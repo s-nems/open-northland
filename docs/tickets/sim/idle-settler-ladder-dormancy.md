@@ -26,9 +26,8 @@ population times the search size, which `packages/sim/AGENTS.md` "Scale" rules o
 
 Expected gain: about 2 ms of the 18.7 ms tick at 40k, inferred rather than measured: the idle-tail and
 flag stand-by runs are 74 of the 159 ladder runs per tick at 60k and the ones that walk every rung,
-against `planAdult`'s 5.5 ms at 40k. That excludes the flag scan (0.7 ms at 40k), whose saving this
-ticket shares with
-[gatherer-rung-scans-foreign-candidates.md](gatherer-rung-scans-foreign-candidates.md).
+against `planAdult`'s 5.5 ms at 40k. That excludes the flag scan, whose per-candidate work cells the
+scan's anchor prefilter already cut.
 
 ## Scope
 

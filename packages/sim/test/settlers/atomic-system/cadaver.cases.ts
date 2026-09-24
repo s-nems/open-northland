@@ -11,6 +11,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation } from '../../../src/index.js';
 import { atomicSystem } from '../../../src/systems/index.js';
 import { harvestFromNode } from '../../../src/systems/settlers/atomics/effects/goods/harvest.js';
+import { resourceHarvestAtomics, resourcesNearNode } from '../../../src/systems/spatial/resources.js';
 import { testContent } from '../../fixtures/content.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
@@ -125,6 +126,28 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     expect(sim.world.isAlive(node)).toBe(false); // the last layer's drain removed the body
     const depleted = sim.events.current().filter((ev) => ev.kind === 'resourceDepleted');
     expect(depleted).toHaveLength(1); // one removal cue - the stage swaps are not depletions
+  });
+
+  it('a layer with another harvest atomic re-arms the body under that atomic in the resource index', () => {
+    const sim = simWithMap();
+    const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
+    const deer = prey(sim, DEER, 3, 0, 20);
+    startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
+    atomicSystem(sim.world, ctxOf(sim));
+    const node = [...sim.world.query(Resource)][0];
+    if (node === undefined) throw new Error('carcass missing');
+    const OTHER_ATOMIC = 24; // a stand-in: no carcass good in the fixture harvests with another atomic
+    for (const layer of sim.world.mut(node, ResourceLayers).layers) layer.harvestAtomic = OTHER_ATOMIC;
+    expect(resourcesNearNode(sim.world, 6, 0, 0, new Set([HARVEST_CADAVER]))).toEqual([node]); // indexed
+
+    startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: MEAT }, 1, HARVEST_CADAVER);
+    atomicSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(node, Resource).harvestAtomic).toBe(OTHER_ATOMIC);
+    expect(resourcesNearNode(sim.world, 6, 0, 0, new Set([OTHER_ATOMIC]))).toEqual([node]);
+    expect(resourcesNearNode(sim.world, 6, 0, 0, new Set([HARVEST_CADAVER]))).toEqual([]);
+    expect(resourceHarvestAtomics(sim.world).has(HARVEST_CADAVER)).toBe(false);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it("the pluck costs the track's baseRepeatCounter strokes per unit (the extracted 5)", () => {

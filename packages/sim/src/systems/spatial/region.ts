@@ -19,15 +19,17 @@ const REGION_NODES = 32;
 /** Region key packing (`rx * STRIDE + ry`): up to 65k regions per axis with a plain-number key. */
 const REGION_KEY_STRIDE = 1 << 16;
 
-interface RegionMember {
+interface RegionMember<Capture> {
   readonly e: Entity;
   /** The member's anchor node, kept beside the id so the box filter needs no store read per query. */
   readonly hx: number;
   readonly hy: number;
+  /** The extra's capture, kept beside the id so a {@link RegionIndex.near} filter needs no store read. */
+  readonly capture: Capture;
 }
 
-interface RegionState<Extra> {
-  byRegion: Map<number, RegionMember[]>;
+interface RegionState<Extra, Capture> {
+  byRegion: Map<number, RegionMember<Capture>[]>;
   /** The same members re-bucketed at node granularity, minted by the first {@link RegionIndex.atNode}
    *  caller and maintained from then on. */
   byNode: NodeBuckets | null;
@@ -51,7 +53,7 @@ export interface RegionIndexLabels {
 /**
  * The per-index derived extra, maintained incrementally beside the membership. `capture` runs at insert
  * and must record everything `remove` needs, because the entity may be destroyed by the time its removal
- * replays.
+ * replays. It must return a primitive: the verifier compares held and fresh captures with `!==`.
  */
 export interface RegionExtraOps<Extra, Capture> {
   empty(): Extra;
@@ -71,13 +73,14 @@ export const NO_REGION_EXTRA: RegionExtraOps<undefined, undefined> = {
 };
 
 /** A memoized region index over `(component, Position)` entities. */
-export interface RegionIndex<Extra> {
+export interface RegionIndex<Extra, Capture> {
   /** The memoized ascending-id list of every indexed entity, shared and frozen. */
   canonical(world: World): readonly Entity[];
   /** Every indexed entity whose anchor node lies within the axis-aligned box `reach` nodes around
    *  `(hx, hy)`, ascending-id. A candidate superset, valid only when `reach` covers the caller's radius
-   *  plus the largest anchor-to-interaction-cell offset. */
-  near(world: World, hx: number, hy: number, reach: number): Entity[];
+   *  plus the largest anchor-to-interaction-cell offset. `keep` drops a member by its capture before the
+   *  sort, so it must reject only members the caller's own filter would reject too. */
+  near(world: World, hx: number, hy: number, reach: number, keep?: (capture: Capture) => boolean): Entity[];
   /** Whether any indexed entity inside the same box passes `test`. Unordered and first-hit, which a pure
    *  existence question does not need. */
   someNear(world: World, hx: number, hy: number, reach: number, test: (e: Entity) => boolean): boolean;
@@ -112,7 +115,7 @@ function boxRegionRange(
   };
 }
 
-function inBox(m: RegionMember, hx: number, hy: number, reach: number): boolean {
+function inBox(m: RegionMember<unknown>, hx: number, hy: number, reach: number): boolean {
   return Math.abs(m.hx - hx) <= reach && Math.abs(m.hy - hy) <= reach;
 }
 
@@ -122,7 +125,7 @@ function inBox(m: RegionMember, hx: number, hy: number, reach: number): boolean 
 function nodeLayerDivergence(
   verifier: string,
   held: NodeBuckets,
-  fresh: Map<number, RegionMember[]>,
+  fresh: Map<number, RegionMember<unknown>[]>,
 ): string[] {
   const expected = new Map<string, Entity[]>();
   // A node belongs to exactly one region and every region bucket is ascending-id, so appending here
@@ -159,14 +162,14 @@ export function createRegionIndex<Extra, Capture>(
   component: Component<unknown>,
   labels: RegionIndexLabels,
   extraOps: RegionExtraOps<Extra, Capture>,
-): RegionIndex<Extra> {
+): RegionIndex<Extra, Capture> {
   interface Member {
     readonly hx: number;
     readonly hy: number;
     readonly capture: Capture;
   }
 
-  const memo = createSpatialMemo<RegionState<Extra>, Member>(component, labels, {
+  const memo = createSpatialMemo<RegionState<Extra, Capture>, Member>(component, labels, {
     empty: () => ({ byRegion: new Map(), byNode: null, list: [], frozen: null, extra: extraOps.empty() }),
     member: (world, e, hx, hy) => ({ hx, hy, capture: extraOps.capture(world, e) }),
     insert: (state, e, m) => {
@@ -178,7 +181,7 @@ export function createRegionIndex<Extra, Capture>(
         bucket = [];
         state.byRegion.set(key, bucket);
       }
-      insertSortedById(bucket, { e, hx: m.hx, hy: m.hy }, (member) => member.e);
+      insertSortedById(bucket, { e, hx: m.hx, hy: m.hy, capture: m.capture }, (member) => member.e);
       state.byNode?.insert(e, m.hx, m.hy);
       extraOps.insert(state.extra, m.capture);
     },
@@ -207,11 +210,13 @@ export function createRegionIndex<Extra, Capture>(
           heldBucket.length !== bucket.length ||
           bucket.some((m, i) => {
             const h = heldBucket[i];
-            return h === undefined || h.e !== m.e || h.hx !== m.hx || h.hy !== m.hy;
+            return (
+              h === undefined || h.e !== m.e || h.hx !== m.hx || h.hy !== m.hy || h.capture !== m.capture
+            );
           })
         ) {
           return [
-            `${labels.verifier} region ${key} diverges from a fresh rebuild - a ${labels.singular} moved in place`,
+            `${labels.verifier} region ${key} diverges from a fresh rebuild - a ${labels.singular} moved or changed in place`,
           ];
         }
       }
@@ -235,7 +240,7 @@ export function createRegionIndex<Extra, Capture>(
       return state.frozen;
     },
     extra: (world) => memo.read(world).extra,
-    near: (world, hx, hy, reach) => {
+    near: (world, hx, hy, reach, keep) => {
       const index = memo.read(world);
       const { minRx, maxRx, minRy, maxRy } = boxRegionRange(hx, hy, reach);
       const out: Entity[] = [];
@@ -243,7 +248,9 @@ export function createRegionIndex<Extra, Capture>(
         for (let ry = minRy; ry <= maxRy; ry++) {
           const bucket = index.byRegion.get(regionKey(rx, ry));
           if (bucket === undefined) continue;
-          for (const m of bucket) if (inBox(m, hx, hy, reach)) out.push(m.e);
+          for (const m of bucket) {
+            if (inBox(m, hx, hy, reach) && (keep === undefined || keep(m.capture))) out.push(m.e);
+          }
         }
       }
       // Each region list is ascending, but concatenating across regions is not, and a nearest-scan's

@@ -1,10 +1,12 @@
 import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { manhattan } from '../../spatial/metric.js';
+import { canonicalById } from '../../spatial/nodes.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../spatial/resources.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
@@ -57,17 +59,18 @@ export function nearestHarvestableFor(
   if (!anyHarvestable) return null;
   const origin = area?.center ?? here;
   const bound = area ?? within;
-  // A bounded scan reads only the resources whose anchor lies in the bound's box, widened by the
-  // content's max work-cell offset so every node whose work cell could pass the radius test is included.
-  // The same filter/rank loop over an ascending-id superset picks the identical winner.
+  const maxWorkOffset = contentIndex(ctx.content).maxResourceWorkOffset;
+  // A work cell lies at most `maxWorkOffset` Manhattan nodes from its anchor, so an anchor farther than
+  // this from the bound's centre has a work cell outside the radius.
+  const anchorReach = bound === undefined ? 0 : bound.radius + maxWorkOffset;
+  const boundX = bound === undefined ? 0 : terrain.coordsOf(bound.center).x;
+  const boundY = bound === undefined ? 0 : terrain.coordsOf(bound.center).y;
+  // A bounded scan reads only the resources of the job's atomics whose anchor lies in the bound's box,
+  // widened by the content's max work-cell offset so every node whose work cell could pass the radius
+  // test is included. The same filter/rank loop over an ascending-id superset picks the identical winner.
   let scanned = candidates;
   if (bound !== undefined) {
-    scanned = resourcesNearNode(
-      world,
-      terrain.coordsOf(bound.center).x,
-      terrain.coordsOf(bound.center).y,
-      bound.radius + contentIndex(ctx.content).maxResourceWorkOffset,
-    );
+    scanned = resourcesNearNode(world, boundX, boundY, anchorReach, allowed);
   } else if (gate !== undefined) {
     // A confined roaming scan: the region box around the allowed area covers every anchor whose work
     // cell could pass the gate, the same superset argument as the bounded path. Guarded, because an
@@ -79,7 +82,7 @@ export function nearestHarvestableFor(
       const cx = Math.floor((b.minX + b.maxX) / 2);
       const cy = Math.floor((b.minY + b.maxY) / 2);
       const half = Math.max(cx - b.minX, b.maxX - cx, cy - b.minY, b.maxY - cy);
-      scanned = resourcesNearNode(world, cx, cy, half + contentIndex(ctx.content).maxResourceWorkOffset);
+      scanned = resourcesNearNode(world, cx, cy, half + maxWorkOffset, allowed);
     }
   }
   // Resolved once per scan, behind the dormancy early-return. Both block layers matter: a building can
@@ -89,6 +92,8 @@ export function nearestHarvestableFor(
   // Probed last in the accept, so a candidate rejected by the cheap gates never costs a region flood.
   const regions = routeRegions(world, ctx, terrain);
   const subject = needSubjectOf(world, plan.entity);
+  // The XP gate depends only on the good, so it is resolved once per good per scan.
+  const meetsNeedByGood = new Map<number, boolean>();
   // Ranked from `origin`, while the interaction cell still resolves from `here`, the route start.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
     if (exclude?.has(e)) return null; // a colleague already digs this node
@@ -96,12 +101,24 @@ export function nearestHarvestableFor(
     if (res === undefined || res.remaining <= 0) return null;
     if (area?.goodType !== undefined && res.goodType !== area.goodType) return null;
     if (goodFilter !== undefined && !goodFilter.has(res.goodType)) return null; // not a good the caller forages for
-    if (!world.has(e, Position)) return null;
+    const p = world.tryGet(e, Position);
+    if (p === undefined) return null;
     if (!allowed.has(res.harvestAtomic)) return null; // data-driven gate: job must permit this atomic
+    if (
+      bound !== undefined &&
+      Math.abs(nodeHxOfPosition(p.x, p.y) - boundX) + Math.abs(nodeHyOfPosition(p.y) - boundY) > anchorReach
+    ) {
+      return null; // its work cell cannot reach into the radius, so skip resolving it
+    }
     // Probed behind the atomic gate, so the rule only ever costs a lookup on the trade's own nodes.
     if (reserved?.(e) === true) return null;
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
-    if (!settlerMeetsNeed(world, ctx, subject, 'good', res.goodType)) return null;
+    let meetsNeed = meetsNeedByGood.get(res.goodType);
+    if (meetsNeed === undefined) {
+      meetsNeed = settlerMeetsNeed(world, ctx, subject, 'good', res.goodType);
+      meetsNeedByGood.set(res.goodType, meetsNeed);
+    }
+    if (!meetsNeed) return null;
     const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
     // A resource across static terrain sits in a different connected component, and `findPath` answers
     // "no route" from the same `componentOf` verdict. Limitation: bridges are not walkable yet, so the
@@ -127,14 +144,16 @@ export function nearestHarvestableFor(
  */
 function nearestDropFor(
   plan: PlannerContext,
+  piles: readonly Entity[],
   pick: (e: Entity) => number | null,
   within?: { center: NodeId; radius: number },
 ): { pile: Entity; goodType: number; dist: number } | null {
-  const { world, ctx, terrain, here, targets } = plan;
+  const { world, ctx, terrain, here } = plan;
+  if (piles.length === 0) return null;
   const gate = plan.limit ?? undefined; // signpost confinement
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const gates: WorkCellGates = { terrain, blocked, memo: unreachableGoals(world, ctx, plan.entity) };
-  const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
+  const best = nearestByCell(terrain, piles, here, (e) => {
     const good = pick(e);
     if (good === null) return null;
     const cell = interactionCell(world, ctx, terrain, e, here);
@@ -164,8 +183,17 @@ export function nearestCollectablePileFor(
   const { world, ctx, targets } = plan;
   const { goodFilter } = opts;
   const allowed = jobAtomics(ctx, plan.jobType);
+  // Only piles of a good this trade harvests (and the caller forages for) are visited at all.
+  const piles: (readonly Entity[])[] = [];
+  for (const [good, harvestAtomic] of targets.harvestAtomicByGood) {
+    if (!allowed.has(harvestAtomic) || (goodFilter !== undefined && !goodFilter.has(good))) continue;
+    const ofGood = targets.groundDropsByGood.get(good);
+    if (ofGood !== undefined) piles.push(ofGood);
+  }
   return nearestDropFor(
     plan,
+    // A pile holding two such goods sits in both lists, hence the set.
+    piles.length === 1 ? (piles[0] ?? []) : canonicalById(new Set(piles.flat())),
     (e) => {
       const good = lowestStockedGood(world.get(e, Stockpile));
       if (good === null) return null; // an emptied drop, about to be reaped
@@ -186,8 +214,8 @@ export function nearestCollectablePileFor(
 export function nearestOwnDropFor(
   plan: PlannerContext,
 ): { pile: Entity; goodType: number; dist: number } | null {
-  const { world, entity: gatherer } = plan;
-  return nearestDropFor(plan, (e) => {
+  const { world, entity: gatherer, targets } = plan;
+  return nearestDropFor(plan, targets.groundDropsByHarvester.get(gatherer) ?? [], (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop
     const good = lowestStockedGood(world.get(e, Stockpile));

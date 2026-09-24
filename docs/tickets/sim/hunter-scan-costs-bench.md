@@ -2,7 +2,7 @@
 
 **Area:** sim · **Focus:** conflict/hunting · **Priority:** P3
 
-Four hunter scans grow with the number of hunters or the density of their grounds rather than with
+Three hunter scans grow with the number of hunters or the density of their grounds rather than with
 work done. On `magiczny_las_12_players` with 13 AI seats the map holds 4-10 hunters, and in the
 trust-clean `npm run bench:profile` from the 40k checkpoint none of these terms passes 0.16% of the
 tick (`huntingGroundHoldsCarcass`; `preyHeldByOthers` is below the sampler's resolution). They matter
@@ -17,13 +17,6 @@ only for hunter-heavy lobbies. Every box below is sized off `HUNTER_WORK_FLAG_RA
   in the radius-plus-slack box, so a resource-dense ground pays the full box per chase tick. A hit that
   survives the cheap rejects and is a carcass also resolves its killer's stance, failed-route memo and
   ground (`claimedByAnotherHunter`, about 1.5 µs per call, bounded by carcasses in the ground).
-- **The carcass-reach sort.** An idle hunter's bounded harvest scan collects the carcass-reach box
-  through `near` (`systems/spatial/region.ts`), which sorts it, once per planner tick, and an idle
-  hunter re-plans every tick.
-  [gatherer-rung-scans-foreign-candidates.md](gatherer-rung-scans-foreign-candidates.md) narrows which
-  resources that scan resolves and
-  [idle-settler-ladder-dormancy.md](idle-settler-ladder-dormancy.md) thins the repeat to its cadence; the
-  collect-and-sort itself stays here.
 - **The last-resort preempt.** A hunter holding last-resort livestock pays the preempt walk every chase
   tick, un-amortized (`HuntRest` does not rest an `Engagement`), out to `2 x radius + slack` from the
   anchor at the leash edge.
@@ -34,10 +27,9 @@ only for hunter-heavy lobbies. Every box below is sized off `HUNTER_WORK_FLAG_RA
   `bench:sim` or a real-map knob) and bound only the terms it shows above noise.
 - Prey-claim set: an O(H) per-world memo keyed on `World.componentGeneration(HuntFocus)` that keeps
   the intra-tick visibility the rule depends on (a hold stamped earlier the same tick is seen).
-- Carcass probe: visit only resources the hunter's atomics allow. Carcass-reach sort: merge the
-  ascending region lists instead of sorting per call, keeping the ascending-id order the first-wins
-  tie-break depends on.
-- Those three are pure cost work: the state hash stays identical.
+- Carcass probe: visit only resources the hunter's atomics allow, as the harvest scan's
+  `resourcesNearNode(..., atomics)` collect already does.
+- Those two are pure cost work: the state hash stays identical.
 - Last-resort preempt: bound the walk to the hunting-ground radius around the anchor, so the winner
   becomes the livestock nearest the anchor instead of nearest the hunter, keeping today's tie-break.
   This changes which animal a hunter takes, so state hashes change: land it as its own commit,

@@ -201,12 +201,16 @@ function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: n
   if (buried !== undefined && layer !== undefined) {
     unstampResourceFootprint(world, node);
     const r = world.mut(node, Resource);
+    const atomicChanged = r.harvestAtomic !== layer.harvestAtomic;
     r.goodType = layer.goodType;
     r.remaining = layer.amount;
     r.harvestAtomic = layer.harvestAtomic;
     if (layer.gfxIndex !== undefined) r.gfxIndex = layer.gfxIndex;
     else delete r.gfxIndex;
     delete r.strikes;
+    // The resource region index captures a node's harvest atomic on membership changes only; a re-add
+    // journals the new one.
+    if (atomicChanged) world.add(node, Resource, { ...r });
     if (buried.layers.length === 1) world.remove(node, ResourceLayers);
     else world.mut(node, ResourceLayers).layers.shift();
     stampResourceFootprintOrFallback(world, ctx.content, node, layer.goodType);

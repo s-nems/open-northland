@@ -18,6 +18,7 @@ const index = createRegionIndex<HarvestAtomics, number>(
   { verifier: 'resourceRegionIndex', plural: 'resources', component: 'Resource', singular: 'resource' },
   {
     empty: () => ({ counts: new Map(), atomics: new Set() }),
+    // Current for the node's life: a stage that changes a node's harvest atomic re-adds its Resource.
     capture: (world, e) => world.get(e, Resource).harvestAtomic,
     insert: (extra, atomic) => {
       extra.counts.set(atomic, (extra.counts.get(atomic) ?? 0) + 1);
@@ -52,10 +53,23 @@ export function resourceHarvestAtomics(world: World): ReadonlySet<number> {
   return index.extra(world).atomics;
 }
 
-/** Every resource whose anchor node lies within the box `reach` nodes around `(hx, hy)`, ascending-id. A
- *  candidate superset, so pass a `reach` covering the radius plus the largest work-cell offset. */
-export function resourcesNearNode(world: World, hx: number, hy: number, reach: number): Entity[] {
-  return index.near(world, hx, hy, reach);
+/** Every resource whose anchor node lies within the box `reach` nodes around `(hx, hy)`, ascending-id,
+ *  narrowed to the harvest atomics in `atomics` when given. A candidate superset, so pass a `reach`
+ *  covering the radius plus the largest work-cell offset. */
+export function resourcesNearNode(
+  world: World,
+  hx: number,
+  hy: number,
+  reach: number,
+  atomics?: ReadonlySet<number>,
+): Entity[] {
+  return index.near(
+    world,
+    hx,
+    hy,
+    reach,
+    atomics === undefined ? undefined : (atomic) => atomics.has(atomic),
+  );
 }
 
 /** Every resource whose anchor node is exactly `(hx, hy)`. The index's live bucket, so copy it before

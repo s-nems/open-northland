@@ -50,6 +50,22 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     expect(near).not.toContain(beyond);
   });
 
+  it('narrows the box to the given harvest atomics, still ascending-id', () => {
+    const sim = newSim();
+    const CHOP = 24; // the fixture node's harvest atomic
+    const STONE = 4;
+    const MINE = 25;
+    const tree = nodeAt(sim, 30, 30);
+    const stone = sim.world.create();
+    sim.world.add(stone, Position, positionOfNode(31, 31));
+    sim.world.add(stone, Resource, { goodType: STONE, remaining: 3, harvestAtomic: MINE });
+    stampResourceFootprintData(sim.world, stone, anchorOnlyFootprint());
+    const later = nodeAt(sim, 33, 33);
+    expect(resourcesNearNode(sim.world, 32, 32, 5, new Set([CHOP]))).toEqual([tree, later]);
+    expect(resourcesNearNode(sim.world, 32, 32, 5, new Set([MINE]))).toEqual([stone]);
+    expect(resourcesNearNode(sim.world, 32, 32, 5, new Set())).toEqual([]);
+  });
+
   it('anyResourceNear agrees with resourcesNearNode over the same box, edge nodes included', () => {
     const sim = newSim();
     const straddling = nodeAt(sim, 31, 31); // one side of the 32-node region border

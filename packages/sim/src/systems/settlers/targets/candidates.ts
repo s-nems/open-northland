@@ -2,6 +2,7 @@ import {
   Building,
   Crop,
   GroundDrop,
+  HarvestedBy,
   Position,
   Resource,
   Stockpile,
@@ -46,6 +47,11 @@ export interface TargetCandidates {
   readonly constructionSiteCells: InteractionCellIndex;
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
+  /** {@link groundDrops} under every good each pile holds, ascending-id, so a scan for one good never
+   *  visits the others. A superset for the pass: a ground drop only ever loses goods. */
+  readonly groundDropsByGood: ReadonlyMap<number, readonly Entity[]>;
+  /** {@link groundDrops} carrying a {@link HarvestedBy} mark, under the harvester it names, ascending-id. */
+  readonly groundDropsByHarvester: ReadonlyMap<Entity, readonly Entity[]>;
   /** Sown fields grouped by the {@link Crop.farm} that owns them, each list ascending-id, so a farmer
    *  reads only its own farm's fields instead of the settlement's whole crop list. */
   readonly cropsByFarm: ReadonlyMap<Entity, readonly Entity[]>;
@@ -92,15 +98,15 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   const cropsByFarm = new Map<Entity, Entity[]>();
   for (const crop of canonicalById(world.query(Crop, Position))) {
     const farm = world.get(crop, Crop).farm;
-    if (farm === null) continue;
-    const fields = cropsByFarm.get(farm);
-    if (fields === undefined) cropsByFarm.set(farm, [crop]);
-    else fields.push(crop);
+    if (farm !== null) pushTo(cropsByFarm, farm, crop);
   }
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
   let fieldZones: Set<NodeId> | undefined;
+  const groundDrops = canonicalById(world.query(GroundDrop, Stockpile, Position));
+  let groundDropsByGood: Map<number, Entity[]> | undefined;
+  let groundDropsByHarvester: Map<Entity, Entity[]> | undefined;
   return {
     resources: canonicalResources(world),
     stockpiles,
@@ -118,7 +124,28 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, constructionSites);
       return constructionSiteCells;
     },
-    groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
+    groundDrops,
+    get groundDropsByGood() {
+      if (groundDropsByGood === undefined) {
+        groundDropsByGood = new Map();
+        for (const pile of groundDrops) {
+          for (const [good, amount] of world.get(pile, Stockpile).amounts) {
+            if (amount > 0) pushTo(groundDropsByGood, good, pile);
+          }
+        }
+      }
+      return groundDropsByGood;
+    },
+    get groundDropsByHarvester() {
+      if (groundDropsByHarvester === undefined) {
+        groundDropsByHarvester = new Map();
+        for (const pile of groundDrops) {
+          const mark = world.tryGet(pile, HarvestedBy);
+          if (mark !== undefined) pushTo(groundDropsByHarvester, mark.by, pile);
+        }
+      }
+      return groundDropsByHarvester;
+    },
     cropsByFarm,
     get fieldZones() {
       if (fieldZones === undefined) {
@@ -143,4 +170,10 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     bands: new TargetBands(world, ctx, terrain, stockpiles, buildings),
     yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupied },
   };
+}
+
+function pushTo<K>(lists: Map<K, Entity[]>, key: K, e: Entity): void {
+  const list = lists.get(key);
+  if (list === undefined) lists.set(key, [e]);
+  else list.push(e);
 }
