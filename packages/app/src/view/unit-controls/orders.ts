@@ -171,71 +171,77 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const pileGood = pile === null ? undefined : goods.find((target) => target.ref === pile)?.goodType;
     if (pileGood !== undefined && wearFromGround(commanded, pileGood)) return true;
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
-    if (building !== null) {
-      const snapshot = deps.snapshot();
-      const entity = entityById(snapshot, building);
-      const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
-      const def = type !== undefined ? buildingsByType.get(type) : undefined;
-      if (
-        def !== undefined &&
-        systems.isSchoolType(def) &&
-        entity?.components.UnderConstruction === undefined
-      ) {
-        event.preventDefault();
-        openSchool(
-          building,
-          commanded.map((t) => t.ref),
-        );
-        return true;
-      }
-      const slots = def?.workers;
-      const underConstruction = entity?.components.UnderConstruction !== undefined;
-      const employsTrade = (jobType: number | undefined): boolean =>
-        jobType !== undefined &&
-        (slots ?? []).some((slot) => canonicalJobType(slot.jobType) === canonicalJobType(jobType));
-      // Homes and workplaces have limited room, so each goes out as one group order and the sim seats
-      // the homeless and the unemployed first.
-      const movers: GroupMember[] = [];
-      const workers: GroupWorker[] = [];
-      for (const target of commanded) {
-        const self = entityById(snapshot, target.ref);
-        const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-        // A site's own worker takes a workplace post and carries materials while it is built, then keeps
-        // the seat when it stands. Only a builder without a matching workplace slot joins the crew.
-        const joinsCrew =
-          currentJob !== undefined &&
-          systems.jobCanBuild(deps.content, currentJob) &&
-          !employsTrade(currentJob);
-        if (underConstruction && joinsCrew) {
-          deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
-          continue;
-        }
-        // A home may be reserved before it stands; its household drives wait for completed construction.
-        if (def?.kind === 'home') {
-          movers.push({ entity: target.ref as Entity });
-          continue;
-        }
-        // Drilling needs the building standing, so a foundation falls through to employment, whose slots
-        // are open from the moment it is placed.
-        if (!underConstruction) {
-          if (trainsRatherThanEmploys(def, currentJob)) {
-            deps.enqueue({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
-            continue;
-          }
-        }
-        // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
-        const jobPriority = assignmentPriorityFor(currentJob, slots);
-        if (jobPriority.length > 0) workers.push({ entity: target.ref as Entity, jobPriority });
-      }
-      if (movers.length > 0) {
-        deps.enqueue({ kind: 'assignHouseGroup', members: movers, house: building as Entity });
-      }
-      if (workers.length > 0) {
-        deps.enqueue({ kind: 'assignWorkerGroup', building: building as Entity, members: workers });
-      }
-      return true;
-    }
+    if (building !== null) return orderAtBuilding(event, commanded, building);
     return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
+  };
+
+  /** The right-click ladder over an own building; true when it opened the school dialog or enqueued an
+   *  order, so a building that takes none of the selection stays silent. */
+  const orderAtBuilding = (
+    event: MouseEvent,
+    commanded: readonly FormationUnit[],
+    building: number,
+  ): boolean => {
+    const snapshot = deps.snapshot();
+    const entity = entityById(snapshot, building);
+    const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
+    const def = type !== undefined ? buildingsByType.get(type) : undefined;
+    const underConstruction = entity?.components.UnderConstruction !== undefined;
+    if (def !== undefined && systems.isSchoolType(def) && !underConstruction) {
+      const opened = openSchool(
+        building,
+        commanded.map((t) => t.ref),
+      );
+      // The press's default would pull focus off the modal it just opened.
+      if (opened) event.preventDefault();
+      return opened;
+    }
+    const slots = def?.workers;
+    const employsTrade = (jobType: number | undefined): boolean =>
+      jobType !== undefined &&
+      (slots ?? []).some((slot) => canonicalJobType(slot.jobType) === canonicalJobType(jobType));
+    let ordered = false;
+    const order = (command: PlayerCommand): void => {
+      deps.enqueue(command);
+      ordered = true;
+    };
+    // Homes and workplaces have limited room, so each goes out as one group order and the sim seats
+    // the homeless and the unemployed first.
+    const movers: GroupMember[] = [];
+    const workers: GroupWorker[] = [];
+    for (const target of commanded) {
+      const self = entityById(snapshot, target.ref);
+      const currentJob = self !== undefined ? settlerJobType(self) : undefined;
+      // A site's own worker takes a workplace post and carries materials while it is built, then keeps
+      // the seat when it stands. Only a builder without a matching workplace slot joins the crew.
+      const joinsCrew =
+        currentJob !== undefined &&
+        systems.jobCanBuild(deps.content, currentJob) &&
+        !employsTrade(currentJob);
+      if (underConstruction && joinsCrew) {
+        order({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
+        continue;
+      }
+      // A home may be reserved before it stands; its household drives wait for completed construction.
+      if (def?.kind === 'home') {
+        movers.push({ entity: target.ref as Entity });
+        continue;
+      }
+      // Drilling needs the building standing, so a foundation falls through to employment, whose slots
+      // are open from the moment it is placed.
+      if (!underConstruction && trainsRatherThanEmploys(def, currentJob)) {
+        order({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
+        continue;
+      }
+      // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
+      const jobPriority = assignmentPriorityFor(currentJob, slots);
+      if (jobPriority.length > 0) workers.push({ entity: target.ref as Entity, jobPriority });
+    }
+    if (movers.length > 0) order({ kind: 'assignHouseGroup', members: movers, house: building as Entity });
+    if (workers.length > 0) {
+      order({ kind: 'assignWorkerGroup', building: building as Entity, members: workers });
+    }
+    return ordered;
   };
 
   /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as

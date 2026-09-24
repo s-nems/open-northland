@@ -1,6 +1,6 @@
 import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { Command, Entity, Fixed, GroupWorker, WorldSnapshot } from '@open-northland/sim';
-import { components, fx, ONE, Simulation } from '@open-northland/sim';
+import { components, fx, ONE, Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { BUILD_HOUSE_ATOMIC } from '../src/catalog/atomics.js';
 import { JOB_BUILDER, JOB_JOINER } from '../src/catalog/jobs.js';
@@ -16,7 +16,7 @@ import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
  * instead. A family may reserve a home before it stands; drilling still requires a completed building.
  */
 
-const { addPerson, Building, Owner, Position, Stockpile, UnderConstruction } = components;
+const { addPerson, Building, Female, Owner, Position, Stockpile, UnderConstruction } = components;
 
 /** A bakery - the workplace whose craft slot the click should hire into. */
 const BAKERY = 'work_bakery_00';
@@ -63,6 +63,16 @@ function rightClick(
   building: Entity,
   content: ContentSet = sim.content,
 ): Command[] {
+  return pressRightClick(sim, settlers, building, content).issued;
+}
+
+/** {@link rightClick} with the press's own verdict, which decides whether the click confirms. */
+function pressRightClick(
+  sim: Simulation,
+  settlers: readonly Entity[],
+  building: Entity,
+  content: ContentSet = sim.content,
+): { issued: Command[]; ordered: boolean } {
   const issued: Command[] = [];
   const snapshot = sim.snapshot();
   const pickable: Pickable = { ref: building, x: 0, y: 0 };
@@ -78,7 +88,7 @@ function rightClick(
     wildlife: () => [],
     ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),
   };
-  createUnitOrderController({
+  const ordered = createUnitOrderController({
     selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,
@@ -89,7 +99,7 @@ function rightClick(
     selectOwnSettler: () => {},
     openActions: () => {},
   }).issueRightClick(CLICK);
-  return issued;
+  return { issued, ordered };
 }
 
 /** The click itself carries no information here - `toWorld` above pins the world point, and the
@@ -238,5 +248,37 @@ describe('right-clicking a standing building', () => {
     expect(rightClick(sim, [idle], barracks)).toEqual([
       { kind: 'trainSoldier', entity: idle, house: barracks },
     ]);
+  });
+});
+
+describe('a right-click that orders nobody', () => {
+  const schoolType = (sim: Simulation): number => {
+    const school = sim.content.buildings.find((row) => systems.isSchoolType(row));
+    if (school === undefined) throw new Error('the sandbox has no school');
+    return school.typeId;
+  };
+
+  it('reports nothing when no selected settler may learn at the school', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const school = buildingAt(sim, schoolType(sim), ONE);
+    const woman = settlerAt(sim, null);
+    sim.world.add(woman, Female, { female: true });
+
+    expect(pressRightClick(sim, [woman], school)).toEqual({ issued: [], ordered: false });
+  });
+
+  it('reports nothing when the foundation takes none of the selection', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const site = siteAt(sim, schoolType(sim)); // a school employs nobody and teaches only once it stands
+    const idle = settlerAt(sim, null);
+
+    expect(pressRightClick(sim, [idle], site)).toEqual({ issued: [], ordered: false });
+  });
+
+  it('reports the order a building did take', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+
+    expect(pressRightClick(sim, [settlerAt(sim, null)], home).ordered).toBe(true);
   });
 });
