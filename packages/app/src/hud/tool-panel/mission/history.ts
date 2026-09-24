@@ -1,7 +1,7 @@
 import { BRIEFING_HISTORY_LIMIT } from '@open-northland/sim';
 
 /** The shown page and the pages shown so far, carried across a remount. */
-export interface MissionWindowState {
+export interface ShownPagesState {
   readonly page: number | null;
   readonly pages: readonly number[];
 }
@@ -18,11 +18,6 @@ export class ShownPages {
   /** Whether two pages have been shown, which is when the prev/next pair appears. */
   get walkable(): boolean {
     return this.pages.length >= 2;
-  }
-
-  /** The last page shown, for a map whose pages all came without the replay flag. */
-  get last(): number | null {
-    return this.pages.at(-1) ?? null;
   }
 
   /** Fold the sim's own delivered history in, so a page shown before this window mounted is walkable. */
@@ -43,11 +38,11 @@ export class ShownPages {
     return this.pages[at + direction] ?? null;
   }
 
-  state(): MissionWindowState {
+  state(): ShownPagesState {
     return { page: this.page, pages: [...this.pages] };
   }
 
-  restore(state: MissionWindowState): void {
+  restore(state: ShownPagesState): void {
     this.page = state.page;
     this.pages = [...state.pages];
   }

@@ -19,7 +19,7 @@ import {
   viewFrameWidth,
 } from './content.js';
 import { type SheetCreep, startCreep } from './creep.js';
-import { type MissionWindowState, ShownPages } from './history.js';
+import { ShownPages, type ShownPagesState } from './history.js';
 import {
   BUTTON_SCROLL_STEP,
   clampScroll,
@@ -41,6 +41,19 @@ import { type MissionHumanLookup, userIconBox } from './user-icons.js';
 const STRING_TITLE = 60;
 const STRING_TAB: Readonly<Record<MissionTab, number>> = { task: 61, goals: 62, history: 63 };
 const STRING_GOALS_HEADING = 66;
+
+/** Where the reader of an open sheet stands: the tab, the history book's page and the scroll in
+ *  design px, so a remount at another scale lands on the same text. */
+export interface MissionReading {
+  readonly tab: MissionTab;
+  readonly bookPage: string;
+  readonly scroll: number;
+}
+
+/** The pages shown so far, and the reading an open sheet resumes after a remount. */
+export interface MissionWindowState extends ShownPagesState {
+  readonly reading: MissionReading | null;
+}
 
 export interface MissionWindowDeps {
   readonly ctx: PanelContext;
@@ -68,7 +81,7 @@ export interface MissionWindowDeps {
 export interface MissionWindow extends ToolWindow {
   /** Open on briefing `page` (a `PlayCutscene`), which joins the pages the prev/next buttons walk. */
   showPage(page: number): void;
-  /** The shown page and the pages shown so far, carried across a remount. */
+  /** The pages shown so far and, while open, where the reader stands; carried across a remount. */
   state(): MissionWindowState;
   restore(state: MissionWindowState): void;
   handleWheel(x: number, y: number, deltaY: number): boolean;
@@ -122,6 +135,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   let creep: SheetCreep | null = null;
   let hovered: Rect | null = null;
   let screenKey = '';
+  /** A restored reading the next opening resumes instead of starting fresh; any other opening drops it. */
+  let resume: MissionReading | null = null;
 
   const clearHover = (): void => {
     if (hovered === null) return;
@@ -247,17 +262,33 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     build();
   };
 
+  /** Back where a remount found the reader: the same page, tab and text, and no creep over a place
+   *  already reached. */
+  const reopenOn = (reading: MissionReading): void => {
+    shown.fold(deps.briefingHistory?.() ?? []);
+    tab = reading.tab;
+    page = reading.bookPage;
+    scroll = 0;
+    creep = null;
+    build();
+    if (layout !== null) scrollTo(reading.scroll * layout.scale);
+  };
+
   /** From the strip the window opens on the map's replayable page (reading); a map whose pages all
    *  came without the replay flag reopens on the last one shown (approximation). */
   const setOpen = (open: boolean): void => {
     if (open === shell.isOpen()) return;
+    const reading = resume;
+    resume = null;
     shell.setOpen(open);
-    if (open) openOn(deps.replayPage?.() ?? shown.page ?? deps.briefingHistory?.().at(-1) ?? null);
+    if (open && reading !== null) reopenOn(reading);
+    else if (open) openOn(deps.replayPage?.() ?? shown.page ?? deps.briefingHistory?.().at(-1) ?? null);
     else clear();
     deps.onOpenChange?.(open);
   };
 
   const showPage = (next: number): void => {
+    resume = null;
     if (!shell.isOpen()) {
       shell.setOpen(true);
       openOn(next);
@@ -329,8 +360,15 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     toggle: () => setOpen(!shell.isOpen()),
     close: () => setOpen(false),
     showPage,
-    state: () => shown.state(),
-    restore: (state) => shown.restore(state),
+    state: () => ({
+      ...shown.state(),
+      reading:
+        shell.isOpen() && layout !== null ? { tab, bookPage: page, scroll: scroll / layout.scale } : null,
+    }),
+    restore: (state) => {
+      shown.restore(state);
+      resume = state.reading;
+    },
     claims: (x, y) => shell.claims(layout?.sheet ?? null, x, y),
     handleClick(x, y): boolean {
       if (!shell.isOpen() || layout === null || viewport === null) return false;

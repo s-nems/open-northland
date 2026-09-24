@@ -25,7 +25,7 @@ const SCREEN = { width: 1024, height: 768 };
 const LINE_H = 10;
 const RUN_W = 40;
 
-function stubContext(): {
+function stubContext(screen: typeof SCREEN = SCREEN): {
   ctx: PanelContext;
   made: string[];
   placedY: Map<string, number>;
@@ -54,7 +54,7 @@ function stubContext(): {
     },
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
-    screen: () => SCREEN,
+    screen: () => screen,
     cue: (cue) => {
       cues.push(cue);
     },
@@ -88,8 +88,9 @@ function mount(
   now: () => number = () => 0,
   replayPage: number | null = null,
   briefingHistory: readonly number[] = [],
+  screen: typeof SCREEN = SCREEN,
 ) {
-  const { ctx, made, placedY, cues } = stubContext();
+  const { ctx, made, placedY, cues } = stubContext(screen);
   const opened: boolean[] = [];
   const asked: (number | null)[] = [];
   const window = createMissionWindow({
@@ -106,7 +107,7 @@ function mount(
     onOpenChange: (open) => opened.push(open),
     now,
   });
-  const layout = layoutMissionWindow(SCREEN, null, buildToolPanelLayout(1).sheetArea(SCREEN));
+  const layout = layoutMissionWindow(screen, null, buildToolPanelLayout(1).sheetArea(screen));
   return { window, made, placedY, opened, asked, layout, cues };
 }
 
@@ -300,12 +301,16 @@ describe('createMissionWindow', () => {
     made.length = 0;
     window.handleClick(...middle(layout.historyNext));
     expect(made).toContain('PAGE 501');
-    expect(window.state()).toEqual({ page: 501, pages: [500, 501, 502] });
+    expect(window.state()).toEqual({
+      page: 501,
+      pages: [500, 501, 502],
+      reading: { tab: 'task', bookPage: 'index', scroll: 0 },
+    });
   });
 
   it('reopens on the restored page and walks the restored pages after a remount', () => {
     const { window, asked, layout } = mount();
-    window.restore({ page: 501, pages: [500, 501, 502] });
+    window.restore({ page: 501, pages: [500, 501, 502], reading: null });
     window.toggle();
     expect(asked.at(-1)).toBe(501);
     window.handleClick(...middle(layout.historyNext));
@@ -313,7 +318,49 @@ describe('createMissionWindow', () => {
     window.handleClick(...middle(layout.historyPrev));
     window.handleClick(...middle(layout.historyPrev));
     expect(asked.at(-1)).toBe(500);
-    expect(window.state()).toEqual({ page: 500, pages: [500, 501, 502] });
+    expect(window.state()).toMatchObject({ page: 500, pages: [500, 501, 502] });
+  });
+
+  it('resumes an open sheet on its own page and scroll after a remount, ahead of the replayable page', () => {
+    const blocks = Array.from({ length: 60 }, (_, i) => ({
+      kind: 'text' as const,
+      style: 'body' as const,
+      text: `P${i}`,
+    }));
+    const brief: MissionBrief = { title: '', blocks, goals: [] };
+    const before = mount(brief, () => 0, 500);
+    before.window.toggle();
+    before.window.showPage(501);
+    before.window.handleClick(...middle(before.layout.scrollDown));
+    // The scroll in design px: how far the first line sits above the text viewport, unscaled.
+    const scrolled = (m: ReturnType<typeof mount>): number =>
+      ((m.placedY.get('P0') ?? Number.NaN) - m.layout.pageViewport.y) / m.layout.scale;
+    expect(scrolled(before)).toBeLessThan(0);
+    // The remount lands on a taller screen, so the sheet is drawn at another scale.
+    const after = mount(brief, () => 0, 500, [], { width: 1600, height: 1200 });
+    expect(after.layout.scale).not.toBeCloseTo(before.layout.scale);
+    after.window.restore(before.window.state());
+    after.window.toggle();
+    expect(after.asked.at(-1)).toBe(501);
+    // Within the screen px the new scale rounds a line's position to.
+    expect(Math.abs(scrolled(after) - scrolled(before))).toBeLessThanOrEqual(1);
+  });
+
+  it('resumes the history book page after a remount, and a closed sheet opens fresh', () => {
+    const before = mount();
+    before.window.toggle();
+    const historyTab = before.layout.tabs.find((t) => t.tab === 'history');
+    expect(historyTab).toBeDefined();
+    if (historyTab === undefined) return;
+    before.window.handleClick(...middle(historyTab.rect));
+    const { viewport } = before.layout;
+    before.window.handleClick(viewport.x + viewport.w / 2, viewport.y + LINE_H + 5);
+    const after = mount();
+    after.window.restore(before.window.state());
+    after.window.toggle();
+    expect(after.made).toEqual(expect.arrayContaining(['SEVEN WONDERS', 'Back']));
+    before.window.close();
+    expect(before.window.state().reading).toBeNull();
   });
 
   it('reports the page map views clipped to its viewport, following the scroll, while open on the task tab', () => {
