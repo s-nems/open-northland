@@ -12,7 +12,6 @@ export {
   attachToFarm,
   birthHerdAnimal,
   farmStands,
-  herdOf,
   herdRoom,
   isAdultAnimal,
   isFreeClaimedAnimal,
@@ -21,5 +20,6 @@ export {
   speciesGoodOf,
   speciesHerdOf,
 } from './herd.js';
+export { herdedFarms, herdOf, summonedAnimals } from './herd-index.js';
 export { slayDepositGoods, stockDepositsAt } from './slay-clip.js';
 export { livestockSummonSystem } from './summon.js';

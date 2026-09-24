@@ -4,7 +4,6 @@ import {
   Frightened,
   JobAssignment,
   MoveGoal,
-  Position,
   Stranded,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -13,6 +12,7 @@ import { interactionNodeId } from '../footprint/interaction.js';
 import { isTravelling } from '../movement/nav-state.js';
 import { entityNode } from '../spatial/nodes.js';
 import { farmStands } from './herd.js';
+import { summonedAnimals } from './herd-index.js';
 
 /**
  * Walk every summoned animal to its farm's door and hold it there, the original's house-interaction mode:
@@ -23,7 +23,8 @@ import { farmStands } from './herd.js';
  */
 export const livestockSummonSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
-  for (const e of world.query(FarmAnimal, Position)) {
+  // The index is a snapshot: releasing a summon below rebuilds it on the next read, not under this loop.
+  for (const e of summonedAnimals(world)) {
     const held = world.get(e, FarmAnimal);
     const summoner = held.summoner;
     if (summoner === null) continue;

@@ -29,6 +29,7 @@ import { entityNode } from '../spatial/nodes.js';
 import { stampAnimalBody } from '../spawn/animals.js';
 import { stockCapacity } from '../stores/index.js';
 import { ANIMAL_ADULT_AGE_TICKS } from './growth.js';
+import { herdOf } from './herd-index.js';
 
 // A farm's herd is the set of animals carrying {@link FarmAnimal} for it - the original's house
 // attachment - and its species stock rows are that set counted per species, recomputed rather than
@@ -54,13 +55,6 @@ export interface SpeciesHerd {
 export function farmStands(world: World, ctx: SystemContext, farm: Entity): boolean {
   const b = world.tryGet(farm, Building);
   return b !== undefined && b.built >= ONE && isLivestockWorkplaceType(ctx.content, b.buildingType);
-}
-
-/** The animals attached to `farm`, in the world's canonical store order. */
-export function* herdOf(world: World, farm: Entity): IterableIterator<Entity> {
-  for (const e of world.query(FarmAnimal, Settler, Position)) {
-    if (world.get(e, FarmAnimal).farm === farm) yield e;
-  }
 }
 
 /** Whether `animal` has grown up (the original's `adult_animal` job). */
@@ -101,8 +95,7 @@ export function speciesHerdOf(
  * shrinks as the other one grows.
  */
 export function herdRoom(world: World, ctx: SystemContext, farm: Entity, speciesGood: number): number {
-  let held = 0;
-  for (const _ of herdOf(world, farm)) held += 1;
+  let held = herdOf(world, farm).length;
   for (const cycle of world.tryGet(farm, Production)?.cycles ?? []) {
     if (livestockTribeOfGood(ctx.content, cycle.goodType) !== null) held += 1; // a calf on its way
   }

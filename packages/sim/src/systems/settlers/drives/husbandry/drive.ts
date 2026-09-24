@@ -22,6 +22,7 @@ import { removeSettlerSilently } from '../../../lifecycle/cleanup.js';
 import {
   attachToFarm,
   farmStands,
+  herdedFarms,
   herdOf,
   herdRoom,
   isAdultAnimal,
@@ -38,7 +39,7 @@ import {
   livestockTribeOfGood,
   slayAtomicOfSpecies,
 } from '../../../readviews/index.js';
-import { canonicalById, entityNode } from '../../../spatial/nodes.js';
+import { entityNode } from '../../../spatial/nodes.js';
 import { buildingWorkerJobs, recipesByProductOf, stockCapacity } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
@@ -196,9 +197,11 @@ function takeFromNeighbour(plan: PlannerContext, farm: Entity, good: number): bo
   let sources = 0;
   let best: Entity | null = null;
   let bestRange = Number.POSITIVE_INFINITY;
-  for (const other of canonicalById(world.query(Building, Stockpile))) {
+  // Only a farm with animals can hold more than a pair, so the herded farms stand in for every building.
+  for (const other of herdedFarms(world)) {
     if (sources >= TAKE_SOURCE_FARMS) break;
-    if (other === farm || ownerOf(world, other) !== owner || !farmStands(world, ctx, other)) continue;
+    if (other === farm || !world.has(other, Stockpile) || ownerOf(world, other) !== owner) continue;
+    if (!farmStands(world, ctx, other)) continue;
     if (speciesHerdOf(world, ctx, other, good).all <= BREEDING_PAIR) continue;
     sources += 1;
     for (const animal of herdOf(world, other)) {
