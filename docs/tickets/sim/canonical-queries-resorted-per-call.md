@@ -37,6 +37,9 @@ Expected gain: about 0.6 ms of the 18.7 ms tick at 40k.
   [planner-pass-setup-scales-with-world.md](planner-pass-setup-scales-with-world.md) and the cross-tick
   food index of [family-food-index-rebuilt-every-tick.md](family-food-index-rebuilt-every-tick.md)
   build on this list rather than each keeping a sorted copy.
+- This list is the sim's own; the app-side entity indexes of
+  [03 Mirror indexes](../runtime-architecture/03-mirror-indexes.md) are maintained on the mirror from
+  the snapshot delta and do not replace it.
 - Pure cost work: the order is the same ascending id, so the state hash must stay identical.
 
 ## Verify

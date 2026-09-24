@@ -1,8 +1,6 @@
 # Cut what the sync digest folds each tick
 
 **Area:** sim, lockstep · **Priority:** P3
-**Needs user:** after the investigate step below, the owner chooses between per-tick and windowed sealing.
-
 A relay session (`relay-client.ts` calls `Simulation.setSyncDigest(true)`) makes
 `SyncDigestRecorder` (`packages/sim/src/simulation/sync-digest.ts`) record every component a tick
 writes through `componentWritten` and re-fold each touched value in full in `seal`, which is what lets
@@ -28,15 +26,10 @@ Split the rarely-written payload out of each of the three hot components into it
 step along a route stops re-folding the route; that is a component-layout and save-format change, and
 it needs no new digest machinery.
 
-Investigate first, then bring the choice back to the owner: survey how other lockstep RTS engines
-checksum state for desync detection (per-tick against windowed checksums, what they fold, and what they
-report when peers diverge), citing only published or public sources such as developer write-ups, talks and
-open-source engine documentation. Write the findings and a recommendation into this ticket. The option
-on the table: accumulate the touched sets across an N-tick window and seal at the boundary, which folds
-a per-tick component once per window instead of N times and stays a pure function of the state at the
-seal tick, but names a window rather than a tick when two clients part. It matters only if the split
-alone misses the budget.
-
+The digest stays sealed every tick: the disputed-tick forensics and the per-tick acknowledgement of
+the [runtime architecture epic](../runtime-architecture/README.md) rest on it, so accumulating touched
+sets across a window and sealing at its boundary is out of scope. The cost comes down through the split
+above, not through fewer seals.
 A depth or size cut that stops folding part of a value is not in scope: it trades away the property
 the digest exists for.
 

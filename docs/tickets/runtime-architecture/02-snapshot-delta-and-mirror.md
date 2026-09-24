@@ -26,6 +26,9 @@ bookkeeping, not from a diff pass after the fact.
   message is detected rather than silently skipped.
 - The inline host of 01 can serve either the live snapshot or the mirror, so the mirror is exercised
   before any worker exists.
+- The mirror's `entities` array is built per change, which retires the per-tick rebuild `takeSnapshot`
+  pays today over all ~26k canonical entities (845 MB of array plus 818 MB of iterator allocation in a
+  45 s live sample on `specjalna_forteca` with 13 AI seats at tick ~48k, x3).
 - On completion, delete the ticket under `docs/tickets/sim/` that asks `takeSnapshot` to reuse its
   per-tick `entities` array: with the delta that array is the mirror's, built per change.
 

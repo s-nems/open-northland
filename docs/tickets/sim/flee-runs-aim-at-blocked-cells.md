@@ -52,9 +52,9 @@ fleeing until it is out of range.
   as in `test/conflict/melee-engagement/autonomous.cases.ts`.
 - Headless: a civilian next to an enemy house stays put; a civilian next to an enemy tower with a
   fighter at its post flees.
-- Replay a late checkpoint with the neighbours set to `enemy` (the war knob of
-  [mass-battle-bench-and-bounds](mass-battle-bench-and-bounds.md) once it exists, or a script issuing
-  `setDiplomacy`): failed flee routes fall from about two-thirds of fleer-ticks to a small fraction,
+- Replay a late checkpoint with the neighbours set to `enemy` (the staged battle of
+  [the heavy-load reference](../runtime-architecture/00-heavy-load-reference.md) once it exists, or a
+  script issuing `setDiplomacy`): failed flee routes fall from about two-thirds of fleer-ticks to a small fraction,
   fleers move, and building threats drop to the shooting ones. These are behaviour changes, so state
   hashes change: regenerate the goldens that contain a fleer in the same commit and name the change.
 - `npm test`, `npm run check`.
