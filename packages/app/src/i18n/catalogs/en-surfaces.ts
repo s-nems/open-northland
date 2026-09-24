@@ -24,7 +24,6 @@ export const enSurfaces = {
     fullscreenPrompt: 'For a better experience, play in fullscreen',
     // A back link names the screen it returns to, not "Back".
     backLabels: { main: 'Menu', newGame: 'Map selection' },
-    underConstruction: 'This screen is under construction.',
     screenTitles: {
       multiplayer: 'Multiplayer',
       newGame: 'New game',

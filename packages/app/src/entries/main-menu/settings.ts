@@ -1,23 +1,18 @@
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { messages } from '../../i18n/index.js';
 import { createSettingsPage, type SettingsMemory, type SettingsPageStore } from '../../view/settings-page.js';
-import type { MenuScreen } from './model.js';
+import type { MenuScreen, MountedScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import { menuSettings, updateSettings } from './settings-state.js';
 
 export type { SettingsMemory } from '../../view/settings-page.js';
-
-export interface SettingsScreenHandle {
-  readonly el: HTMLElement;
-  dispose(): void;
-}
 
 export function settingsScreen(
   open: (screen: MenuScreen) => void,
   memory: SettingsMemory,
   signal: AbortSignal,
   onLanguageChange: () => void,
-): SettingsScreenHandle {
+): MountedScreen {
   const section = document.createElement('section');
   section.className = 'main-menu__screen main-menu__settings';
   const settings: SettingsPageStore = {
@@ -45,5 +40,5 @@ export function settingsScreen(
     onLanguageChange: relabel,
   });
   section.append(head, page.el);
-  return { el: section, dispose: page.dispose };
+  return { element: section, dispose: page.dispose };
 }

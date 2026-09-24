@@ -23,7 +23,6 @@ export const plSurfaces = {
     comingSoonTip: 'Wkrótce',
     fullscreenPrompt: 'Włącz pełny ekran',
     backLabels: { main: 'Menu', newGame: 'Wybór mapy' },
-    underConstruction: 'Ten ekran jest w budowie.',
     screenTitles: {
       multiplayer: 'Gra wieloosobowa',
       newGame: 'Nowa gra',

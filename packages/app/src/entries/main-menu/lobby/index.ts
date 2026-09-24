@@ -2,7 +2,7 @@ import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { createMapDetailsCard } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
-import type { MenuScreen } from '../model.js';
+import type { MenuScreen, MountedScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { targetSearch } from '../target-search.js';
 import { localSeatElements } from './local-seats.js';
@@ -19,14 +19,12 @@ import {
   toggleVacantMode,
 } from './roster-state.js';
 
-/** Slots come from the map; none can be added or removed. */
-
 export function lobbyScreen(
   item: MapSelectItem,
   open: (screen: MenuScreen) => void,
   rosters: Map<string, RosterState>,
   launch: LaunchEntry,
-): HTMLElement {
+): MountedScreen {
   const copy = messages().mainMenu;
   const lobby = copy.lobby;
 
@@ -182,10 +180,6 @@ export function lobbyScreen(
   // Capture phase: Esc closes an open colour picker before the menu shell reads it as
   // back-navigation.
   const onKeydown = (event: KeyboardEvent): void => {
-    if (!section.isConnected) {
-      unhookKeys();
-      return;
-    }
     if (event.key === 'Escape' && pickerSlot !== null) {
       event.stopPropagation();
       refocus = `chip:${pickerSlot}`;
@@ -193,15 +187,11 @@ export function lobbyScreen(
       renderSeats();
     }
   };
-  const unhookKeys = (): void => window.removeEventListener('keydown', onKeydown, true);
   window.addEventListener('keydown', onKeydown, true);
-  head.querySelector('.main-menu__back')?.addEventListener('click', unhookKeys);
 
   start.addEventListener('click', () => {
-    if (start.disabled) return;
-    unhookKeys();
-    launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options)));
+    if (!start.disabled) launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options)));
   });
 
-  return section;
+  return { element: section, dispose: () => window.removeEventListener('keydown', onKeydown, true) };
 }

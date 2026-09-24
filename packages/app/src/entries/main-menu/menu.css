@@ -412,15 +412,6 @@
   color: var(--text-primary);
 }
 
-.main-menu__wip {
-  margin: 0;
-  font:
-    400 calc(var(--u) * 26) / 1.5 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  color: var(--text-muted);
-}
-
 /* ---- Controls shared by the sub-screens ---- */
 
 /* Outlined link-buttons (both <a> and <button>); the accent variant marks a row's primary

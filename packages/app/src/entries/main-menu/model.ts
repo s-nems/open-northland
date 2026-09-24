@@ -1,5 +1,12 @@
 export type MenuScreen = 'main' | 'multiplayer' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
 
+/** A screen and its teardown, which the shell runs when the screen leaves, for handlers bound outside
+ *  its element. */
+export interface MountedScreen {
+  readonly element: HTMLElement;
+  readonly dispose?: () => void;
+}
+
 declare const __GAME_VERSION__: string;
 
 const GAME_VERSION = typeof __GAME_VERSION__ === 'string' ? __GAME_VERSION__ : 'dev';

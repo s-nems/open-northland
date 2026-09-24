@@ -13,14 +13,19 @@ import type { RosterState } from './lobby/roster-state.js';
 import { releaseMapPreviews } from './map-preview.js';
 import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
-import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VERSION_LINE } from './model.js';
+import {
+  backTarget,
+  MAIN_NAV,
+  type MainNavItem,
+  type MenuScreen,
+  type MountedScreen,
+  moveFocus,
+  VERSION_LINE,
+} from './model.js';
 import { startMenuMusic } from './music.js';
 import { networkScreen } from './network/index.js';
-import { screenHead } from './screen-head.js';
 import { settingsScreen } from './settings.js';
 import { adoptStoredSettings, updateSettings } from './settings-state.js';
-
-type SubScreen = Exclude<MenuScreen, 'main'>;
 
 /** Grade layers above the scene, bottom to top; the scene layer itself is built as the backdrop host. */
 const OVERLAY_LAYERS = ['tint', 'shade', 'aurora-dusk', 'aurora-blue'] as const;
@@ -74,21 +79,6 @@ function mainScreen(open: (screen: MenuScreen) => void): HTMLElement {
 
   home.append(brand, nav);
   return home;
-}
-
-function placeholderScreen(screen: SubScreen, open: (screen: MenuScreen) => void): HTMLElement {
-  const copy = messages().mainMenu;
-  const section = document.createElement('section');
-  section.className = 'main-menu__screen';
-
-  const head = screenHead(screen, open);
-
-  const wip = document.createElement('p');
-  wip.className = 'main-menu__wip';
-  wip.textContent = copy.underConstruction;
-
-  section.append(head, wip);
-  return section;
 }
 
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
@@ -162,23 +152,24 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     lobbyMap = item;
     show('lobby');
   };
-  const screenFor = (next: MenuScreen): HTMLElement => {
-    if (next === 'main') return mainScreen(show);
-    if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby, launch);
-    if (next === 'multiplayer') {
-      const mounted = networkScreen(show, launch, params, sound);
-      disposeScreen = mounted.dispose;
-      return mounted.element;
+  const screenFor = (next: MenuScreen): MountedScreen => {
+    switch (next) {
+      case 'main':
+        return { element: mainScreen(show) };
+      case 'newGame':
+        return { element: mapSelectScreen(show, mapSelectMemory, openLobby, launch) };
+      case 'multiplayer':
+        return networkScreen(show, launch, params, sound);
+      case 'load':
+        return { element: loadSelectScreen(show, launch) };
+      case 'lobby':
+        // Only `openLobby` leads here, with its map already set.
+        return lobbyMap === null ? screenFor('newGame') : lobbyScreen(lobbyMap, show, rosters, launch);
+      case 'settings':
+        return settingsScreen(show, settingsMemory, scope.signal, fullscreenPrompt.relabel);
+      case 'credits':
+        return { element: creditsScreen(show) };
     }
-    if (next === 'load') return loadSelectScreen(show, launch);
-    if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters, launch);
-    if (next === 'settings') {
-      const mounted = settingsScreen(show, settingsMemory, scope.signal, fullscreenPrompt.relabel);
-      disposeScreen = mounted.dispose;
-      return mounted.el;
-    }
-    if (next === 'credits') return creditsScreen(show);
-    return placeholderScreen(next, show);
   };
   const show = (next: MenuScreen): void => {
     if (launching) return;
@@ -186,7 +177,9 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     disposeScreen = (): void => undefined;
     screen = next;
     root.classList.toggle('is-sub', next !== 'main');
-    content.replaceChildren(screenFor(next));
+    const mounted = screenFor(next);
+    if (mounted.dispose !== undefined) disposeScreen = mounted.dispose;
+    content.replaceChildren(mounted.element);
     content.classList.remove('is-entering');
     void content.offsetWidth; // reflow so the crossfade animation restarts
     content.classList.add('is-entering');
