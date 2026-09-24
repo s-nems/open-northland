@@ -20,6 +20,12 @@ export const REVEALED_BYTE = 3;
  *  from its neighbours'. */
 const MASK_BYTE_COUNT = REVEALED_BYTE + 1;
 
+/** The world-metric weights of the vision ellipse in px, from the measured projection pitch
+ *  (`nav/world-metric.ts`). Integer, so the ellipse test is exact integer arithmetic. */
+const CELL_STEP_PX = 68;
+const ROW_STEP_PX = 38;
+const NODE_STEP_PX = 34;
+
 /**
  * One player's mask fold: the XOR of every non-UNEXPLORED cell's {@link cellFold}. Boxed so a stamp
  * updates it without a per-cell lookup, and order-independent, so it is a pure function of the mask's
@@ -105,6 +111,8 @@ export class FogState {
   private readonly eyeStamps = new Map<Entity, EyeStamp>();
   /** The stamp pass counter {@link EyeStamp.pass} is checked against when pruning eyes that are gone. */
   private stampPass = 0;
+  /** Whether the open stamp pass memoizes footprints (see {@link beginStampPass}). */
+  private memoStamps = false;
 
   constructor(terrain: TerrainGraph, world: World) {
     // The terrain graph is the 2W×2H half-cell lattice; cells quarter it (ceil for odd safety).
@@ -113,6 +121,7 @@ export class FogState {
     // The may-hold-VISIBLE boxes are incrementally maintained, so the verifier registers here for the
     // fuzz harness's `cachesCoherent` invariant.
     world.registerCacheVerifier('fogVisibleBounds', () => this.verifyVisibleBounds());
+    world.registerCacheVerifier('fogEyeStamps', () => this.verifyEyeStamps());
   }
 
   /** Start maintaining the mask folds, seeded from the masks as they stand: one walk, so a session that
@@ -138,7 +147,7 @@ export class FogState {
 
   /** The fold of `player`'s group mask to update while writing its cells, or null while no digest folds
    *  the fog. An all-UNEXPLORED mask folds to 0, so a fresh box needs no walk. */
-  foldFor(player: number): FogFold | null {
+  private foldFor(player: number): FogFold | null {
     if (this.folds === null) return null;
     const group = this.visionGroupOf(player);
     let fold = this.folds.get(group);
@@ -268,10 +277,41 @@ export class FogState {
     this.generation++;
   }
 
-  /** Open a stamp pass: an eye {@link eyeStampCovered} does not see before {@link pruneEyeStamps} is
-   *  dropped from the memo. */
-  beginStampPass(): void {
+  /** Open a stamp pass. `memo` (only without fog of war, where no byte falls back) skips an eye whose
+   *  footprint is unchanged since its last stamp, and {@link endStampPass} forgets the eyes the pass did
+   *  not see. */
+  beginStampPass(memo: boolean): void {
+    this.memoStamps = memo;
     this.stampPass++;
+  }
+
+  /**
+   * Stamp `eye`'s sight, `radius` nodes around cell (cx, cy), into its owner's group mask, and merge the
+   * touched rect into the group's may-hold-VISIBLE box. Returns whether it raised any byte.
+   */
+  stampEye(eye: Entity, player: number, cx: number, cy: number, radius: number): boolean {
+    if (this.memoStamps && this.eyeStampCovered(eye, player, cx, cy, radius)) return false;
+    const rect = stampVision(
+      this.maskFor(player),
+      this.cellsWide,
+      this.cellsHigh,
+      cx,
+      cy,
+      radius,
+      this.foldFor(player),
+    );
+    if (rect === null) return false;
+    this.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
+    return rect.wrote;
+  }
+
+  /** Close a stamp pass: a memoizing pass forgets the eyes it did not see (destroyed, disowned or no
+   *  longer eyes). */
+  endStampPass(): void {
+    if (!this.memoStamps) return;
+    for (const [eye, stamp] of this.eyeStamps) {
+      if (stamp.pass !== this.stampPass) this.eyeStamps.delete(eye);
+    }
   }
 
   /**
@@ -279,7 +319,7 @@ export class FogState {
    * group's mask: the same group, cell and radius as its memoized stamp. Otherwise memoizes this
    * footprint and returns false, and the caller must stamp it now.
    */
-  eyeStampCovered(eye: Entity, player: number, cx: number, cy: number, radius: number): boolean {
+  private eyeStampCovered(eye: Entity, player: number, cx: number, cy: number, radius: number): boolean {
     const group = this.visionGroupOf(player);
     const held = this.eyeStamps.get(eye);
     if (held === undefined) {
@@ -295,16 +335,9 @@ export class FogState {
     return false;
   }
 
-  /** Close a stamp pass: forget the eyes it did not see (destroyed, disowned or no longer eyes). */
-  pruneEyeStamps(): void {
-    for (const [eye, stamp] of this.eyeStamps) {
-      if (stamp.pass !== this.stampPass) this.eyeStamps.delete(eye);
-    }
-  }
-
   /** Merge a stamp's touched cell rect into the may-hold-VISIBLE box of `player`'s group (see
    *  visibleBounds). */
-  mergeVisibleBounds(player: number, minC: number, maxC: number, minR: number, maxR: number): void {
+  private mergeVisibleBounds(player: number, minC: number, maxC: number, minR: number, maxR: number): void {
     const group = this.visionGroupOf(player);
     const b = this.visibleBounds.get(group);
     if (b === undefined) {
@@ -413,6 +446,30 @@ export class FogState {
   }
 
   /**
+   * Verify the eye memo against the masks: re-stamping a memoized footprint into a copy of its group's
+   * mask must write nothing, or that eye would silently never reveal again. One copy per group, so a
+   * verifier run costs the masks once plus every memoized ellipse.
+   */
+  verifyEyeStamps(): string[] {
+    const violations: string[] = [];
+    const copies = new Map<number, Uint8Array>();
+    for (const [eye, stamp] of this.eyeStamps) {
+      let copy = copies.get(stamp.group);
+      if (copy === undefined) {
+        copy = this.masks.get(stamp.group)?.slice() ?? new Uint8Array(this.cellsWide * this.cellsHigh);
+        copies.set(stamp.group, copy);
+      }
+      const rect = stampVision(copy, this.cellsWide, this.cellsHigh, stamp.cx, stamp.cy, stamp.radius, null);
+      if (rect?.wrote === true) {
+        violations.push(
+          `fog: eye ${eye} memo at (${stamp.cx}, ${stamp.cy}) is not in group ${stamp.group}'s mask`,
+        );
+      }
+    }
+    return violations;
+  }
+
+  /**
    * Mix this state's canonical bytes into a hash: the shared-vision table, then per vision group
    * ascending the group id and its raw mask bytes. A world that never enabled fog nor shared vision
    * holds neither and contributes nothing, so every pre-fog hash stays byte-identical.
@@ -459,4 +516,49 @@ function cellWithinRange(point: HalfCellNode, range: number, c: number, r: numbe
     hexDistanceBetween(point.hx, point.hy, hx, hy + 1) <= range ||
     hexDistanceBetween(point.hx, point.hy, hx + 1, hy + 1) <= range
   );
+}
+
+/**
+ * Write {@link FOG_STATE.VISIBLE} over the world-metric ellipse of `radiusNodes` around cell (cx, cy): a
+ * cell (dc, dr) away is inside iff `(68·dc)² + (38·dr)² ≤ (34·R)²`, exact integer math clamped to the grid.
+ * Approximation: the per-row stagger's ±half-cell wobble is ignored, a fringe on a soft fog edge.
+ * Returns the clamped cell rect the stamp touched and whether it raised any byte, or null when it fell
+ * fully off-grid. A `fold` is updated for the cells this stamp actually flips; a cell a script revealed
+ * already shows and keeps its byte.
+ */
+export function stampVision(
+  mask: Uint8Array,
+  cellsWide: number,
+  cellsHigh: number,
+  cx: number,
+  cy: number,
+  radiusNodes: number,
+  fold: FogFold | null,
+): { minC: number; maxC: number; minR: number; maxR: number; wrote: boolean } | null {
+  const radiusPx = radiusNodes * NODE_STEP_PX;
+  const radiusSq = radiusPx * radiusPx;
+  const dcMax = Math.floor(radiusPx / CELL_STEP_PX);
+  const drMax = Math.floor(radiusPx / ROW_STEP_PX);
+  const rLo = Math.max(0, cy - drMax);
+  const rHi = Math.min(cellsHigh - 1, cy + drMax);
+  const cLo = Math.max(0, cx - dcMax);
+  const cHi = Math.min(cellsWide - 1, cx + dcMax);
+  if (rLo > rHi || cLo > cHi) return null;
+  let wrote = false;
+  for (let r = rLo; r <= rHi; r++) {
+    const dyPx = (r - cy) * ROW_STEP_PX;
+    const dySq = dyPx * dyPx;
+    const base = r * cellsWide;
+    for (let c = cLo; c <= cHi; c++) {
+      const dxPx = (c - cx) * CELL_STEP_PX;
+      if (dxPx * dxPx + dySq > radiusSq) continue;
+      const index = base + c;
+      const previous = mask[index] ?? FOG_STATE.UNEXPLORED;
+      if (previous === FOG_STATE.VISIBLE || previous === REVEALED_BYTE) continue;
+      mask[index] = FOG_STATE.VISIBLE;
+      wrote = true;
+      if (fold !== null) foldCellChange(fold, index, previous, FOG_STATE.VISIBLE);
+    }
+  }
+  return { minC: cLo, maxC: cHi, minR: rLo, maxR: rHi, wrote };
 }

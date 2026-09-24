@@ -199,6 +199,17 @@ describe('stamp memo - an eye whose footprint did not change writes nothing', ()
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
   });
 
+  it('the cache verifier reports a memoized footprint a write lowered behind the memo', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    crowd(sim);
+    sim.run(1 + VISION_CADENCE_TICKS);
+    expect(sim.world.verifyCaches()).toEqual([]);
+    const mask = sim.fog?.tryMaskFor(P0);
+    if (mask === undefined) throw new Error('P0 has no mask');
+    mask[2 * (sim.fog?.cellsWide ?? 0) + 4] = FOG_STATE.EXPLORED; // the bug the verifier exists to catch
+    expect(sim.world.verifyCaches().some((v) => v.startsWith('fog: eye'))).toBe(true);
+  });
+
   it('fog of war: every eye restamps on every rebuild, since the downgrade lowered its ground', () => {
     const sim = simOn(FOG_MODE.CLASSIC_FOG_OF_WAR);
     const eyes = crowd(sim);

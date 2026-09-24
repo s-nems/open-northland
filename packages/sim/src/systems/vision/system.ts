@@ -21,7 +21,7 @@ import type { System } from '../context.js';
 import { SCOUT_EXPERIENCE_TYPE, scoutVisionBonusNodes } from '../progression/index.js';
 import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 import { cellOfNode } from './gates.js';
-import { FOG_STATE, type FogFold, foldCellChange, REVEALED_BYTE } from './state.js';
+import { FOG_STATE } from './state.js';
 
 /**
  * Ticks between visibility-mask rebuilds. Positions move every tick but the masks refresh on this cadence,
@@ -49,12 +49,6 @@ export function visionRadiusForJob(content: ContentSet, jobType: number | null):
   if (isHunterJob(content, jobType)) return HUNTER_VISION_NODES;
   return CIVILIAN_VISION_NODES;
 }
-
-/** The world-metric weights of the vision ellipse in px, from the measured projection pitch
- *  (`nav/world-metric.ts`). Integer, so the ellipse test is exact integer arithmetic. */
-const CELL_STEP_PX = 68;
-const ROW_STEP_PX = 38;
-const NODE_STEP_PX = 34;
 
 /**
  * Rebuild the per-group fog masks on the {@link VISION_CADENCE_TICKS} cadence, and immediately on a mode
@@ -92,33 +86,18 @@ export const visionSystem: System = (world, ctx) => {
     }
   }
 
-  // Stamp pass: writes are idempotent and commutative, so query order needs no canonical sort; each
-  // touched rect feeds the group's may-hold-VISIBLE box for the next downgrade. Without fog of war no
-  // byte ever falls back, so an eye whose footprint is unchanged since its last stamp writes nothing.
-  const memoStamps = !settings.fogOfWar;
-  if (memoStamps) fog.beginStampPass();
+  // Stamp pass: writes are idempotent and commutative, so query order needs no canonical sort. Without
+  // fog of war no byte ever falls back, so the pass memoizes each eye's footprint.
+  fog.beginStampPass(!settings.fogOfWar);
   for (const e of world.query(Owner, Position)) {
     const radius = visionRadiusOf(world, ctx.content, e);
     if (radius === null) continue; // an owned entity that is not an eye (a flag, a pile)
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
     const { cx, cy } = cellOfNode(n.hx, n.hy);
-    const player = world.get(e, Owner).player;
-    if (memoStamps && fog.eyeStampCovered(e, player, cx, cy, radius)) continue;
-    const rect = stampVision(
-      fog.maskFor(player),
-      fog.cellsWide,
-      fog.cellsHigh,
-      cx,
-      cy,
-      radius,
-      fog.foldFor(player),
-    );
-    if (rect === null) continue;
-    fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
-    if (rect.wrote) changed = true;
+    if (fog.stampEye(e, world.get(e, Owner).player, cx, cy, radius)) changed = true;
   }
-  if (memoStamps) fog.pruneEyeStamps();
+  fog.endStampPass();
 
   // Contact pass over the settled masks: a viewer meets every owner whose entity stands on a cell the
   // viewer's group has explored, in sight now or not (reading: the original tests the viewer's once-set
@@ -171,49 +150,4 @@ function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | 
   if (world.has(e, Vehicle)) return CIVILIAN_VISION_NODES;
   if (world.has(e, Signpost)) return SIGNPOST_VISION_NODES;
   return null;
-}
-
-/**
- * Write {@link FOG_STATE.VISIBLE} over the world-metric ellipse of `radiusNodes` around cell (cx, cy): a
- * cell (dc, dr) away is inside iff `(68·dc)² + (38·dr)² ≤ (34·R)²`, exact integer math clamped to the grid.
- * Approximation: the per-row stagger's ±half-cell wobble is ignored, a fringe on a soft fog edge.
- * Returns the clamped cell rect the stamp touched and whether it raised any byte, or null when it fell
- * fully off-grid. A `fold` is updated for the cells this stamp actually flips; a cell a script revealed
- * already shows and keeps its byte.
- */
-export function stampVision(
-  mask: Uint8Array,
-  cellsWide: number,
-  cellsHigh: number,
-  cx: number,
-  cy: number,
-  radiusNodes: number,
-  fold: FogFold | null,
-): { minC: number; maxC: number; minR: number; maxR: number; wrote: boolean } | null {
-  const radiusPx = radiusNodes * NODE_STEP_PX;
-  const radiusSq = radiusPx * radiusPx;
-  const dcMax = Math.floor(radiusPx / CELL_STEP_PX);
-  const drMax = Math.floor(radiusPx / ROW_STEP_PX);
-  const rLo = Math.max(0, cy - drMax);
-  const rHi = Math.min(cellsHigh - 1, cy + drMax);
-  const cLo = Math.max(0, cx - dcMax);
-  const cHi = Math.min(cellsWide - 1, cx + dcMax);
-  if (rLo > rHi || cLo > cHi) return null;
-  let wrote = false;
-  for (let r = rLo; r <= rHi; r++) {
-    const dyPx = (r - cy) * ROW_STEP_PX;
-    const dySq = dyPx * dyPx;
-    const base = r * cellsWide;
-    for (let c = cLo; c <= cHi; c++) {
-      const dxPx = (c - cx) * CELL_STEP_PX;
-      if (dxPx * dxPx + dySq > radiusSq) continue;
-      const index = base + c;
-      const previous = mask[index] ?? FOG_STATE.UNEXPLORED;
-      if (previous === FOG_STATE.VISIBLE || previous === REVEALED_BYTE) continue;
-      mask[index] = FOG_STATE.VISIBLE;
-      wrote = true;
-      if (fold !== null) foldCellChange(fold, index, previous, FOG_STATE.VISIBLE);
-    }
-  }
-  return { minC: cLo, maxC: cHi, minR: rLo, maxR: rHi, wrote };
 }
