@@ -4,19 +4,25 @@
 
 `combatSystem` (`systems/conflict/combat.ts`) builds a new `CombatIndex` every tick on any map with two
 players, war or not. On `magiczny_las_12_players` with 13 AI seats (the session in
-`docs/DEVELOPMENT.md` "Benchmarks") the constructor is 4.6% of all sampled time at tick 40k (3.6 s total,
-1.9 s self over 4000 ticks, `admit` 1.3 s), and 4.6% and 4.5% at 50k and 60k. Profiled timings are
-inflated by the sampler. An unprofiled replay from the 40k checkpoint times one build at 0.84 ms per
-tick, 0.51 ms of it for buildings alone and 0.26 ms for the 900 combatants.
+`docs/DEVELOPMENT.md`, Measuring performance), the trust-clean `npm run bench:profile` from the 40k
+checkpoint puts the constructor at 4.6% of all sampled time (3.6 s total, 1.9 s self over 4,000
+ticks, `admit` 1.3 s; profiled timings are inflated by the sampler), and the busy-machine profiles
+from 50k and 60k at the same 4.5-4.6%. An unprofiled replay from the 40k checkpoint times one build at
+0.84 ms per tick, 0.51 ms of it for buildings alone and 0.26 ms for the 900 combatants.
 
 The building half is static work repeated: 210 buildings are admitted at 10,100 wall nodes per tick
 (about 48 each, from `buildingBodyNodes`), against 900 settler members, and each admit redoes the cell
 lookup, the owner read and `isLowPriorityBuildingTarget`. A building never moves, and its body nodes are
 already memoized per world on the Building store generations (`conflict/target-node.ts`). The cost
-grows with the building count, which went 96 -> 233 over the 60k-tick run. Each build also allocates
-new nested `Map` cells and member arrays: an allocation sample of the fortress at tick ~48k (x3, 45 s)
-put 344 MB on `admit` and 157 MB on `candidatesInBand`, whose per-call `number[]` and `Float64Array`
-the same index owns.
+grows with the building count, which went 96 -> 233 over a 60k-tick run. Each build also allocates
+new nested `Map` cells and member arrays: an allocation sample of a live session of `specjalna_forteca`
+with its 13 AI seats at tick ~48k (x3, 45 s) put 344 MB on `admit` and 157 MB on `candidatesInBand`,
+whose per-call `number[]` and `Float64Array` the same index owns.
+
+Expected gain: about 0.5 ms of the 18.7 ms tick at 40k. Land it after
+[combat-presence-gate-ignores-diplomacy.md](combat-presence-gate-ignores-diplomacy.md), which takes about
+half of the 3.9 ms `combat` median and whose stance filter must stay per build when this layer
+outlives the tick.
 
 ## Scope
 
@@ -38,11 +44,11 @@ the same index owns.
 ## Verify
 
 - `npm test` (the conflict suites and the cache verifiers), `npm run check`.
-- With the session env from `docs/DEVELOPMENT.md` "Benchmarks", measure from a late checkpoint before
-  and after (this session left a checkpoint family in the worktree's `bench-out/`; the recipe there
-  recreates it): `ON_BENCH_CHECKPOINT=<50k checkpoint> ON_BENCH_TICKS=5000 ON_BENCH_WINDOWS=5 npm run
-  bench:map`, then `npm run bench:compare`. `combat` median should fall by about half a millisecond, and
-  `bench:profile` should show the `CombatIndex` constructor at about the settler share (under 2%). The
-  state hash must not change.
-- A repeated allocation sample of a late session shows `admit` and `candidatesInBand` an order of
-  magnitude lower.
+- The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
+  env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
+  then `npm run bench:compare`, on an idle box, trust clean: `combat` median falls by about half a
+  millisecond, and `bench:profile` shows the `CombatIndex` constructor at about the settler share
+  (under 2%). The state hash must not change.
+- Repeat the allocation sample of a late `specjalna_forteca` session (13 AI seats, tick ~48k;
+  `ON_BENCH_MAP=specjalna_forteca ON_BENCH_SEATS=13 ON_BENCH_SKIP=48000` reaches it headlessly, per the
+  same recipe): `admit` and `candidatesInBand` fall an order of magnitude.

@@ -2,13 +2,14 @@
 
 **Area:** sim · **Focus:** inspect/snapshot · **Priority:** P3
 
-`takeSnapshot` (`inspect/snapshot.ts`) builds a fresh `entities` array over `world.canonicalEntities()`
-for all ~26k entities on every call, although the clone cache reuses every untouched entity object.
-`World.canonicalEntities()` is memoized, but any `create` or `destroy` drops the memo, so late-game
-entity churn rebuilds its sorted list most ticks. Allocation sampling of the fortress at tick ~48k
-(x3, 45 s) attributed 845 MB to the array and 818 MB to the iterator, a large share of the client's
-~174 MB/s churn, and the collector pays for it inside the frame. The benches never call `snapshot()`,
-so this shows only in a live session.
+`takeSnapshot` (`inspect/snapshot.ts`) builds a fresh `entities` array over
+`world.canonicalEntities()` for all ~26k entities on every call, although the clone cache reuses every
+untouched entity object. `World.canonicalEntities()` is memoized, but any `create` or `destroy` drops
+the memo, so late-game entity churn rebuilds its sorted list most ticks. Allocation sampling of a live
+session of `specjalna_forteca` with its 13 AI seats at tick ~48k (x3, 45 s) attributed 845 MB to the
+array and 818 MB to the iterator, a large share of the client's ~174 MB/s churn, and the collector
+pays for it inside the frame. The benches never call `snapshot()`, so this shows only in a live
+session.
 
 ## Scope
 
@@ -23,6 +24,7 @@ so this shows only in a live session.
 
 - Repeat the allocation sampling in a live late-game session: the entities array and the iterator
   drop by an order of magnitude.
-- State hash of a 600-tick run from a late checkpoint unchanged (`ON_BENCH_CHECKPOINT`, see
-  `docs/DEVELOPMENT.md`).
+- State hash of a 600-tick run from a late checkpoint unchanged: `ON_BENCH_MAP=specjalna_forteca
+  ON_BENCH_SEATS=13 ON_BENCH_SKIP=48000` with a checkpoint, per the recipe in `docs/DEVELOPMENT.md`
+  (Measuring performance).
 - `npm test`, `npm run check`.

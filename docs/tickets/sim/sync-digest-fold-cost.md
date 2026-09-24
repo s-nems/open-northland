@@ -1,6 +1,6 @@
 # Cut what the sync digest folds each tick
 
-**Area:** sim · **Priority:** P3
+**Area:** sim, lockstep · **Priority:** P3
 
 A relay session (`relay-client.ts` calls `Simulation.setSyncDigest(true)`) makes
 `SyncDigestRecorder` (`packages/sim/src/simulation/sync-digest.ts`) record every component a tick
@@ -23,13 +23,14 @@ reroute.
 Bring the per-tick fold well under a tenth of a settled tick without weakening what it detects: every
 state a run can diverge in must still move a digest domain.
 
-Two levers, in the order their measurements justify them. Split the rarely-written payload out of each
-of the three hot components into its own store, so a step along a route stops re-folding the route;
-that is a component-layout and save-format change, and it needs no new digest machinery. Then decide
-deliberately whether the digest must seal every tick: accumulating the touched sets across an N-tick
-window and sealing at the boundary folds a per-tick component once per window instead of N times, and
-stays a pure function of the state at the seal tick, but it names a window rather than a tick when two
-clients part.
+Split the rarely-written payload out of each of the three hot components into its own store, so a
+step along a route stops re-folding the route; that is a component-layout and save-format change, and
+it needs no new digest machinery.
+
+**Needs the user's decision:** whether the digest must seal every tick. Accumulating the touched sets
+across an N-tick window and sealing at the boundary folds a per-tick component once per window instead
+of N times, and stays a pure function of the state at the seal tick, but it names a window rather than
+a tick when two clients part. Take it only if the split alone misses the budget.
 
 A depth or size cut that stops folding part of a value is not in scope: it trades away the property
 the digest exists for.
@@ -40,5 +41,5 @@ the digest exists for.
   perturbation cases in `packages/sim/test/core/sync-digest.test.ts` still name one domain each.
 - `npm run bench:map` from a late checkpoint of the twelve-player session in `docs/DEVELOPMENT.md`
   (Measuring performance) with `ON_BENCH_TICKS=4000` and `ON_BENCH_SYNC_DIGEST=on`, against the same
-  run with it off, on an idle box, reports the added cost per tick before and after.
+  run with it off, on an idle box, trust clean, reports the added cost per tick before and after.
 - `npm run check`, `npm run build`, `npm test`.

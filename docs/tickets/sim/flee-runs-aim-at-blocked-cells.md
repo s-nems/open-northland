@@ -3,14 +3,14 @@
 **Area:** sim · **Focus:** conflict/flee, conflict/fright · **Priority:** P2
 
 In a settlement, a civilian running from a raider mostly aims into a building or a tree and then
-freezes. On `magiczny_las_12_players` with 13 AI seats (the session in `docs/DEVELOPMENT.md`
-"Benchmarks"), a replay from the 40k checkpoint switched every `neutral` seat pair to `enemy`, which is
-the state the `setDiplomacy` command writes, and ran 600 ticks. Up to 331 civilians were fleeing at
-once. 117,332 of 179,652 fleer-ticks (65%) re-aimed after a failed route, and the worst fleers failed
-on every one of 599 ticks. In a 300-tick breakdown, 54,826 of 55,125 failed routes (99.5%) aimed at a
-dynamically blocked cell: 43,531 inside a building and 11,295 on a resource such as a tree. None aimed
-into another walk component. 54,707 of the failures left the fleer with no live route, and 127 of 289
-fleers stood on the same spot 200 ticks later.
+freezes. On `magiczny_las_12_players` with 13 AI seats (the session in `docs/DEVELOPMENT.md`,
+Measuring performance), a replay from the 40k checkpoint switched every `neutral` seat pair to
+`enemy`, which is the state the `setDiplomacy` command writes, and ran 600 ticks. Up to 331 civilians
+were fleeing at once. 117,332 of 179,652 fleer-ticks (65%) re-aimed after a failed route, and the
+worst fleers failed on every one of 599 ticks. In a 300-tick breakdown, 54,826 of 55,125 failed routes
+(99.5%) aimed at a dynamically blocked cell: 43,531 inside a building and 11,295 on a resource such as
+a tree. None aimed into another walk component. 54,707 of the failures left the fleer with no live
+route, and 127 of 289 fleers stood on the same spot 200 ticks later.
 
 Two faults combine:
 

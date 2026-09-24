@@ -21,9 +21,10 @@ The faults are still in the code:
   `NEAREST_RING_MAX_RADIUS` rings on a miss and then scans linearly, so a band past `RING_MIN_BUCKETS`
   pays the full sweep on every miss.
 
-On a map with few heaps they are small: on `magiczny_las_12_players` with 13 AI seats at tick 60k (1090
-stockpiles), `holding` is 1.3% of the profiled tick and `nearestStoreHolding` 0.6%, and 61.5 of the 62
-`nearest` calls per tick take the linear path because the bands stay under the bucket threshold.
+On a map with few heaps they are small: on `magiczny_las_12_players` with 13 AI seats the trust-clean
+profile from the 40k checkpoint puts `holding` at 1.1% of the tick and `nearestStoreHolding` at 0.3%
+(1.3% and 0.6% at 60k with 1090 stockpiles, busy machine), and at 60k 61.5 of the 62 `nearest` calls
+per tick take the linear path because the bands stay under the bucket threshold.
 
 ## Scope
 
@@ -36,4 +37,4 @@ stockpiles), `holding` is 1.3% of the profiled tick and `nearestStoreHolding` 0.
 ## Verify
 
 `npm run bench:compare` before and after on `ON_BENCH_MAP=gringo` at 6 seats and on the default map,
-with the state hash unchanged; the profile split above shrinks to noise.
+on an idle box, trust clean, with the state hash unchanged; the profile split above shrinks to noise.

@@ -345,7 +345,7 @@ a profile from the 50k one (the profile repeats the session knobs the checkpoint
 export ON_BENCH_MAP=magiczny_las_12_players ON_BENCH_SEATS=0,1,2,3,4,5,7,8,9,10,11,12 \
   ON_BENCH_PROGRESSION=on ON_BENCH_NEEDS=on
 ON_BENCH_TICKS=60000 ON_BENCH_WINDOWS=12 ON_BENCH_CHECKPOINT=bench-out/ml12.checkpoint \
-  ON_BENCH_CHECKPOINTS=30000,40000,50000,60000 npm run bench:map
+  ON_BENCH_CHECKPOINTS=10000,20000,30000,40000,50000,60000 npm run bench:map
 ON_BENCH_CHECKPOINT=bench-out/ml12.t50000.checkpoint npm run bench:profile
 ```
 

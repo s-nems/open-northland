@@ -10,16 +10,20 @@ next reader re-runs `deriveBuildingBlockedCells` over every building (footprint 
 `doorPassage` flood per door). The file already names this: "an actively hammered site costs a
 rebuild per advance". With 13 AI seats building all game, that is about one full rebuild per tick.
 
-On `magiczny_las_12_players` with 13 AI seats, `deriveBuildingBlockedCells` costs 1,082 ms over the
-4,000 profiled ticks from the 40k checkpoint (209 buildings, 0.27 ms/tick) and 1,356 ms over 2,000
-ticks from the 60k checkpoint (233 buildings, 0.68 ms/tick; busy machine, and profiled timings are
-inflated by the sampler). Whoever reads the overlay first in a tick pays it, which is why it shows up
-under other systems' names: at 60k 876 ms of it lands in `animalWanderSystem` (71% of that system's
-cost), 214 ms in the planner's `collectTargets`, 175 ms in `attackMoveUnit`'s
-`reachableMoveGoal`, 61 ms in the AI garrison draft. The same key drives `RouteRegions.refresh`
+On `magiczny_las_12_players` with 13 AI seats, the trust-clean `npm run bench:profile` from the 40k
+checkpoint puts `deriveBuildingBlockedCells` at 1,082 ms over 4,000 ticks (209 buildings, 0.27 ms per
+tick; profiled timings are inflated by the sampler). The busy-machine profile from 60k shows 1,356 ms
+over 2,000 ticks (233 buildings; absolute ms suspect). Whoever reads the overlay first in a tick pays
+it, which is why it shows up under other systems' names: this rebuild is 48% of `animalWanderSystem`'s
+cost at 40k (71% at 60k), and the rest lands in the planner's `collectTargets`, `attackMoveUnit`'s
+`reachableMoveGoal` and the AI garrison draft. The same key drives `RouteRegions.refresh`
 (`systems/footprint/route-regions.ts`), so every construction advance also drops all route-region
-pocket labels and the AI scout's `nextSignpostTarget` refloods its pockets on its next pass. The
-cost grows with the building count times construction activity, not with any change to a wall.
+pocket labels and the AI scout's `nextSignpostTarget` refloods its pockets on its next pass. The cost
+grows with the building count times construction activity, not with any change to a wall.
+
+Expected gain: about 0.27 ms of the 18.7 ms tick at 40k, plus the scout's pocket refloods. P2 despite
+the size because the same invalidation also discards the route-region labels and the node mask
+[nav-step-primitives-cost.md](nav-step-primitives-cost.md) builds on.
 
 ## Scope
 
@@ -35,9 +39,8 @@ cost grows with the building count times construction activity, not with any cha
 
 - Headless: advancing a construction site does not re-derive the cells (count derivations through a
   test seam or the verifier), while a tier upgrade and a placement still do.
-- Session and checkpoint recipe: the twelve-player run in `docs/DEVELOPMENT.md` (Measuring
-  performance); a checkpoint family from this session's 60k run exists in the worktree's `bench-out/`.
-  `ON_BENCH_CHECKPOINT=<60k checkpoint> ON_BENCH_TICKS=2000 npm run bench:map`, then
-  `npm run bench:compare`: `animalWander` median drops by about two thirds, planner and pathfinding a
-  little. The state hash must stay identical.
+- The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
+  env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
+  then `npm run bench:compare`, on an idle box, trust clean: `animalWander` median drops by about
+  half, planner and pathfinding a little. The state hash must stay identical.
 - `npm test`, `npm run check`, `npm run build`.

@@ -2,30 +2,38 @@
 
 **Area:** sim · **Focus:** settlers/targets · **Priority:** P2
 
-On `magiczny_las_12_players` with 13 AI seats (the session in `docs/DEVELOPMENT.md` "Benchmarks"),
-`planGatherer` is 18% of the tick at tick 60k (8.9 s of 49 s over 2,000 profiled ticks, 1055 settlers)
-and 15% at 40k, timings from `npm run bench:profile` and inflated by the sampler. Its searches run
-through `nearestByCell` (`settlers/targets/cell-index.ts`), a plain linear loop that calls the caller's
-`resolve` on every list entry before distance is known: 17% of the tick at 60k, 23.4k iterations per
-tick with 22.5k rejected (precise call count over 200 ticks from the 60k checkpoint). Three scans visit
-mostly candidates the seeker's trade can never take:
+On `magiczny_las_12_players` with 13 AI seats (the session in `docs/DEVELOPMENT.md`, Measuring
+performance), the trust-clean `npm run bench:profile` from the 40k checkpoint puts `planGatherer` at
+15.1% of the tick (922 settlers; profiled timings are inflated by the sampler); the busy-machine
+profile from 60k shows 18% (1,055 settlers). Its searches run through `nearestByCell`
+(`settlers/targets/cell-index.ts`), a plain linear loop that calls the caller's `resolve` on every
+list entry before distance is known: 14.2% of the tick at 40k, and at 60k 23.4k iterations per tick
+with 22.5k rejected (exact count over 200 ticks from the 60k checkpoint). Three scans visit mostly
+candidates the seeker's trade can never take (shares from the 40k profile, exact counts from 60k):
 
 - **Pile scan.** `nearestCollectablePileFor` (`settlers/targets/resources.ts`) walks every `GroundDrop`
-  for every settler that reaches the rung, with no trade gate. At 60k it runs 67 times per tick, 64 of
-  them for trades whose atomics match no standing resource's harvest atomic (women, soldiers, builders:
-  the dormancy gate in `nearestHarvestableFor` already returns null for them), at 194 piles each: 12.9k
-  pile resolves per tick, 2.6 s or 5.2% of the profiled tick. Piles grow 16 -> 69 -> 194 at ticks
-  10k/30k/60k, and pile resolves per tick 0.4k -> 1.2k -> 13.9k. `nearestOwnDropFor` walks the same list
-  for a flag collector's own `HarvestedBy` piles (5.5 calls per tick).
+  for every settler that reaches the rung, with no trade gate: 3.0% of the tick at 40k. At 60k it runs
+  67 times per tick, 64 of them for trades whose atomics match no standing resource's harvest atomic
+  (women, soldiers, builders: the dormancy gate in `nearestHarvestableFor` already returns null for
+  them), at 194 piles each: 12.9k pile resolves per tick. Piles grow 16 -> 69 -> 194 at ticks
+  10k/30k/60k, and all pile resolves per tick, own-drop walks included, 0.4k -> 1.2k -> 13.9k.
+  `nearestOwnDropFor` walks the same list for a flag collector's own `HarvestedBy` piles (5.5 calls per
+  tick).
 - **Hunter scan.** A hunter's `nearestHarvestableFor` call bounded by its hunting ground (`within`)
   reads every resource anchored in the ground's box, about 2,400 per scan at 60k (2.8 scans per tick),
   and rejects nearly all at the harvest-atomic gate because the box holds trees and stone: 6.7k of the
-  8.1k resource resolves per tick, 2.9 s or 5.9%, `resourcesNearNode` included (0.6 s).
+  8.1k resource resolves per tick. The bounded, non-flag harvest scans are 7.9% of the tick at 40k
+  (5.9% at 60k), `resourcesNearNode` included.
 - **Flag area scan.** A flag collector's area query returns the square box around the flag, wider than
   the Manhattan radius, and each candidate passing the atomic gate pays `interactionCell`
-  (`resourceWorkCell`) before the radius test rejects it: 502 work cells per tick, 274 then outside the
-  radius. `settlerMeetsNeed` also runs per candidate though it depends only on the good. 3.3 s or 6.7%,
-  of which `resourceWorkCell` 1.3 s and `settlerMeetsNeed` 0.4 s.
+  (`resourceWorkCell`) before the radius test rejects it: 502 work cells per tick at 60k, 274 then
+  outside the radius. `settlerMeetsNeed` also runs per candidate though it depends only on the good.
+  `planFlagGatherer` is 3.9% at 40k, of which `resourceWorkCell` 1.1% and `settlerMeetsNeed` 0.5%.
+
+Expected gain: about 1.5 ms of the 18.7 ms tick at 40k from the pile and hunter scans, measured
+alone. The flag scan's cost is shared with
+[idle-settler-ladder-dormancy.md](idle-settler-ladder-dormancy.md), which stops repeating it; neither
+ticket counts that saving as its own, and whichever lands second gains less.
 
 ## Scope
 
@@ -47,8 +55,9 @@ mostly candidates the seeker's trade can never take:
 - Unit tests: a trade that can collect no piled good never resolves a pile; a hunter's ground scan never
   resolves a tree; the flag area scan picks the same node as before on a fixture with box-corner
   candidates.
-- With the session env,
-  `ON_BENCH_CHECKPOINT=<tick-60k mark> ON_BENCH_TICKS=5000 ON_BENCH_WINDOWS=5 npm run bench:map` before
-  and after, then `npm run bench:compare`: planner median falls with the state hash unchanged. The
-  recipe in `docs/DEVELOPMENT.md` writes the checkpoint family; one exists in this session's worktree
-  `bench-out/`. `bench:profile` from the same mark shows `nearestByCell` well below 17%.
+- Counter: pile resolves per tick over 200 ticks from the 60k checkpoint fall from 12.9k to the few
+  hundred a collecting trade needs, and resource resolves per hunter scan to the game in its ground.
+- The recipe in `docs/DEVELOPMENT.md` (Measuring performance) writes the checkpoints. With its session
+  env, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000 npm run bench:map` before and after,
+  then `npm run bench:compare`, on an idle box, trust clean: planner median falls by about 1.5 ms with
+  the state hash unchanged. `bench:profile` from the same mark shows `nearestByCell` well below 14%.
