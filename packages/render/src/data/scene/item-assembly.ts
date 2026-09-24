@@ -58,8 +58,11 @@ export function assembleItem(
     case 'palisade': {
       assignStaticFields(item, kind, components);
       if ('UnderConstruction' in components && !('PalisadeBlocking' in components)) {
-        item.palisadeSite = readPalisadeClaimPlanted(components) ? 'claimed' : 'unclaimed';
-        if (item.palisadeSite === 'claimed') assignSiteGoods(item, components);
+        // Once its wood is in, the segment is hammered up from the ground: it draws as a lone post at its
+        // build stage in place of the flag.
+        if (!siteHoldsGoods(components)) {
+          item.palisadeSite = readPalisadeClaimPlanted(components) ? 'claimed' : 'unclaimed';
+        }
       } else {
         const posts = build.palisadePosts.get(entity.id);
         if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;
@@ -112,11 +115,8 @@ export function assembleItem(
   return item;
 }
 
-/** The wood a builder set down on a flagged wall site replaces the flag until the wall rises there. */
-function assignSiteGoods(item: MutableSpriteDrawItem, components: Readonly<Record<string, unknown>>): void {
-  const { goodType, fill } = readStockpile(components);
-  if (goodType !== undefined) item.goodType = goodType;
-  if (fill !== undefined) item.fill = fill;
+function siteHoldsGoods(components: Readonly<Record<string, unknown>>): boolean {
+  return readStockpile(components).goodType !== undefined;
 }
 
 function assignFishFields(item: MutableSpriteDrawItem, components: Readonly<Record<string, unknown>>): void {

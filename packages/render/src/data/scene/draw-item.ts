@@ -34,8 +34,8 @@ export interface StaticDrawFields {
   /** For an under-construction building: build progress as a whole percent (0..99, floored
    *  `Building.built`), which picks the `[GfxHouse]` layers showing at this stage. */
   builtPct?: number;
-  /** A resource node's `Resource.goodType`, or the good a stockpile pile or a flagged wall site mainly
-   *  holds. Omitted for a delivery flag and an empty pile, which draw the flag rather than a heap. */
+  /** A resource node's `Resource.goodType`, or the good a stockpile pile mainly holds. Omitted for a
+   *  delivery flag and an empty pile, which draw the flag rather than a heap. */
   goodType?: number;
   /** For a stockpile pile: units of {@link goodType} held, which grows the drawn heap with its
    *  contents. */
@@ -144,9 +144,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** Repeated posts filling this palisade's forward neighbour edges. Each offset is feet-local draw px;
    *  the optional percentage selects the interpolated durability/construction state of the endpoints. */
   readonly palisadePosts?: readonly PalisadePostDraw[];
-  /** An unfinished palisade site. Before a builder plants its work flag it is only a surveyor's stake;
-   *  once planted it reuses the ordinary delivery/work flag art, and the delivered wood's heap once set
-   *  down. */
+  /** An unfinished palisade site before its wood is in. Before a builder plants its work flag it is only
+   *  a surveyor's stake; once planted it reuses the ordinary delivery/work flag art. */
   readonly palisadeSite?: 'unclaimed' | 'claimed';
   /** This item only survived the cull as the details-panel portrait's subject: it stays reconciled and
    *  paletted for the portrait's own render but is hidden on the main map, so an indoor settler cannot

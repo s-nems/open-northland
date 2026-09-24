@@ -149,6 +149,17 @@ describe('buildScene - settler facing derivation', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(1); // W, into the site
   });
 
+  it('a builder hammering a wall segment (atomic 42) faces the segment', () => {
+    const builder = entity(1, 2, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 42, elapsed: 3, targetEntity: 2, targetTile: null },
+      PathFollow: { waypoints: [{ x: 3 * ONE, y: 1 * ONE }], index: 0 },
+    });
+    const segment = entity(2, 1, 1, { Palisade: { gfxIndex: 691, built: 0 }, UnderConstruction: {} });
+    const scene = buildScene(snapshotOf([builder, segment]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(1); // W, into the segment
+  });
+
   it('a chat pair on a vertical half-cell edge talks straight up/down (atomics 14/15 → S/N blocks)', () => {
     // The talker stands on lattice node (3,2) and the listener one node straight below at (3,3), whose
     // Position is tile (1.25, 1.5) - a half-row node's stagger-removed x, per `nav/halfcell.ts`. The
