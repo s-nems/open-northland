@@ -5,6 +5,7 @@ import {
   Settler,
   type SettlerIdentity,
 } from '../../../components/index.js';
+import type { AtomicEffect } from '../../../core/atomic-effect.js';
 import { type Fixed, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -20,7 +21,7 @@ import {
   SLEEP_ATOMIC_ID,
   startAtomic,
 } from '../atomics/start.js';
-import { heldIndoors, isInsideOwnHome } from '../indoors.js';
+import { heldIndoors, isInside } from '../indoors.js';
 import { storedFoodGood } from '../targets/index.js';
 
 const { REST, HUNGER, PIETY } = ATOMIC_EVENT_CHANNEL;
@@ -29,97 +30,83 @@ const { REST, HUNGER, PIETY } = ATOMIC_EVENT_CHANNEL;
 // leaves rested and fed rather than making a second trip for each bar. Approximation: the data authors the
 // at-home clips but not when a settler chains them, so the chain and its NEED_SATED target are authored.
 
-/** The home larder good `e` may eat indoors: the family's own spare food, never the child fund. */
-function larderGoodFor(world: World, ctx: SystemContext, e: Entity): number | null {
-  const home = world.tryGet(e, Residence)?.home;
-  if (home === undefined) return null;
+/** The home larder good its residents may eat indoors: the family's own spare food, never the child fund. */
+function larderGood(world: World, ctx: SystemContext, home: Entity): number | null {
   if (storedFoodUnits(world, ctx, home) <= reservedFoodUnits(world, home)) return null;
   return storedFoodGood(world, ctx, home);
 }
 
+/** One round of the at-home chain: the atomic to run, what it does, and what it faces. */
+interface HomeRound {
+  readonly atomicId: number;
+  readonly effect: AtomicEffect;
+  readonly target: Entity;
+}
+
 /**
- * Whether `e` is indoors at home with a bar this chain can still top up, and no other system holds it
- * there. The planner keeps such a settler inside instead of stepping it back out between rounds.
+ * The round the at-home chain serves `e` next, rest first, then a meal off the family larder, then a
+ * prayer; null when `e` is not indoors at home, another system holds it there, or no bar it can still
+ * top up. A round whose clip moves no bar is skipped, or the chain would hold the settler in its house
+ * for good.
  */
-export function topsUpAtHome(world: World, ctx: SystemContext, e: Entity): boolean {
-  if (!needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return false;
-  if (heldIndoors(world, e) || !isInsideOwnHome(world, e)) return false;
+function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound | null {
+  if (!needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return null;
+  if (heldIndoors(world, e)) return null;
+  const home = world.tryGet(e, Residence)?.home;
   const settler = world.tryGet(e, Settler);
-  if (settler === undefined) return false;
-  if (settler.fatigue > NEED_SATED_THRESHOLD && restores(ctx, settler, SLEEP_ATOMIC_ID, REST)) return true;
+  if (home === undefined || settler === undefined || !isInside(world, e, home)) return null;
+  if (settler.fatigue > NEED_SATED_THRESHOLD && restores(ctx, settler, SLEEP_ATOMIC_ID, REST)) {
+    return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
+  }
+  if (settler.hunger > NEED_SATED_THRESHOLD && restores(ctx, settler, EAT_ATOMIC_ID, HUNGER)) {
+    const goodType = larderGood(world, ctx, home);
+    if (goodType !== null)
+      return { atomicId: EAT_ATOMIC_ID, effect: { kind: 'eat', goodType, from: home }, target: home };
+  }
   if (
-    settler.hunger > NEED_SATED_THRESHOLD &&
-    restores(ctx, settler, EAT_ATOMIC_ID, HUNGER) &&
-    larderGoodFor(world, ctx, e) !== null
-  )
-    return true;
-  const home = world.get(e, Residence).home;
-  return (
     settler.piety > NEED_SATED_THRESHOLD &&
     jobNeedsReligion(ctx.content, settler.jobType) &&
     restores(ctx, settler, PRAY_ATOMIC_ID, PIETY) &&
     homeQualityActive(world, ctx, home, 'piety')
-  );
+  ) {
+    return { atomicId: PRAY_ATOMIC_ID, effect: { kind: 'pray' }, target: home };
+  }
+  return null;
 }
 
-/** Whether the clip this settler would play indoors pays anything into `channel`. A round that could move
- *  no bar must not start, or the chain would hold the settler in its house for good. */
+/** Whether the clip this settler would play indoors pays anything into `channel`. */
 function restores(ctx: SystemContext, settler: SettlerIdentity, atomicId: number, channel: number): boolean {
   const clip = atomicClipNameAtHome(ctx.content, settler, atomicId);
   return clip !== undefined && atomicEventChannelDelta(ctx.content, clip, channel) > 0;
 }
 
+/** Whether `e` has an at-home round left to serve. The planner keeps such a settler inside instead of
+ *  stepping it back out between rounds. */
+export function topsUpAtHome(world: World, ctx: SystemContext, e: Entity): boolean {
+  return nextHomeRound(world, ctx, e) !== null;
+}
+
 /**
- * Serve one round of the at-home chain: rest first, then a meal off the family larder. A married settler's
- * company bar is filled outright rather than paid out by a clip - the approximation standing in for a chat
- * with the spouse under the same roof, which no clip in the data covers.
+ * Serve one round of the at-home chain. A married settler's company bar is filled outright rather than
+ * paid out by a clip - the approximation standing in for a chat with the spouse under the same roof,
+ * which no clip in the data covers.
  */
 export function planHomeTopUp(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  settler: SettlerIdentity & { fatigue: Fixed; hunger: Fixed; piety: Fixed; enjoyment: Fixed },
+  settler: SettlerIdentity & { enjoyment: Fixed },
 ): boolean {
-  if (!topsUpAtHome(world, ctx, e)) return false;
+  const round = nextHomeRound(world, ctx, e);
+  if (round === null) return false;
   if (world.has(e, Marriage) && settler.enjoyment !== ZERO) world.mut(e, Settler).enjoyment = ZERO;
-  const home = world.get(e, Residence).home;
-  if (settler.fatigue > NEED_SATED_THRESHOLD) {
-    startAtomic(
-      world,
-      e,
-      SLEEP_ATOMIC_ID,
-      { kind: 'sleep' },
-      atHomeDuration(ctx, settler, SLEEP_ATOMIC_ID),
-      e,
-    );
-    return true;
-  }
-  const goodType = larderGoodFor(world, ctx, e);
-  if (goodType !== null && settler.hunger > NEED_SATED_THRESHOLD) {
-    startAtomic(
-      world,
-      e,
-      EAT_ATOMIC_ID,
-      { kind: 'eat', goodType, from: home },
-      atHomeDuration(ctx, settler, EAT_ATOMIC_ID),
-      home,
-    );
-    return true;
-  }
-  if (
-    settler.piety > NEED_SATED_THRESHOLD &&
-    jobNeedsReligion(ctx.content, settler.jobType) &&
-    homeQualityActive(world, ctx, home, 'piety')
-  ) {
-    startAtomic(
-      world,
-      e,
-      PRAY_ATOMIC_ID,
-      { kind: 'pray' },
-      atHomeDuration(ctx, settler, PRAY_ATOMIC_ID),
-      home,
-    );
-    return true;
-  }
-  return false;
+  startAtomic(
+    world,
+    e,
+    round.atomicId,
+    round.effect,
+    atHomeDuration(ctx, settler, round.atomicId),
+    round.target,
+  );
+  return true;
 }

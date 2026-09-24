@@ -41,8 +41,9 @@ const TIRED: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
  *  chain answers it. */
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
 
-/** The shared fixture plus a `home` building type and the at-home sleep clip the rung resolves by name. */
-function homeContent(): ContentSet {
+/** The shared fixture plus a `home` building type and the at-home sleep clip the rung resolves by name;
+ *  `restfulBed: false` authors that clip without its rest pulses. */
+function homeContent({ restfulBed = true } = {}): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
@@ -65,14 +66,14 @@ function homeContent(): ContentSet {
         length: HOME_SLEEP_TICKS,
         // The same two `event <at> 1 +4000` pulses the outdoor clip carries, packed into the shorter
         // clock - and indoors none of it is halved, so a bed at home is worth two naps in the open.
-        events: [1, 2].map((at) => ({ at, type: 1, value: 4000 })),
+        events: restfulBed ? [1, 2].map((at) => ({ at, type: 1, value: 4000 })) : [],
       },
     ],
   });
 }
 
-function simWithHomes(): Simulation {
-  return new Simulation({ seed: 1, content: homeContent(), map: grassMap(8, 6) });
+function simWithHomes(content: ContentSet = homeContent()): Simulation {
+  return new Simulation({ seed: 1, content, map: grassMap(8, 6) });
 }
 
 /** A built home of `tribe` standing on cell (x, y). */
@@ -275,6 +276,19 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
     expect(fed.fatigue).toBeLessThan(TIRED);
     expect(sim.world.has(settler, Resting)).toBe(false);
     expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('skips a round whose clip pays nothing and serves the meal it came home with', () => {
+    const sim = simWithHomes(homeContent({ restfulBed: false }));
+    const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
+    const home = homeAt(sim, 3, 2);
+    sim.world.add(settler, Residence, { home });
+    sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 2]]) });
+
+    for (let i = 0; i < 60; i++) sim.step();
+
+    // A bed that rests nobody would otherwise be re-served for good, with the meal never reached.
+    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(1);
   });
 
   it('serves nothing once a script freezes the needs of a settler already indoors', () => {
