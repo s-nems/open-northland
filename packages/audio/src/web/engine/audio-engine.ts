@@ -121,6 +121,8 @@ export class WebAudioEngine {
   /** The rotation that should be playing instead; non-empty wins over {@link desiredMusic}. */
   private desiredRotation: readonly MusicTrack[] = EMPTY_ROTATION;
   private enabled = true;
+  /** Set by {@link close}; a closed engine never resumes its context again. */
+  private closed = false;
   /** one-shot key → last play time (audio clock seconds) for cooldown debounce. */
   private readonly lastPlayed = new Map<string, number>();
   /** wav file → the audio-clock second an exclusive play of it ends (Infinity while its buffer is still
@@ -183,6 +185,7 @@ export class WebAudioEngine {
    * its engine, so a page never accumulates contexts past the browser's cap.
    */
   close(): void {
+    this.closed = true;
     const ctx = this.ctx;
     if (ctx === null) return;
     this.mixer?.stopAll();
@@ -285,7 +288,19 @@ export class WebAudioEngine {
     this.samples = new SampleCache(this.baseUrl, this.fetchBytes, (bytes) => ctx.decodeAudioData(bytes));
     this.mixer = new AmbientMixer(ctx, sfxBus, this.samples, () => this.canPlay());
     this.music = new MusicPlayer(ctx, musicBus, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
+    ctx.onstatechange = () => this.onStateChange(ctx);
     return ctx;
+  }
+
+  /**
+   * The browser or the OS can suspend a running context (a phone call, sleep, an idle tab). Ask for it
+   * back at once, which a document with sticky activation is granted; otherwise the next gesture's
+   * {@link resume} brings it back. A context running again re-asserts the music a dropped load forgot.
+   */
+  private onStateChange(ctx: AudioContext): void {
+    if (this.closed || ctx.state === 'closed') return;
+    if (ctx.state === 'running') this.assertMusic();
+    else void this.resume();
   }
 
   private playOneShot(ctx: AudioContext, samples: SampleCache, shot: OneShot): void {

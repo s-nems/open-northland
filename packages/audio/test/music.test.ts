@@ -229,9 +229,11 @@ describe('WebAudioEngine music', () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.setMusic(TRACK);
-    ctx.state = 'suspended'; // external interruption (no stop()) while the load is in flight
+    ctx.refuseResume = true; // no user activation, so the engine's own resume is refused
+    ctx.setState('suspended'); // external interruption (no stop()) while the load is in flight
     await flush();
     expect(ctx.sources).toHaveLength(0);
+    ctx.refuseResume = false;
     await engine.resume();
     await flush();
     expect(ctx.sources).toHaveLength(1);

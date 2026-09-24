@@ -189,6 +189,39 @@ describe('WebAudioEngine one-shots', () => {
   });
 });
 
+describe('WebAudioEngine context interruption', () => {
+  it('asks for a context the browser suspended after it ran back at once', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    ctx.setState('suspended'); // a phone call, OS sleep or an idle-tab suspension
+    await flush();
+    expect(ctx.resumes).toBe(2);
+    expect(engine.audible).toBe(true);
+  });
+
+  it('restarts the music a suspension dropped once the context runs again', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    ctx.refuseResume = true; // no activation: the engine's own resume is refused
+    engine.setMusic({ file: 'theme.ogg' });
+    ctx.setState('suspended'); // before the track's load lands
+    await flush();
+    expect(ctx.sources).toHaveLength(0);
+    ctx.setState('running'); // the interruption ends and the platform resumes the context
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+  });
+
+  it('never resumes a context after the engine closed it', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.close();
+    await flush();
+    expect(ctx.state).toBe('closed');
+    expect(ctx.resumes).toBe(1);
+  });
+});
+
 describe('WebAudioEngine ambient reconciliation', () => {
   const bed = (gain: number) => ({ name: 'Meadow Green', file: 'ambient/meadow1.wav', gain });
 

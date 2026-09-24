@@ -89,6 +89,17 @@ export class FakeContext {
   destination = new FakeNode();
   readonly sources: FakeSource[] = [];
   readonly gains: FakeGain[] = [];
+  onstatechange: (() => void) | null = null;
+  /** Resumes asked for, including the ones a suspension triggers without a gesture. */
+  resumes = 0;
+  /** Set to keep the context suspended through a resume, as a browser without user activation does. */
+  refuseResume = false;
+  /** Move to `state` and fire `statechange` when it changed, as the real context does. */
+  setState(state: AudioContextState): void {
+    if (this.state === state) return;
+    this.state = state;
+    this.onstatechange?.();
+  }
   createGain(): FakeGain {
     const g = new FakeGain();
     this.gains.push(g);
@@ -107,10 +118,11 @@ export class FakeContext {
     return { length: bytes.byteLength, duration: bytes.byteLength } as unknown as AudioBuffer;
   }
   async resume(): Promise<void> {
-    if (this.state !== 'closed') this.state = 'running'; // a closed context never reopens
+    this.resumes++;
+    if (this.state !== 'closed' && !this.refuseResume) this.setState('running'); // a closed context never reopens
   }
   async close(): Promise<void> {
-    this.state = 'closed';
+    this.setState('closed');
   }
 }
 
