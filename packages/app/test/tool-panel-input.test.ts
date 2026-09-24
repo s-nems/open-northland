@@ -23,29 +23,19 @@ function press(x: number, y: number, button = 0): Event {
   });
 }
 
-function release(x: number, y: number): Event {
-  return Object.assign(new Event('mouseup', { cancelable: true }), { clientX: x, clientY: y, button: 0 });
-}
-
 function key(code: string): Event {
   return Object.assign(new Event('keydown', { cancelable: true }), { code, key: code });
 }
 
 /** A hold that stays active until cancelled and takes no world click of its own. */
-function heldMode(): HeldMode & { active: boolean; releases: Array<[number, number]> } {
+function heldMode(): HeldMode & { active: boolean } {
   const mode = {
     active: false,
-    releases: [] as Array<[number, number]>,
     isActive: (): boolean => mode.active,
     cancel: (): void => {
       mode.active = false;
     },
     handleClick: (): boolean => mode.active,
-    handleRelease: (x: number, y: number): boolean => {
-      if (!mode.active) return false;
-      mode.releases.push([x, y]);
-      return true;
-    },
   };
   return mode;
 }
@@ -152,25 +142,22 @@ describe('tool panel input clicks', () => {
     input.dispose();
   });
 
-  it('routes a left release on the canvas to an active held drag and consumes it', () => {
-    const { canvas, input, held, arm, windowTarget } = mount();
+  it('spends one right-click or Escape per rung: a held step back first, then the mode', () => {
+    const { canvas, input, cues, held, arm } = mount();
+    let steps = 1;
+    const stepping = Object.assign(held, {
+      stepBack: (): boolean => {
+        if (steps === 0) return false;
+        steps--;
+        return true;
+      },
+    });
     arm();
-    const event = release(320, 210);
-    Object.defineProperty(event, 'target', { value: canvas });
-    windowTarget.dispatchEvent(event);
-    expect(held.releases).toEqual([[320, 210]]);
-    expect(event.defaultPrevented).toBe(true);
-    input.dispose();
-  });
-
-  it('drops the drag when the release lands on a DOM surface over the canvas', () => {
-    const { input, held, arm, windowTarget } = mount();
-    arm();
-    const event = release(320, 210);
-    Object.defineProperty(event, 'target', { value: new DialogButton() });
-    windowTarget.dispatchEvent(event);
-    expect(held.releases).toEqual([]);
-    expect(event.defaultPrevented).toBe(false);
+    canvas.dispatchEvent(press(400, 300, 2));
+    expect(stepping.isActive()).toBe(true);
+    windowTarget.dispatchEvent(key('Escape'));
+    expect(stepping.isActive()).toBe(false);
+    expect(cues).toEqual(['fail', 'fail']);
     input.dispose();
   });
 

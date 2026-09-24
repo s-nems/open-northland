@@ -5,6 +5,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
+import { drawPlanStake, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
 import { layerLutRow, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -266,16 +267,21 @@ export class LayerBinder {
     pe.selectionEllipse = undefined;
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
     if (pe.palisadeSiteMarker === undefined) {
-      pe.palisadeSiteMarker = new Graphics()
-        .ellipse(0, -1, 5, 3)
-        .fill({ color: 0xffffff, alpha: 0.95 })
-        .stroke({ color: 0x313131, width: 1, alpha: 0.8 });
+      pe.palisadeSiteMarker = new Graphics();
+      drawPlanStake(pe.palisadeSiteMarker, 0, 0, { open: true });
       pe.container.addChild(pe.palisadeSiteMarker);
     }
     pe.palisadeSiteMarker.visible = true;
     const drawX = pe.motion.drawX;
     const drawY = pe.motion.drawY;
-    this.stampBounds(pe, drawX - 5, drawY - 4, drawX + 5, drawY + 2, frameId);
+    this.stampBounds(
+      pe,
+      drawX + STAKE_BOUNDS.left,
+      drawY + STAKE_BOUNDS.top,
+      drawX + STAKE_BOUNDS.right,
+      drawY + STAKE_BOUNDS.bottom,
+      frameId,
+    );
   }
 
   private bindPalettedLayer(

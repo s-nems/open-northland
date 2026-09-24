@@ -1,6 +1,6 @@
 import type { PlacementGhost, PlacementOverlayFrame } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
-import type { PalisadePlacementPreview } from '../../hud/tool-panel/placement.js';
+import type { ActiveLine, LinePreviewNode } from '../../hud/tool-panel/line-tool.js';
 
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
@@ -25,7 +25,10 @@ export interface PlacementCursorInput {
   readonly palisadePreview?: (tile: {
     readonly col: number;
     readonly row: number;
-  }) => PalisadePlacementPreview | null;
+  }) => readonly LinePreviewNode[] | null;
+  /** The started line, whose reach the wash lights; null before a line's first click. */
+  readonly activeLine?: ActiveLine | null;
+  readonly lineOverlay?: (line: ActiveLine) => PlacementOverlayFrame | null;
   /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
   /** The civilization this seat raises buildings as, the same one `placeBuilding` stamps. */
@@ -49,6 +52,16 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
     return { overlay, ghost: null };
 
   const tile = input.tileAt();
+  if (palisadeGfxIndex !== null) {
+    // The wash stays while the pointer leaves the map; only the markers need a tile.
+    const line = input.activeLine ?? null;
+    const lineOverlay = line === null ? null : (input.lineOverlay?.(line) ?? null);
+    const nodes = tile === null ? null : (input.palisadePreview?.(tile) ?? null);
+    return {
+      overlay: lineOverlay,
+      ghost: nodes === null ? null : { kind: 'line', nodes, anchored: line !== null },
+    };
+  }
   if (tile === null) return { overlay, ghost: null };
   if (placementType !== null) {
     return input.canPlaceAt(placementType, tile.col, tile.row, paper)
@@ -63,17 +76,6 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
           },
         }
       : { overlay, ghost: null };
-  }
-  if (palisadeGfxIndex !== null) {
-    const preview = input.palisadePreview?.(tile) ?? null;
-    if (preview === null) return { overlay: null, ghost: null };
-    return {
-      overlay: null,
-      ghost:
-        preview.kind === 'wall'
-          ? { kind: 'palisade-line', nodes: preview.nodes }
-          : { kind: 'palisade-gate', nodes: preview.nodes, valid: preview.valid },
-    };
   }
   return input.canPlaceSignpostAt(tile.col, tile.row)
     ? { overlay, ghost: { kind: 'signpost', col: tile.col, row: tile.row, player: input.localPlayer } }

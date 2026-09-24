@@ -160,7 +160,7 @@ function build(sim: Simulation): void {
 
   // Two source-corroborated wood units in a real store are hauled and spent by two real builders.
   // Three owned sites retain one planted exclusive claim after two completions; the enemy-owned site across
-  // the barrier has no eligible builder and remains the unclaimed white-dot marker.
+  // the barrier has no eligible builder and remains the unclaimed stake marker.
   const warehouse = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, 7, 18, HUMAN_PLAYER);
   sim.world.mut(warehouse, Stockpile).amounts.set(GOOD_WOOD, 2);
   spawnSettlerDirect(sim, JOB_BUILDER, 5, 18, HUMAN_PLAYER);
@@ -300,7 +300,7 @@ export const palisadeScene: SceneDefinition = {
       },
     },
     {
-      label: 'the work yard retains one planted exclusive claim and one unclaimed white-dot site',
+      label: 'the work yard retains one planted exclusive claim and one unclaimed staked site',
       predicate: (sim) => {
         const planted = PALISADE_WORK_SITES.owned.filter((node) => {
           const wall = palisadeAt(sim, node.hx, node.hy);

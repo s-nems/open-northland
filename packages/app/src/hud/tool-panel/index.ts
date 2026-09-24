@@ -31,7 +31,7 @@ import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
 import { FRAME_NATIVE, MINIMAP_ART_SCALE } from '../minimap/model.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
-import type { MenuBuildingEntry } from './building-menu.js';
+import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
 import type { DiplomacyPanelRow } from './diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
@@ -40,6 +40,7 @@ import { createHeldPaperController } from './held-paper.js';
 import { createInfoLinesOverlay } from './info-lines.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout } from './layout.js';
+import type { ActiveLine, LineNode, LinePreviewNode } from './line-tool.js';
 import { FigureFrames } from './messages/figure-frames.js';
 import {
   createMessageCenter,
@@ -56,7 +57,6 @@ import {
   createPlacementController,
   type PalisadeGateProbeView,
   type PalisadePlacementMode,
-  type PalisadePlacementPreview,
 } from './placement.js';
 import { ResidentFigures } from './residents/figures.js';
 import type { ResidentsSeam } from './residents/seam.js';
@@ -67,6 +67,12 @@ import { createToolWindows, type ToolWindowsState } from './windows.js';
 const TITLE_ART_PX = 43;
 /** Design px between the notification column's foot and the minimap's top edge. */
 const NOTICE_MINIMAP_GAP = 16;
+
+/** Graphics rows for the quick row's palisade tools; null when the map catalog has no such row. */
+export interface PalisadeTools {
+  readonly wall: number | null;
+  readonly gate: number | null;
+}
 
 export interface ToolPanelOptions {
   readonly app: Application;
@@ -127,6 +133,9 @@ export interface ToolPanelOptions {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
   readonly palisadeGateProbe?: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  /** The wall and closed-gate graphics rows the quick row's palisade and gate tools place; a missing
+   *  row leaves its button disabled. */
+  readonly palisadeTools?: PalisadeTools;
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Whether the session clock stands, so the bar lights the pause for any stop, not only its own. */
   readonly clockPaused?: () => boolean;
@@ -191,9 +200,9 @@ export interface ToolPanelController {
   /** The source wall/gate graphics row currently held for placement. */
   palisadeGfxIndex(): number | null;
   palisadeMode(): PalisadePlacementMode | null;
-  palisadePreview(
-    tile: { readonly col: number; readonly row: number } | null,
-  ): PalisadePlacementPreview | null;
+  palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
+  /** The started wall line, for the reach wash; null before its first click. */
+  activeLine(): ActiveLine | null;
   /** Per-frame hook: the tick's model feeds the summary bar; the layout over it arrives as an accessor
    *  so a closed window never lays it out. */
   update(hudFor: () => HudLayout, model: HudModel): void;
@@ -346,6 +355,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       },
     });
     const heldPaper = createHeldPaperController(ctx, strip);
+    const palisadeToolRow = (tool: ConstructionTool): number | null =>
+      tool === 'palisade'
+        ? (opts.palisadeTools?.wall ?? null)
+        : tool === 'gate'
+          ? (opts.palisadeTools?.gate ?? null)
+          : null;
     // A cancel runs the modes in this order, so the plan a cancelled placement hands back stays held
     // until the next cancel drops it: one rung per press.
     const held: readonly HeldMode[] = [heldPaper, placement];
@@ -401,6 +416,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           paperLabel: nameOfPaper,
           buildingLabel: (typeId) => labelByType.get(typeId) ?? `#${typeId}`,
           onPick: seam.onPick,
+          tools: CONSTRUCTION_TOOLS.filter((tool) => palisadeToolRow(tool) !== null),
+          onPickTool: (tool) => {
+            const gfxIndex = palisadeToolRow(tool);
+            if (gfxIndex !== null) placement.enterPalisade(gfxIndex, tool === 'gate' ? 'gate' : 'wall');
+          },
           onPickPaper: seam.onPickPaper,
           onHelp: seam.onHelp,
           cue: ctx.cue,
@@ -427,7 +447,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         opts.onLargeWindow?.(open);
       },
       onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
-      onPickPalisade: (gfxIndex, label, mode) => placement.enterPalisade(gfxIndex, label, mode),
     });
     domParts.push(windows);
 
@@ -573,6 +592,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       palisadeGfxIndex: () => placement.activePalisade(),
       palisadeMode: () => placement.activePalisadeMode(),
       palisadePreview: (tile) => placement.palisadePreview(tile),
+      activeLine: () => placement.activeLine(),
       update(hudFor, model): void {
         systemBar.update(model);
         speed.refresh();
@@ -602,15 +622,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         windows.restore(state.windows);
         if (state.placementType !== null)
           placement.enter(state.placementType, state.placementPaper ?? undefined);
-        else if (state.palisadeGfxIndex !== null) {
-          const gfxIndex = state.palisadeGfxIndex;
-          const entry = opts.buildings.find((building) => building.placement?.gfxIndex === gfxIndex);
-          placement.enterPalisade(
-            gfxIndex,
-            entry?.label ?? `#${gfxIndex}`,
-            state.palisadeMode ?? entry?.placement?.mode ?? 'wall',
-          );
-        }
+        else if (state.palisadeGfxIndex !== null)
+          placement.enterPalisade(state.palisadeGfxIndex, state.palisadeMode ?? 'wall');
         messageCenter.restore(state.messages);
         applyHudHidden(state.hudHidden);
       },

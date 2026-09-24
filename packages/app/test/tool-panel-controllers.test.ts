@@ -25,7 +25,7 @@ import {
 } from '../src/hud/tool-panel/extras-window.js';
 import { createHeldPaperController } from '../src/hud/tool-panel/held-paper.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
-import { createPlacementController } from '../src/hud/tool-panel/placement.js';
+import { createPlacementController, PALISADE_LINE_MAX_EDGES } from '../src/hud/tool-panel/placement.js';
 import { INITIAL_RESIDENTS_STATE, NO_RESIDENT_FILTERS } from '../src/hud/tool-panel/residents/rows.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
@@ -222,7 +222,6 @@ describe('tool windows registry', () => {
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx } = stubContext();
     const picks: [number, Paper | undefined][] = [];
-    const palisades: number[] = [];
     const container = new Container();
     let menu: ConstructionWindowStub | null = null;
     const heldPaper = createHeldPaperController(ctx, stubPlacementStrip());
@@ -246,12 +245,11 @@ describe('tool windows registry', () => {
       missionReplayPage: () => null,
       history: null,
       onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
-      onPickPalisade: (gfxIndex) => palisades.push(gfxIndex),
       onPayTribute: () => undefined,
       onDeclareDiplomacy: () => undefined,
     });
     if (menu === null) throw new Error('the registry did not mount the construction window');
-    return { ctx, windows, picks, palisades, container, heldPaper, menu: menu as ConstructionWindowStub };
+    return { ctx, windows, picks, container, heldPaper, menu: menu as ConstructionWindowStub };
   }
 
   it('a house plan goes straight to placement; a place-any plan is held for the next catalogue pick, which spends it once', () => {
@@ -376,26 +374,6 @@ describe('tool windows registry', () => {
     again.windows.restore(saved);
     expect(again.windows.byId.residents.isOpen()).toBe(true);
     expect(again.windows.state().residents).toEqual(saved.residents);
-  });
-
-  it('does not take a held building paper when a palisade row is picked', () => {
-    const palisade: MenuBuildingEntry = {
-      typeId: 691,
-      label: 'Palisade',
-      kind: 'tower',
-      cost: [],
-      placement: { kind: 'palisade', gfxIndex: 691, mode: 'wall' },
-    };
-    const { picks, palisades, heldPaper, menu } = mountWindows([...BUILDINGS, palisade]);
-    const paper = { kind: 'placeAny', param: 0 } as const;
-
-    heldPaper.hold(paper);
-    menu.toggle();
-    menu.seam.onPick(palisade.typeId);
-
-    expect(palisades).toEqual([691]);
-    expect(picks).toEqual([]);
-    expect(heldPaper.held()).toEqual(paper);
   });
 
   it('claims a point only while a pop-up is open under it', () => {
@@ -605,37 +583,59 @@ describe('placement controller', () => {
     expect(cues).toEqual([]);
   });
 
-  it('commits one capped contiguous palisade line on release and keeps the tool armed', () => {
+  it('starts a wall line on the first click, lays the capped line on the second and stays armed', () => {
     let tile = { col: 4, row: 2 };
-    const { placement, commands, cues } = mount(() => tile);
+    const { placement, commands, cues, strip } = mount(() => tile);
 
-    placement.enterPalisade(691, 'Palisade', 'wall');
+    placement.enterPalisade(691, 'wall');
+    expect(strip.shown).toEqual({
+      label: messages().hud.palisade,
+      hint: messages().hud.construction.placeWallHint,
+    });
     expect(placement.handleClick(10, 10)).toBe(true);
+    expect(commands).toEqual([]);
+    expect(placement.activeLine()?.anchor).toEqual({ col: 4, row: 2 });
+    expect(strip.shown?.hint).toBe(messages().hud.construction.placeWallLineHint);
     tile = { col: 40, row: 2 };
-    expect(placement.palisadePreview(tile)?.nodes).toHaveLength(21);
-    expect(placement.handleRelease?.(20, 10)).toBe(true);
+    expect(placement.palisadePreview(tile)).toHaveLength(PALISADE_LINE_MAX_EDGES + 1);
+    expect(placement.handleClick(20, 10)).toBe(true);
 
-    expect(commands).toHaveLength(21);
+    expect(commands).toHaveLength(PALISADE_LINE_MAX_EDGES + 1);
     expect(commands[0]).toMatchObject({ kind: 'placePalisade', x: 4, y: 2 });
     expect(commands[20]).toMatchObject({ kind: 'placePalisade', x: 24, y: 2 });
     expect(cues).toEqual(['confirm']);
     expect(placement.isActive()).toBe(true);
+    expect(placement.activeLine()).toBeNull();
     placement.cancel();
     expect(placement.activePalisade()).toBeNull();
   });
 
-  it('stops a dragged line at the first rejected site instead of placing across a gap', () => {
+  it('stops a wall line at the first rejected site instead of placing across a gap', () => {
     let tile = { col: 4, row: 2 };
     const { placement, commands } = mount(
       () => tile,
       () => true,
       (_gfxIndex, col) => col < 7,
     );
-    placement.enterPalisade(691, 'Palisade', 'wall');
+    placement.enterPalisade(691, 'wall');
     placement.handleClick(0, 0);
     tile = { col: 10, row: 2 };
-    placement.handleRelease?.(10, 0);
+    placement.handleClick(10, 0);
     expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([4, 5, 6]);
+  });
+
+  it('steps back from a started line to the armed tool, then leaves the tool on cancel', () => {
+    const { placement, commands, cancels } = mount(() => ({ col: 4, row: 2 }));
+    placement.enterPalisade(691, 'wall');
+    expect(placement.stepBack()).toBe(false);
+    placement.handleClick(0, 0);
+    expect(placement.stepBack()).toBe(true);
+    expect(placement.activeLine()).toBeNull();
+    expect(placement.isActive()).toBe(true);
+    placement.cancel();
+    expect(placement.isActive()).toBe(false);
+    expect(cancels).toEqual([null]);
+    expect(commands).toEqual([]);
   });
 
   it('converts a valid hovered five-wall span with the probe-selected gate orientation', () => {
@@ -651,12 +651,10 @@ describe('placement controller', () => {
         span: [4, 5, 6, 7, 8].map((col) => ({ hx: col, hy: 6 })),
       }),
     );
-    placement.enterPalisade(696, 'Gate', 'gate');
-    expect(placement.palisadePreview({ col: 8, row: 6 })).toMatchObject({
-      kind: 'gate',
-      gfxIndex: 698,
-      valid: true,
-    });
+    placement.enterPalisade(696, 'gate');
+    expect(placement.palisadePreview({ col: 8, row: 6 })).toEqual(
+      [4, 5, 6, 7, 8].map((col) => ({ col, row: 6, valid: true })),
+    );
     placement.handleClick(0, 0);
     expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
   });

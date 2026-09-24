@@ -74,7 +74,7 @@ import {
   goodLabelsFromContent,
   menuEntriesFromContent,
   mountGameToolPanel,
-  palisadeMenuEntries,
+  palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
@@ -460,15 +460,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canPlaceAt,
       canPlacePalisadeAt,
       palisadeGateProbe,
+      palisadeTools: palisadeToolsOf(sim),
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-      buildings: [
-        ...menuEntriesFromContent(sim.content, lang).map((entry) => ({
-          ...entry,
-          availability: () => buildAvailability(viewerPlayer(), entry.typeId),
-        })),
-        ...palisadeMenuEntries(sim),
-      ],
+      buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
+        ...entry,
+        availability: () => buildAvailability(viewerPlayer(), entry.typeId),
+      })),
       buildingLabels: buildingLabelsFromContent(sim.content, lang),
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
@@ -647,6 +645,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       buildingDoors,
       overlayFrame,
       signpostOverlayFrame,
+      lineOverlayFrame,
       hudFor,
       hudModelFor,
       doorBadgesFor,
@@ -847,6 +846,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       geometryDebug: debugMounts.geometryDebug,
       overlayFrame,
       signpostOverlayFrame,
+      lineOverlayFrame,
       hudFor,
       hudModelFor,
       doorBadgesFor,

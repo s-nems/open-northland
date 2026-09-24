@@ -6,7 +6,11 @@ import type { ContentIr } from '../../content/ir/rows.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
-import { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
+import {
+  makeLineReachOverlaySource,
+  makeOverlayFrameSource,
+  makeSignpostOverlaySource,
+} from '../placement-overlay.js';
 import {
   type BuildingDoorInfo,
   type BuildingDoorInfoOf,
@@ -72,6 +76,8 @@ export interface ViewReadModels extends ReturnType<typeof createSnapshotProjecti
   /** The memoized build-mode band probe and its erect-signpost twin. */
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
+  /** The started line's reach wash. */
+  readonly lineOverlayFrame: ReturnType<typeof makeLineReachOverlaySource>;
 }
 
 export async function createViewReadModels(deps: ViewReadModelDeps): Promise<ViewReadModels> {
@@ -84,6 +90,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     buildingDoors: buildings.byType,
     overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer, deps.placementTribe),
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
+    lineOverlayFrame: makeLineReachOverlaySource(sim, mapSize, localPlayer),
     ...createSnapshotProjections(
       deps.viewer,
       buildings.infoOf,

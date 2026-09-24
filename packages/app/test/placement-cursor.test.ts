@@ -6,6 +6,7 @@ import { type PlacementCursorInput, placementCursor } from '../src/view/runtime/
 /** Two distinct washes, so an assertion says which probe answered. The renderer only forwards them. */
 const BUILDING_WASH: PlacementOverlayFrame = { minCol: 0, maxCol: 8, minRow: 0, maxRow: 8, blocked: [] };
 const SIGNPOST_WASH: PlacementOverlayFrame = { minCol: 1, maxCol: 9, minRow: 1, maxRow: 9, blocked: [] };
+const LINE_WASH: PlacementOverlayFrame = { minCol: 2, maxCol: 7, minRow: 2, maxRow: 7, blocked: [] };
 
 const HOUSE = 7;
 const LOCAL_PLAYER = 2;
@@ -128,37 +129,51 @@ describe('placement cursor', () => {
     });
   });
 
-  it('draws every valid and rejected node in the held palisade line', () => {
+  it('draws the marker under the cursor with no wash before a wall line starts', () => {
+    const nodes = [{ col: 4, row: 9, valid: true }];
+    const f = frame({
+      palisadeGfxIndex: 691,
+      signpostActive: true,
+      palisadePreview: () => nodes,
+      activeLine: null,
+      lineOverlay: () => LINE_WASH,
+    });
+
+    expect(f.cursor()).toEqual({ overlay: null, ghost: { kind: 'line', nodes, anchored: false } });
+    expect(f.signpostProbes()).toBe(0);
+  });
+
+  it('washes around a started line and draws it from its anchor', () => {
     const nodes = [
       { col: 4, row: 9, valid: true },
       { col: 5, row: 9, valid: false },
     ];
+    const line = { tool: 'palisade:691', anchor: { col: 4, row: 9 }, maxEdges: 20, canPlace: () => true };
+    const washed: unknown[] = [];
     const f = frame({
       palisadeGfxIndex: 691,
-      signpostActive: true,
-      palisadePreview: () => ({ kind: 'wall', gfxIndex: 691, nodes }),
+      palisadePreview: () => nodes,
+      activeLine: line,
+      lineOverlay: (active) => {
+        washed.push(active);
+        return LINE_WASH;
+      },
     });
 
-    expect(f.cursor()).toEqual({ overlay: null, ghost: { kind: 'palisade-line', nodes } });
-    expect(f.signpostProbes()).toBe(0);
+    expect(f.cursor()).toEqual({ overlay: LINE_WASH, ghost: { kind: 'line', nodes, anchored: true } });
+    expect(washed).toEqual([line]);
   });
 
-  it('draws a valid gate span green through the gate preview ghost', () => {
-    const nodes = [
-      { col: 2, row: 9 },
-      { col: 3, row: 9 },
-      { col: 4, row: 9 },
-      { col: 5, row: 9 },
-      { col: 6, row: 9 },
-    ];
+  it('keeps the wash of a started line while the pointer is off the map', () => {
     const f = frame({
-      palisadeGfxIndex: 696,
-      palisadePreview: () => ({ kind: 'gate', gfxIndex: 697, nodes, valid: true }),
+      palisadeGfxIndex: 691,
+      tileAt: () => null,
+      palisadePreview: () => [],
+      activeLine: { tool: 'palisade:691', anchor: { col: 4, row: 9 }, maxEdges: 20, canPlace: () => true },
+      lineOverlay: () => LINE_WASH,
     });
-    expect(f.cursor()).toEqual({
-      overlay: null,
-      ghost: { kind: 'palisade-gate', nodes, valid: true },
-    });
+
+    expect(f.cursor()).toEqual({ overlay: LINE_WASH, ghost: null });
   });
 
   it('drops the signpost ghost when its band probe has no frame to draw', () => {

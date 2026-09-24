@@ -21,12 +21,17 @@ import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/build
 import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
-import { mountToolPanel, type ToolPanelController, type ToolPanelOptions } from '../hud/tool-panel/index.js';
+import {
+  mountToolPanel,
+  type PalisadeTools,
+  type ToolPanelController,
+  type ToolPanelOptions,
+} from '../hud/tool-panel/index.js';
 import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { PalisadeGateProbeView } from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
-import { currentLocale, messages } from '../i18n/index.js';
+import { currentLocale } from '../i18n/index.js';
 import type { PresentationPack } from '../presentation/pack.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -50,6 +55,7 @@ export interface GameToolPanelDeps {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
   readonly palisadeGateProbe: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  readonly palisadeTools: PalisadeTools;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */
@@ -186,35 +192,12 @@ export function goodLabelsFromContent(content: {
   return new Map(content.goods.filter((g) => g.id !== 'none').map((g) => [g.typeId, g.name ?? g.id]));
 }
 
-/** One wall-line tool plus an axis-detecting gate-conversion tool in the military build tab. */
-export function palisadeMenuEntries(sim: Simulation): MenuBuildingEntry[] {
+/** The quick row's wall-line tool and axis-detecting gate-conversion tool, from the map catalog. */
+export function palisadeToolsOf(sim: Simulation): PalisadeTools {
   const types = sim.terrain?.landscapes?.types ?? [];
   const wall = types.find((type) => type.wall !== undefined && type.wall.gate === undefined);
-  const gates = types.filter((type) => type.wall?.gate?.open === false);
-  return [
-    ...(wall === undefined
-      ? []
-      : [
-          {
-            typeId: wall.typeId,
-            label: messages().hud.palisade,
-            kind: 'tower',
-            cost: wall.wall?.construction ?? [],
-            placement: { kind: 'palisade' as const, gfxIndex: wall.typeId, mode: 'wall' as const },
-          },
-        ]),
-    ...(gates[0] === undefined
-      ? []
-      : [
-          {
-            typeId: gates[0].typeId,
-            label: messages().hud.gate,
-            kind: 'tower',
-            cost: gates[0].wall?.construction ?? [],
-            placement: { kind: 'palisade' as const, gfxIndex: gates[0].typeId, mode: 'gate' as const },
-          },
-        ]),
-  ];
+  const gate = types.find((type) => type.wall?.gate?.open === false);
+  return { wall: wall?.typeId ?? null, gate: gate?.typeId ?? null };
 }
 
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
@@ -259,6 +242,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       canPlaceAt: deps.canPlaceAt,
       canPlacePalisadeAt: deps.canPlacePalisadeAt,
       palisadeGateProbe: deps.palisadeGateProbe,
+      palisadeTools: deps.palisadeTools,
       onSpeedChange: deps.onSpeed,
       ...(deps.clockPaused !== undefined ? { clockPaused: deps.clockPaused } : {}),
       ...(deps.pauseHeld !== undefined ? { pauseHeld: deps.pauseHeld } : {}),

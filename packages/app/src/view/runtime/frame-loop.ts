@@ -7,9 +7,14 @@ import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/i
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
+import type { ActiveLine } from '../../hud/tool-panel/line-tool.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
-import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
+import type {
+  makeLineReachOverlaySource,
+  makeOverlayFrameSource,
+  makeSignpostOverlaySource,
+} from '../placement-overlay.js';
 import {
   type computeConstructionSigns,
   type computeDoorBadges,
@@ -53,6 +58,7 @@ export interface FrameLoopDeps {
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   /** The erect-signpost band probe, live while signpost placement mode is active. */
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
+  readonly lineOverlayFrame: ReturnType<typeof makeLineReachOverlaySource>;
   /** Memoized by snapshot identity, so it rebuilds per tick rather than per RAF. */
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
   /** The same per-tick aggregation behind {@link hudFor}, for its figures rather than its layout. */
@@ -107,6 +113,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     geometryDebug,
     overlayFrame,
     signpostOverlayFrame,
+    lineOverlayFrame,
     hudFor,
     hudModelFor,
     doorBadgesFor,
@@ -154,6 +161,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const frameReport = () => frameStats.report();
   const visiblePlots = createVisiblePlots(() => sim.constructionPlots(), fogGates.seesNode);
+  const lineOverlay = (line: ActiveLine) =>
+    lineOverlayFrame(line, cameraCtl.camera(), app.screen.width, app.screen.height);
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;
   const collect = (): void => {
@@ -226,6 +235,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       canPlaceAt,
       canPlaceSignpostAt,
       palisadePreview: (tile) => toolPanel.controller.palisadePreview(tile),
+      activeLine: toolPanel.controller.activeLine(),
+      lineOverlay,
       localPlayer,
       placementTribe,
     });

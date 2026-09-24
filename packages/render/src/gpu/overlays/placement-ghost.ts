@@ -2,6 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
+import { drawPlanStake, STAKE_TIE_HEIGHT, TAPE_BLOCKED, TAPE_OPEN } from '../plan-stake.js';
 import { resolveLayers } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -25,15 +26,11 @@ export type PlacementGhost =
       readonly tribe: number;
     }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
-  | { readonly kind: 'palisade'; readonly col: number; readonly row: number; readonly gfxIndex: number }
   | {
-      readonly kind: 'palisade-line';
+      /** A planned line of stakes, or a gate span; `anchored` marks the first node as the line's start. */
+      readonly kind: 'line';
       readonly nodes: readonly { readonly col: number; readonly row: number; readonly valid: boolean }[];
-    }
-  | {
-      readonly kind: 'palisade-gate';
-      readonly nodes: readonly { readonly col: number; readonly row: number }[];
-      readonly valid: boolean;
+      readonly anchored: boolean;
     };
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
@@ -58,25 +55,21 @@ export class PlacementGhostLayer {
       this.container.visible = false;
       return;
     }
-    if (ghost.kind === 'palisade-line' || ghost.kind === 'palisade-gate') {
-      const key = `${ghost.kind}:${ghost.kind === 'palisade-gate' ? ghost.valid : ''}:${ghost.nodes
-        .map((node) => `${node.col},${node.row},${'valid' in node ? node.valid : ''}`)
-        .join(';')}`;
+    if (ghost.kind === 'line') {
+      const key = `line:${ghost.anchored}:${ghost.nodes.map((node) => `${node.col},${node.row},${node.valid}`).join(';')}`;
       if (this.builtForKey !== key) {
         this.builtForKey = key;
-        this.rebuildPalisadePlan(ghost, elevation);
+        this.rebuildLine(ghost, elevation);
       }
       this.container.position.set(0, 0);
-      this.container.zIndex = 0;
+      // A plan is a cursor mark: it reads over the settlers and walls standing on its nodes.
+      this.container.zIndex = Number.MAX_SAFE_INTEGER;
+      this.container.alpha = 1;
       this.container.visible = ghost.nodes.length > 0;
       return;
     }
-    const key =
-      ghost.kind === 'building'
-        ? `b:${ghost.tribe}:${ghost.buildingType}`
-        : ghost.kind === 'palisade'
-          ? `p:${ghost.gfxIndex}`
-          : `s:${ghost.player}`;
+    this.container.alpha = GHOST_ALPHA;
+    const key = ghost.kind === 'building' ? `b:${ghost.tribe}:${ghost.buildingType}` : `s:${ghost.player}`;
     if (this.builtForKey !== key) {
       this.builtForKey = key;
       this.rebuild(ghost);
@@ -89,49 +82,38 @@ export class PlacementGhostLayer {
     this.container.visible = true;
   }
 
-  private rebuildPalisadePlan(
-    ghost: Extract<PlacementGhost, { kind: 'palisade-line' | 'palisade-gate' }>,
-    elevation: ElevationField,
-  ): void {
+  private rebuildLine(ghost: Extract<PlacementGhost, { kind: 'line' }>, elevation: ElevationField): void {
     for (const child of this.container.removeChildren()) child.destroy();
     const g = new Graphics();
     const points = ghost.nodes.map((node) => {
       const point = halfCellToScreen(node.col, node.row);
-      return { x: point.x, y: point.y - terrainLiftAtNode(elevation, node.col, node.row) };
+      return { x: point.x, y: point.y - terrainLiftAtNode(elevation, node.col, node.row), valid: node.valid };
     });
-    if (points.length > 1) {
-      const first = points[0];
-      if (first !== undefined) {
-        g.moveTo(first.x, first.y);
-        for (const point of points.slice(1)) g.lineTo(point.x, point.y);
-        g.stroke({ color: 0x171717, width: 2, alpha: 0.9 });
-      }
+    // The string runs knot to knot under the stakes, coloured by the stake it leads to.
+    for (let i = 1; i < points.length; i++) {
+      const from = points[i - 1];
+      const to = points[i];
+      if (from === undefined || to === undefined) continue;
+      g.moveTo(from.x, from.y - STAKE_TIE_HEIGHT)
+        .lineTo(to.x, to.y - STAKE_TIE_HEIGHT)
+        .stroke({ color: to.valid ? TAPE_OPEN : TAPE_BLOCKED, width: 1.25, alpha: 0.9 });
     }
-    // A gate span is one verdict for the whole run; a wall line carries one per node.
-    const isGate = ghost.kind === 'palisade-gate';
-    const validAt = ghost.kind === 'palisade-gate' ? () => ghost.valid : (i: number) => ghost.nodes[i]?.valid;
-    for (let i = 0; i < points.length; i++) {
-      const point = points[i];
-      if (point === undefined) continue;
-      const valid = validAt(i) === true;
-      const color = isGate ? (valid ? 0x49ff66 : 0xff5353) : valid ? 0xffffff : 0xff5353;
-      g.ellipse(point.x, point.y - 1, 6, 3)
-        .fill({ color, alpha: 0.95 })
-        .stroke({ color: 0x202020, width: 1, alpha: 0.9 });
+    // Back to front, so a nearer stake covers the one behind it.
+    const order = points.map((point, index) => ({ point, index })).sort((a, b) => a.point.y - b.point.y);
+    for (const { point, index } of order) {
+      drawPlanStake(g, point.x, point.y, { open: point.valid, anchor: ghost.anchored && index === 0 });
     }
     this.container.addChild(g);
   }
 
-  private rebuild(ghost: Exclude<PlacementGhost, { kind: 'palisade-line' | 'palisade-gate' }>): void {
+  private rebuild(ghost: Exclude<PlacementGhost, { kind: 'line' }>): void {
     for (const child of this.container.removeChildren()) child.destroy();
     // A minimal DrawItem: position and depth live on the container, and `ref: -1` only feeds
     // head-variation picks, which neither kind has.
     const item: DrawItem =
       ghost.kind === 'building'
         ? { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: ghost.buildingType, tribe: ghost.tribe }
-        : ghost.kind === 'palisade'
-          ? { kind: 'palisade', ref: -1, x: 0, y: 0, depth: 0, gfxIndex: ghost.gfxIndex }
-          : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
+        : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null) {
       const g = new Graphics();

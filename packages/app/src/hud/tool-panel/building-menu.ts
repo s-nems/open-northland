@@ -29,13 +29,11 @@ export interface MenuBuildingEntry {
   readonly cost: readonly CostLine[];
   /** Absent, the entry is always open (a scene without progression). */
   readonly availability?: () => BuildingAvailability;
-  /** A wall-family row shown beside military buildings but placed on the half-cell lattice. */
-  readonly placement?: {
-    readonly kind: 'palisade';
-    readonly gfxIndex: number;
-    readonly mode: 'wall' | 'gate';
-  };
 }
+
+/** The quick row's tools, in the row's order; they lay the half-cell lattice, not a building footprint. */
+export const CONSTRUCTION_TOOLS = ['road', 'palisade', 'gate'] as const;
+export type ConstructionTool = (typeof CONSTRUCTION_TOOLS)[number];
 
 /** The five category tabs, in the original's order. */
 export type BuildingCategory = 'all' | 'work' | 'storage' | 'home' | 'military';

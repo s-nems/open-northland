@@ -12,10 +12,9 @@ export interface HeldMode {
   cancel(): void;
   /** True when this mode took the press; the first claimer wins. */
   handleClick(clientX: number, clientY: number): boolean;
-  /** Finish a held drag even when the pointer was released outside the canvas. */
-  handleRelease?(clientX: number, clientY: number): boolean;
-  /** Drop a drag in progress without leaving the mode; the held tool stays armed. */
-  abortDrag?(): void;
+  /** Undo the mode's last step without leaving it, as a line tool drops its started line; false when
+   *  there is no step to undo and the press should cancel the mode. */
+  stepBack?(): boolean;
 }
 
 /** The action whose key toggles each beam entry. */
@@ -60,6 +59,11 @@ export interface ToolPanelInput {
 export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const { canvas, toCanvas, windows, held } = deps;
   const anyHeld = (): boolean => held.some((m) => m.isActive());
+  /** One rung per press: a mode's own step back first, otherwise every held mode is called off. */
+  const cancelOneRung = (): void => {
+    if (held.some((m) => m.isActive() && m.stepBack?.() === true)) return;
+    for (const mode of held) mode.cancel();
+  };
 
   const onMouseDown = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
@@ -76,7 +80,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
         // press as a world move order.
         consume();
         deps.cue('fail');
-        for (const mode of held) mode.cancel();
+        cancelOneRung();
         return;
       }
       // macOS delivers Ctrl+left-click as button 2, so with nothing to cancel it falls through as the
@@ -98,37 +102,6 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
     windows.handleHover(x, y);
-  };
-
-  /** A release over a DOM surface, an open pop-up or a higher overlay belongs to that surface, so the
-   *  drag it would have finished is dropped rather than landing on the world behind it. A release outside
-   *  the page still targets the canvas the press started on. */
-  const releaseOverHud = (e: MouseEvent): boolean => {
-    if (e.target !== canvas) return true;
-    if (deps.deferToOverlay?.(e.clientX, e.clientY) === true) return true;
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-    return windows.claims(x, y);
-  };
-
-  const onMouseUp = (e: MouseEvent): void => {
-    if (e.button !== 0) return;
-    if (releaseOverHud(e)) {
-      for (const mode of held) mode.abortDrag?.();
-      return;
-    }
-    for (const mode of held) {
-      if (!mode.isActive() || mode.handleRelease?.(e.clientX, e.clientY) !== true) continue;
-      e.preventDefault();
-      // This runs before unit-controls' and the minimap's own window listeners, which are mounted later.
-      // Neither can have a live drag here, because their press was consumed by the held mode above.
-      e.stopImmediatePropagation();
-      return;
-    }
-  };
-
-  // A pointer that leaves the window never delivers its mouseup, which would leave a drag half-armed.
-  const onBlur = (): void => {
-    for (const mode of held) mode.abortDrag?.();
   };
 
   // A wheel over an open pop-up belongs to that window; its default would scroll the page behind the
@@ -164,7 +137,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       if (keyboardOwned(e)) return;
       if (anyHeld()) {
         deps.cue('fail');
-        for (const mode of held) mode.cancel();
+        cancelOneRung();
       } else if (!deps.closeWindow()) {
         escapeClaimed = deps.escapeClaimed?.() === true;
         return;
@@ -210,8 +183,6 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('wheel', onWheel, { passive: false });
-  window.addEventListener('mouseup', onMouseUp);
-  window.addEventListener('blur', onBlur);
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keydown', onEscapeMenu);
 
@@ -220,8 +191,6 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('wheel', onWheel);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('blur', onBlur);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keydown', onEscapeMenu);
     },

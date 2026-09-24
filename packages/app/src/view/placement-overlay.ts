@@ -6,6 +6,7 @@ import {
 } from '@open-northland/render';
 import { FOG_STATE, type Paper, type Simulation } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
+import { type ActiveLine, lineReach } from '../hud/tool-panel/line-tool.js';
 import { nodeBandOfCells } from './picking.js';
 
 /** Tiles beyond the visible band the overlay also probes, so its edge never shows during a pan. */
@@ -61,6 +62,36 @@ export function makeSignpostOverlaySource(
       screenW,
       screenH,
     );
+}
+
+/**
+ * The started line's wash: everything dims but the nodes the line can end on (`lineReach`), so the
+ * lit area is exactly where a confirming click lays the whole line. The reach is recomputed only when
+ * the anchor, the tool, a placement blocker or the fog changes.
+ */
+export function makeLineReachOverlaySource(
+  sim: Simulation,
+  mapSize: { readonly width: number; readonly height: number },
+  player: number = HUMAN_PLAYER,
+): (line: ActiveLine, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+  const band = makeBandProber(sim, mapSize, player);
+  let reachKey = '';
+  let reach: ReadonlySet<string> = new Set();
+  return (line, camera, screenW, screenH) => {
+    const fog = sim.fogView(player);
+    const key = `${line.tool}:${line.anchor.col},${line.anchor.row}:${sim.placementBlockerVersion()}:${fog === null ? 'off' : `${fog.mode}:${fog.generation}`}`;
+    if (key !== reachKey) {
+      reach = lineReach(line);
+      reachKey = key;
+    }
+    return band(
+      () => ({ canPlace: (x: number, y: number) => reach.has(`${x},${y}`) }),
+      () => `line:${reachKey}`,
+      camera,
+      screenW,
+      screenH,
+    );
+  };
 }
 
 interface NodeProbe {

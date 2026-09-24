@@ -7,7 +7,9 @@ import {
   BUILDING_CATEGORIES,
   type BuildingCategory,
   type CatalogueView,
+  CONSTRUCTION_TOOLS,
   type ConstructionPage,
+  type ConstructionTool,
   type ConstructionWindowState,
   INITIAL_CONSTRUCTION_STATE,
   type MenuBuildingEntry,
@@ -51,6 +53,10 @@ export interface ConstructionWindowDeps {
   /** The house a plan names, for its card's "?" label. */
   readonly buildingLabel: (typeId: number) => string;
   readonly onPick: (typeId: number) => void;
+  /** The quick-row tools this game offers; the others show disabled. */
+  readonly tools: readonly ConstructionTool[];
+  /** A quick-row tool was pressed; the window has already hidden for its placement. */
+  readonly onPickTool: (tool: ConstructionTool) => void;
   /** A plan card was pressed: the owner starts the placement it pays for (a named house), or holds
    *  it for the catalogue pick (a place-any plan), which the window has already turned to. */
   readonly onPickPaper: (paper: Paper) => void;
@@ -163,19 +169,23 @@ export function createConstructionWindow(deps: ConstructionWindowDeps): Construc
   let disposed = false;
   let state: ConstructionWindowState = INITIAL_CONSTRUCTION_STATE;
 
-  // The quick row: the road, palisade and gate the sim has no command for yet, and the papers.
+  // The quick row: the line and gate tools, the ones the game offers enabled, and the papers.
   const quick = document.createElement('div');
   quick.className = 'on-toolrow';
-  for (const [glyph, label] of [
-    [GLYPH.road, copy.road],
-    [GLYPH.palisade, copy.palisade],
-    [GLYPH.gate, copy.gate],
-  ] as const) {
-    const control = button('on-button', `${glyph}<span></span>`);
-    control.disabled = true;
-    control.title = copy.notInThisVersion;
+  for (const tool of CONSTRUCTION_TOOLS) {
+    const control = button('on-button', `${GLYPH[tool]}<span></span>`);
     const text = control.querySelector('span');
-    if (text !== null) text.textContent = label;
+    if (text !== null) text.textContent = copy[tool];
+    if (deps.tools.includes(tool)) {
+      control.addEventListener('click', () => {
+        deps.cue('confirm');
+        suspend();
+        deps.onPickTool(tool);
+      });
+    } else {
+      control.disabled = true;
+      control.title = copy.notInThisVersion;
+    }
     quick.append(control);
   }
   const papers = button(
