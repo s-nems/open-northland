@@ -39,16 +39,23 @@ export function sendBounded(
   socket.send(text);
 }
 
+/** Recovery requests held in reserve, and the time one of them takes to come back. */
+const RECOVERY_BURST = 4;
+const RECOVERY_REFILL_MS = 2000;
+
 /** Recovery can return a full snapshot or replay for a tiny request. */
 export class RecoveryBudget {
-  private remaining = 4;
+  private remaining = RECOVERY_BURST;
 
   constructor(private updatedAt: number) {}
 
   take(raw: unknown, now: number): boolean {
     const kind = clientMessageKind(raw);
     if (kind !== 'loaded' && kind !== 'saveOrders' && kind !== 'requestInitialSave') return true;
-    this.remaining = Math.min(4, this.remaining + Math.max(0, now - this.updatedAt) / 2000);
+    this.remaining = Math.min(
+      RECOVERY_BURST,
+      this.remaining + Math.max(0, now - this.updatedAt) / RECOVERY_REFILL_MS,
+    );
     this.updatedAt = now;
     if (this.remaining < 1) return false;
     this.remaining--;
