@@ -23,7 +23,12 @@ import {
   TOGGLE_STYLE,
 } from './chrome.js';
 import { type Armed, createAdminLabels, sameArmed } from './labels.js';
-import { createFogSwitcher, createGeometryToggle, createNeedsToggle } from './live-toggles.js';
+import {
+  createFogSwitcher,
+  createGeometryToggle,
+  createNeedsToggle,
+  createZoomOutToggle,
+} from './live-toggles.js';
 import {
   type AnimalEntry,
   ARMOR_CLASSES,
@@ -77,6 +82,8 @@ export interface AdminDebugDeps {
   readonly fogMode?: () => FogMode;
   readonly geometryEnabled: () => boolean;
   readonly setGeometryEnabled: (enabled: boolean) => void;
+  readonly zoomOutUnlocked: () => boolean;
+  readonly setZoomOutUnlocked: (unlocked: boolean) => void;
   /** The chip's top edge in client px, under the HUD's top-right bar. */
   readonly top: number;
 }
@@ -128,6 +135,10 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     enabled: deps.geometryEnabled,
     setEnabled: deps.setGeometryEnabled,
   });
+  const zoomOut = createZoomOutToggle({
+    unlocked: deps.zoomOutUnlocked,
+    setUnlocked: deps.setZoomOutUnlocked,
+  });
 
   const panel = el('div', ADMIN_PANEL_STYLE);
   panel.style.display = 'none';
@@ -142,6 +153,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
       needs.refresh(); // the boot value may predate a scene's own toggle
       fog.refresh();
       geometry.refresh();
+      zoomOut.refresh();
     }
   };
   toggle.addEventListener('click', () => setOpen(!open));
@@ -192,6 +204,8 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   }
   header.append(el('div', SECTION_TITLE_STYLE, copy.geometry));
   header.append(geometry.row);
+  header.append(el('div', `${SECTION_TITLE_STYLE};margin-top:8px`, copy.camera));
+  header.append(zoomOut.row);
 
   const body = el('div', BODY_STYLE);
 

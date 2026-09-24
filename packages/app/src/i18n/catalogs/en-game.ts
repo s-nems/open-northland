@@ -601,6 +601,7 @@ export const enGame = {
     armor: 'Armor',
     fog: 'Visibility',
     geometry: 'Building geometry',
+    camera: 'Camera',
     warriors: 'Warriors',
     civilians: 'Civilians',
     vehicles: 'Vehicles',
@@ -627,6 +628,7 @@ export const enGame = {
     needsOff: 'Needs: OFF (click to enable)',
     geometryOn: 'Grid: ON (click to hide)',
     geometryOff: 'Grid: OFF (click to show)',
+    zoomOutUnlocked: 'Zoom out past the normal limit',
     fogModes: {
       off: 'Map revealed',
       classic: 'Classic',

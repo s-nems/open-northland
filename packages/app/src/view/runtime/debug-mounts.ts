@@ -74,6 +74,13 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
     window.history.replaceState(null, '', `${window.location.pathname}${search === '' ? '' : `?${search}`}`);
   };
 
+  // Not written to the URL: a reload resets the camera's zoom anyway.
+  let zoomOutUnlocked = false;
+  const setZoomOutUnlocked = (unlocked: boolean): void => {
+    zoomOutUnlocked = unlocked;
+    opts.cameraCtl.setZoomOutUnlocked(unlocked);
+  };
+
   // Built on the first enable, so a player who never turns the tools on pays nothing for it.
   let admin: AdminDebugHandle | null = null;
   let toolsEnabled = false;
@@ -86,10 +93,14 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
       admin?.setVisible(false);
       // The grid's only switch is on the palette, so it must not outlive it.
       if (admin !== null && geometryDebug.enabled()) setGeometryEnabled(false);
+      if (zoomOutUnlocked) setZoomOutUnlocked(false);
       return;
     }
     if (opts.allowWorldEdits === false) return;
-    admin ??= mountAdminPalette(opts, geometryDebug, setGeometryEnabled, paletteTop);
+    admin ??= mountAdminPalette(opts, geometryDebug, setGeometryEnabled, paletteTop, {
+      unlocked: () => zoomOutUnlocked,
+      setUnlocked: setZoomOutUnlocked,
+    });
     admin.setVisible(!hudHidden);
   };
   setToolsEnabled(opts.initialToolsEnabled);
@@ -118,6 +129,7 @@ function mountAdminPalette(
   geometryDebug: GeometryDebugOverlay,
   setGeometryEnabled: (enabled: boolean) => void,
   top: number,
+  zoomOut: { readonly unlocked: () => boolean; readonly setUnlocked: (unlocked: boolean) => void },
 ): AdminDebugHandle {
   const { app, canvas, sim, renderer } = opts;
   return mountAdminDebug({
@@ -163,6 +175,8 @@ function mountAdminPalette(
     fogMode: () => sim.fogMode(),
     geometryEnabled: geometryDebug.enabled,
     setGeometryEnabled,
+    zoomOutUnlocked: zoomOut.unlocked,
+    setZoomOutUnlocked: zoomOut.setUnlocked,
     top,
   });
 }

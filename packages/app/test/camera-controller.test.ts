@@ -5,7 +5,9 @@ import {
   type CameraController,
   type CameraInputSettings,
   createCameraController,
+  DEBUG_MIN_ZOOM,
   EDGE_SCROLL_MARGIN,
+  MIN_ZOOM,
 } from '../src/view/camera/index.js';
 
 /** Which DOM events arm and disarm the camera controller's RTS edge-scroll probe, and which key
@@ -132,6 +134,27 @@ const panStep = (ctl: CameraController): number => {
 afterEach(() => {
   vi.unstubAllGlobals();
 });
+
+/** Enough wheel-out notches and glide frames to reach any zoom-out floor from scale 1. */
+const WHEEL_OUT_NOTCHES = 60;
+const GLIDE_FRAMES = 200;
+const FRAME_MS = 16;
+
+const wheelOutFully = (
+  ctl: CameraController,
+  canvasEvents: ReturnType<typeof install>['canvasEvents'],
+): number => {
+  for (let i = 0; i < WHEEL_OUT_NOTCHES; i++) {
+    canvasEvents.emit('wheel', {
+      clientX: 100,
+      clientY: 100,
+      deltaY: 1,
+      preventDefault: (): void => undefined,
+    });
+  }
+  for (let i = 0; i < GLIDE_FRAMES; i++) ctl.update(FRAME_MS);
+  return ctl.camera().scale ?? 1;
+};
 
 describe('createCameraController edge-scroll arming', () => {
   it('arms on a mousemove over the canvas, with no boundary crossing first', () => {
@@ -307,6 +330,35 @@ describe('createCameraController suspension', () => {
     ctl.setSuspended(false);
     ctl.update(16);
     expect(ctl.camera()).toEqual(before);
+    ctl.dispose();
+  });
+});
+
+describe('createCameraController zoom-out unlock', () => {
+  it('lets the wheel pass MIN_ZOOM only while unlocked, down to DEBUG_MIN_ZOOM', () => {
+    const { ctl, canvasEvents } = install();
+    expect(wheelOutFully(ctl, canvasEvents)).toBe(MIN_ZOOM);
+    ctl.setZoomOutUnlocked(true);
+    expect(wheelOutFully(ctl, canvasEvents)).toBe(DEBUG_MIN_ZOOM);
+    ctl.dispose();
+  });
+
+  it('relocking snaps a wider view back to MIN_ZOOM, keeping the screen centre on the same world point', () => {
+    const { ctl, canvasEvents } = install();
+    ctl.setZoomOutUnlocked(true);
+    wheelOutFully(ctl, canvasEvents);
+    const worldAtCentre = (): { x: number; y: number } => {
+      const cam = ctl.camera();
+      const scale = cam.scale ?? 1;
+      return { x: (CANVAS_W / 2 - cam.offsetX) / scale, y: (CANVAS_H / 2 - cam.offsetY) / scale };
+    };
+    const before = worldAtCentre();
+    ctl.setZoomOutUnlocked(false);
+    expect(ctl.camera().scale).toBe(MIN_ZOOM);
+    expect(worldAtCentre().x).toBeCloseTo(before.x);
+    expect(worldAtCentre().y).toBeCloseTo(before.y);
+    // The pending glide target was clamped too, so the next frames stay at the floor.
+    expect(wheelOutFully(ctl, canvasEvents)).toBe(MIN_ZOOM);
     ctl.dispose();
   });
 });

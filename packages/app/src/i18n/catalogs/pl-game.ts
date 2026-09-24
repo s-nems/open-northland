@@ -587,6 +587,7 @@ export const plGame = {
     armor: 'Pancerz',
     fog: 'Widoczność',
     geometry: 'Geometria budynków',
+    camera: 'Kamera',
     warriors: 'Wojownicy',
     civilians: 'Cywile',
     vehicles: 'Wehikuły',
@@ -613,6 +614,7 @@ export const plGame = {
     needsOff: 'Potrzeby: WYŁĄCZONE (kliknij, aby włączyć)',
     geometryOn: 'Siatka: WŁĄCZONA (kliknij, aby ukryć)',
     geometryOff: 'Siatka: WYŁĄCZONA (kliknij, aby pokazać)',
+    zoomOutUnlocked: 'Oddalanie poza zwykły limit',
     fogModes: {
       off: 'Odkryta mapa',
       classic: 'Klasyczna',

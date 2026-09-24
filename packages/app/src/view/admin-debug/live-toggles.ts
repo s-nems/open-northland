@@ -138,3 +138,22 @@ export function createGeometryToggle(deps: {
     },
   };
 }
+
+/** A checkbox that lets the wheel zoom out past the normal floor, to take in most of a large map. */
+export function createZoomOutToggle(deps: {
+  readonly unlocked: () => boolean;
+  readonly setUnlocked: (unlocked: boolean) => void;
+}): LiveToggle {
+  const row = el('label', 'display:flex;gap:6px;align-items:center;cursor:pointer');
+  const checkbox = el('input', 'margin:0;cursor:pointer;accent-color:#8a6f4c');
+  checkbox.type = 'checkbox';
+  checkbox.checked = deps.unlocked();
+  checkbox.addEventListener('change', () => deps.setUnlocked(checkbox.checked));
+  row.append(checkbox, el('span', '', messages().admin.zoomOutUnlocked));
+  return {
+    row,
+    refresh: () => {
+      checkbox.checked = deps.unlocked();
+    },
+  };
+}

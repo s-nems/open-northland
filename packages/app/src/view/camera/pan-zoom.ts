@@ -9,6 +9,11 @@ import type { Camera } from '@open-northland/render';
  */
 export const MIN_ZOOM = 0.35;
 export const MAX_ZOOM = 8;
+/**
+ * The zoom-out floor the admin tools can unlock: a 250x250 map (68 x 38 px cells) fits whole on a
+ * 1920x1080 screen. It lifts the frame-cost cap above, so it stays a debug option.
+ */
+export const DEBUG_MIN_ZOOM = 0.1;
 /** CSS px from a canvas edge within which the pointer edge-scrolls. */
 export const EDGE_SCROLL_MARGIN = 24;
 
@@ -62,13 +67,14 @@ export function stepZoomToward(
   cursorY: number,
   dtMs: number,
   ratePerS: number,
+  minZoom: number = MIN_ZOOM,
 ): Camera {
   const scale = cam.scale ?? 1;
   if (scale === target) return cam;
   const gap = Math.log(target / scale);
   const step = (ratePerS * dtMs) / 1000;
   const next = Math.abs(gap) <= step ? target : scale * Math.exp(Math.sign(gap) * step);
-  return zoomCameraAt(cam, next / scale, cursorX, cursorY);
+  return zoomCameraAt(cam, next / scale, cursorX, cursorY, minZoom);
 }
 
 /** Pan the camera by a screen-pixel delta, preserving `scale`. */
@@ -79,11 +85,17 @@ export function panCamera(cam: Camera, dx: number, dy: number): Camera {
 /**
  * Zoom by `factor`, keeping the world point under `(cursorX, cursorY)` pinned to that screen point. With
  * `screen = world*scale + offset` the world under the cursor is `(cursor - offset)/scale`, and the offset
- * is re-solved after rescaling. The new scale is clamped to `[MIN_ZOOM, MAX_ZOOM]`.
+ * is re-solved after rescaling. The new scale is clamped to `[minZoom, MAX_ZOOM]`.
  */
-export function zoomCameraAt(cam: Camera, factor: number, cursorX: number, cursorY: number): Camera {
+export function zoomCameraAt(
+  cam: Camera,
+  factor: number,
+  cursorX: number,
+  cursorY: number,
+  minZoom: number = MIN_ZOOM,
+): Camera {
   const scale = cam.scale ?? 1;
-  const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scale * factor));
+  const next = Math.min(MAX_ZOOM, Math.max(minZoom, scale * factor));
   if (next === scale) return cam;
   const worldX = (cursorX - cam.offsetX) / scale;
   const worldY = (cursorY - cam.offsetY) / scale;

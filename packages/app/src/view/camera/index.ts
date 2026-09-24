@@ -7,6 +7,7 @@ export {
 } from './frame.js';
 export {
   type CameraTuning,
+  DEBUG_MIN_ZOOM,
   DEFAULT_CAMERA_TUNING,
   EDGE_SCROLL_MARGIN,
   edgePanVelocity,

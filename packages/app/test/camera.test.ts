@@ -4,6 +4,7 @@ import {
   cameraCenteredOnTile,
   cameraCenteredOnWorld,
   cameraForViewportResize,
+  DEBUG_MIN_ZOOM,
   DEFAULT_CAMERA_TUNING,
   EDGE_SCROLL_MARGIN,
   edgePanVelocity,
@@ -124,6 +125,12 @@ describe('zoomCameraAt', () => {
     expect(zoomCameraAt(cam, 0.5, 100, 100)).toBe(cam);
     const partway = zoomCameraAt({ offsetX: 0, offsetY: 0, scale: MIN_ZOOM * 1.05 }, 0.5, 0, 0);
     expect(partway.scale).toBe(MIN_ZOOM);
+  });
+
+  it('zooms out past MIN_ZOOM down to a lowered floor', () => {
+    const cam: Camera = { offsetX: 0, offsetY: 0, scale: MIN_ZOOM };
+    expect(zoomCameraAt(cam, 0.5, 100, 100, DEBUG_MIN_ZOOM).scale).toBe(MIN_ZOOM * 0.5);
+    expect(zoomCameraAt(cam, 0.01, 100, 100, DEBUG_MIN_ZOOM).scale).toBe(DEBUG_MIN_ZOOM);
   });
 });
 

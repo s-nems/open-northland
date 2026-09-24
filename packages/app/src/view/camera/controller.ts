@@ -3,12 +3,14 @@ import { isFieldKey } from '../../hud/hotkeys.js';
 import { bindingFromKeyboardEvent, type KeyBindings } from '../../hud/keybindings.js';
 import {
   type CameraTuning,
+  DEBUG_MIN_ZOOM,
   DEFAULT_CAMERA_TUNING,
   edgePanVelocity,
   MAX_ZOOM,
   MIN_ZOOM,
   panCamera,
   stepZoomToward,
+  zoomCameraAt,
 } from './pan-zoom.js';
 import { clientToScreen, screenScale } from './screen-scale.js';
 
@@ -36,6 +38,9 @@ export interface CameraController {
   update(dtMs: number): void;
   /** Replace the frame outright; an in-flight middle-drag keeps panning from the new frame. */
   jumpTo(next: Camera): void;
+  /** Lower the zoom-out floor to {@link DEBUG_MIN_ZOOM}; relocking snaps a wider view back to
+   *  {@link MIN_ZOOM} about the screen centre. */
+  setZoomOutUnlocked(unlocked: boolean): void;
   /** Suspend camera gestures and discard held, dragged, edge-pan, and glide state. */
   setSuspended(suspended: boolean): void;
   /**
@@ -85,6 +90,7 @@ export function createCameraController(
   // The clamped scale the wheel glide eases toward, anchored at the last wheel cursor in screen px, so
   // a burst of notches magnifies smoothly about one point.
   let targetScale = initial.scale ?? 1;
+  let minZoom = MIN_ZOOM;
   let zoomAnchorX = 0;
   let zoomAnchorY = 0;
   // The edge-scroll probe: the last `mousemove` sample that landed on the canvas, in client px. Null
@@ -139,7 +145,7 @@ export function createCameraController(
     const { x, y } = clientToScreen(canvas, resolution(), e.clientX, e.clientY);
     // Retarget the glide rather than zoom outright, so stacked notches read as one magnification.
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
-    targetScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetScale * factor));
+    targetScale = Math.min(MAX_ZOOM, Math.max(minZoom, targetScale * factor));
     zoomAnchorX = x;
     zoomAnchorY = y;
   };
@@ -202,6 +208,14 @@ export function createCameraController(
       // Retargeted, so a jump never carries the old glide into the new view.
       targetScale = next.scale ?? 1;
     },
+    setZoomOutUnlocked: (unlocked) => {
+      minZoom = unlocked ? DEBUG_MIN_ZOOM : MIN_ZOOM;
+      targetScale = Math.max(minZoom, targetScale);
+      const scale = cam.scale ?? 1;
+      if (scale >= minZoom) return;
+      const res = resolution();
+      cam = zoomCameraAt(cam, minZoom / scale, canvas.width / res / 2, canvas.height / res / 2, minZoom);
+    },
     setSuspended: (next) => {
       suspended = next;
       if (!next) return;
@@ -220,7 +234,7 @@ export function createCameraController(
       if (suspended) return;
       const dt = Math.min(dtMs, MAX_PAN_STEP_MS);
       if (targetScale !== (cam.scale ?? 1)) {
-        cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt, tuning.zoomGlideRate);
+        cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt, tuning.zoomGlideRate, minZoom);
       }
       // Pan velocity in screen px/s, applied directly with no ramp-up or glide-out, so the pan starts
       // and stops with the input. Scroll convention: an input reveals the world in its direction, so
