@@ -67,9 +67,39 @@ describe('speed control', () => {
       onSpeedChange: (spec, cause) => applyGameSpeed(clock, spec, cause),
       onShow: (c) => shown.push(`${c.running}${c.paused ? '/paused' : ''}`),
       held,
+      clockPaused: () => clock.paused,
     });
     return { clock, shown, control };
   }
+
+  it('lights the pause while the clock stands, and shows the choice again once it runs', () => {
+    const { clock, shown, control } = mount(1);
+    control.refresh();
+    clock.setPaused(true); // a hold stops the clock; the player chose nothing
+    control.refresh();
+    control.refresh(); // nothing moved since: nothing to show again
+    clock.setPaused(false); // the hold released, restoring the clock as it was
+    control.refresh();
+    expect(shown).toEqual(['normal', 'normal/paused', 'normal']);
+    expect(control.state()).toEqual({ running: 'normal', paused: false });
+  });
+
+  it('keeps a pause the player chose after a hold over it releases', () => {
+    const { clock, shown, control } = mount(1);
+    control.togglePause();
+    clock.setPaused(true); // the hold, over a clock already paused
+    control.refresh();
+    expect(shown).toEqual(['normal/paused']);
+    expect(control.state().paused).toBe(true);
+  });
+
+  it('resumes with one press a clock stopped from elsewhere', () => {
+    const { clock, control } = mount(1);
+    clock.setPaused(true); // a sub-mission paused the session, not the bar
+    control.refresh();
+    expect(control.togglePause()).toBe(true);
+    expect(clock.state).toEqual({ paused: false, speed: 1 });
+  });
 
   it('refuses every press while a window holds the game paused, and takes them again after', () => {
     let held = true;
