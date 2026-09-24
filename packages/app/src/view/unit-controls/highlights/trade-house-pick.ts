@@ -1,6 +1,6 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { entityById, ONE, type WorldSnapshot } from '@open-northland/sim';
-import { num } from '../../../game/snapshot.js';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { isFinishedBuilding, num } from '../../../game/snapshot.js';
 
 /** The houses a trader's route already names, read off its snapshot `TradeRoute`. */
 function routeHousesOf(snapshot: WorldSnapshot, settler: number): Set<number> {
@@ -14,13 +14,6 @@ function routeHousesOf(snapshot: WorldSnapshot, settler: number): Set<number> {
   return houses;
 }
 
-function isStandingHouse(e: { readonly components: Readonly<Record<string, unknown>> }): boolean {
-  const building = e.components.Building as { built?: unknown } | undefined;
-  return (
-    building !== undefined && num(building.built) === ONE && e.components.UnderConstruction === undefined
-  );
-}
-
 /**
  * The "add a house to the trade route" pick: every finished building on the map is a candidate, lit
  * green while an armed trader's route does not name it yet. Ownership is no gate, since the exchange
@@ -32,13 +25,13 @@ export const tradeHousePick = {
     const routes = settlers.map((settler) => routeHousesOf(snapshot, settler));
     const items: BuildingHighlightItem[] = [];
     for (const e of snapshot.entities) {
-      if (!isStandingHouse(e)) continue;
+      if (!isFinishedBuilding(e)) continue;
       items.push({ id: e.id, ok: routes.some((taken) => !taken.has(e.id)) });
     }
     return items;
   },
   assignableAt(snapshot: WorldSnapshot, building: number, settler: number): boolean {
     const e = entityById(snapshot, building);
-    return e !== undefined && isStandingHouse(e) && !routeHousesOf(snapshot, settler).has(building);
+    return e !== undefined && isFinishedBuilding(e) && !routeHousesOf(snapshot, settler).has(building);
   },
 };
