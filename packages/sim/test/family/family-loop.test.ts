@@ -6,12 +6,14 @@ import {
   Carrying,
   ChildOrder,
   CurrentAtomic,
+  FamilyDuty,
   Female,
   FoodReserve,
   MakingLove,
   Marriage,
   Position,
   Residence,
+  Resting,
   Settler,
   Stockpile,
   TrainingOrder,
@@ -234,6 +236,26 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'male' });
     sim.step();
     expect(sim.world.has(woman(), ChildOrder)).toBe(false);
+  });
+
+  it('a couple inside its home when the home is demolished steps out, unhoused, order standing', () => {
+    const { sim, woman, man, home } = familySim(3);
+    sim.enqueueSetup({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 800, 'wedding');
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman(), child: 'female' });
+    runUntil(sim, () => sim.world.has(home(), MakingLove), 4000, 'hearts');
+    expect(sim.world.get(woman(), Resting).at).toBe(home());
+
+    sim.enqueueSetup({ kind: 'demolish', building: home() });
+    sim.run(2);
+
+    for (const e of [woman(), man()]) {
+      expect(sim.world.has(e, Residence)).toBe(false);
+      expect(sim.world.has(e, Resting)).toBe(false);
+      expect(sim.world.has(e, FamilyDuty)).toBe(false);
+    }
+    expect(sim.world.has(woman(), ChildOrder)).toBe(true); // resumes once the family is housed again
   });
 
   it('marrying after one spouse is already housed moves the other in (co-housed as one household)', () => {
