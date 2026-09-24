@@ -18,7 +18,16 @@ export {
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
 } from './projectile-arc.js';
-export { isIndoorSettler } from './snapshot-index.js';
+export {
+  readSiegeShot,
+  type ShotPath,
+  type ShotPose,
+  type SiegeShot,
+  shotGroundLift,
+  shotPath,
+  shotPoseAt,
+} from './shot-flight.js';
+export { isIndoorSettler, siegeShotsOf } from './snapshot-index.js';
 export { depositVisualLevel } from './snapshot-readers/index.js';
 export { SpriteSpatialIndex } from './spatial-index.js';
 export { buildSpriteScene, collectSpriteScene, type LiveRefs, type SpriteScene } from './sprite-scene.js';

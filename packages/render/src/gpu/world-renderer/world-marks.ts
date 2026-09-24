@@ -19,6 +19,7 @@ import {
   type SettlerBubble,
   type SettlerBubbleGfx,
   SettlerBubbleLayer,
+  ShotLayer,
   type WorkAreaRing,
 } from '../overlays/index.js';
 import type { DamagedBuilding, DrawnGeometry } from '../sprite-pool/index.js';
@@ -68,6 +69,9 @@ export class WorldMarks {
   /** A razed building's sink-into-the-ground transient. Its nodes live inside the depth-sorted sprite
    *  layer rather than a slot of their own, so fighters still occlude around the falling body. */
   private readonly collapses: CollapseLayer;
+  /** A siege shot's stone, shadow, trail and landing smoke; in the depth-sorted sprite layer like the
+   *  collapses. */
+  private readonly shots: ShotLayer;
   private readonly damageSmoke = new DamageSmokeLayer();
   /** Sign chains and garrison flags. Also inside the depth-sorted sprite layer, so a settler walking in
    *  front of a chain occludes it. */
@@ -85,6 +89,7 @@ export class WorldMarks {
     playerColourOf?: (player: number) => number,
   ) {
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet);
+    this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
     this.slots = {
@@ -99,11 +104,12 @@ export class WorldMarks {
     };
   }
 
-  /** Fold this frame's sim events into the two event-driven layers; `tick` is the integer sim tick they
+  /** Fold this frame's sim events into the event-driven layers; `tick` is the integer sim tick they
    *  decay against. */
   ingest(events: readonly SimEvent[], tick: number): void {
     this.effects.ingest(events, tick);
     this.collapses.ingest(events, tick);
+    this.shots.ingest(events, tick);
   }
 
   setBonesGfx(gfx: CombatBonesGfx | null): void {
@@ -145,6 +151,7 @@ export class WorldMarks {
     );
     this.effects.draw(elevation, viewport, renderTime);
     this.collapses.draw(elevation, viewport, renderTime);
+    this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
     this.damageSmoke.draw(frame.damaged, drawn, renderTime);
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
@@ -156,6 +163,7 @@ export class WorldMarks {
     this.selection.destroy();
     this.effects.destroy();
     this.collapses.destroy();
+    this.shots.destroy();
     this.damageSmoke.destroy();
     this.badges.destroy();
     this.constructionSigns.destroy();

@@ -507,9 +507,12 @@ these choices for the holes:
 - A clip naming a bob the baked body lacks is dropped at load, so the Viking big ship sails on its
   empty hull (`ve_test_ship` holds bobs 0..31); a cart with a wait but no drive stands its wait while
   it moves. Every state falls back down `loaded → unloaded → wait`.
-- The catapult loops its 40-frame shot over the 48-tick attack cadence while `task` is `attacks` and
-  stages `fx smoke` (weapon 21's `createsmoke`) for the last 20 ticks of each cycle; which smoke record
-  and where in the clip the shot releases are approximations.
+- The catapult loops its 40-frame shot over the 48-tick attack cadence while `task` is `attacks`;
+  where in the clip the shot releases is an approximation.
+- The stone in flight, the puff it leaves every tick and the smoke a `createsmoke` weapon raises where
+  it lands are the `[particel]` records `Rock` (by `munitiontype`), its `spawnparticelId` and
+  `Smoke.org` (`particles` in the IR; `packages/render/src/gpu/overlays/shot-layer.ts`). The lob and
+  what it adds to the original's are described in `packages/render/src/data/scene/shot-flight.ts`.
 - Ship player colour: besides the baked `human_ship01` atlas, the pipeline emits each ship library as
   an indexed atlas (`ls_vehicles.indexed`, `ve_test_ship.indexed`) and the `human_ship01..10` family as
   a ten-row LUT (`human_ship01.lut.png`), and a ship draws through `PalettedSprite` with its owner's

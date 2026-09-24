@@ -1,6 +1,8 @@
 import type { DrawItem, PalisadePostDraw } from '../../data/scene/index.js';
 import {
   DECOR_BINDING_KEY,
+  headingValency,
+  particleFrame,
   resolveCraftFxDraw,
   resolvePalisadeDraw,
   resolveResourceDraw,
@@ -67,11 +69,10 @@ function pushLayers(
 
   let bobId: number | null;
   switch (item.kind) {
-    // A tile binds by landscape typeId; a projectile has no decoded arrow bob and always draws the
-    // pool's oriented-arrow marker instead (named gap).
     case 'tile':
-    case 'projectile':
       return false;
+    case 'projectile':
+      return pushProjectileLayers(out, sheet, item, tick);
     case 'settler':
       // Per-job settler character (the `[jobbasegraphics]` join), resolved in that body's own frame-id
       // space. A sheet with no characters falls through to the sheet-global settler path.
@@ -274,6 +275,23 @@ function fishPoint(ref: number, fish: number, t: number): { x: number; y: number
     x: Math.sin(t * 0.0097 + phase) * 90 + Math.sin(t * 0.002 + phase * 1.7) * 20,
     y: Math.sin(t * 0.004 + phase * 1.3) * 60 + Math.sin(t * 0.019 + phase * 0.7) * 20,
   };
+}
+
+/**
+ * A shot's `[particel]` frame: an arrow's heading frame, while a siege shot draws nothing here because
+ * the shot layer flies it on its own clock. An unbound munition draws the pool's oriented-arrow marker.
+ */
+function pushProjectileLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
+  const ref = item.munition === undefined ? undefined : sheet.bindings.munition?.byMunition[item.munition];
+  if (ref === undefined || sheet.families?.[ref.layer] === undefined) return false;
+  if (item.siege === true) return true;
+  const valency = ref.directional ? headingValency(item.rotation ?? 0, ref.valencies.length) : 0;
+  const bob = particleFrame(ref, tick, valency);
+  if (bob === undefined) return false;
+  const layer = layeredLayerFor(sheet, 'projectile', { layer: ref.layer, bob });
+  if (layer === null) return false;
+  out.push(layer);
+  return true;
 }
 
 /**

@@ -25,7 +25,9 @@ import {
   readProducing,
   readProjectileAim,
   readProjectileCover,
+  readProjectileMunition,
   readProjectileOrigin,
+  readProjectileSiege,
   readSettlerTribe,
   readUpgradePct,
 } from './snapshot-readers/index.js';
@@ -239,6 +241,9 @@ export function assignProjectileArc(
   item.x = arc.x;
   item.y = arc.y;
   item.rotation = arc.rotation;
+  const munition = readProjectileMunition(components);
+  if (munition !== null) item.munition = munition;
+  if (readProjectileSiege(components)) item.siege = true;
   return arc.lift;
 }
 

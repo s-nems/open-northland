@@ -21,6 +21,7 @@ import {
 } from '../ir/joins.js';
 import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
 import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
+import { buildMunitionBinding, munitionAtlasStems, resolveMunitionRefs } from '../munition-gfx.js';
 import { buildPalisadeBinding, palisadeAtlasStems, resolvePalisadeGfxRefs } from '../palisade-gfx.js';
 import {
   berryBushAtlasStems,
@@ -38,7 +39,7 @@ import {
   resolveStumpRef,
 } from '../resource-gfx/index.js';
 import { buildHumanBindings, type GoodRef } from '../settler-gfx/index.js';
-import { loadVehicleSheet, VEHICLE_ATTACK_SMOKE_FX } from '../vehicle-gfx/index.js';
+import { loadVehicleSheet } from '../vehicle-gfx/index.js';
 import { loadBuildingSheet } from './buildings.js';
 import { loadCharacters } from './characters.js';
 
@@ -140,15 +141,17 @@ export async function loadHumanSpriteSheet(
   const stumpRef = resolveStumpRef(ir);
   const berryBushRefs = resolveBerryBushRefs(ir);
   const chestRefs = resolveChestRefs(ir);
-  // The effects the in-house programs stage (`ls_smoke` fire and smoke) load as families too, and the
-  // catapult's shot smoke with them.
-  const craftFxRefs = resolveCraftFxRefs(ir, [HOLY_FIRE_EFFECT_NAME, VEHICLE_ATTACK_SMOKE_FX]);
+  // The effects the in-house programs stage (`ls_smoke` fire and smoke) load as families too.
+  const craftFxRefs = resolveCraftFxRefs(ir, [HOLY_FIRE_EFFECT_NAME]);
+  // The shots in flight, their trails and landing smoke (`ls_smoke`, `test_arrow` under their palettes).
+  const munitionRefs = resolveMunitionRefs(ir);
   const palisadeRefs = resolvePalisadeGfxRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
   for (const s of chestAtlasStems(chestRefs)) stems.add(s);
   for (const s of craftFxAtlasStems(craftFxRefs)) stems.add(s);
+  for (const s of munitionAtlasStems(munitionRefs)) stems.add(s);
   for (const s of palisadeAtlasStems(palisadeRefs)) stems.add(s);
   stems.add(FISH_ATLAS);
   // The signpost families ride the same contract: every per-player bake plus the single-colour fallback.
@@ -174,13 +177,10 @@ export async function loadHumanSpriteSheet(
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
   const craftFxBinding = buildCraftFxBinding(craftFxRefs, gatheringLoaded);
   const palisadeBinding = buildPalisadeBinding(palisadeRefs, gatheringLoaded);
+  const munitionBinding = buildMunitionBinding(munitionRefs, gatheringLoaded);
   // The carts, ships and catapults: their own `cr_veh_body_00` / `ls_vehicles` pages, bound for every
   // tribe the IR rows cover with the base tribe standing in for the rest.
-  const vehicles = await loadVehicleSheet(
-    ir,
-    tribes[0],
-    craftFxBinding?.byName[VEHICLE_ATTACK_SMOKE_FX] !== undefined,
-  );
+  const vehicles = await loadVehicleSheet(ir, tribes[0]);
   // The building, gathering and vehicle families merge into one map: their served stems are disjoint
   // (`ls_houses_*` vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms` vs `cr_veh_*`/`ls_vehicles`), so
   // the merge never collides.
@@ -226,6 +226,7 @@ export async function loadHumanSpriteSheet(
       ...(craftFxBinding !== undefined ? { craftfx: craftFxBinding } : {}),
       ...(palisadeBinding !== undefined ? { palisade: palisadeBinding } : {}),
       ...(vehicles.binding !== undefined ? { vehicle: vehicles.binding } : {}),
+      ...(munitionBinding !== undefined ? { munition: munitionBinding } : {}),
     },
     overlays: [head],
     // The tree and the default building each draw from their own atlas (distinct id spaces), so they bind

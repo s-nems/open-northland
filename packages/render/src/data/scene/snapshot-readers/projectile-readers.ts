@@ -20,3 +20,14 @@ export function readProjectileAim(components: Readonly<Record<string, unknown>>)
 export function readProjectileCover(components: Readonly<Record<string, unknown>>): number | null {
   return readNumFieldOrNull(components, 'Projectile', 'cover');
 }
+
+/** The `munitionType` a shot's sprite binds by, or `null` when unreadable. */
+export function readProjectileMunition(components: Readonly<Record<string, unknown>>): number | null {
+  return readNumFieldOrNull(components, 'Projectile', 'munitionType');
+}
+
+/** Whether the shot is a siege shot, one that bursts on the ground where it lands (`Projectile.impact`). */
+export function readProjectileSiege(components: Readonly<Record<string, unknown>>): boolean {
+  const p = components.Projectile as { impact?: unknown } | undefined;
+  return p?.impact !== undefined && p.impact !== null;
+}

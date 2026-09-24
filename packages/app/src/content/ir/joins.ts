@@ -7,7 +7,10 @@ import type { BobSeqRow, ContentIr, LandscapeGfxRow } from './rows.js';
 
 /** The served `/bobs/` atlas stem (`<bmd-basename-minus-.bmd>.<palette>`, the pipeline's naming) for a
  *  landscape gfx / building bob record, or `undefined` when it names no body bob or palette. */
-export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteName'>): string | undefined {
+export function servedAtlasStem(record: {
+  readonly bmd?: string | undefined;
+  readonly paletteName?: string | undefined;
+}): string | undefined {
   const bmd = record.bmd;
   if (bmd === undefined || bmd.trim() === '') return undefined;
   if (record.paletteName === undefined || record.paletteName.trim() === '') return undefined;

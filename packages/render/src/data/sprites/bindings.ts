@@ -7,6 +7,7 @@ import type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
+import type { MunitionBinding } from './munition.js';
 import type { SettlerStateBinding } from './settler-bindings.js';
 import type { VehicleBinding } from './vehicle-bindings.js';
 
@@ -45,6 +46,8 @@ export type SpriteBindings = Readonly<{
   craftfx?: CraftFxBinding;
   /** The carts, ships and catapults, per tribe and type. */
   vehicle?: VehicleBinding;
+  /** The shots in flight, their trails and the smoke a landing raises. */
+  munition?: MunitionBinding;
 }>;
 
 /** The decor kinds with no shared kind layer, each bound under its own key. A ground drop's kind and

@@ -5,7 +5,6 @@ import { tileToScreen } from '../../src/data/projection/index.js';
 import { buildSpriteScene } from '../../src/data/scene/index.js';
 import { classify } from '../../src/data/scene/snapshot-readers/index.js';
 import { GFX_DIR_TO_FACING } from '../../src/data/sprites/settler.js';
-import { ATTACK_SMOKE_TICKS, VEHICLE_ATTACK_TICKS } from '../../src/data/sprites/vehicle.js';
 import { entity, fogViewOf, snapshotOf } from '../support/fixtures.js';
 
 /**
@@ -159,31 +158,6 @@ describe('vehicle draw items', () => {
     );
     expect(items.find((i) => i.ref === 2)?.crew).toBe(true);
     expect(items.find((i) => i.ref === 3)?.crew).toBeUndefined();
-  });
-
-  it('stages the shot smoke beside an attacking vehicle only in the smoke tail of the cycle', () => {
-    const fx = { name: 'fx smoke', dx: 0, dy: -36 };
-    const attacking = vehicle(1, { vehicleType: CATAPULT, task: 'attacks' });
-    const smoky = buildSpriteScene(snapshotOf([attacking], VEHICLE_ATTACK_TICKS - 1), {
-      vehicleAttackFx: fx,
-    });
-    expect(smoky.map((i) => i.kind).sort()).toEqual(['craftfx', 'vehicle']);
-    const smoke = smoky.find((i) => i.kind === 'craftfx');
-    const body = smoky.find((i) => i.kind === 'vehicle');
-    expect(smoke).toMatchObject({ fxName: 'fx smoke', x: body?.x, y: (body?.y ?? 0) - 36 });
-    const quiet = buildSpriteScene(snapshotOf([attacking], VEHICLE_ATTACK_TICKS - ATTACK_SMOKE_TICKS - 1), {
-      vehicleAttackFx: fx,
-    });
-    expect(quiet.map((i) => i.kind)).toEqual(['vehicle']);
-    // No effect bound, or not attacking: nothing staged.
-    expect(buildSpriteScene(snapshotOf([attacking], VEHICLE_ATTACK_TICKS - 1)).map((i) => i.kind)).toEqual([
-      'vehicle',
-    ]);
-    expect(
-      buildSpriteScene(snapshotOf([vehicle(1, { vehicleType: CATAPULT })], VEHICLE_ATTACK_TICKS - 1), {
-        vehicleAttackFx: fx,
-      }).map((i) => i.kind),
-    ).toEqual(['vehicle']);
   });
 
   it('ghosts through the fog with its type, tribe, heading and owner, like a building', () => {

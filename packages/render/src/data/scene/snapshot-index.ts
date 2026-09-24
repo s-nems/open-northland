@@ -1,4 +1,5 @@
 import { type EntitySnapshot, entityById, type WorldSnapshot } from '@open-northland/sim';
+import { readSiegeShot, type SiegeShot } from './shot-flight.js';
 import {
   readActingAtomic,
   readAtomicTargetEntity,
@@ -78,6 +79,7 @@ interface SceneIndex {
   readonly signposts: readonly EntitySnapshot[];
   readonly palisades: readonly EntitySnapshot[];
   readonly vehicleCrew: ReadonlySet<number>;
+  readonly siegeShots: readonly SiegeShot[];
 }
 
 const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
@@ -88,6 +90,8 @@ const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map()
 const NO_ENTITIES: readonly EntitySnapshot[] = [];
 
 const NO_CREW: ReadonlySet<number> = new Set();
+
+const NO_SHOTS: readonly SiegeShot[] = [];
 
 /**
  * Completed buildings, the stores a settler can walk into. A settler exchanging goods with one is not
@@ -139,6 +143,11 @@ export function vehicleCrewOf(snapshot: WorldSnapshot): ReadonlySet<number> {
   return sceneIndexOf(snapshot).vehicleCrew;
 }
 
+/** The snapshot's siege shots in flight, in its own ascending id order. */
+export function siegeShotsOf(snapshot: WorldSnapshot): readonly SiegeShot[] {
+  return sceneIndexOf(snapshot).siegeShots;
+}
+
 function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
   const cached = indexBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
@@ -147,6 +156,7 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
   const signposts: EntitySnapshot[] = [];
   const palisades: EntitySnapshot[] = [];
   let vehicleCrew: Set<number> | undefined;
+  let siegeShots: SiegeShot[] | undefined;
   for (const entity of snapshot.entities) {
     const components = entity.components;
     if ('Vehicle' in components) {
@@ -168,6 +178,13 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
     if (craft !== null) wanted.add(craft.workplace);
     if ('Signpost' in components) signposts.push(entity);
     if ('Palisade' in components) palisades.push(entity);
+    if ('Projectile' in components) {
+      const shot = readSiegeShot(entity.id, components);
+      if (shot !== null) {
+        siegeShots ??= [];
+        siegeShots.push(shot);
+      }
+    }
   }
   const index: SceneIndex = {
     enterableStores,
@@ -175,6 +192,7 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
     signposts: signposts.length > 0 ? signposts : NO_ENTITIES,
     palisades: palisades.length > 0 ? palisades : NO_ENTITIES,
     vehicleCrew: vehicleCrew ?? NO_CREW,
+    siegeShots: siegeShots ?? NO_SHOTS,
   };
   indexBySnapshot.set(snapshot, index);
   return index;

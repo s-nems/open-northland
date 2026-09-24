@@ -4,7 +4,9 @@ export { facingTowardTile, readFacing } from './facing.js';
 export {
   readProjectileAim,
   readProjectileCover,
+  readProjectileMunition,
   readProjectileOrigin,
+  readProjectileSiege,
 } from './projectile-readers.js';
 export {
   assignStaticFields,

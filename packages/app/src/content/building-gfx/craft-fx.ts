@@ -17,7 +17,7 @@ function loopFrames(record: LandscapeGfxRow): WaveLoop<number> | undefined {
 }
 
 /** Every effect the extracted in-house programs stage, plus the `extraNames` records another stager
- *  wants (the holy fire, the catapult's shot smoke), resolved to its record once per distinct name; a
+ *  wants (the holy fire), resolved to its record once per distinct name; a
  *  name no record carries, or one naming no drawable atlas, stages nothing. */
 export function resolveCraftFxRefs(ir: ContentIr | null, extraNames: readonly string[] = []): CraftFxRef[] {
   const out: CraftFxRef[] = [];

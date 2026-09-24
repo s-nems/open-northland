@@ -1,4 +1,3 @@
-import type { InHouseOverlay } from '../scene/in-house.js';
 import type { SpriteFrameRef } from './settler-bindings.js';
 
 /**
@@ -41,7 +40,4 @@ export type VehicleTribeLooks = Readonly<Record<number, VehicleLook>>;
 export interface VehicleBinding {
   readonly byTribe: Readonly<Record<number, VehicleTribeLooks>>;
   readonly fallbackTribe: number;
-  /** The effect staged at an attacking catapult while its shot's smoke lingers, drawn through the
-   *  `craftfx` binding by name; absent stages nothing. */
-  readonly attackFx?: InHouseOverlay;
 }

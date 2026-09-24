@@ -5,6 +5,7 @@ import type {
   GfxPattern,
   GfxPatternTransition,
   LandscapeBlockArea,
+  ParticleGfx,
   SoundBank,
   TerrainPattern,
   TrianglePatternType,
@@ -242,6 +243,8 @@ export interface ContentIr {
   readonly jobGraphics?: readonly JobGraphicsRow[];
   /** The resolved per-`(tribe, vehicleType)` vehicle body, palettes and bob-id frame tables. */
   readonly vehicleGraphics?: readonly VehicleGraphics[];
+  /** The `[particel]` sprites shots fly as, trail and raise where they land. */
+  readonly particles?: readonly ParticleGfx[];
   /** The `animaltypes.ini` records, narrowed to tribe membership and to whether the record is a living
    *  creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns; behaviour fields stay
    *  sim-side. */

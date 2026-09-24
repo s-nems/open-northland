@@ -40,6 +40,7 @@ export type {
   SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
+export { headingValency, type MunitionBinding, type ParticleRef, particleFrame } from './munition.js';
 export { resolveSpriteBobId } from './resolve.js';
 export {
   DEFAULT_FACING,
@@ -58,8 +59,6 @@ export type {
   SpriteFrameRef,
 } from './settler-bindings.js';
 export {
-  ATTACK_SMOKE_TICKS,
-  attackSmokeShowing,
   resolveVehicleDraw,
   VEHICLE_ATTACK_TICKS,
   vehicleLookFor,

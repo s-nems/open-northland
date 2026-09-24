@@ -28,6 +28,7 @@ export {
 } from './placement-overlay.js';
 export { type PortraitInsetFrame, PortraitInsetLayer } from './portrait-inset.js';
 export { SelectionLayer, type WorkAreaRing } from './selection-layer.js';
+export { type ShotFrame, ShotLayer } from './shot-layer.js';
 export {
   type BuildingSignGfx,
   type BuildingSignKind,

@@ -190,7 +190,7 @@ describe('the vehicle look join', () => {
 
   it('binds nothing for a row whose body did not load, and no binding at all when none did', () => {
     expect(vehicleLook(vikingOxcart, new Set(), new Map())).toBeUndefined();
-    expect(buildVehicleBinding([vikingOxcart], new Set(), new Map(), VIKING, false)).toBeUndefined();
+    expect(buildVehicleBinding([vikingOxcart], new Set(), new Map(), VIKING)).toBeUndefined();
   });
 
   it('keys the binding by tribe with the base tribe as the fallback for a tribe with no rows', () => {
@@ -199,13 +199,7 @@ describe('the vehicle look join', () => {
       ['cr_veh_body_00.oxcart', new Set(CART_FRAMES)],
       ['cr_veh_body_00.goods_bow', new Set(CART_FRAMES)],
     ]);
-    const binding = buildVehicleBinding(
-      [vikingOxcart, byzantineOxcart, catapult],
-      loaded,
-      frames,
-      VIKING,
-      true,
-    );
+    const binding = buildVehicleBinding([vikingOxcart, byzantineOxcart, catapult], loaded, frames, VIKING);
     expect(binding?.fallbackTribe).toBe(VIKING);
     expect(
       Object.keys(binding?.byTribe ?? {})
@@ -217,10 +211,8 @@ describe('the vehicle look join', () => {
         .map(Number)
         .sort(),
     ).toEqual([OXCART, CATAPULT]);
-    expect(binding?.attackFx).toMatchObject({ name: 'fx smoke' });
-    expect(buildVehicleBinding([vikingOxcart], loaded, frames, VIKING, false)?.attackFx).toBeUndefined();
     // A type named as a ship rides the swell; the rest stand rigid.
-    const afloat = buildVehicleBinding([vikingOxcart, catapult], loaded, frames, VIKING, false, {
+    const afloat = buildVehicleBinding([vikingOxcart, catapult], loaded, frames, VIKING, {
       ships: new Set([OXCART]),
     });
     expect(afloat?.byTribe[VIKING]?.[OXCART]?.afloat).toBe(true);

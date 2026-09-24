@@ -165,6 +165,10 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a projectile: flight heading in screen space (radians, 0 = screen-east, clockwise), tilted
    *  along the drawn arc's tangent when the launch origin is readable. */
   readonly rotation?: number;
+  /** For a projectile: the `munitionType` its sprite binds by. */
+  readonly munition?: number;
+  /** A siege shot, which the shot layer draws on its own flight clock rather than the pool. */
+  readonly siege?: true;
   /** A remembered static drawn from the viewer's fog memory rather than a live entity. It draws dimmed
    *  and stamps no hit bounds, so clicking scenery intel cannot select a fogged, possibly dead,
    *  entity. */

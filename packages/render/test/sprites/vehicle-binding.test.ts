@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GFX_DIR_TO_FACING } from '../../src/data/sprites/settler.js';
 import type { FrameListAnim } from '../../src/data/sprites/settler-bindings.js';
-import {
-  attackSmokeShowing,
-  resolveVehicleDraw,
-  VEHICLE_ATTACK_TICKS,
-} from '../../src/data/sprites/vehicle.js';
+import { resolveVehicleDraw, VEHICLE_ATTACK_TICKS } from '../../src/data/sprites/vehicle.js';
 import type { VehicleBinding, VehicleLook } from '../../src/data/sprites/vehicle-bindings.js';
 import { drawItem } from '../support/fixtures.js';
 
@@ -69,7 +65,6 @@ const binding: VehicleBinding = {
     [FRANK]: { [OXCART]: waitOnly },
   },
   fallbackTribe: VIKING,
-  attackFx: { name: 'fx smoke', dx: 0, dy: -36 },
 };
 
 const item = (fields: Parameters<typeof drawItem>[1]) => drawItem('vehicle', { tribe: VIKING, ...fields });
@@ -172,14 +167,5 @@ describe('resolveVehicleDraw', () => {
       }
       expect(bobs.size).toBe(FACINGS);
     }
-  });
-});
-
-describe('attackSmokeShowing', () => {
-  it('shows the smoke in the tail of every attack cycle and not at its start', () => {
-    expect(attackSmokeShowing(0)).toBe(false);
-    expect(attackSmokeShowing(VEHICLE_ATTACK_TICKS - 1)).toBe(true);
-    expect(attackSmokeShowing(VEHICLE_ATTACK_TICKS * 3 + 30)).toBe(true);
-    expect(attackSmokeShowing(VEHICLE_ATTACK_TICKS * 3 + 10)).toBe(false);
   });
 });

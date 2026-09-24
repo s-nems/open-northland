@@ -42,11 +42,7 @@ async function loadOwnerLut(family: string | undefined): Promise<VehicleColourLu
  * tribes (three cart palettes, two ship libraries), so the whole table costs five pages. With the ships'
  * owner LUT served, their libraries load as the indexed body instead of the baked first palette.
  */
-export async function loadVehicleSheet(
-  ir: ContentIr | null,
-  fallbackTribe: number,
-  attackFxLoaded: boolean,
-): Promise<VehicleSheet> {
+export async function loadVehicleSheet(ir: ContentIr | null, fallbackTribe: number): Promise<VehicleSheet> {
   const rows = vehicleGraphicsRows(ir);
   const family = vehicleOwnerFamily(rows);
   const palette = await loadOwnerLut(family);
@@ -71,7 +67,7 @@ export async function loadVehicleSheet(
     }),
   );
   return {
-    binding: buildVehicleBinding(rows, loaded, frames, fallbackTribe, attackFxLoaded, {
+    binding: buildVehicleBinding(rows, loaded, frames, fallbackTribe, {
       ships: shipTypes(ir),
       ...(ownerFamily !== undefined ? { ownerFamily } : {}),
     }),

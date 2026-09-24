@@ -1,7 +1,6 @@
 export {
   buildVehicleBinding,
   type DrawableFrames,
-  VEHICLE_ATTACK_SMOKE_FX,
   vehicleAtlasStem,
   vehicleAtlasStems,
   vehicleGraphicsRows,

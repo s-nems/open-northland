@@ -43,7 +43,7 @@ describe.runIf(hasRealIr())('the vehicle looks over the decoded content', () => 
       return [[stem, drawable] as const];
     }),
   );
-  const binding = buildVehicleBinding(rows, loaded, frames, VIKING, true);
+  const binding = buildVehicleBinding(rows, loaded, frames, VIKING);
 
   it('binds a look for every row that authors a wait or a drive', () => {
     expect(binding).toBeDefined();

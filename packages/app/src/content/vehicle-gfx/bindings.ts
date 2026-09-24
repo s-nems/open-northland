@@ -33,15 +33,6 @@ const SAIL_CREAM_RAMP = [104, 111] as const;
 const SHIP_OWNER_BAND = [128, 159] as const;
 export const SHIP_SAIL_INDEX_RANGES: ClothIndexRanges = [...SAIL_CREAM_RAMP, ...SHIP_OWNER_BAND];
 
-/** The catapult's shot, staged as this `[GfxLandscape]` record beside the vehicle: weapon 21 authors
- *  `createsmoke 1`, and this is the one looping smoke record the content ships (the in-house cauldron's).
- *  Approximation: which smoke record the original's `createsmoke` names is not read. */
-export const VEHICLE_ATTACK_SMOKE_FX = 'fx smoke';
-/** Where the shot's smoke sits, in screen px from the catapult's feet anchor (+y down). Approximation:
- *  the bowl of the `cr_veh_body_00` catapult frames, read off the sprite. */
-const ATTACK_SMOKE_DX = 0;
-const ATTACK_SMOKE_DY = -36;
-
 /** Whether `row` draws per owner: its body palette starts the family whose LUT loaded. */
 function drawsPerOwner(row: VehicleGraphics, ownerFamily: string | undefined): boolean {
   return ownerFamily !== undefined && row.playerPalettes !== undefined && row.bodyPalette === ownerFamily;
@@ -178,7 +169,6 @@ export function buildVehicleBinding(
   loaded: ReadonlySet<string>,
   frames: DrawableFrames,
   fallbackTribe: number,
-  attackFxLoaded: boolean,
   options: {
     /** The types that ride the swell at sea; absent draws every vehicle rigid. */
     readonly ships?: ReadonlySet<number>;
@@ -198,11 +188,5 @@ export function buildVehicleBinding(
   }
   if (!any) return undefined;
   const tribes: Record<number, VehicleTribeLooks> = byTribe;
-  return {
-    byTribe: tribes,
-    fallbackTribe,
-    ...(attackFxLoaded
-      ? { attackFx: { name: VEHICLE_ATTACK_SMOKE_FX, dx: ATTACK_SMOKE_DX, dy: ATTACK_SMOKE_DY } }
-      : {}),
-  };
+  return { byTribe: tribes, fallbackTribe };
 }
