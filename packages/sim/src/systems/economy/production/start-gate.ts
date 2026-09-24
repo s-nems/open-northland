@@ -23,6 +23,8 @@ interface GateAnswer {
 interface GateMemo {
   ctx: SystemContext;
   readonly answers: Map<Entity, GateAnswer>;
+  /** The Building membership generation the answers were last pruned of razed workshops at. */
+  buildings: number;
 }
 
 const memos = new WeakMap<World, GateMemo>();
@@ -95,14 +97,20 @@ function answerCurrent(world: World, building: Entity, answer: GateAnswer, unloc
 }
 
 function memoOf(world: World, ctx: SystemContext): GateMemo {
+  const buildings = world.componentGeneration(Building);
   let memo = memos.get(world);
   if (memo === undefined) {
-    memo = { ctx, answers: new Map() };
+    memo = { ctx, answers: new Map(), buildings };
     memos.set(world, memo);
     world.registerCacheVerifier('productionStartGate', () => verifyMemo(world));
   } else if (memo.ctx.content !== ctx.content) {
     memo.answers.clear();
+  } else if (memo.buildings !== buildings) {
+    for (const building of memo.answers.keys()) {
+      if (!world.has(building, Building)) memo.answers.delete(building);
+    }
   }
+  memo.buildings = buildings;
   memo.ctx = ctx;
   return memo;
 }

@@ -78,10 +78,9 @@ function admit(index: AssignedIndex, e: Entity, workplace: Entity): void {
   else insertSortedById(workers, e, idOf);
 }
 
-/** Only an index current with the store is compared; a stale one catches up on its next read. */
+/** Catches the held index up first, so the journal replay itself is what gets compared. */
 function verifyIndex(world: World): string[] {
-  const held = indexes.get(world);
-  if (held === undefined || held.generation !== world.componentGeneration(JobAssignment)) return [];
+  const held = assignedIndex(world);
   const fresh = deriveIndex(world);
   if (fresh.byWorkplace.size !== held.byWorkplace.size) {
     return ['assignedWorkers lists a different set of workplaces than a fresh JobAssignment scan'];

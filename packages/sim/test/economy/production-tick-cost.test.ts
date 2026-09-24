@@ -2,6 +2,7 @@ import { parseContentSet } from '@open-northland/data';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Carrying,
+  discoverTechnology,
   JobAssignment,
   Position,
   Production,
@@ -23,6 +24,7 @@ import {
   PLANK,
   SAWMILL,
   settlerAt,
+  VIKING,
   WHEAT,
   WOOD,
   WOODCUTTER,
@@ -32,7 +34,7 @@ afterEach(() => vi.restoreAllMocks());
 
 /** The fixture catalog with every tribe under an open technology table: the kept indexes key their
  *  unlock reads on it, while a tribe without one is re-read on every tick. */
-function technologyContent(bakers = 1) {
+function technologyContent(bakers = 1, plankLocked = false) {
   const base = testContent();
   const bakehouse = base.buildings.find((building) => building.typeId === BAKEHOUSE);
   if (bakehouse === undefined) throw new Error('missing fixture bakehouse');
@@ -42,7 +44,7 @@ function technologyContent(bakers = 1) {
     tribes: base.tribes.map((tribe) => ({
       ...tribe,
       technology: { houses: [] },
-      jobEnables: [],
+      jobEnables: plankLocked ? [{ jobType: CARPENTER, kind: 'good' as const, targetId: PLANK }] : [],
       jobRequirements: [],
     })),
   });
@@ -92,6 +94,19 @@ describe('production tick cost', () => {
     setStockAmount(sim.world, mill, WOOD, 2);
     productionSystem(sim.world, ctxOf(sim));
     expect(asked).toHaveBeenCalledTimes(2);
+    expect(sim.world.get(mill, Production).cycles.map((cycle) => cycle.goodType)).toEqual([PLANK]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('reopens a remembered closed gate once the product is discovered', () => {
+    const sim = new Simulation({ seed: 1, content: technologyContent(1, true) });
+    const mill = buildingAt(sim, SAWMILL, 0, 0, [[WOOD, 2]]);
+    settlerAt(sim, 0, 0, CARPENTER, mill);
+    productionSystem(sim.world, ctxOf(sim));
+    productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(mill, Production)).toBe(false); // locked, and remembered as closed
+    discoverTechnology(sim.world, undefined, VIKING, 'good', PLANK);
+    productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Production).cycles.map((cycle) => cycle.goodType)).toEqual([PLANK]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

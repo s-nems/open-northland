@@ -2,26 +2,21 @@ import {
   Building,
   Carrying,
   Chat,
-  Engagement,
-  FamilyDuty,
-  Fleeing,
   JobAssignment,
   PathRequest,
-  PlayerOrder,
   Position,
   Settler,
   Stockpile,
   SupplyRun,
   settlerTradeLog,
   UnderConstruction,
-  Wedding,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { anotherSystemOwns } from '../settlers/action-owner.js';
+import { ACTION_OWNER_MARKERS, anotherSystemOwns } from '../settlers/action-owner.js';
 import { boundWorkplaceTarget } from '../settlers/targets/workplaces.js';
 import { assignedWorkers } from './assigned-workers.js';
 import { bankedSlot, stockCapacity } from './capacity.js';
@@ -74,11 +69,7 @@ interface WorkforceIndex {
 const SETTLER_MEMBERSHIP: readonly Component<unknown>[] = [
   JobAssignment,
   Settler,
-  Engagement,
-  Fleeing,
-  PlayerOrder,
-  Wedding,
-  FamilyDuty,
+  ...ACTION_OWNER_MARKERS,
   Chat,
   PathRequest,
   Carrying,
