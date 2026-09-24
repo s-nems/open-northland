@@ -1,17 +1,10 @@
-import {
-  Building,
-  Carrying,
-  JobAssignment,
-  MoveGoal,
-  Person,
-  Position,
-  Settler,
-} from '../../components/index.js';
+import { Building, Carrying, MoveGoal, Person, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
-import { NodeBuckets } from '../spatial/nodes.js';
+import { assignedWorkers } from './assigned-workers.js';
 import { buildingWorkerJobs, isCarrierJob } from './workplace.js';
 
 // Who is working a workplace right now: which of its declared slots (./workplace.ts) operate the craft,
@@ -55,36 +48,28 @@ export type WorkplaceOperators =
 const UNSTAFFED_OPERATOR_COUNT = 1;
 
 /**
- * The operators on station at a workplace: settlers whose job is one of its {@link operatorJobsOf} standing
- * on the {@link interactionNode} with an assignment to this building, since the walls themselves are
- * walk-blocked. Listed in ascending id and
- * capped at the type's declared operator-slot headcount, so crowding extra settlers onto the door cannot
- * overclock past the staffing plan. Passing `operatorsByNode` shares one per-tick index; omitting it builds a
- * one-shot index for the identical list.
+ * The operators on station at a workplace: its assigned settlers whose job is one of its
+ * {@link operatorJobsOf}, standing on the {@link interactionNode} since the walls themselves are
+ * walk-blocked. Listed in ascending id and capped at the type's declared operator-slot headcount, so
+ * crowding extra settlers onto the door cannot overclock past the staffing plan.
  */
-export function presentOperators(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  operatorsByNode?: NodeBuckets,
-): WorkplaceOperators {
+export function presentOperators(world: World, ctx: SystemContext, building: Entity): WorkplaceOperators {
   const jobs = operatorJobsOf(world, ctx, building);
   if (jobs.size === 0) return UNSTAFFED;
   const at = interactionNode(world, ctx, building);
   if (at === null) return DESERTED; // a placed-but-position-less workplace can't be stood on
   const cap = operatorSlotHeadcount(world, ctx, building, jobs);
   if (cap <= 0) return DESERTED;
-  const index = operatorsByNode ?? new NodeBuckets(world, world.canonicalQuery(Person, Position));
   const present: Entity[] = [];
-  for (const e of index.at(at.x, at.y)) {
-    if (world.has(e, MoveGoal) || world.has(e, Carrying)) continue;
-    const jobType = world.get(e, Settler).jobType;
-    if (jobType !== null && jobs.has(jobType) && world.tryGet(e, JobAssignment)?.workplace === building) {
-      present.push(e);
-    }
+  for (const e of assignedWorkers(world, building)) {
+    if (present.length === cap) break; // ascending ids, so the clamp keeps the lowest
+    if (!world.has(e, Person) || world.has(e, MoveGoal) || world.has(e, Carrying)) continue;
+    const p = world.tryGet(e, Position);
+    if (p === undefined || nodeHxOfPosition(p.x, p.y) !== at.x || nodeHyOfPosition(p.y) !== at.y) continue;
+    const jobType = world.tryGet(e, Settler)?.jobType;
+    if (jobType !== null && jobType !== undefined && jobs.has(jobType)) present.push(e);
   }
-  present.sort((a, b) => a - b); // canonical: the clamp below keeps the lowest ids, order-independent
-  return { kind: 'staffed', operators: present.length > cap ? present.slice(0, cap) : present };
+  return { kind: 'staffed', operators: present };
 }
 
 const UNSTAFFED: WorkplaceOperators = { kind: 'unstaffed' };
@@ -111,13 +96,8 @@ export function operatorSlotCapacity(world: World, ctx: SystemContext, building:
   return operatorSlotHeadcount(world, ctx, building, jobs);
 }
 
-export function presentOperatorCount(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  operatorsByNode?: NodeBuckets,
-): number {
-  return operatorCountOf(presentOperators(world, ctx, building, operatorsByNode));
+export function presentOperatorCount(world: World, ctx: SystemContext, building: Entity): number {
+  return operatorCountOf(presentOperators(world, ctx, building));
 }
 
 function operatorSlotHeadcount(

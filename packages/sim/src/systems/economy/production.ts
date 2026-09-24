@@ -1,15 +1,15 @@
-import { Building, Person, Position, Production, Stockpile } from '../../components/index.js';
+import { Building, Production, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
-import { NodeBuckets } from '../spatial/nodes.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
-import { WorkshopWorkforce } from '../stores/workshop-workforce.js';
+import { type WorkshopWorkforce, workshopWorkforce } from '../stores/workshop-workforce.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
-import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
+import { depositCycleOutput, startFirstStartable } from './production/cycles.js';
 import { chargeMilitaryPietyCost } from './production/piety.js';
 import { incomingRecipeReservations } from './production/reservations.js';
 import { nextCycleFor, startCycleFor } from './production/rotation.js';
+import { cycleStartable } from './production/start-gate.js';
 
 export { accrueDepositBonus } from './production/bonus-output.js';
 export {
@@ -33,22 +33,13 @@ export { craftablePool, skipUnfundedRecipe } from './production/rotation.js';
  * is the exact integer compare `elapsed >= duration` rather than an accumulated fixed-point step.
  */
 export const productionSystem: System = (world, ctx) => {
-  // Settlers bucketed by their node once per tick, so each workplace's operator lookup is an O(1) door-node
-  // probe instead of a full settler scan. Built lazily, so a tick whose workshops are all starved or blocked
-  // pays no scan or sort; deferring moves nothing, since the constructor reads only the Settler+Position
-  // query, which the loops below never mutate.
-  let operatorsByNode: NodeBuckets | undefined;
   let workforce: WorkshopWorkforce | undefined;
-  const operatorIndex = (): NodeBuckets => {
-    operatorsByNode ??= new NodeBuckets(world, world.canonicalQuery(Person, Position));
-    return operatorsByNode;
-  };
   // Advance running cycles before starting new ones, so a cycle started this tick begins counting next
   // tick rather than being advanced twice.
   for (const e of world.query(Production, Stockpile)) {
     // The tech unlock is a start-only gate, so a committed cycle finishes even if the enabling settler
     // later dies. The worker-presence gate does pause mid-cycle.
-    const staffing = presentOperators(world, ctx, e, operatorIndex());
+    const staffing = presentOperators(world, ctx, e);
     const operators = operatorCountOf(staffing);
     if (operators <= 0) continue;
     const prod = world.mut(e, Production);
@@ -80,11 +71,11 @@ export const productionSystem: System = (world, ctx) => {
     if (world.get(e, Building).built < ONE) continue;
     const recipes = recipesByProductOf(world, ctx, e);
     if (recipes === undefined) continue;
-    // Dormancy gate before the operator lookup: the per-recipe gates are cheap and operator-independent, so
-    // a starved or output-blocked workshop skips the door-node lookup. It elides only a provably-empty loop.
-    if (!anyCycleStartable(world, ctx, e, recipes)) continue;
+    // Dormancy gate before the operator lookup: the per-recipe gates are operator-independent, so a starved
+    // or output-blocked workshop skips the lookup. It elides only a provably-empty loop.
+    if (!cycleStartable(world, ctx, e, recipes)) continue;
     const running = world.tryGet(e, Production)?.cycles.length ?? 0;
-    const staffing = presentOperators(world, ctx, e, operatorIndex());
+    const staffing = presentOperators(world, ctx, e);
     if (staffing.kind === 'unstaffed') {
       // No worker slots: one anonymous batch, first startable product in content order.
       if (running < operatorCountOf(staffing)) startFirstStartable(world, ctx, e, recipes);
@@ -95,7 +86,7 @@ export const productionSystem: System = (world, ctx) => {
     const next = staffing.operators.slice(running);
     // Authored arbitration: give the actual next recipe needing more input units first access to
     // shared stock. Re-evaluate after each start; another operator may have consumed its ingredients.
-    if (recipes.size > 1) workforce ??= new WorkshopWorkforce(world, ctx);
+    if (recipes.size > 1) workforce ??= workshopWorkforce(world, ctx);
     while (next.length > 0) {
       const reserved =
         workforce !== undefined && recipes.size > 1

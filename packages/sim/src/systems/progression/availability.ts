@@ -1,15 +1,20 @@
 import type { JobEnablesKind, Recipe, VehicleType } from '@open-northland/data';
 import {
+  AiPlayer,
   isAiPlayer,
+  MapPermissions,
   mapPermission,
+  ProgressionRules,
   professionProgressionEnabled,
+  ScriptUnlocks,
   scriptAllows,
   scriptEnables,
+  TechnologyDiscoveries,
   technologyDiscovered,
   type UnlockKind,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import type { World } from '../../ecs/world.js';
+import type { Component, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { aliveTribeJobs } from './alive-jobs.js';
@@ -71,6 +76,28 @@ export function recipeOutputsEnabled(
     if (!goodEnabled(world, ctx, owner, tribe, output.goodType)) return false;
   }
   return true;
+}
+
+/** Every store {@link recipeOutputsEnabled} reads for a tribe with a technology table. */
+const TECHNOLOGY_UNLOCK_STORES: readonly Component<unknown>[] = [
+  ScriptUnlocks,
+  MapPermissions,
+  ProgressionRules,
+  TechnologyDiscoveries,
+  AiPlayer,
+];
+
+/**
+ * A number that changes whenever an unlock {@link recipeOutputsEnabled} reads for a tribe with a
+ * technology table may have changed: the sum of those stores' generations, each monotonic. A tribe
+ * without a table is gated by its alive trades, which this does not cover.
+ */
+export function technologyUnlockGeneration(world: World): number {
+  let generation = 0;
+  for (const store of TECHNOLOGY_UNLOCK_STORES) {
+    generation += world.componentGeneration(store) + world.componentValueGeneration(store);
+  }
+  return generation;
 }
 
 export function jobEnabled(

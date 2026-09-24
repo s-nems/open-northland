@@ -18,7 +18,7 @@ import { recipeOutputsEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
 import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../../stores/index.js';
 import { stampSupplyRun } from '../../../../stores/supply-tally.js';
-import { WorkshopWorkforce } from '../../../../stores/workshop-workforce.js';
+import { type WorkshopWorkforce, workshopWorkforce } from '../../../../stores/workshop-workforce.js';
 import { atOrWalk, startDraw, startPickup } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
@@ -62,7 +62,7 @@ export class WorkSeatClaims extends Map<Entity, WorkSeats> {
   recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
     let recipes = this.recipesByWorkplace.get(workplace);
     if (recipes === undefined) {
-      this.workforce ??= new WorkshopWorkforce(world, ctx);
+      this.workforce ??= workshopWorkforce(world, ctx);
       const selected = new Set<Recipe>();
       for (const worker of this.workforce.operatorsAt(workplace)) {
         for (const recipe of operatorRecipes(world, ctx, workplace, worker)) selected.add(recipe);
@@ -81,7 +81,7 @@ export class WorkSeatClaims extends Map<Entity, WorkSeats> {
   /** Units other settlers are bringing to `workplace`: the index's live loads plus the errands stamped
    *  this pass, each settler counted once. The asking settler is re-planning, so its own indexed errand no longer counts. */
   inboundOf(plan: PlannerContext, workplace: Entity, goodType: number): number {
-    this.workforce ??= new WorkshopWorkforce(plan.world, plan.ctx);
+    this.workforce ??= workshopWorkforce(plan.world, plan.ctx);
     const skip = (settler: Entity): boolean => settler === plan.entity || this.errands.has(settler);
     let units = this.workforce.incomingOf(workplace, goodType, skip);
     for (const errand of this.errands.values()) {

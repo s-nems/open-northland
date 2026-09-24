@@ -76,6 +76,7 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
   const s = world.mut(entity, Settler);
   (s as SettlerTradeWrite).jobType = jobType;
   noteSettlerProgress(world, entity);
+  tradeLogs.get(world)?.add(entity);
 }
 
 /**
@@ -97,6 +98,20 @@ export function settlerProgressLog(world: World): Set<Entity> {
   if (log === undefined) {
     log = new Set();
     progressLogs.set(world, log);
+  }
+  return log;
+}
+
+/** Per world, the settlers whose trade {@link setSettlerJob} wrote since the workshop workforce index
+ *  last drained the log: the progress log's narrower twin, for a reader that ignores experience. */
+const tradeLogs = new WeakMap<World, Set<Entity>>();
+
+/** `world`'s trade log, opened on first use, for the workshop workforce index to drain. */
+export function settlerTradeLog(world: World): Set<Entity> {
+  let log = tradeLogs.get(world);
+  if (log === undefined) {
+    log = new Set();
+    tradeLogs.set(world, log);
   }
   return log;
 }

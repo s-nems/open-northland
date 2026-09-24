@@ -23,9 +23,8 @@ By share of sampled bytes:
   step is the inlined `lowestStockedGood` (`systems/stores/capacity.ts`) walk (inferred from the
   inlined attribution); `lowestQualityGood` (`systems/family/quality-search.ts`) 3.2%.
 - 6.3% is `NodeBuckets` (`systems/spatial/nodes.ts`) rebuilt from scratch each tick, a `Map` per
-  column and an array per bucket. Production's `operatorIndex` goes with
-  [production-rescans-workforce-every-tick.md](production-rescans-workforce-every-tick.md) and
-  `PlannerSpacing.forTick` with
+  column and an array per bucket; that share included production's operator index, which no longer
+  exists, so re-profile it. `PlannerSpacing.forTick` goes with
   [planner-pass-setup-scales-with-world.md](planner-pass-setup-scales-with-world.md); the gossip
   candidates and `collectColliders` for posts remain.
 - The rest is a tail under 3% each (the `near` sort in `systems/spatial/region.ts`, `fleeDrive`

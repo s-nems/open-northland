@@ -207,6 +207,12 @@ export class World {
     return this.componentValueGenerations.get(component) ?? 0;
   }
 
+  /** The revision of `entity`'s stored `component` value, undefined while it carries none. A fresh value
+   *  from every {@link add} and {@link mut}, so a cache keyed on it re-derives after any write. */
+  revisionOf(entity: Entity, component: Component<unknown>): number | undefined {
+    return this.componentRevisions.revisionOf(component, entity);
+  }
+
   /** Monotonic version of every entity mutation (`create`/`add`/`remove`/`destroy`/`mut`): the "may the
    *  previous snapshot be reused?" key for `Simulation.snapshot`'s per-tick memo. */
   get mutationVersion(): number {
