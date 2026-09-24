@@ -31,13 +31,6 @@ function parsePresent(value: unknown): SavedSessionMetadata {
   const raw = value as Record<string, unknown>;
   if (raw.version !== 1) throw new Error('unsupported saved session metadata version');
   const { initialSave: _initialSave, ...descriptor } = parseGameSession(raw.descriptor);
-  if (
-    descriptor.seats.length > 0 &&
-    typeof descriptor.localSeat === 'number' &&
-    !descriptor.seats.some((seat) => seat.player === descriptor.localSeat)
-  ) {
-    throw new Error('saved session local seat is absent from its roster');
-  }
   if (!Array.isArray(raw.roster) || raw.roster.length !== descriptor.seats.length)
     throw new Error('saved session roster must match every descriptor seat');
   const names = new Set<string>();
