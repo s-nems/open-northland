@@ -4,9 +4,9 @@ import { contentIndex } from '../../../core/content-index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity } from '../../../ecs/world.js';
 import {
-  type HalfCellNode,
+  forEachRingNode,
   hexDistance,
-  hexDistanceBetween,
+  latticeDistanceBounds,
   nodeOfPosition,
   positionOfNode,
 } from '../../../nav/halfcell.js';
@@ -119,18 +119,22 @@ function walkArea(
 ): void {
   if (op.amount <= 0) return;
   const houses = op.flag ? housesByDistance(pass, op, houseHolds) : new Map<number, Entity[]>();
-  const rings = ringsAround(terrain, op.point, op.range);
   let left = op.amount;
-  const distances = [...new Set([...houses.keys(), ...rings.keys()])].sort((a, b) => a - b);
-  for (const r of distances) {
+  const atGround = (hx: number, hy: number): boolean => {
+    left -= visit.atGround(terrain.nodeAt(hx, hy), left);
+    return left > 0;
+  };
+  // Rings off the map hold nothing, so a far-off point or a map-wide range costs the map, not the range.
+  const { nearest, farthest } = latticeDistanceBounds(op.point, terrain.width, terrain.height);
+  const first = Math.min(nearest, ...houses.keys());
+  const last = Math.min(op.range, Math.max(farthest, ...houses.keys()));
+  for (let r = first; r <= last; r++) {
     for (const e of houses.get(r) ?? []) {
       if (left <= 0) return;
       left -= visit.atHouse(e, left);
     }
-    for (const node of rings.get(r) ?? []) {
-      if (left <= 0) return;
-      left -= visit.atGround(node, left);
-    }
+    if (left <= 0) return;
+    if (!forEachRingNode(op.point, r, terrain.width, terrain.height, atGround)) return;
   }
 }
 
@@ -153,20 +157,6 @@ function housesByDistance(
     bucketAt(buckets, distance).push(e);
   }
   return buckets;
-}
-
-/** Every in-bounds node within `range` of the point, bucketed by distance; the row-major scan leaves
- *  each ring ascending by id. Clipped to the map, so a map-wide or far-off point costs the map, not
- *  the range. */
-function ringsAround(terrain: TerrainGraph, point: HalfCellNode, range: number): Map<number, NodeId[]> {
-  const rings = new Map<number, NodeId[]>();
-  for (let hy = Math.max(0, point.hy - range); hy <= Math.min(terrain.height - 1, point.hy + range); hy++) {
-    for (let hx = Math.max(0, point.hx - range); hx <= Math.min(terrain.width - 1, point.hx + range); hx++) {
-      const distance = hexDistanceBetween(hx, hy, point.hx, point.hy);
-      if (distance <= range) bucketAt(rings, distance).push(terrain.nodeAt(hx, hy));
-    }
-  }
-  return rings;
 }
 
 function bucketAt<T>(buckets: Map<number, T[]>, index: number): T[] {

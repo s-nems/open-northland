@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { hexDistance, hexDistanceBetween, hexNeighboursOf } from '../../src/nav/halfcell.js';
+import {
+  forEachRingNode,
+  hexDistance,
+  hexDistanceBetween,
+  hexNeighboursOf,
+  latticeDistanceBounds,
+  rowReachLeft,
+  rowReachRight,
+} from '../../src/nav/halfcell.js';
 import { hexNodeBox } from '../../src/nav/node-circle.js';
 
 /**
@@ -68,5 +76,74 @@ describe('the half-cell map-point distance', () => {
 describe('hexNodeBox', () => {
   it('spans the range in columns and rows each way', () => {
     expect(hexNodeBox(10, 20, 5)).toEqual({ minX: 5, maxX: 15, minY: 15, maxY: 25 });
+  });
+});
+
+describe('the ring walk over a bounded lattice', () => {
+  const WIDTH = 9;
+  const HEIGHT = 7;
+  /** Inside, on both row parities, on an edge and far off every side. */
+  const CENTRES = [
+    { hx: 4, hy: 3 },
+    { hx: 4, hy: 4 },
+    { hx: 0, hy: 0 },
+    { hx: -5, hy: 2 },
+    { hx: 20, hy: -9 },
+    { hx: 3, hy: 15 },
+  ];
+
+  function nodesAt(centre: { hx: number; hy: number }, radius: number): string[] {
+    const out: string[] = [];
+    for (let hy = 0; hy < HEIGHT; hy++)
+      for (let hx = 0; hx < WIDTH; hx++)
+        if (hexDistanceBetween(hx, hy, centre.hx, centre.hy) === radius) out.push(`${hx},${hy}`);
+    return out;
+  }
+
+  it('inverts the distance per row: a row reaches exactly the columns within range', () => {
+    for (const centre of [...CENTRES, { hx: -3, hy: -3 }]) {
+      for (let range = 0; range <= 6; range++) {
+        for (let hy = centre.hy - range; hy <= centre.hy + range; hy++) {
+          const within: number[] = [];
+          for (let hx = centre.hx - 2 * range - 2; hx <= centre.hx + 2 * range + 2; hx++)
+            if (hexDistanceBetween(hx, hy, centre.hx, centre.hy) <= range) within.push(hx);
+          expect([rowReachLeft(centre, hy, range), rowReachRight(centre, hy, range)]).toEqual([
+            within[0],
+            within.at(-1),
+          ]);
+          expect(within).toHaveLength(rowReachRight(centre, hy, range) - rowReachLeft(centre, hy, range) + 1);
+        }
+      }
+    }
+  });
+
+  it('bounds the distances the lattice holds by its clamped centre and its corners', () => {
+    for (const centre of CENTRES) {
+      const all: number[] = [];
+      for (let hy = 0; hy < HEIGHT; hy++)
+        for (let hx = 0; hx < WIDTH; hx++) all.push(hexDistanceBetween(hx, hy, centre.hx, centre.hy));
+      expect(latticeDistanceBounds(centre, WIDTH, HEIGHT)).toEqual({
+        nearest: Math.min(...all),
+        farthest: Math.max(...all),
+      });
+    }
+  });
+
+  it('visits every node of a ring once, row-major, and stops when told', () => {
+    for (const centre of CENTRES) {
+      const { nearest, farthest } = latticeDistanceBounds(centre, WIDTH, HEIGHT);
+      for (let radius = nearest; radius <= farthest; radius++) {
+        const walked: string[] = [];
+        const finished = forEachRingNode(centre, radius, WIDTH, HEIGHT, (hx, hy) => {
+          walked.push(`${hx},${hy}`);
+          return true;
+        });
+        expect(finished).toBe(true);
+        expect(walked).toEqual(nodesAt(centre, radius));
+      }
+    }
+    let visits = 0;
+    expect(forEachRingNode({ hx: 4, hy: 3 }, 2, WIDTH, HEIGHT, () => ++visits < 3)).toBe(false);
+    expect(visits).toBe(3);
   });
 });

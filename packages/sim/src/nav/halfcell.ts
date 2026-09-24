@@ -130,6 +130,65 @@ export function hexDistanceBetween(ahx: number, ahy: number, bhx: number, bhy: n
   return rows + Math.max(0, columns - Math.floor(rows / 2));
 }
 
+/** The first column of row `hy` within `range` map points of `centre`, {@link hexDistance} inverted
+ *  for one row; meaningful only for a row at most `range` rows away. */
+export function rowReachLeft(centre: HalfCellNode, hy: number, range: number): number {
+  const rows = Math.abs(hy - centre.hy);
+  return centre.hx - rowReach(rows, range) - (rows % 2 !== 0 && hy % 2 !== 0 ? 1 : 0);
+}
+
+/** The last column of row `hy` within `range` map points of `centre`; see {@link rowReachLeft}. */
+export function rowReachRight(centre: HalfCellNode, hy: number, range: number): number {
+  const rows = Math.abs(hy - centre.hy);
+  return centre.hx + rowReach(rows, range) + (rows % 2 !== 0 && hy % 2 === 0 ? 1 : 0);
+}
+
+function rowReach(rows: number, range: number): number {
+  return range - rows + Math.floor(rows / 2);
+}
+
+/** The nearest and farthest {@link hexDistance} from `centre` to a node of the `width` x `height`
+ *  lattice: the distance grows with the column and the row offset alike, so the clamped centre is
+ *  the nearest node and a corner the farthest. */
+export function latticeDistanceBounds(
+  centre: HalfCellNode,
+  width: number,
+  height: number,
+): { readonly nearest: number; readonly farthest: number } {
+  const clamp = (value: number, size: number): number => Math.min(Math.max(value, 0), size - 1);
+  const nearest = hexDistanceBetween(clamp(centre.hx, width), clamp(centre.hy, height), centre.hx, centre.hy);
+  let farthest = 0;
+  for (const hx of [0, width - 1]) {
+    for (const hy of [0, height - 1]) {
+      farthest = Math.max(farthest, hexDistanceBetween(hx, hy, centre.hx, centre.hy));
+    }
+  }
+  return { nearest, farthest };
+}
+
+/** Visit the nodes of the `width` x `height` lattice exactly `radius` map points from `centre`, row by
+ *  row and ascending within a row, until `visit` answers false; answers whether the walk finished. */
+export function forEachRingNode(
+  centre: HalfCellNode,
+  radius: number,
+  width: number,
+  height: number,
+  visit: (hx: number, hy: number) => boolean,
+): boolean {
+  const last = Math.min(height - 1, centre.hy + radius);
+  for (let hy = Math.max(0, centre.hy - radius); hy <= last; hy++) {
+    const left = Math.max(0, rowReachLeft(centre, hy, radius));
+    const right = Math.min(width - 1, rowReachRight(centre, hy, radius));
+    // A row nearer than the ring also crosses the disc one ring in, which splits the ring's run in two.
+    const crossesInner = Math.abs(hy - centre.hy) < radius;
+    const innerLeft = crossesInner ? rowReachLeft(centre, hy, radius - 1) : right + 1;
+    const innerRight = crossesInner ? rowReachRight(centre, hy, radius - 1) : right;
+    for (let hx = left; hx <= Math.min(right, innerLeft - 1); hx++) if (!visit(hx, hy)) return false;
+    for (let hx = Math.max(left, innerRight + 1); hx <= right; hx++) if (!visit(hx, hy)) return false;
+  }
+  return true;
+}
+
 /** The six map-point directions in turning order; a diagonal lands on the row's parity the way
  *  {@link hexDistance} counts it, so every step is one map point. */
 type HexDirection = 'east' | 'southEast' | 'southWest' | 'west' | 'northWest' | 'northEast';

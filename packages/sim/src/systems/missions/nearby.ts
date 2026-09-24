@@ -1,5 +1,5 @@
 import type { Entity, World } from '../../ecs/world.js';
-import type { HalfCellNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, rowReachLeft, rowReachRight } from '../../nav/halfcell.js';
 import { entityPoint } from './targets.js';
 
 interface PointRow {
@@ -50,12 +50,8 @@ function nearRows(rows: readonly PointRow[], at: HalfCellNode, range: number): b
   for (let i = lo; i < rows.length; i++) {
     const row = rows[i];
     if (row === undefined || row.hy > at.hy + range) break;
-    const dy = Math.abs(row.hy - at.hy);
-    const reach = range - dy + Math.floor(dy / 2);
-    // Invert hexDistance's odd-row allowance without examining every entity in the row.
-    const odd = dy % 2 !== 0;
-    const left = at.hx - reach - (odd && row.hy % 2 !== 0 ? 1 : 0);
-    const right = at.hx + reach + (odd && row.hy % 2 === 0 ? 1 : 0);
+    const left = rowReachLeft(at, row.hy, range);
+    const right = rowReachRight(at, row.hy, range);
     if (columnInRange(row.columns, left, right)) return true;
   }
   return false;
