@@ -12,6 +12,7 @@ import {
   MISC_EQUIP_SLOTS,
   MISSION_BEHAVIOUR,
   MoveGoal,
+  NeedOrder,
   PathRequest,
   Position,
   Settler,
@@ -35,6 +36,8 @@ const EAT_ATOMIC = 10;
 const HEADQUARTERS = 1;
 /** Over the the drive threshold eat trigger and still inside the bar, so `needsSystem`'s clamp cannot mask a relief. */
 const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
+/** Well under the drive threshold: only an order makes this bar a reason to act. */
+const FED: Fixed = fx.div(ONE, fx.fromInt(4));
 
 function hungryFighterAt(sim: Simulation, x: number, y: number): Entity {
   const e = fighterAt(sim, x, y, VIKING, WOODCUTTER, { owner: P0 });
@@ -137,6 +140,22 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     expect(sim.world.has(chaser, MoveGoal)).toBe(false);
     expect(sim.world.has(chaser, PathRequest)).toBe(false); // and no route was minted in its place
     expect(sim.world.has(chaser, Engagement)).toBe(true);
+  });
+
+  it('a CHASER ordered to eat on a fed bar keeps its mead for when it is hungry', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const chaser = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
+    sim.world.mut(chaser, Settler).hunger = FED;
+    carryMead(sim, chaser);
+    sim.world.add(chaser, NeedOrder, { need: 'hunger' });
+    sim.world.add(chaser, Engagement, { repathAt: sim.tick + 8 });
+    sim.world.add(chaser, MoveGoal, { cell: cellNode(sim, 10, 0) });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // The flask answers the bar, never the order, as it does off the march.
+    expect(sim.world.has(chaser, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(chaser, MoveGoal)).toBe(true);
   });
 
   it('a hungry BESIEGER whose needs a script froze neither eats its ration nor drinks', () => {

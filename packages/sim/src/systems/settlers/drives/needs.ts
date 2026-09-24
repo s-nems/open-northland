@@ -33,7 +33,7 @@ import {
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { draughtSlotFor, startDrink } from './drink.js';
+import { type DraughtNeed, draughtSlotFor, startDrink } from './drink.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
@@ -85,6 +85,25 @@ function maySeek(world: World, e: Entity, ordered: NeedKind | undefined, need: N
 }
 
 /**
+ * Drink a carried draught for `need` where the settler stands. Gated on the bar rather than an order, so
+ * an ordered meal or nap drains no flask the settler does not need.
+ */
+function drinkForBar(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity,
+  need: DraughtNeed,
+  level: Fixed,
+): boolean {
+  if (level < NEED_DRIVE_THRESHOLD) return false;
+  const draught = draughtSlotFor(world, ctx, e, need);
+  if (draught === null) return false;
+  startDrink(world, ctx, e, settler, draught);
+  return true;
+}
+
+/**
  * The in-place half of the needs ladder, for a settler that must hold its ground: {@link planNeeds}'s rung
  * order with every tail that walks or lies down removed, a tower's bed included, so fatigue waits for a
  * stamina draught or the end of the fight.
@@ -105,20 +124,12 @@ export function answerNeedInPlace(
   if (pressing(settler.hunger, ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
-    const draught = draughtSlotFor(world, ctx, e, 'hunger');
-    if (draught !== null) {
-      startDrink(world, ctx, e, settler, draught);
-      return true;
-    }
+    if (drinkForBar(world, ctx, e, settler, 'hunger', settler.hunger)) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
     if (seek) settleUnservedNeedForAi(world, e, 'hunger');
   }
   if (pressing(settler.fatigue, ordered, 'fatigue')) {
-    const draught = draughtSlotFor(world, ctx, e, 'fatigue');
-    if (draught !== null) {
-      startDrink(world, ctx, e, settler, draught);
-      return true;
-    }
+    if (drinkForBar(world, ctx, e, settler, 'fatigue', settler.fatigue)) return true;
     if (maySeek(world, e, ordered, 'fatigue')) settleUnservedNeedForAi(world, e, 'fatigue');
   }
   return false;
@@ -183,12 +194,7 @@ export function planNeeds(
     if (seek && eatCarried(world, ctx, e, settler, load)) return true;
     // A carried draught is drunk in place, replacing the walk to food, which is what the manual sells it
     // as: "cover longer distances without needing food". It ranks below food in hand, which is free.
-    // Kept on the bar rather than the order, so an ordered meal drains no flask the settler does not need.
-    const draught = settler.hunger >= NEED_DRIVE_THRESHOLD ? draughtSlotFor(world, ctx, e, 'hunger') : null;
-    if (draught !== null) {
-      startDrink(world, ctx, e, settler, draught);
-      return true;
-    }
+    if (drinkForBar(world, ctx, e, settler, 'hunger', settler.hunger)) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
     // A larder and a wild berry bush share the eat animation; only the completion effect differs, so the
     // walk-or-act tail below is identical for both.
@@ -213,12 +219,8 @@ export function planNeeds(
 
   if (pressing(settler.fatigue, ordered, 'fatigue')) {
     // A stamina draught is drunk in place, replacing the walk to a bed: the manual's "remain awake and
-    // ready longer". Kept on the bar rather than the order, as with the hunger flask above.
-    const draught = settler.fatigue >= NEED_DRIVE_THRESHOLD ? draughtSlotFor(world, ctx, e, 'fatigue') : null;
-    if (draught !== null) {
-      startDrink(world, ctx, e, settler, draught);
-      return true;
-    }
+    // ready longer".
+    if (drinkForBar(world, ctx, e, settler, 'fatigue', settler.fatigue)) return true;
     if (maySeek(world, e, ordered, 'fatigue') && !alert()) {
       if (sleepAtPost(world, ctx, e, settler)) return true;
       if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
