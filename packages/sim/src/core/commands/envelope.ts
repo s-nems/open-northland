@@ -122,7 +122,6 @@ export const COMMAND_ISSUER: {
   setPlayerPlacementTribes: 'trusted',
   setProfessionProgression: 'trusted',
   setRegeneration: 'seat',
-  repairPalisade: 'seat',
   setSharedVision: 'trusted',
   setPalisadeGate: 'seat',
   setSignpostNavigation: 'trusted',

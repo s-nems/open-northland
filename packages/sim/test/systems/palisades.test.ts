@@ -22,7 +22,12 @@ import {
   Simulation,
 } from '../../src/index.js';
 import { damageVsTarget } from '../../src/systems/conflict/weapons.js';
-import { advanceConstructionLabor, constructionSystem } from '../../src/systems/economy/construction.js';
+import {
+  advanceConstructionLabor,
+  constructionSystem,
+  PALISADE_BUILD_STRIKES,
+  remainingConstructionSteps,
+} from '../../src/systems/economy/construction.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import {
   claimPalisade,
@@ -31,6 +36,8 @@ import {
   plantPalisadeFlag,
   releasePalisadeReservation,
 } from '../../src/systems/palisades/reservation.js';
+import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
+import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -125,6 +132,19 @@ function flagBearer(sim: Simulation, site: Entity): Entity {
   return builder;
 }
 
+/** Every strike a segment takes to rise, all from its flag bearer. */
+function hammerOut(sim: Simulation, site: Entity): void {
+  const builder = flagBearer(sim, site);
+  for (let strike = 0; strike < PALISADE_BUILD_STRIKES; strike++) {
+    expect(advanceConstructionLabor(sim.world, ctxOf(sim), site, builder)).toBe(true);
+  }
+}
+
+/** One melee blow of `damage` on `target` from an unarmed stand-in attacker. */
+function strike(sim: Simulation, target: Entity, damage: number): void {
+  resolveCombatHit(sim.world, ctxOf(sim), sim.world.create(), target, { damage }, [], 'melee');
+}
+
 /** A stationary creature: only a mover blocks a closing gate, so a bare Position is not enough. */
 function standingCreature(sim: Simulation, hx: number, hy: number): Entity {
   const e = sim.world.create();
@@ -179,7 +199,13 @@ describe('palisades', () => {
     expect(sim.world.has(wall, PalisadeBlocking)).toBe(false);
 
     setStockAmount(sim.world, wall, 5, 1);
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, flagBearer(sim, wall))).toBe(true);
+    const builder = flagBearer(sim, wall);
+    for (let hit = 1; hit < PALISADE_BUILD_STRIKES; hit++) {
+      expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, builder)).toBe(true);
+      constructionSystem(sim.world, ctxOf(sim));
+      expect(sim.world.has(wall, UnderConstruction)).toBe(true);
+    }
+    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, builder)).toBe(true);
     constructionSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(wall, UnderConstruction)).toBe(false);
@@ -271,7 +297,7 @@ describe('palisades', () => {
     sim.step();
     const gate = onlyPalisade(sim);
     setStockAmount(sim.world, gate, 5, 1);
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), gate, flagBearer(sim, gate))).toBe(true);
+    hammerOut(sim, gate);
     const occupant = standingCreature(sim, 9, 8);
 
     constructionSystem(sim.world, ctxOf(sim));
@@ -287,21 +313,111 @@ describe('palisades', () => {
     expect(sim.world.get(gate, Stockpile).amounts.get(5) ?? 0).toBe(0);
   });
 
-  it('uses landscape damage hundreds and repairs by the source transition delta', () => {
+  it('uses landscape damage hundreds and repairs an owned wall a blow damaged by the source delta', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0, owner: 0 });
     sim.step();
     const wall = onlyPalisade(sim);
     expect(damageVsTarget(sim.world, wall, 450)).toBe(4);
     expect(damageVsTarget(sim.world, wall, 99)).toBe(0);
-    sim.world.mut(wall, Health).hitpoints = 90;
-    sim.world.mut(wall, Palisade).built = fx.div(fx.fromInt(90), fx.fromInt(100));
-    sim.enqueueSetup({ kind: 'repairPalisade', palisade: wall });
-    sim.step();
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, flagBearer(sim, wall))).toBe(true);
+
+    strike(sim, wall, 10);
+    expect(sim.world.get(wall, Palisade).repairing).toBe(true);
+    expect(sim.world.get(wall, UnderConstruction).labor).toBe(fx.div(fx.fromInt(90), fx.fromInt(100)));
+    expect(sim.world.has(wall, PalisadeBlocking)).toBe(true);
+    // A blow on a wall under repair pulls the job back with it rather than being built over.
+    strike(sim, wall, 10);
+    expect(sim.world.get(wall, UnderConstruction).labor).toBe(fx.div(fx.fromInt(80), fx.fromInt(100)));
     constructionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(wall, Health).hitpoints).toBe(93);
+    expect(sim.world.get(wall, Health).hitpoints).toBe(80);
+    // A repair strike restores hitpoints, not a build quantum: one builder mends at a time.
+    expect(remainingConstructionSteps(sim.world, ctxOf(sim), wall)).toBe(1);
+
+    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, sim.world.create())).toBe(true);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(wall, Health).hitpoints).toBe(83);
     expect(sim.world.get(wall, Palisade).built).toBeLessThan(ONE);
+  });
+
+  it('closes the repair job once the wall is whole again', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0, owner: 0 });
+    sim.step();
+    const wall = onlyPalisade(sim);
+    strike(sim, wall, 5);
+    const mender = sim.world.create();
+    advanceConstructionLabor(sim.world, ctxOf(sim), wall, mender);
+    advanceConstructionLabor(sim.world, ctxOf(sim), wall, mender);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(wall, Health).hitpoints).toBe(100);
+    expect(sim.world.has(wall, UnderConstruction)).toBe(false);
+    expect(sim.world.get(wall, Palisade).repairing).toBe(false);
+  });
+
+  it('puts an owned authored wall below its maximum under repair, and leaves an unowned one', () => {
+    const sim = fresh();
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: 4,
+      y: 4,
+      tribe: 0,
+      owner: 0,
+      valency: 60,
+    });
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 12, y: 12, tribe: 0, valency: 60 });
+    sim.step();
+    const [owned, unowned] = [...sim.world.query(Palisade, Position)].sort((a, b) => a - b);
+    if (owned === undefined || unowned === undefined) throw new Error('expected two walls');
+    expect(sim.world.get(owned, Palisade).repairing).toBe(true);
+    expect(sim.world.get(owned, UnderConstruction).labor).toBe(sim.world.get(owned, Palisade).built);
+    expect(sim.world.has(unowned, UnderConstruction)).toBe(false);
+  });
+
+  it('keeps a builder off a neighbouring wall site, which rises only on clear ground', () => {
+    const sim = fresh();
+    for (const x of [6, 7]) {
+      sim.enqueueSetup({
+        kind: 'placePalisade',
+        gfxIndex: WALL.typeId,
+        x,
+        y: 6,
+        tribe: 0,
+        owner: 0,
+        underConstruction: true,
+      });
+    }
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected mapped simulation');
+    const [west] = [...sim.world.query(Palisade, Position)].sort((a, b) => a - b);
+    if (west === undefined) throw new Error('expected two wall sites');
+    const cells = PlannerSpacing.forTick(sim.world, ctxOf(sim), terrain).workCells(west);
+    expect(cells.length).toBeGreaterThan(0);
+    expect(cells).not.toContain(terrain.nodeAt(7, 6));
+  });
+
+  it('leaves an unowned wall a blow damaged unrepaired', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0 });
+    sim.step();
+    const wall = onlyPalisade(sim);
+    strike(sim, wall, 10);
+    expect(sim.world.get(wall, Health).hitpoints).toBe(90);
+    expect(sim.world.has(wall, UnderConstruction)).toBe(false);
+  });
+
+  it('opens and closes a gate while builders repair it', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: CLOSED_GATE.typeId, x: 8, y: 8, tribe: 0, owner: 0 });
+    sim.step();
+    const gate = onlyPalisade(sim);
+    strike(sim, gate, 10);
+    expect(sim.world.get(gate, Palisade).repairing).toBe(true);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: true });
+    sim.step();
+    expect(sim.world.get(gate, Palisade).gate?.open).toBe(true);
+    expect(sim.world.get(gate, Palisade).repairing).toBe(true);
   });
 
   it('restores a damaged owned gate with its pairing, collision, health, and fixed-point valency', () => {

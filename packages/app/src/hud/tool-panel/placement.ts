@@ -63,8 +63,9 @@ export interface PlacementDeps {
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
-  /** A placement was called off (Esc, the right button, a beam entry) with nothing placed; `paper`
-   *  is the unspent plan it was to pay with, for the owner to take back into hand. */
+  /** A building placement was called off (Esc, the right button, a beam entry) with nothing placed;
+   *  `paper` is the unspent plan it was to pay with, for the owner to take back into hand. A wall or
+   *  gate tool is called off without it: the player leaves that tool to get back to the map. */
   readonly onCancel?: (paper: Paper | null) => void;
 }
 
@@ -198,9 +199,10 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     },
     cancel: (): void => {
       if (placementType === null && palisade === null) return;
+      const building = placementType !== null;
       const paper = placementPaper;
       exitPlacement();
-      deps.onCancel?.(paper);
+      if (building) deps.onCancel?.(paper);
     },
     stepBack: (): boolean => {
       if (palisade?.line.stepBack() !== true) return false;

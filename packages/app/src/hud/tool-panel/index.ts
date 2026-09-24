@@ -354,7 +354,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.palisadeGateSites !== undefined ? { palisadeGateSites: opts.palisadeGateSites } : {}),
       tribe: opts.tribe,
       owner: opts.owner,
-      // A pick hid the window for the placement; a cancel brings it back where it was, and a place-any
+      // A pick hid the window for the placement; its cancel brings it back where it was, and a place-any
       // plan back into the hand it was picked with, so the next pick still spends it.
       onCancel: (paper) => {
         windows.byId.menu.resume();

@@ -10,7 +10,6 @@ export interface PanelClickActions {
   readonly onCancelUpgrade: (entityId: number) => void;
   readonly onDemolishSignpost: (entityId: number) => void;
   readonly onDemolishPalisade?: (entityId: number) => void;
-  readonly onRepairPalisade?: (entityId: number) => void;
   readonly onSetPalisadeGate?: (entityId: number, open: boolean) => void;
   /** Raise or lower the alarm on the selected garrison building - the Obrona window's shield toggle. */
   readonly onSetDefenceMode: (entityId: number, enabled: boolean) => void;
@@ -89,9 +88,6 @@ export function applyPanelClick(
       return;
     case 'demolishPalisade':
       actions.onDemolishPalisade?.(click.entityId);
-      return;
-    case 'repairPalisade':
-      actions.onRepairPalisade?.(click.entityId);
       return;
     case 'setPalisadeGate':
       actions.onSetPalisadeGate?.(click.entityId, click.open);

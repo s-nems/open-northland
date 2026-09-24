@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { addWildlife, Health, Palisade, Position, stampOwner } from '../../src/components/index.js';
+import {
+  addWildlife,
+  Health,
+  Palisade,
+  Position,
+  stampOwner,
+  UnderConstruction,
+} from '../../src/components/index.js';
 import {
   cellOfNode,
   type Entity,
@@ -8,7 +15,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { palisadeGateProbe } from '../../src/systems/palisades/index.js';
+import { palisadeGateProbe, repairDamagedPalisade } from '../../src/systems/palisades/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -170,6 +177,23 @@ describe('palisadeGateProbe', () => {
     // A rejected run still reports the centre and span, so the cursor can show why.
     expect(result.center).toBe(wallAt(sim, CENTRE.hx));
     expect(result.span).toHaveLength(SPAN_HX.length);
+  });
+
+  it('cuts a whole gate into a run whose walls builders are mending', () => {
+    const centre = wallAt(sim, CENTRE.hx);
+    const edge = wallAt(sim, SPAN_HX[0]);
+    for (const wall of [centre, edge]) {
+      sim.world.mut(wall, Health).hitpoints = THREE_QUARTERS_HP;
+      repairDamagedPalisade(sim.world, wall);
+    }
+    expect(probe(sim).canConvert).toBe(true);
+
+    sim.enqueueSetup({ kind: 'convertPalisadeGate', palisade: centre, gfxIndex: HORIZONTAL_GATE });
+    sim.step();
+    expect(sim.world.get(centre, Palisade).gate).not.toBeNull();
+    expect(sim.world.has(centre, UnderConstruction)).toBe(false);
+    expect(sim.world.get(centre, Health)).toEqual({ hitpoints: MAX_HP, max: MAX_HP });
+    expect(sim.world.get(edge, Palisade).repairing).toBe(true);
   });
 
   it('refuses a span member more than eight height units from the centre', () => {

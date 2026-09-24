@@ -207,7 +207,7 @@ function planEconomy(
 
   // Deliver a carried load first: a settler must free its hands before any empty-handed work.
   if (load !== undefined && load.amount > 0) {
-    planDelivery(plan, load);
+    planDelivery(plan, pass.spacing, load);
     return;
   }
 

@@ -25,9 +25,9 @@ export function drawPalisade(
     chrome.bar(layout.health, model.health.pct, 'gauge');
   }
   if (layout.progress !== null) {
-    const progress = model.repairing
-      ? `${hud.repairPalisade}: ${model.builtPct}%`
-      : formatMessage(hud.constructionProgress, { percent: model.builtPct });
+    const progress = formatMessage(model.repairing ? hud.repairProgress : hud.constructionProgress, {
+      percent: model.builtPct,
+    });
     chrome.textAt(progress, layout.progress.x, layout.progress.y + ROW_TEXT_PAD * s, 'dimmed');
   }
   for (const button of layout.buttons) {
@@ -36,9 +36,9 @@ export function drawPalisade(
         ? model.gateOpen === true
           ? hud.closeGate
           : hud.openGate
-        : button.action === 'repair-palisade'
-          ? hud.repairPalisade
-          : hud.demolishPalisade;
+        : model.gateOpen === null
+          ? hud.demolishPalisade
+          : hud.demolishGate;
     chrome.button(button, label, hover === button.action);
   }
 }

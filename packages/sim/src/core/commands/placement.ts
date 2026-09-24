@@ -15,8 +15,7 @@ export type PlacementCommand =
   | DemolishSignpostCommand
   | DemolishPalisadeCommand
   | ConvertPalisadeGateCommand
-  | SetPalisadeGateCommand
-  | RepairPalisadeCommand;
+  | SetPalisadeGateCommand;
 
 /** The placements a player seat may issue for itself; the rest are world edits only trusted setup or
  *  the admin channel may make. */
@@ -29,8 +28,7 @@ export type PlayerPlacementCommand =
   | DemolishSignpostCommand
   | DemolishPalisadeCommand
   | ConvertPalisadeGateCommand
-  | SetPalisadeGateCommand
-  | RepairPalisadeCommand;
+  | SetPalisadeGateCommand;
 
 /** Place one data-described wall segment at a half-cell node. `gfxIndex` selects the map catalog row,
  * which must carry `ScriptLandscapeType.wall`; seat envelopes own the segment and start it unfinished. */
@@ -65,11 +63,6 @@ export interface ConvertPalisadeGateCommand {
   readonly kind: 'convertPalisadeGate';
   readonly palisade: Entity;
   readonly gfxIndex: number;
-}
-
-export interface RepairPalisadeCommand {
-  readonly kind: 'repairPalisade';
-  readonly palisade: Entity;
 }
 
 /**

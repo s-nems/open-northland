@@ -96,7 +96,6 @@ export async function createUnitChrome(
       onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
       onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
       onDemolishPalisade: (id) => opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity }),
-      onRepairPalisade: (id) => opts.enqueue({ kind: 'repairPalisade', palisade: id as Entity }),
       onSetPalisadeGate: (id, open) =>
         opts.enqueue({ kind: 'setPalisadeGate', palisade: id as Entity, open }),
       onSetDefenceMode: (id, enabled) =>

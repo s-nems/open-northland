@@ -650,7 +650,7 @@ describe('placement controller', () => {
     expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([5, 6, 7]);
   });
 
-  it('steps back from a started line to the armed tool, then leaves the tool on cancel', () => {
+  it('steps back from a started line to the armed tool, then leaves it for the map, not the window', () => {
     const { placement, commands, cancels } = mount(() => ({ col: 4, row: 2 }));
     placement.enterPalisade(691, 'wall');
     expect(placement.stepBack()).toBe(false);
@@ -660,8 +660,13 @@ describe('placement controller', () => {
     expect(placement.isActive()).toBe(true);
     placement.cancel();
     expect(placement.isActive()).toBe(false);
-    expect(cancels).toEqual([null]);
+    expect(cancels).toEqual([]);
     expect(commands).toEqual([]);
+
+    placement.enterPalisade(696, 'gate');
+    placement.cancel();
+    expect(placement.isActive()).toBe(false);
+    expect(cancels).toEqual([]);
   });
 
   it('converts a valid hovered five-wall span with the probe-selected gate orientation', () => {

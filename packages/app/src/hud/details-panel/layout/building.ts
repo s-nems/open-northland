@@ -58,7 +58,6 @@ export type ButtonAction =
   | 'toggle-home-rest'
   | 'toggle-home-piety'
   | 'toggle-gate'
-  | 'repair-palisade'
   | 'demolish-palisade'
   | 'assign-workplace'
   | 'unassign-workplace'

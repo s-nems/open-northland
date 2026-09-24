@@ -122,7 +122,6 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   },
   demolish: { required: { building: 'integer' } },
   demolishPalisade: { required: { palisade: 'integer' } },
-  repairPalisade: { required: { palisade: 'integer' } },
   demolishSignpost: { required: { signpost: 'integer' } },
   dropGood: { required: { good: 'integer', ...NODE, amount: 'integer' } },
   equipGood: {

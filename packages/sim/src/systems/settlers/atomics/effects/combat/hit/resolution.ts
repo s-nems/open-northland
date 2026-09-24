@@ -20,6 +20,7 @@ import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markBuildingDamaged } from '../../../../../economy/repair.js';
 import { damageDealtBy, damageTakenBy, woundBearer } from '../../../../../equipment/index.js';
+import { repairDamagedPalisade } from '../../../../../palisades/index.js';
 import { grantFightExperience } from '../../../../../progression/index.js';
 import { manhattan } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
@@ -150,6 +151,7 @@ export function resolveCombatHit(
   if (wall !== undefined) {
     const health = world.get(target, Health);
     wall.built = fx.div(fx.fromInt(health.hitpoints), fx.fromInt(Math.max(1, health.max)));
+    repairDamagedPalisade(world, target);
   }
   provokeAnger(world, ctx, target);
   frightenStruckAnimal(world, ctx, attacker, target);

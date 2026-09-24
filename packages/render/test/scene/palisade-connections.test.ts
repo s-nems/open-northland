@@ -87,6 +87,17 @@ describe('palisadePostOffsets', () => {
     expect(items.flatMap((item) => item.palisadePosts ?? [])).toEqual([]);
   });
 
+  it('draws the wood set down on a flagged site in place of its flag', () => {
+    const stocked = palisade(2, 1, 0, 0 as Fixed);
+    (stocked.components as Record<string, unknown>).Palisade = {
+      ...stocked.components.Palisade,
+      reservation: { builder: 40, planted: true },
+    };
+    (stocked.components as Record<string, unknown>).Stockpile = { amounts: [[5, 1]] };
+    const item = buildSpriteScene(snapshotOf([stocked])).find((drawn) => drawn.ref === 2);
+    expect(item).toMatchObject({ palisadeSite: 'claimed', goodType: 5, fill: 1 });
+  });
+
   it('keeps a completed wall and its joins visible while repair carries UnderConstruction', () => {
     const repair = palisade(2, 1, 0, (ONE / 2) as Fixed);
     (repair.components as Record<string, unknown>).Palisade = {

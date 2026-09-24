@@ -204,7 +204,6 @@ export function layoutPalisade(
   const buttonH = Math.round(SIGNPOST_BUTTON_H * s);
   const actions = [
     ...(model.gateOpen === null ? [] : (['toggle-gate'] as const)),
-    'repair-palisade' as const,
     'demolish-palisade' as const,
   ];
   const showsProgress = model.underConstruction || model.repairing;
@@ -227,10 +226,7 @@ export function layoutPalisade(
   const buttonY = section.body.y + rowH * rows;
   const buttons = actions.map((action, index) => ({
     action,
-    enabled:
-      action === 'demolish-palisade' ||
-      (!model.underConstruction &&
-        (action !== 'repair-palisade' || (!model.repairing && (model.health?.pct ?? 100) < 100))),
+    enabled: action === 'demolish-palisade' || !model.underConstruction,
     rect: {
       x: section.body.x,
       y: buttonY + index * (buttonH + pad),

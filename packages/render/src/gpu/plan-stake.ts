@@ -12,7 +12,7 @@ export interface PlanStakeTextures {
 
 /** World px from the art's bottom edge to its top; the art is generated for this project, sized by eye
  *  against a settler. */
-const STAKE_HEIGHT = 26;
+const STAKE_HEIGHT = 20;
 /** Where the stake meets the ground and where its cloth is knotted, as fractions of the art. */
 const ART_GROUND = { x: 0.461, y: 0.778 } as const;
 const ART_KNOT_Y = 0.353;

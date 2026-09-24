@@ -12,14 +12,15 @@ import {
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { farmWorkGood } from '../../../economy/fields.js';
-import { constructionWorkCell } from '../../../footprint/index.js';
 import { clearNavState } from '../../../movement/nav-state.js';
 import { atomicDuration } from '../../../readviews/animations.js';
+import { nearestCell } from '../../../spatial/metric.js';
 import { stampSupplyRun } from '../../../stores/index.js';
 import { dropCarryAtOwnTile } from '../../atomics/effects/goods/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
+import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, nearestFreeYardNode } from '../../targets/index.js';
 import { deliveryTargetFor } from './delivery-targets.js';
 import { isBoundToStorageSink } from './store-policy.js';
@@ -54,7 +55,11 @@ export function reconcileYardRoute(world: World, e: Entity): void {
 }
 
 /** Deposit a carried load, or hold/drop it deterministically when no eligible sink exists. */
-export function planDelivery(plan: PlannerContext, load: { goodType: number; amount: number }): void {
+export function planDelivery(
+  plan: PlannerContext,
+  spacing: PlannerSpacing,
+  load: { goodType: number; amount: number },
+): void {
   const { world, ctx, terrain, entity, here, targets, inbound } = plan;
   const worker = plan;
   const store = deliveryTargetFor(plan, load.goodType);
@@ -114,7 +119,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
             plan.limit ?? undefined,
           );
   } else if (world.has(store, UnderConstruction)) {
-    cell = constructionWorkCell(world, ctx, terrain, store, targets.yard.blocked, here);
+    cell = nearestCell(terrain, spacing.workCells(store), here);
   } else {
     cell = interactionCell(world, ctx, terrain, store, here);
   }

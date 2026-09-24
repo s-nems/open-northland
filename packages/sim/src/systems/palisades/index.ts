@@ -121,7 +121,7 @@ export function createPalisade(
   return e;
 }
 
-/** Open or close a completed gate by swapping to its paired data row, reporting whether the swap landed.
+/** Open or close a standing gate, one under repair included, by swapping to its paired data row, reporting whether the swap landed.
  * Closing is refused while any other positioned entity occupies a cell the closed footprint would block;
  * a gate already in the requested state counts as landed. */
 export function setPalisadeGate(
@@ -135,7 +135,7 @@ export function setPalisadeGate(
     terrain === undefined ||
     current === undefined ||
     current.gate === null ||
-    world.has(command.palisade, UnderConstruction)
+    !palisadeStands(world, command.palisade)
   )
     return false;
   if (current.gate.open === command.open) return true;
@@ -183,7 +183,7 @@ export function playerGateAt(
   const node = terrain.nodeAtClamped(hx, hy);
   for (const e of world.query(Palisade, Position)) {
     const wall = world.get(e, Palisade);
-    if (wall.gate === null || world.has(e, UnderConstruction) || ownerOf(world, e) !== player) continue;
+    if (wall.gate === null || !palisadeStands(world, e) || ownerOf(world, e) !== player) continue;
     const at = world.get(e, Position);
     const anchor = nodeOfPosition(at.x, at.y);
     if (terrain.nodeAtClamped(anchor.hx, anchor.hy) === node) return e;
@@ -323,7 +323,7 @@ export function palisadeGateSites(
   const sites: PalisadeGateProbeResult[] = [];
   for (const e of canonicalById(world.query(Palisade, Position))) {
     if (ownerOf(world, e) !== player || world.get(e, Palisade).gate !== null) continue;
-    if (world.has(e, UnderConstruction)) continue;
+    if (!palisadeStands(world, e)) continue;
     const p = world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
     for (const gfxIndex of gfxIndexes) {
@@ -388,7 +388,7 @@ function probeGateRow(
     const wall = world.get(e, Palisade);
     const health = world.tryGet(e, Health);
     if (
-      world.has(e, UnderConstruction) ||
+      !palisadeStands(world, e) ||
       wall.tribe !== centerWall.tribe ||
       ownerOf(world, e) !== owner ||
       health === undefined ||
@@ -437,6 +437,8 @@ export function convertPalisadeGate(
   if (type === undefined || wall?.gate?.open !== false) return;
   const centerWall = world.get(command.palisade, Palisade);
   for (const e of probe.remove) world.destroy(e);
+  // A centre under repair becomes a whole new gate, not a gate site owed wood.
+  world.remove(command.palisade, UnderConstruction);
   world.remove(command.palisade, PalisadeBlocking);
   world.remove(command.palisade, Palisade);
   world.add(command.palisade, Palisade, {
@@ -461,18 +463,31 @@ export function convertPalisadeGate(
   });
 }
 
-/** Re-open a damaged finished segment as a builder job. Repairs consume no goods and restore the readable
- * transition-9 amount per hammer strike. */
-export function repairPalisade(world: World, command: Extract<Command, { kind: 'repairPalisade' }>): void {
-  const wall = world.tryMut(command.palisade, Palisade);
-  const health = world.tryGet(command.palisade, Health);
-  if (wall === undefined || health === undefined || health.hitpoints <= 0 || health.hitpoints >= health.max)
+/**
+ * Put an owned finished segment below its maximum on the builders' list. Repairs consume no goods and
+ * restore the readable transition-9 amount per hammer strike; a blow to a segment already under repair
+ * pulls the job back with its hitpoints. An unowned wall has no crew to mend it.
+ *
+ * Project rule: builders mend walls on their own, so the player never orders a repair.
+ */
+export function repairDamagedPalisade(world: World, e: Entity): void {
+  const wall = world.tryGet(e, Palisade);
+  const health = world.tryGet(e, Health);
+  if (wall === undefined || health === undefined || ownerOf(world, e) === undefined) return;
+  if (health.hitpoints <= 0 || health.hitpoints >= health.max) return;
+  const progress = fx.div(fx.fromInt(health.hitpoints), fx.fromInt(health.max));
+  const site = world.tryGet(e, UnderConstruction);
+  if (site !== undefined) {
+    if (wall.repairing && site.labor !== progress) world.mut(e, UnderConstruction).labor = progress;
     return;
-  if (world.has(command.palisade, UnderConstruction)) return;
-  wall.repairing = true;
-  world.add(command.palisade, UnderConstruction, {
-    labor: fx.div(fx.fromInt(health.hitpoints), fx.fromInt(health.max)),
-  });
+  }
+  world.mut(e, Palisade).repairing = true;
+  world.add(e, UnderConstruction, { labor: progress });
+}
+
+/** A standing wall or gate: finished, or finished and under repair. */
+function palisadeStands(world: World, e: Entity): boolean {
+  return !world.has(e, UnderConstruction) || world.get(e, Palisade).repairing;
 }
 
 export function placePalisade(
@@ -497,6 +512,7 @@ export function placePalisade(
     ...(command.valency !== undefined ? { valency: command.valency } : {}),
     placementWalk: placementWalkOf(terrain, type),
   });
-  if (entity !== null)
-    ctx.events.emit({ kind: 'palisadePlaced', entity, at: { hx: command.x, hy: command.y } });
+  if (entity === null) return;
+  repairDamagedPalisade(world, entity);
+  ctx.events.emit({ kind: 'palisadePlaced', entity, at: { hx: command.x, hy: command.y } });
 }

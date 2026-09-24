@@ -250,10 +250,15 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
  */
 const STEPS_PER_UNIT = 30;
 
+/**
+ * Hammer strikes that raise one wall segment once its wood is in. Approximation: the readable data gives
+ * no count, and a single strike reads on screen as the wall appearing on its own.
+ */
+export const PALISADE_BUILD_STRIKES = 4;
+
 /** Labor installed by one construction step at `site`. */
 function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity): Fixed {
-  // A wall segment rises in a single strike once its material is in.
-  if (world.has(site, Palisade)) return ONE;
+  if (world.has(site, Palisade)) return fx.div(ONE, fx.fromInt(PALISADE_BUILD_STRIKES));
   const totalSteps = constructionTotalUnits(world, ctx, site) * STEPS_PER_UNIT;
   // At least 1 ULP per step so a huge-cost building still finishes: `trunc(ONE / totalSteps)` floors
   // to 0 once `totalSteps > ONE`.
@@ -268,6 +273,9 @@ function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity
 export function remainingConstructionSteps(world: World, ctx: SystemContext, site: Entity): number {
   const labor = world.tryGet(site, UnderConstruction)?.labor;
   if (labor === undefined) return 0;
+  // A repair strike restores hitpoints rather than a labor quantum, so one builder mends a segment at a
+  // time.
+  if (world.tryGet(site, Palisade)?.repairing === true) return labor < ONE ? 1 : 0;
   const delivered = deliveredConstructionFraction(world, ctx, site);
   const cap = delivered < ONE ? delivered : ONE;
   if (labor >= cap) return 0;

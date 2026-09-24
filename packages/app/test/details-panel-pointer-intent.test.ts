@@ -208,7 +208,7 @@ describe('details panel click intents', () => {
     expect(panelClickAt(sign, sp.x, sp.y, NO_TOGGLE)).toEqual({ kind: 'demolishSignpost', entityId: 7 });
   });
 
-  it('reports palisade health and routes gate, repair, and demolish controls', () => {
+  it('reports palisade health and routes the gate and demolish controls', () => {
     const model = panelModelOf(closedGate);
     expect(model).toMatchObject({
       kind: 'palisade',
@@ -229,7 +229,6 @@ describe('details panel click intents', () => {
     });
     expect(intents).toEqual([
       { kind: 'setPalisadeGate', entityId: 8, open: true },
-      { kind: 'repairPalisade', entityId: 8 },
       { kind: 'demolishPalisade', entityId: 8 },
     ]);
   });
@@ -246,7 +245,7 @@ describe('details panel click intents', () => {
     expect(progress.y + progress.h).toBeLessThanOrEqual(buttons[0]?.rect.y ?? Number.NaN);
   });
 
-  it('keeps unfinished or already-repairing palisade actions visibly inert', () => {
+  it('keeps an unfinished gate shut, and lets a gate under repair open and close', () => {
     const unfinished = viewOfKind(
       panelModelOf({
         ...closedGate,
@@ -258,26 +257,24 @@ describe('details panel click intents', () => {
       const p = center(button.rect);
       return panelClickAt(unfinished, p.x, p.y, NO_TOGGLE);
     });
-    expect(unfinished.layout.buttons.map((button) => button.enabled)).toEqual([false, false, true]);
+    expect(unfinished.layout.buttons.map((button) => button.enabled)).toEqual([false, true]);
     expect(unfinished.layout.progress).not.toBeNull();
-    expect(unfinishedIntents).toEqual([null, null, { kind: 'demolishPalisade', entityId: 8 }]);
+    expect(unfinishedIntents).toEqual([null, { kind: 'demolishPalisade', entityId: 8 }]);
 
     const repairing = viewOfKind(
       panelModelOf({
         ...closedGate,
         components: {
           ...closedGate.components,
+          UnderConstruction: {},
           Palisade: { ...(closedGate.components.Palisade as object), repairing: true },
         },
       }),
       'palisade',
     );
-    const repair = repairing.layout.buttons.find((button) => button.action === 'repair-palisade');
-    if (repair === undefined) throw new Error('expected repair action');
-    const p = center(repair.rect);
-    expect(repair.enabled).toBe(false);
+    expect(repairing.model).toMatchObject({ underConstruction: false, repairing: true });
     expect(repairing.layout.progress).not.toBeNull();
-    expect(panelClickAt(repairing, p.x, p.y, NO_TOGGLE)).toBeNull();
+    expect(repairing.layout.buttons.map((button) => button.enabled)).toEqual([true, true]);
   });
 
   it('resolves the defence toggle into the order that flips the alarm the other way', () => {

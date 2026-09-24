@@ -12,7 +12,7 @@ import {
 import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
 import type { SettlerPose } from './settler-pose.js';
-import { assignStaticFields, readPalisadeClaimPlanted } from './snapshot-readers/index.js';
+import { assignStaticFields, readPalisadeClaimPlanted, readStockpile } from './snapshot-readers/index.js';
 
 export interface SceneBuild {
   readonly snapshot: WorldSnapshot;
@@ -59,6 +59,7 @@ export function assembleItem(
       assignStaticFields(item, kind, components);
       if ('UnderConstruction' in components && !('PalisadeBlocking' in components)) {
         item.palisadeSite = readPalisadeClaimPlanted(components) ? 'claimed' : 'unclaimed';
+        if (item.palisadeSite === 'claimed') assignSiteGoods(item, components);
       } else {
         const posts = build.palisadePosts.get(entity.id);
         if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;
@@ -109,6 +110,13 @@ export function assembleItem(
     item.player = build.playerColourOf(item.player);
   }
   return item;
+}
+
+/** The wood a builder set down on a flagged wall site replaces the flag until the wall rises there. */
+function assignSiteGoods(item: MutableSpriteDrawItem, components: Readonly<Record<string, unknown>>): void {
+  const { goodType, fill } = readStockpile(components);
+  if (goodType !== undefined) item.goodType = goodType;
+  if (fill !== undefined) item.fill = fill;
 }
 
 function assignFishFields(item: MutableSpriteDrawItem, components: Readonly<Record<string, unknown>>): void {

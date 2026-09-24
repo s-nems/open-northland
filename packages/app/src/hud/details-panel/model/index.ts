@@ -167,7 +167,7 @@ export function buildUnitPanelModel(
       health: healthBar(ent),
       builtPct: pct(num(palisade?.built)),
       gateOpen: gate === undefined || gate === null ? null : gate.open === true,
-      underConstruction: ent.components.UnderConstruction !== undefined,
+      underConstruction: ent.components.UnderConstruction !== undefined && palisade?.repairing !== true,
       repairing: palisade?.repairing === true,
     };
   }

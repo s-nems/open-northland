@@ -1,9 +1,20 @@
-import { MoveGoal, Owner, PathFollow, PathRequest, Position, Settler } from '../../../components/index.js';
+import {
+  MoveGoal,
+  Owner,
+  Palisade,
+  PalisadeBlocking,
+  PathFollow,
+  PathRequest,
+  Position,
+  Settler,
+  UnderConstruction,
+} from '../../../components/index.js';
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { translatedCells } from '../../footprint/geometry.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../footprint/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { NodeBuckets } from '../../spatial/nodes.js';
@@ -23,6 +34,7 @@ export class PlannerSpacing {
   private readonly claims = new Set<NodeId>();
   private blocked: BlockOverlay | undefined;
   private workCellsBySite: Map<Entity, readonly NodeId[]> | undefined;
+  private wallSiteNodes: ReadonlySet<NodeId> | undefined;
   private yardByAnchor: Map<NodeId, ReadonlySet<NodeId>> | undefined;
 
   private constructor(
@@ -73,9 +85,38 @@ export class PlannerSpacing {
     let cells = this.workCellsBySite.get(site);
     if (cells === undefined) {
       cells = constructionWorkCells(this.world, this.ctx, this.terrain, site, this.blockedCells());
+      if (this.world.has(site, Palisade)) cells = this.offOtherWallSites(cells);
       this.workCellsBySite.set(site, cells);
     }
     return cells;
+  }
+
+  /** A wall site's stand cells off the other unfinished segments: a segment rises only on clear ground,
+   *  so a builder working beside it from a neighbour's node would hold that neighbour unfinished. Keeps
+   *  every cell when none is left. */
+  private offOtherWallSites(cells: readonly NodeId[]): readonly NodeId[] {
+    this.wallSiteNodes ??= this.buildWallSiteNodes();
+    const nodes = this.wallSiteNodes;
+    const clear = cells.filter((cell) => !nodes.has(cell));
+    return clear.length > 0 ? clear : cells;
+  }
+
+  private buildWallSiteNodes(): ReadonlySet<NodeId> {
+    const nodes = new Set<NodeId>();
+    for (const e of this.world.query(Palisade, UnderConstruction, Position)) {
+      if (this.world.has(e, PalisadeBlocking)) continue;
+      const at = this.world.get(e, Position);
+      const anchor = nodeOfPosition(at.x, at.y);
+      for (const cell of translatedCells(
+        this.terrain,
+        this.world.get(e, Palisade).walk,
+        anchor.hx,
+        anchor.hy,
+      )) {
+        nodes.add(cell);
+      }
+    }
+    return nodes;
   }
 
   /**
