@@ -10,6 +10,7 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { carriesNeeds } from '../lifecycle/needs/index.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isHeroJob } from '../readviews/index.js';
 import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
@@ -27,7 +28,9 @@ export function orderNeed(
 ): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !world.has(e, Person)) return;
-  if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) return;
+  // A settler whose bars do not move, a hero or a script-frozen unit, has no rung that would answer the
+  // order and clear it.
+  if (!carriesNeeds(world, ctx.content, e)) return;
   world.add(e, NeedOrder, { need: command.need });
   world.remove(e, CurrentAtomic);
   supersedeStandingOrders(world, e);

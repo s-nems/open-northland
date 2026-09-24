@@ -10,7 +10,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { homeQualityActive } from '../../family/home-quality.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
-import { NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
+import { carriesNeeds, NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { atomicClipNameAtHome, atomicEventChannelDelta } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, jobNeedsReligion } from '../../readviews/index.js';
 import {
@@ -42,7 +42,7 @@ function larderGoodFor(world: World, ctx: SystemContext, e: Entity): number | nu
  * there. The planner keeps such a settler inside instead of stepping it back out between rounds.
  */
 export function topsUpAtHome(world: World, ctx: SystemContext, e: Entity): boolean {
-  if (!needsEnabled(world)) return false;
+  if (!needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return false;
   if (heldIndoors(world, e) || !isInsideOwnHome(world, e)) return false;
   const settler = world.tryGet(e, Settler);
   if (settler === undefined) return false;

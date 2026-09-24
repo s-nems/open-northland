@@ -1,9 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import {
   Carrying,
-  hasMissionBehaviour,
   isAiPlayer,
-  MISSION_BEHAVIOUR,
   type NeedKind,
   NeedOrder,
   NoRegeneration,
@@ -16,12 +14,13 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import {
+  carriesNeeds,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   NEED_SATED_THRESHOLD,
 } from '../../lifecycle/needs/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { isFood, isHeroJob, jobNeedsReligion } from '../../readviews/index.js';
+import { isFood, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import {
   atOrWalk,
@@ -43,19 +42,18 @@ import { eatAtPost, sleepAtPost } from './tower-post.js';
 // and an unsatisfiable need falls through to normal work rather than freezing the settler. Every rung
 // fires at the one shared NEED_DRIVE_THRESHOLD, the level a settler leaves its work at. On a computer
 // seat a seek that fails writes the sated level over its bar instead (`settleUnservedNeedForAi`).
+// Only a settler whose bars move answers them at all ({@link carriesNeeds}): a hero, or a unit whose needs
+// a script froze (`MISSIONS.md`, behaviour bit 0), would otherwise spend what it eats on a bar that stays.
 
 /**
- * Whether any needs rung would fire, so a caller can skip `planNeeds`'s target and limit setup for a sated
- * settler. The ladder re-checks each threshold, so this elides only provably-null work. Piety counts only
- * for a trade that prays: every other trade's bar can pin with nothing able to serve it. `ordered` is the
- * need the player told this settler to answer, which fires its rung whatever the bar reads.
+ * Whether any needs rung would fire for `e`. Piety counts only for a trade that prays: every other
+ * trade's bar can pin with nothing able to serve it. A need the player ordered fires its rung whatever
+ * the bar reads.
  */
-export function anyNeedPressing(
-  content: ContentSet,
-  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed; piety: Fixed },
-  ordered?: NeedKind,
-): boolean {
-  if (isHeroJob(content, settler.jobType)) return false;
+export function anyNeedPressing(world: World, content: ContentSet, e: Entity): boolean {
+  if (!carriesNeeds(world, content, e)) return false;
+  const settler = world.get(e, Settler);
+  const ordered = orderedNeed(world, e);
   return (
     ordered !== undefined ||
     settler.hunger >= NEED_DRIVE_THRESHOLD ||
@@ -102,7 +100,7 @@ export function answerNeedInPlace(
   e: Entity,
   settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
 ): boolean {
-  if (isHeroJob(ctx.content, settler.jobType)) return false;
+  if (!carriesNeeds(world, ctx.content, e)) return false;
   const ordered = orderedNeed(world, e);
   if (pressing(settler.hunger, ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
@@ -172,10 +170,7 @@ export function planNeeds(
   spacing: PlannerSpacing,
   onAlert: () => boolean,
 ): boolean {
-  if (isHeroJob(ctx.content, settler.jobType)) return false;
-  // A script may freeze a unit's needs: they neither rise nor get answered, so it never leaves its post
-  // to eat, sleep or pray (`MISSIONS.md`, behaviour bit 0).
-  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN)) return false;
+  if (!carriesNeeds(world, ctx.content, e)) return false;
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
   let alerted: boolean | undefined;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
   Building,
+  Carrying,
   CurrentAtomic,
   Engagement,
   Equipment,
@@ -9,11 +10,13 @@ import {
   Health,
   HuntFocus,
   MISC_EQUIP_SLOTS,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   PathRequest,
   Position,
   Settler,
   Stockpile,
+  setMissionBehaviour,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../../src/index.js';
@@ -134,6 +137,22 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     expect(sim.world.has(chaser, MoveGoal)).toBe(false);
     expect(sim.world.has(chaser, PathRequest)).toBe(false); // and no route was minted in its place
     expect(sim.world.has(chaser, Engagement)).toBe(true);
+  });
+
+  it('a hungry BESIEGER whose needs a script froze neither eats its ration nor drinks', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const besieger = hungryFighterAt(sim, 10, 0);
+    sim.world.add(besieger, Carrying, { goodType: FOOD, amount: 2 });
+    carryMead(sim, besieger);
+    sim.world.add(besieger, Engagement, { repathAt: sim.tick });
+    // Frozen bars never move, so a meal here would spend the ration and leave the bar pressing for the
+    // next one.
+    setMissionBehaviour(sim.world, besieger, MISSION_BEHAVIOUR.NEEDS_FROZEN, true);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(besieger, CurrentAtomic)).toBe(false);
+    expect(sim.world.get(besieger, Carrying).amount).toBe(2);
   });
 
   it('a hungry CHASER off the lattice walks its leg out before drinking', () => {

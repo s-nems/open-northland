@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   CurrentAtomic,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   NeedOrder,
   NoRegeneration,
@@ -9,6 +10,7 @@ import {
   Position,
   Settler,
   Stockpile,
+  setMissionBehaviour,
   setSettlerJob,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -74,6 +76,21 @@ describe('orderNeed - answering a need on command', () => {
     expect(sim.world.has(hero, NoRegeneration)).toBe(false);
     expect(sim.world.has(hero, CurrentAtomic)).toBe(false);
     expect(sim.world.get(hero, Settler).jobType).toBe(HERO_JOB);
+  });
+
+  it('refuses a need order for a settler whose needs a script froze', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const guard = ownedSettlerAt(sim, 2, 0, { hunger: HUNGRY });
+    setMissionBehaviour(sim.world, guard, MISSION_BEHAVIOUR.NEEDS_FROZEN, true);
+    storeAt(sim, 2, 0, 3);
+
+    sim.enqueueSetup({ kind: 'orderNeed', entity: guard, need: 'hunger' });
+    sim.step();
+
+    // No rung answers a frozen need, so a stamped order would stand for good and excuse the guard
+    // from every battle alert.
+    expect(sim.world.has(guard, NeedOrder)).toBe(false);
+    expect(sim.world.has(guard, CurrentAtomic)).toBe(false);
   });
 
   it('sends a fed settler to the larder and clears the order once the meal lands', () => {

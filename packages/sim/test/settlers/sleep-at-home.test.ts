@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   CurrentAtomic,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   Position,
   Residence,
   Resting,
   Settler,
   Stockpile,
+  setMissionBehaviour,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
@@ -273,6 +275,23 @@ describe('the at-home top-up - a settler home for one need serves the rest befor
     expect(fed.fatigue).toBeLessThan(TIRED);
     expect(sim.world.has(settler, Resting)).toBe(false);
     expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('serves nothing once a script freezes the needs of a settler already indoors', () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
+    const home = homeAt(sim, 3, 2);
+    sim.world.add(settler, Residence, { home });
+    sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 2]]) });
+    sim.step(); // in bed
+    expect(sim.world.tryGet(settler, Resting)?.at).toBe(home);
+
+    // Frozen bars never move, so a round that serves them would repeat for good.
+    setMissionBehaviour(sim.world, settler, MISSION_BEHAVIOUR.NEEDS_FROZEN, true);
+    for (let i = 0; i < 60; i++) sim.step();
+
+    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(2);
+    expect(sim.world.has(settler, Resting)).toBe(false);
   });
 
   it('leaves an empty larder alone and goes back out on its nap alone', () => {
