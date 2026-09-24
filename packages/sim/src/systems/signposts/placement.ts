@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { canPlaceWorkFlag, workFlagBlockerVersion, workFlagPlacementBlocks } from '../footprint/index.js';
+import { canPlaceWorkFlag, workFlagPlacementBlocks } from '../footprint/index.js';
 import { settleSignpostLinks, unlinkSignpost } from './links.js';
 import { type SignpostSite, signpostNetwork } from './network.js';
 
@@ -42,21 +42,9 @@ export interface SignpostProbe {
 }
 
 /**
- * Per-world memo of the last built probe, keyed by the {@link workFlagBlockerVersion} and its player. One
- * entry suffices, since the app probes for the one human player. A pure read-path cache feeding only the
- * overlay, never a sim decision, so it is not hashed and needs no `verifyCaches` registration.
- */
-interface ProbeMemo {
-  version: string;
-  content: ContentSet;
-  terrain: TerrainGraph;
-  probe: SignpostProbe;
-}
-const probeMemo = new WeakMap<World, ProbeMemo>();
-
-/**
- * Build a {@link SignpostProbe} for `player`: the world's blocked set is collected once, so each
- * `canPlace` costs only the player's post count, and the probe rebuilds only when a blocker changes.
+ * Build a {@link SignpostProbe} for `player` over the live blocked set and the current network, so each
+ * `canPlace` costs only the player's post count. Both inputs are live views: ask the probe within one
+ * decision or frame and build a fresh one after the world changes.
  */
 export function signpostProbe(
   world: World,
@@ -64,19 +52,9 @@ export function signpostProbe(
   terrain: TerrainGraph,
   player: number,
 ): SignpostProbe {
-  const version = `${workFlagBlockerVersion(world)}:${player}`;
-  const cached = probeMemo.get(world);
-  if (
-    cached !== undefined &&
-    cached.version === version &&
-    cached.content === content &&
-    cached.terrain === terrain
-  ) {
-    return cached.probe;
-  }
   const blocked = workFlagPlacementBlocks(world, content, terrain);
   const posts = signpostNetwork(world).get(player) ?? [];
-  const probe: SignpostProbe = {
+  return {
     canPlace: (x, y) => {
       if (!terrain.inBounds(x, y)) return false;
       const node = terrain.nodeAt(x, y);
@@ -84,8 +62,6 @@ export function signpostProbe(
       return !insideSpacing(posts, x, y);
     },
   };
-  probeMemo.set(world, { version, content, terrain, probe });
-  return probe;
 }
 
 /**

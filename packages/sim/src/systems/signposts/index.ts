@@ -6,6 +6,7 @@ export {
   networkLimitAt,
   type SignpostSite,
   signpostNetwork,
+  signpostNetworkRevision,
 } from './network.js';
 export {
   canPlaceSignpost,

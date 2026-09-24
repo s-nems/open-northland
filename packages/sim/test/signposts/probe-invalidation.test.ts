@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addPerson, Owner, Position, WorkFlag } from '../../src/components/index.js';
+import { addPerson, Owner, Position, stampOwner, WorkFlag } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -10,17 +10,18 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 import { HUT, mappedSim, VIKING } from '../footprint/building-placement/support.js';
+import { stampPost } from './support.js';
 
 /**
- * The signpost placement probe (`Simulation.signpostProbe`) is memoized on `workFlagBlockerVersion`,
- * and a work flag is the one blocker that MOVES (an in-place Position write `componentGeneration`
- * cannot see). These tests pin the version's flag-move counter: after a relocation - with no
- * intervening add/remove of any blocker - the probe must report the flag's new cell blocked and its
- * old cell free.
+ * The signpost placement probe (`Simulation.signpostProbe`) reads the live work-flag blocked set and the
+ * current signpost network. A work flag is the one blocker that MOVES (an in-place Position write
+ * `componentGeneration` cannot see), and a post can change hands without rising or falling: after
+ * either, the probe must answer for the world as it stands.
  */
 
 const WOODCUTTER = 1;
 const P0 = 0;
+const P1 = 1;
 
 function ownedGatherer(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
@@ -91,5 +92,23 @@ describe('signpostProbe invalidation on a work-flag move', () => {
     const after = nodeXY(sim, flag);
     expect(after).not.toEqual(before); // the eviction really moved the marker
     expect(probeOf(sim).canPlace(after.x, after.y)).toBe(false); // probe sees its new cell
+  });
+});
+
+describe('signpostProbe after a post changes hands', () => {
+  it('measures the spacing against the posts each player holds now', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 2) });
+    const post = stampPost(sim, 10, 0, P0);
+    // Two tiles east: inside the 16-node spacing of the post, whoever holds it.
+    const NEAR = { x: 24, y: 0 };
+    const overlayKey = sim.signpostBlockerVersion();
+    // The receiver asks on both sides of the handover, as its overlay and its AI scout do.
+    expect(sim.signpostProbe(P1)?.canPlace(NEAR.x, NEAR.y)).toBe(true);
+
+    stampOwner(sim.world, post, P1);
+
+    expect(sim.signpostProbe(P1)?.canPlace(NEAR.x, NEAR.y)).toBe(false);
+    expect(sim.signpostProbe(P0)?.canPlace(NEAR.x, NEAR.y)).toBe(true);
+    expect(sim.signpostBlockerVersion()).not.toBe(overlayKey);
   });
 });

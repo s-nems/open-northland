@@ -68,7 +68,7 @@ import {
 import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
-import type { SignpostProbe } from './systems/signposts/index.js';
+import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
 import { type TradeOffer, type TraderView, tradeOffersAt, traderView } from './systems/trade/index.js';
 import { FogState, playerHasMet } from './systems/vision/index.js';
 
@@ -333,10 +333,10 @@ export class Simulation {
 
   /**
    * {@link placementBlockerVersion} plus the work-flag generation, since flags block signpost cells but
-   * not buildings.
+   * not buildings, and the signpost network revision, since the spacing rule reads the player's posts.
    */
   signpostBlockerVersion(): string {
-    return workFlagBlockerVersion(this.world);
+    return `${workFlagBlockerVersion(this.world)}.${signpostNetworkRevision(this.world)}`;
   }
 
   /** The footprint body cells of every under-construction building. */

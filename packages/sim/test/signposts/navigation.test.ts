@@ -12,6 +12,7 @@ import {
   Position,
   Resource,
   Settler,
+  stampOwner,
   WALK_RANGE_NODES,
 } from '../../src/components/index.js';
 import { fx, ONE } from '../../src/core/fixed.js';
@@ -403,6 +404,27 @@ describe('navigationLimitFor, the per-settler memo', () => {
     const farInPostRange = terrain.nodeAt(104, 4);
     expect(before?.allowsNode(farInPostRange)).toBe(false);
     expect(after?.allowsNode(farInPostRange)).toBe(true);
+  });
+
+  it('keeps held limits through an owner change that moves no post', () => {
+    const sim = confinedSim();
+    const u = ownedUnit(sim, 2, 2, WOODCUTTER);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const post = stampPost(sim, 12, 2);
+    const held = navigationLimitFor(sim.world, sim.content, terrain, u);
+
+    // A birth, a death or a placement moves the Owner store; none of them touches the network.
+    ownedUnit(sim, 60, 2, WOODCUTTER);
+    expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBe(held);
+
+    // A post changing hands does, and the settler loses its range.
+    stampOwner(sim.world, post, P0 + 1);
+    const handed = navigationLimitFor(sim.world, sim.content, terrain, u);
+    expect(handed).not.toBe(held);
+    const farInPostRange = terrain.nodeAt(24 + WALK_RANGE_NODES - 2, 4);
+    expect(held?.allowsNode(farInPostRange)).toBe(true);
+    expect(handed?.allowsNode(farInPostRange)).toBe(false);
   });
 
   it('toggling the rule off is honoured immediately: the flag is read live, never memoized', () => {
