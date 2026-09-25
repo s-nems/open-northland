@@ -542,7 +542,8 @@ describe('a fighting unit asleep in the open wakes for a fight', () => {
     }
 
     expect(sim.world.get(walker, Health).hitpoints).toBeLessThan(sim.world.get(walker, Health).max);
-    expect(sim.world.has(walker, MoveGoal)).toBe(false); // it turned round instead of walking on
+    // It turned round instead of walking on: any walk it has left is the fight's, not the errand's.
+    expect(sim.world.tryGet(walker, MoveGoal)?.cell).not.toBe(cellNode(sim, 30));
   });
 });
 

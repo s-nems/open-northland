@@ -98,6 +98,9 @@ export function engageSpec(
   const lowPriorityBuildings = (t: Entity): boolean => index.isLowPriorityBuilding(t);
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
+  // Original behavior: an advancing search starts at the unit's own node, so an archer sees an enemy inside
+  // its dead zone and the chase steps it back out to its reach.
+  const advanceNear = 0;
 
   const hunts = isHunterJob(ctx.content, attacker.jobType);
   // A hunter is never presence-gated, in any stance: its prey filter admits the passive wildlife the
@@ -144,7 +147,7 @@ export function engageSpec(
     const accept = (t: Entity): boolean => nearAnchor(t, DEFEND_RADIUS_NODES) && advanceAccept(t);
     return {
       accept: adultOnly(world, accept),
-      minDist,
+      minDist: advanceNear,
       // Every node within the radius of the anchor lies within this of `here`.
       searchRadius: manhattan(terrain, here, anchor) + DEFEND_RADIUS_NODES,
       player,
@@ -206,7 +209,7 @@ export function engageSpec(
   if (owned) {
     return {
       accept: adultOnly(world, advanceAccept),
-      minDist,
+      minDist: advanceNear,
       searchRadius: sight,
       player,
       lowPriority: lowPriorityBuildings,

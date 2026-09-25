@@ -24,6 +24,9 @@ export const SOLDIER_SPEAR = 33;
 export const SOLDIER_SWORD_SHORT = 34;
 export const SOLDIER_SWORD_LONG = 35;
 export const SOLDIER_SABER = 36;
+/** A short-bow soldier: a ranged weapon with a dead zone, `minimumrange 3`. */
+export const SOLDIER_BOW = 37;
+export const BOW_MIN_RANGE = 3;
 /** The saber's and the axe's `mainType` in `weapons.ini`, classes the sim does not know: no fight bucket
  *  reads them. */
 export const SABER_MAIN_TYPE = 4;
@@ -66,6 +69,7 @@ export function combatCadenceContent(): ContentSet {
     SOLDIER_SWORD_SHORT,
     SOLDIER_SWORD_LONG,
     SOLDIER_SABER,
+    SOLDIER_BOW,
   ];
   // Both tribes bind the same (job → attack animation) rows - the animation names are tribe-agnostic join
   // keys; the per-tribe asymmetry lives in the weapons. The woman alone carries the ATTACKED (82) stagger.
@@ -78,6 +82,7 @@ export function combatCadenceContent(): ContentSet {
     { jobType: SOLDIER_SWORD_LONG, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_sword_long' },
     // The saber attack animation carries NO ATTACK event - the completion-fallback + saber-has-no-fight-XP case.
     { jobType: SOLDIER_SABER, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_saber' },
+    { jobType: SOLDIER_BOW, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_spear_iron' },
   ];
   const weaponsFor = (tribe: number) => [
     {
@@ -129,6 +134,18 @@ export function combatCadenceContent(): ContentSet {
       minRange: 1,
       maxRange: 2,
       damage: LONG_SWORD_DAMAGE,
+    },
+    {
+      typeId: 11,
+      id: 'short_bow',
+      tribeType: tribe,
+      jobType: SOLDIER_BOW,
+      mainType: WEAPON_MAIN_TYPE.BOW,
+      minRange: BOW_MIN_RANGE,
+      maxRange: 12,
+      munitionType: 1,
+      speed: 3,
+      damage: SHORT_SWORD_DAMAGE,
     },
     {
       typeId: 10,

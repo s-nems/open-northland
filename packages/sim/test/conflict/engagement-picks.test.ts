@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Engagement, Owner, Position, Stance } from '../../src/components/index.js';
+import { CurrentAtomic, Engagement, MoveGoal, Owner, Position, Stance } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
@@ -15,11 +15,13 @@ import { moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import {
+  BOW_MIN_RANGE,
   combatCadenceContent,
   ctxOf,
   fighterAtNode,
   grass,
   SAXON,
+  SOLDIER_BOW,
   SOLDIER_SPEAR,
   SOLDIER_SWORD_SHORT,
   VIKING,
@@ -146,6 +148,31 @@ describe('engagement - how far each stance looks', () => {
       combatSystem(s.world, ctxOf(s));
       expect(held(s, soldier)).toBe(kept ? enemy : undefined);
     }
+  });
+});
+
+describe("engagement - an enemy inside an archer's dead zone", () => {
+  const INSIDE = BOW_MIN_RANGE - 1;
+
+  it('is seen under ATTACK and DEFEND, and the archer steps back out to shoot', () => {
+    for (const mode of [MILITARY_MODE.ATTACK, MILITARY_MODE.DEFEND]) {
+      const s = sim();
+      const archer = unit(s, 10, P0, mode, SOLDIER_BOW);
+      anchorAt(s, archer, 10);
+      const enemy = unit(s, 10 + INSIDE, P1, MILITARY_MODE.IGNORE, WOMAN);
+      combatSystem(s.world, ctxOf(s));
+      expect(held(s, archer)).toBe(enemy);
+      const goal = s.world.get(archer, MoveGoal).cell;
+      expect(Math.abs((s.terrain?.xOf(goal) ?? 0) - (10 + INSIDE))).toBeGreaterThanOrEqual(BOW_MIN_RANGE);
+    }
+  });
+
+  it('is left alone under IGNORE, which strikes only inside its reach', () => {
+    const s = sim();
+    const archer = unit(s, 10, P0, MILITARY_MODE.IGNORE, SOLDIER_BOW);
+    unit(s, 10 + INSIDE, P1, MILITARY_MODE.IGNORE, WOMAN);
+    combatSystem(s.world, ctxOf(s));
+    expect(s.world.has(archer, Engagement)).toBe(false);
   });
 });
 
