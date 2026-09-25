@@ -351,7 +351,6 @@ describe('CommandSystem - command authority', () => {
       build: walk,
       groups: [],
       wall: {
-        logicType: typeId,
         maxHitpoints: 100,
         repairPerStrike: 1,
         construction: [{ goodType: WOOD_GOOD, amount: 1 }],

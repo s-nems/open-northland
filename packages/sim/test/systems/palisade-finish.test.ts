@@ -41,7 +41,6 @@ const WALL: ScriptLandscapeType = {
   build: [{ dx: 0, dy: 0 }],
   groups: [],
   wall: {
-    logicType: 82,
     maxHitpoints: 100,
     repairPerStrike: 3,
     construction: [{ goodType: WOOD, amount: 1 }],

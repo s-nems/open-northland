@@ -302,7 +302,6 @@ function wallRow(
     build: walk,
     groups: [],
     wall: {
-      logicType: typeId,
       maxHitpoints: 100,
       repairPerStrike: 3,
       construction: [{ goodType: RESOURCE_GOOD, amount: 1 }],

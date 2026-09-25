@@ -96,7 +96,6 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
         ? {}
         : {
             wall: {
-              logicType: g.logicType,
               maxHitpoints: wall.maxHitpoints,
               repairPerStrike: wall.repairPerStrike,
               construction: woodGoodType === undefined ? [] : [{ goodType: woodGoodType, amount: 1 }],

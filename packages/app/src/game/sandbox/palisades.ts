@@ -207,7 +207,6 @@ export function sandboxPalisadeTypes(): ScriptLandscapeType[] {
     build: fullStateBlockAreaCells(record.buildBlockAreas),
     groups: [],
     wall: {
-      logicType: record.logicType,
       maxHitpoints: PALISADE_MAX_HITPOINTS,
       repairPerStrike: record.gate === undefined ? PALISADE_REPAIR_PER_STRIKE : 1,
       construction: [{ goodType: GOOD_WOOD, amount: 1 }],

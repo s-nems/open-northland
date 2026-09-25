@@ -150,16 +150,14 @@ describe('script landscape walls', () => {
 
   it('joins the player wall rows to their hitpoints, repair steps, gate pairs and wood', () => {
     expect(scriptLandscapeTypes(wallIr(true)).map((t) => t.wall)).toEqual([
-      { logicType: 82, maxHitpoints: 100, repairPerStrike: 3, construction: [{ goodType: WOOD, amount: 1 }] },
+      { maxHitpoints: 100, repairPerStrike: 3, construction: [{ goodType: WOOD, amount: 1 }] },
       {
-        logicType: 83,
         maxHitpoints: 100,
         repairPerStrike: 1,
         construction: [{ goodType: WOOD, amount: 1 }],
         gate: { open: false, counterpartGfxIndex: 700 },
       },
       {
-        logicType: 84,
         maxHitpoints: 100,
         repairPerStrike: 1,
         construction: [{ goodType: WOOD, amount: 1 }],

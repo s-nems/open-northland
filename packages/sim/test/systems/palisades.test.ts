@@ -56,7 +56,6 @@ const WALL: ScriptLandscapeType = {
   ],
   groups: [],
   wall: {
-    logicType: 82,
     maxHitpoints: 100,
     repairPerStrike: 3,
     construction: [{ goodType: 5, amount: 1 }],
@@ -81,7 +80,6 @@ const CLOSED_GATE: ScriptLandscapeType = {
   ],
   groups: [],
   wall: {
-    logicType: 83,
     maxHitpoints: 100,
     repairPerStrike: 1,
     construction: [{ goodType: 5, amount: 1 }],
@@ -98,7 +96,6 @@ const OPEN_GATE: ScriptLandscapeType = {
   build: CLOSED_GATE.build,
   groups: [],
   wall: {
-    logicType: 84,
     maxHitpoints: 100,
     repairPerStrike: 1,
     construction: [{ goodType: 5, amount: 1 }],

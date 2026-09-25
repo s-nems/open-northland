@@ -38,7 +38,6 @@ const WALL: ScriptLandscapeType = {
   build: [{ dx: 0, dy: 0 }],
   groups: [],
   wall: {
-    logicType: 82,
     maxHitpoints: MAX_HP,
     repairPerStrike: 3,
     construction: [{ goodType: 5, amount: 1 }],
@@ -83,7 +82,6 @@ function gateType(typeId: number, walk: { dx: number; dy: number }[]): ScriptLan
     build: walk,
     groups: [],
     wall: {
-      logicType: 83,
       maxHitpoints: MAX_HP,
       repairPerStrike: 1,
       construction: [{ goodType: 5, amount: 1 }],

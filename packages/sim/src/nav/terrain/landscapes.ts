@@ -38,7 +38,6 @@ export interface ScriptLandscapeType {
   /** A player-buildable wooden wall record. `maxHitpoints` is the readable logic type's maximum valency;
    * `repairPerStrike` is its positive repair transition delta. Both stay in data rather than id branches. */
   readonly wall?: {
-    readonly logicType: number;
     readonly maxHitpoints: number;
     readonly repairPerStrike: number;
     readonly construction: readonly { readonly goodType: number; readonly amount: number }[];

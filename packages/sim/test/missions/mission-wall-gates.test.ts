@@ -34,7 +34,6 @@ function gateType(typeId: number, open: boolean, counterpart: number): ScriptLan
     build: SPAN,
     groups: [],
     wall: {
-      logicType: open ? 84 : 83,
       maxHitpoints: 100,
       repairPerStrike: 1,
       construction: [{ goodType: 5, amount: 1 }],

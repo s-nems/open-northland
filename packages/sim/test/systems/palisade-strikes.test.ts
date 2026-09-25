@@ -42,7 +42,6 @@ const CLOSED_GATE: ScriptLandscapeType = {
   build: GATE_SPAN,
   groups: [],
   wall: {
-    logicType: 83,
     maxHitpoints: 100,
     repairPerStrike: 1,
     construction: [{ goodType: 5, amount: 1 }],
