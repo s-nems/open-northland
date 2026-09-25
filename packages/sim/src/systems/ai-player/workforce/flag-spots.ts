@@ -71,13 +71,16 @@ export function collectorSpot(
 }
 
 /** A re-plant: the resource the flag moves after and the spot beside it, `dry` when the map holds no
- *  candidate at all, or null when this decision found none the holder could work. */
+ *  candidate at all, or null when none of the nearest {@link REPLANT_ATTEMPTS} was one the holder could
+ *  work. On null the holder keeps his post and the next decision retries: re-hiring him at the anchor spot
+ *  would only churn (hire, dead patch, retire, hire). */
 export type Replant = { readonly target: HalfCellNode; readonly spot: HalfCellNode } | 'dry' | null;
 
 /**
  * Where `holder` re-plants a flag of `radius`: beside the resource `nearest` picks, checked with the
  * gatherer's own filters from the new spot, trying the next nearest after a miss. `nearest` must honour the
- * `open` test it is given, which drops the resources already tried.
+ * `open` test it is given, which drops the resources already tried. Up to {@link REPLANT_ATTEMPTS} spot
+ * searches per call; the callers pay them only for a holder not mid-action or on the periodic upkeep.
  */
 export function replantSpot(
   world: World,

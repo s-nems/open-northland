@@ -272,7 +272,7 @@ export function allocateGenericCollectors(
       if (!alive && builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
       continue;
     }
-    if (replant === null) continue;
+    if (replant === null) continue; // he keeps his post, see Replant
     const { target: resource, spot } = replant;
     if (spot.hx === flagNode.hx && spot.hy === flagNode.hy) continue;
     if (alive && nodeDistance(spot, resource) >= nodeDistance(flagNode, resource)) continue; // no nearer spot

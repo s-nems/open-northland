@@ -1198,6 +1198,36 @@ describe('workforce module (collectResources)', () => {
     expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([]);
   });
 
+  it('keeps a dry-patch holder at his post when none of the three nearest deposits is workable', () => {
+    const sim = waterSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const [holder] = holdersOf(sim, MUD);
+    const terrain = sim.terrain;
+    if (holder === undefined || terrain === undefined) throw new Error('setup: the clay holder');
+
+    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
+    placeResources(
+      sim,
+      FAR_BANK.map((spot) => ({ ...RESOURCE_SPOTS.mud, ...spot })),
+    );
+    sim.step();
+    const flag = sim.world.get(holder, WorkFlag);
+    const flagAt = sim.world.get(flag.flag, Position);
+    const reach = gathererReach(sim.world, ctxOf(sim), terrain);
+    expect(
+      reach.patchHarvestable(holder, nodeOfPosition(flagAt.x, flagAt.y), flag.radius, (g) => g === MUD),
+    ).toBe(false);
+
+    // Not dry (the map still holds clay) and nothing he can walk to: no move, no retirement.
+    const decision = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
+    expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([]);
+  });
+
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {
     const sim = aiSim();
     placeHq(sim);

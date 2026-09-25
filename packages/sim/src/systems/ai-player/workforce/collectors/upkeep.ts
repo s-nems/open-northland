@@ -76,7 +76,7 @@ export function upkeepHolders(
         commands.push({ kind: 'setJob', entity: holder, jobType: builderJob });
       continue;
     }
-    if (replant === null) continue; // nothing this holder could work from a free spot - try next decision
+    if (replant === null) continue; // nothing he could work from a free spot - he keeps his post, see Replant
     const { target, spot } = replant;
     if (spot.hx === flagNode.hx && spot.hy === flagNode.hy) continue;
     if (alive && nodeDistance(spot, target) >= nodeDistance(flagNode, target)) continue; // no nearer spot
