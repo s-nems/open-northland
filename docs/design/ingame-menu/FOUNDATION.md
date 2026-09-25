@@ -217,35 +217,39 @@ The selected person's panel (ticket 08), bottom right, 318 px wide, in the windo
 carries the trade as the bronze kicker over the person's name, an owner line only when it says
 something (another seat's person, a child's age), and two medallions: Rozkazy, which opens the
 action ring at the settler (its tooltip names the ring hotkey), and close, which clears the
-selection. The body scrolls inside the
-frame and stops 16 px under the summary bar, so the map stays usable beside it. The panel shows
-what the player can read or act on and nothing else: no explanatory lines, no help buttons.
-Review states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
+selection. The panel is a quick look: every state fits the 810 px design plane without a scrollbar
+(the frame stops 16 px under the summary bar), so anything that would not fit is folded or cut at
+design time, never scrolled. It shows what the player can read or act on and nothing else: no
+explanatory lines, no help buttons. Review states: `settler.js` in the mockup, switched by the
+"Osadnik" buttons.
 
 - Portrait row: the live full-body settler in the 96 px framed portrait, as the notifications paint
-  it, is the centre-view button. Beside it the equipment as captioned sockets, Buty always the last
-  of the top row (Narzędzia, Buty; a soldier's Broń, Zbroja, Buty; a hero's fixed arms as flat,
-  frameless sockets), the four-cell Torba bag under them. A socket holds the good's icon over its wear bar (red under a quarter); pressing it
-  opens the equip picker to put on or swap, an empty socket shows a + and opens the picker too, and
-  a small × at an occupied socket's corner, shown on hover or focus, takes the item off. A woman
-  and a child have no sockets. No level medallion: the game has no settler level.
-- Status line under the portrait: the live state (Pracuje, Idzie, a trader's Idzie do with the
-  destination, Bezczynny, Czeka na budowę warsztatu, Stoi na alarmie) and, when the person carries
-  something, "niesie" with the good's icon and count on the same line. A tradesman's Bezczynny and
-  Czeka na budowę warsztatu read in amber. A man without a trade gets his Zmień zawód button right
-  under this line (tooltip with the profession hotkey); it opens the profession choice window.
-- Samopoczucie: one line per stat, label, quarter-ticked meter and the percent, Zdrowie first, then
-  the need bars the settler carries (a child and a hero show health alone). Under a third the bar
-  and its percent turn amber, under a sixth red, so trouble reads without words. A bar over full
-  keeps its stored reserve in the tooltip, as the legacy panel did.
+  it, is the centre-view button. The column beside it holds the equipment as two rows of 34 px
+  sockets, only the slots the person has: the worn row in a fixed order (Broń, Zbroja, Narzędzia,
+  Buty; a worker has the last two, a soldier Broń, Zbroja, Buty, a hero its fixed arms as flat
+  frameless sockets) and the four-cell Torba row under it. An empty worn socket shows a ghost glyph
+  of what goes there (sword, armour, tool, boot) and opens the equip picker; an occupied socket holds
+  the good's icon over its wear bar (red under a quarter), pressing it opens the picker to swap and
+  a small × at its corner, shown on hover or focus, takes the item off. A woman and a child have no
+  sockets, so the column holds the status alone. No level medallion: the game has no settler level.
+- Status line at the foot of that column: the live state (Pracuje, Idzie, a trader's Idzie do with
+  the destination, Bezczynny, Czeka na budowę warsztatu, Stoi na alarmie) and, when the person
+  carries something, "niesie" with the good in a small well and its count. A tradesman's Bezczynny
+  and Czeka na budowę warsztatu read in amber. A man without a trade gets his Zmień zawód button
+  right under the portrait row (tooltip with the profession hotkey); it opens the profession choice
+  window.
+- Samopoczucie: the stat bars in two columns, Zdrowie first, then the need bars the settler carries
+  (a child and a hero show health alone): a label and a quarter-ticked meter, the percent in the
+  tooltip. Under a third the label and the fill turn amber, under a sixth red, so trouble reads
+  without words. A bar over full keeps its stored reserve in the tooltip, as the legacy panel did.
 - Praca i rodzina: ledger rows. Miejsce pracy and Dom name the building as a link that selects it
   (the original's "Pokaż miejsce pracy" and home buttons), followed by two round buttons, assign
   (target glyph, opens the pick mode) and remove (×). An empty seat the player can fill says "brak"
   in amber; when there is nothing to remove the × slot stays blank. A button the sim would refuse
-  stays visible, faded, with the reason in its tooltip ("Dziecko mieszka z rodzicami"). Partner
-  names the spouse as a link that selects them, or "bez pary" in amber (the ring holds the marriage
-  order), and Dziecko the growing child. A man without a trade has no Miejsce pracy row, a woman
-  and a soldier have Dom and family only, a child a read-only Dom row, a hero no section.
+  stays visible, faded, with the reason in its tooltip ("Dziecko mieszka z rodzicami"). Rodzina
+  names the spouse and the growing child as links that select them, or "bez pary" in amber (the
+  ring holds the marriage order). A man without a trade has no Miejsce pracy row, a woman and a
+  soldier have Dom and Rodzina only, a child a read-only Dom row, a hero no section.
 - Produkcja, under Praca for a craft operator and a gatherer: one row per product the trade may make
   here, in recipe order: the good's icon in a round button, its name and a −/n/+ counter. The
   counter is the original's human-window production counter: 0 stops the product (the row fades),
@@ -253,21 +257,23 @@ Review states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   to that end, as the original's window does; + at ∞ stays at ∞ with the arrow dimmed, where the
   original wraps to 0 (a named approximation: one more click must not stop a product). The icon
   button is "Tylko ten produkt": ∞ here, 0 on every other row (the original's "Tylko produkuj").
-  A product not yet earned is listed faded with a lock, the requirement and progress in the tooltip. Products rotate one unit at a time in good order, as the sim does
-  today; a job whose `userCanChangeProductionFlag` is 0 (the hunter) shows no counters.
+  A product not yet earned is listed faded with a lock, the requirement and progress in the
+  tooltip. Products rotate one unit at a time in good order, as the sim does today; a job whose
+  `userCanChangeProductionFlag` is 0 (the hunter) shows no counters.
 - Wojsko, for a soldier and a hero: Postawa as a three-way segmented control (Atak, Obrona, Ignoruj)
   and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action ring issues.
-- Handel, for a trader: each stop as a row naming the house (an other seat's house in amber) with a
-  remove button and its import goods as toggle chips under it after a "Przywóz" label, a "Dodaj
-  punkt handlowy" button and the map's agreements as single-choice chips under Umowa. The route the
-  trader drives is in the status line.
-- Doświadczenie: one ledger row per trained specialization, the current trade's tracks first, then
-  the rest by repeats, with the bonus percent in green (the tooltip spells it out); three rows show
-  and the rest fold behind "Pokaż N więcej" once at least three would hide. Then the upcoming
-  unlocks as lock-marked "job (track)" rows with "current / required" and a thin meter. The section
-  is absent when there is nothing to list.
-- No footer: the portrait centres, the head medallion orders, the profession button sits under the
+- Handel, for a trader: a round add button in the section title (Dodaj punkt handlowy), then one
+  row per stop: the house's name (an other seat's house in amber), its import goods as round icon
+  toggles (the good's name in the tooltip) and a remove button. Umowa lists the map's agreements as
+  single-choice chips drawn as "2 [wood] → 1 [leather]". The route the trader drives is in the
   status line.
+- Doświadczenie: one ledger row per trained specialization of the current trade (at most three, or
+  the single best-trained one for a person without a trade), the bonus percent in green (the tooltip
+  spells it out); every other track folds behind an "N więcej" toggle at the right of the section
+  title, so the fold costs no row. Then the upcoming unlocks as lock-marked "job (track)" rows with
+  "current / required" and a thin meter. The section is absent when there is nothing to list.
+- No footer: the portrait centres, the head medallion orders, the profession button sits under the
+  portrait row.
 - Another seat's person: trade, name, owner line with the diplomatic stance, the live state,
   Zdrowie and Miejsce pracy; the needs, production, experience, family and equipment stay hidden,
   the head has the close medallion alone and no control is offered.
