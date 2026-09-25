@@ -4,12 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { TERRAIN_OPEN } from '../src/catalog/terrain.js';
-import { buildCollisionTerrain } from '../src/content/collision.js';
 import type { ContentIr } from '../src/content/ir/rows.js';
+import { buildScriptLandscapeTerrain } from '../src/content/script-landscape.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
 import { GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
-import { mapResourceObjectNames } from '../src/game/sandbox/map-spawn.js';
 import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place/index.js';
 
 /**
@@ -21,9 +20,9 @@ import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place/index.js';
  * the flag heaps (the trunk left lying).
  *
  * The second test runs the SAME cycle over a collision grid built by the REAL map join
- * (`buildCollisionTerrain`) with tree placements - the exact double-blocking that stalled the live
- * map: baked-static tree cells never unblock when the tree falls, so the trunk lying there was
- * unreachable forever. `skipObjectNames` (the fix) leaves harvestables to their dynamic footprints.
+ * (`buildScriptLandscapeTerrain`) with tree placements - guarding the double-blocking that stalled the
+ * live map: baked-static tree cells never unblock when the tree falls, so the trunk lying there was
+ * unreachable forever. The join leaves harvestables to their dynamic footprints.
  */
 
 const { GroundDrop, Stockpile, WorkFlag } = components;
@@ -124,10 +123,10 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
       landscapeGfx: [{ index: 900, editName: treeName, logicType: 4, walkBlockAreas: [[1, 0, 0, 1]] }],
       gatheringPipeline: [{ goodType: 5, goodId: 'wood', harvest: { landscapeType: 4, gfxIndices: [900] } }],
     };
-    // THE FIX under test: harvestable placements are skipped from the static grid (their blocking is
-    // the dynamic resource footprint, unstamped on fell). Without the skip the felled tree's cell
-    // stays TERRAIN_BLOCKED forever and the trunk lying there is unreachable - the reported stall.
-    const grid: TerrainMap = buildCollisionTerrain(mapFile, ir, mapResourceObjectNames(ir));
+    // The map join under test: a harvestable placement stays out of the static grid (its blocking is
+    // the dynamic resource footprint, unstamped on fell). Were it baked in, the felled tree's cell would
+    // stay TERRAIN_BLOCKED forever and the trunk lying there unreachable - the reported stall.
+    const grid: TerrainMap = buildScriptLandscapeTerrain(mapFile, ir);
     const sim = new Simulation({ seed: 12, content: sandboxContent(), map: grid });
     sim.enqueueSetup({
       kind: 'spawnSettler',

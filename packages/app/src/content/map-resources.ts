@@ -293,17 +293,3 @@ export function mapGroundGoodsSpawns(objects: TerrainObjects, ir: ContentIr): Ma
   });
   return out;
 }
-
-/**
- * The object `EditName`s whose placements become sim entities carrying their own footprint - resource
- * nodes and chests. The static collision join must skip these: their blocking lives in the sim's dynamic
- * resource-footprint overlay, stamped at spawn and unstamped when the node is felled, depleted or opened.
- */
-export function simResourceObjectNames(ir: ContentIr, spawnableGoodIds: ReadonlySet<string>): Set<string> {
-  const out = new Set<string>();
-  for (const [name, ref] of harvestGoodByObjectName(ir)) {
-    if (spawnableGoodIds.has(ref.goodId)) out.add(name);
-  }
-  for (const name of chestRecordByName(ir).keys()) out.add(name);
-  return out;
-}

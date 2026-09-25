@@ -23,11 +23,6 @@ function palisadeGfxByName(ir: ContentIr): ReadonlyMap<string, number> {
   return out;
 }
 
-/** The wall/gate object names promoted from immutable map scenery to live sim entities. */
-export function palisadeObjectNames(ir: ContentIr): ReadonlySet<string> {
-  return new Set(palisadeGfxByName(ir).keys());
-}
-
 /** Source-order authored wall/gate placements on the map's native half-cell lattice. */
 export function mapPalisadeSpawns(objects: TerrainObjects, ir: ContentIr): MapPalisadeSpawn[] {
   const byName = palisadeGfxByName(ir);

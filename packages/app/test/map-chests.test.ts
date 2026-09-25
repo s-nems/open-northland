@@ -3,7 +3,7 @@ import { resolveResourceDraw } from '@open-northland/render';
 import { components, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
-import { mapChestSpawns, simResourceObjectNames } from '../src/content/map-resources.js';
+import { mapChestSpawns } from '../src/content/map-resources.js';
 import { buildChestBinding, resolveChestRefs } from '../src/content/resource-gfx/chest.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
 import { harvestablePlacementOrdinals, spawnMapChests } from '../src/game/sandbox/map-spawn.js';
@@ -95,11 +95,6 @@ describe('mapChestSpawns', () => {
   it('a map without a levels lane authors empty chests', () => {
     const { levels: _levels, ...bare } = OBJECTS;
     expect(mapChestSpawns(bare, fixtureIr()).map((c) => c.contents)).toEqual([0, 0]);
-  });
-
-  it('keeps chest object names out of the static collision bake beside the harvestables', () => {
-    const names = simResourceObjectNames(fixtureIr(), new Set(['wood']));
-    expect([...names].sort()).toEqual(['chest magical', 'chest wooden', 'test tree']);
   });
 });
 

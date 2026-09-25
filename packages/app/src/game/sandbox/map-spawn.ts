@@ -1,7 +1,7 @@
 import type { ContentSet, TerrainObjects } from '@open-northland/data';
 import { type Entity, type ResourceNodeSpec, type Simulation, systems } from '@open-northland/sim';
 import type { ContentIr } from '../../content/ir/rows.js';
-import { mapPalisadeSpawns, palisadeObjectNames } from '../../content/map-palisades.js';
+import { mapPalisadeSpawns } from '../../content/map-palisades.js';
 import {
   type MapResourceSpawn,
   mapBerryBushSpawns,
@@ -9,7 +9,6 @@ import {
   mapFieldSpawns,
   mapGroundGoodsSpawns,
   mapResourceSpawns,
-  simResourceObjectNames,
 } from '../../content/map-resources.js';
 import { diag } from '../../diag/index.js';
 import { GATHERERS, type GathererSpec } from './ids/index.js';
@@ -20,14 +19,6 @@ const SPAWNABLE_GOOD_IDS: ReadonlySet<string> = new Set(GATHERERS.map((g) => g.i
 
 /** Keyed by goodId string, the bridge across the IR's original good numbering and the app's ids. */
 const GATHERER_BY_GOOD_ID: ReadonlyMap<string, GathererSpec> = new Map(GATHERERS.map((g) => [g.id, g]));
-
-/**
- * The object EditNames the static collision join must skip, so a felled node's blocking vanishes with
- * its dynamic footprint instead of being baked into the grid forever.
- */
-export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
-  return new Set([...simResourceObjectNames(ir, SPAWNABLE_GOOD_IDS), ...palisadeObjectNames(ir)]);
-}
 
 /**
  * The starting yield of a deposit placement authored below full: its 1-based `lmlv` level of `states`

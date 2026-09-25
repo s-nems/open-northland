@@ -72,15 +72,14 @@ interface ObjectFootprint {
   readonly margin: readonly Readonly<FootprintCell>[];
 }
 
-/** `EditName` → footprint for every object that blocks something; `skipObjectNames` are left out. */
+/** `EditName` → footprint for every object that blocks something. */
 function objectFootprints(
   rows: NonNullable<CollisionIrView['landscapeGfx']>,
-  skipObjectNames?: ReadonlySet<string>,
 ): ReadonlyMap<string, ObjectFootprint> {
   const key = (c: Readonly<FootprintCell>): string => `${c.dx},${c.dy}`;
   const out = new Map<string, ObjectFootprint>();
   for (const g of rows) {
-    if (g.editName === undefined || skipObjectNames?.has(g.editName)) continue;
+    if (g.editName === undefined) continue;
     const body = fullStateBlockAreaCells(g.walkBlockAreas);
     const build = fullStateBlockAreaCells(g.buildBlockAreas);
     if (body.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
@@ -118,11 +117,7 @@ function joinTriangleClasses(a: number, b: number): number {
  * Ground classes are per-cell in the source (`empa`/`empb` triangles) and stamp their 2×2 node block;
  * object block areas are stamped at their native half-cell anchors and offsets.
  */
-export function buildCollisionTerrain(
-  map: TerrainMapFile,
-  ir: CollisionIrView,
-  skipObjectNames?: ReadonlySet<string>,
-): TerrainMap {
+export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView): TerrainMap {
   const { width, height } = map;
 
   const cellClasses = new Array<number>(width * height).fill(TERRAIN_OPEN);
@@ -150,7 +145,7 @@ export function buildCollisionTerrain(
   const typeIds = upsampled.typeIds.slice(); // a mutable copy the object stamps write into
 
   if (map.objects !== undefined && ir.landscapeGfx !== undefined) {
-    const gfxByName = objectFootprints(ir.landscapeGfx, skipObjectNames);
+    const gfxByName = objectFootprints(ir.landscapeGfx);
     const stamp = (cx: number, cy: number, cls: number): void => {
       if (cx < 0 || cy < 0 || cx >= nodeW || cy >= nodeH) return;
       const i = cy * nodeW + cx;
