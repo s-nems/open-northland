@@ -151,9 +151,11 @@ function strikeable(world: World, e: Entity): boolean {
   return world.has(e, Position) && !world.has(e, Resting);
 }
 
-/** Whether `e` stands on `node`: its own node, or any node of a building's body. */
+/** Whether `e` stands on `node`: its own node, or any node of a building's or a wall's body. */
 function stands(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity, node: NodeId): boolean {
-  if (world.has(e, Building)) return buildingBodyNodes(world, ctx, terrain, e).includes(node);
+  if (world.has(e, Building) || world.has(e, Palisade)) {
+    return buildingBodyNodes(world, ctx, terrain, e).includes(node);
+  }
   return entityNode(world, terrain, e) === node;
 }
 

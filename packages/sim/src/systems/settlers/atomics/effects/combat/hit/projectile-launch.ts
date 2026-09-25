@@ -2,6 +2,7 @@ import {
   Building,
   Health,
   Owner,
+  Palisade,
   Position,
   Projectile,
   Settler,
@@ -40,8 +41,8 @@ export interface LooseShot {
 
 /**
  * Loose a settler's ranged swing at its attack-event frame. The shot is aimed where the target will be:
- * ahead of a walking one, at a random node of a building's body. Its damage resolves on contact against
- * whatever it strikes. Original behavior.
+ * ahead of a walking one, at a random node of a building's or a wall's body. Its damage resolves on contact
+ * against whatever it strikes. Original behavior.
  */
 export function launchProjectile(
   world: World,
@@ -85,7 +86,7 @@ function settlerAim(
   if (terrain === undefined) return world.get(target, Position);
   let aim: { x: Fixed; y: Fixed };
   let mark = entityNode(world, terrain, target);
-  if (world.has(target, Building)) {
+  if (world.has(target, Building) || world.has(target, Palisade)) {
     const body = buildingBodyNodes(world, ctx, terrain, target);
     mark = body[ctx.rng.int(body.length)] ?? mark;
     aim = positionOfNode(terrain.xOf(mark), terrain.yOf(mark));
