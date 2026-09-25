@@ -15,7 +15,10 @@ Implement the interleave render-side:
 - Schedule fidgets in the presentation layer. Deterministic per entity - derive from `item.ref` and
   the tick (the existing `IDLE_PHASE_STEP` desync shows the pattern); no `Math.random`, no sim state.
 - A fidget plays once, then the clock returns to the base-wait loop. Bodies with no fidget programs
-  (animals keep only the mode-1 row today) behave exactly as now.
+  behave exactly as now.
+- Animals author no `gfxanimmode 1` row, so `animalBinding` (`content/animal-gfx/bindings.ts`) loops
+  the first one-shot of their actions 2..6 (chickens only peck, wolves never howl). Give them the same
+  interleave, using the first program as the base.
 - The interleave cadence (how often a fidget fires) is unobserved - pick a rate, name it an
   approximation.
 
