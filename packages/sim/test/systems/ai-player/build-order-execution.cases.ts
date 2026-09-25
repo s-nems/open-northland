@@ -468,6 +468,51 @@ it('does not issue an upgrade blocked by map permissions and resumes once a scri
   expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toMatchObject([{ kind: 'upgradeBuilding' }]);
 });
 
+describe('build order - the bakery wells', () => {
+  const NEAR_BAKERY = { x: 34, y: 16 };
+  const FAR_BAKERY = { x: 6, y: 16 };
+  const order: readonly BuildOrderEntry[] = [
+    {
+      kind: 'place',
+      building: 'work_well_00',
+      count: 5,
+      near: [{ kind: 'building', id: 'work_bakery_00' }],
+      unlessWithin: { building: 'work_bakery_00', radius: WELL_REACH_NODES },
+    },
+    { kind: 'place', building: 'work_mill_00', count: 1 },
+  ];
+
+  /** Two bakeries, the far one at the upgraded tier, and a well beside the near one plus one per `wells`. */
+  function bakerySeat(wells: readonly { x: number; y: number }[]): Command | undefined {
+    const sim = aiSim();
+    placeHq(sim);
+    const sites = [
+      { buildingType: BAKERY_TYPE, ...NEAR_BAKERY },
+      { buildingType: BAKERY_TOP_TYPE, ...FAR_BAKERY },
+      { buildingType: WELL_TYPE, x: NEAR_BAKERY.x + 4, y: NEAR_BAKERY.y },
+      ...wells.map((at) => ({ buildingType: WELL_TYPE, ...at })),
+    ];
+    for (const site of sites)
+      sim.enqueueSetup({ kind: 'placeBuilding', ...site, tribe: VIKING, owner: SEAT });
+    sim.step();
+    return [...buildOrderModule(order).run(sim.world, ctxOf(sim), SEAT)][0];
+  }
+
+  it('raises a well beside the bakery that has none in reach, an upgraded one included', () => {
+    const well = bakerySeat([]);
+    if (well?.kind !== 'placeBuilding') throw new Error('expected a well placement');
+    expect(well.buildingType).toBe(WELL_TYPE);
+    expect(Math.abs(well.x - FAR_BAKERY.x) + Math.abs(well.y - FAR_BAKERY.y)).toBeLessThan(WELL_REACH_NODES);
+  });
+
+  it('skips the well once every bakery has one in reach', () => {
+    expect(bakerySeat([{ x: FAR_BAKERY.x + 4, y: FAR_BAKERY.y }])).toMatchObject({
+      kind: 'placeBuilding',
+      buildingType: MILL_TYPE,
+    });
+  });
+});
+
 describe('build order - the animal farm well', () => {
   const FARM = { x: 44, y: 16 };
   const order: readonly BuildOrderEntry[] = [

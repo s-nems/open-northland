@@ -15,9 +15,10 @@ export type BuildOrderEntry =
    *  `ground: 'plantable'` hard-restricts the footprint to sowable ground, and `apart` prefers
    *  (never requires) a spot clear of the seat's other buildings of the same kind. `needsResources`
    *  names the map goods the building exists to work up; an unmet entry is skipped while the map holds
-   *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while one of the
-   *  seat's buildings it counts already stands within `radius` world-metric nodes of the named building
-   *  (the seat's lowest-id one), or while the seat has none of those. */
+   *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while every one of
+   *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
+   *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
+   *  then pulls the spot toward the first one lacking. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -47,8 +48,8 @@ export type BuildOrderEntry =
  *  {@link TOWER_DEFENCE_RADIUS_NODES}, so the finished settlement stands under overlapping towers. */
 export const DENSE_TOWER_RADIUS_NODES = 14;
 
-/** How near a water-drinking workshop (the brewery, the animal farm) a well must stand to serve it, in
- *  world-metric nodes (authored); a farther one gets another well beside the workshop. */
+/** How near a water-drinking workshop (the bakery, the brewery, the animal farm) a well must stand to
+ *  serve it, in world-metric nodes (authored); a farther one gets another well beside the workshop. */
 export const WELL_REACH_NODES = 12;
 
 /** How far a store's coverage reaches, in world-metric nodes (authored): wider than a tower's, since a
@@ -178,6 +179,14 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
+  // Every bakery drinks water like the brewery: one standing beyond a well's reach gets a well beside it.
+  {
+    kind: 'place',
+    building: 'work_well_00',
+    count: 5,
+    near: [{ kind: 'building', id: 'work_bakery_00' }],
+    unlessWithin: { building: 'work_bakery_00', radius: WELL_REACH_NODES },
+  },
   // Beside the first, sharing its hive and well.
   { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
   { kind: 'place', building: 'home_level_04', count: 8 },

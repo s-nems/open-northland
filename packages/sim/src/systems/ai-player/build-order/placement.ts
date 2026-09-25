@@ -1,6 +1,6 @@
 import { type BuildingType, footprintCellDx, footprintCellMaxAbsDx } from '@open-northland/data';
 import { Building, diplomacyStance, Owner, ownerOf, Resource } from '../../../components/index.js';
-import { contentIndex } from '../../../core/content-index.js';
+import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { withinNodeRadius } from '../../../nav/node-circle.js';
@@ -22,7 +22,9 @@ import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 const OUTSKIRTS_PUSH_NODES = 8;
 
 /** One affinity resolved to a node, or null when it cannot be. A `building` affinity takes the seat's
- *  lowest-id owned match, so the pick is deterministic. */
+ *  lowest-id building of that id or a tier above it, so the pick is deterministic and an upgraded
+ *  workshop still anchors; when the entry's `unlessWithin` names the same id, it takes the first such
+ *  building with none of the entry's kind in reach, the one the placement exists to serve. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
@@ -32,17 +34,18 @@ function affinityNode(
   anchor: HalfCellNode,
   type: BuildingType,
   sameKindAnchors: readonly HalfCellNode[],
+  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   affinity: PlacementAffinity,
 ): HalfCellNode | null {
   switch (affinity.kind) {
     case 'building': {
       const index = contentIndex(ctx.content);
-      for (const e of owned) {
-        if (index.buildings.get(world.get(e, Building).buildingType)?.id === affinity.id) {
-          return anchorNodeOf(world, e);
-        }
-      }
-      return null;
+      const near = entry.unlessWithin;
+      const chosen =
+        near !== undefined && near.building === affinity.id
+          ? unservedAnchor(world, index, owned, tiersAtOrAbove(index, type), near)
+          : anchorsOfId(world, index, owned, affinity.id)[0];
+      return chosen === undefined || chosen === null ? null : anchorNodeOf(world, chosen);
     }
     case 'resource': {
       const good = goodTypeByContentId(ctx.content, affinity.good);
@@ -57,6 +60,42 @@ function affinityNode(
     case 'outskirts':
       return outskirtsNode(world, ctx, owned, type, sameKindAnchors);
   }
+}
+
+/** The seat's buildings of the content id or a tier above it, canonical ascending; none for an unknown id. */
+function anchorsOfId(world: World, index: ContentIndex, owned: readonly Entity[], id: string): Entity[] {
+  const typeId = index.buildingTypeBySlug.get(id);
+  const type = typeId === undefined ? undefined : index.buildings.get(typeId);
+  if (type === undefined) return [];
+  const chain = tiersAtOrAbove(index, type);
+  return owned.filter((e) => chain.has(world.get(e, Building).buildingType));
+}
+
+/**
+ * The seat's lowest-id `near.building` (or a tier above it) with no building of a `counted` type within
+ * `near.radius` world-metric nodes, or null when every one has, or when the seat has none. The entry's
+ * `unlessWithin` skip and its placement centre read the same pick, so the well it raises lands beside the
+ * workshop that lacked one.
+ */
+export function unservedAnchor(
+  world: World,
+  index: ContentIndex,
+  owned: readonly Entity[],
+  counted: ReadonlySet<number>,
+  near: { readonly building: string; readonly radius: number },
+): Entity | null {
+  const served: HalfCellNode[] = [];
+  for (const e of owned) {
+    if (!counted.has(world.get(e, Building).buildingType)) continue;
+    const node = anchorNodeOf(world, e);
+    if (node !== null) served.push(node);
+  }
+  for (const e of anchorsOfId(world, index, owned, near.building)) {
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    if (!served.some((s) => withinNodeRadius(node.hx, node.hy, s.hx, s.hy, near.radius))) return e;
+  }
+  return null;
 }
 
 function mapCentreNode(terrain: TerrainGraph): HalfCellNode {
@@ -154,7 +193,18 @@ function searchCentre(
 ): HalfCellNode {
   const anchors: HalfCellNode[] = [];
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, sameKindAnchors, affinity);
+    const node = affinityNode(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      type,
+      sameKindAnchors,
+      entry,
+      affinity,
+    );
     if (node !== null) anchors.push(node);
   }
   if (anchors.length === 0) return anchor;
