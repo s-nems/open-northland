@@ -48,14 +48,14 @@ export const TerrainTransitions = z.strictObject({
 });
 export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
 
+/** The player slots a map's owner lanes may name: the simulation's player seats. */
+export const MAP_PLAYER_SLOTS = 16;
+
 /**
  * The placed landscape objects of a decoded map: the `emla` lane is a half-cell (`2W x 2H`) grid of
  * indices into the map's `eald` object-name dictionary, kept here as the sparse list of placed
  * triples in row-major order. Names join onto the `LandscapeGfx` table.
  */
-/** The player slots a map's owner lanes may name: the simulation's player seats. */
-export const MAP_PLAYER_SLOTS = 16;
-
 export const TerrainObjects = z.strictObject({
   /** The `[GfxLandscape]` `EditName`s this map places (compacted from the map's `eald` dictionary). */
   types: z.array(z.string()),

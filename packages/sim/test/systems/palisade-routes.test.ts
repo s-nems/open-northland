@@ -14,10 +14,13 @@ import {
 } from '../../src/components/index.js';
 import {
   type Entity,
+  exportSaveGame,
   nodeOfPosition,
   positionOfNode,
+  restoreSimulation,
   type ScriptLandscapeType,
   Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { hexagonRing, hexDistance } from '../../src/nav/halfcell.js';
 import { findPath } from '../../src/nav/pathfinding/index.js';
@@ -123,13 +126,15 @@ function wallBreakingContent(): ContentSet {
   });
 }
 
+function routesMap(): TerrainMap {
+  return {
+    ...grassNodeMap(WIDTH, HEIGHT),
+    landscapes: { types: [WALL, CLOSED_GATE, OPEN_GATE], placements: [] },
+  };
+}
+
 function fresh(content: ContentSet = wallBreakingContent()): Simulation {
-  const base = grassNodeMap(WIDTH, HEIGHT);
-  return new Simulation({
-    seed: 1,
-    content,
-    map: { ...base, landscapes: { types: [WALL, CLOSED_GATE, OPEN_GATE], placements: [] } },
-  });
+  return new Simulation({ seed: 1, content, map: routesMap() });
 }
 
 /** A finished wall row across the whole map, owned by `owner`, with an open gate at {@link GATE_X}. */
@@ -592,6 +597,22 @@ describe('a fighter walled in with its enemy in sight', () => {
     for (let tick = 0; tick < 600 && !hurt(); tick++) sim.step();
     expect(nodeRow(sim, prisoner).hy).toBeLessThan(WALL_ROW);
     expect(hurt()).toBe(true);
+  });
+
+  it('keeps its own breach and its enemy across a save', () => {
+    const { sim, shooter, prisoner } = walledIn(P0);
+    const order = breachOf(sim, prisoner);
+    if (order === undefined) throw new Error('expected the prisoner to go for the wall');
+    const restored = restoreSimulation(exportSaveGame(sim), {
+      content: wallBreakingContent(),
+      map: routesMap(),
+    });
+    expect(restored.world.get(prisoner, AttackOrder).breach?.enemy).toBe(shooter);
+    for (let tick = 0; tick < 60; tick++) {
+      sim.step();
+      restored.step();
+    }
+    expect(restored.hashState()).toBe(sim.hashState());
   });
 
   it("leaves a map's ownerless wall standing", () => {

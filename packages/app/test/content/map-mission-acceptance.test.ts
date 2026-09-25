@@ -114,10 +114,14 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
       y: encounter.point.hy,
     });
     sim.enqueue(approach);
-    for (let tick = 0; tick < systems.MISSION_EVALUATION_TICKS * 3; tick++) {
+    for (let tick = 0; tick < MOVEMENT_BUDGET_TICKS; tick++) {
       sim.step();
       collectEvents();
     }
+    // The hero gave the walk up rather than still being on its way.
+    expect(sim.world.has(hero, components.MoveGoal)).toBe(false);
+    expect(sim.world.has(hero, components.PathFollow)).toBe(false);
+    expect(sim.world.has(hero, components.PathRequest)).toBe(false);
     const heroAt = sim.world.get(hero, components.Position);
     const heroNode = nodeOfPosition(heroAt.x, heroAt.y);
     expect(
