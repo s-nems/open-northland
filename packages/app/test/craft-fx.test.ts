@@ -15,6 +15,10 @@ import type { ContentIr } from '../src/content/ir/rows.js';
 const VIKING = 1;
 const DRUID = 30;
 const SMITH = 13;
+const HQ = 1;
+const TEMPLE = 37;
+/** A building the source gives fire points but no prayer site. */
+const TOWER = 41;
 
 function fixtureIr(): ContentIr {
   return {
@@ -50,6 +54,15 @@ function fixtureIr(): ContentIr {
       { tribeId: VIKING, typeId: 4, level: 2, x: -80, y: 24 },
       { tribeId: VIKING, typeId: 5, level: 3, x: -79, y: 25 },
       { tribeId: VIKING, typeId: 5, level: 3, x: -3, y: 45 },
+      { tribeId: VIKING, typeId: HQ, level: 0, x: 17, y: 38 },
+      { tribeId: VIKING, typeId: TEMPLE, level: 0, x: 5, y: 20 },
+      { tribeId: VIKING, typeId: TOWER, level: 1, x: 3, y: 9 },
+    ],
+    buildings: [
+      { typeId: 4, id: 'home_level_02', kind: 'home' },
+      { typeId: HQ, id: 'headquarters', kind: 'storage', prayerSite: 'headquarters' },
+      { typeId: TEMPLE, id: 'work_temple', kind: 'workplace', prayerSite: 'temple' },
+      { typeId: TOWER, id: 'tower_01', kind: 'tower' },
     ],
     gfxInHousePrograms: [
       {
@@ -104,11 +117,20 @@ describe('the staged craft effects', () => {
     expect(lookup(VIKING, 4, 2)).toEqual({
       name: HOLY_FIRE_EFFECT_NAME,
       points: [{ x: -80, y: 24 }],
+      perpetual: false,
     });
     expect(lookup(VIKING, 5, 3)?.points).toEqual([
       { x: -79, y: 25 },
       { x: -3, y: 45 },
     ]);
     expect(lookup(VIKING, 3, 1)).toBeUndefined();
+  });
+
+  it('keeps the fire of a prayer site burning without oil, and only there', () => {
+    const lookup = holyFireLookup(fixtureIr());
+    expect(lookup(VIKING, TEMPLE, 0)?.perpetual).toBe(true);
+    expect(lookup(VIKING, HQ, 0)?.perpetual).toBe(true);
+    expect(lookup(VIKING, 4, 2)?.perpetual).toBe(false);
+    expect(lookup(VIKING, TOWER, 1)?.perpetual).toBe(false);
   });
 });

@@ -9,10 +9,15 @@ const components = {
   Position: { x: 10 * ONE, y: 10 * ONE },
   HomeQuality: { cooking: 0, rest: 0, piety: 40 },
 };
-const lookup: HolyFireLookup = (tribe, typeId, level) =>
-  tribe === 1 && typeId === 4 && level === 2
-    ? { name: 'fx fire incense', points: [{ x: -80, y: 24 }] }
-    : undefined;
+const TEMPLE = 37;
+const lookup: HolyFireLookup = (tribe, typeId, level) => {
+  if (tribe !== 1) return undefined;
+  if (typeId === 4 && level === 2)
+    return { name: 'fx fire incense', points: [{ x: -80, y: 24 }], perpetual: false };
+  if (typeId === TEMPLE && level === 0)
+    return { name: 'fx fire incense', points: [{ x: 5, y: 20 }], perpetual: true };
+  return undefined;
+};
 
 const snapshot = (
   home: Readonly<Record<string, unknown>> = components,
@@ -47,6 +52,20 @@ describe('home holy fire projection', () => {
     const site = { ...components, UnderConstruction: { labor: 0 } };
     expect(holyFireOverlays(snapshot(site), HOME, site, lookup)).toEqual([]);
     expect(holyFireOverlays(snapshot(), HOME, components, () => undefined)).toEqual([]);
+  });
+
+  it("keeps a prayer site's fire lit with no oil and whatever the oil policy, once it stands", () => {
+    const temple = {
+      Building: { buildingType: TEMPLE, tribe: 1, level: 0, built: ONE },
+      Owner: { player: 0 },
+      Position: { x: 10 * ONE, y: 10 * ONE },
+    };
+    const forbidden = { cooking: true, rest: true, piety: false };
+    expect(holyFireOverlays(snapshot(temple, forbidden), HOME, temple, lookup)).toEqual([
+      { name: 'fx fire incense', dx: 5, dy: 20 },
+    ]);
+    const site = { ...temple, UnderConstruction: { labor: 0 } };
+    expect(holyFireOverlays(snapshot(site), HOME, site, lookup)).toEqual([]);
   });
 
   it('emits retained effect refs only while the home survives the existing viewport cull', () => {

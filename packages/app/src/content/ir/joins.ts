@@ -280,9 +280,14 @@ export function holyFireLookup(ir: ContentIr | null): HolyFireLookup {
     if (points === undefined) byKey.set(key, [{ x: row.x, y: row.y }]);
     else points.push({ x: row.x, y: row.y });
   }
+  const prayerSites = new Set<number>();
+  for (const b of ir?.buildings ?? []) {
+    if (b.prayerSite !== undefined && b.typeId !== undefined) prayerSites.add(b.typeId);
+  }
   return (tribe, buildingType, level) => {
     const points = byKey.get(`${tribe}/${buildingType}/${level}`);
-    return points === undefined ? undefined : { name: HOLY_FIRE_EFFECT_NAME, points };
+    if (points === undefined) return undefined;
+    return { name: HOLY_FIRE_EFFECT_NAME, points, perpetual: prayerSites.has(buildingType) };
   };
 }
 

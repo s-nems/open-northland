@@ -6,6 +6,8 @@ import type { InHouseOverlay } from './in-house.js';
 export interface HolyFireBinding {
   readonly name: string;
   readonly points: readonly { readonly x: number; readonly y: number }[];
+  /** The fire of a prayer site: it burns from the day the building stands, with no oil to feed it. */
+  readonly perpetual: boolean;
 }
 
 /** Source-authored holy-fire points for one tribe, building type, and zero-based home level. */
@@ -15,8 +17,8 @@ export type HolyFireLookup = (
   level: number,
 ) => HolyFireBinding | undefined;
 
-/** The looping flames a visible finished home stages this frame. Policy is settlement-wide; retained
- * oil alone is insufficient when the player has forbidden its use. */
+/** The looping flames a visible finished home or prayer site stages this frame. A home's fire needs oil
+ * its player allows it to burn; a prayer site's always burns. */
 export function holyFireOverlays(
   snapshot: WorldSnapshot,
   home: number,
@@ -41,7 +43,9 @@ export function holyFireOverlays(
   }
   const binding = lookup(tribe, buildingType, level);
   if (binding === undefined || binding.points.length === 0) return [];
-  if ((homeQualityView(snapshot, home)?.piety ?? 0) <= 0) return [];
-  if (!householdGoodPolicyView(snapshot, player).piety) return [];
+  if (!binding.perpetual) {
+    if ((homeQualityView(snapshot, home)?.piety ?? 0) <= 0) return [];
+    if (!householdGoodPolicyView(snapshot, player).piety) return [];
+  }
   return binding.points.map((point) => ({ name: binding.name, dx: point.x, dy: point.y }));
 }

@@ -218,13 +218,14 @@ export interface ContentIr {
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) - the walk/build flags the map-collision
    *  join classes real ground by. */
   readonly trianglePatternTypes?: readonly TrianglePatternType[];
-  /** The building type rows, with the extracted ground `footprint`: collision body, build-exclusion zone,
-   *  and door. */
+  /** The building type rows, with the extracted ground `footprint` (collision body, build-exclusion zone,
+   *  and door) and the prayer sites whose holy fire always burns. */
   readonly buildings?: readonly {
     typeId?: number;
     id?: string;
     kind?: string;
     footprint?: BuildingFootprint;
+    prayerSite?: string;
   }[];
   /** `baseJob` is the `jobtypes.ini` parent a job's animation lookups fall back through. */
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string; baseJob?: number }[];
