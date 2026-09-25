@@ -21,6 +21,7 @@ import { removeWorkFlag } from '../economy/work-flag.js';
 import { evictResidentsOf, isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
 import { releaseWallBreaches } from '../palisades/breach.js';
+import { releasePalisadeReservation } from '../palisades/reservation.js';
 import { isSoldierJob } from '../readviews/index.js';
 
 /**
@@ -124,6 +125,7 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
  *  the statistics and the dropped gear on top of this. */
 export function removeSettlerSilently(world: World, e: Entity): void {
   removeWorkFlag(world, e); // a work flag has no owner once its gatherer is gone
+  releasePalisadeReservation(world, e);
   const marriage = world.tryGet(e, Marriage);
   const wedding = world.tryGet(e, Wedding);
   const wasMinor = isMinor(world, e);

@@ -227,8 +227,8 @@ function holdSegment(plan: PlannerContext, site: Entity): boolean {
   return false;
 }
 
-/** A hammered segment finishes only once its cells are clear, so a builder waiting beside it would hold
- *  it unfinished. */
+/** A hammered segment has no work left: it stands once no traveller is on its cells, and its claim holds
+ *  until then without the builder. */
 function segmentAwaitsClearance(plan: PlannerContext, site: Entity): boolean {
   const labor = plan.world.tryGet(site, UnderConstruction)?.labor;
   return labor !== undefined && labor >= ONE && plan.world.has(site, Palisade);

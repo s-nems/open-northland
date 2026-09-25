@@ -6,16 +6,31 @@ import {
   CurrentAtomic,
   Damaged,
   Health,
+  MoveGoal,
   Owner,
   Palisade,
   Position,
   SiteAssignment,
   Stockpile,
+  setStockAmount,
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, positionOfNode, type ScriptLandscapeType, Simulation } from '../../src/index.js';
+import {
+  adminCommand,
+  fx,
+  ONE,
+  positionOfNode,
+  type ScriptLandscapeType,
+  Simulation,
+} from '../../src/index.js';
+import { advanceConstructionLabor, constructionSystem } from '../../src/systems/economy/construction.js';
 import { WALL_REPAIR_CREW_LIMIT } from '../../src/systems/economy/repair.js';
+import {
+  claimPalisade,
+  palisadeReservedBy,
+  releasePalisadeReservation,
+} from '../../src/systems/palisades/reservation.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { REPAIR_CALM_TICKS } from '../../src/systems/settlers/drives/economy/repair.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -264,5 +279,123 @@ describe('palisade builders', () => {
       largest = Math.max(largest, crew);
     }
     expect(largest).toBe(WALL_REPAIR_CREW_LIMIT);
+  });
+});
+
+describe('wall claims', () => {
+  function claimSim(): Simulation {
+    const map = grassNodeMap(48, 12);
+    const sim = new Simulation({
+      seed: 5,
+      content: builderContent(),
+      map: { ...map, landscapes: { types: [WALL], placements: [] } },
+    });
+    buildingAt(sim, STORE, 4, false);
+    return sim;
+  }
+
+  function wallSite(sim: Simulation, hx: number, extra: object = { underConstruction: true }): Entity {
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: hx,
+      y: ROW,
+      tribe: VIKING,
+      owner: HUMAN,
+      ...extra,
+    });
+    sim.step();
+    const centre = positionOfNode(hx, ROW);
+    const wall = [...sim.world.query(Palisade, Position)].find(
+      (e) => sim.world.get(e, Position).x === centre.x && sim.world.get(e, Position).y === centre.y,
+    );
+    if (wall === undefined) throw new Error(`expected a wall at ${hx}`);
+    return wall;
+  }
+
+  /** A claim holder that stays put: an assignment and a claim, no trade to walk off with. */
+  function stillClaimant(sim: Simulation, site: Entity): Entity {
+    const holder = sim.world.create();
+    sim.world.add(holder, SiteAssignment, { site, pinned: false });
+    expect(claimPalisade(sim.world, site, holder)).toBe(true);
+    return holder;
+  }
+
+  it('keep a pin to a segment another builder claimed, which waits for the claim', () => {
+    const sim = claimSim();
+    const site = wallSite(sim, 24);
+    const holder = stillClaimant(sim, site);
+    const pinned = builderAt(sim, 20);
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: pinned, site });
+    sim.run(30);
+    expect(sim.world.get(pinned, SiteAssignment)).toEqual({ site, pinned: true });
+    expect(palisadeReservedBy(sim.world, site)).toBe(holder);
+    expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
+  });
+
+  it('refuse a pin to a damaged wall whose one-mender crew is full, a pinned mender included', () => {
+    const sim = claimSim();
+    const wall = wallSite(sim, 24, { valency: 50 });
+    const first = builderAt(sim, 20);
+    const second = builderAt(sim, 28);
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: first, site: wall });
+    sim.step();
+    expect(sim.world.get(first, SiteAssignment)).toEqual({ site: wall, pinned: true });
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: second, site: wall });
+    sim.step();
+    expect(WALL_REPAIR_CREW_LIMIT).toBe(1);
+    expect(sim.world.tryGet(second, SiteAssignment)?.site).not.toBe(wall);
+  });
+
+  it('drop the flag when the claim holder is pinned elsewhere or dies', () => {
+    const sim = claimSim();
+    const first = wallSite(sim, 24);
+    const second = wallSite(sim, 30);
+    const builder = builderAt(sim, 20);
+    sim.world.add(builder, SiteAssignment, { site: first, pinned: false });
+    expect(claimPalisade(sim.world, first, builder)).toBe(true);
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: builder, site: second });
+    sim.step();
+    expect(sim.world.get(first, Palisade).reservation).toBeNull();
+
+    // A lapse no release saw, such as a job change: the construction pass clears the raw claim.
+    const other = sim.world.create();
+    sim.world.add(other, SiteAssignment, { site: first, pinned: false });
+    expect(claimPalisade(sim.world, first, other)).toBe(true);
+    sim.world.remove(other, SiteAssignment);
+    sim.step();
+    expect(sim.world.get(first, Palisade).reservation).toBeNull();
+
+    sim.world.add(builder, SiteAssignment, { site: first, pinned: false });
+    expect(claimPalisade(sim.world, first, builder)).toBe(true);
+    sim.world.add(builder, Health, { hitpoints: 1, max: 1 });
+    sim.enqueue(adminCommand({ kind: 'debugKill', target: builder }));
+    sim.step();
+    expect(sim.world.isAlive(builder)).toBe(false);
+    expect(sim.world.get(first, Palisade).reservation).toBeNull();
+  });
+
+  it('keep the flag of a struck segment its builder left while a traveller holds it up', () => {
+    const sim = claimSim();
+    const site = wallSite(sim, 24);
+    const holder = stillClaimant(sim, site);
+    setStockAmount(sim.world, site, WOOD, 1);
+    expect(advanceConstructionLabor(sim.world, ctxOf(sim), site, holder)).toBe(true);
+    const walker = builderAt(sim, 24);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    sim.world.add(walker, MoveGoal, { cell: terrain.nodeAt(40, ROW) });
+
+    // The builder leaves the struck segment as the planner does.
+    releasePalisadeReservation(sim.world, holder);
+    sim.world.remove(holder, SiteAssignment);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(site, UnderConstruction)).toBe(true);
+    expect(sim.world.get(site, Palisade).reservation).toEqual({ builder: holder });
+
+    sim.world.remove(walker, MoveGoal);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(site, UnderConstruction)).toBe(false);
+    expect(sim.world.get(site, Palisade).reservation).toBeNull();
   });
 });

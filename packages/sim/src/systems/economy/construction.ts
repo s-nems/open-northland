@@ -20,7 +20,7 @@ import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { settleClosedWall, WallSiteOccupancy } from '../palisades/index.js';
-import { holdsPalisadeClaim } from '../palisades/reservation.js';
+import { dropLapsedClaim, holdsPalisadeClaim } from '../palisades/reservation.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
@@ -54,12 +54,13 @@ export const constructionSystem: System = (world, ctx) => {
   // one tick settle their plots in a canonical order.
   for (const e of world.canonicalQuery(UnderConstruction)) {
     if (!world.has(e, Stockpile)) continue;
+    const wall = world.tryGet(e, Palisade);
+    if (wall !== undefined) dropLapsedClaim(world, e);
     // A site drained to 0 HP earlier this tick is rubble awaiting the cleanupSystem; raising it here
     // would resurrect it swing after swing.
     const health = world.tryGet(e, Health);
     if (health !== undefined && health.hitpoints <= 0) continue;
     const building = world.tryGet(e, Building);
-    const wall = world.tryGet(e, Palisade);
     if (building !== undefined) {
       // A type missing from content has an empty bill and a zero labor total, which would read as
       // complete and finish the site for free.

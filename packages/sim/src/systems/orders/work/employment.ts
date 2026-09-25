@@ -26,6 +26,7 @@ import {
 import { builderCrewSize, needsRepair, repairCrewLimit } from '../../economy/repair.js';
 import { interactionNode } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
+import { releasePalisadeReservation } from '../../palisades/reservation.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
@@ -198,6 +199,7 @@ export function assignBuilder(
     return; // the repair crew is full
   }
 
+  releasePalisadeReservation(world, e);
   world.add(e, SiteAssignment, { site, pinned: true });
   // A builder pinned mid-haul keeps its load, unlike a profession change: the trade is unchanged, so it
   // carries the material onward instead of dumping it in the field.
@@ -214,6 +216,7 @@ export function unassignBuilder(world: World, command: Extract<Command, { kind: 
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
   if (world.tryGet(e, SiteAssignment)?.pinned !== true) return; // never pinned - nothing to release
+  releasePalisadeReservation(world, e);
   world.remove(e, SiteAssignment);
   cancelActionAndRoute(world, e);
 }
