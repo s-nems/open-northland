@@ -186,8 +186,8 @@ export interface GameViewHandle {
   readonly lifetime: AbortSignal;
   /** Show a clock change another client made, so the speed button follows the session. */
   syncSpeed(control: GameSpeedControl): void;
-  /** Left inset in px that clears the tool-panel strip, for overlays mounted beside this view. */
-  readonly hudInsetLeftPx: number;
+  /** Left inset in px along the bottom edge that clears the minimap window, for overlays mounted beside
+   *  this view. */
   readonly hudInsetBottomLeftPx: number;
 }
 
@@ -196,6 +196,8 @@ const PAUSE_HOLDER_MISSION = 'mission';
 const PAUSE_HOLDER_VERDICT = 'verdict';
 /** Above the world layers, below the HUD plane the tool panel and the minimap share. */
 const SCRIPT_OVERLAY_Z = 900;
+/** Clearance between the minimap window and an overlay mounted beside it. */
+const BESIDE_MINIMAP_GAP_PX = 12;
 
 /** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
@@ -807,10 +809,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifetime: lifetime.signal,
       updateNetStatus: (rows, readout) => systemMenu?.updateNetStatus(rows, readout),
       syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
-      hudInsetLeftPx: perfCornerForUiScale(uiscale).left,
       get hudInsetBottomLeftPx() {
         const rect = mountedMinimap.panelRect();
-        return Math.max(perfCornerForUiScale(uiscale).left, rect === null ? 0 : rect.x + rect.w + 12);
+        return Math.max(
+          perfCornerForUiScale(uiscale).left,
+          rect === null ? 0 : rect.x + rect.w + BESIDE_MINIMAP_GAP_PX,
+        );
       },
     };
   } catch (error) {
