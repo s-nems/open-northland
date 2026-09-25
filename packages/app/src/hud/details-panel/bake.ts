@@ -82,7 +82,7 @@ export function bakePanel(opts: PanelBakeOptions): BakedPanel {
       drawSignpost(chrome, mapLayout(view.layout, toDraw), ui, hover.action);
       break;
     case 'palisade':
-      drawPalisade(chrome, mapLayout(view.layout, toDraw), view.model, ui, hover.action, ss);
+      drawPalisade(chrome, mapLayout(view.layout, toDraw), view.model, hover.action, ss);
       break;
     default: {
       const unreachable: never = view;

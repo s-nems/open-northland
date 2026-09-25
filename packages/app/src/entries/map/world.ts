@@ -18,7 +18,6 @@ import {
   type Simulation,
   type TerrainMap,
 } from '@open-northland/sim';
-import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { spawnMapPalisades } from '../../content/map-palisades.js';
 import { buildScriptLandscapeTerrain } from '../../content/script-landscape.js';
@@ -26,7 +25,6 @@ import { playerTribe } from '../../game/map-roster.js';
 import { setupPlacementTribes } from '../../game/placement-tribes.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
-  mapResourceObjectNames,
   resolveWorldContent,
   spawnMapBerryBushes,
   spawnMapChests,
@@ -129,18 +127,16 @@ function enableScript(sim: Simulation, options: MapWorldOptions): void {
   if (enabled !== null) sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled });
 }
 
-/** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose
- *  footprints unblock when felled. */
+/** With content, the base grid bakes only ground classes and the map objects keep their own collision,
+ *  so a felled tree or a razed wall frees its ground. */
 function collisionTerrain(map: TerrainMapFile | null, ir: ContentIr | null): TerrainMap | null {
   if (map === null) return null;
   if (ir !== null) return buildScriptLandscapeTerrain(map, ir);
-  return ir === null
-    ? halfCellMapFromCells({
-        ...map,
-        ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
-        ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
-      })
-    : buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
+  return halfCellMapFromCells({
+    ...map,
+    ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
+    ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
+  });
 }
 
 function runWorld(
