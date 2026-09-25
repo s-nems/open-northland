@@ -14,7 +14,11 @@ import type { Command } from '../../../src/core/commands/index.js';
 import { Simulation } from '../../../src/index.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
-import { LATE_GAME_FROM_TICKS, MID_GAME_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
+import {
+  LATE_GAME_FROM_TICKS,
+  MID_GAME_FROM_TICKS,
+  STORE_CARRIERS_FROM_TICKS,
+} from '../../../src/systems/ai-player/game-phase.js';
 import {
   BUILDER_CAP,
   type BuildOrderEntry,
@@ -807,7 +811,7 @@ describe('workforce module (collectResources)', () => {
     expect(staffJoinery(BUILDER_CAP + 6)).toBe(2);
   });
 
-  it('staffs the HQ and a warehouse with three carriers each once a grown seat has men spare', () => {
+  it('staffs the HQ and a warehouse with three carriers each in the deep late game', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueueSetup({
@@ -821,11 +825,11 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, LATE_GAME_CIVILIANS, BUILDER);
     sim.step();
 
-    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const commands = [...collectModule.run(sim.world, ctxOf(sim, STORE_CARRIERS_FROM_TICKS), SEAT)];
     const hq = entityOfBuilding(sim, HQ_TYPE);
     const stock = entityOfBuilding(sim, STOCK_TYPE);
     const staffing = commands.filter((c) => c.kind === 'assignWorker');
-    // A grown seat's storage posts are surplus-tier extras, so all six carriers come out of the men left
+    // The storage posts are surplus-tier extras, so all six carriers come out of the men left
     // past the builder reserve and every target post. The collector slots both storages declare are
     // harvest trades and stay open.
     expect(staffing.filter((c) => c.building === hq).map((c) => c.jobPriority)).toEqual([
