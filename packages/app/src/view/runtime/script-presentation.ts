@@ -1,7 +1,7 @@
 import type { Camera, ElevationField } from '@open-northland/render';
 import { halfCellToScreen } from '@open-northland/render';
 import type { Entity, HalfCellNode, SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
-import { entityById, nodeOfPosition } from '@open-northland/sim';
+import { entityById, nodeOfPosition, TICKS_PER_SECOND } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { infoLineTexts } from '../../game/info-lines.js';
 import { positionOf } from '../../game/snapshot-base.js';
@@ -11,16 +11,11 @@ import type { ScriptMarkers } from '../script-markers.js';
 import type { UnitControls } from '../unit-controls/index.js';
 import { mountMissionTrace } from './mission-trace.js';
 
-/**
- * Where a map script's display results land: the mission window for a cutscene, the camera and the
- * selection for a camera or select result, the marker and effect overlays, the info lines, and the
- * diagnostics log for what the script asked for and did not get.
- */
-
 const DIAG_CHANNEL = 'missions';
 /** The info lines' tallies are re-read this often: the original rebuilds its lines at most every two
- *  seconds (reading), which is 24 ticks at 12 a second. */
-const INFO_LINE_REFRESH_TICKS = 24;
+ *  seconds (reading). */
+const INFO_LINE_REFRESH_SECONDS = 2;
+const INFO_LINE_REFRESH_TICKS = INFO_LINE_REFRESH_SECONDS * TICKS_PER_SECOND;
 
 export interface ScriptPresentationDeps {
   readonly sim: Pick<Simulation, 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'>;
@@ -50,6 +45,11 @@ export interface ScriptPresentation {
   dispose(): void;
 }
 
+/**
+ * Where a map script's display results land: the mission window for a cutscene, the camera and the
+ * selection for a camera or select result, the marker and effect overlays, the info lines, and the
+ * diagnostics log for what the script asked for and did not get.
+ */
 export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPresentation {
   const { sim, toolPanel, controls, markers, effects } = deps;
   const trace = deps.missionTrace === true ? mountMissionTrace(sim) : null;
