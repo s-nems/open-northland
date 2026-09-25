@@ -66,6 +66,9 @@ const ENEMY_DEFENDERS: readonly [number, number, number][] = [
   [JOB_SOLDIER_SPEAR, 11, 11],
 ];
 
+/** The reserve's wound: deep enough that healing a hitpoint a tick leaves it wounded past `runTicks`. */
+const RESERVE_LIFE_FRACTION = 0.5;
+
 const { Building, Health } = components;
 
 function build(sim: Simulation): void {
@@ -86,7 +89,7 @@ function build(sim: Simulation): void {
   // Keep the heart example independent of which front-line warrior survives the fight wounded.
   const reserve = spawnSettlerDirect(sim, JOB_ARCHER, 1, 17, HUMAN_PLAYER);
   const health = sim.world.mut(reserve, Health);
-  health.hitpoints = Math.trunc(health.max * 0.9);
+  health.hitpoints = Math.trunc(health.max * RESERVE_LIFE_FRACTION);
   sim.world.mut(reserve, components.Stance).mode = systems.MILITARY_MODE.IGNORE;
 }
 

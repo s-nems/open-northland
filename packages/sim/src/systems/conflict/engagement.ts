@@ -14,6 +14,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { isTravelling } from '../movement/nav-state.js';
 import {
   isAnimalTribe,
   isFighterJob,
@@ -366,9 +367,11 @@ const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatInde
   ];
 
 /**
- * The enemy an owned combatant fights: the one it holds while its stance still keeps it, unless a pick finds
- * one strictly nearer. Original behavior: a fighter keeps its target until it is gone or strays past its
- * leash, and a new scan takes over only a nearer enemy.
+ * The enemy an owned combatant fights: the one it holds while its stance still keeps it, unless a rescan
+ * finds one strictly nearer. Original behavior: a fighter keeps its target until it is gone or strays past
+ * its leash, and a new scan takes over only a nearer enemy. It scans when it has no target and then only
+ * while it walks, never between blows; the original rescans every tenth walk step, approximated here by the
+ * chase's re-path cadence.
  */
 function heldOrPicked(
   world: World,
@@ -380,11 +383,13 @@ function heldOrPicked(
   spec: EngageSpec,
   hold: NonNullable<EngageSpec['hold']>,
 ): { target: Entity; dist: number } | null {
-  const heldTarget = world.tryGet(self, Engagement)?.target;
+  const engagement = world.tryGet(self, Engagement);
+  const heldTarget = engagement?.target;
   const held =
     heldTarget !== undefined && world.isAlive(heldTarget) && hold.keep(heldTarget)
       ? focusedOn(world, ctx, terrain, here, heldTarget)
       : null;
+  if (held !== null && !rescanDue(world, ctx, self, engagement)) return held;
   const { x, y } = terrain.coordsOf(here);
   if (
     held === null &&
@@ -396,6 +401,16 @@ function heldOrPicked(
   const picked = pickByTier(world, ctx, pass, spec, x, y);
   if (held === null) return picked;
   return picked !== null && picked.dist < held.dist ? picked : held;
+}
+
+/** Whether a combatant holding a target looks again this tick: on the chase's re-path tick while it walks. */
+function rescanDue(
+  world: World,
+  ctx: SystemContext,
+  self: Entity,
+  engagement: { readonly repathAt: number } | undefined,
+): boolean {
+  return engagement !== undefined && ctx.tick >= engagement.repathAt && isTravelling(world, self);
 }
 
 /**

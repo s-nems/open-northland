@@ -8,6 +8,7 @@ import {
   DEFEND_LEASH_NODES,
   DEFEND_RADIUS_NODES,
   IGNORE_LEASH_NODES,
+  REPATH_CADENCE,
   SIGHT_RADIUS_NODES,
 } from '../../src/systems/index.js';
 import { moveUnit } from '../../src/systems/orders/index.js';
@@ -188,8 +189,25 @@ describe('engagement - which enemy it picks', () => {
     const far = unit(t, 12, P1, MILITARY_MODE.IGNORE, WOMAN);
     const near = unit(t, 4, P1, MILITARY_MODE.IGNORE, WOMAN);
     hold(t, other, far);
-    combatSystem(t.world, ctxOf(t));
+    // It looks again only on its chase's re-path tick, once it walks.
+    for (let tick = 0; tick < REPATH_CADENCE; tick++) {
+      t.step();
+      expect(held(t, other)).toBe(far);
+    }
+    t.step();
     expect(held(t, other)).toBe(near);
+  });
+
+  it('does not look again while it stands and strikes', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    const struck = unit(s, 2, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const nearer = unit(s, 1, P1, MILITARY_MODE.IGNORE, WOMAN);
+    hold(s, soldier, struck);
+    s.world.mut(soldier, Engagement).repathAt = s.tick - REPATH_CADENCE; // long past its re-path tick
+    combatSystem(s.world, ctxOf(s));
+    expect(s.world.get(soldier, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: struck });
+    expect(held(s, soldier)).not.toBe(nearer);
   });
 });
 
