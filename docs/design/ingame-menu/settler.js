@@ -38,9 +38,8 @@ const STATES = {
     name: 'Ulf Skarsson',
     look: LOOK.man,
     profession: 'Zbieracz',
-    meta: 'Gracz 1 · Wikingowie',
+    meta: null,
     status: 'Pracuje',
-    alert: 'Brak butów: chodzi wolniej',
     bars: [
       ['Zdrowie', 84],
       ['Sytość', 62],
@@ -61,6 +60,9 @@ const STATES = {
     experience: [
       ['Zbieracz Drewna', 12, 6],
       ['Zbieracz Kamienia', 3, 2],
+      ['Rolnik', 9, 5],
+      ['Rybak', 1, null],
+      ['Nosiciel', 20, 10],
     ],
     unlocks: [['Cieśla', 15, 30, 'Zbieracz Drewna']],
     equipment: [
@@ -68,16 +70,15 @@ const STATES = {
       { label: 'Narzędzia', slots: [['tool_wooden', 64]] },
       { label: 'Ekwipunek', slots: [['bread', null], null, null, null] },
     ],
-    orders: ['center', 'ring'],
+    orders: [],
   },
   smith: {
     label: 'Kowal',
     name: 'Halvar Bjornsson',
     look: LOOK.man,
     profession: 'Kowal',
-    meta: 'Gracz 1 · Wikingowie',
+    meta: null,
     status: 'Pracuje',
-    alert: 'Narzędzia prawie zużyte',
     bars: [
       ['Zdrowie', 96],
       ['Sytość', 88],
@@ -103,16 +104,15 @@ const STATES = {
       { label: 'Narzędzia', slots: [['tool_iron', 12]] },
       { label: 'Ekwipunek', slots: [null, null, null, null] },
     ],
-    orders: ['center', 'ring'],
+    orders: [],
   },
   soldier: {
     label: 'Żołnierz',
     name: 'Sigurd Haraldsson',
     look: LOOK.soldier,
     profession: 'Wojownik z mieczem',
-    meta: 'Gracz 1 · Wikingowie',
+    meta: null,
     status: 'Stoi na alarmie',
-    alert: null,
     bars: [
       ['Zdrowie', 58],
       ['Sytość', 30],
@@ -134,16 +134,15 @@ const STATES = {
       { label: 'Buty', slots: [['shoes', 41]] },
       { label: 'Ekwipunek', slots: [['mead', null], ['bread', null], null, null] },
     ],
-    orders: ['center', 'ring'],
+    orders: [],
   },
   hero: {
     label: 'Bohater',
     name: 'Ragnar Lodbrok',
     look: LOOK.soldier,
     profession: 'Bohater',
-    meta: 'Gracz 1 · Wikingowie',
+    meta: null,
     status: 'Bezczynny',
-    alert: null,
     bars: [['Zdrowie', 100]],
     work: { place: null, home: null, carrying: null },
     workControls: {},
@@ -154,32 +153,30 @@ const STATES = {
       { label: 'Broń', slots: [['sword_long', null]], fixed: true },
       { label: 'Zbroja', slots: [['armor_leather', null]], fixed: true },
     ],
-    orders: ['center', 'ring'],
+    orders: [],
   },
   child: {
     label: 'Dziecko',
     name: 'Tove',
     look: LOOK.girl,
     profession: 'Dziecko',
-    meta: 'Gracz 1 · Wikingowie · 3 lata',
+    meta: '3 lata',
     status: 'Idzie',
-    alert: null,
     bars: [['Zdrowie', 100]],
     work: { place: null, home: 'Dom rodziców (poziom 2)', carrying: null },
     workControls: {},
     note: 'Dziecko mieszka z rodzicami i nie ma zawodu, dopóki nie dorośnie.',
     experience: null,
     equipment: null,
-    orders: ['center', 'ring'],
+    orders: [],
   },
   woman: {
     label: 'Kobieta',
     name: 'Astrid Ulfsdottir',
     look: LOOK.woman,
     profession: 'Kobieta',
-    meta: 'Gracz 1 · Wikingowie',
+    meta: null,
     status: 'Idzie do domu',
-    alert: 'Bez pary',
     bars: [
       ['Zdrowie', 92],
       ['Sytość', 54],
@@ -191,16 +188,15 @@ const STATES = {
     workControls: { assignHome: true, unassignHome: true },
     experience: null,
     equipment: null,
-    orders: ['center', 'ring'],
+    orders: [],
   },
   idle: {
     label: 'Bez zawodu',
     name: 'Arne Torstensson',
     look: LOOK.man,
     profession: 'Cywil',
-    meta: 'Gracz 1 · Wikingowie',
+    meta: null,
     status: 'Bezczynny',
-    alert: 'Bez zajęcia i bez domu',
     bars: [
       ['Zdrowie', 100],
       ['Sytość', 71],
@@ -217,16 +213,15 @@ const STATES = {
       { label: 'Narzędzia', slots: [null] },
       { label: 'Ekwipunek', slots: [null, null, null, null] },
     ],
-    orders: ['center', 'profession', 'ring'],
+    orders: ['profession'],
   },
   trader: {
     label: 'Kupiec',
     name: 'Knut Eriksson',
     look: LOOK.man,
     profession: 'Kupiec',
-    meta: 'Gracz 1 · Wikingowie',
+    meta: null,
     status: 'Idzie',
-    alert: null,
     bars: [
       ['Zdrowie', 77],
       ['Sytość', 60],
@@ -269,7 +264,7 @@ const STATES = {
       { label: 'Narzędzia', slots: [null] },
       { label: 'Ekwipunek', slots: [null, null, null, null] },
     ],
-    orders: ['center', 'ring'],
+    orders: [],
   },
   foreign: {
     label: 'Obcy',
@@ -278,23 +273,27 @@ const STATES = {
     profession: 'Piekarka',
     meta: 'Gracz 3 · Plemię Ragnara · nastawienie: neutralne',
     status: 'Pracuje',
-    alert: null,
     foreign: 'Osadnik innego plemienia. Tylko podgląd, bez rozkazów.',
     bars: [['Zdrowie', 90]],
     work: { place: 'Piekarnia', home: null, carrying: null },
     workControls: {},
     experience: null,
     equipment: null,
-    orders: ['center'],
+    orders: [],
   },
 };
 
-const LONG_TITLE = 'Zaznaczenie';
 const STANCES = [
   ['attack', 'Atak'],
   ['defend', 'Obrona'],
   ['ignore', 'Ignoruj'],
 ];
+
+function statusText(state) {
+  const carrying = state.work.carrying;
+  if (carrying === null) return state.status;
+  return `${state.status} · niesie <b class="with-good">${good(carrying[0])}${carrying[1]}</b>`;
+}
 
 function counterText(count) {
   if (count === INFINITE) return '∞';
@@ -302,21 +301,17 @@ function counterText(count) {
 }
 
 function productionMarkup(production) {
-  const hint =
-    production.kind === 'gather'
-      ? 'Ile sztuk każdego surowca ma przynieść. 0 zatrzymuje, ∞ nie kończy się.'
-      : 'Ile sztuk każdego produktu ma wykonać. 0 zatrzymuje, ∞ nie kończy się.';
   const rows = production.rows
     .map((row) => {
       const label = GOODS[row.good];
       if (row.locked !== undefined) {
-        return `<li class="prod-row locked" title="${row.locked}"><span class="prod-good">${good(row.good)}</span><span class="prod-name">${label}</span><span class="prod-lock">${svg('i-lock')}<small>${row.lockShort}</small></span><button type="button" class="prod-help" aria-label="Wiedza: ${label}">?</button></li>`;
+        return `<li class="prod-row locked" title="${row.locked}"><span class="prod-good">${good(row.good)}</span><span class="prod-name">${label}</span><span class="prod-lock">${svg('i-lock')}<small>${row.lockShort}</small></span></li>`;
       }
       const stopped = row.count === 0;
-      return `<li class="prod-row${stopped ? ' stopped' : ''}" data-count="${row.count}"><button type="button" class="prod-good" title="Tylko ten produkt: pozostałe zatrzymaj" aria-label="Tylko ${label}">${good(row.good)}</button><span class="prod-name">${label}</span><span class="counter"><button type="button" class="counter-step" data-step="-1" title="Obniż produkcję · Shift: zatrzymaj" aria-label="Mniej: ${label}">${svg('i-minus')}</button><b class="counter-value" aria-live="polite">${counterText(row.count)}</b><button type="button" class="counter-step" data-step="1" title="Zwiększ produkcję · Shift: bez końca" aria-label="Więcej: ${label}">${svg('i-plus')}</button></span><button type="button" class="prod-help" title="Dalsze informacje o: ${label}" aria-label="Wiedza: ${label}">?</button></li>`;
+      return `<li class="prod-row${stopped ? ' stopped' : ''}" data-count="${row.count}"><button type="button" class="prod-good" title="Tylko ten produkt: pozostałe zatrzymaj" aria-label="Tylko ${label}">${good(row.good)}</button><span class="prod-name">${label}</span><span class="counter"><button type="button" class="counter-step" data-step="-1" title="Obniż produkcję · Shift: zatrzymaj" aria-label="Mniej: ${label}">${svg('i-minus')}</button><b class="counter-value" aria-live="polite">${counterText(row.count)}</b><button type="button" class="counter-step" data-step="1" title="Zwiększ produkcję · Shift: bez końca" aria-label="Więcej: ${label}">${svg('i-plus')}</button></span></li>`;
     })
     .join('');
-  return `<div class="section-title">Produkcja</div><ul class="prod-list">${rows}</ul><p class="hint">${hint}</p>`;
+  return `<div class="section-title">Produkcja</div><ul class="prod-list">${rows}</ul>`;
 }
 
 function controlButton(icon, label, enabled) {
@@ -351,11 +346,6 @@ function workMarkup(state) {
       `<div class="kv kv-ctl"><span>Dom</span>${work.home === null ? '<b class="muted">brak</b>' : `<button type="button" class="kv-link" title="Zaznacz budynek">${work.home}</button>`}${btns}</div>`,
     );
   }
-  if (work.carrying !== null) {
-    rows.push(
-      `<div class="kv"><span>Niesie</span><b class="with-good">${good(work.carrying[0])}${work.carrying[1]}</b></div>`,
-    );
-  }
   if (rows.length === 0) return '';
   return `<div class="section-title">Praca i dom</div>${rows.join('')}${state.note ? `<p class="hint">${state.note}</p>` : ''}${state.production ? productionMarkup(state.production) : ''}`;
 }
@@ -385,19 +375,27 @@ function tradeMarkup(trade) {
   return `<div class="section-title">Handel</div><ul class="stops">${stops}</ul><div class="orders orders-inline"><button type="button">${svg('i-target')}Dodaj punkt handlowy</button></div><div class="kv"><span>Umowa</span></div><div class="offers">${offers}</div><p class="hint">${trade.status}</p>`;
 }
 
+const EXPERIENCE_SHOWN = 3;
+
 function experienceMarkup(state) {
   if (state.experience === null) return '';
-  const rows = state.experience.map(
-    ([label, repeats, bonus]) =>
-      `<div class="kv"><span>${label}</span><b>${repeats}${bonus === null ? '' : ` <small>+${bonus}%</small>`}</b></div>`,
+  const trained = [...state.experience].sort((a, b) => b[1] - a[1]);
+  const rows = trained.map(
+    ([label, repeats, bonus], index) =>
+      `<div class="kv${index >= EXPERIENCE_SHOWN ? ' more' : ''}"><span>${label}</span><b>${repeats}${bonus === null ? '' : ` <small>+${bonus}%</small>`}</b></div>`,
   );
+  const hidden = trained.length - EXPERIENCE_SHOWN;
+  if (hidden > 0)
+    rows.push(
+      `<button type="button" class="kv-more" aria-expanded="false" data-more="${hidden}">Pokaż ${hidden} więcej</button>`,
+    );
   for (const [job, current, required, track] of state.unlocks ?? []) {
     rows.push(
       `<div class="kv unlock" title="Postęp do zawodu ${job} przez ${track}"><span>${job} <small>(${track})</small></span><b>${current} / ${required}</b></div><div class="meter mini" style="--value:${Math.round((current / required) * 100)}%"></div>`,
     );
   }
   if (rows.length === 0) rows.push('<p class="hint">Jeszcze bez doświadczenia.</p>');
-  return `<div class="section-title">Doświadczenie</div>${rows.join('')}`;
+  return `<div class="section-title">Doświadczenie</div><div class="experience">${rows.join('')}</div>`;
 }
 
 function socket(slot, fixed) {
@@ -415,22 +413,21 @@ function socket(slot, fixed) {
 
 function equipmentMarkup(state) {
   if (state.equipment === null) return '';
-  const rows = state.equipment
+  const groups = state.equipment
     .map(
       (row) =>
-        `<div class="kv kv-equip"><span>${row.label}</span><span class="sockets">${row.slots.map((slot) => socket(slot, row.fixed === true)).join('')}</span></div>`,
+        `<div class="equip-group${row.slots.length > 1 ? ' wide' : ''}"><span class="sockets">${row.slots.map((slot) => socket(slot, row.fixed === true)).join('')}</span><small>${row.label}</small></div>`,
     )
     .join('');
-  return `<div class="section-title">Ekwipunek</div>${rows}`;
+  return `<div class="equipment" aria-label="Ekwipunek">${groups}</div>`;
 }
 
 function ordersMarkup(state) {
   const buttons = {
-    center: `<button type="button">${svg('i-center')}Centruj</button>`,
-    ring: `<button type="button">${svg('i-list')}Rozkazy</button>`,
     profession: `<button type="button">${svg('i-forge')}Zmień zawód</button>`,
   };
-  return `<div class="orders">${state.orders.map((id) => buttons[id]).join('')}</div>`;
+  const orders = state.orders.map((id) => buttons[id]);
+  return orders.length === 0 ? '' : `<div class="orders">${orders.join('')}</div>`;
 }
 
 function panelMarkup(key, state) {
@@ -443,12 +440,13 @@ function panelMarkup(key, state) {
   return `<aside class="selection panel" data-selection="${key}" hidden aria-label="Zaznaczenie: ${state.name}">
     <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
     <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
-    <header class="window-head"><div><p>${LONG_TITLE.toUpperCase()}</p><h2>${state.name}</h2></div><button type="button" class="icon-button medallion" aria-label="Usuń zaznaczenie"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button></header>
+    <header class="window-head"><div><p>${state.profession.toUpperCase()}</p><h2>${state.name}</h2>${state.meta ? `<div class="meta">${state.meta}</div>` : ''}</div><span class="head-btns">${state.foreign ? '' : `<button type="button" class="icon-button medallion" title="Rozkazy dla tej osoby" aria-label="Rozkazy"><svg aria-hidden="true" class="icon"><use href="#i-list"/></svg></button>`}<button type="button" class="icon-button medallion" aria-label="Usuń zaznaczenie"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button></span></header>
     <div class="selection-body">
-      <div class="portrait">
-        <div class="portrait-box"><span data-settler="${state.look}"></span></div>
-        <div><strong class="portrait-name">${state.profession}</strong><div class="meta">${state.meta}</div><div class="status">${state.status}</div>${state.alert ? `<div class="alert">${svg('i-warn')}${state.alert}</div>` : ''}</div>
+      <div class="portrait${state.equipment ? '' : ' alone'}">
+        <button type="button" class="portrait-box" title="Centruj widok na tej osobie"><span data-settler="${state.look}"></span></button>
+        ${equipmentMarkup(state)}
       </div>
+      <div class="status">${statusText(state)}</div>
       ${state.foreign ? `<p class="hint foreign-note">${state.foreign}</p>` : ''}
       <div class="section-title">Samopoczucie</div>
       <div class="bars">${bars}</div>
@@ -456,7 +454,6 @@ function panelMarkup(key, state) {
       ${state.military ? militaryMarkup(state.military) : ''}
       ${state.trade ? tradeMarkup(state.trade) : ''}
       ${experienceMarkup(state)}
-      ${equipmentMarkup(state)}
     </div>
     ${ordersMarkup(state)}
   </aside>`;
@@ -505,6 +502,14 @@ host.addEventListener('click', (event) => {
   if (toggle.classList.contains('offer'))
     for (const each of toggle.parentElement.children) each.setAttribute('aria-pressed', 'false');
   toggle.setAttribute('aria-pressed', String(on));
+});
+host.addEventListener('click', (event) => {
+  const more = event.target.closest('.kv-more');
+  if (more === null) return;
+  const open = more.getAttribute('aria-expanded') !== 'true';
+  more.setAttribute('aria-expanded', String(open));
+  more.textContent = open ? 'Pokaż mniej' : `Pokaż ${more.dataset.more} więcej`;
+  more.parentElement.classList.toggle('expanded', open);
 });
 host.addEventListener('click', (event) => {
   if (event.target.closest('[aria-disabled="true"]')) event.preventDefault();

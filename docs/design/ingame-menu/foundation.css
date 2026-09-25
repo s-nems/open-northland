@@ -2719,20 +2719,6 @@ button.medallion:hover {
   color: var(--muted);
   font-size: 12px;
 }
-.selection .alert {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 2px;
-}
-.selection .alert .icon {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
 .selection .hint {
   margin: 4px 0 0;
   color: var(--muted);
@@ -2861,7 +2847,7 @@ button.medallion:hover {
 }
 .prod-row {
   display: grid;
-  grid-template-columns: 30px 1fr auto 22px;
+  grid-template-columns: 30px 1fr auto;
   align-items: center;
   gap: 6px;
   min-height: 34px;
@@ -2957,22 +2943,6 @@ button.prod-good:hover {
 .prod-row.stopped .counter-value {
   color: var(--muted);
 }
-.prod-help {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid var(--bronze-lo);
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #f0d18f, #9d7a3f 70%);
-  color: var(--ink);
-  font:
-    700 12px Cinzel,
-    serif;
-  box-shadow: 0 1px 2px #000a;
-}
-.prod-help:hover {
-  filter: brightness(1.1);
-}
 /* Segmented stance / regeneration toggles. */
 .segmented {
   display: inline-flex;
@@ -3045,10 +3015,6 @@ button.prod-good:hover {
   font-size: 12px;
 }
 /* Equipment sockets: a wooden well with the good and its wear under it. */
-.kv.kv-equip {
-  align-items: center;
-  margin: 6px 0;
-}
 .sockets {
   display: inline-flex;
   gap: 6px;
@@ -3134,4 +3100,92 @@ button.socket:hover {
   fill: none;
   stroke: currentColor;
   stroke-width: 2.6;
+}
+
+/* Head: the trade as the kicker, the name under it, the owner line only when it says something. */
+.selection .window-head h2 {
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+.selection .window-head .meta {
+  margin-top: 3px;
+}
+.head-btns {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+/* Portrait row: the framed person is the centre-view button, the equipment sits beside it. */
+.selection .portrait {
+  align-items: start;
+}
+.selection .portrait.alone {
+  grid-template-columns: 96px;
+}
+button.portrait-box {
+  width: 104px;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+button.portrait-box:hover {
+  border-color: var(--wood-hi);
+  box-shadow:
+    inset 0 0 0 1px var(--bronze),
+    0 0 0 1px var(--bronze),
+    0 3px 6px #0007;
+}
+.equipment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding-top: 2px;
+}
+.equip-group {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+}
+.equip-group.wide {
+  flex-basis: 100%;
+}
+.equip-group .sockets {
+  gap: 4px;
+}
+.equip-group small {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1;
+}
+.selection .status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+}
+.selection .status .with-good {
+  color: var(--text-hi);
+  font-weight: 600;
+}
+/* Experience: three most-trained rows, the rest behind a toggle. */
+.experience .kv.more {
+  display: none;
+}
+.experience.expanded .kv.more {
+  display: flex;
+}
+.kv-more {
+  margin: 2px 0 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bronze);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.kv-more:hover {
+  color: var(--bronze-hi);
 }
