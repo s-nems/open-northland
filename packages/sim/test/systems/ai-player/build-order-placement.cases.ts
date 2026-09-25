@@ -388,7 +388,14 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(covered).toBe(false);
     expect(Math.abs(spot.x - clayX) + Math.abs(spot.y - clayY)).toBeLessThanOrEqual(CLAY_NEIGHBOURHOOD_NODES);
 
-    const accept = buildingSpotAccept(sim.world, { ...ctxOf(sim), content }, terrain, SEAT, PIT_HOUSE);
+    const accept = buildingSpotAccept(
+      sim.world,
+      { ...ctxOf(sim), content },
+      terrain,
+      SEAT,
+      PIT_HOUSE,
+      () => false,
+    );
     expect(accept(clayX, clayY)).toBe(false);
     expect(accept(MUSHROOM_SPOT.x, MUSHROOM_SPOT.y)).toBe(true);
   });

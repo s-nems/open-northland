@@ -6,11 +6,12 @@ import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.
 import {
   type BuildOrderEntry,
   buildOrderModule,
+  enemyFire,
   REBUILD_DELAY_TICKS,
   THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
 } from '../../../src/systems/ai-player/index.js';
-import { standsAtPost } from '../../../src/systems/conflict/tower-post.js';
+import { standsAtPost, TOWER_RANGE_BONUS_NODES } from '../../../src/systems/conflict/tower-post.js';
 import { razeBuilding } from '../../../src/systems/lifecycle/cleanup.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { aiContent } from '../../fixtures/ai-content.js';
@@ -56,6 +57,8 @@ const SEAM_MAP = { width: 32, height: 16, column: 22 };
 const FAR_BANK = { x: 50, y: 16 };
 /** Long enough for a posted archer to walk the few nodes to his tower and step inside. */
 const WALK_IN_TICKS = 200;
+/** The fixture bow's far reach (`aiContent`, the bowman's weapon row). */
+const BOW_REACH_NODES = 17;
 
 interface Spot {
   readonly x: number;
@@ -166,8 +169,10 @@ describe('build-order module - rebuilding under the enemy', () => {
     expect(placementOf(decide(sim))?.buildingType).toBe(BAKERY_TYPE);
   });
 
-  it('does not hold for an enemy archer holding his own tower', () => {
+  it('does not hold for an enemy archer holding his own tower, but keeps the site out of his reach', () => {
     const sim = razedBakerySim();
+    const near = placementOf(decide(sim));
+    if (near === null) throw new Error('expected the bakery re-placed beside the mill');
     place(sim, TOWER_TYPE, FAR_BANK, FOE);
     sim.step();
     const tower = entityOfBuilding(sim, TOWER_TYPE);
@@ -175,7 +180,19 @@ describe('build-order module - rebuilding under the enemy', () => {
     sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
     for (let i = 0; i < WALK_IN_TICKS; i++) sim.step();
     expect(standsAtPost(sim.world, archer)).toBe(tower);
-    expect(placementOf(decide(sim))?.buildingType).toBe(BAKERY_TYPE);
+    const post = nodeOf(sim, archer);
+    const reach = BOW_REACH_NODES + TOWER_RANGE_BONUS_NODES;
+    // The old spot lies under the tower's bow: the garrison would shoot the site down as it rose.
+    expect(Math.abs(near.x - post.x) + Math.abs(near.y - post.y)).toBeLessThanOrEqual(reach);
+
+    const moved = placementOf(decide(sim));
+    expect(moved?.buildingType).toBe(BAKERY_TYPE);
+    if (moved === null) throw new Error('expected the bakery re-placed out of reach');
+    expect(Math.abs(moved.x - post.x) + Math.abs(moved.y - post.y)).toBeGreaterThan(reach);
+
+    // An empty tower shoots nothing: the old spot is back.
+    sim.world.destroy(archer);
+    expect(placementOf(decide(sim))).toEqual(near);
   });
 
   it('waits the full rebuild delay from the last decision that saw the attack', () => {
@@ -201,6 +218,14 @@ describe('build-order module - rebuilding under the enemy', () => {
       ...home,
       buildingType: BAKERY_TYPE,
     });
+  });
+
+  it('judges an enemy fire reach at the walls: the span the site puts out from its anchor', () => {
+    const fire = enemyFire([{ x: 10, y: 10, reach: 5 }]);
+    expect(fire(15, 10, 0)).toBe(true);
+    expect(fire(16, 10, 0)).toBe(false);
+    expect(fire(16, 10, 1)).toBe(true);
+    expect(enemyFire([])(10, 10, 0)).toBe(false);
   });
 
   it('holds a tower coverage placement while the seat is attacked', () => {

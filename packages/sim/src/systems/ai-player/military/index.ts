@@ -12,6 +12,9 @@ import {
   sortieOrders,
   towerPostOrders,
 } from './defence/index.js';
+
+export { enemyFire, enemyPosts, type FireTest, type Shooter } from './defence/index.js';
+
 import { runOffensive } from './offensive.js';
 import { outfitOrders } from './outfit.js';
 

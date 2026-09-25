@@ -20,6 +20,7 @@ import { seatBaseOf } from '../base.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../cadence.js';
 import { buildingTypeByContentId } from '../content-lookup.js';
 import type { AiPlayerModule } from '../index.js';
+import type { FireTest } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../node-geometry.js';
 import { ownedBuildings } from '../seat-roster.js';
 import {
@@ -33,7 +34,7 @@ import {
 } from './entries.js';
 import { placementSpot } from './placement.js';
 import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
-import { seatUnderAttack } from './siege.js';
+import { type Siege, seatSiege } from './siege.js';
 import { coverageOf, coveragePlacementSpot, firstUncoveredBuilding } from './tower-coverage.js';
 import { upgradeBillCovered } from './upgrade-supply.js';
 
@@ -43,7 +44,7 @@ export {
   type EntryStatus,
   entryStatuses,
 } from './progress.js';
-export { seatUnderAttack } from './siege.js';
+export { type Siege, seatSiege } from './siege.js';
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
 /**
@@ -56,8 +57,12 @@ export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.
  * an upgrade holds while a bill good only it or another site could make is not yet in store
  * ({@link upgradeBillCovered}). Builders are never pinned to a site; the builder drive picks its own.
  *
- * Nothing is placed or upgraded while the seat is under attack ({@link seatUnderAttack}): a site raised
- * under the enemy's bows is only knocked down again.
+ * Three rules keep a site from rising under the enemy's bows only to be knocked down again, and a razed
+ * building from being re-placed into the same fire ({@link seatSiege}): nothing is placed or upgraded while
+ * the seat is under attack; no spot inside an enemy fighter's reach is ever picked, a tower garrison's
+ * included, since a garrison never raids; and a razed building's entry waits {@link REBUILD_DELAY_TICKS}
+ * from the last decision that saw the attack. The engine's own contested-ground rule, which every seat
+ * shares, is narrower than the second and adds nothing here.
  */
 export function buildOrderModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
   return {
@@ -83,9 +88,12 @@ function runBuildOrder(
   if (sites >= (base === null ? BASELESS_CONSTRUCTION_SITES : MAX_ACTIVE_CONSTRUCTION_SITES)) return [];
 
   const tribe = playerPlacementTribes(world, player)?.[0];
+  // Scanned once the list has something to do: an idle decision never walks the map's people.
+  let siege: Siege | null = null;
+  const siegeOf = (): Siege => (siege ??= seatSiege(world, ctx, terrain, player, owned));
   if (base === null) {
-    if (tribe === undefined || seatUnderAttack(world, ctx, terrain, player, owned)) return [];
-    return replaceMissingBase(world, ctx, terrain, player, owned, tribe);
+    if (tribe === undefined || siegeOf().attacked) return [];
+    return replaceMissingBase(world, ctx, terrain, player, owned, tribe, siegeOf().underFire);
   }
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
@@ -95,7 +103,7 @@ function runBuildOrder(
   for (const [entryIndex, entry] of order.entries()) {
     const status = entryStatus(world, ctx, player, owned, entry, live);
     if (status !== 'unmet') continue;
-    const attacked = seatUnderAttack(world, ctx, terrain, player, owned);
+    const { attacked, underFire } = siegeOf();
     if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick, attacked) || attacked) return [];
     if (sites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
     const stall = placementStall(world, player, entryIndex);
@@ -106,7 +114,7 @@ function runBuildOrder(
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         if (stall !== null && ctx.tick < stall.retryTick) return [];
-        const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry);
+        const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry, underFire);
         recordPlacementSearch(world, player, entryIndex, spot === null, ctx.tick);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
@@ -143,6 +151,7 @@ function runBuildOrder(
           type,
           target,
           coverage,
+          underFire,
         );
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
@@ -285,12 +294,23 @@ function replaceMissingBase(
   player: number,
   owned: readonly Entity[],
   tribe: number,
+  underFire: FireTest,
 ): readonly PlayerCommand[] {
   const centre = anchorCentroid(world, owned);
   if (centre === null) return [];
   const type = buildingTypeByContentId(ctx.content, BASE_REPLACEMENT_ENTRY.building);
   if (type === undefined) return []; // content without the warehouse expresses no replacement
-  const spot = placementSpot(world, ctx, terrain, player, owned, centre, type, BASE_REPLACEMENT_ENTRY);
+  const spot = placementSpot(
+    world,
+    ctx,
+    terrain,
+    player,
+    owned,
+    centre,
+    type,
+    BASE_REPLACEMENT_ENTRY,
+    underFire,
+  );
   if (spot === null) return [];
   return [siteCommand(type, spot, tribe, player)];
 }

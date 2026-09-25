@@ -2,28 +2,44 @@ import {
   Building,
   DefenceMode,
   diplomacyStance,
+  Garrison,
   Health,
   Owner,
   Person,
   Position,
   Settler,
+  Weapon,
 } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
-import { standsAtPost } from '../../../conflict/tower-post.js';
+import { SIGHT_RADIUS_NODES } from '../../../conflict/targeting.js';
+import { garrisonReach, isManningPost, standsAtPost } from '../../../conflict/tower-post.js';
+import { attackerWeapon } from '../../../conflict/weapons.js';
 import type { SystemContext } from '../../../context.js';
 import { houseBow, isFighterJob } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 
 /** An enemy fighter, at the node he stands on this decision, with the walkable component that node
- *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him. */
-export interface Raider {
+ *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him - and
+ *  how far he strikes from there ({@link Shooter}). */
+export interface Raider extends Shooter {
   readonly entity: Entity;
-  readonly x: number;
-  readonly y: number;
   readonly component: number;
 }
+
+/** An enemy fighter's node and reach: how far from it his swing or shot lands, in Manhattan nodes. A loose
+ *  man's is at least his sight, since he advances on what he sees; a posted man's is his bow's with the
+ *  tower's bonus, and he never leaves it. */
+export interface Shooter {
+  readonly x: number;
+  readonly y: number;
+  readonly reach: number;
+}
+
+/** Whether a site anchored on `(x, y)`, its walls up to `span` nodes out from the anchor, stands inside
+ *  some enemy fighter's reach. */
+export type FireTest = (x: number, y: number, span: number) => boolean;
 
 /** How far past its watch band ({@link threatWatchNodes}) a raider must draw off before the seat stands
  *  down. Without the margin a fighter pacing the rim would flick the town's economy in and out of cover
@@ -82,9 +98,50 @@ export function seatRaiders(
     if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
     if (standsAtPost(world, e) !== null) continue;
     const at = entityNode(world, terrain, e);
-    raiders.push({ entity: e, ...terrain.coordsOf(at), component: terrain.componentOf(at) });
+    const reach = Math.max(weaponReach(world, ctx, e), SIGHT_RADIUS_NODES);
+    raiders.push({ entity: e, ...terrain.coordsOf(at), component: terrain.componentOf(at), reach });
   }
   return raiders;
+}
+
+/** The far reach of the weapon `e` fights with, 0 for an unarmed man. */
+function weaponReach(world: World, ctx: SystemContext, e: Entity): number {
+  const settler = world.get(e, Settler);
+  return (
+    attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId)?.maxRange ?? 0
+  );
+}
+
+/**
+ * Every enemy fighter manning a tower post, with the post's boosted reach: the fortification the raider
+ * scan leaves out, which still shoots a site raised inside its band. Read off the garrison markers, so
+ * the walk is over the few posted men, not over every person.
+ */
+export function enemyPosts(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+): Shooter[] {
+  const posts: Shooter[] = [];
+  for (const e of world.query(Garrison)) {
+    const owner = world.tryGet(e, Owner)?.player;
+    if (owner === undefined || owner === player || diplomacyStance(world, owner, player) !== 'enemy')
+      continue;
+    if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0 || !isManningPost(world, ctx, e)) continue;
+    const reach = weaponReach(world, ctx, e);
+    if (reach === 0) continue;
+    const at = terrain.coordsOf(entityNode(world, terrain, e));
+    posts.push({ x: at.x, y: at.y, reach: garrisonReach({ minRange: 0, maxRange: reach }).maxRange });
+  }
+  return posts;
+}
+
+/** The {@link FireTest} over every shooter, loose or posted, whatever ground he stands on: a bow shoots
+ *  across water. Linear in the shooters, so the caller runs it after its cheaper vetoes. */
+export function enemyFire(shooters: readonly Shooter[]): FireTest {
+  if (shooters.length === 0) return () => false;
+  return (x, y, span) => shooters.some((s) => Math.abs(s.x - x) + Math.abs(s.y - y) <= s.reach + span);
 }
 
 /**

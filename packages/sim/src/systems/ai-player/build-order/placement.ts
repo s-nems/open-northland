@@ -1,4 +1,4 @@
-import { type BuildingType, footprintCellDx } from '@open-northland/data';
+import { type BuildingType, footprintCellDx, footprintCellMaxAbsDx } from '@open-northland/data';
 import { Building, diplomacyStance, Owner, ownerOf, Resource } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -12,6 +12,7 @@ import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
 import { resourcesAtNode } from '../../spatial/resources.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
+import type { FireTest } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf, bestRingNode, outwardNode } from '../node-geometry.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
@@ -254,13 +255,24 @@ function groundAccepted(
  *  herbs, trunks and carcasses stay coverable. */
 const DEPOSIT_GOOD_IDS: readonly string[] = ['mud', 'stone', 'iron', 'gold'];
 
+/** How far out from its anchor a building of the type's chain ever has a wall, in Manhattan nodes: what an
+ *  enemy shot at the building reaches for. */
+function wallSpan(ctx: SystemContext, buildingTypeId: number): number {
+  const footprint = buildingFootprintOf(ctx.content, buildingTypeId);
+  let span = 0;
+  for (const c of [...(footprint?.familyBody ?? []), ...(footprint?.blocked ?? [])]) {
+    span = Math.max(span, footprintCellMaxAbsDx(c) + Math.abs(c.dy));
+  }
+  return span;
+}
+
 /**
  * Shared legality test for a spot search: in-bounds buildable ground, off every existing building's
- * anchor (explicit, so a footprint-less synthetic type never stacks), accepted by the seat's placement
- * probe, and with its reserved zone off every live {@link DEPOSIT_GOOD_IDS} deposit's own node. The engine
- * lets a building cover a deposit that carries no walk or build block, such as clay, and so bury it; the
- * seat never does. It scans the occupied set once per call, so build the closure per search, not per
- * candidate.
+ * anchor (explicit, so a footprint-less synthetic type never stacks), out of every enemy fighter's reach
+ * (`underFire`, judged at the walls), accepted by the seat's placement probe, and with its reserved zone
+ * off every live {@link DEPOSIT_GOOD_IDS} deposit's own node. The engine lets a building cover a deposit
+ * that carries no walk or build block, such as clay, and so bury it; the seat never does. It scans the
+ * occupied set once per call, so build the closure per search, not per candidate.
  */
 export function buildingSpotAccept(
   world: World,
@@ -268,7 +280,9 @@ export function buildingSpotAccept(
   terrain: TerrainGraph,
   player: number,
   buildingTypeId: number,
+  underFire: FireTest,
 ): (x: number, y: number) => boolean {
+  const span = wallSpan(ctx, buildingTypeId);
   const occupied = new Set<NodeId>(); // an off-grid anchor can never match a candidate, so it is left out
   for (const e of world.query(Building)) {
     const node = anchorNodeOf(world, e);
@@ -285,7 +299,7 @@ export function buildingSpotAccept(
   return (x, y) => {
     if (!terrain.inBounds(x, y)) return false;
     const node = terrain.nodeAt(x, y);
-    if (!terrain.isBuildable(node) || occupied.has(node)) return false;
+    if (!terrain.isBuildable(node) || occupied.has(node) || underFire(x, y, span)) return false;
     return probe.canPlace(x, y) && !coversLiveDeposit(world, deposits, zone, x, y);
   };
 }
@@ -350,8 +364,9 @@ export function placementSpot(
   anchor: HalfCellNode,
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+  underFire: FireTest,
 ): HalfCellNode | null {
-  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId);
+  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire);
   const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const settlement = buildReach(world, owned, anchor);
