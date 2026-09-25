@@ -33,19 +33,22 @@ export function evictSettlersFromCells(
   terrain: TerrainGraph,
   body: ReadonlySet<NodeId>,
 ): void {
-  // Travellers enter the occupancy set too, since a landing must not stack on anyone. Sorting is deferred
-  // to the evictees so a finish with nobody on or beside the plot early-outs before any sort.
-  const units: Entity[] = [];
+  // Only the settlers on the cells or beside them can be evicted, looked up by node. Travellers stay put.
+  const byNode = settlersByNode(world);
   const evicteesUnsorted: Entity[] = [];
-  const nookCandidates: Entity[] = [];
-  for (const e of world.query(Settler, Position)) {
-    units.push(e);
-    if (isTravelling(world, e)) continue;
-    const at = settlerNode(world, terrain, e);
-    if (body.has(at)) evicteesUnsorted.push(e);
-    else if (terrain.neighbours(at).some((n) => body.has(n))) nookCandidates.push(e);
+  const nookCandidates = new Set<Entity>();
+  for (const cell of body) {
+    for (const e of byNode.at(terrain.xOf(cell), terrain.yOf(cell))) {
+      if (!isTravelling(world, e)) evicteesUnsorted.push(e);
+    }
+    for (const n of terrain.neighbours(cell)) {
+      if (body.has(n)) continue;
+      for (const e of byNode.at(terrain.xOf(n), terrain.yOf(n))) {
+        if (!isTravelling(world, e)) nookCandidates.add(e);
+      }
+    }
   }
-  if (evicteesUnsorted.length === 0 && nookCandidates.length === 0) return;
+  if (evicteesUnsorted.length === 0 && nookCandidates.size === 0) return;
   // The membership view, not the owning-set union: every read below is a `.has`.
   const blocked = dynamicBlockOverlay(world, ctx, terrain); // includes this building's own body
   const doors = buildingDoorNodes(world, ctx, terrain);
@@ -59,9 +62,9 @@ export function evictSettlersFromCells(
   // Canonical order fixes the Position-write and claim order.
   const evictees = canonicalById(evicteesUnsorted);
 
-  // Only `.at(x, y).length` is read, an order-independent count, so the unsorted `units` list is safe
-  // here (unlike NodeBuckets.nearest).
-  const occupancy = new NodeBuckets(world, units);
+  // Travellers count too, since a landing must not stack on anyone. Only `.at(x, y).length` is read, an
+  // order-independent count, so the query-ordered buckets are safe here (unlike NodeBuckets.nearest).
+  const occupancy = byNode;
   const claimed = new Set<NodeId>();
   for (const e of evictees) {
     const free = nearestFreeCellOutside(
@@ -121,6 +124,31 @@ export function evictSettlerFromBlockedSpawn(
 }
 
 /** The half-cell node a settler stands on, clamped into bounds. */
+/** The settlers on each node, shared by every eviction until one moves, joins or leaves: a map's load
+ *  settles its walls one after another in one tick with nobody moving in between. */
+const settlerNodeCache = new WeakMap<
+  World,
+  { settlers: number; positions: number; moves: number; buckets: NodeBuckets }
+>();
+
+function settlersByNode(world: World): NodeBuckets {
+  const settlers = world.componentGeneration(Settler);
+  const positions = world.componentGeneration(Position);
+  const moves = world.componentValueGeneration(Position);
+  const cached = settlerNodeCache.get(world);
+  if (
+    cached !== undefined &&
+    cached.settlers === settlers &&
+    cached.positions === positions &&
+    cached.moves === moves
+  ) {
+    return cached.buckets;
+  }
+  const buckets = new NodeBuckets(world, world.query(Settler, Position));
+  settlerNodeCache.set(world, { settlers, positions, moves, buckets });
+  return buckets;
+}
+
 function settlerNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const p = world.get(e, Position);
   const n = nodeOfPosition(p.x, p.y);
