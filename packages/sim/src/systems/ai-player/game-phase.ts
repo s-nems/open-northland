@@ -23,6 +23,10 @@ export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
  *  when the mints and druid huts stand and a carrier no longer costs a craftsman. */
 export const STORE_CARRIERS_FROM_TICKS = minutesToTicks(120);
 
+/** When the opening hunter goes back to the pool even while game remains near the base (authored): by
+ *  the mid game the farms feed the seat and the man is worth more as a builder. */
+export const OPENING_HUNT_UNTIL_TICKS = minutesToTicks(60);
+
 export type GamePhase = 'opening' | 'mid' | 'late';
 
 export function gamePhase(tick: number): GamePhase {
