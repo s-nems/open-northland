@@ -175,7 +175,10 @@ export function chase(
   const onOurBank = (cell: NodeId): boolean => bank < 0 || terrain.componentOf(cell) === bank;
 
   let dest: NodeId | null;
-  if (target.body !== null && target.body.length > 0) {
+  const stand = breachStand(world, terrain, e, target, weapon);
+  if (stand !== null && slots.isOpen(stand) && !slots.isTaken(stand, ownGoal)) {
+    dest = stand;
+  } else if (target.body !== null && target.body.length > 0) {
     const faces = slots.encircleCandidates(target.entity, target.body, weapon);
     // Null when every slot is taken, the full-perimeter hold. With no face on our bank there is no front to
     // queue behind: aim at the body, which the release below refuses.
@@ -227,6 +230,21 @@ function engagementFor(world: World, ctx: SystemContext, e: Entity, target: Enti
     world.mut(e, Engagement).stall = undefined;
   }
   return prior;
+}
+
+/** The near-side node a breach dealt `e` for this wall, while it still brings the wall into `weapon`'s band. */
+function breachStand(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  target: ChaseTarget,
+  weapon: WeaponBand,
+): NodeId | null {
+  const order = world.tryGet(e, AttackOrder);
+  const stand = order?.target === target.entity ? order.breach?.stand : undefined;
+  if (stand === undefined || stand === null) return null;
+  const reach = Math.min(...(target.body ?? [target.node]).map((wall) => manhattan(terrain, stand, wall)));
+  return reach >= weapon.minRange && reach <= weapon.maxRange ? stand : null;
 }
 
 /** The cell a chaser should walk to in order to bring `target` into its weapon band: the {@link

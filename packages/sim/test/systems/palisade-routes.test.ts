@@ -155,7 +155,7 @@ function mapped(sim: Simulation) {
 function barring(sim: Simulation, e: Entity, goal: { hx: number; hy: number }): Entity | null {
   const terrain = mapped(sim);
   const at = nodeRow(sim, e);
-  return palisadeBarring(
+  const breach = palisadeBarring(
     sim.world,
     ctxOf(sim),
     terrain,
@@ -163,6 +163,7 @@ function barring(sim: Simulation, e: Entity, goal: { hx: number; hy: number }): 
     terrain.nodeAt(at.hx, at.hy),
     terrain.nodeAt(goal.hx, goal.hy),
   );
+  return breach?.wall ?? null;
 }
 
 describe('walls that start blocking a route', () => {
@@ -386,6 +387,37 @@ describe('an attack-move against a sealed palisade', () => {
     expect([...sim.world.query(Palisade)]).toHaveLength(walls - 1);
   });
 
+  it('spreads a squad along the line, one breaker to each free node on the near side', () => {
+    const sim = fresh();
+    postRow(sim, WALL_ROW, P1);
+    const squad = [10, 11, 12, 13, 14, 15].map((hx) => fighter(sim, { hx, hy: 4 }, P0));
+    for (const raider of squad) {
+      attackMoveUnit(sim.world, ctxOf(sim), {
+        kind: 'attackMoveUnit',
+        entity: raider,
+        x: SOUTH.hx,
+        y: SOUTH.hy,
+      });
+    }
+    for (let tick = 0; tick < 20 && !squad.every((r) => sim.world.has(r, AttackOrder)); tick++) sim.step();
+    const orders = squad.map((raider) => sim.world.get(raider, AttackOrder));
+    const columns = orders.map((order) => nodeRow(sim, order.target).hx);
+    // A straight row offers each post one node on the near side, so six breakers take six posts in a run.
+    expect(new Set(columns).size).toBe(squad.length);
+    expect(Math.max(...columns) - Math.min(...columns)).toBe(squad.length - 1);
+
+    // The fixture weapons do not dent a wall, so every breaker ends up swinging from its own node.
+    sim.run(200);
+    const terrain = mapped(sim);
+    for (const [at, raider] of squad.entries()) {
+      const stand = orders[at]?.breach?.stand;
+      if (stand === undefined || stand === null) throw new Error('expected a dealt node');
+      const here = nodeRow(sim, raider);
+      expect(terrain.nodeAt(here.hx, here.hy)).toBe(stand);
+      expect(here.hy).toBe(WALL_ROW - 1);
+    }
+  });
+
   it('turns an ordered attack on a walled-in enemy into a breach, then back onto the enemy', () => {
     const sim = fresh();
     const gate = wallRow(sim, P1);
@@ -397,7 +429,7 @@ describe('an attack-move against a sealed palisade', () => {
     for (let tick = 0; tick < 20 && sim.world.get(soldier, AttackOrder).breach === undefined; tick++)
       sim.step();
     const order = sim.world.get(soldier, AttackOrder);
-    expect(order.breach).toEqual({ resume: enemy });
+    expect(order.breach?.resume).toBe(enemy);
     expect(sim.world.has(order.target, Palisade)).toBe(true);
 
     sim.world.mut(order.target, Health).hitpoints = 0;

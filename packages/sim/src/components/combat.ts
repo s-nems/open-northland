@@ -107,11 +107,12 @@ export const Garrison = defineComponent<{ post: Entity; returnTo: { x: Fixed; y:
  * target dies or stops being a valid target, then reverts to auto-engagement. A move order or a profession
  * change supersedes it. `breach` marks a wall taken on because it barred an ordered walk: the order lets
  * go when any wall falls and returns to `resume`, the ordered target, or to the march when that is null.
+ * `stand` is the near-side node dealt to this breaker, null when none was free.
  */
-export const AttackOrder = defineComponent<{ target: Entity; breach?: { resume: Entity | null } }>(
-  'AttackOrder',
-  'combat',
-);
+export const AttackOrder = defineComponent<{
+  target: Entity;
+  breach?: { resume: Entity | null; stand: NodeId | null };
+}>('AttackOrder', 'combat');
 
 /**
  * A projectile in flight - a first-class entity carrying a `Position` advanced each tick toward the point
