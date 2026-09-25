@@ -54,7 +54,7 @@ import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js
 import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
-import { grassNodeMap } from '../../fixtures/terrain.js';
+import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
   aiSim,
   BAKER,
@@ -160,6 +160,28 @@ function shedContent(): ContentSet {
       },
     ],
   });
+}
+
+/** The cell column of {@link waterSim}'s strip: its node columns lie between the HQ (hx 30) and
+ *  {@link FAR_BANK}. */
+const WATER_CELL_COLUMN = 22;
+
+/** Three deposit spots on the far bank of {@link waterSim}'s strip. */
+const FAR_BANK = [
+  { x: 54, y: 16 },
+  { x: 56, y: 8 },
+  { x: 56, y: 24 },
+] as const;
+
+/** {@link aiSim}'s map split by a full-height water strip no walk crosses. */
+function waterSim(): Simulation {
+  const sim = new Simulation({
+    seed: 1,
+    content: aiContent(),
+    map: waterColumnMap(32, 16, WATER_CELL_COLUMN),
+  });
+  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+  return sim;
 }
 
 function placeWorkshop(sim: Simulation, buildingType: number, spot = FIRST_WORKSHOP_SPOT): void {
@@ -1154,6 +1176,26 @@ describe('workforce module (collectResources)', () => {
       FLAG_MAX_DISTANCE_NODES,
     );
     expect(move.filter((c) => c.kind === 'setJob' && c.entity === holder)).toEqual([]);
+  });
+
+  it('never moves a clay flag beside a deposit across water: the holder keeps his post', () => {
+    const sim = waterSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const [holder] = holdersOf(sim, MUD);
+    if (holder === undefined) throw new Error('setup: the clay holder');
+
+    // The home deposit is dug out; the only live one stands on the far bank.
+    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...FAR_BANK[0] }]);
+    sim.step();
+
+    const decision = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
+    expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([]);
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {

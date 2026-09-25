@@ -1,4 +1,4 @@
-import { Resource, ResourceFootprint, Settler } from '../../components/index.js';
+import { Position, Resource, ResourceFootprint, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
@@ -11,6 +11,7 @@ import { needSubjectOf, settlerMeetsNeed } from '../progression/index.js';
 import { interactionCell, jobAtomics } from '../settlers/targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
 import { manhattan } from '../spatial/metric.js';
+import { entityNode } from '../spatial/nodes.js';
 import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spatial/resources.js';
 import { anchorNodeOf } from './node-geometry.js';
 
@@ -39,9 +40,13 @@ export function workableResourceTest(world: World, ctx: SystemContext, terrain: 
 /**
  * A flag gatherer's own harvest filters, judged from his flag node as if he idled there: his trade's
  * atomic, the good's experience need, and the work cell nearest the flag lying inside the circle, clear of
- * the live overlay, on his side of any terrain seam, off his failed-route memo and routable. The settler
- * planner's harvest search needs a whole planner pass, so its filters are restated here. Signpost
+ * the live overlay, on the flag's side of any terrain seam, off his failed-route memo and routable. The
+ * settler planner's harvest search needs a whole planner pass, so its filters are restated here. Signpost
  * confinement is left out: the seat plants its flags inside its own network.
+ *
+ * The flag must also share the holder's own walkable component, or he could never walk to it; a holder
+ * with no Position or on an unwalkable node is judged from the flag alone. A flag inside a sealed pocket
+ * stands in for the walker, so it drops the route veto rather than inverting it.
  */
 export interface GathererReach {
   /** Whether `holder` with a flag of `radius` on `flag` would take `resource`. */
@@ -57,6 +62,9 @@ export interface GathererReach {
 
 const NO_ATOMICS: ReadonlySet<number> = new Set();
 
+/** The {@link TerrainGraph.componentOf} label of an unwalkable node. */
+const NO_COMPONENT = -1;
+
 export function gathererReach(world: World, ctx: SystemContext, terrain: TerrainGraph): GathererReach {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const regions = routeRegions(world, ctx, terrain);
@@ -66,8 +74,14 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
     const subject = needSubjectOf(world, holder);
     const memo = unreachableGoals(world, ctx, holder);
     const needMet = new Map<number, boolean>();
+    const holderComponent = world.has(holder, Position)
+      ? terrain.componentOf(entityNode(world, terrain, holder))
+      : NO_COMPONENT;
     return {
       allowed,
+      /** Whether the holder can walk to a flag on `center` at all; the per-resource test assumes it. */
+      reachesFlag: (center: NodeId): boolean =>
+        holderComponent === NO_COMPONENT || terrain.componentOf(center) === holderComponent,
       takes: (center: NodeId, radius: number, e: Entity, wanted: (goodType: number) => boolean): boolean => {
         const res = world.get(e, Resource);
         if (res.remaining <= 0 || !wanted(res.goodType) || !allowed.has(res.harvestAtomic)) return false;
@@ -81,17 +95,21 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
         if (manhattan(terrain, center, cell) > radius) return false;
         if (terrain.componentOf(cell) !== terrain.componentOf(center)) return false;
         if (cell !== center && (blocked.has(cell) || isUnreachableGoal(memo, cell))) return false;
-        return !regions.unroutable(center, cell);
+        return regions.pocketed(center) || !regions.unroutable(center, cell);
       },
     };
   };
   const centerOf = (flag: HalfCellNode): NodeId => terrain.nodeAtClamped(flag.hx, flag.hy);
   return {
-    canWork: (holder, flag, radius, resource) =>
-      judge(holder).takes(centerOf(flag), radius, resource, () => true),
-    patchHarvestable: (holder, flag, radius, wanted) => {
-      const { allowed, takes } = judge(holder);
+    canWork: (holder, flag, radius, resource) => {
+      const { reachesFlag, takes } = judge(holder);
       const center = centerOf(flag);
+      return reachesFlag(center) && takes(center, radius, resource, () => true);
+    },
+    patchHarvestable: (holder, flag, radius, wanted) => {
+      const { allowed, reachesFlag, takes } = judge(holder);
+      const center = centerOf(flag);
+      if (!reachesFlag(center)) return false;
       const reach = radius + contentIndex(ctx.content).maxResourceWorkOffset;
       return anyResourceNear(
         world,
