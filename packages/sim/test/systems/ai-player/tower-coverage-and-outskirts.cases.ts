@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { Settler } from '../../../src/components/index.js';
+import type { Simulation } from '../../../src/index.js';
 import { withinNodeRadius } from '../../../src/nav/node-circle.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -7,6 +9,8 @@ import {
 } from '../../../src/systems/ai-player/index.js';
 import {
   aiSim,
+  BAKERY_TYPE,
+  COLLECTOR,
   completeSites,
   ctxOf,
   HOME_TYPE,
@@ -98,42 +102,63 @@ describe('build-order tower coverage and outskirts', () => {
     expect(order.buildingType).toBe(TOWER_TYPE);
   });
 
-  it('covers an outlying building with a warehouse, never counting a tower toward store coverage', () => {
-    const sim = aiSim();
-    placeHq(sim);
-    const FAR = { x: HQ_X + 31, y: HQ_Y };
-    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, ...FAR, tribe: VIKING, owner: SEAT });
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: TOWER_TYPE,
-      x: FAR.x - 2,
-      y: FAR.y,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    sim.step();
+  describe('store coverage', () => {
     const radius = TOWER_DEFENCE_RADIUS_NODES;
     const stores = buildOrderModule([{ kind: 'storeCoverage', building: 'stock_02', radius }]);
-    const order = [...stores.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (order?.kind !== 'placeBuilding') throw new Error('expected a warehouse placement');
-    expect(order.buildingType).toBe(STOCK_TOP_TYPE);
-    expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, radius)).toBe(true);
+    const place = (sim: Simulation, buildingType: number, x: number, y: number): void =>
+      sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
+    const next = (sim: Simulation) => [...stores.run(sim.world, ctxOf(sim), SEAT)][0];
 
-    sim.enqueueSetup(order);
-    sim.step();
-    expect([...stores.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+    it('covers an outlying workshop with a warehouse clear of every store, and no home or tower', () => {
+      const sim = aiSim();
+      placeHq(sim);
+      // A home and a tower out at the edge need no warehouse beside them.
+      place(sim, HOME_TYPE, HQ_X + 31, HQ_Y);
+      place(sim, TOWER_TYPE, HQ_X - 31, HQ_Y);
+      sim.step();
+      expect(next(sim)).toBeUndefined();
 
-    // A tower out at the edge needs no warehouse beside it.
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: TOWER_TYPE,
-      x: HQ_X - 31,
-      y: HQ_Y,
-      tribe: VIKING,
-      owner: SEAT,
+      const FAR = { x: HQ_X + 29, y: HQ_Y };
+      place(sim, BAKERY_TYPE, FAR.x, FAR.y);
+      sim.step();
+      const order = next(sim);
+      if (order?.kind !== 'placeBuilding') throw new Error('expected a warehouse placement');
+      expect(order.buildingType).toBe(STOCK_TOP_TYPE);
+      expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, radius)).toBe(true);
+      // Not beside the HQ, itself a store: the new circle starts where the HQ's ends.
+      expect(withinNodeRadius(HQ_X, HQ_Y, order.x, order.y, radius)).toBe(false);
+
+      sim.enqueueSetup(order);
+      sim.step();
+      expect(next(sim)).toBeUndefined();
     });
-    sim.step();
-    expect([...stores.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+
+    it("covers a gatherer's work flag, where the mined goods pile up", () => {
+      const sim = aiSim();
+      placeHq(sim);
+      const FLAG = { x: HQ_X - 28, y: HQ_Y + 6 };
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: COLLECTOR,
+        x: FLAG.x + 2,
+        y: FLAG.y,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+      const gatherer = [...sim.world.query(Settler)].find(
+        (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
+      );
+      if (gatherer === undefined) throw new Error('setup: no gatherer');
+      sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, x: FLAG.x, y: FLAG.y });
+      sim.step();
+      const order = next(sim);
+      if (order?.kind !== 'placeBuilding') throw new Error('expected a warehouse placement at the flag');
+      expect(withinNodeRadius(order.x, order.y, FLAG.x, FLAG.y, radius)).toBe(true);
+      sim.enqueueSetup(order);
+      sim.step();
+      expect(next(sim)).toBeUndefined();
+    });
   });
 
   it('pushes an outskirts placement past the frontier building and spreads successive warehouses', () => {

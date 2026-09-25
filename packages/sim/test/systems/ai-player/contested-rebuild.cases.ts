@@ -1,13 +1,6 @@
 import { footprintCellDx } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import {
-  AttackOrder,
-  Building,
-  DefenceMode,
-  Owner,
-  Position,
-  Settler,
-} from '../../../src/components/index.js';
+import { AttackOrder, Building, DefenceMode, Position, Settler } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
@@ -18,6 +11,7 @@ import {
   REBUILD_DELAY_TICKS,
   THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
+  WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
 import { seatRaiders } from '../../../src/systems/ai-player/military/defence/index.js';
 import { SIGHT_RADIUS_NODES } from '../../../src/systems/conflict/targeting.js';
@@ -34,6 +28,7 @@ import {
   CIVILIST,
   ctxOf,
   entityOfBuilding,
+  FARM_TYPE,
   HOME_TYPE,
   HQ_TYPE,
   HQ_X,
@@ -42,6 +37,7 @@ import {
   makeAiSeat,
   placeHq,
   SEAT,
+  STOCK_TOP_TYPE,
   TOWER_TYPE,
   VIKING,
 } from './support.js';
@@ -90,10 +86,11 @@ function wallDistance(sim: Simulation, buildingType: number, site: Spot, at: Spo
 
 /** A foe tower at `at` with a bowman walked in to man its post; returns the archer. */
 function mannedFoeTower(sim: Simulation, at: Spot): Entity {
+  const before = new Set(sim.world.query(Building));
   place(sim, TOWER_TYPE, at, FOE);
   sim.step();
   const tower = [...sim.world.query(Building)].find(
-    (e) => sim.world.get(e, Building).buildingType === TOWER_TYPE && sim.world.get(e, Owner).player === FOE,
+    (e) => !before.has(e) && sim.world.get(e, Building).buildingType === TOWER_TYPE,
   );
   if (tower === undefined) throw new Error('setup: no foe tower');
   const archer = onlyOne(spawnAt(sim, { x: at.x + 4, y: at.y }, BOWMAN));
@@ -298,6 +295,25 @@ describe('build-order module - rebuilding under the enemy', () => {
     expect(moved?.buildingType).toBe(TOWER_TYPE);
     if (moved === null) throw new Error('expected the tower placed out of reach');
     expect(wallDistance(sim, TOWER_TYPE, moved, post)).toBeGreaterThan(reach);
+  });
+
+  it("passes a store coverage entry over while its only spots lie in an enemy tower's reach", () => {
+    const order = buildOrderModule([
+      { kind: 'storeCoverage', building: 'stock_02', radius: WELL_REACH_NODES },
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+    ]);
+    const sim = aiSim();
+    placeHq(sim);
+    const bakery = { x: HQ_X + 29, y: HQ_Y };
+    place(sim, BAKERY_TYPE, bakery);
+    sim.step();
+    expect(placementOf(order.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TOP_TYPE);
+    // Manned towers north and south of the workshop put every spot of its circle under fire.
+    mannedFoeTower(sim, { x: bakery.x, y: bakery.y - 4 });
+    mannedFoeTower(sim, { x: bakery.x, y: bakery.y + 4 });
+    sim.step();
+    // The list goes on to the farm instead of stalling on the warehouse.
+    expect(placementOf(order.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(FARM_TYPE);
   });
 
   it('holds a tower coverage placement while the seat is attacked', () => {

@@ -6,9 +6,11 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
 import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
+import { ownedSettlers } from '../seat-roster.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
 import { buildingSpotAccept, buildReach } from './placement.js';
 
@@ -43,19 +45,15 @@ export function coverageOf(
     : { by: 'store', radius: entry.radius };
 }
 
-/**
- * The first owned building (canonical ascending id) outside every coverage circle, or null when the
- * settlement stands covered. Circle centres are the seat's base plus its towers (or its stores) in any
- * construction state, so coverage arrives with the site rather than with the finished building. Store
- * coverage passes over the towers: they ring the settlement's edge and would pull warehouses out to it.
- */
-export function firstUncoveredBuilding(
+/** The nodes a coverage entry spreads its buildings from: the seat's base plus its towers (or its stores)
+ *  in any construction state, so coverage arrives with the site rather than with the finished building. */
+function coverageCentres(
   world: World,
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
   coverage: Coverage,
-): Entity | null {
+): HalfCellNode[] {
   const index = contentIndex(ctx.content);
   const base = seatBaseOf(world, ctx, player);
   const centres: HalfCellNode[] = [];
@@ -69,27 +67,54 @@ export function firstUncoveredBuilding(
     const node = anchorNodeOf(world, e);
     if (node !== null) centres.push(node);
   }
+  return centres;
+}
+
+/**
+ * The first node the coverage must reach that lies outside every coverage circle, or null when the seat
+ * stands covered. A tower covers every owned building (canonical ascending id). A store covers what fills
+ * it: the seat's workplaces, so a far production cluster has somewhere to unload, and then its gatherers'
+ * work flags (canonical settler order), where the mined and quarried goods pile up; homes and towers pass,
+ * since a tower rings the settlement's edge and would pull warehouses out to it.
+ */
+export function firstUncovered(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  coverage: Coverage,
+): HalfCellNode | null {
+  const index = contentIndex(ctx.content);
+  const centres = coverageCentres(world, ctx, player, owned, coverage);
+  const covered = (node: HalfCellNode): boolean =>
+    centres.some((c) => withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius));
   for (const e of owned) {
     if (
       coverage.by === 'store' &&
-      index.buildings.get(world.get(e, Building).buildingType)?.kind === 'tower'
-    ) {
+      index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'workplace'
+    )
       continue;
-    }
     const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    const covered = centres.some((c) => withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius));
-    if (!covered) return e;
+    if (node !== null && !covered(node)) return node;
+  }
+  if (coverage.by === 'tower') return null;
+  for (const e of ownedSettlers(world, player)) {
+    const flag = liveWorkFlag(world, e);
+    if (flag === undefined) continue;
+    const node = anchorNodeOf(world, flag.flag);
+    if (node !== null && !covered(node)) return node;
   }
   return null;
 }
 
 /**
- * The spot the next covering building goes on, or null to stall the entry: a tower is seeded just past the
- * target, out from the settlement, a warehouse on the target itself. The accept combines two metrics:
- * world-metric coverage of the target and the seat's Manhattan build reach. It needs the full ring budget
- * because the world metric is anisotropic (34 px E/W against 19 px N/S), so a covering node can sit
- * almost twice the coverage radius in rows from the target.
+ * The spot the next covering building goes on, or null when none covers the target: a tower is seeded just
+ * past the target, out from the settlement, a warehouse on the target itself. Two towers side by side
+ * double the defence, but two stores side by side serve the same ground, so a warehouse's spot also lies
+ * outside every standing store's own circle. The accept combines two metrics: world-metric coverage of the
+ * target and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
+ * anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice the coverage radius
+ * in rows from the target.
  */
 export function coveragePlacementSpot(
   world: World,
@@ -99,21 +124,20 @@ export function coveragePlacementSpot(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
-  target: Entity,
+  target: HalfCellNode,
   coverage: Coverage,
   underFire: EnemyFire,
 ): HalfCellNode | null {
-  const targetNode = anchorNodeOf(world, target);
-  if (targetNode === null) return null;
-  const centroid = anchorCentroid(world, owned) ?? targetNode;
-  const seed =
-    coverage.by === 'tower' ? outwardNode(centroid, targetNode, TOWER_OUTSKIRTS_PUSH_NODES) : targetNode;
+  const centroid = anchorCentroid(world, owned) ?? target;
+  const seed = coverage.by === 'tower' ? outwardNode(centroid, target, TOWER_OUTSKIRTS_PUSH_NODES) : target;
+  const apartFrom = coverage.by === 'tower' ? [] : coverageCentres(world, ctx, player, owned, coverage);
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire, seed, fan);
   const reach = buildReach(world, owned, anchor).around(seed, fan);
   return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
     // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
-    if (!withinNodeRadius(x, y, targetNode.hx, targetNode.hy, coverage.radius)) return false;
+    if (!withinNodeRadius(x, y, target.hx, target.hy, coverage.radius)) return false;
+    if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
     if (!reach.contains(x, y)) return false;
     return accept(x, y);
   });

@@ -28,13 +28,13 @@ import {
   BASELESS_CONSTRUCTION_SITES,
   type BuildOrderEntry,
   REBUILD_DELAY_TICKS,
-  sitePace,
   STALLED_PLACEMENT_RETRY_DECISIONS,
+  sitePace,
 } from './entries.js';
 import { placementSpot } from './placement.js';
 import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
 import { type Siege, seatSiege } from './siege.js';
-import { coverageOf, coveragePlacementSpot, firstUncoveredBuilding } from './tower-coverage.js';
+import { coverageOf, coveragePlacementSpot, firstUncovered } from './tower-coverage.js';
 import { upgradeBillCovered } from './upgrade-supply.js';
 
 export * from './entries.js';
@@ -141,7 +141,7 @@ function runBuildOrder(
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         const coverage = coverageOf(entry);
-        const target = firstUncoveredBuilding(world, ctx, player, owned, coverage);
+        const target = firstUncovered(world, ctx, player, owned, coverage);
         if (target === null) return []; // status said unmet - defensive
         const spot = coveragePlacementSpot(
           world,
@@ -155,6 +155,9 @@ function runBuildOrder(
           coverage,
           underFire,
         );
+        // A store target the seat cannot cover, a flag beyond its build reach or ground another store
+        // already serves, is passed over rather than stalled: the goods still travel, only farther.
+        if (spot === null && coverage.by === 'store') continue;
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
     }
@@ -208,7 +211,8 @@ function advanceFrontier(world: World, player: number, entryIndex: number): void
 /**
  * Whether acting on `entryIndex` would take the list more than the clock's lookahead ({@link sitePace})
  * past the oldest one met only by a fresh site still going up. That entry is found by re-reading the list
- * over the buildings that stand, a building mid-upgrade counted at the tier it has; skipped entries do not
+ * over the buildings that stand, a building mid-upgrade counted at the tier it has. An entry unmet over
+ * the sites too was passed over, not met by one, so it never holds the list; skipped entries do not
  * count toward the lookahead.
  */
 function outrunsSites(
@@ -226,8 +230,9 @@ function outrunsSites(
   let oldest = -1;
   for (let i = 0; i < entryIndex && oldest < 0; i++) {
     const entry = order[i];
-    if (entry !== undefined && entryStatus(world, ctx, player, standing, entry, live, false) === 'unmet')
-      oldest = i;
+    if (entry === undefined || entryStatus(world, ctx, player, standing, entry, live, false) !== 'unmet')
+      continue;
+    if (entryStatus(world, ctx, player, owned, entry, live) !== 'unmet') oldest = i;
   }
   if (oldest < 0) return false;
   let ahead = 0;

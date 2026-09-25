@@ -53,8 +53,8 @@ export const DENSE_TOWER_RADIUS_NODES = 14;
  *  serve it, in world-metric nodes (authored); a farther one gets another well beside the workshop. */
 export const WELL_REACH_NODES = 12;
 
-/** How far a store's coverage reaches, in world-metric nodes (authored): wider than a tower's, since a
- *  warehouse serves carriers rather than bows. */
+/** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
+ *  warehouse serves carriers rather than bows, and the base is a store too. */
 export const STORE_COVERAGE_RADIUS_NODES = 32;
 
 /**
@@ -178,7 +178,9 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'front' }],
     needsResources: ['mushroom', 'gold'],
   },
-  { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
+  // Warehouses as the settlement needs them: one wherever a workshop or a work flag stands beyond every
+  // store's reach, so the smithies unload nearby and the ore piled at the mines gets carried in.
+  { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
   // Every bakery drinks water like the brewery: one standing beyond a well's reach gets a well beside it.
   {
@@ -194,8 +196,6 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   // The late game runs out of mail, plate and long bows.
   { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'building', id: 'work_smithy_01' }] },
-  { kind: 'place', building: 'stock_02', count: 3, near: [{ kind: 'outskirts' }], apart: true },
-  { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
   // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer
   // to feed them.
