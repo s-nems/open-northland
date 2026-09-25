@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  absentSeats,
   aiSeats,
   claimSeat,
   hasClaimableSeat,
   initialRosterState,
   OBSERVER_SEAT,
   setSlotColor,
-  toggleVacantMode,
+  setVacantMode,
   wornByAnother,
 } from '../src/entries/main-menu/lobby/roster-state.js';
 
@@ -20,14 +21,14 @@ describe('roster state', () => {
   it('lists no AI seat until a slot is toggled to it', () => {
     let state = claimSeat(initialRosterState(players), 0);
     expect(aiSeats(state, players)).toEqual([]);
-    state = toggleVacantMode(state, 1);
+    state = setVacantMode(state, 1, 'ai');
     expect(aiSeats(state, players)).toEqual([1]);
   });
 
   it('keeps every slot eligible for the AI toggle behind a spectator seat', () => {
     let state = claimSeat(initialRosterState(players), OBSERVER_SEAT);
-    state = toggleVacantMode(state, 0); // no seat is the observer's own - slot 0 still counts
-    state = toggleVacantMode(state, 1); // the all-AI watch rig: every seat toggled to AI
+    state = setVacantMode(state, 0, 'ai'); // no seat is the observer's own - slot 0 still counts
+    state = setVacantMode(state, 1, 'ai'); // the all-AI watch rig: every seat toggled to AI
     expect(aiSeats(state, players)).toEqual([0, 1]);
   });
 
@@ -38,7 +39,7 @@ describe('roster state', () => {
   });
 
   it('does not list the claimed seat as AI', () => {
-    const state = claimSeat(toggleVacantMode(initialRosterState(players), 1), 1);
+    const state = claimSeat(setVacantMode(initialRosterState(players), 1, 'ai'), 1);
     expect(aiSeats(state, players)).toEqual([]);
   });
 
@@ -52,7 +53,7 @@ describe('roster state', () => {
     ] as const;
     const state = claimSeat(initialRosterState(lobby), 0);
     expect(aiSeats(state, lobby)).toEqual([1]);
-    expect(aiSeats(toggleVacantMode(state, 1), lobby)).toEqual([]);
+    expect(aiSeats(setVacantMode(state, 1, 'idle'), lobby)).toEqual([]);
   });
 
   it('never lists a Human/Closed-only seat as AI', () => {
@@ -64,7 +65,15 @@ describe('roster state', () => {
     ] as const;
     const state = claimSeat(initialRosterState(lobby), 0);
     expect(aiSeats(state, lobby)).toEqual([]);
-    expect(aiSeats(toggleVacantMode(state, 1), lobby)).toEqual([]);
+    expect(aiSeats(setVacantMode(state, 1, 'ai'), lobby)).toEqual([]);
+  });
+
+  it('lists an absent seat until someone sits in it, and never as AI', () => {
+    let state = claimSeat(initialRosterState(players), 0);
+    state = setVacantMode(state, 1, 'absent');
+    expect(absentSeats(state, players)).toEqual([1]);
+    expect(aiSeats(state, players)).toEqual([]);
+    expect(absentSeats(claimSeat(state, 1), players)).toEqual([]);
   });
 
   it('keeps authored duplicate colours pickable for their own slot and blocks new duplicates', () => {

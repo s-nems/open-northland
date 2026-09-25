@@ -16,7 +16,7 @@ import {
   type RosterState,
   type SeatChoice,
   setSlotColor,
-  toggleVacantMode,
+  setVacantMode,
 } from './roster-state.js';
 
 export function lobbyScreen(
@@ -150,8 +150,8 @@ export function lobbyScreen(
         if (next !== null) update(next);
         else renderSeats();
       },
-      toggleMode(player) {
-        update(toggleVacantMode(state, player));
+      setMode(player, mode) {
+        update(setVacantMode(state, player, mode));
       },
       claim(player) {
         pickerSlot = null;

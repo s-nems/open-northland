@@ -77,4 +77,19 @@ describe('map palisade promotion', () => {
       },
     ]);
   });
+
+  it("leaves an absent seat's walls unplaced but still claims their placements", () => {
+    const commands: Command[] = [];
+    const sim = { enqueueSetup: (command: Command): void => void commands.push(command) };
+    const objects: TerrainObjects = {
+      types: ['wall_01'],
+      placements: [2, 4, 0, 3, 4, 0],
+      owners: [0, 12],
+    };
+    const placements = spawnMapPalisades(sim, objects, IR, () => 1, new Set([0]));
+    expect(commands.map((command) => (command.kind === 'placePalisade' ? command.owner : null))).toEqual([
+      12,
+    ]);
+    expect(placements).toHaveLength(2);
+  });
 });

@@ -1,7 +1,7 @@
-import { ENVELOPE_VERSION, type ServerMessage, type VacantSeatMode } from '@open-northland/net-protocol';
+import { type DepartedSeatMode, ENVELOPE_VERSION, type ServerMessage } from '@open-northland/net-protocol';
 import type { RoomClock } from './room-clock.js';
 
-type Departure = { readonly nick: string; readonly player: number; readonly mode: VacantSeatMode };
+type Departure = { readonly nick: string; readonly player: number; readonly mode: DepartedSeatMode };
 
 /** Shared seat handovers wait for the real built tick rather than guessing a pre-load baseline. */
 export class Departures {

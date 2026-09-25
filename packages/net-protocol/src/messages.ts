@@ -14,7 +14,7 @@ export type RoomState = 'lobby' | 'running' | 'ended';
 export interface RoomSettings {
   readonly initialSave?: InitialSaveIdentity;
   readonly mapOrigin?: 'mod' | 'user';
-  readonly kickedSeatMode?: 'ai' | 'idle';
+  readonly kickedSeatMode?: DepartedSeatMode;
   readonly name: string;
   readonly world: SessionWorld;
   readonly seed: number;
@@ -26,6 +26,10 @@ export type LobbySettings = Omit<RoomSettings, 'world' | 'initialSave' | 'mapOri
 
 /** What an unclaimed seat does; `human` is never chosen, it is what a claimed seat becomes. */
 export type VacantSeatMode = Exclude<SeatMode, 'human'>;
+
+/** What a seat becomes when its member departs a running game; its settlers already stand, so it
+ *  cannot turn `absent`. */
+export type DepartedSeatMode = Exclude<VacantSeatMode, 'absent'>;
 
 export interface RoomSeatSetup {
   readonly player: number;
@@ -198,7 +202,7 @@ export type ServerMessage =
       readonly kind: 'kicked';
       readonly player: number;
       readonly nick: string;
-      readonly mode: VacantSeatMode;
+      readonly mode: DepartedSeatMode;
       readonly tick: number;
     }
   | {

@@ -68,6 +68,8 @@ export class Lobby {
     if (member !== this.creator()) return 'only the creator sets up seats';
     if (this.settings.initialSave !== undefined && (change.color !== undefined || change.team !== undefined))
       return 'saved seat colors and teams are fixed';
+    if (this.settings.initialSave !== undefined && change.mode === 'absent')
+      return 'a saved world already places every seat';
     const before = this.seats.views().find((seat) => seat.player === player);
     const refusal = this.seats.setUp(player, change);
     if (refusal !== null) return refusal;

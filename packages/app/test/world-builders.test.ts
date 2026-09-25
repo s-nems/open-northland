@@ -130,6 +130,20 @@ describe('runAuthoredMap (map.cif StaticObjects to sim commands)', () => {
     ]);
   });
 
+  it('leaves the placements of an absent seat off the map but keeps their content rows', () => {
+    const { Building, Owner, Settler } = components;
+    const full = runAuthoredMap(7, 1, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS);
+    const sim = runAuthoredMap(7, 1, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS, {}, {}, [0]);
+    if (sim === null || full === null) throw new Error('expected an authored sim');
+    expect([...sim.world.query(Settler)]).toEqual([]);
+    // Only the neutral barracks stands; the seat-0 one is gone.
+    const buildings = [...sim.world.query(Building)];
+    expect(buildings.map((e) => sim.world.get(e, Building).buildingType)).toEqual([31]);
+    expect(buildings.some((e) => sim.world.tryGet(e, Owner)?.player === 0)).toBe(false);
+    // A restore resolves content without the roster, so the catalog must not shrink.
+    expect(sim.content.buildings.map((b) => b.typeId)).toEqual(full.content.buildings.map((b) => b.typeId));
+  });
+
   it('returns null when nothing resolves (caller falls back to the demo slice)', () => {
     const unresolvable = {
       buildings: [{ name: 'unknown house', level: 0, player: 1, hx: 2, hy: 2 }],

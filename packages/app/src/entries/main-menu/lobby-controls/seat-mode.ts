@@ -1,7 +1,7 @@
+import type { SeatMode } from '@open-northland/lockstep';
 import { segControl } from '../../../view/settings-controls.js';
 import { selectControl } from './select.js';
 
-type SeatMode = 'ai' | 'idle' | 'human';
 interface ModeOptions {
   readonly fieldClassName?: string;
   readonly label: string;

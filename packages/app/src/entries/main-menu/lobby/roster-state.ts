@@ -9,8 +9,9 @@ import type { LocalSeat } from '@open-northland/lockstep';
 /** One map player slot as `maps-index.json` lists it. */
 export type MapPlayerSlot = MapsIndexPlayerSlot;
 
-/** What a free claimable seat does once the game starts: nothing, or the strategic AI plays it. */
-export type VacantMode = 'idle' | 'ai';
+/** What a free claimable seat does once the game starts: nothing, the strategic AI plays it, or it
+ *  is left off the map. */
+export type VacantMode = 'idle' | 'ai' | 'absent';
 
 export { OBSERVER_SEAT, OVERSEER_SEAT } from '@open-northland/lockstep';
 
@@ -50,9 +51,9 @@ export function claimSeat(state: RosterState, slot: SeatChoice): RosterState {
   return { ...state, seat: slot };
 }
 
-export function toggleVacantMode(state: RosterState, slot: number): RosterState {
+export function setVacantMode(state: RosterState, slot: number, mode: VacantMode): RosterState {
   const vacantModes = new Map(state.vacantModes);
-  vacantModes.set(slot, vacantModes.get(slot) === 'ai' ? 'idle' : 'ai');
+  vacantModes.set(slot, mode);
   return { ...state, vacantModes };
 }
 
@@ -77,14 +78,26 @@ export function setSlotColor(state: RosterState, slot: number, colorId: number):
  *  toggle's when set, else the authored default. The map's own computer seats are not the lobby's to
  *  list; see `isMapComputerSeat`. */
 export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): number[] {
-  return players
-    .filter(
-      (p) =>
-        p.claimable &&
-        p.aiAllowed &&
-        !p.hidden &&
-        p.player !== state.seat &&
-        (state.vacantModes.get(p.player) ?? authoredVacantMode(p)) === 'ai',
-    )
+  return vacantSeatsIn(state, players, 'ai')
+    .filter((p) => p.aiAllowed)
     .map((p) => p.player);
+}
+
+/** The offered seats left off the map, what `?absent=` carries. */
+export function absentSeats(state: RosterState, players: readonly MapPlayerSlot[]): number[] {
+  return vacantSeatsIn(state, players, 'absent').map((p) => p.player);
+}
+
+function vacantSeatsIn(
+  state: RosterState,
+  players: readonly MapPlayerSlot[],
+  mode: VacantMode,
+): MapPlayerSlot[] {
+  return players.filter(
+    (p) =>
+      p.claimable &&
+      !p.hidden &&
+      p.player !== state.seat &&
+      (state.vacantModes.get(p.player) ?? authoredVacantMode(p)) === mode,
+  );
 }

@@ -13,6 +13,7 @@ export const plNetworkRoom: { readonly [Key in keyof typeof enNetworkRoom]: stri
   seatMode: 'Tryb miejsca',
   ai: 'Komputer',
   idle: 'Bezczynne',
+  absent: 'Brak',
   color: 'Kolor',
   team: 'Drużyna',
   authored: 'Według mapy',

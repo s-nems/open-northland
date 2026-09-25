@@ -50,11 +50,12 @@ describe('observerSeats', () => {
     expect(seats).toEqual([{ player: 0, name: 'Ragnar' }, { player: 1 }, { player: 2 }]);
   });
 
-  it('skips a seat sitting the game out and the map’s locked and hidden computers', () => {
+  it('skips a seat sitting the game out or left off the map and the map’s locked and hidden computers', () => {
     const seats = observerSeats(
       session([
         { player: 0, mode: 'human', color: 0 },
         { player: 1, mode: 'idle', color: 1 },
+        { player: 2, mode: 'absent', color: 2 },
         { player: 3, mode: 'ai', color: 3 },
         { player: 4, mode: 'ai', color: 4 },
       ]),

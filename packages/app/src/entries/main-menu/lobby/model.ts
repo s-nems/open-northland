@@ -11,6 +11,7 @@ import {
 import { formatSearch } from '../../../view/params.js';
 import type { MapPlayerSlot, SeatChoice } from './roster-state.js';
 import {
+  absentSeats,
   aiSeats,
   authoredVacantMode,
   claimSeat,
@@ -79,7 +80,7 @@ export function lobbySlotRows(
 /**
  * The session Start launches. Every rule is set rather than left to the world, so a stale carried param
  * cannot leak into the next map. A roster with no claimable seat starts seatless: nothing is claimed
- * and no offered seat auto-plays; the map's own computer seats play either way.
+ * and no offered seat auto-plays or leaves the map; the map's own computer seats play either way.
  */
 export function lobbySession(
   mapId: string,
@@ -87,7 +88,10 @@ export function lobbySession(
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
 ): GameSession {
-  const ai = new Set(state.seat === null ? [] : aiSeats(state, players));
+  const lists = {
+    ai: new Set(state.seat === null ? [] : aiSeats(state, players)),
+    absent: new Set(state.seat === null ? [] : absentSeats(state, players)),
+  };
   const localSeat = state.seat ?? DEFAULT_LOCAL_PLAYER;
   return {
     world: { kind: 'map', mapId },
@@ -95,7 +99,7 @@ export function lobbySession(
     seats: orderedSeats(
       lobbySeats(players, localSeat).map((slot) => ({
         player: slot.player,
-        mode: seatMode(slot, localSeat, ai),
+        mode: seatMode(slot, localSeat, lists),
         color: state.colors.get(slot.player) ?? slot.colorId,
       })),
     ),

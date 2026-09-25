@@ -67,6 +67,8 @@ describe('immutable lobby files', () => {
     expect(a.last('rejected')?.reason).toMatch(/saved seat/);
     a.send({ kind: 'setSeat', player: 2, mode: 'ai' });
     expect(a.last('room')?.room.seats.find((seat) => seat.player === 2)?.mode).toBe('ai');
+    a.send({ kind: 'setSeat', player: 2, mode: 'absent' });
+    expect(a.last('rejected')?.reason).toMatch(/saved world/);
   });
   it('locks saved overrides and routes map retries to the current creator', () => {
     const { a, b, advance } = lobby();

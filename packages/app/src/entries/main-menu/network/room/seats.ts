@@ -27,7 +27,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
     if (focus !== null) rows.get(focus)?.chip.focus();
     if (player !== null) rows.get(player)?.palette.scrollIntoView({ block: 'nearest' });
   }
-  function seatRow(player: number) {
+  function seatRow(player: number, resumed: boolean) {
     const colorOptions = {
       label: copy.color,
       name: colorName,
@@ -79,6 +79,8 @@ export function roomSeats(deps: NetworkRoomDeps) {
         choices: [
           { id: 'idle', label: copy.idle },
           { id: 'ai', label: copy.ai },
+          // A resumed save's world is already built, so there is nothing left to take off the map.
+          { id: 'absent', label: copy.absent, disabled: resumed },
           { id: 'human', label: copy.human, disabled: true },
         ],
         change: (mode) => {
@@ -151,7 +153,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
       for (const seat of room.seats) {
         let row = rows.get(seat.player);
         if (row === undefined) {
-          row = seatRow(seat.player);
+          row = seatRow(seat.player, room.settings.initialSave !== undefined);
           rows.set(seat.player, row);
           root.append(row.row);
         }

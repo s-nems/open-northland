@@ -295,9 +295,11 @@ export class Room {
     };
   }
 
-  /** The seat returns to its lobby setting; the AI case lands on the clock through the game. */
+  /** The seat returns to its lobby setting, `idle` for an `absent` one whose settlers already stand;
+   *  the AI case lands on the clock through the game. */
   private kickOut(target: Member, player: number, now: number): void {
-    const mode = this.lobby.settings.kickedSeatMode ?? this.seats.vacantModeOf(player);
+    const lobbyMode = this.seats.vacantModeOf(player);
+    const mode = this.lobby.settings.kickedSeatMode ?? (lobbyMode === 'absent' ? 'idle' : lobbyMode);
     if (this.game !== null && mode !== null) {
       const tick = this.game.kicked(target, player, mode);
       if (tick !== null) this.broadcast({ kind: 'kicked', player, nick: target.nick, mode, tick });

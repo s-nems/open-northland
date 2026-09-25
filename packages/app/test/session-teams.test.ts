@@ -48,6 +48,16 @@ describe('session teams', () => {
     ]);
   });
 
+  it('leaves an absent seat out of the match, even where the script names the participants', () => {
+    const absent: GameSession = {
+      ...SESSION,
+      seats: [...SESSION.seats, { player: 4, mode: 'absent', color: 4 }],
+    };
+    expect(sessionWorldOptions(absent, null, {}).absentSeats).toEqual([4]);
+    const scripted = sessionWorldOptions(absent, null, { victory: 'script', participants: [0, 1, 2, 3, 4] });
+    expect(scripted.matchParticipants).toEqual([0, 1, 2, 3]);
+  });
+
   it('hands the world its teams as shared vision beside the stances', () => {
     const options = sessionWorldOptions(SESSION, null, {});
     expect(options.sharedVision).toEqual([[0, 1]]);

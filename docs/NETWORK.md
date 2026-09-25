@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 7` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 8` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -56,8 +56,10 @@ immediately. The host closes a connection that has sent nothing, a pong included
 `createRoom { settings, seats }` makes a room and puts the sender in it. `settings` is
 `{ name, world, seed, rules, speed, kickedSeatMode?, initialSave?, mapOrigin? }`, where `world` and `rules` are the session descriptor's, and
 the world is fixed for the room's life. `seats` lists the world's seats in ascending order as
-`{ player, mode, color, team? }` with `mode` `ai` or `idle`; `human` is never chosen, it is what a claimed
-seat becomes. `joinRoom { roomId }` joins a room in the lobby; a room that has started refuses. A
+`{ player, mode, color, team? }` with `mode` `ai`, `idle` or `absent`; `human` is never chosen, it is what
+a claimed seat becomes. An `absent` seat idles, and a fresh world places none of its authored settlers,
+buildings, walls, animals or signposts. A room resumed from a save refuses `absent`, since its world
+already stands. `joinRoom { roomId }` joins a room in the lobby; a room that has started refuses. A
 duplicate nick within a room gets a numeric suffix (`Ania`, `Ania2`). At most `MAX_MEMBERS` (12)
 people share a room.
 
@@ -207,7 +209,8 @@ other than the target, rounded up. A vote lives only while its target is waited 
 
 When the yeses reach `needed` the relay broadcasts `kicked { player, nick, mode, tick }`, removes
 the member (its token is a stranger from then on), and returns the seat to `settings.kickedSeatMode`
-(`ai` or `idle`), falling back to its original lobby mode when omitted. The room view reflects this mode. For
+(`ai` or `idle`), falling back to its original lobby mode when omitted, and to `idle` for an `absent`
+one, whose settlers already stand. The room view reflects this mode. For
 `mode: "ai"` the relay lands its `setPlayerAi` envelope on `tick`, the next unemitted one, outside
 every budget, so the AI takes the seat on the same tick on every client. For `mode: "idle"` the seat
 simply issues nothing more.

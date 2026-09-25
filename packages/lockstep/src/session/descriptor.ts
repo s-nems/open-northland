@@ -4,10 +4,11 @@ import { type InitialSaveIdentity, parseInitialSaveIdentity } from './initial-sa
 const { isValidPlayer, isFogMode } = components;
 
 /** What a roster seat does for a whole session: `human` is played by a person, `ai` by the strategic AI
- *  player, and `idle` sits out. */
-export type SeatMode = 'human' | 'ai' | 'idle';
+ *  player, and `idle` sits out. `absent` also sits out, and a fresh world places none of the seat's
+ *  authored settlers, buildings, walls, animals or signposts, and the match does not count it. */
+export type SeatMode = 'human' | 'ai' | 'idle' | 'absent';
 
-export const SEAT_MODES = ['human', 'ai', 'idle'] as const satisfies readonly SeatMode[];
+export const SEAT_MODES = ['human', 'ai', 'idle', 'absent'] as const satisfies readonly SeatMode[];
 
 /** One roster seat as the session runs it. */
 export interface SessionSeat {
@@ -86,6 +87,11 @@ export function aiSeatsOf(session: GameSession): number[] {
 /** Every seat a person plays, on whichever client. */
 export function humanSeatsOf(session: GameSession): number[] {
   return seatsInMode(session, 'human');
+}
+
+/** Seats a fresh world leaves empty of their authored placements. */
+export function absentSeatsOf(session: GameSession): number[] {
+  return seatsInMode(session, 'absent');
 }
 
 function seatsInMode(session: GameSession, mode: SeatMode): number[] {

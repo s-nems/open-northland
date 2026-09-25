@@ -47,15 +47,20 @@ export function mapPalisadeSpawns(objects: TerrainObjects, ir: ContentIr): MapPa
 /**
  * Promote authored wall/gate scenery through the setup command seam. Their exact graphics index is
  * retained; the placement-parallel source owner lane becomes the live command owner when present.
+ * An absent seat's walls are not placed, yet their placements are still returned so the static
+ * layer does not draw them as scenery.
  */
 export function spawnMapPalisades(
   sim: Pick<Simulation, 'enqueueSetup'>,
   objects: TerrainObjects,
   ir: ContentIr,
   tribeForOwner: (owner: number | undefined) => number,
+  absentSeats: ReadonlySet<number> = new Set(),
 ): readonly number[] {
   const placements: number[] = [];
   for (const spawn of mapPalisadeSpawns(objects, ir)) {
+    placements.push(spawn.placement);
+    if (spawn.owner !== undefined && absentSeats.has(spawn.owner)) continue;
     const command: Command = {
       kind: 'placePalisade',
       gfxIndex: spawn.gfxIndex,
@@ -68,7 +73,6 @@ export function spawnMapPalisades(
       force: true,
     };
     sim.enqueueSetup(command);
-    placements.push(spawn.placement);
   }
   return placements;
 }

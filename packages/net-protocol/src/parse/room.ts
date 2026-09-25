@@ -9,6 +9,7 @@ import {
   MAX_WORLD_ID_LENGTH,
 } from '../limits.js';
 import type {
+  DepartedSeatMode,
   LobbySettings,
   RoomMemberView,
   RoomSeatSetup,
@@ -34,8 +35,9 @@ import { assertNever, parseLine, parseNick } from './text.js';
 
 const ROOM_STATES = ['lobby', 'running', 'ended'] as const satisfies readonly RoomState[];
 
-const SEAT_MODES = keysOf<SeatMode>({ human: true, ai: true, idle: true });
-export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({ ai: true, idle: true });
+const SEAT_MODES = keysOf<SeatMode>({ human: true, ai: true, idle: true, absent: true });
+export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({ ai: true, idle: true, absent: true });
+export const DEPARTED_SEAT_MODES = keysOf<DepartedSeatMode>({ ai: true, idle: true });
 
 export function parseRoomSettings(value: unknown, at: string): RoomSettings {
   const raw = asRecord(value, at);
@@ -60,7 +62,7 @@ export function parseLobbySettings(value: unknown, at: string): LobbySettings {
     speed: asPositiveNumber(raw.speed, `${at}.speed`, MAX_SPEED),
     ...(raw.kickedSeatMode === undefined
       ? {}
-      : { kickedSeatMode: asOneOf(raw.kickedSeatMode, VACANT_SEAT_MODES, `${at}.kickedSeatMode`) }),
+      : { kickedSeatMode: asOneOf(raw.kickedSeatMode, DEPARTED_SEAT_MODES, `${at}.kickedSeatMode`) }),
   };
 }
 

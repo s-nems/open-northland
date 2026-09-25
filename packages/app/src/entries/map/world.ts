@@ -68,6 +68,8 @@ export interface MapWorldOptions extends SessionRules {
   readonly ir: ContentIr | null;
   readonly content: WorldContentOptions;
   readonly aiSeats: readonly number[];
+  /** Seats whose authored placements and walls the world leaves out. */
+  readonly absentSeats?: readonly number[];
   readonly playerRoster?: MapScript['players'];
   /** Seats whose chest-window assistant grants start on. */
   readonly assistantSeats: readonly number[];
@@ -152,7 +154,16 @@ function runWorld(
   const roster = (options.playerRoster ?? []).map((row) => row.player);
   const script = { ...options.script, diplomacy: withNeutralRosterPairs(roster, rows) };
   if (map?.entities !== undefined && ir !== null) {
-    const authored = runAuthoredMap(seed, PLACEMENT_DRAIN_TICKS, terrain, map.entities, ir, content, script);
+    const authored = runAuthoredMap(
+      seed,
+      PLACEMENT_DRAIN_TICKS,
+      terrain,
+      map.entities,
+      ir,
+      content,
+      script,
+      options.absentSeats,
+    );
     if (authored !== null) return { sim: authored, kind: 'authored' };
   }
   return { sim: runBareMap(seed, terrain, content, script), kind: 'bare' };
@@ -253,8 +264,12 @@ function spawnHarvestables(
   const chests = spawnMapChests(sim, map.objects, ir);
   const goods = spawnMapGroundGoods(sim, map.objects, ir);
   const roster = options.playerRoster === undefined ? null : { players: options.playerRoster };
-  const palisades = spawnMapPalisades(sim, map.objects, ir, (owner) =>
-    owner === undefined ? PRIMARY_TRIBE : playerTribe(roster, owner),
+  const palisades = spawnMapPalisades(
+    sim,
+    map.objects,
+    ir,
+    (owner) => (owner === undefined ? PRIMARY_TRIBE : playerTribe(roster, owner)),
+    new Set(options.absentSeats),
   );
   const bushes =
     options.berryBushes === false ? [] : [...spawnMapBerryBushes(sim, map.objects, ir).placementByEntity];

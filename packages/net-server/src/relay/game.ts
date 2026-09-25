@@ -1,10 +1,10 @@
 import {
   type ClientMessage,
+  type DepartedSeatMode,
   PAUSE_BUDGET,
   type PlayerWireEnvelope,
   type ServerMessage,
   TICK_MS,
-  type VacantSeatMode,
   type WireDigest,
 } from '@open-northland/net-protocol';
 import { type BlobUpload, relayBlob } from './blob-relay.js';
@@ -171,7 +171,7 @@ export class Game {
 
   /** The seat's fallout on the clock: the AI takes it on the next tick, an idle seat just goes quiet.
    *  Returns the tick it takes effect on. */
-  kicked(target: Member, player: number, mode: VacantSeatMode): number | null {
+  kicked(target: Member, player: number, mode: DepartedSeatMode): number | null {
     return this.departures.schedule({ nick: target.nick, player, mode }, this.builtTick !== null);
   }
 

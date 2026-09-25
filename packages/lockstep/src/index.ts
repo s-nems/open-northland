@@ -6,6 +6,7 @@ export {
 } from './driver.js';
 export { LOOPBACK_DELAY_TICKS, LoopbackTransport } from './loopback.js';
 export {
+  absentSeatsOf,
   aiSeatsOf,
   DEFAULT_LOCAL_PLAYER,
   type GameSession,

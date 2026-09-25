@@ -14,7 +14,7 @@ import {
   OVERSEER_SEAT,
   type RosterState,
   setSlotColor,
-  toggleVacantMode,
+  setVacantMode,
 } from '../src/entries/main-menu/lobby/roster-state.js';
 
 function slot(player: number, over: Partial<MapsIndexPlayerSlot> = {}): MapsIndexPlayerSlot {
@@ -59,7 +59,7 @@ describe('lobbySlotRows', () => {
     let state = initialLobbyState(players);
     const recoloured = setSlotColor(state, 1, 7);
     if (recoloured === null) throw new Error('expected a free colour');
-    state = toggleVacantMode(recoloured, 2);
+    state = setVacantMode(recoloured, 2, 'idle');
     const rows = lobbySlotRows(players, state);
     expect(rows[1]?.colorId).toBe(7);
     expect(rows[2]?.vacantMode).toBe('idle'); // authored ai default flipped off
@@ -115,8 +115,8 @@ describe('lobbySession', () => {
   });
 
   it('plays the claimed seat as the person and never lists it as AI', () => {
-    let state = toggleVacantMode(initialRosterState(players), 1);
-    state = toggleVacantMode(state, 1); // back to the authored idle default
+    let state = setVacantMode(initialRosterState(players), 1, 'ai');
+    state = setVacantMode(state, 1, 'idle'); // back to the authored idle default
     state = claimSeat(state, 1);
     const session = lobbySession('zatoka', state, players, OPTIONS);
     expect(session.localSeat).toBe(1);
@@ -125,8 +125,8 @@ describe('lobbySession', () => {
 
   it('keeps every slot eligible for AI behind a spectator seat', () => {
     let state = claimSeat(initialRosterState(players), OBSERVER_SEAT);
-    state = toggleVacantMode(state, 0);
-    state = toggleVacantMode(state, 1);
+    state = setVacantMode(state, 0, 'ai');
+    state = setVacantMode(state, 1, 'ai');
     expect(lobbySession('zatoka', state, players, OPTIONS).localSeat).toBe(OBSERVER_SEAT);
     expect(aiSeatsOfLobby(state, players)).toEqual([0, 1]);
     const overseer = claimSeat(initialRosterState(players), OVERSEER_SEAT);
@@ -137,7 +137,7 @@ describe('lobbySession', () => {
     const lobby = [slot(0, { claimable: true, type: 'human' }), slot(1, { claimable: true })];
     let state = claimSeat(initialRosterState(lobby), 0);
     expect(aiSeatsOfLobby(state, lobby)).toEqual([1]);
-    state = toggleVacantMode(state, 1);
+    state = setVacantMode(state, 1, 'idle');
     expect(aiSeatsOfLobby(state, lobby)).toEqual([]);
   });
 
@@ -148,8 +148,22 @@ describe('lobbySession', () => {
       slot(0, { claimable: true, type: 'human' }),
       slot(1, { claimable: true, aiAllowed: false }),
     ];
-    const state = toggleVacantMode(claimSeat(initialRosterState(lobby), 0), 1);
+    const state = setVacantMode(claimSeat(initialRosterState(lobby), 0), 1, 'ai');
     expect(aiSeatsOfLobby(state, lobby)).toEqual([]);
+  });
+
+  it('leaves an absent seat off the map, but never the claimed one or a map computer seat', () => {
+    const lobby = [...players, slot(3, { claimable: true, aiAllowed: false })];
+    let state = claimSeat(initialRosterState(lobby), 0);
+    state = setVacantMode(state, 1, 'absent');
+    state = setVacantMode(state, 3, 'absent');
+    const session = lobbySession('zatoka', state, lobby, OPTIONS);
+    expect(session.seats.map((seat) => seat.mode)).toEqual(['human', 'absent', 'ai', 'absent']);
+    const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, lobby, OPTIONS));
+    expect(entry.get('absent')).toBe('1,3');
+    // Sitting down in an absent seat plays it; the seat left behind keeps its own choice.
+    const moved = lobbySession('zatoka', claimSeat(state, 1), lobby, OPTIONS);
+    expect(moved.seats.map((seat) => seat.mode)).toEqual(['idle', 'human', 'ai', 'absent']);
   });
 
   it('carries a recoloured slot and leaves an authored colour alone', () => {

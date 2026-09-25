@@ -11,7 +11,7 @@ export interface ObserverSeatEntry {
 /**
  * The seats an observer may watch, ascending: the ones a person may sit in (the lobby's claimable
  * rows, played by a person or a lobby-placed computer). The map's own computer seats, locked or
- * hidden in the lobby, are left out, as is a seat sitting the game out. A seat the roster never
+ * hidden in the lobby, are left out, as is a seat sitting the game out or left off the map. A seat the roster never
  * authored counts as claimable, the way the session parser reads it.
  */
 export function observerSeats(session: GameSession, script: MapScript | null): ObserverSeatEntry[] {
@@ -19,7 +19,8 @@ export function observerSeats(session: GameSession, script: MapScript | null): O
   const nameOf = playerNameMap(script);
   const out: ObserverSeatEntry[] = [];
   for (const seat of orderedSeats(session.seats)) {
-    if (seat.mode === 'idle' || authored.get(seat.player)?.claimable === false) continue;
+    if (seat.mode === 'idle' || seat.mode === 'absent' || authored.get(seat.player)?.claimable === false)
+      continue;
     const name = nameOf(seat.player);
     out.push(name === undefined ? { player: seat.player } : { player: seat.player, name });
   }

@@ -79,9 +79,11 @@ export const enSurfaces = {
       vacantComputer: 'Computer',
       vacantIdle: 'Idle',
       vacantComputerSub: 'computer plays',
+      vacantAbsent: 'None',
       vacantIdleSub: 'idle',
+      vacantAbsentSub: 'not on the map',
       vacantToggleTitle:
-        'What a free seat does once the game starts: Idle does nothing, Computer will play automatically.',
+        'What a free seat does once the game starts: Idle does nothing, Computer will play automatically, None removes its settlers and buildings from the map.',
       sit: 'Sit here',
       footnote:
         'The map defines the slots - none can be added or removed. You can move by sitting in an open slot.',

@@ -11,6 +11,7 @@ export const enNetworkRoom = {
   seatMode: 'Seat mode',
   ai: 'Computer',
   idle: 'Idle',
+  absent: 'None',
   color: 'Colour',
   team: 'Team',
   authored: 'Map default',

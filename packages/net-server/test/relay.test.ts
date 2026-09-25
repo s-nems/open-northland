@@ -225,6 +225,33 @@ describe('relay rooms', () => {
     expect(s.relay.roomCount).toBe(1);
   });
 
+  it('starts an absent seat as absent and hands a departed occupant of one to idle', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    a.send({ kind: 'setSeat', player: 1, mode: 'absent' });
+    a.send({ kind: 'setSeat', player: 2, mode: 'absent' });
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    a.send({ kind: 'setReady', ready: true });
+    b.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    const started = a.last('start');
+    if (started === undefined) throw new Error('expected a start');
+    expect(parseGameSession(started.session).seats.map((seat) => seat.mode)).toEqual([
+      'human',
+      'human',
+      'absent',
+    ]);
+    a.send({ kind: 'loaded', tick: 0, world: 0 });
+    b.send({ kind: 'loaded', tick: 0, world: 0 });
+    b.send({ kind: 'leaveRoom' });
+    expect(a.last('kicked')).toMatchObject({ player: 1, mode: 'idle' });
+    expect(a.last('room')?.room.seats[1]?.mode).toBe('idle');
+  });
+
   it('releases an explicit departure while the other running member continues', () => {
     const s = startedRoom();
     s.b.send({ kind: 'leaveRoom' });

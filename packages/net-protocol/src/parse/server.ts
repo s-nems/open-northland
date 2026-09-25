@@ -13,7 +13,7 @@ import {
   keysOf,
 } from '../untrusted.js';
 import { CLIENT_KINDS } from './client.js';
-import { parseRoomSummary, parseRoomView, parseSeatIndex, VACANT_SEAT_MODES } from './room.js';
+import { DEPARTED_SEAT_MODES, parseRoomSummary, parseRoomView, parseSeatIndex } from './room.js';
 import { parseSaveOrders } from './save-orders.js';
 import { assertNever, asTimestamp, parseLine, parseNick } from './text.js';
 import { BLOB_TYPES, parseBlobBytes, parseStateHash, parseWireCommands, SYNC_DOMAINS } from './wire.js';
@@ -121,7 +121,7 @@ export function parseServerMessage(
         kind,
         player: parseSeatIndex(raw.player, 'kicked.player'),
         nick: parseNick(raw.nick, 'kicked.nick'),
-        mode: asOneOf(raw.mode, VACANT_SEAT_MODES, 'kicked.mode'),
+        mode: asOneOf(raw.mode, DEPARTED_SEAT_MODES, 'kicked.mode'),
         tick: asCount(raw.tick, 'kicked.tick'),
       };
     case 'desync':

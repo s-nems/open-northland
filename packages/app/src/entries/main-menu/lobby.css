@@ -61,8 +61,8 @@
   grid-template-columns:
     calc(var(--u) * 56)
     1fr
-    calc(var(--u) * 280)
-    calc(var(--u) * 240);
+    calc(var(--u) * 400)
+    calc(var(--u) * 220);
   gap: calc(var(--u) * 24);
   align-items: center;
 }
@@ -186,7 +186,7 @@
 .main-menu__lobby-vacant .main-menu__seg-btn {
   flex: 1;
   text-align: center;
-  padding: calc(var(--u) * 12) 0;
+  padding: calc(var(--u) * 12) calc(var(--u) * 8);
   font-size: calc(var(--u) * 22);
 }
 

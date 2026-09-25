@@ -9,6 +9,7 @@ export type {
   BlobType,
   ClientMessage,
   ClientMessageKind,
+  DepartedSeatMode,
   LobbySettings,
   PlayerWireEnvelope,
   RelayWireEnvelope,

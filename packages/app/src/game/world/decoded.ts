@@ -34,6 +34,7 @@ export function runAuthoredMap(
   rows: AuthoredJoinRows,
   options: WorldContentOptions = {},
   script: MapScriptWorld = {},
+  absentSeats: readonly number[] = [],
 ): Simulation | null {
   const { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals } =
     resolveAuthoredPlacements(entities, rows, map, script.humanNames);
@@ -47,7 +48,13 @@ export function runAuthoredMap(
 
   const content = resolveWorldContent(map, options, authoredCatalogExtras(placements, rows));
   const sim = newWorldSim(seed, map, content, script);
-  enqueuePlacements(sim, placements);
+  // The catalog above still counts an absent seat's placements, so a restore resolves the same content
+  // without knowing the roster.
+  const absent = new Set(absentSeats);
+  enqueuePlacements(
+    sim,
+    placements.filter((p) => p.owner === undefined || !absent.has(p.owner)),
+  );
   sim.run(ticks);
   return sim;
 }

@@ -78,9 +78,11 @@ export const plSurfaces = {
       vacantComputer: 'Komputer',
       vacantIdle: 'Bezczynny',
       vacantComputerSub: 'gra komputer',
+      vacantAbsent: 'Brak',
       vacantIdleSub: 'bezczynny',
+      vacantAbsentSub: 'nie ma go na mapie',
       vacantToggleTitle:
-        'Co robi wolne miejsce po starcie gry: Bezczynny nic nie robi, Komputer zagra automatycznie.',
+        'Co robi wolne miejsce po starcie gry: Bezczynny nic nie robi, Komputer zagra automatycznie, Brak usuwa jego osadników i budynki z mapy.',
       sit: 'Usiądź tutaj',
       footnote:
         'Sloty definiuje mapa - nie da się ich dodać ani usunąć. Możesz zmienić miejsce, siadając w wolnym slocie.',

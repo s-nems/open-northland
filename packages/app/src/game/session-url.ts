@@ -10,7 +10,7 @@ import {
   type SessionSeat,
 } from '@open-northland/lockstep';
 import { components } from '@open-northland/sim';
-import { aiSeatsParam, floatParam, intParam } from '../view/params.js';
+import { floatParam, intParam, seatListParam } from '../view/params.js';
 import { fogModeName } from './fog.js';
 import { sessionRuleOverrides } from './session-rules.js';
 
@@ -101,6 +101,8 @@ export function sessionSearch(
       .filter((seat) => seat.mode === 'ai' && !mapComputer.has(seat.player))
       .map((seat) => seat.player);
     if (ai.length > 0) params.set('ai', ai.join(','));
+    const absent = session.seats.filter((seat) => seat.mode === 'absent').map((seat) => seat.player);
+    if (absent.length > 0) params.set('absent', absent.join(','));
     // Only a map takes its seed from the search; a scene's is its own, so writing one would lie.
     if (session.seed !== DEFAULT_SESSION_SEED) params.set('seed', String(session.seed));
   }
@@ -134,9 +136,12 @@ function rosterSeats(
   localSeat: LocalSeat,
 ): readonly SessionSeat[] {
   const overrides = colorOverridesParam(params);
-  const ai = new Set(aiSeatsParam(params).filter(isValidPlayer));
+  const lists: SeatLists = {
+    ai: new Set(seatListParam(params, 'ai').filter(isValidPlayer)),
+    absent: new Set(seatListParam(params, 'absent').filter(isValidPlayer)),
+  };
   const authored = new Map(roster.map((slot) => [slot.player, slot]));
-  const players = new Set([...authored.keys(), ...ai, ...overrides.keys()]);
+  const players = new Set([...authored.keys(), ...lists.ai, ...overrides.keys()]);
   if (typeof localSeat === 'number') players.add(localSeat);
   return orderedSeats(
     [...players].map((player) => {
@@ -144,18 +149,26 @@ function rosterSeats(
       const slot = authored.get(player) ?? { player, colorId: player, type: 'human', claimable: true };
       return {
         player,
-        mode: seatMode(slot, localSeat, ai),
+        mode: seatMode(slot, localSeat, lists),
         color: overrides.get(player) ?? slot.colorId,
       };
     }),
   );
 }
 
-/** The claimed seat is played by the person even when `?ai=` also lists it: one seat cannot be both.
- *  Otherwise `?ai=` and the map's own computer seats play as AI, and the rest sit out. */
-export function seatMode(slot: SessionRosterSlot, localSeat: LocalSeat, ai: ReadonlySet<number>): SeatMode {
+/** The offered seats the lobby handed to the AI (`?ai=`) or left off the map (`?absent=`). */
+export interface SeatLists {
+  readonly ai: ReadonlySet<number>;
+  readonly absent: ReadonlySet<number>;
+}
+
+/** The claimed seat is played by the person even when a list also names it: one seat cannot be both.
+ *  Otherwise `?ai=` and the map's own computer seats play as AI, `?absent=` seats are left off the map,
+ *  and the rest sit out. */
+export function seatMode(slot: SessionRosterSlot, localSeat: LocalSeat, lists: SeatLists): SeatMode {
   if (slot.player === localSeat) return 'human';
-  return ai.has(slot.player) || isMapComputerSeat(slot) ? 'ai' : 'idle';
+  if (lists.ai.has(slot.player) || isMapComputerSeat(slot)) return 'ai';
+  return lists.absent.has(slot.player) ? 'absent' : 'idle';
 }
 
 /** `?colors=<slot>:<colorId>,…`, dropping malformed pairs. Colours are bounded to the roster's id

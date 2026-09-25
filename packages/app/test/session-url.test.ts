@@ -145,6 +145,14 @@ describe('sessionSearch', () => {
     expect(mapSession(search, SCENARIO_ROSTER)).toEqual(parsed);
   });
 
+  it('round-trips the absent seats, which never outrank the claimed seat or an AI one', () => {
+    const parsed = session('map=zatoka&player=0&ai=2&absent=0,1,2');
+    expect(parsed.seats.map((seat) => seat.mode)).toEqual(['human', 'absent', 'ai']);
+    const search = sessionSearch(parsed, ROSTER);
+    expect(search.get('absent')).toBe('1');
+    expect(mapSession(search, ROSTER)).toEqual(parsed);
+  });
+
   it('names a scene without a roster of its own', () => {
     const parsed = sceneSession(new URLSearchParams('needs=off'), 'sandbox', 11);
     expect(sessionSearch(parsed).toString()).toBe('scene=sandbox&needs=off');

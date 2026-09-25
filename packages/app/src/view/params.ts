@@ -64,11 +64,11 @@ export function postFxParam(params: URLSearchParams): boolean | null {
 }
 
 /**
- * Parse `?ai=<seat>[,<seat>...]`, the seats handed to the strategic AI player when a map starts.
- * Malformed entries are dropped.
+ * Parse a `?<name>=<seat>[,<seat>...]` seat list, such as `?ai=`, the seats handed to the strategic AI
+ * player when a map starts. Malformed entries are dropped.
  */
-export function aiSeatsParam(params: URLSearchParams): number[] {
-  const raw = params.get('ai');
+export function seatListParam(params: URLSearchParams, name: 'ai' | 'absent'): number[] {
+  const raw = params.get(name);
   if (raw === null) return [];
   const seats: number[] = [];
   for (const part of raw.split(',')) {
