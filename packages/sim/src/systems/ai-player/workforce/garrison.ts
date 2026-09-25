@@ -33,18 +33,18 @@ import { productsOf } from './craft.js';
 import type { SpareForce } from './pool.js';
 
 /** The army's armed classes; publication order breaks a draft tie, leaving the odd man in reach. */
-const GARRISON_WEAPON_INTENTS = [
+export const GARRISON_WEAPON_INTENTS = [
   'trainSword',
   'trainBow',
   'trainSpear',
 ] as const satisfies readonly AssistantRecruitIntent[];
-type GarrisonWeaponIntent = (typeof GARRISON_WEAPON_INTENTS)[number];
+export type GarrisonWeaponIntent = (typeof GARRISON_WEAPON_INTENTS)[number];
 
 /** The field army's weapon mix while a store can arm every class (authored): four archers to three
  *  swordsmen and three spearmen. Over fewer armable classes the field splits evenly, so a stalled weapon
  *  line leaves the rest half and half. The archers posted to towers leave the field for good and are not
  *  counted. */
-const FULL_FIELD_SHARES: Readonly<Record<GarrisonWeaponIntent, number>> = {
+export const FULL_FIELD_SHARES: Readonly<Record<GarrisonWeaponIntent, number>> = {
   trainSword: 3,
   trainBow: 4,
   trainSpear: 3,

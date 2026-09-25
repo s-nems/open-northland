@@ -1,9 +1,12 @@
 export {
   allocateCollectors,
   allocateGenericCollectors,
+  CLEARING_GOOD_IDS,
+  CLEARING_SPREAD_NODES,
   type CollectorGround,
   SHORTAGE_BUILDER_FLOOR,
   topUpCollectors,
+  WOOD_OVER_STONE_NODES,
 } from './allocate.js';
 export { COLLECTOR_WORKSHOP_BY_GOOD_ID, collectorAnchors } from './anchor.js';
 export { FLAG_RELOCATE_EVERY_DECISIONS } from './upkeep.js';
@@ -14,9 +17,9 @@ export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   clearingCollectors,
   DEFAULT_COLLECTOR_TARGET,
-  EXTRA_BUILDING_GATHERERS_BY_GOOD_ID,
+  EXTRA_GATHERERS_BY_GOOD_ID,
   type ExtraPostsStep,
-  extraBuildingGatherers,
+  extraGatherers,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
   MAX_CLEARING_COLLECTORS,

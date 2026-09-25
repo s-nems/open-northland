@@ -33,6 +33,10 @@ export const GROWN_SEAT_BUILDER_CAP = 14;
  *  four sites open (`build-order/entries.ts`). */
 export const LATE_GAME_BUILDER_CAP = 16;
 
+/** The reserve while a build-order placement finds no spot (owner's rule): the few sites the stall leaves
+ *  need few hands, and every other man fells and digs the room the placement waits for. */
+export const STALLED_BUILDER_CAP = 4;
+
 /** The builder reserve for a seat of `civilians` non-fighting settlers deciding at `tick`. */
 export function builderCap(civilians: number, tick: number): number {
   if (tick >= LATE_GAME_FROM_TICKS) return LATE_GAME_BUILDER_CAP;

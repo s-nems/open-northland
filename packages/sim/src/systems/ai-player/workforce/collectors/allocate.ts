@@ -4,6 +4,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
+import { BUILD_SEARCH_MAX_RADIUS_NODES } from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
 import { gathererReach, nearestLiveResource, type WorkableTest } from '../../live-resources.js';
 import { anchorNodeOf } from '../../node-geometry.js';
@@ -21,13 +22,7 @@ import {
 import type { SpareForce } from '../pool.js';
 import { type CollectorAnchors, type SeatedHolders, seatHolders } from './anchor.js';
 import { everyResource, flagRelocateDue, patchWorked, upkeepHolders } from './upkeep.js';
-import {
-  COLLECTED_GOOD_IDS,
-  genericCollectorJob,
-  meetsNeed,
-  needsVeteran,
-  type WantedGood,
-} from './wanted-goods.js';
+import { genericCollectorJob, meetsNeed, needsVeteran, type WantedGood } from './wanted-goods.js';
 
 /** Post `spare` as a flag gatherer of `w` at `spot`, recorded into the decision's `holders` list and
  *  `taken` nodes so later phases count the hire and keep off its spot before its commands apply. */
@@ -232,11 +227,11 @@ export function topUpCollectors(
 
 /**
  * Generic gatherers: up to `target` collect-anything posts, a flag with no good filter, so the holder
- * picks up whatever its trade may harvest inside the circle. Hired beside the collected-good resource
- * nearest the base, so extra posts clear the ground a stalled placement needs. Once the holder would find
- * nothing to harvest from his flag, and on the periodic upkeep once that nearest resource stands more than
- * the band nearer than his flag, the flag moves beside it; the gatherer retires to builder only when no
- * collected good is left (authored).
+ * picks up whatever its trade may harvest inside the circle. Each is hired beside a {@link clearingResource}
+ * of its own, so extra posts clear the ground a stalled placement needs, in as many directions as there
+ * are posts. Once the holder would find nothing to harvest from his flag, and on the periodic upkeep once
+ * the clearing resource stands more than the band nearer than his flag, the flag moves beside it; the
+ * gatherer retires to builder only when no clearing good is left (authored).
  */
 export function allocateGenericCollectors(
   world: World,
@@ -255,6 +250,13 @@ export function allocateGenericCollectors(
   const baseNode = anchorNodeOf(world, base);
   const reach = gathererReach(world, ctx, terrain);
   const relocateDue = flagRelocateDue(ctx);
+  // The other posts' flags: a re-plant or a hire keeps its resource clear of them, so the posts fan out.
+  const flags: HalfCellNode[] = [];
+  for (const g of genericCollectors) {
+    const flag = liveWorkFlag(world, g);
+    const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
+    if (flagNode !== null) flags.push(flagNode);
+  }
   for (const g of genericCollectors) {
     const flag = liveWorkFlag(world, g);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
@@ -264,8 +266,9 @@ export function allocateGenericCollectors(
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
     const alive = patchWorked(world, reach, g, flagNode, flag.radius, harvests);
     if (alive && !relocateDue) continue;
+    const others = flags.filter((f) => f !== flagNode);
     const nearest = (open: WorkableTest): Entity | null =>
-      nearestCollectedResource(world, ctx, baseNode, (e) => workable(e) && open(e));
+      clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
     if (alive && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
     const replant = replantSpot(world, ctx, terrain, g, flag.radius, nearest, reach, taken);
     if (replant === 'dry') {
@@ -278,14 +281,17 @@ export function allocateGenericCollectors(
     if (alive && nodeDistance(spot, resource) >= nodeDistance(flagNode, resource)) continue; // no nearer spot
     commands.push({ kind: 'setWorkFlag', entity: g, x: spot.hx, y: spot.hy });
     claimFlagNode(taken, spot);
+    flags.push(spot);
   }
   const job = genericCollectorJob(ctx);
   if (job === null || baseNode === null) return commands;
   const veteranFirst = experienceRank(world, ctx, job);
   for (let hired = genericCollectors.length; hired < target; hired++) {
-    const resource = nearestCollectedResource(world, ctx, baseNode, workable);
+    const resource =
+      clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags)) ??
+      clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up
     const node = resource === null ? null : anchorNodeOf(world, resource);
-    if (node === null) break; // no collected good stands anywhere - no generic post
+    if (node === null) break; // no clearing good stands anywhere - no generic post
     const spot = flagSpotNear(world, ctx, terrain, node, taken);
     if (spot === null) break;
     const spare = force.take(undefined, veteranFirst);
@@ -294,12 +300,13 @@ export function allocateGenericCollectors(
     commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
     commands.push({ kind: 'setGatherGood', entity: spare, goodType: null });
     claimFlagNode(taken, spot);
+    flags.push(spot);
   }
   return commands;
 }
 
-/** Whether the collected-good resource nearest the base stands more than the band nearer to it than the
- *  holder's flag does. */
+/** Whether the clearing resource nearest the base stands more than the band nearer to it than the holder's
+ *  flag does. */
 function farFromNearest(
   world: World,
   baseNode: HalfCellNode,
@@ -311,16 +318,34 @@ function farFromNearest(
   return nodeDistance(baseNode, flagNode) - nodeDistance(baseNode, node) > FLAG_MAX_DISTANCE_NODES;
 }
 
-/** The workable live {@link COLLECTED_GOOD_IDS} resource nearest the base - canonical `(distance,
- *  goodType)` pick, so two equidistant goods always resolve the same way. */
-function nearestCollectedResource(
+/** The goods whose standing resource takes ground a building could use, by stable content id, the one
+ *  the generic posts go for first ahead (owner's rule): a tree blocks the walk and the build, a rock the
+ *  build; clay and mushrooms block nothing and the ore lies up in the mountains. */
+export const CLEARING_GOOD_IDS: readonly string[] = ['wood', 'stone'];
+
+/** How much farther than the nearest rock the nearest tree may stand and still be the pick, in lattice
+ *  Manhattan nodes (owner's rule): the wood is what walls a base in, so a post goes for it unless the rock
+ *  is much nearer. The build search's reach radius. */
+export const WOOD_OVER_STONE_NODES = BUILD_SEARCH_MAX_RADIUS_NODES;
+
+/** How near another generic post's flag a clearing resource may stand, in lattice Manhattan nodes
+ *  (owner's rule): farther, so a stall's extra posts open ground on different sides of the base instead
+ *  of felling one grove together. */
+export const CLEARING_SPREAD_NODES = 12;
+
+/**
+ * The workable live {@link CLEARING_GOOD_IDS} resource a generic post clears next: the nearest of the first
+ * good unless one of a later good stands {@link WOOD_OVER_STONE_NODES} nearer the base, judged good by good
+ * in that order. Null when none stands.
+ */
+function clearingResource(
   world: World,
   ctx: SystemContext,
   baseNode: HalfCellNode,
   workable: WorkableTest,
 ): Entity | null {
-  let best: { resource: Entity; dist: number; goodType: number } | null = null;
-  for (const goodId of COLLECTED_GOOD_IDS) {
+  let best: { resource: Entity; dist: number } | null = null;
+  for (const goodId of CLEARING_GOOD_IDS) {
     const good = goodTypeByContentId(ctx.content, goodId);
     if (good === undefined) continue;
     const resource = nearestLiveResource(world, good.typeId, baseNode, workable);
@@ -328,9 +353,14 @@ function nearestCollectedResource(
     const node = anchorNodeOf(world, resource);
     if (node === null) continue;
     const dist = nodeDistance(node, baseNode);
-    if (best === null || dist < best.dist || (dist === best.dist && good.typeId < best.goodType)) {
-      best = { resource, dist, goodType: good.typeId };
-    }
+    if (best === null || dist + WOOD_OVER_STONE_NODES < best.dist) best = { resource, dist };
   }
   return best?.resource ?? null;
+}
+
+/** Whether `resource` stands at least {@link CLEARING_SPREAD_NODES} from every flag in `flags`. */
+function clearOfFlags(world: World, resource: Entity, flags: readonly HalfCellNode[]): boolean {
+  const node = anchorNodeOf(world, resource);
+  if (node === null) return false;
+  return flags.every((f) => nodeDistance(node, f) >= CLEARING_SPREAD_NODES);
 }
