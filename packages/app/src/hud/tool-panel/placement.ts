@@ -35,6 +35,14 @@ export interface LitNodes {
   has(col: number, row: number): boolean;
 }
 
+/** The gate the gate tool would cut in: its orientation row at the span's centre node. */
+export interface GatePreview {
+  readonly col: number;
+  readonly row: number;
+  readonly gfxIndex: number;
+  readonly ok: boolean;
+}
+
 /** The walls a gate can go into now, lit span by span. */
 export interface GateSites extends LitNodes {
   /** The centre of the lit span nearest to a node on it, or null off every span. */
@@ -99,8 +107,11 @@ export interface PlacementController {
   /** Route a left-click while placing; a rejecting or off-map tile still consumes it, so a mis-click
    *  cannot drop the mode. Returns true when consumed. */
   handleClick(clientX: number, clientY: number): boolean;
-  /** The markers under the cursor: the wall line or the gate span, or null outside the palisade tools. */
+  /** The markers under the cursor: the wall line, or a refused gate span no gate row suits; null outside
+   *  the palisade tools. */
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
+  /** The gate under the cursor, or null outside the gate tool or off every wall. */
+  gatePreview(tile: LineNode | null): GatePreview | null;
   /** The started wall line, for the reach wash. */
   activeLine(): ActiveLine | null;
   /** The gate tool's lit spans, for its wash; null outside the gate tool. */
@@ -170,13 +181,23 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     return deps.palisadeGateProbe?.(gfxIndex, at.col, at.row) ?? null;
   };
 
-  /** One verdict for the whole span: the conversion takes all five walls or none. */
-  const gatePreview = (gfxIndex: number, tile: LineNode): LinePreviewNode[] | null => {
+  /** A span with a gate row previews that gate at its centre; one without shows its refused span. Bare
+   *  ground shows nothing. One verdict covers the span: the conversion takes all five walls or none. */
+  const gateSpan = (gfxIndex: number, tile: LineNode): LinePreviewNode[] | null => {
     const probe = gateProbeAt(gfxIndex, tile);
-    // Bare ground shows nothing; a wall off every lit span shows its refused span.
-    if (probe === null || probe.center === null || probe.span.length === 0) return null;
-    const state = probe.canConvert ? 'open' : 'blocked';
-    return probe.span.map(({ hx, hy }) => ({ col: hx, row: hy, state }));
+    if (probe === null || probe.center === null || probe.gfxIndex !== null || probe.span.length === 0) {
+      return null;
+    }
+    return probe.span.map(({ hx, hy }) => ({ col: hx, row: hy, state: 'blocked' }));
+  };
+
+  const gateAt = (gfxIndex: number, tile: LineNode): GatePreview | null => {
+    const probe = gateProbeAt(gfxIndex, tile);
+    const centre = probe?.span[Math.floor((probe?.span.length ?? 0) / 2)];
+    if (probe === null || probe.center === null || probe.gfxIndex === null || centre === undefined) {
+      return null;
+    }
+    return { col: centre.hx, row: centre.hy, gfxIndex: probe.gfxIndex, ok: probe.canConvert };
   };
 
   const convertGate = (gfxIndex: number, tile: LineNode | null): void => {
@@ -261,8 +282,10 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     },
     palisadePreview: (tile): readonly LinePreviewNode[] | null => {
       if (tile === null || palisade === null) return null;
-      return palisade.mode === 'gate' ? gatePreview(palisade.gfxIndex, tile) : palisade.line.preview(tile);
+      return palisade.mode === 'gate' ? gateSpan(palisade.gfxIndex, tile) : palisade.line.preview(tile);
     },
+    gatePreview: (tile): GatePreview | null =>
+      tile === null || palisade?.mode !== 'gate' ? null : gateAt(palisade.gfxIndex, tile),
     activeLine: () => (palisade !== null && palisade.mode !== 'gate' ? palisade.line.active() : null),
     gateSites: () => (palisade?.mode === 'gate' ? (deps.palisadeGateSites?.() ?? null) : null),
   };

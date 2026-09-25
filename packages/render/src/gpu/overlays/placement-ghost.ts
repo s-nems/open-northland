@@ -33,6 +33,14 @@ export type PlacementGhost =
     }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
   | {
+      /** A gate cut into a wall run, drawn as the gate itself at its centre node; `ok` false tints it red. */
+      readonly kind: 'gate';
+      readonly col: number;
+      readonly row: number;
+      readonly gfxIndex: number;
+      readonly ok: boolean;
+    }
+  | {
       /** A planned line of stakes, or a gate span; `anchored` marks the first node as the line's start. */
       readonly kind: 'line';
       readonly nodes: readonly PlanNode[];
@@ -48,6 +56,8 @@ export interface PlanNode {
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
 const GHOST_ALPHA = 0.55;
+/** A gate stands over the posts it replaces, so it needs more cover to read as the gate. Tuned by eye. */
+const GATE_GHOST_ALPHA = 0.85;
 /** Placeholder tint when no atlas frame resolves (bare checkout / synthetic sheet without the type). */
 const PLACEHOLDER_COLOR = 0xc8a04a;
 /** The ring on the ground under a started line's first node. */
@@ -85,8 +95,13 @@ export class PlacementGhostLayer {
       this.container.visible = ghost.nodes.length > 0;
       return;
     }
-    this.container.alpha = GHOST_ALPHA;
-    const key = ghost.kind === 'building' ? `b:${ghost.tribe}:${ghost.buildingType}` : `s:${ghost.player}`;
+    this.container.alpha = ghost.kind === 'gate' ? GATE_GHOST_ALPHA : GHOST_ALPHA;
+    const key =
+      ghost.kind === 'building'
+        ? `b:${ghost.tribe}:${ghost.buildingType}`
+        : ghost.kind === 'gate'
+          ? `g:${ghost.gfxIndex}:${ghost.ok}`
+          : `s:${ghost.player}`;
     if (this.builtForKey !== key) {
       this.builtForKey = key;
       this.rebuild(ghost);
@@ -94,8 +109,9 @@ export class PlacementGhostLayer {
     const p = halfCellToScreen(ghost.col, ghost.row);
     const lift = terrainLiftAtNode(elevation, ghost.col, ghost.row);
     this.container.position.set(p.x, p.y - lift);
-    // Depth by the pre-lift feet anchor, like every pooled sprite - the ghost interleaves correctly.
-    this.container.zIndex = depthKey(p.x, p.y);
+    // Depth by the pre-lift feet anchor, like every pooled sprite - the ghost interleaves correctly. A gate
+    // stands on the walls it replaces, so it reads over them instead.
+    this.container.zIndex = ghost.kind === 'gate' ? Number.MAX_SAFE_INTEGER : depthKey(p.x, p.y);
     this.container.visible = true;
   }
 
@@ -146,7 +162,9 @@ export class PlacementGhostLayer {
     const item: DrawItem =
       ghost.kind === 'building'
         ? { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: ghost.buildingType, tribe: ghost.tribe }
-        : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
+        : ghost.kind === 'gate'
+          ? { kind: 'palisade', ref: -1, x: 0, y: 0, depth: 0, gfxIndex: ghost.gfxIndex }
+          : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null) {
       const g = new Graphics();
@@ -155,7 +173,9 @@ export class PlacementGhostLayer {
       return;
     }
     for (const layer of layers) {
-      this.container.addChild(mintLayerSprite(this.textures, layer));
+      const sprite = mintLayerSprite(this.textures, layer);
+      if (ghost.kind === 'gate' && !ghost.ok) sprite.tint = STRING_BLOCKED;
+      this.container.addChild(sprite);
     }
   }
 

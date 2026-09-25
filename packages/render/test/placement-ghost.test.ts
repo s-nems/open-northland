@@ -77,6 +77,29 @@ describe('PlacementGhostLayer', () => {
     expect(layer.container.children[0]).toBeInstanceOf(Graphics);
   });
 
+  it('draws a gate as the gate itself over the walls it replaces, red where the cut is refused', () => {
+    const GATE = 698;
+    const gateSheet: SpriteSheet = {
+      ...sheet,
+      bindings: {
+        ...sheet.bindings,
+        palisade: { byGfxIndex: { [GATE]: [{ layer: 'houses', bob: BODY_BOB }] }, default: 0 },
+      },
+    };
+    const layer = new PlacementGhostLayer(gateSheet, new TextureCache());
+    layer.set({ kind: 'gate', col: 4, row: 6, gfxIndex: GATE, ok: true }, FLAT);
+    const body = layer.container.children[0];
+    if (!(body instanceof Sprite)) throw new Error('expected a sprite');
+    expect(body.texture.frame.x).toBe(0);
+    expect(body.tint).toBe(0xffffff);
+    expect(layer.container.zIndex).toBe(Number.MAX_SAFE_INTEGER);
+
+    layer.set({ kind: 'gate', col: 4, row: 6, gfxIndex: GATE, ok: false }, FLAT);
+    const refused = layer.container.children[0];
+    if (!(refused instanceof Sprite)) throw new Error('expected a sprite');
+    expect(refused.tint).not.toBe(0xffffff);
+  });
+
   it('stakes the open and blocked nodes of a line and lets the string pass the built ones', () => {
     const stakes = { open: new Texture(), blocked: new Texture(), ring: new Texture() };
     const layer = new PlacementGhostLayer(sheet, new TextureCache(), stakes);

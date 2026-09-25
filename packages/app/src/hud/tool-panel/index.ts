@@ -62,6 +62,7 @@ import { paperLabel } from './paper-label.js';
 import { createPendingWindow } from './pending-window.js';
 import {
   createPlacementController,
+  type GatePreview,
   type GateSites,
   type PalisadeGateProbeView,
   type PalisadePlacementMode,
@@ -216,6 +217,7 @@ export interface ToolPanelController {
    *  map has no wall row or world edits are off. */
   enterStandingWall(owner: number, tribe: number): boolean;
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
+  gatePreview(tile: LineNode | null): GatePreview | null;
   /** The started wall line, for the reach wash; null before its first click. */
   activeLine(): ActiveLine | null;
   /** The gate tool's lit spans; null outside the gate tool. */
@@ -618,6 +620,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         return true;
       },
       palisadePreview: (tile) => placement.palisadePreview(tile),
+      gatePreview: (tile) => placement.gatePreview(tile),
       activeLine: () => placement.activeLine(),
       gateSites: () => placement.gateSites(),
       update(hudFor, model): void {

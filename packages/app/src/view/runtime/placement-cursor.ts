@@ -1,6 +1,7 @@
 import type { PlacementGhost, PlacementOverlayFrame } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
 import type { LinePreviewNode } from '../../hud/tool-panel/line-tool.js';
+import type { GatePreview } from '../../hud/tool-panel/placement.js';
 
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
@@ -26,6 +27,8 @@ export interface PlacementCursorInput {
     readonly col: number;
     readonly row: number;
   }) => readonly LinePreviewNode[] | null;
+  /** The gate tool's gate under the cursor, which draws in place of span markers. */
+  readonly gatePreview?: (tile: { readonly col: number; readonly row: number }) => GatePreview | null;
   /** A line has its first click, so the preview's first node marks where it starts. */
   readonly anchored?: boolean;
   /** The palisade tool's wash: a started line's reach or the gate tool's spans, null when it has none. */
@@ -55,9 +58,12 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   const tile = input.tileAt();
   if (palisadeGfxIndex !== null) {
     // The wash stays while the pointer leaves the map; only the markers need a tile.
+    const overlay = input.palisadeWash?.() ?? null;
+    const gate = tile === null ? null : (input.gatePreview?.(tile) ?? null);
+    if (gate !== null) return { overlay, ghost: { kind: 'gate', ...gate } };
     const nodes = tile === null ? null : (input.palisadePreview?.(tile) ?? null);
     return {
-      overlay: input.palisadeWash?.() ?? null,
+      overlay,
       ghost: nodes === null ? null : { kind: 'line', nodes, anchored: input.anchored === true },
     };
   }

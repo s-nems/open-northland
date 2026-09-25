@@ -708,13 +708,36 @@ describe('placement controller', () => {
       }),
     );
     placement.enterPalisade(696, 'gate');
-    expect(placement.palisadePreview({ col: 8, row: 6 })).toEqual(
-      [4, 5, 6, 7, 8].map((col) => ({ col, row: 6, state: 'open' })),
-    );
+    // The gate itself previews at the span's centre, so no span markers show.
+    expect(placement.gatePreview({ col: 8, row: 6 })).toEqual({ col: 6, row: 6, gfxIndex: 698, ok: true });
+    expect(placement.palisadePreview({ col: 8, row: 6 })).toBeNull();
     placement.handleClick(0, 0);
     expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
     // One gate per pick: the tool leaves like a placed building.
     expect(placement.isActive()).toBe(false);
+  });
+
+  it('previews a refused gate red, and marks the span of a run no gate row suits', () => {
+    const center = 17 as Entity;
+    let gfxIndex: number | null = 698;
+    const { placement } = mount(
+      () => ({ col: 8, row: 6 }),
+      () => true,
+      () => true,
+      () => ({
+        canConvert: false,
+        center,
+        gfxIndex,
+        span: [4, 5, 6, 7, 8].map((col) => ({ hx: col, hy: 6 })),
+      }),
+    );
+    placement.enterPalisade(696, 'gate');
+    expect(placement.gatePreview({ col: 8, row: 6 })).toEqual({ col: 6, row: 6, gfxIndex: 698, ok: false });
+    gfxIndex = null;
+    expect(placement.gatePreview({ col: 8, row: 6 })).toBeNull();
+    expect(placement.palisadePreview({ col: 8, row: 6 })).toEqual(
+      [4, 5, 6, 7, 8].map((col) => ({ col, row: 6, state: 'blocked' })),
+    );
   });
 
   it('aims a gate at the centre of the lit span a hovered wall belongs to', () => {

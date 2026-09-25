@@ -159,6 +159,18 @@ describe('placement cursor', () => {
     expect(f.cursor()).toEqual({ overlay: LINE_WASH, ghost: { kind: 'line', nodes, anchored: true } });
   });
 
+  it('draws the gate the gate tool would cut in place of its span markers', () => {
+    const gate = { col: 6, row: 9, gfxIndex: 698, ok: true };
+    const f = frame({
+      palisadeGfxIndex: 696,
+      gatePreview: () => gate,
+      palisadePreview: () => [{ col: 6, row: 9, state: 'blocked' as const }],
+      palisadeWash: () => LINE_WASH,
+    });
+
+    expect(f.cursor()).toEqual({ overlay: LINE_WASH, ghost: { kind: 'gate', ...gate } });
+  });
+
   it('keeps the wash of a started line while the pointer is off the map', () => {
     const f = frame({
       palisadeGfxIndex: 691,

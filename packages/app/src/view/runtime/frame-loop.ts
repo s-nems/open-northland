@@ -243,6 +243,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       canPlaceAt,
       canPlaceSignpostAt,
       palisadePreview: (tile) => toolPanel.controller.palisadePreview(tile),
+      gatePreview: (tile) => toolPanel.controller.gatePreview(tile),
       anchored: toolPanel.controller.activeLine() !== null,
       palisadeWash,
       localPlayer,
