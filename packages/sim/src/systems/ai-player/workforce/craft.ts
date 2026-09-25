@@ -63,6 +63,21 @@ const JOINERY_SEAT: CraftSeat = {
   otherwise: ['furniture'],
 };
 
+/** The shoes in stock at which a tailor's shoe seat turns to leather armour (authored): every settler wears
+ *  a pair out, and the defence amulet and the recruits take the armour. */
+export const SHOES_GLUT_UNITS = 24;
+
+/** The leather armour in stock at which the second tailor turns to shoes (authored): the armour piles up
+ *  unworn once plate armour has come in. */
+export const LEATHER_ARMOUR_GLUT_UNITS = 16;
+
+/** A tailor's shoe seat: shoes until they reach {@link SHOES_GLUT_UNITS}, leather armour meanwhile. */
+const SHOE_SEAT: CraftSeat = {
+  goods: ['shoes'],
+  glut: { shoes: SHOES_GLUT_UNITS },
+  otherwise: ['armor_leather'],
+};
+
 /** The most plentiful seats a short product takes at once ({@link shortFirst}) (authored): enough to turn a
  *  mint's amulet makers to coins while the druids run dry, and still leave its other lines a hand. */
 export const SHORT_PRODUCT_SEATS = 2;
@@ -79,9 +94,9 @@ export const SHORT_PRODUCT_SEATS = 2;
  * makers turn to coins as well ({@link shortFirst}). Both joiners make iron tools and turn to furniture only
  * while the tools pile up. The potters split bricks and tiles, a lone one working both, and turn to
  * crockery, which doubles a stocked home's food, while both lie at their glut lines. The first tailor sews
- * shoes and the second leather armour, turning to shoes while the armour piles up unworn, as it does once
- * plate armour has come in, and back once the amulet makers and recruits have drawn it down; the small
- * tailor's one man sews shoes too. The first armourer works long bows and wooden spears, dropping
+ * shoes and the second leather armour, each turning to the other's good while his own piles up, as the
+ * armour does once plate armour has come in; the small tailor's one man sews shoes, and leather armour
+ * meanwhile. The first armourer works long bows and wooden spears, dropping
  * whichever has piled up so the other, the spear the smithy's iron spear needs or the bow, gets his whole
  * time. Bakers bake only bread and breeders keep only cattle.
  */
@@ -90,10 +105,18 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_pottery_01: { seats: [['brick'], ['tile']], alone: ['brick', 'tile'], sink: ['crockery'] },
   work_mason_hut_01: { seats: [['pillar', 'ornament']] },
   work_animal_farm: { seats: [['cattle']] },
-  work_sewery_00: { seats: [['shoes']] },
+  work_sewery_00: { seats: [SHOE_SEAT] },
   work_sewery_01: {
-    seats: [['shoes'], { goods: ['armor_leather'], glut: { armor_leather: 16 }, otherwise: ['shoes'] }],
+    seats: [
+      SHOE_SEAT,
+      {
+        goods: ['armor_leather'],
+        glut: { armor_leather: LEATHER_ARMOUR_GLUT_UNITS },
+        otherwise: ['shoes'],
+      },
+    ],
   },
+
   work_bakery_01: { seats: [['bread']] },
   work_smithy_01: {
     seats: [

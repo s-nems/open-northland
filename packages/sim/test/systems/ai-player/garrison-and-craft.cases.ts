@@ -1090,6 +1090,29 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([[BOW_LONG, SPEAR_WOODEN]]);
   });
 
+  it('turns the first tailor to leather armour while the shoes pile up, and back once they are worn down', () => {
+    for (const [id, crew] of [
+      ['work_sewery_01', 2],
+      ['work_sewery_00', 1],
+    ] as const) {
+      const seat = crewedWorkshop(
+        joineryRecastAs(id, [
+          { typeId: SHOES, id: 'shoes' },
+          { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
+        ]),
+        crew,
+      );
+      const glut = glutOf(id, 0, 'shoes');
+      expect(seat.products()[0]).toEqual([SHOES]);
+      seat.stock(SHOES, glut - 1);
+      expect(seat.products()).toEqual([]);
+      seat.stock(SHOES, glut);
+      expect(seat.products()).toEqual([[LEATHER_ARMOUR]]);
+      seat.stock(SHOES, glut - CRAFT_GLUT_BAND_UNITS - 1);
+      expect(seat.products()).toEqual([[SHOES]]);
+    }
+  });
+
   it('turns the second tailor to shoes while the leather armour lies unworn, and back once the amulets take it', () => {
     const seat = crewedWorkshop(
       joineryRecastAs('work_sewery_01', [
