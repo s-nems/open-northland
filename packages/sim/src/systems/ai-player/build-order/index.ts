@@ -43,7 +43,7 @@ export {
   type EntryStatus,
   entryStatuses,
 } from './progress.js';
-export { SIEGE_RADIUS_NODES, seatUnderAttack } from './siege.js';
+export { seatUnderAttack } from './siege.js';
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
 /**
@@ -84,7 +84,7 @@ function runBuildOrder(
 
   const tribe = playerPlacementTribes(world, player)?.[0];
   if (base === null) {
-    if (tribe === undefined || seatUnderAttack(world, ctx, player, owned)) return [];
+    if (tribe === undefined || seatUnderAttack(world, ctx, terrain, player, owned)) return [];
     return replaceMissingBase(world, ctx, terrain, player, owned, tribe);
   }
   const anchor = anchorNodeOf(world, base);
@@ -95,7 +95,7 @@ function runBuildOrder(
   for (const [entryIndex, entry] of order.entries()) {
     const status = entryStatus(world, ctx, player, owned, entry, live);
     if (status !== 'unmet') continue;
-    const attacked = seatUnderAttack(world, ctx, player, owned);
+    const attacked = seatUnderAttack(world, ctx, terrain, player, owned);
     if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick, attacked) || attacked) return [];
     if (sites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
     const stall = placementStall(world, player, entryIndex);
