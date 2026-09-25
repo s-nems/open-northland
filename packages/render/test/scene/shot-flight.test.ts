@@ -30,7 +30,7 @@ describe('readSiegeShot', () => {
       speed: 3,
       launchTick: 7,
       munitionType: ROCK_MUNITION,
-      impact: { damage: {}, hitSounds: {}, landscapeStrikes: 0, smokeTicks: 20 },
+      impact: { smokeTicks: 20 },
     };
     expect(readSiegeShot(5, { Projectile: projectile })).toEqual({
       ref: 5,

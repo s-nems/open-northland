@@ -26,6 +26,7 @@ import {
   type WildClass,
 } from './combat-grid.js';
 import { firingBuildings } from './targeting.js';
+import { vehicleWeapon } from './weapons.js';
 
 /** A candidate packs as `distance * CANDIDATE_ID_SPAN + entity`, so a numeric sort orders by distance and then
  *  id. Entity ids stay below 2^32 and distances below 2^21, so the key is an exact double. */
@@ -115,6 +116,7 @@ export class CombatIndex {
         v,
         vehicleFootprintNodes(world, ctx.content, terrain, v),
         owner === undefined ? 0 : playerBit(owner.player),
+        vehicleWeapon(ctx, world.get(v, Vehicle)) !== null,
       );
     }
   }

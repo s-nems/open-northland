@@ -70,7 +70,7 @@ const stone = entity(SHOT, 2, 4, {
     speed: 3,
     launchTick: LAUNCH,
     munitionType: ROCK,
-    impact: { damage: {}, hitSounds: {}, landscapeStrikes: 0, smokeTicks: SMOKE_TICKS },
+    impact: { smokeTicks: SMOKE_TICKS },
   },
 });
 const inFlight = snapshotOf([stone], LAUNCH);

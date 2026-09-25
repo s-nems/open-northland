@@ -1,7 +1,16 @@
-import { Building, Health, Position, Settler, Vehicle, vehicleCommander } from '../../components/index.js';
+import {
+  Building,
+  Health,
+  Palisade,
+  Position,
+  Settler,
+  Vehicle,
+  vehicleCommander,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
-import { orderedAttack, vehicleWeapon } from '../conflict/engage-vehicle.js';
+import { orderedAttack } from '../conflict/engage-vehicle.js';
+import { vehicleWeapon } from '../conflict/weapons.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { crewInside, refuseMove } from './movement.js';
@@ -58,7 +67,8 @@ export function attackWithVehicle(
     const t = target.entity;
     if (!Number.isInteger(t) || t === e) return;
     if (!world.isAlive(t) || !world.has(t, Health) || !world.has(t, Position)) return;
-    if (!world.has(t, Settler) && !world.has(t, Building) && !world.has(t, Vehicle)) return;
+    const body = world.has(t, Building) || world.has(t, Palisade) || world.has(t, Vehicle);
+    if (!body && !world.has(t, Settler)) return;
   }
   const live = world.mut(e, Vehicle);
   live.attack = orderedAttack(target);

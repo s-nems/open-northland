@@ -8,6 +8,7 @@ import {
   Palisade,
   type SettlerIdentity,
   Vehicle,
+  type VehicleStateView,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -63,6 +64,16 @@ export function attackerWeapon(
   const weapon = index.weaponsByTribeAndJob.get(tribe)?.get(jobType);
   if (weapon === undefined) return null; // unarmed - no resolvable weapon
   return withReach(weapon);
+}
+
+/** The vehicle's weapon: the row its type's job binds for its tribe (weapon 21 for the catapult's job
+ *  54). Null for every unarmed vehicle - the carts and ships. */
+export function vehicleWeapon(
+  ctx: SystemContext,
+  state: Pick<VehicleStateView, 'vehicleType' | 'tribe'>,
+): ReturnType<typeof attackerWeapon> {
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  return type === undefined ? null : attackerWeapon(ctx, state.tribe, type.jobId);
 }
 
 /** Resolve a {@link WeaponType}'s reach band, clamped sane (`1 ≤ minRange ≤ maxRange`). Range values are

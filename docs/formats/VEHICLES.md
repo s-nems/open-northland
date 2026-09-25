@@ -358,8 +358,10 @@ covers a posted archer is not read). A wall stands as a palisade entity, so the 
 segment whose body covers the node and takes `damage[7] / 100` off its hitpoints through the walls'
 own rule, the one every other weapon's blow goes through. The commander's experience scales the
 stone as it scales a swing: the house formula against a building, the fight bonus against anyone
-else, nothing against a wall (approximation: the original's delayed hit is not read for it). The
-note is raised for any striker (approximation). An auto target no firing node reaches is
+else, nothing against a wall (approximation: the original's delayed hit is not read for it). A
+settler resting indoors is passed over, as every other shot passes over it, and an ordered stone may
+name a wall. A fleeing settler runs from an armed vehicle and never from a cart or ship
+(approximation). The note is raised for any striker (approximation). An auto target no firing node reaches is
 given up for the combat memo's 30 seconds (approximation: the original drops it and scans again on
 its next update). `hitself` is not extracted; the burst hits every
 side, which the data's `hitself 1` also says. `removeVehicle` (`systems/vehicles/remove.ts`) draws

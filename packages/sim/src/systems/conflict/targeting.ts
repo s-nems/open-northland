@@ -24,6 +24,7 @@ import {
   mayHunt,
 } from '../readviews/index.js';
 import { isManningPost, standsAtPost } from './tower-post.js';
+import { vehicleWeapon } from './weapons.js';
 
 // The combat targeting relations: who may fight whom, and how far a combatant spots an enemy. A leaf of
 // conflict/ - nothing here reaches back into the drives that consult it.
@@ -142,7 +143,7 @@ export function firingBuildings(world: World, ctx: SystemContext): Set<Entity> {
  * Whether `t` is a threat the FLEE drive runs from: any valid target of the fleer, or - where the
  * directed diplomacy pair is hostile the other way only - a live enemy-stance settler in the open. A
  * building counts either way only while it is among the `firing` ones, so a civilian living beside an
- * enemy's houses keeps working. Fear staying symmetric on the owner axis while engagement is directed is
+ * enemy's houses keeps working; a vehicle counts only while armed, so nobody runs from a cart. Fear staying symmetric on the owner axis while engagement is directed is
  * an approximation, so a pacified player's civilians still run from a one-way aggressor.
  */
 export function isFleeThreat(
@@ -155,6 +156,8 @@ export function isFleeThreat(
 ): boolean {
   const building = world.has(t, Building);
   if (building && !firing.has(t)) return false;
+  const vehicle = world.tryGet(t, Vehicle);
+  if (vehicle !== undefined && vehicleWeapon(ctx, vehicle) === null) return false;
   if (isValidTarget(world, ctx, self, fleer, t)) return true;
   const selfOwner = world.tryGet(self, Owner);
   const tOwner = world.tryGet(t, Owner);

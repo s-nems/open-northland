@@ -34,9 +34,9 @@ import {
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode } from './target-node.js';
-import { isValidTarget } from './targeting.js';
+import { isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { givenUpTargetVeto, noteUnreachableTarget } from './unreachable-targets.js';
-import { attackerWeapon } from './weapons.js';
+import { vehicleWeapon } from './weapons.js';
 
 // The siege vehicle's fight (docs/formats/VEHICLES.md "Catapult"): a stance-driven scan, a target it
 // backs off from, closes on or fires at, and the shot itself, a ground burst the projectile system
@@ -65,16 +65,6 @@ const SCATTER_ROLL = 100;
 const SCATTER_BASE_ACCURACY = 10;
 /** The scatter's reach grows with a quarter of the flight distance (original behavior: `dist >> 2`). */
 const SCATTER_DISTANCE_DIVISOR = 4;
-
-/** The vehicle's weapon: the row its type's job binds for its tribe (weapon 21 for the catapult's job
- *  54). Null for every unarmed vehicle - the carts and ships. */
-export function vehicleWeapon(
-  ctx: SystemContext,
-  state: Pick<VehicleStateView, 'vehicleType' | 'tribe'>,
-): ReturnType<typeof attackerWeapon> {
-  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
-  return type === undefined ? null : attackerWeapon(ctx, state.tribe, type.jobId);
-}
 
 /**
  * Resolve one vehicle's fight this tick: an unarmed, carried or uncommanded vehicle does nothing; an
@@ -113,7 +103,7 @@ export function engageVehicle(
     const elapsed = ctx.tick - state.attack.clipStart;
     // A mark reaped or taken off the map since the clip began is not shot at: the clip ends and the
     // target is judged again below (the original checks the target's validity before the roll).
-    if (!targetStands(world, ctx, e, identity, state.attack.target)) endClip(world, e, state);
+    if (!targetStands(world, ctx, e, identity, state.attack)) endClip(world, e, state);
     else {
       if (elapsed === VEHICLE_ATTACK_EVENT_TICK) fire(world, ctx, terrain, e, state, weapon.weapon, here);
       if (elapsed < VEHICLE_ATTACK_CLIP_TICKS) return;
@@ -122,7 +112,7 @@ export function engageVehicle(
   }
 
   const { attack: held, march } = world.get(e, Vehicle);
-  const standing = held !== null && targetStands(world, ctx, e, identity, held.target) ? held.target : null;
+  const standing = held !== null && targetStands(world, ctx, e, identity, held) ? held.target : null;
   const ordered = standing !== null && held?.ordered === true;
   // A march fights in the attack stance whatever the vehicle's own stance says.
   const stance: VehicleStance = march !== null ? 'attack' : state.stance;
@@ -195,9 +185,14 @@ function targetStands(
   ctx: SystemContext,
   self: Entity,
   identity: SettlerIdentity,
-  target: VehicleAttackTarget,
+  attack: Pick<VehicleAttack, 'target' | 'ordered'>,
 ): boolean {
-  return target.kind === 'ground' || isValidTarget(world, ctx, self, identity, target.entity);
+  const target = attack.target;
+  if (target.kind === 'ground') return true;
+  // An ordered target may be what no scan picks, a wall included, as a soldier's ordered strike may.
+  return attack.ordered
+    ? isValidOrderedTarget(world, ctx, self, identity, target.entity)
+    : isValidTarget(world, ctx, self, identity, target.entity);
 }
 
 /**

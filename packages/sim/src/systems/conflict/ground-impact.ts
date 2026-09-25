@@ -4,6 +4,7 @@ import {
   Palisade,
   Position,
   type ProjectileStateView,
+  Resting,
   Settler,
   SettlerProgress,
   Vehicle,
@@ -82,12 +83,13 @@ function burstDamage(world: World, target: Entity, base: number, hits: number): 
   return withFightDamageBonus(base, hits);
 }
 
-/** Everything with a pool standing on `node`, ascending by id: the settlers and animals on it, and the
- *  vehicles, buildings and walls whose bodies cover it. A felled one (0 hitpoints, unreaped) is skipped. */
+/** Everything with a pool standing on `node`, ascending by id: the settlers and animals out in the open
+ *  on it, and the vehicles, buildings and walls whose bodies cover it. A felled one (0 hitpoints, unreaped) is skipped. */
 function victimsOn(world: World, ctx: SystemContext, terrain: TerrainGraph, node: NodeId): Entity[] {
   const out: Entity[] = [];
   for (const e of world.query(Settler, Health, Position)) {
-    if (entityNode(world, terrain, e) === node) out.push(e);
+    // A settler resting indoors is out of reach, as for every other shot.
+    if (!world.has(e, Resting) && entityNode(world, terrain, e) === node) out.push(e);
   }
   for (const e of world.query(Vehicle, Health, Position)) {
     if (targetBodyNodes(world, ctx, terrain, e)?.includes(node)) out.push(e);

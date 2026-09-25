@@ -8,6 +8,8 @@ import {
   Palisade,
   Position,
   Projectile,
+  Resting,
+  Settler,
   SettlerProgress,
   Stance,
   seatPassenger,
@@ -31,10 +33,12 @@ import {
   type TerrainMap,
 } from '../../src/index.js';
 import { VEHICLE_ATTACK_CLIP_TICKS, VEHICLE_ATTACK_EVENT_TICK } from '../../src/systems/conflict/combat.js';
+import { resolveGroundImpact } from '../../src/systems/conflict/ground-impact.js';
+import { isFleeThreat } from '../../src/systems/conflict/targeting.js';
 import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../src/systems/conflict/unreachable-targets.js';
 import { vehiclesGone } from '../../src/systems/missions/goals/casualties.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { ARMOR_MATERIAL, MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -65,6 +69,8 @@ const CATAPULT_MAX_RANGE = 24;
 const CATAPULT_VS_BARE = 8000;
 const CATAPULT_VS_VEHICLE = 350;
 const CATAPULT_VS_HOUSE = 3625;
+/** Every armor material a weapon row lists damage for. */
+const ALL_MATERIALS = Object.values(ARMOR_MATERIAL);
 /** The row's `createsmoke 1` / `smokelifetime 20`. */
 const CATAPULT_SMOKE_TICKS = 20;
 /** 16 map points at `speed 3`: `16 * 8 / 3` ticks of flight. */
@@ -398,6 +404,28 @@ describe('the clip and its target', () => {
     expect(s.world.get(catapult, Vehicle).guard).toEqual({ hx: 8, hy: 8 });
   });
 
+  it("strikes an enemy wall it is ordered at, as a soldier's ordered blow does", () => {
+    const at = { hx: 22, hy: 8 };
+    const s = sim(grass(40, 10, true));
+    s.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL_TYPE,
+      x: at.hx,
+      y: at.hy,
+      tribe: VIKING,
+      owner: P2,
+    });
+    s.step();
+    const [wall] = s.world.query(Palisade);
+    if (wall === undefined) throw new Error('no wall stood up');
+    const catapult = catapultAt(s, 6, 8, P1);
+    order(s, catapult, P1, wall);
+    s.step();
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: wall });
+    collect(s, VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit']);
+    expect(s.world.get(wall, Health).hitpoints).toBe(WALL_HITPOINTS - WALL_STEPS_PER_STONE);
+  });
+
   it('survives a save round trip with a live attack, a worn wall and a stone in flight', () => {
     const wall = { hx: 22, hy: 8 };
     const run = (): Simulation => {
@@ -672,6 +700,39 @@ describe('the ground burst', () => {
     expect(100_000 - s.world.get(own, Health).hitpoints).toBeGreaterThanOrEqual(ownHits * CATAPULT_VS_BARE);
   });
 
+  it('passes over a man resting inside the house its stone strikes', () => {
+    const s = sim(grass(40, 10));
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    const house = houseAt(s, 22, 8, P2);
+    const inside = fighterAt(s, 22, 8, P2); // on the house's anchor node, but indoors
+    s.world.add(inside, Resting, { at: house });
+    const shooter = fighterAt(s, 6, 8, P1);
+    const aim = positionOfNode(22, 8);
+    const stone = {
+      source: shooter,
+      target: null,
+      player: P1,
+      damage: Object.fromEntries(ALL_MATERIALS.map((m) => [String(m), CATAPULT_VS_HOUSE])),
+      hitSounds: {},
+      weaponMainType: CATAPULT_MAIN_TYPE,
+      missSounds: {},
+      munitionType: 0,
+      speed: 1,
+      originX: aim.x,
+      originY: aim.y,
+      aimX: aim.x,
+      aimY: aim.y,
+      cover: null,
+      launchTick: 0,
+      impact: { smokeTicks: null },
+    };
+    const houseBefore = s.world.get(house, Health).hitpoints;
+    expect(resolveGroundImpact(s.world, ctxOf(s), terrain, s.world.create(), stone, [])).toBe(true);
+    expect(s.world.get(house, Health).hitpoints).toBeLessThan(houseBefore);
+    expect(s.world.get(inside, Health).hitpoints).toBe(s.world.get(inside, Health).max);
+  });
+
   it('strikes an enemy vehicle whose disc covers the landing node', () => {
     const s = sim(grass(40, 10));
     const catapult = catapultAt(s, 6, 8, P1);
@@ -719,6 +780,31 @@ describe('wall demolition', () => {
 });
 
 describe('vehicles as targets', () => {
+  it('frightens a fleer only while armed: a catapult, never a cart', () => {
+    const s = sim(grass(20, 6));
+    const civilian = fighterAt(s, 4, 4, P1);
+    const cart = createVehicle(s.world, ctxOf(s), {
+      vehicleType: HANDCART,
+      x: 8,
+      y: 4,
+      tribe: VIKING,
+      owner: P2,
+    });
+    const catapult = createVehicle(s.world, ctxOf(s), {
+      vehicleType: CATAPULT,
+      x: 12,
+      y: 4,
+      tribe: VIKING,
+      owner: P2,
+    });
+    if (cart === null || catapult === null) throw new Error('vehicle types');
+    const ctx = ctxOf(s);
+    const fears = (t: Entity): boolean =>
+      isFleeThreat(s.world, ctx, civilian, s.world.get(civilian, Settler), t, new Set());
+    expect(fears(cart)).toBe(false);
+    expect(fears(catapult)).toBe(true);
+  });
+
   it('an archer in the attack stance shoots an enemy cart down and the cleanup wrecks it', () => {
     const s = sim(grass(20, 6));
     fighterAt(s, 4, 4, P1, ARCHER);

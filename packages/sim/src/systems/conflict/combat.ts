@@ -16,10 +16,10 @@ export {
   VEHICLE_ATTACK_EVENT_TICK,
   VEHICLE_DEFENCE_LEASH_NODES,
   VEHICLE_SCAN_RADIUS_NODES,
-  vehicleWeapon,
 } from './engage-vehicle.js';
 export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES } from './engagement.js';
 export { SIGHT_RADIUS_NODES } from './targeting.js';
+export { vehicleWeapon } from './weapons.js';
 
 /**
  * CombatSystem - the combat loop's decision stage: for each combatant, pick who to fight and either swing at
