@@ -53,6 +53,14 @@ export interface ToolPanelInputDeps {
    *  the mouse cancel is original behavior). */
   readonly cue: (cue: UiCue) => void;
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
+  /** Whether the platform reports Ctrl with the left button as the right button, as macOS does;
+   *  detected from the browser when omitted. */
+  readonly ctrlClickIsRightButton?: boolean;
+}
+
+/** macOS turns Ctrl with the left button into a right-button press. */
+function platformCtrlClickIsRightButton(): boolean {
+  return typeof navigator !== 'undefined' && /Macintosh|Mac OS X/.test(navigator.userAgent);
 }
 
 export interface ToolPanelInput {
@@ -62,6 +70,7 @@ export interface ToolPanelInput {
 export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const { canvas, toCanvas, windows, held } = deps;
   const anyHeld = (): boolean => held.some((m) => m.isActive());
+  const ctrlClickIsRightButton = deps.ctrlClickIsRightButton ?? platformCtrlClickIsRightButton();
   /** One rung per press: a mode's own step back first, otherwise every held mode is called off. */
   const cancelOneRung = (): void => {
     if (held.some((m) => m.isActive() && m.stepBack?.() === true)) return;
@@ -86,9 +95,10 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     };
 
     // Right button cancels an active placement or held paper; otherwise it is a world order for unit controls.
-    // macOS delivers Ctrl+left-click as button 2, so a Ctrl press falls through as the primary press: the
-    // Ctrl coarse step and a wall tool kept for the next line still work.
-    if (e.button === 2 && !e.ctrlKey) {
+    // Where Ctrl+left-click arrives as button 2, a Ctrl press falls through as the primary press: the Ctrl
+    // coarse step and a wall tool kept for the next line still work.
+    const primaryWithCtrl = e.button === 2 && e.ctrlKey && ctrlClickIsRightButton;
+    if (e.button === 2 && !primaryWithCtrl) {
       if (anyHeld()) {
         // Order-independent with unit controls: when it runs first the still-held claim makes it
         // defer; when it runs later, stopping the event keeps the now-clear claim from reading the

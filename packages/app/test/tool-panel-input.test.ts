@@ -73,7 +73,7 @@ class DialogButton {
   }
 }
 
-function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
+function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean, ctrlClickIsRightButton = false) {
   const canvas = new EventTarget() as unknown as HTMLCanvasElement;
   const cues: UiCue[] = [];
   let menuOpened = 0;
@@ -112,6 +112,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean) {
     cue: (cue) => {
       cues.push(cue);
     },
+    ctrlClickIsRightButton,
   });
   return {
     canvas,
@@ -162,7 +163,7 @@ describe('tool panel input clicks', () => {
   });
 
   it('hands a held mode the Ctrl press macOS delivers on the right button as a primary press to keep', () => {
-    const { canvas, input, cues, held, arm } = mount();
+    const { canvas, input, cues, held, arm } = mount(undefined, undefined, true);
     const presses: Array<{ readonly keep: boolean } | undefined> = [];
     held.handleClick = (_x, _y, mods) => {
       presses.push(mods);
@@ -174,6 +175,21 @@ describe('tool panel input clicks', () => {
     expect(held.isActive()).toBe(true);
     expect(cues).toEqual([]);
     expect(presses).toEqual([{ keep: true }, { keep: false }]);
+    input.dispose();
+  });
+
+  it('calls a held mode off on a Ctrl right-click where Ctrl-click is no right-click', () => {
+    const { canvas, input, cues, held, arm } = mount();
+    let clicks = 0;
+    held.handleClick = () => {
+      clicks++;
+      return true;
+    };
+    arm();
+    canvas.dispatchEvent(press(400, 300, 2, true));
+    expect(held.isActive()).toBe(false);
+    expect(cues).toEqual(['fail']);
+    expect(clicks).toBe(0);
     input.dispose();
   });
 
