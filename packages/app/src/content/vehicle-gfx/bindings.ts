@@ -26,12 +26,21 @@ const INDEXED_SUFFIX = 'indexed';
 /**
  * The palette indices the `ls_vehicles` hulls paint their sails with: the cream ramp, then the 32-entry
  * band the `human_shipNN` palettes differ in. Observation of the decoded frames, where no other part of
- * a hull draws from either range. The viking big ship's `ve_test_ship` sail draws from neither, so it
- * hangs rigid and shows no owner colour.
+ * a hull draws from either range.
  */
 const SAIL_CREAM_RAMP = [104, 111] as const;
 const SHIP_OWNER_BAND = [128, 159] as const;
-export const SHIP_SAIL_INDEX_RANGES: ClothIndexRanges = [...SAIL_CREAM_RAMP, ...SHIP_OWNER_BAND];
+/**
+ * The grey-cream ramp the viking big ship's `ve_test_ship` paints its sail with (observation of the
+ * decoded frames). The deck awning shares it and ripples along; no owner band is painted, so the sail
+ * shows no owner colour.
+ */
+const BIG_SHIP_SAIL_RAMP = [192, 207] as const;
+/** The sail ranges by served indexed atlas stem, both ranges of a single-ramp sail being the ramp. */
+export const SHIP_SAIL_INDEX_RANGES: Readonly<Record<string, ClothIndexRanges>> = {
+  [`ls_vehicles.${INDEXED_SUFFIX}`]: [...SAIL_CREAM_RAMP, ...SHIP_OWNER_BAND],
+  [`ve_test_ship.${INDEXED_SUFFIX}`]: [...BIG_SHIP_SAIL_RAMP, ...BIG_SHIP_SAIL_RAMP],
+};
 
 /** Whether `row` draws per owner: its body palette starts the family whose LUT loaded. */
 function drawsPerOwner(row: VehicleGraphics, ownerFamily: string | undefined): boolean {

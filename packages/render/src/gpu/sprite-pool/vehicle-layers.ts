@@ -28,7 +28,10 @@ export function pushVehicleLayers(
   const still = draw.sway === 'none' || item.ghost === true;
   const underSail = draw.sway === 'sailing';
   const sway = still ? null : shipSway(tick, item.x, item.y, underSail);
-  const sails = !still && draw.indexed ? sheet.vehiclePalette?.sailRanges : undefined;
+  const sails =
+    !still && draw.indexed && draw.layer !== undefined
+      ? sheet.vehiclePalette?.sailRanges?.[draw.layer]
+      : undefined;
   const cloth = sails === undefined ? undefined : sailWind(sails, tick, item.x, item.y, underSail);
   for (const resolved of VEHICLE_BODY.finish()) {
     const layer = draw.indexed ? withAtlasSize(sheet, draw.layer, resolved) : resolved;

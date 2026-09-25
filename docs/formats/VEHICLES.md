@@ -537,9 +537,10 @@ these choices for the holes:
   the band the ten palettes differ in (indices 128..159), so the viking big ship shows no owner colour.
 - Wind in the sails: the original draws one rigid frame per heading. A set sail at sea ripples in the
   shader (`gpu/cloth-wind.ts`), an artistic approximation like the swell: the pixels of the sail's
-  palette indices (the cream ramp 104..111 and the owner band, an observation of the `ls_vehicles`
-  frames) slide sideways on a travelling wave inside the sail's fixed outline. A moored ship's furled
-  sail and the `ve_test_ship` sail, which draws from neither range, stay rigid.
+  palette indices, per indexed atlas, slide sideways on a travelling wave inside the sail's fixed
+  outline. `ls_vehicles` paints its sails with the cream ramp 104..111 and the owner band,
+  `ve_test_ship` with the grey-cream ramp 192..207, which its deck awning shares and so ripples along
+  (observations of the decoded frames). A moored ship's furled sail stays rigid.
 - The ships' two hulls: action 2 (bobs 0..31 of `ls_vehicles`) has the sails set, action 4 (bobs 66..94)
   has them furled with crates on deck (observation of the baked frames). A moored ship draws the furled
   hull, a ship standing or sailing at sea the set one; the `wood` gait the rows author as the loaded

@@ -6,9 +6,9 @@
 
 const ROLL_PERIOD_TICKS = 44;
 const HEAVE_PERIOD_TICKS = 28;
-const SAILING_ROLL = 0.035;
-const SAILING_HEAVE_PX = 2;
-const AT_SEA_ROLL = 0.015;
+const SAILING_ROLL = 0.024;
+const SAILING_HEAVE_PX = 1.5;
+const AT_SEA_ROLL = 0.01;
 const AT_SEA_HEAVE_PX = 1;
 /** Per-anchor phase offsets, radians per world pixel, so a fleet never rocks in step. */
 const PHASE_PER_X = 0.013;

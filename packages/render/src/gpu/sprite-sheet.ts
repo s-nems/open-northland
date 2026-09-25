@@ -24,8 +24,9 @@ export interface PaletteLut {
  * there are player colours, so an owner past the last row wraps around.
  */
 export interface VehicleColourLut extends PaletteLut {
-  /** The palette indices the bound atlases paint their sails with; absent draws the sails rigid. */
-  readonly sailRanges?: ClothIndexRanges;
+  /** The palette indices each indexed atlas paints its sails with, by family stem; an atlas absent
+   *  here draws its sails rigid. */
+  readonly sailRanges?: Readonly<Record<string, ClothIndexRanges>>;
 }
 
 /** The row a vehicle of `player` reads. */

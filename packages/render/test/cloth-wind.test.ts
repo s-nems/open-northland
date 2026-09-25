@@ -35,7 +35,10 @@ describe('the wind in a drawn ship', () => {
   const frame = { x: 0, y: 0, width: 8, height: 8, offsetX: -4, offsetY: -7 };
   const atlas = { width: 8, height: 8, frames: new Map([[0, frame]]) };
   const hull = { start: 0, frameLists: Array.from({ length: 8 }, () => [0]), loop: true };
-  const sheetOf = (indexed: boolean): SpriteSheet => ({
+  const sheetOf = (
+    indexed: boolean,
+    sailRanges: Record<string, ClothIndexRanges> = { ship: SAIL },
+  ): SpriteSheet => ({
     source,
     atlas,
     bindings: {
@@ -48,7 +51,7 @@ describe('the wind in a drawn ship', () => {
       },
     },
     families: { ship: { source, atlas, shadow: { source, atlas } } },
-    vehiclePalette: { source, colours: 10, sailRanges: SAIL },
+    vehiclePalette: { source, colours: 10, sailRanges },
   });
   const ship = { kind: 'vehicle' as const, ref: 1, x: 30, y: 50, depth: 0, tribe: VIKING, typeId: SHIP };
 
@@ -64,10 +67,11 @@ describe('the wind in a drawn ship', () => {
     expect([shadow?.atlasW, body?.atlasW]).toEqual([atlas.width, atlas.width]);
   });
 
-  it('draws a moored ship, a fog ghost and a baked hull rigid', () => {
+  it('draws a moored ship, a fog ghost, a baked hull and an atlas with no sail ranges rigid', () => {
     expect(resolveLayers(sheetOf(true), { ...ship, moored: true }, 9)?.[1]?.cloth).toBeUndefined();
     expect(resolveLayers(sheetOf(true), { ...ship, ghost: true }, 9)?.[1]?.cloth).toBeUndefined();
     expect(resolveLayers(sheetOf(false), ship, 9)?.[1]?.cloth).toBeUndefined();
+    expect(resolveLayers(sheetOf(true, { other: SAIL }), ship, 9)?.[1]?.cloth).toBeUndefined();
     expect(resolveLayers(sheetOf(true), { ...ship, moored: true }, 9)?.[1]?.atlasW).toBe(atlas.width);
   });
 });
