@@ -5,14 +5,25 @@ import type { ContentIr } from '../src/content/ir/rows.js';
 import { mapPalisadeSpawns, spawnMapPalisades } from '../src/content/map-palisades.js';
 
 const IR: ContentIr = {
-  landscape: [{ typeId: 82, id: 'wall' }],
-  landscapeGfx: [{ index: 691, editName: 'wall 01', logicType: 82 }],
+  landscape: [
+    {
+      typeId: 82,
+      id: 'wall',
+      maxValency: 100,
+      playerIdAllowed: true,
+      transitions: [
+        [9, 82, 2, 3, 0],
+        [10, 82, 2, -1, 0],
+      ],
+    },
+  ],
+  landscapeGfx: [{ index: 691, editName: 'wall_01', logicType: 82 }],
 };
 
 describe('map palisade promotion', () => {
   it('preserves source player zero and high player slots while leaving neutral walls unowned', () => {
     const objects: TerrainObjects = {
-      types: ['wall 01'],
+      types: ['wall_01'],
       placements: [2, 4, 0, 3, 4, 0, 4, 4, 0],
       owners: [0, 12, null],
       levels: [100, 40, 60],
@@ -33,7 +44,7 @@ describe('map palisade promotion', () => {
       },
     };
     const objects: TerrainObjects = {
-      types: ['wall 01'],
+      types: ['wall_01'],
       placements: [2, 4, 0, 3, 4, 0],
       owners: [0, 12],
       levels: [100, 40],

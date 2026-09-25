@@ -1,6 +1,7 @@
 import type { LayeredBobRef, PalisadeBinding } from '@open-northland/render';
 import { servedAtlasStem } from './ir/joins.js';
 import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
+import { playerWallRows, WALL_LOGIC_ID } from './palisade-rows.js';
 import { firstBobsByStateAscending } from './resource-gfx/refs.js';
 
 /** The source landscape rows used by walls and their open/closed gate variants. */
@@ -19,20 +20,16 @@ export interface PalisadeGfxRefs {
  * every authored gate orientation and state in the same atlas binding.
  */
 export function resolvePalisadeGfxRefs(ir: ContentIr | null): PalisadeGfxRefs {
-  const logicIdByType = new Map(
-    (ir?.landscape ?? []).flatMap((row) =>
-      typeof row.typeId === 'number' && row.id !== undefined ? [[row.typeId, row.id] as const] : [],
-    ),
-  );
+  const walls = playerWallRows(ir);
   const records: Array<{ gfxIndex: number; stem: string; bobs: readonly number[] }> = [];
   const wallVariantOrder: number[] = [];
   for (const record of ir?.landscapeGfx ?? []) {
-    const logicId = logicIdByType.get(record.logicType);
-    if (logicId !== 'wall' && logicId !== 'wall_gate_closed' && logicId !== 'wall_gate_open') continue;
+    const logicId = walls.get(record.logicType)?.logicId;
+    if (logicId === undefined) continue;
     const ref = palisadeRecordRef(record);
     if (ref === undefined) continue;
     records.push(ref);
-    if (logicId === 'wall' && record.editName?.startsWith('wall_0') === true)
+    if (logicId === WALL_LOGIC_ID && record.editName?.startsWith('wall_0') === true)
       wallVariantOrder.push(record.index);
   }
   return { records, wallVariantOrder };

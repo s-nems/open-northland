@@ -184,7 +184,7 @@ export interface LandscapeTypeRow {
   readonly allowedOnEverything?: boolean;
   readonly playerIdAllowed?: boolean;
   readonly maxValency?: number;
-  /** Raw source transition tuples; wall transition 9 carries its construction valency step. */
+  /** Raw source transition tuples; a wall's transition 9 carries its per-strike repair step. */
   readonly transitions?: readonly (readonly number[])[];
 }
 

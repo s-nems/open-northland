@@ -121,3 +121,54 @@ describe('script landscape content', () => {
     ]);
   });
 });
+
+describe('script landscape walls', () => {
+  const WOOD = 5;
+  const wallRow = (typeId: number, id: string, step: number, playerIdAllowed = true) => ({
+    typeId,
+    id,
+    maxValency: 100,
+    playerIdAllowed,
+    transitions: [
+      [9, typeId, 2, step, 0],
+      [10, typeId, 2, -1, 0],
+    ],
+  });
+  const wallIr = (playerIdAllowed: boolean): ContentIr => ({
+    goods: [{ typeId: WOOD, id: 'wood' }],
+    landscape: [
+      wallRow(82, 'wall', 3, playerIdAllowed),
+      wallRow(83, 'wall_gate_closed', 1, playerIdAllowed),
+      wallRow(84, 'wall_gate_open', 1, playerIdAllowed),
+    ],
+    landscapeGfx: [
+      { index: 691, editName: 'wall_01', logicType: 82 },
+      { index: 696, editName: 'gate_01', logicType: 83 },
+      { index: 700, editName: 'gate_01_open', logicType: 84 },
+    ],
+  });
+
+  it('joins the player wall rows to their hitpoints, repair steps, gate pairs and wood', () => {
+    expect(scriptLandscapeTypes(wallIr(true)).map((t) => t.wall)).toEqual([
+      { logicType: 82, maxHitpoints: 100, repairPerStrike: 3, construction: [{ goodType: WOOD, amount: 1 }] },
+      {
+        logicType: 83,
+        maxHitpoints: 100,
+        repairPerStrike: 1,
+        construction: [{ goodType: WOOD, amount: 1 }],
+        gate: { open: false, counterpartGfxIndex: 700 },
+      },
+      {
+        logicType: 84,
+        maxHitpoints: 100,
+        repairPerStrike: 1,
+        construction: [{ goodType: WOOD, amount: 1 }],
+        gate: { open: true, counterpartGfxIndex: 696 },
+      },
+    ]);
+  });
+
+  it('leaves wall rows no player may own as scenery', () => {
+    expect(scriptLandscapeTypes(wallIr(false)).map((t) => t.wall)).toEqual([undefined, undefined, undefined]);
+  });
+});

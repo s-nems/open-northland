@@ -19,7 +19,7 @@ export const LandscapeType = z.strictObject({
   plantable: z.boolean().default(false),
   /**
    * `maximumValency` - the per-cell capacity gating how many units share a cell in the cell-adjacency
-   * graph (void 100, trees 5, bushes 1). Defaults to 0 when the source omits it.
+   * graph (void 100, trees 5, bushes 1); a wall or gate's hitpoints. Defaults to 0 when the source omits it.
    */
   maxValency: z.number().int().nonnegative().default(0),
   /** `allowedonland` - this type sits on the land layer; the placement layer derives from these flags,
@@ -34,8 +34,8 @@ export const LandscapeType = z.strictObject({
   playerIdAllowed: z.boolean().default(false),
   /**
    * Raw `transition` tuples in file order, captured verbatim. They drive the landscape lifecycle
-   * (tree→trunk, mine depletion), but their field semantics are undecoded, so do not read meaning into
-   * the positions.
+   * (tree→trunk, mine depletion). Only the wall family's are read: field 0 is the event (9 a builder
+   * strike, 10 a hit) and field 3 the valency step. Other fields stay undecoded.
    */
   transitions: z.array(z.array(z.number().int())).default([]),
   source: Provenance.optional(),

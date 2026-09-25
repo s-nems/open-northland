@@ -12,6 +12,7 @@ import {
   groundGoodByObjectName,
   harvestGoodByObjectName,
 } from './map-resources.js';
+import { CLOSED_GATE_LOGIC_ID, OPEN_GATE_LOGIC_ID, playerWallRows } from './palisade-rows.js';
 
 // Shipped result reference memberships, with its spacing typos resolved to actual GfxLandscape EditNames.
 const REMOVAL_NAMES: Readonly<Record<LandscapeRemovalGroup, readonly string[]>> = {
@@ -43,11 +44,7 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
   const harvestByName = harvestGoodByObjectName(ir);
   const groundGoodByName = groundGoodByObjectName(ir);
   const chestKindByType = chestKindByLogicType(ir);
-  const logicByType = new Map(
-    (ir.landscape ?? []).flatMap((row) =>
-      typeof row.typeId === 'number' ? [[row.typeId, row] as const] : [],
-    ),
-  );
+  const wallByType = playerWallRows(ir);
   const woodGoodType = ir.goods?.find((good) => good.id === 'wood')?.typeId;
   const gfxByName = new Map(
     (ir.landscapeGfx ?? []).flatMap((row) =>
@@ -64,17 +61,11 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
     const gatherer = ref === undefined ? undefined : gatherers.get(ref.goodId);
     const chestKind = chestKindByType.get(g.logicType);
     const goodId = g.editName === undefined ? undefined : groundGoodByName.get(g.editName);
-    const logic = logicByType.get(g.logicType);
-    const wallLogic =
-      logic?.playerIdAllowed === true &&
-      (logic.id === 'wall' || logic.id === 'wall_gate_closed' || logic.id === 'wall_gate_open')
-        ? logic
-        : undefined;
-    const repairPerStrike = wallLogic?.transitions?.find((row) => row[0] === 9)?.[3];
+    const wall = wallByType.get(g.logicType);
     const counterpartName =
-      logic?.id === 'wall_gate_closed'
+      wall?.logicId === CLOSED_GATE_LOGIC_ID
         ? `${g.editName ?? ''}_open`
-        : logic?.id === 'wall_gate_open'
+        : wall?.logicId === OPEN_GATE_LOGIC_ID
           ? (g.editName ?? '').replace(/_open$/, '')
           : undefined;
     const counterpartGfxIndex = counterpartName === undefined ? undefined : gfxByName.get(counterpartName);
@@ -101,26 +92,17 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
       ...(g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE ? { bushGfxIndex: g.index } : {}),
       ...(chestKind === undefined ? {} : { chest: { kind: chestKind, gfxIndex: g.index } }),
       ...(goodId === undefined ? {} : { good: { goodId } }),
-      ...(wallLogic === undefined ||
-      wallLogic.maxValency === undefined ||
-      wallLogic.maxValency <= 0 ||
-      repairPerStrike === undefined ||
-      repairPerStrike <= 0
+      ...(wall === undefined
         ? {}
         : {
             wall: {
               logicType: g.logicType,
-              maxHitpoints: wallLogic.maxValency,
-              repairPerStrike,
+              maxHitpoints: wall.maxHitpoints,
+              repairPerStrike: wall.repairPerStrike,
               construction: woodGoodType === undefined ? [] : [{ goodType: woodGoodType, amount: 1 }],
               ...(counterpartGfxIndex === undefined
                 ? {}
-                : {
-                    gate: {
-                      open: logic?.id === 'wall_gate_open',
-                      counterpartGfxIndex,
-                    },
-                  }),
+                : { gate: { open: wall.logicId === OPEN_GATE_LOGIC_ID, counterpartGfxIndex } }),
             },
           }),
     };

@@ -2,8 +2,7 @@ import type { TerrainObjects } from '@open-northland/data';
 import type { Command, Simulation } from '@open-northland/sim';
 import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
-
-const PALISADE_LOGIC_IDS = new Set(['wall', 'wall_gate_closed', 'wall_gate_open']);
+import { playerWallRows } from './palisade-rows.js';
 
 export interface MapPalisadeSpawn {
   readonly gfxIndex: number;
@@ -16,14 +15,10 @@ export interface MapPalisadeSpawn {
 
 /** Map object-name → exact source wall/gate graphics record. */
 function palisadeGfxByName(ir: ContentIr): ReadonlyMap<string, number> {
-  const logicIds = new Set(
-    (ir.landscape ?? []).flatMap((row) =>
-      row.typeId !== undefined && row.id !== undefined && PALISADE_LOGIC_IDS.has(row.id) ? [row.typeId] : [],
-    ),
-  );
+  const walls = playerWallRows(ir);
   const out = new Map<string, number>();
   for (const gfx of ir.landscapeGfx ?? []) {
-    if (gfx.editName !== undefined && logicIds.has(gfx.logicType)) out.set(gfx.editName, gfx.index);
+    if (gfx.editName !== undefined && walls.has(gfx.logicType)) out.set(gfx.editName, gfx.index);
   }
   return out;
 }

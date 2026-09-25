@@ -1,5 +1,6 @@
 import { fullStateBlockAreaCells, type LandscapeBlockArea, type LandscapeGfx } from '@open-northland/data';
 import type { ScriptLandscapeType } from '@open-northland/sim';
+import { CLOSED_GATE_LOGIC_ID, OPEN_GATE_LOGIC_ID, WALL_LOGIC_ID } from '../../content/palisade-rows.js';
 import { GOOD_WOOD } from './ids/index.js';
 
 export const PALISADE_WALL_GFX_INDEX = 691;
@@ -21,9 +22,9 @@ export function sandboxPalisadeLandscapeTypes(): Array<{
   buildable: boolean;
 }> {
   return [
-    { typeId: WALL_LOGIC_TYPE, id: 'palisade_wall', walkable: true, buildable: true },
-    { typeId: CLOSED_GATE_LOGIC_TYPE, id: 'palisade_gate_closed', walkable: true, buildable: true },
-    { typeId: OPEN_GATE_LOGIC_TYPE, id: 'palisade_gate_open', walkable: true, buildable: true },
+    { typeId: WALL_LOGIC_TYPE, id: WALL_LOGIC_ID, walkable: true, buildable: true },
+    { typeId: CLOSED_GATE_LOGIC_TYPE, id: CLOSED_GATE_LOGIC_ID, walkable: true, buildable: true },
+    { typeId: OPEN_GATE_LOGIC_TYPE, id: OPEN_GATE_LOGIC_ID, walkable: true, buildable: true },
   ];
 }
 
