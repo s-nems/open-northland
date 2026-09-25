@@ -394,15 +394,25 @@ describe('engagement - a crowd on one enemy', () => {
     return { swung: swung.size, flips, holding };
   }
 
+  /** The nodes a map point from one enemy: a reach-1 weapon's whole band. */
+  const HEX_SIDES = 6;
+
   it('every attacker swings while the enemy has room around it, and none changes its target', () => {
-    const CROWD = 8; // the spear's 1..2 band holds twelve nodes around one enemy
+    const CROWD = 8; // the spear's 1..2 band holds eighteen nodes around one enemy
     expect(crowdOn(CROWD, SOLDIER_SPEAR)).toEqual({ swung: CROWD, flips: 0, holding: CROWD });
   });
 
+  it('six reach-1 attackers all strike one enemy, one from each side', () => {
+    expect(crowdOn(HEX_SIDES, SOLDIER_SWORD_SHORT)).toEqual({
+      swung: HEX_SIDES,
+      flips: 0,
+      holding: HEX_SIDES,
+    });
+  });
+
   it('an overflow keeps its target and waits beside the front instead of letting it go', () => {
-    const CROWD = 6; // the short sword's 1..1 band holds four nodes around one enemy
-    const SIDES = 4;
-    expect(crowdOn(CROWD, SOLDIER_SWORD_SHORT)).toEqual({ swung: SIDES, flips: 0, holding: CROWD });
+    const CROWD = HEX_SIDES + 2;
+    expect(crowdOn(CROWD, SOLDIER_SWORD_SHORT)).toEqual({ swung: HEX_SIDES, flips: 0, holding: CROWD });
   });
 });
 

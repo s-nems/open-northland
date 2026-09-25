@@ -6,9 +6,9 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import { interactionNode, vehicleFootprintNodes } from '../footprint/index.js';
-import { manhattan, nearestCell, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../spatial/metric.js';
+import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import type { WeaponBand } from './melee-slots.js';
+import { forEachNodeInBand, type WeaponBand } from './melee-slots.js';
 
 // The nodes combat measures a target's distance to, and paths a chaser toward, so the target index, the
 // chase drive and the mid-swing whiff check all resolve a building target's approach the same way.
@@ -144,7 +144,7 @@ export function combatTargetNode(
 ): NodeId {
   const body = targetBodyNodes(world, ctx, terrain, target);
   if (body !== null) {
-    const nearest = nearestCell(terrain, body, from);
+    const nearest = nearestHexCell(terrain, body, from);
     if (nearest !== null) return nearest;
   }
   return entityNode(world, terrain, target);
@@ -208,16 +208,7 @@ function firingCellIn(
   weapon: WeaponBand,
 ): boolean {
   if (terrain.componentOf(target) === component) return true;
-  const dist = manhattan(terrain, here, target);
+  const dist = hexNodeDistance(terrain, here, target);
   if (dist >= weapon.minRange && dist <= weapon.maxRange) return true; // the seeker stands on one already
-  const t = terrain.coordsOf(target);
-  for (let d = weapon.minRange; d <= weapon.maxRange; d++) {
-    const offsets = ringOffsetCount(d);
-    for (let i = 0; i < offsets; i++) {
-      const x = t.x + ringOffsetDx(d, i);
-      const y = t.y + ringOffsetDy(d, i);
-      if (terrain.inBounds(x, y) && terrain.componentOf(terrain.nodeAt(x, y)) === component) return true;
-    }
-  }
-  return false;
+  return !forEachNodeInBand(terrain, target, weapon, (cell) => terrain.componentOf(cell) !== component);
 }

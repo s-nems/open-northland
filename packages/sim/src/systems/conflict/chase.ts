@@ -12,7 +12,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
+import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -20,9 +20,9 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { breakThroughWall } from '../palisades/breach.js';
 import { markLostWay } from '../settlers/lost-way.js';
-import { closer, hexNodeDistance, manhattan, nearestCell } from '../spatial/metric.js';
+import { closer, hexNodeDistance, manhattan, nearestHexCell } from '../spatial/metric.js';
 import type { CombatantStance, EngageSpec } from './engagement.js';
-import type { MeleeSlots, WeaponBand } from './melee-slots.js';
+import { forEachNodeInBand, type MeleeSlots, type WeaponBand } from './melee-slots.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser
@@ -38,6 +38,16 @@ export interface ChaseTarget {
 }
 
 type DefendPost = EngageSpec['defend'];
+
+/** The band a chaser closes into, and whether it takes a melee contact slot there. */
+export interface ApproachBand extends WeaponBand {
+  readonly contact: boolean;
+}
+
+/** How far from itself (map points) a melee attacker looks for a contact slot, and among how many of the
+ *  free slots nearest it it draws one. Original behavior. */
+export const CONTACT_SLOT_RADIUS = 5;
+export const CONTACT_SLOT_CHOICES = 6;
 
 /**
  * How many ticks a chaser follows its current path toward an enemy before re-issuing a fresh one. A per-tick
@@ -112,7 +122,7 @@ export function chase(
   e: Entity,
   here: NodeId,
   target: ChaseTarget,
-  weapon: WeaponBand,
+  weapon: ApproachBand,
   stance: CombatantStance,
   defend: DefendPost,
 ): boolean {
@@ -206,7 +216,7 @@ export function chase(
       ? { cell: stand, waiting: false }
       : target.body !== null && target.body.length > 0
         ? faceApproach(terrain, slots, here, target, weapon, mine, onOurBank)
-        : approachCell(terrain, here, target.node, weapon, slots, mine, onOurBank);
+        : approachCell(ctx, terrain, here, target.node, weapon, slots, mine, onOurBank);
   if (approach.waiting && approach.cell === here && mine.standingOn !== undefined) {
     // A second rank standing where it waits: idle, with no route for the render to read as a walk. It keeps
     // its target and re-asks each tick, which puts it in the moment a front-liner falls or steps off.
@@ -277,7 +287,9 @@ function breachStand(
   const order = world.tryGet(e, AttackOrder);
   const stand = order?.target === target.entity ? order.breach?.stand : undefined;
   if (stand === undefined || stand === null) return null;
-  const reach = Math.min(...(target.body ?? [target.node]).map((wall) => manhattan(terrain, stand, wall)));
+  const reach = Math.min(
+    ...(target.body ?? [target.node]).map((wall) => hexNodeDistance(terrain, stand, wall)),
+  );
   return reach >= weapon.minRange && reach <= weapon.maxRange ? stand : null;
 }
 
@@ -301,17 +313,18 @@ interface Approach {
   readonly waiting: boolean;
 }
 
-/** One node farther than the weapon's far reach: where an overflow waits behind the front. */
+/** One map point farther than the weapon's far reach: where an overflow waits behind the front. */
 function secondRank(weapon: WeaponBand): WeaponBand {
   return { minRange: weapon.maxRange + 1, maxRange: weapon.maxRange + 1 };
 }
 
 /**
- * The cell a chaser should walk to in order to bring `target` into its weapon band: the {@link
- * MeleeSlots.isOpen open}, `reachable`, untaken cell in the band that is closest to `from`, canonicalized by
- * (distance, cell id). A melee unit therefore stops one cell short of the enemy rather than on it, where
- * distance 0 would sit below every weapon's near reach. Falls back to the target's own cell when no cell in
- * the band is open and reachable at all.
+ * The cell a chaser should walk to in order to bring `target` into its weapon band, among the {@link
+ * MeleeSlots.isOpen open}, `reachable`, untaken cells of the band: a melee contact slot ({@link contactSlot})
+ * once one lies near, else the one closest to `from`, canonicalized by (distance, cell id). A melee unit
+ * therefore stops a map point short of the enemy rather than on it, where distance 0 would sit below every
+ * weapon's near reach. Falls back to the target's own cell when no cell in the band is open and reachable
+ * at all.
  *
  * Original behavior: with every side taken the attacker keeps its target, walks up and fights from a taken
  * node, so no cap limits how many strike one enemy. Intentional deviation: a standing fighter's body blocks
@@ -320,14 +333,19 @@ function secondRank(weapon: WeaponBand): WeaponBand {
  * frees.
  */
 function approachCell(
+  ctx: SystemContext,
   terrain: TerrainGraph,
   from: NodeId,
   targetCell: NodeId,
-  weapon: WeaponBand,
+  weapon: ApproachBand,
   slots: MeleeSlots,
   mine: OwnClaims,
   reachable: (cell: NodeId) => boolean,
 ): Approach {
+  const slot = weapon.contact
+    ? contactSlot(ctx, terrain, from, targetCell, weapon, slots, mine, reachable)
+    : null;
+  if (slot !== null) return { cell: slot, waiting: false };
   const front = nearestFreeInBand(terrain, from, targetCell, weapon, slots, mine, reachable);
   if (front.free !== null) return { cell: front.free, waiting: false };
   if (!front.anyOpen) return { cell: targetCell, waiting: false };
@@ -349,15 +367,49 @@ function faceApproach(
 ): Approach {
   const free = (cell: NodeId): boolean => onOurBank(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn);
   const faces = slots.encircleCandidates(target.entity, target.body, weapon);
-  const face = nearestCell(terrain, faces, here, free);
+  const face = nearestHexCell(terrain, faces, here, free);
   if (face !== null) return { cell: face, waiting: false };
   if (!faces.some(onOurBank)) return { cell: target.node, waiting: false };
   const rank = slots.encircleCandidates(target.entity, target.body, secondRank(weapon));
-  return { cell: nearestCell(terrain, rank, here, free) ?? here, waiting: true };
+  return { cell: nearestHexCell(terrain, rank, here, free) ?? here, waiting: true };
+}
+
+/**
+ * A melee attacker's contact slot: its own goal while that is still a free cell of the band, else one
+ * drawn at random among the {@link CONTACT_SLOT_CHOICES} free cells of the band nearest the attacker,
+ * searched out to {@link CONTACT_SLOT_RADIUS} around it; null when none lies that near, and the chase
+ * closes on the nearest free cell instead. Original behavior. Approximation: the original searches by
+ * walking steps from the attacker where this counts map points. Keeping a goal still free is authored, so
+ * a cadence re-path does not redraw the slot.
+ */
+function contactSlot(
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  from: NodeId,
+  targetCell: NodeId,
+  band: WeaponBand,
+  slots: MeleeSlots,
+  mine: OwnClaims,
+  reachable: (cell: NodeId) => boolean,
+): NodeId | null {
+  const inBand = (cell: NodeId): boolean => {
+    const reach = hexNodeDistance(terrain, targetCell, cell);
+    return reach >= band.minRange && reach <= band.maxRange;
+  };
+  const free = (cell: NodeId): boolean =>
+    slots.isOpen(cell) && reachable(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn);
+  if (mine.goal !== undefined && inBand(mine.goal) && free(mine.goal)) return mine.goal;
+  const choices: NodeId[] = [];
+  forEachNodeInBand(terrain, from, { minRange: 0, maxRange: CONTACT_SLOT_RADIUS }, (cell) => {
+    if (inBand(cell) && free(cell)) choices.push(cell);
+    return choices.length < CONTACT_SLOT_CHOICES;
+  });
+  if (choices.length <= 1) return choices[0] ?? null;
+  return choices[ctx.rng.int(choices.length)] ?? null;
 }
 
 /** The untaken cell of `band` around `targetCell` nearest `from` among the open, `reachable` ones, and
- *  whether any cell of the band is open and reachable at all. The band-box scan is O((2·maxRange+1)²). */
+ *  whether any cell of the band is open and reachable at all. Costs the band's area. */
 function nearestFreeInBand(
   terrain: TerrainGraph,
   from: NodeId,
@@ -367,31 +419,24 @@ function nearestFreeInBand(
   mine: OwnClaims,
   reachable: (cell: NodeId) => boolean,
 ): { free: NodeId | null; anyOpen: boolean } {
-  const t = terrain.coordsOf(targetCell);
-  const f = terrain.coordsOf(from);
+  const fromX = terrain.xOf(from);
+  const fromY = terrain.yOf(from);
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   let anyOpen = false;
-  for (let dy = -band.maxRange; dy <= band.maxRange; dy++) {
-    for (let dx = -band.maxRange; dx <= band.maxRange; dx++) {
-      const reach = Math.abs(dx) + Math.abs(dy);
-      if (reach < band.minRange || reach > band.maxRange) continue;
-      const x = t.x + dx;
-      const y = t.y + dy;
-      if (!terrain.inBounds(x, y)) continue;
-      const cell = terrain.nodeAt(x, y);
-      if (!slots.isOpen(cell) || !reachable(cell)) continue;
-      anyOpen = true;
-      if (slots.isTaken(cell, mine.goal, mine.standingOn)) continue; // someone already fights (or was dealt) here
-      const d = Math.abs(x - f.x) + Math.abs(y - f.y); // distance from the unit to this candidate cell
-      if (closer(d, cell, bestDist, bestCell)) {
-        best = cell;
-        bestDist = d;
-        bestCell = cell;
-      }
+  forEachNodeInBand(terrain, targetCell, band, (cell) => {
+    if (!slots.isOpen(cell) || !reachable(cell)) return true;
+    anyOpen = true;
+    if (slots.isTaken(cell, mine.goal, mine.standingOn)) return true; // someone already fights (or was dealt) here
+    const d = hexDistanceBetween(fromX, fromY, terrain.xOf(cell), terrain.yOf(cell));
+    if (closer(d, cell, bestDist, bestCell)) {
+      best = cell;
+      bestDist = d;
+      bestCell = cell;
     }
-  }
+    return true;
+  });
   return { free: best, anyOpen };
 }
 

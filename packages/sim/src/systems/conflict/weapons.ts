@@ -31,7 +31,7 @@ import {
 
 /**
  * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content: its reach as a
- * `[minRange, maxRange]` band (Manhattan half-cell nodes) and the {@link WeaponType} itself. Null when no
+ * `[minRange, maxRange]` band (map points) and the {@link WeaponType} itself. Null when no
  * weapon resolves - an unarmed combatant does no damage (approximation).
  *
  * `minRange` is the near reach a ranged weapon can't fire below (the original's `hunter_bow` is
@@ -79,9 +79,9 @@ export function vehicleWeapon(
 }
 
 /** Resolve a {@link WeaponType}'s reach band, clamped sane (`1 ≤ minRange ≤ maxRange`). Range values are
- *  consumed verbatim as half-cell (node) Manhattan distances - the original's logic grid is the half-cell
- *  lattice, so its distance params live in that space (source basis: the 2W×2H lane/placement layout, no
- *  combat-code oracle). */
+ *  consumed verbatim as map points, the hexagonal distance of `nav/halfcell.ts`. Original behavior: a
+ *  target is in reach when its map-point distance lies within the band, so a reach of 1 touches the six
+ *  nodes around it. */
 function withReach(weapon: WeaponType): { minRange: number; maxRange: number; weapon: WeaponType } {
   const maxRange = Math.max(1, weapon.maxRange);
   const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);

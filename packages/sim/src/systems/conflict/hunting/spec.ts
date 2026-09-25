@@ -3,7 +3,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isLastResortPrey } from '../../readviews/index.js';
-import { manhattan } from '../../spatial/metric.js';
+import { hexNodeDistance, manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
 import type { CombatIndex } from '../combat-index.js';
 import type { EngageSpec } from '../engagement.js';
@@ -65,13 +65,12 @@ export function hunterEngageSpec(
   if (ground === null) {
     // Unanchored (an unposted fixture): plain sight bounds the acquisition, so it bounds the hold too.
     const inSight = (t: Entity): boolean =>
-      manhattan(terrain, hereNode, entityNode(world, terrain, t)) <= sight;
+      hexNodeDistance(terrain, hereNode, entityNode(world, terrain, t)) <= sight;
     const lastResortOk = lastResortGate(terrain, index, hereNode, sight, reachablePrey, lastResortLivestock);
     return {
       accept: (t) => acceptPrey(t) && lastResortOk(t),
       minDist,
       searchRadius: sight,
-      metric: 'manhattan',
       player: null,
       preySeeker: true,
       lowPriority: lastResortLivestock,
@@ -79,6 +78,8 @@ export function hunterEngageSpec(
       defend: null,
     };
   }
+  // The ground is a work-flag circle, counted in Manhattan nodes like every work area; only the weapon
+  // band and the search count map points.
   // Probed at most once per engage, on the first candidate to reach it.
   let carcassWork: boolean | null = null;
   const groundHasCarcassWork = (): boolean =>
@@ -103,9 +104,9 @@ export function hunterEngageSpec(
     accept,
     minDist,
     // From wherever the hunter stands, `dist(here, anchor) + radius` provably covers every in-ground
-    // candidate (triangle inequality), and collapses to ~radius when it stands on its ground.
+    // candidate (triangle inequality, and a map-point distance never exceeds the Manhattan one), and
+    // collapses to ~radius when it stands on its ground.
     searchRadius: manhattan(terrain, hereNode, ground.anchorCell) + ground.radius,
-    metric: 'manhattan',
     player: null,
     preySeeker: true,
     lowPriority: lastResortLivestock,

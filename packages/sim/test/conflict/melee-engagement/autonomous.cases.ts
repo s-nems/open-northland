@@ -8,7 +8,7 @@ import {
   Position,
   Resource,
 } from '../../../src/components/index.js';
-import { fx, Simulation } from '../../../src/index.js';
+import { fx, hexDistanceBetween, Simulation } from '../../../src/index.js';
 import {
   anchorOnlyFootprint,
   combatSystem,
@@ -203,8 +203,12 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, Engagement)).toBe(true);
-    // It walks to a contact cell of the SAME-BANK enemy, 2 nodes short of its node (11, 10).
-    expect(sim.terrain?.coordsOf(sim.world.get(a, MoveGoal).cell)).toEqual({ x: 11, y: 8 });
+    // It walks to a contact cell of the SAME-BANK enemy, inside the axe's 1..2 map points of its node.
+    const goal = sim.terrain?.coordsOf(sim.world.get(a, MoveGoal).cell);
+    if (goal === undefined) throw new Error('mapless sim');
+    const reach = hexDistanceBetween(goal.x, goal.y, 11, 10);
+    expect(reach).toBeGreaterThanOrEqual(1);
+    expect(reach).toBeLessThanOrEqual(2);
   });
 
   it('still chases an enemy on its own bank - the release is unreachable-only', () => {

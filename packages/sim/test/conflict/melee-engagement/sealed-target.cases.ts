@@ -382,14 +382,15 @@ describe('a chase whose target is ringed by standing bodies', () => {
   });
 
   it('drops the refusal count while it stands in the second rank', () => {
-    // A corridor two nodes high: the mace's band around the enemy is three in-bounds cells, each held by
-    // an allied body, so the subject, already a node outside that band, waits there and routing is never
-    // asked.
+    // A corridor two nodes high: the mace's band around the enemy is four in-bounds cells, each held by
+    // an allied body, so the subject, already a map point outside that band, waits there and routing is
+    // never asked.
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grassMap(9, 1) });
     const enemy = fighterOnNode(sim, 10, 0, SOLDIER, P1, MILITARY_MODE.IGNORE);
     for (const [dx, dy] of [
       [-1, 0],
       [1, 0],
+      [-1, 1],
       [0, 1],
     ] as const) {
       fighterOnNode(sim, 10 + dx, dy, SOLDIER, P0, MILITARY_MODE.IGNORE);

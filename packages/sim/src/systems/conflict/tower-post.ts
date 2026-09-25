@@ -16,7 +16,7 @@ import { buildingWorkerJobs } from '../stores/index.js';
 // manning does to its reach.
 
 /**
- * How much reach (Manhattan half-cell nodes) a manned post adds to a garrison's bow, for spotting a target
+ * How much reach (map points) a manned post adds to a garrison's bow, for spotting a target
  * and for the shot alike: the short bow's extracted `maximumrange 15` reaches 20 from the tower, the long
  * bow's 23 reaches 28. Original behavior; a posted man with a melee weapon gains nothing. Intentional
  * deviation: the original grants it to a posted bowman wherever he stands; here only one standing on his

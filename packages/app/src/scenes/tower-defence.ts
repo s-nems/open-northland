@@ -29,10 +29,11 @@ const GUARDS: readonly (readonly [number, number])[] = [
   [15, 13],
 ];
 
-/** Deep enough that the volley from the towers takes a while to cut it down. */
+/** Deep enough that the volley from the towers takes a while to cut it down, and shallow enough that the
+ *  east tower outlasts the raiders battering it from every side. */
 const RAIDER_COLUMNS = [29, 30, 31, 32];
 const RAIDER_ROW_FIRST = 8;
-const RAIDER_ROW_LAST = 12;
+const RAIDER_ROW_LAST = 11;
 
 const { Building, DefenceMode, Health, Owner, Resting, Settler, Sheltering } = components;
 

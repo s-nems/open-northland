@@ -35,7 +35,7 @@ import { vehicleWeapon } from './weapons.js';
  */
 export const SIGHT_RADIUS_NODES = 18;
 
-/** How far (Manhattan nodes) a hostile wild animal spots a civilization victim to advance on - the animal
+/** How far (map points) a hostile wild animal spots a civilization victim to advance on - the animal
  *  twin of {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat sight radius"): no readable aggro
  *  field exists; half a soldier's sight reads as an ambush radius rather than a map-wide hunt. */
 export const ANIMAL_AGGRO_RADIUS_NODES = 8;

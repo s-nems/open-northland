@@ -1,16 +1,34 @@
 import { Engagement, MoveGoal } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
+import { forEachRingNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
-import { manhattan } from '../spatial/metric.js';
+import { hexNodeDistance } from '../spatial/metric.js';
 
-/** A weapon's contact band in half-cell-node Manhattan distance. */
+/** A weapon's reach band in map points ({@link hexNodeDistance}). Original behavior: a target is in reach
+ *  when its map-point distance lies within `[minRange, maxRange]`. */
 export interface WeaponBand {
   readonly minRange: number;
   readonly maxRange: number;
+}
+
+/** Visit every node within `band` of `centre`, nearest ring first, until `visit` answers false; answers
+ *  whether the walk finished. Costs the band's area, about three times `maxRange` squared. */
+export function forEachNodeInBand(
+  terrain: TerrainGraph,
+  centre: NodeId,
+  band: WeaponBand,
+  visit: (cell: NodeId) => boolean,
+): boolean {
+  const at = { hx: terrain.xOf(centre), hy: terrain.yOf(centre) };
+  const onNode = (hx: number, hy: number): boolean => visit(terrain.nodeAt(hx, hy));
+  for (let ring = band.minRange; ring <= band.maxRange; ring++) {
+    if (!forEachRingNode(at, ring, terrain.width, terrain.height, onNode)) return false;
+  }
+  return true;
 }
 
 /**
@@ -84,23 +102,17 @@ export class MeleeSlots {
   private buildBand(body: readonly NodeId[], weapon: WeaponBand): readonly NodeId[] {
     const visited = new Set<NodeId>();
     const candidates: NodeId[] = [];
+    const disc = { minRange: 0, maxRange: weapon.maxRange };
     for (const wall of body) {
-      const t = this.terrain.coordsOf(wall);
-      for (let dy = -weapon.maxRange; dy <= weapon.maxRange; dy++) {
-        for (let dx = -weapon.maxRange; dx <= weapon.maxRange; dx++) {
-          if (Math.abs(dx) + Math.abs(dy) > weapon.maxRange) continue;
-          const x = t.x + dx;
-          const y = t.y + dy;
-          if (!this.terrain.inBounds(x, y)) continue;
-          const cell = this.terrain.nodeAt(x, y);
-          if (visited.has(cell)) continue; // adjacent walls' band boxes overlap - evaluate each cell once
-          visited.add(cell);
-          if (!this.isOpen(cell)) continue;
-          const reach = distanceToBody(this.terrain, cell, body);
-          if (reach < weapon.minRange || reach > weapon.maxRange) continue; // reach is to the NEAREST wall
-          candidates.push(cell);
-        }
-      }
+      forEachNodeInBand(this.terrain, wall, disc, (cell) => {
+        if (visited.has(cell)) return true; // adjacent walls' discs overlap - evaluate each cell once
+        visited.add(cell);
+        if (!this.isOpen(cell)) return true;
+        const reach = distanceToBody(this.terrain, cell, body);
+        // Reach is to the NEAREST wall.
+        if (reach >= weapon.minRange && reach <= weapon.maxRange) candidates.push(cell);
+        return true;
+      });
     }
     return candidates;
   }
@@ -114,10 +126,10 @@ function enRouteChaseGoals(world: World): ReadonlySet<NodeId> {
   return out;
 }
 
-/** Manhattan distance from `cell` to the nearest cell of `body` - how the combat reach to a building is
+/** Map-point distance from `cell` to the nearest cell of `body` - how the combat reach to a building is
  *  measured. */
 function distanceToBody(terrain: TerrainGraph, cell: NodeId, body: readonly NodeId[]): number {
   let min = Number.POSITIVE_INFINITY;
-  for (const wall of body) min = Math.min(min, manhattan(terrain, cell, wall));
+  for (const wall of body) min = Math.min(min, hexNodeDistance(terrain, cell, wall));
   return min;
 }

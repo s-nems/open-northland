@@ -46,9 +46,9 @@ import {
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
-import { manhattan } from '../spatial/metric.js';
+import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { breakOff, type ChaseTarget, chase, disengage, REPATH_CADENCE } from './chase.js';
+import { type ApproachBand, breakOff, type ChaseTarget, chase, disengage, REPATH_CADENCE } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
@@ -395,10 +395,11 @@ function pullUpInReach(
   const stop = follow === undefined ? undefined : world.tryGet(e, PathRoute)?.waypoints[follow.index]?.node;
   const goal = world.tryGet(e, MoveGoal)?.cell;
   for (const cell of stop === undefined ? [here] : [stop, here]) {
-    if (!inBand(manhattan(terrain, cell, combatTargetNode(world, ctx, terrain, cell, target)), weapon))
+    if (!inBand(hexNodeDistance(terrain, cell, combatTargetNode(world, ctx, terrain, cell, target)), weapon))
       continue;
-    if (cell === goal) return true; // already walking there
+    // A body can step onto the goal ahead of it, and two never share a node.
     if (slots.isOccupied(cell)) continue;
+    if (cell === goal) return true; // already walking there
     redirectRoute(world, e, cell);
     slots.claim(cell);
     const engagement = world.tryMut(e, Engagement);
@@ -471,12 +472,15 @@ function swingAt(
 }
 
 /**
- * The band a chaser closes into: a melee weapon's whole reach, a ranged one's reach cut back to the standoff
- * `(2 * max - min) / 2`, so an archer steps in past its farthest shot. Original behavior.
+ * The band a chaser closes into: a melee weapon's whole reach, where it takes a contact slot, and a ranged
+ * one's reach cut back to the standoff `(2 * max - min) / 2`, so an archer steps in past its farthest shot.
+ * Original behavior.
  */
-function approachBand(weapon: ArmedWith): { minRange: number; maxRange: number } {
-  if (!isRangedWeapon(weapon.weapon) || weapon.minRange >= weapon.maxRange) return weapon;
-  return { minRange: weapon.minRange, maxRange: (2 * weapon.maxRange - weapon.minRange) >> 1 };
+function approachBand(weapon: ArmedWith): ApproachBand {
+  const { minRange, maxRange } = weapon;
+  if (!isRangedWeapon(weapon.weapon)) return { minRange, maxRange, contact: true };
+  if (minRange >= maxRange) return { minRange, maxRange, contact: false };
+  return { minRange, maxRange: (2 * maxRange - minRange) >> 1, contact: false };
 }
 
 /** Remember `target` as the enemy `e` holds, written only when it changes. */

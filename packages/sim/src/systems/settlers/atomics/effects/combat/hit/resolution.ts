@@ -21,7 +21,7 @@ import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { woundBearer } from '../../../../../equipment/index.js';
 import { grantFightExperience } from '../../../../../progression/index.js';
-import { manhattan } from '../../../../../spatial/metric.js';
+import { hexNodeDistance } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
 import { spawnCarcasses } from './carcass.js';
@@ -77,7 +77,7 @@ export interface LandingBlow {
 
 /**
  * Whether a melee swing's target has stepped beyond the weapon's reach since the swing started. Uses the
- * same `manhattan` node metric the CombatSystem's engage check uses, so a target that stayed put never
+ * same map-point metric the CombatSystem's engage check uses, so a target that stayed put never
  * spuriously whiffs. A target with no live `Position` counts as out of reach.
  */
 function meleeTargetOutOfReach(
@@ -94,7 +94,7 @@ function meleeTargetOutOfReach(
   // Measuring to the target's combat node, the nearest wall cell for a building, matches the whiff band to
   // the reach the swing engaged within.
   const attackerNode = entityNode(world, terrain, attacker);
-  const dist = manhattan(
+  const dist = hexNodeDistance(
     terrain,
     attackerNode,
     combatTargetNode(world, ctx, terrain, attackerNode, effect.target),

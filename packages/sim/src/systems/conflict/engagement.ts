@@ -23,7 +23,7 @@ import {
   type MilitaryMode,
   stanceMode,
 } from '../readviews/index.js';
-import { hexNodeDistance, manhattan } from '../spatial/metric.js';
+import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { SearchMetric } from './combat-grid.js';
@@ -119,7 +119,6 @@ export function engageSpec(
       accept: adultOnly(world, generalAccept),
       minDist,
       searchRadius: weapon.maxRange,
-      metric: 'manhattan',
       player,
       lowPriority: lowPriorityBuildings,
       lock: null,
@@ -132,7 +131,7 @@ export function engageSpec(
   // band: only the walk is refused, so the swing lands the moment a defender steps out of its compound.
   const givenUp = givenUpTargetVeto(world, ctx, e);
   const inBand = (t: Entity): boolean => {
-    const dist = manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
+    const dist = hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
     return dist >= weapon.minRange && dist <= weapon.maxRange;
   };
   const advanceAccept =
@@ -152,7 +151,6 @@ export function engageSpec(
       minDist: advanceNear,
       // Every node within the radius of the anchor lies within this of `here`.
       searchRadius: hexNodeDistance(terrain, here, anchor) + DEFEND_RADIUS_NODES,
-      metric: 'hex',
       player,
       lowPriority: lowPriorityBuildings,
       lock: null,
@@ -174,7 +172,6 @@ export function engageSpec(
       accept: adultOnly(world, (t) => inBand(t) && advanceAccept(t)),
       minDist,
       searchRadius: weapon.maxRange,
-      metric: 'manhattan',
       player,
       lowPriority: lowPriorityBuildings,
       lock: null,
@@ -216,7 +213,6 @@ export function engageSpec(
       accept: adultOnly(world, advanceAccept),
       minDist: advanceNear,
       searchRadius: sight,
-      metric: 'hex',
       player,
       lowPriority: lowPriorityBuildings,
       lock: null,
@@ -228,7 +224,6 @@ export function engageSpec(
     accept: advanceAccept,
     minDist,
     searchRadius: animalSeeker ? Math.max(weapon.maxRange, ANIMAL_AGGRO_RADIUS_NODES) : weapon.maxRange,
-    metric: 'manhattan',
     player,
     animalSeeker,
     lowPriority: lowPriorityBuildings,
@@ -242,7 +237,7 @@ function adultOnly(world: World, accept: (t: Entity) => boolean): (t: Entity) =>
   return (t) => !world.has(t, Age) && accept(t);
 }
 
-/** Whether `t`'s combat node lies within `reach` nodes of `here`. */
+/** Whether `t`'s combat node lies within `reach` map points of `here`. */
 function inReachOf(
   terrain: TerrainGraph,
   world: World,
@@ -251,7 +246,7 @@ function inReachOf(
   t: Entity,
   reach: number,
 ): boolean {
-  return manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, t)) <= reach;
+  return hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t)) <= reach;
 }
 
 export interface EngageSpec {
@@ -259,10 +254,9 @@ export interface EngageSpec {
   readonly accept: (t: Entity) => boolean;
   /** Near reach - the search ignores anything closer (a ranged weapon's dead zone). */
   readonly minDist: number;
-  /** Far reach - how far the unit spots a target to swing at / advance on. */
+  /** Far reach - how far the unit spots a target to swing at / advance on. Both reaches count map points,
+   *  and the search orders its candidates by them. */
   readonly searchRadius: number;
-  /** What `minDist` and `searchRadius` count in, and so how the search orders its candidates. */
-  readonly metric: SearchMetric;
   /** The seeker's player for the {@link CombatIndex.othersWithin} early-out; null when the seeker must
    *  never skip the search - an unowned one, or a hunter in any stance. */
   readonly player: number | null;
@@ -293,7 +287,7 @@ export interface EngageSpec {
 }
 
 /**
- * The enemy this combatant fights this tick with its Manhattan reach from `here`, or null. An
+ * The enemy this combatant fights this tick with its reach from `here` in map points, or null. An
  * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search; a fighter's own
  * breach yields to a primary-tier target inside `weapon`'s band. Otherwise the nearest target `spec.accept`
  * admits within `[spec.minDist, spec.searchRadius]`, with the `spec.lowPriority` tier searched only when the
@@ -345,10 +339,10 @@ export function resolveTarget(
             spec.searchRadius,
             (t) => !spec.lowPriority(t) && spec.accept(t),
             spec.player,
-            spec.metric,
+            SEARCH_METRIC,
           )
         : null;
-    if (preempt !== null) return inReachTerms(world, ctx, terrain, here, spec, preempt);
+    if (preempt !== null) return focusedOn(world, ctx, terrain, here, preempt.entity);
     return focusedOn(world, ctx, terrain, here, locked);
   }
   // Idle early-out (perf-only): when the coarse presence grid proves no member of a player at war with the
@@ -359,23 +353,11 @@ export function resolveTarget(
   if (spec.animalSeeker === true && !index.civsWithin(x, y, spec.searchRadius)) return null;
   // A nearer tier-2 target never preempts a tier-1 target in sight.
   const found = pickInBand(pass, spec, x, y, 'primary') ?? pickInBand(pass, spec, x, y, 'low');
-  return found === null ? null : inReachTerms(world, ctx, terrain, here, spec, found);
+  return found === null ? null : focusedOn(world, ctx, terrain, here, found.entity);
 }
 
-/** A search hit as the engage ladder reads it: its target and Manhattan reach from `here`, which a hit
- *  measured in map points has to be re-measured for. */
-function inReachTerms(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: NodeId,
-  spec: EngageSpec,
-  found: { readonly entity: Entity; readonly distance: number },
-): { target: Entity; dist: number } {
-  return spec.metric === 'manhattan'
-    ? { target: found.entity, dist: found.distance }
-    : focusedOn(world, ctx, terrain, here, found.entity);
-}
+/** Every engage search counts map points, the metric weapon reach and the stances' radii share. */
+const SEARCH_METRIC: SearchMetric = 'hex';
 
 /** How many of the nearest candidates a pick draws among, and how much farther (map points) than the
  *  nearest one of them may stand. Original behavior. */
@@ -433,23 +415,10 @@ function heldOrPicked(
   }
   const picked = pickByTier(world, ctx, pass, spec, x, y);
   if (picked === null) return held;
-  if (held !== null && picked.distance >= searchDistance(world, ctx, terrain, here, spec, held.target)) {
-    return held;
-  }
-  return inReachTerms(world, ctx, terrain, here, spec, picked);
-}
-
-/** `target`'s distance from `here` in the metric `spec` searches in, to its combat node. */
-function searchDistance(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: NodeId,
-  spec: EngageSpec,
-  target: Entity,
-): number {
-  const node = combatTargetNode(world, ctx, terrain, here, target);
-  return spec.metric === 'hex' ? hexNodeDistance(terrain, here, node) : manhattan(terrain, here, node);
+  // A search hit lies at its distance to the nearest wall in the band; the reach check measures to the
+  // nearest wall of all.
+  const pickedAt = focusedOn(world, ctx, terrain, here, picked.entity);
+  return held !== null && pickedAt.dist >= held.dist ? held : pickedAt;
 }
 
 /** Whether a combatant holding a target looks again this tick: on the chase's re-path tick while it walks. */
@@ -484,7 +453,7 @@ function pickByTier(
       PICK_CANDIDATES,
       spec.player,
       PICK_SPREAD_NODES,
-      spec.metric,
+      SEARCH_METRIC,
     );
     if (found.length === 0) continue;
     const pick = found.length === 1 ? found[0] : found[ctx.rng.int(found.length)];
@@ -505,7 +474,7 @@ function pickInBand(
 ): { entity: Entity; distance: number } | null {
   const wantsLowPriority = tier === 'low';
   const accept = (t: Entity): boolean => spec.lowPriority(t) === wantsLowPriority && spec.accept(t);
-  return pass.index.nearest(x, y, spec.minDist, spec.searchRadius, accept, spec.player, spec.metric);
+  return pass.index.nearest(x, y, spec.minDist, spec.searchRadius, accept, spec.player, SEARCH_METRIC);
 }
 
 /** A focused target and its real distance from `here`, uncapped by the search band - a building
@@ -519,6 +488,6 @@ function focusedOn(
 ): { target: Entity; dist: number } {
   return {
     target,
-    dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, target)),
+    dist: hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, target)),
   };
 }

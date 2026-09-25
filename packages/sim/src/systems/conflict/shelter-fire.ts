@@ -6,7 +6,7 @@ import type { SystemContext } from '../context.js';
 import { shelterOccupancy, shelterStillHolds } from '../defence/index.js';
 import { houseBow, isAreaWeapon, isFighterJob } from '../readviews/index.js';
 import { type LooseShot, looseProjectile } from '../settlers/atomics/effects/combat/index.js';
-import { manhattan, nearestCell } from '../spatial/metric.js';
+import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import type { CombatIndex } from './combat-index.js';
 import { scatteredNode, shelterSpread } from './shot-aim.js';
@@ -43,9 +43,8 @@ const TARGET_KINDS: readonly ((world: World, ctx: SystemContext, t: Entity) => b
  * Loose this tick's shots from every defence-mode building that holds anyone. Reach is measured from the
  * building's nearest wall, the same face an attacker measures its own reach to, so a bow that outranges
  * nothing on the ground cannot stand off a large building either. The building fires at what is in reach
- * whether its owner sees it or not (original behavior). Reach and the nearest-first order use the
- * Manhattan combat metric where the original counts hex steps, an approximation. Scales with the
- * sheltering claims and the shots due, not the map.
+ * whether its owner sees it or not (original behavior). Reach and the nearest-first order count map points,
+ * as the original's do. Scales with the sheltering claims and the shots due, not the map.
  */
 export function fireFromShelters(
   world: World,
@@ -97,7 +96,7 @@ function fireFrom(
   const self = { tribe: b.tribe, jobType: null };
   const reach = (t: Entity): number => {
     const mark = combatTargetNode(world, ctx, terrain, centre, t);
-    return manhattan(terrain, nearestCell(terrain, walls, mark) ?? centre, mark);
+    return hexNodeDistance(terrain, nearestHexCell(terrain, walls, mark) ?? centre, mark);
   };
   const accept = (t: Entity): boolean => {
     if (world.has(t, Age) || !isValidTarget(world, ctx, building, self, t)) return false;
@@ -106,7 +105,7 @@ function fireFrom(
   };
   // A wall stands up to `pad` nodes off the centre the index is searched from.
   let pad = 0;
-  for (const wall of walls) pad = Math.max(pad, manhattan(terrain, centre, wall));
+  for (const wall of walls) pad = Math.max(pad, hexNodeDistance(terrain, centre, wall));
   const { x, y } = terrain.coordsOf(centre);
   const candidates = TARGET_KINDS.map((kind) =>
     index
@@ -122,6 +121,7 @@ function fireFrom(
         Number.POSITIVE_INFINITY,
         owner,
         TARGET_SPREAD_NODES + 2 * pad,
+        'hex',
       )
       .map(({ entity }) => ({ entity, distance: reach(entity) }))
       .sort((p, q) => p.distance - q.distance || p.entity - q.entity)

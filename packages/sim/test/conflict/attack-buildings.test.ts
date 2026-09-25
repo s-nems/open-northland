@@ -20,6 +20,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import {
   fx,
   halfCellMapFromCells,
+  hexDistanceBetween,
   nodeOfPosition,
   ONE,
   positionOfNode,
@@ -380,7 +381,7 @@ describe('warriors attack enemy buildings', () => {
   });
 
   // The FORT placed at visual cell (3,3): anchor node (6,6), body nodes (6,6),(7,6),(6,7),(7,7) - a 2×2
-  // half-cell block with exactly 8 orthogonal contact cells (the melee-1 slots) spread over four faces.
+  // half-cell block with ten contact cells a map point off (the melee-1 slots) on every side.
   const FORT_WALLS: readonly (readonly [number, number])[] = [
     [6, 6],
     [7, 6],
@@ -394,11 +395,11 @@ describe('warriors attack enemy buildings', () => {
     return nodeOfPosition(p.x, p.y);
   }
 
-  /** Manhattan distance (half-cell nodes) from a settler's node to the fort's nearest wall cell. */
+  /** Map-point distance from a settler's node to the fort's nearest wall cell. */
   function distToFort(sim: Simulation, e: Entity): number {
     const n = nodeOf(sim, e);
     let min = Number.POSITIVE_INFINITY;
-    for (const [wx, wy] of FORT_WALLS) min = Math.min(min, Math.abs(n.hx - wx) + Math.abs(n.hy - wy));
+    for (const [wx, wy] of FORT_WALLS) min = Math.min(min, hexDistanceBetween(n.hx, n.hy, wx, wy));
     return min;
   }
 
@@ -425,9 +426,9 @@ describe('warriors attack enemy buildings', () => {
 
     for (let i = 0; i < 400; i++) sim.step();
 
-    // All 8 contact cells around the 2×2 body are manned, each by its own soldier - the whole warband
-    // wrapped around the fort. A single-face slot deal could only ever fill the west band and left the
-    // rest holding behind it.
+    // Each of the 8 soldiers mans its own contact cell around the 2×2 body - the whole warband wrapped
+    // around the fort. A single-face slot deal could only ever fill the west band and left the rest holding
+    // behind it.
     const manned = soldiers.filter((s) => distToFort(sim, s) === 1);
     expect(manned.length).toBe(8);
     const slots = manned.map((s) => {
@@ -452,21 +453,23 @@ describe('warriors attack enemy buildings', () => {
       [0, 3],
       [0, 4],
       [0, 5],
+      [0, 6],
       [1, 1],
       [1, 2],
       [1, 3],
       [1, 4],
       [1, 5],
+      [1, 6],
     ] as const) {
       soldiers.push(warriorAt(sim, x, y, P1));
     }
 
     for (let i = 0; i < 400; i++) sim.step();
 
-    // 10 chasers, 8 slots: the surplus stands fast with NO nav components - the render sprite-state rule
+    // 12 chasers, 10 slots: the surplus stands fast with NO nav components - the render sprite-state rule
     // (PathFollow/PathRequest/MoveGoal ⇒ walking) then reads it as idle, not frozen mid-stride.
     const front = soldiers.filter((s) => distToFort(sim, s) === 1);
-    expect(front.length).toBe(8);
+    expect(front.length).toBe(10);
     const held = soldiers.filter((s) => distToFort(sim, s) > 1);
     expect(held.length).toBe(2);
     for (const s of held) {

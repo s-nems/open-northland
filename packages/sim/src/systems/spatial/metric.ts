@@ -80,6 +80,31 @@ export function nearestCell(
   return best;
 }
 
+/** {@link nearestCell} measured in map points ({@link hexDistanceBetween}), the metric weapon reach counts
+ *  in, with the same `(distance, id)` tie-break. */
+export function nearestHexCell(
+  terrain: TerrainGraph,
+  candidates: readonly NodeId[],
+  from: NodeId,
+  accept?: (cell: NodeId) => boolean,
+): NodeId | null {
+  const fx = terrain.xOf(from);
+  const fy = terrain.yOf(from);
+  let best: NodeId | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const cell of candidates) {
+    if (accept !== undefined && !accept(cell)) continue;
+    const dist = hexDistanceBetween(fx, fy, terrain.xOf(cell), terrain.yOf(cell));
+    if (closer(dist, cell, bestDist, bestCell)) {
+      best = cell;
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best;
+}
+
 export function nearestFreeNeighbour(
   terrain: TerrainGraph,
   anchor: NodeId,

@@ -30,8 +30,8 @@ export { vehicleWeapon } from './weapons.js';
  * a peaceful map costs nothing. The {@link CombatIndex} then answers a seeker's nearest-enemy query from the
  * coarse cells around it rather than with an O(entities) scan per seeker.
  *
- * Two reach radii: the weapon's extracted `[minRange, maxRange]` band (Manhattan nodes) is where a swing lands,
- * while {@link SIGHT_RADIUS_NODES} (map points) is how far an owned combatant spots an enemy to advance on.
+ * Two reach radii, both in map points: the weapon's extracted `[minRange, maxRange]` band is where a swing
+ * lands, while {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on.
  */
 export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
