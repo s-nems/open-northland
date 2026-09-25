@@ -1,0 +1,92 @@
+import { describe, expect, it } from 'vitest';
+import {
+  Building,
+  JobAssignment,
+  Owner,
+  Position,
+  Stockpile,
+  setSettlerJob,
+  UnderConstruction,
+} from '../../../src/components/index.js';
+import { ZERO } from '../../../src/core/fixed.js';
+import type { Entity } from '../../../src/ecs/world.js';
+import { fx, ONE, Simulation } from '../../../src/index.js';
+import { productionSystem } from '../../../src/systems/index.js';
+import { setCraftGoods, setProductionCount } from '../../../src/systems/orders/index.js';
+import { testContent } from '../../fixtures/content.js';
+import { CARPENTER, ctxOf, PLANK_GATE_EARNED, spawnSettler, WOOD, WOODCUTTER } from './support.js';
+
+// The fixture forge (typeId 9): one carpenter operator, wood -> plank (2) and wood -> food_simple (3).
+const FORGE = 9;
+const PLANK = 2;
+const FOOD = 3;
+/** The forge's shelf capacity for each of its products. */
+const SHELF_CAPACITY = 20;
+
+function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } {
+  spawnSettler(sim, WOODCUTTER, 9, 9); // the tech enabler for plank
+  const building = sim.world.create();
+  sim.world.add(building, Building, { buildingType: FORGE, tribe: 1, built: ONE, level: 0 });
+  sim.world.add(building, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+  sim.world.add(building, Stockpile, { amounts: new Map([[WOOD, wood]]) });
+  const smith = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
+  sim.world.add(smith, Owner, { player: 0 });
+  sim.world.add(smith, JobAssignment, { workplace: building });
+  return { forge: building, smith };
+}
+
+describe('Simulation.workStatus - why a craft worker works or idles', () => {
+  it('names the product of the running cycle', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { smith } = forge(sim, 2);
+    expect(sim.workStatus(smith)).toBeUndefined(); // about to start: nothing to report
+    productionSystem(sim.world, ctxOf(sim));
+    expect(sim.workStatus(smith)).toEqual({ kind: 'crafting', goodType: PLANK });
+  });
+
+  it('names the next product that waits for its inputs', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { smith } = forge(sim, 0);
+    setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD] });
+    expect(sim.workStatus(smith)).toEqual({ kind: 'waitingInput', goodType: FOOD });
+  });
+
+  it('reports a full output when every product in the rotation has no shelf room', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 2);
+    const stock = sim.world.mut(f, Stockpile).amounts;
+    stock.set(PLANK, SHELF_CAPACITY);
+    stock.set(FOOD, SHELF_CAPACITY);
+    expect(sim.workStatus(smith)).toEqual({ kind: 'outputFull' });
+  });
+
+  it('reports nothing selected when every counter is 0', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { smith } = forge(sim, 2);
+    for (const goodType of [PLANK, FOOD]) {
+      setProductionCount(sim.world, ctxOf(sim), {
+        kind: 'setProductionCount',
+        entity: smith,
+        goodType,
+        count: 0,
+      });
+    }
+    expect(sim.workStatus(smith)).toEqual({ kind: 'nothingSelected' });
+  });
+
+  it('reports a workplace still under construction', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 2);
+    sim.world.add(f, UnderConstruction, { labor: ZERO });
+    expect(sim.workStatus(smith)).toEqual({ kind: 'workplaceUnderConstruction' });
+  });
+
+  it('reports a tradeless adult, and nothing for a settler with no workplace', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const unposted = spawnSettler(sim, CARPENTER, 0, 0);
+    expect(sim.workStatus(unposted)).toBeUndefined();
+    const tradeless = spawnSettler(sim, CARPENTER, 1, 0);
+    setSettlerJob(sim.world, tradeless, null);
+    expect(sim.workStatus(tradeless)).toEqual({ kind: 'noJob' });
+  });
+});

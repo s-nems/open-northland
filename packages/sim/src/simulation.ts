@@ -79,6 +79,7 @@ import {
 } from './systems/palisades/index.js';
 import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
+import { type WorkStatus, workStatus } from './systems/readviews/work-status.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
 import {
@@ -414,6 +415,14 @@ export class Simulation {
    */
   equipPickList(entity: Entity, group: EquipCategory): EquipPickEntry[] {
     return equipPickList(this.world, this.content, this.terrain, entity, group);
+  }
+
+  /**
+   * Why a craft worker works or stands idle, for the settler panel; undefined when no status applies.
+   * Reads the settler and its workplace only, never a scan.
+   */
+  workStatus(entity: Entity): WorkStatus | undefined {
+    return workStatus(this.world, this.context(), entity);
   }
 
   /** The `WorldRules` rule the `setNeedsEnabled` command sets; absent = enabled. */
