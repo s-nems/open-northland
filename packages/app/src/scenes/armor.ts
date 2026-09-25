@@ -24,7 +24,8 @@ const GRID_Y = 4;
 const COL_STEP = 2;
 const ROW_STEP = 2;
 
-/** Dressed directly before tick 0 and stood down to IGNORE, so rival ownership never turns into a fight. */
+/** Dressed directly before tick 0, stood down to IGNORE and spaced past a sword's reach, so rival ownership
+ *  never turns into a fight. */
 function paradeSoldier(
   sim: Simulation,
   x: number,

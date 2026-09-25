@@ -99,8 +99,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Set one owned unit's military stance - the original's per-unit `MILITARY_MODE`. `DEFEND` captures
-       * the unit's current tile as its defend anchor; an explicit `attackUnit` order overrides the mode.
+       * Set one owned unit's military stance - the original's per-unit `MILITARY_MODE`. `DEFEND` and
+       * `IGNORE` capture the unit's current tile as its anchor; an explicit `attackUnit` order overrides
+       * the mode.
        */
       readonly kind: 'setStance';
       readonly entity: Entity;
