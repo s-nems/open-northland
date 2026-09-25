@@ -93,9 +93,9 @@ export function razePalisade(world: World, ctx: SystemContext, e: Entity): void 
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   const spill = spilledStockOf(world, e);
+  releaseWallBreaches(world, ctx, e);
   world.destroy(e);
   scatterSpilledStock(world, ctx, spill);
-  releaseWallBreaches(world, ctx);
 }
 
 /** Announce a combatant's death, count it against its owner, remove it from the world, and leave its

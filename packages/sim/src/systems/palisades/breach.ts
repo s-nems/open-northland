@@ -78,17 +78,27 @@ export function breakThroughWall(
 }
 
 /**
- * A wall fell: every breach order lets go, so a squad chopping several posts walks through the first gap
- * instead of felling the rest. An ordered attack returns to its target; a march resumes and finds the next
- * wall itself if the gap does not open the way. Costs the standing attack orders, once per fallen wall.
+ * Wall `fallen` is coming down: the breaches its gap may open let go, so a squad chopping several posts
+ * walks through the first gap instead of felling the rest. Those are the breaches on the walls joined to it
+ * within {@link BREACH_SPREAD} joints, the stretch one squad spreads along; a siege further along the line
+ * or elsewhere chops on, and a fallen wall that blocked nothing releases none. An ordered attack returns to
+ * its target; a march resumes and finds the next wall itself if the gap does not open the way; a fighter's
+ * own breach picks its enemy again. Costs the standing attack orders, plus the standing walls when a breach
+ * is among them, once per fallen wall.
  */
-export function releaseWallBreaches(world: World, ctx: SystemContext): void {
-  const released: { e: Entity; resume: Entity | null }[] = [];
+export function releaseWallBreaches(world: World, ctx: SystemContext, fallen: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || !world.has(fallen, PalisadeBlocking)) return;
+  const breaches: { e: Entity; wall: Entity; resume: Entity | null }[] = [];
   for (const e of world.query(AttackOrder)) {
-    const breach = world.get(e, AttackOrder).breach;
-    if (breach !== undefined) released.push({ e, resume: breach.resume });
+    const order = world.get(e, AttackOrder);
+    if (order.breach !== undefined) breaches.push({ e, wall: order.target, resume: order.breach.resume });
   }
-  for (const { e, resume } of released) {
+  if (breaches.length === 0) return;
+  const wallAt = standingWallAt(world, terrain, () => true);
+  const line = joinedWalls(terrain, wallAt, wallCellsOf(wallAt), fallen);
+  for (const { e, wall, resume } of breaches) {
+    if (!line.has(wall)) continue;
     if (resume !== null && world.isAlive(resume)) {
       world.add(e, AttackOrder, { target: resume });
       world.add(e, Engagement, { repathAt: ctx.tick });

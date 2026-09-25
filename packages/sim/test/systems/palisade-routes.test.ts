@@ -718,3 +718,74 @@ describe('a breach the player ordered', () => {
     expect(order.breach?.resume).toBe(enemy);
   });
 });
+
+describe('a wall falling', () => {
+  function besieged() {
+    const sim = fresh();
+    const gate = wallRow(sim, P1);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    sim.step();
+    const raider = fighter(sim, NORTH, P0);
+    attackMoveUnit(sim.world, ctxOf(sim), {
+      kind: 'attackMoveUnit',
+      entity: raider,
+      x: SOUTH.hx,
+      y: SOUTH.hy,
+    });
+    for (let tick = 0; tick < 20 && !sim.world.has(raider, AttackOrder); tick++) sim.step();
+    const wall = sim.world.tryGet(raider, AttackOrder)?.target;
+    if (wall === undefined) throw new Error('expected the raider to go for the wall');
+    return { sim, raider, wall };
+  }
+
+  function wallAt(sim: Simulation, at: { hx: number; hy: number }): Entity {
+    const wall = [...sim.world.query(Palisade)].find((e) => {
+      const node = nodeRow(sim, e);
+      return node.hx === at.hx && node.hy === at.hy;
+    });
+    if (wall === undefined) throw new Error(`expected a wall at ${at.hx},${at.hy}`);
+    return wall;
+  }
+
+  it("off the breach's line leaves the breach chopping", () => {
+    const { sim, raider, wall } = besieged();
+    const lone = { hx: 2, hy: SOUTH.hy };
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: lone.hx,
+      y: lone.hy,
+      tribe: VIKING,
+      owner: P1,
+    });
+    sim.step();
+    sim.world.mut(wallAt(sim, lone), Health).hitpoints = 0;
+    sim.step();
+    expect(sim.world.get(raider, AttackOrder).target).toBe(wall);
+  });
+
+  it('that never stood finished leaves the breach chopping, however close', () => {
+    const { sim, raider, wall } = besieged();
+    const beside = { hx: nodeRow(sim, wall).hx, hy: WALL_ROW + 1 };
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: beside.hx,
+      y: beside.hy,
+      tribe: VIKING,
+      owner: P1,
+      underConstruction: true,
+    });
+    sim.step();
+    sim.enqueueSetup({ kind: 'demolishPalisade', palisade: wallAt(sim, beside) });
+    sim.step();
+    expect(sim.world.get(raider, AttackOrder).target).toBe(wall);
+  });
+
+  it('itself releases the breach', () => {
+    const { sim, raider, wall } = besieged();
+    sim.world.mut(wall, Health).hitpoints = 0;
+    sim.step();
+    expect(sim.world.has(raider, AttackOrder)).toBe(false);
+  });
+});
