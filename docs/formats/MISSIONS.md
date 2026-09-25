@@ -662,9 +662,15 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   room for the take goods every aboard batch brings back and the house has spare above its minimum;
   at the foreign house it hands one batch over unit by unit, then loads the take goods, then repeats
   while another batch is aboard. The agreement holds only while the trader's player is `friend`
-  toward the house's owner. Between two own houses a good moves where a mark admits it, or anywhere
-  while no mark is set on either house, toward the house that is shorter of it. Every unit loaded out
-  of the foreign house adds one to the player's tally with the house's owner, which the goal compares.
+  toward the house's owner. Between two own houses the marks decide: a good marked at one house only
+  is carried to it while the other house has stock above its minimum, a good both houses mark is
+  balanced toward the house that is shorter of it, and cargo neither house marks is unloaded at the
+  first house that stores it. With no mark on either house the original balances every good; this
+  build moves nothing until the player sets a mark (owner's choice). A stop with nothing to move hands
+  the turn to the other stop and the cart stays parked until that stop has a unit to move. A full
+  route refuses a third house in the original; this build replaces the route's foreign stop with a
+  new foreign house and otherwise the older stop (owner's choice). Every unit loaded out of the
+  foreign house adds one to the player's tally with the house's owner, which the goal compares.
 - The trader works from the cart it commands (it needs the human attached as the vehicle's
   commander, else it idles with the `noVehicleForWork` reason): it queues a goto on the cart to a move point found within radius 20 of
   the house whenever the cart stands more than 5 hexagon steps from the house's work point, and
@@ -690,9 +696,10 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   working distance lets the cart go without the original's detach note, while a stop the cart has no
   route to parks the trader by its cart for the failed-goal memo's span before it tries again; the
   cart's move ignores the goto's 60-node walk range (whether the original's pathfinder budget caps
-  the distance is not read); a house's minimum stock is its recipe inputs; the import-mark ranking
-  by request counters is a plain surplus comparison; nothing is handed over while the house holds
-  fewer take goods than a batch pays out, where the original delivers regardless, and a shelf that
+  the distance is not read); a house's minimum stock is its recipe inputs; the request counters that
+  rank the import-mark candidates are not kept, so the lowest good id goes first; nothing is handed
+  over while the house holds fewer take goods than a batch pays out, where the original delivers
+  regardless, and a shelf that
   runs out mid-batch starts the batch over on the next visit, where the original's trader is still
   owed the rest; a chosen agreement that stops holding is kept and waited on, where the original's
   merchant drops its choice; the handler's refill (`systems/trade/partner-stock.ts`) tops up only

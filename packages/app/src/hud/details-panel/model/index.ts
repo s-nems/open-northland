@@ -83,6 +83,7 @@ export {
   type VehicleOrder,
   type VehicleOrderModel,
   type VehiclePanelModel,
+  type VehicleTradeModel,
 } from './vehicle.js';
 
 export interface MultiSettlerPanelModel {

@@ -47,8 +47,9 @@ export function tradeOfferLabel(ctx: UnitPanelModelContext, offer: TradeOffer): 
 
 /**
  * The goods a stop offers import marks for: what its house stores that the other stop currently holds,
- * plus every good already marked, so a mark can always be cleared. Authored: the original lists the
- * house's whole stock table, which for a warehouse is every good in the game.
+ * a held dish counting as its edible (a bakery's bread offers `food_simple` at a storehouse), plus
+ * every good already marked, so a mark can always be cleared. Authored: the original lists the house's
+ * whole stock table, which for a warehouse is every good in the game.
  */
 function importChoices(
   ctx: UnitPanelModelContext,
@@ -58,7 +59,11 @@ function importChoices(
   marked: readonly number[],
 ): TradeImportModel[] {
   const stored = storedGoodsOf(ctx, snapshot, house);
-  const held = other === undefined ? new Set<number>() : new Set(heldGoodsOf(snapshot, other));
+  const held = new Set<number>();
+  for (const good of other === undefined ? [] : heldGoodsOf(snapshot, other)) {
+    held.add(good);
+    held.add(ctx.edibleGoodForm?.(good) ?? good);
+  }
   const choices: TradeImportModel[] = [];
   for (const goodType of stored) {
     const selected = marked.includes(goodType);
@@ -141,7 +146,9 @@ export function tradePanelModel(
   }));
   const status: string[] = [cartLine(ctx, view)];
   if (view.stops.length < 2) status.push(hud.tradeNoRoute);
-  else if (foreign !== undefined) {
+  else if (foreign === undefined) {
+    if (view.stops.every((stop) => stop.imports.length === 0)) status.push(hud.tradeNoImports);
+  } else {
     const chosen = foreign.offers.find((offer) => offer.index === view.agreement);
     if (chosen === undefined) status.push(hud.tradeNoAgreement);
     else if (!view.agreementHolds) status.push(hud.tradeNotFriends);

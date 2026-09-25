@@ -1,4 +1,10 @@
-import type { Simulation, VehicleView, WorldSnapshot } from '@open-northland/sim';
+import {
+  type Entity,
+  type Simulation,
+  TICKS_PER_SECOND,
+  type VehicleView,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
@@ -11,6 +17,7 @@ import { applyPanelClick, type PanelClickActions } from '../src/hud/details-pane
 import {
   hitButton,
   hitStockTab,
+  hitTradeAttach,
   hitVehicleCargoStep,
   hitVehicleCrew,
   hitVehicleOrder,
@@ -31,16 +38,23 @@ import type { PanelView } from '../src/hud/details-panel/selection-view.js';
 import { ALL_STOCK_TAB } from '../src/hud/details-panel/stock-tabs.js';
 import { messages } from '../src/i18n/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
+import { sceneTrader, tradeScene } from '../src/scenes/trade.js';
 import { vehiclesScene } from '../src/scenes/vehicles.js';
 import { center, viewOfKind } from './support/details-panel.js';
 import { ctxOf } from './support/sandbox.js';
+
+/** The panel context with the sim's trader seam, which the Handel section reads. */
+const tradeCtxOf = (sim: Simulation): UnitPanelModelContext => ({
+  ...ctxOf(sim),
+  traderView: (entity) => sim.traderView(entity as Entity),
+});
 
 /** The vehicles scene one tick in: the trader attached to the handcart, the ox cart loaded with wood,
  *  the catapult mid-attack and the ships moored. */
 function vehiclesWorld(): { sim: Simulation; snapshot: WorldSnapshot; ctx: UnitPanelModelContext } {
   const sim = createSceneSim(vehiclesScene);
   sim.step();
-  return { sim, snapshot: sim.snapshot(), ctx: ctxOf(sim) };
+  return { sim, snapshot: sim.snapshot(), ctx: tradeCtxOf(sim) };
 }
 
 function ownVehicle(sim: Simulation, type: number): VehicleView {
@@ -57,6 +71,9 @@ function vehicleModel(world: ReturnType<typeof vehiclesWorld>, type: number): Ve
 
 const vehicleView = (model: VehiclePanelModel): Extract<PanelView, { kind: 'vehicle' }> =>
   viewOfKind(model, 'vehicle');
+
+/** Long enough into the trade scene for the trader to ride its cart with the route set. */
+const TRADE_SCENE_RIDE_TICKS = TICKS_PER_SECOND * 12;
 
 const orders = (model: VehiclePanelModel): string[] => model.orders.map((row) => row.order);
 
@@ -148,6 +165,115 @@ describe('vehicle panel model', () => {
     const vehicle = snapshot.entities.find((e) => e.id === ship)?.components.Vehicle as { moored: boolean };
     vehicle.moored = false;
     expect(unload(vehicleModel({ ...world, snapshot }, VEHICLE_SHIP_SMALL))?.enabled).toBe(false);
+  });
+});
+
+describe('vehicle panel trade tab', () => {
+  /** The snapshot with `trader` seated in the first passenger slot of `vehicle`. */
+  const seatedIn = (snapshot: WorldSnapshot, vehicle: number, trader: number): WorldSnapshot => {
+    const copy = structuredClone(snapshot);
+    const v = copy.entities.find((e) => e.id === vehicle)?.components.Vehicle as {
+      passengers: ({ entity: number; inside: boolean } | null)[];
+    };
+    v.passengers[0] = { entity: trader, inside: true };
+    return copy;
+  };
+
+  it("shows a riding trader's route on a cart, addressed to the trader", () => {
+    const world = vehiclesWorld();
+    const cart = ownVehicle(world.sim, VEHICLE_HANDCART);
+    const model = vehicleModel(world, VEHICLE_HANDCART);
+    expect(cart.commander).not.toBeNull();
+    expect(model.trade?.trader).toBe(cart.commander);
+    expect(model.trade?.panel.canAttach).toBe(true);
+    expect(vehicleView(model).layout.trade).not.toBeNull();
+  });
+
+  it('shows no trade tab on a cart without a trader or on a ship, even one a trader rides', () => {
+    const world = vehiclesWorld();
+    expect(vehicleModel(world, VEHICLE_OXCART).trade).toBeNull();
+    expect(vehicleModel(world, VEHICLE_SHIP_SMALL).trade).toBeNull();
+    expect(vehicleView(vehicleModel(world, VEHICLE_SHIP_SMALL)).layout.trade).toBeNull();
+
+    const trader = ownVehicle(world.sim, VEHICLE_HANDCART).commander;
+    if (trader === null) throw new Error('expected the handcart trader');
+    const ship = ownVehicle(world.sim, VEHICLE_SHIP_SMALL).entity;
+    const oxcart = ownVehicle(world.sim, VEHICLE_OXCART).entity;
+    expect(
+      vehicleModel({ ...world, snapshot: seatedIn(world.snapshot, ship, trader) }, VEHICLE_SHIP_SMALL).trade,
+    ).toBeNull();
+    expect(
+      vehicleModel({ ...world, snapshot: seatedIn(world.snapshot, oxcart, trader) }, VEHICLE_OXCART).trade
+        ?.trader,
+    ).toBe(trader);
+  });
+
+  it('arms the house pick for the trader from the attach button', () => {
+    const world = vehiclesWorld();
+    const model = vehicleModel(world, VEHICLE_HANDCART);
+    const view = vehicleView(model);
+    const attach = view.layout.trade?.attach;
+    if (attach == null || model.trade === null) throw new Error('expected the attach row');
+    const at = center(attach.button.rect);
+    expect(hitTradeAttach(view, at.x, at.y)).toBe(true);
+    expect(hitButton(view, at.x, at.y)?.action).toBe('attach-trade-house');
+    expect(panelClickAt(view, at.x, at.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+      kind: 'attachTradeHouse',
+      entityId: model.trade.trader,
+    });
+    expect(tooltipTextAt(view, at.x, at.y, 1, ALL_STOCK_TAB)).toBe(messages().hud.tradeAttachHouseHint);
+    expect(panelHoverAt(view, at.x, at.y, ALL_STOCK_TAB).action).toBe('attach-trade-house');
+  });
+
+  it("turns the route's import marks, agreements and detach buttons into the trader's orders", () => {
+    const sim = createSceneSim(tradeScene);
+    sim.run(TRADE_SCENE_RIDE_TICKS);
+    const trader = sceneTrader(sim);
+    const cart = trader === undefined ? undefined : sim.traderView(trader)?.cart?.entity;
+    if (trader === undefined || cart === undefined) throw new Error('expected the trader on its cart');
+    const model = buildUnitPanelModel(sim.snapshot(), new Set([cart]), tradeCtxOf(sim));
+    if (model.kind !== 'vehicle') throw new Error(`expected a vehicle model, got ${model.kind}`);
+    expect(model.trade?.trader).toBe(trader);
+    const view = vehicleView(model);
+    const trade = view.layout.trade;
+    if (trade === null) throw new Error('expected the Handel section');
+
+    const mark = trade.stops.flatMap((stop) => stop.imports)[0];
+    if (mark === undefined) throw new Error('expected an import mark');
+    const onMark = center(mark.rect);
+    expect(panelClickAt(view, onMark.x, onMark.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+      kind: 'setTradeImport',
+      entityId: trader,
+      house: mark.house,
+      goodType: mark.goodType,
+      on: !mark.selected,
+    });
+    expect(tooltipTextAt(view, onMark.x, onMark.y, 1, ALL_STOCK_TAB)).toContain(mark.label);
+    expect(panelHoverAt(view, onMark.x, onMark.y, ALL_STOCK_TAB).tradeImport).toEqual({
+      house: mark.house,
+      goodType: mark.goodType,
+    });
+
+    const offer = trade.offers[0];
+    if (offer === undefined) throw new Error('expected an agreement row');
+    const onOffer = center(offer.rect);
+    expect(panelClickAt(view, onOffer.x, onOffer.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+      kind: 'setTradeAgreement',
+      entityId: trader,
+      agreement: offer.selected ? -1 : offer.index,
+    });
+
+    const stop = trade.stops[0];
+    if (stop === undefined) throw new Error('expected a route stop');
+    const onDetach = center(stop.detach.rect);
+    expect(panelClickAt(view, onDetach.x, onDetach.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+      kind: 'detachTradeHouse',
+      entityId: trader,
+      house: stop.house,
+    });
+    expect(tooltipTextAt(view, onDetach.x, onDetach.y, 1, ALL_STOCK_TAB)).toBe(
+      messages().hud.tradeDetachHouse,
+    );
   });
 });
 

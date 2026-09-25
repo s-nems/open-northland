@@ -3,6 +3,7 @@ import type { Rect } from '../../geometry.js';
 import type { VehicleOrder, VehiclePanelModel } from '../model/index.js';
 import { DETAILS_STOCK_TAB_COUNT, stockTabRects } from '../stock-tabs.js';
 import { BAR_H, type ButtonHit, STOCK_ROW_H } from './building.js';
+import { layoutTrade, mapTradeLayout, type TradeLayout, tradeBodyHeight } from './settler-trade.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
 /** The order buttons' action ids, one per {@link VehicleOrder}. */
@@ -63,6 +64,8 @@ export interface VehicleLayout {
   /** One rect per `model.crew` row; empty crew leaves one hint row instead. */
   readonly crewRows: readonly VehicleCrewRowRect[];
   readonly crewHint: Rect | null;
+  /** The Handel section, only while a trader rides a vehicle that is no ship. */
+  readonly trade: TradeLayout | null;
   /** Null for a vehicle without a hold. */
   readonly cargo: SectionRect | null;
   readonly cargoTabHits: readonly Rect[];
@@ -127,12 +130,14 @@ export function layoutVehicle(
   const orderRowCount = Math.ceil(model.orders.length / ORDER_COLUMNS);
   const ordersBodyH = orderRowCount * buttonH + Math.max(0, orderRowCount - 1) * buttonGap;
   const peopleBodyH = Math.max(1, model.crew.length) * rowH;
+  const bodyW = sectionAt(0, 0, w, 0, s).body.w;
+  const tradeBodyH = model.trade === null ? 0 : tradeBodyHeight(model.trade.panel, bodyW, s);
   const hasCargo = model.cargo.length > 0;
   const cargoBodyH = hasCargo
     ? Math.round(CARGO_TAB_H * s) + Math.round(CARGO_TAB_GAP * s) + CARGO_ROWS * Math.round(STOCK_ROW_H * s)
     : 0;
 
-  const heights = [generalBodyH, ordersBodyH, peopleBodyH].map(
+  const heights = [generalBodyH, ordersBodyH, peopleBodyH, ...(model.trade === null ? [] : [tradeBodyH])].map(
     (bodyH) => sectionAt(0, 0, w, bodyH, s).frame.h,
   );
   if (hasCargo) heights.push(sectionAt(0, 0, w, cargoBodyH, s).frame.h);
@@ -181,6 +186,8 @@ export function layoutVehicle(
   const crewHint: Rect | null =
     model.crew.length > 0 ? null : { x: people.body.x, y: people.body.y, w: people.body.w, h: rowH };
 
+  const trade = model.trade === null ? null : layoutTrade(model.trade.panel, next(tradeBodyH), s);
+
   const cargo = hasCargo ? next(cargoBodyH) : null;
   const cargoTabHits =
     cargo === null
@@ -203,6 +210,7 @@ export function layoutVehicle(
     people,
     crewRows,
     crewHint,
+    trade,
     cargo,
     cargoTabHits,
     cargoCells: cells,
@@ -223,6 +231,7 @@ export function mapVehicleLayout(layout: VehicleLayout, fn: (r: Rect) => Rect): 
     people: sec(layout.people),
     crewRows: layout.crewRows.map((row) => ({ ...row, rect: fn(row.rect) })),
     crewHint: layout.crewHint === null ? null : fn(layout.crewHint),
+    trade: layout.trade === null ? null : mapTradeLayout(layout.trade, fn),
     cargo: layout.cargo === null ? null : sec(layout.cargo),
     cargoTabHits: layout.cargoTabHits.map(fn),
     cargoCells: layout.cargoCells.map((cell) => ({

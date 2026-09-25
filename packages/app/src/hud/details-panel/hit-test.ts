@@ -6,6 +6,7 @@ import {
   type EquipSlotRef,
   stockSlotRects,
   type TradeImportHit,
+  type TradeLayout,
   type TradeOfferHit,
   tradeButtons,
   vehicleOrderOf,
@@ -35,7 +36,7 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
     case 'palisade':
       return view.layout.buttons;
     case 'vehicle':
-      return view.layout.orderButtons;
+      return [...view.layout.orderButtons, ...tradeButtons(view.layout.trade)];
     case 'empty':
     case 'compact':
       return [];
@@ -143,26 +144,48 @@ export const nextCraftGoods = (
   return products.filter((g) => next.has(g));
 };
 
-/** The import mark under a canvas point in a trader's Handel section, or undefined. */
+/** A drawn Handel section and the trader its controls act on: a trader's own window, or the vehicle
+ *  window of a cart it rides. */
+export interface TradeTarget {
+  readonly trader: number;
+  readonly layout: TradeLayout;
+}
+
+export const tradeTargetOf = (view: PanelView): TradeTarget | null => {
+  if (view.kind === 'settler') {
+    return view.layout.trade === null ? null : { trader: view.model.entityId, layout: view.layout.trade };
+  }
+  if (view.kind === 'vehicle') {
+    return view.layout.trade === null || view.model.trade === null
+      ? null
+      : { trader: view.model.trade.trader, layout: view.layout.trade };
+  }
+  return null;
+};
+
+/** The import mark under a canvas point in a Handel section, or undefined. */
 export const hitTradeImport = (view: PanelView, x: number, y: number): TradeImportHit | undefined => {
-  if (view.kind !== 'settler' || view.layout.trade === null) return undefined;
-  for (const stop of view.layout.trade.stops) {
+  const trade = tradeTargetOf(view)?.layout;
+  if (trade === undefined) return undefined;
+  for (const stop of trade.stops) {
     const hit = stop.imports.find((h) => contains(h.rect, x, y));
     if (hit !== undefined) return hit;
   }
   return undefined;
 };
 
-/** The agreement row under a canvas point in a trader's Handel section, or undefined. */
-export const hitTradeOffer = (view: PanelView, x: number, y: number): TradeOfferHit | undefined => {
-  if (view.kind !== 'settler' || view.layout.trade === null) return undefined;
-  return view.layout.trade.offers.find((h) => contains(h.rect, x, y));
-};
+/** The agreement row under a canvas point in a Handel section, or undefined. */
+export const hitTradeOffer = (view: PanelView, x: number, y: number): TradeOfferHit | undefined =>
+  tradeTargetOf(view)?.layout.offers.find((h) => contains(h.rect, x, y));
 
 /** The stop whose detach button holds a canvas point, or undefined. */
-export const hitTradeDetach = (view: PanelView, x: number, y: number): number | undefined => {
-  if (view.kind !== 'settler' || view.layout.trade === null) return undefined;
-  return view.layout.trade.stops.find((stop) => contains(stop.detach.rect, x, y))?.house;
+export const hitTradeDetach = (view: PanelView, x: number, y: number): number | undefined =>
+  tradeTargetOf(view)?.layout.stops.find((stop) => contains(stop.detach.rect, x, y))?.house;
+
+/** Whether a canvas point lies on the attach button of a Handel section with a free stop. */
+export const hitTradeAttach = (view: PanelView, x: number, y: number): boolean => {
+  const attach = tradeTargetOf(view)?.layout.attach;
+  return attach != null && contains(attach.button.rect, x, y);
 };
 
 /** The per-slot equipment action button under a canvas point, or undefined (settler layouts only). */
@@ -218,8 +241,6 @@ const buildingHealthValue = (view: PanelView, x: number, y: number): string | nu
 const workControlHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
   const hud = messages().hud;
-  const tradeHint = tradeControlHint(view, x, y, hud);
-  if (tradeHint !== null) return tradeHint;
   const action = view.layout.workControls.find((c) => contains(c.button.rect, x, y))?.action;
   if (action === undefined) return null;
   switch (action) {
@@ -235,16 +256,10 @@ const workControlHint = (view: PanelView, x: number, y: number): string | null =
 };
 
 /** The Handel section's tooltips: the route buttons, an import mark's good, an agreement row. */
-const tradeControlHint = (
-  view: Extract<PanelView, { kind: 'settler' }>,
-  x: number,
-  y: number,
-  hud: ReturnType<typeof messages>['hud'],
-): string | null => {
-  const trade = view.layout.trade;
-  if (trade === null) return null;
-  if (trade.attach !== null && contains(trade.attach.button.rect, x, y)) return hud.tradeAttachHouseHint;
-  if (trade.stops.some((stop) => contains(stop.detach.rect, x, y))) return hud.tradeDetachHouse;
+const tradeControlHint = (view: PanelView, x: number, y: number): string | null => {
+  const hud = messages().hud;
+  if (hitTradeAttach(view, x, y)) return hud.tradeAttachHouseHint;
+  if (hitTradeDetach(view, x, y) !== undefined) return hud.tradeDetachHouse;
   const mark = hitTradeImport(view, x, y);
   if (mark !== undefined) return formatMessage(hud.tradeImportHint, { good: mark.label });
   if (hitTradeOffer(view, x, y) !== undefined) return hud.tradeOfferHint;
@@ -418,6 +433,7 @@ export const tooltipTextAt = (
     productionRowHint(view, x, y) ??
     upgradeButtonHint(view, x, y) ??
     defenceToggleHint(view, x, y) ??
+    tradeControlHint(view, x, y) ??
     workControlHint(view, x, y) ??
     vehicleHint(view, x, y, activeStockTab)
   );

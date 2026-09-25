@@ -13,6 +13,7 @@ import { goodCategoryTab } from '../../good-categories.js';
 import { healthBar, type PanelBar } from './bars.js';
 import { type Comp, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 import { settlerDisplayName } from './settler-name.js';
+import { type TradePanelModel, tradePanelModel } from './trade.js';
 
 /**
  * `vehiclewindow` string ids resolved at draw time from `content/gui/strings/<lang>.json`, the original
@@ -32,7 +33,6 @@ export const VEHICLEWINDOW = {
 /** `misclogic` ids of the vehicle orders the original's ring names. */
 export const VEHICLE_ORDER_STRING = {
   goTo: 142,
-  unloadPeople: 143,
   dock: 144,
   attackInhabitants: 145,
   attackBuilding: 146,
@@ -90,6 +90,12 @@ export interface VehicleCargoRow {
   readonly amount: number;
 }
 
+/** The Handel section of a trader riding the vehicle; its controls act on that trader. */
+export interface VehicleTradeModel {
+  readonly trader: number;
+  readonly panel: TradePanelModel;
+}
+
 export interface VehiclePanelModel {
   readonly kind: 'vehicle';
   readonly entityId: number;
@@ -112,6 +118,7 @@ export interface VehiclePanelModel {
   /** Every good the hold may carry, the live lines first; empty without a hold. The stock tabs
    *  filter it: "Wszystkie" lists the lines with anything aboard, wanted or booked. */
   readonly cargo: readonly VehicleCargoRow[];
+  readonly trade: VehicleTradeModel | null;
 }
 
 interface SeatSnapshot {
@@ -284,6 +291,25 @@ function cargoRows(
   return rows;
 }
 
+/**
+ * Original behavior: every vehicle but a ship shows the Handel tab of the first passenger, aboard or
+ * walking to the door, that holds the trader job, so the route can be edited with only the cart selected.
+ * The trader read seam is the job check: it answers for traders alone.
+ */
+function vehicleTrade(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  type: VehicleType | undefined,
+  passengers: readonly SeatSnapshot[],
+): VehicleTradeModel | null {
+  if (type !== undefined && systems.isShipVehicle(type)) return null;
+  for (const seat of passengers) {
+    const panel = tradePanelModel(ctx, snapshot, seat.entity);
+    if (panel !== null) return { trader: seat.entity, panel };
+  }
+  return null;
+}
+
 export function vehiclePanelModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -341,5 +367,6 @@ export function vehiclePanelModel(
     crewCapacity: passengerCapacity + vehicleCapacity,
     orders: orderRows(type, stance, carrier !== undefined, commander !== undefined, v.moored === true),
     cargo: cargoRows(ctx, type, lines),
+    trade: vehicleTrade(ctx, snapshot, type, passengers),
   };
 }

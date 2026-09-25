@@ -34,4 +34,7 @@ export const tradeHousePick = {
     const e = entityById(snapshot, building);
     return e !== undefined && isFinishedBuilding(e) && !routeHousesOf(snapshot, settler).has(building);
   },
+  onRoute(snapshot: WorldSnapshot, building: number, settler: number): boolean {
+    return routeHousesOf(snapshot, settler).has(building);
+  },
 };

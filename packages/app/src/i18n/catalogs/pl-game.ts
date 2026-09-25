@@ -157,7 +157,7 @@ export const plGame = {
     vehicleOrderGoToHint: 'Kliknij miejsce na mapie, do którego ma pojechać lub popłynąć.',
     vehicleOrderDock: 'Zacumuj', // misclogic 144
     vehicleOrderDockHint: 'Kliknij punkt na brzegu; statek zacumuje obok niego.', // misc 29
-    vehicleOrderUnloadPeople: 'Wysadź na ląd ludzi', // misclogic 143
+    vehicleOrderUnloadPeople: 'Wysadź ludzi',
     vehicleOrderUnloadPeopleHint: 'Każdy pasażer wychodzi przy drzwiach i opuszcza załogę.',
     vehicleOrderStop: 'Zatrzymaj',
     vehicleOrderStopHint: 'Zatrzymuje wehikuł na węźle, na którym stoi.',
@@ -213,7 +213,7 @@ export const plGame = {
       'Kliknij, a potem wskaż stojący dom, własny albo innego plemienia. Kupiec wozi towary między dwoma domami; w domu innego plemienia handluje według umowy tego domu.',
     tradeDetachHouse: 'Zdejmij ten dom z trasy',
     tradeForeignHouse: '{house} (gracz {player})',
-    tradeImportHint: 'Przywoź tu: {good}. Bez żadnego znaku na obu domach wożone jest wszystko.',
+    tradeImportHint: 'Przywoź tu: {good}. Bez żadnego znaku kupiec nic nie wozi.',
     tradeOffer: '{giveAmount} {give} za {takeAmount} {take}',
     tradeOfferHint: 'Handluj według tej umowy.',
     tradeCart: 'Wóz',
@@ -221,6 +221,7 @@ export const plGame = {
     tradeNoCart: 'Brak wozu do pracy',
     tradeCartEmpty: 'pusty',
     tradeNoRoute: 'Potrzebuje dwóch domów na trasie',
+    tradeNoImports: 'Zaznacz towary do przywozu',
     tradeNoAgreement: 'Wybierz umowę',
     tradeNotFriends: 'Handluje tylko z przyjaznym plemieniem',
     tradeExchange: 'Oddano {given}/{giveAmount}, odebrano {received}/{takeAmount}',

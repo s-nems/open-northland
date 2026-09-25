@@ -160,7 +160,7 @@ export const enGame = {
     vehicleOrderGoToHint: 'Click a spot on the map to drive or sail there.',
     vehicleOrderDock: 'Moor', // misclogic 144
     vehicleOrderDockHint: 'Click a shore point; the ship moors beside it.', // misc 29
-    vehicleOrderUnloadPeople: 'Disembark people', // misclogic 143
+    vehicleOrderUnloadPeople: 'Disembark people',
     vehicleOrderUnloadPeopleHint: 'Every rider steps out at the door and leaves the crew.',
     vehicleOrderStop: 'Stop',
     vehicleOrderStopHint: 'Halt on the node under the vehicle.',
@@ -215,7 +215,7 @@ export const enGame = {
       "Click, then pick any standing house, yours or another tribe's. A trader carts goods between its two houses; at another tribe's house it trades on that house's agreement.",
     tradeDetachHouse: 'Take this house off the route',
     tradeForeignHouse: '{house} (player {player})',
-    tradeImportHint: 'Import {good} here. With no mark set on either house every good moves.',
+    tradeImportHint: 'Import {good} here. With no mark set the trader moves nothing.',
     tradeOffer: '{giveAmount} {give} for {takeAmount} {take}',
     tradeOfferHint: 'Trade on this agreement.',
     tradeCart: 'Cart',
@@ -223,6 +223,7 @@ export const enGame = {
     tradeNoCart: 'No cart to work with',
     tradeCartEmpty: 'empty',
     tradeNoRoute: 'Needs two houses on its route',
+    tradeNoImports: 'Mark the goods to import',
     tradeNoAgreement: 'Pick an agreement',
     tradeNotFriends: 'Trades only with a friendly tribe',
     tradeExchange: 'Given {given}/{giveAmount}, received {received}/{takeAmount}',

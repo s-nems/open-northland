@@ -13,7 +13,7 @@ export interface TradeStop {
   readonly house: Entity;
   /** Whether the house belongs to another player: the stop the exchange happens at. */
   readonly foreign: boolean;
-  /** The goods the player marked for import into this house, ascending; empty means every good. */
+  /** The goods the player marked for import into this house, ascending. */
   imports: number[];
 }
 
@@ -54,14 +54,26 @@ export function ensureTradeRoute(world: World, e: Entity): void {
 }
 
 /**
- * Add a stop. Refused with a full route or a house already on it. The import flags of every stop are
- * cleared, as the original does on any route change.
+ * Add a stop; refused for a house already on the route. On a full route the new house takes the place
+ * of a fallen stop, else of the route's foreign stop when it is foreign too, else of the older stop
+ * (the original refuses a full route; this build replaces, owner's choice), and the trader starts over
+ * from the first stop. The import flags of every stop are cleared, as the original does on any route
+ * change.
  */
 export function addTradeStop(world: World, e: Entity, house: Entity, foreign: boolean): boolean {
   ensureTradeRoute(world, e);
   const route = world.get(e, TradeRoute);
-  if (route.stops.length >= TRADE_ROUTE_HOUSES || route.stops.some((s) => s.house === house)) return false;
+  if (route.stops.some((s) => s.house === house)) return false;
   const live = world.mut(e, TradeRoute);
+  if (live.stops.length >= TRADE_ROUTE_HOUSES) {
+    const fallenAt = live.stops.findIndex((s) => !world.isAlive(s.house));
+    const foreignAt = foreign ? live.stops.findIndex((s) => s.foreign) : -1;
+    const [dropped] = live.stops.splice(fallenAt >= 0 ? fallenAt : Math.max(foreignAt, 0), 1);
+    if (dropped?.foreign === true) live.agreement = -1;
+    live.current = -1;
+    live.given = 0;
+    live.received = 0;
+  }
   live.stops.push({ house, foreign, imports: [] });
   for (const stop of live.stops) stop.imports = [];
   return true;

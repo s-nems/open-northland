@@ -14,6 +14,7 @@ import type { PanelHover } from '../pointer-intent.js';
 import type { PanelView } from '../selection-view.js';
 import { STOCK_AMOUNT_INSET } from './building/shared.js';
 import { drawStockTabs } from './building/stock.js';
+import { drawTradeSection } from './settler-trade.js';
 
 /** The Ogólne health row's label column; the gauge fills the rest of the row. */
 const HEALTH_LABEL_W = 78;
@@ -23,9 +24,9 @@ const ACTIVE_ORDER_UNDERLINE_H = 2;
 
 /**
  * The vehicle window: Ogólne (type, owner, task, stance or carrier, capacity, hit points), the order
- * buttons, the crew list and the hold with its wanted-amount steps. The section stack and the button
- * grid are authored; the labels are the original's `vehiclewindow` and `misclogic` strings where it has
- * one.
+ * buttons, the crew list, a riding trader's Handel section and the hold with its wanted-amount steps.
+ * The section stack and the button grid are authored; the labels are the original's `vehiclewindow` and
+ * `misclogic` strings where it has one.
  */
 export function drawVehicle(
   chrome: Chrome,
@@ -40,6 +41,10 @@ export function drawVehicle(
   drawGeneralSection(chrome, layout, model, s);
   drawOrdersSection(chrome, layout, model, ui, hover.action, s);
   drawPeopleSection(chrome, layout, model, ui, hover.crewRow);
+  if (layout.trade !== null && model.trade !== null) {
+    const hovered = { import: hover.tradeImport, offer: hover.tradeOffer, detach: hover.tradeDetach };
+    drawTradeSection(chrome, layout.trade, model.trade.panel, hover.action, hovered, s);
+  }
   if (layout.cargo !== null) drawCargoSection(chrome, view, layout, ui, hover, activeStockTab, s);
 }
 
@@ -99,7 +104,8 @@ function orderLabel(order: VehicleOrder, ui: UiString): string {
     case 'dock':
       return ui('misclogic', VEHICLE_ORDER_STRING.dock, hud.vehicleOrderDock);
     case 'unloadPeople':
-      return ui('misclogic', VEHICLE_ORDER_STRING.unloadPeople, hud.vehicleOrderUnloadPeople);
+      // The catalog's own short label: the mod's "put people ashore" reads wrong on a cart or catapult.
+      return hud.vehicleOrderUnloadPeople;
     case 'stop':
       return hud.vehicleOrderStop;
     case 'attackInhabitants':

@@ -3,7 +3,7 @@ import type { Command, Entity, Fixed, GroupWorker, WorldSnapshot } from '@open-n
 import { components, fx, ONE, Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { BUILD_HOUSE_ATOMIC } from '../src/catalog/atomics.js';
-import { JOB_BUILDER, JOB_JOINER } from '../src/catalog/jobs.js';
+import { JOB_BUILDER, JOB_JOINER, JOB_TRADER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { BUILDING_BARRACKS, BUILDING_HOME_00, sandboxContent } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
@@ -82,8 +82,9 @@ function rightClick(
   settlers: readonly Entity[],
   building: Entity,
   content: ContentSet = sim.content,
+  owned = true,
 ): Command[] {
-  return pressRightClick(sim, settlers, building, content).issued;
+  return pressRightClick(sim, settlers, building, content, owned).issued;
 }
 
 /** {@link rightClick} with the press's own verdict, which decides whether the click confirms. */
@@ -92,12 +93,13 @@ function pressRightClick(
   settlers: readonly Entity[],
   building: Entity,
   content: ContentSet = sim.content,
+  owned = true,
 ): { issued: Command[]; ordered: boolean } {
   const issued: Command[] = [];
   const snapshot = sim.snapshot();
   const pickable: Pickable = { ref: building, x: 0, y: 0 };
   const targets: UnitTargets = {
-    owned: (kind) => (kind === 'building' ? [pickable] : []),
+    owned: (kind) => (kind === 'building' && owned ? [pickable] : []),
     buildings: () => [pickable],
     enemies: () => [],
     flags: () => [],
@@ -350,5 +352,53 @@ describe("the action ring's site pick", () => {
       sim.world.add(settlerAt(sim, JOB_BUILDER), SiteAssignment, { site: home, pinned: false });
     }
     expect(sitePick.assignableAt(sim.snapshot(), home, builder, byType)).toBe(false);
+  });
+});
+
+describe('right-clicking a standing house with a trader', () => {
+  it('puts the house on the trade route instead of hiring or housing the trader', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+
+    expect(rightClick(sim, [trader], home)).toEqual([
+      { kind: 'attachTradeHouse', entity: trader, house: home },
+    ]);
+  });
+
+  it('takes a house the route already names off it', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+    components.addTradeStop(sim.world, trader, home, false);
+
+    expect(rightClick(sim, [trader], home)).toEqual([
+      { kind: 'detachTradeHouse', entity: trader, house: home },
+    ]);
+  });
+
+  it('leaves the rest of the selection to the usual ladder', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const shop = bakery(sim);
+    const house = buildingAt(sim, shop.typeId, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+    const baker = settlerAt(sim, shop.craftJob);
+
+    const [route, ...rest] = rightClick(sim, [trader, baker], house);
+
+    expect(route).toEqual({ kind: 'attachTradeHouse', entity: trader, house });
+    expect(postedWorkers(rest, house).map((member) => member.entity)).toEqual([baker]);
+  });
+
+  it("walks the rest of the selection to another tribe's house the trader routes", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const post = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+    const builder = settlerAt(sim, JOB_BUILDER);
+
+    const issued = rightClick(sim, [trader, builder], post, sim.content, false);
+
+    expect(issued[0]).toEqual({ kind: 'attachTradeHouse', entity: trader, house: post });
+    expect(issued.slice(1).map((order) => ('entity' in order ? order.entity : undefined))).toEqual([builder]);
   });
 });

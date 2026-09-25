@@ -32,6 +32,7 @@ import {
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
+import { tradeHousePick } from './highlights/index.js';
 import { openSchoolDialog, type SchoolDialog } from './school-dialog.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
@@ -170,9 +171,15 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const pile = pickTopAt(goods, world.x, world.y);
     const pileGood = pile === null ? undefined : goods.find((target) => target.ref === pile)?.goodType;
     if (pileGood !== undefined && wearFromGround(commanded, pileGood)) return true;
+    const routed = routeTradeHouse(
+      commanded,
+      onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y),
+    );
+    const others = routed.size === 0 ? commanded : commanded.filter((unit) => !routed.has(unit.ref));
+    if (others.length === 0) return true;
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
-    if (building !== null) return orderAtBuilding(event, commanded, building);
-    return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, 'moveUnit');
+    if (building !== null) return orderAtBuilding(event, others, building) || routed.size > 0;
+    return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), others, 'moveUnit');
   };
 
   /** The right-click ladder over an own building; true when it opened the school dialog or enqueued an
@@ -262,6 +269,28 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       order({ kind: 'assignWorkerGroup', building: building as Entity, members: workers });
     }
     return ordered;
+  };
+
+  /**
+   * Original behavior: a trader's right-click on a standing house puts it on the trade route, another
+   * tribe's house included, and takes it off when the route already names it. The traders that took
+   * the order are returned; the rest of the selection handles the click as usual.
+   */
+  const routeTradeHouse = (commanded: readonly FormationUnit[], house: number | null): Set<number> => {
+    const routed = new Set<number>();
+    if (house === null) return routed;
+    const snapshot = deps.snapshot();
+    for (const unit of commanded) {
+      const self = entityById(snapshot, unit.ref);
+      if (self === undefined || !systems.isTraderJob(deps.content, settlerJobType(self) ?? null)) continue;
+      if (tradeHousePick.onRoute(snapshot, house, unit.ref)) {
+        deps.enqueue({ kind: 'detachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
+      } else if (tradeHousePick.assignableAt(snapshot, house, unit.ref)) {
+        deps.enqueue({ kind: 'attachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
+      } else continue;
+      routed.add(unit.ref);
+    }
+    return routed;
   };
 
   /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as

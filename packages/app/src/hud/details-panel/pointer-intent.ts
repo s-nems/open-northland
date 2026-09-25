@@ -5,12 +5,14 @@ import {
   hitGatherChoice,
   hitPortrait,
   hitStockTab,
+  hitTradeAttach,
   hitTradeDetach,
   hitTradeImport,
   hitTradeOffer,
   hitVehicleCargoStep,
   hitVehicleCrew,
   nextCraftGoods,
+  tradeTargetOf,
 } from './hit-test.js';
 import { type ButtonAction, type EquipSlotRef, equipActionKey, vehicleOrderOf } from './layout/index.js';
 import type { VehicleOrder } from './model/index.js';
@@ -74,6 +76,30 @@ export type PanelClick =
       readonly amount: number;
     };
 
+/** The intent of a Handel control, addressed to the trader whether its own window or the window of a
+ *  cart it rides shows the section. */
+const tradeClick = (view: PanelView, x: number, y: number): PanelClick | null => {
+  const target = tradeTargetOf(view);
+  if (target === null) return null;
+  const entityId = target.trader;
+  const mark = hitTradeImport(view, x, y);
+  if (mark !== undefined) {
+    return {
+      kind: 'setTradeImport',
+      entityId,
+      house: mark.house,
+      goodType: mark.goodType,
+      on: !mark.selected,
+    };
+  }
+  const offer = hitTradeOffer(view, x, y);
+  if (offer !== undefined)
+    return { kind: 'setTradeAgreement', entityId, agreement: offer.selected ? -1 : offer.index };
+  const detach = hitTradeDetach(view, x, y);
+  if (detach !== undefined) return { kind: 'detachTradeHouse', entityId, house: detach };
+  return hitTradeAttach(view, x, y) ? { kind: 'attachTradeHouse', entityId } : null;
+};
+
 /** The intent of the settler choice/equip blocks, which sit above the button column in probe order. */
 const settlerFieldClick = (
   view: Extract<PanelView, { kind: 'settler' }>,
@@ -94,21 +120,6 @@ const settlerFieldClick = (
     );
     return { kind: 'setCraftGoods', entityId, goods };
   }
-  const mark = hitTradeImport(view, x, y);
-  if (mark !== undefined) {
-    return {
-      kind: 'setTradeImport',
-      entityId,
-      house: mark.house,
-      goodType: mark.goodType,
-      on: !mark.selected,
-    };
-  }
-  const offer = hitTradeOffer(view, x, y);
-  if (offer !== undefined)
-    return { kind: 'setTradeAgreement', entityId, agreement: offer.selected ? -1 : offer.index };
-  const detach = hitTradeDetach(view, x, y);
-  if (detach !== undefined) return { kind: 'detachTradeHouse', entityId, house: detach };
   const equipHit = hitEquipAction(view, x, y);
   if (equipHit === undefined) return null;
   return equipHit.kind === 'unequip'
@@ -161,10 +172,8 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
           return { kind: 'assignHome', entityId };
         case 'unassign-home':
           return { kind: 'unassignHome', entityId };
-        case 'attach-trade-house':
-          return { kind: 'attachTradeHouse', entityId };
         default:
-          return null; // a building-only action, which no settler layout routes
+          return null; // a building action, or a trade button, which tradeClick resolves
       }
     }
     case 'signpost':
@@ -216,6 +225,8 @@ export const panelClickAt = (
 ): PanelClick | null => {
   const portrait = hitPortrait(view, x, y);
   if (portrait !== null) return { kind: 'centerOnEntity', entityId: portrait };
+  const trade = tradeClick(view, x, y);
+  if (trade !== null) return trade;
   if (view.kind === 'settler') {
     const field = settlerFieldClick(view, x, y, modifiers.toggle);
     if (field !== null) return field;

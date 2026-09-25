@@ -38,14 +38,17 @@ export const TRADE_CART_HOUSE_DISTANCE = 5;
  *  (original behavior: radius 20). */
 export const TRADE_CART_SEARCH_RADIUS = 20;
 
-/** What the trader does next at its current stop. */
-type TradeAction =
+/** A unit the trader moves at a stop. */
+type StopWork =
   | { readonly kind: 'load'; readonly good: number }
-  | { readonly kind: 'unload'; readonly good: number; readonly into: Entity | null }
-  | { readonly kind: 'next' }
-  | { readonly kind: 'wait' };
+  | { readonly kind: 'unload'; readonly good: number; readonly into: Entity | null };
 
-const NEXT: TradeAction = { kind: 'next' };
+type NextStop = { readonly kind: 'next' };
+
+/** What the trader does next at its current stop. */
+type TradeAction = StopWork | NextStop | { readonly kind: 'wait' };
+
+const NEXT: NextStop = { kind: 'next' };
 const WAIT: TradeAction = { kind: 'wait' };
 
 /**
@@ -80,40 +83,52 @@ export function planTrader(plan: PlannerContext): boolean {
   switch (action.kind) {
     case 'wait':
       return false;
-    case 'next': {
-      if (!cartNearHouse(world, ctx, cart, other.house) && !driveCartTo(plan, cart, other.house))
-        return false;
-      world.mut(e, TradeRoute).current = 1 - current.current;
-      return true;
-    }
     case 'load':
-      if (!cartNearHouse(world, ctx, cart, stop.house)) return driveCartTo(plan, cart, stop.house);
-      walkTo(plan, stop.house, () => {
-        const atomicId = collectAtomicOf(world, ctx, stop.house);
-        startAtomic(
-          world,
-          e,
-          atomicId,
-          { kind: 'cartLoad', from: stop.house, goodType: action.good },
-          atomicDuration(ctx.content, plan, atomicId),
-          stop.house,
-        );
-      });
-      return true;
     case 'unload':
-      if (!cartNearHouse(world, ctx, cart, stop.house)) return driveCartTo(plan, cart, stop.house);
-      walkTo(plan, stop.house, () => {
-        startAtomic(
-          world,
-          e,
-          PILEUP_ATOMIC_ID,
-          { kind: 'cartUnload', store: action.into, goodType: action.good },
-          atomicDuration(ctx.content, plan, PILEUP_ATOMIC_ID),
-          action.into,
-        );
-      });
-      return true;
+      return workStop(plan, cart, stop.house, action);
+    case 'next':
+      break;
   }
+  if (!stop.foreign && !other.foreign) {
+    // Original behavior: an own stop with nothing to move hands the turn to the other one, and the cart
+    // drives only once that stop has a unit to load or unload.
+    const there = decideDomestic(world, ctx, hold, other, stop);
+    if (there.kind === 'next') return false;
+    world.mut(e, TradeRoute).current = 1 - current.current;
+    return workStop(plan, cart, other.house, there);
+  }
+  if (!cartNearHouse(world, ctx, cart, other.house) && !driveCartTo(plan, cart, other.house)) return false;
+  world.mut(e, TradeRoute).current = 1 - current.current;
+  return true;
+}
+
+/** Move one unit at `house`: bring the cart within reach of it first, then walk over and load or unload. */
+function workStop(plan: PlannerContext, cart: TradeCart, house: Entity, work: StopWork): boolean {
+  const { world, ctx, entity: e } = plan;
+  if (!cartNearHouse(world, ctx, cart, house)) return driveCartTo(plan, cart, house);
+  walkTo(plan, house, () => {
+    if (work.kind === 'load') {
+      const atomicId = collectAtomicOf(world, ctx, house);
+      startAtomic(
+        world,
+        e,
+        atomicId,
+        { kind: 'cartLoad', from: house, goodType: work.good },
+        atomicDuration(ctx.content, plan, atomicId),
+        house,
+      );
+      return;
+    }
+    startAtomic(
+      world,
+      e,
+      PILEUP_ATOMIC_ID,
+      { kind: 'cartUnload', store: work.into, goodType: work.good },
+      atomicDuration(ctx.content, plan, PILEUP_ATOMIC_ID),
+      work.into,
+    );
+  });
+  return true;
 }
 
 /** Whether the cart drives or holds a goal until its crew is in: the trader rides along, not works. */
@@ -307,12 +322,19 @@ function resetExchange(world: World, trader: Entity): void {
 }
 
 /**
- * Between the player's own houses: unload what this stop takes, else load the good the other stop is
- * shortest of relative to this one. A good moves only where an import mark admits it, or anywhere while
- * no mark is set on either stop, and food is never taken out of a home (reading). Approximations: the
- * original ranks candidates by the houses' request counters too, which this build does not keep, so
- * ties go to the lowest good id; and it keeps "home enhancer" goods out of a home, a good class the
- * content does not flag.
+ * Between the player's own houses the import marks decide what moves (original behavior, except where
+ * noted):
+ * - A good marked at this stop and not at the other is unloaded here; one marked at the other stop only
+ *   stays aboard for it; one neither stop marks is unloaded at the first stop that stores it.
+ * - A good marked at the other stop only is loaded while this stop has a spare unit and the other has
+ *   room for it beside what is aboard.
+ * - A good both stops mark is balanced: it is loaded while this stop holds more than the other plus
+ *   what is aboard, and unloaded while the other stop holds more (score `(here - there - aboard) / 2`).
+ * - With no mark on either stop nothing moves. The original then balances every good; this build waits
+ *   for the player's marks instead (owner's choice).
+ * Food is never taken out of a home. Approximations: the original ranks candidates by the houses'
+ * request counters, which this build does not keep, so the lowest good id goes first; and it keeps
+ * "home enhancer" goods out of a home, a good class the content does not flag.
  */
 function decideDomestic(
   world: World,
@@ -320,42 +342,39 @@ function decideDomestic(
   hold: CartHold,
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
-): TradeAction {
-  const unmarked = stop.imports.length === 0 && other.imports.length === 0;
-  const admits = (at: DeepReadonly<TradeStop>, good: number): boolean =>
-    unmarked || at.imports.includes(good) || at.imports.includes(edibleGoodFormOf(ctx.content, good));
+): StopWork | NextStop {
+  const marked = (at: DeepReadonly<TradeStop>, good: number): boolean =>
+    at.imports.includes(good) || at.imports.includes(edibleGoodFormOf(ctx.content, good));
   const hereType = world.get(stop.house, Building).buildingType;
 
-  // Aboard goods go to the stop that is shorter of them (reading of the original's unload score,
-  // `(aboard + other - here) / 2`), so what was just loaded for the other stop stays aboard.
   for (const [good, aboard] of hold.entries) {
-    if (!admits(stop, good)) continue;
     const slot = storableFormAt(world, ctx, stop.house, good);
     if (slot === undefined || roomFor(world, ctx, stop.house, slot) <= 0) continue;
-    const there = storableFormAt(world, ctx, other.house, good);
-    const shortfall =
-      (there === undefined ? 0 : stockOf(world, other.house, there)) - stockOf(world, stop.house, slot);
-    if (Math.floor((aboard + shortfall) / 2) > 0 || there === undefined) {
-      return { kind: 'unload', good, into: stop.house };
+    const wantedHere = marked(stop, good);
+    const wantedThere = marked(other, good);
+    if (wantedThere && !wantedHere) continue;
+    if (wantedHere && wantedThere) {
+      const there = storableFormAt(world, ctx, other.house, good);
+      const shortfall =
+        (there === undefined ? 0 : stockOf(world, other.house, there)) - stockOf(world, stop.house, slot);
+      if (there !== undefined && Math.floor((aboard + shortfall) / 2) <= 0) continue;
     }
+    return { kind: 'unload', good, into: stop.house };
   }
 
-  if (hold.room > 0) {
-    let best: { good: number; score: number } | undefined;
-    for (const good of ownGoodsOf(ctx, hereType)) {
-      if (!admits(other, good) || (isFood(ctx, good) && isHome(ctx, hereType))) continue;
-      const spare = spareOf(world, ctx, stop.house, good);
-      if (spare <= 0) continue;
-      const carried = edibleGoodFormOf(ctx.content, good);
-      if (!hold.carries(carried)) continue;
-      const slot = storableFormAt(world, ctx, other.house, carried);
-      if (slot === undefined || roomFor(world, ctx, other.house, slot) <= 0) continue;
-      const score = Math.floor(
-        (stockOf(world, stop.house, good) - stockOf(world, other.house, slot) - hold.amount(carried)) / 2,
-      );
-      if (score > 0 && (best === undefined || score > best.score)) best = { good, score };
-    }
-    if (best !== undefined) return { kind: 'load', good: best.good };
+  if (hold.room <= 0) return NEXT;
+  for (const good of ownGoodsOf(ctx, hereType)) {
+    if (!marked(other, good) || (isFood(ctx, good) && isHome(ctx, hereType))) continue;
+    if (spareOf(world, ctx, stop.house, good) <= 0) continue;
+    const carried = edibleGoodFormOf(ctx.content, good);
+    if (!hold.carries(carried)) continue;
+    const slot = storableFormAt(world, ctx, other.house, carried);
+    if (slot === undefined || roomFor(world, ctx, other.house, slot) - hold.amount(carried) <= 0) continue;
+    const balanced = marked(stop, good);
+    const surplus =
+      stockOf(world, stop.house, good) - stockOf(world, other.house, slot) - hold.amount(carried);
+    if (balanced && Math.floor(surplus / 2) <= 0) continue;
+    return { kind: 'load', good };
   }
   return NEXT;
 }
