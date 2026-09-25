@@ -65,7 +65,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `embr` | cell | terrain brightness |
 | `lmlt` | half-cell | collapsed to cell landscape logic ids |
 | `lmlv` | half-cell | landscape valency: each placement's growth level; a chest placement's entry is its chest-contents type instead, and a goods placement's (an object of a good's `landscapetype`) is its unit count, 1 to 5 across the owned corpus |
-| `lmlp` | half-cell | authored landscape-object owner: player slot 0..12 at an `emla` anchor, 255 for neutral |
+| `lmlp` | half-cell | authored landscape-object owner: a player slot at an `emla` anchor (0..12 observed), 255 for neutral |
 | `empa`, `empb` | cell triangles | final ground-pattern ids |
 | `emla` | half-cell | placed landscape-object ids |
 | `emt1` to `emt4` | cell | transition overlay ids and variants |
@@ -87,14 +87,15 @@ The loader also exposes per-lane dimensions and dictionaries needed to resolve n
 
 ### Verified `lmlp` ownership lane
 
-`lmlp` is an X8 row-major `2W × 2H` lane parallel to `emla`. At every placed landscape object's
-`emla` anchor, bytes 0..12 are authored player slots and 255 is neutral. The pipeline emits one
+`lmlp` is an `X8el` row-major `2W × 2H` lane parallel to `emla`. At every placed landscape object's
+`emla` anchor, a byte other than 255 is an authored player slot and 255 is neutral. The pipeline emits one
 `objects.owners` entry per placement triple, mapping 255 to `null`; it omits the array only when the
 source map lacks the chunk.
 
 The result is byte-level verified across all 124 decodable mod maps: every `lmlp` length matches its
 `emla` length, all 19,937 non-neutral values occur at wall or gate anchors, and all other placed
-objects are neutral. The owned corpus contains player slots 0, 1, 2, 3, 4, 5, 6, 8 and 12. Spot checks
+objects are neutral. The mod maps contain player slots 0, 1, 2, 3, 4, 5, 6, 8 and 12; the owned
+install's maps also contain slot 11. Spot checks
 also join to the readable decoded roster: `tutorial_002` walls use slot 1, `SPECJALNA- FORTECA` walls
 use slot 6, and `WIELKA BITWA Z SARACENAMI` includes slot 12 walls.
 

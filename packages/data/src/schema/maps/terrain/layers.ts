@@ -53,6 +53,9 @@ export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
  * indices into the map's `eald` object-name dictionary, kept here as the sparse list of placed
  * triples in row-major order. Names join onto the `LandscapeGfx` table.
  */
+/** The player slots a map's owner lanes may name: the simulation's player seats. */
+export const MAP_PLAYER_SLOTS = 16;
+
 export const TerrainObjects = z.strictObject({
   /** The `[GfxLandscape]` `EditName`s this map places (compacted from the map's `eald` dictionary). */
   types: z.array(z.string()),
@@ -69,10 +72,20 @@ export const TerrainObjects = z.strictObject({
    */
   levels: z.array(z.number().int().nonnegative()).optional(),
   /**
-   * Per-placement authored owner from the `lmlp` lane, parallel to `placements`: player slot 0..12,
-   * or `null` for the raw 255 neutral sentinel. Absent only when the source map lacks `lmlp`.
-   * Player colour is a separate roster property and is deliberately not represented here.
+   * Per-placement authored owner from the `lmlp` lane, parallel to `placements`: a player slot below
+   * {@link MAP_PLAYER_SLOTS} (0..12 observed), or `null` for the raw 255 neutral sentinel. Absent only when
+   * the source map lacks `lmlp`. Player colour is a separate roster property and is deliberately not
+   * represented here.
    */
-  owners: z.array(z.number().int().nonnegative().max(12).nullable()).optional(),
+  owners: z
+    .array(
+      z
+        .number()
+        .int()
+        .nonnegative()
+        .max(MAP_PLAYER_SLOTS - 1)
+        .nullable(),
+    )
+    .optional(),
 });
 export type TerrainObjects = z.infer<typeof TerrainObjects>;

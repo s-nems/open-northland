@@ -1,4 +1,4 @@
-import { parseTerrainMap } from '@open-northland/data';
+import { MAP_PLAYER_SLOTS, parseTerrainMap } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
 import { encodeMapDat, encodeMapSize, packMapLayer, packX6elLayer } from '../src/decoders/mapdat/index.js';
 import { mapDatToTerrain } from '../src/stages/maps/index.js';
@@ -290,11 +290,11 @@ describe('mapDatToTerrain', () => {
     const invalidOwner = mapDatToTerrain(
       encodeMapDat([
         ...common,
-        { tag: 'lmlp', version: 1, payload: packMapLayer(Uint8Array.from([13, 255, 255, 255])) },
+        { tag: 'lmlp', version: 1, payload: packMapLayer(Uint8Array.from([MAP_PLAYER_SLOTS, 255, 255, 255])) },
       ]),
     );
     expect(invalidOwner.objects).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/owner 13.*outside player slots 0\.\.12/));
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/owner 16.*outside player slots 0\.\.15/));
     warn.mockRestore();
   });
 

@@ -1,3 +1,4 @@
+import { MAP_PLAYER_SLOTS } from '@open-northland/data';
 import {
   decodeStringListChunk,
   findChunk,
@@ -8,9 +9,9 @@ import { compactDictionary, type DecodedMap } from './lane.js';
 
 /** The `emla` lane's "no object here" sentinel (u16 max). */
 const EMLA_EMPTY = 0xffff;
-/** The `lmlp` byte for an unowned placement; every other corpus value is a player slot 0..12. */
+/** The `lmlp` byte for an unowned placement; every other corpus value is a player slot (0..12 observed). */
 const LMLP_NEUTRAL = 0xff;
-const LMLP_MAX_PLAYER = 12;
+const LMLP_MAX_PLAYER = MAP_PLAYER_SLOTS - 1;
 
 export interface ObjectsLayer {
   readonly types: string[];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { parseTerrainMap, TRANSITION_NONE, TRANSITION_PAIRS } from '../src/index.js';
+import { MAP_PLAYER_SLOTS, parseTerrainMap, TRANSITION_NONE, TRANSITION_PAIRS } from '../src/index.js';
 
 /**
  * The cross-lane invariant table of `TerrainMapFile`, one broken lane per case, over hand-authored
@@ -274,8 +274,8 @@ describe('parseTerrainMap cross-lane invariants', () => {
     expect(issues(map)).toEqual([]);
   });
 
-  it('rejects an object owner outside the verified player-slot range', () => {
-    expect(issues({ ...base(), objects: { ...OBJECTS, owners: [13, null] } })).toEqual([
+  it('rejects an object owner outside the player slots', () => {
+    expect(issues({ ...base(), objects: { ...OBJECTS, owners: [MAP_PLAYER_SLOTS, null] } })).toEqual([
       expect.objectContaining({ path: 'objects.owners.0' }),
     ]);
   });

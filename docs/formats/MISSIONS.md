@@ -314,7 +314,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second; its humans are detached from houses as under `ChangeHumanPlayerId` | sim | 134 |
 | 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (original behavior), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the explicit wave-group graphics within `range` | both | 0 |
-| 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's completed wall gate at the point, which may be its anchor or any node its closed body blocks; the same transition a seat's own gate command takes, so a close onto an occupied passage is refused and reported | sim | 14 |
+| 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's completed wall gate at the point. Here: the point may be the gate's anchor or any node its closed body blocks, and the swap takes the same transition a seat's own gate command does, so a close onto an occupied passage is refused and reported, where the original swaps the gate unconditionally (adaptation) | sim | 14 |
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
 | 49 | `SetPlayerBehaviourFlag` | 1, 7, 32 | OR or clear the mask on every current human of the player | sim | 240 |
 | 50 | `SetHumanBehaviourFlag` | 10, 7, 32 | OR or clear the mask on humans with the id | sim | 436 |
