@@ -68,6 +68,10 @@ export const PALISADE_GATE_CLOSE_TICK = 400;
 export const PALISADE_GATE_REOPEN_TICK = 600;
 export const PALISADE_RUN_TICKS = 1_100;
 
+/** The scene's scripted orders take the last position of their tick. The session numbers a live order
+ *  from 0 up within its tick, so a player's order in the same tick can never claim the same position. */
+const SCRIPTED_SEQUENCE = Number.MAX_SAFE_INTEGER;
+
 const { Damaged, Health, Owner, Palisade, Position, Settler, Stockpile, UnderConstruction } = components;
 
 function standingPalisade(
@@ -207,44 +211,22 @@ function build(sim: Simulation): void {
     palisade: gate,
     gfxIndex: PALISADE_HORIZONTAL_GATE_CLOSED_GFX_INDEX,
   });
-  sim.enqueueAt(setupCommand({ kind: 'setPalisadeGate', palisade: gate, open: true }), 20, 0);
-  sim.enqueueAt(setupCommand({ kind: 'moveUnit', entity: firstTraveller, x: SOUTH.hx, y: SOUTH.hy }), 25, 0);
-  sim.enqueueAt(
-    setupCommand({ kind: 'setPalisadeGate', palisade: gate, open: false }),
-    PALISADE_GATE_CLOSE_TICK,
-    0,
-  );
-  sim.enqueueAt(
-    setupCommand({ kind: 'moveUnit', entity: secondTraveller, x: SOUTH.hx, y: SOUTH.hy }),
-    420,
-    0,
-  );
-  sim.enqueueAt(
-    setupCommand({ kind: 'setPalisadeGate', palisade: gate, open: true }),
-    PALISADE_GATE_REOPEN_TICK,
-    0,
-  );
-  sim.enqueueAt(
-    setupCommand({ kind: 'moveUnit', entity: secondTraveller, x: SOUTH.hx, y: SOUTH.hy }),
-    610,
-    0,
-  );
-  sim.enqueueAt(setupCommand({ kind: 'setPalisadeGate', palisade: gate, open: false }), 900, 0);
+  const at = (tick: number, command: Parameters<typeof setupCommand>[0]): void =>
+    sim.enqueueAt(setupCommand(command), tick, SCRIPTED_SEQUENCE);
+  at(20, { kind: 'setPalisadeGate', palisade: gate, open: true });
+  at(25, { kind: 'moveUnit', entity: firstTraveller, x: SOUTH.hx, y: SOUTH.hy });
+  at(PALISADE_GATE_CLOSE_TICK, { kind: 'setPalisadeGate', palisade: gate, open: false });
+  at(420, { kind: 'moveUnit', entity: secondTraveller, x: SOUTH.hx, y: SOUTH.hy });
+  at(PALISADE_GATE_REOPEN_TICK, { kind: 'setPalisadeGate', palisade: gate, open: true });
+  at(610, { kind: 'moveUnit', entity: secondTraveller, x: SOUTH.hx, y: SOUTH.hy });
+  at(900, { kind: 'setPalisadeGate', palisade: gate, open: false });
 
-  sim.enqueueAt(setupCommand({ kind: 'attackUnit', entity: raider, target: breach }), 1, 0);
+  at(1, { kind: 'attackUnit', entity: raider, target: breach });
   // Once the focused attack has landed its tenth blow, hold fire so autonomous target selection does
   // not pull the soldier sideways onto the neighbouring posts. The later player move is issued after
   // the gate has closed and can succeed only through the destroyed segment.
-  sim.enqueueAt(
-    setupCommand({ kind: 'setStance', entity: raider, mode: systems.MILITARY_MODE.IGNORE }),
-    320,
-    0,
-  );
-  sim.enqueueAt(
-    setupCommand({ kind: 'moveUnit', entity: raider, x: RAIDER_GOAL.hx, y: RAIDER_GOAL.hy }),
-    720,
-    0,
-  );
+  at(320, { kind: 'setStance', entity: raider, mode: systems.MILITARY_MODE.IGNORE });
+  at(720, { kind: 'moveUnit', entity: raider, x: RAIDER_GOAL.hx, y: RAIDER_GOAL.hy });
 }
 
 export function palisadeGateIsOpen(sim: Simulation): boolean {
