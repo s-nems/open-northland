@@ -89,7 +89,6 @@ export function engageCombatant(
   // Sheltering inside a building on alarm sits the fight out: the building fires for its people
   // (`shelter-fire.ts`), and an order to attack from inside it has nothing to act on.
   if (isManningShelter(world, e)) {
-    world.remove(e, AttackOrder);
     disengage(world, e);
     return;
   }
@@ -340,8 +339,9 @@ function swingAt(
   // its hash.
   if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
   // The victim's armor material selects both the damage column and the impact sound. Fight experience
-  // with this weapon class raises the swing's damage, by a separate rule against a building. A ranged
-  // swing's shot resolves both again against whatever it strikes.
+  // with this weapon class raises the swing's damage: by the original's formula against a building, by an
+  // authored bonus against anyone else. A ranged swing's shot resolves both again against whatever it
+  // strikes.
   const material = targetMaterial(world, ctx, target);
   const base = weaponDamageVsMaterial(weapon.weapon, material);
   const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);

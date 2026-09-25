@@ -4,9 +4,9 @@
 **Needs user:** yes for the final pick - both options change what a shot looks like, and pixels are
 not decidable by test.
 
-`flightStep` (`packages/sim/src/systems/conflict/projectile.ts`) homes a shot with a plain Euclidean
-step over `Position` x and y, but those axes are not the same length on screen: a column step is
-68 px and a row step 38 (`packages/render/src/data/projection/iso.ts`). `worldDistance`
+`flightStep` (`packages/sim/src/systems/conflict/projectile.ts`) steps a shot toward its release-time
+aim with a plain Euclidean step over `Position` x and y, but those axes are not the same length on
+screen: a column step is 68 px and a row step 38 (`packages/render/src/data/projection/iso.ts`). `worldDistance`
 (`packages/sim/src/nav/world-metric.ts`) exists precisely to reconcile them and is what movement
 uses. Two consequences, both pre-existing and both made more visible when
 `PROJECTILE_TILES_PER_SPEED_UNIT` was halved to ⅛ (a bow now flies 1 tile/tick, not 2):

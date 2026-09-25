@@ -2,6 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
 import { describe, expect, it } from 'vitest';
 import {
   Armor,
+  Building,
   CurrentAtomic,
   Health,
   Owner,
@@ -10,8 +11,9 @@ import {
   SettlerProgress,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, nodeOfPosition, Simulation } from '../../src/index.js';
+import { fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
 import { FIGHT_EXPERIENCE_TYPE, PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
+import { ARMOR_MATERIAL } from '../../src/systems/readviews/index.js';
 import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -31,6 +33,9 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 const VIKING = 1; // a civilization tribe (carries a jobEnables tech edge)
 const FRANK = 2; // a different tribe with NO record - a valid civ enemy (not an animal), the target
 const ARCHER = 40; // the short-bow soldier job (real jobtypes id) - binds the bow by (tribe, job)
+const HERO = 70; // a hero trade, by its `hero` id prefix, carrying the same bow
+const HERO_BOW = 21;
+const HUT = 2; // a one-node building that covers the node it stands on
 const IDLE = 0;
 const BOW = 20; // the bow weapon typeId
 const COIN = 3; // the good the viking tech edge unlocks (makes VIKING read as a civ, not an animal)
@@ -42,10 +47,11 @@ const BOW_LEN = 12; // the draw animation's length
 const RELEASE_FRAME = 6; // the ATTACK event frame (the arrow is loosed here, mid-draw)
 const BOW_DAMAGE = 30; // damage vs an unarmored (class-0) target
 const BOW_HIT_SOUND = 77; // `soundtype_Hit 0`: the arrow's impact group id on a bare target
-const TARGET_HP = 1000;
+const TARGET_HP = 1000; // high enough that one 30-dmg hit leaves the target alive (Health stays present)
 const CHAIN = 3; // an armor class whose column the bow lists apart from a bare target's
 const BOW_DAMAGE_VS_CHAIN = 12;
-const BOW_HIT_SOUND_VS_CHAIN = 88; // high enough that one 30-dmg hit leaves the target alive (Health stays present)
+const BOW_HIT_SOUND_VS_CHAIN = 88; // the arrow's impact group id on a chain-armored target
+const BOW_DAMAGE_VS_HOUSE = 5;
 
 /** Tiles a `BOW_SPEED` projectile advances per tick - the calibration mapping applied to `speed`. With
  *  the ⅛-tile-per-unit constant, `speed 8` = exactly 1 tile/tick (an integer, so the same-row shot's
@@ -62,8 +68,17 @@ function content(): ContentSet {
     jobs: [
       { typeId: IDLE, id: 'idle' },
       { typeId: ARCHER, id: 'soldier_bow_short' },
+      { typeId: HERO, id: 'hero_archer' },
     ],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
+    buildings: [
+      { typeId: 1, id: 'headquarters', kind: 'storage' },
+      {
+        typeId: HUT,
+        id: 'hut',
+        kind: 'home',
+        footprint: { blocked: [{ dx: 0, dy: 0 }], door: { dx: 0, dy: 2 } },
+      },
+    ],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
     weapons: [
       {
@@ -76,8 +91,24 @@ function content(): ContentSet {
         speed: BOW_SPEED,
         minRange: BOW_MIN,
         maxRange: BOW_MAX,
-        damage: { '0': BOW_DAMAGE, [CHAIN]: BOW_DAMAGE_VS_CHAIN },
+        damage: {
+          '0': BOW_DAMAGE,
+          [CHAIN]: BOW_DAMAGE_VS_CHAIN,
+          [ARMOR_MATERIAL.HOUSE]: BOW_DAMAGE_VS_HOUSE,
+        },
         hitSounds: { '0': BOW_HIT_SOUND, [CHAIN]: BOW_HIT_SOUND_VS_CHAIN },
+      },
+      {
+        typeId: HERO_BOW,
+        id: 'viking_hero_bow',
+        tribeType: VIKING,
+        jobType: HERO,
+        mainType: 6,
+        munitionType: ARROW,
+        speed: BOW_SPEED,
+        minRange: BOW_MIN,
+        maxRange: BOW_MAX,
+        damage: { '0': BOW_DAMAGE },
       },
     ],
     tribes: [
@@ -86,7 +117,10 @@ function content(): ContentSet {
         id: 'viking',
         // The archer's attack atomic (81) binds to a bow draw whose ATTACK event (type 25) sits at the
         // release frame - the projectile is loosed there, not at the draw's completion.
-        atomicBindings: [{ jobType: ARCHER, atomicId: 81, animation: 'viking_bow_attack' }],
+        atomicBindings: [
+          { jobType: ARCHER, atomicId: 81, animation: 'viking_bow_attack' },
+          { jobType: HERO, atomicId: 81, animation: 'viking_bow_attack' },
+        ],
         jobEnables: [{ jobType: ARCHER, kind: 'good', targetId: COIN }],
       },
     ],
@@ -123,6 +157,10 @@ function fighterAt(
   sim.world.add(e, Health, { hitpoints, max: hitpoints });
   return e;
 }
+
+/** Ticks and shots enough to see a novice stray: most of its long shots do. */
+const AIM_SAMPLE_TICKS = 300;
+const AIM_MIN_SHOTS = 5;
 
 /** Hits past which a bowman never scatters: the aim roll tops out at 99, against hits plus 10. */
 const MARKSMAN_BOW_HITS = 90;
@@ -289,6 +327,68 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     expect(sim.world.get(comrade, Health).hitpoints).toBe(TARGET_HP);
   });
 
+  it('spares an unowned comrade of its own tribe where it comes down', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+    marksmanAt(sim, 0, 1);
+    const target = fighterAt(sim, 8, 1, FRANK, IDLE);
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    sim.world.mut(target, Position).x = fx.fromInt(11);
+    const comrade = fighterAt(sim, 8, 1, VIKING, IDLE);
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) sim.step();
+
+    expect(sim.world.isAlive(shot)).toBe(false);
+    expect(sim.world.get(comrade, Health).hitpoints).toBe(TARGET_HP);
+  });
+
+  it('strikes an enemy building covering the node only when nobody stands there', () => {
+    const struck = (bystanding: boolean) => {
+      const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+      const archer = marksmanAt(sim, 0, 1);
+      sim.world.add(archer, Owner, { player: 0 });
+      const target = fighterAt(sim, 8, 1, FRANK, IDLE);
+      sim.world.add(target, Owner, { player: 1 });
+
+      stepToLaunch(sim);
+      const shot = shotInFlight(sim);
+      sim.world.mut(target, Position).x = fx.fromInt(11);
+      const house = sim.world.create();
+      const { aimX, aimY } = sim.world.get(shot, Projectile);
+      sim.world.add(house, Position, { x: aimX, y: aimY });
+      sim.world.add(house, Building, { buildingType: HUT, tribe: FRANK, built: ONE, level: 0 });
+      sim.world.add(house, Health, { hitpoints: TARGET_HP, max: TARGET_HP });
+      sim.world.add(house, Owner, { player: 1 });
+      const bystander = bystanding ? fighterAt(sim, 0, 0, FRANK, IDLE) : null;
+      if (bystander !== null) {
+        const at = sim.world.mut(bystander, Position);
+        at.x = aimX;
+        at.y = aimY;
+        sim.world.add(bystander, Owner, { player: 1 });
+      }
+      let structure = false;
+      for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+        sim.step();
+        const event = sim.snapshot().events.find((candidate) => candidate.kind === 'projectileHit');
+        if (event?.kind === 'projectileHit') structure = event.structure === true;
+      }
+      return {
+        house: sim.world.get(house, Health).hitpoints,
+        bystander: bystander === null ? null : sim.world.get(bystander, Health).hitpoints,
+        structure,
+      };
+    };
+
+    const empty = struck(false);
+    expect(empty.house).toBe(TARGET_HP - BOW_DAMAGE_VS_HOUSE);
+    expect(empty.structure).toBe(true);
+
+    const crowded = struck(true);
+    expect(crowded.house).toBe(TARGET_HP);
+    expect(crowded.bystander).toBe(TARGET_HP - BOW_DAMAGE);
+    expect(crowded.structure).toBe(false);
+  });
+
   it('deals damage only AFTER a multi-tick flight (no instant hit), then the projectile is spent', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     marksmanAt(sim, 0, 0);
@@ -330,6 +430,33 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     sim.step();
     expect(sim.world.isAlive(shot)).toBe(false);
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
+  });
+});
+
+describe('projectiles - aim', () => {
+  it('a hero shoots true however green, where a novice strays', () => {
+    const aims = (jobType: number) => {
+      const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+      fighterAt(sim, 0, 1, VIKING, jobType);
+      fighterAt(sim, 9, 1, FRANK, IDLE);
+      const seen = new Set<Entity>();
+      const offMark: boolean[] = [];
+      for (let i = 0; i < AIM_SAMPLE_TICKS; i++) {
+        sim.step();
+        for (const p of projectiles(sim)) {
+          if (seen.has(p)) continue;
+          seen.add(p);
+          const { aimX, aimY } = sim.world.get(p, Projectile);
+          offMark.push(aimX !== fx.fromInt(9) || aimY !== fx.fromInt(1));
+        }
+      }
+      return offMark;
+    };
+
+    const hero = aims(HERO);
+    expect(hero.length).toBeGreaterThan(AIM_MIN_SHOTS);
+    expect(hero.every((off) => !off)).toBe(true);
+    expect(aims(ARCHER).some((off) => off)).toBe(true);
   });
 });
 

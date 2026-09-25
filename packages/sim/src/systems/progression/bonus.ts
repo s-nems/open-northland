@@ -151,8 +151,8 @@ const HOUSE_DAMAGE_EXPERIENCE_NUMERATOR = 200;
 
 /**
  * `base` vs-building damage raised by `hits` landed with the swinging weapon's class:
- * `base * 200 / (200 - min(hits, 100))`, so a hundred landed hits double it. Original behavior, which reads
- * the building case apart from the bonus a blow on a person gets ({@link withFightDamageBonus}).
+ * `base * 200 / (200 - min(hits, 100))`, so a hundred landed hits double it. Original behavior. The original
+ * raises a blow on a person by the same formula; {@link withFightDamageBonus} is an authored stand-in.
  */
 export function withHouseDamageExperience(base: number, hits: number): number {
   if (base <= 0) return base;

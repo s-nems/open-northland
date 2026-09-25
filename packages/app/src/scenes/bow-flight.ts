@@ -9,6 +9,8 @@ import type { SceneDefinition } from './types.js';
 const MAP_W = 28;
 const MAP_H = 24;
 const TARGET_HITPOINTS = 100_000;
+/** Bow hits past the scatter roll's reach, so every shot lands on its mark and the scene shows the flight. */
+const MARKSMAN_BOW_HITS = 90;
 
 /**
  * Compact staggered-raster sight-lines: east, west, straight down the screen, and a reverse diagonal. Each
@@ -22,7 +24,7 @@ const LANES = [
   { archer: { x: 20, y: 18 }, target: { x: 17, y: 14 } },
 ] as const;
 
-const { Health, Owner, Position, Projectile, Settler, Stance } = components;
+const { Health, Owner, Position, Projectile, Settler, SettlerProgress, Stance } = components;
 
 function build(sim: Simulation): void {
   for (const lane of LANES) {
@@ -35,6 +37,9 @@ function build(sim: Simulation): void {
     stance.anchorCell = null;
 
     const archer = spawnSettlerDirect(sim, JOB_ARCHER, lane.archer.x, lane.archer.y, HUMAN_PLAYER);
+    sim.world
+      .mut(archer, SettlerProgress)
+      .experience.set(systems.FIGHT_EXPERIENCE_TYPE.BOW, MARKSMAN_BOW_HITS);
     sim.enqueueSetup({ kind: 'attackUnit', entity: archer, target });
   }
 }
@@ -67,7 +72,7 @@ export const bowFlightScene: SceneDefinition = {
   seed: 41,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 100,
+  runTicks: 75,
   initialZoom: 1.1,
   checks: [
     {

@@ -393,6 +393,22 @@ describe('defence mode', () => {
     expect(marked.size).toBeGreaterThan(1);
   });
 
+  it('shoots a soldier before a nearer civilian', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    const civilian = settlerAt(sim, 6, 1, P2, FARMER);
+    sim.world.mut(civilian, Stance).mode = MILITARY_MODE.IGNORE;
+    const soldier = standingMark(sim, 7, 1);
+
+    const shots = collectShots(sim, 4 * SHELTER_SHOT_PERIOD_TICKS);
+    expect(shots.length).toBeGreaterThan(0);
+    for (const shot of shots) expect(shot.target).toBe(soldier);
+  });
+
   it('turns on an enemy house in reach when no enemy stands in reach', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
@@ -433,7 +449,7 @@ describe('defence mode', () => {
     for (let x = 8; x <= 12; x++) standingMark(sim, x, 0);
     const byTheWall = standingMark(sim, 10 + HALL_HALF_LENGTH_NODES / 2 + 1, 2);
 
-    const marked = collectShots(sim, 20 * SHELTER_SHOT_PERIOD_TICKS).map((shot) => shot.target);
+    const marked = collectShots(sim, 40 * SHELTER_SHOT_PERIOD_TICKS).map((shot) => shot.target);
     expect(marked).toContain(byTheWall);
   });
 

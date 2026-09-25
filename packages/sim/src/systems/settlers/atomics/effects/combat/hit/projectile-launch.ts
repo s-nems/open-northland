@@ -54,6 +54,9 @@ export function launchProjectile(
   if (weapon === undefined) return; // not a ranged swing; the caller already gates this
   const from = world.tryGet(attacker, Position);
   if (from === undefined || world.tryGet(effect.target, Position) === undefined) return;
+  // A target drained to 0 earlier this tick is dead but not yet reaped: no shot, and no launch cue, at a
+  // corpse. Checked before the aim draws, so a withheld shot takes nothing from the stream.
+  if ((world.tryGet(effect.target, Health)?.hitpoints ?? 0) <= 0) return;
   const experience = world.tryGet(attacker, SettlerProgress)?.experience ?? new Map<number, number>();
   looseProjectile(world, ctx, {
     source: attacker,
@@ -109,10 +112,6 @@ function settlerAim(
 export function looseProjectile(world: World, ctx: SystemContext, shot: LooseShot): void {
   const from = world.tryGet(shot.source, Position);
   if (from === undefined) return;
-  // A target drained to 0 earlier this tick is dead but not yet reaped: no shot, and no launch cue, at a
-  // corpse.
-  const targetHealth = world.tryGet(shot.target, Health);
-  if (targetHealth === undefined || targetHealth.hitpoints <= 0) return;
   const p = world.create();
   world.add(p, Position, { x: from.x, y: from.y });
   world.add(p, Projectile, {

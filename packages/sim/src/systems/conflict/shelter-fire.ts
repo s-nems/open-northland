@@ -1,10 +1,10 @@
-import { Age, Building, Health, isWildlife, Owner, Position } from '../../components/index.js';
+import { Age, Building, Health, isWildlife, Owner, Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { shelterOccupancy, shelterStillHolds } from '../defence/index.js';
-import { houseBow } from '../readviews/index.js';
+import { houseBow, isFighterJob } from '../readviews/index.js';
 import { type LooseShot, looseProjectile } from '../settlers/atomics/effects/combat/index.js';
 import { manhattan, nearestCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -25,20 +25,27 @@ export const SHELTER_SHOT_PERIOD_TICKS = 24;
 const TARGET_CANDIDATES = 5;
 const TARGET_SPREAD_NODES = 10;
 
-/** The kinds of enemy a building takes aim at, in the order it fills its shots: people, wild animals,
- *  buildings. Original behavior. */
-const TARGET_KINDS: readonly ((world: World, t: Entity) => boolean)[] = [
-  (world, t) => !world.has(t, Building) && !isWildlife(world, t),
-  (world, t) => isWildlife(world, t),
-  (world, t) => world.has(t, Building),
+/** A person, not a beast or a building. */
+const isPerson = (world: World, t: Entity): boolean => !world.has(t, Building) && !isWildlife(world, t);
+const isFighter = (world: World, ctx: SystemContext, t: Entity): boolean =>
+  isFighterJob(ctx.content, world.tryGet(t, Settler)?.jobType ?? null);
+
+/** The kinds of enemy a building takes aim at, in the order it fills its shots: soldiers and heroes, wild
+ *  animals, buildings, then everyone else. Original behavior. */
+const TARGET_KINDS: readonly ((world: World, ctx: SystemContext, t: Entity) => boolean)[] = [
+  (world, ctx, t) => isPerson(world, t) && isFighter(world, ctx, t),
+  (world, _ctx, t) => isWildlife(world, t),
+  (world, _ctx, t) => world.has(t, Building),
+  (world, ctx, t) => isPerson(world, t) && !isFighter(world, ctx, t),
 ];
 
 /**
  * Loose this tick's shots from every defence-mode building that holds anyone. Reach is measured from the
  * building's nearest wall, the same face an attacker measures its own reach to, so a bow that outranges
  * nothing on the ground cannot stand off a large building either. The building fires at what is in reach
- * whether its owner sees it or not (original behavior). Scales with the sheltering claims and the shots
- * due, not the map.
+ * whether its owner sees it or not (original behavior). Reach and the nearest-first order use the
+ * Manhattan combat metric where the original counts hex steps, an approximation. Scales with the
+ * sheltering claims and the shots due, not the map.
  */
 export function fireFromShelters(
   world: World,
@@ -106,12 +113,13 @@ function fireFrom(
         y,
         0,
         bow.maxRange + pad,
-        (t) => kind(world, t) && accept(t),
-        // Uncounted, because the index orders by distance to the centre: the tail bound keeps every
-        // candidate that can still be among the nearest by reach.
+        (t) => kind(world, ctx, t) && accept(t),
+        // Uncounted, because the index orders by distance to the centre, which sits up to `pad` off a
+        // mark's reach either way: the tail bound keeps every candidate that can still be among the
+        // nearest by reach.
         Number.POSITIVE_INFINITY,
         owner,
-        TARGET_SPREAD_NODES + pad,
+        TARGET_SPREAD_NODES + 2 * pad,
       )
       .map(({ entity }) => ({ entity, distance: reach(entity) }))
       .sort((p, q) => p.distance - q.distance || p.entity - q.entity)

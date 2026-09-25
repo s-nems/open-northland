@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Frightened, HerdMember, Resting, StayPoint } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -8,12 +9,18 @@ import {
   frightenWildlifeNear,
 } from '../../src/systems/conflict/fright.js';
 import { isTravelling } from '../../src/systems/movement/nav-state.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { manhattan } from '../../src/systems/spatial/metric.js';
 import { entityNode } from '../../src/systems/spatial/nodes.js';
+import { combatContent } from '../fixtures/content/combat.js';
+import { economyContent } from '../fixtures/content/economy.js';
+import { TEST_MANIFEST } from '../fixtures/content/index.js';
+import { societyContent } from '../fixtures/content/societies.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap } from '../fixtures/terrain.js';
-import { BEAR, COW, DEER, fighterAtNode } from './combat-system/support.js';
+import { BEAR, COW, DEER, fighterAtNode, HUNTER } from './combat-system/support.js';
+import { combatantAtNode, P0 } from './stances/support.js';
 
 /**
  * The wildlife FRIGHT reaction: a loosed shot scares the passive animals around its mark into
@@ -30,6 +37,19 @@ function wildAtNode(sim: Simulation, hx: number, hy: number, tribe: number): Ent
   if (terrain === undefined) throw new Error('test map missing');
   sim.world.add(e, StayPoint, { cell: entityNode(sim.world, terrain, e) });
   return e;
+}
+
+/** The test content with the fixture spear made a ranged weapon, so a hunter looses real shots. */
+function rangedHunterContent(): ContentSet {
+  return parseContentSet({
+    manifest: TEST_MANIFEST,
+    ...economyContent,
+    ...societyContent,
+    ...combatContent,
+    weapons: combatContent.weapons.map((w) =>
+      w.id === 'test_spear' ? { ...w, munitionType: 1, speed: 8 } : w,
+    ),
+  });
 }
 
 describe('frightenWildlifeNear - who the scare reaches', () => {
@@ -111,13 +131,24 @@ describe('animalFrightSystem - the scatter and the calm-down', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('test map missing');
-    // The helper driven directly (the launch-seam integration lives in hunter-aim.test.ts).
+    // The helper driven directly; the next case drives it through a real loosed shot.
     const cow = wildAtNode(sim, 44, 40, COW);
     const bystander = wildAtNode(sim, 45, 41, COW);
     frightenWildlifeNear(sim.world, ctxOf(sim), terrain, entityNode(sim.world, terrain, cow));
 
     expect(sim.world.has(cow, Frightened)).toBe(true); // the shot-at animal itself bolts
     expect(sim.world.has(bystander, Frightened)).toBe(true); // and so does the herd beside it
+  });
+
+  it('a real loosed shot scatters roaming wildlife around its mark (the launch seam)', () => {
+    const sim = new Simulation({ seed: 1, content: rangedHunterContent(), map: grassCellMap(64, 64) });
+    combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    const cow = wildAtNode(sim, 45, 40, COW);
+
+    let guard = 200;
+    while (!sim.world.has(cow, Frightened) && guard-- > 0) sim.step();
+
+    expect(sim.world.has(cow, Frightened)).toBe(true); // the release itself scares it, not the landing
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

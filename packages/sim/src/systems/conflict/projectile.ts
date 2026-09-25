@@ -1,4 +1,13 @@
-import { Building, Health, Position, Projectile, Resting } from '../../components/index.js';
+import {
+  Building,
+  Health,
+  isWildlife,
+  Owner,
+  Position,
+  Projectile,
+  Resting,
+  Settler,
+} from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -15,6 +24,7 @@ import { entityNode } from '../spatial/nodes.js';
 import { passIndexOf } from './combat-index.js';
 import { projectileStep } from './shot-aim.js';
 import { buildingBodyNodes } from './target-node.js';
+import { mayTarget } from './targeting.js';
 import { hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
@@ -109,12 +119,28 @@ function struckVictim(world: World, ctx: SystemContext, proj: Flight): Entity | 
   const x = terrain.xOf(landing);
   const y = terrain.yOf(landing);
   const onNode = (building: boolean) => (e: Entity) =>
-    e !== proj.source && world.has(e, Building) === building && strikeable(world, e);
+    world.has(e, Building) === building && strikeable(world, e) && strayMayStrike(world, ctx, proj, e);
   return (
     index.nearest(x, y, 0, 0, onNode(false), proj.player)?.entity ??
     index.nearest(x, y, 0, 0, onNode(true), proj.player)?.entity ??
     null
   );
+}
+
+/**
+ * Whether a stray shot strikes `e`, beyond the player sides the combat index already spares. A wild
+ * animal is struck like anyone else. A side without a player, an unowned shooter or bystander, is spared
+ * unless its tribe is hostile to the shooter's, and an ownerless building is never struck.
+ */
+function strayMayStrike(world: World, ctx: SystemContext, proj: Flight, e: Entity): boolean {
+  if (e === proj.source) return false;
+  if (world.has(e, Building)) return world.has(e, Owner);
+  if (isWildlife(world, e)) return true;
+  if (proj.player !== null && world.has(e, Owner)) return true;
+  const shooter = world.tryGet(proj.source, Settler);
+  const bystander = world.tryGet(e, Settler);
+  if (shooter === undefined || bystander === undefined) return false;
+  return mayTarget(world, ctx, proj.source, shooter.tribe, shooter.jobType, e, bystander.tribe);
 }
 
 /** Whether `e` is there to be struck: alive, placed, and not sheltering indoors. */
