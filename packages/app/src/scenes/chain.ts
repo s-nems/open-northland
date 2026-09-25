@@ -96,7 +96,7 @@ export const chainScene: SceneDefinition = {
       predicate: (sim) => totalOf(sim, GOOD_FLOUR) > 0,
     },
     {
-      label: 'the well drew water',
+      label: 'the well filled with water',
       predicate: (sim) => totalOf(sim, GOOD_WATER) > 0,
     },
     {

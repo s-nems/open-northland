@@ -76,6 +76,12 @@ describe('fillBuildingRecipes', () => {
     ]);
   });
 
+  it('gives no recipe to a house that refills its own stock', () => {
+    const well = BuildingType.parse({ ...building(10, 'well', [22]), refillsOwnStock: true });
+    const [filled] = fillBuildingRecipes([well], GOODS, []);
+    expect(filled?.recipes).toEqual([]);
+  });
+
   it('leaves a non-producing building (empty produces) with no recipes', () => {
     const [store] = fillBuildingRecipes([building(1, 'hq', [])], GOODS, []);
     expect(store?.recipes).toEqual([]);

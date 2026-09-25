@@ -148,6 +148,7 @@ export interface SandboxBuildingRow {
   upgradeTarget?: number;
   buildOnBioPattern?: boolean;
   collectAtomic?: number;
+  refillsOwnStock?: boolean;
   canEnableDefenceMode?: boolean;
   /** How many civilians the building shelters in defence mode. */
   shelterCapacity?: number;
@@ -235,18 +236,10 @@ function joineryUpgrade(outputCapacity: number, inputCapacity: number): Partial<
 /** A `workers` entry here replaces the extracted `BUILDING_WORKER_SLOTS` default. */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
-  // Extracted shape ("work well 00"): water-only store, `logicproduction 1`. Water is producedInHouse
-  // in `goodtypes.ini`, not map-gathered, hence the input-less recipe.
+  // Extracted shape ("work well 00"): water-only store, `logicproduction 1`, refilled by the well itself.
   [BUILDING_WELL]: {
     stock: [{ goodType: GOOD_WATER, capacity: WELL_WATER_CAPACITY, initial: 0 }],
     produces: [GOOD_WATER],
-    recipes: [
-      {
-        inputs: [],
-        outputs: [{ goodType: GOOD_WATER, amount: 1 }],
-        ticks: DEFAULT_RECIPE_TICKS,
-      },
-    ],
   },
   // Extracted shape ("work bakery 00"): three-slot store, `logicproduction 19`. The 1 water + 1 flour
   // per bread is a named approximation; `productionInputGoods 11 1` names the inputs, not the amounts.
@@ -481,6 +474,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     ...(upgradeTarget !== undefined ? { upgradeTarget } : {}),
     ...(b.buildOnBioPattern ? { buildOnBioPattern: true } : {}),
     ...(b.collectAtomic !== undefined ? { collectAtomic: b.collectAtomic } : {}),
+    ...(b.refillsOwnStock ? { refillsOwnStock: true } : {}),
     ...(b.canEnableDefenceMode ? { canEnableDefenceMode: true, shelterCapacity: shelterCapacityFor(b) } : {}),
     ...(slots !== undefined ? { workers: slots } : {}),
     ...(b.kind === 'home' ? homeRow(b) : {}),

@@ -203,7 +203,7 @@ function gatherWork(
 /**
  * The craft product toggles for a settler bound to a recipe workplace, or null when there is nothing to
  * choose. Operator slots follow the sim's `operatorJobsOf`: worker slots minus the carrier transport
- * slot, unless every slot is a carrier one (the well), when the carrier does choose.
+ * slot, unless every slot is a carrier one, when the carrier does choose.
  */
 function craftChoicesFor(
   ctx: UnitPanelModelContext,

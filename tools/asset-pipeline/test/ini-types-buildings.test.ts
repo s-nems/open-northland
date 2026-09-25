@@ -17,6 +17,7 @@ describe('extractBuildings', () => {
         homeSize: 0,
         buildOnBioPattern: false,
         canEnableDefenceMode: true, // logicCanEnableDefenceMode 1
+        refillsOwnStock: false,
         workers: [{ jobType: 51, count: 3 }],
         stock: [
           { goodType: 20, capacity: 90, initial: 0 },
@@ -35,6 +36,7 @@ describe('extractBuildings', () => {
         homeSize: 1, // logichomesize
         buildOnBioPattern: false,
         canEnableDefenceMode: false,
+        refillsOwnStock: false,
         workers: [],
         stock: [{ goodType: 20, capacity: 4, initial: 1 }],
         produces: [],
@@ -50,6 +52,7 @@ describe('extractBuildings', () => {
         homeSize: 0,
         buildOnBioPattern: true,
         canEnableDefenceMode: false,
+        refillsOwnStock: false,
         workers: [{ jobType: 51, count: 1 }],
         stock: [],
         produces: [22, 20], // logicproduction output good ids, in file order
@@ -66,6 +69,7 @@ describe('extractBuildings', () => {
         buildOnBioPattern: true,
         collectAtomic: 44, // the engine's well pump for logictype 10, not an .ini key
         canEnableDefenceMode: false,
+        refillsOwnStock: true, // the engine refills the well's water every game second, no worker needed
         workers: [{ jobType: 51, count: 1 }],
         stock: [{ goodType: 20, capacity: 1, initial: 0 }],
         produces: [20],
@@ -82,6 +86,7 @@ describe('extractBuildings', () => {
         buildOnBioPattern: true,
         collectAtomic: 45, // the engine's hive pick-up for logictype 11
         canEnableDefenceMode: false,
+        refillsOwnStock: true,
         workers: [{ jobType: 51, count: 1 }],
         stock: [{ goodType: 22, capacity: 1, initial: 0 }],
         produces: [22],

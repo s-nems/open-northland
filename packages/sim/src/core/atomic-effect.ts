@@ -31,10 +31,6 @@ export type AtomicEffect =
    *  its feet with `store` null. */
   | { readonly kind: 'cartUnload'; readonly store: Entity | null; readonly goodType: number }
   | { readonly kind: 'produce'; readonly recipeOutput: number }
-  /** A consumer worker draws one unit of `goodType` from the input-less shared utility `utility` (a well
-   *  for water, a hive for honey) onto its back. The utility mints from no inputs, so the draw creates
-   *  the unit; a utility gone since the planner chose it still yields. */
-  | { readonly kind: 'draw'; readonly goodType: number; readonly utility: Entity }
   | {
       readonly kind: 'eat';
       readonly goodType: number;

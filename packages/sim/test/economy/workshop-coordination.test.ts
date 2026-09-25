@@ -285,7 +285,7 @@ function secondRecipe(type: ReturnType<typeof workshop>) {
 const WATER = 207;
 const WELL = 30;
 
-/** The forge's second recipe also wants water, which only an empty well beside it can draw. */
+/** The forge's second recipe also wants water, which only the self-filling well beside it holds. */
 function forgeBesideWell() {
   const base = testContent();
   const forge = workshop(base, FORGE);
@@ -305,20 +305,20 @@ function forgeBesideWell() {
         id: 'work_well_00',
         kind: 'workplace',
         collectAtomic: 44,
+        refillsOwnStock: true,
         workers: [{ jobType: 24, count: 1 }],
         stock: [{ goodType: WATER, capacity: 1, initial: 0 }],
         produces: [WATER],
-        recipes: [{ inputs: [], outputs: [{ goodType: WATER, amount: 1 }], ticks: 4 }],
       },
     ],
   });
 }
 
-it('reserves a shared ingredient while the other operator walks to an empty well', () => {
+it('reserves a shared ingredient while the other operator walks to the well', () => {
   const sim = new Simulation({ seed: 1, content: forgeBesideWell(), map: grassMap(14, 1) });
   const shop = buildingAt(sim, FORGE, 0, 0);
   const store = buildingAt(sim, HEADQUARTERS, 3, 0);
-  buildingAt(sim, WELL, 10, 0);
+  buildingAt(sim, WELL, 10, 0, [[WATER, 1]]);
   settlerAt(sim, 13, 0, WOODCUTTER);
   for (const good of [PLANK, FOOD_SIMPLE]) {
     const worker = settlerAt(sim, 0, 0, CARPENTER, shop);
@@ -335,15 +335,15 @@ it('reserves a shared ingredient while the other operator walks to an empty well
   ).toBe(1);
 });
 
-it('keeps the reservation on the tick the fetcher reaches the well, before its draw starts', () => {
+it('keeps the reservation on the tick the fetcher reaches the well, before its pickup starts', () => {
   const sim = new Simulation({ seed: 1, content: forgeBesideWell(), map: grassMap(14, 1) });
   const shop = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
-  const well = buildingAt(sim, WELL, 10, 0);
+  const well = buildingAt(sim, WELL, 10, 0, [[WATER, 1]]);
   settlerAt(sim, 13, 0, WOODCUTTER);
   const present = settlerAt(sim, 0, 0, CARPENTER, shop);
   sim.world.mut(present, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
   sim.world.add(present, CraftSelection, { goods: [PLANK], cursor: 0 });
-  // Arrived: movement has retired the walk, and the planner starts the draw only next tick.
+  // Arrived: movement has retired the walk, and the planner starts the pickup only next tick.
   const fetcher = settlerAt(sim, 10, 0, CARPENTER, shop);
   sim.world.add(fetcher, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
   sim.world.add(fetcher, SupplyRun, { site: shop, goodType: WATER, amount: 1, source: well });

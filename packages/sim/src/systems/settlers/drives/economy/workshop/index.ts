@@ -16,10 +16,10 @@ import {
 } from '../../../../economy/production.js';
 import { recipeOutputsEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
-import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../../stores/index.js';
+import { isWorkplaceOperator, mergedRecipeOf } from '../../../../stores/index.js';
 import { stampSupplyRun } from '../../../../stores/supply-tally.js';
 import { type WorkshopWorkforce, workshopWorkforce } from '../../../../stores/workshop-workforce.js';
-import { atOrWalk, startDraw, startPickup } from '../../../atomics/start.js';
+import { atOrWalk, startPickup } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
 import type { PlannerSpacing } from '../../../planner/spacing.js';
@@ -198,8 +198,9 @@ export function planProducer(
 }
 
 /**
- * Ferry inputs and outputs for a carrier bound to a recipe workplace. Input slots are topped up before
- * output is removed so the operators do not starve; that priority is the existing named approximation.
+ * Ferry inputs and outputs for a carrier bound to a recipe workplace, or carry a self-filling house's
+ * goods out. Input slots are topped up before output is removed so the operators do not starve; that
+ * priority is the existing named approximation.
  */
 export function planWorkshopSupplier(
   plan: PlannerContext,
@@ -210,25 +211,27 @@ export function planWorkshopSupplier(
   const { world, ctx } = plan;
   const worker = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
-  if (recipe === undefined) return;
-
-  const source = nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL);
-  if (source !== null) {
-    routeToInputSource(plan, workplace, source, seatClaims);
-    return;
+  if (recipe !== undefined) {
+    const source = nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL);
+    if (source !== null) {
+      routeToInputSource(plan, workplace, source, seatClaims);
+      return;
+    }
   }
 
   if (haulWorkplaceOutput(plan, workplace)) return;
   // A carrier that is itself the workplace's operator keeps standing on the door so the production
-  // presence gate still fires; one at a workshop run by other operators drives nothing and may loiter.
-  loiterByDoor(plan, workplace, spacing, isWorkplaceOperator(world, ctx, workplace, worker.jobType));
+  // presence gate still fires; one at a workshop run by other operators, or at a house that fills
+  // itself, drives nothing and may loiter.
+  const drivesProduction = recipe !== undefined && isWorkplaceOperator(world, ctx, workplace, worker.jobType);
+  loiterByDoor(plan, workplace, spacing, drivesProduction);
 }
 
 /**
- * Send the worker to a chosen input source: a fetch lifts one carry-load out of a store, a draw cranks a
- * shared utility in place for one unit. A trip carries a single unit whoever makes it, craftsman or bound
- * carrier: the original reserves exactly one against both ends of the walk before it sets off
- * (+1 at the work house, -1 at the source), so a recipe wanting two of a good is two walks.
+ * Send the worker to lift one carry-load of a missing input out of `source`'s store. A trip carries a
+ * single unit whoever makes it, craftsman or bound carrier: the original reserves exactly one against both
+ * ends of the walk before it sets off (+1 at the work house, -1 at the source), so a recipe wanting two of
+ * a good is two walks.
  */
 function routeToInputSource(
   plan: PlannerContext,
@@ -242,19 +245,11 @@ function routeToInputSource(
     site: workplace,
     goodType: source.goodType,
     amount: CARRY_CAPACITY,
-    source: source.kind === 'fetch' ? source.store : source.utility,
+    source: source.store,
   });
   seatClaims.noteErrand(entity, { workplace, goodType: source.goodType, amount: CARRY_CAPACITY });
-  if (source.kind === 'fetch') {
-    atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
-      startPickup(world, ctx, entity, worker, source.store, source.goodType, CARRY_CAPACITY),
-    );
-    return;
-  }
-  // A draw runs the utility recipe's own `ticks`, its work time for one unit.
-  const ticks = recipesByProductOf(world, ctx, source.utility)?.get(source.goodType)?.ticks ?? 1;
-  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.utility, here), () =>
-    startDraw(world, ctx, entity, source.goodType, source.utility, ticks),
+  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
+    startPickup(world, ctx, entity, worker, source.store, source.goodType, CARRY_CAPACITY),
   );
 }
 
@@ -276,9 +271,8 @@ function holdInsideWorkplace(plan: PlannerContext, workplace: Entity, seats?: Wo
 /**
  * Loiter beside the workplace door rather than on it, so a bound worker with nothing to do neither runs
  * the craft nor hides indoors, and may strike up an idle chat with a nearby idler. One that drives the
- * craft by its presence (the well's or hive's carrier) stands on the door in view, where the operator
- * gate counts it and the next unit is lifted from. Unowned fixtures keep the wait-inside behaviour so
- * their state hashes stay byte-identical.
+ * craft by its presence stands on the door in view, where the operator gate counts it. Unowned fixtures
+ * keep the wait-inside behaviour so their state hashes stay byte-identical.
  */
 function loiterByDoor(
   plan: PlannerContext,

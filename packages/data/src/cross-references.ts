@@ -96,6 +96,8 @@ function checkBuildings(set: ContentSet, { goodIds, jobIds }: IdSets): string[] 
           errors.push(`building "${b.id}" recipe references unknown goodType ${io.goodType}`);
       }
     }
+    if (b.refillsOwnStock && b.recipes.length > 0)
+      errors.push(`building "${b.id}" refills its own stock and also carries a recipe`);
   }
   return errors;
 }

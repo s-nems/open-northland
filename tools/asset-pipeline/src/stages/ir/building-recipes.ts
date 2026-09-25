@@ -33,12 +33,12 @@ export function stripVehicleGoods(
  * Materializes each producing building's `recipes` from its `produces` list, taking each recipe's inputs
  * from the output good's own `productionInputs`, which is the only place the source carries them. Inputs
  * are sorted by `goodType` so the result never depends on source order. A building that already carries
- * recipes, or that produces only field-farmed goods, is returned unchanged.
+ * recipes, that produces only field-farmed goods, or that refills its own stock, is returned unchanged.
  *
  * A building whose worker jobs enable goods (`tribetypes.ini` `jobEnablesGood`) makes only those: the
  * original offers a worker the house's production list restricted to what its job enables, which leaves
  * the animal farm breeding sheep and cattle while its wool, leather and meat come from the slaughter
- * clip. A house whose workers enable nothing (the well's and hive's carriers) keeps its whole list.
+ * clip. A house whose workers enable nothing keeps its whole list.
  */
 export function fillBuildingRecipes(
   buildings: readonly BuildingType[],
@@ -50,7 +50,7 @@ export function fillBuildingRecipes(
   const enabledByJob = goodsEnabledByJob(tribes);
 
   return buildings.map((b) => {
-    if (b.recipes.length > 0 || b.produces.length === 0) return b;
+    if (b.recipes.length > 0 || b.produces.length === 0 || b.refillsOwnStock) return b;
 
     const enabled = new Set(b.workers.flatMap((w) => [...(enabledByJob.get(w.jobType) ?? [])]));
     const amounts = new Map<number, number>(); // distinct product → logicproduction multiplicity

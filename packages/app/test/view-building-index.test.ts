@@ -20,6 +20,7 @@ const building = (typeId: number, id: string): ContentBuilding => ({
   recipes: [],
   construction: [],
   buildOnBioPattern: false,
+  refillsOwnStock: false,
   canEnableDefenceMode: false,
   shelterCapacity: 0,
   footprint: FOOTPRINT,

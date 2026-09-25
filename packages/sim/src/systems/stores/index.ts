@@ -41,10 +41,9 @@ export {
   isWorkplaceOutput,
   mayFetchGoodFrom,
   mergedRecipeOf,
-  producesGoodWithoutInputs,
   recipeConsumes,
   recipesByProductOf,
-  typeProducesGoodWithoutInputs,
+  refillsOwnStock,
   workplaceStocksGood,
   workplaceStoredGoods,
 } from './workplace.js';

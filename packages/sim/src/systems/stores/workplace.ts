@@ -88,28 +88,11 @@ export function isWorkplaceOutput(
   return mergedRecipeOf(world, ctx, building)?.outputs.some((o) => o.goodType === goodType) === true;
 }
 
-/**
- * Whether `buildingType` is an unstaffed shared utility that mints `goodType` from no inputs, a well for
- * water or a hive for honey, so a consumer can crank it in place. Data-driven through
- * `inputlessProducersByGood`; a staffed input-less producer does not qualify.
- */
-export function typeProducesGoodWithoutInputs(
-  ctx: SystemContext,
-  buildingType: number,
-  goodType: number,
-): boolean {
-  return contentIndex(ctx.content).inputlessProducersByGood.get(goodType)?.has(buildingType) ?? false;
-}
-
-/** {@link typeProducesGoodWithoutInputs} for a building entity; the caller gates built and reachable. */
-export function producesGoodWithoutInputs(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  goodType: number,
-): boolean {
+/** Whether `building` tops its own produced goods up with no worker: the well and the hive. It carries no
+ *  recipe, yet its stock is output, not a passive store's reserve. */
+export function refillsOwnStock(world: World, ctx: ContentContext, building: Entity): boolean {
   const b = world.tryGet(building, Building);
-  return b !== undefined && typeProducesGoodWithoutInputs(ctx, b.buildingType, goodType);
+  return b !== undefined && contentIndex(ctx.content).buildings.get(b.buildingType)?.refillsOwnStock === true;
 }
 
 /** The job types a building type's worker slots name (`logicworker <job> <count>`). */

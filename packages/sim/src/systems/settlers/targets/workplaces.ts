@@ -12,7 +12,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
 import { workplaceStaffable } from '../../progression/index.js';
-import { buildingWorkerJobs, mergedRecipeOf } from '../../stores/index.js';
+import { buildingWorkerJobs, mergedRecipeOf, refillsOwnStock } from '../../stores/index.js';
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 
@@ -41,7 +41,8 @@ export function boundWorkplaceTarget(
   // applied as a blanket because the flag is not extracted). An upgrading workplace stashes its stock,
   // which reads as empty input slots, so an ungated producer would shuttle inputs store to store.
   if (world.has(workplace, UnderConstruction)) return null;
-  if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
+  if (mergedRecipeOf(world, ctx, workplace) === undefined && !refillsOwnStock(world, ctx, workplace))
+    return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;
   if (!workplaceStaffable(world, ctx, ownerOf(world, workplace), tribe, building.buildingType)) return null;
   if (!world.has(workplace, Position)) return null;

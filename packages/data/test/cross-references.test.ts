@@ -135,6 +135,22 @@ describe('validateCrossReferences', () => {
       },
       error: /building "shed" recipe references unknown goodType 99/,
     },
+    {
+      name: 'a self-filling house that also carries a recipe',
+      overrides: {
+        buildings: [
+          {
+            typeId: 1,
+            id: 'well',
+            kind: 'workplace',
+            refillsOwnStock: true,
+            produces: [1],
+            recipes: [{ inputs: [], outputs: [{ goodType: 1, amount: 1 }] }],
+          },
+        ],
+      },
+      error: /building "well" refills its own stock and also carries a recipe/,
+    },
     // tribes
     {
       name: 'an atomic binding naming an unknown job',

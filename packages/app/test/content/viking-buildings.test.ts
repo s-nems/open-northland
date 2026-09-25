@@ -16,6 +16,7 @@ interface IrBuilding {
   readonly kind: string;
   readonly buildOnBioPattern?: boolean;
   readonly collectAtomic?: number;
+  readonly refillsOwnStock?: boolean;
   readonly canEnableDefenceMode?: boolean;
 }
 interface IrBuildingBob {
@@ -42,6 +43,10 @@ describe.runIf(hasRealIr())('viking building catalog vs real IR', () => {
       );
       // The engine's per-type shelf pick-up: the well pump and the hive pick-up, nothing else.
       expect(real?.collectAtomic, `collect atomic for ${cat.id}`).toBe(cat.collectAtomic);
+      // The engine's self-filling stock: again the well and the hive.
+      expect(real?.refillsOwnStock ?? false, `self-filling flag for ${cat.id}`).toBe(
+        cat.refillsOwnStock === true,
+      );
       // The extracted `logicCanEnableDefenceMode`: exactly the headquarters, barracks and both towers.
       expect(real?.canEnableDefenceMode ?? false, `defence flag for ${cat.id}`).toBe(
         cat.canEnableDefenceMode === true,

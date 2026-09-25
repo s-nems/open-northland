@@ -12,7 +12,7 @@ import {
   stockCapacity,
 } from '../../../../stores/index.js';
 import type { PlannerContext } from '../../../planner/context.js';
-import type { InputSourceKind } from '../../../targets/index.js';
+import { QUALIFIES } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 
 // The producer supply scans: a worker fetches the recipe inputs its workplace is short on and hauls the
@@ -64,10 +64,11 @@ export function workSeatCount(
   return running + startable;
 }
 
-/** Where a producer worker goes for one unit of a missing recipe input. */
-export type MissingInputSource =
-  | { readonly kind: 'fetch'; readonly store: Entity; readonly goodType: number }
-  | { readonly kind: 'draw'; readonly utility: Entity; readonly goodType: number };
+/** The store a producer worker fetches one unit of a missing recipe input from. */
+export interface MissingInputSource {
+  readonly store: Entity;
+  readonly goodType: number;
+}
 
 /**
  * How far a fetch tops an input up. `restockToCapacity` raises the target from the recipe amount to the
@@ -79,17 +80,11 @@ export interface InputShortfall {
   readonly inbound?: (goodType: number) => number;
 }
 
-const FETCH: { readonly payload: 'fetch' } = { payload: 'fetch' };
-const DRAW: { readonly payload: 'draw' } = { payload: 'draw' };
-
 /**
  * The source for the first input `workplace` is short of, or null when every input is stocked and
- * nothing reachable can supply one: the nearest of a `fetch` from a store that holds the good, or a
- * `draw` from a built utility that mints the good from no inputs, cranked in place for one unit. Both
- * kinds compete in one canonical scan, so a bakery beside a well draws there rather than trek to a
- * distant HQ that also holds water. Either way the trip brings one unit, so a shortfall of two is two
- * trips. Never from another player's store or utility, nor a cell the worker failed to reach. Source
- * basis: authored.
+ * nothing reachable holds one: the nearest store that holds the good, a well's or hive's own shelf
+ * included. The trip brings one unit, so a shortfall of two is two trips. Never from another player's
+ * store, nor a cell the worker failed to reach. Source basis: authored.
  */
 export function nearestMissingInputSource(
   plan: PlannerContext,
@@ -106,19 +101,15 @@ export function nearestMissingInputSource(
       ? stockCapacity(world, ctx, workplace, input.goodType)
       : input.amount;
     if (have >= target) continue;
-    const band = targets.bands.inputSources(input.goodType);
-    const winner = band.index.nearest<InputSourceKind>(
+    const winner = targets.bands.inputSources(input.goodType).nearest(
       here,
-      // The workplace never supplies itself; every other member's kind was derived with the band.
-      (e) => (e === workplace ? null : band.kindOf.get(e) === 'draw' ? DRAW : FETCH),
+      // The workplace never supplies itself.
+      (e) => (e === workplace ? null : QUALIFIES),
       plan.limit ?? undefined,
       avoid,
       sameSideAs(world, plan.owner),
     );
-    if (winner === null) continue;
-    return winner.payload === 'draw'
-      ? { kind: 'draw', utility: winner.entity, goodType: input.goodType }
-      : { kind: 'fetch', store: winner.entity, goodType: input.goodType };
+    if (winner !== null) return { store: winner.entity, goodType: input.goodType };
   }
   return null;
 }

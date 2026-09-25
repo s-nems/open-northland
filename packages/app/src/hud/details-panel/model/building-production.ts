@@ -148,6 +148,8 @@ export function productionModel(
   const bestPct = cycleFrontRunners(ent);
   const herdRows = livestockHerdRows(ctx, def, ent, bestPct);
   if (herdRows.length > 0) return { kind: 'recipe', rows: herdRows };
+  // A self-filling house (the well, the hive) runs no craft cycle, so a production bar would never move.
+  if (def?.refillsOwnStock === true) return null;
   const outputs = recipeOutputs(ctx, def);
   if (outputs.length === 0) return null; // not a producer - no Produkcja window
   const inputsByProduct = new Map<number, string>();

@@ -8,31 +8,15 @@ import {
   Upgrading,
   Vehicle,
 } from '../../../components/index.js';
-import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { isTemple } from '../../readviews/index.js';
-import {
-  accessibleStockAmounts,
-  mayFetchGoodFrom,
-  typeProducesGoodWithoutInputs,
-} from '../../stores/index.js';
+import { accessibleStockAmounts, mayFetchGoodFrom } from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { FetchableStock } from './stores/fetchable-stock.js';
 import { buriedUnderBuilding, canStoreGood } from './stores/stock.js';
-
-/** How a missing-input candidate supplies the good: lift it from a store's stock, or crank a built
- *  input-less utility (a well, a hive) in place. */
-export type InputSourceKind = 'fetch' | 'draw';
-
-/** The missing-input band for one good: its members re-indexed for the ring search, with each member's
- *  derived kind so no query re-probes stock or content. */
-export interface InputSourceBand {
-  readonly index: InteractionCellIndex;
-  readonly kindOf: ReadonlyMap<Entity, InputSourceKind>;
-}
 
 /**
  * Tick-local memo of question-keyed candidate bands: the candidates passing one question's
@@ -50,7 +34,7 @@ export class TargetBands {
   private readonly holdingByGood = new Map<number, InteractionCellIndex>();
   private readonly sinksByGood = new Map<number, InteractionCellIndex>();
   private readonly storageSinksByGood = new Map<number, InteractionCellIndex>();
-  private readonly inputSourcesByGood = new Map<number, InputSourceBand>();
+  private readonly inputSourcesByGood = new Map<number, InteractionCellIndex>();
   private templeBand: InteractionCellIndex | undefined;
   private stamp: number;
 
@@ -98,22 +82,13 @@ export class TargetBands {
     return index;
   }
 
-  /** Fetch and draw sources for a missing recipe input of `goodType`; fetch wins when a candidate
-   *  qualifies both ways, matching the unshared accept's test order. */
-  inputSources(goodType: number): InputSourceBand {
+  /** Stores a producer may fetch a missing recipe input of `goodType` from. */
+  inputSources(goodType: number): InteractionCellIndex {
     this.ensureFresh();
     let band = this.inputSourcesByGood.get(goodType);
     if (band === undefined) {
       const walls = buildingBlockedCells(this.world, this.ctx, this.terrain);
-      const kindOf = new Map<Entity, InputSourceKind>();
-      const members: Entity[] = [];
-      for (const e of this.stockpiles) {
-        const kind = this.inputSourceKind(walls, e, goodType);
-        if (kind === null) continue;
-        kindOf.set(e, kind);
-        members.push(e);
-      }
-      band = { index: this.indexOver(members), kindOf };
+      band = this.indexOver(this.stockpiles.filter((e) => this.isInputSource(walls, e, goodType)));
       this.inputSourcesByGood.set(goodType, band);
     }
     return band;
@@ -126,21 +101,13 @@ export class TargetBands {
     return this.templeBand;
   }
 
-  private inputSourceKind(walls: ReadonlySet<NodeId>, e: Entity, goodType: number): InputSourceKind | null {
+  private isInputSource(walls: ReadonlySet<NodeId>, e: Entity, goodType: number): boolean {
     const { world, ctx, terrain } = this;
-    const stock = accessibleStockAmounts(world, e);
-    if (
-      (stock?.get(goodType) ?? 0) > 0 &&
+    return (
+      (accessibleStockAmounts(world, e)?.get(goodType) ?? 0) > 0 &&
       mayFetchGoodFrom(world, ctx, e, goodType) &&
       !buriedUnderBuilding(world, terrain, walls, e)
-    ) {
-      return 'fetch';
-    }
-    const b = world.tryGet(e, Building);
-    if (b !== undefined && b.built >= ONE && typeProducesGoodWithoutInputs(ctx, b.buildingType, goodType)) {
-      return 'draw';
-    }
-    return null;
+    );
   }
 
   private indexOver(members: readonly Entity[]): InteractionCellIndex {

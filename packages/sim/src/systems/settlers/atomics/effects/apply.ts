@@ -16,7 +16,6 @@ import { loadCart, unloadCart } from '../../../trade/index.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
   consumeFood,
-  drawUtilityGood,
   drinkDraught,
   dropCarriedLoad,
   equipFromStore,
@@ -60,9 +59,6 @@ export function applyEffect(
       return;
     case 'pickup':
       pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);
-      return;
-    case 'draw':
-      drawUtilityGood(world, settler, effect.goodType);
       return;
     case 'pileup':
       if (pileupIntoStore(world, ctx, settler, effect.store) > 0) grantCarryExperience(world, ctx, settler);

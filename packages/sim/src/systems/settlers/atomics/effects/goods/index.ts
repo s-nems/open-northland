@@ -18,5 +18,5 @@ export {
   spillOverRings,
   stackOntoTile,
 } from './piles.js';
-export { drawUtilityGood, pickupFromStore, pileupIntoStore } from './transfer.js';
+export { pickupFromStore, pileupIntoStore } from './transfer.js';
 export { isUsed } from './wear.js';

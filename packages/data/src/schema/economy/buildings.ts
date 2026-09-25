@@ -106,6 +106,12 @@ export const BuildingType = z.strictObject({
    * 10) and 45 at the hive (11), else 22.
    */
   collectAtomic: AtomicId.optional(),
+  /**
+   * The house tops each good it produces up by one unit per game second while below its stock capacity,
+   * with no worker: the well's water and the hive's honey. Engine behavior keyed on `logictype` 10 and 11,
+   * not an `.ini` key; such a house carries no recipe.
+   */
+  refillsOwnStock: z.boolean().default(false),
   /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */
   canEnableDefenceMode: z.boolean().default(false),
   /**

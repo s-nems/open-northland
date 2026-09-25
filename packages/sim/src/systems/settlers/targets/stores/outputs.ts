@@ -3,7 +3,12 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { accessibleStockAmounts, isWorkplaceOutput, mergedRecipeOf } from '../../../stores/index.js';
+import {
+  accessibleStockAmounts,
+  isWorkplaceOutput,
+  mergedRecipeOf,
+  refillsOwnStock,
+} from '../../../stores/index.js';
 import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 
 /**
@@ -16,7 +21,7 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
   for (const e of stockpiles) {
     const stock = accessibleStockAmounts(world, e);
     if (stock === undefined) continue;
-    if (mergedRecipeOf(world, ctx, e) === undefined) continue;
+    if (isPassiveStore(world, ctx, e)) continue;
     for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
       if (amount > 0 && isWorkplaceOutput(world, ctx, e, goodType)) return true;
     }
@@ -26,8 +31,8 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
 
 /**
  * The nearest workplace with a finished output good a carrier should haul away, with the good to haul,
- * or null when nothing needs hauling. A candidate is a building whose type carries a recipe, so a
- * stocked good is finished output rather than a passive store's reserve. The `deliverable` check keeps
+ * or null when nothing needs hauling. A candidate is a building whose type carries a recipe or fills
+ * itself, so a stocked good is finished output rather than a passive store's reserve. The `deliverable` check keeps
  * the carrier from picking up a good it could never deliver and would shuttle back and forth.
  */
 export function nearestWorkplaceOutput(
@@ -66,7 +71,7 @@ function haulableOutputGood(
   // ordinary inventory, so a carrier cannot strip the construction hold.
   const stock = accessibleStockAmounts(world, entity);
   if (stock === undefined) return null;
-  if (mergedRecipeOf(world, ctx, entity) === undefined) return null; // passive stores aren't hauled from
+  if (isPassiveStore(world, ctx, entity)) return null; // passive stores aren't hauled from
   for (const [goodType, amount] of stockpileEntries({ amounts: stock })) {
     if (amount <= 0) continue;
     if (!isWorkplaceOutput(world, ctx, entity, goodType)) continue; // only haul outputs
@@ -74,4 +79,8 @@ function haulableOutputGood(
     return goodType;
   }
   return null;
+}
+
+function isPassiveStore(world: World, ctx: SystemContext, e: Entity): boolean {
+  return mergedRecipeOf(world, ctx, e) === undefined && !refillsOwnStock(world, ctx, e);
 }

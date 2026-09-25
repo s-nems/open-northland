@@ -45,36 +45,6 @@ export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> 
   return map;
 }
 
-/**
- * `goodType → the building typeIds a consumer self-serves it from` - the shared unstaffed utilities that
- * mint a good from no inputs (the well drawing water, the hive drawing honey). A type qualifies only
- * when it has a recipe producing the good with no inputs and every worker slot is a carrier or gatherer
- * rather than an operator trade, which excludes a staffed input-less producer like the animal farm.
- * First-wins per typeId.
- */
-export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
-  const isOperatorSlot = operatorSlotRule(content);
-  const map = new Map<number, Set<number>>();
-  const seen = new Set<number>();
-  for (const b of content.buildings) {
-    if (seen.has(b.typeId)) continue;
-    seen.add(b.typeId);
-    if (b.workers.some((w) => isOperatorSlot(w.jobType))) continue; // staffed - not a self-service tap
-    for (const recipe of b.recipes) {
-      if (recipe.inputs.length > 0) continue;
-      const product = recipe.outputs[0]?.goodType;
-      if (product === undefined) continue;
-      let types = map.get(product);
-      if (types === undefined) {
-        types = new Set<number>();
-        map.set(product, types);
-      }
-      types.add(b.typeId);
-    }
-  }
-  return map;
-}
-
 /** Whether a worker slot's trade operates the craft: any trade but a carrier or a gatherer. Approximation:
  *  the readable data does not say which slot operates the craft. */
 function operatorSlotRule(content: ContentSet): (jobType: number) => boolean {
@@ -97,7 +67,7 @@ export function workerJobSets(content: ContentSet): ReadonlyMap<number, Readonly
 /**
  * The per-building-type operator-job sets: the worker slots minus the carrier and gatherer trades, so a
  * gatherer fetching a workshop's raw input never satisfies the production worker-presence gate. A
- * carrier-or-gatherer-only type keeps its whole slot set, since the well's lone carrier is its operator.
+ * carrier-or-gatherer-only type keeps its whole slot set, since its lone carrier is then its operator.
  * Keyed like {@link workerJobSets}; a type with no worker slots maps to the empty set.
  */
 export function operatorJobSets(

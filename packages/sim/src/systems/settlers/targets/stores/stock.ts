@@ -21,6 +21,7 @@ import {
   MAX_GROUND_STACK,
   mayFetchGoodFrom,
   mergedRecipeOf,
+  refillsOwnStock,
   reservedSourceSupplyOf,
 } from '../../../stores/index.js';
 import type { TargetBands } from '../bands.js';
@@ -86,6 +87,11 @@ export function canStoreGood(
     for (const output of recipe.outputs) {
       if (output.goodType === slot.goodType) return false;
     }
+  } else if (
+    refillsOwnStock(world, ctx, entity) &&
+    buildingProduces(world, ctx, entity).includes(slot.goodType)
+  ) {
+    return false;
   }
   return (world.get(entity, Stockpile).amounts.get(slot.goodType) ?? 0) < slot.capacity;
 }

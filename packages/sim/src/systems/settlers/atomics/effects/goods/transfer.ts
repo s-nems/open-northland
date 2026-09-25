@@ -1,5 +1,4 @@
 import {
-  CARRY_CAPACITY,
   Carrying,
   DeliveryFlag,
   Stockpile,
@@ -15,14 +14,6 @@ import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '..
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
-
-/**
- * Resolve one completed `draw`: mint one unit of `goodType` onto the worker's back - an input-less utility
- * creates its good. The worker reached here empty, so {@link addCarry} cannot throw on a foreign load.
- */
-export function drawUtilityGood(world: World, settler: Entity, goodType: number): void {
-  addCarry(world, settler, goodType, CARRY_CAPACITY); // one trip's worth; more water takes more trips
-}
 
 /**
  * Resolve one completed `pickup`: move up to `amount` of `goodType` from the source's {@link Stockpile}

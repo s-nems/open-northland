@@ -25,7 +25,6 @@ import { constructionBills } from './content-index/construction.js';
 import { jobRoleSets } from './content-index/jobs.js';
 import { livestockTables } from './content-index/livestock.js';
 import {
-  inputlessProducerTypes,
   mergedRecipes,
   operatorJobSets,
   recipeProductTables,
@@ -116,12 +115,6 @@ export interface ContentIndex {
    * non-producing type.
    */
   readonly mergedRecipeByBuilding: ReadonlyMap<number, Recipe>;
-  /**
-   * `goodType → building typeIds that produce it from an input-less recipe` - the shared utilities a
-   * consumer self-serves against (the well for water, the hive for honey). Absent for a good no
-   * building mints from nothing.
-   */
-  readonly inputlessProducersByGood: ReadonlyMap<number, ReadonlySet<number>>;
   /** The worn-weapon override key; first-wins per pair in source order. */
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** How a jobbed combatant binds its class weapon; first-wins per pair in source order. */
@@ -230,7 +223,6 @@ function buildIndex(content: ContentSet): ContentIndex {
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
     recipeByProductByBuilding: recipeProductTables(content),
     mergedRecipeByBuilding: mergedRecipes(content),
-    inputlessProducersByGood: inputlessProducerTypes(content),
     atomicBindingsByTribe: atomicBindingTables(content),
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins

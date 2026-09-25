@@ -21,6 +21,9 @@ const COLLECT_ATOMIC_BY_LOGIC_TYPE: Readonly<Record<number, number>> = {
   11: 45,
 };
 
+/** The engine's self-filling house types joined into `BuildingType.refillsOwnStock`: the well and the hive. */
+const SELF_FILLING_LOGIC_TYPES: ReadonlySet<number> = new Set([10, 11]);
+
 function houseKind(mainType: number | undefined): BuildingType['kind'] {
   if (mainType === undefined) return 'maintype_unknown';
   return HOUSE_KIND_BY_MAIN_TYPE[mainType] ?? `maintype_${mainType}`;
@@ -29,8 +32,8 @@ function houseKind(mainType: number | undefined): BuildingType['kind'] {
 /**
  * A house record keys its id on `logictype`, not the `type` every other table uses, and its name on
  * `debugname`. `logicbuildonbiopattern` is retained because it directly gates placement, and the engine's
- * per-type collect action is joined here; unrelated graphics and placement extras (`debugcolor`,
- * `logicvehicletype`, other `logicbuildon*`/`logicignore*`) remain outside this type-table slice.
+ * per-type collect action and self-filling stock are joined here; unrelated graphics and placement extras
+ * (`debugcolor`, `logicvehicletype`, other `logicbuildon*`/`logicignore*`) remain outside this slice.
  */
 export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {
   const buildings: BuildingType[] = [];
@@ -65,6 +68,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
         homeSize: getInt(sec, 'logichomesize') ?? 0,
         buildOnBioPattern: getInt(sec, 'logicbuildonbiopattern') === 1,
         collectAtomic: COLLECT_ATOMIC_BY_LOGIC_TYPE[typeId],
+        refillsOwnStock: SELF_FILLING_LOGIC_TYPES.has(typeId),
         canEnableDefenceMode: getInt(sec, 'logicCanEnableDefenceMode') === 1,
         workers,
         stock,

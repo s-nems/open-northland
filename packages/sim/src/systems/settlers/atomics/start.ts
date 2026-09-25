@@ -164,23 +164,6 @@ export function startPickup(
   );
 }
 
-/**
- * Issue the `draw` atomic: a consumer cranking a shared utility in place for one unit plays the same
- * gesture a carrier plays lifting that unit off its shelf. `ticks` remains the utility recipe's authored
- * work time, so the render loops the gesture until one unit is ready.
- */
-export function startDraw(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  goodType: number,
-  utility: Entity,
-  ticks: number,
-): void {
-  const atomicId = collectAtomicOf(world, ctx, utility);
-  startAtomic(world, e, atomicId, { kind: 'draw', goodType, utility }, ticks, utility);
-}
-
 export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number): void {
   const { world, ctx, terrain, entity: e, here } = plan;
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, from, here), () =>

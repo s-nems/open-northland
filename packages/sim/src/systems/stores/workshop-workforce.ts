@@ -12,7 +12,6 @@ import {
   UnderConstruction,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { ONE } from '../../core/fixed.js';
 import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -22,7 +21,7 @@ import { assignedWorkers } from './assigned-workers.js';
 import { bankedSlot, stockCapacity } from './capacity.js';
 import { accessibleStockAmounts } from './inventory.js';
 import { isWorkplaceOperator } from './operators.js';
-import { mergedRecipeOf, producesGoodWithoutInputs, recipeConsumes } from './workplace.js';
+import { mergedRecipeOf, recipeConsumes } from './workplace.js';
 
 /** One settler's unit on its way to a workplace: carried, or on a pickup leg whose source still has it. */
 export interface SupplyLoad {
@@ -134,16 +133,10 @@ export class WorkshopWorkforce {
 }
 
 /** Whether a bound load still counts: a pickup leg's source holds the good (on its arrival tick too,
- *  before the planner starts the pickup or draw there), and the workplace has shelf room for it. */
+ *  before the planner starts the pickup there), and the workplace has shelf room for it. */
 function inboundCounts(world: World, ctx: SystemContext, workplace: Entity, load: BoundLoad): boolean {
   const source = load.source;
-  if (
-    source !== null &&
-    (accessibleStockAmounts(world, source)?.get(load.goodType) ?? 0) <= 0 &&
-    ((world.tryGet(source, Building)?.built ?? 0) < ONE ||
-      !producesGoodWithoutInputs(world, ctx, source, load.goodType))
-  )
-    return false;
+  if (source !== null && (accessibleStockAmounts(world, source)?.get(load.goodType) ?? 0) <= 0) return false;
   if (bankedSlot(world, ctx, workplace, load.goodType).goodType !== load.goodType) return false;
   return (
     stockCapacity(world, ctx, workplace, load.goodType) >

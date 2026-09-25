@@ -79,8 +79,8 @@ function staffingOf(type: BuildingType): BuildingStaffing | null {
 
 /**
  * Staff each built workplace and storage toward its {@link BuildingStaffing} tier, where an operator is
- * a non-carrier, non-gatherer slot. Gatherer slots stay open, so a carrier-only workplace (the well, the
- * hive) is a shared utility its consumer self-serves. Workplaces fill before storage within a tier, and
+ * a non-carrier, non-gatherer slot. Gatherer slots stay open, and a carrier-only workplace (the well, the
+ * hive) fills itself, so it needs no staff. Workplaces fill before storage within a tier, and
  * all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
  */
 export function staffBuildings(

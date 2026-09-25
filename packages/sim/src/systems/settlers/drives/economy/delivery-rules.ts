@@ -22,7 +22,7 @@ import {
   type InboundSupplyTally,
   inboundSupplyOf,
   mergedRecipeOf,
-  producesGoodWithoutInputs,
+  refillsOwnStock,
   stockCapacity,
 } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -182,10 +182,10 @@ function constructionSiteCanReceive(plan: PlannerContext, site: Entity): boolean
 }
 
 /**
- * A carrier posted at an input-less utility (the well, the hive) feeds that utility's output to a nearby
- * built recipe consumer before central storage, banking only the surplus later (authored). A site still
- * under construction is skipped: it needs delivered build material, not a recipe input. No land-as-itself
- * guard is needed here, since `carriedGoodForm` already converted any dish this carrier holds.
+ * A carrier posted at a self-filling house (the well, the hive) takes its good to the nearest built recipe
+ * consumer with room for it, and only with none to storage: original behavior. A site still under
+ * construction is skipped: it needs delivered build material, not a recipe input. No land-as-itself guard
+ * is needed here, since `carriedGoodForm` already converted any dish this carrier holds.
  */
 function toNearbyRecipeConsumer(
   plan: PlannerContext,
@@ -194,7 +194,8 @@ function toNearbyRecipeConsumer(
 ): DeliveryVerdict {
   const { world, ctx, here, owner, targets } = plan;
   const home = boundWorkplace(plan);
-  if (home === undefined || !producesGoodWithoutInputs(world, ctx, home, goodType)) return null;
+  if (home === undefined || !refillsOwnStock(world, ctx, home)) return null;
+  if (!buildingProduces(world, ctx, home).includes(goodType)) return null;
   return (
     targets.stockpileCells.nearest(
       here,
