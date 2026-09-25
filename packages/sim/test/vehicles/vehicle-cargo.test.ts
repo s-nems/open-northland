@@ -61,6 +61,8 @@ const CART_AT = { hx: 20, hy: 20 };
 const TRIP_TICKS = 120;
 /** The source piles and houses stand this far east of the cart's door. */
 const SOURCE_AT = { hx: 24, hy: 20 };
+/** Food a home holds, which a cargo hand leaves there. */
+const HOME_FOOD = 5;
 /** A house beyond the cargo search radius of the cart's door. */
 const FAR_HOUSE_AT = { hx: CART_AT.hx + VEHICLE_CARGO_SEARCH_RADIUS + 20, hy: 20 };
 
@@ -229,10 +231,9 @@ describe('the commander as cargo hand', () => {
     expect(s.world.has(scout, Carrying)).toBe(false);
   });
 
-  it('keeps the commander aboard while its cart drives, then lets a request no store near the door fills lapse', () => {
+  it('keeps the commander aboard while its cart drives, then lets a request nobody can fill lapse', () => {
     const s = sim();
     const cart = spawnCart(s);
-    placeHq(s, FAR_HOUSE_AT, [{ good: PLANK, amount: 5 }]);
     const scout = spawnSettler(s, 22, 20, SCOUT);
     s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
     s.step();
@@ -245,17 +246,15 @@ describe('the commander as cargo hand', () => {
       s.step();
     }
     s.run(TRIP_TICKS);
-    // Parked, it steps out for the planks, finds none near the door, drops the request and boards again,
-    // where a carrier would walk to the far house for them.
+    // Parked, it steps out for the planks, finds none anywhere, drops the request and boards again.
     expect(line(s, cart, PLANK)).toEqual({ current: 0, wanted: 0, reserved: 0 });
     expect(s.world.has(scout, Position)).toBe(false);
   });
 
-  it("fetches what lies near a trader's door and drops the rest of the request", () => {
+  it('fetches what a trader can find and drops the rest of the request', () => {
     const s = sim();
     const cart = spawnCart(s);
     dropPile(s, WOOD, SOURCE_AT, 2);
-    placeHq(s, FAR_HOUSE_AT);
     const trader = spawnSettler(s, 22, 20, TRADER);
     s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
     s.step();
@@ -264,9 +263,32 @@ describe('the commander as cargo hand', () => {
 
     s.run(4 * TRIP_TICKS);
 
-    // The far house keeps its wood: the trader waits by its cart, as a trader does.
     expect(line(s, cart, WOOD)).toEqual({ current: 2, wanted: 2, reserved: 2 });
     expect(s.world.has(trader, Carrying)).toBe(false);
+  });
+
+  it('takes no food out of a home', () => {
+    const content = testContent();
+    const homes = {
+      ...content,
+      buildings: content.buildings.map((b) =>
+        b.typeId === HEADQUARTERS ? { ...b, kind: 'home' as const } : b,
+      ),
+    };
+    const s = new Simulation({ seed: 3, content: homes, map: grassNodeMap(MAP_NODES, MAP_NODES) });
+    s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const cart = spawnCart(s);
+    const home = placeHq(s, SOURCE_AT, [{ good: FOOD_SIMPLE, amount: HOME_FOOD }]);
+    const trader = spawnSettler(s, 22, 20, TRADER);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
+    s.step();
+    boardRider(s.world, trader, cart);
+    want(s, cart, FOOD_SIMPLE, 2);
+
+    s.run(2 * TRIP_TICKS);
+
+    expect(line(s, cart, FOOD_SIMPLE)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(s.world.get(home, Stockpile).amounts.get(FOOD_SIMPLE)).toBe(HOME_FOOD);
   });
 
   it('sets unloaded goods on the ground at the door when no store stands near it', () => {

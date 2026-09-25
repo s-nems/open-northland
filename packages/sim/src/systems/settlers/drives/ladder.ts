@@ -177,7 +177,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // unit the hold will not take; any rider walks to the door and steps in when asked. A rider of no hold
   // work holding a load runs the ladder down to the delivery rung first, so it is not parked at the door
   // with its hands full.
-  if (planVehicleCargo(plan, load)) return;
+  if (planVehicleCargo(plan, pass.spacing, load)) return;
   if (load === undefined || load.amount <= 0) {
     // A trader commanding a cart works its route from here, above the rider rung that would otherwise
     // keep it at the door; the rung yields while the cart is under way, and the rider rung boards it.

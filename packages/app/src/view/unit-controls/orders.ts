@@ -67,6 +67,9 @@ export interface UnitOrderController {
    *  (a garrison flag hangs far above the tower it stands for). True when the press selected a settler
    *  or gave the selected settlers an order. */
   issueRightClick(event: MouseEvent, onBuilding?: number | null): boolean;
+  /** The trade-route toggle for the selected traders riding inside their carts, which the settlers'
+   *  click skips as they stand nowhere on the map. True when any of them took the house. */
+  issueRiderTradeHouse(event: MouseEvent, onBuilding?: number | null): boolean;
   /** Move the selected gatherers' work flags to a world click; clicking a resource also narrows their
    *  gathering filter to that resource's good. */
   issueSetWorkFlagAt(event: MouseEvent): boolean;
@@ -279,7 +282,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
    * takes is the sim's rule. The traders that took the order are returned; the rest of the selection
    * handles the click as usual.
    */
-  const routeTradeHouse = (commanded: readonly FormationUnit[], house: number | null): Set<number> => {
+  const routeTradeHouse = (
+    commanded: readonly { readonly ref: number }[],
+    house: number | null,
+  ): Set<number> => {
     const routed = new Set<number>();
     if (house === null) return routed;
     const snapshot = deps.snapshot();
@@ -294,6 +300,21 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       routed.add(unit.ref);
     }
     return routed;
+  };
+
+  const issueRiderTradeHouse = (event: MouseEvent, onBuilding?: number | null): boolean => {
+    const snapshot = deps.snapshot();
+    const riders: { readonly ref: number }[] = [];
+    for (const ref of deps.selected()) {
+      const e = entityById(snapshot, ref);
+      if (e !== undefined && e.components.Rider !== undefined && positionOf(e) === undefined)
+        riders.push({ ref });
+    }
+    if (riders.length === 0) return false;
+    const world = deps.toWorld(event.clientX, event.clientY);
+    return (
+      routeTradeHouse(riders, onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y)).size > 0
+    );
   };
 
   /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as
@@ -432,6 +453,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     },
     dispose: () => school?.dispose(),
     issueRightClick,
+    issueRiderTradeHouse,
     issueSetWorkFlagAt,
     issueSetWorkFlag,
     issueMoveTo,

@@ -1,5 +1,7 @@
-import type { ContentSet } from '@open-northland/data';
+import { BUILDING_KIND, type ContentSet } from '@open-northland/data';
+import { Building } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
 /** Matches the eat-slot goods `food_simple`/`food_extra`, and not the separate `potion_food_*` line. */
@@ -21,6 +23,17 @@ export function isFoodIn(content: ContentSet, goodType: number): boolean {
   const good = contentIndex(content).goods.get(goodType);
   if (good === undefined) return false;
   return good.id.startsWith(FOOD_GOOD_ID_PREFIX);
+}
+
+/** Whether `good` is food in a home, which is never taken back out of it: original behavior of the
+ *  trader, and the rule a vehicle's hold keeps too (owner's choice). */
+export function isFoodKeptAtHome(world: World, ctx: SystemContext, house: Entity, good: number): boolean {
+  const type = world.tryGet(house, Building)?.buildingType;
+  return (
+    type !== undefined &&
+    isFood(ctx, good) &&
+    contentIndex(ctx.content).buildings.get(type)?.kind === BUILDING_KIND.home
+  );
 }
 
 /**

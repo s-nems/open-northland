@@ -165,8 +165,10 @@ const tradeLedger = defineWorldSingleton<{
   received: Map<number, number>;
 }>('TradeLedger', 'players', () => ({ received: new Map() }));
 
-/** What each player has traded with each other player, the tally `NumberOfGoodsTraded` reads. Reading:
- *  the original counts one per unit a trader loads out of the partner's house under an agreement. */
+/** What each player has traded with each other player, the tally `NumberOfGoodsTraded` and the diplomacy
+ *  window read. Original behavior (byte-level): one per unit of the agreement's take good a trader carries
+ *  from the partner's house to its cart, keyed by the trader's player and the house's; the goods it hands
+ *  over count nowhere. Approximation: counted as the unit lands in the cart, not as the carry starts. */
 export const TradeLedger = tradeLedger.component;
 
 function ledgerKey(player: number, partner: number): number {

@@ -13,6 +13,7 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
+import { isFoodKeptAtHome } from '../../../readviews/food.js';
 import { manhattan } from '../../../spatial/metric.js';
 import { isLoosePile } from '../../../stores/index.js';
 import { abandonCargoRun } from '../../../vehicles/cargo.js';
@@ -36,6 +37,7 @@ import {
   startPickup,
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
+import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, QUALIFIES } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { planDelivery } from './delivery.js';
@@ -54,7 +56,7 @@ const CARGO_UNIT = 1;
  * VEHICLE CARGO - a cargo hand of a cart or moored ship, a carrier or the commander, serves its hold
  * (docs/formats/VEHICLES.md "Cargo", which also names the approximations): while a good's wanted amount exceeds its booking it
  * fetches a unit, loose goods within {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door first, then a house
- * within it, then, for a carrier, whatever its signpost area reaches, every source on the door's continent; with a unit
+ * within it, then whatever its signpost area reaches, every source on the door's continent; with a unit
  * on its back it books it and sets it into the hold at the door; while a good's booking exceeds its
  * wanted amount it walks the booking down a unit a trip, lifting a unit out when one is aboard. A rider
  * standing on another continent than the door and a load the hold will not take fall through to the
@@ -63,6 +65,7 @@ const CARGO_UNIT = 1;
  */
 export function planVehicleCargo(
   plan: PlannerContext,
+  spacing: PlannerSpacing,
   load: { goodType: number; amount: number } | undefined,
 ): boolean {
   const { world, entity: e } = plan;
@@ -83,7 +86,8 @@ export function planVehicleCargo(
   }
   if (loaded)
     return (
-      bringLoad(plan, vehicle, served.type, served.door, load) || placeRefusedLoad(plan, served.door, load)
+      bringLoad(plan, vehicle, served.type, served.door, load) ||
+      placeRefusedLoad(plan, spacing, served.door, load)
     );
   return fetchShortfall(plan, vehicle, served.type, served.door) || flushSurplus(plan, vehicle, served.door);
 }
@@ -148,6 +152,7 @@ function bringLoad(
  */
 function placeRefusedLoad(
   plan: PlannerContext,
+  spacing: PlannerSpacing,
   door: NodeId,
   load: { goodType: number; amount: number },
 ): true {
@@ -157,7 +162,7 @@ function placeRefusedLoad(
     store !== null &&
     manhattan(terrain, door, interactionCell(world, ctx, terrain, store, door)) <= VEHICLE_CARGO_SEARCH_RADIUS
   ) {
-    planDelivery(plan, load);
+    planDelivery(plan, spacing, load);
   } else {
     startDrop(world, ctx, e);
   }
@@ -177,8 +182,8 @@ function shortfallGoods(stock: DeepReadonly<{ lines: Map<number, VehicleStockLin
 /**
  * Fetch one unit of a good the hold is short of, from the nearest source the search finds. Nothing is
  * booked yet: the booking is made when the unit is on the carrier's back, as the original's carrier does.
- * A commander with no carrier seated beside it lets a request no source near the door can fill lapse to
- * what is booked, so it never steps out for that request again.
+ * A commander with no carrier seated beside it lets a request no source can fill lapse to what is
+ * booked, so it does not stand by the door for goods nobody has.
  */
 function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType, door: NodeId): boolean {
   const { world, ctx, entity: e, here } = plan;
@@ -186,10 +191,10 @@ function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType
   if (vehicleIsFull(type, stock)) return false;
   const goods = shortfallGoods(stock);
   if (goods.length === 0) return false;
-  const carrier = isCarrierRider(world, ctx.content, e);
-  const source = nearestCargoSource(plan, goods, door, carrier);
+  const source = nearestCargoSource(plan, goods, door);
   if (source === null) {
-    if (!carrier && !hasCarrierSeated(world, ctx.content, vehicle)) lapseShortfall(plan, vehicle, goods);
+    if (!isCarrierRider(world, ctx.content, e) && !hasCarrierSeated(world, ctx.content, vehicle))
+      lapseShortfall(plan, vehicle, goods);
     return false;
   }
   atOrWalk(world, e, here, interactionCell(world, ctx, plan.terrain, source.entity, here), () =>
@@ -205,15 +210,13 @@ interface CargoSource {
 
 /**
  * The nearest store holding any of `goods`: a loose pile within the search radius of the door, else a
- * house within it, both ranked from the door, else, for a carrier, any store within its signpost area
- * ranked from where it stands. A commander of another trade keeps to the door's surroundings, so it
- * never leaves its cart for a far warehouse (owner's choice). Ties fall to the lower good id.
+ * house within it, both ranked from the door, else any store within the hand's signpost area ranked
+ * from where it stands. Food in a home is never a source. Ties fall to the lower good id.
  */
 function nearestCargoSource(
   plan: PlannerContext,
   goods: readonly number[],
   door: NodeId,
-  carrier: boolean,
 ): CargoSource | null {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const avoid = unreachableGoalVeto(world, ctx, e);
@@ -228,14 +231,15 @@ function nearestCargoSource(
   const phases: ReadonlyArray<{ origin: NodeId; accept: (e2: Entity) => boolean }> = [
     { origin: door, accept: (e2) => isLoosePile(world, e2) && reachable(e2) && nearDoor(e2) },
     { origin: door, accept: (e2) => world.has(e2, Building) && reachable(e2) && nearDoor(e2) },
-    ...(carrier ? [{ origin: here, accept: reachable }] : []),
+    { origin: here, accept: reachable },
   ];
   for (const phase of phases) {
     let best: (CargoSource & { readonly distance: number }) | null = null;
     for (const goodType of goods) {
+      const accept = (e2: Entity): boolean => phase.accept(e2) && !isFoodKeptAtHome(world, ctx, e2, goodType);
       const hit = targets.bands
         .holding(goodType)
-        .nearest(phase.origin, (e2) => (phase.accept(e2) ? QUALIFIES : null), gate, avoid, onSide);
+        .nearest(phase.origin, (e2) => (accept(e2) ? QUALIFIES : null), gate, avoid, onSide);
       if (hit !== null && (best === null || hit.distance < best.distance)) {
         best = { entity: hit.entity, goodType, distance: hit.distance };
       }

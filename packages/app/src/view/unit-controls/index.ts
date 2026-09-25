@@ -218,8 +218,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       } else {
         // Settlers and vehicles selected together both take the click. One that picks an own settler
         // replaces the selection first, which leaves no vehicle selected to drive.
-        const settlersTook = orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null);
-        const vehiclesTook = vehicleOrders.issueRightClick(e);
+        const onBuilding = marker?.kind === 'building' ? marker.ref : null;
+        const settlersTook = orders.issueRightClick(e, onBuilding);
+        // A trader riding its cart takes a house onto its route instead of driving the cart there.
+        const vehiclesTook = orders.issueRiderTradeHouse(e, onBuilding) || vehicleOrders.issueRightClick(e);
         if (settlersTook || vehiclesTook) cue('confirm');
       }
       return;

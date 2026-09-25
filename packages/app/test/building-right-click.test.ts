@@ -33,6 +33,7 @@ const {
   MissionObjectId,
   Owner,
   Position,
+  Rider,
   SiteAssignment,
   Stockpile,
   UnderConstruction,
@@ -94,8 +95,9 @@ function rightClick(
   building: Entity,
   content: ContentSet = sim.content,
   owned = true,
+  click: 'settlers' | 'riders' = 'settlers',
 ): Command[] {
-  return pressRightClick(sim, settlers, building, content, owned).issued;
+  return pressRightClick(sim, settlers, building, content, owned, click).issued;
 }
 
 /** {@link rightClick} with the press's own verdict, which decides whether the click confirms. */
@@ -105,6 +107,7 @@ function pressRightClick(
   building: Entity,
   content: ContentSet = sim.content,
   owned = true,
+  click: 'settlers' | 'riders' = 'settlers',
 ): { issued: Command[]; ordered: boolean } {
   const issued: Command[] = [];
   const snapshot = sim.snapshot();
@@ -121,7 +124,7 @@ function pressRightClick(
     wildlife: () => [],
     ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),
   };
-  const ordered = createUnitOrderController({
+  const controller = createUnitOrderController({
     selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,
@@ -132,7 +135,9 @@ function pressRightClick(
     selectOwnSettler: () => {},
     openActions: () => {},
     canAttachTradeHouse: (trader, house) => sim.canAttachTradeHouse(trader as Entity, house as Entity),
-  }).issueRightClick(CLICK);
+  });
+  const ordered =
+    click === 'settlers' ? controller.issueRightClick(CLICK) : controller.issueRiderTradeHouse(CLICK);
   return { issued, ordered };
 }
 
@@ -382,6 +387,18 @@ describe('right-clicking a standing house with a trader', () => {
     const trader = settlerAt(sim, JOB_TRADER);
 
     expect(rightClick(sim, [trader], home)).toEqual([
+      { kind: 'attachTradeHouse', entity: trader, house: home },
+    ]);
+  });
+
+  it('puts the house on the route of a trader riding inside its cart, which the cart does not drive to', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+    sim.world.remove(trader, Position);
+    sim.world.add(trader, Rider, { vehicle: sim.world.create(), boarding: false });
+
+    expect(rightClick(sim, [trader], home, sim.content, true, 'riders')).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },
     ]);
   });

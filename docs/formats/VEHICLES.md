@@ -205,9 +205,9 @@ it detaches or dies. Owner's choice: a cargo hand is a seated carrier or the veh
 trade, so a trader's cart and a ship's commander serve the wanted amounts without a carrier; the
 wanted-follows-actual rule and message 0x3a read the same widened test (`isCargoHand`). A hand riding
 inside a cart that stands still or a moored ship steps out onto the door while the hold has a trip for
-it (`cargoHandDisembarkSystem`). A commander of another trade than the carrier's fetches only from
-within radius 40 of the door, and with no carrier seated it lowers a request nothing there can fill to
-what is booked, so it never leaves its vehicle for a far warehouse. The alias goes through the shared
+it (`cargoHandDisembarkSystem`). A commander of another trade than the carrier's, with no carrier
+seated, lowers a request no source can fill to what is booked instead of waiting by the door. No hand
+takes food out of a home, the trader's rule (owner's choice). The alias goes through the shared
 dish-to-edible seam, which also maps meat and sausage (approximation: the original's table lists
 neither). Further approximations: the nearest source wins where the original draws at random, ties by
 good id, every source on the door's continent as the original's flood implies; the guide network is

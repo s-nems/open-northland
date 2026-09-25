@@ -1,4 +1,3 @@
-import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
   Position,
@@ -17,7 +16,7 @@ import type { ContentContext, SystemContext } from '../context.js';
 import { buildingDoorNodes, interactionNode, vehicleAnchor } from '../footprint/index.js';
 import { countsAsOwnStock, roomFor, stockOf, typeStoresGood } from '../missions/stock.js';
 import { atomicDuration } from '../readviews/animations.js';
-import { edibleGoodFormOf, isFood } from '../readviews/food.js';
+import { edibleGoodFormOf, isFoodKeptAtHome } from '../readviews/food.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import { atOrWalk, collectAtomicOf, PILEUP_ATOMIC_ID, startAtomic } from '../settlers/atomics/start.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
@@ -248,8 +247,7 @@ function decidePreparation(
   const toCompleteBatch = give - (aboard % give);
   const roomNeeded = (Math.floor(aboard / give) + 1) * extra + toCompleteBatch;
   const stocked = stockedFormAt(world, ctx, house, agreement.giveGood);
-  const foodFromHome =
-    isFood(ctx, agreement.giveGood) && isHome(ctx, world.get(house, Building).buildingType);
+  const foodFromHome = isFoodKeptAtHome(world, ctx, house, agreement.giveGood);
   if (
     stocked !== undefined &&
     hold.carries(stocked) &&
@@ -367,7 +365,7 @@ function decideDomestic(
 
   if (hold.room <= 0) return NEXT;
   for (const good of ownGoodsOf(ctx, hereType)) {
-    if (!marked(other, good) || (isFood(ctx, good) && isHome(ctx, hereType))) continue;
+    if (!marked(other, good) || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
     if (spareOf(world, ctx, stop.house, good) <= 0) continue;
     const carried = edibleGoodFormOf(ctx.content, good);
     if (!hold.carries(carried)) continue;
@@ -386,10 +384,6 @@ function unloadInto(world: World, ctx: SystemContext, house: Entity, good: numbe
   const slot = storableFormAt(world, ctx, house, good);
   const into = slot !== undefined && roomFor(world, ctx, house, slot) > 0 ? house : null;
   return { kind: 'unload', good, into };
-}
-
-function isHome(ctx: ContentContext, buildingType: number): boolean {
-  return contentIndex(ctx.content).buildings.get(buildingType)?.kind === BUILDING_KIND.home;
 }
 
 /** The goods a house type counts as its own stock, ascending: what a trader may take out of it. */

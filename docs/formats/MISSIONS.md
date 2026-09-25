@@ -232,7 +232,7 @@ writes.
 | 39 | `GoodProduceable` | 1, 3, 6 | the good is produceable for the player's tribe | 150 |
 | 40 | `NumberOfHumansDied` | 1, 7 | at least `amount` humans of the player have died | 118 |
 | 41 | `FindAnimals` | 1, 14 | any animal with the id stands on a point explored by the player | 8 |
-| 42 | `NumberOfGoodsTraded` | 1, 2, 7 | the first player's traders have taken at least `amount` goods aboard out of the second player's houses under a trade agreement (reading of the merchant task's tally) | 3 |
+| 42 | `NumberOfGoodsTraded` | 1, 2, 7 | the first player's traders have taken at least `amount` goods aboard out of the second player's houses under a trade agreement: one per unit of the agreement's take good, the goods handed over not counted (byte-level) | 3 |
 | 43 | `HumanAttachedToWorkHouse` | 1, 4, 7 | at least `amount` humans of the player with the job are attached to a workplace | 17 |
 | 44 | `CheckNumberOfWildAnimals` | 3, 7 | at least `amount` wild animals of the species | 0 \* |
 | 45 | `RandomTimeGone` | 35 | a random `[n/2, n)` seconds have passed since activation | 28 |
@@ -710,7 +710,7 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   economy runs on what it produces. The table holds rows and resolves their houses live, so a row
   several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
   saved with the game; the diplomacy window prints it (`miscwindow` 360) at its foot for a player
-  both sides hold as `friend`, the one case the original's window draws the line in (reading). Above
+  both sides hold as `friend`, the one case the original's window draws the line in (byte-level). Above
   that line the window lists what the selected player's houses trade, each agreement once
   (`Simulation.tradeOffersOf`), with a reminder that a trader deals only with a friendly tribe while
   the viewer's stance toward the player is not `friend`; authored, since the original names a
