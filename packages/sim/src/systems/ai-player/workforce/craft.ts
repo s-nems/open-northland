@@ -319,7 +319,8 @@ const SHORT_PRODUCT_LINES: Readonly<
  * Put each short product, ascending, on seats of its own: one per supply unit it lacks to its hold line
  * ({@link SHORT_PRODUCT_LINES}), at most {@link SHORT_PRODUCT_SEATS}, taken from the free seats whose listed
  * goods all lie at or above their comfort lines, those already working the product alone first, then the
- * last. While a seat works it the product holds to the hold line, otherwise it reads the hire line.
+ * last. A seat the plan itself lists on the product alone is neither counted nor taken: the seats here come
+ * on top of it. While a seat works it the product holds to the hold line, otherwise it reads the hire line.
  * Selection changes cost nothing, so the two lines are the whole hysteresis.
  */
 function shortFirst(
@@ -337,10 +338,11 @@ function shortFirst(
     const lines = supply.lines(good);
     const surplus = supply.surplus(good);
     if (lines === undefined || surplus === undefined) continue;
-    const holders = plentiful.filter((seat) => sameGoods(current[seat] ?? [], [good]));
+    const extra = plentiful.filter((seat) => !sameGoods(listed[seat] ?? [], [good]));
+    const holders = extra.filter((seat) => sameGoods(current[seat] ?? [], [good]));
     if (!supply.isUnder(good, holders.length > 0 ? hold : hire)) continue;
     const seats = Math.min(Math.ceil((lines[hold] - surplus) / lines.unit), SHORT_PRODUCT_SEATS);
-    const others = plentiful.filter((seat) => !holders.includes(seat)).reverse();
+    const others = extra.filter((seat) => !holders.includes(seat)).reverse();
     for (const seat of [...holders, ...others].slice(0, seats)) {
       plentiful.splice(plentiful.indexOf(seat), 1);
       listed[seat] = [good];

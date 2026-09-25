@@ -1179,7 +1179,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
   });
 
-  it('turns up to two amulet makers to coins under the comfort line from the mid game, easing off toward the glut', () => {
+  it('turns up to two amulet makers to coins under the comfort line from the mid game, and holds them to the glut', () => {
     const mints = crewedMints(4, MID_GAME_FROM_TICKS);
     const { unit, short, comfort, glut } = mints.coins;
     mints.stockCoins(glut);
@@ -1190,13 +1190,15 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(Math.ceil((glut - comfort + 1) / unit)).toBeGreaterThan(SHORT_PRODUCT_SEATS);
     mints.stockCoins(comfort - 1);
     expect(mints.products()).toEqual([[COIN], [COIN]]);
-    // From comfort the plan's own coin seat counts among the two, so one turned seat goes back; the other
-    // holds until a single unit lacks to the glut.
+    // The plan's own coin seat never counts among the two: both turned seats hold while two units or more
+    // lack to the glut, the last of them goes back at one unit, the first at the glut.
     mints.stockCoins(comfort);
-    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
+    expect(mints.products()).toEqual([]);
     mints.stockCoins(glut - unit - 1);
     expect(mints.products()).toEqual([]);
     mints.stockCoins(glut - 1);
+    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
+    mints.stockCoins(glut);
     expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
   });
 
