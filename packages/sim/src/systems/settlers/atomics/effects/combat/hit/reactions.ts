@@ -5,6 +5,7 @@ import {
   Engagement,
   FOG_MODE,
   Owner,
+  PlayerOrder,
   Position,
   recordContact,
   Settler,
@@ -89,13 +90,16 @@ export function provokeHostility(world: World, ctx: SystemContext, attacker: Ent
 /**
  * Turn a struck fighter on its attacker. Original behavior: a soldier or hero under ATTACK or DEFEND takes
  * the one who struck it for its target, unless the enemy it already holds stands no farther off in map
- * points. Only an owned fighter holds a target, and an attack order outranks the reaction.
+ * points. Only an owned fighter holds a target, and an attack order outranks the reaction; so does a
+ * player's walk order, which an attack-move march alone leaves open to the fight.
  */
 export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entity, victim: Entity): void {
   const terrain = ctx.terrain;
   const settler = world.tryGet(victim, Settler);
   if (terrain === undefined || settler === undefined || !world.has(victim, Owner)) return;
   if (world.has(victim, AttackOrder) || !isFighterJob(ctx.content, settler.jobType)) return;
+  const order = world.tryGet(victim, PlayerOrder);
+  if (order !== undefined && order.attackMove === undefined) return;
   const mode = stanceMode(world, ctx.content, victim, settler.jobType);
   if (mode !== MILITARY_MODE.ATTACK && mode !== MILITARY_MODE.DEFEND) return;
   if (!world.has(attacker, Position) || !isValidTarget(world, ctx, victim, settler, attacker)) return;

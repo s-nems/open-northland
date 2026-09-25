@@ -20,7 +20,7 @@ import {
   REPATH_CADENCE,
   SIGHT_RADIUS_NODES,
 } from '../../src/systems/index.js';
-import { moveUnit } from '../../src/systems/orders/index.js';
+import { attackMoveUnit, moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import {
@@ -334,6 +334,22 @@ describe('engagement - a struck fighter turns on its attacker', () => {
     resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'melee');
     expect(held(s, soldier)).toBeUndefined();
     expect(s.world.get(soldier, AttackOrder).target).toBe(ordered);
+  });
+
+  it('not while it walks under a move order, though an attack-move march turns', () => {
+    for (const [kind, turns] of [
+      ['moveUnit', false],
+      ['attackMoveUnit', true],
+    ] as const) {
+      const s = sim();
+      const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+      const attacker = unit(s, 2, P1, MILITARY_MODE.IGNORE);
+      const orders = ctxOf(s);
+      if (kind === 'moveUnit') moveUnit(s.world, orders, { kind, entity: soldier, x: 20, y: ROW });
+      else attackMoveUnit(s.world, orders, { kind, entity: soldier, x: 20, y: ROW });
+      resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'melee');
+      expect(held(s, soldier)).toBe(turns ? attacker : undefined);
+    }
   });
 
   it('when the attacker is nearer than the enemy it holds', () => {
