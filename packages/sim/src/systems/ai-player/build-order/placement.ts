@@ -249,13 +249,18 @@ function groundAccepted(
   return true;
 }
 
+/** The deposits a workshop's gatherers dig, which a seat building never covers (authored). The engine's
+ *  blockers already keep a zone off every walk body, so this adds only the walk-free deposits; mushrooms,
+ *  herbs, trunks and carcasses stay coverable. */
+const DEPOSIT_GOOD_IDS: readonly string[] = ['mud', 'stone', 'iron', 'gold'];
+
 /**
  * Shared legality test for a spot search: in-bounds buildable ground, off every existing building's
  * anchor (explicit, so a footprint-less synthetic type never stacks), accepted by the seat's placement
- * probe, and with its reserved zone off every live resource's own node. The engine lets a building cover
- * a deposit that carries no walk or build block, such as clay, and so bury it; the seat never does
- * (authored, the seat's own rule). It scans the occupied set once per call, so build the closure per
- * search, not per candidate.
+ * probe, and with its reserved zone off every live {@link DEPOSIT_GOOD_IDS} deposit's own node. The engine
+ * lets a building cover a deposit that carries no walk or build block, such as clay, and so bury it; the
+ * seat never does. It scans the occupied set once per call, so build the closure per search, not per
+ * candidate.
  */
 export function buildingSpotAccept(
   world: World,
@@ -272,24 +277,32 @@ export function buildingSpotAccept(
   const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, player);
   const reserved = buildingFootprintOf(ctx.content, buildingTypeId)?.reserved;
   const zone = reserved !== undefined && reserved.length > 0 ? reserved : ANCHOR_ONLY;
+  const deposits = new Set<number>();
+  for (const id of DEPOSIT_GOOD_IDS) {
+    const good = goodTypeByContentId(ctx.content, id);
+    if (good !== undefined) deposits.add(good.typeId);
+  }
   return (x, y) => {
     if (!terrain.inBounds(x, y)) return false;
     const node = terrain.nodeAt(x, y);
     if (!terrain.isBuildable(node) || occupied.has(node)) return false;
-    return probe.canPlace(x, y) && !coversLiveResource(world, zone, x, y);
+    return probe.canPlace(x, y) && !coversLiveDeposit(world, deposits, zone, x, y);
   };
 }
 
-/** Whether the zone `cells` anchored at `(x, y)` covers the node of a resource with goods left. */
-function coversLiveResource(
+/** Whether the zone `cells` anchored at `(x, y)` covers the node of a `deposits` resource with goods left. */
+function coversLiveDeposit(
   world: World,
+  deposits: ReadonlySet<number>,
   cells: readonly { dx: number; dy: number }[],
   x: number,
   y: number,
 ): boolean {
+  if (deposits.size === 0) return false;
   for (const c of cells) {
     for (const e of resourcesAtNode(world, x + footprintCellDx(y, c), y + c.dy)) {
-      if (world.get(e, Resource).remaining > 0) return true;
+      const r = world.get(e, Resource);
+      if (r.remaining > 0 && deposits.has(r.goodType)) return true;
     }
   }
   return false;

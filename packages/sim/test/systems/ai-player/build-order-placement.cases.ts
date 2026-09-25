@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { Position, Resource } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
-import { buildReach, HQ_PULL_DIVISOR_NODES } from '../../../src/systems/ai-player/build-order/placement.js';
+import {
+  buildingSpotAccept,
+  buildReach,
+  HQ_PULL_DIVISOR_NODES,
+} from '../../../src/systems/ai-player/build-order/placement.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -332,7 +336,7 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(toOutpost).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // pulled out toward the deposit
   });
 
-  it('keeps the reserved zone off a clay deposit, which carries no block the engine would refuse', () => {
+  it('keeps the reserved zone off a clay deposit, which carries no block the engine would refuse, not off a mushroom', () => {
     // A clay deposit as the real records stamp it: walkable, no walk or build block, dug from its own node.
     const PIT_HOUSE = 34;
     const pitFootprint = {
@@ -340,9 +344,15 @@ describe('build-order placement - affinity and ground rules', () => {
       familyBody: [{ dx: 0, dy: 0 }],
       reserved: [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => ({ dx, dy }))),
     };
+    const MUSHROOM = 50;
+    const MUSHROOM_HARVEST = 50;
     const base = aiContent();
     const content = parseContentSet({
       ...base,
+      goods: [
+        ...base.goods,
+        { typeId: MUSHROOM, id: 'test_mushroom', weight: 1, atomics: { harvest: MUSHROOM_HARVEST } },
+      ],
       buildings: [
         ...base.buildings,
         { typeId: PIT_HOUSE, id: 'test_pit_house', kind: 'home', homeSize: 1, footprint: pitFootprint },
@@ -356,6 +366,12 @@ describe('build-order placement - affinity and ground rules', () => {
     sim.world.add(clay, Position, positionOfNode(clayX, clayY));
     sim.world.add(clay, Resource, { goodType: MUD, remaining: 5, harvestAtomic: harvest });
     stampResourceFootprintData(sim.world, clay, { walk: [], build: [], work: [{ dx: 0, dy: 0 }] });
+    // A meadow mushroom, walk-free like the clay: the seat may build over it.
+    const MUSHROOM_SPOT = { x: 12, y: 14 };
+    const mushroom = sim.world.create();
+    sim.world.add(mushroom, Position, positionOfNode(MUSHROOM_SPOT.x, MUSHROOM_SPOT.y));
+    sim.world.add(mushroom, Resource, { goodType: MUSHROOM, remaining: 1, harvestAtomic: MUSHROOM_HARVEST });
+    stampResourceFootprintData(sim.world, mushroom, { walk: [], build: [], work: [{ dx: 0, dy: 0 }] });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     expect(canPlaceBuilding(sim.world, { ...ctxOf(sim), content }, terrain, PIT_HOUSE, clayX, clayY)).toBe(
@@ -371,5 +387,9 @@ describe('build-order placement - affinity and ground rules', () => {
     );
     expect(covered).toBe(false);
     expect(Math.abs(spot.x - clayX) + Math.abs(spot.y - clayY)).toBeLessThanOrEqual(CLAY_NEIGHBOURHOOD_NODES);
+
+    const accept = buildingSpotAccept(sim.world, { ...ctxOf(sim), content }, terrain, SEAT, PIT_HOUSE);
+    expect(accept(clayX, clayY)).toBe(false);
+    expect(accept(MUSHROOM_SPOT.x, MUSHROOM_SPOT.y)).toBe(true);
   });
 });
