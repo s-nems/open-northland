@@ -51,6 +51,19 @@ export const GLYPH = {
   blade:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M19 3 8 14M6 12l6 6M4 20l4-4M19 3h-4M19 3v4"/></svg>',
   mug: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 9h10v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2ZM16 11h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-2M9 5v1M12 4v2M15 5v1"/></svg>',
+  /* The selection panel's controls: assign, the counter's steps, a lock, browsing, rename, an exchange. */
+  target:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
+  minus: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 12h12"/></svg>',
+  plus: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg>',
+  lock: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  prev: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>',
+  next: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg>',
+  pen: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m4 20 4-1L19 8l-3-3L5 16zM14 7l3 3"/></svg>',
+  arrow:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></svg>',
+  armor:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6z"/></svg>',
 } as const;
 
 /** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */

@@ -24,6 +24,7 @@ import {
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { ChoiceGroup } from './choice-window.js';
 import { GLYPH, RESIDENTS_TOKEN } from './icons.js';
+import { button, element, setAttribute, setHidden, setValue, write } from './parts/dom.js';
 import { professionChoices } from './profession-choices.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
@@ -82,41 +83,6 @@ interface RowView {
   readonly canvas: HTMLCanvasElement;
   readonly cells: readonly [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
   shown: string;
-}
-
-function element<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className: string,
-  html = '',
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  node.className = className;
-  node.innerHTML = html;
-  return node;
-}
-
-function button(className: string, html = ''): HTMLButtonElement {
-  const node = element('button', className, html);
-  node.type = 'button';
-  return node;
-}
-
-/** A tick relists with mostly the same words; an unchanged write would still dirty the layout the
- *  figure pass reads right after. */
-function write(node: Element, text: string): void {
-  if (node.textContent !== text) node.textContent = text;
-}
-
-function setAttribute(node: Element, name: string, value: string): void {
-  if (node.getAttribute(name) !== value) node.setAttribute(name, value);
-}
-
-function setHidden(node: HTMLElement, hidden: boolean): void {
-  if (node.hidden !== hidden) node.hidden = hidden;
-}
-
-function setValue(control: HTMLSelectElement | HTMLInputElement, value: string): void {
-  if (control.value !== value) control.value = value;
 }
 
 /** Cmd stands in for Ctrl, whose click opens the context menu on macOS. */

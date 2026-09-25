@@ -1,10 +1,9 @@
 import type { UiString } from '../../content/gui-gfx.js';
-import { diag } from '../../diag/index.js';
 import { messages } from '../../i18n/index.js';
-import type { GoodIconSource, PresentationPack } from '../../presentation/pack.js';
+import type { PresentationPack } from '../../presentation/pack.js';
 import { stockAmount } from '../details-panel/sections/building/shared.js';
 import type { BuildingHoverState, HoverCardModel, HoverCardRow } from '../hover-card/model.js';
-import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
+import { createGoodIconPainter, goodIconMarkup } from './good-art.js';
 
 /**
  * The parchment card the cursor opens over the world: a settler's name and trade, or a building's name,
@@ -61,21 +60,8 @@ function rowsOf(model: HoverCardModel): readonly HoverCardRow[] {
 }
 
 export function createHoverCard(deps: HoverCardDeps): HoverCard {
-  // Per card, not per module: the icon a good resolves to follows the pack this game draws with, and a
-  // menu-to-game swap builds a new card in the same document.
-  const iconSources = new Map<string, Promise<GoodIconSource | null>>();
-  const paintIcon = (frame: HTMLElement, goodId: string): void => {
-    let pending = iconSources.get(goodId);
-    if (pending === undefined) {
-      pending = goodIconSource(goodId, deps.pack);
-      iconSources.set(goodId, pending);
-    }
-    pending
-      .then((source) => {
-        if (source !== null && frame.isConnected) frame.style.cssText = goodIconStyle(source, ROW_ICON_PX);
-      })
-      .catch((error: unknown) => diag.warn('hud', `hover card icon ${goodId}: ${String(error)}`));
-  };
+  // Per card, not per module: the icon a good resolves to follows the pack this game draws with.
+  const paintIcon = createGoodIconPainter(deps.pack);
 
   const rowElement = (row: HoverCardRow): DrawnRow => {
     const line = document.createElement('p');
@@ -86,7 +72,7 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
     const figure = document.createElement('b');
     line.append(name, figure);
     const frame = name.querySelector('.on-good__frame');
-    if (row.goodId !== undefined && frame instanceof HTMLElement) paintIcon(frame, row.goodId);
+    if (row.goodId !== undefined && frame instanceof HTMLElement) paintIcon(frame, row.goodId, ROW_ICON_PX);
     return { key: rowKey(row), line, figure };
   };
 

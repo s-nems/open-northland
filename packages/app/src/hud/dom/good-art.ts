@@ -1,5 +1,6 @@
 import { loadGoodsManifest } from '../../content/goods-gfx.js';
 import { fetchJsonOrNull } from '../../content/net.js';
+import { diag } from '../../diag/index.js';
 import type { GoodIconSource, PresentationPack } from '../../presentation/pack.js';
 
 /**
@@ -77,4 +78,26 @@ export function goodIconStyle(source: GoodIconSource, boxPx = GOOD_ICON_BOX_PX):
   );
   const px = (n: number): string => `${n.toFixed(2)}px`;
   return `width:${px(rect.width * scale)};height:${px(rect.height * scale)};background-image:url("${source.url}");background-size:${px(sheet.width * scale)} ${px(sheet.height * scale)};background-position:${px(-rect.x * scale)} ${px(-rect.y * scale)};`;
+}
+
+/** Fills a `goodIconMarkup` frame with a good's icon at `boxPx`; the frame's style is replaced once the
+ *  source resolves, and a frame that left the document meanwhile is skipped. */
+export type GoodIconPainter = (frame: HTMLElement, goodId: string, boxPx: number) => void;
+
+/** One painter per game: the icon a good resolves to follows the pack that game draws with, and a
+ *  menu-to-game swap builds a new painter in the same document. */
+export function createGoodIconPainter(pack: PresentationPack | null): GoodIconPainter {
+  const sources = new Map<string, Promise<GoodIconSource | null>>();
+  return (frame, goodId, boxPx) => {
+    let pending = sources.get(goodId);
+    if (pending === undefined) {
+      pending = goodIconSource(goodId, pack);
+      sources.set(goodId, pending);
+    }
+    pending
+      .then((source) => {
+        if (source !== null && frame.isConnected) frame.style.cssText = goodIconStyle(source, boxPx);
+      })
+      .catch((error: unknown) => diag.warn('hud', `good icon ${goodId}: ${String(error)}`));
+  };
 }
