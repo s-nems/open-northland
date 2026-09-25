@@ -1,5 +1,5 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
-import { Building, Position, ResourceFootprint } from '../../components/index.js';
+import { Building, Palisade, PalisadeBlocking, Position, ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState } from '../../components/landscape.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
@@ -13,11 +13,10 @@ import { buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 
 // The per-world free-size classes vehicles route by, on land and on water, over the ground walk-block
-// (buildings, resources, landscapes; never vehicles, which the mover judges against each other at step
-// time). The classes are
-// kept current by replaying the two footprinted stores' membership journals: a placed or razed blocker
-// re-derives the classes around its own cells, so the update cost is local to the change. Derived state,
-// never hashed.
+// (buildings and walls, resources, landscapes; never vehicles, which the mover judges against each other
+// at step time). The classes are kept current by replaying the footprinted stores' membership journals: a
+// placed, finished, swung or razed blocker re-derives the classes around its own cells, so the update cost
+// is local to the change. Derived state, never hashed.
 
 interface ClearanceMemo {
   readonly content: ContentSet;
@@ -38,7 +37,8 @@ interface ClearanceMemo {
 
 const memoByWorld = new WeakMap<World, ClearanceMemo>();
 
-const SOURCES: readonly Component<unknown>[] = [Building, ResourceFootprint];
+/** A wall's gate swing and finish re-add `Palisade` or `PalisadeBlocking`, so membership journals see them. */
+const SOURCES: readonly Component<unknown>[] = [Building, ResourceFootprint, Palisade, PalisadeBlocking];
 
 /** The ground walk-block a vehicle's clearance is measured against: every dynamic layer but the vehicles. */
 export function groundBlockOverlay(world: World, ctx: ContentContext, terrain: TerrainGraph): BlockOverlay {
@@ -55,7 +55,8 @@ function probeOf(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
 }
 
 /** Every cell whose walk-block membership `e` can decide: a building's body plus its door (the door
- *  carve-out), or a resource's walk cells. Empty for a positionless or footprint-less entity. */
+ *  carve-out), a wall's whole placement body (its joint seals lie beside it, inside the recompute reach),
+ *  or a resource's walk cells. Empty for a positionless or footprint-less entity. */
 function blockerCellsOf(world: World, content: ContentSet, terrain: TerrainGraph, e: Entity): NodeId[] {
   const p = world.tryGet(e, Position);
   if (p === undefined) return [];
@@ -71,6 +72,15 @@ function blockerCellsOf(world: World, content: ContentSet, terrain: TerrainGraph
       if (terrain.inBounds(doorX, hy + door.dy)) cells.push(terrain.nodeAt(doorX, hy + door.dy));
     }
     return cells;
+  }
+  const wall = world.tryGet(e, Palisade);
+  if (wall !== undefined) {
+    return [
+      ...new Set([
+        ...translatedCells(terrain, wall.placementWalk, hx, hy),
+        ...translatedCells(terrain, wall.walk, hx, hy),
+      ]),
+    ];
   }
   const resource = world.tryGet(e, ResourceFootprint);
   return resource === undefined ? [] : translatedCells(terrain, resource.walk, hx, hy);

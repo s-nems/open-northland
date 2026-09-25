@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Health,
   MoveGoal,
   NODE_PROGRESS_FULL,
+  Palisade,
   Position,
   Settler,
   seatPassenger,
@@ -77,6 +79,9 @@ const HEX_SOUTH_WEST = 2;
 const HEX_WEST = 3;
 const HEX_NORTH_WEST = 4;
 const HEX_NORTH_EAST = 5;
+/** A one-node wall row a `placePalisade` stands up. */
+const WALL_TYPE = 1;
+const WALL_HITPOINTS = 100;
 
 function sim(map: TerrainMap = grassCellMap(MAP_CELLS, MAP_CELLS), seed = 3): Simulation {
   return new Simulation({ seed, content: testContent(), map });
@@ -329,6 +334,40 @@ describe('moveVehicle', () => {
     s.step();
     expect(refusals(s)).toEqual([]);
     expect(s.world.has(cart, VehicleDrive)).toBe(true);
+  });
+
+  it('closes a wall stood up after the clearance field was read, and reopens it once razed', () => {
+    const wallAt = { hx: 10, hy: 8 };
+    const wall = { maxHitpoints: WALL_HITPOINTS, repairPerStrike: 1, construction: [] };
+    const s = sim({
+      ...grassCellMap(MAP_CELLS, MAP_CELLS),
+      landscapes: {
+        types: [{ typeId: WALL_TYPE, walk: [{ dx: 0, dy: 0 }], build: [], groups: [], wall }],
+        placements: [],
+      },
+    });
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const node = terrain.nodeAt(wallAt.hx, wallAt.hy);
+    expect(vehicleClearance(s.world, ctxOf(s), terrain).classOf(node)).toBeGreaterThan(0);
+    s.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL_TYPE,
+      x: wallAt.hx,
+      y: wallAt.hy,
+      tribe: VIKING,
+      owner: P0,
+    });
+    s.step();
+    const [palisade] = s.world.query(Palisade);
+    if (palisade === undefined) throw new Error('no wall stood up');
+    expect(vehicleClearance(s.world, ctxOf(s), terrain).classOf(node)).toBe(0);
+    expect(s.world.verifyCaches()).toEqual([]);
+    s.world.mut(palisade, Health).hitpoints = 0;
+    s.step();
+    expect(s.world.isAlive(palisade)).toBe(false);
+    expect(vehicleClearance(s.world, ctxOf(s), terrain).classOf(node)).toBeGreaterThan(0);
+    expect(s.world.verifyCaches()).toEqual([]);
   });
 
   it('routes a catapult through nodes wide enough for it and refuses one walled off by clearance', () => {
