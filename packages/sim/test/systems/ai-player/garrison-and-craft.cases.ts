@@ -17,7 +17,11 @@ import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity, World } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
-import { DEFAULT_BUILD_ORDER, SeatSupply } from '../../../src/systems/ai-player/index.js';
+import {
+  DEFAULT_BUILD_ORDER,
+  LATE_GAME_CIVILIANS,
+  SeatSupply,
+} from '../../../src/systems/ai-player/index.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CRAFT_GLUT_BAND_UNITS,
@@ -194,7 +198,7 @@ function draftHeadroom(seat: ArmedSeat): number {
 
 const FURNITURE = 13;
 
-/** The AI content with the joinery's furniture line, so its second seat has a product of its own. */
+/** The AI content with the joinery's furniture line, so its joiners have a product to turn to. */
 function furnitureContent(): ContentSet {
   const base = aiContent();
   return parseContentSet({
@@ -321,7 +325,8 @@ describe('workforce module - the barracks and craft selections', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    spawnMen(sim, 18, BUILDER);
+    // A grown seat, so the HQ staffs its carriers at all.
+    spawnMen(sim, LATE_GAME_CIVILIANS, BUILDER);
     sim.step();
 
     // The barracks declares carrier slots like any store, but the seat posts nobody to them (user
@@ -487,7 +492,11 @@ describe('workforce module - the barracks and craft selections', () => {
       { good: SWORD, amount: 1 },
       { good: BOW, amount: 1 },
     ];
-    const even = armedSeat(both);
+    // The ladder's claims set the pool's parity, so of two crews one man apart, one splits evenly.
+    const [even, odd] = [armedSeat(both), armedSeat(both, { men: SPARE_MEN - 1 })].sort(
+      (a, b) => (sparePool(a) % 2) - (sparePool(b) % 2),
+    );
+    if (even === undefined || odd === undefined) throw new Error('setup: two seats');
     const evenTotal = sparePool(even);
     expect(evenTotal % 2).toBe(0);
     expect(counterWants(even.sim, even.ctx)).toEqual({
@@ -495,8 +504,7 @@ describe('workforce module - the barracks and craft selections', () => {
       trainBow: evenTotal / 2,
     });
 
-    // One man fewer makes the split odd: the extra recruit fights in reach, never at range.
-    const odd = armedSeat(both, { men: SPARE_MEN - 1 });
+    // An odd pool: the extra recruit fights in reach, never at range.
     const oddTotal = sparePool(odd);
     expect(oddTotal % 2).toBe(1);
     expect(counterWants(odd.sim, odd.ctx)).toEqual({
@@ -751,38 +759,19 @@ describe('workforce module - the barracks and craft selections', () => {
     ).toEqual([]);
   });
 
-  it('keeps a lone joiner on iron tools and gives the second the furniture as well', () => {
-    // The first seat's list is what a lone man works: furniture waits for the joinery's second hand.
-    const content = furnitureContent();
-    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
-    placeHq(sim);
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: JOINERY_TYPE,
-      x: 40,
-      y: 16,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    spawnMen(sim, 2, BUILDER);
-    sim.step();
-    const ctx = { ...ctxOf(sim), content };
-    const joinery = entityOfBuilding(sim, JOINERY_TYPE);
-    const [first, second] = [...sim.world.query(Settler)]
-      .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
-      .sort((a, b) => a - b);
-    if (first === undefined || second === undefined) throw new Error('setup: too few men');
-
-    sim.enqueueSetup({ kind: 'assignWorker', entity: first, building: joinery, jobPriority: [JOINER] });
-    sim.step();
-    expect(tune(sim.world, ctx)).toEqual([{ kind: 'setCraftGoods', entity: first, goods: [TOOL_IRON] }]);
-
-    sim.enqueueSetup({ kind: 'assignWorker', entity: second, building: joinery, jobPriority: [JOINER] });
-    sim.step();
-    expect(tune(sim.world, ctx)).toEqual([
-      { kind: 'setCraftGoods', entity: first, goods: [TOOL_IRON] },
-      { kind: 'setCraftGoods', entity: second, goods: [TOOL_IRON, FURNITURE] },
-    ]);
+  it('keeps both joiners on iron tools, and turns both to furniture while the tools pile up', () => {
+    const seat = crewedWorkshop(furnitureContent(), 2);
+    const glut = glutOf('work_joinery_01', 0, 'tool_iron');
+    expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
+    seat.stock(TOOL_IRON, glut - 1);
+    expect(seat.products()).toEqual([]);
+    seat.stock(TOOL_IRON, glut);
+    expect(seat.products()).toEqual([[FURNITURE], [FURNITURE]]);
+    // The tools come back only under the band, so the stock hovering at the glut flips nothing.
+    seat.stock(TOOL_IRON, glut - CRAFT_GLUT_BAND_UNITS);
+    expect(seat.products()).toEqual([]);
+    seat.stock(TOOL_IRON, glut - CRAFT_GLUT_BAND_UNITS - 1);
+    expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
   });
 
   it('opens an upgraded mason hut on a marble run, then alternates stone blocks and marble', () => {
@@ -984,9 +973,12 @@ describe('workforce module - the barracks and craft selections', () => {
   });
 
   it('hands the seats out across every building of the type, not per building', () => {
-    // One joiner in each of two joineries: counted per building each would be a lone man on iron tools,
-    // counted across the type they are the pair the table splits.
-    const content = furnitureContent();
+    // One tailor in each of two sewing huts: counted per building each would be a lone man on the first
+    // seat's shoes, counted across the type they are the pair the table splits.
+    const content = joineryRecastAs('work_sewery_01', [
+      { typeId: SHOES, id: 'shoes' },
+      { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
+    ]);
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     placeHq(sim);
     for (const x of [40, 60]) {
@@ -1002,26 +994,26 @@ describe('workforce module - the barracks and craft selections', () => {
     spawnMen(sim, 2, BUILDER);
     sim.step();
     const ctx = { ...ctxOf(sim), content };
-    const joineries = [...sim.world.query(Building)]
+    const workshops = [...sim.world.query(Building)]
       .filter((e) => sim.world.get(e, Building).buildingType === JOINERY_TYPE)
       .sort((a, b) => a - b);
     const men = [...sim.world.query(Settler)]
       .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
       .sort((a, b) => a - b);
-    for (const [i, building] of joineries.entries()) {
+    for (const [i, building] of workshops.entries()) {
       const man = men[i];
       if (man === undefined) throw new Error('setup: too few men');
       sim.enqueueSetup({ kind: 'assignWorker', entity: man, building, jobPriority: [JOINER] });
     }
     sim.step();
 
-    const joiners = [...sim.world.query(Settler, JobAssignment)]
+    const tailors = [...sim.world.query(Settler, JobAssignment)]
       .filter((e) => sim.world.get(e, Settler).jobType === JOINER)
       .sort((a, b) => a - b);
-    expect(joiners).toHaveLength(2);
+    expect(tailors).toHaveLength(2);
     expect(tune(sim.world, ctx)).toEqual([
-      { kind: 'setCraftGoods', entity: joiners[0], goods: [TOOL_IRON] },
-      { kind: 'setCraftGoods', entity: joiners[1], goods: [TOOL_IRON, FURNITURE] },
+      { kind: 'setCraftGoods', entity: tailors[0], goods: [SHOES] },
+      { kind: 'setCraftGoods', entity: tailors[1], goods: [LEATHER_ARMOUR] },
     ]);
   });
 });

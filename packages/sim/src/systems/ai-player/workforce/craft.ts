@@ -52,6 +52,17 @@ export interface CraftPlan {
  *  hovering at the line does not flip the seat with every unit made or taken. */
 export const CRAFT_GLUT_BAND_UNITS = 8;
 
+/** The iron tools in stock at which the joiners turn to furniture (authored). Every worker wears one and
+ *  no bill or shelf sizes them, so they take no supply lines and the glut is authored. */
+export const JOINERY_TOOL_GLUT_UNITS = 24;
+
+/** A joiner's seat: iron tools until they reach {@link JOINERY_TOOL_GLUT_UNITS}, furniture meanwhile. */
+const JOINERY_SEAT: CraftSeat = {
+  goods: ['tool_iron'],
+  glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS },
+  otherwise: ['furniture'],
+};
+
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
  * runs its main lines. Whatever the lists say, a product the build order runs short of comes first
@@ -60,7 +71,8 @@ export const CRAFT_GLUT_BAND_UNITS = 8;
  * seat forges the short swords only the strength amulet takes. One druid in eight boils holy oil (the
  * first, since the big potion waits on herbs the later herb hut grows). The first two mints' four coiners
  * work one on coins and three on defence amulets; once a fifth joins at the third mint, the crew splits two
- * each over coins, defence and strength amulets. The second joiner takes the furniture. The potters split
+ * each over coins, defence and strength amulets. Both joiners make iron tools and turn to furniture only
+ * while the tools pile up. The potters split
  * bricks and tiles, a lone one working both, and turn to crockery, which doubles a stocked home's food,
  * while both lie at their glut lines. The first tailor sews shoes and the second leather armour, turning
  * to shoes while the armour piles up unworn, as it does once plate armour has come in, and back once the
@@ -70,7 +82,7 @@ export const CRAFT_GLUT_BAND_UNITS = 8;
  * cattle.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
-  work_joinery_01: { seats: [['tool_iron'], ['tool_iron', 'furniture']] },
+  work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT] },
   work_pottery_01: { seats: [['brick'], ['tile']], alone: ['brick', 'tile'], sink: ['crockery'] },
   work_mason_hut_01: { seats: [['pillar', 'ornament']] },
   work_animal_farm: { seats: [['cattle']] },
@@ -226,13 +238,11 @@ export function tuneCraftSelections(
   return commands;
 }
 
-/** The goods a workplace type makes, ascending, from its content recipes. */
+/** The goods a workplace type makes, ascending: its recipes' outputs and the field-farmed goods it
+ *  produces without a recipe, as the farm's grain. */
 export function productsOf(ctx: SystemContext, type: BuildingType): readonly number[] {
-  return (
-    contentIndex(ctx.content)
-      .mergedRecipeByBuilding.get(type.typeId)
-      ?.outputs.map((o) => o.goodType) ?? []
-  );
+  const crafted = contentIndex(ctx.content).mergedRecipeByBuilding.get(type.typeId)?.outputs ?? [];
+  return [...new Set([...crafted.map((o) => o.goodType), ...type.produces])].sort((a, b) => a - b);
 }
 
 /** Whether the type's products with supply lines all lie at their glut lines, or while the crew already

@@ -12,6 +12,7 @@ import {
   setStockAmount,
 } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
+import { contentIndex } from '../../../src/core/content-index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
@@ -34,10 +35,21 @@ import {
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { claimFlagNode, flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import { civilianCount } from '../../../src/systems/ai-player/workforce/pool.js';
+import {
+  type BuildingStaffing,
+  buildingStaffing,
+  type HeldStaff,
+  LATE_GAME_CIVILIANS,
+  plannedOperators,
+  type SeatStaffing,
+  STORE_CARRIERS,
+} from '../../../src/systems/ai-player/workforce/staffing-plan.js';
 import { EAT_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   aiSim,
+  BAKERY_TYPE,
   BUILDER,
   CARRIER,
   COLLECTOR,
@@ -45,8 +57,11 @@ import {
   completeSites,
   ctxOf,
   entityOfBuilding,
+  FARM_TYPE,
+  FARMER,
   HQ_TYPE,
   IRON,
+  MILL_TYPE,
   MUD,
   placeHq,
   placeResources,
@@ -60,7 +75,8 @@ import {
 
 /** The pottery's and mason hut's crews: the first craftsman's carrier, the supply carrier an upgraded
  *  workshop keeps while its goods run short, the second potter while a product runs short, the potters'
- *  product split with its glut sink, and a workshop resting while its products lie at glut. */
+ *  product split with its glut sink, and a workshop resting while its products lie at glut. The farm's and
+ *  mill's crews sized by the grain and flour they lack, and the stores' carriers of a grown seat. */
 
 const POTTER = 12;
 const MASON = 13;
@@ -145,21 +161,23 @@ interface Seat {
   stock(goods: readonly number[], units: number): void;
 }
 
-function workshopSeat(men = BUILDER_CAP + SPARE_MEN): Seat {
-  const content = workshopsContent();
+/** A seat over `content` with the HQ, `men` builders and a building of each of `buildingTypes`, placed
+ *  side by side along one row. */
+function seatOn(content: ContentSet, buildingTypes: readonly number[], men: number): Seat {
   const sim = aiSim(1, content);
   placeHq(sim);
-  for (const [buildingType, x] of [
-    [POTTERY, 40],
-    [MASON_HUT, 50],
-  ] as const) {
-    sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y: 16, tribe: VIKING, owner: SEAT });
+  for (const [i, buildingType] of buildingTypes.entries()) {
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType,
+      x: FIRST_BUILDING_X + i * BUILDING_SPACING,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
   }
   spawnMen(sim, men, BUILDER);
   sim.step();
-  // The clay and stone the two workshops eat: plentiful, so their carriers are hired at all.
-  for (const good of RAW_GOODS)
-    setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, linesOf(content, good).comfort);
   return {
     sim,
     decide: () => [...collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)],
@@ -176,6 +194,17 @@ function workshopSeat(men = BUILDER_CAP + SPARE_MEN): Seat {
       for (const good of goods) setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, units);
     },
   };
+}
+
+const FIRST_BUILDING_X = 40;
+const BUILDING_SPACING = 10;
+
+function workshopSeat(men = BUILDER_CAP + SPARE_MEN): Seat {
+  const content = workshopsContent();
+  const seat = seatOn(content, [POTTERY, MASON_HUT], men);
+  // The clay and stone the two workshops eat: plentiful, so their carriers are hired at all.
+  for (const good of RAW_GOODS) seat.stock([good], linesOf(content, good).comfort);
+  return seat;
 }
 
 /** A seat whose pottery and mason hut are both upgraded, their first carriers still at their posts. */
@@ -613,5 +642,213 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
     expect(upkeep.filter((c) => c.kind === 'setWorkFlag' && (c.entity === low || c.entity === high))).toEqual(
       [],
     );
+  });
+});
+
+const WHEAT = 60;
+const FLOUR = 61;
+const MILLER = 19;
+/** The fixture's one food good, which stands in for the bakery's bread. */
+const FOOD_SIMPLE = 3;
+/** The mill's wheat shelf and the bakery's flour shelf, the consumers' shelves that size each good's unit. */
+const INPUT_SHELF = 10;
+
+/** The AI content with the grain chain: the farm grows wheat, the mill grinds it and the bakery bakes the
+ *  flour. */
+function grainContent(): ContentSet {
+  const base = aiContent();
+  const shelf = (goodType: number) => ({ goodType, capacity: INPUT_SHELF, initial: 0 });
+  const recipe = (input: number, output: number) => ({
+    inputs: [{ goodType: input, amount: 1 }],
+    outputs: [{ goodType: output, amount: 1 }],
+    ticks: 180,
+  });
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      { typeId: WHEAT, id: 'wheat', weight: 1 },
+      { typeId: FLOUR, id: 'flour', weight: 1 },
+    ],
+    buildings: base.buildings.map((b) => {
+      if (b.typeId === FARM_TYPE) return { ...b, produces: [WHEAT] };
+      if (b.typeId === MILL_TYPE)
+        return { ...b, recipes: [recipe(WHEAT, FLOUR)], stock: [shelf(WHEAT), shelf(FLOUR)] };
+      if (b.typeId === BAKERY_TYPE)
+        return { ...b, recipes: [recipe(FLOUR, FOOD_SIMPLE)], stock: [shelf(FLOUR), ...b.stock] };
+      return b;
+    }),
+  });
+}
+
+/** The operators a building's plan staffs per tier this decision, with `held` its live crew. */
+function operatorTiers(seat: Seat, content: ContentSet, building: Entity, held: HeldStaff) {
+  const plan = planOf(seat, content, building, held);
+  return {
+    min: plan.operatorMin,
+    target: plan.operatorTarget,
+    surplus: plan.operatorSurplus ?? plan.operatorTarget,
+  };
+}
+
+function planOf(seat: Seat, content: ContentSet, building: Entity, held: HeldStaff): BuildingStaffing {
+  const { world } = seat.sim;
+  const ctx = { ...ctxOf(seat.sim), content };
+  const owned = ownedBuildings(world, SEAT);
+  const staffing: SeatStaffing = {
+    player: SEAT,
+    owned,
+    civilians: civilianCount(world, ctx, SEAT),
+    supply: SeatSupply.of(world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER),
+  };
+  const type = contentIndex(content).buildings.get(world.get(building, Building).buildingType);
+  const plan = type === undefined ? null : buildingStaffing(world, ctx, staffing, building, type, held);
+  if (plan === null) throw new Error('setup: a staffed building');
+  return plan;
+}
+
+const alone = { operators: 1, carriers: 0 };
+const crewOf = (operators: number): HeldStaff => ({ operators, carriers: 0 });
+
+describe('workforce module - the farm and mill crews', () => {
+  it("derives the grain's and flour's lines from the consumers' input shelves", () => {
+    const content = grainContent();
+    for (const good of [WHEAT, FLOUR]) {
+      const short = MAX_ACTIVE_CONSTRUCTION_SITES * INPUT_SHELF;
+      expect(linesOf(content, good)).toEqual({
+        unit: INPUT_SHELF,
+        short,
+        comfort: short + INPUT_SHELF,
+        glut: short + INPUT_SHELF + BUILD_ORDER_LOOKAHEAD_ENTRIES * INPUT_SHELF,
+      });
+    }
+  });
+
+  it('plans one farmer more per unit of grain lacking, the second at the target tier and the rest from surplus', () => {
+    const content = grainContent();
+    const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
+    const farm = entityOfBuilding(seat.sim, FARM_TYPE);
+    const { unit, short, comfort } = linesOf(content, WHEAT);
+    const tiers = (wheat: number, held: HeldStaff) => {
+      seat.stock([WHEAT], wheat);
+      return operatorTiers(seat, content, farm, held);
+    };
+    // Down to the short line a lone farmer keeps the grain up.
+    expect(tiers(short, alone)).toEqual({ min: 1, target: 1, surplus: 1 });
+    // Under it the gap to comfort spans more than a unit: a second farmer at the target tier, a third out
+    // of surplus.
+    expect(tiers(short - 1, alone)).toEqual({ min: 1, target: 2, surplus: 3 });
+    // An engaged crew reads the comfort line: one unit lacking keeps two farmers, a unit and one three.
+    expect(tiers(comfort - unit, crewOf(2))).toEqual({ min: 1, target: 2, surplus: 2 });
+    expect(tiers(comfort - unit - 1, crewOf(2))).toEqual({ min: 1, target: 2, surplus: 3 });
+    // Two units and more lacking seat the row's four.
+    expect(tiers(comfort - 2 * unit - 1, crewOf(3))).toEqual({ min: 1, target: 2, surplus: 4 });
+    expect(tiers(0, alone)).toEqual({ min: 1, target: 2, surplus: 4 });
+    expect(tiers(comfort, crewOf(4))).toEqual({ min: 1, target: 1, surplus: 1 });
+  });
+
+  it('shrinks the farm crew as the grain comes in, rests it at glut and brings it back under short', () => {
+    const content = grainContent();
+    const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
+    const farm = entityOfBuilding(seat.sim, FARM_TYPE);
+    const { short, comfort, glut } = linesOf(content, WHEAT);
+    const released = () => seat.decide().filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
+    const toBuilders = (men: readonly Entity[]) =>
+      men.map((entity) => ({ kind: 'setJob', entity, jobType: BUILDER }));
+    const farmerHires = () =>
+      seat
+        .decide()
+        .filter((c) => c.kind === 'assignWorker' && c.building === farm && c.jobPriority.includes(FARMER));
+
+    seat.stock([WHEAT], 0);
+    seat.apply(seat.decide());
+    const farmers = seat.crew(farm, FARMER).sort((a, b) => a - b);
+    expect(farmers).toHaveLength(4);
+
+    // At comfort the crew falls back to the first farmer, and at glut he goes too.
+    seat.stock([WHEAT], comfort);
+    expect(released()).toEqual(toBuilders(farmers.slice(1)));
+    seat.apply(released());
+    seat.stock([WHEAT], glut - 1);
+    expect(released()).toEqual([]);
+    seat.stock([WHEAT], glut);
+    expect(released()).toEqual(toBuilders(farmers.slice(0, 1)));
+    seat.apply(released());
+    expect(seat.crew(farm, FARMER)).toEqual([]);
+
+    // The idle farm waits down to the short line, and takes three farmers back under it.
+    seat.stock([WHEAT], short);
+    expect(farmerHires()).toEqual([]);
+    seat.stock([WHEAT], short - 1);
+    expect(farmerHires()).toHaveLength(3);
+  });
+
+  it('plans the second miller out of surplus while the flour runs short, and rests the mill at glut', () => {
+    const content = grainContent();
+    const seat = seatOn(content, [MILL_TYPE], BUILDER_CAP + SPARE_MEN);
+    const mill = entityOfBuilding(seat.sim, MILL_TYPE);
+    const { short, comfort, glut } = linesOf(content, FLOUR);
+    const tiers = (flour: number, held: HeldStaff) => {
+      seat.stock([FLOUR], flour);
+      return operatorTiers(seat, content, mill, held);
+    };
+    // The mill's target is its one miller: the build order plans it as one consumer of the grain.
+    const ctx = { ...ctxOf(seat.sim), content };
+    const millType = contentIndex(content).buildings.get(MILL_TYPE);
+    if (millType === undefined) throw new Error('setup: the mill');
+    expect(plannedOperators(ctx, millType)).toBe(1);
+
+    expect(tiers(short, alone)).toEqual({ min: 1, target: 1, surplus: 1 });
+    expect(tiers(short - 1, alone)).toEqual({ min: 1, target: 1, surplus: 2 });
+    expect(tiers(comfort - 1, crewOf(2))).toEqual({ min: 1, target: 1, surplus: 2 });
+    expect(tiers(comfort, crewOf(2))).toEqual({ min: 1, target: 1, surplus: 1 });
+    expect(tiers(glut, alone)).toEqual({ min: 0, target: 0, surplus: 0 });
+
+    seat.stock([FLOUR], 0);
+    seat.apply(seat.decide());
+    expect(seat.crew(mill, MILLER)).toHaveLength(2);
+  });
+});
+
+describe('workforce module - the stores staff carriers only in a grown seat', () => {
+  const hqCarrierHires = (seat: Seat) =>
+    seat
+      .decide()
+      .filter((c) => c.kind === 'assignWorker' && c.building === entityOfBuilding(seat.sim, HQ_TYPE));
+
+  it('posts no store carrier below the grown-seat size, however many men are spare', () => {
+    const seat = seatOn(aiContent(), [], LATE_GAME_CIVILIANS - 1);
+    expect(hqCarrierHires(seat)).toEqual([]);
+    expect(planOf(seat, aiContent(), entityOfBuilding(seat.sim, HQ_TYPE), crewOf(0))).toMatchObject({
+      carrierTarget: 0,
+      carrierSurplus: 0,
+    });
+  });
+
+  it("hires a grown seat's store carriers at the surplus tier", () => {
+    const seat = seatOn(aiContent(), [], LATE_GAME_CIVILIANS);
+    const hq = entityOfBuilding(seat.sim, HQ_TYPE);
+    expect(planOf(seat, aiContent(), hq, crewOf(0))).toMatchObject({
+      carrierMin: 0,
+      carrierTarget: 0,
+      carrierSurplus: STORE_CARRIERS,
+    });
+    expect(hqCarrierHires(seat).map((c) => c.kind === 'assignWorker' && c.jobPriority)).toEqual(
+      Array.from({ length: STORE_CARRIERS }, () => [CARRIER]),
+    );
+  });
+
+  it("hands a small seat's store carriers back as builders", () => {
+    const seat = seatOn(aiContent(), [], BUILDER_CAP + SPARE_MEN);
+    const hq = entityOfBuilding(seat.sim, HQ_TYPE);
+    for (let i = 0; i < STORE_CARRIERS; i++) hireSpare(seat, hq, CARRIER);
+    const carriers = seat.crew(hq, CARRIER).sort((a, b) => a - b);
+    expect(carriers).toHaveLength(STORE_CARRIERS);
+    expect(
+      seat
+        .decide()
+        .filter((c) => c.kind === 'setJob' && carriers.includes(c.entity))
+        .map((c) => c.kind === 'setJob' && c.jobType),
+    ).toEqual(carriers.map(() => BUILDER));
   });
 });

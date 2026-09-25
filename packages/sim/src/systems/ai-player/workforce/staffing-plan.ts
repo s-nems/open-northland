@@ -17,6 +17,9 @@ export interface BuildingStaffing {
   readonly operatorSurplus?: number;
   readonly carrierMin: number;
   readonly carrierTarget: number;
+  /** Carriers filled only by the `surplus` pass, and the count a release keeps. Absent: the target count
+   *  is final. */
+  readonly carrierSurplus?: number;
 }
 
 /** The baseline workplace plan: one worker per operator trade, no carrier (authored). */
@@ -30,7 +33,9 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
 /** One {@link STAFFING_BY_BUILDING_ID} row. */
 export interface StaffingRow extends Partial<BuildingStaffing> {
   /** Operators beyond the first are posts only while one of the type's products is short: under its
-   *  comfort line while more than one works there, under its short line otherwise ({@link SeatSupply}). */
+   *  comfort line while more than one works there, under its short line otherwise ({@link SeatSupply}).
+   *  A short product allows one operator more per supply unit it lacks to its comfort line, within the
+   *  row's own tiers ({@link gatedOperators}). */
   readonly productGated?: true;
 }
 
@@ -38,12 +43,14 @@ export interface StaffingRow extends Partial<BuildingStaffing> {
  *  applied per building instance. A second hand is a target-tier extra unless its row says otherwise,
  *  so a farm knowingly runs on one farmer until men are actually spare. */
 export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
-  // A lone farmer cannot walk the watering circuit in time, so the second hand is worth more than its
-  // own output; the third and fourth only pay off out of genuine surplus.
-  work_farm_00: { operatorTarget: 2, operatorSurplus: 4 },
-  // Surplus-only: one farm grows roughly what one miller grinds, so the second seat is worth filling
-  // only once the farm's own extra hands have outgrown him.
-  work_mill_00: { operatorSurplus: 2 },
+  // One farmer while the grain keeps up. Short of it, one more per unit it lacks: a lone farmer cannot walk
+  // the watering circuit in time, so the second hand comes at the target tier, and the third and fourth,
+  // which only pay off out of genuine surplus, from the surplus tier. The crew rests at the grain's glut.
+  work_farm_00: { operatorTarget: 2, operatorSurplus: 4, productGated: true },
+  // One miller while the flour keeps up; one farm grows roughly what one miller grinds, so the second seat
+  // is worth filling only out of surplus and only while the flour runs short. The crew rests at the
+  // flour's glut.
+  work_mill_00: { operatorSurplus: 2, productGated: true },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
   // Both breeders keep the cattle (CRAFT_PLANS_BY_BUILDING_ID), so the pair doubles the one herd's
   // output from the start.
@@ -70,19 +77,29 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // The well and the hive stay unstaffed: the brewery's carrier draws its water and honey himself.
 };
 
-/** The storage plan: the HQ and every warehouse run up to three transport carriers, all at the target
- *  tier (authored), so a warehouse post never comes ahead of workplace staffing or the builder
- *  reserve. */
-const STORAGE_STAFFING: BuildingStaffing = {
-  operatorMin: 0,
-  operatorTarget: 0,
-  carrierMin: 0,
-  carrierTarget: 3,
-};
-
 /** The civilians from which a seat counts as grown (authored): its late bills are the largest and its
  *  sites the farthest apart. */
 export const LATE_GAME_CIVILIANS = 60;
+
+/** The transport carriers the HQ and every warehouse run in a grown seat (authored). */
+export const STORE_CARRIERS = 3;
+
+/** The storage plan of a seat below {@link LATE_GAME_CIVILIANS} civilians: no carrier. A store carrier is
+ *  a luxury that costs a civilian, and a seat has men to spare for one only once it is grown. */
+const SMALL_SEAT_STORAGE_STAFFING: BuildingStaffing = {
+  operatorMin: 0,
+  operatorTarget: 0,
+  carrierMin: 0,
+  carrierTarget: 0,
+  carrierSurplus: 0,
+};
+
+/** The storage plan of a grown seat: {@link STORE_CARRIERS} carriers, all at the surplus tier, so a store
+ *  post never comes ahead of workplace staffing or the builder reserve. */
+const GROWN_SEAT_STORAGE_STAFFING: BuildingStaffing = {
+  ...SMALL_SEAT_STORAGE_STAFFING,
+  carrierSurplus: STORE_CARRIERS,
+};
 
 /** The goods whose shortage puts a carrier into the workshop at the minimum tier (authored), by stable
  *  content ids: the building materials only these tiers make. The carrier is hired below a good's short
@@ -136,14 +153,16 @@ export function buildingStaffing(
   type: BuildingType,
   held: HeldStaff,
 ): BuildingStaffing | null {
-  if (type.kind === 'storage') return STORAGE_STAFFING;
+  if (type.kind === 'storage') {
+    return seat.civilians >= LATE_GAME_CIVILIANS ? GROWN_SEAT_STORAGE_STAFFING : SMALL_SEAT_STORAGE_STAFFING;
+  }
   if (type.kind !== 'workplace') return null;
   const { productGated, ...row } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
   let plan: BuildingStaffing = { ...DEFAULT_WORKPLACE_STAFFING, ...row };
   const opening = openingRunPending(world, ctx, building, type);
-  if (opening || (productGated === true && !productShort(ctx, seat, type, held.operators > 1))) {
-    plan = capOperators(plan, 1);
-  }
+  const gate = productGated === true ? gatedOperators(ctx, seat, type, held.operators > 1) : null;
+  if (opening) plan = capOperators(plan, 1);
+  else if (gate !== null) plan = capOperators(plan, gate);
   const holdsCarrier = held.carriers > 0;
   if (suppliesShort(ctx, seat, type, holdsCarrier)) {
     plan = {
@@ -152,11 +171,14 @@ export function buildingStaffing(
       carrierTarget: Math.max(plan.carrierTarget, 1),
     };
   }
-  if (rawGoodShort(ctx, seat, type, holdsCarrier)) plan = { ...plan, carrierMin: 0, carrierTarget: 0 };
-  if (!opening && productsRest(ctx, seat, type, held.operators)) {
-    plan = { ...capOperators(plan, 0), carrierMin: 0, carrierTarget: 0 };
-  }
+  if (rawGoodShort(ctx, seat, type, holdsCarrier)) plan = withoutCarriers(plan);
+  if (!opening && productsRest(ctx, seat, type, held.operators))
+    plan = withoutCarriers(capOperators(plan, 0));
   return plan;
+}
+
+function withoutCarriers(plan: BuildingStaffing): BuildingStaffing {
+  return { ...plan, carrierMin: 0, carrierTarget: 0, carrierSurplus: 0 };
 }
 
 function capOperators(plan: BuildingStaffing, cap: number): BuildingStaffing {
@@ -168,10 +190,28 @@ function capOperators(plan: BuildingStaffing, cap: number): BuildingStaffing {
   };
 }
 
-/** Whether one of the type's products is short: under its comfort line while `engaged`, else its short
- *  line. A product without supply lines never is. */
-function productShort(ctx: SystemContext, seat: SeatStaffing, type: BuildingType, engaged: boolean): boolean {
-  return productsOf(ctx, type).some((good) => seat.supply.isShort(good, engaged));
+/**
+ * The operators a product-gated type may employ: one while none of its products is short (under its comfort
+ * line while `engaged`, else its short line), and while one is, one more per supply unit the shortest lacks
+ * to its comfort line. Null for a type none of whose products has supply lines: its row stands as authored.
+ */
+function gatedOperators(
+  ctx: SystemContext,
+  seat: SeatStaffing,
+  type: BuildingType,
+  engaged: boolean,
+): number | null {
+  let managed = false;
+  let extra = 0;
+  for (const good of productsOf(ctx, type)) {
+    const lines = seat.supply.lines(good);
+    if (lines === undefined) continue;
+    managed = true;
+    if (seat.supply.isShort(good, engaged)) {
+      extra = Math.max(extra, Math.ceil(seat.supply.lackToComfort(good) / lines.unit));
+    }
+  }
+  return managed ? 1 + extra : null;
 }
 
 /**

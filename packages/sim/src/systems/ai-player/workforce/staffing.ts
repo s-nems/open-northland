@@ -66,7 +66,12 @@ export function staffBuildings(
         : tier === 'target'
           ? staffing.operatorTarget
           : (staffing.operatorSurplus ?? staffing.operatorTarget);
-    const carrierWant = tier === 'min' ? staffing.carrierMin : staffing.carrierTarget;
+    const carrierWant =
+      tier === 'min'
+        ? staffing.carrierMin
+        : tier === 'target'
+          ? staffing.carrierTarget
+          : (staffing.carrierSurplus ?? staffing.carrierTarget);
     for (const slot of type.workers) {
       const carrier = isCarrierJob(ctx, slot.jobType);
       if (!carrier && index.harvestJobs.has(slot.jobType)) continue; // gatherer slots stay open
@@ -101,8 +106,9 @@ function heldAt(ctx: SystemContext, tally: StaffingTally, building: Entity): Hel
 }
 
 /**
- * Hand back as builders the carriers a built workplace employs beyond its plan's carrier target, as after
- * an upgrade into a tier that plans fewer or once a supply carrier's goods are plentiful again.
+ * Hand back as builders the carriers a built workplace or store employs beyond its plan's highest carrier
+ * tier, as after an upgrade into a tier that plans fewer, once a supply carrier's goods are plentiful again,
+ * or while the seat is too small for store carriers.
  */
 export function releaseSurplusCarriers(
   world: World,
@@ -118,7 +124,7 @@ export function releaseSurplusCarriers(
     tally,
     builderJob,
     (job) => isCarrierJob(ctx, job),
-    (plan) => plan.carrierTarget,
+    (plan) => plan.carrierSurplus ?? plan.carrierTarget,
   );
 }
 

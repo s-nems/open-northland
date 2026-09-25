@@ -24,6 +24,15 @@ export interface SupplyLines {
   readonly glut: number;
 }
 
+/**
+ * The goods the seat's own workshops pass between themselves whose makers' crews the supply lines size, by
+ * stable content ids (authored): the farm's grain and the mill's flour. The list is authored rather than
+ * every intermediate good, because a managed good's crew rests at its glut line and comes back only under
+ * its short line; that suits a chain whose consumers the build order sizes, not goods such as mead, shoes
+ * or coins whose use the lines do not measure.
+ */
+export const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour'];
+
 /** The unit of a good no bill takes and no workshop shelves. */
 const FALLBACK_SUPPLY_UNIT = 1;
 
@@ -34,10 +43,11 @@ const linesCache = new WeakMap<
 >();
 
 /**
- * The supply lines of every good the build order's bills take, the collected goods and its collector
- * goods (authored approximation). Short covers {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites of the good's
- * unit, comfort adds the larger of the unit and a consuming workshop's input shelf, and glut adds one
- * unit per {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} entry on top.
+ * The supply lines of every good the build order's bills take, the collected goods, its collector goods
+ * and the {@link STOCKED_PRODUCT_GOOD_IDS} (authored approximation). Short covers
+ * {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites of the good's unit, comfort adds the larger of the unit and a
+ * consuming workshop's input shelf, and glut adds one unit per {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} entry
+ * on top.
  */
 export function supplyLines(
   content: ContentSet,
@@ -62,7 +72,8 @@ function deriveLines(
 ): ReadonlyMap<number, SupplyLines> {
   const index = contentIndex(content);
   const managed = new Set<number>();
-  for (const id of COLLECTED_GOOD_IDS) addKnown(managed, index.goodTypeBySlug.get(id));
+  for (const id of [...COLLECTED_GOOD_IDS, ...STOCKED_PRODUCT_GOOD_IDS])
+    addKnown(managed, index.goodTypeBySlug.get(id));
   const named = new Set<number>();
   for (const entry of order) {
     if (entry.kind === 'collector') addKnown(managed, index.goodTypeBySlug.get(entry.good));
@@ -146,6 +157,13 @@ export class SeatSupply {
     const surplus = this.surplusByGood.get(good);
     if (lines === undefined || surplus === undefined) return false;
     return surplus < (engaged ? lines.comfort : lines.short);
+  }
+
+  /** The units the good lacks to its comfort line, 0 at or above it; 0 for an unmanaged good. */
+  lackToComfort(good: number): number {
+    const lines = this.linesByGood.get(good);
+    const surplus = this.surplusByGood.get(good);
+    return lines === undefined || surplus === undefined ? 0 : Math.max(0, lines.comfort - surplus);
   }
 
   atGlut(good: number): boolean {

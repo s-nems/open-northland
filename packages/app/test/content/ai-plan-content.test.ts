@@ -126,6 +126,30 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     }
   });
 
+  it("derives the grain's and flour's supply lines", async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    const managed = supplyLines(content, DEFAULT_BUILD_ORDER);
+    const linesOf = (id: string) => {
+      const good = content.goods.find((g) => g.id === id);
+      return good === undefined ? undefined : managed.get(good.typeId);
+    };
+    // The homes' and several workshops' bills take wheat, so its largest bill line (two) is its unit, and
+    // the mill's and animal farm's ten-unit wheat shelves widen only its band.
+    expect(linesOf('wheat')).toEqual({ unit: 2, short: 4, comfort: 14, glut: 20 });
+    // No bill takes flour: the bakery's ten-unit flour shelf is its unit.
+    expect(linesOf('flour')).toEqual({ unit: 10, short: 20, comfort: 30, glut: 60 });
+  });
+
+  it('keeps the joiners on iron tools, turning to furniture only at an authored glut', () => {
+    const plan = CRAFT_PLANS_BY_BUILDING_ID.work_joinery_01;
+    for (const seat of plan?.seats ?? []) {
+      expect(seat).toMatchObject({ goods: ['tool_iron'], otherwise: ['furniture'] });
+      expect('goods' in seat && seat.glut.tool_iron).toBeGreaterThan(0);
+    }
+    expect(plan?.seats).toHaveLength(2);
+  });
+
   it('the workforce tables name real buildings, goods, and matching worker slots', async () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
@@ -147,10 +171,13 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
         expect(fits, `an operator slot of ${id} offering ${operatorWant} seats`).toBe(true);
       }
-      // A product-gated second hand is hired only while a product with supply lines runs short.
+      // A product-gated second hand is hired only while a product with supply lines runs short; a farm's
+      // field-grown product has no recipe.
       if (staffing.productGated === true) {
+        const products = [...(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)) ?? [])];
+        products.push(...(building?.produces ?? []));
         expect(
-          building?.recipes.some((r) => r.outputs.some((o) => managed.has(o.goodType))),
+          products.some((good) => managed.has(good)),
           `${id} makes a good with supply lines`,
         ).toBe(true);
       }
