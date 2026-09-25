@@ -159,7 +159,6 @@ describe('build-order module (houseBuild)', () => {
 
     // Past the gate: the barracks, both bakery upgrades, then the late tail - the closing pair of level-2
     // bakeries and the second brewery follow, with a tower wherever one lands outside the tower circles,
-    // the store coverage rests (every workshop stands in the HQ's circle), the denser tower ring follows,
     // and the third brewery closes the list. The home entries name `home_level_04`, a tier this
     // content set stops short of, so they skip here - the direct top-tier placement has its own test
     // below. The smithy and armory entries are absent from this fixture, so both skip.
@@ -173,21 +172,14 @@ describe('build-order module (houseBuild)', () => {
       expect(sim.world.get(upgrade.building, Building).buildingType).toBe(BAKERY_TYPE);
       applyAndFinish(sim, upgrade);
     }
+    // The settlement stays inside every coverage circle, so neither coverage entry raises anything.
     for (const expected of [BAKERY_TOP_TYPE, BAKERY_TOP_TYPE, BREWERY_TYPE, BREWERY_TYPE]) {
-      let next = nextPlacement(sim);
-      // The tower coverage entry re-arms whenever a later building lands outside every tower circle.
-      for (; next?.kind === 'placeBuilding' && next.buildingType === TOWER_TYPE; next = nextPlacement(sim)) {
-        applyAndFinish(sim, next);
-      }
+      const next = nextPlacement(sim);
       if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
       expect(next.buildingType).toBe(expected);
       applyAndFinish(sim, next);
     }
-    let next = nextPlacement(sim);
-    for (; next?.kind === 'placeBuilding' && next.buildingType === TOWER_TYPE; next = nextPlacement(sim)) {
-      applyAndFinish(sim, next);
-    }
-    expect(next).toBeUndefined();
+    expect(nextPlacement(sim)).toBeUndefined();
   });
 
   it('re-places a destroyed building (the count repairs itself)', () => {
@@ -361,6 +353,42 @@ describe('build-order module (houseBuild)', () => {
       sim.step();
     }
     expect(openAt(LATE_GAME_FROM_TICKS)).toBeUndefined();
+  });
+
+  it('looks one entry further past the oldest open site from each pace step', () => {
+    const paced = buildOrderModule([
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+      { kind: 'place', building: 'home_level_00', count: 1 },
+      { kind: 'place', building: 'work_well_00', count: 1 },
+      { kind: 'place', building: 'work_mill_00', count: 1 },
+      { kind: 'place', building: 'work_bakery_00', count: 1 },
+      { kind: 'place', building: 'work_brewery', count: 1 },
+    ]);
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const act = (tick: number): Command | undefined => {
+      const commands = [...paced.run(sim.world, ctxOf(sim, tick), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands[0];
+    };
+    const finish = (buildingType: number): void => {
+      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: entityOfBuilding(sim, buildingType) });
+      sim.step();
+    };
+    // The farm's site stays open; each entry behind it finishes at once, so the site cap never binds.
+    expect(act(0)?.kind).toBe('placeBuilding');
+    for (const built of [HOME_TYPE, WELL_TYPE, MILL_TYPE]) {
+      expect(act(0)?.kind).toBe('placeBuilding');
+      finish(built);
+    }
+    // The bakery lies four entries past the farm: beyond the opening's lookahead, inside the next step's.
+    expect(act(0)).toBeUndefined();
+    expect(act(SITES_GROW_FROM_TICKS)?.kind).toBe('placeBuilding');
+    finish(BAKERY_TYPE);
+    expect(act(SITES_GROW_FROM_TICKS)).toBeUndefined();
+    expect(act(LATE_GAME_FROM_TICKS)?.kind).toBe('placeBuilding');
   });
 
   it('upgrades two buildings side by side, each in-flight upgrade meeting its share of the entry', () => {

@@ -71,19 +71,19 @@ function coverageCentres(
 }
 
 /**
- * The first node the coverage must reach that lies outside every coverage circle, or null when the seat
- * stands covered. A tower covers every owned building (canonical ascending id). A store covers what fills
- * it: the seat's workplaces, so a far production cluster has somewhere to unload, and then its gatherers'
- * work flags (canonical settler order), where the mined and quarried goods pile up; homes and towers pass,
- * since a tower rings the settlement's edge and would pull warehouses out to it.
+ * The nodes the coverage must reach that lie outside every coverage circle, lazily, so a status read
+ * stops at the first. A tower covers every owned building (canonical ascending id). A store covers what
+ * fills it: the seat's workplaces, so a far production cluster has somewhere to unload, and then its
+ * gatherers' work flags (canonical settler order), where the mined and quarried goods pile up; homes and
+ * towers pass, since a tower rings the settlement's edge and would pull warehouses out to it.
  */
-export function firstUncovered(
+export function* uncoveredTargets(
   world: World,
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
   coverage: Coverage,
-): HalfCellNode | null {
+): Generator<HalfCellNode> {
   const index = contentIndex(ctx.content);
   const centres = coverageCentres(world, ctx, player, owned, coverage);
   const covered = (node: HalfCellNode): boolean =>
@@ -95,16 +95,26 @@ export function firstUncovered(
     )
       continue;
     const node = anchorNodeOf(world, e);
-    if (node !== null && !covered(node)) return node;
+    if (node !== null && !covered(node)) yield node;
   }
-  if (coverage.by === 'tower') return null;
+  if (coverage.by === 'tower') return;
   for (const e of ownedSettlers(world, player)) {
     const flag = liveWorkFlag(world, e);
     if (flag === undefined) continue;
     const node = anchorNodeOf(world, flag.flag);
-    if (node !== null && !covered(node)) return node;
+    if (node !== null && !covered(node)) yield node;
   }
-  return null;
+}
+
+/** Whether the seat stands covered: no {@link uncoveredTargets}. */
+export function seatCovered(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  coverage: Coverage,
+): boolean {
+  return uncoveredTargets(world, ctx, player, owned, coverage).next().done === true;
 }
 
 /**

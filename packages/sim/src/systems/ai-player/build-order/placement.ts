@@ -13,13 +13,9 @@ import { resourcesAtNode } from '../../spatial/resources.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { EnemyFire } from '../military/defence/index.js';
-import { anchorCentroid, anchorNodeOf, bestRingNode, outwardNode } from '../node-geometry.js';
+import { anchorNodeOf, bestRingNode } from '../node-geometry.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
-
-/** How far past the frontier building an `outskirts` anchor is pushed out from the settlement
- *  centroid, in nodes. Approximation: a footprint plus clearance beyond the built edge. */
-const OUTSKIRTS_PUSH_NODES = 8;
 
 /** One affinity resolved to a node, or null when it cannot be. A `building` affinity takes the seat's
  *  lowest-id building of that id or a tier above it, so the pick is deterministic and an upgraded
@@ -33,7 +29,6 @@ function affinityNode(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
-  sameKindAnchors: readonly HalfCellNode[],
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   affinity: PlacementAffinity,
 ): HalfCellNode | null {
@@ -57,8 +52,6 @@ function affinityNode(
       return mapCentreNode(terrain);
     case 'front':
       return frontNode(world, ctx, player, anchor) ?? mapCentreNode(terrain);
-    case 'outskirts':
-      return outskirtsNode(world, ctx, owned, type, sameKindAnchors);
   }
 }
 
@@ -141,42 +134,6 @@ function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
   return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
 }
 
-/**
- * The `outskirts` anchor: the frontier building ranked first by clearance from the same-kind anchors
- * and only then by reach from the centroid, so a second warehouse anchors past the settlement's
- * least-served side. Strict `>` over the canonical list keeps the lowest id on ties.
- */
-function outskirtsNode(
-  world: World,
-  ctx: SystemContext,
-  owned: readonly Entity[],
-  type: BuildingType,
-  sameKindAnchors: readonly HalfCellNode[],
-): HalfCellNode | null {
-  const centroid = anchorCentroid(world, owned);
-  if (centroid === null) return null;
-  const index = contentIndex(ctx.content);
-  const ownChain = tiersAtOrAbove(index, type);
-  let frontier: HalfCellNode | null = null;
-  let bestClearance = -1;
-  let bestReach = -1;
-  for (const e of owned) {
-    if (ownChain.has(world.get(e, Building).buildingType)) continue; // never anchor on its own chain
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    let clearance = Number.POSITIVE_INFINITY;
-    for (const a of sameKindAnchors) clearance = Math.min(clearance, nodeDistance(node, a));
-    if (clearance === Number.POSITIVE_INFINITY) clearance = 0;
-    const reach = nodeDistance(node, centroid);
-    if (clearance > bestClearance || (clearance === bestClearance && reach > bestReach)) {
-      frontier = node;
-      bestClearance = clearance;
-      bestReach = reach;
-    }
-  }
-  return frontier === null ? null : outwardNode(centroid, frontier, OUTSKIRTS_PUSH_NODES);
-}
-
 /** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
  *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. `serves` is
  *  the building an `unlessWithin` entry's affinity picked, which the spot must land in reach of, else null. */
@@ -189,24 +146,12 @@ function searchCentre(
   anchor: HalfCellNode,
   reach: BuildReach,
   type: BuildingType,
-  sameKindAnchors: readonly HalfCellNode[],
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): { centre: HalfCellNode; serves: HalfCellNode | null } {
   const anchors: HalfCellNode[] = [];
   let serves: HalfCellNode | null = null;
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(
-      world,
-      ctx,
-      terrain,
-      player,
-      owned,
-      anchor,
-      type,
-      sameKindAnchors,
-      entry,
-      affinity,
-    );
+    const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, entry, affinity);
     if (node === null) continue;
     anchors.push(node);
     if (affinity.kind === 'building' && affinity.id === entry.unlessWithin?.building) serves = node;
@@ -383,28 +328,6 @@ function coversLiveDeposit(
   return false;
 }
 
-/** How far an `apart` placement keeps from the seat's other same-kind buildings, in world-metric
- *  nodes. Approximation: far enough that two warehouses serve different corners of the search disc. */
-const KIND_SPACING_NODES = 20;
-
-/** The anchors an `apart` entry keeps away from: same-kind buildings, not same-id, so a warehouse
- *  also spreads away from the base. */
-function kindSpacingAnchors(
-  world: World,
-  ctx: SystemContext,
-  owned: readonly Entity[],
-  type: BuildingType,
-): HalfCellNode[] {
-  const index = contentIndex(ctx.content);
-  const anchors: HalfCellNode[] = [];
-  for (const e of owned) {
-    if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== type.kind) continue;
-    const node = anchorNodeOf(world, e);
-    if (node !== null) anchors.push(node);
-  }
-  return anchors;
-}
-
 /** How many nodes of Manhattan distance from the base anchor cost a candidate spot one ring of distance
  *  from the {@link searchCentre} (authored): the affinity centre stays the main criterion and the base's
  *  closeness decides between spots about as near to it, so a settlement grows round rather than long. */
@@ -413,9 +336,9 @@ export const HQ_PULL_DIVISOR_NODES = 4;
 /**
  * The legal node inside the seat's {@link BuildReach} of least ring radius from {@link searchCentre} plus
  * the {@link HQ_PULL_DIVISOR_NODES} pull toward `anchor`, or null to stall the entry. The ring budget is
- * twice the reach radius, so a centre inside one building's disc reaches every node of that disc. The
- * `apart` veto runs as a first pass only, so the preference never stalls. An `unlessWithin` entry's spot
- * must lie within that radius of the building it serves, or a well would go up that serves nothing.
+ * twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
+ * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
+ * up that serves nothing.
  */
 export function placementSpot(
   world: World,
@@ -428,7 +351,6 @@ export function placementSpot(
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
 ): HalfCellNode | null {
-  const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const settlement = buildReach(world, owned, anchor);
   const { centre, serves } = searchCentre(
@@ -440,7 +362,6 @@ export function placementSpot(
     anchor,
     settlement,
     type,
-    sameKindAnchors,
     entry,
   );
   const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire, centre, fan);
@@ -448,17 +369,13 @@ export function placementSpot(
   const serveRadius = entry.unlessWithin?.radius ?? 0;
   const hqPull = (x: number, y: number): number =>
     Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / HQ_PULL_DIVISOR_NODES);
-  const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
-    bestRingNode(centre.hx, centre.hy, fan, hqPull, (x, y) => {
-      // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
-      // entry re-walks the whole fan on every retry.
-      if (!reach.contains(x, y)) return false;
-      if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
-      if (serves !== null && !withinNodeRadius(serves.hx, serves.hy, x, y, serveRadius)) return false;
-      if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
-      if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
-      return accept(x, y);
-    });
-  if (sameKindAnchors.length === 0) return search([]);
-  return search(sameKindAnchors) ?? search([]);
+  return bestRingNode(centre.hx, centre.hy, fan, hqPull, (x, y) => {
+    // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
+    // entry re-walks the whole fan on every retry.
+    if (!reach.contains(x, y)) return false;
+    if (serves !== null && !withinNodeRadius(serves.hx, serves.hy, x, y, serveRadius)) return false;
+    if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
+    if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
+    return accept(x, y);
+  });
 }

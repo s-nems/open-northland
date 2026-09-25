@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Settler } from '../../../src/components/index.js';
-import type { Simulation } from '../../../src/index.js';
+import { Simulation } from '../../../src/index.js';
 import { withinNodeRadius } from '../../../src/nav/node-circle.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   buildOrderModule,
   TOWER_DEFENCE_RADIUS_NODES,
 } from '../../../src/systems/ai-player/index.js';
+import { aiContent } from '../../fixtures/ai-content.js';
+import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
   aiSim,
   BAKERY_TYPE,
@@ -24,7 +26,7 @@ import {
   WALL_TYPE,
 } from './support.js';
 
-describe('build-order tower coverage and outskirts', () => {
+describe('build-order tower and store coverage', () => {
   const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
 
   it('rests while every building sits in the HQ circle, then covers an outlying one', () => {
@@ -103,11 +105,28 @@ describe('build-order tower coverage and outskirts', () => {
   });
 
   describe('store coverage', () => {
-    const radius = TOWER_DEFENCE_RADIUS_NODES;
+    /** A store circle small enough for the fixture map to hold ground outside it. */
+    const radius = 19;
     const stores = buildOrderModule([{ kind: 'storeCoverage', building: 'stock_02', radius }]);
     const place = (sim: Simulation, buildingType: number, x: number, y: number): void =>
       sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
     const next = (sim: Simulation) => [...stores.run(sim.world, ctxOf(sim), SEAT)][0];
+    const flagAt = (sim: Simulation, at: { x: number; y: number }): void => {
+      const before = new Set(sim.world.query(Settler));
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: COLLECTOR,
+        x: at.x + 2,
+        y: at.y,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+      const gatherer = [...sim.world.query(Settler)].find((e) => !before.has(e));
+      if (gatherer === undefined) throw new Error('setup: no gatherer');
+      sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, x: at.x, y: at.y });
+      sim.step();
+    };
 
     it('covers an outlying workshop with a warehouse clear of every store, and no home or tower', () => {
       const sim = aiSim();
@@ -137,21 +156,7 @@ describe('build-order tower coverage and outskirts', () => {
       const sim = aiSim();
       placeHq(sim);
       const FLAG = { x: HQ_X - 28, y: HQ_Y + 6 };
-      sim.enqueueSetup({
-        kind: 'spawnSettler',
-        jobType: COLLECTOR,
-        x: FLAG.x + 2,
-        y: FLAG.y,
-        tribe: VIKING,
-        owner: SEAT,
-      });
-      sim.step();
-      const gatherer = [...sim.world.query(Settler)].find(
-        (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
-      );
-      if (gatherer === undefined) throw new Error('setup: no gatherer');
-      sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, x: FLAG.x, y: FLAG.y });
-      sim.step();
+      flagAt(sim, FLAG);
       const order = next(sim);
       if (order?.kind !== 'placeBuilding') throw new Error('expected a warehouse placement at the flag');
       expect(withinNodeRadius(order.x, order.y, FLAG.x, FLAG.y, radius)).toBe(true);
@@ -159,71 +164,22 @@ describe('build-order tower coverage and outskirts', () => {
       sim.step();
       expect(next(sim)).toBeUndefined();
     });
-  });
 
-  it('pushes an outskirts placement past the frontier building and spreads successive warehouses', () => {
-    const sim = aiSim();
-    placeHq(sim);
-    const FRONTIER = { x: HQ_X + 14, y: HQ_Y };
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: HOME_TYPE,
-      x: FRONTIER.x,
-      y: FRONTIER.y,
-      tribe: VIKING,
-      owner: SEAT,
+    it('passes a flag beyond the build reach over and covers the next target', () => {
+      // A long map: the first gatherer's flag lies far past any spot the seat may build on.
+      const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(240, 32) });
+      placeHq(sim);
+      const FAR = { x: HQ_X + 190, y: HQ_Y };
+      const NEAR = { x: HQ_X + 28, y: HQ_Y };
+      flagAt(sim, FAR);
+      flagAt(sim, NEAR);
+      const order = next(sim);
+      if (order?.kind !== 'placeBuilding') throw new Error('expected a warehouse placement at the near flag');
+      expect(withinNodeRadius(order.x, order.y, NEAR.x, NEAR.y, radius)).toBe(true);
+      sim.enqueueSetup(order);
+      sim.step();
+      // The far flag stays uncovered, and the entry rests rather than stalling on it.
+      expect(next(sim)).toBeUndefined();
     });
-    sim.step();
-    const stocks = buildOrderModule([
-      { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }] },
-    ]);
-    const first = [...stocks.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (first?.kind !== 'placeBuilding') throw new Error('expected the first warehouse placement');
-    expect(first.buildingType).toBe(STOCK_TOP_TYPE);
-    // The spot lands on the far side of the frontier building - farther from the settlement
-    // centroid than the frontier itself.
-    const centroid = { x: Math.floor((HQ_X + FRONTIER.x) / 2), y: HQ_Y };
-    const frontierDist = Math.abs(FRONTIER.x - centroid.x) + Math.abs(FRONTIER.y - centroid.y);
-    const spotDist = Math.abs(first.x - centroid.x) + Math.abs(first.y - centroid.y);
-    expect(spotDist).toBeGreaterThan(frontierDist);
-    sim.enqueueSetup(first);
-    sim.step();
-    completeSites(sim);
-
-    // The second warehouse never anchors on the first (its own kind is excluded from the frontier
-    // pick) - the pair spreads instead of stacking.
-    const second = [...stocks.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (second?.kind !== 'placeBuilding') throw new Error('expected the second warehouse placement');
-    expect(second.x === first.x && second.y === first.y).toBe(false);
-  });
-
-  it('sends apart warehouses to opposite wings of the settlement', () => {
-    const sim = aiSim();
-    placeHq(sim);
-    for (const dx of [14, -14]) {
-      sim.enqueueSetup({
-        kind: 'placeBuilding',
-        buildingType: HOME_TYPE,
-        x: HQ_X + dx,
-        y: HQ_Y,
-        tribe: VIKING,
-        owner: SEAT,
-      });
-    }
-    sim.step();
-    const stocks = buildOrderModule([
-      { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
-    ]);
-    const first = [...stocks.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (first?.kind !== 'placeBuilding') throw new Error('expected the first warehouse placement');
-    sim.enqueueSetup(first);
-    sim.step();
-    completeSites(sim);
-
-    // The second warehouse anchors past the frontier of the wing the first one did NOT take, rather
-    // than on a spacing ring around it: the two straddle the HQ.
-    const second = [...stocks.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (second?.kind !== 'placeBuilding') throw new Error('expected the second warehouse placement');
-    expect(Math.sign(first.x - HQ_X)).toBe(-Math.sign(second.x - HQ_X));
   });
 });

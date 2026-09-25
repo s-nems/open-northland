@@ -12,7 +12,7 @@ import { anchorNodeOf } from '../node-geometry.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import type { BuildOrderEntry } from './entries.js';
 import { unservedAnchor } from './placement.js';
-import { coverageOf, firstUncovered } from './tower-coverage.js';
+import { coverageOf, seatCovered } from './tower-coverage.js';
 
 /** `skip` (not expressible in this content set, or nothing left to collect) counts as done for
  *  sequencing. */
@@ -105,8 +105,7 @@ export function entryStatus(
     case 'storeCoverage': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      const uncovered = firstUncovered(world, ctx, player, owned, coverageOf(entry));
-      return uncovered === null ? 'satisfied' : 'unmet';
+      return seatCovered(world, ctx, player, owned, coverageOf(entry)) ? 'satisfied' : 'unmet';
     }
   }
 }

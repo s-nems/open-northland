@@ -11,7 +11,7 @@ import { WEAPON_MAIN_TYPE } from '../../src/systems/readviews/index.js';
  * upgrade tail and its two-baker target, and the iron good - gated by the viking `needforgood` row
  * over the collector XP tracks - backs the gated collector entry and its experience rule. The
  * brewery/joinery/barracks/storage/tower rows back the 2026-07-25 tail: the joinery's two recipes
- * drive the craft restriction, the storages the carrier staffing and the outskirts affinity, and the
+ * drive the craft restriction, the storages the carrier staffing and the store coverage, and the
  * tower pair the coverage entry (the kind-'tower' wall row proves the id allowlist). Numeric ids
  * follow the original's job/good bands where they exist (woman 5, civilist 6, builder 7, collector
  * 8, farmer 18, miller 19, baker 20, brewer 21, carrier 24, scout 27, and the fighter band's

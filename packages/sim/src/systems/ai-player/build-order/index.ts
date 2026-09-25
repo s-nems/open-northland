@@ -34,7 +34,7 @@ import {
 import { placementSpot } from './placement.js';
 import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
 import { type Siege, seatSiege } from './siege.js';
-import { coverageOf, coveragePlacementSpot, firstUncovered } from './tower-coverage.js';
+import { coverageOf, coveragePlacementSpot, uncoveredTargets } from './tower-coverage.js';
 import { upgradeBillCovered } from './upgrade-supply.js';
 
 export * from './entries.js';
@@ -141,24 +141,27 @@ function runBuildOrder(
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         const coverage = coverageOf(entry);
-        const target = firstUncovered(world, ctx, player, owned, coverage);
-        if (target === null) return []; // status said unmet - defensive
-        const spot = coveragePlacementSpot(
-          world,
-          ctx,
-          terrain,
-          player,
-          owned,
-          anchor,
-          type,
-          target,
-          coverage,
-          underFire,
-        );
-        // A store target the seat cannot cover, a flag beyond its build reach or ground another store
-        // already serves, is passed over rather than stalled: the goods still travel, only farther.
-        if (spot === null && coverage.by === 'store') continue;
-        return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
+        // The first target with a legal spot, in target order: a target none covers, a flag beyond the
+        // seat's build reach or ground another store already serves, is passed over, and a store entry
+        // with none left is passed over as a whole rather than stalled, since the goods still travel,
+        // only farther.
+        for (const target of uncoveredTargets(world, ctx, player, owned, coverage)) {
+          const spot = coveragePlacementSpot(
+            world,
+            ctx,
+            terrain,
+            player,
+            owned,
+            anchor,
+            type,
+            target,
+            coverage,
+            underFire,
+          );
+          if (spot !== null) return [siteCommand(type, spot, tribe, player)];
+        }
+        if (coverage.by === 'store') continue;
+        return [];
       }
     }
   }

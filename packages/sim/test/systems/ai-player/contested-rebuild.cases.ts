@@ -9,9 +9,9 @@ import {
   buildOrderModule,
   enemyFire,
   REBUILD_DELAY_TICKS,
+  sitePace,
   THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
-  WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
 import { seatRaiders } from '../../../src/systems/ai-player/military/defence/index.js';
 import { SIGHT_RADIUS_NODES } from '../../../src/systems/conflict/targeting.js';
@@ -40,6 +40,7 @@ import {
   STOCK_TOP_TYPE,
   TOWER_TYPE,
   VIKING,
+  WELL_TYPE,
 } from './support.js';
 
 /**
@@ -297,23 +298,64 @@ describe('build-order module - rebuilding under the enemy', () => {
     expect(wallDistance(sim, TOWER_TYPE, moved, post)).toBeGreaterThan(reach);
   });
 
-  it("passes a store coverage entry over while its only spots lie in an enemy tower's reach", () => {
-    const order = buildOrderModule([
-      { kind: 'storeCoverage', building: 'stock_02', radius: WELL_REACH_NODES },
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-    ]);
+  /** A store circle two manned towers can cover whole. */
+  const SMALL_STORE_RADIUS = 12;
+
+  /** A seat whose one workshop, out east, arms a small store coverage entry until two manned foe towers
+   *  north and south of it put every spot of its circle under fire. */
+  function besiegedStoreTarget(): Simulation {
     const sim = aiSim();
     placeHq(sim);
     const bakery = { x: HQ_X + 29, y: HQ_Y };
     place(sim, BAKERY_TYPE, bakery);
     sim.step();
-    expect(placementOf(order.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TOP_TYPE);
-    // Manned towers north and south of the workshop put every spot of its circle under fire.
+    const stores = buildOrderModule([
+      { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
+    ]);
+    expect(placementOf(stores.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TOP_TYPE);
     mannedFoeTower(sim, { x: bakery.x, y: bakery.y - 4 });
     mannedFoeTower(sim, { x: bakery.x, y: bakery.y + 4 });
     sim.step();
+    expect(placementOf(stores.run(sim.world, ctxOf(sim), SEAT))).toBeNull();
+    return sim;
+  }
+
+  it("passes a store coverage entry over while its only spots lie in an enemy tower's reach", () => {
+    const order = buildOrderModule([
+      { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+    ]);
+    const sim = besiegedStoreTarget();
     // The list goes on to the farm instead of stalling on the warehouse.
     expect(placementOf(order.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(FARM_TYPE);
+  });
+
+  it('never counts a passed-over entry as the one the lookahead waits on', () => {
+    // The farm's site is the oldest entry waiting on a site; the passed-over store entry before it
+    // would put the mill one entry past the lookahead if it counted.
+    const order = buildOrderModule([
+      { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+      { kind: 'place', building: 'home_level_00', count: 1 },
+      { kind: 'place', building: 'work_well_00', count: 1 },
+      { kind: 'place', building: 'work_mill_00', count: 1 },
+    ]);
+    const sim = besiegedStoreTarget();
+    const act = (): (Spot & { buildingType: number }) | null => {
+      const commands = [...order.run(sim.world, ctxOf(sim), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return placementOf(commands);
+    };
+    expect(act()?.buildingType).toBe(FARM_TYPE); // its site stays open
+    for (const finished of [HOME_TYPE, WELL_TYPE]) {
+      expect(act()?.buildingType).toBe(finished);
+      const built = entityOfBuilding(sim, finished);
+      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: built });
+      sim.step();
+    }
+    expect(sitePace(0).lookahead).toBe(3);
+    expect(act()?.buildingType).toBe(MILL_TYPE);
   });
 
   it('holds a tower coverage placement while the seat is attacked', () => {

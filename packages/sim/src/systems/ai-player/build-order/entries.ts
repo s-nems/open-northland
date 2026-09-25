@@ -8,13 +8,11 @@ export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
   | { readonly kind: 'mapCentre' }
-  | { readonly kind: 'front' }
-  | { readonly kind: 'outskirts' };
+  | { readonly kind: 'front' };
 
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
-   *  `ground: 'plantable'` hard-restricts the footprint to sowable ground, and `apart` prefers
-   *  (never requires) a spot clear of the seat's other buildings of the same kind. `needsResources`
+   *  `ground: 'plantable'` hard-restricts the footprint to sowable ground. `needsResources`
    *  names the map goods the building exists to work up; an unmet entry is skipped while the map holds
    *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while every one of
    *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
@@ -26,7 +24,6 @@ export type BuildOrderEntry =
       readonly count: number;
       readonly near?: readonly PlacementAffinity[];
       readonly ground?: 'plantable';
-      readonly apart?: boolean;
       readonly needsResources?: readonly string[];
       readonly unlessWithin?: { readonly building: string; readonly radius: number };
     }

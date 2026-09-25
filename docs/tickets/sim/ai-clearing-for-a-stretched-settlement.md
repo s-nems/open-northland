@@ -9,8 +9,8 @@ front the towers cannot cover. Felling the forest beside the base would keep it 
 
 ## Scope
 
-- Record where the build order's latest base-affine placement landed (an entry with no `resource`,
-  `front` or `outskirts` affinity), and arm the clearing gatherers while it lies beyond
+- Record where the build order's latest base-affine placement landed (an entry with no `resource` or
+  `front` affinity), and arm the clearing gatherers while it lies beyond
   `TOWER_DEFENCE_RADIUS_NODES` of the base anchor, the base's own defence circle.
 - Point those gatherers at the wood nearest the base rather than any nearest collected good, so the
   felling opens ground where the next placement would search first.

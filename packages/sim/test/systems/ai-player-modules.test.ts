@@ -11,7 +11,7 @@ import './ai-player/population.cases.js';
 import './ai-player/registry-determinism.cases.js';
 import './ai-player/seat-roster.cases.js';
 import './ai-player/signpost-coverage.cases.js';
-import './ai-player/tower-coverage-and-outskirts.cases.js';
+import './ai-player/tower-coverage.cases.js';
 import './ai-player/upgrade-supply.cases.js';
 import './ai-player/workshop-carriers.cases.js';
 import './ai-player/workforce-allocation.cases.js';
