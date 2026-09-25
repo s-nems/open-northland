@@ -1,5 +1,6 @@
 import { type Fixed, ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import { NodeBuckets } from '../../../spatial/nodes.js';
 
 /** A mover's pre-separation state, kept across ticks while it walks and refreshed by each census. */
 export interface MoverSnapshot {
@@ -31,6 +32,9 @@ export interface SeparationScratch {
    *  stopped moving are never retained. */
   readonly before: Map<Entity, MoverSnapshot>;
   readonly snapshotPool: MoverSnapshot[];
+  /** Refilled by every census, never rebuilt. */
+  readonly moverIndex: NodeBuckets;
+  readonly postIndex: NodeBuckets;
   census: number;
   /** Per-mover neighbour lists, valid up to the counts the resolve keeps beside them. */
   readonly nearMovers: Entity[];
@@ -51,6 +55,8 @@ export function separationScratch(world: World): SeparationScratch {
       posts: [],
       before: new Map(),
       snapshotPool: [],
+      moverIndex: new NodeBuckets(world, []),
+      postIndex: new NodeBuckets(world, []),
       census: 0,
       nearMovers: [],
       nearPosts: [],

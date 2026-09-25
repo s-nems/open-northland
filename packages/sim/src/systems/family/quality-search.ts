@@ -22,19 +22,20 @@ import { accessibleStockAmounts } from '../stores/index.js';
 
 /**
  * Per-tick searchable view of external stores carrying a configured household-quality good. The
- * candidates are the ones stocked when the view is made; their node buckets are built on the first
- * query, since a store stands still while a pass plans.
+ * candidates are the ones stocked when the view is made. Their node buckets are kept while the list is
+ * unchanged, which holds because a positioned stockpile never moves in place (`spatial/stockpiles.ts`).
  */
 export class ExternalQualityIndex {
+  private readonly sources: QualitySources;
   private readonly candidates: readonly Entity[];
-  private buckets: NodeBuckets | undefined;
 
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph | undefined,
   ) {
-    this.candidates = qualitySources(world, ctx.content);
+    this.sources = qualitySources(world, ctx.content);
+    this.candidates = this.sources.list();
   }
 
   nearest(
@@ -80,8 +81,7 @@ export class ExternalQualityIndex {
   }
 
   private bucketed(): NodeBuckets {
-    this.buckets ??= new NodeBuckets(this.world, this.candidates);
-    return this.buckets;
+    return this.sources.bucketsOf(this.candidates);
   }
 
   private lowestDemanded(store: Entity, demanded: ReadonlySet<number>): number | null {
@@ -125,12 +125,16 @@ const byId = (e: Entity): number => e;
 class QualitySources {
   private readonly ids: Entity[] = [];
   private frozen: readonly Entity[] | null = null;
+  /** Buckets of the list they were last filled from, refilled only when a different list is searched. */
+  private readonly buckets: NodeBuckets;
+  private bucketed: readonly Entity[] | null = null;
   readonly captures: JournaledCaptures<true>;
 
   constructor(
     private readonly world: World,
     readonly content: ContentSet,
   ) {
+    this.buckets = new NodeBuckets(world, []);
     this.captures = new JournaledCaptures<true>(
       world,
       {
@@ -162,6 +166,15 @@ class QualitySources {
     return this.frozen;
   }
 
+  /** `list`'s entities by node; `list` is one {@link list} returned. */
+  bucketsOf(list: readonly Entity[]): NodeBuckets {
+    if (this.bucketed !== list) {
+      this.buckets.refill(this.world, list);
+      this.bucketed = list;
+    }
+    return this.buckets;
+  }
+
   verify(): string[] {
     this.captures.catchUp();
     const held = this.list();
@@ -175,8 +188,8 @@ class QualitySources {
 
 const sourcesByWorld = new WeakMap<World, QualitySources>();
 
-/** Every quality source, ascending-id, caught up to the live world; the list is shared and frozen. */
-function qualitySources(world: World, content: ContentSet): readonly Entity[] {
+/** The world's quality sources, caught up to the live world. */
+function qualitySources(world: World, content: ContentSet): QualitySources {
   let held = sourcesByWorld.get(world);
   if (held === undefined || held.content !== content) {
     if (held === undefined) {
@@ -187,7 +200,7 @@ function qualitySources(world: World, content: ContentSet): readonly Entity[] {
   } else {
     held.captures.catchUp();
   }
-  return held.list();
+  return held;
 }
 
 const RING_MAX_RADIUS = 48;

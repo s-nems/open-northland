@@ -17,65 +17,134 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 /** Shared and frozen so an unoccupied-node lookup allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
+/** Packs a node into one map key. A probe at `(x, -d)` aliases `(x - 1, 2^16 - d)`, which still reads
+ *  empty because every map is far fewer than `2^16` half-rows tall, minus any ring radius. */
+const NODE_KEY_STRIDE = 1 << 16;
+
+function packedNodeKey(x: number, y: number): number {
+  return x * NODE_KEY_STRIDE + y;
+}
+
+/** Stale buckets kept for reuse beyond this many times the live ones are dropped on the next refill. */
+const STALE_BUCKET_RATIO = 4;
+
+interface NodeBucket {
+  readonly x: number;
+  readonly y: number;
+  /** The fill that last wrote the bucket; any other fill's bucket is empty, its array spare capacity. */
+  fill: number;
+  /** Entities written by the current fill; `entities` is trimmed to it once the fill ends. */
+  count: number;
+  readonly entities: Entity[];
+}
+
 /**
  * Entities grouped by their {@link Position}'s half-cell node, each bucket preserving input order. Feed the
- * constructor an ascending-id list: {@link NodeBuckets.nearest} is only canonical because buckets
- * hold ascending ids, and the build appends rather than sorts. {@link NodeBuckets.insert} is the seam for a
- * caller placing an entity at a node of its own - a building's wall cells, or a bucket filled out of order.
- * An entity without a Position is dropped. Derived state, never hashed.
+ * constructor or {@link NodeBuckets.refill} an ascending-id list: {@link NodeBuckets.nearest} is only
+ * canonical because buckets hold ascending ids, and a fill appends rather than sorts.
+ * {@link NodeBuckets.insert} is the seam for a caller placing an entity at a node of its own - a
+ * building's wall cells, or a bucket filled out of order. An entity without a Position is dropped.
+ * Derived state, never hashed.
  */
 export class NodeBuckets {
-  private readonly byX = new Map<number, Map<number, Entity[]>>();
+  private readonly byNode = new Map<number, NodeBucket>();
+  private fill = 0;
+  /** The buckets the current fill wrote; only the first `liveCount` are current. */
+  private readonly live: NodeBucket[] = [];
+  private liveCount = 0;
 
   constructor(world: World, entities: Iterable<Entity>) {
+    this.refill(world, entities);
+  }
+
+  /**
+   * Empty every bucket and fill them from `entities`, reusing the buckets and their arrays, so an index
+   * rebuilt every tick allocates only for nodes it has not held recently. Entries are overwritten in place
+   * and trimmed afterwards: V8 frees an array's backing store at length 0, and the next push reallocates.
+   */
+  refill(world: World, entities: Iterable<Entity>): void {
+    this.fill++;
+    if (this.byNode.size > STALE_BUCKET_RATIO * this.liveCount) this.dropStale();
+    this.liveCount = 0;
     for (const e of entities) {
       const p = world.tryGet(e, Position);
       if (p === undefined) continue;
-      this.bucketFor(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)).push(e);
+      const bucket = this.filledBucket(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
+      if (bucket.count < bucket.entities.length) bucket.entities[bucket.count] = e;
+      else bucket.entities.push(e);
+      bucket.count++;
+    }
+    for (let i = 0; i < this.liveCount; i++) {
+      const bucket = this.live[i];
+      if (bucket !== undefined && bucket.entities.length !== bucket.count)
+        bucket.entities.length = bucket.count;
     }
   }
 
-  private bucketFor(x: number, y: number): Entity[] {
-    let column = this.byX.get(x);
-    if (column === undefined) {
-      column = new Map<number, Entity[]>();
-      this.byX.set(x, column);
+  /** Forget the buckets the previous fill left empty, so the map follows where entities are rather than
+   *  everywhere they have been. */
+  private dropStale(): void {
+    for (const bucket of this.byNode.values()) {
+      if (bucket.fill !== this.fill - 1) this.byNode.delete(packedNodeKey(bucket.x, bucket.y));
     }
-    let bucket = column.get(y);
-    if (bucket === undefined) {
-      bucket = [];
-      column.set(y, bucket);
+  }
+
+  /** Node (x,y)'s bucket for the running fill, recorded live the first time the fill reaches it. */
+  private filledBucket(x: number, y: number): NodeBucket {
+    const bucket = this.bucketFor(x, y);
+    if (bucket.fill !== this.fill) {
+      bucket.fill = this.fill;
+      bucket.count = 0;
+      this.live[this.liveCount++] = bucket;
     }
     return bucket;
   }
 
+  private bucketFor(x: number, y: number): NodeBucket {
+    const key = packedNodeKey(x, y);
+    let bucket = this.byNode.get(key);
+    if (bucket === undefined) {
+      bucket = { x, y, fill: -1, count: 0, entities: [] };
+      this.byNode.set(key, bucket);
+    }
+    return bucket;
+  }
+
+  /** Node (x,y)'s bucket when the current fill wrote it. */
+  private current(x: number, y: number): NodeBucket | undefined {
+    const bucket = this.byNode.get(packedNodeKey(x, y));
+    return bucket?.fill === this.fill ? bucket : undefined;
+  }
+
   /** The entities on node (x,y), in ascending-id order. */
   at(x: number, y: number): readonly Entity[] {
-    return this.byX.get(x)?.get(y) ?? NO_ENTITIES;
+    return this.current(x, y)?.entities ?? NO_ENTITIES;
   }
 
   /** Insert `e` into node (x,y)'s bucket, keeping it ascending-id. */
   insert(e: Entity, x: number, y: number): void {
-    insertSortedById(this.bucketFor(x, y), e, (id) => id);
+    const bucket = this.bucketFor(x, y);
+    if (bucket.fill !== this.fill) {
+      bucket.fill = this.fill;
+      bucket.entities.length = 0;
+    }
+    insertSortedById(bucket.entities, e, (id) => id);
+    bucket.count = bucket.entities.length;
   }
 
-  /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket and column. A no-op when `e` is
-   *  not there. */
+  /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket. A no-op when `e` is not there. */
   remove(e: Entity, x: number, y: number): void {
-    const column = this.byX.get(x);
-    const bucket = column?.get(y);
-    if (column === undefined || bucket === undefined) return;
-    if (!removeSortedById(bucket, e, (id) => id)) return;
-    if (bucket.length === 0) {
-      column.delete(y);
-      if (column.size === 0) this.byX.delete(x);
-    }
+    const bucket = this.current(x, y);
+    if (bucket === undefined || !removeSortedById(bucket.entities, e, (id) => id)) return;
+    bucket.count = bucket.entities.length;
+    if (bucket.count === 0) this.byNode.delete(packedNodeKey(x, y));
   }
 
   /** Every non-empty bucket with its node. */
   *buckets(): IterableIterator<{ x: number; y: number; entities: readonly Entity[] }> {
-    for (const [x, column] of this.byX) {
-      for (const [y, entities] of column) yield { x, y, entities };
+    for (const bucket of this.byNode.values()) {
+      if (bucket.fill === this.fill && bucket.count > 0)
+        yield { x: bucket.x, y: bucket.y, entities: bucket.entities };
     }
   }
 
@@ -88,7 +157,7 @@ export class NodeBuckets {
    * finished before choosing and buckets are ascending-id, so node-iteration order cannot decide it.
    *
    * `accept` may re-enter this method: all ring state is call-local, so do not hoist `best` onto the
-   * instance.
+   * instance. It must not refill these buckets, which the search is iterating.
    */
   nearest(
     fromX: number,

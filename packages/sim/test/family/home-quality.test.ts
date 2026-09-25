@@ -47,6 +47,8 @@ import { ctxOf } from '../fixtures/context.js';
 const FOOD = 1;
 const CROCKERY = 2;
 const FURNITURE = 3;
+/** More stores than the quality index scans linearly, so it searches its node buckets. */
+const RING_SEARCHED_STORES = 70;
 const OIL = 4;
 const HOME = 1;
 const JOB = 1;
@@ -375,6 +377,35 @@ describe('household quality goods', () => {
     expect(before.nearest({ hx: 0, hy: 0 }, 0, demanded, null)).toBeNull();
     const after = new ExternalQualityIndex(sim.world, ctxOf(sim), undefined);
     expect(after.nearest({ hx: 0, hy: 0 }, 0, demanded, null)).toEqual({ store: pile, goodType: FURNITURE });
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('searches many stores by ring, following each change to the stocked list', () => {
+    const { sim } = setup();
+    const stores: Entity[] = [];
+    for (let i = 0; i < RING_SEARCHED_STORES; i++) {
+      const store = sim.world.create();
+      sim.world.add(store, Position, { x: fx.fromInt(i + 1), y: fx.fromInt(0) });
+      sim.world.add(store, Stockpile, { amounts: new Map([[FURNITURE, 1]]) });
+      stores.push(store);
+    }
+    const demanded = new Set([FURNITURE]);
+    const nearest = () =>
+      new ExternalQualityIndex(sim.world, ctxOf(sim), undefined).nearest(
+        { hx: 0, hy: 0 },
+        undefined,
+        demanded,
+        null,
+      )?.store;
+
+    const [first, second] = stores;
+    if (first === undefined || second === undefined) throw new Error('fixture stores missing');
+
+    setStockAmount(sim.world, first, FURNITURE, 0);
+    expect(nearest()).toBe(second);
+    expect(nearest()).toBe(second);
+    setStockAmount(sim.world, first, FURNITURE, 1);
+    expect(nearest()).toBe(first);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

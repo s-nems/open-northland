@@ -2,7 +2,7 @@ import { Obstructed, PathFollow, PathRoute, Position, Settler } from '../../../.
 import { ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
-import { NodeBuckets } from '../../../spatial/nodes.js';
+import type { NodeBuckets } from '../../../spatial/nodes.js';
 import { writeLegHeading } from '../../stepping.js';
 import { hasBodyCollision, hasSoftCollision, isStanding } from '../bodies.js';
 import type { MoverSnapshot, SeparationScratch } from './scratch.js';
@@ -69,9 +69,9 @@ export function collectColliders(
     }
   }
   posts.length = postCount;
-  posts.sort(ascending);
-  const postIndex = new NodeBuckets(world, posts);
-  const moverIndex = new NodeBuckets(world, movers);
+  const { moverIndex, postIndex } = scratch;
+  postIndex.refill(world, posts.sort(ascending));
+  moverIndex.refill(world, movers);
 
   for (const e of movers) {
     const p = world.get(e, Position);

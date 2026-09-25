@@ -10,14 +10,13 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { buildingFieldZone, translatedCells } from '../../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalResources } from '../../spatial/resources.js';
 import { TargetBands } from './bands.js';
 import { InteractionCellIndex } from './cell-index.js';
+import { fieldZones } from './field-zones.js';
 import { SinkAvailability } from './stores/sinks.js';
 import { yardOccupancy } from './yard-occupancy.js';
 
@@ -84,7 +83,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
-  let fieldZones: Set<NodeId> | undefined;
+  let zones: ReadonlySet<NodeId> | undefined;
   const groundDrops = world.canonicalQuery(GroundDrop, Stockpile, Position);
   let groundDropsByGood: Map<number, Entity[]> | undefined;
   let groundDropsByHarvester: Map<Entity, Entity[]> | undefined;
@@ -142,22 +141,8 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       return cropsByFarm;
     },
     get fieldZones() {
-      if (fieldZones === undefined) {
-        fieldZones = new Set<NodeId>();
-        for (const entity of buildings) {
-          const building = world.get(entity, Building);
-          const position = world.get(entity, Position);
-          const anchor = nodeOfPosition(position.x, position.y);
-          for (const cell of translatedCells(
-            terrain,
-            buildingFieldZone(ctx.content, building.buildingType),
-            anchor.hx,
-            anchor.hy,
-          ))
-            fieldZones.add(cell);
-        }
-      }
-      return fieldZones;
+      zones ??= fieldZones(world, ctx.content, terrain);
+      return zones;
     },
     harvestAtomicByGood,
     sinks: new SinkAvailability(stockpiles, world, ctx),

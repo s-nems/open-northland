@@ -56,28 +56,53 @@ function chatCooldownActive(world: World, tick: number, e: Entity): boolean {
   return cd !== undefined && cd.until > tick;
 }
 
+/** One world's chat-candidate list and buckets, refilled by each pass's first search rather than rebuilt. */
+interface GossipScratch {
+  readonly eligible: Entity[];
+  readonly buckets: NodeBuckets;
+  /** The instance whose fill the buckets hold. */
+  filledBy: GossipCandidates | null;
+}
+
+const scratchByWorld = new WeakMap<World, GossipScratch>();
+
 /**
- * Lazily built per-tick chat-candidate buckets: every settler statically able to gossip, which is an adult
+ * Lazily filled per-tick chat-candidate buckets: every settler statically able to gossip, which is an adult
  * (approximation: children do not chat) and employed non-fighter, the soldier and hero `forbidatomic`
- * exclusion. Built on the first settler that looks for a partner, so a tick with nobody lonely pays
- * nothing; per-candidate dynamic state is checked at accept time instead.
+ * exclusion. Filled on the first settler that looks for a partner, so a tick with nobody lonely pays
+ * nothing; per-candidate dynamic state is checked at accept time instead. The buckets are shared per
+ * world, so an instance refills them when another one filled them last.
  */
 export class GossipCandidates {
-  private buckets: NodeBuckets | null = null;
   constructor(
     private readonly world: World,
     private readonly content: ContentSet,
   ) {}
 
   ensure(): NodeBuckets {
-    if (this.buckets === null) {
-      const eligible = this.world.canonicalQuery(Person, Position).filter((e) => {
-        const s = this.world.get(e, Settler);
-        return s.jobType !== null && !isFighterJob(this.content, s.jobType) && !this.world.has(e, Age);
-      });
-      this.buckets = new NodeBuckets(this.world, eligible);
+    const { world } = this;
+    let scratch = scratchByWorld.get(world);
+    if (scratch === undefined) {
+      scratch = { eligible: [], buckets: new NodeBuckets(world, []), filledBy: null };
+      scratchByWorld.set(world, scratch);
     }
-    return this.buckets;
+    if (scratch.filledBy !== this) {
+      const { eligible } = scratch;
+      const people = world.canonicalQuery(Person, Position);
+      let count = 0;
+      for (let i = 0; i < people.length; i++) {
+        const e = people[i];
+        if (e === undefined) continue; // i < length, so only for the type
+        const s = world.get(e, Settler);
+        if (s.jobType !== null && !isFighterJob(this.content, s.jobType) && !world.has(e, Age)) {
+          eligible[count++] = e;
+        }
+      }
+      eligible.length = count;
+      scratch.buckets.refill(world, eligible);
+      scratch.filledBy = this;
+    }
+    return scratch.buckets;
   }
 }
 
