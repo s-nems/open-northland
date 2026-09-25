@@ -9,7 +9,7 @@ import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from './in-house.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
-import { palisadePostsByRef } from './palisade-connections.js';
+import { palisadeLayoutOf } from './palisade-connections.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
 import { classify, readPosition } from './snapshot-readers/index.js';
@@ -117,7 +117,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     posByRef,
     elevation,
     playerColourOf,
-    palisadePosts: palisadePostsByRef(snapshot, elevation),
+    palisades: palisadeLayoutOf(snapshot, elevation),
   };
 
   const emit = (entity: EntitySnapshot): void => {

@@ -1,6 +1,12 @@
 import { Container, Graphics } from 'pixi.js';
 import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
+import {
+  palisadeStaggerX,
+  staggeredNodeKeys,
+  type WallNode,
+  wallNodeKey,
+} from '../../data/scene/palisade-stagger.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
 import {
   mintPlanStake,
@@ -108,7 +114,9 @@ export class PlacementGhostLayer {
     }
     const p = halfCellToScreen(ghost.col, ghost.row);
     const lift = terrainLiftAtNode(elevation, ghost.col, ghost.row);
-    this.container.position.set(p.x, p.y - lift);
+    // A gate draws staggered with the wall it stands in.
+    const shift = ghost.kind === 'gate' ? palisadeStaggerX(ghost.row) : 0;
+    this.container.position.set(p.x + shift, p.y - lift);
     // Depth by the pre-lift feet anchor, like every pooled sprite - the ghost interleaves correctly. A gate
     // stands on the walls it replaces, so it reads over them instead.
     this.container.zIndex = ghost.kind === 'gate' ? Number.MAX_SAFE_INTEGER : depthKey(p.x, p.y);
@@ -118,9 +126,19 @@ export class PlacementGhostLayer {
   private rebuildLine(ghost: Extract<PlacementGhost, { kind: 'line' }>, elevation: ElevationField): void {
     for (const child of this.container.removeChildren()) child.destroy();
     const g = new Graphics();
+    // The plan staggers as the walls it lays will.
+    const planNodes = new Map<string, WallNode>(
+      ghost.nodes.map((node) => [wallNodeKey(node.col, node.row), { hx: node.col, hy: node.row }]),
+    );
+    const staggered = staggeredNodeKeys(planNodes, new Set());
     const points = ghost.nodes.map((node) => {
       const point = halfCellToScreen(node.col, node.row);
-      return { x: point.x, y: point.y - terrainLiftAtNode(elevation, node.col, node.row), state: node.state };
+      const shift = staggered.has(wallNodeKey(node.col, node.row)) ? palisadeStaggerX(node.row) : 0;
+      return {
+        x: point.x + shift,
+        y: point.y - terrainLiftAtNode(elevation, node.col, node.row),
+        state: node.state,
+      };
     });
     // The start ring also marks a standing piece under the cursor, which takes no stake of its own.
     const first = points[0];

@@ -11,6 +11,7 @@ import {
 } from './collect-fields.js';
 import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
+import type { PalisadeLayout } from './palisade-connections.js';
 import type { SettlerPose } from './settler-pose.js';
 import { assignStaticFields, readPalisadeClaimed } from './snapshot-readers/index.js';
 
@@ -21,7 +22,7 @@ export interface SceneBuild {
   readonly posByRef: ReadonlyMap<number, { x: number; y: number }>;
   readonly elevation: ElevationField | undefined;
   readonly playerColourOf: ((player: number) => number) | undefined;
-  readonly palisadePosts: ReadonlyMap<number, readonly import('./draw-item.js').PalisadePostDraw[]>;
+  readonly palisades: PalisadeLayout;
 }
 
 export function assembleItem(
@@ -57,12 +58,13 @@ export function assembleItem(
       break;
     case 'palisade': {
       assignStaticFields(item, kind, components);
+      item.x += build.palisades.shiftX.get(entity.id) ?? 0;
       if ('UnderConstruction' in components && !('PalisadeBlocking' in components)) {
         // The wood set down on the flag goes into the wall, so the flag alone stands until the strike
         // raises the segment.
         item.palisadeSite = readPalisadeClaimed(components) ? 'claimed' : 'unclaimed';
       } else {
-        const posts = build.palisadePosts.get(entity.id);
+        const posts = build.palisades.posts.get(entity.id);
         if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;
       }
       break;

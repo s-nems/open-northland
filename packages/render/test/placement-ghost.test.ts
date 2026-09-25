@@ -1,5 +1,6 @@
 import { Graphics, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { PALISADE_STAGGER_PX } from '../src/data/scene/palisade-stagger.js';
 import type { ElevationField } from '../src/data/terrain/index.js';
 import { PlacementGhostLayer } from '../src/gpu/overlays/placement-ghost.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
@@ -93,6 +94,9 @@ describe('PlacementGhostLayer', () => {
     expect(body.texture.frame.x).toBe(0);
     expect(body.tint).toBe(0xffffff);
     expect(layer.container.zIndex).toBe(Number.MAX_SAFE_INTEGER);
+
+    // A gate draws staggered with its wall, an even row a quarter cell left.
+    expect(layer.container.x).toBe(4 * 34 - PALISADE_STAGGER_PX);
 
     layer.set({ kind: 'gate', col: 4, row: 6, gfxIndex: GATE, ok: false }, FLAT);
     const refused = layer.container.children[0];

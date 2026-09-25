@@ -12,11 +12,12 @@ export { type HolyFireBinding, type HolyFireLookup, holyFireOverlays } from './h
 export type { InHouseProgramLookup } from './in-house.js';
 export {
   PALISADE_POST_SPACING_PX,
+  type PalisadeLayout,
   type PalisadePostOffset,
-  type PalisadePostsByRef,
+  palisadeLayoutOf,
   palisadePostOffsets,
-  palisadePostsByRef,
 } from './palisade-connections.js';
+export { PALISADE_STAGGER_PX, palisadeStaggerX } from './palisade-stagger.js';
 export {
   COVER_LAUNCH_HEIGHT_PX,
   PROJECTILE_ARC_PEAK_FRACTION,

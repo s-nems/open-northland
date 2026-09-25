@@ -1,5 +1,6 @@
 import { type Fixed, ONE, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { PALISADE_STAGGER_PX } from '../../src/data/scene/palisade-stagger.js';
 import { buildSpriteScene, PALISADE_POST_SPACING_PX, palisadePostOffsets } from '../../src/index.js';
 import { snapshotOf } from '../support/fixtures.js';
 
@@ -83,6 +84,51 @@ describe('palisadePostOffsets', () => {
     expect(far[0]?.dx).toBeLessThan(0);
     // A third of the edge from each end.
     expect(near[0]?.dx).toBeCloseTo(-(far[0]?.dx ?? 0), 5);
+  });
+
+  it('draws a hex-diagonal run straight, posts included, shifts a row whole and keeps a column', () => {
+    const run: Array<readonly [number, number]> = [
+      [10, 11],
+      [11, 10],
+      [11, 9],
+      [12, 8],
+      [12, 7],
+    ];
+    const items = buildSpriteScene(snapshotOf(run.map(([hx, hy], i) => palisade(i + 1, hx, hy))));
+    const drawn = run.map((_, i) => items.find((item) => item.ref === i + 1));
+    const xs = drawn.map((item) => item?.x ?? Number.NaN);
+    for (let i = 1; i < xs.length; i++) expect((xs[i] ?? 0) - (xs[i - 1] ?? 0)).toBeCloseTo(17);
+    // Every post sits on the line through the anchors: x advances 17 px per 19 px row.
+    const first = drawn[0];
+    for (const item of drawn) {
+      for (const post of item?.palisadePosts ?? []) {
+        const x = (item?.x ?? 0) + post.dx - (first?.x ?? 0);
+        const y = (item?.y ?? 0) + post.dy - (first?.y ?? 0);
+        expect(x).toBeCloseTo((-y * 17) / 19);
+      }
+    }
+
+    const row = buildSpriteScene(snapshotOf([palisade(1, 10, 10), palisade(2, 11, 10)]));
+    for (const item of row) expect((item.x + PALISADE_STAGGER_PX) % 34).toBe(0);
+    const column = buildSpriteScene(
+      snapshotOf([palisade(1, 10, 9), palisade(2, 10, 10), palisade(3, 10, 11), palisade(4, 10, 12)]),
+    );
+    for (const item of column) expect(item.x % 34).toBe(0);
+  });
+
+  it('staggers the riser of a shallow line and keeps the corners of a rectangle square', () => {
+    const shallow = buildSpriteScene(
+      snapshotOf([palisade(1, 9, 10), palisade(2, 10, 10), palisade(3, 10, 9), palisade(4, 11, 9)]),
+    );
+    const xOf = (items: typeof shallow, ref: number): number =>
+      items.find((i) => i.ref === ref)?.x ?? Number.NaN;
+    // Row 10 steps up at column 10 to row 9: staggered, the riser leans the way the line runs.
+    expect(xOf(shallow, 3) - xOf(shallow, 2)).toBe(2 * PALISADE_STAGGER_PX);
+
+    const corner = buildSpriteScene(
+      snapshotOf([palisade(1, 10, 10), palisade(2, 10, 11), palisade(3, 10, 12), palisade(4, 11, 12)]),
+    );
+    for (const ref of [1, 2, 3]) expect(xOf(corner, ref) % 34).toBe(0);
   });
 
   it('draws unfinished segments as ground markers and excludes them from wall connections', () => {
