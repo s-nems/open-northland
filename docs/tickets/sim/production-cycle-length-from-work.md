@@ -10,7 +10,7 @@ whatever it makes. Output amount answers to the worker's experience and tool (`a
 Original behavior: an in-house cycle is one playthrough of the workplace's produce clip, whose length
 is authored per clip in `atomicanimations.ini` (viking baker and miller 200 ticks, smith 240, potter
 80, well, hive and mead 50, druid potions 400). Neither experience nor a tool shortens it; the
-repeated-strokes rule belongs to gathering, fishing and building only.
+repeated-strokes rule belongs to gathering and fishing, and building has its own steps rule.
 
 ## Scope
 

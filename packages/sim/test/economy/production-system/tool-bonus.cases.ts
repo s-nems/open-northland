@@ -15,6 +15,7 @@ import {
 } from '../../../src/systems/economy/production/bonus-output.js';
 import { wearStepOf } from '../../../src/systems/equipment/index.js';
 import {
+  EXPERIENCE_XP_PER_POINT,
   experienceBonusTenths,
   experiencePercent,
   productionSystem,
@@ -33,6 +34,8 @@ const TOOL_IRON = 12;
 const CARRIER = 24;
 const CARPENTER_PLANK_TRACK = 4;
 const PLANK_XP_PER_BATCH = 7;
+/** Curve points the seeded worker stands on: 51 percent, so the tenths read as a sum, not a product. */
+const FIVE_POINTS = 5;
 
 const WOODEN_TENTHS = toolBonusTenths(20);
 const IRON_TENTHS = toolBonusTenths(70);
@@ -70,13 +73,15 @@ describe('productionSystem credits a worn tool additively and wears it per cycle
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
-    sim.world.mut(worker, SettlerProgress).experience.set(CARPENTER_PLANK_TRACK, 500 - PLANK_XP_PER_BATCH);
+    sim.world
+      .mut(worker, SettlerProgress)
+      .experience.set(CARPENTER_PLANK_TRACK, FIVE_POINTS * EXPERIENCE_XP_PER_POINT - PLANK_XP_PER_BATCH);
     wearTool(sim, worker, TOOL_WOODEN);
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(
-      experienceBonusTenths(experiencePercent(5)) + WOODEN_TENTHS,
+      experienceBonusTenths(experiencePercent(FIVE_POINTS)) + WOODEN_TENTHS,
     );
-    expect(experienceBonusTenths(experiencePercent(5)) + WOODEN_TENTHS).toBe(9);
+    expect(experienceBonusTenths(experiencePercent(FIVE_POINTS)) + WOODEN_TENTHS).toBe(9);
   });
 
   it('two iron-tool cycles flush one whole bonus plank, keeping the four tenths', () => {
@@ -125,7 +130,9 @@ describe('productionSystem credits a worn tool additively and wears it per cycle
     const { mill, worker } = sawmill(sim, []);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     const ctx = ctxOf(sim);
-    sim.world.mut(worker, SettlerProgress).experience.set(CARPENTER_PLANK_TRACK, 500); // 5 points, 51%
+    sim.world
+      .mut(worker, SettlerProgress)
+      .experience.set(CARPENTER_PLANK_TRACK, FIVE_POINTS * EXPERIENCE_XP_PER_POINT);
     wearTool(sim, worker, TOOL_IRON);
     accrueDepositBonus(sim.world, ctx, mill, worker, PLANK);
     // 7 tenths from the curve plus the iron tool's 7: one whole plank shelved, 4 tenths banked.

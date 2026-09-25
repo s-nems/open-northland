@@ -1,4 +1,4 @@
-import { halfCellMapFromCells, Simulation } from '@open-northland/sim';
+import { halfCellMapFromCells, Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
@@ -10,6 +10,11 @@ import { resourceCommand } from '../src/game/sandbox/place/index.js';
 
 /** Ticks the search gives a yield before calling the gatherer stuck. */
 const MAX_TICKS = 4000;
+
+/** The original's novice woodcutter fells a tree in about a minute (stopwatch observation); the rests and
+ *  the walks between strokes vary with the stance draws, so the band is wide. */
+const TREE_FALL_MIN_TICKS = 50 * TICKS_PER_SECOND;
+const TREE_FALL_MAX_TICKS = 80 * TICKS_PER_SECOND;
 
 /** A novice collector's strokes per unit: its general track's count. */
 const NOVICE_STROKES =
@@ -67,6 +72,8 @@ describe('resource harvest cadence at 1x', () => {
     const { tick, clips } = firstYield(GOOD_WOOD, atomic);
     expect(clips).toBe(2 * NOVICE_STROKES - 1);
     expect(tick).toBeGreaterThan(clips * clipTicks); // the rests and walks between strokes take their time
+    expect(tick).toBeGreaterThanOrEqual(TREE_FALL_MIN_TICKS);
+    expect(tick).toBeLessThanOrEqual(TREE_FALL_MAX_TICKS);
   });
 
   // Original behavior: the chips of one unit follow one another in place, so a unit costs exactly the

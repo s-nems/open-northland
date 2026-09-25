@@ -15,9 +15,11 @@ import {
 import type { Entity } from '../../../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../../../src/index.js';
 import { plannerSystem, resourceStanceCells, stampResourceFootprint } from '../../../../src/systems/index.js';
-import { setGatherGood } from '../../../../src/systems/orders/work/selection.js';
+import { setJob } from '../../../../src/systems/orders/index.js';
+import { setGatherGood, setWorkFlag } from '../../../../src/systems/orders/work/selection.js';
 import { grassCellMap } from '../../../fixtures/terrain.js';
 import {
+  CLAY_DIGGER,
   content,
   TEST_HUT,
   VIKING,
@@ -156,6 +158,45 @@ describe('flag-bound gatherer - returning to the node its stroke cadence left pa
     const remembered = placeFootprintedTree(sim, 7, 1);
     sim.world.add(gatherer, HarvestFocus, { node: remembered });
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: WOOD });
+    expect(sim.world.has(gatherer, HarvestFocus)).toBe(false);
+  });
+
+  it('a moved flag clears the mark, so the search restarts from the new flag', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassCellMap(12, 5) });
+    const gatherer = flagBoundCutter(sim);
+    sim.world.add(gatherer, Owner, { player: 0 });
+    const remembered = placeFootprintedTree(sim, 7, 1);
+    sim.world.add(gatherer, HarvestFocus, { node: remembered });
+    setWorkFlag(sim.world, ctxOf(sim), { kind: 'setWorkFlag', entity: gatherer, x: 9, y: 3 });
+    expect(sim.world.has(gatherer, HarvestFocus)).toBe(false);
+  });
+
+  it('a change of trade clears the mark, so a later return to the trade searches afresh', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassCellMap(12, 5) });
+    const gatherer = flagBoundCutter(sim);
+    sim.world.add(gatherer, Owner, { player: 0 });
+    const remembered = placeFootprintedTree(sim, 7, 1);
+    sim.world.add(gatherer, HarvestFocus, { node: remembered });
+    setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: gatherer, jobType: CLAY_DIGGER });
+    expect(sim.world.has(gatherer, HarvestFocus)).toBe(false);
+  });
+
+  it("a colleague's follow-through on the remembered node claims it like a stroke; the mark is dropped", () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassCellMap(12, 5) });
+    const gatherer = flagBoundCutter(sim);
+    const rival = placeWoodcutter(sim, 6, 1);
+    const remembered = placeFootprintedTree(sim, 7, 1);
+    sim.world.add(gatherer, HarvestFocus, { node: remembered });
+    sim.world.add(rival, CurrentAtomic, {
+      atomicId: WOOD_ATOMIC,
+      duration: 5,
+      effect: { kind: 'harvestFollowThrough', resource: remembered },
+      targetEntity: remembered,
+      targetTile: null,
+    });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
     expect(sim.world.has(gatherer, HarvestFocus)).toBe(false);
   });
 

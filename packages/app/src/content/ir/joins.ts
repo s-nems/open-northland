@@ -365,22 +365,25 @@ export function tribeJobSeqs(ir: ContentIr | null, tribe: number, jobs: readonly
       }
       if (row.action === ATTACK_ATOMIC) {
         jobAttack ??= row.bodySeq;
-      } else if (WAIT_ACTIONS.has(row.action)) {
+        continue;
+      }
+      // A wait-ladder record is the base wait candidate and, like any action, its own clip: the sim runs
+      // the ladder's short slots as a stroke's rest, and the look draws that slot's fidget.
+      if (WAIT_ACTIONS.has(row.action)) {
         if (jobWait === undefined || (!waitIsBase && row.mode === GFX_ANIM_MODE_LOOP)) {
           jobWait = row.bodySeq;
           waitIsBase = row.mode === GFX_ANIM_MODE_LOOP;
         }
-      } else {
-        let clips = atomics.get(row.action);
-        if (clips === undefined) {
-          clips = [];
-          atomics.set(row.action, clips);
-        }
-        clips.push({
-          seq: row.bodySeq,
-          program: { dirFrames: row.dirFrames, ...(row.mode !== undefined ? { mode: row.mode } : {}) },
-        });
       }
+      let clips = atomics.get(row.action);
+      if (clips === undefined) {
+        clips = [];
+        atomics.set(row.action, clips);
+      }
+      clips.push({
+        seq: row.bodySeq,
+        program: { dirFrames: row.dirFrames, ...(row.mode !== undefined ? { mode: row.mode } : {}) },
+      });
     }
     if (jobWait !== undefined) push(wait, jobWait);
     if (jobAttack !== undefined) push(attack, jobAttack);

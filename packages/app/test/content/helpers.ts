@@ -1,7 +1,15 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import type { ContentSet } from '@open-northland/data';
+import { atlasFromManifest, type SpriteLayer, type TextureSource } from '@open-northland/render';
+import { INDEXED_CHARACTER_PALETTE } from '../../src/catalog/roster.js';
+import { humanSequences, playableSequences } from '../../src/content/ir/joins.js';
+import type { ContentIr } from '../../src/content/ir/rows.js';
 import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../src/content/real-content.js';
+import type { LoadedLook } from '../../src/content/sprite-sheet/character-looks.js';
+import { resolveLooks } from '../../src/content/sprite-sheet/character-looks.js';
+import { tribeCharacters } from '../../src/content/sprite-sheet/tribe-characters.js';
+import type { WorldTribes } from '../../src/game/world-tribes.js';
 import { checkoutRoot } from '../support/checkout-root.js';
 
 /**
@@ -71,4 +79,47 @@ export function loadContentUnderTest(): Promise<RealContentUnderTest> {
     return { real, merge: mergeRealContent(real) };
   })();
   return underTest;
+}
+
+/** A tribe's character table as {@link characterTablesUnderTest} resolves it. */
+export type CharacterTableUnderTest = ReturnType<typeof tribeCharacters>;
+
+/**
+ * The character tables of `civilizations` resolved over the generated body atlases, the way the sprite
+ * sheet builds them, so a test can read what clip a look binds to an action. Null on a checkout whose
+ * content has no rendered bobs.
+ */
+export function characterTablesUnderTest(
+  civilizations: WorldTribes,
+): Map<number, CharacterTableUnderTest> | null {
+  if (!existsSync(resolve(contentDir(), 'bobs'))) return null;
+  const ir = rawIrUnderTest() as ContentIr;
+  const source = {} as TextureSource;
+  const layerFor = (stem: string): SpriteLayer | undefined => {
+    const path = resolve(contentDir(), 'bobs', `${stem}.atlas.json`);
+    if (!existsSync(path)) return undefined;
+    return { source, atlas: atlasFromManifest(JSON.parse(readFileSync(path, 'utf8'))) };
+  };
+  const looksByTribe = resolveLooks(ir, civilizations, INDEXED_CHARACTER_PALETTE);
+  const layersByBody = new Map<string, LoadedLook>();
+  for (const bySpec of looksByTribe.values()) {
+    for (const look of [...bySpec.values()].flat()) {
+      const body = layerFor(look.bodyStem);
+      if (body !== undefined) layersByBody.set(look.bodyStem, { body, headsByStem: new Map() });
+    }
+  }
+  const allSequences = humanSequences(ir);
+  const sequencesByBody = new Map(
+    [...layersByBody].map(([stem, layers]) => [stem, playableSequences(allSequences, layers.body.atlas)]),
+  );
+  return new Map(
+    civilizations.map((tribe) => [
+      tribe,
+      tribeCharacters(ir, [], tribe, {
+        looks: looksByTribe.get(tribe) ?? new Map(),
+        layersByBody,
+        sequencesByBody,
+      }),
+    ]),
+  );
 }

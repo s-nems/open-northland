@@ -57,7 +57,7 @@ export function extractJobExperience(
         name,
         jobType,
         goodTypes: getAllIntValues(sec, 'good').slice(0, GOOD_SLOTS_PER_TRACK),
-        experienceFactor: getInt(sec, 'experiencefactor') ?? 0,
+        experienceFactor: getInt(sec, 'experiencefactor'),
         baseRepeatCounter: getInt(sec, 'baserepeatcounter'),
         source: makeSource(src, 'humanjobexperiencetype'),
       }),

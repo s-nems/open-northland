@@ -82,7 +82,7 @@ function atomicCarriesEvent(
 ): boolean {
   const name = atomicClipName(content, settler, atomicId);
   const anim = name === undefined ? undefined : atomicAnimationByName(content, name);
-  return anim !== undefined && anim.events.some((e) => e.type === eventType);
+  return anim?.events.some((e) => e.type === eventType) ?? false;
 }
 
 /**

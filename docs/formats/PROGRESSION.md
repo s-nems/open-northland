@@ -89,13 +89,17 @@ percent buys: a workshop cycle adds `trunc(pct * 15 / 100)` tenths of a unit on 
 outputs, plus a worn tool's own tenths (wooden 2, iron 7), banked per good until a whole unit lands on
 the shelf; a gatherer's or fisher's strokes per unit are `max(1, trunc(count * 100 / toolFactor) -
 trunc(pct / 20))` with the track's `baserepeatcounter` as the count (10 when the record omits it) and
-the tool factor 100/125/175 for none/wooden/iron; a counted transform stroke (tree, herb, wheat) that
-leaves the node standing is followed by the same clip landing nothing, one of the three short idle
-clips, and a fresh stance drawn at random from the node's work area, while split-up strokes (stone,
-clay, ore) follow one another in place; a builder's swing installs
+the tool factor 100/125/175 for none/wooden/iron; a counted transform stroke on a standing node (tree)
+that leaves it standing is followed by the same clip landing nothing, one of the three short idle
+clips, and a fresh stance drawn at random from the node's work area, split-up strokes (stone, clay,
+ore) follow one another in place, and a field's reap stroke (wheat, herb) ends the farmer's task, who
+picks the field again and walks in from a fresh stance; a builder's swing installs
 `trunc(trunc((150 + pct) * toolFactor / 100) / 100)` of a building's `30 x material units` steps.
 A tool wears one of its rated uses per workshop cycle, gathering stroke, cast, build swing or
-watering.
+watering. A track record without `experiencefactor` loads as 100 and without `baserepeatcounter` as 10
+(original behavior). The stroke count is banked on the node, where the original keeps it on the worker
+(approximation: two workers on one node share its count, and a watering between two reap strokes keeps
+it).
 
 Right-click a school with selected workers to choose a civilian profession or product. The player must
 already know it; a product must belong to the worker's profession. School places are reserved by

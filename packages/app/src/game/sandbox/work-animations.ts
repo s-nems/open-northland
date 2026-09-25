@@ -27,6 +27,15 @@ export const FARMER_WATER_LENGTH = 29;
 export const STORE_PICKUP_ANIMATION = 'viking_pickup';
 export const STORE_PILEUP_ANIMATION = 'viking_pileup';
 export const STORE_EXCHANGE_LENGTH = 20;
+// The three short idle clips a stroke's rest is drawn from, the original's `setatomic 6 2/3/4` rows,
+// `length 6`, `12` and `24` in the same file; the render draws the wait pose for them (the sandbox has no
+// fidget art).
+export const CIVILIST_IDLE_SHORT_ANIMATIONS: readonly string[] = [
+  'viking_civilist_idle_short_a',
+  'viking_civilist_idle_short_b',
+  'viking_civilist_idle_short_c',
+];
+export const CIVILIST_IDLE_SHORT_LENGTHS: readonly number[] = [6, 12, 24];
 // The well pump and the hive pick-up a lift off those shelves plays (`setatomic 6 44/45`), both
 // `length 50` in the same file.
 export const WELL_DRAW_ANIMATION = 'viking_civilist_produce_water';

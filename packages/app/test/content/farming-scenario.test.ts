@@ -49,6 +49,9 @@ const FARM_TICKS = 6_000;
 /** Long past the first sow on grass (a few hundred ticks), so a barren run that sows nothing has waited
  *  for every rung the worker could take. */
 const BARREN_TICKS = 1_500;
+/** A novice herbalist's first reap, ten counted strokes each walked into anew, lands by tick 600 on this
+ *  map; the budget leaves honest headroom. */
+const HERB_REAP_BUDGET_TICKS = 1_200;
 
 /** The two goods the clean-room farming block completes on real content. */
 const FARMED_GOOD_IDS = ['wheat', 'herb'] as const;
@@ -187,9 +190,9 @@ describe.runIf(hasRealIr())('field-farming cycle over merged real content', () =
     }
     expect(placed).toBe(crop.farming.maxFields);
     let banked = 0;
-    // A ripe herb field costs a novice ten cadenced strokes (a follow-through and a rest each) before
-    // the reap lands and the sheaf comes home.
-    for (let tick = 0; tick < 2400 && banked === 0; tick++) {
+    // A ripe herb field costs a novice ten counted strokes, each walked into from a fresh stance,
+    // before the reap lands and the sheaf comes home.
+    for (let tick = 0; tick < HERB_REAP_BUDGET_TICKS && banked === 0; tick++) {
       sim.step();
       banked = sim.world.get(workplaceEntity, Stockpile).amounts.get(crop.typeId) ?? 0;
     }

@@ -1,4 +1,6 @@
 import {
+  type AtomicClock,
+  Crop,
   type CurrentAtomicState,
   HarvestFocus,
   Position,
@@ -8,18 +10,32 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-import { atomicDuration } from '../../readviews/animations.js';
+import { atomicDuration, isTransformAtomic } from '../../readviews/animations.js';
 
-/**
- * What follows a counted stroke that leaves its node standing. Original behavior: after a transform
- * stroke (tree, herb, wheat) the same clip plays once more and lands nothing, one of the three short idle
- * clips follows, and the gatherer then picks its target and stance afresh; a split-up stroke (stone, clay,
- * ore) keeps the target, so the next clip starts at once from the same stance and counts.
- */
+// What follows a counted stroke that leaves its node standing. Original behavior: a collector keeps its
+// target across strokes, so after a transform stroke on a standing node (tree) the same clip plays once
+// more and lands nothing, one of the three short idle clips follows, and the gatherer then picks its
+// target and stance afresh; a split-up stroke (stone, clay, ore) starts the next clip at once from the
+// same stance, and it counts. A field's reap stroke (wheat, herb) ends the farmer's task instead: the
+// field loop picks the field again and walks in from a fresh stance, and that next stroke counts.
 
-/** The running atomic's clock, as `world.mut(e, AtomicClock)` hands it out. */
-interface Clock {
-  elapsed: number;
+type Clock = NonNullable<(typeof AtomicClock)['__value']>;
+
+/** How a gatherer takes its node up again after a counted stroke that left it standing. */
+export type StrokeTakeUp = 'followThrough' | 'inPlace' | 'fresh';
+
+export function strokeTakeUp(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  node: Entity,
+  atomicId: number,
+): StrokeTakeUp {
+  if (world.has(node, Crop)) return 'fresh';
+  const identity = world.tryGet(settler, Settler);
+  return identity !== undefined && isTransformAtomic(ctx.content, identity, atomicId)
+    ? 'followThrough'
+    : 'inPlace';
 }
 
 /** The three short idle slots (`setatomic <job> 2..4`) a stroke's rest is drawn from. */

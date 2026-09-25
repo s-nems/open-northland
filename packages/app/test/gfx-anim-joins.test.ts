@@ -160,8 +160,17 @@ describe('tribeJobSeqs', () => {
       walk: ['longbow_walk', 'soldier_walk'],
       wait: ['longbow_wait', 'civilist_wait'],
       attack: ['longbow_attack'],
-      // A job's several records for one action all stay, in file order, each with its own frame lists.
+      // A job's several records for one action all stay, in file order, each with its own frame lists;
+      // the wait ladder's records are actions of their own besides electing the base wait.
       atomics: new Map([
+        [FIDGET_ACTION, [{ seq: 'longbow_fidget', program: { dirFrames: [[0]], mode: 0 } }]],
+        [
+          BASE_WAIT_ACTION,
+          [
+            { seq: 'longbow_wait', program: { dirFrames: [[1]], mode: 1 } },
+            { seq: 'civilist_wait', program: { dirFrames: [[9]], mode: 1 } },
+          ],
+        ],
         [
           CHEST_ACTION,
           [

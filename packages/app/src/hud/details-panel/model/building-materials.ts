@@ -69,9 +69,9 @@ export function liveAmounts(stockpile: unknown): Map<number, number> {
   return live;
 }
 
-/** The pending bonus output per good as a fraction of a unit (`ProductionBonus.remainders`, banked in
- *  tenths). Empty for a building without the component. */
-function bonusFractions(productionBonus: unknown): Map<number, number> {
+/** The pending bonus output per good in tenths of a unit (`ProductionBonus.remainders`). Empty for a
+ *  building without the component. */
+function bonusTenths(productionBonus: unknown): Map<number, number> {
   const out = new Map<number, number>();
   const remainders = (productionBonus as { remainders?: unknown } | undefined)?.remainders;
   if (!Array.isArray(remainders)) return out;
@@ -80,7 +80,7 @@ function bonusFractions(productionBonus: unknown): Map<number, number> {
     const goodType = num(pair[0]);
     const tenths = num(pair[1]);
     if (goodType !== undefined && tenths !== undefined) {
-      out.set(goodType, tenths / systems.OUTPUT_TENTHS_PER_UNIT);
+      out.set(goodType, tenths);
     }
   }
   return out;
@@ -98,7 +98,7 @@ export function stockRows(
   productionBonus?: unknown,
 ): StockRow[] {
   const live = liveAmounts(stockpile);
-  const fractions = bonusFractions(productionBonus);
+  const tenths = bonusTenths(productionBonus);
   // A species slot counts the herd grazing outside, so it belongs to Produkcja, not Magazyn.
   const slots = (def?.stock ?? []).filter((slot) => ctx.livestockTribeOfGood?.(slot.goodType) == null);
   return slots.map((slot) => {
@@ -107,10 +107,11 @@ export function stockRows(
       goodType: slot.goodType,
       // Shown by the hover tooltip only; the drawn row is just the icon and the amount.
       label: goodLabel(ctx, slot.goodType),
-      // Whole units plus the pending bonus fraction, floored to one decimal so a 0.97 fraction never
-      // reads as an extractable unit. Display only: a withdrawal still sees whole units.
+      // Whole units plus the banked bonus tenths, one division so the decimal stays exact. Display only: a
+      // withdrawal still sees whole units, and a full shelf's banked tenths never show past the capacity.
       amount: Math.min(
-        (live.get(slot.goodType) ?? 0) + Math.floor((fractions.get(slot.goodType) ?? 0) * 10) / 10,
+        ((live.get(slot.goodType) ?? 0) * systems.OUTPUT_TENTHS_PER_UNIT + (tenths.get(slot.goodType) ?? 0)) /
+          systems.OUTPUT_TENTHS_PER_UNIT,
         slot.capacity,
       ),
       category: goodCategoryTab(goodId),

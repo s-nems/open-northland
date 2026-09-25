@@ -39,6 +39,9 @@ import {
 const FARMER_WHEAT_TRACK = 90;
 
 /** The fixture plus a farmer-wheat track (rate 1) pinning `strokes` per reaped field. */
+/** Two counted strokes with a re-plan and a walk to a fresh stance between them. */
+const REAP_BUDGET_TICKS = 300;
+
 function contentWithStrokes(strokes: number): ReturnType<typeof testContent> {
   const base = testContent();
   return {
@@ -124,45 +127,37 @@ describe('planFarmer - the drive ladder', () => {
     expect(atomic.effect).toEqual({ kind: 'harvest', resource: field, goodType: WHEAT });
   });
 
-  it("the field falls on the stroke that completes the track's count, never earlier", () => {
-    // Whether the field still stands after each successive full clip, at `strokes` per field. A
-    // two-stroke field stands through the first stroke and the follow-through clip behind it.
-    const standsAfterClips = (strokes: number): boolean[] => {
+  // Original behavior: a reap stroke ends the farmer's task, so the field is picked again and walked
+  // into from a fresh stance, and every reap clip counts; no clip is wasted and no rest follows.
+  it("the field falls on the reap clip that completes the track's count, never earlier or later", () => {
+    const reapClipsToFall = (strokes: number): number => {
       const sim = new Simulation({ seed: 1, content: contentWithStrokes(strokes), map: grassMap(8, 8) });
-      const { field, farmer } = plotAtCap(sim, { stage: STAGES });
-      plannerSystem(sim.world, ctxOf(sim));
-      const clip = sim.world.get(farmer, components.CurrentAtomic).duration;
-      const stands: boolean[] = [];
-      for (let swing = 0; swing < 2; swing++) {
-        sim.run(clip);
-        stands.push(sim.world.has(field, Crop));
+      const { field } = plotAtCap(sim, { stage: STAGES });
+      let clips = 0;
+      for (let tick = 0; tick < REAP_BUDGET_TICKS && sim.world.has(field, Crop); tick++) {
+        sim.step();
+        for (const event of sim.events.current()) {
+          if (event.kind === 'atomicCompleted' && event.atomicId === REAP_ATOMIC) clips += 1;
+        }
       }
-      return stands;
+      expect(sim.world.has(field, Crop)).toBe(false);
+      return clips;
     };
-    expect(standsAfterClips(1)).toEqual([false, false]);
-    expect(standsAfterClips(2)).toEqual([true, true]);
+    expect(reapClipsToFall(1)).toBe(1);
+    expect(reapClipsToFall(2)).toBe(2);
   });
 
-  it('a two-stroke field falls once the farmer returns for its second counted stroke', () => {
+  it('after its first counted stroke the farmer is released to pick the field up again, not re-armed', () => {
     const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
-    const { field } = plotAtCap(sim, { stage: STAGES });
-    const REAP_BUDGET_TICKS = 300; // two counted strokes with a follow-through, a rest and a re-plan between
-    for (let tick = 0; tick < REAP_BUDGET_TICKS && sim.world.has(field, Crop); tick++) sim.step();
-    expect(sim.world.has(field, Crop)).toBe(false);
-  });
-
-  it('a two-stroke reap plays the same clip again from zero after its first stroke', () => {
-    const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
-    const { farmer } = plotAtCap(sim, { stage: STAGES });
+    const { field, farmer } = plotAtCap(sim, { stage: STAGES });
     plannerSystem(sim.world, ctxOf(sim));
     const clip = sim.world.get(farmer, components.CurrentAtomic).duration;
 
     sim.run(clip);
 
-    const atomic = sim.world.get(farmer, components.CurrentAtomic);
-    expect(atomic.atomicId).toBe(REAP_ATOMIC);
-    expect(sim.world.get(farmer, components.AtomicClock).elapsed).toBe(0);
-    expect(atomic.duration).toBe(clip);
+    expect(sim.world.has(field, Crop)).toBe(true);
+    expect(sim.world.has(farmer, components.CurrentAtomic)).toBe(false);
+    expect(sim.world.has(farmer, components.HarvestFocus)).toBe(false);
   });
 
   it('the stroke count never stretches a clip: reap and water last one clip at any count', () => {

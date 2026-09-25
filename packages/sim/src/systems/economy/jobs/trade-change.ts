@@ -10,6 +10,7 @@ import {
   ExploreOrder,
   Fleeing,
   GatherSelection,
+  HarvestFocus,
   HuntFocus,
   HuntRest,
   hasMissionBehaviour,
@@ -69,6 +70,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   world.remove(e, Fleeing);
   world.remove(e, HuntRest);
   world.remove(e, HuntFocus);
+  world.remove(e, HarvestFocus); // the node being taken up belongs to the old trade's search
   // Owned-only, like the spawn stamp: an unowned settler keeps its content-relation combat behavior and
   // carries no Stance at all, so a neutral settler must not gain one here.
   if (world.has(e, Owner)) stampDefaultStance(world, ctx.content, e, jobType);

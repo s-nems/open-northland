@@ -4,6 +4,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { accrueBonusOutput } from '../../../src/systems/economy/production/bonus-output.js';
 import {
+  EXPERIENCE_XP_PER_POINT,
   experienceBonusTenths,
   experiencePercent,
   OUTPUT_TENTHS_PER_UNIT,
@@ -47,7 +48,7 @@ describe('productionSystem accrues the experience bonus in tenths of a unit', ()
   function seedPoints(sim: Simulation, worker: Entity, points: number): void {
     sim.world
       .mut(worker, SettlerProgress)
-      .experience.set(CARPENTER_PLANK_TRACK, points * 100 - PLANK_XP_PER_BATCH);
+      .experience.set(CARPENTER_PLANK_TRACK, points * EXPERIENCE_XP_PER_POINT - PLANK_XP_PER_BATCH);
   }
   const MASTERY = 200; // points, past the curve's plateau
 

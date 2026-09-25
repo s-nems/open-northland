@@ -132,6 +132,7 @@ export {
 // jobCanBuild is the "can this trade raise a foundation" gate, so the app's right-click on a site cannot
 // drift from the rule assignBuilder and the builder drive ask; PRAY_ATOMIC_ID keys the app's pray gate.
 export { jobCanBuild, PRAY_ATOMIC_ID } from './settlers/atomics/start.js';
+export { STROKE_REST_ATOMIC_IDS } from './settlers/atomics/stroke-cadence.js';
 // The idle re-plan period, so a real-content probe can wait out an idle settler's reaction to new work.
 export { IDLE_REPLAN_PERIOD_TICKS } from './settlers/planner/idle-replan.js';
 // createSignpost lets pre-tick assembly and a scene stand a post the way the erect does, links included.

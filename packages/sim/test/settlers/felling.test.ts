@@ -1,3 +1,4 @@
+import { DEFAULT_BASE_REPEAT_COUNTER } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addCurrentAtomic,
@@ -41,8 +42,7 @@ const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
 const WOOD_TRACK_ID = 'woodcutter_wood';
-/** The record default a track without `baserepeatcounter` loads with. */
-const DEFAULT_TRACK_STROKES = 10;
+const DEFAULT_TRACK_STROKES = DEFAULT_BASE_REPEAT_COUNTER;
 const SHORT_TRACK_STROKES = 5;
 
 // A bare-handed novice needs the whole track count - read from the fixture, not hardcoded.
