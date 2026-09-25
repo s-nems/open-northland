@@ -53,8 +53,8 @@ export function isValidTarget(
   if (t === self) return false;
   if (!world.has(t, Health) || !world.has(t, Position)) return false;
   if (world.get(t, Health).hitpoints <= 0) return false;
-  // A wall is broken only on an order, the player's or an attack-move's through a sealed palisade: a
-  // fighter left to itself walks through the gap rather than chopping every post in sight.
+  // A wall is never picked on sight: only a player's order, or a walk the walls bar, takes one on
+  // (`palisades/breach.ts`), so a fighter left to itself walks through a gap rather than chopping every post.
   if (world.has(t, Palisade)) return false;
   const building = world.tryGet(t, Building);
   if (building !== undefined) {

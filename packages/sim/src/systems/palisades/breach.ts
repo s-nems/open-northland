@@ -15,11 +15,12 @@ import { hexNeighboursOf, nodeOfPosition } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding/index.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isValidOrderedTarget } from '../conflict/targeting.js';
-import { attackerWeapon } from '../conflict/weapons.js';
+import { attackerWeapon, wallBlowDamage } from '../conflict/weapons.js';
 import type { SystemContext } from '../context.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
+import { ARMOR_MATERIAL, weaponDamageVsMaterial } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { canonicalById } from '../spatial/nodes.js';
 
@@ -27,28 +28,51 @@ import { canonicalById } from '../spatial/nodes.js';
  *  chase only an enemy's, so a map's ownerless wall stays up unless the player sends someone at it. */
 export type BreachableWalls = 'attackable' | 'enemy';
 
+/** Who a breach opens the way for: the player's order, which returns to `resume` once the wall falls, or the
+ *  march when that is null; or a fighter's own chase after `enemy`, which its stance keeps governing. */
+export type BreachOpener =
+  | { readonly kind: 'order'; readonly resume: Entity | null }
+  | { readonly kind: 'own'; readonly enemy: Entity };
+
+/** A refused route. `sealed` says the block overlay was already proved to refuse it, so it is not searched
+ *  again. */
+export interface BarredRoute {
+  readonly start: NodeId;
+  readonly goal: NodeId;
+  readonly sealed?: boolean;
+}
+
 /**
- * Turn a walk that walls block into an attack on the wall barring it, reporting whether it did. `resume`
- * is the ordered target to go back to once the wall falls; for an attack-move or a fighter's own chase it
- * is null, and the march resumes or the fighter picks its enemy again instead. A further wall behind is
- * found the same way. Project rule: soldiers walled off from their enemy break through rather than give up.
+ * Turn a walk that walls block into an attack on the wall barring it, reporting whether it did. A further
+ * wall behind is found the same way. Project rule: soldiers walled off from their enemy break through
+ * rather than give up.
  */
 export function breakThroughWall(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  route: { readonly start: NodeId; readonly goal: NodeId },
-  resume: Entity | null,
-  walls: BreachableWalls = 'attackable',
+  route: BarredRoute,
+  opener: BreachOpener,
 ): boolean {
-  const breach = palisadeBarring(world, ctx, terrain, e, route.start, route.goal, walls);
+  const walls = opener.kind === 'own' ? 'enemy' : 'attackable';
+  const breach = palisadeBarring(world, ctx, terrain, e, route, walls);
   if (breach === null) return false;
   clearNavState(world, e);
-  const march = world.tryGet(e, PlayerOrder)?.attackMove;
-  if (resume === null && march !== undefined)
-    world.mut(e, PlayerOrder).attackMove = { ...march, resume: true };
-  world.add(e, AttackOrder, { target: breach.wall, breach: { resume, stand: breach.stand } });
+  if (opener.kind === 'own') {
+    world.add(e, AttackOrder, {
+      target: breach.wall,
+      breach: { resume: null, stand: breach.stand, enemy: opener.enemy },
+    });
+  } else {
+    const march = world.tryGet(e, PlayerOrder)?.attackMove;
+    if (opener.resume === null && march !== undefined)
+      world.mut(e, PlayerOrder).attackMove = { ...march, resume: true };
+    world.add(e, AttackOrder, {
+      target: breach.wall,
+      breach: { resume: opener.resume, stand: breach.stand },
+    });
+  }
   world.add(e, Engagement, { repathAt: ctx.tick });
   return true;
 }
@@ -81,53 +105,110 @@ export interface Breach {
 }
 
 /**
- * The wall segment `e` must break to reach `goal` from `start`, and where to stand: the first wall it may
- * attack on the route that treats every such wall as open ground, or a joined segment further along the
- * line when the first one's near-side nodes are all taken. Null when walls are not what blocks the way: the
- * goal is reachable as it is, out of reach for another reason, or barred only by walls `e` may not attack.
- * Costs the standing walls and a few searches.
+ * The wall segment `e` must break to get along `route`, and where to stand: the first wall it may attack on
+ * the route that treats every such wall as open ground, or a joined segment further along the line when the
+ * first one's near-side nodes are all taken. Null when walls are not what blocks the way: the goal is
+ * reachable as it is, out of reach for another reason, or barred only by walls `e` may not attack or whose
+ * blow would not dent them. The cheap refusals come first; past them it costs the standing walls and a few
+ * searches.
  */
 export function palisadeBarring(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  start: NodeId,
-  goal: NodeId,
+  route: BarredRoute,
   walls: BreachableWalls = 'attackable',
 ): Breach | null {
   const settler = world.tryGet(e, Settler);
-  if (settler === undefined) return null;
+  if (settler === undefined || !world.has(e, Owner)) return null;
+  const arms = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
+  if (arms === null || wallBlowDamage(weaponDamageVsMaterial(arms.weapon, ARMOR_MATERIAL.HOUSE)) === 0) {
+    return null;
+  }
+  const wallAt = standingWallAt(
+    world,
+    terrain,
+    (wall) =>
+      (walls === 'attackable' || world.has(wall, Owner)) &&
+      isValidOrderedTarget(world, ctx, e, settler, wall),
+  );
+  if (wallAt.size === 0) return null;
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   // A route refused over a crowd or a far-off chase target is not a wall's doing.
-  if (findPath(terrain, start, goal, blocked) !== null) return null;
-  const wallAt = new Map<NodeId, Entity>();
-  for (const wall of canonicalById(world.query(PalisadeBlocking, Palisade, Position))) {
-    if (walls === 'enemy' && !world.has(wall, Owner)) continue;
-    if (!isValidOrderedTarget(world, ctx, e, settler, wall)) continue;
-    const at = world.get(wall, Position);
-    const { hx, hy } = nodeOfPosition(at.x, at.y);
-    for (const cell of translatedCells(terrain, world.get(wall, Palisade).walk, hx, hy)) {
-      if (!wallAt.has(cell)) wallAt.set(cell, wall);
-    }
-  }
-  if (wallAt.size === 0) return null;
+  if (route.sealed !== true && findPath(terrain, route.start, route.goal, blocked) !== null) return null;
   const breachable: BlockOverlay = {
     has: (node) => !wallAt.has(node) && blocked.has(node),
     get size() {
       return blocked.size;
     },
   };
-  const path = findPath(terrain, start, goal, breachable);
+  const path = findPath(terrain, route.start, route.goal, breachable);
   if (path === null) return null;
   const hit = firstWallOn(terrain, blocked, wallAt, path);
   if (hit === null) return null;
   // Only a breaker that strikes from beside the wall needs a node of its own; a shooter keeps its range.
   // One standing on a post has no near side to be dealt.
-  const arms = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
-  if (arms === null || arms.minRange > 1 || wallAt.has(hit.approach)) return { wall: hit.wall, stand: null };
+  if (arms.minRange > 1 || wallAt.has(hit.approach)) return { wall: hit.wall, stand: null };
   const line: BreachLine = { terrain, blocked, wallAt, first: hit.wall, approach: hit.approach };
   return spreadAlongLine(world, line, e);
+}
+
+/** The walk cells of every standing wall `admits`, each to its lowest-id wall. */
+function standingWallAt(
+  world: World,
+  terrain: TerrainGraph,
+  admits: (wall: Entity) => boolean,
+): Map<NodeId, Entity> {
+  const wallAt = new Map<NodeId, Entity>();
+  for (const wall of canonicalById(world.query(PalisadeBlocking, Palisade, Position))) {
+    if (!admits(wall)) continue;
+    const at = world.get(wall, Position);
+    const { hx, hy } = nodeOfPosition(at.x, at.y);
+    for (const cell of translatedCells(terrain, world.get(wall, Palisade).walk, hx, hy)) {
+      if (!wallAt.has(cell)) wallAt.set(cell, wall);
+    }
+  }
+  return wallAt;
+}
+
+function wallCellsOf(wallAt: ReadonlyMap<NodeId, Entity>): Map<Entity, NodeId[]> {
+  const cellsOf = new Map<Entity, NodeId[]>();
+  for (const [cell, wall] of wallAt) {
+    const cells = cellsOf.get(wall);
+    if (cells === undefined) cellsOf.set(wall, [cell]);
+    else cells.push(cell);
+  }
+  return cellsOf;
+}
+
+/** The walls joined to `first` along its line within {@link BREACH_SPREAD} joints, each with its joint count,
+ *  nearest first. */
+function joinedWalls(
+  terrain: TerrainGraph,
+  wallAt: ReadonlyMap<NodeId, Entity>,
+  cellsOf: ReadonlyMap<Entity, readonly NodeId[]>,
+  first: Entity,
+): Map<Entity, number> {
+  const joints = new Map<Entity, number>([[first, 0]]);
+  const walls: Entity[] = [first];
+  for (let at = 0; at < walls.length; at++) {
+    const wall = walls[at];
+    if (wall === undefined) continue;
+    const depth = joints.get(wall) ?? 0;
+    if (depth >= BREACH_SPREAD) continue;
+    for (const cell of cellsOf.get(wall) ?? []) {
+      const { x, y } = terrain.coordsOf(cell);
+      for (const n of hexNeighboursOf(x, y)) {
+        if (!terrain.inBounds(n.hx, n.hy)) continue;
+        const next = wallAt.get(terrain.nodeAt(n.hx, n.hy));
+        if (next === undefined || joints.has(next)) continue;
+        joints.set(next, depth + 1);
+        walls.push(next);
+      }
+    }
+  }
+  return joints;
 }
 
 /** Where `path` first meets a wall: the wall and the node it arrives from. */
@@ -184,30 +265,9 @@ function spreadAlongLine(world: World, line: BreachLine, breaker: Entity): Breac
     if (e !== breaker && stand !== undefined && stand !== null) held.add(stand);
   }
 
-  const cellsOf = new Map<Entity, NodeId[]>();
-  for (const [cell, wall] of wallAt) {
-    const cells = cellsOf.get(wall);
-    if (cells === undefined) cellsOf.set(wall, [cell]);
-    else cells.push(cell);
-  }
-  const joints = new Map<Entity, number>([[first, 0]]);
-  const walls: Entity[] = [first];
-  for (let at = 0; at < walls.length; at++) {
-    const wall = walls[at];
-    if (wall === undefined) continue;
-    const depth = joints.get(wall) ?? 0;
-    if (depth >= BREACH_SPREAD) continue;
-    for (const cell of cellsOf.get(wall) ?? []) {
-      const { x, y } = terrain.coordsOf(cell);
-      for (const n of hexNeighboursOf(x, y)) {
-        if (!terrain.inBounds(n.hx, n.hy)) continue;
-        const next = wallAt.get(terrain.nodeAt(n.hx, n.hy));
-        if (next === undefined || joints.has(next)) continue;
-        joints.set(next, depth + 1);
-        walls.push(next);
-      }
-    }
-  }
+  const cellsOf = wallCellsOf(wallAt);
+  const joints = joinedWalls(terrain, wallAt, cellsOf, first);
+  const walls = [...joints.keys()];
 
   const strip = lineStrip(
     terrain,

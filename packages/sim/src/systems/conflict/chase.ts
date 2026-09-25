@@ -1,11 +1,14 @@
 import {
   AttackOrder,
+  Building,
   Engagement,
   EquipOrder,
   HuntFocus,
   MoveGoal,
+  Owner,
   PathRequest,
   PlayerOrder,
+  Settler,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { findPath } from '../../nav/pathfinding/index.js';
@@ -24,7 +27,8 @@ import { noteUnreachableTarget } from './unreachable-targets.js';
 // a distinct contact cell so a converging mass forms ranks rather than a pile, and respect the DEFEND leash.
 
 /** The chase's pre-resolved target: the entity, the combat node the reach check measured (its own node for
- *  a unit, its nearest wall for a building), and a building's full wall list (`null` for a unit). */
+ *  a unit, its nearest body node for a building or a wall), and that structure's whole body (`null` for a
+ *  unit). */
 export interface ChaseTarget {
   readonly entity: Entity;
   readonly node: NodeId;
@@ -119,15 +123,18 @@ export function chase(
   // every tick and the order can never complete.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed) {
+    // The breach this chase walks to, whose target a further wall found on the way still leads back to.
+    const order = world.tryGet(e, AttackOrder);
+    const breach = order?.target === target.entity ? order.breach : undefined;
     // A player-driven walk walled off by a palisade breaks through it: toward the ordered target, else toward
     // the march's goal.
     if (commanded) {
       const march = world.tryGet(e, PlayerOrder)?.attackMove;
       const goal = stance.ordered ? request.goal : march?.goal;
-      const resume = stance.ordered ? target.entity : null;
+      const resume = stance.ordered ? (breach === undefined ? target.entity : breach.resume) : null;
       if (
         goal !== undefined &&
-        breakThroughWall(world, ctx, terrain, e, { start: request.start, goal }, resume)
+        breakThroughWall(world, ctx, terrain, e, { start: request.start, goal }, { kind: 'order', resume })
       ) {
         return true;
       }
@@ -147,15 +154,18 @@ export function chase(
     }
     // Stand the refused route out for a cadence and count it; from the threshold on, only a refusal that
     // buildings and resources alone explain releases the target. A fighter free to leave its spot breaks
-    // an enemy wall that seals it off instead.
+    // an enemy wall that seals it off from an enemy player instead.
     const routes = (engagement.stall?.routes ?? 0) + 1;
     if (
       routes >= SEALED_TARGET_ROUTE_FAILURES &&
       sealedByStructures(world, ctx, terrain, request.start, request.goal)
     ) {
+      const enemy = breach?.enemy ?? target.entity;
+      const route = { start: request.start, goal: request.goal, sealed: true };
       if (
         defend === null &&
-        breakThroughWall(world, ctx, terrain, e, { start: request.start, goal: request.goal }, null, 'enemy')
+        worthASiege(world, enemy) &&
+        breakThroughWall(world, ctx, terrain, e, route, { kind: 'own', enemy })
       ) {
         return true;
       }
@@ -226,6 +236,12 @@ export function chase(
   slots.claim(dest);
   world.mut(e, Engagement).repathAt = ctx.tick + REPATH_CADENCE;
   return false;
+}
+
+/** Whether a fighter's own chase breaks walls to reach `enemy`: an enemy player's settler or building. A hunt
+ *  after wildlife starts no siege. */
+function worthASiege(world: World, enemy: Entity): boolean {
+  return world.has(enemy, Owner) && (world.has(enemy, Settler) || world.has(enemy, Building));
 }
 
 /** `e`'s {@link Engagement} on `target`, added to repath at once on a first engagement. A stall is about one

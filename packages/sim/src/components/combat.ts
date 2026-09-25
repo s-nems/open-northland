@@ -103,15 +103,16 @@ export const Garrison = defineComponent<{ post: Entity; returnTo: { x: Fixed; y:
 );
 
 /**
- * An explicit attack order on an owned combatant: it chases `target` regardless of sight radius until the
- * target dies or stops being a valid target, then reverts to auto-engagement. A move order or a profession
- * change supersedes it. `breach` marks a wall taken on because it barred an ordered walk: the order lets
- * go when any wall falls and returns to `resume`, the ordered target, or to the march when that is null.
- * `stand` is the near-side node dealt to this breaker, null when none was free.
+ * An attack order on an owned combatant: it chases `target` regardless of sight radius until the target dies
+ * or stops being a valid target, then reverts to auto-engagement. A move order or a profession change
+ * supersedes it. `breach` marks a wall taken on because it barred the way: the order lets go when a wall
+ * of its line falls and returns to `resume`, the player's target, or to the march when that is null.
+ * `enemy` marks a fighter's own breach instead, walled off from that enemy: no player order, so the unit's
+ * stance still governs it. `stand` is the near-side node dealt to this breaker, null when none was free.
  */
 export const AttackOrder = defineComponent<{
   target: Entity;
-  breach?: { resume: Entity | null; stand: NodeId | null };
+  breach?: { resume: Entity | null; stand: NodeId | null; enemy?: Entity | undefined };
 }>('AttackOrder', 'combat');
 
 /**

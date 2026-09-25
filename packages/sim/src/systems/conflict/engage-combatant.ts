@@ -48,7 +48,7 @@ import { fleeDrive } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
-import { hostileAnimalNow, isValidOrderedTarget } from './targeting.js';
+import { hostileAnimalNow, isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import {
   attackerWeapon,
@@ -102,13 +102,9 @@ export function engageCombatant(
   }
 
   const owned = world.has(e, Owner);
-  const ordered = liveAttackOrder(world, ctx, e, attacker);
-  const stance: CombatantStance = {
-    owned,
-    ordered,
-    mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
-    post: manning ? posted : null,
-  };
+  const mode = owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null;
+  const ordered = liveAttackOrder(world, ctx, e, attacker, mode);
+  const stance: CombatantStance = { owned, ordered, mode, post: manning ? posted : null };
   // Only a unit that would pick the fight gets up for it - by its stance, or because the player's attack
   // order names the target. A passive or fleeing sleeper sleeps on until a blow lands, which ends any
   // sleep (`atomics/effects/combat/hit/reaction.ts`). A sleep the player ordered is protected further
@@ -155,7 +151,7 @@ export function engageCombatant(
 
   const here = entityNode(world, terrain, e);
   const spec = engageSpec(world, ctx, terrain, index, e, here, stance, attacker, weapon);
-  const found = resolveTarget(world, ctx, terrain, pass, e, here, spec);
+  const found = resolveTarget(world, ctx, terrain, pass, e, here, spec, weapon);
   if (found === null) {
     // Nothing to strike yet, but a fight near enough to stand to still gets it up. A guard's walk back to
     // its anchor waits for the next pass.
@@ -241,15 +237,39 @@ function actingMode(
   return marching ? MILITARY_MODE.ATTACK : stanceMode(world, ctx.content, e, jobType);
 }
 
-/** Whether an explicit {@link AttackOrder} is in flight, dropping one that has outlived its target first:
- *  left standing, its stale spec re-acquires ATTACK-style whatever the unit's actual stance says. */
-function liveAttackOrder(world: World, ctx: SystemContext, e: Entity, attacker: SettlerIdentity): boolean {
-  if (!world.has(e, AttackOrder)) return false;
-  const order = world.get(e, AttackOrder);
+/**
+ * Whether the player's {@link AttackOrder} is in flight, dropping one that has outlived its target first:
+ * left standing, its stale spec re-acquires ATTACK-style whatever the unit's actual stance says. A fighter's
+ * own breach is no player order: it stands only while its wall does, its enemy is still one, and `mode`
+ * still advances on enemies.
+ */
+function liveAttackOrder(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  attacker: SettlerIdentity,
+  mode: MilitaryMode | null,
+): boolean {
+  const order = world.tryGet(e, AttackOrder);
+  if (order === undefined) return false;
+  const breach = order.breach;
+  if (breach?.enemy !== undefined) {
+    const stands =
+      mode === MILITARY_MODE.ATTACK &&
+      isValidOrderedTarget(world, ctx, e, attacker, order.target) &&
+      isValidTarget(world, ctx, e, attacker, breach.enemy);
+    if (!stands) world.remove(e, AttackOrder);
+    return false;
+  }
+  const resume = breach?.resume ?? null;
+  // A breach opened for an ordered target lets go once that target is gone.
+  if (resume !== null && !isValidOrderedTarget(world, ctx, e, attacker, resume)) {
+    world.remove(e, AttackOrder);
+    return false;
+  }
   if (isValidOrderedTarget(world, ctx, e, attacker, order.target)) return true;
   // A breach whose wall is down goes back to the target it was opened for.
-  const resume = order.breach?.resume ?? null;
-  if (resume !== null && isValidOrderedTarget(world, ctx, e, attacker, resume)) {
+  if (resume !== null) {
     world.add(e, AttackOrder, { target: resume });
     return true;
   }

@@ -223,7 +223,7 @@ export const playerOrderSystem: System = (world, ctx) => {
     if (request?.failed) {
       if (march !== undefined) {
         const route = { start: request.start, goal: march.goal };
-        if (breakThroughWall(world, ctx, ctx.terrain, e, route, null)) continue;
+        if (breakThroughWall(world, ctx, ctx.terrain, e, route, { kind: 'order', resume: null })) continue;
       }
       // A failed request is never retried, so the order must be dropped or the unit freezes on it forever.
       // A signpost errand is the original's build-guide task, whose failure is a plain task failure,

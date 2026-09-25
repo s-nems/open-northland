@@ -39,13 +39,16 @@ const VIKING = 1;
 const WOODCUTTER = 1;
 /** The fixture's bow-armed job: a shooter's near reach keeps it off the wall. */
 const HUNTER = 15;
+/** The fixture's aggressive wild animal. */
+const BEAR = 10;
 const P0 = 0;
 const P1 = 1;
 /** The axe weapon class, whose fight bucket seasons the woodcutter's swing. */
 const AXE_CLASS = 5;
 /** Landed hits past the building-damage experience cap, which would double a blow on a house. */
 const SEASONED_HITS = 100;
-const HOUSE_AXE_DAMAGE = 150;
+/** Building-column damage that takes one valency off a wall per blow. */
+const HOUSE_DAMAGE = 150;
 
 const WALL: ScriptLandscapeType = {
   typeId: 691,
@@ -101,9 +104,13 @@ const GATE_X = 12;
 const NORTH = { hx: GATE_X, hy: 2 };
 const SOUTH = { hx: GATE_X, hy: 18 };
 
-/** The fixture content with the woodcutter's axe dealing {@link HOUSE_AXE_DAMAGE} in the building column,
- *  one wall hitpoint and a half per blow. */
-function houseAxeContent(): ContentSet {
+/** The fixture content with the woodcutter's axe and the hunter's bow dealing {@link HOUSE_DAMAGE} in the
+ *  building column, so either dents a wall. The plain fixture weapons list no building column at all. */
+function wallBreakingContent(): ContentSet {
+  const dentsWalls = (w: (typeof combatContent.weapons)[number]) => ({
+    ...w,
+    damage: { ...w.damage, [ARMOR_MATERIAL.HOUSE]: HOUSE_DAMAGE },
+  });
   return parseContentSet({
     manifest: TEST_MANIFEST,
     ...economyContent,
@@ -111,13 +118,15 @@ function houseAxeContent(): ContentSet {
     ...societyContent,
     weapons: combatContent.weapons.map((w) =>
       w.id === 'test_axe'
-        ? { ...w, mainType: AXE_CLASS, damage: { ...w.damage, [ARMOR_MATERIAL.HOUSE]: HOUSE_AXE_DAMAGE } }
-        : w,
+        ? { ...dentsWalls(w), mainType: AXE_CLASS }
+        : w.id === 'test_spear'
+          ? dentsWalls(w)
+          : w,
     ),
   });
 }
 
-function fresh(content: ContentSet = testContent()): Simulation {
+function fresh(content: ContentSet = wallBreakingContent()): Simulation {
   const base = grassNodeMap(WIDTH, HEIGHT);
   return new Simulation({
     seed: 1,
@@ -188,14 +197,10 @@ function mapped(sim: Simulation) {
 function barring(sim: Simulation, e: Entity, goal: { hx: number; hy: number }): Entity | null {
   const terrain = mapped(sim);
   const at = nodeRow(sim, e);
-  const breach = palisadeBarring(
-    sim.world,
-    ctxOf(sim),
-    terrain,
-    e,
-    terrain.nodeAt(at.hx, at.hy),
-    terrain.nodeAt(goal.hx, goal.hy),
-  );
+  const breach = palisadeBarring(sim.world, ctxOf(sim), terrain, e, {
+    start: terrain.nodeAt(at.hx, at.hy),
+    goal: terrain.nodeAt(goal.hx, goal.hy),
+  });
   return breach?.wall ?? null;
 }
 
@@ -314,7 +319,8 @@ describe('a wall line that turns', () => {
     for (let tick = 0; tick < 20 && !squad.every((r) => sim.world.has(r, AttackOrder)); tick++) sim.step();
     const stands = squad.map((raider) => sim.world.get(raider, AttackOrder).breach?.stand ?? null);
     expect(new Set(stands).size).toBe(squad.length);
-    sim.run(300);
+    // Short of the first post falling, which sends the squad on through the gap.
+    sim.run(150);
     const terrain = mapped(sim);
     for (const [at, raider] of squad.entries()) {
       const here = nodeRow(sim, raider);
@@ -329,14 +335,11 @@ describe('a wall line that turns', () => {
     const archer = fighterAt(sim, 0, 0, VIKING, HUNTER, { owner: P0 });
     sim.world.add(archer, Position, positionOfNode(OUTSIDE.hx, OUTSIDE.hy));
     const terrain = mapped(sim);
-    const breach = palisadeBarring(
-      sim.world,
-      ctxOf(sim),
-      terrain,
-      archer,
-      terrain.nodeAt(OUTSIDE.hx, OUTSIDE.hy),
-      terrain.nodeAt(CENTRE.hx, CENTRE.hy),
-    );
+    const breach = palisadeBarring(sim.world, ctxOf(sim), terrain, archer, {
+      start: terrain.nodeAt(OUTSIDE.hx, OUTSIDE.hy),
+      goal: terrain.nodeAt(CENTRE.hx, CENTRE.hy),
+    });
+    expect(breach?.wall).toBeDefined();
     expect(breach?.stand).toBeNull();
   });
 
@@ -390,7 +393,7 @@ describe('walls as targets', () => {
 
   it('take the bare building column from a blow, however seasoned the striker', () => {
     const firstBlow = (seasoned: boolean): number => {
-      const sim = fresh(houseAxeContent());
+      const sim = fresh();
       postRow(sim, WALL_ROW, P1);
       const wall = [...sim.world.query(Palisade)].find(
         (e) => nodeOfPosition(sim.world.get(e, Position).x, sim.world.get(e, Position).y).hx === GATE_X,
@@ -458,7 +461,7 @@ describe('an attack-move against a sealed palisade', () => {
     expect(nodeRow(sim, target).hy).toBe(WALL_ROW);
     expect(sim.world.get(raider, PlayerOrder).attackMove?.goal).toBeDefined();
 
-    // The fixture weapons do not dent a wall, so the breach is made for them.
+    // Felled at once rather than chopped down.
     sim.world.mut(target, Health).hitpoints = 0;
     for (let tick = 0; tick < 600 && nodeRow(sim, raider).hy < SOUTH.hy; tick++) sim.step();
     expect(nodeRow(sim, raider)).toEqual(SOUTH);
@@ -508,7 +511,7 @@ describe('an attack-move against a sealed palisade', () => {
     expect(new Set(columns).size).toBe(squad.length);
     expect(Math.max(...columns) - Math.min(...columns)).toBe(squad.length - 1);
 
-    // The fixture weapons do not dent a wall, so every breaker ends up swinging from its own node.
+    // A wall takes far longer to fall, so every breaker ends up swinging from its own node.
     sim.run(200);
     const terrain = mapped(sim);
     for (const [at, raider] of squad.entries()) {
@@ -566,8 +569,8 @@ describe('a fighter walled in with its enemy in sight', () => {
     return undefined;
   }
 
-  function walledIn(wallOwner: number | null) {
-    const sim = fresh();
+  function walledIn(wallOwner: number | null, content = wallBreakingContent()) {
+    const sim = fresh(content);
     const gate = wallRow(sim, wallOwner ?? P0);
     if (wallOwner === null) for (const wall of sim.world.query(Palisade)) sim.world.remove(wall, Owner);
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
@@ -582,9 +585,9 @@ describe('a fighter walled in with its enemy in sight', () => {
     const order = breachOf(sim, prisoner);
     if (order === undefined) throw new Error('expected the prisoner to go for the wall');
     expect(sim.world.has(order.target, Palisade)).toBe(true);
-    expect(order.breach?.resume).toBeNull();
+    expect(order.breach?.enemy).toBe(shooter);
 
-    // The fixture weapons do not dent a wall, so the breach is made for them.
+    // Felled at once rather than chopped down.
     sim.world.mut(order.target, Health).hitpoints = 0;
     sim.step();
     expect(sim.world.has(prisoner, AttackOrder)).toBe(false);
@@ -603,5 +606,115 @@ describe('a fighter walled in with its enemy in sight', () => {
     const { sim, prisoner } = walledIn(P0);
     sim.world.mut(prisoner, Stance).mode = MILITARY_MODE.DEFEND;
     expect(breachOf(sim, prisoner)).toBeUndefined();
+  });
+
+  it('never goes for a wall its blow cannot dent', () => {
+    const { sim, prisoner } = walledIn(P0, testContent());
+    expect(breachOf(sim, prisoner)).toBeUndefined();
+  });
+
+  it('starts no siege to get at a wild animal', () => {
+    const { sim, shooter, prisoner } = walledIn(P0);
+    sim.world.destroy(shooter);
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
+    sim.world.add(bear, Position, positionOfNode(SHOOTER.hx, SHOOTER.hy));
+    let chased = false;
+    for (let tick = 0; tick < 200; tick++) {
+      sim.step();
+      chased ||= sim.world.tryGet(prisoner, Engagement)?.stall?.target === bear;
+      expect(sim.world.has(prisoner, AttackOrder)).toBe(false);
+    }
+    expect(chased).toBe(true);
+  });
+
+  it('fights back against an enemy that comes at it, then takes the wall up again', () => {
+    const { sim, prisoner } = walledIn(P0);
+    const order = breachOf(sim, prisoner);
+    if (order === undefined) throw new Error('expected the prisoner to go for the wall');
+    const at = nodeRow(sim, prisoner);
+    const rival = fighter(sim, { hx: at.hx + 1, hy: at.hy + 1 }, P0);
+    const hurt = (): boolean => sim.world.get(rival, Health).hitpoints < sim.world.get(rival, Health).max;
+    for (let tick = 0; tick < 200 && !hurt(); tick++) sim.step();
+    expect(hurt()).toBe(true);
+
+    sim.world.mut(rival, Health).hitpoints = 0;
+    const wall = sim.world.get(order.target, Health);
+    const before = wall.hitpoints;
+    for (let tick = 0; tick < 200 && sim.world.get(order.target, Health).hitpoints === before; tick++)
+      sim.step();
+    expect(sim.world.get(prisoner, AttackOrder).target).toBe(order.target);
+    expect(sim.world.get(order.target, Health).hitpoints).toBeLessThan(before);
+  });
+
+  it('lets the wall be once the enemy it broke through for is gone', () => {
+    const { sim, shooter, prisoner } = walledIn(P0);
+    expect(breachOf(sim, prisoner)).toBeDefined();
+    sim.world.mut(shooter, Health).hitpoints = 0;
+    sim.run(2);
+    expect(sim.world.has(prisoner, AttackOrder)).toBe(false);
+  });
+
+  it('keeps to its stance, running from the fight on FLEE', () => {
+    const { sim, prisoner } = walledIn(P0);
+    expect(breachOf(sim, prisoner)).toBeDefined();
+    sim.world.mut(prisoner, Stance).mode = MILITARY_MODE.FLEE;
+    sim.step();
+    expect(sim.world.has(prisoner, AttackOrder)).toBe(false);
+  });
+});
+
+describe('a breach the player ordered', () => {
+  function orderedAtWalledInEnemy(content = wallBreakingContent()) {
+    const sim = fresh(content);
+    const gate = wallRow(sim, P1);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    sim.step();
+    const enemy = fighter(sim, SOUTH, P1);
+    const soldier = fighter(sim, NORTH, P0);
+    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: enemy });
+    return { sim, enemy, soldier };
+  }
+
+  function breachOf(sim: Simulation, soldier: Entity) {
+    for (let tick = 0; tick < 20 && sim.world.tryGet(soldier, AttackOrder)?.breach === undefined; tick++)
+      sim.step();
+    return sim.world.tryGet(soldier, AttackOrder);
+  }
+
+  it('dents the wall with real blows', () => {
+    const { sim, soldier } = orderedAtWalledInEnemy();
+    const order = breachOf(sim, soldier);
+    if (order?.breach === undefined) throw new Error('expected the soldier to go for the wall');
+    const full = sim.world.get(order.target, Health).max;
+    for (let tick = 0; tick < 400 && sim.world.get(order.target, Health).hitpoints === full; tick++)
+      sim.step();
+    expect(sim.world.get(order.target, Health).hitpoints).toBeLessThan(full);
+  });
+
+  it('lets go of the wall once the ordered target is gone', () => {
+    const { sim, enemy, soldier } = orderedAtWalledInEnemy();
+    expect(breachOf(sim, soldier)?.breach?.resume).toBe(enemy);
+    sim.world.mut(enemy, Health).hitpoints = 0;
+    sim.run(2);
+    expect(sim.world.has(soldier, AttackOrder)).toBe(false);
+  });
+
+  it('gives the order up when its blow cannot dent the wall', () => {
+    const { sim, soldier } = orderedAtWalledInEnemy(testContent());
+    sim.run(20);
+    expect(sim.world.has(soldier, AttackOrder)).toBe(false);
+  });
+
+  it('keeps the ordered target when another wall bars the walk to the first', () => {
+    const { sim, enemy, soldier } = orderedAtWalledInEnemy();
+    const first = breachOf(sim, soldier)?.target;
+    if (first === undefined) throw new Error('expected the soldier to go for the wall');
+    const inner = WALL_ROW - 3;
+    expect(nodeRow(sim, soldier).hy).toBeLessThan(inner);
+    postRow(sim, inner, P1);
+    for (let tick = 0; tick < 60 && sim.world.get(soldier, AttackOrder).target === first; tick++) sim.step();
+    const order = sim.world.get(soldier, AttackOrder);
+    expect(nodeRow(sim, order.target).hy).toBe(inner);
+    expect(order.breach?.resume).toBe(enemy);
   });
 });

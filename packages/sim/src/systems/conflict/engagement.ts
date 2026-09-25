@@ -14,6 +14,7 @@ import { entityNode } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
+import type { WeaponBand } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, reachableTargetGate } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
@@ -201,9 +202,10 @@ function defendAnchor(world: World, e: Entity, here: NodeId): NodeId {
 
 /**
  * The enemy this combatant fights this tick with its Manhattan distance from `here`, or null. An
- * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search. Otherwise the
- * nearest target `spec.accept` admits within `[spec.minDist, spec.searchRadius]`, with the
- * `spec.lowPriority` tier searched only when the primary tier finds nothing in sight.
+ * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search; a fighter's own
+ * breach yields to a primary-tier target inside `weapon`'s band. Otherwise the nearest target `spec.accept`
+ * admits within `[spec.minDist, spec.searchRadius]`, with the `spec.lowPriority` tier searched only when the
+ * primary tier finds nothing in sight.
  */
 export function resolveTarget(
   world: World,
@@ -213,13 +215,29 @@ export function resolveTarget(
   self: Entity,
   here: NodeId,
   spec: EngageSpec,
+  weapon: WeaponBand,
 ): { target: Entity; dist: number } | null {
   const { index } = pass;
+  const { x, y } = terrain.coordsOf(here);
   // The engage ladder already dropped an order whose target died or stopped being hostile this tick. An
   // ordered target is chased regardless of sight, so its real distance is measured, uncapped by the band.
-  const focus = world.tryGet(self, AttackOrder)?.target;
-  if (focus !== undefined) return focusedOn(world, ctx, terrain, here, focus);
-  const { x, y } = terrain.coordsOf(here);
+  const order = world.tryGet(self, AttackOrder);
+  if (order !== undefined) {
+    // An enemy within a breaker's reach is fought first, and the wall taken up again once it is gone.
+    const rival =
+      order.breach?.enemy === undefined
+        ? null
+        : index.nearest(
+            x,
+            y,
+            weapon.minRange,
+            weapon.maxRange,
+            (t) => !spec.lowPriority(t) && spec.accept(t),
+            spec.player,
+          );
+    if (rival !== null) return { target: rival.entity, dist: rival.distance };
+    return focusedOn(world, ctx, terrain, here, order.target);
+  }
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
     // A commitment ignores `minDist`: prey that closes inside the weapon's dead zone is backed off by the
