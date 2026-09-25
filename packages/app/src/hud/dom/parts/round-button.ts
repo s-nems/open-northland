@@ -2,8 +2,8 @@ import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { button, isDisabled, removeAttribute, setAttribute, setClass, setDisabled, setTitle } from './dom.js';
 
 /**
- * A round icon chip: a ledger row's assign or remove (20 px), a section title's add (22 px), a product's
- * good (30 px) or a trade stop's import toggle (26 px). The size is the kind's; the face is a line glyph
+ * A round icon chip: a ledger row's assign or remove (18 px), a section title's add (20 px), a product's
+ * good (26 px) or a trade stop's import toggle (24 px). The size is the kind's; the face is a line glyph
  * or a good's icon.
  */
 export type RoundButtonKind = 'ledger' | 'title' | 'good' | 'toggle';
@@ -17,10 +17,10 @@ const KIND_CLASS: Readonly<Record<RoundButtonKind, string>> = {
 
 /** Design px of a good icon on each kind's face (foundation.css sizes the chips around them). */
 const GOOD_ICON_PX: Readonly<Record<RoundButtonKind, number>> = {
-  ledger: 14,
-  title: 16,
-  good: 20,
-  toggle: 20,
+  ledger: 12,
+  title: 14,
+  good: 18,
+  toggle: 18,
 };
 
 export type RoundButtonFace = { readonly glyph: string } | { readonly goodId: string | undefined };
@@ -39,7 +39,7 @@ export interface RoundButtonModel {
 
 export interface RoundButton {
   readonly element: HTMLButtonElement;
-  /** Null keeps the slot's width with nothing in it, so a row's other chip does not move. */
+  /** Null collapses the chip, so a row's value sits against whatever chips it has. */
   update(model: RoundButtonModel | null): void;
 }
 

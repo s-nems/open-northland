@@ -9,6 +9,7 @@ import { createPeerIndex, NO_PEERS, peerAt, type TradePeers } from './peers.js';
 import { createPortraitSection } from './portrait.js';
 import { createProductionSection } from './production.js';
 import { createTradeSection } from './trade.js';
+import { warmModel } from './warm-model.js';
 import { createWorkSection } from './work.js';
 
 /** The selected person's panel on the DOM plane (FOUNDATION.md, "Settler panel"). */
@@ -23,6 +24,9 @@ export interface SettlerPanel {
   browse(step: 1 | -1): boolean;
   /** The HUD scale changed: the portrait's box is measured again. */
   invalidate(): void;
+  /** Paint every section once at map start (`SelectionPanel.warm`) with a few of the game's goods on
+   *  the icons, so the first selection costs no first-paint work. */
+  warm(goodIds: readonly string[]): void;
   dispose(): void;
 }
 
@@ -46,7 +50,6 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       if (peers.ids.length > 0) actions.selectGroup(peers.ids);
     },
     onRename: (name) => actions.rename(entity(), name),
-    onOrders: () => actions.openOrders(entity()),
     onClose: () => actions.clearSelection(),
   });
 
@@ -57,6 +60,15 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const military = createMilitarySection(deps, entity);
   const trade = createTradeSection(deps, current);
   const experience = createExperienceSection();
+  const sections = (model: SettlerPanelModel, fresh: boolean): void => {
+    portrait.update(model);
+    needs.update(model);
+    work.update(model);
+    production.update(model);
+    military.update(model);
+    trade.update(model);
+    experience.update(model, fresh);
+  };
   frame.body.append(
     portrait.element,
     needs.element,
@@ -85,17 +97,17 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       const fresh = shown?.entityId !== model.entityId;
       shown = model;
       peers = model.foreign ? NO_PEERS : peerIndex.peersOf(model.entityId, model.jobType, fresh);
-      frame.updateHead(settlerHead(model, peers, deps.keyLabel('actionRing')));
-      portrait.update(model);
-      needs.update(model);
-      work.update(model);
-      production.update(model);
-      military.update(model);
-      trade.update(model);
-      experience.update(model, fresh);
+      frame.updateHead(settlerHead(model, peers));
+      sections(model, fresh);
       frame.show();
     },
     hide,
+    warm(goodIds): void {
+      const model = warmModel(goodIds);
+      frame.updateHead(settlerHead(model, NO_PEERS));
+      sections(model, true);
+      frame.warm();
+    },
     portrait(): { readonly entityRef: number; readonly rect: ClientRect } | null {
       if (shown === null) return null;
       const rect = frame.holeClientRect();

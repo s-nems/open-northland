@@ -17,7 +17,7 @@ import {
   peerAt,
   tradePeers,
 } from '../src/hud/dom/settler-panel/peers.js';
-import { statusText } from '../src/hud/dom/settler-panel/portrait.js';
+import { statusText, statusTone } from '../src/hud/dom/settler-panel/portrait.js';
 import { gatherTarget, productStopped } from '../src/hud/dom/settler-panel/production.js';
 import { familyValue, seatButton, seatValue } from '../src/hud/dom/settler-panel/work.js';
 import type { ResidentRow } from '../src/hud/tool-panel/residents/rows.js';
@@ -215,6 +215,15 @@ describe('the settler panel’s rows', () => {
     expect(statusText(status)).toBe('Bezczynny');
     expect(statusText({ ...status, detail: 'bez zawodu' })).toBe('Bezczynny · bez zawodu');
   });
+
+  it('colours the status dot amber for trouble, grey for a walk or a wait, green for anything done', () => {
+    const status = { label: '', detail: null, trouble: false, carrying: null } as const;
+    expect(statusTone({ ...status, state: 'idle', trouble: true })).toBe('trouble');
+    expect(statusTone({ ...status, state: 'walking' })).toBe('neutral');
+    expect(statusTone({ ...status, state: 'awaitingWorkplace' })).toBe('neutral');
+    expect(statusTone({ ...status, state: 'talking' })).toBe('ok');
+    expect(statusTone({ ...status, state: 'working' })).toBe('ok');
+  });
 });
 
 describe('the settler head', () => {
@@ -228,17 +237,15 @@ describe('the settler head', () => {
     meta: null,
   } as SettlerPanelModel;
 
-  it('browses the trade and offers rename and orders for the seat’s own person', () => {
-    const head = settlerHead(model, { ids: [5, 7, 9], index: 1 }, 'Spacja');
+  it('browses the trade and offers rename for the seat’s own person', () => {
+    const head = settlerHead(model, { ids: [5, 7, 9], index: 1 });
     expect(head.browse).toMatchObject({ index: 2, count: 3 });
     expect(head.rename).not.toBeNull();
-    expect(head.orders).toContain('Spacja');
   });
 
-  it('keeps another seat’s person to the close medallion alone', () => {
-    const head = settlerHead({ ...model, foreign: true, renamable: false }, NO_PEERS, 'Spacja');
+  it('keeps another seat’s person to the name alone', () => {
+    const head = settlerHead({ ...model, foreign: true, renamable: false }, NO_PEERS);
     expect(head.browse).toBeNull();
     expect(head.rename).toBeNull();
-    expect(head.orders).toBeNull();
   });
 });

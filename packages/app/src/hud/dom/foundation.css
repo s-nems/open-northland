@@ -2366,22 +2366,22 @@ body.on-drag-scroll-cursor-hidden * {
   mask-composite: exclude;
 }
 .on-hud .on-selection .on-window__head {
-  padding: 13px 14px 11px;
+  padding: 10px 12px 8px;
 }
 .on-hud .on-selection__heading {
   min-width: 0;
 }
 .on-hud .on-selection__title {
   margin: 0;
-  font: 700 16px / 1 var(--font-title);
+  font: 700 15px / 1 var(--font-title);
   letter-spacing: 0.02em;
   color: var(--text-hi);
   text-shadow: 0 2px 2px #000;
 }
 .on-hud .on-selection__meta {
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
 }
 .on-hud .on-selection__medallions {
   display: inline-flex;
@@ -2389,27 +2389,32 @@ body.on-drag-scroll-cursor-hidden * {
   flex-shrink: 0;
 }
 .on-hud .on-selection__medallions .on-medallion {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
 }
 .on-hud .on-selection__medallions .on-glyph {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   stroke-width: 2.2;
 }
 .on-hud .on-selection__body {
   flex: 1;
   min-height: 0;
-  padding: 12px 14px 6px;
+  padding: 10px 12px 6px;
   overflow: hidden;
+}
+/* The warm-up frame at map start: painted, so its raster pipelines compile, but not to be seen. */
+.on-hud .on-selection--warm {
+  opacity: 0;
+  pointer-events: none;
 }
 /* Head: the kicker browses the trade with its chevrons, the name renames under the pen. */
 .on-hud .on-kicker {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 0 0 3px;
-  font: 700 10.5px var(--font-body);
+  margin: 0 0 2px;
+  font: 700 10px var(--font-body);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--bronze);
@@ -2477,14 +2482,16 @@ body.on-drag-scroll-cursor-hidden * {
 }
 /* Sections and ledger rows: the panel never scrolls, so its rhythm is tight. */
 .on-hud .on-selection .on-section {
-  margin: 10px 0 4px;
+  margin: 8px 0 3px;
+  font-size: 11.5px;
 }
 .on-hud .on-section__control {
   order: 1;
   margin: 0;
 }
 .on-hud .on-selection .on-ledger {
-  margin: 3px 0;
+  margin: 2px 0;
+  font-size: 12.5px;
 }
 .on-hud .on-ledger--ctl,
 .on-hud .on-selection .on-ledger--ctl {
@@ -2540,8 +2547,8 @@ body.on-drag-scroll-cursor-hidden * {
 }
 /* Round chips: ledger assign/remove, a section title's add, a product's good, an import toggle. */
 .on-hud .on-round {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -2568,20 +2575,21 @@ body.on-drag-scroll-cursor-hidden * {
   cursor: not-allowed;
   filter: saturate(0.5);
 }
+/* A blank slot collapses, so a row's value sits the same distance from whatever chips it has. */
 .on-hud .on-round--blank {
-  visibility: hidden;
+  display: none;
 }
 .on-hud .on-round--title {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 .on-hud .on-round--title .on-glyph {
   width: 11px;
   height: 11px;
 }
 .on-hud .on-round--good {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   background: radial-gradient(circle at 45% 40%, #3f3223, #1d160f 85%);
   box-shadow: inset 0 0 0 1px #c9a26233;
 }
@@ -2590,9 +2598,9 @@ body.on-drag-scroll-cursor-hidden * {
   box-shadow: 0 0 0 2px #c9a26244;
 }
 .on-hud .on-round--toggle {
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
   background: linear-gradient(var(--wood-hi), var(--wood-lo));
   box-shadow: none;
   color: #e6d9bd;
@@ -2605,12 +2613,12 @@ body.on-drag-scroll-cursor-hidden * {
 /* One 18 px stat line: label, quarter-ticked meter, percent; a need line is the order for that need. */
 .on-hud .on-meter-row {
   display: grid;
-  grid-template-columns: 82px 1fr 36px;
+  grid-template-columns: 78px 1fr 34px;
   align-items: center;
   gap: 8px;
-  height: 18px;
+  height: 16px;
   margin: 2px 0;
-  font-size: 12.5px;
+  font-size: 12px;
   color: #c7bda3;
 }
 .on-hud .on-meter-row > b {
@@ -2628,7 +2636,7 @@ body.on-drag-scroll-cursor-hidden * {
   border-radius: 3px;
   background: none;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: inherit;
   color: inherit;
   text-align: left;
@@ -2667,20 +2675,20 @@ body.on-drag-scroll-cursor-hidden * {
 /* The −/n/+ counter. */
 .on-hud .on-counter {
   display: inline-grid;
-  grid-template-columns: 30px 30px 30px;
+  grid-template-columns: 26px 28px 26px;
   align-items: center;
   border: 1px solid var(--wood-lo);
-  border-radius: 14px;
+  border-radius: 13px;
   background: #12171388;
   box-shadow: inset 0 1px 2px #000a;
 }
 .on-hud .on-counter__step {
-  height: 30px;
+  height: 26px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 13px;
+  border-radius: 12px;
   background: none;
   color: var(--bronze);
 }
@@ -2704,7 +2712,7 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-counter__value {
   text-align: center;
   color: var(--text-hi);
-  font: 700 14px var(--font-body);
+  font: 700 13px var(--font-body);
   font-variant-numeric: tabular-nums;
 }
 /* Equipment sockets: a wooden well with the good and its wear under it. */
@@ -2714,8 +2722,8 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-socket {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -2728,8 +2736,8 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--bronze-lo);
 }
 .on-hud .on-socket--empty .on-glyph {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   stroke-width: 1.6;
   opacity: 0.55;
 }
@@ -2768,10 +2776,10 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-socket__off {
   position: absolute;
-  top: -7px;
-  right: -7px;
-  width: 17px;
-  height: 17px;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -2791,22 +2799,27 @@ body.on-drag-scroll-cursor-hidden * {
   height: 9px;
   stroke-width: 2.6;
 }
-/* A segmented choice (stance, regeneration). */
+/* A segmented choice (stance, regeneration): every strip the same width, its options sharing it
+   equally, so a two-way and a three-way choice line up. */
 .on-hud .on-segmented {
-  display: inline-flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  width: 174px;
   border: 1px solid var(--wood-lo);
   border-radius: 3px;
   overflow: hidden;
 }
 .on-hud .on-segmented > button {
-  padding: 4px 9px;
+  padding: 3px 4px;
   border: 0;
   border-right: 1px solid var(--wood-lo);
   border-radius: 0;
   background: linear-gradient(var(--wood-hi), var(--wood-lo));
   color: #e6d9bd;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
 }
 .on-hud .on-segmented > button:last-child {
   border-right: 0;
@@ -2833,11 +2846,24 @@ body.on-drag-scroll-cursor-hidden * {
 }
 
 /* ---------- settler panel: portrait row, status, production, trade ---------- */
+/* The frame with the sockets beside it and the status strip under both; without sockets the strip
+   takes the column beside the frame. */
 .on-hud .on-selection .on-portrait {
+  grid-template-columns: 96px 1fr;
+  grid-template-areas:
+    "frame beside"
+    "status status";
+  gap: 8px 12px;
   align-items: stretch;
 }
+.on-hud .on-selection .on-portrait--bare {
+  grid-template-areas: "frame status";
+  align-items: center;
+}
 .on-hud button.on-portrait__frame {
-  width: 104px;
+  grid-area: frame;
+  width: 96px;
+  height: 92px;
   padding: 0;
   background: none;
   font: inherit;
@@ -2849,35 +2875,72 @@ body.on-drag-scroll-cursor-hidden * {
     0 0 0 1px var(--bronze),
     0 3px 6px #0007;
 }
-.on-hud .on-beside {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 6px;
-  min-width: 0;
-}
 .on-hud .on-equipment {
+  grid-area: beside;
   display: grid;
-  gap: 6px;
-  margin-bottom: auto;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
 }
 .on-hud .on-equip-row {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
-.on-hud .on-settler-status {
-  display: block;
-  color: var(--ok);
+/* The status strip: a tone dot, the state with its detail, and the carried good at the right end. */
+.on-hud .on-status-strip {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: #12171388;
+  box-shadow: inset 0 0 0 1px #c9a26222;
+  color: var(--text-hi);
   font-size: 12px;
   line-height: 1.3;
 }
-.on-hud .on-settler-status--trouble {
+.on-hud .on-portrait--bare .on-status-strip {
+  flex-wrap: wrap;
+  padding: 6px 8px;
+}
+.on-hud .on-status-strip > span {
+  flex: 1;
+  min-width: 0;
+}
+.on-hud .on-status-strip__dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 4px var(--ok);
+}
+.on-hud .on-status-strip--trouble {
   color: var(--warning);
+}
+.on-hud .on-status-strip--trouble .on-status-strip__dot {
+  background: var(--warning);
+  box-shadow: 0 0 4px var(--warning);
+}
+.on-hud .on-status-strip--neutral .on-status-strip__dot {
+  background: var(--muted);
+  box-shadow: none;
+}
+.on-hud .on-status-strip__carry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11.5px;
 }
 .on-hud .on-with-good {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   vertical-align: bottom;
   color: var(--text-hi);
   font-weight: 600;
@@ -2885,19 +2948,45 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-good-well {
   display: inline-grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
   background: #1d160f;
   box-shadow: inset 0 0 0 1px #c9a26233;
 }
 .on-hud .on-orders--inline {
-  margin: 4px 0 8px;
+  margin: 8px 0 6px;
+  gap: 6px;
 }
 .on-hud .on-orders--inline .on-button {
-  flex: 0 1 auto;
-  min-height: 30px;
+  flex: 1 1 0;
+  min-height: 28px;
+  padding: 4px 8px;
   font-size: 12px;
+}
+.on-hud .on-orders--inline .on-button .on-glyph {
+  width: 15px;
+  height: 15px;
+}
+/* The one button a new player needs first: gold, the ring's hotkey in its corner. */
+.on-hud .on-button--primary {
+  background: linear-gradient(#e8c479, #b58a3f);
+  border-color: var(--bronze-lo);
+  color: var(--ink);
+}
+.on-hud .on-button--primary:hover {
+  background: linear-gradient(#f2d48f, #c49a4d);
+  border-color: var(--bronze);
+  color: var(--ink);
+}
+.on-hud .on-button--primary .on-glyph {
+  color: var(--ink);
+}
+.on-hud .on-button--primary .on-key {
+  margin-left: 2px;
+  border-color: #0000003a;
+  background: #0000001a;
+  color: #3a2a14;
 }
 .on-hud .on-prod {
   margin: 2px 0 0;
@@ -2906,10 +2995,10 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-prod-row {
   display: grid;
-  grid-template-columns: 30px 1fr auto;
+  grid-template-columns: 26px 1fr auto;
   align-items: center;
   gap: 6px;
-  min-height: 31px;
+  min-height: 27px;
   padding: 0;
   border-bottom: 1px dotted #c9a26233;
 }
@@ -2934,7 +3023,7 @@ body.on-drag-scroll-cursor-hidden * {
   border-bottom: 0;
 }
 .on-hud .on-prod-row__name {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-hi);
 }
 .on-hud .on-prod-row--stopped .on-prod-row__name,
@@ -2990,7 +3079,7 @@ body.on-drag-scroll-cursor-hidden * {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  height: 26px;
+  height: 24px;
   padding: 0 6px;
   border: 1px solid var(--wood-lo);
   border-radius: 4px;

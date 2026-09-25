@@ -6,13 +6,9 @@ import type { TradePeers } from './peers.js';
 /**
  * The settler's head: the trade as the kicker with its browse over the seat's people of that trade
  * (only for the seat's own), the name with the rename pen (not a hero's, not another seat's person),
- * the owner line, and the orders medallion naming the ring's hotkey.
+ * and the owner line.
  */
-export function settlerHead(
-  model: SettlerPanelModel,
-  peers: TradePeers,
-  ringKey: string,
-): SelectionHeadModel {
+export function settlerHead(model: SettlerPanelModel, peers: TradePeers): SelectionHeadModel {
   const copy = messages().hud.settlerPanel;
   const trade = model.profession;
   return {
@@ -30,7 +26,6 @@ export function settlerHead(
     title: model.name,
     rename: model.renamable ? { tooltip: copy.rename, maxLength: SETTLER_NAME_MAX_CHARS } : null,
     meta: model.meta,
-    orders: model.foreign ? null : formatMessage(copy.ordersTooltip, { key: ringKey }),
-    labels: { orders: copy.orders, close: copy.close, prev: copy.prev, next: copy.next },
+    labels: { close: copy.close, prev: copy.prev, next: copy.next },
   };
 }

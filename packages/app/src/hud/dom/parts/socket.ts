@@ -4,8 +4,8 @@ import { button, element, setAttribute, setClass, setHidden, setTitle } from './
 
 /** A worn item under a quarter of its life left shows its wear bar red. */
 export const SOCKET_WORN_BELOW_PCT = 25;
-/** Design px of the good icon in a 34 px socket (foundation.css). */
-const SOCKET_ICON_PX = 26;
+/** Design px of the good icon in a 30 px socket (foundation.css). */
+const SOCKET_ICON_PX = 23;
 
 export type SocketModel =
   | {
@@ -36,7 +36,7 @@ export interface SocketOptions {
   readonly onRemove?: () => void;
 }
 
-/** One 34 px equipment socket: a ghost glyph when empty, else the good over its wear bar, with a small
+/** One 30 px equipment socket: a ghost glyph when empty, else the good over its wear bar, with a small
  *  × at the corner on hover or focus. */
 export interface Socket {
   readonly element: HTMLElement;

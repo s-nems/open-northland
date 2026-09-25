@@ -8,6 +8,8 @@ import { WINDOW_ORNAMENTS } from './symbols.js';
 const SELECTION_TOP_GAP_PX = 16;
 /** The panel's design-px width (FOUNDATION.md). */
 export const SELECTION_PANEL_W = 318;
+/** The panel painted out of sight for its warm-up frame (foundation.css). */
+const WARM_CLASS = 'on-selection--warm';
 
 /** Design px the panel stands above the plane's bottom: the beam's height when the beam reaches under
  *  the panel's column on a narrow plane, else none. */
@@ -17,7 +19,7 @@ export function selectionBottomInset(plane: { readonly width: number; readonly h
 }
 
 /** The head of the selected thing: the kicker (with browsing), the title (with rename), the meta line,
- *  and the two medallions. */
+ *  and the close medallion. */
 export interface SelectionHeadModel {
   readonly kicker: string;
   /** The chevrons and "i / n" over the kicker's peers; null shows the kicker alone. */
@@ -32,10 +34,7 @@ export interface SelectionHeadModel {
   /** The pen's tooltip and the longest name the field takes; null keeps the title read-only. */
   readonly rename: { readonly tooltip: string; readonly maxLength: number } | null;
   readonly meta: string | null;
-  /** The orders medallion's tooltip; null hides the medallion. */
-  readonly orders: string | null;
   readonly labels: {
-    readonly orders: string;
     readonly close: string;
     readonly prev: string;
     readonly next: string;
@@ -47,7 +46,6 @@ export interface SelectionPanelHandlers {
   readonly onKickerDoubleClick: () => void;
   /** The name the player typed and confirmed, trimmed; an empty one asks for the default name back. */
   readonly onRename: (name: string) => void;
-  readonly onOrders: () => void;
   readonly onClose: () => void;
 }
 
@@ -76,6 +74,13 @@ export interface SelectionPanel {
   setHole(frame: HTMLElement | null): void;
   /** The content, the scale or the screen changed: the hole is measured again on the next read. */
   invalidate(): void;
+  /**
+   * Paint the panel once, out of sight, and hide it again after the frame: the browser compiles a
+   * raster pipeline the first time a style combination is drawn, which this moves from the first
+   * selection to map start (measured at hundreds of ms on the first settler click). A real `show`
+   * during the frame keeps the panel.
+   */
+  warm(): void;
   /** The hole's client box, measured once per change; null while closed or holeless. */
   holeClientRect(): ClientRect | null;
   /** True when this client point is over the panel. */
@@ -116,12 +121,10 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
 
   const heading = element('div', 'on-selection__heading');
   heading.append(kicker, title, meta);
-  const orders = button('on-medallion', GLYPH.list);
   const close = button('on-medallion', GLYPH.close);
-  orders.addEventListener('click', () => handlers.onOrders());
   close.addEventListener('click', () => handlers.onClose());
   const medallions = element('span', 'on-selection__medallions');
-  medallions.append(orders, close);
+  medallions.append(close);
   const head = element('header', 'on-window__head');
   head.append(heading, medallions);
   const body = element('div', 'on-selection__body');
@@ -202,6 +205,7 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
     body,
     show: () => {
       if (root.hidden) invalidate();
+      root.classList.remove(WARM_CLASS);
       setHidden(root, false);
       place();
     },
@@ -236,9 +240,6 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
       }
       setHidden(meta, model.meta === null);
       write(meta, model.meta ?? '');
-      setHidden(orders, model.orders === null);
-      setTitle(orders, model.orders ?? '');
-      setAttribute(orders, 'aria-label', model.labels.orders);
       setAttribute(close, 'aria-label', model.labels.close);
       setTitle(close, model.labels.close);
       setAttribute(root, 'aria-label', model.title);
@@ -253,6 +254,21 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
       invalidate();
     },
     invalidate,
+    warm(): void {
+      root.classList.add(WARM_CLASS);
+      setHidden(root, false);
+      place();
+      invalidate();
+      measure();
+      // Two frames: the first commits the style, the second rasters it.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!root.classList.contains(WARM_CLASS)) return;
+          root.classList.remove(WARM_CLASS);
+          setHidden(root, true);
+        }),
+      );
+    },
     holeClientRect(): ClientRect | null {
       if (root.hidden) return null;
       if (dirty) {

@@ -33,6 +33,8 @@ import { type SettlerContractCommands, settlerPanelActions } from './settler-pan
 import type { UnitControlsOptions } from './types.js';
 
 const NO_SELECTION: ReadonlySet<number> = new Set();
+/** Goods the warm-up paints icons of, enough to fill every icon slot of the warm model. */
+const WARM_GOOD_ICONS = 12;
 
 interface MountedUnitChrome {
   readonly panel: UnitPanel;
@@ -293,6 +295,8 @@ export async function createUnitChrome(
   const panelIds = (): ReadonlySet<number> => (hudHidden ? NO_SELECTION : selection.ids());
   /** The stock tab the hide found, given back on show while the selection is the same one. */
   let keptPanel: { readonly state: UnitPanelState; readonly version: number } | null = null;
+  // Behind the loading screen: the panel's styles raster once now, not on the first click.
+  settlerPanel.warm(opts.content.goods.slice(0, WARM_GOOD_ICONS).map((good) => good.id));
   const mounts = createReplaceableMount(await mount(opts.uiscale ?? 1), mount, (next, previous) => {
     const snapshot = opts.snapshot();
     next.panel.render(snapshot, panelIds());
