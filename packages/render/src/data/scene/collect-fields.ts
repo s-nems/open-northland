@@ -262,7 +262,7 @@ export function pushGhostItems(
     const item: MutableSpriteDrawItem = {
       kind: g.kind,
       ref: g.ref,
-      x: screen.x,
+      x: screen.x + (g.shiftX ?? 0),
       y: screen.y,
       depth: spriteDepth(g.tileX, g.tileY, g.kind),
       state: 'idle',

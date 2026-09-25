@@ -1,7 +1,8 @@
-import { FOG_MODE, FOG_STATE } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { FogGhostStore } from '../src/data/fog/index.js';
-import { collectSpriteScene } from '../src/data/scene/index.js';
+import { fogCellOfTile } from '../src/data/fog/mask.js';
+import { collectSpriteScene, type SpriteDrawItem } from '../src/data/scene/index.js';
 import { ONE, type ResourceTypeBinding, resolveResourceDraw, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf, fogViewOf as viewOf } from './support/fixtures.js';
 
@@ -123,6 +124,60 @@ describe('FogGhostStore', () => {
       viewOf(new Map(), 1, FOG_MODE.RECON_FOG_OF_WAR),
     );
     expect(seeded.map((g) => g.ref)).toEqual([6]);
+  });
+
+  it('remembers walls, gates and wall sites drawn as they last stood, posts and stagger included', () => {
+    const row = 10;
+    const tileOf = (hx: number) => {
+      const { x, y } = positionOfNode(hx, row);
+      return { x: x / ONE, y: y / ONE };
+    };
+    const wall = (id: number, hx: number, marker: Record<string, unknown> = {}) =>
+      entity(id, tileOf(hx).x, tileOf(hx).y, {
+        Palisade: { gfxIndex: 691, tribe: 1, built: ONE },
+        ...marker,
+      });
+    const cellsIn = (state: number) =>
+      new Map(
+        [6, 7, 8, 10, 12, 16].map((hx) => {
+          const { cx, cy } = fogCellOfTile(tileOf(hx).x, tileOf(hx).y);
+          return [`${cx},${cy}`, state] as const;
+        }),
+      );
+    const gate = wall(4, 10, {
+      Palisade: {
+        gfxIndex: 697,
+        tribe: 1,
+        built: ONE,
+        walk: [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 })),
+        gate: { open: false, counterpartGfxIndex: 701 },
+      },
+    });
+    const site = wall(6, 16, {
+      Palisade: { gfxIndex: 691, tribe: 1, built: 0, reservation: 9 },
+      UnderConstruction: {},
+    });
+    const snapshot = snapshotOf([wall(1, 6), wall(2, 7), wall(3, 8), gate, wall(5, 12), site]);
+    const store = new FogGhostStore();
+    store.update(snapshot, viewOf(cellsIn(FOG_STATE.VISIBLE), 1));
+    const ghosts = store.update(snapshotOf([]), viewOf(cellsIn(FOG_STATE.EXPLORED), 2));
+    expect(ghosts.map((g) => g.kind)).toEqual(Array(6).fill('palisade'));
+
+    const drawn = (items: readonly SpriteDrawItem[]) =>
+      items.map(({ ref, x, y, gfxIndex, palisadePosts, palisadeSite }) => ({
+        ref,
+        x,
+        y,
+        gfxIndex,
+        palisadePosts,
+        palisadeSite,
+      }));
+    const live = drawn(collectSpriteScene(snapshot).items);
+    expect(drawn(collectSpriteScene(snapshotOf([]), { ghosts }).items)).toEqual(live);
+    // The comparison covers what a bare post would lose.
+    expect(live.some((item) => (item.palisadePosts?.length ?? 0) > 0)).toBe(true);
+    expect(live.find((item) => item.ref === 4)?.x).not.toBe(tileToScreen(tileOf(10).x, tileOf(10).y).x);
+    expect(live.find((item) => item.ref === 6)?.palisadeSite).toBe('claimed');
   });
 
   it('draws an opened chest by its inert open graphics record', () => {

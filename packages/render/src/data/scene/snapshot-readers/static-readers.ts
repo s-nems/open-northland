@@ -188,6 +188,8 @@ const STATIC_DRAW_KEYS = [
   'levels',
   'gfxIndex',
   'tribe',
+  'palisadePosts',
+  'palisadeSite',
 ] as const;
 // A key missing from STATIC_DRAW_KEYS makes _UncopiedKey non-never and fails to compile here, so a new
 // StaticDrawFields entry cannot be silently dropped by the hand copy below.
@@ -198,10 +200,16 @@ void _allKeysListed;
 /** Copy the present {@link StaticDrawFields} of `source` onto `target` in place, leaving absent fields
  *  absent (exactOptionalPropertyTypes) so a fog ghost re-emits exactly what it captured. */
 export function copyStaticFields(target: StaticDrawFields, source: StaticDrawFields): void {
-  for (const key of STATIC_DRAW_KEYS) {
-    const value = source[key];
-    if (value !== undefined) target[key] = value;
-  }
+  for (const key of STATIC_DRAW_KEYS) copyStaticField(target, source, key);
+}
+
+function copyStaticField<K extends keyof StaticDrawFields>(
+  target: StaticDrawFields,
+  source: StaticDrawFields,
+  key: K,
+): void {
+  const value = source[key];
+  if (value !== undefined) target[key] = value;
 }
 
 /**

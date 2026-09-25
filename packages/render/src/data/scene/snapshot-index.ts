@@ -75,6 +75,7 @@ interface SceneIndex {
   readonly enterableStores: ReadonlySet<number>;
   readonly targetPositions: ReadonlyMap<number, { x: number; y: number }>;
   readonly signposts: readonly EntitySnapshot[];
+  readonly palisades: readonly EntitySnapshot[];
 }
 
 const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
@@ -82,7 +83,7 @@ const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
 /** Shared empty index, so a snapshot with no target-facing actor allocates nothing. */
 const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
 
-const NO_SIGNPOSTS: readonly EntitySnapshot[] = [];
+const NO_ENTITIES: readonly EntitySnapshot[] = [];
 
 /**
  * Completed buildings, the stores a settler can walk into. A settler exchanging goods with one is not
@@ -123,12 +124,18 @@ export function signpostsOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] 
   return sceneIndexOf(snapshot).signposts;
 }
 
+/** The snapshot's walls, gates and wall sites, in its own ascending id order. */
+export function palisadesOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] {
+  return sceneIndexOf(snapshot).palisades;
+}
+
 function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
   const cached = indexBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
   const enterableStores = new Set<number>();
   const wanted = new Set<number>();
   const signposts: EntitySnapshot[] = [];
+  const palisades: EntitySnapshot[] = [];
   for (const entity of snapshot.entities) {
     const components = entity.components;
     if ('Building' in components && readBuiltPct(components) === undefined) {
@@ -143,11 +150,13 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
     const craft = readCraftPerformance(components);
     if (craft !== null) wanted.add(craft.workplace);
     if ('Signpost' in components) signposts.push(entity);
+    if ('Palisade' in components) palisades.push(entity);
   }
   const index: SceneIndex = {
     enterableStores,
     targetPositions: positionsOfRefs(snapshot, wanted),
-    signposts: signposts.length > 0 ? signposts : NO_SIGNPOSTS,
+    signposts: signposts.length > 0 ? signposts : NO_ENTITIES,
+    palisades: palisades.length > 0 ? palisades : NO_ENTITIES,
   };
   indexBySnapshot.set(snapshot, index);
   return index;

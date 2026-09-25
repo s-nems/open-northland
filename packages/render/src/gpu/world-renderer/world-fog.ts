@@ -2,6 +2,7 @@ import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import { FogGhostStore, fogTileVisible } from '../../data/fog/index.js';
 import type { Viewport } from '../../data/projection/index.js';
+import type { ElevationField } from '../../data/terrain/index.js';
 import { FogLayer } from '../overlays/index.js';
 import type { PoolFrame } from '../sprite-pool/index.js';
 
@@ -53,7 +54,7 @@ export class WorldFog {
 
   /** Recomposite the wash for one frame and return the pool's fog inputs. Both passes cache on the mask
    *  generation, so a steady frame does no work. */
-  update(snapshot: WorldSnapshot, vp: Viewport): FogPoolFrame {
+  update(snapshot: WorldSnapshot, vp: Viewport, elevation?: ElevationField): FogPoolFrame {
     const view = this.view;
     const staticRefs = this.staticRefs;
     this.wash.update(view, vp);
@@ -71,7 +72,7 @@ export class WorldFog {
       this.lastPlayer = view.player;
       this.lastMode = view.mode;
     }
-    const ghosts = this.ghosts.update(snapshot, view, staticRefs);
+    const ghosts = this.ghosts.update(snapshot, view, staticRefs, elevation);
     return {
       ...(staticRefs !== undefined ? { staticRefs } : {}),
       fogVisible: this.visibleAt,

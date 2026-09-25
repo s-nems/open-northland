@@ -10,14 +10,8 @@ export type {
 } from './draw-item.js';
 export { type HolyFireBinding, type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 export type { InHouseProgramLookup } from './in-house.js';
-export {
-  PALISADE_POST_SPACING_PX,
-  type PalisadeLayout,
-  type PalisadePostOffset,
-  palisadeLayoutOf,
-  palisadePostOffsets,
-} from './palisade-connections.js';
-export { PALISADE_STAGGER_PX, palisadeStaggerX } from './palisade-stagger.js';
+export { type PalisadeLayout, palisadeLayoutOf } from './palisade-connections.js';
+export { palisadeStaggerX } from './palisade-stagger.js';
 export {
   COVER_LAUNCH_HEIGHT_PX,
   PROJECTILE_ARC_PEAK_FRACTION,

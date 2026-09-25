@@ -1,5 +1,6 @@
 import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import {
+  type EntitySnapshot,
   type Fixed,
   hexNeighboursOf,
   nodeOfPosition,
@@ -9,23 +10,21 @@ import {
 import { ONE, tileToScreen } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
 import { terrainLiftAt } from '../terrain/index.js';
-import type { PalisadePostDraw } from './draw-item.js';
+import type { PalisadePostDraw, StaticDrawFields } from './draw-item.js';
 import { palisadeStaggerX, staggeredNodeKeys, type WallNode, wallNodeKey } from './palisade-stagger.js';
-import { readPosition } from './snapshot-readers/index.js';
-import { readPalisadeStatePct } from './snapshot-readers/static-readers.js';
+import { palisadesOf } from './snapshot-index.js';
+import {
+  assignStaticFields,
+  readPalisadeClaimed,
+  readPalisadeStatePct,
+  readPosition,
+} from './snapshot-readers/index.js';
 
 /** One repeated post between two neighbouring palisade anchors, relative to the first anchor. */
 export interface PalisadePostOffset {
   readonly dx: number;
   readonly dy: number;
 }
-
-/**
- * The largest centre-to-centre gap between repeated wall posts on the current half-cell projection.
- * The original wall draw inserts posts at one-third and two-thirds of a neighbouring edge; with the
- * recovered 68×38 px lattice its longest third is just under 13 px.
- */
-export const PALISADE_POST_SPACING_PX = 13;
 
 /**
  * Fill the open edge between two neighbouring palisade anchors with the original's two one-third
@@ -59,7 +58,8 @@ interface GateNode {
 
 /** How snapshot palisades draw beyond their own anchor sprite. */
 export interface PalisadeLayout {
-  /** Posts inserted on every palisade edge, keyed by the one endpoint that owns that edge's draw. */
+  /** Edge posts by the entity that draws them: the edge end each post stands nearer, or for a gate's
+   *  collar the wall outside its terminal. */
   readonly posts: ReadonlyMap<number, readonly PalisadePostDraw[]>;
   /** Screen px a staggered palisade draws beside its node, by entity id. */
   readonly shiftX: ReadonlyMap<number, number>;
@@ -78,12 +78,15 @@ const EMPTY_LAYOUT: PalisadeLayout = {
   nodeShiftX: new Map(),
 };
 
-interface CachedLayout {
-  readonly flat?: PalisadeLayout;
-  readonly elevated: WeakMap<ElevationField, PalisadeLayout>;
+/** The last layout built for one elevation, and the latest palisade list found equal to the one it was
+ *  built from, so later frames of the same snapshot match by identity. */
+interface BuiltLayout {
+  palisades: readonly EntitySnapshot[];
+  readonly layout: PalisadeLayout;
 }
 
-const layoutBySnapshot = new WeakMap<WorldSnapshot, CachedLayout>();
+let lastFlat: BuiltLayout | undefined;
+const lastByElevation = new WeakMap<ElevationField, BuiltLayout>();
 
 /**
  * Join snapshot palisades on the six-node landscape lattice. An edge is emitted once, from its lower
@@ -93,31 +96,41 @@ const layoutBySnapshot = new WeakMap<WorldSnapshot, CachedLayout>();
  * disappear on the next snapshot. The inserted posts use the lower id's art variant and the construction
  * state interpolated between the endpoints. Walls, sites and gates draw staggered where that keeps lines
  * straight ({@link staggeredNodeKeys}), and the posts between them follow.
+ *
+ * An untouched entity keeps its snapshot object, so while every palisade entity is the one the last
+ * layout was built from, that layout object is returned again.
  */
 export function palisadeLayoutOf(snapshot: WorldSnapshot, elevation?: ElevationField): PalisadeLayout {
-  const cached = layoutBySnapshot.get(snapshot);
-  const hit = elevation === undefined ? cached?.flat : cached?.elevated.get(elevation);
-  if (hit !== undefined) return hit;
-  const built = buildPalisadeLayout(snapshot, elevation);
-  if (cached === undefined) {
-    layoutBySnapshot.set(snapshot, {
-      ...(elevation === undefined ? { flat: built } : {}),
-      elevated: new WeakMap(elevation === undefined ? [] : [[elevation, built]]),
-    });
-  } else if (elevation === undefined) {
-    layoutBySnapshot.set(snapshot, { flat: built, elevated: cached.elevated });
-  } else cached.elevated.set(elevation, built);
-  return built;
+  const palisades = palisadesOf(snapshot);
+  const last = elevation === undefined ? lastFlat : lastByElevation.get(elevation);
+  if (last !== undefined && sameEntities(last.palisades, palisades)) {
+    last.palisades = palisades;
+    return last.layout;
+  }
+  const built: BuiltLayout = { palisades, layout: buildPalisadeLayout(palisades, elevation) };
+  if (elevation === undefined) lastFlat = built;
+  else lastByElevation.set(elevation, built);
+  return built.layout;
 }
 
-function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField | undefined): PalisadeLayout {
+function sameEntities(a: readonly EntitySnapshot[], b: readonly EntitySnapshot[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function buildPalisadeLayout(
+  palisades: readonly EntitySnapshot[],
+  elevation: ElevationField | undefined,
+): PalisadeLayout {
   const byNode = new Map<string, PalisadeNode>();
   const nodes: PalisadeNode[] = [];
   const gates: GateNode[] = [];
   // Every wall and wall site by node, and the refs drawn there, for the stagger.
   const layoutNodes = new Map<string, WallNode>();
   const refsByNode = new Map<string, number>();
-  for (const entity of snapshot.entities) {
+  for (const entity of palisades) {
     const component = entity.components.Palisade as
       | { gfxIndex?: unknown; gate?: unknown; walk?: unknown }
       | undefined;
@@ -205,9 +218,11 @@ function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField 
   }
 
   // A gate sprite owns the leaf and its two terminal posts. Join only the ordinary wall immediately
-  // outside each terminal to that terminal; drawing toward the gate anchor would fill the passage.
+  // outside each terminal to that terminal; drawing toward the gate anchor would fill the passage. A wall
+  // still standing on the terminal already joins its neighbours, so it needs no collar.
   for (const gate of gates) {
     for (const endpoint of gateEndpoints(gate)) {
+      if (byNode.has(wallNodeKey(endpoint.hx, endpoint.hy))) continue;
       const outside = outsideNeighbour(gate, endpoint);
       if (outside === null) continue;
       const wall = byNode.get(wallNodeKey(outside.hx, outside.hy));
@@ -234,6 +249,28 @@ function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField 
     }
   }
   return { posts, shiftX, walls: layoutNodes, terminals: terminalKeys, nodeShiftX };
+}
+
+/**
+ * Assign what a palisade draws by onto `target`, a live draw item or a fog ghost, and return the screen
+ * px it draws beside its node.
+ */
+export function assignPalisadeFields(
+  target: StaticDrawFields,
+  ref: number,
+  components: Readonly<Record<string, unknown>>,
+  layout: PalisadeLayout,
+): number {
+  assignStaticFields(target, 'palisade', components);
+  if ('UnderConstruction' in components) {
+    // The wood set down on the flag goes into the wall, so the flag alone stands until the strike raises
+    // the segment.
+    target.palisadeSite = readPalisadeClaimed(components) ? 'claimed' : 'unclaimed';
+  } else {
+    const posts = layout.posts.get(ref);
+    if (posts !== undefined && posts.length > 0) target.palisadePosts = posts;
+  }
+  return layout.shiftX.get(ref) ?? 0;
 }
 
 /**

@@ -1,9 +1,20 @@
 import { type Fixed, ONE, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { palisadeLayoutOf, planShiftX } from '../../src/data/scene/palisade-connections.js';
+import {
+  palisadeLayoutOf,
+  palisadePostOffsets,
+  planShiftX,
+} from '../../src/data/scene/palisade-connections.js';
 import { PALISADE_STAGGER_PX } from '../../src/data/scene/palisade-stagger.js';
-import { buildSpriteScene, PALISADE_POST_SPACING_PX, palisadePostOffsets } from '../../src/index.js';
+import { buildSpriteScene } from '../../src/index.js';
 import { snapshotOf } from '../support/fixtures.js';
+
+/**
+ * The largest centre-to-centre gap between repeated wall posts on the current half-cell projection.
+ * The original wall draw inserts posts at one-third and two-thirds of a neighbouring edge; with the
+ * recovered 68×38 px lattice its longest third is just under 13 px.
+ */
+const PALISADE_POST_SPACING_PX = 13;
 
 function palisade(id: number, hx: number, hy: number, built: Fixed = ONE, gfxIndex = 691) {
   const position = positionOfNode(hx, hy);
@@ -302,6 +313,48 @@ describe('palisadePostOffsets', () => {
     const collars = items.flatMap((item) => item.palisadePosts ?? []);
     expect(collars).toHaveLength(6);
     expect(collars.filter((post) => post.variantStep === 3)).toHaveLength(2);
+  });
+
+  it('leaves the collar off a gate terminal a wall still stands on, so no post is drawn twice', () => {
+    const gate = damagedPalisade(20, 10, 10, 30);
+    const walls = [6, 7, 8, 12, 13, 14].map((hx) => palisade(hx, hx, 10));
+    const items = buildSpriteScene(
+      snapshotOf([
+        ...walls,
+        {
+          ...gate,
+          components: {
+            ...gate.components,
+            Palisade: {
+              ...gate.components.Palisade,
+              gfxIndex: 697,
+              walk: [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 })),
+              gate: { open: false, counterpartGfxIndex: 701 },
+            },
+          },
+        },
+      ]),
+    );
+    const posts = items.flatMap((item) => item.palisadePosts ?? []);
+    // Two posts on each of the four wall edges, and none in the gate's damage state.
+    expect(posts).toHaveLength(8);
+    expect(posts.every((post) => post.builtPct === undefined)).toBe(true);
+  });
+
+  it('keeps one layout while the walls are the same entity objects, and rebuilds when one changes', () => {
+    const walls = [palisade(1, 0, 0), palisade(2, 1, 0), palisade(3, 2, 0)];
+    const settler = (x: number) => ({ id: 9, components: { Position: { x, y: 0 }, Settler: { tribe: 1 } } });
+    const layout = palisadeLayoutOf(snapshotOf([...walls, settler(0)], 1));
+    // A later tick: the settler moved, every wall kept its snapshot object.
+    expect(palisadeLayoutOf(snapshotOf([...walls, settler(ONE)], 2))).toBe(layout);
+    const damaged = palisadeLayoutOf(
+      snapshotOf(
+        [walls[0], damagedPalisade(2, 1, 0, 40), walls[2], settler(ONE)].flatMap((e) => e ?? []),
+        3,
+      ),
+    );
+    expect(damaged).not.toBe(layout);
+    expect(damaged.posts.get(1)?.map((post) => post.builtPct)).toEqual([80]);
   });
 
   it('interpolates the source durability ladder for damaged finished posts', () => {
