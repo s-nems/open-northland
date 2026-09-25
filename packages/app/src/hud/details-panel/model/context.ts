@@ -1,5 +1,13 @@
 import type { ContentSet } from '@open-northland/data';
-import { systems, type TradeOffer, type TraderView } from '@open-northland/sim';
+import {
+  PRODUCTION_COUNT_MAX,
+  PRODUCTION_UNLIMITED,
+  SETTLER_NAME_MAX_CHARS,
+  systems,
+  type TradeOffer,
+  type TraderView,
+  type WorkStatus,
+} from '@open-northland/sim';
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
@@ -60,22 +68,10 @@ export interface UnitPanelModelContext {
 
 export type DiplomacyStance = 'friend' | 'neutral' | 'enemy';
 
-/**
- * The settler panel's slice of the sim contract, mirrored until the sim exports it: `WorkStatus` from
- * `Simulation.workStatus`, the production counter range of `CraftSelection.counters`, and the longest
- * name `renameSettler` takes.
- */
-export type SettlerWorkStatus =
-  | { readonly kind: 'crafting'; readonly goodType: number }
-  | { readonly kind: 'waitingInput'; readonly goodType: number }
-  | { readonly kind: 'outputFull' }
-  | { readonly kind: 'nothingSelected' }
-  | { readonly kind: 'noTool' }
-  | { readonly kind: 'noJob' }
-  | { readonly kind: 'workplaceUnderConstruction' };
-export const PRODUCTION_COUNT_MAX = 10;
-export const PRODUCTION_UNLIMITED = 11;
-export const SETTLER_NAME_MAX_CHARS = 24;
+/** The sim's own status union and counter range, so the panel cannot drift from `Simulation.workStatus`
+ *  and `CraftSelection.counters`. */
+export type SettlerWorkStatus = WorkStatus;
+export { PRODUCTION_COUNT_MAX, PRODUCTION_UNLIMITED, SETTLER_NAME_MAX_CHARS };
 
 /** The content slice a building's store and construction rows are read through: the surfaces that show
  *  only those rows, such as the hover card, need nothing else. */
