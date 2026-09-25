@@ -44,11 +44,16 @@ export const productionSystem: System = (world, ctx) => {
     if (operators <= 0) continue;
     const prod = world.mut(e, Production);
     const advanced = Math.min(operators, prod.cycles.length);
-    for (const cycle of prod.cycles.slice(0, advanced)) cycle.elapsed += 1;
-
     // `duration` was clamped at cycle start, so the two complementary compares below are plain.
+    let finished = 0;
+    for (let i = 0; i < advanced; i++) {
+      const cycle = prod.cycles[i];
+      if (cycle === undefined) break;
+      cycle.elapsed += 1;
+      if (cycle.elapsed >= cycle.duration) finished++;
+    }
+    if (finished === 0) continue; // the usual tick: batches grind on with nothing to deposit
     const done = prod.cycles.filter((c) => c.elapsed >= c.duration);
-    if (done.length === 0) continue;
     prod.cycles = prod.cycles.filter((c) => c.elapsed < c.duration);
     const recipes = recipesByProductOf(world, ctx, e);
     for (const cycle of done) depositCycleOutput(world, ctx, e, cycle, recipes);
