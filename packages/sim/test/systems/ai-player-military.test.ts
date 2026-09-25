@@ -35,6 +35,8 @@ import {
   LATE_WAVE,
   militaryModule,
   OPENING_WAVE,
+  OUTNUMBERED_DENOMINATOR,
+  OUTNUMBERED_NUMERATOR,
   RALLY_HOLD_RADIUS_NODES,
   takeCensus,
   WAVE_GATHER_TICKS,
@@ -432,6 +434,25 @@ describe('military module - the campaign', () => {
 
     // The window is absolute: keyed on reinforcements, a seat that keeps drafting would gather for the rest
     // of the game and never attack at all.
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+  });
+
+  it('holds a formed wave at the door while the enemy outnumbers the army, and sends it once he does not', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    // The most fighters the enemy may field before the army is outnumbered.
+    const tolerated = Math.floor((WAVE_MIN_SOLDIERS * OUTNUMBERED_NUMERATOR) / OUTNUMBERED_DENOMINATOR);
+    const [fallen] = spawn(sim, tolerated + 1, { x: FOE_HQ.x - 20, y: FOE_HQ.y }, SPEARMAN, FOE);
+    if (fallen === undefined) throw new Error('setup: no enemy fighter');
+
+    // Not even a spent gathering window sends the band: it waits at the door with its plan kept.
+    expect(assaulting(sim, run(sim, PATIENT_SEED), foeHq)).toEqual([]);
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(true);
+
+    // One enemy fighter fewer and he is no longer half again as strong: the band goes in.
+    sim.world.destroy(fallen);
     expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
   });
 

@@ -41,6 +41,18 @@ export function waveBandAt(sincePeace: number): WaveBand {
   return { min: grow(OPENING_WAVE.min, LATE_WAVE.min), max: grow(OPENING_WAVE.max, LATE_WAVE.max) };
 }
 
+/** How much stronger than the seat's whole army the target's owner may be before no wave marches on him
+ *  (authored): {@link OUTNUMBERED_NUMERATOR} / {@link OUTNUMBERED_DENOMINATOR}, an enemy half again as
+ *  strong. Below it a wave's losses are a fair trade; past it the seat would feed its army to him. */
+export const OUTNUMBERED_NUMERATOR = 3;
+export const OUTNUMBERED_DENOMINATOR = 2;
+
+/** Whether `opposing` fighters outnumber an army of `mustered` past the {@link OUTNUMBERED_NUMERATOR} /
+ *  {@link OUTNUMBERED_DENOMINATOR} ratio, compared by cross-multiplication so it stays in integers. */
+function outnumbered(opposing: number, mustered: number): boolean {
+  return opposing * OUTNUMBERED_DENOMINATOR > mustered * OUTNUMBERED_NUMERATOR;
+}
+
 /**
  * Whether the `band` at the door marches this decision: at the size its wave was drawn to, or once that
  * wave has been gathering for {@link WAVE_GATHER_TICKS} with the band's floor at the door, or every man
@@ -48,6 +60,11 @@ export function waveBandAt(sincePeace: number): WaveBand {
  * {@link MusterPlan} rather than drawn per decision, where the smallest draw would always be the one that
  * decides. `mustered` is the whole army, so a man off on an errand thins the band without retiring its
  * plan; only a loss does.
+ *
+ * Nothing marches while the target's owner fields `opposing` fighters {@link outnumbered} the army, not
+ * even on a spent window: the band keeps gathering and the plan is kept. His tower garrisons count in
+ * `opposing`, since they defend what the wave would take. A first strength judgement: a head count, blind
+ * to weapons, armour and experience.
  */
 export function decideWave(
   world: World,
@@ -58,6 +75,7 @@ export function decideWave(
   gatherable: number,
   meleeCore: number,
   peaceEnd: number,
+  opposing: number,
 ): boolean {
   if (mustered < WAVE_MIN_SOLDIERS) {
     abandonWave(world, barracks);
@@ -65,6 +83,7 @@ export function decideWave(
   }
   if (!waveWorthy(band, meleeCore)) return false;
   const plan = wavePlan(world, ctx, barracks, peaceEnd);
+  if (outnumbered(opposing, mustered)) return false;
   if (band.total < plan.waveSize) {
     if (ctx.tick - plan.drawnAt < WAVE_GATHER_TICKS) return false;
     if (band.total < Math.min(waveBandAt(ctx.tick - peaceEnd).min, gatherable)) return false;
