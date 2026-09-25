@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Engagement, MoveGoal, Owner, Position, Stance } from '../../src/components/index.js';
+import {
+  Anger,
+  AttackOrder,
+  CurrentAtomic,
+  Engagement,
+  MoveGoal,
+  Owner,
+  Position,
+  Stance,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
@@ -25,6 +34,7 @@ import {
   SOLDIER_SPEAR,
   SOLDIER_SWORD_SHORT,
   VIKING,
+  WOLF_TRIBE,
   WOMAN,
 } from './combat-cadence/support.js';
 
@@ -170,6 +180,20 @@ describe('engagement - how far each stance looks', () => {
   });
 });
 
+describe('engagement - an archer closing on a far enemy', () => {
+  it('stops at the standoff (2 * max - min) / 2, inside its farthest shot', () => {
+    const BOW_MAX_RANGE = 12;
+    const STANDOFF = (2 * BOW_MAX_RANGE - BOW_MIN_RANGE) >> 1;
+    const s = sim();
+    const archer = unit(s, 0, P0, MILITARY_MODE.ATTACK, SOLDIER_BOW);
+    const enemyAt = BOW_MAX_RANGE + 4;
+    unit(s, enemyAt, P1, MILITARY_MODE.IGNORE, WOMAN);
+    combatSystem(s.world, ctxOf(s));
+    const goal = s.world.get(archer, MoveGoal).cell;
+    expect(enemyAt - (s.terrain?.xOf(goal) ?? 0)).toBe(STANDOFF);
+  });
+});
+
 describe("engagement - an enemy inside an archer's dead zone", () => {
   const INSIDE = BOW_MIN_RANGE - 1;
 
@@ -203,6 +227,35 @@ describe('engagement - which enemy it picks', () => {
     const fighter = unit(s, 10, P1, MILITARY_MODE.IGNORE);
     combatSystem(s.world, ctxOf(s));
     expect(held(s, soldier)).toBe(fighter);
+  });
+
+  it('takes a wild animal before a nearer civilian', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    unit(s, 4, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const wolf = fighterAtNode(s, 10, ROW, WOLF_TRIBE, null);
+    s.world.add(wolf, Anger, { until: s.tick + REPATH_CADENCE }); // provoked, so a fair target
+    combatSystem(s.world, ctxOf(s));
+    expect(held(s, soldier)).toBe(wolf);
+  });
+
+  it('draws among the five nearest only, however many stand within the spread', () => {
+    const at = 20;
+    // Seven candidates within 3 of the nearest: two at 6, two at 7, two at 8, one at 9. By (distance, id)
+    // the draw keeps the pairs at 6 and 7 and the first one at 8.
+    const offsets = [-6, 6, -7, 7, -8, 8, -9];
+    const FIVE_NEAREST = [0, 1, 2, 3, 4];
+    const drawn = new Set<number>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = sim(seed);
+      const soldier = unit(s, at, P0, MILITARY_MODE.ATTACK);
+      const candidates = offsets.map((off) => unit(s, at + off, P1, MILITARY_MODE.IGNORE, WOMAN));
+      combatSystem(s.world, ctxOf(s));
+      const target = held(s, soldier);
+      if (target === undefined) throw new Error('nothing picked');
+      drawn.add(candidates.indexOf(target));
+    }
+    expect([...drawn].sort()).toEqual(FIVE_NEAREST);
   });
 
   it('draws among the nearest within 3 nodes of the nearest, never one farther', () => {
@@ -259,6 +312,29 @@ describe('engagement - which enemy it picks', () => {
 
 describe('engagement - a struck fighter turns on its attacker', () => {
   const blow = { damage: 10 };
+
+  it('only under ATTACK or DEFEND, and never against its attack order', () => {
+    for (const [mode, turns] of [
+      [MILITARY_MODE.ATTACK, true],
+      [MILITARY_MODE.DEFEND, true],
+      [MILITARY_MODE.IGNORE, false],
+      [MILITARY_MODE.FLEE, false],
+    ] as const) {
+      const s = sim();
+      const soldier = unit(s, 0, P0, mode);
+      const attacker = unit(s, 2, P1, MILITARY_MODE.IGNORE);
+      resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'melee');
+      expect(held(s, soldier)).toBe(turns ? attacker : undefined);
+    }
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    const ordered = unit(s, 12, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const attacker = unit(s, 2, P1, MILITARY_MODE.IGNORE);
+    s.world.add(soldier, AttackOrder, { target: ordered });
+    resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'melee');
+    expect(held(s, soldier)).toBeUndefined();
+    expect(s.world.get(soldier, AttackOrder).target).toBe(ordered);
+  });
 
   it('when the attacker is nearer than the enemy it holds', () => {
     const s = sim();

@@ -313,6 +313,23 @@ describe('warriors attack enemy buildings', () => {
     expect(sim.world.get(home, Health).hitpoints).toBe(sim.world.get(home, Health).max); // spared
   });
 
+  it('takes an enemy fighter before a nearer tower, and a tower before a nearer civilian', () => {
+    const IDLE = 0;
+    const first = new Simulation({ seed: 1, content: siegeContent(), map: grass(8, 1) });
+    const a = warriorAt(first, 0, 0, P1);
+    buildingAt(first, 2, 0, TOWER, P2);
+    const fighter = warriorAt(first, 4, 0, P2);
+    combatSystem(first.world, ctxOf(first));
+    expect(first.world.get(a, Engagement).target).toBe(fighter);
+
+    const second = new Simulation({ seed: 1, content: siegeContent(), map: grass(8, 1) });
+    const b = warriorAt(second, 0, 0, P1);
+    warriorAt(second, 1, 0, P2, IDLE);
+    const tower = buildingAt(second, 3, 0, TOWER, P2);
+    combatSystem(second.world, ctxOf(second));
+    expect(second.world.get(b, Engagement).target).toBe(tower);
+  });
+
   it('honours an explicit attack order on a building beyond sight radius', () => {
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(24, 1) });
     const soldier = warriorAt(sim, 0, 0, P1);
