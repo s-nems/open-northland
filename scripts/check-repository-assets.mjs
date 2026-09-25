@@ -22,9 +22,11 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/ui/foundation/notices.png',
   'packages/app/src/assets/ui/foundation/surface.png',
   // The line tools' plan stake: generated for this project, no original-game input (provenance in the
-  // custom art checkout's ui package); the blocked copy is the same image with its cloth recoloured.
+  // custom art checkout's ui package); the blocked copy is the same image with its stones recoloured and
+  // the ring copy the same image with its stake pulled.
   'packages/app/src/assets/markers/plan-stake-blocked.png',
   'packages/app/src/assets/markers/plan-stake-open.png',
+  'packages/app/src/assets/markers/plan-stake-ring.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
   // The menu's typefaces: Cinzel and Alegreya Sans, subset from Google Fonts releases; SIL OFL
