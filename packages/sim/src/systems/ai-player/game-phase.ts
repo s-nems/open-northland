@@ -22,10 +22,10 @@ export const STORE_CARRIERS_FROM_TICKS = LATE_GAME_FROM_TICKS;
  *  its products' stock (authored): a resting farm loses its sown fields and the miller his experience. */
 export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
 
-/** From when the seat's construction goods grow their gatherer posts past the opening's two, by schedule
- *  and by shortage (authored): the homes and workshops the list has reached by then eat more wood than two
- *  woodcutters bring, while the opening cannot spare the men. */
-export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(30);
+/** From when the seat's construction goods grow their gatherer posts past the opening's one each, by
+ *  shortage (owner's rule): from then the sites' and workshops' drain sets the count, while the first
+ *  minutes keep the standard three gatherers and every other man building. */
+export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(10);
 
 /** From when the build order opens a third construction site and looks one entry further ahead
  *  (authored; the late game adds a fourth, `build-order/entries.ts`): by then the reserve and the

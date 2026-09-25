@@ -33,6 +33,7 @@ import {
   SeatSupply,
   type SupplyLines,
   supplyLines,
+  workforceModule,
 } from '../../../src/systems/ai-player/index.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
@@ -697,9 +698,10 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
     const slots = collectorAnchors(sim.world, ctx, [...sim.world.query(Building)], hq).slotsOf('stone', 2);
     expect(slots).toEqual([hut, hq]);
     expect(seatHolders(sim.world, [low, high], slots, hq).anchors).toEqual([hq, hut]);
-    // So the periodic upkeep moves neither flag.
+    // So the periodic upkeep of a seat wanting both posts moves neither flag.
+    const twoStonePosts = workforceModule([{ kind: 'collector', good: 'stone', count: 2 }]);
     const upkeep = [
-      ...collectModule.run(
+      ...twoStonePosts.run(
         sim.world,
         { ...ctxOf(sim, AI_DECISION_INTERVAL_TICKS * FLAG_RELOCATE_EVERY_DECISIONS), content },
         SEAT,

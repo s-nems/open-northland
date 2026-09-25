@@ -35,13 +35,13 @@ import type { SeatSupply } from '../supply.js';
  *  the content set is skipped; the build order adds its `collector` entries' goods once reached. */
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
-/** Base gatherer targets by stable content id (authored): the construction sites are these goods' main
- *  drain, which the shortage posts answer from {@link BUILDING_GOODS_GROW_FROM_TICKS} on. The row's posts
- *  are filled ahead of the builder reserve; what grows it by the {@link EXTRA_GATHERERS_BY_GOOD_ID}
- *  schedule is best-effort. */
+/** The goods the construction sites drain, by stable content id (authored): their shortage posts follow
+ *  the sites from {@link BUILDING_GOODS_GROW_FROM_TICKS} on ({@link siteShortagePosts}). The opening's row
+ *  is the standard one gatherer each, filled ahead of the builder reserve; what grows it by the
+ *  {@link EXTRA_GATHERERS_BY_GOOD_ID} schedule is best-effort. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
-  wood: 2,
-  stone: 2,
+  wood: 1,
+  stone: 1,
 };
 
 /** One step of an extra-post schedule: `posts` more gatherers from `fromTick` on. */
@@ -52,21 +52,19 @@ export interface ExtraPostsStep {
 
 /**
  * The posts a good gains by the game clock (owner's rule), steps ascending, filled at the top-up rung once
- * the seat can spare the men. Wood feeds every bill, the joinery and the armoury, so it grows from
- * {@link BUILDING_GOODS_GROW_FROM_TICKS}. From the mid game every good whose standing resource takes
- * ground a building could use gains a post, wood two, whatever the stock: a settlement that has spread
- * out by then fells and digs itself room for its late-game buildings, and a stretched one most of all.
- * Clay and mushrooms block nothing and gain none.
+ * the seat can spare the men. Until the mid game only the shortage posts grow a good past its row. From
+ * the mid game every good whose standing resource takes ground a building could use holds posts whatever
+ * the stock, wood most: a settlement that has spread out by then fells and digs itself room for its
+ * late-game buildings, and a stretched one most of all. Clay and mushrooms block nothing and gain none.
  */
 export const EXTRA_GATHERERS_BY_GOOD_ID: Readonly<Record<string, readonly ExtraPostsStep[]>> = {
   wood: [
-    { fromTick: BUILDING_GOODS_GROW_FROM_TICKS, posts: 1 },
-    { fromTick: MID_GAME_FROM_TICKS, posts: 2 },
-    { fromTick: LATE_GAME_FROM_TICKS, posts: 3 },
+    { fromTick: MID_GAME_FROM_TICKS, posts: 3 },
+    { fromTick: LATE_GAME_FROM_TICKS, posts: 4 },
   ],
   stone: [
-    { fromTick: MID_GAME_FROM_TICKS, posts: 1 },
-    { fromTick: LATE_GAME_FROM_TICKS, posts: 2 },
+    { fromTick: MID_GAME_FROM_TICKS, posts: 2 },
+    { fromTick: LATE_GAME_FROM_TICKS, posts: 3 },
   ],
   iron: [{ fromTick: MID_GAME_FROM_TICKS, posts: 1 }],
   gold: [{ fromTick: MID_GAME_FROM_TICKS, posts: 1 }],
@@ -232,8 +230,8 @@ export function wantedCollectorGoods(
         : Math.max(fixed + scheduled, entryCount);
     const sitePosts = fixed === undefined ? 0 : siteShortagePosts(ctx.tick);
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
-    // A building good's row stands whole before the reserve (owner's rule): two woodcutters and two
-    // quarrymen are what a seat of fifteen men keeps, its other men building.
+    // A building good's row stands whole before the reserve (owner's rule): the standard one gatherer
+    // each is what a seat of fifteen men keeps in its first minutes, its other men building.
     let min = fixed ?? 1;
     if (mostExtra > 0) {
       const heldExtra = Math.max(0, flagHolders(world, ctx, player, good.typeId) - target);
@@ -243,7 +241,7 @@ export function wantedCollectorGoods(
         // Iron or gold running short idles the smiths, not the builders, so its posts wait behind the
         // reserve like any other extra. So do a building good's until the growth clock (owner's rule): a
         // seat of fifteen men whose first sites ate its starting stock would otherwise turn half of them
-        // into gatherers, with nobody left to raise what they bring in.
+        // into gatherers at once, with nobody left to raise what they bring in.
         if (COLLECTED_GOOD_IDS.includes(goodId) && ctx.tick >= BUILDING_GOODS_GROW_FROM_TICKS) min = target;
       }
     }

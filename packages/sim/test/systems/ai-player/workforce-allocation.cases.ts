@@ -352,23 +352,33 @@ describe('workforce module (collectResources)', () => {
     expect([...collectModule.run(sim.world, late(), SEAT)]).toEqual([]);
   });
 
-  it("fills the building goods' rows ahead of the builder reserve, one post per good per decision", () => {
+  it("keeps the opening to one post per building good, then posts the sites' shortage gatherers out of the reserve", () => {
     const sim = aiSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
     spawnMen(sim, BUILDER_CAP + 4);
     sim.step();
-    const decide = () => {
-      const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const decideAt = (tick: number) => {
+      const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
       for (const c of commands) sim.enqueueSetup(c);
       sim.step();
       return commands;
     };
-    // 3 first posts, the scout and the builder reserve claim every man; the rows' second posts come next
-    // decision, out of the reserve, and nothing else does.
-    expect(posted(decide())).toEqual([MUD, STONE, WOOD]);
-    expect(posted(decide())).toEqual([STONE, WOOD]);
-    expect(posted(decide())).toEqual([]);
+    const builders = () =>
+      [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === BUILDER);
+    // 3 first posts, the scout and the builder reserve claim every man. The store is empty, so both goods
+    // run short, but the opening keeps its men building: nothing else is posted.
+    expect(posted(decideAt(0))).toEqual([MUD, STONE, WOOD]);
+    expect(posted(decideAt(0))).toEqual([]);
+    expect(builders()).toHaveLength(BUILDER_CAP);
+    // From the growth clock the sites justify their shortage posts, one per good per decision, out of the
+    // reserve.
+    const sites = siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS);
+    for (let post = 0; post < sites; post++) {
+      expect(posted(decideAt(BUILDING_GOODS_GROW_FROM_TICKS))).toEqual([STONE, WOOD]);
+    }
+    expect(posted(decideAt(BUILDING_GOODS_GROW_FROM_TICKS))).toEqual([]);
+    expect(builders()).toHaveLength(BUILDER_CAP - 2 * sites);
   });
 
   /** The wood and stone rows of an HQ-only seat of `men` at `tick`, the store holding `stock` of each. */
@@ -396,38 +406,40 @@ describe('workforce module (collectResources)', () => {
   const stoneBase = COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0;
   const LARGE_SEAT = 60;
 
-  it('grows the wood target from the growth clock, and both from the mid game on, at the top-up tier', () => {
+  it('grows both targets from the mid game on, at the top-up tier, whatever the stock', () => {
     // Both goods stocked past the glut: only the schedule rides on the target and only the base row
-    // jumps the builder reserve, whatever the crew. From the mid game the posts clear ground for the
-    // late-game buildings, so they come whatever the stock.
+    // jumps the builder reserve, whatever the crew. Until the mid game the schedule adds nothing; from
+    // then the posts clear ground for the late-game buildings, so they come whatever the stock.
     const glut = (lines: SupplyLines) => lines.glut;
-    expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS - 1, glut)).toEqual([
-      { target: woodBase, min: woodBase },
-      { target: stoneBase, min: stoneBase },
-    ]);
-    expect(buildingPosts(1, BUILDING_GOODS_GROW_FROM_TICKS, glut)).toEqual([
-      { target: woodBase + 1, min: woodBase },
-      { target: stoneBase, min: stoneBase },
-    ]);
+    for (const tick of [
+      BUILDING_GOODS_GROW_FROM_TICKS - 1,
+      BUILDING_GOODS_GROW_FROM_TICKS,
+      MID_GAME_FROM_TICKS - 1,
+    ]) {
+      expect(buildingPosts(LARGE_SEAT, tick, glut)).toEqual([
+        { target: woodBase, min: woodBase },
+        { target: stoneBase, min: stoneBase },
+      ]);
+    }
     expect(buildingPosts(1, MID_GAME_FROM_TICKS, glut)).toEqual([
-      { target: woodBase + 2, min: woodBase },
-      { target: stoneBase + 1, min: stoneBase },
-    ]);
-    expect(buildingPosts(1, LATE_GAME_FROM_TICKS, glut)).toEqual([
       { target: woodBase + 3, min: woodBase },
       { target: stoneBase + 2, min: stoneBase },
+    ]);
+    expect(buildingPosts(1, LATE_GAME_FROM_TICKS, glut)).toEqual([
+      { target: woodBase + 4, min: woodBase },
+      { target: stoneBase + 3, min: stoneBase },
     ]);
   });
 
   it("posts the sites' own shortage gatherers from the growth clock, with no workshop consuming the good", () => {
-    // An empty store lies every unit under the line: the opening still holds to its two posts, from the
-    // growth clock the sites justify their shortage posts on top of the schedule, all ahead of the reserve.
+    // An empty store lies every unit under the line: the first minutes still hold to their one post each,
+    // from the growth clock the sites justify their shortage posts, all ahead of the reserve.
     const empty = () => 0;
     expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS - 1, empty)).toEqual([
       { target: woodBase, min: woodBase },
       { target: stoneBase, min: stoneBase },
     ]);
-    const wood = woodBase + 1 + siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS);
+    const wood = woodBase + siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS);
     const stone = stoneBase + siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS);
     expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS, empty)).toEqual([
       { target: wood, min: wood },
@@ -435,7 +447,7 @@ describe('workforce module (collectResources)', () => {
     ]);
     // The opening hires them only under the short line.
     expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS, (l) => l.short)).toEqual([
-      { target: woodBase + 1, min: woodBase },
+      { target: woodBase, min: woodBase },
       { target: stoneBase, min: stoneBase },
     ]);
   });
@@ -464,12 +476,11 @@ describe('workforce module (collectResources)', () => {
     const woodComfort = lines?.comfort ?? 0;
 
     expect(posted(decide())).toEqual([MUD, STONE, WOOD]);
-    expect(posted(decide())).toEqual([STONE, WOOD]); // the rows' second posts, ahead of the reserve
     expect(posted(decide())).toEqual([]); // the shortage post waits: the reserve took everyone
     expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget);
-    // Five men past the reserve: the three builders the rows and the joiner's post took are replaced
-    // first, then the joinery's second joiner, then the shortage post.
-    spawnMen(sim, 5);
+    // Three men past the reserve: the builder the joiner's post took is replaced first, then the joinery's
+    // second joiner, then the shortage post.
+    spawnMen(sim, 3);
     sim.step();
     expect(posted(decide())).toEqual([WOOD]);
     expect(posted(decide())).toEqual([]);
@@ -542,15 +553,16 @@ describe('workforce module (collectResources)', () => {
     // Stone stocked past its glut, so only wood posts ride on the sites.
     setStockAmount(sim.world, hq, STONE, stone.glut);
 
-    // At the comfort line nothing is short: only the first posts, then the rows' seconds.
+    // At the comfort line nothing is short: only the first posts; the schedule's posts wait behind the
+    // reserve, which takes every other man.
     setStockAmount(sim.world, hq, WOOD, lines.comfort);
     expect(posted(mid())).toEqual([MUD, STONE, WOOD]);
-    expect(posted(mid())).toEqual([STONE, WOOD]);
+    expect(posted(mid())).toEqual([]);
     // One unit under comfort: the opening still waits for the short line, the mid game raises the target
     // and fills every post of it ahead of the reserve, one per decision.
     setStockAmount(sim.world, hq, WOOD, lines.comfort - 1);
     expect(posted(decideAt(0))).toEqual([]);
-    // Every post past the row's two, up to the target plus the shortage posts: the gap to the glut spans
+    // Every post past the row's one, up to the target plus the shortage posts: the gap to the glut spans
     // more units than the sites' cap, which the joinery's one post lies inside.
     const extra = siteShortagePosts(MID_GAME_FROM_TICKS);
     for (let post = woodBase; post < woodTarget + extra; post++) expect(posted(mid())).toEqual([WOOD]);
@@ -627,15 +639,13 @@ describe('workforce module (collectResources)', () => {
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
     placeWorkshop(sim, JOINERY_TYPE);
-    // Four men for the first posts and stone's second, then builders: one each for the scout and the
-    // joiner, one past the floor. From the growth clock, when the shortage posts jump the reserve; stone
-    // stocked past its glut so only wood's do.
+    // Four men for the first posts and the scout, then builders: one for the joiner, two past the floor.
+    // From the growth clock, when the sites' shortage posts jump the reserve; the store is empty, so wood
+    // and stone both want theirs.
     spawnMen(sim, 4);
     spawnMen(sim, SHORTAGE_BUILDER_FLOOR + 3, BUILDER);
     sim.step();
     const tick = BUILDING_GOODS_GROW_FROM_TICKS;
-    const stoneGlut = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(STONE)?.glut;
-    setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), STONE, stoneGlut ?? 0);
     const decide = () => {
       const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
       for (const c of commands) sim.enqueueSetup(c);
@@ -648,18 +658,18 @@ describe('workforce module (collectResources)', () => {
     const first = decide();
     expect(posted(first)).toEqual([MUD, STONE, WOOD]);
     expect(first.filter((c) => c.kind === 'setJob' && c.jobType === SCOUT)).toHaveLength(1);
-    expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR + 2); // the scout is the fourth civilian
-    expect(posted(decide())).toEqual([STONE, WOOD]); // the rows' seconds: the fifth and sixth builders go
+    expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR + 2); // the joiner came out of the builders
+    expect(posted(decide())).toEqual([STONE, WOOD]); // the sites' first shortage posts: two builders go
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
-    expect(posted(decide())).toEqual([]); // wood still wants one more, but not from the last four
+    expect(posted(decide())).toEqual([]); // both still want one more, but not from the last four
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
 
-    // A man of another trade still takes the post.
+    // A man of another trade still takes the post, stone's first in plan order.
     spawnMen(sim, 1);
     sim.step();
-    expect(posted(decide())).toEqual([WOOD]);
+    expect(posted(decide())).toEqual([STONE]);
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
-    expect(holdersOf(sim, WOOD)).toHaveLength((COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + 1);
+    expect(holdersOf(sim, STONE)).toHaveLength((COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0) + 2);
   });
 
   it('sends extra generic gatherers to clear ground while a placement is stalled, ahead of the carriers', () => {
@@ -675,8 +685,8 @@ describe('workforce module (collectResources)', () => {
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     // The same men as the unstalled ladder above call for three clearing posts, and the reserve shrinks to
-    // its stalled floor: after 3 first posts, the scout and that floor, the generic and clearing posts take
-    // every man left, ahead of the carriers.
+    // its stalled floor: after 3 first posts, the scout and that floor, the generic and clearing posts
+    // come ahead of the carriers.
     const clearing = Math.floor((BUILDER_CAP + 7) / CIVILIANS_PER_CLEARING_COLLECTOR);
     const selections = commands.filter((c) => c.kind === 'setGatherGood');
     expect(selections.map((s) => s.goodType)).toEqual([
@@ -684,8 +694,6 @@ describe('workforce module (collectResources)', () => {
       STONE,
       WOOD,
       ...Array(GENERIC_COLLECTOR_TARGET + clearing).fill(null),
-      STONE, // the rows' second posts, topped up behind the clearing
-      WOOD,
     ]);
     expect(commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER)).toHaveLength(
       STALLED_BUILDER_CAP,
