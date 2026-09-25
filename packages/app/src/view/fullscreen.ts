@@ -14,8 +14,9 @@ interface KeyboardLock {
 }
 
 function syncFullscreenEscape(): void {
-  const keyboard = (navigator as Navigator & { keyboard?: KeyboardLock }).keyboard;
-  if (keyboard === undefined) return;
+  // Brave exposes the Keyboard API as `null` rather than leaving it out.
+  const keyboard = (navigator as Navigator & { keyboard?: KeyboardLock | null }).keyboard;
+  if (keyboard === undefined || keyboard === null) return;
   if (isFullscreen()) {
     // A short Escape press belongs to the game's menus while the page is fullscreen.
     void keyboard.lock(['Escape']).catch(() => undefined);
