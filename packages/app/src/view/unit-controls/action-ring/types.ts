@@ -37,14 +37,12 @@ export interface SettlerActions {
   /** Lay the menu out on its pinned anchor and rebuild which buttons the live selection offers. */
   update(camera: Camera, snapshot: WorldSnapshot): void;
   /** Toggle/step the menu (Space): closed→menu, jobs→menu, menu→closed. */
-  toggle(atClient?: { readonly x: number; readonly y: number }): void;
+  toggle(pin?: RingPin): void;
   /** Open the profession list directly for the live selected settlers. */
   openProfessions(targets: readonly number[]): void;
-  /**
-   * Open the default action menu, idempotent to the `menu` face. `atClient` pins it on that client
-   * (CSS) point, as the original pins on the cursor at bring-up; omitted, it pins on the centroid.
-   */
-  open(atClient?: { readonly x: number; readonly y: number }): void;
+  /** Open the default action menu, idempotent to the `menu` face. `pin` pins it on that client point;
+   *  omitted, it pins on the centroid. */
+  open(pin?: RingPin): void;
   close(): void;
   /** True when a client point is over a visible menu button; the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
@@ -56,8 +54,24 @@ export interface SettlerActions {
   dispose(): void;
 }
 
+/** Where the menu pins: a client (CSS) point, as the original pins on the cursor at bring-up, and for a
+ *  press from inside the selection panel that panel's client left edge, which the whole menu keeps
+ *  left of so no arm opens under it. */
+export interface RingPin {
+  readonly x: number;
+  readonly y: number;
+  readonly keepLeftOf?: number;
+}
+
+/** The pin in screen (canvas) px; `rightBound` is the panel's edge, null for the open screen. */
+export interface RingAnchor {
+  readonly x: number;
+  readonly y: number;
+  readonly rightBound: number | null;
+}
+
 export interface SettlerActionsState {
   readonly mode: MenuMode;
-  readonly anchor: { readonly x: number; readonly y: number } | null;
+  readonly anchor: RingAnchor | null;
   readonly pickerScrollTop: number;
 }

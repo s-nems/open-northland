@@ -50,8 +50,11 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
       model: {
         kind: 'empty',
         ghost: row.group === 'misc' || fixed ? null : GHOST[row.group],
+        inert: !row.wearable,
         label: formatMessage(copy.settlerPanel.equipLabel, { slot: label }),
-        tooltip: row.wearable ? formatMessage(copy.settlerPanel.equip, { slot: label }) : label,
+        tooltip: row.wearable
+          ? formatMessage(copy.settlerPanel.equip, { slot: label })
+          : formatMessage(copy.settlerPanel.cannotWear, { slot: label }),
       },
     };
   }

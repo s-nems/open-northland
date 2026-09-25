@@ -5,7 +5,7 @@ import type { TradePeers } from './peers.js';
 
 /**
  * The settler's head: the trade as the kicker with its browse over the seat's people of that trade
- * (only for the seat's own), the name with the rename pen (not a hero's, not another seat's person),
+ * (only for the seat's own, and only when there is someone else of it), the name with the rename pen (not a hero's, not another seat's person),
  * the owner line, and the orders medallion with the ring's hotkey `ordersKey` in its tooltip (another
  * seat's person takes no orders).
  */
@@ -19,7 +19,7 @@ export function settlerHead(
   return {
     kicker: trade,
     browse:
-      model.foreign || peers.index < 0
+      model.foreign || peers.index < 0 || peers.ids.length < 2
         ? null
         : {
             index: peers.index + 1,

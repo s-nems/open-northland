@@ -1105,7 +1105,7 @@ describe('selection details panel model', () => {
     expect(rowsFor(JOB_COLLECTOR)).toEqual(['boots', 'tool', 'misc']);
   });
 
-  it('gives a woman and a child no equipment rows and no experience section', () => {
+  it('gives a woman and a child a worker’s slots, none wearable, and no experience section', () => {
     const trained = { SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.FIST, 5]] } };
     const modelFor = (jobType: number, extra: Record<string, unknown>) => {
       const snapshot = snapshotOf([
@@ -1119,7 +1119,8 @@ describe('selection details panel model', () => {
       modelFor(JOB_WOMAN, { Female: { female: true } }),
       modelFor(JOB_COLLECTOR, { Age: { ticks: 0 } }),
     ]) {
-      expect(model.equipmentRows).toEqual([]);
+      expect(model.equipmentRows.map((row) => row.group)).toEqual(['boots', 'tool', 'misc']);
+      expect(model.equipmentRows.every((row) => !row.wearable)).toBe(true);
       expect(model.experience).toEqual([]);
     }
     expect(modelFor(JOB_COLLECTOR, {}).experience.length).toBeGreaterThan(0);

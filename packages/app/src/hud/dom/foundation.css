@@ -2443,18 +2443,18 @@ body.on-drag-scroll-cursor-hidden * {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--bronze);
+  color: var(--bronze-hi);
 }
 .on-hud .on-browse:first-child {
   margin-left: -4px;
 }
 .on-hud .on-browse:hover {
-  color: var(--bronze-hi);
+  color: var(--active);
 }
 .on-hud .on-browse .on-glyph {
-  width: 12px;
-  height: 12px;
-  stroke-width: 2.4;
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.8;
 }
 .on-hud .on-rename {
   display: inline-flex;
@@ -2500,9 +2500,30 @@ body.on-drag-scroll-cursor-hidden * {
   order: 1;
   margin: 0;
 }
+/* One line per row: the leader gives way first, then a long value (a building's name) ellipsizes. */
 .on-hud .on-selection .on-ledger {
   margin: 2px 0;
   font-size: 12.5px;
+}
+.on-hud .on-selection .on-ledger > span:first-child {
+  flex: 1 0 auto;
+}
+.on-hud .on-selection .on-ledger > span:first-child::after {
+  min-width: 12px;
+}
+.on-hud .on-selection .on-ledger__value {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.on-hud .on-selection .on-ledger__link {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 .on-hud .on-ledger--ctl,
 .on-hud .on-selection .on-ledger--ctl {
@@ -2726,7 +2747,8 @@ body.on-drag-scroll-cursor-hidden * {
   font: 700 13px var(--font-body);
   font-variant-numeric: tabular-nums;
 }
-/* Equipment sockets: a wooden well with the good and its wear under it. */
+/* Equipment sockets: a wooden well with the good over its wear, a fill from the floor up to the life
+   left. A slot the person never fills (a woman's, a child's) is faded and inert. */
 .on-hud .on-socket-group {
   position: relative;
   display: inline-block;
@@ -2767,23 +2789,27 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-socket__wear {
   position: absolute;
-  left: 3px;
-  right: 3px;
-  bottom: 2px;
-  height: 3px;
-  background: #0009;
-  border-radius: 2px;
-  overflow: hidden;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--value);
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(180deg, #c3cf8633, #7c945099);
+  pointer-events: none;
 }
-.on-hud .on-socket__wear::before {
-  content: "";
-  display: block;
-  width: var(--value);
-  height: 100%;
-  background: linear-gradient(90deg, #7c9450, #c3cf86);
+.on-hud .on-socket--worn .on-socket__wear {
+  background: linear-gradient(180deg, #efbe7033, #a8412f99);
 }
-.on-hud .on-socket--worn .on-socket__wear::before {
-  background: linear-gradient(90deg, #a8412f, #efbe70);
+.on-hud .on-socket > .on-good {
+  position: relative;
+}
+.on-hud .on-socket[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+.on-hud button.on-socket[aria-disabled="true"]:hover {
+  border-color: var(--wood-lo);
+  color: var(--bronze-lo);
 }
 .on-hud .on-socket__off {
   position: absolute;
@@ -2857,8 +2883,8 @@ body.on-drag-scroll-cursor-hidden * {
 }
 
 /* ---------- settler panel: portrait row, status, production, trade ---------- */
-/* The frame with a column beside it: the sockets over the status strip; without sockets the strip
-   alone sits at the frame's middle. */
+/* The frame with a column beside it: the sockets at the top, the status strip along the frame's
+   floor. */
 .on-hud .on-selection .on-portrait {
   grid-template-columns: 96px 1fr;
   gap: 12px;
@@ -2884,9 +2910,6 @@ body.on-drag-scroll-cursor-hidden * {
   gap: 4px;
   min-width: 0;
 }
-.on-hud .on-portrait--bare .on-portrait__beside {
-  justify-content: center;
-}
 .on-hud .on-equipment {
   display: grid;
   gap: 5px;
@@ -2895,25 +2918,31 @@ body.on-drag-scroll-cursor-hidden * {
   display: flex;
   gap: 5px;
 }
-/* The status strip: a tone dot, the state with its detail, and the carried good at the right end,
-   which drops to its own line when the words take the width. */
+/* The status strip: one fixed line (the carried good's well fits inside it, so the strip never
+   changes height) with a tone dot, the state with its detail, and the carried good at the right end. */
 .on-hud .on-status-strip {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 2px 6px;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 24px;
   min-width: 0;
-  padding: 2px 7px;
+  /* Centred between the bag row and the next section's title: its floor sits 3 px under the frame's. */
+  margin: auto 0 -3px;
+  padding: 0 7px;
   border-radius: 3px;
   background: #12171388;
   box-shadow: inset 0 0 0 1px #c9a26222;
   color: var(--text-hi);
   font-size: 11px;
-  line-height: 1.3;
+  line-height: 1;
+  white-space: nowrap;
 }
 .on-hud .on-status-strip > span {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .on-hud .on-status-strip__dot {
   flex-shrink: 0;

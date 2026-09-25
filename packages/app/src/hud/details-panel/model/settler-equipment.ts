@@ -75,8 +75,8 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
  * are the original's soldier-only equip slots (`tribetypes` `allowequip`) and a fighter keeps no tool.
  * Two escapes keep worn gear reachable: a row the job would not offer still shows while something is
  * worn in it, and a settler carrying the combat `Weapon` component keeps its arms rows. A woman and a
- * child get no rows at all: the sim's `mayChangeEquipment` lets them wear nothing, where a hero still
- * shows the fixed arms of its class.
+ * child show a worker's rows with nothing wearable, so the panel keeps its shape: the sim's
+ * `mayChangeEquipment` lets them wear nothing, where a hero still shows the fixed arms of its class.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
   const slots = messages().hud.equipmentSlots;
@@ -87,7 +87,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   const job = jobType === undefined ? undefined : ctx.jobs.find((j) => j.typeId === jobType);
   const fighter = job !== undefined && systems.isFighterJobRow(job);
   const hero = job !== undefined && systems.isHeroJobRow(job);
-  if (!hero && ('Female' in comps || 'Age' in comps)) return [];
+  const wearsNothing = hero || 'Female' in comps || 'Age' in comps;
   if (fighter || 'Weapon' in comps || eq?.weapon != null || eq?.armor != null) {
     rows.push({
       slotLabel: slots.weapon,
@@ -106,14 +106,14 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
     slotLabel: slots.boots,
     group: 'boots',
     slots: [slotModel(ctx, eq?.boots)],
-    wearable: !hero,
+    wearable: !wearsNothing,
   });
   if (!fighter || eq?.tool != null) {
     rows.push({
       slotLabel: slots.tools,
       group: 'tool',
       slots: [slotModel(ctx, eq?.tool)],
-      wearable: !fighter && !hero,
+      wearable: !fighter && !wearsNothing,
     });
   }
   const misc = Array.isArray(eq?.misc) ? (eq.misc as RawEquipSlot[]) : [];
@@ -123,7 +123,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
     slotLabel: slots.misc,
     group: 'misc',
     slots: miscSlots,
-    wearable: !hero,
+    wearable: !wearsNothing,
   });
   return rows;
 }

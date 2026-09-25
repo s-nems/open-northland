@@ -47,7 +47,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const ordersKey = (): string => deps.keyLabel('actionRing');
   const frame = createSelectionPanel(deps.plane, {
     onBrowse: (step) => browse(step),
-    onOrders: () => actions.openOrders(entity()),
+    onOrders: (press) => actions.openOrders(entity(), press),
     onKickerDoubleClick: () => {
       if (peers.ids.length > 0) actions.selectGroup(peers.ids);
     },
@@ -86,6 +86,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     shown = null;
     peers = NO_PEERS;
     deps.hoverCard.hide();
+    deps.tooltip.hide();
     frame.hide();
   };
 
@@ -120,6 +121,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     invalidate: () => frame.invalidate(),
     dispose(): void {
       deps.hoverCard.hide();
+      deps.tooltip.hide();
       frame.dispose();
     },
   };

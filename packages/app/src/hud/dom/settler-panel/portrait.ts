@@ -31,7 +31,7 @@ export function statusTone(status: SettlerStatusModel): StatusTone {
 }
 
 /** The portrait block: the live figure's frame as the centre-view button, and beside it the column
- *  with the sockets over the status strip. */
+ *  with the sockets at the top and the status strip along the frame's floor. */
 export interface PortraitSection {
   readonly element: HTMLElement;
   /** The frame the renderer paints the live figure through. */
@@ -103,8 +103,6 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
       sockets[index]?.update(spec.model);
     });
     setHidden(equipment, specs.length === 0);
-    // Without sockets the status strip alone sits beside the frame, at its middle.
-    setClass(row, 'on-portrait--bare', specs.length === 0);
     setHidden(bagRow, rows.bag.length === 0);
   };
 

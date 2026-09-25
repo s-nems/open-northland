@@ -35,6 +35,8 @@ import type { UnitControlsOptions } from './types.js';
 const NO_SELECTION: ReadonlySet<number> = new Set();
 /** Goods the warm-up paints icons of, enough to fill every icon slot of the warm model. */
 const WARM_GOOD_ICONS = 12;
+/** Without a chip from the host (tests) a stat line's hover shows nothing. */
+const NO_CHIP = { show: (): void => undefined, hide: (): void => undefined };
 
 interface MountedUnitChrome {
   readonly panel: UnitPanel;
@@ -117,6 +119,7 @@ export async function createUnitChrome(
     residents: opts.domHud.residents,
     keyLabel,
     hoverCard,
+    tooltip: opts.tooltip ?? NO_CHIP,
     buildingHover: (id) => buildingHoverModel(opts.snapshot(), id, hoverContext),
     now: () => performance.now(),
     actions: settlerPanelActions(
@@ -125,7 +128,8 @@ export async function createUnitChrome(
         selectEntity: callbacks.selectEntity,
         selectGroup: callbacks.selectGroup,
         centre,
-        openOrders: () => mounts.current().actions.open(),
+        openOrders: (press) =>
+          mounts.current().actions.open({ x: press.x, y: press.y, keepLeftOf: press.panelLeft }),
         assignWorkplace: callbacks.assignWorkplace,
         assignHome: callbacks.assignHome,
         attachTradeHouse: callbacks.attachTradeHouse,

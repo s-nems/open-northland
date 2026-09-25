@@ -4,6 +4,7 @@ import type { BuildingHoverModel } from '../../hover-card/model.js';
 import type { ResidentRow } from '../../tool-panel/residents/rows.js';
 import type { GoodIconPainter } from '../good-art.js';
 import type { HoverCard } from '../hover-card.js';
+import type { OrdersPress } from '../selection-panel.js';
 
 /**
  * What the settler panel's controls ask for. The owner checks the viewer's ownership and the sim's
@@ -18,8 +19,8 @@ export interface SettlerPanelActions {
   /** A double click on the trade: select every peer as a group. */
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly clearSelection: () => void;
-  /** Open the action ring at the settler. */
-  readonly openOrders: (id: number) => void;
+  /** Open the action ring for the settler beside the medallion press, clear of the panel. */
+  readonly openOrders: (id: number, press: OrdersPress) => void;
   readonly rename: (id: number, name: string) => void;
   readonly orderNeed: (id: number, need: NeedKind) => void;
   readonly assignWorkplace: (id: number) => void;
@@ -44,6 +45,11 @@ export interface SettlerPanelActions {
   readonly openKnowledge?: (goodType: number) => void;
 }
 
+export interface TextChip {
+  show(clientX: number, clientY: number, text: string): void;
+  hide(): void;
+}
+
 /** What the panel reads besides its model. */
 export interface SettlerPanelDeps {
   readonly plane: HTMLElement;
@@ -56,6 +62,8 @@ export interface SettlerPanelDeps {
   readonly keyLabel: (action: 'actionRing') => string;
   /** The card the workplace link shows while the cursor rests on it. */
   readonly hoverCard: HoverCard;
+  /** The cursor-following chip a stat line's numbers show in while the cursor is over it. */
+  readonly tooltip: TextChip;
   readonly buildingHover: (id: number) => BuildingHoverModel | null;
   /** Wall clock in ms, the peer list's refresh cadence. */
   readonly now: () => number;

@@ -116,6 +116,23 @@ describe('equipment sockets', () => {
     expect(sockets.worn.every((spec) => spec.fixed && !spec.pressable)).toBe(true);
     expect(sockets.worn[0]?.model.kind === 'item' ? sockets.worn[0].model.removeLabel : 'x').toBeNull();
   });
+
+  it('keeps a woman’s slots in place, faded and inert, saying she wears nothing', () => {
+    const sockets = equipmentSockets(
+      [row('boots', [EMPTY], false), row('tool', [EMPTY], false), row('misc', [EMPTY, EMPTY], false)],
+      false,
+    );
+    expect(sockets.worn.map((spec) => spec.ref.group)).toEqual(['tool', 'boots']);
+    expect(sockets.bag).toHaveLength(2);
+    for (const spec of [...sockets.worn, ...sockets.bag]) {
+      expect(spec.pressable).toBe(false);
+      expect(spec.fixed).toBe(false);
+      expect(spec.model).toMatchObject({ kind: 'empty', inert: true });
+      expect(spec.model.tooltip).toContain(messages().hud.settlerPanel.cannotWear.split(':')[1]?.trim());
+    }
+    const wearable = equipmentSockets([row('boots', [EMPTY])], false);
+    expect(wearable.worn[0]?.model).toMatchObject({ kind: 'empty', inert: false });
+  });
 });
 
 describe('the settler panel’s rows', () => {
@@ -208,6 +225,12 @@ describe('the settler head', () => {
     expect(head.browse).toMatchObject({ index: 2, count: 3 });
     expect(head.rename).not.toBeNull();
     expect(head.orders?.tooltip).toContain('Spacja');
+  });
+
+  it('drops the chevrons while the person is the only one of the trade', () => {
+    const head = settlerHead(model, { ids: [7], index: 0 }, 'Spacja');
+    expect(head.browse).toBeNull();
+    expect(head.orders).not.toBeNull();
   });
 
   it('keeps another seat’s person to the name alone', () => {

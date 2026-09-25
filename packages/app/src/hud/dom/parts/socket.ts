@@ -1,8 +1,8 @@
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setClass, setHidden, setTitle } from './dom.js';
+import { button, element, setAttribute, setClass, setDisabled, setHidden, setTitle } from './dom.js';
 
-/** A worn item under a quarter of its life left shows its wear bar red. */
+/** A worn item under a quarter of its life left shows its wear fill red. */
 export const SOCKET_WORN_BELOW_PCT = 25;
 /** Design px of the good icon in a 30 px socket (foundation.css). */
 const SOCKET_ICON_PX = 23;
@@ -12,6 +12,8 @@ export type SocketModel =
       readonly kind: 'empty';
       /** The line glyph of what goes here; null for a bag cell, which takes anything. */
       readonly ghost: string | null;
+      /** A slot this person never fills (a woman's, a child's): faded, a press does nothing. */
+      readonly inert: boolean;
       readonly label: string;
       readonly tooltip: string;
     }
@@ -36,8 +38,8 @@ export interface SocketOptions {
   readonly onRemove?: () => void;
 }
 
-/** One 30 px equipment socket: a ghost glyph when empty, else the good over its wear bar, with a small
- *  × at the corner on hover or focus. */
+/** One 30 px equipment socket: a ghost glyph when empty, else the good over its wear fill (the well
+ *  filled from the bottom to the life left), with a small × at the corner on hover or focus. */
 export interface Socket {
   readonly element: HTMLElement;
   update(model: SocketModel): void;
@@ -67,7 +69,7 @@ export function createSocket(options: SocketOptions): Socket {
       wear = null;
       return;
     }
-    face.innerHTML = `${goodIconMarkup(SOCKET_ICON_PX)}<i class="on-socket__wear"></i>`;
+    face.innerHTML = `<i class="on-socket__wear"></i>${goodIconMarkup(SOCKET_ICON_PX)}`;
     wear = face.querySelector('.on-socket__wear');
     const frame = face.querySelector('.on-good__frame');
     if (model.goodId !== undefined && frame instanceof HTMLElement) {
@@ -80,13 +82,14 @@ export function createSocket(options: SocketOptions): Socket {
     update(model): void {
       paint(model);
       setClass(face, 'on-socket--empty', model.kind === 'empty');
+      if (!fixed) setDisabled(face, model.kind === 'empty' && model.inert);
       setTitle(face, model.tooltip);
       setAttribute(face, 'aria-label', model.label);
       const wearPct = model.kind === 'item' ? model.wearPct : null;
       if (wear !== null) {
         setHidden(wear, wearPct === null);
-        const width = `${wearPct ?? 0}%`;
-        if (wear.style.getPropertyValue('--value') !== width) wear.style.setProperty('--value', width);
+        const fill = `${wearPct ?? 0}%`;
+        if (wear.style.getPropertyValue('--value') !== fill) wear.style.setProperty('--value', fill);
       }
       setClass(face, 'on-socket--worn', wearPct !== null && wearPct < SOCKET_WORN_BELOW_PCT);
       if (off !== null) {

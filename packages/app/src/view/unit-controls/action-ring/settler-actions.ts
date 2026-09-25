@@ -16,7 +16,7 @@ import { createActionRingVisuals } from './action-ring-visuals.js';
 import { createActionRingInput } from './input.js';
 import { allowedActions } from './menu-state.js';
 import { createProfessionPicker } from './profession-picker.js';
-import type { MenuMode, SettlerActions, SettlerActionsOptions } from './types.js';
+import type { MenuMode, RingAnchor, RingPin, SettlerActions, SettlerActionsOptions } from './types.js';
 
 /**
  * Pixi and input glue over the pure action-ring layout: it draws the order buttons in original GUI art
@@ -88,7 +88,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     /** Where the menu is pinned, in screen (canvas) px, captured once when it opens so neither the settler
      *  walking on nor a camera pan moves it. Observation: the original keeps its ring on the cursor
      *  position it opened at. */
-    let anchor: { readonly x: number; readonly y: number } | null = null;
+    let anchor: RingAnchor | null = null;
     /** The arms of the open session, rebuilt only when the selection changes. Observation: the original
      *  builds its ring once at bring-up, so a gate flipping under an open ring does not reflow the arms. */
     let menu: { readonly ids: readonly number[]; readonly groups: readonly ActionGroup[] } | null = null;
@@ -144,13 +144,19 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     };
 
     /**
-     * Open the default arms, pinned on `atClient` when the caller has a cursor; a re-open always re-pins.
+     * Open the default arms, pinned on `pin` when the caller has a cursor; a re-open always re-pins.
      * Without a cursor the anchor stays null and the next frame's update pins the centroid.
      */
-    const openMenu = (atClient?: { readonly x: number; readonly y: number }): void => {
+    const openMenu = (pin?: RingPin): void => {
       closeJobWindow(); // a fresh open shows the default arms, never a stale list
       mode = 'menu';
-      anchor = atClient === undefined ? null : toCanvas(atClient.x, atClient.y);
+      anchor =
+        pin === undefined
+          ? null
+          : {
+              ...toCanvas(pin.x, pin.y),
+              rightBound: pin.keepLeftOf === undefined ? null : toCanvas(pin.keepLeftOf, 0).x,
+            };
       menu = null;
     };
 
@@ -192,14 +198,16 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       }
       // A caller without a pointer sample falls back to the selection centroid on the session's first
       // frame, then freezes it like any other anchor.
-      anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y) };
+      anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y), rightBound: null };
       if (menu === null || !sameIds(menu.ids, centre.ids)) {
         menu = {
           ids: centre.ids,
           groups: actionRingMenu(allowedActions(opts.content, snapshot, centre.ids)),
         };
       }
-      layout = layoutActionRing(menu.groups, anchor.x, anchor.y, scale, app.screen.width, app.screen.height);
+      const screenW =
+        anchor.rightBound === null ? app.screen.width : Math.min(app.screen.width, anchor.rightBound);
+      layout = layoutActionRing(menu.groups, anchor.x, anchor.y, scale, screenW, app.screen.height);
       visuals.placeLayout(layout);
       root.visible = true;
     };
@@ -225,10 +233,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     return {
       update,
-      toggle: (atClient): void => {
+      toggle: (pin): void => {
         if (mode === 'jobs') closeJobWindow();
         else if (mode === 'menu') closeMenu();
-        else openMenu(atClient);
+        else openMenu(pin);
       },
       openProfessions: (targets): void => {
         selectedIds = [...targets];

@@ -128,7 +128,7 @@ export function createWorkSection(
           buttons: [
             seatButton(
               model.workplace.assign,
-              model.workplace.flag ? GLYPH.banner : GLYPH.pick,
+              model.workplace.flag ? GLYPH.banner : GLYPH.house,
               copy.assignWorkplace,
               model.workplace.flag ? copy.assignWorkplaceFlagHint : copy.assignWorkplaceHint,
             ),
@@ -147,7 +147,7 @@ export function createWorkSection(
           label: panel.home,
           value: seatValue(model.home, panel.buildingTooltip, model.foreign),
           buttons: [
-            seatButton(model.home.assign, GLYPH.pick, copy.assignHome, copy.assignHomeHint),
+            seatButton(model.home.assign, GLYPH.house, copy.assignHome, copy.assignHomeHint),
             seatButton(model.home.remove, GLYPH.close, copy.unassignHome, copy.unassignHomeHint),
           ],
         });

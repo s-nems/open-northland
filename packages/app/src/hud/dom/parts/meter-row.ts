@@ -27,11 +27,25 @@ export interface MeterRow {
   update(model: MeterRowModel): void;
 }
 
-export function createMeterRow(onPress?: () => void): MeterRow {
+export interface MeterRowOptions {
+  readonly onPress?: () => void;
+  /** The cursor entered or moved over the row (an event) or left it (null). With this the row's
+   *  tooltip is the owner's chip, not the browser's, which a value ticking under the cursor hides. */
+  readonly onHover?: (event: MouseEvent | null) => void;
+}
+
+export function createMeterRow(options: MeterRowOptions = {}): MeterRow {
+  const { onPress, onHover } = options;
   const inner =
     '<span></span><span class="on-meter" role="meter" aria-valuemin="0" aria-valuemax="100"></span><b></b>';
-  const root = onPress === undefined ? element('div', 'on-meter-row', inner) : button('on-meter-row', inner);
+  const root: HTMLElement =
+    onPress === undefined ? element('div', 'on-meter-row', inner) : button('on-meter-row', inner);
   if (onPress !== undefined) root.addEventListener('click', onPress);
+  if (onHover !== undefined) {
+    root.addEventListener('mouseenter', (event) => onHover(event));
+    root.addEventListener('mousemove', (event) => onHover(event));
+    root.addEventListener('mouseleave', () => onHover(null));
+  }
   const [label, meter, value] = [root.children[0], root.children[1], root.children[2]];
   if (!(meter instanceof HTMLElement) || label === undefined || value === undefined) {
     throw new Error('meter row: template');
@@ -45,7 +59,7 @@ export function createMeterRow(onPress?: () => void): MeterRow {
       const width = `${model.pct}%`;
       if (meter.style.getPropertyValue('--value') !== width) meter.style.setProperty('--value', width);
       write(value, `${model.pct}%`);
-      setTitle(root, model.tooltip);
+      if (onHover === undefined) setTitle(root, model.tooltip);
       const tone = meterTone(model.pct);
       setClass(root, 'on-meter-row--low', tone === 'low');
       setClass(root, 'on-meter-row--critical', tone === 'critical');

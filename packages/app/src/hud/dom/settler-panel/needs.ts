@@ -23,7 +23,8 @@ export function needTooltip(bar: PanelBar): string {
   });
 }
 
-/** Samopoczucie: one meter line per stat, a need line the order for that need. */
+/** Samopoczucie: one meter line per stat, a need line the order for that need. The hovered line's
+ *  numbers show in the panel's chip, refreshed as they tick. */
 export interface NeedsSection {
   readonly element: HTMLElement;
   update(model: SettlerPanelModel): void;
@@ -36,6 +37,18 @@ export function createNeedsSection(deps: SettlerPanelDeps, entity: () => number)
   root.append(title.element, list);
   let shown = '';
   let rows: MeterRow[] = [];
+  let bars: readonly PanelBar[] = [];
+  /** The hovered line and where the cursor last was over it, so a tick refreshes the chip in place. */
+  let hovered: { readonly index: number; readonly clientX: number; readonly clientY: number } | null = null;
+  const showChip = (): void => {
+    const bar = hovered === null ? undefined : bars[hovered.index];
+    if (hovered === null || bar === undefined) deps.tooltip.hide();
+    else deps.tooltip.show(hovered.clientX, hovered.clientY, needTooltip(bar));
+  };
+  const hover = (index: number, event: MouseEvent | null): void => {
+    hovered = event === null ? null : { index, clientX: event.clientX, clientY: event.clientY };
+    showChip();
+  };
   return {
     element: root,
     update(model): void {
@@ -44,17 +57,24 @@ export function createNeedsSection(deps: SettlerPanelDeps, entity: () => number)
       const key = model.bars.map((bar) => `${bar.label}${orders ? (bar.need ?? '') : ''}`).join(',');
       if (key !== shown) {
         shown = key;
-        rows = model.bars.map((bar) => {
+        hovered = null;
+        deps.tooltip.hide();
+        rows = model.bars.map((bar, index) => {
           const need = bar.need;
-          return createMeterRow(
-            orders && need !== undefined ? () => deps.actions.orderNeed(entity(), need) : undefined,
-          );
+          return createMeterRow({
+            ...(orders && need !== undefined
+              ? { onPress: () => deps.actions.orderNeed(entity(), need) }
+              : {}),
+            onHover: (event) => hover(index, event),
+          });
         });
         list.replaceChildren(...rows.map((row) => row.element));
       }
+      bars = model.bars;
       model.bars.forEach((bar, index) => {
         rows[index]?.update({ label: bar.label, pct: bar.pct, tooltip: needTooltip(bar) });
       });
+      if (hovered !== null) showChip();
     },
   };
 }

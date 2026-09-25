@@ -43,9 +43,17 @@ export interface SelectionHeadModel {
   };
 }
 
+/** Where the orders medallion was pressed, in client (CSS) px, with the panel's left edge, so the ring
+ *  opens beside the cursor without an arm under the panel. */
+export interface OrdersPress {
+  readonly x: number;
+  readonly y: number;
+  readonly panelLeft: number;
+}
+
 export interface SelectionPanelHandlers {
   readonly onBrowse: (step: 1 | -1) => void;
-  readonly onOrders: () => void;
+  readonly onOrders: (press: OrdersPress) => void;
   readonly onKickerDoubleClick: () => void;
   /** The name the player typed and confirmed, trimmed; an empty one asks for the default name back. */
   readonly onRename: (name: string) => void;
@@ -127,7 +135,9 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
   // Gold, first in the row: a new player finds the ring here, so it must not read as one more chrome
   // control.
   const orders = button('on-medallion on-medallion--gold', GLYPH.orders);
-  orders.addEventListener('click', () => handlers.onOrders());
+  orders.addEventListener('click', (event) =>
+    handlers.onOrders({ x: event.clientX, y: event.clientY, panelLeft: root.getBoundingClientRect().left }),
+  );
   const close = button('on-medallion', GLYPH.close);
   close.addEventListener('click', () => handlers.onClose());
   const medallions = element('span', 'on-selection__medallions');

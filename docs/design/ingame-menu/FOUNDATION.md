@@ -216,12 +216,13 @@ on the beam opens it at once.
 The selected person's panel (ticket 08), bottom right, 318 px wide, in the window frame. The head
 carries the trade as the bronze kicker over the person's name, an owner line only when it says
 something (another seat's person, a child's age), and two medallions: the gold orders one, with the
-ring glyph and the ring hotkey in its tooltip, opens the action ring at the settler (gold, so a new
-player finds the ring; absent for another seat's person), and the bronze close clears the
-selection. The kicker browses the trade: chevrons on both sides and "2 / 5" step to the previous
-or next person of the same trade and bring them into view (Tab and Shift+Tab do the same while the
-panel is open and no field or other window has the focus), and a
-double click on the trade selects every person of that trade as a group. The name is an in-place
+ring glyph and the ring hotkey in its tooltip, opens the action ring beside the cursor, pushed left
+so that no arm opens under the panel (gold, so a new player finds the ring; absent for another
+seat's person), and the bronze close clears the selection. The kicker browses the trade: chevrons on
+both sides and "2 / 5" step to the previous or next person of the same trade and bring them into
+view (Tab and Shift+Tab do the same while the panel is open and no field or other window has the
+focus); they are absent while the person is the only one of the trade. A double click on the trade
+selects every person of that trade as a group. The name is an in-place
 rename (a pen on hover), except for a hero and another seat's person. The panel is a quick look: every state fits the 810 px design plane without a scrollbar
 (the frame stops 16 px under the summary bar), so anything that would not fit is folded or cut at
 design time, never scrolled. It shows what the player can read or act on and nothing else: no
@@ -230,19 +231,22 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
 
 - Portrait row: the live settler in the 96 × 92 px framed portrait is the centre-view button. The
   renderer paints its world cutout on the canvas under the plane, through a hole the panel's fill
-  leaves at the frame. The column beside it holds the equipment as two rows of 30 px sockets over
-  the status strip, only the slots the person has: the worn row in a fixed order (Broń, Zbroja, Narzędzia, Buty; a worker
-  has the last two, a soldier Broń, Zbroja, Buty, a hero its fixed arms as flat frameless sockets)
-  and the four-cell Torba row under it. An empty worn socket shows a ghost glyph of what goes there
-  (sword, armour, tool, boot) and opens the equip picker; an occupied socket holds the good's icon
-  over its wear bar (red under a quarter), its tooltip the wear left as a percent (the minutes it
-  buys wait for a wear-pace read seam); pressing it opens the picker to swap and a small × at its
+  leaves at the frame. The column beside it holds the equipment as two rows of 30 px sockets at the
+  top and the status strip along the frame's floor. The sockets are the slots the person's kind
+  has: the worn row in a fixed order (Broń, Zbroja, Narzędzia, Buty; a worker has the last two, a
+  soldier Broń, Zbroja, Buty, a hero its fixed arms as flat frameless sockets) and the four-cell
+  Torba row under it. A woman and a child show a worker's sockets faded and inert (the tooltip says
+  the person wears nothing), so their panel keeps the same shape. An empty worn socket shows a
+  ghost glyph of what goes there (sword, armour, tool, boot) and opens the equip picker; an
+  occupied socket holds the good's icon over its wear fill, the well filled from the floor up to
+  the life left (red under a quarter), its tooltip the wear left as a percent (the minutes it buys
+  wait for a wear-pace read seam); pressing it opens the picker to swap and a small × at its
   corner, shown on hover or focus, takes the item off. No level medallion: the game has no settler
   level.
-- Status strip under the sockets in the column beside the frame (alone at the frame's middle for a
-  woman, a child or a hero, who have no sockets): a dark well in 11 px type with a tone dot, the
-  live state and its detail after a dot, and at the right end "niesie" with the carried good in a
-  small well and its count, which drops to its own line when the words take the width. The state
+- Status strip along the frame's floor in the column beside it: a dark well, one 24 px line in 11 px
+  type that never changes height, with a tone dot, the live state and its detail after a dot
+  (ellipsized when long), and at the right end "niesie" with the carried good in a small well and
+  its count. The state
   names what the person is at, read off the running atomic: Pracuje for any economic step (a
   stroke, a catch, a pickup, a cart load, a craft cycle), Buduje, Naprawia, Walczy, Ćwiczy, Je, Śpi,
   Modli się, Rozmawia (a chat
@@ -257,11 +261,14 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   the need bars the settler carries (a child and a hero show health alone). Under a third the fill
   and the percent turn amber, under a sixth red, so trouble reads without words. A need row is the
   order for that need: pressing Sytość, Sen, Towarzystwo or Religia sends the ring's Jedz, Śpij,
-  Rozmawiaj or Módl się (the tooltip names it); Zdrowie has no order. A bar over full keeps its
-  stored reserve in the tooltip, as the legacy panel did.
-- Praca i rodzina: ledger rows. Miejsce pracy and Dom name the building as a link that selects it
-  (the original's "Pokaż miejsce pracy" and home buttons), followed by round buttons, assign
-  (a pointer glyph, opens the pick mode) and remove (×). For a trade that works from a flag (a
+  Rozmawiaj or Módl się; Zdrowie has no order. The numbers show while the cursor rests on a line
+  (health as points, a need as its percent with any stored reserve, and the order the press gives)
+  in the panel's own chip at the cursor, not the browser's tooltip, which a value ticking under the
+  cursor would hide.
+- Praca i rodzina: ledger rows on one line each; the dotted leader gives way first, then a long
+  building name ellipsizes. Praca and Dom name the building as a link that selects it (the
+  original's "Pokaż miejsce pracy" and home buttons), followed by round buttons, assign (a house
+  glyph, opens the pick mode) and remove (×). For a trade that works from a flag (a
   gatherer, a fisher) the assign button carries a flag glyph and arms one pick for both ways the
   trade works: the flag sprite follows the cursor as a translucent ghost, a lit building under the
   click employs the person, any other spot plants the flag there (a posted gatherer leaves its post
@@ -271,7 +278,7 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   stays visible, faded, with the reason in its tooltip (a person a mission holds to its task). Resting on
   the workplace link shows the building's hover card (state and stock) without a click. Rodzina
   names the spouse and the growing child as links that select them, or "bez pary" in amber, which
-  opens the partner choice (the same pick flow as assigning a home, aimed at a person). A man without a trade has no Miejsce pracy row, a woman and a
+  opens the partner choice (the same pick flow as assigning a home, aimed at a person). A man without a trade has no Praca row, a woman and a
   soldier have Dom and Rodzina only, a child a read-only Dom row, a hero no section.
 - Produkcja, under Praca for a craft operator and for a gatherer alike: one row per product the
   trade makes here, in recipe order, or per good it gathers here, in catalog order: the good's icon
@@ -311,7 +318,7 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   (measured at 350 + 230 ms of GPU-process raster on the first settler click without it). Every
   DOM surface that first appears on a click should warm the same way.
 - Another seat's person: trade, name, owner line with the diplomatic stance, the live state,
-  Zdrowie and Miejsce pracy; the needs, production, experience, family and equipment stay hidden,
+  Zdrowie and Praca; the needs, production, experience, family and equipment stay hidden,
   the head has the close medallion alone and no control is offered.
 - A dead or removed target clears the selection and the panel with it. Every control checks the seat's
   ownership before submitting a command.

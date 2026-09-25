@@ -51,9 +51,8 @@ export const GLYPH = {
   blade:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M19 3 8 14M6 12l6 6M4 20l4-4M19 3h-4M19 3v4"/></svg>',
   mug: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 9h10v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2ZM16 11h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-2M9 5v1M12 4v2M15 5v1"/></svg>',
-  /* The selection panel's controls: a pointer for a pick on the map, the counter's steps, a lock,
-     browsing, rename, an exchange. */
-  pick: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M5 3v15.5l4.2-3.6 2.9 6.1 2.6-1.2-2.9-6.1H17.5z"/></svg>',
+  /* The selection panel's controls: the counter's steps, a lock, browsing, rename, an exchange; a pick
+     on the map (assign a home, a workplace, a trade house) carries the house above. */
   minus: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 12h12"/></svg>',
   plus: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg>',
   lock: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
