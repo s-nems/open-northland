@@ -56,6 +56,7 @@ import {
   JOB_TRADER,
   JOB_WOMAN,
 } from '../../catalog/jobs.js';
+import { VEHICLE_HANDCART, VEHICLE_OXCART } from '../../game/sandbox/ids/vehicles.js';
 import { WEAPON_GOOD_SLUG_BY_JOB } from '../../game/sandbox/ids/weapons.js';
 import {
   CHOP_PHASE_START,
@@ -87,9 +88,9 @@ export interface CharacterSpec {
   readonly gfxJobs: readonly number[];
   /** The ×8 locomotion cycle; absent → the look stands its wait even while moving. */
   readonly walkSeq?: string;
-  /** The ×8 cycle played instead of {@link walkSeq} while seated in a vehicle's crew (the trader's cart
-   *  pull); absent → the crew walks the plain cycle. */
-  readonly crewWalkSeq?: string;
+  /** The figure a cart draws while this look's trade drives it from inside, by vehicle type: the ×8
+   *  driving cycle and the `[gfxanimatomic]` action whose one frame per facing stands it. */
+  readonly cartDrive?: Readonly<Record<number, { readonly seq: string; readonly standAction: number }>>;
   /** The standing-idle `[bobseq]`; absent → idle holds the walk's first frame per facing. */
   readonly waitSeq?: string;
   /**
@@ -136,6 +137,10 @@ export interface CharacterSpec {
   readonly engaged?: { readonly moving?: string; readonly idle?: string };
 }
 
+/** The trader's `[gfxanimatomic]` actions that stand the handcart and the ox cart it drives. */
+const HANDCART_STAND_ACTION = 2;
+const OXCART_STAND_ACTION = 3;
+
 /** The generic man body's action sequences, shared by every civilian trade it draws. */
 const CIVILIAN_ATOMICS = {
   [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
@@ -180,14 +185,17 @@ export const CHARACTER_SPECS = {
     // authors no separate put-down.
     atomics: CIVILIAN_ATOMICS,
   },
-  // The trader pulls its cart (`human_man_z00Trader_walk`, the handcart gait the original binds to the
-  // trader job's action 2) only while it crews one; on its own it walks like a carrier. Everything else is
-  // the generic man body.
+  // Outside a cart the trader is a civilist hauling its unit, the original's rule. Driving a cart from
+  // inside, the cart draws as the trader with it: `[gfxwalkatomic]` job 25 with the cart good drives,
+  // `[gfxanimatomic]` action 2 (handcart) or 3 (ox cart) stands.
   trader: {
     gfxJobs: [JOB_TRADER, JOB_CIVILIST],
     logicJob: JOB_CIVILIST,
     walkSeq: 'human_man_generic_walk',
-    crewWalkSeq: 'human_man_z00Trader_walk',
+    cartDrive: {
+      [VEHICLE_HANDCART]: { seq: 'human_man_z00Trader_walk', standAction: HANDCART_STAND_ACTION },
+      [VEHICLE_OXCART]: { seq: 'human_man_z01TraderOx_walk', standAction: OXCART_STAND_ACTION },
+    },
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
     attack: 'human_man_Civilian_Fight_punch',

@@ -1,5 +1,6 @@
 import {
   type CarryingBinding,
+  type CartDriveAnim,
   type DirectionalAnim,
   type FrameListAnim,
   type SettlerStateBinding,
@@ -249,7 +250,7 @@ export function characterBinding(
       : undefined;
 
   const bySubClip = subClips !== undefined ? subClipAnims(subClips, seqByName) : {};
-  const crewMoving = eightDirAnim(seqByName, spec.crewWalkSeq, walkLists);
+  const cartDrive = cartDriveAnims(spec, seqByName, walkLists, programsByAction, bodyAtlas);
 
   return {
     idle,
@@ -258,8 +259,33 @@ export function characterBinding(
     ...(Object.keys(bySubClip).length > 0 ? { bySubClip } : {}),
     ...(carrying !== undefined ? { carrying } : {}),
     ...(engaged !== undefined ? { engaged } : {}),
-    ...(crewMoving !== undefined ? { crew: { moving: crewMoving } } : {}),
+    ...(cartDrive !== undefined ? { cartDrive } : {}),
   };
+}
+
+/**
+ * The spec's driving figures that this body draws, by vehicle type: the ×8 cycle, standing on its action's
+ * one frame per facing, else on the cycle's first frame. Undefined when none draws.
+ */
+function cartDriveAnims(
+  spec: CharacterSpec,
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  walkLists: CharacterGfx['walkLists'],
+  programsByAction: CharacterGfx['programsByAction'],
+  bodyAtlas: SpriteAtlas | undefined,
+): Record<number, CartDriveAnim> | undefined {
+  const out: Record<number, CartDriveAnim> = {};
+  for (const [vehicleType, { seq, standAction }] of Object.entries(spec.cartDrive ?? {})) {
+    const moving = eightDirAnim(seqByName, seq, walkLists);
+    const row = seqByName.get(seq);
+    if (moving === undefined || row === undefined) continue;
+    const program = programsByAction?.get(standAction)?.get(seq);
+    const idle: SpriteFrameRef = drawsProgram(program, row, bodyAtlas)
+      ? { start: row.start, frameLists: frameListsByFacing(program.dirFrames) }
+      : { ...moving, frames: 1 };
+    out[Number(vehicleType)] = { idle, moving };
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**

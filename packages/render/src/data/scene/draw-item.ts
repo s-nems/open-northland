@@ -37,6 +37,12 @@ export type VehicleDrawTask =
   | 'interrupted'
   | 'boardsShip';
 
+/** The commander riding inside a vehicle, as its seat and `Settler` name him. */
+export interface VehicleDriver {
+  readonly jobType: number;
+  readonly tribe?: number;
+}
+
 /** The draw fields a fog ghost keeps from its last sighting, shared by every sprite kind. */
 export interface StaticDrawFields {
   /** The type id a per-type binding picks its frame by: a tile's landscape typeId, or a building's
@@ -120,10 +126,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a {@link carrying} settler: the hauled `Carrying.goodType`, which draws the matching load. For
    *  a carrying vehicle: the good with the most units aboard. */
   readonly carryGood?: number;
-  /** For a settler: seated in a vehicle's crew (`Vehicle.passengers` names it), which switches on the
-   *  binding's crew gait (the trader's cart pull). The sim carries no rider-side component yet, so the
-   *  scene reads the seat lists. */
-  readonly crew?: boolean;
+  /** For a vehicle: the job and tribe of the commander riding inside it, which a cart draws as one figure
+   *  with its driver. */
+  readonly driver?: VehicleDriver;
   /** For a vehicle: its standing task, which picks the attack clip while it `attacks`. */
   readonly task?: VehicleDrawTask;
   /** For a ship: lying at a shore (`Vehicle.moored`), which draws the furled-sail hull. */

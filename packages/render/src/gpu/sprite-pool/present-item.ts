@@ -2,6 +2,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { type AtomicPoseTrack, atomicPose, interpolateAtomicPose } from './atomic-pose.js';
+import { cartDriveLook } from './cart-drive.js';
 import { characterGaitRate, characterInterpolatesMotion } from './character-layers.js';
 import { drawAlphaForKind, type MotionTrack, snapDistanceForKind, trackMotion } from './motion.js';
 import { easeReveal, motionClocks, revealedItem, walkPose } from './presentation.js';
@@ -73,7 +74,9 @@ export function presentItem(
   // it inside a frame hold drags the planted foot along the ground.
   const smooth = characterInterpolatesMotion(sheet?.characters, item);
   const held = item.ghost === true || item.frozen === true;
-  const alpha = held ? 1 : drawAlphaForKind(track.kind, frameAlpha, smooth);
+  // A cart drawn as its driver plays that walker's clip, so it keeps the walker's tick anchor too.
+  const walkerClip = track.kind === 'vehicle' && cartDriveLook(sheet, item) !== undefined;
+  const alpha = held || walkerClip ? 1 : drawAlphaForKind(track.kind, frameAlpha, smooth);
   const pose = smooth ? interpolateAtomicPose(atomic, alpha) : atomic;
   // A remembered/portrait pose must not finish a pending movement or resume it when watched again.
   if (held) track.motion.tick = -1;

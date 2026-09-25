@@ -150,14 +150,15 @@ describe('vehicle draw items', () => {
     expect(item?.player).toBe(PLAYER + 10);
   });
 
-  it('flags a settler seated in a vehicle as crew, aboard or still walking to it', () => {
-    const rider = entity(2, 1, 1, { Settler: { jobType: 25, tribe: VIKING } });
-    const walker = entity(3, 2, 1, { Settler: { jobType: 25, tribe: VIKING } });
-    const items = buildSpriteScene(
-      snapshotOf([vehicle(1, { passengers: [{ entity: 2, inside: false }] }), rider, walker]),
-    );
-    expect(items.find((i) => i.ref === 2)?.crew).toBe(true);
-    expect(items.find((i) => i.ref === 3)?.crew).toBeUndefined();
+  it('names the commander riding inside as its driver, and nobody while he walks outside', () => {
+    const TRADER = 25;
+    const commander = { components: { Settler: { jobType: TRADER, tribe: VIKING } } };
+    const seated = (inside: boolean) =>
+      buildSpriteScene(
+        snapshotOf([vehicle(1, { passengers: [null, { entity: 2, inside }] }), { id: 2, ...commander }]),
+      ).find((i) => i.ref === 1);
+    expect(seated(true)?.driver).toEqual({ jobType: TRADER, tribe: VIKING });
+    expect(seated(false)?.driver).toBeUndefined();
   });
 
   it('ghosts through the fog with its type, tribe, heading and owner, like a building', () => {

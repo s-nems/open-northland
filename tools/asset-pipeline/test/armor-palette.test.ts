@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyArmorRecipe, cutRamp, extractArmorRecipes } from '../src/decoders/armor-palette.js';
+import {
+  applyArmorRecipe,
+  cutRamp,
+  extractArmorRecipes,
+  extractNamedRecipes,
+} from '../src/decoders/armor-palette.js';
 import { iniBytesToSections, rampAliasMap } from '../src/decoders/ini.js';
 
 /**
@@ -53,6 +58,16 @@ describe('extractArmorRecipes', () => {
         ],
       },
     ]);
+  });
+});
+
+describe('extractNamedRecipes', () => {
+  it('numbers the named recipes from the first block, in the asked order, and throws on a missing one', () => {
+    const sections = iniBytesToSections(bytes(RECIPES_INI));
+    expect(extractNamedRecipes(sections, ['human_misc_001'], 5)).toEqual([
+      { tier: 5, patches: [{ band: 15, source: { kind: 'ramp', name: 'hair brown' } }] },
+    ]);
+    expect(() => extractNamedRecipes(sections, ['good_OxCart'], 5)).toThrow(/good_OxCart missing/);
   });
 });
 

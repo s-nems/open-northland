@@ -77,13 +77,17 @@ export interface SettlerStateBinding {
     readonly moving?: SpriteFrameRef;
   };
   /**
-   * The gait while seated in a vehicle's crew: the trader's `human_man_z00Trader_walk` cart pull, which
-   * the original binds to the trader job and draws only with a cart in hand. A lone crewless trader
-   * walks the plain gait. Falls back to the un-seated slot.
+   * The look a cart takes on while this character's trade commands it from inside, by vehicle type: the
+   * driver and his cart drawn as one figure (the trader's `human_man_z00Trader_walk` handcart and
+   * `human_man_z01TraderOx_walk` ox cart), `idle` standing and `moving` driving.
    */
-  readonly crew?: {
-    readonly moving?: SpriteFrameRef;
-  };
+  readonly cartDrive?: Readonly<Record<number, CartDriveAnim>>;
+}
+
+/** One cart's driving figure: a single frame per facing while it stands, the walk cycle while it drives. */
+export interface CartDriveAnim {
+  readonly idle: SpriteFrameRef;
+  readonly moving: SpriteFrameRef;
 }
 
 /**

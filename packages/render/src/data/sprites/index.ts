@@ -53,6 +53,7 @@ export {
 export type {
   ByJobTable,
   CarryingBinding,
+  CartDriveAnim,
   DirectionalAnim,
   FrameListAnim,
   SettlerStateBinding,

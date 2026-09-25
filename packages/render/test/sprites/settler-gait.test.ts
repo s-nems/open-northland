@@ -243,28 +243,3 @@ describe('pickByJob - the per-job character pick', () => {
     expect(pickByJob(armed, 5, false, null)).toBe('woman');
   });
 });
-
-describe('resolveSpriteBobId - crew (cart-pull) gait override', () => {
-  const WALK: DirectionalAnim = { start: 1000, dirs: 8, stride: 12 };
-  const CART_PULL: DirectionalAnim = { start: 4000, dirs: 8, stride: 12 };
-  const ANIM: SettlerStateBinding = {
-    idle: { ...WALK, frames: 1 },
-    moving: WALK,
-    crew: { moving: CART_PULL },
-  };
-  const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
-  const crewItem = (state: SpriteState, crew: boolean): DrawItem => ({
-    ...settlerItem(state, { facing: 0 }),
-    ...(crew ? { crew: true } : {}),
-  });
-
-  it('a seated trader pulls the cart while a lone one walks like a carrier', () => {
-    expect(resolveSpriteBobId(crewItem('moving', true), bindings, 3)).toBe(4000 + 3);
-    expect(resolveSpriteBobId(crewItem('moving', false), bindings, 3)).toBe(1000 + 3);
-  });
-
-  it('a seated trader with no crew gait bound keeps the plain walk', () => {
-    const plain: SpriteBindings = { ...bindings, settler: { idle: ANIM.idle, moving: WALK } };
-    expect(resolveSpriteBobId(crewItem('moving', true), plain, 3)).toBe(1000 + 3);
-  });
-});

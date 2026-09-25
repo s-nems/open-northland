@@ -1,10 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { PLAYER_LUT_ARMOR_BLOCKS, PLAYER_LUT_CART_RECIPES } from '@open-northland/data';
 import {
-  ARMOR_PALETTE_TIERS,
+  type ArmorRecipe,
   applyArmorRecipe,
   cutRamp,
   extractArmorRecipes,
+  extractNamedRecipes,
 } from '../decoders/armor-palette.js';
 import { packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas/index.js';
 import { decodeBmd } from '../decoders/bmd/index.js';
@@ -56,12 +58,13 @@ async function readCreaturePalette(tree: SourceAssetIndex, file: string): Promis
   return pal;
 }
 
-/** The LUT stage's emitted path + how many player colours and armor tiers it composed. */
+/** The LUT stage's emitted path + how many player colours and row blocks it composed. */
 export interface PlayerColorLutResult {
   readonly png: string;
   readonly colors: number;
-  /** Row blocks in the LUT: 1 when the armor recipes were unreadable, else {@link ARMOR_PALETTE_TIERS}. */
-  readonly armorTiers: number;
+  /** Row blocks in the LUT: 1 when the recipes were unreadable, else the armor blocks and the cart blocks
+   *  (`@open-northland/data` `player-lut.ts`). */
+  readonly blocks: number;
   /** The row after the last block: the head palette, shared by every player and tier. */
   readonly headRow: number;
 }
@@ -72,16 +75,28 @@ const RANDOMPALETTE_INI = 'Data/engine2d/inis/humans/randompalette.ini';
 const PALETTES_INI = 'Data/engine2d/inis/palettes/palettes.ini';
 
 /**
- * The armor-tier recolor rows for one composed player palette: `[tier 1 .. tier 4]`, each the player
- * palette with that `human_armor_00N` recipe's patches applied. Tier 0 stays the plain player palette;
- * the original's `human_armor_000` mirror of the team band onto patches 9/11/12 is not applied, a named
- * approximation.
+ * The recolor rows for one composed player palette, in LUT block order after the plain block: armor tiers
+ * 1..4, each the player palette with that `human_armor_00N` recipe's patches applied, then the cart
+ * recipes. Tier 0 stays the plain player palette; the original's `human_armor_000` mirror of the team band
+ * onto patches 9/11/12 is not applied, a named approximation.
  */
-async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) => Uint8Array[]> {
+async function recolorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) => Uint8Array[]> {
   const paletteSections = iniBytesToSections(await readSourceFile(roots, PALETTES_INI));
   const aliases = paletteAliasMap(extractPaletteIndex(paletteSections));
   const ramps = rampAliasMap(paletteSections);
-  const recipes = extractArmorRecipes(iniBytesToSections(await readSourceFile(roots, RANDOMPALETTE_INI)));
+  const recipeSections = iniBytesToSections(await readSourceFile(roots, RANDOMPALETTE_INI));
+  const armor = extractArmorRecipes(recipeSections);
+  const tiers: ArmorRecipe[] = Array.from({ length: PLAYER_LUT_ARMOR_BLOCKS - 1 }, (_, i) => {
+    const recipe = armor.find((r) => r.tier === i + 1);
+    if (recipe === undefined) throw new Error(`armor-palette: recipe human_armor_00${i + 1} missing`);
+    return recipe;
+  });
+  try {
+    tiers.push(...extractNamedRecipes(recipeSections, PLAYER_LUT_CART_RECIPES, PLAYER_LUT_ARMOR_BLOCKS));
+  } catch (err) {
+    // The cart blocks trail the armor blocks, so the armor rows stand without them.
+    console.warn(`[pipeline] cart recolor rows skipped: ${errorMessage(err)}`);
+  }
   const sources = new Map<string, Uint8Array>(); // decoded [GfxPalette256] palettes by .pcx path
   const resolveRamp = (name: string): Uint8Array | undefined => {
     const ramp = ramps.get(name);
@@ -89,8 +104,8 @@ async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) =
     const palette = file === undefined ? undefined : sources.get(file);
     return palette === undefined || ramp === undefined ? undefined : cutRamp(palette, ramp.range);
   };
-  // Pre-read every ramp source .pcx once (the recipes reference 3 files between them).
-  for (const recipe of recipes) {
+  // Pre-read every ramp source .pcx once (the recipes reference a handful of files between them).
+  for (const recipe of tiers) {
     for (const patch of recipe.patches) {
       if (patch.source.kind !== 'ramp') continue;
       const file = ramps.get(patch.source.name)?.source;
@@ -100,19 +115,14 @@ async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) =
       if (palette !== undefined) sources.set(path, palette);
     }
   }
-  const tiers = Array.from({ length: ARMOR_PALETTE_TIERS - 1 }, (_, i) => {
-    const recipe = recipes.find((r) => r.tier === i + 1);
-    if (recipe === undefined) throw new Error(`armor-palette: recipe human_armor_00${i + 1} missing`);
-    return recipe;
-  });
   return (palette) => tiers.map((recipe) => applyArmorRecipe(palette, recipe, resolveRamp));
 }
 
 /**
- * Builds the per-player palettes and their armor recolors and stacks them into a `256 x (16 * tiers + 1)`
- * LUT PNG at `row = 16 * armorTier + player`, with the head palette as the one row after the blocks.
- * Throws on a missing base or reference palette; unreadable armor recipes degrade to the 16-row
- * player-only block.
+ * Builds the per-player palettes and their armor and cart recolors and stacks them into a
+ * `256 x (16 * blocks + 1)` LUT PNG at `row = 16 * block + player`, with the head palette as the one row
+ * after the blocks. Throws on a missing base or reference palette; unreadable recipes degrade to the
+ * 16-row player-only block.
  */
 export async function convertPlayerColorLut(
   roots: SourceRoots,
@@ -129,26 +139,27 @@ export async function convertPlayerColorLut(
         : synthesizePlayerSource(reference, color.source.hue);
     palettes.push(composePlayerPalette(base, source));
   }
-  let armorTiers = 1;
+  let blocks = 1;
   try {
-    const armorRows = await armorRowsFor(roots);
-    const armored = palettes.map((palette) => armorRows(palette)); // [player] -> [tier 1..4]
-    for (let tier = 1; tier < ARMOR_PALETTE_TIERS; tier++) {
-      for (const rows of armored) {
-        const row = rows[tier - 1];
-        if (row === undefined) throw new Error(`armor-palette: tier ${tier} row missing`);
+    const recolorRows = await recolorRowsFor(roots);
+    const recolored = palettes.map((palette) => recolorRows(palette)); // [player] -> [block 1..]
+    const extraBlocks = recolored[0]?.length ?? 0;
+    for (let block = 0; block < extraBlocks; block++) {
+      for (const rows of recolored) {
+        const row = rows[block];
+        if (row === undefined) throw new Error(`armor-palette: block ${block + 1} row missing`);
         palettes.push(row);
       }
     }
-    armorTiers = ARMOR_PALETTE_TIERS;
+    blocks = 1 + extraBlocks;
   } catch (err) {
-    console.warn(`[pipeline] armor recolor rows skipped: ${errorMessage(err)}`);
+    console.warn(`[pipeline] recolor rows skipped: ${errorMessage(err)}`);
   }
   const headRow = palettes.length;
   palettes.push(composeHeadPalette(base));
   const pngRel = `${BOBS_DIR}/player-lut.png`;
   await writeFileWithParents(join(outDir, pngRel), await encodePng(buildPaletteLutImage(palettes)));
-  return { png: pngRel, colors: PLAYER_COLORS.length, armorTiers, headRow };
+  return { png: pngRel, colors: PLAYER_COLORS.length, blocks, headRow };
 }
 
 /**

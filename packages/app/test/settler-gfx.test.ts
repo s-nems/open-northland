@@ -20,6 +20,7 @@ import {
   carryHeadAnims,
   characterBinding,
   directionalAnimFromSeq,
+  frameListsByFacing,
   HERO_JOBS,
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
@@ -245,6 +246,34 @@ describe('characterBinding', () => {
     } as const;
     expect(characterBinding(spec, seqs, [])?.byAtomic).toEqual({
       24: { start: 5106, dirs: 8, stride: 15, phaseStart: 9 },
+    });
+  });
+
+  it('binds a cart-driving figure per vehicle type: standing on its action frames, driving the ×8 cycle', () => {
+    const OX_CART = 2;
+    const HANDCART = 1;
+    const OX_STAND_ACTION = 3;
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['ox_drive', { name: 'ox_drive', start: 5322, length: 96 }],
+    ]);
+    const spec = {
+      gfxJobs: [25],
+      waitSeq: 'wait',
+      cartDrive: {
+        [OX_CART]: { seq: 'ox_drive', standAction: OX_STAND_ACTION },
+        [HANDCART]: { seq: 'absent_drive', standAction: 2 },
+      },
+    } as const;
+    const standFrames = [[55], [70], [0], [15], [24], [41], [88], [75]];
+    const programsByAction = new Map([
+      [OX_STAND_ACTION, new Map([['ox_drive', { dirFrames: standFrames }]])],
+    ]);
+    expect(characterBinding(spec, seqs, [], { programsByAction })?.cartDrive).toEqual({
+      [OX_CART]: {
+        idle: { start: 5322, frameLists: frameListsByFacing(standFrames) },
+        moving: { start: 5322, dirs: 8, stride: 12 },
+      },
     });
   });
 

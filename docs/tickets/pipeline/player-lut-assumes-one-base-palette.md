@@ -31,7 +31,7 @@ differ from it at every index the guidepost draws".
 ## Scope
 
 - Compose one LUT block per distinct base palette the human `[jobbasegraphics]` records name, keeping
-  the existing `(armor tier, player)` layout and the trailing head row inside each block, and carry the
+  the existing `(armor tier or cart recipe, player)` layout (`packages/data/src/player-lut.ts`) and the trailing head row inside each block, and carry the
   block order to the app so a character resolves its own. `buildPaletteLutImage` already takes an
   ordered row list.
 - Give the render's `paletteLutRow` the block term and let a settler character name its block.

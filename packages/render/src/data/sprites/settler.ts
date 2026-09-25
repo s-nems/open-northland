@@ -104,7 +104,6 @@ export function movingFrameRef(binding: SettlerStateBinding, item: DrawItem): Sp
   const loaded = item.carryGood === undefined ? undefined : carry?.byGood?.[item.carryGood];
   return (
     (item.engaged ? binding.engaged?.moving : undefined) ??
-    (item.crew ? binding.crew?.moving : undefined) ??
     loaded?.moving ??
     carry?.moving ??
     binding.moving ??

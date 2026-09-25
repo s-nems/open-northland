@@ -12,8 +12,6 @@ import type { RuleSection } from './ini/grammar.js';
 import { normalizePaletteName } from './ini/ir-fields.js';
 import { findProp, findProps } from './ini/props.js';
 
-/** `TArmorType` count (`logicdefines.inc`: none/wool/leather/chain/plate) - one recipe per tier. */
-export const ARMOR_PALETTE_TIERS = 5;
 /** The `[RandomPalette]` recipe naming scheme, `human_armor_%3.3d` with the `TArmorType` as index. */
 const ARMOR_RECIPE_NAME = /^human_armor_(\d{3})$/;
 /** One palette band (a `[GfxPalette16]` ramp / one `Patch` target) is 16 palette indices. */
@@ -34,10 +32,25 @@ export interface ArmorRecipe {
   readonly patches: readonly ArmorPatch[];
 }
 
+/** The `Patch` lines of one `[RandomPalette]` section in file order; a malformed line is skipped. */
+function readPatches(sec: RuleSection): ArmorPatch[] {
+  const patches: ArmorPatch[] = [];
+  for (const p of findProps(sec, 'Patch')) {
+    const band = Number.parseInt(p.values[0] ?? '', 10);
+    const raw = p.values[1];
+    if (Number.isNaN(band) || raw === undefined) continue;
+    const source = /^\d+$/.test(raw)
+      ? ({ kind: 'copy', band: Number.parseInt(raw, 10) } as const)
+      : ({ kind: 'ramp', name: normalizePaletteName(raw) } as const);
+    patches.push({ band, source });
+  }
+  return patches;
+}
+
 /**
  * Extracts the `human_armor_NNN` recipes from `randompalette.ini` sections; the file's other
- * `[RandomPalette]` recipes (civilian clothing variety, hero looks) are unrelated. A malformed `Patch`
- * line is skipped, and the first of a duplicate tier wins.
+ * `[RandomPalette]` recipes (civilian clothing variety, hero looks) are unrelated. The first of a
+ * duplicate tier wins.
  */
 export function extractArmorRecipes(sections: readonly RuleSection[]): ArmorRecipe[] {
   const byTier = new Map<number, ArmorRecipe>();
@@ -48,19 +61,25 @@ export function extractArmorRecipes(sections: readonly RuleSection[]): ArmorReci
     if (match === null) continue;
     const tier = Number.parseInt(match[1] ?? '', 10);
     if (Number.isNaN(tier) || byTier.has(tier)) continue;
-    const patches: ArmorPatch[] = [];
-    for (const p of findProps(sec, 'Patch')) {
-      const band = Number.parseInt(p.values[0] ?? '', 10);
-      const raw = p.values[1];
-      if (Number.isNaN(band) || raw === undefined) continue;
-      const source = /^\d+$/.test(raw)
-        ? ({ kind: 'copy', band: Number.parseInt(raw, 10) } as const)
-        : ({ kind: 'ramp', name: normalizePaletteName(raw) } as const);
-      patches.push({ band, source });
-    }
-    byTier.set(tier, { tier, patches });
+    byTier.set(tier, { tier, patches: readPatches(sec) });
   }
   return [...byTier.values()].sort((a, b) => a.tier - b.tier);
+}
+
+/**
+ * The `[RandomPalette]` recipes named `names`, in that order, each numbered as the LUT block
+ * `firstTier + i`; throws on a name the file lacks. The first of a duplicate name wins.
+ */
+export function extractNamedRecipes(
+  sections: readonly RuleSection[],
+  names: readonly string[],
+  firstTier: number,
+): ArmorRecipe[] {
+  return names.map((wanted, i) => {
+    const sec = sections.find((s) => s.name === 'RandomPalette' && findProp(s, 'Name')?.values[0] === wanted);
+    if (sec === undefined) throw new Error(`palette recipe ${wanted} missing`);
+    return { tier: firstTier + i, patches: readPatches(sec) };
+  });
 }
 
 /**

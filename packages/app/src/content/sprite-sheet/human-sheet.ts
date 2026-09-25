@@ -1,5 +1,8 @@
-import type { SpriteLayer, SpriteSheet } from '@open-northland/render';
+import { playerLutCartBlock } from '@open-northland/data';
+import type { CartDriveBinding, SpriteLayer, SpriteSheet } from '@open-northland/render';
+import { JOB_CARRIER, JOB_TRADER } from '../../catalog/jobs.js';
 import { INDEXED_CHARACTER_PALETTE, PLAYER_COLOR_COUNT } from '../../catalog/roster.js';
+import { VEHICLE_HANDCART, VEHICLE_OXCART } from '../../game/sandbox/ids/vehicles.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { loadAnimalCharacters } from '../animal-gfx/index.js';
 import {
@@ -251,10 +254,24 @@ export async function loadHumanSpriteSheet(
             playerRows: PLAYER_COLOR_COUNT,
             armorTierByGood: armorTiersByGood(ir),
           },
+          ...(characters !== undefined ? { cartDrive: CART_DRIVE } : {}),
         }
       : {}),
   };
 }
+
+/**
+ * Original behavior: a handcart or ox cart commanded from inside by a trader or a carrier draws as the
+ * trader's driving figure, through the human palette patched by the cart's `randompalette.ini` recipe.
+ */
+const CART_DRIVE: CartDriveBinding = {
+  commanderJobs: new Set([JOB_CARRIER, JOB_TRADER]),
+  lookJob: JOB_TRADER,
+  paletteBlockByVehicleType: {
+    [VEHICLE_HANDCART]: playerLutCartBlock('good_HandCart'),
+    [VEHICLE_OXCART]: playerLutCartBlock('good_OxCart'),
+  },
+};
 
 /** The worn-armor recolor join: armor `goodType` → its `typeId` (the `TArmorType` tier, the LUT's
  *  row-block index). Empty for synthetic content (no `armor` lane), which draws plain player rows. */

@@ -39,7 +39,7 @@ export {
   readStoreExchangeRef,
 } from './unit-readers.js';
 export {
-  readVehicleCrew,
+  readVehicleDriver,
   readVehicleDriving,
   readVehicleFields,
   readVehicleStaticFields,

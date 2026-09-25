@@ -54,12 +54,34 @@ export function paletteLutRow(
   player: number | undefined,
   armorGood: number | null | undefined,
 ): number {
+  const tier = armorGood == null ? undefined : palette.armorTierByGood.get(armorGood);
+  return paletteBlockRow(palette, player, tier);
+}
+
+/** `player`'s row in row block `block` when the texture carries that block, else the plain player row. */
+export function paletteBlockRow(
+  palette: PlayerColourLut,
+  player: number | undefined,
+  block: number | undefined,
+): number {
   const base = player ?? 0; // player 0 is a block's base palette row
-  if (armorGood == null) return base;
-  const tier = palette.armorTierByGood.get(armorGood);
-  if (tier === undefined) return base;
-  const row = tier * palette.playerRows + base;
+  if (block === undefined) return base;
+  const row = block * palette.playerRows + base;
   return row < palette.headRow ? row : base;
+}
+
+/**
+ * A cart drawn as one figure with the driver riding inside it, the original's look for a trader's cart:
+ * the `lookJob` character's {@link SettlerStateBinding.cartDrive} gait, whatever the commander's own job,
+ * read through the settler LUT's cart row block.
+ */
+export interface CartDriveBinding {
+  /** The commander jobs whose ride draws the figure; any other commander leaves the cart's own sprite. */
+  readonly commanderJobs: ReadonlySet<number>;
+  /** The job whose character draws the figure. */
+  readonly lookJob: number;
+  /** The settler LUT row block each cart vehicle type's figure reads. */
+  readonly paletteBlockByVehicleType: Readonly<Record<number, number>>;
 }
 
 /** The row one resolved layer reads: the head row for a head overlay, else the body's `bodyRow`. */
@@ -168,6 +190,8 @@ export interface SpriteSheet {
   readonly palette?: PlayerColourLut;
   /** The LUT the indexed vehicle looks are drawn through per owner; absent draws the baked looks. */
   readonly vehiclePalette?: VehicleColourLut;
+  /** The crewed-cart figure; absent draws every cart as its own sprite. */
+  readonly cartDrive?: CartDriveBinding;
   /** The indoor craft choreography the scene draws a working craftsman from. */
   readonly inHousePrograms?: InHouseProgramLookup;
   /** Persistent holy-fire effects anchored to mature homes. */

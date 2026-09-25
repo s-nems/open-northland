@@ -1,10 +1,16 @@
-import { ONE, positionOfNode, components as simComponents } from '@open-northland/sim';
+import {
+  entityById,
+  ONE,
+  positionOfNode,
+  components as simComponents,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { clamp01, lerp } from '../../math.js';
 import { rowStagger } from '../../projection/iso.js';
 import { readNumField } from '../../snapshot/index.js';
 import { gfxDirToFacing } from '../../sprites/settler.js';
 import type { MutableDrawItem, StaticDrawFields, VehicleDrawTask } from '../draw-item.js';
-import { readOwnerPlayer } from './unit-readers.js';
+import { readJobType, readOwnerPlayer, readSettlerTribe } from './unit-readers.js';
 
 const { NODE_PROGRESS_FULL } = simComponents;
 
@@ -130,15 +136,22 @@ function worldColumn(tileX: number, tileY: number): number {
   return tileX + rowStagger(tileY) / 2;
 }
 
-/** The entity ids seated in this vehicle's crew, aboard or still walking to it, or none for a
- *  non-vehicle. A seat is `{ entity, inside }`; a null slot is free. */
-export function readVehicleCrew(components: Readonly<Record<string, unknown>>): readonly number[] {
+/**
+ * The commander riding inside the vehicle (the last seat, `inside`), read off his own `Settler`; nothing
+ * while the seat is empty or its rider walks outside.
+ */
+export function readVehicleDriver(
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+  snapshot: WorldSnapshot,
+): void {
   const v = components.Vehicle as { passengers?: unknown } | undefined;
-  if (v === undefined || !Array.isArray(v.passengers)) return [];
-  const crew: number[] = [];
-  for (const seat of v.passengers) {
-    const entity = (seat as { entity?: unknown } | null)?.entity;
-    if (typeof entity === 'number') crew.push(entity);
-  }
-  return crew;
+  if (v === undefined || !Array.isArray(v.passengers)) return;
+  const seat = v.passengers[v.passengers.length - 1] as { entity?: unknown; inside?: unknown } | null;
+  if (seat === null || seat === undefined || seat.inside !== true || typeof seat.entity !== 'number') return;
+  const rider = entityById(snapshot, seat.entity);
+  const jobType = rider === undefined ? undefined : readJobType(rider.components);
+  if (rider === undefined || jobType === undefined) return;
+  const tribe = readSettlerTribe(rider.components);
+  item.driver = tribe === undefined ? { jobType } : { jobType, tribe };
 }

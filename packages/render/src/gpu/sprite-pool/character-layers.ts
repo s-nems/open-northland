@@ -78,13 +78,30 @@ export function pushCharacterLayers(
   // has no frame is a real gap and falls to the placeholder.
   const char = characterForItem(characters, item);
   if (char === undefined) return true;
+  return pushComposedCharacterLayers(out, sheet, char, char.binding, char.headBinding, item, tick, gaitClock);
+}
+
+/**
+ * Append `char`'s cast silhouettes, authored shadow, body and head for `binding`'s frame at `item`'s state
+ * and facing; the head reads `headBinding` when the head moves apart from the body, else the body's bob.
+ * False appends nothing and means the placeholder.
+ */
+export function pushComposedCharacterLayers(
+  out: LayerBuffer,
+  sheet: SpriteSheet,
+  char: SettlerCharacter,
+  binding: SettlerCharacter['binding'],
+  headBinding: SettlerCharacter['headBinding'],
+  item: DrawItem,
+  tick: number,
+  gaitClock: number,
+): boolean {
   const scale = characterScale(sheet, char);
-  const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
+  const bob = resolveSettlerBobId(binding, item, tick, gaitClock);
   const body = resolveFromLayer(char.body, bob, scale);
   const heads = char.heads;
   const headLayer = heads !== undefined && heads.length > 0 ? heads[item.ref % heads.length] : undefined;
-  const headBob =
-    char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
+  const headBob = headBinding !== undefined ? resolveSettlerBobId(headBinding, item, tick, gaitClock) : bob;
   const head = headLayer === undefined ? null : resolveFromLayer(headLayer, headBob, scale);
   if (body !== null) {
     out.push(castLayerFor(body));
@@ -107,10 +124,22 @@ function characterScale(sheet: Pick<SpriteSheet, 'kindScales'>, char: SettlerCha
 function characterForItem(characters: SettlerCharacterSet, item: DrawItem): SettlerCharacter | undefined {
   if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe))
     return characters.animals.byTribe[item.tribe];
-  const table = (item.tribe !== undefined ? characters.byTribe?.[item.tribe] : undefined) ?? characters;
-  const character = pickByJob(table, item.jobType, item.young === true, item.weaponGood);
+  return humanCharacter(characters, item.tribe, item.jobType, item.young === true, item.weaponGood, item.ref);
+}
+
+/** The human look of `tribe`'s `jobType`, its variant picked by the stable entity id `ref`. */
+export function humanCharacter(
+  characters: SettlerCharacterSet,
+  tribe: number | undefined,
+  jobType: number | undefined,
+  young: boolean,
+  weaponGood: number | null | undefined,
+  ref: number,
+): SettlerCharacter {
+  const table = (tribe !== undefined ? characters.byTribe?.[tribe] : undefined) ?? characters;
+  const character = pickByJob(table, jobType, young, weaponGood);
   const variants = character.variants;
-  return variants?.length ? (variants[item.ref % variants.length] ?? character) : character;
+  return variants?.length ? (variants[ref % variants.length] ?? character) : character;
 }
 
 /** Converts measured foot travel to the selected clip's tick clock without changing movement. */

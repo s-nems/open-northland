@@ -3,6 +3,7 @@ import { resolveVehicleDraw } from '../../data/sprites/index.js';
 import { sailWind } from '../cloth-wind.js';
 import { shipSway } from '../ship-sway.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
+import { cartDriveLook, pushCartDriveLayers } from './cart-drive.js';
 import { hasLoadedFamily, pushLayeredWithShadow } from './layered-layers.js';
 import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
 
@@ -12,7 +13,8 @@ const VEHICLE_BODY = new LayerBuffer();
 /**
  * Append a vehicle's `[shadow, body]`; false appends nothing. Every look names its family atlas, so an
  * unloaded one draws the placeholder, never a human frame from the shared body atlas. A ship at sea rolls,
- * heaves and fills its sail; a moored one and a fog ghost lie still.
+ * heaves and fills its sail; a moored one and a fog ghost lie still. A cart its trader drives from inside
+ * draws the driving figure instead (`./cart-drive.ts`).
  */
 export function pushVehicleLayers(
   out: LayerBuffer,
@@ -21,6 +23,8 @@ export function pushVehicleLayers(
   tick: number,
   gaitClock: number,
 ): boolean {
+  const driven = cartDriveLook(sheet, item);
+  if (driven !== undefined) return pushCartDriveLayers(out, sheet, driven, item, tick, gaitClock);
   const draw = resolveVehicleDraw(sheet.bindings.vehicle, item, tick, gaitClock);
   if (draw === null || !hasLoadedFamily(sheet, draw)) return false;
   VEHICLE_BODY.reset();

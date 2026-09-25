@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { PLAYER_LUT_ARMOR_BLOCKS, PLAYER_LUT_CART_RECIPES } from '@open-northland/data';
 import { afterEach, describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { PLAYER_COLORS } from '../src/decoders/player-palette.js';
@@ -71,7 +72,7 @@ describe('convertPlayerColorLut', () => {
     );
 
     expect(result.colors).toBe(PLAYER_COLORS.length);
-    expect(result.armorTiers).toBe(1); // no readable recipes - player rows only
+    expect(result.blocks).toBe(1); // no readable recipes - player rows only
     expect(result.png).toBe(`${BOBS_DIR}/player-lut.png`);
     expect(result.headRow).toBe(PLAYER_COLORS.length); // the row after the one block
 
@@ -104,15 +105,16 @@ describe('convertPlayerColorLut', () => {
     expect(rgbAt(0, 80)).not.toEqual(baseAt(80));
   });
 
-  it('appends one 16-row block per armor tier when the recipes and ramps resolve', async () => {
+  it('appends one 16-row block per armor tier and cart recipe when the recipes and ramps resolve', async () => {
     const outDir = await outTreeWithSources();
     await writeCreaturePcx(outDir, 'colors.pcx', 40); // the ramp source palette
     const inis = join(outDir, 'Data', 'engine2d', 'inis');
     await mkdir(join(inis, 'humans'), { recursive: true });
     await mkdir(join(inis, 'palettes'), { recursive: true });
-    // All four tier recipes patch band 11 from one named ramp (the real grammar, minimally).
-    const recipes = [1, 2, 3, 4]
-      .map((t) => `[RandomPalette]\nName "human_armor_00${t}"\nPatch 11 "test ramp" 10\n`)
+    // All four tier recipes and both cart recipes patch band 11 from one named ramp (the real grammar,
+    // minimally).
+    const recipes = [...[1, 2, 3, 4].map((t) => `human_armor_00${t}`), ...PLAYER_LUT_CART_RECIPES]
+      .map((name) => `[RandomPalette]\nName "${name}"\nPatch 11 "test ramp" 10\n`)
       .join('\n');
     await writeFile(join(inis, 'humans', 'randompalette.ini'), recipes);
     await writeFile(
@@ -128,10 +130,12 @@ describe('convertPlayerColorLut', () => {
       await indexSourceAssets(rootsAt(outDir)),
     );
 
-    expect(result.armorTiers).toBe(5); // none + wool/leather/chain/plate blocks
-    expect(result.headRow).toBe(PLAYER_COLORS.length * 5);
+    // none + wool/leather/chain/plate blocks, then the handcart and ox cart blocks
+    const blocks = PLAYER_LUT_ARMOR_BLOCKS + PLAYER_LUT_CART_RECIPES.length;
+    expect(result.blocks).toBe(blocks);
+    expect(result.headRow).toBe(PLAYER_COLORS.length * blocks);
     const png = await decodePng(await readFile(join(outDir, result.png)));
-    expect(png.height).toBe(PLAYER_COLORS.length * 5 + 1); // row = 16*tier + player, then the head row
+    expect(png.height).toBe(PLAYER_COLORS.length * blocks + 1); // row = 16*block + player, then the head row
   });
 
   it('throws when the base creature palette is absent from the out tree', async () => {

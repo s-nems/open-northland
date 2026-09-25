@@ -549,5 +549,15 @@ these choices for the holes:
 - The ships' `gfxturnframelist` in-place turns are not played; a facing change snaps.
 - A wreck's `ruins` nodes draw the `debris wood` `[GfxLandscape]` records for the bone pile's lifetime
   (approximation: the ruin landscape type is unidentified, see above).
-- The trader's `human_man_z00Trader_walk` gait plays only while a vehicle's `passengers` seat it; a
-  lone trader walks the carrier's gait. The seat lists are the only rider-side signal today.
+- A handcart or ox cart whose commander rides inside and is a trader (25) or carrier (24) is not drawn
+  as the cart. Its place shows the trader's driving figure, the man and his cart in one human frame:
+  `[gfxwalkatomic]` job 25 with the cart good (`human_man_z00Trader_walk` for good 59,
+  `human_man_z01TraderOx_walk` for 60) while it drives, `[gfxanimatomic]` action 2 or 3 standing, in the
+  commander's tribe and player colours through the human palette patched by the `randompalette.ini`
+  recipe `good_HandCart` or `good_OxCart` (original behavior, read from the program, not checked against
+  the running game). The patched rows are two more blocks of the player LUT after the armor tiers
+  (`packages/data/src/player-lut.ts`). A parked cart, or one whose trader walks outside to load, draws its
+  own sprite, the ox cart with its all-brown `oxcart` palette; the trader or carrier outside walks as a
+  civilist with the unit it carries. Only the viking records author the figure; every tribe borrows them
+  (approximation: the original falls back along the job chain, not traced). The ox-less cart, ships and
+  the catapult always draw their own sprite.

@@ -3,6 +3,7 @@ import type { DrawItem } from '../src/data/scene/index.js';
 import {
   layerLutRow,
   type PlayerColourLut,
+  paletteBlockRow,
   paletteLutRow,
   type SettlerCharacterSet,
   settlerPaletteLutRow,
@@ -21,6 +22,15 @@ function armorLut(blocks: number): PlayerColourLut {
     headRow,
   };
 }
+
+describe('paletteBlockRow', () => {
+  it('reads a block the texture carries and the plain player row past the blocks', () => {
+    const CART_BLOCK = 6;
+    expect(paletteBlockRow(armorLut(7), 2, CART_BLOCK)).toBe(CART_BLOCK * 16 + 2);
+    expect(paletteBlockRow(armorLut(5), 2, CART_BLOCK)).toBe(2); // a LUT built before the cart blocks
+    expect(paletteBlockRow(armorLut(7), 2, undefined)).toBe(2);
+  });
+});
 
 describe('paletteLutRow', () => {
   it('selects row tier*playerRows + player for a mapped worn armor good', () => {

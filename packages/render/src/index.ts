@@ -56,6 +56,7 @@ export {
   type ByJobTable,
   buildTimeThreshold,
   type CarryingBinding,
+  type CartDriveAnim,
   type ConstructionLayerRef,
   type CraftFxBinding,
   type CraftFxLoopRef,
@@ -182,6 +183,7 @@ export {
   resolveLayers,
 } from './gpu/sprite-pool/index.js';
 export {
+  type CartDriveBinding,
   layerLutRow,
   type PlayerColourLut,
   paletteLutRow,

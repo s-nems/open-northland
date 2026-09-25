@@ -8,7 +8,6 @@ import {
   Owner,
   Position,
   Production,
-  Settler,
   SettlerProgress,
   SiteAssignment,
   Stockpile,
@@ -405,7 +404,7 @@ describe('the yard site search', () => {
     const s = sim();
     const { shop, worker } = yardWorld(s, [SHIP_GOOD, PLANK]);
     s.world.mut(shop, Stockpile).amounts.set(WOOD, 5);
-    s.world.mut(worker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP); // planks are earned
+    s.world.mut(worker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP); // planks are earned
     s.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 4, y: 4, tribe: VIKING, owner: P0 }); // and unlocked
     let plankStarted = false;
     for (let i = 0; i < PLANK_START_BUDGET_TICKS && !plankStarted; i++) {

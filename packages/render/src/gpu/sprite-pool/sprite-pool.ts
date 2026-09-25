@@ -161,11 +161,7 @@ export class SpritePool {
       if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
         this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
       }
-      let pe = this.pool.get(item.ref);
-      if (pe === undefined) {
-        pe = this.binder.create(item.kind, item);
-        this.pool.set(item.ref, pe);
-      }
+      const pe = this.pooledFor(item);
       // An entity absent from last frame's draw list holds the motion track from whenever it was last
       // drawn: resuming from it would glide an arrow in from that stale anchor, and would run a walker's
       // gait and stall clocks over the whole gap. Reset to first-sighting and let trackMotion snap.
@@ -201,6 +197,30 @@ export class SpritePool {
     }
 
     this.reap(scene.liveRefs);
+  }
+
+  /**
+   * `item`'s pooled entity, minted on first sight and minted again when its sprite class no longer suits
+   * it. The replacement keeps the old one's motion and sighting, so the swap never snaps or restarts a
+   * gait.
+   */
+  private pooledFor(item: SpriteDrawItem): PooledEntity {
+    const pe = this.pool.get(item.ref);
+    if (pe !== undefined && this.binder.suits(pe, item)) return pe;
+    const fresh = this.binder.create(item.kind, item);
+    if (pe !== undefined) {
+      Object.assign(fresh.motion, pe.motion);
+      if (pe.lastFacing !== undefined) fresh.lastFacing = pe.lastFacing;
+      fresh.lastSeen = pe.lastSeen;
+      fresh.viewSeen = pe.viewSeen;
+      if (pe.attached) {
+        this.spriteLayer.removeChild(pe.container);
+        this.attached.delete(pe);
+      }
+      pe.container.destroy({ children: true });
+    }
+    this.pool.set(item.ref, fresh);
+    return fresh;
   }
 
   /**
@@ -337,11 +357,9 @@ export class SpritePool {
     try {
       let solo: Container | null = null;
       for (const item of items) {
-        let pe = this.pool.get(item.ref);
-        if (pe === undefined) {
-          pe = this.binder.create(item.kind, item);
-          this.pool.set(item.ref, pe);
-        }
+        // An entity the main frame drew keeps that presentation, a fog ghost of a driven cart included.
+        const drawn = this.pool.get(item.ref);
+        const pe = drawn?.attached === true ? drawn : this.pooledFor(item);
         if (!pe.attached) {
           // Another view may already have drawn it this frame.
           const continuous = pe.lastSeen === this.frameId - 1 || pe.viewSeen >= this.frameId - 1;
