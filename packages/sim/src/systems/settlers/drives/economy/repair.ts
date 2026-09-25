@@ -13,8 +13,9 @@ import { claimWorkCell } from '../spacing.js';
 
 /**
  * How long a building must go unhit before an automatic crew comes to mend it, so builders are not sent
- * into an attack that is still landing - an archer out of sight included. Deliberate divergence: the
- * original recruits builders to a damaged house whatever is going on around it. Authored.
+ * into an attack that is still landing - an archer out of sight included. Authored: a damaged house in the
+ * original recruits builders whatever is going on around it, though its computer players hold their own
+ * repair orders while an enemy soldier is near.
  */
 export const REPAIR_CALM_TICKS = 10 * TICKS_PER_SECOND;
 
@@ -36,7 +37,8 @@ export class RepairCrews {
    *  and no fight is on around it. A player's order skips this; the player chose the risk. */
   isSafe(site: Entity): boolean {
     const mark = this.world.tryGet(site, Damaged);
-    if (mark === undefined || this.ctx.tick - mark.lastHitTick < REPAIR_CALM_TICKS) return false;
+    if (mark === undefined) return false;
+    if (mark.lastHitTick !== null && this.ctx.tick - mark.lastHitTick < REPAIR_CALM_TICKS) return false;
     const p = this.world.get(site, Position);
     return !this.front.fightNear(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
   }

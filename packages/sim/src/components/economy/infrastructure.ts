@@ -99,9 +99,9 @@ export const Upgrading = defineComponent<{
 /**
  * A {@link Building} a blow or a script has taken hitpoints off, carried until its Health is whole again.
  * `lastHitTick` is the tick the latest damage landed, so the builder drive can wait out an attack before
- * sending a repair crew.
+ * sending a repair crew; null when the pool came up short without a blow, as after a script level change.
  */
-export const Damaged = defineComponent<{ lastHitTick: number }>('Damaged', 'economy');
+export const Damaged = defineComponent<{ lastHitTick: number | null }>('Damaged', 'economy');
 
 /**
  * A placed vehicle hull - a ship put on the map as a movable stockpile rather than a static building. It

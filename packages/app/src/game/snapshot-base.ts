@@ -1,4 +1,4 @@
-import { components, entityById, type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
+import { components, entityById, type Fixed, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 
 // Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
 // `undefined` for a missing component or field, because a snapshot entity carries only the components it
@@ -217,6 +217,35 @@ export function buildSiteOf(e: SnapshotEntity): number | undefined {
 export function pinnedSiteOf(e: SnapshotEntity): number | undefined {
   const a = e.components.SiteAssignment as { site?: unknown; pinned?: unknown } | undefined;
   return a?.pinned === true ? num(a.site) : undefined;
+}
+
+const BUILDER_CREWS = new WeakMap<WorldSnapshot, ReadonlyMap<number, number>>();
+
+/** Builders assigned to `siteId`, pinned or not, counted once per snapshot. */
+export function builderCrewSize(snapshot: WorldSnapshot, siteId: number): number {
+  let crews = BUILDER_CREWS.get(snapshot);
+  if (crews === undefined) {
+    const counted = new Map<number, number>();
+    for (const e of snapshot.entities) {
+      const site = buildSiteOf(e);
+      if (site !== undefined) counted.set(site, (counted.get(site) ?? 0) + 1);
+    }
+    crews = counted;
+    BUILDER_CREWS.set(snapshot, crews);
+  }
+  return crews.get(siteId) ?? 0;
+}
+
+/** Whether the sim takes a builder order on `building` from `builder`: a foundation or upgrade site always,
+ *  a standing damaged building while its repair crew has room or already counts the builder. */
+export function builderCrewHasRoom(
+  snapshot: WorldSnapshot,
+  building: SnapshotEntity,
+  builder: SnapshotEntity,
+): boolean {
+  if (building.components.UnderConstruction !== undefined || buildSiteOf(builder) === building.id)
+    return true;
+  return builderCrewSize(snapshot, building.id) < systems.REPAIR_CREW_LIMIT;
 }
 
 /** Whether the settler still leaves what it is doing to answer a need, the original's regeneration flag. */

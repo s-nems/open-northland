@@ -55,6 +55,11 @@ function repairSite(sim: Simulation, builder: Entity): Entity | undefined {
   return sim.world.tryGet(builder, SiteAssignment)?.site;
 }
 
+/** Step until `builder` leaves every site, bounded by an idle builder's re-plan wait. */
+function stepUntilReleased(sim: Simulation, builder: Entity): void {
+  for (let i = 0; i < 400 && sim.world.has(builder, SiteAssignment); i++) sim.step();
+}
+
 /** Step until `builder` joins the crew at `site`, bounded by an idle builder's re-plan wait. */
 function stepUntilCrew(sim: Simulation, builder: Entity, site: Entity): Entity | undefined {
   for (let i = 0; i < 200 && repairSite(sim, builder) !== site; i++) sim.step();
@@ -77,6 +82,8 @@ describe('building repair', () => {
     expect(sim.world.get(house, Health).hitpoints).toBe(DAMAGED_MAX_HP);
     expect(sim.world.has(house, Damaged)).toBe(false);
     expect(sim.world.get(house, Stockpile).amounts.size).toBe(0);
+    stepUntilReleased(sim, builder);
+    expect(sim.world.has(builder, SiteAssignment)).toBe(false);
   });
 
   it('a novice bare-handed swing restores one step of 100 hitpoints', () => {
@@ -156,6 +163,31 @@ describe('building repair', () => {
     expect(builders.filter((b) => repairSite(sim, b) === house)).toHaveLength(REPAIR_CREW_LIMIT);
   });
 
+  it("caps a player's repair orders at the same five builders", () => {
+    const sim = new Simulation({ seed: 5, content: constructionContent(), map: grassMap(14, 5) });
+    const house = damagedHouseAt(sim, 7, 2, 100, sim.tick);
+    const builders = [1, 2, 3, 4, 10, 11].map((x) => builderAt(sim, x, 4));
+    for (const builder of builders) {
+      sim.world.add(builder, Owner, { player: 0 });
+      sim.enqueueSetup({ kind: 'assignBuilder', entity: builder, site: house });
+    }
+    sim.step();
+
+    const pinned = builders.filter((b) => sim.world.tryGet(b, SiteAssignment)?.pinned === true);
+    expect(pinned).toEqual(builders.slice(0, REPAIR_CREW_LIMIT));
+  });
+
+  it('two runs of a contested crew pick the same five builders', () => {
+    const run = (): string => {
+      const sim = new Simulation({ seed: 5, content: constructionContent(), map: grassMap(14, 5) });
+      damagedHouseAt(sim, 7, 2, 100);
+      for (const x of [1, 2, 3, 4, 10, 11, 12]) builderAt(sim, x, 4);
+      sim.run(300);
+      return sim.hashState();
+    };
+    expect(run()).toBe(run());
+  });
+
   it('ranks a safe repair ahead of a nearer construction site with its material on hand', () => {
     const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(12, 3) });
     const site = siteAt(sim, HOUSE, 2, 1);
@@ -185,7 +217,7 @@ describe('building repair', () => {
     expect(sim.world.tryGet(builder, CurrentAtomic)?.effect.kind).not.toBe('construct');
   });
 
-  it("a player's order sends a builder into a building hit this tick", () => {
+  it("a player's order sends a builder into a building still being hit", () => {
     const sim = new Simulation({ seed: 7, content: constructionContent(), map: grassMap(10, 3) });
     const house = damagedHouseAt(sim, 6, 1, 300, sim.tick);
     const builder = builderAt(sim, 1, 1);
@@ -194,7 +226,11 @@ describe('building repair', () => {
     sim.step();
     expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: house, pinned: true });
 
-    for (let i = 0; i < 400 && sim.world.get(house, Health).hitpoints === 300; i++) sim.step();
+    // A blow every tick keeps the calm gate shut for the whole run, so only the pin can explain a swing.
+    for (let i = 0; i < 400 && sim.world.get(house, Health).hitpoints === 300; i++) {
+      sim.world.mut(house, Damaged).lastHitTick = sim.tick;
+      sim.step();
+    }
     expect(sim.world.get(house, Health).hitpoints).toBeGreaterThan(300);
   });
 
@@ -209,7 +245,7 @@ describe('building repair', () => {
     expect(needsRepair(sim.world, foundation)).toBe(true);
   });
 
-  it('a landed blow marks the building, and a filled pool clears the mark', () => {
+  it('a landed blow marks the building, a later one re-stamps it, and a filled pool clears it', () => {
     const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(10, 3) });
     const site = siteAt(sim, HOUSE, 6, 1);
     sim.world.add(site, Health, { hitpoints: DAMAGED_MAX_HP, max: DAMAGED_MAX_HP });
@@ -217,6 +253,9 @@ describe('building repair', () => {
 
     resolveCombatHit(sim.world, ctxOf(sim), attacker, site, { damage: 50 }, [], 'melee');
     expect(sim.world.get(site, Damaged)).toEqual({ lastHitTick: sim.tick });
+    sim.run(3);
+    resolveCombatHit(sim.world, ctxOf(sim), attacker, site, { damage: 50 }, [], 'melee');
+    expect(sim.world.get(site, Damaged)).toEqual({ lastHitTick: sim.tick }); // the calm restarts
 
     forceFinishConstruction(sim.world, ctxOf(sim), site);
     expect(sim.world.has(site, Damaged)).toBe(false);

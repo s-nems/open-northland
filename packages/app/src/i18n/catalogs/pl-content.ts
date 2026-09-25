@@ -185,7 +185,7 @@ export const plContent = {
     repair: {
       title: 'Naprawa',
       summary:
-        'Budowniczowie najpierw naprawiają spokojny dom, a napadnięty dopiero, gdy skończy się przy nim walka.',
+        'Budowniczowie najpierw naprawiają spokojny dom, a bliższy, przy którym trwa walka, zostawiają na później.',
     },
     'tower-defence': {
       title: 'Obrona wieży',

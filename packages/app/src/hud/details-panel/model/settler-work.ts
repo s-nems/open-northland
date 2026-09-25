@@ -92,13 +92,15 @@ export function settlerWork(
     (pinnedSite?.components.Building as { buildingType?: unknown } | undefined)?.buildingType,
   );
   if (pinnedSite !== undefined && pinnedType !== undefined) {
+    // A damaged upgrade site is mended before its upgrade goes on; a rising foundation never is.
+    const site = pinnedSite.components;
+    const repairing =
+      site.Damaged !== undefined && (site.UnderConstruction === undefined || site.Upgrading !== undefined);
     return {
       place: buildingTitle(ctx, pinnedType),
       product:
         carried ??
-        (pinnedSite.components.UnderConstruction !== undefined
-          ? messages().hud.buildSite.assignedSite
-          : messages().hud.buildSite.assignedRepair),
+        (repairing ? messages().hud.buildSite.assignedRepair : messages().hud.buildSite.assignedSite),
       gatherChoices: [],
       selectedGood: null,
       craftChoices: [],

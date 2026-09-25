@@ -30,7 +30,8 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * workplace bindings are strict: their builders stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
- * behavior; repair ranking ahead of new construction and the safety gate are authored.
+ * behavior. Authored: the safety gate, and repair outranking all automatic construction work, a crew the
+ * builder is already on included, where the original recruits only builders with no site.
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -49,6 +50,7 @@ export function planBuilder(
   const assigned = world.tryGet(e, SiteAssignment);
   const pinned =
     assigned?.pinned === true &&
+    onOwnSide(plan, assigned.site) &&
     (world.has(assigned.site, UnderConstruction) || needsRepair(world, assigned.site))
       ? assigned.site
       : null;
@@ -56,9 +58,12 @@ export function planBuilder(
   const locked = pinned ?? bound;
   if (locked !== null) {
     stampAssignment(plan, locked, pinned !== null);
-    if (needsRepair(world, locked) && startRepair(plan, spacing, locked)) return true;
-    const worked =
-      world.has(locked, UnderConstruction) && workAtSite(plan, spacing, claims, materials, locked);
+    // A player's pin chose the risk; a workplace binding waits out the attack like an automatic crew.
+    const repairing = needsRepair(world, locked);
+    if (repairing && (pinned !== null || repairs.isSafe(locked)) && startRepair(plan, spacing, locked)) {
+      return true;
+    }
+    const worked = !repairing && workAtSite(plan, spacing, claims, materials, locked);
     if (!worked) waitAtSite(plan, spacing, locked);
     return true;
   }
@@ -127,8 +132,9 @@ function repairNearest(
   const qualifies = (site: Entity): boolean =>
     needsRepair(world, site) &&
     repairs.isSafe(site) &&
-    repairs.hasRoom(site, e) &&
-    builderCanReach(plan, spacing, site);
+    builderCanReach(plan, spacing, site) &&
+    // Last: the first crew question of a pass scans every assignment in the world.
+    repairs.hasRoom(site, e);
   const assigned = world.tryGet(e, SiteAssignment);
   const crewSite =
     assigned?.pinned === false && avoidSite?.(assigned.site) !== true && qualifies(assigned.site)
@@ -208,17 +214,20 @@ function stampAssignment(plan: PlannerContext, site: Entity, pinned: boolean): v
   }
 }
 
+/** Whether `site` is still a building of the builder's own tribe and side; a script can hand it away. */
+function onOwnSide(plan: PlannerContext, site: Entity): boolean {
+  const building = plan.world.tryGet(site, Building);
+  return (
+    building !== undefined &&
+    building.tribe === plan.tribe &&
+    ownersCompatible(plan.owner, ownerOf(plan.world, site))
+  );
+}
+
 /** Ownership, confinement and an actual routeable perimeter cell for an automatic assignment. */
 function builderCanReach(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): boolean {
-  const { world, terrain, here } = plan;
-  const building = world.tryGet(site, Building);
-  if (
-    building === undefined ||
-    building.tribe !== plan.tribe ||
-    !ownersCompatible(plan.owner, ownerOf(world, site))
-  ) {
-    return false;
-  }
+  const { terrain, here } = plan;
+  if (!onOwnSide(plan, site)) return false;
   const component = terrain.componentOf(here);
   return spacing
     .workCells(site)

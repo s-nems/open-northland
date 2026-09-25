@@ -13,7 +13,7 @@ headquarters with the seat's only site 200 nodes away, four check cadences, no `
 
 ## Scope
 
-- On the cut-off check cadence only, let an idle builder repeat `nearestConstructionSite` with no
+- On the cut-off check cadence only, let an idle builder repeat `nearestBuilderSite` with no
   gate; when the ungated pick finds a site the gated one did not, mark it lost (`markCutOff`) and
   lift the mark the same way `reconcileCutOff` does once the gated pick finds it. The same shape fits the
   gatherer and haul rungs, whose pickers also take the gate, if their cost on the cadence tick stays

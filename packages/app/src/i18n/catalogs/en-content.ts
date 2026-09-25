@@ -184,7 +184,8 @@ export const enContent = {
     },
     repair: {
       title: 'Repair',
-      summary: 'Builders mend a quiet damaged home first and leave the raided one until its fight is over.',
+      summary:
+        'Builders mend a quiet damaged home first and pass over a nearer one while a fight is on beside it.',
     },
     'tower-defence': {
       title: 'Tower defence',

@@ -253,7 +253,7 @@ describe('the house damage results', () => {
     const before = sim.world.get(theHouse(sim), Health).hitpoints;
     runLoadPass(sim);
     expect(sim.world.get(theHouse(sim), Health).hitpoints).toBe(before - damage.amount);
-    expect(sim.world.has(theHouse(sim), Damaged)).toBe(true); // builders now come to mend it
+    expect(sim.world.get(theHouse(sim), Damaged).lastHitTick).not.toBeNull(); // a blow, not a short pool
   });
 
   it('spares a house a script made indestructible', () => {

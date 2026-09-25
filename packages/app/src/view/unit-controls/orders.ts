@@ -19,7 +19,9 @@ import {
   trainsRatherThanEmploys,
 } from '../../game/sandbox/index.js';
 import {
+  builderCrewSize,
   buildingTypeOf,
+  buildSiteOf,
   canOpenChest,
   chestKindOf,
   isBuilding,
@@ -182,15 +184,6 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const def = type !== undefined ? buildingsByType.get(type) : undefined;
     const underConstruction = entity?.components.UnderConstruction !== undefined;
     const damaged = entity?.components.Damaged !== undefined;
-    if (def !== undefined && systems.isSchoolType(def) && !underConstruction) {
-      const opened = openSchool(
-        building,
-        commanded.map((t) => t.ref),
-      );
-      // The press's default would pull focus off the modal it just opened.
-      if (opened) event.preventDefault();
-      return opened;
-    }
     const slots = def?.workers;
     const employsTrade = (jobType: number | undefined): boolean =>
       jobType !== undefined &&
@@ -200,25 +193,51 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       deps.enqueue(command);
       ordered = true;
     };
+    // A foundation or damaged building takes a builder as its crew before anything else, as in the
+    // original, while a standing building's repair crew has room. A site's own worker takes a workplace
+    // post and carries materials while it is built, then keeps the seat when it stands, so only a builder
+    // without a matching workplace slot joins the crew.
+    let crewRoom =
+      entity === undefined || underConstruction
+        ? Number.POSITIVE_INFINITY
+        : systems.REPAIR_CREW_LIMIT - builderCrewSize(snapshot, building);
+    const crew = new Set<number>();
+    if (entity !== undefined && (underConstruction || damaged)) {
+      for (const target of commanded) {
+        const self = entityById(snapshot, target.ref);
+        const currentJob = self !== undefined ? settlerJobType(self) : undefined;
+        if (
+          currentJob === undefined ||
+          !systems.jobCanBuild(deps.content, currentJob) ||
+          employsTrade(currentJob)
+        ) {
+          continue;
+        }
+        const member = self !== undefined && buildSiteOf(self) === building;
+        if (!member && crewRoom <= 0) continue;
+        if (!member) crewRoom--;
+        crew.add(target.ref);
+        order({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
+      }
+    }
+    const rest = commanded.filter((target) => !crew.has(target.ref));
+    if (def !== undefined && systems.isSchoolType(def) && !underConstruction) {
+      if (rest.length === 0) return ordered;
+      const opened = openSchool(
+        building,
+        rest.map((t) => t.ref),
+      );
+      // The press's default would pull focus off the modal it just opened.
+      if (opened) event.preventDefault();
+      return opened || ordered;
+    }
     // Homes and workplaces have limited room, so each goes out as one group order and the sim seats
     // the homeless and the unemployed first.
     const movers: GroupMember[] = [];
     const workers: GroupWorker[] = [];
-    for (const target of commanded) {
+    for (const target of rest) {
       const self = entityById(snapshot, target.ref);
       const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-      // A site's own worker takes a workplace post and carries materials while it is built, then keeps
-      // the seat when it stands. Only a builder without a matching workplace slot joins the crew.
-      const joinsCrew =
-        currentJob !== undefined &&
-        systems.jobCanBuild(deps.content, currentJob) &&
-        !employsTrade(currentJob);
-      // A damaged building other than a school takes a builder as a repair crew before it takes it as a
-      // resident or worker.
-      if ((underConstruction || damaged) && joinsCrew) {
-        order({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
-        continue;
-      }
       // A home may be reserved before it stands; its household drives wait for completed construction.
       if (def?.kind === 'home') {
         movers.push({ entity: target.ref as Entity });

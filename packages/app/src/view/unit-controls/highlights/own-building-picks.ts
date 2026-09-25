@@ -2,6 +2,7 @@ import type { BuildingType } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
+  builderCrewHasRoom,
   buildingTribeOf,
   buildingTypeOf,
   isBuilding,
@@ -40,12 +41,12 @@ interface PickRule {
   /** Which buildings are candidates at all; the rest are skipped, never tinted. */
   readonly candidate: (building: SnapshotEntity, byType: ReadonlyMap<number, BuildingInfo>) => boolean;
   /** Whether a candidate of the settler's own tribe takes this settler. */
-  readonly accepts: (building: SnapshotEntity, settler: SnapshotEntity) => boolean;
+  readonly accepts: (building: SnapshotEntity, settler: SnapshotEntity, snapshot: WorldSnapshot) => boolean;
 }
 
 function ownBuildingPick(rule: PickRule): OwnBuildingPick {
-  const fits = (building: SnapshotEntity, settler: SnapshotEntity): boolean =>
-    buildingTribeOf(building) === settlerTribeOf(settler) && rule.accepts(building, settler);
+  const fits = (building: SnapshotEntity, settler: SnapshotEntity, snapshot: WorldSnapshot): boolean =>
+    buildingTribeOf(building) === settlerTribeOf(settler) && rule.accepts(building, settler, snapshot);
   return {
     highlight(snapshot, settlerIds, byType) {
       const settlers = settlersIn(snapshot, settlerIds);
@@ -54,7 +55,8 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
       for (const e of snapshot.entities) {
         if (!rule.candidate(e, byType)) continue;
         const owned = settlers.filter((settler) => ownerPlayerOf(e) === ownerPlayerOf(settler));
-        if (owned.length > 0) items.push({ id: e.id, ok: owned.some((settler) => fits(e, settler)) });
+        if (owned.length > 0)
+          items.push({ id: e.id, ok: owned.some((settler) => fits(e, settler, snapshot)) });
       }
       return items;
     },
@@ -64,17 +66,17 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
       if (settler === undefined || !isSettler(settler) || building === undefined) return false;
       if (!rule.candidate(building, byType) || ownerPlayerOf(building) !== ownerPlayerOf(settler))
         return false;
-      return fits(building, settler);
+      return fits(building, settler, snapshot);
     },
   };
 }
 
-/** The foundations and damaged buildings a builder may be pinned to. */
+/** The foundations and damaged buildings a builder may be pinned to; a full repair crew refuses more. */
 export const sitePick: OwnBuildingPick = ownBuildingPick({
   candidate: (building) =>
     isBuilding(building) &&
     (building.components.UnderConstruction !== undefined || building.components.Damaged !== undefined),
-  accepts: () => true,
+  accepts: (building, settler, snapshot) => builderCrewHasRoom(snapshot, building, settler),
 });
 
 const finishedOfType =

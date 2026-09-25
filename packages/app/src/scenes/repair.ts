@@ -13,46 +13,49 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The repair scene: builders mend damaged homes without walking into a fight. The builders start nearest
- * the raided home in the east, where a red raid meets the blue defence, so they mend the quiet home in
- * the west first. Once the raid is beaten and the home has gone unhit for a while, they mend it too.
- * Nobody orders them; every builder must come through alive.
+ * the embattled home in the east, where a red raid meets the blue defence, so they mend the quiet home in
+ * the west first; without the safety gate they would take the nearer one. Once the quiet home is whole
+ * they cross to the embattled one, long after the raid is beaten. Nobody orders them.
+ *
+ * The headless twin stops between the two repairs, so its end state shows the order. The calm period
+ * after a blow is proven in the sim's own suite: the raid here fights the defence, not the home.
  */
 
 const MAP_W = 36;
 const MAP_H = 18;
 const QUIET_HOME = { x: 7, y: 8 } as const;
-const RAIDED_HOME = { x: 25, y: 8 } as const;
+const EMBATTLED_HOME = { x: 25, y: 8 } as const;
 const BUILDERS: readonly (readonly [number, number])[] = [
   [19, 13],
   [20, 13],
   [21, 13],
 ];
 const RAIDERS: readonly (readonly [number, number])[] = [
-  [30, 6],
-  [30, 7],
-  [30, 8],
-  [30, 9],
-  [30, 10],
-  [31, 7],
-  [31, 9],
+  [28, 7],
+  [28, 9],
+  [29, 8],
+  [27, 10],
 ];
 const DEFENDERS: readonly (readonly [number, number])[] = [
-  [27, 11],
-  [28, 11],
-  [29, 11],
-  [27, 12],
-  [28, 12],
-  [29, 12],
-  [27, 13],
-  [28, 13],
-  [29, 13],
+  [29, 15],
+  [30, 15],
+  [31, 15],
+  [32, 15],
+  [29, 16],
+  [30, 16],
+  [31, 16],
+  [32, 16],
+  [29, 17],
+  [30, 17],
+  [31, 17],
+  [32, 17],
 ];
-/** The share of its pool each home starts with: a raid's worth of damage. */
-const STARTING_HP_PERCENT = 50;
+/** The share of its pool each home starts with. */
+const STARTING_HP_PERCENT = 90;
 const PERCENT = 100;
-/** The fight lasts about 260 ticks and the second home is whole by about tick 3700 in the headless run,
- *  so this leaves slack. */
-const RUN_TICKS = 5000;
+/** The fight ends by tick 170. The quiet home is whole by tick 620 and the embattled one by 1240; without
+ *  the gate the order flips (520 and 1140), so this stop falls between the two repairs either way. */
+const RUN_TICKS = 900;
 
 const { Damaged, Health, Owner, Person, Settler } = components;
 
@@ -60,13 +63,13 @@ function damagedHome(sim: Simulation, x: number, y: number): Entity {
   const home = placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, x, y, HUMAN_PLAYER);
   const health = sim.world.mut(home, Health);
   health.hitpoints = Math.trunc((health.max * STARTING_HP_PERCENT) / PERCENT);
-  sim.world.add(home, Damaged, { lastHitTick: 0 });
+  sim.world.add(home, Damaged, { lastHitTick: null });
   return home;
 }
 
 function build(sim: Simulation): void {
   damagedHome(sim, QUIET_HOME.x, QUIET_HOME.y);
-  damagedHome(sim, RAIDED_HOME.x, RAIDED_HOME.y);
+  damagedHome(sim, EMBATTLED_HOME.x, EMBATTLED_HOME.y);
   for (const [x, y] of BUILDERS) spawnSandboxSettler(sim, JOB_BUILDER, x, y, HUMAN_PLAYER);
   for (const [x, y] of DEFENDERS) {
     spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, x, y, HUMAN_PLAYER, { weaponTypeId: WEAPON_SWORD });
@@ -116,8 +119,8 @@ export const repairScene: SceneDefinition = {
       predicate: (sim) => livingOf(sim, ENEMY_PLAYER, JOB_SOLDIER_SWORD) === 0,
     },
     {
-      label: 'the raided home is mended once the raid is over',
-      predicate: (sim) => mended(sim, homesWestToEast(sim)[1]),
+      label: 'the embattled home, though nearer, waits for the quiet one',
+      predicate: (sim) => !mended(sim, homesWestToEast(sim)[1]),
     },
     {
       label: 'every builder came through alive',

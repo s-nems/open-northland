@@ -36,6 +36,8 @@ export { createMapCrop } from './economy/fields.js';
 export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './economy/fish.js';
 export { createGroundGoods, type GroundGoodsSpec } from './economy/ground-goods.js';
 export { OUTPUT_TENTHS_PER_UNIT } from './economy/production/bonus-output.js';
+// The repair crew cap, so the app's right-click and site pick fall through where assignBuilder refuses.
+export { REPAIR_CREW_LIMIT } from './economy/repair.js';
 export { isOnMission } from './family/eligibility.js';
 export {
   createResourceNode,

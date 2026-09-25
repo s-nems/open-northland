@@ -23,7 +23,7 @@ import {
   openWorkerJobFromList,
   releaseEmployment,
 } from '../../economy/jobs/index.js';
-import { needsRepair } from '../../economy/repair.js';
+import { builderCrewSize, needsRepair, REPAIR_CREW_LIMIT } from '../../economy/repair.js';
 import { interactionNode } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
@@ -167,6 +167,7 @@ export function unassignWorker(
  * Assign one owned builder to a specific construction `site` or damaged building, the original's "put a
  * builder on a foundation" and its repair twin - see the command doc. {@link jobCanBuild} admits only a
  * settler already holding a builder job, which is also why this order needs no women-take-no-trade gate.
+ * A standing building's repair crew takes no more than {@link REPAIR_CREW_LIMIT}, as in the original.
  *
  * Deliberately no signpost-confinement gate, unlike {@link assignWorker}: a pinned site is how the player
  * extends the network's frontier, and the builder drive treats it as a bound sink so the crew can raise it
@@ -187,6 +188,13 @@ export function assignBuilder(
   if (settler.tribe !== world.get(site, Building).tribe) return; // not this tribe's foundation
   if (!sameSide(world, e, site)) return; // another player's foundation - not this side's
   if (settler.jobType === null || !jobCanBuild(ctx.content, settler.jobType)) return;
+  if (
+    !world.has(site, UnderConstruction) &&
+    world.tryGet(e, SiteAssignment)?.site !== site &&
+    builderCrewSize(world, site) >= REPAIR_CREW_LIMIT
+  ) {
+    return; // the repair crew is full
+  }
 
   world.add(e, SiteAssignment, { site, pinned: true });
   // A builder pinned mid-haul keeps its load, unlike a profession change: the trade is unchanged, so it

@@ -7,17 +7,29 @@ import { JOB_BUILDER, JOB_JOINER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { BUILDING_BARRACKS, BUILDING_HOME_00, sandboxContent } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
+import { sitePick } from '../src/view/unit-controls/highlights/own-building-picks.js';
 import { createUnitOrderController } from '../src/view/unit-controls/orders.js';
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
 
 /**
  * The right-click ladder over an own building. A construction site is hired into by the rules of the
- * building it will become, with one rung on top: a builder joins its crew
- * instead. A family may reserve a home before it stands; drilling still requires a completed building.
+ * building it will become, with one rung on top: a builder joins its crew instead, as it joins a damaged
+ * building's repair crew while that has room. A family may reserve a home before it stands; drilling
+ * still requires a completed building.
  */
 
-const { addPerson, Building, Damaged, Female, Health, Owner, Position, Stockpile, UnderConstruction } =
-  components;
+const {
+  addPerson,
+  Building,
+  Damaged,
+  Female,
+  Health,
+  Owner,
+  Position,
+  SiteAssignment,
+  Stockpile,
+  UnderConstruction,
+} = components;
 
 /** A bakery - the workplace whose craft slot the click should hire into. */
 const BAKERY = 'work_bakery_00';
@@ -30,6 +42,14 @@ function buildingAt(sim: Simulation, buildingType: number, built: Fixed): Entity
   sim.world.add(e, Building, { buildingType, tribe: PRIMARY_TRIBE, built, level: 0 });
   sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
+  return e;
+}
+
+/** A standing building of `buildingType` a blow has taken hitpoints off. */
+function damagedAt(sim: Simulation, buildingType: number): Entity {
+  const e = buildingAt(sim, buildingType, ONE);
+  sim.world.add(e, Health, { hitpoints: 10, max: 100 });
+  sim.world.add(e, Damaged, { lastHitTick: 0 });
   return e;
 }
 
@@ -180,13 +200,36 @@ describe('right-clicking a construction site', () => {
 
   it('sends a builder to mend a damaged standing building rather than employing him there', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
-    const damaged = buildingAt(sim, bakery(sim).typeId, ONE);
-    sim.world.add(damaged, Health, { hitpoints: 10, max: 100 });
-    sim.world.add(damaged, Damaged, { lastHitTick: 0 });
+    const damaged = damagedAt(sim, bakery(sim).typeId);
     const builder = settlerAt(sim, JOB_BUILDER);
 
     expect(rightClick(sim, [builder], damaged)).toEqual([
       { kind: 'assignBuilder', entity: builder, site: damaged },
+    ]);
+  });
+
+  it('sends the builder of a mixed selection to mend a damaged home and houses the rest', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = damagedAt(sim, BUILDING_HOME_00);
+    const builder = settlerAt(sim, JOB_BUILDER);
+    const idle = settlerAt(sim, null);
+
+    expect(rightClick(sim, [builder, idle], home)).toEqual([
+      { kind: 'assignBuilder', entity: builder, site: home },
+      { kind: 'assignHouseGroup', members: [{ entity: idle }], house: home },
+    ]);
+  });
+
+  it('houses a builder in a damaged home whose repair crew is already full', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = damagedAt(sim, BUILDING_HOME_00);
+    for (let i = 0; i < systems.REPAIR_CREW_LIMIT; i++) {
+      sim.world.add(settlerAt(sim, JOB_BUILDER), SiteAssignment, { site: home, pinned: false });
+    }
+    const [spare, sixth] = [settlerAt(sim, JOB_BUILDER), settlerAt(sim, JOB_BUILDER)];
+
+    expect(rightClick(sim, [spare, sixth], home)).toEqual([
+      { kind: 'assignHouseGroup', members: [{ entity: spare }, { entity: sixth }], house: home },
     ]);
   });
 
@@ -292,5 +335,20 @@ describe('a right-click that orders nobody', () => {
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
 
     expect(pressRightClick(sim, [settlerAt(sim, null)], home).ordered).toBe(true);
+  });
+});
+
+describe("the action ring's site pick", () => {
+  it('offers a damaged building to a builder until its repair crew is full', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const byType = lastByTypeId(sim.content.buildings);
+    const home = damagedAt(sim, BUILDING_HOME_00);
+    const builder = settlerAt(sim, JOB_BUILDER);
+    expect(sitePick.assignableAt(sim.snapshot(), home, builder, byType)).toBe(true);
+
+    for (let i = 0; i < systems.REPAIR_CREW_LIMIT; i++) {
+      sim.world.add(settlerAt(sim, JOB_BUILDER), SiteAssignment, { site: home, pinned: false });
+    }
+    expect(sitePick.assignableAt(sim.snapshot(), home, builder, byType)).toBe(false);
   });
 });
