@@ -639,6 +639,32 @@ describe('workforce module (collectResources)', () => {
     expect(Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y)).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
   });
 
+  it('moves a generic flag whose circle holds only a good the holder lacks the experience for', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const FAR = { x: 56, y: 28 };
+    placeResources(sim, [RESOURCE_SPOTS.iron, { ...RESOURCE_SPOTS.wood, ...FAR }]);
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 14, y: 24, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const gatherer = [...sim.world.query(Settler)].find(
+      (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
+    );
+    if (gatherer === undefined) throw new Error('setup: gatherer missing');
+    const IRON_FLAG = { x: RESOURCE_SPOTS.iron.x + FLAG_MIN_DISTANCE_NODES, y: RESOURCE_SPOTS.iron.y };
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, ...IRON_FLAG });
+    sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: null });
+    sim.step();
+
+    // His trade digs iron, but a fresh hire has no XP for it: the circle is dead to him.
+    const moved = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)].filter(
+      (c) => (c.kind === 'setJob' || c.kind === 'setWorkFlag') && c.entity === gatherer,
+    );
+    expect(moved).toHaveLength(1);
+    const [flag] = moved;
+    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
+    expect(Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y)).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+  });
+
   it('moves a working generic flag beside a collected good standing well nearer the base, on the upkeep', () => {
     const sim = aiSim();
     placeHq(sim);
