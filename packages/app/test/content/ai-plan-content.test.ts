@@ -126,19 +126,38 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     }
   });
 
-  it("derives the grain's and flour's supply lines", async () => {
+  it("derives the stocked products' supply lines, the same in every game phase", async () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
-    const managed = supplyLines(content, DEFAULT_BUILD_ORDER);
-    const linesOf = (id: string) => {
-      const good = content.goods.find((g) => g.id === id);
-      return good === undefined ? undefined : managed.get(good.typeId);
-    };
-    // The homes' and several workshops' bills take two wheat at most, so the mill's and animal farm's
-    // ten-unit wheat shelves are its unit.
-    expect(linesOf('wheat')).toEqual({ unit: 10, short: 20, comfort: 30, glut: 60 });
-    // No bill takes flour: the bakery's ten-unit flour shelf is its unit.
-    expect(linesOf('flour')).toEqual({ unit: 10, short: 20, comfort: 30, glut: 60 });
+    const STOCKED_LINES = { unit: 10, short: 20, comfort: 30, glut: 60 };
+    for (const phase of ['opening', 'mid', 'late'] as const) {
+      const managed = supplyLines(content, DEFAULT_BUILD_ORDER, phase);
+      const linesOf = (id: string) => {
+        const good = content.goods.find((g) => g.id === id);
+        return good === undefined ? undefined : managed.get(good.typeId);
+      };
+      // The homes' and several workshops' bills take two wheat at most, so the mill's and animal farm's
+      // ten-unit wheat shelves are its unit.
+      expect(linesOf('wheat'), `wheat in the ${phase}`).toEqual(STOCKED_LINES);
+      // No bill takes flour: the bakery's ten-unit flour shelf is its unit.
+      expect(linesOf('flour'), `flour in the ${phase}`).toEqual(STOCKED_LINES);
+      // No bill takes coins: the druid hut's ten-unit coin shelf is their unit.
+      expect(linesOf('coin'), `coins in the ${phase}`).toEqual(STOCKED_LINES);
+    }
+  });
+
+  it("lays a building material's glut line further out every game phase", async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    const brick = content.goods.find((g) => g.id === 'brick')?.typeId ?? -1;
+    const linesOf = (phase: 'opening' | 'mid' | 'late') =>
+      supplyLines(content, DEFAULT_BUILD_ORDER, phase).get(brick);
+    // The largest bill takes three bricks and no workshop shelves them: a three-brick unit, and one, two
+    // and three units per lookahead entry past comfort.
+    const lines = { unit: 3, short: 6, comfort: 9 };
+    expect(linesOf('opening')).toEqual({ ...lines, glut: 18 });
+    expect(linesOf('mid')).toEqual({ ...lines, glut: 27 });
+    expect(linesOf('late')).toEqual({ ...lines, glut: 36 });
   });
 
   it('keeps the joiners on iron tools, turning to furniture only at an authored glut', () => {

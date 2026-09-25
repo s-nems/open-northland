@@ -17,6 +17,11 @@ import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
+  type GamePhase,
+  HOARD_UNITS_BY_PHASE,
+  MID_GAME_FROM_TICKS,
+} from '../../../src/systems/ai-player/game-phase.js';
+import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
   BUILDER_CAP,
   DEFAULT_BUILD_ORDER,
@@ -313,6 +318,25 @@ describe('workforce module - the supply lines', () => {
     });
     expect(linesOf(wide, WOOD)).toEqual(lines(HOME_CHAIN_WOOD, WIDE_SHELF));
     expect(supplyLines(content, DEFAULT_BUILD_ORDER).has(CROCKERY)).toBe(false);
+  });
+
+  it('lays the glut line further out every game phase, but not for a stocked product', () => {
+    const content = grainContent();
+    const wood = linesOf(content, WOOD);
+    for (const phase of ['opening', 'mid', 'late'] as const satisfies readonly GamePhase[]) {
+      const lines = supplyLines(content, DEFAULT_BUILD_ORDER, phase);
+      expect(lines.get(WOOD)).toEqual({
+        ...wood,
+        glut: wood.comfort + BUILD_ORDER_LOOKAHEAD_ENTRIES * wood.unit * HOARD_UNITS_BY_PHASE[phase],
+      });
+      // The mill's and bakery's shelves size the grain and flour, not the sites.
+      for (const good of [WHEAT, FLOUR]) expect(lines.get(good)).toEqual(linesOf(content, good));
+    }
+    // A decision reads its own phase's lines.
+    const seat = seatOn(content, [], 1);
+    const ctx = { ...ctxOf(seat.sim, MID_GAME_FROM_TICKS), content };
+    const supply = SeatSupply.of(seat.sim.world, ctx, SEAT, [], DEFAULT_BUILD_ORDER);
+    expect(supply.lines(WOOD)).toEqual(supplyLines(content, DEFAULT_BUILD_ORDER, 'mid').get(WOOD));
   });
 });
 /** The raw goods the two workshops eat, and the builders need too. */

@@ -23,12 +23,14 @@ import {
   DEFAULT_BUILD_ORDER,
   LATE_GAME_CIVILIANS,
   SeatSupply,
+  supplyLines,
 } from '../../../src/systems/ai-player/index.js';
 import { ownedBuildings, ownedSettlers } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
+  SHORT_PRODUCT_SEATS,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { ARMY_FLOOR_LEAD_TICKS, ARMY_FLOOR_MIN } from '../../../src/systems/ai-player/workforce/garrison.js';
@@ -985,7 +987,9 @@ describe('workforce module - the barracks and craft selections', () => {
     ]);
   });
 
-  it('turns a defence coiner to coins once the third mint brings the strength-amulet pair', () => {
+  /** Three mints of four coiners' seats with `crew` builders hired two a mint, lowest id first; the
+   *  products each decision hands them, and the coins' lines. */
+  function crewedMints(crew: number) {
     const content = mintContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     placeHq(sim);
@@ -999,7 +1003,7 @@ describe('workforce module - the barracks and craft selections', () => {
         owner: SEAT,
       });
     }
-    spawnMen(sim, 6, BUILDER);
+    spawnMen(sim, crew, BUILDER);
     sim.step();
     const ctx = { ...ctxOf(sim), content };
     const mints = [...sim.world.query(Building)]
@@ -1008,29 +1012,61 @@ describe('workforce module - the barracks and craft selections', () => {
     const men = [...sim.world.query(Settler)]
       .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
       .sort((a, b) => a - b);
-    const hire = (from: number, to: number): void => {
-      for (let i = from; i < to; i++) {
-        const man = men[i];
-        const mint = mints[Math.floor(i / 2)];
-        if (man === undefined || mint === undefined) throw new Error('setup: too few men or mints');
-        sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: mint, jobPriority: [JOINER] });
-      }
-      sim.step();
+    const coins = supplyLines(content, DEFAULT_BUILD_ORDER).get(COIN);
+    if (coins === undefined) throw new Error('setup: coins take supply lines');
+    return {
+      coins,
+      stockCoins: (units: number) => setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), COIN, units),
+      hire(from: number, to: number): void {
+        for (let i = from; i < to; i++) {
+          const man = men[i];
+          const mint = mints[Math.floor(i / 2)];
+          if (man === undefined || mint === undefined) throw new Error('setup: too few men or mints');
+          sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: mint, jobPriority: [JOINER] });
+        }
+        sim.step();
+      },
+      /** The decision's product changes, applied. */
+      products(): (readonly number[])[] {
+        const commands = tune(sim.world, ctx);
+        for (const c of commands) sim.enqueueSetup(c);
+        sim.step();
+        return commands.flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
+      },
     };
-    const products = (): (readonly number[])[] =>
-      tune(sim.world, ctx).flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
+  }
 
-    hire(0, 4);
-    expect(products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
-    hire(4, 6);
-    expect(products()).toEqual([
-      [COIN],
-      [DEFENCE_AMULET],
-      [COIN],
-      [DEFENCE_AMULET],
-      [STRENGTH_AMULET],
-      [STRENGTH_AMULET],
-    ]);
+  it('turns a defence coiner to coins once the third mint brings the strength-amulet pair', () => {
+    const mints = crewedMints(6);
+    // Coins at their comfort line, so the plan's lists stand.
+    mints.stockCoins(mints.coins.comfort);
+    mints.hire(0, 4);
+    expect(mints.products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
+    // The crowded seats: the third coiner turns to coins and the new pair takes the strength amulets.
+    mints.hire(4, 6);
+    expect(mints.products()).toEqual([[COIN], [STRENGTH_AMULET], [STRENGTH_AMULET]]);
+  });
+
+  it('turns up to two amulet makers to coins while the coins run short, one per unit they lack', () => {
+    const mints = crewedMints(4);
+    const { unit, short, comfort } = mints.coins;
+    mints.stockCoins(comfort);
+    mints.hire(0, 4);
+    expect(mints.products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
+    // At the short line nothing moves. Under it the last amulet seats turn to coins, one per unit lacking
+    // to comfort and never more than the cap, whatever the lack.
+    mints.stockCoins(short);
+    expect(mints.products()).toEqual([]);
+    expect(Math.ceil(comfort / unit)).toBeGreaterThan(SHORT_PRODUCT_SEATS);
+    mints.stockCoins(0);
+    expect(mints.products()).toEqual([[COIN], [COIN]]);
+    // The turned seats hold to the comfort line, the first of them the last to go.
+    mints.stockCoins(comfort - unit);
+    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
+    mints.stockCoins(comfort - 1);
+    expect(mints.products()).toEqual([]);
+    mints.stockCoins(comfort);
+    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
   });
 
   it('turns the first armourer to wooden spears alone while the long bows pile up, and back once they are drawn down', () => {

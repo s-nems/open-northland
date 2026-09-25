@@ -10,6 +10,7 @@ import {
   MAX_ACTIVE_CONSTRUCTION_SITES,
 } from '../build-order/index.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
+import { type GamePhase, gamePhase, HOARD_UNITS_BY_PHASE } from '../game-phase.js';
 import { isBuilt } from '../seat-roster.js';
 import { COLLECTED_GOOD_IDS } from './collectors/index.js';
 import { plannedOperators } from './staffing-plan.js';
@@ -24,45 +25,55 @@ export interface SupplyLines {
   readonly glut: number;
 }
 
+/** One of a good's {@link SupplyLines}, ascending. */
+export type SupplyLine = 'short' | 'comfort' | 'glut';
+
 /**
- * The goods the seat's own workshops pass between themselves whose makers' crews the supply lines size, by
- * stable content ids (authored): the farm's grain and the mill's flour. The list is authored rather than
- * every intermediate good, because a managed good's crew rests at its glut line and comes back only under
- * its short line; that suits a chain whose consumers the build order sizes, not goods such as mead, shoes
- * or coins whose use the lines do not measure.
+ * The goods the seat's own workshops pass between themselves whose makers' crews and seats the supply lines
+ * size, by stable content ids (authored): the farm's grain, the mill's flour and the mint's coins the druids'
+ * potions take. The list is authored rather than every intermediate good, because a managed good's lines
+ * hire and release its makers; that suits a chain whose consumers' shelves measure its use, not goods such
+ * as mead or shoes that settlers draw at their own pace. A stocked product's consumers, not the sites, size
+ * it, so it hoards no more with the game phase.
  */
-export const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour'];
+export const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour', 'coin'];
 
 /** The unit of a good no bill takes and no workshop shelves. */
 const FALLBACK_SUPPLY_UNIT = 1;
 
-/** Per content set, per build order: the lines of every managed good, by good type. */
+/** Per content set, per build order, per game phase: the lines of every managed good, by good type. */
 const linesCache = new WeakMap<
   ContentSet,
-  WeakMap<readonly BuildOrderEntry[], ReadonlyMap<number, SupplyLines>>
+  WeakMap<readonly BuildOrderEntry[], Map<GamePhase, ReadonlyMap<number, SupplyLines>>>
 >();
 
 /**
- * The supply lines of every good the build order's bills take, the collected goods, its collector goods
- * and the {@link STOCKED_PRODUCT_GOOD_IDS} (authored approximation). A unit is the good's largest bill line,
- * or for a stocked product the larger of that and its widest consuming shelf. Short covers
- * {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites of the unit, comfort adds the larger of the unit and a
- * consuming workshop's input shelf, and glut adds one unit per {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} entry
- * on top.
+ * The supply lines in `phase` of every good the build order's bills take, the collected goods, its
+ * collector goods and the {@link STOCKED_PRODUCT_GOOD_IDS} (authored approximation). A unit is the good's
+ * largest bill line, or for a stocked product the larger of that and its widest consuming shelf. Short
+ * covers {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites of the unit, comfort adds the larger of the unit and a
+ * consuming workshop's input shelf, and glut adds {@link HOARD_UNITS_BY_PHASE} units per
+ * {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} entry on top, a stocked product the opening's in every phase.
  */
 export function supplyLines(
   content: ContentSet,
   order: readonly BuildOrderEntry[],
+  phase: GamePhase = 'opening',
 ): ReadonlyMap<number, SupplyLines> {
   let byOrder = linesCache.get(content);
   if (byOrder === undefined) {
     byOrder = new WeakMap();
     linesCache.set(content, byOrder);
   }
-  let lines = byOrder.get(order);
+  let byPhase = byOrder.get(order);
+  if (byPhase === undefined) {
+    byPhase = new Map();
+    byOrder.set(order, byPhase);
+  }
+  let lines = byPhase.get(phase);
   if (lines === undefined) {
-    lines = deriveLines(content, order);
-    byOrder.set(order, lines);
+    lines = deriveLines(content, order, phase);
+    byPhase.set(phase, lines);
   }
   return lines;
 }
@@ -70,6 +81,7 @@ export function supplyLines(
 function deriveLines(
   content: ContentSet,
   order: readonly BuildOrderEntry[],
+  phase: GamePhase,
 ): ReadonlyMap<number, SupplyLines> {
   const index = contentIndex(content);
   const managed = new Set<number>();
@@ -105,7 +117,8 @@ function deriveLines(
       : (billUnit.get(good) ?? Math.max(shelved, FALLBACK_SUPPLY_UNIT));
     const short = MAX_ACTIVE_CONSTRUCTION_SITES * unit;
     const comfort = short + Math.max(unit, shelved);
-    lines.set(good, { unit, short, comfort, glut: comfort + BUILD_ORDER_LOOKAHEAD_ENTRIES * unit });
+    const hoard = HOARD_UNITS_BY_PHASE[stocked.has(good) ? 'opening' : phase];
+    lines.set(good, { unit, short, comfort, glut: comfort + BUILD_ORDER_LOOKAHEAD_ENTRIES * unit * hoard });
   }
   return lines;
 }
@@ -120,8 +133,9 @@ function raiseTo(map: Map<number, number>, key: number, value: number): void {
 
 /**
  * One seat's supply this decision: each managed good's surplus (fetchable units minus what the sites
- * still lack) against its {@link SupplyLines}. A workshop's own shelf is not fetchable, so a workshop
- * eating its raw good reads as the shortage it is to the builders. An unmanaged good is never short.
+ * still lack) against its {@link SupplyLines} in the decision's game phase. A workshop's own shelf is not
+ * fetchable, so a workshop eating its raw good reads as the shortage it is to the builders. An unmanaged
+ * good is never short.
  */
 export class SeatSupply {
   private consumers: ReadonlyMap<number, number> | undefined;
@@ -129,7 +143,9 @@ export class SeatSupply {
   private constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
+    private readonly player: number,
     private readonly owned: readonly Entity[],
+    private readonly stock: FetchableStock,
     private readonly linesByGood: ReadonlyMap<number, SupplyLines>,
     private readonly surplusByGood: ReadonlyMap<number, number>,
   ) {}
@@ -141,12 +157,17 @@ export class SeatSupply {
     owned: readonly Entity[],
     order: readonly BuildOrderEntry[],
   ): SeatSupply {
-    const lines = supplyLines(ctx.content, order);
+    const lines = supplyLines(ctx.content, order, gamePhase(ctx.tick));
     const owed = sitesShortfalls(world, ctx, owned);
     const stock = FetchableStock.of(world, ctx);
     const surplus = new Map<number, number>();
     for (const good of lines.keys()) surplus.set(good, stock.units(player, good) - (owed.get(good) ?? 0));
-    return new SeatSupply(world, ctx, owned, lines, surplus);
+    return new SeatSupply(world, ctx, player, owned, stock, lines, surplus);
+  }
+
+  /** The seat's fetchable units of any good, managed or not, the sites' needs not deducted. */
+  units(good: number): number {
+    return this.stock.units(this.player, good);
   }
 
   lines(good: number): SupplyLines | undefined {
@@ -157,13 +178,17 @@ export class SeatSupply {
     return this.surplusByGood.get(good);
   }
 
+  /** Whether the good's surplus lies under `line`; false for an unmanaged good. */
+  isUnder(good: number, line: SupplyLine): boolean {
+    const lines = this.linesByGood.get(good);
+    const surplus = this.surplusByGood.get(good);
+    return lines !== undefined && surplus !== undefined && surplus < lines[line];
+  }
+
   /** Whether the good is under the line its lever reads: comfort while `engaged`, so a lever that pulled
    *  at the short line holds until comfort, and short otherwise. */
   isShort(good: number, engaged: boolean): boolean {
-    const lines = this.linesByGood.get(good);
-    const surplus = this.surplusByGood.get(good);
-    if (lines === undefined || surplus === undefined) return false;
-    return surplus < (engaged ? lines.comfort : lines.short);
+    return this.isUnder(good, engaged ? 'comfort' : 'short');
   }
 
   /** The units the good lacks to its comfort line, 0 at or above it; 0 for an unmanaged good. */
@@ -174,9 +199,7 @@ export class SeatSupply {
   }
 
   atGlut(good: number): boolean {
-    const lines = this.linesByGood.get(good);
-    const surplus = this.surplusByGood.get(good);
-    return lines !== undefined && surplus !== undefined && surplus >= lines.glut;
+    return this.lines(good) !== undefined && !this.isUnder(good, 'glut');
   }
 
   /** The planned operators of the seat's built workshops whose recipes consume the good. */

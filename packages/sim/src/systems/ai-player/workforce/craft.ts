@@ -63,6 +63,10 @@ const JOINERY_SEAT: CraftSeat = {
   otherwise: ['furniture'],
 };
 
+/** The most plentiful seats a short product takes at once ({@link shortFirst}) (authored): enough to turn a
+ *  mint's amulet makers to coins while the druids run dry, and still leave its other lines a hand. */
+export const SHORT_PRODUCT_SEATS = 2;
+
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
  * runs its main lines. Whatever the lists say, a product the build order runs short of comes first
@@ -71,7 +75,8 @@ const JOINERY_SEAT: CraftSeat = {
  * seat forges the short swords only the strength amulet takes. One druid in eight boils holy oil (the
  * first, since the big potion waits on herbs the later herb hut grows). The first two mints' four coiners
  * work one on coins and three on defence amulets; once a fifth joins at the third mint, the crew splits two
- * each over coins, defence and strength amulets. Both joiners make iron tools and turn to furniture only
+ * each over coins, defence and strength amulets. While the druids' coins run short, one or two amulet
+ * makers turn to coins as well ({@link shortFirst}). Both joiners make iron tools and turn to furniture only
  * while the tools pile up. The potters split bricks and tiles, a lone one working both, and turn to
  * crockery, which doubles a stocked home's food, while both lie at their glut lines. The first tailor sews
  * shoes and the second leather armour, turning to shoes while the armour piles up unworn, as it does once
@@ -158,8 +163,8 @@ interface RestrictedCrew {
  * nothing, because `setCraftGoods []` would mean "every product", the opposite of a restriction.
  *
  * Over the lists, the plan's sink takes the whole crew while the type's products with supply lines lie at
- * glut ({@link sinkHolds}), and otherwise a short product takes a seat whose own goods are plentiful
- * ({@link shortFirst}). A crew member on an opening run keeps it.
+ * glut ({@link sinkHolds}), and otherwise a short product takes one or two seats whose own goods are
+ * plentiful ({@link shortFirst}). A crew member on an opening run keeps it.
  */
 export function tuneCraftSelections(
   world: World,
@@ -255,10 +260,11 @@ function sinkHolds(supply: SeatSupply, products: readonly number[], sinking: boo
 }
 
 /**
- * Put each short product, ascending, on a seat of its own: the last free seat whose listed goods all lie at
- * or above their comfort lines, preferring one that already works the product alone. That seat holds the
- * product until its comfort line, any other reads the short line. Selection changes cost nothing, so the
- * two lines are the whole hysteresis.
+ * Put each short product, ascending, on seats of its own: one per supply unit it lacks to its comfort line,
+ * at most {@link SHORT_PRODUCT_SEATS}, taken from the free seats whose listed goods all lie at or above their
+ * comfort lines, those already working the product alone first, then the last. While a seat works it the
+ * product holds until its comfort line, otherwise it reads the short line. Selection changes cost nothing,
+ * so the two lines are the whole hysteresis.
  */
 function shortFirst(
   supply: SeatSupply,
@@ -270,10 +276,16 @@ function shortFirst(
   const plentiful = free.filter((seat) => (listed[seat] ?? []).every((good) => !supply.isShort(good, true)));
   for (const good of products) {
     if (plentiful.length === 0) return;
-    const holder = plentiful.findIndex((seat) => sameGoods(current[seat] ?? [], [good]));
-    if (!supply.isShort(good, holder >= 0)) continue;
-    const [seat] = plentiful.splice(holder >= 0 ? holder : plentiful.length - 1, 1);
-    if (seat !== undefined) listed[seat] = [good];
+    const lines = supply.lines(good);
+    if (lines === undefined) continue;
+    const holders = plentiful.filter((seat) => sameGoods(current[seat] ?? [], [good]));
+    if (!supply.isShort(good, holders.length > 0)) continue;
+    const seats = Math.min(Math.ceil(supply.lackToComfort(good) / lines.unit), SHORT_PRODUCT_SEATS);
+    const others = plentiful.filter((seat) => !holders.includes(seat)).reverse();
+    for (const seat of [...holders, ...others].slice(0, seats)) {
+      plentiful.splice(plentiful.indexOf(seat), 1);
+      listed[seat] = [good];
+    }
   }
 }
 
