@@ -105,26 +105,6 @@ export function jobExperiencePercent(
   return experiencePercent(experiencePoints(xp));
 }
 
-/**
- * Hits at which a weapon class's damage bonus tops out. Authored: combat XP lands per successful hit, far
- * faster than production batches, so combat mastery sits 5x deeper than {@link EXPERIENCE_MASTERY_POINTS}.
- */
-const HITS_PER_FIGHT_POINT = 5;
-export const FIGHT_MASTERY_HITS = EXPERIENCE_MASTERY_POINTS * HITS_PER_FIGHT_POINT;
-
-/** The damage cap: a mastered weapon hits half again as hard, deliberately below the crafts' 2.5x.
- *  Authored, so combat scales gentler than the economy. */
-export const FIGHT_DAMAGE_BONUS_MAX: Fixed = fx.div(ONE, fx.fromInt(2));
-
-/**
- * The damage-bonus fraction `hits` landed with one weapon class buy, in [0, FIGHT_DAMAGE_BONUS_MAX]. Raw
- * bucket XP is read as the hit count directly, since the soldier-general accrual rate is 1 per hit in the
- * base data; a modded rate would scale leveling speed (approximation).
- */
-export function fightDamageBonus(hits: number): Fixed {
-  return fx.mul(experienceBonus(Math.trunc(hits / HITS_PER_FIGHT_POINT)), FIGHT_DAMAGE_BONUS_MAX);
-}
-
 /** Landed hits recorded in `weaponMainType`'s fight bucket: 0 for a class with no bucket. */
 export function weaponClassHits(
   experience: ReadonlyMap<number, number>,
@@ -135,30 +115,21 @@ export function weaponClassHits(
   return bucket === undefined ? 0 : (experience.get(bucket) ?? 0);
 }
 
-/**
- * `base` weapon damage raised by `hits` landed with the swinging weapon's class, truncated to whole points.
- * Unchanged for an untrained class or zero base.
- */
-export function withFightDamageBonus(base: number, hits: number): number {
-  if (base <= 0 || hits <= 0) return base;
-  return base + fx.toInt(fx.mul(fx.fromInt(base), fightDamageBonus(hits)));
-}
-
-/** The hits past which fight experience stops raising damage against a building. Original behavior. */
-export const HOUSE_DAMAGE_EXPERIENCE_CAP_HITS = 100;
-/** The numerator of the building-damage experience factor `NUMERATOR / (NUMERATOR - hits)`. */
-const HOUSE_DAMAGE_EXPERIENCE_NUMERATOR = 200;
+/** The landed hits past which fight experience stops raising damage. Original behavior. */
+export const FIGHT_EXPERIENCE_DAMAGE_CAP_HITS = 100;
+/** The numerator of the fight-experience factor `NUMERATOR / (NUMERATOR - hits)`. Original behavior. */
+const FIGHT_EXPERIENCE_DAMAGE_NUMERATOR = 200;
 
 /**
- * `base` vs-building damage raised by `hits` landed with the swinging weapon's class:
- * `base * 200 / (200 - min(hits, 100))`, so a hundred landed hits double it. Original behavior. The original
- * raises a blow on a person by the same formula; {@link withFightDamageBonus} is an authored stand-in.
+ * `base` weapon damage raised by `hits` landed with the swinging weapon's class:
+ * `base * 200 / (200 - min(hits, 100))` in integer division, so a hundred landed hits double it.
+ * Original behavior, for a blow on a person, a building or an animal alike.
  */
-export function withHouseDamageExperience(base: number, hits: number): number {
+export function withFightExperience(base: number, hits: number): number {
   if (base <= 0) return base;
-  const capped = Math.min(Math.max(hits, 0), HOUSE_DAMAGE_EXPERIENCE_CAP_HITS);
+  const capped = Math.min(Math.max(hits, 0), FIGHT_EXPERIENCE_DAMAGE_CAP_HITS);
   return Math.trunc(
-    (base * HOUSE_DAMAGE_EXPERIENCE_NUMERATOR) / (HOUSE_DAMAGE_EXPERIENCE_NUMERATOR - capped),
+    (base * FIGHT_EXPERIENCE_DAMAGE_NUMERATOR) / (FIGHT_EXPERIENCE_DAMAGE_NUMERATOR - capped),
   );
 }
 

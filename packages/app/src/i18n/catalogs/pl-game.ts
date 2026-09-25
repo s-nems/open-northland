@@ -61,7 +61,6 @@ export const plGame = {
       fist: 'Walka - Pięści',
       spear: 'Walka - Włócznia',
       sword: 'Walka - Miecz',
-      axe: 'Walka - Topór',
       bow: 'Walka - Łuk',
       catapult: 'Walka - Katapulta',
     },

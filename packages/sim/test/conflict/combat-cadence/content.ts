@@ -24,6 +24,10 @@ export const SOLDIER_SPEAR = 33;
 export const SOLDIER_SWORD_SHORT = 34;
 export const SOLDIER_SWORD_LONG = 35;
 export const SOLDIER_SABER = 36;
+/** The saber's and the axe's `mainType` in `weapons.ini`, classes the sim does not know: no fight bucket
+ *  reads them. */
+export const SABER_MAIN_TYPE = 4;
+export const AXE_MAIN_TYPE = 5;
 export const HERO = 42; // hero band - its swings feed the `hero general` track (70), not soldier's (69)
 
 export const CHAIN_CLASS = 3; // armor typeId/material 3
@@ -129,7 +133,7 @@ export function combatCadenceContent(): ContentSet {
       id: 'saber',
       tribeType: tribe,
       jobType: SOLDIER_SABER,
-      mainType: WEAPON_MAIN_TYPE.SABER,
+      mainType: SABER_MAIN_TYPE,
       minRange: 1,
       maxRange: 1,
       damage: SHORT_SWORD_DAMAGE,

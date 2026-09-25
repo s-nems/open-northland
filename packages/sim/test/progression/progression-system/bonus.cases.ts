@@ -21,11 +21,9 @@ import {
   experiencePercent,
   experiencePoints,
   experienceRepeats,
-  FIGHT_DAMAGE_BONUS_MAX,
+  FIGHT_EXPERIENCE_DAMAGE_CAP_HITS,
+  FIGHT_EXPERIENCE_MAX,
   FIGHT_EXPERIENCE_TYPE,
-  FIGHT_MASTERY_HITS,
-  fightDamageBonus,
-  HOUSE_DAMAGE_EXPERIENCE_CAP_HITS,
   jobExperiencePercent,
   SCOUT_VISION_BONUS_MAX_NODES,
   scoutVisionBonusNodes,
@@ -33,8 +31,7 @@ import {
   strokesPerUnit,
   WEAPON_MAIN_TYPE,
   weaponClassHits,
-  withFightDamageBonus,
-  withHouseDamageExperience,
+  withFightExperience,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -98,35 +95,20 @@ describe('scoutVisionBonusNodes - signpost craft widens the scout eye a little',
   });
 });
 
-describe('fightDamageBonus - hits with a weapon class buy extra damage', () => {
-  it('is zero untrained and caps at +50% at combat mastery', () => {
-    expect(fightDamageBonus(0)).toBe(ZERO);
-    expect(fightDamageBonus(FIGHT_MASTERY_HITS)).toBe(FIGHT_DAMAGE_BONUS_MAX);
-    expect(fightDamageBonus(FIGHT_MASTERY_HITS * 3)).toBe(FIGHT_DAMAGE_BONUS_MAX);
-  });
-
-  it('scales the shared curve onto the five-times-deeper hit count', () => {
-    // 50 hits = 10 curve points = 68% of the halved cap = +34%.
-    expect(fx.toFloat(fightDamageBonus(50))).toBeCloseTo(0.34, 2);
+describe('withFightExperience - hits with a weapon class raise its damage', () => {
+  it('scales a column by 200 / (200 - min(hits, 100)) in integer division', () => {
+    expect(withFightExperience(3800, 0)).toBe(3800);
+    expect(withFightExperience(3800, 50)).toBe(5066); // 760000 / 150, truncated
+    expect(withFightExperience(3800, FIGHT_EXPERIENCE_DAMAGE_CAP_HITS)).toBe(7600);
+    expect(withFightExperience(3800, FIGHT_EXPERIENCE_MAX)).toBe(7600); // raw points past 100 buy nothing
+    expect(withFightExperience(0, FIGHT_EXPERIENCE_DAMAGE_CAP_HITS)).toBe(0); // a missing column stays 0
   });
 
   it('weaponClassHits reads the bucket of the swinging weapon class', () => {
     const sword = new Map([[FIGHT_EXPERIENCE_TYPE.SWORD, 40]]);
     expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.SWORD)).toBe(40);
-    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.AXE)).toBe(0); // untrained class
+    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.SPEAR)).toBe(0); // untrained class
     expect(weaponClassHits(sword, null)).toBe(0); // a class-less weapon
-  });
-
-  it('withFightDamageBonus raises base damage by the truncated bonus fraction', () => {
-    expect(withFightDamageBonus(10, FIGHT_MASTERY_HITS)).toBe(15);
-    expect(withFightDamageBonus(10, 0)).toBe(10); // no hits yet
-  });
-
-  it('withHouseDamageExperience scales vs-building damage by 200 / (200 - hits), capped at 100 hits', () => {
-    expect(withHouseDamageExperience(50, 0)).toBe(50);
-    expect(withHouseDamageExperience(50, 40)).toBe(62); // 50 * 200 / 160
-    expect(withHouseDamageExperience(50, HOUSE_DAMAGE_EXPERIENCE_CAP_HITS)).toBe(100);
-    expect(withHouseDamageExperience(50, 5000)).toBe(100); // past the cap
   });
 });
 

@@ -25,7 +25,7 @@ export function siegeWeapons(content: ContentSet): WeaponType[] {
   return content.weapons.filter(isSiegeWeapon);
 }
 
-/** The extracted `mainType`, `1..7` for fist, club, sword, axe, spear, bow, catapult. */
+/** The extracted `mainType`: 1 fist, 2 spear, 3 sword, 6 bow, 7 catapult; 4 and 5 are unused classes. */
 export function weaponClassOf(weapon: WeaponType): number | undefined {
   return weapon.mainType;
 }

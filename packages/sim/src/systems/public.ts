@@ -80,10 +80,10 @@ export {
   experiencePercent,
   experiencePoints,
   experienceRepeats,
-  fightDamageBonus,
   rawXpForRepeats,
   requirementRepeats,
   scoutVisionBonusNodes,
+  withFightExperience,
 } from './progression/bonus.js';
 export {
   FIGHT_EXPERIENCE_TYPE,

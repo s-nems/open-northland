@@ -107,11 +107,12 @@ export interface ExperienceRowModel {
   readonly bonusPct: number | null;
 }
 
+const PERCENT = 100;
+
 const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud']['weaponXp']> = new Map([
   [systems.FIGHT_EXPERIENCE_TYPE.FIST, 'fist'],
   [systems.FIGHT_EXPERIENCE_TYPE.SPEAR, 'spear'],
   [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 'sword'],
-  [systems.FIGHT_EXPERIENCE_TYPE.AXE, 'axe'],
   [systems.FIGHT_EXPERIENCE_TYPE.BOW, 'bow'],
   [systems.FIGHT_EXPERIENCE_TYPE.CATAPULT, 'catapult'],
 ]);
@@ -146,7 +147,7 @@ function experienceBonusPct(
   points: number,
 ): number | null {
   if (track === undefined && WEAPON_XP_KEY.has(spec)) {
-    return Math.round(fx.toFloat(systems.fightDamageBonus(points)) * 100);
+    return systems.withFightExperience(PERCENT, points) - PERCENT;
   }
   if (spec === systems.SCOUT_EXPERIENCE_TYPE) {
     return Math.round((systems.scoutVisionBonusNodes(points) / systems.SCOUT_VISION_NODES) * 100);

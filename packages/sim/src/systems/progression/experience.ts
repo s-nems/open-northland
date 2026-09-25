@@ -176,23 +176,26 @@ export const TRAINING_EXPERIENCE_TYPE = 77;
 
 /**
  * The per-weapon-class fight buckets combat XP accrues into (`logicdefines.inc`
- * `JOB_EXPERIENCE_TYPE_FIGHT_*`, l.598-603), in the same expType id space the `needfor*` soldier-upgrade
- * gates read: the viking iron-spear soldier requires `SPEAR` (72), the long-sword soldier `SWORD` (73),
- * the long-bow soldier `BOW` (75). These ids back no `HumanJobExperienceType` record, so the accrual rate
- * comes from {@link SOLDIER_GENERAL_EXPERIENCE_TYPE}.
+ * `JOB_EXPERIENCE_TYPE_FIGHT_*`), in the same expType id space the `needfor*` soldier-upgrade gates read:
+ * the viking iron-spear soldier requires `SPEAR` (72), the long-sword soldier `SWORD` (73), the long-bow
+ * soldier `BOW` (75). These ids back no `HumanJobExperienceType` record. The define list also names an
+ * axe bucket (74), which no weapon class ever feeds.
  */
 export const FIGHT_EXPERIENCE_TYPE = {
   FIST: 71,
   SPEAR: 72,
   SWORD: 73,
-  AXE: 74,
   BOW: 75,
   CATAPULT: 76,
 } as const;
 
-/** The `humanjobexperiencetypes` track whose `experienceFactor` sets the per-swing fight-XP rate: the
- *  `soldier general` track (`type 69`, factor 1 in the base data). Soldiers accrue the track itself too,
- *  since the base classes' `needforjob` gates read it (viking `needforjob 31/32/34/40 5 69`). */
+/** The raw XP a fight bucket gains per landed hit. Original behavior. */
+const FIGHT_EXPERIENCE_PER_HIT = 1;
+/** The raw XP a fight bucket holds at most; damage reads only the first 100. Original behavior. */
+export const FIGHT_EXPERIENCE_MAX = 10_000;
+
+/** The `soldier general` track (`type 69`, factor 1 in the base data) the base soldier classes'
+ *  `needforjob` gates read (viking `needforjob 31/32/34/40 5 69`). */
 export const SOLDIER_GENERAL_EXPERIENCE_TYPE = 69;
 
 /** The `hero general` track (`type 70`, factor 1 in the base data) the hero-variant `needforjob` gates
@@ -200,12 +203,11 @@ export const SOLDIER_GENERAL_EXPERIENCE_TYPE = 69;
  *  `generalTrackFor`. */
 export const HERO_GENERAL_EXPERIENCE_TYPE = 70;
 
-/** Saber has no fight track in the data (no `JOB_EXPERIENCE_TYPE_FIGHT_SABER`), so it is absent here. */
+/** Original behavior: only these weapon classes keep a fight bucket. */
 const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = new Map([
   [WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST],
   [WEAPON_MAIN_TYPE.SPEAR, FIGHT_EXPERIENCE_TYPE.SPEAR],
   [WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.SWORD],
-  [WEAPON_MAIN_TYPE.AXE, FIGHT_EXPERIENCE_TYPE.AXE],
   [WEAPON_MAIN_TYPE.BOW, FIGHT_EXPERIENCE_TYPE.BOW],
   [WEAPON_MAIN_TYPE.CATAPULT, FIGHT_EXPERIENCE_TYPE.CATAPULT],
 ]);
@@ -219,13 +221,12 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
 }
 
 /**
- * Grant an attacker fight XP for a damaging swing: the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} rate into
- * the swinging weapon's class bucket, plus the attacker's own role track (soldier 69, hero 70), which the
- * `needforjob` gates read. The role grant stays independent of the bucket, so a saber fighter with no
- * weapon bucket still feeds its class gates. Wildlife never levels.
+ * Grant an attacker fight XP for a landed hit, melee or ranged: one raw point into the weapon class's
+ * bucket, capped at {@link FIGHT_EXPERIENCE_MAX}. Original behavior. Wildlife never levels.
  *
- * Approximated: the accrual trigger has no readable oracle - the original may accrue per swing or per
- * kill, and per-damaging-swing is the deterministic reading.
+ * The attacker's role track (soldier 69, hero 70) gains one repeat per hit as well. Approximation: the
+ * original grants those tracks nothing per hit, but nothing else feeds them here and the `needforjob`
+ * gates read them.
  */
 export function grantFightExperience(
   world: World,
@@ -240,8 +241,9 @@ export function grantFightExperience(
   // A tribe with no `jobEnables` reaches no rung, so the points would be hashed state nothing reads.
   if (declaresNoTrades(ctx.content, s.tribe)) return;
   const bucket = fightExperienceTypeFor(weaponMainType);
-  const rate = fightExperienceRate(ctx);
-  if (bucket !== undefined && rate > 0) accrueExperience(world, attacker, bucket, rate);
+  if (bucket !== undefined) {
+    accrueExperience(world, attacker, bucket, FIGHT_EXPERIENCE_PER_HIT, FIGHT_EXPERIENCE_MAX);
+  }
   const generalTrackId = isSoldierJob(ctx.content, s.jobType)
     ? SOLDIER_GENERAL_EXPERIENCE_TYPE
     : isHeroJob(ctx.content, s.jobType)
@@ -250,11 +252,4 @@ export function grantFightExperience(
   if (generalTrackId === undefined) return;
   const general = contentIndex(ctx.content).jobExperience.get(generalTrackId);
   if (general !== undefined) accrueTrack(world, attacker, general);
-}
-
-/** The per-swing fight-XP rate: the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} track's `experienceFactor`
- *  (1 in the base data), or `0` when content carries no such track. */
-function fightExperienceRate(ctx: SystemContext): number {
-  const track = contentIndex(ctx.content).jobExperience.get(SOLDIER_GENERAL_EXPERIENCE_TYPE);
-  return track?.experienceFactor ?? 0;
 }

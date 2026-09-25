@@ -28,7 +28,8 @@ export const ARMOR_MATERIAL = {
 
 /**
  * The coarse weapon class a `WeaponType.mainType` carries (`logicdefines.inc` `WEAPON_MAIN_TYPE_*`, l.892) -
- * the axis the fight-experience buckets key on.
+ * the axis the fight-experience buckets key on. The define list's saber (4) and axe (5) are left out: no
+ * rule of the original reads them, so a weapon carrying one fights with no class.
  */
 export const WEAPON_MAIN_TYPE = {
   NONE: 0,
@@ -36,8 +37,6 @@ export const WEAPON_MAIN_TYPE = {
   UNARMED: 1,
   SPEAR: 2,
   SWORD: 3,
-  SABER: 4,
-  AXE: 5,
   BOW: 6,
   /** Catapult (siege). */
   CATAPULT: 7,

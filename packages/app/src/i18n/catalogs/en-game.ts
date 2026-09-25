@@ -62,7 +62,6 @@ export const enGame = {
       fist: 'Combat - Fists',
       spear: 'Combat - Spear',
       sword: 'Combat - Sword',
-      axe: 'Combat - Axe',
       bow: 'Combat - Bow',
       catapult: 'Combat - Catapult',
     },

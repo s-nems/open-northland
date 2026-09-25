@@ -4,13 +4,14 @@ import { Simulation } from '../../../../src/index.js';
 import {
   atomicSystem,
   combatSystem,
+  FIGHT_EXPERIENCE_MAX,
   FIGHT_EXPERIENCE_TYPE,
-  FIGHT_MASTERY_HITS,
   HERO_GENERAL_EXPERIENCE_TYPE,
   SOLDIER_GENERAL_EXPERIENCE_TYPE,
   WEAPON_MAIN_TYPE,
 } from '../../../../src/systems/index.js';
 import {
+  AXE_MAIN_TYPE,
   combatCadenceContent,
   ctxOf,
   fighterAt,
@@ -18,6 +19,7 @@ import {
   HERO,
   IRON_SPEAR_DAMAGE,
   OTHER,
+  SABER_MAIN_TYPE,
   SOLDIER_SPEAR,
   SOLDIER_UNARMED,
   startSwing,
@@ -54,7 +56,7 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     check(WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST);
   });
 
-  it('trains nothing on a 0-damage swing; a saber hit trains only the band track (no bucket)', () => {
+  it('trains nothing on a 0-damage swing; a saber or axe hit trains only the band track (no bucket)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -63,13 +65,28 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(attacker, SettlerProgress).experience.size).toBe(0);
 
-    // A saber (no JOB_EXPERIENCE_TYPE_FIGHT_SABER in the data) trains no fight BUCKET even when it
-    // hits - but a soldier-band swing still feeds the class-gate track (69).
-    startSwing(sim, attacker, { target, damage: 400, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SABER }, 2);
+    // The data's saber and axe classes have no fight bucket, but a soldier-band hit still feeds the
+    // class-gate track (69).
+    for (const mainType of [SABER_MAIN_TYPE, AXE_MAIN_TYPE]) {
+      startSwing(sim, attacker, { target, damage: 400, hitAt: 1, weaponMainType: mainType }, 2);
+      atomicSystem(sim.world, ctxOf(sim));
+    }
+    const xp = sim.world.get(attacker, SettlerProgress).experience;
+    expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(2);
+    expect(xp.size).toBe(1); // no weapon bucket alongside it
+  });
+
+  it('a bucket stops at 10000 raw points', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+    sim.world
+      .mut(attacker, SettlerProgress)
+      .experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, FIGHT_EXPERIENCE_MAX);
+    startSwing(sim, attacker, { target, damage: 100, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SPEAR }, 2);
     atomicSystem(sim.world, ctxOf(sim));
     const xp = sim.world.get(attacker, SettlerProgress).experience;
-    expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(1);
-    expect(xp.size).toBe(1); // no weapon bucket alongside it
+    expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(FIGHT_EXPERIENCE_MAX);
   });
 
   it('routes the band track by job band: hero swings feed 70, civilian swings feed no band track', () => {
@@ -112,8 +129,8 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
   it('a wild-animal bite trains nothing - progression is a civilization mechanic', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     // A jobless animal-tribe attacker whose natural weapon carries the real `maintype 1` (bearfist/
-    // wolvefist): without the wildlife gate every landed bite would accrue FIST XP and feed the +50%
-    // mastery damage bonus.
+    // wolvefist): without the wildlife gate every landed bite would accrue FIST XP and feed the mastery
+    // damage bonus.
     const wolf = fighterAt(sim, 0, 0, WOLF_TRIBE, null);
     const target = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
     startSwing(sim, wolf, { target, damage: 100, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.UNARMED }, 2);
@@ -136,9 +153,11 @@ describe('combatSystem - fight experience raises the issued swing damage', () =>
     return atomic.effect.damage;
   };
 
-  it('a novice swings the weapon column raw; combat mastery adds half again', () => {
+  it('raises the column by 200 / (200 - min(hits, 100)), doubling it at a hundred hits', () => {
     const base = IRON_SPEAR_DAMAGE['0'];
     expect(swingDamageOf(0)).toBe(base);
-    expect(swingDamageOf(FIGHT_MASTERY_HITS)).toBe(base + base / 2); // +50% at the combat cap
+    expect(swingDamageOf(50)).toBe(Math.trunc((base * 200) / 150));
+    expect(swingDamageOf(100)).toBe(base * 2);
+    expect(swingDamageOf(FIGHT_EXPERIENCE_MAX)).toBe(base * 2); // raw points past 100 buy nothing more
   });
 });

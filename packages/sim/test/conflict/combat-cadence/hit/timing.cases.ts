@@ -1,14 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health } from '../../../../src/components/index.js';
 import { Simulation } from '../../../../src/index.js';
-import { atomicSystem, combatSystem, WEAPON_MAIN_TYPE } from '../../../../src/systems/index.js';
+import {
+  atomicSystem,
+  combatSystem,
+  WEAPON_MAIN_TYPE,
+  withFightExperience,
+} from '../../../../src/systems/index.js';
 import {
   combatCadenceContent,
   ctxOf,
   fighterAt,
   fighterAtNode,
   grass,
+  IRON_SPEAR_DAMAGE,
   OTHER,
+  SABER_MAIN_TYPE,
   SOLDIER_SABER,
   SOLDIER_SPEAR,
   startSwing,
@@ -36,7 +43,7 @@ describe('combatSystem - the swing carries the ATTACK-event hit-frame + the weap
     combatSystem(sim.world, ctxOf(sim));
     const effect = sim.world.get(saberer, CurrentAtomic).effect;
     expect('hitAt' in effect).toBe(false); // no ATTACK event -> no hitAt -> executor uses completion
-    expect(effect).toMatchObject({ weaponMainType: WEAPON_MAIN_TYPE.SABER });
+    expect(effect).toMatchObject({ weaponMainType: SABER_MAIN_TYPE });
   });
 });
 
@@ -104,7 +111,9 @@ describe('atomicSystem - repeating swings at the animation cadence', () => {
     const secondHit = hitTicks[1];
     if (firstHit === undefined || secondHit === undefined) throw new Error('expected two hits');
     expect(secondHit - firstHit).toBe(27);
-    // Each blow took a full spear-vs-unarmored column (3800) off the pool.
-    expect(dealt).toBe(3800 * hitTicks.length);
+    // Each blow took the spear-vs-unarmored column off the pool, raised by the hits landed before it.
+    const column = IRON_SPEAR_DAMAGE['0'];
+    const expected = hitTicks.reduce((sum, _, hits) => sum + withFightExperience(column, hits), 0);
+    expect(dealt).toBe(expected);
   });
 });
