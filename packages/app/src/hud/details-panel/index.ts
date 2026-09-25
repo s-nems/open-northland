@@ -1,7 +1,7 @@
 /** The bottom-right selection details panel. */
 
-export type { EquipSlotRef } from './layout/index.js';
 export type {
+  EquipSlotRef,
   SettlerPanelModel,
   StockRow,
   UnitPanelModel,

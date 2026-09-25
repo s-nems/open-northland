@@ -423,8 +423,6 @@ describe('vehicle panel pointer intents', () => {
       onCancelUpgrade: record('onCancelUpgrade'),
       onDemolishSignpost: record('onDemolishSignpost'),
       onSetDefenceMode: record('onSetDefenceMode'),
-      onSetGatherGood: record('onSetGatherGood'),
-      onSetCraftGoods: record('onSetCraftGoods'),
       onSetHouseholdGoodUse: record('onSetHouseholdGoodUse'),
       onCenterOnEntity: record('onCenterOnEntity'),
       onSelectEntity: record('onSelectEntity'),

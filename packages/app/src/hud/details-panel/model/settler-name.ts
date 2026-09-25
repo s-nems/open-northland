@@ -20,12 +20,20 @@ function scriptedName(ctx: NameContext, ent: SnapshotEntity): string | undefined
   return stringId === undefined ? undefined : ctx.mapText?.(stringId);
 }
 
-/** A settler's given name alone, for a surface with one line to spend. A map's own name and a hero's
- *  stand whole: that is what this person is called, not a first name the surname can be cut off. */
+/** The name the player gave this settler, when it has one. */
+function playerGivenName(ent: SnapshotEntity): string | undefined {
+  const given = ent.components.GivenName as { name?: unknown } | undefined;
+  return typeof given?.name === 'string' && given.name !== '' ? given.name : undefined;
+}
+
+/** A settler's given name alone, for a surface with one line to spend. A map's own name, the player's
+ *  and a hero's stand whole: that is what this person is called, not a first name the surname can be
+ *  cut off. */
 export function settlerGivenName(ctx: NameContext, ent: SnapshotEntity): string {
   const jobType = settlerJobType(ent);
   return (
     scriptedName(ctx, ent) ??
+    playerGivenName(ent) ??
     heroFallbackName(ctx, jobType) ??
     characterGivenName(
       settlerTribeOf(ent) ?? PRIMARY_TRIBE,
@@ -37,12 +45,13 @@ export function settlerGivenName(ctx: NameContext, ent: SnapshotEntity): string 
   );
 }
 
-/** A settler's name everywhere the HUD shows one: the map's own, else a hero's conventional one, else
- *  the generated name. */
+/** A settler's name everywhere the HUD shows one: the map's own, else the player's, else a hero's
+ *  conventional one, else the generated name. */
 export function settlerDisplayName(ctx: NameContext, snapshot: WorldSnapshot, ent: SnapshotEntity): string {
   const jobType = settlerJobType(ent);
   return (
     scriptedName(ctx, ent) ??
+    playerGivenName(ent) ??
     heroFallbackName(ctx, jobType) ??
     characterName(
       settlerTribeOf(ent) ?? PRIMARY_TRIBE,

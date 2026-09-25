@@ -1,8 +1,5 @@
 import {
   hitButton,
-  hitCraftChoice,
-  hitEquipAction,
-  hitGatherChoice,
   hitPortrait,
   hitStockTab,
   hitTradeAttach,
@@ -11,10 +8,9 @@ import {
   hitTradeOffer,
   hitVehicleCargoStep,
   hitVehicleCrew,
-  nextCraftGoods,
   tradeTargetOf,
 } from './hit-test.js';
-import { type ButtonAction, type EquipSlotRef, equipActionKey, vehicleOrderOf } from './layout/index.js';
+import { type ButtonAction, vehicleOrderOf } from './layout/index.js';
 import type { VehicleOrder } from './model/index.js';
 import type { PanelView } from './selection-view.js';
 
@@ -22,7 +18,8 @@ import type { PanelView } from './selection-view.js';
 export const WANTED_STEP = 1;
 export const WANTED_BIG_STEP = 10;
 
-/** The keys held on a panel click: Ctrl/Cmd toggles a craft choice, Shift takes the big wanted step. */
+/** The keys held on a panel click: Shift takes the big wanted step; Ctrl/Cmd is read for the toggle
+ *  the DOM settler panel handles itself. */
 export interface PanelClickModifiers {
   readonly toggle: boolean;
   readonly bigStep: boolean;
@@ -33,11 +30,7 @@ export const NO_MODIFIERS: PanelClickModifiers = { toggle: false, bigStep: false
 /** One resolved left-click intent: `stockTab` re-bakes the panel and `centerOnEntity` moves the view,
  *  the rest are player orders. */
 export type PanelClick =
-  | { readonly kind: 'setGatherGood'; readonly entityId: number; readonly goodType: number | null }
   | { readonly kind: 'centerOnEntity'; readonly entityId: number }
-  | { readonly kind: 'setCraftGoods'; readonly entityId: number; readonly goods: readonly number[] }
-  | { readonly kind: 'equipSlot'; readonly entityId: number; readonly ref: EquipSlotRef }
-  | { readonly kind: 'unequipSlot'; readonly entityId: number; readonly ref: EquipSlotRef }
   | { readonly kind: 'stockTab'; readonly tab: number }
   | { readonly kind: 'upgrade'; readonly entityId: number }
   | { readonly kind: 'cancelUpgrade'; readonly entityId: number }
@@ -52,10 +45,6 @@ export type PanelClick =
   | { readonly kind: 'demolishSignpost'; readonly entityId: number }
   | { readonly kind: 'demolishPalisade'; readonly entityId: number }
   | { readonly kind: 'setPalisadeGate'; readonly entityId: number; readonly open: boolean }
-  | { readonly kind: 'assignWorkplace'; readonly entityId: number }
-  | { readonly kind: 'unassignWorkplace'; readonly entityId: number }
-  | { readonly kind: 'assignHome'; readonly entityId: number }
-  | { readonly kind: 'unassignHome'; readonly entityId: number }
   | { readonly kind: 'attachTradeHouse'; readonly entityId: number }
   | { readonly kind: 'detachTradeHouse'; readonly entityId: number; readonly house: number }
   | {
@@ -84,8 +73,7 @@ export type PanelClick =
       readonly amount: number;
     };
 
-/** The intent of a Handel control, addressed to the trader whether its own window or the window of a
- *  cart it rides shows the section. */
+/** The intent of a Handel control, addressed to the trader whose cart's window shows the section. */
 const tradeClick = (view: PanelView, x: number, y: number): PanelClick | null => {
   const target = tradeTargetOf(view);
   if (target === null) return null;
@@ -115,33 +103,6 @@ const tradeClick = (view: PanelView, x: number, y: number): PanelClick | null =>
   const detach = hitTradeDetach(view, x, y);
   if (detach !== undefined) return { kind: 'detachTradeHouse', entityId, house: detach };
   return hitTradeAttach(view, x, y) ? { kind: 'attachTradeHouse', entityId } : null;
-};
-
-/** The intent of the settler choice/equip blocks, which sit above the button column in probe order. */
-const settlerFieldClick = (
-  view: Extract<PanelView, { kind: 'settler' }>,
-  x: number,
-  y: number,
-  toggleModifier: boolean,
-): PanelClick | null => {
-  const entityId = view.model.entityId;
-  const gatherGood = hitGatherChoice(view, x, y);
-  if (gatherGood !== undefined) return { kind: 'setGatherGood', entityId, goodType: gatherGood };
-  const craftGood = hitCraftChoice(view, x, y);
-  if (craftGood !== undefined) {
-    const goods = nextCraftGoods(
-      view.model.work.craftChoices.map((c) => c.goodType),
-      view.model.work.selectedCraftGoods,
-      craftGood,
-      toggleModifier,
-    );
-    return { kind: 'setCraftGoods', entityId, goods };
-  }
-  const equipHit = hitEquipAction(view, x, y);
-  if (equipHit === undefined) return null;
-  return equipHit.kind === 'unequip'
-    ? { kind: 'unequipSlot', entityId, ref: equipHit.ref }
-    : { kind: 'equipSlot', entityId, ref: equipHit.ref };
 };
 
 /** The intent of an enabled button, or null for an action this view kind does not wire. */
@@ -177,21 +138,6 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
             };
       }
       return action === 'demolish' ? { kind: 'demolish', entityId } : null;
-    }
-    case 'settler': {
-      const entityId = view.model.entityId;
-      switch (action) {
-        case 'assign-workplace':
-          return { kind: 'assignWorkplace', entityId };
-        case 'unassign-workplace':
-          return { kind: 'unassignWorkplace', entityId };
-        case 'assign-home':
-          return { kind: 'assignHome', entityId };
-        case 'unassign-home':
-          return { kind: 'unassignHome', entityId };
-        default:
-          return null; // a building action, or a trade button, which tradeClick resolves
-      }
     }
     case 'signpost':
       return action === 'demolish' ? { kind: 'demolishSignpost', entityId: view.model.entityId } : null;
@@ -245,10 +191,6 @@ export const panelClickAt = (
   if (portrait !== null) return { kind: 'centerOnEntity', entityId: portrait };
   const trade = tradeClick(view, x, y);
   if (trade !== null) return trade;
-  if (view.kind === 'settler') {
-    const field = settlerFieldClick(view, x, y, modifiers.toggle);
-    if (field !== null) return field;
-  }
   if (view.kind === 'vehicle') {
     const field = vehicleFieldClick(view, x, y, modifiers.bigStep, activeStockTab);
     if (field !== null) return field;
@@ -262,11 +204,6 @@ export const panelClickAt = (
 /** Everything a hover changes in the drawn panel, so a rebuild is skipped while every field holds. */
 export interface PanelHover {
   readonly action: ButtonAction | null;
-  /** The hovered gather or craft choice (the blocks never coexist): `undefined` = none, `null` = the
-   *  gather-all button. */
-  readonly choiceGood: number | null | undefined;
-  /** The hovered equip button's {@link equipActionKey}, stable across rebuilds. */
-  readonly equipAction: string | null;
   /** The hovered import mark of a trader's route, by stop house and good. */
   readonly tradeImport: {
     readonly house: number;
@@ -285,8 +222,6 @@ export interface PanelHover {
 
 export const NO_PANEL_HOVER: PanelHover = {
   action: null,
-  choiceGood: undefined,
-  equipAction: null,
   tradeImport: null,
   tradeOffer: null,
   tradeDetach: null,
@@ -295,14 +230,10 @@ export const NO_PANEL_HOVER: PanelHover = {
 };
 
 export const panelHoverAt = (view: PanelView, x: number, y: number, activeStockTab: number): PanelHover => {
-  const gather = hitGatherChoice(view, x, y);
-  const equipHit = hitEquipAction(view, x, y);
   const mark = hitTradeImport(view, x, y);
   const step = hitVehicleCargoStep(view, x, y, activeStockTab);
   return {
     action: hitButton(view, x, y)?.action ?? null,
-    choiceGood: gather !== undefined ? gather : hitCraftChoice(view, x, y),
-    equipAction: equipHit !== undefined ? equipActionKey(equipHit) : null,
     tradeImport: mark === undefined ? null : { house: mark.house, pair: mark.pair, goodType: mark.goodType },
     tradeOffer: hitTradeOffer(view, x, y)?.index ?? null,
     tradeDetach: hitTradeDetach(view, x, y) ?? null,
@@ -313,8 +244,6 @@ export const panelHoverAt = (view: PanelView, x: number, y: number, activeStockT
 
 export const sameHover = (a: PanelHover, b: PanelHover): boolean =>
   a.action === b.action &&
-  a.choiceGood === b.choiceGood &&
-  a.equipAction === b.equipAction &&
   a.tradeImport?.house === b.tradeImport?.house &&
   a.tradeImport?.pair === b.tradeImport?.pair &&
   a.tradeImport?.goodType === b.tradeImport?.goodType &&

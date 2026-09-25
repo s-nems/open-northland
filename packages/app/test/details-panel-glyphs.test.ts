@@ -5,10 +5,9 @@ import type { Rect } from '../src/hud/geometry.js';
 
 /** The bake oversamples `panel.ts` builds the chrome at (integer, clamped to `PANEL_MAX_SUPERSAMPLE`). */
 const BAKE_SCALES = [1, 2, 3, 4] as const;
-/** Design-px sides of the square box a glyph is fitted into: the gather button's inset face
- *  (`GATHER_ICON` 20 less twice `GATHER_ICON_PAD`), the equip-slot action button (`EQUIP_ACTION_BTN`),
- *  and the assign round button (`ASSIGN_ICON`). The smallest box is where the kit's `Math.max` floors
- *  on cell, gap and line width start to bite. */
+/** Design-px sides of the square box a glyph is fitted into: an import mark's inset face, a hold's
+ *  step button and the route's round house button. The smallest box is where the kit's `Math.max`
+ *  floors on cell, gap and line width start to bite. */
 const BOX_SIDES = [14, 15, 20] as const;
 const BOX: Rect = { x: 0, y: 0, w: 20, h: 20 };
 /** A sentinel bevel tone: the kit takes it as a dep, so a hardcoded twin would not show up here. */
@@ -19,8 +18,6 @@ const FACES: readonly { readonly name: string; readonly draw: (kit: GlyphKit, r:
   { name: 'house (enabled)', draw: (kit, r) => kit.glyphHouse(r, true) },
   { name: 'house (disabled)', draw: (kit, r) => kit.glyphHouse(r, false) },
   { name: 'plus', draw: (kit, r) => kit.glyphPlus(r) },
-  { name: 'swap arrows', draw: (kit, r) => kit.glyphSwap(r) },
-  { name: 'cross', draw: (kit, r) => kit.glyphCross(r) },
 ];
 
 /** The colours a draw recorded, in order. Pixi normalizes every `fill()` into a style carrying the

@@ -1,8 +1,6 @@
 import type { Rect } from '../../geometry.js';
 import type { PalisadePanelModel } from '../model/index.js';
 import type { BuildingLayout, ButtonHit } from './building.js';
-import type { SettlerLayout } from './settler.js';
-import { mapTradeLayout } from './settler-trade.js';
 import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared.js';
 import { mapVehicleLayout, type VehicleLayout } from './vehicle.js';
 
@@ -20,18 +18,6 @@ export {
   STOCK_ROW_H,
   stockSlotRects,
 } from './building.js';
-export {
-  layoutSettler,
-  type SettlerLayout,
-  type WorkControlAction,
-  type WorkControlRow,
-} from './settler.js';
-export {
-  EQUIP_ROW_H,
-  type EquipActionHit,
-  type EquipSlotRef,
-  equipActionKey,
-} from './settler-equipment.js';
 export {
   type TradeImportHit,
   type TradeLayout,
@@ -77,13 +63,7 @@ export interface PalisadeLayout {
   readonly buttons: readonly ButtonHit[];
 }
 
-export type DetailsLayout =
-  | BuildingLayout
-  | SettlerLayout
-  | CompactLayout
-  | SignpostLayout
-  | PalisadeLayout
-  | VehicleLayout;
+export type DetailsLayout = BuildingLayout | CompactLayout | SignpostLayout | PalisadeLayout | VehicleLayout;
 
 /** One body row: the selection count lives in the headline, the body is the controls hint. */
 const COMPACT_ROWS = 1;
@@ -126,32 +106,6 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       })),
       offers: layout.offers ? sec(layout.offers) : null,
       offerRows: layout.offerRows.map(fn),
-    };
-  }
-  if (layout.kind === 'settler') {
-    return {
-      ...layout,
-      panel: fn(layout.panel),
-      general: sec(layout.general),
-      preview: fn(layout.preview),
-      name: fn(layout.name),
-      meta: fn(layout.meta),
-      bars: layout.bars.map(fn),
-      work: sec(layout.work),
-      workRows: layout.workRows.map(fn),
-      workControls: layout.workControls.map((c) => ({
-        ...c,
-        button: { ...c.button, rect: fn(c.button.rect) },
-        label: fn(c.label),
-      })),
-      gatherChoiceHits: layout.gatherChoiceHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
-      craftChoiceHits: layout.craftChoiceHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
-      experience: layout.experience === null ? null : sec(layout.experience),
-      expRows: layout.expRows.map(fn),
-      equipment: layout.equipment === null ? null : sec(layout.equipment),
-      equipRows: layout.equipRows.map((r) => ({ label: fn(r.label), slots: r.slots.map(fn) })),
-      equipActionHits: layout.equipActionHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
-      trade: layout.trade === null ? null : mapTradeLayout(layout.trade, fn),
     };
   }
   if (layout.kind === 'signpost') {

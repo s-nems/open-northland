@@ -21,24 +21,35 @@ export function isFighterTarget(content: UnlockContent, jobType: number): boolea
   return job !== undefined && systems.isFighterJobRow(job);
 }
 
+/** A `needforgood` requirement the settler has not met yet: its repeats so far, the threshold, and the
+ *  experience tracks that count toward it. */
+export interface UnmetGoodRequirement {
+  readonly current: number;
+  readonly required: number;
+  readonly experienceTypes: readonly number[];
+}
+
 /**
- * Whether a settler has earned `goodType`: every `needforgood` row for it met in repeats. Goods are
- * civilian, so the progression toggle lifts them all with no fighter carve-out.
+ * The first `needforgood` row for `goodType` the settler has not met in repeats, or null once it has
+ * earned the good. Goods are civilian, so the progression toggle lifts them all with no fighter
+ * carve-out.
  */
-export function goodUnlockedFor(
+export function unmetGoodRequirement(
   content: UnlockContent,
   progressionEnabled: boolean,
   tribe: number | undefined,
   experience: ReadonlyMap<number, number>,
   goodType: number,
-): boolean {
-  if (!progressionEnabled) return true;
+): UnmetGoodRequirement | null {
+  if (!progressionEnabled) return null;
   const tribeType = content.tribes.find((t) => t.typeId === tribe);
-  if (tribeType === undefined) return true; // no requirement table - nothing thresholds it
+  if (tribeType === undefined) return null; // no requirement table - nothing thresholds it
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== 'good' || req.targetId !== goodType) continue;
-    const repeats = systems.requirementRepeats(content.jobExperience, experience, req.experienceTypes);
-    if (repeats < req.amount) return false;
+    const current = systems.requirementRepeats(content.jobExperience, experience, req.experienceTypes);
+    if (current < req.amount) {
+      return { current, required: req.amount, experienceTypes: req.experienceTypes };
+    }
   }
-  return true;
+  return null;
 }

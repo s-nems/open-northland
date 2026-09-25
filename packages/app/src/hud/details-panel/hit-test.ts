@@ -2,8 +2,6 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import { contains } from '../geometry.js';
 import {
   type ButtonHit,
-  type EquipActionHit,
-  type EquipSlotRef,
   stockSlotRects,
   type TradeImportHit,
   type TradeLayout,
@@ -29,8 +27,6 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
         ...(view.layout.defenceToggle === null ? [] : [view.layout.defenceToggle]),
         ...view.layout.homeQualityRows.map((row) => row.button),
       ];
-    case 'settler':
-      return [...view.layout.workControls.map((c) => c.button), ...tradeButtons(view.layout.trade)];
     case 'signpost':
       return [view.layout.button];
     case 'palisade':
@@ -115,47 +111,13 @@ export const hitVehicleOrder = (view: PanelView, x: number, y: number): VehicleO
   return hit === undefined ? undefined : vehicleOrderOf(hit.action);
 };
 
-export const hitGatherChoice = (view: PanelView, x: number, y: number): number | null | undefined => {
-  if (view.kind !== 'settler') return undefined;
-  return view.layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
-};
-
-/** The craft product toggle under a canvas point, or undefined (settler layouts only). */
-export const hitCraftChoice = (view: PanelView, x: number, y: number): number | undefined => {
-  if (view.kind !== 'settler') return undefined;
-  return view.layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
-};
-
-/**
- * The next selection after a craft-choice click. A plain click replaces the selection with the clicked
- * product; `toggle` (Ctrl/Cmd) flips it in the multi-set. Selecting every product or none normalizes to
- * the `[]` all-mode, so the sim drops the component.
- */
-export const nextCraftGoods = (
-  products: readonly number[],
-  selected: readonly number[],
-  goodType: number,
-  toggle: boolean,
-): readonly number[] => {
-  if (!toggle) return products.length === 1 ? [] : [goodType];
-  const next = new Set(selected);
-  if (next.has(goodType)) next.delete(goodType);
-  else next.add(goodType);
-  if (next.size === 0 || next.size === products.length) return [];
-  return products.filter((g) => next.has(g));
-};
-
-/** A drawn Handel section and the trader its controls act on: a trader's own window, or the vehicle
- *  window of a cart it rides. */
+/** A drawn Handel section and the trader its controls act on: the vehicle window of a cart it rides. */
 export interface TradeTarget {
   readonly trader: number;
   readonly layout: TradeLayout;
 }
 
 export const tradeTargetOf = (view: PanelView): TradeTarget | null => {
-  if (view.kind === 'settler') {
-    return view.layout.trade === null ? null : { trader: view.model.entityId, layout: view.layout.trade };
-  }
   if (view.kind === 'vehicle') {
     return view.layout.trade === null || view.model.trade === null
       ? null
@@ -189,15 +151,9 @@ export const hitTradeAttach = (view: PanelView, x: number, y: number): boolean =
   return attach != null && contains(attach.button.rect, x, y);
 };
 
-/** The per-slot equipment action button under a canvas point, or undefined (settler layouts only). */
-export const hitEquipAction = (view: PanelView, x: number, y: number): EquipActionHit | undefined => {
-  if (view.kind !== 'settler') return undefined;
-  return view.layout.equipActionHits.find((hit) => contains(hit.rect, x, y));
-};
-
 /** The entity whose portrait box holds a canvas point, or null. */
 export const hitPortrait = (view: PanelView, x: number, y: number): number | null => {
-  if (view.kind !== 'settler' && view.kind !== 'building') return null;
+  if (view.kind !== 'building') return null;
   return contains(view.layout.preview, x, y) ? view.model.entityId : null;
 };
 
@@ -221,14 +177,6 @@ const hitStockGood = (
   return rows[slot]?.label ?? null;
 };
 
-/** The hovered Ogólne stat bar's value ("300/1000" health, "75%" need), or null. Probes the whole
- *  label+gauge row, which is more forgiving than the gauge alone. */
-const hitBarValue = (view: PanelView, x: number, y: number): string | null => {
-  if (view.kind !== 'settler') return null;
-  const i = view.layout.bars.findIndex((r) => contains(r, x, y));
-  return i < 0 ? null : (view.model.bars[i]?.hover ?? null);
-};
-
 /** The hovered building health gauge ("Zdrowie: 300/1000"), or null. Unlike {@link hitBarValue} the
  *  tooltip carries the caption, since the drawn gauge has none. */
 const buildingHealthValue = (view: PanelView, x: number, y: number): string | null => {
@@ -236,24 +184,6 @@ const buildingHealthValue = (view: PanelView, x: number, y: number): string | nu
   const health = view.model.health;
   if (health === null || !contains(view.layout.health, x, y)) return null;
   return `${health.label}: ${health.hover}`;
-};
-
-/** The Praca control buttons' tooltips; the drawn labels name the order, so these spell out what it does. */
-const workControlHint = (view: PanelView, x: number, y: number): string | null => {
-  if (view.kind !== 'settler') return null;
-  const hud = messages().hud;
-  const action = view.layout.workControls.find((c) => contains(c.button.rect, x, y))?.action;
-  if (action === undefined) return null;
-  switch (action) {
-    case 'assign-workplace':
-      return hud.assignWorkplaceHint;
-    case 'unassign-workplace':
-      return hud.unassignWorkplaceHint;
-    case 'assign-home':
-      return hud.assignHomeHint;
-    case 'unassign-home':
-      return hud.unassignHomeHint;
-  }
 };
 
 /** The Handel section's tooltips: the route buttons, an import mark's good, an agreement row. */
@@ -277,55 +207,6 @@ const defenceToggleHint = (view: PanelView, x: number, y: number): string | null
   const toggle = view.layout.defenceToggle;
   if (toggle === null || !contains(toggle.rect, x, y)) return null;
   return view.model.defenseEnabled ? messages().hud.lowerAlarmHint : messages().hud.raiseAlarmHint;
-};
-
-/** The hovered choice button's good name ("Wszystko" for gather-all), or null; the icon buttons carry no
- *  drawn label. A craft button also spells out the click semantics, the only affordance for the modifier. */
-const gatherChoiceHint = (view: PanelView, x: number, y: number): string | null => {
-  if (view.kind !== 'settler') return null;
-  const gather = view.layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
-  if (gather !== undefined) return gather;
-  const craft = view.layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
-  return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
-};
-
-/** The worn good under a hovered equipment socket ("Miód (50%)"), whose percent is the condition left;
- *  an iconless good draws the generic pile, so this tooltip is what identifies it. */
-const equipSocketHint = (view: PanelView, x: number, y: number): string | null => {
-  if (view.kind !== 'settler') return null;
-  for (let i = 0; i < view.layout.equipRows.length; i++) {
-    const rects = view.layout.equipRows[i]?.slots ?? [];
-    const j = rects.findIndex((r) => contains(r, x, y));
-    if (j < 0) continue;
-    const slot = view.model.equipmentRows[i]?.slots[j];
-    if (slot?.label === undefined) return null;
-    return slot.conditionPct !== null ? `${slot.label} (${slot.conditionPct}%)` : slot.label;
-  }
-  return null;
-};
-
-/** Condition percent of an untouched item - below this the swap/take-off discard warning shows. */
-const FULL_CONDITION_PCT = 100;
-
-/** Whether the addressed slot holds a part-used wearing item - the discard-warning trigger. */
-const holdsUsedItem = (view: PanelView, ref: EquipSlotRef): boolean => {
-  if (view.kind !== 'settler') return false;
-  const slot = view.model.equipmentRows.find((row) => row.group === ref.group)?.slots[ref.slot];
-  return slot?.conditionPct != null && slot.conditionPct < FULL_CONDITION_PCT;
-};
-
-/** The equip action buttons' tooltips; the glyph faces carry no label. A swap or take-off button warns
- *  when the order would discard a part-used item, which the sim destroys silently. */
-const equipActionHint = (view: PanelView, x: number, y: number): string | null => {
-  const hit = hitEquipAction(view, x, y);
-  if (hit === undefined) return null;
-  const hud = messages().hud;
-  const lines = [
-    hit.kind === 'equip' ? hud.equipSlotHint : hit.kind === 'swap' ? hud.swapSlotHint : hud.unequipSlotHint,
-  ];
-  if (hit.label !== undefined) lines.push(hit.label);
-  if (hit.kind !== 'equip' && holdsUsedItem(view, hit.ref)) lines.push(hud.usedItemDiscardHint);
-  return lines.join('\n');
 };
 
 /** The vehicle window's tooltips: an order's effect, a hold cell's counts, a step button's direction, and
@@ -430,16 +311,11 @@ export const tooltipTextAt = (
   return (
     rowName ??
     tabLabel ??
-    hitBarValue(view, x, y) ??
     buildingHealthValue(view, x, y) ??
-    gatherChoiceHint(view, x, y) ??
-    equipSocketHint(view, x, y) ??
-    equipActionHint(view, x, y) ??
     productionRowHint(view, x, y) ??
     upgradeButtonHint(view, x, y) ??
     defenceToggleHint(view, x, y) ??
     tradeControlHint(view, x, y) ??
-    workControlHint(view, x, y) ??
     vehicleHint(view, x, y, activeStockTab)
   );
 };

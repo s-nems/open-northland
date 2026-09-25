@@ -6,14 +6,7 @@ import type { DetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
 import { mapLayout } from './layout/index.js';
 import type { PanelHover } from './pointer-intent.js';
-import {
-  drawBuilding,
-  drawCompact,
-  drawPalisade,
-  drawSettler,
-  drawSignpost,
-  drawVehicle,
-} from './sections/index.js';
+import { drawBuilding, drawCompact, drawPalisade, drawSignpost, drawVehicle } from './sections/index.js';
 import type { PanelView } from './selection-view.js';
 
 export type DrawableView = Exclude<PanelView, { kind: 'empty' }>;
@@ -71,15 +64,6 @@ export function bakePanel(opts: PanelBakeOptions): BakedPanel {
     case 'building': {
       const draw = mapLayout(view.layout, toDraw);
       drawBuilding(chrome, draw, view.model, ui, hover.action, activeStockTab, ss);
-      break;
-    }
-    case 'settler': {
-      const draw = mapLayout(view.layout, toDraw);
-      drawSettler(chrome, draw, view.model, ui, hover.action, hover.choiceGood, hover.equipAction, ss, {
-        import: hover.tradeImport,
-        offer: hover.tradeOffer,
-        detach: hover.tradeDetach,
-      });
       break;
     }
     case 'compact':

@@ -1,4 +1,4 @@
-import { entityById, type Fixed, fx, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, type Fixed, fx, type NeedKind, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
 import { num, type SnapshotEntity, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -11,10 +11,6 @@ import {
   jobDisplayName,
   type UnitPanelModelContext,
 } from './context.js';
-import type { EquipRow } from './settler-equipment.js';
-import type { UnlockProgressRowModel } from './settler-unlocks.js';
-import type { SettlerWorkModel } from './settler-work.js';
-import type { TradePanelModel } from './trade.js';
 
 /** The four military stances (`MILITARY_MODE`). The original carries no string for the sim's own states,
  *  so the "Postawa" line's labels come from the app's own bundle. */
@@ -27,46 +23,12 @@ export function stanceLabel(mode: number | undefined): string {
   return '-';
 }
 
-export interface SettlerPanelModel {
-  readonly kind: 'settler';
-  readonly entityId: number;
-  readonly name: string;
-  readonly profession: string;
-  /** False for an idle or jobless settler, which has no trade to place. */
-  readonly canAssignWorkplace: boolean;
-  /** True for a settler currently posted to a workplace. */
-  readonly canUnassignWorkplace: boolean;
-  /** Any adult may be housed; false for a growing child, whose family is housed through its parents. */
-  readonly canAssignHome: boolean;
-  /** True for an adult that currently has a `Residence` to move its family out of. */
-  readonly canUnassignHome: boolean;
-  /** Owner/tribe meta line under the name, with the military stance appended for a soldier. */
-  readonly meta: string;
-  /** A short live-state caption standing in for the original's animated "what it's doing" preview. */
-  readonly statusCaption: string;
-  /** The Ogólne stat bars: Zdrowie (only for a unit with Health), then the need bars when they apply. */
-  readonly bars: readonly PanelBar[];
-  readonly work: SettlerWorkModel;
-  /** The Handel section: non-null for a trader. */
-  readonly trade: TradePanelModel | null;
-  /** Whether the Doświadczenie section shows: not for a woman or a child, who hold no trade and so
-   *  train nothing, unless rows exist anyway. */
-  readonly showsExperience: boolean;
-  /** Every specialization the settler has trained, most-trained first; empty when it has none. */
-  readonly experience: readonly ExperienceRowModel[];
-  /** Progress toward the professions this settler's current work unlocks next; empty while progression
-   *  is off. */
-  readonly upcomingUnlocks: readonly UnlockProgressRowModel[];
-  /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. */
-  readonly equipmentRows: readonly EquipRow[];
-}
-
-function needBar(label: string, deficit: number | undefined): PanelBar {
+function needBar(label: string, need: NeedKind, deficit: number | undefined): PanelBar {
   const level = 100 - pct(deficit);
   // A bar can hold reserve above full (`NEED_OVERFILL_FLOOR`), which the gauge cannot show: a settler
   // fresh from a meal at home would otherwise read a flat 100% for minutes with nothing moving.
   const stored = deficit === undefined || deficit >= 0 ? 0 : Math.round(fx.toFloat(deficit as Fixed) * -100);
-  return { label, pct: level, hover: stored > 0 ? `${level}% +${stored}%` : `${level}%` };
+  return { label, pct: level, hover: stored > 0 ? `${level}% +${stored}%` : `${level}%`, need };
 }
 
 /**
@@ -92,19 +54,21 @@ export function satisfactionBars(
   // A settler still growing carries no needs at all (`lifecycle/needs/system.ts`), so it shows its health
   // and nothing else.
   if (comps.Age !== undefined) return bars;
-  bars.push(needBar(hud.hunger, num(s.hunger)));
-  bars.push(needBar(hud.sleep, num(s.fatigue)));
-  bars.push(needBar(hud.company, num(s.enjoyment)));
-  bars.push(needBar(hud.religion, num(s.piety)));
+  bars.push(needBar(hud.hunger, 'hunger', num(s.hunger)));
+  bars.push(needBar(hud.sleep, 'fatigue', num(s.fatigue)));
+  bars.push(needBar(hud.company, 'enjoyment', num(s.enjoyment)));
+  bars.push(needBar(hud.religion, 'piety', num(s.piety)));
   return bars;
 }
 
 /** One Doświadczenie row: a specialization's label, its completed-work repeats ("Drewno 5" means five
- *  units gathered), and its bonus percent, null when that experience buys no bonus. */
+ *  units gathered), its bonus percent (null when that experience buys no bonus), and whether it trains
+ *  the settler's current trade. */
 export interface ExperienceRowModel {
   readonly label: string;
   readonly repeats: number;
   readonly bonusPct: number | null;
+  readonly own: boolean;
 }
 
 const PERCENT = 100;
@@ -157,46 +121,68 @@ function experienceBonusPct(
 }
 
 /**
- * The Doświadczenie rows, most-trained first, off the settler's `SettlerProgress.experience` map
- * (`humanjobexperiencetypes` id → raw points). Raw points are shown as completed-work repeats, dividing
- * the track's accrual rate back out; a track-less bucket (fight, scout) shows raw points.
+ * The Doświadczenie rows: the current trade's tracks first, each group most-trained first, off the
+ * settler's `SettlerProgress.experience` map (`humanjobexperiencetypes` id → raw points). Raw points are
+ * shown as completed-work repeats, dividing the track's accrual rate back out; a track-less bucket
+ * (fight, scout) shows raw points and belongs to the fighter or scout trades.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
+  const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
+  const job = ctx.jobs.find((j) => j.typeId === jobType);
+  const fights = job !== undefined && (systems.isFighterJobRow(job) || systems.isHeroJobRow(job));
   const rows: (ExperienceRowModel & { spec: number })[] = [];
   for (const [spec, points] of settlerExperienceOf(comps)) {
     if (points <= 0) continue;
     const track = ctx.jobExperience.find((t) => t.typeId === spec);
     const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;
     if (repeats <= 0) continue; // partial credit toward the first repeat - nothing to show yet
+    const own =
+      track !== undefined
+        ? track.jobType === jobType
+        : WEAPON_XP_KEY.has(spec)
+          ? fights
+          : spec === systems.SCOUT_EXPERIENCE_TYPE && jobType === JOB_SCOUT;
     rows.push({
       label: experienceLabel(ctx, spec, track),
       repeats,
       bonusPct: experienceBonusPct(ctx, spec, track, points),
+      own,
       spec,
     });
   }
-  rows.sort((a, b) => b.repeats - a.repeats || a.spec - b.spec);
-  return rows.map(({ label, repeats, bonusPct }) => ({ label, repeats, bonusPct }));
+  rows.sort((a, b) => Number(b.own) - Number(a.own) || b.repeats - a.repeats || a.spec - b.spec);
+  return rows.map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
 }
+
+/** The rows the Doświadczenie section shows before its fold: the current trade's, at most
+ *  {@link EXPERIENCE_SHOWN_MAX}, or the single best-trained one for a person without a trained trade. */
+export const EXPERIENCE_SHOWN_MAX = 3;
+
+export function experienceShown(rows: readonly ExperienceRowModel[]): number {
+  const own = rows.filter((row) => row.own).length;
+  return Math.min(rows.length, EXPERIENCE_SHOWN_MAX, Math.max(1, own));
+}
+
+/** The live state the status line opens with, read off the settler's components. */
+export type SettlerState = 'ordered' | 'working' | 'walking' | 'awaitingWorkplace' | 'standingTo' | 'idle';
 
 export function settlerStatus(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   entityId: number,
   components: Comp,
-): string {
-  const statuses = messages().hud.statuses;
+): SettlerState {
   // The sim retires PlayerOrder the tick the unit reaches its commanded destination, so a settler
   // carrying it is still walking there.
-  if ('PlayerOrder' in components) return statuses.ordered;
-  if ('CurrentAtomic' in components) return statuses.working;
-  if ('PathFollow' in components || 'MoveGoal' in components) return statuses.walking;
+  if ('PlayerOrder' in components) return 'ordered';
+  if ('CurrentAtomic' in components) return 'working';
+  if ('PathFollow' in components || 'MoveGoal' in components) return 'walking';
   // Waiting out a workplace still going up is by design; without its own caption it reads as idleness.
-  if (awaitsItsWorkplace(snapshot, components)) return statuses.awaitingWorkplace;
+  if (awaitsItsWorkplace(snapshot, components)) return 'awaitingWorkplace';
   // A unit holding its ground under the battle alert takes no work and no rest, which without its own
   // caption reads as a soldier that has simply stopped caring about its empty bars.
-  if (ctx.standsTo?.(entityId) === true) return statuses.standingTo;
-  return statuses.idle;
+  if (ctx.standsTo?.(entityId) === true) return 'standingTo';
+  return 'idle';
 }
 
 function awaitsItsWorkplace(snapshot: WorldSnapshot, components: Comp): boolean {

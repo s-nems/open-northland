@@ -6,8 +6,8 @@ import type { Rect } from '../geometry.js';
 /** Lit and dimmed glyph strokes, matching the button label's gold-cream / grey pair. */
 const GLYPH_LIGHT = 0xead9a0;
 const GLYPH_DIM = 0x8b7a55;
-/** The gather-everything tile's four good tones (stone, wood, gold, herb), so it reads as a mix
- *  rather than as one specific good's pile. */
+/** The iconless import mark's four good tones (stone, wood, gold, herb), so it reads as a mix rather
+ *  than as one specific good's pile. */
 const ALL_GLYPH_TILES = [0xb8b0a0, 0x9a6a34, 0xe0b455, 0x7f9a2a] as const;
 /** The choice dot's radius as a share of its button's width. */
 const DOT_RADIUS = 0.2;
@@ -22,20 +22,16 @@ interface GlyphDeps {
 /** Each glyph is centred in the caller's rect and stays inside it: that rect is a button plate, so
  *  overflow bleeds onto the panel behind the button. */
 export interface GlyphKit {
-  /** A 2×2 grid of mixed-good tiles: the gather-everything button's face. */
+  /** A 2×2 grid of mixed-good tiles: the face of an import mark whose good has no icon. */
   glyphAll(r: Rect): void;
-  /** A house: the assign-workplace button's face. */
+  /** A house: the face of the route's attach and detach buttons. */
   glyphHouse(r: Rect, enabled: boolean): void;
-  /** A plus: an empty equip slot's "put an item on" button face, and a hold's "want one more". */
+  /** A plus: a hold's "want one more" button face. */
   glyphPlus(r: Rect): void;
   /** A minus: a hold's "want one less" button face, dimmed while nothing is wanted. */
   glyphMinus(r: Rect, enabled: boolean): void;
   /** A shield: the defence-mode toggle's face, solid while the alarm is raised and outlined while not. */
   glyphShield(r: Rect, raised: boolean): void;
-  /** Two opposing horizontal arrows: a worn equip slot's "swap the item" button face. */
-  glyphSwap(r: Rect): void;
-  /** A diagonal cross: a worn equip slot's "take the item off" button face. */
-  glyphCross(r: Rect): void;
   /** A solid dot: the face of the chosen one among round choice buttons. */
   glyphDot(r: Rect): void;
 }
@@ -111,45 +107,9 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     else g.stroke({ color: GLYPH_LIGHT, width: line });
   };
 
-  const glyphSwap = (r: Rect): void => {
-    const x0 = r.x + r.w * 0.22;
-    const x1 = r.x + r.w * 0.78;
-    const cy = r.y + r.h / 2;
-    const lane = r.h * 0.14;
-    const th = Math.max(1, Math.round(r.w * 0.1));
-    const head = r.w * 0.16;
-    g.moveTo(x0, cy - lane)
-      .lineTo(x1 - head, cy - lane)
-      .stroke({ color: GLYPH_LIGHT, width: th });
-    g.moveTo(x1, cy - lane)
-      .lineTo(x1 - head, cy - lane - head)
-      .lineTo(x1 - head, cy - lane + head)
-      .closePath()
-      .fill(GLYPH_LIGHT);
-    g.moveTo(x1, cy + lane)
-      .lineTo(x0 + head, cy + lane)
-      .stroke({ color: GLYPH_LIGHT, width: th });
-    g.moveTo(x0, cy + lane)
-      .lineTo(x0 + head, cy + lane - head)
-      .lineTo(x0 + head, cy + lane + head)
-      .closePath()
-      .fill(GLYPH_LIGHT);
-  };
-
-  const glyphCross = (r: Rect): void => {
-    const pad = r.w * 0.3;
-    const th = Math.max(1, Math.round(r.w * 0.14));
-    const x0 = r.x + pad;
-    const x1 = r.x + r.w - pad;
-    const y0 = r.y + pad;
-    const y1 = r.y + r.h - pad;
-    g.moveTo(x0, y0).lineTo(x1, y1).stroke({ color: GLYPH_LIGHT, width: th });
-    g.moveTo(x1, y0).lineTo(x0, y1).stroke({ color: GLYPH_LIGHT, width: th });
-  };
-
   const glyphDot = (r: Rect): void => {
     g.circle(r.x + r.w / 2, r.y + r.h / 2, r.w * DOT_RADIUS).fill(GLYPH_LIGHT);
   };
 
-  return { glyphAll, glyphHouse, glyphPlus, glyphMinus, glyphShield, glyphSwap, glyphCross, glyphDot };
+  return { glyphAll, glyphHouse, glyphPlus, glyphMinus, glyphShield, glyphDot };
 }

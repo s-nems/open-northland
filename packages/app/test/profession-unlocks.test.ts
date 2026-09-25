@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { goodUnlockedFor } from '../src/game/profession-unlocks.js';
+import { unmetGoodRequirement } from '../src/game/profession-unlocks.js';
 
 /** The details panel's product filter - the app-side mirror of the sim's `settlerMeetsNeed`
  *  `needforgood` reading (same rows, same repeats arithmetic). */
-describe('goodUnlockedFor', () => {
+describe('unmetGoodRequirement', () => {
   const COLLECTOR = 8;
   const CARPENTER = 9;
   const WOOD_TRACK = 3;
@@ -50,9 +50,11 @@ describe('goodUnlockedFor', () => {
   };
 
   it('gates a needforgood ware by repeats, and the toggle frees every good (no carve-out)', () => {
-    expect(goodUnlockedFor(content, true, 1, new Map(), PLAIN_GOOD)).toBe(true); // ungated ware
-    expect(goodUnlockedFor(content, true, 1, new Map([[WOOD_TRACK, 99]]), SWORD_GOOD)).toBe(false);
-    expect(goodUnlockedFor(content, true, 1, new Map([[WOOD_TRACK, 100]]), SWORD_GOOD)).toBe(true);
-    expect(goodUnlockedFor(content, false, 1, new Map(), SWORD_GOOD)).toBe(true); // goods are civilian
+    const unmet = (xp: number, good: number, enabled = true) =>
+      unmetGoodRequirement(content, enabled, 1, new Map(xp > 0 ? [[WOOD_TRACK, xp]] : []), good);
+    expect(unmet(0, PLAIN_GOOD)).toBeNull(); // ungated ware
+    expect(unmet(99, SWORD_GOOD)).toEqual({ current: 9, required: 10, experienceTypes: [WOOD_TRACK] });
+    expect(unmet(100, SWORD_GOOD)).toBeNull();
+    expect(unmet(0, SWORD_GOOD, false)).toBeNull(); // goods are civilian
   });
 });

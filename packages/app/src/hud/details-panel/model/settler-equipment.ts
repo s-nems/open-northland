@@ -10,6 +10,13 @@ import { HUMANWINDOW } from './humanwindow.js';
  *  a category added to the data schema a compile error here. */
 export type EquipGroup = EquipCategory;
 
+/** Which sim `Equipment` slot an order addresses: the group, and the index within it (only the misc
+ *  group holds more than one). */
+export interface EquipSlotRef {
+  readonly group: EquipGroup;
+  readonly slot: number;
+}
+
 /** One equipment slot's contents. Empty (`occupied` false, `conditionPct` null) for an unworn slot. */
 export interface EquipSlotModel {
   /** Whether the slot holds a good - true even when the good's def failed to resolve (no icon/label),

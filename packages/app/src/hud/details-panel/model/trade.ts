@@ -19,9 +19,19 @@ export interface TradeStopModel {
   readonly imports: readonly TradeImportModel[];
 }
 
+/** One side of an agreement: so many units of a good. */
+export interface TradeOfferSide {
+  readonly amount: number;
+  readonly goodType: number;
+  readonly goodId?: string;
+  readonly label: string;
+}
+
 export interface TradeOfferModel {
   readonly index: number;
   readonly label: string;
+  readonly give: TradeOfferSide;
+  readonly take: TradeOfferSide;
   readonly selected: boolean;
 }
 
@@ -34,6 +44,8 @@ export interface TradePanelModel {
   readonly balance: readonly TradeImportModel[];
   readonly offers: readonly TradeOfferModel[];
   readonly status: readonly string[];
+  /** The house the trader serves now, for the status line; null before its first stop. */
+  readonly destination: string | null;
   /** Whether the route has a free stop to attach a house to. */
   readonly canAttach: boolean;
   /** Whether that free stop is the first slot, so its attach row goes above the stops. */
@@ -138,9 +150,20 @@ export function tradePanelModel(
       (good) => first.imports.includes(good) && second.imports.includes(good),
     ).filter((choice) => storedAtSecond.has(choice.goodType));
   }
+  const side = (amount: number, goodType: number): TradeOfferSide => {
+    const def = goodDef(ctx, goodType);
+    return {
+      amount,
+      goodType,
+      label: goodLabel(ctx, goodType),
+      ...(def?.id !== undefined ? { goodId: def.id } : {}),
+    };
+  };
   const offers: TradeOfferModel[] = (foreign?.offers ?? []).map((offer) => ({
     index: offer.index,
     label: tradeOfferLabel(ctx, offer),
+    give: side(offer.giveAmount, offer.giveGood),
+    take: side(offer.takeAmount, offer.takeGood),
     selected: offer.index === view.agreement,
   }));
   const status: string[] = [cartLine(ctx, view)];
@@ -163,5 +186,13 @@ export function tradePanelModel(
     }
   }
   const canAttach = view.stops.length < 2;
-  return { stops, balance, offers, status, canAttach, attachFirst: canAttach && first?.slot !== 0 };
+  return {
+    stops,
+    balance,
+    offers,
+    status,
+    destination: stops[view.current]?.label ?? null,
+    canAttach,
+    attachFirst: canAttach && first?.slot !== 0,
+  };
 }

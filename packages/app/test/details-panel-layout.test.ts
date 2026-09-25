@@ -1,24 +1,18 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_COLLECTOR, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_HOME_02,
-  GOOD_MEAD,
-  GOOD_SHOES,
-  GOOD_STONE,
-  GOOD_TOOL_WOODEN,
 } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import {
   type BuildingLayout,
   type DetailsLayout,
-  equipActionKey,
   MAX_STOCK_ROWS,
   mapLayout,
-  type SettlerLayout,
   stockSlotRects,
 } from '../src/hud/details-panel/layout/index.js';
 import { panelViewFor } from '../src/hud/details-panel/selection-view.js';
@@ -46,8 +40,6 @@ const SWEEP_UISCALES = [
 ];
 
 const buildingLayoutOf = (model: UnitPanelModel): BuildingLayout => viewOfKind(model, 'building').layout;
-const settlerLayoutOf = (model: UnitPanelModel, s = 1): SettlerLayout =>
-  viewOfKind(model, 'settler', s).layout;
 
 describe('details panel layout', () => {
   it('pairs every selection kind with the geometry laid out for it', () => {
@@ -62,216 +54,14 @@ describe('details panel layout', () => {
     expect(viewOfKind(modelOf([1], [buildingEntity(1, BUILDING_FARM)]), 'building').model.kind).toBe(
       'building',
     );
-    expect(viewOfKind(modelOf([1], [settler(1)]), 'settler').model.kind).toBe('settler');
+    // A single settler is the DOM settler panel's: this panel leaves it blank.
+    expect(panelViewFor(modelOf([1], [settler(1)]), PANEL_SCREEN, 1).kind).toBe('empty');
     expect(
       viewOfKind(modelOf([1], [{ id: 1, components: { Signpost: { player: 1 } } }]), 'signpost').model.kind,
     ).toBe('signpost');
     // Both multi-select kinds share the one compact strip - the pairing the type keeps and the reason
     // the discriminant is the layout's kind, not the model's.
     expect(viewOfKind(modelOf([1, 2], [settler(1), settler(2)]), 'compact').model.kind).toBe('multi-settler');
-  });
-
-  it('lays every gather filter as a clickable Praca button with the current good selected', () => {
-    const model = buildUnitPanelModel(
-      {
-        tick: 0,
-        events: [],
-        entities: [
-          {
-            id: 1,
-            components: {
-              Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-              WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
-            },
-          },
-        ],
-      },
-      new Set([1]),
-      sandboxCtx(),
-    );
-    const layout = settlerLayoutOf(model);
-    expect(layout.gatherChoiceHits).toHaveLength(7);
-    expect(
-      layout.gatherChoiceHits.filter((choice) => choice.selected).map((choice) => choice.goodType),
-    ).toEqual([GOOD_STONE]);
-  });
-
-  it('offers a fighter’s stray tool the take-off cross alone (no menu it cannot fill)', () => {
-    const model = buildUnitPanelModel(
-      snapshotOf([
-        {
-          id: 1,
-          components: {
-            Settler: { tribe: 1, jobType: JOB_SOLDIER },
-            Equipment: {
-              boots: null,
-              tool: { goodType: GOOD_TOOL_WOODEN, degreeOfUse: 0 }, // kept from its civilian days
-              weapon: null,
-              armor: null,
-              misc: [null, null, null, null],
-            },
-          },
-        },
-      ]),
-      new Set([1]),
-      sandboxCtx(),
-    );
-    const keys = settlerLayoutOf(model).equipActionHits.map(equipActionKey);
-    expect(keys).toContain('tool:0:unequip'); // it can always come off
-    expect(keys).not.toContain('tool:0:swap'); // but the sim refuses to give a fighter another
-  });
-
-  it('lays per-slot equip action buttons: equip on empty, swap + take-off on worn, misc on one line', () => {
-    const model = buildUnitPanelModel(
-      snapshotOf([
-        {
-          id: 1,
-          components: {
-            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-            Equipment: {
-              boots: { goodType: GOOD_SHOES, degreeOfUse: 0 },
-              tool: null,
-              weapon: null,
-              armor: null,
-              misc: [{ goodType: GOOD_MEAD, degreeOfUse: 0 }, null, null, null],
-            },
-          },
-        },
-      ]),
-      new Set([1]),
-      sandboxCtx(),
-    );
-    const layout = settlerLayoutOf(model);
-
-    // A worn slot offers swap + take-off, an empty one only equip (no weapon/armour rows: not a soldier).
-    expect(layout.equipActionHits.map(equipActionKey).sort()).toEqual(
-      [
-        'boots:0:swap',
-        'boots:0:unequip',
-        'tool:0:equip',
-        'misc:0:swap',
-        'misc:0:unequip',
-        'misc:1:equip',
-        'misc:2:equip',
-        'misc:3:equip',
-      ].sort(),
-    );
-    // The worn goods' buttons name the item for the tooltip; an empty slot's equip button has no name.
-    const hitOf = (key: string) => layout.equipActionHits.find((hit) => equipActionKey(hit) === key);
-    expect(hitOf('boots:0:swap')?.label).toBe(hitOf('boots:0:unequip')?.label);
-    expect(hitOf('boots:0:swap')?.label).toBeDefined();
-    expect(hitOf('tool:0:equip')?.label).toBeUndefined();
-
-    // Every socket and button stays inside the Ekwipunek body.
-    if (layout.equipment === null) throw new Error('expected an equipment section');
-    const body = layout.equipment.body;
-    const rects = [
-      ...layout.equipRows.flatMap((r) => [...r.slots]),
-      ...layout.equipActionHits.map((h) => h.rect),
-    ];
-    for (const r of rects) {
-      expect(r.x).toBeGreaterThanOrEqual(body.x);
-      expect(r.x + r.w).toBeLessThanOrEqual(body.x + body.w + 1);
-      expect(r.y).toBeGreaterThanOrEqual(body.y);
-      expect(r.y + r.h).toBeLessThanOrEqual(body.y + body.h + 1);
-    }
-    // The buttons hug their socket (a few px for the icon overflow past the ring).
-    const bootsSocket = layout.equipRows[0]?.slots[0];
-    const bootsSwap = hitOf('boots:0:swap');
-    if (bootsSocket === undefined || bootsSwap === undefined) throw new Error('expected the boots cell');
-    expect(bootsSwap.rect.x - (bootsSocket.x + bootsSocket.w)).toBeLessThanOrEqual(4);
-  });
-
-  it('drops Doświadczenie and Ekwipunek for a woman, ending the panel at Praca', () => {
-    const settler = (extra: Record<string, unknown>) =>
-      settlerLayoutOf(
-        buildUnitPanelModel(
-          snapshotOf([{ id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, ...extra } }]),
-          new Set([1]),
-          sandboxCtx(),
-        ),
-      );
-    const man = settler({});
-    const woman = settler({ Female: { female: true } });
-    expect(man.experience).not.toBeNull();
-    expect(man.equipment).not.toBeNull();
-    expect(woman.experience).toBeNull();
-    expect(woman.expRows).toEqual([]);
-    expect(woman.equipment).toBeNull();
-    expect(woman.equipRows).toEqual([]);
-    expect(woman.equipActionHits).toEqual([]);
-    expect(woman.work.frame.y + woman.work.frame.h).toBe(woman.panel.y + woman.panel.h);
-  });
-
-  it('keeps the four misc cells on one Ekwipunek line at every menu uiscale', () => {
-    const model = buildUnitPanelModel(
-      snapshotOf([
-        {
-          id: 1,
-          components: {
-            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-            Equipment: {
-              boots: null,
-              tool: null,
-              weapon: null,
-              armor: null,
-              misc: [{ goodType: GOOD_MEAD, degreeOfUse: 0 }, null, null, null],
-            },
-          },
-        },
-      ]),
-      new Set([1]),
-      sandboxCtx(),
-    );
-    for (const s of SWEEP_UISCALES) {
-      const layout = settlerLayoutOf(model, s);
-      const misc = layout.equipRows[layout.equipRows.length - 1];
-      if (misc === undefined) throw new Error('expected the misc equipment row');
-      expect(misc.slots).toHaveLength(4);
-      expect(new Set(misc.slots.map((r) => r.y)).size, `uiscale ${s}`).toBe(1);
-    }
-  });
-
-  it('stacks the four Praca controls clear of each other and inside the body, at every scale', () => {
-    // A gatherer: its round choice buttons sit between the text rows and the control stack, the case
-    // where the stack starts lowest and is likeliest to run out of body.
-    const model = buildUnitPanelModel(
-      snapshotOf([
-        {
-          id: 1,
-          components: {
-            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-            WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
-          },
-        },
-      ]),
-      new Set([1]),
-      sandboxCtx(),
-    );
-    for (const s of SWEEP_UISCALES) {
-      const layout = settlerLayoutOf(model, s);
-      const body = layout.work.body;
-      expect(layout.workControls.map((c) => c.action)).toEqual([
-        'assign-workplace',
-        'unassign-workplace',
-        'assign-home',
-        'unassign-home',
-      ]);
-      let previousBottom = layout.gatherChoiceHits.reduce(
-        (low, hit) => Math.max(low, hit.rect.y + hit.rect.h),
-        0,
-      );
-      for (const { button, label } of layout.workControls) {
-        expect(button.rect.y, `uiscale ${s}`).toBeGreaterThan(previousBottom);
-        expect(label.x).toBeGreaterThanOrEqual(button.rect.x + button.rect.w); // the label never overlaps
-        for (const r of [button.rect, label]) {
-          expect(r.x).toBeGreaterThanOrEqual(body.x);
-          expect(r.x + r.w).toBeLessThanOrEqual(body.x + body.w + 1);
-          expect(r.y + r.h, `uiscale ${s}`).toBeLessThanOrEqual(body.y + body.h + 1);
-        }
-        previousBottom = button.rect.y + button.rect.h;
-      }
-    }
   });
 
   it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {
@@ -486,8 +276,8 @@ describe('details panel layout', () => {
   it('mapLayout transforms EVERY rect in a layout (an unmapped new field fails here)', () => {
     const modelOf = (entity: EntitySnapshot): UnitPanelModel =>
       buildUnitPanelModel(snapshotOf([entity]), new Set([entity.id]), sandboxCtx());
-    // The HQ (tabbed store + buttons + the Zdrowie row), a farm site (the Construction branch) and a
-    // gatherer settler - between them every optional section a layout can carry is present.
+    // The HQ (tabbed store + buttons + the Zdrowie row) and a farm site (the Construction branch) -
+    // between them every optional section a layout can carry is present.
     const layouts: readonly DetailsLayout[] = [
       buildingLayoutOf(
         modelOf(
@@ -503,15 +293,6 @@ describe('details panel layout', () => {
             components: { UnderConstruction: { labor: 0 }, Stockpile: { amounts: [] } },
           }),
         ),
-      ),
-      settlerLayoutOf(
-        modelOf({
-          id: 1,
-          components: {
-            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-            WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
-          },
-        }),
       ),
     ];
 

@@ -1,0 +1,136 @@
+import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { JOB_CIVILIST, JOB_IDLE, JOB_SCOUT } from '../../../catalog/jobs.js';
+import {
+  buildingTypeOf,
+  fatherOf,
+  isAdult,
+  isBoundByMarriage,
+  isFemale,
+  isMarrying,
+  marriageOf,
+  residenceHomeOf,
+  type SnapshotEntity,
+  settlerJobType,
+  trainingHouseOf,
+  workplaceOf,
+} from '../../../game/snapshot.js';
+import { buildingTitle, type UnitPanelModelContext } from './context.js';
+import { settlerDisplayName, settlerGivenName } from './settler-name.js';
+import type { SettlerPlace } from './settler-work.js';
+
+/** What the panel shows a person as: the rows and sections follow it (FOUNDATION.md, "Settler panel").
+ *  The residents list's kinds, read the same way. */
+export type SettlerRole = 'worker' | 'civilian' | 'soldier' | 'hero' | 'child' | 'woman';
+
+export function settlerRole(ctx: Pick<UnitPanelModelContext, 'jobs'>, ent: SnapshotEntity): SettlerRole {
+  const jobType = settlerJobType(ent);
+  const job = ctx.jobs.find((j) => j.typeId === jobType);
+  if (!isAdult(ent)) return 'child';
+  if (job !== undefined && systems.isHeroJobRow(job)) return 'hero';
+  if (job !== undefined && systems.isFighterJobRow(job)) return 'soldier';
+  if (isFemale(ent)) return 'woman';
+  if (jobType === undefined || jobType === JOB_IDLE || jobType === JOB_CIVILIST) return 'civilian';
+  return 'worker';
+}
+
+/** A control a row offers: `true` when the sim would take it, else the reason it would refuse, which
+ *  the faded button carries in its tooltip. */
+export type SeatControl = true | string;
+
+/** A Miejsce pracy or Dom row: what it names and the two round buttons after it. */
+export interface SettlerSeatRow {
+  /** Null reads "brak". */
+  readonly target: SettlerPlace | null;
+  /** The assign button; null makes the row read-only. */
+  readonly assign: SeatControl | null;
+  /** The remove button; null leaves its slot blank, as when there is nothing to remove. */
+  readonly remove: SeatControl | null;
+}
+
+export interface SettlerPersonLink {
+  readonly id: number;
+  readonly label: string;
+}
+
+/** The Rodzina row: the spouse and the growing child as links, or "bez pary". */
+export interface SettlerFamilyModel {
+  readonly partner: SettlerPersonLink | null;
+  readonly child: SettlerPersonLink | null;
+  /** Whether "bez pary" arms the partner pick: a grown person free to marry. */
+  readonly canPickPartner: boolean;
+}
+
+/**
+ * The Miejsce pracy row of a worker, or null when there is none to show: a trade no workplace employs
+ * (the scout) has no row while it holds no post. Remove releases a building post only; a pinned site
+ * and a lesson are left to the action ring.
+ */
+export function workplaceRow(
+  ctx: UnitPanelModelContext,
+  ent: SnapshotEntity,
+  place: SettlerPlace | null,
+  control: SeatControl,
+): SettlerSeatRow | null {
+  const jobType = settlerJobType(ent);
+  const employed = ctx.buildings.some((building) =>
+    building.workers.some((slot) => slot.jobType === jobType),
+  );
+  if (place === null && !employed) return null;
+  return {
+    target: place,
+    assign: employed ? control : null,
+    remove: workplaceOf(ent) === undefined ? null : control,
+  };
+}
+
+/** The Dom row: a grown person's own, a child's read-only (it lives where its parents do). */
+export function homeRow(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ent: SnapshotEntity,
+  role: SettlerRole,
+  control: SeatControl,
+): SettlerSeatRow | null {
+  if (role === 'hero') return null;
+  const father = role === 'child' ? fatherOf(snapshot, ent) : undefined;
+  const fatherEnt = father === undefined ? undefined : entityById(snapshot, father);
+  const home = residenceHomeOf(ent) ?? (fatherEnt === undefined ? undefined : residenceHomeOf(fatherEnt));
+  const building = home === undefined ? undefined : entityById(snapshot, home);
+  const target =
+    home === undefined || building === undefined
+      ? null
+      : { id: home, label: buildingTitle(ctx, buildingTypeOf(building)) };
+  if (role === 'child') return { target, assign: null, remove: null };
+  return { target, assign: control, remove: target === null ? null : control };
+}
+
+/** The Rodzina row, or null for a hero and a child, who have none. */
+export function familyModel(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ent: SnapshotEntity,
+  role: SettlerRole,
+  controllable: boolean,
+): SettlerFamilyModel | null {
+  if (role === 'hero' || role === 'child') return null;
+  const marriage = marriageOf(ent);
+  const spouse = marriage === undefined ? undefined : entityById(snapshot, marriage.spouse);
+  const child = marriage?.child == null ? undefined : entityById(snapshot, marriage.child);
+  const partner =
+    spouse === undefined ? null : { id: spouse.id, label: settlerDisplayName(ctx, snapshot, spouse) };
+  // The sim's `mayMarry`: grown, not wedding already, not in a drill, not a fighter or the scout.
+  const free =
+    controllable &&
+    partner === null &&
+    !isBoundByMarriage(snapshot, ent) &&
+    !isMarrying(ent) &&
+    trainingHouseOf(ent) === undefined &&
+    role !== 'soldier' &&
+    settlerJobType(ent) !== JOB_SCOUT;
+  return {
+    partner,
+    child:
+      child === undefined || isAdult(child) ? null : { id: child.id, label: settlerGivenName(ctx, child) },
+    canPickPartner: free,
+  };
+}

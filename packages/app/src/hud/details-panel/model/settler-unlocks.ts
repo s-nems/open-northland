@@ -1,13 +1,16 @@
 import { systems } from '@open-northland/sim';
-import { isFighterTarget } from '../../../game/profession-unlocks.js';
+import { isFighterTarget, unmetGoodRequirement } from '../../../game/profession-unlocks.js';
 import { num, settlerExperienceOf, settlerLearnedOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
 import { experienceLabel } from './settler.js';
 
-/** One upcoming-unlock row: progress toward a `needforjob` threshold, pre-formatted. */
+/** One upcoming-unlock row: progress toward a `needforjob` threshold. */
 export interface UnlockProgressRowModel {
-  readonly label: string;
+  /** The profession it unlocks. */
+  readonly job: string;
+  /** The experience track this settler trains toward it. */
+  readonly track: string;
   /** Summed repeats across the requirement's experience tracks. */
   readonly current: number;
   /** The requirement's `amount`. */
@@ -56,21 +59,45 @@ export function unlockProgressRows(
         ? experienceLabel(ctx, trackType, tracks[reachable])
         : jobDisplayName(ctx, jobType);
     rows.push({
-      label: formatMessage(messages().hud.unlockProgress, {
-        job: jobDisplayName(ctx, req.targetId),
-        current,
-        required: req.amount,
-        track: trackLabel,
-      }),
+      job: jobDisplayName(ctx, req.targetId),
+      track: trackLabel,
       current,
       required: req.amount,
       targetId: req.targetId,
     });
   }
   rows.sort((a, b) => b.current / b.required - a.current / a.required || a.targetId - b.targetId);
-  return rows.slice(0, UPCOMING_UNLOCK_ROWS_MAX).map(({ label, current, required }) => ({
-    label,
+  return rows.slice(0, UPCOMING_UNLOCK_ROWS_MAX).map(({ job, track, current, required }) => ({
+    job,
+    track,
     current,
     required,
   }));
+}
+
+/** Why a settler may not make `goodType` yet under the tribe's `needforgood` table ("8/20 (Kowal)"), or
+ *  null once it has earned it. */
+export function goodExperienceLock(
+  ctx: UnitPanelModelContext,
+  comps: Comp,
+  progressionEnabled: boolean,
+  goodType: number,
+): string | null {
+  const tribe = num(((comps.Settler ?? {}) as Comp).tribe);
+  const unmet = unmetGoodRequirement(ctx, progressionEnabled, tribe, settlerExperienceOf(comps), goodType);
+  if (unmet === null) return null;
+  const trackType = unmet.experienceTypes[0];
+  const track =
+    trackType === undefined
+      ? ''
+      : experienceLabel(
+          ctx,
+          trackType,
+          ctx.jobExperience.find((t) => t.typeId === trackType),
+        );
+  return formatMessage(messages().hud.settlerPanel.goodLock, {
+    current: unmet.current,
+    required: unmet.required,
+    track,
+  });
 }

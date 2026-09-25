@@ -1,7 +1,6 @@
 import { resolveJobAtomics } from '@open-northland/data';
 import { entityById, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import { goodUnlockedFor } from '../../../game/profession-unlocks.js';
-import { num, settlerExperienceOf, settlerLearnedOf } from '../../../game/snapshot.js';
+import { num, settlerLearnedOf } from '../../../game/snapshot.js';
 import { technologyLabel } from '../../../game/technology.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
@@ -11,36 +10,54 @@ import {
   goodDef,
   goodLabel,
   isCarrierJob,
-  recipeOutputs,
+  PRODUCTION_UNLIMITED,
   type UnitPanelModelContext,
 } from './context.js';
+import { goodExperienceLock } from './settler-unlocks.js';
 
-/** The Praca section's model: the workplace/product line and the gather or craft product menus. */
-export interface SettlerWorkModel {
-  readonly place: string;
-  readonly product: string;
-  readonly gatherChoices: readonly {
-    readonly goodType: number | null;
-    readonly label: string;
-    /** The good's string id, the button's icon key; absent for the "Wszystko" choice, which has no
-     *  single good. */
-    readonly goodId?: string;
-  }[];
-  readonly selectedGood: number | null;
-  /** A craft operator's product toggles, in recipe order, multi-selectable. Never non-empty together
-   *  with `gatherChoices`. */
-  readonly craftChoices: readonly {
-    readonly goodType: number;
-    readonly label: string;
-    readonly goodId?: string;
-  }[];
-  /** The settler's `CraftSelection` goods, or every product when it has none. */
-  readonly selectedCraftGoods: readonly number[];
+/** Where the settler works: a building the link selects, or a place with no building (a work flag). */
+export interface SettlerPlace {
+  readonly id: number | null;
+  readonly label: string;
 }
 
+/** One product row: a good the trade may make or gather here. */
+export interface SettlerProductionRow {
+  readonly goodType: number;
+  readonly goodId?: string;
+  readonly label: string;
+  /** Why the settler may not make it yet (the tooltip of its lock), null once earned. */
+  readonly locked: string | null;
+  /** A craft product's counter, 0..`PRODUCTION_UNLIMITED`; null for a gathered good, which has none. */
+  readonly count: number | null;
+}
+
+/** The Produkcja section: a craft operator's counters or a gatherer's goods, in recipe or catalog order. */
+export interface SettlerProductionModel {
+  readonly kind: 'craft' | 'gather';
+  readonly rows: readonly SettlerProductionRow[];
+  /** The one good a gatherer is held to, null while it gathers every good. */
+  readonly selectedGood: number | null;
+}
+
+export interface SettlerWorkModel {
+  readonly place: SettlerPlace | null;
+  readonly production: SettlerProductionModel | null;
+  /** A lesson in progress, which the status line names. */
+  readonly lesson: string | null;
+}
+
+const NO_WORK: SettlerWorkModel = { place: null, production: null, lesson: null };
+
+const HIDDEN = Symbol('hidden');
+/** The per-good gate both product lists share: hidden while the mission forbids the good, else locked
+ *  with the reason, else open. */
+type GoodGate = (goodType: number) => string | null | typeof HIDDEN;
+
 /**
- * The Praca section: the settler's workplace and the good it makes. The no-workplace text is a pinned
- * fallback matching the original's `humanwindow` 41 wording, not a lookup into the decoded table.
+ * The settler's place of work and what it makes there. A gatherer's goods follow the sim's forage
+ * filter (what the workplace stocks, a good's edible form counting too), a craft operator's the
+ * workplace's recipes; a product not yet earned stays listed with the reason it is locked.
  */
 export function settlerWork(
   ctx: UnitPanelModelContext,
@@ -49,137 +66,91 @@ export function settlerWork(
   progressionGated: boolean,
 ): SettlerWorkModel {
   const training = comps.TrainingOrder as
-    | { drillTicksLeft?: number; lesson?: { kind: 'job' | 'good'; typeId: number } }
+    | { house?: unknown; drillTicksLeft?: number; lesson?: { kind: 'job' | 'good'; typeId: number } }
     | undefined;
   if (training?.lesson !== undefined) {
+    const house = num(training.house);
+    const houseType = num(
+      (entityById(snapshot, house ?? -1)?.components.Building as { buildingType?: unknown } | undefined)
+        ?.buildingType,
+    );
     return {
-      place: messages().hud.schoolTitle,
-      product: formatMessage(messages().hud.schoolProgress, {
+      place: {
+        id: house ?? null,
+        label: houseType === undefined ? messages().hud.schoolTitle : buildingTitle(ctx, houseType),
+      },
+      production: null,
+      lesson: formatMessage(messages().hud.schoolProgress, {
         target: technologyLabel(ctx, training.lesson.kind, training.lesson.typeId),
         seconds: Math.ceil(Math.max(0, training.drillTicksLeft ?? 0) / TICKS_PER_SECOND),
       }),
-      gatherChoices: [],
-      selectedGood: null,
-      craftChoices: [],
-      selectedCraftGoods: [],
     };
   }
-  const carry = comps.Carrying as { goodType?: unknown; amount?: unknown } | undefined;
-  const carried =
-    carry === undefined
-      ? undefined
-      : `${goodLabel(ctx, num(carry.goodType) ?? -1)} ×${num(carry.amount) ?? 0}`;
   const settlerComp = comps.Settler as { tribe?: unknown; jobType?: unknown } | undefined;
   const jobType = num(settlerComp?.jobType);
-  // The `needforgood` filter the sim's rotation and harvest gates apply, so both product menus offer
-  // only what this settler may make or dig right now.
-  const experience = settlerExperienceOf(comps);
+  const tribe = num(settlerComp?.tribe) ?? 0;
   const owner = num((comps.Owner as { player?: unknown } | undefined)?.player);
-  const earned = (goodType: number): boolean =>
-    (ctx.goodAllowed?.(goodType, num(settlerComp?.tribe) ?? 0, owner) ?? true) &&
-    (settlerLearnedOf(comps, 'good').includes(goodType) ||
-      goodUnlockedFor(ctx, progressionGated, num(settlerComp?.tribe), experience, goodType));
-  const workFlag = comps.WorkFlag as { goodType?: unknown } | undefined;
-  if (workFlag !== undefined) {
-    const selectedGood = num(workFlag.goodType) ?? null;
-    const goods = harvestableGoodsFor(ctx, jobType).filter((good) => earned(good.typeId));
-    return gatherWork(ctx, messages().hud.workFlag, goods, selectedGood);
+  const learned = settlerLearnedOf(comps, 'good');
+  const experienceGate: GoodGate = (goodType) => {
+    if (!(ctx.goodAllowed?.(goodType, tribe, owner) ?? true)) return HIDDEN;
+    if (learned.includes(goodType)) return null;
+    return goodExperienceLock(ctx, comps, progressionGated, goodType);
+  };
+  const selectedGather = (key: 'WorkFlag' | 'GatherSelection'): number | null =>
+    num((comps[key] as { goodType?: unknown } | undefined)?.goodType) ?? null;
+
+  if (comps.WorkFlag !== undefined) {
+    const goods = harvestableGoodsFor(ctx, jobType);
+    return {
+      place: { id: null, label: messages().hud.workFlag },
+      production: gatherProduction(ctx, goods, experienceGate, selectedGather('WorkFlag')),
+      lesson: null,
+    };
   }
   const siteAssignment = comps.SiteAssignment as { site?: unknown; pinned?: unknown } | undefined;
   const pinnedSiteId = siteAssignment?.pinned === true ? num(siteAssignment.site) : undefined;
-  const pinnedSite = pinnedSiteId === undefined ? undefined : entityById(snapshot, pinnedSiteId);
   const pinnedType = num(
-    (pinnedSite?.components.Building as { buildingType?: unknown } | undefined)?.buildingType,
+    (entityById(snapshot, pinnedSiteId ?? -1)?.components.Building as { buildingType?: unknown } | undefined)
+      ?.buildingType,
   );
-  if (pinnedSite !== undefined && pinnedType !== undefined) {
-    // A damaged upgrade site is mended before its upgrade goes on; a rising foundation never is.
-    const site = pinnedSite.components;
-    const repairing =
-      site.Damaged !== undefined && (site.UnderConstruction === undefined || site.Upgrading !== undefined);
+  if (pinnedSiteId !== undefined && pinnedType !== undefined) {
     return {
-      place: buildingTitle(ctx, pinnedType),
-      product:
-        carried ??
-        (repairing ? messages().hud.buildSite.assignedRepair : messages().hud.buildSite.assignedSite),
-      gatherChoices: [],
-      selectedGood: null,
-      craftChoices: [],
-      selectedCraftGoods: [],
+      place: { id: pinnedSiteId, label: buildingTitle(ctx, pinnedType) },
+      production: null,
+      lesson: null,
     };
   }
-  const assignment = comps.JobAssignment as { workplace?: unknown } | undefined;
-  const workplaceId = num(assignment?.workplace);
-  if (workplaceId === undefined) {
-    return {
-      place: messages().hud.noWorkplace,
-      product: carried ?? '-',
-      gatherChoices: [],
-      selectedGood: null,
-      craftChoices: [],
-      selectedCraftGoods: [],
-    };
-  }
-  const ent = entityById(snapshot, workplaceId);
-  const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
+  const workplaceId = num((comps.JobAssignment as { workplace?: unknown } | undefined)?.workplace);
+  if (workplaceId === undefined) return NO_WORK;
+  const rawType = num(
+    (entityById(snapshot, workplaceId)?.components.Building as { buildingType?: unknown } | undefined)
+      ?.buildingType,
+  );
   const def = buildingDef(ctx, rawType);
-  // The sim's forage filter: a building-employed gatherer forages what its workplace stockpiles, a
-  // good's edible form counting too, so a hunter's kill banks as food at an HQ that has no meat slot.
-  // The gather menu wins over the craft menu, because such a job runs the sim's gather drive and never
-  // the craft loop.
+  const place: SettlerPlace = { id: workplaceId, label: buildingTitle(ctx, rawType) };
+  // The gather list wins over the craft list: such a job runs the sim's gather drive, never the craft
+  // loop.
   const harvestable = harvestableGoodsFor(ctx, jobType);
   if (harvestable.length > 0) {
     const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
-    const isStocked = (goodType: number): boolean =>
-      stored.has(goodType) || stored.has(ctx.edibleGoodForm?.(goodType) ?? goodType);
-    const choices = harvestable.filter((good) => isStocked(good.typeId) && earned(good.typeId));
-    if (choices.length > 0) {
-      const selectedGood =
-        num((comps.GatherSelection as { goodType?: unknown } | undefined)?.goodType) ?? null;
-      return gatherWork(ctx, buildingTitle(ctx, rawType), choices, selectedGood);
-    }
+    const stocked = harvestable.filter(
+      (good) => stored.has(good.typeId) || stored.has(ctx.edibleGoodForm?.(good.typeId) ?? good.typeId),
+    );
+    const production = gatherProduction(ctx, stocked, experienceGate, selectedGather('GatherSelection'));
+    if (production !== null) return { place, production, lesson: null };
   }
-  const craft = craftChoicesFor(
-    ctx,
-    def,
-    comps,
-    (good) => earned(good) && !ctx.technologyReason?.('good', good, num(settlerComp?.tribe) ?? 0, owner),
-  );
-  if (craft !== null) {
-    const selectedLabels = craft.choices
-      .filter((choice) => craft.selected.includes(choice.goodType))
-      .map((choice) => choice.label);
-    const allSelected = selectedLabels.length === craft.choices.length;
-    // A long multi-selection is summarized as a count, because four joined labels overflow the column.
-    const product = allSelected
-      ? messages().hud.gatherAll
-      : selectedLabels.length > 2
-        ? formatMessage(messages().hud.selectedCount, { count: selectedLabels.length })
-        : selectedLabels.join(', ');
-    return {
-      place: buildingTitle(ctx, rawType),
-      product,
-      gatherChoices: [],
-      selectedGood: null,
-      craftChoices: craft.choices,
-      selectedCraftGoods: craft.selected,
-    };
-  }
-  const outputs = recipeOutputs(ctx, def);
-  const product = outputs[0] === undefined ? undefined : goodLabel(ctx, outputs[0].goodType);
-  return {
-    place: buildingTitle(ctx, rawType),
-    product: product ?? carried ?? '-',
-    gatherChoices: [],
-    selectedGood: null,
-    craftChoices: [],
-    selectedCraftGoods: [],
+  const craftGate: GoodGate = (goodType) => {
+    const gate = experienceGate(goodType);
+    if (gate === HIDDEN) return HIDDEN;
+    return ctx.technologyReason?.('good', goodType, tribe, owner) ?? gate;
   };
+  return { place, production: craftProduction(ctx, def, jobType, comps, craftGate), lesson: null };
 }
 
 type GoodEntry = UnitPanelModelContext['goods'][number];
 
 /** The non-farmed goods `jobType` may harvest, in goods-catalog order. Shares `resolveJobAtomics` with
- *  the sim's permission gate, so the menu cannot offer what the planner would refuse. */
+ *  the sim's permission gate, so the list cannot offer what the planner would refuse. */
 function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undefined): GoodEntry[] {
   if (jobType === undefined) return [];
   const allowed = resolveJobAtomics(ctx.jobs).get(jobType);
@@ -190,55 +161,73 @@ function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undef
   );
 }
 
-/** A gatherer's Praca model: the "Wszystko" choice plus one per allowed good. */
-function gatherWork(
+function productRow(
   ctx: UnitPanelModelContext,
-  place: string,
+  goodType: number,
+  locked: string | null,
+  count: number | null,
+): SettlerProductionRow {
+  const id = goodDef(ctx, goodType)?.id;
+  return {
+    goodType,
+    label: goodLabel(ctx, goodType),
+    locked,
+    count,
+    ...(id !== undefined ? { goodId: id } : {}),
+  };
+}
+
+function gatherProduction(
+  ctx: UnitPanelModelContext,
   goods: readonly GoodEntry[],
+  gate: GoodGate,
   selectedGood: number | null,
-): SettlerWorkModel {
-  const gatherChoices = [
-    { goodType: null, label: messages().hud.gatherAll },
-    ...goods.map((good) => ({ goodType: good.typeId, label: goodLabel(ctx, good.typeId), goodId: good.id })),
-  ];
-  const product =
-    gatherChoices.find((choice) => choice.goodType === selectedGood)?.label ?? messages().hud.gatherAll;
-  return { place, product, gatherChoices, selectedGood, craftChoices: [], selectedCraftGoods: [] };
+): SettlerProductionModel | null {
+  const rows = goods.flatMap((good) => {
+    const locked = gate(good.typeId);
+    return locked === HIDDEN ? [] : [productRow(ctx, good.typeId, locked, null)];
+  });
+  return rows.length === 0 ? null : { kind: 'gather', rows, selectedGood };
 }
 
 /**
- * The craft product toggles for a settler bound to a recipe workplace, or null when there is nothing to
- * choose. Operator slots follow the sim's `operatorJobsOf`: worker slots minus the carrier transport
- * slot, unless every slot is a carrier one, when the carrier does choose.
+ * A craft operator's products with their counters, or null when there is nothing to choose. Operator
+ * slots follow the sim's `operatorJobsOf`: worker slots minus the carrier transport slot, unless every
+ * slot is a carrier one, when the carrier does choose. A product missing from `CraftSelection.counters`
+ * never stops, as does every product of an operator without the component.
  */
-function craftChoicesFor(
+function craftProduction(
   ctx: UnitPanelModelContext,
   def: ReturnType<typeof buildingDef>,
+  jobType: number | undefined,
   comps: Comp,
-  earned: (goodType: number) => boolean,
-): { choices: SettlerWorkModel['craftChoices']; selected: number[] } | null {
-  if (def === undefined || def.recipes.length === 0) return null;
-  const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
-  if (jobType === undefined) return null;
+  gate: GoodGate,
+): SettlerProductionModel | null {
+  if (def === undefined || def.recipes.length === 0 || jobType === undefined) return null;
   const operatorSlots = def.workers.filter((slot) => !isCarrierJob(ctx, slot.jobType));
   const operators = operatorSlots.length > 0 ? operatorSlots : def.workers;
   if (!operators.some((slot) => slot.jobType === jobType)) return null;
-  const choices = def.recipes.flatMap((recipe) => {
+  const counters = craftCounters(comps);
+  const rows = def.recipes.flatMap((recipe) => {
     const goodType = recipe.outputs[0]?.goodType;
-    if (goodType === undefined || !earned(goodType)) return [];
-    const good = goodDef(ctx, goodType);
-    return [
-      {
-        goodType,
-        label: goodLabel(ctx, goodType),
-        ...(good?.id !== undefined ? { goodId: good.id } : {}),
-      },
-    ];
+    if (goodType === undefined) return [];
+    const locked = gate(goodType);
+    if (locked === HIDDEN) return [];
+    return [productRow(ctx, goodType, locked, counters.get(goodType) ?? PRODUCTION_UNLIMITED)];
   });
-  if (choices.length === 0) return null;
-  const raw = (comps.CraftSelection as { goods?: unknown } | undefined)?.goods;
-  const picked = Array.isArray(raw) ? raw.map(num).filter((g): g is number => g !== undefined) : [];
-  const products = choices.map((c) => c.goodType);
-  const selected = picked.length > 0 ? products.filter((g) => picked.includes(g)) : products;
-  return { choices, selected: selected.length > 0 ? selected : products };
+  return rows.length === 0 ? null : { kind: 'craft', rows, selectedGood: null };
+}
+
+/** `CraftSelection.counters` as the snapshot serializes it: [goodType, count] pairs. */
+function craftCounters(comps: Comp): ReadonlyMap<number, number> {
+  const raw = (comps.CraftSelection as { counters?: unknown } | undefined)?.counters;
+  const counters = new Map<number, number>();
+  if (!Array.isArray(raw)) return counters;
+  for (const pair of raw) {
+    if (!Array.isArray(pair)) continue;
+    const goodType = num(pair[0]);
+    const count = num(pair[1]);
+    if (goodType !== undefined && count !== undefined) counters.set(goodType, count);
+  }
+  return counters;
 }

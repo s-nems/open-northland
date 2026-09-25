@@ -1,4 +1,4 @@
-import { ONE } from '@open-northland/sim';
+import { type NeedKind, ONE } from '@open-northland/sim';
 import { healthOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 
@@ -9,6 +9,8 @@ export interface PanelBar {
   readonly pct: number;
   /** Tooltip value for the hovered row: raw points for health, a percent for a need. */
   readonly hover: string;
+  /** The need the bar shows, whose order a press on it gives; absent for health. */
+  readonly need?: NeedKind;
 }
 
 /**

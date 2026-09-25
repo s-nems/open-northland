@@ -124,8 +124,12 @@ export function isMakingLove(e: SnapshotEntity): boolean {
 export function surnameSourceOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
   const marriage = marriageOf(e);
   if (marriage !== undefined && isFemale(e)) return marriage.spouse;
-  if (isAdult(e)) return undefined;
-  return fathersByChild(snapshot).get(e.id);
+  return fatherOf(snapshot, e);
+}
+
+/** A growing child's father, which its home and surname follow; undefined for an adult. */
+export function fatherOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
+  return isAdult(e) ? undefined : fathersByChild(snapshot).get(e.id);
 }
 
 const fatherIndex = new WeakMap<WorldSnapshot, ReadonlyMap<number, number>>();

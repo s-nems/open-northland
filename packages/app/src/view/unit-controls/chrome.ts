@@ -111,10 +111,6 @@ export async function createUnitChrome(
         opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
       onSetHouseholdGoodUse: (player, effect, allowed) =>
         opts.enqueue({ kind: 'setHouseholdGoodUse', player, effect, allowed }),
-      onAssignWorkplace: callbacks.assignWorkplace,
-      onAssignHome: callbacks.assignHome,
-      onUnassignWorkplace: (id) => opts.enqueue({ kind: 'unassignWorker', entity: id as Entity }),
-      onUnassignHome: (id) => opts.enqueue({ kind: 'unassignHouse', entity: id as Entity }),
       onAttachTradeHouse: callbacks.attachTradeHouse,
       onDetachTradeHouse: (id, house) =>
         opts.enqueue({ kind: 'detachTradeHouse', entity: id as Entity, house: house as Entity }),
@@ -127,13 +123,6 @@ export async function createUnitChrome(
       onVehicleOrder: callbacks.vehicleOrder,
       onSetVehicleWanted: (id, goodType, amount) =>
         opts.enqueue({ kind: 'setVehicleWanted', vehicle: id as Entity, goodType, amount }),
-      onSetGatherGood: (id, goodType) =>
-        opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
-      onSetCraftGoods: (id, goods) =>
-        opts.enqueue({ kind: 'setCraftGoods', entity: id as Entity, goods: [...goods] }),
-      ...(equipPicker !== null ? { onEquipSlot: (id, ref) => equipPicker.open(id, ref) } : {}),
-      onUnequipSlot: (id, ref) =>
-        opts.enqueue({ kind: 'unequipGood', entity: id as Entity, group: ref.group, slot: ref.slot }),
       onSelectEntity: callbacks.selectEntity,
       // Approximation: centring uses a building's base, so a tall house sits above the midpoint.
       onCenterOnEntity: (id) => {

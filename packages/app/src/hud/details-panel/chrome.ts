@@ -24,8 +24,6 @@ const INNER_BOX_LIGHT = 0x7a6244;
 /** Flat fallback for the section card body without `content/`: the grey-blue the `bg_selected` marble
  *  averages to through the `bg_normal` element palette (decoded #3c4043). */
 const CARD_FILL = 0x3c4043;
-/** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
-const SLOT_FILL = 0x4a2b1d;
 /** Round-button wood fills, matching the rectangular button and tab plates' no-bitmap fallback. */
 const ROUND_BUTTON_FILL = 0x4a2b1d;
 const ROUND_BUTTON_ACTIVE_FILL = 0x6b4426;
@@ -50,8 +48,6 @@ export interface Chrome extends TextKit, GlyphKit {
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope - the original's inner framing. */
   innerBox(r: Rect): void;
-  /** A round equipment-slot socket: a recessed rimmed circle, warm-tinted when `filled`, dark when empty. */
-  slotSocket(r: Rect, filled: boolean): void;
   /** The rust headline strip with centered light title-size text. */
   headline(r: Rect, title: string): void;
   /** The original's yellow-green strip marking a selected row. */
@@ -138,18 +134,6 @@ export function createChrome(
       color: INNER_BOX_LIGHT,
       width: line,
     });
-  };
-
-  const slotSocket = (r: Rect, filled: boolean): void => {
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h / 2;
-    const rad = Math.min(r.w, r.h) / 2;
-    const line = Math.max(1, Math.round(scale));
-    g.circle(cx, cy, rad).fill(
-      filled ? { color: SLOT_FILL, alpha: 0.85 } : { color: INNER_BOX_DARK, alpha: 0.55 },
-    );
-    g.circle(cx, cy, rad).stroke({ color: INNER_BOX_DARK, width: line });
-    g.circle(cx, cy, Math.max(1, rad - line)).stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.7 });
   };
 
   const roundButton = (r: Rect, enabled: boolean, active: boolean): void => {
@@ -270,7 +254,6 @@ export function createChrome(
     goodIcon,
     window: windowBox,
     innerBox,
-    slotSocket,
     roundButton,
     headline,
     selectedUnderline,

@@ -51,7 +51,31 @@ export interface UnitPanelModelContext {
   readonly traderView?: ((entity: number) => TraderView | undefined) | undefined;
   /** The sim's agreement read seam (`Simulation.tradeOffersAt`); absent lists no offers on a house. */
   readonly tradeOffersAt?: ((house: number) => readonly TradeOffer[]) | undefined;
+  /** The sim's work-status read seam (`Simulation.workStatus`) for the one selected tradesman; absent
+   *  leaves the status line without a product or an idle reason. */
+  readonly workStatus?: ((entity: number) => SettlerWorkStatus | undefined) | undefined;
+  /** The viewer seat's stance toward another owner, for a foreign person's owner line. */
+  readonly diplomacyStance?: ((owner: number) => DiplomacyStance) | undefined;
 }
+
+export type DiplomacyStance = 'friend' | 'neutral' | 'enemy';
+
+/**
+ * The settler panel's slice of the sim contract, mirrored until the sim exports it: `WorkStatus` from
+ * `Simulation.workStatus`, the production counter range of `CraftSelection.counters`, and the longest
+ * name `renameSettler` takes.
+ */
+export type SettlerWorkStatus =
+  | { readonly kind: 'crafting'; readonly goodType: number }
+  | { readonly kind: 'waitingInput'; readonly goodType: number }
+  | { readonly kind: 'outputFull' }
+  | { readonly kind: 'nothingSelected' }
+  | { readonly kind: 'noTool' }
+  | { readonly kind: 'noJob' }
+  | { readonly kind: 'workplaceUnderConstruction' };
+export const PRODUCTION_COUNT_MAX = 10;
+export const PRODUCTION_UNLIMITED = 11;
+export const SETTLER_NAME_MAX_CHARS = 24;
 
 /** The content slice a building's store and construction rows are read through: the surfaces that show
  *  only those rows, such as the hover card, need nothing else. */
@@ -70,6 +94,17 @@ function jobLabel(jobType: number | undefined): string {
   const def = professionDefForJob(jobType);
   if (def !== undefined) return professionLabel(def.key);
   return professionLabel('idle');
+}
+
+/** The content's own name for a tribe the locale catalogs do not translate, so a selected animal reads as
+ *  its species rather than a bare id. */
+export function contentTribeName(
+  ctx: Pick<UnitPanelModelContext, 'tribes'>,
+  tribe: number | undefined,
+): string | undefined {
+  if (tribe === undefined) return undefined;
+  const row = ctx.tribes.find((t) => t.typeId === tribe);
+  return row?.name ?? row?.id;
 }
 
 export function buildingDef(

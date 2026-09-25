@@ -51,6 +51,7 @@ import {
   GOOD_WOOL,
 } from '../src/game/sandbox/ids/index.js';
 import { num } from '../src/game/snapshot.js';
+import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import {
   barTone,
   buildUnitPanelModel,
@@ -60,7 +61,7 @@ import {
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
 import { jobDisplayName } from '../src/hud/details-panel/model/context.js';
-import type { PanelBar } from '../src/hud/details-panel/model/index.js';
+import { experienceShown, type PanelBar } from '../src/hud/details-panel/model/index.js';
 import { messages } from '../src/i18n/index.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
@@ -343,8 +344,7 @@ describe('selection details panel model', () => {
 
     const pinned = buildUnitPanelModel(snapshotOf([foundation, builder(true)]), new Set([2]), sandboxCtx());
     if (pinned.kind !== 'settler') throw new Error('expected a settler model');
-    expect(pinned.work.place).toContain('Dom');
-    expect(pinned.work.product).toBe('Przydzielony fundament');
+    expect(pinned.workplace?.target).toMatchObject({ id: 1, label: expect.stringContaining('Dom') });
 
     const automatic = buildUnitPanelModel(
       snapshotOf([foundation, builder(false)]),
@@ -352,7 +352,7 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (automatic.kind !== 'settler') throw new Error('expected a settler model');
-    expect(automatic.work.place).toBe('Brak miejsca pracy');
+    expect(automatic.workplace?.target ?? null).toBeNull();
   });
 
   it('gives a building the settler Zdrowie bar off its Health pool', () => {
@@ -663,7 +663,7 @@ describe('selection details panel model', () => {
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // Pinned labels (deliberately diverging from the decoded humanwindow 12–14 stat names), in the
     // fixed Zdrowie → Głód → Sen → Towarzystwo → Religia order.
-    expect(model.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
+    expect(model.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Sytość', 'Sen', 'Towarzystwo', 'Religia']);
     // Health: gauge = hp/max percent, hover = the raw points.
     expect(model.bars[0]).toMatchObject({ pct: 30, hover: '300/1000' });
     // Needs: gauge = satisfaction level, hover = the same level as a percent.
@@ -674,7 +674,7 @@ describe('selection details panel model', () => {
 
     const bare = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     if (bare.kind !== 'settler') throw new Error('expected a settler model');
-    expect(bare.bars.map((b) => b.label)).toEqual(['Głód', 'Sen', 'Towarzystwo', 'Religia']);
+    expect(bare.bars.map((b) => b.label)).toEqual(['Sytość', 'Sen', 'Towarzystwo', 'Religia']);
   });
 
   it('drops every need bar while the needs rule is off, leaving only Zdrowie', () => {
@@ -697,7 +697,7 @@ describe('selection details panel model', () => {
     ]);
     const kept = buildUnitPanelModel(on, new Set([1]), sandboxCtx());
     if (kept.kind !== 'settler') throw new Error('expected a settler model');
-    expect(kept.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
+    expect(kept.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Sytość', 'Sen', 'Towarzystwo', 'Religia']);
   });
 
   it('shows a minor its age in years off the sim rate, and shows an adult none', () => {
@@ -732,12 +732,12 @@ describe('selection details panel model', () => {
 
     const adult = buildUnitPanelModel(snapshot, new Set([3]), sandboxCtx());
     if (adult.kind !== 'settler') throw new Error('expected a settler model');
-    expect(adult.meta).not.toContain('Wiek');
+    expect(adult.meta).toBeNull();
   });
 
-  it('names each settler civilization instead of printing its tribe code', () => {
-    // A seat can field several tribes at once and tribe partitions the economy, so the panel has to
-    // say which one a settler belongs to rather than showing a bare number.
+  it("names another seat's settler's civilization instead of printing its tribe code", () => {
+    // A seat can field several tribes at once and tribe partitions the economy, so the owner line has
+    // to say which one another seat's settler belongs to rather than showing a bare number.
     const snapshot: WorldSnapshot = {
       tick: 0,
       events: [],
@@ -746,11 +746,17 @@ describe('selection details panel model', () => {
         { id: 2, components: { Settler: { tribe: 4, jobType: JOB_COLLECTOR }, Owner: { player: 0 } } },
       ],
     };
-    const viking = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
-    const saracen = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
+    const watcher = { ...sandboxCtx(), viewer: fixedViewerSeat(1) };
+    const viking = buildUnitPanelModel(snapshot, new Set([1]), watcher);
+    const saracen = buildUnitPanelModel(snapshot, new Set([2]), watcher);
     if (viking.kind !== 'settler' || saracen.kind !== 'settler') throw new Error('expected settlers');
+    expect(viking.foreign).toBe(true);
     expect(viking.meta).toContain('Wikingowie');
     expect(saracen.meta).toContain('Saraceni');
+    // The seat's own settler has nothing to say on that line.
+    const own = buildUnitPanelModel(snapshot, new Set([1]), { ...sandboxCtx(), viewer: fixedViewerSeat(0) });
+    if (own.kind !== 'settler') throw new Error('expected a settler');
+    expect(own.meta).toBeNull();
   });
 
   it('hides the need bars for a cared-for baby (only Zdrowie), keeps them for a child', () => {
@@ -788,6 +794,7 @@ describe('selection details panel model', () => {
 
   it('offers remove-from-home only to a housed adult (not the homeless, not a child)', () => {
     const snapshot = snapshotOf([
+      buildingEntity(9, BUILDING_HOME_00),
       // A housed adult: has a Residence, no Age - the remove button is live.
       { id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Residence: { home: 9 } } },
       // A homeless adult: no Residence - nothing to remove.
@@ -805,15 +812,16 @@ describe('selection details panel model', () => {
 
     const housed = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (housed.kind !== 'settler') throw new Error('expected a settler model');
-    expect(housed.canUnassignHome).toBe(true);
+    expect(housed.home?.remove).toBe(true);
 
     const homeless = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     if (homeless.kind !== 'settler') throw new Error('expected a settler model');
-    expect(homeless.canUnassignHome).toBe(false);
+    expect(homeless.home?.target).toBeNull();
+    expect(homeless.home?.remove).toBeNull();
 
     const child = buildUnitPanelModel(snapshot, new Set([3]), sandboxCtx());
     if (child.kind !== 'settler') throw new Error('expected a settler model');
-    expect(child.canUnassignHome).toBe(false);
+    expect(child.home).toMatchObject({ assign: null, remove: null });
   });
 
   it('offers remove-work-place only to a posted man (not the unposted, not a child or woman)', () => {
@@ -856,7 +864,7 @@ describe('selection details panel model', () => {
     for (const [id, offered] of expected) {
       const model = buildUnitPanelModel(snapshot, new Set([id]), sandboxCtx());
       if (model.kind !== 'settler') throw new Error('expected a settler model');
-      expect(model.canUnassignWorkplace, `settler ${id}`).toBe(offered);
+      expect(model.workplace?.remove === true, `settler ${id}`).toBe(offered);
     }
   });
 
@@ -869,7 +877,7 @@ describe('selection details panel model', () => {
     expect(barTone(0)).toBe('critical');
   });
 
-  it('offers every collector resource plus all in the Praca section and reflects the selected filter', () => {
+  it('lists every collector resource in the Produkcja section and reflects the selected filter', () => {
     const snapshot = snapshotOf([
       {
         id: 1,
@@ -882,8 +890,8 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
 
-    expect(model.work.gatherChoices.map((choice) => choice.goodType)).toEqual([
-      null,
+    expect(model.production?.kind).toBe('gather');
+    expect(model.production?.rows.map((row) => row.goodType)).toEqual([
       GOOD_WOOD,
       GOOD_STONE,
       GOOD_MUD,
@@ -891,10 +899,8 @@ describe('selection details panel model', () => {
       GOOD_GOLD,
       GOOD_MUSHROOM,
     ]);
-    expect(model.work.selectedGood).toBe(GOOD_STONE);
-    expect(model.work.product).toBe(
-      model.work.gatherChoices.find((choice) => choice.goodType === GOOD_STONE)?.label,
-    );
+    expect(model.production?.selectedGood).toBe(GOOD_STONE);
+    expect(model.production?.rows.every((row) => row.count === null)).toBe(true);
   });
 
   // The HQ has no raw meat slot - it banks a hunter's kill as food - so a raw-slot-only menu filter drops
@@ -914,10 +920,10 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
 
-    expect(model.work.gatherChoices.map((choice) => choice.goodType)).toContain(GOOD_MEAT);
+    expect(model.production?.rows.map((row) => row.goodType)).toContain(GOOD_MEAT);
   });
 
-  it('hides a needforgood-gated ware from the gather menu until the settler earns it', () => {
+  it('locks a needforgood-gated ware in the gather list until the settler earns it', () => {
     const DIG_TRACK = 999; // no jobExperience record - raw XP counts as repeats
     const IRON_REPEATS = 10;
     const ctx = sandboxCtx();
@@ -944,11 +950,13 @@ describe('selection details panel model', () => {
 
     const fresh = buildUnitPanelModel(collector(0), new Set([1]), ctx);
     if (fresh.kind !== 'settler') throw new Error('expected a settler model');
-    expect(fresh.work.gatherChoices.some((choice) => choice.goodType === GOOD_IRON)).toBe(false);
+    const ironOf = (model: SettlerPanelModel) =>
+      model.production?.rows.find((row) => row.goodType === GOOD_IRON);
+    expect(ironOf(fresh)?.locked).toContain(`0/${IRON_REPEATS}`);
 
     const veteran = buildUnitPanelModel(collector(IRON_REPEATS), new Set([1]), ctx);
     if (veteran.kind !== 'settler') throw new Error('expected a settler model');
-    expect(veteran.work.gatherChoices.some((choice) => choice.goodType === GOOD_IRON)).toBe(true);
+    expect(ironOf(veteran)?.locked).toBeNull();
   });
 
   it('shows a farm as "Farma" with fields production and a single wheat stock row', () => {
@@ -1103,8 +1111,11 @@ describe('selection details panel model', () => {
   });
 
   it('gives a woman and a child no equipment rows and no experience section', () => {
+    const trained = { SettlerProgress: { experience: [[systems.FIGHT_EXPERIENCE_TYPE.FIST, 5]] } };
     const modelFor = (jobType: number, extra: Record<string, unknown>) => {
-      const snapshot = snapshotOf([{ id: 1, components: { Settler: { tribe: 1, jobType }, ...extra } }]);
+      const snapshot = snapshotOf([
+        { id: 1, components: { Settler: { tribe: 1, jobType }, ...trained, ...extra } },
+      ]);
       const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
       if (model.kind !== 'settler') throw new Error('expected a settler model');
       return model;
@@ -1114,9 +1125,9 @@ describe('selection details panel model', () => {
       modelFor(JOB_COLLECTOR, { Age: { ticks: 0 } }),
     ]) {
       expect(model.equipmentRows).toEqual([]);
-      expect(model.showsExperience).toBe(false);
+      expect(model.experience).toEqual([]);
     }
-    expect(modelFor(JOB_COLLECTOR, {}).showsExperience).toBe(true);
+    expect(modelFor(JOB_COLLECTOR, {}).experience.length).toBeGreaterThan(0);
   });
 
   it('shows a hero without need bars and with a read-only permanent loadout', () => {
@@ -1226,7 +1237,7 @@ describe('selection details panel model', () => {
     ).toBe(true);
   });
 
-  it('lists every trained specialization with repeats and bonus percent, most-trained first', () => {
+  it('lists every trained specialization with repeats and bonus percent, own trade first', () => {
     // Two content tracks: a good-specific one (labels by the good) and a general one (labels by the job);
     // the third row is a fight bucket (sword, no content track - raw points ARE its repeats).
     const ctx = {
@@ -1267,16 +1278,18 @@ describe('selection details panel model', () => {
     ]);
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    // Repeats descending; the percents read the curve in raw hundredths (50 raw → 0%, 100 raw → 17%)
-    // and the fight bucket's own damage factor (4 hits: +2%).
-    expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct }))).toEqual([
-      { repeats: 5, bonusPct: 0 },
-      { repeats: 4, bonusPct: 2 },
-      { repeats: 1, bonusPct: 17 },
+    // The collector's own tracks lead, repeats descending; the percents read the curve in raw hundredths
+    // (50 raw → 0%, 100 raw → 17%) and the fight bucket's own damage factor (4 hits: +2%).
+    expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct, own: r.own }))).toEqual([
+      { repeats: 5, bonusPct: 0, own: true },
+      { repeats: 1, bonusPct: 17, own: true },
+      { repeats: 4, bonusPct: 2, own: false },
     ]);
     expect(model.experience[0]?.label).toBe('Zbieracz Drewna'); // hand-translated trackLabels entry
-    expect(model.experience[1]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
-    expect(model.experience[2]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
+    expect(model.experience[1]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
+    expect(model.experience[2]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
+    // Both own rows show before the fold; the sword row waits behind "1 więcej".
+    expect(experienceShown(model.experience)).toBe(2);
   });
 
   it('floors the remaining-condition percent, so any wear at all reads below 100', () => {
@@ -1362,8 +1375,7 @@ describe('settler upcoming-unlock rows', () => {
     expect(model.upcomingUnlocks.map((r) => ({ current: r.current, required: r.required }))).toEqual([
       { current: 4, required: 10 },
     ]);
-    expect(model.upcomingUnlocks[0]?.label).toContain('4/10');
-    expect(model.upcomingUnlocks[0]?.label).toContain('Zbieracz Drewna'); // the tracked path named
+    expect(model.upcomingUnlocks[0]?.track).toBe('Zbieracz Drewna'); // the tracked path named
   });
 
   it('shows nothing while profession progression is off (the ProgressionRules singleton)', () => {
@@ -1401,7 +1413,7 @@ describe('the animal farm panel - the species rows are its herd', () => {
     expect(sheep?.inputs.split('\n')).toHaveLength(2); // what one breeding costs: water + wheat
   });
 
-  it("a breeder's craft toggles offer the two herds it may tend", () => {
+  it("a breeder's production rows offer the two herds it may tend", () => {
     const sim = createSceneSim(sandboxScene);
     const slot = sim.content.buildings.find((b) => b.typeId === BUILDING_ANIMAL_FARM)?.workers[0];
     if (slot === undefined) throw new Error('animal farm has no worker slots');
@@ -1412,7 +1424,8 @@ describe('the animal farm panel - the species rows are its herd', () => {
 
     const model = buildUnitPanelModel(snapshot, new Set([2]), ctxOf(sim));
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    expect(model.work.craftChoices.map((c) => c.goodType)).toEqual([GOOD_SHEEP, GOOD_CATTLE]);
+    expect(model.production?.kind).toBe('craft');
+    expect(model.production?.rows.map((row) => row.goodType)).toEqual([GOOD_SHEEP, GOOD_CATTLE]);
   });
 
   it('offers the defence window only to a building type that takes a garrison', () => {
@@ -1502,8 +1515,9 @@ describe('the joinery and its vehicle yard', () => {
     ]);
     const model = buildUnitPanelModel(snapshot, new Set([2]), ctxOf(sim));
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    expect(model.work.craftChoices.map((c) => c.goodType)).toEqual([...JOINERY_02_WARES, GOOD_HANDCART]);
-    expect(model.work.craftChoices.at(-1)?.goodId).toBe('handcart');
+    if (model.production?.kind !== 'craft') throw new Error('expected craft production');
+    expect(model.production.rows.map((r) => r.goodType)).toEqual([...JOINERY_02_WARES, GOOD_HANDCART]);
+    expect(model.production.rows.at(-1)?.goodId).toBe('handcart');
   });
 
   it('titles the yard site by the vehicle it becomes, through the locale table', () => {

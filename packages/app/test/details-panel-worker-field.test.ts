@@ -29,14 +29,12 @@ function occupiedHome() {
   return viewOfKind(model, 'building');
 }
 
+/** A selection with a panel but no building under it. */
+const SIGNPOST = () => viewOfKind(panelModelOf({ id: 7, components: { Signpost: {} } }), 'signpost');
+
 describe('details-panel worker field plan', () => {
   it('draws no field for a selection that is not a building', () => {
-    const settler = viewOfKind(
-      panelModelOf({ id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } } }),
-      'settler',
-    );
-
-    expect(workerFieldPlan(settler, 1)).toBeNull();
+    expect(workerFieldPlan(SIGNPOST(), 1)).toBeNull();
   });
 
   it('gives the limits strip the first row and the sprites what is left', () => {
@@ -169,7 +167,7 @@ describe('details-panel worker field overlay', () => {
     const workers = mount();
     workers.sync(crewOf(2, 1), HQ());
 
-    workers.sync(crewOf(2, 2), viewOfKind(panelModelOf(staffer(2)), 'settler'));
+    workers.sync(crewOf(2, 2), SIGNPOST());
 
     expect(drawnWorker(workers, FIELD())).toBeNull();
   });

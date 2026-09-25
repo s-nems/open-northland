@@ -1,4 +1,3 @@
-import type { EquipSlotRef } from './layout/index.js';
 import type { VehicleOrder } from './model/index.js';
 import type { PanelClick } from './pointer-intent.js';
 
@@ -19,18 +18,6 @@ export interface PanelClickActions {
     effect: 'cooking' | 'rest' | 'piety',
     allowed: boolean,
   ) => void;
-  /** Enter "assign a workplace" pick mode for the selected settler. */
-  readonly onAssignWorkplace?: (settlerId: number) => void;
-  /** Take the selected settler off its workplace at once, with no pick mode. */
-  readonly onUnassignWorkplace?: (settlerId: number) => void;
-  /** Enter "assign a home" pick mode for the selected settler. */
-  readonly onAssignHome?: (settlerId: number) => void;
-  /** Remove the selected settler's family from its current home at once, with no pick mode. */
-  readonly onUnassignHome?: (settlerId: number) => void;
-  /** Open the equip pick menu for one of the selected settler's equipment slots. */
-  readonly onEquipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
-  /** Order the worn item in `ref` taken off. */
-  readonly onUnequipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
   /** Enter "add a house to the trade route" pick mode for the selected trader. */
   readonly onAttachTradeHouse?: (settlerId: number) => void;
   readonly onDetachTradeHouse?: (settlerId: number, house: number) => void;
@@ -43,9 +30,6 @@ export interface PanelClickActions {
   readonly onVehicleOrder?: (vehicleId: number, order: VehicleOrder) => void;
   /** Ask for `amount` units of `goodType` in the vehicle's hold (`setVehicleWanted`). */
   readonly onSetVehicleWanted?: (vehicleId: number, goodType: number, amount: number) => void;
-  readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
-  /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product. */
-  readonly onSetCraftGoods: (entityId: number, goods: readonly number[]) => void;
   readonly onCenterOnEntity: (entityId: number) => void;
 }
 
@@ -59,18 +43,6 @@ export function applyPanelClick(
   switch (click.kind) {
     case 'centerOnEntity':
       actions.onCenterOnEntity(click.entityId);
-      return;
-    case 'setGatherGood':
-      actions.onSetGatherGood(click.entityId, click.goodType);
-      return;
-    case 'setCraftGoods':
-      actions.onSetCraftGoods(click.entityId, click.goods);
-      return;
-    case 'equipSlot':
-      actions.onEquipSlot?.(click.entityId, click.ref);
-      return;
-    case 'unequipSlot':
-      actions.onUnequipSlot?.(click.entityId, click.ref);
       return;
     case 'stockTab':
       selectStockTab(click.tab);
@@ -99,12 +71,6 @@ export function applyPanelClick(
     case 'setPalisadeGate':
       actions.onSetPalisadeGate?.(click.entityId, click.open);
       return;
-    case 'assignWorkplace':
-      actions.onAssignWorkplace?.(click.entityId);
-      return;
-    case 'unassignWorkplace':
-      actions.onUnassignWorkplace?.(click.entityId);
-      return;
     case 'attachTradeHouse':
       actions.onAttachTradeHouse?.(click.entityId);
       return;
@@ -120,12 +86,6 @@ export function applyPanelClick(
       return;
     case 'setTradeAgreement':
       actions.onSetTradeAgreement?.(click.entityId, click.agreement);
-      return;
-    case 'assignHome':
-      actions.onAssignHome?.(click.entityId);
-      return;
-    case 'unassignHome':
-      actions.onUnassignHome?.(click.entityId);
       return;
     case 'selectEntity':
       actions.onSelectEntity?.(click.entityId);
