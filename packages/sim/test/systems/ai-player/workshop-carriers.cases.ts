@@ -17,9 +17,12 @@ import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
+  CORE_CREW_FROM_TICKS,
   type GamePhase,
   HOARD_UNITS_BY_PHASE,
+  LATE_GAME_FROM_TICKS,
   MID_GAME_FROM_TICKS,
+  STORE_CARRIERS_FROM_TICKS,
 } from '../../../src/systems/ai-player/game-phase.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
@@ -36,7 +39,9 @@ import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import { collectorAnchors, seatHolders } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
 import { FLAG_RELOCATE_EVERY_DECISIONS } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import {
+  CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
+  CROCKERY_GLUT_UNITS,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { claimFlagNode, flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
@@ -45,8 +50,6 @@ import {
   type BuildingStaffing,
   buildingStaffing,
   type HeldStaff,
-  LATE_GAME_BAND_CIVILIANS,
-  LATE_GAME_CIVILIANS,
   plannedOperators,
   type SeatStaffing,
   STORE_CARRIERS,
@@ -80,9 +83,10 @@ import {
 } from './support.js';
 
 /** The pottery's and mason hut's crews: the first craftsman's carrier, the supply carrier an upgraded
- *  workshop keeps while its goods run short, the second potter while a product runs short, the potters'
- *  product split with its glut sink, and a workshop resting while its products lie at glut. The farm's and
- *  mill's crews sized by the grain and flour they lack, and the stores' carriers of a grown seat. */
+ *  workshop keeps while its goods run short, the second potter while a product runs short or the crockery
+ *  is wanted, the potters' product split with its glut sink, and a workshop resting while its products lie
+ *  at glut early in the game. The farm's and mill's crews sized by the grain and flour they lack, the
+ *  phase's gluts, and the stores' carriers late in the game. */
 
 const POTTER = 12;
 const MASON = 13;
@@ -160,7 +164,8 @@ function workshopsContent(): ContentSet {
 
 interface Seat {
   readonly sim: Simulation;
-  decide(): Command[];
+  /** One decision at `tick`, the game's start by default. */
+  decide(tick?: number): Command[];
   apply(commands: readonly Command[]): void;
   crew(building: Entity, job: number): Entity[];
   /** Put `units` of each good into the headquarters. */
@@ -186,7 +191,7 @@ function seatOn(content: ContentSet, buildingTypes: readonly number[], men: numb
   sim.step();
   return {
     sim,
-    decide: () => [...collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)],
+    decide: (tick = 0) => [...collectModule.run(sim.world, { ...ctxOf(sim, tick), content }, SEAT)],
     apply(commands) {
       for (const c of commands) sim.enqueueSetup(c);
       sim.step();
@@ -354,6 +359,11 @@ describe('workforce module - the pottery and mason hut crews', () => {
     ] as const) {
       expect(seat.crew(building, craft)).toHaveLength(1);
       expect(seat.crew(building, CARRIER)).toHaveLength(1);
+      // A target-tier post: the builder reserve comes first.
+      expect(planOf(seat, workshopsContent(), building, alone)).toMatchObject({
+        carrierMin: 0,
+        carrierTarget: 1,
+      });
     }
     const carriers = [...seat.crew(pottery, CARRIER), ...seat.crew(hut, CARRIER)];
 
@@ -448,25 +458,30 @@ describe('workforce module - the pottery and mason hut crews', () => {
     expect(potterHires()).toHaveLength(1);
   });
 
-  it('splits the potters between bricks and tiles, and puts both on whichever runs short until it is plentiful', () => {
+  it('puts a lone potter on bricks and tiles and a second on crockery, which a short material takes', () => {
     const seat = upgradedSeat();
     finishRun(seat, seat.pottery, 'work_pottery_01', TILE);
     stockAtLine(seat, [BRICK, TILE], 'comfort');
-    // A lone potter keeps both building materials going.
     expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE]]);
     hireSpare(seat, seat.pottery, POTTER);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
 
-    // At the short line nothing moves; under it the brick seat, its own good plentiful, turns to tiles.
+    // At the short line nothing moves; under it the crockery seat, whose good has no lines, turns to tiles.
     stockAtLine(seat, [TILE], 'short');
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
     stockAtLine(seat, [TILE], 'short', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[TILE], [TILE]]);
-    // It stays on tiles through the band and goes back to bricks at the comfort line.
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [TILE]]);
+    // It stays on tiles through the band and goes back to crockery at the comfort line.
     stockAtLine(seat, [TILE], 'comfort', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[TILE], [TILE]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [TILE]]);
     stockAtLine(seat, [TILE], 'comfort');
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
+    // Crockery piled up to its glut: the second potter works the building materials too.
+    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([
+      [BRICK, TILE],
+      [BRICK, TILE],
+    ]);
   });
 
   it('turns the potters to crockery once bricks and tiles both lie at glut, and back once one falls under comfort', () => {
@@ -475,42 +490,41 @@ describe('workforce module - the pottery and mason hut crews', () => {
     hireSpare(seat, seat.pottery, POTTER);
     stockAtLine(seat, [BRICK], 'glut');
     stockAtLine(seat, [TILE], 'glut', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
     stockAtLine(seat, [TILE], 'glut');
     expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY]]);
     // Down to the comfort line they stay on crockery; under it both go back to their seats.
     stockAtLine(seat, [BRICK], 'comfort');
     expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY]]);
     stockAtLine(seat, [BRICK], 'comfort', -1);
-    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE], [CROCKERY]]);
   });
 
-  it('hires the second potter only while a product runs short, and lets him go once all are plentiful', () => {
+  it('staffs the second potter while a material runs short, holds him to its glut, and keeps him for crockery', () => {
     const seat = upgradedSeat();
     finishRun(seat, seat.pottery, 'work_pottery_01', TILE);
-    const potterHires = () =>
-      seat
-        .decide()
-        .filter(
-          (c) => c.kind === 'assignWorker' && c.building === seat.pottery && c.jobPriority.includes(POTTER),
-        );
+    const content = workshopsContent();
+    const tiers = (held: HeldStaff) => operatorTiers(seat, content, seat.pottery, held);
     stockAtLine(seat, SUPPLY_GOODS, 'comfort');
-    stockAtLine(seat, [TILE], 'short');
-    expect(potterHires()).toEqual([]);
-    stockAtLine(seat, [TILE], 'short', -1);
-    expect(potterHires()).toHaveLength(1);
-    seat.apply(seat.decide());
-    const potters = seat.crew(seat.pottery, POTTER).sort((a, b) => a - b);
-    const second = potters[1];
-    expect(potters).toHaveLength(2);
-    if (second === undefined) throw new Error('expected the second potter');
-
-    // He stays through the band and leaves at the comfort line, the first potter keeping his post.
-    const released = () => seat.decide().filter((c) => c.kind === 'setJob' && potters.includes(c.entity));
+    // Bricks and tiles at comfort: the minimum and target tiers keep to the first potter, and the surplus
+    // tier adds the crockery maker.
+    expect(tiers(alone)).toEqual({ min: 1, target: 1, surplus: 2 });
+    // Under the comfort line the second potter is a minimum post, ahead of the builder reserve.
     stockAtLine(seat, [TILE], 'comfort', -1);
-    expect(released()).toEqual([]);
-    stockAtLine(seat, [TILE], 'comfort');
-    expect(released()).toEqual([{ kind: 'setJob', entity: second, jobType: BUILDER }]);
+    expect(tiers(alone)).toEqual({ min: 2, target: 2, surplus: 2 });
+    // The pair holds to the glut line, and there falls back to the surplus tier.
+    stockAtLine(seat, [TILE], 'glut', -1);
+    expect(tiers(crewOf(2))).toEqual({ min: 2, target: 2, surplus: 2 });
+    stockAtLine(seat, [BRICK, TILE], 'glut');
+    expect(tiers(crewOf(2))).toEqual({ min: 1, target: 1, surplus: 2 });
+    // Crockery at its glut releases him; he comes back once it has fallen under it by the craft band.
+    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS);
+    expect(tiers(crewOf(2))).toEqual({ min: 1, target: 1, surplus: 1 });
+    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS - 1);
+    expect(tiers(crewOf(2))).toEqual({ min: 1, target: 1, surplus: 2 });
+    expect(tiers(alone)).toEqual({ min: 1, target: 1, surplus: 1 });
+    seat.stock([CROCKERY], CROCKERY_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS - 1);
+    expect(tiers(alone)).toEqual({ min: 1, target: 1, surplus: 2 });
   });
 });
 
@@ -557,6 +571,21 @@ describe('workforce module - a workshop with nothing left to make', () => {
     expect(masonHires()).toEqual([]);
     stockAtLine(seat, [PILLAR], 'short', -1);
     expect(masonHires()).toHaveLength(1);
+  });
+
+  it('keeps the lone mason from the core-crew time on, whatever lies in store', () => {
+    const seat = workshopSeat();
+    seat.apply(seat.decide());
+    const content = workshopsContent();
+    const hut = entityOfBuilding(seat.sim, MASON_HUT);
+    stockAtLine(seat, [PILLAR], 'glut');
+    expect(planOf(seat, content, hut, alone)).toMatchObject({ operatorMin: 0, operatorTarget: 0 });
+    for (const held of [alone, crewOf(0)]) {
+      expect(planOf(seat, content, hut, held, CORE_CREW_FROM_TICKS)).toMatchObject({
+        operatorMin: 1,
+        operatorTarget: 1,
+      });
+    }
   });
 
   it('keeps a mason hut on its opening run whatever lies in store', () => {
@@ -692,7 +721,14 @@ function grainContent(): ContentSet {
     ...base,
     goods: [
       ...base.goods,
-      { typeId: WHEAT, id: 'wheat', weight: 1 },
+      // Field-farmed, as the real wheat: the farm sows it.
+      {
+        typeId: WHEAT,
+        id: 'wheat',
+        weight: 1,
+        atomics: { harvest: 29, cultivate: 35, plant: 34 },
+        farming: { stages: 5, yieldPerField: 1, fieldRadius: 8, maxFields: 6 },
+      },
       { typeId: FLOUR, id: 'flour', weight: 1 },
     ],
     buildings: base.buildings.map((b) => {
@@ -706,9 +742,9 @@ function grainContent(): ContentSet {
   });
 }
 
-/** The operators a building's plan staffs per tier this decision, with `held` its live crew. */
-function operatorTiers(seat: Seat, content: ContentSet, building: Entity, held: HeldStaff) {
-  const plan = planOf(seat, content, building, held);
+/** The operators a building's plan staffs per tier at `tick`, with `held` its live crew. */
+function operatorTiers(seat: Seat, content: ContentSet, building: Entity, held: HeldStaff, tick = 0) {
+  const plan = planOf(seat, content, building, held, tick);
   return {
     min: plan.operatorMin,
     target: plan.operatorTarget,
@@ -716,9 +752,15 @@ function operatorTiers(seat: Seat, content: ContentSet, building: Entity, held: 
   };
 }
 
-function planOf(seat: Seat, content: ContentSet, building: Entity, held: HeldStaff): BuildingStaffing {
+function planOf(
+  seat: Seat,
+  content: ContentSet,
+  building: Entity,
+  held: HeldStaff,
+  tick = 0,
+): BuildingStaffing {
   const { world } = seat.sim;
-  const ctx = { ...ctxOf(seat.sim), content };
+  const ctx = { ...ctxOf(seat.sim, tick), content };
   const owned = ownedBuildings(world, SEAT);
   const staffing: SeatStaffing = {
     player: SEAT,
@@ -749,91 +791,76 @@ describe('workforce module - the farm and mill crews', () => {
     }
   });
 
-  it('plans one farmer more per unit of grain lacking, the second at the target tier and the rest from surplus', () => {
+  it('plans one farmer more per unit of grain lacking to comfort, the second at the target tier and the rest from surplus', () => {
     const content = grainContent();
     const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
     const farm = entityOfBuilding(seat.sim, FARM_TYPE);
-    const { unit, short, comfort } = linesOf(content, WHEAT);
-    const tiers = (wheat: number, held: HeldStaff) => {
+    const { short, comfort } = linesOf(content, WHEAT);
+    const tiers = (wheat: number) => {
       seat.stock([WHEAT], wheat);
-      return operatorTiers(seat, content, farm, held);
+      return operatorTiers(seat, content, farm, alone);
     };
-    // Down to the short line a lone farmer keeps the grain up.
-    expect(tiers(short, alone)).toEqual({ min: 1, target: 1, surplus: 1 });
-    // Under it the gap to comfort spans more than a unit: a second farmer at the target tier, a third out
-    // of surplus.
-    expect(tiers(short - 1, alone)).toEqual({ min: 1, target: 2, surplus: 3 });
-    // An engaged crew reads the comfort line: one unit lacking keeps two farmers, a unit and one three.
-    expect(tiers(comfort - unit, crewOf(2))).toEqual({ min: 1, target: 2, surplus: 2 });
-    expect(tiers(comfort - unit - 1, crewOf(2))).toEqual({ min: 1, target: 2, surplus: 3 });
-    // Two units and more lacking seat the row's four.
-    expect(tiers(comfort - 2 * unit - 1, crewOf(3))).toEqual({ min: 1, target: 2, surplus: 4 });
-    expect(tiers(0, alone)).toEqual({ min: 1, target: 2, surplus: 4 });
-    expect(tiers(comfort, crewOf(4))).toEqual({ min: 1, target: 1, surplus: 1 });
+    // Down to the comfort line a lone farmer keeps the grain up.
+    expect(tiers(comfort)).toEqual({ min: 1, target: 1, surplus: 1 });
+    // Under it, one more per unit lacking: the second at the target tier, the rest out of surplus.
+    expect(tiers(comfort - 1)).toEqual({ min: 1, target: 2, surplus: 2 });
+    expect(tiers(short - 1)).toEqual({ min: 1, target: 2, surplus: 3 });
+    expect(tiers(0)).toEqual({ min: 1, target: 2, surplus: 4 });
   });
 
-  it('keeps a held farm crew one man over the hire line, so a unit of grain does not churn a farmer', () => {
+  it('holds an engaged farm crew to the glut line, one man over the hire line', () => {
     const content = grainContent();
     const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
     const farm = entityOfBuilding(seat.sim, FARM_TYPE);
-    const { unit, comfort } = linesOf(content, WHEAT);
+    const { unit, comfort, glut } = linesOf(content, WHEAT);
     const tiers = (wheat: number, held: HeldStaff) => {
       seat.stock([WHEAT], wheat);
       return operatorTiers(seat, content, farm, held);
     };
-    // One unit lacking hires two, but a crew of three already there stays; four falls to three.
-    expect(tiers(comfort - unit, crewOf(3))).toEqual({ min: 1, target: 2, surplus: 3 });
-    expect(tiers(comfort - unit, crewOf(4))).toEqual({ min: 1, target: 2, surplus: 3 });
+    // A crew of two reads the glut line: from comfort up to it the pair stays.
+    expect(tiers(comfort, crewOf(2))).toEqual({ min: 1, target: 2, surplus: 2 });
+    expect(tiers(glut - 1, crewOf(2))).toEqual({ min: 1, target: 2, surplus: 2 });
+    // Two are hired there, but a crew of three stays; four falls to three.
+    expect(tiers(comfort, crewOf(3))).toEqual({ min: 1, target: 2, surplus: 3 });
+    expect(tiers(comfort, crewOf(4))).toEqual({ min: 1, target: 2, surplus: 3 });
     // A unit and one lacking hires three and keeps four.
     expect(tiers(comfort - unit - 1, crewOf(4))).toEqual({ min: 1, target: 2, surplus: 4 });
-    // The comfort line takes any crew down to one.
-    expect(tiers(comfort, crewOf(3))).toEqual({ min: 1, target: 1, surplus: 1 });
+    // The glut line takes any crew down to one.
+    expect(tiers(glut, crewOf(3))).toEqual({ min: 1, target: 1, surplus: 1 });
   });
 
-  it('shrinks the farm crew as the grain comes in, rests it at glut and brings it back under short', () => {
+  it('never rests the farm: at the grain glut its crew shrinks to the first farmer', () => {
     const content = grainContent();
     const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
     const farm = entityOfBuilding(seat.sim, FARM_TYPE);
-    const { short, comfort, glut } = linesOf(content, WHEAT);
+    const { glut } = linesOf(content, WHEAT);
     const released = () => seat.decide().filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
-    const toBuilders = (men: readonly Entity[]) =>
-      men.map((entity) => ({ kind: 'setJob', entity, jobType: BUILDER }));
-    const farmerHires = () =>
-      seat
-        .decide()
-        .filter((c) => c.kind === 'assignWorker' && c.building === farm && c.jobPriority.includes(FARMER));
 
     seat.stock([WHEAT], 0);
     seat.apply(seat.decide());
     const farmers = seat.crew(farm, FARMER).sort((a, b) => a - b);
     expect(farmers).toHaveLength(4);
 
-    // At comfort the crew falls back to the first farmer, and at glut he goes too.
-    seat.stock([WHEAT], comfort);
-    expect(released()).toEqual(toBuilders(farmers.slice(1)));
-    seat.apply(released());
-    seat.stock([WHEAT], glut - 1);
-    expect(released()).toEqual([]);
     seat.stock([WHEAT], glut);
-    expect(released()).toEqual(toBuilders(farmers.slice(0, 1)));
+    expect(released()).toEqual(
+      farmers.slice(1).map((entity) => ({ kind: 'setJob', entity, jobType: BUILDER })),
+    );
     seat.apply(released());
-    expect(seat.crew(farm, FARMER)).toEqual([]);
-
-    // The idle farm waits down to the short line, and takes three farmers back under it.
-    seat.stock([WHEAT], short);
-    expect(farmerHires()).toEqual([]);
-    seat.stock([WHEAT], short - 1);
-    expect(farmerHires()).toHaveLength(3);
+    // The first farmer tends the sown fields however much grain lies in store, and an empty farm takes
+    // one back at once.
+    expect(released()).toEqual([]);
+    expect(seat.crew(farm, FARMER)).toEqual(farmers.slice(0, 1));
+    expect(operatorTiers(seat, content, farm, crewOf(0))).toEqual({ min: 1, target: 1, surplus: 1 });
   });
 
-  it('plans the second miller out of surplus while the flour runs short, and rests the mill at glut', () => {
+  it('plans the second miller out of surplus while the flour runs short, and rests the mill only early', () => {
     const content = grainContent();
     const seat = seatOn(content, [MILL_TYPE], BUILDER_CAP + SPARE_MEN);
     const mill = entityOfBuilding(seat.sim, MILL_TYPE);
-    const { short, comfort, glut } = linesOf(content, FLOUR);
-    const tiers = (flour: number, held: HeldStaff) => {
+    const { comfort, glut } = linesOf(content, FLOUR);
+    const tiers = (flour: number, held: HeldStaff, tick = 0) => {
       seat.stock([FLOUR], flour);
-      return operatorTiers(seat, content, mill, held);
+      return operatorTiers(seat, content, mill, held, tick);
     };
     // The mill's target is its one miller: the build order plans it as one consumer of the grain.
     const ctx = { ...ctxOf(seat.sim), content };
@@ -841,11 +868,14 @@ describe('workforce module - the farm and mill crews', () => {
     if (millType === undefined) throw new Error('setup: the mill');
     expect(plannedOperators(ctx, millType)).toBe(1);
 
-    expect(tiers(short, alone)).toEqual({ min: 1, target: 1, surplus: 1 });
-    expect(tiers(short - 1, alone)).toEqual({ min: 1, target: 1, surplus: 2 });
-    expect(tiers(comfort - 1, crewOf(2))).toEqual({ min: 1, target: 1, surplus: 2 });
-    expect(tiers(comfort, crewOf(2))).toEqual({ min: 1, target: 1, surplus: 1 });
+    expect(tiers(comfort, alone)).toEqual({ min: 1, target: 1, surplus: 1 });
+    expect(tiers(comfort - 1, alone)).toEqual({ min: 1, target: 1, surplus: 2 });
+    expect(tiers(glut - 1, crewOf(2))).toEqual({ min: 1, target: 1, surplus: 2 });
+    // At glut the crew rests before the core-crew time, and from it on shrinks to its first miller.
+    expect(tiers(glut, crewOf(2))).toEqual({ min: 0, target: 0, surplus: 0 });
+    expect(tiers(glut, crewOf(2), CORE_CREW_FROM_TICKS)).toEqual({ min: 1, target: 1, surplus: 1 });
     expect(tiers(glut, alone)).toEqual({ min: 0, target: 0, surplus: 0 });
+    expect(tiers(glut, alone, CORE_CREW_FROM_TICKS)).toEqual({ min: 1, target: 1, surplus: 1 });
 
     seat.stock([FLOUR], 0);
     seat.apply(seat.decide());
@@ -853,47 +883,83 @@ describe('workforce module - the farm and mill crews', () => {
   });
 });
 
-describe('workforce module - the stores staff carriers only in a grown seat', () => {
-  const hqCarrierHires = (seat: Seat) =>
+const HERB_HUT = 70;
+const HERBALIST = 29;
+/** The herb hut's herbalist seats, as the real hut's. */
+const HERB_HUT_SEATS = 3;
+
+describe('workforce module - the herb hut crew', () => {
+  it('staffs one herbalist and a second from surplus, and all three late in the game', () => {
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      jobs: [...base.jobs, { typeId: HERBALIST, id: 'herbalist' }],
+      buildings: [
+        ...base.buildings,
+        {
+          typeId: HERB_HUT,
+          id: 'work_herb_hut',
+          kind: 'workplace',
+          workers: [
+            { jobType: HERBALIST, count: HERB_HUT_SEATS },
+            { jobType: CARRIER, count: 1 },
+          ],
+          construction: [{ goodType: WOOD, amount: 1 }],
+        },
+      ],
+    });
+    const seat = seatOn(content, [HERB_HUT], 1);
+    const hut = entityOfBuilding(seat.sim, HERB_HUT);
+    const hutType = contentIndex(content).buildings.get(HERB_HUT);
+    if (hutType === undefined) throw new Error('setup: the herb hut');
+    expect(operatorTiers(seat, content, hut, alone, LATE_GAME_FROM_TICKS - 1)).toEqual({
+      min: 1,
+      target: 1,
+      surplus: 2,
+    });
+    expect(operatorTiers(seat, content, hut, alone, LATE_GAME_FROM_TICKS)).toEqual({
+      min: 1,
+      target: 2,
+      surplus: HERB_HUT_SEATS,
+    });
+    // The druids' herb supply counts the late crew's target.
+    expect(plannedOperators({ ...ctxOf(seat.sim, LATE_GAME_FROM_TICKS), content }, hutType)).toBe(2);
+  });
+});
+
+/** Enough men that the surplus tier reaches the stores past every earlier post. */
+const GROWN_SEAT_MEN = 60;
+
+describe('workforce module - the stores staff carriers only late in the game', () => {
+  const hqCarrierHires = (seat: Seat, tick: number) =>
     seat
-      .decide()
+      .decide(tick)
       .filter((c) => c.kind === 'assignWorker' && c.building === entityOfBuilding(seat.sim, HQ_TYPE));
 
-  it('posts no store carrier below the grown-seat size, however many men are spare', () => {
-    const seat = seatOn(aiContent(), [], LATE_GAME_CIVILIANS - 1);
-    expect(hqCarrierHires(seat)).toEqual([]);
-    expect(planOf(seat, aiContent(), entityOfBuilding(seat.sim, HQ_TYPE), crewOf(0))).toMatchObject({
+  it('posts no store carrier before the store-carrier time, however many men are spare', () => {
+    const seat = seatOn(aiContent(), [], GROWN_SEAT_MEN);
+    const early = STORE_CARRIERS_FROM_TICKS - 1;
+    expect(hqCarrierHires(seat, early)).toEqual([]);
+    expect(planOf(seat, aiContent(), entityOfBuilding(seat.sim, HQ_TYPE), crewOf(0), early)).toMatchObject({
       carrierTarget: 0,
       carrierSurplus: 0,
     });
   });
 
-  it("hires a grown seat's store carriers at the surplus tier", () => {
-    const seat = seatOn(aiContent(), [], LATE_GAME_CIVILIANS);
+  it('hires the store carriers at the surplus tier from the store-carrier time', () => {
+    const seat = seatOn(aiContent(), [], GROWN_SEAT_MEN);
     const hq = entityOfBuilding(seat.sim, HQ_TYPE);
-    expect(planOf(seat, aiContent(), hq, crewOf(0))).toMatchObject({
+    expect(planOf(seat, aiContent(), hq, crewOf(0), STORE_CARRIERS_FROM_TICKS)).toMatchObject({
       carrierMin: 0,
       carrierTarget: 0,
       carrierSurplus: STORE_CARRIERS,
     });
-    expect(hqCarrierHires(seat).map((c) => c.kind === 'assignWorker' && c.jobPriority)).toEqual(
-      Array.from({ length: STORE_CARRIERS }, () => [CARRIER]),
-    );
+    expect(
+      hqCarrierHires(seat, STORE_CARRIERS_FROM_TICKS).map((c) => c.kind === 'assignWorker' && c.jobPriority),
+    ).toEqual(Array.from({ length: STORE_CARRIERS }, () => [CARRIER]));
   });
 
-  it('keeps staffed store carriers through the band under the grown-seat size', () => {
-    const held: HeldStaff = { operators: 0, carriers: STORE_CARRIERS };
-    const kept = seatOn(aiContent(), [], LATE_GAME_CIVILIANS - LATE_GAME_BAND_CIVILIANS);
-    expect(planOf(kept, aiContent(), entityOfBuilding(kept.sim, HQ_TYPE), held)).toMatchObject({
-      carrierSurplus: STORE_CARRIERS,
-    });
-    const shrunk = seatOn(aiContent(), [], LATE_GAME_CIVILIANS - LATE_GAME_BAND_CIVILIANS - 1);
-    expect(planOf(shrunk, aiContent(), entityOfBuilding(shrunk.sim, HQ_TYPE), held)).toMatchObject({
-      carrierSurplus: 0,
-    });
-  });
-
-  it("hands a small seat's store carriers back as builders", () => {
+  it('hands early store carriers back as builders', () => {
     const seat = seatOn(aiContent(), [], BUILDER_CAP + SPARE_MEN);
     const hq = entityOfBuilding(seat.sim, HQ_TYPE);
     for (let i = 0; i < STORE_CARRIERS; i++) hireSpare(seat, hq, CARRIER);

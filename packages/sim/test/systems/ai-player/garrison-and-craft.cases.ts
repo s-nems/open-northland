@@ -19,6 +19,7 @@ import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity, World } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
+import { STORE_CARRIERS_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
 import {
   DEFAULT_BUILD_ORDER,
   LATE_GAME_CIVILIANS,
@@ -372,14 +373,14 @@ describe('workforce module - the barracks and craft selections', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    // A grown seat, so the HQ staffs its carriers at all.
+    // Men to spare past the builder reserve, at the store-carrier time, so the HQ staffs its carriers at all.
     spawnMen(sim, LATE_GAME_CIVILIANS, BUILDER);
     sim.step();
 
     // The barracks declares carrier slots like any store, but the seat posts nobody to them (user
     // rule) and stamps no fighter trade by command: a soldier is made by the drill, never
     // by `setJob` - and a seat that is not AI-flagged runs no garrison hire at all.
-    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const commands = [...collectModule.run(sim.world, ctxOf(sim, STORE_CARRIERS_FROM_TICKS), SEAT)];
     const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
     const posted = commands.filter((c) => c.kind === 'assignWorker');
     // The staffing pass ran - the HQ took its carriers - and skipped the barracks beside it.

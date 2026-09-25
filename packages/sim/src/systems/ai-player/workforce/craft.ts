@@ -63,6 +63,10 @@ const JOINERY_SEAT: CraftSeat = {
   otherwise: ['furniture'],
 };
 
+/** The crockery in stock at which the pottery's crockery seat turns to bricks and tiles (authored). A
+ *  stocked home eats it beside its food, so no bill or shelf sizes it. */
+export const CROCKERY_GLUT_UNITS = 24;
+
 /** The shoes in stock at which a tailor's shoe seat turns to leather armour (authored): every settler wears
  *  a pair out, and the defence amulet and the recruits take the armour. */
 export const SHOES_GLUT_UNITS = 24;
@@ -92,17 +96,25 @@ export const SHORT_PRODUCT_SEATS = 2;
  * work one on coins and three on defence amulets; once a fifth joins at the third mint, the crew splits two
  * each over coins, defence and strength amulets. While the druids' coins run short, one or two amulet
  * makers turn to coins as well ({@link shortFirst}). Both joiners make iron tools and turn to furniture only
- * while the tools pile up. The potters split bricks and tiles, a lone one working both, and turn to
- * crockery, which doubles a stocked home's food, while both lie at their glut lines. The first tailor sews
- * shoes and the second leather armour, each turning to the other's good while his own piles up, as the
- * armour does once plate armour has come in; the small tailor's one man sews shoes, and leather armour
- * meanwhile. The first armourer works long bows and wooden spears, dropping
- * whichever has piled up so the other, the spear the smithy's iron spear needs or the bow, gets his whole
- * time. Bakers bake only bread and breeders keep only cattle.
+ * while the tools pile up. The first potter works bricks and tiles and the second crockery, which doubles a
+ * stocked home's food, until it piles up; a short building material takes the crockery seat, and both
+ * potters turn to crockery while bricks and tiles lie at their glut lines. The first tailor sews shoes and
+ * the second leather armour, each turning to the other's good while his own piles up, as the armour does
+ * once plate armour has come in; the small tailor's one man sews shoes, and leather armour meanwhile. The
+ * first armourer works long bows and wooden spears, dropping whichever has piled up so the other, the spear
+ * the smithy's iron spear needs or the bow, gets his whole time. Bakers bake only bread and breeders keep
+ * only cattle.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT] },
-  work_pottery_01: { seats: [['brick'], ['tile']], alone: ['brick', 'tile'], sink: ['crockery'] },
+  work_pottery_01: {
+    seats: [
+      ['brick', 'tile'],
+      { goods: ['crockery'], glut: { crockery: CROCKERY_GLUT_UNITS }, otherwise: ['brick', 'tile'] },
+    ],
+    alone: ['brick', 'tile'],
+    sink: ['crockery'],
+  },
   work_mason_hut_01: { seats: [['pillar', 'ornament']] },
   work_animal_farm: { seats: [['cattle']] },
   work_sewery_00: { seats: [SHOE_SEAT] },
@@ -116,7 +128,6 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       },
     ],
   },
-
   work_bakery_01: { seats: [['bread']] },
   work_smithy_01: {
     seats: [
@@ -253,7 +264,8 @@ export function tuneCraftSelections(
       );
     }
     const sink = toGoods(plan.sink ?? []);
-    const sinking = free.some((seat) => sameGoods(current[seat] ?? [], sink));
+    // The whole crew, since a seat of its own may work the sink's goods, as the crockery seat does.
+    const sinking = free.length > 0 && free.every((seat) => sameGoods(current[seat] ?? [], sink));
     if (sink.length > 0 && sinkHolds(supply, products, sinking)) for (const seat of free) listed[seat] = sink;
     else shortFirst(supply, products, free, listed, current);
     for (const [seat, e] of crew.entries()) {
@@ -272,8 +284,8 @@ export function productsOf(ctx: SystemContext, type: BuildingType): readonly num
   return [...new Set([...crafted.map((o) => o.goodType), ...type.produces])].sort((a, b) => a - b);
 }
 
-/** Whether the type's products with supply lines all lie at their glut lines, or while the crew already
- *  works the sink (`sinking`), all at or above their comfort lines. False for a type with none. */
+/** Whether the type's products with supply lines all lie at their glut lines, or while the whole crew
+ *  already works the sink (`sinking`), all at or above their comfort lines. False for a type with none. */
 function sinkHolds(supply: SeatSupply, products: readonly number[], sinking: boolean): boolean {
   const managed = products.filter((good) => supply.lines(good) !== undefined);
   return (
@@ -310,6 +322,31 @@ function shortFirst(
       listed[seat] = [good];
     }
   }
+}
+
+/**
+ * Whether a good one of the type's craft seats caps at an authored glut lies under it: under the glut while
+ * `engaged`, else under it by {@link CRAFT_GLUT_BAND_UNITS}, the band at which a seat takes the good back.
+ * False for a type with no such seat.
+ */
+export function craftGlutPending(
+  ctx: SystemContext,
+  supply: SeatSupply,
+  type: BuildingType,
+  engaged: boolean,
+): boolean {
+  const plan = CRAFT_PLANS_BY_BUILDING_ID[type.id];
+  if (plan === undefined) return false;
+  return [...plan.seats, ...(plan.crowded?.seats ?? [])].some(
+    (seat) =>
+      'goods' in seat &&
+      Object.entries(seat.glut).some(([id, glut]) => {
+        const good = goodTypeByContentId(ctx.content, id);
+        return (
+          good !== undefined && supply.units(good.typeId) < (engaged ? glut : glut - CRAFT_GLUT_BAND_UNITS)
+        );
+      }),
+  );
 }
 
 function sameGoods(a: readonly number[], b: readonly number[]): boolean {

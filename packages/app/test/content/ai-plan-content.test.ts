@@ -177,14 +177,14 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     expect(carrierJob).toBeDefined();
     const managed = supplyLines(content, DEFAULT_BUILD_ORDER);
 
-    for (const [id, staffing] of Object.entries(STAFFING_BY_BUILDING_ID)) {
+    for (const [id, row] of Object.entries(STAFFING_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
       expect(building, `staffing override ${id}`).toBeDefined();
-      // The staffing cap is min(slot.count, tier) - a real slot must offer the highest tier's seats.
+      // The staffing cap is min(slot.count, tier) - a real slot must offer the highest tier's seats, early
+      // and late.
+      const phases = [row, { ...row, ...row.late }];
       const operatorWant = Math.max(
-        staffing.operatorMin ?? 0,
-        staffing.operatorTarget ?? 0,
-        staffing.operatorSurplus ?? 0,
+        ...phases.flatMap((t) => [t.operatorMin ?? 0, t.operatorTarget ?? 0, t.operatorSurplus ?? 0]),
       );
       if (operatorWant > 0) {
         const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
@@ -192,7 +192,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       }
       // A product-gated second hand is hired only while a product with supply lines runs short; a farm's
       // field-grown product has no recipe.
-      if (staffing.productGated === true) {
+      if (row.productGated === true) {
         const products = [...(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)) ?? [])];
         products.push(...(building?.produces ?? []));
         expect(
@@ -200,7 +200,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
           `${id} makes a good with supply lines`,
         ).toBe(true);
       }
-      const carrierTarget = staffing.carrierTarget ?? 0;
+      const carrierTarget = Math.max(...phases.map((t) => t.carrierTarget ?? 0));
       if (carrierTarget > 0) {
         const fits = building?.workers.some((w) => w.jobType === carrierJob && w.count >= carrierTarget);
         expect(fits, `a carrier slot of ${id} offering ${carrierTarget} seats`).toBe(true);
