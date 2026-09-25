@@ -20,6 +20,7 @@ import {
   grass,
   SAXON,
   SOLDIER_SPEAR,
+  SOLDIER_SWORD_SHORT,
   VIKING,
   WOMAN,
 } from './combat-cadence/support.js';
@@ -217,5 +218,50 @@ describe('engagement - a struck fighter turns on its attacker', () => {
     const civilian = unit(s, 20, P0, MILITARY_MODE.ATTACK, WOMAN);
     resolveCombatHit(s.world, ctxOf(s), attacker, civilian, blow, [], 'projectile');
     expect(held(s, civilian)).toBeUndefined();
+  });
+});
+
+describe('engagement - a crowd on one enemy', () => {
+  const RUN_TICKS = 150;
+
+  /** `size` owned ATTACK soldiers of `job` in a column ten nodes off one tough enemy woman, run for
+   *  {@link RUN_TICKS}: who swung, and how often any of them changed the enemy it holds. */
+  function crowdOn(size: number, job: number): { swung: number; flips: number; holding: number } {
+    const s = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(MAP_CELLS, 12) });
+    const target = fighterAtNode(s, 30, 10, SAXON, WOMAN, { hitpoints: 100_000_000 });
+    s.world.add(target, Owner, { player: P1 });
+    s.world.add(target, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+    const crowd: Entity[] = [];
+    for (let i = 0; i < size; i++) {
+      const e = fighterAtNode(s, 20, 6 + i, VIKING, job);
+      s.world.add(e, Owner, { player: P0 });
+      s.world.add(e, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
+      crowd.push(e);
+    }
+    const swung = new Set<Entity>();
+    const last = new Map<Entity, Entity | undefined>();
+    let flips = 0;
+    for (let t = 0; t < RUN_TICKS; t++) {
+      s.step();
+      for (const e of crowd) {
+        if (s.world.tryGet(e, CurrentAtomic)?.effect.kind === 'attack') swung.add(e);
+        const now = held(s, e);
+        if (last.has(e) && last.get(e) !== now) flips++;
+        last.set(e, now);
+      }
+    }
+    const holding = crowd.filter((e) => held(s, e) === target).length;
+    return { swung: swung.size, flips, holding };
+  }
+
+  it('every attacker swings while the enemy has room around it, and none changes its target', () => {
+    const CROWD = 8; // the spear's 1..2 band holds twelve nodes around one enemy
+    expect(crowdOn(CROWD, SOLDIER_SPEAR)).toEqual({ swung: CROWD, flips: 0, holding: CROWD });
+  });
+
+  it('an overflow keeps its target and waits beside the front instead of letting it go', () => {
+    const CROWD = 6; // the short sword's 1..1 band holds four nodes around one enemy
+    const SIDES = 4;
+    expect(crowdOn(CROWD, SOLDIER_SWORD_SHORT)).toEqual({ swung: SIDES, flips: 0, holding: CROWD });
   });
 });

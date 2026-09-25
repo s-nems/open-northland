@@ -5,6 +5,7 @@ import {
   CurrentAtomic,
   Engagement,
   Health,
+  MoveGoal,
   Owner,
   PathRequest,
   Position,
@@ -382,7 +383,8 @@ describe('a chase whose target is ringed by standing bodies', () => {
 
   it('drops the refusal count while it stands in the second rank', () => {
     // A corridor two nodes high: the mace's band around the enemy is three in-bounds cells, each held by
-    // an allied body, so the subject is dealt no slot at all and routing is never asked.
+    // an allied body, so the subject, already a node outside that band, waits there and routing is never
+    // asked.
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grassMap(9, 1) });
     const enemy = fighterOnNode(sim, 10, 0, SOLDIER, P1, MILITARY_MODE.IGNORE);
     for (const [dx, dy] of [
@@ -392,11 +394,12 @@ describe('a chase whose target is ringed by standing bodies', () => {
     ] as const) {
       fighterOnNode(sim, 10 + dx, dy, SOLDIER, P0, MILITARY_MODE.IGNORE);
     }
-    const subject = fighterOnNode(sim, 4, 0, SOLDIER, P0, MILITARY_MODE.ATTACK);
+    const subject = fighterOnNode(sim, 8, 0, SOLDIER, P0, MILITARY_MODE.ATTACK);
     sim.world.add(subject, Engagement, { repathAt: 0, stall: { target: enemy, routes: 2 } });
 
     combatSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(subject, Engagement).stall).toBeUndefined();
+    expect(sim.world.get(subject, Engagement)).toMatchObject({ stall: undefined, target: enemy });
+    expect(sim.world.has(subject, MoveGoal)).toBe(false);
   });
 });

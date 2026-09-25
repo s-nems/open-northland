@@ -36,11 +36,11 @@ export class MeleeSlots {
   ) {}
 
   /** Whether `cell` is already spoken for: a standing body, a cell dealt earlier this tick, or another
-   *  chaser's live goal. `ownGoal` is the asker's own goal, which is not taken to itself - a cadence
-   *  repath may re-choose and keep it. */
-  isTaken(cell: NodeId, ownGoal: NodeId | undefined): boolean {
+   *  chaser's live goal. `ownGoal` is the asker's own goal and `standingOn` the node it stands on, neither
+   *  taken to itself - a cadence repath may re-choose and keep either. */
+  isTaken(cell: NodeId, ownGoal: NodeId | undefined, standingOn?: NodeId): boolean {
     this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
-    if (this.standing.has(cell) || this.claimed.has(cell)) return true;
+    if ((this.standing.has(cell) && cell !== standingOn) || this.claimed.has(cell)) return true;
     this.enRoute ??= enRouteChaseGoals(this.world);
     return this.enRoute.has(cell) && cell !== ownGoal;
   }
