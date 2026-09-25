@@ -33,8 +33,8 @@ import {
 } from './entries.js';
 import { placementSpot } from './placement.js';
 import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
-import { coverageOf, coveragePlacementSpot, firstUncoveredBuilding } from './tower-coverage.js';
 import { seatUnderAttack } from './siege.js';
+import { coverageOf, coveragePlacementSpot, firstUncoveredBuilding } from './tower-coverage.js';
 import { upgradeBillCovered } from './upgrade-supply.js';
 
 export * from './entries.js';
