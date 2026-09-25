@@ -93,6 +93,12 @@ export class FetchableStock {
     return total !== undefined && total.unowned + (total.byOwner.get(player) ?? 0) > units;
   }
 
+  /** The units of `goodType` `player` may fetch, unowned piles included. */
+  units(player: number, goodType: number): number {
+    const total = this.totals.get(goodType);
+    return total === undefined ? 0 : total.unowned + (total.byOwner.get(player) ?? 0);
+  }
+
   /** The stores lending at least one unit of `goodType`, in no particular order. The live set: read it,
    *  never keep it past the next catch-up. */
   holders(goodType: number): ReadonlySet<Entity> {

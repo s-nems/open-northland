@@ -16,20 +16,22 @@ import { Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
   BUILDER_CAP,
+  type BuildOrderEntry,
   CIVILIANS_PER_CLEARING_COLLECTOR,
   COLLECTOR_TARGET_BY_GOOD_ID,
+  DEFAULT_BUILD_ORDER,
   DEFAULT_COLLECTOR_TARGET,
   FLAG_MAX_DISTANCE_NODES,
   FLAG_MIN_DISTANCE_NODES,
   LATE_GAME_BUILDER_CAP,
   LATE_GAME_CIVILIANS,
+  SeatSupply,
+  supplyLines,
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
 import { workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
-import {
-  RAW_COMFORT_UNITS,
-  wantedCollectorGoods,
-} from '../../../src/systems/ai-player/workforce/collectors/index.js';
+import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
+import { wantedCollectorGoods } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { resourceStanceCells } from '../../../src/systems/footprint/interaction.js';
@@ -201,9 +203,10 @@ describe('workforce module (collectResources)', () => {
     const hq = entityOfBuilding(sim, HQ_TYPE);
     const retired = (commands: readonly Command[]) =>
       commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
-    setStockAmount(sim.world, hq, WOOD, RAW_COMFORT_UNITS - 1);
+    const woodComfort = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER).get(WOOD)?.comfort ?? 0;
+    setStockAmount(sim.world, hq, WOOD, woodComfort - 1);
     expect(retired(decide())).toEqual([]);
-    setStockAmount(sim.world, hq, WOOD, RAW_COMFORT_UNITS);
+    setStockAmount(sim.world, hq, WOOD, woodComfort);
     expect(retired(decide())).toHaveLength(1);
     expect(woodHolders()).toHaveLength(COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0);
   });
@@ -317,8 +320,11 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const pottery = entityOfBuilding(sim, POTTERY);
     const potters = [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === POTTER);
-    const mudTarget = (): number | undefined =>
-      wantedCollectorGoods(sim.world, ctx, SEAT, [], []).find((w) => w.good.typeId === MUD)?.target;
+    const mudTarget = (): number | undefined => {
+      const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), []);
+      return wantedCollectorGoods(sim.world, ctx, SEAT, [], [], supply).find((w) => w.good.typeId === MUD)
+        ?.target;
+    };
 
     const [first, second] = potters;
     if (first === undefined || second === undefined) throw new Error('setup: two potters');
@@ -333,10 +339,13 @@ describe('workforce module (collectResources)', () => {
     placeHq(sim);
     sim.step();
     const ctx = ctxOf(sim);
-    const ironTarget = (count: number, status: 'unmet' | 'skip'): number | undefined =>
-      wantedCollectorGoods(sim.world, ctx, SEAT, [{ kind: 'collector', good: 'iron', count }], [status]).find(
+    const ironTarget = (count: number, status: 'unmet' | 'skip'): number | undefined => {
+      const order: BuildOrderEntry[] = [{ kind: 'collector', good: 'iron', count }];
+      const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), order);
+      return wantedCollectorGoods(sim.world, ctx, SEAT, order, [status], supply).find(
         (w) => w.good.typeId === IRON,
       )?.target;
+    };
     const IRON_BASE_TARGET = COLLECTOR_TARGET_BY_GOOD_ID.iron ?? DEFAULT_COLLECTOR_TARGET;
     expect(ironTarget(IRON_BASE_TARGET + 2, 'unmet')).toBe(IRON_BASE_TARGET + 2);
     expect(ironTarget(1, 'unmet')).toBe(IRON_BASE_TARGET); // a smaller count never lowers the plan

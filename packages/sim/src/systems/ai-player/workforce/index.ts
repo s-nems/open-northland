@@ -42,6 +42,7 @@ import {
   staffBuildings,
 } from './staffing.js';
 import type { SeatStaffing } from './staffing-plan.js';
+import { SeatSupply } from './supply.js';
 import { buildStaffingTally } from './tally.js';
 
 export {
@@ -49,8 +50,6 @@ export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   DEFAULT_COLLECTOR_TARGET,
-  RAW_COMFORT_UNITS,
-  RAW_SHORT_UNITS,
 } from './collectors/index.js';
 export { CRAFT_PLANS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
@@ -62,6 +61,7 @@ export {
   STAFFING_BY_BUILDING_ID,
   SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
 } from './staffing-plan.js';
+export { SeatSupply, type SupplyLines, supplyLines } from './supply.js';
 
 /**
  * The CollectResources module - the seat's one workforce allocator: no other module ever claims a
@@ -77,9 +77,11 @@ function runWorkforce(
 ): readonly PlayerCommand[] {
   const builderJob = builderJobOf(ctx);
   const base = seatBaseOf(world, ctx, player);
-  if (base === null) return rebuildCrew(world, ctx, player, builderJob);
+  if (base === null) return rebuildCrew(world, ctx, player, order, builderJob);
+  const owned = ownedBuildings(world, player);
+  const supply = SeatSupply.of(world, ctx, player, owned, order);
   const statuses = entryStatuses(world, ctx, player, order);
-  const wanted = wantedCollectorGoods(world, ctx, player, order, statuses);
+  const wanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const civilians = civilianCount(world, ctx, player);
   const clearing = clearingCollectors(world, player, civilians);
   const genericTarget = GENERIC_COLLECTOR_TARGET + clearing;
@@ -94,7 +96,7 @@ function runWorkforce(
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
   const fishing = fishingPlan(world, ctx, player);
-  const seat: SeatStaffing = { player, owned: ownedBuildings(world, player), civilians };
+  const seat: SeatStaffing = { player, owned, civilians, supply };
   const ground = collectorGround(world, ctx, seat.owned, base);
   const generic = (): PlayerCommand[] =>
     ground === null
@@ -158,12 +160,18 @@ function rebuildCrew(
   world: World,
   ctx: SystemContext,
   player: number,
+  order: readonly BuildOrderEntry[],
   builderJob: number | null,
 ): readonly PlayerCommand[] {
   const owned = ownedBuildings(world, player);
   if (!owned.some((e) => world.has(e, UnderConstruction))) return [];
   const force = new SpareForce(rebuildHands(world, ctx, player));
-  const seat: SeatStaffing = { player, owned, civilians: civilianCount(world, ctx, player) };
+  const seat: SeatStaffing = {
+    player,
+    owned,
+    civilians: civilianCount(world, ctx, player),
+    supply: SeatSupply.of(world, ctx, player, owned, order),
+  };
   return [
     ...reserveBuilders(world, force, builderJob, BUILDER_CAP),
     ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world), 'min'),

@@ -24,9 +24,10 @@ export function upgradeBillCovered(
   const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
   if (target === undefined) return true;
   const stock = FetchableStock.of(world, ctx);
+  const owed = sitesShortfalls(world, ctx, owned);
   for (const line of target.construction) {
     if (!producedOnlyByIdleBuildings(world, ctx, owned, candidate, line.goodType)) continue;
-    const committed = sitesShortfall(world, ctx, owned, line.goodType);
+    const committed = owed.get(line.goodType) ?? 0;
     if (!stock.exceeds(player, line.goodType, committed + line.amount - 1)) return false;
   }
   return true;
@@ -52,35 +53,20 @@ function producedOnlyByIdleBuildings(
   return producers > 0;
 }
 
-/** Whether `player` holds at least `units` fetchable units of `goodType` beyond what the seat's sites
- *  still lack: the units a workshop has on its own shelf are not fetchable, so a workshop eating its raw
- *  good reads as the shortage it is to the builders. */
-export function stockedBeyondSites(
-  world: World,
-  ctx: SystemContext,
-  player: number,
-  owned: readonly Entity[],
-  goodType: number,
-  units: number,
-): boolean {
-  const owed = sitesShortfall(world, ctx, owned, goodType);
-  return FetchableStock.of(world, ctx).exceeds(player, goodType, owed + units - 1);
-}
-
-/** How much of `goodType` the seat's construction sites still lack. */
-export function sitesShortfall(
+/** How much of each good the seat's construction sites still lack, by good type. */
+export function sitesShortfalls(
   world: World,
   ctx: SystemContext,
   owned: readonly Entity[],
-  goodType: number,
-): number {
-  let shortfall = 0;
+): Map<number, number> {
+  const shortfalls = new Map<number, number>();
   for (const e of owned) {
     if (!world.has(e, UnderConstruction)) continue;
-    const held = world.tryGet(e, Stockpile)?.amounts.get(goodType) ?? 0;
+    const held = world.tryGet(e, Stockpile)?.amounts;
     for (const line of constructionBillOf(world, ctx, e)) {
-      if (line.goodType === goodType) shortfall += Math.max(0, line.amount - held);
+      const lacking = Math.max(0, line.amount - (held?.get(line.goodType) ?? 0));
+      shortfalls.set(line.goodType, (shortfalls.get(line.goodType) ?? 0) + lacking);
     }
   }
-  return shortfall;
+  return shortfalls;
 }

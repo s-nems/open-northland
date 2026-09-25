@@ -2,15 +2,11 @@ import type { BuildingType } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { stockedBeyondSites } from '../build-order/upgrade-supply.js';
+import { isCarrierJob } from '../../stores/index.js';
 import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
-import {
-  COLLECTED_GOOD_IDS,
-  COLLECTOR_WORKSHOP_BY_GOOD_ID,
-  RAW_COMFORT_UNITS,
-  RAW_SHORT_UNITS,
-} from './collectors/index.js';
+import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
 import { openingRunPending } from './craft.js';
+import type { SeatSupply } from './supply.js';
 
 /** A building's staffing plan: workers per operator trade and total transport carriers, filled tier by
  *  tier so everyone's minimum beats anyone's second worker. Slot counts cap every value. */
@@ -80,23 +76,33 @@ const STORAGE_STAFFING: BuildingStaffing = {
 export const LATE_GAME_CIVILIANS = 60;
 
 /** The goods whose shortage puts a carrier into the workshop at the minimum tier (authored), by stable
- *  content ids: the building materials only these tiers make. */
+ *  content ids: the building materials only these tiers make. The carrier is hired below a good's short
+ *  line and kept until every one reaches its comfort line ({@link SeatSupply}). */
 export const SUPPLY_CARRIER_GOODS_BY_BUILDING_ID: Readonly<Record<string, readonly string[]>> = {
   work_pottery_01: ['brick', 'tile'],
   work_mason_hut_01: ['pillar', 'ornament'],
 };
-
-/** A supply carrier is hired while any of its goods has fewer fetchable units than this beyond what the
- *  seat's sites still lack, and kept until every one has {@link SUPPLY_COMFORT_UNITS} (authored: a home
- *  upgrade takes two, so three homes' round takes six). */
-export const SUPPLY_SHORT_UNITS = 6;
-export const SUPPLY_COMFORT_UNITS = 16;
 
 /** The seat-wide inputs every building's plan reads this decision. */
 export interface SeatStaffing {
   readonly player: number;
   readonly owned: readonly Entity[];
   readonly civilians: number;
+  readonly supply: SeatSupply;
+}
+
+/** The operators a workplace type's plan staffs at the target tier, each operator trade capped by its
+ *  slot count; 0 for any other kind. */
+export function plannedOperators(ctx: SystemContext, type: BuildingType): number {
+  if (type.kind !== 'workplace') return 0;
+  const want = { ...DEFAULT_WORKPLACE_STAFFING, ...STAFFING_BY_BUILDING_ID[type.id] }.operatorTarget;
+  const index = contentIndex(ctx.content);
+  let operators = 0;
+  for (const slot of type.workers) {
+    if (isCarrierJob(ctx, slot.jobType) || index.harvestJobs.has(slot.jobType)) continue;
+    operators += Math.min(slot.count, want);
+  }
+  return operators;
 }
 
 /**
@@ -126,21 +132,20 @@ export function buildingStaffing(
       operatorSurplus: Math.min(plan.operatorSurplus ?? plan.operatorTarget, 1),
     };
   }
-  if (suppliesShort(world, ctx, seat, type, holdsCarrier)) {
+  if (suppliesShort(ctx, seat, type, holdsCarrier)) {
     plan = {
       ...plan,
       carrierMin: Math.max(plan.carrierMin, 1),
       carrierTarget: Math.max(plan.carrierTarget, 1),
     };
   }
-  if (rawGoodShort(world, ctx, seat, type, holdsCarrier)) plan = { ...plan, carrierMin: 0, carrierTarget: 0 };
+  if (rawGoodShort(ctx, seat, type, holdsCarrier)) plan = { ...plan, carrierMin: 0, carrierTarget: 0 };
   return plan;
 }
 
-/** Whether one of the type's supply goods is short: below {@link SUPPLY_SHORT_UNITS} spare units, or while
- *  a carrier already works there, below {@link SUPPLY_COMFORT_UNITS}. */
+/** Whether one of the type's supply goods is short: below its short line, or while a carrier already
+ *  works there, below its comfort line. */
 function suppliesShort(
-  world: World,
   ctx: SystemContext,
   seat: SeatStaffing,
   type: BuildingType,
@@ -148,36 +153,31 @@ function suppliesShort(
 ): boolean {
   const goodIds = SUPPLY_CARRIER_GOODS_BY_BUILDING_ID[type.id];
   if (goodIds === undefined) return false;
-  const wanted = holdsCarrier ? SUPPLY_COMFORT_UNITS : SUPPLY_SHORT_UNITS;
   return goodIds.some((id) => {
     const good = goodTypeByContentId(ctx.content, id);
-    return (
-      good !== undefined && !stockedBeyondSites(world, ctx, seat.player, seat.owned, good.typeId, wanted)
-    );
+    return good !== undefined && seat.supply.isShort(good.typeId, holdsCarrier);
   });
 }
 
 /**
  * Whether `type` is a collected raw good's own workshop ({@link COLLECTOR_WORKSHOP_BY_GOOD_ID}) while that
- * good runs short for the seat's sites: under {@link RAW_SHORT_UNITS} spare units, or while no carrier
- * works there, under {@link RAW_COMFORT_UNITS}. Its carrier only hauls the good onto the workshop's shelf,
- * where the builders cannot take it, so he goes back to the pool and the craftsman fetches his own until
- * the good is plentiful again (authored).
+ * good runs short for the seat's sites: under its short line, or while no carrier works there, under its
+ * comfort line. Its carrier only hauls the good onto the workshop's shelf, where the builders cannot take
+ * it, so he goes back to the pool and the craftsman fetches his own until the good is plentiful again
+ * (authored).
  */
 function rawGoodShort(
-  world: World,
   ctx: SystemContext,
   seat: SeatStaffing,
   type: BuildingType,
   holdsCarrier: boolean,
 ): boolean {
   const index = contentIndex(ctx.content);
-  const spare = holdsCarrier ? RAW_SHORT_UNITS : RAW_COMFORT_UNITS;
   return COLLECTED_GOOD_IDS.some((id) => {
     const served = COLLECTOR_WORKSHOP_BY_GOOD_ID[id];
     const workshop = served === undefined ? undefined : buildingTypeByContentId(ctx.content, served.building);
     if (workshop === undefined || !tiersAtOrAbove(index, workshop).has(type.typeId)) return false;
     const good = goodTypeByContentId(ctx.content, id);
-    return good !== undefined && !stockedBeyondSites(world, ctx, seat.player, seat.owned, good.typeId, spare);
+    return good !== undefined && seat.supply.isShort(good.typeId, !holdsCarrier);
   });
 }

@@ -14,9 +14,9 @@ import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { isCarrierJob } from '../../../stores/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
-import { stockedBeyondSites } from '../../build-order/upgrade-supply.js';
 import { buildingTypeByContentId, goodTypeByContentId } from '../../content-lookup.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from '../../seat-roster.js';
+import type { SeatSupply } from '../supply.js';
 
 /** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
  *  the content set is skipped; the build order adds its `collector` entries' goods once reached. */
@@ -49,12 +49,10 @@ export const COLLECTOR_GROWTH_BY_GOOD_ID: Readonly<Record<string, CollectorGrowt
  * A collected good some built workshop of the seat consumes gets one gatherer more while it runs short
  * for the seat's sites (authored): the potter or mason and his carrier can eat a raw good faster than
  * one gatherer brings it, and what lies on the workshop's shelf is his, not the builders'. Short means
- * fewer than {@link RAW_SHORT_UNITS} fetchable units beyond what the sites still lack; the extra man stays
- * until {@link RAW_COMFORT_UNITS}. Unlike a top-up, the post is filled ahead of the builder reserve, since
- * a settlement with no stone to build with has no use for builders.
+ * under the good's short line ({@link SeatSupply}); the extra man stays until its comfort line. Unlike a
+ * top-up, the post is filled ahead of the builder reserve, since a settlement with no stone to build with
+ * has no use for builders.
  */
-export const RAW_SHORT_UNITS = 6;
-export const RAW_COMFORT_UNITS = 16;
 const RAW_SHORTAGE_EXTRA_COLLECTORS = 1;
 
 /** How many collect-anything gatherers (a flag with no good filter) the seat keeps, at the lowest
@@ -124,14 +122,15 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
  *  plan order, each target at least its entries' `count`, raised by its
- *  {@link COLLECTOR_GROWTH_BY_GOOD_ID} row and by one more while the good runs short
- *  ({@link RAW_SHORT_UNITS}). A good missing from the content set or with no harvest trade is skipped. */
+ *  {@link COLLECTOR_GROWTH_BY_GOOD_ID} row and by {@link RAW_SHORTAGE_EXTRA_COLLECTORS} while the good
+ *  runs short. A good missing from the content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
   world: World,
   ctx: SystemContext,
   player: number,
   order: readonly BuildOrderEntry[],
   statuses: readonly EntryStatus[],
+  supply: SeatSupply,
 ): WantedGood[] {
   const goodIds = [...COLLECTED_GOOD_IDS];
   const entryCounts = collectorGoodsWanted(order, statuses);
@@ -164,8 +163,7 @@ export function wantedCollectorGoods(
       const held = flagHolders(world, ctx, player, good.typeId);
       // The extra post, once manned, holds until the comfort line, so the stock crossing one line does
       // not hire and release a man every few decisions.
-      const spare = held > target ? RAW_COMFORT_UNITS : RAW_SHORT_UNITS;
-      if (!stockedBeyondSites(world, ctx, player, owned, good.typeId, spare)) {
+      if (supply.isShort(good.typeId, held > target)) {
         target += RAW_SHORTAGE_EXTRA_COLLECTORS;
         min = target;
       }

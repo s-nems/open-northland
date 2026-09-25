@@ -12,24 +12,24 @@ import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
-import { BUILDER_CAP, FLAG_MAX_DISTANCE_NODES } from '../../../src/systems/ai-player/index.js';
+import {
+  BUILD_ORDER_LOOKAHEAD_ENTRIES,
+  BUILDER_CAP,
+  DEFAULT_BUILD_ORDER,
+  FLAG_MAX_DISTANCE_NODES,
+  MAX_ACTIVE_CONSTRUCTION_SITES,
+  type SupplyLines,
+  supplyLines,
+} from '../../../src/systems/ai-player/index.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { collectorAnchors, seatHolders } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
-import {
-  FLAG_RELOCATE_EVERY_DECISIONS,
-  RAW_COMFORT_UNITS,
-  RAW_SHORT_UNITS,
-} from '../../../src/systems/ai-player/workforce/collectors/index.js';
+import { FLAG_RELOCATE_EVERY_DECISIONS } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import {
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   LATE_CRAFT_FROM_TICK,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { claimFlagNode, flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
-import {
-  SUPPLY_COMFORT_UNITS,
-  SUPPLY_SHORT_UNITS,
-} from '../../../src/systems/ai-player/workforce/staffing-plan.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   aiSim,
@@ -41,6 +41,7 @@ import {
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  IRON,
   MUD,
   placeHq,
   placeResources,
@@ -49,6 +50,7 @@ import {
   STONE,
   spawnMen,
   VIKING,
+  WOOD,
 } from './support.js';
 
 /** The pottery's and mason hut's crews: the first craftsman's carrier, the supply carrier an upgraded
@@ -68,6 +70,14 @@ const MASON_HUT = 52;
 const MASON_HUT_UPGRADED = 53;
 /** Enough men that the pool still has a spare hand after the builder reserve and every early post. */
 const SPARE_MEN = 20;
+/** The top home's own bill lines of the materials, so each good's supply unit is its own number. */
+const TOP_HOME_MATERIALS = [
+  { goodType: STONE, amount: 4 },
+  { goodType: BRICK, amount: 3 },
+  { goodType: TILE, amount: 2 },
+  { goodType: PILLAR, amount: 5 },
+  { goodType: ORNAMENT, amount: 1 },
+] as const;
 
 function workshop(
   typeId: number,
@@ -110,7 +120,9 @@ function workshopsContent(): ContentSet {
     ],
     jobs: [...base.jobs, { typeId: POTTER, id: 'potter' }, { typeId: MASON, id: 'mason' }],
     buildings: [
-      ...base.buildings,
+      ...base.buildings.map((b) =>
+        b.id === 'home_level_02' ? { ...b, construction: [...b.construction, ...TOP_HOME_MATERIALS] } : b,
+      ),
       workshop(POTTERY, 'work_pottery_00', POTTER, 1, [BRICK], POTTERY_UPGRADED),
       workshop(POTTERY_UPGRADED, 'work_pottery_01', POTTER, 2, [BRICK, TILE, CROCKERY]),
       workshop(MASON_HUT, 'work_mason_hut_00', MASON, 1, [PILLAR], MASON_HUT_UPGRADED),
@@ -142,7 +154,7 @@ function workshopSeat(men = BUILDER_CAP + SPARE_MEN): Seat {
   sim.step();
   // The clay and stone the two workshops eat: plentiful, so their carriers are hired at all.
   for (const good of RAW_GOODS)
-    setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, RAW_COMFORT_UNITS);
+    setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, linesOf(content, good).comfort);
   return {
     sim,
     decide: () => [...collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)],
@@ -177,6 +189,62 @@ function upgradedSeat(men?: number): Seat & { readonly pottery: Entity; readonly
 
 /** The pottery's and the mason hut's supply goods. */
 const SUPPLY_GOODS = [BRICK, TILE, PILLAR, ORNAMENT];
+
+/** The default build order's supply lines of `good` over `content`. */
+function linesOf(content: ContentSet, good: number): SupplyLines {
+  const lines = supplyLines(content, DEFAULT_BUILD_ORDER).get(good);
+  if (lines === undefined) throw new Error(`good ${good} is not managed`);
+  return lines;
+}
+
+/** Stock every good at its own line. */
+function stockAtLine(seat: Seat, goods: readonly number[], line: 'short' | 'comfort', offset = 0): void {
+  const content = workshopsContent();
+  for (const good of goods) seat.stock([good], linesOf(content, good)[line] + offset);
+}
+
+describe('workforce module - the supply lines', () => {
+  it("derives each good's lines from the build order's largest bill line and the consumers' shelves", () => {
+    const content = workshopsContent();
+    // The top home's merged chain bill: two wood per tier over three tiers, plus its own materials.
+    const HOME_CHAIN_WOOD = 6;
+    const lines = (unit: number, band: number) => {
+      const short = MAX_ACTIVE_CONSTRUCTION_SITES * unit;
+      return {
+        unit,
+        short,
+        comfort: short + band,
+        glut: short + band + BUILD_ORDER_LOOKAHEAD_ENTRIES * unit,
+      };
+    };
+    for (const { goodType, amount } of TOP_HOME_MATERIALS) {
+      expect(linesOf(content, goodType)).toEqual(lines(amount, amount));
+    }
+    expect(linesOf(content, WOOD)).toEqual(lines(HOME_CHAIN_WOOD, HOME_CHAIN_WOOD));
+    // Clay no bill takes and no workshop shelves: one unit.
+    expect(linesOf(content, MUD)).toEqual(lines(1, 1));
+    // Iron no bill takes: the joinery's input shelf is its unit and its band.
+    const JOINERY_IRON_SHELF = 5;
+    expect(linesOf(content, IRON)).toEqual(lines(JOINERY_IRON_SHELF, JOINERY_IRON_SHELF));
+    // A shelf wider than the unit widens only the band.
+    const WIDE_SHELF = 20;
+    const wide = parseContentSet({
+      ...content,
+      buildings: content.buildings.map((b) =>
+        b.id === 'work_joinery_01'
+          ? {
+              ...b,
+              stock: b.stock.map((slot) =>
+                slot.goodType === WOOD ? { ...slot, capacity: WIDE_SHELF } : slot,
+              ),
+            }
+          : b,
+      ),
+    });
+    expect(linesOf(wide, WOOD)).toEqual(lines(HOME_CHAIN_WOOD, WIDE_SHELF));
+    expect(supplyLines(content, DEFAULT_BUILD_ORDER).has(CROCKERY)).toBe(false);
+  });
+});
 /** The raw goods the two workshops eat, and the builders need too. */
 const RAW_GOODS = [MUD, STONE];
 
@@ -203,13 +271,13 @@ describe('workforce module - the pottery and mason hut crews', () => {
     const released = () => seat.decide().filter((c) => c.kind === 'setJob' && carriers.includes(c.entity));
     // The upgrade spent the stock, so both carriers stay on.
     expect(released()).toEqual([]);
-    seat.stock(SUPPLY_GOODS, SUPPLY_COMFORT_UNITS);
+    stockAtLine(seat, SUPPLY_GOODS, 'comfort');
     expect(released()).toEqual(carriers.map((entity) => ({ kind: 'setJob', entity, jobType: BUILDER })));
   });
 
   it('puts a carrier back into an upgraded workshop while its goods run short', () => {
     const seat = upgradedSeat();
-    seat.stock(SUPPLY_GOODS, SUPPLY_COMFORT_UNITS);
+    stockAtLine(seat, SUPPLY_GOODS, 'comfort');
     seat.apply(seat.decide());
     expect(seat.crew(seat.pottery, CARRIER)).toEqual([]);
     const carrierHires = () =>
@@ -220,18 +288,18 @@ describe('workforce module - the pottery and mason hut crews', () => {
         );
 
     // Between short and comfortable: nobody is hired.
-    seat.stock([TILE], SUPPLY_SHORT_UNITS);
+    stockAtLine(seat, [TILE], 'short');
     expect(carrierHires()).toEqual([]);
-    seat.stock([TILE], SUPPLY_SHORT_UNITS - 1);
+    stockAtLine(seat, [TILE], 'short', -1);
     expect(carrierHires()).toHaveLength(1);
     seat.apply(seat.decide());
     const [carrier] = seat.crew(seat.pottery, CARRIER);
     if (carrier === undefined) throw new Error('expected the supply carrier');
 
     // Once hired he stays through the same band, and leaves only when the tiles are plentiful again.
-    seat.stock([TILE], SUPPLY_COMFORT_UNITS - 1);
+    stockAtLine(seat, [TILE], 'comfort', -1);
     expect(seat.decide().filter((c) => c.kind === 'setJob' && c.entity === carrier)).toEqual([]);
-    seat.stock([TILE], SUPPLY_COMFORT_UNITS);
+    stockAtLine(seat, [TILE], 'comfort');
     expect(seat.decide().filter((c) => c.kind === 'setJob' && c.entity === carrier)).toEqual([
       { kind: 'setJob', entity: carrier, jobType: BUILDER },
     ]);
@@ -251,18 +319,18 @@ describe('workforce module - the pottery and mason hut crews', () => {
 
     // He stays down to the short line, and goes back to the pool under it: the stone he hauls onto the
     // hut's shelf is the mason's, and the builders have none.
-    seat.stock([STONE], RAW_SHORT_UNITS);
+    stockAtLine(seat, [STONE], 'short');
     expect(released()).toEqual([]);
-    seat.stock([STONE], RAW_SHORT_UNITS - 1);
+    stockAtLine(seat, [STONE], 'short', -1);
     expect(released()).toEqual([{ kind: 'setJob', entity: carrier, jobType: BUILDER }]);
     seat.apply(released());
     expect(seat.crew(hut, CARRIER)).toEqual([]);
 
     // The hut runs on the mason alone until the stone is plentiful again; the pottery's carrier, whose
     // clay is untouched, keeps his post throughout.
-    seat.stock([STONE], RAW_COMFORT_UNITS - 1);
+    stockAtLine(seat, [STONE], 'comfort', -1);
     expect(carrierHires()).toEqual([]);
-    seat.stock([STONE], RAW_COMFORT_UNITS);
+    stockAtLine(seat, [STONE], 'comfort');
     expect(carrierHires()).toHaveLength(1);
     expect(seat.crew(entityOfBuilding(seat.sim, POTTERY), CARRIER)).toHaveLength(1);
   });
