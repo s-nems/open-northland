@@ -6,6 +6,7 @@ import {
   PlayerOrder,
   Position,
   Settler,
+  Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
@@ -13,6 +14,7 @@ import { hexNeighboursOf, nodeOfPosition } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding/index.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import { isValidOrderedTarget } from '../conflict/targeting.js';
+import { attackerWeapon } from '../conflict/weapons.js';
 import type { SystemContext } from '../context.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
@@ -112,11 +114,15 @@ export function palisadeBarring(
   if (path === null) return null;
   const hit = firstWallOn(terrain, blocked, wallAt, path);
   if (hit === null) return null;
+  // Only a breaker that strikes from beside the wall needs a node of its own; a shooter keeps its range.
+  // One standing on a post has no near side to be dealt.
+  const arms = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
+  if (arms === null || arms.minRange > 1 || wallAt.has(hit.approach)) return { wall: hit.wall, stand: null };
   const line: BreachLine = { terrain, blocked, wallAt, first: hit.wall, approach: hit.approach };
-  return spreadAlongLine(world, line, e, { start, goal });
+  return spreadAlongLine(world, line, e);
 }
 
-/** The first wall on `path` and the node the path reaches it from. */
+/** Where `path` first meets a wall: the wall and the node it arrives from. */
 function firstWallOn(
   terrain: TerrainGraph,
   blocked: BlockOverlay,
@@ -146,26 +152,23 @@ interface BreachLine {
 }
 
 /** How many joints along the line from the first wall on the route a squad spreads its breakers. */
-const BREACH_SPREAD = 8;
+const BREACH_SPREAD = 12;
 /** How far from the line the near-side walk reaches, in lattice steps: past a post's own neighbours to the
  *  row behind them, so the walk follows the line round its turns and seals. */
 const NEAR_SIDE_REACH = 2;
-/** Neighbours shown not to open the way before a breaker settles on the first wall. */
-const BREACH_PROBES = 2;
+/** How far from the line the walk through a fallen segment reaches: one step past the near side, so a second
+ *  line close behind is crossed too. */
+const THROUGH_REACH = NEAR_SIDE_REACH + 1;
 
 /**
  * One breaker to a node: the nearest free near-side node beside the first wall, else beside the nearest
- * joined segment that also opens the way to the goal, so a squad fells the line along its length instead of
- * queueing at one post. The near side is walked from where the route meets the line, so a node on the far
- * side, which no route reaches, is never dealt. Project rule. Costs the standing breach orders, a walk along
- * the line near the first wall, and up to {@link BREACH_PROBES} failed searches.
+ * joined segment whose fall opens onto the ground behind the first one, so a squad fells the line along its
+ * length instead of queueing at one post. The near side is walked from where the route meets the line, so a
+ * node on the far side, which no route reaches, is never dealt. Project rule. Every walk stays within
+ * {@link THROUGH_REACH} of the segments up to {@link BREACH_SPREAD} joints away, so the cost is that strip,
+ * once per segment tried, plus the standing breach orders.
  */
-function spreadAlongLine(
-  world: World,
-  line: BreachLine,
-  breaker: Entity,
-  route: { readonly start: NodeId; readonly goal: NodeId },
-): Breach {
+function spreadAlongLine(world: World, line: BreachLine, breaker: Entity): Breach {
   const { terrain, blocked, wallAt, first, approach } = line;
   const held = new Set<NodeId>();
   for (const e of world.query(AttackOrder)) {
@@ -198,66 +201,85 @@ function spreadAlongLine(
     }
   }
 
-  const nearLine = (node: NodeId): boolean => {
-    for (const wall of walls) {
-      for (const cell of cellsOf.get(wall) ?? []) {
-        if (manhattan(terrain, node, cell) <= NEAR_SIDE_REACH) return true;
-      }
-    }
-    return false;
-  };
-  const nearSide = [approach];
-  const seen = new Set<NodeId>(nearSide);
+  const strip = lineStrip(
+    terrain,
+    walls.flatMap((wall) => cellsOf.get(wall) ?? []),
+  );
   const steps = new StepBuffer();
-  for (let at = 0; at < nearSide.length; at++) {
-    const node = nearSide[at];
-    if (node === undefined) continue;
-    terrain.stepsInto(node, blocked, steps);
-    for (let i = 0; i < steps.length; i++) {
-      const next = steps.at(i).node;
-      if (seen.has(next) || !nearLine(next)) continue;
-      seen.add(next);
-      nearSide.push(next);
-    }
+  const nearSide = walkStrip(terrain, blocked, strip, NEAR_SIDE_REACH, approach, steps);
+  const beyondFirst = new Set<NodeId>();
+  for (const [node, reach] of strip) {
+    if (reach !== 1 || nearSide.has(node) || !terrain.isWalkable(node) || blocked.has(node)) continue;
+    if ((cellsOf.get(first) ?? []).some((cell) => manhattan(terrain, node, cell) === 1))
+      beyondFirst.add(node);
   }
 
   const byApproach = (a: NodeId, b: NodeId): number =>
     manhattan(terrain, a, approach) - manhattan(terrain, b, approach) || a - b;
   const ranked = [...walls].sort((a, b) => (joints.get(a) ?? 0) - (joints.get(b) ?? 0) || a - b);
-  let probes = 0;
   for (const wall of ranked) {
     const cells = cellsOf.get(wall) ?? [];
-    const free = nearSide
+    const free = [...nearSide]
       .filter((node) => !held.has(node) && cells.some((cell) => manhattan(terrain, node, cell) === 1))
       .sort(byApproach);
     const stand = free[0];
     if (stand === undefined) continue;
-    if (wall !== first) {
-      if (probes >= BREACH_PROBES) break;
-      if (!opensWay(line, cells, route)) {
-        probes++;
-        continue;
-      }
+    if (wall !== first && beyondFirst.size > 0) {
+      const through: BlockOverlay = {
+        has: (node) => !cells.includes(node) && blocked.has(node),
+        get size() {
+          return blocked.size;
+        },
+      };
+      const reached = walkStrip(terrain, through, strip, THROUGH_REACH, stand, steps);
+      if (![...beyondFirst].some((node) => reached.has(node))) continue;
     }
     return { wall, stand };
   }
   return { wall: first, stand: null };
 }
 
-/** Whether breaking the wall on `cells` alone opens a route from `start` to `goal`. */
-function opensWay(
-  line: BreachLine,
-  cells: readonly NodeId[],
-  route: { readonly start: NodeId; readonly goal: NodeId },
-): boolean {
-  const { blocked } = line;
-  const through: BlockOverlay = {
-    has: (node) => !cells.includes(node) && blocked.has(node),
-    get size() {
-      return blocked.size;
-    },
-  };
-  return findPath(line.terrain, route.start, route.goal, through) !== null;
+/** Every node within {@link THROUGH_REACH} lattice steps of `cells`, with its distance to the nearest. */
+function lineStrip(terrain: TerrainGraph, cells: readonly NodeId[]): Map<NodeId, number> {
+  const strip = new Map<NodeId, number>();
+  for (const cell of cells) {
+    const { x, y } = terrain.coordsOf(cell);
+    for (let dy = -THROUGH_REACH; dy <= THROUGH_REACH; dy++) {
+      const span = THROUGH_REACH - Math.abs(dy);
+      for (let dx = -span; dx <= span; dx++) {
+        if (!terrain.inBounds(x + dx, y + dy)) continue;
+        const node = terrain.nodeAt(x + dx, y + dy);
+        const reach = Math.abs(dx) + Math.abs(dy);
+        if (reach < (strip.get(node) ?? Number.POSITIVE_INFINITY)) strip.set(node, reach);
+      }
+    }
+  }
+  return strip;
+}
+
+/** The nodes `from` reaches under `blocked` without leaving the part of `strip` within `reach` of the line. */
+function walkStrip(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  strip: ReadonlyMap<NodeId, number>,
+  reach: number,
+  from: NodeId,
+  steps: StepBuffer,
+): Set<NodeId> {
+  const seen = new Set<NodeId>([from]);
+  const queue = [from];
+  for (let at = 0; at < queue.length; at++) {
+    const node = queue[at];
+    if (node === undefined) continue;
+    terrain.stepsInto(node, blocked, steps);
+    for (let i = 0; i < steps.length; i++) {
+      const next = steps.at(i).node;
+      if (seen.has(next) || (strip.get(next) ?? Number.POSITIVE_INFINITY) > reach) continue;
+      seen.add(next);
+      queue.push(next);
+    }
+  }
+  return seen;
 }
 
 /**

@@ -15,7 +15,7 @@ import {
   type ScriptLandscapeType,
   Simulation,
 } from '../../src/index.js';
-import { hexagonRing } from '../../src/nav/halfcell.js';
+import { hexagonRing, hexDistance } from '../../src/nav/halfcell.js';
 import { findPath } from '../../src/nav/pathfinding/index.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { attackMoveUnit, attackUnit, moveUnit } from '../../src/systems/orders/index.js';
@@ -27,6 +27,8 @@ import { grassNodeMap } from '../fixtures/terrain.js';
 
 const VIKING = 1;
 const WOODCUTTER = 1;
+/** The fixture's bow-armed job: a shooter's near reach keeps it off the wall. */
+const HUNTER = 15;
 const P0 = 0;
 const P1 = 1;
 
@@ -259,7 +261,52 @@ describe('a wall line that turns', () => {
     const sim = fresh();
     ring(sim, P1);
     const raider = fighter(sim, OUTSIDE, P0);
-    expect(barring(sim, raider, CENTRE)).not.toBeNull();
+    const wall = barring(sim, raider, CENTRE);
+    if (wall === null) throw new Error('expected a wall to break');
+    sim.world.mut(wall, Health).hitpoints = 0;
+    sim.step();
+    expect(sealed(sim, OUTSIDE, CENTRE)).toBe(false);
+  });
+
+  it('deals a squad breaking in its own nodes outside the ring, and each swings from its own', () => {
+    const sim = fresh();
+    ring(sim, P1);
+    const squad = [4, 5, 6, 7].map((hy) => fighter(sim, { hx: 2, hy: WALL_ROW - 6 + 2 * (hy - 4) }, P0));
+    for (const raider of squad) {
+      attackMoveUnit(sim.world, ctxOf(sim), {
+        kind: 'attackMoveUnit',
+        entity: raider,
+        x: CENTRE.hx,
+        y: CENTRE.hy,
+      });
+    }
+    for (let tick = 0; tick < 20 && !squad.every((r) => sim.world.has(r, AttackOrder)); tick++) sim.step();
+    const stands = squad.map((raider) => sim.world.get(raider, AttackOrder).breach?.stand ?? null);
+    expect(new Set(stands).size).toBe(squad.length);
+    sim.run(300);
+    const terrain = mapped(sim);
+    for (const [at, raider] of squad.entries()) {
+      const here = nodeRow(sim, raider);
+      expect(terrain.nodeAt(here.hx, here.hy)).toBe(stands[at]);
+      expect(hexDistance(here, CENTRE)).toBeGreaterThan(4);
+    }
+  });
+
+  it('deals a shooter no node beside the wall', () => {
+    const sim = fresh();
+    ring(sim, P1);
+    const archer = fighterAt(sim, 0, 0, VIKING, HUNTER, { owner: P0 });
+    sim.world.add(archer, Position, positionOfNode(OUTSIDE.hx, OUTSIDE.hy));
+    const terrain = mapped(sim);
+    const breach = palisadeBarring(
+      sim.world,
+      ctxOf(sim),
+      terrain,
+      archer,
+      terrain.nodeAt(OUTSIDE.hx, OUTSIDE.hy),
+      terrain.nodeAt(CENTRE.hx, CENTRE.hy),
+    );
+    expect(breach?.stand).toBeNull();
   });
 
   it('never seals the passage of an open gate it meets', () => {
