@@ -1137,11 +1137,11 @@ describe('workforce module - the barracks and craft selections', () => {
     };
   }
 
-  /** Three mints of four coiners' seats with `crew` builders; the coins' lines. */
-  function crewedMints(crew: number) {
+  /** Three mints of four coiners' seats with `crew` builders deciding at `tick`; the coins' lines then. */
+  function crewedMints(crew: number, tick = 0) {
     const content = mintContent();
-    const mints = crewedWorkshops(content, 3, crew);
-    const coins = supplyLines(content, DEFAULT_BUILD_ORDER).get(COIN);
+    const mints = crewedWorkshops(content, 3, crew, tick);
+    const coins = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(COIN);
     if (coins === undefined) throw new Error('setup: coins take supply lines');
     return { ...mints, coins, stockCoins: (units: number) => mints.stock(COIN, units) };
   }
@@ -1176,6 +1176,27 @@ describe('workforce module - the barracks and craft selections', () => {
     mints.stockCoins(comfort - 1);
     expect(mints.products()).toEqual([]);
     mints.stockCoins(comfort);
+    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
+  });
+
+  it('turns up to two amulet makers to coins under the comfort line from the mid game, easing off toward the glut', () => {
+    const mints = crewedMints(4, MID_GAME_FROM_TICKS);
+    const { unit, short, comfort, glut } = mints.coins;
+    mints.stockCoins(glut);
+    mints.hire(0, 4);
+    expect(mints.products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
+    // Above the short line but under comfort: both capped seats turn, one per unit lacking to the glut.
+    expect(comfort - 1).toBeGreaterThanOrEqual(short);
+    expect(Math.ceil((glut - comfort + 1) / unit)).toBeGreaterThan(SHORT_PRODUCT_SEATS);
+    mints.stockCoins(comfort - 1);
+    expect(mints.products()).toEqual([[COIN], [COIN]]);
+    // From comfort the plan's own coin seat counts among the two, so one turned seat goes back; the other
+    // holds until a single unit lacks to the glut.
+    mints.stockCoins(comfort);
+    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
+    mints.stockCoins(glut - unit - 1);
+    expect(mints.products()).toEqual([]);
+    mints.stockCoins(glut - 1);
     expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
   });
 

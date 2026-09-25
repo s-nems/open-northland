@@ -16,7 +16,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { ownedSettlers } from '../seat-roster.js';
-import type { SeatSupply, SupplyLines } from './supply.js';
+import type { SeatSupply, SupplyLine } from './supply.js';
 
 /**
  * One operator seat's products, by stable content ids. A plain list is worked as is. A `glut` seat drops
@@ -95,8 +95,9 @@ export const SHORT_PRODUCT_SEATS = 2;
  * the short swords only the strength amulet takes, and the fifth smithy's two forge mail and plate, which
  * the late game runs out of. One druid in eight boils holy oil for the temple and the rest brew the big
  * potion. The first two mints' four coiners work one on coins and three on defence amulets; once a fifth
- * joins at the third mint, the crew splits two each over coins, defence and strength amulets. While the
- * druids' coins run short, one or two amulet makers turn to coins as well ({@link shortFirst}). Both joiners
+ * joins at the third mint, the crew splits two each over coins, defence and strength amulets. Coins short
+ * for the druids take up to two amulet makers ({@link shortFirst}): in the opening under the short line
+ * until comfort, from the mid game under comfort, easing off toward the glut. Both joiners
  * make iron tools and turn to furniture only while the tools pile up. The first potter works bricks and
  * tiles and the second crockery, which doubles a stocked home's food, until it piles up; a short building
  * material takes the crockery seat, from the mid game on as soon as it falls under its comfort line, and
@@ -302,9 +303,6 @@ function sinkHolds(supply: SeatSupply, products: readonly number[], sinking: boo
     managed.every((good) => (sinking ? !supply.isShort(good, true) : supply.atGlut(good)))
   );
 }
-
-/** One of a good's supply lines. */
-type SupplyLine = Exclude<keyof SupplyLines, 'unit'>;
 
 /** The line under which a short product takes seats, and the line it holds them to, per game phase
  *  (authored): the opening hires under the short line and holds to comfort, and from the mid game on it

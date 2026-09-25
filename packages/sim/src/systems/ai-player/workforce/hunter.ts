@@ -45,6 +45,7 @@ export function allocateOpeningHunter(
   const posted = huntersAt(world, ctx, player, base);
   if (ctx.tick >= OPENING_HUNT_UNTIL_TICKS) return retireHunters(world, posted, builderJob);
   if (posted.length > 0) {
+    // Not mid-action, walking included: a walk carries no CurrentAtomic.
     const idle = posted.some((e) => !world.has(e, CurrentAtomic));
     if (idle && !huntWorkLeft(world, ctx, base, hunterJob, posted, HUNT_CHASE_SLACK_NODES)) {
       return retireHunters(world, posted, builderJob);

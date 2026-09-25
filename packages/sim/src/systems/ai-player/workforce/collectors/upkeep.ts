@@ -90,8 +90,8 @@ export const everyResource: WorkableTest = () => true;
 
 /**
  * Whether a holder's patch still feeds him: he is mid-action, or his own harvest search from the flag
- * would take a resource `wanted` accepts. Only an idle holder pays for the search, so the per-decision
- * cost follows the idle holders rather than every flag.
+ * would take a resource `wanted` accepts. Only a holder not mid-action (walking included, since a walk
+ * carries no CurrentAtomic) pays for the search, so the cost follows those holders rather than every flag.
  */
 export function patchWorked(
   world: World,

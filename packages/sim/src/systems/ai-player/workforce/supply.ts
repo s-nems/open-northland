@@ -26,7 +26,7 @@ export interface SupplyLines {
 }
 
 /** One of a good's {@link SupplyLines}, ascending. */
-type SupplyLine = 'short' | 'comfort' | 'glut';
+export type SupplyLine = 'short' | 'comfort' | 'glut';
 
 /**
  * The goods the seat's own workshops pass between themselves whose makers' crews and seats the supply lines
