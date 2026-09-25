@@ -66,11 +66,35 @@ const PLACEHOLDER_COLOR = 0xc8a04a;
 const ANCHOR_RING = 0xf2c14e;
 const ANCHOR_RING_RADIUS = { x: 9, y: 4.5 } as const;
 
+/** {@link PlacementGhostLayer}'s built key while it shows a line, whose plan it tracks by value. */
+const LINE_KEY = 'line';
+
+function samePlanNodes(a: readonly PlanNode[], b: readonly PlanNode[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (x === undefined || y === undefined || x.col !== y.col || x.row !== y.row || x.state !== y.state) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function sameShifts(a: readonly number[], b: readonly number[]): boolean {
+  return a === b || (a.length === b.length && a.every((shift, i) => shift === b[i]));
+}
+
 export class PlacementGhostLayer {
   readonly container = new Container();
   private builtForKey: string | null = null;
-  /** The line plan and wall layout the memoized `lineShifts` were worked out for. */
-  private shiftsFor: { readonly plan: string; readonly walls: PalisadeLayout | undefined } | null = null;
+  /** The line plan and wall layout the memoized `lineShifts` were worked out for. The app hands a new
+   *  node list every frame, so the plan compares by value. */
+  private readonly shiftsFor: {
+    nodes: readonly PlanNode[] | null;
+    anchored: boolean;
+    walls: PalisadeLayout | undefined;
+  } = { nodes: null, anchored: false, walls: undefined };
   private lineShifts: readonly number[] = [];
 
   constructor(
@@ -89,19 +113,26 @@ export class PlacementGhostLayer {
       return;
     }
     if (ghost.kind === 'line') {
-      const plan = `${ghost.anchored}:${ghost.nodes.map((node) => `${node.col},${node.row},${node.state}`).join(';')}`;
-      if (this.shiftsFor?.plan !== plan || this.shiftsFor.walls !== walls) {
-        this.shiftsFor = { plan, walls };
-        this.lineShifts = planShiftX(
+      const planned = this.shiftsFor;
+      const samePlan =
+        planned.nodes !== null &&
+        planned.anchored === ghost.anchored &&
+        samePlanNodes(planned.nodes, ghost.nodes);
+      let shifts = this.lineShifts;
+      if (!samePlan || planned.walls !== walls) {
+        shifts = planShiftX(
           ghost.nodes.map((node) => ({ hx: node.col, hy: node.row })),
           walls,
         );
       }
-      const key = `line:${plan}:${this.lineShifts.join(',')}`;
-      if (this.builtForKey !== key) {
-        this.builtForKey = key;
-        this.rebuildLine(ghost, this.lineShifts, elevation);
+      if (!samePlan || this.builtForKey !== LINE_KEY || !sameShifts(shifts, this.lineShifts)) {
+        this.builtForKey = LINE_KEY;
+        this.rebuildLine(ghost, shifts, elevation);
       }
+      this.lineShifts = shifts;
+      planned.nodes = ghost.nodes;
+      planned.anchored = ghost.anchored;
+      planned.walls = walls;
       this.container.position.set(0, 0);
       // A plan is a cursor mark: it reads over the settlers and walls standing on its nodes.
       this.container.zIndex = Number.MAX_SAFE_INTEGER;

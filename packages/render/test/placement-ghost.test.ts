@@ -126,4 +126,22 @@ describe('PlacementGhostLayer', () => {
       stakes.blocked,
     ]);
   });
+
+  it('keeps a line built while each frame hands the same plan anew, and rebuilds when it changes', () => {
+    const layer = new PlacementGhostLayer(sheet, new TextureCache());
+    const line = (state: 'open' | 'blocked') => ({
+      kind: 'line' as const,
+      anchored: true,
+      nodes: [
+        { col: 4, row: 6, state: 'open' as const },
+        { col: 5, row: 6, state },
+      ],
+    });
+    layer.set(line('open'), FLAT);
+    const [string] = layer.container.children;
+    layer.set(line('open'), FLAT);
+    expect(layer.container.children[0]).toBe(string);
+    layer.set(line('blocked'), FLAT);
+    expect(layer.container.children[0]).not.toBe(string);
+  });
 });
