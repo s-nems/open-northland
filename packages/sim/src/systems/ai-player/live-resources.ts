@@ -37,6 +37,29 @@ export function workableResourceTest(world: World, ctx: SystemContext, terrain: 
     resourceStanceCells(world, terrain, e).some((cell) => !blocked.has(cell));
 }
 
+/** The {@link TerrainGraph.componentOf} label of an unwalkable node. */
+const NO_COMPONENT = -1;
+
+/**
+ * The {@link WorkableTest} that also drops every resource whose work cell nearest `from` lies on another
+ * walkable component than `from` itself: a deposit across water is no gatherer's from this seat. Every
+ * search for the resource nearest an anchor reads it, so neither a hire nor a re-plant aims a flag at
+ * ground the holder cannot walk to. Every resource passes when `from` is not walkable.
+ */
+export function reachableResourceTest(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  from: HalfCellNode,
+  workable: WorkableTest,
+): WorkableTest {
+  const origin = terrain.nodeAtClamped(from.hx, from.hy);
+  const component = terrain.componentOf(origin);
+  if (component === NO_COMPONENT) return workable;
+  return (e) =>
+    workable(e) && terrain.componentOf(interactionCell(world, ctx, terrain, e, origin)) === component;
+}
+
 /**
  * A flag gatherer's own harvest filters, judged from his flag node as if he idled there: his trade's
  * atomic, the good's experience need, and the work cell nearest the flag lying inside the circle, clear of
@@ -61,9 +84,6 @@ export interface GathererReach {
 }
 
 const NO_ATOMICS: ReadonlySet<number> = new Set();
-
-/** The {@link TerrainGraph.componentOf} label of an unwalkable node. */
-const NO_COMPONENT = -1;
 
 export function gathererReach(world: World, ctx: SystemContext, terrain: TerrainGraph): GathererReach {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);

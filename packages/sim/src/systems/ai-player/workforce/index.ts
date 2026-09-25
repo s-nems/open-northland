@@ -15,7 +15,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
-import { workableResourceTest } from '../live-resources.js';
+import { reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
 import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
@@ -146,7 +146,8 @@ function runWorkforce(
   ];
 }
 
-/** The decision's {@link CollectorGround}, or null on a mapless sim or a base with no node. */
+/** The decision's {@link CollectorGround}, or null on a mapless sim or a base with no node. A resource
+ *  counts as workable only on the base's own walkable component, where the seat's men stand. */
 function collectorGround(
   world: World,
   ctx: SystemContext,
@@ -154,10 +155,11 @@ function collectorGround(
   baseNode: HalfCellNode | null,
 ): CollectorGround | null {
   if (ctx.terrain === undefined || baseNode === null) return null;
+  const terrain = ctx.terrain;
   return {
     anchors: collectorAnchors(world, ctx, owned, baseNode),
     baseNode,
-    workable: workableResourceTest(world, ctx, ctx.terrain),
+    workable: reachableResourceTest(world, ctx, terrain, baseNode, workableResourceTest(world, ctx, terrain)),
   };
 }
 

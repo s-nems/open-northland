@@ -12,6 +12,7 @@ import {
   WorkFlag,
 } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import { nodeOfPosition, Simulation } from '../../../src/index.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
@@ -49,7 +50,7 @@ import {
   type WantedGood,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
-import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import { flagSpotNear, replantSpot } from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
@@ -1204,27 +1205,7 @@ describe('workforce module (collectResources)', () => {
     expect(move.filter((c) => c.kind === 'setJob' && c.entity === holder)).toEqual([]);
   });
 
-  it('never moves a clay flag beside a deposit across water: the holder keeps his post', () => {
-    const sim = waterSim();
-    placeHq(sim);
-    placeResources(sim, [RESOURCE_SPOTS.mud]);
-    spawnMen(sim, 1);
-    sim.step();
-    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
-    sim.step();
-    const [holder] = holdersOf(sim, MUD);
-    if (holder === undefined) throw new Error('setup: the clay holder');
-
-    // The home deposit is dug out; the only live one stands on the far bank.
-    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
-    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...FAR_BANK[0] }]);
-    sim.step();
-
-    const decision = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
-    expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([]);
-  });
-
-  it('keeps a dry-patch holder at his post when none of the three nearest deposits is workable', () => {
+  it('never aims a clay flag at a deposit across water: the good is dry for the seat and the holder retires', () => {
     const sim = waterSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud]);
@@ -1236,6 +1217,8 @@ describe('workforce module (collectResources)', () => {
     const terrain = sim.terrain;
     if (holder === undefined || terrain === undefined) throw new Error('setup: the clay holder');
 
+    // The home deposit is dug out; the only live ones stand on the far bank, where his own harvest search
+    // from any flag would find nothing either.
     for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
     placeResources(
       sim,
@@ -1249,9 +1232,35 @@ describe('workforce module (collectResources)', () => {
       reach.patchHarvestable(holder, nodeOfPosition(flagAt.x, flagAt.y), flag.radius, (g) => g === MUD),
     ).toBe(false);
 
-    // Not dry (the map still holds clay) and nothing he can walk to: no move, no retirement.
     const decision = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
-    expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([]);
+    expect(decision.filter((c) => 'entity' in c && c.entity === holder)).toEqual([
+      { kind: 'setJob', entity: holder, jobType: BUILDER },
+    ]);
+    // Nobody is re-hired onto the far bank either.
+    expect(decision.filter((c) => c.kind === 'setGatherGood' && c.goodType === MUD)).toEqual([]);
+  });
+
+  it('keeps a dry-patch holder at his post when none of the three nearest deposits is workable', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const [holder] = holdersOf(sim, MUD);
+    const terrain = sim.terrain;
+    if (holder === undefined || terrain === undefined) throw new Error('setup: the clay holder');
+    const ctx = ctxOf(sim);
+    const deposits = [...sim.world.query(Resource)];
+    expect(deposits.length).toBeGreaterThan(0);
+    const nearest = (open: (e: Entity) => boolean): Entity | null => deposits.find((e) => open(e)) ?? null;
+    // A reach that refuses every deposit stands in for three unworkable ones: null, not dry, and the
+    // callers issue nothing on null. With no candidate at all the answer is dry.
+    const refusing = { canWork: () => false, patchHarvestable: () => false };
+    const { radius } = sim.world.get(holder, WorkFlag);
+    expect(replantSpot(sim.world, ctx, terrain, holder, radius, nearest, refusing, new Set())).toBeNull();
+    expect(replantSpot(sim.world, ctx, terrain, holder, radius, () => null, refusing, new Set())).toBe('dry');
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {
