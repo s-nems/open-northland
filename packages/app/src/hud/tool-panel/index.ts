@@ -143,8 +143,8 @@ export interface ToolPanelOptions {
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
-  readonly palisadeBuiltAt?: (col: number, row: number) => boolean;
-  readonly palisadeGateProbe?: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  readonly palisadeBuiltAt?: (owner: number, col: number, row: number) => boolean;
+  readonly palisadeGateProbe?: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
   /** The wall and closed-gate graphics rows the quick row's palisade and gate tools place; a missing
    *  row leaves its button disabled. */

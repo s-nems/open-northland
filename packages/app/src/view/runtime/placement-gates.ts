@@ -7,8 +7,9 @@ export interface PlacementGates {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
-  readonly palisadeBuiltAt: (col: number, row: number) => boolean;
-  readonly palisadeGateProbe: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  /** Whether `owner`'s wall, gate or wall site stands on a node. */
+  readonly palisadeBuiltAt: (owner: number, col: number, row: number) => boolean;
+  readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
 }
 
@@ -29,14 +30,27 @@ export function createPlacementGates(
   const closedGates = (sim.terrain?.landscapes?.types ?? [])
     .filter((type) => type.wall?.gate?.open === false)
     .map((type) => type.typeId);
-  // Both indexes walk every wall, so each is kept until what it reads changes: the built nodes follow the
-  // placement blockers, the gate spans the wall layout and the fog.
+  // Each index walks every wall, so each is kept until what it reads changes: the built nodes follow the
+  // placement blockers, the gate spans the wall layout and the fog, and the hovered probe the wall layout.
   let builtKey = '';
   let builtAt: (col: number, row: number) => boolean = () => false;
-  let sites: GateSites = { key: '', has: () => false, centerFor: () => null, highlight: [] };
+  let sites: GateSites & { readonly isCenter: (col: number, row: number) => boolean } = {
+    key: '',
+    has: () => false,
+    centerFor: () => null,
+    isCenter: () => false,
+    highlight: [],
+  };
+  let probeKey = '';
+  let probe: PalisadeGateProbeView | null = null;
   const fogKey = (): string => {
     const fog = sim.fogView(localPlayer);
     return fog === null ? 'off' : `${fog.mode}:${fog.generation}`;
+  };
+  const gateSites = (): typeof sites => {
+    const key = `gate:${sim.palisadeLayoutVersion()}:${fogKey()}`;
+    if (key !== sites.key) sites = gateSitesOf(sim, closedGates, localPlayer, fogGates, key);
+    return sites;
   };
   return {
     // A paper bypasses only technology; fog, footprint and contested-ground rules still apply.
@@ -48,21 +62,26 @@ export function createPlacementGates(
       fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false),
     canPlacePalisadeAt: (gfxIndex, col, row) =>
       fogGates.seesNode(col, row) && (sim.palisadeProbe(gfxIndex)?.canPlace(col, row) ?? false),
-    palisadeBuiltAt: (col, row) => {
-      const key = sim.placementBlockerVersion();
+    palisadeBuiltAt: (owner, col, row) => {
+      const key = `${owner}:${sim.placementBlockerVersion()}`;
       if (key !== builtKey) {
-        builtAt = sim.ownPalisadeNodes(localPlayer);
+        builtAt = sim.ownPalisadeNodes(owner);
         builtKey = key;
       }
       return builtAt(col, row);
     },
-    palisadeGateProbe: (_gfxIndex, col, row) =>
-      fogGates.seesNode(col, row) ? sim.palisadeGateProbe(col, row, closedGates, localPlayer) : null,
-    palisadeGateSites: () => {
-      const key = `gate:${sim.palisadeLayoutVersion()}:${fogKey()}`;
-      if (key !== sites.key) sites = gateSitesOf(sim, closedGates, localPlayer, fogGates, key);
-      return sites;
+    palisadeGateProbe: (col, row) => {
+      if (!fogGates.seesNode(col, row)) return null;
+      // Only a convertible centre reaches the probe's mover test, so only there is it re-asked each tick.
+      const live = gateSites().isCenter(col, row) ? `:${sim.tick}` : '';
+      const key = `${col},${row}:${sim.palisadeLayoutVersion()}${live}`;
+      if (key !== probeKey) {
+        probe = sim.palisadeGateProbe(col, row, closedGates, localPlayer);
+        probeKey = key;
+      }
+      return probe;
     },
+    palisadeGateSites: gateSites,
   };
 }
 
@@ -72,13 +91,15 @@ function gateSitesOf(
   localPlayer: number,
   fogGates: FogGates,
   key: string,
-): GateSites {
+): GateSites & { readonly isCenter: (col: number, row: number) => boolean } {
   // Node key -> the centre of the covering span and how far along it the node sits.
   const covering = new Map<string, { col: number; row: number; distance: number }>();
+  const centers = new Set<string>();
   const walls = new Set<number>();
   for (const site of sim.palisadeGateSites(closedGates, localPlayer)) {
     const center = site.span[GATE_SPAN_CENTER];
     if (center === undefined || !fogGates.seesNode(center.hx, center.hy)) continue;
+    centers.add(`${center.hx},${center.hy}`);
     for (const wall of site.walls) walls.add(wall);
     site.span.forEach((node, index) => {
       const distance = Math.abs(index - GATE_SPAN_CENTER);
@@ -96,6 +117,7 @@ function gateSitesOf(
       const hit = covering.get(`${col},${row}`);
       return hit === undefined ? null : { col: hit.col, row: hit.row };
     },
+    isCenter: (col, row) => centers.has(`${col},${row}`),
     highlight: [...walls].map((id) => ({ id, ok: true })),
   };
 }

@@ -90,7 +90,7 @@ describe('placement gates - the ground an enemy army contests', () => {
       span: [{ hx: 8, hy: 6 }],
     });
 
-    expect(gates.palisadeGateProbe(gate.typeId, 8, 6)).toMatchObject({
+    expect(gates.palisadeGateProbe(8, 6)).toMatchObject({
       gfxIndex: gate.typeId,
       canConvert: false,
       span: [{ hx: 8, hy: 6 }],
@@ -100,6 +100,60 @@ describe('placement gates - the ground an enemy army contests', () => {
       .filter((type) => type.wall?.gate?.open === false)
       .map((type) => type.typeId);
     expect(probe).toHaveBeenCalledWith(8, 6, orientations, HUMAN_PLAYER);
+  });
+
+  it('asks the hovered gate probe once per wall layout, and once per tick only on a convertible centre', () => {
+    const { sim, gates } = openField();
+    const probe = vi.spyOn(sim, 'palisadeGateProbe').mockReturnValue({
+      canConvert: false,
+      gfxIndex: null,
+      center: null,
+      axis: null,
+      remove: [],
+      walls: [],
+      span: [],
+    });
+    vi.spyOn(sim, 'palisadeGateSites').mockReturnValue([
+      {
+        canConvert: true,
+        gfxIndex: 697,
+        center: 3 as Entity,
+        axis: 0,
+        remove: [],
+        walls: [1, 2, 3, 4, 5] as Entity[],
+        span: [4, 5, 6, 7, 8].map((hx) => ({ hx, hy: 6 })),
+      },
+    ]);
+
+    // Bare ground: the answer follows the wall layout alone, so neither a second frame nor a tick asks again.
+    gates.palisadeGateProbe(12, 2);
+    gates.palisadeGateProbe(12, 2);
+    sim.step();
+    gates.palisadeGateProbe(12, 2);
+    expect(probe).toHaveBeenCalledTimes(1);
+
+    // A convertible centre: a mover may step into the opening on any tick, so each tick asks once.
+    gates.palisadeGateProbe(6, 6);
+    gates.palisadeGateProbe(6, 6);
+    expect(probe).toHaveBeenCalledTimes(2);
+    sim.step();
+    gates.palisadeGateProbe(6, 6);
+    expect(probe).toHaveBeenCalledTimes(3);
+
+    vi.spyOn(sim, 'palisadeLayoutVersion').mockReturnValue('next');
+    gates.palisadeGateProbe(12, 2);
+    expect(probe).toHaveBeenCalledTimes(4);
+  });
+
+  it("tests the built nodes of the owner a line is laid for, not the seat's", () => {
+    const { sim, gates } = openField();
+    const own = vi
+      .spyOn(sim, 'ownPalisadeNodes')
+      .mockImplementation((player) => () => player === ENEMY_PLAYER);
+    expect(gates.palisadeBuiltAt(ENEMY_PLAYER, 4, 2)).toBe(true);
+    expect(gates.palisadeBuiltAt(HUMAN_PLAYER, 4, 2)).toBe(false);
+    expect(gates.palisadeBuiltAt(HUMAN_PLAYER, 5, 2)).toBe(false);
+    expect(own.mock.calls).toEqual([[ENEMY_PLAYER], [HUMAN_PLAYER]]);
   });
 
   it('indexes the gate spans once per wall layout and aims each node at its nearest centre', () => {

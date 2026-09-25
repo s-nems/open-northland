@@ -652,7 +652,7 @@ describe('placement controller', () => {
       // The standing wall's own node refuses a new segment, so only the built test lets the line start.
       (_gfxIndex, col) => col > 4,
       undefined,
-      { palisadeBuiltAt: (col, row) => col === 4 && row === 2 },
+      { palisadeBuiltAt: (_owner, col, row) => col === 4 && row === 2 },
     );
     placement.enterPalisade(691, 'wall');
     placement.handleClick(0, 0);
@@ -671,8 +671,13 @@ describe('placement controller', () => {
   it('lays an admin standing-wall line finished for the chosen owner through the trusted channel', () => {
     let tile = { col: 4, row: 2 };
     const trusted: Command[] = [];
+    const builtOwners = new Set<number>();
     const { placement, commands, strip } = mount(() => tile, undefined, undefined, undefined, {
       enqueueTrusted: (command) => trusted.push(command),
+      palisadeBuiltAt: (owner) => {
+        builtOwners.add(owner);
+        return false;
+      },
     });
     placement.enterPalisade(691, 'standingWall', { owner: 3, tribe: 2 });
     expect(strip.shown?.label).toBe(messages().admin.standingPalisade);
@@ -691,6 +696,8 @@ describe('placement controller', () => {
         underConstruction: false,
       })),
     );
+    // The line joins the chosen owner's walls, not the seat's.
+    expect([...builtOwners]).toEqual([3]);
   });
 
   it('steps back from a started line to the armed tool, then leaves it for the map, not the window', () => {
@@ -781,7 +788,7 @@ describe('placement controller', () => {
       () => ({ col: 8, row: 6 }),
       () => true,
       () => true,
-      (_gfxIndex, col, row) => {
+      (col, row) => {
         probed.push({ col, row });
         return {
           canConvert: col === 6,

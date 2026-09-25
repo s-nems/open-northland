@@ -57,8 +57,8 @@ export interface GameToolPanelDeps {
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
-  readonly palisadeBuiltAt: (col: number, row: number) => boolean;
-  readonly palisadeGateProbe: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
+  readonly palisadeBuiltAt: (owner: number, col: number, row: number) => boolean;
+  readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
   readonly palisadeTools: PalisadeTools;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
