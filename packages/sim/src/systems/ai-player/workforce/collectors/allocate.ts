@@ -8,6 +8,7 @@ import { goodTypeByContentId } from '../../content-lookup.js';
 import { nearestLiveResource, type WorkableTest } from '../../live-resources.js';
 import { anchorNodeOf } from '../../node-geometry.js';
 import { ownedSettlers } from '../../seat-roster.js';
+import { experienceRank } from '../experience.js';
 import {
   claimFlagNode,
   collectorSpot,
@@ -121,8 +122,9 @@ function seatBuilders(world: World, player: number, force: SpareForce, builderJo
  * First posts: keep at least one flag-bound gatherer per wanted good, and a short good's extra ones up to
  * `min`, each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), over the
  * upkeep of every current holder ({@link upkeepHolders}). One post per good per decision, and none beyond
- * a good's first that would break the {@link SHORTAGE_BUILDER_FLOOR}. No-op on a mapless sim, which has
- * no cells to place flags over.
+ * a good's first that would break the {@link SHORTAGE_BUILDER_FLOOR}. Every post, here as in the top-ups and
+ * the generic posts, goes to the spare man most experienced on the track it trains. No-op on a mapless
+ * sim, which has no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
@@ -167,6 +169,7 @@ export function allocateCollectors(
     const keepBuilders = holders.length > 0 && builders !== undefined && builders <= SHORTAGE_BUILDER_FLOOR;
     const spare = force.take(
       (e) => meetsNeed(world, ctx, e, w.good.typeId) && !(keepBuilders && isBuilder(e)),
+      experienceRank(world, ctx, w.job, w.good.typeId),
     );
     if (spare !== null) {
       if (builders !== undefined && isBuilder(spare)) builders--;
@@ -206,12 +209,13 @@ export function topUpCollectors(
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     if (holders.length === 0) continue;
     const { free } = seatGood(world, ground, w, holders);
+    const veteranFirst = experienceRank(world, ctx, w.job, w.good.typeId);
     while (holders.length < w.target) {
       const anchor = free.shift();
       if (anchor === undefined) break;
       const spot = collectorSpot(world, ctx, terrain, anchor, w.good.typeId, taken, ground.workable);
       if (spot === null) break;
-      const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
+      const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId), veteranFirst);
       if (spare === null) break;
       postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
     }
@@ -260,12 +264,13 @@ export function allocateGenericCollectors(
   }
   const job = genericCollectorJob(ctx);
   if (job === null || baseNode === null) return commands;
+  const veteranFirst = experienceRank(world, ctx, job);
   for (let hired = genericCollectors.length; hired < target; hired++) {
     const resource = nearestCollectedResource(world, ctx, baseNode, workable);
     if (resource === null) break; // no collected good stands anywhere - no generic post
     const spot = flagSpotNear(world, ctx, terrain, resource, taken);
     if (spot === null) break;
-    const spare = force.take();
+    const spare = force.take(undefined, veteranFirst);
     if (spare === null) break;
     commands.push({ kind: 'setJob', entity: spare, jobType: job });
     commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });

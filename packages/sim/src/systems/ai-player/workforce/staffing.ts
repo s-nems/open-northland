@@ -6,6 +6,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { isBuilt, ownedSettlers } from '../seat-roster.js';
+import { byExperience, experienceRank, tradeExperience } from './experience.js';
 import type { SpareForce } from './pool.js';
 import {
   type BuildingStaffing,
@@ -34,9 +35,10 @@ export function builderCap(civilians: number): number {
 
 /**
  * Staff each built workplace and storage toward its plan's tier ({@link buildingStaffing}), where an
- * operator is a non-carrier, non-gatherer slot. Gatherer slots stay open, and a carrier-only workplace
- * (the well, the hive) fills itself, so it needs no staff. Workplaces fill before storage within a tier, and
- * all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
+ * operator is a non-carrier, non-gatherer slot. Each post goes to the spare man most experienced on the
+ * slot trade's general track. Gatherer slots stay open, and a carrier-only workplace (the well, the hive)
+ * fills itself, so it needs no staff. Workplaces fill before storage within a tier, and all tiers advance
+ * one shared {@link StaffingTally} because the commands apply only next tick.
  */
 export function staffBuildings(
   world: World,
@@ -78,8 +80,9 @@ export function staffBuildings(
       if (type.kind === 'storage' && !carrier) continue; // storage staffs transport only
       const want = Math.min(slot.count, carrier ? carrierWant : operatorWant);
       const held = tally.get(building)?.get(slot.jobType) ?? 0;
+      const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
       for (let i = held; i < want; i++) {
-        const spare = force.take();
+        const spare = force.take(undefined, veteranFirst);
         if (spare === null) return commands; // pool dry - the rest waits for grown sons
         commands.push({ kind: 'assignWorker', entity: spare, building, jobPriority: [slot.jobType] });
         incrementStaffing(tally, building, slot.jobType);
@@ -157,8 +160,9 @@ export function releaseSurplusOperators(
 
 /**
  * Hand back as builders each built building's staff of the `role` trades beyond the plan's `keep` count,
- * per trade. The lowest ids keep their posts; a man mid-action or holding a load is left until he is free,
- * since the trade change would cancel the one or drop the other.
+ * per trade. The most experienced on the trade's general track keep their posts, the lowest id on a tie,
+ * so the kept set is deterministic. A man mid-action or holding a load is left until he is free, since
+ * the trade change would cancel the one or drop the other.
  */
 function releaseSurplus(
   world: World,
@@ -190,8 +194,10 @@ function releaseSurplus(
     if (type === undefined) continue;
     const plan = buildingStaffing(world, ctx, seat, workplace, type, heldAt(ctx, tally, workplace));
     if (plan === null) continue;
-    for (const staff of byJob.values()) {
-      for (const e of staff.slice(keep(plan, type))) {
+    for (const [job, staff] of byJob) {
+      const kept = keep(plan, type);
+      if (staff.length <= kept) continue;
+      for (const e of byExperience(staff, experienceRank(world, ctx, job)).slice(kept)) {
         if (world.has(e, CurrentAtomic) || world.has(e, Carrying)) continue;
         commands.push({ kind: 'setJob', entity: e, jobType: builderJob });
       }
@@ -203,13 +209,16 @@ function releaseSurplus(
 /**
  * Claim up to `cap` pool men as builders, existing builders first so the crew does not churn. Claiming
  * rather than posting leaves the later tiers only the surplus beyond the reserve; the cap is one-way and
- * never demotes a man.
+ * never demotes a man. A fresh builder is the man with the least experience in other trades
+ * ({@link tradeExperience}), so the reserve leaves the veterans for their posts; without `ctx` it takes
+ * pool order.
  */
 export function reserveBuilders(
   world: World,
   force: SpareForce,
   builderJob: number | null,
   cap: number,
+  ctx?: SystemContext,
 ): PlayerCommand[] {
   if (builderJob === null) return [];
   const commands: PlayerCommand[] = [];
@@ -219,8 +228,9 @@ export function reserveBuilders(
     if (keep === null) break;
     builders++;
   }
+  const greenFirst = ctx === undefined ? undefined : (e: Entity) => -tradeExperience(world, ctx, e);
   while (builders < cap) {
-    const spare = force.take();
+    const spare = force.take(undefined, greenFirst);
     if (spare === null) break;
     commands.push({ kind: 'setJob', entity: spare, jobType: builderJob });
     builders++;
