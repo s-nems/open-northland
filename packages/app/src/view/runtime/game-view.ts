@@ -337,7 +337,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
-    const { canPlaceAt, canPlaceSignpostAt, canPlacePalisadeAt } = createPlacementGates(
+    const { canPlaceAt, canPlaceSignpostAt, canPlacePalisadeAt, palisadeGateProbe } = createPlacementGates(
       sim,
       fogGates,
       localPlayer,
@@ -459,6 +459,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         issueCommand({ kind: 'declareDiplomacy', player: localPlayer, other, state }),
       canPlaceAt,
       canPlacePalisadeAt,
+      palisadeGateProbe,
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       buildings: [
@@ -854,7 +855,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifeHeartsFor,
       canPlaceAt,
       canPlaceSignpostAt,
-      canPlacePalisadeAt,
       placementTribe: seatTribeOf(localPlayer),
       soundDriver,
       presentation,

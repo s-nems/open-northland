@@ -102,6 +102,9 @@ function buildPalisadePosts(
       | { gfxIndex?: unknown; gate?: unknown; walk?: unknown }
       | undefined;
     if (component === undefined || typeof component.gfxIndex !== 'number') continue;
+    // Construction sites are ground markers until completed; they neither draw a post nor connect
+    // completed neighbours across their anchor.
+    if ('UnderConstruction' in entity.components && !('PalisadeBlocking' in entity.components)) continue;
     const position = readPosition(entity.components);
     if (position === null) continue;
     const node = nodeOfPosition(position.x as Fixed, position.y as Fixed);

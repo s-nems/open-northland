@@ -30,7 +30,11 @@ export interface MenuBuildingEntry {
   /** Absent, the entry is always open (a scene without progression). */
   readonly availability?: () => BuildingAvailability;
   /** A wall-family row shown beside military buildings but placed on the half-cell lattice. */
-  readonly placement?: { readonly kind: 'palisade'; readonly gfxIndex: number };
+  readonly placement?: {
+    readonly kind: 'palisade';
+    readonly gfxIndex: number;
+    readonly mode: 'wall' | 'gate';
+  };
 }
 
 /** The five category tabs, in the original's order. */

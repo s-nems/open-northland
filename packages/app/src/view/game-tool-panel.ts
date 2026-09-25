@@ -24,8 +24,9 @@ import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel
 import { mountToolPanel, type ToolPanelController, type ToolPanelOptions } from '../hud/tool-panel/index.js';
 import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
+import type { PalisadeGateProbeView } from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
-import { currentLocale, formatMessage, messages } from '../i18n/index.js';
+import { currentLocale, messages } from '../i18n/index.js';
 import type { PresentationPack } from '../presentation/pack.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -48,6 +49,7 @@ export interface GameToolPanelDeps {
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly palisadeGateProbe: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */
@@ -184,7 +186,7 @@ export function goodLabelsFromContent(content: {
   return new Map(content.goods.filter((g) => g.id !== 'none').map((g) => [g.typeId, g.name ?? g.id]));
 }
 
-/** One ordinary post plus each authored closed-gate orientation exposed in the military build tab. */
+/** One wall-line tool plus an axis-detecting gate-conversion tool in the military build tab. */
 export function palisadeMenuEntries(sim: Simulation): MenuBuildingEntry[] {
   const types = sim.terrain?.landscapes?.types ?? [];
   const wall = types.find((type) => type.wall !== undefined && type.wall.gate === undefined);
@@ -198,19 +200,20 @@ export function palisadeMenuEntries(sim: Simulation): MenuBuildingEntry[] {
             label: messages().hud.palisade,
             kind: 'tower',
             cost: wall.wall?.construction ?? [],
-            placement: { kind: 'palisade' as const, gfxIndex: wall.typeId },
+            placement: { kind: 'palisade' as const, gfxIndex: wall.typeId, mode: 'wall' as const },
           },
         ]),
-    ...gates.map((gate, index) => ({
-      typeId: gate.typeId,
-      label:
-        gates.length === 1
-          ? messages().hud.gate
-          : formatMessage(messages().hud.gateOrientation, { number: index + 1 }),
-      kind: 'tower',
-      cost: gate.wall?.construction ?? [],
-      placement: { kind: 'palisade' as const, gfxIndex: gate.typeId },
-    })),
+    ...(gates[0] === undefined
+      ? []
+      : [
+          {
+            typeId: gates[0].typeId,
+            label: messages().hud.gate,
+            kind: 'tower',
+            cost: gates[0].wall?.construction ?? [],
+            placement: { kind: 'palisade' as const, gfxIndex: gates[0].typeId, mode: 'gate' as const },
+          },
+        ]),
   ];
 }
 
@@ -255,6 +258,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       screenToTile: clientToTile,
       canPlaceAt: deps.canPlaceAt,
       canPlacePalisadeAt: deps.canPlacePalisadeAt,
+      palisadeGateProbe: deps.palisadeGateProbe,
       onSpeedChange: deps.onSpeed,
       ...(deps.clockPaused !== undefined ? { clockPaused: deps.clockPaused } : {}),
       ...(deps.pauseHeld !== undefined ? { pauseHeld: deps.pauseHeld } : {}),

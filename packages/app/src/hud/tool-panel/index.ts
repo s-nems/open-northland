@@ -52,7 +52,12 @@ import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from
 import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
 import { createPendingWindow } from './pending-window.js';
-import { createPlacementController } from './placement.js';
+import {
+  createPlacementController,
+  type PalisadeGateProbeView,
+  type PalisadePlacementMode,
+  type PalisadePlacementPreview,
+} from './placement.js';
 import { ResidentFigures } from './residents/figures.js';
 import type { ResidentsSeam } from './residents/seam.js';
 import { createSpeedControl } from './speed-control.js';
@@ -121,6 +126,7 @@ export interface ToolPanelOptions {
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly palisadeGateProbe?: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Whether the session clock stands, so the bar lights the pause for any stop, not only its own. */
   readonly clockPaused?: () => boolean;
@@ -182,8 +188,12 @@ export interface ToolPanelController {
   placementType(): number | null;
   /** The paper paying for the active placement, or null for normal construction. */
   placementPaper(): Paper | null;
-  /** The source wall/gate graphics row currently held for repeated placement. */
+  /** The source wall/gate graphics row currently held for placement. */
   palisadeGfxIndex(): number | null;
+  palisadeMode(): PalisadePlacementMode | null;
+  palisadePreview(
+    tile: { readonly col: number; readonly row: number } | null,
+  ): PalisadePlacementPreview | null;
   /** Per-frame hook: the tick's model feeds the summary bar; the layout over it arrives as an accessor
    *  so a closed window never lays it out. */
   update(hudFor: () => HudLayout, model: HudModel): void;
@@ -205,6 +215,7 @@ export interface ToolPanelState {
   readonly placementType: number | null;
   readonly placementPaper: Paper | null;
   readonly palisadeGfxIndex: number | null;
+  readonly palisadeMode: PalisadePlacementMode | null;
   readonly messages: MessageFeedState;
   readonly hudHidden: boolean;
 }
@@ -324,6 +335,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       screenToTile: opts.screenToTile,
       canPlaceAt: opts.canPlaceAt,
       ...(opts.canPlacePalisadeAt !== undefined ? { canPlacePalisadeAt: opts.canPlacePalisadeAt } : {}),
+      ...(opts.palisadeGateProbe !== undefined ? { palisadeGateProbe: opts.palisadeGateProbe } : {}),
       tribe: opts.tribe,
       owner: opts.owner,
       // A pick hid the window for the placement; a cancel brings it back where it was, and a place-any
@@ -415,7 +427,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         opts.onLargeWindow?.(open);
       },
       onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
-      onPickPalisade: (gfxIndex, label) => placement.enterPalisade(gfxIndex, label),
+      onPickPalisade: (gfxIndex, label, mode) => placement.enterPalisade(gfxIndex, label, mode),
     });
     domParts.push(windows);
 
@@ -559,6 +571,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       placementType: () => placement.activeType(),
       placementPaper: () => placement.activePaper(),
       palisadeGfxIndex: () => placement.activePalisade(),
+      palisadeMode: () => placement.activePalisadeMode(),
+      palisadePreview: (tile) => placement.palisadePreview(tile),
       update(hudFor, model): void {
         systemBar.update(model);
         speed.refresh();
@@ -576,6 +590,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         placementType: placement.activeType(),
         placementPaper: placement.activePaper(),
         palisadeGfxIndex: placement.activePalisade(),
+        palisadeMode: placement.activePalisadeMode(),
         messages: messageCenter.state(),
         hudHidden,
       }),
@@ -590,7 +605,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         else if (state.palisadeGfxIndex !== null) {
           const gfxIndex = state.palisadeGfxIndex;
           const entry = opts.buildings.find((building) => building.placement?.gfxIndex === gfxIndex);
-          placement.enterPalisade(gfxIndex, entry?.label ?? `#${gfxIndex}`);
+          placement.enterPalisade(
+            gfxIndex,
+            entry?.label ?? `#${gfxIndex}`,
+            state.palisadeMode ?? entry?.placement?.mode ?? 'wall',
+          );
         }
         messageCenter.restore(state.messages);
         applyHudHidden(state.hudHidden);

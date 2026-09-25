@@ -22,25 +22,36 @@ import {
 import type { SceneDefinition } from './types.js';
 
 /**
- * Palisade acceptance field. The upper enclosure has a commanded gate crossing, the eastern section is
- * breached by a commanded enemy attack, and the lower work yard raises one wall from exactly one wood.
+ * Palisade acceptance field. The upper enclosure converts five standing walls into a commanded gate,
+ * the eastern section is breached by a commanded enemy attack, and the lower work yard raises walls from
+ * carried wood while retaining claimed and unclaimed construction markers.
  * The detached seven-post rosette makes all six source wall-connection directions visible at once.
  *
  * Source basis: readable wall records pin 100 maximum valency and +3 repair progress. Original
- * behavior: one wood per placed anchor and interpolated posts along three canonical neighbour
- * directions. Treating valency as hitpoints and making unfinished walls passable are explicit
- * gameplay adaptations. The rules themselves live in the shared sandbox palisade catalog.
+ * behavior: one wood per placed anchor, interpolated posts along three canonical neighbour directions,
+ * and the instant conversion of a straight five-wall span into a gate, which lives in
+ * `palisadeGateProbe`. The original reserves a segment before travel; the physical visit before its
+ * flag appears is a lifecycle adaptation. Treating valency as hitpoints and unfinished walls as
+ * passable are also adaptations. Shared catalog data owns the rules rather than this scene.
  */
 
 const MAP_W = 34;
 const MAP_H = 22;
 const BARRIER_HY = 22;
-const GATE = { hx: 18, hy: BARRIER_HY } as const;
-const GATE_LEFT = GATE.hx - 2;
-const GATE_RIGHT = GATE.hx + 2;
+export const PALISADE_GATE = { hx: 18, hy: BARRIER_HY } as const;
+const GATE = PALISADE_GATE;
 const BREACH = { hx: 50, hy: BARRIER_HY } as const;
 const CONNECTION_HUB = { hx: 38, hy: 8 } as const;
-const BUILD_SITE = { hx: 4, hy: 36 } as const;
+export const PALISADE_WORK_SITES = {
+  owned: [
+    { hx: 4, hy: 36 },
+    { hx: 5, hy: 36 },
+    { hx: 6, hy: 36 },
+  ],
+  // Enemy ground, north of the barrier: a civilian flees any hostile structure inside its sight radius,
+  // so an enemy marker beside the work yard would freeze the builders instead of demonstrating them.
+  unclaimed: { hx: 44, hy: 12 },
+} as const;
 const COMMAND_CHAIN = [
   { hx: 30, hy: 36 },
   { hx: 31, hy: 36 },
@@ -50,8 +61,8 @@ const SOUTH = { hx: GATE.hx, hy: 34 } as const;
 const RAIDER_GOAL = { hx: BREACH.hx, hy: 34 } as const;
 
 /** Exported phase boundaries let the focused test inspect the real mid-scene gate states. */
-export const PALISADE_GATE_CLOSE_TICK = 180;
-export const PALISADE_GATE_REOPEN_TICK = 350;
+export const PALISADE_GATE_CLOSE_TICK = 400;
+export const PALISADE_GATE_REOPEN_TICK = 600;
 export const PALISADE_RUN_TICKS = 1_100;
 
 const { Health, Owner, Palisade, Position, Settler, Stockpile, UnderConstruction } = components;
@@ -84,7 +95,7 @@ function atNode(sim: Simulation, e: Entity, hx: number, hy: number): boolean {
   return node.hx === hx && node.hy === hy;
 }
 
-function palisadeAt(sim: Simulation, hx: number, hy: number): Entity | null {
+export function palisadeAt(sim: Simulation, hx: number, hy: number): Entity | null {
   for (const e of sim.world.query(Palisade, Position)) if (atNode(sim, e, hx, hy)) return e;
   return null;
 }
@@ -119,13 +130,14 @@ export function raiderCrossedBreach(sim: Simulation): boolean {
 
 function build(sim: Simulation): void {
   let breach: Entity | null = null;
+  let gate: Entity | null = null;
   for (let hx = 0; hx < MAP_W * 2; hx++) {
-    if (hx >= GATE_LEFT && hx <= GATE_RIGHT) continue;
     const wall = standingPalisade(sim, PALISADE_WALL_GFX_INDEX, hx, BARRIER_HY);
     if (hx === BREACH.hx) breach = wall;
+    if (hx === GATE.hx) gate = wall;
   }
   if (breach === null) throw new Error('palisade scene did not create its breach target');
-  const gate = standingPalisade(sim, PALISADE_HORIZONTAL_GATE_CLOSED_GFX_INDEX, GATE.hx, GATE.hy);
+  if (gate === null) throw new Error('palisade scene did not create its gate conversion target');
 
   standingPalisade(sim, PALISADE_WALL_GFX_INDEX, CONNECTION_HUB.hx, CONNECTION_HUB.hy);
   for (const neighbour of hexNeighboursOf(CONNECTION_HUB.hx, CONNECTION_HUB.hy)) {
@@ -146,26 +158,43 @@ function build(sim: Simulation): void {
     });
   }
 
-  // One source-corroborated wood unit in a real store, hauled and spent by a real builder after the
-  // public placement command creates the unfinished anchor on tick 1.
+  // Two source-corroborated wood units in a real store are hauled and spent by two real builders.
+  // Three owned sites retain one planted exclusive claim after two completions; the enemy-owned site across
+  // the barrier has no eligible builder and remains the unclaimed white-dot marker.
   const warehouse = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, 7, 18, HUMAN_PLAYER);
-  sim.world.mut(warehouse, Stockpile).amounts.set(GOOD_WOOD, 1);
+  sim.world.mut(warehouse, Stockpile).amounts.set(GOOD_WOOD, 2);
   spawnSettlerDirect(sim, JOB_BUILDER, 5, 18, HUMAN_PLAYER);
+  spawnSettlerDirect(sim, JOB_BUILDER, 6, 18, HUMAN_PLAYER);
+  for (const site of PALISADE_WORK_SITES.owned) {
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: PALISADE_WALL_GFX_INDEX,
+      x: site.hx,
+      y: site.hy,
+      tribe: PRIMARY_TRIBE,
+      owner: HUMAN_PLAYER,
+      underConstruction: true,
+    });
+  }
   sim.enqueueSetup({
     kind: 'placePalisade',
     gfxIndex: PALISADE_WALL_GFX_INDEX,
-    x: BUILD_SITE.hx,
-    y: BUILD_SITE.hy,
+    x: PALISADE_WORK_SITES.unclaimed.hx,
+    y: PALISADE_WORK_SITES.unclaimed.hy,
     tribe: PRIMARY_TRIBE,
-    owner: HUMAN_PLAYER,
+    owner: ENEMY_PLAYER,
     underConstruction: true,
-    force: true,
   });
 
   const firstTraveller = spawnSettlerDirect(sim, JOB_WOMAN, 9, 6, HUMAN_PLAYER);
   const secondTraveller = spawnSettlerDirect(sim, JOB_CIVILIST, 9, 7, HUMAN_PLAYER);
   const raider = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, 25, 7, ENEMY_PLAYER);
 
+  sim.enqueueSetup({
+    kind: 'convertPalisadeGate',
+    palisade: gate,
+    gfxIndex: PALISADE_HORIZONTAL_GATE_CLOSED_GFX_INDEX,
+  });
   sim.enqueueAt(setupCommand({ kind: 'setPalisadeGate', palisade: gate, open: true }), 20, 0);
   sim.enqueueAt(setupCommand({ kind: 'moveUnit', entity: firstTraveller, x: SOUTH.hx, y: SOUTH.hy }), 25, 0);
   sim.enqueueAt(
@@ -175,7 +204,7 @@ function build(sim: Simulation): void {
   );
   sim.enqueueAt(
     setupCommand({ kind: 'moveUnit', entity: secondTraveller, x: SOUTH.hx, y: SOUTH.hy }),
-    200,
+    420,
     0,
   );
   sim.enqueueAt(
@@ -185,10 +214,10 @@ function build(sim: Simulation): void {
   );
   sim.enqueueAt(
     setupCommand({ kind: 'moveUnit', entity: secondTraveller, x: SOUTH.hx, y: SOUTH.hy }),
-    360,
+    610,
     0,
   );
-  sim.enqueueAt(setupCommand({ kind: 'setPalisadeGate', palisade: gate, open: false }), 700, 0);
+  sim.enqueueAt(setupCommand({ kind: 'setPalisadeGate', palisade: gate, open: false }), 900, 0);
 
   sim.enqueueAt(setupCommand({ kind: 'attackUnit', entity: raider, target: breach }), 1, 0);
   // Once the focused attack has landed its tenth blow, hold fire so autonomous target selection does
@@ -240,17 +269,54 @@ export const palisadeScene: SceneDefinition = {
       predicate: (sim) => COMMAND_CHAIN.every((node) => palisadeAt(sim, node.hx, node.hy) !== null),
     },
     {
-      label: 'one stored wood and one builder raised the commanded wall anchor to full health',
+      label: 'two stored wood and two real builders raised two commanded anchors to full health',
       predicate: (sim) => {
-        const wall = palisadeAt(sim, BUILD_SITE.hx, BUILD_SITE.hy);
-        if (wall === null || sim.world.has(wall, UnderConstruction)) return false;
-        const health = sim.world.get(wall, Health);
-        if (sim.world.get(wall, Palisade).built !== ONE || health.hitpoints !== 100 || health.max !== 100)
-          return false;
-        for (const e of sim.world.query(Stockpile)) {
-          if ((sim.world.get(e, Stockpile).amounts.get(GOOD_WOOD) ?? 0) > 0) return false;
-        }
-        return true;
+        const completed = PALISADE_WORK_SITES.owned.flatMap((node) => {
+          const wall = palisadeAt(sim, node.hx, node.hy);
+          return wall !== null && !sim.world.has(wall, UnderConstruction) ? [wall] : [];
+        });
+        return (
+          completed.length === 2 &&
+          completed.every((wall) => {
+            const health = sim.world.get(wall, Health);
+            return (
+              sim.world.get(wall, Palisade).built === ONE && health.hitpoints === 100 && health.max === 100
+            );
+          })
+        );
+      },
+    },
+    {
+      label: 'gate conversion kept the outer posts of its span and cleared only the two neighbours',
+      predicate: (sim) => {
+        const gate = palisadeAt(sim, GATE.hx, GATE.hy);
+        if (gate === null || sim.world.get(gate, Palisade).gate === null) return false;
+        return (
+          palisadeAt(sim, GATE.hx - 2, GATE.hy) !== null &&
+          palisadeAt(sim, GATE.hx - 1, GATE.hy) === null &&
+          palisadeAt(sim, GATE.hx + 1, GATE.hy) === null &&
+          palisadeAt(sim, GATE.hx + 2, GATE.hy) !== null
+        );
+      },
+    },
+    {
+      label: 'the work yard retains one planted exclusive claim and one unclaimed white-dot site',
+      predicate: (sim) => {
+        const planted = PALISADE_WORK_SITES.owned.filter((node) => {
+          const wall = palisadeAt(sim, node.hx, node.hy);
+          return (
+            wall !== null &&
+            sim.world.has(wall, UnderConstruction) &&
+            sim.world.get(wall, Palisade).reservation?.planted === true
+          );
+        });
+        const unclaimed = palisadeAt(sim, PALISADE_WORK_SITES.unclaimed.hx, PALISADE_WORK_SITES.unclaimed.hy);
+        return (
+          planted.length === 1 &&
+          unclaimed !== null &&
+          sim.world.has(unclaimed, UnderConstruction) &&
+          sim.world.get(unclaimed, Palisade).reservation === null
+        );
       },
     },
     {

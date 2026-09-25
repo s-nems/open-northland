@@ -20,6 +20,7 @@ import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { palisadeBlockingCellsOccupied } from '../palisades/index.js';
+import { palisadeFlagPlantedBy } from '../palisades/reservation.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
@@ -123,6 +124,7 @@ function finishSite(
     const mutable = world.mut(e, Palisade);
     mutable.built = ONE;
     mutable.repairing = false;
+    mutable.reservation = null;
     world.remove(e, UnderConstruction);
     if (!world.has(e, PalisadeBlocking)) world.add(e, PalisadeBlocking, {});
     fillHealth(world, e);
@@ -275,7 +277,8 @@ export function remainingConstructionSteps(world: World, ctx: SystemContext, sit
 /**
  * Advance a site's builder-work `labor` by one hammer swing of `builder` - the `construct` atomic's
  * effect. A swing installs the steps the builder's experience and tool are worth. A free (empty-cost)
- * type has nothing to install, so a single swing completes it.
+ * type has nothing to install, so a single swing completes it. A wall segment takes the swing only from
+ * the one builder holding its planted claim.
  */
 export function advanceConstructionLabor(
   world: World,
@@ -296,6 +299,7 @@ export function advanceConstructionLabor(
     world.mut(site, Palisade).built = progress;
     return uc.labor > before;
   }
+  if (wall !== undefined && !palisadeFlagPlantedBy(world, site, builder)) return false;
   const steps = buildStepsPerSwing(
     jobExperiencePercent(world, ctx, builder, null),
     toolWorkFactorPct(world, ctx, builder),

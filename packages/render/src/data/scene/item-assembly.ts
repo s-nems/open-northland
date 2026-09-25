@@ -12,7 +12,7 @@ import {
 import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
 import type { SettlerPose } from './settler-pose.js';
-import { assignStaticFields } from './snapshot-readers/index.js';
+import { assignStaticFields, readPalisadeClaimPlanted } from './snapshot-readers/index.js';
 
 export interface SceneBuild {
   readonly snapshot: WorldSnapshot;
@@ -57,8 +57,12 @@ export function assembleItem(
       break;
     case 'palisade': {
       assignStaticFields(item, kind, components);
-      const posts = build.palisadePosts.get(entity.id);
-      if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;
+      if ('UnderConstruction' in components && !('PalisadeBlocking' in components)) {
+        item.palisadeSite = readPalisadeClaimPlanted(components) ? 'claimed' : 'unclaimed';
+      } else {
+        const posts = build.palisadePosts.get(entity.id);
+        if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;
+      }
       break;
     }
     case 'resource':

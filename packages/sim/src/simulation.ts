@@ -66,7 +66,11 @@ import {
   type OpenTribute,
   openTributes,
 } from './systems/missions/index.js';
-import { palisadePlacementProbe } from './systems/palisades/index.js';
+import {
+  type PalisadeGateProbeResult,
+  palisadeGateProbe,
+  palisadePlacementProbe,
+} from './systems/palisades/index.js';
 import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
@@ -321,6 +325,18 @@ export class Simulation {
   palisadeProbe(gfxIndex: number): PlacementProbe | null {
     if (this.terrain === undefined) return null;
     return palisadePlacementProbe(this.world, this.content, this.terrain, gfxIndex);
+  }
+
+  /** Authoritative gate-conversion preview at one hovered half-cell node, over the authored closed-gate
+   *  rows the caller offers. */
+  palisadeGateProbe(
+    hx: number,
+    hy: number,
+    closedGateGfxIndexes: readonly number[],
+    player?: number,
+  ): PalisadeGateProbeResult | null {
+    if (this.terrain === undefined) return null;
+    return palisadeGateProbe(this.world, this.terrain, hx, hy, closedGateGfxIndexes, player);
   }
 
   /**

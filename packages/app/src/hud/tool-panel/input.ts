@@ -12,6 +12,10 @@ export interface HeldMode {
   cancel(): void;
   /** True when this mode took the press; the first claimer wins. */
   handleClick(clientX: number, clientY: number): boolean;
+  /** Finish a held drag even when the pointer was released outside the canvas. */
+  handleRelease?(clientX: number, clientY: number): boolean;
+  /** Drop a drag in progress without leaving the mode; the held tool stays armed. */
+  abortDrag?(): void;
 }
 
 /** The action whose key toggles each beam entry. */
@@ -96,6 +100,37 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     windows.handleHover(x, y);
   };
 
+  /** A release over a DOM surface, an open pop-up or a higher overlay belongs to that surface, so the
+   *  drag it would have finished is dropped rather than landing on the world behind it. A release outside
+   *  the page still targets the canvas the press started on. */
+  const releaseOverHud = (e: MouseEvent): boolean => {
+    if (e.target !== canvas) return true;
+    if (deps.deferToOverlay?.(e.clientX, e.clientY) === true) return true;
+    const { x, y } = toCanvas(e.clientX, e.clientY);
+    return windows.claims(x, y);
+  };
+
+  const onMouseUp = (e: MouseEvent): void => {
+    if (e.button !== 0) return;
+    if (releaseOverHud(e)) {
+      for (const mode of held) mode.abortDrag?.();
+      return;
+    }
+    for (const mode of held) {
+      if (!mode.isActive() || mode.handleRelease?.(e.clientX, e.clientY) !== true) continue;
+      e.preventDefault();
+      // This runs before unit-controls' and the minimap's own window listeners, which are mounted later.
+      // Neither can have a live drag here, because their press was consumed by the held mode above.
+      e.stopImmediatePropagation();
+      return;
+    }
+  };
+
+  // A pointer that leaves the window never delivers its mouseup, which would leave a drag half-armed.
+  const onBlur = (): void => {
+    for (const mode of held) mode.abortDrag?.();
+  };
+
   // A wheel over an open pop-up belongs to that window; its default would scroll the page behind the
   // canvas.
   const onWheel = (e: WheelEvent): void => {
@@ -175,6 +210,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('wheel', onWheel, { passive: false });
+  window.addEventListener('mouseup', onMouseUp);
+  window.addEventListener('blur', onBlur);
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keydown', onEscapeMenu);
 
@@ -183,6 +220,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('wheel', onWheel);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('blur', onBlur);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keydown', onEscapeMenu);
     },

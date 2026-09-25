@@ -23,19 +23,29 @@ function press(x: number, y: number, button = 0): Event {
   });
 }
 
+function release(x: number, y: number): Event {
+  return Object.assign(new Event('mouseup', { cancelable: true }), { clientX: x, clientY: y, button: 0 });
+}
+
 function key(code: string): Event {
   return Object.assign(new Event('keydown', { cancelable: true }), { code, key: code });
 }
 
 /** A hold that stays active until cancelled and takes no world click of its own. */
-function heldMode(): HeldMode & { active: boolean } {
+function heldMode(): HeldMode & { active: boolean; releases: Array<[number, number]> } {
   const mode = {
     active: false,
+    releases: [] as Array<[number, number]>,
     isActive: (): boolean => mode.active,
     cancel: (): void => {
       mode.active = false;
     },
     handleClick: (): boolean => mode.active,
+    handleRelease: (x: number, y: number): boolean => {
+      if (!mode.active) return false;
+      mode.releases.push([x, y]);
+      return true;
+    },
   };
   return mode;
 }
@@ -139,6 +149,28 @@ describe('tool panel input clicks', () => {
     canvas.dispatchEvent(press(400, 300, 2));
     expect(cues).toEqual(['fail']);
     expect(held.isActive()).toBe(false);
+    input.dispose();
+  });
+
+  it('routes a left release on the canvas to an active held drag and consumes it', () => {
+    const { canvas, input, held, arm, windowTarget } = mount();
+    arm();
+    const event = release(320, 210);
+    Object.defineProperty(event, 'target', { value: canvas });
+    windowTarget.dispatchEvent(event);
+    expect(held.releases).toEqual([[320, 210]]);
+    expect(event.defaultPrevented).toBe(true);
+    input.dispose();
+  });
+
+  it('drops the drag when the release lands on a DOM surface over the canvas', () => {
+    const { input, held, arm, windowTarget } = mount();
+    arm();
+    const event = release(320, 210);
+    Object.defineProperty(event, 'target', { value: new DialogButton() });
+    windowTarget.dispatchEvent(event);
+    expect(held.releases).toEqual([]);
+    expect(event.defaultPrevented).toBe(false);
     input.dispose();
   });
 

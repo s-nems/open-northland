@@ -14,6 +14,7 @@ export type PlacementCommand =
   | DemolishCommand
   | DemolishSignpostCommand
   | DemolishPalisadeCommand
+  | ConvertPalisadeGateCommand
   | SetPalisadeGateCommand
   | RepairPalisadeCommand;
 
@@ -27,6 +28,7 @@ export type PlayerPlacementCommand =
   | DemolishCommand
   | DemolishSignpostCommand
   | DemolishPalisadeCommand
+  | ConvertPalisadeGateCommand
   | SetPalisadeGateCommand
   | RepairPalisadeCommand;
 
@@ -55,6 +57,14 @@ export interface SetPalisadeGateCommand {
   readonly kind: 'setPalisadeGate';
   readonly palisade: Entity;
   readonly open: boolean;
+}
+
+/** Cut a completed closed gate into the centre of a qualifying five-wall span, clearing its two
+ * neighbours and leaving the outer pair standing. */
+export interface ConvertPalisadeGateCommand {
+  readonly kind: 'convertPalisadeGate';
+  readonly palisade: Entity;
+  readonly gfxIndex: number;
 }
 
 export interface RepairPalisadeCommand {

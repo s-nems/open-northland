@@ -1,5 +1,6 @@
 import type { PlacementGhost, PlacementOverlayFrame } from '@open-northland/render';
 import type { Paper } from '@open-northland/sim';
+import type { PalisadePlacementPreview } from '../../hud/tool-panel/placement.js';
 
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
@@ -21,7 +22,10 @@ export interface PlacementCursorInput {
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
-  readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly palisadePreview?: (tile: {
+    readonly col: number;
+    readonly row: number;
+  }) => PalisadePlacementPreview | null;
   /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
   /** The civilization this seat raises buildings as, the same one `placeBuilding` stamps. */
@@ -61,17 +65,15 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
       : { overlay, ghost: null };
   }
   if (palisadeGfxIndex !== null) {
-    return input.canPlacePalisadeAt?.(palisadeGfxIndex, tile.col, tile.row) === true
-      ? {
-          overlay: null,
-          ghost: {
-            kind: 'palisade',
-            col: tile.col,
-            row: tile.row,
-            gfxIndex: palisadeGfxIndex,
-          },
-        }
-      : { overlay: null, ghost: null };
+    const preview = input.palisadePreview?.(tile) ?? null;
+    if (preview === null) return { overlay: null, ghost: null };
+    return {
+      overlay: null,
+      ghost:
+        preview.kind === 'wall'
+          ? { kind: 'palisade-line', nodes: preview.nodes }
+          : { kind: 'palisade-gate', nodes: preview.nodes, valid: preview.valid },
+    };
   }
   return input.canPlaceSignpostAt(tile.col, tile.row)
     ? { overlay, ghost: { kind: 'signpost', col: tile.col, row: tile.row, player: input.localPlayer } }

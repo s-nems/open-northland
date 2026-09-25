@@ -55,7 +55,7 @@ import {
   unassignWorker,
   unequipGood,
 } from '../orders/index.js';
-import { placePalisade, repairPalisade, setPalisadeGate } from '../palisades/index.js';
+import { convertPalisadeGate, placePalisade, repairPalisade, setPalisadeGate } from '../palisades/index.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
@@ -106,6 +106,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'placePalisade':
       placePalisade(world, ctx, command);
+      return;
+    case 'convertPalisadeGate':
+      convertPalisadeGate(world, ctx, command);
       return;
     case 'setPalisadeGate':
       setPalisadeGate(world, ctx, command);

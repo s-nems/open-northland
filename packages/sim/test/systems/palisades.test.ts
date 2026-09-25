@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addWildlife,
   Health,
   Palisade,
   PalisadeBlocking,
   Position,
+  SiteAssignment,
   Stockpile,
   setStockAmount,
   UnderConstruction,
@@ -22,9 +24,19 @@ import {
 import { damageVsTarget } from '../../src/systems/conflict/weapons.js';
 import { advanceConstructionLabor, constructionSystem } from '../../src/systems/economy/construction.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
+import {
+  claimPalisade,
+  constructionSiteAvailableTo,
+  palisadeReservedBy,
+  plantPalisadeFlag,
+  releasePalisadeReservation,
+} from '../../src/systems/palisades/reservation.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
+
+/** Any animal tribe: the occupancy rule reads the component, never the tribe. */
+const WOLF_TRIBE = 9;
 
 const WALL: ScriptLandscapeType = {
   typeId: 691,
@@ -103,6 +115,24 @@ function fresh(): Simulation {
   });
 }
 
+/** A segment takes strikes only from the one builder holding its planted flag, so a direct-labor test
+ *  needs that claim stamped the way {@link planBuilder} stamps it. */
+function flagBearer(sim: Simulation, site: Entity): Entity {
+  const builder = sim.world.create();
+  sim.world.add(builder, SiteAssignment, { site, pinned: false });
+  claimPalisade(sim.world, site, builder);
+  plantPalisadeFlag(sim.world, site, builder);
+  return builder;
+}
+
+/** A stationary creature: only a mover blocks a closing gate, so a bare Position is not enough. */
+function standingCreature(sim: Simulation, hx: number, hy: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(hx, hy));
+  addWildlife(sim.world, e, WOLF_TRIBE);
+  return e;
+}
+
 function onlyPalisade(sim: Simulation): Entity {
   const walls = [...sim.world.query(Palisade)];
   const wall = walls[0];
@@ -149,7 +179,7 @@ describe('palisades', () => {
     expect(sim.world.has(wall, PalisadeBlocking)).toBe(false);
 
     setStockAmount(sim.world, wall, 5, 1);
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, sim.world.create())).toBe(true);
+    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, flagBearer(sim, wall))).toBe(true);
     constructionSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(wall, UnderConstruction)).toBe(false);
@@ -193,12 +223,36 @@ describe('palisades', () => {
     sim.step();
     expect([...sim.world.query(Palisade)]).toHaveLength(3);
 
-    const occupant = sim.world.create();
-    sim.world.add(occupant, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
+    const occupant = standingCreature(sim, 8, 8); // the gate's own anchor, inside its closed body
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
     sim.step();
     expect(sim.world.get(gate, Palisade).gate?.open).toBe(true);
     sim.world.destroy(occupant);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    sim.step();
+    expect(sim.world.get(gate, Palisade).gate?.open).toBe(false);
+  });
+
+  it('closes a gate whose own body covers the outer posts of the run it was cut into', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: OPEN_GATE.typeId, x: 8, y: 8, tribe: 0, owner: 0 });
+    sim.step();
+    const gate = onlyPalisade(sim);
+    // The source's conversion clears only the two neighbours, so these two keep standing inside the gate.
+    for (const x of [6, 10]) {
+      sim.enqueueSetup({
+        kind: 'placePalisade',
+        gfxIndex: WALL.typeId,
+        x,
+        y: 8,
+        tribe: 0,
+        owner: 0,
+        force: true,
+      });
+    }
+    sim.step();
+    expect([...sim.world.query(Palisade)]).toHaveLength(3);
+
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
     sim.step();
     expect(sim.world.get(gate, Palisade).gate?.open).toBe(false);
@@ -217,9 +271,8 @@ describe('palisades', () => {
     sim.step();
     const gate = onlyPalisade(sim);
     setStockAmount(sim.world, gate, 5, 1);
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), gate, sim.world.create())).toBe(true);
-    const occupant = sim.world.create();
-    sim.world.add(occupant, Position, positionOfNode(9, 8));
+    expect(advanceConstructionLabor(sim.world, ctxOf(sim), gate, flagBearer(sim, gate))).toBe(true);
+    const occupant = standingCreature(sim, 9, 8);
 
     constructionSystem(sim.world, ctxOf(sim));
     constructionSystem(sim.world, ctxOf(sim));
@@ -245,7 +298,7 @@ describe('palisades', () => {
     sim.world.mut(wall, Palisade).built = fx.div(fx.fromInt(90), fx.fromInt(100));
     sim.enqueueSetup({ kind: 'repairPalisade', palisade: wall });
     sim.step();
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, sim.world.create())).toBe(true);
+    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, flagBearer(sim, wall))).toBe(true);
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(wall, Health).hitpoints).toBe(93);
     expect(sim.world.get(wall, Palisade).built).toBeLessThan(ONE);
@@ -275,5 +328,57 @@ describe('palisades', () => {
     expect(restored.world.get(gate, Palisade)).toEqual(sim.world.get(gate, Palisade));
     expect(restored.world.get(gate, Health)).toEqual({ hitpoints: 40, max: 100 });
     expect(restored.world.has(gate, PalisadeBlocking)).toBe(true);
+  });
+
+  it('admits one builder per unfinished segment and hands the claim on when it is released', () => {
+    const sim = fresh();
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: 6,
+      y: 6,
+      tribe: 0,
+      owner: 0,
+      underConstruction: true,
+    });
+    sim.step();
+    const wall = onlyPalisade(sim);
+    const first = flagBearer(sim, wall);
+    const second = sim.world.create();
+    sim.world.add(second, SiteAssignment, { site: wall, pinned: false });
+
+    expect(constructionSiteAvailableTo(sim.world, wall, first)).toBe(true);
+    expect(constructionSiteAvailableTo(sim.world, wall, second)).toBe(false);
+    expect(claimPalisade(sim.world, wall, second)).toBe(false);
+    expect(palisadeReservedBy(sim.world, wall)).toBe(first);
+
+    releasePalisadeReservation(sim.world, first);
+    expect(palisadeReservedBy(sim.world, wall)).toBeNull();
+    expect(claimPalisade(sim.world, wall, second)).toBe(true);
+    expect(palisadeReservedBy(sim.world, wall)).toBe(second);
+  });
+
+  it('restores a planted claim so a reloaded builder keeps the segment it was raising', () => {
+    const sim = fresh();
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: 6,
+      y: 6,
+      tribe: 0,
+      owner: 0,
+      underConstruction: true,
+    });
+    sim.step();
+    const wall = onlyPalisade(sim);
+    const builder = flagBearer(sim, wall);
+
+    const restored = restoreSimulation(exportSaveGame(sim), {
+      content: testContent(),
+      map: palisadeMap(),
+    });
+
+    expect(restored.world.get(wall, Palisade).reservation).toEqual({ builder, planted: true });
+    expect(palisadeReservedBy(restored.world, wall)).toBe(builder);
   });
 });

@@ -177,6 +177,7 @@ export function buildCollisionTerrain(
     width: nodeW,
     height: nodeH,
     typeIds,
+    ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
     ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
     ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
     ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),

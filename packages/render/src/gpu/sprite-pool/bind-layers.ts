@@ -77,6 +77,11 @@ export class LayerBinder {
     frame: BindFrame,
     frameId: number,
   ): void {
+    if (item.kind === 'palisade' && item.palisadeSite === 'unclaimed') {
+      this.showPalisadeSite(pe, frameId);
+      return;
+    }
+    if (pe.palisadeSiteMarker !== undefined) pe.palisadeSiteMarker.visible = false;
     if (layers === null) {
       pe.selectionEllipse = undefined;
       this.showPlaceholder(pe, item, frame, frameId);
@@ -252,6 +257,25 @@ export class LayerBinder {
     }
     if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;
+  }
+
+  /** The unclaimed segment is deliberately ground-only: no partially built post exists yet. */
+  private showPalisadeSite(pe: PooledEntity, frameId: number): void {
+    for (const s of pe.sprites) s.visible = false;
+    if (pe.paletted) for (const s of pe.shadows) s.visible = false;
+    pe.selectionEllipse = undefined;
+    if (pe.placeholder !== undefined) pe.placeholder.visible = false;
+    if (pe.palisadeSiteMarker === undefined) {
+      pe.palisadeSiteMarker = new Graphics()
+        .ellipse(0, -1, 5, 3)
+        .fill({ color: 0xffffff, alpha: 0.95 })
+        .stroke({ color: 0x313131, width: 1, alpha: 0.8 });
+      pe.container.addChild(pe.palisadeSiteMarker);
+    }
+    pe.palisadeSiteMarker.visible = true;
+    const drawX = pe.motion.drawX;
+    const drawY = pe.motion.drawY;
+    this.stampBounds(pe, drawX - 5, drawY - 4, drawX + 5, drawY + 2, frameId);
   }
 
   private bindPalettedLayer(

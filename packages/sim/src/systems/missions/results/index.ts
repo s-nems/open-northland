@@ -49,6 +49,7 @@ import {
 } from './standing.js';
 import { grantUnlock } from './tech.js';
 import { scriptTribute } from './tributes.js';
+import { setScriptedWallGate } from './wall-gates.js';
 
 /** Execute one result of mission `index`. An opcode with no executor is reported and does nothing;
  *  nothing here throws, because a corpus script must never halt a running world. */
@@ -79,6 +80,9 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
     case 'SetVertexColor':
     case 'SetVertexColorOnLand':
       editScriptedLandscape(pass, index, result);
+      return;
+    case '1 Open/0 CloseWallGate':
+      setScriptedWallGate(pass, index, result);
       return;
     case 'None':
       return;

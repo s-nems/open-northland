@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HudLayout } from '@open-northland/render';
-import type { Command, Paper } from '@open-northland/sim';
+import type { Command, Entity, Paper } from '@open-northland/sim';
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Rect } from '../src/hud/geometry.js';
@@ -384,7 +384,7 @@ describe('tool windows registry', () => {
       label: 'Palisade',
       kind: 'tower',
       cost: [],
-      placement: { kind: 'palisade', gfxIndex: 691 },
+      placement: { kind: 'palisade', gfxIndex: 691, mode: 'wall' },
     };
     const { picks, palisades, heldPaper, menu } = mountWindows([...BUILDINGS, palisade]);
     const paper = { kind: 'placeAny', param: 0 } as const;
@@ -467,6 +467,7 @@ describe('placement controller', () => {
     screenToTile: (x: number, y: number) => { col: number; row: number } | null,
     canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean = () => true,
     canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean = () => true,
+    palisadeGateProbe?: Parameters<typeof createPlacementController>[0]['palisadeGateProbe'],
   ) {
     const { ctx, cues } = stubContext();
     const commands: Command[] = [];
@@ -480,6 +481,7 @@ describe('placement controller', () => {
       screenToTile,
       canPlaceAt,
       canPlacePalisadeAt,
+      ...(palisadeGateProbe !== undefined ? { palisadeGateProbe } : {}),
       tribe: 1,
       owner: 0,
       onCancel: (paper) => cancels.push(paper),
@@ -603,36 +605,60 @@ describe('placement controller', () => {
     expect(cues).toEqual([]);
   });
 
-  it('keeps a palisade tool armed while placing a contiguous run', () => {
+  it('commits one capped contiguous palisade line on release and keeps the tool armed', () => {
     let tile = { col: 4, row: 2 };
-    const probes: Array<{ gfxIndex: number; col: number; row: number }> = [];
-    const { placement, commands, cues } = mount(
-      () => tile,
-      () => true,
-      (gfxIndex, col, row) => {
-        probes.push({ gfxIndex, col, row });
-        return true;
-      },
-    );
+    const { placement, commands, cues } = mount(() => tile);
 
-    placement.enterPalisade(691, 'Palisade');
-    expect(placement.activePalisade()).toBe(691);
-    placement.handleClick(10, 10);
-    tile = { col: 5, row: 2 };
-    placement.handleClick(20, 10);
+    placement.enterPalisade(691, 'Palisade', 'wall');
+    expect(placement.handleClick(10, 10)).toBe(true);
+    tile = { col: 40, row: 2 };
+    expect(placement.palisadePreview(tile)?.nodes).toHaveLength(21);
+    expect(placement.handleRelease?.(20, 10)).toBe(true);
 
-    expect(probes).toEqual([
-      { gfxIndex: 691, col: 4, row: 2 },
-      { gfxIndex: 691, col: 5, row: 2 },
-    ]);
-    expect(commands).toEqual([
-      { kind: 'placePalisade', gfxIndex: 691, x: 4, y: 2, tribe: 1, owner: 0, underConstruction: true },
-      { kind: 'placePalisade', gfxIndex: 691, x: 5, y: 2, tribe: 1, owner: 0, underConstruction: true },
-    ]);
-    expect(cues).toEqual(['confirm', 'confirm']);
+    expect(commands).toHaveLength(21);
+    expect(commands[0]).toMatchObject({ kind: 'placePalisade', x: 4, y: 2 });
+    expect(commands[20]).toMatchObject({ kind: 'placePalisade', x: 24, y: 2 });
+    expect(cues).toEqual(['confirm']);
     expect(placement.isActive()).toBe(true);
     placement.cancel();
     expect(placement.activePalisade()).toBeNull();
+  });
+
+  it('stops a dragged line at the first rejected site instead of placing across a gap', () => {
+    let tile = { col: 4, row: 2 };
+    const { placement, commands } = mount(
+      () => tile,
+      () => true,
+      (_gfxIndex, col) => col < 7,
+    );
+    placement.enterPalisade(691, 'Palisade', 'wall');
+    placement.handleClick(0, 0);
+    tile = { col: 10, row: 2 };
+    placement.handleRelease?.(10, 0);
+    expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([4, 5, 6]);
+  });
+
+  it('converts a valid hovered five-wall span with the probe-selected gate orientation', () => {
+    const center = 17 as Entity;
+    const { placement, commands } = mount(
+      () => ({ col: 8, row: 6 }),
+      () => true,
+      () => true,
+      () => ({
+        canConvert: true,
+        center,
+        gfxIndex: 698,
+        span: [4, 5, 6, 7, 8].map((col) => ({ hx: col, hy: 6 })),
+      }),
+    );
+    placement.enterPalisade(696, 'Gate', 'gate');
+    expect(placement.palisadePreview({ col: 8, row: 6 })).toMatchObject({
+      kind: 'gate',
+      gfxIndex: 698,
+      valid: true,
+    });
+    placement.handleClick(0, 0);
+    expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
   });
 });
 

@@ -9,6 +9,7 @@ import {
   spawnSandboxSettler,
   WEAPON_SWORD,
 } from '../src/game/sandbox/index.js';
+import { sandboxPalisadeTypes } from '../src/game/sandbox/palisades.js';
 import { makeOverlayFrameSource } from '../src/view/placement-overlay.js';
 import { createFogGates } from '../src/view/projections/index.js';
 import { createPlacementGates, type PlacementGates } from '../src/view/runtime/placement-gates.js';
@@ -26,7 +27,7 @@ function openField(): { sim: Simulation; gates: PlacementGates; fog: ReturnType<
   const sim = new Simulation({
     seed: 1,
     content: resolveWorldContent(terrain, {}),
-    map: halfCellMapFromCells(terrain),
+    map: { ...halfCellMapFromCells(terrain), landscapes: { types: sandboxPalisadeTypes(), placements: [] } },
   });
   const fog = createFogGates();
   fog.setFrame(null); // fog off: only the placement rules decide
@@ -63,6 +64,32 @@ describe('placement gates - the ground an enemy army contests', () => {
       [BUILDING_HOME_00, HUMAN_PLAYER, VIKING],
       [BUILDING_HOME_00, HUMAN_PLAYER, undefined],
     ]);
+  });
+
+  it('probes authored closed-gate rows at the hovered wall node', () => {
+    const { sim, gates } = openField();
+    const gate = sim.terrain?.landscapes?.types.find((type) => type.wall?.gate?.open === false);
+    expect(gate).toBeDefined();
+    if (gate === undefined) return;
+    const probe = vi.spyOn(sim, 'palisadeGateProbe').mockReturnValue({
+      canConvert: false,
+      gfxIndex: gate.typeId,
+      center: null,
+      axis: null,
+      remove: [],
+      span: [{ hx: 8, hy: 6 }],
+    });
+
+    expect(gates.palisadeGateProbe(gate.typeId, 8, 6)).toMatchObject({
+      gfxIndex: gate.typeId,
+      canConvert: false,
+      span: [{ hx: 8, hy: 6 }],
+    });
+    // Every authored orientation is offered in one call, so the probe builds its node index once.
+    const orientations = (sim.terrain?.landscapes?.types ?? [])
+      .filter((type) => type.wall?.gate?.open === false)
+      .map((type) => type.typeId);
+    expect(probe).toHaveBeenCalledWith(8, 6, orientations, HUMAN_PLAYER);
   });
 
   it('uses the same paper technology bypass for the bright buildable-ground overlay', () => {

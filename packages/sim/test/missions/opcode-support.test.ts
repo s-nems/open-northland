@@ -114,6 +114,7 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
+  '1 Open/0 CloseWallGate': { opcode: '1 Open/0 CloseWallGate', player: 0, point: POINT, flag: true },
   StartSubMission: { opcode: 'StartSubMission', campaignId: 0, mapId: 1 },
   EndSubMission: { opcode: 'EndSubMission' },
   SetLandscape: { opcode: 'SetLandscape', point: POINT, landscape: 1, level: 0, flag: false },

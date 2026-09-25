@@ -1,4 +1,5 @@
 import type { Paper, Simulation } from '@open-northland/sim';
+import type { PalisadeGateProbeView } from '../../hud/tool-panel/placement.js';
 import type { FogGates } from '../projections/index.js';
 
 /** The live placement rules the click gates and the cursor ghosts share. */
@@ -6,6 +7,7 @@ export interface PlacementGates {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
+  readonly palisadeGateProbe: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
 }
 
 /**
@@ -19,6 +21,9 @@ export function createPlacementGates(
   localPlayer: number,
   tribe?: number,
 ): PlacementGates {
+  const closedGates = (sim.terrain?.landscapes?.types ?? [])
+    .filter((type) => type.wall?.gate?.open === false)
+    .map((type) => type.typeId);
   return {
     // A paper bypasses only technology; fog, footprint and contested-ground rules still apply.
     canPlaceAt: (typeId, col, row, paper) =>
@@ -29,5 +34,7 @@ export function createPlacementGates(
       fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false),
     canPlacePalisadeAt: (gfxIndex, col, row) =>
       fogGates.seesNode(col, row) && (sim.palisadeProbe(gfxIndex)?.canPlace(col, row) ?? false),
+    palisadeGateProbe: (_gfxIndex, col, row) =>
+      fogGates.seesNode(col, row) ? sim.palisadeGateProbe(col, row, closedGates, localPlayer) : null,
   };
 }

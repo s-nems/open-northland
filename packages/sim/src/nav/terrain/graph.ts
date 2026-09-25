@@ -1,3 +1,4 @@
+import { cellOfNode } from '../halfcell.js';
 import { TerrainEdges } from './edges.js';
 import type { LandscapeProps } from './landscape-props.js';
 import type { LandscapeMapInput } from './landscapes.js';
@@ -30,6 +31,7 @@ export class TerrainGraph extends TerrainEdges {
     readonly landVertices?: readonly boolean[],
     readonly waterContinents?: readonly number[],
     roughness?: readonly number[],
+    readonly elevation?: readonly number[],
   ) {
     super(width, height, typeIds, props);
     if (waterContinents !== undefined && waterContinents.length !== this.nodeCount) {
@@ -39,6 +41,10 @@ export class TerrainGraph extends TerrainEdges {
       throw new Error(`roughness lane has ${roughness.length} nodes, expected ${this.nodeCount}`);
     }
     this.roughness = roughness === undefined ? undefined : Uint8Array.from(roughness);
+    const cellCount = Math.ceil(width / 2) * Math.ceil(height / 2);
+    if (elevation !== undefined && elevation.length !== cellCount) {
+      throw new Error(`elevation lane has ${elevation.length} cells, expected ${cellCount}`);
+    }
     this.components = this.computeComponents();
   }
 
@@ -50,6 +56,17 @@ export class TerrainGraph extends TerrainEdges {
       throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
     }
     return v;
+  }
+
+  /** Source elevation unit under one half-cell node; absent maps are flat. */
+  elevationAt(hx: number, hy: number): number {
+    if (this.elevation === undefined) return 0;
+    const cellWidth = Math.ceil(this.width / 2);
+    const cellHeight = Math.ceil(this.height / 2);
+    const cell = cellOfNode(hx, hy);
+    const x = Math.max(0, Math.min(cellWidth - 1, cell.cx));
+    const y = Math.max(0, Math.min(cellHeight - 1, cell.cy));
+    return this.elevation[y * cellWidth + x] ?? 0;
   }
 
   /**

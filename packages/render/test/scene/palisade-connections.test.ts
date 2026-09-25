@@ -70,6 +70,35 @@ describe('palisadePostOffsets', () => {
     expect(hub?.palisadePosts).toHaveLength(12);
   });
 
+  it('draws unfinished segments as ground markers and excludes them from wall connections', () => {
+    const unclaimed = palisade(2, 1, 0, (ONE / 2) as Fixed);
+    const claimed = palisade(3, 2, 0, (ONE / 2) as Fixed);
+    (unclaimed.components as Record<string, unknown>).Palisade = {
+      ...unclaimed.components.Palisade,
+      reservation: null,
+    };
+    (claimed.components as Record<string, unknown>).Palisade = {
+      ...claimed.components.Palisade,
+      reservation: { builder: 40, planted: true },
+    };
+    const items = buildSpriteScene(snapshotOf([palisade(1, 0, 0), unclaimed, claimed]));
+    expect(items.find((item) => item.ref === 2)?.palisadeSite).toBe('unclaimed');
+    expect(items.find((item) => item.ref === 3)?.palisadeSite).toBe('claimed');
+    expect(items.flatMap((item) => item.palisadePosts ?? [])).toEqual([]);
+  });
+
+  it('keeps a completed wall and its joins visible while repair carries UnderConstruction', () => {
+    const repair = palisade(2, 1, 0, (ONE / 2) as Fixed);
+    (repair.components as Record<string, unknown>).Palisade = {
+      ...repair.components.Palisade,
+      repairing: true,
+    };
+    (repair.components as Record<string, unknown>).PalisadeBlocking = {};
+    const items = buildSpriteScene(snapshotOf([palisade(1, 0, 0), repair]));
+    expect(items.find((item) => item.ref === 2)?.palisadeSite).toBeUndefined();
+    expect(items.flatMap((item) => item.palisadePosts ?? [])).toHaveLength(2);
+  });
+
   it('drops both adjoining edges when a corner post is removed', () => {
     const before = buildSpriteScene(snapshotOf([palisade(1, 0, 0), palisade(2, 1, 0), palisade(3, 1, 1)]));
     expect(before.flatMap((item) => item.palisadePosts ?? [])).toHaveLength(4);
@@ -165,17 +194,6 @@ describe('palisadePostOffsets', () => {
     const collars = items.flatMap((item) => item.palisadePosts ?? []);
     expect(collars).toHaveLength(6);
     expect(collars.filter((post) => post.variantStep === 3)).toHaveLength(2);
-  });
-
-  it('interpolates construction progress between the edge endpoints', () => {
-    const items = buildSpriteScene(
-      snapshotOf([palisade(1, 0, 0), palisade(2, 1, 0, (ONE / 2) as Fixed, 695)]),
-    );
-    const edge = items.find((item) => item.ref === 1)?.palisadePosts;
-    expect(edge?.map((post) => [post.gfxIndex, post.variantStep, post.builtPct])).toEqual([
-      [691, 1, 83],
-      [691, 2, 66],
-    ]);
   });
 
   it('interpolates the source durability ladder for damaged finished posts', () => {

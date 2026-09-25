@@ -90,7 +90,7 @@ function pushLayers(
       break;
     }
     case 'palisade':
-      return pushPalisadeLayers(out, sheet, item);
+      return pushPalisadeLayers(out, sheet, item, tick);
     case 'resource': {
       // A layer-qualified ref (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the
       // default yew) falls through to the `kindLayers.resource` tree layer below. A null draw is a
@@ -169,7 +169,9 @@ const PALISADE_SHADOWS = new LayerBuffer();
 const PALISADE_BODIES = new LayerBuffer();
 
 /** Append the endpoint post and every repeated edge post, grouping all cast shadows below all bodies. */
-function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem): boolean {
+function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
+  if (item.palisadeSite === 'unclaimed') return true;
+  if (item.palisadeSite === 'claimed') return pushStockpileLayers(out, sheet, item, tick);
   const binding = sheet.bindings.palisade;
   if (binding === undefined) return false;
   PALISADE_SHADOWS.reset();

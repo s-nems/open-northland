@@ -16,6 +16,13 @@ function readPalisadeGfxIndex(components: Readonly<Record<string, unknown>>): nu
   return readNumField(components, 'Palisade', 'gfxIndex');
 }
 
+/** Whether an unfinished wall segment already carries its builder's planted work flag. */
+export function readPalisadeClaimPlanted(components: Readonly<Record<string, unknown>>): boolean {
+  const palisade = components.Palisade as { reservation?: unknown } | undefined;
+  const reservation = palisade?.reservation as { planted?: unknown } | null | undefined;
+  return reservation?.planted === true;
+}
+
 /**
  * A wall post's visible source-state percentage. Wall art is a durability ladder: finished damaged
  * posts descend with Health, while an unfinished site also cannot appear further along than its build

@@ -3,6 +3,7 @@ import {
   JobAssignment,
   ownerOf,
   ownersCompatible,
+  Palisade,
   Position,
   SiteAssignment,
   Stockpile,
@@ -15,6 +16,7 @@ import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { constructionWorkCell } from '../../../footprint/index.js';
+import { palisadeFlagPlantedBy } from '../../../palisades/reservation.js';
 import {
   bankedSlot,
   buildingProduces,
@@ -148,7 +150,7 @@ function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict 
   const { world, ctx, entity, tribe, owner, inbound } = plan;
   const crew = world.tryGet(entity, SiteAssignment)?.site ?? boundWorkplace(plan);
   if (crew === undefined) return null;
-  if (!constructionSiteNeeds(world, ctx, crew, tribe, owner, goodType, inbound)) return null;
+  if (!constructionSiteNeeds(world, ctx, crew, tribe, owner, goodType, inbound, entity)) return null;
   return constructionSiteCanReceive(plan, crew) ? crew : 'no-sink';
 }
 
@@ -160,12 +162,12 @@ function toNeedingConstructionSite(
   goodType: number,
   area: DeliverySearchArea,
 ): DeliveryVerdict {
-  const { world, ctx, here, tribe, owner, inbound, targets } = plan;
+  const { world, ctx, entity, here, tribe, owner, inbound, targets } = plan;
   return (
     targets.constructionSiteCells.nearest(
       here,
       (e) =>
-        constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound) &&
+        constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound, entity) &&
         constructionSiteCanReceive(plan, e) &&
         area.avoidSite?.(e) !== true
           ? QUALIFIES
@@ -236,8 +238,11 @@ function constructionSiteNeeds(
   owner: number | undefined,
   goodType: number,
   inbound: InboundSupplyTally,
+  supplier: Entity,
 ): boolean {
   if (!world.has(e, UnderConstruction) || constructionTribeOf(world, e) !== tribe) return false;
+  const wall = world.tryGet(e, Palisade);
+  if (wall !== undefined && !wall.repairing && !palisadeFlagPlantedBy(world, e, supplier)) return false;
   if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
   const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
   return have < stockCapacity(world, ctx, e, goodType);

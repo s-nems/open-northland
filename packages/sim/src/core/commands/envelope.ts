@@ -103,6 +103,7 @@ export const COMMAND_ISSUER: {
   placeBoat: 'trusted',
   placeBuilding: 'seat',
   placePalisade: 'seat',
+  convertPalisadeGate: 'seat',
   placeResource: 'trusted',
   placeSignpost: 'seat',
   setAssistantCounter: 'seat',

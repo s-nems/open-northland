@@ -69,6 +69,7 @@ function seatMayIssue(world: World, seat: number, command: PlayerCommand): boole
   const asset = assetTargetOf(command);
   if (
     (command.kind === 'demolishPalisade' ||
+      command.kind === 'convertPalisadeGate' ||
       command.kind === 'repairPalisade' ||
       command.kind === 'setPalisadeGate') &&
     asset !== undefined

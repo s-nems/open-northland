@@ -70,6 +70,7 @@ export const SUPPORTED_RESULTS = [
   'SetHouseBuildForbiddenArea',
   'SetVertexColor',
   'SetVertexColorOnLand',
+  '1 Open/0 CloseWallGate',
   'None',
   'ActivateMission',
   'DeactivateMission',

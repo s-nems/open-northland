@@ -15,6 +15,7 @@ export {
   readBuiltPct,
   readChestGfxIndex,
   readHpFraction,
+  readPalisadeClaimPlanted,
   readPalisadeStatePct,
   readProducing,
   readUpgradePct,

@@ -72,7 +72,7 @@ describe('resolveLayers - connected palisades', () => {
   const atlas: SpriteAtlas = {
     width: 100,
     height: 10,
-    frames: new Map([0, 1, 2, 10, 11, 12, 20, 21, 22].map(frame)),
+    frames: new Map([0, 1, 2, 10, 11, 12, 20, 21, 22, 30].map(frame)),
   };
   const sheet: SpriteSheet = {
     source,
@@ -102,8 +102,9 @@ describe('resolveLayers - connected palisades', () => {
         },
         default: { layer: 'wall', bob: 0 },
       },
+      stockpile: { byGood: {}, flag: [{ layer: 'goods', bob: 30 }], default: 30 },
     },
-    families: { wall: { source, atlas } },
+    families: { wall: { source, atlas }, goods: { source, atlas } },
   };
 
   it('draws the endpoint plus the two one-third posts, cycling source variants', () => {
@@ -126,6 +127,22 @@ describe('resolveLayers - connected palisades', () => {
       [1, 10, 3],
       [2, 20, 6],
     ]);
+  });
+
+  it('hides an unclaimed site and draws the ordinary work flag after its reservation is planted', () => {
+    const site: DrawItem = {
+      kind: 'palisade',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      gfxIndex: 691,
+      palisadeSite: 'unclaimed',
+    };
+    expect(resolveLayers(sheet, site, 0)).toEqual([]);
+    expect(
+      resolveLayers(sheet, { ...site, palisadeSite: 'claimed' }, 0)?.map((layer) => layer.frame.x),
+    ).toEqual([30]);
   });
 
   it('uses the edge progress to keep connection posts at the lower construction height', () => {

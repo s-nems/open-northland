@@ -25,7 +25,16 @@ export type PlacementGhost =
       readonly tribe: number;
     }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
-  | { readonly kind: 'palisade'; readonly col: number; readonly row: number; readonly gfxIndex: number };
+  | { readonly kind: 'palisade'; readonly col: number; readonly row: number; readonly gfxIndex: number }
+  | {
+      readonly kind: 'palisade-line';
+      readonly nodes: readonly { readonly col: number; readonly row: number; readonly valid: boolean }[];
+    }
+  | {
+      readonly kind: 'palisade-gate';
+      readonly nodes: readonly { readonly col: number; readonly row: number }[];
+      readonly valid: boolean;
+    };
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
 const GHOST_ALPHA = 0.55;
@@ -49,6 +58,19 @@ export class PlacementGhostLayer {
       this.container.visible = false;
       return;
     }
+    if (ghost.kind === 'palisade-line' || ghost.kind === 'palisade-gate') {
+      const key = `${ghost.kind}:${ghost.kind === 'palisade-gate' ? ghost.valid : ''}:${ghost.nodes
+        .map((node) => `${node.col},${node.row},${'valid' in node ? node.valid : ''}`)
+        .join(';')}`;
+      if (this.builtForKey !== key) {
+        this.builtForKey = key;
+        this.rebuildPalisadePlan(ghost, elevation);
+      }
+      this.container.position.set(0, 0);
+      this.container.zIndex = 0;
+      this.container.visible = ghost.nodes.length > 0;
+      return;
+    }
     const key =
       ghost.kind === 'building'
         ? `b:${ghost.tribe}:${ghost.buildingType}`
@@ -67,7 +89,40 @@ export class PlacementGhostLayer {
     this.container.visible = true;
   }
 
-  private rebuild(ghost: PlacementGhost): void {
+  private rebuildPalisadePlan(
+    ghost: Extract<PlacementGhost, { kind: 'palisade-line' | 'palisade-gate' }>,
+    elevation: ElevationField,
+  ): void {
+    for (const child of this.container.removeChildren()) child.destroy();
+    const g = new Graphics();
+    const points = ghost.nodes.map((node) => {
+      const point = halfCellToScreen(node.col, node.row);
+      return { x: point.x, y: point.y - terrainLiftAtNode(elevation, node.col, node.row) };
+    });
+    if (points.length > 1) {
+      const first = points[0];
+      if (first !== undefined) {
+        g.moveTo(first.x, first.y);
+        for (const point of points.slice(1)) g.lineTo(point.x, point.y);
+        g.stroke({ color: 0x171717, width: 2, alpha: 0.9 });
+      }
+    }
+    // A gate span is one verdict for the whole run; a wall line carries one per node.
+    const isGate = ghost.kind === 'palisade-gate';
+    const validAt = ghost.kind === 'palisade-gate' ? () => ghost.valid : (i: number) => ghost.nodes[i]?.valid;
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+      if (point === undefined) continue;
+      const valid = validAt(i) === true;
+      const color = isGate ? (valid ? 0x49ff66 : 0xff5353) : valid ? 0xffffff : 0xff5353;
+      g.ellipse(point.x, point.y - 1, 6, 3)
+        .fill({ color, alpha: 0.95 })
+        .stroke({ color: 0x202020, width: 1, alpha: 0.9 });
+    }
+    this.container.addChild(g);
+  }
+
+  private rebuild(ghost: Exclude<PlacementGhost, { kind: 'palisade-line' | 'palisade-gate' }>): void {
     for (const child of this.container.removeChildren()) child.destroy();
     // A minimal DrawItem: position and depth live on the container, and `ref: -1` only feeds
     // head-variation picks, which neither kind has.

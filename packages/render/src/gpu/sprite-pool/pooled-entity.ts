@@ -28,6 +28,8 @@ interface MutableBounds {
 interface PooledEntityBase extends PresentationTrack {
   readonly container: Container;
   placeholder?: Graphics;
+  /** White ground marker used only while an unfinished palisade segment has no planted flag. */
+  palisadeSiteMarker?: Graphics;
   attached: boolean;
   /** The `frameId` this entity was last drawn on; −1 = never drawn. */
   lastSeen: number;

@@ -2,12 +2,22 @@ import {
   ownerOf,
   ownersCompatible,
   Palisade,
+  Position,
   SiteAssignment,
   UnderConstruction,
 } from '../../../../components/index.js';
+import { ONE } from '../../../../core/fixed.js';
 import type { Entity } from '../../../../ecs/world.js';
+import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { needsRepair } from '../../../economy/repair.js';
+import {
+  claimPalisade,
+  constructionSiteAvailableTo,
+  palisadeFlagPlantedBy,
+  plantPalisadeFlag,
+  releasePalisadeReservation,
+} from '../../../palisades/reservation.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { constructionTribeOf, hasInboundSupply } from '../../../stores/index.js';
 import {
@@ -48,7 +58,7 @@ export function planBuilder(
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   if (!jobCanBuild(ctx.content, settler.jobType)) {
-    world.remove(e, SiteAssignment);
+    dropAssignment(plan);
     return false;
   }
   const materials = constructionMaterialResolver(plan, spacing);
@@ -60,10 +70,19 @@ export function planBuilder(
     (world.has(assigned.site, UnderConstruction) || needsRepair(world, assigned.site))
       ? assigned.site
       : null;
+  // A segment another builder already claimed is not abandoned: the player's pin outranks the drive, so
+  // this builder holds the order and does something else until the claim lapses.
+  if (pinned !== null && !constructionSiteAvailableTo(world, pinned, e)) return false;
   const bound = boundConstructionSite(plan);
   const locked = pinned ?? bound;
+  if (locked !== null && segmentAwaitsClearance(plan, locked)) {
+    dropAssignment(plan);
+    return false;
+  }
   if (locked !== null) {
     stampAssignment(plan, locked, pinned !== null);
+    const segment = takeSegment(plan, locked);
+    if (segment !== 'ready') return segment === 'walking';
     // A player's pin chose the risk; a workplace binding waits out the attack like an automatic crew.
     const repairing = needsRepair(world, locked);
     if (repairing && (pinned !== null || repairs.isSafe(locked)) && startRepair(plan, spacing, locked)) {
@@ -87,7 +106,11 @@ export function planBuilder(
   // A damaged upgrade site is mended before its upgrade goes on, and only by a repair crew, so an
   // automatic builder never hammers the upgrade of a building still under attack.
   const canStandAt = (site: Entity): boolean =>
-    world.has(site, UnderConstruction) && !needsRepair(world, site) && builderCanReach(plan, spacing, site);
+    world.has(site, UnderConstruction) &&
+    !needsRepair(world, site) &&
+    constructionSiteAvailableTo(world, site, e) &&
+    !segmentAwaitsClearance(plan, site) &&
+    builderCanReach(plan, spacing, site);
   const hasTask = (site: Entity): boolean =>
     canStandAt(site) && (claims.hasHammerWork(site) || materials.has(site));
   const nearestSite = (accepts: (site: Entity) => boolean): Entity | null =>
@@ -106,6 +129,14 @@ export function planBuilder(
   // equally valid sites every time one hammer atomic completes.
   const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
   const site = crewSite !== null && hasTask(crewSite) ? crewSite : nearestSite(hasTask);
+  if (site !== null && world.has(site, Palisade)) {
+    // A segment is walked to and flagged before any hammer or delivery, so it has one builder.
+    stampAssignment(plan, site, false);
+    const segment = takeSegment(plan, site);
+    if (segment !== 'ready') return segment === 'walking';
+    if (!workAtSite(plan, spacing, claims, materials, site)) waitAtSite(plan, spacing, site);
+    return true;
+  }
   if (site !== null && workAtSite(plan, spacing, claims, materials, site)) {
     stampAssignment(plan, site, false);
     return true;
@@ -119,10 +150,12 @@ export function planBuilder(
     (crewSite !== null && canStandAt(crewSite) ? crewSite : nearestSite(canStandAt));
   if (staging !== null) {
     stampAssignment(plan, staging, false);
+    const segment = takeSegment(plan, staging);
+    if (segment !== 'ready') return segment === 'walking';
     waitAtSite(plan, spacing, staging);
     return true;
   }
-  world.remove(e, SiteAssignment);
+  dropAssignment(plan);
   return false;
 }
 
@@ -162,6 +195,46 @@ function repairNearest(
   repairs.join(site, e);
   stampAssignment(plan, site, false);
   return true;
+}
+
+/**
+ * Take a wall segment's single-builder claim and walk to its marker to plant the flag; an ordinary
+ * building is always `ready`. `dropped` means the claim was lost or the marker is unreachable.
+ */
+function takeSegment(plan: PlannerContext, site: Entity): 'ready' | 'walking' | 'dropped' {
+  const { world, ctx, terrain, entity: e, here } = plan;
+  if (!claimPalisade(world, site, e)) {
+    dropAssignment(plan);
+    return 'dropped';
+  }
+  const wall = world.tryGet(site, Palisade);
+  if (wall === undefined || wall.repairing || palisadeFlagPlantedBy(world, site, e)) return 'ready';
+  const marker = world.get(site, Position);
+  const node = nodeOfPosition(marker.x, marker.y);
+  const dot = terrain.nodeAtClamped(node.hx, node.hy);
+  // The marker is the segment's own node, not one of its work cells, so the site-stand veto never
+  // covers it: a walk that fails there must drop the claim or the segment stays reserved forever.
+  if (unreachableGoalVeto(world, ctx, e)?.(dot) === true) {
+    dropAssignment(plan);
+    return 'dropped';
+  }
+  atOrWalk(world, e, here, dot, () => {
+    plantPalisadeFlag(world, site, e);
+  });
+  return 'walking';
+}
+
+/** A hammered segment finishes only once its cells are clear, so a builder waiting beside it would hold
+ *  it unfinished. */
+function segmentAwaitsClearance(plan: PlannerContext, site: Entity): boolean {
+  const { world } = plan;
+  return world.has(site, Palisade) && (world.tryGet(site, UnderConstruction)?.labor ?? ONE) >= ONE;
+}
+
+/** Leave crew membership, releasing any wall segment claim before the assignment that anchors it. */
+function dropAssignment(plan: PlannerContext): void {
+  releasePalisadeReservation(plan.world, plan.entity);
+  plan.world.remove(plan.entity, SiteAssignment);
 }
 
 /** Run one useful task, preferring a first real hammer worker, then a missing-material fetch. */
@@ -217,6 +290,7 @@ function stampAssignment(plan: PlannerContext, site: Entity, pinned: boolean): v
   const { world, entity: e } = plan;
   const assigned = world.tryGet(e, SiteAssignment);
   if (assigned === undefined || assigned.site !== site || assigned.pinned !== pinned) {
+    if (assigned?.site !== site) releasePalisadeReservation(world, e);
     world.add(e, SiteAssignment, { site, pinned });
   }
 }

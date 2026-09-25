@@ -158,6 +158,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     required: { gfxIndex: 'integer', ...NODE, tribe: 'integer' },
     optional: { owner: 'integer', underConstruction: 'boolean', valency: 'integer', force: 'boolean' },
   },
+  convertPalisadeGate: { required: { palisade: 'integer', gfxIndex: 'integer' } },
   placeResource: {
     required: { good: 'integer', ...NODE, remaining: 'integer', harvestAtomic: 'integer' },
     optional: {

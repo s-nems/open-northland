@@ -235,6 +235,12 @@ describe('buildCollisionTerrain', () => {
     expect(componentAt(g.width - 1, CORRIDOR_NODE_Y)).toBe(westBank);
   });
 
+  it('preserves the decoded cell elevation lane for simulation height rules', () => {
+    const elevation = [0, 3, 8, 11];
+    const raised = parseTerrainMap({ width: 2, height: 2, typeIds: [1, 1, 1, 1], elevation });
+    expect(buildCollisionTerrain(raised, IR).elevation).toEqual(elevation);
+  });
+
   it('degrades to all-open when the map carries no ground/object lanes', () => {
     const bare = parseTerrainMap({ width: 2, height: 2, typeIds: [1, 1, 1, 1] });
     const g = buildCollisionTerrain(bare, IR);

@@ -32,7 +32,6 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
     },
     canPlaceAt: () => true,
     canPlaceSignpostAt: () => true,
-    canPlacePalisadeAt: () => true,
     localPlayer: LOCAL_PLAYER,
     placementTribe: SARACEN,
     ...over,
@@ -129,20 +128,37 @@ describe('placement cursor', () => {
     });
   });
 
-  it('floats a palisade ghost over an accepted node without scanning another placement band', () => {
-    const f = frame({ palisadeGfxIndex: 691, signpostActive: true });
-
-    expect(f.cursor()).toEqual({
-      overlay: null,
-      ghost: { kind: 'palisade', col: TILE.col, row: TILE.row, gfxIndex: 691 },
+  it('draws every valid and rejected node in the held palisade line', () => {
+    const nodes = [
+      { col: 4, row: 9, valid: true },
+      { col: 5, row: 9, valid: false },
+    ];
+    const f = frame({
+      palisadeGfxIndex: 691,
+      signpostActive: true,
+      palisadePreview: () => ({ kind: 'wall', gfxIndex: 691, nodes }),
     });
+
+    expect(f.cursor()).toEqual({ overlay: null, ghost: { kind: 'palisade-line', nodes } });
     expect(f.signpostProbes()).toBe(0);
   });
 
-  it('hides a palisade ghost over a rejected node', () => {
-    const f = frame({ palisadeGfxIndex: 696, canPlacePalisadeAt: () => false });
-
-    expect(f.cursor()).toEqual({ overlay: null, ghost: null });
+  it('draws a valid gate span green through the gate preview ghost', () => {
+    const nodes = [
+      { col: 2, row: 9 },
+      { col: 3, row: 9 },
+      { col: 4, row: 9 },
+      { col: 5, row: 9 },
+      { col: 6, row: 9 },
+    ];
+    const f = frame({
+      palisadeGfxIndex: 696,
+      palisadePreview: () => ({ kind: 'gate', gfxIndex: 697, nodes, valid: true }),
+    });
+    expect(f.cursor()).toEqual({
+      overlay: null,
+      ghost: { kind: 'palisade-gate', nodes, valid: true },
+    });
   });
 
   it('drops the signpost ghost when its band probe has no frame to draw', () => {

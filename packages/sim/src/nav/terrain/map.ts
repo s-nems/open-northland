@@ -18,6 +18,8 @@ export interface TerrainMap {
   /** Original `lmpr` walking roughness at each half-cell node; absent, every node reads
    *  {@link DEFAULT_NODE_ROUGHNESS}. */
   readonly roughness?: readonly number[];
+  /** Original cell-resolution elevation lane (length `(width/2)*(height/2)`). */
+  readonly elevation?: readonly number[];
   /** Authored fish-manager rows, already addressed on this half-cell grid. */
   readonly fishSwarms?: readonly FishSwarmInput[] | undefined;
   /** Half-cell grid width, twice the map's cell columns. */
@@ -50,6 +52,7 @@ export interface CellTerrainMap {
   readonly waterContinents?: readonly number[] | undefined;
   /** Already at half-cell resolution, like `waterContinents`: the lanes are decoded per node. */
   readonly roughness?: readonly number[] | undefined;
+  readonly elevation?: readonly number[] | undefined;
 }
 
 /**
@@ -88,6 +91,7 @@ export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
     typeIds,
     ...(map.waterContinents !== undefined ? { waterContinents: map.waterContinents } : {}),
     ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
+    ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
     ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),
   };
 }
@@ -116,5 +120,6 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
     map.landVertices,
     map.waterContinents,
     map.roughness,
+    map.elevation,
   );
 }
