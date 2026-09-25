@@ -60,10 +60,6 @@ export type ButtonAction =
   | 'toggle-home-piety'
   | 'toggle-gate'
   | 'demolish-palisade'
-  | 'assign-workplace'
-  | 'unassign-workplace'
-  | 'assign-home'
-  | 'unassign-home'
   | 'attach-trade-house'
   | 'detach-trade-house'
   | VehicleOrderAction;

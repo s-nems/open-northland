@@ -2319,13 +2319,11 @@ body.on-drag-scroll-cursor-hidden * {
 }
 
 /* ---------- selection panel (ticket 08): the bottom-right window and its generic parts ---------- */
-/* The window never scrolls: it grows with its content up to the plane's height minus the summary bar
-   and its gap (`--on-selection-top`, set from TS). */
+/* The window never scrolls: it grows with its content up to the summary bar; its width, bottom and
+   height cap are set from TS (selection-panel.ts), which lifts it above a beam reaching under it. */
 .on-hud .on-selection {
   right: 0;
   bottom: 0;
-  width: 318px;
-  max-height: calc(100% - var(--on-selection-top, 64px));
   pointer-events: auto;
   isolation: isolate;
 }
@@ -2894,7 +2892,7 @@ body.on-drag-scroll-cursor-hidden * {
   box-shadow: inset 0 0 0 1px #c9a26233;
 }
 .on-hud .on-orders--inline {
-  margin: 8px 0 0;
+  margin: 4px 0 8px;
 }
 .on-hud .on-orders--inline .on-button {
   flex: 0 1 auto;

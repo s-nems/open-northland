@@ -308,7 +308,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
 | Notifications | left 10, top 18, width 173, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam, slid right of the minimap when a narrow screen would put it over the corner | one window at a time; Wiedza shows a framed pending note |
-| Selection | bottom right, legacy 322 px panel | lifts above the beam when the beam reaches under it (viewport narrower than 1076 design px) |
+| Selection | bottom right: the 318 px settler panel, the legacy 322 px panel for the rest | lifts above the beam when the beam reaches under it (narrower than 1056 design px for the settler panel, 1076 for the legacy one) |
 | Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
 
 Rules the shell enforces:

@@ -105,6 +105,9 @@ export function createWorkSection(
     },
   });
   root.append(title.element, workplace.element, home.element, family.element);
+  /** The building the workplace link names; a changed or dropped link takes its card with it, since a
+   *  replaced link never reports the cursor leaving. */
+  let linked: number | null = null;
 
   return {
     element: root,
@@ -114,6 +117,9 @@ export function createWorkSection(
       title.update(
         model.family !== null ? panel.workAndFamily : model.home !== null ? panel.workAndHome : copy.work,
       );
+      const target = model.workplace?.target?.id ?? null;
+      if (target !== linked) deps.hoverCard.hide();
+      linked = target;
       setHidden(workplace.element, model.workplace === null);
       if (model.workplace !== null) {
         workplace.update({
@@ -129,7 +135,7 @@ export function createWorkSection(
             ),
           ],
         });
-      } else deps.hoverCard.hide();
+      }
       setHidden(home.element, model.home === null);
       if (model.home !== null) {
         home.update({

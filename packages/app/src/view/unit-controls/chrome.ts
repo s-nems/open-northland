@@ -100,6 +100,7 @@ export async function createUnitChrome(
     const names = messages().mainMenu.settings;
     return binding === null ? names.bindingUnassigned : keyDisplayLabel(binding, { space: names.keySpace });
   };
+  // Its own card: the world hover hides the plane's shared one every frame the cursor is over the HUD.
   const hoverCard = createHoverCard({
     plane: opts.domHud.plane,
     scale: opts.domHud.scale,
@@ -218,7 +219,7 @@ export async function createUnitChrome(
       ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
       onSelectEntity: callbacks.selectEntity,
       onCenterOnEntity: centre,
-      onModel: (model, structural) => settlerPanel.update(model, structural),
+      onModel: (model) => settlerPanel.update(model),
       ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
     });
 

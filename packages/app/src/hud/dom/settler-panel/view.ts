@@ -13,8 +13,8 @@ import { createWorkSection } from './work.js';
 
 /** The selected person's panel on the DOM plane (FOUNDATION.md, "Settler panel"). */
 export interface SettlerPanel {
-  /** Show the model when it is a single settler, else hide; `structural` when the selection changed. */
-  update(model: UnitPanelModel, structural: boolean): void;
+  /** Show the model when it is a single settler, else hide. */
+  update(model: UnitPanelModel): void;
   hide(): void;
   /** The shown settler and the client box the renderer paints its live figure into. */
   portrait(): { readonly entityRef: number; readonly rect: ClientRect } | null;
@@ -76,12 +76,13 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   };
 
   return {
-    update(model, structural): void {
+    update(model): void {
       if (model.kind !== 'settler') {
         hide();
         return;
       }
-      const fresh = structural || shown?.entityId !== model.entityId;
+      // Another person: the fold closes and the trade's people are read again.
+      const fresh = shown?.entityId !== model.entityId;
       shown = model;
       peers = model.foreign ? NO_PEERS : peerIndex.peersOf(model.entityId, model.jobType, fresh);
       frame.updateHead(settlerHead(model, peers, deps.keyLabel('actionRing')));

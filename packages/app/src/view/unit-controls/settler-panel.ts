@@ -4,16 +4,9 @@ import { ownerPlayerOf } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import type { SettlerPanelActions } from '../../hud/dom/settler-panel/actions.js';
+import { NEED_ORDER } from '../../hud/dom/settler-panel/needs.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { UnitControlsOptions } from './types.js';
-
-/** The ring order each need row gives, so a press obeys the same gate the ring button does. */
-const NEED_ORDER: Readonly<Record<NeedKind, ActionOrderId>> = {
-  hunger: 'eat',
-  fatigue: 'sleep',
-  enjoyment: 'talk',
-  piety: 'pray',
-};
 
 /** The commands of the settler panel's sim contract, which `chrome.ts` builds. */
 export interface SettlerContractCommands {
@@ -84,6 +77,7 @@ export function settlerPanelActions(
     openOrders: order(() => host.openOrders()),
     rename: order(contract.rename),
     changeProfession: order(host.openProfessions),
+    // The ring's own order, so a press obeys the same gate the ring button does.
     orderNeed: order((id, need: NeedKind) => host.ringCommand(NEED_ORDER[need], [id])),
     assignWorkplace: order(host.assignWorkplace),
     unassignWorkplace: order((id) => enqueue({ kind: 'unassignWorker', entity: id as Entity })),

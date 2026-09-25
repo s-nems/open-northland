@@ -7,7 +7,7 @@ import { createSection } from '../parts/section.js';
 import type { SettlerPanelDeps } from './actions.js';
 
 /** The action ring's order for each need, which a press on its bar gives. */
-const NEED_ORDER: Readonly<Record<NeedKind, 'eat' | 'sleep' | 'talk' | 'pray'>> = {
+export const NEED_ORDER: Readonly<Record<NeedKind, 'eat' | 'sleep' | 'talk' | 'pray'>> = {
   hunger: 'eat',
   fatigue: 'sleep',
   enjoyment: 'talk',

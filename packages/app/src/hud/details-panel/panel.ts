@@ -50,9 +50,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActio
   /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field or a
    *  crew row of the vehicle window. */
   readonly onSelectEntity?: (entityId: number) => void;
-  /** Every model the rebuild gate lets through, `structural` when the selection itself changed: the
-   *  DOM settler panel shows the single settler this panel leaves blank. */
-  readonly onModel?: (model: UnitPanelModel, structural: boolean) => void;
+  /** Every model the rebuild gate lets through: the DOM settler panel shows the single settler this
+   *  panel leaves blank. */
+  readonly onModel?: (model: UnitPanelModel) => void;
   /** The GUI click every pressed panel button and worker portrait confirms with; absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
   /** Cursor tooltip naming the hovered stock row, injected structurally so the hud layer never imports
@@ -146,7 +146,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const next = rebuildGate.decide(snapshot, app.screen, force);
     if (next === null) return;
     if (next.structural) activeStockTab = ALL_STOCK_TAB;
-    opts.onModel?.(next.model, next.structural);
+    opts.onModel?.(next.model);
     rebuild(next.model);
   };
 

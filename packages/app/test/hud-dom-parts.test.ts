@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { counterStep, counterText } from '../src/hud/dom/parts/counter.js';
 import { METER_CRITICAL_BELOW_PCT, METER_LOW_BELOW_PCT, meterTone } from '../src/hud/dom/parts/meter-row.js';
+import { selectionBottomInset } from '../src/hud/dom/selection-panel.js';
+import { NAV_BEAM_H } from '../src/hud/nav-beam.js';
 
 /** The production counter's range: 0 stops, 1..10 counts down, 11 never stops. */
 const RANGE = { max: 10, unlimited: 11 };
@@ -38,5 +40,17 @@ describe('the meter row tone', () => {
     expect(meterTone(METER_LOW_BELOW_PCT - 1)).toBe('low');
     expect(meterTone(METER_CRITICAL_BELOW_PCT)).toBe('low');
     expect(meterTone(METER_CRITICAL_BELOW_PCT - 1)).toBe('critical');
+  });
+});
+
+describe('the selection panel placement', () => {
+  const HEIGHT = 810;
+  it('stands on the plane bottom while the beam stays clear of its column', () => {
+    expect(selectionBottomInset({ width: 1440, height: HEIGHT })).toBe(0);
+    expect(selectionBottomInset({ width: 1056, height: HEIGHT })).toBe(0);
+  });
+
+  it('lifts above the beam once the beam reaches under it', () => {
+    expect(selectionBottomInset({ width: 1055, height: HEIGHT })).toBe(NAV_BEAM_H);
   });
 });

@@ -1,3 +1,4 @@
+import { navBeamRect } from '../nav-beam.js';
 import { TOP_BAR_HEIGHT } from '../regions.js';
 import { GLYPH } from './icons.js';
 import { button, element, setAttribute, setHidden, setTitle, write } from './parts/dom.js';
@@ -5,6 +6,15 @@ import { WINDOW_ORNAMENTS } from './symbols.js';
 
 /** Design px between the summary bar and the panel's top when the panel is as tall as it gets. */
 const SELECTION_TOP_GAP_PX = 16;
+/** The panel's design-px width (FOUNDATION.md). */
+export const SELECTION_PANEL_W = 318;
+
+/** Design px the panel stands above the plane's bottom: the beam's height when the beam reaches under
+ *  the panel's column on a narrow plane, else none. */
+export function selectionBottomInset(plane: { readonly width: number; readonly height: number }): number {
+  const beam = navBeamRect(plane, 1);
+  return beam.x + beam.w > plane.width - SELECTION_PANEL_W ? beam.h : 0;
+}
 
 /** The head of the selected thing: the kicker (with browsing), the title (with rename), the meta line,
  *  and the two medallions. */
@@ -78,7 +88,7 @@ export interface SelectionPanel {
 export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPanelHandlers): SelectionPanel {
   const root = element('aside', 'on-window on-selection');
   root.hidden = true;
-  root.style.setProperty('--on-selection-top', `${TOP_BAR_HEIGHT + SELECTION_TOP_GAP_PX}px`);
+  root.style.width = `${SELECTION_PANEL_W}px`;
   const fill = element('div', 'on-selection__fill');
 
   const prev = button('on-browse', GLYPH.prev);
@@ -153,7 +163,21 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
     dirty = true;
   };
   window.addEventListener('resize', invalidate);
+  // A fold opening, a late font or an icon shifting the content moves the bottom-anchored frame.
+  const resizes = new ResizeObserver(invalidate);
+  resizes.observe(root);
+  let placed = '';
+  /** Stand above the beam when it reaches under the panel, and stop under the summary bar. */
+  const place = (): void => {
+    const bottom = selectionBottomInset({ width: plane.clientWidth, height: plane.clientHeight });
+    const key = `${bottom}`;
+    if (key === placed) return;
+    placed = key;
+    root.style.bottom = `${bottom}px`;
+    root.style.maxHeight = `calc(100% - ${TOP_BAR_HEIGHT + SELECTION_TOP_GAP_PX + bottom}px)`;
+  };
   const measure = (): ClientRect | null => {
+    place();
     if (holeFrame === null || root.hidden) return null;
     const frameBox = holeFrame.getBoundingClientRect();
     const fillBox = fill.getBoundingClientRect();
@@ -179,6 +203,7 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
     show: () => {
       if (root.hidden) invalidate();
       setHidden(root, false);
+      place();
     },
     hide: () => {
       endRename(false);
@@ -244,6 +269,7 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
     renaming: () => editing,
     dispose(): void {
       window.removeEventListener('resize', invalidate);
+      resizes.disconnect();
       root.remove();
     },
   };
