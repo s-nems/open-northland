@@ -44,7 +44,7 @@ import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
-import { holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
+import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget } from './targeting.js';
@@ -125,6 +125,7 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
+  if (breaksHuntForNeed(world, ctx, e, ordered)) return;
 
   const travelling = isTravelling(world, e);
   if (walksUnderAnotherDrive(world, e, travelling, ordered || marching)) return;

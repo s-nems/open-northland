@@ -3,6 +3,7 @@ import {
   Chat,
   Engagement,
   Female,
+  HuntFocus,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   ownerOf,
@@ -127,6 +128,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     // unless it is the home the sleep or pray rung just put it in, or a garrison that served its need on
     // the spot and is still holding the tower.
     if (!isServedAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
+    // A hunter's chase is the only engagement that reaches here. Dropping it and the prey hold keeps the
+    // CombatSystem off the errand; the hunter picks its prey afresh once the need is met.
+    world.remove(e, Engagement);
+    world.remove(e, HuntFocus);
     return;
   }
 

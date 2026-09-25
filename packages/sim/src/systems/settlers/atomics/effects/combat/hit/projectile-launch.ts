@@ -17,7 +17,6 @@ import {
   nodeHyOfPosition,
   positionOfNode,
 } from '../../../../../../nav/halfcell.js';
-import { frightenWildlifeNear } from '../../../../../conflict/fright.js';
 import { leadPoint, marksmanSpread, scatteredNode } from '../../../../../conflict/shot-aim.js';
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
 import type { SystemContext } from '../../../../../context.js';
@@ -142,8 +141,4 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     munitionType: shot.weapon.munitionType,
     at: eventAt(from.x, from.y),
   });
-  // The herd around the mark bolts at the release, whether the arrow will hit or miss.
-  if (ctx.terrain !== undefined) {
-    frightenWildlifeNear(world, ctx, ctx.terrain, entityNode(world, ctx.terrain, shot.target));
-  }
 }

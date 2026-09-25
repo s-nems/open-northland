@@ -3,13 +3,17 @@ import {
   diplomacyStance,
   FOG_MODE,
   Owner,
+  Position,
   recordContact,
   Settler,
+  StayPoint,
   setDiplomacyStance,
 } from '../../../../../../components/index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
+import { frightenKin } from '../../../../../conflict/fright.js';
 import type { SystemContext } from '../../../../../context.js';
 import { angryGameTimeOf, isAggressiveAnimal, isProvokableAnimal } from '../../../../../readviews/index.js';
+import { entityNode } from '../../../../../spatial/nodes.js';
 
 /**
  * Provoke a struck passive `getAngry` animal into temporary hostility - the provoked half of
@@ -29,6 +33,23 @@ export function provokeAnger(world: World, ctx: SystemContext, target: Entity): 
   const anger = world.tryMut(target, Anger);
   if (anger === undefined) world.add(target, Anger, { until });
   else anger.until = until;
+}
+
+/**
+ * Send a struck animal and its kin running from its attacker, unless the blow provoked it. Original
+ * behavior: a blow, not a loosed shot, sends game running.
+ */
+export function frightenStruckAnimal(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  target: Entity,
+): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || !world.has(target, StayPoint) || !world.has(target, Position)) return;
+  // A shot outlives a slain archer; its quarry then runs from where it stands.
+  const threat = world.has(attacker, Position) ? attacker : target;
+  frightenKin(world, ctx, terrain, target, entityNode(world, terrain, threat));
 }
 
 /**

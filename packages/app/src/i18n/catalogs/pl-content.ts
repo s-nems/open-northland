@@ -336,7 +336,7 @@ export const plContent = {
     hunting: {
       title: 'Myśliwy przy pracy',
       summary:
-        'Myśliwy przypisany do chorągiewki poluje na zające w jej pobliżu - strzały potrafią chybić, płoszą stado, a każde truchło obiera i znosi do obozu w całości zanim ruszy po następne; po owcach, trzymanych do hodowli, sięga tylko w ostateczności.',
+        'Myśliwy przypisany do chorągiewki poluje na zające w jej pobliżu - strzały potrafią chybić, trafienie płoszy stado w obrębie jego terenu, a każde truchło obiera i znosi do obozu w całości zanim ruszy po następne; po owcach, trzymanych do hodowli, sięga tylko w ostateczności.',
     },
     livestock: {
       title: 'Hodowla zwierząt',

@@ -19,8 +19,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { livestockLeashOf } from '../livestock/assignment.js';
-import { stayPointRangeOf } from '../readviews/index.js';
+import { territoryRangeOf } from '../livestock/assignment.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { isTravelling } from './nav-state.js';
@@ -133,9 +132,7 @@ export const animalWanderSystem: System = (world, ctx) => {
     // Claimed livestock grazes at a calm pace on its farm's or its base yard's leash; a wild creature
     // keeps its species' territory radius and the wild cadence.
     const claimed = world.has(e, Livestock) && world.has(e, Owner);
-    const range = claimed
-      ? livestockLeashOf(world, ctx, e)
-      : stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
+    const range = territoryRangeOf(world, ctx, e);
     if (range <= 0) continue; // no territory to range over: this creature holds its spot
     if (ctx.rng.int(claimed ? LIVESTOCK_WANDER_PERIOD_TICKS : ANIMAL_WANDER_PERIOD_TICKS) !== 0) continue;
 

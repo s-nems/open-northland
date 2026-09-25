@@ -143,13 +143,16 @@ function lastResortGate(
 
 /** Commit `target` as this hunter's prey - the write half of the `lock` the spec reads back. A stance that
  *  re-acquires freely instead sheds a hold left from an earlier one. A hold already on `target` is left
- *  untouched, keeping a long chase off the store's change generations. */
+ *  untouched, keeping a long chase off the store's change generations; a new prey keeps the need-break pace. */
 export function holdPrey(world: World, e: Entity, spec: EngageSpec, target: Entity): void {
   if (spec.lock === null) {
     world.remove(e, HuntFocus);
     return;
   }
-  if (world.tryGet(e, HuntFocus)?.target !== target) world.add(e, HuntFocus, { target });
+  const held = world.tryGet(e, HuntFocus);
+  if (held?.target === target) return;
+  const needBreakAt = held?.needBreakAt;
+  world.add(e, HuntFocus, needBreakAt === undefined ? { target } : { target, needBreakAt });
 }
 
 /** The prey this hunter is still committed to - its {@link HuntFocus} target while `holds` admits it, else

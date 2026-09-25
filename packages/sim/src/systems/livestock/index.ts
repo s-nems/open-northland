@@ -5,6 +5,7 @@ export {
   LIVESTOCK_GRAZE_RANGE_NODES,
   livestockAssignmentSystem,
   livestockLeashOf,
+  territoryRangeOf,
 } from './assignment.js';
 export { claimableBy, LIVESTOCK_CAPTURE_RANGE, livestockCaptureSystem } from './capture.js';
 export { freeStockOf } from './free-stock.js';

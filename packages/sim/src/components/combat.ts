@@ -30,9 +30,9 @@ export const Weapon = defineComponent<{ weaponTypeId: number }>('Weapon', 'comba
 export const Anger = defineComponent<{ until: number }>('Anger', 'combat');
 
 /**
- * A wild animal's fright: it runs away from the scare node `from` until the `until` tick, re-aiming on the
- * `repathAt` throttle. Separate from {@link Fleeing}, which the stance ladder strips from any unit not in
- * FLEE stance - an unowned animal carries no stance.
+ * A wild animal's fright: it runs away from `from`, the node its attacker struck from, until the `until`
+ * tick, re-aiming on the `repathAt` throttle. Separate from {@link Fleeing}, which the stance ladder strips
+ * from any unit not in FLEE stance - an unowned animal carries no stance.
  */
 export const Frightened = defineComponent<{ until: number; repathAt: number; from: NodeId }>(
   'Frightened',
@@ -47,9 +47,10 @@ export const HuntRest = defineComponent<{ until: number }>('HuntRest', 'combat')
 
 /**
  * A hunter's committed prey: the animal it stays on until the kill instead of re-picking the nearest each
- * tick. Never outlives the carrier's {@link Engagement}.
+ * tick. Never outlives the carrier's {@link Engagement}. `needBreakAt` is the tick before which a pressing
+ * need does not stop the hunt again, absent until the first break.
  */
-export const HuntFocus = defineComponent<{ target: Entity }>('HuntFocus', 'combat');
+export const HuntFocus = defineComponent<{ target: Entity; needBreakAt?: number }>('HuntFocus', 'combat');
 
 /**
  * Present while a unit chases an enemy, and while an owned one trades blows - the marker the planner's

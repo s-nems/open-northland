@@ -68,6 +68,13 @@ export function livestockLeashOf(world: World, ctx: SystemContext, e: Entity): n
   return Math.min(stayPointRangeOf(ctx.content, world.get(e, Settler).tribe), LIVESTOCK_GRAZE_LEASH_NODES);
 }
 
+/** How far an animal keeps from its {@link StayPoint}: a claimed animal's {@link livestockLeashOf}, else its
+ *  species' wild territory. 0 is no territory. Grazing and flight both keep to it. */
+export function territoryRangeOf(world: World, ctx: SystemContext, e: Entity): number {
+  if (world.has(e, Livestock) && world.has(e, Owner)) return livestockLeashOf(world, ctx, e);
+  return stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
+}
+
 /**
  * Claimed animals herd themselves home: each period every owned {@link Livestock} creature re-anchors its
  * {@link StayPoint} onto its farm's door - the original's birth point for a house-attached animal - or,

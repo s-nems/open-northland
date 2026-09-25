@@ -25,7 +25,7 @@ import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
 import { spawnCarcasses } from './carcass.js';
 import { launchProjectile } from './projectile-launch.js';
 import { collectHitReaction, type PendingHitReaction } from './reaction.js';
-import { provokeAnger, provokeHostility } from './reactions.js';
+import { frightenStruckAnimal, provokeAnger, provokeHostility } from './reactions.js';
 
 /**
  * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit. A ranged swing launches a
@@ -145,6 +145,7 @@ export function resolveCombatHit(
     markBuildingDamaged(world, ctx, target);
   }
   provokeAnger(world, ctx, target);
+  frightenStruckAnimal(world, ctx, attacker, target);
   provokeHostility(world, ctx, attacker, target);
   // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
   // the original marks it on the computed damage, before the pool is touched.
