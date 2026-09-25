@@ -44,10 +44,10 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
+import { isServedAtHome } from './home-errands.js';
 import { planBreeder } from './husbandry/index.js';
 import { answerNeedInPlace, orderedNeed, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
-import { isSleepingAtHome } from './sleep-at-home.js';
 import { deStackIdle, stepOffHomeDoor } from './spacing.js';
 import { holdsPostThroughNeed, planTowerPost } from './tower-post.js';
 import { planTraining } from './training.js';
@@ -124,9 +124,9 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   const alert = (): boolean => (alerted ??= holdsGround(world, ctx, e, pass.front));
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing, alert)) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in -
-    // unless it is the bed the sleep rung just put it in, or a garrison that served its need on the
-    // spot and is still holding the tower.
-    if (!isSleepingAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
+    // unless it is the home the sleep or pray rung just put it in, or a garrison that served its need on
+    // the spot and is still holding the tower.
+    if (!isServedAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
     return;
   }
 

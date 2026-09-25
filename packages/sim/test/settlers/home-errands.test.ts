@@ -16,7 +16,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
-import { isSleepingAtHome } from '../../src/systems/settlers/drives/sleep-at-home.js';
+import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -212,7 +212,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
       targetTile: null,
     });
 
-    expect(isSleepingAtHome(sim.world, settler)).toBe(false);
+    expect(isServedAtHome(sim.world, settler)).toBe(false);
   });
 
   it('comes back out rested - the marker is shed once the sleep completes', () => {

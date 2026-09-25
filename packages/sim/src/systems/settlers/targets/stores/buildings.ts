@@ -7,25 +7,32 @@ import type { TargetBands } from '../bands.js';
 import { ACCEPT_ALL, type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
 /**
- * The nearest temple a devout settler should walk to in order to pray, by Manhattan distance from
- * `here` with the shared ascending-cell-id tie-break, or null when the player has none. `gate` is the
- * settler's signpost confinement: a temple outside its allowed area is not one it knows the way to.
+ * Where a devout settler with no holy fire at home walks to pray: the nearest of its player's finished
+ * temples, and only when it has none in reach, the nearest of its headquarters. Original behavior for the
+ * order; the ranking is this index's Manhattan distance with the shared ascending-cell-id tie-break, an
+ * approximation of the original's hex distance on the settler's own continent. Null when neither is found.
+ * `gate` is the settler's signpost confinement: a site outside its allowed area is not one it knows the way
+ * to.
  */
-export function nearestTemple(
+export function nearestPrayerSite(
   bands: TargetBands,
   world: World,
   here: NodeId,
-  /** The settler's owning player. A settler prays only in its own player's temple. */
+  /** The settler's owning player. A settler prays only at its own player's sites. */
   owner: number | undefined,
   gate?: SpatialGate,
   /** The settler's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
-  return (
-    bands.prayerSites(PRAYER_SITE.temple).nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))
-      ?.entity ?? null
-  );
+  const onSide = sameSideAs(world, owner);
+  for (const site of PRAYER_SITES_IN_ORDER) {
+    const found = bands.prayerSites(site).nearest(here, ACCEPT_ALL, gate, avoid, onSide);
+    if (found !== null) return found.entity;
+  }
+  return null;
 }
+
+const PRAYER_SITES_IN_ORDER = [PRAYER_SITE.temple, PRAYER_SITE.headquarters] as const;
 
 /**
  * The nearest site in `index` a builder of `tribe` should work - a foundation to raise or a damaged

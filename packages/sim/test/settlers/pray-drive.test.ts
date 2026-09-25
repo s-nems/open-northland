@@ -1,16 +1,23 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addCurrentAtomic,
   Building,
   CurrentAtomic,
+  HomeQuality,
   MoveGoal,
+  Owner,
   Position,
+  Residence,
+  Resting,
   Settler,
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
+import { setHouseholdGoodUse } from '../../src/systems/family/home-quality.js';
 import { atomicSystem, needBar, plannerSystem } from '../../src/systems/index.js';
+import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { testContent } from '../fixtures/content.js';
 import {
   cellOf,
@@ -229,5 +236,124 @@ describe('pray drive - closing the forge→pray→relief loop through the real s
       return sim.hashState();
     };
     expect(run()).toBe(run());
+  });
+});
+
+const HQ_TYPE = 1;
+const HOME_TYPE = 90;
+const HOLY_OIL = 99;
+const PLAYER = 0;
+const RIVAL = 1;
+/** One delivery's worth of burning holy fire. */
+const LIT = 1000;
+
+/** The shared fixture plus a home that burns holy oil for its residents' prayers. */
+function oilContent(): ContentSet {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: HOLY_OIL,
+        id: 'holy_oil',
+        homeQuality: {
+          effect: 'piety',
+          deliveryValue: LIT,
+          capacity: 5000,
+          useCost: 3,
+          fetchBelow: 3000,
+          minimumHomeLevel: 0,
+        },
+      },
+    ],
+    buildings: [...base.buildings, { typeId: HOME_TYPE, id: 'home_small', kind: 'home', homeSize: 2 }],
+  });
+}
+
+function ownedAt(sim: Simulation, x: number, buildingType: number, player = PLAYER): Entity {
+  const e = templeAt(sim, x, 0, buildingType);
+  sim.world.add(e, Owner, { player });
+  return e;
+}
+
+/** A devout smith of {@link PLAYER} at cell (x, 0), living in `home` when one is given. */
+function devoutAt(sim: Simulation, x: number, home?: Entity): Entity {
+  const e = settlerAt(sim, x, 0, DEVOUT);
+  sim.world.add(e, Owner, { player: PLAYER });
+  if (home !== undefined) sim.world.add(e, Residence, { home });
+  return e;
+}
+
+function litHomeAt(sim: Simulation, x: number): Entity {
+  const home = ownedAt(sim, x, HOME_TYPE);
+  sim.world.add(home, HomeQuality, { cooking: 0, rest: 0, piety: LIT });
+  return home;
+}
+
+describe('where a devout settler prays: its holy fire, then a temple, then the headquarters', () => {
+  it('walks home to its burning holy fire past a nearer temple', () => {
+    const sim = new Simulation({ seed: 1, content: oilContent(), map: grassMap(8, 1) });
+    ownedAt(sim, 3, TEMPLE_TYPE);
+    const settler = devoutAt(sim, 2, litHomeAt(sim, 6));
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 6, 0));
+  });
+
+  it('prays inside at its own door and stays in for the prayer', () => {
+    const sim = new Simulation({ seed: 1, content: oilContent(), map: grassMap(8, 1) });
+    const home = litHomeAt(sim, 4);
+    const settler = devoutAt(sim, 4, home);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, Resting).at).toBe(home);
+    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'pray' });
+    expect(isServedAtHome(sim.world, settler)).toBe(true);
+  });
+
+  it('goes to the temple when its home fire is out', () => {
+    const sim = new Simulation({ seed: 1, content: oilContent(), map: grassMap(8, 1) });
+    ownedAt(sim, 3, TEMPLE_TYPE);
+    const settler = devoutAt(sim, 2, ownedAt(sim, 6, HOME_TYPE));
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
+  });
+
+  it('goes to the temple when its player forbids burning holy oil', () => {
+    const sim = new Simulation({ seed: 1, content: oilContent(), map: grassMap(8, 1) });
+    ownedAt(sim, 3, TEMPLE_TYPE);
+    const settler = devoutAt(sim, 2, litHomeAt(sim, 6));
+    setHouseholdGoodUse(sim.world, ctxOf(sim), { player: PLAYER, effect: 'piety', allowed: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
+  });
+
+  it('prays at its own headquarters when it has no temple, not at a rival one', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    ownedAt(sim, 1, HQ_TYPE, RIVAL);
+    ownedAt(sim, 6, HQ_TYPE);
+    const settler = devoutAt(sim, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 6, 0));
+  });
+
+  it('prefers a temple to a nearer headquarters', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    ownedAt(sim, 3, HQ_TYPE);
+    ownedAt(sim, 7, TEMPLE_TYPE);
+    const settler = devoutAt(sim, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 7, 0));
   });
 });

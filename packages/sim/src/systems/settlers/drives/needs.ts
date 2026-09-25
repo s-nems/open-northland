@@ -32,10 +32,10 @@ import {
   startAtomic,
 } from '../atomics/start.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
-import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from '../targets/index.js';
+import { interactionCell, nearestFood, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
+import { prayAtHome, sleepAtHome } from './home-errands.js';
 import { restingCell } from './rest-spot.js';
-import { sleepAtHome } from './sleep-at-home.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
 
 // The needs drives: the highest-priority rungs of the planner ladder. Eat outranks sleep outranks pray,
@@ -225,7 +225,8 @@ export function planNeeds(
     maySeek(world, e, ordered, 'piety') &&
     !onAlert();
   if (prays) {
-    const temple = nearestTemple(
+    if (prayAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
+    const site = nearestPrayerSite(
       targets.bands,
       world,
       here,
@@ -233,20 +234,20 @@ export function planNeeds(
       gate,
       unreachableGoalVeto(world, ctx, e),
     );
-    if (temple !== null) {
-      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, temple, here), () =>
+    if (site !== null) {
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, site, here), () =>
         startAtomic(
           world,
           e,
           PRAY_ATOMIC_ID,
           { kind: 'pray' },
           atomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
-          temple,
+          site,
         ),
       );
       return true;
     }
-    // No temple reachable: a human seat's settler falls through to work with piety pinned at ONE.
+    // Nowhere to pray: a human seat's settler falls through to work with piety pinned at ONE.
     settleUnservedNeedForAi(world, e, 'piety');
   }
 

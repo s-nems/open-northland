@@ -55,10 +55,10 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
   const home = world.tryGet(e, Residence)?.home;
   const settler = world.tryGet(e, Settler);
   if (home === undefined || settler === undefined || !isInside(world, e, home)) return null;
-  if (settler.fatigue > NEED_SATED_THRESHOLD && restores(ctx, settler, SLEEP_ATOMIC_ID, REST)) {
+  if (settler.fatigue > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, SLEEP_ATOMIC_ID, REST)) {
     return { atomicId: SLEEP_ATOMIC_ID, effect: { kind: 'sleep' }, target: e };
   }
-  if (settler.hunger > NEED_SATED_THRESHOLD && restores(ctx, settler, EAT_ATOMIC_ID, HUNGER)) {
+  if (settler.hunger > NEED_SATED_THRESHOLD && homeClipServes(ctx, settler, EAT_ATOMIC_ID, HUNGER)) {
     const goodType = larderGood(world, ctx, home);
     if (goodType !== null)
       return { atomicId: EAT_ATOMIC_ID, effect: { kind: 'eat', goodType, from: home }, target: home };
@@ -66,7 +66,7 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
   if (
     settler.piety > NEED_SATED_THRESHOLD &&
     jobNeedsReligion(ctx.content, settler.jobType) &&
-    restores(ctx, settler, PRAY_ATOMIC_ID, PIETY) &&
+    homeClipServes(ctx, settler, PRAY_ATOMIC_ID, PIETY) &&
     homeQualityActive(world, ctx, home, 'piety')
   ) {
     return { atomicId: PRAY_ATOMIC_ID, effect: { kind: 'pray' }, target: home };
@@ -75,7 +75,12 @@ function nextHomeRound(world: World, ctx: SystemContext, e: Entity): HomeRound |
 }
 
 /** Whether the clip this settler would play indoors pays anything into `channel`. */
-function restores(ctx: SystemContext, settler: SettlerIdentity, atomicId: number, channel: number): boolean {
+export function homeClipServes(
+  ctx: SystemContext,
+  settler: SettlerIdentity,
+  atomicId: number,
+  channel: number,
+): boolean {
   const clip = atomicClipNameAtHome(ctx.content, settler, atomicId);
   return clip !== undefined && atomicEventChannelDelta(ctx.content, clip, channel) > 0;
 }

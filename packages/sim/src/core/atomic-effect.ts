@@ -45,8 +45,8 @@ export type AtomicEffect =
   /** The settler sleeps: its clip's `event <at> 1 <delta>` pulses take the rest off its `fatigue`. No
    *  goods are consumed. */
   | { readonly kind: 'sleep' }
-  /** The settler prays: its clip's `event <at> 4 <delta>` pulses take the prayer off its `piety`. It must
-   *  stand on a temple to run it. */
+  /** The settler prays: its clip's `event <at> 4 <delta>` pulses take the prayer off its `piety`. It runs
+   *  it at a prayer site or inside a home whose holy fire burns. */
   | { readonly kind: 'pray' }
   /** The settler runs one drill repetition inside a barracks, charged against the errand's remaining
    *  drill time. Nothing else accrues: the TRAINING bucket grants no experience. */

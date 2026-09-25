@@ -10,9 +10,9 @@ export {
   hasHaulableOutput,
   nearestBuilderSite,
   nearestFreeYardNode,
+  nearestPrayerSite,
   nearestStoreFor,
   nearestStoreHolding,
-  nearestTemple,
   nearestWorkplaceOutput,
   storeYieldsGood,
 } from './stores/index.js';
