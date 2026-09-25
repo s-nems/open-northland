@@ -3309,6 +3309,7 @@ button.portrait-box:hover {
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-bottom: 3px;
 }
 .kicker small {
   font-weight: 400;
@@ -3378,6 +3379,7 @@ button.bar-row {
   border-radius: 3px;
   background: none;
   font: inherit;
+  font-size: 12.5px;
   line-height: inherit;
   color: inherit;
   text-align: left;
