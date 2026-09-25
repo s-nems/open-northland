@@ -22,8 +22,8 @@ import { markShortPool } from '../economy/repair.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
-import { standingWallCells, wallJointSeals } from '../footprint/wall-joints.js';
-import { invalidateRoutesThrough } from '../landscape/routes.js';
+import { wallClosingCells } from '../footprint/wall-joints.js';
+import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
 import { landscapeTypes } from '../landscape/view.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
@@ -164,13 +164,15 @@ export function setPalisadeGate(
 /** A wall that starts blocking turns back every walker whose route runs through it: the walker stops and
  *  searches again, rather than stepping through a gate that shut in front of it. */
 export function rerouteAroundPalisade(world: World, terrain: TerrainGraph, e: Entity): void {
-  const wall = world.get(e, Palisade);
+  // A map's authored walls stand before anyone walks, so its load skips the closing's cells.
+  if (!anyRouteFollowed(world)) return;
   const at = world.get(e, Position);
   const { hx, hy } = nodeOfPosition(at.x, at.y);
-  const body = translatedCells(terrain, wall.walk, hx, hy);
-  const closed = new Set(body);
-  for (const seal of wallJointSeals(terrain, standingWallCells(world, terrain), body)) closed.add(seal);
-  invalidateRoutesThrough(world, terrain, closed);
+  invalidateRoutesThrough(
+    world,
+    terrain,
+    wallClosingCells(world, terrain, world.get(e, Palisade).walk, hx, hy),
+  );
 }
 
 /** The completed gate of `player` standing on `hx,hy` - the anchor itself or any node its closed body

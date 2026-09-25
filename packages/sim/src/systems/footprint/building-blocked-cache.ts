@@ -105,7 +105,7 @@ function deriveBuildingBlockedCells(
   // through a palisade.
   const walls = standingWallCells(world, terrain);
   for (const cell of walls.walls) blocked.add(cell);
-  for (const cell of wallJointSeals(terrain, walls)) blocked.add(cell);
+  for (const cell of wallJointSeals(terrain, walls, walls.walls)) blocked.add(cell);
   return blocked;
 }
 

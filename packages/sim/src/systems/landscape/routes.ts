@@ -28,6 +28,11 @@ export function forgetRouteFailures(world: World): void {
   for (const e of [...world.query(UnreachableGoals)]) world.remove(e, UnreachableGoals);
 }
 
+/** Whether any walker follows a route, which a closing could cut. */
+export function anyRouteFollowed(world: World): boolean {
+  return world.query(PathFollow, PathRoute, Position).next().done !== true;
+}
+
 /**
  * A walker whose remaining route crosses one of `cells` stops short of them and searches again, so a gate
  * shut or a wall finished in front of it is never walked through. Costs the live routes' remaining stops,

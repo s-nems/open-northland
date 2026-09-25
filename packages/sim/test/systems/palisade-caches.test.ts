@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Palisade, Position, SiteAssignment, UnderConstruction } from '../../src/components/index.js';
-import { type Entity, fx, ONE, type ScriptLandscapeType, Simulation } from '../../src/index.js';
+import { adminCommand, type Entity, fx, ONE, type ScriptLandscapeType, Simulation } from '../../src/index.js';
 import { buildingBlockedCells, placementBlockerVersion } from '../../src/systems/footprint/index.js';
+import { standingWallCells } from '../../src/systems/footprint/wall-joints.js';
 import { claimPalisade, releasePalisadeReservation } from '../../src/systems/palisades/reservation.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -47,6 +48,11 @@ function wallAndSite(): { sim: Simulation; site: Entity } {
   return { sim, site };
 }
 
+function forceFinish(sim: Simulation, site: Entity): void {
+  sim.enqueue(adminCommand({ kind: 'debugCompleteConstruction', target: site }));
+  sim.step();
+}
+
 describe('wall caches', () => {
   it('keep the walk block and the placement version through a claim, its release and build progress', () => {
     const { sim, site } = wallAndSite();
@@ -73,5 +79,21 @@ describe('wall caches', () => {
     const generation = sim.world.componentValueGeneration(Palisade);
     releasePalisadeReservation(sim.world, bystander);
     expect(sim.world.componentValueGeneration(Palisade)).toBe(generation);
+  });
+
+  it('follow walls that stand, fall and swap gates without a rebuild drifting from the stores', () => {
+    const { sim, site } = wallAndSite();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    const before = [...standingWallCells(sim.world, terrain).walls];
+    expect(before).toEqual([terrain.nodeAt(4, 4)]);
+
+    forceFinish(sim, site);
+    expect(standingWallCells(sim.world, terrain).walls.has(terrain.nodeAt(8, 8))).toBe(true);
+    const [first] = [...sim.world.query(Palisade, Position)].sort((a, b) => a - b);
+    if (first === undefined) throw new Error('expected the first wall');
+    sim.world.destroy(first);
+    expect([...standingWallCells(sim.world, terrain).walls]).toEqual([terrain.nodeAt(8, 8)]);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 });
