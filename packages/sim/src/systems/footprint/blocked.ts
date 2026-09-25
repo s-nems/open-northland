@@ -36,7 +36,7 @@ export interface ConstructionPlot {
 
 /** The plots last derived for a world, with the generations they hold for. Of the Building fields only
  *  `buildingType` moves a plot, while `built` progress bumps the value generation on every construction
- *  advance, so a value bump replays the sites against {@link types} instead of rebuilding. */
+ *  advance, so a value bump replays the written buildings against {@link types} instead of rebuilding. */
 interface ConstructionPlotMemo {
   readonly content: ContentSet;
   readonly siteGeneration: number;
@@ -62,11 +62,12 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
     memo.content === content &&
     memo.siteGeneration === siteGeneration &&
     memo.buildingGeneration === buildingGeneration &&
-    (memo.buildingValueGeneration === buildingValueGeneration || sameSiteTypes(world, memo.types))
+    writesKeepSiteTypes(world, memo, buildingValueGeneration)
   ) {
     memo.buildingValueGeneration = buildingValueGeneration;
     return memo.plots;
   }
+  world.journalValueWrites(Building);
   const types = new Map<Entity, number>();
   const plots: ConstructionPlot[] = [];
   for (const e of world.query(UnderConstruction, Building, Position)) {
@@ -89,8 +90,16 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
   return plots;
 }
 
-function sameSiteTypes(world: World, types: ReadonlyMap<Entity, number>): boolean {
-  for (const [site, type] of types) if (world.tryGet(site, Building)?.buildingType !== type) return false;
+/** Whether the Building value writes since the memo's generation left every site's type alone. False
+ *  when the journal cannot cover the span. */
+function writesKeepSiteTypes(world: World, memo: ConstructionPlotMemo, valueGeneration: number): boolean {
+  if (memo.buildingValueGeneration === valueGeneration) return true;
+  const written = world.valueWritesSince(Building, memo.buildingValueGeneration);
+  if (written === null) return false;
+  for (const e of written) {
+    const type = memo.types.get(e);
+    if (type !== undefined && world.tryGet(e, Building)?.buildingType !== type) return false;
+  }
   return true;
 }
 
