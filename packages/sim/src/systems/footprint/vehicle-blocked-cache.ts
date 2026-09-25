@@ -1,9 +1,10 @@
 import type { ContentSet } from '@open-northland/data';
 import { Position, Vehicle } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
+import type { CountedCells } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
-import { sameCells } from './geometry.js';
+import { countsMatchCells, sameCells } from './geometry.js';
 import { vehicleDoorNode, vehicleFootprintNodes } from './vehicle-footprint.js';
 
 // The memoized per-world cache of cells standing vehicles make unwalkable - the vehicle twin of
@@ -17,6 +18,7 @@ interface VehicleBlockedCache {
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
   readonly cells: Set<NodeId>;
+  readonly counts: Uint16Array;
 }
 
 const vehicleBlockedCache = new WeakMap<World, VehicleBlockedCache>();
@@ -49,10 +51,15 @@ function verifyVehicleBlockedCache(world: World, content: ContentSet, terrain: T
     return [];
   }
   const fresh = deriveVehicleBlockedCells(world, content, terrain);
-  if (sameCells(cached.cells, fresh)) return [];
-  return [
-    `vehicleBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - a Vehicle moved outside World.mut`,
-  ];
+  if (!sameCells(cached.cells, fresh)) {
+    return [
+      `vehicleBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - a Vehicle moved outside World.mut`,
+    ];
+  }
+  if (!countsMatchCells(cached.counts, cached.cells)) {
+    return ['vehicleBlockedCells counts disagree with its cells - a rebuild missed a restamp'];
+  }
+  return [];
 }
 
 /** The cells standing vehicles make unwalkable right now. Derived state, never hashed; the returned
@@ -62,6 +69,11 @@ export function vehicleBlockedCells(
   ctx: ContentContext,
   terrain: TerrainGraph,
 ): ReadonlySet<NodeId> {
+  return vehicleBlockedLayer(world, ctx, terrain).cells;
+}
+
+/** {@link vehicleBlockedCells} with its per-node counts, for the dynamic overlay. */
+export function vehicleBlockedLayer(world: World, ctx: ContentContext, terrain: TerrainGraph): CountedCells {
   const membershipGeneration = world.componentGeneration(Vehicle);
   const valueGeneration = world.componentValueGeneration(Vehicle);
   const cached = vehicleBlockedCache.get(world);
@@ -72,18 +84,28 @@ export function vehicleBlockedCells(
     cached.membershipGeneration === membershipGeneration &&
     cached.valueGeneration === valueGeneration
   ) {
-    return cached.cells;
+    return cached;
   }
   const cells = deriveVehicleBlockedCells(world, ctx.content, terrain);
-  vehicleBlockedCache.set(world, {
+  let counts: Uint16Array;
+  if (cached?.terrain === terrain) {
+    counts = cached.counts;
+    for (const cell of cached.cells) counts[cell] = 0;
+  } else {
+    counts = new Uint16Array(terrain.nodeCount);
+  }
+  for (const cell of cells) counts[cell] = 1;
+  const cache: VehicleBlockedCache = {
     membershipGeneration,
     valueGeneration,
     content: ctx.content,
     terrain,
     cells,
-  });
+    counts,
+  };
+  vehicleBlockedCache.set(world, cache);
   world.registerCacheVerifier('vehicleBlockedCells', () =>
     verifyVehicleBlockedCache(world, ctx.content, terrain),
   );
-  return cells;
+  return cache;
 }
