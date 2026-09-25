@@ -6,7 +6,6 @@ import {
   Fleeing,
   Health,
   Owner,
-  Palisade,
   Position,
   Settler,
 } from '../../components/index.js';
@@ -51,10 +50,7 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
   // attackable building of a different player wakes the system. Reached only when no unit-vs-unit / animal
   // trigger fired above, and skipped entirely when no owned unit exists (buildings ≪ units - a cheap tail).
   if (owners.size >= 1) {
-    for (const b of [
-      ...world.query(Building, Health, Position),
-      ...world.query(Palisade, Health, Position),
-    ]) {
+    for (const b of world.query(Building, Health, Position)) {
       const owner = world.tryGet(b, Owner);
       if (owner === undefined || world.get(b, Health).hitpoints <= 0) continue;
       for (const u of owners) if (u !== owner.player) return true;

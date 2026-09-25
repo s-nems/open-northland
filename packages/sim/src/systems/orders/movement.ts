@@ -32,6 +32,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling } from '../movement/nav-state.js';
+import { breakThroughWall } from '../palisades/breach.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
@@ -218,7 +219,12 @@ export const playerOrderSystem: System = (world, ctx) => {
       if (o.attackMove !== undefined) o.attackMove.resume = true;
       continue;
     }
-    if (world.tryGet(e, PathRequest)?.failed) {
+    const request = world.tryGet(e, PathRequest);
+    if (request?.failed) {
+      if (march !== undefined) {
+        const route = { start: request.start, goal: march.goal };
+        if (breakThroughWall(world, ctx, ctx.terrain, e, route, null)) continue;
+      }
       // A failed request is never retried, so the order must be dropped or the unit freezes on it forever.
       // A signpost errand is the original's build-guide task, whose failure is a plain task failure,
       // never a lost note.

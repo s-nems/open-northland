@@ -19,6 +19,7 @@ import type { SystemContext } from '../context.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
+import { invalidateRoutesThrough } from '../landscape/routes.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 export type PalisadeGateAxis = 0 | 1 | 2;
@@ -168,7 +169,17 @@ export function setPalisadeGate(
     health.max = target.wall.maxHitpoints;
   }
   if (blocking) world.add(command.palisade, PalisadeBlocking, {});
+  if (blocking && !command.open) rerouteAroundPalisade(world, terrain, command.palisade);
   return true;
+}
+
+/** A wall that starts blocking turns back every walker whose route runs through it: the walker stops and
+ *  searches again, rather than stepping through a gate that shut in front of it. */
+export function rerouteAroundPalisade(world: World, terrain: TerrainGraph, e: Entity): void {
+  const wall = world.get(e, Palisade);
+  const at = world.get(e, Position);
+  const { hx, hy } = nodeOfPosition(at.x, at.y);
+  invalidateRoutesThrough(world, terrain, new Set(translatedCells(terrain, wall.walk, hx, hy)));
 }
 
 /** The completed gate of `player` standing on `hx,hy` - the anchor itself or any node its closed body
@@ -456,6 +467,7 @@ export function convertPalisadeGate(
   });
   world.add(command.palisade, Health, { hitpoints: wall.maxHitpoints, max: wall.maxHitpoints });
   world.add(command.palisade, PalisadeBlocking, {});
+  rerouteAroundPalisade(world, terrain, command.palisade);
   ctx.events.emit({
     kind: 'palisadePlaced',
     entity: command.palisade,
@@ -513,6 +525,7 @@ export function placePalisade(
     placementWalk: placementWalkOf(terrain, type),
   });
   if (entity === null) return;
+  if (world.has(entity, PalisadeBlocking)) rerouteAroundPalisade(world, terrain, entity);
   repairDamagedPalisade(world, entity);
   ctx.events.emit({ kind: 'palisadePlaced', entity, at: { hx: command.x, hy: command.y } });
 }

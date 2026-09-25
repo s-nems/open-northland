@@ -19,7 +19,7 @@ import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
-import { palisadeBlockingCellsOccupied } from '../palisades/index.js';
+import { palisadeBlockingCellsOccupied, rerouteAroundPalisade } from '../palisades/index.js';
 import { holdsPalisadeClaim } from '../palisades/reservation.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
@@ -126,7 +126,11 @@ function finishSite(
     mutable.repairing = false;
     mutable.reservation = null;
     world.remove(e, UnderConstruction);
-    if (!world.has(e, PalisadeBlocking)) world.add(e, PalisadeBlocking, {});
+    // A mended wall already blocks; only a new segment can stand in someone's route.
+    if (!world.has(e, PalisadeBlocking)) {
+      world.add(e, PalisadeBlocking, {});
+      if (ctx.terrain !== undefined) rerouteAroundPalisade(world, ctx.terrain, e);
+    }
     fillHealth(world, e);
     ctx.events.emit({ kind: 'palisadeFinished', entity: e });
     return;

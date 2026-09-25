@@ -244,7 +244,14 @@ function actingMode(
  *  left standing, its stale spec re-acquires ATTACK-style whatever the unit's actual stance says. */
 function liveAttackOrder(world: World, ctx: SystemContext, e: Entity, attacker: SettlerIdentity): boolean {
   if (!world.has(e, AttackOrder)) return false;
-  if (isValidOrderedTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) return true;
+  const order = world.get(e, AttackOrder);
+  if (isValidOrderedTarget(world, ctx, e, attacker, order.target)) return true;
+  // A breach whose wall is down goes back to the target it was opened for.
+  const resume = order.breach?.resume ?? null;
+  if (resume !== null && isValidOrderedTarget(world, ctx, e, attacker, resume)) {
+    world.add(e, AttackOrder, { target: resume });
+    return true;
+  }
   world.remove(e, AttackOrder);
   return false;
 }

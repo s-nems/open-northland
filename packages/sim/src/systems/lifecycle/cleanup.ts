@@ -20,6 +20,7 @@ import { droppedEquipmentOf, scatterSpilledStock, spilledStockOf } from '../econ
 import { removeWorkFlag } from '../economy/work-flag.js';
 import { evictResidentsOf, isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
+import { releaseWallBreaches } from '../palisades/breach.js';
 import { isSoldierJob } from '../readviews/index.js';
 
 /**
@@ -94,6 +95,7 @@ export function razePalisade(world: World, ctx: SystemContext, e: Entity): void 
   const spill = spilledStockOf(world, e);
   world.destroy(e);
   scatterSpilledStock(world, ctx, spill);
+  releaseWallBreaches(world, ctx);
 }
 
 /** Announce a combatant's death, count it against its owner, remove it from the world, and leave its

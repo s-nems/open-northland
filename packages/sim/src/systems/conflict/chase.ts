@@ -13,6 +13,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { breakThroughWall } from '../palisades/breach.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, manhattan, nearestCell } from '../spatial/metric.js';
 import type { CombatantStance, EngageSpec } from './engagement.js';
@@ -118,6 +119,19 @@ export function chase(
   // every tick and the order can never complete.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed) {
+    // A player-driven walk walled off by a palisade breaks through it: toward the ordered target, else toward
+    // the march's goal.
+    if (commanded) {
+      const march = world.tryGet(e, PlayerOrder)?.attackMove;
+      const goal = stance.ordered ? request.goal : march?.goal;
+      const resume = stance.ordered ? target.entity : null;
+      if (
+        goal !== undefined &&
+        breakThroughWall(world, ctx, terrain, e, { start: request.start, goal }, resume)
+      ) {
+        return true;
+      }
+    }
     clearNavState(world, e);
     if (commanded) {
       world.remove(e, AttackOrder);

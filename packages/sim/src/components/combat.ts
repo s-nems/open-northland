@@ -105,9 +105,13 @@ export const Garrison = defineComponent<{ post: Entity; returnTo: { x: Fixed; y:
 /**
  * An explicit attack order on an owned combatant: it chases `target` regardless of sight radius until the
  * target dies or stops being a valid target, then reverts to auto-engagement. A move order or a profession
- * change supersedes it.
+ * change supersedes it. `breach` marks a wall taken on because it barred an ordered walk: the order lets
+ * go when any wall falls and returns to `resume`, the ordered target, or to the march when that is null.
  */
-export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder', 'combat');
+export const AttackOrder = defineComponent<{ target: Entity; breach?: { resume: Entity | null } }>(
+  'AttackOrder',
+  'combat',
+);
 
 /**
  * A projectile in flight - a first-class entity carrying a `Position` advanced each tick toward the point
