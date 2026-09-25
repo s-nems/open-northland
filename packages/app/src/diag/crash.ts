@@ -75,7 +75,10 @@ function showCrashBanner(text: string): void {
     const buttons = document.createElement('div');
     Object.assign(buttons.style, { display: 'flex', gap: '8px' });
     buttons.append(download, dismiss);
-    root.append(title, message, hint, buttons);
+    const browser = document.createElement('small');
+    Object.assign(browser.style, { fontSize: '12px', opacity: '0.7' });
+    browser.textContent = copy.crashRecommendedBrowser;
+    root.append(title, message, hint, buttons, browser);
     document.body.append(root);
     banner = { root, message };
   }
