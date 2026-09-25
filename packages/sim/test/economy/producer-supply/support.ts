@@ -13,7 +13,7 @@ import {
   UnderConstruction,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
+import { cellAnchorNode, fx, type NodeId, ONE, type Simulation } from '../../../src/index.js';
 
 /**
  * The PRODUCER SELF-SERVICE + PORTER drives (`systems/settlers/drives/economy`): a worker
@@ -117,7 +117,8 @@ export function pileAt(sim: Simulation, x: number, y: number, goods: Array<[numb
 }
 
 /** The node id of visual tile (x, y) - walk goals address the doubled half-cell lattice. */
-export function cell(sim: Simulation, x: number, y: number): number {
+export function cell(sim: Simulation, x: number, y: number): NodeId {
   const n = cellAnchorNode(x, y);
-  return sim.terrain?.nodeAt(n.hx, n.hy) as number;
+  if (sim.terrain === undefined) throw new Error('mapped fixture');
+  return sim.terrain.nodeAt(n.hx, n.hy);
 }
