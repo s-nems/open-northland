@@ -31,11 +31,12 @@ export const GatherSelection = defineComponent<{ goodType: number }>('GatherSele
 /**
  * The node a gatherer is taking up and, once drawn, the stance it approaches it from. The stance is
  * drawn at random from the node's work area when the approach starts and kept until the stroke lands,
- * so a walk that takes several planner passes keeps one goal. The stroke cadence
- * (`atomics/stroke-cadence.ts`) then keeps the node and drops the stance, so the next approach draws a
- * fresh one; the gatherer rung returns to the node ahead of any scan, which completes the stroke count
- * banked on it rather than scattering it over the nearest nodes. Removed when the node is gone,
- * extracted or claimed by a colleague, or when the rung picks another.
+ * so a walk that takes several planner passes keeps one goal. After a counted stroke
+ * (`atomics/stroke-cadence.ts`) a transform keeps the node and drops the stance, so the next approach
+ * draws a fresh one, while a split-up keeps both, so the next stroke starts where the last was struck;
+ * the gatherer rung returns to the node ahead of any scan, which completes the stroke count banked on it
+ * rather than scattering it over the nearest nodes. Removed when the node is gone, extracted or claimed
+ * by a colleague, or when the rung picks another.
  */
 export const HarvestFocus = defineComponent<{ node: Entity; stance?: NodeId | undefined }>(
   'HarvestFocus',

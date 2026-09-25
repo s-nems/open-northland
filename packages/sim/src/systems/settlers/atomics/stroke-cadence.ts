@@ -1,18 +1,20 @@
 import {
   type CurrentAtomicState,
   HarvestFocus,
+  Position,
   Settler,
   type SettlerIdentity,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { atomicDuration } from '../../readviews/animations.js';
 
 /**
- * The cadence of a stroke-counted harvest (a transform or split-up clip). Original behavior: a counted
- * stroke that leaves the node standing is followed by the same clip once more, landing nothing, then by
- * one of the three short idle clips, after which the gatherer picks its target and stance afresh. The
- * follow-through and the idle are a fixed cost of every counted stroke; only the idle's slot is random.
+ * What follows a counted stroke that leaves its node standing. Original behavior: after a transform
+ * stroke (tree, herb, wheat) the same clip plays once more and lands nothing, one of the three short idle
+ * clips follows, and the gatherer then picks its target and stance afresh; a split-up stroke (stone, clay,
+ * ore) keeps the target, so the next clip starts at once from the same stance and counts.
  */
 
 /** The running atomic's clock, as `world.mut(e, AtomicClock)` hands it out. */
@@ -27,6 +29,19 @@ export const STROKE_REST_ATOMIC_IDS: readonly number[] = [2, 3, 4];
  *  node from a fresh stance. */
 export function rememberHarvestNode(world: World, settler: Entity, node: Entity): void {
   world.add(settler, HarvestFocus, { node });
+}
+
+/** Remember the part-worked node together with the stance the stroke was struck from, so the next plan
+ *  takes the node up again without moving. */
+export function holdHarvestStance(world: World, ctx: SystemContext, settler: Entity, node: Entity): void {
+  const terrain = ctx.terrain;
+  const position = world.tryGet(settler, Position);
+  if (terrain === undefined || position === undefined) {
+    world.add(settler, HarvestFocus, { node });
+    return;
+  }
+  const { hx, hy } = nodeOfPosition(position.x, position.y);
+  world.add(settler, HarvestFocus, { node, stance: terrain.nodeAtClamped(hx, hy) });
 }
 
 /** Re-arm the just-completed counted stroke as its follow-through: the same clip, no effect. */

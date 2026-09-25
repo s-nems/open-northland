@@ -11,11 +11,12 @@ import {
   GroundDrop,
   HarvestFocus,
   MISC_EQUIP_SLOTS,
+  MineDeposit,
   Position,
   Resource,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, Simulation } from '../../src/index.js';
+import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
 import { wearStepOf } from '../../src/systems/equipment/index.js';
 import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../src/systems/index.js';
 import { STROKE_REST_ATOMIC_IDS } from '../../src/systems/settlers/atomics/stroke-cadence.js';
@@ -24,16 +25,22 @@ import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
-// Original behavior: a counted gathering stroke that leaves its node standing is followed by the same
-// clip once more, landing and wearing nothing, then by one of the three short idle clips; only then does
-// the gatherer pick its target and stance afresh.
+// Original behavior: a counted transform stroke (the chop) that leaves its node standing is followed by
+// the same clip once more, landing and wearing nothing, then by one of the three short idle clips; only
+// then does the gatherer pick its target and stance afresh. A split-up stroke (the chip) keeps the target,
+// so the next clip starts at once from the same stance.
 
 const VIKING = 1;
 const WOODCUTTER = 1;
 const WOOD = 1;
 const CHOP_ATOMIC = 24;
+const MINER = 5;
+const STONE = 4;
+const CHIP_ATOMIC = 25;
 const TOOL_IRON = 12;
 const TREE_YIELD = 4;
+const DEPOSIT_SIZE = 3;
+const DEPOSIT_LEVELS = testContent().goods.find((g) => g.id === 'stone')?.gathering?.depositLevels ?? 0;
 
 /** The rest slots' clips, one length each so the slot drawn is readable off the atomic's duration. */
 const REST_CLIPS = [
@@ -190,5 +197,75 @@ describe('stroke cadence - what follows a counted stroke that leaves the node st
     expect(sim.world.has(cutter, CurrentAtomic)).toBe(false);
     expect(sim.world.get(tree, Felling).chops).toBe(1);
     expect(sim.world.get(cutter, HarvestFocus).node).toBe(tree);
+  });
+});
+
+describe('stroke cadence - a split-up stroke that leaves the deposit standing', () => {
+  function depositScene(seed: number): { sim: Simulation; miner: Entity; deposit: Entity; clip: number } {
+    const sim = new Simulation({ seed, content: contentWithRestClips(), map: grassMap(4, 1) });
+    const miner = settlerAt(sim, { jobType: MINER, position: { x: fx.fromInt(1), y: fx.fromInt(0) } });
+    sim.world.add(miner, Equipment, {
+      boots: null,
+      tool: { goodType: TOOL_IRON, degreeOfUse: fx.fromInt(0) },
+      weapon: null,
+      armor: null,
+      misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+    });
+    const deposit = sim.world.create();
+    sim.world.add(deposit, Position, { x: fx.fromInt(2), y: fx.fromInt(0) });
+    sim.world.add(deposit, Resource, {
+      goodType: STONE,
+      remaining: DEPOSIT_SIZE,
+      harvestAtomic: CHIP_ATOMIC,
+    });
+    stampResourceFootprintData(sim.world, deposit, anchorOnlyFootprint());
+    sim.world.add(deposit, MineDeposit, { initial: DEPOSIT_SIZE, levels: DEPOSIT_LEVELS, strikes: 0 });
+    const clip = sim.content.atomicAnimations.find((a) => a.name === 'viking_mine')?.length ?? 0;
+    expect(clip).toBeGreaterThan(0);
+    return { sim, miner, deposit, clip };
+  }
+
+  /** The terrain node under the miner's tile (1,0): the stance its chips are struck from. */
+  function minerNode(sim: Simulation): number {
+    if (sim.terrain === undefined) throw new Error('the scene has a map');
+    const { hx, hy } = cellAnchorNode(1, 0);
+    return sim.terrain.nodeAt(hx, hy);
+  }
+
+  function startChip(sim: Simulation, miner: Entity, deposit: Entity, clip: number): void {
+    addCurrentAtomic(sim.world, miner, {
+      atomicId: CHIP_ATOMIC,
+      duration: clip,
+      effect: { kind: 'harvest', resource: deposit, goodType: STONE },
+      targetEntity: deposit,
+      targetTile: null,
+    });
+  }
+
+  it('releases the miner at once, holding the deposit and the stance the chip was struck from', () => {
+    const { sim, miner, deposit, clip } = depositScene(1);
+    const step = wearStepOf(ctxOf(sim), TOOL_IRON);
+    startChip(sim, miner, deposit, clip);
+
+    run(sim, clip);
+    expect(sim.world.get(deposit, MineDeposit).strikes).toBe(1);
+    expect(sim.world.get(miner, Equipment).tool?.degreeOfUse).toBe(step);
+    expect(sim.world.has(miner, CurrentAtomic)).toBe(false);
+    const focus = sim.world.get(miner, HarvestFocus);
+    expect(focus.node).toBe(deposit);
+    expect(focus.stance).toBe(minerNode(sim));
+  });
+
+  it('a parked order releases the miner the same way, the deposit and stance still held', () => {
+    const { sim, miner, deposit, clip } = depositScene(1);
+    startChip(sim, miner, deposit, clip);
+    sim.world.add(miner, DeferredOrder, { command: { kind: 'moveUnit', entity: miner, x: 0, y: 0 } });
+    run(sim, clip);
+    expect(sim.world.has(miner, CurrentAtomic)).toBe(false);
+    expect(sim.world.get(deposit, MineDeposit).strikes).toBe(1);
+    expect(sim.world.get(miner, HarvestFocus)).toEqual({
+      node: deposit,
+      stance: minerNode(sim),
+    });
   });
 });

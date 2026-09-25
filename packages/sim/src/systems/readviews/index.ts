@@ -11,6 +11,7 @@ export {
   atomicStartDirection,
   isInterruptibleAtomic,
   isStrokeCountedAtomic,
+  isTransformAtomic,
 } from './animations.js';
 export {
   type BuildingCombatClass,

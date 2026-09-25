@@ -97,8 +97,7 @@ function harvestOnce(sim: Simulation, settler: Entity, node: Entity, good: numbe
 }
 
 /** Chip one unit off `deposit`: the fixture MINER's pairing has no track, so a unit costs the record's
- *  default strokes. Every counted stroke starts its own atomic once the previous stroke's follow-through
- *  and rest have run out. */
+ *  default strokes. A chip releases the miner at once, so every counted stroke starts its own atomic. */
 function chipUnit(sim: Simulation, settler: Entity, deposit: Entity): void {
   for (let stroke = 0; stroke < DEFAULT_BASE_REPEAT_COUNTER; stroke++) {
     harvestOnce(sim, settler, deposit, STONE, HARVEST_STONE);
@@ -294,7 +293,7 @@ describe('mining - end-to-end through the real schedule', () => {
     // Strip: miner@0, a stone deposit@3, a warehouse store@4 (a real typed store - a delivery sink must
     // be a Building/Vehicle, never a bare loose pile).
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(6, 1) });
-    makeMiner(sim, 0, 0);
+    const miner = makeMiner(sim, 0, 0);
     placeDeposit(sim, 3, 0);
     const store = sim.world.create();
     sim.world.add(store, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
@@ -303,9 +302,24 @@ describe('mining - end-to-end through the real schedule', () => {
 
     let maxStone = 0;
     const violations: string[] = [];
+    // The stances a unit's chips are struck from: the miner holds its stance between the chips of one
+    // unit, so each set has one member.
+    const stancesPerUnit: Set<string>[] = [];
+    let unitStances = new Set<string>();
+    let dropsSeen = 0;
     for (let i = 0; i < 900; i++) {
       sim.step();
       maxStone = Math.max(maxStone, totalStone(sim));
+      if (sim.world.tryGet(miner, CurrentAtomic)?.effect.kind === 'harvest') {
+        const p = sim.world.get(miner, Position);
+        unitStances.add(`${p.x},${p.y}`);
+      }
+      const drops = oreDrops(sim).length;
+      if (drops > dropsSeen) {
+        stancesPerUnit.push(unitStances);
+        unitStances = new Set<string>();
+      }
+      dropsSeen = drops;
       if (violations.length === 0) {
         const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
         if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
@@ -322,5 +336,8 @@ describe('mining - end-to-end through the real schedule', () => {
     expect(maxStone).toBe(DEPOSIT_SIZE);
     expect(totalStone(sim)).toBe(DEPOSIT_SIZE);
     expect(violations).toEqual([]);
+    // …and the miner chipped every unit from one stance, without a walk between its strokes.
+    expect(stancesPerUnit).toHaveLength(DEPOSIT_SIZE);
+    expect(stancesPerUnit.map((s) => s.size)).toEqual(new Array(DEPOSIT_SIZE).fill(1));
   });
 });

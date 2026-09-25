@@ -62,12 +62,27 @@ export function isStrokeCountedAtomic(
   settler: SettlerIdentity,
   atomicId: number,
 ): boolean {
+  return (
+    atomicCarriesEvent(content, settler, atomicId, ATOMIC_EVENT_TYPE_SPLIT_UP) ||
+    atomicCarriesEvent(content, settler, atomicId, ATOMIC_EVENT_TYPE_TRANSFORM)
+  );
+}
+
+/** Whether the clip a settler plays for `atomicId` carries a transform work event: the strokes that run
+ *  the stroke cadence (`atomics/stroke-cadence.ts`), as opposed to a split-up's strokes chained in place. */
+export function isTransformAtomic(content: ContentSet, settler: SettlerIdentity, atomicId: number): boolean {
+  return atomicCarriesEvent(content, settler, atomicId, ATOMIC_EVENT_TYPE_TRANSFORM);
+}
+
+function atomicCarriesEvent(
+  content: ContentSet,
+  settler: SettlerIdentity,
+  atomicId: number,
+  eventType: number,
+): boolean {
   const name = atomicClipName(content, settler, atomicId);
   const anim = name === undefined ? undefined : atomicAnimationByName(content, name);
-  if (anim === undefined) return false;
-  return anim.events.some(
-    (e) => e.type === ATOMIC_EVENT_TYPE_SPLIT_UP || e.type === ATOMIC_EVENT_TYPE_TRANSFORM,
-  );
+  return anim !== undefined && anim.events.some((e) => e.type === eventType);
 }
 
 /**

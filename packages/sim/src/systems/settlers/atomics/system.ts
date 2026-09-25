@@ -4,8 +4,10 @@ import {
   DeferredOrder,
   HarvestFocus,
   removeCurrentAtomic,
+  Settler,
 } from '../../../components/index.js';
 import type { System } from '../../context.js';
+import { isTransformAtomic } from '../../readviews/index.js';
 import { applyEffect } from './effects/apply.js';
 import {
   applyPendingHitReactions,
@@ -17,7 +19,12 @@ import { continuesHarvest } from './effects/goods/index.js';
 import { applyAtomicNeedEvents } from './effects/need-events.js';
 import { applyAtomicStockEvents } from './effects/stock-events.js';
 import { emitAtomicSoundCues } from './sound-cue.js';
-import { armStrokeFollowThrough, armStrokeRest, rememberHarvestNode } from './stroke-cadence.js';
+import {
+  armStrokeFollowThrough,
+  armStrokeRest,
+  holdHarvestStance,
+  rememberHarvestNode,
+} from './stroke-cadence.js';
 
 /** Advance every running `CurrentAtomic` and apply its effect on completion. */
 export const atomicSystem: System = (world, ctx) => {
@@ -58,17 +65,22 @@ export const atomicSystem: System = (world, ctx) => {
     }
     const extracted = applyEffect(world, ctx, e, atomic);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: completedAtomicId });
-    // A counted stroke that leaves its node part-worked runs the stroke cadence, re-arming in place so
-    // this iteration stays safe; the stroke that extracts hands the settler straight back to the planner.
-    // "Non-interruptible" protects the clip in flight, not the whole job, so a parked order releases the
-    // settler at either boundary.
+    // A transform stroke that leaves its node part-worked runs the stroke cadence, re-arming in place so
+    // this iteration stays safe; a split-up stroke hands the settler back to the planner holding its
+    // stance, and so does the stroke that extracts. "Non-interruptible" protects the clip in flight, not
+    // the whole job, so a parked order releases the settler at either boundary.
     const parked = world.has(e, DeferredOrder);
     if (atomic.effect.kind === 'harvest') {
       if ((extracted ?? 0) === 0 && continuesHarvest(world, atomic.effect.resource)) {
-        rememberHarvestNode(world, e, atomic.effect.resource);
-        if (!parked) {
-          armStrokeFollowThrough(atomic, clock, atomic.effect.resource);
-          continue;
+        const identity = world.tryGet(e, Settler);
+        if (identity !== undefined && isTransformAtomic(ctx.content, identity, atomic.atomicId)) {
+          rememberHarvestNode(world, e, atomic.effect.resource);
+          if (!parked) {
+            armStrokeFollowThrough(atomic, clock, atomic.effect.resource);
+            continue;
+          }
+        } else {
+          holdHarvestStance(world, ctx, e, atomic.effect.resource);
         }
       } else if (world.has(e, HarvestFocus)) {
         world.remove(e, HarvestFocus);
