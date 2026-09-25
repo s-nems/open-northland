@@ -38,12 +38,13 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 /**
  * BUILD - mend the nearest damaged building that is safe to reach, else keep a useful automatic crew
  * assignment stable, otherwise move the builder to the nearest reachable site with material to fetch or
- * delivered labor to install, and with no task anywhere wait beside a site. Player pins and unfinished
- * workplace bindings are strict: their builders stay with that site even while another has work.
+ * delivered labor to install, and with no task anywhere wait beside a site. Wall segments, repairs
+ * included, come after every building site. Player pins and unfinished workplace bindings are strict:
+ * their builders stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
- * behavior. Authored: the safety gate, and repair outranking all automatic construction work, a crew the
- * builder is already on included, where the original recruits only builders with no site.
+ * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
+ * builder is already on included, where the original recruits only builders with no site, and walls last.
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -120,10 +121,23 @@ export function planBuilder(
       accepts,
     );
 
+  // Walls come last: an automatic builder turns to one only once no building site it could stand at is
+  // left, so walls wait out every new house and upgrade. Project rule.
+  const isWall = (site: Entity): boolean => world.has(site, Palisade);
+  let buildingLeft: boolean | undefined;
+  const wallsWait = (): boolean => {
+    buildingLeft ??= nearestSite((candidate) => !isWall(candidate) && canStandAt(candidate)) !== null;
+    return buildingLeft;
+  };
+  const inTurn = (site: Entity): boolean => !isWall(site) || !wallsWait();
+  const nearestInTurn = (accepts: (site: Entity) => boolean): Entity | null =>
+    nearestSite((candidate) => !isWall(candidate) && accepts(candidate)) ??
+    (wallsWait() ? null : nearestSite(accepts));
+
   // Crew membership is sticky while it still has useful work. This avoids re-ranking builders between
   // equally valid sites every time one hammer atomic completes.
   const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
-  const site = crewSite !== null && hasTask(crewSite) ? crewSite : nearestSite(hasTask);
+  const site = crewSite !== null && hasTask(crewSite) && inTurn(crewSite) ? crewSite : nearestInTurn(hasTask);
   if (site !== null && world.has(site, Palisade)) {
     // A segment is claimed before any hammer or delivery, so it has one builder.
     stampAssignment(plan, site, false);
@@ -140,8 +154,8 @@ export function planBuilder(
   // already walking in, else the current crew site, else the nearest. A builder has no other trade to
   // fall back to, and one that drifts off with the idle crowd pays the walk back for every delivery.
   const staging =
-    nearestSite((candidate) => canStandAt(candidate) && hasInboundSupply(plan.inbound, candidate)) ??
-    (crewSite !== null && canStandAt(crewSite) ? crewSite : nearestSite(canStandAt));
+    nearestInTurn((candidate) => canStandAt(candidate) && hasInboundSupply(plan.inbound, candidate)) ??
+    (crewSite !== null && canStandAt(crewSite) && inTurn(crewSite) ? crewSite : nearestInTurn(canStandAt));
   if (staging !== null) {
     stampAssignment(plan, staging, false);
     if (!holdSegment(plan, staging)) return false;
