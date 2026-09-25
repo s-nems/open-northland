@@ -100,21 +100,16 @@ describe('templeAuraSystem - the temple blesses its owner people once a game sec
     expect(hp(sim, beyond)).toBe(POOL);
   });
 
-  it('blesses once per temple in reach, rechecking the religion level before each', () => {
+  it('blesses once a second however many temples reach the person', () => {
     const sim = fresh();
     templeAt(sim, 10);
     templeAt(sim, 14);
-    const settler = personAt(sim, 12, { piety: NEED_SATED_THRESHOLD });
-    const worn = personAt(sim, 13, { piety: ONE });
+    const settler = personAt(sim, 12, { piety: ONE });
 
     blessAt(sim, 0);
 
-    expect(hp(sim, settler)).toBe(POOL + 2 * TEMPLE_AURA_HITPOINTS);
-    // The first blessing lifts the bar past the sated level, so the second adds no religion.
-    expect(piety(sim, settler)).toBe(applyNeedUnits(NEED_SATED_THRESHOLD, TEMPLE_AURA_PIETY_UNITS));
-    expect(piety(sim, worn)).toBe(
-      applyNeedUnits(applyNeedUnits(ONE, TEMPLE_AURA_PIETY_UNITS), TEMPLE_AURA_PIETY_UNITS),
-    );
+    expect(hp(sim, settler)).toBe(POOL + TEMPLE_AURA_HITPOINTS);
+    expect(piety(sim, settler)).toBe(applyNeedUnits(ONE, TEMPLE_AURA_PIETY_UNITS));
   });
 
   it("blesses only the temple owner's people", () => {

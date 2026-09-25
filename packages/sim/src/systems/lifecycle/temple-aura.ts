@@ -35,9 +35,10 @@ const byId = (e: Entity): number => e;
 /**
  * Once per game second, each finished temple at full hitpoints blesses every person of its owner within
  * {@link TEMPLE_AURA_RANGE}: hitpoints above the max, and religion up to the sated level for a settler
- * whose bars move. Each temple blesses on its own, so a person in reach of two is blessed twice. One wound
- * on the temple stops the blessing until it is whole again. Original behavior; the original also blesses
- * children, whose bars this sim does not keep. Approximation: a child's pool here is far smaller than the
+ * whose bars move. One wound on the temple stops the blessing until it is whole again. Original behavior;
+ * the original also blesses children, whose bars this sim does not keep. Deliberate departure: the original
+ * blesses once per temple in reach, so a cluster of temples multiplies the bonus; here a person is blessed
+ * once a second however many temples reach it. Approximation: a child's pool here is far smaller than the
  * original's, so the flat hitpoints fill a child's surplus in seconds.
  */
 export const templeAuraSystem: System = (world, ctx) => {
@@ -52,8 +53,8 @@ export const templeAuraSystem: System = (world, ctx) => {
     const anchors = owner === undefined ? undefined : anchorsByOwner.get(owner);
     if (anchors === undefined) continue;
     const at = world.get(e, Position);
-    const covering = anchorsInReach(anchors, nodeHxOfPosition(at.x, at.y), nodeHyOfPosition(at.y));
-    for (let i = 0; i < covering; i++) bless(world, ctx, e, piety);
+    if (!withinAnyAnchor(anchors, nodeHxOfPosition(at.x, at.y), nodeHyOfPosition(at.y))) continue;
+    bless(world, ctx, e, piety);
   }
 };
 
@@ -75,12 +76,11 @@ function activeTempleAnchors(world: World, temples: readonly Entity[]): Map<numb
   return byOwner;
 }
 
-function anchorsInReach(anchors: readonly number[], hx: number, hy: number): number {
-  let count = 0;
+function withinAnyAnchor(anchors: readonly number[], hx: number, hy: number): boolean {
   for (let i = 0; i < anchors.length; i += 2) {
-    if (hexDistanceBetween(anchors[i] ?? 0, anchors[i + 1] ?? 0, hx, hy) <= TEMPLE_AURA_RANGE) count++;
+    if (hexDistanceBetween(anchors[i] ?? 0, anchors[i + 1] ?? 0, hx, hy) <= TEMPLE_AURA_RANGE) return true;
   }
-  return count;
+  return false;
 }
 
 function bless(world: World, ctx: SystemContext, e: Entity, piety: boolean): void {
