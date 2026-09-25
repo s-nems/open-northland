@@ -408,6 +408,19 @@ describe('workforce module - the pottery and mason hut crews', () => {
     ]);
   });
 
+  it('runs a carrier at the upgraded pottery from the late game on, whatever lies in store', () => {
+    const seat = upgradedSeat();
+    finishRun(seat, seat.pottery, 'work_pottery_01', TILE);
+    const content = workshopsContent();
+    stockAtLine(seat, SUPPLY_GOODS, 'comfort');
+    const carriers = (tick: number) => {
+      const plan = planOf(seat, content, seat.pottery, alone, tick);
+      return { min: plan.carrierMin, target: plan.carrierTarget };
+    };
+    expect(carriers(LATE_GAME_FROM_TICKS - 1)).toEqual({ min: 0, target: 0 });
+    expect(carriers(LATE_GAME_FROM_TICKS)).toEqual({ min: 0, target: 1 });
+  });
+
   it("lets the mason's carrier go while the sites' stone runs short, and hires him back once it is plentiful", () => {
     const seat = workshopSeat();
     seat.apply(seat.decide());

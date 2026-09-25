@@ -77,12 +77,19 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_bakery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
   work_joinery_01: { operatorTarget: 2 },
   // The first potter and mason work alone, so a carrier hauls for them once the builder reserve is full.
-  // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID). The
+  // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID),
+  // except that from the late game the pottery always runs one, since bricks bottleneck the late bills. The
   // pottery's second potter is a minimum post, ahead of the builder reserve, while a building material
   // runs short once the opening run is done, and a surplus post meanwhile, making the crockery.
   work_pottery_00: { carrierTarget: 1 },
   work_mason_hut_00: { carrierTarget: 1 },
-  work_pottery_01: { operatorMin: 2, operatorTarget: 2, operatorSurplus: 2, productGated: true },
+  work_pottery_01: {
+    operatorMin: 2,
+    operatorTarget: 2,
+    operatorSurplus: 2,
+    productGated: true,
+    late: { carrierTarget: 1 },
+  },
   work_mason_hut_01: { operatorTarget: 2, productGated: true },
   work_sewery_01: { operatorTarget: 2 },
   work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
