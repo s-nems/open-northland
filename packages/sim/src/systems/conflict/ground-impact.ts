@@ -9,7 +9,6 @@ import {
   type ProjectileStateView,
   Resting,
   Settler,
-  SettlerProgress,
   Vehicle,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
@@ -19,7 +18,6 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf } from '../footprint/geometry.js';
 import { vehicleFootprintNodes } from '../footprint/index.js';
-import { weaponClassHits, withFightDamageBonus, withHouseDamageExperience } from '../progression/index.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
 import { type PendingHitReaction, resolveCombatHit } from '../settlers/atomics/effects/combat/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
@@ -49,13 +47,12 @@ export function resolveGroundImpact(
 ): boolean {
   const node = terrain.nodeAtClamped(nodeHxOfPosition(proj.aimX, proj.aimY), nodeHyOfPosition(proj.aimY));
   const at = eventAt(proj.aimX, proj.aimY);
-  const experience = world.tryGet(proj.source, SettlerProgress)?.experience;
-  const hits = experience === undefined ? 0 : weaponClassHits(experience, proj.weaponMainType);
   const shooter = ownerOf(world, proj.source);
   let struck = false;
   for (const target of victimsOn(world, ctx, terrain, node)) {
     const material = targetMaterial(world, ctx, target);
-    const damage = burstDamage(world, target, weaponDamageVsMaterial(proj, material), hits);
+    // A stone takes the bare column, as every shot does; the commander's experience steers only its aim.
+    const damage = damageVsTarget(world, target, weaponDamageVsMaterial(proj, material));
     const hitSoundType = glancesOff(world, target, damage) ? undefined : hitSoundVsMaterial(proj, material);
     resolveCombatHit(
       world,
@@ -79,14 +76,6 @@ export function resolveGroundImpact(
     struck = true;
   }
   return struck;
-}
-
-/** The commander's experience scales a stone's blow as it scales a swing's: by the original's formula
- *  against a building, by the authored bonus against anyone else, and a wall takes the bare column. */
-function burstDamage(world: World, target: Entity, base: number, hits: number): number {
-  if (world.has(target, Palisade)) return damageVsTarget(world, target, base);
-  if (world.has(target, Building)) return withHouseDamageExperience(base, hits);
-  return withFightDamageBonus(base, hits);
 }
 
 /** Whether a blow between these owners is an act of war: either side holds `enemy` toward the other, or

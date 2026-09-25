@@ -125,7 +125,7 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     missSounds: { ...shot.weapon.missSounds },
     munitionType: shot.weapon.munitionType,
     speed: shot.weapon.speed,
-    // The render's ballistic-arc origin, frozen at release and never read in flight.
+    // Frozen at release: the render's ballistic-arc origin and the landing blow's direction.
     originX: from.x,
     originY: from.y,
     // Both the sim and render follow this release-time chord; a runner cannot bend an arrow in flight.

@@ -130,6 +130,30 @@ export function hexDistanceBetween(ahx: number, ahy: number, bhx: number, bhy: n
   return rows + Math.max(0, columns - Math.floor(rows / 2));
 }
 
+/** The six map-point headings, numbered as the original numbers them (its walk directions' first six). */
+export const HEX_HEADING = { E: 0, SE: 1, SW: 2, W: 3, NW: 4, NE: 5 } as const;
+export type HexHeading = (typeof HEX_HEADING)[keyof typeof HEX_HEADING];
+/** The number of {@link HEX_HEADING}s. */
+export const HEX_HEADING_COUNT = 6;
+
+/**
+ * The map-point heading from `(ahx, ahy)` toward `(bhx, bhy)`: the 60-degree sector holding the bearing
+ * on the map-point grid, odd rows shifted half a node east as {@link hexDistance} counts them, with E
+ * spanning -30..30 degrees. Original behavior, straight north reading NE, straight south SW and the same
+ * point E. Approximation: the original first truncates the bearing to whole degrees, which moves its
+ * northern sector edges by under a degree; the edges here are exact.
+ */
+export function hexHeadingBetween(ahx: number, ahy: number, bhx: number, bhy: number): HexHeading {
+  // Doubled coordinates keep the half-node row shift integral.
+  const dx = 2 * bhx + (bhy & 1) - (2 * ahx + (ahy & 1));
+  const dy = 2 * (bhy - ahy);
+  if (dy === 0) return dx < 0 ? HEX_HEADING.W : HEX_HEADING.E;
+  // Within 30 degrees of the east-west axis: tan^2(30) = 1/3. No nonzero integer pair sits on the edge.
+  if (3 * dy * dy < dx * dx) return dx > 0 ? HEX_HEADING.E : HEX_HEADING.W;
+  if (dy > 0) return dx > 0 ? HEX_HEADING.SE : HEX_HEADING.SW;
+  return dx >= 0 ? HEX_HEADING.NE : HEX_HEADING.NW;
+}
+
 /** The first column of row `hy` within `range` map points of `centre`, {@link hexDistance} inverted
  *  for one row; meaningful only for a row at most `range` rows away. */
 export function rowReachLeft(centre: HalfCellNode, hy: number, range: number): number {

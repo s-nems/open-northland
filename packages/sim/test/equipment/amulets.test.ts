@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Armor,
+  addWildlife,
   CurrentAtomic,
   Equipment,
   type EquipmentSlot,
@@ -7,6 +9,8 @@ import {
   MISC_EQUIP_SLOTS,
   MoveGoal,
   Settler,
+  WALK_DIRECTION,
+  WalkFacing,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
@@ -36,6 +40,10 @@ const AMULET_DEFENSE = 26;
 const AMULET_CRITICAL_HIT = 27;
 const AMULET_SPEED = 28;
 const POTION_FOOD = 14;
+/** The fixture's leather armor, `blockingValue 10`. */
+const LEATHER_CLASS = 1;
+/** An animal tribe of the fixture. */
+const BOAR_TRIBE = 12;
 
 const ATTACK_SWING = { atomicId: 81, elapsed: 4, duration: 4 } as const;
 const HP = 10_000;
@@ -97,6 +105,16 @@ describe('combat amulets', () => {
     expect(strike(s, strong.attacker, strong.target)).toBe(75); // trunc(151 / 2)
   });
 
+  it('scales the blow after the hit direction and the armor, then the defense halves it', () => {
+    const s = sim();
+    const { attacker, target } = duel(s, [worn(AMULET_STRENGTH)], [worn(AMULET_DEFENSE)]);
+    s.world.add(target, Armor, { armorClass: LEATHER_CLASS });
+    // The striker stands east of the target, which faces west: struck from behind, x1.5.
+    s.world.add(target, WalkFacing, { direction: WALK_DIRECTION.W, target: WALK_DIRECTION.W });
+    // trunc(101 * 1.5) = 151, less leather's 10 = 141, strength (141 * 3) >> 1 = 211, defense 211 / 2.
+    expect(strike(s, attacker, target)).toBe(105);
+  });
+
   it('a second copy adds nothing', () => {
     const s = sim();
     const { attacker, target } = duel(
@@ -119,6 +137,7 @@ describe('combat amulets', () => {
     const attacker = needsSettlerAt(s, 1, 0, {});
     carry(s, attacker, [worn(AMULET_STRENGTH)]);
     const beast = s.world.create();
+    addWildlife(s.world, beast, BOAR_TRIBE);
     s.world.add(beast, Health, { hitpoints: HP, max: HP });
     expect(strike(s, attacker, beast)).toBe(151);
   });

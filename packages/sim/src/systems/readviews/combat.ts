@@ -4,9 +4,8 @@ import { armorMaterialOf } from './classes/index.js';
 
 /**
  * The armor material tier a weapon's `damagevalue <material> <value>` table is indexed by - the victim's
- * armor `materialType` (`logicdefines.inc` `ARMOR_MATERIAL_TYPE_*`, l.951). The per-material value is the
- * resolved damage: armor works by column selection, not by subtracting a mitigation. For the four base
- * armor records `materialType == typeId`, so column and armor class coincide there.
+ * armor `materialType` (`logicdefines.inc` `ARMOR_MATERIAL_TYPE_*`, l.951). For the four base armor
+ * records `materialType == typeId`, so column and armor class coincide there.
  */
 export const ARMOR_MATERIAL = {
   /** No armor - a bare target (`damage["0"]`). */
@@ -17,7 +16,7 @@ export const ARMOR_MATERIAL = {
   PLATE: 4,
   /** Stone (unused by the base armor records). */
   STONE: 5,
-  /** A tree/wall target - the weapon's damage-vs-wood column. */
+  /** A tree/wall target - the weapon's damage-vs-wood column, also the one a vehicle takes. */
   WOOD: 6,
   /** A vehicle target reads the same column, `damage[6]`, with an armour of 0 (original behavior,
    *  docs/formats/VEHICLES.md). */
@@ -43,10 +42,9 @@ export const WEAPON_MAIN_TYPE = {
 } as const;
 
 /**
- * The damage a weapon lands on a target of armor `material` - the raw `weapon.damage[material]` value, `0`
- * when the weapon lists none. Nothing is subtracted: the `damagevalue` table pre-tabulates the per-material
- * outcome. The uniform `blockingValue 5` on every base armor record has an unknown engine role and is
- * deliberately not applied.
+ * The column a weapon lands on a target of armor `material` - the raw `weapon.damage[material]` value, `0`
+ * when the weapon lists none. The base a blow's damage starts from, before experience, direction and the
+ * armor's `blockingValue`.
  */
 export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, material: number): number {
   return weapon.damage[String(material)] ?? 0;

@@ -12,18 +12,20 @@ import {
 } from '../../../../../../components/index.js';
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
+import type { Fixed } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import { isStructureTarget } from '../../../../../conflict/targeting.js';
 import { glancesOff } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
-import { damageDealtBy, damageTakenBy, woundBearer } from '../../../../../equipment/index.js';
+import { woundBearer } from '../../../../../equipment/index.js';
 import { grantFightExperience } from '../../../../../progression/index.js';
 import { manhattan } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
 import { spawnCarcasses } from './carcass.js';
+import { landedDamage } from './damage.js';
 import { launchProjectile } from './projectile-launch.js';
 import { collectHitReaction, type PendingHitReaction } from './reaction.js';
 import { frightenStruckAnimal, provokeAnger, provokeHostility } from './reactions.js';
@@ -61,12 +63,16 @@ export function resolveAttackHit(
   resolveCombatHit(world, ctx, attacker, effect.target, effect, pendingReactions, 'melee');
 }
 
-/** The blow a melee swing or a landing projectile delivers: its resolved damage, the striker's weapon
- *  class for the fight-experience bucket, and the impact sound the weapon lists for the victim's material. */
+/** The blow a melee swing or a landing projectile delivers: the weapon's column for the victim (raised
+ *  by the striker's experience on a melee blow), the striker's weapon class for the fight-experience
+ *  bucket, and the impact sound the weapon lists for the victim's material. `from` is where the blow
+ *  comes from, which a person's hit direction reads: a shot's release point, or the striker's own
+ *  position when absent. */
 export interface LandingBlow {
   readonly damage: number;
   readonly weaponMainType?: number | null;
   readonly hitSoundType?: number | null;
+  readonly from?: { readonly x: Fixed; readonly y: Fixed };
 }
 
 /**
@@ -98,9 +104,8 @@ function meleeTargetOutOfReach(
 
 /**
  * Land one combat blow, shared by a melee swing at its ATTACK frame and a ranged projectile on contact so
- * the two cannot drift. `blow.damage` is the `weapon.damagevalue[targetMaterial]` column value, with the
- * striker's experience on a melee blow; the striker's and the target's carried amulets adjust it here, on
- * contact. Original behavior: only a living human striker's amulets count, so a defence-mode building's shot
+ * the two cannot drift. {@link landedDamage} turns `blow.damage` into the hitpoints taken, on contact.
+ * Original behavior: only a living human striker's amulets count, so a defence-mode building's shot
  * carries none. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end of the tick. A dead
  * attacker is tolerated, since a dead archer's arrow still lands. A `collateral` blow, a siege burst on a side
  * not at war with the shooter, wounds as any other but provokes no stance change and records no attack.
@@ -118,8 +123,8 @@ export function resolveCombatHit(
   // corpse, which earns nothing and provokes no one, the same as a shot that is never loosed at one.
   const pool = world.tryGet(target, Health);
   if (pool === undefined || pool.hitpoints <= 0) return;
-  const struck = damageDealtBy(world, ctx, attacker, blow.damage);
-  const damage = damageTakenBy(world, ctx, target, struck);
+  const from = blow.from ?? world.tryGet(attacker, Position);
+  const damage = landedDamage(world, ctx, attacker, target, blow.damage, from);
   const weaponMainType = blow.weaponMainType ?? undefined;
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`. A connect
   // fully absorbed by armor still cues, since the blade touched.
@@ -139,7 +144,8 @@ export function resolveCombatHit(
   }
   // Nothing else follows a blow that glances off a wall: no wound, no provocation, no experience.
   if (glancesOff(world, target, blow.damage)) return;
-  // A blow counts as damaging by its damage value, so an overkill still earns fight experience.
+  // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
+  // behavior: a blow that does no damage earns none, melee or ranged.
   const dealtDamage = damage > 0;
   // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
   // spared. Nothing regenerates a human here, so the flag's whole effect is this zero.

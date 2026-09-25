@@ -13,6 +13,7 @@ import {
   NeedOrder,
   Owner,
   Palisade,
+  Person,
   PlayerOrder,
   Position,
   Resting,
@@ -25,11 +26,12 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isManningShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
 import { clearNavState, isTravelling } from '../movement/nav-state.js';
+import { faceToward } from '../movement/turning.js';
 import { weaponClassHits, withFightExperience } from '../progression/index.js';
 import {
   isAnimalTribe,
@@ -171,6 +173,7 @@ export function engageCombatant(
   if (dozing) removeCurrentAtomic(world, e);
   holdPrey(world, e, spec, target);
   if (inReachAndStanding(dist, weapon, travelling && !arrivedAtGoal(world, e, terrain))) {
+    turnToStrike(world, terrain, e, combatTargetNode(world, ctx, terrain, here, target));
     swingAt(world, ctx, e, attacker, owned, target, weapon);
     return;
   }
@@ -358,6 +361,14 @@ function arrivedAtGoal(world: World, e: Entity, terrain: TerrainGraph): boolean 
   const centre = positionOfNode(g.x, g.y);
   const p = world.get(e, Position);
   return p.x === centre.x && p.y === centre.y;
+}
+
+/** A person turns to the node it strikes, the facing a blow landing on it later reads for its direction.
+ *  Wildlife carries no facing. */
+function turnToStrike(world: World, terrain: TerrainGraph, e: Entity, targetNode: NodeId): void {
+  if (!world.has(e, Person)) return;
+  const toward = positionOfNode(terrain.xOf(targetNode), terrain.yOf(targetNode));
+  faceToward(world, e, world.get(e, Position), toward);
 }
 
 function swingAt(

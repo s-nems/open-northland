@@ -32,6 +32,8 @@ export const HERO = 42; // hero band - its swings feed the `hero general` track 
 
 export const CHAIN_CLASS = 3; // armor typeId/material 3
 export const PLATE_CLASS = 4; // armor typeId/material 4
+/** The `blockingValue` of both armor records, the base data's 5. */
+export const ARMOR_BLOCKING = 5;
 
 export const ATTACK_ATOMIC = 81;
 export const ATTACKED_ATOMIC = 82;
@@ -159,8 +161,20 @@ export function combatCadenceContent(): ContentSet {
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
     weapons: [...weaponsFor(VIKING), ...weaponsFor(SAXON)],
     armor: [
-      { typeId: CHAIN_CLASS, id: 'chain_armor', goodType: 35, materialType: 3, blockingValue: 5 },
-      { typeId: PLATE_CLASS, id: 'plate_armor', goodType: 36, materialType: 4, blockingValue: 5 },
+      {
+        typeId: CHAIN_CLASS,
+        id: 'chain_armor',
+        goodType: 35,
+        materialType: 3,
+        blockingValue: ARMOR_BLOCKING,
+      },
+      {
+        typeId: PLATE_CLASS,
+        id: 'plate_armor',
+        goodType: 36,
+        materialType: 4,
+        blockingValue: ARMOR_BLOCKING,
+      },
     ],
     tribes: [
       // A `jobEnables` edge makes each a civilization (not an animal - isAnimalTribe is false), so the two

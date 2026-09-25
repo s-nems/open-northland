@@ -25,7 +25,7 @@ describe('combat damage - armor material column (the AP asymmetry)', () => {
     { job: SOLDIER_SWORD_LONG, armor: CHAIN_CLASS, expected: 2090, desc: 'long sword vs chain' },
   ];
   for (const { job, armor, expected, desc } of cases) {
-    it(`${desc} → ${expected} damage (the material column, no blockingValue subtracted)`, () => {
+    it(`${desc} → ${expected} damage (the material column is the swing's base)`, () => {
       const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
       const attacker = fighterAt(sim, 0, 0, VIKING, job);
       fighterAt(sim, 1, 0, OTHER, null, { armorClass: armor }); // an armored enemy, 2 nodes away (in band [1,2])

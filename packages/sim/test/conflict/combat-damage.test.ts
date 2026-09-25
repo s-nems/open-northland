@@ -10,9 +10,8 @@ import {
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * The combat damage model: a weapon's `damagevalue` table is indexed by the victim's armor MATERIAL, and
- * the per-material value is the resolved damage. Armor works by column selection, not by subtracting its
- * `blockingValue` (that uniform 5 has an unknown engine role and is not applied).
+ * The combat damage column: a weapon's `damagevalue` table is indexed by the victim's armor MATERIAL. The
+ * armor's `blockingValue` comes off later, when the blow lands (`hit-damage.test.ts`).
  */
 
 const SWORD = 7; // a weapon with damage across materials 0..4 + the structure columns 6/7
@@ -60,7 +59,7 @@ function weapon(id: string): ContentSet['weapons'][number] {
 }
 
 describe('weaponDamageVsMaterial', () => {
-  it('selects the material column verbatim - no blockingValue subtracted', () => {
+  it('selects the material column verbatim', () => {
     const sword = weapon('sword');
     expect(weaponDamageVsMaterial(sword, ARMOR_MATERIAL.NONE)).toBe(100);
     expect(weaponDamageVsMaterial(sword, ARMOR_MATERIAL.CHAIN)).toBe(40);

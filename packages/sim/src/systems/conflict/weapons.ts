@@ -5,6 +5,7 @@ import {
   Building,
   CurrentAtomic,
   Equipment,
+  isWildlife,
   Palisade,
   type SettlerIdentity,
   Vehicle,
@@ -86,13 +87,16 @@ function withReach(weapon: WeaponType): { minRange: number; maxRange: number; we
   return { minRange, maxRange, weapon };
 }
 
-/** The armor material tier a target presents: the column a weapon's `damagevalue[material]` selects
- *  verbatim, with no mitigation subtracted. A worn `Equipment.armor` good overrides a scene-stamped
- *  {@link Armor} tier without falling back to it, and protects regardless of `degreeOfUse` (armor never
- *  wears). */
+/**
+ * The armor material tier a target presents: the column a weapon's `damagevalue[material]` selects. A
+ * worn `Equipment.armor` good overrides a scene-stamped {@link Armor} tier without falling back to it,
+ * and protects regardless of `degreeOfUse` (armor never wears). Original behavior: a building takes the
+ * house column, a vehicle the wood column and every animal the leather one, whatever the beast.
+ */
 export function targetMaterial(world: World, ctx: SystemContext, target: Entity): number {
   if (world.has(target, Building) || world.has(target, Palisade)) return ARMOR_MATERIAL.HOUSE;
   if (world.has(target, Vehicle)) return ARMOR_MATERIAL.VEHICLE;
+  if (isWildlife(world, target)) return ARMOR_MATERIAL.LEATHER;
   const worn = world.tryGet(target, Equipment)?.armor;
   if (worn != null) return armorMaterialForGood(ctx.content, worn.goodType) ?? ARMOR_MATERIAL.NONE;
   const armor = world.tryGet(target, Armor);
@@ -121,6 +125,18 @@ export function damageVsTarget(world: World, target: Entity, damage: number): nu
  *  valency off a wall does nothing at all, and sounds no hit. */
 export function glancesOff(world: World, target: Entity, damage: number): boolean {
   return damage <= 0 && world.has(target, Palisade);
+}
+
+/**
+ * The `blockingValue` a person's armor takes off each blow, read from the same worn good or
+ * {@link Armor} tier as {@link targetMaterial}; 0 without armor or an `[armortype]` record.
+ */
+export function targetBlocking(world: World, ctx: SystemContext, target: Entity): number {
+  const index = contentIndex(ctx.content);
+  const worn = world.tryGet(target, Equipment)?.armor;
+  if (worn != null) return index.armorByGoodType.get(worn.goodType)?.blockingValue ?? 0;
+  const armor = world.tryGet(target, Armor);
+  return armor === undefined ? 0 : (index.armor.get(armor.armorClass)?.blockingValue ?? 0);
 }
 
 /** What one landed blow of a weapon does to a target of one armor material: the resolved damage column

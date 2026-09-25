@@ -30,15 +30,16 @@ export function nextWalkDirection(from: WalkDirection, to: WalkDirection): WalkD
 
 type Point = { readonly x: Fixed; readonly y: Fixed };
 
-export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): void {
-  if (from.x === to.x && from.y === to.y) return;
+/** The screen octant heading from `from` toward `to`; undefined when the two coincide. */
+function headingToward(from: Point, to: Point): WalkDirection | undefined {
+  if (from.x === to.x && from.y === to.y) return undefined;
   const dx = worldX(to.x, to.y) - worldX(from.x, from.y);
   const dy = fx.mul(fx.sub(to.y, from.y), ROW_STEP);
   // Nearest screen octant for an off-node recovery leg; lattice edges lie well away from the octant
   // boundaries, so their eight headings are exact.
   const horizontal = Math.abs(dy) * OCTANT_TAN_SCALE <= Math.abs(dx) * OCTANT_EDGE_TAN;
   const vertical = Math.abs(dx) * OCTANT_TAN_SCALE <= Math.abs(dy) * OCTANT_EDGE_TAN;
-  const target: WalkDirection = horizontal
+  return horizontal
     ? dx > 0
       ? E
       : W
@@ -53,9 +54,30 @@ export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): 
         : dx > 0
           ? NE
           : NW;
+}
+
+export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): void {
+  const target = headingToward(from, to);
+  if (target === undefined) return;
   const facing = world.tryGet(e, WalkFacing);
   if (facing === undefined) world.add(e, WalkFacing, { direction: INITIAL_DIRECTION, target });
   else if (facing.target !== target) world.mut(e, WalkFacing).target = target;
+}
+
+/**
+ * Turn a standing human to look from `from` toward `to` at once, as a swing faces its target.
+ * Approximation: the turn takes no ticks, since a swing's own clip starts facing its target.
+ */
+export function faceToward(world: World, e: Entity, from: Point, to: Point): void {
+  const heading = headingToward(from, to);
+  if (heading === undefined) return;
+  const facing = world.tryGet(e, WalkFacing);
+  if (facing === undefined) world.add(e, WalkFacing, { direction: heading, target: heading });
+  else if (facing.direction !== heading || facing.target !== heading) {
+    const turned = world.mut(e, WalkFacing);
+    turned.direction = heading;
+    turned.target = heading;
+  }
 }
 
 /** The last turn tick also advances the step accumulator; earlier turn ticks hold it. */

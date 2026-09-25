@@ -108,13 +108,19 @@ function land(
     world.destroy(p);
     return;
   }
-  // The victim's armor picks the damage column and the impact sound, as a melee swing's does.
+  // The victim's armor picks the damage column and the impact sound, as a melee swing's does. Original
+  // behavior: the blow comes from where the shot was loosed, which a person's hit direction reads.
   const material = targetMaterial(world, ctx, victim);
   const damage = damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material));
   const hitSoundType = glancesOff(world, victim, damage)
     ? null
     : (hitSoundVsMaterial(proj, material) ?? null);
-  const blow = { damage, weaponMainType: proj.weaponMainType, hitSoundType };
+  const blow = {
+    damage,
+    weaponMainType: proj.weaponMainType,
+    hitSoundType,
+    from: { x: proj.originX, y: proj.originY },
+  };
   // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
   resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, 'projectile');
   ctx.events.emit({

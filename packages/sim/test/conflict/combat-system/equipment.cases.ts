@@ -26,10 +26,10 @@ function wearArmor(sim: Simulation, e: Entity, goodType: number | null): void {
 }
 
 describe('combatSystem - armor material column (the target armor material join)', () => {
-  // The fixture's test_axe lists `damage { "0": 50, "1": 60 }`; leather (armor class 1, material 1).
-  // Armor selects the damage COLUMN (no blockingValue subtracted): a viking woodcutter hits an
-  // UNARMORED target for 50 (material 0) and a leather-clad one for 60 (material 1); a column the
-  // weapon lists no value for resolves to 0.
+  // The fixture's test_axe lists `damage { "0": 50, "1": 60, "2": 50 }`; leather (armor class 1,
+  // material 1). Armor selects the swing's damage COLUMN: a viking woodcutter swings 50 at an UNARMORED
+  // target (material 0) and 60 at a leather-clad one (material 1); a column the weapon lists no value
+  // for resolves to 0. The armor's blockingValue comes off later, when the blow lands.
 
   it('an unarmored target (no Armor) takes the material-0 damage (unchanged behavior)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
@@ -47,7 +47,7 @@ describe('combatSystem - armor material column (the target armor material join)'
     });
   });
 
-  it('an armored target takes the per-material damage column (no blockingValue subtracted)', () => {
+  it('an armored target selects the per-material damage column for the swing', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
@@ -58,7 +58,7 @@ describe('combatSystem - armor material column (the target armor material join)'
     expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
       kind: 'attack',
       target: enemy,
-      damage: 60, // test_axe damage["1"], the material-1 column, NOT 60 - 10 (armor selects, doesn't mitigate)
+      damage: 60, // test_axe damage["1"], the material-1 column; blockingValue comes off at the hit
       hitSoundType: 83, // test_axe hitSounds["1"]: leather rings differently from bare skin
       maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
@@ -68,13 +68,13 @@ describe('combatSystem - armor material column (the target armor material join)'
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
-    sim.world.add(enemy, Armor, { armorClass: 2 }); // no armor record → the class value (2) is its own column
+    sim.world.add(enemy, Armor, { armorClass: 3 }); // no armor record → the class value (3) is its own column
 
     combatSystem(sim.world, ctxOf(sim));
 
-    // test_axe lists no `damage["2"]`, so the column is 0 - the swing connects but does this material no
+    // test_axe lists no `damage["3"]`, so the column is 0 - the swing connects but does this material no
     // harm (a class with no `[armortype]` record selects its own column rather than crashing). It lists
-    // no `hitSounds["2"]` either, so the blow lands silently.
+    // no `hitSounds["3"]` either, so the blow lands silently.
     expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
       kind: 'attack',
       target: enemy,

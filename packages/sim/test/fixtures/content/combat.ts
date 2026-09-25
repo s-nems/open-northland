@@ -1,9 +1,9 @@
 export const combatContent = {
   // A weapon for the viking woodcutter (tribe 1, job 1) - the CombatSystem resolves an attacker's
   // weapon by (tribeType, jobType). maxRange 2 (the attacker can strike an enemy up to 2 cells away),
-  // damage 50 vs an unarmored target (material "0") and 60 vs leather (material 1; armor selects the
-  // column, nothing is subtracted). Only a Health-bearing settler ever fights, so this is inert in the
-  // golden slice.
+  // damage 50 vs an unarmored target (material "0"), 60 vs leather (material 1, before the armor's
+  // blockingValue) and 50 vs an animal (material 2, the column every beast takes). Only a
+  // Health-bearing settler ever fights, so this is inert in the golden slice.
   weapons: [
     // `hitSounds` mirrors the real `soundtype_Hit` shape: one impact group id per armor material.
     {
@@ -13,8 +13,8 @@ export const combatContent = {
       jobType: 1,
       minRange: 1,
       maxRange: 2,
-      damage: { '0': 50, '1': 60 },
-      hitSounds: { '0': 82, '1': 83 },
+      damage: { '0': 50, '1': 60, '2': 50 },
+      hitSounds: { '0': 82, '1': 83, '2': 82 },
     },
     // A weapon for the animal tribe (tribe 9, job 1) so an animal combatant CAN resolve a weapon -
     // this is what makes the combat-system test of the animal-exclusion meaningful: the animal is
@@ -54,7 +54,7 @@ export const combatContent = {
     },
     // The HUNTER's weapon (viking tribe 1, job 15 - `JOB_TYPE_HUMAN_HUNTER`) - so a hunter combatant
     // resolves a weapon and can strike `catchable` prey (the hunter-strike mechanic). damage 70 vs an
-    // unarmored (class 0) target; the original binds `setatomic 15 81 "..._hunter_attack"` (atomic 81).
+    // unarmored (class 0) target and an animal (class 2); the original binds `setatomic 15 81 "..._hunter_attack"` (atomic 81).
     // A RANGED weapon (a bow): `minRange 3, maxRange 17` mirrors the real `hunter_bow`
     // (`minimumrange 3`/`maximumrange 17` in `DataCnmd/types/weapons.ini`) - it CANNOT fire on a target
     // closer than 3 cells, the case the CombatSystem's minRange band enforces.
@@ -66,8 +66,8 @@ export const combatContent = {
       jobType: 15,
       minRange: 3,
       maxRange: 17,
-      damage: { '0': 70 },
-      hitSounds: { '0': 77 },
+      damage: { '0': 70, '2': 70 },
+      hitSounds: { '0': 77, '2': 77 },
       missSounds: { '1': 78, '2': 79 },
     },
     // A weapon for the CATCHABLE-and-PROVOKABLE deer (tribe 14, keyed by tribe alone) - so once a
@@ -87,7 +87,7 @@ export const combatContent = {
   armor: [
     // Leather (class 1): a combatant stamped `Armor{armorClass:1}`, or wearing an `Equipment.armor`
     // slot holding `goodType` 1, resolves hits through this record's material column (test_axe
-    // `damage["1"]` = 60; `blockingValue` is deliberately NOT subtracted, see readviews/combat.ts).
+    // `damage["1"]` = 60), less its `blockingValue` on every blow that lands.
     { typeId: 1, id: 'leather', goodType: 1, blockingValue: 10 },
   ],
 };

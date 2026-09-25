@@ -58,13 +58,14 @@ export type AtomicEffect =
   /** The settler runs one drill repetition inside a barracks, charged against the errand's remaining
    *  drill time. Nothing else accrues: the TRAINING bucket grants no experience. */
   | { readonly kind: 'exercise' }
-  /** The settler swings at `target`, subtracting `damage` from its `Health.hitpoints`, clamped at 0.
-   *  `damage` arrives already resolved from the weapon's `damagevalue[targetMaterial]`. A `target` with
-   *  no `Health` is a no-op. */
+  /** The settler swings at `target`, landing a blow that takes hitpoints off it, clamped at 0. A
+   *  `target` with no `Health` is a no-op. */
   | {
       readonly kind: 'attack';
       readonly target: Entity;
-      /** A melee blow's damage against `target`; a ranged swing resolves its own on contact. */
+      /** A melee blow's base against `target`: the weapon's `damagevalue[targetMaterial]` column raised by
+       *  the striker's fight experience, before the hit's own modifiers. A ranged swing resolves its own
+       *  on contact. */
       readonly damage: number;
       /** The animation's `ATOMIC_EVENT_TYPE_ATTACK` frame the blow lands on; the completion frame when
        *  omitted. */

@@ -15,6 +15,7 @@ import {
   Settler,
   SettlerProgress,
   setMissionBehaviour,
+  WalkFacing,
 } from '../../src/components/index.js';
 import { aiCommand, playerCommand } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -209,6 +210,7 @@ describe('the bits the sim reads', () => {
     expect(sim.world.get(shielded, Health).hitpoints).toBe(before);
 
     const exposed = sim.world.get(attacker, Health).hitpoints;
+    sim.world.remove(attacker, WalkFacing); // no facing reads as facing the striker: the blow lands x1
     resolveCombatHit(sim.world, ctxOf(sim), shielded, attacker, { damage: 25 }, [], 'melee');
     expect(sim.world.get(attacker, Health).hitpoints).toBe(exposed - 25);
   });

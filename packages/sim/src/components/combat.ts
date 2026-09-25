@@ -11,8 +11,8 @@ export const Health = defineComponent<{ hitpoints: number; max: number }>('Healt
 
 /**
  * A combatant's worn armor class - the `[armortype]` tier (`ArmorType.typeId`, 1..4 in base data) whose
- * materialType selects the attacker's damage column in the `weapontypes` x `armortypes` join. The uniform
- * `blockingValue 5` is intentionally not subtracted: its engine role is unreadable.
+ * materialType selects the attacker's damage column in the `weapontypes` x `armortypes` join, and whose
+ * `blockingValue` comes off every blow after the hit direction multiplier. Original behavior.
  */
 export const Armor = defineComponent<{ armorClass: number }>('Armor', 'combat');
 
@@ -143,7 +143,8 @@ export const Projectile = defineComponent<{
   munitionType: number;
   /** The extracted `WeaponType.speed`, stored raw because its unit is unreadable. */
   speed: number;
-  /** The render's ballistic-arc start, frozen at release and never read in flight. */
+  /** The release point: the render's ballistic-arc start, and where the landing blow comes from. Never
+   *  read in flight. */
   originX: Fixed;
   originY: Fixed;
   /** Where the shot comes down, frozen at release. Sim flight and render presentation share this one

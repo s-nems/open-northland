@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, SettlerProgress } from '../../../../src/components/index.js';
+import { CurrentAtomic, Health, SettlerProgress } from '../../../../src/components/index.js';
 import { Simulation } from '../../../../src/index.js';
 import {
   atomicSystem,
@@ -11,7 +11,9 @@ import {
   WEAPON_MAIN_TYPE,
 } from '../../../../src/systems/index.js';
 import {
+  ARMOR_BLOCKING,
   AXE_MAIN_TYPE,
+  CHAIN_CLASS,
   combatCadenceContent,
   ctxOf,
   fighterAt,
@@ -74,6 +76,24 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
     const xp = sim.world.get(attacker, SettlerProgress).experience;
     expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(2);
     expect(xp.size).toBe(1); // no weapon bucket alongside it
+  });
+
+  it("trains nothing when the armor's blockingValue takes the whole blow, and one point when it does not", () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000, armorClass: CHAIN_CLASS });
+    const swing = (damage: number): void => {
+      startSwing(sim, attacker, { target, damage, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SPEAR }, 2);
+      atomicSystem(sim.world, ctxOf(sim));
+    };
+
+    swing(ARMOR_BLOCKING); // the whole blow blocked: no damage, no experience
+    expect(sim.world.get(target, Health).hitpoints).toBe(10_000);
+    expect(sim.world.get(attacker, SettlerProgress).experience.size).toBe(0);
+
+    swing(ARMOR_BLOCKING + 1);
+    expect(sim.world.get(target, Health).hitpoints).toBe(10_000 - 1);
+    expect(sim.world.get(attacker, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
   });
 
   it('a bucket stops at 10000 raw points', () => {
