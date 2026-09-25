@@ -8,6 +8,8 @@ export interface ForcedPauseSeam {
 export interface PauseHolds {
   hold(owner: string): void;
   release(owner: string): void;
+  /** True while any owner holds, so a speed press cannot run the game behind its overlay. */
+  isHeld(): boolean;
 }
 
 /** Owners hold and release independently, so a menu closing over an open sheet leaves the sheet's hold
@@ -23,5 +25,6 @@ export function createPauseHolds(seam: ForcedPauseSeam): PauseHolds {
       if (!owners.delete(owner)) return;
       if (owners.size === 0) seam.releaseForcedPause();
     },
+    isHeld: () => owners.size > 0,
   };
 }

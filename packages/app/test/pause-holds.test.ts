@@ -28,4 +28,15 @@ describe('createPauseHolds', () => {
     holds.release('menu');
     expect(calls).toEqual(['force', 'release']);
   });
+
+  it('reports a hold while any owner keeps one', () => {
+    const holds = createPauseHolds({ forcePause: () => undefined, releaseForcedPause: () => undefined });
+    expect(holds.isHeld()).toBe(false);
+    holds.hold('verdict');
+    holds.hold('menu');
+    holds.release('verdict');
+    expect(holds.isHeld()).toBe(true);
+    holds.release('menu');
+    expect(holds.isHeld()).toBe(false);
+  });
 });

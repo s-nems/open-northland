@@ -82,6 +82,8 @@ export interface GameToolPanelDeps {
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Whether the session clock stands, whoever stopped it; absent, the bar shows its own pause only. */
   readonly clockPaused?: () => boolean;
+  /** True while an overlay holds the game paused (the system menu, the verdict, the mission sheet). */
+  readonly pauseHeld?: () => boolean;
   /** A higher overlay's claim: the panel yields left clicks it covers, so hit priority follows draw order. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
   /** That overlay's screen-px box, which the panel's pop-up lists size against. */
@@ -215,6 +217,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       canPlaceAt: deps.canPlaceAt,
       onSpeedChange: deps.onSpeed,
       ...(deps.clockPaused !== undefined ? { clockPaused: deps.clockPaused } : {}),
+      ...(deps.pauseHeld !== undefined ? { pauseHeld: deps.pauseHeld } : {}),
       screenScale: (c) => screenScale(c, deps.app.renderer.resolution),
       ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
       ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),

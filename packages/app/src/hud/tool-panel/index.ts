@@ -114,6 +114,8 @@ export interface ToolPanelOptions {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Whether the session clock stands, so the bar lights the pause for any stop, not only its own. */
   readonly clockPaused?: () => boolean;
+  /** True while an overlay outside the panel holds the game paused; a speed press then waits. */
+  readonly pauseHeld?: () => boolean;
   /** Client (CSS px) → Pixi screen px mapper, shared with the unit controls. */
   readonly screenScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   /** True when a higher HUD overlay covers this client point; the panel yields the left click there so
@@ -413,7 +415,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const speed = createSpeedControl({
       onSpeedChange: opts.onSpeedChange,
       onShow: (control) => systemBar.setSpeed(control),
-      held: () => windows.mission.isOpen(),
+      held: () => windows.mission.isOpen() || opts.pauseHeld?.() === true,
       ...(opts.clockPaused !== undefined ? { clockPaused: opts.clockPaused } : {}),
     });
     const systemBar = createHudSystemBar(plane, {

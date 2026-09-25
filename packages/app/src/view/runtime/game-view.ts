@@ -433,6 +433,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       owner: localPlayer,
       onSpeed: (spec, cause) => applyGameSpeed(driver, spec, cause),
       clockPaused: () => driver.paused,
+      pauseHeld: pauseHolds.isHeld,
       deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
       overlayReserve: () => minimap?.panelRect() ?? null,
       onSystemMenu: () => systemMenu?.toggle(),

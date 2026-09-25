@@ -13,8 +13,8 @@ export interface SpeedControlDeps {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Every state the bar shows: the player's choice, paused whenever the clock stands. */
   readonly onShow: (control: GameSpeedControl) => void;
-  /** True while a window holds the game paused under it (the mission sheet): a press then waits,
-   *  since resuming the clock would run the game behind that window. */
+  /** True while a window holds the game paused under it (the mission sheet, the system menu, the
+   *  verdict): a press then waits, since resuming the clock would run the game behind that window. */
   readonly held?: () => boolean;
   /** Whether the session clock stands, whoever stopped it: a hold, a sub-mission, the player. */
   readonly clockPaused?: () => boolean;
