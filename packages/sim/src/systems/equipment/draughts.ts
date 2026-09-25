@@ -75,7 +75,8 @@ export function spendSip(world: World, ctx: SystemContext, e: Entity, slot: numb
 /**
  * Take `damage` off a bearer's hitpoints. While the wound would leave it under
  * {@link HEALING_DRAUGHT_BELOW_PCT} of its max, it drinks healing sips first, so a blow that would kill
- * is survived when the carried sips cover it.
+ * is survived when the carried sips cover it. Hitpoints a temple raised above the max stay until the
+ * damage takes them.
  */
 export function woundBearer(world: World, ctx: SystemContext, e: Entity, damage: number): void {
   const health = world.get(e, Health);
@@ -86,5 +87,5 @@ export function woundBearer(world: World, ctx: SystemContext, e: Entity, damage:
     hitpoints += Math.trunc((health.max * draught.restore.healthMax) / 100);
     spendSip(world, ctx, e, draught.slot);
   }
-  world.mut(e, Health).hitpoints = Math.max(0, Math.min(health.max, hitpoints));
+  world.mut(e, Health).hitpoints = Math.max(0, Math.min(Math.max(health.max, health.hitpoints), hitpoints));
 }

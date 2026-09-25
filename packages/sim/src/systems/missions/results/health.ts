@@ -24,7 +24,7 @@ export function healHumansInArea(pass: MissionPass, point: HalfCellNode, range: 
   const { world } = pass;
   for (const e of world.query(Person, Health, Position)) {
     const health = world.get(e, Health);
-    if (health.hitpoints === health.max) continue; // mut-on-change: a full human must not be dirtied
+    if (health.hitpoints >= health.max) continue; // a full human is not dirtied, nor a blessed one lowered
     if (!withinRange(world, e, point, range)) continue;
     world.mut(e, Health).hitpoints = health.max;
   }

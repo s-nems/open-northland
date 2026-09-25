@@ -215,6 +215,18 @@ describe('HealHumansInArea', () => {
     expect(pools.filter((h) => h.hitpoints === h.max)).toHaveLength(1);
     expect(pools.filter((h) => h.hitpoints === 1)).toHaveLength(1);
   });
+
+  it('leaves a human a temple raised above its max where it is', () => {
+    const sim = scriptedSim([firingMission([{ opcode: 'HealHumansInArea', point: POINT, range: AREA }])]);
+    spawn(sim, { player: OWNER });
+    sim.run(IDLE_TICKS);
+    const [blessed] = humansOf(sim, OWNER);
+    if (blessed === undefined) throw new Error('no human spawned');
+    const over = sim.world.get(blessed, Health).max + 1;
+    sim.world.mut(blessed, Health).hitpoints = over;
+    runLoadPass(sim);
+    expect(sim.world.get(blessed, Health).hitpoints).toBe(over);
+  });
 });
 
 describe('the house damage results', () => {

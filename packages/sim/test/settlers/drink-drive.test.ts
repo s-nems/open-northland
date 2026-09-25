@@ -291,6 +291,15 @@ describe('healing draught - below half of max hitpoints', () => {
     expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
   });
 
+  it('a blow on hitpoints a temple raised above the max takes only the damage off', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const blessed = HP_MAX + HP_MAX / 2;
+    const settler = woundedBearer(sim, blessed, [fresh(POTION_HEAL)]);
+    const attacker = needsSettlerAt(sim, 1, 0, {});
+    strike(sim, attacker, settler, 10);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(blessed - 10);
+  });
+
   it('a starvation bite that drops the bearer under half takes a sip', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const half = WHOLE_STEP_POOL / 2;
