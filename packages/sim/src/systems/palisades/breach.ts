@@ -1,6 +1,7 @@
 import {
   AttackOrder,
   Engagement,
+  Owner,
   Palisade,
   PalisadeBlocking,
   PlayerOrder,
@@ -22,11 +23,15 @@ import { clearNavState } from '../movement/nav-state.js';
 import { manhattan } from '../spatial/metric.js';
 import { canonicalById } from '../spatial/nodes.js';
 
+/** Which walls a breach may pick: a player's order breaks any wall its unit may attack, a fighter's own
+ *  chase only an enemy's, so a map's ownerless wall stays up unless the player sends someone at it. */
+export type BreachableWalls = 'attackable' | 'enemy';
+
 /**
- * Turn a player-driven walk that walls block into an attack on the wall barring it, reporting whether it
- * did. `resume` is the ordered target to go back to once the wall falls; for an attack-move it is null and
- * the march resumes instead. A further wall behind is found the same way. Project rule: soldiers ordered
- * past a sealed palisade break through it rather than giving up.
+ * Turn a walk that walls block into an attack on the wall barring it, reporting whether it did. `resume`
+ * is the ordered target to go back to once the wall falls; for an attack-move or a fighter's own chase it
+ * is null, and the march resumes or the fighter picks its enemy again instead. A further wall behind is
+ * found the same way. Project rule: soldiers walled off from their enemy break through rather than give up.
  */
 export function breakThroughWall(
   world: World,
@@ -35,8 +40,9 @@ export function breakThroughWall(
   e: Entity,
   route: { readonly start: NodeId; readonly goal: NodeId },
   resume: Entity | null,
+  walls: BreachableWalls = 'attackable',
 ): boolean {
-  const breach = palisadeBarring(world, ctx, terrain, e, route.start, route.goal);
+  const breach = palisadeBarring(world, ctx, terrain, e, route.start, route.goal, walls);
   if (breach === null) return false;
   clearNavState(world, e);
   const march = world.tryGet(e, PlayerOrder)?.attackMove;
@@ -88,6 +94,7 @@ export function palisadeBarring(
   e: Entity,
   start: NodeId,
   goal: NodeId,
+  walls: BreachableWalls = 'attackable',
 ): Breach | null {
   const settler = world.tryGet(e, Settler);
   if (settler === undefined) return null;
@@ -96,6 +103,7 @@ export function palisadeBarring(
   if (findPath(terrain, start, goal, blocked) !== null) return null;
   const wallAt = new Map<NodeId, Entity>();
   for (const wall of canonicalById(world.query(PalisadeBlocking, Palisade, Position))) {
+    if (walls === 'enemy' && !world.has(wall, Owner)) continue;
     if (!isValidOrderedTarget(world, ctx, e, settler, wall)) continue;
     const at = world.get(wall, Position);
     const { hx, hy } = nodeOfPosition(at.x, at.y);

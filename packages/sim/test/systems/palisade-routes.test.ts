@@ -3,10 +3,12 @@ import {
   AttackOrder,
   Engagement,
   Health,
+  Owner,
   Palisade,
   PathFollow,
   PlayerOrder,
   Position,
+  Stance,
 } from '../../src/components/index.js';
 import {
   type Entity,
@@ -20,6 +22,7 @@ import { findPath } from '../../src/nav/pathfinding/index.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { attackMoveUnit, attackUnit, moveUnit } from '../../src/systems/orders/index.js';
 import { palisadeBarring } from '../../src/systems/palisades/breach.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { fighterAt } from '../conflict/melee-engagement/support.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -494,5 +497,59 @@ describe('an attack-move against a sealed palisade', () => {
     sim.run(20);
     expect(sim.world.has(own, AttackOrder)).toBe(false);
     expect(sim.world.has(own, PlayerOrder)).toBe(false);
+  });
+});
+
+describe('a fighter walled in with its enemy in sight', () => {
+  const SHOOTER = { hx: GATE_X, hy: WALL_ROW - 3 };
+  const PRISONER = { hx: GATE_X, hy: WALL_ROW + 3 };
+
+  /** The prisoner's breach order within `ticks`, or undefined when it never goes for a wall. */
+  function breachOf(sim: Simulation, prisoner: Entity, ticks = 200) {
+    for (let tick = 0; tick < ticks; tick++) {
+      sim.step();
+      const order = sim.world.tryGet(prisoner, AttackOrder);
+      if (order?.breach !== undefined) return order;
+    }
+    return undefined;
+  }
+
+  function walledIn(wallOwner: number | null) {
+    const sim = fresh();
+    const gate = wallRow(sim, wallOwner ?? P0);
+    if (wallOwner === null) for (const wall of sim.world.query(Palisade)) sim.world.remove(wall, Owner);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    sim.step();
+    const shooter = fighter(sim, SHOOTER, P0);
+    const prisoner = fighter(sim, PRISONER, P1);
+    return { sim, shooter, prisoner };
+  }
+
+  it('breaks an enemy wall to get at the enemy, then goes for the enemy', () => {
+    const { sim, shooter, prisoner } = walledIn(P0);
+    const order = breachOf(sim, prisoner);
+    if (order === undefined) throw new Error('expected the prisoner to go for the wall');
+    expect(sim.world.has(order.target, Palisade)).toBe(true);
+    expect(order.breach?.resume).toBeNull();
+
+    // The fixture weapons do not dent a wall, so the breach is made for them.
+    sim.world.mut(order.target, Health).hitpoints = 0;
+    sim.step();
+    expect(sim.world.has(prisoner, AttackOrder)).toBe(false);
+    const hurt = (): boolean => sim.world.get(shooter, Health).hitpoints < sim.world.get(shooter, Health).max;
+    for (let tick = 0; tick < 600 && !hurt(); tick++) sim.step();
+    expect(nodeRow(sim, prisoner).hy).toBeLessThan(WALL_ROW);
+    expect(hurt()).toBe(true);
+  });
+
+  it("leaves a map's ownerless wall standing", () => {
+    const { sim, prisoner } = walledIn(null);
+    expect(breachOf(sim, prisoner)).toBeUndefined();
+  });
+
+  it('holds its post on DEFEND', () => {
+    const { sim, prisoner } = walledIn(P0);
+    sim.world.mut(prisoner, Stance).mode = MILITARY_MODE.DEFEND;
+    expect(breachOf(sim, prisoner)).toBeUndefined();
   });
 });

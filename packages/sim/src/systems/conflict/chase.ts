@@ -146,12 +146,19 @@ export function chase(
       return true;
     }
     // Stand the refused route out for a cadence and count it; from the threshold on, only a refusal that
-    // buildings and resources alone explain releases the target.
+    // buildings and resources alone explain releases the target. A fighter free to leave its spot breaks
+    // an enemy wall that seals it off instead.
     const routes = (engagement.stall?.routes ?? 0) + 1;
     if (
       routes >= SEALED_TARGET_ROUTE_FAILURES &&
       sealedByStructures(world, ctx, terrain, request.start, request.goal)
     ) {
+      if (
+        defend === null &&
+        breakThroughWall(world, ctx, terrain, e, { start: request.start, goal: request.goal }, null, 'enemy')
+      ) {
+        return true;
+      }
       noteUnreachableTarget(world, ctx, e, target.entity);
       markLostWay(world, ctx, e);
       breakOff(world, e, here, defend);
