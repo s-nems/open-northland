@@ -283,3 +283,21 @@ describe('engagement - a crowd on one enemy', () => {
     expect(crowdOn(CROWD, SOLDIER_SWORD_SHORT)).toEqual({ swung: SIDES, flips: 0, holding: CROWD });
   });
 });
+
+describe('engagement - two fighters closing on each other', () => {
+  it('strike once in reach instead of walking through to the side they were dealt', () => {
+    const MAX_TICKS = 200;
+    for (const gap of [12, 14, 16]) {
+      const s = sim();
+      const west = unit(s, 0, P0, MILITARY_MODE.ATTACK, SOLDIER_SWORD_SHORT);
+      const east = unit(s, gap, P1, MILITARY_MODE.ATTACK, SOLDIER_SWORD_SHORT);
+      let swung = false;
+      for (let t = 0; t < MAX_TICKS && !swung; t++) {
+        s.step();
+        swung = [west, east].some((e) => s.world.tryGet(e, CurrentAtomic)?.effect.kind === 'attack');
+        expect(s.world.get(west, Position).x).toBeLessThan(s.world.get(east, Position).x);
+      }
+      expect(swung).toBe(true);
+    }
+  });
+});

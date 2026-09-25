@@ -45,6 +45,13 @@ export class MeleeSlots {
     return this.enRoute.has(cell) && cell !== ownGoal;
   }
 
+  /** Whether a body stands on `cell` or it was dealt earlier this tick: {@link isTaken} without the goals of
+   *  chasers still walking, for a walker that is on the spot before them. */
+  isOccupied(cell: NodeId): boolean {
+    this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
+    return this.standing.has(cell) || this.claimed.has(cell);
+  }
+
   /** Whether `cell` is ground a route can actually deliver to. A cell under another building's body or a
    *  resource is statically walkable but unroutable, and routing denies a stand-in for a dynamically
    *  blocked goal - dealing one would fail the route and cancel an ordered unit's whole attack order. */

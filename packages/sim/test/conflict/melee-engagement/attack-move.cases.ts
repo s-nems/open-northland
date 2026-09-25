@@ -37,9 +37,9 @@ describe('attackMoveUnit - a march that fights everything on the way', () => {
 
     orderAttackMove(sim, a, 9, 0);
     // The direct inverse of the "does not re-engage under a move order" case. A swing needs a standstill
-    // (inReachAndStanding): the march's first tick is already a step begun, and turning back onto the
-    // contact cell is a step of its own, eight ticks on land, so the blow lands on the ninth tick.
-    sim.run(9);
+    // (inReachAndStanding): the march's first tick is already a step begun, which the unit finishes onto
+    // the next node, still in reach, and the blow lands once it stands there.
+    sim.run(10);
 
     expect(sim.world.get(a, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: enemy });
     expect(sim.world.has(a, PlayerOrder)).toBe(true); // and the march is still standing behind the fight
