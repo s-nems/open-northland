@@ -171,6 +171,7 @@ export {
 // independently without restating the sim's travel time.
 export * as systems from './systems/public.js';
 export type { EquipPickEntry } from './systems/readviews/index.js';
+export { heapReach } from './systems/stores/seat-stock.js';
 export type { TradeOffer, TraderView, TradeStopView } from './systems/trade/index.js';
 export type { VehicleStockView, VehicleView } from './systems/vehicles/index.js';
 export { FOG_STATE } from './systems/vision/index.js';

@@ -8,12 +8,15 @@ import {
   Settler,
   SettlerProgress,
   StalledPlacement,
+  Stockpile,
   setStockAmount,
+  WALK_RANGE_NODES,
   WorkFlag,
 } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { nodeOfPosition, Simulation } from '../../../src/index.js';
+import { fx, nodeOfPosition, Simulation } from '../../../src/index.js';
+import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
@@ -42,6 +45,7 @@ import {
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
 import { gathererReach, workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
+import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CLEAR_GROUND_FROM_NODES,
@@ -107,6 +111,8 @@ import {
 const FIXTURE_WOOD_LINES = { unit: 6, short: 12, comfort: 18 };
 
 const FIRST_WORKSHOP_SPOT = { x: 40, y: 16 };
+/** Nodes across the map of the seat-reach case: its far end lies past `WALK_RANGE_NODES` from the HQ. */
+const FAR_MAP_WIDTH = 160;
 const SECOND_WORKSHOP_SPOT = { x: 40, y: 26 };
 const THIRD_WORKSHOP_SPOT = { x: 40, y: 36 };
 
@@ -234,6 +240,36 @@ const holdersOf = (sim: Simulation, good: number) =>
 /** The allocator's hiring ladder: collector posts, workshop staffing tiers, scout, builder reserve. */
 
 describe('workforce module (collectResources)', () => {
+  it("counts the heaps in reach of the seat's buildings as its supply, like the summary bar", () => {
+    // A map wide enough that its far end lies beyond the walk range of every building of the seat.
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(FAR_MAP_WIDTH, 64) });
+    placeHq(sim);
+    sim.step();
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    setStockAmount(sim.world, hq, WOOD, 0);
+    const base = anchorNodeOf(sim.world, hq);
+    if (base === null) throw new Error('setup: the HQ has no anchor node');
+    // An unowned heap at the map's far end, beyond the base's walk range, and one a few tiles from it.
+    const heap = (x: number, y: number, units: number): number => {
+      const e = sim.world.create();
+      sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+      sim.world.add(e, Stockpile, { amounts: new Map([[WOOD, units]]) });
+      const n = nodeOfPosition(fx.fromInt(x), fx.fromInt(y));
+      return hexDistanceBetween(base.hx, base.hy, n.hx, n.hy);
+    };
+    const FAR_UNITS = 40;
+    const NEAR_UNITS = 3;
+    expect(heap(FAR_MAP_WIDTH / 2 - 4, 20, FAR_UNITS)).toBeGreaterThanOrEqual(WALK_RANGE_NODES);
+    expect(heap(15, 10, NEAR_UNITS)).toBeLessThan(WALK_RANGE_NODES);
+    sim.step();
+
+    const ctx = ctxOf(sim);
+    const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), DEFAULT_BUILD_ORDER);
+    expect(supply.units(WOOD)).toBe(NEAR_UNITS);
+    expect(supply.exceeds(WOOD, NEAR_UNITS - 1)).toBe(true);
+    expect(supply.exceeds(WOOD, NEAR_UNITS)).toBe(false);
+  });
+
   it('hires flag collectors beside their resources, one scout, and the builder reserve', () => {
     const sim = aiSim();
     placeHq(sim);
@@ -277,7 +313,7 @@ describe('workforce module (collectResources)', () => {
     );
   });
 
-  it('tops wood/stone up to their late-game targets and adds generic gatherers once the reserve stands', () => {
+  it('tops wood/stone up to their late-game targets once the reserve and the store carriers stand', () => {
     const sim = aiSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
@@ -299,20 +335,10 @@ describe('workforce module (collectResources)', () => {
 
     const commands = [...collectModule.run(sim.world, late(), SEAT)];
     const selections = commands.filter((c) => c.kind === 'setGatherGood');
-    // First posts in plan order, then the stone/wood top-ups (mud stays at one), then one
-    // collect-anything flag (3 first posts, the scout and the late-game builder reserve claimed, the
-    // top-ups take five, and the last man goes generic).
-    expect(selections.map((s) => s.goodType)).toEqual([
-      MUD,
-      STONE,
-      WOOD,
-      STONE,
-      STONE,
-      WOOD,
-      WOOD,
-      WOOD,
-      null,
-    ]);
+    // First posts in plan order, then the stone/wood top-ups (mud stays at one): 3 first posts, the
+    // scout, the HQ's two late-game carriers and the late-game builder reserve claimed, the top-ups take
+    // the four men left, and nobody is left to go generic.
+    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, STONE, STONE, WOOD, WOOD]);
     // Each post gets a node of its own. A good's top-up re-derives the same nearest resource as its
     // first post, so without the decision's claimed-node set the two flags land on one tile - one
     // delivery yard, one pile cap, two gatherers.

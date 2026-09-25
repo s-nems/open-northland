@@ -2,13 +2,12 @@ import { Building, Stockpile, UnderConstruction } from '../../../components/inde
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { FetchableStock } from '../../settlers/targets/index.js';
-import { constructionBillOf, upgradeTierOf } from '../../stores/index.js';
+import { constructionBillOf, seatStockOf, upgradeTierOf } from '../../stores/index.js';
 
 /**
  * Whether the seat can start upgrading `candidate` without starving the site. An upgrade sends the crew
  * out, so a bill good that only the candidate or another site could make (the pottery's own bricks, or
- * the bricks a mason hut needs while the pottery is upgrading) must already be fetchable, beyond what the
+ * the bricks a mason hut needs while the pottery is upgrading) must already be in stock, beyond what the
  * seat's other sites still lack of it. A good no owned building makes is gathered, and never holds an
  * upgrade back.
  */
@@ -23,12 +22,12 @@ export function upgradeBillCovered(
   const type = index.buildings.get(world.get(candidate, Building).buildingType);
   const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
   if (target === undefined) return true;
-  const stock = FetchableStock.of(world, ctx);
+  const stock = seatStockOf(world, player);
   const owed = sitesShortfalls(world, ctx, owned);
   for (const line of target.construction) {
     if (!producedOnlyByIdleBuildings(world, ctx, owned, candidate, line.goodType)) continue;
     const committed = owed.get(line.goodType) ?? 0;
-    if (!stock.exceeds(player, line.goodType, committed + line.amount - 1)) return false;
+    if (!stock.exceeds(line.goodType, committed + line.amount - 1)) return false;
   }
   return true;
 }

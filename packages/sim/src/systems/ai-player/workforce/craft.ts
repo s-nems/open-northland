@@ -11,7 +11,6 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { FetchableStock } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
@@ -20,8 +19,8 @@ import type { SeatSupply, SupplyLine } from './supply.js';
 
 /**
  * One operator seat's products, by stable content ids. A plain list is worked as is. A `glut` seat drops
- * each of its `goods` while the seat holds at least that many units of it fetchable (stores, workshop
- * shelves and heaps: the units nobody is taking), and takes it back once the stock has fallen
+ * each of its `goods` while the seat holds at least that many units of it (the summary bar's figure:
+ * stores, workshop shelves, hands and the heaps in reach), and takes it back once the stock has fallen
  * {@link CRAFT_GLUT_BAND_UNITS} under the glut; while every capped good is dropped it works `otherwise`,
  * or the whole list when there is none. A good with supply lines ({@link SeatSupply}) takes no authored
  * glut: {@link CraftPlan.sink} covers it.
@@ -218,7 +217,6 @@ export function tuneCraftSelections(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
-  const stock = FetchableStock.of(world, ctx);
   // Restricted workplace type -> its operators across the seat, gathered first because a seat's share
   // depends on how many men the whole type employs. Insertion follows the canonical settler walk, so the
   // seats and the emitted command order are both deterministic.
@@ -269,7 +267,7 @@ export function tuneCraftSelections(
         toGoods(
           crew.length === 1 && plan.alone !== undefined
             ? plan.alone
-            : seatProducts(ctx, stock, player, current[seat] ?? [], seats[seat % seats.length] ?? []),
+            : seatProducts(ctx, supply, current[seat] ?? [], seats[seat % seats.length] ?? []),
         ),
       );
     }
@@ -386,8 +384,7 @@ function sameGoods(a: readonly number[], b: readonly number[]): boolean {
  */
 function seatProducts(
   ctx: SystemContext,
-  stock: FetchableStock,
-  player: number,
+  supply: SeatSupply,
   current: readonly number[],
   seat: CraftSeat,
 ): readonly string[] {
@@ -397,7 +394,7 @@ function seatProducts(
     const good = glut === undefined ? undefined : goodTypeByContentId(ctx.content, id);
     if (glut === undefined || good === undefined) return true;
     const dropAt = current.includes(good.typeId) ? glut : glut - CRAFT_GLUT_BAND_UNITS;
-    return !stock.exceeds(player, good.typeId, dropAt - 1);
+    return !supply.exceeds(good.typeId, dropAt - 1);
   });
   if (kept.length > 0) return kept;
   return seat.otherwise ?? seat.goods;

@@ -15,6 +15,9 @@ function minutesToTicks(minutes: number): number {
 export const MID_GAME_FROM_TICKS = minutesToTicks(60);
 export const LATE_GAME_FROM_TICKS = minutesToTicks(90);
 
+/** From when the headquarters and the warehouses run transport carriers (owner's rule): the late game. */
+export const STORE_CARRIERS_FROM_TICKS = LATE_GAME_FROM_TICKS;
+
 /** From when a core workshop (farm, mill, pottery, mason hut) never rests its first craftsman, whatever
  *  its products' stock (authored): a resting farm loses its sown fields and the miller his experience. */
 export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
@@ -28,10 +31,6 @@ export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(30);
  *  (authored; the late game adds a fourth, `build-order/entries.ts`): by then the reserve and the
  *  building goods carry more than the opening's two sites. */
 export const SITES_GROW_FROM_TICKS = minutesToTicks(45);
-
-/** From when the headquarters and the warehouses run transport carriers (authored): the deep late game,
- *  when the mints and druid huts stand and a carrier no longer costs a craftsman. */
-export const STORE_CARRIERS_FROM_TICKS = minutesToTicks(120);
 
 /** When the opening hunter goes back to the pool even while game remains near the base (authored): by
  *  the mid game the farms feed the seat and the man is worth more as a builder. */

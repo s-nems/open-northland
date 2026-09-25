@@ -1,9 +1,8 @@
 import {
   type Fixed,
-  hexDistanceBetween,
+  heapReach,
   nodeOfPosition,
   IDLE_JOB as SIM_IDLE_JOB,
-  WALK_RANGE_NODES,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { readAmountPairs, readNumField, readPosition, readStockpileAmounts } from '../snapshot/index.js';
@@ -56,10 +55,6 @@ interface HalfCellNode {
   readonly hy: number;
 }
 
-/** The anchor bucket a node falls in: one square of `WALK_RANGE_NODES` on the half-cell lattice. */
-const bucketKey = (hx: number, hy: number): string =>
-  `${Math.floor(hx / WALK_RANGE_NODES)}:${Math.floor(hy / WALK_RANGE_NODES)}`;
-
 /**
  * The half-cell node under an entity's `Position`, or null for one that stands nowhere. The cast is
  * the one place `render` names the snapshot's positions as fixed-point: `PositionValue` redeclares
@@ -78,14 +73,9 @@ function nodeOf(components: Readonly<Record<string, unknown>>): HalfCellNode | n
  * a heap on the ground, which the anchors below hand to whoever can reach it; a neutral store standing
  * in reach of two seats would therefore count for both. No decoded map authors one.
  *
- * Stock is every unit the seat holds, wherever it sits: the piles of its buildings and boat hulls, the
- * inventory a building keeps aside while it upgrades, the unit in a settler's hands, and every heap on
- * the ground (a felled trunk, an ore pile, a gatherer's yard heap, an evicted stack; none is owned)
- * strictly under `WALK_RANGE_NODES` of one of the seat's signposts or buildings. The ground term is an
- * approximation of the collecting settler's own limit (`networkLimitAt`): its post-range term, with
- * the seat's buildings standing in for a collector's own radius, and without group catching or terrain
- * connectivity. Counting the hands and the yard keeps the figure still while a gatherer walks a unit
- * from trunk to heap to store; nothing is consumed on that trip.
+ * Stock follows the sim's one seat-stock rule (`seatStockOf`, `systems/stores/seat-stock.ts`), read off the
+ * snapshot here: every owned pile, the inventory a building keeps aside while it upgrades, the unit in a
+ * settler's hands, and every heap on the ground in `heapReach` of the seat's signposts and buildings.
  * Output ordering is total (sorted by id), so the same snapshot yields an identical model every call.
  */
 export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
@@ -133,31 +123,7 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
     const carriedAmount = readNumField(components, 'Carrying', 'amount');
     if (carriedGood !== undefined && carriedAmount !== undefined) addPairs([[carriedGood, carriedAmount]]);
   }
-  // A hexagon of range r spans at most r columns and r rows each way, so an anchor within reach of a
-  // heap sits in the heap's own `WALK_RANGE_NODES` bucket or one of its eight neighbours. Bucketing
-  // the anchors once keeps the cost on the heaps beside a settlement; a seat spread across the map
-  // would otherwise pay one distance test per anchor for every heap between its far corners.
-  const anchorBuckets = new Map<string, HalfCellNode[]>();
-  for (const anchor of anchors) {
-    const key = bucketKey(anchor.hx, anchor.hy);
-    const bucket = anchorBuckets.get(key);
-    if (bucket === undefined) anchorBuckets.set(key, [anchor]);
-    else bucket.push(anchor);
-  }
-  const inReach = (node: HalfCellNode): boolean => {
-    const bx = Math.floor(node.hx / WALK_RANGE_NODES);
-    const by = Math.floor(node.hy / WALK_RANGE_NODES);
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        const bucket = anchorBuckets.get(`${bx + dx}:${by + dy}`);
-        if (bucket === undefined) continue;
-        for (const anchor of bucket) {
-          if (hexDistanceBetween(anchor.hx, anchor.hy, node.hx, node.hy) < WALK_RANGE_NODES) return true;
-        }
-      }
-    }
-    return false;
-  };
+  const inReach = heapReach(anchors);
   for (const heap of heaps) {
     const node = nodeOf(heap);
     if (node !== null && inReach(node)) addPairs(readStockpileAmounts(heap));

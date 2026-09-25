@@ -989,25 +989,21 @@ describe('workforce module - the stores staff carriers only late in the game', (
     });
   });
 
-  it('hires the store carriers at the surplus tier from the store-carrier time', () => {
+  it('hires the store carriers, one per tier, from the store-carrier time', () => {
     const seat = seatOn(aiContent(), [], GROWN_SEAT_MEN);
     const hq = entityOfBuilding(seat.sim, HQ_TYPE);
-    expect(planOf(seat, aiContent(), hq, crewOf(0), STORE_CARRIERS_FROM_TICKS)).toMatchObject({
-      carrierMin: 0,
-      carrierTarget: 0,
-      carrierSurplus: STORE_CARRIERS,
-    });
+    expect(planOf(seat, aiContent(), hq, crewOf(0), STORE_CARRIERS_FROM_TICKS)).toMatchObject(STORE_CARRIERS);
     expect(
       hqCarrierHires(seat, STORE_CARRIERS_FROM_TICKS).map((c) => c.kind === 'assignWorker' && c.jobPriority),
-    ).toEqual(Array.from({ length: STORE_CARRIERS }, () => [CARRIER]));
+    ).toEqual(Array.from({ length: STORE_CARRIERS.carrierSurplus }, () => [CARRIER]));
   });
 
   it('hands early store carriers back as builders', () => {
     const seat = seatOn(aiContent(), [], BUILDER_CAP + SPARE_MEN);
     const hq = entityOfBuilding(seat.sim, HQ_TYPE);
-    for (let i = 0; i < STORE_CARRIERS; i++) hireSpare(seat, hq, CARRIER);
+    for (let i = 0; i < STORE_CARRIERS.carrierSurplus; i++) hireSpare(seat, hq, CARRIER);
     const carriers = seat.crew(hq, CARRIER).sort((a, b) => a - b);
-    expect(carriers).toHaveLength(STORE_CARRIERS);
+    expect(carriers).toHaveLength(STORE_CARRIERS.carrierSurplus);
     expect(
       seat
         .decide()

@@ -107,11 +107,9 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
  *  sites the farthest apart. */
 export const LATE_GAME_CIVILIANS = 60;
 
-/** The transport carriers the HQ and every warehouse run from {@link STORE_CARRIERS_FROM_TICKS} (authored). */
-export const STORE_CARRIERS = 3;
-
-/** The storage plan before {@link STORE_CARRIERS_FROM_TICKS}: no carrier. A store carrier is a luxury that
- *  costs a civilian a craftsman could use. */
+/** The storage plan before {@link STORE_CARRIERS_FROM_TICKS}: no carrier (owner's rule). The builders
+ *  fetch from the gatherers' piles themselves, and the supply governor counts those piles as the seat's
+ *  stock, so a store carrier would only cost a civilian a craftsman could use. */
 const EARLY_STORAGE_STAFFING: BuildingStaffing = {
   operatorMin: 0,
   operatorTarget: 0,
@@ -120,12 +118,20 @@ const EARLY_STORAGE_STAFFING: BuildingStaffing = {
   carrierSurplus: 0,
 };
 
-/** The storage plan from {@link STORE_CARRIERS_FROM_TICKS}: {@link STORE_CARRIERS} carriers, all at the
- *  surplus tier, so a store post never comes ahead of workplace staffing or the builder reserve. */
-const LATE_STORAGE_STAFFING: BuildingStaffing = {
-  ...EARLY_STORAGE_STAFFING,
-  carrierSurplus: STORE_CARRIERS,
+/** The transport carriers the HQ and every warehouse run from {@link STORE_CARRIERS_FROM_TICKS} (authored):
+ *  one ahead of the builder reserve, a second at the target tier, a third from the surplus. */
+export const STORE_CARRIERS: Readonly<Record<'carrierMin' | 'carrierTarget' | 'carrierSurplus', number>> = {
+  carrierMin: 1,
+  carrierTarget: 2,
+  carrierSurplus: 3,
 };
+
+const LATE_STORAGE_STAFFING: BuildingStaffing = { ...EARLY_STORAGE_STAFFING, ...STORE_CARRIERS };
+
+/** The storage plan at `tick`. */
+export function storageStaffing(tick: number): BuildingStaffing {
+  return tick >= STORE_CARRIERS_FROM_TICKS ? LATE_STORAGE_STAFFING : EARLY_STORAGE_STAFFING;
+}
 
 /** The goods whose shortage puts a carrier into the workshop at the minimum tier (authored), by stable
  *  content ids: the building materials only these tiers make. The carrier is hired below a good's short
@@ -178,8 +184,8 @@ function rowPlan(
 
 /**
  * One building's plan this decision, or null for the kinds the allocator never staffs: homes, towers and
- * the barracks are military or residential, not production. A store runs carriers only from
- * {@link STORE_CARRIERS_FROM_TICKS}. A workshop on its opening run keeps to its first craftsman so the run
+ * the barracks are military or residential, not production. A store runs the carriers of its
+ * {@link storageStaffing}. A workshop on its opening run keeps to its first craftsman so the run
  * is not split; `held` is who works there already, which keeps a supply carrier or a product-gated
  * craftsman through the band below the line that hired him. A raw good's own workshop runs without a
  * carrier while that good is short for the sites ({@link rawGoodShort}), and a workshop with nothing left
@@ -193,8 +199,7 @@ export function buildingStaffing(
   type: BuildingType,
   held: HeldStaff,
 ): BuildingStaffing | null {
-  if (type.kind === 'storage')
-    return ctx.tick >= STORE_CARRIERS_FROM_TICKS ? LATE_STORAGE_STAFFING : EARLY_STORAGE_STAFFING;
+  if (type.kind === 'storage') return storageStaffing(ctx.tick);
   if (type.kind !== 'workplace') return null;
   const { plan: row, gateFloor } = rowPlan(ctx, type);
   let plan = row;

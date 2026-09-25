@@ -3,7 +3,7 @@ import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { FetchableStock } from '../../settlers/targets/index.js';
+import { type SeatStock, seatStockOf } from '../../stores/index.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
   type BuildOrderEntry,
@@ -15,7 +15,7 @@ import { isBuilt } from '../seat-roster.js';
 import { COLLECTED_GOOD_IDS } from './collectors/index.js';
 import { plannedOperators } from './staffing-plan.js';
 
-/** A managed good's stock lines, in fetchable units beyond what the seat's sites still lack. */
+/** A managed good's stock lines, in units of the seat's stock beyond what its sites still lack. */
 export interface SupplyLines {
   /** What one site takes of the good: its largest bill line in the build order, else its widest
    *  consuming shelf, else one. */
@@ -132,10 +132,9 @@ function raiseTo(map: Map<number, number>, key: number, value: number): void {
 }
 
 /**
- * One seat's supply this decision: each managed good's surplus (fetchable units minus what the sites
- * still lack) against its {@link SupplyLines} in the decision's game phase. A workshop's own shelf is not
- * fetchable, so a workshop eating its raw good reads as the shortage it is to the builders. An unmanaged
- * good is never short.
+ * One seat's supply this decision: each managed good's surplus (its {@link SeatStock} units minus what
+ * the sites still lack) against its {@link SupplyLines} in the decision's game phase. The stock is the
+ * summary bar's figure, so the bot and the player read the same number. An unmanaged good is never short.
  */
 export class SeatSupply {
   private consumers: ReadonlyMap<number, number> | undefined;
@@ -143,9 +142,8 @@ export class SeatSupply {
   private constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
-    private readonly player: number,
     private readonly owned: readonly Entity[],
-    private readonly stock: FetchableStock,
+    private readonly stock: SeatStock,
     private readonly linesByGood: ReadonlyMap<number, SupplyLines>,
     private readonly surplusByGood: ReadonlyMap<number, number>,
   ) {}
@@ -159,15 +157,20 @@ export class SeatSupply {
   ): SeatSupply {
     const lines = supplyLines(ctx.content, order, gamePhase(ctx.tick));
     const owed = sitesShortfalls(world, ctx, owned);
-    const stock = FetchableStock.of(world, ctx);
+    const stock = seatStockOf(world, player);
     const surplus = new Map<number, number>();
-    for (const good of lines.keys()) surplus.set(good, stock.units(player, good) - (owed.get(good) ?? 0));
-    return new SeatSupply(world, ctx, player, owned, stock, lines, surplus);
+    for (const good of lines.keys()) surplus.set(good, stock.units(good) - (owed.get(good) ?? 0));
+    return new SeatSupply(world, ctx, owned, stock, lines, surplus);
   }
 
-  /** The seat's fetchable units of any good, managed or not, the sites' needs not deducted. */
+  /** The seat's units of any good, managed or not, the sites' needs not deducted. */
   units(good: number): number {
-    return this.stock.units(this.player, good);
+    return this.stock.units(good);
+  }
+
+  /** Whether the seat holds more than `units` of the good. */
+  exceeds(good: number, units: number): boolean {
+    return this.stock.exceeds(good, units);
   }
 
   lines(good: number): SupplyLines | undefined {
