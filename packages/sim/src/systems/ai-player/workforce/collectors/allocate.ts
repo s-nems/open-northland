@@ -124,9 +124,11 @@ function seatBuilders(world: World, player: number, force: SpareForce, builderJo
  * First posts: keep at least one flag-bound gatherer per wanted good, and a short good's extra ones up to
  * `min`, each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), over the
  * upkeep of every current holder ({@link upkeepHolders}). One post per good per decision, and none beyond
- * a good's first that would break the {@link SHORTAGE_BUILDER_FLOOR}. Every post, here as in the top-ups and
- * the generic posts, goes to the spare man most experienced on the track it trains. No-op on a mapless
- * sim, which has no cells to place flags over.
+ * a good's first that would break the {@link SHORTAGE_BUILDER_FLOOR}. A post beyond the first takes a
+ * collect-anything gatherer before any spare man, dropping him from `genericCollectors` so the generic
+ * upkeep leaves his flag to the post: the seat's least pointed man goes before a builder. Every other
+ * post, here as in the top-ups and the generic posts, goes to the spare man most experienced on the
+ * track it trains. No-op on a mapless sim, which has no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
@@ -135,6 +137,7 @@ export function allocateCollectors(
   ground: CollectorGround,
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
+  genericCollectors: Entity[],
   force: SpareForce,
   taken: TakenFlagNodes,
   builderJob: number | null,
@@ -169,10 +172,12 @@ export function allocateCollectors(
     if (holders.length > 0 && builderJob !== null)
       builders ??= seatBuilders(world, player, force, builderJob);
     const keepBuilders = holders.length > 0 && builders !== undefined && builders <= SHORTAGE_BUILDER_FLOOR;
-    const spare = force.take(
-      (e) => meetsNeed(world, ctx, e, w.good.typeId) && !(keepBuilders && isBuilder(e)),
-      experienceRank(world, ctx, w.job, w.good.typeId),
-    );
+    const spare =
+      (holders.length > 0 ? takeGenericCollector(world, ctx, genericCollectors, w) : null) ??
+      force.take(
+        (e) => meetsNeed(world, ctx, e, w.good.typeId) && !(keepBuilders && isBuilder(e)),
+        experienceRank(world, ctx, w.job, w.good.typeId),
+      );
     if (spare !== null) {
       if (builders !== undefined && isBuilder(spare)) builders--;
       postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
@@ -187,6 +192,31 @@ export function allocateCollectors(
     collectorsByGood.set(w.good.typeId, holders);
   }
   return commands;
+}
+
+/** The collect-anything gatherer most experienced on `w`'s track who meets the good's need, removed from
+ *  `genericCollectors`, or null when none qualifies. */
+function takeGenericCollector(
+  world: World,
+  ctx: SystemContext,
+  genericCollectors: Entity[],
+  w: WantedGood,
+): Entity | null {
+  const rank = experienceRank(world, ctx, w.job, w.good.typeId);
+  let best: Entity | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let at = -1;
+  for (const [i, e] of genericCollectors.entries()) {
+    if (!meetsNeed(world, ctx, e, w.good.typeId)) continue;
+    const score = rank(e);
+    if (score > bestScore) {
+      best = e;
+      bestScore = score;
+      at = i;
+    }
+  }
+  if (at >= 0) genericCollectors.splice(at, 1);
+  return best;
 }
 
 /**

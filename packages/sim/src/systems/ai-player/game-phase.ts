@@ -27,6 +27,11 @@ export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
  *  minutes keep the standard three gatherers and every other man building. */
 export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(10);
 
+/** From when a building good's shortage posts follow every site the clock keeps open (owner's rule);
+ *  between the growth clock and this one site's worth answers the drain, so a seat of fifteen men still
+ *  keeps most of them building. */
+export const BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS = minutesToTicks(30);
+
 /** From when the build order opens a third construction site and looks one entry further ahead
  *  (authored; the late game adds a fourth, `build-order/entries.ts`): by then the reserve and the
  *  building goods carry more than the opening's two sites. */

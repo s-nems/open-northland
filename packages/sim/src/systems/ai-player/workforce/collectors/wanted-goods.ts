@@ -21,6 +21,7 @@ import {
 } from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
 import {
+  BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS,
   BUILDING_GOODS_GROW_FROM_TICKS,
   type GamePhase,
   gamePhase,
@@ -79,11 +80,18 @@ export function extraGatherers(goodId: string, tick: number): number {
   return posts;
 }
 
+/** The shortage posts one site's drain justifies until {@link BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS}. */
+export const OPENING_SITE_SHORTAGE_POSTS = 1;
+
 /** The shortage posts the construction sites alone justify for a {@link COLLECTOR_TARGET_BY_GOOD_ID} good
- *  from {@link BUILDING_GOODS_GROW_FROM_TICKS} on: one per site the clock lets draw the good at once
- *  ({@link sitePace}) (authored). Before that a workshop consuming the good is the only thing that adds one. */
+ *  (authored): none before {@link BUILDING_GOODS_GROW_FROM_TICKS}, when a workshop consuming the good is
+ *  the only thing that adds one, {@link OPENING_SITE_SHORTAGE_POSTS} until
+ *  {@link BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS}, then one per site the clock lets draw the good at once
+ *  ({@link sitePace}). */
 export function siteShortagePosts(tick: number): number {
-  return tick >= BUILDING_GOODS_GROW_FROM_TICKS ? sitePace(tick).sites : 0;
+  if (tick < BUILDING_GOODS_GROW_FROM_TICKS) return 0;
+  if (tick < BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS) return OPENING_SITE_SHORTAGE_POSTS;
+  return sitePace(tick).sites;
 }
 
 /** The target of a good with no {@link COLLECTOR_TARGET_BY_GOOD_ID} row and no reached collector entry. */

@@ -20,6 +20,7 @@ import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
+  BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS,
   BUILDING_GOODS_GROW_FROM_TICKS,
   gamePhase,
   LATE_GAME_FROM_TICKS,
@@ -57,6 +58,7 @@ import {
   GENERIC_COLLECTOR_TARGET,
   MAX_CLEARING_COLLECTORS,
   NODES_PER_CLEARING_GATHERER,
+  OPENING_SITE_SHORTAGE_POSTS,
   SHORTAGE_BUILDER_FLOOR,
   siteShortagePosts,
   type WantedGood,
@@ -640,12 +642,13 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
     placeWorkshop(sim, JOINERY_TYPE);
     // Four men for the first posts and the scout, then builders: one for the joiner, two past the floor.
-    // From the growth clock, when the sites' shortage posts jump the reserve; the store is empty, so wood
-    // and stone both want theirs.
+    // From the follow-sites clock, when every open site's shortage posts jump the reserve; the store is
+    // empty, so wood and stone both want two.
     spawnMen(sim, 4);
     spawnMen(sim, SHORTAGE_BUILDER_FLOOR + 3, BUILDER);
     sim.step();
-    const tick = BUILDING_GOODS_GROW_FROM_TICKS;
+    const tick = BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS;
+    expect(siteShortagePosts(tick)).toBe(2);
     const decide = () => {
       const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
       for (const c of commands) sim.enqueueSetup(c);
@@ -670,6 +673,46 @@ describe('workforce module (collectResources)', () => {
     expect(posted(decide())).toEqual([STONE]);
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
     expect(holdersOf(sim, STONE)).toHaveLength((COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0) + 2);
+  });
+
+  it("hands a collect-anything gatherer to a short good's post before it takes a builder", () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    // Two men past the first posts, the scout and the full reserve: the generic posts take them.
+    spawnMen(sim, BUILDER_CAP + 4 + GENERIC_COLLECTOR_TARGET);
+    sim.step();
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    const comfort = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER).get(WOOD)?.comfort ?? 0;
+    for (const good of [WOOD, STONE]) setStockAmount(sim.world, hq, good, comfort);
+    const decideAt = (tick: number) => {
+      const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands;
+    };
+    const generic = () =>
+      [...sim.world.query(Settler, WorkFlag)].filter(
+        (e) => sim.world.get(e, WorkFlag).goodType === undefined,
+      );
+    const builders = () =>
+      [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === BUILDER);
+    expect(posted(decideAt(0))).toEqual([MUD, STONE, WOOD, null, null]);
+    expect(posted(decideAt(0))).toEqual([]);
+    expect(generic()).toHaveLength(GENERIC_COLLECTOR_TARGET);
+    expect(builders()).toHaveLength(BUILDER_CAP);
+
+    // Wood runs out from the growth clock: its shortage post takes one of the two collect-anything men,
+    // and the reserve stands whole.
+    setStockAmount(sim.world, hq, WOOD, 0);
+    const beforeShortage = generic();
+    const shortage = decideAt(BUILDING_GOODS_GROW_FROM_TICKS);
+    expect(posted(shortage)).toEqual([WOOD]);
+    const post = shortage.find((c) => c.kind === 'setGatherGood');
+    expect(post !== undefined && beforeShortage.includes(post.entity)).toBe(true);
+    expect(builders()).toHaveLength(BUILDER_CAP);
+    expect(generic()).toHaveLength(GENERIC_COLLECTOR_TARGET - 1);
+    expect(posted(decideAt(BUILDING_GOODS_GROW_FROM_TICKS))).toEqual([]);
   });
 
   it('sends extra generic gatherers to clear ground while a placement is stalled, ahead of the carriers', () => {
@@ -957,10 +1000,15 @@ describe('workforce module (collectResources)', () => {
     expect(LATE_GAME_BUILDER_CAP).toBeGreaterThan(GROWN_SEAT_BUILDER_CAP);
   });
 
-  it('follows the sites the clock keeps open with its shortage posts', () => {
+  it("follows one site's drain from the growth clock and every open site's from the follow-sites clock", () => {
     expect(siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS - 1)).toBe(0);
-    expect(siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS)).toBe(
-      sitePace(BUILDING_GOODS_GROW_FROM_TICKS).sites,
+    expect(siteShortagePosts(BUILDING_GOODS_GROW_FROM_TICKS)).toBe(OPENING_SITE_SHORTAGE_POSTS);
+    expect(siteShortagePosts(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS - 1)).toBe(OPENING_SITE_SHORTAGE_POSTS);
+    expect(siteShortagePosts(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS)).toBe(
+      sitePace(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS).sites,
+    );
+    expect(sitePace(BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS).sites).toBeGreaterThan(
+      OPENING_SITE_SHORTAGE_POSTS,
     );
     expect(siteShortagePosts(LATE_GAME_FROM_TICKS)).toBe(sitePace(LATE_GAME_FROM_TICKS).sites);
   });
