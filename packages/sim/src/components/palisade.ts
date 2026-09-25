@@ -16,7 +16,6 @@ export const Palisade = defineComponent<{
   construction: { goodType: number; amount: number }[];
   /** Source transition-9 valency gain per completed repair strike. */
   repairPerStrike: number;
-  repairing: boolean;
   /** Exclusive builder claim for an unfinished segment, taken when a builder picks it; its work flag
    * shows from then on. */
   reservation: null | { builder: Entity };

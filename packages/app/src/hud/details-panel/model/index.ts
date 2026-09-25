@@ -101,7 +101,6 @@ export interface PalisadePanelModel {
   readonly builtPct: number;
   readonly gateOpen: boolean | null;
   readonly underConstruction: boolean;
-  readonly repairing: boolean;
 }
 
 export type UnitPanelModel =
@@ -157,9 +156,7 @@ export function buildUnitPanelModel(
     const entityId = palisadeIds[0] as number;
     const ent = entityById(snapshot, entityId);
     if (ent === undefined) return { kind: 'empty' };
-    const palisade = ent.components.Palisade as
-      | { built?: unknown; gate?: unknown; repairing?: unknown }
-      | undefined;
+    const palisade = ent.components.Palisade as { built?: unknown; gate?: unknown } | undefined;
     const gate = palisade?.gate as { open?: unknown } | null | undefined;
     return {
       kind: 'palisade',
@@ -167,8 +164,7 @@ export function buildUnitPanelModel(
       health: healthBar(ent),
       builtPct: pct(num(palisade?.built)),
       gateOpen: gate === undefined || gate === null ? null : gate.open === true,
-      underConstruction: ent.components.UnderConstruction !== undefined && palisade?.repairing !== true,
-      repairing: palisade?.repairing === true,
+      underConstruction: ent.components.UnderConstruction !== undefined,
     };
   }
 

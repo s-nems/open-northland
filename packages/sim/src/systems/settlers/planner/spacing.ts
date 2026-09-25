@@ -2,7 +2,6 @@ import {
   MoveGoal,
   Owner,
   Palisade,
-  PalisadeBlocking,
   PathFollow,
   PathRequest,
   Position,
@@ -104,7 +103,6 @@ export class PlannerSpacing {
   private buildWallSiteNodes(): ReadonlySet<NodeId> {
     const nodes = new Set<NodeId>();
     for (const e of this.world.query(Palisade, UnderConstruction, Position)) {
-      if (this.world.has(e, PalisadeBlocking)) continue;
       const at = this.world.get(e, Position);
       const anchor = nodeOfPosition(at.x, at.y);
       for (const cell of translatedCells(

@@ -128,7 +128,6 @@ export const enGame = {
     closeGate: 'Close gate',
     demolishPalisade: 'Demolish palisade',
     demolishGate: 'Demolish gate',
-    repairProgress: 'Repair: {percent}%',
     constructionProgress: 'Construction: {percent}%',
     center: 'Centre',
     help: 'Help',

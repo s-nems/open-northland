@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addWildlife,
+  Damaged,
   Health,
   Palisade,
   PalisadeBlocking,
@@ -13,7 +14,6 @@ import {
 import {
   type Entity,
   exportSaveGame,
-  fx,
   hexNeighboursOf,
   ONE,
   positionOfNode,
@@ -22,11 +22,8 @@ import {
   Simulation,
 } from '../../src/index.js';
 import { damageVsTarget } from '../../src/systems/conflict/weapons.js';
-import {
-  advanceConstructionLabor,
-  constructionSystem,
-  remainingConstructionSteps,
-} from '../../src/systems/economy/construction.js';
+import { advanceConstructionLabor, constructionSystem } from '../../src/systems/economy/construction.js';
+import { needsRepair, repairStructure } from '../../src/systems/economy/repair.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import {
   claimPalisade,
@@ -301,7 +298,7 @@ describe('palisades', () => {
     expect(sim.world.get(gate, Stockpile).amounts.get(5) ?? 0).toBe(0);
   });
 
-  it('uses landscape damage hundreds and repairs an owned wall a blow damaged by the source delta', () => {
+  it('uses landscape damage hundreds and marks an owned wall a blow damaged for its crew to mend', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0, owner: 0 });
     sim.step();
@@ -310,39 +307,33 @@ describe('palisades', () => {
     expect(damageVsTarget(sim.world, wall, 99)).toBe(0);
 
     strike(sim, wall, 10);
-    expect(sim.world.get(wall, Palisade).repairing).toBe(true);
-    expect(sim.world.get(wall, UnderConstruction).labor).toBe(fx.div(fx.fromInt(90), fx.fromInt(100)));
+    expect(sim.world.get(wall, Damaged).lastHitTick).toBe(ctxOf(sim).tick);
+    expect(needsRepair(sim.world, wall)).toBe(true);
+    // The damaged wall still stands: no site, the same body, the damage lives in its hitpoints only.
+    expect(sim.world.has(wall, UnderConstruction)).toBe(false);
     expect(sim.world.has(wall, PalisadeBlocking)).toBe(true);
-    // A blow on a wall under repair pulls the job back with it rather than being built over.
-    strike(sim, wall, 10);
-    expect(sim.world.get(wall, UnderConstruction).labor).toBe(fx.div(fx.fromInt(80), fx.fromInt(100)));
-    constructionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(wall, Health).hitpoints).toBe(80);
-    // A repair strike restores hitpoints, not a build quantum: one builder mends at a time.
-    expect(remainingConstructionSteps(sim.world, ctxOf(sim), wall)).toBe(1);
+    expect(sim.world.get(wall, Palisade).built).toBe(ONE);
 
-    expect(advanceConstructionLabor(sim.world, ctxOf(sim), wall, sim.world.create())).toBe(true);
-    constructionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(wall, Health).hitpoints).toBe(83);
-    expect(sim.world.get(wall, Palisade).built).toBeLessThan(ONE);
+    // A repair swing restores the record's readable gain.
+    expect(repairStructure(sim.world, ctxOf(sim), wall, sim.world.create())).toBe(true);
+    expect(sim.world.get(wall, Health).hitpoints).toBe(93);
   });
 
-  it('closes the repair job once the wall is whole again', () => {
+  it('drops the damage mark once the wall is whole again', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0, owner: 0 });
     sim.step();
     const wall = onlyPalisade(sim);
     strike(sim, wall, 5);
     const mender = sim.world.create();
-    advanceConstructionLabor(sim.world, ctxOf(sim), wall, mender);
-    advanceConstructionLabor(sim.world, ctxOf(sim), wall, mender);
-    constructionSystem(sim.world, ctxOf(sim));
+    expect(repairStructure(sim.world, ctxOf(sim), wall, mender)).toBe(true);
+    expect(repairStructure(sim.world, ctxOf(sim), wall, mender)).toBe(true);
     expect(sim.world.get(wall, Health).hitpoints).toBe(100);
-    expect(sim.world.has(wall, UnderConstruction)).toBe(false);
-    expect(sim.world.get(wall, Palisade).repairing).toBe(false);
+    expect(sim.world.has(wall, Damaged)).toBe(false);
+    expect(repairStructure(sim.world, ctxOf(sim), wall, mender)).toBe(false);
   });
 
-  it('puts an owned authored wall below its maximum under repair, and leaves an unowned one', () => {
+  it('marks an owned authored wall below its maximum with no blow behind it, and leaves an unowned one', () => {
     const sim = fresh();
     sim.enqueueSetup({
       kind: 'placePalisade',
@@ -357,9 +348,27 @@ describe('palisades', () => {
     sim.step();
     const [owned, unowned] = [...sim.world.query(Palisade, Position)].sort((a, b) => a - b);
     if (owned === undefined || unowned === undefined) throw new Error('expected two walls');
-    expect(sim.world.get(owned, Palisade).repairing).toBe(true);
-    expect(sim.world.get(owned, UnderConstruction).labor).toBe(sim.world.get(owned, Palisade).built);
-    expect(sim.world.has(unowned, UnderConstruction)).toBe(false);
+    expect(sim.world.get(owned, Damaged).lastHitTick).toBeNull();
+    expect(sim.world.get(owned, Health).hitpoints).toBe(60);
+    expect(sim.world.has(owned, UnderConstruction)).toBe(false);
+    expect(sim.world.has(unowned, Damaged)).toBe(false);
+  });
+
+  it('leaves a new segment unmarked while its pool climbs with the build', () => {
+    const sim = fresh();
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: 4,
+      y: 4,
+      tribe: 0,
+      owner: 0,
+      underConstruction: true,
+    });
+    sim.step();
+    const site = onlyPalisade(sim);
+    expect(sim.world.get(site, Health).hitpoints).toBeLessThan(sim.world.get(site, Health).max);
+    expect(sim.world.has(site, Damaged)).toBe(false);
   });
 
   it('keeps a builder off a neighbouring wall site, which rises only on clear ground', () => {
@@ -392,20 +401,30 @@ describe('palisades', () => {
     const wall = onlyPalisade(sim);
     strike(sim, wall, 10);
     expect(sim.world.get(wall, Health).hitpoints).toBe(90);
-    expect(sim.world.has(wall, UnderConstruction)).toBe(false);
+    expect(sim.world.has(wall, Damaged)).toBe(false);
   });
 
-  it('opens and closes a gate while builders repair it', () => {
+  it('mends a gate by its own record gain of one per swing', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: CLOSED_GATE.typeId, x: 8, y: 8, tribe: 0, owner: 0 });
     sim.step();
     const gate = onlyPalisade(sim);
     strike(sim, gate, 10);
-    expect(sim.world.get(gate, Palisade).repairing).toBe(true);
+    expect(repairStructure(sim.world, ctxOf(sim), gate, sim.world.create())).toBe(true);
+    expect(sim.world.get(gate, Health).hitpoints).toBe(91);
+  });
+
+  it('opens and closes a damaged gate, which keeps its damage mark', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: CLOSED_GATE.typeId, x: 8, y: 8, tribe: 0, owner: 0 });
+    sim.step();
+    const gate = onlyPalisade(sim);
+    strike(sim, gate, 10);
+    expect(needsRepair(sim.world, gate)).toBe(true);
     sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: true });
     sim.step();
     expect(sim.world.get(gate, Palisade).gate?.open).toBe(true);
-    expect(sim.world.get(gate, Palisade).repairing).toBe(true);
+    expect(needsRepair(sim.world, gate)).toBe(true);
   });
 
   it('restores a damaged owned gate with its pairing, collision, health, and fixed-point valency', () => {
@@ -422,7 +441,8 @@ describe('palisades', () => {
     sim.step();
     const gate = onlyPalisade(sim);
     expect(sim.world.get(gate, Health)).toEqual({ hitpoints: 40, max: 100 });
-    expect(sim.world.get(gate, Palisade).built).toBe(fx.div(fx.fromInt(40), fx.fromInt(100)));
+    expect(sim.world.get(gate, Palisade).built).toBe(ONE);
+    expect(sim.world.has(gate, Damaged)).toBe(true);
     expect(sim.world.has(gate, PalisadeBlocking)).toBe(true);
 
     const restored = restoreSimulation(exportSaveGame(sim), {
@@ -431,6 +451,7 @@ describe('palisades', () => {
     });
     expect(restored.world.get(gate, Palisade)).toEqual(sim.world.get(gate, Palisade));
     expect(restored.world.get(gate, Health)).toEqual({ hitpoints: 40, max: 100 });
+    expect(restored.world.get(gate, Damaged)).toEqual(sim.world.get(gate, Damaged));
     expect(restored.world.has(gate, PalisadeBlocking)).toBe(true);
   });
 

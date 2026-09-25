@@ -30,7 +30,7 @@ export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingT
  */
 export function constructionBillOf(world: World, ctx: SystemContext, site: Entity): readonly GoodsLine[] {
   const wall = world.tryGet(site, Palisade);
-  if (wall !== undefined) return wall.repairing ? EMPTY_CONSTRUCTION : wall.construction;
+  if (wall !== undefined) return wall.construction;
   const b = world.tryGet(site, Building);
   if (b === undefined) return EMPTY_CONSTRUCTION;
   if (world.has(site, Upgrading)) {

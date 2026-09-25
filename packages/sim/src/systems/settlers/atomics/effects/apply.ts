@@ -5,7 +5,7 @@ import { openChest } from '../../../chests/index.js';
 import type { SystemContext } from '../../../context.js';
 import { advanceConstructionLabor } from '../../../economy/construction.js';
 import { applySow, applyWater } from '../../../economy/fields.js';
-import { repairBuilding } from '../../../economy/repair.js';
+import { repairStructure } from '../../../economy/repair.js';
 import { wearWornTool } from '../../../equipment/index.js';
 import {
   grantCarryExperience,
@@ -109,7 +109,7 @@ export function applyEffect(
       return;
     }
     case 'repair': {
-      const repaired = repairBuilding(world, ctx, effect.site, settler);
+      const repaired = repairStructure(world, ctx, effect.site, settler);
       wearWornTool(world, ctx, settler);
       if (repaired) grantProfessionExperience(world, ctx, settler);
       return;

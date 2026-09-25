@@ -206,8 +206,8 @@ export function layoutPalisade(
     ...(model.gateOpen === null ? [] : (['toggle-gate'] as const)),
     'demolish-palisade' as const,
   ];
-  const showsProgress = model.underConstruction || model.repairing;
-  // The hitpoints label, its bar, then the build or repair progress when there is one.
+  const showsProgress = model.underConstruction;
+  // The hitpoints label, its bar, then the build progress of a segment still going up.
   const rows = showsProgress ? 3 : 2;
   const bodyH = rowH * rows + actions.length * buttonH + pad * Math.max(0, actions.length - 1);
   const probe = sectionAt(0, 0, w, bodyH, s);

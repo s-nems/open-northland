@@ -14,17 +14,15 @@ export function palisadeReservedBy(world: World, site: Entity): Entity | null {
 /** Whether this builder may select `site`; ordinary buildings keep their multi-builder crew behavior. */
 export function constructionSiteAvailableTo(world: World, site: Entity, builder: Entity): boolean {
   const wall = world.tryGet(site, Palisade);
-  if (wall === undefined || wall.repairing) return true;
+  if (wall === undefined) return true;
   const reserved = palisadeReservedBy(world, site);
   return reserved === null || reserved === builder;
 }
 
-/** Take the segment's exclusive token after SiteAssignment has been stamped. */
+/** Take the segment's exclusive token after SiteAssignment has been stamped. A building or a standing
+ *  wall a crew mends takes no token. */
 export function claimPalisade(world: World, site: Entity, builder: Entity): boolean {
-  const wall = world.tryGet(site, Palisade);
-  if (wall === undefined) return true;
-  if (wall.repairing) return true;
-  if (!world.has(site, UnderConstruction)) return false;
+  if (!world.has(site, Palisade) || !world.has(site, UnderConstruction)) return true;
   const current = palisadeReservedBy(world, site);
   if (current !== null && current !== builder) return false;
   if (current === builder) return true;

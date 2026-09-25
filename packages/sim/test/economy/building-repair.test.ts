@@ -14,7 +14,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { forceFinishConstruction } from '../../src/systems/economy/construction.js';
-import { needsRepair, REPAIR_CREW_LIMIT, repairBuilding } from '../../src/systems/economy/repair.js';
+import { needsRepair, REPAIR_CREW_LIMIT, repairStructure } from '../../src/systems/economy/repair.js';
 import { plannerSystem } from '../../src/systems/index.js';
 import { applyEffect } from '../../src/systems/settlers/atomics/effects/apply.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
@@ -91,7 +91,7 @@ describe('building repair', () => {
     const house = damagedHouseAt(sim, 6, 1, 300);
     const builder = builderAt(sim, 5, 1);
 
-    expect(repairBuilding(sim.world, ctxOf(sim), house, builder)).toBe(true);
+    expect(repairStructure(sim.world, ctxOf(sim), house, builder)).toBe(true);
     expect(sim.world.get(house, Health).hitpoints).toBe(400);
   });
 
@@ -101,7 +101,7 @@ describe('building repair', () => {
     // 20000 raw XP on the factor-5 track is 100 percent: (150 + 100) * 175% is four whole steps.
     const master = builderWith(sim, { xp: 20_000, tool: TOOL_IRON });
 
-    expect(repairBuilding(sim.world, ctxOf(sim), house, master)).toBe(true);
+    expect(repairStructure(sim.world, ctxOf(sim), house, master)).toBe(true);
     expect(sim.world.get(house, Health).hitpoints).toBe(700);
   });
 

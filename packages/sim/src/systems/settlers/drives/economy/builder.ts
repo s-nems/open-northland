@@ -1,7 +1,9 @@
 import {
+  Damaged,
   ownerOf,
   ownersCompatible,
   Palisade,
+  Position,
   SiteAssignment,
   UnderConstruction,
 } from '../../../../components/index.js';
@@ -38,9 +40,9 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 /**
  * BUILD - mend the nearest damaged building that is safe to reach, else keep a useful automatic crew
  * assignment stable, otherwise move the builder to the nearest reachable site with material to fetch or
- * delivered labor to install, and with no task anywhere wait beside a site. Wall segments, repairs
- * included, come after every building site. Player pins and unfinished workplace bindings are strict:
- * their builders stay with that site even while another has work.
+ * delivered labor to install, and with no task anywhere wait beside a site. Walls come after every
+ * building site, a damaged wall before a new segment. Player pins and unfinished workplace bindings are
+ * strict: their builders stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
@@ -97,7 +99,7 @@ export function planBuilder(
     here,
     unreachableGoalVeto(world, ctx, e),
   );
-  if (repairNearest(plan, spacing, repairs, avoidSite)) return true;
+  if (repairNearest(plan, spacing, repairs, avoidSite, false)) return true;
 
   // A damaged upgrade site is mended before its upgrade goes on, and only by a repair crew, so an
   // automatic builder never hammers the upgrade of a building still under attack.
@@ -134,6 +136,15 @@ export function planBuilder(
     nearestSite((candidate) => !isWall(candidate) && accepts(candidate)) ??
     (wallsWait() ? null : nearestSite(accepts));
 
+  // The damaged-wall list is checked first: most passes have none, and `wallsWait` is a site search.
+  if (
+    world.canonicalQuery(Damaged, Palisade, Position).length > 0 &&
+    !wallsWait() &&
+    repairNearest(plan, spacing, repairs, avoidSite, true)
+  ) {
+    return true;
+  }
+
   // Crew membership is sticky while it still has useful work. This avoids re-ranking builders between
   // equally valid sites every time one hammer atomic completes.
   const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
@@ -166,16 +177,18 @@ export function planBuilder(
   return false;
 }
 
-/** Start a repair swing at the builder's own repair crew's building while it still qualifies, else at the
- *  nearest damaged building that does. */
+/** Start a repair swing at the builder's own repair crew's site while it still qualifies, else at the
+ *  nearest damaged one that does: a wall when `walls`, else a building. */
 function repairNearest(
   plan: PlannerContext,
   spacing: PlannerSpacing,
   repairs: RepairCrews,
   avoidSite: ((site: Entity) => boolean) | undefined,
+  walls: boolean,
 ): boolean {
   const { world, entity: e, here, targets } = plan;
   const qualifies = (site: Entity): boolean =>
+    world.has(site, Palisade) === walls &&
     needsRepair(world, site) &&
     repairs.isSafe(site) &&
     builderCanReach(plan, spacing, site) &&
@@ -189,7 +202,7 @@ function repairNearest(
   const site =
     crewSite ??
     nearestBuilderSite(
-      targets.repairSiteCells,
+      walls ? targets.wallRepairCells : targets.repairSiteCells,
       world,
       here,
       plan.tribe,
@@ -215,8 +228,8 @@ function holdSegment(plan: PlannerContext, site: Entity): boolean {
 /** A hammered segment finishes only once its cells are clear, so a builder waiting beside it would hold
  *  it unfinished. */
 function segmentAwaitsClearance(plan: PlannerContext, site: Entity): boolean {
-  const { world } = plan;
-  return world.has(site, Palisade) && (world.tryGet(site, UnderConstruction)?.labor ?? ONE) >= ONE;
+  const labor = plan.world.tryGet(site, UnderConstruction)?.labor;
+  return labor !== undefined && labor >= ONE && plan.world.has(site, Palisade);
 }
 
 /** Leave crew membership, releasing any wall segment claim before the assignment that anchors it. */

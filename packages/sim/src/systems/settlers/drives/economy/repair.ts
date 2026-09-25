@@ -1,4 +1,4 @@
-import { Damaged, Position, SiteAssignment } from '../../../../components/index.js';
+import { Damaged, Palisade, Position, SiteAssignment } from '../../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../../core/loop.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
@@ -6,13 +6,13 @@ import type { BattleFront } from '../../../conflict/battle-alert.js';
 import type { SystemContext } from '../../../context.js';
 import { REPAIR_CREW_LIMIT } from '../../../economy/repair.js';
 import { atomicDuration } from '../../../readviews/animations.js';
-import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic } from '../../atomics/start.js';
+import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, BUILD_WALL_ATOMIC_ID, startAtomic } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { claimWorkCell } from '../spacing.js';
 
 /**
- * How long a building must go unhit before an automatic crew comes to mend it, so builders are not sent
+ * How long a building or wall must go unhit before an automatic crew comes to mend it, so builders are not sent
  * into an attack that is still landing - an archer out of sight included. Authored: a damaged house in the
  * original recruits builders whatever is going on around it, though its computer players hold their own
  * repair orders while an enemy soldier is near.
@@ -20,9 +20,9 @@ import { claimWorkCell } from '../spacing.js';
 export const REPAIR_CALM_TICKS = 10 * TICKS_PER_SECOND;
 
 /**
- * The repair crews of one planner pass: which damaged buildings are safe to send a builder to, and how
- * many builders each already has. A crew member is a builder whose {@link SiteAssignment} names the
- * building, counted on the first question and topped up by the pass's own picks.
+ * The repair crews of one planner pass: which damaged buildings and walls are safe to send a builder to,
+ * and how many builders each already has. A crew member is a builder whose {@link SiteAssignment} names
+ * the site, counted on the first question and topped up by the pass's own picks.
  */
 export class RepairCrews {
   private crews: Map<Entity, number> | null = null;
@@ -68,20 +68,15 @@ export class RepairCrews {
   }
 }
 
-/** Start one repair swing at `site`, walking to a free perimeter cell first. */
+/** Start one repair swing at `site`, walking to a free perimeter cell first. A wall takes the hammer
+ *  clip its segments are raised with. */
 export function startRepair(plan: PlannerContext, spacing: PlannerSpacing, site: Entity): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const stand = claimWorkCell(world, terrain, e, here, site, spacing);
   if (stand === null) return false;
+  const atomic = world.has(site, Palisade) ? BUILD_WALL_ATOMIC_ID : BUILD_HOUSE_ATOMIC_ID;
   atOrWalk(world, e, here, stand, () =>
-    startAtomic(
-      world,
-      e,
-      BUILD_HOUSE_ATOMIC_ID,
-      { kind: 'repair', site },
-      atomicDuration(ctx.content, plan, BUILD_HOUSE_ATOMIC_ID),
-      site,
-    ),
+    startAtomic(world, e, atomic, { kind: 'repair', site }, atomicDuration(ctx.content, plan, atomic), site),
   );
   return true;
 }

@@ -128,7 +128,7 @@ function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField 
     const key = wallNodeKey(node.hx, node.hy);
     // Construction sites are ground markers until completed; they neither draw a post nor connect
     // completed neighbours across their anchor, but stagger with the line they stand in.
-    if ('UnderConstruction' in entity.components && !('PalisadeBlocking' in entity.components)) {
+    if ('UnderConstruction' in entity.components) {
       layoutNodes.set(key, node);
       refsByNode.set(key, entity.id);
       continue;

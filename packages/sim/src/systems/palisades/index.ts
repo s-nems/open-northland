@@ -1,5 +1,6 @@
 import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import {
+  Damaged,
   Health,
   ownerOf,
   Palisade,
@@ -11,11 +12,12 @@ import {
   UnderConstruction,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import { fx } from '../../core/fixed.js';
+import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { ScriptLandscapeType, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { markShortPool } from '../economy/repair.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
@@ -89,14 +91,11 @@ export function createPalisade(
   world.add(e, Palisade, {
     gfxIndex: type.typeId,
     tribe: spec.tribe,
-    built: spec.underConstruction
-      ? fx.fromInt(0)
-      : fx.div(fx.fromInt(hitpoints), fx.fromInt(wall.maxHitpoints)),
+    built: spec.underConstruction ? fx.fromInt(0) : ONE,
     walk: type.walk.map((cell) => ({ ...cell })),
     placementWalk: (spec.placementWalk ?? type.walk).map((cell) => ({ ...cell })),
     construction: wall.construction.map((line) => ({ ...line })),
     repairPerStrike: wall.repairPerStrike,
-    repairing: false,
     reservation: null,
     gate: wall.gate === undefined ? null : { ...wall.gate },
   });
@@ -111,7 +110,7 @@ export function createPalisade(
   return e;
 }
 
-/** Open or close a standing gate, one under repair included, by swapping to its paired data row, reporting whether the swap landed.
+/** Open or close a standing gate, a damaged one included, by swapping to its paired data row, reporting whether the swap landed.
  * Closing is refused while any other positioned entity occupies a cell the closed footprint would block;
  * a gate already in the requested state counts as landed. */
 export function setPalisadeGate(
@@ -147,7 +146,6 @@ export function setPalisadeGate(
     placementWalk: current.placementWalk.map((cell) => ({ ...cell })),
     construction: target.wall.construction.map((line) => ({ ...line })),
     repairPerStrike: target.wall.repairPerStrike,
-    repairing: current.repairing,
     reservation: current.reservation === null ? null : { ...current.reservation },
     gate: { ...target.wall.gate },
   });
@@ -439,8 +437,8 @@ export function convertPalisadeGate(
   if (type === undefined || wall?.gate?.open !== false) return;
   const centerWall = world.get(command.palisade, Palisade);
   for (const e of probe.remove) world.destroy(e);
-  // A centre under repair becomes a whole new gate, not a gate site owed wood.
-  world.remove(command.palisade, UnderConstruction);
+  // A damaged centre becomes a whole new gate.
+  world.remove(command.palisade, Damaged);
   world.remove(command.palisade, PalisadeBlocking);
   world.remove(command.palisade, Palisade);
   world.add(command.palisade, Palisade, {
@@ -451,7 +449,6 @@ export function convertPalisadeGate(
     placementWalk: placementWalkOf(terrain, type).map((cell) => ({ ...cell })),
     construction: wall.construction.map((line) => ({ ...line })),
     repairPerStrike: wall.repairPerStrike,
-    repairing: false,
     reservation: null,
     gate: { ...wall.gate },
   });
@@ -465,31 +462,9 @@ export function convertPalisadeGate(
   });
 }
 
-/**
- * Put an owned finished segment below its maximum on the builders' list. Repairs consume no goods and
- * restore the readable transition-9 amount per hammer strike; a blow to a segment already under repair
- * pulls the job back with its hitpoints. An unowned wall has no crew to mend it.
- *
- * Project rule: builders mend walls on their own, so the player never orders a repair.
- */
-export function repairDamagedPalisade(world: World, e: Entity): void {
-  const wall = world.tryGet(e, Palisade);
-  const health = world.tryGet(e, Health);
-  if (wall === undefined || health === undefined || ownerOf(world, e) === undefined) return;
-  if (health.hitpoints <= 0 || health.hitpoints >= health.max) return;
-  const progress = fx.div(fx.fromInt(health.hitpoints), fx.fromInt(health.max));
-  const site = world.tryGet(e, UnderConstruction);
-  if (site !== undefined) {
-    if (wall.repairing && site.labor !== progress) world.mut(e, UnderConstruction).labor = progress;
-    return;
-  }
-  world.mut(e, Palisade).repairing = true;
-  world.add(e, UnderConstruction, { labor: progress });
-}
-
-/** A standing wall or gate: finished, or finished and under repair. */
+/** A standing wall or gate, damaged or whole, rather than a segment still to be raised. */
 function palisadeStands(world: World, e: Entity): boolean {
-  return !world.has(e, UnderConstruction) || world.get(e, Palisade).repairing;
+  return !world.has(e, UnderConstruction);
 }
 
 export function placePalisade(
@@ -515,7 +490,11 @@ export function placePalisade(
     placementWalk: placementWalkOf(terrain, type),
   });
   if (entity === null) return;
-  if (world.has(entity, PalisadeBlocking)) rerouteAroundPalisade(world, terrain, entity);
-  repairDamagedPalisade(world, entity);
+  if (world.has(entity, PalisadeBlocking)) {
+    rerouteAroundPalisade(world, terrain, entity);
+    // An authored wall below its maximum starts on the builders' list with no blow behind it; a new
+    // segment's pool climbs with its build instead.
+    markShortPool(world, entity);
+  }
   ctx.events.emit({ kind: 'palisadePlaced', entity, at: { hx: command.x, hy: command.y } });
 }

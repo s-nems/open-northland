@@ -59,7 +59,7 @@ export function assembleItem(
     case 'palisade': {
       assignStaticFields(item, kind, components);
       item.x += build.palisades.shiftX.get(entity.id) ?? 0;
-      if ('UnderConstruction' in components && !('PalisadeBlocking' in components)) {
+      if ('UnderConstruction' in components) {
         // The wood set down on the flag goes into the wall, so the flag alone stands until the strike
         // raises the segment.
         item.palisadeSite = readPalisadeClaimed(components) ? 'claimed' : 'unclaimed';

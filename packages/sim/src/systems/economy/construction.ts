@@ -123,14 +123,10 @@ function finishSite(
     if (palisade === undefined) return;
     const mutable = world.mut(e, Palisade);
     mutable.built = ONE;
-    mutable.repairing = false;
     mutable.reservation = null;
     world.remove(e, UnderConstruction);
-    // A mended wall already blocks; only a new segment can stand in someone's route.
-    if (!world.has(e, PalisadeBlocking)) {
-      world.add(e, PalisadeBlocking, {});
-      if (ctx.terrain !== undefined) rerouteAroundPalisade(world, ctx.terrain, e);
-    }
+    world.add(e, PalisadeBlocking, {});
+    if (ctx.terrain !== undefined) rerouteAroundPalisade(world, ctx.terrain, e);
     fillHealth(world, e);
     ctx.events.emit({ kind: 'palisadeFinished', entity: e });
     return;
@@ -273,9 +269,6 @@ function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity
 export function remainingConstructionSteps(world: World, ctx: SystemContext, site: Entity): number {
   const labor = world.tryGet(site, UnderConstruction)?.labor;
   if (labor === undefined) return 0;
-  // A repair strike restores hitpoints rather than a labor quantum, so one builder mends a segment at a
-  // time.
-  if (world.tryGet(site, Palisade)?.repairing === true) return labor < ONE ? 1 : 0;
   const delivered = deliveredConstructionFraction(world, ctx, site);
   const cap = delivered < ONE ? delivered : ONE;
   if (labor >= cap) return 0;
@@ -297,17 +290,7 @@ export function advanceConstructionLabor(
   const uc = world.tryMut(site, UnderConstruction);
   if (uc === undefined) return false;
   const before = uc.labor;
-  const wall = world.tryGet(site, Palisade);
-  if (wall?.repairing === true) {
-    const health = world.tryMut(site, Health);
-    if (health === undefined) return false;
-    health.hitpoints = Math.min(health.max, health.hitpoints + Math.max(1, wall.repairPerStrike));
-    const progress = fx.div(fx.fromInt(health.hitpoints), fx.fromInt(Math.max(1, health.max)));
-    uc.labor = progress;
-    world.mut(site, Palisade).built = progress;
-    return uc.labor > before;
-  }
-  if (wall !== undefined && !holdsPalisadeClaim(world, site, builder)) return false;
+  if (world.has(site, Palisade) && !holdsPalisadeClaim(world, site, builder)) return false;
   const steps = buildStepsPerSwing(
     jobExperiencePercent(world, ctx, builder, null),
     toolWorkFactorPct(world, ctx, builder),

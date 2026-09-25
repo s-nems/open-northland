@@ -242,7 +242,7 @@ function constructionSiteNeeds(
 ): boolean {
   if (!world.has(e, UnderConstruction) || constructionTribeOf(world, e) !== tribe) return false;
   const wall = world.tryGet(e, Palisade);
-  if (wall !== undefined && !wall.repairing && !holdsPalisadeClaim(world, e, supplier)) return false;
+  if (wall !== undefined && !holdsPalisadeClaim(world, e, supplier)) return false;
   if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
   const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
   return have < stockCapacity(world, ctx, e, goodType);

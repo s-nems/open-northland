@@ -127,7 +127,6 @@ export const plGame = {
     closeGate: 'Zamknij bramę',
     demolishPalisade: 'Wyburz palisadę',
     demolishGate: 'Wyburz bramę',
-    repairProgress: 'Naprawa: {percent}%',
     constructionProgress: 'Budowa: {percent}%',
     center: 'Wycentruj',
     help: 'Pomoc',

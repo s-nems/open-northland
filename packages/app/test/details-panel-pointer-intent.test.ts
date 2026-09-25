@@ -63,7 +63,6 @@ const closedGate: EntitySnapshot = {
       gfxIndex: 696,
       tribe: 1,
       built: ONE,
-      repairing: false,
       gate: { open: false, counterpartGfxIndex: 700 },
     },
     Health: { hitpoints: 75, max: 100 },
@@ -216,7 +215,6 @@ describe('details panel click intents', () => {
       builtPct: 100,
       gateOpen: false,
       underConstruction: false,
-      repairing: false,
     });
     if (model.kind !== 'palisade') throw new Error('expected a palisade model');
     expect(model.health?.pct).toBe(75);
@@ -245,7 +243,7 @@ describe('details panel click intents', () => {
     expect(progress.y + progress.h).toBeLessThanOrEqual(buttons[0]?.rect.y ?? Number.NaN);
   });
 
-  it('keeps an unfinished gate shut, and lets a gate under repair open and close', () => {
+  it('keeps an unfinished gate shut, and lets a damaged gate open and close', () => {
     const unfinished = viewOfKind(
       panelModelOf({
         ...closedGate,
@@ -261,20 +259,16 @@ describe('details panel click intents', () => {
     expect(unfinished.layout.progress).not.toBeNull();
     expect(unfinishedIntents).toEqual([null, { kind: 'demolishPalisade', entityId: 8 }]);
 
-    const repairing = viewOfKind(
+    const damaged = viewOfKind(
       panelModelOf({
         ...closedGate,
-        components: {
-          ...closedGate.components,
-          UnderConstruction: {},
-          Palisade: { ...(closedGate.components.Palisade as object), repairing: true },
-        },
+        components: { ...closedGate.components, Damaged: { lastHitTick: 3 } },
       }),
       'palisade',
     );
-    expect(repairing.model).toMatchObject({ underConstruction: false, repairing: true });
-    expect(repairing.layout.progress).not.toBeNull();
-    expect(repairing.layout.buttons.map((button) => button.enabled)).toEqual([true, true]);
+    expect(damaged.model).toMatchObject({ underConstruction: false });
+    expect(damaged.layout.progress).toBeNull();
+    expect(damaged.layout.buttons.map((button) => button.enabled)).toEqual([true, true]);
   });
 
   it('resolves the defence toggle into the order that flips the alarm the other way', () => {

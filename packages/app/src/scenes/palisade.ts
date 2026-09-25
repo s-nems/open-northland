@@ -24,7 +24,8 @@ import type { SceneDefinition } from './types.js';
 /**
  * Palisade acceptance field. The upper enclosure converts five standing walls into a commanded gate,
  * the eastern section is breached by a commanded enemy attack, and the lower work yard raises walls from
- * carried wood while retaining claimed and unclaimed construction markers.
+ * carried wood while retaining claimed and unclaimed construction markers. The yard's builders also mend
+ * a wall the map authored below its maximum, unasked.
  * The detached seven-post rosette makes all six source wall-connection directions visible at once.
  *
  * Source basis: readable wall records pin 100 maximum valency and +3 repair progress. Original
@@ -52,6 +53,8 @@ export const PALISADE_WORK_SITES = {
   // so an enemy marker beside the work yard would freeze the builders instead of demonstrating them.
   unclaimed: { hx: 44, hy: 12 },
 } as const;
+/** Authored at 70 of 100 valency: ten repair swings. */
+const DAMAGED_YARD_WALL = { hx: 8, hy: 40, valency: 70 } as const;
 const COMMAND_CHAIN = [
   { hx: 30, hy: 36 },
   { hx: 31, hy: 36 },
@@ -65,7 +68,7 @@ export const PALISADE_GATE_CLOSE_TICK = 400;
 export const PALISADE_GATE_REOPEN_TICK = 600;
 export const PALISADE_RUN_TICKS = 1_100;
 
-const { Health, Owner, Palisade, Position, Settler, Stockpile, UnderConstruction } = components;
+const { Damaged, Health, Owner, Palisade, Position, Settler, Stockpile, UnderConstruction } = components;
 
 function standingPalisade(
   sim: Simulation,
@@ -179,6 +182,15 @@ function build(sim: Simulation): void {
   sim.enqueueSetup({
     kind: 'placePalisade',
     gfxIndex: PALISADE_WALL_GFX_INDEX,
+    x: DAMAGED_YARD_WALL.hx,
+    y: DAMAGED_YARD_WALL.hy,
+    tribe: PRIMARY_TRIBE,
+    owner: HUMAN_PLAYER,
+    valency: DAMAGED_YARD_WALL.valency,
+  });
+  sim.enqueueSetup({
+    kind: 'placePalisade',
+    gfxIndex: PALISADE_WALL_GFX_INDEX,
     x: PALISADE_WORK_SITES.unclaimed.hx,
     y: PALISADE_WORK_SITES.unclaimed.hy,
     tribe: PRIMARY_TRIBE,
@@ -283,6 +295,15 @@ export const palisadeScene: SceneDefinition = {
               sim.world.get(wall, Palisade).built === ONE && health.hitpoints === 100 && health.max === 100
             );
           })
+        );
+      },
+    },
+    {
+      label: 'the yard builders mended the authored damaged wall to full health with no order',
+      predicate: (sim) => {
+        const wall = palisadeAt(sim, DAMAGED_YARD_WALL.hx, DAMAGED_YARD_WALL.hy);
+        return (
+          wall !== null && !sim.world.has(wall, Damaged) && sim.world.get(wall, Health).hitpoints === 100
         );
       },
     },

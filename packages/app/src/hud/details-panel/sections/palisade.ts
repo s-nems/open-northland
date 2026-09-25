@@ -25,7 +25,7 @@ export function drawPalisade(
     chrome.bar(layout.health, model.health.pct, 'gauge');
   }
   if (layout.progress !== null) {
-    const progress = formatMessage(model.repairing ? hud.repairProgress : hud.constructionProgress, {
+    const progress = formatMessage(hud.constructionProgress, {
       percent: model.builtPct,
     });
     chrome.textAt(progress, layout.progress.x, layout.progress.y + ROW_TEXT_PAD * s, 'dimmed');

@@ -182,18 +182,6 @@ describe('palisadePostOffsets', () => {
     expect(items.flatMap((drawn) => drawn.palisadePosts ?? [])).toEqual([]);
   });
 
-  it('keeps a completed wall and its joins visible while repair carries UnderConstruction', () => {
-    const repair = palisade(2, 1, 0, (ONE / 2) as Fixed);
-    (repair.components as Record<string, unknown>).Palisade = {
-      ...repair.components.Palisade,
-      repairing: true,
-    };
-    (repair.components as Record<string, unknown>).PalisadeBlocking = {};
-    const items = buildSpriteScene(snapshotOf([palisade(1, 0, 0), repair]));
-    expect(items.find((item) => item.ref === 2)?.palisadeSite).toBeUndefined();
-    expect(items.flatMap((item) => item.palisadePosts ?? [])).toHaveLength(2);
-  });
-
   it('drops both adjoining edges when a corner post is removed', () => {
     const before = buildSpriteScene(snapshotOf([palisade(1, 0, 0), palisade(2, 1, 0), palisade(3, 1, 1)]));
     expect(before.flatMap((item) => item.palisadePosts ?? [])).toHaveLength(4);

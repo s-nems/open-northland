@@ -45,7 +45,10 @@ it('places adjacent wall anchors through ordinary commands and mutates the world
   const ordinaryPlacements = sim.commands.log
     .map((entry) => entry.command)
     .filter((command) => command.kind === 'placePalisade')
-    .filter((command) => command.force !== true && command.underConstruction !== true);
+    .filter(
+      (command) =>
+        command.force !== true && command.underConstruction !== true && command.valency === undefined,
+    );
   expect(ordinaryPlacements.map((command) => [command.x, command.y])).toEqual([
     [30, 36],
     [31, 36],

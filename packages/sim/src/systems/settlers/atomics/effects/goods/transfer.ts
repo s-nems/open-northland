@@ -69,7 +69,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
     return qualityMoved;
   }
   const wall = world.tryGet(store, Palisade);
-  if (wall !== undefined && !wall.repairing && !holdsPalisadeClaim(world, store, settler)) return 0;
+  if (wall !== undefined && !holdsPalisadeClaim(world, store, settler)) return 0;
   const stock = world.tryGet(store, Stockpile);
   if (stock === undefined) return 0;
 
