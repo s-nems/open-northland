@@ -1,27 +1,26 @@
 import { type Container, Graphics, Sprite, type Texture } from 'pixi.js';
 
 /**
- * A surveyor's stake: the marker for one planned node of a line (a wall now, a road later), in the
- * placement preview and on a laid site no builder has claimed yet. Its cloth says whether the node takes
- * the line: undyed where it can go, red where it cannot.
+ * A stake in a ring of stones: the marker for one planned node of a line (a wall now, a road later), in
+ * the placement preview and on a laid site until its piece stands. Its stones say whether the node takes
+ * the line: sandstone where it can go, red where it cannot.
  */
 export interface PlanStakeTextures {
   readonly open: Texture;
   readonly blocked: Texture;
 }
 
-/** World px from the art's bottom edge to its top; the art is generated for this project, sized by eye
- *  against a settler. */
-const STAKE_HEIGHT = 20;
-/** Where the stake meets the ground and where its cloth is knotted, as fractions of the art. */
-const ART_GROUND = { x: 0.461, y: 0.778 } as const;
-const ART_KNOT_Y = 0.353;
-const ART_ASPECT = 544 / 648;
+/** World px across the ring; the art is generated for this project, sized by eye against a settler. */
+const STAKE_WIDTH = 24;
+/** Where the stake meets the ground and where its rope is tied, as fractions of the art. */
+const ART_GROUND = { x: 0.49, y: 0.67 } as const;
+const ART_KNOT_Y = 0.265;
+const ART_ASPECT = 855 / 680;
+const STAKE_HEIGHT = STAKE_WIDTH / ART_ASPECT;
 
 /** How far up the stake the string ties on, in world px from the ground point. */
 export const STAKE_TIE_HEIGHT = Math.round((ART_GROUND.y - ART_KNOT_Y) * STAKE_HEIGHT);
 
-const STAKE_WIDTH = STAKE_HEIGHT * ART_ASPECT;
 /** The drawn box around the ground point, for hit bounds: left, top, right and bottom offsets. */
 export const STAKE_BOUNDS = {
   left: -ART_GROUND.x * STAKE_WIDTH,

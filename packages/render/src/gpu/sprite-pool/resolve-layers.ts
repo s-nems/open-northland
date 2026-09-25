@@ -163,6 +163,10 @@ function pushLayers(
   return out.length > 0;
 }
 
+/** Where a claimed segment's flag stands from its site marker, in world px: behind and to the right, so
+ *  the marker stays in view. Placed by eye. */
+const CLAIM_FLAG_OFFSET = { dx: 10, dy: -4 } as const;
+
 /** Scratch for {@link pushPalisadeLayers}: one post's layers, then every post's shadows and bodies. */
 const PALISADE_POST = new LayerBuffer();
 const PALISADE_SHADOWS = new LayerBuffer();
@@ -171,7 +175,14 @@ const PALISADE_BODIES = new LayerBuffer();
 /** Append the endpoint post and every repeated edge post, grouping all cast shadows below all bodies. */
 function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
   if (item.palisadeSite === 'unclaimed') return true;
-  if (item.palisadeSite === 'claimed') return pushStockpileLayers(out, sheet, item, tick);
+  if (item.palisadeSite === 'claimed') {
+    PALISADE_POST.reset();
+    if (!pushStockpileLayers(PALISADE_POST, sheet, item, tick)) return false;
+    for (const layer of PALISADE_POST.finish()) {
+      out.push({ ...layer, dx: CLAIM_FLAG_OFFSET.dx, dy: CLAIM_FLAG_OFFSET.dy });
+    }
+    return true;
+  }
   const binding = sheet.bindings.palisade;
   if (binding === undefined) return false;
   PALISADE_SHADOWS.reset();

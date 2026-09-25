@@ -79,11 +79,12 @@ export class LayerBinder {
     frame: BindFrame,
     frameId: number,
   ): void {
-    if (item.kind === 'palisade' && item.palisadeSite === 'unclaimed') {
+    const site = item.kind === 'palisade' ? item.palisadeSite : undefined;
+    if (site === 'unclaimed') {
       this.showPalisadeSite(pe, frameId);
       return;
     }
-    if (pe.palisadeSiteMarker !== undefined) pe.palisadeSiteMarker.visible = false;
+    if (site !== 'claimed' && pe.palisadeSiteMarker !== undefined) pe.palisadeSiteMarker.visible = false;
     if (layers === null) {
       pe.selectionEllipse = undefined;
       this.showPlaceholder(pe, item, frame, frameId);
@@ -189,6 +190,10 @@ export class LayerBinder {
     } else {
       pe.shadowFlags.length = spriteSlot;
     }
+    if (site === 'claimed') {
+      this.placeSiteMarker(pe);
+      bounds.add(STAKE_BOUNDS.left, STAKE_BOUNDS.top, STAKE_BOUNDS.right, STAKE_BOUNDS.bottom);
+    }
     // A fog ghost stamps no bounds so it cannot be picked: its ref may be a dead entity, and selecting
     // a live one through the fog would leak its current state into the details panel.
     if (!bounds.isEmpty() && item.ghost !== true) {
@@ -261,17 +266,25 @@ export class LayerBinder {
     spr.visible = true;
   }
 
+  /** The site's marker, painted over the claim flag that stands behind it. */
+  private placeSiteMarker(pe: PooledEntity): void {
+    let marker = pe.palisadeSiteMarker;
+    if (marker === undefined) {
+      marker = mintPlanStake(this.stakes, true);
+      pe.palisadeSiteMarker = marker;
+    }
+    const children = pe.container.children;
+    if (children[children.length - 1] !== marker) pe.container.addChild(marker);
+    marker.visible = true;
+  }
+
   /** The unclaimed segment is deliberately ground-only: no partially built post exists yet. */
   private showPalisadeSite(pe: PooledEntity, frameId: number): void {
     for (const s of pe.sprites) s.visible = false;
     if (pe.paletted) for (const s of pe.shadows) s.visible = false;
     pe.selectionEllipse = undefined;
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
-    if (pe.palisadeSiteMarker === undefined) {
-      pe.palisadeSiteMarker = mintPlanStake(this.stakes, true);
-      pe.container.addChild(pe.palisadeSiteMarker);
-    }
-    pe.palisadeSiteMarker.visible = true;
+    this.placeSiteMarker(pe);
     const drawX = pe.motion.drawX;
     const drawY = pe.motion.drawY;
     this.stampBounds(
