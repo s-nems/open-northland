@@ -14,8 +14,9 @@ import type { SystemContext } from '../../context.js';
 import { FetchableStock } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
+import { type GamePhase, gamePhase } from '../game-phase.js';
 import { ownedSettlers } from '../seat-roster.js';
-import type { SeatSupply } from './supply.js';
+import type { SeatSupply, SupplyLines } from './supply.js';
 
 /**
  * One operator seat's products, by stable content ids. A plain list is worked as is. A `glut` seat drops
@@ -98,12 +99,13 @@ export const SHORT_PRODUCT_SEATS = 2;
  * druids' coins run short, one or two amulet makers turn to coins as well ({@link shortFirst}). Both joiners
  * make iron tools and turn to furniture only while the tools pile up. The first potter works bricks and
  * tiles and the second crockery, which doubles a stocked home's food, until it piles up; a short building
- * material takes the crockery seat, and both potters turn to crockery while bricks and tiles lie at their
- * glut lines. The first tailor sews shoes and the second leather armour, each turning to the other's good
- * while his own piles up, as the armour does once plate armour has come in; the small tailor's one man sews
- * shoes, and leather armour meanwhile. The first armourer works long bows and wooden spears, dropping
- * whichever has piled up so the other, the spear the smithy's iron spear needs or the bow, gets his whole
- * time; every other armourer makes long bows only. Bakers bake only bread and breeders keep only cattle.
+ * material takes the crockery seat, from the mid game on as soon as it falls under its comfort line, and
+ * both potters turn to crockery while bricks and tiles lie at their glut lines. The first tailor sews shoes
+ * and the second leather armour, each turning to the other's good while his own piles up, as the armour does
+ * once plate armour has come in; the small tailor's one man sews shoes, and leather armour meanwhile. The
+ * first armourer works long bows and wooden spears, dropping whichever has piled up so the other, the spear
+ * the smithy's iron spear needs or the bow, gets his whole time; every other armourer makes long bows only.
+ * Bakers bake only bread and breeders keep only cattle.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT] },
@@ -274,7 +276,7 @@ export function tuneCraftSelections(
     // The whole crew, since a seat of its own may work the sink's goods, as the crockery seat does.
     const sinking = free.length > 0 && free.every((seat) => sameGoods(current[seat] ?? [], sink));
     if (sink.length > 0 && sinkHolds(supply, products, sinking)) for (const seat of free) listed[seat] = sink;
-    else shortFirst(supply, products, free, listed, current);
+    else shortFirst(supply, gamePhase(ctx.tick), products, free, listed, current);
     for (const [seat, e] of crew.entries()) {
       const goods = listed[seat] ?? [];
       if (goods.length === 0 || sameGoods(current[seat] ?? [], goods)) continue;
@@ -301,28 +303,45 @@ function sinkHolds(supply: SeatSupply, products: readonly number[], sinking: boo
   );
 }
 
+/** One of a good's supply lines. */
+type SupplyLine = Exclude<keyof SupplyLines, 'unit'>;
+
+/** The line under which a short product takes seats, and the line it holds them to, per game phase
+ *  (authored): the opening hires under the short line and holds to comfort, and from the mid game on it
+ *  hires under comfort and holds to the glut, like the product-gated crews (`staffing-plan.ts`). */
+const SHORT_PRODUCT_LINES: Readonly<
+  Record<GamePhase, { readonly hire: SupplyLine; readonly hold: SupplyLine }>
+> = {
+  opening: { hire: 'short', hold: 'comfort' },
+  mid: { hire: 'comfort', hold: 'glut' },
+  late: { hire: 'comfort', hold: 'glut' },
+};
+
 /**
- * Put each short product, ascending, on seats of its own: one per supply unit it lacks to its comfort line,
- * at most {@link SHORT_PRODUCT_SEATS}, taken from the free seats whose listed goods all lie at or above their
- * comfort lines, those already working the product alone first, then the last. While a seat works it the
- * product holds until its comfort line, otherwise it reads the short line. Selection changes cost nothing,
- * so the two lines are the whole hysteresis.
+ * Put each short product, ascending, on seats of its own: one per supply unit it lacks to its hold line
+ * ({@link SHORT_PRODUCT_LINES}), at most {@link SHORT_PRODUCT_SEATS}, taken from the free seats whose listed
+ * goods all lie at or above their comfort lines, those already working the product alone first, then the
+ * last. While a seat works it the product holds to the hold line, otherwise it reads the hire line.
+ * Selection changes cost nothing, so the two lines are the whole hysteresis.
  */
 function shortFirst(
   supply: SeatSupply,
+  phase: GamePhase,
   products: readonly number[],
   free: readonly number[],
   listed: (readonly number[])[],
   current: readonly (readonly number[])[],
 ): void {
+  const { hire, hold } = SHORT_PRODUCT_LINES[phase];
   const plentiful = free.filter((seat) => (listed[seat] ?? []).every((good) => !supply.isShort(good, true)));
   for (const good of products) {
     if (plentiful.length === 0) return;
     const lines = supply.lines(good);
-    if (lines === undefined) continue;
+    const surplus = supply.surplus(good);
+    if (lines === undefined || surplus === undefined) continue;
     const holders = plentiful.filter((seat) => sameGoods(current[seat] ?? [], [good]));
-    if (!supply.isShort(good, holders.length > 0)) continue;
-    const seats = Math.min(Math.ceil(supply.lackToComfort(good) / lines.unit), SHORT_PRODUCT_SEATS);
+    if (!supply.isUnder(good, holders.length > 0 ? hold : hire)) continue;
+    const seats = Math.min(Math.ceil((lines[hold] - surplus) / lines.unit), SHORT_PRODUCT_SEATS);
     const others = plentiful.filter((seat) => !holders.includes(seat)).reverse();
     for (const seat of [...holders, ...others].slice(0, seats)) {
       plentiful.splice(plentiful.indexOf(seat), 1);

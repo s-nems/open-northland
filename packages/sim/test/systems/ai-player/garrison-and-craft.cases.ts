@@ -19,7 +19,11 @@ import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity, World } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
-import { STORE_CARRIERS_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
+import {
+  gamePhase,
+  MID_GAME_FROM_TICKS,
+  STORE_CARRIERS_FROM_TICKS,
+} from '../../../src/systems/ai-player/game-phase.js';
 import {
   DEFAULT_BUILD_ORDER,
   LATE_GAME_CIVILIANS,
@@ -59,6 +63,7 @@ import {
   HQ_X,
   HQ_Y,
   husbandryContent,
+  IRON,
   JOINER,
   JOINERY_TYPE,
   makeAiSeat,
@@ -244,6 +249,52 @@ function drafted(seat: ArmedSeat): number {
   return Object.values(counterWants(seat.sim, seat.ctx)).reduce((sum, value) => sum + value, 0);
 }
 
+/** A free fixture building slot for {@link smithyContent}'s sword smithy. */
+const SMITHY_TYPE = 19;
+/** Where the smithy stands: inside the settlement, clear of the HQ and the barracks. */
+const SMITHY_AT = { x: 50, y: 16 };
+
+/** {@link armedContent} with a crewless smithy forging short swords out of iron: a weapon shop. */
+function smithyContent(): ContentSet {
+  const base = armedContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: SMITHY_TYPE,
+        id: 'work_smithy_01',
+        kind: 'workplace' as const,
+        workers: [],
+        recipes: [
+          { inputs: [{ goodType: IRON, amount: 1 }], outputs: [{ goodType: SWORD, amount: 1 }], ticks: 180 },
+        ],
+        construction: [{ goodType: WOOD, amount: 2 }],
+        stock: [
+          { goodType: IRON, capacity: 5, initial: 0 },
+          { goodType: SWORD, capacity: 5, initial: 0 },
+        ],
+      },
+    ],
+  });
+}
+
+/** A {@link rivalSeat} on {@link smithyContent} with empty stores, its smithy standing finished. */
+function unarmedSmithySeat(peaceUntil: number): ArmedSeat {
+  const seat = rivalSeat(RIVAL_FIGHTERS, peaceUntil, { content: smithyContent() });
+  setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), SWORD, 0);
+  seat.sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: SMITHY_TYPE,
+    x: SMITHY_AT.x,
+    y: SMITHY_AT.y,
+    tribe: VIKING,
+    owner: SEAT,
+  });
+  seat.sim.step();
+  return seat;
+}
+
 const FURNITURE = 13;
 
 /** The AI content with the joinery's furniture line, so its joiners have a product to turn to. */
@@ -282,6 +333,11 @@ const SWORD_SHORT = 22;
 const SPEAR_IRON = 23;
 const ARMOUR_CHAIN = 24;
 const ARMOUR_PLATE = 25;
+const BRICK = 26;
+const TILE = 27;
+const CROCKERY = 28;
+/** The largest bill line of each building material in {@link potteryContent} (authored for the fixture). */
+const MATERIAL_BILL_UNITS = 3;
 
 /** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
 /** The fixture joinery recast as the workshop `id`, one wood recipe per product, so the type's own plan
@@ -301,6 +357,30 @@ function joineryRecastAs(id: string, products: readonly { typeId: number; id: st
               outputs: [{ goodType: p.typeId, amount: 1 }],
               ticks: 180,
             })),
+          }
+        : b,
+    ),
+  });
+}
+
+/** The fixture joinery recast as the upgraded pottery, whose own bill takes bricks and tiles so both carry
+ *  supply lines. */
+function potteryContent(): ContentSet {
+  const recast = joineryRecastAs('work_pottery_01', [
+    { typeId: BRICK, id: 'brick' },
+    { typeId: TILE, id: 'tile' },
+    { typeId: CROCKERY, id: 'crockery' },
+  ]);
+  return parseContentSet({
+    ...recast,
+    buildings: recast.buildings.map((b) =>
+      b.typeId === JOINERY_TYPE
+        ? {
+            ...b,
+            construction: [
+              { goodType: BRICK, amount: MATERIAL_BILL_UNITS },
+              { goodType: TILE, amount: MATERIAL_BILL_UNITS },
+            ],
           }
         : b,
     ),
@@ -830,6 +910,21 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(drafted(seat)).toBeGreaterThan(ARMY_FLOOR_MIN);
   });
 
+  it('drafts no unarmed soldier and claims no floor men once a weapon shop stands', () => {
+    const atLead = unarmedSmithySeat(ARMY_FLOOR_LEAD_TICKS);
+    // Only the existing bookings stand: none, so no counter asks for anybody.
+    expect(counterWants(atLead.sim, atLead.ctx).trainSoldiers).toBeUndefined();
+    expect(drafted(atLead)).toBe(0);
+    // The floor claimed nobody: the posts and top-ups leave exactly the men they leave without a floor.
+    expect(sparePool(atLead)).toBe(sparePool(unarmedSmithySeat(DISTANT_PEACE)));
+  });
+
+  it('still drafts fist-fighters for the army floor while no weapon shop stands', () => {
+    const seat = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS);
+    setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), SWORD, 0);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: RIVAL_FIGHTERS });
+  });
+
   it('keeps a joinery operator on iron tools only, idempotently', () => {
     const sim = aiSim();
     placeHq(sim);
@@ -1129,6 +1224,49 @@ describe('workforce module - the barracks and craft selections', () => {
     );
     armouries.hire(0, 4);
     expect(armouries.products()).toEqual([[BOW_LONG, SPEAR_WOODEN], [BOW_LONG], [BOW_LONG], [BOW_LONG]]);
+  });
+
+  /** One pottery past its opening run with both potters hired, deciding at `tick`; the bricks' lines then. */
+  function crewedPottery(tick: number) {
+    const content = potteryContent();
+    const pottery = crewedWorkshops(content, 1, 2, tick);
+    const [building] = pottery.buildings;
+    const run = CRAFT_OPENING_RUN_BY_BUILDING_ID.work_pottery_01?.cycles ?? 0;
+    if (building === undefined) throw new Error('setup: no pottery');
+    pottery.sim.world.add(building, CompletedCycles, { byGood: new Map([[TILE, run]]) });
+    pottery.hire(0, 2);
+    const bricks = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(BRICK);
+    const tiles = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(TILE);
+    if (bricks === undefined || tiles === undefined) throw new Error('setup: bricks and tiles take lines');
+    // Tiles sit at their comfort line: short in no phase, and under the glut the crockery sink waits for.
+    pottery.stock(TILE, tiles.comfort);
+    return { ...pottery, bricks };
+  }
+
+  it('turns the crockery seat to bricks under the comfort line from the mid game, and holds it to the glut', () => {
+    const pottery = crewedPottery(MID_GAME_FROM_TICKS);
+    const { short, comfort, glut } = pottery.bricks;
+    pottery.stock(BRICK, comfort - 1);
+    expect(comfort - 1).toBeGreaterThanOrEqual(short);
+    expect(pottery.products()).toEqual([[BRICK, TILE], [BRICK]]);
+    pottery.stock(BRICK, glut - 1);
+    expect(pottery.products()).toEqual([]);
+    pottery.stock(BRICK, glut);
+    expect(pottery.products()).toEqual([[CROCKERY]]);
+  });
+
+  it('keeps the crockery seat on crockery in the opening until the bricks fall under the short line', () => {
+    const pottery = crewedPottery(0);
+    const { short, comfort } = pottery.bricks;
+    pottery.stock(BRICK, comfort - 1);
+    expect(comfort - 1).toBeGreaterThanOrEqual(short);
+    expect(pottery.products()).toEqual([[BRICK, TILE], [CROCKERY]]);
+    pottery.stock(BRICK, short - 1);
+    expect(pottery.products()).toEqual([[BRICK]]);
+    pottery.stock(BRICK, comfort - 1);
+    expect(pottery.products()).toEqual([]);
+    pottery.stock(BRICK, comfort);
+    expect(pottery.products()).toEqual([[CROCKERY]]);
   });
 
   it('turns the first tailor to leather armour while the shoes pile up, and back once they are worn down', () => {
