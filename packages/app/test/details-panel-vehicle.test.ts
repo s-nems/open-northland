@@ -1,5 +1,7 @@
 import {
+  components,
   type Entity,
+  playerCommand,
   type Simulation,
   TICKS_PER_SECOND,
   type VehicleView,
@@ -8,6 +10,9 @@ import {
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
+  BUILDING_WAREHOUSE_00,
+  GOOD_IRON,
+  placeBuiltSandboxBuilding,
   VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
   VEHICLE_OXCART,
@@ -25,6 +30,7 @@ import {
   visibleCargoRows,
 } from '../src/hud/details-panel/hit-test.js';
 import { buildUnitPanelModel, type UnitPanelModelContext } from '../src/hud/details-panel/index.js';
+import type { TradeLayout } from '../src/hud/details-panel/layout/index.js';
 import type { VehiclePanelModel } from '../src/hud/details-panel/model/index.js';
 import {
   NO_MODIFIERS,
@@ -74,6 +80,9 @@ const vehicleView = (model: VehiclePanelModel): Extract<PanelView, { kind: 'vehi
 
 /** Long enough into the trade scene for the trader to ride its cart with the route set. */
 const TRADE_SCENE_RIDE_TICKS = TICKS_PER_SECOND * 12;
+/** A second warehouse of the player's, between the trade scene's home and the foreign post. */
+const SECOND_WAREHOUSE_AT = { x: 11, y: 5 } as const;
+const SECOND_WAREHOUSE_IRON = 3;
 
 const orders = (model: VehiclePanelModel): string[] => model.orders.map((row) => row.order);
 
@@ -225,9 +234,8 @@ describe('vehicle panel trade tab', () => {
     expect(panelHoverAt(view, at.x, at.y, ALL_STOCK_TAB).action).toBe('attach-trade-house');
   });
 
-  it("turns the route's import marks, agreements and detach buttons into the trader's orders", () => {
-    const sim = createSceneSim(tradeScene);
-    sim.run(TRADE_SCENE_RIDE_TICKS);
+  /** The trade scene's cart panel once the trader rides it. */
+  const tradePanel = (sim: Simulation): { trader: Entity; view: PanelView; trade: TradeLayout } => {
     const trader = sceneTrader(sim);
     const cart = trader === undefined ? undefined : sim.traderView(trader)?.cart?.entity;
     if (trader === undefined || cart === undefined) throw new Error('expected the trader on its cart');
@@ -237,7 +245,30 @@ describe('vehicle panel trade tab', () => {
     const view = vehicleView(model);
     const trade = view.layout.trade;
     if (trade === null) throw new Error('expected the Handel section');
+    return { trader, view, trade };
+  };
 
+  it("turns an own route's import marks into the trader's orders", () => {
+    const sim = createSceneSim(tradeScene);
+    sim.run(TRADE_SCENE_RIDE_TICKS);
+    const trader = sceneTrader(sim);
+    const post =
+      trader === undefined ? undefined : sim.traderView(trader)?.stops.find((s) => s.foreign)?.house;
+    if (trader === undefined || post === undefined) throw new Error('expected the foreign route');
+    const second = placeBuiltSandboxBuilding(
+      sim,
+      BUILDING_WAREHOUSE_00,
+      SECOND_WAREHOUSE_AT.x,
+      SECOND_WAREHOUSE_AT.y,
+      HUMAN_PLAYER,
+    );
+    components.setStockAmount(sim.world, second, GOOD_IRON, SECOND_WAREHOUSE_IRON);
+    sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'detachTradeHouse', entity: trader, house: post }));
+    sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachTradeHouse', entity: trader, house: second }));
+    sim.step();
+    const { view, trade } = tradePanel(sim);
+
+    expect(trade.offers).toEqual([]);
     const mark = trade.stops.flatMap((stop) => stop.imports)[0];
     if (mark === undefined) throw new Error('expected an import mark');
     const onMark = center(mark.rect);
@@ -253,7 +284,15 @@ describe('vehicle panel trade tab', () => {
       house: mark.house,
       goodType: mark.goodType,
     });
+  });
 
+  it("turns a foreign route's agreements and detach buttons into the trader's orders, with no import mark", () => {
+    const sim = createSceneSim(tradeScene);
+    sim.run(TRADE_SCENE_RIDE_TICKS);
+    const { trader, view, trade } = tradePanel(sim);
+
+    expect(trade.stops.flatMap((stop) => stop.imports)).toEqual([]);
+    expect(trade.offersCaption).not.toBeNull();
     const offer = trade.offers[0];
     if (offer === undefined) throw new Error('expected an agreement row');
     const onOffer = center(offer.rect);

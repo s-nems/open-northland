@@ -93,10 +93,12 @@ export function removeTradeStop(world: World, e: Entity, house: Entity): boolean
   return true;
 }
 
+/** Mark or clear one import; refused on a route with a foreign stop, where the agreement alone decides
+ *  what moves. */
 export function setTradeImport(world: World, e: Entity, house: Entity, good: number, on: boolean): boolean {
   const route = world.tryGet(e, TradeRoute);
   const index = route?.stops.findIndex((s) => s.house === house) ?? -1;
-  if (route === undefined || index < 0) return false;
+  if (route === undefined || index < 0 || route.stops.some((s) => s.foreign)) return false;
   const has = route.stops[index]?.imports.includes(good) ?? false;
   if (has === on) return true;
   const live = world.mut(e, TradeRoute);

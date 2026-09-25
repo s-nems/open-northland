@@ -72,6 +72,9 @@ export interface UnitControlsOptions {
   /** The sim's trader read seams (`Simulation.traderView` / `tradeOffersAt`); absent hides trade. */
   readonly traderView?: (entity: number) => TraderView | undefined;
   readonly tradeOffersAt?: (house: number) => readonly TradeOffer[];
+  /** The sim's trade-stop rule (`Simulation.canAttachTradeHouse`), which lights the trade-house pick's
+   *  targets and gates a trader's right-click on a house; absent, neither puts a house on a route. */
+  readonly canAttachTradeHouse?: (trader: number, house: number) => boolean;
   /** The sim's vehicle rules (`Simulation.canAttachToVehicle` / `mooringProbe`), which light the
    *  "Assign Vehicle" and dock picks' targets and gate their clicks; absent, the picks light nothing
    *  and the sim alone refuses. */

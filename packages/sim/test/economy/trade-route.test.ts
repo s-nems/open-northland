@@ -59,6 +59,8 @@ const PLANK = 2;
 const FOOD = 3;
 const BREAD = 7;
 const HEADQUARTERS = 1;
+/** The fixture's work temple, a house type that keeps no stock. */
+const TEMPLE = 3;
 const TRADING_POST_ID = 700;
 const NEAR_X = 1;
 const FAR_X = 7;
@@ -168,6 +170,18 @@ function woodRoute(sim: Simulation, trader: Entity, near: Entity, far: Entity): 
   attach(sim, trader, near);
   attach(sim, trader, far);
   mark(sim, trader, far, WOOD);
+}
+
+/** The agreement the houses stamped {@link TRADING_POST_ID} offer: one wood for two planks. */
+function offerWoodForPlanks(sim: Simulation): void {
+  sim.enqueueSetup({
+    kind: 'addTradeAgreement',
+    missionId: TRADING_POST_ID,
+    giveGood: WOOD,
+    giveAmount: 1,
+    takeGood: PLANK,
+    takeAmount: 2,
+  });
 }
 
 describe('a trader between its own houses', () => {
@@ -304,9 +318,10 @@ describe('a trader between its own houses', () => {
   it("lets a foreign house take the route's foreign stop and drops its agreement", () => {
     const sim = newSim();
     const own = houseAt(sim, NEAR_X, HUMAN);
-    const post = houseAt(sim, FAR_X, NEIGHBOUR);
-    const other = houseAt(sim, MIDDLE_X, OUTSIDER);
+    const post = houseAt(sim, FAR_X, NEIGHBOUR, [], TRADING_POST_ID);
+    const other = houseAt(sim, MIDDLE_X, OUTSIDER, [], TRADING_POST_ID);
     const trader = traderOnFoot(sim, NEAR_X);
+    offerWoodForPlanks(sim);
     attach(sim, trader, post);
     attach(sim, trader, own);
     sim.step();
@@ -317,6 +332,52 @@ describe('a trader between its own houses', () => {
     const route = sim.world.get(trader, TradeRoute);
     expect(route.stops.map((stop) => stop.house)).toEqual([own, other]);
     expect(route.agreement).toBe(-1);
+  });
+
+  it('takes no foreign house that offers no agreement', () => {
+    const sim = newSim();
+    const own = houseAt(sim, NEAR_X, HUMAN);
+    const stranger = houseAt(sim, FAR_X, NEIGHBOUR);
+    const trader = traderOnFoot(sim, NEAR_X);
+    attach(sim, trader, own);
+    attach(sim, trader, stranger);
+    sim.step();
+
+    expect(sim.canAttachTradeHouse(trader, stranger)).toBe(false);
+    expect(sim.world.get(trader, TradeRoute).stops.map((stop) => stop.house)).toEqual([own]);
+  });
+
+  it('takes no own house that keeps no stock or is not finished', () => {
+    const sim = newSim();
+    const own = houseAt(sim, NEAR_X, HUMAN);
+    const temple = houseAt(sim, MIDDLE_X, HUMAN);
+    sim.world.mut(temple, Building).buildingType = TEMPLE;
+    const site = houseAt(sim, FAR_X, HUMAN);
+    sim.world.mut(site, Building).built = fx.fromInt(0);
+    const trader = traderOnFoot(sim, NEAR_X);
+    attach(sim, trader, own);
+    attach(sim, trader, temple);
+    attach(sim, trader, site);
+    sim.step();
+
+    expect(sim.canAttachTradeHouse(trader, temple)).toBe(false);
+    expect(sim.canAttachTradeHouse(trader, site)).toBe(false);
+    expect(sim.world.get(trader, TradeRoute).stops.map((stop) => stop.house)).toEqual([own]);
+  });
+
+  it('keeps no import mark on a route with a foreign stop', () => {
+    const sim = newSim();
+    const own = houseAt(sim, NEAR_X, HUMAN);
+    const post = houseAt(sim, FAR_X, NEIGHBOUR, [], TRADING_POST_ID);
+    const trader = traderOnFoot(sim, NEAR_X);
+    offerWoodForPlanks(sim);
+    attach(sim, trader, own);
+    attach(sim, trader, post);
+    sim.step();
+    mark(sim, trader, own, WOOD);
+    sim.step();
+
+    expect(sim.world.get(trader, TradeRoute).stops.map((stop) => stop.imports)).toEqual([[], []]);
   });
 
   it('stands idle with a single house on its route', () => {
@@ -456,14 +517,7 @@ describe('a trader at a foreign house', () => {
     const post = houseAt(sim, FAR_X, NEIGHBOUR, [[PLANK, 8]], TRADING_POST_ID);
     const trader = traderAt(sim, NEAR_X);
     sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN, to: NEIGHBOUR, state: stance });
-    sim.enqueueSetup({
-      kind: 'addTradeAgreement',
-      missionId: TRADING_POST_ID,
-      giveGood: WOOD,
-      giveAmount: 1,
-      takeGood: PLANK,
-      takeAmount: 2,
-    });
+    offerWoodForPlanks(sim);
     attach(sim, trader, home);
     attach(sim, trader, post);
     sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));

@@ -103,7 +103,7 @@ describe('diplomacyPanelRows', () => {
       observer: false,
       goodLabelOf: (good) => (good === FURNITURE ? 'Meble' : undefined),
     });
-    expect(rows[0]?.tradeOffers).toEqual([`1 Meble za 2 ${COIN}`]);
+    expect(rows[0]?.tradeOffers).toEqual([`Oddajesz 1 Meble, dostajesz 2 ${COIN}`]);
   });
 
   it('drops a pair the map hides and takes the stance buttons off a locked pair or a page it closes', () => {

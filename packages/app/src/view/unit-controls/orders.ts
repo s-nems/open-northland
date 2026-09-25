@@ -32,7 +32,7 @@ import {
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
-import { tradeHousePick } from './highlights/index.js';
+import { type TradeHouseRule, tradeHousePick } from './highlights/index.js';
 import { openSchoolDialog, type SchoolDialog } from './school-dialog.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
@@ -54,6 +54,8 @@ export interface UnitOrderDeps {
   readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
   /** The GUI click the school dialog's buttons confirm with; absent, silent. */
   readonly cue?: (cue: UiCue) => void;
+  /** The sim's trade-stop rule; absent, a trader's right-click puts no house on its route. */
+  readonly canAttachTradeHouse?: TradeHouseRule | undefined;
 }
 
 /**
@@ -273,8 +275,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   /**
    * Original behavior: a trader's right-click on a standing house puts it on the trade route, another
-   * tribe's house included, and takes it off when the route already names it. The traders that took
-   * the order are returned; the rest of the selection handles the click as usual.
+   * tribe's house included, and takes it off when the route already names it. Which houses a route
+   * takes is the sim's rule. The traders that took the order are returned; the rest of the selection
+   * handles the click as usual.
    */
   const routeTradeHouse = (commanded: readonly FormationUnit[], house: number | null): Set<number> => {
     const routed = new Set<number>();
@@ -285,7 +288,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       if (self === undefined || !systems.isTraderJob(deps.content, settlerJobType(self) ?? null)) continue;
       if (tradeHousePick.onRoute(snapshot, house, unit.ref)) {
         deps.enqueue({ kind: 'detachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
-      } else if (tradeHousePick.assignableAt(snapshot, house, unit.ref)) {
+      } else if (deps.canAttachTradeHouse?.(unit.ref, house) === true) {
         deps.enqueue({ kind: 'attachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
       } else continue;
       routed.add(unit.ref);

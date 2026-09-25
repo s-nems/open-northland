@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { BUILD_HOUSE_ATOMIC } from '../src/catalog/atomics.js';
 import { JOB_BUILDER, JOB_JOINER, JOB_TRADER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
-import { BUILDING_BARRACKS, BUILDING_HOME_00, sandboxContent } from '../src/game/sandbox/index.js';
+import {
+  BUILDING_BARRACKS,
+  BUILDING_HOME_00,
+  GOOD_STONE,
+  GOOD_WOOD,
+  sandboxContent,
+} from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
 import { sitePick } from '../src/view/unit-controls/highlights/own-building-picks.js';
 import { createUnitOrderController } from '../src/view/unit-controls/orders.js';
@@ -24,12 +30,17 @@ const {
   Damaged,
   Female,
   Health,
+  MissionObjectId,
   Owner,
   Position,
   SiteAssignment,
   Stockpile,
   UnderConstruction,
 } = components;
+
+/** Another tribe's player, and the mission id the map stamps on its trading house. */
+const NEIGHBOUR = HUMAN_PLAYER + 1;
+const TRADING_POST_ID = 700;
 
 /** A bakery - the workplace whose craft slot the click should hire into. */
 const BAKERY = 'work_bakery_00';
@@ -120,6 +131,7 @@ function pressRightClick(
     enqueue: (command) => issued.push(command),
     selectOwnSettler: () => {},
     openActions: () => {},
+    canAttachTradeHouse: (trader, house) => sim.canAttachTradeHouse(trader as Entity, house as Entity),
   }).issueRightClick(CLICK);
   return { issued, ordered };
 }
@@ -355,6 +367,14 @@ describe("the action ring's site pick", () => {
   });
 });
 
+/** A standing house of {@link NEIGHBOUR} stamped as the map's trading post. */
+function tradingPost(sim: Simulation): Entity {
+  const post = buildingAt(sim, BUILDING_HOME_00, ONE);
+  sim.world.mut(post, Owner).player = NEIGHBOUR;
+  sim.world.add(post, MissionObjectId, { id: TRADING_POST_ID });
+  return post;
+}
+
 describe('right-clicking a standing house with a trader', () => {
   it('puts the house on the trade route instead of hiring or housing the trader', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
@@ -392,13 +412,30 @@ describe('right-clicking a standing house with a trader', () => {
 
   it("walks the rest of the selection to another tribe's house the trader routes", () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
-    const post = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const post = tradingPost(sim);
     const trader = settlerAt(sim, JOB_TRADER);
     const builder = settlerAt(sim, JOB_BUILDER);
+    components.addTradeAgreement(sim.world, {
+      missionId: TRADING_POST_ID,
+      giveGood: GOOD_WOOD,
+      giveAmount: 1,
+      takeGood: GOOD_STONE,
+      takeAmount: 1,
+    });
 
     const issued = rightClick(sim, [trader, builder], post, sim.content, false);
 
     expect(issued[0]).toEqual({ kind: 'attachTradeHouse', entity: trader, house: post });
     expect(issued.slice(1).map((order) => ('entity' in order ? order.entity : undefined))).toEqual([builder]);
+  });
+
+  it("walks a trader to another tribe's house that offers no agreement", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const post = tradingPost(sim);
+    const trader = settlerAt(sim, JOB_TRADER);
+
+    const issued = rightClick(sim, [trader], post, sim.content, false);
+
+    expect(issued.map((order) => order.kind)).toEqual(['moveUnit']);
   });
 });

@@ -126,6 +126,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       canvas.style.cursor = armed ? 'crosshair' : '';
     },
     canAttachToVehicle: opts.canAttachToVehicle,
+    canAttachTradeHouse: opts.canAttachTradeHouse,
   });
 
   /** The hotkey obeys the ring's own gate for the settlers, so both ways of arming the order agree on
@@ -163,6 +164,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectOwnSettler: (id) => applySelection([id], false),
     openActions: (atClient) => chrome.actions().open(atClient),
     cue,
+    canAttachTradeHouse: opts.canAttachTradeHouse,
   });
 
   const vehicleOrders = createVehicleOrderController({

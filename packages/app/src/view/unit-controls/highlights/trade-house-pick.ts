@@ -1,6 +1,10 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { isFinishedBuilding, num } from '../../../game/snapshot.js';
+import { num } from '../../../game/snapshot.js';
+
+/** The sim's trade-stop rule (`Simulation.canAttachTradeHouse`): whether the trader's route takes the
+ *  house. */
+export type TradeHouseRule = (trader: number, house: number) => boolean;
 
 /** The houses a trader's route already names, read off its snapshot `TradeRoute`. */
 function routeHousesOf(snapshot: WorldSnapshot, settler: number): Set<number> {
@@ -15,24 +19,24 @@ function routeHousesOf(snapshot: WorldSnapshot, settler: number): Set<number> {
 }
 
 /**
- * The "add a house to the trade route" pick: every finished building on the map is a candidate, lit
- * green while an armed trader's route does not name it yet. Ownership is no gate, since the exchange
- * happens at another tribe's house; the sim's authority check admits the foreign house for these orders
- * alone.
+ * The "add a house to the trade route" pick: a house an armed trader's route takes is lit green, one
+ * already on a route red, and the rest stay unlit, so another tribe's houses light only where an
+ * agreement trades.
  */
 export const tradeHousePick = {
-  highlight(snapshot: WorldSnapshot, settlers: readonly number[]): BuildingHighlightItem[] {
+  highlight(
+    snapshot: WorldSnapshot,
+    settlers: readonly number[],
+    canAttach: TradeHouseRule,
+  ): BuildingHighlightItem[] {
     const routes = settlers.map((settler) => routeHousesOf(snapshot, settler));
     const items: BuildingHighlightItem[] = [];
     for (const e of snapshot.entities) {
-      if (!isFinishedBuilding(e)) continue;
-      items.push({ id: e.id, ok: routes.some((taken) => !taken.has(e.id)) });
+      if (e.components.Building === undefined) continue;
+      if (settlers.some((settler) => canAttach(settler, e.id))) items.push({ id: e.id, ok: true });
+      else if (routes.some((taken) => taken.has(e.id))) items.push({ id: e.id, ok: false });
     }
     return items;
-  },
-  assignableAt(snapshot: WorldSnapshot, building: number, settler: number): boolean {
-    const e = entityById(snapshot, building);
-    return e !== undefined && isFinishedBuilding(e) && !routeHousesOf(snapshot, settler).has(building);
   },
   onRoute(snapshot: WorldSnapshot, building: number, settler: number): boolean {
     return routeHousesOf(snapshot, settler).has(building);

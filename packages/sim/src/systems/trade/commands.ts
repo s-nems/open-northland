@@ -9,15 +9,39 @@ import {
   setTradeAgreement,
   setTradeImport,
   tradeAgreements,
+  tradeRouteOf,
 } from '../../components/index.js';
 import type { TradeAgreementCommand, TradeCommand } from '../../core/commands/trade.js';
+import { contentIndex } from '../../core/content-index.js';
+import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 import { isTraderJob } from '../readviews/jobs.js';
+import { agreementsAt } from './agreements.js';
 
-function isTrader(world: World, ctx: SystemContext, e: Entity): boolean {
+function isTrader(world: World, ctx: ContentContext, e: Entity): boolean {
   const settler = world.tryGet(e, Settler);
   return settler !== undefined && isTraderJob(ctx.content, settler.jobType);
+}
+
+/**
+ * Whether `attachTradeHouse` puts `house` on the trader's route: a standing house not on it yet that
+ * keeps a stock when it is the trader's own, or that offers an agreement when it is another player's.
+ * Trade inside the settlement moves any good; with another tribe only the house's agreements trade, so
+ * a house offering none is no stop (owner's choice, so the house pick lights only the houses that trade).
+ */
+export function canAttachTradeHouse(
+  world: World,
+  ctx: ContentContext,
+  trader: Entity,
+  house: Entity,
+): boolean {
+  if (!isTrader(world, ctx, trader) || !world.isAlive(house)) return false;
+  const building = world.tryGet(house, Building);
+  if (building === undefined || building.built !== ONE) return false;
+  if (tradeRouteOf(world, trader)?.stops.some((stop) => stop.house === house) === true) return false;
+  if (ownerOf(world, house) !== ownerOf(world, trader)) return agreementsAt(world, house).length > 0;
+  return (contentIndex(ctx.content).storedGoodsByBuilding.get(building.buildingType)?.size ?? 0) > 0;
 }
 
 /** Apply one trader order. A stale house, a non-trader, or a choice the route cannot hold is skipped. */
@@ -25,7 +49,7 @@ export function applyTradeCommand(world: World, ctx: SystemContext, command: Tra
   if (!isTrader(world, ctx, command.entity)) return;
   switch (command.kind) {
     case 'attachTradeHouse': {
-      if (!world.isAlive(command.house) || !world.has(command.house, Building)) return;
+      if (!canAttachTradeHouse(world, ctx, command.entity, command.house)) return;
       const foreign = ownerOf(world, command.house) !== ownerOf(world, command.entity);
       addTradeStop(world, command.entity, command.house, foreign);
       return;

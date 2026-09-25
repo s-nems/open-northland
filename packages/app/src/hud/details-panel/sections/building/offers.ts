@@ -3,7 +3,7 @@ import type { Chrome } from '../../chrome.js';
 import { type BuildingLayout, ROW_TEXT_PAD } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
 
-/** The trade agreements window: one "give N X for M Y" line per agreement the house offers. Authored;
+/** The trade agreements window: one "you give N X, you get M Y" line per agreement the house offers. Authored;
  *  the original shows a foreign trade house's agreements in its own house window. */
 export function drawOffersSection(
   chrome: Chrome,

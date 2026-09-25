@@ -12,6 +12,7 @@ import {
   houseAssignableAt,
   schoolPick,
   sitePick,
+  type TradeHouseRule,
   tradeHousePick,
   workerGroupAt,
 } from './highlights/index.js';
@@ -71,6 +72,7 @@ interface BuildingPick {
     snapshot: WorldSnapshot,
     settlers: readonly number[],
     byType: ReadonlyMap<number, BuildingType>,
+    canTrade: TradeHouseRule,
   ) => BuildingHighlightItem[];
   /** The orders a click on `building` issues, empty when that building refuses every settler. */
   readonly orders: (
@@ -78,6 +80,7 @@ interface BuildingPick {
     settlers: readonly number[],
     building: number,
     byType: ReadonlyMap<number, BuildingType>,
+    canTrade: TradeHouseRule,
   ) => PlayerCommand[];
 }
 
@@ -118,12 +121,13 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
         .map((settler) => ({ kind: 'assignBuilder', entity: settler as Entity, site: building as Entity })),
   },
   // The one building pick that reaches beyond the player's own houses: a trader's exchange happens at
-  // another tribe's house, so every standing house lights up but the ones already on the route.
+  // another tribe's house that offers an agreement.
   'trade-house': {
-    highlight: (snapshot, settlers) => tradeHousePick.highlight(snapshot, settlers),
-    orders: (snapshot, settlers, building) =>
+    highlight: (snapshot, settlers, _byType, canTrade) =>
+      tradeHousePick.highlight(snapshot, settlers, canTrade),
+    orders: (_snapshot, settlers, building, _byType, canTrade) =>
       settlers
-        .filter((settler) => tradeHousePick.assignableAt(snapshot, building, settler))
+        .filter((settler) => canTrade(settler, building))
         .map((settler) => ({
           kind: 'attachTradeHouse',
           entity: settler as Entity,
@@ -203,6 +207,9 @@ export interface PickModeDeps {
   /** The sim's attach rule (`Simulation.canAttachToVehicle`), which the "Assign Vehicle" pick lights
    *  the settler's own vehicles by; absent, the pick lights nothing. */
   readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
+  /** The sim's trade-stop rule, which the trade-house pick lights and orders by; absent, the pick
+   *  lights nothing and orders nothing. */
+  readonly canAttachTradeHouse?: TradeHouseRule | undefined;
 }
 
 /**
@@ -266,6 +273,7 @@ function computeVehicleHighlight(
 
 export function createPickModeController(deps: PickModeDeps): PickModeController {
   const buildingsByType = lastByTypeId(deps.content.buildings);
+  const canTrade: TradeHouseRule = deps.canAttachTradeHouse ?? (() => false);
   let pickMode: PickMode | null = null;
   let pickVersion = 0;
   const setMode = (next: PickMode | null): void => {
@@ -291,7 +299,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       );
       if (learners.length > 0) return deps.orders().openSchool(building, learners);
     }
-    const orders = BUILDING_PICKS[kind].orders(snapshot, settlers, building, buildingsByType);
+    const orders = BUILDING_PICKS[kind].orders(snapshot, settlers, building, buildingsByType, canTrade);
     for (const order of orders) deps.enqueue(order);
     return orders.length > 0;
   };
@@ -412,7 +420,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       }
       // The other picks show on the ground or the cursor.
       if (!isBuildingPick(mode)) return null;
-      return BUILDING_PICKS[mode.kind].highlight(snapshot, mode.units, buildingsByType);
+      return BUILDING_PICKS[mode.kind].highlight(snapshot, mode.units, buildingsByType, canTrade);
     },
     () => pickVersion,
   );

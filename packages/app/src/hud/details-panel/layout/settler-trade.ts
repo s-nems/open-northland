@@ -21,12 +21,14 @@ export interface TradeImportHit {
   readonly rect: Rect;
 }
 
-/** One agreement row of the foreign stop; clicking it trades on that agreement. */
+/** One agreement row of the foreign stop, a round choice button before its terms; clicking anywhere on
+ *  the row trades on that agreement. */
 export interface TradeOfferHit {
   readonly index: number;
   readonly label: string;
   readonly selected: boolean;
   readonly rect: Rect;
+  readonly button: Rect;
 }
 
 export interface TradeStopLayout {
@@ -43,6 +45,8 @@ export interface TradeLayout {
   readonly section: SectionRect;
   readonly stops: readonly TradeStopLayout[];
   readonly attach: { readonly button: ButtonHit; readonly label: Rect } | null;
+  /** The caption over the agreement rows; null without any. */
+  readonly offersCaption: Rect | null;
   readonly offers: readonly TradeOfferHit[];
   readonly statusRows: readonly Rect[];
 }
@@ -79,7 +83,7 @@ export function tradeBodyHeight(model: TradePanelModel, bodyW: number, s: number
   let h = 0;
   for (const stop of model.stops) h += m.icon + importBlockH(stop.imports.length, m) + m.stopGap;
   if (model.canAttach) h += m.icon + m.stopGap;
-  h += model.offers.length * m.rowH;
+  if (model.offers.length > 0) h += m.rowH + model.offers.length * (m.icon + m.stopGap);
   h += model.status.length * m.rowH;
   return h;
 }
@@ -134,10 +138,16 @@ export function layoutTrade(model: TradePanelModel, section: SectionRect, s: num
     y += m.icon + m.stopGap;
   }
 
-  const offers: TradeOfferHit[] = model.offers.map((offer) => {
-    const rect: Rect = { x: body.x, y, w: body.w, h: m.rowH };
+  let offersCaption: Rect | null = null;
+  if (model.offers.length > 0) {
+    offersCaption = { x: body.x, y, w: body.w, h: m.rowH };
     y += m.rowH;
-    return { index: offer.index, label: offer.label, selected: offer.selected, rect };
+  }
+  const offers: TradeOfferHit[] = model.offers.map((offer) => {
+    const rect: Rect = { x: body.x, y, w: body.w, h: m.icon };
+    const button: Rect = { x: body.x, y, w: m.icon, h: m.icon };
+    y += m.icon + m.stopGap;
+    return { index: offer.index, label: offer.label, selected: offer.selected, rect, button };
   });
 
   const statusRows: Rect[] = model.status.map(() => {
@@ -146,7 +156,7 @@ export function layoutTrade(model: TradePanelModel, section: SectionRect, s: num
     return rect;
   });
 
-  return { section, stops, attach, offers, statusRows };
+  return { section, stops, attach, offersCaption, offers, statusRows };
 }
 
 /** {@link mapLayout}'s trade half: every rect through `fn`, the rest untouched. */
@@ -170,7 +180,8 @@ export function mapTradeLayout(layout: TradeLayout, fn: (r: Rect) => Rect): Trad
             button: { ...layout.attach.button, rect: fn(layout.attach.button.rect) },
             label: fn(layout.attach.label),
           },
-    offers: layout.offers.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
+    offersCaption: layout.offersCaption === null ? null : fn(layout.offersCaption),
+    offers: layout.offers.map((hit) => ({ ...hit, rect: fn(hit.rect), button: fn(hit.button) })),
     statusRows: layout.statusRows.map(fn),
   };
 }

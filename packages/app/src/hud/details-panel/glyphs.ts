@@ -9,6 +9,8 @@ const GLYPH_DIM = 0x8b7a55;
 /** The gather-everything tile's four good tones (stone, wood, gold, herb), so it reads as a mix
  *  rather than as one specific good's pile. */
 const ALL_GLYPH_TILES = [0xb8b0a0, 0x9a6a34, 0xe0b455, 0x7f9a2a] as const;
+/** The choice dot's radius as a share of its button's width. */
+const DOT_RADIUS = 0.2;
 
 interface GlyphDeps {
   readonly g: Graphics;
@@ -34,6 +36,8 @@ export interface GlyphKit {
   glyphSwap(r: Rect): void;
   /** A diagonal cross: a worn equip slot's "take the item off" button face. */
   glyphCross(r: Rect): void;
+  /** A solid dot: the face of the chosen one among round choice buttons. */
+  glyphDot(r: Rect): void;
 }
 
 export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
@@ -143,5 +147,9 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     g.moveTo(x1, y0).lineTo(x0, y1).stroke({ color: GLYPH_LIGHT, width: th });
   };
 
-  return { glyphAll, glyphHouse, glyphPlus, glyphMinus, glyphShield, glyphSwap, glyphCross };
+  const glyphDot = (r: Rect): void => {
+    g.circle(r.x + r.w / 2, r.y + r.h / 2, r.w * DOT_RADIUS).fill(GLYPH_LIGHT);
+  };
+
+  return { glyphAll, glyphHouse, glyphPlus, glyphMinus, glyphShield, glyphSwap, glyphCross, glyphDot };
 }

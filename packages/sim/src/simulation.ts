@@ -80,6 +80,7 @@ import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
 import {
+  canAttachTradeHouse,
   type TradeOffer,
   type TraderView,
   tradeOffersAt,
@@ -512,6 +513,11 @@ export class Simulation {
   /** The content with the terrain when the run has one; an absent optional resource is omitted, not undefined. */
   private mapContext(): MapContext {
     return { content: this.content, ...(this.terrain !== undefined ? { terrain: this.terrain } : {}) };
+  }
+
+  /** Whether the `attachTradeHouse` command would put `house` on the trader's route right now. */
+  canAttachTradeHouse(trader: Entity, house: Entity): boolean {
+    return canAttachTradeHouse(this.world, this.mapContext(), trader, house);
   }
 
   /** Whether the `attachToVehicle` command would seat `settler` on `vehicle` right now. */

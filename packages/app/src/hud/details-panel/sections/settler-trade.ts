@@ -1,4 +1,5 @@
 import { messages } from '../../../i18n/index.js';
+import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
 import { type ButtonAction, ROW_TEXT_PAD, type TradeLayout } from '../layout/index.js';
@@ -6,11 +7,13 @@ import type { TradePanelModel } from '../model/index.js';
 
 /** Inset of a good icon inside its round import-mark button, so the pile clears the rim. */
 const IMPORT_ICON_PAD = 3;
+/** Darkening behind the chosen agreement row. */
+const OFFER_CHOSEN_SCRIM = 0.25;
 
 /**
  * Handel: one row per stop (detach button + house name) over that stop's import marks, the attach row
- * while a stop is free, the foreign house's agreements (the chosen one lit), and the status lines. The
- * layout is authored; the original configures a trader through its own window.
+ * while a stop is free, the foreign house's agreements as choice rows (the chosen one dotted), and the
+ * status lines. The layout is authored; the original configures a trader through its own window.
  */
 export function drawTradeSection(
   chrome: Chrome,
@@ -56,16 +59,22 @@ export function drawTradeSection(
     chrome.roundButton(button.rect, button.enabled, hoverAction === 'attach-trade-house');
     chrome.glyphHouse(button.rect, button.enabled);
   }
+  if (layout.offersCaption !== null) {
+    const caption = layout.offersCaption;
+    chrome.textAt(hud.tradeOffersCaption, caption.x, caption.y + ROW_TEXT_PAD * s, 'dimmed');
+  }
   for (const offer of layout.offers) {
-    const lit = offer.selected || offer.index === hovered.offer;
-    if (lit) chrome.scrim(offer.rect, 0.25);
+    if (offer.selected) chrome.scrim(offer.rect, OFFER_CHOSEN_SCRIM);
+    chrome.roundButton(offer.button, true, offer.selected || offer.index === hovered.offer);
+    if (offer.selected) chrome.glyphDot(offer.button);
+    const labelX = offer.button.x + offer.button.w + Math.round(WIN_PAD * s);
     chrome.textLeftMiddle(
       offer.label,
-      offer.rect.x,
+      labelX,
       offer.rect.y + offer.rect.h / 2,
-      offer.selected ? 'white' : 'dimmed',
+      'white',
       'body',
-      offer.rect.w,
+      offer.rect.x + offer.rect.w - labelX,
     );
   }
   layout.statusRows.forEach((row, i) => {

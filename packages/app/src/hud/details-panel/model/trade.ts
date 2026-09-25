@@ -35,7 +35,7 @@ export interface TradePanelModel {
   readonly canAttach: boolean;
 }
 
-/** "give N X for M Y", the wording the offer rows and the exchange status share. */
+/** "you give N X, you get M Y", the wording of an agreement wherever it is listed. */
 export function tradeOfferLabel(ctx: UnitPanelModelContext, offer: TradeOffer): string {
   return formatMessage(messages().hud.tradeOffer, {
     giveAmount: offer.giveAmount,
@@ -130,15 +130,17 @@ export function tradePanelModel(
   const view = ctx.traderView?.(entityId);
   if (view === undefined) return null;
   const hud = messages().hud;
+  const foreign = view.stops.find((stop) => stop.foreign);
+  // With another tribe the agreement alone decides what moves, so no stop offers import marks.
   const stops: TradeStopModel[] = view.stops.map((stop, i) => ({
     house: stop.house,
     label: houseLabel(ctx, snapshot, stop.house, stop.foreign),
     foreign: stop.foreign,
-    imports: stop.foreign
-      ? []
-      : importChoices(ctx, snapshot, stop.house, view.stops[1 - i]?.house, stop.imports),
+    imports:
+      foreign !== undefined
+        ? []
+        : importChoices(ctx, snapshot, stop.house, view.stops[1 - i]?.house, stop.imports),
   }));
-  const foreign = view.stops.find((stop) => stop.foreign);
   const offers: TradeOfferModel[] = (foreign?.offers ?? []).map((offer) => ({
     index: offer.index,
     label: tradeOfferLabel(ctx, offer),

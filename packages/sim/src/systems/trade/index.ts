@@ -3,7 +3,7 @@
 
 export { activeAgreement, agreementsAt, type HouseAgreement, isTradingHouse } from './agreements.js';
 export { cartHoldOf, loadCart, type TradeCart, tradeCartOf, unloadCart } from './cart.js';
-export { applyTradeCommand, registerTradeAgreement } from './commands.js';
+export { applyTradeCommand, canAttachTradeHouse, registerTradeAgreement } from './commands.js';
 export { traderDisembarkSystem } from './disembark.js';
 export { planTrader, TRADE_CART_HOUSE_DISTANCE, TRADE_CART_SEARCH_RADIUS } from './drive.js';
 export { sameFoodClass } from './goods.js';
