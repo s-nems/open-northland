@@ -11,7 +11,8 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
-import { nodeOfPosition } from '../../src/nav/halfcell.js';
+import { hexNeighboursOf, nodeOfPosition } from '../../src/nav/halfcell.js';
+import { RESCAN_PERIOD_TICKS, RESCAN_WALK_STEPS } from '../../src/systems/conflict/engagement.js';
 import {
   combatSystem,
   DEFEND_LEASH_NODES,
@@ -70,6 +71,20 @@ function held(s: Simulation, e: Entity): Entity | undefined {
 
 function hold(s: Simulation, e: Entity, target: Entity): void {
   s.world.add(e, Engagement, { repathAt: s.tick, target });
+}
+
+/** Set `e` walking toward node (hx, ROW). */
+function walkTo(s: Simulation, e: Entity, hx: number): void {
+  const terrain = s.terrain;
+  if (terrain === undefined) throw new Error('mapless sim');
+  s.world.add(e, MoveGoal, { cell: terrain.nodeAtClamped(hx, ROW) });
+}
+
+/** The first tick from `from` on which walking `e` looks again for a nearer enemy. */
+function nextLook(from: number, e: Entity): number {
+  let tick = from;
+  while ((tick + e) % RESCAN_PERIOD_TICKS !== 0) tick++;
+  return tick;
 }
 
 describe('engagement - how far each stance looks', () => {
@@ -205,8 +220,10 @@ describe("engagement - an enemy inside an archer's dead zone", () => {
       const enemy = unit(s, 10 + INSIDE, P1, MILITARY_MODE.IGNORE, WOMAN);
       combatSystem(s.world, ctxOf(s));
       expect(held(s, archer)).toBe(enemy);
-      const goal = s.world.get(archer, MoveGoal).cell;
-      expect(Math.abs((s.terrain?.xOf(goal) ?? 0) - (10 + INSIDE))).toBeGreaterThanOrEqual(BOW_MIN_RANGE);
+      // The nearest node at its near reach: one step straight back.
+      expect(s.world.get(archer, MoveGoal).cell).toBe(
+        s.terrain?.nodeAtClamped(10 + INSIDE - BOW_MIN_RANGE, ROW),
+      );
     }
   });
 
@@ -280,21 +297,31 @@ describe('engagement - which enemy it picks', () => {
     const heldEnemy = unit(s, 10, P1, MILITARY_MODE.IGNORE, WOMAN);
     unit(s, 10, P1, MILITARY_MODE.IGNORE, WOMAN);
     hold(s, soldier, heldEnemy);
-    combatSystem(s.world, ctxOf(s));
+    walkTo(s, soldier, 9);
+    combatSystem(s.world, { ...ctxOf(s), tick: nextLook(s.tick, soldier) });
     expect(held(s, soldier)).toBe(heldEnemy); // an equally near one does not take over
+  });
 
-    const t = sim();
-    const other = unit(t, 0, P0, MILITARY_MODE.ATTACK);
-    const far = unit(t, 12, P1, MILITARY_MODE.IGNORE, WOMAN);
-    const near = unit(t, 4, P1, MILITARY_MODE.IGNORE, WOMAN);
-    hold(t, other, far);
-    // It looks again only on its chase's re-path tick, once it walks.
-    for (let tick = 0; tick < REPATH_CADENCE; tick++) {
-      t.step();
-      expect(held(t, other)).toBe(far);
+  it('looks again for a nearer enemy only every tenth step while it walks', () => {
+    expect(RESCAN_WALK_STEPS).toBe(10);
+    const FAR_AT = 60;
+    const NEAR_AT = 14;
+    const NEAR_ROW = 2; // off the walk's row, so it never stands in the way
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    const far = unit(s, FAR_AT, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const near = fighterAtNode(s, NEAR_AT, NEAR_ROW, SAXON, WOMAN);
+    s.world.add(near, Owner, { player: P1 });
+    s.world.add(near, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+    hold(s, soldier, far);
+    walkTo(s, soldier, FAR_AT - 1);
+    const look = nextLook(s.tick + 1, soldier);
+    while (s.tick + 1 < look) {
+      s.step();
+      expect(held(s, soldier)).toBe(far);
     }
-    t.step();
-    expect(held(t, other)).toBe(near);
+    s.step();
+    expect(held(s, soldier)).toBe(near);
   });
 
   it('does not look again while it stands and strikes', () => {
@@ -306,6 +333,7 @@ describe('engagement - which enemy it picks', () => {
     s.world.mut(soldier, Engagement).repathAt = s.tick - REPATH_CADENCE; // long past its re-path tick
     combatSystem(s.world, ctxOf(s));
     expect(s.world.get(soldier, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: struck });
+    expect(held(s, soldier)).toBe(struck);
     expect(held(s, soldier)).not.toBe(nearer);
   });
 });
@@ -379,39 +407,63 @@ describe('engagement - a struck fighter turns on its attacker', () => {
 
 describe('engagement - a crowd on one enemy', () => {
   const RUN_TICKS = 150;
+  /** The nodes a map point from one enemy: a reach-1 weapon's whole band. */
+  const HEX_SIDES = 6;
 
-  /** `size` owned ATTACK soldiers of `job` in a column ten nodes off one tough enemy woman, run for
-   *  {@link RUN_TICKS}: who swung, and how often any of them changed the enemy it holds. */
-  function crowdOn(size: number, job: number): { swung: number; flips: number; holding: number } {
+  /** `size` owned ATTACK soldiers of `job` in a column ten nodes off one tough enemy woman. */
+  function crowd(size: number, job: number): { s: Simulation; target: Entity; crowd: Entity[] } {
     const s = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(MAP_CELLS, 12) });
     const target = fighterAtNode(s, 30, 10, SAXON, WOMAN, { hitpoints: 100_000_000 });
     s.world.add(target, Owner, { player: P1 });
     s.world.add(target, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
-    const crowd: Entity[] = [];
+    const members: Entity[] = [];
     for (let i = 0; i < size; i++) {
       const e = fighterAtNode(s, 20, 6 + i, VIKING, job);
       s.world.add(e, Owner, { player: P0 });
       s.world.add(e, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
-      crowd.push(e);
+      members.push(e);
     }
+    return { s, target, crowd: members };
+  }
+
+  function swinging(s: Simulation, e: Entity): Entity | undefined {
+    const effect = s.world.tryGet(e, CurrentAtomic)?.effect;
+    return effect?.kind === 'attack' ? effect.target : undefined;
+  }
+
+  /** Run a crowd for {@link RUN_TICKS}: who swung, and how often any of them changed the enemy it holds. */
+  function crowdOn(size: number, job: number): { swung: number; flips: number; holding: number } {
+    const { s, target, crowd: members } = crowd(size, job);
     const swung = new Set<Entity>();
     const last = new Map<Entity, Entity | undefined>();
     let flips = 0;
     for (let t = 0; t < RUN_TICKS; t++) {
       s.step();
-      for (const e of crowd) {
-        if (s.world.tryGet(e, CurrentAtomic)?.effect.kind === 'attack') swung.add(e);
+      for (const e of members) {
+        if (swinging(s, e) !== undefined) swung.add(e);
         const now = held(s, e);
         if (last.has(e) && last.get(e) !== now) flips++;
         last.set(e, now);
       }
     }
-    const holding = crowd.filter((e) => held(s, e) === target).length;
+    const holding = members.filter((e) => held(s, e) === target).length;
     return { swung: swung.size, flips, holding };
   }
 
-  /** The nodes a map point from one enemy: a reach-1 weapon's whole band. */
-  const HEX_SIDES = 6;
+  /** A crowd of reach-1 fighters two larger than the sides of its enemy, settled: the front striking and
+   *  the rest waiting behind it. */
+  function settledOverflow(): { s: Simulation; target: Entity; front: Entity[]; waiting: Entity[] } {
+    const { s, target, crowd: members } = crowd(HEX_SIDES + 2, SOLDIER_SWORD_SHORT);
+    const struckOnce = new Set<Entity>();
+    for (let t = 0; t < RUN_TICKS; t++) {
+      s.step();
+      for (const e of members) if (swinging(s, e) !== undefined) struckOnce.add(e);
+    }
+    const front = members.filter((e) => struckOnce.has(e));
+    const waiting = members.filter((e) => !struckOnce.has(e));
+    expect([front.length, waiting.length]).toEqual([HEX_SIDES, 2]);
+    return { s, target, front, waiting };
+  }
 
   it('every attacker swings while the enemy has room around it, and none changes its target', () => {
     const CROWD = 8; // the spear's 1..2 band holds eighteen nodes around one enemy
@@ -429,6 +481,47 @@ describe('engagement - a crowd on one enemy', () => {
   it('an overflow keeps its target and waits beside the front instead of letting it go', () => {
     const CROWD = HEX_SIDES + 2;
     expect(crowdOn(CROWD, SOLDIER_SWORD_SHORT)).toEqual({ swung: HEX_SIDES, flips: 0, holding: CROWD });
+  });
+
+  it('an overflow steps in and strikes once a side frees', () => {
+    const STEP_IN_TICKS = 4 * REPATH_CADENCE;
+    const { s, target, front, waiting } = settledOverflow();
+    const fallen = front[0];
+    if (fallen === undefined) throw new Error('no front');
+    s.world.destroy(fallen);
+    let steppedIn = false;
+    for (let t = 0; t < STEP_IN_TICKS && !steppedIn; t++) {
+      s.step();
+      steppedIn = waiting.some((e) => swinging(s, e) === target);
+    }
+    expect(steppedIn).toBe(true);
+  });
+
+  it('a waiting overflow strikes an enemy that steps up beside it', () => {
+    const TURN_TICKS = 2 * REPATH_CADENCE;
+    const { s, waiting } = settledOverflow();
+    const waiter = waiting[0];
+    if (waiter === undefined) throw new Error('nobody waits');
+    const p = s.world.get(waiter, Position);
+    const at = nodeOfPosition(p.x, p.y);
+    const occupied = new Set(
+      [...s.world.query(Position)].map((e) => {
+        const q = s.world.get(e, Position);
+        const n = nodeOfPosition(q.x, q.y);
+        return `${n.hx},${n.hy}`;
+      }),
+    );
+    const beside = hexNeighboursOf(at.hx, at.hy).find((n) => !occupied.has(`${n.hx},${n.hy}`));
+    if (beside === undefined) throw new Error('no free side');
+    const newcomer = fighterAtNode(s, beside.hx, beside.hy, SAXON, WOMAN);
+    s.world.add(newcomer, Owner, { player: P1 });
+    s.world.add(newcomer, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+    let struck = false;
+    for (let t = 0; t < TURN_TICKS && !struck; t++) {
+      s.step();
+      struck = swinging(s, waiter) === newcomer;
+    }
+    expect(struck).toBe(true);
   });
 });
 

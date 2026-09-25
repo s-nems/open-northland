@@ -26,9 +26,9 @@ const MAP_H = 18;
 const QUIET_HOME = { x: 7, y: 8 } as const;
 const EMBATTLED_HOME = { x: 25, y: 8 } as const;
 const BUILDERS: readonly (readonly [number, number])[] = [
-  [19, 13],
-  [20, 13],
-  [21, 13],
+  [19, 14],
+  [20, 14],
+  [21, 14],
 ];
 const RAIDERS: readonly (readonly [number, number])[] = [
   [28, 7],
@@ -53,8 +53,8 @@ const DEFENDERS: readonly (readonly [number, number])[] = [
 /** The share of its pool each home starts with. */
 const STARTING_HP_PERCENT = 90;
 const PERCENT = 100;
-/** The fight ends by tick 170. The quiet home is whole by tick 620 and the embattled one by 1240; without
- *  the gate the order flips (520 and 1140), so this stop falls between the two repairs either way. */
+/** The fight ends by tick 130. The quiet home is whole by tick 600 and the embattled one by 1220; without
+ *  the gate the order flips (630 and 1240), so this stop falls between the two repairs either way. */
 const RUN_TICKS = 900;
 
 const { Damaged, Health, Owner, Person, Settler } = components;

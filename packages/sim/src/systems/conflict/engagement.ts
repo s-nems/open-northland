@@ -15,6 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isTravelling } from '../movement/nav-state.js';
+import { REFERENCE_STEP_TICKS } from '../movement/system.js';
 import {
   isAnimalTribe,
   isFighterJob,
@@ -26,6 +27,7 @@ import {
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
+import { REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
@@ -123,7 +125,10 @@ export function engageSpec(
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: null,
-      hold: { keep: (t) => holdable(t) && inReachOf(terrain, world, ctx, here, t, weapon.maxRange) },
+      hold: {
+        keep: (t) => holdable(t) && inReachOf(terrain, world, ctx, here, t, weapon.maxRange),
+        band: weapon,
+      },
     };
   }
 
@@ -155,7 +160,7 @@ export function engageSpec(
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES + weapon.maxRange, metric: 'hex', hold: true },
-      hold: { keep: (t) => nearAnchor(t, DEFEND_LEASH_NODES) && holdable(t) },
+      hold: { keep: (t) => nearAnchor(t, DEFEND_LEASH_NODES) && holdable(t), band: weapon },
     };
   }
 
@@ -180,6 +185,7 @@ export function engageSpec(
         keep: (t) =>
           hexNodeDistance(terrain, anchor, entityNode(world, terrain, t)) <= IGNORE_LEASH_NODES &&
           holdable(t),
+        band: weapon,
       },
     };
   }
@@ -217,7 +223,7 @@ export function engageSpec(
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: null,
-      hold: { keep: holdable },
+      hold: { keep: holdable, band: weapon },
     };
   }
   return {
@@ -282,8 +288,12 @@ export interface EngageSpec {
     readonly hold: boolean;
   } | null;
   /** Present for an owned combatant that holds its enemy across ticks ({@link Engagement.target}) and picks
-   *  a new one the original's way; `keep` says whether a held enemy is still held. */
-  readonly hold?: { readonly keep: (t: Entity) => boolean };
+   *  a new one the original's way; `keep` says whether a held enemy is still held, and `band` is the reach
+   *  it strikes one from. */
+  readonly hold?: {
+    readonly keep: (t: Entity) => boolean;
+    readonly band: { readonly minRange: number; readonly maxRange: number };
+  };
 }
 
 /**
@@ -384,9 +394,8 @@ const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatInde
 /**
  * The enemy an owned combatant fights: the one it holds while its stance still keeps it, unless a rescan
  * finds one strictly nearer. Original behavior: a fighter keeps its target until it is gone or strays past
- * its leash, and a new scan takes over only a nearer enemy. It scans when it has no target and then only
- * while it walks, never between blows; the original rescans every tenth walk step, approximated here by the
- * chase's re-path cadence.
+ * its leash, and a new scan takes over only a nearer enemy. It scans when it has no target, then while it
+ * walks every tenth step ({@link RESCAN_WALK_STEPS}), and never between blows.
  */
 function heldOrPicked(
   world: World,
@@ -398,13 +407,12 @@ function heldOrPicked(
   spec: EngageSpec,
   hold: NonNullable<EngageSpec['hold']>,
 ): { target: Entity; dist: number } | null {
-  const engagement = world.tryGet(self, Engagement);
-  const heldTarget = engagement?.target;
+  const heldTarget = world.tryGet(self, Engagement)?.target;
   const held =
     heldTarget !== undefined && world.isAlive(heldTarget) && hold.keep(heldTarget)
       ? focusedOn(world, ctx, terrain, here, heldTarget)
       : null;
-  if (held !== null && !rescanDue(world, ctx, self, engagement)) return held;
+  if (held !== null && !rescanDue(world, ctx, self, held.dist, hold.band)) return held;
   const { x, y } = terrain.coordsOf(here);
   if (
     held === null &&
@@ -421,14 +429,38 @@ function heldOrPicked(
   return held !== null && pickedAt.dist >= held.dist ? held : pickedAt;
 }
 
-/** Whether a combatant holding a target looks again this tick: on the chase's re-path tick while it walks. */
+/** How many walk steps a fighter takes between two looks for a nearer enemy. Original behavior. */
+export const RESCAN_WALK_STEPS = 10;
+
+/** {@link RESCAN_WALK_STEPS} in ticks: ten steps at the reference land pace of 8 ticks a step, 80 ticks,
+ *  staggered by entity id. Approximation: the original counts the steps themselves, so here a walker slower
+ *  than that pace looks a little more often per step and a faster one a little less, and a new enemy a look
+ *  finds is walked toward from the chase's next re-path, up to {@link REPATH_CADENCE} ticks later. */
+export const RESCAN_PERIOD_TICKS = RESCAN_WALK_STEPS * REFERENCE_STEP_TICKS;
+
+/**
+ * Whether a combatant holding a target `heldDist` map points off looks again this tick: every
+ * {@link RESCAN_PERIOD_TICKS} while it walks, and never while it stands with the target in `band`. A unit
+ * standing with its target out of reach, a second rank waiting for a side, looks every
+ * {@link REPATH_CADENCE} ticks. Intentional deviation: in the original that unit would already be walking up
+ * to fight from a taken side, so here it takes an enemy that steps up to it within about a step instead
+ * of standing idle beside it.
+ */
 function rescanDue(
   world: World,
   ctx: SystemContext,
   self: Entity,
-  engagement: { readonly repathAt: number } | undefined,
+  heldDist: number,
+  band: { readonly minRange: number; readonly maxRange: number },
 ): boolean {
-  return engagement !== undefined && ctx.tick >= engagement.repathAt && isTravelling(world, self);
+  if (isTravelling(world, self)) return onStride(ctx.tick, self, RESCAN_PERIOD_TICKS);
+  if (heldDist >= band.minRange && heldDist <= band.maxRange) return false;
+  return onStride(ctx.tick, self, REPATH_CADENCE);
+}
+
+/** Whether `tick` is one of `e`'s every-`period` ticks, spread across entities by id. */
+function onStride(tick: number, e: Entity, period: number): boolean {
+  return (tick + e) % period === 0;
 }
 
 /**
