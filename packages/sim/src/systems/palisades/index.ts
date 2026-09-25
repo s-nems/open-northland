@@ -24,6 +24,7 @@ import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
 import { standingWallCells, wallJointSeals } from '../footprint/wall-joints.js';
 import { invalidateRoutesThrough } from '../landscape/routes.js';
+import { landscapeTypes } from '../landscape/view.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 export type PalisadeGateAxis = 0 | 1 | 2;
@@ -43,7 +44,7 @@ export interface PalisadeGateProbeResult {
 }
 
 export function palisadeType(terrain: TerrainGraph, gfxIndex: number): ScriptLandscapeType | undefined {
-  const type = terrain.landscapes?.types.find((candidate) => candidate.typeId === gfxIndex);
+  const type = landscapeTypes(terrain).get(gfxIndex);
   return type?.wall === undefined ? undefined : type;
 }
 
