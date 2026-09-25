@@ -11,7 +11,7 @@ import { FOG_MODE_BY_NAME } from '../../../game/fog.js';
 import { assertMultiplayerMap } from '../../../game/multiplayer-map.js';
 import { DEFAULT_SESSION_SEED, DEFAULT_SESSION_SPEED, mapSession } from '../../../game/session-url.js';
 import { initialLobbyOptions } from '../lobby/model.js';
-import { authoredVacantMode } from '../lobby/roster-state.js';
+import { authoredVacantMode, vacantOffers } from '../lobby/roster-state.js';
 import type { CreateChoice } from './create-card.js';
 import { type PreparedNetworkSave, readNetworkSave, validateNetworkSave } from './save.js';
 import { restoreSavedSeats, savedRoster } from './saved-roster.js';
@@ -35,6 +35,11 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
     const metadata = roster.get(slot.player);
     return metadata === undefined ? (slot.type === 'ai' ? 'ai' : 'idle') : authoredVacantMode(metadata);
   };
+  // `mapLobbySlots` lists every script seat, so only an out-of-date index row falls back to every mode.
+  const offers = (slot: (typeof script.players)[number]) => {
+    const metadata = roster.get(slot.player);
+    return metadata === undefined ? (['ai', 'idle', 'absent'] as const) : vacantOffers(metadata);
+  };
   const savedColors =
     save?.header.entry == null
       ? new Map<number, number>()
@@ -48,6 +53,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
     player: slot.player,
     color: savedColors.get(slot.player) ?? slot.colorId,
     mode: vacantMode(slot),
+    offers: offers(slot),
   }));
   const seats = save === null ? authoredSeats : restoreSavedSeats(save, authoredSeats);
   const savedSession = save === null ? null : savedRoster(save);

@@ -19,10 +19,17 @@ export function restoreSavedSeats(save: SaveGame, authored: readonly RoomSeatSet
   const players = new Set(authored.map((seat) => seat.player));
   if (seats.length !== players.size || seats.some((seat) => !players.has(seat.player)))
     throw new Error('Saved roster does not match its map');
-  return seats.map(({ player, color, team, mode }) => ({
-    player,
-    color,
-    ...(team === undefined ? {} : { team }),
-    mode: mode === 'human' ? 'idle' : mode,
-  }));
+  const offers = new Map(authored.map((seat) => [seat.player, seat.offers]));
+  return seats.map(({ player, color, team, mode }) => {
+    const vacant = mode === 'human' ? 'idle' : mode;
+    const offered = offers.get(player) ?? [];
+    return {
+      player,
+      color,
+      ...(team === undefined ? {} : { team }),
+      mode: vacant,
+      // A seat the save left off the map keeps saying so; the room refuses a new `absent` either way.
+      offers: offered.includes(vacant) ? offered : [...offered, vacant],
+    };
+  });
 }

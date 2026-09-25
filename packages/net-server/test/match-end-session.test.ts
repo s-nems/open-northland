@@ -26,9 +26,9 @@ const SETTINGS: RoomSettings = {
   speed: 1,
 };
 const SEATS = [
-  { player: 0, mode: 'idle', color: 0 },
-  { player: 1, mode: 'idle', color: 1 },
-  { player: 2, mode: 'idle', color: 2 },
+  { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
+  { player: 1, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 1 },
+  { player: 2, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 2 },
 ] as const;
 const LINK = { latencyMs: 80, jitterMs: 50 };
 const SETTLE = 500;

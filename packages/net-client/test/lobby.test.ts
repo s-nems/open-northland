@@ -35,7 +35,17 @@ const ROOM: RoomView = {
     rules: { fog: null, progression: null, needs: null },
     speed: 1,
   },
-  seats: [{ player: 0, mode: 'human', color: 0, team: 2, nick: 'Ania', ready: false }],
+  seats: [
+    {
+      player: 0,
+      mode: 'human',
+      offers: ['idle', 'ai', 'absent'],
+      color: 0,
+      team: 2,
+      nick: 'Ania',
+      ready: false,
+    },
+  ],
   members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: COMPATIBILITY }],
 };
 

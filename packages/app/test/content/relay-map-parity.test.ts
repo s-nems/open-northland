@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { mapLobbySlots } from '@open-northland/data';
 import { aiSeatsOf, type GameSession, humanSeatsOf } from '@open-northland/lockstep';
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
@@ -11,6 +12,7 @@ import {
   VirtualClock,
   VirtualNetwork,
 } from '../../../net-server/test/support/virtual-network.js';
+import { authoredVacantMode, vacantOffers } from '../../src/entries/main-menu/lobby/roster-state.js';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapScript, realMapWorld, restoreRealMapWorld } from './real-map-world.js';
 
@@ -63,10 +65,11 @@ async function restoreWorld(session: GameSession, save: SaveGame): Promise<Simul
 function seatsFromScript(mapId: string): readonly RoomSeatSetup[] {
   const script = realMapScript(mapId);
   if (script === null) throw new Error(`${mapId} ships no script`);
-  return script.players.map((player) => ({
-    player: player.player,
-    mode: player.type === 'ai' ? 'ai' : 'idle',
-    color: player.colorId,
+  return mapLobbySlots(script).map((slot) => ({
+    player: slot.player,
+    mode: authoredVacantMode(slot),
+    offers: vacantOffers(slot),
+    color: slot.colorId,
   }));
 }
 

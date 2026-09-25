@@ -8,14 +8,42 @@ import {
   OBSERVER_SEAT,
   setSlotColor,
   setVacantMode,
+  vacantOffers,
   wornByAnother,
 } from '../src/entries/main-menu/lobby/roster-state.js';
 
 describe('roster state', () => {
   const players = [
-    { player: 0, type: 'human', tribeId: 1, colorId: 7, claimable: true, hidden: false, aiAllowed: true },
-    { player: 1, type: 'human', tribeId: 2, colorId: 4, claimable: true, hidden: false, aiAllowed: true },
-    { player: 2, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false, aiAllowed: true },
+    {
+      player: 0,
+      type: 'human',
+      tribeId: 1,
+      colorId: 7,
+      claimable: true,
+      hidden: false,
+      aiAllowed: true,
+      noneAllowed: true,
+    },
+    {
+      player: 1,
+      type: 'human',
+      tribeId: 2,
+      colorId: 4,
+      claimable: true,
+      hidden: false,
+      aiAllowed: true,
+      noneAllowed: true,
+    },
+    {
+      player: 2,
+      type: 'ai',
+      tribeId: 4,
+      colorId: 9,
+      claimable: false,
+      hidden: false,
+      aiAllowed: true,
+      noneAllowed: true,
+    },
   ] as const;
 
   it('lists no AI seat until a slot is toggled to it', () => {
@@ -47,9 +75,36 @@ describe('roster state', () => {
     // A lobby-opened seat (Forteca/Mosty style): authored ai, playeroption offers human. The
     // non-claimable slot 2 is the map's own computer seat, which is not the lobby's to list.
     const lobby = [
-      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
-      { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: true },
-      { player: 2, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: false, aiAllowed: true },
+      {
+        player: 0,
+        type: 'human',
+        tribeId: 1,
+        colorId: 0,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
+      {
+        player: 1,
+        type: 'ai',
+        tribeId: 1,
+        colorId: 1,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
+      {
+        player: 2,
+        type: 'ai',
+        tribeId: 1,
+        colorId: 9,
+        claimable: false,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
     ] as const;
     const state = claimSeat(initialRosterState(lobby), 0);
     expect(aiSeats(state, lobby)).toEqual([1]);
@@ -60,12 +115,73 @@ describe('roster state', () => {
     // playeroption without #PLAYER_TYPE_AI (e.g. Zgielk2 slot 0): no AI offer, so the authored
     // default is idle even on an authored-ai slot, and a toggle the UI never shows cannot leak it.
     const lobby = [
-      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
-      { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: false },
+      {
+        player: 0,
+        type: 'human',
+        tribeId: 1,
+        colorId: 0,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
+      {
+        player: 1,
+        type: 'ai',
+        tribeId: 1,
+        colorId: 1,
+        claimable: true,
+        hidden: false,
+        aiAllowed: false,
+        noneAllowed: true,
+      },
     ] as const;
     const state = claimSeat(initialRosterState(lobby), 0);
     expect(aiSeats(state, lobby)).toEqual([]);
     expect(aiSeats(setVacantMode(state, 1, 'ai'), lobby)).toEqual([]);
+  });
+
+  it('offers only the vacant modes the map allows, and locks the map computer seat', () => {
+    const seat = {
+      player: 1,
+      type: 'human',
+      tribeId: 1,
+      colorId: 1,
+      claimable: true,
+      hidden: false,
+    } as const;
+    expect(vacantOffers({ ...seat, aiAllowed: true, noneAllowed: true })).toEqual(['ai', 'idle', 'absent']);
+    expect(vacantOffers({ ...seat, aiAllowed: true, noneAllowed: false })).toEqual(['ai', 'idle']);
+    expect(vacantOffers({ ...seat, aiAllowed: false, noneAllowed: false })).toEqual(['idle']);
+    const computer = { ...seat, type: 'ai', claimable: false, aiAllowed: true, noneAllowed: true } as const;
+    expect(vacantOffers(computer)).toEqual(['ai']);
+  });
+
+  it('never lists a seat the map offers no None as absent', () => {
+    const lobby = [
+      {
+        player: 0,
+        type: 'human',
+        tribeId: 1,
+        colorId: 0,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
+      {
+        player: 1,
+        type: 'human',
+        tribeId: 1,
+        colorId: 1,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: false,
+      },
+    ] as const;
+    const state = setVacantMode(claimSeat(initialRosterState(lobby), 0), 1, 'absent');
+    expect(absentSeats(state, lobby)).toEqual([]);
   });
 
   it('lists an absent seat until someone sits in it, and never as AI', () => {
@@ -80,9 +196,36 @@ describe('roster state', () => {
     // Real rosters duplicate colours freely (tutorial maps are all-blue; multiplayer_104 wears
     // black three times) - "worn" must always be relative to the asking slot.
     const dupes = [
-      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
-      { player: 1, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
-      { player: 2, type: 'human', tribeId: 1, colorId: 4, claimable: true, hidden: false, aiAllowed: true },
+      {
+        player: 0,
+        type: 'human',
+        tribeId: 1,
+        colorId: 0,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
+      {
+        player: 1,
+        type: 'human',
+        tribeId: 1,
+        colorId: 0,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
+      {
+        player: 2,
+        type: 'human',
+        tribeId: 1,
+        colorId: 4,
+        claimable: true,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
     ] as const;
     const state = initialRosterState(dupes);
     expect(wornByAnother(state, 1, 0)).toBe(true); // slot 0 also wears blue…
@@ -93,7 +236,16 @@ describe('roster state', () => {
 
   it('does not gate Start when a roster offers no claimable seat', () => {
     const allAi = [
-      { player: 0, type: 'ai', tribeId: 1, colorId: 0, claimable: false, hidden: false, aiAllowed: true },
+      {
+        player: 0,
+        type: 'ai',
+        tribeId: 1,
+        colorId: 0,
+        claimable: false,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
     ] as const;
     expect(hasClaimableSeat(allAi)).toBe(false);
     expect(hasClaimableSeat([{ ...allAi[0], claimable: true, hidden: true }])).toBe(false);

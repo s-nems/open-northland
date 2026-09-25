@@ -75,8 +75,8 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
     kind: 'createRoom',
     settings,
     seats: [
-      { player: 0, mode: 'idle', color: 0 },
-      { player: 3, mode: 'ai', color: 9 },
+      { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
+      { player: 3, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 9 },
     ],
   },
   { kind: 'joinRoom', roomId: 'a1b2c3d4' },
@@ -138,11 +138,20 @@ describe('client messages', () => {
         kind: 'createRoom',
         settings,
         seats: [
-          { player: 2, mode: 'ai', color: 0 },
-          { player: 1, mode: 'ai', color: 0 },
+          { player: 2, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 0 },
+          { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 0 },
         ],
       },
       /ascending/,
+    ],
+    [
+      'a seat mode the seat does not offer',
+      {
+        kind: 'createRoom',
+        settings,
+        seats: [{ player: 0, mode: 'absent', offers: ['idle', 'ai'], color: 0 }],
+      },
+      /does not offer absent/,
     ],
     [
       'a seat past the last one',
@@ -250,8 +259,8 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
       creator: 'Ania',
       settings,
       seats: [
-        { player: 0, mode: 'human', color: 0, nick: 'Ania', ready: true },
-        { player: 1, mode: 'ai', color: 4, nick: null, ready: false },
+        { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Ania', ready: true },
+        { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 4, nick: null, ready: false },
       ],
       members: [
         { nick: 'Ania', seat: 0, connected: true, compatibility: COMPATIBILITY },

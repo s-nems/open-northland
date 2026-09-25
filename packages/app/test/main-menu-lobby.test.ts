@@ -26,6 +26,7 @@ function slot(player: number, over: Partial<MapsIndexPlayerSlot> = {}): MapsInde
     claimable: false,
     hidden: false,
     aiAllowed: true,
+    noneAllowed: true,
     ...over,
   };
 }
@@ -146,14 +147,14 @@ describe('lobbySession', () => {
     // an authored-ai slot, and a toggle the UI never offers must not leak it into the session either.
     const lobby = [
       slot(0, { claimable: true, type: 'human' }),
-      slot(1, { claimable: true, aiAllowed: false }),
+      slot(1, { claimable: true, aiAllowed: false, noneAllowed: true }),
     ];
     const state = setVacantMode(claimSeat(initialRosterState(lobby), 0), 1, 'ai');
     expect(aiSeatsOfLobby(state, lobby)).toEqual([]);
   });
 
   it('leaves an absent seat off the map, but never the claimed one or a map computer seat', () => {
-    const lobby = [...players, slot(3, { claimable: true, aiAllowed: false })];
+    const lobby = [...players, slot(3, { claimable: true, aiAllowed: false, noneAllowed: true })];
     let state = claimSeat(initialRosterState(lobby), 0);
     state = setVacantMode(state, 1, 'absent');
     state = setVacantMode(state, 3, 'absent');

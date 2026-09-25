@@ -34,6 +34,8 @@ export type DepartedSeatMode = Exclude<VacantSeatMode, 'absent'>;
 export interface RoomSeatSetup {
   readonly player: number;
   readonly mode: VacantSeatMode;
+  /** The vacant modes the map offers this seat, `mode` among them. */
+  readonly offers: readonly VacantSeatMode[];
   readonly color: number;
   readonly team?: number | null;
 }
@@ -41,6 +43,7 @@ export interface RoomSeatSetup {
 export interface RoomSeatView {
   readonly player: number;
   readonly mode: SeatMode;
+  readonly offers: readonly VacantSeatMode[];
   readonly color: number;
   readonly team?: number | null;
   readonly nick: string | null;

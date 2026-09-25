@@ -13,7 +13,16 @@ import {
 } from '../src/entries/main-menu/map-select-model.js';
 
 function slot(player: number, hidden = false): MapsIndexPlayerSlot {
-  return { player, type: 'ai', tribeId: 1, colorId: player, claimable: false, hidden, aiAllowed: true };
+  return {
+    player,
+    type: 'ai',
+    tribeId: 1,
+    colorId: player,
+    claimable: false,
+    hidden,
+    aiAllowed: true,
+    noneAllowed: true,
+  };
 }
 
 describe('map filter tabs', () => {

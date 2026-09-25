@@ -1,3 +1,4 @@
+import { mapLobbySlots } from '@open-northland/data';
 import type { prepareInitialSave } from '@open-northland/net-client';
 import { components, type SaveGame } from '@open-northland/sim';
 import { buildingFootprints } from '../../../content/ir/joins.js';
@@ -13,6 +14,7 @@ import { mapScriptWorld } from '../../../game/world/mission-script.js';
 import { decodeSaveText, type SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { evaluateSaveDocument } from '../../../view/runtime/save-load/evaluate.js';
 import { restoreMapWorld } from '../../map/world.js';
+import { authoredVacantMode, vacantOffers } from '../lobby/roster-state.js';
 import { restoreSavedSeats } from './saved-roster.js';
 
 export async function readNetworkSave(bytes: SaveBytes): Promise<SaveGame> {
@@ -30,10 +32,11 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
   assertMultiplayerMap(script);
   restoreSavedSeats(
     save,
-    (script?.players ?? []).map((seat) => ({
+    (script === null ? [] : mapLobbySlots(script)).map((seat) => ({
       player: seat.player,
       color: seat.colorId,
-      mode: seat.type === 'ai' ? 'ai' : 'idle',
+      mode: authoredVacantMode(seat),
+      offers: vacantOffers(seat),
     })),
   );
   const { sim } = restoreMapWorld(

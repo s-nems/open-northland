@@ -1,4 +1,9 @@
-import { MAX_SEATS, type RoomSeatView, type RoomView } from '@open-northland/net-protocol';
+import {
+  MAX_SEATS,
+  type RoomSeatView,
+  type RoomView,
+  type VacantSeatMode,
+} from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../../../i18n/index.js';
 import { node } from '../../dom.js';
 import { colorChip, colorPalette } from '../../lobby-controls/color.js';
@@ -7,6 +12,8 @@ import { seatModeControl } from '../../lobby-controls/seat-mode.js';
 import { button, selectControl } from './controls.js';
 import { canClaimSeat, roomPermissions, savedSeatHint } from './model.js';
 import type { NetworkRoomDeps } from './types.js';
+
+const ROOM_VACANT_ORDER: readonly VacantSeatMode[] = ['idle', 'ai', 'absent'];
 
 export function roomSeats(deps: NetworkRoomDeps) {
   const { client, copy } = deps;
@@ -27,7 +34,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
     if (focus !== null) rows.get(focus)?.chip.focus();
     if (player !== null) rows.get(player)?.palette.scrollIntoView({ block: 'nearest' });
   }
-  function seatRow(player: number, resumed: boolean) {
+  function seatRow(player: number, offers: readonly VacantSeatMode[], resumed: boolean) {
     const colorOptions = {
       label: copy.color,
       name: colorName,
@@ -77,10 +84,12 @@ export function roomSeats(deps: NetworkRoomDeps) {
         fieldClassName: 'network-room__field',
         label: copy.seatMode,
         choices: [
-          { id: 'idle', label: copy.idle },
-          { id: 'ai', label: copy.ai },
-          // A resumed save's world is already built, so there is nothing left to take off the map.
-          { id: 'absent', label: copy.absent, disabled: resumed },
+          ...ROOM_VACANT_ORDER.filter((mode) => offers.includes(mode)).map((mode) => ({
+            id: mode,
+            label: copy[mode],
+            // A resumed save's world is already built, so there is nothing left to take off the map.
+            disabled: mode === 'absent' && resumed,
+          })),
           { id: 'human', label: copy.human, disabled: true },
         ],
         change: (mode) => {
@@ -153,7 +162,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
       for (const seat of room.seats) {
         let row = rows.get(seat.player);
         if (row === undefined) {
-          row = seatRow(seat.player, room.settings.initialSave !== undefined);
+          row = seatRow(seat.player, seat.offers, room.settings.initialSave !== undefined);
           rows.set(seat.player, row);
           root.append(row.row);
         }

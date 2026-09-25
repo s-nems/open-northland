@@ -1,4 +1,5 @@
 import { createSavedSessionMetadata, type GameSession } from '@open-northland/lockstep';
+import type { RoomSeatSetup } from '@open-northland/net-protocol';
 import { exportSaveGame } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { restoreSavedSeats, savedRoster } from '../../src/entries/main-menu/network/saved-roster.js';
@@ -15,9 +16,9 @@ const descriptor: GameSession = {
     { player: 1, mode: 'ai', color: 4 },
   ],
 };
-const authored = [
-  { player: 0, mode: 'idle' as const, color: 0 },
-  { player: 1, mode: 'idle' as const, color: 1 },
+const authored: RoomSeatSetup[] = [
+  { player: 0, mode: 'idle', offers: ['ai', 'idle', 'absent'], color: 0 },
+  { player: 1, mode: 'idle', offers: ['idle'], color: 1 },
 ];
 const metadata = createSavedSessionMetadata(descriptor, [
   { player: 0, nick: 'Ania' },
@@ -28,8 +29,9 @@ const save = exportSaveGame(runDemoWorld(7, 0), { mapId: 'test', session: metada
 describe('saved multiplayer roster', () => {
   it('recovers colors, teams and AI, leaving saved humans free for an explicit claim', () => {
     expect(restoreSavedSeats(save, authored)).toEqual([
-      { player: 0, mode: 'idle', color: 3, team: 1 },
-      { player: 1, mode: 'ai', color: 4 },
+      { player: 0, mode: 'idle', offers: ['ai', 'idle', 'absent'], color: 3, team: 1 },
+      // The saved mode stays valid even where the map no longer offers it.
+      { player: 1, mode: 'ai', offers: ['idle', 'ai'], color: 4 },
     ]);
     expect(savedRoster(save)?.roster[0]?.nick).toBe('Ania');
   });

@@ -21,8 +21,8 @@ const SETTINGS: RoomSettings = {
   speed: 1,
 };
 const SEATS = [
-  { player: 0, mode: 'idle', color: 0 },
-  { player: 1, mode: 'idle', color: 1 },
+  { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
+  { player: 1, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 1 },
 ] as const;
 const RUN_TICKS = 240;
 /** Each client orders on its own cadence, so orders share ticks now and then. */

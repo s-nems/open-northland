@@ -206,9 +206,9 @@ describe('relay rooms', () => {
     a.send({ kind: 'setSeat', player: 1, mode: 'ai' });
     expect(a.last('rejected')?.reason).toMatch(/taken by Bartek/);
     expect(a.last('room')?.room.seats).toEqual([
-      { player: 0, mode: 'ai', color: 5, nick: null, ready: false },
-      { player: 1, mode: 'human', color: 1, nick: 'Bartek', ready: false },
-      { player: 2, mode: 'ai', color: 2, nick: null, ready: false },
+      { player: 0, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 5, nick: null, ready: false },
+      { player: 1, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 1, nick: 'Bartek', ready: false },
+      { player: 2, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 2, nick: null, ready: false },
     ]);
   });
 
@@ -250,6 +250,35 @@ describe('relay rooms', () => {
     b.send({ kind: 'leaveRoom' });
     expect(a.last('kicked')).toMatchObject({ player: 1, mode: 'idle' });
     expect(a.last('room')?.room.seats[1]?.mode).toBe('idle');
+  });
+
+  it('offers each seat only the vacant modes its map allows, a departure included', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({
+      kind: 'createRoom',
+      settings: { ...SETTINGS, kickedSeatMode: 'ai' },
+      seats: [
+        { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
+        { player: 1, mode: 'idle', offers: ['idle'], color: 1 },
+      ],
+    });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    a.send({ kind: 'setSeat', player: 1, mode: 'absent' });
+    expect(a.last('rejected')?.reason).toMatch(/does not offer absent/);
+    a.send({ kind: 'setSeat', player: 1, mode: 'ai' });
+    expect(a.last('rejected')?.reason).toMatch(/does not offer ai/);
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    a.send({ kind: 'setReady', ready: true });
+    b.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    a.send({ kind: 'loaded', tick: 0, world: 0 });
+    b.send({ kind: 'loaded', tick: 0, world: 0 });
+    b.send({ kind: 'leaveRoom' });
+    // The room hands a departed seat to the AI, but this map allows none there.
+    expect(a.last('kicked')).toMatchObject({ player: 1, mode: 'idle' });
   });
 
   it('releases an explicit departure while the other running member continues', () => {

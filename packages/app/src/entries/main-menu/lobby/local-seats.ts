@@ -4,7 +4,7 @@ import { seatRow } from '../lobby-controls/seat.js';
 import { seatModeControl } from '../lobby-controls/seat-mode.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import type { LobbySlotRow } from './model.js';
-import { type RosterState, type VacantMode, wornByAnother } from './roster-state.js';
+import { type RosterState, type VacantMode, vacantOffers, wornByAnother } from './roster-state.js';
 
 interface SeatActions {
   readonly togglePicker: (player: number) => void;
@@ -62,12 +62,19 @@ export function localSeatElements(
       cell.textContent = lobby.scenarioControl;
       return cell;
     }
-    // A seat without an AI offer (`playeroption` Human/Closed-only) can only idle or leave the map.
-    const choices: { readonly id: VacantMode; readonly label: string }[] = [
-      ...(row.slot.aiAllowed ? [{ id: 'ai' as const, label: lobby.vacantComputer }] : []),
-      { id: 'idle', label: lobby.vacantIdle },
-      { id: 'absent', label: lobby.vacantAbsent },
-    ];
+    const labels: Record<VacantMode, string> = {
+      ai: lobby.vacantComputer,
+      idle: lobby.vacantIdle,
+      absent: lobby.vacantAbsent,
+    };
+    const choices = vacantOffers(row.slot).map((id) => ({ id, label: labels[id] }));
+    if (choices.length === 1) {
+      // The map's `playeroption` row offers neither AI nor None: vacant means idle, no choice.
+      const cell = document.createElement('div');
+      cell.className = 'main-menu__lobby-locked';
+      cell.textContent = lobby.vacantIdle;
+      return cell;
+    }
     const control = seatModeControl(
       {
         label: lobby.vacantToggleTitle,

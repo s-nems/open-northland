@@ -20,13 +20,32 @@ describe('mapLobbySlots', () => {
         claimable: true,
         hidden: false,
         aiAllowed: true,
+        noneAllowed: true,
       },
-      { player: 1, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false, aiAllowed: true },
-      { player: 2, type: 'ai', tribeId: 2, colorId: 3, claimable: false, hidden: false, aiAllowed: true },
+      {
+        player: 1,
+        type: 'ai',
+        tribeId: 4,
+        colorId: 9,
+        claimable: false,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
+      {
+        player: 2,
+        type: 'ai',
+        tribeId: 2,
+        colorId: 3,
+        claimable: false,
+        hidden: false,
+        aiAllowed: true,
+        noneAllowed: true,
+      },
     ]);
   });
 
-  it('lets a playeroption row open an AI seat to a person, deny its AI, or hide it', () => {
+  it('lets a playeroption row open an AI seat to a person, deny its AI or None, or hide it', () => {
     const script = MapScript.parse({
       players: roster,
       multiplayer: {
@@ -38,16 +57,17 @@ describe('mapLobbySlots', () => {
       },
     });
     expect(
-      mapLobbySlots(script).map(({ player, claimable, hidden, aiAllowed }) => [
+      mapLobbySlots(script).map(({ player, claimable, hidden, aiAllowed, noneAllowed }) => [
         player,
         claimable,
         hidden,
         aiAllowed,
+        noneAllowed,
       ]),
     ).toEqual([
-      [0, true, false, true],
-      [1, true, false, true],
-      [2, true, true, false],
+      [0, true, false, true, true],
+      [1, true, false, true, false],
+      [2, true, true, false, true],
     ]);
   });
 });

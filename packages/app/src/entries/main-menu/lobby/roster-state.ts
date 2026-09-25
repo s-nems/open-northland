@@ -23,6 +23,17 @@ export function authoredVacantMode(slot: MapPlayerSlot): VacantMode {
   return slot.type === 'ai' && slot.aiAllowed ? 'ai' : 'idle';
 }
 
+/** The vacant modes the map's `playeroption` row offers the seat, in the lobby's order. Idle is
+ *  always there: it is a person's seat nobody took. The map's own computer seat keeps its mode. */
+export function vacantOffers(slot: MapPlayerSlot): VacantMode[] {
+  if (!slot.claimable) return [authoredVacantMode(slot)];
+  return [
+    ...(slot.aiAllowed ? ['ai' as const] : []),
+    'idle',
+    ...(slot.noneAllowed ? ['absent' as const] : []),
+  ];
+}
+
 /** False for an all-AI roster, where the menu must not gate Start on a seat that cannot exist. */
 export function hasClaimableSeat(players: readonly MapPlayerSlot[]): boolean {
   return players.some((p) => p.claimable && !p.hidden);
@@ -85,7 +96,9 @@ export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): 
 
 /** The offered seats left off the map, what `?absent=` carries. */
 export function absentSeats(state: RosterState, players: readonly MapPlayerSlot[]): number[] {
-  return vacantSeatsIn(state, players, 'absent').map((p) => p.player);
+  return vacantSeatsIn(state, players, 'absent')
+    .filter((p) => p.noneAllowed)
+    .map((p) => p.player);
 }
 
 function vacantSeatsIn(

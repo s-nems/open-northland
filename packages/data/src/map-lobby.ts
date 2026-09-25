@@ -11,6 +11,7 @@ export function mapLobbySlots(script: MapScript): MapsIndexPlayerSlot[] {
       claimable: slot.type === 'human' || allowed?.includes('human') === true,
       hidden: table?.hiddenSlots.includes(slot.player) ?? false,
       aiAllowed: allowed === undefined || allowed.includes('ai'),
+      noneAllowed: allowed === undefined || allowed.includes('none'),
     };
   });
 }

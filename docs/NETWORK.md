@@ -56,19 +56,20 @@ immediately. The host closes a connection that has sent nothing, a pong included
 `createRoom { settings, seats }` makes a room and puts the sender in it. `settings` is
 `{ name, world, seed, rules, speed, kickedSeatMode?, initialSave?, mapOrigin? }`, where `world` and `rules` are the session descriptor's, and
 the world is fixed for the room's life. `seats` lists the world's seats in ascending order as
-`{ player, mode, color, team? }` with `mode` `ai`, `idle` or `absent`; `human` is never chosen, it is what
-a claimed seat becomes. An `absent` seat idles, and a fresh world places none of its authored settlers,
+`{ player, mode, offers, color, team? }` with `mode` `ai`, `idle` or `absent`; `human` is never chosen, it
+is what a claimed seat becomes. `offers` lists the vacant modes the map's `playeroption` row allows the
+seat, `mode` among them. An `absent` seat idles, and a fresh world places none of its authored settlers,
 buildings, walls, animals or signposts. A room resumed from a save refuses `absent`, since its world
 already stands. `joinRoom { roomId }` joins a room in the lobby; a room that has started refuses. A
 duplicate nick within a room gets a numeric suffix (`Ania`, `Ania2`). At most `MAX_MEMBERS` (12)
 people share a room.
 
 Every change to a room is broadcast to its members as `room { room }`, the whole view:
-`{ id, state, creator, settings, seats: [{ player, mode, color, team?, nick, ready }], members: [{ nick, seat, connected, compatibility }] }`.
+`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, nick, ready }], members: [{ nick, seat, connected, compatibility }] }`.
 
 - `claimSeat { player }` sits down in a seat nobody holds, which makes it `human` whatever it was;
   `claimSeat { player: null }` stands up and returns it to its lobby setting.
-- `setSeat { player, mode?, color?, team? }` is the creator's: `mode` only on a vacant seat.
+- `setSeat { player, mode?, color?, team? }` is the creator's: `mode` only on a vacant seat that offers it.
   `team` is an integer from 0 through 15, or null; omitted/null preserves map-authored diplomacy.
   Explicit teams are carried in the session descriptor, whose trusted setup applies the relations
   and joins each team's seats into one fog mask (`setSharedVision`), so teammates explore, see and
@@ -209,8 +210,8 @@ other than the target, rounded up. A vote lives only while its target is waited 
 
 When the yeses reach `needed` the relay broadcasts `kicked { player, nick, mode, tick }`, removes
 the member (its token is a stranger from then on), and returns the seat to `settings.kickedSeatMode`
-(`ai` or `idle`), falling back to its original lobby mode when omitted, and to `idle` for an `absent`
-one, whose settlers already stand. The room view reflects this mode. For
+(`ai` or `idle`) when the seat offers it, else to its lobby mode, and to `idle` for an `absent` one,
+whose settlers already stand. The room view reflects this mode. For
 `mode: "ai"` the relay lands its `setPlayerAi` envelope on `tick`, the next unemitted one, outside
 every budget, so the AI takes the seat on the same tick on every client. For `mode: "idle"` the seat
 simply issues nothing more.

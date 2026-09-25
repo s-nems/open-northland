@@ -18,9 +18,9 @@ export const SETTINGS: RoomSettings = {
   speed: 1,
 };
 export const SEATS = [
-  { player: 0, mode: 'idle', color: 0 },
-  { player: 1, mode: 'idle', color: 1 },
-  { player: 2, mode: 'ai', color: 2 },
+  { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
+  { player: 1, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 1 },
+  { player: 2, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 2 },
 ] as const;
 export const TOKEN_A = 'token-a-0123456789ab';
 export const TOKEN_B = 'token-b-0123456789ab';

@@ -35,8 +35,8 @@ describe('manual save accepted orders end to end', () => {
     await assembleRoom(stage, [a, b], {
       settings,
       seats: [
-        { player: 0, mode: 'idle', color: 0 },
-        { player: 1, mode: 'idle', color: 1 },
+        { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
+        { player: 1, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 1 },
       ],
       seatOf: (i) => i,
       settleMs: 500,
@@ -102,8 +102,8 @@ describe('manual save accepted orders end to end', () => {
     for (const c of [host, guest]) relink(next, c, { latencyMs: 40, jitterMs: 10 });
     settle(next, 300);
     host.createRoom({ ...settings, initialSave: prepared.identity }, [
-      { player: 0, mode: 'idle', color: 0 },
-      { player: 1, mode: 'idle', color: 1 },
+      { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
+      { player: 1, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 1 },
     ]);
     settle(next, 300);
     const id = host.room?.id;

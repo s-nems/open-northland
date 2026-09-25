@@ -32,7 +32,9 @@ function room(id = 'room'): RoomView {
       speed: 1,
       initialSave: IDENTITY,
     },
-    seats: [{ player: 0, mode: 'human', color: 0, nick: 'Ania', ready: false }],
+    seats: [
+      { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Ania', ready: false },
+    ],
     members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null }],
   };
 }
@@ -115,7 +117,16 @@ describe('room assets coordinator', () => {
     });
     h.assets.observe({
       ...joined,
-      seats: [{ player: 0, mode: 'human', color: 1, nick: 'Bartek', ready: false }],
+      seats: [
+        {
+          player: 0,
+          mode: 'human',
+          offers: ['idle', 'ai', 'absent'],
+          color: 1,
+          nick: 'Bartek',
+          ready: false,
+        },
+      ],
     });
     h.assets.observe(joined);
     expect(requests()).toHaveLength(1);

@@ -33,8 +33,16 @@ it('captures the current public roster and does not upload an old world after re
     creator: 'Ania',
     settings: { name: 'Game', world: session.world, seed: 7, speed: 1, rules: session.rules },
     seats: [
-      { player: 0, mode: 'human', color: 3, team: 1, nick: 'Ania', ready: false },
-      { player: 1, mode: 'ai', color: 4, nick: null, ready: false },
+      {
+        player: 0,
+        mode: 'human',
+        offers: ['idle', 'ai', 'absent'],
+        color: 3,
+        team: 1,
+        nick: 'Ania',
+        ready: false,
+      },
+      { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 4, nick: null, ready: false },
     ],
     members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null }],
   };

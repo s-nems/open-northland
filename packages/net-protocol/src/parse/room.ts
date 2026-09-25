@@ -110,9 +110,13 @@ export function parseSeatSetups(value: unknown, at: string): readonly RoomSeatSe
     const player = parseSeatIndex(raw.player, `${at}[${i}].player`);
     if (player <= previous) throw new Error(`${at}[${i}]: seat ${player} out of ascending order`);
     previous = player;
+    const mode = asOneOf(raw.mode, VACANT_SEAT_MODES, `${at}[${i}].mode`);
+    const offers = parseSeatOffers(raw.offers, `${at}[${i}].offers`);
+    if (!offers.includes(mode)) throw new Error(`${at}[${i}]: seat ${player} does not offer ${mode}`);
     return {
       player,
-      mode: asOneOf(raw.mode, VACANT_SEAT_MODES, `${at}[${i}].mode`),
+      mode,
+      offers,
       color: asCount(raw.color, `${at}[${i}].color`),
       ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}[${i}].team`) }),
     };
@@ -133,11 +137,19 @@ export function parseRoomView(value: unknown, at: string): RoomView {
   };
 }
 
+function parseSeatOffers(value: unknown, at: string): readonly VacantSeatMode[] {
+  const offers = asArray(value, at).map((mode, i) => asOneOf(mode, VACANT_SEAT_MODES, `${at}[${i}]`));
+  if (offers.length === 0) throw new Error(`${at}: a seat offers at least one mode`);
+  if (new Set(offers).size !== offers.length) throw new Error(`${at}: repeated mode`);
+  return offers;
+}
+
 function parseRoomSeatView(value: unknown, at: string): RoomSeatView {
   const raw = asRecord(value, at);
   return {
     player: parseSeatIndex(raw.player, `${at}.player`),
     mode: asOneOf(raw.mode, SEAT_MODES, `${at}.mode`),
+    offers: parseSeatOffers(raw.offers, `${at}.offers`),
     color: asCount(raw.color, `${at}.color`),
     ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}.team`) }),
     nick: raw.nick === null ? null : parseNick(raw.nick, `${at}.nick`),

@@ -13,6 +13,9 @@ export const MapsIndexPlayerSlot = MapPlayerSlot.extend({
   /** The seat may auto-play when vacant: its `playeroption` row offers `ai`, or the map ships no
    *  row for it (a row can only deny `ai`). */
   aiAllowed: z.boolean(),
+  /** The seat may sit out off the map: its `playeroption` row offers `none`, or the map ships no row
+   *  for it. A map without a `[multiplayer]` table allowing it is an approximation. */
+  noneAllowed: z.boolean(),
 });
 export type MapsIndexPlayerSlot = z.infer<typeof MapsIndexPlayerSlot>;
 

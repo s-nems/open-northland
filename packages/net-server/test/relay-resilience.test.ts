@@ -332,7 +332,12 @@ describe('kick votes', () => {
     a.send({
       kind: 'createRoom',
       settings: SETTINGS,
-      seats: [0, 1, 2, 3].map((player) => ({ player, mode: 'idle', color: player })),
+      seats: [0, 1, 2, 3].map((player) => ({
+        player,
+        mode: 'idle',
+        offers: ['idle', 'ai', 'absent'],
+        color: player,
+      })),
     });
     const roomId = a.last('room')?.room.id ?? '';
     for (const peer of [b, c, d]) peer.send({ kind: 'joinRoom', roomId });

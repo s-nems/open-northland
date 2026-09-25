@@ -24,7 +24,9 @@ const ROOM = {
     rules: { fog: null, progression: null, needs: null },
     speed: 1,
   },
-  seats: [{ player: 0, mode: 'human', color: 0, nick: 'Ania', ready: true }],
+  seats: [
+    { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Ania', ready: true },
+  ],
   members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null }],
 } as const;
 const SESSION: GameSession = {
