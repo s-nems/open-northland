@@ -24,7 +24,8 @@ export interface HudLayout {
 
 /** User-facing text formatters supplied by the app locale layer. */
 export interface HudLabels {
-  readonly playerTick: (player: number, tick: number) => string;
+  /** The header; `player` is null for nobody's model. */
+  readonly playerTick: (player: number | null, tick: number) => string;
   readonly population: (population: number) => string;
   readonly jobs: string;
   readonly stocks: string;

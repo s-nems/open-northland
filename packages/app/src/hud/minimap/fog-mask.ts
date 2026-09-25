@@ -10,8 +10,8 @@ export interface FogMaskLayer {
 
 /**
  * The fog mask over the minimap ground: one cell-resolution alpha raster stretched over `mapRect` with
- * linear filtering, rewritten in place only when the fog generation moves. The sprite is parented on
- * creation, so the caller must create this layer under the dots in draw order.
+ * linear filtering, rewritten in place only when the fog generation or the viewer seat moves. The
+ * sprite is parented on creation, so the caller must create this layer under the dots in draw order.
  *
  * Named approximation: the stretch ignores the odd-row half-cell stagger of the ground raster.
  */
@@ -23,6 +23,7 @@ export function createFogMaskLayer(container: Container, mapRect: Rect): FogMask
   let texture: Texture | null = null;
   let pixels = new Uint8Array(0);
   let generation = -1; // none rasterized yet
+  let player: number | null = null;
 
   return {
     draw: (fog): void => {
@@ -30,11 +31,13 @@ export function createFogMaskLayer(container: Container, mapRect: Rect): FogMask
         if (sprite.visible) {
           sprite.visible = false;
           generation = -1;
+          player = null;
         }
         return;
       }
-      if (fog.generation === generation) return;
+      if (fog.generation === generation && fog.player === player) return;
       generation = fog.generation;
+      player = fog.player;
       if (texture === null) {
         pixels = new Uint8Array(fog.cellsWide * fog.cellsHigh * 4);
         texture = new Texture({

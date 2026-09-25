@@ -440,9 +440,14 @@ export const enGame = {
         producePermit: "Permission to produce '{name}'",
       },
     },
+    observer: {
+      label: 'Watched player',
+      wholeMap: 'Whole map',
+    },
     stats: {
       seatTick: '{seat} · tick {tick}',
       playerTick: 'Player {player} · tick {tick}',
+      tick: 'Tick {tick}',
       population: 'Population: {population}',
       jobs: 'Jobs',
       stocks: 'Stocks',

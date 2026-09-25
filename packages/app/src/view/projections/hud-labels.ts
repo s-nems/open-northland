@@ -9,6 +9,7 @@ export function hudLabels(seatNameOf?: (player: number) => string | undefined): 
   const copy = messages().hud.stats;
   return {
     playerTick: (player, tick) => {
+      if (player === null) return formatMessage(copy.tick, { tick });
       const seat = seatNameOf?.(player);
       return seat !== undefined
         ? formatMessage(copy.seatTick, { seat, tick })

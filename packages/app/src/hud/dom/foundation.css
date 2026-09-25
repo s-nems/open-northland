@@ -1392,6 +1392,55 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-bar--right {
   border-radius: 0 0 0 5px;
 }
+/* The spectator's seat picker: the watched seat on the bar, the choices in a click-opened list. */
+.on-hud .on-picker__button b {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.on-hud .on-picker__button .on-glyph {
+  width: 12px;
+  height: 12px;
+  color: #b9b09a;
+}
+.on-hud .on-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 190px;
+}
+.on-hud .on-seat {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  gap: 6px;
+  min-height: 26px;
+  padding: 2px 9px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #b9b09a;
+  font: 700 12px / 1 var(--font-body);
+  white-space: nowrap;
+}
+.on-hud .on-seat[aria-selected="true"] {
+  border-color: var(--bronze-lo);
+  background: linear-gradient(#c9a262, #9d7a3f);
+  color: #1b1d18;
+  box-shadow: inset 0 1px #fff6;
+}
+.on-hud .on-seat:hover:not([aria-selected="true"]) {
+  background: #c9a26222;
+  color: var(--text-hi);
+}
+.on-hud .on-seat__swatch {
+  width: 10px;
+  height: 10px;
+  border: 1px solid #0009;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px #fff3;
+}
 .on-hud .on-summary {
   display: flex;
   align-items: center;

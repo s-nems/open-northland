@@ -3,12 +3,15 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import { formatSimClock } from '../summary/model.js';
 import { GAME_SPEED_STATES, type GameSpeedControl, type RunningGameSpeed } from '../tool-panel/game-speed.js';
 import { menuArt } from './icons.js';
+import { createObserverPicker, type ObserverPickerDeps } from './observer-picker.js';
 import { createHudSummary, type HudSummaryDeps } from './summary.js';
 
 const MENU_MEDALLION_PX = 34;
 const MENU_ART_PX = 29;
 
 export interface HudSystemBarDeps {
+  /** Set for a spectator: the seat picker leads the bar, before the seat's counters. */
+  readonly observer?: ObserverPickerDeps | undefined;
   readonly summary: HudSummaryDeps;
   readonly onPauseToggle: () => void;
   readonly onSpeed: (running: RunningGameSpeed) => void;
@@ -33,6 +36,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   bar.className = 'on-bar on-bar--right on-panel';
   Object.assign(bar.style, { position: 'absolute', top: '0', right: '0' });
 
+  const picker = deps.observer === undefined ? null : createObserverPicker(deps.observer);
   const summary = createHudSummary(deps.summary);
 
   const clock = document.createElement('time');
@@ -77,6 +81,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
   menu.innerHTML = menuArt(MENU_ART_PX);
   menu.addEventListener('click', deps.onMenu);
 
+  if (picker !== null) bar.append(picker.element);
   bar.append(summary.element, clock, speed, menu);
   plane.append(bar);
   return {
@@ -87,6 +92,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
       }
     },
     update: (model) => {
+      picker?.refresh();
       summary.update(model);
       const text = formatSimClock(model.tick);
       if (text !== shownClock) {
@@ -99,6 +105,7 @@ export function createHudSystemBar(plane: HTMLElement, deps: HudSystemBarDeps): 
       }
     },
     dispose: () => {
+      picker?.dispose();
       summary.dispose();
       bar.remove();
     },

@@ -7,8 +7,8 @@ import { TILE_HALF_H, TILE_HALF_W, type Viewport, visibleTileRange } from '../..
  * The fog-of-war wash over the ground. The sim's VisionSystem decides which cell is unexplored,
  * explored-but-unwatched, or visible and hands the mask over as a {@link FogView}; this layer is a pure
  * projection of it. Only the visible cell band is rasterized, and only when the band moved, the mask
- * rebuilt (`FogView.generation`), or the fog mode changed (`FogView.mode` remaps what `stateAt`
- * reports).
+ * rebuilt (`FogView.generation`), the viewer changed seat (`FogView.player`), or the fog mode changed
+ * (`FogView.mode` remaps what `stateAt` reports).
  *
  * One texel per cell, stretched over the band and sampled with linear filtering: the GPU's bilinear
  * interpolation spreads each state transition across a whole cell (~68 px), which is what melts the mask
@@ -52,7 +52,7 @@ export class FogLayer {
       return;
     }
     const band = visibleTileRange(vp, view.cellsWide, view.cellsHigh, FOG_BAND_MARGIN);
-    const key = `${band.minCol},${band.maxCol},${band.minRow},${band.maxRow}:${view.generation}:${view.mode}`;
+    const key = `${band.minCol},${band.maxCol},${band.minRow},${band.maxRow}:${view.player}:${view.generation}:${view.mode}`;
     if (key === this.key) return;
 
     const bandW = band.maxCol - band.minCol + 1;

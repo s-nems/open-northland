@@ -13,7 +13,9 @@ import {
   adminCommand,
   type Command,
   type Entity,
+  type FogView,
   orderedSettler,
+  type Paper,
   type PlayerCommand,
   playerCommand,
   type SaveGame,
@@ -32,9 +34,12 @@ import {
   logGpuContextLoss,
   setDiagGameSession,
 } from '../../diag/index.js';
+import { mapStartFocus } from '../../game/map-start.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
+import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyLabel } from '../../game/technology.js';
+import { fixedViewerSeat, switchableViewerSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import type { BuildingStockContext } from '../../hud/details-panel/model/context.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
@@ -46,13 +51,18 @@ import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js'
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
+import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
-import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera/index.js';
+import {
+  cameraCenteredOnTile,
+  cameraCenteredOnWorld,
+  clientToScreen as clientToScreenPx,
+} from '../camera/index.js';
 import {
   applyGameSpeed,
   buildingLabelsFromContent,
@@ -147,6 +157,9 @@ export interface GameViewDeps {
   readonly observer?: boolean;
   /** Read-only spectator: the interactive HUD's command seam is a no-op, so a selection can inspect but never re-task. */
   readonly readOnly?: boolean;
+  /** The seats a read-only spectator may watch one at a time, which mounts the seat picker; absent,
+   *  the spectator watches the whole map alone. */
+  readonly observerSeats?: readonly ObserverSeatEntry[];
   /** Owner slot to team-colour slot for player-coloured HUD bits. Default identity. */
   readonly playerColourOf?: (player: number) => number;
   /** Owner slot to the roster's authored seat name, which the stats header prefers over the slot id. */
@@ -194,6 +207,8 @@ export interface GameViewHandle {
 const PAUSE_HOLDER_MENU = 'menu';
 const PAUSE_HOLDER_MISSION = 'mission';
 const PAUSE_HOLDER_VERDICT = 'verdict';
+const NO_PAPERS: readonly Paper[] = [];
+const NO_RESIDENTS: readonly ResidentRow[] = [];
 /** Above the world layers, below the HUD plane the tool panel and the minimap share. */
 const SCRIPT_OVERLAY_Z = 900;
 /** Clearance between the minimap window and an overlay mounted beside it. */
@@ -203,6 +218,16 @@ const BESIDE_MINIMAP_GAP_PX = 12;
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
   const { app, canvas, params, renderer, sim, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
+  // A spectator's view follows the seat it chose to watch; a played session's is its own seat for good.
+  const switchableSeat = deps.observer === true ? switchableViewerSeat(null) : null;
+  const viewer: ViewerSeat = switchableSeat ?? fixedViewerSeat(localPlayer);
+  /** The seat a per-seat read answers for; watching the whole map reads as the fallback seat. */
+  const viewerPlayer = (): number => viewer.seat() ?? localPlayer;
+  const wholeMap = (): boolean => viewer.seat() === null;
+  const fogViewOf = (): FogView | null => {
+    const seat = viewer.seat();
+    return seat === null ? null : sim.fogView(seat);
+  };
   const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
   const sharedClock = deps.sharedClock === true;
   const netReadout = deps.netReadout ?? ((): null => null);
@@ -340,9 +365,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const { diplomacyView, buildAvailability } = createTickMemoViews(sim, seatTribeOf);
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
-        localPlayer,
+        localPlayer: viewerPlayer(),
         rosterPlayers: deps.rosterPlayers ?? [],
-        observer: deps.observer === true,
+        observer: wholeMap(),
         goodLabelOf: (goodType) => goodLabelByType.get(goodType),
         canPay: !readOnly,
         canDeclare: !readOnly,
@@ -360,7 +385,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
             {
               tick: () => sim.tick,
               status: () => sim.missionStatus(),
-              outcome: () => sim.matchOutcome(localPlayer),
+              outcome: () => sim.matchOutcome(viewerPlayer()),
             },
             mapText,
           );
@@ -370,13 +395,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let selectEntity: ((id: number) => void) | null = null;
     let unitSelection: Pick<UnitControls, 'select' | 'selectedIds' | 'selectionVersion'> | null = null;
     const NO_SELECTION: ReadonlySet<number> = new Set();
-    const residentsFor = memoBySnapshot((snapshot: WorldSnapshot) =>
-      residentRows(snapshot, {
-        localPlayer,
-        content: sim.content,
-        mapText,
-        meadGood: sim.content.goods.find((good) => good.id === MEAD_GOOD_ID)?.typeId,
-      }),
+    const meadGood = sim.content.goods.find((good) => good.id === MEAD_GOOD_ID)?.typeId;
+    const residentsFor = memoBySnapshot(
+      (snapshot: WorldSnapshot) => {
+        const seat = viewer.seat();
+        return seat === null
+          ? NO_RESIDENTS
+          : residentRows(snapshot, { localPlayer: seat, content: sim.content, mapText, meadGood });
+      },
+      () => viewer.version(),
     );
     let escapeClaimed: (() => boolean) | null = null;
     let overviewPress: UnitControls['overviewPress'] | null = null;
@@ -394,9 +421,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       uiscale,
       camera: () => cameraCtl.camera(),
       enqueue: issueCommand,
-      grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
-      counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
-      papers: { read: () => sim.papers(localPlayer) },
+      grants: assistantGrantsSeam(sim, sim.content, viewerPlayer, issueCommand, !readOnly),
+      counters: assistantCountersSeam(sim, viewerPlayer, issueCommand, !readOnly),
+      papers: { read: () => (wholeMap() ? NO_PAPERS : sim.papers(viewerPlayer())) },
       residents: {
         rows: () => residentsFor(sim.snapshot()),
         snapshot: () => sim.snapshot(),
@@ -422,7 +449,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
         ...entry,
-        availability: () => buildAvailability(localPlayer, entry.typeId),
+        availability: () => buildAvailability(viewerPlayer(), entry.typeId),
       })),
       buildingLabels: buildingLabelsFromContent(sim.content, lang),
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
@@ -433,6 +460,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),
       owner: localPlayer,
+      viewer,
+      ...(switchableSeat !== null && deps.observerSeats !== undefined
+        ? { observer: { seats: deps.observerSeats, onWatch: (seat) => switchableSeat.watch(seat) } }
+        : {}),
       onSpeed: (spec, cause) => applyGameSpeed(driver, spec, cause),
       clockPaused: () => driver.paused,
       pauseHeld: pauseHolds.isHeld,
@@ -556,9 +587,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       snapshot: () => sim.snapshot(),
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-      humanPlayer: localPlayer,
-      observer: deps.observer === true,
-      hostileToward: (owner) => sim.diplomacyStance(localPlayer, owner) === 'enemy',
+      viewer,
+      hostileToward: (owner) => sim.diplomacyStance(viewerPlayer(), owner) === 'enemy',
       lang,
       bindings: keyBindings,
       professions: pickerEntries(),
@@ -571,7 +601,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       centerOn: jumpToWorld,
       drawnItems: () => renderer.drawnItems(),
       resourceVisible: (tileX, tileY) => {
-        const fog = deps.observer === true ? null : sim.fogView(localPlayer);
+        const fog = fogViewOf();
         return fog === null || fogTileVisible(fog, tileX, tileY);
       },
       doorBadges: () => pickableDoorBadges?.() ?? [],
@@ -610,6 +640,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       sim,
       mapSize: deps.mapSize,
       localPlayer,
+      viewer,
       fogGates,
       tribes: deps.tribes ?? [PRIMARY_TRIBE],
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
@@ -626,7 +657,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     presentation = createScriptPresentation({
       sim,
       missionTrace: hasDebugFlag(params, 'missions'),
-      localPlayer,
+      seat: viewerPlayer,
       toolPanel,
       controls,
       centerOn: jumpToWorld,
@@ -702,7 +733,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       camera: () => cameraCtl.camera(),
       clientToScreen,
       goodLabel,
-      ...chestTooltipLines(sim.content, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
+      ...chestTooltipLines(sim.content, toolPanel.controller.uiString, viewerPlayer, controls.selectedIds),
       card: hoverCard,
       buildingModel: (snapshot, entityId) => buildingHoverModel(snapshot, entityId, hoverContext),
       settlerModel: (snapshot, entityId) =>
@@ -717,6 +748,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
 
     cleanup.push(() => worldHover.destroy());
+
+    // A seat switch from the picker: the selection was the last seat's, and the view goes where the
+    // new seat's people are.
+    switchableSeat?.onSwitch((seat) => {
+      uiCue('confirm');
+      controls.select([]);
+      if (seat === null) return;
+      const focus = mapStartFocus(sim.snapshot(), deps.mapSize.width, deps.mapSize.height, seat);
+      const zoom = cameraCtl.camera().scale ?? 1;
+      cameraCtl.jumpTo(cameraCenteredOnTile(focus.x, focus.y, zoom, app.screen.width, app.screen.height));
+    });
 
     const liveSettings = createLiveGameSettings({
       screen: app.screen,
@@ -770,6 +812,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       deps: { ...deps, onEvents },
       suspended: subMissions.isPending,
       fpsLimit: storedSettings.fpsLimit,
+      fogView: fogViewOf,
+      seat: viewerPlayer,
+      wholeMap,
       onMatchEnd: () => verdict?.finish(sim.matchOutcome(localPlayer)),
       isDisposed: () => destroyed,
       driver,

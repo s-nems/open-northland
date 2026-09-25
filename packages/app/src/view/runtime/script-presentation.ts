@@ -20,7 +20,8 @@ const INFO_LINE_REFRESH_TICKS = INFO_LINE_REFRESH_SECONDS * TICKS_PER_SECOND;
 export interface ScriptPresentationDeps {
   readonly sim: Pick<Simulation, 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'>;
   readonly missionTrace?: boolean;
-  readonly localPlayer: number;
+  /** Whose info lines the panel shows; read on every refresh. */
+  readonly seat: () => number;
   readonly toolPanel: GameToolPanelHandle;
   readonly controls: Pick<UnitControls, 'select'>;
   /** Re-centre the view on a world-px point at the current zoom. */
@@ -140,7 +141,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
       scriptFired = false;
       if (snapshot.tick - linesTick >= INFO_LINE_REFRESH_TICKS) {
         linesTick = snapshot.tick;
-        lines = infoLineTexts(sim.infoLines(deps.localPlayer), deps.mapText);
+        lines = infoLineTexts(sim.infoLines(deps.seat()), deps.mapText);
       }
       // Pushed every frame: the panel remounts on a scale change and starts blank.
       toolPanel.controller.setInfoLines(lines);

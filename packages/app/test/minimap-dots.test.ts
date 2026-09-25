@@ -45,6 +45,7 @@ function owned(id: number, kind: 'Settler' | 'Building', player: number, x: numb
 /** A FogView whose visibility is decided per cell by `visible` (missing cells read as EXPLORED). */
 function fogWhere(visible: (cellX: number, cellY: number) => boolean): FogView {
   return {
+    player: 0,
     mode: FOG_MODE.RECON_FOG_OF_WAR,
     cellsWide: 8,
     cellsHigh: 8,

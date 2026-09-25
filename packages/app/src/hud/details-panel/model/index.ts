@@ -195,7 +195,7 @@ export function buildUnitPanelModel(
       category,
       owner: `#${ownerPlayerOf(ent) ?? '-'}`,
       ownerPlayer,
-      canSetHouseholdGoodPolicy: ownerPlayer !== undefined && ownerPlayer === ctx.localPlayer,
+      canSetHouseholdGoodPolicy: ownerPlayer !== undefined && ownerPlayer === ctx.viewer?.seat(),
       tribe: tribeName(num(b.tribe), contentTribeName(ctx, num(b.tribe))),
       tribeId: num(b.tribe),
       level,

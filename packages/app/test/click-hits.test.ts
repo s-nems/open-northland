@@ -6,6 +6,7 @@ import {
   tileToScreen,
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
+import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import type { Pickable } from '../src/view/picking.js';
 import { type ClickHitDeps, createClickHits } from '../src/view/unit-controls/click-hits.js';
 
@@ -68,8 +69,7 @@ const hitsFor = (arms: Arms): ReturnType<typeof createClickHits> =>
   createClickHits({
     doorBadges: () => arms.badges ?? [],
     targets: targetsOf(arms),
-    humanPlayer: HUMAN_PLAYER,
-    observer: arms.observer ?? false,
+    viewer: fixedViewerSeat(arms.observer === true ? null : HUMAN_PLAYER),
     ...(arms.elevation !== undefined ? { elevation: arms.elevation } : {}),
   });
 
@@ -203,8 +203,7 @@ describe('click hits on a door marker', () => {
   it('picks no marker at all when the frame publishes no badges', () => {
     const noBadges = createClickHits({
       targets: targetsOf(ALL),
-      humanPlayer: HUMAN_PLAYER,
-      observer: false,
+      viewer: fixedViewerSeat(HUMAN_PLAYER),
     });
     expect(noBadges.doorMarkerAt(CLICK.x, CLICK.y)).toBeNull();
     expect(noBadges.selectionAt(CLICK.x, CLICK.y)).toBe(FLAG_GATHERER);

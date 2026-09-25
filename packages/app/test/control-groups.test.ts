@@ -81,13 +81,13 @@ describe('control groups', () => {
       { id: 5, components: { Settler: {}, Livestock: {}, Owner: { player: 0 } } },
     ]);
 
-    expect(isControlGroupMember(snapshot, 1, 0, false)).toBe(true);
-    expect(isControlGroupMember(snapshot, 2, 0, false)).toBe(true);
-    expect(isControlGroupMember(snapshot, 3, 0, false)).toBe(false);
-    expect(isControlGroupMember(snapshot, 3, 0, true)).toBe(true);
-    expect(isControlGroupMember(snapshot, 4, 0, true)).toBe(false);
-    expect(isControlGroupMember(snapshot, 5, 0, true)).toBe(false);
-    expect(isControlGroupMember(snapshot, 99, 0, true)).toBe(false);
+    expect(isControlGroupMember(snapshot, 1, 0)).toBe(true);
+    expect(isControlGroupMember(snapshot, 2, 0)).toBe(true);
+    expect(isControlGroupMember(snapshot, 3, 0)).toBe(false);
+    expect(isControlGroupMember(snapshot, 3, null)).toBe(true);
+    expect(isControlGroupMember(snapshot, 4, null)).toBe(false);
+    expect(isControlGroupMember(snapshot, 5, null)).toBe(false);
+    expect(isControlGroupMember(snapshot, 99, null)).toBe(false);
   });
 
   it('Shift-adds members in insertion order and steals them from every other group', () => {

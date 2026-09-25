@@ -19,6 +19,7 @@ import type {
 } from '@open-northland/sim';
 import type { Application, Texture } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
+import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
 import type { OverviewPress } from './overview-orders.js';
@@ -35,11 +36,10 @@ export interface UnitControlsOptions {
   readonly snapshot: () => WorldSnapshot;
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly elevation?: ElevationField;
-  readonly humanPlayer: number;
-  /** In an observer session every player's entities are pickable as if owned and no unit reads as an
-   *  enemy. Default false. */
-  readonly observer?: boolean;
-  /** Whether the human seat holds an `enemy` stance toward `owner`; gates the right-click attack set. */
+  /** Whose entities are pickable and orderable; while it names no seat, every player's are pickable as
+   *  if owned and no unit reads as an enemy. */
+  readonly viewer: ViewerSeat;
+  /** Whether the viewer's seat holds an `enemy` stance toward `owner`; gates the right-click attack set. */
   readonly hostileToward: (owner: number) => boolean;
   readonly lang: string;
   readonly bindings: KeyBindings;

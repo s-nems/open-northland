@@ -93,6 +93,7 @@ export function fogViewOf(
   mode: FogMode = FOG_MODE.CLASSIC,
 ): FogView {
   return {
+    player: 0,
     mode,
     cellsWide: 64,
     cellsHigh: 64,

@@ -15,6 +15,7 @@ import {
   ownerPlayerOf,
   positionOf,
 } from '../../game/snapshot.js';
+import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { isHitTarget, type Pickable } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import type { FormationUnit } from './formation.js';
@@ -23,11 +24,10 @@ import type { FormationUnit } from './formation.js';
 export interface UnitTargetsDeps {
   /** Read the current detached snapshot (memoized while sim state is unchanged). */
   readonly snapshot: () => WorldSnapshot;
-  /** The human player whose units are selectable/orderable. */
-  readonly humanPlayer: number;
-  /** Observer session: every owner counts as ours, so nothing reads as an enemy. */
-  readonly observer: boolean;
-  /** Whether the human seat holds an `enemy` stance toward `owner` - the same directed gate the sim's
+  /** Whose units are selectable/orderable; watching the whole map, every owner counts as ours, so
+   *  nothing reads as an enemy. */
+  readonly viewer: ViewerSeat;
+  /** Whether the viewer's seat holds an `enemy` stance toward `owner` - the same directed gate the sim's
    *  attack order obeys, so a click on a non-enemy falls through to a move instead of a dropped order. */
   readonly hostileToward: (owner: number) => boolean;
   /** The frame the player is clicking on. */
@@ -99,8 +99,11 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
   });
 
   /** Whether an entity with this owner belongs to the pickable "ours" set. */
-  const pickableOwner = (owner: number | undefined): boolean =>
-    owner !== undefined && (deps.observer || owner === deps.humanPlayer);
+  const pickableOwner = (owner: number | undefined): boolean => {
+    if (owner === undefined) return false;
+    const seat = deps.viewer.seat();
+    return seat === null || owner === seat;
+  };
 
   /** The item's kind when it is one a unit-controls click resolves to, else null. */
   const unitKindOf = (item: DrawItem): UnitTargetKind | null =>
@@ -164,8 +167,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
     },
 
     flags(): Pickable[] {
-      // flag-id → owning gatherer-id (not a player id); an observer picks every player's flags
-      const gathererOf = gathererByFlag(deps.snapshot(), deps.observer ? 'any' : deps.humanPlayer);
+      // flag-id → owning gatherer-id (not a player id); a whole-map viewer picks every player's flags
+      const gathererOf = gathererByFlag(deps.snapshot(), deps.viewer.seat() ?? 'any');
       if (gathererOf.size === 0) return [];
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {

@@ -25,7 +25,7 @@ describe('assistantCountersSeam', () => {
   it('reads the six rows off the sim block, the class rows renamed', () => {
     const seam = assistantCountersSeam(
       simCounters({ trainSword: { value: 4, infinite: false }, extraMen: { value: 0, infinite: true } }),
-      0,
+      () => 0,
       () => {},
     );
     const faces = seam.read();
@@ -36,7 +36,11 @@ describe('assistantCountersSeam', () => {
 
   it('writes one absolute command carrying the seat and the sim kind', () => {
     const sent: Command[] = [];
-    const seam = assistantCountersSeam(simCounters(), 2, (c) => sent.push(c));
+    const seam = assistantCountersSeam(
+      simCounters(),
+      () => 2,
+      (c) => sent.push(c),
+    );
     expect(seam.set('trainArchers', 7, true)).toBe(true);
     expect(sent).toEqual([
       { kind: 'setAssistantCounter', player: 2, counter: 'trainBow', value: 7, infinite: true },
@@ -45,7 +49,12 @@ describe('assistantCountersSeam', () => {
 
   it('a read-only session rejects every write', () => {
     const sent: Command[] = [];
-    const seam = assistantCountersSeam(simCounters(), 0, (c) => sent.push(c), false);
+    const seam = assistantCountersSeam(
+      simCounters(),
+      () => 0,
+      (c) => sent.push(c),
+      false,
+    );
     expect(seam.set('extraMen', 1, false)).toBe(false);
     expect(sent).toEqual([]);
   });

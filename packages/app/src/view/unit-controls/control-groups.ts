@@ -69,18 +69,14 @@ export function groupCentre(
   return count === 0 ? null : { x: x / count, y: y / count };
 }
 
-/** Group recall may reach off-screen actors, but never dead, foreign, neutral, or livestock entities. */
-export function isControlGroupMember(
-  snapshot: WorldSnapshot,
-  ref: number,
-  humanPlayer: number,
-  observer: boolean,
-): boolean {
+/** Group recall may reach off-screen actors, but never dead, foreign, neutral, or livestock entities;
+ *  a whole-map viewer (`seat` null) owns them all. */
+export function isControlGroupMember(snapshot: WorldSnapshot, ref: number, seat: number | null): boolean {
   const entity = entityById(snapshot, ref);
   if (entity === undefined || (!isSettler(entity) && !isBuilding(entity))) return false;
   if (entity.components.Livestock !== undefined) return false;
   const owner = ownerPlayerOf(entity);
-  return owner !== undefined && (observer || owner === humanPlayer);
+  return owner !== undefined && (seat === null || owner === seat);
 }
 
 /** Ten client-local selection groups. Invalid members are forgotten when their group is recalled. */

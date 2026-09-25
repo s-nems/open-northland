@@ -33,8 +33,9 @@ export interface StockCount {
 
 export interface HudModel {
   readonly tick: number;
-  /** The `Owner.player` slot every figure below is counted for. */
-  readonly player: number;
+  /** The `Owner.player` slot every figure below is counted for; null for nobody's model, whose figures
+   *  are all zero (a spectator watching the whole map rather than one seat). */
+  readonly player: number | null;
   /** Every living person the player owns, working or not, baby or adult; wildlife is not counted. */
   readonly population: number;
   /** Per-job head-counts, ascending by `jobType`. */
@@ -172,4 +173,9 @@ export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
     .sort((a, b) => a.goodType - b.goodType);
 
   return { tick: snapshot.tick, player, population, jobs, stocks };
+}
+
+/** Nobody's model at `tick`: every figure zero, so the bar shows a seatless view as empty. */
+export function emptyHud(tick: number): HudModel {
+  return { tick, player: null, population: 0, jobs: [], stocks: [] };
 }

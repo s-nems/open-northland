@@ -426,9 +426,14 @@ export const plGame = {
         producePermit: "Zezwolenie na produkcję '{name}'",
       },
     },
+    observer: {
+      label: 'Obserwowany gracz',
+      wholeMap: 'Cała mapa',
+    },
     stats: {
       seatTick: '{seat} · krok {tick}',
       playerTick: 'Gracz {player} · krok {tick}',
+      tick: 'Krok {tick}',
       population: 'Populacja: {population}',
       jobs: 'Zawody',
       stocks: 'Zapasy',

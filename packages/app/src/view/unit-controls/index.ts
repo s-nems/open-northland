@@ -33,7 +33,7 @@ const DOUBLE_CLICK = 2;
 /**
  * App-layer select-and-command input: it reads the mouse and keyboard and issues sim commands through
  * the one-way seam, never touching sim state. Selection is client view state fed to the renderer's
- * rings; only the local player's entities are pickable, unless the session is an observer.
+ * rings; only the viewer seat's entities are pickable, unless the viewer watches the whole map.
  */
 
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
@@ -79,8 +79,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   const unitTargets = createUnitTargets({
     snapshot: opts.snapshot,
-    humanPlayer: opts.humanPlayer,
-    observer: opts.observer === true,
+    viewer: opts.viewer,
     hostileToward: opts.hostileToward,
     drawnItems: opts.drawnItems,
     boundsOf: opts.boundsOf,
@@ -104,8 +103,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const clickHits = createClickHits({
     ...(opts.doorBadges !== undefined ? { doorBadges: opts.doorBadges } : {}),
     targets: unitTargets,
-    humanPlayer: opts.humanPlayer,
-    observer: opts.observer === true,
+    viewer: opts.viewer,
     ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
   });
 
@@ -268,7 +266,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       } else {
         const snapshot = opts.snapshot();
         const ids = controlGroups.recall(groupCommand.action, (id) =>
-          isControlGroupMember(snapshot, id, opts.humanPlayer, opts.observer === true),
+          isControlGroupMember(snapshot, id, opts.viewer.seat()),
         );
         if (ids === null) return;
         if (groupRecallEffect(ids, selection.ids()) === 'centre') {

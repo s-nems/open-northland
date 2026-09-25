@@ -17,12 +17,12 @@ export class WorldFog {
   private view: FogView | null = null;
   private readonly ghosts = new FogGhostStore();
   private staticRefs: ReadonlySet<number> | undefined;
-  /** Bumped when the cull's answers may change: a mask rebuild (`generation`) or a mode remap of
-   *  `stateAt`. Consumers key their per-frame caches on it instead of re-probing a steady mask.
-   *  Load-bearing invariant: the view's player is fixed for a renderer's lifetime, so the viewer is
-   *  not key material; a future viewer switch must reset `lastGeneration`. */
+  /** Bumped when the cull's answers may change: a mask rebuild (`generation`), a seat switch
+   *  (`player`) or a mode remap of `stateAt`. Consumers key their per-frame caches on it instead of
+   *  re-probing a steady mask. */
   private epoch = 0;
   private lastGeneration = -1;
+  private lastPlayer: number | null = null;
   private lastMode: FogView['mode'] | null = null;
   /** Bound once: the pool's cull predicate reads the live view, so a frame allocates no closure. */
   private readonly visibleAt = (tileX: number, tileY: number): boolean =>
@@ -61,9 +61,14 @@ export class WorldFog {
       this.ghosts.clear();
       return staticRefs === undefined ? {} : { staticRefs };
     }
-    if (view.generation !== this.lastGeneration || view.mode !== this.lastMode) {
+    if (
+      view.generation !== this.lastGeneration ||
+      view.player !== this.lastPlayer ||
+      view.mode !== this.lastMode
+    ) {
       this.epoch++;
       this.lastGeneration = view.generation;
+      this.lastPlayer = view.player;
       this.lastMode = view.mode;
     }
     const ghosts = this.ghosts.update(snapshot, view, staticRefs);

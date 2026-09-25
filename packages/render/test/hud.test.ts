@@ -357,7 +357,7 @@ function model(over: Partial<HudModel> = {}): HudModel {
 }
 
 const LABELS = {
-  playerTick: (player: number, tick: number) => `Player ${player} · tick ${tick}`,
+  playerTick: (player: number | null, tick: number) => `Player ${player ?? '-'} · tick ${tick}`,
   population: (population: number) => `Population: ${population}`,
   jobs: 'Jobs',
   stocks: 'Stocks',

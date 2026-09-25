@@ -5,6 +5,7 @@ import { createFogGates } from '../src/view/projections/index.js';
 /** A FogView whose cells read VISIBLE only where `visible` holds; everything else reads EXPLORED. */
 function fogWhere(visible: (cellX: number, cellY: number) => boolean): FogView {
   return {
+    player: 0,
     mode: FOG_MODE.RECON_FOG_OF_WAR,
     cellsWide: 16,
     cellsHigh: 16,

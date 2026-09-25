@@ -16,12 +16,14 @@ import {
 } from '../../content/gui-gfx.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
+import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
+import type { ObserverPickerSeat } from '../dom/observer-picker.js';
 import { createPlacementStrip } from '../dom/placement-strip.js';
 import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
@@ -88,6 +90,13 @@ export interface ToolPanelOptions {
   readonly tribe: number;
   /** The player slot a placed building is owned by. */
   readonly owner: number;
+  /** Whose notes the column shows. */
+  readonly viewer: ViewerSeat;
+  /** A spectator's seat picker on the system bar: the seats it may watch and where its choice goes. */
+  readonly observer?: {
+    readonly seats: readonly ObserverPickerSeat[];
+    readonly onWatch: (seat: number | null) => void;
+  };
   /** Submit a seat command into the sim. */
   readonly enqueue: (command: PlayerCommand) => void;
   /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
@@ -419,6 +428,16 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.clockPaused !== undefined ? { clockPaused: opts.clockPaused } : {}),
     });
     const systemBar = createHudSystemBar(plane, {
+      ...(opts.observer !== undefined
+        ? {
+            observer: {
+              seats: opts.observer.seats,
+              viewer: opts.viewer,
+              playerColourOf: opts.playerColourOf,
+              onWatch: opts.observer.onWatch,
+            },
+          }
+        : {}),
       summary: {
         pack: opts.pack,
         goodIdOf: (goodType) => goodIdByType.get(goodType),
@@ -450,7 +469,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       figureFrames,
       buildingThumbs: thumbs,
       playerColourOf: opts.playerColourOf,
-      localPlayer: opts.owner,
+      viewer: opts.viewer,
       buildingLabel: (typeId) => labelByType.get(typeId),
       paperLabel: nameOfPaper,
       technologyLabel: opts.technologyLabel,

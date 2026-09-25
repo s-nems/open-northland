@@ -3,6 +3,7 @@ import { fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../src/game/sandbox/index.js';
 import { actorsOf, trainingOccupancyOf } from '../src/game/snapshot.js';
+import { fixedViewerSeat, switchableViewerSeat } from '../src/game/viewer-seat.js';
 import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
 import { createFogGates, createSnapshotProjections } from '../src/view/projections/index.js';
 import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
@@ -17,7 +18,7 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
   const HOME_TYPE = 2;
   const PLAYER = 0;
   const projectionsFor = () =>
-    createSnapshotProjections(PLAYER, () => undefined, workerRoleOf, createFogGates(), {
+    createSnapshotProjections(fixedViewerSeat(PLAYER), () => undefined, workerRoleOf, createFogGates(), {
       isLivestockTribe: () => false,
     });
   const snap = snapshotOf([building(10, HOME_TYPE, 1, 1), settler(1, 0, 10)]);
@@ -31,11 +32,43 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
     expect(doorBadgesFor(next)).not.toBe(doorBadgesFor(snap));
   });
 
+  it('re-reads the summary when a spectator switches seats under a held snapshot, zero for the whole map', () => {
+    const viewer = switchableViewerSeat(1);
+    const { hudModelFor, hudFor } = createSnapshotProjections(
+      viewer,
+      () => undefined,
+      workerRoleOf,
+      createFogGates(),
+      { isLivestockTribe: () => false },
+    );
+    const person = (id: number, player: number): Ent => ({
+      id,
+      components: { Settler: { jobType: 0 }, Person: {}, Owner: { player } },
+    });
+    const world = snapshotOf([person(1, 0), person(2, 1), person(3, 1)]);
+    expect(hudModelFor(world)).toMatchObject({ player: 1, population: 2 });
+    expect(hudFor(world)).toBe(hudFor(world));
+    const seatOneLayout = hudFor(world);
+
+    viewer.watch(0);
+    expect(hudModelFor(world)).toMatchObject({ player: 0, population: 1 }); // same snapshot instance
+    expect(hudFor(world)).not.toBe(seatOneLayout);
+
+    viewer.watch(null);
+    expect(hudModelFor(world)).toEqual({
+      tick: world.tick,
+      player: null,
+      population: 0,
+      jobs: [],
+      stocks: [],
+    });
+  });
+
   it('re-reads the hearts when the selection moves under a held snapshot (a paused pick)', () => {
     const selected = new Set<number>();
     let version = 0;
     const { lifeHeartsFor } = createSnapshotProjections(
-      PLAYER,
+      fixedViewerSeat(PLAYER),
       () => undefined,
       workerRoleOf,
       createFogGates(),
@@ -87,7 +120,7 @@ describe('per-tick projections - one walk of the map between them', () => {
     const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
 
     const { doorBadgesFor, settlerBubblesFor, lifeHeartsFor } = createSnapshotProjections(
-      PLAYER,
+      fixedViewerSeat(PLAYER),
       () => undefined,
       workerRoleOf,
       createFogGates(),
@@ -123,7 +156,7 @@ describe('per-tick projections - one walk of the map between them', () => {
     const heartInputs = { isLivestockTribe: () => false };
 
     const first = createSnapshotProjections(
-      PLAYER,
+      fixedViewerSeat(PLAYER),
       () => undefined,
       workerRoleOf,
       createFogGates(),
@@ -133,7 +166,7 @@ describe('per-tick projections - one walk of the map between them', () => {
     expect(visits()).toBe(entities.length * 2); // the actor index, plus the scene index once
 
     const second = createSnapshotProjections(
-      PLAYER,
+      fixedViewerSeat(PLAYER),
       () => undefined,
       workerRoleOf,
       createFogGates(),

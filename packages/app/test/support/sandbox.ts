@@ -1,5 +1,6 @@
 import { type EntitySnapshot, ONE, type Simulation, systems, type WorldSnapshot } from '@open-northland/sim';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../src/game/rules.js';
+import { fixedViewerSeat } from '../../src/game/viewer-seat.js';
 import type { UnitPanelModelContext } from '../../src/hud/details-panel/index.js';
 import { createSceneSim } from '../../src/scenes/index.js';
 import { sandboxScene } from '../../src/scenes/sandbox/index.js';
@@ -8,7 +9,7 @@ import { sandboxScene } from '../../src/scenes/sandbox/index.js';
  *  `buildUnitPanelModel` assertion runs against, livestock seams wired like `unit-controls`. */
 export function ctxOf(sim: Simulation): UnitPanelModelContext {
   return {
-    localPlayer: HUMAN_PLAYER,
+    viewer: fixedViewerSeat(HUMAN_PLAYER),
     buildings: sim.content.buildings,
     goods: sim.content.goods,
     jobs: sim.content.jobs,

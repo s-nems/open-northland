@@ -223,7 +223,7 @@ const OPEN_CHEST_STRING_ID = 35;
 export function chestTooltipLines(
   content: ContentSet,
   uiString: UiString,
-  player: number,
+  player: () => number,
   selectedIds: () => ReadonlySet<number>,
 ): Pick<WorldHoverOptions, 'chestLabel' | 'chestOrderLine'> {
   const labels = messages().hud.chest;
@@ -232,7 +232,7 @@ export function chestTooltipLines(
     chestOrderLine: (snapshot, kind) => {
       for (const id of selectedIds()) {
         const e = entityById(snapshot, id);
-        if (e === undefined || !isSettler(e) || ownerPlayerOf(e) !== player) continue;
+        if (e === undefined || !isSettler(e) || ownerPlayerOf(e) !== player()) continue;
         if (canOpenChest(e, kind, content)) return uiString('misclogic', OPEN_CHEST_STRING_ID, labels.open);
       }
       return null;

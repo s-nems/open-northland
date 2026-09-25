@@ -4,6 +4,7 @@ import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
+import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
 import {
@@ -19,7 +20,9 @@ export interface ViewReadModelDeps {
   readonly placementTribe?: number;
   readonly sim: Simulation;
   readonly mapSize: { readonly width: number; readonly height: number };
+  /** The seat that places and probes; the HUD figures follow `viewer` instead. */
   readonly localPlayer: number;
+  readonly viewer: ViewerSeat;
   readonly fogGates: FogGates;
   /** The civilizations this world fields: the tribes whose building anchors are indexed. */
   readonly tribes: WorldTribes;
@@ -82,7 +85,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer, deps.placementTribe),
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
     ...createSnapshotProjections(
-      localPlayer,
+      deps.viewer,
       buildings.infoOf,
       workerRoleOf,
       fogGates,

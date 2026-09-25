@@ -13,6 +13,9 @@ import { effectiveFogState, type FogState } from '../systems/vision/index.js';
 
 /** One viewer player's fog: plain data and one pure accessor over the live {@link FogState}. */
 export interface FogView {
+  /** The seat whose perspective `stateAt` answers for; a render cache keys on it beside `generation`,
+   *  since a spectator may switch seats under one unchanged mask. */
+  readonly player: number;
   /** Never `OFF`, which yields a null view instead. */
   readonly mode: FogMode;
   readonly cellsWide: number;
@@ -61,6 +64,7 @@ export function fogViewFor(world: World, fog: FogState | undefined, player: numb
   const mode = fogMode(world);
   if (mode === FOG_MODE.OFF) return null;
   return {
+    player,
     mode,
     cellsWide: fog.cellsWide,
     cellsHigh: fog.cellsHigh,

@@ -12,6 +12,7 @@ import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { MissionBrief } from '../game/mission-brief.js';
+import type { ViewerSeat } from '../game/viewer-seat.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
 import { createReplaceableMount } from '../hud/replaceable-mount.js';
@@ -19,7 +20,7 @@ import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/build
 import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
-import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
+import { mountToolPanel, type ToolPanelController, type ToolPanelOptions } from '../hud/tool-panel/index.js';
 import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
@@ -64,6 +65,10 @@ export interface GameToolPanelDeps {
   readonly tribe: number;
   /** The player a placed building is owned by. */
   readonly owner: number;
+  /** Whose notes the column shows. */
+  readonly viewer: ViewerSeat;
+  /** A spectator's seat picker on the system bar; absent, the bar has none. */
+  readonly observer?: ToolPanelOptions['observer'];
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
   readonly papers: PapersSeam;
@@ -204,6 +209,8 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       bindings: deps.bindings,
       tribe: deps.tribe,
       owner: deps.owner,
+      viewer: deps.viewer,
+      ...(deps.observer !== undefined ? { observer: deps.observer } : {}),
       enqueue: deps.enqueue,
       grants: deps.grants,
       counters: deps.counters,

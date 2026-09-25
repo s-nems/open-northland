@@ -3,6 +3,7 @@ import { systems, type TradeOffer, type TraderView } from '@open-northland/sim';
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
+import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { currentLocale, messages, professionLabel } from '../../../i18n/index.js';
 
 export type BuildingDef = ContentSet['buildings'][number];
@@ -13,7 +14,7 @@ export type TribeDef = ContentSet['tribes'][number];
 
 export interface UnitPanelModelContext {
   /** The seat allowed to issue player-scoped orders from this panel. */
-  readonly localPlayer?: number | undefined;
+  readonly viewer?: ViewerSeat | undefined;
   readonly goodAllowed?: ((good: number, tribe: number, player?: number) => boolean) | undefined;
   readonly technologyReason?:
     | ((kind: 'job' | 'house' | 'good', typeId: number, tribe: number, player?: number) => string | null)

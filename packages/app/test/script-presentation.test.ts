@@ -69,7 +69,7 @@ function harness(
   };
   const presentation = createScriptPresentation({
     sim,
-    localPlayer: 0,
+    seat: () => 0,
     toolPanel,
     controls: { select: (ids) => calls.push(`select:${[...ids].join()}`) },
     centerOn: (x, y) => calls.push(`centre:${x},${y}`),

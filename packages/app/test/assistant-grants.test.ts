@@ -21,7 +21,12 @@ const MEAD = 43;
 
 describe('assistantGrantsSeam', () => {
   it('reads a switch as ON exactly when its content-resolved good is granted', () => {
-    const seam = assistantGrantsSeam({ assistantGrants: () => [SHOES, MEAD] }, CONTENT, 0, () => {});
+    const seam = assistantGrantsSeam(
+      { assistantGrants: () => [SHOES, MEAD] },
+      CONTENT,
+      () => 0,
+      () => {},
+    );
     expect(seam.read()).toEqual({
       giveBoots: true,
       giveWoodenTools: false,
@@ -32,7 +37,12 @@ describe('assistantGrantsSeam', () => {
 
   it('writes one command per mapped good, carrying the seat and the flip', () => {
     const sent: Command[] = [];
-    const seam = assistantGrantsSeam({ assistantGrants: () => [] }, CONTENT, 2, (c) => sent.push(c));
+    const seam = assistantGrantsSeam(
+      { assistantGrants: () => [] },
+      CONTENT,
+      () => 2,
+      (c) => sent.push(c),
+    );
     expect(seam.set('giveBoots', false)).toBe(true);
     expect(sent).toEqual([{ kind: 'setAssistantGrant', player: 2, goodType: SHOES, enabled: false }]);
   });
@@ -42,7 +52,7 @@ describe('assistantGrantsSeam', () => {
     const seam = assistantGrantsSeam(
       { assistantGrants: () => [SHOES] },
       { goods: [{ typeId: SHOES, id: 'shoes' }] },
-      0,
+      () => 0,
       (c) => sent.push(c),
     );
     expect(seam.read().giveMead).toBe(false);
@@ -52,7 +62,13 @@ describe('assistantGrantsSeam', () => {
 
   it('a read-only session rejects every write', () => {
     const sent: Command[] = [];
-    const seam = assistantGrantsSeam({ assistantGrants: () => [] }, CONTENT, 0, (c) => sent.push(c), false);
+    const seam = assistantGrantsSeam(
+      { assistantGrants: () => [] },
+      CONTENT,
+      () => 0,
+      (c) => sent.push(c),
+      false,
+    );
     expect(seam.set('giveBoots', true)).toBe(false);
     expect(sent).toEqual([]);
   });

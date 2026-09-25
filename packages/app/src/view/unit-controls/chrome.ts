@@ -59,7 +59,7 @@ export async function createUnitChrome(
       canvas: opts.canvas,
       uiscale,
       lang: opts.lang,
-      localPlayer: opts.humanPlayer,
+      viewer: opts.viewer,
       backingScale: (canvas) => screenScale(canvas, opts.app.renderer.resolution),
       technologyReason:
         opts.technologyStatus === undefined

@@ -50,6 +50,7 @@ export class FogGhostStore {
   /** The drawable subset, rebuilt per mask generation and returned by reference. */
   private drawList: FogGhost[] = [];
   private lastGeneration = -1;
+  private lastPlayer: number | null = null;
   private lastMode = -1;
   /** Whether the current known-terrain stretch already seeded natural resources. */
   private reconSeeded = false;
@@ -67,16 +68,20 @@ export class FogGhostStore {
     this.records.clear();
     this.drawList = [];
     this.lastGeneration = -1;
+    this.lastPlayer = null;
     this.lastMode = -1;
     this.reconSeeded = false;
   }
 
   /**
-   * Update the memory and return the drawable ghosts, cached by (generation, mode) so a frame with
-   * no mask rebuild is a field read. Refs in `staticRefs` never ghost - the retained map-object
-   * layer already draws their last-seen state.
+   * Update the memory and return the drawable ghosts, cached by (generation, player, mode) so a
+   * frame with no mask rebuild is a field read. Refs in `staticRefs` never ghost - the retained
+   * map-object layer already draws their last-seen state. The memory is one seat's: a spectator
+   * switching seats starts the new seat's from what it sees now, since what that seat saw before the
+   * switch was never recorded here (approximation of the original's per-player memory).
    */
   update(snapshot: WorldSnapshot, view: FogView, staticRefs?: ReadonlySet<number>): readonly FogGhost[] {
+    if (view.player !== this.lastPlayer) this.clear();
     if (
       view.generation === this.lastGeneration &&
       view.mode === this.lastMode &&
@@ -126,6 +131,7 @@ export class FogGhostStore {
     }
     this.drawList = drawable;
     this.lastGeneration = view.generation;
+    this.lastPlayer = view.player;
     this.lastMode = view.mode;
     return this.drawList;
   }

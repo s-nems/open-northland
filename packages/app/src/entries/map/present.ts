@@ -15,6 +15,7 @@ import { mapStartFocus } from '../../game/map-start.js';
 import { mapStringLookup } from '../../game/map-strings.js';
 import { hasEliminationGoal } from '../../game/match-participants.js';
 import { briefingPage } from '../../game/mission-brief.js';
+import { observerSeats } from '../../game/observer-seats.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { sessionSearch } from '../../game/session-url.js';
 import { currentLocale, messages } from '../../i18n/index.js';
@@ -141,6 +142,7 @@ export async function presentMapWorld(
     localPlayer,
     observer: isSpectator(session),
     readOnly: isReadOnlySpectator(session),
+    ...(isReadOnlySpectator(session) ? { observerSeats: observerSeats(session, script) } : {}),
     playerColourOf,
     seatTribeOf: (player) => playerTribe(script, player),
     tribes: world.tribes,

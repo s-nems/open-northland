@@ -1,7 +1,7 @@
 import type { MusicStanding } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type { DrawItem, HudLayout, HudModel } from '@open-northland/render';
-import type { Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type { FogView, Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
@@ -33,6 +33,12 @@ export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
   readonly suspended?: () => boolean;
   readonly fpsLimit: FpsLimit;
+  /** The viewer's fog this frame draws through; null is fog off or a whole-map spectator. */
+  readonly fogView: () => FogView | null;
+  /** The seat the music's mood and the life-event jingles follow. */
+  readonly seat: () => number;
+  /** True while a spectator watches the whole map, so the mood reads every seat as met. */
+  readonly wholeMap: () => boolean;
   readonly onMatchEnd?: () => void;
   readonly isDisposed?: () => boolean;
   /** The session driver: it decides how many ticks this frame may run and holds the render alpha. */
@@ -118,7 +124,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     syncViewport,
   } = loop;
   const { app, renderer, sim, cameraCtl } = deps;
-  const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
   // Frame phases join the sim instrument's per-system slices in one `?debug=perf` / `?debug=trace` recording.
   const emitPhase = framePhaseEmitter(deps.params);
@@ -126,11 +131,15 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // Every step's events, not just the last tick's: a frame may advance several ticks and each step
   // clears the sim's buffer.
   const frameEvents: SimEvent[] = [];
-  // The roster the music's mood reads our standing against; fixed for the session.
+  // The roster the music's mood reads our standing against; one object, its seat read live.
   const musicRoster = {
-    localPlayer,
+    get localPlayer() {
+      return loop.seat();
+    },
     rosterPlayers: deps.rosterPlayers ?? [],
-    observer: deps.observer === true,
+    get observer() {
+      return loop.wholeMap();
+    },
   };
   // Bound once; the model behind it is the summary bar's too, memoised per snapshot, so the mood costs
   // the stance read alone.
@@ -182,8 +191,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const snap = sim.snapshot();
     const snapMs = performance.now() - snap0;
     // One fog read shared by the renderer, the minimap mask and the event filter, so no consumer can
-    // disagree about a cell. `null` is fog off; an observer gets it view-only, sim fog state untouched.
-    const fogView = deps.observer === true ? null : sim.fogView(localPlayer);
+    // disagree about a cell. `null` is fog off; a spectator gets it view-only, sim fog state untouched.
+    const fogView = loop.fogView();
     fogGates.setFrame(fogView); // before anything below consults the predicates
     renderer.updateFog(fogView);
     // Presentation only: a fight in the fog must neither splatter blood nor ring audible clangs. Event
@@ -214,7 +223,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
       canPlaceAt,
       canPlaceSignpostAt,
-      localPlayer,
+      localPlayer: deps.localPlayer ?? HUMAN_PLAYER,
       placementTribe,
     });
     renderer.updatePlacementOverlay(cursor.overlay);
@@ -265,7 +274,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         canvasW: app.screen.width,
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
-        localPlayer, // life-event jingles ring only for our own entities, not enemies or wildlife
+        localPlayer: loop.seat(), // life-event jingles ring only for our own entities, not enemies or wildlife
         // A settler's authored action cues locate their emitter off the snapshot, not off events, so
         // they need their own fog gate: a hidden enemy must not natter or hammer out of empty black.
         visibleTile: fogGates.visibleTile,

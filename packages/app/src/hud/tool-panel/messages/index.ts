@@ -11,6 +11,7 @@ import { professionDefForJob } from '../../../catalog/professions.js';
 import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { isFemale, num, type SnapshotEntity, surnameSourceOf } from '../../../game/snapshot.js';
+import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { formatMessage, messages, professionLabel } from '../../../i18n/index.js';
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
 import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
@@ -18,7 +19,7 @@ import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column
 import type { PanelContext } from '../context.js';
 import { diplomacyStanceText } from '../diplomacy/model.js';
 import { noticeThumb, orderNotes } from './cards.js';
-import { createMessageFeed, type MessageFeedState } from './feed.js';
+import type { MessageFeedState } from './feed.js';
 import type { FigureFrames } from './figure-frames.js';
 import { NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
@@ -27,6 +28,7 @@ import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './fr
 import { galleryMessages, type NoticeGallery } from './gallery.js';
 import type { MessageNaming } from './raise.js';
 import { isNoteOver, isSubjectGone } from './retire.js';
+import { createSeatFeeds } from './seat-feeds.js';
 import { composeMessageText, type MessageText, type ShortLabels } from './text.js';
 import type { UserMessage } from './types.js';
 
@@ -61,8 +63,9 @@ export interface MessageCenterDeps {
    *  the note shows the house glyph. */
   readonly buildingThumbs?: BuildingThumbs | undefined;
   readonly playerColourOf?: ((player: number) => number) | undefined;
-  /** Only this seat's messages become notes. */
-  readonly localPlayer: number;
+  /** Only the viewer seat's messages become notes. A spectator switching seats gets that seat's notes
+   *  from the switch on, over what it dismissed on an earlier visit; watching the whole map, none. */
+  readonly viewer: ViewerSeat;
   /** A building type's menu label, which names a building in its note. */
   readonly buildingLabel: (typeId: number) => string | undefined;
   /** A paper's display name, for the note about finding one. */
@@ -180,10 +183,10 @@ function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
 
 export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const { ctx } = deps;
-  let feed = createMessageFeed(deps.initial);
+  const feeds = createSeatFeeds(deps.viewer.seat(), deps.initial);
   const naming = makeNaming(deps);
-  const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
-  const diplomacySource = createDiplomacyMessageSource(deps.metSeats);
+  let snapshotSource = feeds.seat === null ? null : createSnapshotMessageSource(feeds.seat);
+  let diplomacySource = createDiplomacyMessageSource(deps.metSeats);
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
   const art = createNoticeArt();
   const column = createNoticeColumn({
@@ -195,26 +198,35 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       art?.paint(canvas, glyph, noticeTint(seat, deps.playerColourOf), onFail) === true,
     onLevel: (level) => {
       ctx.cue('confirm');
-      feed.setLevel(level);
+      feeds.current.setLevel(level);
     },
     onGo: (id) => {
-      const m = feed.find(id);
+      const m = feeds.current.find(id);
       if (m === undefined) return;
       ctx.cue('confirm');
       select(m);
     },
     onDismiss: (id) => {
       ctx.cue('confirm');
-      feed.remove(id, true);
+      feeds.current.remove(id, true);
     },
     onDismissAll: () => {
       ctx.cue('confirm');
-      feed.removeAll(true);
+      feeds.current.removeAll(true);
     },
   });
   const figures = new NoticeFigures(deps.sheet, deps.figureFrames, deps.playerColourOf);
   let previous: WorldSnapshot | null = null;
   let renderedVersion = -1;
+  // The sources start over with the seat, since the idle streaks and the met seats they remember are
+  // the last seat's.
+  const switchSeat = (seat: number | null): void => {
+    if (!feeds.switchTo(seat)) return;
+    snapshotSource = seat === null ? null : createSnapshotMessageSource(seat);
+    diplomacySource = createDiplomacyMessageSource(deps.metSeats);
+    previous = null;
+    renderedVersion = -1;
+  };
   let lastGalleryTick: number | null = null;
   const galleryDue = (tick: number): boolean => {
     if (lastGalleryTick !== null && tick - lastGalleryTick < SNAPSHOT_SWEEP_INTERVAL_TICKS) return false;
@@ -224,42 +236,40 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
 
   return {
     present: (snapshot, events, alpha): void => {
+      const seat = deps.viewer.seat();
+      if (seat !== feeds.seat) switchSeat(seat);
       // The same snapshot object means no tick ran, so nothing was raised and nothing aged.
       if (snapshot !== previous) {
-        if (events.length > 0) {
-          for (const raised of messagesFromEvents(events, snapshot, previous, deps.localPlayer, naming)) {
-            feed.add(raised.pending, snapshot.tick, raised.compose);
+        if (seat !== null && events.length > 0) {
+          for (const raised of messagesFromEvents(events, snapshot, previous, seat, naming)) {
+            feeds.current.add(raised.pending, snapshot.tick, raised.compose);
           }
         }
-        for (const raised of snapshotSource.sweep(snapshot, naming)) {
-          feed.add(raised.pending, snapshot.tick, raised.compose);
+        for (const raised of snapshotSource?.sweep(snapshot, naming) ?? []) {
+          feeds.current.add(raised.pending, snapshot.tick, raised.compose);
         }
-        for (const raised of diplomacySource.poll(naming)) {
-          feed.add(raised.pending, snapshot.tick, raised.compose);
+        if (seat !== null) {
+          for (const raised of diplomacySource.poll(naming)) {
+            feeds.current.add(raised.pending, snapshot.tick, raised.compose);
+          }
         }
-        if (deps.gallery !== undefined && galleryDue(snapshot.tick)) {
-          for (const raised of galleryMessages(
-            snapshot,
-            deps.localPlayer,
-            naming,
-            deps.metSeats(),
-            deps.gallery,
-          )) {
-            feed.add(raised.pending, snapshot.tick, raised.compose);
+        if (seat !== null && deps.gallery !== undefined && galleryDue(snapshot.tick)) {
+          for (const raised of galleryMessages(snapshot, seat, naming, deps.metSeats(), deps.gallery)) {
+            feeds.current.add(raised.pending, snapshot.tick, raised.compose);
           }
         }
         // The gallery's notes have no cause in the sim to check against, so they stand until dismissed or
         // their subject is gone; retiring them would bring each back a sweep later as a new card.
-        if (deps.gallery === undefined) feed.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
-        else feed.expire(snapshot.tick, (m) => isSubjectGone(m, snapshot), true);
+        if (deps.gallery === undefined) feeds.current.expire(snapshot.tick, (m) => isNoteOver(m, snapshot));
+        else feeds.current.expire(snapshot.tick, (m) => isSubjectGone(m, snapshot), true);
         previous = snapshot;
       }
-      if (feed.version() !== renderedVersion) {
-        renderedVersion = feed.version();
+      if (feeds.current.version() !== renderedVersion) {
+        renderedVersion = feeds.current.version();
         column.render(
-          orderNotes(feed.displayed()).map((m) => cardOf(m, snapshot)),
-          feed.tally(),
-          feed.level(),
+          orderNotes(feeds.current.displayed()).map((m) => cardOf(m, snapshot)),
+          feeds.current.tally(),
+          feeds.current.level(),
         );
       }
       // The figures are painted into their cards every frame, so they move as the map's settlers do and
@@ -267,9 +277,9 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       const { slots, box } = column.figures();
       figures.render(snapshot, slots, box, snapshot.tick, alpha);
     },
-    state: () => feed.state(),
+    state: () => feeds.current.state(),
     restore: (state): void => {
-      feed = createMessageFeed(state);
+      feeds.restore(state);
       renderedVersion = -1;
     },
     dispose: (): void => {

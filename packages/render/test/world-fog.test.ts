@@ -96,6 +96,23 @@ describe('WorldFog', () => {
     expect(fog.update(WORLD, VIEWPORT).fogEpoch).not.toBe(rebuilt);
   });
 
+  it('bumps the epoch and starts the memory over when the viewer switches seat under one mask', () => {
+    const fog = new WorldFog();
+    fog.setView(explored(HOUSE_CELL, 1));
+    fog.update(WORLD, VIEWPORT);
+    fog.setView(watching(HOUSE_CELL, 2));
+    const seen = fog.update(WORLD, VIEWPORT);
+    fog.setView(explored(HOUSE_CELL, 3));
+    const remembered = fog.update(WORLD, VIEWPORT);
+    expect(remembered.ghosts).toMatchObject([{ ref: HOUSE.id }]);
+    // The other seat never saw the house: same generation and mode, a different perspective.
+    fog.setView({ ...explored(HOUSE_CELL, 3), player: 1 });
+    const switched = fog.update(WORLD, VIEWPORT);
+    expect(switched.fogEpoch).not.toBe(remembered.fogEpoch);
+    expect(switched.fogEpoch).not.toBe(seen.fogEpoch);
+    expect(switched.ghosts).toBeUndefined();
+  });
+
   it('reads the mask once per generation, not once per frame', () => {
     const fog = new WorldFog();
     const base = watching(HOUSE_CELL, 1);

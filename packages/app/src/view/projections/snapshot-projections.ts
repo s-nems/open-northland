@@ -1,5 +1,6 @@
 import {
   buildHud,
+  emptyHud,
   fogTileVisible,
   type HudLayout,
   type HudModel,
@@ -8,6 +9,7 @@ import {
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
+import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { computeConstructionSigns } from './construction-signs.js';
 import { type BuildingDoorInfoOf, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
@@ -46,10 +48,10 @@ export interface HeartProjectionInputs extends Omit<LifeHeartInputs, 'selected'>
   readonly selection?: HeartSelection | undefined;
 }
 
-/** The snapshot read projections the frame loop shares across HUD/render consumers; `localPlayer` is the
+/** The snapshot read projections the frame loop shares across HUD/render consumers; `viewer` is the
  *  seat the HUD aggregates count for, and `seatNameOf` names it in the panel header. */
 export function createSnapshotProjections(
-  localPlayer: number,
+  viewer: ViewerSeat,
   buildingInfoOf: BuildingDoorInfoOf,
   roleOf: (jobType: number) => WorkerRole,
   fogGates: FogGates,
@@ -64,10 +66,20 @@ export function createSnapshotProjections(
   readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   readonly lifeHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
 } {
-  const hudModelFor = memoBySnapshot((snapshot: WorldSnapshot) => buildHud(snapshot, localPlayer));
+  // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot.
+  const hudModelFor = memoBySnapshot(
+    (snapshot: WorldSnapshot) => {
+      const seat = viewer.seat();
+      return seat === null ? emptyHud(snapshot.tick) : buildHud(snapshot, seat);
+    },
+    () => viewer.version(),
+  );
   return {
     hudModelFor,
-    hudFor: memoBySnapshot((snapshot) => layoutHud(hudModelFor(snapshot), hudLabels(seatNameOf))),
+    hudFor: memoBySnapshot(
+      (snapshot) => layoutHud(hudModelFor(snapshot), hudLabels(seatNameOf)),
+      () => viewer.version(),
+    ),
     doorBadgesFor: memoBySnapshot((snapshot) => {
       const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf);
       const fog = fogGates.current();

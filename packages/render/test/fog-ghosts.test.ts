@@ -142,6 +142,14 @@ describe('FogGhostStore', () => {
     expect(adopted.map((g) => g.ref)).toEqual([2]);
   });
 
+  it('forgets one seat’s memory when the view changes seat', () => {
+    const store = new FogGhostStore();
+    store.update(snapshotOf([HOUSE]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 1));
+    const explored = viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 2);
+    expect(store.update(snapshotOf([HOUSE]), explored)).toHaveLength(1);
+    expect(store.update(snapshotOf([HOUSE]), { ...explored, player: 1 })).toEqual([]);
+  });
+
   it('caches by (generation, mode) and clears on fog off', () => {
     const store = new FogGhostStore();
     const view = viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 1);

@@ -3,6 +3,7 @@ import { components, type WorldSnapshot } from '@open-northland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
 import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
+import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import { pickInRect, pickTopAt } from '../src/view/picking.js';
 import {
@@ -38,8 +39,7 @@ describe('unit-controls targets over the renderer frame', () => {
   ): UnitTargets =>
     createUnitTargets({
       snapshot: () => snapshot,
-      humanPlayer: HUMAN_PLAYER,
-      observer: false,
+      viewer: fixedViewerSeat(HUMAN_PLAYER),
       hostileToward,
       drawnItems: () => drawn,
       boundsOf,
@@ -333,8 +333,7 @@ describe('the ordered set', () => {
     const { snapshot, visits } = visitCountingSnapshot(world);
     const targets = createUnitTargets({
       snapshot: () => snapshot,
-      humanPlayer: HUMAN_PLAYER,
-      observer: false,
+      viewer: fixedViewerSeat(HUMAN_PLAYER),
       hostileToward: () => true,
       drawnItems: () => [],
       boundsOf: undefined,
