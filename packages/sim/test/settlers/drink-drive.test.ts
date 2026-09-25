@@ -13,6 +13,8 @@ import {
   Position,
   Settler,
   Stockpile,
+  WALK_DIRECTION,
+  WalkFacing,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
@@ -236,6 +238,8 @@ describe('healing draught - below half of max hitpoints', () => {
   ) {
     const settler = needsSettlerAt(sim, 0, 0, {});
     sim.world.add(settler, Health, { hitpoints, max });
+    // Facing its striker to the east, so every blow lands head-on at x1.
+    sim.world.add(settler, WalkFacing, { direction: WALK_DIRECTION.E, target: WALK_DIRECTION.E });
     carryDraughts(sim, settler, misc);
     return settler;
   }

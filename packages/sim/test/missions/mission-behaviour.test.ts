@@ -15,6 +15,7 @@ import {
   Settler,
   SettlerProgress,
   setMissionBehaviour,
+  WALK_DIRECTION,
   WalkFacing,
 } from '../../src/components/index.js';
 import { aiCommand, playerCommand } from '../../src/core/commands/index.js';
@@ -210,7 +211,8 @@ describe('the bits the sim reads', () => {
     expect(sim.world.get(shielded, Health).hitpoints).toBe(before);
 
     const exposed = sim.world.get(attacker, Health).hitpoints;
-    sim.world.remove(attacker, WalkFacing); // no facing reads as facing the striker: the blow lands x1
+    // The two share a node, which reads as a blow from the east: facing east, it lands head-on at x1.
+    sim.world.mut(attacker, WalkFacing).direction = WALK_DIRECTION.E;
     resolveCombatHit(sim.world, ctxOf(sim), shielded, attacker, { damage: 25 }, [], 'melee');
     expect(sim.world.get(attacker, Health).hitpoints).toBe(exposed - 25);
   });

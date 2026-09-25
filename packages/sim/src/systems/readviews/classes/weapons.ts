@@ -25,7 +25,8 @@ export function siegeWeapons(content: ContentSet): WeaponType[] {
   return content.weapons.filter(isSiegeWeapon);
 }
 
-/** The extracted `mainType`: 1 fist, 2 spear, 3 sword, 6 bow, 7 catapult; 4 and 5 are unused classes. */
+/** The extracted `mainType`: 1 fist, 2 spear, 3 sword, 6 bow, 7 catapult. The saber rows carry 4 and the
+ *  hero axe 5, which the sim gives no class and no fight bucket. */
 export function weaponClassOf(weapon: WeaponType): number | undefined {
   return weapon.mainType;
 }

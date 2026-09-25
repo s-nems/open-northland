@@ -77,6 +77,8 @@ function duel(
 ): { attacker: Entity; target: Entity } {
   const attacker = needsSettlerAt(s, 1, 0, {});
   const target = needsSettlerAt(s, 0, 0, {});
+  // Facing its striker to the east, so every blow lands head-on at x1.
+  s.world.add(target, WalkFacing, { direction: WALK_DIRECTION.E, target: WALK_DIRECTION.E });
   s.world.add(target, Health, { hitpoints: HP, max: HP });
   carry(s, attacker, attackerCarries);
   carry(s, target, targetCarries);
@@ -110,7 +112,7 @@ describe('combat amulets', () => {
     const { attacker, target } = duel(s, [worn(AMULET_STRENGTH)], [worn(AMULET_DEFENSE)]);
     s.world.add(target, Armor, { armorClass: LEATHER_CLASS });
     // The striker stands east of the target, which faces west: struck from behind, x1.5.
-    s.world.add(target, WalkFacing, { direction: WALK_DIRECTION.W, target: WALK_DIRECTION.W });
+    s.world.mut(target, WalkFacing).direction = WALK_DIRECTION.W;
     // trunc(101 * 1.5) = 151, less leather's 10 = 141, strength (141 * 3) >> 1 = 211, defense 211 / 2.
     expect(strike(s, attacker, target)).toBe(105);
   });

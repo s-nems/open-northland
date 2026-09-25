@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  diplomacyStance,
   Health,
+  Owner,
   Position,
+  SettlerProgress,
+  setDiplomacyStance,
   WALK_DIRECTION,
   type WalkDirection,
   WalkFacing,
@@ -11,8 +15,9 @@ import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { HEX_HEADING, hexHeadingBetween, hexNeighboursOf, positionOfNode } from '../../src/nav/halfcell.js';
 import { targetMaterial } from '../../src/systems/conflict/weapons.js';
-import { ARMOR_MATERIAL } from '../../src/systems/index.js';
+import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } from '../../src/systems/index.js';
 import { landedDamage } from '../../src/systems/settlers/atomics/effects/combat/hit/damage.js';
+import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import {
   ARMOR_BLOCKING,
   CHAIN_CLASS,
@@ -51,19 +56,22 @@ function blowFrom(
 }
 
 describe('hexHeadingBetween - the map-point heading toward another node', () => {
-  it('reads each neighbour as its own heading, the odd rows shifted half a node east', () => {
-    const headings = hexNeighboursOf(VICTIM.hx, VICTIM.hy).map((n) =>
-      hexHeadingBetween(VICTIM.hx, VICTIM.hy, n.hx, n.hy),
-    );
-    expect(headings).toEqual([
-      HEX_HEADING.E,
-      HEX_HEADING.W,
-      HEX_HEADING.NW,
-      HEX_HEADING.NE,
-      HEX_HEADING.SW,
-      HEX_HEADING.SE,
-    ]);
-  });
+  // Even rows, and odd rows on both column parities, where the half-node shift moves the diagonals.
+  for (const centre of [VICTIM, { hx: 4, hy: 5 }, { hx: 7, hy: 3 }]) {
+    it(`reads each neighbour of (${centre.hx}, ${centre.hy}) as its own heading`, () => {
+      const headings = hexNeighboursOf(centre.hx, centre.hy).map((n) =>
+        hexHeadingBetween(centre.hx, centre.hy, n.hx, n.hy),
+      );
+      expect(headings).toEqual([
+        HEX_HEADING.E,
+        HEX_HEADING.W,
+        HEX_HEADING.NW,
+        HEX_HEADING.NE,
+        HEX_HEADING.SW,
+        HEX_HEADING.SE,
+      ]);
+    });
+  }
 
   it('reads straight north as NE, straight south as SW and the same node as E', () => {
     expect(hexHeadingBetween(4, 4, 4, 2)).toBe(HEX_HEADING.NE);
@@ -103,10 +111,12 @@ describe('landedDamage - a person struck from each side', () => {
     expect(blowFrom(sim, striker, north, NORTH_EAST)).toBe(1500);
   });
 
-  it('counts a person that never turned as facing its striker', () => {
+  it('counts a person that never turned as facing SW, where every person starts', () => {
     const { sim, striker } = setup();
     const victim = fighterAtNode(sim, VICTIM.hx, VICTIM.hy, OTHER, null);
-    expect(blowFrom(sim, striker, victim, WEST)).toBe(BASE);
+    expect(blowFrom(sim, striker, victim, SOUTH_WEST)).toBe(BASE);
+    expect(blowFrom(sim, striker, victim, EAST)).toBe(1250);
+    expect(blowFrom(sim, striker, victim, NORTH_EAST)).toBe(1500);
   });
 
   it("takes the armor's blockingValue off after the direction multiplier, and nothing lands at or below 0", () => {
@@ -137,5 +147,55 @@ describe('landedDamage - animals and buildings', () => {
     expect(blowFrom(sim, striker, house, WEST)).toBe(BASE);
     const from = positionOfNode(VICTIM.hx + 1, VICTIM.hy);
     expect(landedDamage(sim.world, ctxOf(sim), striker, house, 0, from)).toBe(0);
+  });
+});
+
+describe('resolveCombatHit - a blow that does no damage', () => {
+  const ATTACKER_PLAYER = 0;
+  const VICTIM_PLAYER = 1;
+  const swing = (damage: number) => ({ damage, weaponMainType: WEAPON_MAIN_TYPE.SPEAR, hitSoundType: 1 });
+
+  function armoredPair(): { sim: Simulation; striker: Entity; victim: Entity } {
+    const { sim, striker } = setup();
+    const victim = fighterAtNode(sim, 1, 0, OTHER, null, { armorClass: CHAIN_CLASS, hitpoints: BASE });
+    sim.world.add(striker, Owner, { player: ATTACKER_PLAYER });
+    sim.world.add(victim, Owner, { player: VICTIM_PLAYER });
+    setDiplomacyStance(sim.world, VICTIM_PLAYER, ATTACKER_PLAYER, 'neutral');
+    return { sim, striker, victim };
+  }
+
+  it('is silent, earns nothing and is no attack when the armor takes it all', () => {
+    const { sim, striker, victim } = armoredPair();
+    const landed = resolveCombatHit(
+      sim.world,
+      ctxOf(sim),
+      striker,
+      victim,
+      swing(ARMOR_BLOCKING),
+      [],
+      'melee',
+    );
+    expect(landed).toBe(false);
+    expect(sim.world.get(victim, Health).hitpoints).toBe(BASE);
+    expect(sim.events.current().filter((ev) => ev.kind === 'combatHit')).toEqual([]);
+    expect(sim.world.get(striker, SettlerProgress).experience.size).toBe(0);
+    expect(diplomacyStance(sim.world, VICTIM_PLAYER, ATTACKER_PLAYER)).toBe('neutral');
+
+    expect(
+      resolveCombatHit(sim.world, ctxOf(sim), striker, victim, swing(ARMOR_BLOCKING + 1), [], 'melee'),
+    ).toBe(true);
+    expect(sim.events.current().filter((ev) => ev.kind === 'combatHit')).toHaveLength(1);
+    expect(diplomacyStance(sim.world, VICTIM_PLAYER, ATTACKER_PLAYER)).toBe('enemy');
+  });
+
+  it('does nothing at all to a building whose column is zero', () => {
+    const { sim, striker } = setup();
+    const house = sim.world.create();
+    sim.world.add(house, Position, positionOfNode(1, 0));
+    sim.world.add(house, Building, { buildingType: 1, tribe: VIKING, built: 0, level: 0 });
+    sim.world.add(house, Health, { hitpoints: BASE, max: BASE });
+    expect(resolveCombatHit(sim.world, ctxOf(sim), striker, house, swing(0), [], 'melee')).toBe(false);
+    expect(sim.world.get(house, Health).hitpoints).toBe(BASE);
+    expect(sim.events.current()).toEqual([]);
   });
 });

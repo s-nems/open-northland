@@ -52,6 +52,8 @@ const CHAIN = 3; // an armor class whose column the bow lists apart from a bare 
 const BOW_DAMAGE_VS_CHAIN = 12;
 const BOW_HIT_SOUND_VS_CHAIN = 88; // the arrow's impact group id on a chain-armored target
 const BOW_DAMAGE_VS_HOUSE = 5;
+/** An armor class on the chain column whose `blockingValue` takes a whole arrow. */
+const PROOF_CHAIN = 4;
 
 /** Tiles a `BOW_SPEED` projectile advances per tick - the calibration mapping applied to `speed`. With
  *  the ⅛-tile-per-unit constant, `speed 8` = exactly 1 tile/tick (an integer, so the same-row shot's
@@ -110,6 +112,9 @@ function content(): ContentSet {
         maxRange: BOW_MAX,
         damage: { '0': BOW_DAMAGE },
       },
+    ],
+    armor: [
+      { typeId: PROOF_CHAIN, id: 'proof_chain', materialType: CHAIN, blockingValue: BOW_DAMAGE_VS_CHAIN },
     ],
     tribes: [
       {
@@ -461,6 +466,28 @@ describe('projectiles - aim', () => {
 });
 
 describe('projectiles - expiry + dead zone', () => {
+  it('thuds like a miss when the armor takes the whole arrow', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    const archer = marksmanAt(sim, 0, 0);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE);
+    sim.world.add(target, Armor, { armorClass: PROOF_CHAIN });
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    let sawMiss = false;
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+      sim.step();
+      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileHit'))
+        throw new Error('a silent hit sounded');
+      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileMissed')) sawMiss = true;
+    }
+    expect(sawMiss).toBe(true);
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
+    expect(sim.world.get(archer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW)).toBe(
+      MARKSMAN_BOW_HITS,
+    );
+  });
+
   it('comes down in the dirt when its target leaves the world mid-flight', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     marksmanAt(sim, 0, 0);

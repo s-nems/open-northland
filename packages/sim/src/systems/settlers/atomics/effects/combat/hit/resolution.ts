@@ -16,7 +16,6 @@ import type { Fixed } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import { isStructureTarget } from '../../../../../conflict/targeting.js';
-import { glancesOff } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { woundBearer } from '../../../../../equipment/index.js';
@@ -104,7 +103,8 @@ function meleeTargetOutOfReach(
 
 /**
  * Land one combat blow, shared by a melee swing at its ATTACK frame and a ranged projectile on contact so
- * the two cannot drift. {@link landedDamage} turns `blow.damage` into the hitpoints taken, on contact.
+ * the two cannot drift. {@link landedDamage} turns `blow.damage` into the hitpoints taken, on contact;
+ * answers whether the blow did damage.
  * Original behavior: only a living human striker's amulets count, so a defence-mode building's shot
  * carries none. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end of the tick. A dead
  * attacker is tolerated, since a dead archer's arrow still lands. A `collateral` blow, a siege burst on a side
@@ -118,17 +118,19 @@ export function resolveCombatHit(
   blow: LandingBlow,
   pendingReactions: PendingHitReaction[],
   source: 'melee' | 'projectile' | 'collateral',
-): void {
+): boolean {
   // A target felled earlier this tick still holds its Health until cleanup reaps it: a blow there lands on a
   // corpse, which earns nothing and provokes no one, the same as a shot that is never loosed at one.
   const pool = world.tryGet(target, Health);
-  if (pool === undefined || pool.hitpoints <= 0) return;
+  if (pool === undefined || pool.hitpoints <= 0) return false;
   const from = blow.from ?? world.tryGet(attacker, Position);
   const damage = landedDamage(world, ctx, attacker, target, blow.damage, from);
   const weaponMainType = blow.weaponMainType ?? undefined;
-  // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`. A connect
-  // fully absorbed by armor still cues, since the blade touched.
-  if (source === 'melee') {
+  // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
+  // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.
+  const dealtDamage = damage > 0;
+  // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`.
+  if (source === 'melee' && dealtDamage) {
     const at = world.tryGet(target, Position);
     if (at !== undefined) {
       ctx.events.emit({
@@ -142,11 +144,6 @@ export function resolveCombatHit(
       });
     }
   }
-  // Nothing else follows a blow that glances off a wall: no wound, no provocation, no experience.
-  if (glancesOff(world, target, blow.damage)) return;
-  // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
-  // behavior: a blow that does no damage earns none, melee or ranged.
-  const dealtDamage = damage > 0;
   // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
   // spared. Nothing regenerates a human here, so the flag's whole effect is this zero.
   const dealt = shieldedByScript(world, target) ? 0 : Math.max(0, damage);
@@ -154,9 +151,10 @@ export function resolveCombatHit(
     woundBearer(world, ctx, target, dealt);
     markStructureDamaged(world, ctx, target);
   }
+  // Original behavior: a struck beast turns angry and a struck person reacts whatever the damage.
   provokeAnger(world, ctx, target);
   frightenStruckAnimal(world, ctx, attacker, target);
-  if (source !== 'collateral') provokeHostility(world, ctx, attacker, target);
+  if (dealtDamage && source !== 'collateral') provokeHostility(world, ctx, attacker, target);
   // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
   // the original marks it on the computed damage, before the pool is touched.
   if (dealtDamage && source !== 'collateral' && world.has(target, Person)) {
@@ -170,6 +168,7 @@ export function resolveCombatHit(
   } else {
     collectHitReaction(world, ctx, target, pendingReactions); // applied after the caller's loop
   }
+  return dealtDamage;
 }
 
 /** Whether a script has made this target unharmable - a human's invulnerable bit or a house's

@@ -54,15 +54,22 @@ export function resolveGroundImpact(
     // A stone takes the bare column, as every shot does; the commander's experience steers only its aim.
     const damage = damageVsTarget(world, target, weaponDamageVsMaterial(proj, material));
     const hitSoundType = glancesOff(world, target, damage) ? undefined : hitSoundVsMaterial(proj, material);
-    resolveCombatHit(
+    const landed = resolveCombatHit(
       world,
       ctx,
       proj.source,
       target,
-      { damage, weaponMainType: proj.weaponMainType, hitSoundType: hitSoundType ?? null },
+      {
+        damage,
+        weaponMainType: proj.weaponMainType,
+        hitSoundType: hitSoundType ?? null,
+        from: { x: proj.originX, y: proj.originY },
+      },
       pendingReactions,
       atWar(world, shooter, ownerOf(world, target)) ? 'projectile' : 'collateral',
     );
+    // Original behavior: a stone that does a victim no damage passes it like one that strikes nothing.
+    if (!landed) continue;
     ctx.events.emit({
       kind: 'projectileHit',
       projectile: p,

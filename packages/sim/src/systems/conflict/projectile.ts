@@ -28,7 +28,7 @@ import { resolveGroundImpact } from './ground-impact.js';
 import { projectileStep } from './shot-aim.js';
 import { targetBodyNodes } from './target-node.js';
 import { isStructureTarget, mayTarget } from './targeting.js';
-import { damageVsTarget, glancesOff, hitSoundVsMaterial, targetMaterial } from './weapons.js';
+import { damageVsTarget, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
 
@@ -96,7 +96,8 @@ function land(
     return;
   }
   const victim = struckVictim(world, ctx, proj);
-  if (victim === null) {
+  // Original behavior: a shot that does its victim no damage thuds like one that strikes nothing.
+  if (victim === null || !strike(world, ctx, proj, victim, pendingReactions)) {
     ctx.events.emit({
       kind: 'projectileMissed',
       projectile: p,
@@ -108,21 +109,8 @@ function land(
     world.destroy(p);
     return;
   }
-  // The victim's armor picks the damage column and the impact sound, as a melee swing's does. Original
-  // behavior: the blow comes from where the shot was loosed, which a person's hit direction reads.
-  const material = targetMaterial(world, ctx, victim);
-  const damage = damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material));
-  const hitSoundType = glancesOff(world, victim, damage)
-    ? null
-    : (hitSoundVsMaterial(proj, material) ?? null);
-  const blow = {
-    damage,
-    weaponMainType: proj.weaponMainType,
-    hitSoundType,
-    from: { x: proj.originX, y: proj.originY },
-  };
+  const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
   // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
-  resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, 'projectile');
   ctx.events.emit({
     kind: 'projectileHit',
     projectile: p,
@@ -130,7 +118,7 @@ function land(
     target: victim,
     munitionType: proj.munitionType,
     at,
-    ...(hitSoundType !== null ? { soundType: hitSoundType } : {}),
+    ...(hitSoundType !== undefined ? { soundType: hitSoundType } : {}),
     ...(isStructureTarget(world, victim) ? { structure: true } : {}),
   });
   world.destroy(p);
@@ -167,6 +155,26 @@ function burst(
     ...(impact.smokeTicks !== null ? { smokeTicks: impact.smokeTicks } : {}),
   });
   world.destroy(p);
+}
+
+/** Land shot `proj`'s blow on `victim`; true when it did damage. The victim's armor picks the damage
+ *  column, as a melee swing's does. Original behavior: the blow comes from where the shot was loosed,
+ *  which a person's hit direction reads. */
+function strike(
+  world: World,
+  ctx: SystemContext,
+  proj: Flight,
+  victim: Entity,
+  pendingReactions: PendingHitReaction[],
+): boolean {
+  const material = targetMaterial(world, ctx, victim);
+  const blow = {
+    damage: damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material)),
+    weaponMainType: proj.weaponMainType,
+    hitSoundType: hitSoundVsMaterial(proj, material) ?? null,
+    from: { x: proj.originX, y: proj.originY },
+  };
+  return resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, 'projectile');
 }
 
 /**

@@ -20,6 +20,7 @@ import {
 import { targetBlocking } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { damageDealtBy, damageTakenBy } from '../../../../../equipment/index.js';
+import { INITIAL_WALK_DIRECTION } from '../../../../../movement/turning.js';
 
 const PERCENT = 100;
 /** Original behavior: a blow from the back sides lands x1.25, from behind x1.5, in percent. */
@@ -73,24 +74,23 @@ export function landedDamage(
 }
 
 /**
- * The {@link HIT_DIRECTION_PCT} a blow from `from` lands on `victim` with. Approximation: a person that
- * has never turned carries no facing and counts as facing its attacker, where the original starts every
- * person facing SW.
+ * The {@link HIT_DIRECTION_PCT} a blow from `from` lands on `victim` with. Original behavior: a person
+ * that has never turned faces {@link INITIAL_WALK_DIRECTION}.
  */
 function hitDirectionPct(
   world: World,
   victim: Entity,
   from: { readonly x: Fixed; readonly y: Fixed } | undefined,
 ): number {
-  const facing = world.tryGet(victim, WalkFacing);
   const at = world.tryGet(victim, Position);
-  if (facing === undefined || at === undefined || from === undefined) return PERCENT;
+  if (at === undefined || from === undefined) return PERCENT;
+  const facing = world.tryGet(victim, WalkFacing)?.direction ?? INITIAL_WALK_DIRECTION;
   const toward = hexHeadingBetween(
     nodeHxOfPosition(at.x, at.y),
     nodeHyOfPosition(at.y),
     nodeHxOfPosition(from.x, from.y),
     nodeHyOfPosition(from.y),
   );
-  const apart = Math.abs(toward - HEX_HEADING_OF_FACING[facing.direction]);
+  const apart = Math.abs(toward - HEX_HEADING_OF_FACING[facing]);
   return HIT_DIRECTION_PCT[Math.min(apart, HEX_HEADING_COUNT - apart)] ?? PERCENT;
 }

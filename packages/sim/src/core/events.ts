@@ -208,10 +208,11 @@ export type SimEvent =
       /**
        * A melee blow connected this tick; a swing that struck air emits nothing. `at` is the victim's
        * node, `weaponMainType` the striker's weapon class (1 fist / 2 spear / 3 sword / 6 bow / 7 catapult,
-       * `WEAPON_MAIN_TYPE_*`) or `undefined` when the weapon lists no class, and `structure` marks a blow
-       * that landed on a building rather than a body. `soundType` is the sound bank's `logicSoundType`
-       * of the impact the weapon lists for the victim's armor material (`soundtype_Hit`); a weapon listing
-       * none lands silently.
+       * `WEAPON_MAIN_TYPE_*`; the saber rows carry 4 and the hero axe 5) or `undefined` when the weapon
+       * lists no class, and `structure` marks a blow that landed on a building rather than a body.
+       * `soundType` is the sound bank's `logicSoundType` of the impact the weapon lists for the victim's
+       * armor material (`soundtype_Hit`); a weapon listing none lands silently. A blow that does no damage
+       * emits nothing.
        */
       readonly kind: 'combatHit';
       readonly attacker: Entity;

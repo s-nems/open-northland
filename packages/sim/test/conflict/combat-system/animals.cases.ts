@@ -6,6 +6,7 @@ import {
   Engagement,
   Health,
   MoveGoal,
+  WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
@@ -42,6 +43,15 @@ describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
     expect(atomic.duration).toBe(4); // bear setatomic 81 -> bear_attack length 4
     expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 40, maxRange: 2 }); // test_bearfist damage["0"]
+  });
+
+  it('an animal swings without taking a facing: wildlife has none', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
+    fighterAt(sim, 1, 0, VIKING, WOODCUTTER);
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(bear, CurrentAtomic).effect.kind).toBe('attack');
+    expect(sim.world.has(bear, WalkFacing)).toBe(false);
   });
 
   it('a civilization fights an aggressive animal BACK (the fight is mutual)', () => {

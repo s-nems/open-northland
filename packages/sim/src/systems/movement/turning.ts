@@ -11,8 +11,8 @@ const TURN_RING: readonly WalkDirection[] = [E, SE, S, SW, W, NW, N, NE];
 const RING_SIZE = TURN_RING.length;
 const HALF_TURN = RING_SIZE / 2;
 
-/** The original's initial orientation for a walker that has never turned. */
-const INITIAL_DIRECTION: WalkDirection = SW;
+/** The original's initial orientation for a person that has never turned. */
+export const INITIAL_WALK_DIRECTION: WalkDirection = SW;
 
 /** tan(22.5°) in parts per {@link OCTANT_TAN_SCALE}: a heading within it of an axis snaps to that axis. */
 const OCTANT_EDGE_TAN = 4142;
@@ -60,7 +60,7 @@ export function beginWalkTurn(world: World, e: Entity, from: Point, to: Point): 
   const target = headingToward(from, to);
   if (target === undefined) return;
   const facing = world.tryGet(e, WalkFacing);
-  if (facing === undefined) world.add(e, WalkFacing, { direction: INITIAL_DIRECTION, target });
+  if (facing === undefined) world.add(e, WalkFacing, { direction: INITIAL_WALK_DIRECTION, target });
   else if (facing.target !== target) world.mut(e, WalkFacing).target = target;
 }
 
