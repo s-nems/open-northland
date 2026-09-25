@@ -223,8 +223,8 @@ export function resolveSignpostDraw(
   return board === undefined ? null : unwrapBobRef(board);
 }
 
-/** The frame a staged effect loops to at `tick`, one frame per tick, or `null` for an effect whose record
- *  the binding never loaded. */
+/** The frame a staged effect loops to at `tick`, one frame per whole tick of the smooth animation clock,
+ *  or `null` for an effect whose record the binding never loaded. */
 export function resolveCraftFxDraw(
   binding: CraftFxBinding | undefined,
   item: DrawItem,
@@ -232,6 +232,7 @@ export function resolveCraftFxDraw(
 ): BuildingDraw | null {
   const loop = item.fxName === undefined ? undefined : binding?.byName[item.fxName];
   if (loop === undefined) return null;
-  const bob = loop.frames[((tick % loop.frames.length) + loop.frames.length) % loop.frames.length];
+  const n = loop.frames.length;
+  const bob = loop.frames[((Math.floor(tick) % n) + n) % n];
   return bob === undefined ? null : { bob, layer: loop.layer };
 }

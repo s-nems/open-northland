@@ -24,6 +24,12 @@ describe('resolveCraftFxDraw - a staged effect’s loop frame', () => {
     });
   });
 
+  it('holds each frame for a whole tick of the smooth animation clock', () => {
+    const fire = drawItem('craftfx', { fxName: 'fx fire small' });
+    expect(resolveCraftFxDraw(binding, fire, 2.5)).toEqual({ layer: 'ls_smoke.fire', bob: 174 });
+    expect(resolveCraftFxDraw(binding, fire, 3.99)).toEqual({ layer: 'ls_smoke.fire', bob: 172 });
+  });
+
   it('draws nothing bound for an unknown effect, a nameless item or no binding (the placeholder path)', () => {
     expect(resolveCraftFxDraw(binding, drawItem('craftfx', { fxName: 'fx wave' }), 0)).toBeNull();
     expect(resolveCraftFxDraw(binding, drawItem('craftfx'), 0)).toBeNull();
