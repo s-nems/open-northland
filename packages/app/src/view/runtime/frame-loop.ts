@@ -142,6 +142,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const buildingOverlay = (buildingType: number, paper?: Paper) =>
     overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height, paper);
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
+  const frameReport = () => frameStats.report();
   const visiblePlots = createVisiblePlots(() => sim.constructionPlots(), fogGates.seesNode);
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;
@@ -299,7 +300,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       drawMs,
       ...renderer.stats(),
     });
-    perf.update(frameStats.report(), netReadout());
+    perf.update(frameReport, netReadout);
   }
   return startRafLoop(frame, loop.fpsLimit);
 }

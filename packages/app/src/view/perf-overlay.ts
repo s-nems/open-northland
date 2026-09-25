@@ -10,8 +10,8 @@ import type { NetReadout } from './runtime/net-readout.js';
  */
 
 export interface PerfOverlayHandle {
-  /** Call once per frame; a hidden readout formats nothing. */
-  update(report: FrameStatsReport, net: NetReadout | null): void;
+  /** Call once per frame; a hidden readout neither folds the stats nor formats anything. */
+  update(report: () => FrameStatsReport, net: () => NetReadout | null): void;
   /** Re-anchor the readout along the bottom edge between the minimap and the details panel. */
   place(leftPx: number, rightPx: number, bottomPx: number): void;
   setVisible(visible: boolean): void;
@@ -87,11 +87,14 @@ export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: numb
   let visible = false;
 
   return {
-    update(report: FrameStatsReport, net: NetReadout | null): void {
+    update(readReport, readNet): void {
+      if (!visible) return;
+      const report = readReport();
       const last = report.last;
-      if (!visible || last === null) return;
+      if (last === null) return;
       const copy = messages().performance;
       const { ema, recent } = report;
+      const net = readNet();
 
       const rate = last.paused ? copy.paused : formatDeliveredSpeed(last.speed, recent);
       // The rolling window's count, not the session total, so a recovered stall leaves the readout.
