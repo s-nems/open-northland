@@ -17,7 +17,8 @@ export type PalisadePlacementMode = 'wall' | 'gate' | 'standingWall';
  * Original behavior: a wall line accepts twenty moves after its starting marker.
  *
  * Approximation: the original routes the line with a pathfinder that detours around an obstacle, where
- * this lays a straight hex line and stops at the first node the placement probe rejects.
+ * this lays a straight run in one of eight directions and stops at the first node the placement probe
+ * rejects.
  */
 export const PALISADE_LINE_MAX_EDGES = 20;
 
