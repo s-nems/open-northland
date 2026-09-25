@@ -103,8 +103,8 @@ describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class
 
     atomicSystem(sim.world, ctxOf(sim)); // both blows reach their frame this tick; the first one kills
 
-    expect(sim.world.get(killer, Settler).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
-    expect(sim.world.get(late, Settler).experience.size).toBe(0);
+    expect(sim.world.get(killer, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1);
+    expect(sim.world.get(late, SettlerProgress).experience.size).toBe(0);
     const hits = sim.events.current().filter((ev) => ev.kind === 'combatHit');
     expect(hits.map((ev) => ev.kind === 'combatHit' && ev.attacker)).toEqual([killer]);
   });
