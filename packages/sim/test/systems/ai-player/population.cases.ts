@@ -1,6 +1,12 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Marriage, Residence, Settler } from '../../../src/components/index.js';
+import {
+  AssistantRecruit,
+  JobAssignment,
+  Marriage,
+  Residence,
+  Settler,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { populationModule } from '../../../src/systems/ai-player/index.js';
@@ -13,6 +19,7 @@ import {
   ctxOf,
   entityOfBuilding,
   HOME_TYPE,
+  HQ_TYPE,
   placeHq,
   SEAT,
   spawnMen,
@@ -169,8 +176,11 @@ describe('population module (homeExpansion)', () => {
 
   describe('the sons counter under idle men', () => {
     /** The sons counter after two decisions: one on a seat with nobody idle, which unbounds it, then one
-     *  after `builders` idle builders arrive. */
-    function sonsAfter(builders: number): { value: number; infinite: boolean } {
+     *  after `builders` builders arrive, the lowest ids first handed to `book`. */
+    function sonsAfter(
+      builders: number,
+      book: (sim: Simulation, men: readonly Entity[]) => void = () => {},
+    ): { value: number; infinite: boolean } {
       const sim = aiSim();
       placeHq(sim);
       sim.step();
@@ -181,6 +191,10 @@ describe('population module (homeExpansion)', () => {
       decide();
       spawnMen(sim, builders, BUILDER);
       sim.step();
+      const men = [...sim.world.query(Settler)]
+        .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
+        .sort((a, b) => a - b);
+      book(sim, men);
       decide();
       return sim.assistantCounters(SEAT).extraMen;
     }
@@ -195,6 +209,22 @@ describe('population module (homeExpansion)', () => {
 
     it('keeps the sons unbounded while the idle men fit the reserve', () => {
       expect(sonsAfter(reserve + IDLE_MEN_HOLD_BIRTHS - 1)).toEqual({ value: 0, infinite: true });
+    });
+
+    it('never counts a posted man as idle', () => {
+      const posted = (sim: Simulation, [man]: readonly Entity[]): void => {
+        if (man === undefined) throw new Error('setup: no builder');
+        sim.world.add(man, JobAssignment, { workplace: entityOfBuilding(sim, HQ_TYPE) });
+      };
+      expect(sonsAfter(reserve + IDLE_MEN_HOLD_BIRTHS, posted)).toEqual({ value: 0, infinite: true });
+    });
+
+    it('never counts a man booked for a drill as idle', () => {
+      const booked = (sim: Simulation, [man]: readonly Entity[]): void => {
+        if (man === undefined) throw new Error('setup: no builder');
+        sim.world.add(man, AssistantRecruit, { intent: 'trainSword', armed: false });
+      };
+      expect(sonsAfter(reserve + IDLE_MEN_HOLD_BIRTHS, booked)).toEqual({ value: 0, infinite: true });
     });
   });
 });
