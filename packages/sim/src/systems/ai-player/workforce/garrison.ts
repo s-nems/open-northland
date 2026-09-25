@@ -24,7 +24,9 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
-import { fighterWeaponClass } from '../military/census.js';
+import { fighterStrength, fighterWeaponClass, strongestEnemyStrength } from '../military/census.js';
+import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
+import { peaceEndsAt, WAVE_GATHER_TICKS } from '../military/plan.js';
 import { ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 
@@ -50,24 +52,69 @@ const FULL_FIELD_SHARES: Readonly<Record<GarrisonWeaponIntent, number>> = {
  *  the drill enlists into - the fallback for a seat that can arm nobody. */
 const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ...GARRISON_WEAPON_INTENTS];
 
+/** The army floor's smallest size (authored): twice the smallest wave the campaign sends, so one band
+ *  can march while another still holds the door. */
+export const ARMY_FLOOR_MIN = 2 * WAVE_MIN_SOLDIERS;
+
+/** How long before the seat's peace ends the army floor starts drafting (authored): one wave gather
+ *  window, so the first band stands at the door when the peace runs out. */
+export const ARMY_FLOOR_LEAD_TICKS = WAVE_GATHER_TICKS;
+
+/**
+ * The army floor: once the seat's peace is within {@link ARMY_FLOOR_LEAD_TICKS} of its end ({@link
+ * peaceEndsAt}, the start when there is none), the seat keeps as many fighters as its strongest enemy
+ * fields ({@link strongestEnemyStrength}), one to one and never fewer than {@link ARMY_FLOOR_MIN}. Its
+ * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
+ * `force`, which the ladder calls ahead of the target-tier posts: a seat whose trades could absorb every
+ * man still raises an army. Capped by the {@link bachelorSurplus} and by the men draftable at all.
+ * Returns the claimed men for {@link trainGarrison} to publish.
+ */
+export function claimArmyFloor(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  force: SpareForce,
+): readonly Entity[] {
+  if (drillFloorOf(world, ctx, player) === null) return [];
+  if (ctx.tick < peaceEndsAt(world, player) - ARMY_FLOOR_LEAD_TICKS) return [];
+  const floor = Math.max(ARMY_FLOOR_MIN, strongestEnemyStrength(world, ctx, player));
+  const missing = floor - armyOnHand(world, ctx, player);
+  const claim = Math.min(missing, bachelorSurplus(world, ctx, player));
+  const claimed: Entity[] = [];
+  while (claimed.length < claim) {
+    const recruit = force.take((e) => isDraftable(world, e));
+    if (recruit === null) break;
+    claimed.push(recruit);
+  }
+  return claimed;
+}
+
 /**
  * The garrison sizing: this rung only holds the assistant's training counters at the number of men the
  * settlement can spare, and the dispatcher (`systems/assistant/`) drafts, walks and drills them. The
  * army has no size cap (authored), so its real bound is breeding: a fighter neither marries nor fathers
  * children and the conversion is one-way, so the allowance counts only unmarried spare men beyond the
- * seat's waiting brides ({@link bachelorSurplus}). Runs last in the workforce ladder, so it sees only
- * the men left unclaimed by every post, reserve and flag.
+ * seat's waiting brides ({@link bachelorSurplus}). Runs last in the workforce ladder, so it sees the men
+ * the army floor claimed (`floorMen`, {@link claimArmyFloor}) and the men left unclaimed by every post,
+ * reserve and flag.
  */
 export function trainGarrison(
   world: World,
   ctx: SystemContext,
   player: number,
   force: SpareForce,
+  floorMen: readonly Entity[],
 ): PlayerCommand[] {
   const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
   const pending = missingWeaponVetoes(world, ctx, player, vetoed);
   // The vetoes land a tick later, so this decision's draft already judges the arms without them.
-  const wants = standingOrder(world, ctx, player, force, [...vetoed, ...pending]);
+  const wants = standingOrder(
+    world,
+    ctx,
+    player,
+    [...floorMen, ...draftableSpare(world, force)],
+    [...vetoed, ...pending],
+  );
   const counters = GARRISON_INTENTS.flatMap((intent) => {
     const command = assistantCounterCommand(world, player, intent, wants.get(intent) ?? 0, false);
     return command === null ? [] : [command];
@@ -76,6 +123,23 @@ export function trainGarrison(
     (goodType): PlayerCommand => ({ kind: 'setAssistantWeaponVeto', player, goodType, vetoed: true }),
   );
   return [...vetoes, ...counters];
+}
+
+/** The seat's barracks when it may drill at all: the military module runs, the content has a soldier
+ *  trade, and a barracks stands, since the drill is the seat's only route to a soldier. */
+function drillFloorOf(world: World, ctx: SystemContext, player: number): Entity | null {
+  if (!aiModuleRuns(world, player, 'military')) return null;
+  if (baseSoldierJobType(ctx.content) === null) return null;
+  return seatBarracksOf(world, ctx, player);
+}
+
+/** The seat's army as the floor counts it: its live fighters ({@link fighterStrength}) plus the booked
+ *  recruits still in drill, who are no fighters yet. */
+function armyOnHand(world: World, ctx: SystemContext, player: number): number {
+  const drilling = unpaidBookings(world, ctx, player).filter(
+    (e) => !isFighterJob(ctx.content, world.get(e, Settler).jobType),
+  );
+  return fighterStrength(world, ctx, player) + drilling.length;
 }
 
 /**
@@ -116,9 +180,9 @@ function weakerWeaponGoods(content: ContentSet): readonly number[] {
 }
 
 /**
- * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus a share of the men
- * the seat may still draft, so the headroom the dispatcher sees (`counter - bookings`) sums to exactly that
- * number. Each man goes to the armable class furthest below its field share ({@link fieldedByIntent},
+ * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus a share of the
+ * `draftable` men (the army floor's first, then the spare), so the headroom the dispatcher sees
+ * (`counter - bookings`) sums to exactly that number. Each man goes to the armable class furthest below its field share ({@link fieldedByIntent},
  * {@link FULL_FIELD_SHARES}), the earlier class on a tie; a seat that can arm none of them falls back to
  * `trainSoldiers`.
  */
@@ -126,19 +190,16 @@ function standingOrder(
   world: World,
   ctx: SystemContext,
   player: number,
-  force: SpareForce,
+  draftable: readonly Entity[],
   vetoed: readonly number[],
 ): Map<AssistantRecruitIntent, number> {
   const wants = new Map<AssistantRecruitIntent, number>();
-  if (!aiModuleRuns(world, player, 'military')) return wants;
-  if (baseSoldierJobType(ctx.content) === null) return wants;
-  const barracks = seatBarracksOf(world, ctx, player);
+  const barracks = drillFloorOf(world, ctx, player);
   if (barracks === null) return wants;
 
   const booked = bookedByIntent(world, ctx, player);
   for (const intent of GARRISON_INTENTS) wants.set(intent, booked.get(intent) ?? 0);
 
-  const draftable = draftableSpare(world, force);
   const allowance = Math.min(draftable.length, Math.max(0, bachelorSurplus(world, ctx, player)));
   const next = draftable[0];
   if (allowance === 0 || next === undefined) return wants; // nobody to draft: the classes need no probe
@@ -219,12 +280,14 @@ function draftingClasses(
 /** The spare men the dispatcher could still draft, in its own draft order. Men already booked are not
  *  here - each of their counters carries them. */
 function draftableSpare(world: World, force: SpareForce): Entity[] {
-  return force.remaining().filter((e) => {
-    if (!draftableTrade(world.get(e, Settler).jobType) || isMarried(world, e)) return false;
-    // A man wearing a weapon good (a manual civilian equip) is persistently undraftable - counting
-    // him would leave the published want standing unfillable.
-    return (world.tryGet(e, Equipment)?.weapon ?? null) === null;
-  });
+  return force.remaining().filter((e) => isDraftable(world, e));
+}
+
+function isDraftable(world: World, e: Entity): boolean {
+  if (!draftableTrade(world.get(e, Settler).jobType) || isMarried(world, e)) return false;
+  // A man wearing a weapon good (a manual civilian equip) is persistently undraftable - counting
+  // him would leave the published want standing unfillable.
+  return (world.tryGet(e, Equipment)?.weapon ?? null) === null;
 }
 
 /** The seat's marriageable men beyond its marriageable women, the men the family plan will never need
@@ -239,21 +302,31 @@ function bachelorSurplus(world: World, ctx: SystemContext, player: number): numb
   return surplus;
 }
 
-/** The seat's in-flight bookings per counter, still unpaid (`armed` marks the payment for a class
- *  recruit). A booking whose drill was abandoned is excluded: its man is back in the spare pool, and
- *  counting both sides would publish one recruit past the bachelor cap. */
+/** The seat's in-flight bookings per counter, still unpaid ({@link unpaidBookings}). */
 function bookedByIntent(
   world: World,
   ctx: SystemContext,
   player: number,
 ): Map<AssistantRecruitIntent, number> {
   const booked = new Map<AssistantRecruitIntent, number>();
+  for (const e of unpaidBookings(world, ctx, player)) {
+    const { intent } = world.get(e, AssistantRecruit);
+    booked.set(intent, (booked.get(intent) ?? 0) + 1);
+  }
+  return booked;
+}
+
+/** The seat's recruits booked on a garrison counter and still unpaid (`armed` marks the payment for a
+ *  class recruit). A booking whose drill was abandoned is excluded: its man is back in the spare pool, and
+ *  counting both sides would publish one recruit past the bachelor cap. */
+function unpaidBookings(world: World, ctx: SystemContext, player: number): Entity[] {
+  const recruits: Entity[] = [];
   for (const e of world.query(AssistantRecruit)) {
     if (ownerOf(world, e) !== player) continue;
     const booking = world.get(e, AssistantRecruit);
     if (booking.armed || !GARRISON_INTENTS.includes(booking.intent)) continue;
     if (!world.has(e, TrainingOrder) && !isSoldierJob(ctx.content, world.get(e, Settler).jobType)) continue;
-    booked.set(booking.intent, (booked.get(booking.intent) ?? 0) + 1);
+    recruits.push(e);
   }
-  return booked;
+  return recruits;
 }

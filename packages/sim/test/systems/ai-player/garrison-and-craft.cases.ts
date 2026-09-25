@@ -1,10 +1,12 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  AiPeace,
   ASSISTANT_RECRUIT_INTENTS,
   type AssistantCounterKind,
   AssistantRecruit,
   type AssistantRecruitIntent,
+  aiPlayerEntity,
   Building,
   CompletedCycles,
   CraftSelection,
@@ -22,13 +24,15 @@ import {
   LATE_GAME_CIVILIANS,
   SeatSupply,
 } from '../../../src/systems/ai-player/index.js';
-import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
+import { ownedBuildings, ownedSettlers } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
+import { ARMY_FLOOR_LEAD_TICKS, ARMY_FLOOR_MIN } from '../../../src/systems/ai-player/workforce/garrison.js';
+import { mayMarry } from '../../../src/systems/family/eligibility.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
@@ -56,8 +60,10 @@ import {
   JOINERY_TYPE,
   makeAiSeat,
   placeHq,
+  placeResources,
   SEAT,
   SPEAR,
+  SPEARMAN,
   SWORD,
   spawnMen,
   TOOL_IRON,
@@ -71,7 +77,8 @@ import {
 // per-seat craft restrictions.
 
 /** Spare civilians an armed-seat case spawns by default - well past every post, reserve and
- *  collector tier. */
+ *  collector tier. The army floor (no peace and no enemy: {@link ARMY_FLOOR_MIN}) claims men these
+ *  cases count as spare anyway and publishes them in the same counters, so their totals hold. */
 const SPARE_MEN = 40;
 
 interface ArmedSeat {
@@ -194,6 +201,44 @@ function draftHeadroom(seat: ArmedSeat): number {
     (slots, intent) => slots + Math.max(0, (wants[intent] ?? live[intent].value) - (booked.get(intent) ?? 0)),
     0,
   );
+}
+
+/** The rival seat whose fighters the army floor matches. */
+const RIVAL = 3;
+/** Where the rival's fighters stand: the far end of the armed-seat map, away from the seat's settlement. */
+const RIVAL_CAMP = { x: 100, y: 20 };
+/** A rival stronger than the floor's minimum, so the match, not the minimum, sets the floor. */
+const RIVAL_FIGHTERS = ARMY_FLOOR_MIN + 2;
+/** A crew whose collector top-ups, with no floor, leave fewer spare men than {@link RIVAL_FIGHTERS}. */
+const FLOOR_CREW = 28;
+
+/** An armed seat with ground to gather on, `rivals` enemy spearmen, and its peace ending at `peaceUntil`. */
+function rivalSeat(rivals: number, peaceUntil: number, options: SeatOptions = {}): ArmedSeat {
+  const seat = armedSeat([{ good: SWORD, amount: 1 }], { men: FLOOR_CREW, ...options });
+  placeResources(seat.sim);
+  for (let i = 0; i < rivals; i++) {
+    seat.sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SPEARMAN,
+      x: RIVAL_CAMP.x + 2 * (i % 8),
+      y: RIVAL_CAMP.y + 2 * Math.floor(i / 8),
+      tribe: VIKING,
+      owner: RIVAL,
+    });
+  }
+  seat.sim.step();
+  const carrier = aiPlayerEntity(seat.sim.world, SEAT);
+  if (carrier === null) throw new Error('setup: no AI seat');
+  seat.sim.world.add(carrier, AiPeace, { untilTick: peaceUntil });
+  return seat;
+}
+
+/** A peace so far off that no case's decision reaches the floor's lead. */
+const DISTANT_PEACE = 1_000_000_000;
+
+/** The men the standing order drafts, over every counter. */
+function drafted(seat: ArmedSeat): number {
+  return Object.values(counterWants(seat.sim, seat.ctx)).reduce((sum, value) => sum + value, 0);
 }
 
 const FURNITURE = 13;
@@ -722,6 +767,59 @@ describe('workforce module - the barracks and craft selections', () => {
     }
     expect([...published].filter((kind) => !withdrawable.has(kind))).toEqual([]);
     expect(published.size).toBe(4); // all four reached: the fallback and every armed class
+  });
+
+  it('keeps an army floor matching the strongest enemy once the peace lead is reached', () => {
+    // With no floor the collector top-ups take most of the crew and leave fewer men than the rival fields.
+    const peaceful = rivalSeat(RIVAL_FIGHTERS, DISTANT_PEACE);
+    const spare = sparePool(peaceful);
+    expect(drafted(peaceful)).toBe(spare);
+    expect(spare).toBeLessThan(RIVAL_FIGHTERS);
+
+    // The lead reached, the floor claims its men ahead of those top-ups: one recruit per enemy fighter.
+    const armed = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS);
+    expect(drafted(armed)).toBe(RIVAL_FIGHTERS);
+    expect(sparePool(armed)).toBe(RIVAL_FIGHTERS);
+  });
+
+  it('drafts nothing for the army floor while the peace is further off than its lead', () => {
+    const early = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS + 1);
+    const peaceful = rivalSeat(RIVAL_FIGHTERS, DISTANT_PEACE);
+    expect(counterWants(early.sim, early.ctx)).toEqual(counterWants(peaceful.sim, peaceful.ctx));
+  });
+
+  it('never drafts the army floor past the bachelor surplus', () => {
+    const BACHELORS = 3;
+    // A crew big enough that the brides, not the posts, bound the draft.
+    const seat = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS, { men: SPARE_MEN });
+    const world = seat.sim.world;
+    const marriageable = (): Entity[] =>
+      ownedSettlers(world, SEAT).filter((e) => mayMarry(world, seat.ctx.content, e));
+    // A bride for every marriageable man but a few bachelors.
+    for (let i = 0; i < marriageable().length - BACHELORS; i++) {
+      seat.sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: WOMAN,
+        x: 4 + 2 * i,
+        y: 28,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    seat.sim.step();
+    // Read after the step, which may send one more man on a mission (the seat's scout).
+    const brides = marriageable().filter((e) => world.get(e, Settler).jobType === WOMAN).length;
+    const surplus = marriageable().length - 2 * brides;
+    expect(surplus).toBeGreaterThan(0);
+    expect(surplus).toBeLessThan(RIVAL_FIGHTERS);
+    expect(drafted(seat)).toBe(surplus);
+  });
+
+  it('still publishes every spare man past the army floor', () => {
+    // A rival weaker than the floor's minimum: the minimum stands, and the spare men join it.
+    const seat = rivalSeat(ARMY_FLOOR_MIN - 1, ARMY_FLOOR_LEAD_TICKS, { men: SPARE_MEN });
+    expect(drafted(seat)).toBe(sparePool(seat));
+    expect(drafted(seat)).toBeGreaterThan(ARMY_FLOOR_MIN);
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {

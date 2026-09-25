@@ -31,7 +31,7 @@ import {
 import { tuneCraftSelections } from './craft.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import type { TakenFlagNodes } from './flag-spots.js';
-import { trainGarrison } from './garrison.js';
+import { claimArmyFloor, trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
 import {
@@ -67,9 +67,9 @@ export { SeatSupply, type SupplyLines, supplyLines } from './supply.js';
 
 /**
  * The CollectResources module - the seat's one workforce allocator: no other module ever claims a
- * settler. The returned array's order is the allocation priority, essentials first and garrison sizing
- * last, and every target is recomputed from live state, so a transient conflict self-heals on the next
- * decision.
+ * settler. The returned array's order is the allocation priority, essentials first, then the army floor,
+ * garrison sizing last, and every target is recomputed from live state, so a transient conflict
+ * self-heals on the next decision.
  */
 function runWorkforce(
   world: World,
@@ -114,7 +114,7 @@ function runWorkforce(
           builderJob,
           genericTarget,
         );
-  return [
+  const essentials = [
     ...(ground === null
       ? []
       : allocateCollectors(world, ctx, player, ground, wanted, collectorsByGood, force, taken, builderJob)),
@@ -125,6 +125,12 @@ function runWorkforce(
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
     ...staffBuildings(world, ctx, seat, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob, builderCap(civilians)), // construction never starves
+  ];
+  // The army floor outranks the clearing and every target and top-up post, so trades that could absorb
+  // every man still leave an army.
+  const armyFloor = claimArmyFloor(world, ctx, player, force);
+  return [
+    ...essentials,
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
     ...(clearing > 0 ? generic() : []),
     ...staffBuildings(world, ctx, seat, force, tally, 'target'),
@@ -132,7 +138,7 @@ function runWorkforce(
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'topUp'),
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),
-    ...trainGarrison(world, ctx, player, force),
+    ...trainGarrison(world, ctx, player, force, armyFloor),
     ...tuneCraftSelections(world, ctx, player, supply),
   ];
 }
