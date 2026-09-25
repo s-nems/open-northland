@@ -66,6 +66,7 @@ import {
   type GateSites,
   type PalisadeGateProbeView,
   type PalisadePlacementMode,
+  type PlacementState,
 } from './placement.js';
 import { ResidentFigures } from './residents/figures.js';
 import type { ResidentsSeam } from './residents/seam.js';
@@ -240,10 +241,7 @@ export interface ToolPanelController {
 export interface ToolPanelState {
   readonly speed: GameSpeedControl;
   readonly windows: ToolWindowsState;
-  readonly placementType: number | null;
-  readonly placementPaper: Paper | null;
-  readonly palisadeGfxIndex: number | null;
-  readonly palisadeMode: PalisadePlacementMode | null;
+  readonly placement: PlacementState;
   readonly messages: MessageFeedState;
   readonly hudHidden: boolean;
 }
@@ -637,10 +635,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       state: () => ({
         speed: speed.state(),
         windows: windows.state(),
-        placementType: placement.activeType(),
-        placementPaper: placement.activePaper(),
-        palisadeGfxIndex: placement.activePalisade(),
-        palisadeMode: placement.activePalisadeMode(),
+        placement: placement.state(),
         messages: messageCenter.state(),
         hudHidden,
       }),
@@ -650,10 +645,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       restore(state): void {
         speed.restore(state.speed);
         windows.restore(state.windows);
-        if (state.placementType !== null)
-          placement.enter(state.placementType, state.placementPaper ?? undefined);
-        else if (state.palisadeGfxIndex !== null)
-          placement.enterPalisade(state.palisadeGfxIndex, state.palisadeMode ?? 'wall');
+        placement.restore(state.placement);
         messageCenter.restore(state.messages);
         applyHudHidden(state.hudHidden);
       },

@@ -43,6 +43,20 @@ export interface GatePreview {
   readonly ok: boolean;
 }
 
+/** The owner and tribe a wall line lays for. */
+type PalisadeSide = { readonly owner: number; readonly tribe: number };
+
+/** A held placement, carried through a HUD remount. */
+export interface PlacementState {
+  readonly type: number | null;
+  readonly paper: Paper | null;
+  readonly palisade: {
+    readonly gfxIndex: number;
+    readonly mode: PalisadePlacementMode;
+    readonly side: PalisadeSide;
+  } | null;
+}
+
 /** The walls a gate can go into now, lit span by span. */
 export interface GateSites extends LitNodes {
   /** The centre of the lit span nearest to a node on it, or null off every span. */
@@ -96,11 +110,7 @@ export interface PlacementController {
   /** Hold `typeId` for placement; a `paper` rides the placement command and buys a finished building. */
   enter(typeId: number, paper?: Paper): void;
   /** Hold a wall or gate row; `owner` and `tribe` override the seat's for an admin standing-wall line. */
-  enterPalisade(
-    gfxIndex: number,
-    mode: PalisadePlacementMode,
-    side?: { readonly owner: number; readonly tribe: number },
-  ): void;
+  enterPalisade(gfxIndex: number, mode: PalisadePlacementMode, side?: PalisadeSide): void;
   cancel(): void;
   /** Drop a started wall line and keep the tool; false when no line was started. */
   stepBack(): boolean;
@@ -118,6 +128,9 @@ export interface PlacementController {
   activeLine(): ActiveLine | null;
   /** The gate tool's lit spans, for its wash; null outside the gate tool. */
   gateSites(): GateSites | null;
+  state(): PlacementState;
+  /** Hold a placement again as {@link state} took it; a started wall line is not kept. */
+  restore(state: PlacementState): void;
 }
 
 export function createPlacementController(deps: PlacementDeps): PlacementController {
@@ -129,6 +142,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   let palisade: {
     readonly gfxIndex: number;
     readonly mode: PalisadePlacementMode;
+    readonly side: PalisadeSide;
     readonly line: LineTool;
   } | null = null;
 
@@ -157,11 +171,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     strip.clear();
   };
 
-  const wallLine = (
-    gfxIndex: number,
-    standing: boolean,
-    side: { readonly owner: number; readonly tribe: number },
-  ): LineTool =>
+  const wallLine = (gfxIndex: number, standing: boolean, side: PalisadeSide): LineTool =>
     createLineTool({
       tool: `palisade:${gfxIndex}`,
       maxEdges: PALISADE_LINE_MAX_EDGES,
@@ -211,29 +221,33 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     exitPlacement();
   };
 
+  const enter = (typeId: number, paper?: Paper): void => {
+    placementType = typeId;
+    placementPaper = paper ?? null;
+    palisade = null;
+    const copy = messages().hud.construction;
+    strip.show({
+      label: deps.labelByType.get(typeId) ?? `#${typeId}`,
+      hint: paper === undefined ? copy.placeHint : copy.placePaperHint,
+    });
+  };
+
+  const enterPalisade = (gfxIndex: number, mode: PalisadePlacementMode, side?: PalisadeSide): void => {
+    placementType = null;
+    placementPaper = null;
+    const held = side ?? { owner: deps.owner, tribe: deps.tribe };
+    palisade = { gfxIndex, mode, side: held, line: wallLine(gfxIndex, mode === 'standingWall', held) };
+    showPalisadeStrip();
+  };
+
   return {
     isActive: () => placementType !== null || palisade !== null,
     activeType: () => placementType,
     activePaper: () => placementPaper,
     activePalisade: () => palisade?.gfxIndex ?? null,
     activePalisadeMode: () => palisade?.mode ?? null,
-    enter: (typeId, paper): void => {
-      placementType = typeId;
-      placementPaper = paper ?? null;
-      palisade = null;
-      const copy = messages().hud.construction;
-      strip.show({
-        label: deps.labelByType.get(typeId) ?? `#${typeId}`,
-        hint: paper === undefined ? copy.placeHint : copy.placePaperHint,
-      });
-    },
-    enterPalisade: (gfxIndex, mode, side): void => {
-      placementType = null;
-      placementPaper = null;
-      const owner = side ?? { owner: deps.owner, tribe: deps.tribe };
-      palisade = { gfxIndex, mode, line: wallLine(gfxIndex, mode === 'standingWall', owner) };
-      showPalisadeStrip();
-    },
+    enter,
+    enterPalisade,
     cancel: (): void => {
       if (placementType === null && palisade === null) return;
       const building = placementType !== null;
@@ -294,5 +308,16 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       tile === null || palisade?.mode !== 'gate' ? null : gateAt(tile),
     activeLine: () => (palisade !== null && palisade.mode !== 'gate' ? palisade.line.active() : null),
     gateSites: () => (palisade?.mode === 'gate' ? (deps.palisadeGateSites?.() ?? null) : null),
+    state: () => ({
+      type: placementType,
+      paper: placementPaper,
+      palisade:
+        palisade === null ? null : { gfxIndex: palisade.gfxIndex, mode: palisade.mode, side: palisade.side },
+    }),
+    restore: (state): void => {
+      if (state.type !== null) enter(state.type, state.paper ?? undefined);
+      else if (state.palisade !== null)
+        enterPalisade(state.palisade.gfxIndex, state.palisade.mode, state.palisade.side);
+    },
   };
 }

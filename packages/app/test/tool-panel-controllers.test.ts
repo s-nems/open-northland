@@ -700,6 +700,27 @@ describe('placement controller', () => {
     expect([...builtOwners]).toEqual([3]);
   });
 
+  it("keeps an admin standing-wall line's chosen side through a HUD remount", () => {
+    let tile = { col: 4, row: 2 };
+    const trusted: Command[] = [];
+    const before = mount(() => tile);
+    before.placement.enterPalisade(691, 'standingWall', { owner: 3, tribe: 2 });
+    const saved = before.placement.state();
+
+    const after = mount(() => tile, undefined, undefined, undefined, {
+      enqueueTrusted: (command) => trusted.push(command),
+    });
+    after.placement.restore(saved);
+    expect(after.placement.activePalisadeMode()).toBe('standingWall');
+    after.placement.handleClick(0, 0);
+    tile = { col: 5, row: 2 };
+    after.placement.handleClick(10, 0);
+    expect(trusted.map((command) => ('owner' in command ? [command.owner, command.tribe] : null))).toEqual([
+      [3, 2],
+      [3, 2],
+    ]);
+  });
+
   it('steps back from a started line to the armed tool, then leaves it for the map, not the window', () => {
     const { placement, commands, cancels } = mount(() => ({ col: 4, row: 2 }));
     placement.enterPalisade(691, 'wall');
