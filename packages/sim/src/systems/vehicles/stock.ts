@@ -59,10 +59,22 @@ export function isCargoHand(world: World, content: ContentSet, vehicle: Entity, 
   if (state === undefined) return false;
   if (vehicleCommander(state) === rider) return true;
   if (!state.passengers.some((seat) => seat !== null && seat.entity === rider)) return false;
+  return isCarrierRider(world, content, rider);
+}
+
+/** A rider of the carrier trade: the cargo hand that fetches from anywhere its signpost area reaches. */
+export function isCarrierRider(world: World, content: ContentSet, rider: Entity): boolean {
   const jobType = world.tryGet(rider, Settler)?.jobType;
   if (jobType === undefined || jobType === null) return false;
   const job = contentIndex(content).jobs.get(jobType);
   return job !== undefined && isCarrierJobRow(job);
+}
+
+/** Some rider of the carrier trade sits in `vehicle`, in any seat. */
+export function hasCarrierSeated(world: World, content: ContentSet, vehicle: Entity): boolean {
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined) return false;
+  return vehiclePassengers(state).some((seat) => isCarrierRider(world, content, seat.entity));
 }
 
 /** Some rider works the hold: a carrier seated anywhere, or a commander. */

@@ -1,5 +1,7 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import {
+  AiPlayer,
+  aiPlayerEntity,
   Building,
   MissionObjectId,
   ownerOf,
@@ -8,8 +10,9 @@ import {
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { handlerTurn, scriptedSeatOnTurn } from '../ai-player/cadence.js';
-import type { System } from '../context.js';
+import type { ContentContext, System, SystemContext } from '../context.js';
 import { stockOf } from '../missions/stock.js';
 import { bankedSlot } from '../stores/index.js';
 
@@ -35,12 +38,8 @@ export const tradePartnerStockSystem: System = (world, ctx) => {
   if (seat === null) return;
   const agreements = tradeAgreements(world);
   if (agreements.length === 0) return;
-  const buildings = contentIndex(ctx.content).buildings;
   for (const house of world.query(MissionObjectId, Building)) {
-    if (ownerOf(world, house) !== seat) continue;
-    const building = world.get(house, Building);
-    if (building.built !== ONE || buildings.get(building.buildingType)?.kind !== BUILDING_KIND.storage)
-      continue;
+    if (ownerOf(world, house) !== seat || !isRefilledHouse(world, ctx, house)) continue;
     const id = world.get(house, MissionObjectId).id;
     for (const agreement of agreements) {
       if (agreement.missionId !== id) continue;
@@ -50,3 +49,28 @@ export const tradePartnerStockSystem: System = (world, ctx) => {
     }
   }
 };
+
+/** A finished warehouse, the kind of house the refill tops up. */
+function isRefilledHouse(world: World, ctx: ContentContext, house: Entity): boolean {
+  const building = world.get(house, Building);
+  return (
+    building.built === ONE &&
+    contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.storage
+  );
+}
+
+/** Whether the refill will top `house`'s shelf of `good` up to `amount` again: a finished warehouse of a
+ *  scripted computer seat with room for that many. */
+export function refillRestores(
+  world: World,
+  ctx: SystemContext,
+  house: Entity,
+  good: number,
+  amount: number,
+): boolean {
+  const owner = ownerOf(world, house);
+  const seat = owner === undefined ? null : aiPlayerEntity(world, owner);
+  if (seat === null || !world.get(seat, AiPlayer).scripted || !isRefilledHouse(world, ctx, house))
+    return false;
+  return Math.min(AI_STOCK_REFILL_LEVEL, bankedSlot(world, ctx, house, good).capacity) >= amount;
+}

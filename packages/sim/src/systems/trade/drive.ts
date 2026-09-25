@@ -29,6 +29,7 @@ import { nodeOf, sendVehicleTo, snapVehicleTarget } from '../vehicles/movement.j
 import { activeAgreement } from './agreements.js';
 import { type CartHold, cartHoldOf, type TradeCart, tradeCartOf } from './cart.js';
 import { sameFoodClass } from './goods.js';
+import { refillRestores } from './partner-stock.js';
 
 /** How close to the stop's door the cart must stand before the trader works the stop, in map-point
  *  steps (original behavior: a hexagon distance over 5 moves the cart). */
@@ -265,9 +266,10 @@ function decidePreparation(
  * At the foreign house: hand the give goods over one by one, then take the agreed goods aboard, then
  * start over while another batch is aboard; go home when the cart runs out or fills up, or when the
  * house runs out of the take good mid-batch (what was handed over stays given, as the original's goods
- * vanish into the house). Approximation: nothing is handed over while the house holds fewer take goods
- * than one batch pays out, where the original delivers regardless; a trader with only give goods aboard
- * then waits at the house, one with anything else aboard carries it home first.
+ * vanish into the house). Nothing is handed over while the house holds fewer take goods than one batch
+ * pays out, where the original delivers regardless: the trader waits at the house for its seat's refill
+ * instead, so one trip sells the whole load (owner's choice). At a house no refill tops up again, a
+ * trader with only give goods aboard waits there, one with anything else aboard carries it home first.
  */
 function decideExchange(
   world: World,
@@ -284,6 +286,7 @@ function decideExchange(
   if (route.given < agreement.giveAmount) {
     if (aboard + route.given < agreement.giveAmount) return NEXT;
     if (route.given === 0 && onOffer < agreement.takeAmount) {
+      if (refillRestores(world, ctx, house, agreement.takeGood, agreement.takeAmount)) return WAIT;
       const otherAboard = hold.entries.some(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
       return otherAboard ? NEXT : WAIT;
     }

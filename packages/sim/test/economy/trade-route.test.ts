@@ -74,6 +74,10 @@ const RUN_TICKS = 900;
 const TRADE_START_TICKS = 60;
 /** Planks put into the cart's hold by hand, which no house on the route marks. */
 const STRAY_PLANKS = 2;
+/** More wood than a handcart takes on one trip. */
+const PLENTY_OF_WOOD = 30;
+/** Long enough for a handcart's load of wood to be sold over several of the partner's refills. */
+const SELL_OUT_TICKS = 4000;
 /** Where the player sends the trader mid-stop: the row below the houses, between them. */
 const ORDER_NODE = { hx: 8, hy: 4 } as const;
 
@@ -712,6 +716,27 @@ describe("a computer seat's trade house", () => {
 
       expect(stockOf(sim, post, PLANK)).toBe(0);
     }
+  });
+
+  it('keeps a trader at the house through the refills until its whole load is sold', () => {
+    const { sim, post } = partnerWorld({ scripted: true });
+    const home = houseAt(sim, NEAR_X, HUMAN, [[WOOD, PLENTY_OF_WOOD]]);
+    const trader = traderAt(sim, NEAR_X);
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN, to: NEIGHBOUR, state: 'friend' });
+    attach(sim, trader, home);
+    attach(sim, trader, post);
+    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
+
+    let loaded = 0;
+    while (stockOf(sim, home, PLANK) === 0 && sim.tick < SELL_OUT_TICKS) {
+      sim.run(1);
+      loaded = Math.max(loaded, cartOf(sim, trader, WOOD));
+    }
+
+    // More wood than one refill pays for went out, and all of it was sold before the planks came home.
+    expect(loaded * 2).toBeGreaterThan(AI_STOCK_REFILL_LEVEL);
+    expect(stockOf(sim, home, PLANK)).toBeGreaterThan(0);
+    expect(stockOf(sim, post, WOOD)).toBe(loaded);
   });
 
   it('pays a trader out of a house the map authored empty', () => {

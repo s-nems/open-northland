@@ -18,8 +18,11 @@ import { isLoosePile } from '../../../stores/index.js';
 import { abandonCargoRun } from '../../../vehicles/cargo.js';
 import { boardingNode, isShipAtSea } from '../../../vehicles/crew.js';
 import {
+  hasCarrierSeated,
   isCargoHand,
+  isCarrierRider,
   modifyVehicleReserved,
+  setVehicleWanted,
   vehicleIsFull,
   vehicleIsFullSoon,
   vehicleStockGood,
@@ -51,7 +54,7 @@ const CARGO_UNIT = 1;
  * VEHICLE CARGO - a cargo hand of a cart or moored ship, a carrier or the commander, serves its hold
  * (docs/formats/VEHICLES.md "Cargo", which also names the approximations): while a good's wanted amount exceeds its booking it
  * fetches a unit, loose goods within {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door first, then a house
- * within it, then whatever its signpost area reaches, every source on the door's continent; with a unit
+ * within it, then, for a carrier, whatever its signpost area reaches, every source on the door's continent; with a unit
  * on its back it books it and sets it into the hold at the door; while a good's booking exceeds its
  * wanted amount it walks the booking down a unit a trip, lifting a unit out when one is aboard. A rider
  * standing on another continent than the door and a load the hold will not take fall through to the
@@ -172,9 +175,10 @@ function shortfallGoods(stock: DeepReadonly<{ lines: Map<number, VehicleStockLin
 }
 
 /**
- * Fetch one unit of a good the hold is short of, from the nearest source the three-phase search finds.
- * Nothing is booked yet: the booking is made when the unit is on the carrier's back, as the original's
- * carrier does.
+ * Fetch one unit of a good the hold is short of, from the nearest source the search finds. Nothing is
+ * booked yet: the booking is made when the unit is on the carrier's back, as the original's carrier does.
+ * A commander with no carrier seated beside it lets a request no source near the door can fill lapse to
+ * what is booked, so it never steps out for that request again.
  */
 function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType, door: NodeId): boolean {
   const { world, ctx, entity: e, here } = plan;
@@ -182,8 +186,12 @@ function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType
   if (vehicleIsFull(type, stock)) return false;
   const goods = shortfallGoods(stock);
   if (goods.length === 0) return false;
-  const source = nearestCargoSource(plan, goods, door);
-  if (source === null) return false;
+  const carrier = isCarrierRider(world, ctx.content, e);
+  const source = nearestCargoSource(plan, goods, door, carrier);
+  if (source === null) {
+    if (!carrier && !hasCarrierSeated(world, ctx.content, vehicle)) lapseShortfall(plan, vehicle, goods);
+    return false;
+  }
   atOrWalk(world, e, here, interactionCell(world, ctx, plan.terrain, source.entity, here), () =>
     startPickup(world, ctx, e, plan, source.entity, source.goodType, CARGO_UNIT),
   );
@@ -197,13 +205,15 @@ interface CargoSource {
 
 /**
  * The nearest store holding any of `goods`: a loose pile within the search radius of the door, else a
- * house within it, both ranked from the door, else any store within the carrier's signpost area ranked
- * from where it stands. Ties fall to the lower good id.
+ * house within it, both ranked from the door, else, for a carrier, any store within its signpost area
+ * ranked from where it stands. A commander of another trade keeps to the door's surroundings, so it
+ * never leaves its cart for a far warehouse (owner's choice). Ties fall to the lower good id.
  */
 function nearestCargoSource(
   plan: PlannerContext,
   goods: readonly number[],
   door: NodeId,
+  carrier: boolean,
 ): CargoSource | null {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const avoid = unreachableGoalVeto(world, ctx, e);
@@ -218,7 +228,7 @@ function nearestCargoSource(
   const phases: ReadonlyArray<{ origin: NodeId; accept: (e2: Entity) => boolean }> = [
     { origin: door, accept: (e2) => isLoosePile(world, e2) && reachable(e2) && nearDoor(e2) },
     { origin: door, accept: (e2) => world.has(e2, Building) && reachable(e2) && nearDoor(e2) },
-    { origin: here, accept: reachable },
+    ...(carrier ? [{ origin: here, accept: reachable }] : []),
   ];
   for (const phase of phases) {
     let best: (CargoSource & { readonly distance: number }) | null = null;
@@ -233,6 +243,15 @@ function nearestCargoSource(
     if (best !== null) return { entity: best.entity, goodType: best.goodType };
   }
   return null;
+}
+
+/** Lower each of `goods`' wanted amount to what its line has booked. */
+function lapseShortfall(plan: PlannerContext, vehicle: Entity, goods: readonly number[]): void {
+  const { world, ctx } = plan;
+  for (const good of goods) {
+    const booked = world.get(vehicle, VehicleStock).lines.get(good)?.reserved ?? 0;
+    setVehicleWanted(world, vehicle, ctx.content, good, booked);
+  }
 }
 
 /** Walk the first good booked beyond its wanted amount down by a unit: the booking drops as the carrier

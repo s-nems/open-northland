@@ -229,9 +229,10 @@ describe('the commander as cargo hand', () => {
     expect(s.world.has(scout, Carrying)).toBe(false);
   });
 
-  it('keeps the commander aboard while its cart drives, and by the door while a good nobody has is asked for', () => {
+  it('keeps the commander aboard while its cart drives, then lets a request no store near the door fills lapse', () => {
     const s = sim();
     const cart = spawnCart(s);
+    placeHq(s, FAR_HOUSE_AT, [{ good: PLANK, amount: 5 }]);
     const scout = spawnSettler(s, 22, 20, SCOUT);
     s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
     s.step();
@@ -244,9 +245,28 @@ describe('the commander as cargo hand', () => {
       s.step();
     }
     s.run(TRIP_TICKS);
-    // Parked, it steps out for the planks and waits by the door, for no house or pile holds any.
-    expect(s.world.has(scout, Position)).toBe(true);
-    expect(line(s, cart, PLANK)).toEqual({ current: 0, wanted: 2, reserved: 0 });
+    // Parked, it steps out for the planks, finds none near the door, drops the request and boards again,
+    // where a carrier would walk to the far house for them.
+    expect(line(s, cart, PLANK)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(s.world.has(scout, Position)).toBe(false);
+  });
+
+  it("fetches what lies near a trader's door and drops the rest of the request", () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    dropPile(s, WOOD, SOURCE_AT, 2);
+    placeHq(s, FAR_HOUSE_AT);
+    const trader = spawnSettler(s, 22, 20, TRADER);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
+    s.step();
+    boardRider(s.world, trader, cart);
+    want(s, cart, WOOD, 5);
+
+    s.run(4 * TRIP_TICKS);
+
+    // The far house keeps its wood: the trader waits by its cart, as a trader does.
+    expect(line(s, cart, WOOD)).toEqual({ current: 2, wanted: 2, reserved: 2 });
+    expect(s.world.has(trader, Carrying)).toBe(false);
   });
 
   it('sets unloaded goods on the ground at the door when no store stands near it', () => {

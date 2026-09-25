@@ -702,9 +702,9 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   the distance is not read); a house's minimum stock is its recipe inputs; the request counters that
   rank the import-mark candidates are not kept, so the lowest good id goes first; nothing is handed
   over while the house holds fewer take goods than a batch pays out, where the original delivers
-  regardless, and a shelf that
-  runs out mid-batch starts the batch over on the next visit, where the original's trader is still
-  owed the rest; a chosen agreement that stops holding is kept and waited on, where the original's
+  regardless, and at a house that a scripted seat refills, the trader waits there with the rest of its
+  load for the refill, so one trip sells all of it (owner's choice); a shelf that runs out mid-batch starts the batch over on the next
+  visit, where the original's trader is still owed the rest; a chosen agreement that stops holding is kept and waited on, where the original's
   merchant drops its choice; the handler's refill (`systems/trade/partner-stock.ts`) tops up only
   the goods an agreement pays out at the house and cuts nothing down, so a computer seat's own
   economy runs on what it produces. The table holds rows and resolves their houses live, so a row
