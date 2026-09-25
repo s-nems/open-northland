@@ -280,9 +280,21 @@ export const plSurfaces = {
     },
   },
   deviceNotice: {
-    title: 'Open Northland wymaga komputera',
-    body: 'Do gry potrzebne są mysz, klawiatura i większy ekran. Telefony i tablety nie są obsługiwane. Otwórz tę stronę na komputerze, żeby zagrać.',
-    proceed: 'Mam mysz i klawiaturę, uruchom mimo to',
+    touch: {
+      title: 'Open Northland wymaga komputera',
+      body: 'Do gry potrzebne są mysz, klawiatura i większy ekran. Telefony i tablety nie są obsługiwane. Otwórz tę stronę na komputerze, żeby zagrać.',
+      proceed: 'Mam mysz i klawiaturę, uruchom mimo to',
+    },
+    webgl: {
+      title: 'Przeglądarka nie udostępnia WebGL',
+      body: 'Gra rysuje świat przez WebGL, a ta przeglądarka go nie udostępnia. Włącz akcelerację sprzętową w ustawieniach przeglądarki albo zaktualizuj przeglądarkę, a potem odśwież stronę.',
+      proceed: 'Uruchom mimo to',
+    },
+    canvasReadback: {
+      title: 'Przeglądarka zniekształca grafikę gry',
+      body: 'Ochrona przed fingerprintingiem podmienia piksele, które gra odczytuje, więc część grafiki będzie wyglądać źle. Wyłącz ją dla tej strony (w Firefoksie i LibreWolfie to privacy.resistFingerprinting, może to też robić rozszerzenie blokujące canvas) i odśwież stronę.',
+      proceed: 'Uruchom mimo to',
+    },
   },
   loading: {
     graphics: 'Uruchamianie grafiki…',

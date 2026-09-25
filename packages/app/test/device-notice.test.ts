@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type DeviceEnv, deviceNoticeCleared, deviceNoticeNeeded } from '../src/view/device-notice.js';
+import { type DeviceEnv, deviceNotice, deviceNoticeCleared } from '../src/view/device-notice.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -7,31 +7,53 @@ afterEach(() => vi.unstubAllGlobals());
 const PHONE: DeviceEnv = {
   servedByBrowser: true,
   playerRoute: true,
-  dismissed: false,
+  touchDismissed: false,
   coarsePointer: true,
   finePointer: false,
+  webgl: true,
+  canvasReadbackIntact: true,
 };
 
-describe('deviceNoticeNeeded', () => {
+/** A desktop browser that can play. */
+const DESKTOP: DeviceEnv = { ...PHONE, coarsePointer: false, finePointer: true };
+
+describe('deviceNotice', () => {
   it('holds a device with only a finger to point with at the notice', () => {
-    expect(deviceNoticeNeeded(PHONE)).toBe(true);
+    expect(deviceNotice(PHONE)).toBe('touch');
   });
 
   it('lets a touch laptop or a tablet with a mouse through, since its trackpad or mouse can play', () => {
-    expect(deviceNoticeNeeded({ ...PHONE, finePointer: true })).toBe(false);
+    expect(deviceNotice({ ...PHONE, finePointer: true })).toBeNull();
   });
 
   it('lets a browser that reports no pointer at all through, as a remote desktop may', () => {
-    expect(deviceNoticeNeeded({ ...PHONE, coarsePointer: false })).toBe(false);
+    expect(deviceNotice({ ...PHONE, coarsePointer: false })).toBeNull();
   });
 
   it('stays away once the player chose to start anyway', () => {
-    expect(deviceNoticeNeeded({ ...PHONE, dismissed: true })).toBe(false);
+    expect(deviceNotice({ ...PHONE, touchDismissed: true })).toBeNull();
   });
 
   it('never shows in the desktop shell or in developer modes', () => {
-    expect(deviceNoticeNeeded({ ...PHONE, servedByBrowser: false })).toBe(false);
-    expect(deviceNoticeNeeded({ ...PHONE, playerRoute: false })).toBe(false);
+    expect(deviceNotice({ ...PHONE, servedByBrowser: false })).toBeNull();
+    expect(deviceNotice({ ...PHONE, playerRoute: false })).toBeNull();
+    expect(deviceNotice({ ...DESKTOP, webgl: false, servedByBrowser: false })).toBeNull();
+  });
+
+  it('warns a browser without WebGL first, since the game cannot draw a frame there', () => {
+    expect(deviceNotice({ ...DESKTOP, webgl: false })).toBe('webgl');
+    expect(deviceNotice({ ...PHONE, webgl: false, canvasReadbackIntact: false })).toBe('webgl');
+  });
+
+  it('warns a browser whose privacy setting alters canvas reads, even after the touch notice was dismissed', () => {
+    expect(deviceNotice({ ...DESKTOP, canvasReadbackIntact: false })).toBe('canvasReadback');
+    expect(deviceNotice({ ...PHONE, touchDismissed: true, canvasReadbackIntact: false })).toBe(
+      'canvasReadback',
+    );
+  });
+
+  it('lets a browser that can play straight through', () => {
+    expect(deviceNotice(DESKTOP)).toBeNull();
   });
 });
 
@@ -41,8 +63,8 @@ function stubNoticeDocument(): { readonly drawn: () => number; readonly click: (
   let onClick = (): void => undefined;
   vi.stubGlobal('document', {
     body: { append: () => undefined },
-    createElement: () => {
-      drawn += 1;
+    createElement: (tag: string) => {
+      if (tag === 'main') drawn += 1;
       return {
         append: () => undefined,
         remove: () => undefined,

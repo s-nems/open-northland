@@ -200,6 +200,8 @@ export const enGame = {
     dismiss: 'Dismiss',
     crashTitle: 'The game hit an error',
     crashHint: 'Download the report and attach it to your bug report.',
+    crashBraveHint:
+      'You are playing in Brave: if the error comes back, turn Shields off for this site (the lion icon in the address bar) and reload the page.',
     fieldCounters: 'Sown {sown} · Growing {growing} · Ripe {ripe}',
     selectedCount: '{count} selected',
     subjectCount: 'Subjects on the list: {count}',

@@ -3,6 +3,7 @@
  * DOM, so the banner depends on nothing that may itself be the wedged part.
  */
 import { messages } from '../i18n/index.js';
+import { isBrave } from '../view/browser-support.js';
 import { downloadDiagnosticsBundle } from './bundle.js';
 import { diag } from './log.js';
 
@@ -53,7 +54,8 @@ function showCrashBanner(text: string): void {
     const message = document.createElement('div');
     Object.assign(message.style, { fontFamily: 'ui-monospace,monospace', fontSize: '12px' });
     const hint = document.createElement('div');
-    hint.textContent = copy.crashHint;
+    // Brave Shields have broken the game where every other browser ran it.
+    hint.textContent = isBrave() ? `${copy.crashHint} ${copy.crashBraveHint}` : copy.crashHint;
 
     const download = document.createElement('button');
     download.type = 'button';

@@ -1,11 +1,13 @@
 import { bcp47Tag, localeParam, messages } from '../i18n/index.js';
 import { type RouteId, routeFor } from '../routes.js';
 import { BRAND_LOGO_STACKED, BRAND_LOGO_STACKED_SIZE } from './brand-art.js';
+import { canvasReadbackIntact, webglAvailable } from './browser-support.js';
 import { servedByBrowser } from './host.js';
 
 /**
- * What a touch-only browser sees before the game: orders need a mouse (right click, drag select,
- * hover) and a keyboard. The notice only advises, so the player can always start the game from it.
+ * What a browser that cannot play properly sees before the game: a touch-only device (orders need a
+ * mouse and a keyboard), no WebGL, or canvas reads a privacy setting alters. The notice only advises,
+ * so the player can always start the game from it.
  */
 
 /** The modes a shared link opens; developer modes never show the notice. */
@@ -14,22 +16,31 @@ const PLAYER_ROUTES: readonly RouteId[] = ['menu', 'map', 'relay'];
 const DISMISSED_KEY = 'open-northland.device-notice';
 const DISMISSED = 'dismissed';
 
+export type DeviceNoticeKind = 'webgl' | 'touch' | 'canvasReadback';
+
 export interface DeviceEnv {
   readonly servedByBrowser: boolean;
   readonly playerRoute: boolean;
-  readonly dismissed: boolean;
+  /** The player started anyway from the touch notice once; the other notices return until fixed. */
+  readonly touchDismissed: boolean;
   /** `(any-pointer: coarse)`: some attached pointer is a finger. */
   readonly coarsePointer: boolean;
   /** `(any-pointer: fine)`: some attached pointer, a mouse or a trackpad, can aim precisely. */
   readonly finePointer: boolean;
+  readonly webgl: boolean;
+  readonly canvasReadbackIntact: boolean;
 }
 
 /**
- * Only a finger to point with. A touchscreen beside a trackpad or a mouse can play, and a browser that
- * answers neither query (no pointer reported, or no support) boots straight into the game.
+ * The one notice to show, the gravest first. A touchscreen beside a trackpad or a mouse can play, and
+ * a browser that answers neither pointer query (no pointer reported, or no support) is let through.
  */
-export function deviceNoticeNeeded(env: DeviceEnv): boolean {
-  return env.servedByBrowser && env.playerRoute && !env.dismissed && env.coarsePointer && !env.finePointer;
+export function deviceNotice(env: DeviceEnv): DeviceNoticeKind | null {
+  if (!env.servedByBrowser || !env.playerRoute) return null;
+  if (!env.webgl) return 'webgl';
+  if (!env.touchDismissed && env.coarsePointer && !env.finePointer) return 'touch';
+  if (!env.canvasReadbackIntact) return 'canvasReadback';
+  return null;
 }
 
 function readDismissed(): boolean {
@@ -52,9 +63,11 @@ function readDeviceEnv(params: URLSearchParams): DeviceEnv {
   return {
     servedByBrowser: servedByBrowser(),
     playerRoute: PLAYER_ROUTES.includes(routeFor(params).id),
-    dismissed: readDismissed(),
+    touchDismissed: readDismissed(),
     coarsePointer: window.matchMedia('(any-pointer: coarse)').matches,
     finePointer: window.matchMedia('(any-pointer: fine)').matches,
+    webgl: webglAvailable(),
+    canvasReadbackIntact: canvasReadbackIntact(),
   };
 }
 
@@ -69,9 +82,9 @@ function element<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function mountNotice(params: URLSearchParams, proceed: () => void): void {
+function mountNotice(params: URLSearchParams, kind: DeviceNoticeKind, proceed: () => void): void {
   const locale = localeParam(params);
-  const copy = messages(locale).deviceNotice;
+  const copy = messages(locale).deviceNotice[kind];
   const root = element('main', 'device-notice');
   root.lang = bcp47Tag(locale);
   const card = element('div', 'device-notice__card');
@@ -85,7 +98,7 @@ function mountNotice(params: URLSearchParams, proceed: () => void): void {
   button.addEventListener(
     'click',
     () => {
-      rememberDismissed();
+      if (kind === 'touch') rememberDismissed();
       root.remove();
       proceed();
     },
@@ -101,15 +114,16 @@ function mountNotice(params: URLSearchParams, proceed: () => void): void {
   document.body.append(root);
 }
 
-/** Resolves once the entry may boot: at once on a device that can play, else when the player chooses. */
+/** Resolves once the entry may boot: at once in a browser that can play, else when the player chooses. */
 export function deviceNoticeCleared(params: URLSearchParams): Promise<void> {
   try {
-    if (!deviceNoticeNeeded(readDeviceEnv(params))) return Promise.resolve();
+    const kind = deviceNotice(readDeviceEnv(params));
+    if (kind === null) return Promise.resolve();
     let proceed = (): void => undefined;
     const cleared = new Promise<void>((resolve) => {
       proceed = resolve;
     });
-    mountNotice(params, proceed);
+    mountNotice(params, kind, proceed);
     return cleared;
   } catch {
     // A notice that cannot read the device or draw itself must not keep the game from starting.

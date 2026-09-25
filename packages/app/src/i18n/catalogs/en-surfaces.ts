@@ -283,9 +283,21 @@ export const enSurfaces = {
     },
   },
   deviceNotice: {
-    title: 'Open Northland needs a computer',
-    body: 'The game needs a mouse, a keyboard and a larger screen. Phones and tablets are not supported. Open this page on a computer to play.',
-    proceed: 'I have a mouse and keyboard, start anyway',
+    touch: {
+      title: 'Open Northland needs a computer',
+      body: 'The game needs a mouse, a keyboard and a larger screen. Phones and tablets are not supported. Open this page on a computer to play.',
+      proceed: 'I have a mouse and keyboard, start anyway',
+    },
+    webgl: {
+      title: 'This browser does not offer WebGL',
+      body: 'The game draws its world with WebGL, and this browser does not offer it. Turn on hardware acceleration in the browser settings or update the browser, then reload the page.',
+      proceed: 'Start anyway',
+    },
+    canvasReadback: {
+      title: 'This browser distorts the game graphics',
+      body: 'Fingerprinting protection replaces the pixels the game reads, so some graphics will look wrong. Turn it off for this site (in Firefox and LibreWolf it is privacy.resistFingerprinting; a canvas-blocking extension can do it too) and reload the page.',
+      proceed: 'Start anyway',
+    },
   },
   // One label per `BootPhase`.
   loading: {
