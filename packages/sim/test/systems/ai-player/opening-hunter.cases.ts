@@ -31,7 +31,7 @@ import {
 } from './support.js';
 
 /** The opening hunt: one headquarters-employed hunter while game grazes near the base, until the clock
- *  or the level-2 bakery ends it. */
+ *  ends it. */
 
 const DEER = 14;
 const MEAT = 8;
@@ -87,7 +87,7 @@ function retirements(sim: Simulation, content: ContentSet, hunter: Entity, tick 
 }
 
 describe('workforce module - the opening hunter', () => {
-  it('posts one headquarters hunter, then hands him back once the level-2 bakery stands', () => {
+  it('posts one headquarters hunter and keeps him while the game grazes and the clock runs', () => {
     const content = gameContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
     placeHq(sim);
@@ -110,7 +110,7 @@ describe('workforce module - the opening hunter', () => {
     expect(sim.world.get(hunter, JobAssignment).workplace).toBe(hq);
     expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'assignWorker')).toEqual([]);
 
-    // The milestone lands: the hunt ends and the man rejoins the pool as a builder.
+    // A built workshop tier ends nothing: the hunt runs on the clock and the game alone.
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BAKERY_TOP_TYPE,
@@ -122,7 +122,7 @@ describe('workforce module - the opening hunter', () => {
     sim.step();
     expect(
       [...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setJob' && c.entity === hunter),
-    ).toEqual([{ kind: 'setJob', entity: hunter, jobType: BUILDER }]);
+    ).toEqual([]);
   });
 
   it('hands the hunter back once the opening hunt clock runs out, game or no game', () => {

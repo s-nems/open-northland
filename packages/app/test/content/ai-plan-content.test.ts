@@ -9,7 +9,6 @@ const {
   CRAFT_PLANS_BY_BUILDING_ID,
   DEFAULT_BUILD_ORDER,
   HEADQUARTERS_BUILDING_ID,
-  OPENING_HUNT_UNTIL_BUILDING_ID,
   SOLDIER_OUTFIT_GOOD_IDS,
   STAFFING_BY_BUILDING_ID,
   SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
@@ -226,10 +225,6 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     expect(
       replacement?.workers.some((w) => w.jobType === hunterJob),
       `a hunter slot at ${BASE_REPLACEMENT_ENTRY.building}`,
-    ).toBe(true);
-    expect(
-      buildingById.has(OPENING_HUNT_UNTIL_BUILDING_ID),
-      `opening-hunt milestone ${OPENING_HUNT_UNTIL_BUILDING_ID}`,
     ).toBe(true);
     for (const goodId of Object.keys(COLLECTOR_TARGET_BY_GOOD_ID)) {
       expect(
