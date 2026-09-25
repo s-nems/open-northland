@@ -41,10 +41,13 @@ export interface TargetCandidates {
   readonly buildings: readonly Entity[];
   /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-prayer-site pick. */
   readonly buildingCells: InteractionCellIndex;
-  /** Construction sites, kept separate so an idle world scans an empty list. */
+  /** Building construction sites, kept separate so an idle world scans an empty list. */
   readonly constructionSites: readonly Entity[];
   /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks. */
   readonly constructionSiteCells: InteractionCellIndex;
+  /** Unfinished wall segments, indexed apart from {@link constructionSiteCells}: builders take them only
+   *  once no building site is left, and only a segment's own builder supplies it. */
+  readonly wallSiteCells: InteractionCellIndex;
   /** Buildings carrying {@link Damaged}, as a ring index keyed by interaction cell, for the nearest-repair
    *  pick. Built on first ask, so a pass with no builder looking for repairs never scans them. */
   readonly repairSiteCells: InteractionCellIndex;
@@ -86,11 +89,12 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
 
   const stockpiles = world.canonicalQuery(Stockpile, Position);
   const buildings = world.canonicalQuery(Building, Position);
-  const constructionSites = world.canonicalQuery(UnderConstruction, Position);
+  const constructionSites = world.canonicalQuery(UnderConstruction, Building, Position);
   let cropsByFarm: Map<Entity, Entity[]> | undefined;
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
+  let wallSiteCells: InteractionCellIndex | undefined;
   let repairSiteCells: InteractionCellIndex | undefined;
   let wallRepairCells: InteractionCellIndex | undefined;
   let zones: ReadonlySet<NodeId> | undefined;
@@ -113,6 +117,15 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     get constructionSiteCells() {
       constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, constructionSites);
       return constructionSiteCells;
+    },
+    get wallSiteCells() {
+      wallSiteCells ??= new InteractionCellIndex(
+        world,
+        ctx,
+        terrain,
+        world.canonicalQuery(UnderConstruction, Palisade, Position),
+      );
+      return wallSiteCells;
     },
     get repairSiteCells() {
       repairSiteCells ??= new InteractionCellIndex(

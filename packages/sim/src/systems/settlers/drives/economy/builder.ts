@@ -27,7 +27,7 @@ import {
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
-import { nearestBuilderSite, unreachableSiteStand } from '../../targets/index.js';
+import { type InteractionCellIndex, nearestBuilderSite, unreachableSiteStand } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { claimWorkCell } from '../spacing.js';
 import type { ConstructionTaskClaims } from './construction-task-claims.js';
@@ -109,11 +109,12 @@ export function planBuilder(
     constructionSiteAvailableTo(world, site, e) &&
     !segmentAwaitsClearance(plan, site) &&
     builderCanReach(plan, spacing, site);
+  // The pass-memoized work checks run before the reach test: an idle builder asks every waiting wall.
   const hasTask = (site: Entity): boolean =>
-    canStandAt(site) && (claims.hasHammerWork(site) || materials.has(site));
-  const nearestSite = (accepts: (site: Entity) => boolean): Entity | null =>
+    (claims.hasHammerWork(site) || materials.has(site)) && canStandAt(site);
+  const nearestSite = (sites: InteractionCellIndex, accepts: (site: Entity) => boolean): Entity | null =>
     nearestBuilderSite(
-      targets.constructionSiteCells,
+      sites,
       world,
       here,
       settler.tribe,
@@ -128,13 +129,14 @@ export function planBuilder(
   const isWall = (site: Entity): boolean => world.has(site, Palisade);
   let buildingLeft: boolean | undefined;
   const wallsWait = (): boolean => {
-    buildingLeft ??= nearestSite((candidate) => !isWall(candidate) && canStandAt(candidate)) !== null;
+    buildingLeft ??= nearestSite(targets.constructionSiteCells, canStandAt) !== null;
     return buildingLeft;
   };
   const inTurn = (site: Entity): boolean => !isWall(site) || !wallsWait();
+  // Every `accepts` implies `canStandAt`, so a building site that passes it keeps the walls waiting.
   const nearestInTurn = (accepts: (site: Entity) => boolean): Entity | null =>
-    nearestSite((candidate) => !isWall(candidate) && accepts(candidate)) ??
-    (wallsWait() ? null : nearestSite(accepts));
+    nearestSite(targets.constructionSiteCells, accepts) ??
+    (wallsWait() ? null : nearestSite(targets.wallSiteCells, accepts));
 
   // The damaged-wall list is checked first: most passes have none, and `wallsWait` is a site search.
   if (
@@ -165,7 +167,7 @@ export function planBuilder(
   // already walking in, else the current crew site, else the nearest. A builder has no other trade to
   // fall back to, and one that drifts off with the idle crowd pays the walk back for every delivery.
   const staging =
-    nearestInTurn((candidate) => canStandAt(candidate) && hasInboundSupply(plan.inbound, candidate)) ??
+    nearestInTurn((candidate) => hasInboundSupply(plan.inbound, candidate) && canStandAt(candidate)) ??
     (crewSite !== null && canStandAt(crewSite) && inTurn(crewSite) ? crewSite : nearestInTurn(canStandAt));
   if (staging !== null) {
     stampAssignment(plan, staging, false);

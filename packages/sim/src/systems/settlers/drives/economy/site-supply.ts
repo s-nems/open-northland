@@ -100,13 +100,16 @@ function fetchableMaterial(
   needs: ReadonlyArray<{ readonly goodType: number; readonly amount: number }>,
   sourceFor: (goodType: number) => MaterialSource | null,
 ): FetchableMaterial | null {
-  // A site with no legal perimeter cell cannot take a delivery, so nothing is fetched for it.
-  if (spacing.workCells(site).length === 0) return null;
   for (const need of needs) {
     const source = sourceFor(need.goodType);
     if (source === null) continue;
     const amount = Math.min(need.amount, source.available, CARRY_CAPACITY);
-    if (amount > 0) return { source: source.source, goodType: need.goodType, amount };
+    if (amount <= 0) continue;
+    // A site with no legal perimeter cell cannot take a delivery, so nothing is fetched for it. Asked after
+    // the memoized source, since an idle builder asks every waiting site while no material is in store.
+    return spacing.workCells(site).length === 0
+      ? null
+      : { source: source.source, goodType: need.goodType, amount };
   }
   return null;
 }
