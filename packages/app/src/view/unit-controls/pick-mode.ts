@@ -29,6 +29,7 @@ import type { VehicleOrderController } from './vehicle-orders.js';
 export type PickMode =
   | { readonly kind: BuildingPickKind; readonly units: readonly number[] }
   | { readonly kind: ScoutPickKind; readonly scout: number }
+  | { readonly kind: 'partner'; readonly settler: number }
   | { readonly kind: SpotPickKind; readonly units: readonly number[] }
   | { readonly kind: 'attack-move'; readonly units: readonly number[]; readonly vehicles: readonly number[] }
   | { readonly kind: StrikePickKind; readonly units: readonly number[] }
@@ -185,6 +186,7 @@ const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<
   'vehicle-attack-building',
   'vehicle-attack-vehicle',
   'vehicle-carrier',
+  'partner',
 ]);
 
 export interface PickModeDeps {
@@ -210,6 +212,8 @@ export interface PickModeDeps {
   /** The sim's trade-stop rule, which the trade-house pick lights and orders by; absent, the pick
    *  lights nothing and orders nothing. */
   readonly canAttachTradeHouse?: TradeHouseRule | undefined;
+  /** Wed `settler` to the person the partner pick named; the sim checks the pair. */
+  readonly marry: (settler: number, partner: number) => void;
 }
 
 /**
@@ -376,6 +380,13 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.vehicleOrders().issueAttackTarget(event, mode.vehicle, 'vehicle');
       case 'vehicle-carrier':
         return deps.vehicleOrders().issueLoadInto(event, mode.vehicle);
+      case 'partner': {
+        const w = deps.toWorld(event.clientX, event.clientY);
+        const partner = pickTopAt(deps.targets.owned('settler'), w.x, w.y);
+        if (partner === null || partner === mode.settler) return false;
+        deps.marry(mode.settler, partner);
+        return true;
+      }
       default: {
         const unreachable: never = mode;
         throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);

@@ -97,6 +97,7 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
       throw new Error('no vehicle order controller in this test');
     },
     setArmedCursor: () => {},
+    marry: () => {},
   });
   const press = createOverviewOrders({
     pickMode,

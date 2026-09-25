@@ -5,10 +5,18 @@ import { technologyReason, vehicleLabel } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import {
   mountUnitPanel,
+  type PortraitBox,
   type UnitPanel,
   type UnitPanelState,
   type VehicleOrder,
 } from '../../hud/details-panel/index.js';
+import { createGoodIconPainter } from '../../hud/dom/good-art.js';
+import { createHoverCard } from '../../hud/dom/hover-card.js';
+import type { ClientRect } from '../../hud/dom/selection-panel.js';
+import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
+import { clientToCanvas } from '../../hud/geometry.js';
+import { buildingHoverModel } from '../../hud/hover-card/building.js';
+import { keyDisplayLabel } from '../../hud/keybindings.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
@@ -21,6 +29,7 @@ import {
 } from './action-ring/index.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { UnitSelection } from './selection.js';
+import { type SettlerContractCommands, settlerPanelActions } from './settler-panel.js';
 import type { UnitControlsOptions } from './types.js';
 
 const NO_SELECTION: ReadonlySet<number> = new Set();
@@ -35,9 +44,12 @@ export interface UnitChromeCallbacks {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
+  readonly pickPartner: (id: number) => void;
   readonly selectEntity: (id: number) => void;
   /** One of the vehicle window's order buttons. */
   readonly vehicleOrder: (vehicle: number, order: VehicleOrder) => void;
+  /** Replace the selection with these entities; none clears it. */
+  readonly selectGroup: (ids: readonly number[]) => void;
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
   /** The GUI click feedback the ring's and the panel's buttons press with. */
   readonly cue: (cue: UiCue) => void;
@@ -46,6 +58,14 @@ export interface UnitChromeCallbacks {
 export interface UnitChromeHandle {
   panel(): UnitPanel;
   actions(): SettlerActions;
+  /** The live figure's box on the canvas: the DOM settler panel's frame, else the Pixi panel's. */
+  portrait(): PortraitBox | null;
+  /** True over either details panel. */
+  claimsPointer(clientX: number, clientY: number): boolean;
+  /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade. */
+  browse(step: 1 | -1): boolean;
+  /** The partner pick named a person: wed them. */
+  marryPartner(settler: number, partner: number): void;
   /** Show the selection on the panel, or nothing while the HUD is hidden. */
   renderPanel(snapshot: WorldSnapshot): void;
   setHudHidden(hidden: boolean): void;
@@ -60,6 +80,77 @@ export async function createUnitChrome(
   equipPicker: EquipPickController | null,
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
+  // The settler panel's commands of the sim contract (`CraftSelection.counters`, `renameSettler`, the
+  // chosen-partner `marry`).
+  const contract: SettlerContractCommands = {
+    rename: (id, name) => opts.enqueue({ kind: 'renameSettler', entity: id as Entity, name }),
+    setProductionCount: (id, goodType, count) =>
+      opts.enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
+  };
+  const marryPartner = (settler: number, partner: number): void =>
+    opts.enqueue({ kind: 'marry', entity: settler as Entity, partner: partner as Entity });
+
+  // Approximation: centring uses a building's base, so a tall house sits above the midpoint.
+  const centre = (id: number): void => {
+    const at = entityAnchor(opts.snapshot(), id, opts.elevation);
+    if (at !== null) opts.centerOn(at.x, at.y);
+  };
+  const keyLabel = (action: 'actionRing' | 'professionPicker'): string => {
+    const binding = opts.bindings[action];
+    const names = messages().mainMenu.settings;
+    return binding === null ? names.bindingUnassigned : keyDisplayLabel(binding, { space: names.keySpace });
+  };
+  const hoverCard = createHoverCard({
+    plane: opts.domHud.plane,
+    scale: opts.domHud.scale,
+    pack: opts.domHud.pack,
+    uiString: opts.domHud.uiString,
+  });
+  const hoverContext = { buildings: opts.content.buildings, goods: opts.content.goods };
+  // Mounted once on the plane, which scales as a whole: a HUD scale change remounts only the Pixi parts.
+  const settlerPanel = createSettlerPanel({
+    plane: opts.domHud.plane,
+    icons: createGoodIconPainter(opts.domHud.pack),
+    residents: opts.domHud.residents,
+    keyLabel,
+    hoverCard,
+    buildingHover: (id) => buildingHoverModel(opts.snapshot(), id, hoverContext),
+    now: () => performance.now(),
+    actions: settlerPanelActions(
+      opts,
+      {
+        selectEntity: callbacks.selectEntity,
+        selectGroup: callbacks.selectGroup,
+        centre,
+        openOrders: () => mounts.current().actions.open(),
+        openProfessions: (id) => mounts.current().actions.openProfessions([id]),
+        assignWorkplace: callbacks.assignWorkplace,
+        assignHome: callbacks.assignHome,
+        attachTradeHouse: callbacks.attachTradeHouse,
+        pickPartner: callbacks.pickPartner,
+        ringCommand: callbacks.ringCommand,
+        cue: callbacks.cue,
+      },
+      contract,
+      equipPicker,
+    ),
+  });
+  /** The canvas box of the DOM portrait, converted once per measured client box and settler. */
+  let portraitMemo: { client: ClientRect; box: PortraitBox } | null = null;
+  const domPortrait = (): PortraitBox | null => {
+    const shown = settlerPanel.portrait();
+    if (shown === null) return null;
+    if (portraitMemo?.client !== shown.rect || portraitMemo.box.entityRef !== shown.entityRef) {
+      const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
+      const { left, top, width, height } = shown.rect;
+      const from = clientToCanvas(scale, left, top);
+      const to = clientToCanvas(scale, left + width, top + height);
+      const rect = { x: from.x, y: from.y, w: to.x - from.x, h: to.y - from.y };
+      portraitMemo = { client: shown.rect, box: { entityRef: shown.entityRef, kind: 'settler', rect } };
+    }
+    return portraitMemo.box;
+  };
+
   const mountPanel = (uiscale: number): Promise<UnitPanel> =>
     mountUnitPanel({
       app: opts.app,
@@ -123,12 +214,11 @@ export async function createUnitChrome(
       onVehicleOrder: callbacks.vehicleOrder,
       onSetVehicleWanted: (id, goodType, amount) =>
         opts.enqueue({ kind: 'setVehicleWanted', vehicle: id as Entity, goodType, amount }),
+      ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
+      ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
       onSelectEntity: callbacks.selectEntity,
-      // Approximation: centring uses a building's base, so a tall house sits above the midpoint.
-      onCenterOnEntity: (id) => {
-        const at = entityAnchor(opts.snapshot(), id, opts.elevation);
-        if (at !== null) opts.centerOn(at.x, at.y);
-      },
+      onCenterOnEntity: centre,
+      onModel: (model, structural) => settlerPanel.update(model, structural),
       ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
     });
 
@@ -212,6 +302,10 @@ export async function createUnitChrome(
   return {
     panel: () => mounts.current().panel,
     actions: () => mounts.current().actions,
+    portrait: () => domPortrait() ?? mounts.current().panel.portrait(),
+    claimsPointer: (x, y) => settlerPanel.claims(x, y) || mounts.current().panel.claimsPointer(x, y),
+    browse: settlerPanel.browse,
+    marryPartner,
     renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
     setHudHidden: (hidden) => {
       hudHidden = hidden;
@@ -224,7 +318,14 @@ export async function createUnitChrome(
       if (!hidden && keptPanel?.version === selection.version()) panel.restore(keptPanel.state);
       if (!hidden) keptPanel = null;
     },
-    setUiScale: (uiscale) => mounts.replace(uiscale),
-    dispose: mounts.dispose,
+    setUiScale: (uiscale) => {
+      settlerPanel.invalidate();
+      return mounts.replace(uiscale);
+    },
+    dispose: () => {
+      mounts.dispose();
+      settlerPanel.dispose();
+      hoverCard.dispose();
+    },
   };
 }

@@ -653,6 +653,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       // pointer is over the HUD - exactly when this one must stay shown.
       tooltip: detailsTooltip,
       onUiCue: uiCue,
+      domHud: {
+        plane: hudDom.element,
+        scale: hudDom.currentScale,
+        pack,
+        uiString: toolPanel.controller.uiString,
+        residents: () => residentsFor(sim.snapshot()),
+      },
+      workStatus: (entity) => sim.workStatus(entity as Entity),
+      diplomacyStance: (owner) => sim.diplomacyStance(viewerPlayer(), owner),
     });
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;

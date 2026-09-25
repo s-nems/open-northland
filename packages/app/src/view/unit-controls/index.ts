@@ -1,4 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import { isActionHotkey, isFieldKey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
@@ -65,8 +66,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     assignWorkplace: (id) => pickMode.arm({ kind: 'workplace', units: [id] }),
     assignHome: (id) => pickMode.arm({ kind: 'home', units: [id] }),
     attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', units: [id] }),
+    pickPartner: (id) => pickMode.arm({ kind: 'partner', settler: id }),
     selectEntity: (id) => applySelection([id], false),
     vehicleOrder: (vehicle, order) => issueVehicleOrder(vehicle, order, { enqueue: opts.enqueue, pickMode }),
+    selectGroup: (ids) => applySelection(ids, false),
     ringCommand: (id, targets) =>
       issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
         enqueue: opts.enqueue,
@@ -127,6 +130,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     canAttachToVehicle: opts.canAttachToVehicle,
     canAttachTradeHouse: opts.canAttachTradeHouse,
+    marry: (settler, partner) => chrome.marryPartner(settler, partner),
   });
 
   /** The hotkey obeys the ring's own gate for the settlers, so both ways of arming the order agree on
@@ -138,6 +142,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (units.length === 0 && vehicles.length === 0) return;
     chrome.actions().close();
     pickMode.arm({ kind: 'attack-move', units, vehicles });
+  };
+
+  /** The one selected entity no longer stands in the world. */
+  const selectionGone = (snapshot: WorldSnapshot): boolean => {
+    const ids = selection.ids();
+    if (ids.size !== 1) return false;
+    const [only] = ids;
+    return only !== undefined && entityById(snapshot, only) === undefined;
   };
 
   const applySelection = (ids: Iterable<number>, add: boolean): void => {
@@ -293,6 +305,19 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
   };
 
+  /** Tab steps through the shown settler's trade unless a field or another HUD window has the focus,
+   *  whose own focus order Tab keeps. */
+  const browsesTrade = (e: KeyboardEvent): boolean =>
+    !e.altKey &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !isFieldKey(e) &&
+    !(
+      e.target instanceof Element &&
+      e.target.closest('.on-hud') !== null &&
+      e.target.closest('.on-selection') === null
+    );
+
   const onKeyDown = (e: KeyboardEvent): void => {
     const groupCommand = isFieldKey(e) ? null : controlGroupCommand(e, opts.bindings);
     if (groupCommand !== null) {
@@ -326,6 +351,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
       e.preventDefault();
       armAttackMove();
+    } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {
+      e.preventDefault();
     } else if (e.code === 'Escape') {
       // Escape steps back one level: job list, then an armed pick mode, then the selection itself.
       if (chrome.actions().handleEscape()) return;
@@ -347,7 +374,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectEntity: (id) => applySelection([id], false),
     overviewPress,
     select: (ids) => applySelection(ids, false),
-    portrait: () => chrome.panel().portrait(),
+    portrait: () => chrome.portrait(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     workAreaRings: () => workArea.rings(opts.snapshot()),
     assignHighlight: pickMode.highlight,
@@ -359,9 +386,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // rather than world.
     claimsPointer: (x, y) =>
       opts.claimPointer?.(x, y) === true ||
-      chrome.panel().claimsPointer(x, y) ||
+      chrome.claimsPointer(x, y) ||
       chrome.actions().claimsPointer(x, y),
     tick: (snapshot) => {
+      // A dead or removed target clears the selection, and the panel with it.
+      if (selectionGone(snapshot)) applySelection([], false);
       orders.refresh();
       chrome.panel().tick(snapshot);
       // Re-anchors the ring on the selection's on-screen centroid; a no-op while it is closed.

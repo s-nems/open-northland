@@ -19,9 +19,13 @@ import type {
 } from '@open-northland/sim';
 import type { Application, Texture } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
+import type { UiString } from '../../content/gui-gfx.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
+import type { DiplomacyStance, SettlerWorkStatus } from '../../hud/details-panel/model/index.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
+import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
+import type { PresentationPack } from '../../presentation/pack.js';
 import type { OverviewPress } from './overview-orders.js';
 
 export interface UnitControlsOptions {
@@ -90,6 +94,20 @@ export interface UnitControlsOptions {
     show(clientX: number, clientY: number, text: string): void;
     hide(): void;
   };
+  /** The DOM plane the settler panel mounts on, and what its icons, hover card and trade browsing read. */
+  readonly domHud: {
+    readonly plane: HTMLElement;
+    /** The plane's current scale, which turns a client point into a design-px one. */
+    readonly scale: () => number;
+    readonly pack: PresentationPack | null;
+    readonly uiString: UiString;
+    /** The seat's people, memoized per snapshot by the caller. */
+    readonly residents: () => readonly ResidentRow[];
+  };
+  /** The sim's work-status read seam (`Simulation.workStatus`); absent leaves the status detail out. */
+  readonly workStatus?: (entity: number) => SettlerWorkStatus | undefined;
+  /** The viewer seat's stance toward another owner, for a foreign person's owner line. */
+  readonly diplomacyStance?: (owner: number) => DiplomacyStance;
 }
 
 export interface UnitControls {
