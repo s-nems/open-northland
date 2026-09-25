@@ -67,7 +67,22 @@ describe('palisadePostOffsets', () => {
     expect(items).toHaveLength(7);
     const hub = items.find((item) => item.ref === 1);
     expect(hub?.kind).toBe('palisade');
-    expect(hub?.palisadePosts).toHaveLength(12);
+    // Each edge's two posts split between its ends: the hub holds the one nearer it on all six.
+    expect(hub?.palisadePosts).toHaveLength(6);
+    // Six spokes and the six edges joining the ring, two posts each.
+    expect(items.flatMap((item) => item.palisadePosts ?? [])).toHaveLength(24);
+  });
+
+  it('draws each post of an edge with the end it stands nearer, offset from that end', () => {
+    const items = buildSpriteScene(snapshotOf([palisade(1, 10, 10), palisade(2, 11, 10)]));
+    const near = items.find((item) => item.ref === 1)?.palisadePosts ?? [];
+    const far = items.find((item) => item.ref === 2)?.palisadePosts ?? [];
+    expect(near).toHaveLength(1);
+    expect(far).toHaveLength(1);
+    expect(near[0]?.dx).toBeGreaterThan(0);
+    expect(far[0]?.dx).toBeLessThan(0);
+    // A third of the edge from each end.
+    expect(near[0]?.dx).toBeCloseTo(-(far[0]?.dx ?? 0), 5);
   });
 
   it('draws unfinished segments as ground markers and excludes them from wall connections', () => {
@@ -212,8 +227,8 @@ describe('palisadePostOffsets', () => {
 
   it('interpolates the source durability ladder for damaged finished posts', () => {
     const items = buildSpriteScene(snapshotOf([damagedPalisade(1, 0, 0, 80), damagedPalisade(2, 1, 0, 20)]));
-    const edge = items.find((item) => item.ref === 1)?.palisadePosts;
+    const edge = items.flatMap((item) => item.palisadePosts ?? []);
     expect(items.find((item) => item.ref === 1)?.builtPct).toBe(80);
-    expect(edge?.map((post) => post.builtPct)).toEqual([60, 40]);
+    expect(edge.map((post) => post.builtPct)).toEqual([60, 40]);
   });
 });

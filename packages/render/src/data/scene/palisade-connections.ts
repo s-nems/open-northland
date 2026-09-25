@@ -69,10 +69,12 @@ interface CachedPosts {
 const postsBySnapshot = new WeakMap<WorldSnapshot, CachedPosts>();
 
 /**
- * Join snapshot palisades on the six-node landscape lattice. An edge belongs to its lower entity id so
- * it is emitted exactly once regardless of snapshot order; deleting either endpoint makes the join
- * disappear on the next snapshot. The inserted post uses the first endpoint's art variant and the
- * construction state interpolated between the endpoints.
+ * Join snapshot palisades on the six-node landscape lattice. An edge is emitted once, from its lower
+ * entity id, regardless of snapshot order, and each of its two posts rides the draw of the endpoint it
+ * stands nearer. A post then sorts within a third of an edge of its own place, so in a wall two posts
+ * thick no row paints over a post standing in front of it. Deleting either endpoint makes the join
+ * disappear on the next snapshot. The inserted posts use the lower id's art variant and the construction
+ * state interpolated between the endpoints.
  */
 export function palisadePostsByRef(snapshot: WorldSnapshot, elevation?: ElevationField): PalisadePostsByRef {
   const cached = postsBySnapshot.get(snapshot);
@@ -152,6 +154,7 @@ function buildPalisadePosts(
         toScreen.x - fromScreen.x,
         toScreen.y - terrainLiftAt(elevation, toTileX, toTileY) - fromDrawY,
         to.builtPct,
+        to,
       );
     }
   }
@@ -178,6 +181,7 @@ function buildPalisadePosts(
         endpointScreen.x - wallScreen.x,
         endpointScreen.y - terrainLiftAt(elevation, endpointTileX, endpointTileY) - wallDrawY,
         gate.builtPct,
+        null,
         true,
       );
     }
@@ -239,12 +243,15 @@ function outsideNeighbour(
   return best;
 }
 
+/** Emit an edge's posts. With a `far` endpoint the post nearer it rides its draw, offset from its own
+ *  anchor; a gate's collar edge has none, so every post stays with the wall. */
 function appendEdgePosts(
   posts: Map<number, PalisadePostDraw[]>,
   from: PalisadeNode,
   dx: number,
   dy: number,
   toBuiltPct: number | undefined,
+  far: PalisadeNode | null,
   includeEndpoint = false,
 ): void {
   const fromProgress = from.builtPct ?? 100;
@@ -253,18 +260,20 @@ function appendEdgePosts(
   // Gate art has transparent margin outside its terminal posts. An ordinary source wall post at the
   // exact terminal overlaps that margin and closes the collar while leaving the leaf opening untouched.
   if (includeEndpoint) offsets.push({ dx, dy });
-  const edgePosts = offsets.map((offset, index) => {
+  offsets.forEach((offset, index) => {
     const fraction = (index + 1) / 3;
     const progress = Math.floor(fromProgress + (toProgress - fromProgress) * fraction);
-    return {
-      ...offset,
+    const nearFar = far !== null && fraction > 1 / 2;
+    const post: PalisadePostDraw = {
+      dx: nearFar ? offset.dx - dx : offset.dx,
+      dy: nearFar ? offset.dy - dy : offset.dy,
       gfxIndex: from.gfxIndex,
       variantStep: index + 1,
       ...(progress < 100 ? { builtPct: progress } : {}),
     };
+    const owner = nearFar ? far.ref : from.ref;
+    const existing = posts.get(owner);
+    if (existing === undefined) posts.set(owner, [post]);
+    else existing.push(post);
   });
-  if (edgePosts.length === 0) return;
-  const existing = posts.get(from.ref);
-  if (existing === undefined) posts.set(from.ref, edgePosts);
-  else existing.push(...edgePosts);
 }
