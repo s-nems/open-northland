@@ -123,8 +123,8 @@ function enemyDefendersDead(sim: Simulation): boolean {
 }
 
 // `runTicks` must land after the high-value tier is razed but before the warband turns on the plain
-// homes, so the end state itself shows the auto-focus priority. All checks hold at ticks 625..800
-// in the headless fixture; leave margin after the full march and siege.
+// homes, so the end state itself shows the auto-focus priority. All checks hold at ticks 655..875 in the
+// headless fixture, sampled every 5 ticks; leave margin on both sides.
 export const siegeScene: SceneDefinition = {
   id: 'siege',
   seed: 11,
