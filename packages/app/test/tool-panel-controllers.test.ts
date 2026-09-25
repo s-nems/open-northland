@@ -650,6 +650,31 @@ describe('placement controller', () => {
     expect(commands.map((command) => ('x' in command ? command.x : null))).toEqual([5, 6, 7]);
   });
 
+  it('lays an admin standing-wall line finished for the chosen owner through the trusted channel', () => {
+    let tile = { col: 4, row: 2 };
+    const trusted: Command[] = [];
+    const { placement, commands, strip } = mount(() => tile, undefined, undefined, undefined, {
+      enqueueTrusted: (command) => trusted.push(command),
+    });
+    placement.enterPalisade(691, 'standingWall', { owner: 3, tribe: 2 });
+    expect(strip.shown?.label).toBe(messages().admin.standingPalisade);
+    placement.handleClick(0, 0);
+    tile = { col: 6, row: 2 };
+    placement.handleClick(10, 0);
+    expect(commands).toEqual([]);
+    expect(trusted).toEqual(
+      [4, 5, 6].map((x) => ({
+        kind: 'placePalisade',
+        gfxIndex: 691,
+        x,
+        y: 2,
+        owner: 3,
+        tribe: 2,
+        underConstruction: false,
+      })),
+    );
+  });
+
   it('steps back from a started line to the armed tool, then leaves it for the map, not the window', () => {
     const { placement, commands, cancels } = mount(() => ({ col: 4, row: 2 }));
     placement.enterPalisade(691, 'wall');

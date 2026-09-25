@@ -1,4 +1,4 @@
-import type { Entity, Paper, PlayerCommand } from '@open-northland/sim';
+import type { Command, Entity, Paper, PlayerCommand } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import type { PlacementStrip } from '../dom/placement-strip.js';
 import type { PanelContext } from './context.js';
@@ -10,7 +10,8 @@ import {
   type LineTool,
 } from './line-tool.js';
 
-export type PalisadePlacementMode = 'wall' | 'gate';
+/** `standingWall` is the admin tool's wall line: it lays finished walls through the trusted channel. */
+export type PalisadePlacementMode = 'wall' | 'gate' | 'standingWall';
 
 /**
  * Original behavior: a wall line accepts twenty moves after its starting marker.
@@ -60,6 +61,8 @@ export interface PlacementDeps {
   readonly palisadeBuiltAt?: (col: number, row: number) => boolean;
   readonly palisadeGateProbe?: (gfxIndex: number, col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
+  /** The admin channel a standing-wall line commits through; absent, that tool lays nothing. */
+  readonly enqueueTrusted?: (command: Command) => void;
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
@@ -84,7 +87,12 @@ export interface PlacementController {
   activePalisadeMode(): PalisadePlacementMode | null;
   /** Hold `typeId` for placement; a `paper` rides the placement command and buys a finished building. */
   enter(typeId: number, paper?: Paper): void;
-  enterPalisade(gfxIndex: number, mode: PalisadePlacementMode): void;
+  /** Hold a wall or gate row; `owner` and `tribe` override the seat's for an admin standing-wall line. */
+  enterPalisade(
+    gfxIndex: number,
+    mode: PalisadePlacementMode,
+    side?: { readonly owner: number; readonly tribe: number },
+  ): void;
   cancel(): void;
   /** Drop a started wall line and keep the tool; false when no line was started. */
   stepBack(): boolean;
@@ -119,7 +127,13 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
         : palisade.line.anchor() === null
           ? copy.construction.placeWallHint
           : copy.construction.placeWallLineHint;
-    strip.show({ label: palisade.mode === 'gate' ? copy.gate : copy.palisade, hint });
+    const label =
+      palisade.mode === 'gate'
+        ? copy.gate
+        : palisade.mode === 'standingWall'
+          ? messages().admin.standingPalisade
+          : copy.palisade;
+    strip.show({ label, hint });
   };
 
   const exitPlacement = (): void => {
@@ -129,7 +143,11 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     strip.clear();
   };
 
-  const wallLine = (gfxIndex: number): LineTool =>
+  const wallLine = (
+    gfxIndex: number,
+    standing: boolean,
+    side: { readonly owner: number; readonly tribe: number },
+  ): LineTool =>
     createLineTool({
       tool: `palisade:${gfxIndex}`,
       maxEdges: PALISADE_LINE_MAX_EDGES,
@@ -137,15 +155,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       built: (node) => deps.palisadeBuiltAt?.(node.col, node.row) === true,
       commit: (nodes) => {
         for (const node of nodes) {
-          deps.enqueue({
-            kind: 'placePalisade',
-            gfxIndex,
-            x: node.col,
-            y: node.row,
-            tribe: deps.tribe,
-            owner: deps.owner,
-            underConstruction: true,
-          });
+          const place = { kind: 'placePalisade', gfxIndex, x: node.col, y: node.row, ...side } as const;
+          if (standing) deps.enqueueTrusted?.({ ...place, underConstruction: false });
+          else deps.enqueue({ ...place, underConstruction: true });
         }
         ctx.cue('confirm');
       },
@@ -191,10 +203,11 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
         hint: paper === undefined ? copy.placeHint : copy.placePaperHint,
       });
     },
-    enterPalisade: (gfxIndex, mode): void => {
+    enterPalisade: (gfxIndex, mode, side): void => {
       placementType = null;
       placementPaper = null;
-      palisade = { gfxIndex, mode, line: wallLine(gfxIndex) };
+      const owner = side ?? { owner: deps.owner, tribe: deps.tribe };
+      palisade = { gfxIndex, mode, line: wallLine(gfxIndex, mode === 'standingWall', owner) };
       showPalisadeStrip();
     },
     cancel: (): void => {
@@ -250,7 +263,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       if (tile === null || palisade === null) return null;
       return palisade.mode === 'gate' ? gatePreview(palisade.gfxIndex, tile) : palisade.line.preview(tile);
     },
-    activeLine: () => (palisade?.mode === 'wall' ? palisade.line.active() : null),
+    activeLine: () => (palisade !== null && palisade.mode !== 'gate' ? palisade.line.active() : null),
     gateSites: () => (palisade?.mode === 'gate' ? (deps.palisadeGateSites?.() ?? null) : null),
   };
 }

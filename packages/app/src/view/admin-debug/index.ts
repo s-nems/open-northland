@@ -59,6 +59,9 @@ export interface AdminDebugDeps {
   /** Owner slot to its roster tribe: a spawn is stamped for the slot it is dropped for, so it can work
    *  that slot's buildings. */
   readonly seatTribeOf: (player: number) => number;
+  /** Hand the HUD's wall line tool a line of finished walls for an owner; false when it cannot take one.
+   *  Absent hides the structures section. */
+  readonly enterStandingWall?: (owner: number, tribe: number) => boolean;
   /** Every good the running content defines, each droppable as a loose pile. Live-sourced, so no entry
    *  can trip the sim's `dropGood` content guard. */
   readonly goods: readonly GoodEntry[];
@@ -235,6 +238,18 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     false,
     copy.filterGoods,
   );
+  // The wall line tool keeps its preview and reach; only its commit turns into finished walls.
+  const enterStandingWall = deps.enterStandingWall;
+  if (enterStandingWall !== undefined) {
+    const section = collapsibleSection(copy.structures, 1, false);
+    const button = el('button', BUTTON_STYLE, copy.standingPalisade);
+    button.addEventListener('click', () => {
+      setArmed(null);
+      enterStandingWall(player, deps.seatTribeOf(player));
+    });
+    section.content.append(rowOf([{ button, label: copy.standingPalisade }]));
+    body.append(section.wrap);
+  }
   // Click-a-target tools, inert without an entity picker.
   addPaletteSection(
     copy.actions,

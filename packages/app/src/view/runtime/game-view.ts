@@ -431,6 +431,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       uiscale,
       camera: () => cameraCtl.camera(),
       enqueue: issueCommand,
+      ...(sharedClock ? {} : { enqueueTrusted: issueTrusted }),
       grants: assistantGrantsSeam(sim, sim.content, viewer.seat, issueCommand, !readOnly),
       counters: assistantCountersSeam(sim, viewer.seat, issueCommand, !readOnly),
       papers: {
@@ -717,6 +718,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       claimPointer: (x, y) => controls.claimsPointer(x, y),
       goodLabel,
       seatTribeOf,
+      enterStandingWall: (owner, tribe) => toolPanel.controller.enterStandingWall(owner, tribe),
     });
 
     cleanup.push(() => debugMounts.dispose());

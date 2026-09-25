@@ -530,6 +530,8 @@ export const plGame = {
     filterGoods: 'Filtruj towary…',
     filterAnimals: 'Filtruj zwierzęta…',
     actions: 'Akcje',
+    structures: 'Budowle',
+    standingPalisade: 'Palisada (gotowa)',
     targetSettler: 'jednostkę',
     targetBuilding: 'budynek',
     nothingArmed: 'Nic nie wybrano - wybierz jednostkę, złoże, towar lub narzędzie powyżej.',

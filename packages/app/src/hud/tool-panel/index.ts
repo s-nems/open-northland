@@ -1,7 +1,14 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout, HudModel, MapViewFrame, SpriteSheet } from '@open-northland/render';
-import type { DiplomacyState, Paper, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type {
+  Command,
+  DiplomacyState,
+  Paper,
+  PlayerCommand,
+  SimEvent,
+  WorldSnapshot,
+} from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { PROFESSIONS, professionDefForJob } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
@@ -111,6 +118,8 @@ export interface ToolPanelOptions {
   };
   /** Submit a seat command into the sim. */
   readonly enqueue: (command: PlayerCommand) => void;
+  /** The admin channel, for the debug palette's standing-wall line; absent where world edits are off. */
+  readonly enqueueTrusted?: (command: Command) => void;
   /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
   readonly grants: ExtrasGrantsSeam;
   /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
@@ -203,6 +212,9 @@ export interface ToolPanelController {
   /** The source wall/gate graphics row currently held for placement. */
   palisadeGfxIndex(): number | null;
   palisadeMode(): PalisadePlacementMode | null;
+  /** Arm the wall line tool to lay finished walls for `owner` through the admin channel; false when the
+   *  map has no wall row or world edits are off. */
+  enterStandingWall(owner: number, tribe: number): boolean;
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
   /** The started wall line, for the reach wash; null before its first click. */
   activeLine(): ActiveLine | null;
@@ -352,6 +364,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.palisadeBuiltAt !== undefined ? { palisadeBuiltAt: opts.palisadeBuiltAt } : {}),
       ...(opts.palisadeGateProbe !== undefined ? { palisadeGateProbe: opts.palisadeGateProbe } : {}),
       ...(opts.palisadeGateSites !== undefined ? { palisadeGateSites: opts.palisadeGateSites } : {}),
+      ...(opts.enqueueTrusted !== undefined ? { enqueueTrusted: opts.enqueueTrusted } : {}),
       tribe: opts.tribe,
       owner: opts.owner,
       // A pick hid the window for the placement; its cancel brings it back where it was, and a place-any
@@ -598,6 +611,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       placementPaper: () => placement.activePaper(),
       palisadeGfxIndex: () => placement.activePalisade(),
       palisadeMode: () => placement.activePalisadeMode(),
+      enterStandingWall: (owner, tribe): boolean => {
+        const gfxIndex = opts.palisadeTools?.wall ?? null;
+        if (gfxIndex === null || opts.enqueueTrusted === undefined) return false;
+        placement.enterPalisade(gfxIndex, 'standingWall', { owner, tribe });
+        return true;
+      },
       palisadePreview: (tile) => placement.palisadePreview(tile),
       activeLine: () => placement.activeLine(),
       gateSites: () => placement.gateSites(),

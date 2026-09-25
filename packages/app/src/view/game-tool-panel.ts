@@ -3,6 +3,7 @@ import type { ContentSet } from '@open-northland/data';
 import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
 import {
+  type Command,
   constructionBillForType,
   type DiplomacyState,
   type Paper,
@@ -51,6 +52,8 @@ export interface GameToolPanelDeps {
   readonly camera: () => Camera;
   /** A closure, so it follows a scene restart. */
   readonly enqueue: (command: PlayerCommand) => void;
+  /** The admin channel for the debug palette's standing-wall line; absent where world edits are off. */
+  readonly enqueueTrusted?: (command: Command) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
@@ -232,6 +235,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       viewer: deps.viewer,
       ...(deps.observer !== undefined ? { observer: deps.observer } : {}),
       enqueue: deps.enqueue,
+      ...(deps.enqueueTrusted !== undefined ? { enqueueTrusted: deps.enqueueTrusted } : {}),
       grants: deps.grants,
       counters: deps.counters,
       papers: deps.papers,

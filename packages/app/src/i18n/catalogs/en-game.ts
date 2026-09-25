@@ -543,6 +543,8 @@ export const enGame = {
     filterGoods: 'Filter goods…',
     filterAnimals: 'Filter wildlife…',
     actions: 'Actions',
+    structures: 'Structures',
+    standingPalisade: 'Palisade (standing)',
     targetSettler: 'unit',
     targetBuilding: 'building',
     nothingArmed: 'Nothing selected - choose a unit, resource, good or tool above.',
