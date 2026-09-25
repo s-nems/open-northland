@@ -2,7 +2,6 @@ import type { ContentSet } from '@open-northland/data';
 import {
   AiPlayer,
   aiPlayerEntity,
-  Building,
   JobAssignment,
   Settler,
   StalledPlacement,
@@ -12,48 +11,29 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
-import { isCarrierJob } from '../../../stores/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
-import { buildingTypeByContentId, goodTypeByContentId } from '../../content-lookup.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../../seat-roster.js';
+import { goodTypeByContentId } from '../../content-lookup.js';
+import { ownedSettlers } from '../../seat-roster.js';
 import type { SeatSupply } from '../supply.js';
 
 /** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
  *  the content set is skipped; the build order adds its `collector` entries' goods once reached. */
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
-/** How many flag gatherers the plan keeps per good, by stable content id; an unlisted good keeps
- *  {@link DEFAULT_COLLECTOR_TARGET}, or its build-order entry's `count`. Authored: three iron gatherers
- *  serve all the smithies and the iron-tool joinery. The first post is guaranteed, the rest best-effort. */
+/** Fixed gatherer targets by stable content id (authored): the construction sites are these goods' main
+ *  drain, which the shortage posts answer. The first post is guaranteed, the rest best-effort. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
-  iron: 3,
 };
+
+/** The target of a good with no {@link COLLECTOR_TARGET_BY_GOOD_ID} row and no reached collector entry. */
 export const DEFAULT_COLLECTOR_TARGET = 1;
 
-/** A good whose gatherers grow with the crew working it up: one more per `per` operators of `building`
- *  beyond its first `from`. */
-interface CollectorGrowth {
-  readonly building: string;
-  readonly from: number;
-  readonly per: number;
-}
-
-/** Collector growth by stable good id (authored): the second potter's tiles bring a second clay gatherer. */
-export const COLLECTOR_GROWTH_BY_GOOD_ID: Readonly<Record<string, CollectorGrowth>> = {
-  mud: { building: 'work_pottery_01', from: 1, per: 1 },
-};
-
-/**
- * A collected good some built workshop of the seat consumes gets one gatherer more while it runs short
- * for the seat's sites (authored): the potter or mason and his carrier can eat a raw good faster than
- * one gatherer brings it, and what lies on the workshop's shelf is his, not the builders'. Short means
- * under the good's short line ({@link SeatSupply}); the extra man stays until its comfort line. Unlike a
- * top-up, the post is filled ahead of the builder reserve, since a settlement with no stone to build with
- * has no use for builders.
- */
-const RAW_SHORTAGE_EXTRA_COLLECTORS = 1;
+/** A good with no fixed target gets one gatherer more per this many planned operators of the seat's built
+ *  workshops consuming it (authored): the pottery tier planning two potters brings a second clay gatherer,
+ *  and two smithies' four smiths two iron gatherers over the entry's one. */
+export const OPERATORS_PER_EXTRA_GATHERER = 2;
 
 /** How many collect-anything gatherers (a flag with no good filter) the seat keeps, at the lowest
  *  hiring priority (authored). */
@@ -121,9 +101,11 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 }
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
- *  plan order, each target at least its entries' `count`, raised by its
- *  {@link COLLECTOR_GROWTH_BY_GOOD_ID} row and by {@link RAW_SHORTAGE_EXTRA_COLLECTORS} while the good
- *  runs short. A good missing from the content set or with no harvest trade is skipped. */
+ *  plan order. A target is the good's fixed row, else its entries' largest `count` (at least
+ *  {@link DEFAULT_COLLECTOR_TARGET}) grown by {@link OPERATORS_PER_EXTRA_GATHERER}, plus the shortage
+ *  posts ({@link shortageGatherers}); nothing lowers it below a reached entry's `count`, since a released
+ *  holder would regress the entry and stall the order. A good missing from the content set or with no
+ *  harvest trade is skipped. */
 export function wantedCollectorGoods(
   world: World,
   ctx: SystemContext,
@@ -137,8 +119,6 @@ export function wantedCollectorGoods(
   for (const goodId of entryCounts.keys()) {
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }
-  const owned = ownedBuildings(world, player);
-  const consumed = goodsConsumedByWorkshops(world, ctx, owned);
   const wanted: WantedGood[] = [];
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
@@ -146,25 +126,20 @@ export function wantedCollectorGoods(
     if (good === undefined || harvestAtomic === undefined) continue; // not in this content set
     const job = harvestJobFor(ctx, harvestAtomic);
     if (job === null) continue;
-    const base = Math.max(
-      COLLECTOR_TARGET_BY_GOOD_ID[goodId] ?? DEFAULT_COLLECTOR_TARGET,
-      entryCounts.get(goodId) ?? 0,
-    );
-    const growth = COLLECTOR_GROWTH_BY_GOOD_ID[goodId];
-    const extra =
-      growth === undefined
-        ? 0
-        : Math.floor(
-            Math.max(0, workshopOperators(world, ctx, player, growth.building) - growth.from) / growth.per,
-          );
-    let target = base + extra;
+    const consumers = supply.plannedConsumers(good.typeId);
+    const fixed = COLLECTOR_TARGET_BY_GOOD_ID[goodId];
+    const entryCount = entryCounts.get(goodId) ?? 0;
+    let target =
+      fixed === undefined
+        ? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount) +
+          Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER)
+        : Math.max(fixed, entryCount);
     let min = 1;
-    if (COLLECTED_GOOD_IDS.includes(goodId) && consumed.has(good.typeId)) {
-      const held = flagHolders(world, ctx, player, good.typeId);
-      // The extra post, once manned, holds until the comfort line, so the stock crossing one line does
-      // not hire and release a man every few decisions.
-      if (supply.isShort(good.typeId, held > target)) {
-        target += RAW_SHORTAGE_EXTRA_COLLECTORS;
+    if (consumers > 0) {
+      const engaged = flagHolders(world, ctx, player, good.typeId) > target;
+      const extra = shortageGatherers(supply, good.typeId, engaged, consumers);
+      if (extra > 0) {
+        target += extra;
         min = target;
       }
     }
@@ -173,17 +148,25 @@ export function wantedCollectorGoods(
   return wanted;
 }
 
-/** The goods the seat's built workshops consume, by good type: the drains a raw good's shortage is
- *  measured against. */
-function goodsConsumedByWorkshops(world: World, ctx: SystemContext, owned: readonly Entity[]): Set<number> {
-  const index = contentIndex(ctx.content);
-  const consumed = new Set<number>();
-  for (const e of owned) {
-    if (!isBuilt(world, e)) continue;
-    const inputs = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType)?.inputs;
-    for (const input of inputs ?? []) consumed.add(input.goodType);
-  }
-  return consumed;
+/**
+ * The extra gatherers a good some built workshop consumes calls for while it runs short for the seat's
+ * sites (authored): one per unit its surplus lies under the comfort line, rounded up, at most one per
+ * planned consuming operator. The workshop eats the good faster than its gatherers bring it, and what lies
+ * on its shelf is not the builders'. Short is under the short line, or the comfort line while the posts
+ * are `engaged` ({@link SeatSupply.isShort}), so the stock crossing one line does not hire and release a
+ * man every few decisions. The posts are filled ahead of the builder reserve, since a settlement with no
+ * stone to build with has no use for builders.
+ */
+function shortageGatherers(
+  supply: SeatSupply,
+  goodType: number,
+  engaged: boolean,
+  consumers: number,
+): number {
+  const lines = supply.lines(goodType);
+  const surplus = supply.surplus(goodType);
+  if (lines === undefined || surplus === undefined || !supply.isShort(goodType, engaged)) return 0;
+  return Math.min(Math.ceil((lines.comfort - surplus) / lines.unit), consumers);
 }
 
 /** The seat's men holding a live flag of `goodType` with a trade that harvests it: what
@@ -197,22 +180,6 @@ function flagHolders(world: World, ctx: SystemContext, player: number, goodType:
     if (jobCanHarvestGood(ctx, job, goodType)) holders++;
   }
   return holders;
-}
-
-/** The operators every building of the content id employs across the seat: its crafters, not its carriers
- *  or gatherers. */
-function workshopOperators(world: World, ctx: SystemContext, player: number, buildingId: string): number {
-  const type = buildingTypeByContentId(ctx.content, buildingId);
-  if (type === undefined) return 0;
-  const index = contentIndex(ctx.content);
-  let operators = 0;
-  for (const e of ownedSettlers(world, player)) {
-    const workplace = world.tryGet(e, JobAssignment)?.workplace;
-    if (workplace === undefined || world.tryGet(workplace, Building)?.buildingType !== type.typeId) continue;
-    const job = world.get(e, Settler).jobType;
-    if (job !== null && !isCarrierJob(ctx, job) && !index.harvestJobs.has(job)) operators++;
-  }
-  return operators;
 }
 
 /** Whether this settler's accrued XP clears the good's `needforgood` thresholds - the same gate

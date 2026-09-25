@@ -1,4 +1,4 @@
-import { Settler } from '../../../../components/index.js';
+import { JobAssignment, Settler } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
@@ -7,6 +7,7 @@ import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
 import { nearestLiveResource, type WorkableTest } from '../../live-resources.js';
 import { anchorNodeOf } from '../../node-geometry.js';
+import { ownedSettlers } from '../../seat-roster.js';
 import {
   claimFlagNode,
   collectorSpot,
@@ -101,15 +102,32 @@ function seatGood(
   return seatHolders(world, holders, slots, ground.baseNode);
 }
 
+/** The fewest builders a good's shortage post beyond its first may leave the seat (authored), counting
+ *  spare men of the builder trade and those bound to a site: gatherers with nobody to raise the sites
+ *  bring nothing. At the floor such a post takes only a man of another trade. */
+export const SHORTAGE_BUILDER_FLOOR = 4;
+
+/** The seat's builders this decision: the builder-trade men `force` still holds and those bound to a site. */
+function seatBuilders(world: World, player: number, force: SpareForce, builderJob: number): number {
+  let builders = 0;
+  for (const e of force.remaining()) if (world.get(e, Settler).jobType === builderJob) builders++;
+  for (const e of ownedSettlers(world, player)) {
+    if (world.has(e, JobAssignment) && world.get(e, Settler).jobType === builderJob) builders++;
+  }
+  return builders;
+}
+
 /**
- * First posts: keep at least one flag-bound gatherer per wanted good, and a short raw good's extra one
- * (`min`), each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), over the
- * upkeep of every current holder ({@link upkeepHolders}). One post per good per decision. No-op on a
- * mapless sim, which has no cells to place flags over.
+ * First posts: keep at least one flag-bound gatherer per wanted good, and a short good's extra ones up to
+ * `min`, each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), over the
+ * upkeep of every current holder ({@link upkeepHolders}). One post per good per decision, and none beyond
+ * a good's first that would break the {@link SHORTAGE_BUILDER_FLOOR}. No-op on a mapless sim, which has
+ * no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
   ctx: SystemContext,
+  player: number,
   ground: CollectorGround,
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
@@ -122,6 +140,8 @@ export function allocateCollectors(
   const commands: PlayerCommand[] = [];
   const relocateDue = flagRelocateDue(ctx);
   const { workable } = ground;
+  const isBuilder = (e: Entity): boolean => world.get(e, Settler).jobType === builderJob;
+  let builders: number | undefined; // counted once a post beyond a good's first needs a man
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     const seated = seatGood(world, ground, w, holders);
@@ -142,8 +162,14 @@ export function allocateCollectors(
     if (holders.length >= w.min || anchor === undefined) continue;
     const spot = collectorSpot(world, ctx, terrain, anchor, w.good.typeId, taken, workable);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
-    const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
+    if (holders.length > 0 && builderJob !== null)
+      builders ??= seatBuilders(world, player, force, builderJob);
+    const keepBuilders = holders.length > 0 && builders !== undefined && builders <= SHORTAGE_BUILDER_FLOOR;
+    const spare = force.take(
+      (e) => meetsNeed(world, ctx, e, w.good.typeId) && !(keepBuilders && isBuilder(e)),
+    );
     if (spare !== null) {
+      if (builders !== undefined && isBuilder(spare)) builders--;
       postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
       continue;
     }

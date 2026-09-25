@@ -115,7 +115,7 @@ function runWorkforce(
   return [
     ...(ground === null
       ? []
-      : allocateCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken, builderJob)),
+      : allocateCollectors(world, ctx, player, ground, wanted, collectorsByGood, force, taken, builderJob)),
     ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'first'),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),

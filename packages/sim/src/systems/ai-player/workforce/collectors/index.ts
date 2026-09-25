@@ -2,6 +2,7 @@ export {
   allocateCollectors,
   allocateGenericCollectors,
   type CollectorGround,
+  SHORTAGE_BUILDER_FLOOR,
   topUpCollectors,
 } from './allocate.js';
 export { COLLECTOR_WORKSHOP_BY_GOOD_ID, collectorAnchors } from './anchor.js';
@@ -13,6 +14,7 @@ export {
   clearingCollectors,
   DEFAULT_COLLECTOR_TARGET,
   GENERIC_COLLECTOR_TARGET,
+  OPERATORS_PER_EXTRA_GATHERER,
   type WantedGood,
   wantedCollectorGoods,
 } from './wanted-goods.js';
