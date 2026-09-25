@@ -34,13 +34,12 @@ describe('extractGoods', () => {
         classification: { producedOnMap: true, producedInHouse: false, inputGood: true },
         landscapeType: 16,
         // the three-stage pipeline: bramble(13) -> snag(15) -> reedpile(16); `isBioLandscapeFlag 1` -> bio.
-        // The felling/mining params (chops/yield/deposit) are OBSERVED, absent from the source → extractor emits 0.
+        // The felling/mining params (yield/deposit) are OBSERVED, absent from the source → extractor emits 0.
         gathering: {
           harvest: 13,
           pickup: 15,
           store: 16,
           bioLandscape: true,
-          chopsToFell: 0,
           yieldPerNode: 0,
           depositSize: 0,
           depositLevels: 0,
@@ -107,12 +106,11 @@ describe('extractGoods', () => {
     );
     expect(honey?.landscapeType).toBe(32);
     // The absent harvest lane stays undefined - a faithful omission, not a guessed default. The felling/
-    // mining params (chops/yield/deposit) are OBSERVED, absent from the source, so the extractor emits 0.
+    // mining params (yield/deposit) are OBSERVED, absent from the source, so the extractor emits 0.
     expect(honey?.gathering).toEqual({
       pickup: 32,
       store: 32,
       bioLandscape: false,
-      chopsToFell: 0,
       yieldPerNode: 0,
       depositSize: 0,
       depositLevels: 0,

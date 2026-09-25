@@ -10,7 +10,7 @@ iconless).
 Interim: the app overlays the clean-room classification by good slug at load
 (`withEquipClass` in `packages/app/src/content/real-content.ts`), so the equip window works on real
 content today. The overlay now ALSO carries the effect/wear balance fields (`productionBonusPct`,
-`uses`, `restorePct`) the sim's equipment effects run on - values no readable
+`workFactorPct`, `uses`, `restorePct`) the sim's equipment effects run on - values no readable
 source carries (fixed in the original), so extraction can only ever supply `category`/`wears`. The
 landing commit must therefore FIELD-MERGE: extracted classification wins, but the balance fields
 stay overlaid wherever the shipped `equip` lacks them. A wholesale "extracted wins" (today's

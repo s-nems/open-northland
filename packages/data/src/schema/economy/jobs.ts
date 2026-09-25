@@ -28,6 +28,9 @@ export type JobType = z.infer<typeof JobType>;
  *  across every `good` line in the record, and it drops any id past the second. */
 export const GOOD_SLOTS_PER_TRACK = 2;
 
+/** The strokes-per-unit count a track record without `baserepeatcounter` loads with. */
+export const DEFAULT_BASE_REPEAT_COUNTER = 10;
+
 /**
  * One `[humanjobexperiencetype]` record (`Data/logic/humanjobexperiencetypes.ini`): a per-specialization
  * experience track. The original grants experience within a narrow `(job, goods)` pairing ("collector
@@ -46,9 +49,9 @@ export const HumanJobExperienceType = z.strictObject({
   goodTypes: z.array(TypeId).max(GOOD_SLOTS_PER_TRACK).default([]),
   /** `experiencefactor` - how fast XP accrues on this track; the runtime curve is the ProgressionSystem's. */
   experienceFactor: z.number().int().nonnegative().default(0),
-  /** `baserepeatcounter` - strokes per completed work action on the track; the sim's `workRepeatsFor`
-   *  owns the reading. */
-  baseRepeatCounter: z.number().int().nonnegative().optional(),
+  /** `baserepeatcounter` - a novice's strokes per unit on the track; the sim's `workRepeatsFor` owns the
+   *  reading. A record without the key loads as 10 in the original. */
+  baseRepeatCounter: z.number().int().nonnegative().default(DEFAULT_BASE_REPEAT_COUNTER),
   source: Provenance.optional(),
 });
 export type HumanJobExperienceType = z.infer<typeof HumanJobExperienceType>;

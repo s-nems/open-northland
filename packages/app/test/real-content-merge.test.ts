@@ -4,7 +4,7 @@ import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SHELTER_CAPACITY, shelterCapacityById } from '../src/catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../src/catalog/farming.js';
-import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
+import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
 import {
   NAV_LANDSCAPE_TYPES,
@@ -43,7 +43,7 @@ function rawRealLike(): ContentSet {
       ? g
       : {
           ...g,
-          gathering: { ...g.gathering, chopsToFell: 0, yieldPerNode: 0, depositSize: 0, depositLevels: 0 },
+          gathering: { ...g.gathering, yieldPerNode: 0, depositSize: 0, depositLevels: 0 },
         };
   // Real ir.json ships a farmed good with its field atomics but no clean-room `farming` block - strip it
   // so the merge has to re-add it (and so a field good with none surfaces as a gap).
@@ -177,13 +177,12 @@ describe('mergeRealContent', () => {
   it('pins the clean-room felling/mining balance into the zeroed gathering blocks', () => {
     const raw = rawRealLike();
     // Precondition: the stand-in ships dead gathering, like real ir.json.
-    expect(goodById(raw, 'wood').gathering?.chopsToFell).toBe(0);
+    expect(goodById(raw, 'wood').gathering?.yieldPerNode).toBe(0);
     expect(goodById(raw, 'stone').gathering?.depositSize).toBe(0);
 
     const { content } = mergeRealContent(raw);
 
     const wood = goodById(content, 'wood').gathering;
-    expect(wood?.chopsToFell).toBe(WOOD_CHOPS_TO_FELL);
     expect(wood?.yieldPerNode).toBe(WOOD_YIELD_PER_NODE);
     expect(wood?.bioLandscape).toBe(true); // extracted field preserved, not overwritten
 

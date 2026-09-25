@@ -7,7 +7,7 @@ import {
   resolveAttackHit,
 } from './effects/combat/index.js';
 import { advanceFishingAtomic } from './effects/goods/fishing.js';
-import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
+import { continuesHarvest } from './effects/goods/index.js';
 import { applyAtomicNeedEvents } from './effects/need-events.js';
 import { applyAtomicStockEvents } from './effects/stock-events.js';
 import { emitAtomicSoundCues } from './sound-cue.js';
@@ -41,22 +41,6 @@ export const atomicSystem: System = (world, ctx) => {
     if (elapsed < duration) continue;
     const atomic = world.mut(e, CurrentAtomic);
 
-    // A finished rest tail already applied and announced its harvest, so it chains straight into the next
-    // swing; the node is re-checked because a competitor may have finished it mid-rest.
-    if (atomic.restTail === true) {
-      if (
-        atomic.effect.kind === 'harvest' &&
-        !world.has(e, DeferredOrder) && // a parked order releases the settler at the swing boundary
-        continuesHarvest(world, atomic.effect.resource)
-      ) {
-        endRestTail(atomic);
-        clock.elapsed = 0;
-        continue;
-      }
-      removeCurrentAtomic(world, e);
-      continue;
-    }
-
     const completedAtomicId = atomic.atomicId;
     if (atomic.effect.kind === 'fish') {
       const continues = advanceFishingAtomic(world, ctx, e, atomic, atomic.effect);
@@ -67,15 +51,17 @@ export const atomicSystem: System = (world, ctx) => {
     }
     const extracted = applyEffect(world, ctx, e, atomic);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: completedAtomicId });
-    // A multi-swing harvest holds the settler across swings, re-arming in place so this iteration stays
-    // safe; only the swing that extracts hands it back to the planner. "Non-interruptible" protects the
-    // swing in flight, not the whole job, so a parked order releases the settler at this boundary.
-    if (atomic.effect.kind === 'harvest' && (extracted ?? 0) === 0 && !world.has(e, DeferredOrder)) {
-      if (beginRestTail(world, atomic, atomic.effect.resource)) continue;
-      if (continuesHarvest(world, atomic.effect.resource)) {
-        clock.elapsed = 0;
-        continue;
-      }
+    // A multi-stroke harvest holds the settler across strokes, re-arming in place so this iteration stays
+    // safe; only the stroke that extracts hands it back to the planner. "Non-interruptible" protects the
+    // stroke in flight, not the whole job, so a parked order releases the settler at this boundary.
+    if (
+      atomic.effect.kind === 'harvest' &&
+      (extracted ?? 0) === 0 &&
+      !world.has(e, DeferredOrder) &&
+      continuesHarvest(world, atomic.effect.resource)
+    ) {
+      clock.elapsed = 0;
+      continue;
     }
     removeCurrentAtomic(world, e);
   }

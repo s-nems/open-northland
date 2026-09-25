@@ -1,4 +1,4 @@
-import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from './felling.js';
+import { WOOD_YIELD_PER_NODE } from './felling.js';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
@@ -13,7 +13,6 @@ import {
  */
 export interface GatheringBalance {
   readonly bioLandscape: boolean;
-  readonly chopsToFell?: number;
   readonly yieldPerNode?: number;
   readonly depositSize?: number;
   readonly depositLevels?: number;
@@ -26,7 +25,7 @@ export interface GatheringBalance {
  * real-content overlay preserves the extracted value.
  */
 export const GATHERING_BALANCE_BY_ID: Readonly<Record<string, GatheringBalance>> = {
-  wood: { bioLandscape: true, chopsToFell: WOOD_CHOPS_TO_FELL, yieldPerNode: WOOD_YIELD_PER_NODE },
+  wood: { bioLandscape: true, yieldPerNode: WOOD_YIELD_PER_NODE },
   stone: { bioLandscape: false, depositSize: STONE_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
   mud: { bioLandscape: false, depositSize: CLAY_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
   iron: { bioLandscape: false, depositSize: IRON_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },

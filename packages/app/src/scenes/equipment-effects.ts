@@ -27,10 +27,10 @@ const FOREST = [
 /** The wheat pile sits clear of the mill footprint so its stand stays reachable. */
 const MILL = { x: 16, y: 12 } as const;
 const WHEAT_PILE = { x: 12, y: 14 } as const;
-/** Five one-to-one cycles. The iron tool's 0.6 per cycle mints as trunc(0.6·ONE), one ulp shy, so five
- *  credits total 2.99995: two whole bonus flour are guaranteed, the third is not. */
+/** Five one-to-one cycles. The iron tool banks 7 tenths of a flour per cycle, 35 in all: three whole
+ *  bonus flour are guaranteed, and the miller's own experience only adds on top. */
 const WHEAT_UNITS = 5;
-const GUARANTEED_BONUS_FLOUR = 2;
+const GUARANTEED_BONUS_FLOUR = 3;
 const MILLERS = 1;
 /** Parked out of work-flag range of the forest so the drinker stays put. */
 const DRINKER = { x: 3, y: 2 } as const;

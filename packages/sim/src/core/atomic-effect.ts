@@ -76,9 +76,9 @@ export type AtomicEffect =
         readonly missSounds: Readonly<Record<string, number>>;
       };
     }
-  /** A builder's construction swing at `site`: advances the site's builder-work `labor` by one strike's
-   *  quantum (`+ONE / (totalConstructionUnits · strikesPerUnit)`), clamped at ONE. No goods move here;
-   *  the visible `Building.built` is derived from `min(labor, deliveredFraction)`. */
+  /** A builder's construction swing at `site`: advances the site's builder-work `labor` by the steps the
+   *  builder's experience and tool are worth, capped at the delivered fraction. No goods move here; the
+   *  visible `Building.built` is derived from `min(labor, deliveredFraction)`. */
   | { readonly kind: 'construct'; readonly site: Entity }
   /** The scout's build-guide swing completed: a signpost owned by the swinging scout's player appears at
    *  half-cell node `(x, y)`. Observation: one hammer strike, instant, no materials. The spot is

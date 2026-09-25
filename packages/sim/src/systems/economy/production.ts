@@ -11,7 +11,13 @@ import { incomingRecipeReservations } from './production/reservations.js';
 import { nextCycleFor, startCycleFor } from './production/rotation.js';
 import { cycleStartable } from './production/start-gate.js';
 
-export { accrueDepositBonus } from './production/bonus-output.js';
+export {
+  accrueDepositBonus,
+  experienceBonusTenths,
+  MASTERY_BONUS_TENTHS,
+  OUTPUT_TENTHS_PER_UNIT,
+  toolBonusTenths,
+} from './production/bonus-output.js';
 export {
   BREEDING_PAIR,
   outputRoomForCycles,
@@ -65,7 +71,7 @@ export const productionSystem: System = (world, ctx) => {
       staffing,
       done.map((cycle) => cycle.goodType),
     );
-    // After the grant, so the batch that just finished already counts toward its own bonus fraction.
+    // After the grant, so the batch that just finished already counts toward its own bonus tenths.
     accrueBonusOutput(world, ctx, e, done, staffing, recipes);
     if (prod.cycles.length === 0) world.remove(e, Production);
   }

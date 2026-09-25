@@ -21,10 +21,9 @@ export const FIELD_GROWTH_STAGES = 5;
  *  `maximumValency 5`). */
 export const FIELD_YIELD_PER_FIELD = 1;
 
-/** Strokes a farmer plays per reaped field, transcribed from `humanjobexperiencetypes.ini` type 46
- *  "farmer wheat" `baserepeatcounter 2`. Approximation: which of the three field actions the count gates
- *  is not readable, every farmer clip firing one cue per play; the scythe is the reading. The herb track
- *  (type 56) names no counter, so a herbalist reaps in one stroke. */
+/** Strokes a novice farmer plays per reaped field, transcribed from `humanjobexperiencetypes.ini` type 46
+ *  "farmer wheat" `baserepeatcounter 2`. Original behavior: the reap clip's transform event is the stroke
+ *  the count gates. */
 export const WHEAT_WORK_REPEATS = 2;
 
 /** How far from the workplace's anchor its workers sow and fetch piles, in half-cell nodes (16 nodes ≈ 8

@@ -12,14 +12,12 @@ export interface ResourceSpec {
    *  interprets it - footprint and collision come from the good's own record in the sim's content set,
    *  whose numbering is unrelated. Omitted for an admin or scene spawn. */
   readonly gfxIndex?: number;
-  /** A felled node such as a tree: its chops-to-fell counter. Mutually exclusive with `deposit`. */
-  readonly felling?: { readonly chopsLeft: number };
-  /** A mined finite deposit: its level ladder and how many work cycles chip one unit off (an observed
-   *  calibration in the app catalog). `initial` is the deposit's full size, the ladder denominator, for
-   *  a node placed already part-mined; omitted it is `remaining`. */
+  /** A felled node such as a tree when true. Mutually exclusive with `deposit`. */
+  readonly felling?: boolean;
+  /** A mined finite deposit: its level ladder. `initial` is the deposit's full size, the ladder
+   *  denominator, for a node placed already part-mined; omitted it is `remaining`. */
   readonly deposit?: {
     readonly levels: number;
-    readonly strikesPerUnit: number;
     readonly initial?: number;
   };
 }

@@ -1,12 +1,12 @@
 import { FishSwarm, JobAssignment, Position } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
-import { fx } from '../../../../core/fixed.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { hexDistance, hexNeighboursOf, nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { FISH_CAST_ATOMIC, FISH_SHORE_SEARCH_RADIUS } from '../../../economy/fish.js';
+import { toolWorkFactorPct } from '../../../equipment/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../../footprint/index.js';
-import { experienceBonus, trackFor, workRepeatsFor } from '../../../progression/index.js';
+import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { edibleGoodFormOf } from '../../../readviews/food.js';
 import { isFisherJob } from '../../../readviews/index.js';
@@ -175,18 +175,14 @@ function workplaceCanBankCatch(plan: PlannerContext, goodType: number): boolean 
 }
 
 /**
- * Cast attempts needed for one catch. The original's needed-retries calculation subtracts up to
- * five retries along the shared experience curve; for the authored fisher base of five this yields
- * 5 attempts as a novice and 1 once experienced. Tools are intentionally omitted until fishing rods are
- * simulated.
+ * Casts one catch costs this fisher: the trade's `baserepeatcounter` (five for the fisher) under the
+ * shared strokes rule, so experience and a tool cut the misses down to a single cast.
  */
 function fishingRetriesFor(plan: PlannerContext, fishGood: number): number {
-  const base = workRepeatsFor(plan.ctx, plan.jobType, fishGood);
-  const track = plan.jobType === null ? undefined : trackFor(plan.ctx, plan.jobType, fishGood);
-  // Our save encoding stores `experienceFactor` points per catch. Dividing by the original percentage
-  // scale (100), rather than back by the track factor, preserves that factor's authored learning rate:
-  // fisher 150 improves half again as quickly as a factor-100 trade.
-  const scaledExperience = track === undefined ? 0 : (plan.experience.get(track.typeId) ?? 0) / 100;
-  const learned = Math.floor(fx.toFloat(experienceBonus(scaledExperience)) * 5);
-  return Math.max(1, base - learned);
+  const { world, ctx, entity: fisher } = plan;
+  return strokesPerUnit(
+    workRepeatsFor(ctx, plan.jobType, fishGood),
+    jobExperiencePercent(world, ctx, fisher, fishGood),
+    toolWorkFactorPct(world, ctx, fisher),
+  );
 }

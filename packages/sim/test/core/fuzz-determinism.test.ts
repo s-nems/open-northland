@@ -99,8 +99,6 @@ const FOOD_CHEST_ID = 1 as Entity;
 const RESOURCE_GOOD = 1;
 const RESOURCE_LANDSCAPE_TYPE = 20;
 const RESOURCE_GFX_INDEX = 200;
-/** Every swing frees a unit. */
-const SINGLE_STRIKE = 1;
 
 /** The fixture content plus the footprinted hut, the home, the woman job, and the footprinted wood
  *  resource - all fuzz-local so the golden fixtures stay untouched (a footprint on a shared type would
@@ -480,8 +478,8 @@ function nextCommand(rng: Rng): Command {
         y,
         remaining: rng.int(6) + 1,
         harvestAtomic: 24,
-        ...(life === 0 ? { felling: { chopsLeft: rng.int(4) + 1 } } : {}),
-        ...(life === 1 ? { deposit: { levels: rng.int(4) + 1, strikesPerUnit: SINGLE_STRIKE } } : {}),
+        ...(life === 0 ? { felling: true } : {}),
+        ...(life === 1 ? { deposit: { levels: rng.int(4) + 1 } } : {}),
       };
     }
     case 9:

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
-import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
+import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -18,16 +18,11 @@ import {
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
 } from '../src/catalog/jobs.js';
-import {
-  CLAY_MINE_STRIKES_PER_UNIT,
-  HARD_MINE_STRIKES_PER_UNIT,
-  STONE_DEPOSIT_UNITS,
-} from '../src/catalog/mining.js';
+import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import {
   GOOD_BOW_LONG,
   GOOD_BOW_SHORT,
-  GOOD_MUD,
   GOOD_SPEAR_IRON,
   GOOD_SPEAR_WOODEN,
   GOOD_STONE,
@@ -184,7 +179,7 @@ describe('admin spawn command mapping', () => {
       y: 5,
       remaining: WOOD_YIELD_PER_NODE,
       harvestAtomic: expect.any(Number),
-      felling: { chopsLeft: WOOD_CHOPS_TO_FELL },
+      felling: true,
     });
   });
 
@@ -193,15 +188,8 @@ describe('admin spawn command mapping', () => {
     expect(cmd?.kind).toBe('placeResource');
     if (cmd?.kind !== 'placeResource') throw new Error('expected placeResource');
     expect(cmd.remaining).toBe(STONE_DEPOSIT_UNITS);
-    expect(cmd.deposit?.strikesPerUnit).toBe(HARD_MINE_STRIKES_PER_UNIT);
+    expect(cmd.deposit).toEqual({ levels: MINE_LEVELS });
     expect(cmd.felling).toBeUndefined();
-  });
-
-  it('a clay resource uses an extra dig cycle for its shorter animation', () => {
-    const cmd = resourceCommand(GOOD_MUD, 1, 1);
-    expect(cmd?.kind).toBe('placeResource');
-    if (cmd?.kind !== 'placeResource') throw new Error('expected placeResource');
-    expect(cmd.deposit?.strikesPerUnit).toBe(CLAY_MINE_STRIKES_PER_UNIT);
   });
 
   it('an unknown good is not spawnable (null command)', () => {

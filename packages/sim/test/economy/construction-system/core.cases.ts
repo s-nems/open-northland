@@ -9,6 +9,7 @@ import {
 } from '../../../src/systems/index.js';
 
 import {
+  builderWith,
   constructionContent,
   ctxOf,
   finishedEvents,
@@ -18,6 +19,8 @@ import {
   HOUSE_MAX_HP,
   placeSite,
   STONE,
+  TOOL_IRON,
+  tooledBuilderContent,
   VIKING,
   WOOD,
 } from './support.js';
@@ -122,14 +125,29 @@ describe('constructionSystem', () => {
     // fraction - the truncated per-swing quantum must not park it a hair above (that overshoot is what
     // made `built` visibly jump the instant the next material landed instead of at a swing).
     const delivered = fx.div(ONE, fx.fromInt(3));
-    // Far more swings than the 1/3-of-the-build the delivered unit backs (a 3-unit HOUSE is
-    // 3·STRIKES_PER_UNIT swings total, so ~a third of that fills the delivered third) - labor must cap.
-    for (let i = 0; i < 40; i++) advanceConstructionLabor(sim.world, ctx, e);
+    // Far more swings than the 1/3-of-the-build the delivered unit backs (a 3-unit HOUSE is 90 steps
+    // total, so 30 one-step novice swings fill the delivered third) - labor must cap.
+    const novice = sim.world.create(); // no trade, no tool: one step per swing
+    for (let i = 0; i < 40; i++) advanceConstructionLabor(sim.world, ctx, e, novice);
     expect(sim.world.get(e, UnderConstruction).labor).toBe(delivered);
     // More material lands: the cap rises but labor doesn't - built holds until the next swing.
     sim.world.mut(e, Stockpile).amounts.set(STONE, 2);
     constructionSystem(sim.world, ctx);
     expect(sim.world.get(e, Building).built).toBe(delivered);
+  });
+
+  it('a swing installs the steps the builder is worth: one bare-handed, four for a master with iron', () => {
+    const sim = new Simulation({ seed: 1, content: tooledBuilderContent() });
+    const ctx = ctxOf(sim);
+    const site = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 }); // 3 units, 90 steps
+    const stepLabor = fx.div(ONE, fx.fromInt(90));
+    const novice = builderWith(sim, { xp: 0, tool: null });
+    advanceConstructionLabor(sim.world, ctx, site, novice);
+    expect(sim.world.get(site, UnderConstruction).labor).toBe(stepLabor);
+    // 20000 raw XP on the factor-5 track is 200 curve points: 100 percent, four steps with iron.
+    const master = builderWith(sim, { xp: 20_000, tool: TOOL_IRON });
+    advanceConstructionLabor(sim.world, ctx, site, master);
+    expect(sim.world.get(site, UnderConstruction).labor).toBe(fx.mul(stepLabor, fx.fromInt(5)));
   });
 
   it('discounts live supply runs from the next needed good, spreading fetches over materials', () => {

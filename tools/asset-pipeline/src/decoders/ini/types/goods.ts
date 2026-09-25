@@ -105,14 +105,12 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
     pickup?: number;
     store?: number;
     bioLandscape: boolean;
-    chopsToFell: number;
     yieldPerNode: number;
     depositSize: number;
     depositLevels: number;
   } = {
     bioLandscape: getInt(sec, 'isBioLandscapeFlag') === 1,
-    // The `goodtype` record carries none of these four, so the spawn site supplies the real values.
-    chopsToFell: 0,
+    // The `goodtype` record carries none of these three, so the spawn site supplies the real values.
     yieldPerNode: 0,
     depositSize: 0,
     depositLevels: 0,

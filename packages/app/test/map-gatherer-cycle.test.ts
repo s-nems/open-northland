@@ -1,7 +1,7 @@
 import type { TerrainMapFile } from '@open-northland/data';
 import { components, halfCellMapFromCells, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
+import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { TERRAIN_OPEN } from '../src/catalog/terrain.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';
@@ -45,7 +45,7 @@ function mapTree(sim: Simulation, hx: number, hy: number): void {
     y: hy,
     remaining: WOOD_YIELD_PER_NODE,
     harvestAtomic: sandboxContent().goods.find((g) => g.id === 'wood')?.atomics.harvest ?? 24,
-    felling: { chopsLeft: WOOD_CHOPS_TO_FELL },
+    felling: true,
   });
   expect(e).not.toBeNull();
 }

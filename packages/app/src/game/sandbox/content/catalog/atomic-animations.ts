@@ -21,7 +21,7 @@ import {
   SWORD_HIT_FRAME,
   SWORD_SWING_LENGTH,
 } from '../../combat.js';
-import { GATHERERS, GOOD_LEATHER, GOOD_MEAT, GOOD_WOOL } from '../../ids/index.js';
+import { GATHERERS, type GatherMode, GOOD_LEATHER, GOOD_MEAT, GOOD_WOOL } from '../../ids/index.js';
 import {
   NEED_CLIPS,
   SOLDIER_SWING_DRAIN_VALUE,
@@ -48,6 +48,7 @@ import {
   CIVILIST_TALK_PULSE_FRAMES,
   FARMER_REAP_ANIMATION,
   FARMER_REAP_LENGTH,
+  FARMER_REAP_WORK_EVENT_FRAME,
   FARMER_SOW_ANIMATION,
   FARMER_SOW_LENGTH,
   FARMER_WATER_ANIMATION,
@@ -103,6 +104,13 @@ function swingClip(name: string, length: number, hitFrame: number, drain = SOLDI
 
 const SOCIAL = systems.ATOMIC_EVENT_CHANNEL.LEISURE;
 
+/** The work event each gather mode's clip carries, which decides whether its strokes are counted. */
+const GATHER_EVENT_TYPE: Readonly<Record<GatherMode, number>> = {
+  fell: systems.ATOMIC_EVENT_TYPE_TRANSFORM,
+  mine: systems.ATOMIC_EVENT_TYPE_SPLIT_UP,
+  pick: systems.ATOMIC_EVENT_TYPE_PICKUP,
+};
+
 /** The sandbox ids of the wares a slaughter clip names, by their content slug. */
 const SLAY_WARE_BY_SLUG: Readonly<Record<string, number>> = {
   wool: GOOD_WOOL,
@@ -121,7 +129,11 @@ function slayClip(species: string, name: string) {
 
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
-    ...GATHERERS.map((gatherer) => workClip(gatherer.animation, HARVEST_TICKS[gatherer.atomic] ?? 1)),
+    ...GATHERERS.map((gatherer) =>
+      workClip(gatherer.animation, HARVEST_TICKS[gatherer.atomic] ?? 1, [
+        { at: gatherer.workEventFrame, type: GATHER_EVENT_TYPE[gatherer.mode] },
+      ]),
+    ),
     clip(STORE_PICKUP_ANIMATION, STORE_EXCHANGE_LENGTH),
     clip(STORE_PILEUP_ANIMATION, STORE_EXCHANGE_LENGTH),
     clip(WELL_DRAW_ANIMATION, UTILITY_DRAW_LENGTH),
@@ -173,7 +185,9 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     clip(CIVILIST_EXERCISE_ANIMATION, CIVILIST_EXERCISE_LENGTH, [
       { at: CIVILIST_EXERCISE_XP_FRAME, type: TRAINING_EXPERIENCE_EVENT_TYPE, value: CIVILIST_EXERCISE_XP },
     ]),
-    workClip(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH),
+    workClip(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH, [
+      { at: FARMER_REAP_WORK_EVENT_FRAME, type: systems.ATOMIC_EVENT_TYPE_TRANSFORM },
+    ]),
     workClip(FARMER_SOW_ANIMATION, FARMER_SOW_LENGTH),
     workClip(FARMER_WATER_ANIMATION, FARMER_WATER_LENGTH),
     ...Object.values(BREEDER_PRODUCE_ANIMATION_BY_SPECIES).map((name) => workClip(name, BREEDER_CLIP_LENGTH)),

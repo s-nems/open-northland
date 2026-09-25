@@ -36,7 +36,7 @@ import { combatantAtNode, P0 } from './stances/support.js';
 
 const HUNTER_GENERAL_TRACK = 37; // the fixture hunter_general specialization id
 const HUNTER_GENERAL_FACTOR = 200; // its experienceFactor (XP per carcass unit)
-const MASTERY_REPEATS = 100; // experienceBonus saturates here
+const MASTERY_REPEATS = 100; // 200 curve points at factor 200, past the curve's plateau
 const ROLL_TICKS = 100; // one roll per tick - a full percent-space sweep
 
 /** The fixture content with the hunter's `test_spear` made genuinely RANGED (arrow, bow speed), so the

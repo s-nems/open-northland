@@ -9,9 +9,7 @@ import {
 import { JOB_COLLECTOR } from '../../../../catalog/jobs.js';
 import {
   CLAY_DEPOSIT_UNITS,
-  CLAY_MINE_STRIKES_PER_UNIT,
   GOLD_DEPOSIT_UNITS,
-  HARD_MINE_STRIKES_PER_UNIT,
   IRON_DEPOSIT_UNITS,
   MINE_LEVELS,
   STONE_DEPOSIT_UNITS,
@@ -29,10 +27,11 @@ export interface GathererSpec {
   readonly atomic: number;
   readonly animation: string;
   readonly mode: GatherMode;
+  /** The frame of the clip's work event, extracted from its `atomicanimations.ini` row. */
+  readonly workEventFrame: number;
   readonly nodes: number;
   readonly depositUnits?: number;
   readonly depositLevels?: number;
-  readonly strikesPerUnit?: number;
 }
 
 export const GATHERERS: readonly GathererSpec[] = [
@@ -43,6 +42,7 @@ export const GATHERERS: readonly GathererSpec[] = [
     atomic: HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_tree',
     mode: 'fell',
+    workEventFrame: 20,
     nodes: 2,
   },
   {
@@ -52,10 +52,10 @@ export const GATHERERS: readonly GathererSpec[] = [
     atomic: STONE_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_stone',
     mode: 'mine',
+    workEventFrame: 20,
     nodes: 1,
     depositUnits: STONE_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
-    strikesPerUnit: HARD_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_MUD,
@@ -64,10 +64,10 @@ export const GATHERERS: readonly GathererSpec[] = [
     atomic: CLAY_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_mud',
     mode: 'mine',
+    workEventFrame: 20,
     nodes: 1,
     depositUnits: CLAY_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
-    strikesPerUnit: CLAY_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_IRON,
@@ -76,10 +76,10 @@ export const GATHERERS: readonly GathererSpec[] = [
     atomic: IRON_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_iron',
     mode: 'mine',
+    workEventFrame: 19,
     nodes: 1,
     depositUnits: IRON_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
-    strikesPerUnit: HARD_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_GOLD,
@@ -88,10 +88,10 @@ export const GATHERERS: readonly GathererSpec[] = [
     atomic: GOLD_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_gold',
     mode: 'mine',
+    workEventFrame: 19,
     nodes: 1,
     depositUnits: GOLD_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
-    strikesPerUnit: HARD_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_MUSHROOM,
@@ -100,6 +100,7 @@ export const GATHERERS: readonly GathererSpec[] = [
     atomic: MUSHROOM_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_mushroom',
     mode: 'pick',
+    workEventFrame: 21,
     nodes: 3,
   },
 ] as const;

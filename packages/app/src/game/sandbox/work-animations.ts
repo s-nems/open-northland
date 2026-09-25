@@ -12,6 +12,7 @@ export const BUILD_GUIDE_ANIMATION = 'viking_scout_build_guide';
 // `setatomic 18 29/34/35` bindings.
 export const FARMER_REAP_ANIMATION = 'viking_farmer_harvest_wheat';
 export const FARMER_REAP_LENGTH = 24;
+export const FARMER_REAP_WORK_EVENT_FRAME = 14;
 export const FARMER_SOW_ANIMATION = 'viking_farmer_plant';
 export const FARMER_SOW_LENGTH = 24;
 export const FARMER_WATER_ANIMATION = 'viking_farmer_cultivate';

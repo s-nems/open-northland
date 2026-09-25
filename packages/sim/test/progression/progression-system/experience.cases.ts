@@ -85,16 +85,17 @@ describe('grantWorkExperience - accrual on a completed work atomic', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
     const ctx = ctxOf(sim);
-    grantWorkExperience(sim.world, ctx, e, WOOD, 5); // a felled trunk trains its whole yield at once
-    grantWorkExperience(sim.world, ctx, e, WOOD, 0); // a mid-job chop trains nothing
+    grantWorkExperience(sim.world, ctx, e, WOOD, 5); // five completed works at once
+    grantWorkExperience(sim.world, ctx, e, WOOD, 0); // a stroke that frees nothing trains nothing
     expect(sim.world.get(e, SettlerProgress).experience.get(WOOD_TRACK)).toBe(50); // 5 units × factor 10
   });
 });
 
 describe('AtomicSystem grants XP on a completed harvest', () => {
-  it('a woodcutter completing a wood harvest accrues the wood specialization', () => {
+  it('a woodcutter completing a wood unit accrues the wood specialization once', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
+    const strokes = sim.content.jobExperience.find((t) => t.typeId === WOOD_TRACK)?.baseRepeatCounter ?? 0;
     const resource = sim.world.create();
     sim.world.add(resource, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, resource, anchorOnlyFootprint());
@@ -105,19 +106,25 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
       targetEntity: null,
       targetTile: null,
     });
-    atomicSystem(sim.world, ctxOf(sim)); // completes this tick → harvest + XP grant
+    // The chop is stroke-counted: the chain lands the track's count, the last stroke freeing the unit.
+    for (let stroke = 0; stroke < strokes; stroke++) {
+      expect(sim.world.has(e, Carrying)).toBe(false);
+      atomicSystem(sim.world, ctxOf(sim));
+    }
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 }); // harvest still happens
     expect(sim.world.get(e, SettlerProgress).experience.get(WOOD_TRACK)).toBe(10); // and trained the spec
   });
 
-  it('a felling job trains only on the swing that drops the trunk, by its whole yield', () => {
+  it('a felling job trains once, on the stroke that drops the trunk, not by its yield', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
+    const strokes = sim.content.jobExperience.find((t) => t.typeId === WOOD_TRACK)?.baseRepeatCounter ?? 0;
+    const factor = sim.content.jobExperience.find((t) => t.typeId === WOOD_TRACK)?.experienceFactor ?? 0;
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
-    sim.world.add(tree, Felling, { chopsLeft: 2 });
+    sim.world.add(tree, Felling, { chops: 0 });
     const swing = () => {
       addCurrentAtomic(sim.world, e, {
         atomicId: 24,
@@ -127,11 +134,12 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
         targetTile: null,
       });
       atomicSystem(sim.world, ctxOf(sim));
-      removeCurrentAtomic(sim.world, e); // shed any rest tail so the next swing starts clean
+      removeCurrentAtomic(sim.world, e); // each swing starts clean
     };
-    swing(); // chop 1 of 2 - nothing extracted yet
+    for (let stroke = 1; stroke < strokes; stroke++) swing(); // nothing extracted yet
     expect(sim.world.get(e, SettlerProgress).experience.size).toBe(0);
-    swing(); // the felling chop - the whole 4-unit trunk drops
-    expect(sim.world.get(e, SettlerProgress).experience.get(WOOD_TRACK)).toBe(40); // 4 units × factor 10
+    swing(); // the felling stroke - the whole 4-unit trunk drops
+    expect(sim.world.has(tree, Resource)).toBe(false);
+    expect(sim.world.get(e, SettlerProgress).experience.get(WOOD_TRACK)).toBe(factor); // one work
   });
 });

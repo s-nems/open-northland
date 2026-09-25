@@ -6,21 +6,52 @@ import {
   Stockpile,
   setStockAmount,
 } from '../../../components/index.js';
-import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { isCraftingOperator, toolProductionBonus, wearWornTool } from '../../equipment/index.js';
-import { operatorProductionBonus } from '../../progression/index.js';
+import { isCraftingOperator, toolProductionBonusPct, wearWornTool } from '../../equipment/index.js';
+import { jobExperiencePercent } from '../../progression/index.js';
 import { livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
 
 /**
- * The bonus-output half of a completed batch: each done cycle credits its operator's experience bonus plus
- * its worn tool's credit - a sum, never a product - times its recipe outputs into the workplace's
- * {@link ProductionBonus} remainders, pairing cycles to operators index for index. A crafting operator's
- * tool wears one step per completed cycle, whether or not it rates a credit. The flush runs on every
- * completion regardless of the crediting operator's bonus, so a unit banked earlier is never stranded
- * behind a fresh worker.
+ * A completed cycle's extra output on top of its recipe outputs, in tenths of a unit: the operator's
+ * experience percent buys up to {@link MASTERY_BONUS_TENTHS}, its worn tool adds its own tenths, and the
+ * two are summed, never multiplied. The workplace banks the tenths per good and shelves each whole unit
+ * they add up to. Original behavior: a master with an iron tool makes 3.2 units per cycle.
+ */
+
+/** Tenths of a unit in one whole unit, the granularity the bonus is banked in. */
+export const OUTPUT_TENTHS_PER_UNIT = 10;
+
+/** Tenths a fully experienced operator adds per cycle: one and a half units on top of the base unit. */
+export const MASTERY_BONUS_TENTHS = 15;
+
+const PERCENT = 100;
+
+/** The tenths `experiencePct` buys per cycle, truncated. */
+export function experienceBonusTenths(experiencePct: number): number {
+  return Math.trunc((experiencePct * MASTERY_BONUS_TENTHS) / PERCENT);
+}
+
+/** The tenths a tool's whole-percent credit adds per cycle, truncated. */
+export function toolBonusTenths(toolPct: number): number {
+  return Math.trunc((toolPct * OUTPUT_TENTHS_PER_UNIT) / PERCENT);
+}
+
+/** One operator's bonus tenths per cycle of `goodType`: experience plus tool. */
+function operatorBonusTenths(world: World, ctx: SystemContext, operator: Entity, goodType: number): number {
+  return (
+    experienceBonusTenths(jobExperiencePercent(world, ctx, operator, goodType)) +
+    toolBonusTenths(toolProductionBonusPct(world, ctx, operator))
+  );
+}
+
+/**
+ * The bonus-output half of a completed batch: each done cycle banks its operator's bonus tenths times its
+ * recipe outputs into the workplace's {@link ProductionBonus} remainders, pairing cycles to operators index
+ * for index. A crafting operator's tool wears one step per completed cycle, whether or not it rates a
+ * credit. The flush runs on every completion regardless of the crediting operator's bonus, so a unit
+ * banked earlier is never stranded behind a fresh worker.
  */
 export function accrueBonusOutput(
   world: World,
@@ -36,18 +67,15 @@ export function accrueBonusOutput(
       if (op === undefined) return;
       // Credit before wearing: the cycle that breaks the tool is still a cycle the tool worked, so a tool
       // rated `uses: N` credits N cycles, not N - 1.
-      const bonus = fx.add(
-        operatorProductionBonus(world, ctx, op, cycle.goodType),
-        toolProductionBonus(world, ctx, op),
-      );
+      const tenths = operatorBonusTenths(world, ctx, op, cycle.goodType);
       if (isCraftingOperator(world, ctx, op)) wearWornTool(world, ctx, op);
-      if (bonus <= ZERO) return;
+      if (tenths <= 0) return;
       const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
       for (const output of outputs) {
         // A species good is not a ware on a shelf but the calf the herd bears, so there is no fraction
         // of one to bank; the wares its slaughter yields carry the bonus instead.
         if (livestockTribeOfGood(ctx.content, output.goodType) !== null) continue;
-        creditBonus(world, building, output.goodType, fx.mul(bonus, fx.fromInt(output.amount)));
+        creditBonus(world, building, output.goodType, tenths * output.amount);
       }
     });
   }
@@ -57,9 +85,8 @@ export function accrueBonusOutput(
 /**
  * Bank the worker's share of a ware banked outside a production cycle: the frames of the slaughter clip,
  * which put their goods straight on the shelf. The original pays these the same job efficiency a produced
- * good earns - experience plus tool, summed, and the tenths past a whole unit kept as a decimal remainder,
- * which is what the workplace's remainders are. Only the deposit is paid: the calf a breeding yields is one
- * animal at any skill.
+ * good earns, with the tenths past a whole unit kept as the workplace's remainder. Only the deposit is
+ * paid: the calf a breeding yields is one animal at any skill.
  */
 export function accrueDepositBonus(
   world: World,
@@ -68,21 +95,18 @@ export function accrueDepositBonus(
   operator: Entity,
   goodType: number,
 ): void {
-  const bonus = fx.add(
-    operatorProductionBonus(world, ctx, operator, goodType),
-    toolProductionBonus(world, ctx, operator),
-  );
-  if (bonus <= ZERO) return;
-  creditBonus(world, building, goodType, bonus);
+  const tenths = operatorBonusTenths(world, ctx, operator, goodType);
+  if (tenths <= 0) return;
+  creditBonus(world, building, goodType, tenths);
   flushBankedBonus(world, ctx, building);
 }
 
-/** Accumulate `extra` bonus output of `goodType` on the workplace's remainder map. */
-function creditBonus(world: World, building: Entity, goodType: number, extra: Fixed): void {
+/** Accumulate `tenths` of bonus output of `goodType` on the workplace's remainder map. */
+function creditBonus(world: World, building: Entity, goodType: number, tenths: number): void {
   const bonus =
     world.tryMut(building, ProductionBonus) ??
     world.add(building, ProductionBonus, { remainders: new Map() });
-  bonus.remainders.set(goodType, fx.add(bonus.remainders.get(goodType) ?? ZERO, extra));
+  bonus.remainders.set(goodType, (bonus.remainders.get(goodType) ?? 0) + tenths);
 }
 
 /**
@@ -110,7 +134,7 @@ function flushWholeUnits(
   const stock = world.get(building, Stockpile).amounts;
   for (const [goodType, held] of bonus.remainders) {
     let remainder = held;
-    while (remainder >= ONE) {
+    while (remainder >= OUTPUT_TENTHS_PER_UNIT) {
       const have = stock.get(goodType) ?? 0;
       const free =
         stockCapacity(world, ctx, building, goodType) -
@@ -118,10 +142,10 @@ function flushWholeUnits(
         reservedFor(world, building, goodType, recipes);
       if (free <= 0) break;
       setStockAmount(world, building, goodType, have + 1);
-      remainder = fx.sub(remainder, ONE);
+      remainder -= OUTPUT_TENTHS_PER_UNIT;
       ctx.events.emit({ kind: 'goodProduced', building, goodType, amount: 1 });
     }
-    if (remainder > ZERO) bonus.remainders.set(goodType, remainder);
+    if (remainder > 0) bonus.remainders.set(goodType, remainder);
     else bonus.remainders.delete(goodType);
   }
   if (bonus.remainders.size === 0) world.remove(building, ProductionBonus);

@@ -112,7 +112,7 @@ function runSlice(seed: number, ticks: number): GoldenRun {
       harvestAtomic: HARVEST_ATOMIC,
     });
     stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
-    sim.world.add(tree, Felling, { chopsLeft: woodFell?.chopsToFell ?? 0 });
+    sim.world.add(tree, Felling, { chops: 0 });
   }
 
   const trace: string[] = [];
@@ -189,67 +189,79 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // its WORK FLAG (auto-planted at its feet when it spawns - a gatherer is never free; it carries no
   // atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups the HQ's stored
   // wood into the mill and hauls finished planks back out). Cadence notes: a rested barefoot settler
-  // walks a land cell in 16 ticks (a laden one in 18), the inter-swing breather lands after every 2nd
-  // swing of a worker's burst, and a trained swing advances a tree by more than one chop (the
-  // woodcutter's second tree), and an idle carrier takes up a waiting load on its idle re-plan tick.
+  // walks a land cell in 16 ticks (a laden one in 18), a tree costs the trade's ten strokes back to
+  // back (one felled tree is not yet a curve point, so the second tree costs ten too), and an idle
+  // carrier takes up a waiting load on its idle re-plan tick.
   // Separation can push a walker off a waypoint; the continuation uses its captured full-step pace,
   // which also shifts later work cycles within this fixed window.
   const GOLDEN_TRACE: readonly string[] = [
     '24:8:22',
     '38:5:24',
     '41:5:24',
+    '44:5:24',
+    '47:5:24',
+    '50:5:24',
     '50:8:23',
+    '53:5:24',
+    '56:5:24',
     '59:5:24',
-    '63:5:22',
-    '87:7:22',
+    '62:5:24',
+    '65:5:24',
+    '69:5:22',
     '94:8:22',
-    '107:5:23',
+    '99:7:22',
+    '113:5:23',
     '120:8:23',
-    '146:7:23',
-    '147:5:22',
+    '153:5:22',
+    '158:7:23',
     '164:8:22',
     '190:8:23',
-    '191:5:23',
-    '202:7:22',
+    '197:5:23',
+    '214:7:22',
     '234:8:22',
-    '247:5:24',
-    '250:5:24',
-    '261:8:23',
-    '264:7:23',
+    '253:5:24',
+    '256:5:24',
+    '259:5:24',
+    '260:8:23',
+    '262:5:24',
+    '265:5:24',
     '268:5:24',
-    '272:5:22',
-    '302:8:22',
-    '328:8:23',
-    '334:5:23',
-    '355:7:22',
-    '372:8:22',
-    '390:5:22',
-    '398:8:23',
-    '439:8:22',
-    '452:5:23',
-    '453:7:23',
-    '465:8:23',
-    '509:8:22',
-    '535:8:23',
-    '541:7:22',
-    '579:8:22',
-    '605:8:23',
-    '639:7:23',
-    '649:8:22',
-    '675:8:23',
-    '719:8:22',
-    '727:7:22',
-    '745:8:23',
-    '789:8:22',
-    '815:8:23',
-    '825:7:23',
-    '859:8:22',
-    '885:8:23',
-    '913:7:22',
-    '929:8:22',
-    '955:8:23',
-    '959:8:22',
-    '985:8:23',
+    '271:5:24',
+    '274:5:24',
+    '277:5:24',
+    '277:7:23',
+    '280:5:24',
+    '284:5:22',
+    '301:8:22',
+    '327:8:23',
+    '346:5:23',
+    '365:7:22',
+    '371:8:22',
+    '397:8:23',
+    '402:5:22',
+    '438:8:22',
+    '463:7:23',
+    '464:5:23',
+    '464:8:23',
+    '508:8:22',
+    '534:8:23',
+    '551:7:22',
+    '578:8:22',
+    '604:8:23',
+    '649:7:23',
+    '652:8:22',
+    '679:8:23',
+    '723:8:22',
+    '737:7:22',
+    '749:8:23',
+    '793:8:22',
+    '819:8:23',
+    '836:7:23',
+    '863:8:22',
+    '889:8:23',
+    '925:7:22',
+    '933:8:22',
+    '959:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -261,16 +273,16 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('48a949f2');
+    expect(run.hash).toBe('78c141a2');
   });
 
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
     // Whole planks out of the mill inside this fixed 1000-tick observation window: the batches its
-    // journeys complete plus the whole bonus units the carpenter's growing experience banks over them
-    // (see the production-bonus cases).
-    expect(run.produced).toBe(20); // turn pauses leave one fewer production cycle in this fixed window
+    // journeys complete. The fixture's plank track accrues 7 raw XP per batch, short of a first curve
+    // point in this window, so no bonus tenths reach a whole unit (see the production-bonus cases).
+    expect(run.produced).toBe(14);
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

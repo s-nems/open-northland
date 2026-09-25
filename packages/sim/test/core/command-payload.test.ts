@@ -20,7 +20,7 @@ function parse(command: Record<string, unknown>): unknown {
 }
 
 describe('command payload contracts', () => {
-  it('preserves finite-deposit work cycles through the serialized command boundary', () => {
+  it('preserves a finite deposit and a felling marker through the serialized command boundary', () => {
     const command: Extract<Command, { kind: 'placeResource' }> = {
       kind: 'placeResource',
       good: 1,
@@ -28,22 +28,19 @@ describe('command payload contracts', () => {
       y: 6,
       remaining: 20,
       harvestAtomic: 1,
-      deposit: { levels: 3, strikesPerUnit: 4 },
+      deposit: { levels: 3 },
     };
     expect(parseCommandEnvelope(JSON.parse(JSON.stringify(imported({ ...command }))))).toEqual(
       imported({ ...command }),
     );
-    expect(() => parse({ ...command, deposit: { levels: 3 } })).toThrow(
-      /deposit: missing field 'strikesPerUnit'/,
-    );
-    for (const strikesPerUnit of ['4', 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
-      expect(() => parse({ ...command, deposit: { levels: 3, strikesPerUnit } })).toThrow(
-        /deposit.strikesPerUnit/,
-      );
-    }
-    expect(() => parse({ ...command, deposit: { levels: 3, strikesPerUnit: 4, unknown: true } })).toThrow(
+    expect(() => parse({ ...command, deposit: {} })).toThrow(/deposit: missing field 'levels'/);
+    expect(() => parse({ ...command, deposit: { levels: 3, strikesPerUnit: 4 } })).toThrow(
       /deposit: unknown field/,
     );
+    const { deposit: _deposit, ...bare } = command;
+    const felled = { ...bare, felling: true };
+    expect(parse(felled)).toEqual(imported(felled));
+    expect(() => parse({ ...command, felling: { chopsLeft: 3 } })).toThrow(/felling/);
   });
 
   it.each([

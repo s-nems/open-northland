@@ -65,8 +65,7 @@ export const MUSHROOM_PLUCKS_PER_PICK = 3;
 /** The viking `pick_up` list length (`[gfxanimatomic]` action 32, one facing-locked direction), pinned so
  *  {@link HARVEST_TICKS} stays static content. */
 export const MUSHROOM_PLUCK_FRAMES = 19;
-/** Ticks the picker stands in the ready stance after the last bend, tuned apart from the miners'
- *  inter-swing rest (sim `HARVEST_REST_TICKS`). */
+/** Ticks the picker stands in the ready stance after the last bend. */
 const MUSHROOM_PLUCK_BREATHER_TICKS = 15;
 
 /**

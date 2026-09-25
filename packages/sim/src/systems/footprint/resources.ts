@@ -122,14 +122,13 @@ export interface ResourceNodeSpec extends ResourceSpec {
 /**
  * Assemble a standing resource node from a resolved {@link ResourceNodeSpec} - the one construction path,
  * so a hand-placed tree and a command-placed tree are byte-identical entities. Null without creating
- * anything when `good` has no resource footprint record or a deposit's `strikesPerUnit` is below one;
- * both are rejected before `create()` so the rejection burns no entity id, which would otherwise make
- * the id sequence depend on how many rejected commands were issued.
+ * anything when `good` has no resource footprint record; that is rejected before `create()` so the
+ * rejection burns no entity id, which would otherwise make the id sequence depend on how many rejected
+ * commands were issued.
  */
 export function createResourceNode(world: World, content: ContentSet, spec: ResourceNodeSpec): Entity | null {
   // The stamp below re-resolves this same memoized record, so it cannot fail after the create.
   if (resourceFootprintForGood(content, spec.good) === null) return null;
-  if (spec.deposit !== undefined && spec.deposit.strikesPerUnit < 1) return null;
   const e = world.create();
   if (spec.landscapeId !== undefined) world.add(e, LandscapeResource, { id: spec.landscapeId });
   world.add(e, Position, positionOfNode(spec.x, spec.y));
@@ -140,12 +139,11 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
   stampResourceFootprint(world, content, e, spec.good);
-  if (spec.felling !== undefined) world.add(e, Felling, { chopsLeft: spec.felling.chopsLeft });
+  if (spec.felling === true) world.add(e, Felling, { chops: 0 });
   if (spec.deposit !== undefined) {
     world.add(e, MineDeposit, {
       initial: spec.deposit.initial ?? spec.remaining,
       levels: spec.deposit.levels,
-      strikesPerUnit: spec.deposit.strikesPerUnit,
       strikes: 0,
     });
   }

@@ -218,7 +218,7 @@ describe('a parked order and the multi-swing harvest chain', () => {
     sim.world.add(tree, Position, { x: fx.fromInt(4), y: fx.fromInt(1) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
     stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
-    sim.world.add(tree, Felling, { chopsLeft: 5 }); // far from felled - an ungated chain would re-arm
+    sim.world.add(tree, Felling, { chops: 0 }); // far from felled - an ungated chain would re-arm
     const swingTicks = 3; // fixture `viking_chop` length
     addCurrentAtomic(sim.world, e, {
       atomicId: HARVEST_ATOMIC,
@@ -234,7 +234,7 @@ describe('a parked order and the multi-swing harvest chain', () => {
 
     sim.run(swingTicks - 1);
     // Exactly one chop landed, then the settler was released to its order - not re-armed tree-to-fall.
-    expect(sim.world.get(tree, Felling).chopsLeft).toBe(4);
+    expect(sim.world.get(tree, Felling).chops).toBe(1);
     expect(sim.world.has(e, CurrentAtomic)).toBe(false);
     expect(sim.world.has(e, MoveGoal)).toBe(true);
   });

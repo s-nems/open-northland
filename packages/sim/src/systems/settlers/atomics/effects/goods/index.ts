@@ -4,13 +4,12 @@ export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
 export { drinkDraught } from './drink.js';
 export { equipFromStore, unequipWornGood } from './equip.js';
-export { harvestFromNode } from './harvest.js';
 export {
-  beginRestTail,
   continuesHarvest,
-  endRestTail,
-  swingWorkUnits,
-} from './harvest-burst.js';
+  harvestFromNode,
+  harvestStrokesPerUnit,
+  PICKUP_STROKES_PER_UNIT,
+} from './harvest.js';
 export {
   dropOrStackGood,
   placeUnitOnTile,

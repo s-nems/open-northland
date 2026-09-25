@@ -97,12 +97,6 @@ export class ResidentFigures {
 
 /** The item at rest: no atomic, no load, no fight, one facing, so every row of a look reads alike. */
 function standing(item: DrawItem): DrawItem {
-  const {
-    atomicId: _atomicId,
-    elapsed: _elapsed,
-    atomicRest: _atomicRest,
-    carryGood: _carryGood,
-    ...rest
-  } = item;
+  const { atomicId: _atomicId, elapsed: _elapsed, carryGood: _carryGood, ...rest } = item;
   return { ...rest, state: 'idle', facing: ROW_FACING, carrying: false, engaged: false, working: false };
 }

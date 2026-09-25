@@ -64,7 +64,7 @@ describe('extractJobExperience', () => {
       layer: 'base',
     };
     expect(tracks).toEqual([
-      // A "general" track carries no `good` -> goodType omitted, baseRepeatCounter omitted.
+      // A "general" track carries no `good` -> goodType omitted; no `baserepeatcounter` loads as 10.
       {
         typeId: 5,
         id: 'gatherer_basic',
@@ -72,6 +72,7 @@ describe('extractJobExperience', () => {
         jobType: 33,
         goodTypes: [],
         experienceFactor: 110,
+        baseRepeatCounter: 10,
         source: src,
       },
       // A good-specific track carries `good`.
@@ -82,6 +83,7 @@ describe('extractJobExperience', () => {
         jobType: 33,
         goodTypes: [22],
         experienceFactor: 260,
+        baseRepeatCounter: 10,
         source: src,
       },
       // `baserepeatcounter` is captured when present.
@@ -103,6 +105,7 @@ describe('extractJobExperience', () => {
         jobType: 30,
         goodTypes: [44, 45],
         experienceFactor: 100,
+        baseRepeatCounter: 10,
         source: src,
       },
     ]);

@@ -22,7 +22,6 @@ export { readStockpile } from './stockpile-readers.js';
 export {
   readActingAtomic,
   readAtomicElapsed,
-  readAtomicRest,
   readAtomicTargetEntity,
   readCarrying,
   readCraftPerformance,

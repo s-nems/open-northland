@@ -156,8 +156,8 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     required: { good: 'integer', ...NODE, remaining: 'integer', harvestAtomic: 'integer' },
     optional: {
       landscapeId: 'integer',
-      felling: { fields: { required: { chopsLeft: 'integer' } } },
-      deposit: { fields: { required: { levels: 'integer', strikesPerUnit: 'integer' } } },
+      felling: 'boolean',
+      deposit: { fields: { required: { levels: 'integer' } } },
     },
   },
   placeSignpost: { required: { entity: 'integer', ...NODE } },

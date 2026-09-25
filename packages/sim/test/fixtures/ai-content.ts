@@ -27,7 +27,7 @@ export function aiContent(): ContentSet {
         id: 'wood',
         weight: 1,
         atomics: { harvest: 24 },
-        gathering: { bioLandscape: true, chopsToFell: 3, yieldPerNode: 4 },
+        gathering: { bioLandscape: true, yieldPerNode: 4 },
       },
       // Clay ("mud") is a trivial direct pickup here - the collector-selection tests only need a
       // distinct harvest atomic per good, not the original's digging lifecycle.

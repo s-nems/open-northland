@@ -1,29 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AtomicClock,
   addCurrentAtomic,
-  CurrentAtomic,
+  Equipment,
+  type EquipmentSlot,
   Felling,
+  MISC_EQUIP_SLOTS,
   Position,
   Resource,
   SettlerProgress,
 } from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
+import { BARE_HANDS_WORK_FACTOR_PCT } from '../../../src/systems/equipment/index.js';
 import {
   anchorOnlyFootprint,
   atomicSystem,
-  EXPERIENCE_MASTERY_REPEATS,
+  EXPERIENCE_MASTERY_POINTS,
+  EXPERIENCE_XP_PER_POINT,
   experienceBonus,
+  experiencePercent,
+  experiencePoints,
   experienceRepeats,
   FIGHT_DAMAGE_BONUS_MAX,
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_MASTERY_HITS,
   fightDamageBonus,
-  operatorProductionBonus,
+  jobExperiencePercent,
   SCOUT_VISION_BONUS_MAX_NODES,
   scoutVisionBonusNodes,
   stampResourceFootprintData,
+  strokesPerUnit,
   WEAPON_MAIN_TYPE,
   withFightDamageBonus,
 } from '../../../src/systems/index.js';
@@ -41,39 +47,50 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('experienceBonus - the repeats → bonus curve', () => {
-  it('matches the reference table within 2 points at repeats 1..11', () => {
-    // The user-specified reference bonus percentages the K = 4.9 fit targets.
+describe('experiencePercent - the points → percent curve', () => {
+  it('reproduces the bonus table observed on the original at points 1..11 exactly', () => {
     const reference = [17, 29, 38, 45, 51, 56, 60, 63, 66, 68, 70];
-    for (const [i, expected] of reference.entries()) {
-      const got = fx.toFloat(experienceBonus(i + 1)) * 100;
-      expect(Math.abs(got - expected)).toBeLessThanOrEqual(2);
-    }
+    for (const [i, expected] of reference.entries()) expect(experiencePercent(i + 1)).toBe(expected);
   });
 
-  it('clamps to 0% below one repeat and to exactly 100% at mastery and beyond', () => {
+  it('reads 0 below one point, 97 at a hundred and exactly 100 from mastery on', () => {
+    expect(experiencePercent(0)).toBe(0);
+    expect(experiencePercent(-3)).toBe(0);
+    expect(experiencePercent(100)).toBe(97);
+    expect(experiencePercent(EXPERIENCE_MASTERY_POINTS - 1)).toBe(98);
+    expect(experiencePercent(EXPERIENCE_MASTERY_POINTS)).toBe(100);
+    expect(experiencePercent(EXPERIENCE_MASTERY_POINTS + 500)).toBe(100);
     expect(experienceBonus(0)).toBe(ZERO);
-    expect(experienceBonus(-3)).toBe(ZERO);
-    expect(experienceBonus(EXPERIENCE_MASTERY_REPEATS)).toBe(ONE);
-    expect(experienceBonus(EXPERIENCE_MASTERY_REPEATS + 500)).toBe(ONE);
+    expect(experienceBonus(EXPERIENCE_MASTERY_POINTS)).toBe(ONE);
   });
 
-  it('is monotonically increasing from 0 to mastery', () => {
-    for (let n = 1; n <= EXPERIENCE_MASTERY_REPEATS; n++) {
-      expect(experienceBonus(n)).toBeGreaterThan(experienceBonus(n - 1));
+  it('never falls as points grow', () => {
+    for (let n = 1; n <= EXPERIENCE_MASTERY_POINTS; n++) {
+      expect(experiencePercent(n)).toBeGreaterThanOrEqual(experiencePercent(n - 1));
     }
   });
 
-  it('truncates fractional repeats (integer domain)', () => {
-    expect(experienceBonus(5.9)).toBe(experienceBonus(5));
+  it('truncates fractional points (integer domain)', () => {
+    expect(experiencePercent(5.9)).toBe(experiencePercent(5));
+  });
+});
+
+describe('experiencePoints - raw XP in hundredths, whatever the track', () => {
+  it('reads one point per hundred raw XP, truncating the rest', () => {
+    expect(experiencePoints(0)).toBe(0);
+    expect(experiencePoints(99)).toBe(0);
+    expect(experiencePoints(100)).toBe(1);
+    expect(experiencePoints(250)).toBe(2);
+    expect(experiencePoints(-5)).toBe(0);
   });
 });
 
 describe('scoutVisionBonusNodes - signpost craft widens the scout eye a little', () => {
   it('scales the curve to whole extra nodes, capped well below a 2x eye', () => {
     expect(scoutVisionBonusNodes(0)).toBe(0);
-    expect(scoutVisionBonusNodes(10)).toBe(4); // ~69% of the 6-node cap, truncated
-    expect(scoutVisionBonusNodes(100)).toBe(SCOUT_VISION_BONUS_MAX_NODES); // mastery: the full cap
+    expect(scoutVisionBonusNodes(10)).toBe(4); // 68% of the 6-node cap, truncated
+    expect(scoutVisionBonusNodes(100)).toBe(5); // 97%: still a node short
+    expect(scoutVisionBonusNodes(EXPERIENCE_MASTERY_POINTS)).toBe(SCOUT_VISION_BONUS_MAX_NODES);
   });
 });
 
@@ -84,9 +101,9 @@ describe('fightDamageBonus - hits with a weapon class buy extra damage', () => {
     expect(fightDamageBonus(FIGHT_MASTERY_HITS * 3)).toBe(FIGHT_DAMAGE_BONUS_MAX);
   });
 
-  it('scales the shared curve onto the deeper 500-hit mastery', () => {
-    // 50 hits = 10 curve repeats ≈ 69% of the halved cap ≈ +35%.
-    expect(fx.toFloat(fightDamageBonus(50))).toBeCloseTo(0.347, 2);
+  it('scales the shared curve onto the five-times-deeper hit count', () => {
+    // 50 hits = 10 curve points = 68% of the halved cap = +34%.
+    expect(fx.toFloat(fightDamageBonus(50))).toBeCloseTo(0.34, 2);
   });
 
   it('withFightDamageBonus raises base damage by the truncated bonus fraction', () => {
@@ -98,64 +115,19 @@ describe('fightDamageBonus - hits with a weapon class buy extra damage', () => {
   });
 });
 
-describe('work-credit wiring - an experienced gatherer fells in fewer swings, not faster ones', () => {
-  const WOOD_MASTERY_XP = 1000; // 100 repeats at the fixture wood track's factor 10
-
-  /** A woodcutter with `xp` on its wood track, a 3-chop tree, and one completed swing (duration 1). */
-  const swingOnce = (xp: number) => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const e = settlerAt(sim, { jobType: WOODCUTTER, position: { x: fx.fromInt(1), y: fx.fromInt(0) } });
-    if (xp > 0) sim.world.mut(e, SettlerProgress).experience.set(WOOD_TRACK, xp);
-    const tree = sim.world.create();
-    sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
-    sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
-    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
-    sim.world.add(tree, Felling, { chopsLeft: 3 });
-    addCurrentAtomic(sim.world, e, {
-      atomicId: 24,
-      duration: 1,
-      effect: { kind: 'harvest', resource: tree, goodType: WOOD },
-      targetEntity: tree,
-      targetTile: null,
-    });
-    atomicSystem(sim.world, ctxOf(sim));
-    return { sim, settler: e, tree };
-  };
-
-  it("a novice's swing lands one chop; a master's swing counts double", () => {
-    const novice = swingOnce(0);
-    expect(novice.sim.world.get(novice.tree, Felling).chopsLeft).toBe(2);
-    const master = swingOnce(WOOD_MASTERY_XP);
-    expect(master.sim.world.get(master.tree, Felling).chopsLeft).toBe(1);
-    // A whole credit banks no fraction - the novice atomic keeps its historical shape.
-    expect(novice.sim.world.get(novice.settler, CurrentAtomic).workCredit).toBeUndefined();
-  });
-
-  it('a mid-curve gatherer banks the fraction and cashes it on a later swing', () => {
-    // 40 XP = 4 repeats → bonus ≈ 0.46: swings land 1, 1, then 2 chops (0.46 + 0.46 + 0.46 crosses 1).
-    const { sim, settler, tree } = swingOnce(40);
-    expect(sim.world.get(tree, Felling).chopsLeft).toBe(2);
-    expect(sim.world.get(settler, CurrentAtomic).workCredit).toBeDefined();
-    const rearm = () => {
-      sim.world.mut(settler, AtomicClock).elapsed = 0;
-      const atomic = sim.world.mut(settler, CurrentAtomic);
-      atomic.duration = 1;
-      delete atomic.restTail; // strip any breather - this drives raw swings only
-      atomicSystem(sim.world, ctxOf(sim));
-    };
-    rearm();
-    expect(sim.world.get(tree, Felling).chopsLeft).toBe(1);
-    rearm();
-    expect(sim.world.has(tree, Felling)).toBe(false); // the banked credit felled it a swing early
-  });
-});
-
-describe('operatorProductionBonus - product-specific track with a general fallback', () => {
+describe('jobExperiencePercent - product-specific track with a general fallback', () => {
   it('uses general trade experience for a product without its own specialization', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carpenter = settlerAt(sim, { jobType: CARPENTER });
     sim.world.mut(carpenter, SettlerProgress).experience.set(CARPENTER_GENERAL_TRACK, 500);
-    expect(operatorProductionBonus(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experienceBonus(5));
+    expect(jobExperiencePercent(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experiencePercent(5));
+  });
+
+  it('reads the general track for a good-less work', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const carpenter = settlerAt(sim, { jobType: CARPENTER });
+    sim.world.mut(carpenter, SettlerProgress).experience.set(CARPENTER_GENERAL_TRACK, 500);
+    expect(jobExperiencePercent(sim.world, ctxOf(sim), carpenter, null)).toBe(experiencePercent(5));
   });
 
   it('uses one specialization for every product variant listed on its track', () => {
@@ -170,22 +142,28 @@ describe('operatorProductionBonus - product-specific track with a general fallba
     };
     const sim = new Simulation({ seed: 1, content });
     const carpenter = settlerAt(sim, { jobType: CARPENTER });
-    sim.world
-      .mut(carpenter, SettlerProgress)
-      .experience.set(sharedTrack.typeId, sharedTrack.experienceFactor * 5);
-    expect(operatorProductionBonus(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experienceBonus(5));
+    // The curve reads raw XP in hundredths whatever the track's factor: 500 raw XP is 5 points here too.
+    sim.world.mut(carpenter, SettlerProgress).experience.set(sharedTrack.typeId, 500);
+    expect(jobExperiencePercent(sim.world, ctxOf(sim), carpenter, WOOD)).toBe(experiencePercent(5));
   });
 
-  it('a carrier operator with heavy delivery XP still reads ZERO (its XP is display-only)', () => {
+  it('a carrier with heavy delivery XP still reads 0 (its XP is display-only)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carrier = settlerAt(sim, { jobType: CARRIER });
     sim.world.mut(carrier, SettlerProgress).experience.set(CARRIER_TRACK, 100_000);
-    expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier, WOOD)).toBe(ZERO);
+    expect(jobExperiencePercent(sim.world, ctxOf(sim), carrier, WOOD)).toBe(0);
   });
 });
 
 describe('experienceRepeats - raw XP back to completed-work repeats', () => {
-  const track = { typeId: 1, id: 't', jobType: 1, goodTypes: [], experienceFactor: 100 };
+  const track = {
+    typeId: 1,
+    id: 't',
+    jobType: 1,
+    goodTypes: [],
+    experienceFactor: 100,
+    baseRepeatCounter: 10,
+  };
 
   it('divides the accrual rate back out, truncating partial credit', () => {
     expect(experienceRepeats(0, track)).toBe(0);
@@ -195,5 +173,74 @@ describe('experienceRepeats - raw XP back to completed-work repeats', () => {
 
   it('a rate-0 track represents no repeats', () => {
     expect(experienceRepeats(500, { ...track, experienceFactor: 0 })).toBe(0);
+  });
+});
+
+describe("strokes rule wiring - experience and a tool cut a gatherer's strokes per unit", () => {
+  const MASTERY_XP = EXPERIENCE_MASTERY_POINTS * EXPERIENCE_XP_PER_POINT;
+  const MASTERY_PCT = 100;
+  const TOOL_IRON = 12; // fixture `tool_iron`
+  const IRON_WORK_FACTOR_PCT = 175; // its `workFactorPct`
+  const HARVEST_WOOD = 24; // the woodcutter's stroke-counted chop clip
+  const STROKE_GUARD = 100;
+  const trackStrokes = () =>
+    testContent().jobExperience.find((t) => t.typeId === WOOD_TRACK)?.baseRepeatCounter ?? 0;
+
+  /** Strokes a woodcutter with `xp` on its wood track (and an optional tool) lands before the fixture
+   *  tree falls, driving the executor's own stroke chain. */
+  const fell = (xp: number, tool?: number) => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = settlerAt(sim, { jobType: WOODCUTTER, position: { x: fx.fromInt(1), y: fx.fromInt(0) } });
+    if (xp > 0) sim.world.mut(e, SettlerProgress).experience.set(WOOD_TRACK, xp);
+    if (tool !== undefined) {
+      sim.world.add(e, Equipment, {
+        boots: null,
+        tool: { goodType: tool, degreeOfUse: fx.fromInt(0) },
+        weapon: null,
+        armor: null,
+        misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+      });
+    }
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_WOOD });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
+    sim.world.add(tree, Felling, { chops: 0 });
+    addCurrentAtomic(sim.world, e, {
+      atomicId: HARVEST_WOOD,
+      duration: 1,
+      effect: { kind: 'harvest', resource: tree, goodType: WOOD },
+      targetEntity: tree,
+      targetTile: null,
+    });
+    let strokes = 0;
+    while (sim.world.has(tree, Felling) && strokes < STROKE_GUARD) {
+      atomicSystem(sim.world, ctxOf(sim));
+      strokes += 1;
+    }
+    const wear = sim.world.tryGet(e, Equipment)?.tool?.degreeOfUse ?? 0;
+    return { strokes, wear };
+  };
+
+  it('a novice needs the track count, a master fewer, a master with an iron tool one', () => {
+    const base = trackStrokes();
+    expect(strokesPerUnit(base, 0, BARE_HANDS_WORK_FACTOR_PCT)).toBe(base);
+    expect(strokesPerUnit(base, MASTERY_PCT, BARE_HANDS_WORK_FACTOR_PCT)).toBeLessThan(base);
+    expect(strokesPerUnit(base, MASTERY_PCT, IRON_WORK_FACTOR_PCT)).toBe(1);
+  });
+
+  it('the executor fells in exactly those counts', () => {
+    const base = trackStrokes();
+    expect(fell(0).strokes).toBe(base);
+    expect(fell(MASTERY_XP).strokes).toBe(strokesPerUnit(base, MASTERY_PCT, BARE_HANDS_WORK_FACTOR_PCT));
+    expect(fell(0, TOOL_IRON).strokes).toBe(strokesPerUnit(base, 0, IRON_WORK_FACTOR_PCT));
+    expect(fell(MASTERY_XP, TOOL_IRON).strokes).toBe(1);
+  });
+
+  it('every stroke wears the tool, the ones that fell nothing included', () => {
+    const single = fell(MASTERY_XP, TOOL_IRON);
+    const novice = fell(0, TOOL_IRON);
+    expect(single.wear).toBeGreaterThan(0);
+    expect(novice.wear).toBe(single.wear * novice.strokes);
   });
 });

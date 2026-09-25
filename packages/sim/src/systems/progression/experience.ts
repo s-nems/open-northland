@@ -1,4 +1,8 @@
-import type { ContentSet, HumanJobExperienceType } from '@open-northland/data';
+import {
+  type ContentSet,
+  DEFAULT_BASE_REPEAT_COUNTER,
+  type HumanJobExperienceType,
+} from '@open-northland/data';
 import {
   hasMissionBehaviour,
   isWildlife,
@@ -34,14 +38,13 @@ export function trackFor(
 }
 
 /**
- * Strokes one unit of output costs this `(job, good)` pairing - the track's extracted
- * `baserepeatcounter` (`humanjobexperiencetypes.ini`: hunter 5, farmer wheat 2, fisher 5) read as
- * strokes-per-action. The reading is indirect but calibrated: the farm's measured throughput of ~10 grain
- * per farmer per 10 min lands with 2 strokes and would not with 1 or 4. Never below one stroke.
+ * A novice's strokes per unit for this `(job, good)` pairing: the track's `baserepeatcounter`, the base
+ * that `strokesPerUnit` cuts down by experience and tool. A pairing no track covers costs the record
+ * default, as in the original. Never below one stroke.
  */
 export function workRepeatsFor(ctx: SystemContext, jobType: number | null, goodType: number): number {
-  if (jobType === null) return 1;
-  return Math.max(1, trackFor(ctx, jobType, goodType)?.baseRepeatCounter ?? 1);
+  if (jobType === null) return DEFAULT_BASE_REPEAT_COUNTER;
+  return Math.max(1, trackFor(ctx, jobType, goodType)?.baseRepeatCounter ?? DEFAULT_BASE_REPEAT_COUNTER);
 }
 
 /** The cap on any track, in repeats; the saved value is the repeat count times the track's factor. */

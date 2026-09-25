@@ -15,7 +15,9 @@ import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
+import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
   constructionBillOf,
@@ -211,45 +213,56 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
 }
 
 /**
- * Hammer strikes a builder sinks into each unit of construction material, so the strikes to raise a
- * building scale with its size through its material cost. Approximation tuned to the original's observed
- * pace: the 4-unit base home takes about 100 strikes, a little under 1% of the build each.
+ * Construction steps one unit of construction material takes to install, so the steps to raise a
+ * building scale with its size through its material cost: the 4-unit base home takes 120. Original
+ * behavior.
  */
-const STRIKES_PER_UNIT = 26;
+const STEPS_PER_UNIT = 30;
 
-/** Labor installed by one hammer strike at `site`. */
-function constructionLaborPerStrike(world: World, ctx: SystemContext, site: Entity): Fixed {
-  const totalStrikes = constructionTotalUnits(world, ctx, site) * STRIKES_PER_UNIT;
-  // At least 1 ULP per strike so a huge-cost building still finishes: `trunc(ONE / totalStrikes)` floors
-  // to 0 once `totalStrikes > ONE`.
-  return totalStrikes > 0 ? (Math.max(1, fx.div(ONE, fx.fromInt(totalStrikes))) as Fixed) : ONE;
+/** Labor installed by one construction step at `site`. */
+function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity): Fixed {
+  const totalSteps = constructionTotalUnits(world, ctx, site) * STEPS_PER_UNIT;
+  // At least 1 ULP per step so a huge-cost building still finishes: `trunc(ONE / totalSteps)` floors
+  // to 0 once `totalSteps > ONE`.
+  return totalSteps > 0 ? (Math.max(1, fx.div(ONE, fx.fromInt(totalSteps))) as Fixed) : ONE;
 }
 
 /**
- * Hammer strikes which can still install already-delivered material. Planner-tick claims subtract from
- * this count so a crew can work in parallel without assigning more builders than the current material cap
- * can use.
+ * Construction steps which can still install already-delivered material. Planner-tick claims subtract
+ * from this count so a crew can work in parallel without assigning more builders than the current
+ * material cap can use; a claim counts as one step, a bare-handed novice's swing.
  */
-export function remainingConstructionStrikes(world: World, ctx: SystemContext, site: Entity): number {
+export function remainingConstructionSteps(world: World, ctx: SystemContext, site: Entity): number {
   const labor = world.tryGet(site, UnderConstruction)?.labor;
   if (labor === undefined) return 0;
   const delivered = deliveredConstructionFraction(world, ctx, site);
   const cap = delivered < ONE ? delivered : ONE;
   if (labor >= cap) return 0;
-  return Math.ceil((cap - labor) / constructionLaborPerStrike(world, ctx, site));
+  return Math.ceil((cap - labor) / constructionLaborPerStep(world, ctx, site));
 }
 
 /**
- * Advance a site's builder-work `labor` by one hammer strike - the `construct` atomic's effect. A free
- * (empty-cost) type has nothing to install, so a single swing completes it.
+ * Advance a site's builder-work `labor` by one hammer swing of `builder` - the `construct` atomic's
+ * effect. A swing installs the steps the builder's experience and tool are worth. A free (empty-cost)
+ * type has nothing to install, so a single swing completes it.
  */
-export function advanceConstructionLabor(world: World, ctx: SystemContext, site: Entity): boolean {
+export function advanceConstructionLabor(
+  world: World,
+  ctx: SystemContext,
+  site: Entity,
+  builder: Entity,
+): boolean {
   const uc = world.tryMut(site, UnderConstruction);
   if (uc === undefined) return false;
   const before = uc.labor;
-  const quantum = constructionLaborPerStrike(world, ctx, site);
+  const steps = buildStepsPerSwing(
+    jobExperiencePercent(world, ctx, builder, null),
+    toolWorkFactorPct(world, ctx, builder),
+  );
+  const quantum = fx.mul(constructionLaborPerStep(world, ctx, site), fx.fromInt(steps));
   // Cap the swing at the delivered-material fraction, so `built = min(labor, delivered)` moves as swings
-  // land rather than jumping when the next material arrives.
+  // land rather than jumping when the next material arrives. Original behavior: the steps past the
+  // delivered material are lost, not carried.
   const delivered = deliveredConstructionFraction(world, ctx, site);
   const cap = delivered < ONE ? delivered : ONE;
   const advanced = fx.add(uc.labor, quantum);

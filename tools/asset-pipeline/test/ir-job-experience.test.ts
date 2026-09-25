@@ -25,6 +25,7 @@ const track = (
   jobType,
   goodTypes,
   experienceFactor: 100,
+  baseRepeatCounter: 10,
 });
 
 const tribe = (jobEnables: TribeType['jobEnables']): TribeType => ({

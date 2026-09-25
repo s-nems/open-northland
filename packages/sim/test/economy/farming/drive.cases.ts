@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, positionOfNode, Simulation } from '../../../src/index.js';
-import { plannerSystem } from '../../../src/systems/index.js';
+import {
+  EXPERIENCE_MASTERY_POINTS,
+  EXPERIENCE_XP_PER_POINT,
+  plannerSystem,
+} from '../../../src/systems/index.js';
 import { dropPath } from '../../../src/systems/movement/nav-state.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -171,7 +175,8 @@ describe('planFarmer - the drive ladder', () => {
   it('a master reaps a two-stroke field in one swing - experience buys fewer strokes, never faster ones', () => {
     const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
     const { field, farmer } = plotAtCap(sim, { stage: STAGES });
-    sim.world.mut(farmer, components.SettlerProgress).experience.set(FARMER_WHEAT_TRACK, 100); // 100 XP at rate 1 = mastery
+    const masteryXp = EXPERIENCE_MASTERY_POINTS * EXPERIENCE_XP_PER_POINT;
+    sim.world.mut(farmer, components.SettlerProgress).experience.set(FARMER_WHEAT_TRACK, masteryXp);
 
     plannerSystem(sim.world, ctxOf(sim));
     sim.run(sim.world.get(farmer, components.CurrentAtomic).duration);

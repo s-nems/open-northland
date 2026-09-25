@@ -1,4 +1,3 @@
-import type { Fixed } from '../../core/fixed.js';
 import { defineComponent } from '../../ecs/world.js';
 
 /** One in-flight production batch of a {@link Production} workplace. */
@@ -38,12 +37,12 @@ export const CraftSelection = defineComponent<{
 }>('CraftSelection', 'economy');
 
 /**
- * A workplace's fractional experience-bonus output - the decimal part of "an experienced baker bakes 1.5
- * bread per cycle". A remainder moves into the {@link Stockpile} as a whole unit the moment it crosses ONE,
- * so only whole units are ever visible to withdrawal (authored: a 0.9 remainder cannot leave the building).
- * The component exists only while some remainder is non-zero.
+ * A workplace's banked bonus output - the tenths past a whole unit of "an experienced baker bakes 2.5
+ * bread per cycle". A remainder moves into the {@link Stockpile} as a whole unit the moment it reaches ten
+ * tenths, so only whole units are ever visible to withdrawal (original behavior: the house keeps the
+ * tenths). The component exists only while some remainder is non-zero.
  */
 export const ProductionBonus = defineComponent<{
-  /** goodType → the accumulated fractional bonus output (`Fixed`), pending its next whole unit. */
-  remainders: Map<number, Fixed>;
+  /** goodType → the banked bonus output in tenths of a unit; past nine only while the shelf is full. */
+  remainders: Map<number, number>;
 }>('ProductionBonus', 'economy');

@@ -144,7 +144,6 @@ function experienceBonusPct(
   spec: number,
   track: JobExperienceDef | undefined,
   points: number,
-  repeats: number,
 ): number | null {
   if (track === undefined && WEAPON_XP_KEY.has(spec)) {
     return Math.round(fx.toFloat(systems.fightDamageBonus(points)) * 100);
@@ -153,7 +152,7 @@ function experienceBonusPct(
     return Math.round((systems.scoutVisionBonusNodes(points) / systems.SCOUT_VISION_NODES) * 100);
   }
   if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
-  return Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);
+  return systems.experiencePercent(systems.experiencePoints(points));
 }
 
 /**
@@ -171,7 +170,7 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
     rows.push({
       label: experienceLabel(ctx, spec, track),
       repeats,
-      bonusPct: experienceBonusPct(ctx, spec, track, points, repeats),
+      bonusPct: experienceBonusPct(ctx, spec, track, points),
       spec,
     });
   }

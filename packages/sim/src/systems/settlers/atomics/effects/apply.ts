@@ -1,16 +1,18 @@
-import { type CurrentAtomic, clearNeedOrder, ownerOf } from '../../../../components/index.js';
+import { type CurrentAtomic, clearNeedOrder, ownerOf, Settler } from '../../../../components/index.js';
 import { assertNever } from '../../../../core/brand.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { openChest } from '../../../chests/index.js';
 import type { SystemContext } from '../../../context.js';
 import { advanceConstructionLabor } from '../../../economy/construction.js';
 import { applySow, applyWater } from '../../../economy/fields.js';
+import { wearWornTool } from '../../../equipment/index.js';
 import {
   grantCarryExperience,
   grantProfessionExperience,
   grantScoutExperience,
   grantWorkExperience,
 } from '../../../progression/index.js';
+import { isStrokeCountedAtomic } from '../../../readviews/index.js';
 import { erectSignpost } from '../../../signposts/index.js';
 import { loadCart, unloadCart } from '../../../trade/index.js';
 import { serveDrillRepetition } from '../../drives/training.js';
@@ -21,16 +23,16 @@ import {
   equipFromStore,
   forageBerry,
   harvestFromNode,
+  harvestStrokesPerUnit,
+  PICKUP_STROKES_PER_UNIT,
   pickupFromStore,
   pileupIntoStore,
-  swingWorkUnits,
   unequipWornGood,
 } from './goods/index.js';
 
-/** A live view onto the running {@link CurrentAtomic}: a harvest swing banks `workCredit` back through it. */
 type CompletedAtomic = Pick<
   NonNullable<(typeof CurrentAtomic)['__value']>,
-  'atomicId' | 'duration' | 'effect' | 'workCredit'
+  'atomicId' | 'duration' | 'effect'
 >;
 
 /** Apply a completed atomic's effect. Returns the units a `harvest` swing extracted, undefined otherwise. */
@@ -42,16 +44,18 @@ export function applyEffect(
 ): number | undefined {
   const effect = atomic.effect;
   switch (effect.kind) {
+    // Original behavior: a split-up or transform clip is one stroke of the worker's per-unit count and
+    // wears the tool; a pickup clip takes a unit outright. Either trains once per unit it frees.
     case 'harvest': {
-      const units = harvestFromNode(
-        world,
-        ctx,
-        settler,
-        effect.resource,
-        effect.goodType,
-        swingWorkUnits(world, ctx, settler, atomic, effect.goodType),
-      );
-      grantWorkExperience(world, ctx, settler, effect.goodType, units);
+      const identity = world.tryGet(settler, Settler);
+      const strokeCounted =
+        identity !== undefined && isStrokeCountedAtomic(ctx.content, identity, atomic.atomicId);
+      const needed = strokeCounted
+        ? harvestStrokesPerUnit(world, ctx, settler, effect.goodType)
+        : PICKUP_STROKES_PER_UNIT;
+      const units = harvestFromNode(world, ctx, settler, effect.resource, effect.goodType, needed);
+      if (strokeCounted) wearWornTool(world, ctx, settler);
+      if (units > 0) grantWorkExperience(world, ctx, settler, effect.goodType, 1);
       return units;
     }
     // Fishing owns its multi-clip state machine in the executor; it never reaches the generic applier.
@@ -96,13 +100,20 @@ export function applyEffect(
     case 'openChest':
       openChest(world, ctx, settler, effect.chest);
       return;
-    case 'construct':
-      if (advanceConstructionLabor(world, ctx, effect.site)) grantProfessionExperience(world, ctx, settler);
+    // A swing wears the tool whether or not it installed anything, after the tool counted for it; only an
+    // installing swing trains.
+    case 'construct': {
+      const installed = advanceConstructionLabor(world, ctx, effect.site, settler);
+      wearWornTool(world, ctx, settler);
+      if (installed) grantProfessionExperience(world, ctx, settler);
       return;
+    }
     case 'sow':
       applySow(world, ctx, effect);
       return;
+    // Watering wears the tool and trains nothing; sowing does neither.
     case 'water':
+      wearWornTool(world, ctx, settler);
       applyWater(world, effect.crop);
       return;
     // The wares were already banked at the clip's own frames; what lands here is the breeder's

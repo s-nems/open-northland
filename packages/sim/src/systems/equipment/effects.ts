@@ -1,6 +1,6 @@
 import { Equipment, type EquipmentSlot, Health, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isCarrierJob } from '../stores/index.js';
@@ -25,13 +25,22 @@ export function isCraftingOperator(world: World, ctx: SystemContext, operator: E
   return s !== undefined && s.jobType !== null && !isCarrierJob(ctx, s.jobType);
 }
 
-/** A crafting operator's ADDITIVE per-cycle tool credit in [0, ONE] (see the schema's
- *  `productionBonusPct`). ZERO for a carrier operator, a no/spent tool, or an unrated good. */
-export function toolProductionBonus(world: World, ctx: SystemContext, operator: Entity): Fixed {
-  if (!isCraftingOperator(world, ctx, operator)) return ZERO;
+/** A crafting operator's ADDITIVE per-cycle tool credit in whole percent of the recipe outputs (the
+ *  schema's `productionBonusPct`). 0 for a carrier operator, a no/spent tool, or an unrated good. */
+export function toolProductionBonusPct(world: World, ctx: SystemContext, operator: Entity): number {
+  if (!isCraftingOperator(world, ctx, operator)) return 0;
   const tool = world.tryGet(operator, Equipment)?.tool ?? null;
-  const pct = liveEquipOf(ctx, tool)?.productionBonusPct;
-  return pct === undefined ? ZERO : pctFraction(pct);
+  return liveEquipOf(ctx, tool)?.productionBonusPct ?? 0;
+}
+
+/** The work factor of bare hands, in percent: what a worker with no live tool works at. */
+export const BARE_HANDS_WORK_FACTOR_PCT = 100;
+
+/** A worker's tool work factor in percent for strokes and build swings (the schema's `workFactorPct`):
+ *  bare hands for a no/spent tool or an unrated good. */
+export function toolWorkFactorPct(world: World, ctx: SystemContext, worker: Entity): number {
+  const tool = world.tryGet(worker, Equipment)?.tool ?? null;
+  return liveEquipOf(ctx, tool)?.workFactorPct ?? BARE_HANDS_WORK_FACTOR_PCT;
 }
 
 /** One sip's restores for a draught good: needs as Fixed fractions, health as a whole percent of the

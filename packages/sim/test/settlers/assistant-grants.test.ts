@@ -30,7 +30,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 /**
  * The assistant's auto-equip: a granted good is fetched by settlers with a matching free slot, one
  * errand per settler, never more fetchers than store stock. Fixture goods: 8 = shoes / 10 = fur_boots
- * (boots), 11 = tool_wooden (+30%) / 12 = tool_iron (+60%) (tools), 13 = mead (misc); 1 = wood (not
+ * (boots), 11 = tool_wooden (+20%) / 12 = tool_iron (+70%) (tools), 13 = mead (misc); 1 = wood (not
  * wearable).
  */
 

@@ -140,8 +140,8 @@ function withCivilianBowBalance(weapon: WeaponType): WeaponType {
   };
 }
 
-/** Overlay the clean-room felling/mining balance (chops-to-fell, yield, deposit size and levels) into the
- *  pipeline's zeroed gathering block: the mod data carries no chop count. Everything else the real row
+/** Overlay the clean-room felling/mining balance (felled yield, deposit size and levels) into the
+ *  pipeline's zeroed gathering block: the mod data carries none of them. Everything else the real row
  *  ships is preserved. */
 function withGatheringBalance(good: GoodType): GoodType {
   if (good.gathering === undefined) return good;
@@ -151,7 +151,6 @@ function withGatheringBalance(good: GoodType): GoodType {
     ...good,
     gathering: {
       ...good.gathering,
-      ...(balance.chopsToFell !== undefined ? { chopsToFell: balance.chopsToFell } : {}),
       ...(balance.yieldPerNode !== undefined ? { yieldPerNode: balance.yieldPerNode } : {}),
       ...(balance.depositSize !== undefined ? { depositSize: balance.depositSize } : {}),
       ...(balance.depositLevels !== undefined ? { depositLevels: balance.depositLevels } : {}),

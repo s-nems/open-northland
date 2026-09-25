@@ -2,6 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
 import { WHEAT_WORK_REPEATS } from '../../../catalog/farming.js';
 import { EXTENDED_GOODS } from '../../../catalog/goods.js';
 import { HUNTER_GENERAL_XP_TRACK, huntPreyRows } from '../../../catalog/hunting.js';
+import { JOB_COLLECTOR } from '../../../catalog/jobs.js';
 import type { GoodRef } from '../../../content/settler-gfx/index.js';
 import { buildSandboxBuildings } from '../building-set.js';
 import { sandboxArmor, sandboxWeapons } from '../combat.js';
@@ -36,6 +37,18 @@ const FARMER_WHEAT_XP_TRACK = {
   baseRepeatCounter: WHEAT_WORK_REPEATS,
 } as const;
 
+/**
+ * Source basis: extracted `humanjobexperiencetypes.ini` type 2. It carries no `baserepeatcounter`, so a
+ * novice collector's stroke-counted gathers (felling, mining) cost the default ten strokes per unit.
+ */
+const COLLECTOR_GENERAL_XP_TRACK = {
+  typeId: 2,
+  id: 'collector_general',
+  name: 'collector general',
+  jobType: JOB_COLLECTOR,
+  experienceFactor: 100,
+} as const;
+
 export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
   const buildings = buildSandboxBuildings(extras);
   const jobs = buildSandboxJobs(extras);
@@ -53,7 +66,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     tribes: [...tribes.values()],
     animals: buildSandboxAnimals(),
     huntPrey: huntPreyRows(EXTENDED_GOODS, SANDBOX_ANIMAL_TRIBES),
-    jobExperience: [HUNTER_GENERAL_XP_TRACK, FARMER_WHEAT_XP_TRACK],
+    jobExperience: [COLLECTOR_GENERAL_XP_TRACK, HUNTER_GENERAL_XP_TRACK, FARMER_WHEAT_XP_TRACK],
     atomicAnimations: buildSandboxAtomicAnimations(),
   });
 }

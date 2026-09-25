@@ -6,8 +6,11 @@ import {
   Carrying,
   CurrentAtomic,
   DeliveryFlag,
+  Equipment,
+  type EquipmentSlot,
   FishSwarm,
   JobAssignment,
+  MISC_EQUIP_SLOTS,
   MoveGoal,
   Owner,
   Position,
@@ -26,6 +29,7 @@ import {
   takeFishNear,
 } from '../../src/systems/economy/fish.js';
 import { syncWorkFlagToJob } from '../../src/systems/economy/work-flag.js';
+import { wearStepOf } from '../../src/systems/equipment/index.js';
 import { assignWorker, unassignWorker } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -34,6 +38,7 @@ import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 const FISHER = 22;
 const FISH = 122;
 const FOOD = 3;
+const TOOL_IRON = 12; // the fixture's iron tool: work factor 175
 
 function fishingContent(): ContentSet {
   const base = testContent();
@@ -251,6 +256,37 @@ describe('fishing', () => {
     }
     expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
     expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
+  });
+
+  it('an iron tool cuts a novice down to two casts and wears one use per cast', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 5, hy: 3, count: 1, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+    const fisher = fisherAt(sim, c.x, c.y);
+    sim.world.add(fisher, Equipment, {
+      boots: null,
+      tool: { goodType: TOOL_IRON, degreeOfUse: fx.fromInt(0) },
+      weapon: null,
+      armor: null,
+      misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+    });
+
+    const seen: number[] = [];
+    for (let tick = 0; tick < 30 && !sim.world.has(fisher, Carrying); tick++) {
+      sim.step();
+      const atomic = sim.world.tryGet(fisher, CurrentAtomic)?.atomicId;
+      if (atomic !== undefined && seen.at(-1) !== atomic) seen.push(atomic);
+    }
+    // Five casts over the iron factor 175 leave two: one miss, then the catch.
+    expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_FAILED_ATOMIC, FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
+    expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
+    const step = wearStepOf(ctxOf(sim), TOOL_IRON);
+    expect(sim.world.get(fisher, Equipment).tool?.degreeOfUse).toBe(fx.add(step, step));
   });
 
   it("chooses a reachable nearby bank instead of the swarm's single spawn-time shore", () => {

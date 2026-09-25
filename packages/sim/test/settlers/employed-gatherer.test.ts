@@ -40,8 +40,6 @@ const MEAT = 21;
 const WOOD_HARVEST = 24;
 const STONE_HARVEST = 25;
 
-const CHOPS_TO_FELL = testContent().goods.find((g) => g.id === 'wood')?.gathering?.chopsToFell ?? 0;
-
 function placeBuilding(sim: Simulation, buildingType: number, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -64,7 +62,7 @@ function placeTree(sim: Simulation, x: number, y: number): Entity {
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: WOOD_HARVEST });
   stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
-  sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
+  sim.world.add(e, Felling, { chops: 0 });
   return e;
 }
 
@@ -90,7 +88,7 @@ describe('employed gatherer - the workplace store filter', () => {
     sim.run(200); // plenty to walk over and start felling
     expect(sim.world.get(stone, Resource).remaining).toBe(5); // untouched - not a sawmill ware
     // The wood was worked instead: the tree is being chopped (or already fell and was reaped).
-    const chopped = !sim.world.isAlive(tree) || sim.world.get(tree, Felling).chopsLeft < CHOPS_TO_FELL;
+    const chopped = !sim.world.isAlive(tree) || sim.world.get(tree, Felling).chops > 0;
     expect(chopped).toBe(true);
     expect(sim.world.has(worker, GatherSelection)).toBe(false); // no pick made - filter alone did this
   });

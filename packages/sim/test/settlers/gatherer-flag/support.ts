@@ -59,7 +59,9 @@ export const WIDE_RADIUS = 40; // covers any node in these small strips
 export const NARROW_RADIUS = 4; // tight enough that a distant node falls outside it
 
 export const WOOD_GATHERING = testContent().goods.find((g) => g.id === 'wood')?.gathering;
-export const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
+/** A bare-handed novice's strokes per tree: the woodcutter's wood track count. */
+export const CHOPS_TO_FELL =
+  testContent().jobExperience.find((t) => t.id === 'woodcutter_wood')?.baseRepeatCounter ?? 0;
 export const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
 
 /** A grass half-cell map split by a vertical WATER wall on node columns `riverCols` (all rows) - a
@@ -129,7 +131,7 @@ export function placeFellableTree(sim: Simulation, x: number, y: number): Entity
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WOOD, remaining: TREE_WOOD_YIELD, harvestAtomic: HARVEST_ATOMIC });
   stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
-  sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
+  sim.world.add(e, Felling, { chops: 0 });
   return e;
 }
 

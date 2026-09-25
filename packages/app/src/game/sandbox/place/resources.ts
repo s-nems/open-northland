@@ -8,7 +8,7 @@ import {
   type Simulation,
   systems,
 } from '@open-northland/sim';
-import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../../catalog/felling.js';
+import { WOOD_YIELD_PER_NODE } from '../../../catalog/felling.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
 import { GATHERERS, type GathererSpec } from '../ids/index.js';
 import { gatherMasteryExperience } from './mastery.js';
@@ -23,28 +23,26 @@ export const GATHERER_WORK_RADIUS = components.DEFAULT_WORK_FLAG_RADIUS;
 export function resourceSpecFor(g: GathererSpec, x: number, y: number): ResourceNodeSpec {
   switch (g.mode) {
     case 'fell':
-      // Wood is the only felled good, so its yield and chops-to-fell stay catalog constants rather
-      // than GathererSpec fields.
+      // Wood is the only felled good, so its yield stays a catalog constant rather than a GathererSpec
+      // field.
       return {
         good: g.good,
         x,
         y,
         remaining: WOOD_YIELD_PER_NODE,
         harvestAtomic: g.atomic,
-        felling: { chopsLeft: WOOD_CHOPS_TO_FELL },
+        felling: true,
       };
     case 'mine': {
       const units = g.depositUnits ?? 0;
       if (units <= 0) throw new Error(`resourceSpecFor: '${g.id}' needs positive depositUnits`);
-      const strikesPerUnit = g.strikesPerUnit ?? 0;
-      if (strikesPerUnit <= 0) throw new Error(`resourceSpecFor: '${g.id}' needs positive strikesPerUnit`);
       return {
         good: g.good,
         x,
         y,
         remaining: units,
         harvestAtomic: g.atomic,
-        deposit: { levels: g.depositLevels ?? 0, strikesPerUnit },
+        deposit: { levels: g.depositLevels ?? 0 },
       };
     }
     case 'pick':

@@ -35,6 +35,7 @@ export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './econom
 export { createMapCrop } from './economy/fields.js';
 export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './economy/fish.js';
 export { createGroundGoods, type GroundGoodsSpec } from './economy/ground-goods.js';
+export { OUTPUT_TENTHS_PER_UNIT } from './economy/production/bonus-output.js';
 export { isOnMission } from './family/eligibility.js';
 export {
   createResourceNode,
@@ -68,6 +69,8 @@ export {
 export { knowsCourse } from './orders/education.js';
 export {
   experienceBonus,
+  experiencePercent,
+  experiencePoints,
   experienceRepeats,
   fightDamageBonus,
   rawXpForRepeats,
@@ -85,8 +88,11 @@ export {
 // need clips on the same ids the sim reads back.
 export {
   ATOMIC_EVENT_CHANNEL,
+  ATOMIC_EVENT_TYPE_PICKUP,
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK,
+  ATOMIC_EVENT_TYPE_SPLIT_UP,
+  ATOMIC_EVENT_TYPE_TRANSFORM,
   atomicClipName,
   atomicClipNameAtHome,
   atomicDuration,

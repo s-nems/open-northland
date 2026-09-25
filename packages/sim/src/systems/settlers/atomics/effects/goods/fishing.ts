@@ -13,6 +13,7 @@ import {
   FISH_FAILED_ATOMIC,
   takeFishNear,
 } from '../../../../economy/fish.js';
+import { wearWornTool } from '../../../../equipment/index.js';
 import { grantWorkExperience } from '../../../../progression/index.js';
 import { atomicDuration } from '../../../../readviews/animations.js';
 import { edibleGoodFormOf } from '../../../../readviews/food.js';
@@ -32,6 +33,8 @@ export function advanceFishingAtomic(
   effect: FishingEffect,
 ): boolean {
   if (effect.phase === 'result') return false;
+  // A cast wears the rod's tool, hit or miss.
+  if (effect.phase === 'cast') wearWornTool(world, ctx, fisher);
   if (effect.phase === 'retry') {
     transition(world, ctx, fisher, atomic, FISH_CAST_ATOMIC, {
       ...effect,

@@ -60,8 +60,10 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     runCycles(sim, 4);
     const stock = sim.world.get(f, Stockpile).amounts;
     expect(stock.get(WOOD)).toBe(0);
+    // Planks read the slow plank track (no bonus yet); the two food batches read the general track at
+    // 29% and 45%, banking 4 + 6 tenths: one whole bonus food on top of the two base ones.
     expect(stock.get(PLANK)).toBe(2);
-    expect(stock.get(FOOD)).toBe(2);
+    expect(stock.get(FOOD)).toBe(3);
   });
 
   it('each in-flight cycle carries the product it crafts', () => {
@@ -77,8 +79,8 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD] });
     runCycles(sim, 4);
     const stock = sim.world.get(f, Stockpile).amounts;
-    // 4 base + 1 whole experience-bonus unit: the smith's four batches bank 17+29+38+46% of extra
-    // output, crossing 1.0 on the fourth (see the production bonus cases).
+    // 4 base + 1 whole experience-bonus unit: the smith's four batches bank 2 + 4 + 5 + 6 tenths of
+    // extra output (17/29/38/45%), crossing a whole unit on the third.
     expect(stock.get(FOOD)).toBe(5);
     expect(stock.get(PLANK) ?? 0).toBe(0);
   });
@@ -90,7 +92,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     runCycles(sim, 4);
     const stock = sim.world.get(f, Stockpile).amounts;
     expect(stock.get(PLANK)).toBe(2);
-    expect(stock.get(FOOD)).toBe(2);
+    expect(stock.get(FOOD)).toBe(3); // two base plus the general track's banked bonus, as above
   });
 
   it('an empty selection removes the component (back to the all-products default)', () => {

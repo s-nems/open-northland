@@ -56,7 +56,6 @@ export function atomicPose(item: DrawItem, tick: number, track: AtomicPoseTrack)
       state: 'acting',
       atomicId: last.atomicId,
       elapsed: last.elapsed + 1,
-      ...(last.atomicRest === true ? { atomicRest: true } : {}),
       ...(last.facing === undefined ? {} : { facing: last.facing }),
     };
   }

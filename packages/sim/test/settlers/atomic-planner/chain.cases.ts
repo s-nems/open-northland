@@ -12,9 +12,10 @@ describe('atomicPlanner - end-to-end harvest -> carry -> pileup through the real
     woodAt(sim, 1, 0, 5);
     const store = storeAt(sim, 2, 0);
 
-    // Run until the store has wood (one full harvest→carry→pileup cycle), with a generous cap.
+    // Run until the store has wood (one full harvest→carry→pileup cycle, the harvest a novice's ten
+    // strokes), with a generous cap.
     let deposited = 0;
-    for (let i = 0; i < 60 && deposited === 0; i++) {
+    for (let i = 0; i < 120 && deposited === 0; i++) {
       sim.step();
       deposited = sim.world.get(store, Stockpile).amounts.get(WOOD) ?? 0;
     }

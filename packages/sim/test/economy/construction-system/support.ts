@@ -9,6 +9,9 @@ import {
   addPerson,
   Building,
   Carrying,
+  Equipment,
+  type EquipmentSlot,
+  MISC_EQUIP_SLOTS,
   Position,
   Stockpile,
   UnderConstruction,
@@ -33,7 +36,7 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
 export const VIKING = 1;
 export const STONE = 1;
 export const WOOD = 2;
-export const HOUSE = 2; // a residence needing 2× stone + 1× wood to build (3 units → 3·STRIKES_PER_UNIT swings)
+export const HOUSE = 2; // a residence needing 2× stone + 1× wood to build (3 units → 90 steps)
 export const HEADQUARTERS = 1; // free - empty construction cost
 /** A workplace whose recipe turns wood into stone: its WOOD is a protected input reserve, its STONE the
  *  finished shelf a builder may still lift - both sides of the fetch reserve rule in one building. */
@@ -302,4 +305,66 @@ export function levelChainWithCarrier(): ContentSet {
       },
     ],
   });
+}
+
+export const TOOL_IRON = 9; // an iron tool good added to the construction content: work factor 175
+export const BUILDER_GENERAL_TRACK = 1; // factor 5, the shipped builder rate
+
+/** The construction content plus an iron tool good and the builder's general experience track. */
+export function tooledBuilderContent(): ContentSet {
+  const base = constructionContent();
+  return {
+    ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: TOOL_IRON,
+        id: 'tool_iron',
+        weight: 1,
+        atomics: {},
+        productionInputs: [],
+        classification: { producedOnMap: false, producedInHouse: true, inputGood: false },
+        equip: { category: 'tool', wears: true, productionBonusPct: 70, workFactorPct: 175, uses: 100 },
+      },
+    ],
+    jobExperience: [
+      {
+        typeId: BUILDER_GENERAL_TRACK,
+        id: 'builder_general',
+        jobType: BUILDER,
+        goodTypes: [],
+        experienceFactor: 5,
+        baseRepeatCounter: 10,
+      },
+    ],
+  };
+}
+
+/** A builder holding `xp` on its general track and, when given, a fresh `tool`. */
+export function builderWith(sim: Simulation, opts: { xp: number; tool: number | null }): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+  addPerson(
+    sim.world,
+    e,
+    {
+      tribe: VIKING,
+      jobType: BUILDER,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+    },
+    { experience: new Map(opts.xp > 0 ? [[BUILDER_GENERAL_TRACK, opts.xp]] : []) },
+  );
+  if (opts.tool !== null) {
+    sim.world.add(e, Equipment, {
+      boots: null,
+      tool: { goodType: opts.tool, degreeOfUse: fx.fromInt(0) },
+      weapon: null,
+      armor: null,
+      misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+    });
+  }
+  return e;
 }

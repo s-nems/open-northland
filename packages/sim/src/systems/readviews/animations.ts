@@ -43,6 +43,34 @@ export const ATOMIC_EVENT_TYPE_PLAY_SOUND_FX = 34;
 export const ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK = 27;
 
 /**
+ * The gathering clips' work event types: a pickup takes one unit per clip, while a split-up (stone, clay,
+ * ore) or transform (tree, herb, wheat) clip is one stroke of the trade's per-unit count.
+ *
+ * Source basis: `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_PICKUP` (l.731), `_SPLITUP` (l.733) and
+ * `_TRANSFORM` (l.738).
+ */
+export const ATOMIC_EVENT_TYPE_PICKUP = 11;
+export const ATOMIC_EVENT_TYPE_SPLIT_UP = 13;
+export const ATOMIC_EVENT_TYPE_TRANSFORM = 18;
+
+/**
+ * Whether the harvest clip a settler plays for `atomicId` is stroke-counted: it carries a split-up or
+ * transform event. A clip with neither gathers like a pickup, one unit per playthrough.
+ */
+export function isStrokeCountedAtomic(
+  content: ContentSet,
+  settler: SettlerIdentity,
+  atomicId: number,
+): boolean {
+  const name = atomicClipName(content, settler, atomicId);
+  const anim = name === undefined ? undefined : atomicAnimationByName(content, name);
+  if (anim === undefined) return false;
+  return anim.events.some(
+    (e) => e.type === ATOMIC_EVENT_TYPE_SPLIT_UP || e.type === ATOMIC_EVENT_TYPE_TRANSFORM,
+  );
+}
+
+/**
  * The clip frame `elapsed` ticks into an atomic. A clip shorter than the atomic running it replays, so a
  * multi-stroke harvest or a long crank at a well pays its events once per playthrough. Only frames `1` to
  * `length` are ever reached, so an event authored outside that window never fires.

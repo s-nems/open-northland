@@ -74,7 +74,7 @@ export type EquipGoodSpec = EquipClass & {
 /** A pair of shoes' condition points in the original:
  *  every node walked off spends its roughness, doubled while hauling. */
 const SHOE_USES = 10000;
-/** Rated production cycles for a tool (~1% per completed cycle). */
+/** Rated uses for a tool: production cycles, gathering strokes, casts and build swings alike. */
 const TOOL_USES = 100;
 /** Manual-pinned: "Small potions can be used twice, large ones can be used five times". Mead is sized
  *  like a small bottle. */
@@ -83,9 +83,13 @@ const BIG_BOTTLE_USES = 5;
 /** One sip's restore percents. Mead matches one meal on both bars, a potion restores half of its one. */
 const MEAD_RESTORE = { hunger: 40, fatigue: 40 } as const;
 const POTION_RESTORE_PCT = 50;
-/** Percent of the recipe outputs, added to the experience bonus rather than multiplied with it. */
-const WOODEN_TOOL_BONUS_PCT = 30;
-const IRON_TOOL_BONUS_PCT = 60;
+/** Percent of the recipe outputs a worn tool adds per cycle, summed with the experience bonus rather
+ *  than multiplied with it. The original's values. */
+const WOODEN_TOOL_BONUS_PCT = 20;
+const IRON_TOOL_BONUS_PCT = 70;
+/** A tool's work factor for strokes and build swings, percent of bare hands. The original's values. */
+const WOODEN_TOOL_WORK_FACTOR_PCT = 125;
+const IRON_TOOL_WORK_FACTOR_PCT = 175;
 
 /**
  * Set membership is pinned to `tribetypes.ini` `allowequip`. The slot category is derived from the
@@ -106,6 +110,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'tool',
     wears: true,
     productionBonusPct: WOODEN_TOOL_BONUS_PCT,
+    workFactorPct: WOODEN_TOOL_WORK_FACTOR_PCT,
     uses: TOOL_USES,
   },
   {
@@ -114,6 +119,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'tool',
     wears: true,
     productionBonusPct: IRON_TOOL_BONUS_PCT,
+    workFactorPct: IRON_TOOL_WORK_FACTOR_PCT,
     uses: TOOL_USES,
   },
   {

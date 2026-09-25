@@ -18,7 +18,6 @@ import {
 import { testContent } from '../../../fixtures/content.js';
 import {
   bindToFlag,
-  CHOPS_TO_FELL,
   ctxOf,
   grassMap,
   groundHeapWood,
@@ -87,7 +86,7 @@ describe('flag-bound gatherer - works only within its flag radius (req 3)', () =
 
     // The out-of-range tree is never chopped, nothing is banked, and the gatherer stayed home by its flag.
     expect([...sim.world.query(Resource)]).toHaveLength(1);
-    expect(sim.world.get([...sim.world.query(Felling)][0] as Entity, Felling).chopsLeft).toBe(CHOPS_TO_FELL);
+    expect(sim.world.get([...sim.world.query(Felling)][0] as Entity, Felling).chops).toBe(0);
     expect(groundHeapWood(sim)).toBe(0); // no harvest ⇒ no goods heaps by the flag
     expect(fx.toInt(sim.world.get(gatherer, Position).x)).toBeLessThanOrEqual(NARROW_RADIUS);
     expect(violations).toEqual([]);
@@ -134,7 +133,7 @@ describe('flag-bound gatherer - never targets a tree it cannot reach (mosty na r
     expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD); // the reachable tree's wood banked at the flag
     const standing = [...sim.world.query(Resource)];
     expect(standing).toEqual([acrossRiver]); // only the far-bank tree still stands…
-    expect(sim.world.get(acrossRiver, Felling).chopsLeft).toBe(CHOPS_TO_FELL); // …and it was never chopped
+    expect(sim.world.get(acrossRiver, Felling).chops).toBe(0); // …and it was never chopped
     // The gatherer never crossed the river - it stayed on its own (left) bank.
     expect(fx.toInt(sim.world.get(gatherer, Position).x)).toBeLessThanOrEqual(5);
     expect(violations).toEqual([]);

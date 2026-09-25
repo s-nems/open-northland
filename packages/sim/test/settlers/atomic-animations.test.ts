@@ -7,8 +7,14 @@ import {
   atomicHasExtendedEvents,
   atomicStartDirection,
   isInterruptibleAtomic,
+  isStrokeCountedAtomic,
 } from '../../src/systems/index.js';
-import { atomicDuration } from '../../src/systems/readviews/animations.js';
+import {
+  ATOMIC_EVENT_TYPE_PICKUP,
+  ATOMIC_EVENT_TYPE_SPLIT_UP,
+  ATOMIC_EVENT_TYPE_TRANSFORM,
+  atomicDuration,
+} from '../../src/systems/readviews/animations.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
@@ -219,5 +225,61 @@ describe('atomicHasExtendedEvents', () => {
     const content = animationContent();
     expect(atomicHasExtendedEvents(content, 'viking_walk')).toBe(false); // no events at all
     expect(atomicHasExtendedEvents(content, 'nonexistent_anim')).toBe(false); // unknown → safe default
+  });
+});
+
+describe('isStrokeCountedAtomic', () => {
+  const VIKING = 1;
+  const COLLECTOR = 8;
+  const FELL = 24;
+  const MINE = 25;
+  const PICK = 30;
+  const BARE = 31;
+  const UNBOUND = 99;
+  const collector = { tribe: VIKING, jobType: COLLECTOR };
+  const clipWith = (name: string, type?: number) => ({
+    id: name,
+    name,
+    length: 30,
+    events: type === undefined ? [] : [{ at: 20, type }],
+  });
+  function gatherContent(): ContentSet {
+    return parseContentSet({
+      manifest: TEST_MANIFEST,
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: COLLECTOR, id: 'collector' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
+      tribes: [
+        {
+          typeId: VIKING,
+          id: 'viking',
+          atomicBindings: [
+            { jobType: COLLECTOR, atomicId: FELL, animation: 'harvest_tree' },
+            { jobType: COLLECTOR, atomicId: MINE, animation: 'harvest_stone' },
+            { jobType: COLLECTOR, atomicId: PICK, animation: 'harvest_mushroom' },
+            { jobType: COLLECTOR, atomicId: BARE, animation: 'harvest_bare' },
+          ],
+        },
+      ],
+      atomicAnimations: [
+        clipWith('harvest_tree', ATOMIC_EVENT_TYPE_TRANSFORM),
+        clipWith('harvest_stone', ATOMIC_EVENT_TYPE_SPLIT_UP),
+        clipWith('harvest_mushroom', ATOMIC_EVENT_TYPE_PICKUP),
+        clipWith('harvest_bare'),
+      ],
+    });
+  }
+
+  it('counts strokes on a transform or split-up clip', () => {
+    const content = gatherContent();
+    expect(isStrokeCountedAtomic(content, collector, FELL)).toBe(true);
+    expect(isStrokeCountedAtomic(content, collector, MINE)).toBe(true);
+  });
+
+  it('takes a unit per clip on a pickup clip, one with no work event, or an unbound atomic', () => {
+    const content = gatherContent();
+    expect(isStrokeCountedAtomic(content, collector, PICK)).toBe(false);
+    expect(isStrokeCountedAtomic(content, collector, BARE)).toBe(false);
+    expect(isStrokeCountedAtomic(content, collector, UNBOUND)).toBe(false);
   });
 });

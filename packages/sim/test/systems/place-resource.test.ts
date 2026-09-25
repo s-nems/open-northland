@@ -107,9 +107,6 @@ function nodeOf(sim: Simulation, good: number): Entity | null {
   return null;
 }
 
-/** Every swing frees a unit. */
-const SINGLE_STRIKE = 1;
-
 describe('placeResource command', () => {
   it('stamps a felled tree for a fell good (Felling, no MineDeposit)', () => {
     const sim = newSim();
@@ -120,7 +117,7 @@ describe('placeResource command', () => {
       y: 4,
       remaining: 4,
       harvestAtomic: WOOD_ATOM,
-      felling: { chopsLeft: 3 },
+      felling: true,
     });
     sim.step();
     const e = nodeOf(sim, WOOD);
@@ -128,7 +125,7 @@ describe('placeResource command', () => {
     if (e === null) return;
     expect(sim.world.has(e, ResourceFootprint)).toBe(true);
     expect(sim.world.get(e, Resource).remaining).toBe(4);
-    expect(sim.world.get(e, Felling).chopsLeft).toBe(3);
+    expect(sim.world.get(e, Felling).chops).toBe(0);
     expect(sim.world.has(e, MineDeposit)).toBe(false);
   });
 
@@ -141,7 +138,7 @@ describe('placeResource command', () => {
       y: 2,
       remaining: 5,
       harvestAtomic: STONE_ATOM,
-      deposit: { levels: 5, strikesPerUnit: SINGLE_STRIKE },
+      deposit: { levels: 5 },
     });
     sim.step();
     const e = nodeOf(sim, STONE);
@@ -187,22 +184,6 @@ describe('placeResource command', () => {
     expect([...sim.world.query(Resource)].length).toBe(before);
   });
 
-  it('skips a deposit whose strikesPerUnit is below one (no node created, id-neutral)', () => {
-    const sim = newSim();
-    const before = [...sim.world.query(Resource)].length;
-    sim.enqueueSetup({
-      kind: 'placeResource',
-      good: STONE,
-      x: 2,
-      y: 2,
-      remaining: 5,
-      harvestAtomic: STONE_ATOM,
-      deposit: { levels: 5, strikesPerUnit: 0 },
-    });
-    sim.step();
-    expect([...sim.world.query(Resource)].length).toBe(before);
-  });
-
   it('is byte-identical from the same seed and holds the core invariants', () => {
     const runOnce = (): string => {
       const sim = newSim();
@@ -213,7 +194,7 @@ describe('placeResource command', () => {
         y: 4,
         remaining: 4,
         harvestAtomic: WOOD_ATOM,
-        felling: { chopsLeft: 3 },
+        felling: true,
       });
       sim.enqueueSetup({
         kind: 'placeResource',
@@ -222,7 +203,7 @@ describe('placeResource command', () => {
         y: 7,
         remaining: 5,
         harvestAtomic: STONE_ATOM,
-        deposit: { levels: 5, strikesPerUnit: SINGLE_STRIKE },
+        deposit: { levels: 5 },
       });
       for (let t = 0; t < 5; t++) sim.step();
       expect(checkInvariants(sim.world, sim.content, CORE_INVARIANTS)).toEqual([]); // includes cachesCoherent

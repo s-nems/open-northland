@@ -1,4 +1,4 @@
-import { constructionBillForType, type Fixed, fx, type WorldSnapshot } from '@open-northland/sim';
+import { constructionBillForType, type Fixed, fx, systems, type WorldSnapshot } from '@open-northland/sim';
 import { actorsOf, isSettler, num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import {
@@ -69,8 +69,8 @@ export function liveAmounts(stockpile: unknown): Map<number, number> {
   return live;
 }
 
-/** The pending experience-bonus fraction per good (`ProductionBonus.remainders`, `Fixed` → float).
- *  Empty for a building without the component. */
+/** The pending bonus output per good as a fraction of a unit (`ProductionBonus.remainders`, banked in
+ *  tenths). Empty for a building without the component. */
 function bonusFractions(productionBonus: unknown): Map<number, number> {
   const out = new Map<number, number>();
   const remainders = (productionBonus as { remainders?: unknown } | undefined)?.remainders;
@@ -78,8 +78,10 @@ function bonusFractions(productionBonus: unknown): Map<number, number> {
   for (const pair of remainders) {
     if (!Array.isArray(pair)) continue;
     const goodType = num(pair[0]);
-    const raw = num(pair[1]);
-    if (goodType !== undefined && raw !== undefined) out.set(goodType, fx.toFloat(raw as Fixed));
+    const tenths = num(pair[1]);
+    if (goodType !== undefined && tenths !== undefined) {
+      out.set(goodType, tenths / systems.OUTPUT_TENTHS_PER_UNIT);
+    }
   }
   return out;
 }

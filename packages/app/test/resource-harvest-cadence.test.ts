@@ -1,16 +1,21 @@
-import { halfCellMapFromCells, Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
+import { halfCellMapFromCells, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
+import { HARVEST_TICKS } from '../src/content/settler-gfx/index.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
-import { GOOD_MUD, GOOD_STONE, GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
+import { GATHERERS, GOOD_MUD, GOOD_STONE, GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
 import { resourceCommand } from '../src/game/sandbox/place/index.js';
 
-const MIN_HARVEST_TICKS = 20 * TICKS_PER_SECOND;
-const MAX_HARVEST_TICKS = 25 * TICKS_PER_SECOND;
+/** Ticks the search gives a yield before calling the gatherer stuck. */
+const MAX_TICKS = 2000;
 
-function firstYield(good: number): { readonly ticks: number; readonly units: number } {
+/** A novice collector's strokes per unit: its general track's count. */
+const NOVICE_STROKES =
+  sandboxContent().jobExperience.find((t) => t.jobType === JOB_COLLECTOR)?.baseRepeatCounter ?? 0;
+
+function firstYield(good: number): number {
   const terrain = grassTerrain(8, 8);
   const sim = new Simulation({
     seed: 1,
@@ -29,25 +34,27 @@ function firstYield(good: number): { readonly ticks: number; readonly units: num
     owner: HUMAN_PLAYER,
   });
 
-  for (let ticks = 1; ticks <= MAX_HARVEST_TICKS * 3; ticks++) {
+  for (let ticks = 1; ticks <= MAX_TICKS; ticks++) {
     sim.step();
     for (const event of sim.events.current()) {
-      if (event.kind === 'resourceFelled' && event.goodType === good) return { ticks, units: event.amount };
-      if (event.kind === 'resourceMined' && event.goodType === good) return { ticks, units: 1 };
+      if ((event.kind === 'resourceFelled' || event.kind === 'resourceMined') && event.goodType === good) {
+        return ticks;
+      }
     }
   }
-  throw new Error(`good ${good} produced no yield within ${MAX_HARVEST_TICKS * 3} ticks`);
+  throw new Error(`good ${good} produced no yield within ${MAX_TICKS} ticks`);
 }
 
 describe('resource harvest cadence at 1x', () => {
+  // Original behavior: the strokes of one unit chain back to back, with no rest between them.
   it.each([
     ['wood', GOOD_WOOD],
     ['stone', GOOD_STONE],
     ['clay', GOOD_MUD],
-  ] as const)('%s averages 20–25 seconds of work per yielded unit', (_name, good) => {
-    const yieldResult = firstYield(good);
-    const ticksPerUnit = yieldResult.ticks / yieldResult.units;
-    expect(ticksPerUnit).toBeGreaterThanOrEqual(MIN_HARVEST_TICKS);
-    expect(ticksPerUnit).toBeLessThanOrEqual(MAX_HARVEST_TICKS);
+  ] as const)("a novice's first %s yield lands after the track's strokes, back to back", (_name, good) => {
+    const atomic = GATHERERS.find((g) => g.good === good)?.atomic ?? 0;
+    const clipTicks = HARVEST_TICKS[atomic] ?? 0;
+    expect(NOVICE_STROKES).toBeGreaterThan(1);
+    expect(firstYield(good)).toBe(NOVICE_STROKES * clipTicks);
   });
 });

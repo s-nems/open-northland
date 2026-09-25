@@ -66,9 +66,10 @@ export const huntingScene: SceneDefinition = {
   seed: 43,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  // The 25-tick draw, the ~40% fresh hit rate, the herd scattering off every release, the 5-stroke
-  // pluck (`baserepeatcounter`), and the one-kill-at-a-time carry stretch the bag past the kill time.
-  runTicks: 2600,
+  // The 25-tick draw, the ~40% fresh hit rate, the herd scattering off every release, a pluck per unit,
+  // and the one-kill-at-a-time carry stretch the bag past the kill time; the run ends before the hunters,
+  // out of hares, turn to the sheep.
+  runTicks: 1200,
   initialZoom: 0.8,
   checks: [
     {

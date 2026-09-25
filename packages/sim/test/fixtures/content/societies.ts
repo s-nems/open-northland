@@ -229,15 +229,17 @@ export const societyContent = {
   ],
   atomicAnimations: [
     // The chop carries the original's mid-swing sound cue (`event <at> 34 9` - PLAY_SOUND_FX naming
-    // the Woodcutter Axe `logicSoundType`), two thirds in like `viking_collector_harvest_tree`.
+    // the Woodcutter Axe `logicSoundType`) and its transform work event (`event <at> 18`), two thirds in
+    // like `viking_collector_harvest_tree`. The mine and reap swings carry their split-up (13) and
+    // transform (18) work events the same way, so all three count strokes.
     {
       id: 'viking_chop',
       name: 'viking_chop',
       length: 3,
-      events: [{ at: 2, type: 34, value: 9 }, ...workDrain()],
+      events: [{ at: 2, type: 34, value: 9 }, { at: 2, type: 18 }, ...workDrain()],
     },
-    { id: 'viking_mine', name: 'viking_mine', length: 3, events: workDrain() },
-    { id: 'viking_reap', name: 'viking_reap', length: 3, events: workDrain() },
+    { id: 'viking_mine', name: 'viking_mine', length: 3, events: [{ at: 2, type: 13 }, ...workDrain()] },
+    { id: 'viking_reap', name: 'viking_reap', length: 3, events: [{ at: 2, type: 18 }, ...workDrain()] },
     { id: 'viking_sow', name: 'viking_sow', length: 3, events: workDrain() },
     { id: 'viking_water', name: 'viking_water', length: 3, events: workDrain() },
     // One meal, the original's single `event 30 2 +4000` on the eat clip, and the at-home twin the data

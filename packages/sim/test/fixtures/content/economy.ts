@@ -2,19 +2,19 @@ export const economyContent = {
   goods: [
     { typeId: 0, id: 'none' },
     // Wood is harvested with atomic 24 (atomicForHarvesting), the join key the planner reads. Its
-    // `gathering` carries the tree→trunk felling lifecycle: a node is FELLED over `chopsToFell` chops
-    // (yielding nothing onto the back) and drops its whole `yieldPerNode` as a ground trunk. Both are
-    // OBSERVED calibration constants (the readable `.ini` has neither - source basis); a spawn
-    // site stamps them onto a node as a `Felling` component + the node's `remaining`. `yieldPerNode`
-    // 4 keeps the golden slice's per-node wood at 4 (2 trees → 8 harvested), so goods still total 18.
+    // `gathering` carries the tree→trunk felling lifecycle: a node is FELLED over the woodcutter's
+    // per-unit strokes (yielding nothing onto the back) and drops its whole `yieldPerNode` as a ground
+    // trunk. `yieldPerNode` is OBSERVED calibration (the readable `.ini` lacks it - source basis); a
+    // spawn site stamps it onto a node as the node's `remaining` beside a `Felling` marker. 4 keeps the
+    // golden slice's per-node wood at 4 (2 trees → 8 harvested), so goods still total 18.
     {
       typeId: 1,
       id: 'wood',
       weight: 1,
       atomics: { harvest: 24 },
-      // Only the felling params (the sim reads these); the landscape-stage refs (harvest/pickup/store
-      // typeIds) are a render/pipeline join this synthetic fixture doesn't model, so they're omitted.
-      gathering: { bioLandscape: true, chopsToFell: 3, yieldPerNode: 4 },
+      // Only the felling yield; the landscape-stage refs (harvest/pickup/store typeIds) are a
+      // render/pipeline join this synthetic fixture doesn't model, so they're omitted.
+      gathering: { bioLandscape: true, yieldPerNode: 4 },
     },
     { typeId: 2, id: 'plank', weight: 1 },
     // An edible good - the eat-drive recognises it by the `food` id prefix (isFood), like the
@@ -80,13 +80,13 @@ export const economyContent = {
       typeId: 11,
       id: 'tool_wooden',
       weight: 1,
-      equip: { category: 'tool', wears: true, productionBonusPct: 30, uses: 100 },
+      equip: { category: 'tool', wears: true, productionBonusPct: 20, workFactorPct: 125, uses: 100 },
     },
     {
       typeId: 12,
       id: 'tool_iron',
       weight: 1,
-      equip: { category: 'tool', wears: true, productionBonusPct: 60, uses: 100 },
+      equip: { category: 'tool', wears: true, productionBonusPct: 70, workFactorPct: 175, uses: 100 },
     },
     {
       typeId: 13,

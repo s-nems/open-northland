@@ -11,8 +11,8 @@ import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
-// Equipment wear: a wearing item spends its content-rated `equip.uses` in equal steps (one production cycle
-// for tools, one sip for consumables) and breaks at ONE, so the slot clears and the unit leaves the
+// Equipment wear: a wearing item spends its content-rated `equip.uses` in equal steps (one work event for
+// tools, one sip for consumables) and breaks at ONE, so the slot clears and the unit leaves the
 // economy. Boots spend theirs at each walked node, including the terminal destination.
 
 /** One use's wear step for `goodType`: `divCeil(ONE, uses)`, so an item never outlives its rating
@@ -99,7 +99,8 @@ export function wearWornBoots(
 /** A hauled good doubles each step's boot wear (`roughness << 1`). */
 const CARRYING_WEAR_FACTOR = 2;
 
-/** One completed production cycle's tool wear (the bonus-output hook). */
+/** One work event's tool wear: a completed production cycle, a gathering stroke, a cast, a build swing or
+ *  a watering, whether or not the event paid off. Original behavior. */
 export function wearWornTool(world: World, ctx: SystemContext, operator: Entity): void {
   const tool = world.tryGet(operator, Equipment)?.tool;
   if (tool == null) return;

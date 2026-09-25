@@ -26,15 +26,13 @@ import { settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (historical plan phase 3). A wood node is FELLED, not gathered
- * unit-by-unit: the collector chops it down over `chopsToFell` swings (each yielding NOTHING onto its
- * back), then the tree falls - the standing node is removed, its whole `yieldPerNode` yield drops at
- * its cell as a bare {@link GroundDrop} trunk pile, and a {@link Stump} decor is left behind. The
- * collector then carries the trunk off to a store (multiple trips at a 1-unit on-foot carry). Goods
- * are conserved: nothing is created or lost by the tree coming down.
+ * A wood node is FELLED, not gathered unit-by-unit: the woodcutter chops it over its per-unit stroke count
+ * (each stroke yielding NOTHING onto its back), then the tree falls - the standing node is removed, its
+ * whole `yieldPerNode` yield drops at its cell as a bare {@link GroundDrop} trunk pile, and a {@link Stump}
+ * decor is left behind. Goods are conserved: nothing is created or lost by the tree coming down.
  *
- * The felling constants come from CONTENT (the wood good's `gathering.chopsToFell`/`yieldPerNode`,
- * OBSERVED calibration values - source basis), read here so the tests carry no magic literals.
+ * The stroke count is the woodcutter's wood track `baseRepeatCounter` (the fixture track omits it, so it
+ * loads as 10) and the yield is the wood good's `yieldPerNode`, both read from content.
  */
 
 const WOOD = 1;
@@ -42,10 +40,25 @@ const WOODCUTTER = 1; // fixture job allowed the wood harvest atomic (24)
 const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
-// The felling spec the sim stamps onto a fellable node - read from the fixture, not hardcoded.
-const WOOD_GATHERING = testContent().goods.find((g) => g.id === 'wood')?.gathering;
-const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
-const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
+const WOOD_TRACK_ID = 'woodcutter_wood';
+/** The record default a track without `baserepeatcounter` loads with. */
+const DEFAULT_TRACK_STROKES = 10;
+const SHORT_TRACK_STROKES = 5;
+
+// A bare-handed novice needs the whole track count - read from the fixture, not hardcoded.
+const CHOPS_TO_FELL = testContent().jobExperience.find((t) => t.id === WOOD_TRACK_ID)?.baseRepeatCounter ?? 0;
+const TREE_WOOD_YIELD = testContent().goods.find((g) => g.id === 'wood')?.gathering?.yieldPerNode ?? 0;
+
+/** The fixture content with the woodcutter's wood track carrying an explicit `baserepeatcounter`. */
+function contentWithWoodStrokes(strokes: number) {
+  const content = testContent();
+  return {
+    ...content,
+    jobExperience: content.jobExperience.map((t) =>
+      t.id === WOOD_TRACK_ID ? { ...t, baseRepeatCounter: strokes } : t,
+    ),
+  };
+}
 
 /** A proper woodcutter settler at integer tile (x,y): needs at 0, empty experience. */
 function makeWoodcutter(sim: Simulation, x: number, y: number): Entity {
@@ -58,7 +71,7 @@ function placeFellableTree(sim: Simulation, x: number, y: number): Entity {
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WOOD, remaining: TREE_WOOD_YIELD, harvestAtomic: HARVEST_ATOMIC });
   stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
-  sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
+  sim.world.add(e, Felling, { chops: 0 });
   return e;
 }
 
@@ -97,7 +110,7 @@ function totalWood(sim: Simulation): number {
 }
 
 describe('felling - chopping a tree down', () => {
-  it('a chop decrements chopsLeft and yields NOTHING onto the back', () => {
+  it('a chop lands one stroke and yields NOTHING onto the back', () => {
     // A zeroed felling spec would fell the tree on the first swing and make the counts below vacuous.
     expect(CHOPS_TO_FELL).toBeGreaterThan(0);
     expect(TREE_WOOD_YIELD).toBeGreaterThan(0);
@@ -107,7 +120,7 @@ describe('felling - chopping a tree down', () => {
 
     chopOnce(sim, cutter, tree);
 
-    expect(sim.world.get(tree, Felling).chopsLeft).toBe(CHOPS_TO_FELL - 1);
+    expect(sim.world.get(tree, Felling).chops).toBe(1);
     expect(sim.world.has(cutter, Carrying)).toBe(false); // a chop carries nothing until the tree falls
     expect(sim.world.has(tree, Resource)).toBe(true); // still standing (more chops to go)
     expect(trunkPile(sim)).toBeUndefined();
@@ -138,6 +151,19 @@ describe('felling - chopping a tree down', () => {
     expect(sim.world.has(cutter, Carrying)).toBe(false);
     // Goods conserved: the trunk holds exactly the tree's whole yield, no more, no less.
     expect(totalWood(sim)).toBe(TREE_WOOD_YIELD);
+  });
+
+  it("a novice fells in the track's count: the record default without the key, else the key", () => {
+    expect(CHOPS_TO_FELL).toBe(DEFAULT_TRACK_STROKES);
+    for (const strokes of [DEFAULT_TRACK_STROKES, SHORT_TRACK_STROKES]) {
+      const sim = new Simulation({ seed: 1, content: contentWithWoodStrokes(strokes) });
+      const tree = placeFellableTree(sim, 0, 0);
+      const cutter = makeWoodcutter(sim, 0, 0);
+      for (let i = 1; i < strokes; i++) chopOnce(sim, cutter, tree);
+      expect(sim.world.get(tree, Felling).chops).toBe(strokes - 1);
+      chopOnce(sim, cutter, tree);
+      expect(sim.world.has(tree, Resource)).toBe(false);
+    }
   });
 
   it('emits a resourceFelled event naming the trunk, the stump, and the whole yield', () => {

@@ -1233,8 +1233,16 @@ describe('selection details panel model', () => {
           jobType: JOB_COLLECTOR,
           goodTypes: [GOOD_WOOD],
           experienceFactor: 10,
+          baseRepeatCounter: 10,
         },
-        { typeId: 9, id: 'collector_general', jobType: JOB_COLLECTOR, goodTypes: [], experienceFactor: 100 },
+        {
+          typeId: 9,
+          id: 'collector_general',
+          jobType: JOB_COLLECTOR,
+          goodTypes: [],
+          experienceFactor: 100,
+          baseRepeatCounter: 10,
+        },
       ],
     };
     const snapshot = snapshotOf([
@@ -1244,8 +1252,8 @@ describe('selection details panel model', () => {
           Settler: { tribe: 1, jobType: JOB_COLLECTOR },
           SettlerProgress: {
             experience: [
-              [3, 50], // 50 raw points at rate 10 → 5 wood gathered
-              [9, 100], // 100 raw points at rate 100 → 1 repeat
+              [3, 50], // 50 raw points at rate 10 → 5 wood gathered, half a curve point
+              [9, 100], // 100 raw points at rate 100 → 1 repeat, one curve point
               [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4], // 4 hits - under 5 hits/repeat, so +0% damage
             ],
           },
@@ -1254,10 +1262,10 @@ describe('selection details panel model', () => {
     ]);
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    // Repeats descending; the curve percents pin the shared bonus formula (5→52%, 1→17%) and the fight
-    // bucket's own damage scale (4 hits sit under its 5-hits-per-repeat step, so it buys +0% yet).
+    // Repeats descending; the percents read the curve in raw hundredths (50 raw → 0%, 100 raw → 17%)
+    // and the fight bucket's own damage scale (4 hits sit under its 5-hits-per-point step: +0% yet).
     expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct }))).toEqual([
-      { repeats: 5, bonusPct: 52 },
+      { repeats: 5, bonusPct: 0 },
       { repeats: 4, bonusPct: 0 },
       { repeats: 1, bonusPct: 17 },
     ]);
@@ -1298,6 +1306,7 @@ describe('settler upcoming-unlock rows', () => {
           jobType: JOB_COLLECTOR,
           goodTypes: [GOOD_WOOD],
           experienceFactor: 10,
+          baseRepeatCounter: 10,
         },
       ],
       tribes: [

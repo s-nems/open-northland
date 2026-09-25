@@ -76,9 +76,23 @@ to a general track remain: the hunter's leather, meat and prey, the fisher's and
 the coiner's six amulets.
 
 Saved experience uses a factor-scaled encoding: one counted action contributes its track's
-`experienceFactor`. Requirement readers divide by that factor. This encoding is an internal
-representation, not a claim about the original's in-memory values. Work counters cap at 10,000 counted
-actions.
+`experienceFactor`. The experience curve reads that total in hundredths, so the factor is the track's
+learning rate (original behavior: a factor-100 track climbs one curve point per action, wood
+collection at 250 two and a half, the builder at 5 one per twenty). Requirement readers and the
+details-panel rows divide the factor back out to count actions, which is an approximation: the value
+the original compares a `needfor*` gate against is not established. Work counters cap at 10,000
+counted actions.
+
+The curve is the original's: `pct = trunc((10000 - 100 * trunc(10000 / (20 * points + 100))) / 98)`,
+clamped to 100, which reaches 17/29/38 percent at one, two and three points and 100 at 162. What the
+percent buys: a workshop cycle adds `trunc(pct * 15 / 100)` tenths of a unit on top of its recipe
+outputs, plus a worn tool's own tenths (wooden 2, iron 7), banked per good until a whole unit lands on
+the shelf; a gatherer's or fisher's strokes per unit are `max(1, trunc(count * 100 / toolFactor) -
+trunc(pct / 20))` with the track's `baserepeatcounter` as the count (10 when the record omits it) and
+the tool factor 100/125/175 for none/wooden/iron; a builder's swing installs
+`trunc(trunc((150 + pct) * toolFactor / 100) / 100)` of a building's `30 x material units` steps.
+A tool wears one of its rated uses per workshop cycle, gathering stroke, cast, build swing or
+watering.
 
 Right-click a school with selected workers to choose a civilian profession or product. The player must
 already know it; a product must belong to the worker's profession. School places are reserved by

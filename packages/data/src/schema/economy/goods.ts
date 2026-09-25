@@ -55,14 +55,9 @@ export const GoodGathering = z.strictObject({
   /** `isBioLandscapeFlag` - living/growing landscapes (trees, herb) vs mined (stone, ore). */
   bioLandscape: z.boolean().default(false),
   /**
-   * Observed calibration, not extracted (the readable `.ini` has no collector-job `baserepeatcounter`):
-   * chop atomics needed to fell a standing node before it drops its whole yield as a ground trunk. `0`
-   * (the extractor default) is a single-hit gather like stone; `> 0` a fell-once-whole-yield good.
-   */
-  chopsToFell: z.number().int().nonnegative().default(0),
-  /**
-   * Observed calibration - units a felled node drops as its ground trunk. Only meaningful when
-   * {@link chopsToFell} `> 0`; `0` leaves the amount to the spawn site.
+   * Observed calibration - units a standing node drops whole as its ground trunk once felled; `> 0` marks
+   * a fell-whole good (wood), `0` (the extractor default) a unit-by-unit gather. The strokes that fell it
+   * come from the trade's experience track, not from here.
    */
   yieldPerNode: z.number().int().nonnegative().default(0),
   /**

@@ -10,6 +10,7 @@ export {
   atomicHasExtendedEvents,
   atomicStartDirection,
   isInterruptibleAtomic,
+  isStrokeCountedAtomic,
 } from './animations.js';
 export {
   type BuildingCombatClass,

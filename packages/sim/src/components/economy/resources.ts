@@ -13,9 +13,8 @@ export const Resource = defineComponent<{
   /** Opaque render-variant tag a decoded-map spawn carries (the app's species record index). Never read by
    *  a sim decision, absent on admin/scene spawns. */
   gfxIndex?: number | undefined;
-  /** Swings banked toward the next freed unit - a bare node's pluck or a ripe field's fall - where the trade
-   *  plays several strokes per unit (`workRepeatsFor`, the extracted `baserepeatcounter`). Absent until
-   *  first advanced and cleared when a unit frees. */
+  /** Strokes landed toward the next freed unit of a stroke-counted bare node or a ripe field. Absent until
+   *  the first stroke and cleared when a unit frees. */
   strikes?: number | undefined;
 }>('Resource', 'economy');
 
@@ -70,11 +69,11 @@ export const ResourceFootprint = defineComponent<ResourceFootprintData>('Resourc
 
 /**
  * Marks a {@link Resource} node that is felled rather than gathered unit-by-unit, faithful to the original's
- * `tree -> "tree falling" -> trunk` lifecycle (`landscapetypes.ini`; the good's `chopsToFell` param).
- * `chopsLeft` counts the chops still needed, each yielding nothing onto the settler's back; the node falls
- * at 0, dropping its whole `Resource.remaining` at its cell as a {@link GroundDrop} trunk pile.
+ * `tree -> "tree falling" -> trunk` lifecycle (`landscapetypes.ini`). `chops` counts the strokes landed so
+ * far, each yielding nothing; the stroke that completes the feller's per-unit count drops the whole
+ * `Resource.remaining` at its cell as a {@link GroundDrop} trunk pile.
  */
-export const Felling = defineComponent<{ chopsLeft: number }>('Felling', 'economy');
+export const Felling = defineComponent<{ chops: number }>('Felling', 'economy');
 
 /**
  * Marks a {@link Resource} node that is mined one unit at a time, faithful to the original's
@@ -89,10 +88,8 @@ export const MineDeposit = defineComponent<{
   /** The visual state count this node shrinks through: the `[GfxLandscape]` record's own for a map
    *  placement, the good's uniform fallback otherwise. */
   levels: number;
-  /** Work cycles per chipped unit (>= 1). Observed calibration: the readable data carries only the
-   *  single-swing cycle length (`atomicanimations.ini`). */
-  strikesPerUnit: number;
-  /** Progress toward the next unit (0..strikesPerUnit-1), reset on each chipped unit. */
+  /** Strokes landed toward the next unit, reset on each chipped unit; the miner's per-unit count decides
+   *  when one frees. */
   strikes: number;
 }>('MineDeposit', 'economy');
 

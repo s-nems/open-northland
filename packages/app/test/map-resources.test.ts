@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
-  HARD_MINE_STRIKES_PER_UNIT,
   IRON_DEPOSIT_UNITS,
   STONE_DEPOSIT_UNITS,
 } from '../src/catalog/mining.js';
@@ -140,7 +139,7 @@ describe('spawnMapResources - end-to-end over real sandbox content', () => {
     expect(mined).toHaveLength(1); // the rock is a finite deposit
     const minedEntity = mined[0];
     if (minedEntity === undefined) throw new Error('missing mined resource');
-    expect(sim.world.get(minedEntity, MineDeposit).strikesPerUnit).toBe(HARD_MINE_STRIKES_PER_UNIT);
+    expect(sim.world.get(minedEntity, MineDeposit).strikes).toBe(0);
     // Every map-spawned node carries its placement's OWN gfx record as the render-variant tag (the
     // IR/app numbering - deliberately unrelated to the sim content's footprint records).
     expect(resources.map((e) => sim.world.get(e, Resource).gfxIndex).sort()).toEqual([10, 10, 20]);

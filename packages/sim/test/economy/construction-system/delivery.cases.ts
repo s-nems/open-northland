@@ -20,7 +20,7 @@ import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
-import { remainingConstructionStrikes } from '../../../src/systems/economy/construction.js';
+import { remainingConstructionSteps } from '../../../src/systems/economy/construction.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { PlannerSpacing } from '../../../src/systems/settlers/planner/spacing.js';
@@ -91,7 +91,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     builderAt(sim, 4, 0);
 
     let built = false;
-    // The build takes 3 units × STRIKES_PER_UNIT swings (several ticks each) even with the material
+    // The build takes 3 units × 30 steps (several ticks each) even with the material
     // already inbound, so the tick budget covers the full hammer-out at the tuned ~1%/strike pace.
     for (let i = 0; i < 600 && !built; i++) {
       sim.step();
@@ -132,7 +132,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     let built = false;
     let maxCarried = 0;
     // Generous tick budget: the builder makes three fetch trips AND hammers out every strike alone
-    // (3 units × STRIKES_PER_UNIT swings, several ticks each).
+    // (3 units × 30 steps, several ticks each).
     for (let i = 0; i < 1200 && !built; i++) {
       sim.step();
       built = sim.world.get(site, Building).built >= ONE;
@@ -487,13 +487,13 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     if (terrain === undefined) throw new Error('mapped sim expected');
     const site = siteAt(sim, HOUSE, 24, 1);
     sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
-    // One quantum short of the delivered cap: exactly one strike is left to claim.
+    // One quantum short of the delivered cap: exactly one step is left to claim.
     sim.world.mut(site, UnderConstruction).labor = (deliveredConstructionFraction(
       sim.world,
       ctxOf(sim),
       site,
     ) - 1) as Fixed;
-    expect(remainingConstructionStrikes(sim.world, ctxOf(sim), site)).toBe(1);
+    expect(remainingConstructionSteps(sim.world, ctxOf(sim), site)).toBe(1);
     const perimeter = PlannerSpacing.forTick(sim.world, ctxOf(sim), terrain).workCells(site);
     const walkGoal = perimeter[0];
     if (walkGoal === undefined) throw new Error('site perimeter expected');
@@ -684,7 +684,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     // The pinned builder walks PAST the nearer stocked site and raises its assigned one to completion
     // FIRST - the nearer site untouched until then (afterwards the pin retires and it may move on).
     let nearLaborWhenFarFinished = -1;
-    for (let i = 0; i < 400 && nearLaborWhenFarFinished < 0; i++) {
+    for (let i = 0; i < 600 && nearLaborWhenFarFinished < 0; i++) {
       sim.step();
       if (!sim.world.has(far, UnderConstruction)) {
         nearLaborWhenFarFinished = sim.world.get(near, UnderConstruction).labor;
@@ -841,7 +841,7 @@ describe('constructionSystem - upgrade-site DELIVERY dispatch (carrier path)', (
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
 
     let upgraded = false;
-    // 2 units × STRIKES_PER_UNIT swings (several ticks each) on top of the delivery walks.
+    // 2 units × 30 steps (several ticks each) on top of the delivery walks.
     for (let i = 0; i < 600 && !upgraded; i++) {
       sim.step();
       upgraded = sim.world.get(home, Building).buildingType === HOME_L1;

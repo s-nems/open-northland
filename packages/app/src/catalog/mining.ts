@@ -14,14 +14,6 @@ export const CLAY_DEPOSIT_UNITS = 5;
 export const IRON_DEPOSIT_UNITS = 4;
 export const GOLD_DEPOSIT_UNITS = 3;
 
-/** Full strikes needed for one hard-mineral unit. Observed original pacing is 20–25 s: eight 29-tick
- * cycles plus three 15-tick rests take 277 ticks (about 23.1 s at 12 ticks/s). */
-export const HARD_MINE_STRIKES_PER_UNIT = 8;
-
-/** Full digs needed for one clay unit. Its shorter clip needs nine 23-tick cycles plus four rests,
- * totaling 267 ticks (about 22.3 s at 12 ticks/s). */
-export const CLAY_MINE_STRIKES_PER_UNIT = 9;
-
 /**
  * The visual fill states a fallback-sized deposit steps down through as it empties. The real count is per
  * `[GfxLandscape]` record (clay, iron and gold mines carry 5, stone's rocks 4 or 5), so a map placement

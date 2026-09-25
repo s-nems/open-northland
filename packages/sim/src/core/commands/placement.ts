@@ -106,12 +106,12 @@ export interface PlaceResourceCommand {
   readonly remaining: number;
   /** The atomic a gatherer runs to harvest this node ({@link Resource.harvestAtomic}). */
   readonly harvestAtomic: number;
-  /** A felled node (a tree): its chops-to-fell counter (stamps {@link Felling}). Mutually exclusive with
-   *  `deposit`; omit both for a pluck-whole node (a mushroom). */
-  readonly felling?: { readonly chopsLeft: number };
-  /** A mined finite deposit (stone/clay/iron/gold): its level ladder and work cycles per chipped unit
-   *  (stamps {@link MineDeposit}, `initial` = `remaining`). Mutually exclusive with `felling`. */
-  readonly deposit?: { readonly levels: number; readonly strikesPerUnit: number };
+  /** A felled node (a tree) when true (stamps {@link Felling}). Mutually exclusive with `deposit`; omit
+   *  both for a pluck-whole node (a mushroom). */
+  readonly felling?: boolean;
+  /** A mined finite deposit (stone/clay/iron/gold): its level ladder (stamps {@link MineDeposit},
+   *  `initial` = `remaining`). Mutually exclusive with `felling`. */
+  readonly deposit?: { readonly levels: number };
 }
 
 /**

@@ -78,7 +78,7 @@ function buildScenario(content: ContentSet): Simulation {
         y: ty,
         remaining: gathering.yieldPerNode,
         harvestAtomic: harvest,
-        ...(gathering.chopsToFell > 0 ? { felling: { chopsLeft: gathering.chopsToFell } } : {}),
+        ...(gathering.yieldPerNode > 0 ? { felling: true } : {}),
       });
       expect(node, `real wood could not footprint a node at (${tx},${ty})`).not.toBeNull();
     }

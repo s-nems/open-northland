@@ -13,8 +13,9 @@ import {
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
+import { toolWorkFactorPct } from '../../../../equipment/index.js';
 import { stampResourceFootprintOrFallback, unstampResourceFootprint } from '../../../../footprint/index.js';
-import { workRepeatsFor } from '../../../../progression/index.js';
+import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../../progression/index.js';
 import { addCarry } from './carry.js';
 import { dropGroundPile } from './piles.js';
 
@@ -25,16 +26,35 @@ import { dropGroundPile } from './piles.js';
  */
 const HARVEST_YIELD = 1;
 
+/** Strokes a pickup clip spends on a unit: it takes the unit outright. Original behavior. */
+export const PICKUP_STROKES_PER_UNIT = 1;
+
 /**
- * Resolve one completed harvest swing. The node's marker components decide the shape, never its
- * goodType, so the lifecycle stays content-declared: a `Crop` field falls on the stroke that completes the
- * trade's count (approximation: which field action the count gates is not readable) and reaps its whole
- * yield to the ground, a `Felling` node drops a trunk on the chop that
- * zeroes `chopsLeft`, a `MineDeposit` chips ore piles until its last unit, and a bare node goes straight
- * onto the settler's back.
+ * Strokes one unit of `goodType` costs `settler` on a stroke-counted clip: the trade's track count, cut by
+ * the worker's experience and tool. Re-read at every stroke, so training or a tool picked up mid-unit
+ * counts at once. Original behavior.
+ */
+export function harvestStrokesPerUnit(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  goodType: number,
+): number {
+  return strokesPerUnit(
+    workRepeatsFor(ctx, world.tryGet(settler, Settler)?.jobType ?? null, goodType),
+    jobExperiencePercent(world, ctx, settler, goodType),
+    toolWorkFactorPct(world, ctx, settler),
+  );
+}
+
+/**
+ * Resolve one landed harvest stroke. The node's marker components decide the shape, never its goodType,
+ * so the lifecycle stays content-declared: a `Crop` field is reaped whole to the ground, a `Felling` node
+ * drops its whole yield as a trunk, a `MineDeposit` chips one ore pile until its last unit, and a bare node
+ * goes straight onto the settler's back. Each completes on the stroke that brings the node's landed count
+ * to `strokesNeeded`, the count then starting again for the next unit.
  *
- * `swings` is the whole work units the completed swing performs; a bare-node pluck stays one unit
- * because the pluck is itself the pickup. Returns the units extracted, the basis for per-unit work XP.
+ * Returns the units extracted; zero while the unit is still being worked.
  */
 export function harvestFromNode(
   world: World,
@@ -42,7 +62,7 @@ export function harvestFromNode(
   settler: Entity,
   node: Entity,
   goodType: number,
-  swings = 1,
+  strokesNeeded: number,
 ): number {
   const res = world.tryGet(node, Resource);
   if (res === undefined) return 0;
@@ -51,31 +71,30 @@ export function harvestFromNode(
   if (res.goodType !== goodType) return 0;
   if (world.has(node, Crop)) {
     if (res.remaining <= 0) return 0; // unripe: stands, and banks no stroke
-    return strokeCompletesCount(world, ctx, settler, node, res, swings) ? reapField(world, node, res) : 0;
+    return strokeCompletesUnit(world, node, res.strikes, strokesNeeded) ? reapField(world, node, res) : 0;
   }
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
-    const chopsLeft = Math.max(0, felling.chopsLeft - swings);
-    world.mut(node, Felling).chopsLeft = chopsLeft;
-    if (chopsLeft > 0) return 0;
+    if (felling.chops + 1 < strokesNeeded) {
+      world.mut(node, Felling).chops = felling.chops + 1;
+      return 0;
+    }
     fellNode(world, ctx, settler, node, res.goodType, res.remaining);
     return res.remaining;
   }
   // A competing collector took the last unit and its own drain already removed the node.
   if (res.remaining <= 0) return 0;
   const deposit = world.tryGet(node, MineDeposit);
-  let took = Math.min(HARVEST_YIELD, res.remaining);
+  const took = Math.min(HARVEST_YIELD, res.remaining);
   if (deposit !== undefined) {
-    // Observation: several strikes chip one unit, and the data pins only the single-swing cycle length.
-    const advanced = deposit.strikes + swings;
-    const freed = Math.floor(advanced / deposit.strikesPerUnit);
-    const rest = advanced % deposit.strikesPerUnit;
-    if (rest !== deposit.strikes) world.mut(node, MineDeposit).strikes = rest;
-    if (freed === 0) return 0;
-    took = Math.min(freed * HARVEST_YIELD, res.remaining);
+    if (deposit.strikes + 1 < strokesNeeded) {
+      world.mut(node, MineDeposit).strikes = deposit.strikes + 1;
+      return 0;
+    }
+    if (deposit.strikes !== 0) world.mut(node, MineDeposit).strikes = 0;
     dropMinedOre(world, settler, node, res.goodType, took);
   } else {
-    if (!strokeCompletesCount(world, ctx, settler, node, res, swings)) return 0;
+    if (!strokeCompletesUnit(world, node, res.strikes, strokesNeeded)) return 0;
     addCarry(world, settler, goodType, took);
   }
   // Decrement only after the unit is dropped or carried, so a rejecting `addCarry` cannot lose it.
@@ -91,31 +110,35 @@ export function harvestFromNode(
   return took;
 }
 
-/**
- * Bank a swing's `swings` strokes toward the trade's `baserepeatcounter` for the node's good, reporting
- * whether the count completed. Only the completing stroke frees a unit; earlier ones sit on the node's
- * counter, and on a node that stays standing a multi-unit stroke's overshoot carries into the next unit.
- */
-function strokeCompletesCount(
+/** Land one stroke on a field's or bare node's `Resource.strikes`, reporting whether it completes the unit;
+ *  the completing stroke clears the count. */
+function strokeCompletesUnit(
   world: World,
-  ctx: SystemContext,
-  settler: Entity,
   node: Entity,
-  res: { readonly goodType: number; readonly strikes?: number | undefined },
-  swings: number,
+  landed: number | undefined,
+  needed: number,
 ): boolean {
-  const repeats = workRepeatsFor(ctx, world.tryGet(settler, Settler)?.jobType ?? null, res.goodType);
-  if (repeats <= 1) return true;
-  const advanced = (res.strikes ?? 0) + swings;
-  if (advanced < repeats) {
-    world.mut(node, Resource).strikes = advanced;
+  const next = (landed ?? 0) + 1;
+  if (next < needed) {
+    world.mut(node, Resource).strikes = next;
     return false;
   }
-  const rest = advanced % repeats;
-  const r = world.mut(node, Resource);
-  if (rest === 0) r.strikes = undefined;
-  else r.strikes = rest;
+  if (landed !== undefined) world.mut(node, Resource).strikes = undefined;
   return true;
+}
+
+/**
+ * Whether the stroke that just resolved left the node's unit part-worked. The executor then chains the
+ * next stroke directly: the original plays a gatherer's strokes back to back, with no rest between them.
+ */
+export function continuesHarvest(world: World, node: Entity): boolean {
+  const res = world.tryGet(node, Resource);
+  if (res === undefined) return false;
+  const felling = world.tryGet(node, Felling);
+  if (felling !== undefined) return felling.chops > 0;
+  const deposit = world.tryGet(node, MineDeposit);
+  if (deposit !== undefined) return deposit.strikes > 0;
+  return (res.strikes ?? 0) > 0;
 }
 
 /** Remove an exhausted resource node, unstamping its footprint through the incremental cache rather
@@ -137,7 +160,7 @@ function reapField(world: World, node: Entity, res: { goodType: number; remainin
 }
 
 /**
- * Fell a {@link Felling} node whose last chop just landed: drop its whole yield as a ground trunk pile,
+ * Fell a {@link Felling} node whose completing stroke just landed: drop its whole yield as a ground trunk pile,
  * leave a {@link Stump} where it stood, and remove the node. `goodType` and `yieldAmount` are passed in
  * because `world.destroy` drops the component object from its store.
  */
