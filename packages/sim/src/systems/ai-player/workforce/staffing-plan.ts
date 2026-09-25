@@ -5,7 +5,7 @@ import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
-import { openingRunPending } from './craft.js';
+import { CRAFT_PLANS_BY_BUILDING_ID, openingRunPending, productsOf } from './craft.js';
 import type { SeatSupply } from './supply.js';
 
 /** A building's staffing plan: workers per operator trade and total transport carriers, filled tier by
@@ -27,10 +27,17 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
   carrierTarget: 0,
 };
 
+/** One {@link STAFFING_BY_BUILDING_ID} row. */
+export interface StaffingRow extends Partial<BuildingStaffing> {
+  /** Operators beyond the first are posts only while one of the type's products is short: under its
+   *  comfort line while more than one works there, under its short line otherwise ({@link SeatSupply}). */
+  readonly productGated?: true;
+}
+
 /** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (authored),
  *  applied per building instance. A second hand is a target-tier extra unless its row says otherwise,
  *  so a farm knowingly runs on one farmer until men are actually spare. */
-export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingStaffing>>> = {
+export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // A lone farmer cannot walk the watering circuit in time, so the second hand is worth more than its
   // own output; the third and fourth only pay off out of genuine surplus.
   work_farm_00: { operatorTarget: 2, operatorSurplus: 4 },
@@ -46,11 +53,13 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
   work_bakery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
   work_joinery_01: { operatorTarget: 2 },
   // The first potter and mason work alone, so a carrier hauls for them. The upgraded tiers keep one only
-  // while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID). The pottery's second potter is a
-  // minimum post, ahead of the builder reserve, but only once the opening run is done.
+  // while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID), and a second craftsman likewise.
+  // The pottery's second potter is a minimum post, ahead of the builder reserve, once the opening run is
+  // done.
   work_pottery_00: { carrierMin: 1, carrierTarget: 1 },
   work_mason_hut_00: { carrierMin: 1, carrierTarget: 1 },
-  work_pottery_01: { operatorMin: 2, operatorTarget: 2 },
+  work_pottery_01: { operatorMin: 2, operatorTarget: 2, productGated: true },
+  work_mason_hut_01: { operatorTarget: 2, productGated: true },
   work_sewery_01: { operatorTarget: 2 },
   work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
   work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
@@ -83,6 +92,12 @@ export const SUPPLY_CARRIER_GOODS_BY_BUILDING_ID: Readonly<Record<string, readon
   work_mason_hut_01: ['pillar', 'ornament'],
 };
 
+/** Who a building employs this decision, the live lever state its plan's hysteresis reads. */
+export interface HeldStaff {
+  readonly operators: number;
+  readonly carriers: number;
+}
+
 /** The seat-wide inputs every building's plan reads this decision. */
 export interface SeatStaffing {
   readonly player: number;
@@ -108,10 +123,10 @@ export function plannedOperators(ctx: SystemContext, type: BuildingType): number
 /**
  * One building's plan this decision, or null for the kinds the allocator never staffs: homes, towers and
  * the barracks are military or residential, not production. A workshop on its opening run keeps to its
- * first craftsman so the run is not split; `holdsCarrier` says whether a carrier works there already,
- * which keeps a supply carrier through the band below the line that hired him. A raw
- * good's own workshop runs without a carrier while that good is short for the sites
- * ({@link rawGoodShort}), whatever the rows above say.
+ * first craftsman so the run is not split; `held` is who works there already, which keeps a supply carrier
+ * or a product-gated craftsman through the band below the line that hired him. A raw good's own workshop
+ * runs without a carrier while that good is short for the sites ({@link rawGoodShort}), and a workshop
+ * with nothing left to make runs with nobody ({@link productsRest}), whatever the rows above say.
  */
 export function buildingStaffing(
   world: World,
@@ -119,19 +134,17 @@ export function buildingStaffing(
   seat: SeatStaffing,
   building: Entity,
   type: BuildingType,
-  holdsCarrier: boolean,
+  held: HeldStaff,
 ): BuildingStaffing | null {
   if (type.kind === 'storage') return STORAGE_STAFFING;
   if (type.kind !== 'workplace') return null;
-  let plan: BuildingStaffing = { ...DEFAULT_WORKPLACE_STAFFING, ...STAFFING_BY_BUILDING_ID[type.id] };
-  if (openingRunPending(world, ctx, building, type)) {
-    plan = {
-      ...plan,
-      operatorMin: Math.min(plan.operatorMin, 1),
-      operatorTarget: Math.min(plan.operatorTarget, 1),
-      operatorSurplus: Math.min(plan.operatorSurplus ?? plan.operatorTarget, 1),
-    };
+  const { productGated, ...row } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
+  let plan: BuildingStaffing = { ...DEFAULT_WORKPLACE_STAFFING, ...row };
+  const opening = openingRunPending(world, ctx, building, type);
+  if (opening || (productGated === true && !productShort(ctx, seat, type, held.operators > 1))) {
+    plan = capOperators(plan, 1);
   }
+  const holdsCarrier = held.carriers > 0;
   if (suppliesShort(ctx, seat, type, holdsCarrier)) {
     plan = {
       ...plan,
@@ -140,7 +153,44 @@ export function buildingStaffing(
     };
   }
   if (rawGoodShort(ctx, seat, type, holdsCarrier)) plan = { ...plan, carrierMin: 0, carrierTarget: 0 };
+  if (!opening && productsRest(ctx, seat, type, held.operators)) {
+    plan = { ...capOperators(plan, 0), carrierMin: 0, carrierTarget: 0 };
+  }
   return plan;
+}
+
+function capOperators(plan: BuildingStaffing, cap: number): BuildingStaffing {
+  return {
+    ...plan,
+    operatorMin: Math.min(plan.operatorMin, cap),
+    operatorTarget: Math.min(plan.operatorTarget, cap),
+    operatorSurplus: Math.min(plan.operatorSurplus ?? plan.operatorTarget, cap),
+  };
+}
+
+/** Whether one of the type's products is short: under its comfort line while `engaged`, else its short
+ *  line. A product without supply lines never is. */
+function productShort(ctx: SystemContext, seat: SeatStaffing, type: BuildingType, engaged: boolean): boolean {
+  return productsOf(ctx, type).some((good) => seat.supply.isShort(good, engaged));
+}
+
+/**
+ * Whether a workshop with no craft sink ({@link CRAFT_PLANS_BY_BUILDING_ID}) has nothing worth making:
+ * every product has supply lines and lies at its glut line, or, once its crew has gone, none is short
+ * yet. A product without supply lines keeps the crew on, as does a type with no product at all.
+ */
+function productsRest(
+  ctx: SystemContext,
+  seat: SeatStaffing,
+  type: BuildingType,
+  operators: number,
+): boolean {
+  if (CRAFT_PLANS_BY_BUILDING_ID[type.id]?.sink !== undefined) return false;
+  const products = productsOf(ctx, type);
+  if (products.length === 0 || products.some((good) => seat.supply.lines(good) === undefined)) return false;
+  return operators === 0
+    ? products.every((good) => !seat.supply.isShort(good, false))
+    : products.every((good) => seat.supply.atGlut(good));
 }
 
 /** Whether one of the type's supply goods is short: below its short line, or while a carrier already

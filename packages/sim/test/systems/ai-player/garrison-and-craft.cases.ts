@@ -13,9 +13,12 @@ import {
   setStockAmount,
   TrainingOrder,
 } from '../../../src/components/index.js';
-import type { Entity } from '../../../src/ecs/world.js';
+import type { PlayerCommand } from '../../../src/core/commands/index.js';
+import type { Entity, World } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
+import { DEFAULT_BUILD_ORDER, SeatSupply } from '../../../src/systems/ai-player/index.js';
+import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
@@ -263,8 +266,14 @@ function glutOf(buildingId: string, index: number, goodId: string): number {
   return glut;
 }
 
+/** One decision's craft selections, over the seat's supply at the time. */
+function tune(world: World, ctx: SystemContext): PlayerCommand[] {
+  const supply = SeatSupply.of(world, ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
+  return tuneCraftSelections(world, ctx, SEAT, supply);
+}
+
 /** A recast joinery at (40, 16) with `crew` builders hired as its joiners, lowest id first; the
- *  products each decision hands them, via {@link tuneCraftSelections}, in that order. */
+ *  products each decision hands them, via {@link tune}, in that order. */
 function crewedWorkshop(content: ContentSet, crew: number) {
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
   placeHq(sim);
@@ -292,7 +301,7 @@ function crewedWorkshop(content: ContentSet, crew: number) {
       setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, units),
     /** The decision's product changes, applied. */
     products(): (readonly number[])[] {
-      const commands = tuneCraftSelections(sim.world, ctx, SEAT);
+      const commands = tune(sim.world, ctx);
       for (const c of commands) sim.enqueueSetup(c);
       sim.step();
       return commands.flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
@@ -766,13 +775,11 @@ describe('workforce module - the barracks and craft selections', () => {
 
     sim.enqueueSetup({ kind: 'assignWorker', entity: first, building: joinery, jobPriority: [JOINER] });
     sim.step();
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([
-      { kind: 'setCraftGoods', entity: first, goods: [TOOL_IRON] },
-    ]);
+    expect(tune(sim.world, ctx)).toEqual([{ kind: 'setCraftGoods', entity: first, goods: [TOOL_IRON] }]);
 
     sim.enqueueSetup({ kind: 'assignWorker', entity: second, building: joinery, jobPriority: [JOINER] });
     sim.step();
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([
+    expect(tune(sim.world, ctx)).toEqual([
       { kind: 'setCraftGoods', entity: first, goods: [TOOL_IRON] },
       { kind: 'setCraftGoods', entity: second, goods: [TOOL_IRON, FURNITURE] },
     ]);
@@ -830,7 +837,7 @@ describe('workforce module - the barracks and craft selections', () => {
     const mason = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === MASON);
     if (mason === undefined) throw new Error('expected a mason');
     sim.world.add(mason, JobAssignment, { workplace: hut });
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([]);
+    expect(tune(sim.world, ctx)).toEqual([]);
 
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: hut });
     sim.step();
@@ -840,21 +847,21 @@ describe('workforce module - the barracks and craft selections', () => {
 
     // The upgraded hut opens on a marble run, counted on the hut itself.
     const run = { kind: 'setCraftGoods', entity: mason, goods: [ORNAMENT] } as const;
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([run]);
+    expect(tune(sim.world, ctx)).toEqual([run]);
     sim.enqueueSetup(run);
     sim.step();
     const cycles = CRAFT_OPENING_RUN_BY_BUILDING_ID.work_mason_hut_01?.cycles ?? 0;
     sim.world.mut(hut, CompletedCycles).byGood.set(ORNAMENT, cycles - 1);
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([]);
+    expect(tune(sim.world, ctx)).toEqual([]);
 
     // With the run done, the mason alternates stone blocks and marble.
     sim.world.mut(hut, CompletedCycles).byGood.set(ORNAMENT, cycles);
     const choice = { kind: 'setCraftGoods', entity: mason, goods: [PILLAR, ORNAMENT] } as const;
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([choice]);
+    expect(tune(sim.world, ctx)).toEqual([choice]);
     sim.enqueueSetup(choice);
     sim.step();
     expect(sim.world.get(mason, CraftSelection).goods).toEqual([PILLAR, ORNAMENT]);
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([]);
+    expect(tune(sim.world, ctx)).toEqual([]);
   });
 
   it('keeps both breeders of the animal farm on the cattle', () => {
@@ -924,7 +931,7 @@ describe('workforce module - the barracks and craft selections', () => {
       sim.step();
     };
     const products = (): (readonly number[])[] =>
-      tuneCraftSelections(sim.world, ctx, SEAT).flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
+      tune(sim.world, ctx).flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
 
     hire(0, 4);
     expect(products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
@@ -1012,7 +1019,7 @@ describe('workforce module - the barracks and craft selections', () => {
       .filter((e) => sim.world.get(e, Settler).jobType === JOINER)
       .sort((a, b) => a - b);
     expect(joiners).toHaveLength(2);
-    expect(tuneCraftSelections(sim.world, ctx, SEAT)).toEqual([
+    expect(tune(sim.world, ctx)).toEqual([
       { kind: 'setCraftGoods', entity: joiners[0], goods: [TOOL_IRON] },
       { kind: 'setCraftGoods', entity: joiners[1], goods: [TOOL_IRON, FURNITURE] },
     ]);

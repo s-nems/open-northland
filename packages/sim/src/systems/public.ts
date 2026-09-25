@@ -22,6 +22,7 @@ export {
   OPENING_HUNT_UNTIL_BUILDING_ID,
   STAFFING_BY_BUILDING_ID,
   SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
+  supplyLines,
 } from './ai-player/workforce/index.js';
 export {
   CHEST_CONTENTS,

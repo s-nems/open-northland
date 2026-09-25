@@ -15,6 +15,7 @@ const {
   SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
   TOWER_CONTENT_IDS,
   hunterJobType,
+  supplyLines,
 } = systems;
 
 /**
@@ -131,6 +132,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
     const carrierJob = content.jobs.find((j) => j.id === 'carrier')?.typeId;
     expect(carrierJob).toBeDefined();
+    const managed = supplyLines(content, DEFAULT_BUILD_ORDER);
 
     for (const [id, staffing] of Object.entries(STAFFING_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
@@ -144,6 +146,13 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       if (operatorWant > 0) {
         const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
         expect(fits, `an operator slot of ${id} offering ${operatorWant} seats`).toBe(true);
+      }
+      // A product-gated second hand is hired only while a product with supply lines runs short.
+      if (staffing.productGated === true) {
+        expect(
+          building?.recipes.some((r) => r.outputs.some((o) => managed.has(o.goodType))),
+          `${id} makes a good with supply lines`,
+        ).toBe(true);
       }
       const carrierTarget = staffing.carrierTarget ?? 0;
       if (carrierTarget > 0) {
@@ -230,23 +239,43 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
             : most,
         0,
       );
-      const seatLists = [plan.seats, plan.crowded?.seats ?? [], plan.late ?? []];
+      const seatLists = [plan.seats, plan.crowded?.seats ?? []];
       for (const seats of seatLists) {
         expect(
           (operatorSeats ?? 0) * planned,
           `operator seats of every planned ${id}`,
         ).toBeGreaterThanOrEqual(seats.length);
       }
-      const listed: string[] = [...(plan.alone ?? [])];
+      const listed: string[] = [...(plan.alone ?? []), ...(plan.sink ?? [])];
       for (const seat of seatLists.flat()) {
         if (!('goods' in seat)) {
           listed.push(...seat);
           continue;
         }
         listed.push(...seat.goods, ...(seat.otherwise ?? []));
-        // A glut on a good the seat never works would cap nothing.
-        for (const capped of Object.keys(seat.glut))
+        for (const capped of Object.keys(seat.glut)) {
+          // A glut on a good the seat never works would cap nothing, and a good with supply lines takes
+          // its glut from them.
           expect(seat.goods, `${id} glut good ${capped}`).toContain(capped);
+          const good = content.goods.find((g) => g.id === capped);
+          expect(good !== undefined && managed.has(good.typeId), `${id} authors a glut for ${capped}`).toBe(
+            false,
+          );
+        }
+      }
+      // A sink runs only while the type's goods with supply lines lie at glut, so the type needs one, and a
+      // sink good with lines of its own would feed its own trigger.
+      if (plan.sink !== undefined) {
+        expect(
+          [...produced].some((good) => managed.has(good)),
+          `${id} makes a good with supply lines`,
+        ).toBe(true);
+        for (const goodId of plan.sink) {
+          const good = content.goods.find((g) => g.id === goodId);
+          expect(good !== undefined && managed.has(good.typeId), `${id} sink ${goodId} has no lines`).toBe(
+            false,
+          );
+        }
       }
       for (const goodId of listed) {
         const good = content.goods.find((g) => g.id === goodId);

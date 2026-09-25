@@ -38,6 +38,7 @@ import {
   BUILDER_CAP,
   builderCap,
   releaseSurplusCarriers,
+  releaseSurplusOperators,
   reserveBuilders,
   staffBuildings,
 } from './staffing.js';
@@ -119,7 +120,8 @@ function runWorkforce(
     ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'first'),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
-    ...releaseSurplusCarriers(world, ctx, seat, builderJob),
+    ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
+    ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
     ...staffBuildings(world, ctx, seat, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob, builderCap(civilians)), // construction never starves
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
@@ -130,7 +132,7 @@ function runWorkforce(
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force),
-    ...tuneCraftSelections(world, ctx, player),
+    ...tuneCraftSelections(world, ctx, player, supply),
   ];
 }
 

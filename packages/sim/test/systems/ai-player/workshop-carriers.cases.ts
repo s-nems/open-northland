@@ -1,10 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
+  Carrying,
   CompletedCycles,
   CraftSelection,
   JobAssignment,
+  removeCurrentAtomic,
   Settler,
   setStockAmount,
 } from '../../../src/components/index.js';
@@ -18,18 +21,20 @@ import {
   DEFAULT_BUILD_ORDER,
   FLAG_MAX_DISTANCE_NODES,
   MAX_ACTIVE_CONSTRUCTION_SITES,
+  SeatSupply,
   type SupplyLines,
   supplyLines,
 } from '../../../src/systems/ai-player/index.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
+import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import { collectorAnchors, seatHolders } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
 import { FLAG_RELOCATE_EVERY_DECISIONS } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import {
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
-  LATE_CRAFT_FROM_TICK,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { claimFlagNode, flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import { EAT_ATOMIC_ID } from '../../../src/systems/settlers/atomics/start.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   aiSim,
@@ -54,8 +59,8 @@ import {
 } from './support.js';
 
 /** The pottery's and mason hut's crews: the first craftsman's carrier, the supply carrier an upgraded
- *  workshop keeps while its goods run short, the second potter after the opening run, and the potters'
- *  product split. */
+ *  workshop keeps while its goods run short, the second potter while a product runs short, the potters'
+ *  product split with its glut sink, and a workshop resting while its products lie at glut. */
 
 const POTTER = 12;
 const MASON = 13;
@@ -198,9 +203,44 @@ function linesOf(content: ContentSet, good: number): SupplyLines {
 }
 
 /** Stock every good at its own line. */
-function stockAtLine(seat: Seat, goods: readonly number[], line: 'short' | 'comfort', offset = 0): void {
+function stockAtLine(
+  seat: Seat,
+  goods: readonly number[],
+  line: 'short' | 'comfort' | 'glut',
+  offset = 0,
+): void {
   const content = workshopsContent();
   for (const good of goods) seat.stock([good], linesOf(content, good)[line] + offset);
+}
+
+/** Mark `building`'s opening run done, as if its crew had finished every cycle of `good`. */
+function finishRun(seat: Seat, building: Entity, buildingId: string, good: number): void {
+  const cycles = CRAFT_OPENING_RUN_BY_BUILDING_ID[buildingId]?.cycles ?? 0;
+  const done = seat.sim.world.tryMut(building, CompletedCycles);
+  if (done === undefined)
+    seat.sim.world.add(building, CompletedCycles, { byGood: new Map([[good, cycles]]) });
+  else done.byGood.set(good, cycles);
+}
+
+/** Post a spare man at `building` as a `job`. */
+function hireSpare(seat: Seat, building: Entity, job: number): void {
+  const spare = [...seat.sim.world.query(Settler)].find(
+    (e) => seat.sim.world.get(e, Settler).jobType === BUILDER && !seat.sim.world.has(e, JobAssignment),
+  );
+  if (spare === undefined) throw new Error('expected a spare man');
+  seat.apply([{ kind: 'assignWorker', entity: spare, building, jobPriority: [job] }]);
+}
+
+/** The `job` crew's live selections at `building` in id order, once one decision's tuning has applied. */
+function selections(seat: Seat, building: Entity, job: number): (readonly number[] | undefined)[] {
+  const { world } = seat.sim;
+  const ctx = { ...ctxOf(seat.sim), content: workshopsContent() };
+  const supply = SeatSupply.of(world, ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
+  seat.apply(tuneCraftSelections(world, ctx, SEAT, supply));
+  return seat
+    .crew(building, job)
+    .sort((a, b) => a - b)
+    .map((e) => world.tryGet(e, CraftSelection)?.goods);
 }
 
 describe('workforce module - the supply lines', () => {
@@ -354,32 +394,126 @@ describe('workforce module - the pottery and mason hut crews', () => {
     expect(potterHires()).toHaveLength(1);
   });
 
-  it('splits the potters between bricks and tiles, and adds the crockery to both only late', () => {
+  it('splits the potters between bricks and tiles, and puts both on whichever runs short until it is plentiful', () => {
     const seat = upgradedSeat();
-    const cycles = CRAFT_OPENING_RUN_BY_BUILDING_ID.work_pottery_01?.cycles ?? 0;
-    seat.sim.world.add(seat.pottery, CompletedCycles, { byGood: new Map([[TILE, cycles]]) });
-    const content = workshopsContent();
-    // The potters' live selections, in id order, once the decision at `tick` has applied.
-    const selections = (tick: number) => {
-      seat.apply(tuneCraftSelections(seat.sim.world, { ...ctxOf(seat.sim, tick), content }, SEAT));
-      return seat
-        .crew(seat.pottery, POTTER)
-        .sort((a, b) => a - b)
-        .map((e) => seat.sim.world.tryGet(e, CraftSelection)?.goods);
-    };
-
+    finishRun(seat, seat.pottery, 'work_pottery_01', TILE);
+    stockAtLine(seat, [BRICK, TILE], 'comfort');
     // A lone potter keeps both building materials going.
-    expect(selections(0)).toEqual([[BRICK, TILE]]);
-    const second = [...seat.sim.world.query(Settler)].find(
-      (e) => seat.sim.world.get(e, Settler).jobType === BUILDER && !seat.sim.world.has(e, JobAssignment),
-    );
-    if (second === undefined) throw new Error('expected a spare man');
-    seat.apply([{ kind: 'assignWorker', entity: second, building: seat.pottery, jobPriority: [POTTER] }]);
-    expect(selections(0)).toEqual([[BRICK], [TILE]]);
-    expect(selections(LATE_CRAFT_FROM_TICK)).toEqual([
-      [BRICK, CROCKERY],
-      [TILE, CROCKERY],
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK, TILE]]);
+    hireSpare(seat, seat.pottery, POTTER);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+
+    // At the short line nothing moves; under it the brick seat, its own good plentiful, turns to tiles.
+    stockAtLine(seat, [TILE], 'short');
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+    stockAtLine(seat, [TILE], 'short', -1);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[TILE], [TILE]]);
+    // It stays on tiles through the band and goes back to bricks at the comfort line.
+    stockAtLine(seat, [TILE], 'comfort', -1);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[TILE], [TILE]]);
+    stockAtLine(seat, [TILE], 'comfort');
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+  });
+
+  it('turns the potters to crockery once bricks and tiles both lie at glut, and back once one falls under comfort', () => {
+    const seat = upgradedSeat();
+    finishRun(seat, seat.pottery, 'work_pottery_01', TILE);
+    hireSpare(seat, seat.pottery, POTTER);
+    stockAtLine(seat, [BRICK], 'glut');
+    stockAtLine(seat, [TILE], 'glut', -1);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+    stockAtLine(seat, [TILE], 'glut');
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY]]);
+    // Down to the comfort line they stay on crockery; under it both go back to their seats.
+    stockAtLine(seat, [BRICK], 'comfort');
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[CROCKERY], [CROCKERY]]);
+    stockAtLine(seat, [BRICK], 'comfort', -1);
+    expect(selections(seat, seat.pottery, POTTER)).toEqual([[BRICK], [TILE]]);
+  });
+
+  it('hires the second potter only while a product runs short, and lets him go once all are plentiful', () => {
+    const seat = upgradedSeat();
+    finishRun(seat, seat.pottery, 'work_pottery_01', TILE);
+    const potterHires = () =>
+      seat
+        .decide()
+        .filter(
+          (c) => c.kind === 'assignWorker' && c.building === seat.pottery && c.jobPriority.includes(POTTER),
+        );
+    stockAtLine(seat, SUPPLY_GOODS, 'comfort');
+    stockAtLine(seat, [TILE], 'short');
+    expect(potterHires()).toEqual([]);
+    stockAtLine(seat, [TILE], 'short', -1);
+    expect(potterHires()).toHaveLength(1);
+    seat.apply(seat.decide());
+    const potters = seat.crew(seat.pottery, POTTER).sort((a, b) => a - b);
+    const second = potters[1];
+    expect(potters).toHaveLength(2);
+    if (second === undefined) throw new Error('expected the second potter');
+
+    // He stays through the band and leaves at the comfort line, the first potter keeping his post.
+    const released = () => seat.decide().filter((c) => c.kind === 'setJob' && potters.includes(c.entity));
+    stockAtLine(seat, [TILE], 'comfort', -1);
+    expect(released()).toEqual([]);
+    stockAtLine(seat, [TILE], 'comfort');
+    expect(released()).toEqual([{ kind: 'setJob', entity: second, jobType: BUILDER }]);
+  });
+});
+
+describe('workforce module - a workshop with nothing left to make', () => {
+  it('lets the lone mason and his carrier go while the pillars lie at glut, and hires him back once they run short', () => {
+    const seat = workshopSeat();
+    seat.apply(seat.decide());
+    const hut = entityOfBuilding(seat.sim, MASON_HUT);
+    const [mason] = seat.crew(hut, MASON);
+    const [carrier] = seat.crew(hut, CARRIER);
+    if (mason === undefined || carrier === undefined) throw new Error('expected the mason hut crew');
+    const released = () =>
+      seat.decide().filter((c) => c.kind === 'setJob' && (c.entity === mason || c.entity === carrier));
+    const masonHires = () =>
+      seat
+        .decide()
+        .filter((c) => c.kind === 'assignWorker' && c.building === hut && c.jobPriority.includes(MASON));
+
+    stockAtLine(seat, [PILLAR], 'glut', -1);
+    expect(released()).toEqual([]);
+    stockAtLine(seat, [PILLAR], 'glut');
+    // Never mid-action or under a load: the trade change would cancel the one or drop the other.
+    seat.sim.world.add(mason, Carrying, { goodType: STONE, amount: 1 });
+    expect(released()).toEqual([{ kind: 'setJob', entity: carrier, jobType: BUILDER }]);
+    seat.sim.world.remove(mason, Carrying);
+    addCurrentAtomic(seat.sim.world, mason, {
+      atomicId: EAT_ATOMIC_ID,
+      duration: 50,
+      effect: { kind: 'eat', goodType: STONE, from: null },
+      targetEntity: mason,
+      targetTile: null,
+    });
+    expect(released()).toEqual([{ kind: 'setJob', entity: carrier, jobType: BUILDER }]);
+    removeCurrentAtomic(seat.sim.world, mason);
+    expect(released()).toEqual([
+      { kind: 'setJob', entity: carrier, jobType: BUILDER },
+      { kind: 'setJob', entity: mason, jobType: BUILDER },
     ]);
+    seat.apply(released());
+    expect(seat.crew(hut, MASON)).toEqual([]);
+
+    // The empty hut waits down to the short line, and takes a mason back under it.
+    stockAtLine(seat, [PILLAR], 'short');
+    expect(masonHires()).toEqual([]);
+    stockAtLine(seat, [PILLAR], 'short', -1);
+    expect(masonHires()).toHaveLength(1);
+  });
+
+  it('keeps a mason hut on its opening run whatever lies in store', () => {
+    const seat = upgradedSeat();
+    const [mason] = seat.crew(seat.hut, MASON);
+    if (mason === undefined) throw new Error('expected the mason');
+    const released = () => seat.decide().filter((c) => c.kind === 'setJob' && c.entity === mason);
+    stockAtLine(seat, [PILLAR, ORNAMENT], 'glut');
+    expect(released()).toEqual([]);
+    finishRun(seat, seat.hut, 'work_mason_hut_01', ORNAMENT);
+    expect(released()).toEqual([{ kind: 'setJob', entity: mason, jobType: BUILDER }]);
   });
 });
 

@@ -1,3 +1,4 @@
+import type { BuildingType } from '@open-northland/data';
 import { Building, Carrying, CurrentAtomic, JobAssignment, Settler } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -6,7 +7,13 @@ import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { isBuilt, ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
-import { buildingStaffing, LATE_GAME_CIVILIANS, type SeatStaffing } from './staffing-plan.js';
+import {
+  type BuildingStaffing,
+  buildingStaffing,
+  type HeldStaff,
+  LATE_GAME_CIVILIANS,
+  type SeatStaffing,
+} from './staffing-plan.js';
 import { incrementStaffing, type StaffingTally } from './tally.js';
 
 /** Whichever tier a staffing pass fills toward - see {@link staffBuildings}. */
@@ -51,7 +58,7 @@ export function staffBuildings(
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
     if (type === undefined) continue;
-    const staffing = buildingStaffing(world, ctx, seat, building, type, carriersAt(ctx, tally, building) > 0);
+    const staffing = buildingStaffing(world, ctx, seat, building, type, heldAt(ctx, tally, building));
     if (staffing === null) continue;
     const operatorWant =
       tier === 'min'
@@ -77,47 +84,111 @@ export function staffBuildings(
   return commands;
 }
 
-/** How many transport carriers `building` employs by `tally`. */
-function carriersAt(ctx: SystemContext, tally: StaffingTally, building: Entity): number {
+/** Whether `job` is an operator trade: neither a transport carrier nor a flag gatherer. */
+function isOperatorJob(ctx: SystemContext, job: number): boolean {
+  return !isCarrierJob(ctx, job) && !contentIndex(ctx.content).harvestJobs.has(job);
+}
+
+/** Who `building` employs by `tally`. */
+function heldAt(ctx: SystemContext, tally: StaffingTally, building: Entity): HeldStaff {
+  let operators = 0;
   let carriers = 0;
-  for (const [job, count] of tally.get(building) ?? []) if (isCarrierJob(ctx, job)) carriers += count;
-  return carriers;
+  for (const [job, count] of tally.get(building) ?? []) {
+    if (isCarrierJob(ctx, job)) carriers += count;
+    else if (isOperatorJob(ctx, job)) operators += count;
+  }
+  return { operators, carriers };
 }
 
 /**
  * Hand back as builders the carriers a built workplace employs beyond its plan's carrier target, as after
- * an upgrade into a tier that plans fewer or once a supply carrier's goods are plentiful again. The
- * lowest-id carriers keep their posts; a man mid-action or holding a load is left until he is free, since
- * the trade change would cancel the one or drop the other.
+ * an upgrade into a tier that plans fewer or once a supply carrier's goods are plentiful again.
  */
 export function releaseSurplusCarriers(
   world: World,
   ctx: SystemContext,
   seat: SeatStaffing,
+  tally: StaffingTally,
   builderJob: number | null,
+): PlayerCommand[] {
+  return releaseSurplus(
+    world,
+    ctx,
+    seat,
+    tally,
+    builderJob,
+    (job) => isCarrierJob(ctx, job),
+    (plan) => plan.carrierTarget,
+  );
+}
+
+/**
+ * Hand back as builders the operators a built workplace employs beyond the highest tier its plan staffs,
+ * as once a product-gated second craftsman's goods are plentiful or a workshop's products all lie at glut
+ * ({@link buildingStaffing}).
+ */
+export function releaseSurplusOperators(
+  world: World,
+  ctx: SystemContext,
+  seat: SeatStaffing,
+  tally: StaffingTally,
+  builderJob: number | null,
+): PlayerCommand[] {
+  return releaseSurplus(
+    world,
+    ctx,
+    seat,
+    tally,
+    builderJob,
+    (job) => isOperatorJob(ctx, job),
+    // A store staffs transport only, so its hunters and fishers are not the plan's to release.
+    (plan, type) =>
+      type.kind === 'storage'
+        ? Number.POSITIVE_INFINITY
+        : Math.max(plan.operatorMin, plan.operatorTarget, plan.operatorSurplus ?? 0),
+  );
+}
+
+/**
+ * Hand back as builders each built building's staff of the `role` trades beyond the plan's `keep` count,
+ * per trade. The lowest ids keep their posts; a man mid-action or holding a load is left until he is free,
+ * since the trade change would cancel the one or drop the other.
+ */
+function releaseSurplus(
+  world: World,
+  ctx: SystemContext,
+  seat: SeatStaffing,
+  tally: StaffingTally,
+  builderJob: number | null,
+  role: (job: number) => boolean,
+  keep: (plan: BuildingStaffing, type: BuildingType) => number,
 ): PlayerCommand[] {
   if (builderJob === null) return [];
   const index = contentIndex(ctx.content);
   // Insertion follows the canonical settler walk, so the kept posts and the command order are deterministic.
-  const carriersByWorkplace = new Map<Entity, Entity[]>();
+  const staffByWorkplace = new Map<Entity, Map<number, Entity[]>>();
   for (const e of ownedSettlers(world, seat.player)) {
     const workplace = world.tryGet(e, JobAssignment)?.workplace;
     const job = world.get(e, Settler).jobType;
-    if (workplace === undefined || job === null || !isCarrierJob(ctx, job)) continue;
-    const carriers = carriersByWorkplace.get(workplace);
-    if (carriers === undefined) carriersByWorkplace.set(workplace, [e]);
-    else carriers.push(e);
+    if (workplace === undefined || job === null || !role(job)) continue;
+    const byJob = staffByWorkplace.get(workplace) ?? new Map<number, Entity[]>();
+    staffByWorkplace.set(workplace, byJob);
+    const staff = byJob.get(job);
+    if (staff === undefined) byJob.set(job, [e]);
+    else staff.push(e);
   }
   const commands: PlayerCommand[] = [];
-  for (const [workplace, carriers] of carriersByWorkplace) {
+  for (const [workplace, byJob] of staffByWorkplace) {
     if (!isBuilt(world, workplace)) continue;
     const type = index.buildings.get(world.get(workplace, Building).buildingType);
-    const staffing =
-      type === undefined ? null : buildingStaffing(world, ctx, seat, workplace, type, carriers.length > 0);
-    if (staffing === null) continue;
-    for (const e of carriers.slice(staffing.carrierTarget)) {
-      if (world.has(e, CurrentAtomic) || world.has(e, Carrying)) continue;
-      commands.push({ kind: 'setJob', entity: e, jobType: builderJob });
+    if (type === undefined) continue;
+    const plan = buildingStaffing(world, ctx, seat, workplace, type, heldAt(ctx, tally, workplace));
+    if (plan === null) continue;
+    for (const staff of byJob.values()) {
+      for (const e of staff.slice(keep(plan, type))) {
+        if (world.has(e, CurrentAtomic) || world.has(e, Carrying)) continue;
+        commands.push({ kind: 'setJob', entity: e, jobType: builderJob });
+      }
     }
   }
   return commands;
