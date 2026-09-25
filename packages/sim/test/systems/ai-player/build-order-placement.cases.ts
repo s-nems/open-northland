@@ -26,6 +26,7 @@ import {
   aiSim,
   ctxOf,
   entityOfBuilding,
+  HOME_TYPE,
   HQ_TYPE,
   HQ_X,
   HQ_Y,
@@ -227,6 +228,52 @@ describe('build-order placement - affinity and ground rules', () => {
     if (fallback?.kind !== 'placeBuilding') throw new Error('expected a centre-pulled placement');
     expect(fallback.x).toBeGreaterThan(HQ_AT.x);
     expect(fallback.y).toBeGreaterThan(HQ_AT.y);
+  });
+
+  it('searches from the base when the affinity-pulled fan finds no room, so a wide settlement never stalls on its far side', () => {
+    // Grass west of the water line, water east of it; a home stands far out on the water side (forced) and
+    // the enemy beyond it, so the front-pulled centre lands east of the home and its fan never reaches the
+    // grass around the base. Two fans would cover the whole reach; one cannot.
+    const WATER_FROM_X = 60;
+    const WIDTH = 256;
+    const HEIGHT = 64;
+    const GRASS = 0;
+    const WATER = 1;
+    const HQ = { x: 20, y: 32 };
+    const FAR_HOME = { x: 100, y: 32 };
+    const RIVAL_HQ = { x: 240, y: 32 };
+    const RIVAL = 3;
+    expect(FAR_HOME.x - BUILD_SEARCH_MAX_RADIUS_NODES).toBeGreaterThan(WATER_FROM_X);
+    const typeIds = new Array<number>(WIDTH * HEIGHT).fill(GRASS);
+    for (let y = 0; y < HEIGHT; y++)
+      for (let x = WATER_FROM_X; x < WIDTH; x++) typeIds[y * WIDTH + x] = WATER;
+    const map: TerrainMap = { resolution: 'half-cell', width: WIDTH, height: HEIGHT, typeIds };
+    const sim = new Simulation({ seed: 1, content: aiContent(), map });
+    placeHq(sim, HQ.x, HQ.y);
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: RIVAL, tribes: [VIKING] });
+    for (const [buildingType, at, owner] of [
+      [HOME_TYPE, FAR_HOME, SEAT],
+      [HQ_TYPE, RIVAL_HQ, RIVAL],
+    ] as const) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType,
+        x: at.x,
+        y: at.y,
+        tribe: VIKING,
+        owner,
+        force: true,
+      });
+    }
+    sim.step();
+    const spot = firstCommandOf(sim, [
+      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
+    ]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement from the base');
+    expect(spot.x).toBeLessThan(WATER_FROM_X);
+    expect(Math.abs(spot.x - HQ.x) + Math.abs(spot.y - HQ.y)).toBeLessThanOrEqual(
+      BUILD_SEARCH_MAX_RADIUS_NODES,
+    );
   });
 
   it('breaks a near tie between affinity spots toward the base, never trading more than the divisor allows', () => {

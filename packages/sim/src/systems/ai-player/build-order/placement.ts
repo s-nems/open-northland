@@ -339,6 +339,10 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  * twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
  * up that serves nothing.
+ *
+ * An affinity pull that finds nothing yields to the same search from `anchor` (owner's rule): a
+ * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
+ * barracks or a mint anywhere in it beats a list stalled for half an hour.
  */
 export function placementSpot(
   world: World,
@@ -351,7 +355,6 @@ export function placementSpot(
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
 ): HalfCellNode | null {
-  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const settlement = buildReach(world, owned, anchor);
   const { centre, serves } = searchCentre(
     world,
@@ -364,6 +367,37 @@ export function placementSpot(
     type,
     entry,
   );
+  const pulled = spotAround(
+    world,
+    ctx,
+    terrain,
+    player,
+    settlement,
+    anchor,
+    centre,
+    serves,
+    type,
+    entry,
+    underFire,
+  );
+  if (pulled !== null || (centre.hx === anchor.hx && centre.hy === anchor.hy)) return pulled;
+  return spotAround(world, ctx, terrain, player, settlement, anchor, anchor, serves, type, entry, underFire);
+}
+
+function spotAround(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  settlement: BuildReach,
+  anchor: HalfCellNode,
+  centre: HalfCellNode,
+  serves: HalfCellNode | null,
+  type: BuildingType,
+  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+  underFire: EnemyFire,
+): HalfCellNode | null {
+  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire, centre, fan);
   const reach = settlement.around(centre, fan);
   const serveRadius = entry.unlessWithin?.radius ?? 0;
