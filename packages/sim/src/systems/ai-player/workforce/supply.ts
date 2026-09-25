@@ -44,8 +44,9 @@ const linesCache = new WeakMap<
 
 /**
  * The supply lines of every good the build order's bills take, the collected goods, its collector goods
- * and the {@link STOCKED_PRODUCT_GOOD_IDS} (authored approximation). Short covers
- * {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites of the good's unit, comfort adds the larger of the unit and a
+ * and the {@link STOCKED_PRODUCT_GOOD_IDS} (authored approximation). A unit is the good's largest bill line,
+ * or for a stocked product the larger of that and its widest consuming shelf. Short covers
+ * {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites of the unit, comfort adds the larger of the unit and a
  * consuming workshop's input shelf, and glut adds one unit per {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} entry
  * on top.
  */
@@ -92,10 +93,16 @@ function deriveLines(
       raiseTo(shelf, input.goodType, capacities?.get(input.goodType) ?? 0);
     }
   }
+  const stocked = new Set<number>();
+  for (const id of STOCKED_PRODUCT_GOOD_IDS) addKnown(stocked, index.goodTypeBySlug.get(id));
   const lines = new Map<number, SupplyLines>();
   for (const good of managed) {
     const shelved = shelf.get(good) ?? 0;
-    const unit = billUnit.get(good) ?? Math.max(shelved, FALLBACK_SUPPLY_UNIT);
+    // A stocked product is measured by the shelf its consumers draw it from, whatever small bill lines
+    // also take it: a crew sized by a two-grain bill would rest before the mill's shelf was full.
+    const unit = stocked.has(good)
+      ? Math.max(billUnit.get(good) ?? 0, shelved, FALLBACK_SUPPLY_UNIT)
+      : (billUnit.get(good) ?? Math.max(shelved, FALLBACK_SUPPLY_UNIT));
     const short = MAX_ACTIVE_CONSTRUCTION_SITES * unit;
     const comfort = short + Math.max(unit, shelved);
     lines.set(good, { unit, short, comfort, glut: comfort + BUILD_ORDER_LOOKAHEAD_ENTRIES * unit });

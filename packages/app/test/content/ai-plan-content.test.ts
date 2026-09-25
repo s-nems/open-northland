@@ -134,9 +134,9 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const good = content.goods.find((g) => g.id === id);
       return good === undefined ? undefined : managed.get(good.typeId);
     };
-    // The homes' and several workshops' bills take wheat, so its largest bill line (two) is its unit, and
-    // the mill's and animal farm's ten-unit wheat shelves widen only its band.
-    expect(linesOf('wheat')).toEqual({ unit: 2, short: 4, comfort: 14, glut: 20 });
+    // The homes' and several workshops' bills take two wheat at most, so the mill's and animal farm's
+    // ten-unit wheat shelves are its unit.
+    expect(linesOf('wheat')).toEqual({ unit: 10, short: 20, comfort: 30, glut: 60 });
     // No bill takes flour: the bakery's ten-unit flour shelf is its unit.
     expect(linesOf('flour')).toEqual({ unit: 10, short: 20, comfort: 30, glut: 60 });
   });
