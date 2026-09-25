@@ -217,7 +217,10 @@ The selected person's panel (ticket 08), bottom right, 318 px wide, in the windo
 carries the trade as the bronze kicker over the person's name, an owner line only when it says
 something (another seat's person, a child's age), and two medallions: Rozkazy, which opens the
 action ring at the settler (its tooltip names the ring hotkey), and close, which clears the
-selection. The panel is a quick look: every state fits the 810 px design plane without a scrollbar
+selection. The kicker browses the trade: chevrons on both sides and "2 / 5" step to the previous
+or next person of the same trade (Tab and Shift+Tab do the same while the panel is open), and a
+double click on the trade selects every person of that trade as a group. The name is an in-place
+rename (a pen on hover), except for a hero and another seat's person. The panel is a quick look: every state fits the 810 px design plane without a scrollbar
 (the frame stops 16 px under the summary bar), so anything that would not fit is folded or cut at
 design time, never scrolled. It shows what the player can read or act on and nothing else: no
 explanatory lines, no help buttons. Review states: `settler.js` in the mockup, switched by the
@@ -229,26 +232,32 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   Buty; a worker has the last two, a soldier Broń, Zbroja, Buty, a hero its fixed arms as flat
   frameless sockets) and the four-cell Torba row under it. An empty worn socket shows a ghost glyph
   of what goes there (sword, armour, tool, boot) and opens the equip picker; an occupied socket holds
-  the good's icon over its wear bar (red under a quarter), pressing it opens the picker to swap and
-  a small × at its corner, shown on hover or focus, takes the item off. A woman and a child have no
+  the good's icon over its wear bar (red under a quarter), its tooltip the wear left as a percent
+  and the minutes it buys at the current pace; pressing it opens the picker to swap and a small ×
+  at its corner, shown on hover or focus, takes the item off. A woman and a child have no
   sockets, so the column holds the status alone. No level medallion: the game has no settler level.
-- Status line at the foot of that column: the live state (Pracuje, Idzie, a trader's Idzie do with
-  the destination, Bezczynny, Czeka na budowę warsztatu, Stoi na alarmie) and, when the person
-  carries something, "niesie" with the good in a small well and its count. A tradesman's Bezczynny
-  and Czeka na budowę warsztatu read in amber. A man without a trade gets his Zmień zawód button
+- Status line at the foot of that column: the live state (Pracuje, Idzie, Bezczynny, Czeka na
+  budowę warsztatu, Stoi na alarmie) with its detail after a dot: the product being made (Pracuje ·
+  Krótki miecz), a trader's destination (Idzie do Magazyn · Wikingowie), the reason a tradesman
+  stands idle when the sim knows one (brak żelaza w kuźni, magazyn pełny, bez narzędzia, bez
+  zawodu); then, when the person carries something, "niesie" with the good in a small well and its
+  count. A tradesman's Bezczynny and Czeka na budowę warsztatu read in amber with their reason. A man without a trade gets his Zmień zawód button
   right under the portrait row (tooltip with the profession hotkey); it opens the profession choice
   window.
 - Samopoczucie: one line per stat, label, quarter-ticked meter and the percent, Zdrowie first, then
   the need bars the settler carries (a child and a hero show health alone). Under a third the fill
-  and the percent turn amber, under a sixth red, so trouble reads without words. A bar over full
-  keeps its stored reserve in the tooltip, as the legacy panel did.
+  and the percent turn amber, under a sixth red, so trouble reads without words. A need row is the
+  order for that need: pressing Sytość, Sen, Towarzystwo or Religia sends the ring's Jedz, Śpij,
+  Rozmawiaj or Módl się (the tooltip names it); Zdrowie has no order. A bar over full keeps its
+  stored reserve in the tooltip, as the legacy panel did.
 - Praca i rodzina: ledger rows. Miejsce pracy and Dom name the building as a link that selects it
   (the original's "Pokaż miejsce pracy" and home buttons), followed by two round buttons, assign
   (target glyph, opens the pick mode) and remove (×). An empty seat the player can fill says "brak"
   in amber; when there is nothing to remove the × slot stays blank. A button the sim would refuse
-  stays visible, faded, with the reason in its tooltip ("Dziecko mieszka z rodzicami"). Rodzina
-  names the spouse and the growing child as links that select them, or "bez pary" in amber (the
-  ring holds the marriage order). A man without a trade has no Miejsce pracy row, a woman and a
+  stays visible, faded, with the reason in its tooltip ("Dziecko mieszka z rodzicami"). Resting on
+  the workplace link shows the building's hover card (state and stock) without a click. Rodzina
+  names the spouse and the growing child as links that select them, or "bez pary" in amber, which
+  opens the partner choice (the same pick flow as assigning a home, aimed at a person). A man without a trade has no Miejsce pracy row, a woman and a
   soldier have Dom and Rodzina only, a child a read-only Dom row, a hero no section.
 - Produkcja, under Praca for a craft operator and a gatherer: one row per product the trade may make
   here, in recipe order: the good's icon in a round button, its name and a −/n/+ counter. The
@@ -258,7 +267,7 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   original wraps to 0 (a named approximation: one more click must not stop a product). The icon
   button is "Tylko ten produkt": ∞ here, 0 on every other row (the original's "Tylko produkuj").
   A product not yet earned is listed faded with a lock, the requirement and progress in the
-  tooltip. Products rotate one unit at a time in good order, as the sim does today; a job whose
+  tooltip; the lock opens the good's Knowledge page. Products rotate one unit at a time in good order, as the sim does today; a job whose
   `userCanChangeProductionFlag` is 0 (the hunter) shows no counters.
 - Wojsko, for a soldier and a hero: Postawa as a three-way segmented control (Atak, Obrona, Ignoruj)
   and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action ring issues.

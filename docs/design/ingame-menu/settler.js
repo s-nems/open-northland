@@ -20,6 +20,10 @@ const WORN_SLOTS = [
   ['Buty', 'i-boot'],
 ];
 const BAG_LABEL = 'Torba';
+// Clicking a need bar sends the ring's order for that need; health has no order.
+const NEED_ORDERS = { Sytość: 'Jedz', Sen: 'Śpij', Towarzystwo: 'Rozmawiaj', Religia: 'Módl się' };
+// Sample wear pace for the socket tooltip's "ok. N min" (an approximation for the mockup).
+const WEAR_PCT_PER_MIN = 12;
 const good = (id) => `<span data-good="${id}"></span>`;
 
 // [good id, label]
@@ -51,6 +55,7 @@ const STATES = {
     profession: 'Zbieracz',
     meta: null,
     status: 'Pracuje',
+    ofTrade: [1, 3],
     bars: [
       ['Zdrowie', 84],
       ['Sytość', 62],
@@ -93,6 +98,8 @@ const STATES = {
     profession: 'Kowal',
     meta: null,
     status: 'Pracuje',
+    detail: 'Krótki miecz',
+    ofTrade: [2, 5],
     bars: [
       ['Zdrowie', 96],
       ['Sytość', 88],
@@ -129,6 +136,7 @@ const STATES = {
     profession: 'Wojownik z mieczem',
     meta: null,
     status: 'Stoi na alarmie',
+    ofTrade: [4, 12],
     bars: [
       ['Zdrowie', 58],
       ['Sytość', 12],
@@ -194,6 +202,7 @@ const STATES = {
     look: LOOK.woman,
     profession: 'Kobieta',
     meta: null,
+    ofTrade: [3, 9],
     status: 'Idzie do domu',
     bars: [
       ['Zdrowie', 92],
@@ -216,7 +225,9 @@ const STATES = {
     profession: 'Cywil',
     meta: null,
     status: 'Bezczynny',
+    detail: 'bez zawodu',
     trouble: true,
+    ofTrade: [1, 4],
     bars: [
       ['Zdrowie', 100],
       ['Sytość', 71],
@@ -242,6 +253,7 @@ const STATES = {
     look: LOOK.man,
     profession: 'Kupiec',
     meta: null,
+    ofTrade: [1, 1],
     status: 'Idzie do Magazyn · Wikingowie',
     bars: [
       ['Zdrowie', 77],
@@ -305,6 +317,14 @@ const STATES = {
   },
 };
 
+STATES['smith-idle'] = {
+  ...STATES.smith,
+  label: 'Kowal bez surowca',
+  status: 'Bezczynny',
+  detail: 'brak żelaza w kuźni',
+  trouble: true,
+};
+
 const STANCES = [
   ['attack', 'Atak'],
   ['defend', 'Obrona'],
@@ -313,8 +333,9 @@ const STANCES = [
 
 function statusText(state) {
   const carrying = state.work.carrying;
-  if (carrying === null) return state.status;
-  return `${state.status} · niesie <b class="with-good"><span class="good-well">${good(carrying[0])}</span>${carrying[1]}</b>`;
+  const head = state.detail === undefined ? state.status : `${state.status} · ${state.detail}`;
+  if (carrying === null) return head;
+  return `${head} · niesie <b class="with-good"><span class="good-well">${good(carrying[0])}</span>${carrying[1]}</b>`;
 }
 
 function counterText(count) {
@@ -327,7 +348,7 @@ function productionMarkup(production) {
     .map((row) => {
       const label = GOODS[row.good];
       if (row.locked !== undefined) {
-        return `<li class="prod-row locked" title="${row.locked}"><span class="prod-good">${good(row.good)}</span><span class="prod-name">${label}</span><span class="prod-lock">${svg('i-lock')}</span></li>`;
+        return `<li class="prod-row locked" title="${row.locked}"><span class="prod-good">${good(row.good)}</span><span class="prod-name">${label}</span><button type="button" class="prod-lock" title="${row.locked} · Wiedza: ${label}" aria-label="Wiedza: ${label}">${svg('i-lock')}</button></li>`;
       }
       const stopped = row.count === 0;
       return `<li class="prod-row${stopped ? ' stopped' : ''}" data-count="${row.count}"><button type="button" class="prod-good" title="Tylko ten produkt: pozostałe zatrzymaj" aria-label="Tylko ${label}">${good(row.good)}</button><span class="prod-name">${label}</span><span class="counter"><button type="button" class="counter-step" data-step="-1" title="Obniż produkcję · Shift: zatrzymaj" aria-label="Mniej: ${label}">${svg('i-minus')}</button><b class="counter-value" aria-live="polite">${counterText(row.count)}</b><button type="button" class="counter-step" data-step="1" ${row.count === INFINITE ? 'aria-disabled="true"' : ''} title="Zwiększ produkcję · Shift: bez końca" aria-label="Więcej: ${label}">${svg('i-plus')}</button></span></li>`;
@@ -354,7 +375,7 @@ function workMarkup(state) {
   if (tradesman) {
     const btns = `<span class="ledger-btns">${controlButton('i-target', 'Przydziel miejsce pracy', workControls.assign)}${controlButton('i-close', 'Usuń miejsce pracy', work.place === null ? null : workControls.unassign)}</span>`;
     rows.push(
-      `<div class="kv kv-ctl"><span>Miejsce pracy</span>${work.place === null ? missing(true) : `<button type="button" class="kv-link" title="Zaznacz budynek">${work.place}</button>`}${btns}</div>`,
+      `<div class="kv kv-ctl"><span>Miejsce pracy</span>${work.place === null ? missing(true) : `<button type="button" class="kv-link" title="Zaznacz budynek · najedź: stan budynku">${work.place}</button>`}${btns}</div>`,
     );
   } else if (work.place !== null) {
     rows.push(`<div class="kv"><span>Miejsce pracy</span><b>${work.place}</b></div>`);
@@ -373,7 +394,7 @@ function workMarkup(state) {
       `<button type="button" class="kv-link" title="${role}: zaznacz">${name}</button>`;
     const members =
       family.partner === null
-        ? '<b class="missing" title="Ślub: rozkaz w pierścieniu">bez pary</b>'
+        ? '<button type="button" class="kv-link missing" title="Wybierz partnera">bez pary</button>'
         : `<b class="people">${person(family.partner, 'Partner')}${family.child === null ? '' : ` · ${person(family.child, 'Dziecko')}`}</b>`;
     rows.push(`<div class="kv"><span>Rodzina</span>${members}</div>`);
   }
@@ -445,7 +466,11 @@ function socket(slot, label, ghost, fixed) {
   const cls = condition !== null && condition < 25 ? ' worn' : '';
   if (fixed)
     return `<span class="socket fixed${cls}" title="${label}: ${GOODS[id]}">${good(id)}${wear}</span>`;
-  return `<span class="socket-group"><button type="button" class="socket${cls}" title="${label}: ${GOODS[id]}${condition === null ? '' : ` · ${condition}%`} · Wymień" aria-label="Wymień: ${GOODS[id]}">${good(id)}${wear}</button><button type="button" class="socket-off" title="Zdejmij: ${GOODS[id]}" aria-label="Zdejmij: ${GOODS[id]}">${svg('i-close')}</button></span>`;
+  const left =
+    condition === null
+      ? ''
+      : ` · ${condition}% · ok. ${Math.max(1, Math.round(condition / WEAR_PCT_PER_MIN))} min`;
+  return `<span class="socket-group"><button type="button" class="socket${cls}" title="${label}: ${GOODS[id]}${left} · Wymień" aria-label="Wymień: ${GOODS[id]}">${good(id)}${wear}</button><button type="button" class="socket-off" title="Zdejmij: ${GOODS[id]}" aria-label="Zdejmij: ${GOODS[id]}">${svg('i-close')}</button></span>`;
 }
 
 // Two rows beside the portrait: the worn slots the person has, in WORN_SLOTS order, then the bag.
@@ -472,17 +497,24 @@ function ordersMarkup(state) {
   return orders.length === 0 ? '' : `<div class="orders orders-inline">${orders.join('')}</div>`;
 }
 
+function kickerMarkup(state) {
+  if (state.foreign || state.ofTrade === undefined) return `<p>${state.profession.toUpperCase()}</p>`;
+  const [index, count] = state.ofTrade;
+  const trade = state.profession;
+  return `<p class="kicker"><button type="button" class="browse" title="Poprzedni: ${trade} · Shift+Tab" aria-label="Poprzedni">${svg('i-prev')}</button><span title="Dwuklik: zaznacz wszystkich (${trade})">${trade.toUpperCase()} <small>${index} / ${count}</small></span><button type="button" class="browse" title="Następny: ${trade} · Tab" aria-label="Następny">${svg('i-next')}</button></p>`;
+}
+
 function panelMarkup(key, state) {
   const bars = state.bars
     .map(
       ([label, value]) =>
-        `<div class="bar-row${value < NEED_CRITICAL ? ' critical' : value < NEED_LOW ? ' low' : ''}"><span>${label}</span><span class="meter" style="--value:${value}%" role="meter" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100" aria-label="${label}"></span><b>${value}%</b></div>`,
+        `<${NEED_ORDERS[label] ? 'button type="button"' : 'div'} class="bar-row${value < NEED_CRITICAL ? ' critical' : value < NEED_LOW ? ' low' : ''}"${NEED_ORDERS[label] ? ` title="Rozkaz: ${NEED_ORDERS[label]}"` : ''}><span>${label}</span><span class="meter" style="--value:${value}%" role="meter" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100" aria-label="${label}"></span><b>${value}%</b></${NEED_ORDERS[label] ? 'button' : 'div'}>`,
     )
     .join('');
   return `<aside class="selection panel" data-selection="${key}" hidden aria-label="Zaznaczenie: ${state.name}">
     <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
     <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
-    <header class="window-head"><div><p>${state.profession.toUpperCase()}</p><h2>${state.name}</h2>${state.meta ? `<div class="meta">${state.meta}</div>` : ''}</div><span class="head-btns">${state.foreign ? '' : `<button type="button" class="icon-button medallion" title="Rozkazy · Spacja" aria-label="Rozkazy"><svg aria-hidden="true" class="icon"><use href="#i-list"/></svg></button>`}<button type="button" class="icon-button medallion" aria-label="Usuń zaznaczenie"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button></span></header>
+    <header class="window-head"><div>${kickerMarkup(state)}${state.foreign || state.profession === 'Bohater' ? `<h2>${state.name}</h2>` : `<h2><button type="button" class="rename" title="Zmień imię">${state.name}${svg('i-pen')}</button></h2>`}${state.meta ? `<div class="meta">${state.meta}</div>` : ''}</div><span class="head-btns">${state.foreign ? '' : `<button type="button" class="icon-button medallion" title="Rozkazy · Spacja" aria-label="Rozkazy"><svg aria-hidden="true" class="icon"><use href="#i-list"/></svg></button>`}<button type="button" class="icon-button medallion" aria-label="Usuń zaznaczenie"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button></span></header>
     <div class="selection-body">
       <div class="portrait">
         <button type="button" class="portrait-box" title="Centruj widok na tej osobie"><span data-settler="${state.look}"></span></button>

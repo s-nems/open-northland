@@ -17,6 +17,12 @@ actions and focus behavior when connecting the redesigned resident panel.
 - Keep the bottom-right location, readable identity and needs, work/home assignment, experience/qualifications and equipment actions. Use shared chrome/icons and contextual Knowledge links.
 - Expose actionable shortages with clear disabled reasons. Preserve ownership checks and command submission, and keep the world usable while the panel scrolls.
 - Recheck existing details-panel work-controls and snapshot-indexes tickets, plus religion and tribe presentation tickets, before overlapping their code. Do not fold unrelated simulation changes into the visual redesign.
+- Approved additions from the design review, all in the "Settler panel" section of
+  `docs/design/ingame-menu/FOUNDATION.md`: per-product production counters (the sim gap: craft
+  selection carries counts, gatherers a quota), the status detail (current product, idle reason),
+  need bars as orders, the lock as a Knowledge link, "bez pary" as the partner pick, wear minutes in
+  the socket tooltip, trade browsing (chevrons, Tab / Shift+Tab, double click selects the trade),
+  the workplace hover card and in-place rename (not for heroes).
 
 ## Verify
 

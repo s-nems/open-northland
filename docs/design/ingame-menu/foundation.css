@@ -3303,3 +3303,96 @@ button.portrait-box:hover {
   color: var(--muted);
   font-weight: 400;
 }
+/* Head: browse the trade with the chevrons, rename by the pen. */
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.kicker small {
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.browse {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bronze);
+  cursor: pointer;
+}
+.browse:first-child {
+  margin-left: -4px;
+}
+.browse:hover {
+  color: var(--bronze-hi);
+}
+.browse .icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-shadow: inherit;
+  cursor: text;
+}
+.rename .icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--bronze);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.rename:hover .icon,
+.rename:focus-visible .icon {
+  opacity: 1;
+}
+/* A need bar is the order for that need. */
+button.bar-row {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.bar-row:hover {
+  background: #c9a26218;
+}
+button.bar-row:hover span:first-child {
+  color: var(--text-hi);
+}
+.prod-lock {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.prod-lock:hover {
+  color: var(--bronze-hi);
+}
+.kv-link.missing {
+  color: var(--warning);
+  font-weight: 600;
+}
