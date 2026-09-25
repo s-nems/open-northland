@@ -254,7 +254,7 @@ export class CombatIndex {
   }
 
   /**
-   * Whether any member `player` might fight or flee from lies within Manhattan `radius` of node (hx, hy): one
+   * Whether any member `player` might fight or flee from lies within `radius` map points of node (hx, hy): one
    * owned by a player holding `enemy` toward or from it, or an unowned one other than passive wildlife.
    * `false` is a proof of absence; `true` only means "run the real search".
    */
@@ -264,7 +264,7 @@ export class CombatIndex {
   }
 
   /**
-   * Whether anything `player` might flee from lies within Manhattan `radius` of node (hx, hy): the
+   * Whether anything `player` might flee from lies within `radius` map points of node (hx, hy): the
    * {@link othersWithin} test over units and {@link firing} buildings only, since a plain building is no
    * flee threat. `false` is a proof of absence; `true` only means "run the real search".
    */
@@ -279,8 +279,8 @@ export class CombatIndex {
   }
 
   /**
-   * Whether any civilization combatant - everything not classified wildlife - might lie within Manhattan
-   * `radius` of node (hx, hy). The hostile-animal seeker's early-out twin of {@link othersWithin}, since a
+   * Whether any civilization combatant - everything not classified wildlife - might lie within `radius` map
+   * points of node (hx, hy). The hostile-animal seeker's early-out twin of {@link othersWithin}, since a
    * wild animal's only valid targets are civilization settlers.
    */
   civsWithin(hx: number, hy: number, radius: number): boolean {
@@ -288,8 +288,8 @@ export class CombatIndex {
   }
 
   /**
-   * Whether any unowned member of a huntable tribe that is not last-resort prey might lie within Manhattan
-   * `radius` of node (hx, hy). Every hunter's primary-tier target is one, so `false` proves that tier's
+   * Whether any unowned member of a huntable tribe that is not last-resort prey might lie within `radius`
+   * map points of node (hx, hy). Every hunter's primary-tier target is one, so `false` proves that tier's
    * search empty.
    */
   gameWithin(hx: number, hy: number, radius: number): boolean {
