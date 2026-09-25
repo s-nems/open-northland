@@ -1,23 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { readbackMatches } from '../src/view/browser-support.js';
+import { compareReadback } from '../src/view/browser-support.js';
 
 const WRITTEN = new Uint8ClampedArray([0, 7, 128, 255, 254, 13, 29, 255]);
 
-describe('readbackMatches', () => {
-  it('accepts an exact read', () => {
-    expect(readbackMatches(WRITTEN, WRITTEN.slice())).toBe(true);
+describe('compareReadback', () => {
+  it('reports an unchanged read as exact', () => {
+    expect(compareReadback(WRITTEN, WRITTEN.slice())).toBe('exact');
   });
 
-  it("tolerates Brave's default one-step shift of a colour channel", () => {
-    expect(readbackMatches(WRITTEN, new Uint8ClampedArray([1, 6, 128, 255, 255, 13, 28, 255]))).toBe(true);
+  it("reports Brave's one-step shift of a colour channel as shifted", () => {
+    expect(compareReadback(WRITTEN, new Uint8ClampedArray([1, 6, 128, 255, 255, 13, 28, 255]))).toBe(
+      'shifted',
+    );
   });
 
-  it('rejects replaced pixels, as strict fingerprinting protection returns', () => {
-    expect(readbackMatches(WRITTEN, new Uint8ClampedArray([0, 7, 131, 255, 254, 13, 29, 255]))).toBe(false);
-    expect(readbackMatches(WRITTEN, new Uint8ClampedArray(WRITTEN.length).fill(255))).toBe(false);
+  it('reports pixels strict fingerprinting protection returns as replaced', () => {
+    expect(compareReadback(WRITTEN, new Uint8ClampedArray([0, 7, 131, 255, 254, 13, 29, 255]))).toBe(
+      'replaced',
+    );
+    expect(compareReadback(WRITTEN, new Uint8ClampedArray(WRITTEN.length).fill(255))).toBe('replaced');
   });
 
-  it('rejects a read of a different size', () => {
-    expect(readbackMatches(WRITTEN, WRITTEN.slice(0, 4))).toBe(false);
+  it('reports a read of a different size as replaced', () => {
+    expect(compareReadback(WRITTEN, WRITTEN.slice(0, 4))).toBe('replaced');
   });
 });

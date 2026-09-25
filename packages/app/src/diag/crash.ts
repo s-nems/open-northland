@@ -45,6 +45,7 @@ let banner: { readonly root: HTMLElement; readonly message: HTMLElement } | null
 function showCrashBanner(text: string): void {
   if (banner === null) {
     const copy = messages().hud;
+    const recommendedBrowser = messages().deviceNotice.recommendedBrowser;
     const root = document.createElement('div');
     root.style.cssText = BANNER_STYLE;
     root.setAttribute('role', 'alert');
@@ -77,7 +78,7 @@ function showCrashBanner(text: string): void {
     buttons.append(download, dismiss);
     const browser = document.createElement('small');
     Object.assign(browser.style, { fontSize: '12px', opacity: '0.7' });
-    browser.textContent = copy.crashRecommendedBrowser;
+    browser.textContent = recommendedBrowser;
     root.append(title, message, hint, buttons, browser);
     document.body.append(root);
     banner = { root, message };

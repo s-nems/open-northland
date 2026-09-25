@@ -298,6 +298,12 @@ export const enSurfaces = {
       body: 'Fingerprinting protection replaces the pixels the game reads, so some graphics will look wrong. Turn it off for this site (in Firefox and LibreWolf it is privacy.resistFingerprinting; a canvas-blocking extension can do it too) and reload the page.',
       proceed: 'Start anyway',
     },
+    braveShields: {
+      title: 'Brave Shields are on',
+      body: 'Brave Shields change the pixels the game reads and can break its graphics or behaviour. Click the lion icon in the address bar, turn Shields off for this site and reload the page.',
+      proceed: 'Start anyway',
+    },
+    recommendedBrowser: 'Suggested browser: Google Chrome.',
   },
   // One label per `BootPhase`.
   loading: {

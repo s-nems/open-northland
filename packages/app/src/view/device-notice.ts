@@ -1,34 +1,37 @@
 import { bcp47Tag, localeParam, messages } from '../i18n/index.js';
 import { type RouteId, routeFor } from '../routes.js';
 import { BRAND_LOGO_STACKED, BRAND_LOGO_STACKED_SIZE } from './brand-art.js';
-import { canvasReadbackIntact, webglAvailable } from './browser-support.js';
+import { type CanvasReadback, canvasReadback, isBrave, webglAvailable } from './browser-support.js';
 import { servedByBrowser } from './host.js';
 
 /**
  * What a browser that cannot play properly sees before the game: a touch-only device (orders need a
- * mouse and a keyboard), no WebGL, or canvas reads a privacy setting alters. The notice only advises,
- * so the player can always start the game from it.
+ * mouse and a keyboard), no WebGL, canvas reads a privacy setting replaces, or Brave Shields left on.
+ * The notice only advises, so the player can always start the game from it.
  */
 
 /** The modes a shared link opens; developer modes never show the notice. */
 const PLAYER_ROUTES: readonly RouteId[] = ['menu', 'map', 'relay'];
 
-const DISMISSED_KEY = 'open-northland.device-notice';
+const DISMISSED_KEY_PREFIX = 'open-northland.device-notice.';
 const DISMISSED = 'dismissed';
 
-export type DeviceNoticeKind = 'webgl' | 'touch' | 'canvasReadback';
+export type DeviceNoticeKind = 'webgl' | 'touch' | 'canvasReadback' | 'braveShields';
+
+/** The game still plays behind these, so starting anyway once silences them; the others return until fixed. */
+const DISMISSABLE: readonly DeviceNoticeKind[] = ['touch', 'braveShields'];
 
 export interface DeviceEnv {
   readonly servedByBrowser: boolean;
   readonly playerRoute: boolean;
-  /** The player started anyway from the touch notice once; the other notices return until fixed. */
-  readonly touchDismissed: boolean;
+  readonly dismissed: ReadonlySet<DeviceNoticeKind>;
   /** `(any-pointer: coarse)`: some attached pointer is a finger. */
   readonly coarsePointer: boolean;
   /** `(any-pointer: fine)`: some attached pointer, a mouse or a trackpad, can aim precisely. */
   readonly finePointer: boolean;
   readonly webgl: boolean;
-  readonly canvasReadbackIntact: boolean;
+  readonly canvasReadback: CanvasReadback;
+  readonly brave: boolean;
 }
 
 /**
@@ -38,22 +41,27 @@ export interface DeviceEnv {
 export function deviceNotice(env: DeviceEnv): DeviceNoticeKind | null {
   if (!env.servedByBrowser || !env.playerRoute) return null;
   if (!env.webgl) return 'webgl';
-  if (!env.touchDismissed && env.coarsePointer && !env.finePointer) return 'touch';
-  if (!env.canvasReadbackIntact) return 'canvasReadback';
+  if (!env.dismissed.has('touch') && env.coarsePointer && !env.finePointer) return 'touch';
+  if (env.canvasReadback === 'replaced') return 'canvasReadback';
+  // Shields shift canvas reads only while on, so an exact read means the player turned them off.
+  if (!env.dismissed.has('braveShields') && env.brave && env.canvasReadback === 'shifted')
+    return 'braveShields';
   return null;
 }
 
-function readDismissed(): boolean {
+function readDismissed(): ReadonlySet<DeviceNoticeKind> {
   try {
-    return window.localStorage.getItem(DISMISSED_KEY) === DISMISSED;
+    return new Set(
+      DISMISSABLE.filter((kind) => window.localStorage.getItem(DISMISSED_KEY_PREFIX + kind) === DISMISSED),
+    );
   } catch {
-    return false;
+    return new Set();
   }
 }
 
-function rememberDismissed(): void {
+function rememberDismissed(kind: DeviceNoticeKind): void {
   try {
-    window.localStorage.setItem(DISMISSED_KEY, DISMISSED);
+    window.localStorage.setItem(DISMISSED_KEY_PREFIX + kind, DISMISSED);
   } catch {
     // Storage denied (private mode): the notice returns on the next visit.
   }
@@ -63,11 +71,12 @@ function readDeviceEnv(params: URLSearchParams): DeviceEnv {
   return {
     servedByBrowser: servedByBrowser(),
     playerRoute: PLAYER_ROUTES.includes(routeFor(params).id),
-    touchDismissed: readDismissed(),
+    dismissed: readDismissed(),
     coarsePointer: window.matchMedia('(any-pointer: coarse)').matches,
     finePointer: window.matchMedia('(any-pointer: fine)').matches,
     webgl: webglAvailable(),
-    canvasReadbackIntact: canvasReadbackIntact(),
+    canvasReadback: canvasReadback(),
+    brave: isBrave(),
   };
 }
 
@@ -84,7 +93,8 @@ function element<K extends keyof HTMLElementTagNameMap>(
 
 function mountNotice(params: URLSearchParams, kind: DeviceNoticeKind, proceed: () => void): void {
   const locale = localeParam(params);
-  const copy = messages(locale).deviceNotice[kind];
+  const notices = messages(locale).deviceNotice;
+  const copy = notices[kind];
   const root = element('main', 'device-notice');
   root.lang = bcp47Tag(locale);
   const card = element('div', 'device-notice__card');
@@ -98,7 +108,7 @@ function mountNotice(params: URLSearchParams, kind: DeviceNoticeKind, proceed: (
   button.addEventListener(
     'click',
     () => {
-      if (kind === 'touch') rememberDismissed();
+      if (DISMISSABLE.includes(kind)) rememberDismissed(kind);
       root.remove();
       proceed();
     },
@@ -110,6 +120,8 @@ function mountNotice(params: URLSearchParams, kind: DeviceNoticeKind, proceed: (
     element('p', 'device-notice__body', copy.body),
     button,
   );
+  // A touch device needs a computer, not another browser.
+  if (kind !== 'touch') card.append(element('p', 'device-notice__browser', notices.recommendedBrowser));
   root.append(card);
   document.body.append(root);
 }

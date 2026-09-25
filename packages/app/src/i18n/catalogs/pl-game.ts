@@ -201,7 +201,6 @@ export const plGame = {
     crashHint: 'Pobierz raport i załącz go do zgłoszenia błędu.',
     crashBraveHint:
       'Grasz w Brave: jeśli błąd wraca, wyłącz osłony dla tej strony (ikona lwa w pasku adresu) i odśwież ją.',
-    crashRecommendedBrowser: 'Zalecana przeglądarka: Google Chrome.',
     fieldCounters: 'Posiane {sown} · Rosnące {growing} · Dojrzałe {ripe}',
     selectedCount: 'Wybrano: {count}',
     subjectCount: 'Liczba poddanych na liście: {count}',

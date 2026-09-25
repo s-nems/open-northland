@@ -4,7 +4,7 @@
  */
 
 /**
- * Largest per-channel change a read-back pixel may show. Brave's fingerprinting protection shifts some
+ * Largest per-channel change a `shifted` read shows. Brave's fingerprinting protection shifts some
  * colour channels by one (observed); the worst it does is a neighbouring palette entry on a few pixels
  * of a HUD figure. Firefox `privacy.resistFingerprinting` and canvas-blocking extensions replace the
  * pixels outright.
@@ -47,23 +47,32 @@ function probePattern(): ImageData {
   return image;
 }
 
-export function readbackMatches(written: Uint8ClampedArray, read: Uint8ClampedArray): boolean {
-  if (written.length !== read.length) return false;
-  return written.every((value, i) => Math.abs(value - (read[i] ?? 0)) <= READBACK_TOLERANCE);
+/** How a 2D canvas hands back pixels written to it: unchanged, shifted within tolerance, or replaced. */
+export type CanvasReadback = 'exact' | 'shifted' | 'replaced';
+
+export function compareReadback(written: Uint8ClampedArray, read: Uint8ClampedArray): CanvasReadback {
+  if (written.length !== read.length) return 'replaced';
+  let shifted = false;
+  for (let i = 0; i < written.length; i++) {
+    const delta = Math.abs((written[i] ?? 0) - (read[i] ?? 0));
+    if (delta > READBACK_TOLERANCE) return 'replaced';
+    if (delta > 0) shifted = true;
+  }
+  return shifted ? 'shifted' : 'exact';
 }
 
-/** Decoded art is recoloured and baked through 2D canvas reads, so altered reads show as broken art. */
-export function canvasReadbackIntact(): boolean {
+/** Decoded art is recoloured and baked through 2D canvas reads, so replaced reads show as broken art. */
+export function canvasReadback(): CanvasReadback {
   try {
     const canvas = document.createElement('canvas');
     canvas.width = PROBE_SIZE;
     canvas.height = PROBE_SIZE;
     const ctx = canvas.getContext('2d');
-    if (ctx === null) return true;
+    if (ctx === null) return 'exact';
     const written = probePattern();
     ctx.putImageData(written, 0, 0);
-    return readbackMatches(written.data, ctx.getImageData(0, 0, PROBE_SIZE, PROBE_SIZE).data);
+    return compareReadback(written.data, ctx.getImageData(0, 0, PROBE_SIZE, PROBE_SIZE).data);
   } catch {
-    return true;
+    return 'exact';
   }
 }

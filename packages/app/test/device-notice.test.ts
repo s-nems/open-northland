@@ -7,11 +7,12 @@ afterEach(() => vi.unstubAllGlobals());
 const PHONE: DeviceEnv = {
   servedByBrowser: true,
   playerRoute: true,
-  touchDismissed: false,
+  dismissed: new Set(),
   coarsePointer: true,
   finePointer: false,
   webgl: true,
-  canvasReadbackIntact: true,
+  canvasReadback: 'exact',
+  brave: false,
 };
 
 /** A desktop browser that can play. */
@@ -31,7 +32,7 @@ describe('deviceNotice', () => {
   });
 
   it('stays away once the player chose to start anyway', () => {
-    expect(deviceNotice({ ...PHONE, touchDismissed: true })).toBeNull();
+    expect(deviceNotice({ ...PHONE, dismissed: new Set(['touch']) })).toBeNull();
   });
 
   it('never shows in the desktop shell or in developer modes', () => {
@@ -42,14 +43,22 @@ describe('deviceNotice', () => {
 
   it('warns a browser without WebGL first, since the game cannot draw a frame there', () => {
     expect(deviceNotice({ ...DESKTOP, webgl: false })).toBe('webgl');
-    expect(deviceNotice({ ...PHONE, webgl: false, canvasReadbackIntact: false })).toBe('webgl');
+    expect(deviceNotice({ ...PHONE, webgl: false, canvasReadback: 'replaced' })).toBe('webgl');
   });
 
-  it('warns a browser whose privacy setting alters canvas reads, even after the touch notice was dismissed', () => {
-    expect(deviceNotice({ ...DESKTOP, canvasReadbackIntact: false })).toBe('canvasReadback');
-    expect(deviceNotice({ ...PHONE, touchDismissed: true, canvasReadbackIntact: false })).toBe(
+  it('warns a browser whose privacy setting replaces canvas reads, even after the touch notice was dismissed', () => {
+    expect(deviceNotice({ ...DESKTOP, canvasReadback: 'replaced' })).toBe('canvasReadback');
+    expect(deviceNotice({ ...PHONE, dismissed: new Set(['touch']), canvasReadback: 'replaced' })).toBe(
       'canvasReadback',
     );
+  });
+
+  it('asks Brave to lower its Shields while they shift canvas reads, until the player starts anyway', () => {
+    const shielded: DeviceEnv = { ...DESKTOP, brave: true, canvasReadback: 'shifted' };
+    expect(deviceNotice(shielded)).toBe('braveShields');
+    expect(deviceNotice({ ...shielded, canvasReadback: 'exact' })).toBeNull();
+    expect(deviceNotice({ ...shielded, dismissed: new Set(['braveShields']) })).toBeNull();
+    expect(deviceNotice({ ...shielded, brave: false })).toBeNull();
   });
 
   it('lets a browser that can play straight through', () => {

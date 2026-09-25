@@ -295,6 +295,12 @@ export const plSurfaces = {
       body: 'Ochrona przed fingerprintingiem podmienia piksele, które gra odczytuje, więc część grafiki będzie wyglądać źle. Wyłącz ją dla tej strony (w Firefoksie i LibreWolfie to privacy.resistFingerprinting, może to też robić rozszerzenie blokujące canvas) i odśwież stronę.',
       proceed: 'Uruchom mimo to',
     },
+    braveShields: {
+      title: 'Osłony Brave są włączone',
+      body: 'Osłony Brave (Shields) zmieniają piksele, które gra odczytuje, i mogą psuć jej grafikę albo działanie. Kliknij ikonę lwa w pasku adresu, wyłącz osłony dla tej strony i odśwież ją.',
+      proceed: 'Uruchom mimo to',
+    },
+    recommendedBrowser: 'Sugerowana przeglądarka: Google Chrome.',
   },
   loading: {
     graphics: 'Uruchamianie grafiki…',

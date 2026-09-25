@@ -59,6 +59,12 @@
   cursor: pointer;
 }
 
+.device-notice__browser {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(180, 205, 200, 0.6);
+}
+
 /* A phone held sideways: tighter, so the way into the game stays on screen without scrolling. */
 @media (max-height: 440px) {
   .device-notice {
