@@ -5,6 +5,7 @@ import { CombatIndex, holdPassIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
 import { engageVehicle } from './engage-vehicle.js';
+import { answerQueuedAlarms } from './hit-alarm.js';
 import { MeleeSlots } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { fireFromShelters } from './shelter-fire.js';
@@ -52,6 +53,7 @@ export const combatSystem: System = (world, ctx) => {
     front: new BattleFront(world, ctx),
   };
   holdPassIndex(world, pass.index);
+  answerQueuedAlarms(world, ctx, terrain, pass.index);
   for (const e of combatants) engageCombatant(world, ctx, terrain, pass, e);
   fireFromShelters(world, ctx, terrain, pass.index);
   // The siege vehicles fight after the men, off the same index, so a catapult's scan sees the tick's

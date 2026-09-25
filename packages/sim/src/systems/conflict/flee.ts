@@ -1,10 +1,13 @@
 import {
+  AttackOrder,
   Carrying,
   Fleeing,
   Owner,
   PathRequest,
+  PlayerOrder,
   Settler,
   type SettlerIdentity,
+  Sheltering,
 } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -14,6 +17,7 @@ import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, redirectRoute } from '../movement/nav-state.js';
 import { isHunterJob } from '../readviews/index.js';
+import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
@@ -145,6 +149,32 @@ export function fleeDrive(
     redirectRoute(world, e, dest);
   }
   world.mut(e, Fleeing).repathAt = ctx.tick + FLEE_REPATH_CADENCE;
+}
+
+/**
+ * Start `e` running a {@link FLEE_STEP_NODES} step away from `from`, the node a blow on a neighbour came
+ * from, unless it is already running, sheltering, busy with an action, under a player's order or too worn
+ * out to run. A unit that carries a haul sets it down first and runs once its drive sees the threat. With
+ * no threat in its own sight the drive winds the run down after {@link FLEE_COOLDOWN_TICKS}, an
+ * approximation of where the original's run from a blow ends.
+ */
+export function runFromBlow(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  from: NodeId,
+): void {
+  if (world.has(e, Fleeing) || world.has(e, Sheltering) || world.has(e, PlayerOrder)) return;
+  if (world.has(e, AttackOrder) || atomicHoldsSettler(world, e) || needCollapsing(world, e)) return;
+  world.add(e, Fleeing, { repathAt: ctx.tick + FLEE_REPATH_CADENCE, calmUntil: null });
+  if (world.has(e, Carrying)) {
+    startDrop(world, ctx, e);
+    return;
+  }
+  const here = entityNode(world, terrain, e);
+  const dest = fleeDestination(terrain, dynamicBlockOverlay(world, ctx, terrain), here, from);
+  if (dest !== here) redirectRoute(world, e, dest);
 }
 
 /** The cell a fleeing unit should run to: the cell {@link FLEE_STEP_NODES} away, of the eight compass

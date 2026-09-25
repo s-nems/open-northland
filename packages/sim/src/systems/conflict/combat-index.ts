@@ -209,6 +209,51 @@ export class CombatIndex {
   }
 
   /**
+   * Every unit or building owned by `player` within `maxDist` of node (fromX, fromY) by `metric`, each once at
+   * its nearest admitted node, in ascending (distance, id) order. Only the owner's own members are measured,
+   * so the cost is the owner's members in the box, however crowded the box is with anyone else.
+   */
+  ownedWithin(
+    player: number,
+    fromX: number,
+    fromY: number,
+    maxDist: number,
+    metric: SearchMetric,
+  ): readonly { entity: Entity; distance: number }[] {
+    const bit = playerBit(player);
+    if (bit === 0) return [];
+    const keys: number[] = [];
+    const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const cell = this.grid.cellAt(cx, cy);
+        if (cell === undefined || (cell.ownerMask & bit) === 0) continue;
+        for (let i = 0; i < cell.count; i++) {
+          if (cell.memberBit[i] !== bit) continue;
+          const mx = cell.memberX[i] ?? 0;
+          const my = cell.memberY[i] ?? 0;
+          const distance =
+            metric === 'hex'
+              ? hexDistanceBetween(fromX, fromY, mx, my)
+              : Math.abs(mx - fromX) + Math.abs(my - fromY);
+          if (distance <= maxDist) keys.push(distance * CANDIDATE_ID_SPAN + (cell.members[i] ?? 0));
+        }
+      }
+    }
+    keys.sort((a, b) => a - b);
+    const seen = new Set<Entity>();
+    const found: { entity: Entity; distance: number }[] = [];
+    for (const key of keys) {
+      const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+      const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+      if (seen.has(entity)) continue;
+      seen.add(entity);
+      found.push({ entity, distance });
+    }
+    return found;
+  }
+
+  /**
    * Whether any member `player` might fight or flee from lies within Manhattan `radius` of node (hx, hy): one
    * owned by a player holding `enemy` toward or from it, or an unowned one other than passive wildlife.
    * `false` is a proof of absence; `true` only means "run the real search".

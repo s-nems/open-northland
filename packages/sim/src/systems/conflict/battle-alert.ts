@@ -32,8 +32,9 @@ import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 /**
  * How near (map points) a fight gets a fighting unit asleep in the open back up, and how near an enemy on
- * its feet keeps one from lying down. Authored, sized to the original's reach of 40 map points for the
- * alarm a blow on one of a player's people raises among its soldiers.
+ * its feet keeps one from lying down. Authored, sized to the original's alarm reach of 40 map points. The
+ * alarm (`hit-alarm.ts`) answers only a blow on the player's own people; this also gets a sleeper up for a
+ * fight its side started and keeps a line from lying down before the first blow.
  */
 export const STAND_TO_RADIUS_NODES = 40;
 
