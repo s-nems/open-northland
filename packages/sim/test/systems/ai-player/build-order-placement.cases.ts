@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Command } from '../../../src/core/commands/index.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
-import { buildReach } from '../../../src/systems/ai-player/build-order/placement.js';
+import { buildReach, HQ_PULL_DIVISOR_NODES } from '../../../src/systems/ai-player/build-order/placement.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -10,6 +10,7 @@ import {
   DEFAULT_BUILD_ORDER,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../src/systems/ai-player/index.js';
+import { bestRingNode } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -214,6 +215,48 @@ describe('build-order placement - affinity and ground rules', () => {
     if (fallback?.kind !== 'placeBuilding') throw new Error('expected a centre-pulled placement');
     expect(fallback.x).toBeGreaterThan(HQ_AT.x);
     expect(fallback.y).toBeGreaterThan(HQ_AT.y);
+  });
+
+  it('breaks a near tie between affinity spots toward the base, never trading more than the divisor allows', () => {
+    // A well west of the HQ: the ring walk meets the west side first, the pull turns the pick east.
+    const WELL_AT = { x: 14, y: 16 };
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: WELL_TYPE,
+      ...WELL_AT,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const spot = firstCommandOf(sim, [
+      {
+        kind: 'place',
+        building: 'work_bakery_00',
+        count: 1,
+        near: [{ kind: 'building', id: 'work_well_00' }],
+      },
+    ]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
+    expect(spot.x).toBeGreaterThan(WELL_AT.x); // the HQ side
+    expect(Math.abs(spot.x - WELL_AT.x) + Math.abs(spot.y - WELL_AT.y)).toBeLessThanOrEqual(2); // still beside
+
+    // The walk itself, around (0, 0) with the base 20 nodes east. On one ring the node nearer the base wins.
+    const BASE = { hx: 20, hy: 0 };
+    const pull = (x: number, y: number) =>
+      Math.floor((Math.abs(x - BASE.hx) + Math.abs(y - BASE.hy)) / HQ_PULL_DIVISOR_NODES);
+    const only =
+      (...nodes: readonly [number, number][]) =>
+      (x: number, y: number) =>
+        nodes.some(([nx, ny]) => nx === x && ny === y);
+    expect(bestRingNode(0, 0, 10, pull, only([-1, 0], [0, 1], [1, 0]))).toEqual({ hx: 1, hy: 0 });
+    // A further ring wins only while the pull gives back more than its rings cost: west ring 6 costs
+    // 6 + floor(26 / 4) = 12, east ring 9 costs 9 + floor(11 / 4) = 11, and east ring 10 ties at
+    // 10 + floor(10 / 4) = 12, where the nearer ring keeps the spot.
+    expect(bestRingNode(0, 0, 10, pull, only([-6, 0], [9, 0]))).toEqual({ hx: 9, hy: 0 });
+    expect(bestRingNode(0, 0, 10, pull, only([-6, 0], [10, 0]))).toEqual({ hx: -6, hy: 0 });
+    expect(bestRingNode(0, 0, 10, pull, () => false)).toBeNull();
   });
 
   it("clamps a far-off affinity centre back into the band of the seat's buildings", () => {

@@ -62,3 +62,34 @@ export function firstRingNode(
   }
   return null;
 }
+
+/**
+ * The accepted node of least `ring radius + penalty(x, y)` over the {@link firstRingNode} walk, the first
+ * walked on ties, or null. `penalty` must be a non-negative integer: a node's cost is then never below
+ * its ring, so the walk stops at the first ring no longer under the best cost, and `accept` runs only on
+ * a node that would beat it.
+ */
+export function bestRingNode(
+  cx: number,
+  cy: number,
+  maxRadius: number,
+  penalty: (x: number, y: number) => number,
+  accept: (x: number, y: number) => boolean,
+): HalfCellNode | null {
+  let best: HalfCellNode | null = null;
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (let r = 0; r <= maxRadius && r < bestCost; r++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const dy = r - Math.abs(dx);
+      // North (y−) first, then south; the equator node once.
+      for (let side = dy === 0 ? 1 : 0; side < 2; side++) {
+        const y = side === 0 ? cy - dy : cy + dy;
+        const cost = r + penalty(cx + dx, y);
+        if (cost >= bestCost || !accept(cx + dx, y)) continue;
+        best = { hx: cx + dx, hy: y };
+        bestCost = cost;
+      }
+    }
+  }
+  return best;
+}

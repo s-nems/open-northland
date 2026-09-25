@@ -11,7 +11,7 @@ import { buildingFootprintOf } from '../../footprint/geometry.js';
 import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
-import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
+import { anchorCentroid, anchorNodeOf, bestRingNode, outwardNode } from '../node-geometry.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
@@ -296,10 +296,16 @@ function kindSpacingAnchors(
   return anchors;
 }
 
+/** How many nodes of Manhattan distance from the base anchor cost a candidate spot one ring of distance
+ *  from the {@link searchCentre} (authored): the affinity centre stays the main criterion and the base's
+ *  closeness decides between spots about as near to it, so a settlement grows round rather than long. */
+export const HQ_PULL_DIVISOR_NODES = 4;
+
 /**
- * The legal node closest to {@link searchCentre} and inside the seat's {@link BuildReach}, or null to
- * stall the entry. The ring budget is twice the reach radius, so a centre inside one building's disc
- * reaches every node of that disc. The `apart` veto runs as a first pass only, so the preference never stalls.
+ * The legal node inside the seat's {@link BuildReach} of least ring radius from {@link searchCentre} plus
+ * the {@link HQ_PULL_DIVISOR_NODES} pull toward `anchor`, or null to stall the entry. The ring budget is
+ * twice the reach radius, so a centre inside one building's disc reaches every node of that disc. The
+ * `apart` veto runs as a first pass only, so the preference never stalls.
  */
 export function placementSpot(
   world: World,
@@ -328,8 +334,10 @@ export function placementSpot(
     entry,
   );
   const reach = settlement.around(centre, fan);
+  const hqPull = (x: number, y: number): number =>
+    Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / HQ_PULL_DIVISOR_NODES);
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
-    firstRingNode(centre.hx, centre.hy, fan, (x, y) => {
+    bestRingNode(centre.hx, centre.hy, fan, hqPull, (x, y) => {
       // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
       // entry re-walks the whole fan on every retry.
       if (!reach.contains(x, y)) return false;
