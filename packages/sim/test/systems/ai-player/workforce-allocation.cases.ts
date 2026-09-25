@@ -33,6 +33,7 @@ import { workableResourceTest } from '../../../src/systems/ai-player/live-resour
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   SHORTAGE_BUILDER_FLOOR,
+  type WantedGood,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
@@ -86,6 +87,7 @@ const FIXTURE_WOOD_LINES = { unit: 6, short: 12, comfort: 18 };
 
 const FIRST_WORKSHOP_SPOT = { x: 40, y: 16 };
 const SECOND_WORKSHOP_SPOT = { x: 40, y: 26 };
+const THIRD_WORKSHOP_SPOT = { x: 40, y: 36 };
 
 /** Free fixture ids for {@link workshopContent}'s trades and workshops. */
 const POTTER = 29;
@@ -137,11 +139,20 @@ function wantedTarget(
   good: number,
   entries: readonly BuildOrderEntry[] = [],
 ): number | undefined {
+  return wantedRow(sim, ctx, good, entries)?.target;
+}
+
+function wantedRow(
+  sim: Simulation,
+  ctx: SystemContext,
+  good: number,
+  entries: readonly BuildOrderEntry[] = [],
+): WantedGood | undefined {
   const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), DEFAULT_BUILD_ORDER);
   const reached = entries.map((): EntryStatus => 'satisfied');
   return wantedCollectorGoods(sim.world, ctx, SEAT, entries, reached, supply).find(
     (w) => w.good.typeId === good,
-  )?.target;
+  );
 }
 
 /** Stock the HQ at the good's comfort line, so no shortage post rides on the target. */
@@ -260,7 +271,8 @@ describe('workforce module (collectResources)', () => {
       return commands;
     };
     const woodTarget = COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0;
-    // With no wood the gap spans three units, so the joinery's two planned joiners cap the extra posts.
+    // With no wood the gap spans three units, so the joinery's two planned joiners cap the extra posts at
+    // one.
     const lines = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER).get(WOOD);
     expect(lines).toMatchObject(FIXTURE_WOOD_LINES);
     const woodComfort = lines?.comfort ?? 0;
@@ -269,23 +281,22 @@ describe('workforce module (collectResources)', () => {
     // Every post of the raised target is a first post, one per decision.
     expect(posted(decide())).toEqual([WOOD]);
     expect(posted(decide())).toEqual([WOOD]);
-    expect(posted(decide())).toEqual([WOOD]);
     expect(posted(decide())).toEqual([]);
-    expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + 2);
+    expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + 1);
 
-    // The engaged posts read the comfort line: one unit short keeps one extra man, the comfort line none.
+    // The engaged post reads the comfort line: one unit short keeps the extra man, the comfort line not.
     const hq = entityOfBuilding(sim, HQ_TYPE);
     const retired = (commands: readonly Command[]) =>
       commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
     setStockAmount(sim.world, hq, WOOD, woodComfort - 1);
-    expect(retired(decide())).toHaveLength(1);
+    expect(retired(decide())).toHaveLength(0);
     expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + 1);
     setStockAmount(sim.world, hq, WOOD, woodComfort);
     expect(retired(decide())).toHaveLength(1);
     expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget);
   });
 
-  it('scales the shortage posts with the gap in units, at most one per planned consumer', () => {
+  it('scales the shortage posts with the gap in units, at most one per two planned consumers', () => {
     const sim = aiSim();
     const ctx = ctxOf(sim);
     placeHq(sim);
@@ -299,12 +310,13 @@ describe('workforce module (collectResources)', () => {
     };
     expect(supplyLines(ctx.content, DEFAULT_BUILD_ORDER).get(WOOD)).toMatchObject(FIXTURE_WOOD_LINES);
 
-    // One joinery plans two joiners: a gap of three units still gets two extra gatherers.
-    expect(extraWood(0)).toBe(2);
+    // One joinery plans two joiners: a gap of three units still gets one extra gatherer.
+    expect(extraWood(0)).toBe(1);
     placeWorkshop(sim, JOINERY_TYPE, SECOND_WORKSHOP_SPOT);
+    placeWorkshop(sim, JOINERY_TYPE, THIRD_WORKSHOP_SPOT);
     sim.step();
     const { short } = FIXTURE_WOOD_LINES;
-    expect(extraWood(0)).toBe(3); // 18 under comfort: three units
+    expect(extraWood(0)).toBe(3); // 18 under comfort: three units, six joiners allow three
     expect(extraWood(short - 1)).toBe(2); // 7 under comfort: two units
     expect(extraWood(short)).toBe(0); // at the short line, with no post engaged
   });
@@ -334,7 +346,7 @@ describe('workforce module (collectResources)', () => {
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR + 1);
     expect(posted(decide())).toEqual([WOOD]); // the fifth builder goes
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
-    expect(posted(decide())).toEqual([]); // wood still wants two more, but not from the last four
+    expect(posted(decide())).toEqual([]); // wood still wants one more, but not from the last four
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
 
     // A man of another trade still takes the post.
@@ -455,6 +467,19 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     expect(ironTarget(1)).toBe(3);
     expect(ironTarget(2)).toBe(4); // the growth stacks on a larger entry count
+  });
+
+  it('keeps a short iron post behind the builder reserve: only the building goods jump it', () => {
+    const content = workshopContent();
+    const sim = aiSim(1, content);
+    const ctx = { ...ctxOf(sim), content };
+    placeHq(sim);
+    placeWorkshop(sim, SMITHY_TYPE);
+    sim.step();
+    const entry: BuildOrderEntry[] = [{ kind: 'collector', good: 'iron', count: 1 }];
+    const iron = wantedRow(sim, ctx, IRON, entry);
+    expect(iron?.target).toBe(3); // the entry's one, one grown, one for the shortage
+    expect(iron?.min).toBe(1);
   });
 
   it("never governs a reached entry's gatherers below its count", () => {

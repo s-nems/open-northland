@@ -65,7 +65,7 @@ export interface WantedGood {
   readonly job: number;
   readonly target: number;
   /** How many of the target's posts are filled ahead of the builder reserve, one per decision: the first,
-   *  or every one while the good runs short. */
+   *  or every one while a good the sites build with ({@link COLLECTED_GOOD_IDS}) runs short. */
   readonly min: number;
 }
 
@@ -140,7 +140,9 @@ export function wantedCollectorGoods(
       const extra = shortageGatherers(supply, good.typeId, engaged, consumers);
       if (extra > 0) {
         target += extra;
-        min = target;
+        // Iron or gold running short idles the smiths, not the builders, so its posts wait behind the
+        // reserve like any other extra.
+        if (COLLECTED_GOOD_IDS.includes(goodId)) min = target;
       }
     }
     wanted.push({ good, harvestAtomic, job, target, min });
@@ -151,10 +153,11 @@ export function wantedCollectorGoods(
 /**
  * The extra gatherers a good some built workshop consumes calls for while it runs short for the seat's
  * sites (authored): one per unit its surplus lies under the comfort line, rounded up, at most one per
- * planned consuming operator. The workshop eats the good faster than its gatherers bring it, and what lies
- * on its shelf is not the builders'. Short is under the short line, or the comfort line while the posts
- * are `engaged` ({@link SeatSupply.isShort}), so the stock crossing one line does not hire and release a
- * man every few decisions. The posts are filled ahead of the builder reserve, since a settlement with no
+ * {@link OPERATORS_PER_EXTRA_GATHERER} planned consuming operators, the same rate the target grows at. The
+ * workshop eats the good faster than its gatherers bring it, and what lies on its shelf is not the
+ * builders'. Short is under the short line, or the comfort line while the posts are `engaged`
+ * ({@link SeatSupply.isShort}), so the stock crossing one line does not hire and release a man every few
+ * decisions. A building good's posts are filled ahead of the builder reserve, since a settlement with no
  * stone to build with has no use for builders.
  */
 function shortageGatherers(
@@ -166,7 +169,10 @@ function shortageGatherers(
   const lines = supply.lines(goodType);
   const surplus = supply.surplus(goodType);
   if (lines === undefined || surplus === undefined || !supply.isShort(goodType, engaged)) return 0;
-  return Math.min(Math.ceil((lines.comfort - surplus) / lines.unit), consumers);
+  return Math.min(
+    Math.ceil((lines.comfort - surplus) / lines.unit),
+    Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER),
+  );
 }
 
 /** The seat's men holding a live flag of `goodType` with a trade that harvests it: what
