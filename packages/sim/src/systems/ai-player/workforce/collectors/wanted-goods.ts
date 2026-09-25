@@ -22,8 +22,8 @@ import { ownedSettlers } from '../../seat-roster.js';
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
 /** How many flag gatherers the plan keeps per good, by stable content id; an unlisted good keeps
- *  {@link DEFAULT_COLLECTOR_TARGET}. Authored: iron runs three for the first two smithies and the
- *  iron-tool joinery. The first post is guaranteed, the rest best-effort. */
+ *  {@link DEFAULT_COLLECTOR_TARGET}, or its build-order entry's `count`. Authored: three iron gatherers
+ *  serve all the smithies and the iron-tool joinery. The first post is guaranteed, the rest best-effort. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
@@ -39,11 +39,8 @@ interface CollectorGrowth {
   readonly per: number;
 }
 
-/** Collector growth by stable good id (authored). Two smithies' four smiths run on the base iron target,
- *  and all four smithies' eight bring a fourth iron gatherer; the second potter's tiles bring a second clay
- *  gatherer. */
+/** Collector growth by stable good id (authored): the second potter's tiles bring a second clay gatherer. */
 export const COLLECTOR_GROWTH_BY_GOOD_ID: Readonly<Record<string, CollectorGrowth>> = {
-  iron: { building: 'work_smithy_01', from: 4, per: 4 },
   mud: { building: 'work_pottery_01', from: 1, per: 1 },
 };
 
@@ -110,7 +107,8 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 }
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
- *  plan order, each target raised by its {@link COLLECTOR_GROWTH_BY_GOOD_ID} row. A good missing from the
+ *  plan order, each target at least its entries' `count` and raised by its
+ *  {@link COLLECTOR_GROWTH_BY_GOOD_ID} row. A good missing from the
  *  content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
   world: World,
@@ -120,7 +118,8 @@ export function wantedCollectorGoods(
   statuses: readonly EntryStatus[],
 ): WantedGood[] {
   const goodIds = [...COLLECTED_GOOD_IDS];
-  for (const goodId of collectorGoodsWanted(order, statuses)) {
+  const entryCounts = collectorGoodsWanted(order, statuses);
+  for (const goodId of entryCounts.keys()) {
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }
   const wanted: WantedGood[] = [];
@@ -130,7 +129,10 @@ export function wantedCollectorGoods(
     if (good === undefined || harvestAtomic === undefined) continue; // not in this content set
     const job = harvestJobFor(ctx, harvestAtomic);
     if (job === null) continue;
-    const base = COLLECTOR_TARGET_BY_GOOD_ID[goodId] ?? DEFAULT_COLLECTOR_TARGET;
+    const base = Math.max(
+      COLLECTOR_TARGET_BY_GOOD_ID[goodId] ?? DEFAULT_COLLECTOR_TARGET,
+      entryCounts.get(goodId) ?? 0,
+    );
     const growth = COLLECTOR_GROWTH_BY_GOOD_ID[goodId];
     const extra =
       growth === undefined

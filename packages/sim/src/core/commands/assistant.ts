@@ -1,7 +1,7 @@
 import type { AssistantCounterKind } from '../../components/assistant.js';
 
 /** Commands that configure the per-player settlement assistant. */
-export type AssistantCommand = AssistantGrantCommand | AssistantCounterCommand;
+export type AssistantCommand = AssistantGrantCommand | AssistantWeaponVetoCommand | AssistantCounterCommand;
 
 type AssistantGrantCommand = {
   /**
@@ -15,6 +15,20 @@ type AssistantGrantCommand = {
   /** The content good type id; a good with no `equip` class is skipped (only wearables are grantable). */
   readonly goodType: number;
   readonly enabled: boolean;
+};
+
+type AssistantWeaponVetoCommand = {
+  /**
+   * Veto or allow one weapon good in `player`'s recruit arming, held on the per-player
+   * `AssistantWeaponVetoes` carrier. A vetoed good is never handed to a recruit; his class takes the next
+   * allowed weapon or waits for one.
+   */
+  readonly kind: 'setAssistantWeaponVeto';
+  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
+  readonly player: number;
+  /** The content good type id; a good that arms no class is skipped. */
+  readonly goodType: number;
+  readonly vetoed: boolean;
 };
 
 /**

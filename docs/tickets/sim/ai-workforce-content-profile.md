@@ -5,20 +5,20 @@
 
 AI staffing counts with their supply and grown-seat carriers, builder caps, collector targets with
 their crew-driven growth, workshop anchors and the stalled-placement clearing rate, the fisher target and
-trip radius, craft plans with their opening runs and late lists, the soldiers' outfit goods, and
-tower-coverage constants are authored tables in sim code. Once seats select a validated AI profile, these policies should come
+trip radius, craft plans with their opening runs and late lists, the soldiers' outfit goods, the field
+army's class shares and weak-weapon vetoes, and tower-coverage constants are authored tables in sim code. Once seats select a validated AI profile, these policies should come
 from the same profile instead of remaining one global default.
 
 ## Scope
 
-- Add staffing, builder-cap, collector-target, fisher, craft-restriction, outfit, and tower-coverage
-  policy to the AI profile.
-- Move the current tables into the committed fallback catalog and resolve all seven policies through the
+- Add staffing, builder-cap, collector-target, fisher, craft-restriction, outfit, army-mix, and
+  tower-coverage policy to the AI profile.
+- Move the current tables into the committed fallback catalog and resolve all eight policies through the
   seat's selected profile.
 - Keep runtime indexes memoized and free of id-specific branches.
 
 ## Verify
 
-- A fixture profile changes each policy without changing the other six.
+- A fixture profile changes each policy without changing the other seven.
 - The default profile preserves current commands and goldens.
 - `npm test`, `npm run check`, and `npm run build`.

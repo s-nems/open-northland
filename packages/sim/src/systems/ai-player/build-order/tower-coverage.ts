@@ -9,7 +9,7 @@ import type { SystemContext } from '../../context.js';
 import { seatBaseOf } from '../base.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
-import { buildingSpotAccept } from './placement.js';
+import { buildingSpotAccept, buildReach } from './placement.js';
 
 // The coverage circle is a planning heuristic only; what a tower does under an alarm is
 // `systems/defence/`.
@@ -17,7 +17,7 @@ import { buildingSpotAccept } from './placement.js';
 /** Planning radius of a tower's or the base's assumed defence circle, in world-metric nodes.
  *  Deliberately under the house bow's own 0-29 reach (`readviews/defence.ts`): observation - towers
  *  ringed at full bow range stand too far out to read as part of the settlement. */
-export const TOWER_DEFENCE_RADIUS_NODES = 22;
+export const TOWER_DEFENCE_RADIUS_NODES = 19;
 
 /** Covering towers are an id allowlist, not `kind === 'tower'`: `work_pottery_02` shares the kind but
  *  is the defence wall. */
@@ -86,7 +86,7 @@ export function firstUncoveredBuilding(
 /**
  * The spot the next covering building goes on, or null to stall the entry: a tower is seeded just past the
  * target, out from the settlement, a warehouse on the target itself. The accept combines two metrics:
- * world-metric coverage of the target and the Manhattan anchor disc. It needs the full ring budget
+ * world-metric coverage of the target and the seat's Manhattan build reach. It needs the full ring budget
  * because the world metric is anisotropic (34 px E/W against 19 px N/S), so a covering node can sit
  * almost twice the coverage radius in rows from the target.
  */
@@ -107,9 +107,12 @@ export function coveragePlacementSpot(
   const seed =
     coverage.by === 'tower' ? outwardNode(centroid, targetNode, TOWER_OUTSKIRTS_PUSH_NODES) : targetNode;
   const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId);
-  return firstRingNode(seed.hx, seed.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
-    if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
+  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+  const reach = buildReach(world, owned, anchor).around(seed, fan);
+  return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
+    // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
     if (!withinNodeRadius(x, y, targetNode.hx, targetNode.hy, coverage.radius)) return false;
+    if (!reach.contains(x, y)) return false;
     return accept(x, y);
   });
 }

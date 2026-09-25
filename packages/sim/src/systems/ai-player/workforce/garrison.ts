@@ -1,10 +1,13 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   AssistantRecruit,
   type AssistantRecruitIntent,
+  AssistantWeaponVetoes,
   aiModuleRuns,
   Equipment,
   Female,
   ownerOf,
+  playerGoodList,
   Settler,
   TrainingOrder,
 } from '../../../components/index.js';
@@ -15,37 +18,37 @@ import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
 import { baseSoldierJobType, isFighterJob, isSoldierJob } from '../../readviews/index.js';
-import { armableIntents } from '../../settlers/planner/recruit-arming.js';
+import { INTENT_WEAPON_CLASS } from '../../settlers/atomics/effects/goods/weapon-class.js';
+import { armableIntents, armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
-import { weaponMix } from '../military/census.js';
+import { fighterWeaponClass } from '../military/census.js';
 import { ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 
-/** The army's weapon mix (authored): as many swordsmen as archers in the field, but only over the classes
- *  a store can arm this decision, so the fielded mix tracks stock. The archers posted to towers leave the
- *  field for good and are not counted. Publication order breaks a tie, leaving the odd man in reach. */
+/** The army's armed classes; publication order breaks a draft tie, leaving the odd man in reach. */
 const GARRISON_WEAPON_INTENTS = [
   'trainSword',
   'trainBow',
+  'trainSpear',
 ] as const satisfies readonly AssistantRecruitIntent[];
+type GarrisonWeaponIntent = (typeof GARRISON_WEAPON_INTENTS)[number];
 
-/** The main class that fights at range; every other one fills the melee side of the field mix. */
-const RANGED_INTENT: AssistantRecruitIntent = 'trainBow';
-
-/** The classes drafted only while neither main class can be armed: the seat's own smiths make no
- *  spears, so these arm the men from whatever the map handed it. */
-const GARRISON_FALLBACK_INTENTS = ['trainSpear'] as const satisfies readonly AssistantRecruitIntent[];
+/** The field army's weapon mix while a store can arm every class (authored): four archers to three
+ *  swordsmen and three spearmen. Over fewer armable classes the field splits evenly, so a stalled weapon
+ *  line leaves the rest half and half. The archers posted to towers leave the field for good and are not
+ *  counted. */
+const FULL_FIELD_SHARES: Readonly<Record<GarrisonWeaponIntent, number>> = {
+  trainSword: 3,
+  trainBow: 4,
+  trainSpear: 3,
+};
 
 /** Every counter this rung owns: the armed classes plus `trainSoldiers`, the weaponless base class
  *  the drill enlists into - the fallback for a seat that can arm nobody. */
-const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = [
-  'trainSoldiers',
-  ...GARRISON_WEAPON_INTENTS,
-  ...GARRISON_FALLBACK_INTENTS,
-];
+const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ...GARRISON_WEAPON_INTENTS];
 
 /**
  * The garrison sizing: this rung only holds the assistant's training counters at the number of men the
@@ -61,24 +64,70 @@ export function trainGarrison(
   player: number,
   force: SpareForce,
 ): PlayerCommand[] {
-  const wants = standingOrder(world, ctx, player, force);
-  return GARRISON_INTENTS.flatMap((intent) => {
+  const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
+  const pending = missingWeaponVetoes(world, ctx, player, vetoed);
+  // The vetoes land a tick later, so this decision's draft already judges the arms without them.
+  const wants = standingOrder(world, ctx, player, force, [...vetoed, ...pending]);
+  const counters = GARRISON_INTENTS.flatMap((intent) => {
     const command = assistantCounterCommand(world, player, intent, wants.get(intent) ?? 0, false);
     return command === null ? [] : [command];
   });
+  const vetoes = pending.map(
+    (goodType): PlayerCommand => ({ kind: 'setAssistantWeaponVeto', player, goodType, vetoed: true }),
+  );
+  return [...vetoes, ...counters];
+}
+
+/**
+ * The AI arms its recruits only with each class's best weapon (authored): short swords, wooden spears and
+ * short bows would field weak men, and the short swords and wooden spears its own shops make are inputs
+ * to amulets and iron spears. The {@link weakerWeaponGoods} goods not yet among the seat's `vetoed` ones.
+ */
+function missingWeaponVetoes(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  vetoed: readonly number[],
+): readonly number[] {
+  if (!aiModuleRuns(world, player, 'military')) return [];
+  return weakerWeaponGoods(ctx.content).filter((good) => !vetoed.includes(good));
+}
+
+const weakerWeaponsByContent = new WeakMap<ContentSet, readonly number[]>();
+
+/** The weapon goods, ascending, that some tribe's armed class ranks below its best and none ranks best. */
+function weakerWeaponGoods(content: ContentSet): readonly number[] {
+  const known = weakerWeaponsByContent.get(content);
+  if (known !== undefined) return known;
+  const best = new Set<number>();
+  const weaker = new Set<number>();
+  for (const tribe of new Set(
+    content.weapons.flatMap((w) => (w.tribeType === undefined ? [] : [w.tribeType])),
+  )) {
+    for (const intent of GARRISON_WEAPON_INTENTS) {
+      const [strongest, ...rest] = armingGoodPreference(content, tribe, intent, []);
+      if (strongest !== undefined) best.add(strongest);
+      for (const good of rest) weaker.add(good);
+    }
+  }
+  const goods = [...weaker].filter((good) => !best.has(good)).sort((a, b) => a - b);
+  weakerWeaponsByContent.set(content, goods);
+  return goods;
 }
 
 /**
  * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus a share of the men
  * the seat may still draft, so the headroom the dispatcher sees (`counter - bookings`) sums to exactly that
- * number. Each man goes to the armable class with the fewest in the field ({@link fieldedByIntent}), the
- * earlier class on a tie; a seat that can arm none of them falls back to `trainSoldiers`.
+ * number. Each man goes to the armable class furthest below its field share ({@link fieldedByIntent},
+ * {@link FULL_FIELD_SHARES}), the earlier class on a tie; a seat that can arm none of them falls back to
+ * `trainSoldiers`.
  */
 function standingOrder(
   world: World,
   ctx: SystemContext,
   player: number,
   force: SpareForce,
+  vetoed: readonly number[],
 ): Map<AssistantRecruitIntent, number> {
   const wants = new Map<AssistantRecruitIntent, number>();
   if (!aiModuleRuns(world, player, 'military')) return wants;
@@ -93,12 +142,17 @@ function standingOrder(
   const allowance = Math.min(draftable.length, Math.max(0, bachelorSurplus(world, ctx, player)));
   const next = draftable[0];
   if (allowance === 0 || next === undefined) return wants; // nobody to draft: the classes need no probe
-  const drafting = draftingClasses(world, ctx, player, barracks, next);
+  const drafting = draftingClasses(world, ctx, player, barracks, next, vetoed);
   const fielded = fieldedByIntent(world, ctx, player, booked);
+  const full = GARRISON_WEAPON_INTENTS.every((intent) => drafting.includes(intent));
+  const shares = drafting.map((intent) => (full && isWeaponIntent(intent) ? FULL_FIELD_SHARES[intent] : 1));
   const standing = drafting.map((intent) => fielded.get(intent) ?? 0);
+  // standing / share compared by cross-multiplication, so the pick stays in integers.
+  const behind = (i: number, j: number): boolean =>
+    (standing[i] ?? 0) * (shares[j] ?? 1) < (standing[j] ?? 0) * (shares[i] ?? 1);
   for (let drafted = 0; drafted < allowance; drafted++) {
     let rank = 0;
-    for (let i = 1; i < drafting.length; i++) if ((standing[i] ?? 0) < (standing[rank] ?? 0)) rank = i;
+    for (let i = 1; i < drafting.length; i++) if (behind(i, rank)) rank = i;
     const intent = drafting[rank];
     if (intent === undefined) break;
     standing[rank] = (standing[rank] ?? 0) + 1;
@@ -107,9 +161,14 @@ function standingOrder(
   return wants;
 }
 
+function isWeaponIntent(intent: AssistantRecruitIntent): intent is GarrisonWeaponIntent {
+  return (GARRISON_WEAPON_INTENTS as readonly AssistantRecruitIntent[]).includes(intent);
+}
+
 /**
- * The seat's field army per main class: its fighters outside the towers, by the weapon they fight with,
- * plus each class's unpaid bookings. A booked man still waiting for his weapon counts only as the booking.
+ * The seat's field army per armed class: its fighters outside the towers, by the class of the weapon they
+ * fight with, plus each class's unpaid bookings. A booked man still waiting for his weapon counts only as
+ * the booking, and a fighter of another class or none counts for no class.
  */
 function fieldedByIntent(
   world: World,
@@ -125,18 +184,19 @@ function fieldedByIntent(
     if (world.tryGet(e, AssistantRecruit)?.armed === false) continue;
     field.push(e);
   }
-  const mix = weaponMix(world, ctx, field);
   const fielded = new Map<AssistantRecruitIntent, number>();
-  for (const intent of GARRISON_WEAPON_INTENTS) {
-    const armed = intent === RANGED_INTENT ? mix.ranged : mix.melee;
-    fielded.set(intent, armed + (booked.get(intent) ?? 0));
+  for (const intent of GARRISON_WEAPON_INTENTS) fielded.set(intent, booked.get(intent) ?? 0);
+  for (const e of field) {
+    const weaponClass = fighterWeaponClass(world, ctx, e);
+    const intent = GARRISON_WEAPON_INTENTS.find((i) => INTENT_WEAPON_CLASS[i] === weaponClass);
+    if (intent !== undefined) fielded.set(intent, (fielded.get(intent) ?? 0) + 1);
   }
   return fielded;
 }
 
 /**
- * The counters this decision's allowance is split over: the main classes the seat can arm a recruit
- * for, else the fallback classes it can, else `trainSoldiers`. Judged for `next`'s tribe and from the barracks door, because the arming
+ * The counters this decision's allowance is split over: the armed classes the seat can arm a recruit
+ * for, else `trainSoldiers`. Judged for `next`'s tribe and from the barracks door, because the arming
  * pass shops against the recruit's weapon rows from where he stands when it first looks at him.
  */
 function draftingClasses(
@@ -145,17 +205,15 @@ function draftingClasses(
   player: number,
   barracks: Entity,
   next: Entity,
+  vetoed: readonly number[],
 ): readonly AssistantRecruitIntent[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return GARRISON_WEAPON_INTENTS; // mapless sim: no network to walk
   const tribe = world.get(next, Settler).tribe;
   const door = interactionCell(world, ctx, terrain, barracks);
   const reach = networkLimitAt(world, terrain, player, terrain.xOf(door), terrain.yOf(door));
-  for (const classes of [GARRISON_WEAPON_INTENTS, GARRISON_FALLBACK_INTENTS]) {
-    const armable = armableIntents(world, ctx, terrain, player, tribe, classes, reach);
-    if (armable.length > 0) return armable;
-  }
-  return ['trainSoldiers'];
+  const armable = armableIntents(world, ctx, terrain, player, tribe, GARRISON_WEAPON_INTENTS, reach, vetoed);
+  return armable.length > 0 ? armable : ['trainSoldiers'];
 }
 
 /** The spare men the dispatcher could still draft, in its own draft order. Men already booked are not

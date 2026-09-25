@@ -393,7 +393,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(70);
+  const roll = rng.int(71);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -957,6 +957,16 @@ function nextCommand(rng: Rng): Command {
     case 69:
       // The unload twin: a carried vehicle set down on its carrier's door, or released on its way.
       return { kind: 'leaveCarrier', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 70:
+      // A recruit weapon veto flip, the grant flip's twin: the AssistantWeaponVetoes carrier created,
+      // updated and destroyed under the arming pass; a good that arms no class and an out-of-range player
+      // hit the skip paths.
+      return {
+        kind: 'setAssistantWeaponVeto',
+        player: pick(rng, OWNERS),
+        goodType: pick(rng, EQUIP_ORDER_GOODS),
+        vetoed: rng.int(2) === 0,
+      };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

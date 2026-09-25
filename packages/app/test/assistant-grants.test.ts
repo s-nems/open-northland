@@ -2,8 +2,8 @@ import type { Command } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { assistantGrantsSeam, grantAssistantDefaults } from '../src/view/assistant-grants.js';
 
-/** The seam translating the four chest-window switches to `setAssistantGrant` commands and back -
- *  good ids resolved from the live content by slug, so the fixture uses arbitrary ids. */
+/** The seam translating the chest-window switches to `setAssistantGrant` and `setAssistantWeaponVeto`
+ *  commands and back - good ids resolved from the live content by slug, so the fixture uses arbitrary ids. */
 
 const CONTENT = {
   goods: [
@@ -11,19 +11,33 @@ const CONTENT = {
     { typeId: 31, id: 'tool_wooden' },
     { typeId: 32, id: 'tool_iron' },
     { typeId: 43, id: 'mead' },
+    { typeId: 41, id: 'sword_shord' },
+    { typeId: 39, id: 'spear_wooden' },
+    { typeId: 37, id: 'bow_short' },
   ],
 };
+
+/** A sim face with nothing vetoed, granting `granted`. */
+const simGranting = (
+  granted: readonly number[],
+  vetoed: readonly number[] = [],
+): { assistantGrants: () => readonly number[]; assistantWeaponVetoes: () => readonly number[] } => ({
+  assistantGrants: () => granted,
+  assistantWeaponVetoes: () => vetoed,
+});
 
 const SHOES = 30;
 const TOOL_WOODEN = 31;
 const TOOL_IRON = 32;
 const MEAD = 43;
+const SWORD_SHORT = 41;
+const SPEAR_WOODEN = 39;
 
 describe('assistantGrantsSeam', () => {
   it('reads every switch OFF and writes nothing while no seat is watched', () => {
     const sent: Command[] = [];
     const seam = assistantGrantsSeam(
-      { assistantGrants: () => [SHOES, MEAD] },
+      simGranting([SHOES, MEAD]),
       CONTENT,
       () => null,
       (c) => sent.push(c),
@@ -35,7 +49,7 @@ describe('assistantGrantsSeam', () => {
 
   it('reads a switch as ON exactly when its content-resolved good is granted', () => {
     const seam = assistantGrantsSeam(
-      { assistantGrants: () => [SHOES, MEAD] },
+      simGranting([SHOES, MEAD]),
       CONTENT,
       () => 0,
       () => {},
@@ -45,13 +59,34 @@ describe('assistantGrantsSeam', () => {
       giveWoodenTools: false,
       giveIronTools: false,
       giveMead: true,
+      allowShortSwords: true,
+      allowWoodenSpears: true,
+      allowShortBows: true,
     });
+  });
+
+  it('reads a weapon switch as OFF while its good is vetoed, and writes the veto on a flip', () => {
+    const sent: Command[] = [];
+    const seam = assistantGrantsSeam(
+      simGranting([], [SPEAR_WOODEN]),
+      CONTENT,
+      () => 3,
+      (c) => sent.push(c),
+    );
+    expect(seam.read().allowWoodenSpears).toBe(false);
+    expect(seam.read().allowShortSwords).toBe(true);
+    expect(seam.set('allowShortSwords', false)).toBe(true);
+    expect(seam.set('allowWoodenSpears', true)).toBe(true);
+    expect(sent).toEqual([
+      { kind: 'setAssistantWeaponVeto', player: 3, goodType: SWORD_SHORT, vetoed: true },
+      { kind: 'setAssistantWeaponVeto', player: 3, goodType: SPEAR_WOODEN, vetoed: false },
+    ]);
   });
 
   it('writes one command per mapped good, carrying the seat and the flip', () => {
     const sent: Command[] = [];
     const seam = assistantGrantsSeam(
-      { assistantGrants: () => [] },
+      simGranting([]),
       CONTENT,
       () => 2,
       (c) => sent.push(c),
@@ -63,7 +98,7 @@ describe('assistantGrantsSeam', () => {
   it('a switch whose slug the content lacks reads OFF and rejects writes', () => {
     const sent: Command[] = [];
     const seam = assistantGrantsSeam(
-      { assistantGrants: () => [SHOES] },
+      simGranting([SHOES]),
       { goods: [{ typeId: SHOES, id: 'shoes' }] },
       () => 0,
       (c) => sent.push(c),
@@ -76,7 +111,7 @@ describe('assistantGrantsSeam', () => {
   it('a read-only session rejects every write', () => {
     const sent: Command[] = [];
     const seam = assistantGrantsSeam(
-      { assistantGrants: () => [] },
+      simGranting([]),
       CONTENT,
       () => 0,
       (c) => sent.push(c),
@@ -88,9 +123,10 @@ describe('assistantGrantsSeam', () => {
 });
 
 describe('grantAssistantDefaults', () => {
-  it('switches all four grants ON for the seat at world start', () => {
+  it('switches all four grants ON for the seat at world start and vetoes no weapon', () => {
     const sent: Command[] = [];
     grantAssistantDefaults({ enqueueSetup: (c) => sent.push(c) }, CONTENT, [1]);
+    expect(sent.every((c) => c.kind === 'setAssistantGrant')).toBe(true);
     const grants = sent.filter((c) => c.kind === 'setAssistantGrant');
     expect(grants.map((c) => c.goodType).sort((a, b) => a - b)).toEqual([
       SHOES,

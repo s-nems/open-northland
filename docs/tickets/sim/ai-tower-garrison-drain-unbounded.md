@@ -9,11 +9,11 @@ the men are spent for the rest of the game.
 
 The build order's tower entry is perpetual (`{ kind: 'towerCoverage' }` in
 `packages/sim/src/systems/ai-player/build-order/entries.ts`), placing a tower per uncovered stretch of
-settlement inside `TOWER_DEFENCE_RADIUS_NODES = 22`, and the late tail repeats it at the denser
-`DENSE_TOWER_RADIUS_NODES = 15`. A sprawling seat therefore keeps raising towers
-and keeps paying three archers each, against a draft that raises swords and bows in equal number
-(`workforce/garrison.ts`). Six towers means the seat needs roughly 36 soldiers before a single archer
-is free to march, so its campaign stalls while its walls fill.
+settlement inside `TOWER_DEFENCE_RADIUS_NODES = 19`, and the late tail repeats it at the denser
+`DENSE_TOWER_RADIUS_NODES = 14`. A sprawling seat therefore keeps raising towers and keeps paying three
+archers each. The draft (`workforce/garrison.ts`) leaves posted archers out of its field count, so it
+replaces them, but every one is a man the waves never get: six towers take 18 men before the field army
+gains a single one, so the campaign stalls while the walls fill.
 
 ## Scope
 

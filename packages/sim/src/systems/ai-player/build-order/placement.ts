@@ -95,13 +95,14 @@ function outskirtsNode(
 }
 
 /** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
- *  clamped back into the anchor disc, or the anchor itself when nothing resolves. */
+ *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. */
 function searchCentre(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   owned: readonly Entity[],
   anchor: HalfCellNode,
+  reach: BuildReach,
   type: BuildingType,
   sameKindAnchors: readonly HalfCellNode[],
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
@@ -118,16 +119,67 @@ function searchCentre(
     sx += a.hx;
     sy += a.hy;
   }
-  const centre = { hx: Math.floor(sx / anchors.length), hy: Math.floor(sy / anchors.length) };
-  const dx = centre.hx - anchor.hx;
-  const dy = centre.hy - anchor.hy;
-  const dist = Math.abs(dx) + Math.abs(dy);
-  if (dist <= BUILD_SEARCH_MAX_RADIUS_NODES) return centre;
-  // Integer projection toward the anchor; trunc keeps |dx'|+|dy'| ≤ the radius. Plain `/` on integer
-  // operands is exactly rounded, so the result is byte-identical across engines.
+  return reach.clamp({ hx: Math.floor(sx / anchors.length), hy: Math.floor(sy / anchors.length) });
+}
+
+/** The ground a placement may take: within {@link BUILD_SEARCH_MAX_RADIUS_NODES} (Manhattan) of one of
+ *  the seat's buildings, sites included, so the settlement keeps growing from wherever it stands. */
+export interface BuildReach {
+  contains(x: number, y: number): boolean;
+  /** `node` itself when inside, else pulled onto the disc edge of the building nearest it. */
+  clamp(node: HalfCellNode): HalfCellNode;
+  /** The same reach cut to the buildings whose discs meet the Manhattan disc of `span` around `centre`,
+   *  for a search that never leaves that disc. */
+  around(centre: HalfCellNode, span: number): BuildReach;
+}
+
+/** The {@link BuildReach} of the seat's `owned` buildings, or of `fallback` alone while none has a node. */
+export function buildReach(world: World, owned: readonly Entity[], fallback: HalfCellNode): BuildReach {
+  const centres: HalfCellNode[] = [];
+  for (const e of owned) {
+    const node = anchorNodeOf(world, e);
+    if (node !== null) centres.push(node);
+  }
+  if (centres.length === 0) centres.push(fallback);
+  return reachOver(centres, fallback);
+}
+
+function reachOver(centres: readonly HalfCellNode[], fallback: HalfCellNode): BuildReach {
+  const radius = BUILD_SEARCH_MAX_RADIUS_NODES;
+  // Ring walks test runs of nearby nodes, so the centre that took the last one goes first.
+  let last = 0;
+  const within = (c: HalfCellNode | undefined, x: number, y: number): boolean =>
+    c !== undefined && Math.abs(x - c.hx) + Math.abs(y - c.hy) <= radius;
   return {
-    hx: anchor.hx + Math.trunc((dx * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
-    hy: anchor.hy + Math.trunc((dy * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
+    contains(x, y) {
+      if (within(centres[last], x, y)) return true;
+      for (let i = 0; i < centres.length; i++) {
+        if (!within(centres[i], x, y)) continue;
+        last = i;
+        return true;
+      }
+      return false;
+    },
+    around(centre, span) {
+      return reachOver(
+        centres.filter((c) => nodeDistance(c, centre) <= span + radius),
+        fallback,
+      );
+    },
+    clamp(node) {
+      let nearest = centres[0] ?? fallback;
+      for (const c of centres) if (nodeDistance(node, c) < nodeDistance(node, nearest)) nearest = c;
+      const dx = node.hx - nearest.hx;
+      const dy = node.hy - nearest.hy;
+      const dist = Math.abs(dx) + Math.abs(dy);
+      if (dist <= radius) return node;
+      // Integer projection toward the building; trunc keeps |dx'|+|dy'| ≤ the radius. Plain `/` on integer
+      // operands is exactly rounded, so the result is byte-identical across engines.
+      return {
+        hx: nearest.hx + Math.trunc((dx * radius) / dist),
+        hy: nearest.hy + Math.trunc((dy * radius) / dist),
+      };
+    },
   };
 }
 
@@ -202,9 +254,9 @@ function kindSpacingAnchors(
 }
 
 /**
- * The legal node closest to {@link searchCentre} and inside the anchor disc, or null to stall the
- * entry. The ring budget is twice the anchor radius because a centre inside the disc reaches every
- * disc node within that. The `apart` veto runs as a first pass only, so the preference never stalls.
+ * The legal node closest to {@link searchCentre} and inside the seat's {@link BuildReach}, or null to
+ * stall the entry. The ring budget is twice the reach radius, so a centre inside one building's disc
+ * reaches every node of that disc. The `apart` veto runs as a first pass only, so the preference never stalls.
  */
 export function placementSpot(
   world: World,
@@ -218,12 +270,15 @@ export function placementSpot(
 ): HalfCellNode | null {
   const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId);
   const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
-  const centre = searchCentre(world, ctx, terrain, owned, anchor, type, sameKindAnchors, entry);
+  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+  const settlement = buildReach(world, owned, anchor);
+  const centre = searchCentre(world, ctx, terrain, owned, anchor, settlement, type, sameKindAnchors, entry);
+  const reach = settlement.around(centre, fan);
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
-    firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
-      // Cheapest test first: an affinity-pulled centre puts up to half of every ring outside the
-      // disc, and a stalled entry re-walks the whole fan on every retry.
-      if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
+    firstRingNode(centre.hx, centre.hy, fan, (x, y) => {
+      // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
+      // entry re-walks the whole fan on every retry.
+      if (!reach.contains(x, y)) return false;
       if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
       if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
       if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;

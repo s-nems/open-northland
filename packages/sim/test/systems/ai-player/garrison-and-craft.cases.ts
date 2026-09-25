@@ -21,6 +21,7 @@ import {
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
+import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import { stampPost } from '../../signposts/support.js';
@@ -73,6 +74,8 @@ interface ArmedSeat {
 
 interface SeatOptions {
   readonly men?: number;
+  /** The content set; {@link armedContent} when absent. */
+  readonly content?: ContentSet;
   /** Where the barracks stands, in nodes - the drill floor an arming reach is measured from. */
   readonly barracks?: { x: number; y: number };
   /** Turn signpost navigation on, so that reach confines anything at all. */
@@ -90,7 +93,7 @@ const BRIDGE_POST = { x: 32, y: 8 };
 /** A seat with an HQ holding `arms`, a barracks, and `men` idle civilians, on content whose sword,
  *  spear and bow classes are equippable ({@link armedContent}). */
 function armedSeat(arms: readonly { good: number; amount: number }[], options: SeatOptions = {}): ArmedSeat {
-  const content = armedContent();
+  const content = options.content ?? armedContent();
   const men = options.men ?? SPARE_MEN;
   const barracks = options.barracks ?? BARRACKS_AT;
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
@@ -116,6 +119,35 @@ function armedSeat(arms: readonly { good: number; amount: number }[], options: S
   makeAiSeat(sim, SEAT);
   sim.step();
   return { sim, ctx: { ...ctxOf(sim), content }, men };
+}
+
+/** A long sword that outranks the fixture's short one. */
+const LONG_SWORD = 42;
+const LONG_SWORDSMAN = 35;
+const LONG_SWORD_DAMAGE = 3800;
+
+/** {@link armedContent} with a long sword beside the short one, so the sword class has a weaker weapon. */
+function longSwordContent(): ContentSet {
+  const base = armedContent();
+  return parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: LONG_SWORD, id: 'sword_long', weight: 1 }],
+    jobs: [...base.jobs, { typeId: LONG_SWORDSMAN, id: 'soldier_sword_long' }],
+    weapons: [
+      ...base.weapons,
+      {
+        typeId: 8,
+        id: 'viking_sword_long',
+        tribeType: VIKING,
+        jobType: LONG_SWORDSMAN,
+        mainType: WEAPON_MAIN_TYPE.SWORD,
+        goodType: LONG_SWORD,
+        minRange: 1,
+        maxRange: 1,
+        damage: { '0': LONG_SWORD_DAMAGE },
+      },
+    ],
+  });
 }
 
 /** The rung's standing order, by counter. A counter the decision leaves where it already sits issues
@@ -425,20 +457,76 @@ describe('workforce module - the barracks and craft selections', () => {
     });
   });
 
-  it('splits the standing order between swords and bows, leaving the spears in store', () => {
+  it('drafts four archers to three swordsmen and three spearmen while every class can be armed', () => {
     const seat = armedSeat([
       { good: SWORD, amount: 1 },
       { good: SPEAR, amount: 1 },
       { good: BOW, amount: 1 },
     ]);
     const total = sparePool(seat);
+    const wants = counterWants(seat.sim, seat.ctx);
+    expect((wants.trainBow ?? 0) + (wants.trainSword ?? 0) + (wants.trainSpear ?? 0)).toBe(total);
+    // Each class within one man of its share of the field.
+    expect(Math.abs((wants.trainBow ?? 0) - (total * 4) / 10)).toBeLessThan(1);
+    expect(Math.abs((wants.trainSword ?? 0) - (total * 3) / 10)).toBeLessThan(1);
+    expect(Math.abs((wants.trainSpear ?? 0) - (total * 3) / 10)).toBeLessThan(1);
+  });
+
+  it('splits evenly over the classes it can arm when one weapon line runs dry', () => {
+    const seat = armedSeat([
+      { good: SWORD, amount: 1 },
+      { good: SPEAR, amount: 1 },
+    ]);
+    const total = sparePool(seat);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({
       trainSword: Math.ceil(total / 2),
-      trainBow: Math.floor(total / 2),
+      trainSpear: Math.floor(total / 2),
     });
   });
 
-  it('drafts spearmen only while neither a sword nor a bow is in store', () => {
+  it('vetoes a weaker weapon once, and never drafts a class only that weapon could arm', () => {
+    const seat = armedSeat([{ good: SWORD, amount: 1 }], { content: longSwordContent() });
+    const first = collectModule.run(seat.sim.world, seat.ctx, SEAT);
+    const vetoes = first.filter((c) => c.kind === 'setAssistantWeaponVeto');
+    expect(vetoes).toEqual([{ kind: 'setAssistantWeaponVeto', player: SEAT, goodType: SWORD, vetoed: true }]);
+    // The same decision already drafts as if the veto stood: only the short swords are in store, so
+    // nobody can be armed and the men drill bare.
+    expect(first.some((c) => c.kind === 'setAssistantCounter' && c.counter === 'trainSword')).toBe(false);
+    for (const veto of vetoes) seat.sim.enqueueSetup(veto);
+    seat.sim.step();
+
+    const again = collectModule.run(seat.sim.world, seat.ctx, SEAT);
+    expect(again.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: sparePool(seat) });
+  });
+
+  it('lifts its weapon vetoes when the AI lets go of the seat or its military module', () => {
+    const vetoedSeat = (): ArmedSeat => {
+      const seat = armedSeat([], { content: longSwordContent() });
+      for (const c of collectModule.run(seat.sim.world, seat.ctx, SEAT)) {
+        if (c.kind === 'setAssistantWeaponVeto') seat.sim.enqueueSetup(c);
+      }
+      seat.sim.step();
+      expect(seat.sim.assistantWeaponVetoes(SEAT)).toEqual([SWORD]);
+      return seat;
+    };
+    const detached = vetoedSeat();
+    detached.sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: false });
+    detached.sim.step();
+    expect(detached.sim.assistantWeaponVetoes(SEAT)).toEqual([]);
+
+    const disarmed = vetoedSeat();
+    disarmed.sim.enqueueSetup({
+      kind: 'setPlayerAi',
+      player: SEAT,
+      enabled: true,
+      modules: { military: false, houseBuild: true },
+    });
+    disarmed.sim.step();
+    expect(disarmed.sim.assistantWeaponVetoes(SEAT)).toEqual([]);
+  });
+
+  it('drafts spearmen alone while only spears are in store', () => {
     const seat = armedSeat([{ good: SPEAR, amount: 1 }]);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSpear: sparePool(seat) });
   });

@@ -79,7 +79,15 @@ function mountSurfaces() {
     },
     buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace', cost: [] }],
     grants: {
-      read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
+      read: () => ({
+        giveBoots: true,
+        giveWoodenTools: true,
+        giveIronTools: true,
+        giveMead: true,
+        allowShortSwords: true,
+        allowWoodenSpears: true,
+        allowShortBows: true,
+      }),
       set: () => true,
     },
     counters: {

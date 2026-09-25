@@ -5,12 +5,14 @@ import {
   type AssistantCounterKind,
   AssistantCounters,
   AssistantGrants,
+  AssistantWeaponVetoes,
   assistantCountersAtDefault,
   assistantCountersEntity,
-  assistantGrantsEntity,
   defaultAssistantCounters,
   INFINITE_COUNTER_KINDS,
   isValidPlayer,
+  type PlayerGoodList,
+  playerGoodListEntity,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -18,8 +20,8 @@ import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
 /**
- * Toggle one good in `player`'s assistant grant list - see the command doc. Owns the rules-singleton
- * carrier lifecycle stated on {@link AssistantGrants}.
+ * Toggle one good in `player`'s assistant grant list - see the command doc. The carrier lifecycle is
+ * {@link setListed}'s.
  */
 export function setAssistantGrant(
   world: World,
@@ -29,22 +31,42 @@ export function setAssistantGrant(
   if (!isValidPlayer(command.player)) return;
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined) return; // only a wearable good is grantable
-  const carrier = assistantGrantsEntity(world, command.player);
-  const current = carrier === null ? [] : world.get(carrier, AssistantGrants).goods;
-  if (command.enabled === current.includes(command.goodType)) return; // already in the wanted state
-  if (!command.enabled) {
-    const goods = current.filter((g) => g !== command.goodType);
+  setListed(world, AssistantGrants, command.player, command.goodType, command.enabled);
+}
+
+/** Veto or allow one weapon good in `player`'s recruit arming - see the command doc. */
+export function setAssistantWeaponVeto(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'setAssistantWeaponVeto' }>,
+): void {
+  if (!isValidPlayer(command.player)) return;
+  if (!ctx.content.weapons.some((w) => w.goodType === command.goodType)) return; // arms no class
+  setListed(world, AssistantWeaponVetoes, command.player, command.goodType, command.vetoed);
+}
+
+/** Lift every recruit weapon veto of `player`: the list is back to the default, nothing vetoed. */
+export function clearAssistantWeaponVetoes(world: World, player: number): void {
+  const carrier = playerGoodListEntity(world, AssistantWeaponVetoes, player);
+  if (carrier !== null) world.destroy(carrier);
+}
+
+/** Put `good` on or off `player`'s `list`: the carrier is created with the first good and destroyed with
+ *  the last, and the goods stay ascending. */
+function setListed(world: World, list: PlayerGoodList, player: number, good: number, listed: boolean): void {
+  const carrier = playerGoodListEntity(world, list, player);
+  const current = carrier === null ? [] : world.get(carrier, list).goods;
+  if (listed === current.includes(good)) return; // already in the wanted state
+  if (!listed) {
+    const goods = current.filter((g) => g !== good);
     if (carrier === null) return;
     if (goods.length === 0) world.destroy(carrier);
-    else world.mut(carrier, AssistantGrants).goods = goods;
+    else world.mut(carrier, list).goods = goods;
     return;
   }
-  const goods = [...current, command.goodType].sort((a, b) => a - b);
-  if (carrier === null) {
-    world.add(world.create(), AssistantGrants, { player: command.player, goods });
-  } else {
-    world.mut(carrier, AssistantGrants).goods = goods;
-  }
+  const goods = [...current, good].sort((a, b) => a - b);
+  if (carrier === null) world.add(world.create(), list, { player, goods });
+  else world.mut(carrier, list).goods = goods;
 }
 
 /**

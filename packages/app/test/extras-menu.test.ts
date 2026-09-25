@@ -34,7 +34,7 @@ function centreOf(r: { x: number; y: number; w: number; h: number }): { x: numbe
 }
 
 describe('assistant state', () => {
-  it('defaults to six zeroed finite counters and every grant ON', () => {
+  it('defaults to six zeroed finite counters and every switch ON', () => {
     const s = defaultAssistantState();
     expect(Object.keys(s.counters)).toEqual([...COUNTER_ROW_IDS]);
     for (const id of COUNTER_ROW_IDS) expect(s.counters[id]).toEqual({ value: 0, infinite: false });
@@ -43,6 +43,9 @@ describe('assistant state', () => {
       giveWoodenTools: true,
       giveIronTools: true,
       giveMead: true,
+      allowShortSwords: true,
+      allowWoodenSpears: true,
+      allowShortBows: true,
     });
   });
 
@@ -110,6 +113,9 @@ describe('extras menu layout', () => {
       'giveWoodenTools',
       'giveIronTools',
       'giveMead',
+      'allowShortSwords',
+      'allowWoodenSpears',
+      'allowShortBows',
     ]);
 
     // The grant block starts a visible gap below the last counter row (the requested "lekki odstęp").

@@ -13,11 +13,13 @@ import {
 
 /**
  * The extras ("chest") window model: the assistant tab, the counter and grant controls, their layout
- * and hit-test. Grants drive the sim's auto-equip, counters its birth and training queues. The papers
- * the original lists on this window's second tab are the construction window's page.
+ * and hit-test. Grants drive the sim's auto-equip, the weapon switches its recruit arming, counters its
+ * birth and training queues. The papers the original lists on this window's second tab are the
+ * construction window's page.
  *
  * The decoded `miscwindow` table carries the original window's labels (500 the title, 502 the block
- * header, 503-509 the grant commands); the row wording, counter set and geometry are an approximation.
+ * header, 503-509 the grant commands); the row wording, counter set and geometry are an approximation,
+ * and the weapon switches are this project's addition.
  */
 
 /** The assistant's six production counters: two birth queues and four training queues. */
@@ -29,8 +31,16 @@ export type AssistantCounterId =
   | 'trainSpearmen'
   | 'trainArchers';
 
-/** The assistant's four "give everyone …" grant switches. */
-export type AssistantGrantId = 'giveBoots' | 'giveWoodenTools' | 'giveIronTools' | 'giveMead';
+/** The assistant's switch rows: four "give everyone …" grants, then three that let recruits be armed with
+ *  a class's weaker weapon. */
+export type AssistantGrantId =
+  | 'giveBoots'
+  | 'giveWoodenTools'
+  | 'giveIronTools'
+  | 'giveMead'
+  | 'allowShortSwords'
+  | 'allowWoodenSpears'
+  | 'allowShortBows';
 
 /** One counter's face: the queued amount and whether the queue never drains. */
 export interface AssistantCounterFace {
@@ -78,7 +88,15 @@ export function defaultAssistantState(): AssistantState {
       trainSpearmen: zero,
       trainArchers: zero,
     },
-    grants: { giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true },
+    grants: {
+      giveBoots: true,
+      giveWoodenTools: true,
+      giveIronTools: true,
+      giveMead: true,
+      allowShortSwords: true,
+      allowWoodenSpears: true,
+      allowShortBows: true,
+    },
   };
 }
 
@@ -189,6 +207,9 @@ export const GRANT_IDS: readonly AssistantGrantId[] = [
   'giveWoodenTools',
   'giveIronTools',
   'giveMead',
+  'allowShortSwords',
+  'allowWoodenSpears',
+  'allowShortBows',
 ];
 
 /** Resolve the window to screen rects, with every row's controls right-aligned on a shared column. */
@@ -227,6 +248,9 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
     giveWoodenTools: labels.giveWoodenTools,
     giveIronTools: labels.giveIronTools,
     giveMead: labels.giveMead,
+    allowShortSwords: labels.allowShortSwords,
+    allowWoodenSpears: labels.allowWoodenSpears,
+    allowShortBows: labels.allowShortBows,
   };
 
   const counters: ExtrasCounterRow[] = COUNTER_IDS.map((id, i) => {

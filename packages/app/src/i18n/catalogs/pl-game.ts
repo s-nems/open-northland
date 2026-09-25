@@ -494,6 +494,9 @@ export const plGame = {
       giveWoodenTools: 'Przyznaj wszystkim drewniane narzędzia',
       giveIronTools: 'Przyznaj wszystkim żelazne narzędzia',
       giveMead: 'Przyznaj wszystkim miód pitny',
+      allowShortSwords: 'Pozwól na krótkie miecze',
+      allowWoodenSpears: 'Pozwól na drewniane włócznie',
+      allowShortBows: 'Pozwól na krótkie łuki',
       on: 'Wł.',
       off: 'Wył.',
       papers: {

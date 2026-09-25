@@ -144,10 +144,10 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup({ kind: 'setGatherGood', entity: settler, goodType: IRON });
     sim.step();
 
-    // Past the gate: the barracks, both bakery upgrades, then the late tail - the tower coverage entry
-    // rests (everything sits inside the HQ circle on this map), the second brewery, the two outskirts
-    // warehouses, the closing pair of level-2 bakeries and the third warehouse follow, the store coverage
-    // rests, and the denser tower ring and the third brewery close the list. The home entries name `home_level_04`, a tier this
+    // Past the gate: the barracks, both bakery upgrades, then the late tail - the second brewery, the two
+    // outskirts warehouses, the closing pair of level-2 bakeries and the third warehouse follow, with a
+    // tower wherever one lands outside the tower circles, the store coverage rests, and the denser tower
+    // ring and the third brewery close the list. The home entries name `home_level_04`, a tier this
     // content set stops short of, so they skip here - the direct top-tier placement has its own test
     // below. The smithy and armory entries are absent from this fixture, so both skip.
     const barracks = nextPlacement(sim);
@@ -160,6 +160,7 @@ describe('build-order module (houseBuild)', () => {
       expect(sim.world.get(upgrade.building, Building).buildingType).toBe(BAKERY_TYPE);
       applyAndFinish(sim, upgrade);
     }
+    let towers = 0;
     for (const expected of [
       BREWERY_TYPE,
       STOCK_TOP_TYPE,
@@ -168,12 +169,16 @@ describe('build-order module (houseBuild)', () => {
       BAKERY_TOP_TYPE,
       STOCK_TOP_TYPE,
     ]) {
-      const next = nextPlacement(sim);
+      let next = nextPlacement(sim);
+      // The tower coverage entry re-arms whenever a later building lands outside every tower circle.
+      for (; next?.kind === 'placeBuilding' && next.buildingType === TOWER_TYPE; next = nextPlacement(sim)) {
+        applyAndFinish(sim, next);
+        towers++;
+      }
       if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
       expect(next.buildingType).toBe(expected);
       applyAndFinish(sim, next);
     }
-    let towers = 0;
     let next = nextPlacement(sim);
     for (; next?.kind === 'placeBuilding' && next.buildingType === TOWER_TYPE; next = nextPlacement(sim)) {
       applyAndFinish(sim, next);
@@ -366,6 +371,39 @@ describe('build-order module (houseBuild)', () => {
     const placed = [...gated.run(sim.world, ctxOf(sim), SEAT)][0];
     if (placed?.kind !== 'placeBuilding') throw new Error('expected the bakery placement');
     expect(placed.buildingType).toBe(BAKERY_TYPE);
+  });
+
+  it('holds a collector entry until its whole count of gatherers stands', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.iron]);
+    sim.step();
+    const order = buildOrderModule([
+      { kind: 'collector', good: 'iron', count: 2 },
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+    ]);
+    const flagIronGatherer = (): void => {
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: COLLECTOR,
+        x: 12,
+        y: 24,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+      const settler = [...sim.world.query(Settler)].at(-1);
+      if (settler === undefined) throw new Error('setup: collector missing');
+      sim.enqueueSetup({ kind: 'setWorkFlag', entity: settler, x: 14, y: 26 });
+      sim.enqueueSetup({ kind: 'setGatherGood', entity: settler, goodType: IRON });
+      sim.step();
+    };
+    flagIronGatherer();
+    expect([...order.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]); // one of two: still waiting
+    flagIronGatherer();
+    const placed = [...order.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (placed?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
+    expect(placed.buildingType).toBe(FARM_TYPE);
   });
 
   it('stalls when nothing can upgrade toward the entry tier yet', () => {

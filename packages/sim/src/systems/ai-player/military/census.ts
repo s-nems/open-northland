@@ -66,6 +66,12 @@ export function weaponMix(world: World, ctx: SystemContext, units: readonly Enti
   return { total: units.length, ranged, melee: units.length - ranged };
 }
 
+/** The weapon class (`maintype`) a fighter goes in with, or null when he fights bare-handed. */
+export function fighterWeaponClass(world: World, ctx: SystemContext, e: Entity): number | null {
+  const weapon = fightingWeapon(world, ctx, e, world.get(e, Settler));
+  return weapon === null ? null : (weaponClassOf(weapon) ?? null);
+}
+
 /** The weapon the CombatSystem would resolve for a fighter - the worn one, else his class default - or
  *  null when he goes in with nothing but his hands: no row at all, or one whose class is the bare fist /
  *  no class ({@link WEAPON_MAIN_TYPE}). A row with no `mainType` at all still arms him: the content named

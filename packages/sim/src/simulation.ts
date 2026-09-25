@@ -4,6 +4,7 @@ import {
   ASSISTANT_COUNTER_KINDS,
   AssistantCounters,
   type AssistantCounterValues,
+  AssistantWeaponVetoes,
   assistantCountersEntity,
   assistantGrantedGoods,
   type DiplomacyState,
@@ -20,6 +21,7 @@ import {
   missionBriefingPage,
   needsEnabled,
   type Paper,
+  playerGoodList,
   playerPaperSlots,
   professionProgressionEnabled,
   Settler,
@@ -430,6 +432,11 @@ export class Simulation {
   /** The good types `player`'s assistant may hand out, as a detached copy of the command's state. */
   assistantGrants(player: number): readonly number[] {
     return [...assistantGrantedGoods(this.world, player)];
+  }
+
+  /** The weapon goods `player`'s assistant never arms a recruit with, as a detached copy. */
+  assistantWeaponVetoes(player: number): readonly number[] {
+    return [...playerGoodList(this.world, AssistantWeaponVetoes, player)];
   }
 
   /** `player`'s assistant production counters as a detached copy; all-default when the carrier is absent. */

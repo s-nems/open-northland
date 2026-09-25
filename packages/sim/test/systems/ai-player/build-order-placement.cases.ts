@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Command } from '../../../src/core/commands/index.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
+import { buildReach } from '../../../src/systems/ai-player/build-order/placement.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -9,6 +10,7 @@ import {
   DEFAULT_BUILD_ORDER,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../src/systems/ai-player/index.js';
+import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
@@ -171,7 +173,7 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(spot.y).toBeGreaterThan(HQ_FAR.y);
   });
 
-  it('clamps a far-off affinity centre back into the near-HQ band', () => {
+  it("clamps a far-off affinity centre back into the band of the seat's buildings", () => {
     const HQ_FAR = { x: 20, y: 20 };
     const STONE_FAR = { x: 200, y: 200 };
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
@@ -185,5 +187,55 @@ describe('build-order placement - affinity and ground rules', () => {
     const toHq = Math.abs(spot.x - HQ_FAR.x) + Math.abs(spot.y - HQ_FAR.y);
     expect(toHq).toBeLessThanOrEqual(BUILD_SEARCH_MAX_RADIUS_NODES); // never outside the band
     expect(toHq).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // yet pulled hard toward the deposit
+  });
+
+  it('keeps every building whose band meets the search disc when the reach is cut down to it', () => {
+    const R = BUILD_SEARCH_MAX_RADIUS_NODES;
+    const HQ_AT = { hx: 20, hy: 20 };
+    const SPAN = 2 * R;
+    // A well just inside span + R of the HQ: its band still covers nodes of the HQ-centred search disc.
+    const WELL_AT = { x: HQ_AT.hx + SPAN + R - 4, y: HQ_AT.hy };
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 64) });
+    placeHq(sim, HQ_AT.hx, HQ_AT.hy);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: WELL_TYPE,
+      x: WELL_AT.x,
+      y: WELL_AT.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const reach = buildReach(sim.world, ownedBuildings(sim.world, SEAT), HQ_AT).around(HQ_AT, SPAN);
+    expect(reach.contains(HQ_AT.hx + SPAN, HQ_AT.hy)).toBe(true); // the well's band, the disc's edge
+    expect(reach.contains(HQ_AT.hx + R + 1, HQ_AT.hy)).toBe(false); // between the two bands
+  });
+
+  it("reaches past the HQ band from an outlying building, never past that building's own band", () => {
+    const HQ_FAR = { x: 20, y: 20 };
+    const OUTPOST = { x: 60, y: 20 };
+    const STONE_FAR = { x: 200, y: 200 };
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    placeHq(sim, HQ_FAR.x, HQ_FAR.y);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: WELL_TYPE,
+      x: OUTPOST.x,
+      y: OUTPOST.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    placeResources(sim, [{ good: STONE, harvest: STONE_HARVEST, x: STONE_FAR.x, y: STONE_FAR.y }]);
+    sim.step();
+    const spot = firstCommandOf(sim, [
+      { kind: 'place', building: 'work_bakery_00', count: 1, near: [{ kind: 'resource', good: 'stone' }] },
+    ]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement past the HQ band');
+    expect(Math.abs(spot.x - HQ_FAR.x) + Math.abs(spot.y - HQ_FAR.y)).toBeGreaterThan(
+      BUILD_SEARCH_MAX_RADIUS_NODES,
+    );
+    const toOutpost = Math.abs(spot.x - OUTPOST.x) + Math.abs(spot.y - OUTPOST.y);
+    expect(toOutpost).toBeLessThanOrEqual(BUILD_SEARCH_MAX_RADIUS_NODES);
+    expect(toOutpost).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // pulled out toward the deposit
   });
 });

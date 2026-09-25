@@ -29,9 +29,10 @@ export type BuildOrderEntry =
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier. */
   | { readonly kind: 'upgrade'; readonly building: string; readonly count: number }
-  /** Wait for one flag-bound gatherer of the good; the workforce module owns the hire. A good with
-   *  no live resource is skipped. */
-  | { readonly kind: 'collector'; readonly good: string }
+  /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
+   *  and keeps at least that many. Posts past the first come out of spare men only, so the list holds
+   *  here until the seat has them. A good with no live resource is skipped. */
+  | { readonly kind: 'collector'; readonly good: string; readonly count?: number }
   /** Keep every owned building inside some tower's or the base's defence circle of `radius` nodes
    *  (default {@link TOWER_DEFENCE_RADIUS_NODES}). Unlike the counted entries it re-arms whenever a later
    *  building lands uncovered, so the tower count is dynamic. */
@@ -42,7 +43,7 @@ export type BuildOrderEntry =
 
 /** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
  *  {@link TOWER_DEFENCE_RADIUS_NODES}, so the finished settlement stands under overlapping towers. */
-export const DENSE_TOWER_RADIUS_NODES = 15;
+export const DENSE_TOWER_RADIUS_NODES = 14;
 
 /** How near the brewery a well must stand to serve it, in world-metric nodes (authored); a farther
  *  one gets a second well beside the brewery. */
@@ -170,6 +171,24 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
   { kind: 'place', building: 'work_brewery', count: 3, near: [{ kind: 'building', id: 'work_brewery' }] },
+  { kind: 'place', building: 'home_level_04', count: 10 },
+  // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer
+  // to feed them.
+  {
+    kind: 'place',
+    building: 'work_coin_mint',
+    count: 3,
+    near: [{ kind: 'resource', good: 'gold' }],
+    needsResources: ['gold'],
+  },
+  { kind: 'collector', good: 'mushroom', count: 2 },
+  {
+    kind: 'place',
+    building: 'work_druid_01',
+    count: 4,
+    near: [{ kind: 'building', id: 'work_druid_01' }],
+    needsResources: ['mushroom', 'gold'],
+  },
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would
@@ -196,8 +215,8 @@ export const BUILD_ORDER_LOOKAHEAD_ENTRIES = 3;
 /** How long a regressed entry, a razed building's, waits before the seat raises it again (authored). */
 export const REBUILD_DELAY_TICKS = 15 * TICKS_PER_SECOND;
 
-/** How far from the seat's base a placement may land, in half-cell Manhattan nodes; every affinity
- *  pull stays inside this disc. */
+/** How far from the nearest of the seat's buildings a placement may land, in half-cell Manhattan nodes;
+ *  every affinity pull stays inside this reach. */
 export const BUILD_SEARCH_MAX_RADIUS_NODES = 48;
 
 /** Decisions between a stalled placement's spot searches, about 60 s at the decision interval. It never

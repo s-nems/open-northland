@@ -507,6 +507,9 @@ export const enGame = {
       giveWoodenTools: 'Give everyone wooden tools',
       giveIronTools: 'Give everyone iron tools',
       giveMead: 'Give everyone mead',
+      allowShortSwords: 'Allow short swords',
+      allowWoodenSpears: 'Allow wooden spears',
+      allowShortBows: 'Allow short bows',
       on: 'ON',
       off: 'OFF',
       /** Stand-ins for the decoded `misclogic` rows 180-186 naming each paper kind; `{name}` takes

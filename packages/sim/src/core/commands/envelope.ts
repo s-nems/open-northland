@@ -114,6 +114,7 @@ export const COMMAND_ISSUER: {
   placeSignpost: 'seat',
   setAssistantCounter: 'seat',
   setAssistantGrant: 'seat',
+  setAssistantWeaponVeto: 'seat',
   setCraftGoods: 'seat',
   setDefenceMode: 'seat',
   setDiplomacy: 'trusted',

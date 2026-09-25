@@ -215,7 +215,15 @@ function stubCountersSeam(): {
 
 describe('tool windows registry', () => {
   const GRANTS: ExtrasGrantsSeam = {
-    read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
+    read: () => ({
+      giveBoots: true,
+      giveWoodenTools: true,
+      giveIronTools: true,
+      giveMead: true,
+      allowShortSwords: true,
+      allowWoodenSpears: true,
+      allowShortBows: true,
+    }),
     set: () => true,
   };
 
@@ -841,6 +849,9 @@ describe('extras window controller', () => {
       giveWoodenTools: true,
       giveIronTools: true,
       giveMead: true,
+      allowShortSwords: true,
+      allowWoodenSpears: true,
+      allowShortBows: true,
       ...initial,
     };
     const writes: [AssistantGrantId, boolean][] = [];
@@ -994,6 +1005,9 @@ describe('extras window controller', () => {
       giveWoodenTools: true,
       giveIronTools: true,
       giveMead: true,
+      allowShortSwords: true,
+      allowWoodenSpears: true,
+      allowShortBows: true,
     };
     // The command applies on a later tick, as a queued `setAssistantGrant` does.
     const lagging: ExtrasGrantsSeam = { read: () => ({ ...live }), set: () => true };

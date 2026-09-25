@@ -4,6 +4,7 @@ import {
   AssistantChildOrder,
   AssistantCounters,
   AssistantRecruit,
+  AssistantWeaponVetoes,
   addPerson,
   Building,
   ChildOrder,
@@ -217,6 +218,10 @@ function pileAt(sim: Simulation, x: number, y: number, amounts: ReadonlyMap<numb
   return e;
 }
 
+function vetoWeapon(sim: Simulation, goodType: number, vetoed: boolean): void {
+  sim.enqueueSetup({ kind: 'setAssistantWeaponVeto', player: PLAYER, goodType, vetoed });
+}
+
 function setCounter(
   sim: Simulation,
   counter: 'extraWomen' | 'extraMen' | 'trainSoldiers' | 'trainSword' | 'trainSpear' | 'trainBow',
@@ -274,6 +279,23 @@ describe('setAssistantCounter - command and carrier lifecycle', () => {
     setCounter(sim, 'trainBow', 7, false);
     sim.step();
     expect(sim.assistantCounters(PLAYER).trainBow).toEqual({ value: 7, infinite: false });
+  });
+});
+
+describe('setAssistantWeaponVeto - command and carrier lifecycle', () => {
+  it('lists vetoed weapons ascending, ignores a good that arms nobody, and drops the carrier when empty', () => {
+    const sim = trainSim();
+    vetoWeapon(sim, SWORD_LONG_GOOD, true);
+    vetoWeapon(sim, SWORD_SHORT_GOOD, true);
+    vetoWeapon(sim, ARMOR_WOOL_GOOD, true); // armor arms no class
+    sim.step();
+    expect(sim.assistantWeaponVetoes(PLAYER)).toEqual([SWORD_SHORT_GOOD, SWORD_LONG_GOOD]);
+
+    vetoWeapon(sim, SWORD_LONG_GOOD, false);
+    vetoWeapon(sim, SWORD_SHORT_GOOD, false);
+    sim.step();
+    expect(sim.assistantWeaponVetoes(PLAYER)).toEqual([]);
+    expect([...sim.world.query(AssistantWeaponVetoes)].length).toBe(0);
   });
 });
 
@@ -443,6 +465,28 @@ describe('the training queue', () => {
     runUntil(sim, () => !sim.world.has(recruit, AssistantRecruit), 2000, 'released unarmored');
     expect(sim.world.tryGet(recruit, Equipment)?.armor ?? null).toBe(null);
     expect(sim.assistantCounters(PLAYER).trainSword.value).toBe(0);
+  });
+
+  it('never hands a recruit a vetoed weapon: he waits for an allowed one', () => {
+    const sim = trainSim();
+    barracksAt(sim, 6, 3);
+    const recruit = settlerAt(sim, CIVILIST, 3, 3);
+    pileAt(sim, 9, 3, new Map([[SWORD_SHORT_GOOD, 1]]));
+    vetoWeapon(sim, SWORD_SHORT_GOOD, true);
+
+    setCounter(sim, 'trainSword', 1);
+    runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SOLDIER, 3000, 'enlisted');
+    run(sim, 4 * BEAT_TICKS);
+    expect(sim.world.tryGet(recruit, Equipment)?.weapon ?? null).toBe(null);
+    expect(sim.world.has(recruit, EquipOrder)).toBe(false);
+
+    vetoWeapon(sim, SWORD_SHORT_GOOD, false);
+    runUntil(
+      sim,
+      () => sim.world.get(recruit, Settler).jobType === SWORDSMAN_SHORT,
+      3000,
+      'armed once allowed',
+    );
   });
 
   it('demotes a swordsman back to the unarmed base when the sword comes off', () => {

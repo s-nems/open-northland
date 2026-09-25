@@ -93,9 +93,11 @@ export function entryStatus(
     case 'collector': {
       const good = goodTypeByContentId(ctx.content, entry.good);
       if (good?.atomics?.harvest === undefined) return 'skip';
+      let holders = 0;
       for (const e of ownedSettlers(world, player)) {
-        if (liveWorkFlag(world, e)?.goodType === good.typeId) return 'satisfied';
+        if (liveWorkFlag(world, e)?.goodType === good.typeId) holders++;
       }
+      if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
       return liveResourceNearBase(world, ctx, player, good.typeId, live) ? 'unmet' : 'skip';
     }
@@ -181,19 +183,26 @@ export function upgradeCandidate(
   return null;
 }
 
+function collectorCount(entry: Extract<BuildOrderEntry, { kind: 'collector' }>): number {
+  return entry.count ?? 1;
+}
+
 /**
- * The collector goods the list has reached, in order: an entry is reached while every entry before it
- * is satisfied or skipped. Reached state is re-derived each decision, so a regressing earlier entry
- * drops a later collector and returns its holder to the pool until the list re-reaches the entry.
+ * The collector goods the list has reached, in order, each with the most gatherers a reached entry asks
+ * for: an entry is reached while every entry before it is satisfied or skipped. Reached state is
+ * re-derived each decision, so a regressing earlier entry drops a later collector and returns its holder
+ * to the pool until the list re-reaches the entry.
  */
 export function collectorGoodsWanted(
   order: readonly BuildOrderEntry[],
   statuses: readonly EntryStatus[],
-): readonly string[] {
-  const wanted: string[] = [];
+): ReadonlyMap<string, number> {
+  const wanted = new Map<string, number>();
   for (const [i, entry] of order.entries()) {
     const status = statuses[i];
-    if (entry.kind === 'collector' && status !== 'skip') wanted.push(entry.good);
+    if (entry.kind === 'collector' && status !== 'skip') {
+      wanted.set(entry.good, Math.max(wanted.get(entry.good) ?? 0, collectorCount(entry)));
+    }
     if (status === 'unmet') break;
   }
   return wanted;

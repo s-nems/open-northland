@@ -32,9 +32,11 @@ export const LATE_CRAFT_FROM_TICK = 90 * 60 * TICKS_PER_SECOND;
 
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
- * runs its main lines: the smithies' eight seats are three long-sword and five plate-armour makers, one
- * druid in four boils holy oil (the first, since the big potion waits on herbs the later herb hut grows),
- * one coiner in four strikes coins, and the second joiner takes the furniture. The potters split bricks
+ * runs its main lines. The smithies' eight seats open on plate armour and long swords, then add the iron
+ * spear, whose wooden shaft the first armourer makes between his long bows, and mail; the last seat forges
+ * the short swords only the strength amulet takes. One druid in eight boils holy oil (the first, since the
+ * big potion waits on herbs the later herb hut grows); the coiners strike coins, then defence amulets, and
+ * the third mint's pair strength amulets. The second joiner takes the furniture. The potters split bricks
  * and tiles, a lone one working both, and add the crockery only late. The first tailor sews shoes and the
  * second leather armour, and the small tailor's one man sews shoes too. Bakers bake only bread and
  * breeders keep only cattle.
@@ -56,19 +58,39 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_bakery_01: { seats: [['bread']] },
   work_smithy_01: {
     seats: [
-      ['sword_long'],
       ['armor_plate'],
       ['sword_long'],
-      ['armor_plate'],
+      ['spear_iron'],
+      ['armor_chain'],
       ['armor_plate'],
       ['sword_long'],
-      ['armor_plate'],
-      ['armor_plate'],
+      ['armor_chain'],
+      ['sword_shord'],
     ],
   },
-  work_armory_01: { seats: [['bow_long']] },
-  work_druid_01: { seats: [['holy_oil'], ['potion_heal_big'], ['potion_heal_big'], ['potion_heal_big']] },
-  work_coin_mint: { seats: [['coin'], ['amulet_defense'], ['amulet_defense'], ['amulet_defense']] },
+  work_armory_01: { seats: [['bow_long', 'spear_wooden'], ['bow_long']] },
+  work_druid_01: {
+    seats: [
+      ['holy_oil'],
+      ['potion_heal_big'],
+      ['potion_heal_big'],
+      ['potion_heal_big'],
+      ['potion_heal_big'],
+      ['potion_heal_big'],
+      ['potion_heal_big'],
+      ['potion_heal_big'],
+    ],
+  },
+  work_coin_mint: {
+    seats: [
+      ['coin'],
+      ['amulet_defense'],
+      ['amulet_defense'],
+      ['amulet_defense'],
+      ['amulet_strength'],
+      ['amulet_strength'],
+    ],
+  },
 };
 
 /** The run a workshop opens with once built, by stable content ids (authored): its whole crew works only

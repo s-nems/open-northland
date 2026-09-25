@@ -16,7 +16,7 @@ import { runOffensive } from './offensive.js';
 import { outfitOrders } from './outfit.js';
 
 export { campaignTarget } from './campaign.js';
-export { type ArmyCensus, takeCensus, type WeaponMix, weaponMix } from './census.js';
+export { type ArmyCensus, fighterWeaponClass, takeCensus, type WeaponMix, weaponMix } from './census.js';
 export {
   THREAT_STAND_DOWN_MARGIN_NODES,
   TOWER_GARRISON_ARCHERS,

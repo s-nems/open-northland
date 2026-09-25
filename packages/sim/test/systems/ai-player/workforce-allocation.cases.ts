@@ -15,6 +15,7 @@ import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/caden
 import {
   BUILDER_CAP,
   CIVILIANS_PER_CLEARING_COLLECTOR,
+  COLLECTOR_TARGET_BY_GOOD_ID,
   DEFAULT_COLLECTOR_TARGET,
   FLAG_MAX_DISTANCE_NODES,
   FLAG_MIN_DISTANCE_NODES,
@@ -274,6 +275,21 @@ describe('workforce module (collectResources)', () => {
     expect(mudTarget()).toBe(DEFAULT_COLLECTOR_TARGET);
     sim.world.add(second, JobAssignment, { workplace: pottery });
     expect(mudTarget()).toBe(DEFAULT_COLLECTOR_TARGET + 1);
+  });
+
+  it("raises a good's gatherer target to the count its reached collector entry asks for", () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const ctx = ctxOf(sim);
+    const ironTarget = (count: number, status: 'unmet' | 'skip'): number | undefined =>
+      wantedCollectorGoods(sim.world, ctx, SEAT, [{ kind: 'collector', good: 'iron', count }], [status]).find(
+        (w) => w.good.typeId === IRON,
+      )?.target;
+    const IRON_BASE_TARGET = COLLECTOR_TARGET_BY_GOOD_ID.iron ?? DEFAULT_COLLECTOR_TARGET;
+    expect(ironTarget(IRON_BASE_TARGET + 2, 'unmet')).toBe(IRON_BASE_TARGET + 2);
+    expect(ironTarget(1, 'unmet')).toBe(IRON_BASE_TARGET); // a smaller count never lowers the plan
+    expect(ironTarget(IRON_BASE_TARGET + 2, 'skip')).toBeUndefined(); // a skipped entry wants nobody
   });
 
   it('keeps the late-game builder reserve for a grown settlement only', () => {

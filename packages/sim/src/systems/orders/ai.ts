@@ -11,17 +11,18 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { AI_PUBLISHED_COUNTERS } from '../ai-player/assistant-counters.js';
-import { resetAssistantCounters } from './assistant.js';
+import { clearAssistantWeaponVetoes, resetAssistantCounters } from './assistant.js';
 
 /**
  * Attach or detach the computer player on a seat through the per-player {@link AiPlayer} carrier. The
  * flag is an ordinary component, so it hashes and replays.
  *
  * The AI plays through standing world state, so detaching the hand that published it must withdraw it:
- * the assistant counters ({@link AI_PUBLISHED_COUNTERS}) and the alarms its defence raised, which
- * nothing else would ever lower. Disable resets every AI-published kind, and an in-place module update
- * resets the kinds whose publishing gates just broke; the alarms stay, since the defence keeps
- * deciding for a seat with its military module off.
+ * the assistant counters ({@link AI_PUBLISHED_COUNTERS}), the recruit weapon vetoes its military module
+ * sets, and the alarms its defence raised, which nothing else would ever lower. Disable resets every
+ * AI-published kind and lifts the vetoes, and an in-place module update resets what just lost its
+ * publishing gate; the alarms stay, since the defence keeps deciding for a seat with its military module
+ * off.
  */
 export function setPlayerAi(world: World, command: Extract<Command, { kind: 'setPlayerAi' }>): void {
   if (!isValidPlayer(command.player)) return;
@@ -30,6 +31,7 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
     if (carrier === null) return; // never AI-driven: nothing standing to withdraw
     world.destroy(carrier);
     for (const { kinds } of AI_PUBLISHED_COUNTERS) resetAssistantCounters(world, command.player, kinds);
+    clearAssistantWeaponVetoes(world, command.player);
     standDownAlarms(world, command.player);
     return;
   }
@@ -48,6 +50,7 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
       resetAssistantCounters(world, command.player, entry.kinds);
     }
   }
+  if (previous.military && !modules.military) clearAssistantWeaponVetoes(world, command.player);
   const seat = world.mut(carrier, AiPlayer);
   seat.modules = modules;
   seat.scripted = scripted;

@@ -2,6 +2,7 @@ import type { ContentSet, WeaponType } from '@open-northland/data';
 import {
   Age,
   AssistantRecruit,
+  AssistantWeaponVetoes,
   Building,
   Carrying,
   Equipment,
@@ -9,6 +10,7 @@ import {
   ownerOf,
   ownersCompatible,
   Position,
+  playerGoodList,
   Settler,
   type SettlerIdentity,
   Stockpile,
@@ -88,17 +90,23 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
 
 /**
  * The good types an `intent` recruit may be armed with, strongest first: bare-target damage decides and
- * the good id only breaks a tie. A row needs both a `jobtype` and a `goodtype` to arm anyone.
+ * the good id only breaks a tie. A row needs both a `jobtype` and a `goodtype` to arm anyone, and a
+ * `vetoed` good (the seat's {@link AssistantWeaponVetoes}) arms nobody.
  */
 export function armingGoodPreference(
   content: ContentSet,
   tribe: number,
   intent: keyof typeof INTENT_WEAPON_CLASS,
+  vetoed: readonly number[],
 ): readonly number[] {
   const mainType = INTENT_WEAPON_CLASS[intent];
   const rows = content.weapons.filter(
     (w): w is WeaponType & { goodType: number } =>
-      w.tribeType === tribe && w.mainType === mainType && w.goodType !== undefined && w.jobType !== undefined,
+      w.tribeType === tribe &&
+      w.mainType === mainType &&
+      w.goodType !== undefined &&
+      w.jobType !== undefined &&
+      !vetoed.includes(w.goodType),
   );
   rows.sort(
     (a, b) =>
@@ -115,6 +123,7 @@ export function armingGoodPreference(
  * reach and ownership rule as the dispatch below, and a neutral ground heap of swords counts like a
  * stocked warehouse. Existence only: which recruit walks there is the dispatch's problem. One walk of
  * the stores answers every intent, so the cost is the world's stores, not the stores times the classes.
+ * `vetoed` is the seat's veto list as the caller will have it, which may run ahead of the stored one.
  */
 export function armableIntents<Intent extends keyof typeof INTENT_WEAPON_CLASS>(
   world: World,
@@ -124,10 +133,11 @@ export function armableIntents<Intent extends keyof typeof INTENT_WEAPON_CLASS>(
   tribe: number,
   intents: readonly Intent[],
   reach: NavigationLimit | null,
+  vetoed: readonly number[],
 ): readonly Intent[] {
   // An intent whose tribe data binds no craftable class row can never be armed and is dropped here.
   const wanted = intents
-    .map((intent) => ({ intent, goods: armingGoodPreference(ctx.content, tribe, intent) }))
+    .map((intent) => ({ intent, goods: armingGoodPreference(ctx.content, tribe, intent, vetoed) }))
     .filter((w) => w.goods.length > 0);
   if (wanted.length === 0) return [];
   const armable = new Set<Intent>();
@@ -163,7 +173,8 @@ function dispatchWeaponFetch(
 ): void {
   const { world, ctx, targets } = pass;
   let route: FetchRoute | undefined;
-  for (const goodType of armingGoodPreference(ctx.content, settler.tribe, intent)) {
+  const vetoed = playerGoodList(world, AssistantWeaponVetoes, owner);
+  for (const goodType of armingGoodPreference(ctx.content, settler.tribe, intent, vetoed)) {
     route ??= fetchRouteFor(pass, e, owner);
     const src = nearestStoreHolding(
       targets.bands,

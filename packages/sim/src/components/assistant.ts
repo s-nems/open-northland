@@ -1,4 +1,4 @@
-import { defineComponent, type Entity, type World } from '../ecs/world.js';
+import { type Component, defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /** The assistant's production counters: the `extra*` kinds queue births, the `train*` kinds barracks
  *  drills. */
@@ -48,24 +48,44 @@ export const AssistantGrants = defineComponent<{
   goods: readonly number[];
 }>('AssistantGrants', 'players');
 
-/** The {@link AssistantGrants} carrier for `player`, or null when nothing is granted. The lowest-id
- *  carrier wins should more than one ever exist. */
-export function assistantGrantsEntity(world: World, player: number): Entity | null {
+/** A per-player good list carrier: {@link AssistantGrants} and {@link AssistantWeaponVetoes}. */
+export type PlayerGoodList = Component<{ player: number; goods: readonly number[] }>;
+
+/** `list`'s carrier for `player`, or null when the list is empty. The lowest-id carrier wins should more
+ *  than one ever exist. */
+export function playerGoodListEntity(world: World, list: PlayerGoodList, player: number): Entity | null {
   let best: Entity | null = null;
-  for (const e of world.query(AssistantGrants)) {
-    if (world.get(e, AssistantGrants).player !== player) continue;
+  for (const e of world.query(list)) {
+    if (world.get(e, list).player !== player) continue;
     if (best === null || e < best) best = e;
   }
   return best;
 }
 
-const NO_GRANTS: readonly number[] = [];
+const NO_GOODS: readonly number[] = [];
+
+/** `player`'s goods on `list`, ascending; empty when the list is. */
+export function playerGoodList(world: World, list: PlayerGoodList, player: number): readonly number[] {
+  const carrier = playerGoodListEntity(world, list, player);
+  return carrier === null ? NO_GOODS : world.get(carrier, list).goods;
+}
 
 /** The good types granted to `player`'s settlers, ascending; empty when nothing is granted. */
 export function assistantGrantedGoods(world: World, player: number): readonly number[] {
-  const carrier = assistantGrantsEntity(world, player);
-  return carrier === null ? NO_GRANTS : world.get(carrier, AssistantGrants).goods;
+  return playerGoodList(world, AssistantGrants, player);
 }
+
+/**
+ * The per-player recruit weapon vetoes: weapon good types the assistant's arming pass never hands a
+ * recruit, so his class waits for a better weapon instead. The carrier lives while the list is non-empty,
+ * like {@link AssistantGrants}.
+ */
+export const AssistantWeaponVetoes = defineComponent<{
+  /** The player slot the vetoes belong to (`[0, MAX_PLAYERS)`). */
+  player: number;
+  /** Vetoed good type ids, ascending. */
+  goods: readonly number[];
+}>('AssistantWeaponVetoes', 'players');
 
 /**
  * The per-player assistant counter block - the sibling carrier of {@link AssistantGrants}: at most one per

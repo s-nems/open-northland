@@ -50,10 +50,10 @@ const countersEqual = (
 const statesEqual = (a: AssistantState, b: AssistantState): boolean =>
   countersEqual(a.counters, b.counters) && GRANT_IDS.every((id) => a.grants[id] === b.grants[id]);
 
-/** The grant switches' sim seam, re-read every frame like the counters: a click writes one
- *  `setAssistantGrant` command per mapped good. */
+/** The switches' sim seam, re-read every frame like the counters: a click writes one
+ *  `setAssistantGrant` or `setAssistantWeaponVeto` command per mapped good. */
 export interface ExtrasGrantsSeam {
-  /** The live per-switch state; a switch is ON when every good it flips is granted. */
+  /** The live per-switch state; a switch is ON when every good it flips is granted, or allowed. */
   read(): Readonly<Record<AssistantGrantId, boolean>>;
   /** Flip one switch; false when the write was rejected, which the window must not echo. */
   set(id: AssistantGrantId, enabled: boolean): boolean;

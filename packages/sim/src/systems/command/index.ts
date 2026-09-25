@@ -42,6 +42,7 @@ import {
   placeSignpost,
   setAssistantCounter,
   setAssistantGrant,
+  setAssistantWeaponVeto,
   setCraftGoods,
   setDefenceMode,
   setGatherGood,
@@ -296,6 +297,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setAssistantGrant':
       setAssistantGrant(world, ctx, command);
+      return;
+    case 'setAssistantWeaponVeto':
+      setAssistantWeaponVeto(world, ctx, command);
       return;
     case 'setAssistantCounter':
       setAssistantCounter(world, ctx, command);
