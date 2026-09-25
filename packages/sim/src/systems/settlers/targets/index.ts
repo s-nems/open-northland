@@ -8,7 +8,7 @@ export {
   buriedUnderBuilding,
   FetchableStock,
   hasHaulableOutput,
-  nearestConstructionSite,
+  nearestBuilderSite,
   nearestFreeYardNode,
   nearestStoreFor,
   nearestStoreHolding,

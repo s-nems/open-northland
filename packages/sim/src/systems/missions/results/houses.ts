@@ -5,6 +5,7 @@ import { type HalfCellNode, hexDistance } from '../../../nav/halfcell.js';
 import { placeBuilding } from '../../command/placement.js';
 import type { SystemContext } from '../../context.js';
 import { settleFootprint } from '../../economy/construction.js';
+import { clearRepairedDamage, markBuildingDamaged } from '../../economy/repair.js';
 import { placementProbe } from '../../footprint/index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
@@ -95,6 +96,9 @@ function rebuildAtLevel(
     const held = world.tryGet(e, Health)?.hitpoints ?? max;
     world.add(e, Health, { hitpoints: Math.min(held, max), max });
   }
+  // A new tier's pool can leave a whole house short or a damaged one whole.
+  clearRepairedDamage(world, e);
+  markBuildingDamaged(world, ctx, e);
   if (!world.has(e, UnderConstruction)) {
     settleFootprint(world, ctx, e);
     ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: at });

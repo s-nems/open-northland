@@ -24,11 +24,12 @@ export function nearestTemple(
 }
 
 /**
- * The nearest construction site a builder of `tribe` should raise, by Manhattan distance from `here`
- * with the shared ascending-cell-id tie-break, or null when the side has none. A builder raises only its
- * own player's foundations, since two players may field the same tribe.
+ * The nearest site in `index` a builder of `tribe` should work - a foundation to raise or a damaged
+ * building to mend - by Manhattan distance from `here` with the shared ascending-cell-id tie-break, or
+ * null when the side has none. A builder works only its own player's sites, since two players may field
+ * the same tribe.
  */
-export function nearestConstructionSite(
+export function nearestBuilderSite(
   index: InteractionCellIndex,
   world: World,
   here: NodeId,

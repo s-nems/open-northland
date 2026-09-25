@@ -9,6 +9,7 @@ import {
   Position,
 } from '../../../components/index.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { markBuildingDamaged } from '../../economy/repair.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { withinRange } from '../targets.js';
@@ -53,5 +54,6 @@ export function damageHousesInArea(
     if (hasHouseBehaviour(world, e, HOUSE_BEHAVIOUR.INDESTRUCTIBLE)) continue;
     const health = world.mut(e, Health);
     health.hitpoints = Math.max(0, health.hitpoints - op.amount);
+    markBuildingDamaged(world, pass.ctx, e);
   }
 }

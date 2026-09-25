@@ -41,6 +41,7 @@ export const plGame = {
     buildSite: {
       title: 'Budowa',
       assignedSite: 'Przydzielony fundament',
+      assignedRepair: 'Przydzielona naprawa',
       inbound: ' (+{count})',
       status: {
         'missing-materials': 'Oczekuje na materiały',

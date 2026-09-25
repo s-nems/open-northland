@@ -180,9 +180,10 @@ export const Carrying = defineComponent<{ goodType: number; amount: number }>('C
 export const CARRY_CAPACITY = 1;
 
 /**
- * A builder's construction-site crew membership, re-stamped whenever the builder drive engages the site, so
- * it survives a wait for material, a detour, or a meal. `pinned` marks the `assignBuilder` order's site,
- * which wins over the nearest-site pick while that site still stands.
+ * A builder's crew membership at a construction site or a damaged building it mends, re-stamped whenever
+ * the builder drive engages the site, so it survives a wait for material, a detour, or a meal. `pinned`
+ * marks the `assignBuilder` order's site, which wins over the nearest-site pick while that site still
+ * stands unfinished or damaged.
  */
 export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>(
   'SiteAssignment',

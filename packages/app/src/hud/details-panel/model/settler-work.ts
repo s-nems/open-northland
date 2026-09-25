@@ -94,7 +94,11 @@ export function settlerWork(
   if (pinnedSite !== undefined && pinnedType !== undefined) {
     return {
       place: buildingTitle(ctx, pinnedType),
-      product: carried ?? messages().hud.buildSite.assignedSite,
+      product:
+        carried ??
+        (pinnedSite.components.UnderConstruction !== undefined
+          ? messages().hud.buildSite.assignedSite
+          : messages().hud.buildSite.assignedRepair),
       gatherChoices: [],
       selectedGood: null,
       craftChoices: [],

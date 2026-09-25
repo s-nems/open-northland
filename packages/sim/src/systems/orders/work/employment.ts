@@ -23,6 +23,7 @@ import {
   openWorkerJobFromList,
   releaseEmployment,
 } from '../../economy/jobs/index.js';
+import { needsRepair } from '../../economy/repair.js';
 import { interactionNode } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { canChooseJob, needSubjectOf } from '../../progression/index.js';
@@ -163,9 +164,9 @@ export function unassignWorker(
 }
 
 /**
- * Assign one owned builder to a specific construction `site`, the original's "put a builder on a
- * foundation" - see the command doc. {@link jobCanBuild} admits only a settler already holding a builder
- * job, which is also why this order needs no women-take-no-trade gate.
+ * Assign one owned builder to a specific construction `site` or damaged building, the original's "put a
+ * builder on a foundation" and its repair twin - see the command doc. {@link jobCanBuild} admits only a
+ * settler already holding a builder job, which is also why this order needs no women-take-no-trade gate.
  *
  * Deliberately no signpost-confinement gate, unlike {@link assignWorker}: a pinned site is how the player
  * extends the network's frontier, and the builder drive treats it as a bound sink so the crew can raise it
@@ -180,7 +181,8 @@ export function assignBuilder(
   if (!isOrderableSettler(world, e)) return;
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
   const site = command.site;
-  if (!world.isAlive(site) || !world.has(site, Building) || !world.has(site, UnderConstruction)) return;
+  if (!world.isAlive(site) || !world.has(site, Building)) return;
+  if (!world.has(site, UnderConstruction) && !needsRepair(world, site)) return;
   const settler = world.get(e, Settler);
   if (settler.tribe !== world.get(site, Building).tribe) return; // not this tribe's foundation
   if (!sameSide(world, e, site)) return; // another player's foundation - not this side's

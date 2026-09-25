@@ -9,7 +9,7 @@ import { GossipCandidates } from '../../social/index.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
 import { SeatDoors } from '../drives/cut-off.js';
 import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
-import { ConstructionTaskClaims, WorkSeatClaims } from '../drives/economy/index.js';
+import { ConstructionTaskClaims, RepairCrews, WorkSeatClaims } from '../drives/economy/index.js';
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
 import { IdleStands } from './idle-replan.js';
@@ -38,6 +38,7 @@ export interface PlannerPass {
   readonly gossipCandidates: GossipCandidates;
   readonly front: BattleFront;
   readonly constructionClaims: ConstructionTaskClaims;
+  readonly repairCrews: RepairCrews;
   readonly seatDoors: SeatDoors;
   /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
    *  is what makes the shelter rung free when nothing is happening. */
@@ -49,6 +50,7 @@ export interface PlannerPass {
 /** Snapshot the shared pass state at the top of a planner tick. */
 export function beginPlannerPass(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerPass {
   const targets = collectTargets(world, ctx, terrain);
+  const front = new BattleFront(world, ctx);
   return {
     world,
     ctx,
@@ -63,8 +65,9 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
-    front: new BattleFront(world, ctx),
+    front,
     constructionClaims: new ConstructionTaskClaims(world, ctx),
+    repairCrews: new RepairCrews(world, ctx, front),
     seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
     shelters: collectShelters(world, ctx),
     idle: new IdleStands(),

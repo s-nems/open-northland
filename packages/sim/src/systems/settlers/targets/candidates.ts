@@ -1,6 +1,7 @@
 import {
   Building,
   Crop,
+  Damaged,
   GroundDrop,
   HarvestedBy,
   Position,
@@ -43,6 +44,9 @@ export interface TargetCandidates {
   readonly constructionSites: readonly Entity[];
   /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks. */
   readonly constructionSiteCells: InteractionCellIndex;
+  /** Buildings carrying {@link Damaged}, as a ring index keyed by interaction cell, for the nearest-repair
+   *  pick. Built on first ask, so a pass with no builder looking for repairs never scans them. */
+  readonly repairSiteCells: InteractionCellIndex;
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
   /** {@link groundDrops} under every good each pile holds, ascending-id, so a scan for one good never
@@ -83,6 +87,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
+  let repairSiteCells: InteractionCellIndex | undefined;
   let zones: ReadonlySet<NodeId> | undefined;
   const groundDrops = world.canonicalQuery(GroundDrop, Stockpile, Position);
   let groundDropsByGood: Map<number, Entity[]> | undefined;
@@ -103,6 +108,15 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     get constructionSiteCells() {
       constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, constructionSites);
       return constructionSiteCells;
+    },
+    get repairSiteCells() {
+      repairSiteCells ??= new InteractionCellIndex(
+        world,
+        ctx,
+        terrain,
+        world.canonicalQuery(Damaged, Building, Position),
+      );
+      return repairSiteCells;
     },
     groundDrops,
     get groundDropsByGood() {

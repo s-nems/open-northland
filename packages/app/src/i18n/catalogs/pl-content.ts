@@ -182,6 +182,11 @@ export const plContent = {
       summary:
         'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną i wieże, na końcu zwykłe domy.',
     },
+    repair: {
+      title: 'Naprawa',
+      summary:
+        'Budowniczowie najpierw naprawiają spokojny dom, a napadnięty dopiero, gdy skończy się przy nim walka.',
+    },
     'tower-defence': {
       title: 'Obrona wieży',
       summary:

@@ -82,6 +82,9 @@ export type AtomicEffect =
    *  builder's experience and tool are worth, capped at the delivered fraction. No goods move here; the
    *  visible `Building.built` is derived from `min(labor, deliveredFraction)`. */
   | { readonly kind: 'construct'; readonly site: Entity }
+  /** A builder's repair swing at a damaged building `site`: the build clip, restoring the hitpoints the
+   *  builder's experience and tool are worth. No goods move. */
+  | { readonly kind: 'repair'; readonly site: Entity }
   /** The scout's build-guide swing completed: a signpost owned by the swinging scout's player appears at
    *  half-cell node `(x, y)`. Observation: one hammer strike, instant, no materials. The spot is
    *  re-validated at application, and an illegal spot means the swing whiffs. */

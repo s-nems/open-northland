@@ -235,7 +235,7 @@ function planEconomy(
     return;
   }
 
-  if (planBuilder(plan, pass.spacing, pass.constructionClaims)) return;
+  if (planBuilder(plan, pass.spacing, pass.constructionClaims, pass.repairCrews)) return;
 
   if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
 

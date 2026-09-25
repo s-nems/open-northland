@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  Damaged,
   Health,
   isWildlife,
   MissionBehaviour,
@@ -285,6 +286,9 @@ describe('the house results', () => {
     expect(sim.world.get(house, Building).buildingType).toBe(HUT_LARGE);
     expect(sim.world.get(house, Building).level).toBe(1);
     expect(sim.world.get(house, Health).max).toBe(300);
+    // The larger pool the house kept its old hit points in is short, so builders mend the rest.
+    const pool = sim.world.get(house, Health);
+    expect(sim.world.has(house, Damaged)).toBe(pool.hitpoints < pool.max);
     // The larger body settles its plot like a finished upgrade, which the app's clearing keys on.
     expect(sim.events.current().filter((e) => e.kind === 'buildingUpgraded')).toEqual([
       { kind: 'buildingUpgraded', entity: house, level: 1 },

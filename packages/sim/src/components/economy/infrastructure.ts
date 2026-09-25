@@ -97,6 +97,13 @@ export const Upgrading = defineComponent<{
 }>('Upgrading', 'economy');
 
 /**
+ * A {@link Building} a blow or a script has taken hitpoints off, carried until its Health is whole again.
+ * `lastHitTick` is the tick the latest damage landed, so the builder drive can wait out an attack before
+ * sending a repair crew.
+ */
+export const Damaged = defineComponent<{ lastHitTick: number }>('Damaged', 'economy');
+
+/**
  * A placed vehicle hull - a ship put on the map as a movable stockpile rather than a static building. It
  * owns a {@link Stockpile} the way a headquarters does, and carries the same `(type, tribe)` shape a
  * {@link Building} does, so a hull hashes and is queried exactly like one. Only an unlocked ship type is

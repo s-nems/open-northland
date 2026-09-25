@@ -116,6 +116,13 @@ export class BattleFront {
     return this.fightWithin(e, player, STAND_TO_RADIUS_NODES);
   }
 
+  /** Whether anyone is fighting within {@link STAND_TO_RADIUS_NODES} of node `(hx, hy)`, whoever the sides
+   *  are: a civilian walking in there would walk into the fight. */
+  fightNear(hx: number, hy: number): boolean {
+    const grid = this.ensureEngaged();
+    return !grid.empty && grid.anyWithin(hx, hy, STAND_TO_RADIUS_NODES, () => true);
+  }
+
   private fightWithin(e: Entity, player: number, radius: number): boolean {
     const grid = this.ensureEngaged();
     if (grid.empty) return false;

@@ -30,6 +30,7 @@ import {
 import { destroyBerryBushesInReserved } from './berries.js';
 import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
+import { clearRepairedDamage } from './repair.js';
 import { destroyStumpsInReserved } from './stumps.js';
 
 /**
@@ -204,6 +205,7 @@ function poolCeiling(builtFraction: Fixed, max: number): number {
 function fillHealth(world: World, e: Entity): void {
   const health = world.tryMut(e, Health);
   if (health !== undefined) health.hitpoints = health.max;
+  clearRepairedDamage(world, e);
 }
 
 /** Spend the `cost` materials into the structure; the caller has verified

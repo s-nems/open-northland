@@ -181,6 +181,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
     const def = type !== undefined ? buildingsByType.get(type) : undefined;
     const underConstruction = entity?.components.UnderConstruction !== undefined;
+    const damaged = entity?.components.Damaged !== undefined;
     if (def !== undefined && systems.isSchoolType(def) && !underConstruction) {
       const opened = openSchool(
         building,
@@ -212,7 +213,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         currentJob !== undefined &&
         systems.jobCanBuild(deps.content, currentJob) &&
         !employsTrade(currentJob);
-      if (underConstruction && joinsCrew) {
+      // A damaged building other than a school takes a builder as a repair crew before it takes it as a
+      // resident or worker.
+      if ((underConstruction || damaged) && joinsCrew) {
         order({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
         continue;
       }

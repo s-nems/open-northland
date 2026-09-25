@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  Damaged,
   Health,
   HOUSE_BEHAVIOUR,
   MissionObjectId,
@@ -252,6 +253,7 @@ describe('the house damage results', () => {
     const before = sim.world.get(theHouse(sim), Health).hitpoints;
     runLoadPass(sim);
     expect(sim.world.get(theHouse(sim), Health).hitpoints).toBe(before - damage.amount);
+    expect(sim.world.has(theHouse(sim), Damaged)).toBe(true); // builders now come to mend it
   });
 
   it('spares a house a script made indestructible', () => {

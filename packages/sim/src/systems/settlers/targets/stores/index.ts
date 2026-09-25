@@ -1,4 +1,4 @@
-export { nearestConstructionSite, nearestTemple } from './buildings.js';
+export { nearestBuilderSite, nearestTemple } from './buildings.js';
 export { FetchableStock } from './fetchable-stock.js';
 export { hasHaulableOutput, nearestWorkplaceOutput } from './outputs.js';
 export {

@@ -26,6 +26,7 @@ import { huntingScene } from './hunting.js';
 import { livestockScene } from './livestock.js';
 import { movementContinuityScene } from './movement-continuity.js';
 import { presentationScene } from './presentation.js';
+import { repairScene } from './repair.js';
 import { sandboxScene } from './sandbox/index.js';
 import { schoolScene } from './school.js';
 import { siegeScene } from './siege.js';
@@ -56,6 +57,7 @@ export const SCENES: readonly SceneDefinition[] = [
   bowFlightScene,
   battleWearyScene,
   siegeScene,
+  repairScene,
   towerDefenceScene,
   attackMoveScene,
   diplomacyScene,

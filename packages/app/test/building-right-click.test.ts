@@ -16,7 +16,8 @@ import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
  * instead. A family may reserve a home before it stands; drilling still requires a completed building.
  */
 
-const { addPerson, Building, Female, Owner, Position, Stockpile, UnderConstruction } = components;
+const { addPerson, Building, Damaged, Female, Health, Owner, Position, Stockpile, UnderConstruction } =
+  components;
 
 /** A bakery - the workplace whose craft slot the click should hire into. */
 const BAKERY = 'work_bakery_00';
@@ -174,6 +175,18 @@ describe('right-clicking a construction site', () => {
 
     expect(postedWorkers(rightClick(sim, [builder], standing), standing).map((w) => w.entity)).toEqual([
       builder,
+    ]);
+  });
+
+  it('sends a builder to mend a damaged standing building rather than employing him there', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const damaged = buildingAt(sim, bakery(sim).typeId, ONE);
+    sim.world.add(damaged, Health, { hitpoints: 10, max: 100 });
+    sim.world.add(damaged, Damaged, { lastHitTick: 0 });
+    const builder = settlerAt(sim, JOB_BUILDER);
+
+    expect(rightClick(sim, [builder], damaged)).toEqual([
+      { kind: 'assignBuilder', entity: builder, site: damaged },
     ]);
   });
 

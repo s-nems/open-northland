@@ -206,13 +206,14 @@ export function stanceModeOf(e: SnapshotEntity): number | undefined {
   return num(stance?.mode);
 }
 
-/** The foundation a builder is assigned to. */
+/** The foundation or damaged building a builder is assigned to. */
 export function buildSiteOf(e: SnapshotEntity): number | undefined {
   const a = e.components.SiteAssignment as { site?: unknown } | undefined;
   return num(a?.site);
 }
 
-/** The foundation an `assignBuilder` order pinned a builder to - the one the player can take back. */
+/** The foundation or damaged building an `assignBuilder` order pinned a builder to - the one the player
+ *  can take back. */
 export function pinnedSiteOf(e: SnapshotEntity): number | undefined {
   const a = e.components.SiteAssignment as { site?: unknown; pinned?: unknown } | undefined;
   return a?.pinned === true ? num(a.site) : undefined;

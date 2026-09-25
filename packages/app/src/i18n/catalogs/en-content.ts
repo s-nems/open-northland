@@ -182,6 +182,10 @@ export const enContent = {
       title: 'Siege',
       summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
     },
+    repair: {
+      title: 'Repair',
+      summary: 'Builders mend a quiet damaged home first and leave the raided one until its fight is over.',
+    },
     'tower-defence': {
       title: 'Tower defence',
       summary:

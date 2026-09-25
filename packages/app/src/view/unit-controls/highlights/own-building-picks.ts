@@ -69,9 +69,11 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
   };
 }
 
-/** The foundations a builder may be pinned to. */
+/** The foundations and damaged buildings a builder may be pinned to. */
 export const sitePick: OwnBuildingPick = ownBuildingPick({
-  candidate: (building) => isBuilding(building) && building.components.UnderConstruction !== undefined,
+  candidate: (building) =>
+    isBuilding(building) &&
+    (building.components.UnderConstruction !== undefined || building.components.Damaged !== undefined),
   accepts: () => true,
 });
 

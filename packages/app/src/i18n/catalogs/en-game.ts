@@ -41,6 +41,7 @@ export const enGame = {
     buildSite: {
       title: 'Construction',
       assignedSite: 'Assigned foundation',
+      assignedRepair: 'Assigned repair',
       inbound: ' (+{count})',
       status: {
         'missing-materials': 'Waiting for materials',

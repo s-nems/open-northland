@@ -16,6 +16,7 @@ import { eventAt } from '../../../../../../core/events.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import type { SystemContext } from '../../../../../context.js';
+import { markBuildingDamaged } from '../../../../../economy/repair.js';
 import { damageDealtBy, damageTakenBy, woundBearer } from '../../../../../equipment/index.js';
 import { grantFightExperience } from '../../../../../progression/index.js';
 import { manhattan } from '../../../../../spatial/metric.js';
@@ -143,7 +144,10 @@ export function resolveCombatHit(
   // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
   // spared. Nothing regenerates a human here, so the flag's whole effect is this zero.
   const dealt = shieldedByScript(world, target) ? 0 : Math.max(0, damage);
-  if (dealt > 0) woundBearer(world, ctx, target, dealt);
+  if (dealt > 0) {
+    woundBearer(world, ctx, target, dealt);
+    markBuildingDamaged(world, ctx, target);
+  }
   provokeAnger(world, ctx, target);
   provokeHostility(world, ctx, attacker, target);
   // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
