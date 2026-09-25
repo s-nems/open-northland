@@ -78,7 +78,7 @@ describe('PlacementGhostLayer', () => {
   });
 
   it('stakes the open and blocked nodes of a line and lets the string pass the built ones', () => {
-    const stakes = { open: new Texture(), blocked: new Texture() };
+    const stakes = { open: new Texture(), blocked: new Texture(), ring: new Texture() };
     const layer = new PlacementGhostLayer(sheet, new TextureCache(), stakes);
     layer.set(
       {

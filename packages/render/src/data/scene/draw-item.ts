@@ -144,8 +144,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** Repeated posts filling this palisade's forward neighbour edges. Each offset is feet-local draw px;
    *  the optional percentage selects the interpolated durability/construction state of the endpoints. */
   readonly palisadePosts?: readonly PalisadePostDraw[];
-  /** An unfinished palisade site: its plan stake until the wall stands, joined by the ordinary
-   *  delivery/work flag once a builder claims it, with no heap for its wood. */
+  /** An unfinished palisade site: its plan stake until a builder claims it, then the stake's stone ring
+   *  with the ordinary delivery/work flag planted in it, and no heap for its wood, until the wall stands. */
   readonly palisadeSite?: 'unclaimed' | 'claimed';
   /** This item only survived the cull as the details-panel portrait's subject: it stays reconciled and
    *  paletted for the portrait's own render but is hidden on the main map, so an indoor settler cannot

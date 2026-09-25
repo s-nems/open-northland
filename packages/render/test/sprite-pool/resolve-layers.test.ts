@@ -129,7 +129,7 @@ describe('resolveLayers - connected palisades', () => {
     ]);
   });
 
-  it('hides an unclaimed site and stands the ordinary work flag beside its marker once claimed', () => {
+  it('hides an unclaimed site and draws the ordinary work flag once a builder claims it', () => {
     const site: DrawItem = {
       kind: 'palisade',
       ref: 1,
@@ -141,12 +141,8 @@ describe('resolveLayers - connected palisades', () => {
     };
     expect(resolveLayers(sheet, site, 0)).toEqual([]);
     expect(
-      resolveLayers(sheet, { ...site, palisadeSite: 'claimed' }, 0)?.map((layer) => [
-        layer.frame.x,
-        Math.sign(layer.dx ?? 0),
-        Math.sign(layer.dy ?? 0),
-      ]),
-    ).toEqual([[30, 1, -1]]);
+      resolveLayers(sheet, { ...site, palisadeSite: 'claimed' }, 0)?.map((layer) => layer.frame.x),
+    ).toEqual([30]);
   });
 
   it('uses the edge progress to keep connection posts at the lower construction height', () => {

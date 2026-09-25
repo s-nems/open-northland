@@ -3,12 +3,16 @@ import { type Container, Graphics, Sprite, type Texture } from 'pixi.js';
 /**
  * A stake in a ring of stones: the marker for one planned node of a line (a wall now, a road later), in
  * the placement preview and on a laid site until its piece stands. Its stones say whether the node takes
- * the line: sandstone where it can go, red where it cannot.
+ * the line: sandstone where it can go, red where it cannot. A claimed site pulls the stake and plants the
+ * builder's flag in the ring instead. All three pieces of art share one frame and ground point.
  */
 export interface PlanStakeTextures {
   readonly open: Texture;
   readonly blocked: Texture;
+  readonly ring: Texture;
 }
+
+export type PlanStakeLook = keyof PlanStakeTextures;
 
 /** World px across the ring; the art is generated for this project, sized by eye against a settler. */
 const STAKE_WIDTH = 24;
@@ -39,15 +43,19 @@ const FALLBACK_OPEN = 0xe9dcc0;
 const FALLBACK_BLOCKED = STRING_BLOCKED;
 const FALLBACK_HALF_W = 2.5;
 
-/** One stake with its ground point at the display object's origin. */
-export function mintPlanStake(art: PlanStakeTextures | undefined, open: boolean): Container {
+/** One marker with its ground point at the display object's origin. */
+export function mintPlanStake(art: PlanStakeTextures | undefined, look: PlanStakeLook): Container {
   if (art !== undefined) {
-    const sprite = new Sprite(open ? art.open : art.blocked);
+    const sprite = new Sprite(art[look]);
     sprite.anchor.set(ART_GROUND.x, ART_GROUND.y);
     sprite.scale.set(STAKE_HEIGHT / sprite.texture.height);
     return sprite;
   }
   const g = new Graphics();
+  if (look === 'ring') {
+    return g.ellipse(0, 0, STAKE_WIDTH / 2, STAKE_WIDTH / 4).stroke({ color: FALLBACK_OPEN, width: 2 });
+  }
+  const open = look === 'open';
   const top = -STAKE_TIE_HEIGHT - FALLBACK_HALF_W * 2;
   g.rect(-FALLBACK_HALF_W, top, FALLBACK_HALF_W * 2, -top).fill(FALLBACK_WOOD);
   g.rect(-FALLBACK_HALF_W, -STAKE_TIE_HEIGHT - 1, FALLBACK_HALF_W * 2, 2).fill(

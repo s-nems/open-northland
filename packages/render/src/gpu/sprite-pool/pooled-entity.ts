@@ -30,6 +30,8 @@ interface PooledEntityBase extends PresentationTrack {
   placeholder?: Graphics;
   /** The plan stake standing on an unfinished palisade segment no builder has claimed yet. */
   palisadeSiteMarker?: Container;
+  /** The same segment's stone ring once claimed, holding the builder's flag in place of the stake. */
+  palisadeClaimRing?: Container;
   attached: boolean;
   /** The `frameId` this entity was last drawn on; −1 = never drawn. */
   lastSeen: number;

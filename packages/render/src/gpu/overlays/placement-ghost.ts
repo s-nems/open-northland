@@ -133,7 +133,7 @@ export class PlacementGhostLayer {
     // Back to front, so a nearer stake covers the one behind it.
     const stakes = points.filter((point) => point.state !== 'built').sort((a, b) => a.y - b.y);
     for (const point of stakes) {
-      const stake = mintPlanStake(this.stakes, point.state === 'open');
+      const stake = mintPlanStake(this.stakes, point.state === 'open' ? 'open' : 'blocked');
       stake.position.set(point.x, point.y);
       this.container.addChild(stake);
     }
