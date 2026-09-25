@@ -26,7 +26,7 @@ import { type PlacementGrid, placementBlockerGrid } from './blocker-grid.js';
  * no oracle: holding the reserved rings disjoint matches observed settlement density, while letting them
  * overlap packs about twice as densely.
  */
-export function canPlaceAnchor(
+function canPlaceAnchor(
   grid: PlacementGrid,
   footprint: BuildingFootprint,
   buildOnBioPattern: boolean,
