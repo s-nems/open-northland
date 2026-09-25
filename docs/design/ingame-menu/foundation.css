@@ -2739,19 +2739,19 @@ button.medallion:hover {
   height: 20px;
 }
 /* One-line stat rows: label, quarter-ticked meter, value. */
-.bars {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 12px;
-}
 .bar-row {
   display: grid;
-  grid-template-columns: 66px 1fr;
+  grid-template-columns: 82px 1fr 36px;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   margin: 2px 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: #c7bda3;
+}
+.bar-row b {
+  text-align: right;
+  color: var(--text-hi);
+  font-variant-numeric: tabular-nums;
 }
 .bar-row .meter {
   margin: 0;
@@ -3235,13 +3235,13 @@ button.portrait-box:hover {
   visibility: hidden;
 }
 /* Trouble reads in colour, not in words: low needs, an idle tradesman, an empty seat to fill. */
-.bar-row.low span:first-child {
+.bar-row.low b {
   color: var(--warning);
 }
 .bar-row.low .meter:before {
   background: linear-gradient(#efbe70, #a8742f);
 }
-.bar-row.critical span:first-child {
+.bar-row.critical b {
   color: var(--danger);
 }
 .bar-row.critical .meter:before {

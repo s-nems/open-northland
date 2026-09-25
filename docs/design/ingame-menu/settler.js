@@ -476,7 +476,7 @@ function panelMarkup(key, state) {
   const bars = state.bars
     .map(
       ([label, value]) =>
-        `<div class="bar-row${value < NEED_CRITICAL ? ' critical' : value < NEED_LOW ? ' low' : ''}" title="${label}: ${value}%"><span>${label}</span><span class="meter" style="--value:${value}%" role="meter" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100" aria-label="${label}"></span></div>`,
+        `<div class="bar-row${value < NEED_CRITICAL ? ' critical' : value < NEED_LOW ? ' low' : ''}"><span>${label}</span><span class="meter" style="--value:${value}%" role="meter" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100" aria-label="${label}"></span><b>${value}%</b></div>`,
     )
     .join('');
   return `<aside class="selection panel" data-selection="${key}" hidden aria-label="Zaznaczenie: ${state.name}">

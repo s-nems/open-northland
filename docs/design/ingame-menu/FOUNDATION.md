@@ -238,10 +238,10 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   and Czeka na budowę warsztatu read in amber. A man without a trade gets his Zmień zawód button
   right under the portrait row (tooltip with the profession hotkey); it opens the profession choice
   window.
-- Samopoczucie: the stat bars in two columns, Zdrowie first, then the need bars the settler carries
-  (a child and a hero show health alone): a label and a quarter-ticked meter, the percent in the
-  tooltip. Under a third the label and the fill turn amber, under a sixth red, so trouble reads
-  without words. A bar over full keeps its stored reserve in the tooltip, as the legacy panel did.
+- Samopoczucie: one line per stat, label, quarter-ticked meter and the percent, Zdrowie first, then
+  the need bars the settler carries (a child and a hero show health alone). Under a third the fill
+  and the percent turn amber, under a sixth red, so trouble reads without words. A bar over full
+  keeps its stored reserve in the tooltip, as the legacy panel did.
 - Praca i rodzina: ledger rows. Miejsce pracy and Dom name the building as a link that selects it
   (the original's "Pokaż miejsce pracy" and home buttons), followed by two round buttons, assign
   (target glyph, opens the pick mode) and remove (×). An empty seat the player can fill says "brak"
