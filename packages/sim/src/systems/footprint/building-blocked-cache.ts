@@ -6,6 +6,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, countsMatchCells, sameCells, translatedCells } from './geometry.js';
+import { standingWallCells, wallJointSeals } from './wall-joints.js';
 
 // The memoized per-world cache of cells standing buildings make unwalkable, plus its coherence verifier -
 // the building twin of ./resource-blocked-cache.ts.
@@ -102,12 +103,9 @@ function deriveBuildingBlockedCells(
   for (const cell of doors) blocked.delete(cell);
   // Walls go in after the door subtraction, so an authored overlap cannot punch a door-shaped hole
   // through a palisade.
-  for (const e of world.query(PalisadeBlocking, Palisade, Position)) {
-    const wall = world.get(e, Palisade);
-    const p = world.get(e, Position);
-    const { hx, hy } = nodeOfPosition(p.x, p.y);
-    for (const cell of translatedCells(terrain, wall.walk, hx, hy)) blocked.add(cell);
-  }
+  const walls = standingWallCells(world, terrain);
+  for (const cell of walls.walls) blocked.add(cell);
+  for (const cell of wallJointSeals(terrain, walls)) blocked.add(cell);
   return blocked;
 }
 
@@ -162,12 +160,12 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  *
  * A building's own DOOR and the shortest passage to exterior ground are left walkable when the door
  * lies inside the walk-block. Without that passage a clear door point can still be sealed by wall cells.
- *
- * Standing walls and shut gates block their walk cells too.
+ * Standing walls and shut gates add their walk cells and the seals of their slanted joints
+ * (`wallJointSeals`).
  *
  * Derived state, never hashed. Memoized per world on the Building store's membership generation, the
- * buildings' types and the Palisade generations, so construction progress keeps the build and a burst of callers between two building
- * changes shares one. A rebuild returns a new set, so its identity keys dependent caches. The returned set
+ * buildings' types and the Palisade generations, so construction progress keeps the build and a burst
+ * of callers between two building changes shares one. A rebuild returns a new set, so its identity keys dependent caches. The returned set
  * is the SHARED cached copy: membership reads only. A set union and a door subtraction, neither with a pick,
  * so store-iteration order cannot change it.
  */

@@ -15,6 +15,7 @@ import {
   type ScriptLandscapeType,
   Simulation,
 } from '../../src/index.js';
+import { hexagonRing } from '../../src/nav/halfcell.js';
 import { findPath } from '../../src/nav/pathfinding/index.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { attackMoveUnit, attackUnit, moveUnit } from '../../src/systems/orders/index.js';
@@ -220,6 +221,71 @@ describe('walls that start blocking a route', () => {
       sim.step();
       for (const walker of walkers) expect(nodeRow(sim, walker).hy).toBeLessThan(row);
     }
+  });
+});
+
+describe('a wall line that turns', () => {
+  const CENTRE = { hx: GATE_X, hy: WALL_ROW };
+  const OUTSIDE = { hx: WIDTH - 2, hy: WALL_ROW };
+
+  function ring(sim: Simulation, owner: number): void {
+    for (const { point } of hexagonRing(CENTRE, 4)) {
+      sim.enqueueSetup({
+        kind: 'placePalisade',
+        gfxIndex: WALL.typeId,
+        x: point.hx,
+        y: point.hy,
+        tribe: VIKING,
+        owner,
+      });
+    }
+    sim.step();
+  }
+
+  it('holds the walkers it rings, slanted joints included', () => {
+    const sim = fresh();
+    ring(sim, P0);
+    expect(sealed(sim, CENTRE, OUTSIDE)).toBe(true);
+    const walker = fighter(sim, CENTRE, P0);
+    moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: walker, x: OUTSIDE.hx, y: OUTSIDE.hy });
+    for (let tick = 0; tick < 300; tick++) {
+      sim.step();
+      expect(Math.abs(nodeRow(sim, walker).hx - CENTRE.hx)).toBeLessThan(4);
+    }
+  });
+
+  it('is still breached through one of its posts', () => {
+    const sim = fresh();
+    ring(sim, P1);
+    const raider = fighter(sim, OUTSIDE, P0);
+    expect(barring(sim, raider, CENTRE)).not.toBeNull();
+  });
+
+  it('never seals the passage of an open gate it meets', () => {
+    const sim = fresh();
+    // An odd half-row, where a post a half-row under the gate's end joins it slanting across the passage.
+    const row = WALL_ROW - 1;
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: OPEN_GATE.typeId,
+      x: GATE_X,
+      y: row,
+      tribe: VIKING,
+      owner: P0,
+    });
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: GATE_X - 1,
+      y: row + 1,
+      tribe: VIKING,
+      owner: P0,
+    });
+    sim.step();
+    const terrain = mapped(sim);
+    const blocked = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
+    expect(blocked.has(terrain.nodeAt(GATE_X - 1, row))).toBe(false);
+    expect(blocked.has(terrain.nodeAt(GATE_X - 2, row + 1))).toBe(true);
   });
 });
 

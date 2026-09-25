@@ -19,6 +19,7 @@ import type { SystemContext } from '../context.js';
 import { translatedCells } from '../footprint/geometry.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
+import { standingWallCells, wallJointSeals } from '../footprint/wall-joints.js';
 import { invalidateRoutesThrough } from '../landscape/routes.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
@@ -179,7 +180,10 @@ export function rerouteAroundPalisade(world: World, terrain: TerrainGraph, e: En
   const wall = world.get(e, Palisade);
   const at = world.get(e, Position);
   const { hx, hy } = nodeOfPosition(at.x, at.y);
-  invalidateRoutesThrough(world, terrain, new Set(translatedCells(terrain, wall.walk, hx, hy)));
+  const body = translatedCells(terrain, wall.walk, hx, hy);
+  const closed = new Set(body);
+  for (const seal of wallJointSeals(terrain, standingWallCells(world, terrain), body)) closed.add(seal);
+  invalidateRoutesThrough(world, terrain, closed);
 }
 
 /** The completed gate of `player` standing on `hx,hy` - the anchor itself or any node its closed body
