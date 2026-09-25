@@ -42,8 +42,10 @@ import { destroyStumpsInReserved } from './stumps.js';
  * falls to a single blow.
  */
 export const constructionSystem: System = (world, ctx) => {
-  for (const e of world.query(Building, Stockpile)) {
-    if (!world.has(e, UnderConstruction)) continue;
+  // Sites only, in ascending id: the pass scales with what is being built, and two sites finishing on
+  // one tick settle their plots in a canonical order.
+  for (const e of world.canonicalQuery(UnderConstruction)) {
+    if (!world.has(e, Building) || !world.has(e, Stockpile)) continue;
     // A site drained to 0 HP earlier this tick is rubble awaiting the cleanupSystem; raising it here
     // would resurrect it swing after swing.
     const health = world.tryGet(e, Health);
