@@ -122,7 +122,7 @@ export function createTradeSection(
       const panel = copy.settlerPanel;
       title.update(copy.trade);
       add.update({
-        face: { glyph: GLYPH.target },
+        face: { glyph: GLYPH.pick },
         label: copy.tradeAttachHouse,
         tooltip: copy.tradeAttachHouseHint,
         enabled: trade.canAttach,

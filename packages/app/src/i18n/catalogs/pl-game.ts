@@ -67,6 +67,8 @@ export const plGame = {
     assignWorkplace: 'Przydziel miejsce pracy',
     assignWorkplaceHint:
       'Kliknij, a następnie wskaż budynek: zielone mają wolne miejsce dla tego osadnika, czerwone nie. LPM przydziela, PPM lub Esc anuluje.',
+    assignWorkplaceFlagHint:
+      'Kliknij, a następnie wskaż budynek albo miejsce na ziemi: budynek zatrudnia (zielone mają wolne miejsce, czerwone nie), ziemia stawia tam chorągiewkę, przy której osadnik pracuje. LPM wybiera, PPM lub Esc anuluje.',
     unassignWorkplace: 'Usuń miejsce pracy',
     unassignWorkplaceHint:
       'Zdejmuje osadnika z miejsca pracy i zwalnia etat. Zachowuje zawód i to, co niesie; zbieracz wraca do chorągiewki postawionej tam, gdzie stoi.',
@@ -272,6 +274,7 @@ export const plGame = {
       ordered: 'Idzie na rozkaz',
       working: 'Pracuje',
       building: 'Buduje',
+      repairing: 'Naprawia',
       fighting: 'Walczy',
       training: 'Ćwiczy',
       eating: 'Je',
@@ -372,7 +375,6 @@ export const plGame = {
         'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. To, na co czeka zablokowany budynek, przeczytasz tutaj.',
     },
     settlerPanel: {
-      orders: 'Rozkazy',
       ordersTooltip: 'Rozkazy · {key}',
       close: 'Usuń zaznaczenie',
       prev: 'Poprzedni',
@@ -384,8 +386,6 @@ export const plGame = {
       foreignOwner: 'Gracz {player} · {tribe} · nastawienie: {stance}',
       foreignOwnerPlain: 'Gracz {player} · {tribe}',
       centre: 'Centruj widok na tej osobie',
-      changeProfession: 'Zmień zawód',
-      changeProfessionTooltip: 'Zmień zawód · {key}',
       bag: 'Torba',
       equip: '{slot}: załóż',
       equipLabel: 'Załóż: {slot}',

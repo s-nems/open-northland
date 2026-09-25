@@ -127,6 +127,8 @@ export interface UnitControls {
    *  is armed. */
   readonly assignHighlight: () => readonly BuildingHighlightItem[] | null;
   readonly signpostPlacementActive: () => boolean;
+  /** A flag trade's workplace pick is armed: the placement ghost shows its flag under the cursor. */
+  readonly workFlagPlacementActive: () => boolean;
   /** True while an Escape would land here: the job list is open, a pick is armed or units are selected. */
   readonly claimsEscape: () => boolean;
   /** The ship whose dock pick is armed, whose mooring spots the frame loop washes onto the map. */

@@ -149,12 +149,11 @@ describe('the settler panel model', () => {
     expect(model.military).toEqual({ stance: systems.MILITARY_MODE.DEFEND, regeneration: false });
   });
 
-  it('gives a man without a trade the profession button and no workplace row', () => {
+  it('gives a man without a trade no workplace row', () => {
     const model = settlerModel([
       { id: SETTLER, components: owned({ Settler: { tribe: 1, jobType: JOB_CIVILIST } }) },
     ]);
     expect(model.role).toBe('civilian');
-    expect(model.canChangeProfession).toBe(true);
     expect(model.workplace).toBeNull();
     // Idle with no trade: the line says why, in amber.
     expect(model.status).toMatchObject({ state: 'idle', trouble: true });

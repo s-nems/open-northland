@@ -17,6 +17,9 @@ export interface PlacementCursorInput {
   readonly signpostActive: boolean;
   /** The ship whose dock pick is armed, or null. */
   readonly dockVehicle: number | null;
+  /** A workplace pick armed for a flag trade: the flag follows the cursor until the click plants it or
+   *  names a building. */
+  readonly flagActive: boolean;
   /** Viewport-memoized band probes; each runs only when its own mode wins, so a frame never walks a
    *  band it would discard. */
   readonly buildingOverlay: (buildingType: number, paper?: Paper) => PlacementOverlayFrame | null;
@@ -44,16 +47,19 @@ export interface PlacementCursorInput {
 
 /**
  * The ghost stays hidden over ground that rejects it, matching the original's vanishing house cursor.
- * A held building takes precedence over a pending signpost, and either over an armed dock pick, whose
- * wash of mooring spots floats no ghost.
+ * A held building takes precedence over a wall tool, that over a pending signpost, those over an armed
+ * dock pick, whose wash of mooring spots floats no ghost, and all of them over a pending work flag, which
+ * has no wash: the sim snaps the flag to the nearest workable node on the click.
  */
 export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   const { placementType } = input;
   const palisadeGfxIndex = input.palisadeGfxIndex ?? null;
   const paper = input.placementPaper === null ? undefined : input.placementPaper;
   if (placementType === null && palisadeGfxIndex === null && !input.signpostActive) {
-    const overlay = input.dockVehicle === null ? null : input.dockOverlay(input.dockVehicle);
-    return { overlay, ghost: null };
+    if (input.dockVehicle !== null) return { overlay: input.dockOverlay(input.dockVehicle), ghost: null };
+    if (!input.flagActive) return { overlay: null, ghost: null };
+    const tile = input.tileAt();
+    return { overlay: null, ghost: tile === null ? null : { kind: 'flag', col: tile.col, row: tile.row } };
   }
   const signpostFrame = placementType === null && palisadeGfxIndex === null ? input.signpostOverlay() : null;
   const overlay = placementType === null ? signpostFrame : input.buildingOverlay(placementType, paper);

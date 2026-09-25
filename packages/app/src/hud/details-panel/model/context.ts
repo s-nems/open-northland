@@ -41,6 +41,9 @@ export interface UnitPanelModelContext {
   readonly vehicles: readonly VehicleDef[];
   /** The sim's livestock-workplace classification. Absent = no filtering. */
   readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
+  /** The sim's flag-trade test (`jobUsesWorkFlag`): a gatherer or a fisher, whose workplace pick also
+   *  plants the flag. Absent = no trade works from a flag. */
+  readonly usesWorkFlag?: ((jobType: number) => boolean) | undefined;
   /** The sim's species-good seam: the animal tribe a good is a herd of, null for an ordinary ware whose
    *  stock row holds goods rather than counting a farm's animals. */
   readonly livestockTribeOfGood?: ((goodType: number) => number | null) | undefined;

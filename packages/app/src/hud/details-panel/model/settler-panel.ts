@@ -1,6 +1,5 @@
 import { systems, type WorldSnapshot } from '@open-northland/sim';
 import {
-  isJobLocked,
   isPlayerControllable,
   needsRuleEnabled,
   num,
@@ -37,6 +36,7 @@ import {
   type SettlerFamilyModel,
   type SettlerRole,
   type SettlerSeatRow,
+  type SettlerWorkplaceRow,
   settlerRole,
   workplaceRow,
 } from './settler-household.js';
@@ -86,7 +86,7 @@ export interface SettlerPanelModel {
   readonly status: SettlerStatusModel;
   /** Zdrowie, then the need bars the person carries. */
   readonly bars: readonly PanelBar[];
-  readonly workplace: SettlerSeatRow | null;
+  readonly workplace: SettlerWorkplaceRow | null;
   readonly home: SettlerSeatRow | null;
   readonly family: SettlerFamilyModel | null;
   readonly production: SettlerProductionModel | null;
@@ -97,8 +97,6 @@ export interface SettlerPanelModel {
   readonly upcomingUnlocks: readonly UnlockProgressRowModel[];
   /** The equipment rows, empty for a woman, a child and another seat's person. */
   readonly equipmentRows: readonly EquipRow[];
-  /** A man without a trade gets his Zmień zawód button. */
-  readonly canChangeProfession: boolean;
 }
 
 function metaLine(
@@ -223,7 +221,7 @@ export function settlerPanelModel(
     return {
       ...base,
       renamable: false,
-      workplace: work.place === null ? null : { target: work.place, assign: null, remove: null },
+      workplace: work.place === null ? null : { target: work.place, assign: null, remove: null, flag: false },
       home: null,
       family: null,
       production: null,
@@ -232,7 +230,6 @@ export function settlerPanelModel(
       experience: [],
       upcomingUnlocks: [],
       equipmentRows: [],
-      canChangeProfession: false,
     };
   }
   // A woman and a child hold no trade to train in.
@@ -252,6 +249,5 @@ export function settlerPanelModel(
     experience: trains ? experienceRows(ctx, comps) : [],
     upcomingUnlocks: trains ? unlockProgressRows(ctx, comps, progressionGated) : [],
     equipmentRows: equipmentRows(ctx, comps),
-    canChangeProfession: role === 'civilian' && controllable && !isJobLocked(ent),
   };
 }

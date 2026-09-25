@@ -195,11 +195,11 @@ export function removeWorkFlag(world: World, e: Entity): void {
  * excluded from the harvest set, since its harvester is a farmer banking the crop in the farm's own store
  * (`logicstock 4 25 0`) and a flag would hijack every sheaf delivery - the flag rung outranks the store.
  */
-export function jobCanHarvest(ctx: SystemContext, jobType: number): boolean {
+export function jobCanHarvest(ctx: ContentContext, jobType: number): boolean {
   return contentIndex(ctx.content).harvestJobs.has(jobType);
 }
 
 /** A field gatherer or land fisher whose catch is collected at its movable delivery flag. */
-export function jobUsesWorkFlag(ctx: SystemContext, jobType: number): boolean {
+export function jobUsesWorkFlag(ctx: ContentContext, jobType: number): boolean {
   return jobCanHarvest(ctx, jobType) || isFisherJob(ctx.content, jobType);
 }

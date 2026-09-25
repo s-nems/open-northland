@@ -215,7 +215,9 @@ on the beam opens it at once.
 
 The selected person's panel (ticket 08), bottom right, 318 px wide, in the window frame. The head
 carries the trade as the bronze kicker over the person's name, an owner line only when it says
-something (another seat's person, a child's age), and the close medallion, which clears the
+something (another seat's person, a child's age), and two medallions: the gold orders one, with the
+ring glyph and the ring hotkey in its tooltip, opens the action ring at the settler (gold, so a new
+player finds the ring; absent for another seat's person), and the bronze close clears the
 selection. The kicker browses the trade: chevrons on both sides and "2 / 5" step to the previous
 or next person of the same trade and bring them into view (Tab and Shift+Tab do the same while the
 panel is open and no field or other window has the focus), and a
@@ -228,8 +230,8 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
 
 - Portrait row: the live settler in the 96 × 92 px framed portrait is the centre-view button. The
   renderer paints its world cutout on the canvas under the plane, through a hole the panel's fill
-  leaves at the frame. The column beside it holds the equipment as two rows of 30 px sockets, only
-  the slots the person has: the worn row in a fixed order (Broń, Zbroja, Narzędzia, Buty; a worker
+  leaves at the frame. The column beside it holds the equipment as two rows of 30 px sockets over
+  the status strip, only the slots the person has: the worn row in a fixed order (Broń, Zbroja, Narzędzia, Buty; a worker
   has the last two, a soldier Broń, Zbroja, Buty, a hero its fixed arms as flat frameless sockets)
   and the four-cell Torba row under it. An empty worn socket shows a ghost glyph of what goes there
   (sword, armour, tool, boot) and opens the equip picker; an occupied socket holds the good's icon
@@ -237,11 +239,13 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   buys wait for a wear-pace read seam); pressing it opens the picker to swap and a small × at its
   corner, shown on hover or focus, takes the item off. No level medallion: the game has no settler
   level.
-- Status strip under the portrait row (beside the frame for a woman, a child or a hero, who have no
-  sockets): a dark well with a tone dot, the live state and its detail after a dot, and at the right
-  end "niesie" with the carried good in a small well and its count. The state names what the
-  person is at, read off the running atomic: Pracuje for any economic step (a stroke, a catch, a
-  pickup, a cart load, a craft cycle), Buduje, Walczy, Ćwiczy, Je, Śpi, Modli się, Rozmawia (a chat
+- Status strip under the sockets in the column beside the frame (alone at the frame's middle for a
+  woman, a child or a hero, who have no sockets): a dark well in 11 px type with a tone dot, the
+  live state and its detail after a dot, and at the right end "niesie" with the carried good in a
+  small well and its count, which drops to its own line when the words take the width. The state
+  names what the person is at, read off the running atomic: Pracuje for any economic step (a
+  stroke, a catch, a pickup, a cart load, a craft cycle), Buduje, Naprawia, Walczy, Ćwiczy, Je, Śpi,
+  Modli się, Rozmawia (a chat
   holds the person), Idzie, Idzie na rozkaz, Bezczynny (nothing running, or only the wait animation),
   Czeka na budowę warsztatu, Stoi na alarmie. A civilian eating or a builder asleep never reads as
   working. The detail is the product being made (Pracuje · Krótki miecz), a trader's destination
@@ -249,11 +253,6 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   surowców: żelazo, magazyn pełny, nic nie wybrano, bez zawodu). The dot and the text read amber
   for a tradesman's Bezczynny and Czeka na budowę warsztatu, the dot grey for a walk or a wait and
   green for anything the person is at.
-- Button row under the strip: Rozkazy, gold as the panel's one primary button, with the ring glyph
-  and the ring hotkey in a key chip, opens the action ring at the settler (a new player needs to
-  find the ring, so it is not a head medallion); a man without a trade gets Zmień zawód beside it
-  (tooltip with the profession hotkey), which opens the profession choice window. Another seat's
-  person has no row.
 - Samopoczucie: one line per stat, label, quarter-ticked meter and the percent, Zdrowie first, then
   the need bars the settler carries (a child and a hero show health alone). Under a third the fill
   and the percent turn amber, under a sixth red, so trouble reads without words. A need row is the
@@ -262,7 +261,11 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   stored reserve in the tooltip, as the legacy panel did.
 - Praca i rodzina: ledger rows. Miejsce pracy and Dom name the building as a link that selects it
   (the original's "Pokaż miejsce pracy" and home buttons), followed by round buttons, assign
-  (target glyph, opens the pick mode) and remove (×). An empty seat the player can fill says "brak"
+  (a pointer glyph, opens the pick mode) and remove (×). For a trade that works from a flag (a
+  gatherer, a fisher) the assign button carries a flag glyph and arms one pick for both ways the
+  trade works: the flag sprite follows the cursor as a translucent ghost, a lit building under the
+  click employs the person, any other spot plants the flag there (a posted gatherer leaves its post
+  for it) and the ghost goes; the tooltip says so. An empty seat the player can fill says "brak"
   in amber; when there is nothing to remove the × is absent and the value sits against the assign
   button, so every row keeps the same distances. A button the sim would refuse
   stays visible, faded, with the reason in its tooltip (a person a mission holds to its task). Resting on
@@ -301,7 +304,8 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   "current / required" and a thin meter, the first two shown and the rest behind the same fold, so a
   gatherer's six goods and four unlocks still fit the plane. The section is absent when there is
   nothing to list.
-- No footer: the portrait centres, the Rozkazy button orders, the profession button sits beside it.
+- No footer and no button row: the portrait centres, the head's gold medallion orders, the
+  profession change is the ring's (and its hotkey's).
 - First paint at map start: the panel paints a made-up person once, out of sight, when the game
   view mounts, so the browser compiles the raster pipelines of its styles behind the loading screen
   (measured at 350 + 230 ms of GPU-process raster on the first settler click without it). Every

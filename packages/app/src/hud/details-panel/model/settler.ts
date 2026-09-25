@@ -165,6 +165,7 @@ export type SettlerState =
   | 'ordered'
   | 'working'
   | 'building'
+  | 'repairing'
   | 'fighting'
   | 'training'
   | 'eating'
@@ -191,7 +192,7 @@ const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
   slay: 'fighting',
   exercise: 'training',
   construct: 'building',
-  repair: 'building',
+  repair: 'repairing',
   harvest: 'working',
   harvestFollowThrough: 'working',
   fish: 'working',

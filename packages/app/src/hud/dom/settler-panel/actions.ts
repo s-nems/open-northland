@@ -21,7 +21,6 @@ export interface SettlerPanelActions {
   /** Open the action ring at the settler. */
   readonly openOrders: (id: number) => void;
   readonly rename: (id: number, name: string) => void;
-  readonly changeProfession: (id: number) => void;
   readonly orderNeed: (id: number, need: NeedKind) => void;
   readonly assignWorkplace: (id: number) => void;
   readonly unassignWorkplace: (id: number) => void;
@@ -53,8 +52,8 @@ export interface SettlerPanelDeps {
   /** The seat's people, for browsing the trade; read on a selection change and at most every few
    *  seconds, never per tick. */
   readonly residents: () => readonly ResidentRow[];
-  /** The player-facing label of a hotkey action's current binding, for the tooltips that name it. */
-  readonly keyLabel: (action: 'actionRing' | 'professionPicker') => string;
+  /** The player-facing label of the ring hotkey's current binding, for the orders tooltip. */
+  readonly keyLabel: (action: 'actionRing') => string;
   /** The card the workplace link shows while the cursor rests on it. */
   readonly hoverCard: HoverCard;
   readonly buildingHover: (id: number) => BuildingHoverModel | null;

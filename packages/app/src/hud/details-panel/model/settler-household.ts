@@ -47,6 +47,12 @@ export interface SettlerSeatRow {
   readonly remove: SeatControl | null;
 }
 
+/** The Miejsce pracy row: for a trade that works from a flag (a gatherer, a fisher) the assign pick
+ *  also plants the flag on the ground, so the row always offers it. */
+export interface SettlerWorkplaceRow extends SettlerSeatRow {
+  readonly flag: boolean;
+}
+
 export interface SettlerPersonLink {
   readonly id: number;
   readonly label: string;
@@ -70,16 +76,18 @@ export function workplaceRow(
   ent: SnapshotEntity,
   place: SettlerPlace | null,
   control: SeatControl,
-): SettlerSeatRow | null {
+): SettlerWorkplaceRow | null {
   const jobType = settlerJobType(ent);
   const employed = ctx.buildings.some((building) =>
     building.workers.some((slot) => slot.jobType === jobType),
   );
-  if (place === null && !employed) return null;
+  const flag = jobType !== undefined && ctx.usesWorkFlag?.(jobType) === true;
+  if (place === null && !employed && !flag) return null;
   return {
     target: place,
-    assign: employed ? control : null,
+    assign: employed || flag ? control : null,
     remove: workplaceOf(ent) === undefined ? null : control,
+    flag,
   };
 }
 

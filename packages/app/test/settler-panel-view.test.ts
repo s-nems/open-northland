@@ -203,15 +203,17 @@ describe('the settler head', () => {
     meta: null,
   } as SettlerPanelModel;
 
-  it('browses the trade and offers rename for the seat’s own person', () => {
-    const head = settlerHead(model, { ids: [5, 7, 9], index: 1 });
+  it('browses the trade, offers rename and the orders medallion for the seat’s own person', () => {
+    const head = settlerHead(model, { ids: [5, 7, 9], index: 1 }, 'Spacja');
     expect(head.browse).toMatchObject({ index: 2, count: 3 });
     expect(head.rename).not.toBeNull();
+    expect(head.orders?.tooltip).toContain('Spacja');
   });
 
   it('keeps another seat’s person to the name alone', () => {
-    const head = settlerHead({ ...model, foreign: true, renamable: false }, NO_PEERS);
+    const head = settlerHead({ ...model, foreign: true, renamable: false }, NO_PEERS, 'Spacja');
     expect(head.browse).toBeNull();
     expect(head.rename).toBeNull();
+    expect(head.orders).toBeNull();
   });
 });

@@ -30,6 +30,7 @@ function harness(): {
     isArmed: () => armed.length > 0,
     signpostActive: () => false,
     dockVehicle: () => null,
+    flagActive: () => false,
     handleMouseDown: () => null,
     handleOverviewPress: () => null,
     highlight: () => null,

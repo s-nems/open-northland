@@ -1,7 +1,6 @@
-import { formatMessage, messages } from '../../../i18n/index.js';
+import { messages } from '../../../i18n/index.js';
 import type { SettlerPanelModel, SettlerStatusModel } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
-import { GLYPH } from '../icons.js';
 import { button, element, setClass, setHidden, setTitle, write } from '../parts/dom.js';
 import { createSocket, type Socket } from '../parts/socket.js';
 import type { SettlerPanelDeps } from './actions.js';
@@ -31,8 +30,8 @@ export function statusTone(status: SettlerStatusModel): StatusTone {
   }
 }
 
-/** The portrait block: the live figure's frame as the centre-view button with the sockets beside it,
- *  the status strip, and the row of buttons under them (Rozkazy, Zmień zawód). */
+/** The portrait block: the live figure's frame as the centre-view button, and beside it the column
+ *  with the sockets over the status strip. */
 export interface PortraitSection {
   readonly element: HTMLElement;
   /** The frame the renderer paints the live figure through. */
@@ -42,10 +41,10 @@ export interface PortraitSection {
 
 export function createPortraitSection(deps: SettlerPanelDeps, entity: () => number): PortraitSection {
   const { actions } = deps;
-  const root = element('div', '');
   const row = element('div', 'on-portrait');
   const frame = button('on-portrait__frame');
   frame.addEventListener('click', () => actions.centre(entity()));
+  const beside = element('div', 'on-portrait__beside');
   const equipment = element('div', 'on-equipment');
   const wornRow = element('div', 'on-equip-row');
   const bagRow = element('div', 'on-equip-row');
@@ -67,21 +66,8 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
     throw new Error('portrait: carried good');
   }
   status.append(carrying);
-  row.append(frame, equipment, status);
-  const orders = button(
-    'on-button on-button--rounded on-button--primary',
-    `${GLYPH.orders}<span></span><kbd class="on-key"></kbd>`,
-  );
-  orders.addEventListener('click', () => actions.openOrders(entity()));
-  const [ordersText, ordersKey] = [orders.children[1], orders.children[2]];
-  if (ordersText === undefined || ordersKey === undefined) throw new Error('portrait: orders');
-  const profession = button('on-button on-button--rounded', `${GLYPH.forge}<span></span>`);
-  profession.addEventListener('click', () => actions.changeProfession(entity()));
-  const professionText = profession.lastElementChild;
-  if (professionText === null) throw new Error('portrait: profession');
-  const buttons = element('div', 'on-orders on-orders--inline');
-  buttons.append(orders, profession);
-  root.append(row, buttons);
+  beside.append(equipment, status);
+  row.append(frame, beside);
 
   let shownSockets = '';
   let sockets: Socket[] = [];
@@ -117,13 +103,13 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
       sockets[index]?.update(spec.model);
     });
     setHidden(equipment, specs.length === 0);
-    // Without sockets the status takes the column beside the frame instead of the line under it.
+    // Without sockets the status strip alone sits beside the frame, at its middle.
     setClass(row, 'on-portrait--bare', specs.length === 0);
     setHidden(bagRow, rows.bag.length === 0);
   };
 
   return {
-    element: root,
+    element: row,
     frame,
     update(model): void {
       const copy = messages().hud.settlerPanel;
@@ -147,17 +133,6 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
           if (carried.goodId !== undefined) deps.icons(carryFrame, carried.goodId, CARRIED_ICON_PX);
         }
       }
-      // Another seat's person takes no orders, and a person of ours always does.
-      setHidden(buttons, model.foreign);
-      write(ordersText, copy.orders);
-      write(ordersKey, deps.keyLabel('actionRing'));
-      setTitle(orders, formatMessage(copy.ordersTooltip, { key: deps.keyLabel('actionRing') }));
-      setHidden(profession, !model.canChangeProfession);
-      write(professionText, copy.changeProfession);
-      setTitle(
-        profession,
-        formatMessage(copy.changeProfessionTooltip, { key: deps.keyLabel('professionPicker') }),
-      );
     },
   };
 }

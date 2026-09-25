@@ -68,6 +68,8 @@ export const enGame = {
     assignWorkplace: 'Assign a workplace',
     assignWorkplaceHint:
       'Click, then pick a building: green ones have an open slot for this settler, red ones do not. Left-click assigns, right-click or Esc cancels.',
+    assignWorkplaceFlagHint:
+      'Click, then pick a building or a spot on the ground: a building employs (green ones have an open slot, red ones do not), the ground plants the work flag there, where the settler works. Left-click picks, right-click or Esc cancels.',
     unassignWorkplace: 'Remove work place',
     unassignWorkplaceHint:
       'Takes this settler off its workplace and frees the slot. It keeps its trade and whatever it is carrying; a gatherer goes back to a work flag planted where it stands.',
@@ -275,6 +277,7 @@ export const enGame = {
       ordered: 'Following an order',
       working: 'Working',
       building: 'Building',
+      repairing: 'Repairing',
       fighting: 'Fighting',
       training: 'Training',
       eating: 'Eating',
@@ -385,7 +388,6 @@ export const enGame = {
         'Knowledge (production and development, encyclopedia, how to play) is being built. What a locked building still waits for will be read here.',
     },
     settlerPanel: {
-      orders: 'Orders',
       ordersTooltip: 'Orders · {key}',
       close: 'Clear the selection',
       prev: 'Previous',
@@ -397,8 +399,6 @@ export const enGame = {
       foreignOwner: 'Player {player} · {tribe} · stance: {stance}',
       foreignOwnerPlain: 'Player {player} · {tribe}',
       centre: 'Centre the view on this person',
-      changeProfession: 'Change profession',
-      changeProfessionTooltip: 'Change profession · {key}',
       bag: 'Bag',
       equip: '{slot}: equip',
       equipLabel: 'Equip: {slot}',

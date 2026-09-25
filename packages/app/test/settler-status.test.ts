@@ -63,6 +63,7 @@ describe('the settler status caption', () => {
     expect(status(atomic('sleep'))).toBe('sleeping');
     expect(status(atomic('pray'))).toBe('praying');
     expect(status(atomic('construct'))).toBe('building');
+    expect(status(atomic('repair'))).toBe('repairing');
     expect(status(atomic('attack'))).toBe('fighting');
     expect(status(atomic('harvest'))).toBe('working');
     expect(status(atomic('produce'))).toBe('working');

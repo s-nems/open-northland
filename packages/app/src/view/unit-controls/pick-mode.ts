@@ -2,7 +2,7 @@ import type { UiCue } from '@open-northland/audio';
 import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
 import { type Entity, entityById, type PlayerCommand, type WorldSnapshot } from '@open-northland/sim';
-import { isVehicle, ownerPlayerOf } from '../../game/snapshot.js';
+import { isVehicle, ownerPlayerOf, workplaceOf } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import {
@@ -28,6 +28,9 @@ import type { VehicleOrderController } from './vehicle-orders.js';
  */
 export type PickMode =
   | { readonly kind: BuildingPickKind; readonly units: readonly number[] }
+  /** A flag trade's workplace pick: a lit building employs, any other spot plants the work flag there
+   *  (a posted gatherer leaves its post for it). */
+  | { readonly kind: 'workplace-or-flag'; readonly units: readonly number[] }
   | { readonly kind: ScoutPickKind; readonly scout: number }
   | { readonly kind: 'partner'; readonly settler: number }
   | { readonly kind: SpotPickKind; readonly units: readonly number[] }
@@ -148,8 +151,11 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
   },
 };
 
-const isBuildingPick = (mode: PickMode): mode is Extract<PickMode, { readonly kind: BuildingPickKind }> =>
-  Object.hasOwn(BUILDING_PICKS, mode.kind);
+/** The building pick a mode lights up and resolves against, null for a mode that names no building. */
+const buildingPickOf = (mode: PickMode): BuildingPickKind | null => {
+  if (mode.kind === 'workplace-or-flag') return 'workplace';
+  return Object.hasOwn(BUILDING_PICKS, mode.kind) ? (mode.kind as BuildingPickKind) : null;
+};
 
 const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<
   SpotPickKind | 'attack-move' | ScoutPickKind | VehicleSpotPickKind
@@ -246,6 +252,8 @@ export interface PickModeController {
   signpostActive(): boolean;
   /** The ship whose dock pick is armed, or null: the frame loop washes the map with its mooring spots. */
   dockVehicle(): number | null;
+  /** A flag trade's workplace pick is armed, so the flag ghost follows the cursor. */
+  flagActive(): boolean;
   /** Non-null when a mode was armed: the press resolved or cancelled it, so the caller must not fall
    *  through to selection or an order. */
   handleMouseDown(event: MouseEvent): PickPress | null;
@@ -354,6 +362,19 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
   };
 
+  /** Plant the flag of every unit at `named`; one holding a post leaves it first, so the sim, which
+   *  ignores a posted worker's flag order, takes the flag. */
+  const resolveFlag = (units: readonly number[], named: Tile): boolean => {
+    const snapshot = deps.snapshot();
+    for (const unit of units) {
+      const entity = entityById(snapshot, unit);
+      if (entity !== undefined && workplaceOf(entity) !== undefined) {
+        deps.enqueue({ kind: 'unassignWorker', entity: unit as Entity });
+      }
+    }
+    return deps.orders().issueSetWorkFlag(named, units);
+  };
+
   const resolvePicked = (mode: Exclude<PickMode, SpotMode>, event: MouseEvent): boolean => {
     switch (mode.kind) {
       case 'workplace':
@@ -362,6 +383,11 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'learning-place':
       case 'trade-house':
         return resolveBuilding(event, mode.kind, mode.units);
+      case 'workplace-or-flag':
+        return (
+          resolveBuilding(event, 'workplace', mode.units) ||
+          resolveFlag(mode.units, deps.nodeAt(event.clientX, event.clientY))
+        );
       case 'attack-settler':
         return deps.orders().issueAttackTarget(event, 'settler', mode.units);
       case 'attack-building':
@@ -429,9 +455,10 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         const canAttach = deps.canAttachToVehicle;
         return canAttach === undefined ? null : computeVehicleHighlight(snapshot, mode.settler, canAttach);
       }
-      // The other picks show on the ground or the cursor.
-      if (!isBuildingPick(mode)) return null;
-      return BUILDING_PICKS[mode.kind].highlight(snapshot, mode.units, buildingsByType, canTrade);
+      // Only the building picks light targets up; the rest show on the ground or the cursor.
+      const kind = buildingPickOf(mode);
+      if (kind === null || !('units' in mode)) return null;
+      return BUILDING_PICKS[kind].highlight(snapshot, mode.units, buildingsByType, canTrade);
     },
     () => pickVersion,
   );
@@ -442,6 +469,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     isArmed: () => pickMode !== null,
     signpostActive: () => pickMode?.kind === 'signpost',
     dockVehicle: () => (pickMode?.kind === 'vehicle-dock' ? pickMode.vehicle : null),
+    flagActive: () => pickMode?.kind === 'workplace-or-flag',
     handleMouseDown,
     handleOverviewPress,
     highlight: () => highlightFor(deps.snapshot()),

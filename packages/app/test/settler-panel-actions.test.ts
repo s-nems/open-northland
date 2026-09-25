@@ -33,7 +33,6 @@ function harness(viewer: ViewerSeat = fixedViewerSeat(SEAT)) {
       selectGroup: () => undefined,
       centre: () => undefined,
       openOrders: () => undefined,
-      openProfessions: () => undefined,
       assignWorkplace: () => undefined,
       assignHome: () => undefined,
       attachTradeHouse: () => undefined,

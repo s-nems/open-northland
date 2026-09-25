@@ -97,7 +97,7 @@ export async function createUnitChrome(
     const at = entityAnchor(opts.snapshot(), id, opts.elevation);
     if (at !== null) opts.centerOn(at.x, at.y);
   };
-  const keyLabel = (action: 'actionRing' | 'professionPicker'): string => {
+  const keyLabel = (action: 'actionRing'): string => {
     const binding = opts.bindings[action];
     const names = messages().mainMenu.settings;
     return binding === null ? names.bindingUnassigned : keyDisplayLabel(binding, { space: names.keySpace });
@@ -126,7 +126,6 @@ export async function createUnitChrome(
         selectGroup: callbacks.selectGroup,
         centre,
         openOrders: () => mounts.current().actions.open(),
-        openProfessions: (id) => mounts.current().actions.openProfessions([id]),
         assignWorkplace: callbacks.assignWorkplace,
         assignHome: callbacks.assignHome,
         attachTradeHouse: callbacks.attachTradeHouse,
@@ -186,6 +185,7 @@ export async function createUnitChrome(
       ...(opts.standsTo !== undefined ? { standsTo: opts.standsTo } : {}),
       vehicles: opts.content.vehicles,
       isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
+      usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),
       livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
       vehicleLabel: (typeId) => vehicleLabel(opts.content, typeId),

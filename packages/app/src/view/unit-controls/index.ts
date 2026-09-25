@@ -1,5 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { settlerJobType } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import { isActionHotkey, isFieldKey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
@@ -61,9 +62,17 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           cue,
         });
   const workArea = createWorkAreaOverlay();
+  /** A gatherer's or a fisher's workplace pick also plants its flag, so the panel's one button serves
+   *  both ways the trade works. */
+  const worksFromFlag = (id: number): boolean => {
+    const entity = entityById(opts.snapshot(), id);
+    const job = entity === undefined ? undefined : settlerJobType(entity);
+    return job !== undefined && systems.jobUsesWorkFlag({ content: opts.content }, job);
+  };
   // `pickMode` is built below; the arrows defer the reads to click time.
   const chrome = await createUnitChrome(opts, selection, equipPicker, {
-    assignWorkplace: (id) => pickMode.arm({ kind: 'workplace', units: [id] }),
+    assignWorkplace: (id) =>
+      pickMode.arm({ kind: worksFromFlag(id) ? 'workplace-or-flag' : 'workplace', units: [id] }),
     assignHome: (id) => pickMode.arm({ kind: 'home', units: [id] }),
     attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', units: [id] }),
     pickPartner: (id) => pickMode.arm({ kind: 'partner', settler: id }),
@@ -379,6 +388,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     workAreaRings: () => workArea.rings(opts.snapshot()),
     assignHighlight: pickMode.highlight,
     signpostPlacementActive: pickMode.signpostActive,
+    workFlagPlacementActive: pickMode.flagActive,
     claimsEscape: () =>
       chrome.actions().state().mode === 'jobs' || pickMode.isArmed() || selection.ids().size > 0,
     dockPickVehicle: pickMode.dockVehicle,

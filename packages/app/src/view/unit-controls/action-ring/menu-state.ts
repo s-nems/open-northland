@@ -1,12 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import {
-  components,
-  entityById,
-  harvestJobsOf,
-  jobAllowsAtomic,
-  systems,
-  type WorldSnapshot,
-} from '@open-northland/sim';
+import { components, entityById, jobAllowsAtomic, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_IDLE } from '../../../catalog/jobs.js';
 import {
   childOrderOf,
@@ -108,7 +101,7 @@ function worksAnArea(content: ContentSet, e: SnapshotEntity, job: number | null)
     tradeAssignable(e) &&
     workplaceOf(e) === undefined &&
     job !== null &&
-    (harvestJobsOf(content).has(job) || systems.isFisherJob(content, job))
+    systems.jobUsesWorkFlag({ content }, job)
   );
 }
 

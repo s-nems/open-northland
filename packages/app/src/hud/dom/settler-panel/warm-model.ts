@@ -38,7 +38,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       carrying: { ...good(0), label: 'Warm', amount: 2 },
     },
     bars: [bar('Warm', 100), bar('Warm', 50, 'hunger'), bar('Warm', 25, 'fatigue'), bar('Warm', 10, 'piety')],
-    workplace: { target: { id: 1, label: 'Warm' }, assign: true, remove: 'warm' },
+    workplace: { target: { id: 1, label: 'Warm' }, assign: true, remove: 'warm', flag: false },
     home: { target: null, assign: true, remove: null },
     family: { partner: null, child: null, canPickPartner: true },
     production: {
@@ -116,6 +116,5 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
         wearable: true,
       },
     ],
-    canChangeProfession: true,
   };
 }

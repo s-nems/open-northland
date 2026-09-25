@@ -244,6 +244,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       palisadeGfxIndex: toolPanel.controller.palisadeGfxIndex(),
       signpostActive: controls.signpostPlacementActive(),
       dockVehicle: controls.dockPickVehicle(),
+      flagActive: controls.workFlagPlacementActive(),
       buildingOverlay,
       signpostOverlay,
       dockOverlay,

@@ -19,7 +19,7 @@ export function selectionBottomInset(plane: { readonly width: number; readonly h
 }
 
 /** The head of the selected thing: the kicker (with browsing), the title (with rename), the meta line,
- *  and the close medallion. */
+ *  and the medallions: the gold orders one, when the thing takes orders, beside the close. */
 export interface SelectionHeadModel {
   readonly kicker: string;
   /** The chevrons and "i / n" over the kicker's peers; null shows the kicker alone. */
@@ -34,6 +34,8 @@ export interface SelectionHeadModel {
   /** The pen's tooltip and the longest name the field takes; null keeps the title read-only. */
   readonly rename: { readonly tooltip: string; readonly maxLength: number } | null;
   readonly meta: string | null;
+  /** The orders medallion's tooltip, which names the ring's hotkey; null leaves the close alone. */
+  readonly orders: { readonly tooltip: string } | null;
   readonly labels: {
     readonly close: string;
     readonly prev: string;
@@ -43,6 +45,7 @@ export interface SelectionHeadModel {
 
 export interface SelectionPanelHandlers {
   readonly onBrowse: (step: 1 | -1) => void;
+  readonly onOrders: () => void;
   readonly onKickerDoubleClick: () => void;
   /** The name the player typed and confirmed, trimmed; an empty one asks for the default name back. */
   readonly onRename: (name: string) => void;
@@ -121,10 +124,14 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
 
   const heading = element('div', 'on-selection__heading');
   heading.append(kicker, title, meta);
+  // Gold, first in the row: a new player finds the ring here, so it must not read as one more chrome
+  // control.
+  const orders = button('on-medallion on-medallion--gold', GLYPH.orders);
+  orders.addEventListener('click', () => handlers.onOrders());
   const close = button('on-medallion', GLYPH.close);
   close.addEventListener('click', () => handlers.onClose());
   const medallions = element('span', 'on-selection__medallions');
-  medallions.append(close);
+  medallions.append(orders, close);
   const head = element('header', 'on-window__head');
   head.append(heading, medallions);
   const body = element('div', 'on-selection__body');
@@ -240,6 +247,11 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
       }
       setHidden(meta, model.meta === null);
       write(meta, model.meta ?? '');
+      setHidden(orders, model.orders === null);
+      if (model.orders !== null) {
+        setTitle(orders, model.orders.tooltip);
+        setAttribute(orders, 'aria-label', model.orders.tooltip);
+      }
       setAttribute(close, 'aria-label', model.labels.close);
       setTitle(close, model.labels.close);
       setAttribute(root, 'aria-label', model.title);

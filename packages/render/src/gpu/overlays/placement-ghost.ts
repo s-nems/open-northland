@@ -17,9 +17,10 @@ import type { TextureCache } from '../texture-cache.js';
 import { mintLayerSprite } from './layer-sprite.js';
 
 /**
- * The build-placement cursor ghost - the held building's own sprite, translucent, snapped to the hovered
- * half-cell node, the anchor grid buildings place on. The app decides where it hovers and whether it
- * shows at all (the original's house icon vanishes over ground the placement probe rejects).
+ * The placement cursor ghost - the held building's, signpost's or work flag's own sprite, translucent,
+ * snapped to the hovered half-cell node, the anchor grid buildings place on. The app decides where it
+ * hovers and whether it shows at all (the original's house icon vanishes over ground the placement
+ * probe rejects).
  */
 
 /** The hovered placement, with `col`/`row` as half-cell coordinates on the `2W×2H` lattice. */
@@ -47,13 +48,62 @@ export type PlacementGhost =
       readonly kind: 'line';
       readonly nodes: readonly PlanNode[];
       readonly anchored: boolean;
-    };
+    }
+  /** A gatherer's work flag about to be planted: the delivery-flag sprite, unowned. */
+  | { readonly kind: 'flag'; readonly col: number; readonly row: number };
 
 /** `open` gets a stake, `built` already holds a piece the string only passes, `blocked` a red stake. */
 export interface PlanNode {
   readonly col: number;
   readonly row: number;
   readonly state: 'open' | 'built' | 'blocked';
+}
+
+/** The ghosts drawn as one sprite; a line is stakes and string, built apart. */
+type SpriteGhost = Exclude<PlacementGhost, { readonly kind: 'line' }>;
+
+function ghostKey(ghost: SpriteGhost): string {
+  switch (ghost.kind) {
+    case 'building':
+      return `b:${ghost.tribe}:${ghost.buildingType}`;
+    case 'signpost':
+      return `s:${ghost.player}`;
+    case 'gate':
+      return `g:${ghost.gfxIndex}:${ghost.ok}`;
+    case 'flag':
+      return 'f';
+    default: {
+      const unreachable: never = ghost;
+      throw new Error(`unhandled ghost: ${JSON.stringify(unreachable)}`);
+    }
+  }
+}
+
+/** A minimal DrawItem: position and depth live on the container, and `ref: -1` only feeds
+ *  head-variation picks, which no ghost kind has. */
+function ghostItem(ghost: SpriteGhost): DrawItem {
+  switch (ghost.kind) {
+    case 'building':
+      return {
+        kind: 'building',
+        ref: -1,
+        x: 0,
+        y: 0,
+        depth: 0,
+        typeId: ghost.buildingType,
+        tribe: ghost.tribe,
+      };
+    case 'signpost':
+      return { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
+    case 'gate':
+      return { kind: 'palisade', ref: -1, x: 0, y: 0, depth: 0, gfxIndex: ghost.gfxIndex };
+    case 'flag':
+      return { kind: 'stockpile', ref: -1, x: 0, y: 0, depth: 0, isFlag: true };
+    default: {
+      const unreachable: never = ghost;
+      throw new Error(`unhandled ghost: ${JSON.stringify(unreachable)}`);
+    }
+  }
 }
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
@@ -141,12 +191,7 @@ export class PlacementGhostLayer {
       return;
     }
     this.container.alpha = ghost.kind === 'gate' ? GATE_GHOST_ALPHA : GHOST_ALPHA;
-    const key =
-      ghost.kind === 'building'
-        ? `b:${ghost.tribe}:${ghost.buildingType}`
-        : ghost.kind === 'gate'
-          ? `g:${ghost.gfxIndex}:${ghost.ok}`
-          : `s:${ghost.player}`;
+    const key = ghostKey(ghost);
     if (this.builtForKey !== key) {
       this.builtForKey = key;
       this.rebuild(ghost);
@@ -212,14 +257,7 @@ export class PlacementGhostLayer {
 
   private rebuild(ghost: Exclude<PlacementGhost, { kind: 'line' }>): void {
     for (const child of this.container.removeChildren()) child.destroy();
-    // A minimal DrawItem: position and depth live on the container, and `ref: -1` only feeds
-    // head-variation picks, which neither kind has.
-    const item: DrawItem =
-      ghost.kind === 'building'
-        ? { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: ghost.buildingType, tribe: ghost.tribe }
-        : ghost.kind === 'gate'
-          ? { kind: 'palisade', ref: -1, x: 0, y: 0, depth: 0, gfxIndex: ghost.gfxIndex }
-          : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
+    const item = ghostItem(ghost);
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null) {
       const g = new Graphics();

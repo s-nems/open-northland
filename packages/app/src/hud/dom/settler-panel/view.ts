@@ -44,8 +44,10 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     actions.showPeer(next);
     return true;
   };
+  const ordersKey = (): string => deps.keyLabel('actionRing');
   const frame = createSelectionPanel(deps.plane, {
     onBrowse: (step) => browse(step),
+    onOrders: () => actions.openOrders(entity()),
     onKickerDoubleClick: () => {
       if (peers.ids.length > 0) actions.selectGroup(peers.ids);
     },
@@ -97,14 +99,14 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       const fresh = shown?.entityId !== model.entityId;
       shown = model;
       peers = model.foreign ? NO_PEERS : peerIndex.peersOf(model.entityId, model.jobType, fresh);
-      frame.updateHead(settlerHead(model, peers));
+      frame.updateHead(settlerHead(model, peers, ordersKey()));
       sections(model, fresh);
       frame.show();
     },
     hide,
     warm(goodIds): void {
       const model = warmModel(goodIds);
-      frame.updateHead(settlerHead(model, NO_PEERS));
+      frame.updateHead(settlerHead(model, NO_PEERS, ordersKey()));
       sections(model, true);
       frame.warm();
     },

@@ -26,6 +26,7 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
     placementPaper: null,
     signpostActive: false,
     dockVehicle: null,
+    flagActive: false,
     buildingOverlay: () => BUILDING_WASH,
     signpostOverlay: () => {
       signpostProbes++;
@@ -207,6 +208,18 @@ describe('placement cursor', () => {
     const signpost = frame({ signpostActive: true, dockVehicle: SHIP });
     expect(signpost.cursor().overlay).toBe(SIGNPOST_WASH);
     expect(signpost.dockProbes()).toBe(0);
+  });
+
+  it('floats the work flag under the cursor without a wash while a flag pick is armed', () => {
+    const f = frame({ flagActive: true });
+
+    expect(f.cursor()).toEqual({ overlay: null, ghost: { kind: 'flag', col: TILE.col, row: TILE.row } });
+    expect(f.signpostProbes()).toBe(0);
+  });
+
+  it('hides the flag off the canvas and lets a pending signpost win over it', () => {
+    expect(frame({ flagActive: true, tileAt: () => null }).cursor()).toEqual({ overlay: null, ghost: null });
+    expect(frame({ flagActive: true, signpostActive: true }).cursor().ghost?.kind).toBe('signpost');
   });
 
   it('drops the signpost ghost when its band probe has no frame to draw', () => {
