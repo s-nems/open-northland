@@ -1,57 +1,28 @@
 import { hexDistanceBetween } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { createLineTool, type LineNode, lineReach, straightLine } from '../src/hud/tool-panel/line-tool.js';
+import { createLineTool, hexLine, type LineNode, lineReach } from '../src/hud/tool-panel/line-tool.js';
 
 const MAX_EDGES = 20;
 
-describe('straight line', () => {
+describe('hex line', () => {
   it.each([
     [0, 0, 8, 0],
     [0, 0, 4, 8],
     [7, 8, 3, 0],
     [3, 3, 10, 9],
-    [10, 11, 13, 5],
-  ])(
-    'walks adjacent hex nodes from (%i,%i) toward (%i,%i) in one repeating stride',
-    (startCol, startRow, endCol, endRow) => {
-      const nodes = straightLine({ col: startCol, row: startRow }, { col: endCol, row: endRow }, MAX_EDGES);
-      expect(nodes[0]).toEqual({ col: startCol, row: startRow });
-      const strides = new Set<string>();
-      for (let i = 1; i < nodes.length; i++) {
-        const before = nodes[i - 1];
-        const after = nodes[i];
-        if (before === undefined || after === undefined) throw new Error('line gap');
-        expect(hexDistanceBetween(before.col, before.row, after.col, after.row)).toBe(1);
-        strides.add(`${after.col - before.col},${after.row - before.row},${before.row & 1}`);
-      }
-      // A row or column repeats one step; a diagonal alternates one step per row parity.
-      expect(strides.size).toBeLessThanOrEqual(2);
-    },
-  );
-
-  it('runs a diagonal cursor along the hex diagonal a gate fits', () => {
-    expect(straightLine({ col: 10, row: 11 }, { col: 13, row: 5 }, MAX_EDGES)).toEqual([
-      { col: 10, row: 11 },
-      { col: 11, row: 10 },
-      { col: 11, row: 9 },
-      { col: 12, row: 8 },
-      { col: 12, row: 7 },
-      { col: 13, row: 6 },
-      { col: 13, row: 5 },
-    ]);
-  });
-
-  it('snaps a cursor between runs to the nearest one', () => {
-    expect(straightLine({ col: 10, row: 10 }, { col: 11, row: 4 }, MAX_EDGES).map((n) => n.col)).toEqual(
-      new Array(7).fill(10),
-    );
-    expect(straightLine({ col: 10, row: 10 }, { col: 14, row: 8 }, MAX_EDGES).map((n) => n.row)).toEqual(
-      new Array(5).fill(10),
-    );
+  ])('walks adjacent hex nodes from (%i,%i) toward (%i,%i)', (startCol, startRow, endCol, endRow) => {
+    const nodes = hexLine({ col: startCol, row: startRow }, { col: endCol, row: endRow }, MAX_EDGES);
+    expect(nodes[0]).toEqual({ col: startCol, row: startRow });
+    for (let i = 1; i < nodes.length; i++) {
+      const before = nodes[i - 1];
+      const after = nodes[i];
+      if (before === undefined || after === undefined) throw new Error('line gap');
+      expect(hexDistanceBetween(before.col, before.row, after.col, after.row)).toBe(1);
+    }
   });
 
   it('caps a long line at its edge budget and includes both endpoints', () => {
-    const nodes = straightLine({ col: 2, row: 4 }, { col: 80, row: 4 }, MAX_EDGES);
+    const nodes = hexLine({ col: 2, row: 4 }, { col: 80, row: 4 }, MAX_EDGES);
     expect(nodes).toHaveLength(MAX_EDGES + 1);
     expect(nodes[0]).toEqual({ col: 2, row: 4 });
     expect(nodes.at(-1)).toEqual({ col: 22, row: 4 });
@@ -59,7 +30,7 @@ describe('straight line', () => {
 });
 
 describe('line reach', () => {
-  it('lights the straight runs from the anchor up to their first refused node', () => {
+  it('lights only the ends whose whole line from the anchor is accepted', () => {
     // A blocked node east of the anchor shadows everything behind it on the same row.
     const reach = lineReach({
       tool: 'test',
@@ -72,8 +43,6 @@ describe('line reach', () => {
     expect(reach.has('13,10')).toBe(false);
     expect(reach.has('8,10')).toBe(true);
     expect(reach.has('15,10')).toBe(false); // past the edge budget
-    expect(reach.has('11,8')).toBe(true); // on the diagonal
-    expect(reach.has('12,8')).toBe(false); // off every straight run
   });
 
   it('lights nothing when the anchor itself is refused', () => {
