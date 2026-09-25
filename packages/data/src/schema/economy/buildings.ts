@@ -120,7 +120,7 @@ export const BuildingType = z.strictObject({
    */
   refillsOwnStock: z.boolean().default(false),
   /**
-   * The house is a prayer site whose holy fire burns from placement and never goes out. Engine behavior
+   * The house is a prayer site whose holy fire burns, with no oil, once the house stands. Engine behavior
    * keyed on `logictype` 37 (temple) and 1 (headquarters), not an `.ini` key. Only a temple blesses the
    * people around it.
    */

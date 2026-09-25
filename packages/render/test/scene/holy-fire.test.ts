@@ -66,6 +66,8 @@ describe('home holy fire projection', () => {
     ]);
     const site = { ...temple, UnderConstruction: { labor: 0 } };
     expect(holyFireOverlays(snapshot(site), HOME, site, lookup)).toEqual([]);
+    const unfinished = { ...temple, Building: { ...temple.Building, built: ONE - 1 } };
+    expect(holyFireOverlays(snapshot(unfinished), HOME, unfinished, lookup)).toEqual([]);
   });
 
   it('emits retained effect refs only while the home survives the existing viewport cull', () => {

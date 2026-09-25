@@ -17,7 +17,7 @@ const DRUID = 30;
 const SMITH = 13;
 const HQ = 1;
 const TEMPLE = 37;
-/** A building the source gives fire points but no prayer site. */
+/** A tower with fire points and no prayer site; the source gives them to another tribe's tower. */
 const TOWER = 41;
 
 function fixtureIr(): ContentIr {

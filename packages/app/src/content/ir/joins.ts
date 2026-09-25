@@ -273,22 +273,24 @@ export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodR
 export const HOLY_FIRE_EFFECT_NAME = 'fx fire incense';
 
 export function holyFireLookup(ir: ContentIr | null): HolyFireLookup {
-  const byKey = new Map<string, { x: number; y: number }[]>();
-  for (const row of ir?.buildingHolyFirePoints ?? []) {
-    const key = `${row.tribeId}/${row.typeId}/${row.level}`;
-    const points = byKey.get(key);
-    if (points === undefined) byKey.set(key, [{ x: row.x, y: row.y }]);
-    else points.push({ x: row.x, y: row.y });
-  }
   const prayerSites = new Set<number>();
   for (const b of ir?.buildings ?? []) {
     if (b.prayerSite !== undefined && b.typeId !== undefined) prayerSites.add(b.typeId);
   }
-  return (tribe, buildingType, level) => {
-    const points = byKey.get(`${tribe}/${buildingType}/${level}`);
-    if (points === undefined) return undefined;
-    return { name: HOLY_FIRE_EFFECT_NAME, points, perpetual: prayerSites.has(buildingType) };
-  };
+  const byKey = new Map<string, { name: string; points: { x: number; y: number }[]; perpetual: boolean }>();
+  for (const row of ir?.buildingHolyFirePoints ?? []) {
+    const key = `${row.tribeId}/${row.typeId}/${row.level}`;
+    const binding = byKey.get(key);
+    if (binding !== undefined) binding.points.push({ x: row.x, y: row.y });
+    else {
+      byKey.set(key, {
+        name: HOLY_FIRE_EFFECT_NAME,
+        points: [{ x: row.x, y: row.y }],
+        perpetual: prayerSites.has(row.typeId),
+      });
+    }
+  }
+  return (tribe, buildingType, level) => byKey.get(`${tribe}/${buildingType}/${level}`);
 }
 
 /** One `[gfxanimatomic]` record as a clip candidate: the body bobseq it names and its own frame lists. */

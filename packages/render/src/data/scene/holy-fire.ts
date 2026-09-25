@@ -21,7 +21,7 @@ export type HolyFireLookup = (
  * its player allows it to burn; a prayer site's always burns. */
 export function holyFireOverlays(
   snapshot: WorldSnapshot,
-  home: number,
+  building: number,
   components: Readonly<Record<string, unknown>>,
   lookup: HolyFireLookup | undefined,
 ): InHouseOverlay[] {
@@ -44,7 +44,7 @@ export function holyFireOverlays(
   const binding = lookup(tribe, buildingType, level);
   if (binding === undefined || binding.points.length === 0) return [];
   if (!binding.perpetual) {
-    if ((homeQualityView(snapshot, home)?.piety ?? 0) <= 0) return [];
+    if ((homeQualityView(snapshot, building)?.piety ?? 0) <= 0) return [];
     if (!householdGoodPolicyView(snapshot, player).piety) return [];
   }
   return binding.points.map((point) => ({ name: binding.name, dx: point.x, dy: point.y }));
