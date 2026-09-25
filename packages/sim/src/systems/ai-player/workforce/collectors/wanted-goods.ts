@@ -26,16 +26,21 @@ export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
 /** Base gatherer targets by stable content id (authored): the construction sites are these goods' main
  *  drain, which the shortage posts answer. The first post is guaranteed, the rest best-effort. Each row
- *  grows by {@link LATE_GAME_EXTRA_BUILDING_GATHERERS} in the late game. */
+ *  grows by its {@link EXTRA_BUILDING_GATHERERS_BY_GOOD_ID} row as the game goes on. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
 };
 
-/** The posts a good with a {@link COLLECTOR_TARGET_BY_GOOD_ID} row gains in the late {@link gamePhase}
- *  (authored): a nice-to-have filled at the top-up rung once the seat can spare the men, since it builds
- *  its army first and hoards its building goods only then. */
-export const LATE_GAME_EXTRA_BUILDING_GATHERERS = 1;
+/** The posts a good with a {@link COLLECTOR_TARGET_BY_GOOD_ID} row gains per {@link gamePhase} (authored),
+ *  filled at the top-up rung once the seat can spare the men: wood feeds every bill, the joinery and the
+ *  armoury, so it grows from the mid game; stone feeds only the bills, so it waits for the late game. */
+export const EXTRA_BUILDING_GATHERERS_BY_GOOD_ID: Readonly<
+  Record<string, Readonly<Record<GamePhase, number>>>
+> = {
+  wood: { opening: 0, mid: 1, late: 2 },
+  stone: { opening: 0, mid: 0, late: 1 },
+};
 
 /** The target of a good with no {@link COLLECTOR_TARGET_BY_GOOD_ID} row and no reached collector entry. */
 export const DEFAULT_COLLECTOR_TARGET = 1;
@@ -142,8 +147,8 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 }
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
- *  plan order. A target is the good's fixed row, grown by {@link LATE_GAME_EXTRA_BUILDING_GATHERERS} in
- *  the late game, else its entries' largest `count` (at least
+ *  plan order. A target is the good's fixed row, grown by its {@link EXTRA_BUILDING_GATHERERS_BY_GOOD_ID}
+ *  row for the phase, else its entries' largest `count` (at least
  *  {@link DEFAULT_COLLECTOR_TARGET}) grown by {@link OPERATORS_PER_EXTRA_GATHERER}, plus the shortage
  *  posts ({@link shortageGatherers}); nothing lowers it below a reached entry's `count`, since a released
  *  holder would regress the entry and stall the order. A good missing from the content set or with no
@@ -162,7 +167,6 @@ export function wantedCollectorGoods(
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }
   const phase = gamePhase(ctx.tick);
-  const lateExtra = phase === 'late' ? LATE_GAME_EXTRA_BUILDING_GATHERERS : 0;
   const wanted: WantedGood[] = [];
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
@@ -177,7 +181,7 @@ export function wantedCollectorGoods(
       fixed === undefined
         ? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount) +
           Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER)
-        : Math.max(fixed + lateExtra, entryCount);
+        : Math.max(fixed + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID[goodId]?.[phase] ?? 0), entryCount);
     let min = 1;
     if (consumers > 0) {
       const heldExtra = Math.max(0, flagHolders(world, ctx, player, good.typeId) - target);

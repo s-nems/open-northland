@@ -39,10 +39,10 @@ import { gathererReach, workableResourceTest } from '../../../src/systems/ai-pla
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CLEAR_GROUND_FROM_NODES,
+  EXTRA_BUILDING_GATHERERS_BY_GOOD_ID,
   FLAG_RELOCATE_EVERY_DECISIONS,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
-  LATE_GAME_EXTRA_BUILDING_GATHERERS,
   MAX_CLEARING_COLLECTORS,
   NODES_PER_CLEARING_GATHERER,
   SHORTAGE_BUILDER_FLOOR,
@@ -252,18 +252,33 @@ describe('workforce module (collectResources)', () => {
     const sim = aiSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
-    spawnMen(sim, BUILDER_CAP + 9);
+    spawnMen(sim, BUILDER_CAP + 10);
     sim.step();
-    // Late in the game: three posts each.
-    expect((COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + LATE_GAME_EXTRA_BUILDING_GATHERERS).toBe(3);
+    // Late in the game: four wood posts and three stone ones.
+    expect(
+      (COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID.wood?.late ?? 0),
+    ).toBe(4);
+    expect(
+      (COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0) + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID.stone?.late ?? 0),
+    ).toBe(3);
     const late = () => ctxOf(sim, LATE_GAME_FROM_TICKS);
 
     const commands = [...collectModule.run(sim.world, late(), SEAT)];
     const selections = commands.filter((c) => c.kind === 'setGatherGood');
     // First posts in plan order, then the stone/wood top-ups (mud stays at one), then one
     // collect-anything flag (3 first posts, the scout and the builder reserve claimed, the top-ups take
-    // four, and the last man goes generic).
-    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, STONE, STONE, WOOD, WOOD, null]);
+    // five, and the last man goes generic).
+    expect(selections.map((s) => s.goodType)).toEqual([
+      MUD,
+      STONE,
+      WOOD,
+      STONE,
+      STONE,
+      WOOD,
+      WOOD,
+      WOOD,
+      null,
+    ]);
     // Each post gets a node of its own. A good's top-up re-derives the same nearest resource as its
     // first post, so without the decision's claimed-node set the two flags land on one tile - one
     // delivery yard, one pile cap, two gatherers.
@@ -290,7 +305,7 @@ describe('workforce module (collectResources)', () => {
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
   });
 
-  it('grows the wood and stone targets in the late game only, at the top-up tier, whatever the crew', () => {
+  it('grows the wood target from the mid game and the stone target in the late game, at the top-up tier', () => {
     const buildingPosts = (men: number, tick: number): (Pick<WantedGood, 'target' | 'min'> | undefined)[] => {
       const sim = aiSim();
       const ctx = ctxOf(sim, tick);
@@ -306,15 +321,18 @@ describe('workforce module (collectResources)', () => {
     const stoneBase = COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0;
     const LARGE_SEAT = 60;
     // No workshop consumes either good, so no shortage post rides on the target and only the first post
-    // jumps the builder reserve.
-    const base = [
+    // jumps the builder reserve, whatever the crew.
+    expect(buildingPosts(LARGE_SEAT, MID_GAME_FROM_TICKS - 1)).toEqual([
       { target: woodBase, min: 1 },
       { target: stoneBase, min: 1 },
-    ];
-    expect(buildingPosts(LARGE_SEAT, LATE_GAME_FROM_TICKS - 1)).toEqual(base);
+    ]);
+    expect(buildingPosts(1, MID_GAME_FROM_TICKS)).toEqual([
+      { target: woodBase + 1, min: 1 },
+      { target: stoneBase, min: 1 },
+    ]);
     expect(buildingPosts(1, LATE_GAME_FROM_TICKS)).toEqual([
-      { target: woodBase + LATE_GAME_EXTRA_BUILDING_GATHERERS, min: 1 },
-      { target: stoneBase + LATE_GAME_EXTRA_BUILDING_GATHERERS, min: 1 },
+      { target: woodBase + 2, min: 1 },
+      { target: stoneBase + 1, min: 1 },
     ]);
   });
 
@@ -392,7 +410,9 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, BUILDER_CAP + 4);
     sim.step();
     const hq = entityOfBuilding(sim, HQ_TYPE);
-    const woodTarget = COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0;
+    // The mid game's wood target, its base row plus the phase's extra post.
+    const woodTarget =
+      (COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID.wood?.mid ?? 0);
     const decideAt = (tick: number) => {
       const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
       for (const c of commands) sim.enqueueSetup(c);
@@ -418,8 +438,8 @@ describe('workforce module (collectResources)', () => {
     // and fills every post of it ahead of the reserve, one per decision.
     setStockAmount(sim.world, hq, WOOD, lines.comfort - 1);
     expect(posted(decideAt(0))).toEqual([]);
-    expect(posted(mid())).toEqual([WOOD]);
-    expect(posted(mid())).toEqual([WOOD]);
+    // Every post past the first standing one, up to the target plus the shortage post.
+    for (let post = 1; post <= woodTarget; post++) expect(posted(mid())).toEqual([WOOD]);
     expect(posted(mid())).toEqual([]);
     expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + 1);
 
