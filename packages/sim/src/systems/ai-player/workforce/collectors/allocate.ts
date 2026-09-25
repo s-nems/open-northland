@@ -12,6 +12,7 @@ import { experienceRank } from '../experience.js';
 import {
   claimFlagNode,
   collectorSpot,
+  FLAG_MAX_DISTANCE_NODES,
   flagSpotNear,
   nodeDistance,
   replantSpot,
@@ -19,7 +20,7 @@ import {
 } from '../flag-spots.js';
 import type { SpareForce } from '../pool.js';
 import { type CollectorAnchors, type SeatedHolders, seatHolders } from './anchor.js';
-import { flagRelocateDue, patchWorked, upkeepHolders } from './upkeep.js';
+import { everyResource, flagRelocateDue, patchWorked, upkeepHolders } from './upkeep.js';
 import {
   COLLECTED_GOOD_IDS,
   genericCollectorJob,
@@ -233,8 +234,9 @@ export function topUpCollectors(
  * Generic gatherers: up to `target` collect-anything posts, a flag with no good filter, so the holder
  * picks up whatever its trade may harvest inside the circle. Hired beside the collected-good resource
  * nearest the base, so extra posts clear the ground a stalled placement needs. Once the holder would find
- * nothing to harvest from his flag, the flag moves beside the next such resource, and the gatherer retires
- * to builder only when no collected good is left (authored).
+ * nothing to harvest from his flag, and on the periodic upkeep once that nearest resource stands more than
+ * the band nearer than his flag, the flag moves beside it; the gatherer retires to builder only when no
+ * collected good is left (authored).
  */
 export function allocateGenericCollectors(
   world: World,
@@ -252,6 +254,7 @@ export function allocateGenericCollectors(
   const commands: PlayerCommand[] = [];
   const baseNode = anchorNodeOf(world, base);
   const reach = gathererReach(world, ctx, terrain);
+  const relocateDue = flagRelocateDue(ctx);
   for (const g of genericCollectors) {
     const flag = liveWorkFlag(world, g);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
@@ -259,17 +262,20 @@ export function allocateGenericCollectors(
     const job = world.get(g, Settler).jobType;
     if (job === null) continue;
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
-    if (patchWorked(world, reach, g, flagNode, flag.radius, harvests)) continue;
+    const alive = patchWorked(world, reach, g, flagNode, flag.radius, harvests);
+    if (alive && !relocateDue) continue;
     const nearest = (open: WorkableTest): Entity | null =>
       nearestCollectedResource(world, ctx, baseNode, (e) => workable(e) && open(e));
+    if (alive && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
     const replant = replantSpot(world, ctx, terrain, g, flag.radius, nearest, reach, taken);
     if (replant === 'dry') {
-      if (builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
+      if (!alive && builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
       continue;
     }
     if (replant === null) continue;
-    const { spot } = replant;
+    const { target: resource, spot } = replant;
     if (spot.hx === flagNode.hx && spot.hy === flagNode.hy) continue;
+    if (alive && nodeDistance(spot, resource) >= nodeDistance(flagNode, resource)) continue; // no nearer spot
     commands.push({ kind: 'setWorkFlag', entity: g, x: spot.hx, y: spot.hy });
     claimFlagNode(taken, spot);
   }
@@ -290,6 +296,19 @@ export function allocateGenericCollectors(
     claimFlagNode(taken, spot);
   }
   return commands;
+}
+
+/** Whether the collected-good resource nearest the base stands more than the band nearer to it than the
+ *  holder's flag does. */
+function farFromNearest(
+  world: World,
+  baseNode: HalfCellNode,
+  flagNode: HalfCellNode,
+  nearest: Entity | null,
+): boolean {
+  const node = nearest === null ? null : anchorNodeOf(world, nearest);
+  if (node === null) return false;
+  return nodeDistance(baseNode, flagNode) - nodeDistance(baseNode, node) > FLAG_MAX_DISTANCE_NODES;
 }
 
 /** The workable live {@link COLLECTED_GOOD_IDS} resource nearest the base - canonical `(distance,

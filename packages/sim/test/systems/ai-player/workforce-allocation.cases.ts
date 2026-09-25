@@ -39,6 +39,7 @@ import { gathererReach, workableResourceTest } from '../../../src/systems/ai-pla
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CLEAR_GROUND_FROM_NODES,
+  FLAG_RELOCATE_EVERY_DECISIONS,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
   LATE_GAME_EXTRA_BUILDING_GATHERERS,
@@ -594,6 +595,37 @@ describe('workforce module (collectResources)', () => {
     const [flag] = moved;
     if (flag?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
     expect(Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y)).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+  });
+
+  it('moves a working generic flag beside a collected good standing well nearer the base, on the upkeep', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const FAR = { x: 56, y: 28 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.wood, ...FAR }]);
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 52, y: 26, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const gatherer = [...sim.world.query(Settler)].find(
+      (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
+    );
+    if (gatherer === undefined) throw new Error('setup: gatherer missing');
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, x: FAR.x - FLAG_MIN_DISTANCE_NODES, y: FAR.y });
+    sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: null });
+    const NEAR = { x: 38, y: 24 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.wood, ...NEAR }]);
+    sim.step();
+
+    const flagMoves = (tick: number) =>
+      [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)].filter(
+        (c) => c.kind === 'setWorkFlag' && c.entity === gatherer,
+      );
+    // A live patch is left alone on an ordinary decision…
+    expect(flagMoves(AI_DECISION_INTERVAL_TICKS)).toEqual([]);
+    // …and follows the nearer resource on the periodic upkeep.
+    const [moved] = flagMoves(AI_DECISION_INTERVAL_TICKS * FLAG_RELOCATE_EVERY_DECISIONS);
+    if (moved?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
+    expect(Math.abs(moved.x - NEAR.x) + Math.abs(moved.y - NEAR.y)).toBeLessThanOrEqual(
+      FLAG_MAX_DISTANCE_NODES,
+    );
   });
 
   it('adds a clay gatherer for the pottery tier that plans a second potter', () => {
