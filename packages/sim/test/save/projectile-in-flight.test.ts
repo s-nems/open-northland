@@ -12,7 +12,7 @@ import { DEER, fighterAtNode, VIKING } from '../conflict/combat-system/support.j
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
-/** The arrow's sound payload as `launchProjectile` copies it off the bow: the impact id for the victim's
+/** The arrow's sound payload as `looseProjectile` copies it off the bow: the impact ids by the victim's
  *  material and the whole per-ground miss table. */
 const BOW_HIT_SOUND = 77;
 const BOW_MISS_SOUNDS = { '1': 78, '2': 79 } as const;
@@ -29,15 +29,16 @@ describe('save a projectile in flight', () => {
     const original = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(32, 32) });
     const shooter = fighterAtNode(original, 10, 10, VIKING, null);
     const deer = fighterAtNode(original, 20, 10, DEER, null);
-    const aim = original.world.get(deer, Position);
+    const aim = positionOfNode(15, 10); // bare ground short of the deer
     const shot = original.world.create();
     original.world.add(shot, Position, positionOfNode(10, 10));
     original.world.add(shot, Projectile, {
       source: shooter,
       target: deer,
-      damage: 70,
+      player: null,
+      damage: { '0': 70 },
+      hitSounds: { '0': BOW_HIT_SOUND },
       weaponMainType: null,
-      hitSoundType: BOW_HIT_SOUND,
       missSounds: { ...BOW_MISS_SOUNDS },
       munitionType: 1,
       speed: 8,
@@ -46,14 +47,13 @@ describe('save a projectile in flight', () => {
       aimX: aim.x,
       aimY: aim.y,
       cover: null,
-      missAim: { x: aim.x, y: aim.y },
       launchTick: original.tick + 1,
     });
     original.step(); // the rest at the bow: the arrow is now a persisted entity mid-flight
 
     const copy = restored(original);
     expect(copy.world.get(shot, Projectile)).toMatchObject({
-      hitSoundType: BOW_HIT_SOUND,
+      hitSounds: { '0': BOW_HIT_SOUND },
       missSounds: BOW_MISS_SOUNDS,
     });
 

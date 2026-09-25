@@ -109,24 +109,25 @@ export const Garrison = defineComponent<{ post: Entity; returnTo: { x: Fixed; y:
 export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder', 'combat');
 
 /**
- * A projectile in flight - a first-class entity carrying a `Position` advanced each tick toward the aim
- * frozen at release. The payload is resolved once at launch, so a shooter that died meanwhile still lands
- * its arrow.
- *
- * Freezing the aim is informed by reverse-engineering evidence that the original projectile particle owns
- * start/target points rather than a target entity. Applying the payload to the originally selected target
- * remains an approximation; spatial impact resolution is outside this component's combat contract.
+ * A projectile in flight - a first-class entity carrying a `Position` advanced each tick toward the point
+ * frozen at release. Original behavior: a shot is aimed at a point, not at a victim, and on landing it
+ * strikes whatever stands there, its damage resolved then against that victim's armor. A shooter that died
+ * meanwhile still lands its arrow.
  */
 export const Projectile = defineComponent<{
   source: Entity;
+  /** The victim the shot was loosed at; it is struck first when it stands where the shot lands. */
   target: Entity;
-  /** The pre-resolved material-column damage (`weapon.damagevalue[targetMaterial]`); armor is immutable in
-   *  flight, so this equals resolving on contact. */
-  damage: number;
+  /** The shooter's player, whose own units and those of its friends and neutrals a shot passes over; null for
+   *  an unowned shooter. */
+  player: number | null;
+  /** The weapon's `damagevalue` table, keyed by armor material. Original behavior: a shot lands its column
+   *  as it stands, with none of the shooter's experience. */
+  damage: Readonly<Record<string, number>>;
+  /** The weapon's `soundtype_Hit` table, keyed by armor material. */
+  hitSounds: Readonly<Record<string, number>>;
   /** Keys the fight-XP bucket; `null` grants no fight XP. */
   weaponMainType: number | null;
-  /** The group id the landing blow plays (`soundtype_Hit[targetMaterial]`), `null` for a silent landing. */
-  hitSoundType: number | null;
   /** The weapon's `soundtype_NoHit` table by ground logic type: what a shot that strikes nothing plays
    *  where it comes down. Carried whole and handed on with the miss event, because the sim navigates
    *  terrain classes and never sees the landscape under the landing node. */
@@ -137,14 +138,12 @@ export const Projectile = defineComponent<{
   /** The render's ballistic-arc start, frozen at release and never read in flight. */
   originX: Fixed;
   originY: Fixed;
-  /** The target point frozen at release. Sim flight and render presentation share this one chord. */
+  /** Where the shot comes down, frozen at release. Sim flight and render presentation share this one
+   *  chord. */
   aimX: Fixed;
   aimY: Fixed;
   /** The defence-mode building that fired the shot itself, read only by the render. */
   cover: Entity | null;
-  /** The frozen aim of a shot that missed at release or lost its mark mid-flight; it lands there dealing
-   *  nothing. `null` while the shot is still eligible to hit its selected target. */
-  missAim: { x: Fixed; y: Fixed } | null;
   /** The tick the string was loosed on; the flight rests at the bow through it, so a shot is observable at
    *  its launch point. */
   launchTick: number;

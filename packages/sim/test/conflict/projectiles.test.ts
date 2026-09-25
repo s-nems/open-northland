@@ -1,17 +1,26 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health, Position, Projectile } from '../../src/components/index.js';
+import {
+  Armor,
+  CurrentAtomic,
+  Health,
+  Owner,
+  Position,
+  Projectile,
+  SettlerProgress,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, Simulation } from '../../src/index.js';
-import { PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
+import { FIGHT_EXPERIENCE_TYPE, PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
 import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Ranged-combat (projectile) tests - the flight half of combat: a bow shot LAUNCHES a projectile entity
- * at the shooter's ATTACK-event (release) frame, the projectile freezes its aim and deals damage on
- * CONTACT (not instantly), a lost target makes it EXPIRE, and an enemy inside the weapon's dead zone
- * (< minRange) is never shot. Deterministic: fixed-point straight-line homing, no RNG.
+ * at the shooter's ATTACK-event (release) frame, the projectile freezes its aim and, where it comes down,
+ * strikes whatever enemy stands there (not instantly), and an enemy inside the weapon's dead zone
+ * (< minRange) is never shot. The archer is a practised bowman, so its shots land true; the scatter of a
+ * novice is covered in `shot-aim.test.ts`.
  *
  * The combatants are UNOWNED and of DIFFERENT tribes (a viking archer vs an unrecorded "frank" - a valid
  * civ enemy, see `mayAttack`), so the fight runs on the legacy tribe-hostility axis with no Stance/advance
@@ -33,7 +42,10 @@ const BOW_LEN = 12; // the draw animation's length
 const RELEASE_FRAME = 6; // the ATTACK event frame (the arrow is loosed here, mid-draw)
 const BOW_DAMAGE = 30; // damage vs an unarmored (class-0) target
 const BOW_HIT_SOUND = 77; // `soundtype_Hit 0`: the arrow's impact group id on a bare target
-const TARGET_HP = 1000; // high enough that one 30-dmg hit leaves the target alive (Health stays present)
+const TARGET_HP = 1000;
+const CHAIN = 3; // an armor class whose column the bow lists apart from a bare target's
+const BOW_DAMAGE_VS_CHAIN = 12;
+const BOW_HIT_SOUND_VS_CHAIN = 88; // high enough that one 30-dmg hit leaves the target alive (Health stays present)
 
 /** Tiles a `BOW_SPEED` projectile advances per tick - the calibration mapping applied to `speed`. With
  *  the ⅛-tile-per-unit constant, `speed 8` = exactly 1 tile/tick (an integer, so the same-row shot's
@@ -64,8 +76,8 @@ function content(): ContentSet {
         speed: BOW_SPEED,
         minRange: BOW_MIN,
         maxRange: BOW_MAX,
-        damage: { '0': BOW_DAMAGE },
-        hitSounds: { '0': BOW_HIT_SOUND },
+        damage: { '0': BOW_DAMAGE, [CHAIN]: BOW_DAMAGE_VS_CHAIN },
+        hitSounds: { '0': BOW_HIT_SOUND, [CHAIN]: BOW_HIT_SOUND_VS_CHAIN },
       },
     ],
     tribes: [
@@ -112,6 +124,16 @@ function fighterAt(
   return e;
 }
 
+/** Hits past which a bowman never scatters: the aim roll tops out at 99, against hits plus 10. */
+const MARKSMAN_BOW_HITS = 90;
+
+/** An archer practised enough that every shot lands on its aim. */
+function marksmanAt(sim: Simulation, x: number, y: number): Entity {
+  const archer = fighterAt(sim, x, y, VIKING, ARCHER);
+  sim.world.mut(archer, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.BOW, MARKSMAN_BOW_HITS);
+  return archer;
+}
+
 /** The projectiles currently in flight. */
 function projectiles(sim: Simulation): Entity[] {
   return [...sim.world.query(Projectile)];
@@ -139,7 +161,7 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
 
   it('launches a projectile only AT the release frame - none before, and no instant damage', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    const archer = fighterAt(sim, 0, 0, VIKING, ARCHER);
+    const archer = marksmanAt(sim, 0, 0);
     const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes away - inside the 3..20 band, so the archer fires
 
     // The swing is added on tick 1 (combatSystem) and advances from tick 2; the ATTACK event is frame 6,
@@ -158,7 +180,7 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
 
   it('rests at the bow for its launch tick, then advances one step per tick after it', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    marksmanAt(sim, 0, 0);
     fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
 
     stepToLaunch(sim);
@@ -173,7 +195,7 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
 describe('projectiles - frozen flight chord + on-contact damage', () => {
   it('travels straight toward the target at the mapped speed (fixed-point, exact on a same-row shot)', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    marksmanAt(sim, 0, 0);
     const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
 
     stepToLaunch(sim);
@@ -198,39 +220,78 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     expect(sim.world.get(shot, Projectile).originX).toBe(fx.fromInt(0)); // origin stays frozen mid-flight
   });
 
-  it('keeps the release-time aim when the selected target moves', () => {
+  it('comes down where the target stood and misses a target that stepped away', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
-    fighterAt(sim, 0, 1, VIKING, ARCHER);
+    marksmanAt(sim, 0, 1);
     const target = fighterAt(sim, 8, 1, FRANK, IDLE);
 
     stepToLaunch(sim);
     const shot = shotInFlight(sim);
     const releaseAim = { x: fx.fromInt(8), y: fx.fromInt(1) };
-    expect(sim.world.get(shot, Projectile)).toMatchObject({
-      aimX: releaseAim.x,
-      aimY: releaseAim.y,
-    });
+    expect(sim.world.get(shot, Projectile)).toMatchObject({ aimX: releaseAim.x, aimY: releaseAim.y });
 
-    // The combat payload still belongs to the originally selected target (the bounded approximation),
-    // but the runner does not bend the visible/simulated arrow away from its release chord.
+    // A runner cannot bend the arrow: it lands on the release chord's end, where nobody stands any more.
     const moved = sim.world.mut(target, Position);
     moved.x = fx.fromInt(11);
     moved.y = fx.fromInt(2);
-    let hitAt: ReturnType<typeof nodeOfPosition> | undefined;
+    let missedAt: ReturnType<typeof nodeOfPosition> | undefined;
     for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
       sim.step();
-      const event = sim.snapshot().events.find((candidate) => candidate.kind === 'projectileHit');
-      if (event?.kind === 'projectileHit') hitAt = event.at;
+      const event = sim.snapshot().events.find((candidate) => candidate.kind === 'projectileMissed');
+      if (event?.kind === 'projectileMissed') missedAt = event.at;
     }
 
     expect(sim.world.isAlive(shot)).toBe(false);
-    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
-    expect(hitAt).toEqual(nodeOfPosition(releaseAim.x, releaseAim.y));
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
+    expect(missedAt).toEqual(nodeOfPosition(releaseAim.x, releaseAim.y));
+  });
+
+  it('strikes another enemy standing where it comes down, against its own armor', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+    marksmanAt(sim, 0, 1);
+    const target = fighterAt(sim, 8, 1, FRANK, IDLE);
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    sim.world.mut(target, Position).x = fx.fromInt(11);
+    const bystander = fighterAt(sim, 8, 1, FRANK, IDLE);
+    sim.world.add(bystander, Armor, { armorClass: CHAIN });
+    let soundType: number | undefined;
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+      sim.step();
+      const event = sim.snapshot().events.find((candidate) => candidate.kind === 'projectileHit');
+      if (event?.kind === 'projectileHit') soundType = event.soundType;
+    }
+
+    expect(sim.world.get(bystander, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE_VS_CHAIN);
+    expect(soundType).toBe(BOW_HIT_SOUND_VS_CHAIN);
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
+  });
+
+  it('passes over its own side where it comes down', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 3) });
+    const archer = marksmanAt(sim, 0, 1);
+    const target = fighterAt(sim, 8, 1, FRANK, IDLE);
+    sim.world.add(archer, Owner, { player: 0 });
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    sim.world.mut(target, Position).x = fx.fromInt(11);
+    const comrade = fighterAt(sim, 8, 1, VIKING, IDLE);
+    sim.world.add(comrade, Owner, { player: 0 });
+    let missed = false;
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+      sim.step();
+      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileMissed')) missed = true;
+    }
+
+    expect(missed).toBe(true);
+    expect(sim.world.get(comrade, Health).hitpoints).toBe(TARGET_HP);
   });
 
   it('deals damage only AFTER a multi-tick flight (no instant hit), then the projectile is spent', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    marksmanAt(sim, 0, 0);
     const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
 
     stepToLaunch(sim);
@@ -247,7 +308,7 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     }
 
     expect(hitTick).toBeGreaterThan(launchTick + 1); // the arrow spent several ticks in flight - not instant
-    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // step-1 column damage landed
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // the column damage landed, with no experience on an arrow
     // A projectileHit was announced for render/audio, carrying the impact the bow lists for a bare target.
     expect(hitEvent?.soundType).toBe(BOW_HIT_SOUND);
     expect(projectiles(sim)).toHaveLength(0); // the spent arrow was destroyed on impact
@@ -255,7 +316,7 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
 
   it('snapshots the arrow at its aim before resolving contact', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    marksmanAt(sim, 0, 0);
     const target = fighterAt(sim, 8, 0, FRANK, IDLE);
 
     stepToLaunch(sim);
@@ -273,46 +334,37 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
 });
 
 describe('projectiles - expiry + dead zone', () => {
-  it('is destroyed with no hit when its target leaves the world mid-flight', () => {
+  it('comes down in the dirt when its target leaves the world mid-flight', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    fighterAt(sim, 0, 0, VIKING, ARCHER);
-    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
-
-    stepToLaunch(sim);
-    expect(projectiles(sim)).toHaveLength(1);
-
-    // The mark is removed outright while the arrow is still in the air - no Position left, so there is
-    // nowhere for the shot to come down.
-    sim.world.destroy(target);
-    sim.step();
-
-    expect(projectiles(sim)).toHaveLength(0);
-    expect(sim.snapshot().events.some((ev) => ev.kind === 'projectileHit')).toBe(false);
-    // A few more ticks confirm it stays clear (no re-target, no spurious shot at a dead target).
-    for (let i = 0; i < 20; i++) sim.step();
-    expect(projectiles(sim)).toHaveLength(0);
-  });
-
-  it('lands in the dirt where the mark fell, instead of evaporating in mid-air', () => {
-    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    marksmanAt(sim, 0, 0);
     const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
 
     stepToLaunch(sim);
     const shot = shotInFlight(sim);
-    const spot = sim.world.get(target, Position);
-    const fell = { x: spot.x, y: spot.y };
+    sim.world.destroy(target);
+    let sawMiss = false;
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+      sim.step();
+      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileMissed')) sawMiss = true;
+    }
 
+    expect(sim.world.isAlive(shot)).toBe(false);
+    expect(sawMiss).toBe(true);
+  });
+
+  it('lands in the dirt where the mark fell, instead of evaporating in mid-air', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    marksmanAt(sim, 0, 0);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
     // The mark drops (0 hitpoints) with the arrow still well short of it, the way it does when an earlier
     // shot of the same volley kills the man everyone is loosing at.
     sim.world.mut(target, Health).hitpoints = 0;
     sim.step();
-
-    // The shot stayed in the air, re-frozen onto the spot the mark fell on.
     expect(sim.world.isAlive(shot)).toBe(true);
-    expect(sim.world.get(shot, Projectile).missAim).toEqual(fell);
 
-    // It flies the rest of the way and lands there, dealing nothing.
     let sawMiss = false;
     for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
       sim.step();
@@ -323,35 +375,9 @@ describe('projectiles - expiry + dead zone', () => {
     expect(sim.snapshot().events.some((ev) => ev.kind === 'projectileHit')).toBe(false);
   });
 
-  it('settles the aim of a shot still resting at the bow when its mark falls that same tick', () => {
-    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
-    fighterAt(sim, 0, 0, VIKING, ARCHER);
-    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
-
-    stepToLaunch(sim);
-    const shot = shotInFlight(sim);
-    // Put the shot back at the bow for the NEXT tick and drop the mark on that same tick - the exact
-    // overlap a real volley makes, where one arrow lands the kill in the same pass another is loosed in.
-    // The cleanupSystem reaps the corpse at the end of that tick, so the aim has to be taken during it.
-    sim.world.mut(shot, Projectile).launchTick = sim.tick + 1;
-    sim.world.mut(target, Health).hitpoints = 0;
-    sim.step();
-
-    expect(sim.world.isAlive(target)).toBe(false); // reaped, so no position is readable any more
-    expect(sim.world.isAlive(shot)).toBe(true); // the shot did not evaporate at the bow
-    expect(sim.world.get(shot, Projectile).missAim).not.toBeNull();
-
-    let sawMiss = false;
-    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
-      sim.step();
-      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileMissed')) sawMiss = true;
-    }
-    expect(sawMiss).toBe(true); // it flew on and came down
-  });
-
   it('does not shoot an enemy inside the bow dead zone (closer than minRange)', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(12, 1) });
-    const archer = fighterAt(sim, 0, 0, VIKING, ARCHER);
+    const archer = marksmanAt(sim, 0, 0);
     const target = fighterAt(sim, 1, 0, FRANK, IDLE); // 2 nodes < minRange 3 - in the dead zone
 
     for (let i = 0; i < 20; i++) sim.step();
@@ -366,7 +392,7 @@ describe('projectiles - determinism', () => {
   it('two same-seed runs with projectiles active reach the same state hash', () => {
     const run = (): { hash: string; sawProjectile: boolean } => {
       const sim = new Simulation({ seed: 9, content: content(), map: grassMap(24, 1) });
-      fighterAt(sim, 0, 0, VIKING, ARCHER);
+      marksmanAt(sim, 0, 0);
       fighterAt(sim, 8, 0, FRANK, IDLE, 90); // frail, in band - dies under the volley, exercising the death path too
       let sawProjectile = false;
       for (let i = 0; i < 60; i++) {

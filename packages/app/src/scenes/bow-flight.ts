@@ -67,7 +67,7 @@ export const bowFlightScene: SceneDefinition = {
   seed: 41,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 75,
+  runTicks: 100,
   initialZoom: 1.1,
   checks: [
     {

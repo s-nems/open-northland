@@ -123,7 +123,7 @@ describe('combat amulets', () => {
     expect(strike(s, attacker, beast)).toBe(151);
   });
 
-  it("a dead striker's blow and a garrison shot, which is the house's, carry no striker amulet", () => {
+  it("a dead striker's blow and a defence-mode building's shot carry no striker amulet", () => {
     const s = sim();
     const striker = [worn(AMULET_STRENGTH), worn(AMULET_CRITICAL_HIT)];
     const dead = duel(s, striker);
@@ -132,16 +132,8 @@ describe('combat amulets', () => {
     expect(strike(s, dead.attacker, dead.target)).toBe(BLOW);
 
     const garrison = duel(s, striker, [worn(AMULET_DEFENSE)]);
-    const shelter = s.world.create();
-    resolveCombatHit(
-      s.world,
-      ctxOf(s),
-      garrison.attacker,
-      garrison.target,
-      { damage: BLOW, cover: shelter },
-      [],
-      'projectile',
-    );
+    const shelter = s.world.create(); // the building fires its own shot, carrying nothing
+    resolveCombatHit(s.world, ctxOf(s), shelter, garrison.target, { damage: BLOW }, [], 'projectile');
     expect(HP - s.world.get(garrison.target, Health).hitpoints).toBe(50); // the target's defense still halves it
     expect(s.rng.getState()).toBe(before); // neither rolled the critical hit
   });

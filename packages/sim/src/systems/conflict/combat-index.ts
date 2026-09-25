@@ -30,6 +30,20 @@ const CANDIDATE_ID_SPAN = 2 ** 32;
 /** A player-slot bitmask naming every slot: players are < {@link MAX_PLAYERS}, which fits one integer. */
 const EVERY_PLAYER = (1 << MAX_PLAYERS) - 1;
 
+/** The index each world's latest combat pass built, which the shots landing after it read. */
+const passIndexes = new WeakMap<World, CombatIndex>();
+
+export function holdPassIndex(world: World, index: CombatIndex): void {
+  passIndexes.set(world, index);
+}
+
+/** The index this tick's combat pass built, or null on a tick it did not run because no fight was
+ *  possible. Positions do not change between the pass and the landing shots. */
+export function passIndexOf(world: World, tick: number): CombatIndex | null {
+  const index = passIndexes.get(world);
+  return index !== undefined && index.tick === tick ? index : null;
+}
+
 /**
  * The combat tick's target index over every combatant and every building with a Health pool, a felled one
  * included until cleanup reaps it: the coarse cells of the world's {@link CombatGrid}, each holding its
@@ -50,7 +64,8 @@ const EVERY_PLAYER = (1 << MAX_PLAYERS) - 1;
 export class CombatIndex {
   private readonly grid: CombatGrid;
   private readonly content: ContentSet;
-  private readonly tick: number;
+  /** The tick this index was built on. */
+  readonly tick: number;
   /** Per player slot, the {@link playerBit}s of the players it holds `enemy` toward or from, resolved once at
    *  build: every stance writer ahead of `combat` in the tick schedule has run by then and none runs inside
    *  it, so a stance flipped earlier this tick is already seen. */

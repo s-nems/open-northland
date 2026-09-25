@@ -127,7 +127,13 @@ export function startAttack(
     weapon.speed > 0 &&
     weapon.munitionType !== undefined
       ? // Copied: saved state may not alias the content row another swing carries too.
-        { munitionType: weapon.munitionType, speed: weapon.speed, missSounds: { ...weapon.missSounds } }
+        {
+          munitionType: weapon.munitionType,
+          speed: weapon.speed,
+          damage: { ...weapon.damage },
+          hitSounds: { ...weapon.hitSounds },
+          missSounds: { ...weapon.missSounds },
+        }
       : undefined;
   addCurrentAtomic(world, e, {
     atomicId: ATTACK_ATOMIC_ID,

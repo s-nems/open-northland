@@ -22,7 +22,6 @@ import { grantFightExperience } from '../../../../../progression/index.js';
 import { manhattan } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
-import { hunterShotMisses } from './aim.js';
 import { spawnCarcasses } from './carcass.js';
 import { launchProjectile } from './projectile-launch.js';
 import { collectHitReaction, type PendingHitReaction } from './reaction.js';
@@ -41,9 +40,8 @@ export function resolveAttackHit(
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
   pendingReactions: PendingHitReaction[],
 ): void {
-  // A miss is decided at release, not on contact: the arrow still flies, aimed where the target stood.
   if (effect.projectile !== undefined) {
-    launchProjectile(world, ctx, attacker, effect, hunterShotMisses(world, ctx, attacker));
+    launchProjectile(world, ctx, attacker, effect);
     return;
   }
   // Before the reach check, so a whiff is heard too; a clip that sounds its own swing is left to do so.
@@ -66,8 +64,6 @@ export function resolveAttackHit(
  *  class for the fight-experience bucket, and the impact sound the weapon lists for the victim's material. */
 export interface LandingBlow {
   readonly damage: number;
-  /** The shelter a garrison shot left from; set, the blow is the house's and not its shooter's. */
-  readonly cover?: Entity | null;
   readonly weaponMainType?: number | null;
   readonly hitSoundType?: number | null;
 }
@@ -101,11 +97,11 @@ function meleeTargetOutOfReach(
 
 /**
  * Land one combat blow, shared by a melee swing at its ATTACK frame and a ranged projectile on contact so
- * the two cannot drift. `blow.damage` is the pre-resolved `weapon.damagevalue[targetMaterial]` column
- * value; the striker's and the target's carried amulets adjust it here, on contact. Original behavior:
- * only a living human striker's amulets count, so a garrison shot, which the original fires as the house,
- * lands without its shooter's. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end
- * of the tick. A dead attacker is tolerated, since a dead archer's arrow still lands.
+ * the two cannot drift. `blow.damage` is the `weapon.damagevalue[targetMaterial]` column value, with the
+ * striker's experience on a melee blow; the striker's and the target's carried amulets adjust it here, on
+ * contact. Original behavior: only a living human striker's amulets count, so a defence-mode building's shot
+ * carries none. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end of the tick. A dead
+ * attacker is tolerated, since a dead archer's arrow still lands.
  */
 export function resolveCombatHit(
   world: World,
@@ -120,7 +116,7 @@ export function resolveCombatHit(
   // corpse, which earns nothing and provokes no one, the same as a shot that is never loosed at one.
   const pool = world.tryGet(target, Health);
   if (pool === undefined || pool.hitpoints <= 0) return;
-  const struck = blow.cover == null ? damageDealtBy(world, ctx, attacker, blow.damage) : blow.damage;
+  const struck = damageDealtBy(world, ctx, attacker, blow.damage);
   const damage = damageTakenBy(world, ctx, target, struck);
   const weaponMainType = blow.weaponMainType ?? undefined;
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`. A connect

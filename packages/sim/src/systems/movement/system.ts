@@ -214,6 +214,31 @@ function advanceTimedLeg(
   return stepTowardPoint(p, target, maxPerTick !== undefined && share > maxPerTick ? maxPerTick : share);
 }
 
+/** How far `e` advances along its route each tick, or null while it stands. A timed walker between legs is
+ *  read at the pace its next leg will start with. */
+export function walkPacePerTick(world: World, ctx: SystemContext, e: Entity): Fixed | null {
+  const pf = world.tryGet(e, PathFollow);
+  const stops = world.tryGet(e, PathRoute)?.waypoints;
+  if (pf === undefined || stops === undefined) return null;
+  const period = world.tryGet(e, MoveStepPeriod)?.ticks;
+  if (period === undefined && (world.has(e, MoveSpeed) || isWildlife(world, e)))
+    return creaturePace(world, e);
+  if (pf.legPace !== undefined) return pf.legPace;
+  const to = stops[pf.index];
+  if (to === undefined) return null;
+  const from = pf.legCost === 0 ? world.get(e, Position) : stops[pf.index - 1];
+  if (from === undefined) return null;
+  const ticks =
+    pf.legCost !== 0
+      ? pf.legCost
+      : (period ??
+        walkStepTicks(
+          departureRoughness(ctx.terrain, pf, stops),
+          walkStepModifiersOf(world, e, ctx.content),
+        ));
+  return fx.div(worldDistance(from.x, from.y, to.x, to.y), fx.fromInt(ticks));
+}
+
 /** A creature's constant pace; a content pace that truncates to 0 ulps never makes progress, so one ULP
  *  keeps such a pace terminating. */
 function creaturePace(world: World, e: Entity): Fixed {

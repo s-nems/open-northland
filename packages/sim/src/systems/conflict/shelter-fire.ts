@@ -1,18 +1,17 @@
-import type { WeaponType } from '@open-northland/data';
-import { Age, Building, Health, isWildlife, Owner } from '../../components/index.js';
+import { Age, Building, Health, isWildlife, Owner, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { shelterOccupancy, shelterStillHolds } from '../defence/index.js';
-import { houseBow, weaponDamageVsMaterial } from '../readviews/index.js';
+import { houseBow } from '../readviews/index.js';
 import { type LooseShot, looseProjectile } from '../settlers/atomics/effects/combat/index.js';
 import { manhattan, nearestCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import type { CombatIndex } from './combat-index.js';
+import { scatteredNode, shelterSpread } from './shot-aim.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { isValidTarget } from './targeting.js';
-import { hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 // Defence-mode fire. Original behavior: the building on alarm shoots the house bow itself, and the people
 // sheltering inside only set its rate - they neither aim nor wear a bow.
@@ -25,14 +24,6 @@ export const SHELTER_SHOT_PERIOD_TICKS = 24;
  *  {@link TARGET_SPREAD_NODES} of the nearest. Original behavior. */
 const TARGET_CANDIDATES = 5;
 const TARGET_SPREAD_NODES = 10;
-
-/**
- * A shot's scatter: up to a quarter of its range, divided by a roll of 1..30, in each axis. Most shots land
- * true and a long one sometimes lands a few nodes off. Original behavior; a shot off its mark hits nothing
- * there, which is an approximation - the original lands it on whatever stands at the landing point.
- */
-const SCATTER_RANGE_DIVISOR = 4;
-const SCATTER_ROLL_SPAN = 30;
 
 /** The kinds of enemy a building takes aim at, in the order it fills its shots: people, wild animals,
  *  buildings. Original behavior. */
@@ -84,7 +75,13 @@ function fireFrom(
   const b = world.get(building, Building);
   const bow = houseBow(ctx.content, b.tribe);
   if (bow?.munitionType === undefined || bow.speed === undefined || bow.speed <= 0) return;
-  const flight = { munitionType: bow.munitionType, speed: bow.speed, missSounds: bow.missSounds };
+  const flight = {
+    munitionType: bow.munitionType,
+    speed: bow.speed,
+    damage: bow.damage,
+    hitSounds: bow.hitSounds,
+    missSounds: bow.missSounds,
+  };
   const walls = buildingBodyNodes(world, ctx, terrain, building);
   const centre = entityNode(world, terrain, building);
   const owner = world.get(building, Owner).player;
@@ -130,7 +127,7 @@ function fireFrom(
       if (nearest === undefined) continue;
       const pool = band.filter((c) => c.distance <= nearest.distance + TARGET_SPREAD_NODES);
       const pick = pool[ctx.rng.int(pool.length)] ?? nearest;
-      shoot(world, ctx, terrain, building, bow, flight, pick.entity, pick.distance);
+      shoot(world, ctx, terrain, building, owner, flight, pick.entity);
       left--;
       fired = true;
     }
@@ -142,47 +139,31 @@ function shoot(
   ctx: SystemContext,
   terrain: TerrainGraph,
   building: Entity,
-  bow: WeaponType,
-  flight: LooseShot['projectile'],
+  owner: number,
+  flight: LooseShot['weapon'],
   target: Entity,
-  distance: number,
 ): void {
-  const material = targetMaterial(world, ctx, target);
-  const mark = combatTargetNode(world, ctx, terrain, entityNode(world, terrain, building), target);
-  const landing = scatteredLanding(ctx, terrain, mark, distance);
+  // Original behavior: the building aims where its mark stands now, with no lead on a walker, and scatters
+  // by the range from its own position.
+  const centre = entityNode(world, terrain, building);
+  const mark = combatTargetNode(world, ctx, terrain, centre, target);
+  const range = hexDistanceBetween(
+    terrain.xOf(centre),
+    terrain.yOf(centre),
+    terrain.xOf(mark),
+    terrain.yOf(mark),
+  );
+  const landing = scatteredNode(ctx, terrain, mark, shelterSpread(ctx, range));
   looseProjectile(world, ctx, {
     source: building,
     target,
-    damage: weaponDamageVsMaterial(bow, material),
+    player: owner,
+    weapon: flight,
     weaponMainType: null, // a building earns no fight experience
-    hitSoundType: hitSoundVsMaterial(bow, material) ?? null,
-    projectile: flight,
     cover: building,
-    missAt: landsOn(world, ctx, terrain, target, landing)
-      ? null
-      : positionOfNode(terrain.xOf(landing), terrain.yOf(landing)),
+    aim:
+      landing === mark && !world.has(target, Building)
+        ? world.get(target, Position)
+        : positionOfNode(terrain.xOf(landing), terrain.yOf(landing)),
   });
-}
-
-/** Where a shot aimed at `mark` from `distance` nodes away comes down. */
-function scatteredLanding(ctx: SystemContext, terrain: TerrainGraph, mark: NodeId, distance: number): NodeId {
-  const spread = Math.floor(
-    Math.floor(distance / SCATTER_RANGE_DIVISOR) / (ctx.rng.int(SCATTER_ROLL_SPAN) + 1),
-  );
-  const half = Math.floor(spread / 2);
-  const dx = ctx.rng.int(spread + 1) - half;
-  const dy = ctx.rng.int(spread + 1) - half;
-  return terrain.nodeAtClamped(terrain.xOf(mark) + dx, terrain.yOf(mark) + dy);
-}
-
-/** Whether a shot coming down on `landing` strikes `target`: its own node, or any wall of a building. */
-function landsOn(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  target: Entity,
-  landing: NodeId,
-): boolean {
-  if (world.has(target, Building)) return buildingBodyNodes(world, ctx, terrain, target).includes(landing);
-  return entityNode(world, terrain, target) === landing;
 }

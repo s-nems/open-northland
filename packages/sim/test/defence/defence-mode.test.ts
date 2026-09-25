@@ -184,7 +184,6 @@ interface Shot {
   readonly source: Entity;
   readonly target: Entity;
   readonly cover: Entity | null;
-  readonly missed: boolean;
 }
 
 /** Every shot loosed over the next `ticks` ticks, read at launch. */
@@ -196,8 +195,8 @@ function collectShots(sim: Simulation, ticks: number): Shot[] {
     for (const p of sim.world.query(Projectile)) {
       if (seen.has(p)) continue;
       seen.add(p);
-      const { source, target, cover, missAim } = sim.world.get(p, Projectile);
-      shots.push({ source, target, cover, missed: missAim !== null });
+      const { source, target, cover } = sim.world.get(p, Projectile);
+      shots.push({ source, target, cover });
     }
   }
   return shots;

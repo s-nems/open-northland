@@ -1,125 +1,133 @@
-import { Building, Health, Position, Projectile } from '../../components/index.js';
+import { Building, Health, Position, Projectile, Resting } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
+import { weaponDamageVsMaterial } from '../readviews/index.js';
 import {
   applyPendingHitReactions,
   type PendingHitReaction,
   resolveCombatHit,
 } from '../settlers/atomics/effects/combat/index.js';
+import { entityNode } from '../spatial/nodes.js';
+import { passIndexOf } from './combat-index.js';
+import { projectileStep } from './shot-aim.js';
+import { buildingBodyNodes } from './target-node.js';
+import { hitSoundVsMaterial, targetMaterial } from './weapons.js';
+
+export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
+
+type Flight = NonNullable<(typeof Projectile)['__value']>;
 
 /**
- * How many tiles a projectile advances per tick per unit of the weapon's extracted `WeaponType.speed` - the
- * mapping of the unreadable `speed` unit onto the sim's tile/tick grid. A bow's `speed 8` gives 1 tile/tick,
- * 18x a settler's walk; a catapult's `speed 3` gives ⅜ tile/tick. An ⅛-tile-per-unit step keeps every real
- * `speed` (3..8) on an integer fraction of ONE, so no rounding drift enters and two runs stay byte-identical.
- * Tiles here are raw grid units, which makes this the east-west pace: {@link flightStep} does not weight a
- * row step, and one draws 38 px against a column's 68.
- *
- * Approximated, calibration-pending (source basis "Combat ranged projectiles"): the source carries `speed`'s
- * value verbatim but not its unit, so this scale is tuned by eye against the drawn flight, not a data param.
- */
-export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8)); // ⅛ tile/tick per speed unit
-
-/**
- * ProjectileSystem - advance every in-flight {@link Projectile} one tick along its release-time chord, and
- * either land its blow on contact or bring it down in the dirt once the target is gone. The
- * launch is the AtomicSystem's `attack` effect at the shooter's release frame; the hit runs the same
+ * ProjectileSystem - advance every in-flight {@link Projectile} one tick along its release-time chord and,
+ * where it comes down, strike whatever stands there. The launch is the AtomicSystem's `attack` effect at the
+ * shooter's release frame, or a defence-mode building's own shot; the hit runs the same
  * {@link resolveCombatHit} a melee swing does.
  *
  * Projectiles are visited in canonical ascending-id order and a victim's reaction is deferred past the
  * loop, so a flinch tie-break is order-independent. Cost scales with the count of active projectiles:
- * nothing else scans them, and a spent one is destroyed the instant it lands.
+ * nothing else scans them, a landing asks the combat index about one node, and a spent shot is destroyed
+ * the instant it lands.
  */
 export const projectileSystem: System = (world, ctx) => {
   // Deferred reactions from any survivor struck this tick, so a flinch added mid-loop cannot perturb a
   // later projectile's hit decision.
   const pendingReactions: PendingHitReaction[] = [];
   for (const p of world.canonicalQuery(Projectile, Position)) {
-    advanceProjectile(world, ctx, p, pendingReactions);
+    const proj = world.get(p, Projectile);
+    // Loosed this tick: it does not move, so a shot is observable at its launch point (approximated - the
+    // sub-tick release instant is unreadable).
+    if (proj.launchTick === ctx.tick) continue;
+    if (flightStep(world, p, proj.aimX, proj.aimY, proj.speed)) land(world, ctx, p, proj, pendingReactions);
   }
   applyPendingHitReactions(world, pendingReactions);
 };
 
-/** Advance one projectile: a true shot follows its frozen aim and lands its blow on arrival; one with no
- *  live mark left follows the same chord into the dirt. */
-function advanceProjectile(
+/** Bring shot `p` down at its aim: the blow lands on whatever it strikes there, or it thuds into the dirt. */
+function land(
   world: World,
   ctx: SystemContext,
   p: Entity,
+  proj: Flight,
   pendingReactions: PendingHitReaction[],
 ): void {
-  const proj = world.get(p, Projectile);
-  // Loosed this tick: it does not move, so a shot is observable at its launch point (approximated - the
-  // sub-tick release instant is unreadable). It still settles its aim below, because the cleanupSystem reaps
-  // a mark that fell this tick and a shot that waited would find nowhere to come down.
-  const restsAtBow = proj.launchTick === ctx.tick;
-  const aim = { x: proj.aimX, y: proj.aimY };
-  const targetPos = proj.missAim === null ? liveMark(world, proj.target) : null;
-  if (targetPos === null) {
-    if (proj.missAim === null && !freezeMiss(world, p, proj.target, aim)) return;
-    if (!restsAtBow) flyToDirt(world, ctx, p, proj, aim);
-    return;
-  }
-  if (restsAtBow) return;
-
-  if (flightStep(world, p, aim.x, aim.y, proj.speed)) {
-    // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
-    resolveCombatHit(world, ctx, proj.source, proj.target, proj, pendingReactions, 'projectile');
+  const at = eventAt(proj.aimX, proj.aimY);
+  const victim = struckVictim(world, ctx, proj);
+  if (victim === null) {
     ctx.events.emit({
-      kind: 'projectileHit',
+      kind: 'projectileMissed',
       projectile: p,
       shooter: proj.source,
-      target: proj.target,
       munitionType: proj.munitionType,
-      at: eventAt(aim.x, aim.y),
-      ...(proj.hitSoundType !== null ? { soundType: proj.hitSoundType } : {}),
-      ...(world.has(proj.target, Building) ? { structure: true } : {}),
+      at,
+      missSounds: proj.missSounds,
     });
     world.destroy(p);
+    return;
   }
-}
-
-/** The position a true shot still homes on - its target's, while that target is alive and positioned;
- *  null once it has fallen (0 hitpoints, reaped by the cleanupSystem this tick) or lost its Position. */
-function liveMark(world: World, target: Entity): { x: Fixed; y: Fixed } | null {
-  const health = world.tryGet(target, Health);
-  if (health === undefined || health.hitpoints <= 0) return null;
-  return world.tryGet(target, Position) ?? null;
-}
-
-/** Fly a shot whose aim is frozen one step toward it, landing it in the dirt (`projectileMissed`, no blow)
- *  on arrival. Shared by a release-time miss and a stranded shot - the two flights are the same. */
-function flyToDirt(
-  world: World,
-  ctx: SystemContext,
-  p: Entity,
-  proj: { source: Entity; munitionType: number; speed: number; missSounds: Readonly<Record<string, number>> },
-  aim: { x: Fixed; y: Fixed },
-): void {
-  if (!flightStep(world, p, aim.x, aim.y, proj.speed)) return;
+  // The victim's armor picks the damage column and the impact sound, as a melee swing's does.
+  const material = targetMaterial(world, ctx, victim);
+  const hitSoundType = hitSoundVsMaterial(proj, material) ?? null;
+  const blow = {
+    damage: weaponDamageVsMaterial(proj, material),
+    weaponMainType: proj.weaponMainType,
+    hitSoundType,
+  };
+  // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
+  resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, 'projectile');
   ctx.events.emit({
-    kind: 'projectileMissed',
+    kind: 'projectileHit',
     projectile: p,
     shooter: proj.source,
+    target: victim,
     munitionType: proj.munitionType,
-    at: eventAt(aim.x, aim.y),
-    missSounds: proj.missSounds,
+    at,
+    ...(hitSoundType !== null ? { soundType: hitSoundType } : {}),
+    ...(world.has(victim, Building) ? { structure: true } : {}),
   });
   world.destroy(p);
 }
 
-/** Mark a stranded shot as a miss while preserving its release-time chord. A target removed outright still
- *  leaves no impact owner, retaining the established expiry behavior; a fallen positioned target lets the
- *  arrow continue into the dirt. */
-function freezeMiss(world: World, p: Entity, target: Entity, aim: { x: Fixed; y: Fixed }): boolean {
-  if (world.tryGet(target, Position) === undefined) {
-    world.destroy(p);
-    return false;
-  }
-  world.mut(p, Projectile).missAim = { x: aim.x, y: aim.y };
-  return true;
+/**
+ * What a shot coming down at its aim strikes: the victim it was loosed at, when it stands there; otherwise
+ * the lowest-id man or beast there, and failing one, a building whose body covers the node. Original
+ * behavior: a shot strikes the first thing standing where it lands, and a building only when nobody stands
+ * there; it passes over its own side's, and also, as an approximation, over those of friends and neutrals.
+ * Preferring the victim loosed at stands in for the original's own order on a shared node. With no combat
+ * pass this tick no fight was possible, so only that victim can be struck.
+ */
+function struckVictim(world: World, ctx: SystemContext, proj: Flight): Entity | null {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return strikeable(world, proj.target) ? proj.target : null;
+  const landing = terrain.nodeAtClamped(nodeHxOfPosition(proj.aimX, proj.aimY), nodeHyOfPosition(proj.aimY));
+  if (strikeable(world, proj.target) && stands(world, ctx, terrain, proj.target, landing)) return proj.target;
+  const index = passIndexOf(world, ctx.tick);
+  if (index === null) return null;
+  const x = terrain.xOf(landing);
+  const y = terrain.yOf(landing);
+  const onNode = (building: boolean) => (e: Entity) =>
+    e !== proj.source && world.has(e, Building) === building && strikeable(world, e);
+  return (
+    index.nearest(x, y, 0, 0, onNode(false), proj.player)?.entity ??
+    index.nearest(x, y, 0, 0, onNode(true), proj.player)?.entity ??
+    null
+  );
+}
+
+/** Whether `e` is there to be struck: alive, placed, and not sheltering indoors. */
+function strikeable(world: World, e: Entity): boolean {
+  const health = world.tryGet(e, Health);
+  if (health === undefined || health.hitpoints <= 0) return false;
+  return world.has(e, Position) && !world.has(e, Resting);
+}
+
+/** Whether `e` stands on `node`: its own node, or any node of a building's body. */
+function stands(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity, node: NodeId): boolean {
+  if (world.has(e, Building)) return buildingBodyNodes(world, ctx, terrain, e).includes(node);
+  return entityNode(world, terrain, e) === node;
 }
 
 /** Step projectile `p` one tick straight toward `(ax, ay)`; true when it began this tick at the aim. The
@@ -143,10 +151,4 @@ function flightStep(world: World, p: Entity, ax: Fixed, ay: Fixed, speed: number
   pos.x = fx.add(pos.x, fx.mul(ux, step));
   pos.y = fx.add(pos.y, fx.mul(uy, step));
   return false;
-}
-
-/** The per-tick tile step a projectile of extracted `speed` advances. The launch gate guarantees a positive
- *  `speed`, so the step is positive and a projectile always closes on its target. */
-function projectileStep(speed: number): Fixed {
-  return fx.mul(fx.fromInt(speed), PROJECTILE_TILES_PER_SPEED_UNIT);
 }

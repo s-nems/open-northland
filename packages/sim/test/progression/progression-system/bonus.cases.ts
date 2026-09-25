@@ -32,6 +32,7 @@ import {
   stampResourceFootprintData,
   strokesPerUnit,
   WEAPON_MAIN_TYPE,
+  weaponClassHits,
   withFightDamageBonus,
   withHouseDamageExperience,
 } from '../../../src/systems/index.js';
@@ -109,23 +110,23 @@ describe('fightDamageBonus - hits with a weapon class buy extra damage', () => {
     expect(fx.toFloat(fightDamageBonus(50))).toBeCloseTo(0.34, 2);
   });
 
+  it('weaponClassHits reads the bucket of the swinging weapon class', () => {
+    const sword = new Map([[FIGHT_EXPERIENCE_TYPE.SWORD, 40]]);
+    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.SWORD)).toBe(40);
+    expect(weaponClassHits(sword, WEAPON_MAIN_TYPE.AXE)).toBe(0); // untrained class
+    expect(weaponClassHits(sword, null)).toBe(0); // a class-less weapon
+  });
+
   it('withFightDamageBonus raises base damage by the truncated bonus fraction', () => {
-    const sword = new Map([[FIGHT_EXPERIENCE_TYPE.SWORD, FIGHT_MASTERY_HITS]]);
-    expect(withFightDamageBonus(10, sword, WEAPON_MAIN_TYPE.SWORD)).toBe(15);
-    expect(withFightDamageBonus(10, sword, WEAPON_MAIN_TYPE.AXE)).toBe(10); // untrained class
-    expect(withFightDamageBonus(10, new Map(), WEAPON_MAIN_TYPE.SWORD)).toBe(10); // no hits yet
-    expect(withFightDamageBonus(10, sword, undefined)).toBe(10); // a class-less weapon
+    expect(withFightDamageBonus(10, FIGHT_MASTERY_HITS)).toBe(15);
+    expect(withFightDamageBonus(10, 0)).toBe(10); // no hits yet
   });
 
   it('withHouseDamageExperience scales vs-building damage by 200 / (200 - hits), capped at 100 hits', () => {
-    const bow = (hits: number) => new Map([[FIGHT_EXPERIENCE_TYPE.BOW, hits]]);
-    expect(withHouseDamageExperience(50, new Map(), WEAPON_MAIN_TYPE.BOW)).toBe(50);
-    expect(withHouseDamageExperience(50, bow(40), WEAPON_MAIN_TYPE.BOW)).toBe(62); // 50 * 200 / 160
-    expect(withHouseDamageExperience(50, bow(HOUSE_DAMAGE_EXPERIENCE_CAP_HITS), WEAPON_MAIN_TYPE.BOW)).toBe(
-      100,
-    );
-    expect(withHouseDamageExperience(50, bow(5000), WEAPON_MAIN_TYPE.BOW)).toBe(100); // past the cap
-    expect(withHouseDamageExperience(50, bow(40), WEAPON_MAIN_TYPE.SWORD)).toBe(50); // untrained class
+    expect(withHouseDamageExperience(50, 0)).toBe(50);
+    expect(withHouseDamageExperience(50, 40)).toBe(62); // 50 * 200 / 160
+    expect(withHouseDamageExperience(50, HOUSE_DAMAGE_EXPERIENCE_CAP_HITS)).toBe(100);
+    expect(withHouseDamageExperience(50, 5000)).toBe(100); // past the cap
   });
 });
 

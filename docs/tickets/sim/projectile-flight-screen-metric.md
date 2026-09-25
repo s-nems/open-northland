@@ -41,8 +41,8 @@ Pick one and name it as the approximation it is:
   does not remove the weave.
 - **render-only** - draw the arrow along the origin→target screen chord at the fraction flown `p`
   that `packages/render/src/data/scene/projectile-arc.ts` already computes, leaving the sim position
-  alone. Removes the weave; leaves the sim pace anisotropic. Note that a homing shot re-aims each
-  tick, so "the chord" has to be re-derived, not frozen at launch.
+  alone. Removes the weave; leaves the sim pace anisotropic. The chord is the one frozen at release
+  (`Projectile.originX/Y` to `aimX/Y`).
 
 Re-tune `PROJECTILE_TILES_PER_SPEED_UNIT` by eye afterwards either way.
 

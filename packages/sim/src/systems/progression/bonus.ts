@@ -125,20 +125,22 @@ export function fightDamageBonus(hits: number): Fixed {
   return fx.mul(experienceBonus(Math.trunc(hits / HITS_PER_FIGHT_POINT)), FIGHT_DAMAGE_BONUS_MAX);
 }
 
-/**
- * `base` weapon damage raised by the attacker's fight experience in `weaponMainType`'s bucket, truncated
- * to whole points. Unchanged for an untrained bucket, a class with no fight track, or zero base.
- */
-export function withFightDamageBonus(
-  base: number,
+/** Landed hits recorded in `weaponMainType`'s fight bucket: 0 for a class with no bucket. */
+export function weaponClassHits(
   experience: ReadonlyMap<number, number>,
-  weaponMainType: number | undefined,
+  weaponMainType: number | null | undefined,
 ): number {
-  if (base <= 0 || weaponMainType === undefined) return base;
+  if (weaponMainType == null) return 0;
   const bucket = fightExperienceTypeFor(weaponMainType);
-  if (bucket === undefined) return base;
-  const hits = experience.get(bucket) ?? 0;
-  if (hits <= 0) return base;
+  return bucket === undefined ? 0 : (experience.get(bucket) ?? 0);
+}
+
+/**
+ * `base` weapon damage raised by `hits` landed with the swinging weapon's class, truncated to whole points.
+ * Unchanged for an untrained class or zero base.
+ */
+export function withFightDamageBonus(base: number, hits: number): number {
+  if (base <= 0 || hits <= 0) return base;
   return base + fx.toInt(fx.mul(fx.fromInt(base), fightDamageBonus(hits)));
 }
 
@@ -148,20 +150,16 @@ export const HOUSE_DAMAGE_EXPERIENCE_CAP_HITS = 100;
 const HOUSE_DAMAGE_EXPERIENCE_NUMERATOR = 200;
 
 /**
- * `base` vs-building damage raised by the attacker's fight experience in `weaponMainType`'s bucket:
+ * `base` vs-building damage raised by `hits` landed with the swinging weapon's class:
  * `base * 200 / (200 - min(hits, 100))`, so a hundred landed hits double it. Original behavior, which reads
  * the building case apart from the bonus a blow on a person gets ({@link withFightDamageBonus}).
  */
-export function withHouseDamageExperience(
-  base: number,
-  experience: ReadonlyMap<number, number>,
-  weaponMainType: number | undefined,
-): number {
-  if (base <= 0 || weaponMainType === undefined) return base;
-  const bucket = fightExperienceTypeFor(weaponMainType);
-  if (bucket === undefined) return base;
-  const hits = Math.min(experience.get(bucket) ?? 0, HOUSE_DAMAGE_EXPERIENCE_CAP_HITS);
-  return Math.trunc((base * HOUSE_DAMAGE_EXPERIENCE_NUMERATOR) / (HOUSE_DAMAGE_EXPERIENCE_NUMERATOR - hits));
+export function withHouseDamageExperience(base: number, hits: number): number {
+  if (base <= 0) return base;
+  const capped = Math.min(Math.max(hits, 0), HOUSE_DAMAGE_EXPERIENCE_CAP_HITS);
+  return Math.trunc(
+    (base * HOUSE_DAMAGE_EXPERIENCE_NUMERATOR) / (HOUSE_DAMAGE_EXPERIENCE_NUMERATOR - capped),
+  );
 }
 
 /** Extra vision nodes a mastered scout sees, deliberately small next to the other trades' gains. Authored:

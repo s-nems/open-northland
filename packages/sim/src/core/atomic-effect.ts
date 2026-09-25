@@ -57,6 +57,7 @@ export type AtomicEffect =
   | {
       readonly kind: 'attack';
       readonly target: Entity;
+      /** A melee blow's damage against `target`; a ranged swing resolves its own on contact. */
       readonly damage: number;
       /** The animation's `ATOMIC_EVENT_TYPE_ATTACK` frame the blow lands on; the completion frame when
        *  omitted. */
@@ -70,11 +71,14 @@ export type AtomicEffect =
        *  beyond it during the swing takes no damage. Absent means no reach check. */
       readonly maxRange?: number;
       /** Present for a ranged swing: at `hitAt` a projectile of this ammunition class and travel speed
-       *  flies at `target` instead of the blow landing in place, dealing the same `damage` on contact. A
-       *  shot that strikes nothing thuds by the ground's logic type through `missSounds`. */
+       *  flies toward `target` instead of the blow landing in place. It strikes whatever stands where it
+       *  comes down, resolving the weapon's `damage` and `hitSounds` columns against that victim; a shot
+       *  that strikes nothing thuds by the ground's logic type through `missSounds`. */
       readonly projectile?: {
         readonly munitionType: number;
         readonly speed: number;
+        readonly damage: Readonly<Record<string, number>>;
+        readonly hitSounds: Readonly<Record<string, number>>;
         readonly missSounds: Readonly<Record<string, number>>;
       };
     }

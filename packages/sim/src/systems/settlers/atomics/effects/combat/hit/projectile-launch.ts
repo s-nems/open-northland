@@ -1,89 +1,138 @@
-import { Health, Position, Projectile } from '../../../../../../components/index.js';
+import {
+  Building,
+  Health,
+  Owner,
+  Position,
+  Projectile,
+  Settler,
+  SettlerProgress,
+} from '../../../../../../components/index.js';
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
 import type { Fixed } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
+import {
+  hexDistanceBetween,
+  nodeHxOfPosition,
+  nodeHyOfPosition,
+  positionOfNode,
+} from '../../../../../../nav/halfcell.js';
 import { frightenWildlifeNear } from '../../../../../conflict/fright.js';
+import { leadPoint, marksmanSpread, scatteredNode } from '../../../../../conflict/shot-aim.js';
+import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
 import type { SystemContext } from '../../../../../context.js';
+import { weaponClassHits } from '../../../../../progression/index.js';
+import { isHeroJob, WEAPON_MAIN_TYPE } from '../../../../../readviews/index.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 
-type AttackEffect = Extract<AtomicEffect, { kind: 'attack' }>;
+type RangedSwing = NonNullable<Extract<AtomicEffect, { kind: 'attack' }>['projectile']>;
 
-/** One shot as its shooter looses it: who fires, the payload resolved at release, and where it comes down
- *  if it is a miss. */
+/** One shot as its shooter looses it: who fires, the weapon it carries, and where it comes down. */
 export interface LooseShot {
   readonly source: Entity;
   readonly target: Entity;
-  readonly damage: number;
+  readonly player: number | null;
+  readonly weapon: RangedSwing;
   readonly weaponMainType: number | null;
-  readonly hitSoundType: number | null;
-  readonly projectile: NonNullable<AttackEffect['projectile']>;
   /** The defence-mode building that fires the shot itself, read only by the render. */
   readonly cover: Entity | null;
-  /** Where a missed shot lands; null for a shot still eligible to hit `target`. */
-  readonly missAt: { x: Fixed; y: Fixed } | null;
+  readonly aim: { readonly x: Fixed; readonly y: Fixed };
 }
 
 /**
- * Launch a {@link Projectile} at the shooter's attack-event frame, carrying the pre-resolved damage; the
- * `projectileSystem` then flies it and lands the same `resolveCombatHit` on contact. `missed` marks the same
- * ballistic flight to land in the dirt at the target's release position without applying its payload.
+ * Loose a settler's ranged swing at its attack-event frame. The shot is aimed where the target will be:
+ * ahead of a walking one, at a random node of a building's body. Its damage resolves on contact against
+ * whatever it strikes. Original behavior.
  */
 export function launchProjectile(
   world: World,
   ctx: SystemContext,
   attacker: Entity,
-  effect: AttackEffect,
-  missed: boolean,
+  effect: Extract<AtomicEffect, { kind: 'attack' }>,
 ): void {
-  if (effect.projectile === undefined) return; // not a ranged swing; the caller already gates this
-  const targetPos = world.tryGet(effect.target, Position);
-  if (targetPos === undefined) return;
+  const weapon = effect.projectile;
+  if (weapon === undefined) return; // not a ranged swing; the caller already gates this
+  const from = world.tryGet(attacker, Position);
+  if (from === undefined || world.tryGet(effect.target, Position) === undefined) return;
+  const experience = world.tryGet(attacker, SettlerProgress)?.experience ?? new Map<number, number>();
   looseProjectile(world, ctx, {
     source: attacker,
     target: effect.target,
-    damage: effect.damage,
+    player: world.tryGet(attacker, Owner)?.player ?? null,
+    weapon,
     weaponMainType: effect.weaponMainType ?? null,
-    hitSoundType: effect.hitSoundType ?? null,
-    projectile: effect.projectile,
     cover: null,
-    missAt: missed ? { x: targetPos.x, y: targetPos.y } : null,
+    aim: settlerAim(world, ctx, attacker, from, effect.target, weapon.speed, experience),
   });
 }
 
 /**
- * Put `shot` in flight from its source's position. A true shot freezes the target's current position as its
- * aim; a miss flies to `missAt` instead and deals nothing there.
+ * Where a settler's shot at `target` comes down: the point it aims at, scattered by how practised a bowman
+ * it is over the range. Original behavior; a hero always shoots true.
  */
+function settlerAim(
+  world: World,
+  ctx: SystemContext,
+  shooter: Entity,
+  release: { x: Fixed; y: Fixed },
+  target: Entity,
+  speed: number,
+  experience: ReadonlyMap<number, number>,
+): { x: Fixed; y: Fixed } {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return world.get(target, Position);
+  let aim: { x: Fixed; y: Fixed };
+  let mark = entityNode(world, terrain, target);
+  if (world.has(target, Building)) {
+    const body = buildingBodyNodes(world, ctx, terrain, target);
+    mark = body[ctx.rng.int(body.length)] ?? mark;
+    aim = positionOfNode(terrain.xOf(mark), terrain.yOf(mark));
+  } else {
+    aim = leadPoint(world, ctx, release, target, speed);
+    mark = terrain.nodeAtClamped(nodeHxOfPosition(aim.x, aim.y), nodeHyOfPosition(aim.y));
+  }
+  if (isHeroJob(ctx.content, world.tryGet(shooter, Settler)?.jobType ?? null)) return aim;
+  const from = entityNode(world, terrain, shooter);
+  const distance = hexDistanceBetween(
+    terrain.xOf(from),
+    terrain.yOf(from),
+    terrain.xOf(mark),
+    terrain.yOf(mark),
+  );
+  const spread = marksmanSpread(ctx, distance, weaponClassHits(experience, WEAPON_MAIN_TYPE.BOW));
+  if (spread === 0) return aim;
+  const landing = scatteredNode(ctx, terrain, mark, spread);
+  return positionOfNode(terrain.xOf(landing), terrain.yOf(landing));
+}
+
+/** Put `shot` in flight from its source's position toward its aim. */
 export function looseProjectile(world: World, ctx: SystemContext, shot: LooseShot): void {
   const from = world.tryGet(shot.source, Position);
   if (from === undefined) return;
   // A target drained to 0 earlier this tick is dead but not yet reaped: no shot, and no launch cue, at a
-  // corpse. Mirrors the projectileSystem's expiry test on arrival.
+  // corpse.
   const targetHealth = world.tryGet(shot.target, Health);
   if (targetHealth === undefined || targetHealth.hitpoints <= 0) return;
-  const targetPos = world.tryGet(shot.target, Position);
-  if (targetPos === undefined) return;
-  const aim = shot.missAt ?? targetPos;
   const p = world.create();
   world.add(p, Position, { x: from.x, y: from.y });
   world.add(p, Projectile, {
     source: shot.source,
     target: shot.target,
-    damage: shot.damage,
+    player: shot.player,
+    // The shot owns its copies, as the swing owns its own.
+    damage: { ...shot.weapon.damage },
+    hitSounds: { ...shot.weapon.hitSounds },
     weaponMainType: shot.weaponMainType,
-    hitSoundType: shot.hitSoundType,
-    missSounds: { ...shot.projectile.missSounds }, // the shot owns its copy, as the swing owns its own
-    munitionType: shot.projectile.munitionType,
-    speed: shot.projectile.speed,
+    missSounds: { ...shot.weapon.missSounds },
+    munitionType: shot.weapon.munitionType,
+    speed: shot.weapon.speed,
     // The render's ballistic-arc origin, frozen at release and never read in flight.
     originX: from.x,
     originY: from.y,
     // Both the sim and render follow this release-time chord; a runner cannot bend an arrow in flight.
-    aimX: aim.x,
-    aimY: aim.y,
+    aimX: shot.aim.x,
+    aimY: shot.aim.y,
     cover: shot.cover,
-    missAim: shot.missAt === null ? null : { x: aim.x, y: aim.y },
     launchTick: ctx.tick,
   });
   ctx.events.emit({
@@ -91,7 +140,7 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     projectile: p,
     shooter: shot.source,
     target: shot.target,
-    munitionType: shot.projectile.munitionType,
+    munitionType: shot.weapon.munitionType,
     at: eventAt(from.x, from.y),
   });
   // The herd around the mark bolts at the release, whether the arrow will hit or miss.

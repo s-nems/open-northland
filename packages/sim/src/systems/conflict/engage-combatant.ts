@@ -29,7 +29,7 @@ import type { SystemContext } from '../context.js';
 import { isManningShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
 import { clearNavState, isTravelling } from '../movement/nav-state.js';
-import { withFightDamageBonus, withHouseDamageExperience } from '../progression/index.js';
+import { weaponClassHits, withFightDamageBonus, withHouseDamageExperience } from '../progression/index.js';
 import {
   isAnimalTribe,
   isHunterJob,
@@ -340,15 +340,15 @@ function swingAt(
   // its hash.
   if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
   // The victim's armor material selects both the damage column and the impact sound. Fight experience
-  // with this weapon class raises the swing's damage, by a separate rule against a building.
+  // with this weapon class raises the swing's damage, by a separate rule against a building. A ranged
+  // swing's shot resolves both again against whatever it strikes.
   const material = targetMaterial(world, ctx, target);
-  const withExperience = world.has(target, Building) ? withHouseDamageExperience : withFightDamageBonus;
+  const base = weaponDamageVsMaterial(weapon.weapon, material);
+  const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
   const blow = {
-    damage: withExperience(
-      weaponDamageVsMaterial(weapon.weapon, material),
-      world.get(e, SettlerProgress).experience,
-      weapon.weapon.mainType,
-    ),
+    damage: world.has(target, Building)
+      ? withHouseDamageExperience(base, hits)
+      : withFightDamageBonus(base, hits),
     hitSoundType: hitSoundVsMaterial(weapon.weapon, material),
   };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);

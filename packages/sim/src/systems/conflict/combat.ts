@@ -1,7 +1,7 @@
 import { Health, Position, Settler } from '../../components/index.js';
 import type { System } from '../context.js';
 import { BattleFront } from './battle-alert.js';
-import { CombatIndex } from './combat-index.js';
+import { CombatIndex, holdPassIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
 import { MeleeSlots } from './melee-slots.js';
@@ -44,6 +44,7 @@ export const combatSystem: System = (world, ctx) => {
     slots: new MeleeSlots(world, ctx, terrain),
     front: new BattleFront(world, ctx),
   };
+  holdPassIndex(world, pass.index);
   for (const e of combatants) engageCombatant(world, ctx, terrain, pass, e);
   fireFromShelters(world, ctx, terrain, pass.index);
 };
