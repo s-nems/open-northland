@@ -145,7 +145,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
         expect(fits, `an operator slot of ${id} offering ${operatorWant} seats`).toBe(true);
       }
-      const carrierTarget = Math.max(staffing.carrierTarget ?? 0, staffing.grownCarrierTarget ?? 0);
+      const carrierTarget = staffing.carrierTarget ?? 0;
       if (carrierTarget > 0) {
         const fits = building?.workers.some((w) => w.jobType === carrierJob && w.count >= carrierTarget);
         expect(fits, `a carrier slot of ${id} offering ${carrierTarget} seats`).toBe(true);

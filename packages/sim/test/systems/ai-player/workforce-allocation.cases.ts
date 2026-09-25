@@ -526,10 +526,7 @@ describe('workforce module (collectResources)', () => {
     expect(staffing.map((c) => c.jobPriority)).toEqual([[BAKER], [CARRIER]]);
   });
 
-  it.each([
-    ['leaves a carrier-only workplace (the well) unstaffed', LATE_GAME_CIVILIANS - 1, []],
-    ['gives the well a carrier of its own once the seat has grown', LATE_GAME_CIVILIANS, [[CARRIER]]],
-  ])('%s', (_title, men, posts) => {
+  it('leaves a carrier-only workplace (the well) unstaffed, however grown the seat', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueueSetup({
@@ -540,13 +537,12 @@ describe('workforce module (collectResources)', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    spawnMen(sim, men, BUILDER);
+    spawnMen(sim, LATE_GAME_CIVILIANS, BUILDER);
     sim.step();
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const well = entityOfBuilding(sim, WELL_TYPE);
-    const hires = commands.filter((c) => c.kind === 'assignWorker' && c.building === well);
-    expect(hires.map((c) => (c.kind === 'assignWorker' ? c.jobPriority : []))).toEqual(posts);
+    expect(commands.some((c) => c.kind === 'assignWorker' && c.building === well)).toBe(false);
   });
 
   it('hires the iron collector only once the build order reaches its gated entry', () => {

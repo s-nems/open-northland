@@ -21,8 +21,6 @@ export interface BuildingStaffing {
   readonly operatorSurplus?: number;
   readonly carrierMin: number;
   readonly carrierTarget: number;
-  /** The carrier target of a grown seat ({@link LATE_GAME_CIVILIANS} civilians on). Absent: unchanged. */
-  readonly grownCarrierTarget?: number;
 }
 
 /** The baseline workplace plan: one worker per operator trade, no carrier (authored). */
@@ -64,9 +62,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
   work_herb_hut: { operatorSurplus: 2 },
   work_druid_01: { operatorTarget: 2, carrierTarget: 1 },
   work_coin_mint: { operatorTarget: 2, carrierTarget: 1 },
-  // The brewery's water and honey: self-served early, a drawer of their own once the seat has grown.
-  work_well_00: { grownCarrierTarget: 1 },
-  work_hive_00: { grownCarrierTarget: 1 },
+  // The well and the hive stay unstaffed: the brewery's carrier draws its water and honey himself.
 };
 
 /** The storage plan: the HQ and every warehouse run up to three transport carriers, all at the target
@@ -82,10 +78,6 @@ const STORAGE_STAFFING: BuildingStaffing = {
 /** The civilians from which a seat counts as grown (authored): its late bills are the largest and its
  *  sites the farthest apart. */
 export const LATE_GAME_CIVILIANS = 60;
-
-/** How far below {@link LATE_GAME_CIVILIANS} a grown seat's carrier keeps his post (authored), so a seat
- *  hovering at the line does not hire and release him with every birth and draft. */
-export const GROWN_CARRIER_SLACK_CIVILIANS = 10;
 
 /** The goods whose shortage puts a carrier into the workshop at the minimum tier (authored), by stable
  *  content ids: the building materials only these tiers make. */
@@ -111,7 +103,7 @@ export interface SeatStaffing {
  * One building's plan this decision, or null for the kinds the allocator never staffs: homes, towers and
  * the barracks are military or residential, not production. A workshop on its opening run keeps to its
  * first craftsman so the run is not split; `holdsCarrier` says whether a carrier works there already,
- * which keeps a supply or grown-seat carrier through the band below the line that hired him. A raw
+ * which keeps a supply carrier through the band below the line that hired him. A raw
  * good's own workshop runs without a carrier while that good is short for the sites
  * ({@link rawGoodShort}), whatever the rows above say.
  */
@@ -133,10 +125,6 @@ export function buildingStaffing(
       operatorTarget: Math.min(plan.operatorTarget, 1),
       operatorSurplus: Math.min(plan.operatorSurplus ?? plan.operatorTarget, 1),
     };
-  }
-  const grown = holdsCarrier ? LATE_GAME_CIVILIANS - GROWN_CARRIER_SLACK_CIVILIANS : LATE_GAME_CIVILIANS;
-  if (plan.grownCarrierTarget !== undefined && seat.civilians >= grown) {
-    plan = { ...plan, carrierTarget: Math.max(plan.carrierTarget, plan.grownCarrierTarget) };
   }
   if (suppliesShort(world, ctx, seat, type, holdsCarrier)) {
     plan = {
