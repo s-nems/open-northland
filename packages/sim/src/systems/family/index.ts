@@ -3,7 +3,7 @@ import { driveChildOrders } from './children/index.js';
 import { drainHolyOil } from './home-quality.js';
 import { driveWeddings } from './weddings.js';
 
-export { findPartnerFor, isAdultSettler, isOnMission, mayMarry } from './eligibility.js';
+export { findPartnerFor, isAdultSettler, isEligiblePartner, isOnMission, mayMarry } from './eligibility.js';
 export {
   builtHomeType,
   familiesOf,

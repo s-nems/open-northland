@@ -6,6 +6,7 @@ import {
   familyOf,
   findPartnerFor,
   isAdultSettler,
+  isEligiblePartner,
   isMinor,
   mayMarry,
   moveFamilyInto,
@@ -17,8 +18,8 @@ import { groupPlacementOrder } from './group-placement.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
- * Match the issuer with the nearest eligible partner and start their wedding - see the command doc. The
- * FamilySystem walks them together and kisses them into a {@link Marriage}.
+ * Match the issuer with its chosen partner, or the nearest eligible one, and start their wedding - see the
+ * command doc. The FamilySystem walks them together and kisses them into a {@link Marriage}.
  */
 export function marry(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'marry' }>): void {
   const e = command.entity;
@@ -27,7 +28,13 @@ export function marry(world: World, ctx: SystemContext, command: Extract<Command
   // same rule as every other target search.
   const terrain = ctx.terrain;
   const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, e) : null;
-  const partner = findPartnerFor(world, ctx.content, e, terrain, limit);
+  const chosen = command.partner;
+  const partner =
+    chosen === undefined
+      ? findPartnerFor(world, ctx.content, e, terrain, limit)
+      : isEligiblePartner(world, ctx.content, e, chosen, terrain, limit)
+        ? chosen
+        : null;
   if (partner === null) {
     ctx.events.emit({ kind: 'marriageUnmatched', entity: e });
     return;

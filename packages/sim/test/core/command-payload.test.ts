@@ -186,6 +186,14 @@ describe('command payload contracts', () => {
     expect(parse({ ...command, name: 'ż'.repeat(SETTLER_NAME_MAX_CHARS) })).toBeDefined();
   });
 
+  it('accepts a marry order with or without a chosen partner id', () => {
+    expect(parse({ kind: 'marry', entity: UNIT })).toBeDefined();
+    expect(parse({ kind: 'marry', entity: UNIT, partner: UNIT + 1 })).toBeDefined();
+    expect(() => parse({ kind: 'marry', entity: UNIT, partner: 'him' })).toThrow(
+      /command\.partner: expected an integer/,
+    );
+  });
+
   it('refuses a value outside a fixed set', () => {
     expect(() => parse({ kind: 'makeChild', entity: UNIT, child: 'other' })).toThrow(
       'envelope.command.child: expected one of female, male, got "other"',

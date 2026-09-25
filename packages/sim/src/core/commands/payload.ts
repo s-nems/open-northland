@@ -161,7 +161,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   leaveCarrier: { required: { vehicle: 'integer' } },
   loadIntoVehicle: { required: { vehicle: 'integer', carrier: 'integer' } },
   makeChild: { required: { entity: 'integer', child: { oneOf: CHILD_SEXES } } },
-  marry: { required: { entity: 'integer' } },
+  marry: { required: { entity: 'integer' }, optional: { partner: 'integer' } },
   moveUnit: { required: { entity: 'integer', ...NODE } },
   moveVehicle: { required: { vehicle: 'integer', ...NODE }, optional: { attackMove: 'boolean' } },
   dockVehicle: { required: { vehicle: 'integer', ...NODE } },
