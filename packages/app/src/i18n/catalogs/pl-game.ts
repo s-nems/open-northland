@@ -286,7 +286,6 @@ export const plGame = {
     attack: 'Atak',
     defend: 'Obrona',
     ignore: 'Ignoruj',
-    flee: 'Ucieczka',
     fields: 'Pola',
     capacity: 'Pojemność: {value}',
     categories: {

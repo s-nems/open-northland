@@ -289,7 +289,6 @@ export const enGame = {
     attack: 'Attack',
     defend: 'Defend',
     ignore: 'Ignore',
-    flee: 'Flee',
     fields: 'Fields',
     capacity: 'Capacity: {value}',
     categories: {

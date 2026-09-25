@@ -13,7 +13,6 @@ export {
   barTone,
   buildUnitPanelModel,
   equipmentRows,
-  HUMANWINDOW,
   remainingPct,
 } from './model/index.js';
 export type { PortraitBox, UnitPanel, UnitPanelState } from './panel.js';

@@ -55,7 +55,6 @@ import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import {
   barTone,
   buildUnitPanelModel,
-  HUMANWINDOW,
   remainingPct,
   type SettlerPanelModel,
   type UnitPanelModelContext,
@@ -1025,8 +1024,7 @@ describe('selection details panel model', () => {
       num((e.components.Equipment as { boots?: { goodType?: unknown } } | undefined)?.boots?.goodType);
     const hasWeaponSlot = (e: (typeof snapshot.entities)[number]): boolean =>
       (e.components.Equipment as { weapon?: unknown } | undefined)?.weapon != null;
-    const rowOf = (m: SettlerPanelModel, titleId: number) =>
-      m.equipmentRows.find((r) => r.titleId === titleId);
+    const rowOf = (m: SettlerPanelModel, group: string) => m.equipmentRows.find((r) => r.group === group);
 
     // The equipped civilian: boots = shoes, no weapon slot → Buty / Narzędzia / Ekwipunek rows only.
     const civ = snapshot.entities.find((e) => bootsGood(e) === GOOD_SHOES && !hasWeaponSlot(e));
@@ -1037,22 +1035,18 @@ describe('selection details panel model', () => {
     // the generic "Ogólne" title.
     expect(civModel.name).toContain(' ');
     expect(civModel.name.length).toBeGreaterThan(0);
-    expect(civModel.equipmentRows.map((r) => r.titleId)).toEqual([
-      HUMANWINDOW.boots,
-      HUMANWINDOW.tools,
-      HUMANWINDOW.misc,
-    ]);
+    expect(civModel.equipmentRows.map((r) => r.group)).toEqual(['boots', 'tool', 'misc']);
     // Each row names the sim Equipment field it shows - the slot address an equip order targets.
     expect(civModel.equipmentRows.map((r) => r.group)).toEqual(['boots', 'tool', 'misc']);
-    expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]).toMatchObject({
+    expect(rowOf(civModel, 'boots')?.slots[0]).toMatchObject({
       goodId: 'shoes',
       conditionPct: 30,
       occupied: true,
     });
-    expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]?.label).toBeDefined();
+    expect(rowOf(civModel, 'boots')?.slots[0]?.label).toBeDefined();
     // The misc row holds the four consumable slots: a worn mead carries a condition percent, a permanent amulet
     // does not, and one slot stays empty.
-    const misc = rowOf(civModel, HUMANWINDOW.misc)?.slots ?? [];
+    const misc = rowOf(civModel, 'misc')?.slots ?? [];
     expect(misc).toHaveLength(4);
     expect(misc.some((sl) => sl.goodId === 'mead' && sl.conditionPct === 50)).toBe(true);
     expect(misc.some((sl) => sl.goodId === 'amulet_strength' && sl.conditionPct === null)).toBe(true);
@@ -1065,14 +1059,9 @@ describe('selection details panel model', () => {
     if (soldier === undefined) throw new Error('equipment scene did not place the equipped soldier');
     const solModel = buildUnitPanelModel(snapshot, new Set([soldier.id]), ctx);
     if (solModel.kind !== 'settler') throw new Error('expected a settler model');
-    expect(solModel.equipmentRows.map((r) => r.titleId)).toEqual([
-      HUMANWINDOW.weapon,
-      HUMANWINDOW.armor,
-      HUMANWINDOW.boots,
-      HUMANWINDOW.misc,
-    ]);
-    expect(rowOf(solModel, HUMANWINDOW.weapon)?.slots[0]?.goodId).toBe('sword_shord');
-    expect(rowOf(solModel, HUMANWINDOW.armor)?.slots[0]?.goodId).toBe('armor_chain');
+    expect(solModel.equipmentRows.map((r) => r.group)).toEqual(['weapon', 'armor', 'boots', 'misc']);
+    expect(rowOf(solModel, 'weapon')?.slots[0]?.goodId).toBe('sword_shord');
+    expect(rowOf(solModel, 'armor')?.slots[0]?.goodId).toBe('armor_chain');
 
     // A stray worn tool on a fighter (a scene/spawn fixture - normal play never produces one) still
     // shows its row, so the unit stays visible and can be taken off.
@@ -1225,11 +1214,7 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([bare.id]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // The base rows still show (Buty, Narzędzia, Ekwipunek), all empty; no weapon/armour row.
-    expect(model.equipmentRows.map((r) => r.titleId)).toEqual([
-      HUMANWINDOW.boots,
-      HUMANWINDOW.tools,
-      HUMANWINDOW.misc,
-    ]);
+    expect(model.equipmentRows.map((r) => r.group)).toEqual(['boots', 'tool', 'misc']);
     expect(
       model.equipmentRows
         .flatMap((r) => r.slots)

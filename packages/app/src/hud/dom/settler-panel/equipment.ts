@@ -84,7 +84,7 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
 export function equipmentSockets(rows: readonly EquipRow[], hero: boolean): EquipmentSockets {
   const worn = (hero ? HERO_ORDER : WORN_ORDER).flatMap((group) => {
     const row = rows.find((candidate) => candidate.group === group);
-    return row === undefined ? [] : [socketOf(row, 0, row.fallback, hero)];
+    return row === undefined ? [] : [socketOf(row, 0, row.slotLabel, hero)];
   });
   const misc = rows.find((row) => row.group === 'misc');
   const bagLabel = messages().hud.settlerPanel.bag;

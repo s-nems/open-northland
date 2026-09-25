@@ -80,7 +80,7 @@ describe('trade browsing', () => {
 });
 
 function row(group: EquipRow['group'], slots: EquipRow['slots'], wearable = true): EquipRow {
-  return { titleId: 0, fallback: group, group, slots, wearable };
+  return { slotLabel: group, group, slots, wearable };
 }
 const EMPTY = { occupied: false, conditionPct: null } as const;
 

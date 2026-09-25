@@ -12,17 +12,6 @@ import {
   type UnitPanelModelContext,
 } from './context.js';
 
-/** The four military stances (`MILITARY_MODE`). The original carries no string for the sim's own states,
- *  so the "Postawa" line's labels come from the app's own bundle. */
-export function stanceLabel(mode: number | undefined): string {
-  const hud = messages().hud;
-  if (mode === systems.MILITARY_MODE.ATTACK) return hud.attack;
-  if (mode === systems.MILITARY_MODE.DEFEND) return hud.defend;
-  if (mode === systems.MILITARY_MODE.IGNORE) return hud.ignore;
-  if (mode === systems.MILITARY_MODE.FLEE) return hud.flee;
-  return '-';
-}
-
 function needBar(label: string, need: NeedKind, deficit: number | undefined): PanelBar {
   const level = 100 - pct(deficit);
   // A bar can hold reserve above full (`NEED_OVERFILL_FLOOR`), which the gauge cannot show: a settler

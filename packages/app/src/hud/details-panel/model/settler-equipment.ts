@@ -4,7 +4,6 @@ import { num } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 import { remainingPct } from './bars.js';
 import { type Comp, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
-import { HUMANWINDOW } from './humanwindow.js';
 
 /** The equipment slot groups the sim `Equipment` component carries. Aliasing the content category makes
  *  a category added to the data schema a compile error here. */
@@ -31,11 +30,10 @@ export interface EquipSlotModel {
   readonly conditionPct: number | null;
 }
 
-/** One labeled equipment row, keyed by a `humanwindow` label id with a pinned fallback. The base rows
- *  carry one slot; the misc `Ekwipunek` row carries {@link components.MISC_EQUIP_SLOTS}. */
+/** One labeled equipment row. The base rows carry one slot; the misc row carries
+ *  {@link components.MISC_EQUIP_SLOTS}. */
 export interface EquipRow {
-  readonly titleId: number;
-  readonly fallback: string;
+  readonly slotLabel: string;
   /** Which sim `Equipment` field this row shows - the slot address its action buttons order against. */
   readonly group: EquipGroup;
   readonly slots: readonly EquipSlotModel[];
@@ -92,31 +90,27 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   if (!hero && ('Female' in comps || 'Age' in comps)) return [];
   if (fighter || 'Weapon' in comps || eq?.weapon != null || eq?.armor != null) {
     rows.push({
-      titleId: HUMANWINDOW.weapon,
-      fallback: slots.weapon,
+      slotLabel: slots.weapon,
       group: 'weapon',
       slots: [slotModel(ctx, eq?.weapon)],
       wearable: !hero,
     });
     rows.push({
-      titleId: HUMANWINDOW.armor,
-      fallback: slots.armor,
+      slotLabel: slots.armor,
       group: 'armor',
       slots: [slotModel(ctx, eq?.armor)],
       wearable: !hero,
     });
   }
   rows.push({
-    titleId: HUMANWINDOW.boots,
-    fallback: slots.boots,
+    slotLabel: slots.boots,
     group: 'boots',
     slots: [slotModel(ctx, eq?.boots)],
     wearable: !hero,
   });
   if (!fighter || eq?.tool != null) {
     rows.push({
-      titleId: HUMANWINDOW.tools,
-      fallback: slots.tools,
+      slotLabel: slots.tools,
       group: 'tool',
       slots: [slotModel(ctx, eq?.tool)],
       wearable: !fighter && !hero,
@@ -126,8 +120,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   const miscSlots: EquipSlotModel[] = [];
   for (let i = 0; i < components.MISC_EQUIP_SLOTS; i++) miscSlots.push(slotModel(ctx, misc[i] ?? null));
   rows.push({
-    titleId: HUMANWINDOW.misc,
-    fallback: slots.misc,
+    slotLabel: slots.misc,
     group: 'misc',
     slots: miscSlots,
     wearable: !hero,

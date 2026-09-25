@@ -60,7 +60,6 @@ export {
   type SettlerWorkStatus,
   type UnitPanelModelContext,
 } from './context.js';
-export { HUMANWINDOW } from './humanwindow.js';
 export {
   EXPERIENCE_SHOWN_MAX,
   type ExperienceRowModel,
