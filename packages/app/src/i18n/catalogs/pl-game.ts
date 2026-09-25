@@ -179,7 +179,8 @@ export const plGame = {
     vehicleOrderLoadIntoShipHint: 'Kliknij jeden ze swoich zacumowanych statków; wehikuł wjedzie na pokład.',
     vehicleOrderLeaveShip: 'Usuń ze statku', // vehiclewindow 25
     vehicleOrderUnloadGoods: 'Rozładuj towary', // vehiclewindow 19
-    vehicleOrderUnloadGoodsHint: 'Niczego nie żąda, więc tragarz wynosi wszystkie towary.', // vehiclewindow 20
+    vehicleOrderUnloadGoodsHint:
+      'Załoga wynosi wszystkie towary: do magazynu obok, a bez niego na ziemię. Statek musi stać zacumowany.', // vehiclewindow 20
     vehicleWantedLess: 'Zmniejsz ilość {good} (Shift: o 10)', // vehiclewindow 10
     vehicleWantedMore: 'Zwiększ ilość {good} (Shift: o 10)', // vehiclewindow 11
     vehicleCargoLine: '{good}: {current} na pokładzie, {wanted} pożądane, {reserved} w drodze',
@@ -698,7 +699,7 @@ export const plGame = {
       cannotAttachVehicle: 'Bez przydziału',
       vehicleCannotNearShip: 'Za blisko statku',
       cannotLeaveVehicle: 'Nie może wysiąść',
-      vehicleNoCarrier: 'Brak tragarza',
+      vehicleNoCarrier: 'Brak załogi do ładunku',
       humanDied: 'Nie żyje',
       playerSighted: 'Pierwszy kontakt',
       diplomacyChanged: 'Nowe stosunki',

@@ -237,9 +237,10 @@ export type UnitOrderCommand =
   | {
       /**
        * Ask for `amount` units of `goodType` in one owned vehicle's hold (the original's `m`): the
-       * amount is clamped so the wanted amounts over every good fit the type's `stockSlots`, and an
-       * attached carrier fetches or flushes toward it. A vehicle with no carrier attached takes the
-       * request and raises `vehicleCrewRefused` with `noCarrier`. An uncarriable good is ignored.
+       * amount is clamped so the wanted amounts over every good fit the type's `stockSlots`, and a cargo
+       * hand, the commander or a seated carrier, fetches or flushes toward it. A vehicle nobody is
+       * seated in takes the request and raises `vehicleCrewRefused` with `noCarrier`. An uncarriable
+       * good is ignored.
        */
       readonly kind: 'setVehicleWanted';
       readonly vehicle: Entity;
@@ -248,7 +249,7 @@ export type UnitOrderCommand =
     }
   | {
       /** Ask for nothing in one owned vehicle's hold (the original's `n`): every wanted amount to 0, so
-       *  an attached carrier flushes the hold out. The same `noCarrier` note as `setVehicleWanted`. */
+       *  a cargo hand flushes the hold out. The same `noCarrier` note as `setVehicleWanted`. */
       readonly kind: 'clearVehicleWanted';
       readonly vehicle: Entity;
     }

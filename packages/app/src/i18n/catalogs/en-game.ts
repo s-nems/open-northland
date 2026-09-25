@@ -182,7 +182,8 @@ export const enGame = {
     vehicleOrderLoadIntoShipHint: 'Click one of your moored ships; the vehicle drives aboard.',
     vehicleOrderLeaveShip: 'Remove from ship', // vehiclewindow 25
     vehicleOrderUnloadGoods: 'Unload goods', // vehiclewindow 19
-    vehicleOrderUnloadGoodsHint: 'Asks for nothing, so the carrier takes every good out.', // vehiclewindow 20
+    vehicleOrderUnloadGoodsHint:
+      'The crew takes every good out: into a store nearby, else onto the ground. A ship must be moored.', // vehiclewindow 20
     vehicleWantedLess: 'Decrease amount of {good} (Shift: by 10)', // vehiclewindow 10
     vehicleWantedMore: 'Increase amount of {good} (Shift: by 10)', // vehiclewindow 11
     vehicleCargoLine: '{good}: {current} aboard, {wanted} wanted, {reserved} on the way',
@@ -713,7 +714,7 @@ export const enGame = {
       cannotAttachVehicle: 'Not assigned',
       vehicleCannotNearShip: 'Too close to ship',
       cannotLeaveVehicle: 'Cannot disembark',
-      vehicleNoCarrier: 'No carrier',
+      vehicleNoCarrier: 'No crew for the cargo',
       humanDied: 'Dead',
       playerSighted: 'First contact',
       diplomacyChanged: 'New standing',

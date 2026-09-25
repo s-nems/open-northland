@@ -196,23 +196,28 @@ cart's move near a house is described in MISSIONS.md "Trade agreements".
 Open Northland: `VehicleStock` (`packages/sim/src/components/vehicle.ts`) keeps the three bytes per
 canonical good as `current`, `wanted` and `reserved` (the future amount); `systems/vehicles/stock.ts`
 holds the clamps, `stockVehicleGoods` the booked-and-stowed write of `addgoods` and a loaded spawn
-(wanted follows actual while no carrier is attached, as the original's stow does), and
-`addGoodsToVehicle` the script result. The seat orders are `setVehicleWanted` and
-`clearVehicleWanted`; `unloadPeople` is the passenger half of unload people (the carried-vehicle half is not
-mirrored, *open*). The carrier rung
-(`systems/settlers/drives/economy/vehicle-cargo.ts`) runs above the rider rung for an attached carrier
-and its booking rides on the carrier as `CargoRun`, given back when it detaches or dies. The alias
-goes through the shared dish-to-edible seam, which also maps meat and sausage (approximation: the
-original's table lists neither). Further approximations: the nearest source wins where the original
-draws at random, ties by good id, every source on the door's continent as the original's flood
-implies; the guide network is the carrier's signpost confinement; a lifted-out unit goes where the
-delivery ladder sends an unbound settler's load, the ground at the door when nothing takes it; a
-house source must hold the hold's canonical good, never a dish it would alias to it; a carrier whose
-walk to a source or store fails takes the planner's stranded recovery and keeps its seat, where only
-a failed walk to the door drops it. The trader's own write is `tradeVehicleStock`: booked and stowed
-in one step, and the wanted amount set to the actual one whether or not a carrier is attached
-(approximation: the original's rule holds only without a carrier, so a carrier seated beside the
-trader would flush the trade cargo as surplus; here it finds nothing to fetch or flush).
+(wanted follows actual while no cargo hand is seated, as the original's stow does without a carrier),
+and `addGoodsToVehicle` the script result. The seat orders are `setVehicleWanted` and
+`clearVehicleWanted`; `unloadPeople` is the passenger half of unload people (the carried-vehicle half
+is not mirrored, *open*). The cargo rung (`systems/settlers/drives/economy/vehicle-cargo.ts`) runs
+above the rider rung for a cargo hand and its booking rides on the hand as `CargoRun`, given back when
+it detaches or dies. Owner's choice: a cargo hand is a seated carrier or the vehicle's commander of any
+trade, so a trader's cart and a ship's commander serve the wanted amounts without a carrier; the
+wanted-follows-actual rule and message 0x3a read the same widened test (`isCargoHand`). A hand riding
+inside a cart that stands still or a moored ship steps out onto the door while the hold has a trip for
+it (`cargoHandDisembarkSystem`), and a commander then waits by the door while a request stands, a good
+nobody has included, until the vehicle asks its crew in. The alias goes through the shared
+dish-to-edible seam, which also maps meat and sausage (approximation: the original's table lists
+neither). Further approximations: the nearest source wins where the original draws at random, ties by
+good id, every source on the door's continent as the original's flood implies; the guide network is
+the carrier's signpost confinement; a lifted-out unit goes where the delivery ladder sends an unbound
+settler's load when that store lies within radius 40 of the door, and onto the ground where the hand
+stands otherwise (owner's choice); a house source must hold the hold's canonical good, never a dish it
+would alias to it; a cargo hand whose walk to a source or store fails takes the planner's stranded
+recovery and keeps its seat, where only a failed walk to the door drops it. The trader's own write is
+`tradeVehicleStock`: booked and stowed in one step, and the wanted amount set to the actual one
+whatever crew is seated (approximation: the original's rule holds only without a carrier; here the
+trader is its cart's own cargo hand, and it finds nothing of its trade cargo to fetch or flush).
 
 ## Movement
 

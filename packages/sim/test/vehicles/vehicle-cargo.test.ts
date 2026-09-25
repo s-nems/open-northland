@@ -7,6 +7,7 @@ import {
   Rider,
   Settler,
   Stockpile,
+  VehicleDrive,
   VehicleStock,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -19,8 +20,10 @@ import {
   serializeSaveGame,
 } from '../../src/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/stances.js';
+import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../src/systems/settlers/drives/economy/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
-import { createVehicle } from '../../src/systems/vehicles/index.js';
+import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
 import {
   clearVehicleWanted,
   setVehicleWanted,
@@ -44,6 +47,7 @@ const HANDCART = 1;
 const HANDCART_SLOTS = 15;
 const CARRIER = 24;
 const SCOUT = 27;
+const TRADER = 25;
 const HEADQUARTERS = 1;
 const WOOD = 1;
 const PLANK = 2;
@@ -57,6 +61,8 @@ const CART_AT = { hx: 20, hy: 20 };
 const TRIP_TICKS = 120;
 /** The source piles and houses stand this far east of the cart's door. */
 const SOURCE_AT = { hx: 24, hy: 20 };
+/** A house beyond the cargo search radius of the cart's door. */
+const FAR_HOUSE_AT = { hx: CART_AT.hx + VEHICLE_CARGO_SEARCH_RADIUS + 20, hy: 20 };
 
 function sim(seed = 3): Simulation {
   const s = new Simulation({ seed, content: testContent(), map: grassNodeMap(MAP_NODES, MAP_NODES) });
@@ -176,7 +182,7 @@ describe('the wanted-amount orders', () => {
     expect(s.world.get(cart, VehicleStock).lines.has(STONE)).toBe(false);
   });
 
-  it('notes vehicleNoCarrier when no carrier is attached, a scout commander included', () => {
+  it('notes vehicleNoCarrier only while nobody works the hold; a commander of any trade does', () => {
     const s = sim();
     const cart = spawnCart(s);
     want(s, cart, WOOD, 3);
@@ -186,8 +192,78 @@ describe('the wanted-amount orders', () => {
     s.step();
     s.enqueue(playerCommand(P0, { kind: 'clearVehicleWanted', vehicle: cart }));
     s.step();
-    expect(crewRefusals(s)).toEqual([`${cart}:noCarrier`]);
-    expect(line(s, cart, WOOD).wanted).toBe(0); // the order still applied
+    expect(crewRefusals(s)).toEqual([]);
+    expect(line(s, cart, WOOD).wanted).toBe(0);
+  });
+});
+
+describe('the commander as cargo hand', () => {
+  it('steps a trader out of its parked cart to fetch what the player asks for from a house nearby', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const hq = placeHq(s, SOURCE_AT);
+    const trader = spawnSettler(s, 22, 20, TRADER);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: trader, vehicle: cart }));
+    s.step();
+    boardRider(s.world, trader, cart);
+    want(s, cart, WOOD, 2);
+    expect(crewRefusals(s)).toEqual([]);
+    s.run(TRIP_TICKS * 2);
+    expect(line(s, cart, WOOD)).toEqual({ current: 2, wanted: 2, reserved: 2 });
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 - 2);
+    expect(s.world.has(trader, Carrying)).toBe(false);
+  });
+
+  it('delivers an unloaded unit to a store nearby even from a DEFEND stance', () => {
+    const s = sim();
+    const cart = spawnCart(s, CART_AT, [{ good: WOOD, amount: 2 }]);
+    const hq = placeHq(s, SOURCE_AT);
+    const scout = spawnSettler(s, 22, 20, SCOUT);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
+    s.enqueue(playerCommand(P0, { kind: 'setStance', entity: scout, mode: MILITARY_MODE.DEFEND }));
+    s.step();
+    s.enqueue(playerCommand(P0, { kind: 'clearVehicleWanted', vehicle: cart }));
+    s.run(TRIP_TICKS * 3);
+    expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 2);
+    expect(s.world.has(scout, Carrying)).toBe(false);
+  });
+
+  it('keeps the commander aboard while its cart drives, and by the door while a good nobody has is asked for', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const scout = spawnSettler(s, 22, 20, SCOUT);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
+    s.step();
+    boardRider(s.world, scout, cart);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: cart, x: CART_AT.hx - 10, y: CART_AT.hy }));
+    s.step();
+    want(s, cart, PLANK, 2);
+    while (s.world.has(cart, VehicleDrive)) {
+      expect(s.world.has(scout, Position)).toBe(false);
+      s.step();
+    }
+    s.run(TRIP_TICKS);
+    // Parked, it steps out for the planks and waits by the door, for no house or pile holds any.
+    expect(s.world.has(scout, Position)).toBe(true);
+    expect(line(s, cart, PLANK)).toEqual({ current: 0, wanted: 2, reserved: 0 });
+  });
+
+  it('sets unloaded goods on the ground at the door when no store stands near it', () => {
+    const s = sim();
+    const cart = spawnCart(s, CART_AT, [{ good: WOOD, amount: 2 }]);
+    const hq = placeHq(s, FAR_HOUSE_AT);
+    const scout = spawnSettler(s, 22, 20, SCOUT);
+    s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: scout, vehicle: cart }));
+    s.step();
+    boardRider(s.world, scout, cart);
+    s.enqueue(playerCommand(P0, { kind: 'clearVehicleWanted', vehicle: cart }));
+    s.run(TRIP_TICKS * 2);
+    expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(pileAmount(s, WOOD)).toBe(2);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10);
+    // With nothing left to move the scout steps back in.
+    expect(s.world.has(scout, Position)).toBe(false);
   });
 });
 

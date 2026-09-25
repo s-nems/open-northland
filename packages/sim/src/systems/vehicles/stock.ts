@@ -5,6 +5,7 @@ import {
   Vehicle,
   VehicleStock,
   type VehicleStockLine,
+  vehicleCommander,
   vehicleLoad,
   vehiclePassengers,
   vehicleReservedLoad,
@@ -48,17 +49,44 @@ export function vehicleIsFullSoon(type: VehicleType, stock: HoldView): boolean {
   return vehicleReservedLoad(stock) >= vehicleLineCap(type);
 }
 
-/** A rider of the carrier trade holds any seat, aboard or on its way. */
-export function hasCarrierAttached(world: World, content: ContentSet, vehicle: Entity): boolean {
+/**
+ * Whether `rider` works `vehicle`'s hold: a rider of the carrier trade in any seat, as in the original,
+ * or the vehicle's commander, whatever its trade (owner's choice: a trader's cart and a ship's crew load
+ * and unload without a carrier seated beside them).
+ */
+export function isCargoHand(world: World, content: ContentSet, vehicle: Entity, rider: Entity): boolean {
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined) return false;
-  const jobs = contentIndex(content).jobs;
-  return vehiclePassengers(state).some((seat) => {
-    const jobType = world.tryGet(seat.entity, Settler)?.jobType;
-    if (jobType === undefined || jobType === null) return false;
-    const job = jobs.get(jobType);
-    return job !== undefined && isCarrierJobRow(job);
-  });
+  if (vehicleCommander(state) === rider) return true;
+  if (!state.passengers.some((seat) => seat !== null && seat.entity === rider)) return false;
+  const jobType = world.tryGet(rider, Settler)?.jobType;
+  if (jobType === undefined || jobType === null) return false;
+  const job = contentIndex(content).jobs.get(jobType);
+  return job !== undefined && isCarrierJobRow(job);
+}
+
+/** Some rider works the hold: a carrier seated anywhere, or a commander. */
+export function hasCargoHand(world: World, content: ContentSet, vehicle: Entity): boolean {
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined) return false;
+  return vehiclePassengers(state).some((seat) => isCargoHand(world, content, vehicle, seat.entity));
+}
+
+/**
+ * Whether `rider` is a cargo hand of `vehicle` with a trip to make: a good booked past its wanted
+ * amount, or one short of it while the hold is not full soon.
+ */
+export function cargoHandHasWork(world: World, content: ContentSet, vehicle: Entity, rider: Entity): boolean {
+  const state = world.tryGet(vehicle, Vehicle);
+  const stock = world.tryGet(vehicle, VehicleStock);
+  const type = state === undefined ? undefined : contentIndex(content).vehicles.get(state.vehicleType);
+  if (stock === undefined || type === undefined || !isCargoHand(world, content, vehicle, rider)) return false;
+  let short = false;
+  for (const line of stock.lines.values()) {
+    if (line.wanted < line.reserved) return true;
+    if (line.wanted > line.reserved) short = true;
+  }
+  return short && !vehicleIsFullSoon(type, stock);
 }
 
 function lineOf(stock: { lines: Map<number, VehicleStockLine> }, good: number): VehicleStockLine {
@@ -89,8 +117,8 @@ function holdOf(world: World, vehicle: Entity, content: ContentSet, goodType: nu
 
 /**
  * Add `delta` units of `goodType` to the hold: the good is aliased, a negative
- * result is refused, the addition is clamped to the free budget, and a vehicle with no carrier attached
- * sets the good's wanted amount to the new actual one. Returns the units actually moved, 0 for a
+ * result is refused, the addition is clamped to the free budget, and a vehicle with no cargo hand
+ * seated sets the good's wanted amount to the new actual one. Returns the units actually moved, 0 for a
  * refused or uncarriable good. `reserved` is left alone: a carrier's delivery was booked when it set out.
  */
 export function modifyVehicleStock(
@@ -109,7 +137,7 @@ export function modifyVehicleStock(
   if (moved === 0) return 0;
   const line = lineOf(world.mut(vehicle, VehicleStock), hold.good);
   line.current = have + moved;
-  if (!hasCarrierAttached(world, content, vehicle)) line.wanted = line.current;
+  if (!hasCargoHand(world, content, vehicle)) line.wanted = line.current;
   return moved;
 }
 
@@ -140,9 +168,9 @@ export function modifyVehicleReserved(
  * A commander's own load or unload of `delta` units of `goodType`, the trader's write at a stop: the
  * units are booked and stowed in one step and the good's wanted amount follows the actual one whatever
  * crew is attached. Returns the units moved. Named approximation: the original's trader books a unit
- * on its walk to the door and stows it there,
- * whose wanted-follows-actual rule holds only while no carrier is attached, so a carrier seated beside
- * the trader would flush the trade cargo as surplus; keeping wanted on the actual amount forestalls that.
+ * on its walk to the door and stows it there, and its wanted-follows-actual rule holds only while no
+ * cargo hand is seated; the trader is its cart's hand here, which would flush its own trade cargo as
+ * surplus, so wanted stays on the actual amount.
  */
 export function tradeVehicleStock(
   world: World,
@@ -203,8 +231,8 @@ export function clearVehicleWanted(world: World, vehicle: Entity): void {
  * Put `amount` units of `goodType` aboard that nobody is bringing, booked and stowed at once (a map's
  * `addgoods` and the loaded spawn of a scene): `current` rises by the units the budget takes and
  * `reserved` by as many as the booking budget still has. The original's stow then sets the
- * good's wanted amount to the new actual one while no carrier is attached, which at a spawn is always,
- * so the cargo is also asked for and a carrier seated later neither fetches nor flushes it. Returns the
+ * good's wanted amount to the new actual one while no cargo hand is seated, which at a spawn is always,
+ * so the cargo is also asked for and a hand seated later neither fetches nor flushes it. Returns the
  * units stowed.
  */
 export function stockVehicleGoods(
@@ -222,7 +250,7 @@ export function stockVehicleGoods(
   const line = lineOf(world.mut(vehicle, VehicleStock), hold.good);
   line.current += moved;
   line.reserved += booked;
-  if (!hasCarrierAttached(world, content, vehicle)) line.wanted = line.current;
+  if (!hasCargoHand(world, content, vehicle)) line.wanted = line.current;
   return moved;
 }
 

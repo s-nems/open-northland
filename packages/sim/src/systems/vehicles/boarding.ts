@@ -36,6 +36,7 @@ import {
 } from './crew.js';
 import { startDock } from './dock.js';
 import { refuseMove, startVehicleDrive } from './movement.js';
+import { cargoHandHasWork } from './stock.js';
 
 // The boarding drives of docs/formats/VEHICLES.md "Crew" and "Ships and docking": a vehicle that needs its
 // crew inside asks every rider on the door's continent to step in and drops the stragglers, and a cart
@@ -82,12 +83,14 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
 
 /**
  * Whether a rider steps in as soon as it reaches the door, unasked: everyone but the crew that works its
- * vehicle from outside, a carrier serving the hold or a trader working a route, who wait by the door for
- * their own rungs until the vehicle asks. Deviation (user rule): the original keeps every rider outside
- * until the vehicle's order asks it in.
+ * vehicle from outside, a carrier serving the hold, a trader working a route or a commander with cargo
+ * to move, who wait by the door for their own rungs until the vehicle asks. Deviation (user rule): the
+ * original keeps every rider outside until the vehicle's order asks it in.
  */
-function boardsUnasked(ctx: SystemContext, jobType: number | null): boolean {
-  return jobType !== null && !isCarrierJob(ctx, jobType) && !isTraderJob(ctx.content, jobType);
+function boardsUnasked(world: World, ctx: SystemContext, vehicle: Entity, e: Entity): boolean {
+  const jobType = world.get(e, Settler).jobType;
+  if (jobType === null || isCarrierJob(ctx, jobType) || isTraderJob(ctx.content, jobType)) return false;
+  return !cargoHandHasWork(world, ctx.content, vehicle, e);
 }
 
 /**
@@ -129,7 +132,7 @@ export function planRider(
   if (doorNode === null) return true; // the vehicle rides a carrier: nowhere to walk to
   const here = entityNode(world, terrain, e);
   if (standsAtDoor(terrain, spacing, e, here, doorNode)) {
-    const steps = rider.boarding || boardsUnasked(ctx, world.get(e, Settler).jobType);
+    const steps = rider.boarding || boardsUnasked(world, ctx, vehicle, e);
     if (steps && !isShipAtSea(ctx, world.get(vehicle, Vehicle))) boardRider(world, e, vehicle);
     return true;
   }
@@ -140,7 +143,7 @@ export function planRider(
 /**
  * Keep riders consistent with their seats: a rider whose vehicle is gone or whose seat was taken away is
  * released, and one that cannot find a way to the door is dropped where it stands with a lost note. A
- * carrier's failed walk to a cargo source or store is not a lost door: it takes the planner's ordinary
+ * cargo hand's failed walk to a cargo source or store is not a lost door: it takes the planner's ordinary
  * stranded recovery and keeps its seat. Before the planner, so the ladder's rider rung only sees riders
  * that still belong somewhere.
  */

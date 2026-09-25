@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   Position,
   Rider,
   Settler,
+  Stockpile,
   seatPassenger,
   Vehicle,
   VehicleDrive,
+  VehicleStock,
   vehiclePassengers,
 } from '../../src/components/index.js';
 import { playerTally } from '../../src/components/statistics.js';
@@ -37,6 +40,7 @@ import {
   removeVehicle,
   VEHICLE_WALK_RANGE_NODES,
 } from '../../src/systems/vehicles/index.js';
+import { stockVehicleGoods } from '../../src/systems/vehicles/stock.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { runLoadPass } from '../missions/support.js';
@@ -67,6 +71,10 @@ const EAST_SHORE_X = 32;
 const SHIP_SIZE = 2;
 const DOOR_DISTANCE = 4;
 const MID_ROW = 16;
+const WOOD = 1;
+/** The units a ship lands in the unloading test, and time enough for a trip a unit at the door. */
+const CARGO = 3;
+const UNLOAD_TICKS = 300;
 /** Long enough for a scout's walk to the mooring and the ship's crossing. */
 const SAIL_TICKS = 400;
 
@@ -156,6 +164,18 @@ function anchorOf(s: Simulation, e: Entity): HalfCellNode {
 
 function distanceTo(a: HalfCellNode, b: HalfCellNode): number {
   return hexDistanceBetween(a.hx, a.hy, b.hx, b.hy);
+}
+
+function holdOf(s: Simulation, vehicle: Entity, good: number): number {
+  return s.world.get(vehicle, VehicleStock).lines.get(good)?.current ?? 0;
+}
+
+function groundOf(s: Simulation, good: number): number {
+  let total = 0;
+  for (const e of s.world.query(Stockpile)) {
+    if (!s.world.has(e, Building)) total += s.world.get(e, Stockpile).amounts.get(good) ?? 0;
+  }
+  return total;
 }
 
 function dock(s: Simulation, vehicle: Entity, x: number, y: number): void {
@@ -276,6 +296,25 @@ describe('dockVehicle', () => {
       expect(s.world.has(rider, Rider)).toBe(false);
     }
     expect(vehiclePassengers(s.world.get(ship, Vehicle))).toEqual([]);
+  });
+
+  it('lands its commander to empty the hold onto a shore with no store, and keeps it aboard at sea', () => {
+    const s = sim();
+    const { ship, riders } = crewedShip(s, 20, MID_ROW);
+    const commander = riders[0];
+    if (commander === undefined) throw new Error('no crew');
+    stockVehicleGoods(s.world, ship, s.content, WOOD, CARGO);
+    s.enqueue(playerCommand(P0, { kind: 'clearVehicleWanted', vehicle: ship }));
+    s.run(UNLOAD_TICKS);
+    expect(s.world.has(commander, Position)).toBe(false); // at sea: nowhere to step out
+    expect(holdOf(s, ship, WOOD)).toBe(CARGO);
+    const point = { hx: EAST_SHORE_X + 1, hy: MID_ROW };
+    dock(s, ship, point.hx, point.hy);
+    sailOut(s, ship);
+    s.run(UNLOAD_TICKS);
+    expect(holdOf(s, ship, WOOD)).toBe(0);
+    expect(groundOf(s, WOOD)).toBe(CARGO);
+    expect(s.world.get(commander, Rider).vehicle).toBe(ship);
   });
 
   it('refuses a ship nobody commands with the no-commander note', () => {

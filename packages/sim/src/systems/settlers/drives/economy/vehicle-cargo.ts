@@ -14,10 +14,11 @@ import type { DeepReadonly, Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { manhattan } from '../../../spatial/metric.js';
-import { isCarrierJob, isLoosePile } from '../../../stores/index.js';
+import { isLoosePile } from '../../../stores/index.js';
 import { abandonCargoRun } from '../../../vehicles/cargo.js';
 import { boardingNode, isShipAtSea } from '../../../vehicles/crew.js';
 import {
+  isCargoHand,
   modifyVehicleReserved,
   vehicleIsFull,
   vehicleIsFullSoon,
@@ -28,11 +29,14 @@ import {
   PICKUP_ATOMIC_ID,
   PILEUP_ATOMIC_ID,
   startAtomic,
+  startDrop,
   startPickup,
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, QUALIFIES } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
+import { planDelivery } from './delivery.js';
+import { deliveryTargetFor } from './delivery-targets.js';
 
 /**
  * How far from the vehicle's door the original's carrier looks for loose goods and houses before it asks
@@ -44,8 +48,8 @@ export const VEHICLE_CARGO_SEARCH_RADIUS = 40;
 const CARGO_UNIT = 1;
 
 /**
- * VEHICLE CARGO - a carrier attached to a cart or moored ship serves its hold (docs/formats/VEHICLES.md
- * "Cargo", which also names the approximations): while a good's wanted amount exceeds its booking it
+ * VEHICLE CARGO - a cargo hand of a cart or moored ship, a carrier or the commander, serves its hold
+ * (docs/formats/VEHICLES.md "Cargo", which also names the approximations): while a good's wanted amount exceeds its booking it
  * fetches a unit, loose goods within {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door first, then a house
  * within it, then whatever its signpost area reaches, every source on the door's continent; with a unit
  * on its back it books it and sets it into the hold at the door; while a good's booking exceeds its
@@ -74,18 +78,21 @@ export function planVehicleCargo(
     abandonCargoRun(world, e);
     return false;
   }
-  if (loaded) return bringLoad(plan, vehicle, served.type, served.door, load);
+  if (loaded)
+    return (
+      bringLoad(plan, vehicle, served.type, served.door, load) || placeRefusedLoad(plan, served.door, load)
+    );
   return fetchShortfall(plan, vehicle, served.type, served.door) || flushSurplus(plan, vehicle, served.door);
 }
 
-/** The hold this carrier serves right now: its type and boarding node, or null while the vehicle lies
- *  at sea, has no door, or stands on another continent than the carrier. */
+/** The hold this rider serves right now: its type and boarding node, or null for a rider that is no
+ *  cargo hand, or while the vehicle lies at sea, has no door, or stands on another continent. */
 function servedHold(
   plan: PlannerContext,
   vehicle: Entity,
 ): { readonly type: VehicleType; readonly door: NodeId } | null {
-  const { world, ctx, terrain, here } = plan;
-  if (!isCarrierJob(ctx, plan.jobType)) return null;
+  const { world, ctx, terrain, here, entity: e } = plan;
+  if (!isCargoHand(world, ctx.content, vehicle, e)) return null;
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined || !world.has(vehicle, VehicleStock) || isShipAtSea(ctx, state)) return null;
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
@@ -126,6 +133,31 @@ function bringLoad(
       vehicle,
     ),
   );
+  return true;
+}
+
+/**
+ * A unit the hold will not take, a flushed one among them, is delivered to a store within
+ * {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door; with none that near it is set down where the hand
+ * stands, so a crew unloading on a far shore empties the hold onto the ground there (owner's choice; the
+ * original carries it to a consumer or a pile point near the carrier). The rung places it itself, so no
+ * stance or errand below it holds a hand with a load at the door.
+ */
+function placeRefusedLoad(
+  plan: PlannerContext,
+  door: NodeId,
+  load: { goodType: number; amount: number },
+): true {
+  const { world, ctx, terrain, entity: e } = plan;
+  const store = deliveryTargetFor(plan, load.goodType);
+  if (
+    store !== null &&
+    manhattan(terrain, door, interactionCell(world, ctx, terrain, store, door)) <= VEHICLE_CARGO_SEARCH_RADIUS
+  ) {
+    planDelivery(plan, load);
+  } else {
+    startDrop(world, ctx, e);
+  }
   return true;
 }
 

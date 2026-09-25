@@ -173,9 +173,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     gossipCandidates: pass.gossipCandidates,
   };
 
-  // A vehicle's crew, above every errand and trade: a carrier serves its vehicle's hold; any rider walks
-  // to the door and steps in when asked. A rider holding a load the hold will not take runs the ladder
-  // down to the delivery rung first, so it is not parked at the door with its hands full.
+  // A vehicle's crew, above every errand and trade: a cargo hand serves its vehicle's hold and places a
+  // unit the hold will not take; any rider walks to the door and steps in when asked. A rider of no hold
+  // work holding a load runs the ladder down to the delivery rung first, so it is not parked at the door
+  // with its hands full.
   if (planVehicleCargo(plan, load)) return;
   if (load === undefined || load.amount <= 0) {
     // A trader commanding a cart works its route from here, above the rider rung that would otherwise

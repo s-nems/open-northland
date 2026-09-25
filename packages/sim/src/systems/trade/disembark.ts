@@ -14,7 +14,8 @@ import { landingOf, setDownRider } from '../vehicles/crew.js';
 /**
  * A trader riding inside the cart it commands steps out onto the door once the cart stands still with
  * no goal held, so the trade rung can work the stop on foot; one with fewer than two houses on its
- * route stays aboard where the player put it. Before the planner, so the trader is planned the tick it
+ * route stays aboard where the player put it until its cart has cargo to move
+ * (`cargoHandDisembarkSystem`), and then waits by the door. Before the planner, so the trader is planned the tick it
  * lands. Reading: the original's trader runs its task from inside the vehicle and walks out through the
  * door for every unit; here the whole stop is worked from outside (approximation).
  */
