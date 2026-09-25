@@ -1,5 +1,4 @@
 import type { ArmorType, EquipClass } from '@open-northland/data';
-import { HUNTER_BOW_BALANCE } from '../../catalog/hunting.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -76,6 +75,19 @@ const SPEAR_DAMAGE = 3800; // iron_spear
 const BROADSWORD_DAMAGE = 3800; // long_sword
 const BOW_DAMAGE = 500; // short_bow
 const LONG_BOW_DAMAGE = 700; // long_bow
+// The hunter bow, extracted from the mod `weapons.ini` type 19: band and the damage columns by target
+// material (bare, wool, leather, chain, plate, wood, house).
+const HUNTER_BOW_MIN_RANGE = 3;
+const HUNTER_BOW_MAX_RANGE = 17;
+const HUNTER_BOW_DAMAGE: Readonly<Record<string, number>> = {
+  '0': 700,
+  '1': 350,
+  '2': 525,
+  '3': 175,
+  '4': 175,
+  '6': 100,
+  '7': 100,
+};
 // The house bow, extracted from the mod `weapons.ini` type 20: band, speed and the damage columns by
 // target material (bare, wool, leather, chain, plate, wood, house).
 const HOUSE_BOW_MIN_RANGE = 0;
@@ -251,9 +263,9 @@ export function sandboxWeapons() {
       mainType: RANGED_MAIN_TYPE,
       munitionType: ARROW_MUNITION,
       speed: BOW_SPEED,
-      minRange: HUNTER_BOW_BALANCE.minRange,
-      maxRange: HUNTER_BOW_BALANCE.maxRange,
-      damage: { ...HUNTER_BOW_BALANCE.damage },
+      minRange: HUNTER_BOW_MIN_RANGE,
+      maxRange: HUNTER_BOW_MAX_RANGE,
+      damage: { ...HUNTER_BOW_DAMAGE },
     },
     // The bow a civilian shoots from a defence-mode building. It binds by typeId rather than job, so a
     // sheltering farmer keeps its trade, and carries no `goodType`: the bow belongs to the building.

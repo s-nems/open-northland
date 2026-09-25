@@ -14,7 +14,7 @@ import { VIKING_BUILDINGS } from '../catalog/buildings.js';
 import { shelterCapacityFor } from '../catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
-import { HUNTER_BOW_BALANCE, huntPreyRows } from '../catalog/hunting.js';
+import { huntPreyRows } from '../catalog/hunting.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { diag } from '../diag/index.js';
 import { EQUIP_CLASS_BY_SLUG } from '../game/sandbox/combat.js';
@@ -126,18 +126,6 @@ function withShelterCapacity(building: BuildingType): BuildingType {
   return { ...building, shelterCapacity: shelterCapacityFor(building) };
 }
 
-/** Rein the hunter bow in under the soldier's short bow: a design override of the extracted row, which
- *  makes it stronger. The house bow keeps its extracted row whole. */
-function withHunterBowBalance(weapon: WeaponType): WeaponType {
-  if (weapon.id !== 'hunter_bow') return weapon;
-  return {
-    ...weapon,
-    minRange: HUNTER_BOW_BALANCE.minRange,
-    maxRange: HUNTER_BOW_BALANCE.maxRange,
-    damage: { ...HUNTER_BOW_BALANCE.damage },
-  };
-}
-
 /** Overlay the clean-room felling/mining balance (felled yield, deposit size and levels) into the
  *  pipeline's zeroed gathering block: the mod data carries none of them. Everything else the real row
  *  ships is preserved. */
@@ -187,7 +175,7 @@ export function mergeRealContent(
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
-  const weapons = real.weapons.map((weapon) => withHunterBowBalance(withHeroFistJob(weapon)));
+  const weapons = real.weapons.map(withHeroFistJob);
   // Wool's pipeline row is leather's whole row re-keyed: the cadaver stage (landscape 79 / gfx 847), its
   // footprint, and the store-pile stage, so a wool heap draws the hide pile's decal. The same named
   // approximation as the harvest atomic.

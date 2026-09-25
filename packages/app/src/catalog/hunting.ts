@@ -102,23 +102,6 @@ export const HUNTER_GENERAL_XP_TRACK = {
   baseRepeatCounter: 5,
 } as const;
 
-/**
- * The hunter bow's band and damage: an authored override of the extracted `weapons.ini` row (typeId 19),
- * whose mod data makes the hunter bow stronger than a soldier's short bow (damage 700 vs 500, reach
- * 3-17 vs 3-15). A civilian trade must shoot weaker, so every value here sits just under the short bow's.
- * The row carries no `goodType`, so the bow stays outside the equipment economy as extracted.
- */
-export const HUNTER_BOW_BALANCE: {
-  readonly minRange: number;
-  readonly maxRange: number;
-  /** Per-armor-class damage, each below the short bow's column ({0:500, 1:128, 2:400, 3..4:100, 6:40, 7:100}). */
-  readonly damage: Readonly<Record<string, number>>;
-} = {
-  minRange: 3,
-  maxRange: 13, // short bow reaches 15
-  damage: { '0': 400, '1': 100, '2': 320, '3': 80, '4': 80, '6': 30, '7': 80 },
-};
-
 // Clip timings transcribed verbatim from the extracted `atomicanimations.ini`, for
 // `viking_hunter_attack` and `viking_hunter_harvest_cadaver`.
 export const HUNTER_BOW_DRAW_LENGTH = 25;

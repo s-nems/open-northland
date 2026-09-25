@@ -244,18 +244,14 @@ describe('mergeRealContent', () => {
     expect(content.buildings.find((b) => b.id === 'tower_00')?.shelterCapacity).toBe(0);
   });
 
-  it('reins the hunter bow in under the soldier short bow and keeps the house bow extracted', () => {
-    // The extracted hunter bow beats the short bow outright, so it is a design override (`hunting.ts`).
+  it('keeps the hunter bow and the house bow as extracted', () => {
     const raw = rawRealLike();
     const { content } = mergeRealContent(raw);
     const bow = (weapons: readonly WeaponType[], id: string) => weapons.find((w) => w.id === id);
-    const short = bow(content.weapons, 'viking_short_bow') ?? bow(content.weapons, 'short_bow');
-    const hunter = bow(content.weapons, 'hunter_bow');
-    if (short === undefined || hunter === undefined) throw new Error('fixture: no short or hunter bow');
-    for (const [column, soldierDamage] of Object.entries(short.damage)) {
-      expect(hunter.damage[column] ?? 0).toBeLessThan(soldierDamage);
+    for (const id of ['hunter_bow', 'house_bow']) {
+      expect(bow(raw.weapons, id)).toBeDefined();
+      expect(bow(content.weapons, id)).toEqual(bow(raw.weapons, id));
     }
-    expect(bow(content.weapons, 'house_bow')).toEqual(bow(raw.weapons, 'house_bow'));
   });
 
   it('surfaces felled/mined and field goods it cannot complete, and non-vehicle buildings beyond the catalog', () => {
