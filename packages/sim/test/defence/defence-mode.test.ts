@@ -28,15 +28,16 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { garrisonSeats } from '../../src/systems/defence/index.js';
+import { SHELTER_SHOT_PERIOD_TICKS, shotsDue } from '../../src/systems/conflict/shelter-fire.js';
+import { shelterOccupancy } from '../../src/systems/defence/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
-// DEFENCE MODE - the alarm a player raises on a garrison building: its civilians run inside, shoot the
-// house bow from cover, and stay there until it drops. Source basis: the mode is extracted
-// (`houses.ini` `logicCanEnableDefenceMode` on the HQ, barracks and both towers); the shelter semantics,
-// the garrison size, and who runs for cover are named approximations (user rules).
+// DEFENCE MODE - the alarm a player raises on a garrison building: its civilians run inside, the building
+// shoots the house bow at a rate their number sets, and they stay there until it drops. Source basis: the
+// mode is extracted (`houses.ini` `logicCanEnableDefenceMode` on the HQ, barracks and both towers); the
+// fire and the garrison size are the original's, who runs for cover is a named approximation.
 
 const VIKING = 1;
 const P1 = 1; // the sheltering player
@@ -46,44 +47,55 @@ const FARMER = 2; // a civilian trade - runs for cover
 const SOLDIER = 31; // `soldier_unarmed` - the slug isFighterJob keys on; never shelters
 const SCOUT = 14; // `scout` - never shelters either
 const CHILD = 4; // `child_male` - the age class hides but never fights (`lifecycle/ageclass.ts`)
-const HUNTER = 15; // `hunter` - a civilian trade that shelters, but whose filter also admits game
-const DEER = 9; // an animal tribe with a huntPrey row: game a hunter may strike, and nobody else may
 const TOWER = 40;
 const HUT = 41; // no shelterCapacity: a building that cannot raise the alarm at all
+const HALL = 39; // a long garrison building, whose walls stand far off its centre
+/** How far the hall's walls reach east and west of its anchor, in half-cell nodes. */
+const HALL_HALF_LENGTH_NODES = 12;
 
 const TOWER_CAPACITY = 2;
 const HOUSE_BOW_DAMAGE = 30;
 const HOUSE_BOW_RANGE = 6;
 const RAIDER_HP = 500;
-/** Game deep enough to outlive a long window, so the band under test never changes shape mid-run. */
-const GAME_HP = 100_000;
+/** A mark deep enough to outlive a long window, so the targets under test never change mid-run. */
+const TOUGH_HP = 100_000;
 /** A food good, so a settler under cover can answer hunger from what it carries. */
 const RATION = 1;
-/** The deer's carcass good; huntPrey yields need a harvest atomic. */
-const VENISON = 2;
 
-/** One tribe fought across two players, a tower that shelters {@link TOWER_CAPACITY} civilians and a hut
- *  that shelters nobody, the civilian house bow (bound by id, no jobType - a sheltering settler keeps its
- *  own trade and wears the bow), and a short-range raider mace. */
-function defenceContent(): ContentSet {
+/** One tribe fought across two players, a tower and a long hall that shelter {@link TOWER_CAPACITY}
+ *  civilians each, a hut that shelters nobody, the house bow the sheltering buildings fire (bound by id,
+ *  no jobType), and a short-range raider mace. */
+function defenceContent(houseBowRange = HOUSE_BOW_RANGE): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: RATION, id: 'food_simple', weight: 1 },
-      { typeId: VENISON, id: 'food_venison', weight: 1, atomics: { harvest: 32 } },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: CHILD, id: 'child_male' },
       { typeId: FARMER, id: 'farmer' },
-      { typeId: HUNTER, id: 'hunter' },
       { typeId: SOLDIER, id: 'soldier_unarmed' },
       { typeId: SCOUT, id: 'scout' },
     ],
     buildings: [
       { typeId: TOWER, id: 'tower_00', kind: 'tower', hitpoints: 100_000, shelterCapacity: TOWER_CAPACITY },
       { typeId: HUT, id: 'hut', kind: 'home', hitpoints: 1000 },
+      {
+        typeId: HALL,
+        id: 'barracks',
+        kind: 'training',
+        hitpoints: 100_000,
+        shelterCapacity: TOWER_CAPACITY,
+        footprint: {
+          blocked: Array.from({ length: 2 * HALL_HALF_LENGTH_NODES + 1 }, (_, i) => ({
+            dx: i - HALL_HALF_LENGTH_NODES,
+            dy: 0,
+          })),
+          door: { dx: 0, dy: 2 },
+        },
+      },
     ],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
     weapons: [
@@ -94,7 +106,7 @@ function defenceContent(): ContentSet {
         munitionType: 1, // an arrow, like the extracted row - so a garrison shot really is a projectile
         speed: 7,
         minRange: 1,
-        maxRange: HOUSE_BOW_RANGE,
+        maxRange: houseBowRange,
         damage: { '0': HOUSE_BOW_DAMAGE },
       },
       {
@@ -115,16 +127,11 @@ function defenceContent(): ContentSet {
         // settlers needs at all; the edge itself gates nothing these cases exercise.
         jobEnables: [{ jobType: FARMER, kind: 'job', targetId: SOLDIER }],
         atomicBindings: [
-          { jobType: FARMER, atomicId: 81, animation: 'viking_attack' },
-          { jobType: HUNTER, atomicId: 81, animation: 'viking_attack' },
           { jobType: SOLDIER, atomicId: 81, animation: 'viking_attack' },
           { jobType: FARMER, atomicId: 10, animation: 'viking_eat' },
         ],
       },
-      { typeId: DEER, id: 'deer' },
     ],
-    animals: [{ id: 'deer', tribeType: DEER, catchable: true, hitpointsAdult: 1000 }],
-    huntPrey: [{ tribeType: DEER, yields: [{ goodType: VENISON, amount: 1 }] }],
     atomicAnimations: [
       { id: 'viking_attack', name: 'viking_attack', length: 4 },
       // The eat clip's single `event <at> 2 +4000`: what one ration is worth to the eater's hunger.
@@ -158,23 +165,6 @@ function settlerAt(sim: Simulation, x: number, y: number, owner: number, jobType
   return e;
 }
 
-/** Wildlife: a positioned, {@link Health}-bearing settler of an animal tribe, owned by nobody. It carries
- *  no stay point, so it neither roams nor is frightened off the node it is placed on. */
-function animalAt(sim: Simulation, x: number, y: number, tribe: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  addPerson(sim.world, e, {
-    tribe,
-    jobType: null,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-  });
-  sim.world.add(e, Health, { hitpoints: GAME_HP, max: GAME_HP });
-  return e;
-}
-
 function buildingAt(sim: Simulation, x: number, y: number, buildingType: number, owner: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(2 * x, 2 * y));
@@ -188,6 +178,38 @@ function buildingAt(sim: Simulation, x: number, y: number, buildingType: number,
  *  arrival rather than pinning an exact tick count. */
 function stepUntil(sim: Simulation, ticks: number, done: () => boolean): void {
   for (let i = 0; i < ticks && !done(); i++) sim.step();
+}
+
+interface Shot {
+  readonly source: Entity;
+  readonly target: Entity;
+  readonly cover: Entity | null;
+  readonly missed: boolean;
+}
+
+/** Every shot loosed over the next `ticks` ticks, read at launch. */
+function collectShots(sim: Simulation, ticks: number): Shot[] {
+  const seen = new Set<Entity>();
+  const shots: Shot[] = [];
+  for (let i = 0; i < ticks; i++) {
+    sim.step();
+    for (const p of sim.world.query(Projectile)) {
+      if (seen.has(p)) continue;
+      seen.add(p);
+      const { source, target, cover, missAim } = sim.world.get(p, Projectile);
+      shots.push({ source, target, cover, missed: missAim !== null });
+    }
+  }
+  return shots;
+}
+
+/** An enemy that holds its ground and soaks the fire without dying. */
+function standingMark(sim: Simulation, x: number, y: number): Entity {
+  const e = settlerAt(sim, x, y, P2, SOLDIER);
+  sim.world.mut(e, Stance).mode = MILITARY_MODE.IGNORE;
+  sim.world.mut(e, Health).max = TOUGH_HP;
+  sim.world.mut(e, Health).hitpoints = TOUGH_HP;
+  return e;
 }
 
 const shelterOf = (sim: Simulation, e: Entity): Entity | undefined =>
@@ -333,129 +355,124 @@ describe('defence mode', () => {
     expect(insideOf(sim, farmer)).toBe(tower); // and never stepped out to chase
   });
 
-  it('looses the garrison arrow from the tower, not from the door node the shooter stands on', () => {
+  it('fires from the building itself, one arrow per occupant every 24 ticks', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
-    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
-
-    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
-    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
-    // A settler keeps the cell it entered by, and a real building's door sits off its anchor - this
-    // fixture has no footprint, so the two coincide until the shooter is stood one cell off by hand.
-    const doorstep = { x: fx.fromInt(4), y: fx.fromInt(1) };
-    sim.world.add(farmer, Position, doorstep);
-    settlerAt(sim, 7, 1, P2, SOLDIER); // the mark, in bow reach of the tower
-
-    let shot: Entity | undefined;
-    stepUntil(sim, 600, () => {
-      shot = [...sim.world.query(Projectile)][0];
-      return shot !== undefined;
-    });
-    if (shot === undefined) throw new Error('expected the garrison to loose an arrow');
-
-    // The arrow leaves the TOWER, not the shooter's cell - the render then draws it falling from the
-    // tower's gallery instead of climbing off the ground beside it.
-    const at = sim.world.get(tower, Position);
-    expect(at).not.toEqual(doorstep);
-    expect(sim.world.get(shot, Projectile).cover).toBe(tower);
-    expect(sim.world.get(shot, Position)).toEqual({ x: at.x, y: at.y });
-  });
-
-  it('measures a garrison’s reach from the tower too, not from the cell the shooter stands on', () => {
-    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(16, 4) });
-    const tower = buildingAt(sim, 5, 1, TOWER, P1);
-    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
-
-    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
-    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
-    // Stand the shooter far off the tower (the door-vs-anchor gap a footprinted building really has,
-    // exaggerated): the mark below is HOUSE_BOW_RANGE nodes from the tower and far outside that band from
-    // the shooter's own cell, so an arrow proves the tower is what aims.
-    sim.world.add(farmer, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
-    settlerAt(sim, 5 + HOUSE_BOW_RANGE / 2, 1, P2, SOLDIER);
-
-    stepUntil(sim, 600, () => [...sim.world.query(Projectile)].length > 0);
-
-    expect(insideOf(sim, farmer)).toBe(tower); // still under cover, so it shot from in there
-    expect([...sim.world.query(Projectile)]).not.toHaveLength(0);
-  });
-
-  it('fans the garrison across the nearest raiders instead of stacking it all on one', () => {
-    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
-    const tower = buildingAt(sim, 5, 1, TOWER, P1);
-    const first = settlerAt(sim, 4, 1, P1, FARMER);
-    // A gap in the entity ids, as a real village has: what divides the band between the two shooters is
-    // their SEAT in the garrison, not their id. With a gap of 6 and three marks below, an id-derived
-    // offset would land both on the same man.
-    for (let i = 0; i < 5; i++) sim.world.create();
-    const garrison = [first, settlerAt(sim, 4, 2, P1, FARMER)];
+    const garrison = [settlerAt(sim, 4, 1, P1, FARMER), settlerAt(sim, 4, 2, P1, FARMER)];
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => garrison.every((g) => insideOf(sim, g) === tower));
-    // Three marks at three distances, all inside the bow's band: a garrison that always took the nearest
-    // would put every arrow of every tick into the same man.
-    for (const x of [6, 7, 8]) settlerAt(sim, x, 1, P2, SOLDIER);
+    const raider = settlerAt(sim, 7, 1, P2, SOLDIER);
+    sim.world.mut(raider, Health).max = TOUGH_HP;
+    sim.world.mut(raider, Health).hitpoints = TOUGH_HP;
 
-    let split = false;
-    for (let i = 0; i < 600 && !split; i++) {
-      sim.step();
-      const drawn = garrison.map((g) => {
-        const swing = sim.world.tryGet(g, CurrentAtomic)?.effect;
-        return swing?.kind === 'attack' ? swing.target : null;
-      });
-      split = drawn.every((t) => t !== null) && new Set(drawn).size === garrison.length;
+    const shots = collectShots(sim, 2 * SHELTER_SHOT_PERIOD_TICKS);
+
+    // Two people inside are worth two arrows a period, whatever trade they follow and however long its
+    // attack clip is - the building aims, they only set its rate.
+    expect(shots).toHaveLength(2 * garrison.length);
+    for (const shot of shots) {
+      expect(shot.source).toBe(tower);
+      expect(shot.cover).toBe(tower);
+      expect(shot.target).toBe(raider);
     }
-
-    expect(split).toBe(true); // both shooters drew on DIFFERENT raiders in the same tick
+    for (const g of garrison) expect(sim.world.tryGet(g, CurrentAtomic)?.effect.kind).not.toBe('attack');
   });
 
-  it('keeps a sheltering hunter’s game out of the trade sitting beside it', () => {
+  it('spreads its shots among the enemies near the nearest one', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
-    const hunter = settlerAt(sim, 4, 1, P1, HUNTER); // the lower id, so it takes seat 0 and resolves first
-    const farmer = settlerAt(sim, 4, 2, P1, FARMER);
+    const garrison = [settlerAt(sim, 4, 1, P1, FARMER), settlerAt(sim, 4, 2, P1, FARMER)];
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
-    stepUntil(sim, 400, () => insideOf(sim, hunter) === tower && insideOf(sim, farmer) === tower);
-    // Two heads of game in the bow's band, which only the hunter's predation filter admits, and an enemy
-    // house, which only the deprioritized tier holds. The two occupants share a node, a band and a reach,
-    // so the whole difference between their searches is the trade the filter keys on.
-    const nearGame = animalAt(sim, 6, 1, DEER);
-    animalAt(sim, 7, 1, DEER); // the second head - what seat 1 would take from a band it must not share
-    const enemyHouse = buildingAt(sim, 5 + HOUSE_BOW_RANGE / 2, 1, HUT, P2);
+    stepUntil(sim, 400, () => garrison.every((g) => insideOf(sim, g) === tower));
+    const raiders = [6, 7, 8].map((x) => settlerAt(sim, x, 1, P2, SOLDIER));
+    for (const r of raiders) sim.world.mut(r, Health).hitpoints = TOUGH_HP;
 
-    const drawnBy = (e: Entity): Entity | null => {
-      const swing = sim.world.tryGet(e, CurrentAtomic)?.effect;
-      return swing?.kind === 'attack' ? swing.target : null;
-    };
-    const hunterDrew = new Set<Entity>();
-    const farmerDrew = new Set<Entity>();
-    for (let i = 0; i < 600; i++) {
-      sim.step();
-      const game = drawnBy(hunter);
-      const house = drawnBy(farmer);
-      if (game !== null) hunterDrew.add(game);
-      if (house !== null) farmerDrew.add(house);
-    }
+    const marked = new Set(collectShots(sim, 20 * SHELTER_SHOT_PERIOD_TICKS).map((shot) => shot.target));
 
-    expect(hunterDrew).toEqual(new Set([nearGame])); // seat 0 takes the nearest of its own band
-    expect(farmerDrew).toEqual(new Set([enemyHouse])); // and seat 1 never inherits a head of it
+    expect(marked.size).toBeGreaterThan(1);
   });
 
-  it('seats only the settlers that have arrived, so the spread never doubles up on one raider', () => {
+  it('turns on an enemy house in reach when no enemy stands in reach', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
+    const enemyHouse = buildingAt(sim, 5 + HOUSE_BOW_RANGE / 2, 1, HUT, P2);
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+
+    const shots = collectShots(sim, 2 * SHELTER_SHOT_PERIOD_TICKS);
+    expect(shots.length).toBeGreaterThan(0);
+    for (const shot of shots) expect(shot.target).toBe(enemyHouse);
+  });
+
+  it("measures its reach from the nearest wall, so no bow outranges a long building's fire", () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(24, 6) });
+    const hall = buildingAt(sim, 10, 2, HALL, P1);
+    const farmer = settlerAt(sim, 8, 3, P1, FARMER);
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: hall, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === hall);
+    // Two nodes past the east wall, and far past the bow's reach of the hall's centre: an archer standing
+    // here measures its own reach to that wall, and so does the hall.
+    const raider = settlerAt(sim, 10 + HALL_HALF_LENGTH_NODES / 2 + 1, 2, P2, SOLDIER);
+
+    const shots = collectShots(sim, SHELTER_SHOT_PERIOD_TICKS);
+    expect(shots.map((shot) => shot.target)).toEqual([raider]);
+  });
+
+  it('picks among the enemies nearest its walls, not its centre', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(24, 6) });
+    const hall = buildingAt(sim, 10, 2, HALL, P1);
+    const farmer = settlerAt(sim, 8, 3, P1, FARMER);
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: hall, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === hall);
+    // Five marks off the hall's middle, nearer its centre, and one just past the east wall, nearer a wall.
+    for (let x = 8; x <= 12; x++) standingMark(sim, x, 0);
+    const byTheWall = standingMark(sim, 10 + HALL_HALF_LENGTH_NODES / 2 + 1, 2);
+
+    const marked = collectShots(sim, 20 * SHELTER_SHOT_PERIOD_TICKS).map((shot) => shot.target);
+    expect(marked).toContain(byTheWall);
+  });
+
+  it('scatters a long shot, which then lands in the dirt instead of on its mark', () => {
+    const range = 28;
+    const sim = new Simulation({ seed: 1, content: defenceContent(range), map: grass(24, 4) });
+    const tower = buildingAt(sim, 3, 1, TOWER, P1);
+    const garrison = [settlerAt(sim, 2, 1, P1, FARMER), settlerAt(sim, 2, 2, P1, FARMER)];
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => garrison.every((g) => insideOf(sim, g) === tower));
+    standingMark(sim, 3 + range / 2 - 1, 1); // a cell inside the band's far edge
+
+    const landed = { hit: 0, missed: 0 };
+    for (let i = 0; i < 40 * SHELTER_SHOT_PERIOD_TICKS; i++) {
+      sim.step();
+      for (const ev of sim.events.current()) {
+        if (ev.kind === 'projectileHit') landed.hit++;
+        if (ev.kind === 'projectileMissed') landed.missed++;
+      }
+    }
+
+    // Most shots land true; a long one sometimes lands a few nodes off and strikes nothing.
+    expect(landed.hit).toBeGreaterThan(landed.missed);
+    expect(landed.missed).toBeGreaterThan(0);
+  });
+
+  it('counts only the settlers that have arrived', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(20, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const inside = settlerAt(sim, 4, 1, P1, FARMER);
-    const runner = settlerAt(sim, 15, 1, P1, FARMER); // still crossing the field when the seats are read
+    const runner = settlerAt(sim, 15, 1, P1, FARMER); // still crossing the field when the count is read
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, inside) === tower && shelterOf(sim, runner) === tower);
 
-    // Seats number the ARRIVED. Counting the runner would leave the seats in play {0, 2, ...} - a sparse
-    // set that collides again the moment the spread takes them modulo the band.
-    const seats = garrisonSeats(sim.world);
-    expect(seats.get(inside)).toBe(0);
-    expect(seats.has(runner)).toBe(false);
+    expect(insideOf(sim, runner)).toBeUndefined();
+    expect(shelterOccupancy(sim.world).get(tower)).toBe(1);
   });
 
   it('never lets a claimant flee - the run for cover is its flight', () => {
@@ -545,7 +562,7 @@ describe('defence mode', () => {
     expect(shelterOf(sim, outlier)).toBeUndefined(); // out of reach of both - keeps working
   });
 
-  it("hides a child without arming it - the bow is the grown civilians'", () => {
+  it('counts a sheltering child toward the fire like anyone inside, and never aims at an enemy child', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const child = settlerAt(sim, 4, 1, P1, CHILD);
@@ -553,11 +570,14 @@ describe('defence mode', () => {
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, child) === tower);
+    const enemyChild = settlerAt(sim, 6, 1, P2, CHILD);
+    sim.world.add(enemyChild, Age, { ticks: 0 });
     const raider = settlerAt(sim, 8, 1, P2, SOLDIER);
-    for (let i = 0; i < 300; i++) sim.step();
 
-    expect(insideOf(sim, child)).toBe(tower); // it does take cover with everyone else…
-    expect(sim.world.get(raider, Health).hitpoints).toBe(RAIDER_HP); // …but never looses an arrow
+    const shots = collectShots(sim, 2 * SHELTER_SHOT_PERIOD_TICKS);
+
+    expect(shots).toHaveLength(2);
+    for (const shot of shots) expect(shot.target).toBe(raider);
   });
 
   it('keeps a starving settler under cover instead of walking it out to eat', () => {
@@ -593,5 +613,18 @@ describe('defence mode', () => {
 
     expect(sim.world.get(farmer, Settler).hunger).toBeLessThan(ONE);
     expect(insideOf(sim, farmer)).toBe(tower);
+  });
+});
+
+describe('shotsDue', () => {
+  const overPeriod = (occupants: number): number[] =>
+    Array.from({ length: SHELTER_SHOT_PERIOD_TICKS }, (_, tick) => shotsDue(tick, occupants));
+
+  it('is worth one arrow per occupant each period, at most one more than the whole arrows a tick', () => {
+    for (const occupants of [0, 2, 23, 24, 30]) {
+      const perTick = overPeriod(occupants);
+      expect(perTick.reduce((sum, n) => sum + n, 0)).toBe(occupants);
+      expect(Math.max(...perTick)).toBeLessThanOrEqual(Math.ceil(occupants / SHELTER_SHOT_PERIOD_TICKS));
+    }
   });
 });

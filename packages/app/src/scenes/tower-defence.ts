@@ -86,14 +86,14 @@ function playerSettlers(sim: Simulation): Entity[] {
   return own;
 }
 
-// runTicks covers the walk to cover plus the whole exchange of fire, which is slow because a garrison
-// arrow is a third of a soldier's and the fire fans across the nearest few raiders.
+// runTicks covers the walk to cover plus the whole exchange of fire: each tower looses one arrow per
+// occupant every 24 ticks, spread over the nearest few raiders.
 export const towerDefenceScene: SceneDefinition = {
   id: 'tower-defence',
   seed: 7,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 600,
+  runTicks: 900,
   initialZoom: 0.8,
   checks: [
     {

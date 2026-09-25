@@ -142,6 +142,28 @@ export function withFightDamageBonus(
   return base + fx.toInt(fx.mul(fx.fromInt(base), fightDamageBonus(hits)));
 }
 
+/** The hits past which fight experience stops raising damage against a building. Original behavior. */
+export const HOUSE_DAMAGE_EXPERIENCE_CAP_HITS = 100;
+/** The numerator of the building-damage experience factor `NUMERATOR / (NUMERATOR - hits)`. */
+const HOUSE_DAMAGE_EXPERIENCE_NUMERATOR = 200;
+
+/**
+ * `base` vs-building damage raised by the attacker's fight experience in `weaponMainType`'s bucket:
+ * `base * 200 / (200 - min(hits, 100))`, so a hundred landed hits double it. Original behavior, which reads
+ * the building case apart from the bonus a blow on a person gets ({@link withFightDamageBonus}).
+ */
+export function withHouseDamageExperience(
+  base: number,
+  experience: ReadonlyMap<number, number>,
+  weaponMainType: number | undefined,
+): number {
+  if (base <= 0 || weaponMainType === undefined) return base;
+  const bucket = fightExperienceTypeFor(weaponMainType);
+  if (bucket === undefined) return base;
+  const hits = Math.min(experience.get(bucket) ?? 0, HOUSE_DAMAGE_EXPERIENCE_CAP_HITS);
+  return Math.trunc((base * HOUSE_DAMAGE_EXPERIENCE_NUMERATOR) / (HOUSE_DAMAGE_EXPERIENCE_NUMERATOR - hits));
+}
+
 /** Extra vision nodes a mastered scout sees, deliberately small next to the other trades' gains. Authored:
  *  a seasoned scout sees a bit farther, never twice as far. */
 export const SCOUT_VISION_BONUS_MAX_NODES = 6;

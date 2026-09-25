@@ -1,3 +1,4 @@
+import type { WeaponType } from '@open-northland/data';
 import {
   Building,
   Garrison,
@@ -8,31 +9,18 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { isFighterJob } from '../readviews/index.js';
+import { isFighterJob, isRangedWeapon } from '../readviews/index.js';
 import { buildingWorkerJobs } from '../stores/index.js';
 
 // The tower post: which one a fighter is entitled to man, whether it is manning one right now, and what
 // manning does to its reach.
 
 /**
- * How much reach (Manhattan half-cell nodes) a manned post adds to the garrison's own bow, so a tower
- * archer outranges the ground: the short bow's extracted `maximumrange 15` reaches 23 from the wall, the
- * long bow's 23 reaches 31.
- *
- * Approximation - no readable record rates a building's height bonus; the value is flat and sized so a
- * ground archer cannot outrange a manned tower. The nearest data anchor is the `house_bow` (`weapons.ini`
- * type 20), the weapon a building itself fires, whose 29 sits between the two boosted bows.
+ * How much reach (Manhattan half-cell nodes) a manned post adds to a garrison's bow, for spotting a target
+ * and for the shot alike: the short bow's extracted `maximumrange 15` reaches 20 from the tower, the long
+ * bow's 23 reaches 28. Original behavior; a posted man with a melee weapon gains nothing.
  */
-export const TOWER_RANGE_BONUS_NODES = 8;
-
-/**
- * A garrison's near reach: no dead zone, so an enemy battering the tower's own wall cannot stand safely
- * under it. Approximated by analogy - the datum is real but belongs to another weapon: the `house_bow` a
- * building fires (`weapons.ini` type 20, jobtype 6) carries `minimumrange 0` where every hand bow has a
- * 3-4 node dead zone, and firing from cover is read as the building's case. The value is `1`, not `0`,
- * because `withReach` clamps every band to at least 1 - distance 0 is the unit's own node.
- */
-const GARRISON_MIN_RANGE = 1;
+export const TOWER_RANGE_BONUS_NODES = 5;
 
 /**
  * The post `e` is entitled to man: the built, same-tribe building its {@link JobAssignment} binds it to,
@@ -79,8 +67,11 @@ export function isManningPost(world: World, ctx: SystemContext, e: Entity): bool
   return jobType != null && towerPostFor(world, ctx, e, jobType) === post;
 }
 
-/** A garrison's reach band: its weapon's far reach plus {@link TOWER_RANGE_BONUS_NODES}, with the near
- *  dead zone dropped ({@link GARRISON_MIN_RANGE}). */
-export function garrisonReach<T extends { minRange: number; maxRange: number }>(weapon: T): T {
-  return { ...weapon, minRange: GARRISON_MIN_RANGE, maxRange: weapon.maxRange + TOWER_RANGE_BONUS_NODES };
+/** A garrison's reach band: a bow's far reach plus {@link TOWER_RANGE_BONUS_NODES}, and no near dead zone
+ *  (original behavior - the post shoots at whatever stands under its wall). */
+export function garrisonReach<T extends { minRange: number; maxRange: number; weapon: WeaponType }>(
+  held: T,
+): T {
+  if (!isRangedWeapon(held.weapon)) return { ...held, minRange: 0 };
+  return { ...held, minRange: 0, maxRange: held.maxRange + TOWER_RANGE_BONUS_NODES };
 }

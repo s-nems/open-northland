@@ -124,8 +124,8 @@ export interface ContentIndex {
   /** The first weapon row of each tribe (source order) - a jobless animal's weapon (its combat identity is
    *  its tribe alone). */
   readonly firstWeaponByTribe: ReadonlyMap<number, WeaponType>;
-  /** Each tribe's `house_bow` row - the wall bow a sheltering civilian shoots, resolved by weapon id
-   *  because the shooter keeps its own trade. */
+  /** Each tribe's `house_bow` row - the wall bow a defence-mode building fires, resolved by weapon id
+   *  because no trade carries it. */
   readonly houseBowByTribe: ReadonlyMap<number, WeaponType>;
   /**
    * Per tribe: the `setatomic` bindings resolved `jobType → atomicId → animation name`, last-wins over

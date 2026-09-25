@@ -34,13 +34,6 @@ export const DEFEND_RADIUS_NODES = 8;
  */
 export const DEFEND_LEASH_NODES = 12;
 
-/**
- * How many of the nearest enemies a GARRISON fans its fire across: every settler manning one building stands
- * on the same node, so without this a full tower would empty itself into one raider. Approximation - no
- * readable record carries a fire-distribution rule.
- */
-export const GARRISON_SPREAD_TARGETS = 4;
-
 export interface CombatantStance {
   /** Whether the unit has an {@link Owner}; an unowned combatant has no fog and carries no {@link Stance}. */
   readonly owned: boolean;
@@ -51,10 +44,6 @@ export interface CombatantStance {
   /** The tower the unit is manning, or null. A garrison shoots from cover and never leaves, so the post
    *  overrides whatever `mode` would otherwise do. */
   readonly post: Entity | null;
-  /** The defence-mode building a CIVILIAN mans instead and its `seat` in that garrison, else null. It
-   *  shoots the house bow from cover, measured from the building, and neither flees nor steps out to
-   *  chase, whatever its stance says. */
-  readonly shelter: { readonly building: Entity; readonly seat: number } | null;
 }
 
 /**
@@ -95,18 +84,13 @@ export function engageSpec(
   const player = hunts ? null : (viewer?.player ?? null);
 
   // A garrison outranks every stance: its search band is the tower-boosted reach (`weapon` already carries
-  // the bonus), never the advance sight radius. A sheltering civilian reads the same way, anchor-less
-  // because a DEFEND post's walk-back would march it out of the building it is holding.
-  if (stance.post !== null || stance.shelter !== null) {
+  // the bonus), never the advance sight radius.
+  if (stance.post !== null) {
     return {
       accept: generalAccept,
       minDist,
       searchRadius: weapon.maxRange,
       player,
-      // Only the sheltering crowd fans its fire; a tower's posted archers still stack on the nearest man.
-      ...(stance.shelter === null
-        ? {}
-        : { spread: { seat: stance.shelter.seat, group: garrisonGroup(viewer?.player, attacker, hunts) } }),
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: null,
@@ -182,15 +166,6 @@ export function engageSpec(
   };
 }
 
-/**
- * The seeker inputs a garrison's `accept` keys on: the fog owner, the tribe the hostility relation reads,
- * and whether the trade hunts - a trade reaches that filter only through `mayHunt`, so the flag is the
- * whole of it. Two occupants agreeing on all three admit the same targets, so one search answers both.
- */
-function garrisonGroup(player: number | undefined, attacker: SettlerIdentity, hunts: boolean): string {
-  return `${player}/${attacker.tribe}/${hunts}`;
-}
-
 export interface EngageSpec {
   /** The nearest search's per-candidate hostility/predation filter. */
   readonly accept: (t: Entity) => boolean;
@@ -206,10 +181,6 @@ export interface EngageSpec {
   /** A hunter seeking prey: its primary tier is always game {@link CombatIndex.gameWithin} tallies, so a hold
    *  on the deprioritized tier skips the search for something to yield to while none is in the band. */
   readonly preySeeker?: boolean;
-  /** This seeker's place in the firing line it shares a node with: `seat` is its offset into the nearest
-   *  {@link GARRISON_SPREAD_TARGETS}, and `group` identifies the occupants whose search it is the same as.
-   *  Absent means take the nearest. */
-  readonly spread?: { readonly seat: number; readonly group: string };
   /** The deprioritized tier among accepted targets, searched only when the primary tier finds nothing in
    *  sight. It splits RAW search candidates ahead of {@link EngageSpec.accept}, so it must stay total
    *  and pure over any indexed entity - a friendly unit, an own building, a carcass. */
@@ -282,8 +253,7 @@ export function resolveTarget(
 
 type TargetTier = 'primary' | 'low';
 
-/** One priority tier's pick from the search band: the nearest target the stance admits, or the seat's own
- *  share of the nearest {@link GARRISON_SPREAD_TARGETS} for a seeker carrying a `spread`. */
+/** One priority tier's pick from the search band: the nearest target the stance admits. */
 function pickInBand(
   pass: CombatPass,
   spec: EngageSpec,
@@ -293,31 +263,8 @@ function pickInBand(
 ): { target: Entity; dist: number } | null {
   const wantsLowPriority = tier === 'low';
   const accept = (t: Entity): boolean => spec.lowPriority(t) === wantsLowPriority && spec.accept(t);
-  const spread = spec.spread;
-  if (spread === undefined) {
-    const found = pass.index.nearest(x, y, spec.minDist, spec.searchRadius, accept, spec.player);
-    return found === null ? null : { target: found.entity, dist: found.distance };
-  }
-  // One search per garrison, not per seat: `spread.group`, the centre and the reach name every input the
-  // walk reads. The `t === self` exclusion is the one they cannot, and it never decides a garrison's band -
-  // `isValidTarget` already refuses every manning settler.
-  const key = `${x},${y},${spec.minDist},${spec.searchRadius},${spread.group},${tier}`;
-  let band = pass.bands.get(key);
-  if (band === undefined) {
-    band = pass.index.nearestFew(
-      x,
-      y,
-      spec.minDist,
-      spec.searchRadius,
-      accept,
-      GARRISON_SPREAD_TARGETS,
-      spec.player,
-    );
-    pass.bands.set(key, band);
-  }
-  if (band.length === 0) return null;
-  const share = band[spread.seat % band.length];
-  return share === undefined ? null : { target: share.entity, dist: share.distance };
+  const found = pass.index.nearest(x, y, spec.minDist, spec.searchRadius, accept, spec.player);
+  return found === null ? null : { target: found.entity, dist: found.distance };
 }
 
 /** A focused target and its real distance from `here`, uncapped by the search band - a building

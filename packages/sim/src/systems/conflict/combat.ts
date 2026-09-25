@@ -1,12 +1,12 @@
 import { Health, Position, Settler } from '../../components/index.js';
 import type { System } from '../context.js';
-import { garrisonSeats } from '../defence/index.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
 import { MeleeSlots } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
+import { fireFromShelters } from './shelter-fire.js';
 
 // Re-exported so the public surface keeps its single combat import site; the rest of the folder is internal.
 export { REPATH_CADENCE } from './chase.js';
@@ -39,12 +39,11 @@ export const combatSystem: System = (world, ctx) => {
   const combatants = world.canonicalQuery(Settler, Health, Position);
   const pass: CombatPass = {
     // Attackable buildings join the target index but never the seeker loop: a warrior can strike an enemy
-    // building, but a building never engages.
+    // building, and a building on alarm fires on its own after the combatants have moved.
     index: new CombatIndex(world, ctx, terrain, combatants),
     slots: new MeleeSlots(world, ctx, terrain),
-    seats: garrisonSeats(world),
-    bands: new Map(),
     front: new BattleFront(world, ctx),
   };
   for (const e of combatants) engageCombatant(world, ctx, terrain, pass, e);
+  fireFromShelters(world, ctx, terrain, pass.index);
 };

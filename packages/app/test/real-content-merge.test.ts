@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet, type WeaponType } from '@open-northland/data';
 import { flatTileColour } from '@open-northland/render';
 import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -220,15 +220,15 @@ describe('mergeRealContent', () => {
     expect(goodById(content, 'wood').equip).toBeUndefined(); // a non-equippable stays bare
   });
 
-  it('overlays the authored garrison capacity onto the buildings the extracted flag admits, and nothing else', () => {
+  it("overlays the original's garrison sizes onto the buildings the extracted flag admits, and nothing else", () => {
     const { content } = mergeRealContent(rawRealLike());
     const capacityOf = (id: string) => content.buildings.find((b) => b.id === id)?.shelterCapacity;
 
-    expect(capacityOf('headquarters')).toBe(shelterCapacityById('headquarters'));
-    expect(capacityOf('barracks')).toBe(shelterCapacityById('barracks'));
-    expect(capacityOf('tower_00')).toBe(shelterCapacityById('tower_00'));
-    expect(capacityOf('tower_01')).toBe(shelterCapacityById('tower_01'));
-    // A flagged house the balance table does not name (a mod's own) takes the default garrison.
+    expect(capacityOf('headquarters')).toBe(30);
+    expect(capacityOf('barracks')).toBe(10);
+    expect(capacityOf('tower_00')).toBe(10);
+    expect(capacityOf('tower_01')).toBe(20);
+    // A flagged house the table does not name (a mod's own) takes the default garrison.
     expect(capacityOf('wonder_test')).toBe(DEFAULT_SHELTER_CAPACITY);
     // A workplace carries no flag, so it never offers the mode (the panel and the order read this).
     expect(capacityOf('work_mill_00')).toBe(0);
@@ -245,28 +245,18 @@ describe('mergeRealContent', () => {
     expect(content.buildings.find((b) => b.id === 'tower_00')?.shelterCapacity).toBe(0);
   });
 
-  it('reins the civilian bows in under the soldier short bow on EVERY damage column', () => {
-    // The extracted rows do not hold this: the wall bow beats the short bow against wool/chain/plate and
-    // the hunter bow beats it outright, so both are design overrides (`catalog/defence.ts`, `hunting.ts`).
-    const { content } = mergeRealContent(rawRealLike());
-    const bow = (id: string) => content.weapons.find((w) => w.id === id);
-    const short = bow('viking_short_bow') ?? bow('short_bow');
-    if (short === undefined) throw new Error('fixture: no short bow');
-
-    for (const civilian of ['house_bow', 'hunter_bow']) {
-      const row = bow(civilian);
-      if (row === undefined) throw new Error(`fixture: no ${civilian}`);
-      for (const [column, soldierDamage] of Object.entries(short.damage)) {
-        expect(row.damage[column] ?? 0).toBeLessThan(soldierDamage);
-      }
-    }
-
-    // The wall bow is held to the tighter share its own rule states - a garrison's strength is its numbers
-    // and its reach, not the arrow (`catalog/defence.ts`).
-    const wall = bow('house_bow');
+  it('reins the hunter bow in under the soldier short bow and keeps the house bow extracted', () => {
+    // The extracted hunter bow beats the short bow outright, so it is a design override (`hunting.ts`).
+    const raw = rawRealLike();
+    const { content } = mergeRealContent(raw);
+    const bow = (weapons: readonly WeaponType[], id: string) => weapons.find((w) => w.id === id);
+    const short = bow(content.weapons, 'viking_short_bow') ?? bow(content.weapons, 'short_bow');
+    const hunter = bow(content.weapons, 'hunter_bow');
+    if (short === undefined || hunter === undefined) throw new Error('fixture: no short or hunter bow');
     for (const [column, soldierDamage] of Object.entries(short.damage)) {
-      expect(wall?.damage[column] ?? 0).toBeLessThanOrEqual(Math.round(soldierDamage / 3));
+      expect(hunter.damage[column] ?? 0).toBeLessThan(soldierDamage);
     }
+    expect(bow(content.weapons, 'house_bow')).toEqual(bow(raw.weapons, 'house_bow'));
   });
 
   it('surfaces felled/mined and field goods it cannot complete, and non-vehicle buildings beyond the catalog', () => {

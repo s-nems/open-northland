@@ -1,7 +1,7 @@
 /**
- * The defence-mode balance: how many civilians a garrison building shelters while its alarm is up. Which
- * types may raise the mode is the extracted `logicCanEnableDefenceMode` flag; the source carries no
- * garrison size, so these numbers are authored.
+ * How many civilians a garrison building shelters while its alarm is up. Which types may raise the mode is
+ * the extracted `logicCanEnableDefenceMode` flag; no readable record carries the size. Original behavior:
+ * the headquarters takes 30, the large tower 20 and every other defence house 10.
  *
  * A shelter seat is separate from a tower's employed `logicworker` post, so a full garrison of archers
  * takes nothing from the room the townspeople run into. Keyed by `ir.json` id-slug, so one table serves
@@ -9,12 +9,10 @@
  */
 export const SHELTER_CAPACITY_BY_ID: Readonly<Record<string, number>> = {
   headquarters: 30,
-  barracks: 10, // kept under the small tower; `logicSchoolSize 25` counts drill places, not cover
-  tower_00: 15,
   tower_01: 20,
 };
 
-/** The garrison of a flagged type the table does not name, such as a mod's own defence house. */
+/** The garrison of every other flagged type: the small tower, the barracks, a mod's own defence house. */
 export const DEFAULT_SHELTER_CAPACITY = 10;
 
 /** The garrison `shelterCapacity` a defence-capable building of this id takes. */
@@ -22,28 +20,10 @@ export function shelterCapacityById(id: string): number {
   return SHELTER_CAPACITY_BY_ID[id] ?? DEFAULT_SHELTER_CAPACITY;
 }
 
-/** The garrison a building type takes: authored for a flagged type, none for the rest. */
+/** The garrison a building type takes: the original's size for a flagged type, none for the rest. */
 export function shelterCapacityFor(building: {
   readonly id: string;
   readonly canEnableDefenceMode?: boolean;
 }): number {
   return building.canEnableDefenceMode ? shelterCapacityById(building.id) : 0;
 }
-
-/**
- * The house bow's damage: an authored override of the extracted `weapons.ini` row (typeId 20, bound to
- * the `civilist` job, so it is the original's defence-mode weapon). The mod data lets a civilian at a
- * window out-damage a trained soldier's short bow against wool, chain and plate (240/150/150 against
- * 128/100/100), so each column is rounded to a third of the short bow's, which is why column 0 reads 167
- * rather than 166; a column already under that keeps its extracted value (wood 11). Band and munition
- * are not overridden, since a wall bow outranging a hand bow is the source's choice.
- */
-export const HOUSE_BOW_DAMAGE: Readonly<Record<string, number>> = {
-  '0': 167,
-  '1': 43,
-  '2': 133,
-  '3': 33,
-  '4': 33,
-  '6': 11,
-  '7': 33,
-};

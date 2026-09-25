@@ -96,7 +96,8 @@ export const plGame = {
     defenseGarrison: 'Załoga',
     defenseStopped: 'Obrona zatrzymana',
     defenseStarted: 'Obrona rozpoczęta - schronieni {sheltered}/{capacity}',
-    raiseAlarmHint: 'Bij na alarm: każdy cywil w zasięgu chowa się tutaj i strzela z ukrycia.',
+    raiseAlarmHint:
+      'Bij na alarm: każdy cywil w zasięgu chowa się tutaj, a budynek strzela tym szybciej, im więcej osób jest w środku.',
     lowerAlarmHint: 'Odwołaj alarm: osadnicy schronieni w środku wracają do pracy.',
     upgrade: 'Rozbuduj',
     schoolProgress: 'Nauka: {target}, pozostało {seconds} s',

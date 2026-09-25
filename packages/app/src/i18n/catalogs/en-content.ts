@@ -190,7 +190,7 @@ export const enContent = {
     'tower-defence': {
       title: 'Tower defence',
       summary:
-        'The alarm goes up: civilians hide in the watchtowers and shoot the house bow at the raiders from cover.',
+        'The alarm goes up: civilians hide in the watchtowers, and each tower shoots at the raiders faster the more are inside.',
     },
     'attack-move': {
       title: 'Attack-move',

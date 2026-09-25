@@ -26,8 +26,8 @@ import { combatantAtNode, P0, P1, VIKING } from './stances/support.js';
  * The combat index answers a nearest-target query by scanning the members of the coarse cells its box
  * overlaps. Its contract is the canonical walk over every node of the band, ring by ring: same winner (min
  * Manhattan distance, then min entity id), same distance, the same `accept` verdicts honoured, and for the
- * garrison's `nearestFew` the same (distance, id) order and tail bound. These tests pin that equivalence
- * against a node-by-node reference over randomised crowds, then the garrison order on named cases.
+ * `nearestFew` the same (distance, id) order and tail bound. These tests pin that equivalence against a
+ * node-by-node reference over randomised crowds, then the order on named cases.
  *
  * Buildings are in the crowd throughout, because they are the members admitted at SEVERAL nodes: a search
  * finds one at the distance to its nearest wall, and lists it once however many of its walls the band
@@ -42,7 +42,7 @@ const KEEPS = 10;
 const QUERIES = 40;
 const MAX_RADIUS = 24;
 const FEW = 4;
-/** The rings past the first hit `nearestFew` keeps taking, mirrored from the index. */
+/** The rings past the first hit `nearestFew` is asked to keep taking. */
 const TAIL_RINGS = 3;
 /** The fixture keep: a four-node wall row on `dy` 0, whose `dx` offsets hold on either row parity. Long
  *  enough that one band can cut through it, leaving walls on both sides of a `minDist` floor. */
@@ -222,7 +222,7 @@ function expectRingWalkAgreement(
     expect(index.nearest(x, y, minDist, maxDist, accept, null)).toEqual(
       reference.nearest(x, y, minDist, maxDist, accept),
     );
-    expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, null)).toEqual(
+    expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, null, TAIL_RINGS)).toEqual(
       ringNearestFew(reference, x, y, minDist, maxDist, accept, FEW),
     );
     // A seeker's skip is exactly a filter admitting only players at war with it either way, so the
@@ -232,7 +232,7 @@ function expectRingWalkAgreement(
     expect(index.nearest(x, y, minDist, maxDist, accept, seeker)).toEqual(
       reference.nearest(x, y, minDist, maxDist, hostile),
     );
-    expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, seeker)).toEqual(
+    expect(index.nearestFew(x, y, minDist, maxDist, accept, FEW, seeker, TAIL_RINGS)).toEqual(
       ringNearestFew(reference, x, y, minDist, maxDist, hostile, FEW),
     );
   }
@@ -373,8 +373,8 @@ describe('CombatIndex nearest search - equivalent to the node ring walk', () => 
 });
 
 /**
- * `nearestFew` - the nearest several. Seekers stacked on one node (a tower's garrison) take an offset into
- * this band instead of all choosing its first entry, so the ORDER is the contract, not just the membership.
+ * `nearestFew` - the nearest several. A defence-mode building picks among this band, so the ORDER is the
+ * contract, not just the membership.
  */
 describe('CombatIndex.nearestFew - the nearest several', () => {
   const all: Accept = () => true;
@@ -392,13 +392,13 @@ describe('CombatIndex.nearestFew - the nearest several', () => {
       combatantAtNode(sim, 10, 11, P1, MILITARY_MODE.ATTACK), // dist 1 - the nearest
     ];
     const index = indexOver(sim, ids);
-    expect(index.nearestFew(10, 10, 0, 10, all, FEW, null)).toEqual([
+    expect(index.nearestFew(10, 10, 0, 10, all, FEW, null, TAIL_RINGS)).toEqual([
       { entity: ids[3], distance: 1 },
       { entity: ids[1], distance: 2 },
       { entity: ids[2], distance: 2 },
       { entity: ids[0], distance: 4 },
     ]);
-    expect(index.nearestFew(10, 10, 0, 10, all, FEW, null)[0]).toEqual(
+    expect(index.nearestFew(10, 10, 0, 10, all, FEW, null, TAIL_RINGS)[0]).toEqual(
       index.nearest(10, 10, 0, 10, all, null),
     );
   });
@@ -406,7 +406,7 @@ describe('CombatIndex.nearestFew - the nearest several', () => {
   it('truncates to `limit`, keeping the nearest', () => {
     const sim = mappedSim(1);
     const ids = [11, 12, 13, 14].map((x) => combatantAtNode(sim, x, 10, P1, MILITARY_MODE.ATTACK));
-    expect(indexOver(sim, ids).nearestFew(10, 10, 0, 10, all, 2, null)).toEqual([
+    expect(indexOver(sim, ids).nearestFew(10, 10, 0, 10, all, 2, null, TAIL_RINGS)).toEqual([
       { entity: ids[0], distance: 1 },
       { entity: ids[1], distance: 2 },
     ]);
@@ -419,7 +419,9 @@ describe('CombatIndex.nearestFew - the nearest several', () => {
     const door = combatantAtNode(sim, 11, 10, P1, MILITARY_MODE.ATTACK);
     const straggler = combatantAtNode(sim, 22, 10, P1, MILITARY_MODE.ATTACK);
     const index = indexOver(sim, [door, straggler]);
-    expect(index.nearestFew(10, 10, 0, 29, all, FEW, null)).toEqual([{ entity: door, distance: 1 }]);
+    expect(index.nearestFew(10, 10, 0, 29, all, FEW, null, TAIL_RINGS)).toEqual([
+      { entity: door, distance: 1 },
+    ]);
     // The straggler is still findable - it is the tail bound, not the band, that dropped it.
     expect(index.nearest(10, 10, 2, 29, all, null)).toEqual({ entity: straggler, distance: 12 });
   });
@@ -431,7 +433,7 @@ describe('CombatIndex.nearestFew - the nearest several', () => {
     const keep = keepAtNode(sim, 10, 10, P1); // walls at distance 0, 1, 2 and 3
     const unit = combatantAtNode(sim, 10, 14, P1, MILITARY_MODE.ATTACK); // distance 4
     const index = indexOver(sim, [unit]);
-    expect(index.nearestFew(10, 10, 2, 10, all, FEW, null)).toEqual([
+    expect(index.nearestFew(10, 10, 2, 10, all, FEW, null, TAIL_RINGS)).toEqual([
       { entity: keep, distance: 2 },
       { entity: unit, distance: 4 },
     ]);
@@ -442,7 +444,9 @@ describe('CombatIndex.nearestFew - the nearest several', () => {
     const sim = mappedSim(1);
     const lone = combatantAtNode(sim, 12, 10, P1, MILITARY_MODE.ATTACK);
     const index = indexOver(sim, [lone]);
-    expect(index.nearestFew(10, 10, 0, 10, all, FEW, null)).toEqual([{ entity: lone, distance: 2 }]);
-    expect(index.nearestFew(10, 10, 3, 10, all, FEW, null)).toEqual([]);
+    expect(index.nearestFew(10, 10, 0, 10, all, FEW, null, TAIL_RINGS)).toEqual([
+      { entity: lone, distance: 2 },
+    ]);
+    expect(index.nearestFew(10, 10, 3, 10, all, FEW, null, TAIL_RINGS)).toEqual([]);
   });
 });

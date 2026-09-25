@@ -1,5 +1,4 @@
 import type { ArmorType, EquipClass } from '@open-northland/data';
-import { HOUSE_BOW_DAMAGE } from '../../catalog/defence.js';
 import { HUNTER_BOW_BALANCE } from '../../catalog/hunting.js';
 import {
   JOB_ARCHER,
@@ -65,12 +64,20 @@ const SPEAR_DAMAGE = 3800; // iron_spear
 const BROADSWORD_DAMAGE = 3800; // long_sword
 const BOW_DAMAGE = 500; // short_bow
 const LONG_BOW_DAMAGE = 700; // long_bow
-// The house bow's band and speed, extracted from `weapons.ini` type 20. Its damage is instead the
-// design override the real-content merge also applies, so the wall bow runs at one balance on either
-// content base. The source's `minimumrange 0` is clamped to the sim's floor of 1 (`withReach`).
-const HOUSE_BOW_MIN_RANGE = 1;
+// The house bow, extracted from the mod `weapons.ini` type 20: band, speed and the damage columns by
+// target material (bare, wool, leather, chain, plate, wood, house).
+const HOUSE_BOW_MIN_RANGE = 0;
 const HOUSE_BOW_MAX_RANGE = 29;
 const HOUSE_BOW_SPEED = 7;
+const HOUSE_BOW_DAMAGE: Readonly<Record<string, number>> = {
+  '0': 375,
+  '1': 240,
+  '2': 300,
+  '3': 150,
+  '4': 150,
+  '6': 9,
+  '7': 50,
+};
 // Extracted from the mod `weapons.ini` `bearfist`/`wolvefist` rows. Both share weapon type 1 because
 // the lookup key is `(tribeType, typeId)`. The source `goodtype 0` is dropped on purpose: carrying it
 // would count good 0 among the military goods.

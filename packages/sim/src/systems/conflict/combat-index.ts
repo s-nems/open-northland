@@ -23,14 +23,6 @@ import {
 } from './combat-grid.js';
 import { firingBuildings } from './targeting.js';
 
-/**
- * How many rings past the first hit {@link CombatIndex.nearestFew} keeps taking. Without it a band holding
- * fewer acceptors than the caller asked for costs every candidate out to `maxDist`. Approximation: three
- * rings is the huddle around the nearest target, so a garrison fans onto enemies beside its closest one
- * rather than onto stragglers half a map behind them.
- */
-const NEAREST_FEW_TAIL_RINGS = 3;
-
 /** A candidate packs as `distance * CANDIDATE_ID_SPAN + entity`, so a numeric sort orders by distance and then
  *  id. Entity ids stay below 2^32 and distances below 2^21, so the key is an exact double. */
 const CANDIDATE_ID_SPAN = 2 ** 32;
@@ -143,8 +135,9 @@ export class CombatIndex {
    * The `limit` nearest indexed targets satisfying `accept`, in the same (distance, then id) order
    * {@link nearest} picks its winner from, so `[0]` is exactly what `nearest` returns. A member indexed at
    * several nodes is listed once, at its nearest, and `accept` is asked once per member, so it must be
-   * total and pure over any indexed entity. The take stops at `limit` acceptors, `maxDist`, or
-   * {@link NEAREST_FEW_TAIL_RINGS} past the first ring that hit.
+   * total and pure over any indexed entity. The take stops at `limit` acceptors, `maxDist`, or `tailRings`
+   * past the first ring that hit, so a band holding fewer acceptors than asked for does not cost every
+   * candidate out to `maxDist`.
    */
   nearestFew(
     fromX: number,
@@ -154,6 +147,7 @@ export class CombatIndex {
     accept: (e: Entity) => boolean,
     limit: number,
     seeker: number | null,
+    tailRings: number,
   ): readonly { entity: Entity; distance: number }[] {
     const { keys, count } = this.bandScan(fromX, fromY, minDist, maxDist, seeker);
     const found: { entity: Entity; distance: number }[] = [];
@@ -170,7 +164,7 @@ export class CombatIndex {
         seen.add(entity);
         if (!accept(entity)) continue;
         found.push({ entity, distance });
-        lastRing = Math.min(lastRing, distance + NEAREST_FEW_TAIL_RINGS);
+        lastRing = Math.min(lastRing, distance + tailRings);
       }
       return found;
     } finally {

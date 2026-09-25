@@ -97,7 +97,8 @@ export const enGame = {
     defenseGarrison: 'Garrison',
     defenseStopped: 'Defence stopped',
     defenseStarted: 'Defence started - sheltered {sheltered}/{capacity}',
-    raiseAlarmHint: 'Sound the alarm: every civilian in range hides here and shoots from cover.',
+    raiseAlarmHint:
+      'Sound the alarm: every civilian in range hides here, and the building shoots faster the more are inside.',
     lowerAlarmHint: 'Call off the alarm: the settlers sheltering here go back to work.',
     upgrade: 'Upgrade',
     schoolProgress: 'Learning {target}: {seconds}s left',

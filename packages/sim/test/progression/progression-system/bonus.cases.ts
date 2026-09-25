@@ -25,6 +25,7 @@ import {
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_MASTERY_HITS,
   fightDamageBonus,
+  HOUSE_DAMAGE_EXPERIENCE_CAP_HITS,
   jobExperiencePercent,
   SCOUT_VISION_BONUS_MAX_NODES,
   scoutVisionBonusNodes,
@@ -32,6 +33,7 @@ import {
   strokesPerUnit,
   WEAPON_MAIN_TYPE,
   withFightDamageBonus,
+  withHouseDamageExperience,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -113,6 +115,17 @@ describe('fightDamageBonus - hits with a weapon class buy extra damage', () => {
     expect(withFightDamageBonus(10, sword, WEAPON_MAIN_TYPE.AXE)).toBe(10); // untrained class
     expect(withFightDamageBonus(10, new Map(), WEAPON_MAIN_TYPE.SWORD)).toBe(10); // no hits yet
     expect(withFightDamageBonus(10, sword, undefined)).toBe(10); // a class-less weapon
+  });
+
+  it('withHouseDamageExperience scales vs-building damage by 200 / (200 - hits), capped at 100 hits', () => {
+    const bow = (hits: number) => new Map([[FIGHT_EXPERIENCE_TYPE.BOW, hits]]);
+    expect(withHouseDamageExperience(50, new Map(), WEAPON_MAIN_TYPE.BOW)).toBe(50);
+    expect(withHouseDamageExperience(50, bow(40), WEAPON_MAIN_TYPE.BOW)).toBe(62); // 50 * 200 / 160
+    expect(withHouseDamageExperience(50, bow(HOUSE_DAMAGE_EXPERIENCE_CAP_HITS), WEAPON_MAIN_TYPE.BOW)).toBe(
+      100,
+    );
+    expect(withHouseDamageExperience(50, bow(5000), WEAPON_MAIN_TYPE.BOW)).toBe(100); // past the cap
+    expect(withHouseDamageExperience(50, bow(40), WEAPON_MAIN_TYPE.SWORD)).toBe(50); // untrained class
   });
 });
 

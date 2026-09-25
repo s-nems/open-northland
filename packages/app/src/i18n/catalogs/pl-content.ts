@@ -190,7 +190,7 @@ export const plContent = {
     'tower-defence': {
       title: 'Obrona wieży',
       summary:
-        'Alarm: cywile chowają się w wieżach i ostrzeliwują najeźdźców z łuku, nie wychodząc z ukrycia.',
+        'Alarm: cywile chowają się w wieżach, a każda wieża ostrzeliwuje najeźdźców tym szybciej, im więcej osób jest w środku.',
     },
     'attack-move': {
       title: 'Atak w marszu',

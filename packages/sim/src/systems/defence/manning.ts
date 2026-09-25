@@ -1,11 +1,11 @@
-import { Age, Position, Sheltering } from '../../components/index.js';
+import { Position, Sheltering } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { isInside } from '../settlers/indoors.js';
 
 /**
  * The shelter `e` is manning: the defence-mode building it claimed and reached, rather than one it is still
- * running to. Manning is what the CombatSystem reads, so a manned settler never flees, never steps out to
- * chase, and is not a target itself, while a claimant still crossing the ground is an ordinary civilian.
+ * running to. A manned settler sits the fight out and is not a target itself, and its building fires for
+ * it; a claimant still crossing the ground is an ordinary civilian.
  */
 export function mannedShelter(world: World, e: Entity): Entity | null {
   const claim = world.tryGet(e, Sheltering);
@@ -19,28 +19,13 @@ export function isManningShelter(world: World, e: Entity): boolean {
   return mannedShelter(world, e) !== null;
 }
 
-/** Every shooter's seat, its place `0..n-1` among the settlers manning one building, numbered in ascending
- *  id order so the same settler holds the same seat on every machine. Numbered over the arrived only:
- *  counting a claimant still crossing the field would leave the seats in play a sparse subset of `0..n-1`,
- *  which collides again under the spread's modulo. */
-export function garrisonSeats(world: World): ReadonlyMap<Entity, number> {
-  const seats = new Map<Entity, number>();
-  const taken = new Map<Entity, number>();
-  for (const e of world.canonicalQuery(Sheltering)) {
+/** How many settlers each defence-mode building holds right now: the arrived claimants only, since one
+ *  still crossing the field adds nothing to the building's fire. Scales with the claims, not the map. */
+export function shelterOccupancy(world: World): ReadonlyMap<Entity, number> {
+  const occupancy = new Map<Entity, number>();
+  for (const e of world.query(Sheltering)) {
     const shelter = mannedShelter(world, e);
-    if (shelter === null) continue;
-    const seat = taken.get(shelter) ?? 0;
-    taken.set(shelter, seat + 1);
-    seats.set(e, seat);
+    if (shelter !== null) occupancy.set(shelter, (occupancy.get(shelter) ?? 0) + 1);
   }
-  return seats;
-}
-
-/**
- * Whether a manning settler draws the house bow: a grown civilian does, a baby or child hides without
- * fighting. Keyed on the {@link Age} marker rather than the age-class job ids because only a born-young
- * settler carries it, so a fixture's adult job id colliding with an age-class id cannot disarm an adult.
- */
-export function drawsHouseBow(world: World, e: Entity): boolean {
-  return !world.has(e, Age);
+  return occupancy;
 }

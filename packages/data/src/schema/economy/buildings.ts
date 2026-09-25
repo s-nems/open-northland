@@ -128,9 +128,9 @@ export const BuildingType = z.strictObject({
   /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */
   canEnableDefenceMode: z.boolean().default(false),
   /**
-   * How many civilians shelter inside during defence mode, each shooting the house bow from cover; `0`
-   * for a type that offers no mode. No readable record carries a garrison size, so this is authored
-   * balance, overlaid at the app boundary onto the types the flag admits.
+   * How many civilians shelter inside during defence mode, `0` for a type that offers no mode. No readable
+   * record carries a garrison size; the original's sizes are overlaid at the app boundary onto the types
+   * the flag admits.
    */
   shelterCapacity: z.number().int().nonnegative().default(0),
   source: Provenance.optional(),

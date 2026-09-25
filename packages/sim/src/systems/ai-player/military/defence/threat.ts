@@ -34,9 +34,9 @@ export const THREAT_STAND_DOWN_MARGIN_NODES = 6;
  *  and whose shelters therefore take their people in unarmed - they still have to be indoors in time. */
 const HOUSE_BOW_REACH_NODES = 29;
 
-/** How close a raider comes before a building of `tribe` counts as threatened: the reach of the bow its
- *  people answer with from inside ({@link houseBow}). A sheltering civilian shoots at its plain range; the
- *  tower bonus belongs to the employed post. */
+/** How close a raider comes before a building of `tribe` counts as threatened: the reach of the bow it
+ *  fires once its people are inside ({@link houseBow}), at its plain range; the tower bonus belongs to the
+ *  employed post. */
 export function threatWatchNodes(ctx: SystemContext, tribe: number): number {
   return houseBow(ctx.content, tribe)?.maxRange ?? HOUSE_BOW_REACH_NODES;
 }

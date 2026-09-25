@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet, WeaponType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addCurrentAtomic,
@@ -23,7 +23,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
-import { TOWER_RANGE_BONUS_NODES } from '../../src/systems/conflict/tower-post.js';
+import { garrisonReach, TOWER_RANGE_BONUS_NODES } from '../../src/systems/conflict/tower-post.js';
 import { plannerSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -32,11 +32,11 @@ import { ctxOf, grassMap } from '../settlers/needs/support.js';
 /**
  * The tower garrison: a bow soldier posted to a watchtower walks in, holds it, and shoots from cover at
  * the tower's extended reach without ever stepping out. `houses.ini` gives the towers exactly these posts
- * (`logicworker 40 3`/`41 3` on `tower 00`, 4/4 on `tower 01`); what manning one DOES - the shelter, the
- * reach bonus - is the approximation the feature names (see `systems/conflict/tower-post.ts`).
+ * (`logicworker 40 3`/`41 3` on `tower 00`, 4/4 on `tower 01`). The reach bonus is the original's; the
+ * shelter from enemy fire is the approximation the feature names (see `systems/conflict/tower-post.ts`).
  *
  * The fixture mirrors that shape at fixture scale: a `tower` kind employing the base soldier class plus a
- * hauler, and a bow for that class whose plain reach is short enough that the +8 is what decides.
+ * hauler, and a bow for that class whose plain reach is short enough that the tower's bonus is what decides.
  */
 
 const VIKING = 1;
@@ -48,8 +48,8 @@ const SOLDIER_JOB = 31;
 const TOWER_TYPE = 92;
 const HEADQUARTERS_TYPE = 1;
 const FOOD_GOOD = 3;
-/** The garrison bow: `maxRange 4` plain, so a target at 10 nodes is reachable only from the tower
- *  (4 + {@link TOWER_RANGE_BONUS_NODES} = 12) - the bonus, not the bow, is what lands the shot. */
+/** The garrison bow: `maxRange 4` plain, so a target at 8 nodes is reachable only from the tower
+ *  (4 + {@link TOWER_RANGE_BONUS_NODES} = 9) - the bonus, not the bow, is what lands the shot. */
 const GARRISON_BOW_RANGE = 4;
 const ARROW_MUNITION = 1;
 /** Well over the drive threshold - a garrison this hungry leaves the tower for the larder. */
@@ -393,9 +393,26 @@ describe('the tower garrison - where the watch sits in the drive ladder', () => 
   });
 });
 
+describe('garrisonReach', () => {
+  const band = (weapon: WeaponType) => ({ minRange: weapon.minRange, maxRange: weapon.maxRange, weapon });
+  const bow = WeaponType.parse({
+    typeId: 1,
+    id: 'bow',
+    munitionType: ARROW_MUNITION,
+    minRange: 3,
+    maxRange: 15,
+  });
+  const sword = WeaponType.parse({ typeId: 2, id: 'sword', minRange: 1, maxRange: 2 });
+
+  it('lengthens a bow by the tower bonus and drops every dead zone', () => {
+    expect(garrisonReach(band(bow))).toMatchObject({ minRange: 0, maxRange: 15 + TOWER_RANGE_BONUS_NODES });
+    expect(garrisonReach(band(sword))).toMatchObject({ minRange: 0, maxRange: 2 });
+  });
+});
+
 describe('the tower garrison - shooting from cover', () => {
   /** The tower's cell, and an enemy cell one full plain-reach beyond it - `GARRISON_BOW_RANGE` CELLS out
-   *  is twice that many nodes, so the plain bow falls short and only the +8 covers it. */
+   *  is twice that many nodes, so the plain bow falls short and only the tower's bonus covers it. */
   const TOWER_X = 6;
   const ROW = 3;
   const ENEMY_X = TOWER_X + GARRISON_BOW_RANGE;
@@ -446,9 +463,9 @@ describe('the tower garrison - shooting from cover', () => {
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, ROW);
     manTheTower(sim, soldier, tower);
     const post = tileOf(sim, soldier);
-    // Past the boosted band (12 nodes) but inside a soldier's 16-node sight: on open ground this is
+    // Past the boosted band (9 nodes) but inside a soldier's 16-node sight: on open ground this is
     // exactly the target an ATTACK-stance soldier marches at.
-    const outOfBand = GARRISON_BOW_RANGE + TOWER_RANGE_BONUS_NODES + 2; // nodes
+    const outOfBand = GARRISON_BOW_RANGE + TOWER_RANGE_BONUS_NODES + 3; // nodes, a whole number of cells
     standingTarget(sim, TOWER_X + outOfBand / 2); // one cell is two nodes
 
     run(sim, 200);

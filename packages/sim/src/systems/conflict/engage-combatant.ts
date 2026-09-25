@@ -26,12 +26,11 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { drawsHouseBow, mannedShelter } from '../defence/index.js';
+import { isManningShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
 import { clearNavState, isTravelling } from '../movement/nav-state.js';
-import { withFightDamageBonus } from '../progression/index.js';
+import { withFightDamageBonus, withHouseDamageExperience } from '../progression/index.js';
 import {
-  houseBow,
   isAnimalTribe,
   isHunterJob,
   MILITARY_MODE,
@@ -67,7 +66,7 @@ export function engageCombatant(
   pass: CombatPass,
   e: Entity,
 ): void {
-  const { index, seats, slots } = pass;
+  const { index, slots } = pass;
   const attacker = world.get(e, Settler);
   const posted = attacker.jobType === null ? null : towerPostFor(world, ctx, e, attacker.jobType);
   const manning = posted !== null && standsAtPost(world, e) === posted;
@@ -87,17 +86,21 @@ export function engageCombatant(
   const marching = march !== undefined && ctx.tick >= march.blockedUntil;
   if (suppressedByMoveOrder(world, e, marching)) return;
 
+  // Sheltering inside a building on alarm sits the fight out: the building fires for its people
+  // (`shelter-fire.ts`), and an order to attack from inside it has nothing to act on.
+  if (isManningShelter(world, e)) {
+    world.remove(e, AttackOrder);
+    disengage(world, e);
+    return;
+  }
+
   const owned = world.has(e, Owner);
   const ordered = liveAttackOrder(world, ctx, e, attacker);
-  const manned = mannedShelter(world, e);
   const stance: CombatantStance = {
     owned,
     ordered,
     mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
     post: manning ? posted : null,
-    // A manned settler always has a seat - `garrisonSeats` numbers every manned claim - so the fallback is
-    // only for a claim made after that pass, which reads as the first seat until the next tick.
-    shelter: manned === null ? null : { building: manned, seat: seats.get(e) ?? 0 },
   };
   // Only a unit that would pick the fight gets up for it - by its stance, or because the player's attack
   // order names the target. A passive or fleeing sleeper sleeps on until a blow lands, which ends any
@@ -131,12 +134,7 @@ export function engageCombatant(
     return;
   }
 
-  const held = attackerWeapon(
-    ctx,
-    attacker.tribe,
-    attacker.jobType,
-    wieldedWeaponTypeId(world, ctx, e, stance, attacker),
-  );
+  const held = attackerWeapon(ctx, attacker.tribe, attacker.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
   if (held === null) {
     disengage(world, e);
     return;
@@ -147,9 +145,7 @@ export function engageCombatant(
 
   if (preySearchResting(world, ctx, e, attacker.jobType, stance)) return;
 
-  // A garrison acquires and measures reach from the tower, not from the door node it stands on inside, so
-  // the band it shoots into is the band its arrow leaves from.
-  const here = entityNode(world, terrain, stance.shelter?.building ?? e);
+  const here = entityNode(world, terrain, e);
   const spec = engageSpec(world, ctx, terrain, index, e, here, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, pass, e, here, spec);
   if (found === null) {
@@ -193,20 +189,6 @@ export function engageCombatant(
  *  an archer that opens fire at the foot of its own tower never climbs it. */
 function climbingToPost(world: World, e: Entity, posted: Entity | null, manning: boolean): boolean {
   return posted !== null && !manning && !world.has(e, AttackOrder);
-}
-
-/** The weapon typeId this combatant fights with, overriding its `(tribe, job)` class binding: the house bow
- *  while it mans a shelter, else the {@link Weapon} it carries. `undefined` falls back to the class binding,
- *  which leaves an unarmed civilian unarmed. */
-function wieldedWeaponTypeId(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  stance: CombatantStance,
-  attacker: SettlerIdentity,
-): number | undefined {
-  if (stance.shelter === null) return world.tryGet(e, Weapon)?.weaponTypeId;
-  return drawsHouseBow(world, e) ? houseBow(ctx.content, attacker.tribe)?.typeId : undefined;
 }
 
 /** Asleep in the open or on its tower, where an enemy can reach it; a settler asleep indoors elsewhere is
@@ -358,10 +340,11 @@ function swingAt(
   // its hash.
   if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
   // The victim's armor material selects both the damage column and the impact sound. Fight experience
-  // with this weapon class raises the swing's damage (up to +50% at combat mastery).
+  // with this weapon class raises the swing's damage, by a separate rule against a building.
   const material = targetMaterial(world, ctx, target);
+  const withExperience = world.has(target, Building) ? withHouseDamageExperience : withFightDamageBonus;
   const blow = {
-    damage: withFightDamageBonus(
+    damage: withExperience(
       weaponDamageVsMaterial(weapon.weapon, material),
       world.get(e, SettlerProgress).experience,
       weapon.weapon.mainType,
@@ -371,10 +354,10 @@ function swingAt(
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
 }
 
-/** Who never walks toward a target out of reach: anyone shooting from inside a building, and an unowned
- *  scenario civ. For the men indoors this is also where an attack order onto something past their reach
- *  dies, rather than marching them out. An owned combatant advances, and so does a hostile wild animal. */
+/** Who never walks toward a target out of reach: a garrison shooting from its tower, and an unowned
+ *  scenario civ. For the men on a tower this is also where an attack order onto something past their reach
+ *  dies, rather than marching them down. An owned combatant advances, and so does a hostile wild animal. */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
-  if (stance.post !== null || stance.shelter !== null) return true;
+  if (stance.post !== null) return true;
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);
 }

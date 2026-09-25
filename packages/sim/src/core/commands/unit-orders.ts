@@ -302,8 +302,8 @@ export type UnitOrderCommand =
   | {
       /**
        * Raise or lower the alarm on one owned garrison building. While it is up the owner's civilians
-       * shelter inside and shoot the house bow, up to the type's `shelterCapacity`; lowering it releases
-       * everyone sheltering there.
+       * shelter inside, up to the type's `shelterCapacity`, and the building fires the house bow; lowering
+       * it releases everyone sheltering there.
        */
       readonly kind: 'setDefenceMode';
       readonly building: Entity;

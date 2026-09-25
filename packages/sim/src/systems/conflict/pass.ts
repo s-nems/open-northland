@@ -1,4 +1,3 @@
-import type { Entity } from '../../ecs/world.js';
 import type { BattleFront } from './battle-alert.js';
 import type { CombatIndex } from './combat-index.js';
 import type { MeleeSlots } from './melee-slots.js';
@@ -7,10 +6,6 @@ import type { MeleeSlots } from './melee-slots.js';
 export interface CombatPass {
   readonly index: CombatIndex;
   readonly slots: MeleeSlots;
-  readonly seats: ReadonlyMap<Entity, number>;
-  /** Garrison searches already answered this pass, keyed by their inputs. Read-only to every seat that shares
-   *  one: the band is handed out, never edited. */
-  readonly bands: Map<string, ReturnType<CombatIndex['nearestFew']>>;
   /** The fights a sleeper gets up for, bucketed on its first question. */
   readonly front: BattleFront;
 }

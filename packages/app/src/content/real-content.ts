@@ -11,7 +11,7 @@ import {
 } from '@open-northland/data';
 import { HARVEST_CADAVER_ATOMIC } from '../catalog/atomics.js';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
-import { HOUSE_BOW_DAMAGE, shelterCapacityFor } from '../catalog/defence.js';
+import { shelterCapacityFor } from '../catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { HUNTER_BOW_BALANCE, huntPreyRows } from '../catalog/hunting.js';
@@ -121,16 +121,15 @@ function withWoolCarcassHarvest(good: GoodType): GoodType {
   return { ...good, atomics: { ...good.atomics, harvest: HARVEST_CADAVER_ATOMIC } };
 }
 
-/** Overlay the authored garrison size: the flag decides who offers the mode, so an unflagged row is
- *  zeroed whatever it arrived with. */
+/** Overlay the garrison size: the flag decides who offers the mode, so an unflagged row is zeroed whatever
+ *  it arrived with. */
 function withShelterCapacity(building: BuildingType): BuildingType {
   return { ...building, shelterCapacity: shelterCapacityFor(building) };
 }
 
-/** Rein the two civilian bows in under the soldier's short bow: a design override of the extracted rows,
- *  which make both stronger in at least one column. The wall bow keeps its extracted reach. */
-function withCivilianBowBalance(weapon: WeaponType): WeaponType {
-  if (weapon.id === 'house_bow') return { ...weapon, damage: { ...HOUSE_BOW_DAMAGE } };
+/** Rein the hunter bow in under the soldier's short bow: a design override of the extracted row, which
+ *  makes it stronger. The house bow keeps its extracted row whole. */
+function withHunterBowBalance(weapon: WeaponType): WeaponType {
   if (weapon.id !== 'hunter_bow') return weapon;
   return {
     ...weapon,
@@ -195,7 +194,7 @@ export function mergeRealContent(
   const tribes = real.tribes.map((t) =>
     t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
   );
-  const weapons = real.weapons.map((weapon) => withCivilianBowBalance(withHeroFistJob(weapon)));
+  const weapons = real.weapons.map((weapon) => withHunterBowBalance(withHeroFistJob(weapon)));
   // Wool's pipeline row is leather's whole row re-keyed: the cadaver stage (landscape 79 / gfx 847), its
   // footprint, and the store-pile stage, so a wool heap draws the hide pile's decal. The same named
   // approximation as the harvest atomic.

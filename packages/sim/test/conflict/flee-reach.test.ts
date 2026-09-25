@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  DefenceMode,
   Fleeing,
   Frightened,
   Garrison,
@@ -15,7 +16,6 @@ import {
   Resting,
   Settler,
   Sheltering,
-  Stance,
   StayPoint,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -365,17 +365,17 @@ describe('FLEE - only a building that shoots is a threat', () => {
     expect(s.world.has(civ, Fleeing)).toBe(true);
   });
 
-  it('a shelter fires only while a civilian inside would draw its bow', () => {
+  it('a shelter on alarm fires while anyone is inside it', () => {
     const s = sim();
     const civ = combatantAtNode(s, 30, 30, P0, MILITARY_MODE.FLEE, { jobType: CIVILIAN_JOB });
     const shelter = buildingAtNode(s, SHELTER, 34, 30, P1);
+    s.world.add(shelter, DefenceMode, {});
+    expect(scares(s, civ, shelter)).toBe(false); // on alarm but empty
+
+    // Whatever the stance of the one inside: the building aims, not its people.
     const inside = combatantAtNode(s, 34, 30, P1, MILITARY_MODE.IGNORE, { jobType: CIVILIAN_JOB });
     s.world.add(inside, Sheltering, { shelter });
     s.world.add(inside, Resting, { at: shelter });
-
-    // IGNORE stands a non-hunter down before it aims, so the shelter stays silent.
-    expect(scares(s, civ, shelter)).toBe(false);
-    s.world.mut(inside, Stance).mode = MILITARY_MODE.FLEE;
     expect(scares(s, civ, shelter)).toBe(true);
   });
 
