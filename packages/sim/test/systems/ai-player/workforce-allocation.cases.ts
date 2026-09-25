@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aiPlayerEntity,
   Marriage,
+  Position,
   Resource,
   Settler,
   SettlerProgress,
@@ -11,7 +12,7 @@ import {
   WorkFlag,
 } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
-import { Simulation } from '../../../src/index.js';
+import { nodeOfPosition, Simulation } from '../../../src/index.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
@@ -34,7 +35,7 @@ import {
   supplyLines,
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
-import { workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
+import { gathererReach, workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CLEAR_GROUND_FROM_NODES,
@@ -49,7 +50,7 @@ import {
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
-import { resourceStanceCells } from '../../../src/systems/footprint/interaction.js';
+import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -135,6 +136,27 @@ function workshopContent(): ContentSet {
       workshop(POTTERY_00_TYPE, 'work_pottery_00', POTTER, 1, MUD),
       workshop(POTTERY_01_TYPE, 'work_pottery_01', POTTER, 2, MUD),
       workshop(SMITHY_TYPE, 'work_smithy_01', SMITH, 2, IRON),
+    ],
+  });
+}
+
+/** A free fixture id for {@link shedContent}'s one-node building. */
+const SHED_TYPE = 33;
+
+/** The AI fixture plus a shed whose body blocks the one node it stands on. */
+function shedContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: SHED_TYPE,
+        id: 'test_shed',
+        kind: 'home',
+        homeSize: 1,
+        footprint: { blocked: [{ dx: 0, dy: 0 }] },
+      },
     ],
   });
 }
@@ -1016,6 +1038,70 @@ describe('workforce module (collectResources)', () => {
     expect(Math.abs(flag.x - FRESH.x) + Math.abs(flag.y - FRESH.y)).toBeLessThanOrEqual(
       FLAG_MAX_DISTANCE_NODES,
     );
+  });
+
+  it('moves a flag whose deposit the holder cannot reach from it, though another side is clear', () => {
+    const content = shedContent();
+    const sim = aiSim(1, content);
+    const ctxAt = (tick = 0): SystemContext => ({ ...ctxOf(sim, tick), content });
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxAt(), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const terrain = sim.terrain;
+    const deposit = [...sim.world.query(Resource)].find((e) => sim.world.get(e, Resource).goodType === MUD);
+    const [holder] = holdersOf(sim, MUD);
+    if (terrain === undefined || deposit === undefined || holder === undefined) throw new Error('setup');
+    const flagAt = sim.world.get(sim.world.get(holder, WorkFlag).flag, Position);
+    const flagNode = nodeOfPosition(flagAt.x, flagAt.y);
+
+    // A shed on the one stance cell the gatherer walks to from his flag: the deposit keeps clear sides, but
+    // he would never dig it from here. A fresh deposit waits across the map.
+    const stance = resourceWorkCell(sim.world, terrain, deposit, terrain.nodeAt(flagNode.hx, flagNode.hy));
+    const x = terrain.xOf(stance);
+    const y = terrain.yOf(stance);
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SHED_TYPE, x, y, tribe: VIKING, owner: SEAT });
+    const FRESH = { x: 50, y: 8 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...FRESH }]);
+    sim.step();
+    expect(workableResourceTest(sim.world, ctxAt(), terrain)(deposit)).toBe(true);
+    const radius = sim.world.get(holder, WorkFlag).radius;
+    const reach = gathererReach(sim.world, ctxAt(), terrain);
+    expect(reach.patchHarvestable(holder, flagNode, radius, (g) => g === MUD)).toBe(false);
+
+    const move = [...collectModule.run(sim.world, ctxAt(AI_DECISION_INTERVAL_TICKS), SEAT)];
+    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
+    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to move');
+    expect(flag.x !== flagNode.hx || flag.y !== flagNode.hy).toBe(true);
+    expect(reach.patchHarvestable(holder, { hx: flag.x, hy: flag.y }, radius, (g) => g === MUD)).toBe(true);
+  });
+
+  it('moves a clay holder off a spent deposit beside the next live one', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const [holder] = holdersOf(sim, MUD);
+    if (holder === undefined) throw new Error('setup: the clay holder');
+
+    // The deposit is dug out; the next one stands across the map, far outside the flag's circle.
+    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
+    const NEXT = { x: 56, y: 28 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...NEXT }]);
+    sim.step();
+
+    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
+    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
+    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to follow the next deposit');
+    expect(Math.abs(flag.x - NEXT.x) + Math.abs(flag.y - NEXT.y)).toBeLessThanOrEqual(
+      FLAG_MAX_DISTANCE_NODES,
+    );
+    expect(move.filter((c) => c.kind === 'setJob' && c.entity === holder)).toEqual([]);
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {

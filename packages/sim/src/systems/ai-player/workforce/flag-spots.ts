@@ -1,12 +1,9 @@
-import { Resource } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { workFlagPlacementTest } from '../../footprint/index.js';
-import { anyResourceNear } from '../../spatial/resources.js';
-import { nearestLiveResource, type WorkableTest } from '../live-resources.js';
+import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf, firstRingNode } from '../node-geometry.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
@@ -14,6 +11,9 @@ export const FLAG_MIN_DISTANCE_NODES = 4;
 export const FLAG_MAX_DISTANCE_NODES = 6;
 /** When the whole 2-3-tile band is blocked, any legal node this close still serves. */
 const FLAG_FALLBACK_MAX_DISTANCE_NODES = 12;
+/** How many nearest resources one re-plant tries (authored): a resource whose best flag spot is taken or
+ *  from which the holder could not work it gives way to the next nearest. */
+const REPLANT_ATTEMPTS = 3;
 
 /** The spots a decision has already handed out, which its later posts must keep off: two flags on one
  *  node would share a single delivery yard and its per-tile pile cap. A flag that already stands is in
@@ -24,30 +24,13 @@ function flagNodeKey(hx: number, hy: number): string {
   return `${hx},${hy}`;
 }
 
-export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
-  taken.add(flagNodeKey(spot.hx, spot.hy));
+/** Manhattan distance between two half-cell nodes, the metric of the flag band. */
+export function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
+  return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
 }
 
-/** Whether any live resource accepted by `alive` and `workable` remains inside the flag's work circle,
- *  the world-metric circle the gatherer harvests in. */
-export function patchAlive(
-  world: World,
-  flagNode: HalfCellNode,
-  radius: number,
-  alive: (r: { goodType: number; remaining: number }) => boolean,
-  workable: WorkableTest,
-): boolean {
-  // The region-index box must contain the anisotropic circle (±radius nodes E/W, wider in rows).
-  const box = nodeBoxOfCircles([{ x: flagNode.hx, y: flagNode.hy, r: radius }]);
-  const reach = Math.max(box.maxX - flagNode.hx, box.maxY - flagNode.hy);
-  return anyResourceNear(world, flagNode.hx, flagNode.hy, reach, (e) => {
-    const r = world.get(e, Resource);
-    if (r.remaining <= 0 || !alive(r)) return false;
-    const node = anchorNodeOf(world, e);
-    return (
-      node !== null && withinNodeRadius(flagNode.hx, flagNode.hy, node.hx, node.hy, radius) && workable(e)
-    );
-  });
+export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
+  taken.add(flagNodeKey(spot.hx, spot.hy));
 }
 
 /** The closest legal work-flag node in the 2-3-tile band around a resource, falling back to any nearby
@@ -85,4 +68,38 @@ export function collectorSpot(
   if (resource === null) return null;
   const node = anchorNodeOf(world, resource);
   return node === null ? null : flagSpotNear(world, ctx, terrain, node, taken);
+}
+
+/** A re-plant: the resource the flag moves after and the spot beside it, `dry` when the map holds no
+ *  candidate at all, or null when this decision found none the holder could work. */
+export type Replant = { readonly target: HalfCellNode; readonly spot: HalfCellNode } | 'dry' | null;
+
+/**
+ * Where `holder` re-plants a flag of `radius`: beside the resource `nearest` picks, checked with the
+ * gatherer's own filters from the new spot, trying the next nearest after a miss. `nearest` must honour the
+ * `open` test it is given, which drops the resources already tried.
+ */
+export function replantSpot(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  holder: Entity,
+  radius: number,
+  nearest: (open: WorkableTest) => Entity | null,
+  reach: GathererReach,
+  taken: TakenFlagNodes,
+): Replant {
+  const tried = new Set<Entity>();
+  const open = (e: Entity): boolean => !tried.has(e);
+  for (let attempt = 0; attempt < REPLANT_ATTEMPTS; attempt++) {
+    const resource = nearest(open);
+    if (resource === null) return attempt === 0 ? 'dry' : null;
+    const target = anchorNodeOf(world, resource);
+    const spot = target === null ? null : flagSpotNear(world, ctx, terrain, target, taken);
+    if (target !== null && spot !== null && reach.canWork(holder, spot, radius, resource)) {
+      return { target, spot };
+    }
+    tried.add(resource);
+  }
+  return null;
 }

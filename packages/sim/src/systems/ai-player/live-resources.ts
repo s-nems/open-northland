@@ -1,10 +1,16 @@
-import { Resource, ResourceFootprint } from '../../components/index.js';
+import { Resource, ResourceFootprint, Settler } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
+import { routeRegions } from '../footprint/index.js';
 import { resourceStanceCells } from '../footprint/interaction.js';
+import { needSubjectOf, settlerMeetsNeed } from '../progression/index.js';
+import { interactionCell, jobAtomics } from '../settlers/targets/index.js';
+import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
+import { manhattan } from '../spatial/metric.js';
 import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spatial/resources.js';
 import { anchorNodeOf } from './node-geometry.js';
 
@@ -28,6 +34,75 @@ export function workableResourceTest(world: World, ctx: SystemContext, terrain: 
   return (e) =>
     !world.has(e, ResourceFootprint) ||
     resourceStanceCells(world, terrain, e).some((cell) => !blocked.has(cell));
+}
+
+/**
+ * A flag gatherer's own harvest filters, judged from his flag node as if he idled there: his trade's
+ * atomic, the good's experience need, and the work cell nearest the flag lying inside the circle, clear of
+ * the live overlay, on his side of any terrain seam, off his failed-route memo and routable. The settler
+ * planner's harvest search needs a whole planner pass, so its filters are restated here. Signpost
+ * confinement is left out: the seat plants its flags inside its own network.
+ */
+export interface GathererReach {
+  /** Whether `holder` with a flag of `radius` on `flag` would take `resource`. */
+  canWork(holder: Entity, flag: HalfCellNode, radius: number, resource: Entity): boolean;
+  /** Whether any live resource of a good `wanted` accepts is one {@link canWork} takes. */
+  patchHarvestable(
+    holder: Entity,
+    flag: HalfCellNode,
+    radius: number,
+    wanted: (goodType: number) => boolean,
+  ): boolean;
+}
+
+const NO_ATOMICS: ReadonlySet<number> = new Set();
+
+export function gathererReach(world: World, ctx: SystemContext, terrain: TerrainGraph): GathererReach {
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const regions = routeRegions(world, ctx, terrain);
+  const judge = (holder: Entity) => {
+    const jobType = world.get(holder, Settler).jobType;
+    const allowed = jobType === null ? NO_ATOMICS : jobAtomics(ctx, jobType);
+    const subject = needSubjectOf(world, holder);
+    const memo = unreachableGoals(world, ctx, holder);
+    const needMet = new Map<number, boolean>();
+    return {
+      allowed,
+      takes: (center: NodeId, radius: number, e: Entity, wanted: (goodType: number) => boolean): boolean => {
+        const res = world.get(e, Resource);
+        if (res.remaining <= 0 || !wanted(res.goodType) || !allowed.has(res.harvestAtomic)) return false;
+        let met = needMet.get(res.goodType);
+        if (met === undefined) {
+          met = settlerMeetsNeed(world, ctx, subject, 'good', res.goodType);
+          needMet.set(res.goodType, met);
+        }
+        if (!met) return false;
+        const cell = interactionCell(world, ctx, terrain, e, center);
+        if (manhattan(terrain, center, cell) > radius) return false;
+        if (terrain.componentOf(cell) !== terrain.componentOf(center)) return false;
+        if (cell !== center && (blocked.has(cell) || isUnreachableGoal(memo, cell))) return false;
+        return !regions.unroutable(center, cell);
+      },
+    };
+  };
+  const centerOf = (flag: HalfCellNode): NodeId => terrain.nodeAtClamped(flag.hx, flag.hy);
+  return {
+    canWork: (holder, flag, radius, resource) =>
+      judge(holder).takes(centerOf(flag), radius, resource, () => true),
+    patchHarvestable: (holder, flag, radius, wanted) => {
+      const { allowed, takes } = judge(holder);
+      const center = centerOf(flag);
+      const reach = radius + contentIndex(ctx.content).maxResourceWorkOffset;
+      return anyResourceNear(
+        world,
+        flag.hx,
+        flag.hy,
+        reach,
+        (e) => takes(center, radius, e, wanted),
+        allowed,
+      );
+    },
+  };
 }
 
 /** The best `(Manhattan distance, entity id)` live `goodType` resource `workable` accepts inside the
