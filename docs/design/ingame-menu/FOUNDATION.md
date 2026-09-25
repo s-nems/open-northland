@@ -216,54 +216,61 @@ on the beam opens it at once.
 The selected person's panel (ticket 08), bottom right, 318 px wide, in the window frame. The head
 carries the trade as the bronze kicker over the person's name, an owner line only when it says
 something (another seat's person, a child's age), and two medallions: Rozkazy, which opens the
-action ring at the settler, and close, which clears the selection. The body scrolls inside the
+action ring at the settler (its tooltip names the ring hotkey), and close, which clears the
+selection. The body scrolls inside the
 frame and stops 16 px under the summary bar, so the map stays usable beside it. The panel shows
 what the player can read or act on and nothing else: no explanatory lines, no help buttons.
 Review states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
 
 - Portrait row: the live full-body settler in the 96 px framed portrait, as the notifications paint
-  it, is the centre-view button. Beside it the equipment as captioned sockets (Buty, Narzędzia; a
-  soldier's Broń, Zbroja, Buty; a hero's fixed arms as plain sockets), the four-cell Ekwipunek bag
-  under them. A socket holds the good's icon over its wear bar (red under a quarter); pressing it
+  it, is the centre-view button. Beside it the equipment as captioned sockets, Buty always the last
+  of the top row (Narzędzia, Buty; a soldier's Broń, Zbroja, Buty; a hero's fixed arms as flat,
+  frameless sockets), the four-cell Torba bag under them. A socket holds the good's icon over its wear bar (red under a quarter); pressing it
   opens the equip picker to put on or swap, an empty socket shows a + and opens the picker too, and
   a small × at an occupied socket's corner, shown on hover or focus, takes the item off. A woman
   and a child have no sockets. No level medallion: the game has no settler level.
-- Status line under the portrait: the live state (Pracuje, Idzie, Bezczynny, Czeka na budowę
-  warsztatu, Stoi na alarmie) and, when the person carries something, "niesie" with the good's icon
-  and count on the same line.
+- Status line under the portrait: the live state (Pracuje, Idzie, a trader's Idzie do with the
+  destination, Bezczynny, Czeka na budowę warsztatu, Stoi na alarmie) and, when the person carries
+  something, "niesie" with the good's icon and count on the same line. A tradesman's Bezczynny and
+  Czeka na budowę warsztatu read in amber. A man without a trade gets his Zmień zawód button right
+  under this line (tooltip with the profession hotkey); it opens the profession choice window.
 - Samopoczucie: one line per stat, label, quarter-ticked meter and the percent, Zdrowie first, then
-  the need bars the settler carries (a child and a hero show health alone). A bar over full keeps
-  its stored reserve in the tooltip, as the legacy panel did.
-- Praca i dom: ledger rows. Miejsce pracy and Dom name the building as a link that selects it (the
-  original's "Pokaż miejsce pracy" and home buttons), followed by two round buttons, assign (target
-  glyph, opens the pick mode) and remove (×). A button the sim would refuse stays visible, faded,
-  with the reason in its tooltip: "Najpierw wybierz zawód", "Nie ma miejsca pracy", "Dziecko mieszka
-  z rodzicami". A woman and a soldier have the Dom row only, a child a read-only Dom row and a
-  note, a hero nothing to assign.
+  the need bars the settler carries (a child and a hero show health alone). Under a third the bar
+  and its percent turn amber, under a sixth red, so trouble reads without words. A bar over full
+  keeps its stored reserve in the tooltip, as the legacy panel did.
+- Praca i rodzina: ledger rows. Miejsce pracy and Dom name the building as a link that selects it
+  (the original's "Pokaż miejsce pracy" and home buttons), followed by two round buttons, assign
+  (target glyph, opens the pick mode) and remove (×). An empty seat the player can fill says "brak"
+  in amber; when there is nothing to remove the × slot stays blank. A button the sim would refuse
+  stays visible, faded, with the reason in its tooltip ("Dziecko mieszka z rodzicami"). Partner
+  names the spouse as a link that selects them, or "bez pary" in amber (the ring holds the marriage
+  order), and Dziecko the growing child. A man without a trade has no Miejsce pracy row, a woman
+  and a soldier have Dom and family only, a child a read-only Dom row, a hero no section.
 - Produkcja, under Praca for a craft operator and a gatherer: one row per product the trade may make
   here, in recipe order: the good's icon in a round button, its name and a −/n/+ counter. The
   counter is the original's human-window production counter: 0 stops the product (the row fades),
-  1 to 10 is how many more to make, ∞ never stops. The arrows wrap at both ends (− at 0 gives ∞, +
-  at ∞ gives 0) and Shift with an arrow jumps to that end, as the original's window does. The icon
+  1 to 10 is how many more to make, ∞ never stops. − at 0 wraps to ∞ and Shift with an arrow jumps
+  to that end, as the original's window does; + at ∞ stays at ∞ with the arrow dimmed, where the
+  original wraps to 0 (a named approximation: one more click must not stop a product). The icon
   button is "Tylko ten produkt": ∞ here, 0 on every other row (the original's "Tylko produkuj").
-  A product not yet earned is listed faded with a lock and its progress ("8 / 20"), the full
-  requirement in the tooltip. Products rotate one unit at a time in good order, as the sim does
+  A product not yet earned is listed faded with a lock, the requirement and progress in the tooltip. Products rotate one unit at a time in good order, as the sim does
   today; a job whose `userCanChangeProductionFlag` is 0 (the hunter) shows no counters.
 - Wojsko, for a soldier and a hero: Postawa as a three-way segmented control (Atak, Obrona, Ignoruj)
   and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action ring issues.
 - Handel, for a trader: each stop as a row naming the house (an other seat's house in amber) with a
-  remove button and its import goods as toggle chips under it, a "Dodaj punkt handlowy" button, the
-  map's agreements as single-choice chips under Umowa and the trader's status line.
-- Doświadczenie: one ledger row per trained specialization, most trained first, repeats and the
-  bonus percent in green; the three first rows show, the rest fold behind "Pokaż N więcej". Then
-  the upcoming unlocks as "job (track)" rows with "current / required" and a thin meter. "Jeszcze
-  bez doświadczenia" for a tradesman with none; the section is absent for a woman and a child.
-- Orders row under the body only when an order is left: a man without a trade gets Zmień zawód,
-  which opens the profession choice window.
+  remove button and its import goods as toggle chips under it after a "Przywóz" label, a "Dodaj
+  punkt handlowy" button and the map's agreements as single-choice chips under Umowa. The route the
+  trader drives is in the status line.
+- Doświadczenie: one ledger row per trained specialization, the current trade's tracks first, then
+  the rest by repeats, with the bonus percent in green (the tooltip spells it out); three rows show
+  and the rest fold behind "Pokaż N więcej" once at least three would hide. Then the upcoming
+  unlocks as lock-marked "job (track)" rows with "current / required" and a thin meter. The section
+  is absent when there is nothing to list.
+- No footer: the portrait centres, the head medallion orders, the profession button sits under the
+  status line.
 - Another seat's person: trade, name, owner line with the diplomatic stance, the live state,
-  Zdrowie and Miejsce pracy, under a dashed note "Osadnik innego plemienia. Tylko podgląd, bez
-  rozkazów"; the needs, production, experience and equipment stay hidden, and the head has the
-  close medallion alone.
+  Zdrowie and Miejsce pracy; the needs, production, experience, family and equipment stay hidden,
+  the head has the close medallion alone and no control is offered.
 - A dead or removed target clears the selection and the panel with it. Every control checks the seat's
   ownership before submitting a command.
 
