@@ -45,7 +45,6 @@ import {
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { claimFlagNode, flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
-import { civilianCount } from '../../../src/systems/ai-player/workforce/pool.js';
 import {
   type BuildingStaffing,
   buildingStaffing,
@@ -765,7 +764,6 @@ function planOf(
   const staffing: SeatStaffing = {
     player: SEAT,
     owned,
-    civilians: civilianCount(world, ctx, SEAT),
     supply: SeatSupply.of(world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER),
   };
   const type = contentIndex(content).buildings.get(world.get(building, Building).buildingType);

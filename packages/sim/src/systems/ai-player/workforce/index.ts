@@ -101,7 +101,7 @@ function runWorkforce(
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
   const fishing = fishingPlan(world, ctx, player);
-  const seat: SeatStaffing = { player, owned, civilians, supply };
+  const seat: SeatStaffing = { player, owned, supply };
   const ground = collectorGround(world, ctx, seat.owned, baseNode);
   const generic = (): PlayerCommand[] =>
     ground === null
@@ -177,12 +177,7 @@ function rebuildCrew(
   const owned = ownedBuildings(world, player);
   if (!owned.some((e) => world.has(e, UnderConstruction))) return [];
   const force = new SpareForce(rebuildHands(world, ctx, player));
-  const seat: SeatStaffing = {
-    player,
-    owned,
-    civilians: civilianCount(world, ctx, player),
-    supply: SeatSupply.of(world, ctx, player, owned, order),
-  };
+  const seat: SeatStaffing = { player, owned, supply: SeatSupply.of(world, ctx, player, owned, order) };
   return [
     ...reserveBuilders(world, force, builderJob, BUILDER_CAP, ctx),
     ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world), 'min'),

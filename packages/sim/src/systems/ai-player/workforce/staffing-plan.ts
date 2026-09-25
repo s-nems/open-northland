@@ -127,7 +127,6 @@ export interface HeldStaff {
 export interface SeatStaffing {
   readonly player: number;
   readonly owned: readonly Entity[];
-  readonly civilians: number;
   readonly supply: SeatSupply;
 }
 
