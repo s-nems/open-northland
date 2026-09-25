@@ -5,6 +5,7 @@ import {
   Chest,
   JobAssignment,
   PAPER_KINDS,
+  Palisade,
   type Paper,
   Settler,
   Sheltering,
@@ -23,10 +24,12 @@ import {
   playerCommand,
   Rng,
   restoreSimulation,
+  type ScriptLandscapeType,
   Simulation,
   serializeSaveGame,
   setupCommand,
   stepReplaying,
+  type TerrainMap,
 } from '../../src/index.js';
 import { type ChestSpec, createChest } from '../../src/systems/chests/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -280,6 +283,60 @@ const CHEST_OPENER = (NUCLEUS_HOME + 9) as Entity;
  *  preamble that grows another entity fails loudly here rather than quietly stopping the coverage. */
 const ATTACHED_SETTLER = (PREAMBLE_CHESTS.length + 11) as Entity;
 const FUZZ_SEEDS = [13, 29, 47] as const;
+
+/** Wall rows on the fuzz map: a one-post wall and a horizontal gate in both states. The good is the
+ *  fixture's wood, so a stream carrier can fill a site. */
+const WALL_GFX = 691;
+const CLOSED_GATE_GFX = 696;
+const OPEN_GATE_GFX = 700;
+const PALISADE_ROWS = [WALL_GFX, CLOSED_GATE_GFX, OPEN_GATE_GFX, INVALID_TYPE] as const;
+const GATE_SPAN = [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 }));
+function wallRow(
+  typeId: number,
+  walk: readonly { dx: number; dy: number }[],
+  gate?: { open: boolean; counterpartGfxIndex: number },
+): ScriptLandscapeType {
+  return {
+    typeId,
+    walk,
+    build: walk,
+    groups: [],
+    wall: {
+      logicType: typeId,
+      maxHitpoints: 100,
+      repairPerStrike: 3,
+      construction: [{ goodType: RESOURCE_GOOD, amount: 1 }],
+      ...(gate === undefined ? {} : { gate }),
+    },
+  };
+}
+const FUZZ_WALL_ROWS: readonly ScriptLandscapeType[] = [
+  wallRow(WALL_GFX, [{ dx: 0, dy: 0 }]),
+  wallRow(CLOSED_GATE_GFX, GATE_SPAN, { open: false, counterpartGfxIndex: OPEN_GATE_GFX }),
+  wallRow(OPEN_GATE_GFX, [GATE_SPAN[0] ?? { dx: -2, dy: 0 }, GATE_SPAN[4] ?? { dx: 2, dy: 0 }], {
+    open: true,
+    counterpartGfxIndex: CLOSED_GATE_GFX,
+  }),
+];
+/** The preamble's run of five owned walls, the one straight run a gate conversion can take. */
+const PREAMBLE_WALL_ROW = 2;
+const PREAMBLE_WALL_XS = [8, 9, 10, 11, 12] as const;
+/** The ids the preamble walls take, after every other preamble entity; pinned by an assertion in
+ *  {@link runFuzz}, so the aimed wall rolls keep hitting them. */
+const PREAMBLE_WALL_IDS = PREAMBLE_WALL_XS.map((_, i) => (ATTACHED_SETTLER + 4 + i) as Entity);
+
+/** The middle wall of the preamble run, where the harness cuts its gate. */
+const PREAMBLE_GATE_CENTRE = (ATTACHED_SETTLER + 6) as Entity;
+
+/** The fuzz map: the grass fixture with the wall rows in its landscape catalog. */
+function fuzzMap(): TerrainMap {
+  return { ...grassMap(MAP_W, MAP_H), landscapes: { types: FUZZ_WALL_ROWS, placements: [] } };
+}
+
+/** A wall-order target: half the time one of the preamble walls, else any id. */
+function wallTarget(rng: Rng): Entity {
+  return rng.int(2) === 0 ? pick(rng, PREAMBLE_WALL_IDS) : ((rng.int(TARGET_ID_RANGE) + 1) as Entity);
+}
 /** Past the tribute table's 44 slots, so the out-of-range refusal is rolled too. */
 const TRIBUTE_SLOT_RANGE = 48;
 const TICKS = 600;
@@ -296,7 +353,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(53);
+  const roll = rng.int(57);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -767,6 +824,29 @@ function nextCommand(rng: Rng): Command {
         })),
         building: rng.int(2) === 0 ? NUCLEUS_HOME : ((rng.int(TARGET_ID_RANGE) + 1) as Entity),
       };
+    case 53:
+      // A wall or gate row, or an unknown one, at a random node: a seat's site, a trusted standing wall
+      // or gate, forced over whatever stands there or refused by the placement gate.
+      return {
+        kind: 'placePalisade',
+        gfxIndex: pick(rng, PALISADE_ROWS),
+        x,
+        y,
+        tribe: VIKING,
+        ...(rng.int(2) === 0 ? { underConstruction: true } : {}),
+        ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
+        ...(rng.int(4) === 0 ? { force: true } : {}),
+        ...(rng.int(4) === 0 ? { valency: rng.int(120) } : {}),
+      };
+    case 54:
+      // A wall tear-down: the preamble run, stream walls and sites, and non-wall or dead ids.
+      return { kind: 'demolishPalisade', palisade: wallTarget(rng) };
+    case 55:
+      // A gate swing: stream gates open and shut over walkers and piles, and every non-gate refusal.
+      return { kind: 'setPalisadeGate', palisade: wallTarget(rng), open: rng.int(2) === 0 };
+    case 56:
+      // A gate cut into the preamble run's centre, or refused anywhere else and for a non-gate row.
+      return { kind: 'convertPalisadeGate', palisade: wallTarget(rng), gfxIndex: pick(rng, PALISADE_ROWS) };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
@@ -804,16 +884,15 @@ interface FuzzRun {
   /** Whether the preamble's food chest was opened - pinned so a gate change cannot quietly turn every
    *  open-chest order in the stream into a refusal. */
   readonly chestOpened: boolean;
+  /** Whether a stream order cut a gate into the preamble run and swung it, pinned like the latches above. */
+  readonly gateSwung: boolean;
 }
 
 /** Export → parse → restore at a live checkpoint: the restored sim must hash exactly like the live
  *  one and re-export the same bytes. */
 function assertSaveRoundTrip(sim: Simulation, liveHash: string, content: ContentSet): void {
   const bytes = serializeSaveGame(exportSaveGame(sim));
-  const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
-    content,
-    map: grassMap(MAP_W, MAP_H),
-  });
+  const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), { content, map: fuzzMap() });
   if (restored.hashState() !== liveHash) {
     throw new Error(`tick ${sim.tick}: the restored sim hashes differently from the live one`);
   }
@@ -825,7 +904,7 @@ function assertSaveRoundTrip(sim: Simulation, liveHash: string, content: Content
 /** A fresh sim with {@link PREAMBLE_CHESTS} assembled directly, as a map boot stands its placements
  *  before tick 1: scene input rather than commands, so the replay run assembles them the same way. */
 function fuzzSim(seed: number, content: ContentSet): Simulation {
-  const sim = new Simulation({ seed, content, map: grassMap(MAP_W, MAP_H) });
+  const sim = new Simulation({ seed, content, map: fuzzMap() });
   for (const spec of PREAMBLE_CHESTS) createChest(sim.world, content, spec);
   return sim;
 }
@@ -878,6 +957,18 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     tribe: VIKING,
     owner: 0,
   });
+  // A standing owned run of five, the one span a stream gate conversion can take; placed last, so the
+  // pinned ids above hold.
+  for (const x of PREAMBLE_WALL_XS) {
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL_GFX,
+      x,
+      y: PREAMBLE_WALL_ROW,
+      tribe: VIKING,
+      owner: 0,
+    });
+  }
   // An independent generator stream (any fixed derivation of the fuzz seed works - it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
@@ -886,6 +977,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
   let sheltered = false;
   let attachedToWork = false;
   let chestOpened = false;
+  let gateSwung = false;
   for (let t = 0; t < ticks; t++) {
     // House one nucleus woman and man on the second tick (ids are monotonic: the chests, the home, then
     // the six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
@@ -918,8 +1010,23 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       }
       sim.enqueueSetup({ kind: 'setDefenceMode', building: NUCLEUS_HOME, enabled: true });
     }
+    // Cut a gate into the preamble run and open it, so the stream's own gate swings and wall tear-downs
+    // meet a real gate on every seed. Fixed input, logged like every command.
+    if (t === 1) {
+      sim.enqueueSetup({
+        kind: 'convertPalisadeGate',
+        palisade: PREAMBLE_GATE_CENTRE,
+        gfxIndex: CLOSED_GATE_GFX,
+      });
+    }
+    if (t === 2) sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: PREAMBLE_GATE_CENTRE, open: true });
     if (gen.int(COMMAND_EVERY) === 0) submit(sim, gen, nextCommand(gen));
     sim.step();
+    if (t === 0) {
+      for (const id of PREAMBLE_WALL_IDS) {
+        if (!sim.world.has(id, Palisade)) throw new Error(`preamble wall id ${id} drifted`);
+      }
+    }
     // A per-tick snapshot populates the clone cache, arming the cachesCoherent invariant's stale-clone
     // verifier against any system write that bypassed the tracked seam. A pure read: hashes unaffected.
     sim.snapshot();
@@ -934,6 +1041,8 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       attachedToWork = sim.world.has(ATTACHED_SETTLER, JobAssignment);
     }
     if (!chestOpened) chestOpened = !sim.world.has(FOOD_CHEST_ID, Chest);
+    if (!gateSwung)
+      gateSwung = PREAMBLE_WALL_IDS.some((id) => sim.world.tryGet(id, Palisade)?.gate?.open === true);
     if (sim.tick % CHECKPOINT_EVERY === 0) {
       const hash = sim.hashState();
       checkpoints.push(hash);
@@ -948,6 +1057,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     sheltered,
     attachedToWork,
     chestOpened,
+    gateSwung,
     log: [...sim.commands.log],
   };
 }
@@ -967,6 +1077,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       expect(a.sheltered).toBe(true); // the stream really reached defence mode, not just its skip paths
       expect(a.attachedToWork).toBe(true); // and the authored attachment really bound, not just refused
       expect(a.chestOpened).toBe(true); // and a chest really opened, not just refused
+      expect(a.gateSwung).toBe(true); // and a gate really stood in the wall run and opened
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);
       // Checkpoint-wise equality first: on a divergence the failing index names the 50-tick window.
