@@ -196,7 +196,7 @@ const LEATHER = 1;
 const COMBATANT_HITPOINTS = 500;
 // The worn goods some spawn rolls stamp. All three resolve in `fuzzContent()`, so the effects that
 // read the content class - boots speed + walking wear, the tool credit + per-cycle wear, an auto-drunk
-// mead and the healing death save - actually run under the stream instead of short-circuiting on an
+// mead and the half-health healing sip - actually run under the stream instead of short-circuiting on an
 // unknown good.
 const SHOES_GOOD = 8;
 const MEAD_GOOD = 13;

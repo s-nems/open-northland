@@ -76,13 +76,15 @@ export type EquipGoodSpec = EquipClass & {
 const SHOE_USES = 10000;
 /** Rated uses for a tool: production cycles, gathering strokes, casts and build swings alike. */
 const TOOL_USES = 100;
-/** Manual-pinned: "Small potions can be used twice, large ones can be used five times". Mead is sized
- *  like a small bottle. */
+/** Original behavior, as the manual says: "Small potions can be used twice, large ones can be used five
+ *  times". Mead is a small bottle. */
 const SMALL_BOTTLE_USES = 2;
 const BIG_BOTTLE_USES = 5;
-/** One sip's restore percents. Mead matches one meal on both bars, a potion restores half of its one. */
-const MEAD_RESTORE = { hunger: 40, fatigue: 40 } as const;
-const POTION_RESTORE_PCT = 50;
+/** One sip's restore in percent of a need bar or of max hitpoints. The original's values: mead half of
+ *  each bar, a food or stamina potion a whole bar, a healing potion 2000 of a settler's 5000 hitpoints. */
+const MEAD_RESTORE = { hunger: 50, fatigue: 50 } as const;
+const NEED_POTION_RESTORE_PCT = 100;
+const HEALING_POTION_RESTORE_PCT = 40;
 /** Percent of the recipe outputs a worn tool adds per cycle, summed with the experience bonus rather
  *  than multiplied with it. The original's values. */
 const WOODEN_TOOL_BONUS_PCT = 20;
@@ -186,7 +188,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'misc',
     wears: true,
     uses: SMALL_BOTTLE_USES,
-    restorePct: { hunger: POTION_RESTORE_PCT },
+    restorePct: { hunger: NEED_POTION_RESTORE_PCT },
   },
   {
     typeId: GOOD_POTION_FOOD_BIG,
@@ -194,7 +196,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'misc',
     wears: true,
     uses: BIG_BOTTLE_USES,
-    restorePct: { hunger: POTION_RESTORE_PCT },
+    restorePct: { hunger: NEED_POTION_RESTORE_PCT },
   },
   {
     typeId: GOOD_POTION_STAMINA_SMALL,
@@ -202,7 +204,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'misc',
     wears: true,
     uses: SMALL_BOTTLE_USES,
-    restorePct: { fatigue: POTION_RESTORE_PCT },
+    restorePct: { fatigue: NEED_POTION_RESTORE_PCT },
   },
   {
     typeId: GOOD_POTION_STAMINA_BIG,
@@ -210,7 +212,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'misc',
     wears: true,
     uses: BIG_BOTTLE_USES,
-    restorePct: { fatigue: POTION_RESTORE_PCT },
+    restorePct: { fatigue: NEED_POTION_RESTORE_PCT },
   },
   {
     typeId: GOOD_POTION_HEAL_SMALL,
@@ -218,7 +220,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'misc',
     wears: true,
     uses: SMALL_BOTTLE_USES,
-    restorePct: { healthMax: POTION_RESTORE_PCT },
+    restorePct: { healthMax: HEALING_POTION_RESTORE_PCT },
   },
   {
     typeId: GOOD_POTION_HEAL_BIG,
@@ -226,7 +228,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     category: 'misc',
     wears: true,
     uses: BIG_BOTTLE_USES,
-    restorePct: { healthMax: POTION_RESTORE_PCT },
+    restorePct: { healthMax: HEALING_POTION_RESTORE_PCT },
   },
   { typeId: 150, id: 'amulet_food', category: 'misc', wears: false },
   { typeId: 151, id: 'amulet_stamina', category: 'misc', wears: false },

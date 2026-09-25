@@ -1,3 +1,4 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -8,18 +9,14 @@ import {
   Health,
   MISC_EQUIP_SLOTS,
   MoveGoal,
+  NeedOrder,
   Position,
   Settler,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import {
-  atomicSystem,
-  needsSystem,
-  plannerSystem,
-  STARVATION_TICKS_TO_DIE,
-} from '../../src/systems/index.js';
+import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
+import { needsSystem, plannerSystem, STARVATION_TICKS_TO_DIE } from '../../src/systems/index.js';
 import { resolveAttackHit } from '../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -29,12 +26,11 @@ import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from
 const ATTACK_SWING = { atomicId: 81, elapsed: 4, duration: 4 } as const;
 
 /**
- * The AUTO-DRINK drives + the healing draught's death-save. A pressing settler with a matching misc
- * draught drinks it IN PLACE (the drink replaces the walk to food/bed - manual: "will automatically
- * take it when his stomach starts to rumble"); a lethal blow or starvation bite on a healing-draught
- * bearer spends a sip instead of killing. Fixture draughts (2 sips each):
- * mead 13 (hunger+fatigue 40/40), potion_food_small 14 (+50 hunger), potion_stamina_small 15
- * (+50 fatigue), potion_heal_small 16 (50% of max HP). Eat atomic 10 ("viking_eat", 5 ticks).
+ * Carried draughts are drunk on the spot with no clip: a pressing hunger or fatigue bar takes a sip before
+ * anything else, and a blow or starvation bite that would leave a bearer under half its max hitpoints
+ * is softened by healing sips first, even a lethal one. Fixture draughts (2 sips each, the original's
+ * restores): mead 13 (half of both bars), potion_food_small 14 (a whole hunger bar),
+ * potion_stamina_small 15 (a whole fatigue bar), potion_heal_small 16 (40% of max hitpoints).
  */
 
 const FOOD = 3;
@@ -42,12 +38,15 @@ const MEAD = 13;
 const POTION_FOOD = 14;
 const POTION_STAMINA = 15;
 const POTION_HEAL = 16;
-const EAT_ATOMIC = 10;
+/** A five-sip food potion added per test; the fixture carries only small bottles. */
+const POTION_FOOD_BIG = 19;
+const BIG_BOTTLE_USES = 5;
 const HEADQUARTERS = 1;
 const VIKING = 1;
 const PRESSING: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 const HALF: Fixed = fx.div(ONE, fx.fromInt(2));
-const RESTORE_40: Fixed = fx.div(fx.fromInt(40), fx.fromInt(100));
+/** Enough ticks for a walker to leave its start and reach the next node on its route. */
+const WALK_TICKS = 60;
 
 /** Put draughts (fresh unless a slot spec says otherwise) on a settler's misc row, low slots first. */
 function carryDraughts(sim: Simulation, e: Entity, slots: ReadonlyArray<EquipmentSlot | null>): void {
@@ -60,9 +59,20 @@ function carryDraughts(sim: Simulation, e: Entity, slots: ReadonlyArray<Equipmen
 
 const fresh = (goodType: number): EquipmentSlot => ({ goodType, degreeOfUse: fx.fromInt(0) });
 
-/** Drive the started drink atomic to completion (the eat clip is 5 ticks). */
-function finishAtomic(sim: Simulation, e: Entity): void {
-  for (let i = 0; i < 8 && sim.world.has(e, CurrentAtomic); i++) atomicSystem(sim.world, ctxOf(sim));
+function withBigFoodPotion() {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: POTION_FOOD_BIG,
+        id: 'potion_food_big',
+        weight: 1,
+        equip: { category: 'misc', wears: true, uses: BIG_BOTTLE_USES, restorePct: { hunger: 100 } },
+      },
+    ],
+  });
 }
 
 function foodStoreAt(sim: Simulation, x: number, y: number, food: number): void {
@@ -73,21 +83,15 @@ function foodStoreAt(sim: Simulation, x: number, y: number, food: number): void 
 }
 
 describe('drink drive - hunger and fatigue draughts', () => {
-  it('drinks a food potion in place instead of walking to the larder', () => {
+  it('drinks a food potion on the spot instead of walking to the larder, and refills the whole bar', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING });
     carryDraughts(sim, settler, [fresh(POTION_FOOD)]);
     foodStoreAt(sim, 5, 0, 5); // a stocked larder exists - the sip must still win
 
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(settler, MoveGoal)).toBe(false); // no walk - drunk on the spot
-    const atomic = sim.world.get(settler, CurrentAtomic);
-    expect(atomic.atomicId).toBe(EAT_ATOMIC); // the eat gesture doubles as the drink clip
-    expect(atomic.effect).toEqual({ kind: 'drink', slot: 0 });
-
-    finishAtomic(sim, settler);
-    // +50% hunger relief, and the 2-sip bottle is half spent.
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(PRESSING, HALF));
+    expect(sim.world.has(settler, MoveGoal)).toBe(false);
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(PRESSING, ONE));
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_FOOD, degreeOfUse: HALF });
   });
 
@@ -97,20 +101,18 @@ describe('drink drive - hunger and fatigue draughts', () => {
     carryDraughts(sim, settler, [{ goodType: POTION_FOOD, degreeOfUse: HALF }]);
 
     plannerSystem(sim.world, ctxOf(sim));
-    finishAtomic(sim, settler);
     expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
   });
 
-  it('mead answers hunger and relieves BOTH bars by its 40/40 restore', () => {
+  it('mead answers hunger and relieves both bars by half', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING, fatigue: HALF });
     carryDraughts(sim, settler, [fresh(MEAD)]);
 
     plannerSystem(sim.world, ctxOf(sim));
-    finishAtomic(sim, settler);
     const s = sim.world.get(settler, Settler);
-    expect(s.hunger).toBe(fx.sub(PRESSING, RESTORE_40));
-    expect(s.fatigue).toBe(fx.sub(HALF, RESTORE_40));
+    expect(s.hunger).toBe(fx.sub(PRESSING, HALF));
+    expect(s.fatigue).toBe(fx.fromInt(0));
   });
 
   it('drinks a stamina potion instead of bedding down when tired', () => {
@@ -120,17 +122,51 @@ describe('drink drive - hunger and fatigue draughts', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
-    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'drink', slot: 0 });
-    finishAtomic(sim, settler);
-    expect(sim.world.get(settler, Settler).fatigue).toBe(fx.sub(PRESSING, HALF));
+    expect(sim.world.get(settler, Settler).fatigue).toBe(fx.sub(PRESSING, ONE));
   });
 
-  it('prefers the dedicated potion over mead, wherever it sits in the row', () => {
+  it('answers hunger and fatigue in the same pass, each with its own bottle', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING, fatigue: PRESSING });
+    carryDraughts(sim, settler, [fresh(POTION_STAMINA), fresh(POTION_FOOD)]);
+
+    plannerSystem(sim.world, ctxOf(sim));
+    const s = sim.world.get(settler, Settler);
+    expect(s.hunger).toBe(fx.sub(PRESSING, ONE));
+    expect(s.fatigue).toBe(fx.sub(PRESSING, ONE));
+  });
+
+  it('takes an opened bottle first, then a small one before a large one, then the lowest slot', () => {
+    const content = withBigFoodPotion();
+    const drunkSlot = (misc: ReadonlyArray<EquipmentSlot>): number => {
+      const sim = new Simulation({ seed: 1, content, map: grassMap(4, 1) });
+      const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING });
+      carryDraughts(sim, settler, misc);
+      plannerSystem(sim.world, ctxOf(sim));
+      const after = sim.world.get(settler, Equipment).misc;
+      return misc.findIndex((held, slot) => after[slot]?.degreeOfUse !== held.degreeOfUse);
+    };
+    const opened = (goodType: number): EquipmentSlot => ({
+      goodType,
+      degreeOfUse: fx.div(ONE, fx.fromInt(BIG_BOTTLE_USES)),
+    });
+
+    expect(drunkSlot([fresh(POTION_FOOD), opened(POTION_FOOD_BIG)])).toBe(1);
+    expect(drunkSlot([fresh(POTION_FOOD_BIG), fresh(POTION_FOOD)])).toBe(1);
+    // Mead counts as a small bottle, so the row order breaks the tie with a small food potion.
+    expect(drunkSlot([fresh(MEAD), fresh(POTION_FOOD)])).toBe(0);
+    expect(drunkSlot([fresh(POTION_FOOD), fresh(MEAD)])).toBe(0);
+  });
+
+  it('drinks before eating the food in hand', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING });
-    carryDraughts(sim, settler, [fresh(MEAD), fresh(POTION_FOOD)]); // mead first, potion second
+    sim.world.add(settler, Carrying, { goodType: FOOD, amount: 1 });
+    carryDraughts(sim, settler, [fresh(POTION_FOOD)]);
+
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'drink', slot: 1 });
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(PRESSING, ONE));
+    expect(sim.world.get(settler, Carrying).amount).toBe(1);
   });
 
   it('ignores a spent bottle and falls through to the walk-to-food branch', () => {
@@ -139,21 +175,55 @@ describe('drink drive - hunger and fatigue draughts', () => {
     carryDraughts(sim, settler, [{ goodType: POTION_FOOD, degreeOfUse: ONE }]);
     foodStoreAt(sim, 3, 0, 5);
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(settler, MoveGoal)).toBe(true); // walking to the larder, not sipping air
+    expect(sim.world.has(settler, MoveGoal)).toBe(true);
   });
 
-  it('carried food still outranks the bottle (food in hand is free, the sip is finite)', () => {
+  it("leaves the bottle to a player's need order, which walks to the larder instead", () => {
+    for (const need of ['hunger', 'piety'] as const) {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+      const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING });
+      carryDraughts(sim, settler, [fresh(POTION_FOOD)]);
+      sim.world.add(settler, NeedOrder, { need });
+      foodStoreAt(sim, 5, 0, 5);
+
+      plannerSystem(sim.world, ctxOf(sim));
+      expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_FOOD));
+      expect(sim.world.get(settler, Settler).hunger).toBe(PRESSING);
+      if (need === 'hunger') expect(sim.world.has(settler, MoveGoal)).toBe(true);
+    }
+  });
+
+  it('a walker drinks at the next node it reaches and keeps walking', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const settler = needsSettlerAt(sim, 0, 0, { fatigue: PRESSING });
+    carryDraughts(sim, settler, [fresh(POTION_STAMINA)]);
+    const goal = cellAnchorNode(10, 0);
+    const cell = sim.terrain?.nodeAt(goal.hx, goal.hy);
+    if (cell === undefined) throw new Error('fixture map has no such cell');
+    sim.world.add(settler, MoveGoal, { cell });
+
+    for (let i = 0; i < WALK_TICKS && sim.world.get(settler, Equipment).misc[0]?.degreeOfUse === 0; i++) {
+      sim.step();
+    }
+    expect(sim.world.get(settler, Equipment).misc[0]?.degreeOfUse).toBe(HALF);
+    expect(sim.world.get(settler, Settler).fatigue).toBeLessThan(NEED_DRIVE_THRESHOLD);
+    expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(settler, MoveGoal)).toBe(true);
+  });
+
+  it('keeps the bottle while the bar is below the drive level', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const settler = needsSettlerAt(sim, 0, 0, { hunger: PRESSING });
-    sim.world.add(settler, Carrying, { goodType: FOOD, amount: 1 });
+    const settler = needsSettlerAt(sim, 0, 0, { hunger: HALF });
     carryDraughts(sim, settler, [fresh(POTION_FOOD)]);
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, CurrentAtomic).effect).toMatchObject({ kind: 'eat', goodType: FOOD });
+    expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_FOOD));
   });
 });
 
-describe('healing draught - the death-save', () => {
+describe('healing draught - below half of max hitpoints', () => {
   const HP_MAX = 300;
+  /** 40% of HP_MAX, one healing sip. */
+  const SIP_HP = 120;
 
   /** A pool the size of the starvation span, which loses one whole hitpoint on every tick. */
   const WHOLE_STEP_POOL = STARVATION_TICKS_TO_DIE;
@@ -170,76 +240,65 @@ describe('healing draught - the death-save', () => {
     return settler;
   }
 
-  it('a lethal blow spends a sip instead of killing: the bearer stands at 50% of max', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const settler = woundedBearer(sim, 10, [fresh(POTION_HEAL)]);
-    const attacker = needsSettlerAt(sim, 1, 0, {});
+  function strike(sim: Simulation, attacker: Entity, target: Entity, damage: number): void {
+    resolveAttackHit(sim.world, ctxOf(sim), attacker, ATTACK_SWING, { kind: 'attack', target, damage }, []);
+  }
 
-    resolveAttackHit(
-      sim.world,
-      ctxOf(sim),
-      attacker,
-      ATTACK_SWING,
-      { kind: 'attack', target: settler, damage: 999 },
-      [],
-    );
-    const health = sim.world.get(settler, Health);
-    expect(health.hitpoints).toBe(HP_MAX / 2); // regenerated, not dead
-    expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
-
-    // The second save drains the bottle; the third blow kills - the shield is finite.
-    resolveAttackHit(
-      sim.world,
-      ctxOf(sim),
-      attacker,
-      ATTACK_SWING,
-      { kind: 'attack', target: settler, damage: 999 },
-      [],
-    );
-    expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX / 2);
-    expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
-    resolveAttackHit(
-      sim.world,
-      ctxOf(sim),
-      attacker,
-      ATTACK_SWING,
-      { kind: 'attack', target: settler, damage: 999 },
-      [],
-    );
-    expect(sim.world.get(settler, Health).hitpoints).toBe(0);
-  });
-
-  it('a non-lethal blow drains normally - the bottle stays corked', () => {
+  it('a blow that leaves the bearer under half its max takes one sip', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const settler = woundedBearer(sim, HP_MAX, [fresh(POTION_HEAL)]);
     const attacker = needsSettlerAt(sim, 1, 0, {});
-    resolveAttackHit(
-      sim.world,
-      ctxOf(sim),
-      attacker,
-      ATTACK_SWING,
-      { kind: 'attack', target: settler, damage: 40 },
-      [],
-    );
-    expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX - 40);
-    expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_HEAL));
-  });
 
-  it('the starvation bite that would finish a bearer is saved too', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const settler = woundedBearer(sim, 1, [fresh(POTION_HEAL)], WHOLE_STEP_POOL);
-    sim.world.mut(settler, Settler).hunger = ONE; // starving, and this tick's whole-point bite is lethal
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Health).hitpoints).toBe(WHOLE_STEP_POOL / 2);
+    strike(sim, attacker, settler, 200);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX - 200 + SIP_HP);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
   });
 
-  it('never revives an already-dead bearer (the combat twin guards the same way)', () => {
+  it('keeps drinking until the bearer is back at half, while sips last', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const settler = woundedBearer(sim, 0, [fresh(POTION_HEAL)]); // killed this tick, awaiting cleanup
-    sim.world.mut(settler, Settler).hunger = ONE;
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Health).hitpoints).toBe(0); // stays dead, and the bottle is untouched
+    const settler = woundedBearer(sim, HP_MAX, [fresh(POTION_HEAL)]);
+    const attacker = needsSettlerAt(sim, 1, 0, {});
+
+    strike(sim, attacker, settler, HP_MAX - 10);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(10 + 2 * SIP_HP);
+    expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
+  });
+
+  it('a blow that stays at or above half leaves the bottle corked', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const settler = woundedBearer(sim, HP_MAX, [fresh(POTION_HEAL)]);
+    const attacker = needsSettlerAt(sim, 1, 0, {});
+    strike(sim, attacker, settler, HP_MAX / 2);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX / 2);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_HEAL));
+  });
+
+  it('a blow that would kill is survived when the sips cover it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const settler = woundedBearer(sim, HP_MAX, [fresh(POTION_HEAL)]);
+    const attacker = needsSettlerAt(sim, 1, 0, {});
+    strike(sim, attacker, settler, HP_MAX + 50);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(2 * SIP_HP - 50);
+    expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
+  });
+
+  it('a blow past what the sips cover still kills', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const settler = woundedBearer(sim, 10, [fresh(POTION_HEAL)]);
+    const attacker = needsSettlerAt(sim, 1, 0, {});
+    strike(sim, attacker, settler, 10 + 2 * SIP_HP);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(0);
+    expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
+  });
+
+  it('a starvation bite that drops the bearer under half takes a sip', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const half = WHOLE_STEP_POOL / 2;
+    const settler = woundedBearer(sim, half, [fresh(POTION_HEAL)], WHOLE_STEP_POOL);
+    sim.world.mut(settler, Settler).hunger = ONE; // starving: this tick bites one whole hitpoint
+    needsSystem(sim.world, ctxOf(sim));
+    const sip = Math.trunc((WHOLE_STEP_POOL * 40) / 100);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(half - 1 + sip);
+    expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
   });
 });

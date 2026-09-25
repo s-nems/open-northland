@@ -22,9 +22,9 @@ export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
  * A good's equipment classification. The manual pins the wear split ("Partly used items (potions,
  * shoes, ...) you drop are lost", while weapons, armour and amulets "can be used again") and potion
  * `uses` ("Small potions can be used twice, large ones can be used five times"); the boots' rating is
- * the original's shoe condition. Every other magnitude is authored balance: no readable
- * `.ini` carries a numeric field for it. What boots do for the walk is not a field: the original's step
- * cost drops by a fixed two ticks while a live pair is worn (`sim` `walkStepTicks`).
+ * the original's shoe condition. No readable `.ini` carries the other magnitudes: they are the original's
+ * fixed values where known and authored balance otherwise. What boots do for the walk is not a field: the
+ * original's step cost drops by a fixed two ticks while a live pair is worn (`sim` `walkStepTicks`).
  */
 export const EquipClass = z
   .strictObject({
@@ -49,8 +49,8 @@ export const EquipClass = z
   .refine((e) => !e.wears || e.uses !== undefined, {
     message: 'a wearing equip good must rate its uses',
   })
-  // The same hole reversed: a good that restores a need without wearing is a bottomless bottle, and
-  // its bearer is unkillable through the healing draught's death save.
+  // The same hole reversed: a good that restores a need without wearing is a bottomless bottle, and a
+  // wounded bearer would drink a healing one forever.
   .refine((e) => e.restorePct === undefined || e.wears, {
     message: 'a restoring equip good must wear down',
   });

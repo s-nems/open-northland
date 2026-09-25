@@ -15,6 +15,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import {
   carriesNeeds,
+  drinkPressingDraughts,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   NEED_SATED_THRESHOLD,
@@ -33,7 +34,6 @@ import {
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { type DraughtNeed, draughtSlotFor, startDrink } from './drink.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
@@ -84,53 +84,38 @@ function maySeek(world: World, e: Entity, ordered: NeedKind | undefined, need: N
   return ordered === need || !world.has(e, NoRegeneration);
 }
 
-/**
- * Drink a carried draught for `need` where the settler stands. Gated on the bar rather than an order, so
- * an ordered meal or nap drains no flask the settler does not need.
- */
-function drinkForBar(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  settler: SettlerIdentity,
-  need: DraughtNeed,
-  level: Fixed,
-): boolean {
-  if (level < NEED_DRIVE_THRESHOLD) return false;
-  const draught = draughtSlotFor(world, ctx, e, need);
-  if (draught === null) return false;
-  startDrink(world, ctx, e, settler, draught);
-  return true;
+/** The hunger and fatigue bars once carried draughts have answered them. */
+function barsAfterDraughts(world: World, ctx: SystemContext, e: Entity): { hunger: Fixed; fatigue: Fixed } {
+  drinkPressingDraughts(world, ctx, e);
+  return world.get(e, Settler);
 }
 
 /**
  * The in-place half of the needs ladder, for a settler that must hold its ground: {@link planNeeds}'s rung
- * order with every tail that walks or lies down removed, a tower's bed included, so fatigue waits for a
- * stamina draught or the end of the fight.
+ * order with every tail that walks or lies down removed, a tower's bed included, so fatigue no draught
+ * answers waits for the end of the fight.
  *
- * What is left to answer with is thin on purpose, and thinner still on extracted content, which binds no
- * equipment class to a good and so offers no draught at all: a garrison eats from its tower, and a field
- * unit eats only what it happens to carry. A unit locked in a fight it cannot win before its hunger kills
+ * What is left to answer with is thin on purpose: a garrison eats from its tower, and a field unit eats
+ * only what it happens to carry. A unit locked in a fight it cannot win before its hunger kills
  * it is the player's to pull out, with a move order or an ordered meal; both break the fight off.
  */
 export function answerNeedInPlace(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
+  settler: SettlerIdentity,
 ): boolean {
   if (!carriesNeeds(world, ctx.content, e)) return false;
   const ordered = orderedNeed(world, e);
-  if (pressing(settler.hunger, ordered, 'hunger')) {
+  const bars = barsAfterDraughts(world, ctx, e);
+  if (pressing(bars.hunger, ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
-    if (drinkForBar(world, ctx, e, settler, 'hunger', settler.hunger)) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
     if (seek) settleUnservedNeedForAi(world, e, 'hunger');
   }
-  if (pressing(settler.fatigue, ordered, 'fatigue')) {
-    if (drinkForBar(world, ctx, e, settler, 'fatigue', settler.fatigue)) return true;
-    if (maySeek(world, e, ordered, 'fatigue')) settleUnservedNeedForAi(world, e, 'fatigue');
+  if (pressing(bars.fatigue, ordered, 'fatigue') && maySeek(world, e, ordered, 'fatigue')) {
+    settleUnservedNeedForAi(world, e, 'fatigue');
   }
   return false;
 }
@@ -140,7 +125,7 @@ function eatCarried(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  settler: SettlerIdentity & { hunger: Fixed },
+  settler: SettlerIdentity,
   load: { goodType: number; amount: number } | undefined,
 ): boolean {
   if (load === undefined || load.amount <= 0 || !isFood(ctx, load.goodType)) return false;
@@ -156,9 +141,9 @@ function eatCarried(
 }
 
 /**
- * Run the needs ladder for one idle settler: eat, then sleep, then pray. Returns true when a rung acted and
- * the settler is spoken for this tick, false when every need is below its threshold or unsatisfiable, in
- * which case the caller falls through to work with the unsatisfied bar clamped at ONE.
+ * Run the needs ladder for one idle settler: carried draughts, then eat, sleep and pray. Returns true when
+ * a rung acted and the settler is spoken for this tick, false when every need is below its threshold or
+ * unsatisfiable, in which case the caller falls through to work with the unsatisfied bar clamped at ONE.
  *
  * A settler on alert answers a need in place, as {@link answerNeedInPlace} does, except that it walks to
  * food once its hunger turns critical: hunger alone costs hitpoints, so a standoff that never comes to
@@ -171,7 +156,7 @@ export function planNeeds(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed; piety: Fixed },
+  settler: SettlerIdentity & { piety: Fixed },
   here: NodeId,
   load: { goodType: number; amount: number } | undefined,
   targets: TargetCandidates,
@@ -189,16 +174,14 @@ export function planNeeds(
   }
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
-  if (pressing(settler.hunger, ordered, 'hunger')) {
+  const bars = barsAfterDraughts(world, ctx, e);
+  if (pressing(bars.hunger, ordered, 'hunger')) {
     const seek = maySeek(world, e, ordered, 'hunger');
     if (seek && eatCarried(world, ctx, e, settler, load)) return true;
-    // A carried draught is drunk in place, replacing the walk to food, which is what the manual sells it
-    // as: "cover longer distances without needing food". It ranks below food in hand, which is free.
-    if (drinkForBar(world, ctx, e, settler, 'hunger', settler.hunger)) return true;
     if (seek && eatAtPost(world, ctx, e, settler)) return true;
     // A larder and a wild berry bush share the eat animation; only the completion effect differs, so the
     // walk-or-act tail below is identical for both.
-    const walks = seek && (settler.hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
+    const walks = seek && (bars.hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
     const food = walks ? nearestFood(targets, world, ctx, terrain, here, e, gate) : null;
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
@@ -217,10 +200,7 @@ export function planNeeds(
     if (walks) settleUnservedNeedForAi(world, e, 'hunger');
   }
 
-  if (pressing(settler.fatigue, ordered, 'fatigue')) {
-    // A stamina draught is drunk in place, replacing the walk to a bed: the manual's "remain awake and
-    // ready longer".
-    if (drinkForBar(world, ctx, e, settler, 'fatigue', settler.fatigue)) return true;
+  if (pressing(bars.fatigue, ordered, 'fatigue')) {
     if (maySeek(world, e, ordered, 'fatigue') && !onAlert()) {
       if (sleepAtPost(world, ctx, e, settler)) return true;
       if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;

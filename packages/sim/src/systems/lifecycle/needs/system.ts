@@ -15,7 +15,7 @@ import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { handlerTurn, scriptedSeatOnTurn } from '../../ai-player/cadence.js';
 import type { System, SystemContext } from '../../context.js';
-import { tryDeathSaveDraught } from '../../equipment/index.js';
+import { woundBearer } from '../../equipment/index.js';
 import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index.js';
 import {
   applyNeedUnits,
@@ -185,9 +185,7 @@ function stepHealth(world: World, ctx: SystemContext, e: Entity, settler: Settle
     if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.INVULNERABLE)) return;
     const bite = poolStepAt(health.max, STARVATION_TICKS_TO_DIE, ctx.tick);
     if (bite === 0) return;
-    // The healing draught's death-save may answer a lethal bite.
-    if (health.hitpoints - bite <= 0 && tryDeathSaveDraught(world, ctx, e)) return;
-    world.mut(e, Health).hitpoints = Math.max(0, health.hitpoints - bite);
+    woundBearer(world, ctx, e, bite);
     return;
   }
   if (health.hitpoints >= health.max) return;

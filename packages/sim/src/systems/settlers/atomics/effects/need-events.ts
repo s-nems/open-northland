@@ -35,8 +35,6 @@ export function applyAtomicNeedEvents(
   elapsed: number,
 ): void {
   if (!needsEnabled(world) || !carriesNeeds(world, ctx.content, e)) return;
-  // A draught is drunk on the borrowed eat gesture, but what it restores is the bottle's, not the clip's.
-  if (atomic.effect.kind === 'drink') return;
   const settler = world.get(e, Settler);
   const atHome = isInsideOwnHome(world, e);
   const clip = clipPlayedBy(ctx, settler, atomic.atomicId, atHome);

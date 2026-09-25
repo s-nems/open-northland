@@ -32,12 +32,13 @@ import { ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from '.
 
 const FOOD = 3;
 const MEAD = 13;
-const EAT_ATOMIC = 10;
 const HEADQUARTERS = 1;
 /** Over the the drive threshold eat trigger and still inside the bar, so `needsSystem`'s clamp cannot mask a relief. */
 const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** Well under the drive threshold: only an order makes this bar a reason to act. */
 const FED: Fixed = fx.div(ONE, fx.fromInt(4));
+/** What one sip of mead takes off the hunger bar: half of it. */
+const MEAD_SIP: Fixed = fx.div(ONE, fx.fromInt(2));
 
 function hungryFighterAt(sim: Simulation, x: number, y: number): Entity {
   const e = fighterAt(sim, x, y, VIKING, WOODCUTTER, { owner: P0 });
@@ -53,9 +54,11 @@ function larderAt(sim: Simulation, x: number, y: number): void {
   sim.world.add(e, Stockpile, { amounts: new Map([[FOOD, 5]]) });
 }
 
+const FRESH_MEAD: EquipmentSlot = { goodType: MEAD, degreeOfUse: fx.fromInt(0) };
+
 function carryMead(sim: Simulation, e: Entity): void {
   const misc = new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null);
-  misc[0] = { goodType: MEAD, degreeOfUse: fx.fromInt(0) };
+  misc[0] = { ...FRESH_MEAD };
   sim.world.add(e, Equipment, { boots: null, tool: null, weapon: null, armor: null, misc });
 }
 
@@ -117,15 +120,13 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(besieger, MoveGoal)).toBe(false);
-    const atomic = sim.world.get(besieger, CurrentAtomic);
-    expect(atomic.atomicId).toBe(EAT_ATOMIC); // the eat gesture doubles as the drink clip
-    expect(atomic.effect).toEqual({ kind: 'drink', slot: 0 });
-    // The meal does not release the fight.
+    expect(sim.world.get(besieger, Settler).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
+    // The sip does not release the fight.
     expect(sim.world.has(besieger, Engagement)).toBe(true);
     expect(sim.world.has(besieger, AttackOrder)).toBe(true);
   });
 
-  it('a hungry CHASER drinks mid-march, stopping the walk for the meal', () => {
+  it('a hungry CHASER drinks mid-march without stopping', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const chaser = hungryFighterAt(sim, 0, 0);
     carryMead(sim, chaser);
@@ -135,10 +136,9 @@ describe('an engaged unit answers a need in place, never by walking', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(chaser, CurrentAtomic).effect).toEqual({ kind: 'drink', slot: 0 });
-    // Nothing else pauses a path follower, so the route is shed and combat re-paths after the meal.
-    expect(sim.world.has(chaser, MoveGoal)).toBe(false);
-    expect(sim.world.has(chaser, PathRequest)).toBe(false); // and no route was minted in its place
+    expect(sim.world.get(chaser, Settler).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
+    expect(sim.world.has(chaser, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(chaser, MoveGoal)).toBe(true);
     expect(sim.world.has(chaser, Engagement)).toBe(true);
   });
 
@@ -154,7 +154,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     // The flask answers the bar, never the order, as it does off the march.
-    expect(sim.world.has(chaser, CurrentAtomic)).toBe(false);
+    expect(sim.world.get(chaser, Equipment).misc[0]).toEqual(FRESH_MEAD);
     expect(sim.world.has(chaser, MoveGoal)).toBe(true);
   });
 
@@ -172,9 +172,10 @@ describe('an engaged unit answers a need in place, never by walking', () => {
 
     expect(sim.world.has(besieger, CurrentAtomic)).toBe(false);
     expect(sim.world.get(besieger, Carrying).amount).toBe(2);
+    expect(sim.world.get(besieger, Equipment).misc[0]).toEqual(FRESH_MEAD);
   });
 
-  it('a hungry CHASER off the lattice walks its leg out before drinking', () => {
+  it('a hungry CHASER off the lattice drinks at its next node, not mid-leg', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const chaser = hungryFighterAt(sim, 0, 0);
     carryMead(sim, chaser);
@@ -185,7 +186,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(chaser, CurrentAtomic)).toBe(false); // the sip waits for the leg to end
+    expect(sim.world.get(chaser, Equipment).misc[0]).toEqual(FRESH_MEAD); // the sip waits for the node
     expect(sim.world.has(chaser, MoveGoal)).toBe(true);
   });
 
@@ -198,7 +199,7 @@ describe('an engaged unit answers a need in place, never by walking', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(chaser, CurrentAtomic)).toBe(false); // no need pressing - no sip spent
+    expect(sim.world.get(chaser, Equipment).misc[0]).toEqual(FRESH_MEAD); // no need pressing - no sip spent
     expect(sim.world.has(chaser, MoveGoal)).toBe(true);
   });
 

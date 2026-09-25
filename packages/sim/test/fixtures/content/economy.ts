@@ -92,25 +92,25 @@ export const economyContent = {
       typeId: 13,
       id: 'mead',
       weight: 1,
-      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 40, fatigue: 40 } },
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 50, fatigue: 50 } },
     },
     {
       typeId: 14,
       id: 'potion_food_small',
       weight: 1,
-      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 50 } },
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 100 } },
     },
     {
       typeId: 15,
       id: 'potion_stamina_small',
       weight: 1,
-      equip: { category: 'misc', wears: true, uses: 2, restorePct: { fatigue: 50 } },
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { fatigue: 100 } },
     },
     {
       typeId: 16,
       id: 'potion_heal_small',
       weight: 1,
-      equip: { category: 'misc', wears: true, uses: 2, restorePct: { healthMax: 50 } },
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { healthMax: 40 } },
     },
     // A second permanent weapon good: the fresh-swap shape - walking wears boots, so only a
     // non-wearing good still stows after the walk to its replacement.

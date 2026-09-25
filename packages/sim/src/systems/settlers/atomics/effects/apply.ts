@@ -18,7 +18,6 @@ import { loadCart, unloadCart } from '../../../trade/index.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
   consumeFood,
-  drinkDraught,
   dropCarriedLoad,
   equipFromStore,
   forageBerry,
@@ -85,9 +84,6 @@ export function applyEffect(
     case 'forage':
       forageBerry(world, ctx, effect.bush);
       clearNeedOrder(world, settler, 'hunger');
-      return;
-    case 'drink':
-      drinkDraught(world, ctx, settler, effect.slot);
       return;
     case 'exercise':
       serveDrillRepetition(world, settler, atomic.duration);

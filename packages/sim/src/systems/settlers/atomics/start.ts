@@ -29,7 +29,7 @@ import { atomicHoldsSettler } from './busy.js';
 export const EAT_ATOMIC_ID = 10;
 
 /**
- * Duration in ticks of one eat, forage, or drink atomic, from the settler's own eat clip
+ * Duration in ticks of one eat or forage atomic, from the settler's own eat clip
  * (`viking_civilist_eat_slot_food` = 50 ticks). The `[gfxanimatomic]` action-10 frame list raises, chews
  * and lowers, so the clip is a whole meal. Most working trades bind no eat clip and play the civilist's.
  */

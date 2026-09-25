@@ -88,8 +88,9 @@ function onNodeCentre(world: World, e: Entity): boolean {
 
 /**
  * Answer a combatant's pressing need mid-route, which the drive ladder cannot do because it never runs for a
- * travelling settler. The walk stops for it, since nothing else pauses a path follower; waiting for the end
- * of a leg keeps the eater on the lattice. A failed route is left alone so the chase still reads its flag.
+ * travelling settler. A meal stops the walk, since nothing else pauses a path follower; waiting for the end
+ * of a leg keeps the eater on the lattice. A draught needs no stop. A failed route is left alone so the
+ * chase still reads its flag.
  */
 function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed: boolean): void {
   if (routeFailed || !combatOwnsFeet(world, e) || !onNodeCentre(world, e)) return;

@@ -46,13 +46,14 @@ import { BEAR, ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } f
 
 const FOOD = 3;
 const MEAD = 13;
-const EAT_ATOMIC = 10;
 const SLEEP_ATOMIC = 8;
 const HEADQUARTERS = 1;
 /** Over the drive threshold and still inside the bar. */
 const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** Between the drive threshold and the critical mark, where a unit on alert still holds for food. */
 const HUNGRY: Fixed = fx.div(fx.fromInt(85), fx.fromInt(100));
+/** What one sip of mead takes off the hunger bar: half of it. */
+const MEAD_SIP: Fixed = fx.div(ONE, fx.fromInt(2));
 /** Cell distances along one row, where a cell is two half-cell nodes. `NEAR_CELLS` is inside the 32-node
  *  stand-to radius but past the 16-node sight radius, so the unit has the fight near it without being drawn
  *  into it; `CLEAR_CELLS` is past the 40-node rest clearance. */
@@ -282,9 +283,8 @@ describe('a fighting unit on alert takes no rest', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    const atomic = sim.world.get(hungry, CurrentAtomic);
-    expect(atomic.atomicId).toBe(EAT_ATOMIC); // the eat gesture doubles as the drink clip
-    expect(atomic.effect).toEqual({ kind: 'drink', slot: 0 });
+    expect(sim.world.get(hungry, Settler).hunger).toBe(fx.sub(PRESSING, MEAD_SIP));
+    expect(sim.world.has(hungry, MoveGoal)).toBe(false);
   });
 
   it('a hungry fighter on alert with no rations does not walk to the larder', () => {

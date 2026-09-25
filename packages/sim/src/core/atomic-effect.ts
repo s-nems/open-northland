@@ -42,8 +42,6 @@ export type AtomicEffect =
        *  consumes a unit it already carries. One unit of `goodType` is destroyed on completion. */
       readonly from: Entity | null;
     }
-  /** The settler drinks the draught in misc equipment slot `slot`, in place, on the eat animation. */
-  | { readonly kind: 'drink'; readonly slot: number }
   /** The settler sleeps: its clip's `event <at> 1 <delta>` pulses take the rest off its `fatigue`. No
    *  goods are consumed. */
   | { readonly kind: 'sleep' }

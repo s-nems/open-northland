@@ -13,7 +13,7 @@ import { DEFAULT_NODE_ROUGHNESS, type NodeId, type TerrainGraph } from '../../na
 import { HALF_COLUMN, HALF_ROW, worldDistance } from '../../nav/world-metric.js';
 import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
-import { chargeBarefootStep } from '../lifecycle/needs/index.js';
+import { chargeBarefootStep, drinkPressingDraughts } from '../lifecycle/needs/index.js';
 import { dropPath } from './nav-state.js';
 import { stepTowardPoint } from './stepping.js';
 import { beginWalkTurn, finishWalkTurn } from './turning.js';
@@ -107,11 +107,12 @@ type FollowState = NonNullable<(typeof PathFollow)['__value']>;
 
 /** The per-node charge: after pace is read at departure, and once at the terminal destination.
  *  Original behavior: pace updates before shoe/food points are spent, and the charge lands before a
- *  new step and when the destination is reached. */
+ *  new step and when the destination is reached; a pressing need then reaches for a carried draught. */
 function chargeNode(world: World, ctx: SystemContext, e: Entity, roughness: number): void {
   const carrying = isCarryingGood(world, e);
   if (hasLiveBoots(world, e)) wearWornBoots(world, ctx, e, roughness, carrying);
   else chargeBarefootStep(world, ctx, e, roughness, carrying);
+  drinkPressingDraughts(world, ctx, e);
 }
 
 function roughnessAt(terrain: TerrainGraph | undefined, waypoint: { node: NodeId } | undefined): number {

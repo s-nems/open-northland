@@ -1,15 +1,13 @@
-# Populate the goods `equip` lane and bind icons for the iconless equippables
+# Populate the goods `equip` lane from extracted data
 
 **Area:** pipeline · **Priority:** P2
 
 The sim's equipment component axis exists, but the extractor does not populate `equip`
-(`packages/data/src/schema/economy/goods.ts`) on the real `ir.json`, and the potion/amulet goods
-have no icons - their `landscapeType` has no `good piles all` record (the same gap leaves `fruit`
-iconless).
+(`packages/data/src/schema/economy/goods.ts`) on the real `ir.json`.
 
 Interim: the app overlays the clean-room classification by good slug at load
 (`withEquipClass` in `packages/app/src/content/real-content.ts`), so the equip window works on real
-content today. The overlay now ALSO carries the effect/wear balance fields (`productionBonusPct`,
+content today. The overlay also carries the effect/wear balance fields (`productionBonusPct`,
 `workFactorPct`, `uses`, `restorePct`) the sim's equipment effects run on - values no readable
 source carries (fixed in the original), so extraction can only ever supply `category`/`wears`. The
 landing commit must therefore FIELD-MERGE: extracted classification wins, but the balance fields
@@ -22,12 +20,10 @@ real content.
 
 ## Scope
 
-- Populate the `equip` lane from the readable data.
-- Bind icons for the iconless equippables (potions ×6, amulets ×6, fruit) - nearest-extractor
-  mirror, not hand-built art.
+- Populate the `equip` lane from the readable data, field-merged with the overlay's balance fields.
 
 ## Verify
 
 - `npm test`; a real pipeline run against the local mod (extraction changed).
-- The generated `ir.json` carries `equip` on the equippable goods and icon bindings for the
-  previously iconless ones.
+- The generated `ir.json` carries `equip` on the equippable goods, and the equip window and draught
+  effects still work on real content.

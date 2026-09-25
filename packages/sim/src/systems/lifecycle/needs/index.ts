@@ -1,3 +1,4 @@
+export { drinkPressingDraughts } from './draughts.js';
 export {
   applyNeedUnits,
   clampNeed,

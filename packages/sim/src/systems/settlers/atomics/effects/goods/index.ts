@@ -2,7 +2,6 @@
 
 export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
-export { drinkDraught } from './drink.js';
 export { equipFromStore, unequipWornGood } from './equip.js';
 export {
   continuesHarvest,
