@@ -102,9 +102,10 @@ function seatGood(
 }
 
 /**
- * First posts: keep at least one flag-bound gatherer per wanted good, each flag standing 2-3 tiles from
- * a workable resource nearest its anchor (authored), over the upkeep of every current holder
- * ({@link upkeepHolders}). No-op on a mapless sim, which has no cells to place flags over.
+ * First posts: keep at least one flag-bound gatherer per wanted good, and a short raw good's extra one
+ * (`min`), each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), over the
+ * upkeep of every current holder ({@link upkeepHolders}). One post per good per decision. No-op on a
+ * mapless sim, which has no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
@@ -138,7 +139,7 @@ export function allocateCollectors(
       commands,
     );
     const anchor = seated.free[0];
-    if (holders.length > 0 || anchor === undefined) continue;
+    if (holders.length >= w.min || anchor === undefined) continue;
     const spot = collectorSpot(world, ctx, terrain, anchor, w.good.typeId, taken, workable);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));

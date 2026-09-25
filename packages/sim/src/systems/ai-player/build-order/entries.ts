@@ -1,11 +1,13 @@
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
- *  each kind to a node. */
+ *  each kind to a node. `front` is the nearest enemy seat, its headquarters before any other building,
+ *  and the map centre while no enemy has a building standing. */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
   | { readonly kind: 'mapCentre' }
+  | { readonly kind: 'front' }
   | { readonly kind: 'outskirts' };
 
 export type BuildOrderEntry =
@@ -112,7 +114,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_joinery_01', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
   { kind: 'collector', good: 'iron' },
   { kind: 'place', building: 'work_smithy_01', count: 1, near: [{ kind: 'resource', good: 'iron' }] },
-  { kind: 'place', building: 'barracks', count: 1, near: [{ kind: 'mapCentre' }] },
+  // Toward the nearest enemy, where the attacks come from; the barracks also holds the line in defence.
+  { kind: 'place', building: 'barracks', count: 1, near: [{ kind: 'front' }] },
   { kind: 'place', building: 'work_armory_01', count: 1, near: [{ kind: 'building', id: 'work_smithy_01' }] },
   { kind: 'upgrade', building: 'home_level_03', count: 3 },
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
@@ -161,7 +164,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     kind: 'place',
     building: 'work_temple',
     count: 1,
-    near: [{ kind: 'mapCentre' }],
+    near: [{ kind: 'front' }],
     needsResources: ['mushroom', 'gold'],
   },
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
@@ -170,7 +173,6 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'stock_02', count: 3, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
-  { kind: 'place', building: 'work_brewery', count: 3, near: [{ kind: 'building', id: 'work_brewery' }] },
   { kind: 'place', building: 'home_level_04', count: 10 },
   // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer
   // to feed them.

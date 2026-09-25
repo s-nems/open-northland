@@ -230,13 +230,25 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
             : most,
         0,
       );
-      for (const seats of [plan.seats, plan.late ?? []]) {
+      const seatLists = [plan.seats, plan.crowded?.seats ?? [], plan.late ?? []];
+      for (const seats of seatLists) {
         expect(
           (operatorSeats ?? 0) * planned,
           `operator seats of every planned ${id}`,
         ).toBeGreaterThanOrEqual(seats.length);
       }
-      for (const goodId of [...plan.seats.flat(), ...(plan.alone ?? []), ...(plan.late ?? []).flat()]) {
+      const listed: string[] = [...(plan.alone ?? [])];
+      for (const seat of seatLists.flat()) {
+        if (!('goods' in seat)) {
+          listed.push(...seat);
+          continue;
+        }
+        listed.push(...seat.goods, ...(seat.otherwise ?? []));
+        // A glut on a good the seat never works would cap nothing.
+        for (const capped of Object.keys(seat.glut))
+          expect(seat.goods, `${id} glut good ${capped}`).toContain(capped);
+      }
+      for (const goodId of listed) {
         const good = content.goods.find((g) => g.id === goodId);
         expect(good, `craft good ${goodId}`).toBeDefined();
         // The restriction must name a product the workplace actually makes - an unmakeable-only

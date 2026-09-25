@@ -10,12 +10,13 @@ import {
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
-import { jobCanHarvestGood } from '../../../economy/work-flag.js';
+import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { isCarrierJob } from '../../../stores/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
+import { stockedBeyondSites } from '../../build-order/upgrade-supply.js';
 import { buildingTypeByContentId, goodTypeByContentId } from '../../content-lookup.js';
-import { ownedSettlers } from '../../seat-roster.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../../seat-roster.js';
 
 /** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
  *  the content set is skipped; the build order adds its `collector` entries' goods once reached. */
@@ -43,6 +44,18 @@ interface CollectorGrowth {
 export const COLLECTOR_GROWTH_BY_GOOD_ID: Readonly<Record<string, CollectorGrowth>> = {
   mud: { building: 'work_pottery_01', from: 1, per: 1 },
 };
+
+/**
+ * A collected good some built workshop of the seat consumes gets one gatherer more while it runs short
+ * for the seat's sites (authored): the potter or mason and his carrier can eat a raw good faster than
+ * one gatherer brings it, and what lies on the workshop's shelf is his, not the builders'. Short means
+ * fewer than {@link RAW_SHORT_UNITS} fetchable units beyond what the sites still lack; the extra man stays
+ * until {@link RAW_COMFORT_UNITS}. Unlike a top-up, the post is filled ahead of the builder reserve, since
+ * a settlement with no stone to build with has no use for builders.
+ */
+export const RAW_SHORT_UNITS = 6;
+export const RAW_COMFORT_UNITS = 16;
+const RAW_SHORTAGE_EXTRA_COLLECTORS = 1;
 
 /** How many collect-anything gatherers (a flag with no good filter) the seat keeps, at the lowest
  *  hiring priority (authored). */
@@ -73,6 +86,9 @@ export interface WantedGood {
   readonly harvestAtomic: number;
   readonly job: number;
   readonly target: number;
+  /** How many of the target's posts are filled ahead of the builder reserve, one per decision: the first,
+   *  or every one while the good runs short. */
+  readonly min: number;
 }
 
 /** The lowest gatherer trade whose grants include this harvest atomic, or null. */
@@ -107,9 +123,9 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 }
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
- *  plan order, each target at least its entries' `count` and raised by its
- *  {@link COLLECTOR_GROWTH_BY_GOOD_ID} row. A good missing from the
- *  content set or with no harvest trade is skipped. */
+ *  plan order, each target at least its entries' `count`, raised by its
+ *  {@link COLLECTOR_GROWTH_BY_GOOD_ID} row and by one more while the good runs short
+ *  ({@link RAW_SHORT_UNITS}). A good missing from the content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
   world: World,
   ctx: SystemContext,
@@ -122,6 +138,8 @@ export function wantedCollectorGoods(
   for (const goodId of entryCounts.keys()) {
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }
+  const owned = ownedBuildings(world, player);
+  const consumed = goodsConsumedByWorkshops(world, ctx, owned);
   const wanted: WantedGood[] = [];
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
@@ -140,9 +158,47 @@ export function wantedCollectorGoods(
         : Math.floor(
             Math.max(0, workshopOperators(world, ctx, player, growth.building) - growth.from) / growth.per,
           );
-    wanted.push({ good, harvestAtomic, job, target: base + extra });
+    let target = base + extra;
+    let min = 1;
+    if (COLLECTED_GOOD_IDS.includes(goodId) && consumed.has(good.typeId)) {
+      const held = flagHolders(world, ctx, player, good.typeId);
+      // The extra post, once manned, holds until the comfort line, so the stock crossing one line does
+      // not hire and release a man every few decisions.
+      const spare = held > target ? RAW_COMFORT_UNITS : RAW_SHORT_UNITS;
+      if (!stockedBeyondSites(world, ctx, player, owned, good.typeId, spare)) {
+        target += RAW_SHORTAGE_EXTRA_COLLECTORS;
+        min = target;
+      }
+    }
+    wanted.push({ good, harvestAtomic, job, target, min });
   }
   return wanted;
+}
+
+/** The goods the seat's built workshops consume, by good type: the drains a raw good's shortage is
+ *  measured against. */
+function goodsConsumedByWorkshops(world: World, ctx: SystemContext, owned: readonly Entity[]): Set<number> {
+  const index = contentIndex(ctx.content);
+  const consumed = new Set<number>();
+  for (const e of owned) {
+    if (!isBuilt(world, e)) continue;
+    const inputs = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType)?.inputs;
+    for (const input of inputs ?? []) consumed.add(input.goodType);
+  }
+  return consumed;
+}
+
+/** The seat's men holding a live flag of `goodType` with a trade that harvests it: what
+ *  `classifyWorkforce` seats on the good before its target caps them. */
+function flagHolders(world: World, ctx: SystemContext, player: number, goodType: number): number {
+  let holders = 0;
+  for (const e of ownedSettlers(world, player)) {
+    if (world.has(e, JobAssignment)) continue;
+    const job = world.get(e, Settler).jobType;
+    if (job === null || liveWorkFlag(world, e)?.goodType !== goodType) continue;
+    if (jobCanHarvestGood(ctx, job, goodType)) holders++;
+  }
+  return holders;
 }
 
 /** The operators every building of the content id employs across the seat: its crafters, not its carriers

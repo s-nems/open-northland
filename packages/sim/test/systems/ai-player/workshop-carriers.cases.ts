@@ -15,7 +15,11 @@ import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/caden
 import { BUILDER_CAP, FLAG_MAX_DISTANCE_NODES } from '../../../src/systems/ai-player/index.js';
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { collectorAnchors, seatHolders } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
-import { FLAG_RELOCATE_EVERY_DECISIONS } from '../../../src/systems/ai-player/workforce/collectors/index.js';
+import {
+  FLAG_RELOCATE_EVERY_DECISIONS,
+  RAW_COMFORT_UNITS,
+  RAW_SHORT_UNITS,
+} from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import {
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   LATE_CRAFT_FROM_TICK,
@@ -37,6 +41,7 @@ import {
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  MUD,
   placeHq,
   placeResources,
   RESOURCE_SPOTS,
@@ -135,6 +140,9 @@ function workshopSeat(men = BUILDER_CAP + SPARE_MEN): Seat {
   }
   spawnMen(sim, men, BUILDER);
   sim.step();
+  // The clay and stone the two workshops eat: plentiful, so their carriers are hired at all.
+  for (const good of RAW_GOODS)
+    setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, RAW_COMFORT_UNITS);
   return {
     sim,
     decide: () => [...collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)],
@@ -169,6 +177,8 @@ function upgradedSeat(men?: number): Seat & { readonly pottery: Entity; readonly
 
 /** The pottery's and the mason hut's supply goods. */
 const SUPPLY_GOODS = [BRICK, TILE, PILLAR, ORNAMENT];
+/** The raw goods the two workshops eat, and the builders need too. */
+const RAW_GOODS = [MUD, STONE];
 
 describe('workforce module - the pottery and mason hut crews', () => {
   it('hires a carrier beside the first potter and mason, and keeps him after the upgrade until supplies are plentiful', () => {
@@ -225,6 +235,36 @@ describe('workforce module - the pottery and mason hut crews', () => {
     expect(seat.decide().filter((c) => c.kind === 'setJob' && c.entity === carrier)).toEqual([
       { kind: 'setJob', entity: carrier, jobType: BUILDER },
     ]);
+  });
+
+  it("lets the mason's carrier go while the sites' stone runs short, and hires him back once it is plentiful", () => {
+    const seat = workshopSeat();
+    seat.apply(seat.decide());
+    const hut = entityOfBuilding(seat.sim, MASON_HUT);
+    const [carrier] = seat.crew(hut, CARRIER);
+    if (carrier === undefined) throw new Error('expected the mason hut carrier');
+    const released = () => seat.decide().filter((c) => c.kind === 'setJob' && c.entity === carrier);
+    const carrierHires = () =>
+      seat
+        .decide()
+        .filter((c) => c.kind === 'assignWorker' && c.building === hut && c.jobPriority.includes(CARRIER));
+
+    // He stays down to the short line, and goes back to the pool under it: the stone he hauls onto the
+    // hut's shelf is the mason's, and the builders have none.
+    seat.stock([STONE], RAW_SHORT_UNITS);
+    expect(released()).toEqual([]);
+    seat.stock([STONE], RAW_SHORT_UNITS - 1);
+    expect(released()).toEqual([{ kind: 'setJob', entity: carrier, jobType: BUILDER }]);
+    seat.apply(released());
+    expect(seat.crew(hut, CARRIER)).toEqual([]);
+
+    // The hut runs on the mason alone until the stone is plentiful again; the pottery's carrier, whose
+    // clay is untouched, keeps his post throughout.
+    seat.stock([STONE], RAW_COMFORT_UNITS - 1);
+    expect(carrierHires()).toEqual([]);
+    seat.stock([STONE], RAW_COMFORT_UNITS);
+    expect(carrierHires()).toHaveLength(1);
+    expect(seat.crew(entityOfBuilding(seat.sim, POTTERY), CARRIER)).toHaveLength(1);
   });
 
   it('adds the second potter once the opening run is done, ahead of the builder reserve', () => {

@@ -12,25 +12,45 @@ import { contentIndex } from '../../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { FetchableStock } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { ownedSettlers } from '../seat-roster.js';
 
+/**
+ * One operator seat's products, by stable content ids. A plain list is worked as is. A `glut` seat drops
+ * each of its `goods` while the seat holds at least that many units of it fetchable (stores, workshop
+ * shelves and heaps: the units nobody is taking), and takes it back once the stock has fallen
+ * {@link CRAFT_GLUT_BAND_UNITS} under the glut; while every capped good is dropped it works `otherwise`,
+ * or the whole list when there is none.
+ */
+export type CraftSeat =
+  | readonly string[]
+  | {
+      readonly goods: readonly string[];
+      readonly glut: Readonly<Record<string, number>>;
+      readonly otherwise?: readonly string[];
+    };
+
 /** A workplace type's product plan, by stable content ids (authored). */
 export interface CraftPlan {
-  /** One list per operator seat, counted across every building of the type the seat owns and handed out in
+  /** One seat per operator, counted across every building of the type the seat owns and handed out in
    *  canonical settler order, wrapping when more operators work the type than it lists. */
-  readonly seats: readonly (readonly string[])[];
-  /** What the type's only operator works while it employs just one, instead of the first seat's list. */
+  readonly seats: readonly CraftSeat[];
+  /** What the type's only operator works while it employs just one, instead of the first seat. */
   readonly alone?: readonly string[];
-  /** The seat lists while the type employs at least `crew` operators, instead of `seats`. */
-  readonly crowded?: { readonly crew: number; readonly seats: readonly (readonly string[])[] };
-  /** The seat lists from {@link LATE_CRAFT_FROM_TICK} on. */
-  readonly late?: readonly (readonly string[])[];
+  /** The seats while the type employs at least `crew` operators, instead of `seats`. */
+  readonly crowded?: { readonly crew: number; readonly seats: readonly CraftSeat[] };
+  /** The seats from {@link LATE_CRAFT_FROM_TICK} on. */
+  readonly late?: readonly CraftSeat[];
 }
 
 /** When a {@link CraftPlan}'s late lists take over (authored): an hour and a half of game time. */
 export const LATE_CRAFT_FROM_TICK = 90 * 60 * TICKS_PER_SECOND;
+
+/** How far under its glut a good's stock falls before a seat takes the good back (authored), so a stock
+ *  hovering at the line does not flip the seat with every unit made or taken. */
+export const CRAFT_GLUT_BAND_UNITS = 8;
 
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
@@ -41,8 +61,11 @@ export const LATE_CRAFT_FROM_TICK = 90 * 60 * TICKS_PER_SECOND;
  * and three on defence amulets; once a fifth joins at the third mint, the crew splits two each over coins,
  * defence and strength amulets. The second joiner takes the furniture. The potters split bricks and tiles,
  * a lone one working both, and add the crockery only late. The first tailor sews shoes and the
- * second leather armour, and the small tailor's one man sews shoes too. Bakers bake only bread and
- * breeders keep only cattle.
+ * second leather armour, turning to shoes while the armour piles up unworn, as it does once plate armour
+ * has come in, and back once the amulet makers and recruits have drawn it down; the small tailor's one
+ * man sews shoes too. The first armourer works long bows and wooden spears, dropping whichever has piled
+ * up so the other, the spear the smithy's iron spear needs or the bow, gets his whole time. Bakers bake
+ * only bread and breeders keep only cattle.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_joinery_01: { seats: [['tool_iron'], ['tool_iron', 'furniture']] },
@@ -57,7 +80,9 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_mason_hut_01: { seats: [['pillar', 'ornament']] },
   work_animal_farm: { seats: [['cattle']] },
   work_sewery_00: { seats: [['shoes']] },
-  work_sewery_01: { seats: [['shoes'], ['armor_leather']] },
+  work_sewery_01: {
+    seats: [['shoes'], { goods: ['armor_leather'], glut: { armor_leather: 16 }, otherwise: ['shoes'] }],
+  },
   work_bakery_01: { seats: [['bread']] },
   work_smithy_01: {
     seats: [
@@ -71,7 +96,9 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       ['sword_shord'],
     ],
   },
-  work_armory_01: { seats: [['bow_long', 'spear_wooden'], ['bow_long']] },
+  work_armory_01: {
+    seats: [{ goods: ['bow_long', 'spear_wooden'], glut: { bow_long: 20, spear_wooden: 20 } }, ['bow_long']],
+  },
   work_druid_01: {
     seats: [
       ['holy_oil'],
@@ -127,6 +154,7 @@ interface RestrictedCrew {
 export function tuneCraftSelections(world: World, ctx: SystemContext, player: number): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
+  const stock = FetchableStock.of(world, ctx);
   // Restricted workplace type -> its operators across the seat, gathered first because a seat's share
   // depends on how many men the whole type employs. Insertion follows the canonical settler walk, so the
   // seats and the emitted command order are both deterministic.
@@ -157,12 +185,13 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
     for (const [seat, e] of crew.entries()) {
       const workplace = workplaces[seat];
       const opening = workplace === undefined ? null : openingRun(world, ctx, workplace, type);
+      const current = world.tryGet(e, CraftSelection)?.goods ?? [];
       const listed =
         opening !== null
           ? [opening]
           : crew.length === 1 && plan.alone !== undefined
             ? plan.alone
-            : (seats[seat % seats.length] ?? []);
+            : seatProducts(ctx, stock, player, current, seats[seat % seats.length] ?? []);
       const goods = [
         ...new Set(
           listed
@@ -171,12 +200,35 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
         ),
       ].sort((a, b) => a - b);
       if (goods.length === 0) continue;
-      const current = world.tryGet(e, CraftSelection)?.goods ?? [];
       if (current.length === goods.length && current.every((g, i) => g === goods[i])) continue;
       commands.push({ kind: 'setCraftGoods', entity: e, goods });
     }
   }
   return commands;
+}
+
+/**
+ * What a {@link CraftSeat} works right now. A capped good the worker has on his `current` selection is
+ * dropped at its glut; one he does not have comes back only under the glut by the band, so the two lines
+ * a stock crosses are the hysteresis and no state beyond the live selection is kept.
+ */
+function seatProducts(
+  ctx: SystemContext,
+  stock: FetchableStock,
+  player: number,
+  current: readonly number[],
+  seat: CraftSeat,
+): readonly string[] {
+  if (!('goods' in seat)) return seat;
+  const kept = seat.goods.filter((id) => {
+    const glut = seat.glut[id];
+    const good = glut === undefined ? undefined : goodTypeByContentId(ctx.content, id);
+    if (glut === undefined || good === undefined) return true;
+    const dropAt = current.includes(good.typeId) ? glut : glut - CRAFT_GLUT_BAND_UNITS;
+    return !stock.exceeds(player, good.typeId, dropAt - 1);
+  });
+  if (kept.length > 0) return kept;
+  return seat.otherwise ?? seat.goods;
 }
 
 /** Whether `workplace`'s opening run is still unfinished; false for a type without one. */

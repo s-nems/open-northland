@@ -52,6 +52,21 @@ function producedOnlyByIdleBuildings(
   return producers > 0;
 }
 
+/** Whether `player` holds at least `units` fetchable units of `goodType` beyond what the seat's sites
+ *  still lack: the units a workshop has on its own shelf are not fetchable, so a workshop eating its raw
+ *  good reads as the shortage it is to the builders. */
+export function stockedBeyondSites(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  goodType: number,
+  units: number,
+): boolean {
+  const owed = sitesShortfall(world, ctx, owned, goodType);
+  return FetchableStock.of(world, ctx).exceeds(player, goodType, owed + units - 1);
+}
+
 /** How much of `goodType` the seat's construction sites still lack. */
 export function sitesShortfall(
   world: World,

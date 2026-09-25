@@ -17,6 +17,7 @@ import {
   aiSim,
   ctxOf,
   entityOfBuilding,
+  HQ_TYPE,
   HQ_X,
   HQ_Y,
   makeAiSeat,
@@ -27,6 +28,7 @@ import {
   SEAT,
   STONE,
   STONE_HARVEST,
+  TOWER_TYPE,
   VIKING,
   WELL_TYPE,
 } from './support.js';
@@ -171,6 +173,47 @@ describe('build-order placement - affinity and ground rules', () => {
     // The pull points at the map centre (128,128), east and south of this HQ.
     expect(spot.x).toBeGreaterThan(HQ_FAR.x);
     expect(spot.y).toBeGreaterThan(HQ_FAR.y);
+  });
+
+  it('pulls a front-affinity placement toward the nearest enemy headquarters, or the map centre without one', () => {
+    const HQ_AT = { x: 40, y: 40 };
+    const ENEMY = SEAT + 1;
+    const ENEMY_HQ = { x: 40, y: 200 }; // due south; the map centre (128,128) lies south-east
+    const ENEMY_TOWER = { x: 70, y: 40 }; // nearer, due east - but not a headquarters
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    placeHq(sim, HQ_AT.x, HQ_AT.y);
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: ENEMY, tribes: [VIKING] });
+    for (const [buildingType, at] of [
+      [HQ_TYPE, ENEMY_HQ],
+      [TOWER_TYPE, ENEMY_TOWER],
+    ] as const) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType,
+        x: at.x,
+        y: at.y,
+        tribe: VIKING,
+        owner: ENEMY,
+      });
+    }
+    sim.step();
+    const front: BuildOrderEntry[] = [
+      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
+    ];
+    const spot = firstCommandOf(sim, front);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a front-pulled placement');
+    // Pulled hard south toward the enemy headquarters, past the nearer tower's eastward pull.
+    expect(spot.y - HQ_AT.y).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2);
+    expect(Math.abs(spot.x - HQ_AT.x)).toBeLessThan(BUILD_SEARCH_MAX_RADIUS_NODES / 4);
+
+    // No enemy building anywhere: the pull falls back to the middle of the map, east and south of here.
+    const alone = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    placeHq(alone, HQ_AT.x, HQ_AT.y);
+    alone.step();
+    const fallback = firstCommandOf(alone, front);
+    if (fallback?.kind !== 'placeBuilding') throw new Error('expected a centre-pulled placement');
+    expect(fallback.x).toBeGreaterThan(HQ_AT.x);
+    expect(fallback.y).toBeGreaterThan(HQ_AT.y);
   });
 
   it("clamps a far-off affinity centre back into the band of the seat's buildings", () => {

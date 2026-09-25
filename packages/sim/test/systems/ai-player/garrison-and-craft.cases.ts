@@ -17,7 +17,9 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
 import {
+  CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
+  CRAFT_PLANS_BY_BUILDING_ID,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
@@ -216,15 +218,16 @@ function furnitureContent(): ContentSet {
 const COIN = 14;
 const DEFENCE_AMULET = 15;
 const STRENGTH_AMULET = 16;
+const BOW_LONG = 17;
+const SPEAR_WOODEN = 18;
+const SHOES = 19;
+const LEATHER_ARMOUR = 20;
 
 /** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
-function mintContent(): ContentSet {
+/** The fixture joinery recast as the workshop `id`, one wood recipe per product, so the type's own plan
+ *  is what the two-seat crew works. */
+function joineryRecastAs(id: string, products: readonly { typeId: number; id: string }[]): ContentSet {
   const base = aiContent();
-  const products = [
-    { typeId: COIN, id: 'coin' },
-    { typeId: DEFENCE_AMULET, id: 'amulet_defense' },
-    { typeId: STRENGTH_AMULET, id: 'amulet_strength' },
-  ];
   return parseContentSet({
     ...base,
     goods: [...base.goods, ...products.map((p) => ({ ...p, weight: 1 }))],
@@ -232,7 +235,7 @@ function mintContent(): ContentSet {
       b.typeId === JOINERY_TYPE
         ? {
             ...b,
-            id: 'work_coin_mint',
+            id,
             recipes: products.map((p) => ({
               inputs: [{ goodType: WOOD, amount: 1 }],
               outputs: [{ goodType: p.typeId, amount: 1 }],
@@ -242,6 +245,59 @@ function mintContent(): ContentSet {
         : b,
     ),
   });
+}
+
+function mintContent(): ContentSet {
+  return joineryRecastAs('work_coin_mint', [
+    { typeId: COIN, id: 'coin' },
+    { typeId: DEFENCE_AMULET, id: 'amulet_defense' },
+    { typeId: STRENGTH_AMULET, id: 'amulet_strength' },
+  ]);
+}
+
+/** The glut a plan's seat `index` drops `goodId` at, or a failure when the plan does not cap it. */
+function glutOf(buildingId: string, index: number, goodId: string): number {
+  const seat = CRAFT_PLANS_BY_BUILDING_ID[buildingId]?.seats[index];
+  const glut = seat === undefined || !('goods' in seat) ? undefined : seat.glut[goodId];
+  if (glut === undefined) throw new Error(`setup: ${buildingId} seat ${index} does not cap ${goodId}`);
+  return glut;
+}
+
+/** A recast joinery at (40, 16) with `crew` builders hired as its joiners, lowest id first; the
+ *  products each decision hands them, via {@link tuneCraftSelections}, in that order. */
+function crewedWorkshop(content: ContentSet, crew: number) {
+  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+  placeHq(sim);
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: JOINERY_TYPE,
+    x: 40,
+    y: 16,
+    tribe: VIKING,
+    owner: SEAT,
+  });
+  spawnMen(sim, crew, BUILDER);
+  sim.step();
+  const workshop = entityOfBuilding(sim, JOINERY_TYPE);
+  for (const man of [...sim.world.query(Settler)].sort((a, b) => a - b)) {
+    if (sim.world.get(man, Settler).jobType === BUILDER)
+      sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: workshop, jobPriority: [JOINER] });
+  }
+  sim.step();
+  const ctx = { ...ctxOf(sim), content };
+  return {
+    sim,
+    /** Put `units` of the good into the headquarters, the seat's fetchable stock. */
+    stock: (good: number, units: number) =>
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, units),
+    /** The decision's product changes, applied. */
+    products(): (readonly number[])[] {
+      const commands = tuneCraftSelections(sim.world, ctx, SEAT);
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands.flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
+    },
+  };
 }
 
 describe('workforce module - the barracks and craft selections', () => {
@@ -881,6 +937,43 @@ describe('workforce module - the barracks and craft selections', () => {
       [STRENGTH_AMULET],
       [STRENGTH_AMULET],
     ]);
+  });
+
+  it('turns the first armourer to wooden spears alone while the long bows pile up, and back once they are drawn down', () => {
+    const seat = crewedWorkshop(
+      joineryRecastAs('work_armory_01', [
+        { typeId: BOW_LONG, id: 'bow_long' },
+        { typeId: SPEAR_WOODEN, id: 'spear_wooden' },
+      ]),
+      1,
+    );
+    const glut = glutOf('work_armory_01', 0, 'bow_long');
+    expect(seat.products()).toEqual([[BOW_LONG, SPEAR_WOODEN]]);
+    seat.stock(BOW_LONG, glut - 1);
+    expect(seat.products()).toEqual([]);
+    seat.stock(BOW_LONG, glut);
+    expect(seat.products()).toEqual([[SPEAR_WOODEN]]);
+    // The bow comes back only under the band, so the stock hovering at the glut flips nothing.
+    seat.stock(BOW_LONG, glut - CRAFT_GLUT_BAND_UNITS);
+    expect(seat.products()).toEqual([]);
+    seat.stock(BOW_LONG, glut - CRAFT_GLUT_BAND_UNITS - 1);
+    expect(seat.products()).toEqual([[BOW_LONG, SPEAR_WOODEN]]);
+  });
+
+  it('turns the second tailor to shoes while the leather armour lies unworn, and back once the amulets take it', () => {
+    const seat = crewedWorkshop(
+      joineryRecastAs('work_sewery_01', [
+        { typeId: SHOES, id: 'shoes' },
+        { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
+      ]),
+      2,
+    );
+    const glut = glutOf('work_sewery_01', 1, 'armor_leather');
+    expect(seat.products()).toEqual([[SHOES], [LEATHER_ARMOUR]]);
+    seat.stock(LEATHER_ARMOUR, glut);
+    expect(seat.products()).toEqual([[SHOES]]); // the second seat's change; the first already sews shoes
+    seat.stock(LEATHER_ARMOUR, glut - CRAFT_GLUT_BAND_UNITS - 1);
+    expect(seat.products()).toEqual([[LEATHER_ARMOUR]]);
   });
 
   it('hands the seats out across every building of the type, not per building', () => {

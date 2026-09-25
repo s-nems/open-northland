@@ -1,9 +1,15 @@
 import type { BuildingType } from '@open-northland/data';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { FetchableStock } from '../../settlers/targets/index.js';
-import { sitesShortfall } from '../build-order/upgrade-supply.js';
-import { goodTypeByContentId } from '../content-lookup.js';
+import { stockedBeyondSites } from '../build-order/upgrade-supply.js';
+import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import {
+  COLLECTED_GOOD_IDS,
+  COLLECTOR_WORKSHOP_BY_GOOD_ID,
+  RAW_COMFORT_UNITS,
+  RAW_SHORT_UNITS,
+} from './collectors/index.js';
 import { openingRunPending } from './craft.js';
 
 /** A building's staffing plan: workers per operator trade and total transport carriers, filled tier by
@@ -105,7 +111,9 @@ export interface SeatStaffing {
  * One building's plan this decision, or null for the kinds the allocator never staffs: homes, towers and
  * the barracks are military or residential, not production. A workshop on its opening run keeps to its
  * first craftsman so the run is not split; `holdsCarrier` says whether a carrier works there already,
- * which keeps a supply or grown-seat carrier through the band below the line that hired him.
+ * which keeps a supply or grown-seat carrier through the band below the line that hired him. A raw
+ * good's own workshop runs without a carrier while that good is short for the sites
+ * ({@link rawGoodShort}), whatever the rows above say.
  */
 export function buildingStaffing(
   world: World,
@@ -137,6 +145,7 @@ export function buildingStaffing(
       carrierTarget: Math.max(plan.carrierTarget, 1),
     };
   }
+  if (rawGoodShort(world, ctx, seat, type, holdsCarrier)) plan = { ...plan, carrierMin: 0, carrierTarget: 0 };
   return plan;
 }
 
@@ -151,12 +160,36 @@ function suppliesShort(
 ): boolean {
   const goodIds = SUPPLY_CARRIER_GOODS_BY_BUILDING_ID[type.id];
   if (goodIds === undefined) return false;
-  const stock = FetchableStock.of(world, ctx);
   const wanted = holdsCarrier ? SUPPLY_COMFORT_UNITS : SUPPLY_SHORT_UNITS;
   return goodIds.some((id) => {
     const good = goodTypeByContentId(ctx.content, id);
-    if (good === undefined) return false;
-    const owed = sitesShortfall(world, ctx, seat.owned, good.typeId);
-    return !stock.exceeds(seat.player, good.typeId, owed + wanted - 1);
+    return (
+      good !== undefined && !stockedBeyondSites(world, ctx, seat.player, seat.owned, good.typeId, wanted)
+    );
+  });
+}
+
+/**
+ * Whether `type` is a collected raw good's own workshop ({@link COLLECTOR_WORKSHOP_BY_GOOD_ID}) while that
+ * good runs short for the seat's sites: under {@link RAW_SHORT_UNITS} spare units, or while no carrier
+ * works there, under {@link RAW_COMFORT_UNITS}. Its carrier only hauls the good onto the workshop's shelf,
+ * where the builders cannot take it, so he goes back to the pool and the craftsman fetches his own until
+ * the good is plentiful again (authored).
+ */
+function rawGoodShort(
+  world: World,
+  ctx: SystemContext,
+  seat: SeatStaffing,
+  type: BuildingType,
+  holdsCarrier: boolean,
+): boolean {
+  const index = contentIndex(ctx.content);
+  const spare = holdsCarrier ? RAW_SHORT_UNITS : RAW_COMFORT_UNITS;
+  return COLLECTED_GOOD_IDS.some((id) => {
+    const served = COLLECTOR_WORKSHOP_BY_GOOD_ID[id];
+    const workshop = served === undefined ? undefined : buildingTypeByContentId(ctx.content, served.building);
+    if (workshop === undefined || !tiersAtOrAbove(index, workshop).has(type.typeId)) return false;
+    const good = goodTypeByContentId(ctx.content, id);
+    return good !== undefined && !stockedBeyondSites(world, ctx, seat.player, seat.owned, good.typeId, spare);
   });
 }

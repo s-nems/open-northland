@@ -13,6 +13,8 @@ export {
   clearingCollectors,
   DEFAULT_COLLECTOR_TARGET,
   GENERIC_COLLECTOR_TARGET,
+  RAW_COMFORT_UNITS,
+  RAW_SHORT_UNITS,
   type WantedGood,
   wantedCollectorGoods,
 } from './wanted-goods.js';

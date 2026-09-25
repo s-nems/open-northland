@@ -8,8 +8,10 @@ import {
   Settler,
   SettlerProgress,
   StalledPlacement,
+  setStockAmount,
   WorkFlag,
 } from '../../../src/components/index.js';
+import type { Command } from '../../../src/core/commands/index.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
@@ -24,7 +26,10 @@ import {
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
 import { workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
-import { wantedCollectorGoods } from '../../../src/systems/ai-player/workforce/collectors/index.js';
+import {
+  RAW_COMFORT_UNITS,
+  wantedCollectorGoods,
+} from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { resourceStanceCells } from '../../../src/systems/footprint/interaction.js';
@@ -155,6 +160,52 @@ describe('workforce module (collectResources)', () => {
     const hq = entityOfBuilding(sim, HQ_TYPE);
     const carriers = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === hq);
     expect(carriers.map((c) => c.jobPriority)).toEqual([[CARRIER], [CARRIER], [CARRIER]]);
+  });
+
+  it("posts more wood gatherers ahead of the builder reserve while the joinery eats the sites' wood", () => {
+    // The joinery's recipes consume wood, the crew is the previous case's: nothing past the reserve, so
+    // only a first-tier post can still claim a man.
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: JOINERY_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, BUILDER_CAP + 7);
+    sim.step();
+    const decide = () => {
+      const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands;
+    };
+    const posted = (commands: readonly Command[]) =>
+      commands.flatMap((c) => (c.kind === 'setGatherGood' ? [c.goodType] : []));
+    const woodHolders = () =>
+      [...sim.world.query(Settler, WorkFlag)].filter((e) => sim.world.get(e, WorkFlag).goodType === WOOD);
+
+    expect(posted(decide())).toEqual([MUD, STONE, WOOD]);
+    // No wood beyond what the sites need and a built consumer: the target's every post is a first post,
+    // one per decision, up to one beyond the plan's two.
+    expect(posted(decide())).toEqual([WOOD]);
+    expect(posted(decide())).toEqual([WOOD]);
+    expect(posted(decide())).toEqual([]);
+    expect(woodHolders()).toHaveLength((COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + 1);
+
+    // The extra man stays through the band and rejoins the builders once the wood is plentiful.
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    const retired = (commands: readonly Command[]) =>
+      commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
+    setStockAmount(sim.world, hq, WOOD, RAW_COMFORT_UNITS - 1);
+    expect(retired(decide())).toEqual([]);
+    setStockAmount(sim.world, hq, WOOD, RAW_COMFORT_UNITS);
+    expect(retired(decide())).toHaveLength(1);
+    expect(woodHolders()).toHaveLength(COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0);
   });
 
   it('sends extra generic gatherers to clear ground while a placement is stalled, ahead of the carriers', () => {

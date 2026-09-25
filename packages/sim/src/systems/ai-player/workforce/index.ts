@@ -49,6 +49,8 @@ export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   DEFAULT_COLLECTOR_TARGET,
+  RAW_COMFORT_UNITS,
+  RAW_SHORT_UNITS,
 } from './collectors/index.js';
 export { CRAFT_PLANS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';

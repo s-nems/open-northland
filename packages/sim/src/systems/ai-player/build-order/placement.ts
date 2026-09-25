@@ -1,5 +1,5 @@
 import { type BuildingType, footprintCellDx } from '@open-northland/data';
-import { Building } from '../../../components/index.js';
+import { Building, diplomacyStance, Owner, ownerOf } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -8,6 +8,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
+import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
@@ -24,6 +25,7 @@ function affinityNode(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  player: number,
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
@@ -47,10 +49,50 @@ function affinityNode(
       return resource === null ? null : anchorNodeOf(world, resource);
     }
     case 'mapCentre':
-      return { hx: Math.floor(terrain.width / 2), hy: Math.floor(terrain.height / 2) };
+      return mapCentreNode(terrain);
+    case 'front':
+      return frontNode(world, ctx, player, anchor) ?? mapCentreNode(terrain);
     case 'outskirts':
       return outskirtsNode(world, ctx, owned, type, sameKindAnchors);
   }
+}
+
+function mapCentreNode(terrain: TerrainGraph): HalfCellNode {
+  return { hx: Math.floor(terrain.width / 2), hy: Math.floor(terrain.height / 2) };
+}
+
+/**
+ * The `front` anchor: the building nearest `anchor` (Manhattan) of a player the seat holds as enemy,
+ * headquarters ranked ahead of everything else, so the pull points down the road the attacks come by
+ * rather than at the middle of the map. Null while no enemy has a building. Strict `<` over the
+ * canonical walk keeps the lowest id on ties.
+ */
+function frontNode(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  anchor: HalfCellNode,
+): HalfCellNode | null {
+  const index = contentIndex(ctx.content);
+  let best: HalfCellNode | null = null;
+  let bestHq = false;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const e of world.canonicalQuery(Building, Owner)) {
+    const owner = ownerOf(world, e);
+    if (owner === undefined || owner === player || diplomacyStance(world, player, owner) !== 'enemy')
+      continue;
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    const hq = index.buildings.get(world.get(e, Building).buildingType)?.id === HEADQUARTERS_BUILDING_ID;
+    if (bestHq && !hq) continue;
+    const distance = nodeDistance(node, anchor);
+    if ((hq && !bestHq) || distance < bestDistance) {
+      best = node;
+      bestHq = hq;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /** Lattice Manhattan distance, not the anisotropic world metric the spacing veto measures in. */
@@ -100,6 +142,7 @@ function searchCentre(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  player: number,
   owned: readonly Entity[],
   anchor: HalfCellNode,
   reach: BuildReach,
@@ -109,7 +152,7 @@ function searchCentre(
 ): HalfCellNode {
   const anchors: HalfCellNode[] = [];
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, terrain, owned, anchor, type, sameKindAnchors, affinity);
+    const node = affinityNode(world, ctx, terrain, player, owned, anchor, type, sameKindAnchors, affinity);
     if (node !== null) anchors.push(node);
   }
   if (anchors.length === 0) return anchor;
@@ -272,7 +315,18 @@ export function placementSpot(
   const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const settlement = buildReach(world, owned, anchor);
-  const centre = searchCentre(world, ctx, terrain, owned, anchor, settlement, type, sameKindAnchors, entry);
+  const centre = searchCentre(
+    world,
+    ctx,
+    terrain,
+    player,
+    owned,
+    anchor,
+    settlement,
+    type,
+    sameKindAnchors,
+    entry,
+  );
   const reach = settlement.around(centre, fan);
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
     firstRingNode(centre.hx, centre.hy, fan, (x, y) => {

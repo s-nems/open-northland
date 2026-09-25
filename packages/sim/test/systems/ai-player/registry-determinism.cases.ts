@@ -92,7 +92,7 @@ describe('the full strategic registry - determinism and replay', () => {
     );
     // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, three
     // TOP-tier homes (the tail's further homes name a tier above this content set's chain, so they
-    // skip here), the upgraded bakery plus the three direct-placed level-2 bakeries, three breweries,
+    // skip here), the upgraded bakery plus the three direct-placed level-2 bakeries, two breweries,
     // the joinery, the barracks, and the three outskirts warehouses. Every building sits inside the HQ's
     // opening coverage circle, so only the late tail's denser ring raises towers.
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
@@ -107,7 +107,6 @@ describe('the full strategic registry - determinism and replay', () => {
         BAKERY_TOP_TYPE,
         BAKERY_TOP_TYPE,
         BAKERY_TOP_TYPE,
-        BREWERY_TYPE,
         BREWERY_TYPE,
         BREWERY_TYPE,
         JOINERY_TYPE,
