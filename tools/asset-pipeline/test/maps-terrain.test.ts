@@ -290,7 +290,11 @@ describe('mapDatToTerrain', () => {
     const invalidOwner = mapDatToTerrain(
       encodeMapDat([
         ...common,
-        { tag: 'lmlp', version: 1, payload: packMapLayer(Uint8Array.from([MAP_PLAYER_SLOTS, 255, 255, 255])) },
+        {
+          tag: 'lmlp',
+          version: 1,
+          payload: packMapLayer(Uint8Array.from([MAP_PLAYER_SLOTS, 255, 255, 255])),
+        },
       ]),
     );
     expect(invalidOwner.objects).toBeUndefined();
