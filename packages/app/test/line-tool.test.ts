@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createLineTool,
   type LineNode,
+  lineFan,
   lineReach,
   screenLine,
   straightLine,
@@ -62,6 +63,20 @@ describe('line reach', () => {
     expect(reach.has('13,10')).toBe(false);
     expect(reach.has('8,10')).toBe(true);
     expect(reach.has('15,10')).toBe(false); // past the edge budget
+  });
+
+  it('answers a changed probe over one walked fan as a fresh walk does', () => {
+    const anchor = { col: 30, row: 31 };
+    const fan = lineFan(anchor, MAX_EDGES);
+    for (const blockedCol of [27, 31, 36]) {
+      const line = {
+        tool: 'test',
+        anchor,
+        maxEdges: MAX_EDGES,
+        accepts: (col: number) => col !== blockedCol,
+      };
+      expect([...lineReach(line, fan)].sort()).toEqual([...lineReach(line)].sort());
+    }
   });
 
   it('lights nothing when the anchor itself is refused', () => {

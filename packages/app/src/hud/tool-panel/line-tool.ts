@@ -138,34 +138,70 @@ function markPrefix(
   });
 }
 
-/**
- * The nodes a started line can end on: those whose whole line from the anchor is accepted. Each node in
- * the reach radius is probed once, so the cost is the radius's area, not area times line length.
- */
-export function lineReach(line: ActiveLine): ReadonlySet<string> {
-  const verdicts = new Map<string, boolean>();
-  const accepted = (node: LineNode): boolean => {
+/** Every line a started line can draw from `anchor`, walked once: only the anchor and the edge budget
+ *  shape them, so a world change re-probes the nodes without walking the lines again. */
+export interface LineFan {
+  readonly anchor: LineNode;
+  readonly maxEdges: number;
+  /** The distinct nodes the lines pass; the anchor is the first. */
+  readonly nodes: readonly LineNode[];
+  /** Each end a line reaches exactly, with its nodes as indexes into `nodes`. */
+  readonly lines: readonly { readonly end: string; readonly path: readonly number[] }[];
+}
+
+export function lineFan(anchor: LineNode, maxEdges: number): LineFan {
+  const nodes: LineNode[] = [];
+  const indexOf = new Map<string, number>();
+  const index = (node: LineNode): number => {
     const key = `${node.col},${node.row}`;
-    let verdict = verdicts.get(key);
-    if (verdict === undefined) {
-      verdict = line.accepts(node.col, node.row);
-      verdicts.set(key, verdict);
+    let at = indexOf.get(key);
+    if (at === undefined) {
+      at = nodes.length;
+      nodes.push({ col: node.col, row: node.row });
+      indexOf.set(key, at);
     }
-    return verdict;
+    return at;
   };
-  const reach = new Set<string>();
-  const { anchor, maxEdges } = line;
-  if (!accepted(anchor)) return reach;
+  index(anchor);
+  const lines: { end: string; path: number[] }[] = [];
   // Half-cell rows step one hex row each, and a row holds at most `maxEdges` steps either way.
   for (let row = anchor.row - maxEdges; row <= anchor.row + maxEdges; row++) {
     for (let col = anchor.col - maxEdges; col <= anchor.col + maxEdges; col++) {
-      const end = { col, row };
       if (hexDistanceBetween(anchor.col, anchor.row, col, row) > maxEdges) continue;
-      const path = screenLine(anchor, end, maxEdges);
+      const path = screenLine(anchor, { col, row }, maxEdges);
       const last = path[path.length - 1];
-      if (last?.col === col && last.row === row && path.every(accepted)) reach.add(`${col},${row}`);
+      if (last?.col === col && last.row === row) lines.push({ end: `${col},${row}`, path: path.map(index) });
     }
   }
+  return { anchor: { col: anchor.col, row: anchor.row }, maxEdges, nodes, lines };
+}
+
+const UNPROBED = 0;
+const ACCEPTED = 1;
+const REFUSED = 2;
+
+/**
+ * The nodes a started line can end on: those whose whole line from the anchor is accepted. Each node the
+ * fan passes is probed at most once, so the cost is the reach radius's area, not area times line length.
+ * `fan` must be the one of `line`'s anchor and budget.
+ */
+export function lineReach(
+  line: ActiveLine,
+  fan: LineFan = lineFan(line.anchor, line.maxEdges),
+): ReadonlySet<string> {
+  const verdicts = new Uint8Array(fan.nodes.length);
+  const accepted = (at: number): boolean => {
+    let verdict = verdicts[at] ?? UNPROBED;
+    if (verdict === UNPROBED) {
+      const node = fan.nodes[at];
+      verdict = node !== undefined && line.accepts(node.col, node.row) ? ACCEPTED : REFUSED;
+      verdicts[at] = verdict;
+    }
+    return verdict === ACCEPTED;
+  };
+  const reach = new Set<string>();
+  if (!accepted(0)) return reach;
+  for (const { end, path } of fan.lines) if (path.every(accepted)) reach.add(end);
   return reach;
 }
 

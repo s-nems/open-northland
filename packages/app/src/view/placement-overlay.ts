@@ -6,7 +6,7 @@ import {
 } from '@open-northland/render';
 import { FOG_STATE, type Paper, type Simulation } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import { type ActiveLine, lineReach } from '../hud/tool-panel/line-tool.js';
+import { type ActiveLine, type LineFan, lineFan, lineReach } from '../hud/tool-panel/line-tool.js';
 import type { LitNodes } from '../hud/tool-panel/placement.js';
 import { nodeBandOfCells } from './picking.js';
 
@@ -67,18 +67,28 @@ export function makeSignpostOverlaySource(
 
 /**
  * A started line's lit nodes (`lineReach`): exactly where a confirming click lays the whole line. The
- * reach is recomputed only when the anchor, the tool, a placement blocker or the fog changes.
+ * lines themselves are walked once per anchor; the nodes are re-probed only when the tool, a placement
+ * blocker or the fog changes.
  */
 export function makeLineReachSource(
   sim: Simulation,
   player: number = HUMAN_PLAYER,
 ): (line: ActiveLine) => LitNodes {
   let lit: LitNodes = { key: '', has: () => false };
+  let fan: LineFan | null = null;
   return (line) => {
     const fog = sim.fogView(player);
     const key = `line:${line.tool}:${line.anchor.col},${line.anchor.row}:${sim.placementBlockerVersion()}:${fog === null ? 'off' : `${fog.mode}:${fog.generation}`}`;
     if (key !== lit.key) {
-      const reach = lineReach(line);
+      if (
+        fan === null ||
+        fan.anchor.col !== line.anchor.col ||
+        fan.anchor.row !== line.anchor.row ||
+        fan.maxEdges !== line.maxEdges
+      ) {
+        fan = lineFan(line.anchor, line.maxEdges);
+      }
+      const reach = lineReach(line, fan);
       lit = { key, has: (col, row) => reach.has(`${col},${row}`) };
     }
     return lit;
