@@ -21,6 +21,7 @@ function world(tick: number, settler: 'lost' | 'found' | 'gone'): WorldSnapshot 
 function needsWorld(
   needs: { hunger?: number; fatigue?: number; piety?: number },
   enabled = true,
+  ordered: string | null = null,
 ): WorldSnapshot {
   return {
     tick: RELEASED,
@@ -38,6 +39,7 @@ function needsWorld(
             enjoyment: 0,
             experience: { $map: [] },
           },
+          ...(ordered === null ? {} : { NeedOrder: { need: ordered } }),
         },
       },
       ...(enabled ? [] : [{ id: 8, components: { WorldRules: { needsEnabled: false } } }]),
@@ -120,6 +122,12 @@ describe('note retirement', () => {
   it('keeps a prayer note a failed search raised below the critical level until a prayer answers it', () => {
     const pressing = systems.NEED_DRIVE_THRESHOLD;
     expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: pressing }))).toBe(false);
+  });
+
+  it('keeps the prayer note of an ordered prayer with nowhere to go while the order stands', () => {
+    const calm = { piety: 0 };
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld(calm, true, 'piety'))).toBe(false);
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld(calm, true, 'hunger'))).toBe(true);
   });
 
   it('ends need notes when needs are disabled or the settler no longer carries them', () => {

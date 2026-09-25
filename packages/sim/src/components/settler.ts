@@ -20,8 +20,9 @@ export const Settler = defineComponent<{
   /** 0..ONE; rises over time, cleared by the `sleep` atomic (id 8, `tribetypes` `setatomic <job> 8`). */
   fatigue: Fixed;
   /**
-   * 0..ONE; does not rise with time - only forging a weapon or armor good raises it, and the `pray` atomic
-   * (id 12, `setatomic 6 12`) at a temple clears it.
+   * 0..ONE; does not rise with time - only forging a weapon or armor good raises it. The `pray` atomic
+   * (id 12, `setatomic 6 12`) at a lit home, a temple or the headquarters lowers it, and so does a nearby
+   * temple's blessing.
    */
   piety: Fixed;
   /**

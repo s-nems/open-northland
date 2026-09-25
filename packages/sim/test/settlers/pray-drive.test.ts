@@ -6,6 +6,7 @@ import {
   CurrentAtomic,
   HomeQuality,
   MoveGoal,
+  NeedOrder,
   Owner,
   Position,
   Residence,
@@ -18,6 +19,7 @@ import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { setHouseholdGoodUse } from '../../src/systems/family/home-quality.js';
 import { atomicSystem, NEED_SATED_THRESHOLD, needBar, plannerSystem } from '../../src/systems/index.js';
 import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
+import { TEMPLE_PREFERRED_RANGE } from '../../src/systems/settlers/targets/stores/buildings.js';
 import { testContent } from '../fixtures/content.js';
 import {
   cellOf,
@@ -32,7 +34,7 @@ import {
 /**
  * Unit + integration tests for the PRAY DRIVE - the planner choosing a `pray` atomic (id 12, the
  * original's `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY`) when a settler's piety crosses the threshold,
- * WALKING TO A TEMPLE (the first target-bound need - unlike eat at a store / sleep in place) and
+ * WALKING TO A PRAYER SITE (its lit home, else a temple, else its headquarters) and
  * zeroing piety on completion, closing the NeedsSystem's rise→pray→reset loop.
  *
  * The viking tribe binds pray atomic 12 → "viking_pray" (length 7); the pray atomic id (12) is pinned
@@ -314,6 +316,23 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
     expect(isServedAtHome(sim.world, settler)).toBe(true);
   });
 
+  it('does not count a temple prayer said from its doorstep as a prayer at home', () => {
+    const sim = new Simulation({ seed: 1, content: oilContent(), map: grassMap(8, 1) });
+    const home = litHomeAt(sim, 4);
+    const temple = ownedAt(sim, 4, TEMPLE_TYPE);
+    const settler = devoutAt(sim, 4, home);
+    sim.world.add(settler, Resting, { at: home });
+    addCurrentAtomic(sim.world, settler, {
+      atomicId: PRAY_ATOMIC,
+      duration: PRAY_CLIP_TICKS,
+      effect: { kind: 'pray' },
+      targetEntity: temple,
+      targetTile: null,
+    });
+
+    expect(isServedAtHome(sim.world, settler)).toBe(false);
+  });
+
   it('goes to the temple when its home fire is out', () => {
     const sim = new Simulation({ seed: 1, content: oilContent(), map: grassMap(8, 1) });
     ownedAt(sim, 3, TEMPLE_TYPE);
@@ -357,6 +376,19 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 7, 0));
   });
 
+  it('prays at a nearer headquarters when its nearest temple lies beyond the preferred range', () => {
+    // A cell is two map points along a row, so a temple this many cells away is past the range.
+    const farCells = TEMPLE_PREFERRED_RANGE / 2 + 2;
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(farCells + 4, 1) });
+    ownedAt(sim, 5, HQ_TYPE);
+    ownedAt(sim, 2 + farCells, TEMPLE_TYPE);
+    const settler = devoutAt(sim, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 5, 0));
+  });
+
   it('warns a human seat whose settler has nowhere to pray, and settles a computer seat one instead', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const human = devoutAt(sim, 2);
@@ -371,5 +403,29 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
       .events.flatMap((ev) => (ev.kind === 'prayerSiteMissing' ? [ev.entity] : []));
     expect(missing).toEqual([human]);
     expect(sim.world.get(computer, Settler).piety).toBe(NEED_SATED_THRESHOLD);
+  });
+
+  it('warns a human seat whose ordered prayer finds nowhere to go, whatever its bar reads', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const settler = settlerAt(sim, 2, 0, NEED_SATED_THRESHOLD);
+    sim.world.add(settler, Owner, { player: PLAYER });
+    sim.world.add(settler, NeedOrder, { need: 'piety' });
+
+    sim.step();
+
+    const missing = sim
+      .snapshot()
+      .events.flatMap((ev) => (ev.kind === 'prayerSiteMissing' ? [ev.entity] : []));
+    expect(missing).toEqual([settler]);
+    expect(sim.world.get(settler, NeedOrder).need).toBe('piety');
+  });
+
+  it('warns nobody for an ownerless settler with nowhere to pray', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    settlerAt(sim, 2, 0, DEVOUT);
+
+    sim.step();
+
+    expect(sim.snapshot().events.some((ev) => ev.kind === 'prayerSiteMissing')).toBe(false);
   });
 });

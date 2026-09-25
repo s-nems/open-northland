@@ -107,12 +107,14 @@ function goHomeFor(
 
 /**
  * Whether `e` is inside its own house mid-sleep or mid-prayer. Testing the house and not just the atomic
- * is load-bearing: the open-ground rung starts an identical `sleep` atomic and a temple an identical
- * `pray`, so the atomic alone would also match a settler behind a stale indoors marker.
+ * is load-bearing: the open-ground rung starts an identical `sleep` atomic, so the atomic alone would also
+ * match a settler behind a stale indoors marker. A prayer must also target the home: a temple's or the
+ * headquarters' door can share the node the settler stepped in by, and that prayer is said outside.
  */
 export function isServedAtHome(world: World, e: Entity): boolean {
   const home = world.tryGet(e, Residence)?.home;
   if (home === undefined || !isInside(world, e, home)) return false;
-  const kind = world.tryGet(e, CurrentAtomic)?.effect.kind;
-  return kind === 'sleep' || kind === 'pray';
+  const atomic = world.tryGet(e, CurrentAtomic);
+  if (atomic === undefined) return false;
+  return atomic.effect.kind === 'sleep' || (atomic.effect.kind === 'pray' && atomic.targetEntity === home);
 }

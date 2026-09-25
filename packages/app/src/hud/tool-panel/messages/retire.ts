@@ -1,5 +1,11 @@
 import { entityById, ONE, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import { needsRuleEnabled, settlerNeedsOf, workFlagOf, workplaceOf } from '../../../game/snapshot.js';
+import {
+  needsRuleEnabled,
+  orderedNeedOf,
+  settlerNeedsOf,
+  workFlagOf,
+  workplaceOf,
+} from '../../../game/snapshot.js';
 import { isStandingNote } from './feed.js';
 import { hasWorkplaceToWorkAt, occupationOf } from './from-snapshot.js';
 import { USER_MESSAGE_TYPE, type UserMessage } from './types.js';
@@ -25,8 +31,9 @@ function isNeedNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
       return needs.fatigue < systems.NEED_CRITICAL_THRESHOLD;
     case USER_MESSAGE_TYPE.wantsToPray:
       // A failed search for somewhere to pray raises it below the critical level, so it lasts until a
-      // prayer takes the bar back under the level the search started at.
-      return needs.piety < systems.NEED_DRIVE_THRESHOLD;
+      // prayer takes the bar back under the level the search started at. An ordered prayer searches at
+      // any bar level, so its note stands with the order.
+      return needs.piety < systems.NEED_DRIVE_THRESHOLD && orderedNeedOf(e) !== 'piety';
     default:
       return false;
   }

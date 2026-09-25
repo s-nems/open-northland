@@ -320,6 +320,11 @@ export function settlerNeedsOf(
     : undefined;
 }
 
+/** The need the player ordered the settler to answer, standing until the atomic that answers it lands. */
+export function orderedNeedOf(e: SnapshotEntity): unknown {
+  return (e.components.NeedOrder as { need?: unknown } | undefined)?.need;
+}
+
 /**
  * Map each gatherer's drop-off flag entity to its owning gatherer, restricted to one player or `'any'`.
  * A flag stores no back-reference, so this scan is the only way to invert the edge; a gatherer binds to

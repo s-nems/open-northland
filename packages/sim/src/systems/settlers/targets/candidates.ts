@@ -36,9 +36,9 @@ export interface TargetCandidates {
   readonly stockpiles: readonly Entity[];
   /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks. */
   readonly stockpileCells: InteractionCellIndex;
-  /** Building-keyed targets (temples): entities with {@link Building} + {@link Position}. */
+  /** Building-keyed targets (prayer sites): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
-  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-temple pick. */
+  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-prayer-site pick. */
   readonly buildingCells: InteractionCellIndex;
   /** Construction sites, kept separate so an idle world scans an empty list. */
   readonly constructionSites: readonly Entity[];

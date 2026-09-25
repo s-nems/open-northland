@@ -1,22 +1,28 @@
 import { PRAYER_SITE } from '@open-northland/data';
 import { Building, ownerOf, ownersCompatible, sameSideAs } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
-import type { NodeId } from '../../../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { TargetBands } from '../bands.js';
 import { ACCEPT_ALL, type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
+/** Map points within which the nearest temple is taken outright; a farther one competes with the
+ *  headquarters, and the nearer of the two wins, a tie going to the headquarters. Original behavior. */
+export const TEMPLE_PREFERRED_RANGE = 40;
+
 /**
  * Where a devout settler with no holy fire at home walks to pray: the nearest of its player's finished
- * temples, and only when it has none in reach, the nearest of its headquarters. Original behavior for the
- * order; the ranking is this index's Manhattan distance with the shared ascending-cell-id tie-break, an
- * approximation of the original's hex distance on the settler's own continent. Null when neither is found.
- * `gate` is the settler's signpost confinement: a site outside its allowed area is not one it knows the way
- * to.
+ * temples, unless it lies beyond {@link TEMPLE_PREFERRED_RANGE} and a headquarters is no farther. The
+ * candidates are ranked by this index's Manhattan distance with the shared ascending-cell-id tie-break and
+ * compared in map points, an approximation of the original's hex-distance search on the settler's own
+ * continent. Null when neither is found. `gate` is the settler's signpost confinement: a site outside its
+ * allowed area is not one it knows the way to.
  */
 export function nearestPrayerSite(
   bands: TargetBands,
   world: World,
+  terrain: TerrainGraph,
   here: NodeId,
   /** The settler's owning player. A settler prays only at its own player's sites. */
   owner: number | undefined,
@@ -25,14 +31,24 @@ export function nearestPrayerSite(
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   const onSide = sameSideAs(world, owner);
-  for (const site of PRAYER_SITES_IN_ORDER) {
-    const found = bands.prayerSites(site).nearest(here, ACCEPT_ALL, gate, avoid, onSide);
-    if (found !== null) return found.entity;
+  const temple = bands.prayerSites(PRAYER_SITE.temple).nearest(here, ACCEPT_ALL, gate, avoid, onSide);
+  const templePoints =
+    temple === null ? Number.POSITIVE_INFINITY : mapPointsBetween(terrain, here, temple.cell);
+  if (temple !== null && templePoints <= TEMPLE_PREFERRED_RANGE) return temple.entity;
+  const headquarters = bands
+    .prayerSites(PRAYER_SITE.headquarters)
+    .nearest(here, ACCEPT_ALL, gate, avoid, onSide);
+  if (headquarters !== null && mapPointsBetween(terrain, here, headquarters.cell) <= templePoints) {
+    return headquarters.entity;
   }
-  return null;
+  return temple?.entity ?? null;
 }
 
-const PRAYER_SITES_IN_ORDER = [PRAYER_SITE.temple, PRAYER_SITE.headquarters] as const;
+function mapPointsBetween(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
+  const from = terrain.coordsOf(a);
+  const to = terrain.coordsOf(b);
+  return hexDistanceBetween(from.x, from.y, to.x, to.y);
+}
 
 /**
  * The nearest site in `index` a builder of `tribe` should work - a foundation to raise or a damaged
