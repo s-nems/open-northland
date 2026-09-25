@@ -11,9 +11,11 @@ import {
   Stockpile,
   UnderConstruction,
 } from '../../src/components/index.js';
+import { CHANGE_FEED_LIMIT } from '../../src/ecs/change-feed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../src/systems/index.js';
+import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt as spawnSettler } from '../fixtures/settler.js';
@@ -118,6 +120,51 @@ describe('idle-spacing (de-stack) drive', () => {
     s.run(15);
     expect(tileOf(s, e)).toEqual({ x: 4, y: 3 });
     expect(s.world.has(e, MoveGoal)).toBe(false);
+  });
+});
+
+describe('planner-pass occupancy', () => {
+  it('holds the stationary owned settlers as the pass began, and catches up at the next pass', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('setup: terrain missing');
+    const ctx = ctxOf(s);
+    const keeper = idleWoodcutter(s, 4, 3);
+    const leaver = idleWoodcutter(s, 4, 3);
+    const mover = idleWoodcutter(s, 6, 3);
+    idleWoodcutter(s, 4, 3, null); // unowned: never occupies
+
+    const first = PlannerSpacing.forTick(s.world, ctx, terrain).occupancy;
+    expect(first.at(4, 3)).toEqual([keeper, leaver]);
+    s.world.add(leaver, MoveGoal, { cell: terrain.nodeAtClamped(8, 3) });
+    const p = s.world.mut(mover, Position);
+    ({ x: p.x, y: p.y } = positionOfNode(8, 3));
+    // The pass that set them moving still reads its own start.
+    expect(first.at(4, 3)).toEqual([keeper, leaver]);
+    expect(first.at(6, 3)).toEqual([mover]);
+
+    const next = PlannerSpacing.forTick(s.world, ctx, terrain).occupancy;
+    expect(next.at(4, 3)).toEqual([keeper]);
+    expect(next.at(6, 3)).toEqual([]);
+    expect(next.at(8, 3)).toEqual([mover]);
+    expect(s.world.verifyCaches()).toEqual([]);
+  });
+
+  it('rebuilds from the world after more changes than its feed holds', () => {
+    const s = sim();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('setup: terrain missing');
+    const ctx = ctxOf(s);
+    const [a, b] = [idleWoodcutter(s, 4, 3), idleWoodcutter(s, 6, 3)];
+    PlannerSpacing.forTick(s.world, ctx, terrain);
+    // Alternate so no write repeats the one before it; each lands in the feed.
+    for (let i = 0; i <= CHANGE_FEED_LIMIT; i++) {
+      const p = s.world.mut(i % 2 === 0 ? a : b, Position);
+      ({ x: p.x, y: p.y } = positionOfNode(i % 2 === 0 ? 2 : 8, 3));
+    }
+    const occupancy = PlannerSpacing.forTick(s.world, ctx, terrain).occupancy;
+    expect([occupancy.at(4, 3), occupancy.at(2, 3), occupancy.at(8, 3)]).toEqual([[], [a], [b]]);
+    expect(s.world.verifyCaches()).toEqual([]);
   });
 });
 

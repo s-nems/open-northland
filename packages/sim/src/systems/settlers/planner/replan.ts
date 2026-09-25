@@ -1,12 +1,16 @@
 import {
   Chat,
+  CurrentAtomic,
   Engagement,
   Fleeing,
   Frightened,
   Garrison,
   HuntFocus,
+  IdleStand,
   inPastimeChat,
+  MoveGoal,
   ownerOf,
+  PathFollow,
   PathRequest,
   PlayerOrder,
   Position,
@@ -16,10 +20,13 @@ import {
   Sheltering,
   Stranded,
   SupplyRun,
+  UnreachableGoals,
+  UnreachableTargets,
   Wedding,
+  YardDeliveryRoute,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import type { Component, Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
@@ -96,11 +103,9 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
  * alarm, which only a player order or an existing shelter keeps it from.
  */
 function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelters: ShelterSites): boolean {
-  const owner = ownerOf(world, e);
   const settler = world.tryGet(e, Settler);
   if (
-    owner === undefined ||
-    !shelters.has(owner) ||
+    !takesCoverFrom(world, e, shelters) ||
     settler === undefined ||
     settler.jobType === null ||
     !sheltersOnAlarm(ctx.content, settler.jobType) ||
@@ -125,6 +130,58 @@ function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelte
     navigationLimitFor(world, ctx.content, ctx.terrain, e),
     shelters,
   );
+}
+
+/** The stores {@link idleRelease} reads: their membership, and the values below. */
+export const RELEASE_IDLE_MEMBERSHIP: readonly Component<unknown>[] = [
+  YardDeliveryRoute,
+  UnreachableGoals,
+  UnreachableTargets,
+  Garrison,
+  IdleStand,
+  CurrentAtomic,
+  Wedding,
+  Chat,
+  MoveGoal,
+  PathRequest,
+  PathFollow,
+  SupplyRun,
+  Engagement,
+];
+export const RELEASE_IDLE_VALUES: readonly Component<unknown>[] = [CurrentAtomic, Chat, PathRequest];
+
+/** Why {@link releaseStaleIntent} passes a settler by without changing anything. */
+export type IdleRelease = 'held' | 'travelling';
+
+/**
+ * How the sweep's visit of `e` changes nothing, or null when it may: an atomic holds it, or it walks
+ * a live route that only a shelter of its owner on alarm diverts ({@link takesCoverFrom}), and it
+ * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes. Keep in
+ * step with that call's early-outs.
+ */
+export function idleRelease(world: World, e: Entity): IdleRelease | null {
+  if (
+    world.has(e, YardDeliveryRoute) ||
+    world.has(e, UnreachableGoals) ||
+    world.has(e, UnreachableTargets) ||
+    world.has(e, Garrison) ||
+    world.has(e, IdleStand)
+  ) {
+    return null;
+  }
+  if (atomicHoldsSettler(world, e)) return 'held';
+  const quiet =
+    isTravelling(world, e) &&
+    !world.has(e, SupplyRun) &&
+    !world.has(e, Engagement) &&
+    world.tryGet(e, PathRequest)?.failed !== true;
+  return quiet ? 'travelling' : null;
+}
+
+/** Whether one of `e`'s owner's buildings on alarm may draw it off its route. */
+export function takesCoverFrom(world: World, e: Entity, shelters: ShelterSites): boolean {
+  const owner = ownerOf(world, e);
+  return owner !== undefined && shelters.has(owner);
 }
 
 /**

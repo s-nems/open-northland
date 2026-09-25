@@ -1,6 +1,7 @@
-import { Owner, Position, Settler } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import { MoveGoal, Owner, PathFollow, PathRequest, Position, Settler } from '../../../components/index.js';
+import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../footprint/index.js';
@@ -35,10 +36,7 @@ export class PlannerSpacing {
 
   /** Gated on {@link Owner}, so an unowned fixture buckets nothing. */
   static forTick(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerSpacing {
-    const stationaryOwned = world
-      .canonicalQuery(Settler, Position, Owner)
-      .filter((e) => !isTravelling(world, e));
-    return new PlannerSpacing(world, ctx, terrain, new NodeBuckets(world, stationaryOwned), () =>
+    return new PlannerSpacing(world, ctx, terrain, stationaryOwnedSettlers(world), () =>
       dynamicBlockOverlay(world, ctx, terrain),
     );
   }
@@ -116,4 +114,100 @@ export class PlannerSpacing {
     }
     return yard;
   }
+}
+
+interface NodeXY {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * The owned settlers standing still, bucketed by node. Kept across ticks per world and caught up only
+ * by {@link stationaryOwnedSettlers} at the start of a planner pass, so the pass reads the occupancy
+ * as it began while its own walks and a garrison's `stepOut` land. Every walker's step feeds it, which
+ * is still cheaper than re-bucketing every stationary settler each pass.
+ */
+class StationaryOwned {
+  readonly buckets: NodeBuckets;
+  private readonly nodes = new Map<Entity, NodeXY>();
+  private readonly feed: ChangeFeed;
+
+  constructor(private readonly world: World) {
+    this.feed = world.watchChanges([Settler, Position, Owner, MoveGoal, PathRequest, PathFollow], [Position]);
+    this.buckets = new NodeBuckets(world, []);
+    this.rebuild();
+  }
+
+  catchUp(): void {
+    if (this.feed.pending && this.feed.drain((e) => this.refresh(e))) this.rebuild();
+  }
+
+  private refresh(e: Entity): void {
+    const held = this.nodes.get(e);
+    const live = stationaryNode(this.world, e);
+    if (held?.x === live?.x && held?.y === live?.y) return;
+    if (held !== undefined) {
+      this.buckets.remove(e, held.x, held.y);
+      this.nodes.delete(e);
+    }
+    if (live !== undefined) {
+      this.buckets.insert(e, live.x, live.y);
+      this.nodes.set(e, live);
+    }
+  }
+
+  private rebuild(): void {
+    this.nodes.clear();
+    const stationary = freshStationaryOwned(this.world);
+    this.buckets.refill(this.world, stationary);
+    for (const e of stationary) {
+      const node = stationaryNode(this.world, e);
+      if (node !== undefined) this.nodes.set(e, node);
+    }
+  }
+
+  verify(): string[] {
+    this.catchUp();
+    const fresh = new NodeBuckets(this.world, freshStationaryOwned(this.world));
+    const problems: string[] = [];
+    let freshNodes = 0;
+    for (const { x, y, entities } of fresh.buckets()) {
+      freshNodes++;
+      const held = this.buckets.at(x, y);
+      if (held.length !== entities.length || held.some((e, i) => entities[i] !== e)) {
+        problems.push(`stationaryOwned node (${x}, ${y}) is stale`);
+      }
+    }
+    let heldNodes = 0;
+    for (const _ of this.buckets.buckets()) heldNodes++;
+    if (heldNodes !== freshNodes) {
+      problems.push(`stationaryOwned holds ${heldNodes} nodes, a fresh scan finds ${freshNodes}`);
+    }
+    return problems;
+  }
+}
+
+function freshStationaryOwned(world: World): Entity[] {
+  return world.canonicalQuery(Settler, Position, Owner).filter((e) => !isTravelling(world, e));
+}
+
+function stationaryNode(world: World, e: Entity): NodeXY | undefined {
+  if (!world.has(e, Settler) || !world.has(e, Owner) || isTravelling(world, e)) return undefined;
+  const p = world.tryGet(e, Position);
+  return p === undefined ? undefined : { x: nodeHxOfPosition(p.x, p.y), y: nodeHyOfPosition(p.y) };
+}
+
+const stationary = new WeakMap<World, StationaryOwned>();
+
+function stationaryOwnedSettlers(world: World): NodeBuckets {
+  let held = stationary.get(world);
+  if (held === undefined) {
+    const created = new StationaryOwned(world);
+    world.registerCacheVerifier('stationaryOwned', () => created.verify());
+    stationary.set(world, created);
+    held = created;
+  } else {
+    held.catchUp();
+  }
+  return held.buckets;
 }

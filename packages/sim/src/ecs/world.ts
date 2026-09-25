@@ -6,6 +6,7 @@
 
 import { type CacheVerifier, CacheVerifiers } from './cache-verifier.js';
 import { CanonicalQueries } from './canonical-queries.js';
+import { ChangeFeed, ChangeFeeds } from './change-feed.js';
 import type { Component, DeepReadonly, Entity } from './component.js';
 import { ComponentRevisions } from './component-revisions.js';
 import { GenerationJournals } from './generation-journal.js';
@@ -13,6 +14,7 @@ import { QueryIterator } from './query-iterator.js';
 import { TouchedLog } from './touched-log.js';
 
 export type { CacheVerifier } from './cache-verifier.js';
+export type { ChangeFeed } from './change-feed.js';
 export type { Component, DeepReadonly, Entity } from './component.js';
 export { defineComponent } from './component.js';
 export { SYNC_DOMAINS, type SyncDomain } from './sync-domain.js';
@@ -54,6 +56,7 @@ export class World {
   private readonly componentRevisions = new ComponentRevisions();
   private readonly membershipJournals = new GenerationJournals();
   private readonly valueJournals = new GenerationJournals();
+  private readonly changeFeeds = new ChangeFeeds();
   private readonly touched = new TouchedLog();
   private readonly cacheVerifiers = new CacheVerifiers();
   private readonly canonicalQueries = new CanonicalQueries();
@@ -194,6 +197,7 @@ export class World {
     this.recordComponentWrite(component, entity);
     this.componentValueGenerations.set(component, (this.componentValueGenerations.get(component) ?? 0) + 1);
     this.valueJournals.record(component, entity);
+    this.changeFeeds.valueWritten(component, entity);
   }
 
   private recordComponentWrite(component: Component<unknown>, entity: Entity): void {
@@ -352,6 +356,7 @@ export class World {
     // One bump for the whole fill: a cache built against generation 0 must not read as current over
     // a store this call populated.
     this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
+    this.changeFeeds.storeReplaced(component);
   }
 
   /** Visit an entity's components in registration order and O(carried components), without allocating.
@@ -385,6 +390,7 @@ export class World {
   private bumpComponentGeneration(component: Component<unknown>, entity: Entity): void {
     this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
     this.membershipJournals.record(component, entity);
+    this.changeFeeds.membershipChanged(component, entity);
   }
 
   /** Start journaling membership changes of `component`'s store so an incremental index can replay them via
@@ -397,6 +403,15 @@ export class World {
    *  `since`, or `null` when the caller must rebuild from the store instead. */
   membershipDeltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
     return this.membershipJournals.deltasSince(component, since);
+  }
+
+  /** A feed of the entities whose `membership` stores (adds, re-adds, removes, destroys) or `values`
+   *  stores (writes acquired through {@link mut}/{@link tryMut}) change from now on: one log for an
+   *  incremental view over several stores. It records for the world's lifetime. */
+  watchChanges(membership: readonly Component<unknown>[], values: readonly Component<unknown>[]): ChangeFeed {
+    const feed = new ChangeFeed();
+    this.changeFeeds.watch(feed, membership, values);
+    return feed;
   }
 
   /** Start journaling `component`'s in-place value writes so a cache that reads one field can replay the

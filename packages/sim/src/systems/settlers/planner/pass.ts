@@ -1,5 +1,4 @@
-import { Position, Settler } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { BattleFront } from '../../conflict/battle-alert.js';
 import type { SystemContext } from '../../context.js';
@@ -25,11 +24,6 @@ export interface PlannerPass {
   readonly world: World;
   readonly ctx: SystemContext;
   readonly terrain: TerrainGraph;
-  /** Every positioned settler in ascending entity-id order, shared by the assistant dispatch and the
-   *  ladder sweep: the per-tick claim maps hand out targets first come, first served, so visit order
-   *  decides who gets what. Wildlife is in this list: the sweep's `releaseStaleIntent` is the only
-   *  failed-route recovery a parked creature has. */
-  readonly settlers: readonly Entity[];
   readonly targets: TargetCandidates;
   /** Whether any workplace holds a haulable output: the tick-level dormancy gate for the store-carrier
    *  fallback scan. */
@@ -59,7 +53,6 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     world,
     ctx,
     terrain,
-    settlers: world.canonicalQuery(Settler, Position),
     targets,
     anyHaulable: hasHaulableOutput(world, ctx, targets.stockpiles),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),

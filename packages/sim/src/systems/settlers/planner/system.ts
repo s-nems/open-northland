@@ -22,6 +22,7 @@ import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './pass.js';
 import { dispatchRecruitArming } from './recruit-arming.js';
 import { releaseStaleIntent } from './replan.js';
+import { sweepOrder } from './sweep.js';
 
 /** The atomic pass runs before {@link navigationPlanner}, so a goal it sets is routed in the same tick
  *  rather than stalling for one. */
@@ -31,16 +32,14 @@ export const plannerSystem: System = (world, ctx) => {
   navigationPlanner(world, ctx.terrain);
 };
 
-/** Sweep every settler through the drive ladder, sharing one {@link beginPlannerPass} snapshot. */
+/** Sweep the settlers that can act through the drive ladder, sharing one {@link beginPlannerPass} snapshot. */
 function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
   const pass = beginPlannerPass(world, ctx, terrain);
   // The assistant's errands are stamped before the sweep, so a dispatched settler is planned onto its
   // fetch the same tick; arming first, so a recruit's weapon outranks its pair of boots.
   dispatchRecruitArming(pass);
   dispatchAssistantGrants(pass);
-  for (const e of pass.settlers) {
-    // The snapshot was taken before the sweep, and a breeder's slaughter removes an animal mid-pass.
-    if (!world.isAlive(e)) continue;
+  for (const e of sweepOrder(world, pass.shelters)) {
     // A busy settler plays its intent out, and is no longer idle; the rest shed what the previous plan
     // left before re-planning.
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound, pass.shelters)) {

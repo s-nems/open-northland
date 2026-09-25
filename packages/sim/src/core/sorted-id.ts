@@ -31,3 +31,15 @@ export function removeSortedById<T>(arr: T[], id: number, idOf: (item: T) => num
   arr.splice(i, 1);
   return true;
 }
+
+/** Whether ascending-id `arr` holds an item with `id`. */
+export function includesSortedId<T>(arr: readonly T[], id: number, idOf: (item: T) => number): boolean {
+  const held = arr[lowerBound(arr, id, idOf)];
+  return held !== undefined && idOf(held) === id;
+}
+
+/** The index of the first item of ascending-id `arr` whose integer id is above `id`; `arr.length` when
+ *  none is. */
+export function indexAboveId<T>(arr: readonly T[], id: number, idOf: (item: T) => number): number {
+  return lowerBound(arr, id + 1, idOf);
+}
