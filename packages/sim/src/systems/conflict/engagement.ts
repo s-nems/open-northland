@@ -1,9 +1,21 @@
-import { AttackOrder, Owner, type SettlerIdentity, Stance } from '../../components/index.js';
+import {
+  Age,
+  AttackOrder,
+  Building,
+  Engagement,
+  isWildlife,
+  Owner,
+  Person,
+  Settler,
+  type SettlerIdentity,
+  Stance,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import {
   isAnimalTribe,
+  isFighterJob,
   isHunterJob,
   MILITARY_MODE,
   type MilitaryMode,
@@ -23,17 +35,17 @@ import { givenUpTargetVeto } from './unreachable-targets.js';
 // Re-exported so the combat modules keep one import site for the stance ladder.
 export { stanceMode };
 
-/**
- * DEFEND stance - how far (Manhattan half-cell nodes) from its anchor a defender auto-acquires an enemy.
- * Approximated (source basis "Combat stances").
- */
-export const DEFEND_RADIUS_NODES = 8;
+/** DEFEND stance - how far (nodes) from its anchor a defender looks for an enemy. Original behavior. */
+export const DEFEND_RADIUS_NODES = 18;
 
-/**
- * DEFEND stance - the farthest (Manhattan nodes) from its anchor a defender steps to strike an in-radius
- * enemy; a target reachable only past it is left alone. Approximated (source basis "Combat stances").
- */
-export const DEFEND_LEASH_NODES = 12;
+/** DEFEND stance - how far (nodes) from its anchor an enemy a defender already holds may go before it lets
+ *  it go and walks back. Original behavior. */
+export const DEFEND_LEASH_NODES = 40;
+
+/** IGNORE stance - how far (nodes) from its anchor an enemy a fighter already holds may go before it lets
+ *  it go and walks back. Original behavior; the original also drops one nearer its anchor than the weapon's
+ *  near reach, left out here as plainly odd. */
+export const IGNORE_LEASH_NODES = 18;
 
 export interface CombatantStance {
   /** Whether the unit has an {@link Owner}; an unowned combatant has no fog and carries no {@link Stance}. */
@@ -45,6 +57,12 @@ export interface CombatantStance {
   /** The tower the unit is manning, or null. A garrison shoots from cover and never leaves, so the post
    *  overrides whatever `mode` would otherwise do. */
   readonly post: Entity | null;
+}
+
+/** The anchor a DEFEND or IGNORE unit guards: the {@link Stance}'s captured `anchorCell`, falling back to
+ *  `here` when it carries none. */
+function stanceAnchor(world: World, e: Entity, here: NodeId): NodeId {
+  return world.tryGet(e, Stance)?.anchorCell ?? here;
 }
 
 /**
@@ -84,17 +102,22 @@ export function engageSpec(
   // presence grid discounts.
   const player = hunts ? null : (viewer?.player ?? null);
 
+  // A held enemy stays held while it is still a live hostile it can reach, without the fog gate: the
+  // original keeps its target until it is gone.
+  const holdable = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && reachable(t);
+
   // A garrison outranks every stance: its search band is the tower-boosted reach (`weapon` already carries
   // the bonus), never the advance sight radius.
   if (stance.post !== null) {
     return {
-      accept: generalAccept,
+      accept: adultOnly(world, generalAccept),
       minDist,
       searchRadius: weapon.maxRange,
       player,
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: null,
+      hold: { keep: (t) => holdable(t) && inReachOf(terrain, world, ctx, here, t, weapon.maxRange) },
     };
   }
 
@@ -111,19 +134,46 @@ export function engageSpec(
       : (t: Entity): boolean => hostileInSight(t) && (!givenUp(t) || inBand(t)) && reachable(t);
 
   if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
-    const anchor = defendAnchor(world, e, here);
+    const anchor = stanceAnchor(world, e, here);
+    const nearAnchor = (t: Entity, reach: number): boolean =>
+      manhattan(terrain, anchor, entityNode(world, terrain, t)) <= reach;
     // The radius clause leads: it is a subtraction, while `advanceAccept` ends in a walk of the candidate's
     // reach band.
-    const accept = (t: Entity): boolean =>
-      manhattan(terrain, anchor, entityNode(world, terrain, t)) <= DEFEND_RADIUS_NODES && advanceAccept(t);
+    const accept = (t: Entity): boolean => nearAnchor(t, DEFEND_RADIUS_NODES) && advanceAccept(t);
     return {
-      accept,
+      accept: adultOnly(world, accept),
       minDist,
-      searchRadius: DEFEND_RADIUS_NODES + DEFEND_LEASH_NODES,
+      // Every node within the radius of the anchor lies within this of `here`.
+      searchRadius: manhattan(terrain, here, anchor) + DEFEND_RADIUS_NODES,
       player,
       lowPriority: lowPriorityBuildings,
       lock: null,
-      defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES, hold: true },
+      defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES + weapon.maxRange, hold: true },
+      hold: { keep: (t) => nearAnchor(t, DEFEND_LEASH_NODES) && holdable(t) },
+    };
+  }
+
+  // Original behavior: a fighter under IGNORE strikes an enemy inside its weapon's reach where it stands,
+  // and lets one go that strays past its leash.
+  if (
+    owned &&
+    !ordered &&
+    stance.mode === MILITARY_MODE.IGNORE &&
+    isFighterJob(ctx.content, attacker.jobType)
+  ) {
+    const anchor = stanceAnchor(world, e, here);
+    return {
+      accept: adultOnly(world, (t) => inBand(t) && advanceAccept(t)),
+      minDist,
+      searchRadius: weapon.maxRange,
+      player,
+      lowPriority: lowPriorityBuildings,
+      lock: null,
+      defend: { anchorCell: anchor, leash: IGNORE_LEASH_NODES + weapon.maxRange, hold: true },
+      hold: {
+        keep: (t) =>
+          manhattan(terrain, anchor, entityNode(world, terrain, t)) <= IGNORE_LEASH_NODES && holdable(t),
+      },
     };
   }
 
@@ -151,20 +201,45 @@ export function engageSpec(
   // An unowned hostile animal advances like a soldier within its shorter ambush radius; any other unowned
   // combatant (a scenario civ) swings in place, its search capped at weapon reach.
   const animalSeeker = !owned && isAnimalTribe(ctx.content, attacker.tribe);
+  if (owned) {
+    return {
+      accept: adultOnly(world, advanceAccept),
+      minDist,
+      searchRadius: sight,
+      player,
+      lowPriority: lowPriorityBuildings,
+      lock: null,
+      defend: null,
+      hold: { keep: holdable },
+    };
+  }
   return {
     accept: advanceAccept,
     minDist,
-    searchRadius: owned
-      ? sight
-      : animalSeeker
-        ? Math.max(weapon.maxRange, ANIMAL_AGGRO_RADIUS_NODES)
-        : weapon.maxRange,
+    searchRadius: animalSeeker ? Math.max(weapon.maxRange, ANIMAL_AGGRO_RADIUS_NODES) : weapon.maxRange,
     player,
     animalSeeker,
     lowPriority: lowPriorityBuildings,
     lock: null,
     defend: null,
   };
+}
+
+/** `accept` narrowed to grown targets. Original behavior: a fighter picks no child for a target. */
+function adultOnly(world: World, accept: (t: Entity) => boolean): (t: Entity) => boolean {
+  return (t) => !world.has(t, Age) && accept(t);
+}
+
+/** Whether `t`'s combat node lies within `reach` nodes of `here`. */
+function inReachOf(
+  terrain: TerrainGraph,
+  world: World,
+  ctx: SystemContext,
+  here: NodeId,
+  t: Entity,
+  reach: number,
+): boolean {
+  return manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, t)) <= reach;
 }
 
 export interface EngageSpec {
@@ -192,12 +267,9 @@ export interface EngageSpec {
   /** Anchor leash: the chase never walks past `leash` of `anchorCell`; null when the chase is unbounded.
    *  `hold` walks the unit back to the anchor with no target in sight, false hands it back to the economy. */
   readonly defend: { readonly anchorCell: NodeId; readonly leash: number; readonly hold: boolean } | null;
-}
-
-/** The DEFEND anchor cell - the {@link Stance}'s captured `anchorCell`, falling back to `here` when it
- *  carries none. */
-function defendAnchor(world: World, e: Entity, here: NodeId): NodeId {
-  return world.tryGet(e, Stance)?.anchorCell ?? here;
+  /** Present for an owned combatant that holds its enemy across ticks ({@link Engagement.target}) and picks
+   *  a new one the original's way; `keep` says whether a held enemy is still held. */
+  readonly hold?: { readonly keep: (t: Entity) => boolean };
 }
 
 /**
@@ -238,6 +310,7 @@ export function resolveTarget(
     if (rival !== null) return { target: rival.entity, dist: rival.distance };
     return focusedOn(world, ctx, terrain, here, order.target);
   }
+  if (spec.hold !== undefined) return heldOrPicked(world, ctx, terrain, pass, self, here, spec, spec.hold);
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
     // A commitment ignores `minDist`: prey that closes inside the weapon's dead zone is backed off by the
@@ -267,6 +340,90 @@ export function resolveTarget(
   const primary = pickInBand(pass, spec, x, y, 'primary');
   if (primary !== null) return primary;
   return pickInBand(pass, spec, x, y, 'low');
+}
+
+/** How many of the nearest candidates a pick draws among, and how much farther than the nearest one of
+ *  them may stand. Original behavior. */
+const PICK_CANDIDATES = 5;
+const PICK_SPREAD_NODES = 3;
+
+/**
+ * The kinds of enemy a fighter looks for, in the order it looks: its first pass takes enemy fighters, then
+ * military buildings, then wild animals; its second anyone else, then any building. Original behavior. The
+ * military buildings here are the ones that are not {@link CombatIndex.isLowPriorityBuilding} (headquarters
+ * and towers), an approximation of the original's own military house class.
+ */
+const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatIndex, t: Entity) => boolean)[] =
+  [
+    (world, ctx, _index, t) =>
+      world.has(t, Person) && isFighterJob(ctx.content, world.get(t, Settler).jobType),
+    (world, _ctx, index, t) => world.has(t, Building) && !index.isLowPriorityBuilding(t),
+    (world, _ctx, _index, t) => isWildlife(world, t),
+    (world, _ctx, _index, t) => world.has(t, Person),
+    (world, _ctx, _index, t) => world.has(t, Building),
+  ];
+
+/**
+ * The enemy an owned combatant fights: the one it holds while its stance still keeps it, unless a pick finds
+ * one strictly nearer. Original behavior: a fighter keeps its target until it is gone or strays past its
+ * leash, and a new scan takes over only a nearer enemy.
+ */
+function heldOrPicked(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  self: Entity,
+  here: NodeId,
+  spec: EngageSpec,
+  hold: NonNullable<EngageSpec['hold']>,
+): { target: Entity; dist: number } | null {
+  const heldTarget = world.tryGet(self, Engagement)?.target;
+  const held =
+    heldTarget !== undefined && world.isAlive(heldTarget) && hold.keep(heldTarget)
+      ? focusedOn(world, ctx, terrain, here, heldTarget)
+      : null;
+  const { x, y } = terrain.coordsOf(here);
+  if (
+    held === null &&
+    spec.player !== null &&
+    !pass.index.othersWithin(spec.player, x, y, spec.searchRadius)
+  ) {
+    return null;
+  }
+  const picked = pickByTier(world, ctx, pass, spec, x, y);
+  if (held === null) return picked;
+  return picked !== null && picked.dist < held.dist ? picked : held;
+}
+
+/**
+ * The original's pick: the first kind in {@link PICK_TIERS} with a candidate, and among its
+ * {@link PICK_CANDIDATES} nearest within {@link PICK_SPREAD_NODES} of the nearest, one at random.
+ */
+function pickByTier(
+  world: World,
+  ctx: SystemContext,
+  pass: CombatPass,
+  spec: EngageSpec,
+  x: number,
+  y: number,
+): { target: Entity; dist: number } | null {
+  for (const tier of PICK_TIERS) {
+    const found = pass.index.nearestFew(
+      x,
+      y,
+      spec.minDist,
+      spec.searchRadius,
+      (t) => tier(world, ctx, pass.index, t) && spec.accept(t),
+      PICK_CANDIDATES,
+      spec.player,
+      PICK_SPREAD_NODES,
+    );
+    if (found.length === 0) continue;
+    const pick = found.length === 1 ? found[0] : found[ctx.rng.int(found.length)];
+    if (pick !== undefined) return { target: pick.entity, dist: pick.distance };
+  }
+  return null;
 }
 
 type TargetTier = 'primary' | 'low';

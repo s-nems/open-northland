@@ -55,12 +55,14 @@ export const HuntFocus = defineComponent<{ target: Entity; needBreakAt?: number 
 /**
  * Present while a unit chases an enemy, and while an owned one trades blows - the marker the planner's
  * ownership gate reads to leave it to combat. `repathAt` is the tick throttling the chase's re-path. `stall`
- * counts consecutive refused routes toward one target, absent (never null) so a stall-free engagement keeps
- * its serialized shape.
+ * counts consecutive refused routes toward one target. `target` is the enemy an owned combatant holds until
+ * its stance lets it go or a strictly nearer one turns up. Both are absent (never null) when unset, so an
+ * engagement without them keeps its serialized shape.
  */
 export const Engagement = defineComponent<{
   repathAt: number;
   stall?: { target: Entity; routes: number } | undefined;
+  target?: Entity | undefined;
 }>('Engagement', 'combat');
 
 /** One given-up enemy: the entity, and the tick it stops being skipped. */
@@ -80,8 +82,8 @@ export const UnreachableTargets = defineComponent<{ entries: readonly Unreachabl
 
 /**
  * A combatant's military stance - the {@link MilitaryMode} the CombatSystem reads to decide
- * auto-engagement, stamped owned-only. `anchorCell` is the DEFEND leash anchor captured at
- * `setStance(DEFEND)`, null in every other mode.
+ * auto-engagement, stamped owned-only. `anchorCell` is the DEFEND or IGNORE leash anchor captured by
+ * `setStance`, null in every other mode.
  */
 export const Stance = defineComponent<{ mode: MilitaryMode; anchorCell: NodeId | null }>('Stance', 'combat');
 

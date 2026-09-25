@@ -2,9 +2,11 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
 import { describe, expect, it } from 'vitest';
 import {
   Armor,
+  AttackOrder,
   Building,
   CurrentAtomic,
   Health,
+  MoveGoal,
   Owner,
   Position,
   Projectile,
@@ -376,6 +378,8 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
 
       stepToLaunch(sim);
       const shot = shotInFlight(sim);
+      // Only this one shot is under test: the archer leaves, and its arrow still lands.
+      sim.world.destroy(archer);
       sim.world.mut(target, Position).x = fx.fromInt(11);
       const house = sim.world.create();
       const { aimX, aimY } = sim.world.get(shot, Projectile);
@@ -683,5 +687,22 @@ describe('projectiles - the first thing on the landing point', () => {
     sim.step();
     expect(sim.world.get(second, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // the one loosed at
     expect(sim.world.get(first, Health).hitpoints).toBe(TARGET_HP);
+  });
+});
+
+describe('projectiles - the standoff an archer closes to', () => {
+  it('walks in to (2 * max - min) / 2 nodes of a far target, not only to its farthest shot', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(28, 1) });
+    const archer = marksmanAt(sim, 0, 0);
+    sim.world.add(archer, Owner, { player: 0 });
+    const target = fighterAt(sim, 15, 0, FRANK, IDLE); // 30 nodes, past the bow's 20
+    sim.world.add(target, Owner, { player: 1 });
+    sim.world.add(archer, AttackOrder, { target });
+    for (let i = 0; i < 3 && !sim.world.has(archer, MoveGoal); i++) sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    const goal = terrain.coordsOf(sim.world.get(archer, MoveGoal).cell);
+    const standoff = (2 * BOW_MAX - BOW_MIN) >> 1;
+    expect(Math.abs(nodeOfPosition(fx.fromInt(15), fx.fromInt(0)).hx - goal.x)).toBe(standoff);
   });
 });

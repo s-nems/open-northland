@@ -208,9 +208,15 @@ export function chase(
   if (dest === null) {
     // Every cell of the target's reach band on our own bank is a taken slot: stand fast as a second rank and
     // re-ask each tick, which admits the unit the moment a front-liner falls or steps off. Routing was not
-    // asked, so no refusal stands against the target.
+    // asked, so no refusal stands against the target. Intentional deviation from the original, which keeps
+    // its target: a held target with no free side is let go, so the next pick can go to an enemy with room.
     clearNavState(world, e);
-    if (engagement.stall !== undefined) world.mut(e, Engagement).stall = undefined;
+    const held = world.get(e, Engagement);
+    if (held.stall !== undefined || held.target !== undefined) {
+      const released = world.mut(e, Engagement);
+      released.stall = undefined;
+      released.target = undefined;
+    }
     return false;
   }
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand

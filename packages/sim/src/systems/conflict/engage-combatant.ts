@@ -35,7 +35,9 @@ import { faceToward } from '../movement/turning.js';
 import { weaponClassHits, withFightExperience } from '../progression/index.js';
 import {
   isAnimalTribe,
+  isFighterJob,
   isHunterJob,
+  isRangedWeapon,
   MILITARY_MODE,
   type MilitaryMode,
   stanceFights,
@@ -169,6 +171,7 @@ export function engageCombatant(
   }
 
   const { target, dist } = found;
+  if (spec.hold !== undefined) holdTarget(world, ctx, e, target);
   // Woken: the rest already slept keeps, the clip is cut where it stands.
   if (dozing) removeCurrentAtomic(world, e);
   holdPrey(world, e, spec, target);
@@ -188,7 +191,18 @@ export function engageCombatant(
     node: combatTargetNode(world, ctx, terrain, here, target),
     body: targetBodyNodes(world, ctx, terrain, target),
   };
-  const gaveUp = chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
+  const gaveUp = chase(
+    world,
+    ctx,
+    terrain,
+    slots,
+    e,
+    here,
+    chaseTarget,
+    approachBand(weapon),
+    stance,
+    spec.defend,
+  );
   if (gaveUp) restPreySearch(world, ctx, e, spec);
 }
 
@@ -305,11 +319,15 @@ function resolveFleeState(
   return true;
 }
 
-/** The passive stance never auto-engages. A hunter is exempt: predation is an economic drive independent of
- *  the military mode, so it falls through to the engage path under a predation-only filter. */
+/** The passive stance auto-engages only a fighter's in-reach enemies. A hunter is exempt too: predation is
+ *  an economic drive independent of the military mode, so it falls through to the engage path under a
+ *  predation-only filter. */
 function ignoresCombat(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   return (
-    stance.mode === MILITARY_MODE.IGNORE && !stance.ordered && !isHunterJob(ctx.content, attacker.jobType)
+    stance.mode === MILITARY_MODE.IGNORE &&
+    !stance.ordered &&
+    !isHunterJob(ctx.content, attacker.jobType) &&
+    !isFighterJob(ctx.content, attacker.jobType)
   );
 }
 
@@ -384,7 +402,11 @@ function swingAt(
   // The in-band Engagement refresh is owned-only: it matters in the idle tick between swings, where it
   // keeps an owned unit engaged instead of re-tasked. Stamping a swinging unowned civ would only perturb
   // its hash.
-  if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
+  if (owned) {
+    const prior = world.tryGet(e, Engagement);
+    if (prior === undefined) world.add(e, Engagement, { repathAt: ctx.tick });
+    else if (prior.stall !== undefined) world.mut(e, Engagement).stall = undefined; // it reached its target
+  }
   // The victim's armor material selects both the damage column and the impact sound, and fight experience
   // with this weapon class raises the column. Original behavior: a wall takes the bare column, unscaled by
   // experience. A ranged swing's shot resolves the column again, without the experience, against whatever
@@ -400,6 +422,22 @@ function swingAt(
     hitSoundType: glancesOff(world, target, damage) ? undefined : hitSoundVsMaterial(weapon.weapon, material),
   };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
+}
+
+/**
+ * The band a chaser closes into: a melee weapon's whole reach, a ranged one's reach cut back to the standoff
+ * `(2 * max - min) / 2`, so an archer steps in past its farthest shot. Original behavior.
+ */
+function approachBand(weapon: ArmedWith): { minRange: number; maxRange: number } {
+  if (!isRangedWeapon(weapon.weapon) || weapon.minRange >= weapon.maxRange) return weapon;
+  return { minRange: weapon.minRange, maxRange: (2 * weapon.maxRange - weapon.minRange) >> 1 };
+}
+
+/** Remember `target` as the enemy `e` holds, written only when it changes. */
+function holdTarget(world: World, ctx: SystemContext, e: Entity, target: Entity): void {
+  const engagement = world.tryGet(e, Engagement);
+  if (engagement === undefined) world.add(e, Engagement, { repathAt: ctx.tick, target });
+  else if (engagement.target !== target) world.mut(e, Engagement).target = target;
 }
 
 /** Who never walks toward a target out of reach: a garrison shooting from its tower, and an unowned

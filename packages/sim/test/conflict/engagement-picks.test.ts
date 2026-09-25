@@ -1,0 +1,205 @@
+import { describe, expect, it } from 'vitest';
+import { CurrentAtomic, Engagement, Owner, Stance } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
+import { Simulation } from '../../src/index.js';
+import {
+  combatSystem,
+  DEFEND_LEASH_NODES,
+  DEFEND_RADIUS_NODES,
+  IGNORE_LEASH_NODES,
+  SIGHT_RADIUS_NODES,
+} from '../../src/systems/index.js';
+import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
+import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
+import {
+  combatCadenceContent,
+  ctxOf,
+  fighterAtNode,
+  grass,
+  SAXON,
+  SOLDIER_SPEAR,
+  VIKING,
+  WOMAN,
+} from './combat-cadence/support.js';
+
+const P0 = 0;
+const P1 = 1;
+/** The row every unit stands on; node distances are then plain column differences. */
+const ROW = 0;
+const MAP_CELLS = 40;
+
+function sim(seed = 1): Simulation {
+  return new Simulation({ seed, content: combatCadenceContent(), map: grass(MAP_CELLS, 2) });
+}
+
+/** An owned unit at node (hx, ROW) under `mode`. */
+function unit(s: Simulation, hx: number, owner: number, mode: MilitaryMode, job = SOLDIER_SPEAR): Entity {
+  const e = fighterAtNode(s, hx, ROW, owner === P0 ? VIKING : SAXON, job);
+  s.world.add(e, Owner, { player: owner });
+  s.world.add(e, Stance, { mode, anchorCell: null });
+  return e;
+}
+
+function anchorAt(s: Simulation, e: Entity, hx: number): void {
+  const terrain = s.terrain;
+  if (terrain === undefined) throw new Error('mapless sim');
+  s.world.mut(e, Stance).anchorCell = terrain.nodeAtClamped(hx, ROW);
+}
+
+function held(s: Simulation, e: Entity): Entity | undefined {
+  return s.world.tryGet(e, Engagement)?.target;
+}
+
+function hold(s: Simulation, e: Entity, target: Entity): void {
+  s.world.add(e, Engagement, { repathAt: s.tick, target });
+}
+
+describe('engagement - how far each stance looks', () => {
+  it('ATTACK takes an enemy 18 nodes off and none past it', () => {
+    for (const [off, found] of [
+      [SIGHT_RADIUS_NODES, true],
+      [SIGHT_RADIUS_NODES + 1, false],
+    ] as const) {
+      const s = sim();
+      const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+      const enemy = unit(s, off, P1, MILITARY_MODE.IGNORE, WOMAN);
+      combatSystem(s.world, ctxOf(s));
+      expect(held(s, soldier)).toBe(found ? enemy : undefined);
+    }
+    expect(SIGHT_RADIUS_NODES).toBe(18);
+  });
+
+  it('DEFEND looks 18 around its anchor and lets a held enemy go past 40', () => {
+    expect([DEFEND_RADIUS_NODES, DEFEND_LEASH_NODES]).toEqual([18, 40]);
+    const anchor = 10;
+    for (const [off, found] of [
+      [DEFEND_RADIUS_NODES, true],
+      [DEFEND_RADIUS_NODES + 1, false],
+    ] as const) {
+      const s = sim();
+      const guard = unit(s, anchor, P0, MILITARY_MODE.DEFEND);
+      anchorAt(s, guard, anchor);
+      const enemy = unit(s, anchor + off, P1, MILITARY_MODE.IGNORE, WOMAN);
+      combatSystem(s.world, ctxOf(s));
+      expect(held(s, guard)).toBe(found ? enemy : undefined);
+    }
+    for (const [off, kept] of [
+      [DEFEND_LEASH_NODES, true],
+      [DEFEND_LEASH_NODES + 1, false],
+    ] as const) {
+      const s = sim();
+      const guard = unit(s, 0, P0, MILITARY_MODE.DEFEND);
+      anchorAt(s, guard, 0);
+      const enemy = unit(s, off, P1, MILITARY_MODE.IGNORE, WOMAN);
+      hold(s, guard, enemy);
+      combatSystem(s.world, ctxOf(s));
+      expect(held(s, guard)).toBe(kept ? enemy : undefined);
+    }
+  });
+
+  it('IGNORE strikes only inside its weapon reach, and only a fighter does', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.IGNORE);
+    const near = unit(s, 2, P1, MILITARY_MODE.IGNORE, WOMAN); // the spear reaches 1..2
+    combatSystem(s.world, ctxOf(s));
+    expect(s.world.get(soldier, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: near });
+
+    const t = sim();
+    const out = unit(t, 0, P0, MILITARY_MODE.IGNORE);
+    unit(t, 3, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const civilian = unit(t, 20, P0, MILITARY_MODE.IGNORE, WOMAN);
+    unit(t, 21, P1, MILITARY_MODE.IGNORE, WOMAN);
+    combatSystem(t.world, ctxOf(t));
+    expect(t.world.has(out, Engagement)).toBe(false);
+    expect(t.world.has(civilian, Engagement)).toBe(false);
+  });
+
+  it('IGNORE lets a held enemy go past 18 from its anchor', () => {
+    expect(IGNORE_LEASH_NODES).toBe(18);
+    for (const [off, kept] of [
+      [IGNORE_LEASH_NODES, true],
+      [IGNORE_LEASH_NODES + 1, false],
+    ] as const) {
+      const s = sim();
+      const soldier = unit(s, 0, P0, MILITARY_MODE.IGNORE);
+      anchorAt(s, soldier, 0);
+      const enemy = unit(s, off, P1, MILITARY_MODE.IGNORE, WOMAN);
+      hold(s, soldier, enemy);
+      combatSystem(s.world, ctxOf(s));
+      expect(held(s, soldier)).toBe(kept ? enemy : undefined);
+    }
+  });
+});
+
+describe('engagement - which enemy it picks', () => {
+  it('takes an enemy fighter before a nearer civilian', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    unit(s, 4, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const fighter = unit(s, 10, P1, MILITARY_MODE.IGNORE);
+    combatSystem(s.world, ctxOf(s));
+    expect(held(s, soldier)).toBe(fighter);
+  });
+
+  it('draws among the nearest within 3 nodes of the nearest, never one farther', () => {
+    const picked = new Set<string>();
+    for (let seed = 1; seed <= 24; seed++) {
+      const s = sim(seed);
+      const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+      const nearest = unit(s, 6, P1, MILITARY_MODE.IGNORE, WOMAN);
+      const within = unit(s, 9, P1, MILITARY_MODE.IGNORE, WOMAN);
+      const past = unit(s, 10, P1, MILITARY_MODE.IGNORE, WOMAN);
+      combatSystem(s.world, ctxOf(s));
+      const target = held(s, soldier);
+      expect(target).not.toBe(past);
+      picked.add(target === nearest ? 'nearest' : target === within ? 'within' : 'other');
+    }
+    expect([...picked].sort()).toEqual(['nearest', 'within']);
+  });
+
+  it('keeps a held enemy unless a pick is strictly nearer', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    const heldEnemy = unit(s, 10, P1, MILITARY_MODE.IGNORE, WOMAN);
+    unit(s, 10, P1, MILITARY_MODE.IGNORE, WOMAN);
+    hold(s, soldier, heldEnemy);
+    combatSystem(s.world, ctxOf(s));
+    expect(held(s, soldier)).toBe(heldEnemy); // an equally near one does not take over
+
+    const t = sim();
+    const other = unit(t, 0, P0, MILITARY_MODE.ATTACK);
+    const far = unit(t, 12, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const near = unit(t, 4, P1, MILITARY_MODE.IGNORE, WOMAN);
+    hold(t, other, far);
+    combatSystem(t.world, ctxOf(t));
+    expect(held(t, other)).toBe(near);
+  });
+});
+
+describe('engagement - a struck fighter turns on its attacker', () => {
+  const blow = { damage: 10 };
+
+  it('when the attacker is nearer than the enemy it holds', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    const far = unit(s, 12, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const attacker = unit(s, 2, P1, MILITARY_MODE.IGNORE);
+    hold(s, soldier, far);
+    resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'melee');
+    expect(held(s, soldier)).toBe(attacker);
+  });
+
+  it('but keeps a nearer held enemy, and a civilian does not turn at all', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
+    const near = unit(s, 2, P1, MILITARY_MODE.IGNORE, WOMAN);
+    const attacker = unit(s, 12, P1, MILITARY_MODE.IGNORE);
+    hold(s, soldier, near);
+    resolveCombatHit(s.world, ctxOf(s), attacker, soldier, blow, [], 'projectile');
+    expect(held(s, soldier)).toBe(near);
+
+    const civilian = unit(s, 20, P0, MILITARY_MODE.ATTACK, WOMAN);
+    resolveCombatHit(s.world, ctxOf(s), attacker, civilian, blow, [], 'projectile');
+    expect(held(s, civilian)).toBeUndefined();
+  });
+});

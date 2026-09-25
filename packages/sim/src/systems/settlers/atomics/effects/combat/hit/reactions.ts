@@ -1,6 +1,8 @@
 import {
   Anger,
+  AttackOrder,
   diplomacyStance,
+  Engagement,
   FOG_MODE,
   Owner,
   Position,
@@ -11,8 +13,18 @@ import {
 } from '../../../../../../components/index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { frightenKin } from '../../../../../conflict/fright.js';
+import { combatTargetNode } from '../../../../../conflict/target-node.js';
+import { isValidTarget } from '../../../../../conflict/targeting.js';
 import type { SystemContext } from '../../../../../context.js';
-import { angryGameTimeOf, isAggressiveAnimal, isProvokableAnimal } from '../../../../../readviews/index.js';
+import {
+  angryGameTimeOf,
+  isAggressiveAnimal,
+  isFighterJob,
+  isProvokableAnimal,
+  MILITARY_MODE,
+  stanceMode,
+} from '../../../../../readviews/index.js';
+import { manhattan } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 
 /**
@@ -72,4 +84,35 @@ export function provokeHostility(world: World, ctx: SystemContext, attacker: Ent
   }
   if (diplomacyStance(world, targetOwner.player, attackerOwner.player) === 'enemy') return;
   setDiplomacyStance(world, targetOwner.player, attackerOwner.player, 'enemy');
+}
+
+/**
+ * Turn a struck fighter on its attacker. Original behavior: a soldier or hero under ATTACK or DEFEND takes
+ * the one who struck it for its target, unless the enemy it already holds stands no farther off. Only an
+ * owned fighter holds a target, and an attack order outranks the reaction.
+ */
+export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entity, victim: Entity): void {
+  const terrain = ctx.terrain;
+  const settler = world.tryGet(victim, Settler);
+  if (terrain === undefined || settler === undefined || !world.has(victim, Owner)) return;
+  if (world.has(victim, AttackOrder) || !isFighterJob(ctx.content, settler.jobType)) return;
+  const mode = stanceMode(world, ctx.content, victim, settler.jobType);
+  if (mode !== MILITARY_MODE.ATTACK && mode !== MILITARY_MODE.DEFEND) return;
+  if (!world.has(attacker, Position) || !isValidTarget(world, ctx, victim, settler, attacker)) return;
+  const here = entityNode(world, terrain, victim);
+  const reach = (t: Entity): number =>
+    manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
+  const engagement = world.tryGet(victim, Engagement);
+  const held = engagement?.target;
+  if (held === attacker) return;
+  if (
+    held !== undefined &&
+    world.isAlive(held) &&
+    world.has(held, Position) &&
+    reach(held) <= reach(attacker)
+  ) {
+    return;
+  }
+  if (engagement === undefined) world.add(victim, Engagement, { repathAt: ctx.tick, target: attacker });
+  else world.mut(victim, Engagement).target = attacker;
 }

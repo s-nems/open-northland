@@ -54,13 +54,13 @@ const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 const HUNGRY: Fixed = fx.div(fx.fromInt(85), fx.fromInt(100));
 /** What one sip of mead takes off the hunger bar: half of it. */
 const MEAD_SIP: Fixed = fx.div(ONE, fx.fromInt(2));
-/** Cell distances along one row, where a cell is two half-cell nodes. `NEAR_CELLS` is inside the 32-node
- *  stand-to radius but past the 16-node sight radius, so the unit has the fight near it without being drawn
- *  into it; `CLEAR_CELLS` is past the 40-node rest clearance. */
+/** Cell distances along one row, where a cell is two half-cell nodes. `NEAR_CELLS` is inside the 40-node
+ *  stand-to radius but past the 18-node sight radius, so the unit has the fight near it without being drawn
+ *  into it; `CLEAR_CELLS` is past the 49-node rest clearance. */
 const NEAR_CELLS = 12;
-const CLEAR_CELLS = 21;
+const CLEAR_CELLS = 25;
 /** Between the stand-to radius and the rest clearance: too near to lie down, too far to be woken. */
-const EDGE_CELLS = 18;
+const EDGE_CELLS = 22;
 /** Long enough for the ten-cell walk to the larder and the meal at the end of it. */
 const ORDERED_MEAL_BUDGET_TICKS = 400;
 /** Long enough for the fixture's six-tick sleep clip and the order's own tick to land. */
@@ -436,7 +436,7 @@ describe('a fighting unit on alert takes no rest', () => {
   it('over real ticks, a tired rear rank stays up for the whole fight and rests once it is won', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const rear = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
-    fighterAt(sim, 13, 0, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
+    fighterAt(sim, CLEAR_CELLS - 8, 0, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
     // Just past the rear rank's rest clearance, so only the front rank's fight can hold it; the front rank
     // closes to the cell beside it, which is still inside.
     const enemy = enemyAt(sim, CLEAR_CELLS, 400);

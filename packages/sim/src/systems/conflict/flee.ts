@@ -32,9 +32,10 @@ const FLEE_COOLDOWN_TICKS = 40;
 
 /**
  * FLEE stance - how many half-cell nodes a fleeing unit runs away from the nearest threat each time it
- * re-aims. Approximated - no readable flee distance (source basis "Combat flee").
+ * re-aims. Original behavior for the distance: a struck civilian runs 10 map points from its attacker.
+ * Running from any threat in sight, not only from a blow, is this sim's FLEE stance.
  */
-const FLEE_STEP_NODES = 12;
+const FLEE_STEP_NODES = 10;
 
 /**
  * FLEE stance - how many ticks a fleeing unit holds its current route before re-aiming away from the moving

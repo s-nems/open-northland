@@ -29,7 +29,7 @@ import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 
 /**
  * Stamp the job-based default military stance on an owned settler. The anchor resets to null, since only
- * `setStance(DEFEND)` sets one. The caller guarantees `e` is owned, and Stance stays owned-only.
+ * `setStance` sets one. The caller guarantees `e` is owned, and Stance stays owned-only.
  */
 export function stampDefaultStance(
   world: World,
@@ -41,8 +41,8 @@ export function stampDefaultStance(
 }
 
 /**
- * Set one owned unit's military stance - see the command doc. `DEFEND` captures the unit's current tile as
- * the anchor it guards and returns to; every other mode clears the anchor.
+ * Set one owned unit's military stance - see the command doc. `DEFEND` and `IGNORE` capture the unit's
+ * current tile as the anchor its leash is measured from and it returns to; every other mode clears it.
  *
  * The CombatSystem re-decides the unit's behavior from the new mode on its next pass, so this handler does
  * not cancel a running swing or an explicit {@link AttackOrder}.
@@ -56,9 +56,10 @@ export function setStance(
   if (!isOrderableSettler(world, e)) return;
   if (!isMilitaryMode(command.mode)) return; // an out-of-range mode is bad input - skip
 
-  // A mapless sim leaves the anchor null, since a DEFEND radius only means something where cells exist.
+  // A mapless sim leaves the anchor null, since a leash only means something where cells exist.
   let anchorCell: NodeId | null = null;
-  if (command.mode === MILITARY_MODE.DEFEND && ctx.terrain !== undefined && world.has(e, Position)) {
+  const anchored = command.mode === MILITARY_MODE.DEFEND || command.mode === MILITARY_MODE.IGNORE;
+  if (anchored && ctx.terrain !== undefined && world.has(e, Position)) {
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
     anchorCell = ctx.terrain.nodeAtClamped(n.hx, n.hy);

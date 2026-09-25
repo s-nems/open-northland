@@ -15,7 +15,7 @@ export {
   VEHICLE_DEFENCE_LEASH_NODES,
   VEHICLE_SCAN_RADIUS_NODES,
 } from './engage-vehicle.js';
-export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES } from './engagement.js';
+export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES, IGNORE_LEASH_NODES } from './engagement.js';
 export { SIGHT_RADIUS_NODES } from './targeting.js';
 export { vehicleWeapon } from './weapons.js';
 

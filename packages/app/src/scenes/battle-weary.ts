@@ -24,9 +24,9 @@ const MAP_H = 16;
 
 const RANK_ROWS: readonly number[] = [5, 6, 7, 8, 9];
 const FRONT_X = 8;
-/** Four cells, eight nodes, behind the front rank and ten from the picket: past a soldier's sight, so the
- *  reserve never joins the fight, but well inside the rest clearance of it. */
-const RESERVE_X = 4;
+/** Eight cells, sixteen nodes, behind the front rank, so the fight at the front stays past a defender's
+ *  18-node reach and the reserve never joins it, but well inside the rest clearance of it. */
+const RESERVE_X = 0;
 const PICKET_X = 14;
 const PICKET_ROWS: readonly number[] = [6, 7, 8];
 /** Behind the reserve, so the walk the reserve does not take is a short and obvious one, and north of the
@@ -110,9 +110,11 @@ function warband(sim: Simulation): Entity[] {
   return living(sim, HUMAN_PLAYER, false);
 }
 
-/** The hungry rank: the only blues whose hunger bar the scene authored. */
+/** The hungry rank: the only blues whose hunger bar the scene authored. Told apart from the front rank by
+ *  the midpoint between the two, since the front shuffles as it forms up. */
 function reserve(sim: Simulation): Entity[] {
-  return warband(sim).filter((e) => sim.world.get(e, Position).x < fx.fromInt(FRONT_X));
+  const midpoint = fx.div(fx.fromInt(RESERVE_X + FRONT_X), fx.fromInt(2));
+  return warband(sim).filter((e) => sim.world.get(e, Position).x < midpoint);
 }
 
 function sentryAwake(sim: Simulation): boolean {

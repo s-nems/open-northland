@@ -1,12 +1,13 @@
 import { cellAnchorNode, components, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_SOLDIER_SWORD, JOB_WOMAN } from '../catalog/jobs.js';
+import { JOB_SOLDIER_SWORD, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import { spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The skirmish rule end to end: three swordsmen cut down the rival seat's lone man, the MatchSystem
+ * The skirmish rule end to end: three swordsmen cut down the rival seat's lone fist fighter, too weak to
+ * fell one of them first, the MatchSystem
  * finds that seat without an adult man at its next check and declares it dead, and the human seat wins
  * as the last one standing. The rival's woman survives the verdict, proving she kept nobody alive. The
  * browser view pairs this with the verdict panel and the won jingle.
@@ -31,7 +32,7 @@ const RUN_TICKS = FIRST_CHECK_TICK + 50;
 const { Owner, Person } = components;
 
 function build(sim: Simulation): void {
-  const rivalMan = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, RIVAL_AT.x, RIVAL_AT.y, ENEMY_PLAYER);
+  const rivalMan = spawnSettlerDirect(sim, JOB_SOLDIER_UNARMED, RIVAL_AT.x, RIVAL_AT.y, ENEMY_PLAYER);
   spawnSettlerDirect(sim, JOB_WOMAN, RIVAL_WOMAN_AT.x, RIVAL_WOMAN_AT.y, ENEMY_PLAYER);
   const target = cellAnchorNode(RIVAL_AT.x, RIVAL_AT.y);
   for (let i = 0; i < WARBAND_SIZE; i++) {

@@ -32,10 +32,10 @@ import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 /**
  * How near (Manhattan half-cell nodes) a fight gets a fighting unit asleep in the open back up, and how
- * near an enemy on its feet keeps one from lying down. Twice the sight radius, so a rear rank stands to
- * while the rank in front fights. Authored: no readable rule keeps a soldier from resting in a battle.
+ * near an enemy on its feet keeps one from lying down. Original behavior for the reach: a blow on one of a
+ * player's people alarms its soldiers within 40 map points. Holding them from rest is authored.
  */
-export const STAND_TO_RADIUS_NODES = 2 * SIGHT_RADIUS_NODES;
+export const STAND_TO_RADIUS_NODES = 40;
 
 /**
  * How far off the fighting must be before a fighting unit lies down or leaves for its needs. The margin

@@ -30,12 +30,11 @@ import { vehicleWeapon } from './weapons.js';
 // conflict/ - nothing here reaches back into the drives that consult it.
 
 /**
- * How far (Manhattan half-cell nodes) an owned combatant can spot an enemy to advance on it - the
- * aggro/advance radius the walk-into-melee drive searches within. Approximated (source basis "Combat sight
- * radius"): humans carry no readable sight/aggro field in the data, only animals have leash radii. The
- * weapon's extracted `[minRange, maxRange]` band, where a swing lands, is separate and faithful.
+ * How far (nodes) an owned combatant looks for an enemy to advance on - the radius an ATTACK fighter
+ * scans around itself. Original behavior (18 map points; measured here in Manhattan nodes, an
+ * approximation of the original's map-point distance).
  */
-export const SIGHT_RADIUS_NODES = 16;
+export const SIGHT_RADIUS_NODES = 18;
 
 /** How far a hostile wild animal spots a civilization victim to advance on - the animal twin of
  *  {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat sight radius"): no readable aggro field

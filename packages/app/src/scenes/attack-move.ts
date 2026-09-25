@@ -1,6 +1,6 @@
 import { cellAnchorNode, components, type Entity, fx, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_SOLDIER_SPEAR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
+import { JOB_CIVILIST, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import { spawnSettlerDirect } from '../game/sandbox/index.js';
 import { enemyLivingSettlers } from './sandbox-queries.js';
@@ -13,7 +13,8 @@ const BLUE_X: readonly number[] = [2, 3];
 const BLUE_Y_FIRST = 5;
 const BLUE_Y_LAST = 8;
 
-/** Halfway along the route and passive, so only an attack-moving warband ever fights it. */
+/** Halfway along the route: unarmed men who never pick a fight, so only an attack-moving warband ever
+ *  fights them. */
 const PICKET_X = 16;
 const PICKET_Y: readonly number[] = [5, 6, 7, 8];
 
@@ -37,11 +38,10 @@ function build(sim: Simulation): void {
       sim.enqueueSetup({ kind: 'attackMoveUnit', entity: warrior, x: goal.hx, y: goal.hy });
     }
   }
-  for (const y of PICKET_Y)
-    standDown(sim, spawnSettlerDirect(sim, JOB_SOLDIER_SPEAR, PICKET_X, y, ENEMY_PLAYER));
+  for (const y of PICKET_Y) standDown(sim, spawnSettlerDirect(sim, JOB_CIVILIST, PICKET_X, y, ENEMY_PLAYER));
 }
 
-/** IGNORE lets a unit defend itself but never auto-acquire. */
+/** IGNORE keeps a civilian where it stands: it neither runs nor picks a fight. */
 function standDown(sim: Simulation, e: Entity): void {
   const stance = sim.world.mut(e, Stance);
   stance.mode = systems.MILITARY_MODE.IGNORE;
