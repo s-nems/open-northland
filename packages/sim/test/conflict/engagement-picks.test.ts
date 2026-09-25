@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Engagement, Owner, Stance } from '../../src/components/index.js';
+import { CurrentAtomic, Engagement, Owner, Position, Stance } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
+import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import {
   combatSystem,
   DEFEND_LEASH_NODES,
@@ -9,6 +10,7 @@ import {
   IGNORE_LEASH_NODES,
   SIGHT_RADIUS_NODES,
 } from '../../src/systems/index.js';
+import { moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import {
@@ -27,6 +29,8 @@ const P1 = 1;
 /** The row every unit stands on; node distances are then plain column differences. */
 const ROW = 0;
 const MAP_CELLS = 40;
+/** Long enough to walk 20 nodes, retire the order and, without the fix, walk back to the old anchor. */
+const SETTLE_TICKS = 400;
 
 function sim(seed = 1): Simulation {
   return new Simulation({ seed, content: combatCadenceContent(), map: grass(MAP_CELLS, 2) });
@@ -112,6 +116,18 @@ describe('engagement - how far each stance looks', () => {
     combatSystem(t.world, ctxOf(t));
     expect(t.world.has(out, Engagement)).toBe(false);
     expect(t.world.has(civilian, Engagement)).toBe(false);
+  });
+
+  it('a move order carries an IGNORE anchor along, so the unit stays where it was sent', () => {
+    const s = sim();
+    const soldier = unit(s, 0, P0, MILITARY_MODE.IGNORE);
+    anchorAt(s, soldier, 0);
+    unit(s, 2 * MAP_CELLS - 1, P1, MILITARY_MODE.IGNORE, WOMAN); // keeps the combat pass awake, out of reach
+    const sent = 20;
+    moveUnit(s.world, ctxOf(s), { kind: 'moveUnit', entity: soldier, x: sent, y: ROW });
+    for (let t = 0; t < SETTLE_TICKS; t++) s.step();
+    const p = s.world.get(soldier, Position);
+    expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: sent, hy: ROW });
   });
 
   it('IGNORE lets a held enemy go past 18 from its anchor', () => {

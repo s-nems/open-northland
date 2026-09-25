@@ -171,10 +171,10 @@ function startPlayerWalk(
   clearLostWay(world, e); // an obeyed order is the way found
   // Likewise a tower posting; no other kind of worker is unemployed by a walk order.
   releaseTowerPost(world, ctx, e);
-  // A move order relocates a DEFEND unit's post, or the arrived-hold combat pass would march the guard back
-  // to its old anchor the moment it found no enemy there.
-  const stance = world.tryMut(e, Stance);
-  if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) stance.anchorCell = goal;
+  // A move order relocates a DEFEND or IGNORE unit's anchor, or the arrived-hold combat pass would march it
+  // back to its old one the moment it found no enemy there.
+  const mode = world.tryGet(e, Stance)?.mode;
+  if (mode === MILITARY_MODE.DEFEND || mode === MILITARY_MODE.IGNORE) world.mut(e, Stance).anchorCell = goal;
 
   // An attack-move walk carries its destination on the order itself: a fight overwrites the MoveGoal with
   // chase destinations, so the march would otherwise have nothing left to resume toward.
