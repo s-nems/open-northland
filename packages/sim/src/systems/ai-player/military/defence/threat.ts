@@ -12,6 +12,7 @@ import {
   Weapon,
 } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { SIGHT_RADIUS_NODES } from '../../../conflict/targeting.js';
 import { garrisonReach, isManningPost, standsAtPost } from '../../../conflict/tower-post.js';
@@ -193,10 +194,10 @@ export function enemyPosts(
 }
 
 /** The {@link EnemyFire} of every shooter, loose or posted, whatever ground he stands on: a bow shoots
- *  across water. */
+ *  across water. Reach counts map points, as the bow does. */
 export function enemyFire(shooters: readonly Shooter[]): EnemyFire {
   const within = (s: Shooter, x: number, y: number, extra: number): boolean =>
-    Math.abs(s.x - x) + Math.abs(s.y - y) <= s.reach + extra;
+    hexDistanceBetween(s.x, s.y, x, y) <= s.reach + extra;
   return {
     reaches: (x, y, span) => shooters.some((s) => within(s, x, y, span)),
     around: (x, y, radius, span) => enemyFire(shooters.filter((s) => within(s, x, y, radius + span))),
@@ -204,7 +205,8 @@ export function enemyFire(shooters: readonly Shooter[]): EnemyFire {
 }
 
 /**
- * The raider nearest `(x, y)` within `radius`, with his distance, or null when none is that close.
+ * The raider nearest `(x, y)` within `radius` map points, the measure of the bow reach the band is read
+ * from, with his distance, or null when none is that close.
  * Candidates arrive ascending-id, so the strict `<` keeps the lowest id among equal distances.
  *
  * `reachable` is the walkable component a candidate must share, or null to take him wherever he stands:
@@ -220,7 +222,7 @@ export function nearestRaiderWithin(
   let best: { raider: Raider; distance: number } | null = null;
   for (const raider of raiders) {
     if (reachable !== null && raider.component !== reachable) continue;
-    const distance = Math.abs(raider.x - x) + Math.abs(raider.y - y);
+    const distance = hexDistanceBetween(raider.x, raider.y, x, y);
     if (distance > radius) continue;
     if (best === null || distance < best.distance) best = { raider, distance };
   }

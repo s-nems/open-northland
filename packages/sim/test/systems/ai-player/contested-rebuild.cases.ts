@@ -4,6 +4,7 @@ import { AttackOrder, Building, DefenceMode, Position, Settler } from '../../../
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
+import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,
@@ -73,14 +74,14 @@ function bowReach(sim: Simulation): number {
   return bow.maxRange;
 }
 
-/** The nearest Manhattan distance from `at` to any wall cell of a `buildingType` site anchored on `site`. */
+/** The nearest map-point distance from `at` to any wall cell of a `buildingType` site anchored on `site`. */
 function wallDistance(sim: Simulation, buildingType: number, site: Spot, at: Spot): number {
   const cells = buildingFootprintOf(sim.content, buildingType)?.blocked ?? [];
-  let nearest = Math.abs(site.x - at.x) + Math.abs(site.y - at.y);
+  let nearest = hexDistanceBetween(site.x, site.y, at.x, at.y);
   for (const c of cells) {
     const x = site.x + footprintCellDx(site.y, c);
     const y = site.y + c.dy;
-    nearest = Math.min(nearest, Math.abs(x - at.x) + Math.abs(y - at.y));
+    nearest = Math.min(nearest, hexDistanceBetween(x, y, at.x, at.y));
   }
   return nearest;
 }
@@ -154,11 +155,14 @@ function standAt(sim: Simulation, e: Entity, at: Spot): void {
   sim.world.add(e, Position, positionOfNode(at.x, at.y));
 }
 
-/** The node `distance` nodes (Manhattan) from the HQ, west first and then north: away from the mill. */
+/** A node `distance` map points from the HQ, west first and then north: away from the mill. */
 function offTheHq(sim: Simulation, distance: number): Spot {
   const hq = nodeOf(sim, entityOfBuilding(sim, HQ_TYPE));
-  const west = Math.min(distance, hq.x);
-  return { x: hq.x - west, y: hq.y - (distance - west) };
+  const x = hq.x - Math.min(distance, hq.x);
+  for (let y = hq.y; y >= 0; y--) {
+    if (hexDistanceBetween(hq.x, hq.y, x, y) === distance) return { x, y };
+  }
+  throw new Error(`setup: no node ${distance} map points west and north of the HQ`);
 }
 
 describe('build-order module - rebuilding under the enemy', () => {

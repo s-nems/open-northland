@@ -235,6 +235,23 @@ describe('ai defence - the alarm', () => {
     expect(alarms(run(sim))).toEqual([]);
   });
 
+  it('counts the band in map points, where a diagonal half as wide as it is tall comes free', () => {
+    const ROWS = 10; // an even row span, so no half-node lean applies
+    const FREE_COLUMNS = ROWS / 2;
+    for (const [pastBand, rings] of [
+      [0, true],
+      [1, false],
+    ] as const) {
+      const sim = aiSim();
+      const hq = place(sim, HQ_TYPE, SEAT_HQ);
+      const at = nodeOf(sim, hq);
+      const columns = watchOf(sim) - ROWS + FREE_COLUMNS + pastBand;
+      spawn(sim, 1, { x: at.x + columns, y: at.y + ROWS }, SPEARMAN, FOE);
+
+      expect(alarms(run(sim))).toEqual(rings ? [{ building: hq, enabled: true }] : []);
+    }
+  });
+
   it('holds a raised alarm while the raider hangs inside the stand-down margin', () => {
     const sim = aiSim();
     const hq = place(sim, HQ_TYPE, SEAT_HQ);
