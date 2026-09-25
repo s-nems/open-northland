@@ -81,10 +81,13 @@ export interface InputShortfall {
 }
 
 /**
- * The source for the first input `workplace` is short of, or null when every input is stocked and
- * nothing reachable holds one: the nearest store that holds the good, a well's or hive's own shelf
- * included. The trip brings one unit, so a shortfall of two is two trips. Never from another player's
- * store, nor a cell the worker failed to reach. Source basis: authored.
+ * The source for the input `workplace` lacks most, or null when every input is stocked and nothing
+ * reachable holds a short one: the nearest store that holds the good, a well's or hive's own shelf
+ * included. Short inputs rank by how full they are against their target, emptiest first, ties in recipe
+ * order; an input no reachable store holds falls through to the next. The trip brings one unit, so a
+ * shortfall of two is two trips. Never from another player's store, nor a cell the worker failed to reach.
+ *
+ * Approximation: the original's pick order between short inputs is unobserved; emptiest-first is authored.
  */
 export function nearestMissingInputSource(
   plan: PlannerContext,
@@ -95,12 +98,33 @@ export function nearestMissingInputSource(
   const { world, ctx, here, targets } = plan;
   const stock = world.get(workplace, Stockpile).amounts;
   const avoid = unreachableGoalVeto(world, ctx, plan.entity);
-  for (const input of recipe.inputs) {
-    const have = (stock.get(input.goodType) ?? 0) + (shortfall.inbound?.(input.goodType) ?? 0);
-    const target = shortfall.restockToCapacity
-      ? stockCapacity(world, ctx, workplace, input.goodType)
-      : input.amount;
-    if (have >= target) continue;
+  const inputs = recipe.inputs;
+  // Each round picks the emptiest short input ranked after the previous round's pick, so a fall-through
+  // walks the ranking without building it; the rescan only repeats when a pick has no source.
+  let lastIndex = -1;
+  let lastHave = 0;
+  let lastTarget = 0;
+  for (;;) {
+    let pick = -1;
+    let pickHave = 0;
+    let pickTarget = 0;
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i];
+      if (input === undefined) continue;
+      const have = (stock.get(input.goodType) ?? 0) + (shortfall.inbound?.(input.goodType) ?? 0);
+      const target = shortfall.restockToCapacity
+        ? stockCapacity(world, ctx, workplace, input.goodType)
+        : input.amount;
+      if (have >= target) continue;
+      if (lastIndex >= 0 && !ranksBefore(lastHave, lastTarget, lastIndex, have, target, i)) continue;
+      if (pick < 0 || ranksBefore(have, target, i, pickHave, pickTarget, pick)) {
+        pick = i;
+        pickHave = have;
+        pickTarget = target;
+      }
+    }
+    const input = inputs[pick];
+    if (input === undefined) return null;
     const winner = targets.bands.inputSources(input.goodType).nearest(
       here,
       // The workplace never supplies itself.
@@ -110,8 +134,25 @@ export function nearestMissingInputSource(
       sameSideAs(world, plan.owner),
     );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType };
+    lastIndex = pick;
+    lastHave = pickHave;
+    lastTarget = pickTarget;
   }
-  return null;
+}
+
+/** Whether short input `a` fills less of its target than `b` (`have / target` compared by
+ *  cross-multiplication, so the rank stays in integers), the earlier recipe index breaking a tie. */
+function ranksBefore(
+  haveA: number,
+  targetA: number,
+  indexA: number,
+  haveB: number,
+  targetB: number,
+  indexB: number,
+): boolean {
+  const a = haveA * targetB;
+  const b = haveB * targetA;
+  return a !== b ? a < b : indexA < indexB;
 }
 
 /**
