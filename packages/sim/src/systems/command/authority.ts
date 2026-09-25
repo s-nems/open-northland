@@ -12,6 +12,8 @@ import type {
 } from '../../core/commands/index.js';
 import { COMMAND_ISSUER } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
+import { palisadeType } from '../palisades/index.js';
 
 /**
  * The command the envelope applies, or undefined when its origin is not entitled to it. A rejected
@@ -19,11 +21,15 @@ import type { Entity, World } from '../../ecs/world.js';
  * keeps only the `members` the seat commands, so one held by a script, fallen, or not the seat's own
  * does not void the rest; the log keeps the order as issued, and a replay narrows it the same way.
  */
-export function authorizedCommand(world: World, envelope: CommandEnvelope): Command | undefined {
+export function authorizedCommand(
+  world: World,
+  envelope: CommandEnvelope,
+  terrain?: TerrainGraph,
+): Command | undefined {
   if (!ownerFieldsValid(envelope.command)) return undefined;
   if (envelope.origin === 'setup' || envelope.origin === 'admin') return envelope.command;
   const command = envelope.command;
-  if (!seatMayIssue(world, envelope.player, command)) return undefined;
+  if (!seatMayIssue(world, envelope.player, command, terrain)) return undefined;
   const commanded = (e: Entity): boolean => seatCommandsUnit(world, envelope, e);
   if ('entity' in command) return commanded(command.entity) ? command : undefined;
   if ('members' in command) return keepMembers(command, commanded);
@@ -55,7 +61,12 @@ function ownerFieldsValid(command: Command): boolean {
   return !('player' in command) || isValidPlayer(command.player);
 }
 
-function seatMayIssue(world: World, seat: number, command: PlayerCommand): boolean {
+function seatMayIssue(
+  world: World,
+  seat: number,
+  command: PlayerCommand,
+  terrain: TerrainGraph | undefined,
+): boolean {
   if (COMMAND_ISSUER[command.kind] !== 'seat') return false;
   // A seat that died in the match keeps watching but never commands again.
   if (isPlayerDead(world, seat)) return false;
@@ -63,19 +74,27 @@ function seatMayIssue(world: World, seat: number, command: PlayerCommand): boole
     if (hasAuthoredOptions(command)) return false;
     if (!playerPlacementTribes(world, seat)?.includes(command.tribe)) return false;
   }
+  // A seat cuts a gate into its own finished run; only a map stands one on open ground.
+  if (command.kind === 'placePalisade' && terrain !== undefined && isGateRow(terrain, command.gfxIndex)) {
+    return false;
+  }
   if ('player' in command && command.player !== seat) return false;
   if ('owner' in command && command.owner !== seat) return false;
 
-  const asset = assetTargetOf(command);
+  // Even a neutral wall is off limits: a seat raises, opens and breaks only its own.
   if (
-    (command.kind === 'demolishPalisade' ||
-      command.kind === 'convertPalisadeGate' ||
-      command.kind === 'setPalisadeGate') &&
-    asset !== undefined
+    command.kind === 'demolishPalisade' ||
+    command.kind === 'convertPalisadeGate' ||
+    command.kind === 'setPalisadeGate'
   ) {
-    return ownerOf(world, asset) === seat;
+    return ownerOf(world, command.palisade) === seat;
   }
+  const asset = assetTargetOf(command);
   return asset === undefined || ownersCompatible(seat, ownerOf(world, asset));
+}
+
+function isGateRow(terrain: TerrainGraph, gfxIndex: number): boolean {
+  return palisadeType(terrain, gfxIndex)?.wall?.gate !== undefined;
 }
 
 /** Only trusted origins may place finished buildings or supply authored placement options. */
@@ -108,6 +127,5 @@ function assetTargetOf(command: PlayerCommand): Entity | undefined {
   if ('site' in command) return command.site;
   if ('house' in command) return command.house;
   if ('signpost' in command) return command.signpost;
-  if ('palisade' in command) return command.palisade;
   return undefined;
 }

@@ -162,14 +162,7 @@ export function ownedEnvelope(envelope: CommandEnvelope): CommandEnvelope {
 
 function seatOwned(command: PlayerCommand, player: number): PlayerCommand {
   const owned = clonePlainData(command);
-  if (owned.kind === 'placePalisade') {
-    return {
-      ...owned,
-      owner: owned.owner === undefined ? player : owned.owner,
-      underConstruction: owned.underConstruction === undefined ? true : owned.underConstruction,
-    };
-  }
-  if (owned.kind !== 'placeBuilding') return owned;
+  if (owned.kind !== 'placeBuilding' && owned.kind !== 'placePalisade') return owned;
   return {
     ...owned,
     owner: owned.owner === undefined ? player : owned.owner,

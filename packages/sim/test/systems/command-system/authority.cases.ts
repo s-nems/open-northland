@@ -4,6 +4,7 @@ import {
   JobAssignment,
   MISSION_BEHAVIOUR,
   Owner,
+  Palisade,
   Position,
   Stockpile,
   setPlayerPlacementTribes,
@@ -19,11 +20,13 @@ import {
   type PlayerCommand,
   parseCommandEnvelope,
   playerCommand,
+  type ScriptLandscapeType,
   Simulation,
   setupCommand,
 } from '../../../src/index.js';
 import { authorizedCommand } from '../../../src/systems/command/authority.js';
 import { testContent } from '../../fixtures/content.js';
+import { grassNodeMap } from '../../fixtures/terrain.js';
 import { fresh, HEADQUARTERS, nthEntity, SAWMILL, VIKING, WOODCUTTER } from './support.js';
 
 /** The fixture HQ declares three woodcutter slots, so a spawned woodcutter qualifies for one. */
@@ -329,5 +332,124 @@ describe('CommandSystem - command authority', () => {
       [1, 1, 'admin'],
       [2, 2, 'player'],
     ]);
+  });
+
+  describe('walls', () => {
+    const WALL_ROW = 691;
+    const GATE_ROW = 696;
+    const OPEN_GATE_ROW = 700;
+    const WOOD_GOOD = 5;
+    const post = { dx: 0, dy: 0 };
+    const span = [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 }));
+    const wallRow = (
+      typeId: number,
+      walk: { dx: number; dy: number }[],
+      gate?: { open: boolean; counterpartGfxIndex: number },
+    ): ScriptLandscapeType => ({
+      typeId,
+      walk,
+      build: walk,
+      groups: [],
+      wall: {
+        logicType: typeId,
+        maxHitpoints: 100,
+        repairPerStrike: 1,
+        construction: [{ goodType: WOOD_GOOD, amount: 1 }],
+        ...(gate === undefined ? {} : { gate }),
+      },
+    });
+    const ROWS = [
+      wallRow(WALL_ROW, [post]),
+      wallRow(GATE_ROW, span, { open: false, counterpartGfxIndex: OPEN_GATE_ROW }),
+      wallRow(OPEN_GATE_ROW, [span[0] ?? post, span[4] ?? post], {
+        open: true,
+        counterpartGfxIndex: GATE_ROW,
+      }),
+    ];
+
+    function walled(): Simulation {
+      const base = grassNodeMap(24, 24);
+      const sim = new Simulation({
+        seed: 1,
+        content: testContent(),
+        map: { ...base, landscapes: { types: ROWS, placements: [] } },
+      });
+      setPlayerPlacementTribes(sim.world, sim.content, MINE, [VIKING]);
+      return sim;
+    }
+
+    function standingWall(
+      sim: Simulation,
+      owner: number | undefined,
+      x: number,
+      gfxIndex = WALL_ROW,
+    ): Entity {
+      sim.enqueueSetup({
+        kind: 'placePalisade',
+        gfxIndex,
+        x,
+        y: 12,
+        tribe: VIKING,
+        ...(owner === undefined ? {} : { owner }),
+      });
+      sim.step();
+      const wall = [...sim.world.query(Palisade)].sort((a, b) => b - a)[0];
+      if (wall === undefined) throw new Error('expected a wall');
+      return wall;
+    }
+
+    it('keeps a seat off a foreign or neutral wall and gate, and on its own', () => {
+      const sim = walled();
+      for (const owner of [THEIRS, undefined]) {
+        const wall = standingWall(sim, owner, owner === undefined ? 4 : 10);
+        const gate = standingWall(sim, owner, owner === undefined ? 16 : 20, GATE_ROW);
+        const refused: readonly PlayerCommand[] = [
+          { kind: 'demolishPalisade', palisade: wall },
+          { kind: 'convertPalisadeGate', palisade: wall, gfxIndex: GATE_ROW },
+          { kind: 'setPalisadeGate', palisade: gate, open: true },
+        ];
+        for (const command of refused) {
+          expect(authorizedCommand(sim.world, playerCommand(MINE, command)), command.kind).toBeUndefined();
+          expect(authorizedCommand(sim.world, adminCommand(command)), command.kind).toBeDefined();
+        }
+      }
+      const mine = standingWall(sim, MINE, 7);
+      const demolish: PlayerCommand = { kind: 'demolishPalisade', palisade: mine };
+      expect(authorizedCommand(sim.world, playerCommand(MINE, demolish))).toBe(demolish);
+    });
+
+    it('refuses a seat the authored wall options', () => {
+      const sim = walled();
+      const place = { kind: 'placePalisade', gfxIndex: WALL_ROW, x: 6, y: 6, tribe: VIKING } as const;
+      const cheats = [
+        { ...place, force: true },
+        { ...place, valency: 40 },
+        { ...place, underConstruction: false },
+      ];
+      for (const command of cheats) {
+        sim.enqueue(parseCommandEnvelope({ v: 1, origin: 'player', player: MINE, command }));
+      }
+      sim.step();
+      expect([...sim.world.query(Palisade)]).toEqual([]);
+
+      sim.enqueue(playerCommand(MINE, place));
+      sim.step();
+      const [site] = [...sim.world.query(Palisade)];
+      if (site === undefined) throw new Error('expected a wall site');
+      expect(sim.world.has(site, UnderConstruction)).toBe(true);
+      expect(sim.world.get(site, Owner)).toEqual({ player: MINE });
+    });
+
+    it('refuses a seat a gate row on open ground, which a map may still stand', () => {
+      const sim = walled();
+      const gate = { kind: 'placePalisade', gfxIndex: GATE_ROW, x: 12, y: 6, tribe: VIKING } as const;
+      sim.enqueue(playerCommand(MINE, gate));
+      sim.step();
+      expect([...sim.world.query(Palisade)]).toEqual([]);
+
+      sim.enqueueSetup({ ...gate, owner: MINE });
+      sim.step();
+      expect([...sim.world.query(Palisade)]).toHaveLength(1);
+    });
   });
 });

@@ -71,7 +71,7 @@ import { demolish, demolishSignpost, dropGood, placeResource } from './world-edi
  */
 export const commandSystem: System = (world, ctx) => {
   for (const queued of ctx.commands.drain(ctx.tick)) {
-    const command = authorizedCommand(world, queued);
+    const command = authorizedCommand(world, queued, ctx.terrain);
     if (command !== undefined) {
       applyCommand(world, ctx, command);
       wakeAddressed(world, command);
