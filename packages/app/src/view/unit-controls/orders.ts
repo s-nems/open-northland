@@ -338,7 +338,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         : (candidate: UnitTargetKind) => kind.includes(candidate);
     const enemy = pickTopAt(
       deps.targets
-        .enemies()
+        .enemies({ neutralWalls: true })
         .filter((p) =>
           p.kind === 'settler' || p.kind === 'building' || p.kind === 'palisade' ? accepts(p.kind) : false,
         ),

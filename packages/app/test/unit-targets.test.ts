@@ -117,7 +117,7 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(atWar.enemies().length).toBeGreaterThan(0);
   });
 
-  it('includes a neutral palisade in explicit attack targets while an observer remains non-commanding', () => {
+  it('offers a neutral palisade to the explicit attack pick only, and never to an observer', () => {
     const neutral = {
       id: 90_040,
       components: {
@@ -128,11 +128,10 @@ describe('unit-controls targets over the renderer frame', () => {
     snapshot = { ...snapshot, entities: [...snapshot.entities, neutral] };
     const wall = { ref: neutral.id, kind: 'palisade', x: 200, y: 300, depth: 300 } satisfies DrawItem;
 
-    expect(
-      targetsOver([wall])
-        .enemies()
-        .map((target) => target.ref),
-    ).toEqual([neutral.id]);
+    const targets = targetsOver([wall]);
+    expect(targets.enemies({ neutralWalls: true }).map((target) => target.ref)).toEqual([neutral.id]);
+    // A plain right-click beside an authored wall walks there instead of striking it.
+    expect(targets.enemies()).toEqual([]);
     const observer = createUnitTargets({
       snapshot: () => snapshot,
       viewer: overseerViewerSeat(HUMAN_PLAYER),
@@ -141,7 +140,7 @@ describe('unit-controls targets over the renderer frame', () => {
       boundsOf: undefined,
       pixelHitOf: undefined,
     });
-    expect(observer.enemies()).toEqual([]);
+    expect(observer.enemies({ neutralWalls: true })).toEqual([]);
   });
 
   it('hits an own palisade anywhere in its sprite box, gaps between the posts included', () => {

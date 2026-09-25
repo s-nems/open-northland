@@ -162,7 +162,7 @@ describe('unit orders against a selection that moves under them', () => {
     expect(order).not.toMatchObject({ x: guarded.hx, y: guarded.hy });
   });
 
-  it('treats a palisade as a structure target for the action-ring attack mode', () => {
+  it('strikes a neutral palisade from the action-ring attack mode and walks beside it on a right-click', () => {
     const issued: Command[] = [];
     const target = { id: 50, at: OPEN_GROUND };
     const p = halfCellToScreen(target.at.hx, target.at.hy);
@@ -170,7 +170,9 @@ describe('unit orders against a selection that moves under them', () => {
       selected: () => new Set([SCOUT.id]),
       targets: {
         ...targets,
-        enemies: () => [{ ref: target.id, x: p.x, y: p.y, kind: 'palisade' }],
+        // An unowned wall, which the targets offer only to an explicit attack pick.
+        enemies: (opts) =>
+          opts?.neutralWalls === true ? [{ ref: target.id, x: p.x, y: p.y, kind: 'palisade' }] : [],
       },
       snapshot: () => WORLD,
       content: CONTENT,
@@ -183,6 +185,10 @@ describe('unit orders against a selection that moves under them', () => {
 
     expect(orders.issueAttackTarget(clickOn(target.at), ['building', 'palisade'])).toBe(true);
     expect(issued).toEqual([{ kind: 'attackUnit', entity: SCOUT.id, target: target.id }]);
+
+    issued.length = 0;
+    expect(orders.issueRightClick(clickOn(target.at))).toBe(true);
+    expect(issued).toEqual([{ kind: 'moveUnit', entity: SCOUT.id, x: target.at.hx, y: target.at.hy }]);
   });
 
   it('plants a work flag for the units selected now', () => {

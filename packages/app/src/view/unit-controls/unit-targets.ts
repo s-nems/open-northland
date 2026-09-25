@@ -53,8 +53,10 @@ export interface UnitTargets {
    *  tribe's house. */
   buildings(): Pickable[];
   /** Enemy attack targets - settlers AND buildings of a player the human holds an `enemy` stance
-   *  toward. A right-click on one issues an `attackUnit` order (the sim accepts a building target). */
-  enemies(): Pickable[];
+   *  toward. A right-click on one issues an `attackUnit` order (the sim accepts a building target).
+   *  `neutralWalls` adds the unowned palisades, which only an explicit attack pick strikes: a plain
+   *  right-click beside one walks there. */
+  enemies(opts?: { readonly neutralWalls?: boolean }): Pickable[];
   /** The human's gatherers' drop-off flags, each mapped to its owning gatherer (a flag→unit proxy). */
   flags(): Pickable[];
   /** The human's standing signposts - direct-click targets only (a marquee never grabs a post). */
@@ -149,7 +151,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       return out;
     },
 
-    enemies(): Pickable[] {
+    enemies(opts): Pickable[] {
+      const neutralWalls = opts?.neutralWalls === true && pickableSeat(deps.viewer) !== null;
       const { ownerOf } = ownersOf(deps.snapshot());
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
@@ -161,10 +164,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         if (!isHitTarget(it)) continue;
         const owner = ownerOf.get(it.ref);
         if (owner === undefined) {
-          // Neutral palisades are explicit structure targets in the sim. Other neutral entities keep
-          // their existing non-enemy meaning, and observers cannot issue attacks.
-          if (itemKind !== 'palisade' || pickableSeat(deps.viewer) === null) continue;
-          out.push(hitTarget(it, itemKind));
+          // Other neutral entities are never attack targets, and observers issue no attacks.
+          if (itemKind === 'palisade' && neutralWalls) out.push(hitTarget(it, itemKind));
           continue;
         }
         if (pickableOwner(owner)) continue; // "ours" - not an enemy
