@@ -303,7 +303,7 @@ export const enGame = {
       placeHint: 'point at a place on the map',
       placeWallHint: 'click where the wall starts',
       placeWallLineHint:
-        'left click lays the wall, with Ctrl it draws on, Shift keeps it straight, right click drops the line',
+        'left click lays the wall, with Ctrl/Cmd it draws on, Shift keeps it straight, right click drops the line',
       placeGateHint: 'point at a straight run of five finished wall sections',
       placePaperHint: 'from a plan: point at a place, the building stands finished',
       heldPaper: 'Building plan',

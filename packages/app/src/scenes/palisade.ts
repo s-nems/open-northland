@@ -211,6 +211,8 @@ function build(sim: Simulation): void {
     palisade: gate,
     gfxIndex: PALISADE_HORIZONTAL_GATE_CLOSED_GFX_INDEX,
   });
+  // A save keeps no timed order and a restore reruns no build, so a reloaded save of this scene plays on
+  // without the timeline below.
   const at = (tick: number, command: Parameters<typeof setupCommand>[0]): void =>
     sim.enqueueAt(setupCommand(command), tick, SCRIPTED_SEQUENCE);
   at(20, { kind: 'setPalisadeGate', palisade: gate, open: true });
