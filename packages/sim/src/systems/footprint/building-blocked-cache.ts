@@ -70,15 +70,21 @@ function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, door: Nod
   return passage;
 }
 
-/** One full derivation - the rebuild and the verifier's reference run through this single path. Records
- *  each building's type into `types` when given. */
-function deriveBuildingBlockedCells(
+interface BuildingCells {
+  /** The building bodies, doors and their passages carved out. */
+  readonly blocked: Set<NodeId>;
+  /** Each door node and the passage cleared from it to exterior ground. */
+  readonly openings: Set<NodeId>;
+}
+
+function deriveBuildingCells(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   types?: Map<Entity, number>,
-): Set<NodeId> {
+): BuildingCells {
   const blocked = new Set<NodeId>();
+  const openings = new Set<NodeId>();
   // The exact door point stays open even if another building's reserved margin overlaps it.
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
@@ -95,18 +101,67 @@ function deriveBuildingBlockedCells(
       if (terrain.inBounds(doorX, ay + door.dy)) {
         const doorNode = terrain.nodeAt(doorX, ay + door.dy);
         doors.add(doorNode);
-        for (const cell of doorPassage(terrain, body, doorNode)) body.delete(cell);
+        for (const cell of doorPassage(terrain, body, doorNode)) {
+          body.delete(cell);
+          openings.add(cell);
+        }
       }
     }
     for (const cell of body) blocked.add(cell);
   }
   for (const cell of doors) blocked.delete(cell);
+  return { blocked, openings };
+}
+
+/** One full derivation - the rebuild and the verifier's reference run through this single path. Records
+ *  each building's type into `types` when given. */
+function deriveBuildingBlockedCells(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  types?: Map<Entity, number>,
+): Set<NodeId> {
+  const { blocked, openings } = deriveBuildingCells(world, content, terrain, types);
   // Walls go in after the door subtraction, so an authored overlap cannot punch a door-shaped hole
   // through a palisade.
   const walls = standingWallCells(world, terrain);
   for (const cell of walls.walls) blocked.add(cell);
-  for (const cell of wallJointSeals(terrain, walls, walls.walls)) blocked.add(cell);
+  for (const cell of wallJointSeals(terrain, walls, walls.walls, openings)) blocked.add(cell);
   return blocked;
+}
+
+interface OpeningsMemo {
+  readonly content: ContentSet;
+  readonly terrain: TerrainGraph;
+  readonly membershipGeneration: number;
+  readonly valueGeneration: number;
+  readonly openings: ReadonlySet<NodeId>;
+}
+
+const openingsMemo = new WeakMap<World, OpeningsMemo>();
+
+/** Every building's door node and the passage cleared from it to exterior ground, which a wall joint
+ *  seal leaves open. Memoized on the Building generations alone, so a wall change keeps it. Derived
+ *  state, never hashed. */
+export function buildingOpenings(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+): ReadonlySet<NodeId> {
+  const membershipGeneration = world.componentGeneration(Building);
+  const valueGeneration = world.componentValueGeneration(Building);
+  const held = openingsMemo.get(world);
+  if (
+    held?.content === content &&
+    held.terrain === terrain &&
+    held.membershipGeneration === membershipGeneration &&
+    held.valueGeneration === valueGeneration
+  ) {
+    return held.openings;
+  }
+  const { openings } = deriveBuildingCells(world, content, terrain);
+  openingsMemo.set(world, { content, terrain, membershipGeneration, valueGeneration, openings });
+  return openings;
 }
 
 /** Whether the Building value writes since the cache's confirmed generation left every derived building's
@@ -160,7 +215,7 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  * A building's own DOOR and the shortest passage to exterior ground are left walkable when the door
  * lies inside the walk-block. Without that passage a clear door point can still be sealed by wall cells.
  * Standing walls and shut gates add their walk cells and the seals of their slanted joints
- * (`wallJointSeals`).
+ * (`wallJointSeals`), which leave a door and its passage open.
  *
  * Derived state, never hashed. Memoized per world on the Building store's membership generation, the
  * buildings' types and the wall membership generations, so building progress, a wall claim and a wall's

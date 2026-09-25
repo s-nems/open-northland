@@ -1,3 +1,4 @@
+import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Palisade, Position, SiteAssignment, UnderConstruction } from '../../src/components/index.js';
 import { adminCommand, type Entity, fx, ONE, type ScriptLandscapeType, Simulation } from '../../src/index.js';
@@ -23,6 +24,9 @@ const WALL: ScriptLandscapeType = {
 
 const OWNER = 0;
 const TRIBE = 0;
+/** A one-node hut added to the fixture, its door a half-row below its body. */
+const DOORED_HUT = 40;
+const HUT_DOOR = { dx: 0, dy: 1 };
 
 /** A standing wall at (4,4) and a wall site at (8,8). */
 function wallAndSite(): { sim: Simulation; site: Entity } {
@@ -95,5 +99,51 @@ describe('wall caches', () => {
     sim.world.destroy(first);
     expect([...standingWallCells(sim.world, terrain).walls]).toEqual([terrain.nodeAt(8, 8)]);
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('leave a building door open where a wall joint would seal it', () => {
+    const base = testContent();
+    const content = parseContentSet({
+      ...base,
+      buildings: [
+        ...base.buildings,
+        {
+          typeId: DOORED_HUT,
+          id: 'doored_hut',
+          kind: 'workplace',
+          footprint: { blocked: [{ dx: 0, dy: 0 }], familyBody: [{ dx: 0, dy: 0 }], door: HUT_DOOR },
+        },
+      ],
+    });
+    const sim = new Simulation({
+      seed: 1,
+      content,
+      map: { ...grassNodeMap(24, 24), landscapes: { types: [WALL], placements: [] } },
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped simulation');
+    const anchor = { hx: 10, hy: 8 };
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: DOORED_HUT,
+      x: anchor.hx,
+      y: anchor.hy,
+      tribe: TRIBE,
+    });
+    // An odd-row post and its partner a half-row down and a column on: the joint's odd corner is the door.
+    const door = { hx: anchor.hx + footprintCellDx(anchor.hy, HUT_DOOR), hy: anchor.hy + HUT_DOOR.dy };
+    expect(door.hy % 2).toBe(1);
+    for (const at of [
+      { hx: door.hx - 1, hy: door.hy },
+      { hx: door.hx, hy: door.hy + 1 },
+    ]) {
+      sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: at.hx, y: at.hy, tribe: TRIBE });
+    }
+    sim.step();
+    expect([...sim.world.query(Palisade)]).toHaveLength(2);
+
+    const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
+    expect(blocked.has(terrain.nodeAt(door.hx, door.hy))).toBe(false);
+    expect(blocked.has(terrain.nodeAt(door.hx - 1, door.hy + 1))).toBe(true);
   });
 });

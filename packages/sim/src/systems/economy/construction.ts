@@ -49,7 +49,7 @@ import { destroyStumpsInReserved } from './stumps.js';
  * falls to a single blow.
  */
 export const constructionSystem: System = (world, ctx) => {
-  const occupancy = new WallSiteOccupancy(world);
+  const occupancy = new WallSiteOccupancy(world, ctx);
   // Sites only, in ascending id: the pass scales with what is being built, and two sites finishing on
   // one tick settle their plots in a canonical order.
   for (const e of world.canonicalQuery(UnderConstruction)) {

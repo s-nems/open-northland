@@ -149,13 +149,16 @@ export function standingWallCells(world: World, terrain: TerrainGraph): Standing
  * The nodes that close the slanted joints of wall lines touching `from`. Walls join on the six-node
  * landscape lattice, where an odd-row node's neighbours one half-row up and down sit a column to +x. Two
  * of the pathfinder's diagonal steps cross such a joint, each with one midpoint flank open; blocking one
- * corner of the joint refuses both. The odd-row corner is taken unless an open gate passes there.
- * Project rule: a joined wall line holds walkers wherever it turns.
+ * corner of the joint refuses both. The odd-row corner is taken unless an open gate passes there or it
+ * is one of the `openings`, a building's door or its passage; a joint whose only corner left is an
+ * opening stays open, so a wall never shuts a building. Project rule: a joined wall line holds walkers
+ * wherever it turns.
  */
 export function wallJointSeals(
   terrain: TerrainGraph,
   cells: StandingWallCells | { readonly walls: NodeMembership; readonly passages: NodeMembership },
   from: Iterable<NodeId>,
+  openings: NodeMembership,
 ): Set<NodeId> {
   const seals = new Set<NodeId>();
   const { walls, passages } = cells;
@@ -175,7 +178,8 @@ export function wallJointSeals(
       const evenCorner = odd ? open(x, y + dy) : open(x - 1, y);
       // A corner that is already wall closes the joint by the diagonal flank rule; the map edge needs none.
       if (oddCorner === null || evenCorner === null) continue;
-      seals.add(passages.has(oddCorner) ? evenCorner : oddCorner);
+      const seal = passages.has(oddCorner) || openings.has(oddCorner) ? evenCorner : oddCorner;
+      if (!openings.has(seal)) seals.add(seal);
     }
   }
   return seals;
@@ -185,7 +189,8 @@ const JOINT_ROW_STEPS = [-1, 1] as const;
 
 /**
  * The cells `walk` anchored at `hx,hy` closes once it blocks: its own body and the joint seals it makes
- * against the standing walls. An open gate's passage the body now covers is no longer a passage.
+ * against the standing walls, leaving the building `openings` open. An open gate's passage the body now
+ * covers is no longer a passage.
  */
 export function wallClosingCells(
   world: World,
@@ -193,6 +198,7 @@ export function wallClosingCells(
   walk: readonly FootprintCell[],
   hx: number,
   hy: number,
+  openings: NodeMembership,
 ): Set<NodeId> {
   const body = new Set(translatedCells(terrain, walk, hx, hy));
   const standing = standingWallCells(world, terrain);
@@ -203,6 +209,7 @@ export function wallClosingCells(
       passages: { has: (node) => !body.has(node) && standing.passages.has(node) },
     },
     body,
+    openings,
   );
   for (const seal of seals) body.add(seal);
   return body;
