@@ -165,6 +165,21 @@ describe('resolveLayers - connected palisades', () => {
     ).toEqual([30]);
   });
 
+  it('hands back the same moved layer for an unchanged post, frame after frame', () => {
+    const item: DrawItem = {
+      kind: 'palisade',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      gfxIndex: 691,
+      palisadePosts: [{ dx: 10, dy: 3, gfxIndex: 691, variantStep: 1 }],
+    };
+    const first = resolveLayers(sheet, item, 0)?.[1];
+    expect(first).toMatchObject({ dx: 10, dy: 3 });
+    expect(resolveLayers(sheet, item, 1)?.[1]).toBe(first);
+  });
+
   it('uses the edge progress to keep connection posts at the lower construction height', () => {
     const item: DrawItem = {
       kind: 'palisade',

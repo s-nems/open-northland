@@ -1,4 +1,4 @@
-import type { DrawItem } from '../../data/scene/index.js';
+import type { DrawItem, PalisadePostDraw } from '../../data/scene/index.js';
 import {
   DECOR_BINDING_KEY,
   resolveCraftFxDraw,
@@ -168,6 +168,13 @@ const PALISADE_POST = new LayerBuffer();
 const PALISADE_SHADOWS = new LayerBuffer();
 const PALISADE_BODIES = new LayerBuffer();
 
+const NO_POSTS: readonly PalisadePostDraw[] = [];
+
+/** A post's layers moved onto its offset, by the cached layer record and the post. The scene reuses a
+ *  post object while its wall is unchanged, so a steady wall allocates nothing here, and an entry dies
+ *  with either key. */
+const shiftedLayers = new WeakMap<ResolvedLayer, WeakMap<PalisadePostDraw, ResolvedLayer>>();
+
 /** Append the endpoint post and every repeated edge post, grouping all cast shadows below all bodies. */
 function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem, tick: number): boolean {
   if (item.palisadeSite === 'unclaimed') return true;
@@ -176,31 +183,53 @@ function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem
   if (binding === undefined) return false;
   PALISADE_SHADOWS.reset();
   PALISADE_BODIES.reset();
-  const append = (
-    drawItem: Pick<DrawItem, 'gfxIndex' | 'builtPct'> & { readonly variantStep?: number },
-    dx = 0,
-    dy = 0,
-  ): boolean => {
-    PALISADE_POST.reset();
-    if (!pushLayeredWithShadow(PALISADE_POST, sheet, 'palisade', resolvePalisadeDraw(binding, drawItem))) {
-      return false;
-    }
-    for (const layer of PALISADE_POST.finish()) {
-      const shifted = dx === 0 && dy === 0 ? layer : { ...layer, dx, dy };
-      (layer.shadow === true ? PALISADE_SHADOWS : PALISADE_BODIES).push(shifted);
-    }
-    return true;
-  };
-  if (!append(item)) return false;
-  for (const post of item.palisadePosts ?? []) append(post, post.dx, post.dy);
+  if (!appendPalisadePost(sheet, binding, item, null)) return false;
+  for (const post of item.palisadePosts ?? NO_POSTS) appendPalisadePost(sheet, binding, post, post);
   for (const layer of PALISADE_SHADOWS.finish()) out.push(layer);
   // An edge's posts ride one endpoint's draw, and toward a neighbour further up the screen they stand
   // behind that endpoint: paint the bodies from the back row forward. The sort is stable, so the layers
   // of one post keep their order; it reorders the scratch list in place.
   const bodies = PALISADE_BODIES.finish() as ResolvedLayer[];
-  bodies.sort((a, b) => (a.dy ?? 0) - (b.dy ?? 0));
+  bodies.sort(byRowOffset);
   for (const layer of bodies) out.push(layer);
   return true;
+}
+
+/** Sort the layers of one post into the shadow and body scratch lists, moved onto `post`'s offset when
+ *  it is a repeated post rather than the anchor's own. */
+function appendPalisadePost(
+  sheet: SpriteSheet,
+  binding: NonNullable<SpriteSheet['bindings']['palisade']>,
+  draw: Pick<DrawItem, 'gfxIndex' | 'builtPct'> & { readonly variantStep?: number },
+  post: PalisadePostDraw | null,
+): boolean {
+  PALISADE_POST.reset();
+  if (!pushLayeredWithShadow(PALISADE_POST, sheet, 'palisade', resolvePalisadeDraw(binding, draw)))
+    return false;
+  for (const layer of PALISADE_POST.finish()) {
+    const placed = post === null ? layer : shiftedLayer(layer, post);
+    (layer.shadow === true ? PALISADE_SHADOWS : PALISADE_BODIES).push(placed);
+  }
+  return true;
+}
+
+function shiftedLayer(layer: ResolvedLayer, post: PalisadePostDraw): ResolvedLayer {
+  if (post.dx === 0 && post.dy === 0) return layer;
+  let byPost = shiftedLayers.get(layer);
+  if (byPost === undefined) {
+    byPost = new WeakMap();
+    shiftedLayers.set(layer, byPost);
+  }
+  let shifted = byPost.get(post);
+  if (shifted === undefined) {
+    shifted = { ...layer, dx: post.dx, dy: post.dy };
+    byPost.set(post, shifted);
+  }
+  return shifted;
+}
+
+function byRowOffset(a: ResolvedLayer, b: ResolvedLayer): number {
+  return (a.dy ?? 0) - (b.dy ?? 0);
 }
 
 /**
