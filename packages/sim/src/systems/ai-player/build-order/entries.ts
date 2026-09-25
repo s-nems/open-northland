@@ -50,6 +50,10 @@ export const DENSE_TOWER_RADIUS_NODES = 14;
  *  serve it, in world-metric nodes (authored); a farther one gets another well beside the workshop. */
 export const WELL_REACH_NODES = 12;
 
+/** How near a brewery its hive must stand to count as its honey source, in world-metric nodes (authored):
+ *  the well's reach, since the brewer's carrier walks to both. */
+export const HIVE_REACH_NODES = WELL_REACH_NODES;
+
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
 export const STORE_COVERAGE_RADIUS_NODES = 32;
@@ -124,7 +128,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_smithy_01', count: 1, near: [{ kind: 'resource', good: 'iron' }] },
   // Toward the nearest enemy, where the attacks come from; the barracks also holds the line in defence.
   { kind: 'place', building: 'barracks', count: 1, near: [{ kind: 'front' }] },
-  { kind: 'place', building: 'work_armory_01', count: 1, near: [{ kind: 'building', id: 'work_smithy_01' }] },
+  // The armourer turns wood into bows and spear shafts, so it stands by the wood like the joinery.
+  { kind: 'place', building: 'work_armory_01', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
   { kind: 'upgrade', building: 'home_level_03', count: 3 },
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
@@ -175,9 +180,6 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'front' }],
     needsResources: ['mushroom', 'gold'],
   },
-  // Warehouses as the settlement needs them: one wherever a workshop or a work flag stands beyond every
-  // store's reach, so the smithies unload nearby and the ore piled at the mines gets carried in.
-  { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
   // Every bakery drinks water like the brewery: one standing beyond a well's reach gets a well beside it.
   {
@@ -187,13 +189,27 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'building', id: 'work_bakery_00' }],
     unlessWithin: { building: 'work_bakery_00', radius: WELL_REACH_NODES },
   },
-  // Beside the first, sharing its hive and well.
+  // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
+  // it otherwise.
   { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
+  {
+    kind: 'place',
+    building: 'work_hive_00',
+    count: 2,
+    near: [{ kind: 'building', id: 'work_brewery' }],
+    unlessWithin: { building: 'work_brewery', radius: HIVE_REACH_NODES },
+  },
+  {
+    kind: 'place',
+    building: 'work_well_00',
+    count: 6,
+    near: [{ kind: 'building', id: 'work_brewery' }],
+    unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
+  },
   { kind: 'place', building: 'home_level_04', count: 8 },
   // The late game runs out of mail, plate and long bows.
   { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
-  { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'building', id: 'work_smithy_01' }] },
-  { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
+  { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'resource', good: 'wood' }] },
   // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer
   // to feed them.
   {
@@ -211,8 +227,27 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'building', id: 'work_druid_01' }],
     needsResources: ['mushroom', 'gold'],
   },
-  // The third brewery closes the list, beside the first two.
+  // The third brewery beside the first two, with its own hive and well by the same rule.
   { kind: 'place', building: 'work_brewery', count: 3, near: [{ kind: 'building', id: 'work_brewery' }] },
+  {
+    kind: 'place',
+    building: 'work_hive_00',
+    count: 3,
+    near: [{ kind: 'building', id: 'work_brewery' }],
+    unlessWithin: { building: 'work_brewery', radius: HIVE_REACH_NODES },
+  },
+  {
+    kind: 'place',
+    building: 'work_well_00',
+    count: 7,
+    near: [{ kind: 'building', id: 'work_brewery' }],
+    unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
+  },
+  // Warehouses close the list, as the settlement needs them: one wherever a workshop or a work flag
+  // stands beyond every store's reach, so the smithies unload nearby and the ore piled at the mines
+  // gets carried in. Then the denser tower ring over the finished settlement.
+  { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
+  { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would
