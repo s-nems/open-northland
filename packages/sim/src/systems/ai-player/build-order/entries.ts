@@ -181,6 +181,9 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   // Beside the first, sharing its hive and well.
   { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
   { kind: 'place', building: 'home_level_04', count: 8 },
+  // The late game runs out of mail, plate and long bows.
+  { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
+  { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'building', id: 'work_smithy_01' }] },
   { kind: 'place', building: 'stock_02', count: 3, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },

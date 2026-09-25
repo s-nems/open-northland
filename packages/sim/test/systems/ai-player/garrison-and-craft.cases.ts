@@ -277,6 +277,11 @@ const BOW_LONG = 17;
 const SPEAR_WOODEN = 18;
 const SHOES = 19;
 const LEATHER_ARMOUR = 20;
+const SWORD_LONG = 21;
+const SWORD_SHORT = 22;
+const SPEAR_IRON = 23;
+const ARMOUR_CHAIN = 24;
+const ARMOUR_PLATE = 25;
 
 /** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
 /** The fixture joinery recast as the workshop `id`, one wood recipe per product, so the type's own plan
@@ -988,17 +993,16 @@ describe('workforce module - the barracks and craft selections', () => {
     ]);
   });
 
-  /** Three mints of four coiners' seats with `crew` builders hired two a mint, lowest id first; the
-   *  products each decision hands them, and the coins' lines. */
-  function crewedMints(crew: number) {
-    const content = mintContent();
-    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
+  /** `workshops` recast joineries of two operator seats each at 20-node steps, with `crew` builders hired
+   *  two a workshop, lowest id first, by `hire`; the products each decision at `tick` hands them. */
+  function crewedWorkshops(content: ContentSet, workshops: number, crew: number, tick = 0) {
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(192, 32) });
     placeHq(sim);
-    for (const x of [40, 60, 80]) {
+    for (let i = 0; i < workshops; i++) {
       sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: JOINERY_TYPE,
-        x,
+        x: 40 + 20 * i,
         y: 16,
         tribe: VIKING,
         owner: SEAT,
@@ -1006,24 +1010,25 @@ describe('workforce module - the barracks and craft selections', () => {
     }
     spawnMen(sim, crew, BUILDER);
     sim.step();
-    const ctx = { ...ctxOf(sim), content };
-    const mints = [...sim.world.query(Building)]
+    const ctx = { ...ctxOf(sim, tick), content };
+    const buildings = [...sim.world.query(Building)]
       .filter((e) => sim.world.get(e, Building).buildingType === JOINERY_TYPE)
       .sort((a, b) => a - b);
     const men = [...sim.world.query(Settler)]
       .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
       .sort((a, b) => a - b);
-    const coins = supplyLines(content, DEFAULT_BUILD_ORDER).get(COIN);
-    if (coins === undefined) throw new Error('setup: coins take supply lines');
     return {
-      coins,
-      stockCoins: (units: number) => setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), COIN, units),
+      sim,
+      buildings,
+      /** Put `units` of the good into the headquarters, the seat's fetchable stock. */
+      stock: (good: number, units: number) =>
+        setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, units),
       hire(from: number, to: number): void {
         for (let i = from; i < to; i++) {
           const man = men[i];
-          const mint = mints[Math.floor(i / 2)];
-          if (man === undefined || mint === undefined) throw new Error('setup: too few men or mints');
-          sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: mint, jobPriority: [JOINER] });
+          const building = buildings[Math.floor(i / 2)];
+          if (man === undefined || building === undefined) throw new Error('setup: too few men or workshops');
+          sim.enqueueSetup({ kind: 'assignWorker', entity: man, building, jobPriority: [JOINER] });
         }
         sim.step();
       },
@@ -1035,6 +1040,15 @@ describe('workforce module - the barracks and craft selections', () => {
         return commands.flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
       },
     };
+  }
+
+  /** Three mints of four coiners' seats with `crew` builders; the coins' lines. */
+  function crewedMints(crew: number) {
+    const content = mintContent();
+    const mints = crewedWorkshops(content, 3, crew);
+    const coins = supplyLines(content, DEFAULT_BUILD_ORDER).get(COIN);
+    if (coins === undefined) throw new Error('setup: coins take supply lines');
+    return { ...mints, coins, stockCoins: (units: number) => mints.stock(COIN, units) };
   }
 
   it('turns a defence coiner to coins once the third mint brings the strength-amulet pair', () => {
@@ -1089,6 +1103,32 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([]);
     seat.stock(BOW_LONG, glut - CRAFT_GLUT_BAND_UNITS - 1);
     expect(seat.products()).toEqual([[BOW_LONG, SPEAR_WOODEN]]);
+  });
+
+  it('forges mail and plate at the fifth smithy, and long bows alone at the second armoury', () => {
+    const smithies = crewedWorkshops(
+      joineryRecastAs('work_smithy_01', [
+        { typeId: SWORD_LONG, id: 'sword_long' },
+        { typeId: SWORD_SHORT, id: 'sword_shord' },
+        { typeId: SPEAR_IRON, id: 'spear_iron' },
+        { typeId: ARMOUR_CHAIN, id: 'armor_chain' },
+        { typeId: ARMOUR_PLATE, id: 'armor_plate' },
+      ]),
+      5,
+      10,
+    );
+    smithies.hire(0, 10);
+    expect(smithies.products().slice(8)).toEqual([[ARMOUR_CHAIN], [ARMOUR_PLATE]]);
+    const armouries = crewedWorkshops(
+      joineryRecastAs('work_armory_01', [
+        { typeId: BOW_LONG, id: 'bow_long' },
+        { typeId: SPEAR_WOODEN, id: 'spear_wooden' },
+      ]),
+      2,
+      4,
+    );
+    armouries.hire(0, 4);
+    expect(armouries.products()).toEqual([[BOW_LONG, SPEAR_WOODEN], [BOW_LONG], [BOW_LONG], [BOW_LONG]]);
   });
 
   it('turns the first tailor to leather armour while the shoes pile up, and back once they are worn down', () => {

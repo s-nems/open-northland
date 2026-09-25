@@ -89,21 +89,21 @@ export const SHORT_PRODUCT_SEATS = 2;
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
  * runs its main lines. Whatever the lists say, a product the build order runs short of comes first
- * ({@link tuneCraftSelections}). The smithies' eight seats open on plate armour and long swords, then add
- * the iron spear, whose wooden shaft the first armourer makes between his long bows, and mail; the last
- * seat forges the short swords only the strength amulet takes. One druid in eight boils holy oil (the
- * first, since the big potion waits on herbs the later herb hut grows). The first two mints' four coiners
- * work one on coins and three on defence amulets; once a fifth joins at the third mint, the crew splits two
- * each over coins, defence and strength amulets. While the druids' coins run short, one or two amulet
- * makers turn to coins as well ({@link shortFirst}). Both joiners make iron tools and turn to furniture only
- * while the tools pile up. The first potter works bricks and tiles and the second crockery, which doubles a
- * stocked home's food, until it piles up; a short building material takes the crockery seat, and both
- * potters turn to crockery while bricks and tiles lie at their glut lines. The first tailor sews shoes and
- * the second leather armour, each turning to the other's good while his own piles up, as the armour does
- * once plate armour has come in; the small tailor's one man sews shoes, and leather armour meanwhile. The
- * first armourer works long bows and wooden spears, dropping whichever has piled up so the other, the spear
- * the smithy's iron spear needs or the bow, gets his whole time. Bakers bake only bread and breeders keep
- * only cattle.
+ * ({@link tuneCraftSelections}). The smithies' seats open on plate armour and long swords, then add the iron
+ * spear, whose wooden shaft the first armourer makes between his long bows, and mail; the eighth seat forges
+ * the short swords only the strength amulet takes, and the fifth smithy's two forge mail and plate, which
+ * the late game runs out of. One druid in eight boils holy oil for the temple and the rest brew the big
+ * potion. The first two mints' four coiners work one on coins and three on defence amulets; once a fifth
+ * joins at the third mint, the crew splits two each over coins, defence and strength amulets. While the
+ * druids' coins run short, one or two amulet makers turn to coins as well ({@link shortFirst}). Both joiners
+ * make iron tools and turn to furniture only while the tools pile up. The first potter works bricks and
+ * tiles and the second crockery, which doubles a stocked home's food, until it piles up; a short building
+ * material takes the crockery seat, and both potters turn to crockery while bricks and tiles lie at their
+ * glut lines. The first tailor sews shoes and the second leather armour, each turning to the other's good
+ * while his own piles up, as the armour does once plate armour has come in; the small tailor's one man sews
+ * shoes, and leather armour meanwhile. The first armourer works long bows and wooden spears, dropping
+ * whichever has piled up so the other, the spear the smithy's iron spear needs or the bow, gets his whole
+ * time; every other armourer makes long bows only. Bakers bake only bread and breeders keep only cattle.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT] },
@@ -139,10 +139,17 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       ['sword_long'],
       ['armor_chain'],
       ['sword_shord'],
+      ['armor_chain'],
+      ['armor_plate'],
     ],
   },
   work_armory_01: {
-    seats: [{ goods: ['bow_long', 'spear_wooden'], glut: { bow_long: 20, spear_wooden: 20 } }, ['bow_long']],
+    seats: [
+      { goods: ['bow_long', 'spear_wooden'], glut: { bow_long: 20, spear_wooden: 20 } },
+      ['bow_long'],
+      ['bow_long'],
+      ['bow_long'],
+    ],
   },
   work_druid_01: {
     seats: [
