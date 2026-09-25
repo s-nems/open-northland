@@ -34,6 +34,7 @@ import {
 } from '../../src/systems/palisades/reservation.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
+import { isLoosePile } from '../../src/systems/stores/capacity.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -322,6 +323,15 @@ describe('palisades', () => {
     // A repair swing restores the record's readable gain.
     expect(repairStructure(sim.world, ctxOf(sim), wall, sim.world.create())).toBe(true);
     expect(sim.world.get(wall, Health).hitpoints).toBe(93);
+  });
+
+  it('keeps its construction stock apart from the loose heaps on the ground', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: WALL.typeId, x: 4, y: 4, tribe: 0, owner: 0 });
+    sim.step();
+    const wall = onlyPalisade(sim);
+    expect(sim.world.has(wall, Stockpile)).toBe(true);
+    expect(isLoosePile(sim.world, wall)).toBe(false);
   });
 
   it('drops the damage mark once the wall is whole again', () => {
