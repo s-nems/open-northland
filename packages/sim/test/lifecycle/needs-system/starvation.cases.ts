@@ -8,6 +8,7 @@ import {
   CHILD_AGE_TICKS,
   CHILD_MALE,
   HUMAN_HITPOINTS,
+  isNearDeath,
   REGENERATION_HITPOINTS_PER_TICK,
   STARVATION_HITPOINTS_PER_TICK,
 } from '../../../src/systems/index.js';
@@ -157,5 +158,16 @@ describe('needsSystem - healing (a fed settler regains hitpoints)', () => {
     // The setup command applies on the first tick, before the needs pass.
     expect(pool(sim, fed)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
     expect(pool(sim, pinned)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
+  });
+});
+
+describe('isNearDeath - the line a dying warning reads', () => {
+  it('holds from 720 of 5000 down to 1, and keeps the same share of a larger pool', () => {
+    expect(isNearDeath(720, HUMAN_HITPOINTS)).toBe(true);
+    expect(isNearDeath(721, HUMAN_HITPOINTS)).toBe(false);
+    expect(isNearDeath(1, HUMAN_HITPOINTS)).toBe(true);
+    expect(isNearDeath(0, HUMAN_HITPOINTS)).toBe(false); // dead, not dying
+    expect(isNearDeath(2880, 20_000)).toBe(true);
+    expect(isNearDeath(2881, 20_000)).toBe(false);
   });
 });

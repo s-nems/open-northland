@@ -36,10 +36,6 @@ const NO_MESSAGES: readonly RaisedMessage[] = [];
 /** Hunger pinned at the top of the bar is starvation. */
 const STARVING_HUNGER: number = ONE;
 
-/** The starving settler is close enough to death to warn about once its pool is down to a tenth.
- *  Approximation on the sim's own starvation beat, which leaves about twenty seconds from there. */
-const DYING_HEALTH_DIVISOR = 10;
-
 /** Atomics that occupy a settler without being work, such as a paired chat. */
 const EFFECTLESS_ATOMICS: ReadonlySet<AtomicEffect['kind']> = new Set<AtomicEffect['kind']>(['idle']);
 
@@ -147,12 +143,10 @@ class PostHistory {
   }
 }
 
-/** A starving settler whose pool has nearly run out; the sim bites it every few ticks until it dies. */
+/** A living settler whose pool has nearly run out. */
 function isDying(e: SnapshotEntity): boolean {
   const health = healthOf(e);
-  return (
-    health !== undefined && health.hitpoints > 0 && health.hitpoints * DYING_HEALTH_DIVISOR <= health.max
-  );
+  return health !== undefined && systems.isNearDeath(health.hitpoints, health.max);
 }
 
 /** The sim's own lost marker, so a lost settler's note is back after a reload; the sim event that raised
@@ -180,8 +174,9 @@ function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity): void {
 
 /**
  * A settler close to death, whatever brought it there. The original reads the hitpoint margin alone, so
- * a wounded fighter is warned about as loudly as a starving one. Approximation: it also asks whether the
- * settler has food on it to save itself with, which this sim gives no inventory slot for.
+ * a wounded fighter is warned about as loudly as a starving one, and holds the note back while the
+ * settler carries a healing draught. That check is left out here: a bearer drinks its draughts before
+ * falling to half its pool, so one near death has none left.
  */
 function raiseDying(raiser: MessageRaiser, e: SnapshotEntity): void {
   if (isDying(e)) raiser.settler(USER_MESSAGE_TYPE.willDie, e);

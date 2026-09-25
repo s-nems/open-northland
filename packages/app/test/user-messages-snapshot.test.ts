@@ -14,7 +14,9 @@ const ENEMY = 1;
 const WORKPLACE = 90;
 const SITE = 91;
 const WORKER_JOB = 7;
-const HEALTH_POOL = 300;
+const HEALTH_POOL = systems.HUMAN_HITPOINTS;
+/** The original's near-death line on a 5000 pool. */
+const NEAR_DEATH = 720;
 
 /** What a synthetic settler is doing, mapped onto the components the source reads. */
 type Doing = 'nothing' | 'work' | 'chat' | 'walk' | 'ordered' | 'guard' | 'indoors';
@@ -26,7 +28,7 @@ interface Actor {
   readonly hunger?: number;
   readonly fatigue?: number;
   readonly piety?: number;
-  /** Hitpoints left of a 300-point pool; absent leaves the settler without a Health component. */
+  /** Hitpoints left of the person pool; absent leaves the settler without a Health component. */
   readonly hitpoints?: number;
   readonly workplace?: number;
   /** A gatherer's flag yard, which stands in for a workplace. */
@@ -152,9 +154,10 @@ describe('user messages read off the snapshot', () => {
       source,
       snapshot(100, [
         { id: 1, hunger: ONE, hitpoints: HEALTH_POOL },
-        { id: 2, hunger: ONE, hitpoints: HEALTH_POOL / 10 },
+        { id: 2, hunger: ONE, hitpoints: NEAR_DEATH },
         { id: 3, hunger: ONE, hitpoints: 0 },
         { id: 4, hitpoints: 1 },
+        { id: 5, hitpoints: NEAR_DEATH + 1 },
       ]),
     );
     expect(out).toEqual([

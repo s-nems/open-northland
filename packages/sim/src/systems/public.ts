@@ -51,8 +51,9 @@ export {
 } from './footprint/resources.js';
 export { ADULT_AGE_TICKS, CHILD_AGE_TICKS, isChild, TICKS_PER_AGE_YEAR } from './lifecycle/ageclass.js';
 // The need levels the HUD marks its bars and bubbles against, so presentation cannot drift from the
-// level the drives fire at.
+// level the drives fire at, and the near-death line its warning reads.
 export {
+  isNearDeath,
   NEED_CRITICAL_THRESHOLD,
   NEED_DRIVE_THRESHOLD,
   NEED_OVERFILL_FLOOR,

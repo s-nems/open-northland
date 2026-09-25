@@ -15,6 +15,7 @@ export {
   carriesNeeds,
   chargeBarefootStep,
   chargeMilitaryPiety,
+  isNearDeath,
   NEED_INIT_SPREAD_UNITS,
   needsSystem,
   REGENERATION_HITPOINTS_PER_TICK,
