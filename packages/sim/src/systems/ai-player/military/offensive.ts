@@ -7,7 +7,7 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { seatBarracksOf } from '../base.js';
 import { campaignTarget, objectiveNode } from './campaign.js';
-import { fighterStrength, weaponMix } from './census.js';
+import { defendingStrength, fighterStrength, weaponMix } from './census.js';
 import { spokenFor } from './errand.js';
 import { formedUpAt, gatherAt, marchOrders, meleeCoreFor, musterAround, waveWorthy } from './muster.js';
 import { abandonWave, decideWave, peaceEndsAt } from './plan.js';
@@ -72,11 +72,11 @@ export function runOffensive(
     (e) => terrain.componentOf(entityNode(world, terrain, e)) === doorSide,
   ).length;
   // Both sides weighed whole, garrisons and men in a fight included, so a seat whose towers hold a third
-  // of its men is not benched by its own defence.
+  // of its men is not benched by its own defence; the target's posted men weigh what they kill.
   const targetOwner = ownerOf(world, target);
   const strength = {
     own: fighterStrength(world, ctx, player),
-    opposing: targetOwner === undefined ? 0 : fighterStrength(world, ctx, targetOwner),
+    opposing: targetOwner === undefined ? 0 : defendingStrength(world, ctx, targetOwner),
   };
   const charges = decideWave(
     world,

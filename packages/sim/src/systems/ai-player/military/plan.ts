@@ -41,22 +41,18 @@ export function waveBandAt(sincePeace: number): WaveBand {
   return { min: grow(OPENING_WAVE.min, LATE_WAVE.min), max: grow(OPENING_WAVE.max, LATE_WAVE.max) };
 }
 
-/** How much stronger than the seat's whole army the target's owner may be before no wave marches on him
- *  (authored): {@link OUTNUMBERED_NUMERATOR} / {@link OUTNUMBERED_DENOMINATOR}, an enemy half again as
- *  strong. Below it a wave's losses are a fair trade; past it the seat would feed its army to him. */
-export const OUTNUMBERED_NUMERATOR = 3;
-export const OUTNUMBERED_DENOMINATOR = 2;
-
-/** Two seats' fighter head counts, each whole: garrisons and men in a fight included on both sides. */
+/** The seat's whole fighter head count against the strength the target's owner defends with
+ *  (`census.ts` `defendingStrength`): garrisons and men in a fight included on both sides, his tower
+ *  posts weighed for the men they kill. */
 export interface Strength {
   readonly own: number;
   readonly opposing: number;
 }
 
-/** Whether the opposing fighters outnumber the seat's own past the {@link OUTNUMBERED_NUMERATOR} /
- *  {@link OUTNUMBERED_DENOMINATOR} ratio, compared by cross-multiplication so it stays in integers. */
+/** Whether the target's owner defends with more than the seat's whole army (authored): a wave marches
+ *  only from parity or better, since a tower-held settlement eats an army that merely matches it. */
 function outnumbered({ own, opposing }: Strength): boolean {
-  return opposing * OUTNUMBERED_DENOMINATOR > own * OUTNUMBERED_NUMERATOR;
+  return opposing > own;
 }
 
 /**
@@ -68,9 +64,10 @@ function outnumbered({ own, opposing }: Strength): boolean {
  * plan; only a loss does.
  *
  * Nothing marches while the target's owner {@link outnumbered} the seat by `strength`, not even on a spent
- * window: the band keeps gathering and the plan is kept. Both head counts are whole armies, the seat's own
- * beyond `mustered`, since a garrison defends what a wave would take and the seat's towers should not bench
- * the band at its door. A first strength judgement: a head count, blind to weapons, armour and experience.
+ * window: the band keeps gathering and the plan is kept. Both sides are whole armies, the seat's own beyond
+ * `mustered`, since a garrison defends what a wave would take and the seat's towers should not bench the
+ * band at its door. A first strength judgement: head counts and tower posts, blind to weapons, armour,
+ * amulets, potions and experience.
  */
 export function decideWave(
   world: World,

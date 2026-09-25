@@ -12,7 +12,7 @@ import {
   Weapon,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { towerPostFor } from '../../conflict/tower-post.js';
+import { isManningPost, towerPostFor } from '../../conflict/tower-post.js';
 import { attackerWeapon } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
 import { isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE, weaponClassOf } from '../../readviews/index.js';
@@ -63,25 +63,40 @@ export function takeCensus(world: World, ctx: SystemContext, player: number): Ar
  * settlement a wave would have to take. A fighter at zero hitpoints is a body awaiting removal, not a man.
  */
 export function fighterStrength(world: World, ctx: SystemContext, player: number): number {
-  let fighters = 0;
+  return armyStrength(world, ctx, player, 1);
+}
+
+/** What one fighter holding a tower post is worth to the army that must march into his reach (authored):
+ *  his post's boosted range and the wall around him let him kill several men before he falls. */
+export const TOWER_POST_STRENGTH = 3;
+
+/** The strength a wave meets when it marches on `player`: his live fighters, each man holding a tower post
+ *  weighed {@link TOWER_POST_STRENGTH}. */
+export function defendingStrength(world: World, ctx: SystemContext, player: number): number {
+  return armyStrength(world, ctx, player, TOWER_POST_STRENGTH);
+}
+
+function armyStrength(world: World, ctx: SystemContext, player: number, postedWeight: number): number {
+  let strength = 0;
   for (const e of ownedSettlers(world, player)) {
     if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
-    if ((world.tryGet(e, Health)?.hitpoints ?? 0) > 0) fighters++;
+    if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
+    strength += isManningPost(world, ctx, e) ? postedWeight : 1;
   }
-  return fighters;
+  return strength;
 }
 
 /**
- * The {@link fighterStrength} of the strongest player `player` holds an `enemy` stance toward, 0 when no
- * enemy fields anyone. One roster pass per enemy slot, so the cost is the enemies' people, the same order
- * as the campaign's target scan. Not fog-gated, like that scan; that the original's AI sees through the
- * fog too is unconfirmed.
+ * The {@link defendingStrength} of the strongest player `player` holds an `enemy` stance toward, 0 when no
+ * enemy fields anyone: the army the seat must raise to march on him at all. One roster pass per enemy
+ * slot, so the cost is the enemies' people, the same order as the campaign's target scan. Not fog-gated,
+ * like that scan; that the original's AI sees through the fog too is unconfirmed.
  */
 export function strongestEnemyStrength(world: World, ctx: SystemContext, player: number): number {
   let strongest = 0;
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (other === player || diplomacyStance(world, player, other) !== 'enemy') continue;
-    strongest = Math.max(strongest, fighterStrength(world, ctx, other));
+    strongest = Math.max(strongest, defendingStrength(world, ctx, other));
   }
   return strongest;
 }

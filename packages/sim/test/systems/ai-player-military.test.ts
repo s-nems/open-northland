@@ -35,9 +35,8 @@ import {
   LATE_WAVE,
   militaryModule,
   OPENING_WAVE,
-  OUTNUMBERED_DENOMINATOR,
-  OUTNUMBERED_NUMERATOR,
   RALLY_HOLD_RADIUS_NODES,
+  TOWER_POST_STRENGTH,
   takeCensus,
   WAVE_GATHER_TICKS,
   WAVE_MIN_SOLDIERS,
@@ -45,6 +44,7 @@ import {
   waveBandAt,
   weaponMix,
 } from '../../src/systems/ai-player/index.js';
+import { standsAtPost } from '../../src/systems/conflict/tower-post.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
@@ -87,6 +87,8 @@ const CERTAIN_WAVE = OPENING_WAVE.max;
 const EAGER_SEED = 7;
 /** A seed whose draw is the top of the band - that same group is held for a full one. */
 const PATIENT_SEED = 43;
+/** Ticks enough for an archer spawned a few nodes from a tower to walk in and take its post. */
+const POST_WALK_IN_TICKS = 200;
 /** A seed drawing a size inside the band, for the cases that grow a muster up to its draw. */
 const MIDDLE_SEED = 6;
 /** The size {@link MIDDLE_SEED} draws. */
@@ -437,12 +439,12 @@ describe('military module - the campaign', () => {
     expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
   });
 
-  it('holds a formed wave at the door while the enemy outnumbers the army, and sends it once he does not', () => {
+  it('holds a formed wave at the door while the enemy outnumbers the army, and sends it from parity', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
     const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
     const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
-    // The most fighters the enemy may field before the army is outnumbered.
-    const tolerated = Math.floor((WAVE_MIN_SOLDIERS * OUTNUMBERED_NUMERATOR) / OUTNUMBERED_DENOMINATOR);
+    // The most fighters the enemy may field before the army is outnumbered: as many as its own.
+    const tolerated = WAVE_MIN_SOLDIERS;
     const [fallen] = spawn(sim, tolerated + 1, { x: FOE_HQ.x - 20, y: FOE_HQ.y }, SPEARMAN, FOE);
     if (fallen === undefined) throw new Error('setup: no enemy fighter');
 
@@ -451,7 +453,30 @@ describe('military module - the campaign', () => {
     expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toEqual([]);
     expect(sim.world.has(barracks, MusterPlan)).toBe(true);
 
-    // One enemy fighter fewer and he is no longer half again as strong: the band goes in.
+    // One enemy fighter fewer and the armies match: the band goes in.
+    sim.world.destroy(fallen);
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+  });
+
+  it('weighs each fighter holding an enemy tower post as several men, so the band waits for a bigger army', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    // One archer walked into a tower beside a few men on foot: fewer heads than the band, more strength.
+    place(sim, TOWER_TYPE, { x: FOE_HQ.x - 30, y: FOE_HQ.y }, FOE);
+    const tower = buildingOfType(sim, TOWER_TYPE, FOE);
+    const [archer] = spawn(sim, 1, { x: FOE_HQ.x - 26, y: FOE_HQ.y }, BOWMAN, FOE);
+    if (archer === undefined) throw new Error('setup: no enemy archer');
+    sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
+    for (let i = 0; i < POST_WALK_IN_TICKS; i++) sim.step();
+    expect(standsAtPost(sim.world, archer)).toBe(tower);
+    const onFoot = WAVE_MIN_SOLDIERS - TOWER_POST_STRENGTH + 1;
+    expect(onFoot + 1).toBeLessThan(WAVE_MIN_SOLDIERS); // a head count would send the band
+    const [fallen] = spawn(sim, onFoot, { x: FOE_HQ.x - 20, y: FOE_HQ.y }, SPEARMAN, FOE);
+    if (fallen === undefined) throw new Error('setup: no enemy fighter');
+    expect(assaulting(sim, run(sim, PATIENT_SEED), foeHq)).toEqual([]);
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toEqual([]);
+
+    // One man on foot fewer and the post plus the rest match the band: the wave marches.
     sim.world.destroy(fallen);
     expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
   });
@@ -460,11 +485,11 @@ describe('military module - the campaign', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
     const rally = rallyOf(sim);
     const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
-    const tolerated = Math.floor((WAVE_MIN_SOLDIERS * OUTNUMBERED_NUMERATOR) / OUTNUMBERED_DENOMINATOR);
+    const tolerated = WAVE_MIN_SOLDIERS;
     spawn(sim, tolerated + 1, { x: FOE_HQ.x - 20, y: FOE_HQ.y }, SPEARMAN, FOE);
     expect(assaulting(sim, run(sim, PATIENT_SEED), foeHq)).toEqual([]);
 
-    // Two archers walled into a tower leave the band but not the army: seven men tolerate eight.
+    // Two archers walled into a tower leave the band but not the army: the army now matches the foe.
     place(sim, TOWER_TYPE, { x: rally.x - 30, y: rally.y }, SEAT);
     const tower = buildingOfType(sim, TOWER_TYPE, SEAT);
     for (const archer of spawn(sim, 2, { x: rally.x - 26, y: rally.y }, BOWMAN)) {

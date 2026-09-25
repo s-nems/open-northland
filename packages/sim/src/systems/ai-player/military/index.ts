@@ -17,7 +17,14 @@ import { runOffensive } from './offensive.js';
 import { outfitOrders } from './outfit.js';
 
 export { campaignTarget } from './campaign.js';
-export { type ArmyCensus, fighterWeaponClass, takeCensus, type WeaponMix, weaponMix } from './census.js';
+export {
+  type ArmyCensus,
+  fighterWeaponClass,
+  TOWER_POST_STRENGTH,
+  takeCensus,
+  type WeaponMix,
+  weaponMix,
+} from './census.js';
 export {
   enemyFire,
   THREAT_STAND_DOWN_MARGIN_NODES,
@@ -30,8 +37,6 @@ export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
 export {
   LATE_WAVE,
   OPENING_WAVE,
-  OUTNUMBERED_DENOMINATOR,
-  OUTNUMBERED_NUMERATOR,
   WAVE_GATHER_TICKS,
   WAVE_RAMP_TICKS,
   waveBandAt,
