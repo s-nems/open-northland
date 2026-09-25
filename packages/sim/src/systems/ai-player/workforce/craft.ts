@@ -91,9 +91,9 @@ export const SHORT_PRODUCT_SEATS = 2;
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
  * runs its main lines. Whatever the lists say, a product the build order runs short of comes first
  * ({@link tuneCraftSelections}). The smithies' seats open on plate armour and long swords, then add the iron
- * spear, whose wooden shaft the first armourer makes between his long bows, and mail; the eighth seat forges
- * the short swords only the strength amulet takes, and the fifth smithy's two forge mail and plate, which
- * the late game runs out of. One druid in eight boils holy oil for the temple and the rest brew the big
+ * spear, whose wooden shaft the first armourer makes between his long bows, and mail; five smithies' ten
+ * smiths forge three plate, two mail, two long swords, two iron spears, and one short sword, the weapon
+ * only the strength amulet takes. One druid in eight boils holy oil for the temple and the rest brew the big
  * potion. The first two mints' four coiners work one on coins and three on defence amulets; once a fifth
  * joins at the third mint, the crew splits two each over coins, defence and strength amulets. Coins short
  * for the druids take up to two amulet makers ({@link shortFirst}): in the opening under the short line
@@ -140,10 +140,10 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       ['armor_chain'],
       ['armor_plate'],
       ['sword_long'],
-      ['armor_chain'],
-      ['sword_shord'],
+      ['spear_iron'],
       ['armor_chain'],
       ['armor_plate'],
+      ['sword_shord'],
     ],
   },
   work_armory_01: {

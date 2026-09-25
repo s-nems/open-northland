@@ -1223,7 +1223,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([[BOW_LONG, SPEAR_WOODEN]]);
   });
 
-  it('forges mail and plate at the fifth smithy, and long bows alone at the second armoury', () => {
+  it('shares ten smiths over plate, mail, long swords, iron spears and one short sword; long bows alone at the second armoury', () => {
     const smithies = crewedWorkshops(
       joineryRecastAs('work_smithy_01', [
         { typeId: SWORD_LONG, id: 'sword_long' },
@@ -1236,7 +1236,12 @@ describe('workforce module - the barracks and craft selections', () => {
       10,
     );
     smithies.hire(0, 10);
-    expect(smithies.products().slice(8)).toEqual([[ARMOUR_CHAIN], [ARMOUR_PLATE]]);
+    const forged = smithies.products();
+    expect(forged.slice(0, 2)).toEqual([[ARMOUR_PLATE], [SWORD_LONG]]);
+    const count = (good: number) => forged.filter((seat) => seat.length === 1 && seat[0] === good).length;
+    expect([ARMOUR_PLATE, ARMOUR_CHAIN, SWORD_LONG, SPEAR_IRON, SWORD_SHORT].map(count)).toEqual([
+      3, 2, 2, 2, 1,
+    ]);
     const armouries = crewedWorkshops(
       joineryRecastAs('work_armory_01', [
         { typeId: BOW_LONG, id: 'bow_long' },
