@@ -150,19 +150,21 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'resource', good: 'gold' }],
     needsResources: ['gold'],
   },
-  {
-    kind: 'place',
-    building: 'work_druid_01',
-    count: 2,
-    near: [{ kind: 'building', id: 'work_well_00' }],
-    needsResources: ['mushroom', 'gold'],
-  },
+  // The herb hut comes first, beside a well, so its herbs are growing when the druids it draws beside it
+  // stand.
   {
     kind: 'place',
     building: 'work_herb_hut',
     count: 1,
-    near: [{ kind: 'building', id: 'work_druid_01' }],
+    near: [{ kind: 'building', id: 'work_well_00' }],
     ground: 'plantable',
+    needsResources: ['mushroom', 'gold'],
+  },
+  {
+    kind: 'place',
+    building: 'work_druid_01',
+    count: 2,
+    near: [{ kind: 'building', id: 'work_herb_hut' }],
     needsResources: ['mushroom', 'gold'],
   },
   { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
@@ -182,7 +184,6 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'stock_02', count: 3, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
-  { kind: 'place', building: 'home_level_04', count: 10 },
   // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom gatherer
   // to feed them.
   {
@@ -200,6 +201,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'building', id: 'work_druid_01' }],
     needsResources: ['mushroom', 'gold'],
   },
+  // The third brewery closes the list, beside the first two.
+  { kind: 'place', building: 'work_brewery', count: 3, near: [{ kind: 'building', id: 'work_brewery' }] },
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would

@@ -149,8 +149,8 @@ describe('build-order module (houseBuild)', () => {
 
     // Past the gate: the barracks, both bakery upgrades, then the late tail - the two outskirts warehouses,
     // the closing pair of level-2 bakeries, the second brewery and the third warehouse follow, with a
-    // tower wherever one lands outside the tower circles, the store coverage rests, and the denser tower
-    // ring closes the list. The home entries name `home_level_04`, a tier this
+    // tower wherever one lands outside the tower circles, the store coverage rests, the denser tower
+    // ring follows, and the third brewery closes the list. The home entries name `home_level_04`, a tier this
     // content set stops short of, so they skip here - the direct top-tier placement has its own test
     // below. The smithy and armory entries are absent from this fixture, so both skip.
     const barracks = nextPlacement(sim);
@@ -171,6 +171,7 @@ describe('build-order module (houseBuild)', () => {
       BAKERY_TOP_TYPE,
       BREWERY_TYPE,
       STOCK_TOP_TYPE,
+      BREWERY_TYPE,
     ]) {
       let next = nextPlacement(sim);
       // The tower coverage entry re-arms whenever a later building lands outside every tower circle.
