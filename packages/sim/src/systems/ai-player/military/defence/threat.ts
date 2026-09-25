@@ -110,12 +110,15 @@ export function seatRaiders(
   return raiders;
 }
 
+/** The weapon `e` fights with and its reach band, or null for an unarmed man. */
+function heldWeapon(world: World, ctx: SystemContext, e: Entity): ReturnType<typeof attackerWeapon> {
+  const settler = world.get(e, Settler);
+  return attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
+}
+
 /** The far reach of the weapon `e` fights with, 0 for an unarmed man. */
 function weaponReach(world: World, ctx: SystemContext, e: Entity): number {
-  const settler = world.get(e, Settler);
-  return (
-    attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId)?.maxRange ?? 0
-  );
+  return heldWeapon(world, ctx, e)?.maxRange ?? 0;
 }
 
 /**
@@ -135,10 +138,10 @@ export function enemyPosts(
     if (owner === undefined || owner === player || diplomacyStance(world, owner, player) !== 'enemy')
       continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0 || !isManningPost(world, ctx, e)) continue;
-    const reach = weaponReach(world, ctx, e);
-    if (reach === 0) continue;
+    const held = heldWeapon(world, ctx, e);
+    if (held === null || held.maxRange === 0) continue;
     const at = terrain.coordsOf(entityNode(world, terrain, e));
-    posts.push({ x: at.x, y: at.y, reach: garrisonReach({ minRange: 0, maxRange: reach }).maxRange });
+    posts.push({ x: at.x, y: at.y, reach: garrisonReach(held).maxRange });
   }
   return posts;
 }
