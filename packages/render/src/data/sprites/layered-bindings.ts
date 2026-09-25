@@ -77,6 +77,15 @@ export interface ResourceTypeBinding {
   readonly default: LayeredBobRef;
 }
 
+/** The original wall-post records, keyed by exact `[GfxLandscape]` index. Each list runs from the
+ *  shortest construction post to the completed full-height post. */
+export interface PalisadeBinding {
+  readonly byGfxIndex: Readonly<Record<number, readonly LayeredBobRef[]>>;
+  /** The source record order cycled by the two connection posts. */
+  readonly variantOrder?: readonly number[];
+  readonly default: LayeredBobRef;
+}
+
 /** Each frame's own offsets carry the pivot, so a board draws at the post's feet anchor. */
 export interface SignpostBinding {
   readonly post: LayeredBobRef;

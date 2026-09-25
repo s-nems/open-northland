@@ -79,6 +79,7 @@ export interface ToolWindowsDeps {
   readonly heldPaper: HeldPaperController;
   /** A building was picked for placement; `paper` is the plan the placement spends, when one is held. */
   readonly onPickBuilding: (typeId: number, paper?: Paper) => void;
+  readonly onPickPalisade?: (gfxIndex: number, label: string) => void;
 }
 
 export interface ToolWindows {
@@ -148,6 +149,11 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const menu = deps.constructionWindow({
     entries: deps.buildings,
     onPick: (typeId) => {
+      const entry = deps.buildings.find((building) => building.typeId === typeId);
+      if (entry?.placement?.kind === 'palisade') {
+        deps.onPickPalisade?.(entry.placement.gfxIndex, entry.label);
+        return;
+      }
       const paper = heldPaper.take();
       if (paper === null) deps.onPickBuilding(typeId);
       else deps.onPickBuilding(typeId, paper);

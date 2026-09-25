@@ -68,6 +68,80 @@ describe('resolveLayers - the animated building overlay is bounds-exempt', () =>
   });
 });
 
+describe('resolveLayers - connected palisades', () => {
+  const atlas: SpriteAtlas = {
+    width: 100,
+    height: 10,
+    frames: new Map([0, 1, 2, 10, 11, 12, 20, 21, 22].map(frame)),
+  };
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: {
+      settler: 1,
+      resource: 1,
+      building: 1,
+      palisade: {
+        variantOrder: [691, 692, 693],
+        byGfxIndex: {
+          691: [
+            { layer: 'wall', bob: 20 },
+            { layer: 'wall', bob: 10 },
+            { layer: 'wall', bob: 0 },
+          ],
+          692: [
+            { layer: 'wall', bob: 21 },
+            { layer: 'wall', bob: 11 },
+            { layer: 'wall', bob: 1 },
+          ],
+          693: [
+            { layer: 'wall', bob: 22 },
+            { layer: 'wall', bob: 12 },
+            { layer: 'wall', bob: 2 },
+          ],
+        },
+        default: { layer: 'wall', bob: 0 },
+      },
+    },
+    families: { wall: { source, atlas } },
+  };
+
+  it('draws the endpoint plus the two one-third posts, cycling source variants', () => {
+    const item: DrawItem = {
+      kind: 'palisade',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      gfxIndex: 691,
+      palisadePosts: [
+        { dx: 10, dy: 3, gfxIndex: 691, variantStep: 1 },
+        { dx: 20, dy: 6, gfxIndex: 691, variantStep: 2 },
+      ],
+    };
+    expect(
+      resolveLayers(sheet, item, 0)?.map((layer) => [layer.frame.x, layer.dx ?? 0, layer.dy ?? 0]),
+    ).toEqual([
+      [0, 0, 0],
+      [1, 10, 3],
+      [2, 20, 6],
+    ]);
+  });
+
+  it('uses the edge progress to keep connection posts at the lower construction height', () => {
+    const item: DrawItem = {
+      kind: 'palisade',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      gfxIndex: 691,
+      palisadePosts: [{ dx: 10, dy: 0, gfxIndex: 691, variantStep: 1, builtPct: 10 }],
+    };
+    expect(resolveLayers(sheet, item, 0)?.map((layer) => layer.frame.x)).toEqual([0, 21]);
+  });
+});
+
 describe('resolveLayers - construction reveal: per-pixel with time data, crop fallback without', () => {
   const atlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([frame(70), frame(85)]) };
   const times = { width: 100, height: 10, values: new Uint8Array(100 * 10) };

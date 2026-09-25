@@ -86,6 +86,7 @@ export const COMMAND_ISSUER: {
   debugSetNeeds: 'trusted',
   declareDiplomacy: 'seat',
   demolish: 'seat',
+  demolishPalisade: 'seat',
   demolishSignpost: 'seat',
   detachTradeHouse: 'seat',
   clearTradeImports: 'seat',
@@ -101,6 +102,7 @@ export const COMMAND_ISSUER: {
   payTribute: 'seat',
   placeBoat: 'trusted',
   placeBuilding: 'seat',
+  placePalisade: 'seat',
   placeResource: 'trusted',
   placeSignpost: 'seat',
   setAssistantCounter: 'seat',
@@ -119,7 +121,9 @@ export const COMMAND_ISSUER: {
   setPlayerPlacementTribes: 'trusted',
   setProfessionProgression: 'trusted',
   setRegeneration: 'seat',
+  repairPalisade: 'seat',
   setSharedVision: 'trusted',
+  setPalisadeGate: 'seat',
   setSignpostNavigation: 'trusted',
   setStance: 'seat',
   setTradeAgreement: 'seat',
@@ -158,6 +162,13 @@ export function ownedEnvelope(envelope: CommandEnvelope): CommandEnvelope {
 
 function seatOwned(command: PlayerCommand, player: number): PlayerCommand {
   const owned = clonePlainData(command);
+  if (owned.kind === 'placePalisade') {
+    return {
+      ...owned,
+      owner: owned.owner === undefined ? player : owned.owner,
+      underConstruction: owned.underConstruction === undefined ? true : owned.underConstruction,
+    };
+  }
   if (owned.kind !== 'placeBuilding') return owned;
   return {
     ...owned,

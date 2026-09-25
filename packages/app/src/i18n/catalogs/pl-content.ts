@@ -187,6 +187,11 @@ export const plContent = {
       summary:
         'Budowniczowie najpierw naprawiają spokojny dom, a bliższy, przy którym trwa walka, zostawiają na później.',
     },
+    palisade: {
+      title: 'Palisady i bramy',
+      summary:
+        'Budowniczowie wznoszą połączoną drewnianą palisadę, brama otwiera przez nią drogę, a wrogi żołnierz rozbija segment i tworzy drugi wyłom.',
+    },
     'tower-defence': {
       title: 'Obrona wieży',
       summary:

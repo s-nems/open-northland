@@ -15,6 +15,7 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   stump: 0,
   chest: 0, // a chest sits behind the settler opening it, like a resource node
   building: 1,
+  palisade: 1,
   grounddrop: 1,
   signpost: 1, // the post occludes like a small building
   stockpile: 2,

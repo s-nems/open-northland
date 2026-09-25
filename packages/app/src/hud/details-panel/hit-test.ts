@@ -30,6 +30,8 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
       return [...view.layout.workControls.map((c) => c.button), ...tradeButtons(view.layout.trade)];
     case 'signpost':
       return [view.layout.button];
+    case 'palisade':
+      return view.layout.buttons;
     case 'empty':
     case 'compact':
       return [];

@@ -11,6 +11,7 @@ import {
   familiesByHome,
   isBuilding,
   isFemale,
+  isPalisade,
   isSettler,
   isSignpost,
   needsRuleEnabled,
@@ -93,11 +94,22 @@ export interface SignpostPanelModel {
   readonly entityId: number;
 }
 
+export interface PalisadePanelModel {
+  readonly kind: 'palisade';
+  readonly entityId: number;
+  readonly health: ReturnType<typeof healthBar>;
+  readonly builtPct: number;
+  readonly gateOpen: boolean | null;
+  readonly underConstruction: boolean;
+  readonly repairing: boolean;
+}
+
 export type UnitPanelModel =
   | EmptyPanelModel
   | BuildingPanelModel
   | SettlerPanelModel
   | SignpostPanelModel
+  | PalisadePanelModel
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
@@ -122,16 +134,43 @@ export function buildUnitPanelModel(
   const settlerIds: number[] = [];
   const buildingIds: number[] = [];
   const signpostIds: number[] = [];
+  const palisadeIds: number[] = [];
   for (const id of selected) {
     const e = entityById(snapshot, id);
     if (e === undefined) continue;
     if (isSettler(e)) settlerIds.push(e.id);
     else if (isBuilding(e)) buildingIds.push(e.id);
     else if (isSignpost(e)) signpostIds.push(e.id);
+    else if (isPalisade(e)) palisadeIds.push(e.id);
   }
   settlerIds.sort((a, b) => a - b);
   buildingIds.sort((a, b) => a - b);
   signpostIds.sort((a, b) => a - b);
+  palisadeIds.sort((a, b) => a - b);
+
+  if (
+    settlerIds.length === 0 &&
+    buildingIds.length === 0 &&
+    signpostIds.length === 0 &&
+    palisadeIds.length === 1
+  ) {
+    const entityId = palisadeIds[0] as number;
+    const ent = entityById(snapshot, entityId);
+    if (ent === undefined) return { kind: 'empty' };
+    const palisade = ent.components.Palisade as
+      | { built?: unknown; gate?: unknown; repairing?: unknown }
+      | undefined;
+    const gate = palisade?.gate as { open?: unknown } | null | undefined;
+    return {
+      kind: 'palisade',
+      entityId,
+      health: healthBar(ent),
+      builtPct: pct(num(palisade?.built)),
+      gateOpen: gate === undefined || gate === null ? null : gate.open === true,
+      underConstruction: ent.components.UnderConstruction !== undefined,
+      repairing: palisade?.repairing === true,
+    };
+  }
 
   // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank it.
   if (settlerIds.length === 0 && buildingIds.length === 0 && signpostIds.length === 1) {

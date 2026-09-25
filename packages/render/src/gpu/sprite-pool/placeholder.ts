@@ -24,6 +24,7 @@ export const ARROW = {
 
 const KIND_COLOURS: Record<BoxKind, number> = {
   building: 0xc8a04a,
+  palisade: 0x8b5a2b,
   settler: 0xe8e0d0,
   fish: 0x5da9c9,
   resource: 0x2f7d32,

@@ -9,6 +9,7 @@ import {
   NeedOrder,
   OpenChestOrder,
   Owner,
+  Palisade,
   PlayerOrder,
   Position,
   removeCurrentAtomic,
@@ -86,7 +87,8 @@ export function attackUnit(
   const target = command.target;
   if (target === e) return; // a unit can't attack itself
   if (!world.isAlive(target) || !world.has(target, Health) || !world.has(target, Position)) return;
-  if (!world.has(target, Settler) && !world.has(target, Building)) return; // a unit or a besiegeable building
+  // A unit, a besiegeable building or a wall.
+  if (!world.has(target, Settler) && !world.has(target, Building) && !world.has(target, Palisade)) return;
 
   // Unlike moveUnit and setJob this still cancels a non-interruptible atomic, a remaining member of that
   // class.

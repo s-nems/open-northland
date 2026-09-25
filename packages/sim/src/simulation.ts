@@ -48,6 +48,7 @@ import { type SyncDigest, SyncDigestRecorder } from './simulation/sync-digest.js
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
 import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 import type { SystemContext } from './systems/context.js';
+import type { PlacementProbe } from './systems/footprint/index.js';
 import {
   type ConstructionPlot,
   constructionSitePlots,
@@ -65,6 +66,7 @@ import {
   type OpenTribute,
   openTributes,
 } from './systems/missions/index.js';
+import { palisadePlacementProbe } from './systems/palisades/index.js';
 import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
@@ -313,6 +315,12 @@ export class Simulation {
    */
   placementProbe(buildingType: number, player?: number, tribe?: number): PlayerPlacementProbe | null {
     return placementProbeFor(this.world, this.content, this.terrain, this.fog, buildingType, player, tribe);
+  }
+
+  /** Collision probe for one data-described palisade or gate graphic. Null for an unknown row or mapless sim. */
+  palisadeProbe(gfxIndex: number): PlacementProbe | null {
+    if (this.terrain === undefined) return null;
+    return palisadePlacementProbe(this.world, this.content, this.terrain, gfxIndex);
   }
 
   /**

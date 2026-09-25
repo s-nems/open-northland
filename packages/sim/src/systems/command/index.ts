@@ -15,6 +15,7 @@ import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 import { setHouseholdGoodUse } from '../family/home-quality.js';
+import { razePalisade } from '../lifecycle/cleanup.js';
 import { payTribute } from '../missions/tributes.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
 // `ai-player/assistant-counters.js` for the published-counter map, and routing that through the
@@ -54,6 +55,7 @@ import {
   unassignWorker,
   unequipGood,
 } from '../orders/index.js';
+import { placePalisade, repairPalisade, setPalisadeGate } from '../palisades/index.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
@@ -101,6 +103,18 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'placeResource':
       placeResource(world, ctx, command);
+      return;
+    case 'placePalisade':
+      placePalisade(world, ctx, command);
+      return;
+    case 'setPalisadeGate':
+      setPalisadeGate(world, ctx, command);
+      return;
+    case 'repairPalisade':
+      repairPalisade(world, command);
+      return;
+    case 'demolishPalisade':
+      razePalisade(world, ctx, command.palisade);
       return;
     case 'dropGood':
       dropGood(world, ctx, command);

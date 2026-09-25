@@ -29,6 +29,9 @@ export const LandscapeType = z.strictObject({
   allowedOnWater: z.boolean().default(false),
   /** `allowedoneverything` - this type sits on any layer (only the "void"/empty type). */
   allowedOnEverything: z.boolean().default(false),
+  /** `playeridallowed` - a player may own and alter a placed object of this logic type. The readable
+   * wall and gate rows set it; ordinary scenery omits it. */
+  playerIdAllowed: z.boolean().default(false),
   /**
    * Raw `transition` tuples in file order, captured verbatim. They drive the landscape lifecycle
    * (tree→trunk, mine depletion), but their field semantics are undecoded, so do not read meaning into

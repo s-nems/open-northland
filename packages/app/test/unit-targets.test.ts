@@ -3,7 +3,7 @@ import { components, type WorldSnapshot } from '@open-northland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
 import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
-import { fixedViewerSeat } from '../src/game/viewer-seat.js';
+import { fixedViewerSeat, overseerViewerSeat } from '../src/game/viewer-seat.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import { pickInRect, pickTopAt } from '../src/view/picking.js';
 import {
@@ -115,6 +115,33 @@ describe('unit-controls targets over the renderer frame', () => {
 
     const atWar = targetsOver(fullScene, (owner) => owner === ENEMY_PLAYER);
     expect(atWar.enemies().length).toBeGreaterThan(0);
+  });
+
+  it('includes a neutral palisade in explicit attack targets while an observer remains non-commanding', () => {
+    const neutral = {
+      id: 90_040,
+      components: {
+        Palisade: { gfxIndex: 691 },
+        Position: { x: 6 * ONE, y: 8 * ONE },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, neutral] };
+    const wall = { ref: neutral.id, kind: 'palisade', x: 200, y: 300, depth: 300 } satisfies DrawItem;
+
+    expect(
+      targetsOver([wall])
+        .enemies()
+        .map((target) => target.ref),
+    ).toEqual([neutral.id]);
+    const observer = createUnitTargets({
+      snapshot: () => snapshot,
+      viewer: overseerViewerSeat(HUMAN_PLAYER),
+      hostileToward: () => true,
+      drawnItems: () => [wall],
+      boundsOf: undefined,
+      pixelHitOf: undefined,
+    });
+    expect(observer.enemies()).toEqual([]);
   });
 
   it('reaches only what the frame drew - a culled unit is not clickable', () => {

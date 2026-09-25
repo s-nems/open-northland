@@ -20,9 +20,11 @@ import {
 } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
+import { spawnMapPalisades } from '../../content/map-palisades.js';
 import { buildScriptLandscapeTerrain } from '../../content/script-landscape.js';
 import { playerTribe } from '../../game/map-roster.js';
 import { setupPlacementTribes } from '../../game/placement-tribes.js';
+import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   mapResourceObjectNames,
   resolveWorldContent,
@@ -105,7 +107,7 @@ const TRIBES_WITHOUT_STRATEGIC_AI: ReadonlySet<number> = new Set([WERESNAKE_TRIB
 
 /** Session rules and visibility are applied before the briefing can pause the world. */
 export function buildMapWorld(options: MapWorldOptions): MapWorld {
-  const terrain = collisionTerrain(options.map, options.ir, options.script?.missions !== undefined);
+  const terrain = collisionTerrain(options.map, options.ir);
   const { sim, kind } = runWorld(options, terrain);
   setupPlacementTribes(sim, options.playerRoster);
   applySessionRules(sim, options);
@@ -129,13 +131,9 @@ function enableScript(sim: Simulation, options: MapWorldOptions): void {
 
 /** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose
  *  footprints unblock when felled. */
-function collisionTerrain(
-  map: TerrainMapFile | null,
-  ir: ContentIr | null,
-  scripted: boolean,
-): TerrainMap | null {
+function collisionTerrain(map: TerrainMapFile | null, ir: ContentIr | null): TerrainMap | null {
   if (map === null) return null;
-  if (scripted && ir !== null) return buildScriptLandscapeTerrain(map, ir);
+  if (ir !== null) return buildScriptLandscapeTerrain(map, ir);
   return ir === null
     ? halfCellMapFromCells({
         ...map,
@@ -217,7 +215,7 @@ export interface RestoredMapWorld {
  * paths to the same resolution.
  */
 export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): RestoredMapWorld {
-  const terrain = collisionTerrain(options.map, options.ir, options.script?.missions !== undefined);
+  const terrain = collisionTerrain(options.map, options.ir);
   if (terrain === null) {
     const demo = {
       ...options.content,
@@ -258,6 +256,10 @@ function spawnHarvestables(
   const fields = spawnMapFields(sim, map.objects, ir);
   const chests = spawnMapChests(sim, map.objects, ir);
   const goods = spawnMapGroundGoods(sim, map.objects, ir);
+  const roster = options.playerRoster === undefined ? null : { players: options.playerRoster };
+  const palisades = spawnMapPalisades(sim, map.objects, ir, (owner) =>
+    owner === undefined ? PRIMARY_TRIBE : playerTribe(roster, owner),
+  );
   const bushes =
     options.berryBushes === false ? [] : [...spawnMapBerryBushes(sim, map.objects, ir).placementByEntity];
   return {
@@ -266,6 +268,7 @@ function spawnHarvestables(
       ...fields.retiredPlacements,
       ...chests.placementByEntity.values(),
       ...goods.placementByEntity.values(),
+      ...palisades,
     ],
   };
 }

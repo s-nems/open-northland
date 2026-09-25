@@ -3,6 +3,7 @@ import { DECOR_BINDING_KEY, type SpriteBindings } from './bindings.js';
 import {
   resolveBuildingDraw,
   resolveCraftFxDraw,
+  resolvePalisadeDraw,
   resolveResourceDraw,
   resolveSignpostDraw,
   resolveStockpileDraw,
@@ -41,6 +42,8 @@ export function resolveSpriteBobId(
         : resolveSettlerBobId(bindings.settler, item, tick, gaitClock);
     case 'building':
       return bindings.building === undefined ? null : resolveBuildingDraw(bindings.building, item).bob;
+    case 'palisade':
+      return bindings.palisade === undefined ? null : resolvePalisadeDraw(bindings.palisade, item).bob;
     case 'resource':
     case 'stump':
     case 'berrybush':

@@ -12,6 +12,40 @@ function readBuildingTribe(components: Readonly<Record<string, unknown>>): numbe
   return readNumField(components, 'Building', 'tribe');
 }
 
+function readPalisadeGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
+  return readNumField(components, 'Palisade', 'gfxIndex');
+}
+
+/**
+ * A wall post's visible source-state percentage. Wall art is a durability ladder: finished damaged
+ * posts descend with Health, while an unfinished site also cannot appear further along than its build
+ * progress. `undefined` means the full-height, full-health frame.
+ */
+export function readPalisadeStatePct(components: Readonly<Record<string, unknown>>): number | undefined {
+  const palisade = components.Palisade as { built?: unknown } | undefined;
+  const builtPct =
+    palisade !== undefined &&
+    typeof palisade.built === 'number' &&
+    Number.isFinite(palisade.built) &&
+    palisade.built < ONE
+      ? clamp(Math.floor((palisade.built * 100) / ONE), 0, 99)
+      : undefined;
+  const health = components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
+  const hpPct =
+    health !== undefined &&
+    typeof health.hitpoints === 'number' &&
+    typeof health.max === 'number' &&
+    Number.isFinite(health.hitpoints) &&
+    Number.isFinite(health.max) &&
+    health.max > 0 &&
+    health.hitpoints < health.max
+      ? clamp(Math.floor((health.hitpoints * 100) / health.max), 0, 99)
+      : undefined;
+  if (builtPct === undefined) return hpPct;
+  if (hpPct === undefined) return builtPct;
+  return Math.min(builtPct, hpPct);
+}
+
 /**
  * An under-construction building's progress as a whole percent (0..99), or `undefined` when it is
  * finished, unreadable, or upgrading - an upgrade reads {@link readUpgradePct} instead, so the old-tier
@@ -172,7 +206,7 @@ export function copyStaticFields(target: StaticDrawFields, source: StaticDrawFie
  */
 export function assignStaticFields(
   target: StaticDrawFields,
-  kind: 'building' | 'resource' | 'stump' | 'chest' | 'stockpile',
+  kind: 'building' | 'palisade' | 'resource' | 'stump' | 'chest' | 'stockpile',
   components: Readonly<Record<string, unknown>>,
 ): void {
   switch (kind) {
@@ -182,6 +216,13 @@ export function assignStaticFields(
       const tribe = readBuildingTribe(components);
       if (tribe !== undefined) target.tribe = tribe;
       const builtPct = readBuiltPct(components);
+      if (builtPct !== undefined) target.builtPct = builtPct;
+      return;
+    }
+    case 'palisade': {
+      const gfxIndex = readPalisadeGfxIndex(components);
+      if (gfxIndex !== undefined) target.gfxIndex = gfxIndex;
+      const builtPct = readPalisadeStatePct(components);
       if (builtPct !== undefined) target.builtPct = builtPct;
       return;
     }

@@ -23,6 +23,7 @@ export * from './mission-presentation.js';
 export * from './movement.js';
 export * from './needs.js';
 export * from './ownership.js';
+export * from './palisade.js';
 export * from './papers.js';
 export * from './player-placement.js';
 export * from './relations.js';

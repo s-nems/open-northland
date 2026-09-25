@@ -5,6 +5,7 @@ import {
   Building,
   CurrentAtomic,
   Equipment,
+  Palisade,
   type SettlerIdentity,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -78,12 +79,17 @@ function withReach(weapon: WeaponType): { minRange: number; maxRange: number; we
  *  {@link Armor} tier without falling back to it, and protects regardless of `degreeOfUse` (armor never
  *  wears). */
 export function targetMaterial(world: World, ctx: SystemContext, target: Entity): number {
-  if (world.has(target, Building)) return ARMOR_MATERIAL.HOUSE; // vs-building damage column
+  if (world.has(target, Building) || world.has(target, Palisade)) return ARMOR_MATERIAL.HOUSE;
   const worn = world.tryGet(target, Equipment)?.armor;
   if (worn != null) return armorMaterialForGood(ctx.content, worn.goodType) ?? ARMOR_MATERIAL.NONE;
   const armor = world.tryGet(target, Armor);
   if (armor === undefined) return ARMOR_MATERIAL.NONE; // bare target - the unarmored column
   return armorMaterialForClass(ctx.content, armor.armorClass);
+}
+
+/** Landscapes store durability in 0..100 valency and receive the integer hundreds of HOUSE damage. */
+export function damageVsTarget(world: World, target: Entity, damage: number): number {
+  return world.has(target, Palisade) ? Math.trunc(Math.max(0, damage) / 100) : damage;
 }
 
 /** What one landed blow of a weapon does to a target of one armor material: the resolved damage column

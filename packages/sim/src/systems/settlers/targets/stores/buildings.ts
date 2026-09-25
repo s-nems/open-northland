@@ -1,9 +1,10 @@
 import { PRAYER_SITE } from '@open-northland/data';
-import { Building, ownerOf, ownersCompatible, sameSideAs } from '../../../../components/index.js';
+import { ownerOf, ownersCompatible, sameSideAs } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { hexDistanceBetween } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import { constructionTribeOf } from '../../../stores/index.js';
 import type { TargetBands } from '../bands.js';
 import { ACCEPT_ALL, type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
@@ -73,7 +74,7 @@ export function nearestBuilderSite(
     index.nearest(
       here,
       (e) =>
-        world.get(e, Building).tribe === tribe &&
+        constructionTribeOf(world, e) === tribe &&
         ownersCompatible(owner, ownerOf(world, e)) &&
         avoidSite?.(e) !== true &&
         acceptsSite(e)

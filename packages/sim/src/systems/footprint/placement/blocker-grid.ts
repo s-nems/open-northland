@@ -4,7 +4,15 @@ import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { type LandscapeBlocks, landscapeBlocks } from '../../landscape/view.js';
 import { type BlockerJournal, startBlockerJournal } from './blocker-journal.js';
-import { type BlockerVisit, BUILDING_ZONE, EXCLUSION, eachBlockerCell, OBSTACLE } from './blockers.js';
+import {
+  type BlockerVisit,
+  BUILDING_ZONE,
+  EXCLUSION,
+  eachBlockerCell,
+  OBSTACLE,
+  PALISADE_BODY,
+  PALISADE_ZONE,
+} from './blockers.js';
 
 // The incrementally-maintained building-placement grid - the per-world count grid ./building.ts probes,
 // over the shared replay of ./blocker-journal.ts, with its landscape layer, rebuild and coherence verifier.
@@ -26,12 +34,16 @@ export interface PlacementGrid {
   readonly terrain: TerrainGraph;
   readonly obstacle: Uint16Array;
   readonly exclusion: Uint16Array;
+  readonly palisadeBody: Uint16Array;
+  readonly palisadeZone: Uint16Array;
 }
 
 /** One entity's stamped slots per channel. */
 interface StampedSlots {
   readonly obstacle: readonly number[];
   readonly exclusion: readonly number[];
+  readonly palisadeBody: readonly number[];
+  readonly palisadeZone: readonly number[];
 }
 
 /** The scripted landscape layer the grid currently holds: the blocks view it last applied (a read
@@ -67,7 +79,13 @@ const gridMemo = new WeakMap<World, IncrementalGrid>();
 
 function emptyGrid(terrain: TerrainGraph): PlacementGrid {
   const size = terrain.width * terrain.height;
-  return { terrain, obstacle: new Uint16Array(size), exclusion: new Uint16Array(size) };
+  return {
+    terrain,
+    obstacle: new Uint16Array(size),
+    exclusion: new Uint16Array(size),
+    palisadeBody: new Uint16Array(size),
+    palisadeZone: new Uint16Array(size),
+  };
 }
 
 /** `delta` onto every listed slot. Slots are captured in bounds, so the `?? 0` fallback that
@@ -79,6 +97,8 @@ function addCounts(counts: Uint16Array, slots: Iterable<number>, delta: number):
 function applySlots(grid: PlacementGrid, slots: StampedSlots, delta: number): void {
   addCounts(grid.obstacle, slots.obstacle, delta);
   addCounts(grid.exclusion, slots.exclusion, delta);
+  addCounts(grid.palisadeBody, slots.palisadeBody, delta);
+  addCounts(grid.palisadeZone, slots.palisadeZone, delta);
 }
 
 function applyLandscapeLayer(grid: PlacementGrid, layer: LandscapeLayer, delta: number): void {
@@ -123,12 +143,29 @@ function captureSlots(grid: PlacementGrid, run: (visit: BlockerVisit) => void): 
   const h = grid.terrain.height;
   const obstacle: number[] = [];
   const exclusion: number[] = [];
+  const palisadeBody: number[] = [];
+  const palisadeZone: number[] = [];
   run((x, y, channel) => {
-    if (channel !== OBSTACLE && channel !== EXCLUSION && channel !== BUILDING_ZONE) return;
+    if (
+      channel !== OBSTACLE &&
+      channel !== EXCLUSION &&
+      channel !== BUILDING_ZONE &&
+      channel !== PALISADE_BODY &&
+      channel !== PALISADE_ZONE
+    )
+      return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never stamped (see PlacementGrid)
-    (channel === EXCLUSION ? exclusion : obstacle).push(y * w + x);
+    const target =
+      channel === EXCLUSION
+        ? exclusion
+        : channel === PALISADE_BODY
+          ? palisadeBody
+          : channel === PALISADE_ZONE
+            ? palisadeZone
+            : obstacle;
+    target.push(y * w + x);
   });
-  return { obstacle, exclusion };
+  return { obstacle, exclusion, palisadeBody, palisadeZone };
 }
 
 function rebuildGrid(
@@ -140,6 +177,8 @@ function rebuildGrid(
   const grid = reuse?.grid ?? emptyGrid(terrain);
   grid.obstacle.fill(0);
   grid.exclusion.fill(0);
+  grid.palisadeBody.fill(0);
+  grid.palisadeZone.fill(0);
   const landscape = liveLandscapeLayer(world, terrain);
   applyLandscapeLayer(grid, landscape, STAMP);
   return {
@@ -218,9 +257,23 @@ function stampBlockerGrid(world: World, content: ContentSet, grid: PlacementGrid
   const h = grid.terrain.height;
   applyLandscapeLayer(grid, liveLandscapeLayer(world, grid.terrain), STAMP);
   eachBlockerCell(world, content, (x, y, channel) => {
-    if (channel !== OBSTACLE && channel !== EXCLUSION && channel !== BUILDING_ZONE) return;
+    if (
+      channel !== OBSTACLE &&
+      channel !== EXCLUSION &&
+      channel !== BUILDING_ZONE &&
+      channel !== PALISADE_BODY &&
+      channel !== PALISADE_ZONE
+    )
+      return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never stamped (see PlacementGrid)
-    const counts = channel === EXCLUSION ? grid.exclusion : grid.obstacle;
+    const counts =
+      channel === EXCLUSION
+        ? grid.exclusion
+        : channel === PALISADE_BODY
+          ? grid.palisadeBody
+          : channel === PALISADE_ZONE
+            ? grid.palisadeZone
+            : grid.obstacle;
     const slot = y * w + x;
     counts[slot] = (counts[slot] ?? 0) + STAMP;
   });
@@ -237,9 +290,16 @@ function verifyGridMemo(world: World, content: ContentSet, terrain: TerrainGraph
   state.scratch = fresh;
   fresh.obstacle.fill(0);
   fresh.exclusion.fill(0);
+  fresh.palisadeBody.fill(0);
+  fresh.palisadeZone.fill(0);
   stampBlockerGrid(world, content, fresh);
   for (let i = 0; i < fresh.obstacle.length; i++) {
-    if (state.grid.obstacle[i] === fresh.obstacle[i] && state.grid.exclusion[i] === fresh.exclusion[i]) {
+    if (
+      state.grid.obstacle[i] === fresh.obstacle[i] &&
+      state.grid.exclusion[i] === fresh.exclusion[i] &&
+      state.grid.palisadeBody[i] === fresh.palisadeBody[i] &&
+      state.grid.palisadeZone[i] === fresh.palisadeZone[i]
+    ) {
       continue;
     }
     return [

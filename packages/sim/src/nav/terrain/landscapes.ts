@@ -35,6 +35,15 @@ export interface ScriptLandscapeType {
    *  holding its level in units, drawn from the goods sheet rather than the static landscape layer. The
    *  slug resolves against the world's content when the heap is laid. */
   readonly good?: { readonly goodId: string };
+  /** A player-buildable wooden wall record. `maxHitpoints` is the readable logic type's maximum valency;
+   * `repairPerStrike` is its positive repair transition delta. Both stay in data rather than id branches. */
+  readonly wall?: {
+    readonly logicType: number;
+    readonly maxHitpoints: number;
+    readonly repairPerStrike: number;
+    readonly construction: readonly { readonly goodType: number; readonly amount: number }[];
+    readonly gate?: { readonly open: boolean; readonly counterpartGfxIndex: number };
+  };
 }
 
 export interface ScriptLandscapePlacement {

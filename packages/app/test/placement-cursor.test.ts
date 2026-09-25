@@ -32,6 +32,7 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
     },
     canPlaceAt: () => true,
     canPlaceSignpostAt: () => true,
+    canPlacePalisadeAt: () => true,
     localPlayer: LOCAL_PLAYER,
     placementTribe: SARACEN,
     ...over,
@@ -126,6 +127,22 @@ describe('placement cursor', () => {
       overlay: null,
       ghost: { kind: 'building', col: TILE.col, row: TILE.row, buildingType: HOUSE, tribe: SARACEN },
     });
+  });
+
+  it('floats a palisade ghost over an accepted node without scanning another placement band', () => {
+    const f = frame({ palisadeGfxIndex: 691, signpostActive: true });
+
+    expect(f.cursor()).toEqual({
+      overlay: null,
+      ghost: { kind: 'palisade', col: TILE.col, row: TILE.row, gfxIndex: 691 },
+    });
+    expect(f.signpostProbes()).toBe(0);
+  });
+
+  it('hides a palisade ghost over a rejected node', () => {
+    const f = frame({ palisadeGfxIndex: 696, canPlacePalisadeAt: () => false });
+
+    expect(f.cursor()).toEqual({ overlay: null, ghost: null });
   });
 
   it('drops the signpost ghost when its band probe has no frame to draw', () => {

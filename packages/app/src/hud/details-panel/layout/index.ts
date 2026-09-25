@@ -1,4 +1,5 @@
 import type { Rect } from '../../geometry.js';
+import type { PalisadePanelModel } from '../model/index.js';
 import type { BuildingLayout, ButtonHit } from './building.js';
 import type { SettlerLayout } from './settler.js';
 import { mapTradeLayout } from './settler-trade.js';
@@ -54,7 +55,16 @@ export interface SignpostLayout {
   readonly button: ButtonHit;
 }
 
-export type DetailsLayout = BuildingLayout | SettlerLayout | CompactLayout | SignpostLayout;
+export interface PalisadeLayout {
+  readonly kind: 'palisade';
+  readonly panel: Rect;
+  readonly section: SectionRect;
+  readonly health: Rect;
+  readonly progress: Rect | null;
+  readonly buttons: readonly ButtonHit[];
+}
+
+export type DetailsLayout = BuildingLayout | SettlerLayout | CompactLayout | SignpostLayout | PalisadeLayout;
 
 /** One body row: the selection count lives in the headline, the body is the controls hint. */
 const COMPACT_ROWS = 1;
@@ -133,6 +143,16 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       button: { ...layout.button, rect: fn(layout.button.rect) },
     };
   }
+  if (layout.kind === 'palisade') {
+    return {
+      ...layout,
+      panel: fn(layout.panel),
+      section: sec(layout.section),
+      health: fn(layout.health),
+      progress: layout.progress === null ? null : fn(layout.progress),
+      buttons: layout.buttons.map((button) => ({ ...button, rect: fn(button.rect) })),
+    };
+  }
   return { ...layout, panel: fn(layout.panel), section: sec(layout.section) };
 }
 
@@ -168,4 +188,44 @@ export function layoutSignpost(
     },
   };
   return { kind: 'signpost', panel, section, button };
+}
+
+export function layoutPalisade(
+  model: PalisadePanelModel,
+  screen: { readonly width: number; readonly height: number },
+  s: number,
+): PalisadeLayout {
+  const w = Math.round(PANEL_W * s);
+  const rowH = Math.round(ROW_H * s);
+  const pad = Math.round(SIGNPOST_BUTTON_PAD * s);
+  const buttonH = Math.round(SIGNPOST_BUTTON_H * s);
+  const actions = [
+    ...(model.gateOpen === null ? [] : (['toggle-gate'] as const)),
+    'repair-palisade' as const,
+    'demolish-palisade' as const,
+  ];
+  const bodyH = rowH * 2 + actions.length * buttonH + pad * Math.max(0, actions.length - 1);
+  const probe = sectionAt(0, 0, w, bodyH, s);
+  const panel = panelRect(probe.frame.h, screen, s);
+  const section = sectionAt(panel.x, panel.y, w, bodyH, s);
+  const health = { x: section.body.x, y: section.body.y + 2, w: section.body.w, h: Math.max(4, rowH - 6) };
+  const progress =
+    model.underConstruction || model.repairing
+      ? { x: section.body.x, y: section.body.y + rowH, w: section.body.w, h: rowH }
+      : null;
+  const buttonY = section.body.y + rowH * 2;
+  const buttons = actions.map((action, index) => ({
+    action,
+    enabled:
+      action === 'demolish-palisade' ||
+      (!model.underConstruction &&
+        (action !== 'repair-palisade' || (!model.repairing && (model.health?.pct ?? 100) < 100))),
+    rect: {
+      x: section.body.x,
+      y: buttonY + index * (buttonH + pad),
+      w: section.body.w,
+      h: buttonH,
+    },
+  }));
+  return { kind: 'palisade', panel, section, health, progress, buttons };
 }

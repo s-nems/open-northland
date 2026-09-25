@@ -21,6 +21,7 @@ export interface SceneBuild {
   readonly posByRef: ReadonlyMap<number, { x: number; y: number }>;
   readonly elevation: ElevationField | undefined;
   readonly playerColourOf: ((player: number) => number) | undefined;
+  readonly palisadePosts: ReadonlyMap<number, readonly import('./draw-item.js').PalisadePostDraw[]>;
 }
 
 export function assembleItem(
@@ -54,6 +55,12 @@ export function assembleItem(
     case 'building':
       assignBuildingFields(item, components);
       break;
+    case 'palisade': {
+      assignStaticFields(item, kind, components);
+      const posts = build.palisadePosts.get(entity.id);
+      if (posts !== undefined && posts.length > 0) item.palisadePosts = posts;
+      break;
+    }
     case 'resource':
     case 'stump':
       assignStaticFields(item, kind, components);

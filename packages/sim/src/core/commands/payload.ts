@@ -121,6 +121,8 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     optional: { hunger: 'integer', fatigue: 'integer', piety: 'integer', enjoyment: 'integer' },
   },
   demolish: { required: { building: 'integer' } },
+  demolishPalisade: { required: { palisade: 'integer' } },
+  repairPalisade: { required: { palisade: 'integer' } },
   demolishSignpost: { required: { signpost: 'integer' } },
   dropGood: { required: { good: 'integer', ...NODE, amount: 'integer' } },
   equipGood: {
@@ -151,6 +153,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
       initialGoods: { arrayOf: { fields: { required: { good: 'integer', amount: 'integer' } } } },
       paper: PAPER,
     },
+  },
+  placePalisade: {
+    required: { gfxIndex: 'integer', ...NODE, tribe: 'integer' },
+    optional: { owner: 'integer', underConstruction: 'boolean', valency: 'integer', force: 'boolean' },
   },
   placeResource: {
     required: { good: 'integer', ...NODE, remaining: 'integer', harvestAtomic: 'integer' },
@@ -188,6 +194,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     optional: { victory: { oneOf: ['script', 'elimination'] } },
   },
   setNeedsEnabled: { required: { enabled: 'boolean' } },
+  setPalisadeGate: { required: { palisade: 'integer', open: 'boolean' } },
   setPlayerPlacementTribes: { required: { player: 'integer', tribes: { arrayOf: 'integer' } } },
   setPlayerAi: {
     required: { player: 'integer', enabled: 'boolean' },

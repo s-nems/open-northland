@@ -9,6 +9,7 @@ import { emitEntities } from './entity-source.js';
 import { type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 import type { InHousePose, InHouseProgramLookup } from './in-house.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
+import { palisadePostsByRef } from './palisade-connections.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
 import { classify, readPosition } from './snapshot-readers/index.js';
@@ -109,7 +110,15 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   const items: MutableSpriteDrawItem[] = [];
   const collected = new Set<number>();
   const posByRef = targetPositionsOf(snapshot);
-  const build: SceneBuild = { snapshot, items, collected, posByRef, elevation, playerColourOf };
+  const build: SceneBuild = {
+    snapshot,
+    items,
+    collected,
+    posByRef,
+    elevation,
+    playerColourOf,
+    palisadePosts: palisadePostsByRef(snapshot, elevation),
+  };
 
   const emit = (entity: EntitySnapshot): void => {
     // Drawn by the retained static layer instead - skip before paying for a classify.

@@ -2,6 +2,7 @@ import type { SpriteKind } from '../scene/index.js';
 import type {
   BuildingTypeBinding,
   CraftFxBinding,
+  PalisadeBinding,
   ResourceTypeBinding,
   SignpostBinding,
   StockpileBinding,
@@ -26,6 +27,7 @@ export type SpriteBindings = Readonly<{
   settler: number | SettlerStateBinding;
   building: number | BuildingTypeBinding;
   resource: number | ResourceTypeBinding;
+  palisade?: number | PalisadeBinding;
   fish?: FishBinding;
   stockpile?: number | StockpileBinding;
   /** A felled tree's stump/debris. */

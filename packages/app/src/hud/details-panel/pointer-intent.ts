@@ -33,6 +33,9 @@ export type PanelClick =
       readonly allowed: boolean;
     }
   | { readonly kind: 'demolishSignpost'; readonly entityId: number }
+  | { readonly kind: 'demolishPalisade'; readonly entityId: number }
+  | { readonly kind: 'repairPalisade'; readonly entityId: number }
+  | { readonly kind: 'setPalisadeGate'; readonly entityId: number; readonly open: boolean }
   | { readonly kind: 'assignWorkplace'; readonly entityId: number }
   | { readonly kind: 'unassignWorkplace'; readonly entityId: number }
   | { readonly kind: 'assignHome'; readonly entityId: number }
@@ -143,6 +146,17 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
     }
     case 'signpost':
       return action === 'demolish' ? { kind: 'demolishSignpost', entityId: view.model.entityId } : null;
+    case 'palisade':
+      if (action === 'demolish-palisade') return { kind: 'demolishPalisade', entityId: view.model.entityId };
+      if (action === 'repair-palisade') return { kind: 'repairPalisade', entityId: view.model.entityId };
+      if (action === 'toggle-gate' && view.model.gateOpen !== null) {
+        return {
+          kind: 'setPalisadeGate',
+          entityId: view.model.entityId,
+          open: !view.model.gateOpen,
+        };
+      }
+      return null;
     case 'empty':
     case 'compact':
       return null;

@@ -4,6 +4,7 @@ import {
   isWildlife,
   Marriage,
   Owner,
+  Palisade,
   Position,
   recordHumanDeath,
   Settler,
@@ -38,6 +39,7 @@ export const cleanupSystem: System = (world, ctx) => {
     // A drained building goes through the demolish path, not the settler-death path: it holds no
     // marriage, flag, or starvation state and must not fire a `settlerDied` stinger.
     if (world.has(e, Building)) razeBuilding(world, ctx, e);
+    else if (world.has(e, Palisade)) razePalisade(world, ctx, e);
     else reap(world, ctx, e);
   }
 };
@@ -72,6 +74,26 @@ export function removeBuildingSilently(world: World, ctx: SystemContext, e: Enti
   unbindWorkersOf(world, ctx, e);
   evictResidentsOf(world, e);
   world.destroy(e);
+}
+
+/** Shared combat and owner-demolition teardown for a palisade or gate. */
+export function razePalisade(world: World, ctx: SystemContext, e: Entity): void {
+  const wall = world.tryGet(e, Palisade);
+  if (wall === undefined) return;
+  const owner = world.tryGet(e, Owner);
+  const pos = world.tryGet(e, Position);
+  ctx.events.emit({
+    kind: 'palisadeDestroyed',
+    entity: e,
+    player: owner?.player ?? null,
+    gfxIndex: wall.gfxIndex,
+    tribe: wall.tribe,
+    built: wall.built,
+    ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
+  });
+  const spill = spilledStockOf(world, e);
+  world.destroy(e);
+  scatterSpilledStock(world, ctx, spill);
 }
 
 /** Announce a combatant's death, count it against its owner, remove it from the world, and leave its

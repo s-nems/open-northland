@@ -1,5 +1,12 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, type GoodsLine, holdsAll, Stockpile, Upgrading } from '../../components/index.js';
+import {
+  Building,
+  type GoodsLine,
+  holdsAll,
+  Palisade,
+  Stockpile,
+  Upgrading,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -22,6 +29,8 @@ export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingT
  * `construction`, the level difference the source encodes per tier.
  */
 export function constructionBillOf(world: World, ctx: SystemContext, site: Entity): readonly GoodsLine[] {
+  const wall = world.tryGet(site, Palisade);
+  if (wall !== undefined) return wall.repairing ? EMPTY_CONSTRUCTION : wall.construction;
   const b = world.tryGet(site, Building);
   if (b === undefined) return EMPTY_CONSTRUCTION;
   if (world.has(site, Upgrading)) {
@@ -30,6 +39,11 @@ export function constructionBillOf(world: World, ctx: SystemContext, site: Entit
     return upgradeTierOf(type, ctx)?.construction ?? EMPTY_CONSTRUCTION;
   }
   return contentIndex(ctx.content).constructionBillByBuilding.get(b.buildingType) ?? EMPTY_CONSTRUCTION;
+}
+
+/** The civilization whose builders may raise this site, independent of the structure kind. */
+export function constructionTribeOf(world: World, site: Entity): number | undefined {
+  return world.tryGet(site, Building)?.tribe ?? world.tryGet(site, Palisade)?.tribe;
 }
 
 const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];

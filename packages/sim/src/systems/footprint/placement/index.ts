@@ -4,7 +4,13 @@
 // overlay probe, and ./work-flag/ covers flags and signposts.
 
 export { placementBlockerVersion } from './blockers.js';
-export { canPlaceBuilding, type PlacementProbe, placementProbe } from './building.js';
+export {
+  canPlaceAnchor,
+  canPlaceBuilding,
+  canPlacePalisadeAnchor,
+  type PlacementProbe,
+  placementProbe,
+} from './building.js';
 export {
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,

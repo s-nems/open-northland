@@ -1,6 +1,7 @@
 import type { ContentSet, TerrainObjects } from '@open-northland/data';
 import { type Entity, type ResourceNodeSpec, type Simulation, systems } from '@open-northland/sim';
 import type { ContentIr } from '../../content/ir/rows.js';
+import { mapPalisadeSpawns, palisadeObjectNames } from '../../content/map-palisades.js';
 import {
   type MapResourceSpawn,
   mapBerryBushSpawns,
@@ -25,7 +26,7 @@ const GATHERER_BY_GOOD_ID: ReadonlyMap<string, GathererSpec> = new Map(GATHERERS
  * its dynamic footprint instead of being baked into the grid forever.
  */
 export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
-  return simResourceObjectNames(ir, SPAWNABLE_GOOD_IDS);
+  return new Set([...simResourceObjectNames(ir, SPAWNABLE_GOOD_IDS), ...palisadeObjectNames(ir)]);
 }
 
 /**
@@ -165,6 +166,7 @@ export function harvestablePlacementOrdinals(
   for (const goods of mapGroundGoodsSpawns(objects, ir)) {
     if (goodBySlug.has(goods.goodId)) out.push(goods.placement);
   }
+  for (const wall of mapPalisadeSpawns(objects, ir)) out.push(wall.placement);
   return out;
 }
 

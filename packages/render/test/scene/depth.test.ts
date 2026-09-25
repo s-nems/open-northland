@@ -6,6 +6,7 @@ import type { DrawKind } from '../../src/data/scene/index.js';
 const ALL_KINDS = [
   'tile',
   'building',
+  'palisade',
   'settler',
   'fish',
   'resource',

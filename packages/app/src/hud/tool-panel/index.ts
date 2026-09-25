@@ -120,6 +120,7 @@ export interface ToolPanelOptions {
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
+  readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Whether the session clock stands, so the bar lights the pause for any stop, not only its own. */
   readonly clockPaused?: () => boolean;
@@ -181,6 +182,8 @@ export interface ToolPanelController {
   placementType(): number | null;
   /** The paper paying for the active placement, or null for normal construction. */
   placementPaper(): Paper | null;
+  /** The source wall/gate graphics row currently held for repeated placement. */
+  palisadeGfxIndex(): number | null;
   /** Per-frame hook: the tick's model feeds the summary bar; the layout over it arrives as an accessor
    *  so a closed window never lays it out. */
   update(hudFor: () => HudLayout, model: HudModel): void;
@@ -201,6 +204,7 @@ export interface ToolPanelState {
   readonly windows: ToolWindowsState;
   readonly placementType: number | null;
   readonly placementPaper: Paper | null;
+  readonly palisadeGfxIndex: number | null;
   readonly messages: MessageFeedState;
   readonly hudHidden: boolean;
 }
@@ -319,6 +323,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       enqueue,
       screenToTile: opts.screenToTile,
       canPlaceAt: opts.canPlaceAt,
+      ...(opts.canPlacePalisadeAt !== undefined ? { canPlacePalisadeAt: opts.canPlacePalisadeAt } : {}),
       tribe: opts.tribe,
       owner: opts.owner,
       // A pick hid the window for the placement; a cancel brings it back where it was, and a place-any
@@ -410,6 +415,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         opts.onLargeWindow?.(open);
       },
       onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
+      onPickPalisade: (gfxIndex, label) => placement.enterPalisade(gfxIndex, label),
     });
     domParts.push(windows);
 
@@ -552,6 +558,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       claimsWheel,
       placementType: () => placement.activeType(),
       placementPaper: () => placement.activePaper(),
+      palisadeGfxIndex: () => placement.activePalisade(),
       update(hudFor, model): void {
         systemBar.update(model);
         speed.refresh();
@@ -568,6 +575,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         windows: windows.state(),
         placementType: placement.activeType(),
         placementPaper: placement.activePaper(),
+        palisadeGfxIndex: placement.activePalisade(),
         messages: messageCenter.state(),
         hudHidden,
       }),
@@ -579,6 +587,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         windows.restore(state.windows);
         if (state.placementType !== null)
           placement.enter(state.placementType, state.placementPaper ?? undefined);
+        else if (state.palisadeGfxIndex !== null) {
+          const gfxIndex = state.palisadeGfxIndex;
+          const entry = opts.buildings.find((building) => building.placement?.gfxIndex === gfxIndex);
+          placement.enterPalisade(gfxIndex, entry?.label ?? `#${gfxIndex}`);
+        }
         messageCenter.restore(state.messages);
         applyHudHidden(state.hudHidden);
       },

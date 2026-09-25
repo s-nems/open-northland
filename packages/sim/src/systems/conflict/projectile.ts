@@ -3,6 +3,7 @@ import {
   Health,
   isWildlife,
   Owner,
+  Palisade,
   Position,
   Projectile,
   Resting,
@@ -25,7 +26,7 @@ import { passIndexOf } from './combat-index.js';
 import { projectileStep } from './shot-aim.js';
 import { buildingBodyNodes } from './target-node.js';
 import { mayTarget } from './targeting.js';
-import { hitSoundVsMaterial, targetMaterial } from './weapons.js';
+import { damageVsTarget, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
 
@@ -82,7 +83,7 @@ function land(
   const material = targetMaterial(world, ctx, victim);
   const hitSoundType = hitSoundVsMaterial(proj, material) ?? null;
   const blow = {
-    damage: weaponDamageVsMaterial(proj, material),
+    damage: damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material)),
     weaponMainType: proj.weaponMainType,
     hitSoundType,
   };
@@ -96,7 +97,7 @@ function land(
     munitionType: proj.munitionType,
     at,
     ...(hitSoundType !== null ? { soundType: hitSoundType } : {}),
-    ...(world.has(victim, Building) ? { structure: true } : {}),
+    ...(world.has(victim, Building) || world.has(victim, Palisade) ? { structure: true } : {}),
   });
   world.destroy(p);
 }

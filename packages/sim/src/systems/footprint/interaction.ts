@@ -2,6 +2,7 @@ import { footprintCellDx } from '@open-northland/data';
 import {
   Building,
   GroundDrop,
+  Palisade,
   Position,
   ResourceFootprint,
   Stockpile,
@@ -70,14 +71,20 @@ export function constructionWorkCells(
   blocked: BlockOverlay,
 ): readonly NodeId[] {
   const building = world.tryGet(site, Building);
+  const palisade = world.tryGet(site, Palisade);
   const position = world.tryGet(site, Position);
-  if (building === undefined || position === undefined) return [];
+  if ((building === undefined && palisade === undefined) || position === undefined) return [];
 
   const anchorCoords = nodeOfPosition(position.x, position.y);
   const anchor = terrain.nodeAtClamped(anchorCoords.hx, anchorCoords.hy);
-  const footprint = buildingFootprintOf(ctx.content, building.buildingType);
+  const footprint =
+    building === undefined ? undefined : buildingFootprintOf(ctx.content, building.buildingType);
   const bodyOffsets =
-    footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
+    palisade !== undefined && palisade.walk.length > 0
+      ? palisade.walk
+      : footprint !== undefined && footprint.blocked.length > 0
+        ? footprint.blocked
+        : ANCHOR_ONLY;
   const bodyCells = translatedCells(terrain, bodyOffsets, anchorCoords.hx, anchorCoords.hy);
   if (bodyCells.length === 0) bodyCells.push(anchor);
   const body = new Set(bodyCells);

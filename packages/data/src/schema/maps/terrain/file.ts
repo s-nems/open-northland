@@ -174,6 +174,13 @@ const INVARIANTS: readonly TerrainMapInvariant[] = [
     message: () => 'terrain map objects.levels must carry one entry per placement triple',
     path: ['objects', 'levels'],
   },
+  {
+    ok: (m) =>
+      m.objects?.owners === undefined ||
+      m.objects.owners.length === m.objects.placements.length / PLACEMENT_STRIDE,
+    message: () => 'terrain map objects.owners must carry one entry per placement triple',
+    path: ['objects', 'owners'],
+  },
   cellLaneLength('elevation'),
   cellLaneLength('brightness'),
   cellLaneLength('shore'),

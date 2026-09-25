@@ -222,6 +222,7 @@ describe('tool windows registry', () => {
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx } = stubContext();
     const picks: [number, Paper | undefined][] = [];
+    const palisades: number[] = [];
     const container = new Container();
     let menu: ConstructionWindowStub | null = null;
     const heldPaper = createHeldPaperController(ctx, stubPlacementStrip());
@@ -245,11 +246,12 @@ describe('tool windows registry', () => {
       missionReplayPage: () => null,
       history: null,
       onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
+      onPickPalisade: (gfxIndex) => palisades.push(gfxIndex),
       onPayTribute: () => undefined,
       onDeclareDiplomacy: () => undefined,
     });
     if (menu === null) throw new Error('the registry did not mount the construction window');
-    return { ctx, windows, picks, container, heldPaper, menu: menu as ConstructionWindowStub };
+    return { ctx, windows, picks, palisades, container, heldPaper, menu: menu as ConstructionWindowStub };
   }
 
   it('a house plan goes straight to placement; a place-any plan is held for the next catalogue pick, which spends it once', () => {
@@ -376,6 +378,26 @@ describe('tool windows registry', () => {
     expect(again.windows.state().residents).toEqual(saved.residents);
   });
 
+  it('does not take a held building paper when a palisade row is picked', () => {
+    const palisade: MenuBuildingEntry = {
+      typeId: 691,
+      label: 'Palisade',
+      kind: 'tower',
+      cost: [],
+      placement: { kind: 'palisade', gfxIndex: 691 },
+    };
+    const { picks, palisades, heldPaper, menu } = mountWindows([...BUILDINGS, palisade]);
+    const paper = { kind: 'placeAny', param: 0 } as const;
+
+    heldPaper.hold(paper);
+    menu.toggle();
+    menu.seam.onPick(palisade.typeId);
+
+    expect(palisades).toEqual([691]);
+    expect(picks).toEqual([]);
+    expect(heldPaper.held()).toEqual(paper);
+  });
+
   it('claims a point only while a pop-up is open under it', () => {
     const { ctx, windows } = mountWindows();
     const inside = { x: statsOrigin(ctx).x + 1, y: statsOrigin(ctx).y + 1 };
@@ -444,6 +466,7 @@ describe('placement controller', () => {
   function mount(
     screenToTile: (x: number, y: number) => { col: number; row: number } | null,
     canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean = () => true,
+    canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean = () => true,
   ) {
     const { ctx, cues } = stubContext();
     const commands: Command[] = [];
@@ -456,6 +479,7 @@ describe('placement controller', () => {
       enqueue: (c) => commands.push(c),
       screenToTile,
       canPlaceAt,
+      canPlacePalisadeAt,
       tribe: 1,
       owner: 0,
       onCancel: (paper) => cancels.push(paper),
@@ -577,6 +601,38 @@ describe('placement controller', () => {
     placement.enter(23);
     placement.handleClick(10, 10);
     expect(cues).toEqual([]);
+  });
+
+  it('keeps a palisade tool armed while placing a contiguous run', () => {
+    let tile = { col: 4, row: 2 };
+    const probes: Array<{ gfxIndex: number; col: number; row: number }> = [];
+    const { placement, commands, cues } = mount(
+      () => tile,
+      () => true,
+      (gfxIndex, col, row) => {
+        probes.push({ gfxIndex, col, row });
+        return true;
+      },
+    );
+
+    placement.enterPalisade(691, 'Palisade');
+    expect(placement.activePalisade()).toBe(691);
+    placement.handleClick(10, 10);
+    tile = { col: 5, row: 2 };
+    placement.handleClick(20, 10);
+
+    expect(probes).toEqual([
+      { gfxIndex: 691, col: 4, row: 2 },
+      { gfxIndex: 691, col: 5, row: 2 },
+    ]);
+    expect(commands).toEqual([
+      { kind: 'placePalisade', gfxIndex: 691, x: 4, y: 2, tribe: 1, owner: 0, underConstruction: true },
+      { kind: 'placePalisade', gfxIndex: 691, x: 5, y: 2, tribe: 1, owner: 0, underConstruction: true },
+    ]);
+    expect(cues).toEqual(['confirm', 'confirm']);
+    expect(placement.isActive()).toBe(true);
+    placement.cancel();
+    expect(placement.activePalisade()).toBeNull();
   });
 });
 

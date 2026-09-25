@@ -182,6 +182,10 @@ export interface LandscapeTypeRow {
   /** `allowedoneverything` - the void type alone carries it; goods that never lie on the ground (livestock,
    *  vehicles, the chest) name it as their landscape. */
   readonly allowedOnEverything?: boolean;
+  readonly playerIdAllowed?: boolean;
+  readonly maxValency?: number;
+  /** Raw source transition tuples; wall transition 9 carries its construction valency step. */
+  readonly transitions?: readonly (readonly number[])[];
 }
 
 /**

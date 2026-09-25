@@ -9,6 +9,9 @@ export interface PanelClickActions {
   /** Abort the selected building's running upgrade - the Cancel button (housewindow 112). */
   readonly onCancelUpgrade: (entityId: number) => void;
   readonly onDemolishSignpost: (entityId: number) => void;
+  readonly onDemolishPalisade?: (entityId: number) => void;
+  readonly onRepairPalisade?: (entityId: number) => void;
+  readonly onSetPalisadeGate?: (entityId: number, open: boolean) => void;
   /** Raise or lower the alarm on the selected garrison building - the Obrona window's shield toggle. */
   readonly onSetDefenceMode: (entityId: number, enabled: boolean) => void;
   readonly onSetHouseholdGoodUse: (
@@ -83,6 +86,15 @@ export function applyPanelClick(
       return;
     case 'demolishSignpost':
       actions.onDemolishSignpost(click.entityId);
+      return;
+    case 'demolishPalisade':
+      actions.onDemolishPalisade?.(click.entityId);
+      return;
+    case 'repairPalisade':
+      actions.onRepairPalisade?.(click.entityId);
+      return;
+    case 'setPalisadeGate':
+      actions.onSetPalisadeGate?.(click.entityId, click.open);
       return;
     case 'assignWorkplace':
       actions.onAssignWorkplace?.(click.entityId);

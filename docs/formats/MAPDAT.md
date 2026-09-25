@@ -65,6 +65,7 @@ The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to
 | `embr` | cell | terrain brightness |
 | `lmlt` | half-cell | collapsed to cell landscape logic ids |
 | `lmlv` | half-cell | landscape valency: each placement's growth level; a chest placement's entry is its chest-contents type instead, and a goods placement's (an object of a good's `landscapetype`) is its unit count, 1 to 5 across the owned corpus |
+| `lmlp` | half-cell | authored landscape-object owner: player slot 0..12 at an `emla` anchor, 255 for neutral |
 | `empa`, `empb` | cell triangles | final ground-pattern ids |
 | `emla` | half-cell | placed landscape-object ids |
 | `emt1` to `emt4` | cell | transition overlay ids and variants |
@@ -83,6 +84,23 @@ observed maximum count is 30. The pipeline imports only populated records and va
 half-cell coordinates against the emitted map dimensions.
 
 The loader also exposes per-lane dimensions and dictionaries needed to resolve numeric ids.
+
+### Verified `lmlp` ownership lane
+
+`lmlp` is an X8 row-major `2W × 2H` lane parallel to `emla`. At every placed landscape object's
+`emla` anchor, bytes 0..12 are authored player slots and 255 is neutral. The pipeline emits one
+`objects.owners` entry per placement triple, mapping 255 to `null`; it omits the array only when the
+source map lacks the chunk.
+
+The result is byte-level verified across all 124 decodable mod maps: every `lmlp` length matches its
+`emla` length, all 19,937 non-neutral values occur at wall or gate anchors, and all other placed
+objects are neutral. The owned corpus contains player slots 0, 1, 2, 3, 4, 5, 6, 8 and 12. Spot checks
+also join to the readable decoded roster: `tutorial_002` walls use slot 1, `SPECJALNA- FORTECA` walls
+use slot 6, and `WIELKA BITWA Z SARACENAMI` includes slot 12 walls.
+
+The byte carries no separate palette value. For example, `SPECJALNA- FORTECA` writes owner 6 in
+`lmlp`, while its player-6 roster record selects colour 9. A consumer derives fortification colour
+from the owner slot's roster entry.
 
 ## Lanes not imported
 
@@ -104,7 +122,6 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | `lmao` | derivable | attach-point vector per node, encoded `(-dx - (dy << 8)) & 0xffff` |
 | `lasw` | derivable | pathfinding sector graph: 10x10-cell sectors, land and water planes, 52 bytes each |
 | `emmi` | authored | road-overlay type per half-cell node |
-| `lmlp` | authored | owner and palette of pre-placed stockades and gates per node |
 | `emvc` | authored | vertex colors per cell (optional chunk, like `lmhf`) |
 
 Ground collision currently joins `empa` and `empb` through `gfxPatterns` to

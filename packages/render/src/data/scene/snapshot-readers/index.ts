@@ -15,6 +15,7 @@ export {
   readBuiltPct,
   readChestGfxIndex,
   readHpFraction,
+  readPalisadeStatePct,
   readProducing,
   readUpgradePct,
 } from './static-readers.js';

@@ -41,6 +41,9 @@ function recordingActions(calls: Call[]): PanelClickActions {
     onUnassignHome: record('onUnassignHome'),
     onEquipSlot: record('onEquipSlot'),
     onUnequipSlot: record('onUnequipSlot'),
+    onDemolishPalisade: record('onDemolishPalisade'),
+    onRepairPalisade: record('onRepairPalisade'),
+    onSetPalisadeGate: record('onSetPalisadeGate'),
   };
 }
 
@@ -59,6 +62,9 @@ const ROUTES: readonly (readonly [PanelClick, Call])[] = [
     ['onSetHouseholdGoodUse', ENTITY, 'cooking', false],
   ],
   [{ kind: 'demolishSignpost', entityId: ENTITY }, ['onDemolishSignpost', ENTITY]],
+  [{ kind: 'demolishPalisade', entityId: ENTITY }, ['onDemolishPalisade', ENTITY]],
+  [{ kind: 'repairPalisade', entityId: ENTITY }, ['onRepairPalisade', ENTITY]],
+  [{ kind: 'setPalisadeGate', entityId: ENTITY, open: true }, ['onSetPalisadeGate', ENTITY, true]],
   [{ kind: 'assignWorkplace', entityId: ENTITY }, ['onAssignWorkplace', ENTITY]],
   [{ kind: 'unassignWorkplace', entityId: ENTITY }, ['onUnassignWorkplace', ENTITY]],
   [{ kind: 'assignHome', entityId: ENTITY }, ['onAssignHome', ENTITY]],

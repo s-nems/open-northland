@@ -5,6 +5,7 @@ import type { FogGates } from '../projections/index.js';
 export interface PlacementGates {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
+  readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
 }
 
 /**
@@ -26,5 +27,7 @@ export function createPlacementGates(
         true),
     canPlaceSignpostAt: (col, row) =>
       fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false),
+    canPlacePalisadeAt: (gfxIndex, col, row) =>
+      fogGates.seesNode(col, row) && (sim.palisadeProbe(gfxIndex)?.canPlace(col, row) ?? false),
   };
 }

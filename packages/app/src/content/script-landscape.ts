@@ -43,6 +43,17 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
   const harvestByName = harvestGoodByObjectName(ir);
   const groundGoodByName = groundGoodByObjectName(ir);
   const chestKindByType = chestKindByLogicType(ir);
+  const logicByType = new Map(
+    (ir.landscape ?? []).flatMap((row) =>
+      typeof row.typeId === 'number' ? [[row.typeId, row] as const] : [],
+    ),
+  );
+  const woodGoodType = ir.goods?.find((good) => good.id === 'wood')?.typeId;
+  const gfxByName = new Map(
+    (ir.landscapeGfx ?? []).flatMap((row) =>
+      row.editName === undefined ? [] : [[row.editName, row.index] as const],
+    ),
+  );
   const gatherers = new Map(GATHERERS.map((g) => [g.id, g]));
   return (ir.landscapeGfx ?? []).map((g) => {
     const name = g.editName?.trim().toLowerCase() ?? '';
@@ -53,6 +64,20 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
     const gatherer = ref === undefined ? undefined : gatherers.get(ref.goodId);
     const chestKind = chestKindByType.get(g.logicType);
     const goodId = g.editName === undefined ? undefined : groundGoodByName.get(g.editName);
+    const logic = logicByType.get(g.logicType);
+    const wallLogic =
+      logic?.playerIdAllowed === true &&
+      (logic.id === 'wall' || logic.id === 'wall_gate_closed' || logic.id === 'wall_gate_open')
+        ? logic
+        : undefined;
+    const repairPerStrike = wallLogic?.transitions?.find((row) => row[0] === 9)?.[3];
+    const counterpartName =
+      logic?.id === 'wall_gate_closed'
+        ? `${g.editName ?? ''}_open`
+        : logic?.id === 'wall_gate_open'
+          ? (g.editName ?? '').replace(/_open$/, '')
+          : undefined;
+    const counterpartGfxIndex = counterpartName === undefined ? undefined : gfxByName.get(counterpartName);
     let resource: ScriptLandscapeType['resource'];
     if (gatherer !== undefined && ref !== undefined) {
       const {
@@ -76,6 +101,28 @@ export function scriptLandscapeTypes(ir: ContentIr): ScriptLandscapeType[] {
       ...(g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE ? { bushGfxIndex: g.index } : {}),
       ...(chestKind === undefined ? {} : { chest: { kind: chestKind, gfxIndex: g.index } }),
       ...(goodId === undefined ? {} : { good: { goodId } }),
+      ...(wallLogic === undefined ||
+      wallLogic.maxValency === undefined ||
+      wallLogic.maxValency <= 0 ||
+      repairPerStrike === undefined ||
+      repairPerStrike <= 0
+        ? {}
+        : {
+            wall: {
+              logicType: g.logicType,
+              maxHitpoints: wallLogic.maxValency,
+              repairPerStrike,
+              construction: woodGoodType === undefined ? [] : [{ goodType: woodGoodType, amount: 1 }],
+              ...(counterpartGfxIndex === undefined
+                ? {}
+                : {
+                    gate: {
+                      open: logic?.id === 'wall_gate_open',
+                      counterpartGfxIndex,
+                    },
+                  }),
+            },
+          }),
     };
   });
 }
@@ -107,7 +154,8 @@ export function buildScriptLandscapeTerrain(map: TerrainMapFile, ir: ContentIr):
         ...(type?.resource !== undefined ||
         type?.bushGfxIndex !== undefined ||
         type?.chest !== undefined ||
-        type?.good !== undefined
+        type?.good !== undefined ||
+        type?.wall !== undefined
           ? { resourceBacked: true }
           : {}),
       });

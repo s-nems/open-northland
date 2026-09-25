@@ -73,8 +73,12 @@ export interface UnitOrderController {
   issueSetWorkFlag(target: Tile, units?: readonly number[]): boolean;
   issueMoveTo(target: Tile, units?: readonly number[]): boolean;
   issueAttackMove(target: Tile, units?: readonly number[]): boolean;
-  /** Strike one enemy of `kind` under the cursor; a click that hits none of them orders nothing. */
-  issueAttackTarget(event: MouseEvent, kind: UnitTargetKind, units?: readonly number[]): boolean;
+  /** Strike one enemy of an accepted kind under the cursor; a click that hits none orders nothing. */
+  issueAttackTarget(
+    event: MouseEvent,
+    kind: UnitTargetKind | readonly UnitTargetKind[],
+    units?: readonly number[],
+  ): boolean;
   /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
   issueAttackAnimal(event: MouseEvent, units?: readonly number[]): boolean;
   /** Offer `units` the courses of the school `house`; false when none of them may learn there. */
@@ -322,10 +326,22 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return commanded.length > 0;
   };
 
-  const issueAttackTarget = (event: MouseEvent, kind: UnitTargetKind, units?: readonly number[]): boolean => {
+  const issueAttackTarget = (
+    event: MouseEvent,
+    kind: UnitTargetKind | readonly UnitTargetKind[],
+    units?: readonly number[],
+  ): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
+    const accepts =
+      typeof kind === 'string'
+        ? (candidate: UnitTargetKind) => candidate === kind
+        : (candidate: UnitTargetKind) => kind.includes(candidate);
     const enemy = pickTopAt(
-      deps.targets.enemies().filter((p) => p.kind === kind),
+      deps.targets
+        .enemies()
+        .filter((p) =>
+          p.kind === 'settler' || p.kind === 'building' || p.kind === 'palisade' ? accepts(p.kind) : false,
+        ),
       world.x,
       world.y,
     );

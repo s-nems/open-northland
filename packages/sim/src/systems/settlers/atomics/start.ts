@@ -69,6 +69,9 @@ export const PICKUP_ATOMIC_ID = 22;
  *  `DataCnmd/tribetypes12/tribetypes.ini` and the builder's `allowatomic 39` in `jobtypes.ini`). */
 export const BUILD_HOUSE_ATOMIC_ID = 39;
 
+/** The source-bound wall-builder action used for the one-wood finish and repairs. */
+export const BUILD_WALL_ATOMIC_ID = 42;
+
 /** Construction labor belongs to the builder trade. Other jobs may expose the same atomic for their
  *  animation set, so atomic permission alone does not establish the construction role. */
 export function jobCanBuild(content: ContentSet, jobType: number): boolean {

@@ -25,6 +25,7 @@ import { householdGoodsScene } from './household-goods.js';
 import { huntingScene } from './hunting.js';
 import { livestockScene } from './livestock.js';
 import { movementContinuityScene } from './movement-continuity.js';
+import { palisadeScene } from './palisade.js';
 import { presentationScene } from './presentation.js';
 import { repairScene } from './repair.js';
 import { sandboxScene } from './sandbox/index.js';
@@ -80,6 +81,7 @@ export const SCENES: readonly SceneDefinition[] = [
   huntingScene,
   householdGoodsScene,
   livestockScene,
+  palisadeScene,
   equipmentScene,
   equipmentEffectsScene,
   amuletsScene,

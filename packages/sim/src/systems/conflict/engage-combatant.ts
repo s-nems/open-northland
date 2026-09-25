@@ -12,6 +12,7 @@ import {
   MoveGoal,
   NeedOrder,
   Owner,
+  Palisade,
   PlayerOrder,
   Position,
   Resting,
@@ -49,7 +50,13 @@ import type { CombatPass } from './pass.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
-import { attackerWeapon, hitSoundVsMaterial, startAttack, targetMaterial } from './weapons.js';
+import {
+  attackerWeapon,
+  damageVsTarget,
+  hitSoundVsMaterial,
+  startAttack,
+  targetMaterial,
+} from './weapons.js';
 
 /** The {@link attackerWeapon} resolution: the weapon plus its clamped reach band. */
 type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
@@ -179,7 +186,10 @@ export function engageCombatant(
   const chaseTarget: ChaseTarget = {
     entity: target,
     node: combatTargetNode(world, ctx, terrain, here, target),
-    body: world.has(target, Building) ? buildingBodyNodes(world, ctx, terrain, target) : null,
+    body:
+      world.has(target, Building) || world.has(target, Palisade)
+        ? buildingBodyNodes(world, ctx, terrain, target)
+        : null,
   };
   const gaveUp = chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
   if (gaveUp) restPreySearch(world, ctx, e, spec);
@@ -347,9 +357,13 @@ function swingAt(
   const base = weaponDamageVsMaterial(weapon.weapon, material);
   const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
   const blow = {
-    damage: world.has(target, Building)
-      ? withHouseDamageExperience(base, hits)
-      : withFightDamageBonus(base, hits),
+    damage: damageVsTarget(
+      world,
+      target,
+      world.has(target, Building) || world.has(target, Palisade)
+        ? withHouseDamageExperience(base, hits)
+        : withFightDamageBonus(base, hits),
+    ),
     hitSoundType: hitSoundVsMaterial(weapon.weapon, material),
   };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);

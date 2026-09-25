@@ -1,4 +1,4 @@
-import type { EntitySnapshot } from '@open-northland/sim';
+import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
@@ -56,6 +56,19 @@ const postedSettler: EntitySnapshot = {
 };
 
 const signpost: EntitySnapshot = { id: 7, components: { Signpost: {} } };
+const closedGate: EntitySnapshot = {
+  id: 8,
+  components: {
+    Palisade: {
+      gfxIndex: 696,
+      tribe: 1,
+      built: ONE,
+      repairing: false,
+      gate: { open: false, counterpartGfxIndex: 700 },
+    },
+    Health: { hitpoints: 75, max: 100 },
+  },
+};
 
 /** A settler view spliced to offer two craft products under the all-mode default selection. No sandbox
  *  workplace declares two recipes, and one product collapses both click modes onto all-mode - so this is
@@ -193,6 +206,66 @@ describe('details panel click intents', () => {
     const sign = viewOfKind(panelModelOf(signpost), 'signpost');
     const sp = center(sign.layout.button.rect);
     expect(panelClickAt(sign, sp.x, sp.y, NO_TOGGLE)).toEqual({ kind: 'demolishSignpost', entityId: 7 });
+  });
+
+  it('reports palisade health and routes gate, repair, and demolish controls', () => {
+    const model = panelModelOf(closedGate);
+    expect(model).toMatchObject({
+      kind: 'palisade',
+      entityId: 8,
+      builtPct: 100,
+      gateOpen: false,
+      underConstruction: false,
+      repairing: false,
+    });
+    if (model.kind !== 'palisade') throw new Error('expected a palisade model');
+    expect(model.health?.pct).toBe(75);
+    const view = viewOfKind(model, 'palisade');
+    expect(view.layout.progress).toBeNull();
+
+    const intents = view.layout.buttons.map((button) => {
+      const p = center(button.rect);
+      return panelClickAt(view, p.x, p.y, NO_TOGGLE);
+    });
+    expect(intents).toEqual([
+      { kind: 'setPalisadeGate', entityId: 8, open: true },
+      { kind: 'repairPalisade', entityId: 8 },
+      { kind: 'demolishPalisade', entityId: 8 },
+    ]);
+  });
+
+  it('keeps unfinished or already-repairing palisade actions visibly inert', () => {
+    const unfinished = viewOfKind(
+      panelModelOf({
+        ...closedGate,
+        components: { ...closedGate.components, UnderConstruction: {} },
+      }),
+      'palisade',
+    );
+    const unfinishedIntents = unfinished.layout.buttons.map((button) => {
+      const p = center(button.rect);
+      return panelClickAt(unfinished, p.x, p.y, NO_TOGGLE);
+    });
+    expect(unfinished.layout.buttons.map((button) => button.enabled)).toEqual([false, false, true]);
+    expect(unfinished.layout.progress).not.toBeNull();
+    expect(unfinishedIntents).toEqual([null, null, { kind: 'demolishPalisade', entityId: 8 }]);
+
+    const repairing = viewOfKind(
+      panelModelOf({
+        ...closedGate,
+        components: {
+          ...closedGate.components,
+          Palisade: { ...(closedGate.components.Palisade as object), repairing: true },
+        },
+      }),
+      'palisade',
+    );
+    const repair = repairing.layout.buttons.find((button) => button.action === 'repair-palisade');
+    if (repair === undefined) throw new Error('expected repair action');
+    const p = center(repair.rect);
+    expect(repair.enabled).toBe(false);
+    expect(repairing.layout.progress).not.toBeNull();
+    expect(panelClickAt(repairing, p.x, p.y, NO_TOGGLE)).toBeNull();
   });
 
   it('resolves the defence toggle into the order that flips the alarm the other way', () => {

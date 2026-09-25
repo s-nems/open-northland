@@ -12,6 +12,7 @@ export {
   constructionBillOf,
   constructionMaterialsPresent,
   constructionTotalUnits,
+  constructionTribeOf,
   deliveredConstructionFraction,
   neededConstructionGoods,
   upgradeTierOf,

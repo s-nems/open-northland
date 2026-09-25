@@ -95,6 +95,10 @@ export async function createUnitChrome(
       onUpgrade: (id) => opts.enqueue({ kind: 'upgradeBuilding', building: id as Entity }),
       onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
       onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
+      onDemolishPalisade: (id) => opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity }),
+      onRepairPalisade: (id) => opts.enqueue({ kind: 'repairPalisade', palisade: id as Entity }),
+      onSetPalisadeGate: (id, open) =>
+        opts.enqueue({ kind: 'setPalisadeGate', palisade: id as Entity, open }),
       onSetDefenceMode: (id, enabled) =>
         opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
       onSetHouseholdGoodUse: (player, effect, allowed) =>

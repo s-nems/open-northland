@@ -29,6 +29,8 @@ export interface MenuBuildingEntry {
   readonly cost: readonly CostLine[];
   /** Absent, the entry is always open (a scene without progression). */
   readonly availability?: () => BuildingAvailability;
+  /** A wall-family row shown beside military buildings but placed on the half-cell lattice. */
+  readonly placement?: { readonly kind: 'palisade'; readonly gfxIndex: number };
 }
 
 /** The five category tabs, in the original's order. */

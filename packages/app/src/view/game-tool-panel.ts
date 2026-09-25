@@ -7,6 +7,7 @@ import {
   type DiplomacyState,
   type Paper,
   type PlayerCommand,
+  type Simulation,
 } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
@@ -24,7 +25,7 @@ import { mountToolPanel, type ToolPanelController, type ToolPanelOptions } from 
 import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
-import { currentLocale } from '../i18n/index.js';
+import { currentLocale, formatMessage, messages } from '../i18n/index.js';
 import type { PresentationPack } from '../presentation/pack.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -46,6 +47,7 @@ export interface GameToolPanelDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
+  readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */
@@ -182,6 +184,36 @@ export function goodLabelsFromContent(content: {
   return new Map(content.goods.filter((g) => g.id !== 'none').map((g) => [g.typeId, g.name ?? g.id]));
 }
 
+/** One ordinary post plus each authored closed-gate orientation exposed in the military build tab. */
+export function palisadeMenuEntries(sim: Simulation): MenuBuildingEntry[] {
+  const types = sim.terrain?.landscapes?.types ?? [];
+  const wall = types.find((type) => type.wall !== undefined && type.wall.gate === undefined);
+  const gates = types.filter((type) => type.wall?.gate?.open === false);
+  return [
+    ...(wall === undefined
+      ? []
+      : [
+          {
+            typeId: wall.typeId,
+            label: messages().hud.palisade,
+            kind: 'tower',
+            cost: wall.wall?.construction ?? [],
+            placement: { kind: 'palisade' as const, gfxIndex: wall.typeId },
+          },
+        ]),
+    ...gates.map((gate, index) => ({
+      typeId: gate.typeId,
+      label:
+        gates.length === 1
+          ? messages().hud.gate
+          : formatMessage(messages().hud.gateOrientation, { number: index + 1 }),
+      kind: 'tower',
+      cost: gate.wall?.construction ?? [],
+      placement: { kind: 'palisade' as const, gfxIndex: gate.typeId },
+    })),
+  ];
+}
+
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
     const c = clientToScreen(deps.canvas, deps.app.renderer.resolution, clientX, clientY);
@@ -222,6 +254,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       onDeclareDiplomacy: deps.onDeclareDiplomacy,
       screenToTile: clientToTile,
       canPlaceAt: deps.canPlaceAt,
+      canPlacePalisadeAt: deps.canPlacePalisadeAt,
       onSpeedChange: deps.onSpeed,
       ...(deps.clockPaused !== undefined ? { clockPaused: deps.clockPaused } : {}),
       ...(deps.pauseHeld !== undefined ? { pauseHeld: deps.pauseHeld } : {}),

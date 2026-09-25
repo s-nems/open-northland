@@ -82,7 +82,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
 
   const stockpiles = world.canonicalQuery(Stockpile, Position);
   const buildings = world.canonicalQuery(Building, Position);
-  const constructionSites = world.canonicalQuery(UnderConstruction, Building, Position);
+  const constructionSites = world.canonicalQuery(UnderConstruction, Position);
   let cropsByFarm: Map<Entity, Entity[]> | undefined;
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;

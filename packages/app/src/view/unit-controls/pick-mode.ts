@@ -282,7 +282,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'attack-settler':
         return deps.orders().issueAttackTarget(event, 'settler', mode.units);
       case 'attack-building':
-        return deps.orders().issueAttackTarget(event, 'building', mode.units);
+        return deps.orders().issueAttackTarget(event, ['building', 'palisade'], mode.units);
       case 'attack-animal':
         return deps.orders().issueAttackAnimal(event, mode.units);
       default: {

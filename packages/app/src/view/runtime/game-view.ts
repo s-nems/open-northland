@@ -74,6 +74,7 @@ import {
   goodLabelsFromContent,
   menuEntriesFromContent,
   mountGameToolPanel,
+  palisadeMenuEntries,
 } from '../game-tool-panel.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
@@ -336,7 +337,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
-    const { canPlaceAt, canPlaceSignpostAt } = createPlacementGates(
+    const { canPlaceAt, canPlaceSignpostAt, canPlacePalisadeAt } = createPlacementGates(
       sim,
       fogGates,
       localPlayer,
@@ -457,12 +458,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onDeclareDiplomacy: (other, state) =>
         issueCommand({ kind: 'declareDiplomacy', player: localPlayer, other, state }),
       canPlaceAt,
+      canPlacePalisadeAt,
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-      buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
-        ...entry,
-        availability: () => buildAvailability(viewerPlayer(), entry.typeId),
-      })),
+      buildings: [
+        ...menuEntriesFromContent(sim.content, lang).map((entry) => ({
+          ...entry,
+          availability: () => buildAvailability(viewerPlayer(), entry.typeId),
+        })),
+        ...palisadeMenuEntries(sim),
+      ],
       buildingLabels: buildingLabelsFromContent(sim.content, lang),
       technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
@@ -755,6 +760,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       suppressed: (clientX, clientY) =>
         hudHidden ||
         toolPanel.controller.placementType() !== null ||
+        toolPanel.controller.palisadeGfxIndex() !== null ||
         toolPanel.claimPointer(clientX, clientY) ||
         controls.claimsPointer(clientX, clientY),
     });
@@ -848,6 +854,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifeHeartsFor,
       canPlaceAt,
       canPlaceSignpostAt,
+      canPlacePalisadeAt,
       placementTribe: seatTribeOf(localPlayer),
       soundDriver,
       presentation,

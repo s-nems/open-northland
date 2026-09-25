@@ -4,6 +4,8 @@ import {
   consumeGoods,
   type GoodsLine,
   Health,
+  Palisade,
+  PalisadeBlocking,
   Settler,
   Stockpile,
   setStockAmount,
@@ -17,6 +19,7 @@ import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
+import { palisadeBlockingCellsOccupied } from '../palisades/index.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
@@ -48,16 +51,18 @@ export const constructionSystem: System = (world, ctx) => {
   // Sites only, in ascending id: the pass scales with what is being built, and two sites finishing on
   // one tick settle their plots in a canonical order.
   for (const e of world.canonicalQuery(UnderConstruction)) {
-    if (!world.has(e, Building) || !world.has(e, Stockpile)) continue;
+    if (!world.has(e, Stockpile)) continue;
     // A site drained to 0 HP earlier this tick is rubble awaiting the cleanupSystem; raising it here
     // would resurrect it swing after swing.
     const health = world.tryGet(e, Health);
     if (health !== undefined && health.hitpoints <= 0) continue;
-    const building = world.get(e, Building);
+    const building = world.tryGet(e, Building);
+    const palisade = world.tryGet(e, Palisade);
+    if (building === undefined && palisade === undefined) continue;
     // A type missing from content has an empty bill and a zero labor total, which would read as complete
     // and finish the site for free.
-    if (!contentIndex(ctx.content).buildings.has(building.buildingType)) continue;
-    advanceSite(world, ctx, e, building, constructionBillOf(world, ctx, e));
+    if (building !== undefined && !contentIndex(ctx.content).buildings.has(building.buildingType)) continue;
+    advanceSite(world, ctx, e, building, palisade, constructionBillOf(world, ctx, e));
   }
 };
 
@@ -69,23 +74,33 @@ function advanceSite(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  building: DeepReadonly<BuildingState>,
+  building: DeepReadonly<BuildingState> | undefined,
+  palisade: DeepReadonly<NonNullable<(typeof Palisade)['__value']>> | undefined,
   cost: ReadonlyArray<{ goodType: number; amount: number }>,
 ): void {
   const labor = world.get(e, UnderConstruction).labor;
   // A free (empty-cost) type has nothing to install, so its labor requirement is waived.
-  const laborComplete = constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
+  const laborComplete =
+    palisade !== undefined ? labor >= ONE : constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
   if (laborComplete && constructionMaterialsPresent(world, ctx, e)) {
+    if (
+      palisade !== undefined &&
+      ctx.terrain !== undefined &&
+      palisadeBlockingCellsOccupied(world, ctx.terrain, e, palisade.walk)
+    ) {
+      return;
+    }
     consumeMaterials(world, e, cost);
-    finishSite(world, ctx, e, building);
+    finishSite(world, ctx, e, building, palisade);
     return;
   }
 
   const delivered = deliveredConstructionFraction(world, ctx, e);
-  const before = building.built;
+  const before = building?.built ?? palisade?.built ?? ONE;
   const next = labor < delivered ? labor : delivered;
   if (next === before) return; // mut only on a real move, or every idle site would churn version keys
-  world.mut(e, Building).built = next;
+  if (building !== undefined) world.mut(e, Building).built = next;
+  else world.mut(e, Palisade).built = next;
   // An upgrade site keeps the standing building's Health; ramping by `built` would drop a whole house to
   // 1 HP (approximation - the original's upgrade HP behavior is unobserved).
   if (!world.has(e, Upgrading)) rampHealth(world, e, before, next);
@@ -100,8 +115,20 @@ function finishSite(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  building: DeepReadonly<BuildingState>,
+  building: DeepReadonly<BuildingState> | undefined,
+  palisade: DeepReadonly<NonNullable<(typeof Palisade)['__value']>> | undefined,
 ): void {
+  if (building === undefined) {
+    if (palisade === undefined) return;
+    const mutable = world.mut(e, Palisade);
+    mutable.built = ONE;
+    mutable.repairing = false;
+    world.remove(e, UnderConstruction);
+    if (!world.has(e, PalisadeBlocking)) world.add(e, PalisadeBlocking, {});
+    fillHealth(world, e);
+    ctx.events.emit({ kind: 'palisadeFinished', entity: e });
+    return;
+  }
   const upgrading = world.tryGet(e, Upgrading);
   let adoptedTier = false;
   if (upgrading !== undefined) {
@@ -182,7 +209,7 @@ export function settleFootprint(world: World, ctx: SystemContext, e: Entity): vo
  */
 export function forceFinishConstruction(world: World, ctx: SystemContext, site: Entity): void {
   if (!world.has(site, UnderConstruction)) return;
-  finishSite(world, ctx, site, world.get(site, Building));
+  finishSite(world, ctx, site, world.tryGet(site, Building), world.tryGet(site, Palisade));
 }
 
 /** Ramp a site's {@link Health} for a rise from `before` to `after`: the pool gains what the ceiling gained
@@ -223,6 +250,8 @@ const STEPS_PER_UNIT = 30;
 
 /** Labor installed by one construction step at `site`. */
 function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity): Fixed {
+  // A wall segment rises in a single strike once its material is in.
+  if (world.has(site, Palisade)) return ONE;
   const totalSteps = constructionTotalUnits(world, ctx, site) * STEPS_PER_UNIT;
   // At least 1 ULP per step so a huge-cost building still finishes: `trunc(ONE / totalSteps)` floors
   // to 0 once `totalSteps > ONE`.
@@ -257,6 +286,16 @@ export function advanceConstructionLabor(
   const uc = world.tryMut(site, UnderConstruction);
   if (uc === undefined) return false;
   const before = uc.labor;
+  const wall = world.tryGet(site, Palisade);
+  if (wall?.repairing === true) {
+    const health = world.tryMut(site, Health);
+    if (health === undefined) return false;
+    health.hitpoints = Math.min(health.max, health.hitpoints + Math.max(1, wall.repairPerStrike));
+    const progress = fx.div(fx.fromInt(health.hitpoints), fx.fromInt(Math.max(1, health.max)));
+    uc.labor = progress;
+    world.mut(site, Palisade).built = progress;
+    return uc.labor > before;
+  }
   const steps = buildStepsPerSwing(
     jobExperiencePercent(world, ctx, builder, null),
     toolWorkFactorPct(world, ctx, builder),

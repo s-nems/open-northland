@@ -24,7 +24,8 @@ export type PlacementGhost =
        *  down rather than the base tribe's. */
       readonly tribe: number;
     }
-  | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number };
+  | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
+  | { readonly kind: 'palisade'; readonly col: number; readonly row: number; readonly gfxIndex: number };
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
 const GHOST_ALPHA = 0.55;
@@ -48,7 +49,12 @@ export class PlacementGhostLayer {
       this.container.visible = false;
       return;
     }
-    const key = ghost.kind === 'building' ? `b:${ghost.tribe}:${ghost.buildingType}` : `s:${ghost.player}`;
+    const key =
+      ghost.kind === 'building'
+        ? `b:${ghost.tribe}:${ghost.buildingType}`
+        : ghost.kind === 'palisade'
+          ? `p:${ghost.gfxIndex}`
+          : `s:${ghost.player}`;
     if (this.builtForKey !== key) {
       this.builtForKey = key;
       this.rebuild(ghost);
@@ -68,7 +74,9 @@ export class PlacementGhostLayer {
     const item: DrawItem =
       ghost.kind === 'building'
         ? { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: ghost.buildingType, tribe: ghost.tribe }
-        : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
+        : ghost.kind === 'palisade'
+          ? { kind: 'palisade', ref: -1, x: 0, y: 0, depth: 0, gfxIndex: ghost.gfxIndex }
+          : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null) {
       const g = new Graphics();

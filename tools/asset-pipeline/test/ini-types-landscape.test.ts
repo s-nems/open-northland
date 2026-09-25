@@ -52,7 +52,7 @@ describe('extractLandscape', () => {
     expect(mine?.transitions).toEqual([[12, 13]]);
   });
 
-  it('extracts maximumValency and the allowedon* placement flags (1/0 ints -> booleans)', () => {
+  it('extracts maximumValency and the placement/ownership flags (1/0 ints -> booleans)', () => {
     const byId = new Map(
       extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' }).map((l) => [l.id, l]),
     );
@@ -71,7 +71,12 @@ describe('extractLandscape', () => {
       allowedOnEverything: false,
     });
     // A wardline/gate sits on BOTH land and water (allowedonwater 1).
-    expect(byId.get('wardline')).toMatchObject({ maxValency: 2, allowedOnLand: true, allowedOnWater: true });
+    expect(byId.get('wardline')).toMatchObject({
+      maxValency: 2,
+      allowedOnLand: true,
+      allowedOnWater: true,
+      playerIdAllowed: true,
+    });
   });
 
   it('defaults maxValency to 0 and the flags to false when the source omits them', () => {
@@ -84,6 +89,7 @@ describe('extractLandscape', () => {
       allowedOnLand: false,
       allowedOnWater: false,
       allowedOnEverything: false,
+      playerIdAllowed: false,
     });
   });
 });

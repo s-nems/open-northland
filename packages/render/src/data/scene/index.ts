@@ -1,8 +1,22 @@
 /** The pure scene-building layer: no Pixi, no canvas, no GPU. */
 export { SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth } from './depth.js';
-export type { DrawItem, DrawKind, SpriteDrawItem, SpriteKind, SpriteState } from './draw-item.js';
+export type {
+  DrawItem,
+  DrawKind,
+  PalisadePostDraw,
+  SpriteDrawItem,
+  SpriteKind,
+  SpriteState,
+} from './draw-item.js';
 export { type HolyFireBinding, type HolyFireLookup, holyFireOverlays } from './holy-fire.js';
 export type { InHouseProgramLookup } from './in-house.js';
+export {
+  PALISADE_POST_SPACING_PX,
+  type PalisadePostOffset,
+  type PalisadePostsByRef,
+  palisadePostOffsets,
+  palisadePostsByRef,
+} from './palisade-connections.js';
 export {
   COVER_LAUNCH_HEIGHT_PX,
   PROJECTILE_ARC_PEAK_FRACTION,

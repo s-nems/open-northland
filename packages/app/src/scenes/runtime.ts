@@ -1,8 +1,20 @@
 import { halfCellMapFromCells, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import { setupPlacementTribes } from '../game/placement-tribes.js';
-import { resolveWorldContent, type WorldContentOptions } from '../game/sandbox/index.js';
+import {
+  resolveWorldContent,
+  sandboxPalisadeTypes,
+  type WorldContentOptions,
+} from '../game/sandbox/index.js';
 import type { SceneWorld } from './types.js';
+
+function sceneTerrain(scene: SceneWorld) {
+  return {
+    ...halfCellMapFromCells(scene.terrain),
+    landscapes: { types: sandboxPalisadeTypes(), placements: [] },
+    ...(scene.landVertices !== undefined ? { landVertices: scene.landVertices } : {}),
+  };
+}
 
 /**
  * Builds a fresh deterministic sim for a scene world at tick 0, then runs `scene.build`, with the
@@ -31,10 +43,7 @@ export function createSceneWorld(scene: SceneWorld, options: WorldContentOptions
     seed: scene.seed,
     content: resolveWorldContent(scene.terrain, options),
     // Scenes author cell grids; the sim navigates their half-cell lattice.
-    map: {
-      ...halfCellMapFromCells(scene.terrain),
-      ...(scene.landVertices !== undefined ? { landVertices: scene.landVertices } : {}),
-    },
+    map: sceneTerrain(scene),
     ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
   scene.build(sim);
@@ -67,10 +76,7 @@ export function restoreSceneSim(
 ): Simulation {
   return restoreSimulation(save, {
     content: resolveWorldContent(scene.terrain, options),
-    map: {
-      ...halfCellMapFromCells(scene.terrain),
-      ...(scene.landVertices !== undefined ? { landVertices: scene.landVertices } : {}),
-    },
+    map: sceneTerrain(scene),
     ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
 }

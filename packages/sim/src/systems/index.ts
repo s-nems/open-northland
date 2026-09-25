@@ -31,6 +31,7 @@ export * from './movement/spacing.js';
 export * from './movement/system.js';
 export * from './movement/walk-cost.js';
 export * from './orders/index.js';
+export * from './palisades/index.js';
 export * from './progression/index.js';
 export * from './readviews/index.js';
 // The meal length, exposed so tests can assert it without pulling in the action vocabulary wholesale.

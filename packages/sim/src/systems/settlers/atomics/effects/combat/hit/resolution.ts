@@ -6,6 +6,7 @@ import {
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   ownerOf,
+  Palisade,
   Person,
   Position,
   recordHumanKill,
@@ -13,6 +14,7 @@ import {
 } from '../../../../../../components/index.js';
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
+import { fx } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import type { SystemContext } from '../../../../../context.js';
@@ -131,7 +133,7 @@ export function resolveCombatHit(
         at: eventAt(at.x, at.y),
         ...(weaponMainType !== undefined ? { weaponMainType } : {}),
         ...(blow.hitSoundType != null ? { soundType: blow.hitSoundType } : {}),
-        ...(world.has(target, Building) ? { structure: true } : {}),
+        ...(world.has(target, Building) || world.has(target, Palisade) ? { structure: true } : {}),
       });
     }
   }
@@ -143,6 +145,11 @@ export function resolveCombatHit(
   if (dealt > 0) {
     woundBearer(world, ctx, target, dealt);
     markBuildingDamaged(world, ctx, target);
+  }
+  const wall = world.tryMut(target, Palisade);
+  if (wall !== undefined) {
+    const health = world.get(target, Health);
+    wall.built = fx.div(fx.fromInt(health.hitpoints), fx.fromInt(Math.max(1, health.max)));
   }
   provokeAnger(world, ctx, target);
   frightenStruckAnimal(world, ctx, attacker, target);

@@ -6,6 +6,7 @@ import {
   Health,
   isWildlife,
   Owner,
+  Palisade,
   Position,
   Settler,
   type SettlerIdentity,
@@ -53,13 +54,15 @@ export function isValidTarget(
   if (!world.has(t, Health) || !world.has(t, Position)) return false;
   if (world.get(t, Health).hitpoints <= 0) return false;
   const building = world.tryGet(t, Building);
-  if (building !== undefined) {
+  const palisade = world.tryGet(t, Palisade);
+  const structureTribe = building?.tribe ?? palisade?.tribe;
+  if (structureTribe !== undefined) {
     // Only a player's own units besiege buildings - an animal never turns on a structure.
     if (!world.has(self, Owner)) return false;
     // And only a player-owned building is a siege target: admitting an ownerless one would contradict the
     // dormancy gate's owned-buildings-only tail.
     if (!world.has(t, Owner)) return false;
-    return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, building.tribe);
+    return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, structureTribe);
   }
   if (!world.has(t, Settler)) return false;
   // Anyone shooting from inside a building is out of reach, so the attackers must batter the structure to
@@ -87,6 +90,16 @@ export function isValidOrderedTarget(
   t: Entity,
 ): boolean {
   if (isValidTarget(world, ctx, self, attacker, t)) return true;
+  if (
+    world.has(self, Owner) &&
+    world.has(t, Palisade) &&
+    !world.has(t, Owner) &&
+    world.has(t, Health) &&
+    world.has(t, Position) &&
+    world.get(t, Health).hitpoints > 0
+  ) {
+    return true;
+  }
   if (!world.has(self, Owner) || !isWildlife(world, t) || world.has(t, Owner)) return false;
   if (!world.has(t, Health) || !world.has(t, Position)) return false;
   if (world.get(t, Health).hitpoints <= 0) return false;

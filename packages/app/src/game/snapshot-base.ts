@@ -104,6 +104,9 @@ export function isBuilding(e: SnapshotEntity): boolean {
 export function isSignpost(e: SnapshotEntity): boolean {
   return e.components.Signpost !== undefined;
 }
+export function isPalisade(e: SnapshotEntity): boolean {
+  return e.components.Palisade !== undefined;
+}
 
 interface SnapshotIndex {
   readonly actors: readonly SnapshotEntity[];

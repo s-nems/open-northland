@@ -1,7 +1,7 @@
 import {
-  Building,
   ownerOf,
   ownersCompatible,
+  Palisade,
   SiteAssignment,
   UnderConstruction,
 } from '../../../../components/index.js';
@@ -9,8 +9,14 @@ import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { needsRepair } from '../../../economy/repair.js';
 import { atomicDuration } from '../../../readviews/animations.js';
-import { hasInboundSupply } from '../../../stores/index.js';
-import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic } from '../../atomics/start.js';
+import { constructionTribeOf, hasInboundSupply } from '../../../stores/index.js';
+import {
+  atOrWalk,
+  BUILD_HOUSE_ATOMIC_ID,
+  BUILD_WALL_ATOMIC_ID,
+  jobCanBuild,
+  startAtomic,
+} from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import { nearestBuilderSite, unreachableSiteStand } from '../../targets/index.js';
@@ -187,13 +193,14 @@ function startHammer(
   if (!claims.hasHammerWork(site)) return false;
   const stand = claimWorkCell(world, terrain, e, here, site, spacing);
   if (stand === null || !claims.claimHammer(site)) return false;
+  const buildAtomic = world.has(site, Palisade) ? BUILD_WALL_ATOMIC_ID : BUILD_HOUSE_ATOMIC_ID;
   atOrWalk(world, e, here, stand, () =>
     startAtomic(
       world,
       e,
-      BUILD_HOUSE_ATOMIC_ID,
+      buildAtomic,
       { kind: 'construct', site },
-      atomicDuration(ctx.content, plan, BUILD_HOUSE_ATOMIC_ID),
+      atomicDuration(ctx.content, plan, buildAtomic),
       site,
     ),
   );
@@ -216,10 +223,8 @@ function stampAssignment(plan: PlannerContext, site: Entity, pinned: boolean): v
 
 /** Whether `site` is still a building of the builder's own tribe and side; a script can hand it away. */
 function onOwnSide(plan: PlannerContext, site: Entity): boolean {
-  const building = plan.world.tryGet(site, Building);
   return (
-    building !== undefined &&
-    building.tribe === plan.tribe &&
+    constructionTribeOf(plan.world, site) === plan.tribe &&
     ownersCompatible(plan.owner, ownerOf(plan.world, site))
   );
 }

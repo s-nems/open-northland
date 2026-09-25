@@ -1,5 +1,6 @@
 import { NAV_LANDSCAPE_TYPES } from '../../catalog/terrain.js';
 import { GATHERERS, type GathererSpec, GOOD_MUD } from './ids/index.js';
+import { sandboxPalisadeGfx, sandboxPalisadeLandscapeTypes } from './palisades.js';
 
 /** Structural, so both the authored cell grids and the sim's half-cell maps satisfy it. */
 export interface TerrainTypeIds {
@@ -65,6 +66,7 @@ export function sandboxLandscape(
 ): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean; plantable?: boolean }> {
   const base = [
     ...NAV_LANDSCAPE_TYPES,
+    ...sandboxPalisadeLandscapeTypes(),
     ...GATHERERS.map((g) => ({
       typeId: resourceLandscapeType(g.good),
       id: `${g.id}_harvest_node`,
@@ -90,16 +92,19 @@ export function sandboxWalkableTypeIds(map?: TerrainTypeIds): ReadonlySet<number
 }
 
 export function sandboxLandscapeGfx() {
-  return GATHERERS.map((g) => ({
-    index: resourceGfxIndex(g.good),
-    editName: `sandbox ${g.id} resource`,
-    logicType: resourceLandscapeType(g.good),
-    maxValency: landscapeState(g),
-    isWorkable: true,
-    walkBlockAreas: walkBlockAreas(g),
-    buildBlockAreas: buildBlockAreas(g),
-    workAreas: workAreas(g),
-  }));
+  return [
+    ...GATHERERS.map((g) => ({
+      index: resourceGfxIndex(g.good),
+      editName: `sandbox ${g.id} resource`,
+      logicType: resourceLandscapeType(g.good),
+      maxValency: landscapeState(g),
+      isWorkable: true,
+      walkBlockAreas: walkBlockAreas(g),
+      buildBlockAreas: buildBlockAreas(g),
+      workAreas: workAreas(g),
+    })),
+    ...sandboxPalisadeGfx(),
+  ];
 }
 
 export function sandboxGatheringPipeline() {

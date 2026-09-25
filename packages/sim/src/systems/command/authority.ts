@@ -59,7 +59,7 @@ function seatMayIssue(world: World, seat: number, command: PlayerCommand): boole
   if (COMMAND_ISSUER[command.kind] !== 'seat') return false;
   // A seat that died in the match keeps watching but never commands again.
   if (isPlayerDead(world, seat)) return false;
-  if (command.kind === 'placeBuilding') {
+  if (command.kind === 'placeBuilding' || command.kind === 'placePalisade') {
     if (hasAuthoredOptions(command)) return false;
     if (!playerPlacementTribes(world, seat)?.includes(command.tribe)) return false;
   }
@@ -67,11 +67,25 @@ function seatMayIssue(world: World, seat: number, command: PlayerCommand): boole
   if ('owner' in command && command.owner !== seat) return false;
 
   const asset = assetTargetOf(command);
+  if (
+    (command.kind === 'demolishPalisade' ||
+      command.kind === 'repairPalisade' ||
+      command.kind === 'setPalisadeGate') &&
+    asset !== undefined
+  ) {
+    return ownerOf(world, asset) === seat;
+  }
   return asset === undefined || ownersCompatible(seat, ownerOf(world, asset));
 }
 
 /** Only trusted origins may place finished buildings or supply authored placement options. */
-function hasAuthoredOptions(command: PlaceBuildingCommand): boolean {
+function hasAuthoredOptions(
+  command: PlaceBuildingCommand | Extract<PlayerCommand, { kind: 'placePalisade' }>,
+): boolean {
+  if (command.kind === 'placePalisade')
+    return (
+      command.underConstruction === false || command.valency !== undefined || command.force !== undefined
+    );
   return (
     command.underConstruction === false ||
     command.force !== undefined ||
@@ -94,5 +108,6 @@ function assetTargetOf(command: PlayerCommand): Entity | undefined {
   if ('site' in command) return command.site;
   if ('house' in command) return command.house;
   if ('signpost' in command) return command.signpost;
+  if ('palisade' in command) return command.palisade;
   return undefined;
 }

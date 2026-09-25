@@ -53,7 +53,12 @@ const PLACEMENTS: readonly number[] = [
   HALF_CELL_Y_BOUND - 1,
   OBJECT_TYPES.length - 1,
 ];
-const OBJECTS = { types: OBJECT_TYPES, placements: PLACEMENTS, levels: [1, 2] } as const;
+const OBJECTS = {
+  types: OBJECT_TYPES,
+  placements: PLACEMENTS,
+  levels: [1, 2],
+  owners: [null, 12],
+} as const;
 
 /** A 4x3 map carrying every optional lane at a valid size. */
 function base(): Record<string, unknown> {
@@ -170,6 +175,13 @@ describe('parseTerrainMap cross-lane invariants', () => {
       path: 'objects.levels',
       message: 'terrain map objects.levels must carry one entry per placement triple',
     },
+    // objects.owners
+    {
+      name: 'an owners lane with fewer entries than placement triples',
+      map: { ...base(), objects: { ...OBJECTS, owners: [null] } },
+      path: 'objects.owners',
+      message: 'terrain map objects.owners must carry one entry per placement triple',
+    },
     // per-cell lanes
     {
       name: 'an elevation lane one cell short',
@@ -231,6 +243,7 @@ describe('parseTerrainMap cross-lane invariants', () => {
           types: OBJECT_TYPES,
           placements: [HALF_CELL_X_BOUND - 1, HALF_CELL_Y_BOUND - 1, OBJECT_TYPES.length - 1],
           levels: [1],
+          owners: [0],
         },
       },
     },
@@ -240,7 +253,7 @@ describe('parseTerrainMap cross-lane invariants', () => {
     },
     {
       name: 'an objects layer that places nothing',
-      map: { ...base(), objects: { types: [], placements: [], levels: [] } },
+      map: { ...base(), objects: { types: [], placements: [], levels: [], owners: [] } },
     },
     {
       name: 'transition lanes that are all TRANSITION_NONE over an empty types dictionary',
@@ -259,6 +272,12 @@ describe('parseTerrainMap cross-lane invariants', () => {
 
   it.each(ACCEPT_CASES)('accepts $name', ({ map }) => {
     expect(issues(map)).toEqual([]);
+  });
+
+  it('rejects an object owner outside the verified player-slot range', () => {
+    expect(issues({ ...base(), objects: { ...OBJECTS, owners: [13, null] } })).toEqual([
+      expect.objectContaining({ path: 'objects.owners.0' }),
+    ]);
   });
 
   it('reports every broken lane at once, in invariant-table order (ground before objects)', () => {

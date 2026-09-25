@@ -3,6 +3,7 @@ import type { InHouseClip } from './in-house.js';
 export type DrawKind =
   | 'tile'
   | 'building'
+  | 'palisade'
   | 'settler'
   | 'fish'
   | 'resource'
@@ -140,6 +141,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  arc height), subtracted from the drawn `y`. The anchor and {@link depth} stay pre-lift, so a
    *  lifted sprite still occludes by feet row. */
   readonly lift?: number;
+  /** Repeated posts filling this palisade's forward neighbour edges. Each offset is feet-local draw px;
+   *  the optional percentage selects the interpolated durability/construction state of the endpoints. */
+  readonly palisadePosts?: readonly PalisadePostDraw[];
   /** This item only survived the cull as the details-panel portrait's subject: it stays reconciled and
    *  paletted for the portrait's own render but is hidden on the main map, so an indoor settler cannot
    *  pop into view at its workplace door. */
@@ -156,6 +160,16 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a `craftfx` item: the `[GfxLandscape]` record (`EditName`) the in-house program stages here, a
    *  looping effect such as the fire under a cauldron. */
   readonly fxName?: string;
+}
+
+export interface PalisadePostDraw {
+  readonly dx: number;
+  readonly dy: number;
+  readonly gfxIndex: number;
+  /** Advance this many places through the binding's wall-variant order. */
+  readonly variantStep: number;
+  /** Source wall-state percentage: build progress capped by remaining durability. */
+  readonly builtPct?: number;
 }
 
 /** The mutable twin of {@link DrawItem}, used only while one item is being assembled: fields are

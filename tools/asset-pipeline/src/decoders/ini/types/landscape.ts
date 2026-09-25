@@ -31,6 +31,7 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
         allowedOnLand: getInt(sec, 'allowedonland') === 1,
         allowedOnWater: getInt(sec, 'allowedonwater') === 1,
         allowedOnEverything: getInt(sec, 'allowedoneverything') === 1,
+        playerIdAllowed: getInt(sec, 'playeridallowed') === 1,
         transitions,
         source: makeSource(src, 'landscapetype'),
       }),

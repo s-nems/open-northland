@@ -282,6 +282,7 @@ type 58
 name "wardline"
 allowedonland 1
 allowedonwater 1
+playeridallowed 1
 maximumValency 2
 `;
 

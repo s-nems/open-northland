@@ -21,6 +21,7 @@ import {
 } from '../ir/joins.js';
 import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
 import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
+import { buildPalisadeBinding, palisadeAtlasStems, resolvePalisadeGfxRefs } from '../palisade-gfx.js';
 import {
   berryBushAtlasStems,
   buildBerryBushBinding,
@@ -140,11 +141,13 @@ export async function loadHumanSpriteSheet(
   const chestRefs = resolveChestRefs(ir);
   // The effects the in-house programs stage (`ls_smoke` fire and smoke) load as families too.
   const craftFxRefs = resolveCraftFxRefs(ir, [HOLY_FIRE_EFFECT_NAME]);
+  const palisadeRefs = resolvePalisadeGfxRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
   for (const s of chestAtlasStems(chestRefs)) stems.add(s);
   for (const s of craftFxAtlasStems(craftFxRefs)) stems.add(s);
+  for (const s of palisadeAtlasStems(palisadeRefs)) stems.add(s);
   stems.add(FISH_ATLAS);
   // The signpost families ride the same contract: every per-player bake plus the single-colour fallback.
   stems.add(GUIDEPOST_ATLAS_BAKED);
@@ -168,6 +171,7 @@ export async function loadHumanSpriteSheet(
   const chestBinding = buildChestBinding(chestRefs, gatheringLoaded);
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
   const craftFxBinding = buildCraftFxBinding(craftFxRefs, gatheringLoaded);
+  const palisadeBinding = buildPalisadeBinding(palisadeRefs, gatheringLoaded);
   // The building and gathering families merge into one map: their served stems are disjoint (`ls_houses_*`
   // vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
   const families = { ...buildings.families, ...gatheringFamilies };
@@ -210,6 +214,7 @@ export async function loadHumanSpriteSheet(
       }),
       ...signpostBinding,
       ...(craftFxBinding !== undefined ? { craftfx: craftFxBinding } : {}),
+      ...(palisadeBinding !== undefined ? { palisade: palisadeBinding } : {}),
     },
     overlays: [head],
     // The tree and the default building each draw from their own atlas (distinct id spaces), so they bind

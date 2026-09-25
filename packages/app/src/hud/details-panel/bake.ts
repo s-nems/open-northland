@@ -6,7 +6,7 @@ import type { DetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
 import { mapLayout } from './layout/index.js';
 import type { PanelHover } from './pointer-intent.js';
-import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
+import { drawBuilding, drawCompact, drawPalisade, drawSettler, drawSignpost } from './sections/index.js';
 import type { PanelView } from './selection-view.js';
 
 export type DrawableView = Exclude<PanelView, { kind: 'empty' }>;
@@ -80,6 +80,9 @@ export function bakePanel(opts: PanelBakeOptions): BakedPanel {
       break;
     case 'signpost':
       drawSignpost(chrome, mapLayout(view.layout, toDraw), ui, hover.action);
+      break;
+    case 'palisade':
+      drawPalisade(chrome, mapLayout(view.layout, toDraw), view.model, ui, hover.action, ss);
       break;
     default: {
       const unreachable: never = view;

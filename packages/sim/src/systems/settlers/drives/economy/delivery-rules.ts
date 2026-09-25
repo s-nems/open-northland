@@ -1,5 +1,4 @@
 import {
-  Building,
   DeliveryFlag,
   JobAssignment,
   ownerOf,
@@ -19,6 +18,7 @@ import { constructionWorkCell } from '../../../footprint/index.js';
 import {
   bankedSlot,
   buildingProduces,
+  constructionTribeOf,
   type InboundSupplyTally,
   inboundSupplyOf,
   mergedRecipeOf,
@@ -237,8 +237,7 @@ function constructionSiteNeeds(
   goodType: number,
   inbound: InboundSupplyTally,
 ): boolean {
-  if (!world.has(e, UnderConstruction) || !world.has(e, Building)) return false;
-  if (world.get(e, Building).tribe !== tribe) return false;
+  if (!world.has(e, UnderConstruction) || constructionTribeOf(world, e) !== tribe) return false;
   if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
   const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
   return have < stockCapacity(world, ctx, e, goodType);

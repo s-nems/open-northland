@@ -187,6 +187,11 @@ export const enContent = {
       summary:
         'Builders mend a quiet damaged home first and pass over a nearer one while a fight is on beside it.',
     },
+    palisade: {
+      title: 'Palisades and gates',
+      summary:
+        'Builders raise a connected wooden stockade, a gate opens a route through it, and an enemy soldier breaks a segment to make a second breach.',
+    },
     'tower-defence': {
       title: 'Tower defence',
       summary:

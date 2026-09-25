@@ -23,6 +23,17 @@ export type SimEvent =
       readonly entity: Entity;
       readonly at: HalfCellNode;
     }
+  | { readonly kind: 'palisadePlaced'; readonly entity: Entity; readonly at: HalfCellNode }
+  | { readonly kind: 'palisadeFinished'; readonly entity: Entity }
+  | {
+      readonly kind: 'palisadeDestroyed';
+      readonly entity: Entity;
+      readonly player: number | null;
+      readonly gfxIndex: number;
+      readonly tribe: number;
+      readonly built: number;
+      readonly at?: HalfCellNode;
+    }
   | {
       readonly kind: 'boatPlaced';
       readonly entity: Entity;

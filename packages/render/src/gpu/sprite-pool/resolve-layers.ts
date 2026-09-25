@@ -2,6 +2,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import {
   DECOR_BINDING_KEY,
   resolveCraftFxDraw,
+  resolvePalisadeDraw,
   resolveResourceDraw,
   resolveSignpostDraw,
   resolveSpriteBobId,
@@ -88,6 +89,8 @@ function pushLayers(
       bobId = branch;
       break;
     }
+    case 'palisade':
+      return pushPalisadeLayers(out, sheet, item);
     case 'resource': {
       // A layer-qualified ref (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the
       // default yew) falls through to the `kindLayers.resource` tree layer below. A null draw is a
@@ -158,6 +161,39 @@ function pushLayers(
     if (resolved !== null) out.push(resolved);
   }
   return out.length > 0;
+}
+
+/** Scratch for {@link pushPalisadeLayers}: one post's layers, then every post's shadows and bodies. */
+const PALISADE_POST = new LayerBuffer();
+const PALISADE_SHADOWS = new LayerBuffer();
+const PALISADE_BODIES = new LayerBuffer();
+
+/** Append the endpoint post and every repeated edge post, grouping all cast shadows below all bodies. */
+function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem): boolean {
+  const binding = sheet.bindings.palisade;
+  if (binding === undefined) return false;
+  PALISADE_SHADOWS.reset();
+  PALISADE_BODIES.reset();
+  const append = (
+    drawItem: Pick<DrawItem, 'gfxIndex' | 'builtPct'> & { readonly variantStep?: number },
+    dx = 0,
+    dy = 0,
+  ): boolean => {
+    PALISADE_POST.reset();
+    if (!pushLayeredWithShadow(PALISADE_POST, sheet, 'palisade', resolvePalisadeDraw(binding, drawItem))) {
+      return false;
+    }
+    for (const layer of PALISADE_POST.finish()) {
+      const shifted = dx === 0 && dy === 0 ? layer : { ...layer, dx, dy };
+      (layer.shadow === true ? PALISADE_SHADOWS : PALISADE_BODIES).push(shifted);
+    }
+    return true;
+  };
+  if (!append(item)) return false;
+  for (const post of item.palisadePosts ?? []) append(post, post.dx, post.dy);
+  for (const layer of PALISADE_SHADOWS.finish()) out.push(layer);
+  for (const layer of PALISADE_BODIES.finish()) out.push(layer);
+  return true;
 }
 
 /**

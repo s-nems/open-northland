@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { Building, Position } from '../../components/index.js';
+import { Building, Palisade, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -46,6 +46,13 @@ export function buildingBodyNodes(
   terrain: TerrainGraph,
   building: Entity,
 ): readonly NodeId[] {
+  const palisade = world.tryGet(building, Palisade);
+  const palisadePosition = world.tryGet(building, Position);
+  if (palisade !== undefined && palisadePosition !== undefined) {
+    const { hx, hy } = nodeOfPosition(palisadePosition.x, palisadePosition.y);
+    const body = translatedCells(terrain, palisade.walk, hx, hy);
+    return body.length > 0 ? body : [entityNode(world, terrain, building)];
+  }
   const bodies = liveBodies(world, ctx, terrain);
   const held = bodies.get(building);
   if (held !== undefined) return held;
@@ -135,7 +142,7 @@ export function combatTargetNode(
   from: NodeId,
   target: Entity,
 ): NodeId {
-  if (world.has(target, Building)) {
+  if (world.has(target, Building) || world.has(target, Palisade)) {
     const nearest = nearestCell(terrain, buildingBodyNodes(world, ctx, terrain, target), from);
     if (nearest !== null) return nearest;
   }
@@ -168,7 +175,7 @@ export function reachableTargetGate(
   const bank = terrain.componentOf(here);
   if (bank < 0) return () => true;
   return (t) => {
-    if (!world.has(t, Building)) {
+    if (!world.has(t, Building) && !world.has(t, Palisade)) {
       return firingCellIn(terrain, bank, here, entityNode(world, terrain, t), weapon);
     }
     return buildingBodyNodes(world, ctx, terrain, t).some((wall) =>

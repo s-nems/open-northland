@@ -11,6 +11,7 @@ export interface PlacementCursorInput {
   readonly placementType: number | null;
   /** The paper paying for this placement, which bypasses the technology part of the live probe. */
   readonly placementPaper: Paper | null;
+  readonly palisadeGfxIndex?: number | null;
   readonly signpostActive: boolean;
   /** Viewport-memoized band probes; each runs only when its own mode wins, so a frame never walks a
    *  band it would discard. */
@@ -20,6 +21,7 @@ export interface PlacementCursorInput {
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
+  readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
   /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
   /** The civilization this seat raises buildings as, the same one `placeBuilding` stamps. */
@@ -32,10 +34,15 @@ export interface PlacementCursorInput {
  */
 export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   const { placementType } = input;
-  const signpostFrame = placementType === null && input.signpostActive ? input.signpostOverlay() : null;
+  const palisadeGfxIndex = input.palisadeGfxIndex ?? null;
+  const signpostFrame =
+    placementType === null && palisadeGfxIndex === null && input.signpostActive
+      ? input.signpostOverlay()
+      : null;
   const paper = input.placementPaper === null ? undefined : input.placementPaper;
   const overlay = placementType === null ? signpostFrame : input.buildingOverlay(placementType, paper);
-  if (placementType === null && signpostFrame === null) return { overlay, ghost: null };
+  if (placementType === null && palisadeGfxIndex === null && signpostFrame === null)
+    return { overlay, ghost: null };
 
   const tile = input.tileAt();
   if (tile === null) return { overlay, ghost: null };
@@ -52,6 +59,19 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
           },
         }
       : { overlay, ghost: null };
+  }
+  if (palisadeGfxIndex !== null) {
+    return input.canPlacePalisadeAt?.(palisadeGfxIndex, tile.col, tile.row) === true
+      ? {
+          overlay: null,
+          ghost: {
+            kind: 'palisade',
+            col: tile.col,
+            row: tile.row,
+            gfxIndex: palisadeGfxIndex,
+          },
+        }
+      : { overlay: null, ghost: null };
   }
   return input.canPlaceSignpostAt(tile.col, tile.row)
     ? { overlay, ghost: { kind: 'signpost', col: tile.col, row: tile.row, player: input.localPlayer } }

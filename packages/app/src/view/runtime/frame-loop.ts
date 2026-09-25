@@ -69,6 +69,7 @@ export interface FrameLoopDeps {
   /** The civilization the local seat builds as; the placement ghost previews its bodies. */
   readonly placementTribe: number;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
+  readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   /** The map script's display: its camera jitter for the frame, and its overlays after the draw. */
   readonly presentation: Pick<ScriptPresentation, 'jitter' | 'frame'> | null;
@@ -115,6 +116,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     lifeHeartsFor,
     canPlaceAt,
     canPlaceSignpostAt,
+    canPlacePalisadeAt,
     placementTribe,
     soundDriver,
     presentation,
@@ -218,12 +220,14 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const cursor = placementCursor({
       placementType: toolPanel.controller.placementType(),
       placementPaper: toolPanel.controller.placementPaper(),
+      palisadeGfxIndex: toolPanel.controller.palisadeGfxIndex(),
       signpostActive: controls.signpostPlacementActive(),
       buildingOverlay,
       signpostOverlay,
       tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
       canPlaceAt,
       canPlaceSignpostAt,
+      canPlacePalisadeAt,
       localPlayer,
       placementTribe,
     });

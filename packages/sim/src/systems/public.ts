@@ -69,6 +69,7 @@ export {
 } from './missions/index.js';
 // So the school dialog offers exactly the courses the `learn` command accepts.
 export { knowsCourse } from './orders/education.js';
+export { createPalisade, palisadeType } from './palisades/index.js';
 export {
   experienceBonus,
   experiencePercent,

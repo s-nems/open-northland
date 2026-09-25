@@ -245,6 +245,59 @@ describe('mapDatToTerrain', () => {
     expect(terrain.objects?.levels).toEqual([3, 100]); // palm at state 3, wall-style sentinel kept verbatim
   });
 
+  it('emits lmlp owners at the matching emla anchors and preserves neutral placements', () => {
+    // All four lanes are row-major over the same 2×2 half-cell grid. The lmlp byte under an emla
+    // placement is its 0-based player slot; 255 is the authored neutral sentinel.
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([82, 82, 82, 0])) },
+      { tag: 'emla', version: 1, payload: packX6elLayer(Uint16Array.from([0, 1, 2, 0xffff])) },
+      { tag: 'lmlp', version: 1, payload: packMapLayer(Uint8Array.from([255, 3, 12, 7])) },
+      { tag: 'eald', version: 1, payload: encodeStringList(['wall_01', 'gate_01', 'wall_05']) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.objects).toEqual({
+      types: ['wall_01', 'gate_01', 'wall_05'],
+      placements: [0, 0, 0, 1, 0, 1, 0, 1, 2],
+      owners: [null, 3, 12],
+    });
+    expect(parseTerrainMap(terrain).objects?.owners).toEqual([null, 3, 12]);
+  });
+
+  it('omits owners with no lmlp lane and rejects malformed owner lanes', () => {
+    const common = [
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([82, 0, 0, 0])) },
+      { tag: 'emla', version: 1, payload: packX6elLayer(Uint16Array.from([0, 0xffff, 0xffff, 0xffff])) },
+      { tag: 'eald', version: 1, payload: encodeStringList(['wall_01']) },
+    ] as const;
+    expect(mapDatToTerrain(encodeMapDat(common)).objects).toEqual({
+      types: ['wall_01'],
+      placements: [0, 0, 0],
+    });
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const badLength = mapDatToTerrain(
+      encodeMapDat([
+        ...common,
+        { tag: 'lmlp', version: 1, payload: packMapLayer(Uint8Array.from([255, 255, 255])) },
+      ]),
+    );
+    expect(badLength.objects).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/lmlp lane has 3 half-cells, expected 4/));
+
+    warn.mockClear();
+    const invalidOwner = mapDatToTerrain(
+      encodeMapDat([
+        ...common,
+        { tag: 'lmlp', version: 1, payload: packMapLayer(Uint8Array.from([13, 255, 255, 255])) },
+      ]),
+    );
+    expect(invalidOwner.objects).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/owner 13.*outside player slots 0\.\.12/));
+    warn.mockRestore();
+  });
+
   it('emits the per-cell elevation lane from lmhe (one byte per cell, not half-cell)', () => {
     // 2×1 grid: lmlt is the 4×2 half-cell object lane, but lmhe is PER CELL - exactly width·height
     // values (2), carried through verbatim (raw byte height, 0..250 observed).

@@ -162,6 +162,29 @@ describe('unit orders against a selection that moves under them', () => {
     expect(order).not.toMatchObject({ x: guarded.hx, y: guarded.hy });
   });
 
+  it('treats a palisade as a structure target for the action-ring attack mode', () => {
+    const issued: Command[] = [];
+    const target = { id: 50, at: OPEN_GROUND };
+    const p = halfCellToScreen(target.at.hx, target.at.hy);
+    const orders = createUnitOrderController({
+      selected: () => new Set([SCOUT.id]),
+      targets: {
+        ...targets,
+        enemies: () => [{ ref: target.id, x: p.x, y: p.y, kind: 'palisade' }],
+      },
+      snapshot: () => WORLD,
+      content: CONTENT,
+      mapSize: MAP_SIZE,
+      toWorld: (clientX, clientY) => ({ x: clientX, y: clientY }),
+      enqueue: (command) => issued.push(command),
+      selectOwnSettler: () => {},
+      openActions: () => {},
+    });
+
+    expect(orders.issueAttackTarget(clickOn(target.at), ['building', 'palisade'])).toBe(true);
+    expect(issued).toEqual([{ kind: 'attackUnit', entity: SCOUT.id, target: target.id }]);
+  });
+
   it('plants a work flag for the units selected now', () => {
     const { selection, orders, issued } = harness();
 

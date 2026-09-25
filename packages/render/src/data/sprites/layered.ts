@@ -6,6 +6,7 @@ import type {
   ConstructionLayerRef,
   CraftFxBinding,
   LayeredBobRef,
+  PalisadeBinding,
   ResourceTypeBinding,
   SignpostBinding,
   StockpileBinding,
@@ -192,6 +193,28 @@ export function resolveResourceDraw(
   const ref = frames[idx];
   if (ref === null) return null;
   return unwrapBobRef(ref ?? binding.default);
+}
+
+/** Select a wall post's durability/construction-height frame. Source rows are reversed by the app into
+ * shortest-to-full order; 0/20/40/60/80 percent advance the five original states. */
+export function resolvePalisadeDraw(
+  binding: number | PalisadeBinding,
+  item: Pick<DrawItem, 'gfxIndex' | 'builtPct'> & { readonly variantStep?: number },
+): BuildingDraw {
+  if (typeof binding === 'number') return { bob: binding };
+  let gfxIndex = item.gfxIndex;
+  const order = binding.variantOrder;
+  if (gfxIndex !== undefined && item.variantStep !== undefined && order !== undefined && order.length > 0) {
+    const at = order.indexOf(gfxIndex);
+    if (at >= 0) gfxIndex = order[(at + item.variantStep) % order.length];
+  }
+  const frames = gfxIndex === undefined ? undefined : binding.byGfxIndex[gfxIndex];
+  if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
+  const index =
+    item.builtPct === undefined
+      ? frames.length - 1
+      : Math.min(frames.length - 1, Math.floor((item.builtPct * frames.length) / 100));
+  return unwrapBobRef(frames[index] ?? binding.default);
 }
 
 /** A pile with no good is a bare collection point and draws the delivery flag's wave frame at `tick`. */

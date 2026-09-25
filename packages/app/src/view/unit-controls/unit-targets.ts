@@ -43,7 +43,7 @@ export interface UnitTargetsDeps {
 }
 
 /** The drawable kinds a unit-controls click resolves to (a signpost has its own picker). */
-export type UnitTargetKind = 'settler' | 'building';
+export type UnitTargetKind = 'settler' | 'building' | 'palisade';
 
 /** The pickable target sets the unit controls hit-test a click against, plus the order-issuing set. */
 export interface UnitTargets {
@@ -107,7 +107,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
   /** The item's kind when it is one a unit-controls click resolves to, else null. */
   const unitKindOf = (item: DrawItem): UnitTargetKind | null =>
-    item.kind === 'settler' || item.kind === 'building' ? item.kind : null;
+    item.kind === 'settler' || item.kind === 'building' || item.kind === 'palisade' ? item.kind : null;
 
   /** A building refines to solid pixels, since its sprite box overhangs the footprint. */
   const hitTarget = (item: DrawItem, kind: UnitTargetKind): Pickable => {
@@ -118,7 +118,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       y: item.y,
       kind,
       box: deps.boundsOf?.(item.ref),
-      ...(kind === 'building' && pixelHitOf !== undefined
+      ...((kind === 'building' || kind === 'palisade') && pixelHitOf !== undefined
         ? { pixelHit: (wx: number, wy: number) => pixelHitOf(item.ref, wx, wy) }
         : {}),
     };
@@ -159,7 +159,14 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         // can be ordered at it.
         if (!isHitTarget(it)) continue;
         const owner = ownerOf.get(it.ref);
-        if (owner === undefined || pickableOwner(owner)) continue; // neutral or "ours" - not an enemy
+        if (owner === undefined) {
+          // Neutral palisades are explicit structure targets in the sim. Other neutral entities keep
+          // their existing non-enemy meaning, and observers cannot issue attacks.
+          if (itemKind !== 'palisade' || pickableSeat(deps.viewer) === null) continue;
+          out.push(hitTarget(it, itemKind));
+          continue;
+        }
+        if (pickableOwner(owner)) continue; // "ours" - not an enemy
         if (!deps.hostileToward(owner)) continue; // an ally or truce holder is not an attack target
         out.push(hitTarget(it, itemKind));
       }

@@ -7,20 +7,60 @@ export type PlacementCommand =
   | PlaceBuildingCommand
   | PlaceBoatCommand
   | PlaceResourceCommand
+  | PlacePalisadeCommand
   | DropGoodCommand
   | UpgradeBuildingCommand
   | CancelUpgradeCommand
   | DemolishCommand
-  | DemolishSignpostCommand;
+  | DemolishSignpostCommand
+  | DemolishPalisadeCommand
+  | SetPalisadeGateCommand
+  | RepairPalisadeCommand;
 
 /** The placements a player seat may issue for itself; the rest are world edits only trusted setup or
  *  the admin channel may make. */
 export type PlayerPlacementCommand =
   | PlayerPlaceBuildingCommand
+  | PlacePalisadeCommand
   | UpgradeBuildingCommand
   | CancelUpgradeCommand
   | DemolishCommand
-  | DemolishSignpostCommand;
+  | DemolishSignpostCommand
+  | DemolishPalisadeCommand
+  | SetPalisadeGateCommand
+  | RepairPalisadeCommand;
+
+/** Place one data-described wall segment at a half-cell node. `gfxIndex` selects the map catalog row,
+ * which must carry `ScriptLandscapeType.wall`; seat envelopes own the segment and start it unfinished. */
+export interface PlacePalisadeCommand {
+  readonly kind: 'placePalisade';
+  readonly gfxIndex: number;
+  readonly x: number;
+  readonly y: number;
+  readonly tribe: number;
+  readonly owner?: number;
+  /** Trusted map setup may place an already-standing neutral or owned wall. */
+  readonly underConstruction?: boolean;
+  /** Trusted authored-map durability/valency; ignored for a construction site. */
+  readonly valency?: number;
+  readonly force?: boolean;
+}
+
+export interface DemolishPalisadeCommand {
+  readonly kind: 'demolishPalisade';
+  readonly palisade: Entity;
+}
+
+export interface SetPalisadeGateCommand {
+  readonly kind: 'setPalisadeGate';
+  readonly palisade: Entity;
+  readonly open: boolean;
+}
+
+export interface RepairPalisadeCommand {
+  readonly kind: 'repairPalisade';
+  readonly palisade: Entity;
+}
 
 /**
  * Place a {@link Building} of `buildingType` at (x,y) for `tribe`, fully built (`built = ONE`) unless

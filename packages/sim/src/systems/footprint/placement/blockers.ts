@@ -1,5 +1,12 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
-import { Building, DeliveryFlag, Position, ResourceFootprint, Signpost } from '../../../components/index.js';
+import {
+  Building,
+  DeliveryFlag,
+  Palisade,
+  Position,
+  ResourceFootprint,
+  Signpost,
+} from '../../../components/index.js';
 import { landscapePlacementRevision } from '../../../components/landscape.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
@@ -30,14 +37,29 @@ const EXCLUSION = 1;
 const RESOURCE_ANCHOR = 2;
 const MARKER = 3;
 const BUILDING_ZONE = 4;
+/** A palisade's build margin. Buildings reject it, while another palisade may overlap it. */
+const PALISADE_ZONE = 5;
+/** A palisade's source walk body, present during construction for placement collision only. */
+const PALISADE_BODY = 6;
 type BlockerChannel =
   | typeof OBSTACLE
   | typeof EXCLUSION
   | typeof RESOURCE_ANCHOR
   | typeof MARKER
-  | typeof BUILDING_ZONE;
+  | typeof BUILDING_ZONE
+  | typeof PALISADE_ZONE
+  | typeof PALISADE_BODY;
 
-export { type BlockerChannel, BUILDING_ZONE, EXCLUSION, MARKER, OBSTACLE, RESOURCE_ANCHOR };
+export {
+  type BlockerChannel,
+  BUILDING_ZONE,
+  EXCLUSION,
+  MARKER,
+  OBSTACLE,
+  PALISADE_BODY,
+  PALISADE_ZONE,
+  RESOURCE_ANCHOR,
+};
 
 /** Opt-in for the {@link MARKER} channel. Only the work-flag rule consumes markers, so a scan that
  *  ignores the channel must not pay for the delivery-flag store walk. */
@@ -74,6 +96,16 @@ export function buildingBlockerCells(
   const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
   for (const c of body) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
   for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
+}
+
+function palisadeZoneCells(world: World, e: Entity, visit: BlockerVisit): void {
+  const wall = world.tryGet(e, Palisade);
+  const p = world.tryGet(e, Position);
+  if (wall === undefined || p === undefined) return;
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  const zone = wall.build.length > 0 ? wall.build : ANCHOR_ONLY;
+  for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, PALISADE_ZONE);
+  for (const c of wall.placementWalk) visit(hx + footprintCellDx(hy, c), hy + c.dy, PALISADE_BODY);
 }
 
 /** One signpost's contribution: its anchor is an OBSTACLE - no building's reserved zone and no
@@ -113,6 +145,7 @@ export const BLOCKER_STORES: readonly BlockerStore[] = [
     cells: (world, _content, e, visit) => resourceBlockerCells(world, e, visit),
   },
   BUILDING_STORE,
+  { component: Palisade, cells: (world, _content, e, visit) => palisadeZoneCells(world, e, visit) },
   { component: Signpost, cells: (world, _content, e, visit) => signpostBlockerCells(world, e, visit) },
 ];
 
@@ -150,5 +183,5 @@ export function eachBlockerCell(
  * never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${landscapePlacementRevision(world)}`;
+  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentValueGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${landscapePlacementRevision(world)}`;
 }

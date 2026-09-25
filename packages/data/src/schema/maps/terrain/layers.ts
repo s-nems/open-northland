@@ -68,5 +68,11 @@ export const TerrainObjects = z.strictObject({
    * Direction pinned by observation against the screenshot corpus.
    */
   levels: z.array(z.number().int().nonnegative()).optional(),
+  /**
+   * Per-placement authored owner from the `lmlp` lane, parallel to `placements`: player slot 0..12,
+   * or `null` for the raw 255 neutral sentinel. Absent only when the source map lacks `lmlp`.
+   * Player colour is a separate roster property and is deliberately not represented here.
+   */
+  owners: z.array(z.number().int().nonnegative().max(12).nullable()).optional(),
 });
 export type TerrainObjects = z.infer<typeof TerrainObjects>;

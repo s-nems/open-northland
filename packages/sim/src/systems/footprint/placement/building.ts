@@ -21,14 +21,14 @@ import { type PlacementGrid, placementBlockerGrid } from './blocker-grid.js';
  * no oracle: holding the reserved rings disjoint matches observed settlement density, while letting them
  * overlap packs about twice as densely.
  */
-function canPlaceAnchor(
+export function canPlaceAnchor(
   grid: PlacementGrid,
   footprint: BuildingFootprint,
   buildOnBioPattern: boolean,
   x: number,
   y: number,
 ): boolean {
-  const { terrain, obstacle, exclusion } = grid;
+  const { terrain, obstacle, exclusion, palisadeBody, palisadeZone } = grid;
   const w = terrain.width;
   const h = terrain.height;
   // 1. Reserved zone - the max-level body plus the source's margin ring: on the map, on buildable ground,
@@ -39,7 +39,9 @@ function canPlaceAnchor(
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
-    if ((obstacle[cy * w + cx] ?? 0) > 0) return false; // a resource body, a wall, or another reserved zone
+    const slot = cy * w + cx;
+    if ((obstacle[slot] ?? 0) > 0 || (palisadeBody[slot] ?? 0) > 0 || (palisadeZone[slot] ?? 0) > 0)
+      return false;
   }
   // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones, so placing
   //    level 0 already reserves the top level's space. familyBody ⊆ reserved, so loop 1 already proved
@@ -58,6 +60,34 @@ function canPlaceAnchor(
       const cy = y + c.dy;
       if (!terrain.inBounds(cx, cy) || !terrain.isPlantable(terrain.nodeAt(cx, cy))) return false;
     }
+  }
+  return true;
+}
+
+/** Palisade placement uses the building rule except that adjacent palisade build margins may overlap.
+ * Existing wall bodies still reject the candidate's own walk cells, preventing duplicate segments. */
+export function canPlacePalisadeAnchor(
+  grid: PlacementGrid,
+  footprint: BuildingFootprint,
+  x: number,
+  y: number,
+): boolean {
+  const { terrain, obstacle, exclusion, palisadeBody } = grid;
+  const w = terrain.width;
+  const h = terrain.height;
+  for (const c of footprint.reserved) {
+    const cx = x + footprintCellDx(y, c);
+    const cy = y + c.dy;
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
+    if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false;
+    if ((obstacle[cy * w + cx] ?? 0) > 0) return false;
+  }
+  for (const c of footprint.familyBody) {
+    const cx = x + footprintCellDx(y, c);
+    const cy = y + c.dy;
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
+    const slot = cy * w + cx;
+    if ((exclusion[slot] ?? 0) > 0 || (palisadeBody[slot] ?? 0) > 0) return false;
   }
   return true;
 }

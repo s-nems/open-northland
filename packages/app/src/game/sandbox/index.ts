@@ -4,6 +4,7 @@ export * from './content/index.js';
 export * from './ids/index.js';
 export * from './landscape.js';
 export * from './map-spawn.js';
+export * from './palisades.js';
 export * from './place/index.js';
 export * from './work-animations.js';
 export * from './worker-roles.js';
