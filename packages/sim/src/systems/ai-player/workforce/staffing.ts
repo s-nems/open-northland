@@ -218,7 +218,7 @@ export function reserveBuilders(
   force: SpareForce,
   builderJob: number | null,
   cap: number,
-  ctx?: SystemContext,
+  ctx: SystemContext,
 ): PlayerCommand[] {
   if (builderJob === null) return [];
   const commands: PlayerCommand[] = [];
@@ -228,9 +228,8 @@ export function reserveBuilders(
     if (keep === null) break;
     builders++;
   }
-  const greenFirst = ctx === undefined ? undefined : (e: Entity) => -tradeExperience(world, ctx, e);
   while (builders < cap) {
-    const spare = force.take(undefined, greenFirst);
+    const spare = force.take(undefined, (e) => -tradeExperience(world, ctx, e));
     if (spare === null) break;
     commands.push({ kind: 'setJob', entity: spare, jobType: builderJob });
     builders++;

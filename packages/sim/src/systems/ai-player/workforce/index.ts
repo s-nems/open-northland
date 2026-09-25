@@ -127,7 +127,7 @@ function runWorkforce(
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
     ...staffBuildings(world, ctx, seat, force, tally, 'min'),
-    ...reserveBuilders(world, force, builderJob, builderCap(civilians)), // construction never starves
+    ...reserveBuilders(world, force, builderJob, builderCap(civilians), ctx), // construction never starves
   ];
   // The army floor outranks the clearing and every target and top-up post, so trades that could absorb
   // every man still leave an army.
@@ -184,7 +184,7 @@ function rebuildCrew(
     supply: SeatSupply.of(world, ctx, player, owned, order),
   };
   return [
-    ...reserveBuilders(world, force, builderJob, BUILDER_CAP),
+    ...reserveBuilders(world, force, builderJob, BUILDER_CAP, ctx),
     ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world), 'min'),
   ];
 }

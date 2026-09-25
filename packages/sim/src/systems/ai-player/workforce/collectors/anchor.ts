@@ -38,7 +38,7 @@ export interface SeatedHolders {
 }
 
 /**
- * Seat `holders` on `slots`: each, in canonical order, takes the free slot nearest its flag, the lowest
+ * Seat `holders` on `slots`: each, most experienced first, takes the free slot nearest its flag, the lowest
  * rank on a tie, so a hire or a loss never swaps the others across the map. A holder whose flag is gone
  * takes the lowest free rank. Holders beyond the slots gather beside `fallback`.
  */
