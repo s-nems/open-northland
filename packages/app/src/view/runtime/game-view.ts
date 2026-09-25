@@ -242,7 +242,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   });
   // Three overlays hold the sim paused - the menu, the mission sheet and the verdict - so each holds
   // under its own key and none can release another's.
-  const pauseHolds = createPauseHolds(saveLoad);
+  const pauseHolds = createPauseHolds(saveLoad, !sharedClock);
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;
