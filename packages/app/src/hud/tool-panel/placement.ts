@@ -254,8 +254,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       const tile = deps.screenToTile(clientX, clientY);
       if (palisade !== null) {
         if (palisade.mode === 'gate') convertGate(palisade.gfxIndex, tile);
-        // A laid line ends the tool like a placed building, unless Ctrl keeps it for the next line.
-        else if (palisade.line.click(tile, straight) && mods?.keep !== true) exitPlacement();
+        // A laid line ends the tool like a placed building, unless Ctrl draws on from where it ends.
+        else if (palisade.line.click(tile, { straight, chain: mods?.keep === true }) && mods?.keep !== true)
+          exitPlacement();
         else showPalisadeStrip();
         return true;
       }

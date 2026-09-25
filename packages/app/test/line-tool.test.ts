@@ -140,6 +140,19 @@ describe('line tool', () => {
     expect(line.active()).toBeNull();
   });
 
+  it('chains the next line from where the laid one ends, without laying that node again', () => {
+    const { line, lines } = tool((node) => node.col < 7);
+    line.click({ col: 4, row: 2 });
+    line.click({ col: 9, row: 2 }, { chain: true });
+    expect(lines[0]?.map((node) => node.col)).toEqual([4, 5, 6]);
+    expect(line.anchor()).toEqual({ col: 6, row: 2 });
+    expect(line.preview({ col: 6, row: 4 })[0]).toEqual({ col: 6, row: 2, state: 'built' });
+
+    line.click({ col: 6, row: 4 });
+    expect(lines[1]?.some((node) => node.col === 6 && node.row === 2)).toBe(false);
+    expect(line.anchor()).toBeNull();
+  });
+
   it('keeps a line to the nearest straight run only while asked to', () => {
     const { line, lines } = tool();
     line.click({ col: 10, row: 10 });
@@ -147,7 +160,7 @@ describe('line tool', () => {
     expect(line.preview(cursor).some((node) => node.row !== 10)).toBe(true);
     expect(line.preview(cursor, true).map((node) => node.row)).toEqual(new Array(5).fill(10));
 
-    line.click(cursor, true);
+    line.click(cursor, { straight: true });
     expect(lines).toEqual([[10, 11, 12, 13, 14].map((col) => ({ col, row: 10 }))]);
   });
 

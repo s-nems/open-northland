@@ -610,7 +610,7 @@ describe('placement controller', () => {
     expect(strip.shown).toBeNull();
   });
 
-  it('keeps the wall tool armed for the next line while Ctrl is held on the laying click', () => {
+  it('draws on from the end of a line laid with Ctrl held, and ends after a plain one', () => {
     let tile = { col: 4, row: 2 };
     const { placement, commands } = mount(() => tile);
     placement.enterPalisade(691, 'wall');
@@ -619,13 +619,14 @@ describe('placement controller', () => {
     placement.handleClick(10, 0, { keep: true });
     expect(commands).toHaveLength(3);
     expect(placement.activePalisade()).toBe(691);
-    expect(placement.activeLine()).toBeNull();
+    expect(placement.activeLine()?.anchor).toEqual({ col: 6, row: 2 });
 
-    tile = { col: 4, row: 6 };
-    placement.handleClick(0, 0);
-    tile = { col: 5, row: 6 };
+    tile = { col: 8, row: 2 };
     placement.handleClick(10, 0);
-    expect(commands).toHaveLength(5);
+    expect(commands.slice(3)).toMatchObject([
+      { kind: 'placePalisade', x: 7, y: 2 },
+      { kind: 'placePalisade', x: 8, y: 2 },
+    ]);
     expect(placement.isActive()).toBe(false);
   });
 

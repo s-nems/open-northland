@@ -181,8 +181,9 @@ export interface LineToolSpec {
 
 /**
  * A two-click line placement: a click on an open or built node starts the line, the pointer moves its end,
- * and a second left click lays the accepted prefix and waits for the next start.
- * `stepBack` drops a started line, which the right button and Esc reach first.
+ * and a second left click lays the accepted prefix and waits for the next start, or with `chain` starts
+ * the next line where the laid one ends. `stepBack` drops a started line, which the right button and Esc
+ * reach first.
  */
 export interface LineTool {
   anchor(): LineNode | null;
@@ -190,44 +191,65 @@ export interface LineTool {
    *  keeps it to the nearest of the eight straight runs. */
   preview(tile: LineNode, straight?: boolean): LinePreviewNode[];
   /** True when the press laid a line. */
-  click(tile: LineNode | null, straight?: boolean): boolean;
+  click(tile: LineNode | null, opts?: LineClick): boolean;
   stepBack(): boolean;
   active(): ActiveLine | null;
+}
+
+export interface LineClick {
+  /** Keeps the line to the nearest straight run, as in `preview`. */
+  readonly straight?: boolean;
+  /** Starts the next line at the laid line's last accepted node. */
+  readonly chain?: boolean;
 }
 
 export function createLineTool(spec: LineToolSpec): LineTool {
   // Built once per started line: the frame loop reads it every frame.
   let line: ActiveLine | null = null;
+  // A chained line's anchor, just committed: built before the commit lands, never laid twice.
+  let laid: LineNode | null = null;
   const stateOf = (node: LineNode): LineNodeState =>
-    spec.built?.(node) === true ? 'built' : spec.canPlace(node) ? 'open' : 'blocked';
+    (laid?.col === node.col && laid.row === node.row) || spec.built?.(node) === true
+      ? 'built'
+      : spec.canPlace(node)
+        ? 'open'
+        : 'blocked';
   const accepts = (col: number, row: number): boolean => stateOf({ col, row }) !== 'blocked';
+  const startAt = (node: LineNode): ActiveLine => ({
+    tool: spec.tool,
+    anchor: { col: node.col, row: node.row },
+    maxEdges: spec.maxEdges,
+    accepts,
+  });
   const route = (from: LineNode, tile: LineNode, straight: boolean): LinePreviewNode[] =>
     markPrefix((straight ? straightLine : screenLine)(from, tile, spec.maxEdges), stateOf);
   return {
     anchor: () => line?.anchor ?? null,
     preview: (tile, straight = false) => route(line?.anchor ?? tile, tile, straight),
-    click: (tile, straight = false): boolean => {
+    click: (tile, { straight = false, chain = false } = {}): boolean => {
       if (tile === null) return false;
       if (line === null) {
-        if (stateOf(tile) !== 'blocked') {
-          line = {
-            tool: spec.tool,
-            anchor: { col: tile.col, row: tile.row },
-            maxEdges: spec.maxEdges,
-            accepts,
-          };
-        }
+        if (stateOf(tile) !== 'blocked') line = startAt(tile);
         return false;
       }
-      const placed = route(line.anchor, tile, straight).filter((node) => node.state === 'open');
+      const path = route(line.anchor, tile, straight);
+      const placed = path.filter((node) => node.state === 'open');
+      // The accepted prefix is laid, so the next line picks up at its last node.
+      const end = path.filter((node) => node.state !== 'blocked').at(-1);
       line = null;
+      laid = null;
       if (placed.length === 0) return false;
       spec.commit(placed.map(({ col, row }) => ({ col, row })));
+      if (chain && end !== undefined) {
+        line = startAt(end);
+        laid = end;
+      }
       return true;
     },
     stepBack: (): boolean => {
       if (line === null) return false;
       line = null;
+      laid = null;
       return true;
     },
     active: () => line,
