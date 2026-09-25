@@ -154,18 +154,17 @@ describe('atomicSystem - authored sound cues', () => {
     expect(cuesOverSwing(COLLECTOR_JOB, CIVILIST_ONLY_ATOMIC)).toEqual([{ tick: 3, soundType: VOICE }]);
   });
 
-  it('sounds a multi-stroke harvest once per stroke', () => {
-    // The fixture chop is 3 ticks with its cue at frame 2; a felling re-arms the clip in place between
-    // strokes, so the cue must track the strokes, not the atomic's lifetime.
+  it('sounds a counted stroke and its follow-through once each, the rest never', () => {
+    // The fixture chop is 3 ticks with its cue at frame 2. A counted stroke that leaves the tree standing
+    // re-arms the clip as its follow-through, so the cue fires for both clips; the rest clip that follows
+    // carries no cue.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const cutter = settlerAt(sim, {
       jobType: WOODCUTTER_JOB,
       position: { x: fx.fromInt(0), y: fx.fromInt(0) },
     });
-    // A standing tree is FELLED over several chops that each yield nothing, so the swing re-arms in place.
     const content = testContent();
     const yieldPerNode = content.goods.find((g) => g.id === 'wood')?.gathering?.yieldPerNode ?? 0;
-    const chops = content.jobExperience.find((t) => t.id === 'woodcutter_wood')?.baseRepeatCounter ?? 0;
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: yieldPerNode, harvestAtomic: CHOP_ATOMIC });
@@ -179,17 +178,19 @@ describe('atomicSystem - authored sound cues', () => {
       targetTile: null,
     });
 
-    let swings = 0;
+    let chopClips = 0;
     let cues = 0;
     for (let tick = 0; tick < 60; tick++) {
       if (!sim.world.has(cutter, CurrentAtomic)) break;
-      if (sim.world.get(cutter, AtomicClock).elapsed === 0) swings += 1;
+      const atomic = sim.world.get(cutter, CurrentAtomic);
+      if (atomic.atomicId === CHOP_ATOMIC && sim.world.get(cutter, AtomicClock).elapsed === 0) chopClips += 1;
       sim.events.clear();
       atomicSystem(sim.world, ctxOf(sim));
       cues += sim.events.current().filter((ev) => ev.kind === 'atomicSound').length;
     }
 
-    expect(swings).toBe(chops); // the chain re-armed stroke after stroke until the tree came down
-    expect(cues).toBe(swings);
+    expect(chopClips).toBe(2); // the counted stroke and its follow-through
+    expect(cues).toBe(chopClips);
+    expect(sim.world.get(tree, Felling).chops).toBe(1); // the follow-through landed nothing
   });
 });

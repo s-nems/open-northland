@@ -191,11 +191,13 @@ describe('resource footprints', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(worker, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.nodeAt(1, 1));
+    const stances = [terrain.nodeAt(1, 1), terrain.nodeAt(3, 1)]; // the work cells either side of the anchor
+    const stance = sim.world.get(worker, MoveGoal).cell;
+    expect(stances).toContain(stance);
 
     sim.world.remove(worker, MoveGoal);
     sim.world.remove(worker, PathRequest);
-    Object.assign(sim.world.get(worker, Position), positionOfNode(1, 1)); // standing on the work node
+    Object.assign(sim.world.get(worker, Position), positionOfNode(terrain.coordsOf(stance).x, 1)); // standing on the work node
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(worker, MoveGoal)).toBe(false);

@@ -25,8 +25,8 @@ const ENEMY_POST = { x: 90, y: 4 } as const;
 const COLLECTOR = { x: 4, y: 4 } as const;
 const NEAR_TREE = { x: 50, y: 6 } as const;
 const FAR_TREE = { x: 110, y: 2 } as const;
-/** Walk ~48 tiles + fell the near tree, with margin. */
-const RUN_TICKS = 2800;
+/** Walk ~48 tiles + fell the near tree over ten cadenced strokes, with margin. */
+const RUN_TICKS = 4000;
 /** Frames the collector's whole trip: the chain, the near tree and the lone post in one screen. */
 const INITIAL_ZOOM = 0.55;
 

@@ -125,7 +125,8 @@ describe('planFarmer - the drive ladder', () => {
   });
 
   it("the field falls on the stroke that completes the track's count, never earlier", () => {
-    // Whether the field still stands after each successive full clip, at `strokes` per field.
+    // Whether the field still stands after each successive full clip, at `strokes` per field. A
+    // two-stroke field stands through the first stroke and the follow-through clip behind it.
     const standsAfterClips = (strokes: number): boolean[] => {
       const sim = new Simulation({ seed: 1, content: contentWithStrokes(strokes), map: grassMap(8, 8) });
       const { field, farmer } = plotAtCap(sim, { stage: STAGES });
@@ -139,10 +140,18 @@ describe('planFarmer - the drive ladder', () => {
       return stands;
     };
     expect(standsAfterClips(1)).toEqual([false, false]);
-    expect(standsAfterClips(2)).toEqual([true, false]);
+    expect(standsAfterClips(2)).toEqual([true, true]);
   });
 
-  it('a two-stroke reap re-arms the same clip from zero after its first stroke', () => {
+  it('a two-stroke field falls once the farmer returns for its second counted stroke', () => {
+    const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
+    const { field } = plotAtCap(sim, { stage: STAGES });
+    const REAP_BUDGET_TICKS = 300; // two counted strokes with a follow-through, a rest and a re-plan between
+    for (let tick = 0; tick < REAP_BUDGET_TICKS && sim.world.has(field, Crop); tick++) sim.step();
+    expect(sim.world.has(field, Crop)).toBe(false);
+  });
+
+  it('a two-stroke reap plays the same clip again from zero after its first stroke', () => {
     const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
     const { farmer } = plotAtCap(sim, { stage: STAGES });
     plannerSystem(sim.world, ctxOf(sim));

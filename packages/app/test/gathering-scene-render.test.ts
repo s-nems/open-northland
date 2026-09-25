@@ -43,9 +43,9 @@ const LANE_STEP = 2;
 const WORKER_X = 8;
 const NODE_X = 13;
 const FLAG_X = 18;
-/** Enough for the slowest lane to fully drain - clay (10 units × 6 strikes × 23-tick digs + rests)
- *  empties around tick 5400 on this layout; 6000 leaves honest headroom. */
-const RUN_TICKS = 6000;
+/** Enough for the slowest lane to fully drain - clay (10 units × 10 cadenced strokes of 23-tick digs)
+ *  on this layout, with headroom. */
+const RUN_TICKS = 18000;
 
 const fixture: SceneDefinition = {
   id: 'gathering-render-fixture',

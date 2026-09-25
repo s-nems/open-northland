@@ -40,9 +40,10 @@ const MAP_H = 96;
  *  extent of the authored content. */
 export const SANDBOX_SETTLEMENT_PITCH = Math.max(MAP_W, MAP_H);
 const INITIAL_ZOOM = 0.5;
-/** Every persistent headless check passes by tick 825. Sample later while the idle crew has a live chat
- *  under the wider no-field zone around completed buildings. */
-const RUN_TICKS = 1400;
+/** Every persistent headless check passes once the slowest camp's first unit lands, a novice's ten
+ *  cadenced strokes in. Sample later while the idle crew has a live chat under the wider no-field zone
+ *  around completed buildings. */
+const RUN_TICKS = 3000;
 
 function buildVillage(sim: Simulation, ox: number, oy: number): void {
   for (const b of VILLAGE) {

@@ -3,6 +3,7 @@ import {
   CraftSelection,
   CurrentAtomic,
   GatherSelection,
+  HarvestFocus,
   JobAssignment,
   removeCurrentAtomic,
   Settler,
@@ -73,6 +74,8 @@ export function setWorkFlag(
   const c = terrain.coordsOf(target);
   const pos = positionOfNode(c.x, c.y);
 
+  // A moved flag restarts the search from it: the node being approached may lie outside the new radius.
+  if (world.has(e, HarvestFocus)) world.remove(e, HarvestFocus);
   if (live !== undefined) {
     relocateWorkFlag(world, live.flag, pos, e);
     return;
@@ -118,7 +121,10 @@ export function setGatherGood(
     }
   }
   const atomic = world.tryGet(e, CurrentAtomic);
-  if (atomic?.effect.kind === 'harvest') removeCurrentAtomic(world, e);
+  if (atomic?.effect.kind === 'harvest' || atomic?.effect.kind === 'harvestFollowThrough') {
+    removeCurrentAtomic(world, e);
+  }
+  if (world.has(e, HarvestFocus)) world.remove(e, HarvestFocus);
   clearNavState(world, e);
 }
 

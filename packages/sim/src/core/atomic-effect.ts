@@ -6,6 +6,10 @@ import type { NodeId } from '../nav/terrain/index.js';
 export type AtomicEffect =
   | { readonly kind: 'move'; readonly to: { x: number; y: number } }
   | { readonly kind: 'harvest'; readonly resource: Entity; readonly goodType: number }
+  /** The swing a gatherer plays right after a counted stroke that left `resource` standing: the same
+   *  clip again, landing nothing and wearing nothing, the node still its claim. Original behavior;
+   *  `atomics/stroke-cadence.ts`. */
+  | { readonly kind: 'harvestFollowThrough'; readonly resource: Entity }
   | {
       readonly kind: 'fish';
       readonly swarm: Entity;

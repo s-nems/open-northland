@@ -1,5 +1,6 @@
 import {
   GatherSelection,
+  HarvestFocus,
   JobAssignment,
   Position,
   Resource,
@@ -13,18 +14,22 @@ import {
   HUNT_CARCASS_SLACK_NODES,
   huntingGround,
 } from '../../../conflict/hunting/index.js';
+import { dynamicBlockOverlay, resourceStanceCells, routeRegions } from '../../../footprint/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { isHunterJob } from '../../../readviews/index.js';
+import { manhattan } from '../../../spatial/metric.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { IdleStands } from '../../planner/idle-replan.js';
 import {
   interactionCell,
+  jobAtomics,
   nearestCollectablePileFor,
   nearestHarvestableFor,
   nearestOwnDropFor,
 } from '../../targets/index.js';
+import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
 import type { HarvestClaims } from './harvest-claims.js';
 
 /**
@@ -60,13 +65,20 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
   const goodFilter =
     stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
 
+  const hunter = isHunterJob(ctx.content, plan.jobType);
   // A hunter is bounded to its own hunting ground, the same band the one-kill gate probes, so the gate and
   // the harvest that answers it cannot disagree about what its work is. A body that drifts past every
   // ground has no sweeper left. A hunter with neither flag nor workplace still roams unbounded.
-  const hunter = isHunterJob(ctx.content, plan.jobType);
   const ground = hunter ? huntingGround(world, terrain, e) : null;
   const huntArea =
     ground === null ? undefined : { center: ground.anchorCell, radius: carcassReach(plan, ground.radius) };
+  const focus = focusedHarvest(
+    plan,
+    harvestClaims,
+    (node, goodType) =>
+      (goodFilter === undefined || goodFilter.has(goodType)) && !(hunter && foreignKill(plan)(node)),
+  );
+  if (focus !== null && startHarvestFromNode(plan, focus, harvestClaims, huntArea)) return true;
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
     ...(goodFilter !== undefined ? { goodFilter } : {}),
@@ -83,10 +95,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
     walkPickupBatch(plan, trunk.pile, trunk.goodType);
     return true;
   }
-  if (node !== null) {
-    startHarvestFromNode(plan, node, harvestClaims);
-    return true;
-  }
+  if (node !== null) return startHarvestFromNode(plan, node, harvestClaims, huntArea);
   return false;
 }
 
@@ -111,23 +120,28 @@ function planFlagGatherer(
     walkPickupBatch(plan, own.pile, own.goodType);
     return true;
   }
-
   // A hunter ignores its flag's good filter: a layered carcass re-arms through its goods in turn, so a
   // meat-only pick would strand the body at its leather stage while the one-kill gate held forever.
   const hunter = isHunterJob(ctx.content, plan.jobType);
+  const reach = { center: flagCell, radius: hunter ? carcassReach(plan, flag.radius) : flag.radius };
+  const focus = focusedHarvest(
+    plan,
+    harvestClaims,
+    (node, goodType) =>
+      (flag.goodType === undefined || hunter || goodType === flag.goodType) &&
+      !(hunter && foreignKill(plan)(node)),
+  );
+  if (focus !== null && startHarvestFromNode(plan, focus, harvestClaims, reach)) return true;
+
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
     ...(hunter ? { reserved: foreignKill(plan) } : {}),
     area: {
-      center: flagCell,
-      radius: hunter ? carcassReach(plan, flag.radius) : flag.radius,
+      ...reach,
       ...(flag.goodType !== undefined && !hunter ? { goodType: flag.goodType } : {}),
     },
   });
-  if (node !== null) {
-    startHarvestFromNode(plan, node, harvestClaims);
-    return true;
-  }
+  if (node !== null && startHarvestFromNode(plan, node, harvestClaims, reach)) return true;
 
   // Nothing in reach: stand idle beside the flag.
   idle.stand(e, false);
@@ -151,17 +165,66 @@ function foreignKill(plan: PlannerContext): (node: Entity) => boolean {
   return (node) => claimedByAnotherHunter(world, ctx, terrain, node, e);
 }
 
-/** Walk to a node's work cell and start its harvest atomic, claiming the node so colleagues planned later
- *  this pass pick another. */
+/**
+ * The node this gatherer is taking up, when it still stands, is still its trade's work, `accepts` still
+ * wants its good, no colleague took it this pass and the stance drawn for it is not one its routes just
+ * failed on; otherwise the mark is dropped and the scan decides.
+ */
+function focusedHarvest(
+  plan: PlannerContext,
+  harvestClaims: HarvestClaims,
+  accepts: (node: Entity, goodType: number) => boolean,
+): { entity: Entity } | null {
+  const { world, ctx, entity: e } = plan;
+  const focus = world.tryGet(e, HarvestFocus);
+  if (focus === undefined) return null;
+  const res = world.tryGet(focus.node, Resource);
+  const stanceLost =
+    focus.stance !== undefined && isUnreachableGoal(unreachableGoals(world, ctx, e), focus.stance);
+  if (
+    res !== undefined &&
+    res.remaining > 0 &&
+    !stanceLost &&
+    !harvestClaims.has(focus.node) &&
+    jobAtomics(ctx, plan.jobType).has(res.harvestAtomic) &&
+    accepts(focus.node, res.goodType)
+  ) {
+    return { entity: focus.node };
+  }
+  world.remove(e, HarvestFocus);
+  return null;
+}
+
+/**
+ * Walk to the node's stance and start its harvest atomic, claiming the node so colleagues planned later
+ * this pass pick another. The stance is the one this approach already drew, while it still passes the
+ * gates, else a fresh draw among the pool cells the settler can route to, remembered with the node. A
+ * scan's proven cell stands in when no pool cell passes; a remembered node with none left is dropped
+ * and the caller falls through to its scan. Returns whether the harvest was taken up.
+ */
 function startHarvestFromNode(
   plan: PlannerContext,
-  node: { entity: Entity; cell: NodeId },
+  node: { entity: Entity; cell?: NodeId },
   harvestClaims: HarvestClaims,
-): void {
-  const { world, ctx, entity: e, here } = plan;
-  harvestClaims.add(node.entity);
+  bound: { center: NodeId; radius: number } | undefined,
+): boolean {
+  const { world, ctx, terrain, entity: e, here } = plan;
   const res = world.get(node.entity, Resource);
-  atOrWalk(world, e, here, node.cell, () =>
+  const focus = world.tryGet(e, HarvestFocus);
+  const drawn = focus?.node === node.entity ? focus.stance : undefined;
+  const passes = stanceGates(plan, bound);
+  let stance = drawn !== undefined && passes(drawn) ? drawn : undefined;
+  if (stance === undefined) {
+    const open = resourceStanceCells(world, terrain, node.entity).filter(passes);
+    stance = open.length > 0 ? open[ctx.rng.int(open.length)] : node.cell;
+    if (stance === undefined) {
+      world.remove(e, HarvestFocus);
+      return false;
+    }
+    world.add(e, HarvestFocus, { node: node.entity, stance });
+  }
+  harvestClaims.add(node.entity);
+  atOrWalk(world, e, here, stance, () =>
     startAtomic(
       world,
       e,
@@ -171,4 +234,30 @@ function startHarvestFromNode(
       node.entity,
     ),
   );
+  return true;
+}
+
+/**
+ * The gates a stance must pass for this settler to walk there, the same ones the harvest scan applies
+ * to its proven cell: open under the walk-block overlay, not a goal its routes just failed on, in its
+ * static component and routable from where it stands, inside its signpost area and inside `bound`.
+ * The settler's own cell always passes.
+ */
+function stanceGates(
+  plan: PlannerContext,
+  bound: { center: NodeId; radius: number } | undefined,
+): (cell: NodeId) => boolean {
+  const { world, ctx, terrain, entity: e, here } = plan;
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const unreachable = unreachableGoals(world, ctx, e);
+  const regions = routeRegions(world, ctx, terrain);
+  const gate = plan.limit ?? undefined;
+  return (cell) =>
+    cell === here ||
+    (!blocked.has(cell) &&
+      !isUnreachableGoal(unreachable, cell) &&
+      terrain.componentOf(cell) === terrain.componentOf(here) &&
+      !regions.unroutable(here, cell) &&
+      (gate === undefined || gate.allowsNode(cell)) &&
+      (bound === undefined || manhattan(terrain, bound.center, cell) <= bound.radius));
 }

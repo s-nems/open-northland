@@ -151,7 +151,7 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
     sim.world.add(wood, Resource, { goodType: WOOD, remaining: 100, harvestAtomic: HARVEST_ATOMIC });
     stampResourceFootprintData(sim.world, wood, anchorOnlyFootprint());
 
-    sim.run(62); // the walk out, then the first swings of the harvest
+    sim.run(400); // the walk out, then the harvest's strokes with their cadence
 
     // Every idle moment between atomics re-acquires the enemy across the water: without the release the
     // chase re-benches the woodcutter each time and the tree is never touched.

@@ -13,9 +13,9 @@ describe('atomicPlanner - end-to-end harvest -> carry -> pileup through the real
     const store = storeAt(sim, 2, 0);
 
     // Run until the store has wood (one full harvest→carry→pileup cycle, the harvest a novice's ten
-    // strokes), with a generous cap.
+    // strokes, each with its follow-through, rest and fresh stance), with a generous cap.
     let deposited = 0;
-    for (let i = 0; i < 120 && deposited === 0; i++) {
+    for (let i = 0; i < 600 && deposited === 0; i++) {
       sim.step();
       deposited = sim.world.get(store, Stockpile).amounts.get(WOOD) ?? 0;
     }
@@ -29,7 +29,7 @@ describe('atomicPlanner - end-to-end harvest -> carry -> pileup through the real
     woodcutterAt(sim, 0, 0);
     woodAt(sim, 1, 0, 5);
     const store = storeAt(sim, 2, 0);
-    for (let i = 0; i < 200; i++) sim.step();
+    for (let i = 0; i < 1000; i++) sim.step();
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD) ?? 0).toBeGreaterThanOrEqual(2);
   });
 
@@ -40,8 +40,8 @@ describe('atomicPlanner - end-to-end harvest -> carry -> pileup through the real
 
     const store = storeAt(sim, 2, 0);
 
-    // Long enough to harvest the node dry and haul every unit (each cycle is ~tens of ticks).
-    for (let i = 0; i < 600; i++) sim.step();
+    // Long enough to harvest the node dry and haul every unit (each unit is ten cadenced strokes).
+    for (let i = 0; i < 2400; i++) sim.step();
 
     // A drained single-unit node is now REMOVED (Step 4), not left as a `remaining:0` husk the planner
     // would re-scan forever - the collector picked its last unit off the back and it vanished.

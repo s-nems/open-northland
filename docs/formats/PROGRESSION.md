@@ -89,7 +89,9 @@ percent buys: a workshop cycle adds `trunc(pct * 15 / 100)` tenths of a unit on 
 outputs, plus a worn tool's own tenths (wooden 2, iron 7), banked per good until a whole unit lands on
 the shelf; a gatherer's or fisher's strokes per unit are `max(1, trunc(count * 100 / toolFactor) -
 trunc(pct / 20))` with the track's `baserepeatcounter` as the count (10 when the record omits it) and
-the tool factor 100/125/175 for none/wooden/iron; a builder's swing installs
+the tool factor 100/125/175 for none/wooden/iron, each counted gathering stroke that leaves the node
+standing followed by the same clip landing nothing, one of the three short idle clips, and a fresh
+stance drawn at random from the node's work area; a builder's swing installs
 `trunc(trunc((150 + pct) * toolFactor / 100) / 100)` of a building's `30 x material units` steps.
 A tool wears one of its rated uses per workshop cycle, gathering stroke, cast, build swing or
 watering.

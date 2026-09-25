@@ -63,8 +63,8 @@ describe('flag-bound gatherer - a drop on a blocked cell is left for later, not 
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The doomed drop is skipped: the walk goal is the tree's near work cell, not the blocked drop.
-    expect(sim.world.get(gatherer, MoveGoal).cell).toBe(terrain.nodeAt(2, 1));
+    // The doomed drop is skipped: the walk goal is one of the tree's work cells, not the blocked drop.
+    expect([terrain.nodeAt(2, 1), terrain.nodeAt(4, 1)]).toContain(sim.world.get(gatherer, MoveGoal).cell);
   });
 
   it('still reclaims the same drop when its cell is free (the gate keys on blockage alone)', () => {

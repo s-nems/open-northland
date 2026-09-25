@@ -187,7 +187,9 @@ describe.runIf(hasRealIr())('field-farming cycle over merged real content', () =
     }
     expect(placed).toBe(crop.farming.maxFields);
     let banked = 0;
-    for (let tick = 0; tick < 600 && banked === 0; tick++) {
+    // A ripe herb field costs a novice ten cadenced strokes (a follow-through and a rest each) before
+    // the reap lands and the sheaf comes home.
+    for (let tick = 0; tick < 2400 && banked === 0; tick++) {
       sim.step();
       banked = sim.world.get(workplaceEntity, Stockpile).amounts.get(crop.typeId) ?? 0;
     }

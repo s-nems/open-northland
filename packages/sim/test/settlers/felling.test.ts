@@ -305,7 +305,8 @@ describe('felling - end-to-end through the real schedule', () => {
 
     let maxWood = 0;
     const violations: string[] = [];
-    for (let i = 0; i < 300; i++) {
+    // Ten counted strokes, each with its follow-through, rest and fresh stance, then three trunk trips.
+    for (let i = 0; i < 900; i++) {
       sim.step();
       maxWood = Math.max(maxWood, totalWood(sim));
       if (violations.length === 0) {

@@ -7,6 +7,7 @@ import {
   Carrying,
   CurrentAtomic,
   GroundDrop,
+  HarvestFocus,
   MineDeposit,
   Position,
   Resource,
@@ -25,6 +26,7 @@ import {
 } from '../../src/systems/progression/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { settleStrokeCadence } from '../fixtures/strokes.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -95,10 +97,13 @@ function harvestOnce(sim: Simulation, settler: Entity, node: Entity, good: numbe
 }
 
 /** Chip one unit off `deposit`: the fixture MINER's pairing has no track, so a unit costs the record's
- *  default strokes. The first stroke starts the atomic and every later one re-arms in place (duration 1). */
+ *  default strokes. Every counted stroke starts its own atomic once the previous stroke's follow-through
+ *  and rest have run out. */
 function chipUnit(sim: Simulation, settler: Entity, deposit: Entity): void {
-  harvestOnce(sim, settler, deposit, STONE, HARVEST_STONE);
-  for (let stroke = 1; stroke < DEFAULT_BASE_REPEAT_COUNTER; stroke++) atomicSystem(sim.world, ctxOf(sim));
+  for (let stroke = 0; stroke < DEFAULT_BASE_REPEAT_COUNTER; stroke++) {
+    harvestOnce(sim, settler, deposit, STONE, HARVEST_STONE);
+    settleStrokeCadence(sim, settler);
+  }
 }
 
 /** Every loose ore pile (a {@link GroundDrop}) in the world. */
@@ -226,32 +231,37 @@ describe("mining - strokes per unit come from the miner's track", () => {
     return { sim, miner, node };
   };
 
-  it('chains strokes on the node counter and frees one unit on the last, then releases', () => {
+  it('banks strokes on the node counter across the cadence and frees one unit on the last', () => {
     const needed = strokesPerUnit(WOOD_TRACK_STROKES, MASTERY_PCT, BARE_HANDS_WORK_FACTOR_PCT);
     expect(needed).toBeLessThan(WOOD_TRACK_STROKES); // mastery saves strokes
     const { sim, miner, node } = trainedMinerScene(4, MASTERY_XP);
-    harvestOnce(sim, miner, node, WOOD, HARVEST_WOOD);
-    for (let stroke = 2; stroke < needed; stroke++) atomicSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(node, MineDeposit).strikes).toBe(needed - 1);
+    for (let stroke = 1; stroke < needed; stroke++) {
+      harvestOnce(sim, miner, node, WOOD, HARVEST_WOOD);
+      settleStrokeCadence(sim, miner);
+      expect(sim.world.get(node, MineDeposit).strikes).toBe(stroke);
+      expect(sim.world.get(miner, HarvestFocus).node).toBe(node); // released mid-unit, the node remembered
+    }
     expect(oreDrops(sim)).toHaveLength(0);
-    expect(sim.world.has(miner, CurrentAtomic)).toBe(true); // mid-unit - the stroke chains
 
-    atomicSystem(sim.world, ctxOf(sim));
+    harvestOnce(sim, miner, node, WOOD, HARVEST_WOOD);
     expect(sim.world.get(node, MineDeposit).strikes).toBe(0);
     expect(sim.world.get(node, Resource).remaining).toBe(3);
     expect(oreDrops(sim)).toHaveLength(1);
-    expect(sim.world.has(miner, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(miner, CurrentAtomic)).toBe(false); // the extracting stroke releases at once
+    expect(sim.world.has(miner, HarvestFocus)).toBe(false);
   });
 
   it('re-reads the count at every stroke, so mastery earned mid-unit frees the unit at once', () => {
     const masterNeeds = strokesPerUnit(WOOD_TRACK_STROKES, MASTERY_PCT, BARE_HANDS_WORK_FACTOR_PCT);
     const { sim, miner, node } = trainedMinerScene(4, 0);
-    harvestOnce(sim, miner, node, WOOD, HARVEST_WOOD);
-    for (let stroke = 1; stroke < masterNeeds; stroke++) atomicSystem(sim.world, ctxOf(sim));
+    for (let stroke = 0; stroke < masterNeeds; stroke++) {
+      harvestOnce(sim, miner, node, WOOD, HARVEST_WOOD);
+      settleStrokeCadence(sim, miner);
+    }
     expect(sim.world.get(node, MineDeposit).strikes).toBe(masterNeeds);
     expect(oreDrops(sim)).toHaveLength(0);
     sim.world.mut(miner, SettlerProgress).experience.set(WOOD_TRACK, MASTERY_XP);
-    atomicSystem(sim.world, ctxOf(sim));
+    harvestOnce(sim, miner, node, WOOD, HARVEST_WOOD);
     expect(oreDrops(sim)).toHaveLength(1);
   });
 });

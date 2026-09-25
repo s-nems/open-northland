@@ -9,13 +9,14 @@ import { GATHERERS, GOOD_MUD, GOOD_STONE, GOOD_WOOD } from '../src/game/sandbox/
 import { resourceCommand } from '../src/game/sandbox/place/index.js';
 
 /** Ticks the search gives a yield before calling the gatherer stuck. */
-const MAX_TICKS = 2000;
+const MAX_TICKS = 4000;
 
 /** A novice collector's strokes per unit: its general track's count. */
 const NOVICE_STROKES =
   sandboxContent().jobExperience.find((t) => t.jobType === JOB_COLLECTOR)?.baseRepeatCounter ?? 0;
 
-function firstYield(good: number): number {
+/** The tick the first unit of `good` lands and the harvest clips the collector played to get there. */
+function firstYield(good: number, atomic: number): { tick: number; clips: number } {
   const terrain = grassTerrain(8, 8);
   const sim = new Simulation({
     seed: 1,
@@ -34,11 +35,16 @@ function firstYield(good: number): number {
     owner: HUMAN_PLAYER,
   });
 
-  for (let ticks = 1; ticks <= MAX_TICKS; ticks++) {
+  let clips = 0;
+  for (let tick = 1; tick <= MAX_TICKS; tick++) {
     sim.step();
-    for (const event of sim.events.current()) {
+    const events = sim.events.current();
+    for (const event of events) {
+      if (event.kind === 'atomicCompleted' && event.atomicId === atomic) clips += 1;
+    }
+    for (const event of events) {
       if ((event.kind === 'resourceFelled' || event.kind === 'resourceMined') && event.goodType === good) {
-        return ticks;
+        return { tick, clips };
       }
     }
   }
@@ -46,15 +52,22 @@ function firstYield(good: number): number {
 }
 
 describe('resource harvest cadence at 1x', () => {
-  // Original behavior: the strokes of one unit chain back to back, with no rest between them.
+  // Original behavior: every counted stroke but the last is followed by the same clip landing nothing,
+  // a short rest and a fresh stance, so a unit costs twice the track's clips less one, spread over the
+  // rests and the walks between them.
   it.each([
     ['wood', GOOD_WOOD],
     ['stone', GOOD_STONE],
     ['clay', GOOD_MUD],
-  ] as const)("a novice's first %s yield lands after the track's strokes, back to back", (_name, good) => {
-    const atomic = GATHERERS.find((g) => g.good === good)?.atomic ?? 0;
-    const clipTicks = HARVEST_TICKS[atomic] ?? 0;
-    expect(NOVICE_STROKES).toBeGreaterThan(1);
-    expect(firstYield(good)).toBe(NOVICE_STROKES * clipTicks);
-  });
+  ] as const)(
+    "a novice's first %s yield lands after the track's strokes, each with its follow-through",
+    (_name, good) => {
+      const atomic = GATHERERS.find((g) => g.good === good)?.atomic ?? 0;
+      const clipTicks = HARVEST_TICKS[atomic] ?? 0;
+      expect(NOVICE_STROKES).toBeGreaterThan(1);
+      const { tick, clips } = firstYield(good, atomic);
+      expect(clips).toBe(2 * NOVICE_STROKES - 1);
+      expect(tick).toBeGreaterThan(clips * clipTicks); // the rests and walks between strokes take their time
+    },
+  );
 });

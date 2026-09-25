@@ -80,12 +80,12 @@ describe('the full strategic registry - determinism and replay', () => {
     // The crew covers the ladder's essentials - the collectors (with top-ups), the scout, the
     // minimum staffing of every workshop the list raises, and the eight-builder reserve that
     // actually raises it - with enough left over to reach the first target-tier posts. The rest
-    // waits for grown sons, which this run doesn't simulate. The list closes by ~4200 ticks; 5000
-    // keeps slack without dragging the suite (per-tick cost here is dominated by the settler
-    // micro-planner, not the strategic AI).
+    // waits for grown sons, which this run doesn't simulate. The list closes once the cadenced
+    // gathering has fed every site; the budget keeps slack without dragging the suite (per-tick cost
+    // here is dominated by the settler micro-planner, not the strategic AI).
     spawnMen(sim, 26);
     sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
-    sim.run(5000);
+    sim.run(9000);
     const built = [...sim.world.query(Building)].filter(
       (e) => !sim.world.has(e, UnderConstruction) && sim.world.get(e, Building).buildingType !== HQ_TYPE,
     );

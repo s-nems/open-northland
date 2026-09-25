@@ -7,6 +7,7 @@ import {
   CARRY_CAPACITY,
   Crop,
   FarmTask,
+  HarvestFocus,
   JobAssignment,
   ownerOf,
   Position,
@@ -75,6 +76,9 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const settler = plan;
   const bound = boundFarmTarget(world, ctx, e, settler.jobType, settler.tribe);
   if (bound === null) return false;
+  // The stroke cadence remembers a part-reaped field; this rung picks its own fields and the strokes
+  // bank on the crop, so the mark has nothing to add here.
+  if (world.has(e, HarvestFocus)) world.remove(e, HarvestFocus);
   const { farm, spec } = bound;
   const fp = world.get(farm, Position);
   const fn = nodeOfPosition(fp.x, fp.y);

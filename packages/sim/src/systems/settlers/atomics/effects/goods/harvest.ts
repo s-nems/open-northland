@@ -128,8 +128,8 @@ function strokeCompletesUnit(
 }
 
 /**
- * Whether the stroke that just resolved left the node's unit part-worked. The executor then chains the
- * next stroke directly: the original plays a gatherer's strokes back to back, with no rest between them.
+ * Whether the stroke that just resolved left the node's unit part-worked. The executor then runs the
+ * stroke cadence (`atomics/stroke-cadence.ts`) before the gatherer takes the node up again.
  */
 export function continuesHarvest(world: World, node: Entity): boolean {
   const res = world.tryGet(node, Resource);

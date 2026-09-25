@@ -61,6 +61,9 @@ export function applyEffect(
     // Fishing owns its multi-clip state machine in the executor; it never reaches the generic applier.
     case 'fish':
       return;
+    // The clip plays for its own sake: nothing lands, nothing wears (`stroke-cadence.ts`).
+    case 'harvestFollowThrough':
+      return;
     case 'pickup':
       pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);
       return;

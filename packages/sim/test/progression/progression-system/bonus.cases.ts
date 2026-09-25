@@ -36,6 +36,7 @@ import {
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
+import { settleStrokeCadence } from '../../fixtures/strokes.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 import {
   CARPENTER,
@@ -186,8 +187,8 @@ describe("strokes rule wiring - experience and a tool cut a gatherer's strokes p
   const trackStrokes = () =>
     testContent().jobExperience.find((t) => t.typeId === WOOD_TRACK)?.baseRepeatCounter ?? 0;
 
-  /** Strokes a woodcutter with `xp` on its wood track (and an optional tool) lands before the fixture
-   *  tree falls, driving the executor's own stroke chain. */
+  /** Counted strokes a woodcutter with `xp` on its wood track (and an optional tool) lands before the
+   *  fixture tree falls. */
   const fell = (xp: number, tool?: number) => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = settlerAt(sim, { jobType: WOODCUTTER, position: { x: fx.fromInt(1), y: fx.fromInt(0) } });
@@ -206,17 +207,20 @@ describe("strokes rule wiring - experience and a tool cut a gatherer's strokes p
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_WOOD });
     stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chops: 0 });
-    addCurrentAtomic(sim.world, e, {
-      atomicId: HARVEST_WOOD,
-      duration: 1,
-      effect: { kind: 'harvest', resource: tree, goodType: WOOD },
-      targetEntity: tree,
-      targetTile: null,
-    });
+    // Each counted stroke starts its own atomic; the executor's cadence (follow-through, rest) runs out
+    // between them and counts nothing.
     let strokes = 0;
     while (sim.world.has(tree, Felling) && strokes < STROKE_GUARD) {
+      addCurrentAtomic(sim.world, e, {
+        atomicId: HARVEST_WOOD,
+        duration: 1,
+        effect: { kind: 'harvest', resource: tree, goodType: WOOD },
+        targetEntity: tree,
+        targetTile: null,
+      });
       atomicSystem(sim.world, ctxOf(sim));
       strokes += 1;
+      settleStrokeCadence(sim, e);
     }
     const wear = sim.world.tryGet(e, Equipment)?.tool?.degreeOfUse ?? 0;
     return { strokes, wear };
@@ -237,7 +241,7 @@ describe("strokes rule wiring - experience and a tool cut a gatherer's strokes p
     expect(fell(MASTERY_XP, TOOL_IRON).strokes).toBe(1);
   });
 
-  it('every stroke wears the tool, the ones that fell nothing included', () => {
+  it('every counted stroke wears the tool, the ones that fell nothing included; the cadence wears none', () => {
     const single = fell(MASTERY_XP, TOOL_IRON);
     const novice = fell(0, TOOL_IRON);
     expect(single.wear).toBeGreaterThan(0);
