@@ -34,6 +34,7 @@ import {
 import { placementSpot } from './placement.js';
 import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
 import { coverageOf, coveragePlacementSpot, firstUncoveredBuilding } from './tower-coverage.js';
+import { seatUnderAttack } from './siege.js';
 import { upgradeBillCovered } from './upgrade-supply.js';
 
 export * from './entries.js';
@@ -42,6 +43,7 @@ export {
   type EntryStatus,
   entryStatuses,
 } from './progress.js';
+export { SIEGE_RADIUS_NODES, seatUnderAttack } from './siege.js';
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
 /**
@@ -53,6 +55,9 @@ export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.
  * decision, a placement that found no spot every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and
  * an upgrade holds while a bill good only it or another site could make is not yet in store
  * ({@link upgradeBillCovered}). Builders are never pinned to a site; the builder drive picks its own.
+ *
+ * Nothing is placed or upgraded while the seat is under attack ({@link seatUnderAttack}): a site raised
+ * under the enemy's bows is only knocked down again.
  */
 export function buildOrderModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
   return {
@@ -79,7 +84,8 @@ function runBuildOrder(
 
   const tribe = playerPlacementTribes(world, player)?.[0];
   if (base === null) {
-    return tribe === undefined ? [] : replaceMissingBase(world, ctx, terrain, player, owned, tribe);
+    if (tribe === undefined || seatUnderAttack(world, ctx, player, owned)) return [];
+    return replaceMissingBase(world, ctx, terrain, player, owned, tribe);
   }
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
@@ -89,7 +95,8 @@ function runBuildOrder(
   for (const [entryIndex, entry] of order.entries()) {
     const status = entryStatus(world, ctx, player, owned, entry, live);
     if (status !== 'unmet') continue;
-    if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick)) return [];
+    const attacked = seatUnderAttack(world, ctx, player, owned);
+    if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick, attacked) || attacked) return [];
     if (sites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
     const stall = placementStall(world, player, entryIndex);
     switch (entry.kind) {
@@ -147,9 +154,10 @@ function runBuildOrder(
 
 /**
  * Whether the acting entry is a razed building's, fallen back below the seat's frontier, still inside
- * {@link REBUILD_DELAY_TICKS} of the decision that first saw it. Only a counted building entry regresses
- * this way; a coverage entry re-arms by design and a collector is hired, not built, so neither moves the
- * frontier. A seat with no AI carrier (a module run directly) keeps no frontier and never waits.
+ * {@link REBUILD_DELAY_TICKS} of the decision that first saw it or, later, of the last one that saw the
+ * seat `attacked`. Only a counted building entry regresses this way; a coverage entry re-arms by design
+ * and a collector is hired, not built, so neither moves the frontier. A seat with no AI carrier (a module
+ * run directly) keeps no frontier and never waits.
  */
 function awaitingRebuild(
   world: World,
@@ -157,6 +165,7 @@ function awaitingRebuild(
   entryIndex: number,
   entry: BuildOrderEntry,
   tick: number,
+  attacked: boolean,
 ): boolean {
   const carrier = aiPlayerEntity(world, player);
   if (carrier === null) return false;
@@ -166,11 +175,12 @@ function awaitingRebuild(
     return false;
   }
   if (entry.kind !== 'place' && entry.kind !== 'upgrade') return false;
-  if (frontier.rebuildTick === null) {
+  const held = frontier.rebuildTick;
+  if (held === null || (attacked && held < tick + REBUILD_DELAY_TICKS)) {
     world.mut(carrier, BuildOrderFrontier).rebuildTick = tick + REBUILD_DELAY_TICKS;
     return true;
   }
-  return tick < frontier.rebuildTick;
+  return tick < held;
 }
 
 /** Raise the seat's frontier to `entryIndex`, the first unmet entry at or past it (the list's length once all

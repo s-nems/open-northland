@@ -1,17 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { Settler } from '../../../src/components/index.js';
+import { AttackOrder, Engagement, Settler } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
-import { type BuildOrderEntry, buildOrderModule } from '../../../src/systems/ai-player/index.js';
-import { CONTESTED_GROUND_RADIUS_NODES } from '../../../src/systems/conflict/contested-ground.js';
+import {
+  type BuildOrderEntry,
+  buildOrderModule,
+  REBUILD_DELAY_TICKS,
+  SIEGE_RADIUS_NODES,
+} from '../../../src/systems/ai-player/index.js';
 import { razeBuilding } from '../../../src/systems/lifecycle/cleanup.js';
-import { aiSim, BAKERY_TYPE, ctxOf, entityOfBuilding, MILL_TYPE, placeHq, SEAT, VIKING } from './support.js';
+import {
+  aiSim,
+  BAKERY_TYPE,
+  ctxOf,
+  entityOfBuilding,
+  HOME_TYPE,
+  HQ_TYPE,
+  HQ_X,
+  HQ_Y,
+  MILL_TYPE,
+  makeAiSeat,
+  placeHq,
+  SEAT,
+  TOWER_TYPE,
+  VIKING,
+} from './support.js';
 
 /**
- * Rebuilding under the enemy: a razed building is re-placed like any other unmet entry, but never onto
- * the ground the army that razed it still stands on - the command would refuse it, and the band would
- * flatten the site again the tick it rose.
+ * Rebuilding under the enemy: nothing is placed while a hostile fighter besieges the seat, and a razed
+ * building waits out the rebuild delay from the last decision that saw the attack, so the band that
+ * razed it cannot flatten the site again as it rises.
  */
 
 const FOE = 3;
@@ -66,30 +85,70 @@ function campOn(sim: Simulation, at: Spot, count = 3): { men: Entity[]; spots: S
   return { men: [...sim.world.query(Settler)].filter((e) => !before.has(e)), spots };
 }
 
-function manhattan(a: Spot, b: Spot): number {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-}
-
 describe('build-order module - rebuilding under the enemy', () => {
   const module = buildOrderModule(ORDER);
 
-  it('re-places the razed building off the ground the band holds, and back on its plot once they leave', () => {
+  it('holds the placement while an enemy fighter engages the seat, and places once he is gone', () => {
     const sim = razedBakerySim();
     const home = placementOf(module.run(sim.world, ctxOf(sim), SEAT));
     expect(home?.buildingType).toBe(BAKERY_TYPE);
-    if (home === null) return;
-    expect(manhattan(home, BAKERY)).toBeLessThanOrEqual(CONTESTED_GROUND_RADIUS_NODES);
 
-    const band = campOn(sim, BAKERY);
-    const elsewhere = placementOf(module.run(sim.world, ctxOf(sim), SEAT));
-    expect(elsewhere?.buildingType).toBe(BAKERY_TYPE);
-    if (elsewhere === null) return;
-    // The search walks on past the band's ground rather than stalling the entry on it.
-    for (const spot of band.spots) {
-      expect(manhattan(elsewhere, spot)).toBeGreaterThan(CONTESTED_GROUND_RADIUS_NODES);
-    }
+    const band = campOn(sim, BAKERY, 1);
+    for (const man of band.men) sim.world.add(man, Engagement, { repathAt: 0 });
+    expect(module.run(sim.world, ctxOf(sim), SEAT)).toEqual([]);
 
     for (const man of band.men) sim.world.destroy(man);
     expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))).toEqual(home);
+  });
+
+  it('holds while a far fighter carries an attack order on the seat, not while he only stands far off', () => {
+    const sim = razedBakerySim();
+    const far = { x: HQ_X - SIEGE_RADIUS_NODES - 4, y: HQ_Y };
+    const band = campOn(sim, far, 1);
+    expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(BAKERY_TYPE);
+
+    for (const man of band.men) {
+      sim.world.add(man, AttackOrder, { target: entityOfBuilding(sim, HQ_TYPE) });
+    }
+    expect(module.run(sim.world, ctxOf(sim), SEAT)).toEqual([]);
+  });
+
+  it('waits the full rebuild delay from the last decision that saw the attack', () => {
+    const sim = razedBakerySim();
+    makeAiSeat(sim, SEAT);
+    const decide = (tick: number): readonly Command[] => module.run(sim.world, ctxOf(sim, tick), SEAT);
+    // Stand the bakery back up so the list completes and the frontier passes it, then lose it again.
+    const home = placementOf(decide(0));
+    if (home === null) throw new Error('expected the bakery placed');
+    place(sim, BAKERY_TYPE, home);
+    sim.step();
+    expect(decide(0)).toEqual([]);
+    razeBuilding(sim.world, ctxOf(sim), entityOfBuilding(sim, BAKERY_TYPE));
+
+    const band = campOn(sim, BAKERY);
+    const lastAttacked = 2 * REBUILD_DELAY_TICKS;
+    expect(decide(0)).toEqual([]);
+    expect(decide(lastAttacked)).toEqual([]); // past the first delay, but still besieged
+
+    for (const man of band.men) sim.world.destroy(man);
+    expect(decide(lastAttacked + REBUILD_DELAY_TICKS - 1)).toEqual([]);
+    expect(placementOf(decide(lastAttacked + REBUILD_DELAY_TICKS))).toEqual({
+      ...home,
+      buildingType: BAKERY_TYPE,
+    });
+  });
+
+  it('holds a tower coverage placement while the seat is attacked', () => {
+    const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
+    const sim = aiSim();
+    placeHq(sim);
+    // An outlying home outside the HQ's circle arms the coverage entry.
+    place(sim, HOME_TYPE, { x: HQ_X + 31, y: HQ_Y });
+    sim.step();
+    const band = campOn(sim, { x: HQ_X, y: HQ_Y + 4 }, 1);
+    expect(coverage.run(sim.world, ctxOf(sim), SEAT)).toEqual([]);
+
+    for (const man of band.men) sim.world.destroy(man);
+    expect(placementOf(coverage.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(TOWER_TYPE);
   });
 });

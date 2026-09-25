@@ -226,8 +226,10 @@ export const BASELESS_CONSTRUCTION_SITES = 1;
  *  brings. */
 export const BUILD_ORDER_LOOKAHEAD_ENTRIES = 3;
 
-/** How long a regressed entry, a razed building's, waits before the seat raises it again (authored). */
-export const REBUILD_DELAY_TICKS = 15 * TICKS_PER_SECOND;
+/** How long a regressed entry, a razed building's, waits before the seat raises it again, counted from the
+ *  last decision that saw the seat under attack (authored): long enough for a band that razed it to walk
+ *  off, so the site is not flattened again as it rises. */
+export const REBUILD_DELAY_TICKS = 30 * TICKS_PER_SECOND;
 
 /** How far from the nearest of the seat's buildings a placement may land, in half-cell Manhattan nodes
  *  (authored): tight enough that the settlement grows as one piece. Every affinity pull stays inside it. */
