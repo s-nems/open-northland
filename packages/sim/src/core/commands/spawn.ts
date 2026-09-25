@@ -51,9 +51,7 @@ export type SpawnCommand =
       /**
        * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). Every settler, civilians included,
        * is stamped a {@link Health} pool: a positive `hitpoints` sets its size, otherwise it is the
-       * tribe's adult pool, or `DEFAULT_SETTLER_HITPOINTS` when the job's slug is a baby/child stage.
-       * Approximation: human hitpoints are not in the readable data (source basis "Combat hit
-       * resolution"), so every pool a human carries is authored.
+       * person's `HUMAN_HITPOINTS`.
        */
       readonly kind: 'spawnSettler';
       readonly jobType: number;

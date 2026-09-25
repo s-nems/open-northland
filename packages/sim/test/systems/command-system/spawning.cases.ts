@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Armor, Health, MoveSpeed, Owner, Settler, Weapon } from '../../../src/components/index.js';
 import { fx } from '../../../src/index.js';
-import { DEFAULT_SETTLER_HITPOINTS } from '../../../src/systems/index.js';
+import { HUMAN_HITPOINTS } from '../../../src/systems/index.js';
 
 import { fresh, nthEntity, VIKING, WOODCUTTER } from './support.js';
 
@@ -25,16 +25,15 @@ describe('CommandSystem - spawning', () => {
     // The default (omitted hitpoints) path now stamps the shared default pool: EVERY settler carries
     // Health (the panel shows it, combat can strike it, starvation drains it).
     const health = sim.world.get(nthEntity(sim, 0), Health);
-    expect(health.hitpoints).toBe(DEFAULT_SETTLER_HITPOINTS);
-    expect(health.max).toBe(DEFAULT_SETTLER_HITPOINTS);
+    expect(health.hitpoints).toBe(HUMAN_HITPOINTS);
+    expect(health.max).toBe(HUMAN_HITPOINTS);
   });
 
   it('spawnSettler with hitpoints stamps a Health pool: the civ becomes a combatant from command data', () => {
     const sim = fresh();
     // A civilization soldier enters the world as a combatant THROUGH THE COMMAND SEAM (not a test reaching
-    // into the world): a positive hitpoints pool stamps a full Health{hitpoints: max, max}, the settler
-    // analogue of the animal `hitpoints_adult` stamp. The magnitude is caller-supplied (approximated -
-    // humans' HP is below the readable `.ini`).
+    // into the world): a positive hitpoints pool stamps a full Health{hitpoints: max, max} in place of the
+    // person's own pool.
     sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType: WOODCUTTER,
@@ -55,7 +54,7 @@ describe('CommandSystem - spawning', () => {
     // tick - treat it as "unspecified" and stamp the shared default instead.
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, hitpoints: 0 });
     sim.step();
-    expect(sim.world.get(nthEntity(sim, 0), Health).hitpoints).toBe(DEFAULT_SETTLER_HITPOINTS);
+    expect(sim.world.get(nthEntity(sim, 0), Health).hitpoints).toBe(HUMAN_HITPOINTS);
   });
 
   it('spawnSettler with a positive armorClass stamps an Armor tier (the combatant wears armor)', () => {

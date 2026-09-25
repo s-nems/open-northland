@@ -213,7 +213,8 @@ describe('HealHumansInArea', () => {
     runLoadPass(sim);
     const pools = wounded.map((e) => sim.world.get(e, Health));
     expect(pools.filter((h) => h.hitpoints === h.max)).toHaveLength(1);
-    expect(pools.filter((h) => h.hitpoints === 1)).toHaveLength(1);
+    // The one outside has only its own point-a-tick regeneration.
+    expect(pools.filter((h) => h.hitpoints < h.max / 2)).toHaveLength(1);
   });
 
   it('sets a human a temple raised above its max back to the max', () => {

@@ -120,7 +120,6 @@ export {
   mayAttack,
   mayHunt,
   playableTribes,
-  settlerHitpoints,
   slayAtomicOfSpecies,
   stayPointRangeOf,
 } from './tribes/index.js';

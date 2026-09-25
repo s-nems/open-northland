@@ -16,7 +16,6 @@ import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { HUNTER_BOW_BALANCE, huntPreyRows } from '../catalog/hunting.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
-import { HUMAN_HITPOINTS } from '../catalog/units.js';
 import { diag } from '../diag/index.js';
 import { EQUIP_CLASS_BY_SLUG } from '../game/sandbox/combat.js';
 import { loadIrRaw } from './ir/load.js';
@@ -188,12 +187,6 @@ export function mergeRealContent(
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
-  // The real IR carries no human hitpoints (unreadable, source basis "Combat hit resolution"), so a
-  // playable tribe takes the clean-room value. Scoped by `jobEnables`: an animal/monster tribe is no
-  // settler's tribe and keeps its own 0.
-  const tribes = real.tribes.map((t) =>
-    t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
-  );
   const weapons = real.weapons.map((weapon) => withHunterBowBalance(withHeroFistJob(weapon)));
   // Wool's pipeline row is leather's whole row re-keyed: the cadaver stage (landscape 79 / gfx 847), its
   // footprint, and the store-pile stage, so a wool heap draws the hide pile's decal. The same named
@@ -207,7 +200,7 @@ export function mergeRealContent(
   const gatheringPipeline = needsWoolRow
     ? [...real.gatheringPipeline, { ...leatherRow, goodType: woolType, goodId: 'wool' }]
     : real.gatheringPipeline;
-  const huntPrey = huntPreyRows(goods, tribes);
+  const huntPrey = huntPreyRows(goods, real.tribes);
   // Only a good felled or mined off a landscape node reads the felling/mining balance. A field crop, a
   // carcass yield and a hive's honey (no harvest stage) are supplied by their own loops.
   const huntYields = new Set(huntPrey.flatMap((prey) => prey.yields.map((y) => y.goodType)));
@@ -228,7 +221,6 @@ export function mergeRealContent(
       jobs,
       buildings,
       landscape,
-      tribes,
       weapons,
       gatheringPipeline,
       huntPrey,

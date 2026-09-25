@@ -38,7 +38,6 @@ import {
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
 } from '../../../../catalog/jobs.js';
-import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
 import { PRIMARY_TRIBE } from '../../../rules.js';
 import { GATHERERS, JOB_FARMER_SLOT, JOB_VEHICLE_CATAPULT, rebaseSlotJob } from '../../ids/index.js';
 import {
@@ -81,7 +80,6 @@ const MAKE_LOVE_ATOMIC = 78;
 export interface SandboxTribe {
   readonly typeId: number;
   readonly id: string;
-  readonly hitpoints?: number;
   readonly jobEnables?: readonly JobEnables[];
   readonly jobRequirements?: readonly JobRequirement[];
   readonly atomicBindings?: unknown[];
@@ -116,7 +114,6 @@ export function buildSandboxTribes(
   tribes.set(PRIMARY_TRIBE, {
     typeId: PRIMARY_TRIBE,
     id: 'viking',
-    hitpoints: HUMAN_HITPOINTS,
     atomicBindings: [
       ...GATHERERS.map((gatherer) => ({
         jobType: gatherer.job,
@@ -211,7 +208,6 @@ export function buildSandboxTribes(
       },
     ],
   });
-  // No hitpoints row: an animal's HP pool comes from its animal record, not the tribe table.
   for (const tribe of SANDBOX_ANIMAL_TRIBES) {
     tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id });
   }
@@ -219,7 +215,7 @@ export function buildSandboxTribes(
     if (!tribes.has(tribe.typeId)) {
       // No tech graph: an empty edge list gates nothing, so an extra tribe's buildings stay enabled
       // without an enabler settler.
-      tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id, hitpoints: HUMAN_HITPOINTS });
+      tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id });
     }
   }
   return tribes;

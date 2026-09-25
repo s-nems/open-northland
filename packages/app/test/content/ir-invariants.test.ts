@@ -195,15 +195,6 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
-  it('every playable tribe spawns settlers with hitpoints after the merge', async () => {
-    const { merge } = await loadContentUnderTest();
-    // Playable = carries a jobEnables tech-graph; a 0-HP playable tribe makes every settler stillborn.
-    for (const tribe of merge.content.tribes) {
-      if (tribe.jobEnables.length === 0) continue;
-      expect(tribe.hitpoints, `playable tribe '${tribe.id}' merged with no hitpoints`).toBeGreaterThan(0);
-    }
-  });
-
   it('the merge injects every sim nav-terrain class into the landscape table', async () => {
     const { merge } = await loadContentUnderTest();
     const landscapeIds = new Set(merge.content.landscape.map((t) => t.typeId));

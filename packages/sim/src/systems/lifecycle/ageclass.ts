@@ -8,11 +8,9 @@
 
 import { Age, Health, Person, Residence, Settler, setSettlerJob } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { ContentContext, System } from '../context.js';
+import type { Entity } from '../../ecs/world.js';
+import type { System } from '../context.js';
 import { releaseWidowedParentsOf } from '../family/widowhood.js';
-// The module, not the readviews barrel: the barrel imports CIVILIST_JOB back from here.
-import { settlerHitpoints } from '../readviews/tribes/civilizations.js';
 
 /** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`). */
 export const BABY_FEMALE = 1;
@@ -126,27 +124,8 @@ export const growthSystem: System = (world, ctx) => {
     // `homeSize`. The Age removal above also expires a widowed parent's carve-out.
     world.remove(e, Residence);
     releaseWidowedParentsOf(world, e);
-    applyAdultHitpoints(world, ctx, e);
   }
 };
-
-/**
- * Swap a grown settler's childhood {@link Health} pool for its tribe's adult one, carrying the wound across
- * as a fraction of the new pool (floored at 1 HP); a tribe declaring no pool leaves the settler alone.
- * Approximation: the original's growth-time health handling is not established.
- */
-function applyAdultHitpoints(world: World, ctx: ContentContext, e: Entity): void {
-  const pool = settlerHitpoints(ctx.content, world.get(e, Settler).tribe);
-  const health = world.tryGet(e, Health);
-  if (pool <= 0 || health === undefined || health.max === pool) return;
-  // A settler killed earlier this tick awaits CleanupSystem's reap; a birthday must not revive it, and
-  // `max > 0` keeps the fraction below a real division.
-  if (health.hitpoints <= 0 || health.max <= 0) return;
-  const scaled = Math.max(1, Math.trunc((health.hitpoints * pool) / health.max));
-  const h = world.mut(e, Health);
-  h.hitpoints = scaled;
-  h.max = pool;
-}
 
 /**
  * The age-class `jobType` a settler that has lived `ticks`, still short of adulthood, should currently

@@ -1,6 +1,7 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addCurrentAtomic,
   Building,
   Carrying,
   CurrentAtomic,
@@ -18,7 +19,12 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import { needsSystem, plannerSystem, STARVATION_TICKS_TO_DIE } from '../../src/systems/index.js';
+import {
+  HUMAN_HITPOINTS,
+  needsSystem,
+  plannerSystem,
+  STARVATION_HITPOINTS_PER_TICK,
+} from '../../src/systems/index.js';
 import { resolveAttackHit } from '../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -223,12 +229,9 @@ describe('drink drive - hunger and fatigue draughts', () => {
 });
 
 describe('healing draught - below half of max hitpoints', () => {
-  const HP_MAX = 300;
+  const HP_MAX = HUMAN_HITPOINTS;
   /** 40% of HP_MAX, one healing sip. */
-  const SIP_HP = 120;
-
-  /** A pool the size of the starvation span, which loses one whole hitpoint on every tick. */
-  const WHOLE_STEP_POOL = STARVATION_TICKS_TO_DIE;
+  const SIP_HP = 2000;
 
   function woundedBearer(
     sim: Simulation,
@@ -253,8 +256,9 @@ describe('healing draught - below half of max hitpoints', () => {
     const settler = woundedBearer(sim, HP_MAX, [fresh(POTION_HEAL)]);
     const attacker = needsSettlerAt(sim, 1, 0, {});
 
-    strike(sim, attacker, settler, 200);
-    expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX - 200 + SIP_HP);
+    const blow = (HP_MAX * 3) / 5; // leaves two fifths of the pool, under half
+    strike(sim, attacker, settler, blow);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX - blow + SIP_HP);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
   });
 
@@ -306,12 +310,30 @@ describe('healing draught - below half of max hitpoints', () => {
 
   it('a starvation bite that drops the bearer under half takes a sip', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const half = WHOLE_STEP_POOL / 2;
-    const settler = woundedBearer(sim, half, [fresh(POTION_HEAL)], WHOLE_STEP_POOL);
-    sim.world.mut(settler, Settler).hunger = ONE; // starving: this tick bites one whole hitpoint
+    const half = HP_MAX / 2;
+    const settler = woundedBearer(sim, half, [fresh(POTION_HEAL)]);
+    sim.world.mut(settler, Settler).hunger = ONE; // starving: this tick bites
     needsSystem(sim.world, ctxOf(sim));
-    const sip = Math.trunc((WHOLE_STEP_POOL * 40) / 100);
-    expect(sim.world.get(settler, Health).hitpoints).toBe(half - 1 + sip);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(half - STARVATION_HITPOINTS_PER_TICK + SIP_HP);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
+  });
+
+  it('a lethal blow in a full tick is drunk off before the reaper looks', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const settler = woundedBearer(sim, HP_MAX, [fresh(POTION_HEAL)]);
+    const attacker = needsSettlerAt(sim, 1, 0, {});
+    addCurrentAtomic(sim.world, attacker, {
+      atomicId: ATTACK_SWING.atomicId,
+      duration: ATTACK_SWING.duration,
+      effect: { kind: 'attack', target: settler, damage: HP_MAX + 50, hitAt: 1 },
+      targetEntity: settler,
+      targetTile: null,
+    });
+
+    sim.step(); // the blow lands, takes the pool under 1, the carried sips cover it, the cleanup spares it
+    expect(sim.world.isAlive(settler)).toBe(true);
+    expect(sim.world.get(settler, Health).hitpoints).toBe(2 * SIP_HP - 50);
+    expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
+    expect(sim.events.current().some((ev) => ev.kind === 'settlerDied')).toBe(false);
   });
 });

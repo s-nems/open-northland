@@ -13,14 +13,13 @@ import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { BABY_FEMALE, BABY_MALE } from '../lifecycle/ageclass.js';
 import { stampDefaultStance } from '../orders/index.js';
-import { DEFAULT_SETTLER_HITPOINTS } from './settlers.js';
+import { HUMAN_HITPOINTS } from './settlers.js';
 
 /**
  * Assemble a newborn of the ordered `sex` at its mother's door. Deliberately not a `createSettler` call: it
  * rolls no RNG (a birth must not perturb the seeded stream), takes its sex and life stage from the parents'
- * order rather than a job slug, and starts on the childhood {@link DEFAULT_SETTLER_HITPOINTS} pool, growing
- * into its tribe's adult pool when it grows up (GrowthSystem). It emits nothing, and the stamp order is
- * hash-significant.
+ * order rather than a job slug, and starts on the full {@link HUMAN_HITPOINTS} pool every person carries.
+ * It emits nothing, and the stamp order is hash-significant.
  */
 export function spawnNewborn(
   world: World,
@@ -42,7 +41,7 @@ export function spawnNewborn(
   });
   if (sex === 'female') world.add(baby, Female, { female: true });
   world.add(baby, Age, { ticks: 0 });
-  world.add(baby, Health, { hitpoints: DEFAULT_SETTLER_HITPOINTS, max: DEFAULT_SETTLER_HITPOINTS });
+  world.add(baby, Health, { hitpoints: HUMAN_HITPOINTS, max: HUMAN_HITPOINTS });
   const owner = world.tryGet(mother, Owner)?.player;
   if (owner !== undefined) {
     world.add(baby, Owner, { player: owner });

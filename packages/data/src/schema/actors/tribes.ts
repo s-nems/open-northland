@@ -55,12 +55,6 @@ export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
-  /**
-   * The hitpoint pool an adult settler of this tribe carries. Human HP is not in the readable data, so
-   * the original's value is supplied at the content boundary; `0` means unset and the sim falls back
-   * to its `DEFAULT_SETTLER_HITPOINTS`.
-   */
-  hitpoints: z.number().int().nonnegative().default(0),
   /** Walk-cost reduction, optionally restricted to one profession. */
   walkStepReduction: z
     .strictObject({

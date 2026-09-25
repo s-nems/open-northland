@@ -1,5 +1,4 @@
-import type { Command, Entity, FogMode } from '@open-northland/sim';
-import { HUMAN_HITPOINTS } from '../../catalog/units.js';
+import { type Command, type Entity, type FogMode, systems } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
@@ -95,8 +94,8 @@ export interface AdminDebugHandle {
   dispose(): void;
 }
 
-/** Matches the settler HP the content's tribes carry, so the field shows what an untouched spawn gets. */
-const DEFAULT_HITPOINTS = HUMAN_HITPOINTS;
+/** The pool an untouched spawn gets, so the field shows it. */
+const DEFAULT_HITPOINTS = systems.HUMAN_HITPOINTS;
 
 /** Mount the admin/debug spawn palette with its toggle chip showing and the panel closed. */
 export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {

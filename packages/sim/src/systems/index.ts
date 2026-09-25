@@ -45,7 +45,7 @@ export * from './spatial/metric.js';
 export * from './spatial/nodes.js';
 // `spawn` otherwise stays private to the command handler, but `createSettler` is the scene-facing entity
 // constructor, so pre-tick-0 setup can place a settler directly and stamp its bindings.
-export { createSettler, DEFAULT_SETTLER_HITPOINTS, type SettlerSpec } from './spawn/index.js';
+export { createSettler, HUMAN_HITPOINTS, type SettlerSpec } from './spawn/index.js';
 export * from './stores/index.js';
 export * from './vision/index.js';
 // The package-internal systems barrel, so tests and implementation helpers share one import site. The

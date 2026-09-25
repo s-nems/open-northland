@@ -58,7 +58,6 @@ function build(sim: Simulation): void {
     },
   });
   spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, 12, 8, HUMAN_PLAYER, {
-    hitpoints: 300,
     weaponTypeId: WEAPON_SWORD,
     equipment: {
       weapon: { goodType: goodBySlug(sim, 'sword_shord') },

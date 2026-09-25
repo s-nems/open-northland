@@ -31,13 +31,7 @@ import { spawnAgeTicks } from '../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../lifecycle/needs/index.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { stampDefaultStance } from '../orders/index.js';
-import {
-  isAnimalTribe,
-  isHeroJob,
-  isSoldierJob,
-  mayChangeEquipment,
-  settlerHitpoints,
-} from '../readviews/index.js';
+import { isAnimalTribe, isHeroJob, isSoldierJob, mayChangeEquipment } from '../readviews/index.js';
 import { attachAuthoredBuildings, attachAuthoredVehicle } from './attach.js';
 
 /**
@@ -52,11 +46,10 @@ export type SettlerSpec = Omit<
 >;
 
 /**
- * The hitpoint pool a settler carries before its tribe's adult pool applies: every baby and child, and an
- * adult whose tribe declares no pool. An authored fallback scale; the child-to-adult ratio it implies is
- * uncalibrated.
+ * The hitpoint pool of every person, child or adult, of any tribe. Original behavior; the original's one
+ * exception, a Byzantine wooden-spear soldier's 20000, is not modelled.
  */
-export const DEFAULT_SETTLER_HITPOINTS = 300;
+export const HUMAN_HITPOINTS = 5000;
 
 /** The idle/unemployed job sentinel: the command wire form of `jobType: null`, since a command field cannot
  *  carry null. Valid on any content, including one whose job table starts at typeId 1. */
@@ -109,14 +102,8 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   if (ageTicks !== null) {
     world.add(e, Age, { ticks: ageTicks });
   }
-  // An adult takes its tribe's pool ({@link settlerHitpoints}), so every adult spawn on one content base
-  // shares one value; a young stage keeps the childhood default and grows into the tribe pool. An explicit
-  // positive `hitpoints` wins over both.
-  const young = ageTicks !== null;
-  const override = spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : undefined;
-  const tribeHitpoints = settlerHitpoints(content, spec.tribe);
-  const adultPool = tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS;
-  const hitpoints = override ?? (young ? DEFAULT_SETTLER_HITPOINTS : adultPool);
+  // An explicit positive `hitpoints` wins over the person's pool.
+  const hitpoints = spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : HUMAN_HITPOINTS;
   world.add(e, Health, { hitpoints, max: hitpoints });
   const heroJob = isHeroJob(content, spec.jobType);
   const fixedHeroArmor = heroJob ? contentIndex(content).jobs.get(spec.jobType)?.fixedArmorType : undefined;

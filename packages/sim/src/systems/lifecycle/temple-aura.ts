@@ -38,8 +38,7 @@ const byId = (e: Entity): number => e;
  * whose bars move. One wound on the temple stops the blessing until it is whole again. Original behavior;
  * the original also blesses children, whose bars this sim does not keep. Deliberate departure: the original
  * blesses once per temple in reach, so a cluster of temples multiplies the bonus; here a person is blessed
- * once a second however many temples reach it. Approximation: a child's pool here is far smaller than the
- * original's, so the flat hitpoints fill a child's surplus in seconds.
+ * once a second however many temples reach it.
  */
 export const templeAuraSystem: System = (world, ctx) => {
   // Caught up every tick, so a busy tick's building writes never pile past the feed's limit.

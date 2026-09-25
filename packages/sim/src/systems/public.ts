@@ -153,7 +153,7 @@ export {
   signpostNetwork,
   signpostProbe,
 } from './signposts/index.js';
-export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './spawn/index.js';
+export { createSettler, HUMAN_HITPOINTS } from './spawn/index.js';
 export { isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
 // createVehicle stands a vehicle in pre-tick assembly the way the command does; modifyVehicleStock and
 // stockVehicleGoods are the writes into a hold, the second the booked-and-stowed one a loaded spawn uses.

@@ -31,7 +31,6 @@ const track = (
 const tribe = (jobEnables: TribeType['jobEnables']): TribeType => ({
   typeId: 1,
   id: 'test',
-  hitpoints: 0,
   atomicBindings: [],
   jobEnables,
   jobRequirements: [],

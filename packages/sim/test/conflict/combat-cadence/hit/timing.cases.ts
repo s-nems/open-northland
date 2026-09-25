@@ -4,6 +4,7 @@ import { Simulation } from '../../../../src/index.js';
 import {
   atomicSystem,
   combatSystem,
+  REGENERATION_HITPOINTS_PER_TICK,
   WEAPON_MAIN_TYPE,
   withFightExperience,
 } from '../../../../src/systems/index.js';
@@ -111,9 +112,11 @@ describe('atomicSystem - repeating swings at the animation cadence', () => {
     const secondHit = hitTicks[1];
     if (firstHit === undefined || secondHit === undefined) throw new Error('expected two hits');
     expect(secondHit - firstHit).toBe(27);
-    // Each blow took the spear-vs-unarmored column off the pool, raised by the hits landed before it.
+    // Each blow took the spear-vs-unarmored column off the pool, raised by the hits landed before it. The
+    // needs pass runs ahead of the blow, so every blow after the first lands on a tick that also heals.
     const column = IRON_SPEAR_DAMAGE['0'];
-    const expected = hitTicks.reduce((sum, _, hits) => sum + withFightExperience(column, hits), 0);
+    const blows = hitTicks.reduce((sum, _, hits) => sum + withFightExperience(column, hits), 0);
+    const expected = blows - (hitTicks.length - 1) * REGENERATION_HITPOINTS_PER_TICK;
     expect(dealt).toBe(expected);
   });
 });

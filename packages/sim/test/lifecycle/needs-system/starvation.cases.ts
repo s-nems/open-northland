@@ -7,8 +7,9 @@ import {
   BABY_MALE,
   CHILD_AGE_TICKS,
   CHILD_MALE,
-  HEALING_TICKS_TO_FULL,
-  STARVATION_TICKS_TO_DIE,
+  HUMAN_HITPOINTS,
+  REGENERATION_HITPOINTS_PER_TICK,
+  STARVATION_HITPOINTS_PER_TICK,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { settlerWithHunger } from './support.js';
@@ -17,14 +18,12 @@ import { settlerWithHunger } from './support.js';
 const MONSTER_TRIBE = 16;
 /** The soldier trade the decoded maps give every placed monster. */
 const MONSTER_JOB = 31;
-/** The hitpoint pool the original gives a human, where its rates read as whole points per tick. */
-const ORIGINAL_POOL = 5000;
-/** Ticks that leave a starving pool one step short of empty: the first step lands on tick 1, so a pool
- *  never gets tick 0's share of its span. */
-const ONE_STEP_SHORT = STARVATION_TICKS_TO_DIE - 2;
+/** The hitpoint pool the original gives a human. */
+const ORIGINAL_POOL = HUMAN_HITPOINTS;
+/** A pool far off the original's, to show the rates do not scale with it. */
+const OTHER_POOL = 300;
 
-/** A window long enough for a 300-point pool to take several steps, so an exemption that holds across it
- *  is a real exemption and not a settler between steps. */
+/** A window long enough to take many steps, so an exemption that holds across it is a real exemption. */
 const SEVERAL_STEPS = 100;
 
 /** A settler carrying a Health pool, hungry or fed as `hunger` says. */
@@ -53,25 +52,19 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     expect(sim.checkInvariants()).toEqual([]);
   });
 
-  it('empties any pool over the same span, so the pool size sets the step and not the pace', () => {
+  it('takes the same two points a tick whatever the pool', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const small = settlerWithPool(sim, ONE, 300);
-    const large = settlerWithPool(sim, ONE, 2400);
+    const small = settlerWithPool(sim, ONE, OTHER_POOL);
+    const large = settlerWithPool(sim, ONE, ORIGINAL_POOL);
 
-    for (let i = 0; i < ONE_STEP_SHORT; i++) sim.step();
-    expect(pool(sim, small)).toBe(1);
-    expect(pool(sim, large)).toBe(1);
-
-    sim.step();
-    expect(sim.world.has(small, Settler)).toBe(false); // emptied and reaped on the same tick
-    expect(sim.world.has(large, Settler)).toBe(false);
+    for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
+    expect(pool(sim, small)).toBe(OTHER_POOL - SEVERAL_STEPS * STARVATION_HITPOINTS_PER_TICK);
+    expect(pool(sim, large)).toBe(ORIGINAL_POOL - SEVERAL_STEPS * STARVATION_HITPOINTS_PER_TICK);
   });
 
   it('starves a settler to death: the drained pool is reaped with a settlerDied event', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // A nearly dead settler off a big pool: the step scales with the pool, so this dies in a few ticks
-    // rather than the whole span.
-    const e = settlerWithPool(sim, ONE, 2, 2400);
+    const e = settlerWithPool(sim, ONE, STARVATION_HITPOINTS_PER_TICK, ORIGINAL_POOL);
     let died = false;
     for (let i = 0; i < 10 && !died; i++) {
       sim.step();
@@ -83,10 +76,10 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
 
   it('exempts animals and jobless settlers (jobType null - no eat/graze path to save them)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const e = settlerWithPool(sim, ONE, 300);
+    const e = settlerWithPool(sim, ONE, ORIGINAL_POOL);
     setSettlerJob(sim.world, e, null);
     for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
-    expect(pool(sim, e)).toBe(300);
+    expect(pool(sim, e)).toBe(ORIGINAL_POOL);
   });
 
   it('exempts a monster-tribe soldier - its tribe declares no trades, so no store is ever its own', () => {
@@ -94,9 +87,9 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     // The decoded maps place 2341 of these as owned soldiers. Their bars are frozen, so this pins the
     // other half of the exemption: an already-pinned one still takes no bite.
     const e = settlerWithHunger(sim, ONE, { tribe: MONSTER_TRIBE, jobType: MONSTER_JOB });
-    sim.world.add(e, Health, { hitpoints: 300, max: 300 });
+    sim.world.add(e, Health, { hitpoints: ORIGINAL_POOL, max: ORIGINAL_POOL });
     for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
-    expect(pool(sim, e)).toBe(300);
+    expect(pool(sim, e)).toBe(ORIGINAL_POOL);
   });
 
   for (const [stage, jobType, ageTicks] of [
@@ -107,20 +100,20 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
       const sim = new Simulation({ seed: 1, content: testContent() });
       // An authored pinned bar is the only way a growing settler reaches one: nothing in play moves it.
       // Age matters - an adult fixture whose synthetic job id collides with an age class must still starve.
-      const e = settlerWithPool(sim, ONE, 300);
+      const e = settlerWithPool(sim, ONE, ORIGINAL_POOL);
       setSettlerJob(sim.world, e, jobType);
       sim.world.add(e, components.Age, { ticks: ageTicks });
       for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
-      expect(pool(sim, e)).toBe(300);
+      expect(pool(sim, e)).toBe(ORIGINAL_POOL);
     });
   }
 
   it('stops starving while needs are disabled', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const e = settlerWithPool(sim, ONE, 300);
+    const e = settlerWithPool(sim, ONE, ORIGINAL_POOL);
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
-    expect(pool(sim, e)).toBe(300);
+    expect(pool(sim, e)).toBe(ORIGINAL_POOL);
   });
 });
 
@@ -136,38 +129,33 @@ describe('needsSystem - healing (a fed settler regains hitpoints)', () => {
     expect(sim.checkInvariants()).toEqual([]);
   });
 
-  it('refills any pool over the same span, at half the pace starvation empties it', () => {
+  it('refills any pool one point a tick, up to its max', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const small = settlerWithPool(sim, fx.fromInt(0), 1, 300);
-    const large = settlerWithPool(sim, fx.fromInt(0), 1, 4800);
-
-    for (let i = 0; i < STARVATION_TICKS_TO_DIE; i++) sim.step();
-    // Half the healing span in: both are about half full, where a starving settler would already be dead.
-    expect(pool(sim, small)).toBe(151);
-    expect(pool(sim, large)).toBe(2401);
-
-    for (let i = 0; i < HEALING_TICKS_TO_FULL - STARVATION_TICKS_TO_DIE; i++) sim.step();
-    expect(pool(sim, small)).toBe(300);
-    expect(pool(sim, large)).toBe(4800);
-    expect(HEALING_TICKS_TO_FULL).toBe(STARVATION_TICKS_TO_DIE * 2);
-  });
-
-  it('never heals a starving settler, and never past the ceiling', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const starving = settlerWithPool(sim, ONE, 100, 300);
-    const whole = settlerWithPool(sim, fx.fromInt(0), 300);
+    const small = settlerWithPool(sim, fx.fromInt(0), 1, OTHER_POOL);
+    const nearlyWhole = settlerWithPool(sim, fx.fromInt(0), ORIGINAL_POOL - 1, ORIGINAL_POOL);
 
     for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
-    expect(pool(sim, starving)).toBeLessThan(100);
-    expect(pool(sim, whole)).toBe(300);
+    expect(pool(sim, small)).toBe(1 + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
+    expect(pool(sim, nearlyWhole)).toBe(ORIGINAL_POOL);
   });
 
-  it('heals nothing while needs are disabled', () => {
+  it('never heals a starving settler', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const e = settlerWithPool(sim, fx.fromInt(0), 100, 300);
+    const starving = settlerWithPool(sim, ONE, ORIGINAL_POOL / 2, ORIGINAL_POOL);
+
+    for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
+    expect(pool(sim, starving)).toBeLessThan(ORIGINAL_POOL / 2);
+  });
+
+  it('heals everyone as fed while needs are disabled, a pinned hunger included', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const fed = settlerWithPool(sim, fx.fromInt(0), OTHER_POOL, ORIGINAL_POOL);
+    const pinned = settlerWithPool(sim, ONE, OTHER_POOL, ORIGINAL_POOL);
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
 
     for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
-    expect(pool(sim, e)).toBe(100);
+    // The setup command applies on the first tick, before the needs pass.
+    expect(pool(sim, fed)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
+    expect(pool(sim, pinned)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
   });
 });

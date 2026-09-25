@@ -12,7 +12,6 @@ describe('goodUnlockedFor', () => {
   const VIKING_TRIBE = {
     typeId: 1,
     id: 'viking',
-    hitpoints: 0,
     atomicBindings: [],
     jobEnables: [],
     jobRequirements: [

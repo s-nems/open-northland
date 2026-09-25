@@ -15,9 +15,9 @@ export {
   carriesNeeds,
   chargeBarefootStep,
   chargeMilitaryPiety,
-  HEALING_TICKS_TO_FULL,
   NEED_INIT_SPREAD_UNITS,
   needsSystem,
+  REGENERATION_HITPOINTS_PER_TICK,
   rollInitialNeed,
-  STARVATION_TICKS_TO_DIE,
+  STARVATION_HITPOINTS_PER_TICK,
 } from './system.js';

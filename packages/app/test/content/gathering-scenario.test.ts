@@ -49,10 +49,8 @@ function resolveActors(content: ContentSet): {
     .sort((a, b) => a.typeId - b.typeId)
     .find((j) => j.allowedAtomics.includes(harvest) && !j.forbiddenAtomics.includes(harvest));
   if (gatherer === undefined) throw new Error('no trade is granted the wood harvest atomic');
-  const tribe = [...content.tribes]
-    .sort((a, b) => a.typeId - b.typeId)
-    .find((t) => t.jobEnables.length > 0 && t.hitpoints > 0);
-  if (tribe === undefined) throw new Error('no playable tribe with hitpoints');
+  const tribe = [...content.tribes].sort((a, b) => a.typeId - b.typeId).find((t) => t.jobEnables.length > 0);
+  if (tribe === undefined) throw new Error('no playable tribe');
   return { wood, gathering: wood.gathering, harvest, gatherer, tribe };
 }
 

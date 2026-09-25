@@ -96,10 +96,8 @@ function resolveActors(
         b.workers.some((w) => w.jobType === worker.typeId) && b.stock.some((s) => s.goodType === crop.typeId),
     );
   if (workplace === undefined) throw new Error(`no building staffs the ${goodId} trade and stores ${goodId}`);
-  const tribe = [...content.tribes]
-    .sort((a, b) => a.typeId - b.typeId)
-    .find((t) => t.jobEnables.length > 0 && t.hitpoints > 0);
-  if (tribe === undefined) throw new Error('no playable tribe with hitpoints');
+  const tribe = [...content.tribes].sort((a, b) => a.typeId - b.typeId).find((t) => t.jobEnables.length > 0);
+  if (tribe === undefined) throw new Error('no playable tribe');
   return { crop, worker, workplace, tribe };
 }
 

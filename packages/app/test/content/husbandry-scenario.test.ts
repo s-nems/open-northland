@@ -65,10 +65,8 @@ function resolveActors(content: ContentSet, speciesId: string): Actors {
         farm.workers.some((w) => w.jobType === j.typeId) && slay !== null && j.allowedAtomics.includes(slay),
     );
   if (breeder === undefined) throw new Error(`no trade at the ${speciesId} farm may slaughter one`);
-  const tribe = [...content.tribes]
-    .sort((a, b) => a.typeId - b.typeId)
-    .find((t) => t.jobEnables.length > 0 && t.hitpoints > 0);
-  if (tribe === undefined) throw new Error('no playable tribe with hitpoints');
+  const tribe = [...content.tribes].sort((a, b) => a.typeId - b.typeId).find((t) => t.jobEnables.length > 0);
+  if (tribe === undefined) throw new Error('no playable tribe');
   return { species, breeder, farm, tribe, animalTribe };
 }
 

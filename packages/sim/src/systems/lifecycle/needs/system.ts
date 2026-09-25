@@ -74,23 +74,10 @@ export function chargeBarefootStep(
 /** A hauled good doubles a barefoot step's hunger (`roughness << 1`). */
 const CARRYING_HUNGER_FACTOR = 2;
 
-/**
- * Ticks a pinned hunger takes to empty a full `Health` pool, and ticks a fed settler takes to refill an
- * empty one. Original behavior: a human has a flat 5000-point pool, loses 2 a
- * tick while its food sits at zero and returns 1 a tick below the pool. Approximation: reading those two
- * spans against `Health.max` carries them to the pools authored here, where the original has only the one.
- */
-export const STARVATION_TICKS_TO_DIE = 2500;
-export const HEALING_TICKS_TO_FULL = STARVATION_TICKS_TO_DIE * 2;
-
-/**
- * The whole hitpoints a pool of `max` moves on `tick` when it spends itself over `span` ticks. Differencing
- * a running total is exact for any integer pool without a remainder in component state, and cannot drift:
- * the total between two ticks depends on those ticks alone.
- */
-function poolStepAt(max: number, span: number, tick: number): number {
-  return Math.trunc(((tick + 1) * max) / span) - Math.trunc((tick * max) / span);
-}
+/** Hitpoints a grown settler loses each tick while its food sits at zero. Original behavior. */
+export const STARVATION_HITPOINTS_PER_TICK = 2;
+/** Hitpoints any other settler below its max regains each tick. Original behavior. */
+export const REGENERATION_HITPOINTS_PER_TICK = 1;
 
 /**
  * The rise half of settler needs, plus the hitpoint step. `piety` is not touched here: it climbs only
@@ -103,16 +90,17 @@ function poolStepAt(max: number, span: number, tick: number): number {
  * the monster tribes as a seat's soldiers no building can employ, so their bars would only ever pin.
  *
  * Hitpoints move for everyone, fed or not: a settler whose hunger has pinned loses them until it eats or
- * the pool empties, and any other wounded settler regains them.
+ * the pool empties, and any other wounded settler regains them. With the needs rule off nobody hungers,
+ * so everyone regains them as a fed settler does.
  */
 export const needsSystem: System = (world, ctx) => {
-  if (!needsEnabled(world)) return;
-  const refilling = seatRefillingAt(world, ctx.tick);
+  const needs = needsEnabled(world);
+  const refilling = needs ? seatRefillingAt(world, ctx.tick) : null;
   for (const e of world.query(Person)) {
     // Frozen inside a cart, hitpoints included (approximation); a ship's passengers eat and sleep aboard.
     if (isAboardVehicle(world, e) && !isAboardShip(world, ctx.content, e)) continue;
     if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e);
-    const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
+    const settler = needs && carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);
   }
 };
@@ -178,22 +166,19 @@ function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerView {
 }
 
 /**
- * One hitpoint step: starvation for a grown settler whose hunger has pinned, healing for anyone else off
- * a full pool. A jobless settler never starves: the eat drive lives in the job planner, which skips it, so
- * nothing could feed it. The 0-HP reap is CleanupSystem's.
+ * One hitpoint step: starvation for a grown settler whose hunger has pinned, healing for anyone else below
+ * a full pool. Intentional deviation from the original: a jobless settler never starves, since the eat
+ * drive lives in the job planner, which skips it, so nothing could feed it. The 0-HP reap is
+ * CleanupSystem's.
  */
 function stepHealth(world: World, ctx: SystemContext, e: Entity, settler: SettlerView | undefined): void {
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0) return;
   if (settler !== undefined && settler.hunger === ONE && settler.jobType !== null) {
     if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.INVULNERABLE)) return;
-    const bite = poolStepAt(health.max, STARVATION_TICKS_TO_DIE, ctx.tick);
-    if (bite === 0) return;
-    woundBearer(world, ctx, e, bite);
+    woundBearer(world, ctx, e, STARVATION_HITPOINTS_PER_TICK);
     return;
   }
   if (health.hitpoints >= health.max) return;
-  const heal = poolStepAt(health.max, HEALING_TICKS_TO_FULL, ctx.tick);
-  if (heal === 0) return;
-  world.mut(e, Health).hitpoints = Math.min(health.max, health.hitpoints + heal);
+  world.mut(e, Health).hitpoints = Math.min(health.max, health.hitpoints + REGENERATION_HITPOINTS_PER_TICK);
 }
