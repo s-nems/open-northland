@@ -129,6 +129,26 @@ describe('resolveLayers - connected palisades', () => {
     ]);
   });
 
+  it('paints posts on an edge running up the screen behind the endpoint that owns them', () => {
+    const item: DrawItem = {
+      kind: 'palisade',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      gfxIndex: 691,
+      palisadePosts: [
+        { dx: 10, dy: -13, gfxIndex: 691, variantStep: 1 },
+        { dx: 20, dy: -26, gfxIndex: 691, variantStep: 2 },
+      ],
+    };
+    expect(resolveLayers(sheet, item, 0)?.map((layer) => [layer.frame.x, layer.dy ?? 0])).toEqual([
+      [2, -26],
+      [1, -13],
+      [0, 0],
+    ]);
+  });
+
   it('hides an unclaimed site and draws the ordinary work flag once a builder claims it', () => {
     const site: DrawItem = {
       kind: 'palisade',

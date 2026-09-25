@@ -194,7 +194,12 @@ function pushPalisadeLayers(out: LayerBuffer, sheet: SpriteSheet, item: DrawItem
   if (!append(item)) return false;
   for (const post of item.palisadePosts ?? []) append(post, post.dx, post.dy);
   for (const layer of PALISADE_SHADOWS.finish()) out.push(layer);
-  for (const layer of PALISADE_BODIES.finish()) out.push(layer);
+  // An edge's posts ride one endpoint's draw, and toward a neighbour further up the screen they stand
+  // behind that endpoint: paint the bodies from the back row forward. The sort is stable, so the layers
+  // of one post keep their order; it reorders the scratch list in place.
+  const bodies = PALISADE_BODIES.finish() as ResolvedLayer[];
+  bodies.sort((a, b) => (a.dy ?? 0) - (b.dy ?? 0));
+  for (const layer of bodies) out.push(layer);
   return true;
 }
 
