@@ -72,14 +72,13 @@ const JOINERY_SEAT: CraftSeat = {
  * first, since the big potion waits on herbs the later herb hut grows). The first two mints' four coiners
  * work one on coins and three on defence amulets; once a fifth joins at the third mint, the crew splits two
  * each over coins, defence and strength amulets. Both joiners make iron tools and turn to furniture only
- * while the tools pile up. The potters split
- * bricks and tiles, a lone one working both, and turn to crockery, which doubles a stocked home's food,
- * while both lie at their glut lines. The first tailor sews shoes and the second leather armour, turning
- * to shoes while the armour piles up unworn, as it does once plate armour has come in, and back once the
- * amulet makers and recruits have drawn it down; the small tailor's one man sews shoes too. The first
- * armourer works long bows and wooden spears, dropping whichever has piled up so the other, the spear the
- * smithy's iron spear needs or the bow, gets his whole time. Bakers bake only bread and breeders keep only
- * cattle.
+ * while the tools pile up. The potters split bricks and tiles, a lone one working both, and turn to
+ * crockery, which doubles a stocked home's food, while both lie at their glut lines. The first tailor sews
+ * shoes and the second leather armour, turning to shoes while the armour piles up unworn, as it does once
+ * plate armour has come in, and back once the amulet makers and recruits have drawn it down; the small
+ * tailor's one man sews shoes too. The first armourer works long bows and wooden spears, dropping
+ * whichever has piled up so the other, the spear the smithy's iron spear needs or the bow, gets his whole
+ * time. Bakers bake only bread and breeders keep only cattle.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT] },

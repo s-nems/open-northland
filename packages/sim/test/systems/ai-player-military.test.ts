@@ -456,6 +456,24 @@ describe('military module - the campaign', () => {
     expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
   });
 
+  it("weighs the seat's own tower garrison with the band, so its defence never benches the wave", () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const rally = rallyOf(sim);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    const tolerated = Math.floor((WAVE_MIN_SOLDIERS * OUTNUMBERED_NUMERATOR) / OUTNUMBERED_DENOMINATOR);
+    spawn(sim, tolerated + 1, { x: FOE_HQ.x - 20, y: FOE_HQ.y }, SPEARMAN, FOE);
+    expect(assaulting(sim, run(sim, PATIENT_SEED), foeHq)).toEqual([]);
+
+    // Two archers walled into a tower leave the band but not the army: seven men tolerate eight.
+    place(sim, TOWER_TYPE, { x: rally.x - 30, y: rally.y }, SEAT);
+    const tower = buildingOfType(sim, TOWER_TYPE, SEAT);
+    for (const archer of spawn(sim, 2, { x: rally.x - 26, y: rally.y }, BOWMAN)) {
+      sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
+    }
+    sim.step();
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+  });
+
   it('marches on the window even while the seat keeps drafting', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
     const rally = rallyOf(sim);

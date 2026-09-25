@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
-const { Building, JobAssignment, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } =
+const { Building, JobAssignment, Owner, Person, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } =
   components;
 const {
   CIVILIANS_PER_EXTRA_BUILDING_GATHERER,
@@ -66,7 +66,8 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     // gatherer is pinned to one collected good. How many of the three goods get a collector depends
     // on what the map actually holds, but a forest map guarantees at least the wood one, and no good
     // may exceed its plan target (`COLLECTOR_TARGET_BY_GOOD_ID` grown by the seat's civilians, default 1).
-    const civilians = [...sim.world.query(Settler, Owner)].filter(
+    // Counted over people, as the allocator does: a claimed herd is an owned Settler with no Person.
+    const civilians = [...sim.world.query(Person, Owner)].filter(
       (e) =>
         sim.world.get(e, Owner).player === AI_SEAT &&
         !isFighterJob(content, sim.world.get(e, Settler).jobType),

@@ -40,6 +40,7 @@ import {
   type BuildingStaffing,
   buildingStaffing,
   type HeldStaff,
+  LATE_GAME_BAND_CIVILIANS,
   LATE_GAME_CIVILIANS,
   plannedOperators,
   type SeatStaffing,
@@ -747,6 +748,24 @@ describe('workforce module - the farm and mill crews', () => {
     expect(tiers(comfort, crewOf(4))).toEqual({ min: 1, target: 1, surplus: 1 });
   });
 
+  it('keeps a held farm crew one man over the hire line, so a unit of grain does not churn a farmer', () => {
+    const content = grainContent();
+    const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
+    const farm = entityOfBuilding(seat.sim, FARM_TYPE);
+    const { unit, comfort } = linesOf(content, WHEAT);
+    const tiers = (wheat: number, held: HeldStaff) => {
+      seat.stock([WHEAT], wheat);
+      return operatorTiers(seat, content, farm, held);
+    };
+    // One unit lacking hires two, but a crew of three already there stays; four falls to three.
+    expect(tiers(comfort - unit, crewOf(3))).toEqual({ min: 1, target: 2, surplus: 3 });
+    expect(tiers(comfort - unit, crewOf(4))).toEqual({ min: 1, target: 2, surplus: 3 });
+    // A unit and one lacking hires three and keeps four.
+    expect(tiers(comfort - unit - 1, crewOf(4))).toEqual({ min: 1, target: 2, surplus: 4 });
+    // The comfort line takes any crew down to one.
+    expect(tiers(comfort, crewOf(3))).toEqual({ min: 1, target: 1, surplus: 1 });
+  });
+
   it('shrinks the farm crew as the grain comes in, rests it at glut and brings it back under short', () => {
     const content = grainContent();
     const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
@@ -836,6 +855,18 @@ describe('workforce module - the stores staff carriers only in a grown seat', ()
     expect(hqCarrierHires(seat).map((c) => c.kind === 'assignWorker' && c.jobPriority)).toEqual(
       Array.from({ length: STORE_CARRIERS }, () => [CARRIER]),
     );
+  });
+
+  it('keeps staffed store carriers through the band under the grown-seat size', () => {
+    const held: HeldStaff = { operators: 0, carriers: STORE_CARRIERS };
+    const kept = seatOn(aiContent(), [], LATE_GAME_CIVILIANS - LATE_GAME_BAND_CIVILIANS);
+    expect(planOf(kept, aiContent(), entityOfBuilding(kept.sim, HQ_TYPE), held)).toMatchObject({
+      carrierSurplus: STORE_CARRIERS,
+    });
+    const shrunk = seatOn(aiContent(), [], LATE_GAME_CIVILIANS - LATE_GAME_BAND_CIVILIANS - 1);
+    expect(planOf(shrunk, aiContent(), entityOfBuilding(shrunk.sim, HQ_TYPE), held)).toMatchObject({
+      carrierSurplus: 0,
+    });
   });
 
   it("hands a small seat's store carriers back as builders", () => {

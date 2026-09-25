@@ -81,6 +81,10 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
  *  sites the farthest apart. */
 export const LATE_GAME_CIVILIANS = 60;
 
+/** How far under {@link LATE_GAME_CIVILIANS} a seat that already staffs its stores still counts as grown
+ *  (authored): about one family, so a recruit or a death at the line does not undo the staffing. */
+export const LATE_GAME_BAND_CIVILIANS = 10;
+
 /** The transport carriers the HQ and every warehouse run in a grown seat (authored). */
 export const STORE_CARRIERS = 3;
 
@@ -154,13 +158,17 @@ export function buildingStaffing(
   held: HeldStaff,
 ): BuildingStaffing | null {
   if (type.kind === 'storage') {
-    return seat.civilians >= LATE_GAME_CIVILIANS ? GROWN_SEAT_STORAGE_STAFFING : SMALL_SEAT_STORAGE_STAFFING;
+    // A staffed store keeps its carriers through the band under the line, so one recruit or death at the
+    // line does not hand a dozen carriers back for the next birth to re-hire.
+    const grownFrom =
+      held.carriers > 0 ? LATE_GAME_CIVILIANS - LATE_GAME_BAND_CIVILIANS : LATE_GAME_CIVILIANS;
+    return seat.civilians >= grownFrom ? GROWN_SEAT_STORAGE_STAFFING : SMALL_SEAT_STORAGE_STAFFING;
   }
   if (type.kind !== 'workplace') return null;
   const { productGated, ...row } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
   let plan: BuildingStaffing = { ...DEFAULT_WORKPLACE_STAFFING, ...row };
   const opening = openingRunPending(world, ctx, building, type);
-  const gate = productGated === true ? gatedOperators(ctx, seat, type, held.operators > 1) : null;
+  const gate = productGated === true ? gatedOperators(ctx, seat, type, held.operators) : null;
   if (opening) plan = capOperators(plan, 1);
   else if (gate !== null) plan = capOperators(plan, gate);
   const holdsCarrier = held.carriers > 0;
@@ -192,14 +200,17 @@ function capOperators(plan: BuildingStaffing, cap: number): BuildingStaffing {
 
 /**
  * The operators a product-gated type may employ: one while none of its products is short (under its comfort
- * line while `engaged`, else its short line), and while one is, one more per supply unit the shortest lacks
- * to its comfort line. Null for a type none of whose products has supply lines: its row stands as authored.
+ * line while more than one works there, else its short line), and while one is, one more per supply unit
+ * the shortest lacks to its comfort line. A crew already `held` beyond that keeps one man over it, so the
+ * stock crossing a unit step does not release a man for the next unit to re-hire; the comfort line takes
+ * the whole crew down to one. Null for a type none of whose products has supply lines: its row stands as
+ * authored.
  */
 function gatedOperators(
   ctx: SystemContext,
   seat: SeatStaffing,
   type: BuildingType,
-  engaged: boolean,
+  held: number,
 ): number | null {
   let managed = false;
   let extra = 0;
@@ -207,11 +218,13 @@ function gatedOperators(
     const lines = seat.supply.lines(good);
     if (lines === undefined) continue;
     managed = true;
-    if (seat.supply.isShort(good, engaged)) {
+    if (seat.supply.isShort(good, held > 1)) {
       extra = Math.max(extra, Math.ceil(seat.supply.lackToComfort(good) / lines.unit));
     }
   }
-  return managed ? 1 + extra : null;
+  if (!managed) return null;
+  const hire = 1 + extra;
+  return extra > 0 ? Math.max(hire, Math.min(held, hire + 1)) : hire;
 }
 
 /**

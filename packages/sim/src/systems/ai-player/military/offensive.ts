@@ -29,10 +29,11 @@ const NO_CAMPAIGN: CampaignDecision = { commands: [], waiting: [] };
 
 /**
  * One strategic decision for the seat's campaign: sort `army` around the barracks door
- * ({@link musterAround}), then judge the launch ({@link decideWave}). Until the peace ends ({@link peaceEndsAt}) the army
- * only gathers at the door, as it does with no target. The men at the door march when the
- * muster is the wave it was gathering and the target's owner does not outnumber the army; a body already nearer the objective goes in whatever the muster
- * says, having nowhere safe to wait; everybody else is called in.
+ * ({@link musterAround}), then judge the launch ({@link decideWave}). Until the peace ends
+ * ({@link peaceEndsAt}) the army only gathers at the door, as it does with no target. The men at the door
+ * march when the muster is the wave it was gathering and the target's owner does not outnumber the seat; a
+ * body already nearer the objective goes in whatever the muster says, having nowhere safe to wait;
+ * everybody else is called in.
  */
 export function runOffensive(
   world: World,
@@ -70,8 +71,13 @@ export function runOffensive(
   const gatherable = free.filter(
     (e) => terrain.componentOf(entityNode(world, terrain, e)) === doorSide,
   ).length;
+  // Both sides weighed whole, garrisons and men in a fight included, so a seat whose towers hold a third
+  // of its men is not benched by its own defence.
   const targetOwner = ownerOf(world, target);
-  const opposing = targetOwner === undefined ? 0 : fighterStrength(world, ctx, targetOwner);
+  const strength = {
+    own: fighterStrength(world, ctx, player),
+    opposing: targetOwner === undefined ? 0 : fighterStrength(world, ctx, targetOwner),
+  };
   const charges = decideWave(
     world,
     ctx,
@@ -81,7 +87,7 @@ export function runOffensive(
     gatherable,
     core,
     peaceEnd,
-    opposing,
+    strength,
   );
   // Forward men go in with a launching wave or as a band of their own; too few for either and they come
   // home, since the size floor governs who the seat sends anywhere, not where the last fight left him.

@@ -182,9 +182,9 @@ function weakerWeaponGoods(content: ContentSet): readonly number[] {
 /**
  * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus a share of the
  * `draftable` men (the army floor's first, then the spare), so the headroom the dispatcher sees
- * (`counter - bookings`) sums to exactly that number. Each man goes to the armable class furthest below its field share ({@link fieldedByIntent},
- * {@link FULL_FIELD_SHARES}), the earlier class on a tie; a seat that can arm none of them falls back to
- * `trainSoldiers`.
+ * (`counter - bookings`) sums to exactly that number. Each man goes to the armable class furthest below
+ * its field share ({@link fieldedByIntent}, {@link FULL_FIELD_SHARES}), the earlier class on a tie; a seat
+ * that can arm none of them falls back to `trainSoldiers`.
  */
 function standingOrder(
   world: World,
