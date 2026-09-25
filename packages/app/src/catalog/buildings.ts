@@ -1,3 +1,4 @@
+import type { PrayerSite } from '@open-northland/data';
 import { type CellTerrainMap, components, type Simulation } from '@open-northland/sim';
 import { HIVE_DRAW_ATOMIC, WELL_DRAW_ATOMIC } from './atomics.js';
 import { TERRAIN_OPEN } from './terrain.js';
@@ -6,9 +7,9 @@ import { TERRAIN_OPEN } from './terrain.js';
  * The committed catalog of viking buildings, keyed by `Building.buildingType`, the original's
  * `[GfxHouse]` `LogicType`: the id a `placeBuilding` command stamps and the renderer's bob-lookup key.
  *
- * `typeId`, `id`, `kind`, `buildOnBioPattern`, `collectAtomic`, `refillsOwnStock` and `canEnableDefenceMode`
- * are transcribed verbatim from `ir.json`'s `buildings`; `label` is hand-authored English. Level suffixes are
- * 1-based for the player even though the ids stay 0-indexed.
+ * `typeId`, `id`, `kind`, `buildOnBioPattern`, `collectAtomic`, `refillsOwnStock`, `prayerSite` and
+ * `canEnableDefenceMode` are transcribed verbatim from `ir.json`'s `buildings`; `label` is hand-authored
+ * English. Level suffixes are 1-based for the player even though the ids stay 0-indexed.
  *
  * Scope is the 41 real viking buildings (`typeId` 1..41), every one with a decoded bob. `work_murek`
  * (typeId 55) is omitted because the mod binds no viking bob for it, so it would draw the fallback house.
@@ -35,12 +36,21 @@ export interface VikingBuilding {
   readonly collectAtomic?: number;
   /** The house tops its own produced goods up every game second with no worker. */
   readonly refillsOwnStock?: true;
+  /** Where a settler prays without holy oil at home. */
+  readonly prayerSite?: PrayerSite;
   readonly canEnableDefenceMode?: true;
 }
 
 /** Every viking building in `typeId` order. */
 export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
-  { typeId: 1, id: 'headquarters', label: 'Headquarters', kind: 'storage', canEnableDefenceMode: true },
+  {
+    typeId: 1,
+    id: 'headquarters',
+    label: 'Headquarters',
+    kind: 'storage',
+    prayerSite: 'headquarters',
+    canEnableDefenceMode: true,
+  },
   { typeId: 2, id: 'home_level_00', label: 'Home (level 1)', kind: 'home' },
   { typeId: 3, id: 'home_level_01', label: 'Home (level 2)', kind: 'home' },
   { typeId: 4, id: 'home_level_02', label: 'Home (level 3)', kind: 'home' },
@@ -94,7 +104,7 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 34, id: 'work_herb_hut', label: 'Herb hut', kind: 'workplace' },
   { typeId: 35, id: 'work_druid_00', label: "Druid's hut (level 1)", kind: 'workplace' },
   { typeId: 36, id: 'work_druid_01', label: "Druid's hut (level 2)", kind: 'workplace' },
-  { typeId: 37, id: 'work_temple', label: 'Temple', kind: 'workplace' },
+  { typeId: 37, id: 'work_temple', label: 'Temple', kind: 'workplace', prayerSite: 'temple' },
   { typeId: 38, id: 'school', label: 'School', kind: 'training' },
   { typeId: 39, id: 'barracks', label: 'Barracks', kind: 'training', canEnableDefenceMode: true },
   { typeId: 40, id: 'tower_00', label: 'Watchtower (level 1)', kind: 'tower', canEnableDefenceMode: true },

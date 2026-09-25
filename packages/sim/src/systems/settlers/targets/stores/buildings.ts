@@ -1,3 +1,4 @@
+import { PRAYER_SITE } from '@open-northland/data';
 import { Building, ownerOf, ownersCompatible, sameSideAs } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
@@ -20,7 +21,10 @@ export function nearestTemple(
   /** The settler's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
-  return bands.temples().nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))?.entity ?? null;
+  return (
+    bands.prayerSites(PRAYER_SITE.temple).nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))
+      ?.entity ?? null
+  );
 }
 
 /**

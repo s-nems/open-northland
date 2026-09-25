@@ -6,6 +6,7 @@ import {
   MoveGoal,
   Position,
   Settler,
+  UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
@@ -28,13 +29,14 @@ import {
  * zeroing piety on completion, closing the NeedsSystem's rise→pray→reset loop.
  *
  * The viking tribe binds pray atomic 12 → "viking_pray" (length 7); the pray atomic id (12) is pinned
- * to the original `setatomic 6 12 "..._pray"` bindings + the `HOUSE_TYPE_WORK_TEMPLE` (logictype 37,
- * logicmaintype 3, no workers/stock/production) temple signature `isTemple` recognises; the drive threshold
- * and the temple->pray-need inference are approximations.
+ * to the original `setatomic 6 12 "..._pray"` bindings, and the temple is the type content marks
+ * `prayerSite: 'temple'` (the original's logictype 37).
  */
 
 const VIKING = 1;
 const TEMPLE_TYPE = 3;
+/** The fixture smithy: a workplace with no workers, stock or recipe, like the temple, but no prayer site. */
+const SMITHY_TYPE = 4;
 /** The fixture's `needsReligionFlag` trade: only such a settler leaves its work to pray. */
 const SMITH = 13;
 /** A trade with no religion need, which the fixture also lets fell wood. */
@@ -60,10 +62,10 @@ function settlerAt(
   return needsSettlerAt(sim, x, y, { hunger, fatigue, piety }, SMITH);
 }
 
-function templeAt(sim: Simulation, x: number, y: number): Entity {
+function templeAt(sim: Simulation, x: number, y: number, buildingType = TEMPLE_TYPE): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Building, { buildingType: TEMPLE_TYPE, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level: 0 });
   return e;
 }
 
@@ -123,6 +125,30 @@ describe('prayDrive - the planner choosing to pray (target-bound: walk to a temp
     // No temple to pray at: the settler works (heads for the tree) instead of stalling.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
+  });
+
+  it('passes a temple still under construction by', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const settler = settlerAt(sim, 0, 0, DEVOUT);
+    const site = templeAt(sim, 4, 0);
+    sim.world.mut(site, Building).built = fx.fromInt(0);
+    sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
+    treeAt(sim, 3, 0);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0)); // headed for the wood
+  });
+
+  it('does not take a workplace with no workers or recipe for a temple', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const settler = settlerAt(sim, 0, 0, DEVOUT);
+    templeAt(sim, 4, 0, SMITHY_TYPE);
+    treeAt(sim, 3, 0);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0)); // headed for the wood
   });
 
   it('leaves a trade with no religion need at its work, however overdue its piety bar', () => {

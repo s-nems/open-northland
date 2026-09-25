@@ -19,9 +19,10 @@ export {
   HEADQUARTERS_BUILDING_ID,
   isBarracks,
   isBarracksType,
+  isFinishedPrayerSite,
   isLowPriorityBuildingTarget,
   isSchoolType,
-  isTemple,
+  prayerSiteOf,
 } from './buildings.js';
 export {
   ARMOR_MAIN_TYPE,

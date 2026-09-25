@@ -180,6 +180,7 @@ export const economyContent = {
       typeId: 1,
       id: 'headquarters',
       kind: 'storage',
+      prayerSite: 'headquarters',
       // A transport slot beside the gatherer slots (the original HQ declares `logicworker 24 3`,
       // houses.ini; count 1 here is a fixture simplification - one carrier keeps the golden legible):
       // a carrier is posted here, and only a POSTED carrier hauls
@@ -207,12 +208,11 @@ export const economyContent = {
       recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
     },
     {
-      // The "work temple" (original logictype 37, logicmaintype 3): a `workplace` kind with NO
-      // workers, NO stock, NO recipe - the structural signature isTemple() recognises as the pray
-      // satisfier site. A devout settler walks here and runs the pray atomic to reset its piety.
+      // The "work temple" (original logictype 37): a devout settler walks here and runs the pray atomic.
       typeId: 3,
       id: 'temple',
       kind: 'workplace',
+      prayerSite: 'temple',
     },
     {
       // A tech-gated workplace: the viking tribe's `jobEnablesHouse` edge below locks it behind the

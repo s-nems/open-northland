@@ -1,4 +1,10 @@
-import { BUILDING_KIND, type BuildingKind, BuildingType } from '@open-northland/data';
+import {
+  BUILDING_KIND,
+  type BuildingKind,
+  BuildingType,
+  PRAYER_SITE,
+  type PrayerSite,
+} from '@open-northland/data';
 import type { RuleSection } from '../grammar.js';
 import { makeSource, type SourceRef, slug } from '../ir-fields.js';
 import { findProps, getInt, getIntList, getStr } from '../props.js';
@@ -24,6 +30,12 @@ const COLLECT_ATOMIC_BY_LOGIC_TYPE: Readonly<Record<number, number>> = {
 /** The engine's self-filling house types joined into `BuildingType.refillsOwnStock`: the well and the hive. */
 const SELF_FILLING_LOGIC_TYPES: ReadonlySet<number> = new Set([10, 11]);
 
+/** The engine's prayer-site house types joined into `BuildingType.prayerSite`: temple and headquarters. */
+const PRAYER_SITE_BY_LOGIC_TYPE: Readonly<Record<number, PrayerSite>> = {
+  37: PRAYER_SITE.temple,
+  1: PRAYER_SITE.headquarters,
+};
+
 function houseKind(mainType: number | undefined): BuildingType['kind'] {
   if (mainType === undefined) return 'maintype_unknown';
   return HOUSE_KIND_BY_MAIN_TYPE[mainType] ?? `maintype_${mainType}`;
@@ -32,8 +44,9 @@ function houseKind(mainType: number | undefined): BuildingType['kind'] {
 /**
  * A house record keys its id on `logictype`, not the `type` every other table uses, and its name on
  * `debugname`. `logicbuildonbiopattern` is retained because it directly gates placement, and the engine's
- * per-type collect action and self-filling stock are joined here; unrelated graphics and placement extras
- * (`debugcolor`, `logicvehicletype`, other `logicbuildon*`/`logicignore*`) remain outside this slice.
+ * per-type collect action, self-filling stock and prayer site are joined here; unrelated graphics and
+ * placement extras (`debugcolor`, `logicvehicletype`, other `logicbuildon*`/`logicignore*`) remain outside
+ * this slice.
  */
 export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {
   const buildings: BuildingType[] = [];
@@ -69,6 +82,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
         buildOnBioPattern: getInt(sec, 'logicbuildonbiopattern') === 1,
         collectAtomic: COLLECT_ATOMIC_BY_LOGIC_TYPE[typeId],
         refillsOwnStock: SELF_FILLING_LOGIC_TYPES.has(typeId),
+        prayerSite: PRAYER_SITE_BY_LOGIC_TYPE[typeId],
         canEnableDefenceMode: getInt(sec, 'logicCanEnableDefenceMode') === 1,
         workers,
         stock,

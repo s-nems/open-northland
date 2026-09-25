@@ -1,3 +1,4 @@
+import type { PrayerSite } from '@open-northland/data';
 import {
   Building,
   DeliveryFlag,
@@ -12,7 +13,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
-import { isTemple } from '../../readviews/index.js';
+import { isFinishedPrayerSite } from '../../readviews/index.js';
 import { accessibleStockAmounts, mayFetchGoodFrom } from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { FetchableStock } from './stores/fetchable-stock.js';
@@ -35,7 +36,7 @@ export class TargetBands {
   private readonly sinksByGood = new Map<number, InteractionCellIndex>();
   private readonly storageSinksByGood = new Map<number, InteractionCellIndex>();
   private readonly inputSourcesByGood = new Map<number, InteractionCellIndex>();
-  private templeBand: InteractionCellIndex | undefined;
+  private readonly prayerSiteBands = new Map<PrayerSite, InteractionCellIndex>();
   private stamp: number;
 
   constructor(
@@ -44,7 +45,7 @@ export class TargetBands {
     private readonly terrain: TerrainGraph,
     /** Canonical ascending-id `Stockpile + Position` candidates, the store questions' universe. */
     private readonly stockpiles: readonly Entity[],
-    /** Canonical ascending-id `Building + Position` candidates, the temple question's universe. */
+    /** Canonical ascending-id `Building + Position` candidates, the prayer-site questions' universe. */
     private readonly buildings: readonly Entity[],
   ) {
     this.stamp = this.generationSum();
@@ -94,11 +95,17 @@ export class TargetBands {
     return band;
   }
 
-  /** The player-blind temple band; a seeker's own-side filter stays per query. */
-  temples(): InteractionCellIndex {
+  /** The player-blind band of finished `site` buildings; a seeker's own-side filter stays per query. */
+  prayerSites(site: PrayerSite): InteractionCellIndex {
     this.ensureFresh();
-    this.templeBand ??= this.indexOver(this.buildings.filter((e) => isTemple(this.world, this.ctx, e)));
-    return this.templeBand;
+    let band = this.prayerSiteBands.get(site);
+    if (band === undefined) {
+      band = this.indexOver(
+        this.buildings.filter((e) => isFinishedPrayerSite(this.world, this.ctx, e, site)),
+      );
+      this.prayerSiteBands.set(site, band);
+    }
+    return band;
   }
 
   private isInputSource(walls: ReadonlySet<NodeId>, e: Entity, goodType: number): boolean {
@@ -141,6 +148,6 @@ export class TargetBands {
     this.sinksByGood.clear();
     this.storageSinksByGood.clear();
     this.inputSourcesByGood.clear();
-    this.templeBand = undefined;
+    this.prayerSiteBands.clear();
   }
 }

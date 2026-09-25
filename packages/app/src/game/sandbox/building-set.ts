@@ -1,4 +1,4 @@
-import { type BuildingFootprint, DEFAULT_RECIPE_TICKS } from '@open-northland/data';
+import { type BuildingFootprint, DEFAULT_RECIPE_TICKS, type PrayerSite } from '@open-northland/data';
 import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { shelterCapacityFor } from '../../catalog/defence.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
@@ -149,6 +149,7 @@ export interface SandboxBuildingRow {
   buildOnBioPattern?: boolean;
   collectAtomic?: number;
   refillsOwnStock?: boolean;
+  prayerSite?: PrayerSite;
   canEnableDefenceMode?: boolean;
   /** How many civilians the building shelters in defence mode. */
   shelterCapacity?: number;
@@ -475,6 +476,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     ...(b.buildOnBioPattern ? { buildOnBioPattern: true } : {}),
     ...(b.collectAtomic !== undefined ? { collectAtomic: b.collectAtomic } : {}),
     ...(b.refillsOwnStock ? { refillsOwnStock: true } : {}),
+    ...(b.prayerSite !== undefined ? { prayerSite: b.prayerSite } : {}),
     ...(b.canEnableDefenceMode ? { canEnableDefenceMode: true, shelterCapacity: shelterCapacityFor(b) } : {}),
     ...(slots !== undefined ? { workers: slots } : {}),
     ...(b.kind === 'home' ? homeRow(b) : {}),

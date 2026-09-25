@@ -46,6 +46,13 @@ export const BUILDING_KIND = {
 } as const;
 export type BuildingKind = (typeof BUILDING_KIND)[keyof typeof BUILDING_KIND];
 
+/** The buildings where a settler prays without holy oil of its own: temples first, then the headquarters. */
+export const PRAYER_SITE = {
+  temple: 'temple',
+  headquarters: 'headquarters',
+} as const;
+export type PrayerSite = (typeof PRAYER_SITE)[keyof typeof PRAYER_SITE];
+
 export const BuildingType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
@@ -112,6 +119,12 @@ export const BuildingType = z.strictObject({
    * not an `.ini` key; such a house carries no recipe.
    */
   refillsOwnStock: z.boolean().default(false),
+  /**
+   * The house is a prayer site whose holy fire burns from placement and never goes out. Engine behavior
+   * keyed on `logictype` 37 (temple) and 1 (headquarters), not an `.ini` key. Only a temple blesses the
+   * people around it.
+   */
+  prayerSite: z.enum(PRAYER_SITE).optional(),
   /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */
   canEnableDefenceMode: z.boolean().default(false),
   /**

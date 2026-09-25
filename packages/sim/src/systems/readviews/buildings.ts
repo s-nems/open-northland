@@ -1,6 +1,7 @@
-import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
+import { BUILDING_KIND, type BuildingType, type PrayerSite } from '@open-northland/data';
 import { Building, UnderConstruction } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
@@ -51,18 +52,19 @@ export function isBarracks(world: World, ctx: SystemContext, building: Entity): 
   return type !== undefined && isBarracksType(type);
 }
 
-/**
- * The satisfier site for the piety need. The original's "work temple" (`logictype 37`) is a
- * `logicmaintype 3` workplace declaring no `logicworker`, `logicstock` or `logicproduction`, so it
- * reaches the IR as a workplace with no workers, stock or recipes.
- *
- * Approximation: the temple-to-pray binding lives below the readable rule files, so the satisfier is
- * inferred from that structural signature.
- */
-export function isTemple(world: World, ctx: SystemContext, building: Entity): boolean {
+/** The prayer site a building type is, from content; undefined for every other type. */
+export function prayerSiteOf(ctx: SystemContext, buildingType: number): PrayerSite | undefined {
+  return contentIndex(ctx.content).buildings.get(buildingType)?.prayerSite;
+}
+
+/** A finished building of `site`: a foundation, or a building mid-upgrade, is not one yet. */
+export function isFinishedPrayerSite(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  site: PrayerSite,
+): boolean {
+  if (world.has(building, UnderConstruction)) return false;
   const b = world.tryGet(building, Building);
-  if (b === undefined) return false;
-  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
-  if (type === undefined) return false;
-  return type.kind === 'workplace' && type.recipes.length === 0 && type.workers.length === 0;
+  return b !== undefined && b.built >= ONE && prayerSiteOf(ctx, b.buildingType) === site;
 }

@@ -17,6 +17,7 @@ interface IrBuilding {
   readonly buildOnBioPattern?: boolean;
   readonly collectAtomic?: number;
   readonly refillsOwnStock?: boolean;
+  readonly prayerSite?: string;
   readonly canEnableDefenceMode?: boolean;
 }
 interface IrBuildingBob {
@@ -47,6 +48,8 @@ describe.runIf(hasRealIr())('viking building catalog vs real IR', () => {
       expect(real?.refillsOwnStock ?? false, `self-filling flag for ${cat.id}`).toBe(
         cat.refillsOwnStock === true,
       );
+      // The engine's prayer sites: the temple and the headquarters.
+      expect(real?.prayerSite, `prayer site for ${cat.id}`).toBe(cat.prayerSite);
       // The extracted `logicCanEnableDefenceMode`: exactly the headquarters, barracks and both towers.
       expect(real?.canEnableDefenceMode ?? false, `defence flag for ${cat.id}`).toBe(
         cat.canEnableDefenceMode === true,

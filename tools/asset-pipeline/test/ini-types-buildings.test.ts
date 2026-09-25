@@ -104,6 +104,22 @@ describe('extractBuildings', () => {
     ).toThrow(/without a numeric `logictype`/);
   });
 
+  it('marks the engine prayer sites by logictype: 37 the temple, 1 the headquarters', () => {
+    const buildings = extractBuildings(
+      parseIniSections(
+        [37, 1, 51]
+          .map((type) => `[logichousetype]\ndebugname "house ${type}"\nlogictype ${type}\nlogicmaintype 3\n`)
+          .join('\n'),
+      ),
+      { file: 'f.ini' },
+    );
+    expect(buildings.map((b) => [b.typeId, b.prayerSite])).toEqual([
+      [37, 'temple'],
+      [1, 'headquarters'],
+      [51, undefined], // the Artemis wonder is a temple by name only
+    ]);
+  });
+
   it('maps an unknown logicmaintype to a stable maintype_<n> kind', () => {
     const buildings = extractBuildings(
       parseIniSections('[logichousetype]\ndebugname "weird"\nlogictype 99\nlogicmaintype 9\n'),
