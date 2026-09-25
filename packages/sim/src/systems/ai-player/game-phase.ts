@@ -3,15 +3,14 @@ import { TICKS_PER_SECOND } from '../../core/loop.js';
 const SECONDS_PER_MINUTE = 60;
 
 /** Game minutes to sim ticks. */
-export function minutesToTicks(minutes: number): number {
+function minutesToTicks(minutes: number): number {
   return minutes * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 }
 
 /**
  * The seat's game-time phases (authored, in game minutes): the opening saves every civilian, the mid game
  * from one hour hoards building goods, the late game from ninety minutes affords nice-to-have posts.
- * Game time runs about three times faster than the clock at the usual game speed, so the phases are
- * short in real minutes.
+ * Game minutes are sim time: at the x3 game speed one real minute is three of them.
  */
 export const MID_GAME_FROM_TICKS = minutesToTicks(60);
 export const LATE_GAME_FROM_TICKS = minutesToTicks(90);

@@ -827,6 +827,38 @@ describe('workforce module - the farm and mill crews', () => {
     expect(tiers(glut, crewOf(3))).toEqual({ min: 1, target: 1, surplus: 1 });
   });
 
+  it('keeps two farmers from the late game on, whatever the grain', () => {
+    const content = grainContent();
+    const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);
+    const farm = entityOfBuilding(seat.sim, FARM_TYPE);
+    const { comfort, glut } = linesOf(content, WHEAT);
+    seat.stock([WHEAT], glut);
+    // Before the late game the glut takes the crew down to one; from it the second farmer stays, and a
+    // shortage still sizes the crew above him.
+    expect(operatorTiers(seat, content, farm, crewOf(2), LATE_GAME_FROM_TICKS - 1)).toEqual({
+      min: 1,
+      target: 1,
+      surplus: 1,
+    });
+    expect(operatorTiers(seat, content, farm, crewOf(2), LATE_GAME_FROM_TICKS)).toEqual({
+      min: 1,
+      target: 2,
+      surplus: 2,
+    });
+    seat.stock([WHEAT], 0);
+    expect(operatorTiers(seat, content, farm, alone, LATE_GAME_FROM_TICKS)).toEqual({
+      min: 1,
+      target: 2,
+      surplus: 4,
+    });
+    seat.stock([WHEAT], comfort - 1);
+    expect(operatorTiers(seat, content, farm, alone, LATE_GAME_FROM_TICKS)).toEqual({
+      min: 1,
+      target: 2,
+      surplus: 2,
+    });
+  });
+
   it('never rests the farm: at the grain glut its crew shrinks to the first farmer', () => {
     const content = grainContent();
     const seat = seatOn(content, [FARM_TYPE], BUILDER_CAP + SPARE_MEN);

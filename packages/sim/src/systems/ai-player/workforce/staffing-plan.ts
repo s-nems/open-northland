@@ -33,7 +33,17 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
 };
 
 /** One {@link STAFFING_BY_BUILDING_ID} row. */
-export interface StaffingRow extends Partial<BuildingStaffing> {
+/** A row's tiers plus the floor a product gate keeps. */
+interface StaffingTiers extends Partial<BuildingStaffing> {
+  /** The operators a product gate never cuts the crew below, the tiers permitting; default
+   *  {@link DEFAULT_GATE_FLOOR}. */
+  readonly gateFloor?: number;
+}
+
+/** The product gate keeps at least the first craftsman. */
+const DEFAULT_GATE_FLOOR = 1;
+
+export interface StaffingRow extends StaffingTiers {
   /** The minimum and target tiers' operators beyond the first are posts only while one of the type's
    *  products with supply lines ({@link SeatSupply}) is short: under its comfort line while one man or
    *  none works there, under its glut line while more do, one operator more per supply unit it lacks to
@@ -42,7 +52,7 @@ export interface StaffingRow extends Partial<BuildingStaffing> {
    *  glut ({@link craftGlutPending}): a spare hand works the goods no supply line sizes. */
   readonly productGated?: true;
   /** The tiers from the late game ({@link LATE_GAME_FROM_TICKS}) on, over the rest of the row. */
-  readonly late?: Partial<BuildingStaffing>;
+  readonly late?: StaffingTiers;
 }
 
 /** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (authored),
@@ -54,7 +64,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // the watering circuit in time, so the second hand comes at the target tier, and the third and fourth,
   // which only pay off out of genuine surplus, from the surplus tier. The crew shrinks to its first
   // farmer at the grain's glut.
-  work_farm_00: { operatorTarget: 2, operatorSurplus: 4, productGated: true },
+  work_farm_00: { operatorTarget: 2, operatorSurplus: 4, productGated: true, late: { gateFloor: 2 } },
   // One miller while the flour keeps up; one farm grows roughly what one miller grinds, so the second seat
   // is worth filling only out of surplus and only while the flour runs short.
   work_mill_00: { operatorSurplus: 2, productGated: true },
@@ -134,7 +144,7 @@ export interface SeatStaffing {
  *  slot count; 0 for any other kind. */
 export function plannedOperators(ctx: SystemContext, type: BuildingType): number {
   if (type.kind !== 'workplace') return 0;
-  const want = rowPlan(ctx, type).operatorTarget;
+  const want = rowPlan(ctx, type).plan.operatorTarget;
   const index = contentIndex(ctx.content);
   let operators = 0;
   for (const slot of type.workers) {
@@ -145,13 +155,17 @@ export function plannedOperators(ctx: SystemContext, type: BuildingType): number
 }
 
 /** A workplace type's row at the decision's tick, over the default plan. */
-function rowPlan(ctx: SystemContext, type: BuildingType): BuildingStaffing {
+function rowPlan(
+  ctx: SystemContext,
+  type: BuildingType,
+): { readonly plan: BuildingStaffing; readonly gateFloor: number } {
   const { productGated: _, late, ...row } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
-  return {
-    ...DEFAULT_WORKPLACE_STAFFING,
+  const { gateFloor, ...tiers } = {
+    gateFloor: DEFAULT_GATE_FLOOR,
     ...row,
     ...(late !== undefined && ctx.tick >= LATE_GAME_FROM_TICKS ? late : {}),
   };
+  return { plan: { ...DEFAULT_WORKPLACE_STAFFING, ...tiers }, gateFloor };
 }
 
 /**
@@ -174,12 +188,14 @@ export function buildingStaffing(
   if (type.kind === 'storage')
     return ctx.tick >= STORE_CARRIERS_FROM_TICKS ? LATE_STORAGE_STAFFING : EARLY_STORAGE_STAFFING;
   if (type.kind !== 'workplace') return null;
-  let plan = rowPlan(ctx, type);
+  const { plan: row, gateFloor } = rowPlan(ctx, type);
+  let plan = row;
   const opening = openingRunPending(world, ctx, building, type);
-  const gate =
+  const gated =
     STAFFING_BY_BUILDING_ID[type.id]?.productGated === true
       ? gatedOperators(ctx, seat, type, held.operators)
       : null;
+  const gate = gated === null ? null : Math.max(gated, gateFloor);
   if (opening) plan = capOperators(plan, 1);
   else if (gate !== null) {
     const crafting = craftGlutPending(ctx, seat.supply, type, held.operators > gate);

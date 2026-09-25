@@ -69,11 +69,11 @@ export const CROCKERY_GLUT_UNITS = 24;
 
 /** The shoes in stock at which a tailor's shoe seat turns to leather armour (authored): every settler wears
  *  a pair out, and the defence amulet and the recruits take the armour. */
-export const SHOES_GLUT_UNITS = 24;
+const SHOES_GLUT_UNITS = 24;
 
 /** The leather armour in stock at which the second tailor turns to shoes (authored): the armour piles up
  *  unworn once plate armour has come in. */
-export const LEATHER_ARMOUR_GLUT_UNITS = 16;
+const LEATHER_ARMOUR_GLUT_UNITS = 16;
 
 /** A tailor's shoe seat: shoes until they reach {@link SHOES_GLUT_UNITS}, leather armour meanwhile. */
 const SHOE_SEAT: CraftSeat = {
