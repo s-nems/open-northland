@@ -1,8 +1,10 @@
 import {
   AssistantChildOrder,
+  AssistantRecruit,
   Building,
   ChildOrder,
   Female,
+  JobAssignment,
   Marriage,
   Residence,
   Settler,
@@ -11,16 +13,23 @@ import type { PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { liveWorkFlag } from '../economy/work-flag.js';
 import { isAdultSettler, isOnMission, mayMarry } from '../family/eligibility.js';
 import { familiesOf } from '../family/households.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import type { AiPlayerModule } from './index.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from './seat-roster.js';
+import { builderJobOf, civilianCount, isAllocatableMan } from './workforce/pool.js';
+import { builderCap } from './workforce/staffing.js';
+
+/** How many idle men beyond the builder reserve hold the sons counter at zero (authored). */
+export const IDLE_MEN_HOLD_BIRTHS = 3;
 
 /**
  * The HomeExpansion module (authored): who marries, which family takes a free home slot, and the birth
- * counters the settlement assistant is held at - daughters up to the housing stock, sons unbounded.
+ * counters the settlement assistant is held at - daughters up to the housing stock, sons unbounded
+ * unless idle men stand beyond the builder reserve ({@link idleMenHoldBirths}).
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
@@ -80,9 +89,28 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     false,
   );
   if (daughters !== null) commands.push(daughters);
-  const sons = assistantCounterCommand(world, player, 'extraMen', 0, true);
+  const held = idleMenHoldBirths(world, ctx, player);
+  const sons = assistantCounterCommand(world, player, 'extraMen', 0, !held);
   if (sons !== null) commands.push(sons);
   return commands;
+}
+
+/**
+ * Whether at least {@link IDLE_MEN_HOLD_BIRTHS} builder-trade men beyond the builder reserve
+ * ({@link builderCap}) stand idle: no post, no live work flag, no drill or recruit booking. A man nobody
+ * can post or arm is a mouth, so more sons wait until posts or arms open up. It reads no clock, so the
+ * opening, where every man is placed, is never held.
+ */
+function idleMenHoldBirths(world: World, ctx: SystemContext, player: number): boolean {
+  const builderJob = builderJobOf(ctx);
+  if (builderJob === null) return false;
+  let idle = 0;
+  for (const e of ownedSettlers(world, player)) {
+    if (world.get(e, Settler).jobType !== builderJob || !isAllocatableMan(world, ctx, e)) continue;
+    if (world.has(e, JobAssignment) || world.has(e, AssistantRecruit)) continue;
+    if (liveWorkFlag(world, e) === undefined) idle++;
+  }
+  return idle - builderCap(civilianCount(world, ctx, player)) >= IDLE_MEN_HOLD_BIRTHS;
 }
 
 /** Married to a living spouse - narrower than the family rule's `isMarried`, which also counts a widow

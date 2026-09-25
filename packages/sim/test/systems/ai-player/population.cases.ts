@@ -4,9 +4,12 @@ import { Marriage, Residence, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { populationModule } from '../../../src/systems/ai-player/index.js';
+import { IDLE_MEN_HOLD_BIRTHS } from '../../../src/systems/ai-player/population.js';
+import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
   aiSim,
+  BUILDER,
   ctxOf,
   entityOfBuilding,
   HOME_TYPE,
@@ -161,6 +164,37 @@ describe('population module (homeExpansion)', () => {
       counter: 'extraWomen',
       value: 1,
       infinite: false,
+    });
+  });
+
+  describe('the sons counter under idle men', () => {
+    /** The sons counter after two decisions: one on a seat with nobody idle, which unbounds it, then one
+     *  after `builders` idle builders arrive. */
+    function sonsAfter(builders: number): { value: number; infinite: boolean } {
+      const sim = aiSim();
+      placeHq(sim);
+      sim.step();
+      const decide = (): void => {
+        for (const c of populationModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+        sim.step();
+      };
+      decide();
+      spawnMen(sim, builders, BUILDER);
+      sim.step();
+      decide();
+      return sim.assistantCounters(SEAT).extraMen;
+    }
+
+    // The seat's civilians are its builders alone, well under the grown-settlement reserve.
+    const reserve = builderCap(0);
+
+    it('holds the sons at zero while idle builders stand beyond the reserve', () => {
+      const idleBeyondReserve = 5;
+      expect(sonsAfter(reserve + idleBeyondReserve)).toEqual({ value: 0, infinite: false });
+    });
+
+    it('keeps the sons unbounded while the idle men fit the reserve', () => {
+      expect(sonsAfter(reserve + IDLE_MEN_HOLD_BIRTHS - 1)).toEqual({ value: 0, infinite: true });
     });
   });
 });
