@@ -8,6 +8,7 @@ vi.mock('../../src/view/runtime/raf-loop.js', () => ({
   },
 }));
 
+import { createFogGates } from '../../src/view/projections/index.js';
 import type { FrameLoopDeps } from '../../src/view/runtime/frame-loop.js';
 
 // Test files share one module registry, so the fake above only reaches `frame-loop.ts` when that
@@ -38,6 +39,7 @@ it('polls confirmed finish when an adopted terminal save advances zero ticks and
     },
     driver,
     fpsLimit: null,
+    fogGates: createFogGates(),
     onMatchEnd: finished,
     pointer: () => null,
     syncViewport: vi.fn(),
@@ -72,6 +74,7 @@ it('does not touch camera, snapshot or renderer after a driver error disposes th
       },
     },
     fpsLimit: null,
+    fogGates: createFogGates(),
     isDisposed: () => disposed,
     pointer: () => null,
     syncViewport: vi.fn(),
