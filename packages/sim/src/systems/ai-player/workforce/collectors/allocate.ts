@@ -68,12 +68,17 @@ function stealVeteranFor(
   for (const other of wanted) {
     if (other === w) continue;
     const otherHolders = collectorsByGood.get(other.good.typeId) ?? [];
-    const veteran = otherHolders[0];
-    if (veteran === undefined) continue;
-    const { tribe, jobType } = world.get(veteran, Settler);
-    if (!needsVeteran(ctx, tribe, w.good.typeId)) continue;
+    const tribe = otherHolders[0] === undefined ? undefined : world.get(otherHolders[0], Settler).tribe;
+    if (tribe === undefined || !needsVeteran(ctx, tribe, w.good.typeId)) continue;
     if (needsVeteran(ctx, tribe, other.good.typeId)) continue;
-    if (!meetsNeed(world, ctx, veteran, w.good.typeId)) continue;
+    // Holders stand most experienced first, so the last who qualifies costs the other good the least.
+    let veteran: Entity | undefined;
+    for (let i = otherHolders.length - 1; i >= 0 && veteran === undefined; i--) {
+      const holder = otherHolders[i];
+      if (holder !== undefined && meetsNeed(world, ctx, holder, w.good.typeId)) veteran = holder;
+    }
+    if (veteran === undefined) continue;
+    const { jobType } = world.get(veteran, Settler);
     const commands: PlayerCommand[] = [];
     if (jobType !== w.job) commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });
     commands.push({ kind: 'setWorkFlag', entity: veteran, x: spot.hx, y: spot.hy });

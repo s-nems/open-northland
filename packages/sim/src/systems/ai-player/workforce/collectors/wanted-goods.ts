@@ -57,7 +57,7 @@ export const MAX_CLEARING_COLLECTORS = 10;
 /** How far the seat's farthest home may stand from its base before collect-anything gatherers start
  *  clearing room to build, and how many nodes further each next one is called for, in lattice Manhattan
  *  nodes (authored). */
-export const CLEAR_GROUND_FROM_NODES = 16;
+export const CLEAR_GROUND_FROM_NODES = 24;
 export const NODES_PER_CLEARING_GATHERER = 8;
 
 /** The extra gatherers a stalled placement calls for, or 0 while the build order places freely or is
@@ -180,8 +180,8 @@ export function wantedCollectorGoods(
         : Math.max(fixed + lateExtra, entryCount);
     let min = 1;
     if (consumers > 0) {
-      const engaged = flagHolders(world, ctx, player, good.typeId) > target;
-      const extra = shortageGatherers(supply, good.typeId, engaged, consumers, phase);
+      const heldExtra = Math.max(0, flagHolders(world, ctx, player, good.typeId) - target);
+      const extra = shortageGatherers(supply, good.typeId, heldExtra, consumers, phase);
       if (extra > 0) {
         target += extra;
         // Iron or gold running short idles the smiths, not the builders, so its posts wait behind the
@@ -199,7 +199,7 @@ export function wantedCollectorGoods(
  * sites (authored): one per unit its surplus lies under the line the lack is measured to, rounded up, at
  * most one per {@link OPERATORS_PER_EXTRA_GATHERER} planned consuming operators, the same rate the target
  * grows at. The workshop eats the good faster than its gatherers bring it, and what lies on its shelf is
- * not the builders'. The posts are hired under one line and, once `engaged`, held up to the next, so the
+ * not the builders'. The posts are hired under one line and, while any is held, kept up to the next, so the
  * stock crossing one line does not hire and release a man every few decisions: short and comfort in the
  * opening, when these posts outrank the builder reserve the opening cannot spare, then comfort and glut
  * from the mid game, when the seat hoards its building goods. A building good's posts are filled ahead of
@@ -208,7 +208,7 @@ export function wantedCollectorGoods(
 function shortageGatherers(
   supply: SeatSupply,
   goodType: number,
-  engaged: boolean,
+  heldExtra: number,
   consumers: number,
   phase: GamePhase,
 ): number {
@@ -218,9 +218,12 @@ function shortageGatherers(
   const opening = phase === 'opening';
   const hireLine = opening ? lines.short : lines.comfort;
   const holdLine = opening ? lines.comfort : lines.glut;
-  if (surplus >= (engaged ? holdLine : hireLine)) return 0;
+  if (surplus >= (heldExtra > 0 ? holdLine : hireLine)) return 0;
+  const lacking = Math.ceil((holdLine - surplus) / lines.unit);
+  // The posts already held keep one man over the count the lack calls for, so the stock crossing a unit
+  // step does not release a gatherer for the next unit to re-post.
   return Math.min(
-    Math.ceil((holdLine - surplus) / lines.unit),
+    Math.max(lacking, Math.min(heldExtra, lacking + 1)),
     Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER),
   );
 }

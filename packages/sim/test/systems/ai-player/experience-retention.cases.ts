@@ -173,6 +173,18 @@ describe('workforce module - experience retention', () => {
     ]);
   });
 
+  it('claims the green builders first and leaves a released veteran free for his post', () => {
+    const seat = seatWith(3, false);
+    const mason = manAt(seat, 0);
+    grant(seat, mason, MASON_XP_TRACK, VETERAN_XP);
+    const ctx = { ...ctxOf(seat.sim), content: seat.content };
+    const force = new SpareForce(seat.men);
+    // Every man is a builder already, so the reserve claims without a command; the veteran mason, first
+    // in pool order, is the one it leaves.
+    expect(reserveBuilders(seat.sim.world, force, BUILDER, 2, ctx)).toEqual([]);
+    expect(force.remaining()).toEqual([mason]);
+  });
+
   it('hands back the green mason and keeps the veteran when the hut cuts its crew', () => {
     const seat = seatWith(4, true);
     const hut = entityOfBuilding(seat.sim, MASON_HUT_TYPE);
