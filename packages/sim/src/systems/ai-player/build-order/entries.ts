@@ -1,4 +1,5 @@
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
+import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../game-phase.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
  *  each kind to a node. `front` is the nearest enemy seat, its headquarters before any other building,
@@ -226,17 +227,52 @@ export const BASE_REPLACEMENT_ENTRY: Extract<BuildOrderEntry, { kind: 'place' }>
   count: 1,
 };
 
-/** Concurrent construction sites per seat, upgrade sites included (authored). */
+/** The opening's concurrent construction sites per seat, upgrade sites included (authored); the supply
+ *  lines size their short line by it in every phase. */
 export const MAX_ACTIVE_CONSTRUCTION_SITES = 2;
 
 /** A seat that lost its base keeps to one site, so the replacement warehouse gets the whole crew and is
  *  never placed twice while its first site still stands unbuilt (authored). */
 export const BASELESS_CONSTRUCTION_SITES = 1;
 
-/** How many entries past the first one still waiting on a construction site the build order may act on
- *  (authored): a slow site holds the list back so the entries behind it never outrun the materials it
- *  brings. */
+/** The opening's lookahead: how many entries past the first one still waiting on a construction site the
+ *  build order may act on (authored). A slow site holds the list back so the entries behind it never
+ *  outrun the materials it brings. */
 export const BUILD_ORDER_LOOKAHEAD_ENTRIES = 3;
+
+/** How many sites a seat keeps open and how far past the oldest waiting one it looks, from `fromTick`. */
+export interface SitePace {
+  readonly fromTick: number;
+  readonly sites: number;
+  readonly lookahead: number;
+}
+
+/** The pace by game clock (authored): the opening's two sites, a third with one more entry of lookahead
+ *  from {@link SITES_GROW_FROM_TICKS}, a fourth with one more again from the late game, when the builder
+ *  reserve grows to match (`workforce/staffing.ts`). */
+export const SITE_PACE_STEPS: readonly SitePace[] = [
+  { fromTick: 0, sites: MAX_ACTIVE_CONSTRUCTION_SITES, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
+  {
+    fromTick: SITES_GROW_FROM_TICKS,
+    sites: MAX_ACTIVE_CONSTRUCTION_SITES + 1,
+    lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 1,
+  },
+  {
+    fromTick: LATE_GAME_FROM_TICKS,
+    sites: MAX_ACTIVE_CONSTRUCTION_SITES + 2,
+    lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2,
+  },
+];
+
+/** The {@link SITE_PACE_STEPS} step reached at `tick`. */
+export function sitePace(tick: number): SitePace {
+  let pace = SITE_PACE_STEPS[0];
+  if (pace === undefined) throw new Error('SITE_PACE_STEPS is empty');
+  for (const step of SITE_PACE_STEPS) {
+    if (tick >= step.fromTick) pace = step;
+  }
+  return pace;
+}
 
 /** How long a regressed entry, a razed building's, waits before the seat raises it again, counted from the
  *  last decision that saw the seat under attack (authored): long enough for a band that razed it to walk

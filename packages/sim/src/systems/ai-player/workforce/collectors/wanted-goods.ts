@@ -17,7 +17,7 @@ import {
   type BuildOrderEntry,
   collectorGoodsWanted,
   type EntryStatus,
-  MAX_ACTIVE_CONSTRUCTION_SITES,
+  sitePace,
 } from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
 import {
@@ -71,9 +71,11 @@ export function extraBuildingGatherers(goodId: string, tick: number): number {
 }
 
 /** The shortage posts the construction sites alone justify for a {@link COLLECTOR_TARGET_BY_GOOD_ID} good
- *  from {@link BUILDING_GOODS_GROW_FROM_TICKS} on: one per site that may be drawing the good at once
- *  (authored). Before that a workshop consuming the good is the only thing that adds one. */
-export const SITE_SHORTAGE_POSTS = MAX_ACTIVE_CONSTRUCTION_SITES;
+ *  from {@link BUILDING_GOODS_GROW_FROM_TICKS} on: one per site the clock lets draw the good at once
+ *  ({@link sitePace}) (authored). Before that a workshop consuming the good is the only thing that adds one. */
+export function siteShortagePosts(tick: number): number {
+  return tick >= BUILDING_GOODS_GROW_FROM_TICKS ? sitePace(tick).sites : 0;
+}
 
 /** The target of a good with no {@link COLLECTOR_TARGET_BY_GOOD_ID} row and no reached collector entry. */
 export const DEFAULT_COLLECTOR_TARGET = 1;
@@ -214,8 +216,7 @@ export function wantedCollectorGoods(
         ? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount) +
           Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER)
         : Math.max(fixed + extraBuildingGatherers(goodId, ctx.tick), entryCount);
-    const sitePosts =
-      fixed !== undefined && ctx.tick >= BUILDING_GOODS_GROW_FROM_TICKS ? SITE_SHORTAGE_POSTS : 0;
+    const sitePosts = fixed === undefined ? 0 : siteShortagePosts(ctx.tick);
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
     let min = 1;
     if (mostExtra > 0) {
@@ -237,7 +238,7 @@ export function wantedCollectorGoods(
  * The extra gatherers a good calls for while it runs short for the seat's sites (authored): one per unit
  * its surplus lies under the line the lack is measured to, rounded up, at most `mostExtra`: one per
  * {@link OPERATORS_PER_EXTRA_GATHERER} planned operators of the built workshops consuming it, the same
- * rate the target grows at, or the {@link SITE_SHORTAGE_POSTS} of a good the sites themselves drain. The
+ * rate the target grows at, or the {@link siteShortagePosts} of a good the sites themselves drain. The
  * workshop eats the good faster than its gatherers bring it, and what lies on its shelf is not the
  * builders'. The posts are hired under one line and, while any is held, kept up to the next, so the stock
  * crossing one line does not hire and release a man every few decisions: short and comfort in the

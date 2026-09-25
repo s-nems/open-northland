@@ -22,7 +22,7 @@ export {
   MAX_CLEARING_COLLECTORS,
   NODES_PER_CLEARING_GATHERER,
   OPERATORS_PER_EXTRA_GATHERER,
-  SITE_SHORTAGE_POSTS,
+  siteShortagePosts,
   type WantedGood,
   wantedCollectorGoods,
 } from './wanted-goods.js';

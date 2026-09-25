@@ -5,14 +5,17 @@ import {
   Owner,
   Settler,
   setMapPermission,
+  UnderConstruction,
 } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Simulation } from '../../../src/index.js';
+import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
   REBUILD_DELAY_TICKS,
+  sitePace,
   WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
 import { standsAtPost } from '../../../src/systems/conflict/tower-post.js';
@@ -331,6 +334,46 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup(upgrade);
     sim.step();
     expect(next()).toMatchObject({ kind: 'placeBuilding', buildingType: FARM_TYPE });
+  });
+
+  it('opens a third site from the growth clock and a fourth from the late game', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.iron]);
+    sim.step();
+    expect(sitePace(0)).toEqual({ fromTick: 0, sites: 2, lookahead: 3 });
+    expect(sitePace(SITES_GROW_FROM_TICKS)).toEqual({
+      fromTick: SITES_GROW_FROM_TICKS,
+      sites: 3,
+      lookahead: 4,
+    });
+    expect(sitePace(LATE_GAME_FROM_TICKS)).toEqual({
+      fromTick: LATE_GAME_FROM_TICKS,
+      sites: 4,
+      lookahead: 5,
+    });
+
+    const openAt = (tick: number): Command | undefined =>
+      [...module.run(sim.world, ctxOf(sim, tick), SEAT)][0];
+    const sites = (): number => [...sim.world.query(UnderConstruction)].length;
+    for (let open = 0; open < sitePace(LATE_GAME_FROM_TICKS).sites; open++) {
+      expect(sites()).toBe(open);
+      // Each step holds at its own cap while the next one opens another site.
+      if (open >= sitePace(0).sites) expect(openAt(0)).toBeUndefined();
+      if (open >= sitePace(SITES_GROW_FROM_TICKS).sites)
+        expect(openAt(SITES_GROW_FROM_TICKS)).toBeUndefined();
+      const tick =
+        open < sitePace(0).sites
+          ? 0
+          : open < sitePace(SITES_GROW_FROM_TICKS).sites
+            ? SITES_GROW_FROM_TICKS
+            : LATE_GAME_FROM_TICKS;
+      const next = openAt(tick);
+      if (next?.kind !== 'placeBuilding') throw new Error(`expected site ${open + 1} at tick ${tick}`);
+      sim.enqueueSetup(next);
+      sim.step();
+    }
+    expect(openAt(LATE_GAME_FROM_TICKS)).toBeUndefined();
   });
 
   it('upgrades two buildings side by side, each in-flight upgrade meeting its share of the entry', () => {

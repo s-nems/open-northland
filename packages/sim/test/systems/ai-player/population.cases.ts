@@ -200,7 +200,7 @@ describe('population module (homeExpansion)', () => {
     }
 
     // The seat's civilians are its builders alone, well under the grown-settlement reserve.
-    const reserve = builderCap(0);
+    const reserve = builderCap(0, 0);
 
     it('holds the sons at zero while idle builders stand beyond the reserve', () => {
       const idleBeyondReserve = 5;

@@ -110,7 +110,7 @@ function idleMenHoldBirths(world: World, ctx: SystemContext, player: number): bo
     if (world.has(e, JobAssignment) || world.has(e, AssistantRecruit)) continue;
     if (liveWorkFlag(world, e) === undefined) idle++;
   }
-  return idle - builderCap(civilianCount(world, ctx, player)) >= IDLE_MEN_HOLD_BIRTHS;
+  return idle - builderCap(civilianCount(world, ctx, player), ctx.tick) >= IDLE_MEN_HOLD_BIRTHS;
 }
 
 /** Married to a living spouse - narrower than the family rule's `isMarried`, which also counts a widow

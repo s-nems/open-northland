@@ -24,6 +24,11 @@ export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
  *  woodcutters bring, while the opening cannot spare the men. */
 export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(30);
 
+/** From when the build order opens a third construction site and looks one entry further ahead
+ *  (authored; the late game adds a fourth, `build-order/entries.ts`): by then the reserve and the
+ *  building goods carry more than the opening's two sites. */
+export const SITES_GROW_FROM_TICKS = minutesToTicks(45);
+
 /** From when the headquarters and the warehouses run transport carriers (authored): the deep late game,
  *  when the mints and druid huts stand and a carrier no longer costs a craftsman. */
 export const STORE_CARRIERS_FROM_TICKS = minutesToTicks(120);

@@ -57,7 +57,7 @@ export {
 export { CRAFT_PLANS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export { builderJobOf } from './pool.js';
-export { BUILDER_CAP, LATE_GAME_BUILDER_CAP } from './staffing.js';
+export { BUILDER_CAP, GROWN_SEAT_BUILDER_CAP, LATE_GAME_BUILDER_CAP } from './staffing.js';
 export {
   LATE_GAME_CIVILIANS,
   STAFFING_BY_BUILDING_ID,
@@ -126,7 +126,7 @@ function runWorkforce(
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
     ...staffBuildings(world, ctx, seat, force, tally, 'min'),
-    ...reserveBuilders(world, force, builderJob, builderCap(civilians), ctx), // construction never starves
+    ...reserveBuilders(world, force, builderJob, builderCap(civilians, ctx.tick), ctx), // construction never starves
   ];
   // The army floor outranks the clearing and every target and top-up post, so trades that could absorb
   // every man still leave an army.

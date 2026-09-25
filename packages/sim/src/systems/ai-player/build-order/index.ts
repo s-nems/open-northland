@@ -26,10 +26,9 @@ import { ownedBuildings } from '../seat-roster.js';
 import {
   BASE_REPLACEMENT_ENTRY,
   BASELESS_CONSTRUCTION_SITES,
-  BUILD_ORDER_LOOKAHEAD_ENTRIES,
   type BuildOrderEntry,
-  MAX_ACTIVE_CONSTRUCTION_SITES,
   REBUILD_DELAY_TICKS,
+  sitePace,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from './entries.js';
 import { placementSpot } from './placement.js';
@@ -49,13 +48,13 @@ export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.
 
 /**
  * Acts on the first unmet entry, so a razed building is re-placed, after {@link REBUILD_DELAY_TICKS},
- * before any entry the seat has not reached yet. A placed site meets its entry at once, so up to
- * {@link MAX_ACTIVE_CONSTRUCTION_SITES} entries go up side by side, within
- * {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} of the oldest unfinished one. An unmet entry with no legal action
- * stalls rather than being skipped, so no later site draws off the goods it waits for: most retry next
- * decision, a placement that found no spot every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and
- * an upgrade holds while a bill good only it or another site could make is not yet in store
- * ({@link upgradeBillCovered}). Builders are never pinned to a site; the builder drive picks its own.
+ * before any entry the seat has not reached yet. A placed site meets its entry at once, so up to the
+ * clock's {@link sitePace} sites go up side by side, within its lookahead of the oldest unfinished one.
+ * An unmet entry with no legal action stalls rather than being skipped, so no later site draws off the
+ * goods it waits for: most retry next decision, a placement that found no spot every
+ * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an upgrade holds while a bill good only it or
+ * another site could make is not yet in store ({@link upgradeBillCovered}). Builders are never pinned to
+ * a site; the builder drive picks its own.
  *
  * Three rules keep a site from rising under the enemy's bows only to be knocked down again, and a razed
  * building from being re-placed into the same fire ({@link seatSiege}): nothing is placed or upgraded while
@@ -85,7 +84,7 @@ function runBuildOrder(
     if (world.has(e, UnderConstruction)) sites++;
   }
   const base = seatBaseOf(world, ctx, player);
-  if (sites >= (base === null ? BASELESS_CONSTRUCTION_SITES : MAX_ACTIVE_CONSTRUCTION_SITES)) return [];
+  if (sites >= (base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(ctx.tick).sites)) return [];
 
   const tribe = playerPlacementTribes(world, player)?.[0];
   // Scanned once the list has something to do: an idle decision never walks the map's people.
@@ -207,7 +206,7 @@ function advanceFrontier(world: World, player: number, entryIndex: number): void
 }
 
 /**
- * Whether acting on `entryIndex` would take the list more than {@link BUILD_ORDER_LOOKAHEAD_ENTRIES} entries
+ * Whether acting on `entryIndex` would take the list more than the clock's lookahead ({@link sitePace})
  * past the oldest one met only by a fresh site still going up. That entry is found by re-reading the list
  * over the buildings that stand, a building mid-upgrade counted at the tier it has; skipped entries do not
  * count toward the lookahead.
@@ -221,7 +220,8 @@ function outrunsSites(
   entryIndex: number,
   live: LiveResourceMemo,
 ): boolean {
-  if (entryIndex <= BUILD_ORDER_LOOKAHEAD_ENTRIES) return false;
+  const { lookahead } = sitePace(ctx.tick);
+  if (entryIndex <= lookahead) return false;
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
   let oldest = -1;
   for (let i = 0; i < entryIndex && oldest < 0; i++) {
@@ -235,7 +235,7 @@ function outrunsSites(
     const entry = order[i];
     if (entry !== undefined && entryStatus(world, ctx, player, owned, entry, live) !== 'skip') ahead++;
   }
-  return ahead > BUILD_ORDER_LOOKAHEAD_ENTRIES;
+  return ahead > lookahead;
 }
 
 /** The seat's stall record when it names `entryIndex`; a record for any other entry is dropped, since
