@@ -709,7 +709,12 @@ describe('placement controller', () => {
     );
     placement.enterPalisade(696, 'gate');
     // The gate itself previews at the span's centre, so no span markers show.
-    expect(placement.gatePreview({ col: 8, row: 6 })).toEqual({ col: 6, row: 6, gfxIndex: 698, ok: true });
+    expect(placement.gatePreview({ col: 8, row: 6 })).toEqual({
+      col: 6,
+      row: 6,
+      gfxIndex: 698,
+      ok: true,
+    });
     expect(placement.palisadePreview({ col: 8, row: 6 })).toBeNull();
     placement.handleClick(0, 0);
     expect(commands).toEqual([{ kind: 'convertPalisadeGate', palisade: center, gfxIndex: 698 }]);
@@ -732,7 +737,12 @@ describe('placement controller', () => {
       }),
     );
     placement.enterPalisade(696, 'gate');
-    expect(placement.gatePreview({ col: 8, row: 6 })).toEqual({ col: 6, row: 6, gfxIndex: 698, ok: false });
+    expect(placement.gatePreview({ col: 8, row: 6 })).toEqual({
+      col: 6,
+      row: 6,
+      gfxIndex: 698,
+      ok: false,
+    });
     gfxIndex = null;
     expect(placement.gatePreview({ col: 8, row: 6 })).toBeNull();
     expect(placement.palisadePreview({ col: 8, row: 6 })).toEqual(

@@ -17,7 +17,7 @@ export type PalisadePlacementMode = 'wall' | 'gate' | 'standingWall';
  * Original behavior: a wall line accepts twenty moves after its starting marker.
  *
  * Approximation: the original routes the line with a pathfinder that detours around an obstacle, where
- * this lays a straight hex line and stops at the first node the placement probe rejects.
+ * this lays the line the cursor draws on screen and stops at the first node the placement probe rejects.
  */
 export const PALISADE_LINE_MAX_EDGES = 20;
 
@@ -104,6 +104,8 @@ export interface PlacementController {
   cancel(): void;
   /** Drop a started wall line and keep the tool; false when no line was started. */
   stepBack(): boolean;
+  /** Shift held: a wall line keeps to the nearest straight run. */
+  setStraight(on: boolean): void;
   /** Route a left-click while placing; a rejecting or off-map tile still consumes it, so a mis-click
    *  cannot drop the mode. Returns true when consumed. */
   handleClick(clientX: number, clientY: number): boolean;
@@ -123,6 +125,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
 
   let placementType: number | null = null;
   let placementPaper: Paper | null = null;
+  let straight = false;
   let palisade: {
     readonly gfxIndex: number;
     readonly mode: PalisadePlacementMode;
@@ -243,13 +246,16 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       showPalisadeStrip();
       return true;
     },
+    setStraight: (on): void => {
+      straight = on;
+    },
     handleClick: (clientX, clientY): boolean => {
       if (placementType === null && palisade === null) return false;
       const tile = deps.screenToTile(clientX, clientY);
       if (palisade !== null) {
         if (palisade.mode === 'gate') convertGate(palisade.gfxIndex, tile);
         else {
-          palisade.line.click(tile);
+          palisade.line.click(tile, straight);
           showPalisadeStrip();
         }
         return true;
@@ -282,7 +288,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     },
     palisadePreview: (tile): readonly LinePreviewNode[] | null => {
       if (tile === null || palisade === null) return null;
-      return palisade.mode === 'gate' ? gateSpan(palisade.gfxIndex, tile) : palisade.line.preview(tile);
+      return palisade.mode === 'gate'
+        ? gateSpan(palisade.gfxIndex, tile)
+        : palisade.line.preview(tile, straight);
     },
     gatePreview: (tile): GatePreview | null =>
       tile === null || palisade?.mode !== 'gate' ? null : gateAt(palisade.gfxIndex, tile),

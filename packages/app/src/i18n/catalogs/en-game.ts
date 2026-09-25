@@ -303,7 +303,7 @@ export const enGame = {
       costShort: '{name}: you have {have} of {amount}',
       placeHint: 'point at a place on the map',
       placeWallHint: 'click where the wall starts',
-      placeWallLineHint: 'left click lays the wall, right click drops the line',
+      placeWallLineHint: 'left click lays the wall, Shift keeps it straight, right click drops the line',
       placeGateHint: 'point at a straight run of five finished wall sections',
       placePaperHint: 'from a plan: point at a place, the building stands finished',
       heldPaper: 'Building plan',

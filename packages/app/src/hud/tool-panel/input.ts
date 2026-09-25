@@ -15,6 +15,8 @@ export interface HeldMode {
   /** Undo the mode's last step without leaving it, as a line tool drops its started line; false when
    *  there is no step to undo and the press should cancel the mode. */
   stepBack?(): boolean;
+  /** Shift is held: a line tool keeps its line straight. */
+  setStraight?(on: boolean): void;
 }
 
 /** The action whose key toggles each beam entry. */
@@ -65,7 +67,17 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     for (const mode of held) mode.cancel();
   };
 
+  // Every pointer event reports Shift too, so one pressed while another window had focus still counts.
+  const syncStraight = (on: boolean): void => {
+    for (const mode of held) mode.setStraight?.(on);
+  };
+  const onShiftKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Shift') syncStraight(e.type === 'keydown');
+  };
+  const onBlur = (): void => syncStraight(false);
+
   const onMouseDown = (e: MouseEvent): void => {
+    syncStraight(e.shiftKey);
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const consume = (): void => {
       e.preventDefault();
@@ -100,6 +112,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   };
 
   const onMouseMove = (e: MouseEvent): void => {
+    syncStraight(e.shiftKey);
     const { x, y } = toCanvas(e.clientX, e.clientY);
     windows.handleHover(x, y);
   };
@@ -185,6 +198,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keydown', onEscapeMenu);
+  window.addEventListener('keydown', onShiftKey);
+  window.addEventListener('keyup', onShiftKey);
+  window.addEventListener('blur', onBlur);
 
   return {
     dispose(): void {
@@ -193,6 +209,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keydown', onEscapeMenu);
+      window.removeEventListener('keydown', onShiftKey);
+      window.removeEventListener('keyup', onShiftKey);
+      window.removeEventListener('blur', onBlur);
     },
   };
 }

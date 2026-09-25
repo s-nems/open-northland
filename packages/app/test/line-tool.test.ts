@@ -1,17 +1,23 @@
 import { hexDistanceBetween } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { createLineTool, hexLine, type LineNode, lineReach } from '../src/hud/tool-panel/line-tool.js';
+import {
+  createLineTool,
+  type LineNode,
+  lineReach,
+  screenLine,
+  straightLine,
+} from '../src/hud/tool-panel/line-tool.js';
 
 const MAX_EDGES = 20;
 
-describe('hex line', () => {
+describe('screen line', () => {
   it.each([
     [0, 0, 8, 0],
     [0, 0, 4, 8],
     [7, 8, 3, 0],
     [3, 3, 10, 9],
   ])('walks adjacent hex nodes from (%i,%i) toward (%i,%i)', (startCol, startRow, endCol, endRow) => {
-    const nodes = hexLine({ col: startCol, row: startRow }, { col: endCol, row: endRow }, MAX_EDGES);
+    const nodes = screenLine({ col: startCol, row: startRow }, { col: endCol, row: endRow }, MAX_EDGES);
     expect(nodes[0]).toEqual({ col: startCol, row: startRow });
     for (let i = 1; i < nodes.length; i++) {
       const before = nodes[i - 1];
@@ -19,10 +25,23 @@ describe('hex line', () => {
       if (before === undefined || after === undefined) throw new Error('line gap');
       expect(hexDistanceBetween(before.col, before.row, after.col, after.row)).toBe(1);
     }
+    expect(nodes.at(-1)).toEqual({ col: endCol, row: endRow });
+  });
+
+  it('follows a steep drawn line without stepping a column back and forth', () => {
+    const cols = screenLine({ col: 46, row: 30 }, { col: 49, row: 16 }, MAX_EDGES).map((n) => n.col);
+    for (let i = 1; i < cols.length; i++) expect(cols[i]).toBeGreaterThanOrEqual(cols[i - 1] ?? 0);
+    expect(cols.at(-1)).toBe(49);
+  });
+
+  it('runs a line pointed along the hex diagonal as the diagonal', () => {
+    expect(screenLine({ col: 10, row: 11 }, { col: 13, row: 5 }, MAX_EDGES)).toEqual(
+      straightLine({ col: 10, row: 11 }, { col: 13, row: 5 }, MAX_EDGES),
+    );
   });
 
   it('caps a long line at its edge budget and includes both endpoints', () => {
-    const nodes = hexLine({ col: 2, row: 4 }, { col: 80, row: 4 }, MAX_EDGES);
+    const nodes = screenLine({ col: 2, row: 4 }, { col: 80, row: 4 }, MAX_EDGES);
     expect(nodes).toHaveLength(MAX_EDGES + 1);
     expect(nodes[0]).toEqual({ col: 2, row: 4 });
     expect(nodes.at(-1)).toEqual({ col: 22, row: 4 });
@@ -52,6 +71,49 @@ describe('line reach', () => {
   });
 });
 
+describe('straight line', () => {
+  it.each([
+    [0, 0, 8, 0],
+    [0, 0, 4, 8],
+    [7, 8, 3, 0],
+    [10, 11, 13, 5],
+  ])('walks from (%i,%i) toward (%i,%i) in one repeating stride', (startCol, startRow, endCol, endRow) => {
+    const nodes = straightLine({ col: startCol, row: startRow }, { col: endCol, row: endRow }, MAX_EDGES);
+    expect(nodes[0]).toEqual({ col: startCol, row: startRow });
+    const strides = new Set<string>();
+    for (let i = 1; i < nodes.length; i++) {
+      const before = nodes[i - 1];
+      const after = nodes[i];
+      if (before === undefined || after === undefined) throw new Error('line gap');
+      expect(hexDistanceBetween(before.col, before.row, after.col, after.row)).toBe(1);
+      strides.add(`${after.col - before.col},${after.row - before.row},${before.row & 1}`);
+    }
+    // A row or column repeats one step; a diagonal alternates one step per row parity.
+    expect(strides.size).toBeLessThanOrEqual(2);
+  });
+
+  it('runs a diagonal cursor along the hex diagonal', () => {
+    expect(straightLine({ col: 10, row: 11 }, { col: 13, row: 5 }, MAX_EDGES)).toEqual([
+      { col: 10, row: 11 },
+      { col: 11, row: 10 },
+      { col: 11, row: 9 },
+      { col: 12, row: 8 },
+      { col: 12, row: 7 },
+      { col: 13, row: 6 },
+      { col: 13, row: 5 },
+    ]);
+  });
+
+  it('snaps a cursor between runs to the nearest one', () => {
+    expect(straightLine({ col: 10, row: 10 }, { col: 11, row: 4 }, MAX_EDGES).map((n) => n.col)).toEqual(
+      new Array(7).fill(10),
+    );
+    expect(straightLine({ col: 10, row: 10 }, { col: 14, row: 8 }, MAX_EDGES).map((n) => n.row)).toEqual(
+      new Array(5).fill(10),
+    );
+  });
+});
+
 describe('line tool', () => {
   function tool(canPlace: (node: LineNode) => boolean = () => true, built?: (node: LineNode) => boolean) {
     const lines: (readonly LineNode[])[] = [];
@@ -76,6 +138,17 @@ describe('line tool', () => {
     expect(lines).toEqual([[4, 5, 6, 7].map((col) => ({ col, row: 2 }))]);
     expect(line.anchor()).toBeNull();
     expect(line.active()).toBeNull();
+  });
+
+  it('keeps a line to the nearest straight run only while asked to', () => {
+    const { line, lines } = tool();
+    line.click({ col: 10, row: 10 });
+    const cursor = { col: 14, row: 8 };
+    expect(line.preview(cursor).some((node) => node.row !== 10)).toBe(true);
+    expect(line.preview(cursor, true).map((node) => node.row)).toEqual(new Array(5).fill(10));
+
+    line.click(cursor, true);
+    expect(lines).toEqual([[10, 11, 12, 13, 14].map((col) => ({ col, row: 10 }))]);
   });
 
   it('shows one marker under the cursor before a line starts', () => {

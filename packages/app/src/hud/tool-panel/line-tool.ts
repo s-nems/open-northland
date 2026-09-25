@@ -1,4 +1,5 @@
-import { hexDistanceBetween } from '@open-northland/sim';
+import { halfCellToScreen, palisadeStaggerX, TILE_HALF_H, TILE_HALF_W } from '@open-northland/render';
+import { hexDistanceBetween, hexNeighboursOf } from '@open-northland/sim';
 
 /** A half-cell node on the sim lattice. */
 export interface LineNode {
@@ -24,49 +25,102 @@ export interface ActiveLine {
   readonly accepts: (col: number, row: number) => boolean;
 }
 
-interface Cube {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
+/** Two candidate steps this close to the drawn segment count as equally near it. */
+const TIE_PX = 1e-6;
+
+/**
+ * The line from `start` toward `end` as it looks on screen, at most `maxEdges` steps: each step takes the
+ * hex neighbour that advances along the segment and strays least from it. A line flatter than the hex
+ * diagonal is measured where its walls draw, on the staggered rows; a steeper one on the lattice without a
+ * sideways step, so it runs as straight columns joined by slants. A cube-coordinate line would zigzag
+ * across a column the screen shows straight.
+ */
+export function screenLine(start: LineNode, end: LineNode, maxEdges: number): LineNode[] {
+  const origin = halfCellToScreen(start.col, start.row);
+  const target = halfCellToScreen(end.col, end.row);
+  // The hex diagonal crosses one column per two rows.
+  const steep = Math.abs(target.x - origin.x) * TILE_HALF_H < Math.abs(target.y - origin.y) * TILE_HALF_W;
+  const at = (col: number, row: number): { x: number; y: number } => {
+    const p = halfCellToScreen(col, row);
+    return steep ? p : { x: p.x + palisadeStaggerX(row), y: p.y };
+  };
+  const from = at(start.col, start.row);
+  const to = at(end.col, end.row);
+  const vx = to.x - from.x;
+  const vy = to.y - from.y;
+  const length = Math.hypot(vx, vy);
+  const nodes: LineNode[] = [{ col: start.col, row: start.row }];
+  if (length === 0) return nodes;
+  let node = start;
+  let along = 0;
+  while (nodes.length <= maxEdges && (node.col !== end.col || node.row !== end.row)) {
+    let best: { node: LineNode; along: number; off: number } | null = null;
+    for (const next of hexNeighboursOf(node.col, node.row)) {
+      if (steep && next.hy === node.row) continue;
+      const p = at(next.hx, next.hy);
+      const nextAlong = ((p.x - from.x) * vx + (p.y - from.y) * vy) / length;
+      if (nextAlong <= along) continue;
+      const off = Math.abs((p.x - from.x) * vy - (p.y - from.y) * vx) / length;
+      if (best === null || off < best.off - TIE_PX || (off <= best.off + TIE_PX && nextAlong > best.along)) {
+        best = { node: { col: next.hx, row: next.hy }, along: nextAlong, off };
+      }
+    }
+    if (best === null || best.along > length + TIE_PX) break;
+    node = best.node;
+    along = best.along;
+    nodes.push(node);
+  }
+  return nodes;
 }
 
-function toCube(node: LineNode): Cube {
-  const x = node.col - (node.row - (node.row & 1)) / 2;
-  const z = node.row;
-  return { x, y: -x - z, z };
-}
+type Step = (node: LineNode) => LineNode;
 
-function fromCube(cube: Cube): LineNode {
-  const row = cube.z;
-  return { col: cube.x + (row - (row & 1)) / 2, row };
-}
+const oddRow = (row: number): boolean => (row & 1) === 1;
 
-function roundCube(cube: Cube): Cube {
-  let x = Math.round(cube.x);
-  let y = Math.round(cube.y);
-  let z = Math.round(cube.z);
-  const dx = Math.abs(x - cube.x);
-  const dy = Math.abs(y - cube.y);
-  const dz = Math.abs(z - cube.z);
-  if (dx > dy && dx > dz) x = -y - z;
-  else if (dy > dz) y = -x - z;
-  else z = -x - y;
-  return { x, y, z };
-}
+/** The eight straight runs a held Shift keeps a line to: along a row, down a column and the four hex
+ *  diagonals, whose steps alternate with the row parity. */
+const STRAIGHT_STEPS: readonly Step[] = [
+  (n) => ({ col: n.col + 1, row: n.row }),
+  (n) => ({ col: n.col - 1, row: n.row }),
+  (n) => ({ col: n.col, row: n.row - 1 }),
+  (n) => ({ col: n.col, row: n.row + 1 }),
+  (n) => ({ col: oddRow(n.row) ? n.col + 1 : n.col, row: n.row - 1 }),
+  (n) => ({ col: oddRow(n.row) ? n.col : n.col - 1, row: n.row - 1 }),
+  (n) => ({ col: oddRow(n.row) ? n.col + 1 : n.col, row: n.row + 1 }),
+  (n) => ({ col: oddRow(n.row) ? n.col : n.col - 1, row: n.row + 1 }),
+];
 
-/** A deterministic shortest hex line from `start` toward `end`, at most `maxEdges` steps long. */
-export function hexLine(start: LineNode, end: LineNode, maxEdges: number): LineNode[] {
-  const distance = hexDistanceBetween(start.col, start.row, end.col, end.row);
-  if (distance === 0) return [{ col: start.col, row: start.row }];
-  const steps = Math.min(maxEdges, distance);
-  const a = toCube(start);
-  const b = toCube(end);
-  const nodes: LineNode[] = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / distance;
-    nodes.push(
-      fromCube(roundCube({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t })),
-    );
+/** The straight run from `start` whose screen direction lies nearest the cursor, reaching as far along it
+ *  as the cursor does and at most `maxEdges` steps. */
+export function straightLine(start: LineNode, cursor: LineNode, maxEdges: number): LineNode[] {
+  const from = halfCellToScreen(start.col, start.row);
+  const to = halfCellToScreen(cursor.col, cursor.row);
+  const vx = to.x - from.x;
+  const vy = to.y - from.y;
+  const reach = Math.hypot(vx, vy);
+  const nodes: LineNode[] = [{ col: start.col, row: start.row }];
+  if (reach === 0) return nodes;
+  let best: Step | undefined;
+  let bestCos = -Infinity;
+  let edges = 0;
+  for (const step of STRAIGHT_STEPS) {
+    // Two steps average out a diagonal's alternating stride.
+    const twoSteps = step(step(start));
+    const two = halfCellToScreen(twoSteps.col, twoSteps.row);
+    const dx = (two.x - from.x) / 2;
+    const dy = (two.y - from.y) / 2;
+    const stride = Math.hypot(dx, dy);
+    const cos = (vx * dx + vy * dy) / (reach * stride);
+    if (cos > bestCos) {
+      bestCos = cos;
+      best = step;
+      edges = Math.round((reach * cos) / stride);
+    }
+  }
+  if (best === undefined) return nodes;
+  for (let i = 0; i < Math.min(maxEdges, Math.max(0, edges)); i++) {
+    const last = nodes[nodes.length - 1] ?? start;
+    nodes.push(best(last));
   }
   return nodes;
 }
@@ -107,7 +161,9 @@ export function lineReach(line: ActiveLine): ReadonlySet<string> {
     for (let col = anchor.col - maxEdges; col <= anchor.col + maxEdges; col++) {
       const end = { col, row };
       if (hexDistanceBetween(anchor.col, anchor.row, col, row) > maxEdges) continue;
-      if (hexLine(anchor, end, maxEdges).every(accepted)) reach.add(`${col},${row}`);
+      const path = screenLine(anchor, end, maxEdges);
+      const last = path[path.length - 1];
+      if (last?.col === col && last.row === row && path.every(accepted)) reach.add(`${col},${row}`);
     }
   }
   return reach;
@@ -130,9 +186,10 @@ export interface LineToolSpec {
  */
 export interface LineTool {
   anchor(): LineNode | null;
-  /** The cursor's marker before a line starts, the capped line toward the cursor after. */
-  preview(tile: LineNode): LinePreviewNode[];
-  click(tile: LineNode | null): void;
+  /** The cursor's marker before a line starts, the capped line toward the cursor after; `straight`
+   *  keeps it to the nearest of the eight straight runs. */
+  preview(tile: LineNode, straight?: boolean): LinePreviewNode[];
+  click(tile: LineNode | null, straight?: boolean): void;
   stepBack(): boolean;
   active(): ActiveLine | null;
 }
@@ -143,12 +200,12 @@ export function createLineTool(spec: LineToolSpec): LineTool {
   const stateOf = (node: LineNode): LineNodeState =>
     spec.built?.(node) === true ? 'built' : spec.canPlace(node) ? 'open' : 'blocked';
   const accepts = (col: number, row: number): boolean => stateOf({ col, row }) !== 'blocked';
-  const route = (from: LineNode, tile: LineNode): LinePreviewNode[] =>
-    markPrefix(hexLine(from, tile, spec.maxEdges), stateOf);
+  const route = (from: LineNode, tile: LineNode, straight: boolean): LinePreviewNode[] =>
+    markPrefix((straight ? straightLine : screenLine)(from, tile, spec.maxEdges), stateOf);
   return {
     anchor: () => line?.anchor ?? null,
-    preview: (tile) => route(line?.anchor ?? tile, tile),
-    click: (tile): void => {
+    preview: (tile, straight = false) => route(line?.anchor ?? tile, tile, straight),
+    click: (tile, straight = false): void => {
       if (tile === null) return;
       if (line === null) {
         if (stateOf(tile) !== 'blocked') {
@@ -161,7 +218,7 @@ export function createLineTool(spec: LineToolSpec): LineTool {
         }
         return;
       }
-      const placed = route(line.anchor, tile).filter((node) => node.state === 'open');
+      const placed = route(line.anchor, tile, straight).filter((node) => node.state === 'open');
       line = null;
       if (placed.length > 0) spec.commit(placed.map(({ col, row }) => ({ col, row })));
     },

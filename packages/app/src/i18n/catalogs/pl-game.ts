@@ -291,7 +291,7 @@ export const plGame = {
       costShort: '{name}: masz {have} z {amount}',
       placeHint: 'wskaż miejsce na mapie',
       placeWallHint: 'kliknij, gdzie ma się zacząć palisada',
-      placeWallLineHint: 'lewy przycisk stawia palisadę, prawy anuluje linię',
+      placeWallLineHint: 'lewy przycisk stawia palisadę, Shift trzyma prostą, prawy anuluje linię',
       placeGateHint: 'wskaż prosty odcinek pięciu gotowych segmentów palisady',
       placePaperHint: 'z planu: wskaż miejsce, budynek stanie gotowy',
       heldPaper: 'Plan budowy',
