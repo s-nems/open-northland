@@ -1,7 +1,7 @@
-import type { FogView, SimEvent } from '@open-northland/sim';
+import type { FogView, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
-import type { DrawItem, SceneTerrain } from '../../data/scene/index.js';
+import { type DrawItem, palisadeLayoutOf, type SceneTerrain } from '../../data/scene/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
 import { type GroundWave, GroundWaveLayer } from '../ground-waves/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
@@ -348,14 +348,18 @@ export class WorldRenderer {
 
   /**
    * A signpost ghost's `player` is the owner slot, mapped to the session colour here - the same boundary
-   * pooled sprites are mapped at.
+   * pooled sprites are mapped at. A wall line staggers with the walls of `snapshot`.
    */
-  updatePlacementGhost(ghost: PlacementGhost | null): void {
+  updatePlacementGhost(ghost: PlacementGhost | null, snapshot?: WorldSnapshot): void {
     const mapped =
       ghost !== null && ghost.kind === 'signpost' && this.playerColourOf !== undefined
         ? { ...ghost, player: this.playerColourOf(ghost.player) }
         : ghost;
-    this.placementGhost.set(mapped, this.elevation);
+    const walls =
+      mapped?.kind === 'line' && snapshot !== undefined
+        ? palisadeLayoutOf(snapshot, this.elevation)
+        : undefined;
+    this.placementGhost.set(mapped, this.elevation, walls);
   }
 
   stats(): { drawn: number; pooled: number } {

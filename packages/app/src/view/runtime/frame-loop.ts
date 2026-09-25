@@ -250,7 +250,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       placementTribe,
     });
     renderer.updatePlacementOverlay(cursor.overlay);
-    renderer.updatePlacementGhost(cursor.ghost);
+    renderer.updatePlacementGhost(cursor.ghost, snap);
     // Before `renderer.update`, so the panel a rebuild bakes and the portrait inset painted over it both
     // show this frame's state.
     controls.tick(snap);

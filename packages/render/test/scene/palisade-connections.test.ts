@@ -1,5 +1,6 @@
 import { type Fixed, ONE, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { palisadeLayoutOf, planShiftX } from '../../src/data/scene/palisade-connections.js';
 import { PALISADE_STAGGER_PX } from '../../src/data/scene/palisade-stagger.js';
 import { buildSpriteScene, PALISADE_POST_SPACING_PX, palisadePostOffsets } from '../../src/index.js';
 import { snapshotOf } from '../support/fixtures.js';
@@ -129,6 +130,25 @@ describe('palisadePostOffsets', () => {
       snapshotOf([palisade(1, 10, 10), palisade(2, 10, 11), palisade(3, 10, 12), palisade(4, 11, 12)]),
     );
     for (const ref of [1, 2, 3]) expect(xOf(corner, ref) % 34).toBe(0);
+  });
+
+  it('plans a line where its walls will stand among the standing ones, and a standing piece where it is', () => {
+    const standing = snapshotOf([palisade(1, 10, 10), palisade(2, 11, 10)]);
+    const row = palisadeLayoutOf(standing);
+    const rowEnd = buildSpriteScene(standing).find((item) => item.ref === 2);
+    // The row's end under the cursor, and a lone stake beside it that extends the row.
+    expect(planShiftX([{ hx: 11, hy: 10 }], row)).toEqual([(rowEnd?.x ?? 0) - 11 * 34]);
+    expect(planShiftX([{ hx: 12, hy: 10 }], row)).toEqual([-PALISADE_STAGGER_PX]);
+    expect(planShiftX([{ hx: 12, hy: 10 }])).toEqual([0]);
+
+    const column = palisadeLayoutOf(
+      snapshotOf([palisade(1, 10, 8), palisade(2, 10, 9), palisade(3, 10, 10)]),
+    );
+    const extended = [
+      { hx: 10, hy: 10 },
+      { hx: 10, hy: 11 },
+    ];
+    expect(planShiftX(extended, column)).toEqual([0, 0]);
   });
 
   it('draws unfinished segments as ground markers and excludes them from wall connections', () => {

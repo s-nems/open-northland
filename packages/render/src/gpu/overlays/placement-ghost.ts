@@ -1,12 +1,8 @@
 import { Container, Graphics } from 'pixi.js';
 import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
-import {
-  palisadeStaggerX,
-  staggeredNodeKeys,
-  type WallNode,
-  wallNodeKey,
-} from '../../data/scene/palisade-stagger.js';
+import { type PalisadeLayout, planShiftX } from '../../data/scene/palisade-connections.js';
+import { palisadeStaggerX } from '../../data/scene/palisade-stagger.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
 import {
   mintPlanStake,
@@ -73,6 +69,9 @@ const ANCHOR_RING_RADIUS = { x: 9, y: 4.5 } as const;
 export class PlacementGhostLayer {
   readonly container = new Container();
   private builtForKey: string | null = null;
+  /** The line plan and wall layout the memoized `lineShifts` were worked out for. */
+  private shiftsFor: { readonly plan: string; readonly walls: PalisadeLayout | undefined } | null = null;
+  private lineShifts: readonly number[] = [];
 
   constructor(
     private readonly sheet: SpriteSheet | undefined,
@@ -83,16 +82,25 @@ export class PlacementGhostLayer {
     this.container.alpha = GHOST_ALPHA;
   }
 
-  set(ghost: PlacementGhost | null, elevation: ElevationField): void {
+  /** `walls` is the scene's palisade layout, which a line plan staggers with. */
+  set(ghost: PlacementGhost | null, elevation: ElevationField, walls?: PalisadeLayout): void {
     if (ghost === null) {
       this.container.visible = false;
       return;
     }
     if (ghost.kind === 'line') {
-      const key = `line:${ghost.anchored}:${ghost.nodes.map((node) => `${node.col},${node.row},${node.state}`).join(';')}`;
+      const plan = `${ghost.anchored}:${ghost.nodes.map((node) => `${node.col},${node.row},${node.state}`).join(';')}`;
+      if (this.shiftsFor?.plan !== plan || this.shiftsFor.walls !== walls) {
+        this.shiftsFor = { plan, walls };
+        this.lineShifts = planShiftX(
+          ghost.nodes.map((node) => ({ hx: node.col, hy: node.row })),
+          walls,
+        );
+      }
+      const key = `line:${plan}:${this.lineShifts.join(',')}`;
       if (this.builtForKey !== key) {
         this.builtForKey = key;
-        this.rebuildLine(ghost, elevation);
+        this.rebuildLine(ghost, this.lineShifts, elevation);
       }
       this.container.position.set(0, 0);
       // A plan is a cursor mark: it reads over the settlers and walls standing on its nodes.
@@ -123,19 +131,17 @@ export class PlacementGhostLayer {
     this.container.visible = true;
   }
 
-  private rebuildLine(ghost: Extract<PlacementGhost, { kind: 'line' }>, elevation: ElevationField): void {
+  private rebuildLine(
+    ghost: Extract<PlacementGhost, { kind: 'line' }>,
+    shifts: readonly number[],
+    elevation: ElevationField,
+  ): void {
     for (const child of this.container.removeChildren()) child.destroy();
     const g = new Graphics();
-    // The plan staggers as the walls it lays will.
-    const planNodes = new Map<string, WallNode>(
-      ghost.nodes.map((node) => [wallNodeKey(node.col, node.row), { hx: node.col, hy: node.row }]),
-    );
-    const staggered = staggeredNodeKeys(planNodes, new Set());
-    const points = ghost.nodes.map((node) => {
+    const points = ghost.nodes.map((node, i) => {
       const point = halfCellToScreen(node.col, node.row);
-      const shift = staggered.has(wallNodeKey(node.col, node.row)) ? palisadeStaggerX(node.row) : 0;
       return {
-        x: point.x + shift,
+        x: point.x + (shifts[i] ?? 0),
         y: point.y - terrainLiftAtNode(elevation, node.col, node.row),
         state: node.state,
       };

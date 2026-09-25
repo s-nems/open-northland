@@ -63,9 +63,20 @@ export interface PalisadeLayout {
   readonly posts: ReadonlyMap<number, readonly PalisadePostDraw[]>;
   /** Screen px a staggered palisade draws beside its node, by entity id. */
   readonly shiftX: ReadonlyMap<number, number>;
+  /** Every wall and wall site by {@link wallNodeKey}, and the nodes the gates end on. */
+  readonly walls: ReadonlyMap<string, WallNode>;
+  readonly terminals: ReadonlySet<string>;
+  /** Screen px drawn beside the node, by {@link wallNodeKey}, for every node of `walls` and `terminals`. */
+  readonly nodeShiftX: ReadonlyMap<string, number>;
 }
 
-const EMPTY_LAYOUT: PalisadeLayout = { posts: new Map(), shiftX: new Map() };
+const EMPTY_LAYOUT: PalisadeLayout = {
+  posts: new Map(),
+  shiftX: new Map(),
+  walls: new Map(),
+  terminals: new Set(),
+  nodeShiftX: new Map(),
+};
 
 interface CachedLayout {
   readonly flat?: PalisadeLayout;
@@ -150,23 +161,23 @@ function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField 
   if (layoutNodes.size === 0 && gates.length === 0) return EMPTY_LAYOUT;
 
   const shiftX = new Map<number, number>();
-  const terminals = new Set<string>();
+  const terminals = new Map<string, WallNode>();
   for (const gate of gates) {
     shiftX.set(gate.ref, palisadeStaggerX(gate.hy));
-    for (const end of gateEndpoints(gate)) terminals.add(wallNodeKey(end.hx, end.hy));
+    for (const end of gateEndpoints(gate)) terminals.set(wallNodeKey(end.hx, end.hy), end);
   }
+  const nodeShiftX = new Map<string, number>();
+  for (const key of layoutNodes.keys()) nodeShiftX.set(key, 0);
+  const terminalKeys = new Set(terminals.keys());
+  const staggered = staggeredNodeKeys(layoutNodes, terminalKeys);
   // A gate leaves its span's outer posts standing on its terminals; they stagger with it.
-  for (const key of [...staggeredNodeKeys(layoutNodes, terminals), ...terminals]) {
+  for (const [key, node] of [...layoutNodes, ...terminals]) {
+    if (!staggered.has(key) && !terminalKeys.has(key)) continue;
+    nodeShiftX.set(key, palisadeStaggerX(node.hy));
     const ref = refsByNode.get(key);
-    const node = layoutNodes.get(key);
-    if (ref !== undefined && node !== undefined) shiftX.set(ref, palisadeStaggerX(node.hy));
+    if (ref !== undefined) shiftX.set(ref, palisadeStaggerX(node.hy));
   }
-  const shiftOf = (hx: number, hy: number): number => {
-    const key = wallNodeKey(hx, hy);
-    if (terminals.has(key)) return palisadeStaggerX(hy);
-    const ref = refsByNode.get(key);
-    return ref === undefined ? 0 : (shiftX.get(ref) ?? 0);
-  };
+  const shiftOf = (hx: number, hy: number): number => nodeShiftX.get(wallNodeKey(hx, hy)) ?? 0;
 
   const posts = new Map<number, PalisadePostDraw[]>();
   for (const from of nodes) {
@@ -222,7 +233,33 @@ function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField 
       );
     }
   }
-  return { posts, shiftX };
+  return { posts, shiftX, walls: layoutNodes, terminals: terminalKeys, nodeShiftX };
+}
+
+/**
+ * Screen px each node of a planned wall line draws beside its node once laid among `layout`'s walls, so
+ * the plan stands where its walls will. A node already standing keeps the shift it draws with now. The
+ * stagger reads a node's joints and its column partner's, so walls two steps off the plan decide it.
+ */
+export function planShiftX(plan: readonly WallNode[], layout: PalisadeLayout = EMPTY_LAYOUT): number[] {
+  const walls = new Map<string, WallNode>();
+  for (const node of plan) walls.set(wallNodeKey(node.hx, node.hy), node);
+  if (layout.walls.size > 0 || layout.terminals.size > 0) {
+    for (const node of plan) {
+      for (const near of hexNeighboursOf(node.hx, node.hy)) {
+        for (const far of [near, ...hexNeighboursOf(near.hx, near.hy)]) {
+          const key = wallNodeKey(far.hx, far.hy);
+          const standing = layout.walls.get(key);
+          if (standing !== undefined) walls.set(key, standing);
+        }
+      }
+    }
+  }
+  const staggered = staggeredNodeKeys(walls, layout.terminals);
+  return plan.map((node) => {
+    const key = wallNodeKey(node.hx, node.hy);
+    return layout.nodeShiftX.get(key) ?? (staggered.has(key) ? palisadeStaggerX(node.hy) : 0);
+  });
 }
 
 function footprintCells(value: unknown): FootprintCell[] {
