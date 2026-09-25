@@ -25,7 +25,7 @@ import { fetchNeededMaterial } from './site-supply.js';
  * vehicle when the site finishes; the worker then moves its rotation past the vehicle good.
  *
  * Returns whether the operator's turn was a vehicle's. A search that finds nowhere raises the refusal
- * once and parks the worker for the failed-goal memo's span before it looks again.
+ * once per failed-goal memo span and skips the turn; while the memo holds, the turn is skipped unsearched.
  */
 export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing: PlannerSpacing): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
@@ -34,10 +34,15 @@ export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing
   releaseFinishedSite(plan, workplace, recipes);
   const pick = nextRotationPick(world, ctx, workplace, e, recipes);
   const houseType = pick === null ? undefined : vehicleHouseOfGood(ctx.content, pick.good);
-  if (houseType === undefined) return false;
+  if (pick === null || houseType === undefined) return false;
 
   const site = siteFor(plan, workplace, houseType);
-  if (site === null) return true;
+  if (site === null) {
+    // No spot for the yard (a joinery far from water asked for a ship): the turn is skipped, so the
+    // rotation moves on to the workshop's other products instead of stalling on this one.
+    advanceRotation(world, e, pick);
+    return false;
+  }
   const assigned = world.tryGet(e, SiteAssignment);
   if (assigned === undefined || assigned.site !== site || assigned.pinned) {
     world.add(e, SiteAssignment, { site, pinned: false });
@@ -83,7 +88,7 @@ function releaseFinishedSite(
 /**
  * The site the worker builds `houseType` on: the one it already crews, else the nearest unfinished one of
  * the owner's within the reuse ring, else a fresh one opened at the first admissible placement-ring point.
- * Null when none can be had, which parks the worker.
+ * Null when none can be had, which skips the turn.
  */
 function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): Entity | null {
   const { world, ctx, terrain, entity: e, here, targets } = plan;

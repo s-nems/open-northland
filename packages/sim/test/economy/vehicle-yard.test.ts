@@ -84,6 +84,8 @@ const PLANK_GATE_RAW_XP = 300;
 const MAP_CELLS = 24;
 /** Well past the 2-wood site's fetch, delivery and hammering. */
 const BUILD_BUDGET_TICKS = 3000;
+/** Well past the first plan and the plank batch it starts. */
+const PLANK_START_BUDGET_TICKS = 200;
 
 /** The shared fixture plus the yard rows; local to this file so the save fixture's content fingerprint
  *  stays put. */
@@ -350,7 +352,7 @@ describe('the yard site search', () => {
     expect(verdict).toEqual({ kind: 'occupied' });
   });
 
-  it('reports no site on ground too small for the yard, once, and parks the worker', () => {
+  it('reports no site on ground too small for the yard, once, and skips the turn', () => {
     const s = sim(grassCellMap(2, 2));
     const shop = buildingAt(s, WAINWRIGHT, 1, 1);
     const worker = carpenterAt(s, 1, 1, shop);
@@ -397,6 +399,21 @@ describe('the yard site search', () => {
     expect(s.events.current().filter((ev) => ev.kind === 'vehicleSiteRefused')).toEqual([
       { kind: 'vehicleSiteRefused', entity: worker, reason: 'notFound' },
     ]);
+  });
+
+  it('skips the ship turn of a shipyard with no water in reach and makes its planks', () => {
+    const s = sim();
+    const { shop, worker } = yardWorld(s, [SHIP_GOOD, PLANK]);
+    s.world.mut(shop, Stockpile).amounts.set(WOOD, 5);
+    s.world.mut(worker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP); // planks are earned
+    s.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 4, y: 4, tribe: VIKING, owner: P0 }); // and unlocked
+    let plankStarted = false;
+    for (let i = 0; i < PLANK_START_BUDGET_TICKS && !plankStarted; i++) {
+      s.step();
+      plankStarted = s.world.tryGet(shop, Production)?.cycles.some((c) => c.goodType === PLANK) === true;
+    }
+    expect(plankStarted).toBe(true);
+    expect(sitesOf(s, SHIP_YARD)).toEqual([]);
   });
 });
 
