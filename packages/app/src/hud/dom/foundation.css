@@ -1392,8 +1392,47 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-bar--right {
   border-radius: 0 0 0 5px;
 }
+.on-hud .on-summary {
+  display: flex;
+  align-items: center;
+}
+.on-hud .on-resource {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.on-hud .on-bar__count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 38px;
+  min-height: 30px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+}
+.on-hud .on-bar__count:hover,
+.on-hud .on-bar__count:focus-visible,
+.on-hud .on-bar__count[aria-expanded="true"] {
+  background: #c9a26222;
+  box-shadow: inset 0 -2px var(--bronze);
+}
+.on-hud .on-bar__count b {
+  font: 700 13px / 1 var(--font-body);
+  color: var(--text-hi);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px #000;
+}
+.on-hud .on-bar__count .on-figure {
+  width: 21px;
+  height: 25px;
+  color: #e2d5b6;
+  filter: drop-shadow(0 1px 1px #000c);
+}
 /* The spectator's seat picker: the watched seat on the bar as a framed drop-down control, the
-   choices as ink-on-parchment rows in a click-opened list. */
+   choices as ink-on-parchment rows in a click-opened list. After the count rules, which its button
+   shares and refines. */
 .on-hud .on-picker__button {
   gap: 6px;
   padding: 2px 6px 2px 8px;
@@ -1413,6 +1452,7 @@ body.on-drag-scroll-cursor-hidden * {
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .on-hud .on-picker__button .on-glyph {
   width: 12px;
@@ -1480,44 +1520,6 @@ body.on-drag-scroll-cursor-hidden * {
   border: 1px solid #0009;
   border-radius: 2px;
   box-shadow: inset 0 0 0 1px #fff5;
-}
-.on-hud .on-summary {
-  display: flex;
-  align-items: center;
-}
-.on-hud .on-resource {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.on-hud .on-bar__count {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 38px;
-  min-height: 30px;
-  padding: 2px 5px;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
-}
-.on-hud .on-bar__count:hover,
-.on-hud .on-bar__count:focus-visible,
-.on-hud .on-bar__count[aria-expanded="true"] {
-  background: #c9a26222;
-  box-shadow: inset 0 -2px var(--bronze);
-}
-.on-hud .on-bar__count b {
-  font: 700 13px / 1 var(--font-body);
-  color: var(--text-hi);
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 2px #000;
-}
-.on-hud .on-bar__count .on-figure {
-  width: 21px;
-  height: 25px;
-  color: #e2d5b6;
-  filter: drop-shadow(0 1px 1px #000c);
 }
 /* A good's icon: its sheet frame, sized by area in good-art.ts so every good carries the same mass,
    centred in the box; the frame element is exactly the crop, so no neighbouring frame shows. */

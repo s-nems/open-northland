@@ -30,7 +30,7 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
   const clickableBadges = (): readonly DoorBadge[] => {
     const badges = deps.doorBadges?.() ?? [];
     const seat = deps.viewer.seat();
-    return seat === null ? badges : badges.filter((b) => b.player === seat);
+    return deps.viewer.wholeMap() ? badges : badges.filter((b) => b.player === seat);
   };
 
   const doorMarkerAt = (wx: number, wy: number): DoorMarkerHit | null => {

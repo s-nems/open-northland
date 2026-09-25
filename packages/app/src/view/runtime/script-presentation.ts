@@ -20,8 +20,8 @@ const INFO_LINE_REFRESH_TICKS = INFO_LINE_REFRESH_SECONDS * TICKS_PER_SECOND;
 export interface ScriptPresentationDeps {
   readonly sim: Pick<Simulation, 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'>;
   readonly missionTrace?: boolean;
-  /** Whose info lines the panel shows; read on every refresh. */
-  readonly seat: () => number;
+  /** Whose info lines the panel shows, read on every refresh; null shows none. */
+  readonly seat: () => number | null;
   readonly toolPanel: GameToolPanelHandle;
   readonly controls: Pick<UnitControls, 'select'>;
   /** Re-centre the view on a world-px point at the current zoom. */
@@ -55,6 +55,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
   const { sim, toolPanel, controls, markers, effects } = deps;
   const trace = deps.missionTrace === true ? mountMissionTrace(sim) : null;
   let linesTick = Number.NEGATIVE_INFINITY;
+  let linesSeat: number | null = null;
   let lines: string[] = [];
 
   const saved = sim.missionPresentation();
@@ -139,9 +140,12 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
     frame(snapshot, camera, nowMs) {
       trace?.refresh(snapshot.tick, scriptFired);
       scriptFired = false;
-      if (snapshot.tick - linesTick >= INFO_LINE_REFRESH_TICKS) {
+      // A seat switch re-reads at once: the cadence paces one seat's lines, not a change of seat.
+      const seat = deps.seat();
+      if (seat !== linesSeat || snapshot.tick - linesTick >= INFO_LINE_REFRESH_TICKS) {
         linesTick = snapshot.tick;
-        lines = infoLineTexts(sim.infoLines(deps.seat()), deps.mapText);
+        linesSeat = seat;
+        lines = seat === null ? [] : infoLineTexts(sim.infoLines(seat), deps.mapText);
       }
       // Pushed every frame: the panel remounts on a scale change and starts blank.
       toolPanel.controller.setInfoLines(lines);

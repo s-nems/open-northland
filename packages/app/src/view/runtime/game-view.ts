@@ -39,7 +39,12 @@ import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyLabel } from '../../game/technology.js';
-import { fixedViewerSeat, switchableViewerSeat, type ViewerSeat } from '../../game/viewer-seat.js';
+import {
+  fixedViewerSeat,
+  overseerViewerSeat,
+  switchableViewerSeat,
+  type ViewerSeat,
+} from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import type { BuildingStockContext } from '../../hud/details-panel/model/context.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
@@ -157,8 +162,8 @@ export interface GameViewDeps {
   readonly observer?: boolean;
   /** Read-only spectator: the interactive HUD's command seam is a no-op, so a selection can inspect but never re-task. */
   readonly readOnly?: boolean;
-  /** The seats a read-only spectator may watch one at a time, which mounts the seat picker; absent,
-   *  the spectator watches the whole map alone. */
+  /** The seats a read-only spectator may watch one at a time, which mounts the seat picker and starts
+   *  the view on the whole map with nobody's figures; absent, a spectator keeps `localPlayer`'s. */
   readonly observerSeats?: readonly ObserverSeatEntry[];
   /** Owner slot to team-colour slot for player-coloured HUD bits. Default identity. */
   readonly playerColourOf?: (player: number) => number;
@@ -218,15 +223,17 @@ const BESIDE_MINIMAP_GAP_PX = 12;
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
   const { app, canvas, params, renderer, sim, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
-  // A spectator's view follows the seat it chose to watch; a played session's is its own seat for good.
-  const switchableSeat = deps.observer === true ? switchableViewerSeat(null) : null;
-  const viewer: ViewerSeat = switchableSeat ?? fixedViewerSeat(localPlayer);
-  /** The seat a per-seat read answers for; watching the whole map reads as the fallback seat. */
+  // A spectator with a picker follows the seat it chose to watch; the overseer sees the whole map with
+  // its own seat's figures; a played session's view is its own seat for good.
+  const switchableSeat = deps.observerSeats === undefined ? null : switchableViewerSeat(null);
+  const viewer: ViewerSeat =
+    switchableSeat ??
+    (deps.observer === true ? overseerViewerSeat(localPlayer) : fixedViewerSeat(localPlayer));
+  /** The seat a read needing one answers for; watching the whole map reads as the fallback seat. */
   const viewerPlayer = (): number => viewer.seat() ?? localPlayer;
-  const wholeMap = (): boolean => viewer.seat() === null;
   const fogViewOf = (): FogView | null => {
     const seat = viewer.seat();
-    return seat === null ? null : sim.fogView(seat);
+    return viewer.wholeMap() || seat === null ? null : sim.fogView(seat);
   };
   const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
   const sharedClock = deps.sharedClock === true;
@@ -367,7 +374,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       diplomacyPanelRows(diplomacyView, {
         localPlayer: viewerPlayer(),
         rosterPlayers: deps.rosterPlayers ?? [],
-        observer: wholeMap(),
+        observer: viewer.wholeMap(),
         goodLabelOf: (goodType) => goodLabelByType.get(goodType),
         canPay: !readOnly,
         canDeclare: !readOnly,
@@ -423,7 +430,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       enqueue: issueCommand,
       grants: assistantGrantsSeam(sim, sim.content, viewer.seat, issueCommand, !readOnly),
       counters: assistantCountersSeam(sim, viewer.seat, issueCommand, !readOnly),
-      papers: { read: () => (wholeMap() ? NO_PAPERS : sim.papers(viewerPlayer())) },
+      papers: {
+        read: () => {
+          const seat = viewer.seat();
+          return seat === null ? NO_PAPERS : sim.papers(seat);
+        },
+      },
       residents: {
         rows: () => residentsFor(sim.snapshot()),
         snapshot: () => sim.snapshot(),
@@ -657,7 +669,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     presentation = createScriptPresentation({
       sim,
       missionTrace: hasDebugFlag(params, 'missions'),
-      seat: viewerPlayer,
+      seat: viewer.seat,
       toolPanel,
       controls,
       centerOn: jumpToWorld,
@@ -753,6 +765,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // new seat's people are.
     switchableSeat?.onSwitch((seat) => {
       uiCue('confirm');
+      // The gates follow at once, so a click before the next frame reads the new seat's fog.
+      fogGates.setFrame(fogViewOf());
       controls.select([]);
       if (seat === null) return;
       const focus = mapStartFocus(sim.snapshot(), deps.mapSize.width, deps.mapSize.height, seat);
@@ -813,8 +827,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       suspended: subMissions.isPending,
       fpsLimit: storedSettings.fpsLimit,
       fogView: fogViewOf,
-      seat: viewerPlayer,
-      wholeMap,
+      viewer,
       onMatchEnd: () => verdict?.finish(sim.matchOutcome(localPlayer)),
       isDisposed: () => destroyed,
       driver,

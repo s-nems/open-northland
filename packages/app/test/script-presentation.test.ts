@@ -36,6 +36,7 @@ function snapshotAt(tick: number): WorldSnapshot {
 function harness(
   lines: InfoLineView[] = [],
   saved: MissionPresentationView = { guiMarkers: [], groundMarkers: [], weather: [] },
+  seat: () => number | null = () => 0,
 ) {
   const calls: string[] = [];
   const infoLines: (readonly string[])[] = [];
@@ -45,7 +46,7 @@ function harness(
       return tick;
     },
     snapshot: () => snapshotAt(tick),
-    infoLines: () => lines,
+    infoLines: (player: number) => lines.filter((line) => line.index === player),
     missionPresentation: () => saved,
     missionStatus: () => [],
   };
@@ -69,7 +70,7 @@ function harness(
   };
   const presentation = createScriptPresentation({
     sim,
-    seat: () => 0,
+    seat,
     toolPanel,
     controls: { select: (ids) => calls.push(`select:${[...ids].join()}`) },
     centerOn: (x, y) => calls.push(`centre:${x},${y}`),
@@ -155,6 +156,24 @@ describe('createScriptPresentation', () => {
     advance(24);
     presentation.frame(snapshotAt(24), CAMERA, 0);
     expect(infoLines.at(-1)).toEqual(['Held: 2 of 4']);
+  });
+
+  it('re-reads the lines at once when the watched seat changes, and shows none for no seat', () => {
+    // The fixture files each seat's line under its own index.
+    const lines: InfoLineView[] = [
+      { index: 0, stringId: 7, count: 1, extra: 4 },
+      { index: 1, stringId: 7, count: 3, extra: 4 },
+    ];
+    let seat: number | null = 0;
+    const { presentation, infoLines } = harness(lines, undefined, () => seat);
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual(['Held: 1 of 4']);
+    seat = 1;
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual(['Held: 3 of 4']);
+    seat = null;
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual([]);
   });
 });
 

@@ -63,14 +63,16 @@ export class FogGhostStore {
     this.pendingAdopt.add(ref);
   }
 
+  /** Forget the memory and the cache key with it, so the next update rebuilds even from an empty
+   *  store: a seat switch under one generation must still capture what the new seat sees. */
   clear(): void {
-    if (this.records.size === 0 && this.drawList.length === 0 && !this.reconSeeded) return;
-    this.records.clear();
-    this.drawList = [];
     this.lastGeneration = -1;
     this.lastPlayer = null;
     this.lastMode = -1;
     this.reconSeeded = false;
+    if (this.records.size === 0 && this.drawList.length === 0) return;
+    this.records.clear();
+    this.drawList = [];
   }
 
   /**

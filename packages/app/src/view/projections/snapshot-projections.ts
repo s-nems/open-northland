@@ -66,16 +66,13 @@ export function createSnapshotProjections(
   readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   readonly lifeHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
 } {
-  // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot.
-  const hudModelFor = memoBySnapshot(
-    (snapshot: WorldSnapshot) => {
-      const seat = viewer.seat();
-      return seat === null ? emptyHud(snapshot.tick) : buildHud(snapshot, seat);
-    },
-    () => viewer.version(),
-  );
-  // The fog is the viewer's too, so every fog-filtered memo keys on the viewer as well.
+  // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot, and
+  // the fog is the viewer's, so every fog-filtered memo keys on it as well.
   const viewerVersion = (): number => viewer.version();
+  const hudModelFor = memoBySnapshot((snapshot: WorldSnapshot) => {
+    const seat = viewer.seat();
+    return seat === null ? emptyHud(snapshot.tick) : buildHud(snapshot, seat);
+  }, viewerVersion);
   const heartsMemo = (): ((snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>) =>
     memoBySnapshot(
       (snapshot) => {

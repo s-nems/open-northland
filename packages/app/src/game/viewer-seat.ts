@@ -1,12 +1,13 @@
 /**
- * The seat whose perspective the view shows: fog, the summary figures, the notes, what a click may
- * select. A played session's is its own seat for good; a spectator's is the seat it chose to watch,
- * or none for the whole map.
+ * The seat whose perspective the view shows: the summary figures, the notes, the papers, the chest,
+ * and, unless the view spans the whole map, the fog and what a click may select. A played session's
+ * is its own seat for good; a spectator's is the seat it chose to watch, or none for the whole map.
  */
 export interface ViewerSeat {
-  /** The watched seat, or null while a spectator watches the whole map: no fog, nobody's figures,
-   *  no notes, every entity pickable. */
+  /** The seat whose figures, notes, papers and chest the HUD shows; null shows nobody's. */
   seat(): number | null;
+  /** Whether the view spans the whole map: no fog, every entity pickable. */
+  wholeMap(): boolean;
   /** Bumps on every switch, so a memo keyed on a snapshot also keys on it. */
   version(): number;
 }
@@ -18,17 +19,25 @@ export interface SwitchableViewerSeat extends ViewerSeat {
   onSwitch(listener: (seat: number | null) => void): void;
 }
 
-/** A seat that never switches: a played session's own, or null for a whole-map view with no picker. */
-export function fixedViewerSeat(seat: number | null): ViewerSeat {
-  return { seat: () => seat, version: () => 0 };
+/** A played session's own seat: its fog, its entities, its figures. */
+export function fixedViewerSeat(seat: number): ViewerSeat {
+  return { seat: () => seat, wholeMap: () => false, version: () => 0 };
 }
 
+/** The overseer's view: the whole map to see and pick, with `seat`'s figures, chest and papers, since
+ *  its orders and paper plans go out as that seat's. */
+export function overseerViewerSeat(seat: number): ViewerSeat {
+  return { seat: () => seat, wholeMap: () => true, version: () => 0 };
+}
+
+/** A spectator's switchable seat; watching none (null) is the whole map with nobody's figures. */
 export function switchableViewerSeat(initial: number | null): SwitchableViewerSeat {
   let seat = initial;
   let version = 0;
   const listeners: ((seat: number | null) => void)[] = [];
   return {
     seat: () => seat,
+    wholeMap: () => seat === null,
     version: () => version,
     watch: (next) => {
       if (next === seat) return;

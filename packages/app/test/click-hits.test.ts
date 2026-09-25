@@ -6,7 +6,7 @@ import {
   tileToScreen,
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { fixedViewerSeat } from '../src/game/viewer-seat.js';
+import { fixedViewerSeat, overseerViewerSeat } from '../src/game/viewer-seat.js';
 import type { Pickable } from '../src/view/picking.js';
 import { type ClickHitDeps, createClickHits } from '../src/view/unit-controls/click-hits.js';
 
@@ -69,7 +69,7 @@ const hitsFor = (arms: Arms): ReturnType<typeof createClickHits> =>
   createClickHits({
     doorBadges: () => arms.badges ?? [],
     targets: targetsOf(arms),
-    viewer: fixedViewerSeat(arms.observer === true ? null : HUMAN_PLAYER),
+    viewer: arms.observer === true ? overseerViewerSeat(HUMAN_PLAYER) : fixedViewerSeat(HUMAN_PLAYER),
     ...(arms.elevation !== undefined ? { elevation: arms.elevation } : {}),
   });
 

@@ -5,6 +5,7 @@ import type { FogView, Paper, SimEvent, WorldSnapshot } from '@open-northland/si
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
+import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
@@ -35,10 +36,9 @@ export interface FrameLoopDeps {
   readonly fpsLimit: FpsLimit;
   /** The viewer's fog this frame draws through; null is fog off or a whole-map spectator. */
   readonly fogView: () => FogView | null;
-  /** The seat the music's mood and the life-event jingles follow. */
-  readonly seat: () => number;
-  /** True while a spectator watches the whole map, so the mood reads every seat as met. */
-  readonly wholeMap: () => boolean;
+  /** The seat the music's mood and the life-event jingles follow; the whole map reads every seat as
+   *  met, and no jingle rings for nobody's seat. */
+  readonly viewer: ViewerSeat;
   readonly onMatchEnd?: () => void;
   readonly isDisposed?: () => boolean;
   /** The session driver: it decides how many ticks this frame may run and holds the render alpha. */
@@ -124,6 +124,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     syncViewport,
   } = loop;
   const { app, renderer, sim, cameraCtl } = deps;
+  const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
   // Frame phases join the sim instrument's per-system slices in one `?debug=perf` / `?debug=trace` recording.
   const emitPhase = framePhaseEmitter(deps.params);
@@ -134,11 +135,11 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // The roster the music's mood reads our standing against; one object, its seat read live.
   const musicRoster = {
     get localPlayer() {
-      return loop.seat();
+      return loop.viewer.seat() ?? localPlayer;
     },
     rosterPlayers: deps.rosterPlayers ?? [],
     get observer() {
-      return loop.wholeMap();
+      return loop.viewer.wholeMap();
     },
   };
   // Bound once; the model behind it is the summary bar's too, memoised per snapshot, so the mood costs
@@ -223,7 +224,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
       canPlaceAt,
       canPlaceSignpostAt,
-      localPlayer: deps.localPlayer ?? HUMAN_PLAYER,
+      localPlayer,
       placementTribe,
     });
     renderer.updatePlacementOverlay(cursor.overlay);
@@ -267,6 +268,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     presentation?.frame(snap, drawnCamera, nowMs);
     deps.onFrame?.(snap);
     if (soundDriver !== null) {
+      const jingleSeat = loop.viewer.seat();
       soundDriver.update({
         events: presentEvents,
         snapshot: snap,
@@ -274,7 +276,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         canvasW: app.screen.width,
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
-        localPlayer: loop.seat(), // life-event jingles ring only for our own entities, not enemies or wildlife
+        // Life-event jingles ring only for our own entities, not enemies or wildlife; none for nobody's seat.
+        ...(jingleSeat === null ? {} : { localPlayer: jingleSeat }),
         // A settler's authored action cues locate their emitter off the snapshot, not off events, so
         // they need their own fog gate: a hidden enemy must not natter or hammer out of empty black.
         visibleTile: fogGates.visibleTile,

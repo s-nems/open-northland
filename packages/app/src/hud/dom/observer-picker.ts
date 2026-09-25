@@ -90,25 +90,27 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   entry(null);
   for (const seat of deps.seats) entry(seat.player);
 
+  // Escape closes the open list from wherever focus sits, ahead of the game's own Escape: a clicked
+  // button holds no focus in every browser.
+  const onEscape = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape') return;
+    show(false);
+    button.focus();
+    event.stopPropagation();
+  };
   const show = (open: boolean): void => {
     if (list.hidden === !open) return;
     list.hidden = !open;
     button.setAttribute('aria-expanded', String(open));
+    if (open) document.addEventListener('keydown', onEscape, true);
+    else document.removeEventListener('keydown', onEscape, true);
   };
   button.addEventListener('click', () => show(list.hidden === true));
-  // A press anywhere else closes the list; `focusout` alone would not, since a button takes no focus
-  // on click in every browser.
+  // A press anywhere else closes the list; `focusout` alone would not, for the same reason.
   const onPressOutside = (event: PointerEvent): void => {
     if (!(event.target instanceof Node && root.contains(event.target))) show(false);
   };
   document.addEventListener('pointerdown', onPressOutside, true);
-  root.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !list.hidden) {
-      show(false);
-      button.focus();
-      event.stopPropagation();
-    }
-  });
   root.append(button, list);
 
   let shown: number | null | undefined;
@@ -126,6 +128,7 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
       }
     },
     dispose: () => {
+      show(false);
       document.removeEventListener('pointerdown', onPressOutside, true);
       root.remove();
     },

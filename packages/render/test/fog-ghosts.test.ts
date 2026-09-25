@@ -150,6 +150,16 @@ describe('FogGhostStore', () => {
     expect(store.update(snapshotOf([HOUSE]), { ...explored, player: 1 })).toEqual([]);
   });
 
+  it('captures for the new seat under one generation even when the last seat remembered nothing', () => {
+    const store = new FogGhostStore();
+    const unseen = viewOf(new Map([[HOUSE_CELL, FOG_STATE.UNEXPLORED]]), 1);
+    expect(store.update(snapshotOf([HOUSE]), unseen)).toEqual([]);
+    const seen = { ...viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 1), player: 1 };
+    expect(store.update(snapshotOf([HOUSE]), seen)).toEqual([]);
+    const explored = { ...viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 2), player: 1 };
+    expect(store.update(snapshotOf([HOUSE]), explored).map((g) => g.ref)).toEqual([HOUSE.id]);
+  });
+
   it('caches by (generation, mode) and clears on fog off', () => {
     const store = new FogGhostStore();
     const view = viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 1);

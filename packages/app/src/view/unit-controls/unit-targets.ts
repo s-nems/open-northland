@@ -101,8 +101,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
   /** Whether an entity with this owner belongs to the pickable "ours" set. */
   const pickableOwner = (owner: number | undefined): boolean => {
     if (owner === undefined) return false;
-    const seat = deps.viewer.seat();
-    return seat === null || owner === seat;
+    return deps.viewer.wholeMap() || owner === deps.viewer.seat();
   };
 
   /** The item's kind when it is one a unit-controls click resolves to, else null. */
@@ -168,7 +167,11 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
     flags(): Pickable[] {
       // flag-id → owning gatherer-id (not a player id); a whole-map viewer picks every player's flags
-      const gathererOf = gathererByFlag(deps.snapshot(), deps.viewer.seat() ?? 'any');
+      const seat = deps.viewer.seat();
+      const gathererOf = gathererByFlag(
+        deps.snapshot(),
+        deps.viewer.wholeMap() || seat === null ? 'any' : seat,
+      );
       if (gathererOf.size === 0) return [];
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
