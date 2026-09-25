@@ -15,6 +15,7 @@ export { AI_HANDLER_ROUND_TICKS } from './ai-player/cadence.js';
 // The garrison an acceptance scene pins, and the outfit the real-content plan test resolves.
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './ai-player/military/index.js';
 export {
+  CIVILIANS_PER_EXTRA_BUILDING_GATHERER,
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   CRAFT_PLANS_BY_BUILDING_ID,

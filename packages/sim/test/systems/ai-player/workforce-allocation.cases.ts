@@ -18,6 +18,7 @@ import {
   BUILDER_CAP,
   type BuildOrderEntry,
   CIVILIANS_PER_CLEARING_COLLECTOR,
+  CIVILIANS_PER_EXTRA_BUILDING_GATHERER,
   COLLECTOR_TARGET_BY_GOOD_ID,
   DEFAULT_BUILD_ORDER,
   DEFAULT_COLLECTOR_TARGET,
@@ -37,6 +38,7 @@ import {
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import { civilianCount } from '../../../src/systems/ai-player/workforce/pool.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { resourceStanceCells } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
@@ -150,7 +152,8 @@ function wantedRow(
 ): WantedGood | undefined {
   const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), DEFAULT_BUILD_ORDER);
   const reached = entries.map((): EntryStatus => 'satisfied');
-  return wantedCollectorGoods(sim.world, ctx, SEAT, entries, reached, supply).find(
+  const civilians = civilianCount(sim.world, ctx, SEAT);
+  return wantedCollectorGoods(sim.world, ctx, SEAT, entries, reached, supply, civilians).find(
     (w) => w.good.typeId === good,
   );
 }
@@ -213,19 +216,21 @@ describe('workforce module (collectResources)', () => {
     );
   });
 
-  it('tops wood/stone up to two collectors and adds generic gatherers once the reserve stands', () => {
+  it('tops wood/stone up to their grown targets and adds generic gatherers once the reserve stands', () => {
     const sim = aiSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
-    spawnMen(sim, BUILDER_CAP + 10);
+    const men = BUILDER_CAP + 12;
+    spawnMen(sim, men);
     sim.step();
+    expect(Math.floor(men / CIVILIANS_PER_EXTRA_BUILDING_GATHERER)).toBe(1); // three posts each
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const selections = commands.filter((c) => c.kind === 'setGatherGood');
     // First posts in plan order, then the stone/wood top-ups (mud stays at one), then one
     // collect-anything flag (3 first posts, the scout and the builder reserve claimed, the HQ's three
-    // target-tier carriers three more, the top-ups take two, and the last man goes generic).
-    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, STONE, WOOD, null]);
+    // target-tier carriers three more, the top-ups take four, and the last man goes generic).
+    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, STONE, STONE, WOOD, WOOD, null]);
     // Each post gets a node of its own. A good's top-up re-derives the same nearest resource as its
     // first post, so without the decision's claimed-node set the two flags land on one tile - one
     // delivery yard, one pile cap, two gatherers.
@@ -253,6 +258,34 @@ describe('workforce module (collectResources)', () => {
     const hq = entityOfBuilding(sim, HQ_TYPE);
     const carriers = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === hq);
     expect(carriers.map((c) => c.jobPriority)).toEqual([[CARRIER], [CARRIER], [CARRIER]]);
+  });
+
+  it('grows the wood and stone targets by one post per twenty civilians, all at the top-up tier', () => {
+    const buildingPosts = (men: number): (Pick<WantedGood, 'target' | 'min'> | undefined)[] => {
+      const sim = aiSim();
+      const ctx = ctxOf(sim);
+      placeHq(sim);
+      spawnMen(sim, men);
+      sim.step();
+      return [WOOD, STONE].map((good) => {
+        const row = wantedRow(sim, ctx, good);
+        return row === undefined ? undefined : { target: row.target, min: row.min };
+      });
+    };
+    const woodBase = COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0;
+    const stoneBase = COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0;
+    // No workshop consumes either good, so no shortage post rides on the grown target and only the
+    // first post jumps the builder reserve.
+    const LARGE_SEAT = 2 * CIVILIANS_PER_EXTRA_BUILDING_GATHERER;
+    expect(buildingPosts(LARGE_SEAT)).toEqual([
+      { target: woodBase + 2, min: 1 },
+      { target: stoneBase + 2, min: 1 },
+    ]);
+    const SMALL_SEAT = CIVILIANS_PER_EXTRA_BUILDING_GATHERER - 1;
+    expect(buildingPosts(SMALL_SEAT)).toEqual([
+      { target: woodBase, min: 1 },
+      { target: stoneBase, min: 1 },
+    ]);
   });
 
   it("posts more wood gatherers ahead of the builder reserve while the joinery eats the sites' wood", () => {
@@ -528,7 +561,7 @@ describe('workforce module (collectResources)', () => {
     const ironTarget = (count: number, status: 'unmet' | 'skip'): number | undefined => {
       const order: BuildOrderEntry[] = [{ kind: 'collector', good: 'iron', count }];
       const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), order);
-      return wantedCollectorGoods(sim.world, ctx, SEAT, order, [status], supply).find(
+      return wantedCollectorGoods(sim.world, ctx, SEAT, order, [status], supply, 0).find(
         (w) => w.good.typeId === IRON,
       )?.target;
     };

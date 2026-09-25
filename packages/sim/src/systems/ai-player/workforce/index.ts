@@ -48,6 +48,7 @@ import { buildStaffingTally } from './tally.js';
 
 export {
   CIVILIANS_PER_CLEARING_COLLECTOR,
+  CIVILIANS_PER_EXTRA_BUILDING_GATHERER,
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   DEFAULT_COLLECTOR_TARGET,
@@ -82,8 +83,8 @@ function runWorkforce(
   const owned = ownedBuildings(world, player);
   const supply = SeatSupply.of(world, ctx, player, owned, order);
   const statuses = entryStatuses(world, ctx, player, order);
-  const wanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const civilians = civilianCount(world, ctx, player);
+  const wanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply, civilians);
   const clearing = clearingCollectors(world, player, civilians);
   const genericTarget = GENERIC_COLLECTOR_TARGET + clearing;
   const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(
