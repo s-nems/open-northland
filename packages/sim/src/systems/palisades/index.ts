@@ -1,4 +1,4 @@
-import { type BuildingFootprint, type FootprintCell, footprintCellDx } from '@open-northland/data';
+import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import {
   Health,
   ownerOf,
@@ -39,17 +39,6 @@ export interface PalisadeGateProbeResult {
   readonly span: readonly { hx: number; hy: number }[];
 }
 
-function wallFootprint(type: ScriptLandscapeType, body: readonly FootprintCell[]): BuildingFootprint {
-  const reservedByKey = new Map<string, FootprintCell>();
-  for (const cell of type.build) reservedByKey.set(`${cell.dx},${cell.dy}`, cell);
-  if (reservedByKey.size === 0) reservedByKey.set('0,0', { dx: 0, dy: 0 });
-  return {
-    blocked: body.map((cell) => ({ ...cell })),
-    familyBody: body.map((cell) => ({ ...cell })),
-    reserved: [...reservedByKey.values()].map((cell) => ({ ...cell })),
-  };
-}
-
 export function palisadeType(terrain: TerrainGraph, gfxIndex: number): ScriptLandscapeType | undefined {
   const type = terrain.landscapes?.types.find((candidate) => candidate.typeId === gfxIndex);
   return type?.wall === undefined ? undefined : type;
@@ -71,9 +60,9 @@ export function palisadePlacementProbe(
 ): PlacementProbe | null {
   const type = palisadeType(terrain, gfxIndex);
   if (type === undefined) return null;
-  const footprint = wallFootprint(type, placementWalkOf(terrain, type));
+  const body = placementWalkOf(terrain, type);
   const grid = placementBlockerGrid(world, content, terrain);
-  return { canPlace: (x, y) => canPlacePalisadeAnchor(grid, footprint, x, y) };
+  return { canPlace: (x, y) => canPlacePalisadeAnchor(grid, body, x, y) };
 }
 
 /** Assemble a wall segment from one validated map-catalog row. Used by the command and authored map boot. */
@@ -105,7 +94,6 @@ export function createPalisade(
       : fx.div(fx.fromInt(hitpoints), fx.fromInt(wall.maxHitpoints)),
     walk: type.walk.map((cell) => ({ ...cell })),
     placementWalk: (spec.placementWalk ?? type.walk).map((cell) => ({ ...cell })),
-    build: type.build.map((cell) => ({ ...cell })),
     construction: wall.construction.map((line) => ({ ...line })),
     repairPerStrike: wall.repairPerStrike,
     repairing: false,
@@ -157,7 +145,6 @@ export function setPalisadeGate(
     built: current.built,
     walk: target.walk.map((cell) => ({ ...cell })),
     placementWalk: current.placementWalk.map((cell) => ({ ...cell })),
-    build: target.build.map((cell) => ({ ...cell })),
     construction: target.wall.construction.map((line) => ({ ...line })),
     repairPerStrike: target.wall.repairPerStrike,
     repairing: current.repairing,
@@ -462,7 +449,6 @@ export function convertPalisadeGate(
     built: fx.fromInt(1),
     walk: type.walk.map((cell) => ({ ...cell })),
     placementWalk: placementWalkOf(terrain, type).map((cell) => ({ ...cell })),
-    build: type.build.map((cell) => ({ ...cell })),
     construction: wall.construction.map((line) => ({ ...line })),
     repairPerStrike: wall.repairPerStrike,
     repairing: false,

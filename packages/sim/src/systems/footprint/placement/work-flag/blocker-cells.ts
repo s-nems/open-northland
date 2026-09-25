@@ -12,7 +12,6 @@ import {
   markerBlockerCells,
   OBSTACLE,
   PALISADE_BODY,
-  PALISADE_ZONE,
   RESOURCE_ANCHOR,
 } from '../blockers.js';
 
@@ -30,7 +29,6 @@ const BLOCKS_WORK_FLAG: Record<BlockerChannel, boolean> = {
   [EXCLUSION]: false,
   [BUILDING_ZONE]: false,
   [PALISADE_BODY]: true,
-  [PALISADE_ZONE]: false,
 };
 
 /** The entity's blocked nodes under `run`'s visitor - the shared channel/bounds filter of every capturer. */

@@ -13,7 +13,6 @@ export const Palisade = defineComponent<{
   walk: FootprintCell[];
   /** Placement-only occupied body. An open gate retains its closed counterpart's full passage here. */
   placementWalk: FootprintCell[];
-  build: FootprintCell[];
   construction: { goodType: number; amount: number }[];
   /** Source transition-9 valency gain per completed repair strike. */
   repairPerStrike: number;

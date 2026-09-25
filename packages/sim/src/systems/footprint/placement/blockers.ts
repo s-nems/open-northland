@@ -21,13 +21,14 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  * What a standing entity contributes to a cell - merged across entity KIND within each channel, because
  * every rule treats resource and building the same within one:
  *  - **OBSTACLE** - resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
- *    building candidate's RESERVED zone (the "minimum distance from a node/wall") and any work flag. A
+ *    building candidate's RESERVED zone (the "minimum distance from a node/wall"), a wall's body and any
+ *    work flag. A
  *    building's door is part of its family body, so it stays walkable for routing but takes no flag.
  *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY, whose walls may not
- *    sit in a resource's build margin; still valid open ground for a work flag.
+ *    sit in a resource's build margin; still open ground for a wall and a work flag.
  *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
  *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing `canPlaceAnchor` names as
- *    an approximation); still open ground for a work flag.
+ *    an approximation); still open ground for a wall and a work flag.
  *  - **RESOURCE_ANCHOR** - a resource's own cell, which its walk body need not cover. Blocks a work flag
  *    only.
  *  - **MARKER** - a delivery flag's cell. Blocks another marker, never a building.
@@ -37,29 +38,18 @@ const EXCLUSION = 1;
 const RESOURCE_ANCHOR = 2;
 const MARKER = 3;
 const BUILDING_ZONE = 4;
-/** A palisade's build margin. Buildings reject it, while another palisade may overlap it. */
-const PALISADE_ZONE = 5;
-/** A palisade's source walk body, present during construction for placement collision only. */
-const PALISADE_BODY = 6;
+/** A palisade's source walk body, present during construction for placement collision only. Rejects
+ *  another wall's body and a building's FAMILY BODY; a wall keeps no margin of its own. */
+const PALISADE_BODY = 5;
 type BlockerChannel =
   | typeof OBSTACLE
   | typeof EXCLUSION
   | typeof RESOURCE_ANCHOR
   | typeof MARKER
   | typeof BUILDING_ZONE
-  | typeof PALISADE_ZONE
   | typeof PALISADE_BODY;
 
-export {
-  type BlockerChannel,
-  BUILDING_ZONE,
-  EXCLUSION,
-  MARKER,
-  OBSTACLE,
-  PALISADE_BODY,
-  PALISADE_ZONE,
-  RESOURCE_ANCHOR,
-};
+export { type BlockerChannel, BUILDING_ZONE, EXCLUSION, MARKER, OBSTACLE, PALISADE_BODY, RESOURCE_ANCHOR };
 
 /** Opt-in for the {@link MARKER} channel. Only the work-flag rule consumes markers, so a scan that
  *  ignores the channel must not pay for the delivery-flag store walk. */
@@ -98,13 +88,11 @@ export function buildingBlockerCells(
   for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
 }
 
-function palisadeZoneCells(world: World, e: Entity, visit: BlockerVisit): void {
+function palisadeBodyCells(world: World, e: Entity, visit: BlockerVisit): void {
   const wall = world.tryGet(e, Palisade);
   const p = world.tryGet(e, Position);
   if (wall === undefined || p === undefined) return;
   const { hx, hy } = nodeOfPosition(p.x, p.y);
-  const zone = wall.build.length > 0 ? wall.build : ANCHOR_ONLY;
-  for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, PALISADE_ZONE);
   for (const c of wall.placementWalk) visit(hx + footprintCellDx(hy, c), hy + c.dy, PALISADE_BODY);
 }
 
@@ -145,7 +133,7 @@ export const BLOCKER_STORES: readonly BlockerStore[] = [
     cells: (world, _content, e, visit) => resourceBlockerCells(world, e, visit),
   },
   BUILDING_STORE,
-  { component: Palisade, cells: (world, _content, e, visit) => palisadeZoneCells(world, e, visit) },
+  { component: Palisade, cells: (world, _content, e, visit) => palisadeBodyCells(world, e, visit) },
   { component: Signpost, cells: (world, _content, e, visit) => signpostBlockerCells(world, e, visit) },
 ];
 

@@ -15,6 +15,7 @@ import {
   EXCLUSION,
   eachBlockerCell,
   OBSTACLE,
+  PALISADE_BODY,
 } from '../../../src/systems/footprint/placement/blockers.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -148,7 +149,7 @@ export function referenceCanPlace(
   const exclusions = new Set<string>();
   eachBlockerCell(sim.world, sim.content, (bx, by, channel) => {
     if (channel === OBSTACLE || channel === BUILDING_ZONE) obstacles.add(`${bx},${by}`);
-    else if (channel === EXCLUSION) exclusions.add(`${bx},${by}`);
+    else if (channel === EXCLUSION || channel === PALISADE_BODY) exclusions.add(`${bx},${by}`);
   });
   for (const c of footprint.reserved) {
     const cx = x + footprintCellDx(y, c);

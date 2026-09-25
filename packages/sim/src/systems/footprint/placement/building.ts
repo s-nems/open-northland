@@ -1,4 +1,9 @@
-import { type BuildingFootprint, type ContentSet, footprintCellDx } from '@open-northland/data';
+import {
+  type BuildingFootprint,
+  type ContentSet,
+  type FootprintCell,
+  footprintCellDx,
+} from '@open-northland/data';
 import { landscapeEditState } from '../../../components/landscape.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
@@ -8,8 +13,8 @@ import { type PlacementGrid, placementBlockerGrid } from './blocker-grid.js';
 
 // Building placement evaluates the blocker channels of ./blockers.ts over the one incrementally maintained
 // count grid of ./blocker-grid.ts that the one-shot command gate and the per-frame overlay probe both read,
-// so the two cannot disagree. The obstacle counts hold the reserved-zone blockers, the exclusion counts the
-// body blockers.
+// so the two cannot disagree. The obstacle and building-zone counts hold the reserved-zone blockers, the
+// exclusion and wall-body counts the body blockers.
 
 /**
  * Whether `footprint` may be placed with its anchor at integer tile `(x, y)` against the stamped
@@ -28,28 +33,29 @@ export function canPlaceAnchor(
   x: number,
   y: number,
 ): boolean {
-  const { terrain, obstacle, exclusion, palisadeBody, palisadeZone } = grid;
+  const { terrain, obstacle, exclusion, palisadeBody, buildingZone } = grid;
   const w = terrain.width;
   const h = terrain.height;
   // 1. Reserved zone - the max-level body plus the source's margin ring: on the map, on buildable ground,
-  //    clear of reserved-zone blockers (OBSTACLE nodes and other buildings' reserved zones, both in the
-  //    obstacle counts), so two buildings' reserved rings never overlap.
+  //    clear of OBSTACLE nodes and other buildings' reserved zones, so two buildings' reserved rings never
+  //    overlap.
   for (const c of footprint.reserved) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
     const slot = cy * w + cx;
-    if ((obstacle[slot] ?? 0) > 0 || (palisadeBody[slot] ?? 0) > 0 || (palisadeZone[slot] ?? 0) > 0)
-      return false;
+    if ((obstacle[slot] ?? 0) > 0 || (buildingZone[slot] ?? 0) > 0) return false;
   }
-  // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones, so placing
-  //    level 0 already reserves the top level's space. familyBody ⊆ reserved, so loop 1 already proved
-  //    every cell in-bounds; the guard only shields a hand-authored footprint that breaks that.
+  // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones and wall
+  //    bodies, so placing level 0 already reserves the top level's space. familyBody ⊆ reserved, so loop 1
+  //    already proved every cell in-bounds; the guard only shields a hand-authored footprint that breaks that.
   for (const c of footprint.familyBody) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
-    if (cx >= 0 && cy >= 0 && cx < w && cy < h && (exclusion[cy * w + cx] ?? 0) > 0) return false;
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;
+    const slot = cy * w + cx;
+    if ((exclusion[slot] ?? 0) > 0 || (palisadeBody[slot] ?? 0) > 0) return false;
   }
   // 3. `logicbuildonbiopattern` checks the walk-block body against the source's vegetation ground flags.
   // The original tests every surrounding triangle; the collision join conservatively collapses each
@@ -64,30 +70,22 @@ export function canPlaceAnchor(
   return true;
 }
 
-/** Palisade placement uses the building rule except that adjacent palisade build margins may overlap.
- * Existing wall bodies still reject the candidate's own walk cells, preventing duplicate segments. */
+/** A wall needs only its own cells: walkable ground clear of every body, whether a building, resource,
+ * signpost or another wall. It keeps no margin, so a line runs between trees and stones and up to a
+ * building's wall. Project rule. */
 export function canPlacePalisadeAnchor(
   grid: PlacementGrid,
-  footprint: BuildingFootprint,
+  body: readonly FootprintCell[],
   x: number,
   y: number,
 ): boolean {
-  const { terrain, obstacle, exclusion, palisadeBody } = grid;
-  const w = terrain.width;
-  const h = terrain.height;
-  for (const c of footprint.reserved) {
+  const { terrain, obstacle, palisadeBody } = grid;
+  for (const c of body) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
-    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
-    if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false;
-    if ((obstacle[cy * w + cx] ?? 0) > 0) return false;
-  }
-  for (const c of footprint.familyBody) {
-    const cx = x + footprintCellDx(y, c);
-    const cy = y + c.dy;
-    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
-    const slot = cy * w + cx;
-    if ((exclusion[slot] ?? 0) > 0 || (palisadeBody[slot] ?? 0) > 0) return false;
+    if (!terrain.inBounds(cx, cy) || !terrain.isWalkable(terrain.nodeAt(cx, cy))) return false;
+    const slot = cy * terrain.width + cx;
+    if ((obstacle[slot] ?? 0) > 0 || (palisadeBody[slot] ?? 0) > 0) return false;
   }
   return true;
 }
