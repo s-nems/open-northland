@@ -1,5 +1,13 @@
+import { footprintCellDx } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { AttackOrder, DefenceMode, Position, Settler } from '../../../src/components/index.js';
+import {
+  AttackOrder,
+  Building,
+  DefenceMode,
+  Owner,
+  Position,
+  Settler,
+} from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
@@ -11,7 +19,11 @@ import {
   THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
 } from '../../../src/systems/ai-player/index.js';
+import { seatRaiders } from '../../../src/systems/ai-player/military/defence/index.js';
+import { SIGHT_RADIUS_NODES } from '../../../src/systems/conflict/targeting.js';
 import { standsAtPost, TOWER_RANGE_BONUS_NODES } from '../../../src/systems/conflict/tower-post.js';
+import { attackerWeapon } from '../../../src/systems/conflict/weapons.js';
+import { buildingFootprintOf } from '../../../src/systems/footprint/geometry.js';
 import { razeBuilding } from '../../../src/systems/lifecycle/cleanup.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { aiContent } from '../../fixtures/ai-content.js';
@@ -57,8 +69,39 @@ const SEAM_MAP = { width: 32, height: 16, column: 22 };
 const FAR_BANK = { x: 50, y: 16 };
 /** Long enough for a posted archer to walk the few nodes to his tower and step inside. */
 const WALK_IN_TICKS = 200;
-/** The fixture bow's far reach (`aiContent`, the bowman's weapon row). */
-const BOW_REACH_NODES = 17;
+/** The far reach of the fixture's bowman, read off his weapon row. */
+function bowReach(sim: Simulation): number {
+  const bow = attackerWeapon(ctxOf(sim), VIKING, BOWMAN);
+  if (bow === null) throw new Error('setup: the fixture bowman is unarmed');
+  return bow.maxRange;
+}
+
+/** The nearest Manhattan distance from `at` to any wall cell of a `buildingType` site anchored on `site`. */
+function wallDistance(sim: Simulation, buildingType: number, site: Spot, at: Spot): number {
+  const cells = buildingFootprintOf(sim.content, buildingType)?.blocked ?? [];
+  let nearest = Math.abs(site.x - at.x) + Math.abs(site.y - at.y);
+  for (const c of cells) {
+    const x = site.x + footprintCellDx(site.y, c);
+    const y = site.y + c.dy;
+    nearest = Math.min(nearest, Math.abs(x - at.x) + Math.abs(y - at.y));
+  }
+  return nearest;
+}
+
+/** A foe tower at `at` with a bowman walked in to man its post; returns the archer. */
+function mannedFoeTower(sim: Simulation, at: Spot): Entity {
+  place(sim, TOWER_TYPE, at, FOE);
+  sim.step();
+  const tower = [...sim.world.query(Building)].find(
+    (e) => sim.world.get(e, Building).buildingType === TOWER_TYPE && sim.world.get(e, Owner).player === FOE,
+  );
+  if (tower === undefined) throw new Error('setup: no foe tower');
+  const archer = onlyOne(spawnAt(sim, { x: at.x + 4, y: at.y }, BOWMAN));
+  sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
+  for (let i = 0; i < WALK_IN_TICKS; i++) sim.step();
+  expect(standsAtPost(sim.world, archer)).toBe(tower);
+  return archer;
+}
 
 interface Spot {
   readonly x: number;
@@ -173,22 +216,17 @@ describe('build-order module - rebuilding under the enemy', () => {
     const sim = razedBakerySim();
     const near = placementOf(decide(sim));
     if (near === null) throw new Error('expected the bakery re-placed beside the mill');
-    place(sim, TOWER_TYPE, FAR_BANK, FOE);
-    sim.step();
-    const tower = entityOfBuilding(sim, TOWER_TYPE);
-    const archer = onlyOne(spawnAt(sim, { x: FAR_BANK.x + 4, y: FAR_BANK.y }, BOWMAN));
-    sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
-    for (let i = 0; i < WALK_IN_TICKS; i++) sim.step();
-    expect(standsAtPost(sim.world, archer)).toBe(tower);
+    const archer = mannedFoeTower(sim, FAR_BANK);
     const post = nodeOf(sim, archer);
-    const reach = BOW_REACH_NODES + TOWER_RANGE_BONUS_NODES;
+    const reach = bowReach(sim) + TOWER_RANGE_BONUS_NODES;
     // The old spot lies under the tower's bow: the garrison would shoot the site down as it rose.
-    expect(Math.abs(near.x - post.x) + Math.abs(near.y - post.y)).toBeLessThanOrEqual(reach);
+    expect(wallDistance(sim, BAKERY_TYPE, near, post)).toBeLessThanOrEqual(reach);
 
     const moved = placementOf(decide(sim));
     expect(moved?.buildingType).toBe(BAKERY_TYPE);
     if (moved === null) throw new Error('expected the bakery re-placed out of reach');
-    expect(Math.abs(moved.x - post.x) + Math.abs(moved.y - post.y)).toBeGreaterThan(reach);
+    // Judged at the walls: every wall cell of the site, not only its anchor, lies past the reach.
+    expect(wallDistance(sim, BAKERY_TYPE, moved, post)).toBeGreaterThan(reach);
 
     // An empty tower shoots nothing: the old spot is back.
     sim.world.destroy(archer);
@@ -222,10 +260,44 @@ describe('build-order module - rebuilding under the enemy', () => {
 
   it('judges an enemy fire reach at the walls: the span the site puts out from its anchor', () => {
     const fire = enemyFire([{ x: 10, y: 10, reach: 5 }]);
-    expect(fire(15, 10, 0)).toBe(true);
-    expect(fire(16, 10, 0)).toBe(false);
-    expect(fire(16, 10, 1)).toBe(true);
-    expect(enemyFire([])(10, 10, 0)).toBe(false);
+    expect(fire.reaches(15, 10, 0)).toBe(true);
+    expect(fire.reaches(16, 10, 0)).toBe(false);
+    expect(fire.reaches(16, 10, 1)).toBe(true);
+    expect(enemyFire([]).reaches(10, 10, 0)).toBe(false);
+    // Narrowed to the shooters a fan can meet: the disc's rim plus the span, and no one farther.
+    expect(fire.around(30, 10, 14, 1).reaches(15, 10, 0)).toBe(true);
+    expect(fire.around(30, 10, 13, 1).reaches(15, 10, 0)).toBe(false);
+  });
+
+  it('gives a loose raider at least his sight as reach, since he advances on what he sees', () => {
+    const sim = razedBakerySim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: the fixture map builds no terrain graph');
+    spawnAt(sim, FAR_CORNER, SPEARMAN);
+    spawnAt(sim, { x: FAR_CORNER.x + 6, y: FAR_CORNER.y }, BOWMAN);
+    const reaches = seatRaiders(sim.world, ctxOf(sim), terrain, SEAT).map((r) => r.reach);
+    expect(reaches).toEqual([SIGHT_RADIUS_NODES, Math.max(bowReach(sim), SIGHT_RADIUS_NODES)]);
+  });
+
+  it("keeps a tower coverage placement out of a manned enemy tower's reach", () => {
+    const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
+    const sim = aiSim();
+    placeHq(sim);
+    // An outlying home outside the HQ's circle arms the coverage entry.
+    const home = { x: HQ_X + 31, y: HQ_Y };
+    place(sim, HOME_TYPE, home);
+    sim.step();
+    const open = placementOf(coverage.run(sim.world, ctxOf(sim), SEAT));
+    if (open === null) throw new Error('expected a covering tower');
+    const archer = mannedFoeTower(sim, { x: home.x, y: home.y - 6 });
+    const post = nodeOf(sim, archer);
+    const reach = bowReach(sim) + TOWER_RANGE_BONUS_NODES;
+    expect(wallDistance(sim, TOWER_TYPE, open, post)).toBeLessThanOrEqual(reach);
+
+    const moved = placementOf(coverage.run(sim.world, ctxOf(sim), SEAT));
+    expect(moved?.buildingType).toBe(TOWER_TYPE);
+    if (moved === null) throw new Error('expected the tower placed out of reach');
+    expect(wallDistance(sim, TOWER_TYPE, moved, post)).toBeGreaterThan(reach);
   });
 
   it('holds a tower coverage placement while the seat is attacked', () => {

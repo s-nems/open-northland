@@ -6,9 +6,9 @@ export { enlistOrders } from './enlist.js';
 export { TOWER_GARRISON_ARCHERS, towerPostOrders } from './posts.js';
 export { sortieOrders } from './sortie.js';
 export {
+  type EnemyFire,
   enemyFire,
   enemyPosts,
-  type FireTest,
   raidOnTheSettlement,
   type Shooter,
   seatRaiders,

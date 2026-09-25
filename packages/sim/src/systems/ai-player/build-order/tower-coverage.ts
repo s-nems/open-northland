@@ -7,7 +7,7 @@ import { withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { seatBaseOf } from '../base.js';
-import type { FireTest } from '../military/defence/index.js';
+import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
 import { buildingSpotAccept, buildReach } from './placement.js';
@@ -101,15 +101,15 @@ export function coveragePlacementSpot(
   type: BuildingType,
   target: Entity,
   coverage: Coverage,
-  underFire: FireTest,
+  underFire: EnemyFire,
 ): HalfCellNode | null {
   const targetNode = anchorNodeOf(world, target);
   if (targetNode === null) return null;
   const centroid = anchorCentroid(world, owned) ?? targetNode;
   const seed =
     coverage.by === 'tower' ? outwardNode(centroid, targetNode, TOWER_OUTSKIRTS_PUSH_NODES) : targetNode;
-  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire);
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire, seed, fan);
   const reach = buildReach(world, owned, anchor).around(seed, fan);
   return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
     // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.

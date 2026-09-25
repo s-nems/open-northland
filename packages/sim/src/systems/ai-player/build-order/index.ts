@@ -20,7 +20,7 @@ import { seatBaseOf } from '../base.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../cadence.js';
 import { buildingTypeByContentId } from '../content-lookup.js';
 import type { AiPlayerModule } from '../index.js';
-import type { FireTest } from '../military/defence/index.js';
+import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../node-geometry.js';
 import { ownedBuildings } from '../seat-roster.js';
 import {
@@ -115,6 +115,9 @@ function runBuildOrder(
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         if (stall !== null && ctx.tick < stall.retryTick) return [];
         const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry, underFire);
+        // A serving placement with no room beside the workshop it serves is passed over rather than stalled:
+        // the workshop still runs, slower, while a stalled list would not.
+        if (spot === null && entry.unlessWithin !== undefined) continue;
         recordPlacementSearch(world, player, entryIndex, spot === null, ctx.tick);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
@@ -294,7 +297,7 @@ function replaceMissingBase(
   player: number,
   owned: readonly Entity[],
   tribe: number,
-  underFire: FireTest,
+  underFire: EnemyFire,
 ): readonly PlayerCommand[] {
   const centre = anchorCentroid(world, owned);
   if (centre === null) return [];

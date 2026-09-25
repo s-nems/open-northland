@@ -2,9 +2,9 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import {
+  type EnemyFire,
   enemyFire,
   enemyPosts,
-  type FireTest,
   raidOnTheSettlement,
   seatRaiders,
 } from '../military/defence/index.js';
@@ -21,7 +21,7 @@ export interface Siege {
   readonly attacked: boolean;
   /** Whether a site on a node would rise inside an enemy fighter's reach, a tower garrison's included:
    *  the garrison never raids, but it shoots down whatever is raised under its post. */
-  readonly underFire: FireTest;
+  readonly underFire: EnemyFire;
 }
 
 /** Cost: one walk over every person ({@link seatRaiders}, the scan the military module makes too, with no

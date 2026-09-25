@@ -37,9 +37,15 @@ export interface Shooter {
   readonly reach: number;
 }
 
-/** Whether a site anchored on `(x, y)`, its walls up to `span` nodes out from the anchor, stands inside
- *  some enemy fighter's reach. */
-export type FireTest = (x: number, y: number, span: number) => boolean;
+/** The enemy's fire over the map, narrowed to the shooters a search can meet before it runs its test. */
+export interface EnemyFire {
+  /** Whether a site anchored on `(x, y)`, its walls up to `span` nodes out from the anchor, stands inside
+   *  some shooter's reach. Linear in the shooters, so narrow it first. */
+  reaches(x: number, y: number, span: number): boolean;
+  /** The same fire over only the shooters whose reach, plus `span`, meets the Manhattan disc of `radius`
+   *  around `(x, y)`: what a search fanning that far from its centre can meet at all, usually nobody. */
+  around(x: number, y: number, radius: number, span: number): EnemyFire;
+}
 
 /** How far past its watch band ({@link threatWatchNodes}) a raider must draw off before the seat stands
  *  down. Without the margin a fighter pacing the rim would flick the town's economy in and out of cover
@@ -137,11 +143,15 @@ export function enemyPosts(
   return posts;
 }
 
-/** The {@link FireTest} over every shooter, loose or posted, whatever ground he stands on: a bow shoots
- *  across water. Linear in the shooters, so the caller runs it after its cheaper vetoes. */
-export function enemyFire(shooters: readonly Shooter[]): FireTest {
-  if (shooters.length === 0) return () => false;
-  return (x, y, span) => shooters.some((s) => Math.abs(s.x - x) + Math.abs(s.y - y) <= s.reach + span);
+/** The {@link EnemyFire} of every shooter, loose or posted, whatever ground he stands on: a bow shoots
+ *  across water. */
+export function enemyFire(shooters: readonly Shooter[]): EnemyFire {
+  const within = (s: Shooter, x: number, y: number, extra: number): boolean =>
+    Math.abs(s.x - x) + Math.abs(s.y - y) <= s.reach + extra;
+  return {
+    reaches: (x, y, span) => shooters.some((s) => within(s, x, y, span)),
+    around: (x, y, radius, span) => enemyFire(shooters.filter((s) => within(s, x, y, radius + span))),
+  };
 }
 
 /**

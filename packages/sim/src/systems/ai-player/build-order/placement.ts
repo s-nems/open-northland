@@ -12,7 +12,7 @@ import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
 import { resourcesAtNode } from '../../spatial/resources.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
-import type { FireTest } from '../military/defence/index.js';
+import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf, bestRingNode, outwardNode } from '../node-geometry.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
@@ -178,7 +178,8 @@ function outskirtsNode(
 }
 
 /** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
- *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. */
+ *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. `serves` is
+ *  the building an `unlessWithin` entry's affinity picked, which the spot must land in reach of, else null. */
 function searchCentre(
   world: World,
   ctx: SystemContext,
@@ -190,8 +191,9 @@ function searchCentre(
   type: BuildingType,
   sameKindAnchors: readonly HalfCellNode[],
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
-): HalfCellNode {
+): { centre: HalfCellNode; serves: HalfCellNode | null } {
   const anchors: HalfCellNode[] = [];
+  let serves: HalfCellNode | null = null;
   for (const affinity of entry.near ?? []) {
     const node = affinityNode(
       world,
@@ -205,16 +207,21 @@ function searchCentre(
       entry,
       affinity,
     );
-    if (node !== null) anchors.push(node);
+    if (node === null) continue;
+    anchors.push(node);
+    if (affinity.kind === 'building' && affinity.id === entry.unlessWithin?.building) serves = node;
   }
-  if (anchors.length === 0) return anchor;
+  if (anchors.length === 0) return { centre: anchor, serves };
   let sx = 0;
   let sy = 0;
   for (const a of anchors) {
     sx += a.hx;
     sy += a.hy;
   }
-  return reach.clamp({ hx: Math.floor(sx / anchors.length), hy: Math.floor(sy / anchors.length) });
+  return {
+    centre: reach.clamp({ hx: Math.floor(sx / anchors.length), hy: Math.floor(sy / anchors.length) }),
+    serves,
+  };
 }
 
 /** The ground a placement may take: within {@link BUILD_SEARCH_MAX_RADIUS_NODES} (Manhattan) of one of
@@ -319,7 +326,8 @@ function wallSpan(ctx: SystemContext, buildingTypeId: number): number {
 /**
  * Shared legality test for a spot search: in-bounds buildable ground, off every existing building's
  * anchor (explicit, so a footprint-less synthetic type never stacks), out of every enemy fighter's reach
- * (`underFire`, judged at the walls), accepted by the seat's placement probe, and with its reserved zone
+ * (`underFire`, judged at the walls and narrowed once to the shooters the `fan` around `centre` can meet),
+ * accepted by the seat's placement probe, and with its reserved zone
  * off every live {@link DEPOSIT_GOOD_IDS} deposit's own node. The engine lets a building cover a deposit
  * that carries no walk or build block, such as clay, and so bury it; the seat never does. It scans the
  * occupied set once per call, so build the closure per search, not per candidate.
@@ -330,9 +338,12 @@ export function buildingSpotAccept(
   terrain: TerrainGraph,
   player: number,
   buildingTypeId: number,
-  underFire: FireTest,
+  underFire: EnemyFire,
+  centre: HalfCellNode,
+  fan: number,
 ): (x: number, y: number) => boolean {
   const span = wallSpan(ctx, buildingTypeId);
+  const fire = underFire.around(centre.hx, centre.hy, fan, span);
   const occupied = new Set<NodeId>(); // an off-grid anchor can never match a candidate, so it is left out
   for (const e of world.query(Building)) {
     const node = anchorNodeOf(world, e);
@@ -349,7 +360,7 @@ export function buildingSpotAccept(
   return (x, y) => {
     if (!terrain.inBounds(x, y)) return false;
     const node = terrain.nodeAt(x, y);
-    if (!terrain.isBuildable(node) || occupied.has(node) || underFire(x, y, span)) return false;
+    if (!terrain.isBuildable(node) || occupied.has(node) || fire.reaches(x, y, span)) return false;
     return probe.canPlace(x, y) && !coversLiveDeposit(world, deposits, zone, x, y);
   };
 }
@@ -403,7 +414,8 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  * The legal node inside the seat's {@link BuildReach} of least ring radius from {@link searchCentre} plus
  * the {@link HQ_PULL_DIVISOR_NODES} pull toward `anchor`, or null to stall the entry. The ring budget is
  * twice the reach radius, so a centre inside one building's disc reaches every node of that disc. The
- * `apart` veto runs as a first pass only, so the preference never stalls.
+ * `apart` veto runs as a first pass only, so the preference never stalls. An `unlessWithin` entry's spot
+ * must lie within that radius of the building it serves, or a well would go up that serves nothing.
  */
 export function placementSpot(
   world: World,
@@ -414,13 +426,12 @@ export function placementSpot(
   anchor: HalfCellNode,
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
-  underFire: FireTest,
+  underFire: EnemyFire,
 ): HalfCellNode | null {
-  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire);
   const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
   const settlement = buildReach(world, owned, anchor);
-  const centre = searchCentre(
+  const { centre, serves } = searchCentre(
     world,
     ctx,
     terrain,
@@ -432,7 +443,9 @@ export function placementSpot(
     sameKindAnchors,
     entry,
   );
+  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire, centre, fan);
   const reach = settlement.around(centre, fan);
+  const serveRadius = entry.unlessWithin?.radius ?? 0;
   const hqPull = (x: number, y: number): number =>
     Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / HQ_PULL_DIVISOR_NODES);
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
@@ -441,6 +454,7 @@ export function placementSpot(
       // entry re-walks the whole fan on every retry.
       if (!reach.contains(x, y)) return false;
       if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
+      if (serves !== null && !withinNodeRadius(serves.hx, serves.hy, x, y, serveRadius)) return false;
       if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
       if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
       return accept(x, y);

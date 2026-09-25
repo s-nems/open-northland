@@ -14,6 +14,7 @@ import {
   type BuildOrderEntry,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
+  enemyFire,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../src/systems/ai-player/index.js';
 import { bestRingNode } from '../../../src/systems/ai-player/node-geometry.js';
@@ -394,7 +395,9 @@ describe('build-order placement - affinity and ground rules', () => {
       terrain,
       SEAT,
       PIT_HOUSE,
-      () => false,
+      enemyFire([]),
+      { hx: clayX, hy: clayY },
+      0,
     );
     expect(accept(clayX, clayY)).toBe(false);
     expect(accept(MUSHROOM_SPOT.x, MUSHROOM_SPOT.y)).toBe(true);

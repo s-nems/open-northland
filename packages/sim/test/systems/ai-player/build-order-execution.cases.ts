@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { Building, grantScriptUnlock, Settler, setMapPermission } from '../../../src/components/index.js';
+import {
+  Building,
+  grantScriptUnlock,
+  Owner,
+  Settler,
+  setMapPermission,
+} from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Simulation } from '../../../src/index.js';
 import {
@@ -9,12 +15,14 @@ import {
   REBUILD_DELAY_TICKS,
   WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
+import { standsAtPost } from '../../../src/systems/conflict/tower-post.js';
 import {
   ANIMAL_FARM_TYPE,
   aiSim,
   BAKERY_TOP_TYPE,
   BAKERY_TYPE,
   BARRACKS_TYPE,
+  BOWMAN,
   BREWERY_TYPE,
   COLLECTOR,
   completeSites,
@@ -468,6 +476,9 @@ it('does not issue an upgrade blocked by map permissions and resumes once a scri
   expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toMatchObject([{ kind: 'upgradeBuilding' }]);
 });
 
+/** The enemy seat in the bakery well cases. */
+const FOE = 3;
+
 describe('build order - the bakery wells', () => {
   const NEAR_BAKERY = { x: 34, y: 16 };
   const FAR_BAKERY = { x: 6, y: 16 };
@@ -503,6 +514,57 @@ describe('build order - the bakery wells', () => {
     if (well?.kind !== 'placeBuilding') throw new Error('expected a well placement');
     expect(well.buildingType).toBe(WELL_TYPE);
     expect(Math.abs(well.x - FAR_BAKERY.x) + Math.abs(well.y - FAR_BAKERY.y)).toBeLessThan(WELL_REACH_NODES);
+  });
+
+  it('passes the well over, rather than stalling the list, when no spot in reach of the bakery is legal', () => {
+    // Manned foe towers north and south of the far bakery put every node in a well's reach of it under
+    // fire: the reach disc is wider in rows than in columns, so one post's Manhattan reach cannot cover it.
+    const sim = aiSim();
+    placeHq(sim);
+    for (const site of [
+      { buildingType: BAKERY_TYPE, ...NEAR_BAKERY },
+      { buildingType: BAKERY_TOP_TYPE, ...FAR_BAKERY },
+      { buildingType: WELL_TYPE, x: NEAR_BAKERY.x + 4, y: NEAR_BAKERY.y },
+    ]) {
+      sim.enqueueSetup({ kind: 'placeBuilding', ...site, tribe: VIKING, owner: SEAT });
+    }
+    const posts = [
+      { x: FAR_BAKERY.x, y: FAR_BAKERY.y - 4 },
+      { x: FAR_BAKERY.x, y: FAR_BAKERY.y + 4 },
+    ];
+    for (const at of posts) {
+      sim.enqueueSetup({ kind: 'placeBuilding', buildingType: TOWER_TYPE, ...at, tribe: VIKING, owner: FOE });
+    }
+    sim.step();
+    const towers = [...sim.world.query(Building)].filter((e) => sim.world.get(e, Owner).player === FOE);
+    expect(towers).toHaveLength(posts.length);
+    for (const at of posts) {
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: BOWMAN,
+        x: at.x + 4,
+        y: at.y,
+        tribe: VIKING,
+        owner: FOE,
+      });
+    }
+    sim.step();
+    const archers = [...sim.world.query(Settler, Owner)].filter(
+      (e) => sim.world.get(e, Owner).player === FOE,
+    );
+    expect(archers).toHaveLength(posts.length);
+    for (const [i, archer] of archers.entries()) {
+      const tower = towers[i];
+      if (tower === undefined) throw new Error('setup: fewer towers than archers');
+      sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
+    }
+    for (let i = 0; i < 200; i++) sim.step();
+    for (const archer of archers) expect(standsAtPost(sim.world, archer)).not.toBeNull();
+
+    expect([...buildOrderModule(order).run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
+      kind: 'placeBuilding',
+      buildingType: MILL_TYPE,
+    });
   });
 
   it('skips the well once every bakery has one in reach', () => {
