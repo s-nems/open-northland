@@ -216,7 +216,7 @@ describe('HealHumansInArea', () => {
     expect(pools.filter((h) => h.hitpoints === 1)).toHaveLength(1);
   });
 
-  it('leaves a human a temple raised above its max where it is', () => {
+  it('sets a human a temple raised above its max back to the max', () => {
     const sim = scriptedSim([firingMission([{ opcode: 'HealHumansInArea', point: POINT, range: AREA }])]);
     spawn(sim, { player: OWNER });
     sim.run(IDLE_TICKS);
@@ -225,7 +225,7 @@ describe('HealHumansInArea', () => {
     const over = sim.world.get(blessed, Health).max + 1;
     sim.world.mut(blessed, Health).hitpoints = over;
     runLoadPass(sim);
-    expect(sim.world.get(blessed, Health).hitpoints).toBe(over);
+    expect(sim.world.get(blessed, Health).hitpoints).toBe(sim.world.get(blessed, Health).max);
   });
 });
 

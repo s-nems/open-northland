@@ -109,8 +109,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'vision', system: visionSystem },
   { name: 'combat', system: combatSystem },
   { name: 'projectile', system: projectileSystem },
-  // After this tick's blows, so an arrow in the temple stops its blessing at once, and before cleanup
-  // reaps the dead it must not revive.
+  // After this tick's blows, so an arrow in the temple stops its blessing at once.
   { name: 'templeAura', system: templeAuraSystem },
   { name: 'growth', system: growthSystem },
   { name: 'technologyAfterWork', system: technologySystem },

@@ -18,13 +18,13 @@ import { withinRange } from '../targets.js';
  *  100-entry buffer and stops). */
 const HOUSE_DAMAGE_CAP = 100;
 
-/** Refill every human standing within `range` of the point, whoever owns it - the original heals
- *  friend and foe alike. */
+/** Set every human standing within `range` of the point to its max, whoever owns it - the original heals
+ *  friend and foe alike, and takes a temple's surplus away too. */
 export function healHumansInArea(pass: MissionPass, point: HalfCellNode, range: number): void {
   const { world } = pass;
   for (const e of world.query(Person, Health, Position)) {
     const health = world.get(e, Health);
-    if (health.hitpoints >= health.max) continue; // a full human is not dirtied, nor a blessed one lowered
+    if (health.hitpoints === health.max) continue; // mut-on-change: a full human must not be dirtied
     if (!withinRange(world, e, point, range)) continue;
     world.mut(e, Health).hitpoints = health.max;
   }

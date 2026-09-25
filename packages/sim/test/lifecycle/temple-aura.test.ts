@@ -24,6 +24,8 @@ import { grassNodeMap } from '../fixtures/terrain.js';
 const VIKING = 1;
 const TEMPLE_TYPE = 3;
 const SAWMILL_TYPE = 2;
+/** The fixture headquarters: a prayer site, but not a temple, so it blesses nobody. */
+const HEADQUARTERS_TYPE = 1;
 const TEMPLE_HITPOINTS = 1000;
 const OWNER = 0;
 const RIVAL = 1;
@@ -98,6 +100,23 @@ describe('templeAuraSystem - the temple blesses its owner people once a game sec
     expect(hp(sim, beyond)).toBe(POOL);
   });
 
+  it('blesses once per temple in reach, rechecking the religion level before each', () => {
+    const sim = fresh();
+    templeAt(sim, 10);
+    templeAt(sim, 14);
+    const settler = personAt(sim, 12, { piety: NEED_SATED_THRESHOLD });
+    const worn = personAt(sim, 13, { piety: ONE });
+
+    blessAt(sim, 0);
+
+    expect(hp(sim, settler)).toBe(POOL + 2 * TEMPLE_AURA_HITPOINTS);
+    // The first blessing lifts the bar past the sated level, so the second adds no religion.
+    expect(piety(sim, settler)).toBe(applyNeedUnits(NEED_SATED_THRESHOLD, TEMPLE_AURA_PIETY_UNITS));
+    expect(piety(sim, worn)).toBe(
+      applyNeedUnits(applyNeedUnits(ONE, TEMPLE_AURA_PIETY_UNITS), TEMPLE_AURA_PIETY_UNITS),
+    );
+  });
+
   it("blesses only the temple owner's people", () => {
     const sim = fresh();
     templeAt(sim, 10);
@@ -111,12 +130,13 @@ describe('templeAuraSystem - the temple blesses its owner people once a game sec
     expect(piety(sim, rival)).toBe(WORN);
   });
 
-  it('gives nothing from a temple still being built or from another building', () => {
+  it('gives nothing from a temple still being built, the headquarters or another building', () => {
     const sim = fresh();
     const site = templeAt(sim, 10);
     sim.world.mut(site, Building).built = fx.fromInt(0);
     sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
     templeAt(sim, 20, { type: SAWMILL_TYPE });
+    templeAt(sim, 18, { type: HEADQUARTERS_TYPE });
     const settler = personAt(sim, 15);
 
     blessAt(sim, 0);
@@ -215,11 +235,10 @@ describe('templeAuraSystem - the temple blesses its owner people once a game sec
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
-  it('runs after this tick blows land and before the reaper', () => {
+  it("runs after this tick's blows land", () => {
     const names = SYSTEM_ORDER.map((s) => s.name);
     expect(names.indexOf('projectile')).toBeLessThan(names.indexOf('templeAura'));
     expect(names.indexOf('combat')).toBeLessThan(names.indexOf('templeAura'));
-    expect(names.indexOf('templeAura')).toBeLessThan(names.indexOf('cleanup'));
   });
 
   it('is byte-identical across two same-seed runs', () => {

@@ -6,9 +6,9 @@
 The forge clips spend religion on whoever plays them: `viking_carpenter_produce_spear_wooden` and both
 `viking_sewer_produce_armor_*` carry `event <at> 4 -1500`. Only `jobtypes.ini`'s `needsReligionFlag` trades
 (joiner, armorer, smith) go to pray on their own, so a carpenter's or a sewer's bar moves only when the
-player orders a prayer or when it works near an undamaged temple of its owner, whose blessing refills every
-settler in range up to the sated level. Otherwise the bar drains to empty and stays there, and the details
-panel shows a stat that looks stuck.
+player orders a prayer or when it stands within reach of an undamaged temple of its owner, whose blessing
+adds religion every second while the bar is at or below the sated level. Otherwise the bar drains to empty
+and stays there, and the details panel shows a stat that looks stuck.
 
 ## Scope
 
