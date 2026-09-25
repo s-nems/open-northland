@@ -1,6 +1,8 @@
+import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
+import { Position, Resource } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
-import { Simulation, type TerrainMap } from '../../../src/index.js';
+import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
 import { buildReach, HQ_PULL_DIVISOR_NODES } from '../../../src/systems/ai-player/build-order/placement.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
@@ -12,6 +14,7 @@ import {
 } from '../../../src/systems/ai-player/index.js';
 import { bestRingNode } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
+import { canPlaceBuilding, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
@@ -21,6 +24,7 @@ import {
   HQ_TYPE,
   HQ_X,
   HQ_Y,
+  MUD,
   makeAiSeat,
   placeHq,
   placeResources,
@@ -33,6 +37,9 @@ import {
   VIKING,
   WELL_TYPE,
 } from './support.js';
+
+/** How near a deposit an affinity placement that keeps off it still lands (a reserved ring plus one). */
+const CLAY_NEIGHBOURHOOD_NODES = 4;
 
 describe('build-order placement - affinity and ground rules', () => {
   /** A half-cell node map that is grass except where `sandy(x, y)` says otherwise. */
@@ -323,5 +330,46 @@ describe('build-order placement - affinity and ground rules', () => {
     const toOutpost = Math.abs(spot.x - OUTPOST.x) + Math.abs(spot.y - OUTPOST.y);
     expect(toOutpost).toBeLessThanOrEqual(BUILD_SEARCH_MAX_RADIUS_NODES);
     expect(toOutpost).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // pulled out toward the deposit
+  });
+
+  it('keeps the reserved zone off a clay deposit, which carries no block the engine would refuse', () => {
+    // A clay deposit as the real records stamp it: walkable, no walk or build block, dug from its own node.
+    const PIT_HOUSE = 34;
+    const pitFootprint = {
+      blocked: [{ dx: 0, dy: 0 }],
+      familyBody: [{ dx: 0, dy: 0 }],
+      reserved: [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => ({ dx, dy }))),
+    };
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      buildings: [
+        ...base.buildings,
+        { typeId: PIT_HOUSE, id: 'test_pit_house', kind: 'home', homeSize: 1, footprint: pitFootprint },
+      ],
+    });
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.step();
+    const clay = sim.world.create();
+    const { x: clayX, y: clayY, harvest } = RESOURCE_SPOTS.mud;
+    sim.world.add(clay, Position, positionOfNode(clayX, clayY));
+    sim.world.add(clay, Resource, { goodType: MUD, remaining: 5, harvestAtomic: harvest });
+    stampResourceFootprintData(sim.world, clay, { walk: [], build: [], work: [{ dx: 0, dy: 0 }] });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    expect(canPlaceBuilding(sim.world, { ...ctxOf(sim), content }, terrain, PIT_HOUSE, clayX, clayY)).toBe(
+      true,
+    );
+
+    const [spot] = buildOrderModule([
+      { kind: 'place', building: 'test_pit_house', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
+    ]).run(sim.world, { ...ctxOf(sim), content }, SEAT);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement beside the clay');
+    const covered = pitFootprint.reserved.some(
+      (c) => spot.x + footprintCellDx(spot.y, c) === clayX && spot.y + c.dy === clayY,
+    );
+    expect(covered).toBe(false);
+    expect(Math.abs(spot.x - clayX) + Math.abs(spot.y - clayY)).toBeLessThanOrEqual(CLAY_NEIGHBOURHOOD_NODES);
   });
 });

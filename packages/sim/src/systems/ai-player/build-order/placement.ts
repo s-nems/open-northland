@@ -1,5 +1,5 @@
 import { type BuildingType, footprintCellDx } from '@open-northland/data';
-import { Building, diplomacyStance, Owner, ownerOf } from '../../../components/index.js';
+import { Building, diplomacyStance, Owner, ownerOf, Resource } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -7,8 +7,9 @@ import { withinNodeRadius } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
-import { buildingFootprintOf } from '../../footprint/geometry.js';
+import { ANCHOR_ONLY, buildingFootprintOf } from '../../footprint/geometry.js';
 import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
+import { resourcesAtNode } from '../../spatial/resources.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
 import { anchorCentroid, anchorNodeOf, bestRingNode, outwardNode } from '../node-geometry.js';
@@ -250,8 +251,11 @@ function groundAccepted(
 
 /**
  * Shared legality test for a spot search: in-bounds buildable ground, off every existing building's
- * anchor (explicit, so a footprint-less synthetic type never stacks), and accepted by the seat's placement
- * probe. It scans the occupied set once per call, so build the closure per search, not per candidate.
+ * anchor (explicit, so a footprint-less synthetic type never stacks), accepted by the seat's placement
+ * probe, and with its reserved zone off every live resource's own node. The engine lets a building cover
+ * a deposit that carries no walk or build block, such as clay, and so bury it; the seat never does
+ * (authored, the seat's own rule). It scans the occupied set once per call, so build the closure per
+ * search, not per candidate.
  */
 export function buildingSpotAccept(
   world: World,
@@ -266,12 +270,29 @@ export function buildingSpotAccept(
     if (node !== null && terrain.inBounds(node.hx, node.hy)) occupied.add(terrain.nodeAt(node.hx, node.hy));
   }
   const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, player);
+  const reserved = buildingFootprintOf(ctx.content, buildingTypeId)?.reserved;
+  const zone = reserved !== undefined && reserved.length > 0 ? reserved : ANCHOR_ONLY;
   return (x, y) => {
     if (!terrain.inBounds(x, y)) return false;
     const node = terrain.nodeAt(x, y);
     if (!terrain.isBuildable(node) || occupied.has(node)) return false;
-    return probe.canPlace(x, y);
+    return probe.canPlace(x, y) && !coversLiveResource(world, zone, x, y);
   };
+}
+
+/** Whether the zone `cells` anchored at `(x, y)` covers the node of a resource with goods left. */
+function coversLiveResource(
+  world: World,
+  cells: readonly { dx: number; dy: number }[],
+  x: number,
+  y: number,
+): boolean {
+  for (const c of cells) {
+    for (const e of resourcesAtNode(world, x + footprintCellDx(y, c), y + c.dy)) {
+      if (world.get(e, Resource).remaining > 0) return true;
+    }
+  }
+  return false;
 }
 
 /** How far an `apart` placement keeps from the seat's other same-kind buildings, in world-metric
