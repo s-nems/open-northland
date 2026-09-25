@@ -4,6 +4,8 @@ import { MapScript, TerrainMapFile } from '@open-northland/data';
 import {
   components,
   exportSaveGame,
+  hexDistanceBetween,
+  nodeOfPosition,
   playerCommand,
   type SimEvent,
   serializeSaveGame,
@@ -21,6 +23,7 @@ const CONTACT_MISSION = 81;
 const TRIBUTE_MISSION = 82;
 const CONTACT_PAGE = 511;
 const FRANK_SEAT = 5;
+/** The well's story encounter, whose point lies inside a closed wall ring. */
 const ENCOUNTER_MISSION = 22;
 /** The mission that hands the player the win, activated only by a later chain of triggers. */
 const VICTORY_MISSION = 77;
@@ -29,7 +32,7 @@ const MOVEMENT_BUDGET_TICKS = 2400;
 
 /** A real player's opening and reinforcement route; no verdict or mission state is injected. */
 describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
-  it('opens contact briefings, reaches reinforcements and a story encounter across restore', async () => {
+  it('opens contact briefings and reaches reinforcements across restore, but not the walled well', async () => {
     const ir = rawIrUnderTest() as ContentIr;
     const { merge } = await loadContentUnderTest();
     const root = resolve(contentDir(), 'maps');
@@ -102,6 +105,8 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
     const encounter = sim.missions?.missions[ENCOUNTER_MISSION]?.goals[0];
     if (encounter?.opcode !== 'FindPosByHumans') throw new Error('story encounter source changed');
     expect(encounter.humanId).toBe(goal.humanId);
+    // Original behavior: the well's chest stands inside a closed ring of a friendly player's walls, and
+    // walkers step only between hex neighbours, so nobody reaches it and its story encounter never fires.
     const approach = playerCommand(0, {
       kind: 'moveUnit',
       entity: hero,
@@ -109,16 +114,17 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
       y: encounter.point.hy,
     });
     sim.enqueue(approach);
-    for (
-      let tick = 0;
-      tick < MOVEMENT_BUDGET_TICKS && !sim.missionBriefingHistory().includes(ENCOUNTER_PAGE);
-      tick++
-    ) {
+    for (let tick = 0; tick < systems.MISSION_EVALUATION_TICKS * 3; tick++) {
       sim.step();
       collectEvents();
     }
-    expect(sim.missionStatus()[ENCOUNTER_MISSION]).toMatchObject({ done: true, fireCount: 1 });
-    expect(briefingPages).toContain(ENCOUNTER_PAGE);
+    const heroAt = sim.world.get(hero, components.Position);
+    const heroNode = nodeOfPosition(heroAt.x, heroAt.y);
+    expect(
+      hexDistanceBetween(heroNode.hx, heroNode.hy, encounter.point.hx, encounter.point.hy),
+    ).toBeGreaterThan(encounter.range);
+    expect(sim.missionStatus()[ENCOUNTER_MISSION]).toMatchObject({ done: false, fireCount: 0 });
+    expect(briefingPages).not.toContain(ENCOUNTER_PAGE);
     expect(components.missionRecords(sim.world)[VICTORY_MISSION]?.fireCount ?? 0).toBe(0);
     expect(scriptFailures).toEqual([]);
   }, 90_000);
