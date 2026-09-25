@@ -26,7 +26,7 @@ import { passIndexOf } from './combat-index.js';
 import { projectileStep } from './shot-aim.js';
 import { buildingBodyNodes } from './target-node.js';
 import { mayTarget } from './targeting.js';
-import { damageVsTarget, hitSoundVsMaterial, targetMaterial } from './weapons.js';
+import { damageVsTarget, glancesOff, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
 
@@ -81,12 +81,11 @@ function land(
   }
   // The victim's armor picks the damage column and the impact sound, as a melee swing's does.
   const material = targetMaterial(world, ctx, victim);
-  const hitSoundType = hitSoundVsMaterial(proj, material) ?? null;
-  const blow = {
-    damage: damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material)),
-    weaponMainType: proj.weaponMainType,
-    hitSoundType,
-  };
+  const damage = damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material));
+  const hitSoundType = glancesOff(world, victim, damage)
+    ? null
+    : (hitSoundVsMaterial(proj, material) ?? null);
+  const blow = { damage, weaponMainType: proj.weaponMainType, hitSoundType };
   // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
   resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, 'projectile');
   ctx.events.emit({

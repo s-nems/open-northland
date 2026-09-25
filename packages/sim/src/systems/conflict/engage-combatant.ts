@@ -53,6 +53,7 @@ import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import {
   attackerWeapon,
   damageVsTarget,
+  glancesOff,
   hitSoundVsMaterial,
   startAttack,
   targetMaterial,
@@ -363,13 +364,14 @@ function swingAt(
   const material = targetMaterial(world, ctx, target);
   const base = weaponDamageVsMaterial(weapon.weapon, material);
   const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
+  const damage = world.has(target, Palisade)
+    ? damageVsTarget(world, target, base)
+    : world.has(target, Building)
+      ? withHouseDamageExperience(base, hits)
+      : withFightDamageBonus(base, hits);
   const blow = {
-    damage: world.has(target, Palisade)
-      ? damageVsTarget(world, target, base)
-      : world.has(target, Building)
-        ? withHouseDamageExperience(base, hits)
-        : withFightDamageBonus(base, hits),
-    hitSoundType: hitSoundVsMaterial(weapon.weapon, material),
+    damage,
+    hitSoundType: glancesOff(world, target, damage) ? undefined : hitSoundVsMaterial(weapon.weapon, material),
   };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
 }

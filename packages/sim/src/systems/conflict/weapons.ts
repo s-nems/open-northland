@@ -87,9 +87,27 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
   return armorMaterialForClass(ctx.content, armor.armorClass);
 }
 
-/** Landscapes store durability in 0..100 valency and receive the integer hundreds of HOUSE damage. */
+/** How much of a blow's HOUSE damage takes one valency off a wall. */
+const HOUSE_DAMAGE_PER_WALL_VALENCY = 100;
+
+/**
+ * The valency a wall loses to a blow of `houseDamage`, the weapon's HOUSE column. Source basis:
+ * landscapetypes.ini gives the wall and both gates `maximumValency 100` and `transition 10 ... -1`, one
+ * valency per hit; original behavior: a blow lands one such hit per whole hundred, so under 100 does nothing.
+ */
+export function wallBlowDamage(houseDamage: number): number {
+  return Math.trunc(Math.max(0, houseDamage) / HOUSE_DAMAGE_PER_WALL_VALENCY);
+}
+
+/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, else `damage` itself. */
 export function damageVsTarget(world: World, target: Entity, damage: number): number {
-  return world.has(target, Palisade) ? Math.trunc(Math.max(0, damage) / 100) : damage;
+  return world.has(target, Palisade) ? wallBlowDamage(damage) : damage;
+}
+
+/** Whether a blow of resolved `damage` leaves `target` untouched. Original behavior: a blow that takes no
+ *  valency off a wall does nothing at all, and sounds no hit. */
+export function glancesOff(world: World, target: Entity, damage: number): boolean {
+  return damage <= 0 && world.has(target, Palisade);
 }
 
 /** What one landed blow of a weapon does to a target of one armor material: the resolved damage column

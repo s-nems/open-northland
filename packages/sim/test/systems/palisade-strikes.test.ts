@@ -21,12 +21,14 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 const VIKING = 1;
+const WOODCUTTER = 1;
 /** The fixture's bow-armed job. */
 const HUNTER = 15;
 const P0 = 0;
 const P1 = 1;
-/** Building-column damage that takes one valency off a wall per blow. */
+/** Building-column damage that takes one valency off a wall per blow, and one too weak to take any. */
 const DENTING = 150;
+const GLANCING = 50;
 const WALL_HIT_SOUND = 84;
 const ARROW = 1;
 const ARROW_SPEED = 8;
@@ -165,5 +167,33 @@ describe('arrows at a wall', () => {
     expect(hits.some((ev) => ev.at.hx !== GATE_AT.hx)).toBe(true);
     const health = sim.world.get(gate, Health);
     expect(health.max - health.hitpoints).toBe(hits.length);
+  });
+});
+
+describe('a blow too weak to dent a wall', () => {
+  it('sounds no hit and leaves the wall whole, where a denting one sounds', () => {
+    const firstBlow = (houseDamage: number) => {
+      const { sim, gate } = gated(houseDamage);
+      const soldier = striker(sim, WOODCUTTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 1 });
+      attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: gate });
+      const [blow] = eventsOver(sim, 200, struck);
+      return { blow, health: sim.world.get(gate, Health) };
+    };
+    const glancing = firstBlow(GLANCING);
+    expect(glancing.blow?.kind).toBe('combatHit');
+    expect(glancing.blow?.soundType).toBeUndefined();
+    expect(glancing.health.hitpoints).toBe(glancing.health.max);
+    expect(firstBlow(DENTING).blow?.soundType).toBe(WALL_HIT_SOUND);
+  });
+
+  it('lands silent from an arrow too', () => {
+    const { sim, gate } = gated(GLANCING);
+    const archer = striker(sim, HUNTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 8 });
+    shootAt(sim, archer, gate, GATE_AT, GLANCING);
+    const [hit] = eventsOver(sim, 60, struck);
+    expect(hit?.kind).toBe('projectileHit');
+    expect(hit?.soundType).toBeUndefined();
+    const health = sim.world.get(gate, Health);
+    expect(health.hitpoints).toBe(health.max);
   });
 });

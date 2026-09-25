@@ -16,6 +16,7 @@ import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
+import { glancesOff } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { markStructureDamaged } from '../../../../../economy/repair.js';
 import { damageDealtBy, damageTakenBy, woundBearer } from '../../../../../equipment/index.js';
@@ -136,6 +137,8 @@ export function resolveCombatHit(
       });
     }
   }
+  // Nothing else follows a blow that glances off a wall: no wound, no provocation, no experience.
+  if (glancesOff(world, target, blow.damage)) return;
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience.
   const dealtDamage = damage > 0;
   // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
