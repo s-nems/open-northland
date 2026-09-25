@@ -57,13 +57,16 @@ const BOW_HIT_SOUND_VS_CHAIN = 88; // the arrow's impact group id on a chain-arm
 const BOW_DAMAGE_VS_HOUSE = 5;
 /** An armor class on the chain column whose `blockingValue` takes a whole arrow. */
 const PROOF_CHAIN = 4;
+/** The bow's weapon class, which keys the fight bucket a shot trains. */
+const BOW_MAIN_TYPE = 6;
 
-/** A same-row shot at the cell 8 tiles east: 16 map points, so a `speed 8` bow flies 16 ticks. */
+/** A same-row shot at the cell 8 tiles east: 16 map points, so a `speed 8` bow flies 16 ticks and, the
+ *  release tick counting toward them, strikes 15 ticks after it. */
 const SHOT_TILES = 8;
-const SHOT_FLIGHT_TICKS = 16;
+const SHOT_LAND_TICKS = 15;
 /** The chord's first step: the shot reaches its aim the tick before it lands, so the chord is split in
- *  one tick fewer than the flight. */
-const FIRST_STEP: Fixed = fx.mulDiv(fx.fromInt(SHOT_TILES), fx.fromInt(1), fx.fromInt(SHOT_FLIGHT_TICKS - 1));
+ *  one tick fewer than the wait for the strike. */
+const FIRST_STEP: Fixed = fx.mulDiv(fx.fromInt(SHOT_TILES), fx.fromInt(1), fx.fromInt(SHOT_LAND_TICKS - 1));
 
 function content(): ContentSet {
   return parseContentSet({
@@ -238,7 +241,7 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
     expect(sim.world.get(shot, Position).x).toBe(FIRST_STEP); // and only now it flies
   });
 
-  it('flies the map points times 8 over its speed, and strikes on that tick', () => {
+  it('flies the map points times 8 over its speed, and strikes one tick short of it', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     marksmanAt(sim, 0, 0);
     const target = fighterAt(sim, SHOT_TILES, 0, FRANK, IDLE);
@@ -246,7 +249,7 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
     stepToLaunch(sim);
     const shot = shotInFlight(sim);
     const { launchTick, landTick } = sim.world.get(shot, Projectile);
-    expect(landTick - launchTick).toBe(SHOT_FLIGHT_TICKS);
+    expect(landTick - launchTick).toBe(SHOT_LAND_TICKS);
     while (sim.tick < landTick - 1) sim.step();
     expect(sim.world.get(shot, Position).x).toBe(fx.fromInt(SHOT_TILES)); // held at the aim for one snapshot
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
@@ -637,6 +640,19 @@ describe('projectiles - area shots', () => {
     sim.step();
     for (const e of ring) expect(sim.world.get(e, Health).hitpoints).toBe(TARGET_HP - CATAPULT_DAMAGE);
     expect(sim.world.get(beyond, Health).hitpoints).toBe(TARGET_HP);
+  });
+
+  it('trains its shooter once, however many it strikes', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+    const shooter = marksmanAt(sim, 0, 0);
+    const ring = [AIM, ...hexNeighboursOf(AIM.hx, AIM.hy)].map((node) => onNode(sim, node, FRANK));
+    const [centre] = ring;
+    if (centre === undefined) throw new Error('no centre victim');
+    const p = stone(sim, shooter, centre, false);
+    sim.world.mut(p, Projectile).weaponMainType = BOW_MAIN_TYPE;
+    sim.step();
+    const bow = sim.world.get(shooter, SettlerProgress).experience.get(FIGHT_EXPERIENCE_TYPE.BOW);
+    expect(bow).toBe(MARKSMAN_BOW_HITS + 1);
   });
 
   it('strikes its own side only when the weapon hits itself', () => {

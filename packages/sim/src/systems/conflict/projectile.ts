@@ -15,6 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexNeighboursOf, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
+import { grantFightExperience } from '../progression/index.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
 import {
   applyPendingHitReactions,
@@ -104,6 +105,8 @@ function land(
       ...(isStructureTarget(world, victim) ? { structure: true } : {}),
     });
   }
+  // Original behavior: a shot that did damage trains its shooter once, however many it struck.
+  if (struckAny) grantFightExperience(world, ctx, proj.source, proj.weaponMainType ?? undefined);
   if (!struckAny) {
     ctx.events.emit({
       kind: 'projectileMissed',
@@ -130,6 +133,8 @@ function burst(
   const at = eventAt(proj.aimX, proj.aimY);
   const struck =
     ctx.terrain !== undefined && resolveGroundImpact(world, ctx, ctx.terrain, p, proj, pendingReactions);
+  // Original behavior: a stone that did damage trains its commander once, however many it struck.
+  if (struck) grantFightExperience(world, ctx, proj.source, proj.weaponMainType ?? undefined);
   if (!struck) {
     ctx.events.emit({
       kind: 'projectileMissed',
@@ -176,9 +181,12 @@ function strike(
  * point and its six neighbours. A shot passes over its own side's, and also, as an approximation, over
  * those of friends and neutrals; a `hitSelf` weapon passes over nobody.
  *
- * The first thing is the victim loosed at when it stands there, then the lowest-id man or beast, then a
- * building whose body covers the node: a named stand-in for the original's own order on a shared node.
- * With no combat pass this tick no fight was possible, so only that victim can be struck.
+ * Approximation, differing on any shared node: the original takes the first entry of the node's own list
+ * of standing units, then the house there, and never prefers the victim it was loosed at. Here the first
+ * thing is that victim when it stands there, then the lowest-id man or beast, then a building whose body
+ * covers the node. An area shot here collects every man and beast of the seven nodes before any building,
+ * where the original fills its list node by node; the two differ only past its 100-object cap. With no
+ * combat pass this tick no fight was possible, so only the victim loosed at can be struck.
  */
 function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly Entity[] {
   const terrain = ctx.terrain;

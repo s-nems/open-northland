@@ -12,7 +12,8 @@ not only a wounded one. It plays the heal clip on that target, and the event add
 when the target is below its max, so a send may carry the pool past the max, up to the ceiling of
 max plus half. A target that is gone ends the task. "First" is
 the original's own human order, which the sim has to replace with a named canonical rule, such as
-ascending id.
+ascending id. The search is centred on a point the healer stores, which may not be where it stands
+now; verify what that point is before implementing.
 
 ## Scope
 

@@ -9,6 +9,7 @@ import {
   Settler,
   type SettlerIdentity,
   Stance,
+  Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -351,7 +352,8 @@ const PICK_SPREAD_NODES = 3;
  * The kinds of enemy a fighter looks for, in the order it looks: its first pass takes enemy fighters, then
  * military buildings, then wild animals; its second anyone else, then any building. Original behavior. The
  * military buildings here are the ones that are not {@link CombatIndex.isLowPriorityBuilding} (headquarters
- * and towers), an approximation of the original's own military house class.
+ * and towers), an approximation of the original's own military house class. A vehicle joins the last pass on
+ * a building's terms; where the original ranks a cart or ship is unconfirmed (approximation).
  */
 const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatIndex, t: Entity) => boolean)[] =
   [
@@ -360,7 +362,7 @@ const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatInde
     (world, _ctx, index, t) => world.has(t, Building) && !index.isLowPriorityBuilding(t),
     (world, _ctx, _index, t) => isWildlife(world, t),
     (world, _ctx, _index, t) => world.has(t, Person),
-    (world, _ctx, _index, t) => world.has(t, Building),
+    (world, _ctx, _index, t) => world.has(t, Building) || world.has(t, Vehicle),
   ];
 
 /**

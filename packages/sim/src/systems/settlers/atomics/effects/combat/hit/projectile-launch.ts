@@ -24,6 +24,7 @@ import {
   marksmanSpread,
   scatteredNode,
   shotFlightTicks,
+  shotLandDelay,
 } from '../../../../../conflict/shot-aim.js';
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
 import type { SystemContext } from '../../../../../context.js';
@@ -141,7 +142,7 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     cover: shot.cover,
     launchTick: ctx.tick,
     // Original behavior: the flight time runs from the shooter to where the shot comes down.
-    landTick: ctx.tick + shotFlightTicks(mapPointDistance(from, shot.aim), shot.weapon.speed),
+    landTick: ctx.tick + shotLandDelay(shotFlightTicks(mapPointDistance(from, shot.aim), shot.weapon.speed)),
     impact: null,
   });
   ctx.events.emit({

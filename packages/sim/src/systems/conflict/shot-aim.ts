@@ -8,14 +8,23 @@ import type { SystemContext } from '../context.js';
 import { stepTowardPoint } from '../movement/stepping.js';
 import { walkPacePerTick } from '../movement/system.js';
 
-/** The map points a shot of `speed 1` crosses in eight ticks. Original behavior: a shot over `d` map points
- *  flies `d * 8 / speed` ticks, so a bow's `speed 8` crosses one map point a tick. */
+/** Ticks per map point at speed 1. Original behavior: a shot over `d` map points flies `d * 8 / speed`
+ *  ticks, so a bow's `speed 8` crosses one map point a tick. */
 const FLIGHT_TICKS_PER_POINT_AT_SPEED_ONE = 8;
 
-/** The ticks a shot of extracted `speed` takes over `distance` map points; at least one, so it never lands
- *  on the tick it is loosed. Original behavior. */
+/** The flight time, in ticks, of a shot of extracted `speed` over `distance` map points: the time a lead
+ *  reckons with. Original behavior. */
 export function shotFlightTicks(distance: number, speed: number): number {
-  return Math.max(1, Math.trunc((distance * FLIGHT_TICKS_PER_POINT_AT_SPEED_ONE) / speed));
+  return Math.trunc((distance * FLIGHT_TICKS_PER_POINT_AT_SPEED_ONE) / speed);
+}
+
+/**
+ * The ticks after its release a shot of flight time `flight` strikes. Original behavior: the release tick
+ * already counts toward the flight, so the shot strikes one tick short of it. Approximation: a flight of
+ * one tick or less strikes the tick after the release rather than on it, so the arrow is seen at all.
+ */
+export function shotLandDelay(flight: number): number {
+  return Math.max(1, flight - 1);
 }
 
 /** The map-point distance between two positions, measured node to node. */

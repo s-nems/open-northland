@@ -161,7 +161,8 @@ export function resolveCombatHit(
   if (dealtDamage && source !== 'collateral' && world.has(target, Person)) {
     recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
   }
-  if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);
+  // A shot grants its experience once for all it strikes (`projectileSystem`).
+  if (dealtDamage && source === 'melee') grantFightExperience(world, ctx, attacker, weaponMainType);
   if (world.get(target, Health).hitpoints <= 0) {
     spawnCarcasses(world, ctx, attacker, target);
     // Only humans are counted: a hunted animal and a razed house belong to no kill tally a goal reads.

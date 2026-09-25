@@ -82,7 +82,7 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         munitionType: getInt(sec, 'munitiontype'),
         speed: getInt(sec, 'speed'),
         damageType: getInt(sec, 'damagetype'),
-        hitSelf: getInt(sec, 'hitself') === 1,
+        hitSelf: (getInt(sec, 'hitself') ?? 0) !== 0,
         minRange: getInt(sec, 'minimumrange'),
         maxRange: getInt(sec, 'maximumrange'),
         damage: indexedInts(sec, 'damagevalue'),

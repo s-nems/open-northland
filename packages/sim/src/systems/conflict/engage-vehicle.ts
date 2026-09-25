@@ -34,7 +34,7 @@ import {
 } from '../vehicles/movement.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
-import { mapPointDistance, shotFlightTicks } from './shot-aim.js';
+import { mapPointDistance, shotFlightTicks, shotLandDelay } from './shot-aim.js';
 import { combatTargetNode } from './target-node.js';
 import { isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { givenUpTargetVeto, noteUnreachableTarget } from './unreachable-targets.js';
@@ -392,7 +392,7 @@ function fire(
     cover: null,
     launchTick: ctx.tick,
     // Original behavior: a stone flies for the map points to where it comes down, as an arrow does.
-    landTick: ctx.tick + shotFlightTicks(mapPointDistance(from, impact), weapon.speed),
+    landTick: ctx.tick + shotLandDelay(shotFlightTicks(mapPointDistance(from, impact), weapon.speed)),
     impact: { smokeTicks: weapon.impactSmokeTicks ?? null },
   });
   ctx.events.emit({

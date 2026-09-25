@@ -691,7 +691,8 @@ describe('the ground burst', () => {
     }
     if (stone === undefined) throw new Error('no stone loosed');
     const { launchTick, landTick } = s.world.get(stone, Projectile);
-    expect(landTick - launchTick).toBe(SIXTEEN_POINT_FLIGHT_TICKS);
+    // The release tick counts toward the flight, so the stone strikes one tick short of it.
+    expect(landTick - launchTick).toBe(SIXTEEN_POINT_FLIGHT_TICKS - 1);
     const origin = positionOfNode(6, 8);
     const aim = positionOfNode(22, 8);
     while (s.tick < landTick - 1) {

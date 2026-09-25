@@ -9,6 +9,7 @@ import {
   scatteredNode,
   shelterSpread,
   shotFlightTicks,
+  shotLandDelay,
 } from '../../src/systems/conflict/shot-aim.js';
 import { VIKING } from '../conflict/combat-system/support.js';
 import { testContent } from '../fixtures/content.js';
@@ -145,10 +146,17 @@ describe('leading a walker', () => {
 });
 
 describe('shot flight time', () => {
-  it('is the map points times 8 over the speed, at least one tick', () => {
+  it('is the map points times 8 over the speed', () => {
     expect(shotFlightTicks(16, BOW_SPEED)).toBe(16);
     expect(shotFlightTicks(10, 7)).toBe(11); // house bow: 80 / 7 truncated
     expect(shotFlightTicks(20, 3)).toBe(53); // catapult
-    expect(shotFlightTicks(0, BOW_SPEED)).toBe(1);
+    expect(shotFlightTicks(0, BOW_SPEED)).toBe(0);
+  });
+
+  it('strikes one tick short of the flight, and never on the release tick', () => {
+    expect(shotLandDelay(16)).toBe(15);
+    expect(shotLandDelay(2)).toBe(1);
+    expect(shotLandDelay(1)).toBe(1);
+    expect(shotLandDelay(0)).toBe(1);
   });
 });
