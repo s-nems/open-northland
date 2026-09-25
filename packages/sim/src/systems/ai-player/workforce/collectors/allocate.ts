@@ -5,7 +5,7 @@ import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
-import { nearestLiveResource } from '../../live-resources.js';
+import { nearestLiveResource, type WorkableTest } from '../../live-resources.js';
 import { anchorNodeOf } from '../../node-geometry.js';
 import {
   claimFlagNode,
@@ -15,6 +15,7 @@ import {
   type TakenFlagNodes,
 } from '../flag-spots.js';
 import type { SpareForce } from '../pool.js';
+import { type CollectorAnchors, type SeatedHolders, seatHolders } from './anchor.js';
 import { flagRelocateDue, upkeepHolders } from './upkeep.js';
 import {
   COLLECTED_GOOD_IDS,
@@ -80,15 +81,35 @@ function stealVeteranFor(
   return null;
 }
 
+/** Where one decision's flag gatherers stand: each good's anchors, and which resources can still be
+ *  worked. */
+export interface CollectorGround {
+  readonly anchors: CollectorAnchors;
+  readonly baseNode: HalfCellNode;
+  readonly workable: WorkableTest;
+}
+
+/** `w`'s holders seated on its anchors ({@link seatHolders}), with a free anchor for each post up to its
+ *  target. */
+function seatGood(
+  world: World,
+  ground: CollectorGround,
+  w: WantedGood,
+  holders: readonly Entity[],
+): SeatedHolders {
+  const slots = ground.anchors.slotsOf(w.good.id, Math.max(w.target, holders.length, 1));
+  return seatHolders(world, holders, slots, ground.baseNode);
+}
+
 /**
  * First posts: keep at least one flag-bound gatherer per wanted good, each flag standing 2-3 tiles from
- * a live resource (authored), over the upkeep of every current holder ({@link upkeepHolders}). No-op on
- * a mapless sim, which has no cells to place flags over.
+ * a workable resource nearest its anchor (authored), over the upkeep of every current holder
+ * ({@link upkeepHolders}). No-op on a mapless sim, which has no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
   ctx: SystemContext,
-  base: Entity,
+  ground: CollectorGround,
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
   force: SpareForce,
@@ -99,12 +120,26 @@ export function allocateCollectors(
   if (terrain === undefined) return [];
   const commands: PlayerCommand[] = [];
   const relocateDue = flagRelocateDue(ctx);
-  const baseNode = anchorNodeOf(world, base);
+  const { workable } = ground;
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
-    upkeepHolders(world, ctx, terrain, w, holders, taken, relocateDue, builderJob, commands);
-    if (holders.length > 0 || baseNode === null) continue;
-    const spot = collectorSpot(world, ctx, terrain, baseNode, w.good.typeId, taken);
+    const seated = seatGood(world, ground, w, holders);
+    upkeepHolders(
+      world,
+      ctx,
+      terrain,
+      w,
+      holders,
+      seated.anchors,
+      workable,
+      taken,
+      relocateDue,
+      builderJob,
+      commands,
+    );
+    const anchor = seated.free[0];
+    if (holders.length > 0 || anchor === undefined) continue;
+    const spot = collectorSpot(world, ctx, terrain, anchor, w.good.typeId, taken, workable);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
     if (spare !== null) {
@@ -131,7 +166,7 @@ export function allocateCollectors(
 export function topUpCollectors(
   world: World,
   ctx: SystemContext,
-  base: Entity,
+  ground: CollectorGround,
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
   force: SpareForce,
@@ -139,13 +174,15 @@ export function topUpCollectors(
 ): PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
-  const baseNode = anchorNodeOf(world, base);
-  if (baseNode === null) return [];
   const commands: PlayerCommand[] = [];
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
-    while (holders.length > 0 && holders.length < w.target) {
-      const spot = collectorSpot(world, ctx, terrain, baseNode, w.good.typeId, taken);
+    if (holders.length === 0) continue;
+    const { free } = seatGood(world, ground, w, holders);
+    while (holders.length < w.target) {
+      const anchor = free.shift();
+      if (anchor === undefined) break;
+      const spot = collectorSpot(world, ctx, terrain, anchor, w.good.typeId, taken, ground.workable);
       if (spot === null) break;
       const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
       if (spare === null) break;
@@ -158,13 +195,15 @@ export function topUpCollectors(
 /**
  * Generic gatherers: up to `target` collect-anything posts, a flag with no good filter, so the holder
  * picks up whatever its trade may harvest inside the circle. Hired beside the collected-good resource
- * nearest the base, so extra posts clear the ground a stalled placement needs, retired to builder when
- * nothing its trade harvests remains in the circle, and never relocated (authored).
+ * nearest the base, so extra posts clear the ground a stalled placement needs. Once nothing workable its
+ * trade harvests remains in the circle, the flag moves beside the next such resource, and the gatherer
+ * retires to builder only when none is left (authored).
  */
 export function allocateGenericCollectors(
   world: World,
   ctx: SystemContext,
   base: Entity,
+  workable: WorkableTest,
   genericCollectors: readonly Entity[],
   force: SpareForce,
   taken: TakenFlagNodes,
@@ -174,20 +213,28 @@ export function allocateGenericCollectors(
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const commands: PlayerCommand[] = [];
+  const baseNode = anchorNodeOf(world, base);
   for (const g of genericCollectors) {
     const flag = liveWorkFlag(world, g);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
     if (flag === undefined || flagNode === null) continue;
     const job = world.get(g, Settler).jobType;
     if (job === null) continue;
-    if (patchAlive(world, flagNode, flag.radius, (r) => jobCanHarvestGood(ctx, job, r.goodType))) continue;
-    if (builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
+    const harvests = (r: { goodType: number }): boolean => jobCanHarvestGood(ctx, job, r.goodType);
+    if (patchAlive(world, flagNode, flag.radius, harvests, workable)) continue;
+    const resource = baseNode === null ? null : nearestCollectedResource(world, ctx, baseNode, workable);
+    const spot = resource === null ? null : flagSpotNear(world, ctx, terrain, resource, taken);
+    if (spot !== null && (spot.hx !== flagNode.hx || spot.hy !== flagNode.hy)) {
+      commands.push({ kind: 'setWorkFlag', entity: g, x: spot.hx, y: spot.hy });
+      claimFlagNode(taken, spot);
+    } else if (builderJob !== null) {
+      commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
+    }
   }
   const job = genericCollectorJob(ctx);
-  const baseNode = anchorNodeOf(world, base);
   if (job === null || baseNode === null) return commands;
   for (let hired = genericCollectors.length; hired < target; hired++) {
-    const resource = nearestCollectedResource(world, ctx, baseNode);
+    const resource = nearestCollectedResource(world, ctx, baseNode, workable);
     if (resource === null) break; // no collected good stands anywhere - no generic post
     const spot = flagSpotNear(world, ctx, terrain, resource, taken);
     if (spot === null) break;
@@ -201,18 +248,19 @@ export function allocateGenericCollectors(
   return commands;
 }
 
-/** The anchor of the live {@link COLLECTED_GOOD_IDS} resource nearest the base - canonical
+/** The anchor of the workable live {@link COLLECTED_GOOD_IDS} resource nearest the base - canonical
  *  `(distance, goodType)` pick, so two equidistant goods always resolve the same way. */
 function nearestCollectedResource(
   world: World,
   ctx: SystemContext,
   baseNode: HalfCellNode,
+  workable: WorkableTest,
 ): HalfCellNode | null {
   let best: { node: HalfCellNode; dist: number; goodType: number } | null = null;
   for (const goodId of COLLECTED_GOOD_IDS) {
     const good = goodTypeByContentId(ctx.content, goodId);
     if (good === undefined) continue;
-    const resource = nearestLiveResource(world, good.typeId, baseNode);
+    const resource = nearestLiveResource(world, good.typeId, baseNode, workable);
     if (resource === null) continue;
     const node = anchorNodeOf(world, resource);
     if (node === null) continue;

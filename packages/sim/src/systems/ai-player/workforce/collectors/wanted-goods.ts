@@ -40,8 +40,8 @@ interface CollectorGrowth {
 }
 
 /** Collector growth by stable good id (authored). Two smithies' four smiths run on the base iron target,
- *  and all four smithies' eight bring a fourth iron gatherer; the second potter's crockery brings a second
- *  clay gatherer. */
+ *  and all four smithies' eight bring a fourth iron gatherer; the second potter's tiles bring a second clay
+ *  gatherer. */
 export const COLLECTOR_GROWTH_BY_GOOD_ID: Readonly<Record<string, CollectorGrowth>> = {
   iron: { building: 'work_smithy_01', from: 4, per: 4 },
   mud: { building: 'work_pottery_01', from: 1, per: 1 },

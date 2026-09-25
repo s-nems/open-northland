@@ -14,12 +14,16 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
+import { workableResourceTest } from '../live-resources.js';
+import { anchorNodeOf } from '../node-geometry.js';
 import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import {
   allocateCollectors,
   allocateGenericCollectors,
+  type CollectorGround,
   clearingCollectors,
+  collectorAnchors,
   GENERIC_COLLECTOR_TARGET,
   topUpCollectors,
   wantedCollectorGoods,
@@ -37,23 +41,25 @@ import {
   reserveBuilders,
   staffBuildings,
 } from './staffing.js';
+import type { SeatStaffing } from './staffing-plan.js';
 import { buildStaffingTally } from './tally.js';
 
 export {
   CIVILIANS_PER_CLEARING_COLLECTOR,
   COLLECTOR_TARGET_BY_GOOD_ID,
+  COLLECTOR_WORKSHOP_BY_GOOD_ID,
   DEFAULT_COLLECTOR_TARGET,
 } from './collectors/index.js';
-export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
+export { CRAFT_PLANS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export { OPENING_HUNT_UNTIL_BUILDING_ID } from './hunter.js';
 export { builderJobOf } from './pool.js';
+export { BUILDER_CAP, LATE_GAME_BUILDER_CAP } from './staffing.js';
 export {
-  BUILDER_CAP,
-  LATE_GAME_BUILDER_CAP,
   LATE_GAME_CIVILIANS,
   STAFFING_BY_BUILDING_ID,
-} from './staffing.js';
+  SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
+} from './staffing-plan.js';
 
 /**
  * The CollectResources module - the seat's one workforce allocator: no other module ever claims a
@@ -86,26 +92,58 @@ function runWorkforce(
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
   const fishing = fishingPlan(world, ctx, player);
+  const seat: SeatStaffing = { player, owned: ownedBuildings(world, player), civilians };
+  const ground = collectorGround(world, ctx, seat.owned, base);
   const generic = (): PlayerCommand[] =>
-    allocateGenericCollectors(world, ctx, base, genericCollectors, force, taken, builderJob, genericTarget);
+    ground === null
+      ? []
+      : allocateGenericCollectors(
+          world,
+          ctx,
+          base,
+          ground.workable,
+          genericCollectors,
+          force,
+          taken,
+          builderJob,
+          genericTarget,
+        );
   return [
-    ...allocateCollectors(world, ctx, base, wanted, collectorsByGood, force, taken, builderJob),
+    ...(ground === null
+      ? []
+      : allocateCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken, builderJob)),
     ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'first'),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
-    ...releaseSurplusCarriers(world, ctx, player, builderJob),
-    ...staffBuildings(world, ctx, player, force, tally, 'min'),
+    ...releaseSurplusCarriers(world, ctx, seat, builderJob),
+    ...staffBuildings(world, ctx, seat, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob, builderCap(civilians)), // construction never starves
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
     ...(clearing > 0 ? generic() : []),
-    ...staffBuildings(world, ctx, player, force, tally, 'target'),
-    ...topUpCollectors(world, ctx, base, wanted, collectorsByGood, force, taken),
+    ...staffBuildings(world, ctx, seat, force, tally, 'target'),
+    ...(ground === null ? [] : topUpCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken)),
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'topUp'),
-    ...staffBuildings(world, ctx, player, force, tally, 'surplus'),
+    ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force),
     ...tuneCraftSelections(world, ctx, player),
   ];
+}
+
+/** The decision's {@link CollectorGround}, or null on a mapless sim or a base with no node. */
+function collectorGround(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  base: Entity,
+): CollectorGround | null {
+  const baseNode = anchorNodeOf(world, base);
+  if (ctx.terrain === undefined || baseNode === null) return null;
+  return {
+    anchors: collectorAnchors(world, ctx, owned, baseNode),
+    baseNode,
+    workable: workableResourceTest(world, ctx, ctx.terrain),
+  };
 }
 
 /**
@@ -120,11 +158,13 @@ function rebuildCrew(
   player: number,
   builderJob: number | null,
 ): readonly PlayerCommand[] {
-  if (!ownedBuildings(world, player).some((e) => world.has(e, UnderConstruction))) return [];
+  const owned = ownedBuildings(world, player);
+  if (!owned.some((e) => world.has(e, UnderConstruction))) return [];
   const force = new SpareForce(rebuildHands(world, ctx, player));
+  const seat: SeatStaffing = { player, owned, civilians: civilianCount(world, ctx, player) };
   return [
     ...reserveBuilders(world, force, builderJob, BUILDER_CAP),
-    ...staffBuildings(world, ctx, player, force, buildStaffingTally(world), 'min'),
+    ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world), 'min'),
   ];
 }
 

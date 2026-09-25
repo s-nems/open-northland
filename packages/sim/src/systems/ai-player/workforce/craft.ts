@@ -9,42 +9,66 @@ import {
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
+import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { ownedSettlers } from '../seat-roster.js';
 
+/** A workplace type's product plan, by stable content ids (authored). */
+export interface CraftPlan {
+  /** One list per operator seat, counted across every building of the type the seat owns and handed out in
+   *  canonical settler order, wrapping when more operators work the type than it lists. */
+  readonly seats: readonly (readonly string[])[];
+  /** What the type's only operator works while it employs just one, instead of the first seat's list. */
+  readonly alone?: readonly string[];
+  /** The seat lists from {@link LATE_CRAFT_FROM_TICK} on. */
+  readonly late?: readonly (readonly string[])[];
+}
+
+/** When a {@link CraftPlan}'s late lists take over (authored): an hour and a half of game time. */
+export const LATE_CRAFT_FROM_TICK = 90 * 60 * TICKS_PER_SECOND;
+
 /**
- * Product restrictions per workplace type, by stable content ids (authored). One list per operator seat,
- * counted across every building of the type the seat owns and handed out in canonical settler order,
- * wrapping when more operators work the type than it lists. The first seat's list is what a lone man
- * works, and the lists interleave so a partly staffed type already runs its main lines: the smithies'
- * eight seats are three long-sword and five plate-armour makers, one druid in four boils holy oil (the
- * first, since the big potion waits on herbs the later herb hut grows), one coiner in four strikes coins,
- * the second joiner and potter take the furniture and the crockery, and the first tailor sews shoes while
- * the second sews leather armour. Bakers bake only bread and breeders keep only cattle.
+ * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
+ * runs its main lines: the smithies' eight seats are three long-sword and five plate-armour makers, one
+ * druid in four boils holy oil (the first, since the big potion waits on herbs the later herb hut grows),
+ * one coiner in four strikes coins, and the second joiner takes the furniture. The potters split bricks
+ * and tiles, a lone one working both, and add the crockery only late. The first tailor sews shoes and the
+ * second leather armour, and the small tailor's one man sews shoes too. Bakers bake only bread and
+ * breeders keep only cattle.
  */
-export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly (readonly string[])[]>> = {
-  work_joinery_01: [['tool_iron'], ['tool_iron', 'furniture']],
-  work_pottery_01: [['brick', 'tile'], ['crockery']],
-  work_mason_hut_01: [['pillar', 'ornament']],
-  work_animal_farm: [['cattle']],
-  work_sewery_01: [['shoes'], ['armor_leather']],
-  work_bakery_01: [['bread']],
-  work_smithy_01: [
-    ['sword_long'],
-    ['armor_plate'],
-    ['sword_long'],
-    ['armor_plate'],
-    ['armor_plate'],
-    ['sword_long'],
-    ['armor_plate'],
-    ['armor_plate'],
-  ],
-  work_armory_01: [['bow_long']],
-  work_druid_01: [['holy_oil'], ['potion_heal_big'], ['potion_heal_big'], ['potion_heal_big']],
-  work_coin_mint: [['coin'], ['amulet_defense'], ['amulet_defense'], ['amulet_defense']],
+export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
+  work_joinery_01: { seats: [['tool_iron'], ['tool_iron', 'furniture']] },
+  work_pottery_01: {
+    seats: [['brick'], ['tile']],
+    alone: ['brick', 'tile'],
+    late: [
+      ['brick', 'crockery'],
+      ['tile', 'crockery'],
+    ],
+  },
+  work_mason_hut_01: { seats: [['pillar', 'ornament']] },
+  work_animal_farm: { seats: [['cattle']] },
+  work_sewery_00: { seats: [['shoes']] },
+  work_sewery_01: { seats: [['shoes'], ['armor_leather']] },
+  work_bakery_01: { seats: [['bread']] },
+  work_smithy_01: {
+    seats: [
+      ['sword_long'],
+      ['armor_plate'],
+      ['sword_long'],
+      ['armor_plate'],
+      ['armor_plate'],
+      ['sword_long'],
+      ['armor_plate'],
+      ['armor_plate'],
+    ],
+  },
+  work_armory_01: { seats: [['bow_long']] },
+  work_druid_01: { seats: [['holy_oil'], ['potion_heal_big'], ['potion_heal_big'], ['potion_heal_big']] },
+  work_coin_mint: { seats: [['coin'], ['amulet_defense'], ['amulet_defense'], ['amulet_defense']] },
 };
 
 /** The run a workshop opens with once built, by stable content ids (authored): its whole crew works only
@@ -59,7 +83,7 @@ export const CRAFT_OPENING_RUN_BY_BUILDING_ID: Readonly<
 
 interface RestrictedCrew {
   readonly type: BuildingType;
-  readonly restriction: readonly (readonly string[])[];
+  readonly plan: CraftPlan;
   readonly crew: Entity[];
   /** Each crew member's workplace, index for index. */
   readonly workplaces: Entity[];
@@ -93,16 +117,22 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
     }
     const type = index.buildings.get(building.buildingType);
     if (type === undefined) continue;
-    const restriction = CRAFT_RESTRICTIONS_BY_BUILDING_ID[type.id];
-    if (restriction === undefined) continue;
-    crews.set(building.buildingType, { type, restriction, crew: [e], workplaces: [assignment.workplace] });
+    const plan = CRAFT_PLANS_BY_BUILDING_ID[type.id];
+    if (plan === undefined) continue;
+    crews.set(building.buildingType, { type, plan, crew: [e], workplaces: [assignment.workplace] });
   }
-  for (const { type, restriction, crew, workplaces } of crews.values()) {
+  for (const { type, plan, crew, workplaces } of crews.values()) {
     const produced = new Set(type.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
+    const seats = (ctx.tick >= LATE_CRAFT_FROM_TICK ? plan.late : undefined) ?? plan.seats;
     for (const [seat, e] of crew.entries()) {
       const workplace = workplaces[seat];
       const opening = workplace === undefined ? null : openingRun(world, ctx, workplace, type);
-      const listed = opening !== null ? [opening] : (restriction[seat % restriction.length] ?? []);
+      const listed =
+        opening !== null
+          ? [opening]
+          : crew.length === 1 && plan.alone !== undefined
+            ? plan.alone
+            : (seats[seat % seats.length] ?? []);
       const goods = [
         ...new Set(
           listed

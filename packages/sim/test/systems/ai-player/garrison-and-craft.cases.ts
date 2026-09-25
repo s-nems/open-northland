@@ -30,6 +30,7 @@ import {
   armedContent,
   BARRACKS_TYPE,
   BOW,
+  BOWMAN,
   BREEDER,
   BUILDER,
   CATTLE,
@@ -50,6 +51,7 @@ import {
   SWORD,
   spawnMen,
   TOOL_IRON,
+  TOWER_TYPE,
   VIKING,
   WOMAN,
   WOOD,
@@ -372,6 +374,54 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(counterWants(odd.sim, odd.ctx)).toEqual({
       trainSword: (oddTotal + 1) / 2,
       trainBow: (oddTotal - 1) / 2,
+    });
+  });
+
+  it('drafts toward an even field army, leaving the tower archers out of the count', () => {
+    const seat = armedSeat([
+      { good: SWORD, amount: 1 },
+      { good: BOW, amount: 1 },
+    ]);
+    const FIELD_ARCHERS = 4;
+    for (let i = 0; i < FIELD_ARCHERS; i++) {
+      seat.sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: BOWMAN,
+        x: 50 + 2 * i,
+        y: 24,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    seat.sim.step();
+    const total = sparePool(seat);
+    expect(total).toBeGreaterThan(FIELD_ARCHERS);
+    // The swordsmen catch up with the archers first, then the rest splits.
+    const rest = total - FIELD_ARCHERS;
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({
+      trainSword: FIELD_ARCHERS + Math.ceil(rest / 2),
+      trainBow: Math.floor(rest / 2),
+    });
+
+    // Walled into a tower, the same archers leave the field, so the draft splits evenly again.
+    seat.sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TOWER_TYPE,
+      x: 56,
+      y: 8,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    seat.sim.step();
+    const tower = entityOfBuilding(seat.sim, TOWER_TYPE);
+    for (const archer of seat.sim.world.query(Settler)) {
+      if (seat.sim.world.get(archer, Settler).jobType === BOWMAN) {
+        seat.sim.world.add(archer, JobAssignment, { workplace: tower });
+      }
+    }
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({
+      trainSword: Math.ceil(total / 2),
+      trainBow: Math.floor(total / 2),
     });
   });
 

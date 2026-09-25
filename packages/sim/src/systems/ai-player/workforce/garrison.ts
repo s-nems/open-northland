@@ -11,25 +11,29 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { draftableTrade } from '../../assistant/index.js';
+import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
-import { baseSoldierJobType, isSoldierJob } from '../../readviews/index.js';
+import { baseSoldierJobType, isFighterJob, isSoldierJob } from '../../readviews/index.js';
 import { armableIntents } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
+import { weaponMix } from '../military/census.js';
 import { ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 
-/** The army's weapon mix (authored): swordsmen and archers in equal shares, but only over the classes a
- *  store can arm this decision, so the fielded mix tracks stock. Publication order breaks an indivisible
- *  draft, leaving the odd men in reach. Blind to the tower posts, which take bow classes for good, so a
- *  seat holding towers fields fewer archers than the share implies. */
+/** The army's weapon mix (authored): as many swordsmen as archers in the field, but only over the classes
+ *  a store can arm this decision, so the fielded mix tracks stock. The archers posted to towers leave the
+ *  field for good and are not counted. Publication order breaks a tie, leaving the odd man in reach. */
 const GARRISON_WEAPON_INTENTS = [
   'trainSword',
   'trainBow',
 ] as const satisfies readonly AssistantRecruitIntent[];
+
+/** The main class that fights at range; every other one fills the melee side of the field mix. */
+const RANGED_INTENT: AssistantRecruitIntent = 'trainBow';
 
 /** The classes drafted only while neither main class can be armed: the seat's own smiths make no
  *  spears, so these arm the men from whatever the map handed it. */
@@ -65,10 +69,10 @@ export function trainGarrison(
 }
 
 /**
- * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus an even share of
- * the men the seat may still draft, so the headroom the dispatcher sees (`counter - bookings`) sums to
- * exactly that number. Shares go only to the classes the seat can arm right now, the earlier classes
- * taking the remainder; a seat that can arm none of them falls back to `trainSoldiers`.
+ * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus a share of the men
+ * the seat may still draft, so the headroom the dispatcher sees (`counter - bookings`) sums to exactly that
+ * number. Each man goes to the armable class with the fewest in the field ({@link fieldedByIntent}), the
+ * earlier class on a tie; a seat that can arm none of them falls back to `trainSoldiers`.
  */
 function standingOrder(
   world: World,
@@ -90,11 +94,44 @@ function standingOrder(
   const next = draftable[0];
   if (allowance === 0 || next === undefined) return wants; // nobody to draft: the classes need no probe
   const drafting = draftingClasses(world, ctx, player, barracks, next);
-  for (const [rank, intent] of drafting.entries()) {
-    const share = Math.floor(allowance / drafting.length) + (rank < allowance % drafting.length ? 1 : 0);
-    wants.set(intent, (wants.get(intent) ?? 0) + share);
+  const fielded = fieldedByIntent(world, ctx, player, booked);
+  const standing = drafting.map((intent) => fielded.get(intent) ?? 0);
+  for (let drafted = 0; drafted < allowance; drafted++) {
+    let rank = 0;
+    for (let i = 1; i < drafting.length; i++) if ((standing[i] ?? 0) < (standing[rank] ?? 0)) rank = i;
+    const intent = drafting[rank];
+    if (intent === undefined) break;
+    standing[rank] = (standing[rank] ?? 0) + 1;
+    wants.set(intent, (wants.get(intent) ?? 0) + 1);
   }
   return wants;
+}
+
+/**
+ * The seat's field army per main class: its fighters outside the towers, by the weapon they fight with,
+ * plus each class's unpaid bookings. A booked man still waiting for his weapon counts only as the booking.
+ */
+function fieldedByIntent(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  booked: ReadonlyMap<AssistantRecruitIntent, number>,
+): Map<AssistantRecruitIntent, number> {
+  const field: Entity[] = [];
+  for (const e of ownedSettlers(world, player)) {
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;
+    if (towerPostFor(world, ctx, e, jobType) !== null) continue;
+    if (world.tryGet(e, AssistantRecruit)?.armed === false) continue;
+    field.push(e);
+  }
+  const mix = weaponMix(world, ctx, field);
+  const fielded = new Map<AssistantRecruitIntent, number>();
+  for (const intent of GARRISON_WEAPON_INTENTS) {
+    const armed = intent === RANGED_INTENT ? mix.ranged : mix.melee;
+    fielded.set(intent, armed + (booked.get(intent) ?? 0));
+  }
+  return fielded;
 }
 
 /**

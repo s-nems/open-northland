@@ -1,6 +1,10 @@
-import { Resource } from '../../components/index.js';
+import { Resource, ResourceFootprint } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { SystemContext } from '../context.js';
+import { dynamicBlockOverlay } from '../footprint/blocked.js';
+import { resourceStanceCells } from '../footprint/interaction.js';
 import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spatial/resources.js';
 import { anchorNodeOf } from './node-geometry.js';
 
@@ -13,14 +17,28 @@ const RESOURCE_BOX_REACH_START = 16;
  */
 const RESOURCE_BOX_REACH_MAX = 512;
 
-/** The best `(Manhattan distance, entity id)` live `goodType` resource inside the Chebyshev `reach`
- *  box around `from`, or null. Candidates arrive ascending-id, so the strict `<` keeps the lowest
- *  id among the minimum distance - the same winner the reference scan picks. */
+/** Whether a gatherer can still stand to work a resource. */
+export type WorkableTest = (e: Entity) => boolean;
+
+/** The decision's {@link WorkableTest}: some stance cell of the resource lies clear of the live walk-block
+ *  overlay, so a deposit a building has buried whole no longer counts. A gatherer tests only the stance cell
+ *  nearest itself, so a partly buried one can still pass here. A node without a footprint is workable. */
+export function workableResourceTest(world: World, ctx: SystemContext, terrain: TerrainGraph): WorkableTest {
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  return (e) =>
+    !world.has(e, ResourceFootprint) ||
+    resourceStanceCells(world, terrain, e).some((cell) => !blocked.has(cell));
+}
+
+/** The best `(Manhattan distance, entity id)` live `goodType` resource `workable` accepts inside the
+ *  Chebyshev `reach` box around `from`, or null. Candidates arrive ascending-id, so the strict `<` keeps
+ *  the lowest id among the minimum distance - the same winner the reference scan picks. */
 function bestLiveResourceInBox(
   world: World,
   goodType: number,
   from: HalfCellNode,
   reach: number,
+  workable: WorkableTest | undefined,
 ): { entity: Entity; distance: number } | null {
   let best: Entity | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
@@ -29,7 +47,7 @@ function bestLiveResourceInBox(
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
     const distance = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-    if (distance < bestDistance) {
+    if (distance < bestDistance && (workable === undefined || workable(e))) {
       best = e;
       bestDistance = distance;
     }
@@ -45,19 +63,25 @@ function isLiveResource(world: World, e: Entity, goodType: number): boolean {
 
 /**
  * The standing not-yet-empty resource of `goodType` nearest to `from` (Manhattan node distance,
- * ties to the lower entity id), or null when the map holds none. Expanding boxes over the resource
- * region index, so a decision near a stocked neighbourhood never walks the whole canonical list.
+ * ties to the lower entity id) that `workable` accepts, or null when the map holds none. Expanding boxes
+ * over the resource region index, so a decision near a stocked neighbourhood never walks the whole
+ * canonical list.
  */
-export function nearestLiveResource(world: World, goodType: number, from: HalfCellNode): Entity | null {
+export function nearestLiveResource(
+  world: World,
+  goodType: number,
+  from: HalfCellNode,
+  workable?: WorkableTest,
+): Entity | null {
   for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
-    const hit = bestLiveResourceInBox(world, goodType, from, reach);
+    const hit = bestLiveResourceInBox(world, goodType, from, reach, workable);
     if (hit === null) continue;
     // A winner at Manhattan ≤ reach is global: every node outside the Chebyshev `reach` box lies at
     // Manhattan ≥ reach+1, so nothing outside can beat or tie it.
     if (hit.distance <= reach) return hit.entity;
     // Only a box-corner hit (Manhattan up to 2·reach): every node at Manhattan ≤ hit.distance lies
     // inside the Chebyshev `hit.distance` box, so one exact re-query settles the winner.
-    const exact = bestLiveResourceInBox(world, goodType, from, hit.distance);
+    const exact = bestLiveResourceInBox(world, goodType, from, hit.distance, workable);
     return (exact ?? hit).entity;
   }
   // Nothing within the cap - the reference scan finds the same winner the uncapped search would.
@@ -68,7 +92,7 @@ export function nearestLiveResource(world: World, goodType: number, from: HalfCe
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
     const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-    if (dist < bestDist) {
+    if (dist < bestDist && (workable === undefined || workable(e))) {
       best = e;
       bestDist = dist;
     }

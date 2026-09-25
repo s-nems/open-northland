@@ -11,6 +11,7 @@ import {
   WorkFlag,
 } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
+import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
   BUILDER_CAP,
   CIVILIANS_PER_CLEARING_COLLECTOR,
@@ -21,9 +22,11 @@ import {
   LATE_GAME_CIVILIANS,
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
+import { workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
 import { wantedCollectorGoods } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import { flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
+import { resourceStanceCells } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -62,6 +65,7 @@ import {
   WELL_TYPE,
   WOOD,
   WOOD_HARVEST,
+  wallOver,
 } from './support.js';
 
 /** The allocator's hiring ladder: collector posts, workshop staffing tiers, scout, builder reserve. */
@@ -197,7 +201,7 @@ describe('workforce module (collectResources)', () => {
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
   });
 
-  it('retires a generic collector whose circle holds nothing its trade can harvest', () => {
+  it('moves a generic collector whose circle holds nothing its trade can harvest, or retires it', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 10, y: 10, tribe: VIKING, owner: SEAT });
@@ -214,6 +218,18 @@ describe('workforce module (collectResources)', () => {
     expect(commands.filter((c) => c.kind === 'setJob' && c.entity === gatherer)).toEqual([
       { kind: 'setJob', entity: gatherer, jobType: BUILDER },
     ]);
+
+    // With a collected good standing past the circle, the flag moves there instead.
+    const FAR = { x: 56, y: 28 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.wood, ...FAR }]);
+    sim.step();
+    const moved = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
+      (c) => (c.kind === 'setJob' || c.kind === 'setWorkFlag') && c.entity === gatherer,
+    );
+    expect(moved).toHaveLength(1);
+    const [flag] = moved;
+    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
+    expect(Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y)).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
   });
 
   it('adds a clay gatherer for the second potter', () => {
@@ -443,7 +459,10 @@ describe('workforce module (collectResources)', () => {
     expect(staffing.map((c) => c.jobPriority)).toEqual([[BAKER], [CARRIER]]);
   });
 
-  it('leaves a carrier-only workplace (the well) unstaffed', () => {
+  it.each([
+    ['leaves a carrier-only workplace (the well) unstaffed', LATE_GAME_CIVILIANS - 1, []],
+    ['gives the well a carrier of its own once the seat has grown', LATE_GAME_CIVILIANS, [[CARRIER]]],
+  ])('%s', (_title, men, posts) => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueueSetup({
@@ -454,12 +473,13 @@ describe('workforce module (collectResources)', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    spawnMen(sim, 6, BUILDER);
+    spawnMen(sim, men, BUILDER);
     sim.step();
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const well = entityOfBuilding(sim, WELL_TYPE);
-    expect(commands.filter((c) => c.kind === 'assignWorker' && c.building === well)).toEqual([]);
+    const hires = commands.filter((c) => c.kind === 'assignWorker' && c.building === well);
+    expect(hires.map((c) => (c.kind === 'assignWorker' ? c.jobPriority : []))).toEqual(posts);
   });
 
   it('hires the iron collector only once the build order reaches its gated entry', () => {
@@ -556,6 +576,45 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const rehire = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(rehire.filter((c) => c.kind === 'setGatherGood').map((c) => c.goodType)).toEqual([STONE]);
+  });
+
+  it('moves a flag off a deposit a building has buried, though the deposit is not dug out', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+
+    // Walls over every cell a digger could stand on leave the deposit standing but out of reach; a fresh
+    // one waits across the map.
+    const terrain = sim.terrain;
+    const buried = [...sim.world.query(Resource)].find((e) => sim.world.get(e, Resource).goodType === MUD);
+    if (buried === undefined || terrain === undefined) throw new Error('setup: the deposit');
+    const { x, y } = RESOURCE_SPOTS.mud;
+    const anchor = terrain.nodeAt(x, y);
+    const stance = [
+      anchor,
+      ...terrain.walkableNeighbours(anchor),
+      ...resourceStanceCells(sim.world, terrain, buried),
+    ];
+    wallOver(
+      sim,
+      stance.map((cell) => ({ x: terrain.xOf(cell), y: terrain.yOf(cell) })),
+    );
+    const FRESH = { x: 50, y: 8 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...FRESH }]);
+    sim.step();
+    expect(workableResourceTest(sim.world, ctxOf(sim), terrain)(buried)).toBe(false);
+
+    // An ordinary decision, not the periodic upkeep: a patch with nothing workable left is a dry one.
+    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
+    const flag = move.find((c) => c.kind === 'setWorkFlag');
+    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to move to the fresh deposit');
+    expect(Math.abs(flag.x - FRESH.x) + Math.abs(flag.y - FRESH.y)).toBeLessThanOrEqual(
+      FLAG_MAX_DISTANCE_NODES,
+    );
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {

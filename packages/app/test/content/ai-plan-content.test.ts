@@ -5,12 +5,14 @@ import { hasRealIr, loadContentUnderTest } from './helpers.js';
 const {
   BASE_REPLACEMENT_ENTRY,
   COLLECTOR_TARGET_BY_GOOD_ID,
-  CRAFT_RESTRICTIONS_BY_BUILDING_ID,
+  COLLECTOR_WORKSHOP_BY_GOOD_ID,
+  CRAFT_PLANS_BY_BUILDING_ID,
   DEFAULT_BUILD_ORDER,
   HEADQUARTERS_BUILDING_ID,
   OPENING_HUNT_UNTIL_BUILDING_ID,
   SOLDIER_OUTFIT_GOOD_IDS,
   STAFFING_BY_BUILDING_ID,
+  SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
   TOWER_CONTENT_IDS,
   hunterJobType,
 } = systems;
@@ -143,7 +145,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
         expect(fits, `an operator slot of ${id} offering ${operatorWant} seats`).toBe(true);
       }
-      const carrierTarget = staffing.carrierTarget ?? 0;
+      const carrierTarget = Math.max(staffing.carrierTarget ?? 0, staffing.grownCarrierTarget ?? 0);
       if (carrierTarget > 0) {
         const fits = building?.workers.some((w) => w.jobType === carrierJob && w.count >= carrierTarget);
         expect(fits, `a carrier slot of ${id} offering ${carrierTarget} seats`).toBe(true);
@@ -180,6 +182,31 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         `collector good ${goodId}`,
       ).toBe(true);
     }
+    // A stale workshop id sends the good's gatherers back to the base, silently.
+    for (const [goodId, workshop] of Object.entries(COLLECTOR_WORKSHOP_BY_GOOD_ID)) {
+      const good = content.goods.find((g) => g.id === goodId);
+      expect(good, `anchored good ${goodId}`).toBeDefined();
+      const building = buildingById.get(workshop.building);
+      expect(
+        building?.recipes.some((r) => r.inputs.some((i) => i.goodType === good?.typeId)),
+        `${workshop.building} works up ${goodId}`,
+      ).toBe(true);
+    }
+    // A stale supply good never calls the carrier in.
+    for (const [id, goodIds] of Object.entries(SUPPLY_CARRIER_GOODS_BY_BUILDING_ID)) {
+      const building = buildingById.get(id);
+      expect(
+        building?.workers.some((w) => w.jobType === carrierJob),
+        `a carrier slot of supply workshop ${id}`,
+      ).toBe(true);
+      for (const goodId of goodIds) {
+        const good = content.goods.find((g) => g.id === goodId);
+        expect(
+          building?.recipes.some((r) => r.outputs.some((o) => o.goodType === good?.typeId)),
+          `${id} makes supply good ${goodId}`,
+        ).toBe(true);
+      }
+    }
     // The tower allowlist: a stale id here would leave built towers uncounted as coverage centres,
     // so the coverage entry would re-arm and place towers forever.
     for (const towerId of TOWER_CONTENT_IDS) {
@@ -187,7 +214,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(building, `tower id ${towerId}`).toBeDefined();
       expect(building?.kind, `tower kind of ${towerId}`).toBe('tower');
     }
-    for (const [id, seats] of Object.entries(CRAFT_RESTRICTIONS_BY_BUILDING_ID)) {
+    for (const [id, plan] of Object.entries(CRAFT_PLANS_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();
       const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
@@ -203,10 +230,13 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
             : most,
         0,
       );
-      expect((operatorSeats ?? 0) * planned, `operator seats of every planned ${id}`).toBeGreaterThanOrEqual(
-        seats.length,
-      );
-      for (const goodId of seats.flat()) {
+      for (const seats of [plan.seats, plan.late ?? []]) {
+        expect(
+          (operatorSeats ?? 0) * planned,
+          `operator seats of every planned ${id}`,
+        ).toBeGreaterThanOrEqual(seats.length);
+      }
+      for (const goodId of [...plan.seats.flat(), ...(plan.alone ?? []), ...(plan.late ?? []).flat()]) {
         const good = content.goods.find((g) => g.id === goodId);
         expect(good, `craft good ${goodId}`).toBeDefined();
         // The restriction must name a product the workplace actually makes - an unmakeable-only

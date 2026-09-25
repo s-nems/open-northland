@@ -1,4 +1,10 @@
-export { allocateCollectors, allocateGenericCollectors, topUpCollectors } from './allocate.js';
+export {
+  allocateCollectors,
+  allocateGenericCollectors,
+  type CollectorGround,
+  topUpCollectors,
+} from './allocate.js';
+export { COLLECTOR_WORKSHOP_BY_GOOD_ID, collectorAnchors } from './anchor.js';
 export { FLAG_RELOCATE_EVERY_DECISIONS } from './upkeep.js';
 export {
   CIVILIANS_PER_CLEARING_COLLECTOR,

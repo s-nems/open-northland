@@ -121,6 +121,13 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
   { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'home_level_04', count: 5 },
+  // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
+  {
+    kind: 'place',
+    building: 'work_sewery_00',
+    count: 2,
+    near: [{ kind: 'building', id: 'work_sewery_01' }],
+  },
   // The healing line: the big potion takes herbs, mushrooms and coins, and the temple waits on the
   // druids' oil, so all of it stands only where the map holds both gold and mushrooms.
   { kind: 'collector', good: 'mushroom' },
@@ -162,6 +169,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'stock_02', count: 3, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
   { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
+  { kind: 'place', building: 'work_brewery', count: 3, near: [{ kind: 'building', id: 'work_brewery' }] },
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would

@@ -53,7 +53,7 @@ function producedOnlyByIdleBuildings(
 }
 
 /** How much of `goodType` the seat's construction sites still lack. */
-function sitesShortfall(
+export function sitesShortfall(
   world: World,
   ctx: SystemContext,
   owned: readonly Entity[],

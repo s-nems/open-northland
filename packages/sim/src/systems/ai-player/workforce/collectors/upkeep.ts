@@ -1,10 +1,11 @@
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../cadence.js';
-import { nearestLiveResource } from '../../live-resources.js';
+import { nearestLiveResource, type WorkableTest } from '../../live-resources.js';
 import { anchorNodeOf } from '../../node-geometry.js';
 import {
   claimFlagNode,
@@ -24,11 +25,11 @@ export function flagRelocateDue(ctx: SystemContext): boolean {
 }
 
 /**
- * The upkeep over one good's current holders: a flag whose patch ran dry is re-planted beside the
- * nearest live resource, one whose patch has receded past the band is nudged after it when
- * `relocateDue`, and a holder whose good has left the map rejoins the builder pool. Every re-plant
- * claims its node, since two holders of the same good resolve the same nearest resource and would
- * otherwise be sent to one tile.
+ * The upkeep over one good's current holders, each serving its anchor in `anchors`, index for index. A
+ * flag whose patch holds nothing workable is re-planted beside the workable resource nearest its anchor,
+ * one standing past the band from that resource is moved after it when `relocateDue` and a nearer spot
+ * exists, and a holder whose good has left the map rejoins the builder pool. Every re-plant claims its
+ * node, since holders of one good resolve the same nearest resource and would otherwise share a tile.
  */
 export function upkeepHolders(
   world: World,
@@ -36,40 +37,39 @@ export function upkeepHolders(
   terrain: TerrainGraph,
   w: WantedGood,
   holders: readonly Entity[],
+  anchors: readonly HalfCellNode[],
+  workable: WorkableTest,
   taken: TakenFlagNodes,
   relocateDue: boolean,
   builderJob: number | null,
   commands: PlayerCommand[],
 ): void {
-  for (const holder of holders) {
+  for (const [rank, holder] of holders.entries()) {
     const flag = liveWorkFlag(world, holder);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
     if (flag === undefined || flagNode === null) continue; // vanished mid-decision - next pass rehires
-    if (patchAlive(world, flagNode, flag.radius, (r) => r.goodType === w.good.typeId)) {
-      if (!relocateDue) continue;
-      const near = nearestLiveResource(world, w.good.typeId, flagNode);
-      const nearNode = near === null ? null : anchorNodeOf(world, near);
-      if (nearNode === null) continue;
-      const drift = Math.abs(nearNode.hx - flagNode.hx) + Math.abs(nearNode.hy - flagNode.hy);
-      if (drift <= FLAG_MAX_DISTANCE_NODES) continue; // still in the band - leave the flag be
-      const spot = flagSpotNear(world, ctx, terrain, nearNode, taken);
-      if (spot !== null && (spot.hx !== flagNode.hx || spot.hy !== flagNode.hy)) {
-        commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
-        claimFlagNode(taken, spot);
-      }
-      continue;
-    }
-    const next = nearestLiveResource(world, w.good.typeId, flagNode);
-    if (next === null) {
+    const alive = patchAlive(world, flagNode, flag.radius, (r) => r.goodType === w.good.typeId, workable);
+    if (alive && !relocateDue) continue;
+    const anchor = anchors[rank];
+    if (anchor === undefined) continue;
+    const target = nearestLiveResource(world, w.good.typeId, anchor, workable);
+    const targetNode = target === null ? null : anchorNodeOf(world, target);
+    if (targetNode === null) {
       // The map ran out of this good - the collector rejoins the builder pool.
-      if (builderJob !== null) commands.push({ kind: 'setJob', entity: holder, jobType: builderJob });
+      if (!alive && builderJob !== null)
+        commands.push({ kind: 'setJob', entity: holder, jobType: builderJob });
       continue;
     }
-    const node = anchorNodeOf(world, next);
-    const spot = node === null ? null : flagSpotNear(world, ctx, terrain, node, taken);
-    if (spot !== null) {
-      commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
-      claimFlagNode(taken, spot);
-    }
+    const drift = nodeDistance(flagNode, targetNode);
+    if (alive && drift <= FLAG_MAX_DISTANCE_NODES) continue; // still in the band - leave the flag be
+    const spot = flagSpotNear(world, ctx, terrain, targetNode, taken);
+    if (spot === null || (spot.hx === flagNode.hx && spot.hy === flagNode.hy)) continue;
+    if (alive && nodeDistance(spot, targetNode) >= drift) continue; // no nearer spot to move to
+    commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
+    claimFlagNode(taken, spot);
   }
+}
+
+function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
+  return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
 }

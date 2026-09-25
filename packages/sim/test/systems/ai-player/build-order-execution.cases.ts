@@ -147,7 +147,7 @@ describe('build-order module (houseBuild)', () => {
     // Past the gate: the barracks, both bakery upgrades, then the late tail - the tower coverage entry
     // rests (everything sits inside the HQ circle on this map), the second brewery, the two outskirts
     // warehouses, the closing pair of level-2 bakeries and the third warehouse follow, the store coverage
-    // rests, and the denser tower ring closes the list. The home entries name `home_level_04`, a tier this
+    // rests, and the denser tower ring and the third brewery close the list. The home entries name `home_level_04`, a tier this
     // content set stops short of, so they skip here - the direct top-tier placement has its own test
     // below. The smithy and armory entries are absent from this fixture, so both skip.
     const barracks = nextPlacement(sim);
@@ -174,13 +174,17 @@ describe('build-order module (houseBuild)', () => {
       applyAndFinish(sim, next);
     }
     let towers = 0;
-    for (let next = nextPlacement(sim); next !== undefined; next = nextPlacement(sim)) {
-      if (next.kind !== 'placeBuilding') throw new Error(`expected a tower placement, got ${next.kind}`);
-      expect(next.buildingType).toBe(TOWER_TYPE);
+    let next = nextPlacement(sim);
+    for (; next?.kind === 'placeBuilding' && next.buildingType === TOWER_TYPE; next = nextPlacement(sim)) {
       applyAndFinish(sim, next);
       towers++;
     }
     expect(towers).toBeGreaterThan(0);
+    // The third brewery closes the list.
+    if (next?.kind !== 'placeBuilding') throw new Error('expected the third brewery');
+    expect(next.buildingType).toBe(BREWERY_TYPE);
+    applyAndFinish(sim, next);
+    expect(nextPlacement(sim)).toBeUndefined();
   });
 
   it('re-places a destroyed building (the count repairs itself)', () => {

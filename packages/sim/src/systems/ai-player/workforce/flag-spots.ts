@@ -6,7 +6,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { workFlagPlacementTest } from '../../footprint/index.js';
 import { anyResourceNear } from '../../spatial/resources.js';
-import { nearestLiveResource } from '../live-resources.js';
+import { nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf, firstRingNode } from '../node-geometry.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
@@ -28,13 +28,14 @@ export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
   taken.add(flagNodeKey(spot.hx, spot.hy));
 }
 
-/** Whether any live resource accepted by `alive` remains inside the flag's work circle, the
- *  world-metric circle the gatherer harvests in. */
+/** Whether any live resource accepted by `alive` and `workable` remains inside the flag's work circle,
+ *  the world-metric circle the gatherer harvests in. */
 export function patchAlive(
   world: World,
   flagNode: HalfCellNode,
   radius: number,
   alive: (r: { goodType: number; remaining: number }) => boolean,
+  workable: WorkableTest,
 ): boolean {
   // The region-index box must contain the anisotropic circle (±radius nodes E/W, wider in rows).
   const box = nodeBoxOfCircles([{ x: flagNode.hx, y: flagNode.hy, r: radius }]);
@@ -43,7 +44,9 @@ export function patchAlive(
     const r = world.get(e, Resource);
     if (r.remaining <= 0 || !alive(r)) return false;
     const node = anchorNodeOf(world, e);
-    return node !== null && withinNodeRadius(flagNode.hx, flagNode.hy, node.hx, node.hy, radius);
+    return (
+      node !== null && withinNodeRadius(flagNode.hx, flagNode.hy, node.hx, node.hy, radius) && workable(e)
+    );
   });
 }
 
@@ -67,17 +70,18 @@ export function flagSpotNear(
   );
 }
 
-/** The flag spot beside the good's live resource nearest the seat's base, or null when the map holds none
- *  (or no legal flag node stands near it). */
+/** The flag spot beside the good's workable live resource nearest `anchor`, or null when the map holds
+ *  none (or no legal flag node stands near it). */
 export function collectorSpot(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  baseNode: HalfCellNode,
+  anchor: HalfCellNode,
   goodType: number,
   taken: TakenFlagNodes,
+  workable: WorkableTest,
 ): HalfCellNode | null {
-  const resource: Entity | null = nearestLiveResource(world, goodType, baseNode);
+  const resource: Entity | null = nearestLiveResource(world, goodType, anchor, workable);
   if (resource === null) return null;
   const node = anchorNodeOf(world, resource);
   return node === null ? null : flagSpotNear(world, ctx, terrain, node, taken);
