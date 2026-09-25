@@ -876,13 +876,20 @@ describe('selection details panel model', () => {
     expect(barTone(0)).toBe('critical');
   });
 
-  it('lists every collector resource in the Produkcja section and reflects the selected filter', () => {
+  it('lists every collector resource in the Produkcja section with its counter', () => {
     const snapshot = snapshotOf([
       {
         id: 1,
         components: {
           Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-          WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
+          WorkFlag: { flag: 2, radius: 24 },
+          ProductionCounters: {
+            counters: [
+              [GOOD_WOOD, 0],
+              [GOOD_STONE, 3],
+            ],
+            cursor: 0,
+          },
         },
       },
     ]);
@@ -898,8 +905,7 @@ describe('selection details panel model', () => {
       GOOD_GOLD,
       GOOD_MUSHROOM,
     ]);
-    expect(model.production?.selectedGood).toBe(GOOD_STONE);
-    expect(model.production?.rows.every((row) => row.count === null)).toBe(true);
+    expect(model.production?.rows.map((row) => row.count)).toEqual([0, 3, 11, 11, 11, 11]);
   });
 
   // The HQ has no raw meat slot - it banks a hunter's kill as food - so a raw-slot-only menu filter drops

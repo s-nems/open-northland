@@ -28,16 +28,15 @@ export interface SettlerProductionRow {
   readonly label: string;
   /** Why the settler may not make it yet (the tooltip of its lock), null once earned. */
   readonly locked: string | null;
-  /** A craft product's counter, 0..`PRODUCTION_UNLIMITED`; null for a gathered good, which has none. */
-  readonly count: number | null;
+  /** The product's counter, 0..`PRODUCTION_UNLIMITED`, for a crafted and a gathered good alike. */
+  readonly count: number;
 }
 
-/** The Produkcja section: a craft operator's counters or a gatherer's goods, in recipe or catalog order. */
+/** The Produkcja section: a craft operator's products in recipe order, or a gatherer's goods in catalog
+ *  order, each with its counter. */
 export interface SettlerProductionModel {
   readonly kind: 'craft' | 'gather';
   readonly rows: readonly SettlerProductionRow[];
-  /** The one good a gatherer is held to, null while it gathers every good. */
-  readonly selectedGood: number | null;
 }
 
 export interface SettlerWorkModel {
@@ -96,14 +95,13 @@ export function settlerWork(
     if (learned.includes(goodType)) return null;
     return goodExperienceLock(ctx, comps, progressionGated, goodType);
   };
-  const selectedGather = (key: 'WorkFlag' | 'GatherSelection'): number | null =>
-    num((comps[key] as { goodType?: unknown } | undefined)?.goodType) ?? null;
+  const counters = productionCounters(comps);
 
   if (comps.WorkFlag !== undefined) {
     const goods = harvestableGoodsFor(ctx, jobType);
     return {
       place: { id: null, label: messages().hud.workFlag },
-      production: gatherProduction(ctx, goods, experienceGate, selectedGather('WorkFlag')),
+      production: gatherProduction(ctx, goods, experienceGate, counters),
       lesson: null,
     };
   }
@@ -136,7 +134,7 @@ export function settlerWork(
     const stocked = harvestable.filter(
       (good) => stored.has(good.typeId) || stored.has(ctx.edibleGoodForm?.(good.typeId) ?? good.typeId),
     );
-    const production = gatherProduction(ctx, stocked, experienceGate, selectedGather('GatherSelection'));
+    const production = gatherProduction(ctx, stocked, experienceGate, counters);
     if (production !== null) return { place, production, lesson: null };
   }
   const craftGate: GoodGate = (goodType) => {
@@ -144,7 +142,7 @@ export function settlerWork(
     if (gate === HIDDEN) return HIDDEN;
     return ctx.technologyReason?.('good', goodType, tribe, owner) ?? gate;
   };
-  return { place, production: craftProduction(ctx, def, jobType, comps, craftGate), lesson: null };
+  return { place, production: craftProduction(ctx, def, jobType, counters, craftGate), lesson: null };
 }
 
 type GoodEntry = UnitPanelModelContext['goods'][number];
@@ -165,7 +163,7 @@ function productRow(
   ctx: UnitPanelModelContext,
   goodType: number,
   locked: string | null,
-  count: number | null,
+  count: number,
 ): SettlerProductionRow {
   const id = goodDef(ctx, goodType)?.id;
   return {
@@ -177,37 +175,38 @@ function productRow(
   };
 }
 
+/** A gatherer's goods with their counters (a good without an entry never stops), or null for none. */
 function gatherProduction(
   ctx: UnitPanelModelContext,
   goods: readonly GoodEntry[],
   gate: GoodGate,
-  selectedGood: number | null,
+  counters: ReadonlyMap<number, number>,
 ): SettlerProductionModel | null {
   const rows = goods.flatMap((good) => {
     const locked = gate(good.typeId);
-    return locked === HIDDEN ? [] : [productRow(ctx, good.typeId, locked, null)];
+    if (locked === HIDDEN) return [];
+    return [productRow(ctx, good.typeId, locked, counters.get(good.typeId) ?? PRODUCTION_UNLIMITED)];
   });
-  return rows.length === 0 ? null : { kind: 'gather', rows, selectedGood };
+  return rows.length === 0 ? null : { kind: 'gather', rows };
 }
 
 /**
  * A craft operator's products with their counters, or null when there is nothing to choose. Operator
  * slots follow the sim's `operatorJobsOf`: worker slots minus the carrier transport slot, unless every
- * slot is a carrier one, when the carrier does choose. A product missing from `ProductionCounters.counters`
+ * slot is a carrier one, when the carrier does choose. A product missing from `ProductionCounters`
  * never stops, as does every product of an operator without the component.
  */
 function craftProduction(
   ctx: UnitPanelModelContext,
   def: ReturnType<typeof buildingDef>,
   jobType: number | undefined,
-  comps: Comp,
+  counters: ReadonlyMap<number, number>,
   gate: GoodGate,
 ): SettlerProductionModel | null {
   if (def === undefined || def.recipes.length === 0 || jobType === undefined) return null;
   const operatorSlots = def.workers.filter((slot) => !isCarrierJob(ctx, slot.jobType));
   const operators = operatorSlots.length > 0 ? operatorSlots : def.workers;
   if (!operators.some((slot) => slot.jobType === jobType)) return null;
-  const counters = craftCounters(comps);
   const rows = def.recipes.flatMap((recipe) => {
     const goodType = recipe.outputs[0]?.goodType;
     if (goodType === undefined) return [];
@@ -215,11 +214,11 @@ function craftProduction(
     if (locked === HIDDEN) return [];
     return [productRow(ctx, goodType, locked, counters.get(goodType) ?? PRODUCTION_UNLIMITED)];
   });
-  return rows.length === 0 ? null : { kind: 'craft', rows, selectedGood: null };
+  return rows.length === 0 ? null : { kind: 'craft', rows };
 }
 
 /** `ProductionCounters.counters` as the snapshot serializes it: [goodType, count] pairs. */
-function craftCounters(comps: Comp): ReadonlyMap<number, number> {
+function productionCounters(comps: Comp): ReadonlyMap<number, number> {
   const raw = (comps.ProductionCounters as { counters?: unknown } | undefined)?.counters;
   const counters = new Map<number, number>();
   if (!Array.isArray(raw)) return counters;

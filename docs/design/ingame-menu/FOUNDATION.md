@@ -270,16 +270,15 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   names the spouse and the growing child as links that select them, or "bez pary" in amber, which
   opens the partner choice (the same pick flow as assigning a home, aimed at a person). A man without a trade has no Miejsce pracy row, a woman and a
   soldier have Dom and Rodzina only, a child a read-only Dom row, a hero no section.
-- Produkcja, under Praca for a craft operator: one row per product the trade may make
-  here, in recipe order: the good's icon in a round button, its name and a −/n/+ counter. A
-  gatherer's goods carry no counter until the sim holds a gatherer quota, so they stand in one strip
-  of icon buttons (the name in the tooltip): pressing one holds the gatherer to that good, the rest
-  fade, and pressing the sole held good's icon gathers everything again. The
-  counter is the original's human-window production counter: 0 stops the product (the row fades),
+- Produkcja, under Praca for a craft operator and for a gatherer alike: one row per product the
+  trade makes here, in recipe order, or per good it gathers here, in catalog order: the good's icon
+  in a round button, its name and a −/n/+ counter. The counter is the original's human-window
+  production counter, and a gatherer's counts down per landed unit (a stroke's yield, a catch): 0 stops the product (the row fades),
   1 to 10 is how many more to make, ∞ never stops. − at 0 wraps to ∞ and Shift with an arrow jumps
   to that end, as the original's window does; + at ∞ stays at ∞ with the arrow dimmed, where the
   original wraps to 0 (a named approximation: one more click must not stop a product). The icon
-  button is "Tylko ten produkt": ∞ here, 0 on every other row (the original's "Tylko produkuj").
+  button is "Tylko ten produkt" (for a gatherer "Tylko to dobro"): ∞ here, 0 on every other row (the
+  original's "Tylko produkuj").
   A product not yet earned is listed faded with a lock, the requirement and progress in the
   tooltip; the lock opens the good's Knowledge page once the Knowledge window exists. Products rotate
   one unit at a time in good order, as the sim does today; a job whose `userCanChangeProductionFlag` is
@@ -299,7 +298,9 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   spells it out); every other track folds behind an "N więcej" toggle at the right of the section
   title, so the fold costs no row. Every fight track counts as a soldier's and a hero's own
   (approximation: the weapon a class fights with is not read). Then the upcoming unlocks as lock-marked "job (track)" rows with
-  "current / required" and a thin meter. The section is absent when there is nothing to list.
+  "current / required" and a thin meter, the first two shown and the rest behind the same fold, so a
+  gatherer's six goods and four unlocks still fit the plane. The section is absent when there is
+  nothing to list.
 - No footer: the portrait centres, the Rozkazy button orders, the profession button sits beside it.
 - First paint at map start: the panel paints a made-up person once, out of sight, when the game
   view mounts, so the browser compiles the raster pipelines of its styles behind the loading screen

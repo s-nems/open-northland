@@ -3002,23 +3002,6 @@ body.on-drag-scroll-cursor-hidden * {
   padding: 0;
   border-bottom: 1px dotted #c9a26233;
 }
-/* A gatherer's goods: icon buttons side by side, the name in each one's tooltip, the held good lit. */
-.on-hud .on-prod--strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 0 2px;
-}
-.on-hud .on-prod--strip .on-prod-row {
-  display: block;
-  min-height: 0;
-  border-bottom: 0;
-}
-.on-hud .on-prod--strip .on-prod-row__name,
-.on-hud .on-prod--strip .on-counter,
-.on-hud .on-prod--strip .on-prod-row__lock {
-  display: none;
-}
 .on-hud .on-prod-row:last-child {
   border-bottom: 0;
 }

@@ -32,10 +32,8 @@ export interface SettlerPanelActions {
   readonly equip: (id: number, ref: EquipSlotRef) => void;
   readonly unequip: (id: number, ref: EquipSlotRef) => void;
   readonly setProductionCount: (id: number, goodType: number, count: number) => void;
-  /** "Only this product": this one never stops, every other product stops. */
+  /** "Only this product": this one never stops, every other product or gathered good stops. */
   readonly onlyProduct: (id: number, goodType: number) => void;
-  /** Hold a gatherer to one good, or null for every good. */
-  readonly setGatherGood: (id: number, goodType: number | null) => void;
   readonly setStance: (id: number, mode: number) => void;
   readonly setRegeneration: (id: number, allowed: boolean) => void;
   readonly attachTradeHouse: (id: number) => void;

@@ -18,7 +18,6 @@ import {
   tradePeers,
 } from '../src/hud/dom/settler-panel/peers.js';
 import { statusText, statusTone } from '../src/hud/dom/settler-panel/portrait.js';
-import { gatherTarget, productStopped } from '../src/hud/dom/settler-panel/production.js';
 import { familyValue, seatButton, seatValue } from '../src/hud/dom/settler-panel/work.js';
 import type { ResidentRow } from '../src/hud/tool-panel/residents/rows.js';
 import { messages } from '../src/i18n/index.js';
@@ -121,34 +120,6 @@ describe('equipment sockets', () => {
     expect(sockets.bag).toEqual([]);
     expect(sockets.worn.every((spec) => spec.fixed && !spec.pressable)).toBe(true);
     expect(sockets.worn[0]?.model.kind === 'item' ? sockets.worn[0].model.removeLabel : 'x').toBeNull();
-  });
-});
-
-describe('production rows', () => {
-  const production = (selectedGood: number | null, kind: 'craft' | 'gather'): SettlerProductionModel => ({
-    kind,
-    rows: [],
-    selectedGood,
-  });
-  const product = (goodType: number, count: number | null): SettlerProductionRow => ({
-    goodType,
-    label: '',
-    locked: null,
-    count,
-  });
-
-  it('holds a gatherer to one good, and a second press on the sole good gathers everything again', () => {
-    expect(gatherTarget(null, 4)).toBe(4);
-    expect(gatherTarget(4, 5)).toBe(5);
-    expect(gatherTarget(4, 4)).toBeNull();
-  });
-
-  it('fades a stopped counter and every good a gatherer is not held to', () => {
-    expect(productStopped(production(null, 'craft'), product(4, 0))).toBe(true);
-    expect(productStopped(production(null, 'craft'), product(4, 3))).toBe(false);
-    expect(productStopped(production(null, 'gather'), product(4, null))).toBe(false);
-    expect(productStopped(production(5, 'gather'), product(4, null))).toBe(true);
-    expect(productStopped(production(4, 'gather'), product(4, null))).toBe(false);
   });
 });
 

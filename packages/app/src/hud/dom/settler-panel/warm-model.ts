@@ -48,7 +48,6 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
         { goodType: 1, ...good(2), label: 'Warm', locked: null, count: 0 },
         { goodType: 2, ...good(3), label: 'Warm', locked: 'warm', count: 11 },
       ],
-      selectedGood: null,
     },
     military: { stance: null, regeneration: true },
     trade: {

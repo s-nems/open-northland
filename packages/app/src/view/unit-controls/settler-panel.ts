@@ -92,9 +92,6 @@ export function settlerPanelActions(
     onlyProduct: order((id, goodType: number) =>
       enqueue({ kind: 'setProductionGoods', entity: id as Entity, goods: [goodType] }),
     ),
-    setGatherGood: order((id, goodType: number | null) =>
-      enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
-    ),
     setStance: order((id, mode: number) => enqueue({ kind: 'setStance', entity: id as Entity, mode })),
     setRegeneration: order((id, enabled: boolean) =>
       enqueue({ kind: 'setRegeneration', entity: id as Entity, enabled }),

@@ -5,15 +5,11 @@
 **Blocked by:** [16-knowledge-reference](ingame-ui-16-knowledge-reference.md) for the lock link
 
 The DOM settler panel (`packages/app/src/hud/dom/settler-panel/`) ships every section of the
-"Settler panel" spec in [FOUNDATION.md](../../design/ingame-menu/FOUNDATION.md) except three
+"Settler panel" spec in [FOUNDATION.md](../../design/ingame-menu/FOUNDATION.md) except two
 affordances whose data or target does not exist yet. The spec names each gap where it applies.
 
 ## Scope
 
-- **Gatherer quota.** A gatherer's Produkcja rows carry the icon button alone (`production.ts`,
-  `gatherTarget`). The sim keeps a gatherer's per-good counters in `ProductionCounters`, set by
-  `setProductionCount` and `setProductionGoods` and spent per landed unit (`jobGatherGoods` lists the
-  goods). Give gatherer rows the same counter part (`hud/dom/parts/counter.ts`) the craft rows use.
 - **Knowledge link.** The lock on a locked product calls `SettlerPanelActions.openKnowledge`, which
   `view/unit-controls/settler-panel.ts` leaves unwired. Wire it to the good's Knowledge entry once
   ticket 16 provides one.
@@ -23,8 +19,7 @@ affordances whose data or target does not exist yet. The spec names each gap whe
 
 ## Verify
 
-Unit-test the quota's decrement and the gatherer counter rows, the Knowledge link opening the right
-entry, and the wear estimate against a known pace. Check a gatherer, a smith and a worn tool in the
-running game.
+Unit-test the Knowledge link opening the right entry and the wear estimate against a known pace.
+Check a locked product and a worn tool in the running game.
 
 For player-visible work, provide the verified preview from the ticket's worktree.

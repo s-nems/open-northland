@@ -36,8 +36,12 @@ function unlockRow(row: UnlockProgressRowModel): LedgerModel {
   };
 }
 
-/** Doświadczenie: the current trade's tracks (the rest folded behind "N więcej" in the title), then
- *  the upcoming unlocks with a thin meter each. */
+/** The upcoming unlocks shown before the fold: a gatherer with six goods and four unlocks would
+ *  otherwise push the panel past the plane. */
+export const UNLOCKS_SHOWN_MAX = 2;
+
+/** Doświadczenie: the current trade's tracks and the first upcoming unlocks with a thin meter each; the
+ *  rest of both fold behind one "N więcej" in the title. */
 export interface ExperienceSection {
   readonly element: HTMLElement;
   update(model: SettlerPanelModel, structural: boolean): void;
@@ -85,7 +89,8 @@ export function createExperienceSection(): ExperienceSection {
         );
       }
       const shown = experienceShown(model.experience);
-      hidden = model.experience.length - shown;
+      const shownUnlocks = Math.min(model.upcomingUnlocks.length, UNLOCKS_SHOWN_MAX);
+      hidden = model.experience.length - shown + model.upcomingUnlocks.length - shownUnlocks;
       model.experience.forEach((row, index) => {
         const ledger = trained[index];
         if (ledger === undefined) return;
@@ -97,6 +102,8 @@ export function createExperienceSection(): ExperienceSection {
         if (unlock === undefined) return;
         unlock.ledger.update(unlockRow(row));
         setClass(unlock.ledger.element, 'on-ledger--unlock', true);
+        setClass(unlock.ledger.element, 'on-ledger--more', index >= shownUnlocks);
+        setClass(unlock.meter, 'on-ledger--more', index >= shownUnlocks);
         const width = `${Math.round((row.current / Math.max(1, row.required)) * 100)}%`;
         if (unlock.meter.style.getPropertyValue('--value') !== width)
           unlock.meter.style.setProperty('--value', width);

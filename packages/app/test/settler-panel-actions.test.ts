@@ -59,10 +59,9 @@ describe('the settler panel’s orders', () => {
     const { actions, sent, cues, renamed } = harness();
     actions.unassignWorkplace(FOREIGN);
     actions.rename(FOREIGN, 'Bjorn');
-    actions.setGatherGood(99, null);
     expect(sent).toEqual([]);
     expect(renamed).toEqual([]);
-    expect(cues).toEqual(['fail', 'fail', 'fail']);
+    expect(cues).toEqual(['fail', 'fail']);
   });
 
   it('lets the whole-map view order everyone', () => {
