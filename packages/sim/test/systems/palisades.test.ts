@@ -3,6 +3,7 @@ import {
   addWildlife,
   Damaged,
   Health,
+  MoveGoal,
   Palisade,
   PalisadeBlocking,
   Position,
@@ -269,7 +270,7 @@ describe('palisades', () => {
     expect(sim.world.get(gate, Palisade).gate?.open).toBe(false);
   });
 
-  it('defers completed collision while occupied and consumes its wood exactly once after clearing', () => {
+  it('defers completed collision while a traveller crosses and consumes its wood exactly once after', () => {
     const sim = fresh();
     sim.enqueueSetup({
       kind: 'placePalisade',
@@ -283,7 +284,11 @@ describe('palisades', () => {
     const gate = onlyPalisade(sim);
     setStockAmount(sim.world, gate, 5, 1);
     hammerOut(sim, gate);
+    // An idle occupant is pushed off as the gate rises; one on its way waits the gate out.
     const occupant = standingCreature(sim, 9, 8);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected mapped simulation');
+    sim.world.add(occupant, MoveGoal, { cell: terrain.nodeAt(9, 12) });
 
     constructionSystem(sim.world, ctxOf(sim));
     constructionSystem(sim.world, ctxOf(sim));

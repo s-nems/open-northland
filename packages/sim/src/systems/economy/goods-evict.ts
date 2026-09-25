@@ -1,4 +1,12 @@
-import { Building, GroundDrop, HarvestedBy, Position, Stockpile, Vehicle } from '../../components/index.js';
+import {
+  Building,
+  GroundDrop,
+  HarvestedBy,
+  Palisade,
+  Position,
+  Stockpile,
+  Vehicle,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
@@ -25,14 +33,25 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
   if (terrain === undefined) return;
   const body = walkBlockedBodyOf(world, ctx, terrain, building);
   if (body === null) return;
+  evictLooseGoodsFromCells(world, ctx, terrain, body);
+}
 
+/** {@link evictLooseGoodsFromFootprint} over cells that already block, such as a finished wall's body and
+ *  joint seals. */
+export function evictLooseGoodsFromCells(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  body: ReadonlySet<NodeId>,
+): void {
   // Snapshot the buried piles before mutating - the landing loop below creates and destroys entities
   // in the very index this scan reads.
   const buriedUnsorted: Entity[] = [];
   for (const cell of body) {
     const { x, y } = terrain.coordsOf(cell);
     for (const e of stockpilesAtNode(world, x, y)) {
-      if (world.has(e, Building) || world.has(e, Vehicle)) continue; // a persistent store keeps its cell
+      // A persistent store keeps its cell, and a wall's stock is its own construction hold.
+      if (world.has(e, Building) || world.has(e, Vehicle) || world.has(e, Palisade)) continue;
       buriedUnsorted.push(e);
     }
   }

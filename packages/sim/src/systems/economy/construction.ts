@@ -19,7 +19,7 @@ import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
-import { palisadeBlockingCellsOccupied, rerouteAroundPalisade } from '../palisades/index.js';
+import { settleClosedWall, WallSiteOccupancy } from '../palisades/index.js';
 import { holdsPalisadeClaim } from '../palisades/reservation.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
@@ -49,6 +49,7 @@ import { destroyStumpsInReserved } from './stumps.js';
  * falls to a single blow.
  */
 export const constructionSystem: System = (world, ctx) => {
+  const occupancy = new WallSiteOccupancy(world);
   // Sites only, in ascending id: the pass scales with what is being built, and two sites finishing on
   // one tick settle their plots in a canonical order.
   for (const e of world.canonicalQuery(UnderConstruction)) {
@@ -58,79 +59,100 @@ export const constructionSystem: System = (world, ctx) => {
     const health = world.tryGet(e, Health);
     if (health !== undefined && health.hitpoints <= 0) continue;
     const building = world.tryGet(e, Building);
-    const palisade = world.tryGet(e, Palisade);
-    if (building === undefined && palisade === undefined) continue;
-    // A type missing from content has an empty bill and a zero labor total, which would read as complete
-    // and finish the site for free.
-    if (building !== undefined && !contentIndex(ctx.content).buildings.has(building.buildingType)) continue;
-    advanceSite(world, ctx, e, building, palisade, constructionBillOf(world, ctx, e));
+    const wall = world.tryGet(e, Palisade);
+    if (building !== undefined) {
+      // A type missing from content has an empty bill and a zero labor total, which would read as
+      // complete and finish the site for free.
+      if (!contentIndex(ctx.content).buildings.has(building.buildingType)) continue;
+      advanceBuildingSite(world, ctx, e, building, constructionBillOf(world, ctx, e));
+    } else if (wall !== undefined) {
+      advanceWallSite(world, ctx, e, wall, constructionBillOf(world, ctx, e), occupancy);
+    }
   }
 };
 
 type BuildingState = NonNullable<(typeof Building)['__value']>;
+type PalisadeState = NonNullable<(typeof Palisade)['__value']>;
 
-/** Advance one construction site this tick. `cost` is the site's bill, spent into the structure on
+/** Advance one building site this tick. `cost` is the site's bill, spent into the structure on
  *  completion. */
-function advanceSite(
+function advanceBuildingSite(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  building: DeepReadonly<BuildingState> | undefined,
-  palisade: DeepReadonly<NonNullable<(typeof Palisade)['__value']>> | undefined,
+  building: DeepReadonly<BuildingState>,
   cost: ReadonlyArray<{ goodType: number; amount: number }>,
 ): void {
   const labor = world.get(e, UnderConstruction).labor;
   // A free (empty-cost) type has nothing to install, so its labor requirement is waived.
-  const laborComplete =
-    palisade !== undefined ? labor >= ONE : constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
+  const laborComplete = constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
   if (laborComplete && constructionMaterialsPresent(world, ctx, e)) {
-    if (
-      palisade !== undefined &&
-      ctx.terrain !== undefined &&
-      palisadeBlockingCellsOccupied(world, ctx.terrain, e, palisade.walk)
-    ) {
-      return;
-    }
     consumeMaterials(world, e, cost);
-    finishSite(world, ctx, e, building, palisade);
+    finishBuilding(world, ctx, e, building);
     return;
   }
-
-  const delivered = deliveredConstructionFraction(world, ctx, e);
-  const before = building?.built ?? palisade?.built ?? ONE;
-  const next = labor < delivered ? labor : delivered;
+  const before = building.built;
+  const next = builtProgress(world, ctx, e, labor);
   if (next === before) return; // mut only on a real move, or every idle site would churn version keys
-  if (building !== undefined) world.mut(e, Building).built = next;
-  else world.mut(e, Palisade).built = next;
+  world.mut(e, Building).built = next;
   // An upgrade site keeps the standing building's Health; ramping by `built` would drop a whole house to
   // 1 HP (approximation - the original's upgrade HP behavior is unobserved).
   if (!world.has(e, Upgrading)) rampHealth(world, e, before, next);
 }
 
-/**
- * Flip one construction site to finished. An upgrade site additionally adopts the target tier and merges
- * its stashed pre-upgrade inventory back into the stockpile, so the build hold's surplus and the old
- * inventory coexist rather than replace one another.
- */
-function finishSite(
+/** Advance one wall site this tick. A hammered segment stands once no traveller is on its cells or on the
+ *  joint seals it would make; whoever idles there is pushed off as it rises. */
+function advanceWallSite(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  building: DeepReadonly<BuildingState> | undefined,
-  palisade: DeepReadonly<NonNullable<(typeof Palisade)['__value']>> | undefined,
+  wall: DeepReadonly<PalisadeState>,
+  cost: ReadonlyArray<{ goodType: number; amount: number }>,
+  occupancy: WallSiteOccupancy,
 ): void {
-  if (building === undefined) {
-    if (palisade === undefined) return;
-    const mutable = world.mut(e, Palisade);
-    mutable.built = ONE;
-    mutable.reservation = null;
-    world.remove(e, UnderConstruction);
-    world.add(e, PalisadeBlocking, {});
-    if (ctx.terrain !== undefined) rerouteAroundPalisade(world, ctx.terrain, e);
-    fillHealth(world, e);
-    ctx.events.emit({ kind: 'palisadeFinished', entity: e });
+  const labor = world.get(e, UnderConstruction).labor;
+  if (labor >= ONE && constructionMaterialsPresent(world, ctx, e)) {
+    if (ctx.terrain !== undefined && occupancy.travellerOnClosing(ctx.terrain, e)) return;
+    consumeMaterials(world, e, cost);
+    finishWall(world, ctx, e);
     return;
   }
+  const before = wall.built;
+  const next = builtProgress(world, ctx, e, labor);
+  if (next === before) return;
+  world.mut(e, Palisade).built = next;
+  rampHealth(world, e, before, next);
+}
+
+/** A site's `built` fraction: its labor, capped by the delivered material. */
+function builtProgress(world: World, ctx: SystemContext, e: Entity, labor: Fixed): Fixed {
+  const delivered = deliveredConstructionFraction(world, ctx, e);
+  return labor < delivered ? labor : delivered;
+}
+
+/** Raise a wall site: it starts blocking and settles the ground it closes. */
+function finishWall(world: World, ctx: SystemContext, e: Entity): void {
+  const wall = world.mut(e, Palisade);
+  wall.built = ONE;
+  wall.reservation = null;
+  world.remove(e, UnderConstruction);
+  world.add(e, PalisadeBlocking, {});
+  if (ctx.terrain !== undefined) settleClosedWall(world, ctx, ctx.terrain, e);
+  fillHealth(world, e);
+  ctx.events.emit({ kind: 'palisadeFinished', entity: e });
+}
+
+/**
+ * Flip one building site to finished. An upgrade site additionally adopts the target tier and merges
+ * its stashed pre-upgrade inventory back into the stockpile, so the build hold's surplus and the old
+ * inventory coexist rather than replace one another.
+ */
+function finishBuilding(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  building: DeepReadonly<BuildingState>,
+): void {
   const upgrading = world.tryGet(e, Upgrading);
   let adoptedTier = false;
   if (upgrading !== undefined) {
@@ -211,7 +233,9 @@ export function settleFootprint(world: World, ctx: SystemContext, e: Entity): vo
  */
 export function forceFinishConstruction(world: World, ctx: SystemContext, site: Entity): void {
   if (!world.has(site, UnderConstruction)) return;
-  finishSite(world, ctx, site, world.tryGet(site, Building), world.tryGet(site, Palisade));
+  const building = world.tryGet(site, Building);
+  if (building !== undefined) finishBuilding(world, ctx, site, building);
+  else if (world.has(site, Palisade)) finishWall(world, ctx, site);
 }
 
 /** Ramp a site's {@link Health} for a rise from `before` to `after`: the pool gains what the ceiling gained

@@ -15,7 +15,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { NodeId } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
@@ -110,16 +110,31 @@ export function evictWorkFlagsFromFootprint(world: World, ctx: SystemContext, bu
   if (b === undefined || p === undefined) return;
   const anchor = nodeOfPosition(p.x, p.y);
   const cells = buildingFlagBody(ctx.content, b.buildingType);
-  const body = new Set<NodeId>(translatedCells(terrain, cells, anchor.hx, anchor.hy));
-  if (body.size === 0) return;
+  evictWorkFlagsFromCells(
+    world,
+    ctx,
+    terrain,
+    new Set(translatedCells(terrain, cells, anchor.hx, anchor.hy)),
+  );
+}
 
+/** Push every work flag on `body` out to the nearest legal field `accept` also takes, as
+ *  {@link evictWorkFlagsFromFootprint} does for a building. */
+export function evictWorkFlagsFromCells(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  body: ReadonlySet<NodeId>,
+  accept?: (node: NodeId) => boolean,
+): void {
+  if (body.size === 0) return;
   // The common case, no flag on the plot, early-outs before any nearest-field scan.
   const enclosed = [...world.query(DeliveryFlag, Position)].filter((e) =>
     body.has(entityNode(world, terrain, e)),
   );
   if (enclosed.length === 0) return;
   for (const flag of canonicalById(enclosed)) {
-    const node = nearestWorkFlagPlacement(world, ctx, terrain, entityNode(world, terrain, flag));
+    const node = nearestWorkFlagPlacement(world, ctx, terrain, entityNode(world, terrain, flag), { accept });
     if (node === null) continue; // no legal field anywhere - the flag stays put
     const c = terrain.coordsOf(node);
     relocateWorkFlag(world, flag, positionOfNode(c.x, c.y));

@@ -22,7 +22,17 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   if (terrain === undefined) return; // mapless sim: no cells to stand on
   const body = walkBlockedBodyOf(world, ctx, terrain, building);
   if (body === null) return; // nothing impassable
+  evictSettlersFromCells(world, ctx, terrain, body);
+}
 
+/** {@link evictSettlersFromFootprint} over cells that already block, such as a finished wall's body and
+ *  joint seals. */
+export function evictSettlersFromCells(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  body: ReadonlySet<NodeId>,
+): void {
   // Travellers enter the occupancy set too, since a landing must not stack on anyone. Sorting is deferred
   // to the evictees so a finish with nobody on or beside the plot early-outs before any sort.
   const units: Entity[] = [];

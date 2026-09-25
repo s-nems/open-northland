@@ -15,16 +15,22 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import { fx, ONE } from '../../core/fixed.js';
 import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { ScriptLandscapeType, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, ScriptLandscapeType, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { evictLooseGoodsFromCells } from '../economy/goods-evict.js';
 import { markShortPool } from '../economy/repair.js';
+import { evictWorkFlagsFromCells } from '../economy/work-flag.js';
 import { translatedCells } from '../footprint/geometry.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
 import { placementBlockerGrid } from '../footprint/placement/blocker-grid.js';
 import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placement/index.js';
 import { wallClosingCells } from '../footprint/wall-joints.js';
 import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
 import { landscapeTypes } from '../landscape/view.js';
+import { evictSettlersFromCells } from '../movement/evict.js';
+import { isTravelling } from '../movement/nav-state.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 export type PalisadeGateAxis = 0 | 1 | 2;
@@ -113,8 +119,8 @@ export function createPalisade(
 }
 
 /** Open or close a standing gate, a damaged one included, by swapping to its paired data row, reporting whether the swap landed.
- * Closing is refused while any other positioned entity occupies a cell the closed footprint would block;
- * a gate already in the requested state counts as landed. */
+ * Closing is refused while a settler or creature stands on a cell the closed gate would block, its joint
+ * seals included; a gate already in the requested state counts as landed. */
 export function setPalisadeGate(
   world: World,
   ctx: SystemContext,
@@ -132,9 +138,7 @@ export function setPalisadeGate(
   if (current.gate.open === command.open) return true;
   const target = palisadeType(terrain, current.gate.counterpartGfxIndex);
   if (target?.wall?.gate === undefined || target.wall.gate.open !== command.open) return false;
-  if (!command.open && palisadeBlockingCellsOccupied(world, terrain, command.palisade, target.walk)) {
-    return false;
-  }
+  if (!command.open && gateClosingOccupied(world, terrain, command.palisade, target.walk)) return false;
 
   // Remove + add so footprint journals see the source-record swap as a topology change.
   const blocking = world.has(command.palisade, PalisadeBlocking);
@@ -157,22 +161,61 @@ export function setPalisadeGate(
     health.max = target.wall.maxHitpoints;
   }
   if (blocking) world.add(command.palisade, PalisadeBlocking, {});
-  if (blocking && !command.open) rerouteAroundPalisade(world, terrain, command.palisade);
+  if (blocking && !command.open) settleClosedWall(world, ctx, terrain, command.palisade);
   return true;
 }
 
-/** A wall that starts blocking turns back every walker whose route runs through it: the walker stops and
- *  searches again, rather than stepping through a gate that shut in front of it. */
-export function rerouteAroundPalisade(world: World, terrain: TerrainGraph, e: Entity): void {
-  // A map's authored walls stand before anyone walks, so its load skips the closing's cells.
-  if (!anyRouteFollowed(world)) return;
+/** The cells wall or gate `e` closes with `walk`, its joint seals included. */
+function closingCellsOf(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  walk: readonly FootprintCell[],
+): Set<NodeId> {
   const at = world.get(e, Position);
   const { hx, hy } = nodeOfPosition(at.x, at.y);
-  invalidateRoutesThrough(
-    world,
-    terrain,
-    wallClosingCells(world, terrain, world.get(e, Palisade).walk, hx, hy),
-  );
+  return wallClosingCells(world, terrain, walk, hx, hy);
+}
+
+/**
+ * Settle the ground a wall that just started blocking closed, its body and its joint seals: every walker
+ * whose route runs through it stops and searches again, rather than stepping through a gate that shut in
+ * front of it, and the settlers standing idle there, the loose goods and the work flags are pushed off,
+ * so none is stranded on a node no route leaves. A traveller stays; a wall site waits for it.
+ */
+export function settleClosedWall(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): void {
+  const closing = closingCellsOf(world, terrain, e, world.get(e, Palisade).walk);
+  // A map's authored walls stand before anyone walks, so its load skips the route scan.
+  if (anyRouteFollowed(world)) invalidateRoutesThrough(world, terrain, closing);
+  evictSettlersFromCells(world, ctx, terrain, closing);
+  evictLooseGoodsFromCells(world, ctx, terrain, closing);
+  // Built only when a flag is enclosed: a map's load places every wall before any flag stands.
+  let blocked: BlockOverlay | null = null;
+  evictWorkFlagsFromCells(world, ctx, terrain, closing, (node) => {
+    blocked ??= dynamicBlockOverlay(world, ctx, terrain);
+    return !blocked.has(node);
+  });
+}
+
+/** The settlers standing on each node, filled on first use, so a construction pass pays one settler scan
+ *  however many wall sites wait on it. An eviction moves only idle settlers, never a traveller, which is
+ *  all this reads. */
+export class WallSiteOccupancy {
+  private byNode: NodeBuckets | null = null;
+
+  constructor(private readonly world: World) {}
+
+  /** Whether a traveller stands where wall site `e` would close, which the finish waits out. */
+  travellerOnClosing(terrain: TerrainGraph, e: Entity): boolean {
+    const world = this.world;
+    this.byNode ??= new NodeBuckets(world, world.query(Settler, Position));
+    for (const cell of closingCellsOf(world, terrain, e, world.get(e, Palisade).walk)) {
+      for (const settler of this.byNode.at(terrain.xOf(cell), terrain.yOf(cell))) {
+        if (isTravelling(world, settler)) return true;
+      }
+    }
+    return false;
+  }
 }
 
 /** The completed gate of `player` standing on `hx,hy` - the anchor itself or any node its closed body
@@ -196,39 +239,30 @@ export function playerGateAt(
   return null;
 }
 
-/** Whether a settler or creature stands on a cell `walk` would block, anchored at `hx,hy`. Only movers
- *  count: dropped goods and the wall posts a gate's body overlaps are not something a door can crush. */
-function moverOnCells(
-  world: World,
-  terrain: TerrainGraph,
-  walk: readonly FootprintCell[],
-  hx: number,
-  hy: number,
-): boolean {
-  const closed = new Set(translatedCells(terrain, walk, hx, hy));
+/** Whether a settler or creature stands on one of `cells`. Only movers count: dropped goods and the wall
+ *  posts a gate's body overlaps are not something a door can crush. */
+function moverOnCells(world: World, terrain: TerrainGraph, cells: ReadonlySet<NodeId>): boolean {
   for (const e of world.query(Settler, Position)) {
     const p = world.get(e, Position);
     const here = nodeOfPosition(p.x, p.y);
-    if (closed.has(terrain.nodeAtClamped(here.hx, here.hy))) return true;
+    if (cells.has(terrain.nodeAtClamped(here.hx, here.hy))) return true;
   }
   return false;
 }
 
 /**
- * Whether a mover stands where the gate's `walk` footprint would close.
+ * Whether a mover stands where the gate's `walk` footprint, or a joint seal it makes, would close.
  *
  * Approximation: the original swaps the gate record with no occupancy test at all, so it closes on a
  * passer-by. Refusing is this build's adaptation.
  */
-export function palisadeBlockingCellsOccupied(
+function gateClosingOccupied(
   world: World,
   terrain: TerrainGraph,
   gate: Entity,
   walk: readonly FootprintCell[],
 ): boolean {
-  const at = world.get(gate, Position);
-  const anchor = nodeOfPosition(at.x, at.y);
-  return moverOnCells(world, terrain, walk, anchor.hx, anchor.hy);
+  return moverOnCells(world, terrain, closingCellsOf(world, terrain, gate, walk));
 }
 
 interface AxialNode {
@@ -435,7 +469,10 @@ function probeGateRow(
   if (remove.some((e) => hasStoredGoods(world, e))) return { ...empty, center, span };
   const at = world.get(center, Position);
   const anchor = nodeOfPosition(at.x, at.y);
-  if (checkMovers && moverOnCells(world, terrain, type.walk, anchor.hx, anchor.hy)) {
+  if (
+    checkMovers &&
+    moverOnCells(world, terrain, new Set(translatedCells(terrain, type.walk, anchor.hx, anchor.hy)))
+  ) {
     return { ...empty, center, span };
   }
   return { canConvert: true, gfxIndex, center, axis, remove, walls, span };
@@ -484,7 +521,7 @@ export function convertPalisadeGate(
   });
   world.add(command.palisade, Health, { hitpoints: wall.maxHitpoints, max: wall.maxHitpoints });
   world.add(command.palisade, PalisadeBlocking, {});
-  rerouteAroundPalisade(world, terrain, command.palisade);
+  settleClosedWall(world, ctx, terrain, command.palisade);
   ctx.events.emit({
     kind: 'palisadePlaced',
     entity: command.palisade,
@@ -521,7 +558,7 @@ export function placePalisade(
   });
   if (entity === null) return;
   if (world.has(entity, PalisadeBlocking)) {
-    rerouteAroundPalisade(world, terrain, entity);
+    settleClosedWall(world, ctx, terrain, entity);
     // An authored wall below its maximum starts on the builders' list with no blow behind it; a new
     // segment's pool climbs with its build instead.
     markShortPool(world, entity);
