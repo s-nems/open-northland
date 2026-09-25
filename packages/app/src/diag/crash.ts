@@ -4,6 +4,7 @@
  */
 import { messages } from '../i18n/index.js';
 import { isBrave } from '../view/browser-support.js';
+import { servedByBrowser } from '../view/host.js';
 import { downloadDiagnosticsBundle } from './bundle.js';
 import { diag } from './log.js';
 
@@ -45,7 +46,6 @@ let banner: { readonly root: HTMLElement; readonly message: HTMLElement } | null
 function showCrashBanner(text: string): void {
   if (banner === null) {
     const copy = messages().hud;
-    const recommendedBrowser = messages().deviceNotice.recommendedBrowser;
     const root = document.createElement('div');
     root.style.cssText = BANNER_STYLE;
     root.setAttribute('role', 'alert');
@@ -76,10 +76,14 @@ function showCrashBanner(text: string): void {
     const buttons = document.createElement('div');
     Object.assign(buttons.style, { display: 'flex', gap: '8px' });
     buttons.append(download, dismiss);
-    const browser = document.createElement('small');
-    Object.assign(browser.style, { fontSize: '12px', opacity: '0.7' });
-    browser.textContent = recommendedBrowser;
-    root.append(title, message, hint, buttons, browser);
+    root.append(title, message, hint, buttons);
+    // The desktop shell ships its own browser, so only the web app has one to suggest.
+    if (servedByBrowser()) {
+      const browser = document.createElement('small');
+      Object.assign(browser.style, { fontSize: '12px', opacity: '0.7' });
+      browser.textContent = messages().deviceNotice.recommendedBrowser;
+      root.append(browser);
+    }
     document.body.append(root);
     banner = { root, message };
   }
