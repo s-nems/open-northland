@@ -13,9 +13,13 @@ function gateOver() {
   let clock = 1000;
   const claim = createDotReplotGate(() => clock);
   return {
-    frame: (snapshot: ReturnType<typeof snapshotOf>, advanceMs = 0): boolean => {
+    frame: (
+      snapshot: ReturnType<typeof snapshotOf>,
+      advanceMs = 0,
+      viewer: number | null = null,
+    ): boolean => {
       clock += advanceMs;
-      return claim(snapshot);
+      return claim(snapshot, viewer);
     },
   };
 }
@@ -23,6 +27,16 @@ function gateOver() {
 describe('createDotReplotGate', () => {
   it('plots the first frame it sees', () => {
     expect(gateOver().frame(snapshotOf([]))).toBe(true);
+  });
+
+  it('re-plots a held snapshot for another viewer seat, after the window', () => {
+    const g = gateOver();
+    const held = snapshotOf([]);
+    expect(g.frame(held, 0, 0)).toBe(true);
+    expect(g.frame(held, REPLOT_MIN_MS, 0)).toBe(false); // same seat: already plotted, however long held
+    expect(g.frame(held, 0, 1)).toBe(true); // another seat: its dots differ
+    expect(g.frame(held, REPLOT_MIN_MS / 2, 0)).toBe(false); // back inside the window: refused for now
+    expect(g.frame(held, REPLOT_MIN_MS / 2, 0)).toBe(true); // and landed once it passed
   });
 
   it('refuses the rest of the window even though every frame brings a new snapshot', () => {

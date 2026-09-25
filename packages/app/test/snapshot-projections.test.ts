@@ -1,5 +1,5 @@
 import { terrainWorldBounds } from '@open-northland/render';
-import { fx } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../src/game/sandbox/index.js';
 import { actorsOf, trainingOccupancyOf } from '../src/game/snapshot.js';
@@ -62,6 +62,48 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
       jobs: [],
       stocks: [],
     });
+  });
+
+  it('re-filters the fog-gated overlays when a spectator switches seats under a held snapshot', () => {
+    const viewer = switchableViewerSeat(null);
+    const gates = createFogGates();
+    const selected = new Set<number>([1]);
+    const { doorBadgesFor, lifeHeartsFor } = createSnapshotProjections(
+      viewer,
+      () => undefined,
+      workerRoleOf,
+      gates,
+      { isLivestockTribe: () => false, selection: { ids: () => selected, version: () => 0 } },
+    );
+    const home = building(10, HOME_TYPE, 1, 1);
+    const worker = settler(1, 0, 10);
+    const world = snapshotOf([
+      { ...home, components: { ...home.components, Owner: { player: 0 } } },
+      {
+        ...worker,
+        components: {
+          ...worker.components,
+          Owner: { player: 0 },
+          Position: { x: 0, y: 0 },
+          Settler: { tribe: 1, jobType: 0 },
+        },
+      },
+    ]);
+    expect(doorBadgesFor(world)).toHaveLength(1);
+    expect(lifeHeartsFor(world)).toHaveLength(1);
+
+    // The new seat sees nothing: same snapshot, a fog that hides every cell.
+    viewer.watch(1);
+    gates.setFrame({
+      player: 1,
+      mode: FOG_MODE.CLASSIC_FOG_OF_WAR,
+      cellsWide: 8,
+      cellsHigh: 8,
+      generation: 1,
+      stateAt: () => FOG_STATE.UNEXPLORED,
+    });
+    expect(doorBadgesFor(world)).toHaveLength(0);
+    expect(lifeHeartsFor(world)).toHaveLength(0);
   });
 
   it('re-reads the hearts when the selection moves under a held snapshot (a paused pick)', () => {

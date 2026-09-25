@@ -421,8 +421,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       uiscale,
       camera: () => cameraCtl.camera(),
       enqueue: issueCommand,
-      grants: assistantGrantsSeam(sim, sim.content, viewerPlayer, issueCommand, !readOnly),
-      counters: assistantCountersSeam(sim, viewerPlayer, issueCommand, !readOnly),
+      grants: assistantGrantsSeam(sim, sim.content, viewer.seat, issueCommand, !readOnly),
+      counters: assistantCountersSeam(sim, viewer.seat, issueCommand, !readOnly),
       papers: { read: () => (wholeMap() ? NO_PAPERS : sim.papers(viewerPlayer())) },
       residents: {
         rows: () => residentsFor(sim.snapshot()),

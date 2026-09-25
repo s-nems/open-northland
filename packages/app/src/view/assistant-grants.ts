@@ -32,19 +32,21 @@ function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, read
 }
 
 /** Live chest-window grant seam for the seat `player` names, read on every call so a spectator's
- *  window follows its watched seat. A read-only spectator session (`writable: false`) rejects every
- *  write, so the window never echoes a command the sim would drop. */
+ *  window follows its watched seat; no seat (null, the whole map) reads every switch OFF. A read-only
+ *  spectator session (`writable: false`) rejects every write, so the window never echoes a command
+ *  the sim would drop. */
 export function assistantGrantsSeam(
   sim: Pick<Simulation, 'assistantGrants'>,
   content: GrantContent,
-  player: () => number,
+  player: () => number | null,
   enqueue: (command: PlayerCommand) => void,
   writable = true,
 ): ExtrasGrantsSeam {
   const grantGoods = resolveGrantGoods(content);
   return {
     read: () => {
-      const granted = new Set(sim.assistantGrants(player()));
+      const seat = player();
+      const granted = new Set(seat === null ? [] : sim.assistantGrants(seat));
       const on = (id: AssistantGrantId): boolean => {
         const goods = grantGoods[id];
         return goods.length > 0 && goods.every((g) => granted.has(g));
@@ -53,9 +55,10 @@ export function assistantGrantsSeam(
     },
     set: (id, enabled) => {
       const goods = grantGoods[id];
-      if (!writable || goods.length === 0) return false;
+      const seat = player();
+      if (!writable || seat === null || goods.length === 0) return false;
       for (const goodType of goods) {
-        enqueue({ kind: 'setAssistantGrant', player: player(), goodType, enabled });
+        enqueue({ kind: 'setAssistantGrant', player: seat, goodType, enabled });
       }
       return true;
     },

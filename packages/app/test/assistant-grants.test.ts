@@ -20,6 +20,19 @@ const TOOL_IRON = 32;
 const MEAD = 43;
 
 describe('assistantGrantsSeam', () => {
+  it('reads every switch OFF and writes nothing while no seat is watched', () => {
+    const sent: Command[] = [];
+    const seam = assistantGrantsSeam(
+      { assistantGrants: () => [SHOES, MEAD] },
+      CONTENT,
+      () => null,
+      (c) => sent.push(c),
+    );
+    expect(seam.read().giveBoots).toBe(false);
+    expect(seam.set('giveBoots', true)).toBe(false);
+    expect(sent).toEqual([]);
+  });
+
   it('reads a switch as ON exactly when its content-resolved good is granted', () => {
     const seam = assistantGrantsSeam(
       { assistantGrants: () => [SHOES, MEAD] },

@@ -4,7 +4,8 @@ import { createMessageFeed, type MessageFeed, type MessageFeedState } from './fe
  * The feed shown for the viewer's seat, swapped as a spectator switches seats. A seat's notes start at
  * the first switch to it and its feed is kept as it stood when the viewer left, so a return keeps what
  * was dismissed. The whole map (null) shows a fresh empty feed each time. The filter level is the
- * viewer's, not the seat's, so it carries across every switch.
+ * viewer's, not the seat's, so it carries across every switch. A HUD remount restores the shown feed
+ * alone: the left feeds die with the mount, so a return after a scale change starts over.
  */
 export interface SeatFeeds {
   readonly current: MessageFeed;

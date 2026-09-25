@@ -74,30 +74,10 @@ export function createSnapshotProjections(
     },
     () => viewer.version(),
   );
-  return {
-    hudModelFor,
-    hudFor: memoBySnapshot(
-      (snapshot) => layoutHud(hudModelFor(snapshot), hudLabels(seatNameOf)),
-      () => viewer.version(),
-    ),
-    doorBadgesFor: memoBySnapshot((snapshot) => {
-      const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf);
-      const fog = fogGates.current();
-      return fog === null
-        ? badges
-        : badges.filter((badge) => fogTileVisible(fog, badge.x / ONE, badge.y / ONE));
-    }),
-    constructionSignsFor: memoBySnapshot((snapshot) => {
-      const signs = computeConstructionSigns(snapshot, buildingInfoOf);
-      const fog = fogGates.current();
-      return fog === null ? signs : signs.filter((sign) => fogTileVisible(fog, sign.x / ONE, sign.y / ONE));
-    }),
-    settlerBubblesFor: memoBySnapshot((snapshot) => {
-      const bubbles = computeSettlerBubbles(snapshot);
-      const fog = fogGates.current();
-      return fog === null ? bubbles : bubbles.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
-    }),
-    lifeHeartsFor: memoBySnapshot(
+  // The fog is the viewer's too, so every fog-filtered memo keys on the viewer as well.
+  const viewerVersion = (): number => viewer.version();
+  const heartsMemo = (): ((snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>) =>
+    memoBySnapshot(
       (snapshot) => {
         const list = computeLifeHearts(snapshot, {
           isLivestockTribe: hearts.isLivestockTribe,
@@ -108,6 +88,39 @@ export function createSnapshotProjections(
         return fog === null ? list : list.filter((h) => fogTileVisible(fog, h.x / ONE, h.y / ONE));
       },
       () => hearts.selection?.version() ?? 0,
+    );
+  // The hearts key on the selection; a seat switch, rare beside a pick, replaces the memo instead.
+  let heartsViewer = viewer.version();
+  let lifeHearts = heartsMemo();
+  return {
+    hudModelFor,
+    hudFor: memoBySnapshot(
+      (snapshot) => layoutHud(hudModelFor(snapshot), hudLabels(seatNameOf)),
+      viewerVersion,
     ),
+    doorBadgesFor: memoBySnapshot((snapshot) => {
+      const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf);
+      const fog = fogGates.current();
+      return fog === null
+        ? badges
+        : badges.filter((badge) => fogTileVisible(fog, badge.x / ONE, badge.y / ONE));
+    }, viewerVersion),
+    constructionSignsFor: memoBySnapshot((snapshot) => {
+      const signs = computeConstructionSigns(snapshot, buildingInfoOf);
+      const fog = fogGates.current();
+      return fog === null ? signs : signs.filter((sign) => fogTileVisible(fog, sign.x / ONE, sign.y / ONE));
+    }, viewerVersion),
+    settlerBubblesFor: memoBySnapshot((snapshot) => {
+      const bubbles = computeSettlerBubbles(snapshot);
+      const fog = fogGates.current();
+      return fog === null ? bubbles : bubbles.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
+    }, viewerVersion),
+    lifeHeartsFor: (snapshot) => {
+      if (viewer.version() !== heartsViewer) {
+        heartsViewer = viewer.version();
+        lifeHearts = heartsMemo();
+      }
+      return lifeHearts(snapshot);
+    },
   };
 }

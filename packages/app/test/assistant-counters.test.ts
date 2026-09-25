@@ -22,6 +22,18 @@ function simCounters(overrides: Partial<Record<string, { value: number; infinite
 }
 
 describe('assistantCountersSeam', () => {
+  it('reads every counter as zero and writes nothing while no seat is watched', () => {
+    const sent: Command[] = [];
+    const seam = assistantCountersSeam(
+      simCounters({ trainSword: { value: 4, infinite: true } }),
+      () => null,
+      (c) => sent.push(c),
+    );
+    expect(seam.read().trainSwordsmen).toEqual({ value: 0, infinite: false });
+    expect(seam.set('trainSwordsmen', 2, false)).toBe(false);
+    expect(sent).toEqual([]);
+  });
+
   it('reads the six rows off the sim block, the class rows renamed', () => {
     const seam = assistantCountersSeam(
       simCounters({ trainSword: { value: 4, infinite: false }, extraMen: { value: 0, infinite: true } }),

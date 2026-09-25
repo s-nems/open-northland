@@ -16,6 +16,7 @@ import {
 } from '../../content/gui-gfx.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
+import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
@@ -23,7 +24,6 @@ import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
-import type { ObserverPickerSeat } from '../dom/observer-picker.js';
 import { createPlacementStrip } from '../dom/placement-strip.js';
 import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
@@ -94,7 +94,7 @@ export interface ToolPanelOptions {
   readonly viewer: ViewerSeat;
   /** A spectator's seat picker on the system bar: the seats it may watch and where its choice goes. */
   readonly observer?: {
-    readonly seats: readonly ObserverPickerSeat[];
+    readonly seats: readonly ObserverSeatEntry[];
     readonly onWatch: (seat: number | null) => void;
   };
   /** Submit a seat command into the sim. */

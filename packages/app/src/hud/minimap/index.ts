@@ -256,7 +256,7 @@ async function mountMinimapAtScale(opts: MinimapOptions): Promise<MountedMinimap
         container.position.set(layout.panel.x, layout.panel.y);
         surface.syncResolution();
         mountedFogMask.draw(fog);
-        if (claimDotReplot(snapshot)) drawDots(snapshot, fog);
+        if (claimDotReplot(snapshot, fog?.player ?? null)) drawDots(snapshot, fog);
         const vp = viewportRectOnMinimap(
           layout,
           bounds,

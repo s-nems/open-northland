@@ -1,16 +1,11 @@
 import { playerSwatchHex } from '../../catalog/roster.js';
+import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages } from '../../i18n/index.js';
 import { GLYPH } from './icons.js';
 
-export interface ObserverPickerSeat {
-  readonly player: number;
-  /** The seat's authored name; absent, the picker numbers the seat. */
-  readonly name?: string | undefined;
-}
-
 export interface ObserverPickerDeps {
-  readonly seats: readonly ObserverPickerSeat[];
+  readonly seats: readonly ObserverSeatEntry[];
   /** What the picker shows as chosen; the choice itself goes through `onWatch`. */
   readonly viewer: ViewerSeat;
   /** Owner slot to team-colour slot for the swatches; absent = identity. */
@@ -92,10 +87,12 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
     button.setAttribute('aria-expanded', String(open));
   };
   button.addEventListener('click', () => show(list.hidden === true));
-  root.addEventListener('focusout', (event) => {
-    const next = event.relatedTarget;
-    if (!(next instanceof Node && root.contains(next))) show(false);
-  });
+  // A press anywhere else closes the list; `focusout` alone would not, since a button takes no focus
+  // on click in every browser.
+  const onPressOutside = (event: PointerEvent): void => {
+    if (!(event.target instanceof Node && root.contains(event.target))) show(false);
+  };
+  document.addEventListener('pointerdown', onPressOutside, true);
   root.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !list.hidden) {
       show(false);
@@ -119,6 +116,9 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
         option.setAttribute('aria-selected', String(entrySeat === seat));
       }
     },
-    dispose: () => root.remove(),
+    dispose: () => {
+      document.removeEventListener('pointerdown', onPressOutside, true);
+      root.remove();
+    },
   };
 }
