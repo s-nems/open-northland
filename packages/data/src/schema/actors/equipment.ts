@@ -18,6 +18,13 @@ export const EquipRestorePct = z.strictObject({
 });
 export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
 
+/** A carried item's chance to multiply a landed blow's damage. */
+export const EquipCriticalHit = z.strictObject({
+  chancePct: z.number().int().min(1).max(100),
+  damagePct: z.number().int().positive(),
+});
+export type EquipCriticalHit = z.infer<typeof EquipCriticalHit>;
+
 /**
  * A good's equipment classification. The manual pins the wear split ("Partly used items (potions,
  * shoes, ...) you drop are lost", while weapons, armour and amulets "can be used again") and potion
@@ -25,6 +32,10 @@ export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
  * the original's shoe condition. No readable `.ini` carries the other magnitudes: they are the original's
  * fixed values where known and authored balance otherwise. What boots do for the walk is not a field: the
  * original's step cost drops by a fixed two ticks while a live pair is worn (`sim` `walkStepTicks`).
+ *
+ * The carried effects (`damageDealtPct`, `criticalHit`, `damageTakenPct`, `walkStepTicksSaved`) act while
+ * the good sits live in a misc slot. A second copy adds nothing: the original asks only whether one is
+ * carried.
  */
 export const EquipClass = z
   .strictObject({
@@ -42,17 +53,35 @@ export const EquipClass = z
      *  10000 is the original's shoe condition), one work event (tools: a production cycle, a gathering
      *  stroke, a cast, a build swing or a watering), or one sip (consumables). */
     uses: z.number().int().positive().optional(),
-    /** What one sip restores - present only on drinkable goods (mead, potions). */
+    /** What one use restores: a sip of mead or a potion, or an amulet's top-up of its need. */
     restorePct: EquipRestorePct.optional(),
+    /** Percent of its damage a landed blow of the bearer deals (strength amulet 150). */
+    damageDealtPct: z.number().int().positive().optional(),
+    /** Rolled per landed blow of the bearer, after `damageDealtPct` (critical-hit amulet: 20% for 200%). */
+    criticalHit: EquipCriticalHit.optional(),
+    /** Percent of an incoming blow's damage the bearer takes, truncated (defense amulet 50). */
+    damageTakenPct: z.number().int().min(0).max(100).optional(),
+    /** Ticks taken off every step of the bearer's walk, before the age and weight terms (speed amulet 2). */
+    walkStepTicksSaved: z.number().int().positive().optional(),
   })
   // Wear steps are ONE/uses, so a wearing item with no rated uses would never break.
   .refine((e) => !e.wears || e.uses !== undefined, {
     message: 'a wearing equip good must rate its uses',
   })
-  // The same hole reversed: a good that restores a need without wearing is a bottomless bottle, and a
-  // wounded bearer would drink a healing one forever.
-  .refine((e) => e.restorePct === undefined || e.wears, {
-    message: 'a restoring equip good must wear down',
+  // The sim reads the carried effects off the misc row alone; on another slot they would do nothing.
+  .refine(
+    (e) =>
+      e.category === 'misc' ||
+      (e.damageDealtPct === undefined &&
+        e.criticalHit === undefined &&
+        e.damageTakenPct === undefined &&
+        e.walkStepTicksSaved === undefined),
+    { message: 'a carried effect belongs on a misc good' },
+  )
+  // A permanent good may top up hunger or fatigue (the amulets do), but a wounded bearer would drink a
+  // healing one forever.
+  .refine((e) => e.restorePct?.healthMax === undefined || e.wears, {
+    message: 'a healing equip good must wear down',
   });
 export type EquipClass = z.infer<typeof EquipClass>;
 

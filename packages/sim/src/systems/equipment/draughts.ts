@@ -6,8 +6,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { applyEquipWear, wearStepOf } from './wear.js';
 
-// Carried draughts (mead, potions) are drunk on the spot, with no clip and no walk: one sip applies its
-// restore and spends one rated use. Original behavior.
+// Carried draughts (mead, potions, the food and stamina amulets) are drunk on the spot, with no clip and
+// no walk: one sip applies its restore and spends one rated use, or nothing for an amulet. Original
+// behavior.
 
 /** The bar a draught restores, keyed like the content's `restorePct`. */
 type DraughtNeed = keyof EquipRestorePct;
@@ -21,10 +22,23 @@ interface CarriedDraught {
   readonly restore: EquipRestorePct;
 }
 
+/** Where a carried draught ranks: opened, permanent (an amulet), then rated uses. */
+interface DraughtRank {
+  readonly opened: boolean;
+  readonly permanent: boolean;
+  readonly uses: number;
+}
+
+function outranks(a: DraughtRank, b: DraughtRank): boolean {
+  if (a.opened !== b.opened) return a.opened;
+  if (a.permanent !== b.permanent) return a.permanent;
+  return a.uses < b.uses;
+}
+
 /**
- * The carried draught to drink for `need`, or null. Original behavior: an opened bottle goes before a
- * full one, then the one with fewer rated uses (small before large, mead counting as small), then the
- * lowest slot.
+ * The carried draught to drink for `need`, or null. Original behavior: an opened bottle goes before an
+ * amulet, an amulet before a full bottle, then the one with fewer rated uses (small before large, mead
+ * counting as small), then the lowest slot.
  */
 export function draughtFor(
   world: World,
@@ -35,22 +49,24 @@ export function draughtFor(
   const eq = world.tryGet(e, Equipment);
   if (eq === undefined) return null;
   const goods = contentIndex(ctx.content).goods;
-  let best: (CarriedDraught & { opened: boolean; uses: number }) | null = null;
+  let best: (CarriedDraught & DraughtRank) | null = null;
   for (let slot = 0; slot < eq.misc.length; slot++) {
     const held = eq.misc[slot] ?? null;
     if (held === null || held.degreeOfUse >= ONE) continue;
     const equip = goods.get(held.goodType)?.equip;
     const restore = equip?.restorePct;
-    if (restore?.[need] === undefined || equip?.uses === undefined) continue;
-    const opened = held.degreeOfUse > ZERO;
-    if (best === null || (opened && !best.opened) || (opened === best.opened && equip.uses < best.uses)) {
-      best = { slot, restore, opened, uses: equip.uses };
-    }
+    if (restore?.[need] === undefined) continue;
+    const rank: DraughtRank = {
+      opened: held.degreeOfUse > ZERO,
+      permanent: !equip?.wears,
+      uses: equip?.uses ?? 0,
+    };
+    if (best === null || outranks(rank, best)) best = { slot, restore, ...rank };
   }
   return best === null ? null : { slot: best.slot, restore: best.restore };
 }
 
-/** Spend one sip of the draught in misc `slot`; the last one empties the slot. */
+/** Spend one sip of the draught in misc `slot`; the last one empties the slot, and an amulet never wears. */
 export function spendSip(world: World, ctx: SystemContext, e: Entity, slot: number): void {
   const held = world.get(e, Equipment).misc[slot];
   if (held != null) applyEquipWear(world, e, 'misc', slot, wearStepOf(ctx, held.goodType));

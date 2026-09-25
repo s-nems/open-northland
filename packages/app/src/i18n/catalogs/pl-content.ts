@@ -348,6 +348,11 @@ export const plContent = {
       summary:
         'Dwaj zbieracze maszerują do lasu - ten w butach wyraźnie szybciej, a buty zużywają się w drodze; młynarz z żelaznym narzędziem miele 5 pszenicy z premią do produkcji, a osadnicy sami piją miód i mikstury, gdy dopada ich głód lub zmęczenie.',
     },
+    amulets: {
+      title: 'Amulety',
+      summary:
+        'Trzy próby amuletów: piechur z amuletem szybkości wyprzedza tego bez amuletu, wojownik z amuletami siły, ciosu krytycznego i obrony pokonuje równego rywala, a głodny i zmęczony zbieracz uzupełnia obie potrzeby z amuletów obfitości i wytrzymałości, które nigdy się nie zużywają.',
+    },
     barracks: {
       title: 'Szkolenie w koszarach',
       summary:

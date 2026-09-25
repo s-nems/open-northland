@@ -349,6 +349,11 @@ export const enContent = {
       summary:
         'Two collectors trek to a forest - the booted one visibly faster, its boots wearing down on the road; an iron-tooled miller grinds 5 wheat with a production bonus, and settlers drink their mead and potions by themselves when hunger or fatigue presses.',
     },
+    amulets: {
+      title: 'Amulets',
+      summary:
+        'Three amulet trials: a walker with the speed amulet pulls ahead of a bare one, a swordsman with the strength, critical-hit and defense amulets beats an equal rival, and a hungry, tired collector tops up both needs from the food and stamina amulets, which never wear out.',
+    },
     barracks: {
       title: 'Barracks training',
       summary:

@@ -7,9 +7,9 @@ The sim's equipment component axis exists, but the extractor does not populate `
 
 Interim: the app overlays the clean-room classification by good slug at load
 (`withEquipClass` in `packages/app/src/content/real-content.ts`), so the equip window works on real
-content today. The overlay also carries the effect/wear balance fields (`productionBonusPct`,
-`workFactorPct`, `uses`, `restorePct`) the sim's equipment effects run on - values no readable
-source carries (fixed in the original), so extraction can only ever supply `category`/`wears`. The
+content today. The overlay also carries every other `EquipClass` field (tool bonuses, `uses`,
+`restorePct`, the amulets' combat and walk effects) the sim's equipment effects run on - values no
+readable source carries (fixed in the original), so extraction can only ever supply `category`/`wears`. The
 landing commit must therefore FIELD-MERGE: extracted classification wins, but the balance fields
 stay overlaid wherever the shipped `equip` lacks them. A wholesale "extracted wins" (today's
 `withEquipClass` defers entirely when `good.equip` ships) would silently strip every worn effect on
@@ -25,5 +25,5 @@ real content.
 ## Verify
 
 - `npm test`; a real pipeline run against the local mod (extraction changed).
-- The generated `ir.json` carries `equip` on the equippable goods, and the equip window and draught
-  effects still work on real content.
+- The generated `ir.json` carries `equip` on the equippable goods, and the equip window, draught
+  effects and the `amulets` scene's real-content test still work.

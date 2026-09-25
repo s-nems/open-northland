@@ -60,7 +60,12 @@ export const GOOD_POTION_STAMINA_SMALL = 146;
 export const GOOD_POTION_STAMINA_BIG = 147;
 export const GOOD_POTION_HEAL_SMALL = 148;
 export const GOOD_POTION_HEAL_BIG = 149;
+export const GOOD_AMULET_FOOD = 150;
+export const GOOD_AMULET_STAMINA = 151;
 export const GOOD_AMULET_STRENGTH = 152;
+export const GOOD_AMULET_DEFENSE = 153;
+export const GOOD_AMULET_CRITICAL_HIT = 154;
+export const GOOD_AMULET_SPEED = 155;
 
 /** The classification only; the good itself, with its name and icon, lives once in the global catalog. */
 export type EquipGoodSpec = EquipClass & {
@@ -92,6 +97,14 @@ const IRON_TOOL_BONUS_PCT = 70;
 /** A tool's work factor for strokes and build swings, percent of bare hands. The original's values. */
 const WOODEN_TOOL_WORK_FACTOR_PCT = 125;
 const IRON_TOOL_WORK_FACTOR_PCT = 175;
+
+/** The amulets' magnitudes, the original's values. The food and stamina amulets top up their need by
+ *  4000 of its 10000 units whenever it falls to the drive level, and never wear. */
+const AMULET_RESTORE_PCT = 40;
+const AMULET_STRENGTH_DAMAGE_PCT = 150;
+const AMULET_CRITICAL_HIT = { chancePct: 20, damagePct: 200 } as const;
+const AMULET_DEFENSE_DAMAGE_TAKEN_PCT = 50;
+const AMULET_SPEED_STEP_TICKS_SAVED = 2;
 
 /**
  * Set membership is pinned to `tribetypes.ini` `allowequip`. The slot category is derived from the
@@ -230,15 +243,46 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     uses: BIG_BOTTLE_USES,
     restorePct: { healthMax: HEALING_POTION_RESTORE_PCT },
   },
-  { typeId: 150, id: 'amulet_food', category: 'misc', wears: false },
-  { typeId: 151, id: 'amulet_stamina', category: 'misc', wears: false },
+  {
+    typeId: GOOD_AMULET_FOOD,
+    id: 'amulet_food',
+    category: 'misc',
+    wears: false,
+    restorePct: { hunger: AMULET_RESTORE_PCT },
+  },
+  {
+    typeId: GOOD_AMULET_STAMINA,
+    id: 'amulet_stamina',
+    category: 'misc',
+    wears: false,
+    restorePct: { fatigue: AMULET_RESTORE_PCT },
+  },
   {
     typeId: GOOD_AMULET_STRENGTH,
     id: 'amulet_strength',
     category: 'misc',
     wears: false,
+    damageDealtPct: AMULET_STRENGTH_DAMAGE_PCT,
   },
-  { typeId: 153, id: 'amulet_defense', category: 'misc', wears: false },
-  { typeId: 154, id: 'amulet_crithit', category: 'misc', wears: false },
-  { typeId: 155, id: 'amulet_speed', category: 'misc', wears: false },
+  {
+    typeId: GOOD_AMULET_DEFENSE,
+    id: 'amulet_defense',
+    category: 'misc',
+    wears: false,
+    damageTakenPct: AMULET_DEFENSE_DAMAGE_TAKEN_PCT,
+  },
+  {
+    typeId: GOOD_AMULET_CRITICAL_HIT,
+    id: 'amulet_crithit',
+    category: 'misc',
+    wears: false,
+    criticalHit: AMULET_CRITICAL_HIT,
+  },
+  {
+    typeId: GOOD_AMULET_SPEED,
+    id: 'amulet_speed',
+    category: 'misc',
+    wears: false,
+    walkStepTicksSaved: AMULET_SPEED_STEP_TICKS_SAVED,
+  },
 ];

@@ -11,6 +11,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { carriedStepTicksSaved } from '../equipment/index.js';
 import { type AgeClass, ageClassOfJobId } from '../lifecycle/ageclass.js';
 import { NEED_DRIVE_THRESHOLD } from '../lifecycle/needs/scale.js';
 import { isHeroJob } from '../readviews/jobs.js';
@@ -20,19 +21,21 @@ import { isHeroJob } from '../readviews/jobs.js';
  * cost. Original behavior: a step starts when the walker leaves a node,
  * reads that node's `lmpr` roughness, and completes after exactly `cost` ticks, where
  *
- *   cost = 2 * roughness + 2 + (shoes ? 0 : 2) + (carrying a good ? 1 : 0) + (stamina <= 2000 ? 2 : 0)
+ *   cost = 2 * roughness + (speed amulet ? 0 : 2) + (shoes ? 0 : 2) + (carrying a good ? 1 : 0)
+ *        + (stamina <= 2000 ? 2 : 0)
  *   cost = cost * 2 when the script's slow bit is set, then cost - 2 when its fast bit is set
  *   cost = max(3, cost)
  *
  * Before script flags: subtract the tribe/job reduction, double for a baby or add two for a child,
  * then add floor(combined equipment weight / 2), except for heroes. The original applies
- * them in that order. Speed amulets remain unimplemented (see amulet ticket).
+ * them in that order.
  * Turning is paced separately; navigation still chooses this sim's routes, not the original's paths.
  */
 export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {
   let cost =
     ROUGHNESS_TICKS_PER_LEVEL * roughness +
-    BASE_STEP_TICKS +
+    BASE_STEP_TICKS -
+    m.stepTicksSaved +
     (m.shoes ? 0 : BAREFOOT_STEP_TICKS) +
     (m.carrying ? CARRYING_STEP_TICKS : 0) +
     (m.tired ? TIRED_STEP_TICKS : 0);
@@ -49,6 +52,8 @@ export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {
 export interface WalkStepModifiers {
   /** A live (unspent) pair of boots in the boots slot. */
   readonly shoes: boolean;
+  /** Ticks carried items take off the base step: the speed amulet's 2. */
+  readonly stepTicksSaved: number;
   /** Hauling a good. */
   readonly carrying: boolean;
   /** Fatigue at or past the drive level, the stamina the original tests against 2000. */
@@ -77,6 +82,7 @@ const ROUGHNESS_MAX_ON_MAPS = 5;
 /** The longest step an ordinary human takes: barefoot, laden, due for sleep, script-slowed, off snow. */
 export const MAX_STEP_TICKS = walkStepTicks(ROUGHNESS_MAX_ON_MAPS, {
   shoes: false,
+  stepTicksSaved: 0,
   carrying: true,
   tired: true,
   walksSlowly: true,
@@ -89,6 +95,7 @@ export const MAX_STEP_TICKS = walkStepTicks(ROUGHNESS_MAX_ON_MAPS, {
 /** The modifiers of an ordinary walker with nothing on: the one every test map's default step reads. */
 export const UNMODIFIED_STEP: WalkStepModifiers = {
   shoes: false,
+  stepTicksSaved: 0,
   carrying: false,
   tired: false,
   walksSlowly: false,
@@ -120,6 +127,7 @@ export function walkStepModifiersOf(world: World, e: Entity, content: ContentSet
   const reduction = settler === undefined ? undefined : index.tribes.get(settler.tribe)?.walkStepReduction;
   return {
     shoes: hasLiveBoots(world, e),
+    stepTicksSaved: carriedStepTicksSaved(world, content, e),
     carrying: isCarryingGood(world, e),
     tired: fatigue !== undefined && fatigue >= NEED_DRIVE_THRESHOLD,
     walksSlowly: (flags & MISSION_BEHAVIOUR.WALKS_SLOWLY) !== 0,

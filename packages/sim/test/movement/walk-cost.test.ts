@@ -34,6 +34,13 @@ describe('walkStepTicks', () => {
     expect([1, 2, 3, 4, 5].map((r) => 2 * walkStepTicks(r, TIRED_SHOD))).toEqual([12, 16, 20, 24, 28]);
   });
 
+  it('drops the base two ticks for a speed amulet, before the floor of 3', () => {
+    const FAST = { ...UNMODIFIED_STEP, stepTicksSaved: 2 };
+    expect([0, 1, 2, 5].map((r) => walkStepTicks(r, FAST))).toEqual([3, 4, 6, 12]);
+    expect([0, 1, 2, 5].map((r) => walkStepTicks(r, { ...FAST, shoes: true }))).toEqual([3, 3, 4, 10]);
+    expect(walkStepTicks(2, { ...FAST, age: 'baby' })).toBe(12); // (4 + 2) * 2
+  });
+
   it('adds one tick a step while hauling a good', () => {
     expect(walkStepTicks(2, { ...UNMODIFIED_STEP, carrying: true })).toBe(9);
     expect(walkStepTicks(2, { ...TIRED_SHOD, carrying: true })).toBe(9);

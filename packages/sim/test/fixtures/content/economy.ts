@@ -121,6 +121,18 @@ export const economyContent = {
     // atomic 33). Direct-pickup nodes like the mushroom - no felling/deposit lifecycle.
     { typeId: 21, id: 'meat', weight: 1, atomics: { harvest: 33 } },
     { typeId: 22, id: 'leather', weight: 1, atomics: { harvest: 33 } },
+    // The six amulets, permanent misc goods carrying the app catalog's (the original's) effects.
+    { typeId: 23, id: 'amulet_food', weight: 0, equip: { category: 'misc', restorePct: { hunger: 40 } } },
+    { typeId: 24, id: 'amulet_stamina', weight: 0, equip: { category: 'misc', restorePct: { fatigue: 40 } } },
+    { typeId: 25, id: 'amulet_strength', weight: 0, equip: { category: 'misc', damageDealtPct: 150 } },
+    { typeId: 26, id: 'amulet_defense', weight: 0, equip: { category: 'misc', damageTakenPct: 50 } },
+    {
+      typeId: 27,
+      id: 'amulet_crithit',
+      weight: 0,
+      equip: { category: 'misc', criticalHit: { chancePct: 20, damagePct: 200 } },
+    },
+    { typeId: 28, id: 'amulet_speed', weight: 0, equip: { category: 'misc', walkStepTicksSaved: 2 } },
   ],
   jobs: [
     { typeId: 0, id: 'idle' },

@@ -40,7 +40,24 @@ describe('EquipClass', () => {
     expect(EquipClass.parse({ category: 'boots', wears: true, uses: 1 }).uses).toBe(1);
   });
 
-  it('rejects a restoring item that never wears (a bottomless bottle)', () => {
-    expect(() => EquipClass.parse({ category: 'misc', restorePct: { hunger: 50 } })).toThrow(/wear down/);
+  it('lets a permanent item top up a need but rejects one that heals without wearing', () => {
+    expect(EquipClass.parse({ category: 'misc', restorePct: { hunger: 40 } }).restorePct).toEqual({
+      hunger: 40,
+    });
+    expect(() => EquipClass.parse({ category: 'misc', restorePct: { healthMax: 50 } })).toThrow(/wear down/);
+  });
+
+  it('accepts the carried combat and walk effects and rejects out-of-range ones', () => {
+    const amulet = { category: 'misc' } as const;
+    expect(EquipClass.parse({ ...amulet, damageDealtPct: 150 }).damageDealtPct).toBe(150);
+    expect(
+      EquipClass.parse({ ...amulet, criticalHit: { chancePct: 20, damagePct: 200 } }).criticalHit,
+    ).toEqual({ chancePct: 20, damagePct: 200 });
+    expect(EquipClass.parse({ ...amulet, damageTakenPct: 50 }).damageTakenPct).toBe(50);
+    expect(EquipClass.parse({ ...amulet, walkStepTicksSaved: 2 }).walkStepTicksSaved).toBe(2);
+    expect(() => EquipClass.parse({ ...amulet, damageTakenPct: 101 })).toThrow();
+    expect(() => EquipClass.parse({ ...amulet, criticalHit: { chancePct: 0, damagePct: 200 } })).toThrow();
+    expect(() => EquipClass.parse({ ...amulet, walkStepTicksSaved: 0 })).toThrow();
+    expect(() => EquipClass.parse({ category: 'armor', damageTakenPct: 50 })).toThrow(/misc good/);
   });
 });

@@ -44,8 +44,7 @@ Pick one and name it as the approximation it is:
   alone. Removes the weave; leaves the sim pace anisotropic. Note that a homing shot re-aims each
   tick, so "the chord" has to be re-derived, not frozen at launch.
 
-Re-tune `PROJECTILE_TILES_PER_SPEED_UNIT` by eye afterwards either way, and fold the result into
-[combat calibration](../features/combat-calibration.md).
+Re-tune `PROJECTILE_TILES_PER_SPEED_UNIT` by eye afterwards either way.
 
 ## Verify
 

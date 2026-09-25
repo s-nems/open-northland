@@ -8,6 +8,9 @@ export {
 } from './draughts.js';
 export {
   BARE_HANDS_WORK_FACTOR_PCT,
+  carriedStepTicksSaved,
+  damageDealtBy,
+  damageTakenBy,
   isCraftingOperator,
   toolProductionBonusPct,
   toolWorkFactorPct,

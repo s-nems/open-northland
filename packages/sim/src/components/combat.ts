@@ -140,7 +140,8 @@ export const Projectile = defineComponent<{
   /** The target point frozen at release. Sim flight and render presentation share this one chord. */
   aimX: Fixed;
   aimY: Fixed;
-  /** The defence-mode shelter a manning shooter loosed from, read only by the render. */
+  /** The defence-mode shelter a manning shooter loosed from. The render draws the shot from it, and the
+   *  hit treats it as the house's own shot, which carries no amulet. */
   cover: Entity | null;
   /** The frozen aim of a shot that missed at release or lost its mark mid-flight; it lands there dealing
    *  nothing. `null` while the shot is still eligible to hit its selected target. */
