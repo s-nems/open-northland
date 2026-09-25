@@ -29,6 +29,12 @@
 <symbol id="i-knot" viewBox="0 0 64 20"><path d="m4 10 10-7 12 14L38 3l12 14 10-7-10-7-12 14L26 3 14 17Z" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
 <symbol id="i-pawns" viewBox="0 0 64 64"><g stroke="#402e1e" stroke-width="1.4"><path d="M9 46 14 29h7l5 17q-8 5-17 0Z"/><circle cx="17.5" cy="22" r="6"/><path d="m38 46 5-17h7l5 17q-8 5-17 0Z"/><circle cx="46.5" cy="22" r="6"/><path d="m20 54 7-22h10l7 22q-12 7-24 0Z"/><circle cx="32" cy="23" r="8"/></g><path d="M28 38 25 50M15 33l-3 10M44 33l-3 10" stroke="#edce94" opacity=".65" stroke-width="2"/></symbol>
 <linearGradient id="pawn-wood"><stop stop-color="#debe83"/><stop offset=".55" stop-color="#a4804d"/><stop offset="1" stop-color="#61482d"/></linearGradient>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
+<symbol id="i-center" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3ZM12 10v5M12 18v.5"/></symbol>
 </defs></svg>
 
 <header class="page-head">
@@ -71,6 +77,17 @@
   <button type="button" data-notices="empty" aria-pressed="false">Pusto</button>
   <button type="button" data-notices="urgent" aria-pressed="false">Filtr: pilne</button>
   <button type="button" data-notices="overflow" aria-pressed="false">14 kart</button>
+  <span>Osadnik</span>
+  <button type="button" data-settler-state="collector" aria-pressed="true">Zbieracz</button>
+  <button type="button" data-settler-state="smith" aria-pressed="false">Kowal</button>
+  <button type="button" data-settler-state="soldier" aria-pressed="false">Żołnierz</button>
+  <button type="button" data-settler-state="hero" aria-pressed="false">Bohater</button>
+  <button type="button" data-settler-state="child" aria-pressed="false">Dziecko</button>
+  <button type="button" data-settler-state="woman" aria-pressed="false">Kobieta</button>
+  <button type="button" data-settler-state="idle" aria-pressed="false">Bez zawodu</button>
+  <button type="button" data-settler-state="trader" aria-pressed="false">Kupiec</button>
+  <button type="button" data-settler-state="foreign" aria-pressed="false">Obcy</button>
+  <button type="button" data-settler-state="empty" aria-pressed="false">Pusto</button>
 </div>
 
 <section class="viewport" id="viewport" aria-label="Reprezentatywny ekran HUD">
@@ -396,31 +413,7 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
     <span class="keys"><kbd>Esc</kbd> <span data-esc-hint>wraca do katalogu</span> · <kbd>PPM</kbd> anuluje</span>
   </div>
 
-  <aside class="selection panel">
-    <svg aria-hidden="true" class="frame-knot"><use href="#i-knot"/></svg>
-    <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
-    <header class="window-head">
-      <div><p>ZAZNACZENIE</p><h2>Eirik · Drwal II</h2></div>
-      <button type="button" class="icon-button medallion" aria-label="Usuń zaznaczenie"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button>
-    </header>
-    <div class="selection-body">
-      <div class="portrait">
-        <div class="portrait-box"><span data-settler="6"></span><span class="level"><span class="sr">Poziom </span>II</span></div>
-        <div><strong class="portrait-name">Wraca do pracy</strong><div class="status">Zdrowy · najedzony</div><div class="alert">Potrzebuje narzędzi</div></div>
-      </div>
-      <div class="section-title">Samopoczucie</div>
-      <div class="kv"><span>Zdrowie</span><b>72 / 100</b></div>
-      <div class="meter"></div>
-      <div class="kv"><span>Sytość</span><b>64%</b></div>
-      <div class="section-title">Praca i dom</div>
-      <div class="kv"><span>Miejsce pracy</span><b>Chata drwala</b></div>
-      <div class="kv"><span>Dom</span><b>Dom rodzinny</b></div>
-      <div class="orders">
-        <button type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>Centruj</button>
-        <button type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 6h14M5 12h9M5 18h6M17 15l2 2 4-4"/></svg>Rozkazy</button>
-      </div>
-    </div>
-  </aside>
+  <div data-selection-host></div>
 
   <nav class="nav panel" aria-label="Menu gry">
     <button type="button" aria-pressed="true"><span class="painted" aria-hidden="true" style="--ix:0%;--iy:11.5%"></span><span data-copy="buildNav">Buduj</span></button>
@@ -532,6 +525,7 @@ Nowe budynki: kuźnia, warsztat garncarza"><span class="settler-preview glyph" a
     </ul>
   </div>
 </section>
+<script type="module" src="settler.js"></script>
 <script type="module" src="residents.js"></script>
 <script type="module" src="foundation.js"></script>
 </body>
