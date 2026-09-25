@@ -1,4 +1,4 @@
-import { Owner, Person, Position, Settler } from '../../components/index.js';
+import { Owner, Person, Position, Resting, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -7,6 +7,8 @@ import { turnOnAttacker } from '../settlers/atomics/effects/combat/hit/reactions
 import { entityNode } from '../spatial/nodes.js';
 import { type CombatIndex, passIndexOf } from './combat-index.js';
 import { runFromBlow } from './flee.js';
+import { isFleeThreat } from './targeting.js';
+import { standsAtPost } from './tower-post.js';
 
 // The alarm a blow raises: the struck person's side reacts as if it had been struck itself.
 
@@ -50,6 +52,11 @@ function tickAlarms(world: World, tick: number): TickAlarms {
  * {@link ALARM_PEOPLE_RADIUS_NODES}. A melee blow lands before this tick's combat pass and waits for it; a
  * shot lands after it and is answered at once from the pass's index. Only a player's person raises it;
  * the original's alarm among wild animals is not modelled.
+ *
+ * An alarm on a tick whose combat pass did not run goes unanswered, since the queue is tick-scoped state no
+ * save carries. The pass's gate lets a tick through whenever the striker could still be fought: another
+ * player's man, a hostile or angered beast, an enemy house. A blow that finds it shut came from a striker
+ * no one would turn on, a dead archer's arrow or a stray shot on its own side.
  */
 export function raiseHitAlarm(world: World, ctx: SystemContext, attacker: Entity, victim: Entity): void {
   const terrain = ctx.terrain;
@@ -76,10 +83,16 @@ export function answerQueuedAlarms(
 }
 
 /**
- * The side's answer to one alarm, once per (player, attacker) a tick: a soldier or hero under ATTACK or
- * DEFEND turns on the attacker the way a struck one does, and a person whose stance runs runs from it.
- * Intentional deviation: in the original everyone else runs; here a unit under IGNORE holds its ground and a
- * civilian the player set to ATTACK or DEFEND stays to fight, as their stances say.
+ * The side's answer to one alarm. Original behavior: a soldier or hero under ATTACK or DEFEND turns on the
+ * attacker the way a struck one does, and under any other stance does nothing; everyone else near enough
+ * runs from the attacker.
+ *
+ * Intentional deviations: a civilian runs only under FLEE, so one the player set to IGNORE holds its ground
+ * and one set to ATTACK or DEFEND stays to fight, as their stances say. A tick answers each (player,
+ * attacker) pair once, around its first victim, so a second victim of the same area shot does not widen
+ * the circle. No one inside a house but a man on his tower answers: a soldier asleep at home would
+ * otherwise wake holding a raider long gone and chase it (whether the original's alarm reaches indoors is
+ * unconfirmed).
  */
 function answerAlarm(
   world: World,
@@ -101,13 +114,24 @@ function answerAlarm(
     ALARM_SOLDIER_RADIUS_NODES,
     'hex',
   )) {
-    if (entity === alarm.victim || !world.has(entity, Person)) continue;
-    const jobType = world.get(entity, Settler).jobType;
-    const mode = stanceMode(world, ctx.content, entity, jobType);
-    if (mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND) {
-      if (isFighterJob(ctx.content, jobType)) turnOnAttacker(world, ctx, alarm.attacker, entity);
-    } else if (mode === MILITARY_MODE.FLEE && distance <= ALARM_PEOPLE_RADIUS_NODES) {
+    if (entity === alarm.victim || !world.has(entity, Person) || indoors(world, entity)) continue;
+    const settler = world.get(entity, Settler);
+    const mode = stanceMode(world, ctx.content, entity, settler.jobType);
+    if (isFighterJob(ctx.content, settler.jobType)) {
+      if (mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND) {
+        turnOnAttacker(world, ctx, alarm.attacker, entity);
+      }
+    } else if (
+      mode === MILITARY_MODE.FLEE &&
+      distance <= ALARM_PEOPLE_RADIUS_NODES &&
+      isFleeThreat(world, ctx, entity, settler, alarm.attacker, index.firing)
+    ) {
       runFromBlow(world, ctx, terrain, entity, from);
     }
   }
+}
+
+/** Inside a house, unless standing on its tower post. */
+function indoors(world: World, e: Entity): boolean {
+  return world.has(e, Resting) && standsAtPost(world, e) === null;
 }
