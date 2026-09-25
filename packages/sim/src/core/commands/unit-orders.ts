@@ -382,6 +382,16 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Give one owned settler the player's own name for it (`GivenName`). The name is trimmed; an empty
+       * one removes the given name, and one longer than `SETTLER_NAME_MAX_CHARS` code points or carrying
+       * a control character is refused. A hero keeps the name its job carries.
+       */
+      readonly kind: 'renameSettler';
+      readonly entity: Entity;
+      readonly name: string;
+    }
+  | {
+      /**
        * House one owned adult settler's whole family (the settler, its spouse, their still-growing child)
        * in `house`. A home holds up to `homeSize` families (`houses.ini` `logichomesize`, 1..5 by level);
        * re-assigning moves the family out of its previous home.

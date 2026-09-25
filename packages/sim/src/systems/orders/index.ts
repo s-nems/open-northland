@@ -7,6 +7,7 @@ export * from './equipment.js';
 export * from './explore.js';
 export * from './family.js';
 export * from './movement.js';
+export * from './naming.js';
 export * from './needs.js';
 export * from './pending.js';
 export * from './signposts.js';

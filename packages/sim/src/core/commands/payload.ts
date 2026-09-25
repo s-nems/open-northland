@@ -4,20 +4,23 @@ import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
 import type { NeedKind } from '../../components/needs.js';
 import { PAPER_KINDS } from '../../components/papers.js';
 import { DIPLOMACY_STATES } from '../../components/rules.js';
+import { SETTLER_NAME_MAX_CHARS } from '../../components/settler.js';
 import { VEHICLE_STANCES } from '../../components/vehicle.js';
 import { assertNever } from '../brand.js';
-import { asRecord, typeName } from '../untrusted.js';
+import { asRecord, codePointLength, hasControlCharacter, typeName } from '../untrusted.js';
 import type { Command } from './index.js';
 import { CHILD_SEXES } from './unit-orders.js';
 
 /**
  * What one payload field must hold. Entity references, content ids and half-cell coordinates are all
  * `'integer'`: the sim indexes stores and grids with them, and a fractional or non-finite value would
- * write state no later read can find.
+ * write state no later read can find. `{ string: n }` is text of at most `n` code points with no control
+ * character.
  */
 type FieldCheck =
   | 'integer'
   | 'boolean'
+  | { readonly string: number }
   | { readonly oneOf: readonly string[] }
   | { readonly arrayOf: FieldCheck }
   | { readonly tupleOf: readonly FieldCheck[] }
@@ -162,6 +165,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   moveUnit: { required: { entity: 'integer', ...NODE } },
   moveVehicle: { required: { vehicle: 'integer', ...NODE }, optional: { attackMove: 'boolean' } },
   dockVehicle: { required: { vehicle: 'integer', ...NODE } },
+  renameSettler: { required: { entity: 'integer', name: { string: SETTLER_NAME_MAX_CHARS } } },
   openChest: { required: { entity: 'integer', chest: 'integer' } },
   placeBuilding: {
     required: { buildingType: 'integer', ...NODE, tribe: 'integer' },
@@ -314,6 +318,14 @@ function checkField(value: unknown, check: FieldCheck, at: string): void {
     if (typeof value !== 'boolean') {
       throw new Error(`${at}: expected a boolean, got ${described(value)}`);
     }
+    return;
+  }
+  if ('string' in check) {
+    if (typeof value !== 'string') throw new Error(`${at}: expected a string, got ${described(value)}`);
+    if (codePointLength(value) > check.string) {
+      throw new Error(`${at}: expected at most ${check.string} characters, got ${codePointLength(value)}`);
+    }
+    if (hasControlCharacter(value)) throw new Error(`${at}: expected no control characters`);
     return;
   }
   if ('oneOf' in check) {

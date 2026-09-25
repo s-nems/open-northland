@@ -22,6 +22,7 @@ export {
   fogModeOf,
   fogSettings,
 } from './components/rules.js';
+export { SETTLER_NAME_MAX_CHARS } from './components/settler.js';
 export { WALK_RANGE_NODES } from './components/signpost.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';

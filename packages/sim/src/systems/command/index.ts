@@ -40,6 +40,7 @@ import {
   orderNeed,
   orderOpenChest,
   placeSignpost,
+  renameSettler,
   setAssistantCounter,
   setAssistantGrant,
   setAssistantWeaponVeto,
@@ -280,6 +281,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'marry':
       marry(world, ctx, command);
+      return;
+    case 'renameSettler':
+      renameSettler(world, ctx, command);
       return;
     case 'assignHouse':
       assignHouse(world, ctx, command);

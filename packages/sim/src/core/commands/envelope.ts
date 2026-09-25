@@ -112,6 +112,7 @@ export const COMMAND_ISSUER: {
   convertPalisadeGate: 'seat',
   placeResource: 'trusted',
   placeSignpost: 'seat',
+  renameSettler: 'seat',
   setAssistantCounter: 'seat',
   setAssistantGrant: 'seat',
   setAssistantWeaponVeto: 'seat',
