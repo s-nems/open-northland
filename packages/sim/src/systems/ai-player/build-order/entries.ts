@@ -215,9 +215,9 @@ export const BUILD_ORDER_LOOKAHEAD_ENTRIES = 3;
 /** How long a regressed entry, a razed building's, waits before the seat raises it again (authored). */
 export const REBUILD_DELAY_TICKS = 15 * TICKS_PER_SECOND;
 
-/** How far from the nearest of the seat's buildings a placement may land, in half-cell Manhattan nodes;
- *  every affinity pull stays inside this reach. */
-export const BUILD_SEARCH_MAX_RADIUS_NODES = 48;
+/** How far from the nearest of the seat's buildings a placement may land, in half-cell Manhattan nodes
+ *  (authored): tight enough that the settlement grows as one piece. Every affinity pull stays inside it. */
+export const BUILD_SEARCH_MAX_RADIUS_NODES = 32;
 
 /** Decisions between a stalled placement's spot searches, about 60 s at the decision interval. It never
  *  gives up, since felled trees or a razed building can free room later. Approximation: a tuned

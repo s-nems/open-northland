@@ -213,6 +213,37 @@ function furnitureContent(): ContentSet {
   });
 }
 
+const COIN = 14;
+const DEFENCE_AMULET = 15;
+const STRENGTH_AMULET = 16;
+
+/** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
+function mintContent(): ContentSet {
+  const base = aiContent();
+  const products = [
+    { typeId: COIN, id: 'coin' },
+    { typeId: DEFENCE_AMULET, id: 'amulet_defense' },
+    { typeId: STRENGTH_AMULET, id: 'amulet_strength' },
+  ];
+  return parseContentSet({
+    ...base,
+    goods: [...base.goods, ...products.map((p) => ({ ...p, weight: 1 }))],
+    buildings: base.buildings.map((b) =>
+      b.typeId === JOINERY_TYPE
+        ? {
+            ...b,
+            id: 'work_coin_mint',
+            recipes: products.map((p) => ({
+              inputs: [{ goodType: WOOD, amount: 1 }],
+              outputs: [{ goodType: p.typeId, amount: 1 }],
+              ticks: 180,
+            })),
+          }
+        : b,
+    ),
+  });
+}
+
 describe('workforce module - the barracks and craft selections', () => {
   it('never staffs the barracks: it is a military building, not a workplace the plan crews', () => {
     const sim = aiSim();
@@ -801,6 +832,54 @@ describe('workforce module - the barracks and craft selections', () => {
     expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setCraftGoods')).toEqual([
       { kind: 'setCraftGoods', entity: breeders[0], goods: [CATTLE] },
       { kind: 'setCraftGoods', entity: breeders[1], goods: [CATTLE] },
+    ]);
+  });
+
+  it('turns a defence coiner to coins once the third mint brings the strength-amulet pair', () => {
+    const content = mintContent();
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
+    placeHq(sim);
+    for (const x of [40, 60, 80]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: JOINERY_TYPE,
+        x,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    spawnMen(sim, 6, BUILDER);
+    sim.step();
+    const ctx = { ...ctxOf(sim), content };
+    const mints = [...sim.world.query(Building)]
+      .filter((e) => sim.world.get(e, Building).buildingType === JOINERY_TYPE)
+      .sort((a, b) => a - b);
+    const men = [...sim.world.query(Settler)]
+      .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
+      .sort((a, b) => a - b);
+    const hire = (from: number, to: number): void => {
+      for (let i = from; i < to; i++) {
+        const man = men[i];
+        const mint = mints[Math.floor(i / 2)];
+        if (man === undefined || mint === undefined) throw new Error('setup: too few men or mints');
+        sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: mint, jobPriority: [JOINER] });
+      }
+      sim.step();
+    };
+    const products = (): (readonly number[])[] =>
+      tuneCraftSelections(sim.world, ctx, SEAT).flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
+
+    hire(0, 4);
+    expect(products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
+    hire(4, 6);
+    expect(products()).toEqual([
+      [COIN],
+      [DEFENCE_AMULET],
+      [COIN],
+      [DEFENCE_AMULET],
+      [STRENGTH_AMULET],
+      [STRENGTH_AMULET],
     ]);
   });
 

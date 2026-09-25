@@ -27,6 +27,7 @@ const CHARGING_SEED = 7;
 const WAITING_SEED = 1;
 const POTION = 60;
 const AMULET = 61;
+const STRENGTH_AMULET = 62;
 
 const HQ = { x: 20, y: 30 };
 const FOE_HQ = { x: 80, y: 50 };
@@ -45,6 +46,12 @@ function outfitContent(): ContentSet {
         equip: { category: 'misc', wears: true, uses: 5, restorePct: { healthMax: 50 } },
       },
       { typeId: AMULET, id: 'amulet_defense', weight: 1, equip: { category: 'misc', wears: false } },
+      {
+        typeId: STRENGTH_AMULET,
+        id: 'amulet_strength',
+        weight: 1,
+        equip: { category: 'misc', wears: false },
+      },
     ],
   });
 }
@@ -169,6 +176,22 @@ describe('military module - the soldiers outfit', () => {
     });
     expect(equipOrders(sim)).toEqual([
       { kind: 'equipGood', entity: man, group: 'misc', slot: 1, goodType: AMULET },
+    ]);
+  });
+
+  it('sends a man who wears both the potion and the defence amulet for the strength amulet', () => {
+    const sim = outfittedSeat([{ good: STRENGTH_AMULET, amount: 1 }], 1);
+    const [man] = soldiers(sim);
+    if (man === undefined) throw new Error('setup: no soldier');
+    sim.world.add(man, Equipment, {
+      boots: null,
+      tool: null,
+      weapon: null,
+      armor: null,
+      misc: [{ goodType: POTION, degreeOfUse: ZERO }, { goodType: AMULET, degreeOfUse: ZERO }, null, null],
+    });
+    expect(equipOrders(sim)).toEqual([
+      { kind: 'equipGood', entity: man, group: 'misc', slot: 2, goodType: STRENGTH_AMULET },
     ]);
   });
 

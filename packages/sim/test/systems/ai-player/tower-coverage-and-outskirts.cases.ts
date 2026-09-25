@@ -44,11 +44,13 @@ describe('build-order tower coverage and outskirts', () => {
     if (order?.kind !== 'placeBuilding') throw new Error('expected a tower placement');
     expect(order.buildingType).toBe(TOWER_TYPE);
     expect(order.underConstruction).toBe(true);
-    // The spot actually covers the target (world-metric circle) and stays inside the HQ disc.
+    // The spot actually covers the target (world-metric circle) and stays within building reach.
     expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, TOWER_DEFENCE_RADIUS_NODES)).toBe(true);
-    expect(Math.abs(order.x - HQ_X) + Math.abs(order.y - HQ_Y)).toBeLessThanOrEqual(
-      BUILD_SEARCH_MAX_RADIUS_NODES,
+    const nearest = Math.min(
+      Math.abs(order.x - HQ_X) + Math.abs(order.y - HQ_Y),
+      Math.abs(order.x - FAR.x) + Math.abs(order.y - FAR.y),
     );
+    expect(nearest).toBeLessThanOrEqual(BUILD_SEARCH_MAX_RADIUS_NODES);
 
     // The tower SITE already counts as coverage; a finished tower keeps the entry satisfied - and
     // the entry is perpetual: another far building re-arms it.

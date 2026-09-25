@@ -14,7 +14,11 @@ import { goodTypeByContentId } from '../content-lookup.js';
 
 /** The misc goods every soldier waiting at the barracks is sent to fetch, one slot each, whenever a store
  *  holds a unit (authored). The seat's druids and coiners make exactly these. */
-export const SOLDIER_OUTFIT_GOOD_IDS: readonly string[] = ['potion_heal_big', 'amulet_defense'];
+export const SOLDIER_OUTFIT_GOOD_IDS: readonly string[] = [
+  'potion_heal_big',
+  'amulet_defense',
+  'amulet_strength',
+];
 
 /**
  * Send each soldier in `waiting` for the first {@link SOLDIER_OUTFIT_GOOD_IDS} good he lacks, one errand

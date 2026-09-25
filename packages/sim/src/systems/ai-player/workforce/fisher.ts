@@ -22,7 +22,6 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { manhattan } from '../../spatial/metric.js';
-import { BUILD_SEARCH_MAX_RADIUS_NODES } from '../build-order/entries.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 
@@ -30,9 +29,12 @@ import type { SpareForce } from './pool.js';
  *  first collector posts, the second only as a top-up. */
 export const FISHER_TARGET = 2;
 
-/** How far from its store's door a seat sends a fisher to a shore, in Manhattan nodes (authored): as far
- *  as the seat builds from its base, plus the fisher's own shore search from there. */
-export const FISHING_TRIP_RADIUS_NODES = BUILD_SEARCH_MAX_RADIUS_NODES + FISH_SHORE_SEARCH_RADIUS;
+/** How far past his own shore search a fisher is walked from his store's door, in Manhattan nodes
+ *  (authored). */
+const FISHING_WALK_NODES = 48;
+
+/** How far from its store's door a seat sends a fisher to a shore, in Manhattan nodes. */
+export const FISHING_TRIP_RADIUS_NODES = FISHING_WALK_NODES + FISH_SHORE_SEARCH_RADIUS;
 
 interface FishingStore {
   readonly store: Entity;

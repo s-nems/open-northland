@@ -23,6 +23,8 @@ export interface CraftPlan {
   readonly seats: readonly (readonly string[])[];
   /** What the type's only operator works while it employs just one, instead of the first seat's list. */
   readonly alone?: readonly string[];
+  /** The seat lists while the type employs at least `crew` operators, instead of `seats`. */
+  readonly crowded?: { readonly crew: number; readonly seats: readonly (readonly string[])[] };
   /** The seat lists from {@link LATE_CRAFT_FROM_TICK} on. */
   readonly late?: readonly (readonly string[])[];
 }
@@ -35,9 +37,10 @@ export const LATE_CRAFT_FROM_TICK = 90 * 60 * TICKS_PER_SECOND;
  * runs its main lines. The smithies' eight seats open on plate armour and long swords, then add the iron
  * spear, whose wooden shaft the first armourer makes between his long bows, and mail; the last seat forges
  * the short swords only the strength amulet takes. One druid in eight boils holy oil (the first, since the
- * big potion waits on herbs the later herb hut grows); the coiners strike coins, then defence amulets, and
- * the third mint's pair strength amulets. The second joiner takes the furniture. The potters split bricks
- * and tiles, a lone one working both, and add the crockery only late. The first tailor sews shoes and the
+ * big potion waits on herbs the later herb hut grows). The first two mints' four coiners work one on coins
+ * and three on defence amulets; once a fifth joins at the third mint, the crew splits two each over coins,
+ * defence and strength amulets. The second joiner takes the furniture. The potters split bricks and tiles,
+ * a lone one working both, and add the crockery only late. The first tailor sews shoes and the
  * second leather armour, and the small tailor's one man sews shoes too. Bakers bake only bread and
  * breeders keep only cattle.
  */
@@ -82,14 +85,18 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
     ],
   },
   work_coin_mint: {
-    seats: [
-      ['coin'],
-      ['amulet_defense'],
-      ['amulet_defense'],
-      ['amulet_defense'],
-      ['amulet_strength'],
-      ['amulet_strength'],
-    ],
+    seats: [['coin'], ['amulet_defense'], ['amulet_defense'], ['amulet_defense']],
+    crowded: {
+      crew: 5,
+      seats: [
+        ['coin'],
+        ['amulet_defense'],
+        ['coin'],
+        ['amulet_defense'],
+        ['amulet_strength'],
+        ['amulet_strength'],
+      ],
+    },
   },
 };
 
@@ -145,7 +152,8 @@ export function tuneCraftSelections(world: World, ctx: SystemContext, player: nu
   }
   for (const { type, plan, crew, workplaces } of crews.values()) {
     const produced = new Set(type.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
-    const seats = (ctx.tick >= LATE_CRAFT_FROM_TICK ? plan.late : undefined) ?? plan.seats;
+    const crowded = plan.crowded !== undefined && crew.length >= plan.crowded.crew ? plan.crowded : plan;
+    const seats = (ctx.tick >= LATE_CRAFT_FROM_TICK ? plan.late : undefined) ?? crowded.seats;
     for (const [seat, e] of crew.entries()) {
       const workplace = workplaces[seat];
       const opening = workplace === undefined ? null : openingRun(world, ctx, workplace, type);
