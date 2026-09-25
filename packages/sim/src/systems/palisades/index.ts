@@ -2,6 +2,7 @@ import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import {
   Damaged,
   Health,
+  Owner,
   ownerOf,
   Palisade,
   PalisadeBlocking,
@@ -13,7 +14,7 @@ import {
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { fx, ONE } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { ScriptLandscapeType, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -337,10 +338,36 @@ export function palisadeGateSites(
   return sites;
 }
 
-/** A token over the inputs of {@link palisadeGateSites} other than movers: the walls themselves, their
- *  construction and their health. */
+/** The per-wall inputs of {@link palisadeGateSites} besides the wall set: construction, owner, health and
+ *  the stock a gate's cleared neighbours may not hold. */
+const GATE_SITE_MEMBERSHIP = [UnderConstruction, Owner, Health, Stockpile];
+const GATE_SITE_VALUES = [Owner, Health, Stockpile];
+
+interface GateSiteWatch {
+  readonly feed: ChangeFeed;
+  /** Bumped by every drained write that lands on a wall. */
+  revision: number;
+}
+
+const gateSiteWatches = new WeakMap<World, GateSiteWatch>();
+
+/**
+ * A token over the inputs of {@link palisadeGateSites} other than movers. The Palisade membership
+ * generation carries the wall set and every gate swap; a change feed catches the per-wall inputs, so a
+ * settler's heal or a house's stock leaves it alone. Never hashed.
+ */
 export function palisadeLayoutVersion(world: World): string {
-  return `${world.componentGeneration(Palisade)}.${world.componentValueGeneration(Palisade)}.${world.componentGeneration(UnderConstruction)}.${world.componentValueGeneration(Health)}`;
+  let watch = gateSiteWatches.get(world);
+  if (watch === undefined) {
+    watch = { feed: world.watchChanges(GATE_SITE_MEMBERSHIP, GATE_SITE_VALUES), revision: 0 };
+    gateSiteWatches.set(world, watch);
+  }
+  let wallChanged = false;
+  const lost = watch.feed.drain((e) => {
+    if (!wallChanged && world.has(e, Palisade)) wallChanged = true;
+  });
+  if (lost || wallChanged) watch.revision++;
+  return `${world.componentGeneration(Palisade)}.${watch.revision}`;
 }
 
 /** The nodes `player`'s walls, gates and wall sites stand on, which a new wall line may join. */

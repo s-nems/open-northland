@@ -344,6 +344,18 @@ describe('palisadeGateSites', () => {
     sim.world.mut(wallAt(sim, CENTRE.hx), Health).hitpoints = THREE_QUARTERS_HP - 1;
     expect(sim.palisadeLayoutVersion()).not.toBe(before);
   });
+
+  it('keeps its version through a settler heal and moves it when a wall changes hands', () => {
+    const { sim } = runOfFive();
+    const settler = sim.world.create();
+    sim.world.add(settler, Health, { hitpoints: 1, max: MAX_HP });
+    const before = sim.palisadeLayoutVersion();
+    sim.world.mut(settler, Health).hitpoints = MAX_HP;
+    expect(sim.palisadeLayoutVersion()).toBe(before);
+    stampOwner(sim.world, wallAt(sim, CENTRE.hx), OTHER_PLAYER);
+    expect(sim.palisadeLayoutVersion()).not.toBe(before);
+    expect(sim.palisadeGateSites(ROWS, OWNER)).toEqual([]);
+  });
 });
 
 describe('ownPalisadeNodes', () => {

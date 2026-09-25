@@ -38,7 +38,6 @@ export function holdsPalisadeClaim(world: World, site: Entity, builder: Entity):
 /** Release the one segment claimed by `builder`. Call before removing its SiteAssignment. */
 export function releasePalisadeReservation(world: World, builder: Entity): void {
   const assigned = world.tryGet(builder, SiteAssignment)?.site;
-  if (assigned === undefined) return;
-  const wall = world.tryMut(assigned, Palisade);
-  if (wall?.reservation?.builder === builder) wall.reservation = null;
+  if (assigned === undefined || world.tryGet(assigned, Palisade)?.reservation?.builder !== builder) return;
+  world.mut(assigned, Palisade).reservation = null;
 }

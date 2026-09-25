@@ -22,8 +22,8 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  * every rule treats resource and building the same within one:
  *  - **OBSTACLE** - resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
  *    building candidate's RESERVED zone (the "minimum distance from a node/wall"), a wall's body and any
- *    work flag. A
- *    building's door is part of its family body, so it stays walkable for routing but takes no flag.
+ *    work flag. A building's door is part of its family body, so it stays walkable for routing but takes
+ *    no flag.
  *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY, whose walls may not
  *    sit in a resource's build margin; still open ground for a wall and a work flag.
  *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
@@ -158,12 +158,12 @@ export function eachBlockerCell(
 }
 
 /**
- * A per-world version of the placement-blocker inputs: the `Building`, `ResourceFootprint` and `Signpost`
- * membership generations, the scripted landscape placement revision, plus the `Building` VALUE
+ * A per-world version of the placement-blocker inputs: the `Building`, `Palisade`, `ResourceFootprint` and
+ * `Signpost` membership generations, the scripted landscape placement revision, plus the `Building` VALUE
  * generation, since the home tier upgrade swaps `buildingType` in place invisibly to membership. That
  * swap cannot change the cells today (`familyBody` and `reserved` are level-chain unions), so the value
- * term only guards a future per-level footprint. It moves when those cells can change rather than every
- * tick.
+ * term only guards a future per-level footprint. A wall's placement body changes only by a re-add, so its
+ * in-place claim and build writes stay out. It moves when those cells can change rather than every tick.
  *
  * Exactness rests on buildings and footprinted objects never MOVING once placed, so a stored entity's
  * cells are fixed. Completeness is load-bearing: a memo keyed on this gates a placement, so a missed input
@@ -171,5 +171,5 @@ export function eachBlockerCell(
  * never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentValueGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${landscapePlacementRevision(world)}`;
+  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${landscapePlacementRevision(world)}`;
 }

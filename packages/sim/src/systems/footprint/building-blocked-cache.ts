@@ -19,9 +19,9 @@ interface BuildingBlockedCache extends CountedCells {
    *  construction advance, so a bump replays the written buildings against {@link types} and rebuilds
    *  only when one changed type. */
   valueGeneration: number;
-  /** Palisade and PalisadeBlocking generations: a wall or a shut gate blocks its walk cells. */
+  /** Palisade and PalisadeBlocking membership generations: a wall or a shut gate blocks its walk cells.
+   *  Its cells and gate state change only by a re-add; the in-place writes are a claim and build progress. */
   readonly palisadeMembershipGeneration: number;
-  readonly palisadeValueGeneration: number;
   readonly palisadeBlockingGeneration: number;
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
@@ -125,7 +125,6 @@ function valueWritesKeepCells(world: World, cached: BuildingBlockedCache, valueG
 function palisadesUnchanged(world: World, cached: BuildingBlockedCache): boolean {
   return (
     cached.palisadeMembershipGeneration === world.componentGeneration(Palisade) &&
-    cached.palisadeValueGeneration === world.componentValueGeneration(Palisade) &&
     cached.palisadeBlockingGeneration === world.componentGeneration(PalisadeBlocking)
   );
 }
@@ -164,9 +163,9 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  * (`wallJointSeals`).
  *
  * Derived state, never hashed. Memoized per world on the Building store's membership generation, the
- * buildings' types and the Palisade generations, so construction progress keeps the build and a burst
- * of callers between two building changes shares one. A rebuild returns a new set, so its identity keys dependent caches. The returned set
- * is the SHARED cached copy: membership reads only. A set union and a door subtraction, neither with a pick,
+ * buildings' types and the wall membership generations, so building progress, a wall claim and a wall's
+ * build keep it. A rebuild returns a new set, so its identity keys dependent caches. The returned set is
+ * the SHARED cached copy: membership reads only. A set union and a door subtraction, neither with a pick,
  * so store-iteration order cannot change it.
  */
 export function buildingBlockedCells(
@@ -209,7 +208,6 @@ export function buildingBlockedLayer(world: World, ctx: SystemContext, terrain: 
     membershipGeneration,
     valueGeneration,
     palisadeMembershipGeneration: world.componentGeneration(Palisade),
-    palisadeValueGeneration: world.componentValueGeneration(Palisade),
     palisadeBlockingGeneration: world.componentGeneration(PalisadeBlocking),
     content: ctx.content,
     terrain,
