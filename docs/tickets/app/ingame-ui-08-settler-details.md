@@ -1,32 +1,32 @@
-# Redesign the selected resident panel
+# Finish the settler panel's deferred affordances
 
-**Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
+**Area:** app, sim · **Focus:** in-game UI redesign · **Priority:** P3
 
-`hud/details-panel/layout/settler.ts` stacks general, work, experience and equipment sections in the bottom-right; the current model/actions must survive the new presentation.
+**Blocked by:** [16-knowledge-reference](ingame-ui-16-knowledge-reference.md) for the lock link
 
-Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
-against this checkout before starting; the reference document describes an earlier implementation.
-
-Profession and school choice windows already use the shared compact HUD surface; preserve their
-actions and focus behavior when connecting the redesigned resident panel.
+The DOM settler panel (`packages/app/src/hud/dom/settler-panel/`) ships every section of the
+"Settler panel" spec in [FOUNDATION.md](../../design/ingame-menu/FOUNDATION.md) except three
+affordances whose data or target does not exist yet. The spec names each gap where it applies.
 
 ## Scope
 
-- Design actual information density using representative worker, soldier, hero, child and foreign-person states before implementing.
-- Keep the bottom-right location, readable identity and needs, work/home assignment, experience/qualifications and equipment actions. Use shared chrome/icons and contextual Knowledge links.
-- Expose actionable shortages with clear disabled reasons. Preserve ownership checks and command submission, and keep the world usable while the panel scrolls.
-- Recheck existing details-panel work-controls and snapshot-indexes tickets, plus religion and tribe presentation tickets, before overlapping their code. Do not fold unrelated simulation changes into the visual redesign.
-- Approved additions from the design review, all in the "Settler panel" section of
-  `docs/design/ingame-menu/FOUNDATION.md`: per-product production counters (the sim gap: craft
-  selection carries counts, gatherers a quota), the status detail (current product, idle reason),
-  need bars as orders, the lock as a Knowledge link, "bez pary" as the partner pick, wear minutes in
-  the socket tooltip, trade browsing (chevrons, Tab / Shift+Tab, double click selects the trade),
-  the workplace hover card and in-place rename (not for heroes).
+- **Gatherer quota.** A gatherer's Produkcja rows carry the icon button alone (`production.ts`,
+  `gatherTarget`): the sim holds a gatherer to one good or to all through `setGatherGood`, with no
+  per-good count. Add a per-good quota to the sim (the craft counters' semantics: 0 stops, 1..10
+  counts down, unlimited never stops), then give gatherer rows the same counter part
+  (`hud/dom/parts/counter.ts`) the craft rows use. Name where the quota decrements, as the craft
+  counter's approximation does.
+- **Knowledge link.** The lock on a locked product calls `SettlerPanelActions.openKnowledge`, which
+  `view/unit-controls/settler-panel.ts` leaves unwired. Wire it to the good's Knowledge entry once
+  ticket 16 provides one.
+- **Wear minutes.** A worn item's socket tooltip gives the life left as a percent only. The spec's
+  "minutes it buys at the current pace" needs a sim read seam for the wear an item takes per game
+  minute of its wearer's current work; add it only if it is cheap for the one selected settler.
 
 ## Verify
 
-Exercise work/home assignment, training/equipment actions, ownership, dead/removed targets and long content. Reuse model, hit-test, pointer-intent and click-action coverage; review representative real-map selections.
+Unit-test the quota's decrement and the gatherer counter rows, the Knowledge link opening the right
+entry, and the wear estimate against a known pace. Check a gatherer, a smith and a worn tool in the
+running game.
 
-For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
-not proof of runtime behavior. Apply the shared design-review step before implementation.
+For player-visible work, provide the verified preview from the ticket's worktree.

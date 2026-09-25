@@ -68,8 +68,8 @@ filters are an explicit exception in this mouse/keyboard study.
 - Construction: 640 px wide, so the widest bill in the content (eight goods) sits in one row on a
   card; content-sized rather than filling the screen vertically; the catalogue scrolls
   inside it once the window would reach the beam.
-- Selection placeholder: 318 px in the study; the runtime keeps the legacy 322 px panel until the
-  selection ticket replaces it.
+- Selection: the settler panel is 318 px on the DOM plane; a building, a signpost and a group keep the
+  legacy 322 px panel until tickets 09 and 10 replace it.
 - Notifications: 173 px, no opaque background in unused column space.
 - Minimap: 270 × 214 px in the study, touching the bottom-left corner; the runtime keeps the legacy
   224 × 200 until ticket 19.
@@ -218,7 +218,8 @@ carries the trade as the bronze kicker over the person's name, an owner line onl
 something (another seat's person, a child's age), and two medallions: Rozkazy, which opens the
 action ring at the settler (its tooltip names the ring hotkey), and close, which clears the
 selection. The kicker browses the trade: chevrons on both sides and "2 / 5" step to the previous
-or next person of the same trade (Tab and Shift+Tab do the same while the panel is open), and a
+or next person of the same trade and bring them into view (Tab and Shift+Tab do the same while the
+panel is open and no field or other window has the focus), and a
 double click on the trade selects every person of that trade as a group. The name is an in-place
 rename (a pen on hover), except for a hero and another seat's person. The panel is a quick look: every state fits the 810 px design plane without a scrollbar
 (the frame stops 16 px under the summary bar), so anything that would not fit is folded or cut at
@@ -226,14 +227,15 @@ design time, never scrolled. It shows what the player can read or act on and not
 explanatory lines, no help buttons. Review states: `settler.js` in the mockup, switched by the
 "Osadnik" buttons.
 
-- Portrait row: the live full-body settler in the 96 px framed portrait, as the notifications paint
-  it, is the centre-view button. The column beside it holds the equipment as two rows of 34 px
+- Portrait row: the live settler in the 96 px framed portrait is the centre-view button. The renderer
+  paints its world cutout on the canvas under the plane, through a hole the panel's fill leaves at the
+  frame. The column beside it holds the equipment as two rows of 34 px
   sockets, only the slots the person has: the worn row in a fixed order (Broń, Zbroja, Narzędzia,
   Buty; a worker has the last two, a soldier Broń, Zbroja, Buty, a hero its fixed arms as flat
   frameless sockets) and the four-cell Torba row under it. An empty worn socket shows a ghost glyph
   of what goes there (sword, armour, tool, boot) and opens the equip picker; an occupied socket holds
   the good's icon over its wear bar (red under a quarter), its tooltip the wear left as a percent
-  and the minutes it buys at the current pace; pressing it opens the picker to swap and a small ×
+  (the minutes it buys wait for a wear-pace read seam); pressing it opens the picker to swap and a small ×
   at its corner, shown on hover or focus, takes the item off. A woman and a child have no
   sockets, so the column holds the status alone. No level medallion: the game has no settler level.
 - Status line at the foot of that column: the live state (Pracuje, Idzie, Bezczynny, Czeka na
@@ -254,12 +256,14 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   (the original's "Pokaż miejsce pracy" and home buttons), followed by two round buttons, assign
   (target glyph, opens the pick mode) and remove (×). An empty seat the player can fill says "brak"
   in amber; when there is nothing to remove the × slot stays blank. A button the sim would refuse
-  stays visible, faded, with the reason in its tooltip ("Dziecko mieszka z rodzicami"). Resting on
+  stays visible, faded, with the reason in its tooltip (a person a mission holds to its task). Resting on
   the workplace link shows the building's hover card (state and stock) without a click. Rodzina
   names the spouse and the growing child as links that select them, or "bez pary" in amber, which
   opens the partner choice (the same pick flow as assigning a home, aimed at a person). A man without a trade has no Miejsce pracy row, a woman and a
   soldier have Dom and Rodzina only, a child a read-only Dom row, a hero no section.
-- Produkcja, under Praca for a craft operator and a gatherer: one row per product the trade may make
+- Produkcja, under Praca for a craft operator and a gatherer (a gatherer's rows have the icon button
+  alone until the sim carries a gatherer quota: it holds the gatherer to that good, and pressing the
+  sole held good's icon gathers everything again): one row per product the trade may make
   here, in recipe order: the good's icon in a round button, its name and a −/n/+ counter. The
   counter is the original's human-window production counter: 0 stops the product (the row fades),
   1 to 10 is how many more to make, ∞ never stops. − at 0 wraps to ∞ and Shift with an arrow jumps
@@ -267,19 +271,23 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   original wraps to 0 (a named approximation: one more click must not stop a product). The icon
   button is "Tylko ten produkt": ∞ here, 0 on every other row (the original's "Tylko produkuj").
   A product not yet earned is listed faded with a lock, the requirement and progress in the
-  tooltip; the lock opens the good's Knowledge page. Products rotate one unit at a time in good order, as the sim does today; a job whose
-  `userCanChangeProductionFlag` is 0 (the hunter) shows no counters.
-- Wojsko, for a soldier and a hero: Postawa as a three-way segmented control (Atak, Obrona, Ignoruj)
-  and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action ring issues.
+  tooltip; the lock opens the good's Knowledge page once the Knowledge window exists. Products rotate
+  one unit at a time in good order, as the sim does today; a job whose `userCanChangeProductionFlag` is
+  0 (the hunter) shows no counters.
+- Wojsko, for a soldier and a hero: Postawa as a three-way segmented control (Atak, Obrona, Ignoruj;
+  a fleeing unit lights none) and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action
+  ring issues.
 - Handel, for a trader: a round add button in the section title (Dodaj punkt handlowy), then one
   row per stop: the house's name (an other seat's house in amber), its import goods as round icon
-  toggles (the good's name in the tooltip) and a remove button. Umowa lists the map's agreements as
+  toggles (the good's name in the tooltip; a foreign stop has none, it trades on the agreement) and a
+  remove button. Umowa lists the map's agreements as
   single-choice chips drawn as "2 [wood] → 1 [leather]". The route the trader drives is in the
   status line.
 - Doświadczenie: one ledger row per trained specialization of the current trade (at most three, or
   the single best-trained one for a person without a trade), the bonus percent in green (the tooltip
   spells it out); every other track folds behind an "N więcej" toggle at the right of the section
-  title, so the fold costs no row. Then the upcoming unlocks as lock-marked "job (track)" rows with
+  title, so the fold costs no row. Every fight track counts as a soldier's and a hero's own
+  (approximation: the weapon a class fights with is not read). Then the upcoming unlocks as lock-marked "job (track)" rows with
   "current / required" and a thin meter. The section is absent when there is nothing to list.
 - No footer: the portrait centres, the head medallion orders, the profession button sits under the
   portrait row.

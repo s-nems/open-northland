@@ -14,7 +14,7 @@ against this checkout before starting; the reference document describes an earli
 
 - Design building families and states: construction site, home, production, warehouse, military and special buildings. Show a representative full panel before implementation.
 - Preserve workforce assignment, production selection, inventory/stock controls, construction materials and supported special actions. Keep costs, supplies and output meanings explicit.
-- Reuse accepted resident-panel chrome, resource icons and shared interaction patterns; do not create another visual family.
+- Reuse the settler panel's frame (`hud/dom/selection-panel.ts`), its generic parts (`hud/dom/parts/`), resource icons and shared interaction patterns; do not create another visual family. The Pixi `mountUnitPanel` keeps drawing buildings, signposts and groups until then.
 - Verify the existing original-building-names, tribe-partition and husbandry-player-feedback tickets before touching overlapping presentation. Preserve source basis and update only completed overlap.
 
 ## Verify
