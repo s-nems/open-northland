@@ -4,9 +4,9 @@ import { Stockpile } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Simulation } from '../../../src/index.js';
 import {
-  BREWERY_WELL_REACH_NODES,
   type BuildOrderEntry,
   buildOrderModule,
+  WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import {
@@ -134,7 +134,7 @@ describe('build order - material gates', () => {
         building: 'work_well_00',
         count: 2,
         near: [{ kind: 'building', id: 'work_brewery' }],
-        unlessWithin: { building: 'work_brewery', radius: BREWERY_WELL_REACH_NODES },
+        unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
       },
       // Acts only once the well entry counts as done, so a skip is told apart from a stall.
       { kind: 'place', building: 'work_mill_00', count: 1 },
@@ -168,12 +168,10 @@ describe('build order - material gates', () => {
     });
 
     it('raises a second well beside the brewery when the first stands farther off', () => {
-      const well = brewerySeat(BREWERY.x - 3 * BREWERY_WELL_REACH_NODES);
+      const well = brewerySeat(BREWERY.x - 3 * WELL_REACH_NODES);
       if (well?.kind !== 'placeBuilding') throw new Error('expected a well placement');
       expect(well.buildingType).toBe(WELL_TYPE);
-      expect(Math.abs(well.x - BREWERY.x) + Math.abs(well.y - BREWERY.y)).toBeLessThan(
-        BREWERY_WELL_REACH_NODES,
-      );
+      expect(Math.abs(well.x - BREWERY.x) + Math.abs(well.y - BREWERY.y)).toBeLessThan(WELL_REACH_NODES);
     });
   });
 });

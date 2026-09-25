@@ -47,9 +47,9 @@ export type BuildOrderEntry =
  *  {@link TOWER_DEFENCE_RADIUS_NODES}, so the finished settlement stands under overlapping towers. */
 export const DENSE_TOWER_RADIUS_NODES = 14;
 
-/** How near the brewery a well must stand to serve it, in world-metric nodes (authored); a farther
- *  one gets a second well beside the brewery. */
-export const BREWERY_WELL_REACH_NODES = 12;
+/** How near a water-drinking workshop (the brewery, the animal farm) a well must stand to serve it, in
+ *  world-metric nodes (authored); a farther one gets another well beside the workshop. */
+export const WELL_REACH_NODES = 12;
 
 /** How far a store's coverage reaches, in world-metric nodes (authored): wider than a tower's, since a
  *  warehouse serves carriers rather than bows. */
@@ -90,7 +90,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     building: 'work_well_00',
     count: 2,
     near: [{ kind: 'building', id: 'work_brewery' }],
-    unlessWithin: { building: 'work_brewery', radius: BREWERY_WELL_REACH_NODES },
+    unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
   },
   // Tiles and marble come only from these tiers, and homes, the armory and the bakeries all wait on them,
   // so the upgrades land well before the first bill that needs them.
@@ -104,6 +104,15 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
       { kind: 'building', id: 'work_farm_00' },
       { kind: 'building', id: 'work_well_00' },
     ],
+  },
+  // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in reach.
+  // The count only caps the seat's wells: the entry is skipped once any well stands within reach.
+  {
+    kind: 'place',
+    building: 'work_well_00',
+    count: 3,
+    near: [{ kind: 'building', id: 'work_animal_farm' }],
+    unlessWithin: { building: 'work_animal_farm', radius: WELL_REACH_NODES },
   },
   {
     kind: 'place',
@@ -121,8 +130,6 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
   { kind: 'towerCoverage', building: 'tower_01' },
-  // Beside the first, sharing its hive and well.
-  { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
   { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'home_level_04', count: 5 },
   // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
@@ -169,6 +176,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
+  // Beside the first, sharing its hive and well.
+  { kind: 'place', building: 'work_brewery', count: 2, near: [{ kind: 'building', id: 'work_brewery' }] },
   { kind: 'place', building: 'home_level_04', count: 8 },
   { kind: 'place', building: 'stock_02', count: 3, near: [{ kind: 'outskirts' }], apart: true },
   { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },

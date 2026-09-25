@@ -7,8 +7,10 @@ import {
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
   REBUILD_DELAY_TICKS,
+  WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
 import {
+  ANIMAL_FARM_TYPE,
   aiSim,
   BAKERY_TOP_TYPE,
   BAKERY_TYPE,
@@ -24,6 +26,7 @@ import {
   HQ_TYPE,
   HQ_X,
   HQ_Y,
+  husbandryContent,
   IRON,
   JOINERY_TYPE,
   MILL_TYPE,
@@ -124,8 +127,8 @@ describe('build-order module (houseBuild)', () => {
       .filter((t) => t === HOME_TYPE || t === HOME_TOP_TYPE);
     expect(homes).toEqual([HOME_TOP_TYPE, HOME_TOP_TYPE, HOME_TOP_TYPE]);
 
-    // The hive/animal-farm/sewery entries are absent from this content; the brewery and the
-    // level-2 joinery follow before the gated iron-collector entry.
+    // The hive/animal-farm/sewery entries are absent from this content (the animal farm's well skips with
+    // no farm standing); the brewery and the level-2 joinery follow before the gated iron-collector entry.
     for (const expected of [BREWERY_TYPE, JOINERY_TYPE]) {
       const next = nextPlacement(sim);
       if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
@@ -144,8 +147,8 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup({ kind: 'setGatherGood', entity: settler, goodType: IRON });
     sim.step();
 
-    // Past the gate: the barracks, both bakery upgrades, then the late tail - the second brewery, the two
-    // outskirts warehouses, the closing pair of level-2 bakeries and the third warehouse follow, with a
+    // Past the gate: the barracks, both bakery upgrades, then the late tail - the two outskirts warehouses,
+    // the closing pair of level-2 bakeries, the second brewery and the third warehouse follow, with a
     // tower wherever one lands outside the tower circles, the store coverage rests, and the denser tower
     // ring closes the list. The home entries name `home_level_04`, a tier this
     // content set stops short of, so they skip here - the direct top-tier placement has its own test
@@ -162,11 +165,11 @@ describe('build-order module (houseBuild)', () => {
     }
     let towers = 0;
     for (const expected of [
+      STOCK_TOP_TYPE,
+      STOCK_TOP_TYPE,
+      BAKERY_TOP_TYPE,
+      BAKERY_TOP_TYPE,
       BREWERY_TYPE,
-      STOCK_TOP_TYPE,
-      STOCK_TOP_TYPE,
-      BAKERY_TOP_TYPE,
-      BAKERY_TOP_TYPE,
       STOCK_TOP_TYPE,
     ]) {
       let next = nextPlacement(sim);
@@ -462,4 +465,44 @@ it('does not issue an upgrade blocked by map permissions and resumes once a scri
   expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   grantScriptUnlock(sim.world, 'allowed', SEAT, VIKING, 'house', next);
   expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toMatchObject([{ kind: 'upgradeBuilding' }]);
+});
+
+describe('build order - the animal farm well', () => {
+  const FARM = { x: 44, y: 16 };
+  const order: readonly BuildOrderEntry[] = [
+    {
+      kind: 'place',
+      building: 'work_well_00',
+      count: 3,
+      near: [{ kind: 'building', id: 'work_animal_farm' }],
+      unlessWithin: { building: 'work_animal_farm', radius: WELL_REACH_NODES },
+    },
+    // Acts only once the well entry counts as done, so a skip is told apart from a stall.
+    { kind: 'place', building: 'work_mill_00', count: 1 },
+  ];
+
+  function animalFarmSeat(wellX: number): Command | undefined {
+    const content = husbandryContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    for (const [buildingType, x] of [
+      [WELL_TYPE, wellX],
+      [ANIMAL_FARM_TYPE, FARM.x],
+    ] as const) {
+      sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y: FARM.y, tribe: VIKING, owner: SEAT });
+    }
+    sim.step();
+    return [...buildOrderModule(order).run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
+  }
+
+  it('skips the well while one already stands beside the animal farm', () => {
+    expect(animalFarmSeat(FARM.x + 4)).toMatchObject({ kind: 'placeBuilding', buildingType: MILL_TYPE });
+  });
+
+  it('raises a well beside the animal farm when the first stands farther off', () => {
+    const well = animalFarmSeat(FARM.x - 3 * WELL_REACH_NODES);
+    if (well?.kind !== 'placeBuilding') throw new Error('expected a well placement');
+    expect(well.buildingType).toBe(WELL_TYPE);
+    expect(Math.abs(well.x - FARM.x) + Math.abs(well.y - FARM.y)).toBeLessThan(WELL_REACH_NODES);
+  });
 });
