@@ -12,6 +12,14 @@ const NEED_LOW = 34;
 const NEED_CRITICAL = 17;
 
 const svg = (id) => `<svg aria-hidden="true" class="icon"><use href="#${id}"/></svg>`;
+// Worn slots in their fixed order and the ghost glyph an empty one shows.
+const WORN_SLOTS = [
+  ['Broń', 'i-sword'],
+  ['Zbroja', 'i-armor'],
+  ['Narzędzia', 'i-tool'],
+  ['Buty', 'i-boot'],
+];
+const BAG_LABEL = 'Torba';
 const good = (id) => `<span data-good="${id}"></span>`;
 
 // [good id, label]
@@ -265,8 +273,8 @@ const STATES = {
         },
       ],
       offers: [
-        ['2 × Drewno → 1 × Skóra', true],
-        ['3 × Kamień → 1 × Żelazo', false],
+        [2, 'wood', 1, 'leather', true],
+        [3, 'stone', 1, 'iron', false],
       ],
     },
     family: { partner: null, child: null },
@@ -306,7 +314,7 @@ const STANCES = [
 function statusText(state) {
   const carrying = state.work.carrying;
   if (carrying === null) return state.status;
-  return `${state.status} · niesie <b class="with-good">${good(carrying[0])}${carrying[1]}</b>`;
+  return `${state.status} · niesie <b class="with-good"><span class="good-well">${good(carrying[0])}</span>${carrying[1]}</b>`;
 }
 
 function counterText(count) {
@@ -361,13 +369,13 @@ function workMarkup(state) {
     );
   }
   if (family) {
-    rows.push(
-      `<div class="kv"><span>Partner</span>${family.partner === null ? '<b class="missing" title="Ślub: rozkaz w pierścieniu">bez pary</b>' : `<button type="button" class="kv-link" title="Zaznacz osobę">${family.partner}</button>`}</div>`,
-    );
-    if (family.child !== null)
-      rows.push(
-        `<div class="kv"><span>Dziecko</span><button type="button" class="kv-link" title="Zaznacz osobę">${family.child}</button></div>`,
-      );
+    const person = (name, role) =>
+      `<button type="button" class="kv-link" title="${role}: zaznacz">${name}</button>`;
+    const members =
+      family.partner === null
+        ? '<b class="missing" title="Ślub: rozkaz w pierścieniu">bez pary</b>'
+        : `<b class="people">${person(family.partner, 'Partner')}${family.child === null ? '' : ` · ${person(family.child, 'Dziecko')}`}</b>`;
+    rows.push(`<div class="kv"><span>Rodzina</span>${members}</div>`);
   }
   if (rows.length === 0) return '';
   return `<div class="section-title">${family ? 'Praca i rodzina' : 'Praca i dom'}</div>${rows.join('')}${state.production ? productionMarkup(state.production) : ''}`;
@@ -386,20 +394,22 @@ function tradeMarkup(trade) {
       const imports = stop.imports
         .map(
           ([id, on]) =>
-            `<button type="button" class="import" aria-pressed="${on}" title="${on ? 'Przestań przywozić' : 'Przywoź'}: ${GOODS[id]}">${good(id)}<span>${GOODS[id]}</span></button>`,
+            `<button type="button" class="import" aria-pressed="${on}" title="${on ? 'Przestań przywozić' : 'Przywoź'}: ${GOODS[id]}" aria-label="${GOODS[id]}">${good(id)}</button>`,
         )
         .join('');
-      return `<li class="stop${stop.foreign ? ' foreign' : ''}"><div class="kv kv-ctl"><span>${stop.foreign ? 'Obcy punkt' : 'Punkt'}</span><b>${stop.label}</b><span class="ledger-btns">${controlButton('i-close', 'Usuń punkt handlowy', true)}</span></div><div class="imports"><small>Przywóz</small>${imports}</div></li>`;
+      return `<li class="stop${stop.foreign ? ' foreign' : ''}"><div class="kv kv-ctl"><b class="stop-name" title="${stop.foreign ? 'Obcy punkt handlowy' : 'Punkt handlowy'}: ${stop.label}">${stop.label}</b><span class="imports">${imports}</span><span class="ledger-btns">${controlButton('i-close', 'Usuń punkt handlowy', true)}</span></div></li>`;
     })
     .join('');
   const offers = trade.offers
-    .map(([label, on]) => `<button type="button" class="offer" aria-pressed="${on}">${label}</button>`)
+    .map(
+      ([give, giveId, take, takeId, on]) =>
+        `<button type="button" class="offer" aria-pressed="${on}" title="Umowa: ${give} × ${GOODS[giveId]} za ${take} × ${GOODS[takeId]}">${give}${good(giveId)}${svg('i-arrow')}${take}${good(takeId)}</button>`,
+    )
     .join('');
-  return `<div class="section-title">Handel</div><ul class="stops">${stops}</ul><div class="orders orders-inline"><button type="button">${svg('i-target')}Dodaj punkt handlowy</button></div><div class="kv"><span>Umowa</span></div><div class="offers">${offers}</div>`;
+  return `<div class="section-title">Handel<button type="button" class="ledger-btn title-btn" title="Dodaj punkt handlowy" aria-label="Dodaj punkt handlowy">${svg('i-target')}</button></div><ul class="stops">${stops}</ul><div class="kv"><span>Umowa</span><span class="offers">${offers}</span></div>`;
 }
 
 const EXPERIENCE_SHOWN = 3;
-const EXPERIENCE_FOLD_MIN = 3;
 
 function experienceMarkup(state) {
   if (state.experience === null || (state.experience.length === 0 && (state.unlocks ?? []).length === 0))
@@ -407,46 +417,51 @@ function experienceMarkup(state) {
   const own = state.ownTracks ?? [];
   const rank = (row) => (own.includes(row[0]) ? 1 : 0);
   const trained = [...state.experience].sort((a, b) => rank(b) - rank(a) || b[1] - a[1]);
-  const hidden =
-    trained.length - EXPERIENCE_SHOWN >= EXPERIENCE_FOLD_MIN ? trained.length - EXPERIENCE_SHOWN : 0;
+  const shown = Math.min(EXPERIENCE_SHOWN, Math.max(1, trained.filter((row) => rank(row) === 1).length));
+  const hidden = trained.length - shown;
   const rows = trained.map(
     ([label, repeats, bonus], index) =>
-      `<div class="kv${hidden > 0 && index >= EXPERIENCE_SHOWN ? ' more' : ''}"><span>${label}</span><b title="${repeats} razy${bonus === null ? '' : `, wydajność +${bonus}%`}">${repeats}${bonus === null ? '' : ` <small>+${bonus}%</small>`}</b></div>`,
+      `<div class="kv${index >= shown ? ' more' : ''}"><span>${label}</span><b title="${repeats} razy${bonus === null ? '' : `, wydajność +${bonus}%`}">${repeats}${bonus === null ? '' : ` <small>+${bonus}%</small>`}</b></div>`,
   );
-  if (hidden > 0)
-    rows.push(
-      `<button type="button" class="kv-more" aria-expanded="false" data-more="${hidden}">Pokaż ${hidden} więcej</button>`,
-    );
   for (const [job, current, required, track] of state.unlocks ?? []) {
     rows.push(
       `<div class="kv unlock" title="Postęp do zawodu ${job} przez ${track}"><span>${svg('i-lock')}${job} <small>(${track})</small></span><b>${current} / ${required}</b></div><div class="meter mini" style="--value:${Math.round((current / required) * 100)}%"></div>`,
     );
   }
-  return `<div class="section-title">Doświadczenie</div><div class="experience">${rows.join('')}</div>`;
+  const toggle =
+    hidden > 0
+      ? `<button type="button" class="kv-more" aria-expanded="false" data-more="${hidden}">${hidden} więcej</button>`
+      : '';
+  return `<div class="section-title">Doświadczenie${toggle}</div><div class="experience">${rows.join('')}</div>`;
 }
 
-function socket(slot, fixed) {
+function socket(slot, label, ghost, fixed) {
   if (slot === null) {
-    return fixed
-      ? '<span class="socket empty fixed" aria-hidden="true"></span>'
-      : `<button type="button" class="socket empty" title="Załóż przedmiot" aria-label="Załóż">${svg('i-plus')}</button>`;
+    if (fixed) return `<span class="socket empty fixed" title="${label}"></span>`;
+    return `<button type="button" class="socket empty" title="${label}: załóż" aria-label="Załóż: ${label}">${ghost ? svg(ghost) : ''}</button>`;
   }
   const [id, condition] = slot;
   const wear = condition === null ? '' : `<i class="wear" style="--value:${condition}%"></i>`;
   const cls = condition !== null && condition < 25 ? ' worn' : '';
-  if (fixed) return `<span class="socket fixed${cls}" title="${GOODS[id]}">${good(id)}${wear}</span>`;
-  return `<span class="socket-group"><button type="button" class="socket${cls}" title="${GOODS[id]}${condition === null ? '' : ` · ${condition}%`} · Wymień" aria-label="Wymień: ${GOODS[id]}">${good(id)}${wear}</button><button type="button" class="socket-off" title="Zdejmij: ${GOODS[id]}" aria-label="Zdejmij: ${GOODS[id]}">${svg('i-close')}</button></span>`;
+  if (fixed)
+    return `<span class="socket fixed${cls}" title="${label}: ${GOODS[id]}">${good(id)}${wear}</span>`;
+  return `<span class="socket-group"><button type="button" class="socket${cls}" title="${label}: ${GOODS[id]}${condition === null ? '' : ` · ${condition}%`} · Wymień" aria-label="Wymień: ${GOODS[id]}">${good(id)}${wear}</button><button type="button" class="socket-off" title="Zdejmij: ${GOODS[id]}" aria-label="Zdejmij: ${GOODS[id]}">${svg('i-close')}</button></span>`;
 }
 
+// Two rows beside the portrait: the worn slots the person has, in WORN_SLOTS order, then the bag.
 function equipmentMarkup(state) {
   if (state.equipment === null) return '';
-  const groups = state.equipment
-    .map(
-      (row) =>
-        `<div class="equip-group${row.slots.length > 1 ? ' wide' : ''}"><span class="sockets">${row.slots.map((slot) => socket(slot, row.fixed === true)).join('')}</span><small>${row.label}</small></div>`,
-    )
+  const byLabel = new Map(state.equipment.map((row) => [row.label, row]));
+  const worn = WORN_SLOTS.filter(([label]) => byLabel.has(label))
+    .map(([label, ghost]) => {
+      const row = byLabel.get(label);
+      return socket(row.slots[0], label, ghost, row.fixed === true);
+    })
     .join('');
-  return `<div class="equipment" aria-label="Ekwipunek">${groups}</div>`;
+  const bag = byLabel.get(BAG_LABEL);
+  const bagCells =
+    bag === undefined ? '' : bag.slots.map((slot) => socket(slot, BAG_LABEL, null, false)).join('');
+  return `<div class="equipment" aria-label="Ekwipunek"><div class="equip-row">${worn}</div>${bagCells ? `<div class="equip-row bag">${bagCells}</div>` : ''}</div>`;
 }
 
 function ordersMarkup(state) {
@@ -461,7 +476,7 @@ function panelMarkup(key, state) {
   const bars = state.bars
     .map(
       ([label, value]) =>
-        `<div class="bar-row${value < NEED_CRITICAL ? ' critical' : value < NEED_LOW ? ' low' : ''}"><span>${label}</span><span class="meter" style="--value:${value}%" role="meter" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100" aria-label="${label}"></span><b>${value}%</b></div>`,
+        `<div class="bar-row${value < NEED_CRITICAL ? ' critical' : value < NEED_LOW ? ' low' : ''}" title="${label}: ${value}%"><span>${label}</span><span class="meter" style="--value:${value}%" role="meter" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100" aria-label="${label}"></span></div>`,
     )
     .join('');
   return `<aside class="selection panel" data-selection="${key}" hidden aria-label="Zaznaczenie: ${state.name}">
@@ -469,11 +484,10 @@ function panelMarkup(key, state) {
     <svg aria-hidden="true" class="corner tl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner tr"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner bl"><use href="#i-corner"/></svg><svg aria-hidden="true" class="corner br"><use href="#i-corner"/></svg>
     <header class="window-head"><div><p>${state.profession.toUpperCase()}</p><h2>${state.name}</h2>${state.meta ? `<div class="meta">${state.meta}</div>` : ''}</div><span class="head-btns">${state.foreign ? '' : `<button type="button" class="icon-button medallion" title="Rozkazy · Spacja" aria-label="Rozkazy"><svg aria-hidden="true" class="icon"><use href="#i-list"/></svg></button>`}<button type="button" class="icon-button medallion" aria-label="Usuń zaznaczenie"><svg aria-hidden="true" class="icon"><use href="#i-close"/></svg></button></span></header>
     <div class="selection-body">
-      <div class="portrait${state.equipment ? '' : ' alone'}">
+      <div class="portrait">
         <button type="button" class="portrait-box" title="Centruj widok na tej osobie"><span data-settler="${state.look}"></span></button>
-        ${equipmentMarkup(state)}
+        <div class="beside">${equipmentMarkup(state)}<div class="status${state.trouble ? ' trouble' : ''}">${statusText(state)}</div></div>
       </div>
-      <div class="status${state.trouble ? ' trouble' : ''}">${statusText(state)}</div>
       ${ordersMarkup(state)}
       <div class="section-title">Samopoczucie</div>
       <div class="bars">${bars}</div>
@@ -537,8 +551,8 @@ host.addEventListener('click', (event) => {
   if (more === null) return;
   const open = more.getAttribute('aria-expanded') !== 'true';
   more.setAttribute('aria-expanded', String(open));
-  more.textContent = open ? 'Pokaż mniej' : `Pokaż ${more.dataset.more} więcej`;
-  more.parentElement.classList.toggle('expanded', open);
+  more.textContent = open ? 'mniej' : `${more.dataset.more} więcej`;
+  more.parentElement.nextElementSibling.classList.toggle('expanded', open);
 });
 host.addEventListener('click', (event) => {
   if (event.target.closest('[aria-disabled="true"]')) event.preventDefault();
