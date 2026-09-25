@@ -50,7 +50,7 @@ export function isHeroJobRow(job: Pick<JobType, 'id'>): boolean {
 
 /**
  * Whether the trade serves a piety need (`jobtypes.ini` `needsReligionFlag`: joiner, armorer, smith). Every
- * other trade's piety bar is inert, even the sewer's, whose armour clips drain it.
+ * other trade prays only when ordered, even the sewer, whose armour clips drain its bar.
  */
 export function jobNeedsReligion(content: ContentSet, jobType: number | null): boolean {
   return jobType !== null && contentIndex(content).jobs.get(jobType)?.needsReligion === true;

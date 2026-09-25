@@ -72,7 +72,7 @@ export const JOB_HEROINE_BOW = 47; // heroine_bow_xena
 export const SOLDIER_JOB_MIN = JOB_SOLDIER_UNARMED;
 export const SOLDIER_JOB_MAX = JOB_ARCHER_LONG;
 
-/** The trades `jobtypes.ini` marks `needsReligionFlag`: the only ones that walk to a temple. */
+/** The trades `jobtypes.ini` marks `needsReligionFlag`: the only ones that go to pray unordered. */
 export const RELIGION_JOBS: ReadonlySet<number> = new Set([JOB_JOINER, JOB_ARMORER, JOB_SMITH]);
 
 /** The trades `jobtypes.ini` marks `ignoresHomeHouseFlag`: the two that travel, plus every soldier and

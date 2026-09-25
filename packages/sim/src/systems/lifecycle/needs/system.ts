@@ -92,7 +92,7 @@ function poolStepAt(max: number, span: number, tick: number): number {
 
 /**
  * The rise half of settler needs, plus the hitpoint step. `piety` is not touched here: it climbs only
- * through {@link chargeMilitaryPiety} and falls at a temple.
+ * through {@link chargeMilitaryPiety} and falls with a prayer or a temple's blessing.
  *
  * Only a grown settler of a trading tribe carries needs. Original behavior for the age gate: neither
  * the per-tick drain nor the urgent-need check applies unless the human is an adult, so the child
