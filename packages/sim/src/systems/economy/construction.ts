@@ -4,7 +4,6 @@ import {
   consumeGoods,
   type GoodsLine,
   Health,
-  JobAssignment,
   Settler,
   Stockpile,
   setStockAmount,
@@ -17,6 +16,7 @@ import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
+import { assignedWorkers } from '../stores/assigned-workers.js';
 import {
   constructionBillOf,
   constructionMaterialsPresent,
@@ -148,10 +148,9 @@ function preserveProductionChoices(
   if (![...newProducts.keys()].some((good) => !oldProducts.has(good))) return;
   const retained = [...oldProducts.keys()].filter((good) => newProducts.has(good)).sort((a, b) => a - b);
   if (retained.length === 0) return;
-  for (const worker of world.query(Settler, JobAssignment)) {
-    if (world.get(worker, JobAssignment).workplace !== building) continue;
-    const jobType = world.get(worker, Settler).jobType;
-    if (jobType === null || !isWorkplaceOperator(world, ctx, building, jobType)) continue;
+  for (const worker of assignedWorkers(world, building)) {
+    const jobType = world.tryGet(worker, Settler)?.jobType;
+    if (jobType == null || !isWorkplaceOperator(world, ctx, building, jobType)) continue;
     const selection = world.tryGet(worker, CraftSelection);
     if (selection !== undefined && selection.goods.length > 0) continue;
     if (selection === undefined) world.add(worker, CraftSelection, { goods: retained.slice(), cursor: 0 });

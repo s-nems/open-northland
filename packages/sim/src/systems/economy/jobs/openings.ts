@@ -1,4 +1,4 @@
-import { Building, JobAssignment, ownerOf, ownersCompatible, Settler } from '../../../components/index.js';
+import { Building, ownerOf, ownersCompatible, Settler } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -9,6 +9,7 @@ import {
   workplaceStaffable,
 } from '../../progression/index.js';
 import { isFighterJob } from '../../readviews/index.js';
+import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 
 /** The settler-side context an openness probe reads: the same tribe/owner/experience triple the
@@ -75,7 +76,7 @@ function garrisonPostOpenTo(query: OpeningsQuery, jobType: number): boolean {
 /**
  * Whether `jobType` has an unfilled `workers` slot at this specific `building`. The head-count is
  * per-building rather than tribe-wide, so two same-type workplaces each fill their own slots
- * independently. A commutative sum rather than a pick, so query insertion order is fine.
+ * independently.
  */
 function jobUnderstaffed(query: OpeningsQuery, building: Entity, jobType: number): boolean {
   const { world, ctx } = query;
@@ -84,9 +85,8 @@ function jobUnderstaffed(query: OpeningsQuery, building: Entity, jobType: number
   const slot = type?.workers.find((w) => w.jobType === jobType);
   if (slot === undefined) return false;
   let held = 0;
-  for (const e of world.query(Settler, JobAssignment)) {
-    if (world.get(e, JobAssignment).workplace !== building) continue;
-    if (world.get(e, Settler).jobType === jobType) held++;
+  for (const e of assignedWorkers(world, building)) {
+    if (world.tryGet(e, Settler)?.jobType === jobType) held++;
   }
   return held < slot.count;
 }
