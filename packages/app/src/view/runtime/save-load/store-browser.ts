@@ -1,5 +1,4 @@
 import { isSaveBytes, type SaveBytes } from './codec.js';
-import { peekSaveHeader } from './header-peek.js';
 import { completed, openDb } from './idb.js';
 import { newestFirst, type SaveSlotInfo, type SaveSlotMeta, type SaveStore } from './store.js';
 
@@ -52,11 +51,8 @@ export function browserSaveStore(): SaveStore {
     },
 
     async write(name: string, bytes: SaveBytes, meta: SaveSlotMeta): Promise<void> {
-      const header = await peekSaveHeader(bytes);
       await inSavesDb([META_STORE, BYTES_STORE], 'readwrite', (txn) => {
-        txn
-          .objectStore(META_STORE)
-          .put({ ...meta, savedAt: header?.savedAt ?? meta.savedAt ?? Date.now() }, name);
+        txn.objectStore(META_STORE).put({ ...meta, savedAt: meta.savedAt ?? Date.now() }, name);
         txn.objectStore(BYTES_STORE).put(bytes, name);
       });
     },

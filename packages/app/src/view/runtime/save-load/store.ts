@@ -13,9 +13,9 @@ export interface SaveSlotInfo {
   readonly savedAt: number | null;
 }
 
-/** Header provenance recorded at write time where the backing store cannot re-read it cheaply. */
+/** The save header's provenance, recorded beside the bytes so a list never inflates a save. */
 export interface SaveSlotMeta {
-  readonly savedAt?: number | null;
+  readonly savedAt: number | null;
   readonly mapId: string | null;
   readonly tick: number;
   readonly entry: string | null;
