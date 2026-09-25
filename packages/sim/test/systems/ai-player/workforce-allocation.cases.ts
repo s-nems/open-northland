@@ -17,6 +17,8 @@ import { nodeOfPosition, Simulation } from '../../../src/index.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
+  BUILDING_GOODS_GROW_FROM_TICKS,
+  gamePhase,
   LATE_GAME_FROM_TICKS,
   MID_GAME_FROM_TICKS,
   STORE_CARRIERS_FROM_TICKS,
@@ -33,6 +35,7 @@ import {
   LATE_GAME_BUILDER_CAP,
   LATE_GAME_CIVILIANS,
   SeatSupply,
+  type SupplyLines,
   supplyLines,
   workforceModule,
 } from '../../../src/systems/ai-player/index.js';
@@ -40,13 +43,14 @@ import { gathererReach, workableResourceTest } from '../../../src/systems/ai-pla
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   CLEAR_GROUND_FROM_NODES,
-  EXTRA_BUILDING_GATHERERS_BY_GOOD_ID,
+  extraBuildingGatherers,
   FLAG_RELOCATE_EVERY_DECISIONS,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
   MAX_CLEARING_COLLECTORS,
   NODES_PER_CLEARING_GATHERER,
   SHORTAGE_BUILDER_FLOOR,
+  SITE_SHORTAGE_POSTS,
   type WantedGood,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
@@ -277,14 +281,19 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
     spawnMen(sim, BUILDER_CAP + 10);
     sim.step();
-    // Late in the game: four wood posts and three stone ones.
+    // Late in the game: four wood posts and three stone ones, with both goods stocked past the glut so no
+    // shortage post rides on the schedule.
     expect(
-      (COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID.wood?.late ?? 0),
+      (COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + extraBuildingGatherers('wood', LATE_GAME_FROM_TICKS),
     ).toBe(4);
     expect(
-      (COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0) + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID.stone?.late ?? 0),
+      (COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0) + extraBuildingGatherers('stone', LATE_GAME_FROM_TICKS),
     ).toBe(3);
     const late = () => ctxOf(sim, LATE_GAME_FROM_TICKS);
+    const lateLines = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER, 'late');
+    for (const good of [WOOD, STONE]) {
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, lateLines.get(good)?.glut ?? 0);
+    }
 
     const commands = [...collectModule.run(sim.world, late(), SEAT)];
     const selections = commands.filter((c) => c.kind === 'setGatherGood');
@@ -328,34 +337,71 @@ describe('workforce module (collectResources)', () => {
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
   });
 
-  it('grows the wood target from the mid game and the stone target in the late game, at the top-up tier', () => {
-    const buildingPosts = (men: number, tick: number): (Pick<WantedGood, 'target' | 'min'> | undefined)[] => {
-      const sim = aiSim();
-      const ctx = ctxOf(sim, tick);
-      placeHq(sim);
-      spawnMen(sim, men);
-      sim.step();
-      return [WOOD, STONE].map((good) => {
-        const row = wantedRow(sim, ctx, good);
-        return row === undefined ? undefined : { target: row.target, min: row.min };
-      });
-    };
-    const woodBase = COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0;
-    const stoneBase = COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0;
-    const LARGE_SEAT = 60;
-    // No workshop consumes either good, so no shortage post rides on the target and only the first post
+  /** The wood and stone rows of an HQ-only seat of `men` at `tick`, the store holding `stock` of each. */
+  const buildingPosts = (
+    men: number,
+    tick: number,
+    stock: (lines: SupplyLines) => number,
+  ): (Pick<WantedGood, 'target' | 'min'> | undefined)[] => {
+    const sim = aiSim();
+    const ctx = ctxOf(sim, tick);
+    placeHq(sim);
+    spawnMen(sim, men);
+    sim.step();
+    const lines = supplyLines(ctx.content, DEFAULT_BUILD_ORDER, gamePhase(tick));
+    for (const good of [WOOD, STONE]) {
+      const line = lines.get(good);
+      if (line !== undefined) setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, stock(line));
+    }
+    return [WOOD, STONE].map((good) => {
+      const row = wantedRow(sim, ctx, good);
+      return row === undefined ? undefined : { target: row.target, min: row.min };
+    });
+  };
+  const woodBase = COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0;
+  const stoneBase = COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0;
+  const LARGE_SEAT = 60;
+
+  it('grows the wood target from the growth clock and the stone target in the late game, at the top-up tier', () => {
+    // Both goods stocked past the glut: only the schedule rides on the target and only the first post
     // jumps the builder reserve, whatever the crew.
-    expect(buildingPosts(LARGE_SEAT, MID_GAME_FROM_TICKS - 1)).toEqual([
+    const glut = (lines: SupplyLines) => lines.glut;
+    expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS - 1, glut)).toEqual([
       { target: woodBase, min: 1 },
       { target: stoneBase, min: 1 },
     ]);
-    expect(buildingPosts(1, MID_GAME_FROM_TICKS)).toEqual([
+    expect(buildingPosts(1, BUILDING_GOODS_GROW_FROM_TICKS, glut)).toEqual([
       { target: woodBase + 1, min: 1 },
       { target: stoneBase, min: 1 },
     ]);
-    expect(buildingPosts(1, LATE_GAME_FROM_TICKS)).toEqual([
+    expect(buildingPosts(1, MID_GAME_FROM_TICKS, glut)).toEqual([
+      { target: woodBase + 1, min: 1 },
+      { target: stoneBase, min: 1 },
+    ]);
+    expect(buildingPosts(1, LATE_GAME_FROM_TICKS, glut)).toEqual([
       { target: woodBase + 2, min: 1 },
       { target: stoneBase + 1, min: 1 },
+    ]);
+  });
+
+  it("posts the sites' own shortage gatherers from the growth clock, with no workshop consuming the good", () => {
+    // An empty store lies every unit under the line: the opening still holds to its two posts, from the
+    // growth clock the sites justify SITE_SHORTAGE_POSTS on top of the schedule, all ahead of the reserve.
+    const empty = () => 0;
+    expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS - 1, empty)).toEqual([
+      { target: woodBase, min: 1 },
+      { target: stoneBase, min: 1 },
+    ]);
+    const wood = woodBase + 1 + SITE_SHORTAGE_POSTS;
+    const stone = stoneBase + SITE_SHORTAGE_POSTS;
+    expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS, empty)).toEqual([
+      { target: wood, min: wood },
+      { target: stone, min: stone },
+    ]);
+    // The opening hires them only under the short line.
+    expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS, (l) => l.short)).toEqual([
+      { target: woodBase + 1, min: 1 },
+      { target: stoneBase, min: 1 },
     ]);
   });
 
@@ -433,9 +479,9 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, BUILDER_CAP + 4);
     sim.step();
     const hq = entityOfBuilding(sim, HQ_TYPE);
-    // The mid game's wood target, its base row plus the phase's extra post.
+    // The mid game's wood target, its base row plus the clock's extra post.
     const woodTarget =
-      (COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID.wood?.mid ?? 0);
+      (COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0) + extraBuildingGatherers('wood', MID_GAME_FROM_TICKS);
     const decideAt = (tick: number) => {
       const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
       for (const c of commands) sim.enqueueSetup(c);
@@ -451,8 +497,11 @@ describe('workforce module (collectResources)', () => {
       DEFAULT_BUILD_ORDER,
     );
     const lines = supply.lines(WOOD);
-    if (lines === undefined) throw new Error('expected managed wood');
+    const stone = supply.lines(STONE);
+    if (lines === undefined || stone === undefined) throw new Error('expected managed wood and stone');
     expect(lines.glut).toBeGreaterThan(lines.comfort);
+    // Stone stocked past its glut, so only wood posts ride on the sites.
+    setStockAmount(sim.world, hq, STONE, stone.glut);
 
     // At the comfort line nothing is short: only the first posts.
     setStockAmount(sim.world, hq, WOOD, lines.comfort);
@@ -461,19 +510,21 @@ describe('workforce module (collectResources)', () => {
     // and fills every post of it ahead of the reserve, one per decision.
     setStockAmount(sim.world, hq, WOOD, lines.comfort - 1);
     expect(posted(decideAt(0))).toEqual([]);
-    // Every post past the first standing one, up to the target plus the shortage post.
-    for (let post = 1; post <= woodTarget; post++) expect(posted(mid())).toEqual([WOOD]);
+    // Every post past the first standing one, up to the target plus the shortage posts: the gap to the
+    // glut spans more units than the sites' cap, which the joinery's one post lies inside.
+    const extra = SITE_SHORTAGE_POSTS;
+    for (let post = 1; post < woodTarget + extra; post++) expect(posted(mid())).toEqual([WOOD]);
     expect(posted(mid())).toEqual([]);
-    expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + 1);
+    expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + extra);
 
-    // The engaged post holds past comfort, up to the glut line.
+    // The engaged posts hold past comfort, up to the glut line.
     const retired = (commands: readonly Command[]) =>
       commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
     setStockAmount(sim.world, hq, WOOD, lines.glut - 1);
     expect(retired(mid())).toHaveLength(0);
-    expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + 1);
+    expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget + extra);
     setStockAmount(sim.world, hq, WOOD, lines.glut);
-    expect(retired(mid())).toHaveLength(1);
+    expect(retired(mid())).toHaveLength(extra);
     expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget);
   });
 

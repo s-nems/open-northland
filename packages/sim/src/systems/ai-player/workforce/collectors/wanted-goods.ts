@@ -13,9 +13,19 @@ import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
-import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
+import {
+  type BuildOrderEntry,
+  collectorGoodsWanted,
+  type EntryStatus,
+  MAX_ACTIVE_CONSTRUCTION_SITES,
+} from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
-import { type GamePhase, gamePhase } from '../../game-phase.js';
+import {
+  BUILDING_GOODS_GROW_FROM_TICKS,
+  type GamePhase,
+  gamePhase,
+  LATE_GAME_FROM_TICKS,
+} from '../../game-phase.js';
 import { anchorNodeOf } from '../../node-geometry.js';
 import { ownedSettlers } from '../../seat-roster.js';
 import type { SeatSupply } from '../supply.js';
@@ -25,22 +35,45 @@ import type { SeatSupply } from '../supply.js';
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
 /** Base gatherer targets by stable content id (authored): the construction sites are these goods' main
- *  drain, which the shortage posts answer. The first post is guaranteed, the rest best-effort. Each row
- *  grows by its {@link EXTRA_BUILDING_GATHERERS_BY_GOOD_ID} row as the game goes on. */
+ *  drain, which the shortage posts answer from {@link BUILDING_GOODS_GROW_FROM_TICKS} on. The first post
+ *  is guaranteed, the rest best-effort. Each row grows by its {@link EXTRA_BUILDING_GATHERERS_BY_GOOD_ID}
+ *  schedule as the game goes on. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
 };
 
-/** The posts a good with a {@link COLLECTOR_TARGET_BY_GOOD_ID} row gains per {@link gamePhase} (authored),
- *  filled at the top-up rung once the seat can spare the men: wood feeds every bill, the joinery and the
- *  armoury, so it grows from the mid game; stone feeds only the bills, so it waits for the late game. */
-export const EXTRA_BUILDING_GATHERERS_BY_GOOD_ID: Readonly<
-  Record<string, Readonly<Record<GamePhase, number>>>
-> = {
-  wood: { opening: 0, mid: 1, late: 2 },
-  stone: { opening: 0, mid: 0, late: 1 },
+/** One step of an extra-post schedule: `posts` more gatherers from `fromTick` on. */
+export interface ExtraPostsStep {
+  readonly fromTick: number;
+  readonly posts: number;
+}
+
+/** The posts a good with a {@link COLLECTOR_TARGET_BY_GOOD_ID} row gains by the game clock (authored),
+ *  steps ascending, filled at the top-up rung once the seat can spare the men: wood feeds every bill, the
+ *  joinery and the armoury, so it grows from {@link BUILDING_GOODS_GROW_FROM_TICKS}; stone feeds only
+ *  the bills, so it waits for the late game. */
+export const EXTRA_BUILDING_GATHERERS_BY_GOOD_ID: Readonly<Record<string, readonly ExtraPostsStep[]>> = {
+  wood: [
+    { fromTick: BUILDING_GOODS_GROW_FROM_TICKS, posts: 1 },
+    { fromTick: LATE_GAME_FROM_TICKS, posts: 2 },
+  ],
+  stone: [{ fromTick: LATE_GAME_FROM_TICKS, posts: 1 }],
 };
+
+/** The scheduled extra posts of `goodId` at `tick`: its last step reached, else none. */
+export function extraBuildingGatherers(goodId: string, tick: number): number {
+  let posts = 0;
+  for (const step of EXTRA_BUILDING_GATHERERS_BY_GOOD_ID[goodId] ?? []) {
+    if (tick >= step.fromTick) posts = step.posts;
+  }
+  return posts;
+}
+
+/** The shortage posts the construction sites alone justify for a {@link COLLECTOR_TARGET_BY_GOOD_ID} good
+ *  from {@link BUILDING_GOODS_GROW_FROM_TICKS} on: one per site that may be drawing the good at once
+ *  (authored). Before that a workshop consuming the good is the only thing that adds one. */
+export const SITE_SHORTAGE_POSTS = MAX_ACTIVE_CONSTRUCTION_SITES;
 
 /** The target of a good with no {@link COLLECTOR_TARGET_BY_GOOD_ID} row and no reached collector entry. */
 export const DEFAULT_COLLECTOR_TARGET = 1;
@@ -148,11 +181,10 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
  *  plan order. A target is the good's fixed row, grown by its {@link EXTRA_BUILDING_GATHERERS_BY_GOOD_ID}
- *  row for the phase, else its entries' largest `count` (at least
- *  {@link DEFAULT_COLLECTOR_TARGET}) grown by {@link OPERATORS_PER_EXTRA_GATHERER}, plus the shortage
- *  posts ({@link shortageGatherers}); nothing lowers it below a reached entry's `count`, since a released
- *  holder would regress the entry and stall the order. A good missing from the content set or with no
- *  harvest trade is skipped. */
+ *  schedule, else its entries' largest `count` (at least {@link DEFAULT_COLLECTOR_TARGET}) grown by
+ *  {@link OPERATORS_PER_EXTRA_GATHERER}, plus the shortage posts ({@link shortageGatherers}); nothing
+ *  lowers it below a reached entry's `count`, since a released holder would regress the entry and stall
+ *  the order. A good missing from the content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
   world: World,
   ctx: SystemContext,
@@ -181,11 +213,14 @@ export function wantedCollectorGoods(
       fixed === undefined
         ? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount) +
           Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER)
-        : Math.max(fixed + (EXTRA_BUILDING_GATHERERS_BY_GOOD_ID[goodId]?.[phase] ?? 0), entryCount);
+        : Math.max(fixed + extraBuildingGatherers(goodId, ctx.tick), entryCount);
+    const sitePosts =
+      fixed !== undefined && ctx.tick >= BUILDING_GOODS_GROW_FROM_TICKS ? SITE_SHORTAGE_POSTS : 0;
+    const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
     let min = 1;
-    if (consumers > 0) {
+    if (mostExtra > 0) {
       const heldExtra = Math.max(0, flagHolders(world, ctx, player, good.typeId) - target);
-      const extra = shortageGatherers(supply, good.typeId, heldExtra, consumers, phase);
+      const extra = shortageGatherers(supply, good.typeId, heldExtra, mostExtra, phase);
       if (extra > 0) {
         target += extra;
         // Iron or gold running short idles the smiths, not the builders, so its posts wait behind the
@@ -199,12 +234,13 @@ export function wantedCollectorGoods(
 }
 
 /**
- * The extra gatherers a good some built workshop consumes calls for while it runs short for the seat's
- * sites (authored): one per unit its surplus lies under the line the lack is measured to, rounded up, at
- * most one per {@link OPERATORS_PER_EXTRA_GATHERER} planned consuming operators, the same rate the target
- * grows at. The workshop eats the good faster than its gatherers bring it, and what lies on its shelf is
- * not the builders'. The posts are hired under one line and, while any is held, kept up to the next, so the
- * stock crossing one line does not hire and release a man every few decisions: short and comfort in the
+ * The extra gatherers a good calls for while it runs short for the seat's sites (authored): one per unit
+ * its surplus lies under the line the lack is measured to, rounded up, at most `mostExtra`: one per
+ * {@link OPERATORS_PER_EXTRA_GATHERER} planned operators of the built workshops consuming it, the same
+ * rate the target grows at, or the {@link SITE_SHORTAGE_POSTS} of a good the sites themselves drain. The
+ * workshop eats the good faster than its gatherers bring it, and what lies on its shelf is not the
+ * builders'. The posts are hired under one line and, while any is held, kept up to the next, so the stock
+ * crossing one line does not hire and release a man every few decisions: short and comfort in the
  * opening, when these posts outrank the builder reserve the opening cannot spare, then comfort and glut
  * from the mid game, when the seat hoards its building goods. A building good's posts are filled ahead of
  * the builder reserve, since a settlement with no stone to build with has no use for builders.
@@ -213,7 +249,7 @@ function shortageGatherers(
   supply: SeatSupply,
   goodType: number,
   heldExtra: number,
-  consumers: number,
+  mostExtra: number,
   phase: GamePhase,
 ): number {
   const lines = supply.lines(goodType);
@@ -226,10 +262,7 @@ function shortageGatherers(
   const lacking = Math.ceil((holdLine - surplus) / lines.unit);
   // The posts already held keep one man over the count the lack calls for, so the stock crossing a unit
   // step does not release a gatherer for the next unit to re-post.
-  return Math.min(
-    Math.max(lacking, Math.min(heldExtra, lacking + 1)),
-    Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER),
-  );
+  return Math.min(Math.max(lacking, Math.min(heldExtra, lacking + 1)), mostExtra);
 }
 
 /** The seat's men holding a live flag of `goodType` with a trade that harvests it: what

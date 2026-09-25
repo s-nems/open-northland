@@ -19,6 +19,11 @@ export const LATE_GAME_FROM_TICKS = minutesToTicks(90);
  *  its products' stock (authored): a resting farm loses its sown fields and the miller his experience. */
 export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
 
+/** From when the seat's construction goods grow their gatherer posts past the opening's two, by schedule
+ *  and by shortage (authored): the homes and workshops the list has reached by then eat more wood than two
+ *  woodcutters bring, while the opening cannot spare the men. */
+export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(30);
+
 /** From when the headquarters and the warehouses run transport carriers (authored): the deep late game,
  *  when the mints and druid huts stand and a carrier no longer costs a craftsman. */
 export const STORE_CARRIERS_FROM_TICKS = minutesToTicks(120);
