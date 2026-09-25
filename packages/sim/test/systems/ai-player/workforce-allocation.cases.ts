@@ -33,7 +33,12 @@ import {
 import { workableResourceTest } from '../../../src/systems/ai-player/live-resources.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import {
+  CLEAR_GROUND_FROM_NODES,
+  farGroundExtras,
+  GENERIC_COLLECTOR_TARGET,
   LATE_GAME_EXTRA_BUILDING_GATHERERS,
+  MAX_CLEARING_COLLECTORS,
+  NODES_PER_CLEARING_GATHERER,
   SHORTAGE_BUILDER_FLOOR,
   type WantedGood,
   wantedCollectorGoods,
@@ -58,6 +63,7 @@ import {
   entityOfBuilding,
   FARM_TYPE,
   FARMER,
+  HOME_TYPE,
   HQ_TYPE,
   IRON,
   IRON_GATE_XP,
@@ -399,6 +405,57 @@ describe('workforce module (collectResources)', () => {
     setStockAmount(sim.world, hq, WOOD, lines.glut);
     expect(retired(mid())).toHaveLength(1);
     expect(holdersOf(sim, WOOD)).toHaveLength(woodTarget);
+  });
+
+  it("adds collect-anything gatherers as the seat's farthest home moves away from the base", () => {
+    const HQ_AT = { x: 8, y: 16 };
+    const homeAt = (distance: number) => {
+      const sim = aiSim();
+      placeHq(sim, HQ_AT.x, HQ_AT.y);
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: HQ_AT.x + distance,
+        y: HQ_AT.y,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+      return farGroundExtras(sim.world, ctxOf(sim), ownedBuildings(sim.world, SEAT), {
+        hx: HQ_AT.x,
+        hy: HQ_AT.y,
+      });
+    };
+    expect(homeAt(CLEAR_GROUND_FROM_NODES + NODES_PER_CLEARING_GATHERER - 1)).toBe(0);
+    expect(homeAt(CLEAR_GROUND_FROM_NODES + NODES_PER_CLEARING_GATHERER)).toBe(1);
+    expect(homeAt(CLEAR_GROUND_FROM_NODES + 2 * NODES_PER_CLEARING_GATHERER)).toBe(2);
+    expect(2).toBeLessThan(MAX_CLEARING_COLLECTORS);
+
+    // The ladder posts them at its generic rung: two more collect-anything flags than a compact seat's.
+    const genericPosts = (distance: number | null): number => {
+      const sim = aiSim();
+      placeHq(sim, HQ_AT.x, HQ_AT.y);
+      placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+      if (distance !== null) {
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: HOME_TYPE,
+          x: HQ_AT.x + distance,
+          y: HQ_AT.y,
+          tribe: VIKING,
+          owner: SEAT,
+        });
+      }
+      spawnMen(sim, BUILDER_CAP + 20);
+      sim.step();
+      return [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
+        (c) => c.kind === 'setGatherGood' && c.goodType === null,
+      ).length;
+    };
+    expect(genericPosts(null)).toBe(GENERIC_COLLECTOR_TARGET);
+    expect(genericPosts(CLEAR_GROUND_FROM_NODES + 2 * NODES_PER_CLEARING_GATHERER)).toBe(
+      GENERIC_COLLECTOR_TARGET + 2,
+    );
   });
 
   it('keeps four builders when a shortage post beyond the first would take one', () => {

@@ -7,6 +7,7 @@ import {
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried } from '../../family/eligibility.js';
 import { scoutJobType } from '../../readviews/index.js';
@@ -24,6 +25,7 @@ import {
   type CollectorGround,
   clearingCollectors,
   collectorAnchors,
+  farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
   topUpCollectors,
   wantedCollectorGoods,
@@ -85,7 +87,9 @@ function runWorkforce(
   const civilians = civilianCount(world, ctx, player);
   const wanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const clearing = clearingCollectors(world, player, civilians);
-  const genericTarget = GENERIC_COLLECTOR_TARGET + clearing;
+  const baseNode = anchorNodeOf(world, base);
+  const farGround = baseNode === null ? 0 : farGroundExtras(world, ctx, owned, baseNode);
+  const genericTarget = GENERIC_COLLECTOR_TARGET + clearing + farGround;
   const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(
     world,
     ctx,
@@ -98,7 +102,7 @@ function runWorkforce(
   const taken: TakenFlagNodes = new Set();
   const fishing = fishingPlan(world, ctx, player);
   const seat: SeatStaffing = { player, owned, civilians, supply };
-  const ground = collectorGround(world, ctx, seat.owned, base);
+  const ground = collectorGround(world, ctx, seat.owned, baseNode);
   const generic = (): PlayerCommand[] =>
     ground === null
       ? []
@@ -147,9 +151,8 @@ function collectorGround(
   world: World,
   ctx: SystemContext,
   owned: readonly Entity[],
-  base: Entity,
+  baseNode: HalfCellNode | null,
 ): CollectorGround | null {
-  const baseNode = anchorNodeOf(world, base);
   if (ctx.terrain === undefined || baseNode === null) return null;
   return {
     anchors: collectorAnchors(world, ctx, owned, baseNode),

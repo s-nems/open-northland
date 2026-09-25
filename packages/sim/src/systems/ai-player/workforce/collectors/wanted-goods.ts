@@ -2,18 +2,21 @@ import type { ContentSet } from '@open-northland/data';
 import {
   AiPlayer,
   aiPlayerEntity,
+  Building,
   JobAssignment,
   Settler,
   StalledPlacement,
 } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
 import { type GamePhase, gamePhase } from '../../game-phase.js';
+import { anchorNodeOf } from '../../node-geometry.js';
 import { ownedSettlers } from '../../seat-roster.js';
 import type { SeatSupply } from '../supply.js';
 
@@ -51,6 +54,12 @@ export const GENERIC_COLLECTOR_TARGET = 2;
 export const CIVILIANS_PER_CLEARING_COLLECTOR = 5;
 export const MAX_CLEARING_COLLECTORS = 10;
 
+/** How far the seat's farthest home may stand from its base before collect-anything gatherers start
+ *  clearing room to build, and how many nodes further each next one is called for, in lattice Manhattan
+ *  nodes (authored). */
+export const CLEAR_GROUND_FROM_NODES = 16;
+export const NODES_PER_CLEARING_GATHERER = 8;
+
 /** The extra gatherers a stalled placement calls for, or 0 while the build order places freely or is
  *  switched off. The count follows the seat's `civilians` each decision, so it grows with the settlement
  *  while the stall lasts. */
@@ -63,6 +72,31 @@ export function clearingCollectors(world: World, player: number, civilians: numb
     MAX_CLEARING_COLLECTORS,
     Math.max(1, Math.floor(civilians / CIVILIANS_PER_CLEARING_COLLECTOR)),
   );
+}
+
+/**
+ * The extra collect-anything gatherers the seat's spread calls for: one per
+ * {@link NODES_PER_CLEARING_GATHERER} its farthest home (sites included) stands past
+ * {@link CLEAR_GROUND_FROM_NODES} from `baseNode`, at most {@link MAX_CLEARING_COLLECTORS}. Homes are placed
+ * with no affinity, nearest the base first, so the farthest one measures how far the nearest free ground
+ * has moved away from it, and felling what stands nearer makes room there again.
+ */
+export function farGroundExtras(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  baseNode: HalfCellNode,
+): number {
+  const index = contentIndex(ctx.content);
+  let farthest = 0;
+  for (const e of owned) {
+    if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'home') continue;
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    farthest = Math.max(farthest, Math.abs(node.hx - baseNode.hx) + Math.abs(node.hy - baseNode.hy));
+  }
+  const extras = Math.floor((farthest - CLEAR_GROUND_FROM_NODES) / NODES_PER_CLEARING_GATHERER);
+  return Math.min(MAX_CLEARING_COLLECTORS, Math.max(0, extras));
 }
 
 /** A wanted collector good with its resolved gatherer trade, harvest atomic, and staffing target. */
