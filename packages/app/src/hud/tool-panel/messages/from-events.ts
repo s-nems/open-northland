@@ -96,6 +96,11 @@ export function messagesFromEvents(
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
         break;
       }
+      case 'prayerSiteMissing': {
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.wantsToPray, e);
+        break;
+      }
       case 'marriageUnmatched': {
         const e = ownedPerson(ev.entity);
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.noOneToMarry, e);

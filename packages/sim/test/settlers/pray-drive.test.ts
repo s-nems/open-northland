@@ -16,7 +16,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { setHouseholdGoodUse } from '../../src/systems/family/home-quality.js';
-import { atomicSystem, needBar, plannerSystem } from '../../src/systems/index.js';
+import { atomicSystem, NEED_SATED_THRESHOLD, needBar, plannerSystem } from '../../src/systems/index.js';
 import { isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { testContent } from '../fixtures/content.js';
 import {
@@ -355,5 +355,21 @@ describe('where a devout settler prays: its holy fire, then a temple, then the h
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 7, 0));
+  });
+
+  it('warns a human seat whose settler has nowhere to pray, and settles a computer seat one instead', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const human = devoutAt(sim, 2);
+    const computer = settlerAt(sim, 4, 0, DEVOUT);
+    sim.world.add(computer, Owner, { player: RIVAL });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: RIVAL, enabled: true });
+
+    sim.step();
+
+    const missing = sim
+      .snapshot()
+      .events.flatMap((ev) => (ev.kind === 'prayerSiteMissing' ? [ev.entity] : []));
+    expect(missing).toEqual([human]);
+    expect(sim.world.get(computer, Settler).piety).toBe(NEED_SATED_THRESHOLD);
   });
 });

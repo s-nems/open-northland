@@ -113,7 +113,13 @@ describe('note retirement', () => {
   it('ends tired and prayer notes when the corresponding need is answered', () => {
     const answered = systems.NEED_CRITICAL_THRESHOLD - 1;
     expect(isNoteOver(note(USER_MESSAGE_TYPE.tired), needsWorld({ fatigue: answered }))).toBe(true);
-    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: answered }))).toBe(true);
+    const prayed = systems.NEED_DRIVE_THRESHOLD - 1;
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: prayed }))).toBe(true);
+  });
+
+  it('keeps a prayer note a failed search raised below the critical level until a prayer answers it', () => {
+    const pressing = systems.NEED_DRIVE_THRESHOLD;
+    expect(isNoteOver(note(USER_MESSAGE_TYPE.wantsToPray), needsWorld({ piety: pressing }))).toBe(false);
   });
 
   it('ends need notes when needs are disabled or the settler no longer carries them', () => {

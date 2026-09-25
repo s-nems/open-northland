@@ -24,7 +24,9 @@ function isNeedNoteOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
     case USER_MESSAGE_TYPE.tired:
       return needs.fatigue < systems.NEED_CRITICAL_THRESHOLD;
     case USER_MESSAGE_TYPE.wantsToPray:
-      return needs.piety < systems.NEED_CRITICAL_THRESHOLD;
+      // A failed search for somewhere to pray raises it below the critical level, so it lasts until a
+      // prayer takes the bar back under the level the search started at.
+      return needs.piety < systems.NEED_DRIVE_THRESHOLD;
     default:
       return false;
   }

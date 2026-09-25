@@ -60,6 +60,12 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
+      /** A settler that must pray found no burning holy fire at home and no temple or headquarters of its
+       *  own player in reach. */
+      readonly kind: 'prayerSiteMissing';
+      readonly entity: Entity;
+    }
+  | {
       /** A marry order found nobody eligible to wed inside the issuer's allowed area. */
       readonly kind: 'marriageUnmatched';
       readonly entity: Entity;

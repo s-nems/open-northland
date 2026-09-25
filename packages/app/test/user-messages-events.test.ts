@@ -337,6 +337,22 @@ describe('user messages from sim events', () => {
     ]);
   });
 
+  it("notes this seat's settler that found nowhere to pray, once, as the original's wants-to-pray note", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: ENEMY, kind: 'person' },
+    ]);
+    const out = run(
+      [
+        { kind: 'prayerSiteMissing', entity: e(1) },
+        { kind: 'prayerSiteMissing', entity: e(1) },
+        { kind: 'prayerSiteMissing', entity: e(2) },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.wantsToPray, 1]]);
+  });
+
   it('notes a marry order that found nobody', () => {
     const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
     const out = run([{ kind: 'marriageUnmatched', entity: e(1) }], snap);

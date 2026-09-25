@@ -247,8 +247,10 @@ export function planNeeds(
       );
       return true;
     }
-    // Nowhere to pray: a human seat's settler falls through to work with piety pinned at ONE.
-    settleUnservedNeedForAi(world, e, 'piety');
+    // Nowhere to pray: a human seat's settler falls through to work with piety pinned at ONE, and its
+    // player hears of it.
+    if (!settleUnservedNeedForAi(world, e, 'piety'))
+      ctx.events.emit({ kind: 'prayerSiteMissing', entity: e });
   }
 
   return false;
@@ -260,11 +262,13 @@ export function planNeeds(
  * pinning. Original behavior: a failed need seek sets the failed need's bar to the sated
  * level when the human's player is of the computer type, where a human player's settler gets the
  * warning message instead. A seek the seat
- * forbade starts no task there, so that bar falls to the seat's refill (`lifecycle/needs`).
+ * forbade starts no task there, so that bar falls to the seat's refill (`lifecycle/needs`). Returns false
+ * when the bar still presses and the settler's player is the one to be warned.
  */
-function settleUnservedNeedForAi(world: World, e: Entity, need: 'hunger' | 'fatigue' | 'piety'): void {
-  if (world.get(e, Settler)[need] <= NEED_SATED_THRESHOLD) return;
+function settleUnservedNeedForAi(world: World, e: Entity, need: 'hunger' | 'fatigue' | 'piety'): boolean {
+  if (world.get(e, Settler)[need] <= NEED_SATED_THRESHOLD) return true;
   const player = ownerOf(world, e);
-  if (player === undefined || !isAiPlayer(world, player)) return;
+  if (player === undefined || !isAiPlayer(world, player)) return false;
   world.mut(e, Settler)[need] = NEED_SATED_THRESHOLD;
+  return true;
 }
