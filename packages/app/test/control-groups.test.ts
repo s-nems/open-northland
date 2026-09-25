@@ -72,13 +72,14 @@ describe('controlGroupCommand', () => {
 });
 
 describe('control groups', () => {
-  it('recalls owned actors off-screen but rejects foreign, neutral, and livestock refs', () => {
+  it('recalls owned actors and vehicles off-screen but rejects foreign, neutral, and livestock refs', () => {
     const snapshot = snapshotOf([
       { id: 1, components: { Settler: {}, Owner: { player: 0 } } },
       { id: 2, components: { Building: {}, Owner: { player: 0 } } },
       { id: 3, components: { Settler: {}, Owner: { player: 1 } } },
       { id: 4, components: { Settler: {} } },
       { id: 5, components: { Settler: {}, Livestock: {}, Owner: { player: 0 } } },
+      { id: 6, components: { Vehicle: {}, Owner: { player: 0 } } },
     ]);
 
     expect(isControlGroupMember(snapshot, 1, 0)).toBe(true);
@@ -87,6 +88,7 @@ describe('control groups', () => {
     expect(isControlGroupMember(snapshot, 3, null)).toBe(true);
     expect(isControlGroupMember(snapshot, 4, null)).toBe(false);
     expect(isControlGroupMember(snapshot, 5, null)).toBe(false);
+    expect(isControlGroupMember(snapshot, 6, 0)).toBe(true);
     expect(isControlGroupMember(snapshot, 99, null)).toBe(false);
   });
 

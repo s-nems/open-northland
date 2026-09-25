@@ -1,13 +1,13 @@
 import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
-import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import {
   sandboxContent,
   VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
   VEHICLE_SHIP_SMALL,
 } from '../src/game/sandbox/index.js';
+import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import { type Pickable, worldToTile } from '../src/view/picking.js';
 import { createPickModeController } from '../src/view/unit-controls/pick-mode.js';
 import { issueRingCommand } from '../src/view/unit-controls/ring-commands.js';
@@ -229,10 +229,35 @@ describe('vehicle right-click defaults', () => {
     expect(cart.issued).toEqual([{ kind: 'moveVehicle', vehicle: HANDCART, x: spot.col, y: spot.row }]);
   });
 
-  it('takes no click while a settler shares the selection, an enemy vehicle is selected, or two are', () => {
-    expect(harness([CATAPULT, OWN_SETTLER], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
+  it('takes no click for a selected enemy vehicle, nor for a group over an own settler, which selects it', () => {
     expect(harness([ENEMY_CART], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
-    expect(harness([CATAPULT, HANDCART], ALL_UNDER).controller.issueRightClick(rightClick)).toBe(false);
+    const overSettler = harness([CATAPULT, HANDCART], { settlersUnder: [under(OWN_SETTLER, 'settler')] });
+    expect(overSettler.controller.issueRightClick(rightClick)).toBe(false);
+    expect(overSettler.issued).toEqual([]);
+  });
+
+  it("sends a group's armed vehicles at the enemy under the cursor and drives the rest there", () => {
+    const { issued, controller } = harness([HANDCART, CATAPULT], {
+      enemies: [under(ENEMY_HOUSE, 'building')],
+    });
+    expect(controller.issueRightClick(rightClick)).toBe(true);
+    const spot = worldToTile(CLICK.x, CLICK.y);
+    expect(issued).toEqual([
+      { kind: 'attackWithVehicle', vehicle: CATAPULT, target: { kind: 'entity', entity: ENEMY_HOUSE } },
+      { kind: 'moveVehicle', vehicle: HANDCART, x: spot.col, y: spot.row },
+    ]);
+  });
+
+  it('drives a group, settlers beside it or not, to distinct slots around the spot on a plain move', () => {
+    const { issued, controller } = harness([CATAPULT, HANDCART, OWN_SETTLER], {});
+    expect(controller.issueRightClick(rightClick)).toBe(true);
+    const spot = worldToTile(CLICK.x, CLICK.y);
+    expect(issued.map((command) => command.kind)).toEqual(['moveVehicle', 'moveVehicle']);
+    expect(issued[0]).toEqual({ kind: 'moveVehicle', vehicle: CATAPULT, x: spot.col, y: spot.row });
+    const goals = issued.map((command) =>
+      command.kind === 'moveVehicle' ? `${command.x},${command.y}` : '',
+    );
+    expect(new Set(goals).size).toBe(2);
   });
 
   it('drives the vehicle for its commander selected aboard it, and nothing for a passenger aboard', () => {
@@ -363,6 +388,7 @@ describe('vehicle picks', () => {
       pickMode,
       openEquipment: () => undefined,
       toggleWorkArea: () => undefined,
+      siegeVehicles: () => [],
     });
     expect(pickMode.isArmed()).toBe(true);
     expect(pickMode.handleMouseDown(leftClick)).toBe('ordered');

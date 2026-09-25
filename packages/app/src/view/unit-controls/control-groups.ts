@@ -1,6 +1,6 @@
 import type { ElevationField } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { isBuilding, isSettler, ownerPlayerOf } from '../../game/snapshot.js';
+import { isBuilding, isSettler, isVehicle, ownerPlayerOf } from '../../game/snapshot.js';
 import {
   CONTROL_GROUP_BINDING_ACTIONS,
   type ControlGroupAction,
@@ -73,7 +73,7 @@ export function groupCentre(
  *  a whole-map viewer (`seat` null) owns them all. */
 export function isControlGroupMember(snapshot: WorldSnapshot, ref: number, seat: number | null): boolean {
   const entity = entityById(snapshot, ref);
-  if (entity === undefined || (!isSettler(entity) && !isBuilding(entity))) return false;
+  if (entity === undefined || (!isSettler(entity) && !isBuilding(entity) && !isVehicle(entity))) return false;
   if (entity.components.Livestock !== undefined) return false;
   const owner = ownerPlayerOf(entity);
   return owner !== undefined && (seat === null || owner === seat);

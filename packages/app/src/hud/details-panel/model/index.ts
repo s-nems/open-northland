@@ -183,8 +183,8 @@ export function buildUnitPanelModel(
   }
   vehicleIds.sort((a, b) => a - b);
 
-  // A signpost or a vehicle is a direct-click-only selection (never marquee'd), so units/buildings
-  // always outrank either.
+  // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank
+  // it. A vehicle's order window opens for it alone; settlers boxed with vehicles are a group.
   if (settlerIds.length === 0 && buildingIds.length === 0 && signpostIds.length === 1) {
     return { kind: 'signpost', entityId: signpostIds[0] as number };
   }
@@ -192,6 +192,7 @@ export function buildUnitPanelModel(
     const ent = entityById(snapshot, vehicleIds[0] as number);
     return ent === undefined ? { kind: 'empty' } : vehiclePanelModel(ctx, snapshot, ent);
   }
+  if (settlerIds.length > 0 && vehicleIds.length > 0) return { kind: 'generic', count: selected.size };
 
   if (settlerIds.length === 0 && buildingIds.length === 1) {
     const entityId = buildingIds[0] as number;

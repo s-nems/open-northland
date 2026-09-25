@@ -9,6 +9,8 @@ export interface RingCommandDeps {
   readonly openEquipment: (settlers: readonly number[]) => void;
   /** Show or hide the work-area circle of every settler the order reaches that carries a work flag. */
   readonly toggleWorkArea: (targets: readonly number[]) => void;
+  /** The selected siege vehicles, which the settler ring does not list but an attack-move marches too. */
+  readonly siegeVehicles: () => readonly number[];
 }
 
 /** Which need bar each of the original's four need buttons orders answered. */
@@ -101,7 +103,7 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       deps.pickMode.arm({ kind: 'attack-vehicle', units: targets });
       return;
     case 'attackPosition':
-      deps.pickMode.arm({ kind: 'attack-move', units: targets, vehicles: [] });
+      deps.pickMode.arm({ kind: 'attack-move', units: targets, vehicles: deps.siegeVehicles() });
       return;
     case 'attackMode':
       each((entity) => ({ kind: 'setStance', entity, mode: systems.MILITARY_MODE.ATTACK }));

@@ -47,8 +47,8 @@ export type UnitTargetKind = 'settler' | 'building' | 'palisade' | 'vehicle';
 
 /** The pickable target sets the unit controls hit-test a click against, plus the order-issuing set. */
 export interface UnitTargets {
-  /** Owned, pickable targets of `kind` with their world-px feet anchors. Absent, the marquee set:
-   *  settlers and buildings, since a vehicle is a direct-click selection like a signpost. */
+  /** Owned, pickable targets of `kind` with their world-px feet anchors; absent, settlers and
+   *  buildings. */
   owned(kind?: UnitTargetKind): Pickable[];
   /** Every standing building drawn this frame, whoever owns it: a trader's route may name another
    *  tribe's house. */
@@ -124,7 +124,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       y: item.y,
       kind,
       box: deps.boundsOf?.(item.ref),
-      ...(kind !== 'settler' && pixelHitOf !== undefined
+      ...((kind === 'building' || kind === 'vehicle') && pixelHitOf !== undefined
         ? { pixelHit: (wx: number, wy: number) => pixelHitOf(item.ref, wx, wy) }
         : {}),
     };

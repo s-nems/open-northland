@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { PickMode, PickModeController } from '../src/view/unit-controls/pick-mode.js';
 import { issueRingCommand } from '../src/view/unit-controls/ring-commands.js';
 
+/** A selected catapult, which a ring attack-move marches beside the settlers. */
+const CATAPULT = 30;
+
 /** A dispatcher harness recording what a click issued and what it armed. */
 function harness(): {
   issued: PlayerCommand[];
@@ -13,6 +16,7 @@ function harness(): {
   enqueue: (command: PlayerCommand) => void;
   openEquipment: (settlers: readonly number[]) => void;
   toggleWorkArea: (targets: readonly number[]) => void;
+  siegeVehicles: () => readonly number[];
 } {
   const issued: PlayerCommand[] = [];
   const armed: PickMode[] = [];
@@ -38,6 +42,7 @@ function harness(): {
     pickMode,
     enqueue: (command) => issued.push(command),
     openEquipment: (settlers) => equipmentFor.push([...settlers]),
+    siegeVehicles: () => [CATAPULT],
     toggleWorkArea: (targets) => workAreaFor.push([...targets]),
   };
 }
@@ -81,7 +86,7 @@ describe('issueRingCommand', () => {
       { kind: 'destination', units: [4, 9] },
       { kind: 'attack-building', units: [4, 9] },
       { kind: 'attack-animal', units: [4, 9] },
-      { kind: 'attack-move', units: [4], vehicles: [] },
+      { kind: 'attack-move', units: [4], vehicles: [CATAPULT] },
     ]);
   });
 

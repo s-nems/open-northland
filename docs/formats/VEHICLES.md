@@ -395,7 +395,9 @@ original's animal list order and transform details are not read.
 
 Open Northland (`packages/app/src/hud/details-panel/model/vehicle.ts`, `view/unit-controls/vehicle-orders.ts`):
 a vehicle is selected by a click on its drawn sprite (solid pixels), after the door markers, flags,
-settlers and buildings under the same point and before a signpost, and never by a marquee; the
+settlers and buildings under the same point and before a signpost. A marquee takes every own
+vehicle whose drawn bounds it touches along with the settlers (an addition); the window opens for
+one vehicle alone, and a group, or vehicles boxed with settlers, shows only the selection count. The
 world tooltip reads "type · player · task". The window stacks Ogólne (owner, task, stance or
 carrier, capacity, hit points), the order buttons, Mieszkańcy (commander first, then passengers and
 carried vehicles, each row selecting what it names, a rider still outside marked) and Magazyn (the
@@ -410,7 +412,9 @@ button-by-button reading; the clear order is the "unload goods" button; the righ
 original's order (enemy human, own moored ship for a land vehicle, enemy vehicle or house, else go
 to) but the attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's
 attack order silently; a ship's right-click on a shore the mooring probe accepts docks there, elsewhere
-it is a goto the sim refuses, the mooring order being explicit; the ring's "Assign Vehicle" is offered
+it is a goto the sim refuses, the mooring order being explicit; a group's right-click (an addition)
+sends its armed vehicles at the enemy under the cursor and drives the rest to spaced slots there,
+never boarding or docking; the ring's "Assign Vehicle" is offered
 to every grown settler, its pick lights the settler's own vehicles green where `canAttachToVehicle`
 (job list, free seat, a door on the settler's continent) takes it and red otherwise, and a red vehicle
 drops the click; the selected settlers' right-click on an own vehicle attaches each one that rule

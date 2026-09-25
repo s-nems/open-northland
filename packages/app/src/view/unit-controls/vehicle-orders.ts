@@ -59,6 +59,10 @@ export interface VehicleOrderController {
    * attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's attack order
    * silently, the original's per-vehicle gate not being read; a ship's right-click on a shore its
    * mooring rule accepts docks there, where the original's goto is refused.
+   *
+   * A marquee's group of vehicles, or vehicles selected beside settlers, is an addition: the armed ones
+   * attack the enemy under the cursor and the rest drive to their own slots of a spaced formation
+   * there. A group neither boards nor docks.
    */
   issueRightClick(event: MouseEvent): boolean;
   issueMoveTo(vehicle: number, target: Tile): boolean;
@@ -117,17 +121,26 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return found;
   };
 
-  const selectedSiegeVehicles = (): number[] => {
+  /** The owned vehicles selected themselves, in id order. */
+  const selectedVehicles = (): SnapshotEntity[] => {
     const snapshot = deps.snapshot();
-    const vehicles: number[] = [];
+    const vehicles: SnapshotEntity[] = [];
     for (const id of deps.selected()) {
       const e = entityById(snapshot, id);
-      if (e === undefined || !isVehicle(e) || !ours(e)) continue;
-      const type = vehicleTypeOf(e);
-      if (type !== undefined && systems.isSiegeVehicle(type)) vehicles.push(id);
+      if (e !== undefined && isVehicle(e) && ours(e)) vehicles.push(e);
     }
-    return vehicles;
+    return vehicles.sort((a, b) => a.id - b.id);
   };
+
+  const isSiege = (e: SnapshotEntity): boolean => {
+    const type = vehicleTypeOf(e);
+    return type !== undefined && systems.isSiegeVehicle(type);
+  };
+
+  const selectedSiegeVehicles = (): number[] =>
+    selectedVehicles()
+      .filter(isSiege)
+      .map((e) => e.id);
 
   const clampNode = (target: Tile): Tile => {
     const { width, height } = nodeBounds(deps.mapSize);
@@ -140,24 +153,41 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return true;
   };
 
-  const issueAttackMove = (vehicles: readonly number[], target: Tile): boolean => {
-    // Formation slots on a lattice as wide as the group, each scaled out to the spacing.
-    const span = vehicles.length;
-    const slots = formationTiles({ col: span, row: span }, span, 2 * span + 1, 2 * span + 1, () => false);
-    vehicles.forEach((vehicle, i) => {
-      const slot = slots[i] ?? { col: span, row: span };
-      const node = clampNode({
-        col: target.col + (slot.col - span) * VEHICLE_FORMATION_SPACING_NODES,
-        row: target.row + (slot.row - span) * VEHICLE_FORMATION_SPACING_NODES,
+  /** One goal per vehicle around `target`, formation slots on a lattice as wide as the group, each
+   *  scaled out to the spacing. */
+  const formationGoals = (count: number, target: Tile): Tile[] => {
+    const slots = formationTiles(
+      { col: count, row: count },
+      count,
+      2 * count + 1,
+      2 * count + 1,
+      () => false,
+    );
+    return Array.from({ length: count }, (_, i) => {
+      const slot = slots[i] ?? { col: count, row: count };
+      return clampNode({
+        col: target.col + (slot.col - count) * VEHICLE_FORMATION_SPACING_NODES,
+        row: target.row + (slot.row - count) * VEHICLE_FORMATION_SPACING_NODES,
       });
+    });
+  };
+
+  const driveInFormation = (vehicles: readonly number[], target: Tile, attackMove: boolean): void => {
+    const goals = formationGoals(vehicles.length, target);
+    vehicles.forEach((vehicle, i) => {
+      const node = goals[i] ?? clampNode(target);
       deps.enqueue({
         kind: 'moveVehicle',
         vehicle: vehicle as Entity,
         x: node.col,
         y: node.row,
-        attackMove: true,
+        ...(attackMove ? { attackMove: true } : {}),
       });
     });
+  };
+
+  const issueAttackMove = (vehicles: readonly number[], target: Tile): boolean => {
+    driveInFormation(vehicles, target, true);
     return vehicles.length > 0;
   };
 
@@ -246,9 +276,24 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return sent;
   };
 
+  /** A group's right-click (see {@link VehicleOrderController.issueRightClick}). An own settler under
+   *  the cursor is left to the settlers' click, which selects it. */
+  const issueGroupRightClick = (event: MouseEvent): boolean => {
+    const group = selectedVehicles();
+    if (group.length === 0) return false;
+    const world = deps.toWorld(event.clientX, event.clientY);
+    if (pickTopAt(deps.targets.owned('settler'), world.x, world.y) !== null) return false;
+    const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
+    const striking = enemy === null ? [] : group.filter(isSiege);
+    if (enemy !== null) for (const e of striking) strike(e.id, enemy);
+    const driving = group.filter((e) => !striking.includes(e)).map((e) => e.id);
+    driveInFormation(driving, worldToTile(world.x, world.y, deps.elevation), false);
+    return true;
+  };
+
   const issueRightClick = (event: MouseEvent): boolean => {
     const vehicle = selectedVehicle();
-    if (vehicle === null) return false;
+    if (vehicle === null) return issueGroupRightClick(event);
     const self = entityById(deps.snapshot(), vehicle);
     const type = self === undefined ? undefined : vehicleTypeOf(self);
     const armed = type !== undefined && systems.isSiegeVehicle(type);

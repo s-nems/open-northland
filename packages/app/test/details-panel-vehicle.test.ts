@@ -61,6 +61,20 @@ const vehicleView = (model: VehiclePanelModel): Extract<PanelView, { kind: 'vehi
 const orders = (model: VehiclePanelModel): string[] => model.orders.map((row) => row.order);
 
 describe('vehicle panel model', () => {
+  it('opens the order window for one vehicle alone and counts a group of them or one boxed with settlers', () => {
+    const world = vehiclesWorld();
+    const catapult = ownVehicle(world.sim, VEHICLE_CATAPULT).entity;
+    const cart = ownVehicle(world.sim, VEHICLE_HANDCART).entity;
+    const settler = world.snapshot.entities.find(
+      (e) => e.components.Settler !== undefined && e.components.Position !== undefined,
+    );
+    if (settler === undefined) throw new Error('no settler on the map');
+    const modelOf = (ids: readonly number[]) => buildUnitPanelModel(world.snapshot, new Set(ids), world.ctx);
+    expect(modelOf([catapult]).kind).toBe('vehicle');
+    expect(modelOf([catapult, cart])).toEqual({ kind: 'generic', count: 2 });
+    expect(modelOf([catapult, settler.id])).toEqual({ kind: 'generic', count: 2 });
+  });
+
   it('titles a cart by its type, lists its trader as the commander and offers the cart orders', () => {
     const world = vehiclesWorld();
     const model = vehicleModel(world, VEHICLE_HANDCART);

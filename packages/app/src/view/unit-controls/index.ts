@@ -73,6 +73,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         pickMode,
         openEquipment: (settlers) => equipPicker?.openAll(settlers),
         toggleWorkArea: workArea.toggle,
+        siegeVehicles: () => vehicleOrders.selectedSiegeVehicles(),
       }),
     cue,
   });
@@ -210,12 +211,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (marker?.kind === 'settler') {
         applySelection([marker.ref], false);
         cue('confirm');
-      } else if (
-        vehicleOrders.issueAttachSelected(e) ||
-        orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null) ||
-        vehicleOrders.issueRightClick(e)
-      ) {
+      } else if (vehicleOrders.issueAttachSelected(e)) {
         cue('confirm');
+      } else {
+        // Settlers and vehicles selected together both take the click. One that picks an own settler
+        // replaces the selection first, which leaves no vehicle selected to drive.
+        const settlersTook = orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null);
+        const vehiclesTook = vehicleOrders.issueRightClick(e);
+        if (settlersTook || vehiclesTook) cue('confirm');
       }
       return;
     }
@@ -258,7 +261,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // A drag select is silent in the original; only the single click below confirms.
       const a = toWorld(release.startX, release.startY);
       const b = toWorld(e.clientX, e.clientY);
-      applySelection(pickInRect(unitTargets.owned('settler'), a.x, a.y, b.x, b.y), e.shiftKey);
+      // Any own vehicle whose sprite the box touches joins the settlers; a single one opens its order
+      // window, a group takes the right-click and the attack-move.
+      const boxed = [...unitTargets.owned('settler'), ...unitTargets.owned('vehicle')];
+      applySelection(pickInRect(boxed, a.x, a.y, b.x, b.y), e.shiftKey);
       return;
     }
     const w = toWorld(e.clientX, e.clientY);
