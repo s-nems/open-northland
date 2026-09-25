@@ -4,16 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
-const { Building, JobAssignment, Owner, Person, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } =
+const { Building, JobAssignment, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } =
   components;
-const {
-  CIVILIANS_PER_EXTRA_BUILDING_GATHERER,
-  COLLECTOR_TARGET_BY_GOOD_ID,
-  DEFAULT_COLLECTOR_TARGET,
-  isFighterJob,
-  isHunterJob,
-  MAX_ACTIVE_CONSTRUCTION_SITES,
-} = systems;
+const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET, isHunterJob, MAX_ACTIVE_CONSTRUCTION_SITES } =
+  systems;
 
 /** The decoded map under test - a free-play start where every seat opens with an authored, stocked
  *  viking headquarters (the fortress-map convention the AI keys on). */
@@ -65,13 +59,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     // The workforce allocator flagged collectors beside real resources: each owned flag-bound
     // gatherer is pinned to one collected good. How many of the three goods get a collector depends
     // on what the map actually holds, but a forest map guarantees at least the wood one, and no good
-    // may exceed its plan target (`COLLECTOR_TARGET_BY_GOOD_ID` grown by the seat's civilians, default 1).
-    // Counted over people, as the allocator does: a claimed herd is an owned Settler with no Person.
-    const civilians = [...sim.world.query(Person, Owner)].filter(
-      (e) =>
-        sim.world.get(e, Owner).player === AI_SEAT &&
-        !isFighterJob(content, sim.world.get(e, Settler).jobType),
-    ).length;
+    // may exceed its opening plan target (`COLLECTOR_TARGET_BY_GOOD_ID`, default 1).
     const pinned: number[] = [];
     const flagNodes: string[] = [];
     for (const e of sim.world.query(Settler, WorkFlag)) {
@@ -89,10 +77,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     for (const goodType of new Set(pinned)) {
       const goodId = goodIdOf.get(goodType) ?? '';
       const fixed = COLLECTOR_TARGET_BY_GOOD_ID[goodId];
-      const target =
-        fixed === undefined
-          ? DEFAULT_COLLECTOR_TARGET
-          : fixed + Math.floor(civilians / CIVILIANS_PER_EXTRA_BUILDING_GATHERER);
+      const target = fixed ?? DEFAULT_COLLECTOR_TARGET;
       expect(pinned.filter((g) => g === goodType).length, `collectors of ${goodId}`).toBeLessThanOrEqual(
         target,
       );

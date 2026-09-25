@@ -13,6 +13,7 @@ import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
 import { goodTypeByContentId } from '../../content-lookup.js';
+import { type GamePhase, gamePhase } from '../../game-phase.js';
 import { ownedSettlers } from '../../seat-roster.js';
 import type { SeatSupply } from '../supply.js';
 
@@ -22,16 +23,16 @@ export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
 /** Base gatherer targets by stable content id (authored): the construction sites are these goods' main
  *  drain, which the shortage posts answer. The first post is guaranteed, the rest best-effort. Each row
- *  grows with the settlement by {@link CIVILIANS_PER_EXTRA_BUILDING_GATHERER}. */
+ *  grows by {@link LATE_GAME_EXTRA_BUILDING_GATHERERS} in the late game. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
 };
 
-/** A good with a {@link COLLECTOR_TARGET_BY_GOOD_ID} row gets one gatherer more per this many civilians
- *  (authored): a grown settlement builds more at once and hoards its building goods, a gatherer costs it
- *  a smaller share of its men, and every felled tree or quarried rock clears room to build on. */
-export const CIVILIANS_PER_EXTRA_BUILDING_GATHERER = 20;
+/** The posts a good with a {@link COLLECTOR_TARGET_BY_GOOD_ID} row gains in the late {@link gamePhase}
+ *  (authored): a nice-to-have filled at the top-up rung once the seat can spare the men, since it builds
+ *  its army first and hoards its building goods only then. */
+export const LATE_GAME_EXTRA_BUILDING_GATHERERS = 1;
 
 /** The target of a good with no {@link COLLECTOR_TARGET_BY_GOOD_ID} row and no reached collector entry. */
 export const DEFAULT_COLLECTOR_TARGET = 1;
@@ -107,8 +108,8 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 }
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
- *  plan order. A target is the good's fixed row grown by the seat's `civilians`
- *  ({@link CIVILIANS_PER_EXTRA_BUILDING_GATHERER}), else its entries' largest `count` (at least
+ *  plan order. A target is the good's fixed row, grown by {@link LATE_GAME_EXTRA_BUILDING_GATHERERS} in
+ *  the late game, else its entries' largest `count` (at least
  *  {@link DEFAULT_COLLECTOR_TARGET}) grown by {@link OPERATORS_PER_EXTRA_GATHERER}, plus the shortage
  *  posts ({@link shortageGatherers}); nothing lowers it below a reached entry's `count`, since a released
  *  holder would regress the entry and stall the order. A good missing from the content set or with no
@@ -120,13 +121,14 @@ export function wantedCollectorGoods(
   order: readonly BuildOrderEntry[],
   statuses: readonly EntryStatus[],
   supply: SeatSupply,
-  civilians: number,
 ): WantedGood[] {
   const goodIds = [...COLLECTED_GOOD_IDS];
   const entryCounts = collectorGoodsWanted(order, statuses);
   for (const goodId of entryCounts.keys()) {
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }
+  const phase = gamePhase(ctx.tick);
+  const lateExtra = phase === 'late' ? LATE_GAME_EXTRA_BUILDING_GATHERERS : 0;
   const wanted: WantedGood[] = [];
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
@@ -141,11 +143,11 @@ export function wantedCollectorGoods(
       fixed === undefined
         ? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount) +
           Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER)
-        : Math.max(fixed + Math.floor(civilians / CIVILIANS_PER_EXTRA_BUILDING_GATHERER), entryCount);
+        : Math.max(fixed + lateExtra, entryCount);
     let min = 1;
     if (consumers > 0) {
       const engaged = flagHolders(world, ctx, player, good.typeId) > target;
-      const extra = shortageGatherers(supply, good.typeId, engaged, consumers);
+      const extra = shortageGatherers(supply, good.typeId, engaged, consumers, phase);
       if (extra > 0) {
         target += extra;
         // Iron or gold running short idles the smiths, not the builders, so its posts wait behind the
@@ -160,25 +162,31 @@ export function wantedCollectorGoods(
 
 /**
  * The extra gatherers a good some built workshop consumes calls for while it runs short for the seat's
- * sites (authored): one per unit its surplus lies under the comfort line, rounded up, at most one per
- * {@link OPERATORS_PER_EXTRA_GATHERER} planned consuming operators, the same rate the target grows at. The
- * workshop eats the good faster than its gatherers bring it, and what lies on its shelf is not the
- * builders'. Short is under the short line, or the comfort line while the posts are `engaged`
- * ({@link SeatSupply.isShort}), so the stock crossing one line does not hire and release a man every few
- * decisions. A building good's posts are filled ahead of the builder reserve, since a settlement with no
- * stone to build with has no use for builders.
+ * sites (authored): one per unit its surplus lies under the line the lack is measured to, rounded up, at
+ * most one per {@link OPERATORS_PER_EXTRA_GATHERER} planned consuming operators, the same rate the target
+ * grows at. The workshop eats the good faster than its gatherers bring it, and what lies on its shelf is
+ * not the builders'. The posts are hired under one line and, once `engaged`, held up to the next, so the
+ * stock crossing one line does not hire and release a man every few decisions: short and comfort in the
+ * opening, when these posts outrank the builder reserve the opening cannot spare, then comfort and glut
+ * from the mid game, when the seat hoards its building goods. A building good's posts are filled ahead of
+ * the builder reserve, since a settlement with no stone to build with has no use for builders.
  */
 function shortageGatherers(
   supply: SeatSupply,
   goodType: number,
   engaged: boolean,
   consumers: number,
+  phase: GamePhase,
 ): number {
   const lines = supply.lines(goodType);
   const surplus = supply.surplus(goodType);
-  if (lines === undefined || surplus === undefined || !supply.isShort(goodType, engaged)) return 0;
+  if (lines === undefined || surplus === undefined) return 0;
+  const opening = phase === 'opening';
+  const hireLine = opening ? lines.short : lines.comfort;
+  const holdLine = opening ? lines.comfort : lines.glut;
+  if (surplus >= (engaged ? holdLine : hireLine)) return 0;
   return Math.min(
-    Math.ceil((lines.comfort - surplus) / lines.unit),
+    Math.ceil((holdLine - surplus) / lines.unit),
     Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER),
   );
 }
