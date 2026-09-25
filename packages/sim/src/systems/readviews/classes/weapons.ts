@@ -6,6 +6,15 @@ export function isRangedWeapon(weapon: WeaponType): boolean {
   return weapon.munitionType !== undefined;
 }
 
+/** `damagetype 2`: a shot that strikes everything on its landing point and the six around it. Original
+ *  behavior. */
+const AREA_DAMAGE_TYPE = 2;
+
+/** Whether `weapon`'s shot strikes an area rather than the first thing where it lands. */
+export function isAreaWeapon(weapon: Pick<WeaponType, 'damageType'>): boolean {
+  return weapon.damageType === AREA_DAMAGE_TYPE;
+}
+
 /**
  * A present `damageType` (`2`, the area class) marks a siege weapon, which only the catapult carries.
  * Siege implies ranged, not the reverse.

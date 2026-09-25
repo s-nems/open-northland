@@ -11,8 +11,9 @@ import {
   SettlerProgress,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
-import { FIGHT_EXPERIENCE_TYPE, PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
+import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
+import { hexNeighboursOf } from '../../src/nav/halfcell.js';
+import { FIGHT_EXPERIENCE_TYPE } from '../../src/systems/index.js';
 import { ARMOR_MATERIAL } from '../../src/systems/readviews/index.js';
 import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -55,10 +56,12 @@ const BOW_DAMAGE_VS_HOUSE = 5;
 /** An armor class on the chain column whose `blockingValue` takes a whole arrow. */
 const PROOF_CHAIN = 4;
 
-/** Tiles a `BOW_SPEED` projectile advances per tick - the calibration mapping applied to `speed`. With
- *  the ⅛-tile-per-unit constant, `speed 8` = exactly 1 tile/tick (an integer, so the same-row shot's
- *  arithmetic is exact). */
-const BOW_STEP_TILES = fx.toInt(fx.mul(fx.fromInt(BOW_SPEED), PROJECTILE_TILES_PER_SPEED_UNIT));
+/** A same-row shot at the cell 8 tiles east: 16 map points, so a `speed 8` bow flies 16 ticks. */
+const SHOT_TILES = 8;
+const SHOT_FLIGHT_TICKS = 16;
+/** The chord's first step: the shot reaches its aim the tick before it lands, so the chord is split in
+ *  one tick fewer than the flight. */
+const FIRST_STEP: Fixed = fx.mulDiv(fx.fromInt(SHOT_TILES), fx.fromInt(1), fx.fromInt(SHOT_FLIGHT_TICKS - 1));
 
 function content(): ContentSet {
   return parseContentSet({
@@ -199,7 +202,6 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
     const w = content().weapons[0];
     expect(w?.munitionType).toBe(ARROW);
     expect(w?.speed).toBe(BOW_SPEED);
-    expect(BOW_STEP_TILES).toBe(1); // speed 8 × ⅛ = 1 tile/tick (the exact-arithmetic mapping)
   });
 
   it('launches a projectile only AT the release frame - none before, and no instant damage', () => {
@@ -231,7 +233,24 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
     expect(sim.world.get(shot, Position).x).toBe(fx.fromInt(0)); // the archer's own cell
 
     sim.step();
-    expect(sim.world.get(shot, Position).x).toBe(fx.fromInt(BOW_STEP_TILES)); // and only now it flies
+    expect(sim.world.get(shot, Position).x).toBe(FIRST_STEP); // and only now it flies
+  });
+
+  it('flies the map points times 8 over its speed, and strikes on that tick', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    marksmanAt(sim, 0, 0);
+    const target = fighterAt(sim, SHOT_TILES, 0, FRANK, IDLE);
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    const { launchTick, landTick } = sim.world.get(shot, Projectile);
+    expect(landTick - launchTick).toBe(SHOT_FLIGHT_TICKS);
+    while (sim.tick < landTick - 1) sim.step();
+    expect(sim.world.get(shot, Position).x).toBe(fx.fromInt(SHOT_TILES)); // held at the aim for one snapshot
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
+    sim.step();
+    expect(sim.world.isAlive(shot)).toBe(false);
+    expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE);
   });
 });
 
@@ -256,8 +275,8 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
 
     sim.step();
     const after = sim.world.get(shot, Position);
-    // A due-east shot advances by exactly BOW_STEP_TILES on x each tick and never drifts off the target's row.
-    expect(after.x).toBe(fx.add(x0, fx.fromInt(BOW_STEP_TILES)));
+    // A due-east shot advances along x and never drifts off the target's row.
+    expect(after.x).toBe(fx.add(x0, FIRST_STEP));
     expect(after.y).toBe(y0);
     expect(after.y).toBe(sim.world.get(target, Position).y);
     expect(sim.world.get(shot, Projectile).originX).toBe(fx.fromInt(0)); // origin stays frozen mid-flight
@@ -401,6 +420,7 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
 
     stepToLaunch(sim);
     const launchTick = sim.tick;
+    const shot = shotInFlight(sim);
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
 
     // Fly it until the blow lands (the target loses health), capturing the impact event and tick.
@@ -416,7 +436,7 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // the column damage landed, with no experience on an arrow
     // A projectileHit was announced for render/audio, carrying the impact the bow lists for a bare target.
     expect(hitEvent?.soundType).toBe(BOW_HIT_SOUND);
-    expect(projectiles(sim)).toHaveLength(0); // the spent arrow was destroyed on impact
+    expect(sim.world.isAlive(shot)).toBe(false); // the spent arrow was destroyed on impact
   });
 
   it('snapshots the arrow at its aim before resolving contact', () => {
@@ -559,5 +579,109 @@ describe('projectiles - determinism', () => {
     const b = run();
     expect(a.sawProjectile).toBe(true); // the scenario really put arrows in flight (not a vacuous hash)
     expect(a.hash).toBe(b.hash);
+  });
+});
+
+describe('projectiles - area shots', () => {
+  const CATAPULT_DAMAGE = 800;
+  const AIM = { hx: 16, hy: 4 } as const;
+
+  /** A catapult stone already in flight from `shooter`, landing on {@link AIM} next tick. */
+  function stone(sim: Simulation, shooter: Entity, target: Entity, hitSelf: boolean): Entity {
+    const from = sim.world.get(shooter, Position);
+    const aim = positionOfNode(AIM.hx, AIM.hy);
+    const p = sim.world.create();
+    sim.world.add(p, Position, { x: aim.x, y: aim.y });
+    sim.world.add(p, Projectile, {
+      source: shooter,
+      target,
+      player: null,
+      hitSelf,
+      area: true,
+      damage: { '0': CATAPULT_DAMAGE },
+      hitSounds: {},
+      weaponMainType: null,
+      missSounds: {},
+      munitionType: 2,
+      originX: from.x,
+      originY: from.y,
+      aimX: aim.x,
+      aimY: aim.y,
+      cover: null,
+      launchTick: sim.tick,
+      landTick: sim.tick + 1,
+      impact: null,
+    });
+    return p;
+  }
+
+  function onNode(sim: Simulation, node: { hx: number; hy: number }, tribe: number): Entity {
+    const e = fighterAt(sim, 0, 0, tribe, IDLE);
+    sim.world.mut(e, Position).x = positionOfNode(node.hx, node.hy).x;
+    sim.world.mut(e, Position).y = positionOfNode(node.hx, node.hy).y;
+    return e;
+  }
+
+  it('strikes everything on the landing point and its six neighbours, and nothing further', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+    const shooter = marksmanAt(sim, 0, 0);
+    const ring = [AIM, ...hexNeighboursOf(AIM.hx, AIM.hy)].map((node) => onNode(sim, node, FRANK));
+    const beyond = onNode(sim, { hx: AIM.hx + 2, hy: AIM.hy }, FRANK);
+    const [centre] = ring;
+    if (centre === undefined) throw new Error('no centre victim');
+    stone(sim, shooter, centre, false);
+    sim.step();
+    for (const e of ring) expect(sim.world.get(e, Health).hitpoints).toBe(TARGET_HP - CATAPULT_DAMAGE);
+    expect(sim.world.get(beyond, Health).hitpoints).toBe(TARGET_HP);
+  });
+
+  it('strikes its own side only when the weapon hits itself', () => {
+    for (const hitSelf of [false, true]) {
+      const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+      const shooter = marksmanAt(sim, 0, 0);
+      const enemy = onNode(sim, AIM, FRANK);
+      const comrade = onNode(sim, { hx: AIM.hx + 1, hy: AIM.hy }, VIKING);
+      stone(sim, shooter, enemy, hitSelf);
+      sim.step();
+      expect(sim.world.get(enemy, Health).hitpoints).toBe(TARGET_HP - CATAPULT_DAMAGE);
+      expect(sim.world.get(comrade, Health).hitpoints).toBe(
+        hitSelf ? TARGET_HP - CATAPULT_DAMAGE : TARGET_HP,
+      );
+    }
+  });
+});
+
+describe('projectiles - the first thing on the landing point', () => {
+  it('strikes the victim loosed at, else the lowest-id man there, never two', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 6) });
+    const shooter = marksmanAt(sim, 0, 0);
+    const first = fighterAt(sim, 8, 2, FRANK, IDLE);
+    const second = fighterAt(sim, 8, 2, FRANK, IDLE);
+    const aim = sim.world.get(first, Position);
+    const shot = sim.world.create();
+    sim.world.add(shot, Position, { x: aim.x, y: aim.y });
+    sim.world.add(shot, Projectile, {
+      source: shooter,
+      target: second,
+      player: null,
+      hitSelf: false,
+      area: false,
+      damage: { '0': BOW_DAMAGE },
+      hitSounds: {},
+      weaponMainType: null,
+      missSounds: {},
+      munitionType: ARROW,
+      originX: fx.fromInt(0),
+      originY: fx.fromInt(0),
+      aimX: aim.x,
+      aimY: aim.y,
+      cover: null,
+      launchTick: sim.tick,
+      landTick: sim.tick + 1,
+      impact: null,
+    });
+    sim.step();
+    expect(sim.world.get(second, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // the one loosed at
+    expect(sim.world.get(first, Health).hitpoints).toBe(TARGET_HP);
   });
 });

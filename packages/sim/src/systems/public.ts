@@ -35,7 +35,6 @@ export {
 // the drive ladder holds it at.
 export { REST_CLEARANCE_NODES } from './conflict/battle-alert.js';
 // A siege shot's flight time, so the render flies the stone on the sim's own clock.
-export { siegeFlightTicksOf } from './conflict/projectile.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { createMapCrop } from './economy/fields.js';
 export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './economy/fish.js';

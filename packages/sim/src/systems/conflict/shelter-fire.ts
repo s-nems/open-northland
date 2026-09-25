@@ -4,7 +4,7 @@ import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { shelterOccupancy, shelterStillHolds } from '../defence/index.js';
-import { houseBow, isFighterJob } from '../readviews/index.js';
+import { houseBow, isAreaWeapon, isFighterJob } from '../readviews/index.js';
 import { type LooseShot, looseProjectile } from '../settlers/atomics/effects/combat/index.js';
 import { manhattan, nearestCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -85,6 +85,8 @@ function fireFrom(
   const flight = {
     munitionType: bow.munitionType,
     speed: bow.speed,
+    hitSelf: bow.hitSelf,
+    area: isAreaWeapon(bow),
     damage: bow.damage,
     hitSounds: bow.hitSounds,
     missSounds: bow.missSounds,

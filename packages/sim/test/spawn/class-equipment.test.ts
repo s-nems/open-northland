@@ -33,6 +33,7 @@ describe('createSettler hero equipment', () => {
           jobType: HERO_SABER,
           goodType: HERO_SABER_GOOD,
           weight: 0,
+          hitSelf: false,
           minRange: 1,
           maxRange: 2,
           damage: { '0': 90 },

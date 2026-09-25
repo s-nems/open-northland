@@ -94,6 +94,7 @@ describe('extractWeapons', () => {
         tribeType: 1,
         mainType: 1, // coarse weapon class
         weight: 0, // schema default; the claw adds no encumbrance
+        hitSelf: false, // no `hitself` line: spares its own side
         minRange: 1,
         maxRange: 1,
         damage: { '0': 360, '1': 70 },
@@ -116,6 +117,7 @@ describe('extractWeapons', () => {
         munitionType: 3, // a ranged weapon's ammo class - captured, NOT good id 3
         speed: 6, // a ranged weapon's projectile travel speed - captured (undefined-dropped on melee)
         damageType: 4, // the damage class (siege marker, all-lowercase key) - captured, NOT good id 4
+        hitSelf: true, // `hitself 1`: strikes its own side too
         minRange: 1,
         maxRange: 1,
         damage: { '0': 2100 },

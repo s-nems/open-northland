@@ -126,9 +126,14 @@ export const Projectile = defineComponent<{
   /** The victim the shot was loosed at; it is struck first when it stands where the shot lands. Null for a
    *  siege shot aimed at a map point. */
   target: Entity | null;
-  /** The shooter's player, whose own units and those of its friends and neutrals a shot passes over; null for
-   *  an unowned shooter. */
+  /** The shooter's player, whose own units and those of its friends and neutrals a shot passes over unless
+   *  it {@link hitSelf}; null for an unowned shooter. */
   player: number | null;
+  /** The weapon strikes its own side too (`hitself`, the catapults). */
+  hitSelf: boolean;
+  /** The weapon strikes everything on the landing point and its six neighbours (`damagetype 2`, the
+   *  catapults), where any other shot strikes the first thing there. */
+  area: boolean;
   /** The weapon's `damagevalue` table, keyed by armor material. Original behavior: a shot lands its column
    *  as it stands, with none of the shooter's experience. */
   damage: Readonly<Record<string, number>>;
@@ -141,10 +146,8 @@ export const Projectile = defineComponent<{
    *  terrain classes and never sees the landscape under the landing node. */
   missSounds: Readonly<Record<string, number>>;
   munitionType: number;
-  /** The extracted `WeaponType.speed`, stored raw because its unit is unreadable. */
-  speed: number;
-  /** The release point: the render's ballistic-arc start, and where the landing blow comes from. Never
-   *  read in flight. */
+  /** The release point: the render's ballistic-arc start, the flight's start and where the landing blow
+   *  comes from. */
   originX: Fixed;
   originY: Fixed;
   /** Where the shot comes down, frozen at release. Sim flight and render presentation share this one
@@ -156,6 +159,8 @@ export const Projectile = defineComponent<{
   /** The tick the string was loosed on; the flight rests at the bow through it, so a shot is observable at
    *  its launch point. */
   launchTick: number;
+  /** The tick the shot comes down and strikes: {@link launchTick} plus its flight time. */
+  landTick: number;
   /** A siege shot's burst on its landing node, `null` for a shot that strikes one thing where it lands. A
    *  burst strikes everything there, whatever its side. */
   impact: ProjectileImpact | null;

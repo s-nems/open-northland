@@ -24,6 +24,9 @@ function restored(original: Simulation): Simulation {
   return copy;
 }
 
+/** A bow shot's flight over the five map points to its aim. */
+const FLIGHT_TICKS = 5;
+
 describe('save a projectile in flight', () => {
   it('keeps the arrow`s sound payload and lands the same miss event after loading', () => {
     const original = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(32, 32) });
@@ -36,18 +39,20 @@ describe('save a projectile in flight', () => {
       source: shooter,
       target: deer,
       player: null,
+      hitSelf: false,
+      area: false,
       damage: { '0': 70 },
       hitSounds: { '0': BOW_HIT_SOUND },
       weaponMainType: null,
       missSounds: { ...BOW_MISS_SOUNDS },
       munitionType: 1,
-      speed: 8,
       originX: positionOfNode(10, 10).x,
       originY: positionOfNode(10, 10).y,
       aimX: aim.x,
       aimY: aim.y,
       cover: null,
       launchTick: original.tick + 1,
+      landTick: original.tick + 1 + FLIGHT_TICKS,
       impact: null,
     });
     original.step(); // the rest at the bow: the arrow is now a persisted entity mid-flight

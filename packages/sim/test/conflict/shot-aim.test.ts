@@ -4,9 +4,11 @@ import { fx, positionOfNode, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import {
   leadPoint,
+  mapPointDistance,
   marksmanSpread,
   scatteredNode,
   shelterSpread,
+  shotFlightTicks,
 } from '../../src/systems/conflict/shot-aim.js';
 import { VIKING } from '../conflict/combat-system/support.js';
 import { testContent } from '../fixtures/content.js';
@@ -40,6 +42,22 @@ describe('shot scatter', () => {
     for (let i = 0; i < DRAWS; i++) {
       expect(marksmanSpread(ctxOf(s), LONG_SHOT_NODES, MARKSMAN_BOW_HITS)).toBe(0);
       expect(marksmanSpread(ctxOf(s), POINT_BLANK_NODES, 0)).toBe(0);
+    }
+  });
+
+  it('scatters on a roll above hits plus 10, by (roll - threshold) * range/4 / roll', () => {
+    const s = sim();
+    const ctx = ctxOf(s);
+    const quarter = Math.floor(LONG_SHOT_NODES / 4);
+    for (const hits of [0, 50]) {
+      for (let i = 0; i < DRAWS; i++) {
+        const state = ctx.rng.getState();
+        const roll = ctx.rng.int(100);
+        ctx.rng.setState(state);
+        const threshold = hits + 10;
+        const expected = roll > threshold ? Math.floor(((roll - threshold) * quarter) / roll) : 0;
+        expect(marksmanSpread(ctx, LONG_SHOT_NODES, hits)).toBe(expected);
+      }
     }
   });
 
@@ -87,7 +105,9 @@ describe('leading a walker', () => {
 
     const lead = leadPoint(s.world, ctxOf(s), from, walker, BOW_SPEED);
     expect(lead.y).toBe(start.y);
-    expect(lead.x).toBeGreaterThan(start.x); // ahead along its walk
+    // Ahead along its walk by its pace for the flight: the map points to it times 8 over the speed.
+    const flight = shotFlightTicks(mapPointDistance(from, start), BOW_SPEED);
+    expect(lead.x).toBe(fx.add(start.x, fx.mul(pace, fx.fromInt(flight))));
     expect(lead.x).toBeLessThan(end.x);
 
     // A shot at a standing target aims at it.
@@ -121,5 +141,14 @@ describe('leading a walker', () => {
 
     const lead = leadPoint(s.world, ctxOf(s), positionOfNode(10, 2), walker, BOW_SPEED);
     expect(lead.x).toBeGreaterThan(start.x);
+  });
+});
+
+describe('shot flight time', () => {
+  it('is the map points times 8 over the speed, at least one tick', () => {
+    expect(shotFlightTicks(16, BOW_SPEED)).toBe(16);
+    expect(shotFlightTicks(10, 7)).toBe(11); // house bow: 80 / 7 truncated
+    expect(shotFlightTicks(20, 3)).toBe(53); // catapult
+    expect(shotFlightTicks(0, BOW_SPEED)).toBe(1);
   });
 });

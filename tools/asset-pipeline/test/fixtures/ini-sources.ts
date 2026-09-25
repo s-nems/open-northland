@@ -154,6 +154,7 @@ weight 1
 munitiontype 3
 speed 6
 damagetype 4
+hitself 1
 damagevalue 0 2100
 soundtype_NoHit 1 78
 soundtype_NoHit 2 79

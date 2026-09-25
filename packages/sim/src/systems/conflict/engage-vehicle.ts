@@ -23,6 +23,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../progression/index.js';
+import { isAreaWeapon } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import {
   crewInside,
@@ -33,6 +34,7 @@ import {
 } from '../vehicles/movement.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
+import { mapPointDistance, shotFlightTicks } from './shot-aim.js';
 import { combatTargetNode } from './target-node.js';
 import { isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { givenUpTargetVeto, noteUnreachableTarget } from './unreachable-targets.js';
@@ -381,13 +383,16 @@ function fire(
     weaponMainType: weapon.mainType ?? null,
     missSounds: { ...weapon.missSounds },
     munitionType: weapon.munitionType,
-    speed: weapon.speed,
+    hitSelf: weapon.hitSelf,
+    area: isAreaWeapon(weapon),
     originX: from.x,
     originY: from.y,
     aimX: impact.x,
     aimY: impact.y,
     cover: null,
     launchTick: ctx.tick,
+    // Original behavior: a stone flies for the map points to where it comes down, as an arrow does.
+    landTick: ctx.tick + shotFlightTicks(mapPointDistance(from, impact), weapon.speed),
     impact: { smokeTicks: weapon.impactSmokeTicks ?? null },
   });
   ctx.events.emit({

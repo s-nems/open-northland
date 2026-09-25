@@ -4,8 +4,11 @@ import { readSiegeShot, type SiegeShot, shotPath, shotPoseAt } from '../../src/d
 import { headingValency, type ParticleRef, particleFrame } from '../../src/data/sprites/index.js';
 import { type ElevationField, makeElevationField } from '../../src/data/terrain/index.js';
 
-/** A catapult's stone east over 16 map points at weapon speed 3: `16 * 8 / 3` ticks. */
+/** A catapult's stone east over 16 map points at weapon speed 3: `16 * 8 / 3` ticks, the tick before its
+ *  land tick spent on the aim. */
 const SIXTEEN_POINT_FLIGHT_TICKS = 42;
+const LAUNCH_TICK = 7;
+const LAND_TICK = LAUNCH_TICK + SIXTEEN_POINT_FLIGHT_TICKS + 1;
 const ROCK_MUNITION = 2;
 
 function shot(fields: Partial<SiegeShot> = {}): SiegeShot {
@@ -27,15 +30,15 @@ describe('readSiegeShot', () => {
       originY: 4 * ONE,
       aimX: 10 * ONE,
       aimY: 4 * ONE,
-      speed: 3,
-      launchTick: 7,
+      launchTick: LAUNCH_TICK,
+      landTick: LAND_TICK,
       munitionType: ROCK_MUNITION,
       impact: { smokeTicks: 20 },
     };
     expect(readSiegeShot(5, { Projectile: projectile })).toEqual({
       ref: 5,
       munitionType: ROCK_MUNITION,
-      launchTick: 7,
+      launchTick: LAUNCH_TICK,
       flightTicks: SIXTEEN_POINT_FLIGHT_TICKS,
       origin: { x: 2, y: 4 },
       aim: { x: 10, y: 4 },

@@ -93,7 +93,7 @@ export const WeaponType = z.strictObject({
   name: z.string().optional(),
   /** Owning tribe (`weapontype` `tribetype`). The other half of the composite key. */
   tribeType: TypeId.optional(),
-  /** `mainType` - the coarse weapon class (1..7 in the base data: fist/club/sword/axe/spear/bow). */
+  /** `mainType` - the coarse weapon class (1 fist, 2 spear, 3 sword, 4 saber, 5 axe, 6 bow, 7 catapult). */
   mainType: ClassId.optional(),
   /** `weight` - the encumbrance the weapon adds (0..2 in the base data). */
   weight: z.number().int().nonnegative().default(0),
@@ -102,13 +102,14 @@ export const WeaponType = z.strictObject({
   munitionType: ClassId.optional(),
   /**
    * `speed` - a ranged weapon's projectile travel speed (short/long bow 8, house bow 7, catapult 3);
-   * absent on melee weapons. The extracted value is faithful but its unit is unreadable, so a consumer
-   * must map it onto a per-tick step through a named calibration constant.
+   * absent on melee weapons. A shot over `d` map points flies `d * 8 / speed` ticks.
    */
   speed: z.number().int().nonnegative().optional(),
-  /** `damagetype` - the damage class a weapon deals. Only the catapults carry it (value 2), so it reads
-   *  as a siege/area marker. */
+  /** `damagetype` - the damage class a weapon deals. Only the catapults carry it (value 2): their shot
+   *  strikes everything on the landing point and its six neighbours. */
   damageType: ClassId.optional(),
+  /** `hitself` - the weapon's shot also strikes its own side's units and buildings (the catapults). */
+  hitSelf: z.boolean().default(false),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
   /** `damageValue[targetArmorClass] -> value`, as in the original weapontypes. Keyed by the numeric

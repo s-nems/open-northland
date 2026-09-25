@@ -1,12 +1,11 @@
-import { type Fixed, systems } from '@open-northland/sim';
 import { clamp01, lerp } from '../math.js';
 import { ONE, tileToScreen } from '../projection/index.js';
 import { type ElevationField, elevationLiftPerUnit, terrainLiftAt } from '../terrain/index.js';
 
 /**
- * A siege shot's drawn flight. The sim moves the stone along its release chord in equal steps over
- * `distance * 8 / speed` ticks; the render draws the same chord at the frame's own time and lifts it by
- * a parabola from the ground height at the catapult to the ground height at the landing point.
+ * A siege shot's drawn flight. The sim moves the stone along its release chord in equal steps, reaching
+ * the aim the tick before its land tick; the render draws the same chord at the frame's own time and lifts
+ * it by a parabola from the ground height at the catapult to the ground height at the landing point.
  *
  * Original behavior: the lift rises `terrain at the start + 0.1 of the full height scale` above the
  * chord at mid-flight, raised wherever the path would dip under the ground, so on low ground a stone
@@ -56,16 +55,15 @@ const CLEARANCE_SAMPLES = 8;
 export function readSiegeShot(ref: number, components: Readonly<Record<string, unknown>>): SiegeShot | null {
   const p = components.Projectile as Record<string, unknown> | undefined;
   if (p === undefined || p.impact === null || p.impact === undefined) return null;
-  const { originX, originY, aimX, aimY, speed, launchTick, munitionType } = p;
+  const { originX, originY, aimX, aimY, launchTick, landTick, munitionType } = p;
   if (
     typeof originX !== 'number' ||
     typeof originY !== 'number' ||
     typeof aimX !== 'number' ||
     typeof aimY !== 'number' ||
-    typeof speed !== 'number' ||
     typeof launchTick !== 'number' ||
-    typeof munitionType !== 'number' ||
-    speed <= 0
+    typeof landTick !== 'number' ||
+    typeof munitionType !== 'number'
   ) {
     return null;
   }
@@ -73,14 +71,8 @@ export function readSiegeShot(ref: number, components: Readonly<Record<string, u
     ref,
     munitionType,
     launchTick,
-    // The snapshot carries the sim's own fixed-point chord verbatim.
-    flightTicks: systems.siegeFlightTicksOf({
-      originX: originX as Fixed,
-      originY: originY as Fixed,
-      aimX: aimX as Fixed,
-      aimY: aimY as Fixed,
-      speed,
-    }),
+    // The sim's chord span: the shot sits on the aim from the tick before it lands.
+    flightTicks: Math.max(1, landTick - launchTick - 1),
     origin: { x: originX / ONE, y: originY / ONE },
     aim: { x: aimX / ONE, y: aimY / ONE },
   };

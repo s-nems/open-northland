@@ -39,6 +39,7 @@ import { resolveGroundImpact } from '../../src/systems/conflict/ground-impact.js
 import { isFleeThreat } from '../../src/systems/conflict/targeting.js';
 import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../src/systems/conflict/unreachable-targets.js';
 import { vehiclesGone } from '../../src/systems/missions/goals/casualties.js';
+import { REGENERATION_HITPOINTS_PER_TICK } from '../../src/systems/lifecycle/needs/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
 import { ARMOR_MATERIAL, MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
@@ -258,11 +259,17 @@ function catapultAt(s: Simulation, hx: number, hy: number, owner: number, skill 
   return e;
 }
 
-function collect(s: Simulation, ticks: number, kinds: readonly SimEvent['kind'][]): SimEvent[] {
+function collect(
+  s: Simulation,
+  ticks: number,
+  kinds: readonly SimEvent['kind'][],
+  afterTick?: () => void,
+): SimEvent[] {
   const out: SimEvent[] = [];
   for (let i = 0; i < ticks; i++) {
     s.step();
     for (const ev of s.events.current()) if (kinds.includes(ev.kind)) out.push(ev);
+    afterTick?.();
   }
   return out;
 }
@@ -672,6 +679,7 @@ describe('the scatter roll', () => {
 
 describe('the ground burst', () => {
   it('flies distance * 8 / speed ticks along its chord, then bursts once with the weapon smoke', () => {
+    // The stone follows the arrow's rule: it sits on the aim the tick before its land tick.
     const s = sim(grass(40, 10));
     const catapult = catapultAt(s, 6, 8, P1);
     const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE); // 16 map points east
@@ -682,12 +690,17 @@ describe('the ground burst', () => {
       for (const ev of s.events.current()) if (ev.kind === 'projectileLaunched') stone = ev.projectile;
     }
     if (stone === undefined) throw new Error('no stone loosed');
-    const launchTick = s.world.get(stone, Projectile).launchTick;
+    const { launchTick, landTick } = s.world.get(stone, Projectile);
+    expect(landTick - launchTick).toBe(SIXTEEN_POINT_FLIGHT_TICKS);
     const origin = positionOfNode(6, 8);
     const aim = positionOfNode(22, 8);
-    while (s.tick < launchTick + SIXTEEN_POINT_FLIGHT_TICKS / 2) s.step();
-    expect(s.world.get(stone, Position)).toEqual({ x: (origin.x + aim.x) / 2, y: origin.y });
-    while (s.tick < launchTick + SIXTEEN_POINT_FLIGHT_TICKS) s.step();
+    while (s.tick < landTick - 1) {
+      s.step();
+      const at = s.world.get(stone, Position);
+      expect(at.y).toBe(origin.y);
+      expect(at.x).toBeGreaterThan(origin.x);
+      expect(at.x).toBeLessThanOrEqual(aim.x);
+    }
     expect(s.world.get(stone, Position)).toEqual(aim); // on the aim, held for the drawn last segment
     s.step();
     expect(s.world.has(stone, Projectile)).toBe(false);
@@ -709,12 +722,20 @@ describe('the ground burst', () => {
     const own = fighterAt(s, 22, 8, P1); // stands on the house's anchor node
     s.world.mut(own, Stance).mode = MILITARY_MODE.IGNORE;
     order(s, catapult, P1, house);
-    const hits = collect(s, SHOT_TICKS, ['projectileHit']);
+    // Damage is summed blow by blow: a fed settler heals between two stones, and the heal of the blow's own
+    // tick nets off one point.
+    let lost = 0;
+    let before = s.world.get(own, Health).hitpoints;
+    const hits = collect(s, SHOT_TICKS, ['projectileHit'], () => {
+      const now = s.world.get(own, Health).hitpoints;
+      lost += Math.max(0, before - now);
+      before = now;
+    });
     const struck = hits.map((ev) => (ev.kind === 'projectileHit' ? ev.target : -1));
     expect(new Set(struck)).toEqual(new Set([house, own]));
     const ownHits = struck.filter((t) => t === own).length;
     expect(ownHits).toBeGreaterThan(0);
-    expect(100_000 - s.world.get(own, Health).hitpoints).toBeGreaterThanOrEqual(ownHits * CATAPULT_VS_BARE);
+    expect(lost).toBeGreaterThanOrEqual(ownHits * (CATAPULT_VS_BARE - REGENERATION_HITPOINTS_PER_TICK));
   });
 
   it("wounds an ally's man on the landing node without turning his player hostile", () => {
@@ -751,13 +772,15 @@ describe('the ground burst', () => {
       weaponMainType: CATAPULT_MAIN_TYPE,
       missSounds: {},
       munitionType: 0,
-      speed: 1,
+      hitSelf: true,
+      area: false,
       originX: aim.x,
       originY: aim.y,
       aimX: aim.x,
       aimY: aim.y,
       cover: null,
       launchTick: 0,
+      landTick: 1,
       impact: { smokeTicks: null },
     };
     const houseBefore = s.world.get(house, Health).hitpoints;

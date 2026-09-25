@@ -6,14 +6,13 @@ import {
   Position,
   Projectile,
   type ProjectileImpact,
-  type ProjectileStateView,
   Resting,
   Settler,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
-import { type Fixed, fx } from '../../core/fixed.js';
+import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { hexDistance, nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
+import { hexNeighboursOf, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
@@ -25,43 +24,25 @@ import {
 import { entityNode } from '../spatial/nodes.js';
 import { passIndexOf } from './combat-index.js';
 import { resolveGroundImpact } from './ground-impact.js';
-import { projectileStep } from './shot-aim.js';
 import { targetBodyNodes } from './target-node.js';
 import { isStructureTarget, mayTarget } from './targeting.js';
 import { damageVsTarget, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
-export { PROJECTILE_TILES_PER_SPEED_UNIT } from './shot-aim.js';
-
 type Flight = NonNullable<(typeof Projectile)['__value']>;
 
-/** A siege shot's flight takes this many ticks per map point per unit of the weapon's `speed`, divided
- *  (original behavior: `distance * 8 / speed`, so a catapult's `speed 3` crosses 16 map points in 42). */
-const SIEGE_FLIGHT_TICKS_PER_POINT_SPEED = 8;
-
-/** The ticks a siege shot of `speed` flies over `mapPoints` map points, at least one. */
-export function siegeFlightTicks(mapPoints: number, speed: number): number {
-  return Math.max(1, Math.floor((mapPoints * SIEGE_FLIGHT_TICKS_PER_POINT_SPEED) / speed));
-}
-
-/** {@link siegeFlightTicks} over a shot's frozen release chord, in raw `Fixed` position units. */
-export function siegeFlightTicksOf(
-  proj: Pick<ProjectileStateView, 'originX' | 'originY' | 'aimX' | 'aimY' | 'speed'>,
-): number {
-  const from = nodeOfPosition(proj.originX, proj.originY);
-  const to = nodeOfPosition(proj.aimX, proj.aimY);
-  return siegeFlightTicks(hexDistance(from, to), proj.speed);
-}
+/** The most objects one shot strikes. Original behavior: the list a landing collects holds 100. */
+const STRUCK_LIST_CAPACITY = 100;
 
 /**
- * ProjectileSystem - advance every in-flight {@link Projectile} one tick along its release-time chord and,
- * where it comes down, strike whatever stands there. The launch is the AtomicSystem's `attack` effect at the
- * shooter's release frame, or a defence-mode building's own shot; the hit runs the same
+ * ProjectileSystem - carry every in-flight {@link Projectile} along its release-time chord and, on its land
+ * tick, strike what stands where it comes down. The launch is the AtomicSystem's `attack` effect at the
+ * shooter's release frame, or a defence-mode building's own shot; each hit runs the same
  * {@link resolveCombatHit} a melee swing does.
  *
  * Projectiles are visited in canonical ascending-id order and a victim's reaction is deferred past the
  * loop, so a flinch tie-break is order-independent. Cost scales with the count of active projectiles:
- * nothing else scans them, a landing asks the combat index about one node, and a spent shot is destroyed
- * the instant it lands.
+ * nothing else scans them, a landing asks the combat index about one node (seven for an area shot), and a
+ * spent shot is destroyed the instant it lands.
  */
 export const projectileSystem: System = (world, ctx) => {
   // Deferred reactions from any survivor struck this tick, so a flinch added mid-loop cannot perturb a
@@ -72,16 +53,26 @@ export const projectileSystem: System = (world, ctx) => {
     // Loosed this tick: it does not move, so a shot is observable at its launch point (approximated - the
     // sub-tick release instant is unreadable).
     if (proj.launchTick === ctx.tick) continue;
-    const arrived =
-      proj.impact === null
-        ? flightStep(world, p, proj.aimX, proj.aimY, proj.speed)
-        : siegeFlight(world, ctx, p, proj);
-    if (arrived) land(world, ctx, p, proj, pendingReactions);
+    if (ctx.tick >= proj.landTick) land(world, ctx, p, proj, pendingReactions);
+    else fly(world, p, proj, ctx.tick);
   }
   applyPendingHitReactions(world, pendingReactions);
 };
 
-/** Bring shot `p` down at its aim: the blow lands on whatever it strikes there, a siege shot's on everything
+/**
+ * Place shot `p` on its chord for `tick`. It reaches the aim the tick before it lands and is held there
+ * for that one snapshot, so presentation interpolates the final segment instead of removing the arrow
+ * short of it.
+ */
+function fly(world: World, p: Entity, proj: Flight, tick: number): void {
+  const span = fx.fromInt(Math.max(1, proj.landTick - proj.launchTick - 1));
+  const flown = fx.fromInt(Math.min(tick - proj.launchTick, fx.toInt(span)));
+  const pos = world.mut(p, Position);
+  pos.x = fx.add(proj.originX, fx.mulDiv(fx.sub(proj.aimX, proj.originX), flown, span));
+  pos.y = fx.add(proj.originY, fx.mulDiv(fx.sub(proj.aimY, proj.originY), flown, span));
+}
+
+/** Bring shot `p` down at its aim: the blow lands on what it strikes there, a siege shot's on everything
  *  there, or it thuds into the dirt. */
 function land(
   world: World,
@@ -95,9 +86,25 @@ function land(
     burst(world, ctx, p, proj, proj.impact, pendingReactions);
     return;
   }
-  const victim = struckVictim(world, ctx, proj);
-  // Original behavior: a shot that does its victim no damage thuds like one that strikes nothing.
-  if (victim === null || !strike(world, ctx, proj, victim, pendingReactions)) {
+  let struckAny = false;
+  for (const victim of struckVictims(world, ctx, proj)) {
+    const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
+    // Original behavior: a shot that does its victim no damage thuds like one that strikes nothing.
+    if (!strike(world, ctx, proj, victim, pendingReactions)) continue;
+    struckAny = true;
+    // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
+    ctx.events.emit({
+      kind: 'projectileHit',
+      projectile: p,
+      shooter: proj.source,
+      target: victim,
+      munitionType: proj.munitionType,
+      at,
+      ...(hitSoundType !== undefined ? { soundType: hitSoundType } : {}),
+      ...(isStructureTarget(world, victim) ? { structure: true } : {}),
+    });
+  }
+  if (!struckAny) {
     ctx.events.emit({
       kind: 'projectileMissed',
       projectile: p,
@@ -106,21 +113,7 @@ function land(
       at,
       missSounds: proj.missSounds,
     });
-    world.destroy(p);
-    return;
   }
-  const hitSoundType = hitSoundVsMaterial(proj, targetMaterial(world, ctx, victim));
-  // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
-  ctx.events.emit({
-    kind: 'projectileHit',
-    projectile: p,
-    shooter: proj.source,
-    target: victim,
-    munitionType: proj.munitionType,
-    at,
-    ...(hitSoundType !== undefined ? { soundType: hitSoundType } : {}),
-    ...(isStructureTarget(world, victim) ? { structure: true } : {}),
-  });
   world.destroy(p);
 }
 
@@ -178,42 +171,68 @@ function strike(
 }
 
 /**
- * What a shot coming down at its aim strikes: the victim it was loosed at, when it stands there; otherwise
- * the lowest-id man or beast there, and failing one, a building whose body covers the node. Original
- * behavior: a shot strikes the first thing standing where it lands, and a building only when nobody stands
- * there; it passes over its own side's, and also, as an approximation, over those of friends and neutrals.
- * Preferring the victim loosed at stands in for the original's own order on a shared node. With no combat
- * pass this tick no fight was possible, so only that victim can be struck.
+ * What a shot coming down at its aim strikes. Original behavior: a shot strikes the first thing standing
+ * where it lands, men and beasts before a building, and an area shot strikes everything on the landing
+ * point and its six neighbours. A shot passes over its own side's, and also, as an approximation, over
+ * those of friends and neutrals; a `hitSelf` weapon passes over nobody.
+ *
+ * The first thing is the victim loosed at when it stands there, then the lowest-id man or beast, then a
+ * building whose body covers the node: a named stand-in for the original's own order on a shared node.
+ * With no combat pass this tick no fight was possible, so only that victim can be struck.
  */
-function struckVictim(world: World, ctx: SystemContext, proj: Flight): Entity | null {
+function struckVictims(world: World, ctx: SystemContext, proj: Flight): readonly Entity[] {
   const terrain = ctx.terrain;
-  const target = proj.target;
-  if (terrain === undefined) return target !== null && strikeable(world, target) ? target : null;
+  const target = proj.target !== null && strikeable(world, proj.target) ? proj.target : null;
+  if (terrain === undefined) return target === null ? [] : [target];
   const landing = terrain.nodeAtClamped(nodeHxOfPosition(proj.aimX, proj.aimY), nodeHyOfPosition(proj.aimY));
-  if (target !== null && strikeable(world, target) && stands(world, ctx, terrain, target, landing))
-    return target;
+  const nodes = proj.area ? [landing, ...inBoundsNeighbours(terrain, landing)] : [landing];
+  const targetThere = target !== null && nodes.some((node) => stands(world, ctx, terrain, target, node));
   const index = passIndexOf(world, ctx.tick);
-  if (index === null) return null;
-  const x = terrain.xOf(landing);
-  const y = terrain.yOf(landing);
+  if (index === null) return targetThere && target !== null ? [target] : [];
+  if (targetThere && target !== null && !proj.area) return [target];
+  const seeker = proj.hitSelf ? null : proj.player;
   const onNode = (building: boolean) => (e: Entity) =>
     world.has(e, Building) === building && strikeable(world, e) && strayMayStrike(world, ctx, proj, e);
-  return (
-    index.nearest(x, y, 0, 0, onNode(false), proj.player)?.entity ??
-    index.nearest(x, y, 0, 0, onNode(true), proj.player)?.entity ??
-    null
-  );
+  if (!proj.area) {
+    const x = terrain.xOf(landing);
+    const y = terrain.yOf(landing);
+    const first =
+      index.nearest(x, y, 0, 0, onNode(false), seeker)?.entity ??
+      index.nearest(x, y, 0, 0, onNode(true), seeker)?.entity;
+    return first === undefined ? [] : [first];
+  }
+  const struck = new Set<Entity>();
+  for (const building of [false, true]) {
+    for (const node of nodes) {
+      const x = terrain.xOf(node);
+      const y = terrain.yOf(node);
+      const room = STRUCK_LIST_CAPACITY - struck.size;
+      if (room <= 0) break;
+      for (const { entity } of index.nearestFew(x, y, 0, 0, onNode(building), room, seeker, 0)) {
+        struck.add(entity);
+      }
+    }
+  }
+  return [...struck];
+}
+
+/** The six map-point neighbours of `node` that lie on the map. */
+function inBoundsNeighbours(terrain: TerrainGraph, node: NodeId): NodeId[] {
+  return hexNeighboursOf(terrain.xOf(node), terrain.yOf(node))
+    .filter((n) => terrain.inBounds(n.hx, n.hy))
+    .map((n) => terrain.nodeAt(n.hx, n.hy));
 }
 
 /**
  * Whether a stray shot strikes `e`, beyond the player sides the combat index already spares. A wild
- * animal is struck like anyone else. A side without a player, an unowned shooter or bystander, is spared
- * unless its tribe is hostile to the shooter's, and an ownerless building is never struck.
+ * animal is struck like anyone else, and so is every man under a `hitSelf` weapon. A side without a
+ * player, an unowned shooter or bystander, is otherwise spared unless its tribe is hostile to the
+ * shooter's, and an ownerless building is never struck.
  */
 function strayMayStrike(world: World, ctx: SystemContext, proj: Flight, e: Entity): boolean {
   if (e === proj.source) return false;
   if (world.has(e, Building)) return world.has(e, Owner);
-  if (isWildlife(world, e)) return true;
+  if (isWildlife(world, e) || proj.hitSelf) return true;
   if (proj.player !== null && world.has(e, Owner)) return true;
   const shooter = world.tryGet(proj.source, Settler);
   const bystander = world.tryGet(e, Settler);
@@ -232,49 +251,4 @@ function strikeable(world: World, e: Entity): boolean {
 function stands(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity, node: NodeId): boolean {
   const body = targetBodyNodes(world, ctx, terrain, e);
   return body === null ? entityNode(world, terrain, e) === node : body.includes(node);
-}
-
-/**
- * Place a siege shot on its release chord at the fraction of {@link siegeFlightTicksOf} flown, so it
- * covers the chord in whole equal steps and reaches the aim on its last flight tick; true a tick later.
- * That held tick is the arrow's rule too: the drawn shot finishes its last segment before it lands.
- * Approximation: the original lands the blow on the last flight tick itself.
- */
-function siegeFlight(world: World, ctx: SystemContext, p: Entity, proj: Flight): boolean {
-  const ticks = siegeFlightTicksOf(proj);
-  const flown = ctx.tick - proj.launchTick;
-  if (flown > ticks) return true;
-  const pos = world.mut(p, Position);
-  pos.x = fx.add(
-    proj.originX,
-    fx.mulDiv(fx.sub(proj.aimX, proj.originX), fx.fromInt(flown), fx.fromInt(ticks)),
-  );
-  pos.y = fx.add(
-    proj.originY,
-    fx.mulDiv(fx.sub(proj.aimY, proj.originY), fx.fromInt(flown), fx.fromInt(ticks)),
-  );
-  return false;
-}
-
-/** Step projectile `p` one tick straight toward `(ax, ay)`; true when it began this tick at the aim. The
- *  arrival is held for one snapshot before contact resolution, so presentation can interpolate the final
- *  segment instead of removing the arrow up to one full step short. The in-flight unit-vector division is
- *  safe: `dist > step > 0` on the stepping branch. */
-function flightStep(world: World, p: Entity, ax: Fixed, ay: Fixed, speed: number): boolean {
-  const pos = world.mut(p, Position);
-  const dx = fx.sub(ax, pos.x);
-  const dy = fx.sub(ay, pos.y);
-  const dist = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));
-  const step = projectileStep(speed);
-  if (dist === 0) return true;
-  if (dist <= step) {
-    pos.x = ax;
-    pos.y = ay;
-    return false;
-  }
-  const ux = fx.div(dx, dist);
-  const uy = fx.div(dy, dist);
-  pos.x = fx.add(pos.x, fx.mul(ux, step));
-  pos.y = fx.add(pos.y, fx.mul(uy, step));
-  return false;
 }

@@ -22,6 +22,7 @@ import {
   armorMaterialForGood,
   atomicEventFrame,
   isAnimalTribe,
+  isAreaWeapon,
   isRangedWeapon,
 } from '../readviews/index.js';
 
@@ -183,6 +184,8 @@ export function startAttack(
         {
           munitionType: weapon.munitionType,
           speed: weapon.speed,
+          hitSelf: weapon.hitSelf,
+          area: isAreaWeapon(weapon),
           damage: { ...weapon.damage },
           hitSounds: { ...weapon.hitSounds },
           missSounds: { ...weapon.missSounds },

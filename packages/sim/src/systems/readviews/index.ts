@@ -31,6 +31,7 @@ export {
   armorClassOf,
   armorMaterialOf,
   armorWeightOf,
+  isAreaWeapon,
   isRangedWeapon,
   isSiegeWeapon,
   rangedWeapons,

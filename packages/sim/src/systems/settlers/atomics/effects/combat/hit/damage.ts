@@ -3,6 +3,7 @@ import {
   isWildlife,
   Palisade,
   Position,
+  Vehicle,
   WALK_DIRECTION,
   type WalkDirection,
   WalkFacing,
@@ -53,7 +54,9 @@ const HEX_HEADING_OF_FACING: Readonly<Record<WalkDirection, HexHeading>> = {
  * - a person: the hit direction multiplier, then its armor's `blockingValue` off, then the striker's
  *   amulets, then the person's own defence amulet;
  * - a building or a wall: nothing for a zero base, then the striker's amulets;
- * - an animal: the striker's amulets.
+ * - an animal: the striker's amulets;
+ * - a vehicle: the wood column with no armour; that the striker's amulets raise it as against a beast is
+ *   an approximation, unconfirmed against the running original.
  * A result at or below zero does nothing: no damage and no fight experience.
  */
 export function landedDamage(
@@ -67,7 +70,8 @@ export function landedDamage(
   if (world.has(target, Building) || world.has(target, Palisade)) {
     return base === 0 ? 0 : damageDealtBy(world, ctx, attacker, base);
   }
-  if (isWildlife(world, target)) return damageDealtBy(world, ctx, attacker, base);
+  if (isWildlife(world, target) || world.has(target, Vehicle))
+    return damageDealtBy(world, ctx, attacker, base);
   const directed = Math.trunc((base * hitDirectionPct(world, target, from)) / PERCENT);
   const blocked = directed - targetBlocking(world, ctx, target);
   return damageTakenBy(world, ctx, target, damageDealtBy(world, ctx, attacker, blocked));

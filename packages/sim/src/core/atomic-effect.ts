@@ -85,6 +85,10 @@ export type AtomicEffect =
       readonly projectile?: {
         readonly munitionType: number;
         readonly speed: number;
+        /** The shot strikes its own side too (`hitself`). */
+        readonly hitSelf: boolean;
+        /** The shot strikes everything on the landing point and its six neighbours (`damagetype 2`). */
+        readonly area: boolean;
         readonly damage: Readonly<Record<string, number>>;
         readonly hitSounds: Readonly<Record<string, number>>;
         readonly missSounds: Readonly<Record<string, number>>;

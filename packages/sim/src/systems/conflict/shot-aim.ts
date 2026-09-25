@@ -1,45 +1,39 @@
 import { PathFollow, PathRoute, Position } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { worldDistance } from '../../nav/world-metric.js';
 import type { SystemContext } from '../context.js';
 import { stepTowardPoint } from '../movement/stepping.js';
 import { walkPacePerTick } from '../movement/system.js';
 
-/**
- * How many tiles a projectile advances per tick per unit of the weapon's extracted `WeaponType.speed` - the
- * mapping of the unreadable `speed` unit onto the sim's tile/tick grid. A bow's `speed 8` gives 1 tile/tick,
- * 18x a settler's walk; a catapult's `speed 3` gives ⅜ tile/tick. An ⅛-tile-per-unit step keeps every real
- * `speed` (3..8) on an integer fraction of ONE, so no rounding drift enters and two runs stay byte-identical.
- * Tiles here are raw grid units, which makes this the east-west pace: the flight does not weight a row
- * step, and one draws 38 px against a column's 68.
- *
- * Approximated, calibration-pending (source basis "Combat ranged projectiles"): the source carries `speed`'s
- * value verbatim but not its unit, so this scale is tuned by eye against the drawn flight, not a data param.
- */
-export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8)); // ⅛ tile/tick per speed unit
+/** The map points a shot of `speed 1` crosses in eight ticks. Original behavior: a shot over `d` map points
+ *  flies `d * 8 / speed` ticks, so a bow's `speed 8` crosses one map point a tick. */
+const FLIGHT_TICKS_PER_POINT_AT_SPEED_ONE = 8;
 
-/** The per-tick tile step a projectile of extracted `speed` advances. The launch gate guarantees a positive
- *  `speed`, so the step is positive and a projectile always closes on its target. */
-export function projectileStep(speed: number): Fixed {
-  return fx.mul(fx.fromInt(speed), PROJECTILE_TILES_PER_SPEED_UNIT);
+/** The ticks a shot of extracted `speed` takes over `distance` map points; at least one, so it never lands
+ *  on the tick it is loosed. Original behavior. */
+export function shotFlightTicks(distance: number, speed: number): number {
+  return Math.max(1, Math.trunc((distance * FLIGHT_TICKS_PER_POINT_AT_SPEED_ONE) / speed));
 }
 
-/** The ticks a shot loosed at `from` takes to strike at `to`: its flight, plus the tick it rests at the
- *  bow before the flight and the tick it is held at the aim before contact. */
-function flightTicks(from: { x: Fixed; y: Fixed }, to: { x: Fixed; y: Fixed }, speed: number): number {
-  const dx = fx.sub(to.x, from.x);
-  const dy = fx.sub(to.y, from.y);
-  const chord = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));
-  return Math.ceil(chord / projectileStep(speed)) + 1;
+/** The map-point distance between two positions, measured node to node. */
+export function mapPointDistance(from: { x: Fixed; y: Fixed }, to: { x: Fixed; y: Fixed }): number {
+  return hexDistanceBetween(
+    nodeHxOfPosition(from.x, from.y),
+    nodeHyOfPosition(from.y),
+    nodeHxOfPosition(to.x, to.y),
+    nodeHyOfPosition(to.y),
+  );
 }
 
 /**
  * Where a walking `target` will stand when a shot loosed from `from` comes down: its position carried
  * along its route by the pace it walks for the flight's ticks. Original behavior: a settler leads a
- * moving target along its walk; a defence-mode building does not. Following the route rather than the
- * current heading is an approximation.
+ * moving target by its step pace times the flight time to where it stands now, plus the part of its
+ * current step already walked, which the target's position here already holds; a defence-mode building
+ * does not lead. Following the route rather than the current heading is an approximation.
  */
 export function leadPoint(
   world: World,
@@ -54,7 +48,7 @@ export function leadPoint(
   const pf = world.tryGet(target, PathFollow);
   const stops = world.tryGet(target, PathRoute)?.waypoints;
   if (pace === null || pf === undefined || stops === undefined) return lead;
-  let budget = fx.mul(pace, fx.fromInt(flightTicks(from, at, speed)));
+  let budget = fx.mul(pace, fx.fromInt(shotFlightTicks(mapPointDistance(from, at), speed)));
   for (let i = pf.index; i < stops.length && budget > 0; i++) {
     const stop = stops[i];
     if (stop === undefined) break;

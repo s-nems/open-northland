@@ -18,7 +18,13 @@ import {
   nodeHyOfPosition,
   positionOfNode,
 } from '../../../../../../nav/halfcell.js';
-import { leadPoint, marksmanSpread, scatteredNode } from '../../../../../conflict/shot-aim.js';
+import {
+  leadPoint,
+  mapPointDistance,
+  marksmanSpread,
+  scatteredNode,
+  shotFlightTicks,
+} from '../../../../../conflict/shot-aim.js';
 import { buildingBodyNodes } from '../../../../../conflict/target-node.js';
 import type { SystemContext } from '../../../../../context.js';
 import { weaponClassHits } from '../../../../../progression/index.js';
@@ -118,13 +124,14 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     source: shot.source,
     target: shot.target,
     player: shot.player,
+    hitSelf: shot.weapon.hitSelf,
+    area: shot.weapon.area,
     // The shot owns its copies, as the swing owns its own.
     damage: { ...shot.weapon.damage },
     hitSounds: { ...shot.weapon.hitSounds },
     weaponMainType: shot.weaponMainType,
     missSounds: { ...shot.weapon.missSounds },
     munitionType: shot.weapon.munitionType,
-    speed: shot.weapon.speed,
     // Frozen at release: the render's ballistic-arc origin and the landing blow's direction.
     originX: from.x,
     originY: from.y,
@@ -133,6 +140,8 @@ export function looseProjectile(world: World, ctx: SystemContext, shot: LooseSho
     aimY: shot.aim.y,
     cover: shot.cover,
     launchTick: ctx.tick,
+    // Original behavior: the flight time runs from the shooter to where the shot comes down.
+    landTick: ctx.tick + shotFlightTicks(mapPointDistance(from, shot.aim), shot.weapon.speed),
     impact: null,
   });
   ctx.events.emit({
