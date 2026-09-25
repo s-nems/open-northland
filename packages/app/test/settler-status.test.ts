@@ -54,6 +54,30 @@ describe('the settler status caption', () => {
     expect(status({ MoveGoal: {} })).toBe('walking');
   });
 
+  it('names what the running atomic does: a need is not work, and a wait animation is idleness', () => {
+    const snapshot = snapshotOf(siteWorld(false));
+    const status = (live: Record<string, unknown>): string =>
+      settlerStatus(ctxOf(), snapshot, SETTLER, comps(null, live));
+    const atomic = (kind: string): Record<string, unknown> => ({ CurrentAtomic: { effect: { kind } } });
+    expect(status(atomic('eat'))).toBe('eating');
+    expect(status(atomic('sleep'))).toBe('sleeping');
+    expect(status(atomic('pray'))).toBe('praying');
+    expect(status(atomic('construct'))).toBe('building');
+    expect(status(atomic('attack'))).toBe('fighting');
+    expect(status(atomic('harvest'))).toBe('working');
+    expect(status(atomic('produce'))).toBe('working');
+    expect(status(atomic('idle'))).toBe('idle');
+    expect(status({ ...atomic('idle'), MoveGoal: {} })).toBe('walking');
+  });
+
+  it('reads talking while a chat holds the person, whatever animation it plays', () => {
+    const snapshot = snapshotOf(siteWorld(false));
+    const talking = { Chat: { talking: true }, CurrentAtomic: { effect: { kind: 'idle' } } };
+    expect(settlerStatus(ctxOf(), snapshot, SETTLER, comps(null, talking))).toBe('talking');
+    const seeking = { Chat: { talking: false }, MoveGoal: {} };
+    expect(settlerStatus(ctxOf(), snapshot, SETTLER, comps(null, seeking))).toBe('walking');
+  });
+
   it('reads "standing to" for the unit the sim says is holding its ground', () => {
     const snapshot = snapshotOf(siteWorld(false));
     const asked: number[] = [];

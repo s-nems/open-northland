@@ -1,4 +1,12 @@
-import { entityById, type Fixed, fx, type NeedKind, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type AtomicEffect,
+  entityById,
+  type Fixed,
+  fx,
+  type NeedKind,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
 import { num, type SnapshotEntity, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -153,7 +161,62 @@ export function experienceShown(rows: readonly ExperienceRowModel[]): number {
 }
 
 /** The live state the status line opens with, read off the settler's components. */
-export type SettlerState = 'ordered' | 'working' | 'walking' | 'awaitingWorkplace' | 'standingTo' | 'idle';
+export type SettlerState =
+  | 'ordered'
+  | 'working'
+  | 'building'
+  | 'fighting'
+  | 'training'
+  | 'eating'
+  | 'sleeping'
+  | 'praying'
+  | 'talking'
+  | 'walking'
+  | 'awaitingWorkplace'
+  | 'standingTo'
+  | 'idle';
+
+/**
+ * What the running atomic says the person is doing, by its effect. Every economic effect (a stroke, a
+ * catch, a pickup, a cart load, a craft cycle) reads as work; a need's effect as that need, so a
+ * civilian eating or a builder asleep never reads as working; an `idle` effect is the wait animation.
+ */
+const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
+  move: 'walking',
+  idle: 'idle',
+  eat: 'eating',
+  sleep: 'sleeping',
+  pray: 'praying',
+  attack: 'fighting',
+  slay: 'fighting',
+  exercise: 'training',
+  construct: 'building',
+  harvest: 'working',
+  harvestFollowThrough: 'working',
+  fish: 'working',
+  forage: 'working',
+  pickup: 'working',
+  pileup: 'working',
+  drop: 'working',
+  cartLoad: 'working',
+  cartUnload: 'working',
+  produce: 'working',
+  sow: 'working',
+  water: 'working',
+  equip: 'working',
+  unequip: 'working',
+  erectSignpost: 'working',
+  openChest: 'working',
+};
+
+function atomicState(components: Comp): SettlerState | null {
+  const atomic = components.CurrentAtomic as { effect?: { kind?: unknown } } | undefined;
+  if (atomic === undefined) return null;
+  const kind = atomic.effect?.kind;
+  return typeof kind === 'string' && kind in ATOMIC_STATE
+    ? ATOMIC_STATE[kind as AtomicEffect['kind']]
+    : 'working';
+}
 
 export function settlerStatus(
   ctx: UnitPanelModelContext,
@@ -164,7 +227,10 @@ export function settlerStatus(
   // The sim retires PlayerOrder the tick the unit reaches its commanded destination, so a settler
   // carrying it is still walking there.
   if ('PlayerOrder' in components) return 'ordered';
-  if ('CurrentAtomic' in components) return 'working';
+  // A chat holds both people through its atomics; the seeker walking up to its partner is still walking.
+  if ((components.Chat as { talking?: unknown } | undefined)?.talking === true) return 'talking';
+  const atomic = atomicState(components);
+  if (atomic !== null && atomic !== 'idle') return atomic;
   if ('PathFollow' in components || 'MoveGoal' in components) return 'walking';
   // Waiting out a workplace still going up is by design; without its own caption it reads as idleness.
   if (awaitsItsWorkplace(snapshot, components)) return 'awaitingWorkplace';

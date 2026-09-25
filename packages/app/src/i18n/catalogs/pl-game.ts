@@ -271,6 +271,13 @@ export const plGame = {
     statuses: {
       ordered: 'Idzie na rozkaz',
       working: 'Pracuje',
+      building: 'Buduje',
+      fighting: 'Walczy',
+      training: 'Ćwiczy',
+      eating: 'Je',
+      sleeping: 'Śpi',
+      praying: 'Modli się',
+      talking: 'Rozmawia',
       walking: 'Idzie',
       awaitingWorkplace: 'Czeka na budowę warsztatu',
       standingTo: 'Stoi na alarmie',

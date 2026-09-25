@@ -274,6 +274,13 @@ export const enGame = {
     statuses: {
       ordered: 'Following an order',
       working: 'Working',
+      building: 'Building',
+      fighting: 'Fighting',
+      training: 'Training',
+      eating: 'Eating',
+      sleeping: 'Sleeping',
+      praying: 'Praying',
+      talking: 'Talking',
       walking: 'Walking',
       awaitingWorkplace: 'Waiting for the workshop',
       standingTo: 'Standing to',
