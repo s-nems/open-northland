@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { BattleFront } from '../../../conflict/battle-alert.js';
 import type { SystemContext } from '../../../context.js';
-import { REPAIR_CREW_LIMIT } from '../../../economy/repair.js';
+import { repairCrewLimit } from '../../../economy/repair.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, BUILD_WALL_ATOMIC_ID, startAtomic } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -12,10 +12,10 @@ import type { PlannerSpacing } from '../../planner/spacing.js';
 import { claimWorkCell } from '../spacing.js';
 
 /**
- * How long a building or wall must go unhit before an automatic crew comes to mend it, so builders are not sent
- * into an attack that is still landing - an archer out of sight included. Authored: a damaged house in the
- * original recruits builders whatever is going on around it, though its computer players hold their own
- * repair orders while an enemy soldier is near.
+ * How long a building or wall must go unhit before an automatic crew comes to mend it, so builders are
+ * not sent into an attack that is still landing - an archer out of sight included. Authored: a damaged
+ * house in the original recruits builders whatever is going on around it, though its computer players
+ * hold their own repair orders while an enemy soldier is near.
  */
 export const REPAIR_CALM_TICKS = 10 * TICKS_PER_SECOND;
 
@@ -46,7 +46,7 @@ export class RepairCrews {
   /** Whether `builder` may join the crew at `site`: it already belongs to it, or the crew has room. */
   hasRoom(site: Entity, builder: Entity): boolean {
     if (this.world.tryGet(builder, SiteAssignment)?.site === site) return true;
-    return (this.crewSizes().get(site) ?? 0) < REPAIR_CREW_LIMIT;
+    return (this.crewSizes().get(site) ?? 0) < repairCrewLimit(this.world, site);
   }
 
   /** Count `builder` into the crew at `site` for the rest of the pass. */

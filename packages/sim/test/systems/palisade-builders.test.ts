@@ -15,7 +15,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, positionOfNode, type ScriptLandscapeType, Simulation } from '../../src/index.js';
-import { REPAIR_CREW_LIMIT } from '../../src/systems/economy/repair.js';
+import { WALL_REPAIR_CREW_LIMIT } from '../../src/systems/economy/repair.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { REPAIR_CALM_TICKS } from '../../src/systems/settlers/drives/economy/repair.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -235,7 +235,7 @@ describe('palisade builders', () => {
     expect(sim.world.get(damaged, Health).hitpoints).toBe(WALL.wall?.maxHitpoints);
   });
 
-  it('cap the crew at a damaged wall at the building repair limit', () => {
+  it('send a damaged wall one mender at a time', () => {
     const map = grassNodeMap(48, 12);
     const sim = new Simulation({
       seed: 4,
@@ -263,7 +263,6 @@ describe('palisade builders', () => {
       const crew = builders.filter((b) => sim.world.tryGet(b, SiteAssignment)?.site === wall).length;
       largest = Math.max(largest, crew);
     }
-    expect(largest).toBeGreaterThan(1);
-    expect(largest).toBeLessThanOrEqual(REPAIR_CREW_LIMIT);
+    expect(largest).toBe(WALL_REPAIR_CREW_LIMIT);
   });
 });

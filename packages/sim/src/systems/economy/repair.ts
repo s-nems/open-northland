@@ -19,10 +19,19 @@ import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.j
  *  repair swing ends with the pool. A wall takes its own record's gain per swing instead. */
 const HITPOINTS_PER_REPAIR_STEP = 100;
 
-/** Builders one damaged building or wall takes at a time, the player's own orders included. Original
- *  behavior for a standing building. Approximation for a damaged upgrade site, where the original also
- *  admits one builder per construction good still owed. Approximation for a wall. */
+/** Builders one damaged building takes at a time, the player's own orders included. Original behavior
+ *  for a standing building; approximation for a damaged upgrade site, where the original also admits one
+ *  builder per construction good still owed. */
 export const REPAIR_CREW_LIMIT = 5;
+
+/** Builders one damaged wall takes at a time: a single node leaves room beside it for one, as a new
+ *  segment has one builder. Project rule. */
+export const WALL_REPAIR_CREW_LIMIT = 1;
+
+/** The repair crew limit of `site`, a wall's or a building's. */
+export function repairCrewLimit(world: World, site: Entity): number {
+  return world.has(site, Palisade) ? WALL_REPAIR_CREW_LIMIT : REPAIR_CREW_LIMIT;
+}
 
 /** A building, or a wall with an owner: an unowned wall has no crew to mend it. */
 function mendable(world: World, e: Entity): boolean {
