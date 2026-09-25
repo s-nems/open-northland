@@ -53,9 +53,7 @@ export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> 
  * First-wins per typeId.
  */
 export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
-  const carrierJobs = new Set(content.jobs.filter((j) => isCarrierJobId(j.id)).map((j) => j.typeId));
-  const harvestJobs = harvestCapableJobs(content);
-  const isOperatorSlot = (jobType: number): boolean => !carrierJobs.has(jobType) && !harvestJobs.has(jobType);
+  const isOperatorSlot = operatorSlotRule(content);
   const map = new Map<number, Set<number>>();
   const seen = new Set<number>();
   for (const b of content.buildings) {
@@ -77,6 +75,14 @@ export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number,
   return map;
 }
 
+/** Whether a worker slot's trade operates the craft: any trade but a carrier or a gatherer. Approximation:
+ *  the readable data does not say which slot operates the craft. */
+function operatorSlotRule(content: ContentSet): (jobType: number) => boolean {
+  const carrierJobs = new Set(content.jobs.filter((j) => isCarrierJobId(j.id)).map((j) => j.typeId));
+  const harvestJobs = harvestCapableJobs(content);
+  return (jobType) => !carrierJobs.has(jobType) && !harvestJobs.has(jobType);
+}
+
 /** The per-building-type worker-job sets - first-wins per typeId unconditionally, so a first record with
  *  zero workers claims the key with an empty set and a later duplicate cannot shadow it. */
 export function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
@@ -84,6 +90,26 @@ export function workerJobSets(content: ContentSet): ReadonlyMap<number, Readonly
   for (const b of content.buildings) {
     if (map.has(b.typeId)) continue;
     map.set(b.typeId, new Set(b.workers.map((w) => w.jobType)));
+  }
+  return map;
+}
+
+/**
+ * The per-building-type operator-job sets: the worker slots minus the carrier and gatherer trades, so a
+ * gatherer fetching a workshop's raw input never satisfies the production worker-presence gate. A
+ * carrier-or-gatherer-only type keeps its whole slot set, since the well's lone carrier is its operator.
+ * Keyed like {@link workerJobSets}; a type with no worker slots maps to the empty set.
+ */
+export function operatorJobSets(
+  workerJobs: ReadonlyMap<number, ReadonlySet<number>>,
+  content: ContentSet,
+): ReadonlyMap<number, ReadonlySet<number>> {
+  const isOperatorSlot = operatorSlotRule(content);
+  const map = new Map<number, ReadonlySet<number>>();
+  for (const [typeId, jobs] of workerJobs) {
+    const operators = new Set<number>();
+    for (const job of jobs) if (isOperatorSlot(job)) operators.add(job);
+    map.set(typeId, operators.size > 0 ? operators : jobs);
   }
   return map;
 }

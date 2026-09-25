@@ -5,25 +5,18 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { assignedWorkers } from './assigned-workers.js';
-import { buildingWorkerJobs, isCarrierJob } from './workplace.js';
 
 // Who is working a workplace right now: which of its declared slots (./workplace.ts) operate the craft,
 // and which settlers stand at the door filling them.
 
-/**
- * The operator jobs of a workplace: its worker-slot jobs minus the carrier and gatherer trades, so a
- * gatherer fetching a workshop's raw input never satisfies the production worker-presence gate. A
- * carrier-or-gatherer-only type keeps its slots, since the well's lone carrier is its operator.
- * Approximation: the readable data does not say which slot operates the craft.
- */
+/** The operator jobs of a workplace, the content index's `operatorJobsByBuilding` row for its type. */
 function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
-  const jobs = buildingWorkerJobs(world, ctx, building);
-  if (jobs.size === 0) return jobs;
-  const harvest = contentIndex(ctx.content).harvestJobs;
-  const operators = new Set<number>();
-  for (const job of jobs) if (!isCarrierJob(ctx, job) && !harvest.has(job)) operators.add(job);
-  return operators.size > 0 ? operators : jobs;
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return EMPTY_JOBS;
+  return contentIndex(ctx.content).operatorJobsByBuilding.get(b.buildingType) ?? EMPTY_JOBS;
 }
+
+const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
 
 /** Whether `jobType` is one of `building`'s {@link operatorJobsOf}, the trades whose presence runs the craft. */
 export function isWorkplaceOperator(

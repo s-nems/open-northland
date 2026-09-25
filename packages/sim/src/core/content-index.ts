@@ -27,6 +27,7 @@ import { livestockTables } from './content-index/livestock.js';
 import {
   inputlessProducerTypes,
   mergedRecipes,
+  operatorJobSets,
   recipeProductTables,
   stockSlotCapacityTables,
   storedGoodSets,
@@ -94,6 +95,8 @@ export interface ContentIndex {
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
    *  worker slots). */
   readonly workerJobsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
+  /** Per building type: the worker-slot trades whose presence runs the craft ({@link operatorJobSets}). */
+  readonly operatorJobsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
   /** Per building type: the set of good types its `stock` slots store - what an employed gatherer may
    *  forage for. Absent for a type declaring no stock slots. */
   readonly storedGoodsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
@@ -222,6 +225,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     livestockSlayAtomicByGood: livestock.slayAtomicByGood,
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobs,
+    operatorJobsByBuilding: operatorJobSets(workerJobs, content),
     storedGoodsByBuilding: storedGoodSets(content),
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
     recipeByProductByBuilding: recipeProductTables(content),
