@@ -4,6 +4,7 @@ import {
   type AssistantRecruitIntent,
   AssistantWeaponVetoes,
   aiModuleRuns,
+  Building,
   Equipment,
   Female,
   ownerOf,
@@ -27,7 +28,8 @@ import { seatBarracksOf } from '../base.js';
 import { fighterStrength, fighterWeaponClass, strongestEnemyStrength } from '../military/census.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { peaceEndsAt, WAVE_GATHER_TICKS } from '../military/plan.js';
-import { ownedSettlers } from '../seat-roster.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../seat-roster.js';
+import { productsOf } from './craft.js';
 import type { SpareForce } from './pool.js';
 
 /** The army's armed classes; publication order breaks a draft tie, leaving the odd man in reach. */
@@ -49,7 +51,7 @@ const FULL_FIELD_SHARES: Readonly<Record<GarrisonWeaponIntent, number>> = {
 };
 
 /** Every counter this rung owns: the armed classes plus `trainSoldiers`, the weaponless base class
- *  the drill enlists into - the fallback for a seat that can arm nobody. */
+ *  the drill enlists into - the fallback for a seat that can arm nobody and has no weapon shop yet. */
 const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ...GARRISON_WEAPON_INTENTS];
 
 /** The army floor's smallest size (authored): twice the smallest wave the campaign sends, so one band
@@ -60,13 +62,37 @@ export const ARMY_FLOOR_MIN = 2 * WAVE_MIN_SOLDIERS;
  *  window, so the first band stands at the door when the peace runs out. */
 export const ARMY_FLOOR_LEAD_TICKS = WAVE_GATHER_TICKS;
 
+/** This decision's arming judgement, shared by the army floor and the draft so both read one answer. */
+export interface GarrisonArms {
+  /** The weaker weapon goods not yet vetoed on the seat ({@link missingWeaponVetoes}); the draft sets them. */
+  readonly pendingVetoes: readonly number[];
+  /** The classes a draft splits over ({@link draftingClasses}), judged once, for the first man asked about. */
+  classesFor(barracks: Entity, next: Entity): readonly AssistantRecruitIntent[];
+}
+
+export function garrisonArms(world: World, ctx: SystemContext, player: number): GarrisonArms {
+  const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
+  const pendingVetoes = missingWeaponVetoes(world, ctx, player, vetoed);
+  // The vetoes land a tick later, so this decision's draft already judges the arms without them.
+  const judged = [...vetoed, ...pendingVetoes];
+  let classes: readonly AssistantRecruitIntent[] | undefined;
+  return {
+    pendingVetoes,
+    classesFor: (barracks, next) => {
+      classes ??= draftingClasses(world, ctx, player, barracks, next, judged);
+      return classes;
+    },
+  };
+}
+
 /**
  * The army floor: once the seat's peace is within {@link ARMY_FLOOR_LEAD_TICKS} of its end ({@link
  * peaceEndsAt}, the start when there is none), the seat keeps as many fighters as its strongest enemy
  * fields ({@link strongestEnemyStrength}), one to one and never fewer than {@link ARMY_FLOOR_MIN}. Its
  * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
  * `force`, which the ladder calls ahead of the target-tier posts: a seat whose trades could absorb every
- * man still raises an army. Capped by the {@link bachelorSurplus} and by the men draftable at all.
+ * man still raises an army. Capped by the {@link bachelorSurplus} and by the men draftable at all, and
+ * nobody is claimed while the draft has no class to put him in.
  * Returns the claimed men for {@link trainGarrison} to publish.
  */
 export function claimArmyFloor(
@@ -74,12 +100,17 @@ export function claimArmyFloor(
   ctx: SystemContext,
   player: number,
   force: SpareForce,
+  arms: GarrisonArms,
 ): readonly Entity[] {
-  if (drillFloorOf(world, ctx, player) === null) return [];
+  const barracks = drillFloorOf(world, ctx, player);
+  if (barracks === null) return [];
   if (ctx.tick < peaceEndsAt(world, player) - ARMY_FLOOR_LEAD_TICKS) return [];
   const floor = Math.max(ARMY_FLOOR_MIN, strongestEnemyStrength(world, ctx, player));
   const missing = floor - armyOnHand(world, ctx, player);
   const claim = Math.min(missing, bachelorSurplus(world, ctx, player));
+  if (claim <= 0) return [];
+  const next = force.remaining().find((e) => isDraftable(world, e));
+  if (next === undefined || arms.classesFor(barracks, next).length === 0) return [];
   const claimed: Entity[] = [];
   while (claimed.length < claim) {
     const recruit = force.take((e) => isDraftable(world, e));
@@ -104,22 +135,14 @@ export function trainGarrison(
   player: number,
   force: SpareForce,
   floorMen: readonly Entity[],
+  arms: GarrisonArms,
 ): PlayerCommand[] {
-  const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
-  const pending = missingWeaponVetoes(world, ctx, player, vetoed);
-  // The vetoes land a tick later, so this decision's draft already judges the arms without them.
-  const wants = standingOrder(
-    world,
-    ctx,
-    player,
-    [...floorMen, ...draftableSpare(world, force)],
-    [...vetoed, ...pending],
-  );
+  const wants = standingOrder(world, ctx, player, [...floorMen, ...draftableSpare(world, force)], arms);
   const counters = GARRISON_INTENTS.flatMap((intent) => {
     const command = assistantCounterCommand(world, player, intent, wants.get(intent) ?? 0, false);
     return command === null ? [] : [command];
   });
-  const vetoes = pending.map(
+  const vetoes = arms.pendingVetoes.map(
     (goodType): PlayerCommand => ({ kind: 'setAssistantWeaponVeto', player, goodType, vetoed: true }),
   );
   return [...vetoes, ...counters];
@@ -165,9 +188,7 @@ function weakerWeaponGoods(content: ContentSet): readonly number[] {
   if (known !== undefined) return known;
   const best = new Set<number>();
   const weaker = new Set<number>();
-  for (const tribe of new Set(
-    content.weapons.flatMap((w) => (w.tribeType === undefined ? [] : [w.tribeType])),
-  )) {
+  for (const tribe of weaponTribes(content)) {
     for (const intent of GARRISON_WEAPON_INTENTS) {
       const [strongest, ...rest] = armingGoodPreference(content, tribe, intent, []);
       if (strongest !== undefined) best.add(strongest);
@@ -183,15 +204,15 @@ function weakerWeaponGoods(content: ContentSet): readonly number[] {
  * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus a share of the
  * `draftable` men (the army floor's first, then the spare), so the headroom the dispatcher sees
  * (`counter - bookings`) sums to exactly that number. Each man goes to the armable class furthest below
- * its field share ({@link fieldedByIntent}, {@link FULL_FIELD_SHARES}), the earlier class on a tie; a seat
- * that can arm none of them falls back to `trainSoldiers`.
+ * its field share ({@link fieldedByIntent}, {@link FULL_FIELD_SHARES}), the earlier class on a tie. A seat
+ * that can arm none of them drafts by {@link draftingClasses}' fallback: `trainSoldiers`, or nobody.
  */
 function standingOrder(
   world: World,
   ctx: SystemContext,
   player: number,
   draftable: readonly Entity[],
-  vetoed: readonly number[],
+  arms: GarrisonArms,
 ): Map<AssistantRecruitIntent, number> {
   const wants = new Map<AssistantRecruitIntent, number>();
   const barracks = drillFloorOf(world, ctx, player);
@@ -203,7 +224,8 @@ function standingOrder(
   const allowance = Math.min(draftable.length, Math.max(0, bachelorSurplus(world, ctx, player)));
   const next = draftable[0];
   if (allowance === 0 || next === undefined) return wants; // nobody to draft: the classes need no probe
-  const drafting = draftingClasses(world, ctx, player, barracks, next, vetoed);
+  const drafting = arms.classesFor(barracks, next);
+  if (drafting.length === 0) return wants;
   const fielded = fieldedByIntent(world, ctx, player, booked);
   const full = GARRISON_WEAPON_INTENTS.every((intent) => drafting.includes(intent));
   const shares = drafting.map((intent) => (full && isWeaponIntent(intent) ? FULL_FIELD_SHARES[intent] : 1));
@@ -257,8 +279,10 @@ function fieldedByIntent(
 
 /**
  * The counters this decision's allowance is split over: the armed classes the seat can arm a recruit
- * for, else `trainSoldiers`. Judged for `next`'s tribe and from the barracks door, because the arming
- * pass shops against the recruit's weapon rows from where he stands when it first looks at him.
+ * for. When it can arm none, `trainSoldiers` while no weapon shop stands, since fists are the only army
+ * such a seat can have, and nothing once one does: the men wait for the arms it makes. Judged for
+ * `next`'s tribe and from the barracks door, because the arming pass shops against the recruit's weapon
+ * rows from where he stands when it first looks at him.
  */
 function draftingClasses(
   world: World,
@@ -274,7 +298,43 @@ function draftingClasses(
   const door = interactionCell(world, ctx, terrain, barracks);
   const reach = networkLimitAt(world, terrain, player, terrain.xOf(door), terrain.yOf(door));
   const armable = armableIntents(world, ctx, terrain, player, tribe, GARRISON_WEAPON_INTENTS, reach, vetoed);
-  return armable.length > 0 ? armable : ['trainSoldiers'];
+  if (armable.length > 0) return armable;
+  return weaponShopStands(world, ctx, player) ? [] : ['trainSoldiers'];
+}
+
+/** Whether a finished building of the seat makes a good that arms a garrison class. */
+function weaponShopStands(world: World, ctx: SystemContext, player: number): boolean {
+  const shops = weaponShopTypes(ctx);
+  return ownedBuildings(world, player).some(
+    (e) => shops.has(world.get(e, Building).buildingType) && isBuilt(world, e),
+  );
+}
+
+const weaponShopsByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
+
+/** The building types whose products ({@link productsOf}) include a good some tribe arms a garrison class
+ *  with ({@link armingGoodPreference}). */
+function weaponShopTypes(ctx: SystemContext): ReadonlySet<number> {
+  const known = weaponShopsByContent.get(ctx.content);
+  if (known !== undefined) return known;
+  const weapons = new Set<number>();
+  for (const tribe of weaponTribes(ctx.content)) {
+    for (const intent of GARRISON_WEAPON_INTENTS) {
+      for (const good of armingGoodPreference(ctx.content, tribe, intent, [])) weapons.add(good);
+    }
+  }
+  const shops = new Set(
+    ctx.content.buildings
+      .filter((type) => productsOf(ctx, type).some((good) => weapons.has(good)))
+      .map((type) => type.typeId),
+  );
+  weaponShopsByContent.set(ctx.content, shops);
+  return shops;
+}
+
+/** The tribes some weapon row names. */
+function weaponTribes(content: ContentSet): ReadonlySet<number> {
+  return new Set(content.weapons.flatMap((w) => (w.tribeType === undefined ? [] : [w.tribeType])));
 }
 
 /** The spare men the dispatcher could still draft, in its own draft order. Men already booked are not

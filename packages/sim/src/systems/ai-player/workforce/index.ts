@@ -33,7 +33,7 @@ import {
 import { tuneCraftSelections } from './craft.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import type { TakenFlagNodes } from './flag-spots.js';
-import { claimArmyFloor, trainGarrison } from './garrison.js';
+import { claimArmyFloor, garrisonArms, trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
 import {
@@ -131,7 +131,8 @@ function runWorkforce(
   ];
   // The army floor outranks the clearing and every target and top-up post, so trades that could absorb
   // every man still leave an army.
-  const armyFloor = claimArmyFloor(world, ctx, player, force);
+  const arms = garrisonArms(world, ctx, player);
+  const armyFloor = claimArmyFloor(world, ctx, player, force, arms);
   return [
     ...essentials,
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
@@ -141,7 +142,7 @@ function runWorkforce(
     ...allocateFishers(world, ctx, fishing, force, builderJob, 'topUp'),
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),
-    ...trainGarrison(world, ctx, player, force, armyFloor),
+    ...trainGarrison(world, ctx, player, force, armyFloor, arms),
     ...tuneCraftSelections(world, ctx, player, supply),
   ];
 }
