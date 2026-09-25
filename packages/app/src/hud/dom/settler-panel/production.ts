@@ -95,6 +95,9 @@ export function createProductionSection(
       if (production === null) return;
       const copy = messages().hud;
       title.update(copy.production);
+      // A gatherer's goods carry no counter, so they stand in one strip of icon buttons rather than a row
+      // each: six map goods would otherwise cost the panel the height of the whole experience section.
+      setClass(list, 'on-prod--strip', production.kind === 'gather');
       const key = `${production.kind}:${production.rows.map((row) => row.goodType).join(',')}`;
       if (key !== shown) {
         shown = key;

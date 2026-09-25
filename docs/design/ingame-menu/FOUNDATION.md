@@ -261,10 +261,11 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   names the spouse and the growing child as links that select them, or "bez pary" in amber, which
   opens the partner choice (the same pick flow as assigning a home, aimed at a person). A man without a trade has no Miejsce pracy row, a woman and a
   soldier have Dom and Rodzina only, a child a read-only Dom row, a hero no section.
-- Produkcja, under Praca for a craft operator and a gatherer (a gatherer's rows have the icon button
-  alone until the sim carries a gatherer quota: it holds the gatherer to that good, and pressing the
-  sole held good's icon gathers everything again): one row per product the trade may make
-  here, in recipe order: the good's icon in a round button, its name and a −/n/+ counter. The
+- Produkcja, under Praca for a craft operator: one row per product the trade may make
+  here, in recipe order: the good's icon in a round button, its name and a −/n/+ counter. A
+  gatherer's goods carry no counter until the sim holds a gatherer quota, so they stand in one strip
+  of icon buttons (the name in the tooltip): pressing one holds the gatherer to that good, the rest
+  fade, and pressing the sole held good's icon gathers everything again. The
   counter is the original's human-window production counter: 0 stops the product (the row fades),
   1 to 10 is how many more to make, ∞ never stops. − at 0 wraps to ∞ and Shift with an arrow jumps
   to that end, as the original's window does; + at ∞ stays at ∞ with the arrow dimmed, where the
