@@ -34,19 +34,64 @@ export interface ConstructionPlot {
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
+/** The plots last derived for a world, with the generations they hold for. Of the Building fields only
+ *  `buildingType` moves a plot, while `built` progress bumps the value generation on every construction
+ *  advance, so a value bump replays the sites against {@link types} instead of rebuilding. */
+interface ConstructionPlotMemo {
+  readonly content: ContentSet;
+  readonly siteGeneration: number;
+  readonly buildingGeneration: number;
+  buildingValueGeneration: number;
+  readonly types: ReadonlyMap<Entity, number>;
+  readonly plots: readonly ConstructionPlot[];
+}
+
+const constructionPlotMemo = new WeakMap<World, ConstructionPlotMemo>();
+
 /** The ground plots of every under-construction building: its footprint body cells translated onto world
- *  half-cell nodes, unfiltered by the grid bounds, or the bare anchor cell for a footprint-less type. */
-export function constructionSitePlots(world: World, content: ContentSet): ConstructionPlot[] {
+ *  half-cell nodes, unfiltered by the grid bounds, or the bare anchor cell for a footprint-less type. The
+ *  same array comes back until a site is added, finished, removed or retyped, so a per-frame reader can
+ *  key on its identity. */
+export function constructionSitePlots(world: World, content: ContentSet): readonly ConstructionPlot[] {
+  const siteGeneration = world.componentGeneration(UnderConstruction);
+  const buildingGeneration = world.componentGeneration(Building);
+  const buildingValueGeneration = world.componentValueGeneration(Building);
+  const memo = constructionPlotMemo.get(world);
+  if (
+    memo !== undefined &&
+    memo.content === content &&
+    memo.siteGeneration === siteGeneration &&
+    memo.buildingGeneration === buildingGeneration &&
+    (memo.buildingValueGeneration === buildingValueGeneration || sameSiteTypes(world, memo.types))
+  ) {
+    memo.buildingValueGeneration = buildingValueGeneration;
+    return memo.plots;
+  }
+  const types = new Map<Entity, number>();
   const plots: ConstructionPlot[] = [];
   for (const e of world.query(UnderConstruction, Building, Position)) {
     const b = world.get(e, Building);
+    types.set(e, b.buildingType);
     const footprint = buildingFootprintOf(content, b.buildingType);
     const p = world.get(e, Position);
     const { hx, hy } = nodeOfPosition(p.x, p.y);
     const body = footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
     plots.push({ cells: body.map((c) => ({ col: hx + footprintCellDx(hy, c), row: hy + c.dy })) });
   }
+  constructionPlotMemo.set(world, {
+    content,
+    siteGeneration,
+    buildingGeneration,
+    buildingValueGeneration,
+    types,
+    plots,
+  });
   return plots;
+}
+
+function sameSiteTypes(world: World, types: ReadonlyMap<Entity, number>): boolean {
+  for (const [site, type] of types) if (world.tryGet(site, Building)?.buildingType !== type) return false;
+  return true;
 }
 
 /** One building's walk-blocked body: its footprint `blocked` cells on the map minus its door cell, or null

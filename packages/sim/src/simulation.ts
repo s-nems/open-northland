@@ -339,8 +339,8 @@ export class Simulation {
     return `${workFlagBlockerVersion(this.world)}.${signpostNetworkRevision(this.world)}`;
   }
 
-  /** The footprint body cells of every under-construction building. */
-  constructionPlots(): ConstructionPlot[] {
+  /** The footprint body cells of every under-construction building; the same array while no site changes. */
+  constructionPlots(): readonly ConstructionPlot[] {
     return constructionSitePlots(this.world, this.content);
   }
 

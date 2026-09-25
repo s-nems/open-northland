@@ -22,6 +22,8 @@ const MAX_CORNER_RADIUS = 12;
 export class ConstructionPlotLayer {
   readonly container = new Container();
   private readonly g = new Graphics();
+  /** The list last handed in: the frame loop passes the same array while no plot changed. */
+  private drawn: readonly ConstructionPlotFrame[] | null = null;
   /** Signature of the plot set last drawn - an unchanged set skips the rebuild. */
   private key = '';
 
@@ -32,6 +34,8 @@ export class ConstructionPlotLayer {
 
   /** Redraw the plots for the current set of construction sites; an empty list clears them. */
   set(plots: readonly ConstructionPlotFrame[], elevation: ElevationField): void {
+    if (plots === this.drawn) return;
+    this.drawn = plots;
     const key = signatureOf(plots);
     if (key === this.key) return;
     this.key = key;

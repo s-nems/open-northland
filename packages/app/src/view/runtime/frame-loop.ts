@@ -26,6 +26,7 @@ import type { NetReadout } from './net-readout.js';
 import { placementCursor } from './placement-cursor.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
 import type { ScriptPresentation } from './script-presentation.js';
+import { createVisiblePlots } from './visible-plots.js';
 
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
@@ -141,6 +142,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const buildingOverlay = (buildingType: number, paper?: Paper) =>
     overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height, paper);
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
+  const visiblePlots = createVisiblePlots(() => sim.constructionPlots(), fogGates.seesNode);
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;
   const collect = (): void => {
@@ -222,18 +224,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // A world cutout centred on the selection, rendered into the portrait box during `renderer.update`.
     // Null when the selection has no portrait.
     renderer.setPortraitInset(loop.portraitVisible() ? controls.portrait() : null);
-    // Fog gate: the plot layer draws above the wash, so an enemy foundation in the black would paint
-    // through it. Plot cells are half-cell nodes.
-    const plots = sim.constructionPlots();
-    renderer.updateConstructionPlots(
-      fogView === null
-        ? plots
-        : plots
-            .map((p) => ({
-              cells: p.cells.filter((c) => fogGates.seesNode(c.col, c.row)),
-            }))
-            .filter((p) => p.cells.length > 0),
-    );
+    renderer.updateConstructionPlots(visiblePlots(fogView));
     geometryDebug.update(snap);
     renderer.setBuildingHighlight(controls.assignHighlight());
     const doorBadges = doorBadgesFor(snap);

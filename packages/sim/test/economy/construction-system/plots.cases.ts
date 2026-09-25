@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UnderConstruction } from '../../../src/components/index.js';
+import { Building, UnderConstruction } from '../../../src/components/index.js';
 import { fx, nodeOfPosition, Simulation } from '../../../src/index.js';
 import { constructionSystem } from '../../../src/systems/index.js';
 
@@ -29,5 +29,16 @@ describe('constructionPlots - the render decal cells for under-construction site
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(hq, UnderConstruction)).toBe(false);
     expect(sim.constructionPlots()).toEqual([]);
+  });
+
+  it('hands back the same list while a site only rises, and a fresh one once a site is retyped', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const site = placeSite(sim, HOUSE);
+    const rising = sim.constructionPlots();
+    sim.world.mut(site, Building).built = fx.fromInt(1);
+    expect(sim.constructionPlots()).toBe(rising);
+    sim.world.mut(site, Building).buildingType = HEADQUARTERS;
+    const { hx, hy } = nodeOfPosition(fx.fromInt(0), fx.fromInt(0));
+    expect(sim.constructionPlots()).toEqual([{ cells: [{ col: hx, row: hy }] }]);
   });
 });
