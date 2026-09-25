@@ -585,7 +585,7 @@ describe('placement controller', () => {
     expect(cues).toEqual([]);
   });
 
-  it('starts a wall line on the first click, lays the capped line on the second and stays armed', () => {
+  it('starts a wall line on the first click, lays the capped line on the second and exits', () => {
     let tile = { col: 4, row: 2 };
     const { placement, commands, cues, strip } = mount(() => tile);
 
@@ -606,10 +606,27 @@ describe('placement controller', () => {
     expect(commands[0]).toMatchObject({ kind: 'placePalisade', x: 4, y: 2 });
     expect(commands[20]).toMatchObject({ kind: 'placePalisade', x: 24, y: 2 });
     expect(cues).toEqual(['confirm']);
-    expect(placement.isActive()).toBe(true);
+    expect(placement.isActive()).toBe(false);
+    expect(strip.shown).toBeNull();
+  });
+
+  it('keeps the wall tool armed for the next line while Ctrl is held on the laying click', () => {
+    let tile = { col: 4, row: 2 };
+    const { placement, commands } = mount(() => tile);
+    placement.enterPalisade(691, 'wall');
+    placement.handleClick(0, 0, { keep: true });
+    tile = { col: 6, row: 2 };
+    placement.handleClick(10, 0, { keep: true });
+    expect(commands).toHaveLength(3);
+    expect(placement.activePalisade()).toBe(691);
     expect(placement.activeLine()).toBeNull();
-    placement.cancel();
-    expect(placement.activePalisade()).toBeNull();
+
+    tile = { col: 4, row: 6 };
+    placement.handleClick(0, 0);
+    tile = { col: 5, row: 6 };
+    placement.handleClick(10, 0);
+    expect(commands).toHaveLength(5);
+    expect(placement.isActive()).toBe(false);
   });
 
   it('stops a wall line at the first rejected site instead of placing across a gap', () => {

@@ -181,7 +181,7 @@ export interface LineToolSpec {
 
 /**
  * A two-click line placement: a click on an open or built node starts the line, the pointer moves its end,
- * and a second left click lays the accepted prefix and leaves the tool armed for the next line.
+ * and a second left click lays the accepted prefix and waits for the next start.
  * `stepBack` drops a started line, which the right button and Esc reach first.
  */
 export interface LineTool {
@@ -189,7 +189,8 @@ export interface LineTool {
   /** The cursor's marker before a line starts, the capped line toward the cursor after; `straight`
    *  keeps it to the nearest of the eight straight runs. */
   preview(tile: LineNode, straight?: boolean): LinePreviewNode[];
-  click(tile: LineNode | null, straight?: boolean): void;
+  /** True when the press laid a line. */
+  click(tile: LineNode | null, straight?: boolean): boolean;
   stepBack(): boolean;
   active(): ActiveLine | null;
 }
@@ -205,8 +206,8 @@ export function createLineTool(spec: LineToolSpec): LineTool {
   return {
     anchor: () => line?.anchor ?? null,
     preview: (tile, straight = false) => route(line?.anchor ?? tile, tile, straight),
-    click: (tile, straight = false): void => {
-      if (tile === null) return;
+    click: (tile, straight = false): boolean => {
+      if (tile === null) return false;
       if (line === null) {
         if (stateOf(tile) !== 'blocked') {
           line = {
@@ -216,11 +217,13 @@ export function createLineTool(spec: LineToolSpec): LineTool {
             accepts,
           };
         }
-        return;
+        return false;
       }
       const placed = route(line.anchor, tile, straight).filter((node) => node.state === 'open');
       line = null;
-      if (placed.length > 0) spec.commit(placed.map(({ col, row }) => ({ col, row })));
+      if (placed.length === 0) return false;
+      spec.commit(placed.map(({ col, row }) => ({ col, row })));
+      return true;
     },
     stepBack: (): boolean => {
       if (line === null) return false;

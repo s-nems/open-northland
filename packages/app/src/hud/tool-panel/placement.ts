@@ -83,8 +83,8 @@ export interface PlacementDeps {
 /** Placement mode: pick a building in the window, then one left-click on buildable ground places and
  *  exits the mode, as in the original. Esc or right-click abandons. The landing click confirms through
  *  the GUI cue; the world itself makes no sound for a new site. The wall tool lays lines (see
- *  {@link LineTool}) and stays armed until cancelled; the gate tool cuts one gate into a finished run and
- *  exits like a building. */
+ *  {@link LineTool}) and exits after one, or stays armed for the next while Ctrl is held; the gate tool
+ *  cuts one gate into a finished run and exits like a building. */
 export interface PlacementController {
   isActive(): boolean;
   /** The building typeId currently being placed, or null when not in placement. */
@@ -108,7 +108,7 @@ export interface PlacementController {
   setStraight(on: boolean): void;
   /** Route a left-click while placing; a rejecting or off-map tile still consumes it, so a mis-click
    *  cannot drop the mode. Returns true when consumed. */
-  handleClick(clientX: number, clientY: number): boolean;
+  handleClick(clientX: number, clientY: number, mods?: { readonly keep: boolean }): boolean;
   /** The markers under the cursor: the wall line, or a refused gate span no gate row suits; null outside
    *  the palisade tools. */
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
@@ -249,15 +249,14 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     setStraight: (on): void => {
       straight = on;
     },
-    handleClick: (clientX, clientY): boolean => {
+    handleClick: (clientX, clientY, mods): boolean => {
       if (placementType === null && palisade === null) return false;
       const tile = deps.screenToTile(clientX, clientY);
       if (palisade !== null) {
         if (palisade.mode === 'gate') convertGate(palisade.gfxIndex, tile);
-        else {
-          palisade.line.click(tile, straight);
-          showPalisadeStrip();
-        }
+        // A laid line ends the tool like a placed building, unless Ctrl keeps it for the next line.
+        else if (palisade.line.click(tile, straight) && mods?.keep !== true) exitPlacement();
+        else showPalisadeStrip();
         return true;
       }
       if (

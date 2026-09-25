@@ -10,8 +10,9 @@ import type { ToolWindows } from './windows.js';
 export interface HeldMode {
   isActive(): boolean;
   cancel(): void;
-  /** True when this mode took the press; the first claimer wins. */
-  handleClick(clientX: number, clientY: number): boolean;
+  /** True when this mode took the press; the first claimer wins. `keep` (Ctrl or Cmd held) keeps a tool
+   *  armed after the press completes its work. */
+  handleClick(clientX: number, clientY: number, mods?: { readonly keep: boolean }): boolean;
   /** Undo the mode's last step without leaving it, as a line tool drops its started line; false when
    *  there is no step to undo and the press should cancel the mode. */
   stepBack?(): boolean;
@@ -85,7 +86,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     };
 
     // Right button cancels an active placement or held paper; otherwise it is a world order for unit controls.
-    if (e.button === 2) {
+    // macOS delivers Ctrl+left-click as button 2, so a Ctrl press falls through as the primary press: the
+    // Ctrl coarse step and a wall tool kept for the next line still work.
+    if (e.button === 2 && !e.ctrlKey) {
       if (anyHeld()) {
         // Order-independent with unit controls: when it runs first the still-held claim makes it
         // defer; when it runs later, stopping the event keeps the now-clear claim from reading the
@@ -93,12 +96,10 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
         consume();
         deps.cue('fail');
         cancelOneRung();
-        return;
       }
-      // macOS delivers Ctrl+left-click as button 2, so with nothing to cancel it falls through as the
-      // primary press and the Ctrl coarse step still works.
-      if (!e.ctrlKey) return;
-    } else if (e.button !== 0) return;
+      return;
+    }
+    if (e.button !== 0 && e.button !== 2) return;
     // A higher overlay covers this point, so its own handler takes the press instead.
     if (deps.deferToOverlay?.(e.clientX, e.clientY) === true) return;
 
@@ -106,7 +107,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     let consumed = windows.handleClick(x, y, { bigStep: e.ctrlKey || e.metaKey });
     for (const mode of held) {
       if (consumed) break;
-      consumed = mode.handleClick(e.clientX, e.clientY);
+      consumed = mode.handleClick(e.clientX, e.clientY, { keep: e.ctrlKey || e.metaKey });
     }
     if (consumed) e.stopImmediatePropagation();
   };

@@ -12,12 +12,12 @@ import type { ToolWindows } from '../src/hud/tool-panel/windows.js';
  */
 
 /** A press the handler reads like a MouseEvent: client point, button, modifiers. */
-function press(x: number, y: number, button = 0): Event {
+function press(x: number, y: number, button = 0, ctrlKey = false): Event {
   return Object.assign(new Event('mousedown', { cancelable: true }), {
     clientX: x,
     clientY: y,
     button,
-    ctrlKey: false,
+    ctrlKey,
     metaKey: false,
     shiftKey: false,
   });
@@ -158,6 +158,22 @@ describe('tool panel input clicks', () => {
     windowTarget.dispatchEvent(key('Escape'));
     expect(stepping.isActive()).toBe(false);
     expect(cues).toEqual(['fail', 'fail']);
+    input.dispose();
+  });
+
+  it('hands a held mode the Ctrl press macOS delivers on the right button as a primary press to keep', () => {
+    const { canvas, input, cues, held, arm } = mount();
+    const presses: Array<{ readonly keep: boolean } | undefined> = [];
+    held.handleClick = (_x, _y, mods) => {
+      presses.push(mods);
+      return true;
+    };
+    arm();
+    canvas.dispatchEvent(press(400, 300, 2, true));
+    canvas.dispatchEvent(press(400, 300));
+    expect(held.isActive()).toBe(true);
+    expect(cues).toEqual([]);
+    expect(presses).toEqual([{ keep: true }, { keep: false }]);
     input.dispose();
   });
 

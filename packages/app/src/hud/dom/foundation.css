@@ -772,7 +772,7 @@ body.on-drag-scroll-cursor-hidden * {
   display: flex;
   align-items: center;
   gap: 9px;
-  max-width: 540px;
+  max-width: 640px;
   padding: 7px 12px;
   transform: translateX(-50%);
   border: 1px solid var(--bronze-lo);
@@ -800,8 +800,13 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-strip b {
   color: var(--bronze-hi);
 }
+.on-hud .on-strip__text {
+  min-width: 0;
+  white-space: normal;
+}
 .on-hud .on-strip__keys {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 4px;
   margin-left: 6px;
