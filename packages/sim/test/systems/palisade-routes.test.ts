@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
@@ -8,6 +9,7 @@ import {
   PathFollow,
   PlayerOrder,
   Position,
+  SettlerProgress,
   Stance,
 } from '../../src/components/index.js';
 import {
@@ -22,8 +24,13 @@ import { findPath } from '../../src/nav/pathfinding/index.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { attackMoveUnit, attackUnit, moveUnit } from '../../src/systems/orders/index.js';
 import { palisadeBarring } from '../../src/systems/palisades/breach.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { fightExperienceTypeFor } from '../../src/systems/progression/experience.js';
+import { ARMOR_MATERIAL, MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { fighterAt } from '../conflict/melee-engagement/support.js';
+import { combatContent } from '../fixtures/content/combat.js';
+import { economyContent } from '../fixtures/content/economy.js';
+import { TEST_MANIFEST } from '../fixtures/content/index.js';
+import { societyContent } from '../fixtures/content/societies.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -34,6 +41,11 @@ const WOODCUTTER = 1;
 const HUNTER = 15;
 const P0 = 0;
 const P1 = 1;
+/** The axe weapon class, whose fight bucket seasons the woodcutter's swing. */
+const AXE_CLASS = 5;
+/** Landed hits past the building-damage experience cap, which would double a blow on a house. */
+const SEASONED_HITS = 100;
+const HOUSE_AXE_DAMAGE = 150;
 
 const WALL: ScriptLandscapeType = {
   typeId: 691,
@@ -89,11 +101,27 @@ const GATE_X = 12;
 const NORTH = { hx: GATE_X, hy: 2 };
 const SOUTH = { hx: GATE_X, hy: 18 };
 
-function fresh(): Simulation {
+/** The fixture content with the woodcutter's axe dealing {@link HOUSE_AXE_DAMAGE} in the building column,
+ *  one wall hitpoint and a half per blow. */
+function houseAxeContent(): ContentSet {
+  return parseContentSet({
+    manifest: TEST_MANIFEST,
+    ...economyContent,
+    ...combatContent,
+    ...societyContent,
+    weapons: combatContent.weapons.map((w) =>
+      w.id === 'test_axe'
+        ? { ...w, mainType: AXE_CLASS, damage: { ...w.damage, [ARMOR_MATERIAL.HOUSE]: HOUSE_AXE_DAMAGE } }
+        : w,
+    ),
+  });
+}
+
+function fresh(content: ContentSet = testContent()): Simulation {
   const base = grassNodeMap(WIDTH, HEIGHT);
   return new Simulation({
     seed: 1,
-    content: testContent(),
+    content,
     map: { ...base, landscapes: { types: [WALL, CLOSED_GATE, OPEN_GATE], placements: [] } },
   });
 }
@@ -358,6 +386,30 @@ describe('walls as targets', () => {
     const soldier = fighter(sim, NORTH, P0);
     attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: wall });
     expect(sim.world.get(soldier, AttackOrder).target).toBe(wall);
+  });
+
+  it('take the bare building column from a blow, however seasoned the striker', () => {
+    const firstBlow = (seasoned: boolean): number => {
+      const sim = fresh(houseAxeContent());
+      postRow(sim, WALL_ROW, P1);
+      const wall = [...sim.world.query(Palisade)].find(
+        (e) => nodeOfPosition(sim.world.get(e, Position).x, sim.world.get(e, Position).y).hx === GATE_X,
+      );
+      if (wall === undefined) throw new Error('expected a wall');
+      const soldier = fighter(sim, { hx: GATE_X, hy: WALL_ROW - 2 }, P0);
+      if (seasoned) {
+        const bucket = fightExperienceTypeFor(AXE_CLASS);
+        if (bucket === undefined) throw new Error('expected an axe fight bucket');
+        sim.world.mut(soldier, SettlerProgress).experience = new Map([[bucket, SEASONED_HITS]]);
+      }
+      attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: wall });
+      const full = sim.world.get(wall, Health).max;
+      for (let tick = 0; tick < 600 && sim.world.get(wall, Health).hitpoints === full; tick++) sim.step();
+      return full - sim.world.get(wall, Health).hitpoints;
+    };
+    const rookie = firstBlow(false);
+    expect(rookie).toBeGreaterThan(0);
+    expect(firstBlow(true)).toBe(rookie);
   });
 
   it('bar the way only when they are what blocks it', () => {

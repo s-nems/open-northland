@@ -358,19 +358,17 @@ function swingAt(
   if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
   // The victim's armor material selects both the damage column and the impact sound. Fight experience
   // with this weapon class raises the swing's damage: by the original's formula against a building, by an
-  // authored bonus against anyone else. A ranged swing's shot resolves both again against whatever it
-  // strikes.
+  // authored bonus against anyone else. Original behavior: a wall takes the bare column, unscaled by
+  // experience. A ranged swing's shot resolves both again against whatever it strikes.
   const material = targetMaterial(world, ctx, target);
   const base = weaponDamageVsMaterial(weapon.weapon, material);
   const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
   const blow = {
-    damage: damageVsTarget(
-      world,
-      target,
-      world.has(target, Building) || world.has(target, Palisade)
+    damage: world.has(target, Palisade)
+      ? damageVsTarget(world, target, base)
+      : world.has(target, Building)
         ? withHouseDamageExperience(base, hits)
         : withFightDamageBonus(base, hits),
-    ),
     hitSoundType: hitSoundVsMaterial(weapon.weapon, material),
   };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
