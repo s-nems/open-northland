@@ -1,11 +1,6 @@
 import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import type {
-  EquipRow,
-  SettlerPanelModel,
-  SettlerProductionModel,
-  SettlerProductionRow,
-} from '../src/hud/details-panel/model/index.js';
+import type { EquipRow, SettlerPanelModel } from '../src/hud/details-panel/model/index.js';
 import { equipmentSockets } from '../src/hud/dom/settler-panel/equipment.js';
 import { settlerHead } from '../src/hud/dom/settler-panel/head.js';
 import { stanceSegment } from '../src/hud/dom/settler-panel/military.js';
