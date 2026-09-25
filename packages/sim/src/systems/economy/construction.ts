@@ -140,7 +140,6 @@ function finishWall(world: World, ctx: SystemContext, e: Entity): void {
   world.add(e, PalisadeBlocking, {});
   if (ctx.terrain !== undefined) settleClosedWall(world, ctx, ctx.terrain, e);
   fillHealth(world, e);
-  ctx.events.emit({ kind: 'palisadeFinished', entity: e });
 }
 
 /**

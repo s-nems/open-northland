@@ -80,19 +80,7 @@ export function removeBuildingSilently(world: World, ctx: SystemContext, e: Enti
 
 /** Shared combat and owner-demolition teardown for a palisade or gate. */
 export function razePalisade(world: World, ctx: SystemContext, e: Entity): void {
-  const wall = world.tryGet(e, Palisade);
-  if (wall === undefined) return;
-  const owner = world.tryGet(e, Owner);
-  const pos = world.tryGet(e, Position);
-  ctx.events.emit({
-    kind: 'palisadeDestroyed',
-    entity: e,
-    player: owner?.player ?? null,
-    gfxIndex: wall.gfxIndex,
-    tribe: wall.tribe,
-    built: wall.built,
-    ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
-  });
+  if (!world.has(e, Palisade)) return;
   const spill = spilledStockOf(world, e);
   releaseWallBreaches(world, ctx, e);
   world.destroy(e);

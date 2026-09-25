@@ -522,11 +522,6 @@ export function convertPalisadeGate(
   world.add(command.palisade, Health, { hitpoints: wall.maxHitpoints, max: wall.maxHitpoints });
   world.add(command.palisade, PalisadeBlocking, {});
   settleClosedWall(world, ctx, terrain, command.palisade);
-  ctx.events.emit({
-    kind: 'palisadePlaced',
-    entity: command.palisade,
-    at: { hx: node.hx, hy: node.hy },
-  });
 }
 
 /** A standing wall or gate, damaged or whole, rather than a segment still to be raised. */
@@ -563,5 +558,4 @@ export function placePalisade(
     // segment's pool climbs with its build instead.
     markShortPool(world, entity);
   }
-  ctx.events.emit({ kind: 'palisadePlaced', entity, at: { hx: command.x, hy: command.y } });
 }
