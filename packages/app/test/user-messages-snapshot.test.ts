@@ -1,3 +1,4 @@
+import * as sim from '@open-northland/sim';
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
@@ -30,6 +31,8 @@ interface Actor {
   readonly piety?: number;
   /** Hitpoints left of the person pool; absent leaves the settler without a Health component. */
   readonly hitpoints?: number;
+  /** A script made the settler unharmable. */
+  readonly invulnerable?: boolean;
   readonly workplace?: number;
   /** A gatherer's flag yard, which stands in for a workplace. */
   readonly workFlag?: number;
@@ -93,6 +96,9 @@ function components(a: Actor): Record<string, unknown> {
       ? {}
       : { TradeRoute: { stops: Array.from({ length: a.tradeStops }, (_, house) => ({ house })) } }),
     ...(a.rider === true ? { Rider: { vehicle: 50, boarding: false } } : {}),
+    ...(a.invulnerable === true
+      ? { MissionBehaviour: { flags: sim.components.MISSION_BEHAVIOUR.INVULNERABLE } }
+      : {}),
     ...doingComponents(a.doing ?? 'nothing'),
   };
 }
@@ -184,6 +190,12 @@ describe('user messages read off the snapshot', () => {
       ]),
     );
     expect(out).toEqual([[USER_MESSAGE_TYPE.lostWithoutSignposts, 1]]);
+  });
+
+  it('spares a script-invulnerable settler the note', () => {
+    const source = createSnapshotMessageSource(LOCAL);
+    const out = sweep(source, snapshot(100, [{ id: 1, hitpoints: 1, invulnerable: true }]));
+    expect(out).toEqual([]);
   });
 
   it('warns about a wounded settler even where the needs rule is off', () => {

@@ -145,7 +145,7 @@ export function resolveCombatHit(
     }
   }
   // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
-  // spared. Nothing regenerates a human here, so the flag's whole effect is this zero.
+  // spared here, as starvation spares it in the needs pass.
   const dealt = shieldedByScript(world, target) ? 0 : Math.max(0, damage);
   if (dealt > 0) {
     woundBearer(world, ctx, target, dealt);

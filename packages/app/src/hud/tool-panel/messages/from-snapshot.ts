@@ -12,6 +12,7 @@ import {
   actorsOf,
   healthOf,
   isAdult,
+  isInvulnerable,
   needsRuleEnabled,
   num,
   ownerPlayerOf,
@@ -143,10 +144,10 @@ class PostHistory {
   }
 }
 
-/** A living settler whose pool has nearly run out. */
+/** A living settler whose pool has nearly run out, and that a script has not made unharmable. */
 function isDying(e: SnapshotEntity): boolean {
   const health = healthOf(e);
-  return health !== undefined && systems.isNearDeath(health.hitpoints, health.max);
+  return health !== undefined && !isInvulnerable(e) && systems.isNearDeath(health.hitpoints, health.max);
 }
 
 /** The sim's own lost marker, so a lost settler's note is back after a reload; the sim event that raised
@@ -174,9 +175,10 @@ function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity): void {
 
 /**
  * A settler close to death, whatever brought it there. The original reads the hitpoint margin alone, so
- * a wounded fighter is warned about as loudly as a starving one, and holds the note back while the
- * settler carries a healing draught. That check is left out here: a bearer drinks its draughts before
- * falling to half its pool, so one near death has none left.
+ * a wounded fighter is warned about as loudly as a starving one, and holds the note back for a
+ * script-invulnerable settler and while one carries a healing draught. Approximation: the draught check
+ * is left out, since a bearer drinks before falling to half its pool; only a draught put in its slot
+ * after the wound, and not yet drunk, would have held the note back.
  */
 function raiseDying(raiser: MessageRaiser, e: SnapshotEntity): void {
   if (isDying(e)) raiser.settler(USER_MESSAGE_TYPE.willDie, e);

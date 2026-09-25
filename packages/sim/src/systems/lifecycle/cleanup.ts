@@ -19,6 +19,8 @@ export const cleanupSystem: System = (world, ctx) => {
   // ascending-id order so the `settlerDied` events render consumes are stable.
   const dead: Entity[] = [];
   for (const e of world.query(Health)) {
+    // Intentional deviation from the original: a pool left at exactly 0 dies here, where the original's
+    // regeneration lifts a fed person back to 1 before its death check.
     if (world.get(e, Health).hitpoints <= 0) dead.push(e);
   }
   dead.sort((a, b) => a - b);

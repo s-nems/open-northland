@@ -12,6 +12,7 @@ import {
   REGENERATION_HITPOINTS_PER_TICK,
   STARVATION_HITPOINTS_PER_TICK,
 } from '../../../src/systems/index.js';
+import { woundedPersonsOf } from '../../../src/systems/lifecycle/needs/wounded.js';
 import { testContent } from '../../fixtures/content.js';
 import { settlerWithHunger } from './support.js';
 
@@ -97,15 +98,15 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     ['baby', BABY_MALE, 0],
     ['child', CHILD_MALE, CHILD_AGE_TICKS],
   ] as const) {
-    it(`exempts a growing settler in the ${stage} stage - it carries no needs to starve on`, () => {
+    it(`heals a growing settler in the ${stage} stage even on a pinned bar - it carries no needs`, () => {
       const sim = new Simulation({ seed: 1, content: testContent() });
       // An authored pinned bar is the only way a growing settler reaches one: nothing in play moves it.
       // Age matters - an adult fixture whose synthetic job id collides with an age class must still starve.
-      const e = settlerWithPool(sim, ONE, ORIGINAL_POOL);
+      const e = settlerWithPool(sim, ONE, OTHER_POOL, ORIGINAL_POOL);
       setSettlerJob(sim.world, e, jobType);
       sim.world.add(e, components.Age, { ticks: ageTicks });
       for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
-      expect(pool(sim, e)).toBe(ORIGINAL_POOL);
+      expect(pool(sim, e)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
     });
   }
 
@@ -158,6 +159,26 @@ describe('needsSystem - healing (a fed settler regains hitpoints)', () => {
     // The setup command applies on the first tick, before the needs pass.
     expect(pool(sim, fed)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
     expect(pool(sim, pinned)).toBe(OTHER_POOL + SEVERAL_STEPS * REGENERATION_HITPOINTS_PER_TICK);
+    expect(sim.checkInvariants()).toEqual([]); // the wounded list agrees with a fresh scan
+  });
+
+  it('with needs disabled, reads nobody at full health and drops a settler once it is whole', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const whole = settlerWithPool(sim, fx.fromInt(0), ORIGINAL_POOL);
+    const nearlyWhole = settlerWithPool(sim, fx.fromInt(0), ORIGINAL_POOL - 2, ORIGINAL_POOL);
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.step();
+    expect(woundedPersonsOf(sim.world)).toEqual([nearlyWhole]);
+    const generation = sim.world.componentValueGeneration(Health);
+    sim.step();
+    sim.step();
+    expect(pool(sim, nearlyWhole)).toBe(ORIGINAL_POOL);
+    expect(woundedPersonsOf(sim.world)).toEqual([]);
+    const settled = sim.world.componentValueGeneration(Health);
+    for (let i = 0; i < SEVERAL_STEPS; i++) sim.step();
+    expect(sim.world.componentValueGeneration(Health)).toBe(settled); // nobody's pool is written
+    expect(settled).toBeGreaterThan(generation);
+    expect(pool(sim, whole)).toBe(ORIGINAL_POOL);
   });
 });
 

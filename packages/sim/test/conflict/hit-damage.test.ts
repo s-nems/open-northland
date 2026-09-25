@@ -1,5 +1,7 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Anger,
   Building,
   diplomacyStance,
   Health,
@@ -17,6 +19,7 @@ import { HEX_HEADING, hexHeadingBetween, hexNeighboursOf, positionOfNode } from 
 import { targetMaterial } from '../../src/systems/conflict/weapons.js';
 import { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } from '../../src/systems/index.js';
 import { landedDamage } from '../../src/systems/settlers/atomics/effects/combat/hit/damage.js';
+import type { PendingHitReaction } from '../../src/systems/settlers/atomics/effects/combat/hit/reaction.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import {
   ARMOR_BLOCKING,
@@ -26,6 +29,7 @@ import {
   fighterAtNode,
   grass,
   OTHER,
+  SAXON,
   VIKING,
   WOLF_TRIBE,
   WOMAN,
@@ -35,6 +39,8 @@ import {
 const VICTIM = { hx: 4, hy: 4 } as const;
 const [EAST, WEST, NORTH_WEST, NORTH_EAST, SOUTH_WEST, SOUTH_EAST] = hexNeighboursOf(VICTIM.hx, VICTIM.hy);
 const BASE = 1000;
+/** A provoked beast's anger span in ticks. */
+const ANGRY_TICKS = 10;
 
 function setup(): { sim: Simulation; striker: Entity } {
   const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(6, 6) });
@@ -186,6 +192,28 @@ describe('resolveCombatHit - a blow that does no damage', () => {
     ).toBe(true);
     expect(sim.events.current().filter((ev) => ev.kind === 'combatHit')).toHaveLength(1);
     expect(diplomacyStance(sim.world, VICTIM_PLAYER, ATTACKER_PLAYER)).toBe('enemy');
+  });
+
+  it('still angers a beast and makes a person react, as the original does whatever the damage', () => {
+    const { sim, striker } = setup();
+    // A civilian, whose tribe binds the stagger clip a blow plays on it.
+    const civilian = fighterAtNode(sim, 1, 0, SAXON, WOMAN, { armorClass: CHAIN_CLASS, hitpoints: BASE });
+    const reactions: PendingHitReaction[] = [];
+    resolveCombatHit(sim.world, ctxOf(sim), striker, civilian, swing(ARMOR_BLOCKING), reactions, 'melee');
+    expect(sim.world.get(civilian, Health).hitpoints).toBe(BASE);
+    expect(reactions).toHaveLength(1);
+
+    const base = combatCadenceContent();
+    const provokable = parseContentSet({
+      ...base,
+      animals: base.animals.map((a) => ({ ...a, getAngry: true, angryGameTime: ANGRY_TICKS })),
+    });
+    const wild = new Simulation({ seed: 1, content: provokable, map: grass(6, 6) });
+    const hunter = fighterAtNode(wild, 0, 0, VIKING, WOMAN);
+    const wolf = fighterAtNode(wild, 1, 0, WOLF_TRIBE, null, { hitpoints: BASE });
+    resolveCombatHit(wild.world, ctxOf(wild), hunter, wolf, swing(0), [], 'melee');
+    expect(wild.world.get(wolf, Health).hitpoints).toBe(BASE);
+    expect(wild.world.has(wolf, Anger)).toBe(true);
   });
 
   it('does nothing at all to a building whose column is zero', () => {

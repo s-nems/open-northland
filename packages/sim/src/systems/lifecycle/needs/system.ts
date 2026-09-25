@@ -26,6 +26,7 @@ import {
   NEED_RESERVE_UNITS,
   needBar,
 } from './scale.js';
+import { woundedPersonsOf } from './wounded.js';
 
 /** The spread of a settler's starting deficit, half a bar, so a map opens with varied satisfaction instead
  *  of everyone identically full. Authored: per-settler starting needs are below the readable data. */
@@ -105,13 +106,17 @@ export function isNearDeath(hitpoints: number, max: number): boolean {
  * so everyone regains them as a fed settler does.
  */
 export const needsSystem: System = (world, ctx) => {
-  const needs = needsEnabled(world);
-  const refilling = needs ? seatRefillingAt(world, ctx.tick) : null;
+  if (!needsEnabled(world)) {
+    // Nobody hungers, so only the wounded move: the pass reads them alone.
+    for (const e of woundedPersonsOf(world)) stepHealth(world, ctx, e, undefined);
+    return;
+  }
+  const refilling = seatRefillingAt(world, ctx.tick);
   for (const e of world.query(Person)) {
     // Frozen inside a cart, hitpoints included (approximation); a ship's passengers eat and sleep aboard.
     if (isAboardVehicle(world, e) && !isAboardShip(world, ctx.content, e)) continue;
     if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e);
-    const settler = needs && carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
+    const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);
   }
 };

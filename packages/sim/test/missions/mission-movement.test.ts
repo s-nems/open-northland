@@ -17,6 +17,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { playerCommand, type Simulation } from '../../src/index.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
+import { REGENERATION_HITPOINTS_PER_TICK } from '../../src/systems/index.js';
 import type { MissionResultOp } from '../../src/systems/missions/index.js';
 import {
   firingMission,
@@ -213,8 +214,8 @@ describe('HealHumansInArea', () => {
     runLoadPass(sim);
     const pools = wounded.map((e) => sim.world.get(e, Health));
     expect(pools.filter((h) => h.hitpoints === h.max)).toHaveLength(1);
-    // The one outside has only its own point-a-tick regeneration.
-    expect(pools.filter((h) => h.hitpoints < h.max / 2)).toHaveLength(1);
+    // The one outside has only its own point-a-tick regeneration over the pass's one tick.
+    expect(pools.filter((h) => h.hitpoints === 1 + REGENERATION_HITPOINTS_PER_TICK)).toHaveLength(1);
   });
 
   it('sets a human a temple raised above its max back to the max', () => {

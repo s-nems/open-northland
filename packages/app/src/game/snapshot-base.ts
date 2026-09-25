@@ -314,6 +314,11 @@ export function isPlayerControllable(e: SnapshotEntity): boolean {
   return !hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.NOT_CONTROLLABLE);
 }
 
+/** A script made the settler unharmable: the sim spares its pool every blow and bite. */
+export function isInvulnerable(e: SnapshotEntity): boolean {
+  return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.INVULNERABLE);
+}
+
 /** A script fixed the settler's trade: the sim refuses a profession change, a lesson and a drill. */
 export function isJobLocked(e: SnapshotEntity): boolean {
   return hasMissionBehaviour(e, components.MISSION_BEHAVIOUR.JOB_LOCKED);
