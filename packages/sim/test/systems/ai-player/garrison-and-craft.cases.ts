@@ -10,6 +10,7 @@ import {
   Building,
   CompletedCycles,
   CraftSelection,
+  EquipOrder,
   JobAssignment,
   Settler,
   setStockAmount,
@@ -27,6 +28,7 @@ import {
 import {
   DEFAULT_BUILD_ORDER,
   LATE_GAME_CIVILIANS,
+  militaryModule,
   SeatSupply,
   supplyLines,
 } from '../../../src/systems/ai-player/index.js';
@@ -41,7 +43,8 @@ import {
 import { ARMY_FLOOR_LEAD_TICKS, ARMY_FLOOR_MIN } from '../../../src/systems/ai-player/workforce/garrison.js';
 import { mayMarry } from '../../../src/systems/family/eligibility.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
-import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
+import { ARMOR_MAIN_TYPE, WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
+import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import { stampPost } from '../../signposts/support.js';
@@ -73,6 +76,7 @@ import {
   SPEAR,
   SPEARMAN,
   SWORD,
+  SWORDSMAN,
   spawnMen,
   TOOL_IRON,
   TOWER_TYPE,
@@ -1379,5 +1383,98 @@ describe('workforce module - the barracks and craft selections', () => {
       { kind: 'setCraftGoods', entity: tailors[0], goods: [SHOES] },
       { kind: 'setCraftGoods', entity: tailors[1], goods: [LEATHER_ARMOUR] },
     ]);
+  });
+});
+
+describe('military module - the outfit at the barracks door', () => {
+  /** The base soldier class: bare fists, the drill's fallback while the shops were empty. */
+  const FIST = 31;
+  const CHAIN_GOOD = 43;
+  const CHAIN_ARMOR = 1;
+
+  /** {@link armedContent} whose weapon goods are wearable, with one heavy armour beside them. */
+  function outfitContent(): ContentSet {
+    const base = armedContent();
+    const weapons = new Set([SWORD, SPEAR, BOW]);
+    return parseContentSet({
+      ...base,
+      goods: [
+        ...base.goods.map((g) => (weapons.has(g.typeId) ? { ...g, equip: { category: 'weapon' } } : g)),
+        { typeId: CHAIN_GOOD, id: 'armor_chain', weight: 1, equip: { category: 'armor' } },
+      ],
+      armor: [{ typeId: CHAIN_ARMOR, id: 'chain', mainType: ARMOR_MAIN_TYPE.HEAVY, goodType: CHAIN_GOOD }],
+    });
+  }
+
+  /** A soldier of `jobType` standing `apart` nodes below the seat's barracks door, `armed` with a sword
+   *  when asked. Each man gets a node of his own: one spawned onto another's is walked off it, and a
+   *  walking man is not one the campaign leaves waiting. */
+  function soldierAtDoor(seat: ArmedSeat, jobType: number, apart: number, armed = false): Entity {
+    const terrain = seat.sim.terrain;
+    if (terrain === undefined) throw new Error('setup: the fixture map builds no terrain graph');
+    const barracks = ownedBuildings(seat.sim.world, SEAT).find(
+      (e) => seat.sim.world.get(e, Building).buildingType === BARRACKS_TYPE,
+    );
+    if (barracks === undefined) throw new Error('setup: no barracks');
+    const door = terrain.coordsOf(interactionCell(seat.sim.world, seat.ctx, terrain, barracks));
+    const before = new Set(seat.sim.world.query(Settler));
+    seat.sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType,
+      x: door.x,
+      y: door.y + apart,
+      tribe: VIKING,
+      owner: SEAT,
+      ...(armed ? { equipment: { weapon: { goodType: SWORD } } } : {}),
+    });
+    seat.sim.step();
+    const soldier = [...seat.sim.world.query(Settler)].find((e) => !before.has(e));
+    if (soldier === undefined) throw new Error('setup: no soldier');
+    return soldier;
+  }
+
+  const equipOrders = (seat: ArmedSeat) =>
+    [...militaryModule.run(seat.sim.world, seat.ctx, SEAT)].filter((c) => c.kind === 'equipGood');
+
+  /** {@link armedSeat} with its live AI switched off, so only the decisions a case runs dress anyone. */
+  function outfitSeat(arms: readonly { good: number; amount: number }[]): ArmedSeat {
+    const seat = armedSeat(arms, { content: outfitContent(), men: 0 });
+    seat.sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: false });
+    seat.sim.step();
+    return seat;
+  }
+
+  it('sends a bare soldier at the door for a weapon, and an armed one for armour, one errand at a time', () => {
+    const seat = outfitSeat([
+      { good: SWORD, amount: 1 },
+      { good: CHAIN_GOOD, amount: 1 },
+    ]);
+    const bare = soldierAtDoor(seat, FIST, 2);
+    // The weapon comes before the armour, and the class is the one the draft would pick next.
+    expect(equipOrders(seat)).toEqual([
+      { kind: 'equipGood', entity: bare, group: 'weapon', slot: 0, goodType: SWORD },
+    ]);
+    seat.sim.enqueueSetup({ kind: 'equipGood', entity: bare, group: 'weapon', slot: 0, goodType: SWORD });
+    seat.sim.step();
+    expect(seat.sim.world.has(bare, EquipOrder)).toBe(true);
+    // His errand is underway: nothing more for him, and the sword is spoken for.
+    expect(equipOrders(seat)).toEqual([]);
+
+    const armed = soldierAtDoor(seat, SWORDSMAN, 4, true);
+    expect(equipOrders(seat)).toEqual([
+      { kind: 'equipGood', entity: armed, group: 'armor', slot: 0, goodType: CHAIN_GOOD },
+    ]);
+  });
+
+  it('sends no more men for a weapon than the stores hold units of it', () => {
+    const seat = outfitSeat([{ good: SWORD, amount: 1 }]);
+    const first = soldierAtDoor(seat, FIST, 2);
+    const second = soldierAtDoor(seat, FIST, 4);
+    expect(equipOrders(seat)).toEqual([
+      { kind: 'equipGood', entity: first, group: 'weapon', slot: 0, goodType: SWORD },
+    ]);
+    // A second sword in store: the second man goes too.
+    setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), SWORD, 2);
+    expect(equipOrders(seat).map((c) => c.entity)).toEqual([first, second]);
   });
 });
