@@ -1,4 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
+import { pickableSeat } from '../../game/viewer-seat.js';
 import { isActionHotkey, isFieldKey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
@@ -266,7 +267,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       } else {
         const snapshot = opts.snapshot();
         const ids = controlGroups.recall(groupCommand.action, (id) =>
-          isControlGroupMember(snapshot, id, opts.viewer.seat()),
+          isControlGroupMember(snapshot, id, pickableSeat(opts.viewer)),
         );
         if (ids === null) return;
         if (groupRecallEffect(ids, selection.ids()) === 'centre') {

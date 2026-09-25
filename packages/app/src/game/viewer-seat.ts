@@ -19,6 +19,12 @@ export interface SwitchableViewerSeat extends ViewerSeat {
   onSwitch(listener: (seat: number | null) => void): void;
 }
 
+/** The owner a click or a control-group recall is limited to; null on the whole map, where every
+ *  owner's entities are the viewer's to pick. */
+export function pickableSeat(viewer: ViewerSeat): number | null {
+  return viewer.wholeMap() ? null : viewer.seat();
+}
+
 /** A played session's own seat: its fog, its entities, its figures. */
 export function fixedViewerSeat(seat: number): ViewerSeat {
   return { seat: () => seat, wholeMap: () => false, version: () => 0 };

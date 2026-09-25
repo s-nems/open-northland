@@ -90,8 +90,8 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   entry(null);
   for (const seat of deps.seats) entry(seat.player);
 
-  // Escape closes the open list from wherever focus sits, ahead of the game's own Escape: a clicked
-  // button holds no focus in every browser.
+  // Escape closes the open list from wherever focus sits, since a clicked button holds no focus in
+  // every browser; the tool panel's own Escape runs first, so an open window closes before the list.
   const onEscape = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape') return;
     show(false);

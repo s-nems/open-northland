@@ -1,5 +1,5 @@
 import type { DoorBadge, ElevationField } from '@open-northland/render';
-import type { ViewerSeat } from '../../game/viewer-seat.js';
+import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { drawnInFront, pickDoorBadgeRow, pickGarrisonFlag, pickTopAt, topTargetAt } from '../picking.js';
 import type { UnitTargets } from './unit-targets.js';
 
@@ -29,8 +29,8 @@ export function createClickHits(deps: ClickHitDeps): ClickHits {
   /** An enemy building's markers are not selection proxies for the men behind them. */
   const clickableBadges = (): readonly DoorBadge[] => {
     const badges = deps.doorBadges?.() ?? [];
-    const seat = deps.viewer.seat();
-    return deps.viewer.wholeMap() ? badges : badges.filter((b) => b.player === seat);
+    const seat = pickableSeat(deps.viewer);
+    return seat === null ? badges : badges.filter((b) => b.player === seat);
   };
 
   const doorMarkerAt = (wx: number, wy: number): DoorMarkerHit | null => {
