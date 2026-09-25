@@ -6,6 +6,7 @@ import {
   Health,
   Owner,
   Position,
+  SettlerProgress,
   SiteAssignment,
   Stockpile,
   Upgrading,
@@ -15,10 +16,13 @@ import { fx, Simulation } from '../../src/index.js';
 import { forceFinishConstruction } from '../../src/systems/economy/construction.js';
 import { needsRepair, REPAIR_CREW_LIMIT, repairBuilding } from '../../src/systems/economy/repair.js';
 import { plannerSystem } from '../../src/systems/index.js';
+import { applyEffect } from '../../src/systems/settlers/atomics/effects/apply.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { REPAIR_CALM_TICKS } from '../../src/systems/settlers/drives/economy/repair.js';
 import {
+  BUILDER_GENERAL_TRACK,
   builderAt,
+  builderWith,
   builtBuildingAt,
   constructionContent,
   ctxOf,
@@ -26,6 +30,8 @@ import {
   HOUSE,
   STONE,
   siteAt,
+  TOOL_IRON,
+  tooledBuilderContent,
   WOOD,
 } from './construction-system/support.js';
 
@@ -80,6 +86,37 @@ describe('building repair', () => {
 
     expect(repairBuilding(sim.world, ctxOf(sim), house, builder)).toBe(true);
     expect(sim.world.get(house, Health).hitpoints).toBe(400);
+  });
+
+  it('a master with an iron tool restores four steps a swing, as on a construction site', () => {
+    const sim = new Simulation({ seed: 2, content: tooledBuilderContent(), map: grassMap(10, 3) });
+    const house = damagedHouseAt(sim, 6, 1, 300);
+    // 20000 raw XP on the factor-5 track is 100 percent: (150 + 100) * 175% is four whole steps.
+    const master = builderWith(sim, { xp: 20_000, tool: TOOL_IRON });
+
+    expect(repairBuilding(sim.world, ctxOf(sim), house, master)).toBe(true);
+    expect(sim.world.get(house, Health).hitpoints).toBe(700);
+  });
+
+  it('a repair swing trains the builder, and a swing at a whole building does not', () => {
+    const sim = new Simulation({ seed: 2, content: tooledBuilderContent(), map: grassMap(10, 3) });
+    const house = damagedHouseAt(sim, 6, 1, DAMAGED_MAX_HP - 100);
+    const builder = builderWith(sim, { xp: 0, tool: null });
+    const xp = (): number =>
+      sim.world.get(builder, SettlerProgress).experience.get(BUILDER_GENERAL_TRACK) ?? 0;
+    const swing = () =>
+      applyEffect(sim.world, ctxOf(sim), builder, {
+        atomicId: 1,
+        duration: 1,
+        effect: { kind: 'repair', site: house },
+      });
+
+    swing();
+    const trained = xp();
+    expect(trained).toBeGreaterThan(0);
+
+    swing();
+    expect(xp()).toBe(trained);
   });
 
   it('sends no crew to a building hit within the calm period', () => {
