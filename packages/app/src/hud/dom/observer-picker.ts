@@ -55,10 +55,19 @@ export function createObserverPicker(deps: ObserverPickerDeps): ObserverPicker {
   title.textContent = copy.observer.label;
   list.append(title);
 
-  const labelOf = (seat: number | null): string =>
-    seat === null
-      ? copy.observer.wholeMap
-      : (deps.seats.find((s) => s.player === seat)?.name ?? `${copy.player} ${seat}`);
+  // Seats are numbered from one, as the lobby numbers them. A name several seats share (a map's
+  // "Duchy" ×6) carries the number too, so the rows stay distinguishable beyond their swatch.
+  const seatNumber = (seat: number): number => seat + 1;
+  const nameCount = new Map<string, number>();
+  for (const { name } of deps.seats) {
+    if (name !== undefined) nameCount.set(name, (nameCount.get(name) ?? 0) + 1);
+  }
+  const labelOf = (seat: number | null): string => {
+    if (seat === null) return copy.observer.wholeMap;
+    const name = deps.seats.find((s) => s.player === seat)?.name;
+    if (name === undefined) return `${copy.player} ${seatNumber(seat)}`;
+    return (nameCount.get(name) ?? 0) > 1 ? `${name} ${seatNumber(seat)}` : name;
+  };
   const colourOf = (seat: number | null): string =>
     seat === null ? 'transparent' : playerSwatchHex(deps.playerColourOf?.(seat) ?? seat);
 
