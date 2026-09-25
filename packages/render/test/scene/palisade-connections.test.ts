@@ -198,6 +198,31 @@ describe('palisadePostOffsets', () => {
     expect(items.flatMap((item) => item.palisadePosts ?? [])).toEqual([]);
   });
 
+  it('staggers the outer posts a gate leaves standing on its terminals with the gate', () => {
+    const gate = palisade(2, 10, 10, ONE, 697);
+    const items = buildSpriteScene(
+      snapshotOf([
+        palisade(1, 8, 10),
+        {
+          ...gate,
+          components: {
+            ...gate.components,
+            Palisade: {
+              ...gate.components.Palisade,
+              walk: [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 })),
+              gate: { open: false, counterpartGfxIndex: 701 },
+            },
+          },
+        },
+        palisade(3, 12, 10),
+      ]),
+    );
+    for (const ref of [1, 2, 3]) {
+      const x = items.find((item) => item.ref === ref)?.x ?? Number.NaN;
+      expect((x + PALISADE_STAGGER_PX) % 34, `ref ${ref}`).toBe(0);
+    }
+  });
+
   it.each([
     {
       label: 'horizontal',

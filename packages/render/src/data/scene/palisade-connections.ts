@@ -118,10 +118,8 @@ function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField 
     // Construction sites are ground markers until completed; they neither draw a post nor connect
     // completed neighbours across their anchor, but stagger with the line they stand in.
     if ('UnderConstruction' in entity.components && !('PalisadeBlocking' in entity.components)) {
-      if (component.gate === undefined || component.gate === null) {
-        layoutNodes.set(key, node);
-        refsByNode.set(key, entity.id);
-      }
+      layoutNodes.set(key, node);
+      refsByNode.set(key, entity.id);
       continue;
     }
     if (component.gate !== undefined && component.gate !== null) {
@@ -157,7 +155,8 @@ function buildPalisadeLayout(snapshot: WorldSnapshot, elevation: ElevationField 
     shiftX.set(gate.ref, palisadeStaggerX(gate.hy));
     for (const end of gateEndpoints(gate)) terminals.add(wallNodeKey(end.hx, end.hy));
   }
-  for (const key of staggeredNodeKeys(layoutNodes, terminals)) {
+  // A gate leaves its span's outer posts standing on its terminals; they stagger with it.
+  for (const key of [...staggeredNodeKeys(layoutNodes, terminals), ...terminals]) {
     const ref = refsByNode.get(key);
     const node = layoutNodes.get(key);
     if (ref !== undefined && node !== undefined) shiftX.set(ref, palisadeStaggerX(node.hy));
