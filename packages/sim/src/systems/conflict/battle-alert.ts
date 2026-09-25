@@ -10,7 +10,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
+import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { stanceFights, stanceMode } from '../readviews/index.js';
 import { playerSeesEntity } from '../vision/index.js';
@@ -31,9 +31,9 @@ import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 // the presence sweep off the hundreds of deer a decoded map carries.
 
 /**
- * How near (Manhattan half-cell nodes) a fight gets a fighting unit asleep in the open back up, and how
- * near an enemy on its feet keeps one from lying down. Original behavior for the reach: a blow on one of a
- * player's people alarms its soldiers within 40 map points. Holding them from rest is authored.
+ * How near (map points) a fight gets a fighting unit asleep in the open back up, and how near an enemy on
+ * its feet keeps one from lying down. Authored, sized to the original's reach of 40 map points for the
+ * alarm a blow on one of a player's people raises among its soldiers.
  */
 export const STAND_TO_RADIUS_NODES = 40;
 
@@ -187,7 +187,8 @@ interface Member {
 }
 
 /** Positioned entities in coarse cells {@link REST_CLEARANCE_NODES} wide, so a query within that radius -
- *  the widest {@link BattleFront} asks - reads the nine cells around its own. Its own structure rather than
+ *  the widest {@link BattleFront} asks - reads the nine cells around its own: a map-point disc reaches no
+ *  farther along either axis than its radius. Its own structure rather than
  *  `spatial/nodes.ts` buckets, whose nearest search walks the rings of a radius-40 diamond (some 3300
  *  nodes) to answer a question that only needs the members of nine cells, and rather than the combat pass's
  *  {@link CombatIndex}, which the planner pass has no access to. */
@@ -214,7 +215,8 @@ class CoarseGrid {
     this.empty = false;
   }
 
-  /** Whether a member within `radius`, at most {@link REST_CLEARANCE_NODES}, of `(hx, hy)` passes `accept`.
+  /** Whether a member within `radius` map points, at most {@link REST_CLEARANCE_NODES}, of `(hx, hy)` passes
+   *  `accept`.
    *  `accept` must be a pure read: which member matches depends on insertion order, only whether one does
    *  is a fact about the world. */
   anyWithin(hx: number, hy: number, radius: number, accept: (e: Entity) => boolean): boolean {
@@ -223,7 +225,7 @@ class CoarseGrid {
       if (column === undefined) continue;
       for (let dy = -1; dy <= 1; dy++) {
         for (const m of column.get(coarseOf(hy) + dy) ?? []) {
-          if (Math.abs(m.hx - hx) + Math.abs(m.hy - hy) <= radius && accept(m.e)) return true;
+          if (hexDistanceBetween(hx, hy, m.hx, m.hy) <= radius && accept(m.e)) return true;
         }
       }
     }

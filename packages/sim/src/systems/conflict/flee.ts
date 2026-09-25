@@ -32,8 +32,10 @@ const FLEE_COOLDOWN_TICKS = 40;
 
 /**
  * FLEE stance - how many half-cell nodes a fleeing unit runs away from the nearest threat each time it
- * re-aims. Original behavior for the distance: a struck civilian runs 10 map points from its attacker.
- * Running from any threat in sight, not only from a blow, is this sim's FLEE stance.
+ * re-aims, and a frightened animal from its scare, along one of the eight walk directions. The original
+ * runs a struck civilian 10 map points from its attacker; this is 10 map points along a row or a column and
+ * up to 15 on a diagonal, an approximation. Running from any threat in sight, not only from a blow, is
+ * this sim's FLEE stance.
  */
 const FLEE_STEP_NODES = 10;
 
@@ -101,7 +103,7 @@ export function fleeDrive(
     !isHunterJob(ctx.content, attacker.jobType) &&
     !index.threatsWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
       ? null
-      : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept, viewer?.player ?? null);
+      : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept, viewer?.player ?? null, 'hex');
   const fleeing = world.tryGet(e, Fleeing);
 
   if (threat === null) {

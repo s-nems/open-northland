@@ -66,6 +66,11 @@ export interface CoarseCell {
   unitsAdmitted: boolean;
 }
 
+/** How a combat search measures its band: Manhattan half-cell nodes, the weapon reach metric, or the
+ *  original's map points ({@link hexDistanceBetween}), which its search radii and leashes count in. A
+ *  map-point disc of radius `r` lies inside the square box of radius `r`, as a Manhattan diamond does. */
+export type SearchMetric = 'manhattan' | 'hex';
+
 /** One nesting depth's sorted candidate keys and the band they answer, reused by the next query at that
  *  depth that asks the same band. */
 export interface BandScan {
@@ -74,6 +79,7 @@ export interface BandScan {
   y: number;
   minDist: number;
   maxDist: number;
+  metric: SearchMetric;
   seeker: number | null;
   count: number;
   keys: Float64Array;
@@ -205,6 +211,7 @@ export class CombatGrid {
         y: 0,
         minDist: 0,
         maxDist: 0,
+        metric: 'manhattan',
         seeker: null,
         count: 0,
         keys: new Float64Array(BAND_SCAN_INITIAL_KEYS),

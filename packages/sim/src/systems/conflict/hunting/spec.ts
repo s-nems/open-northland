@@ -71,6 +71,7 @@ export function hunterEngageSpec(
       accept: (t) => acceptPrey(t) && lastResortOk(t),
       minDist,
       searchRadius: sight,
+      metric: 'manhattan',
       player: null,
       preySeeker: true,
       lowPriority: lastResortLivestock,
@@ -104,11 +105,12 @@ export function hunterEngageSpec(
     // From wherever the hunter stands, `dist(here, anchor) + radius` provably covers every in-ground
     // candidate (triangle inequality), and collapses to ~radius when it stands on its ground.
     searchRadius: manhattan(terrain, hereNode, ground.anchorCell) + ground.radius,
+    metric: 'manhattan',
     player: null,
     preySeeker: true,
     lowPriority: lastResortLivestock,
     lock: { target: livePrey(world, e, held) },
-    defend: { anchorCell: ground.anchorCell, leash, hold: false },
+    defend: { anchorCell: ground.anchorCell, leash, metric: 'manhattan', hold: false },
   };
 }
 

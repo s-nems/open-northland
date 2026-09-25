@@ -77,6 +77,25 @@ describe('engagement - how far each stance looks', () => {
     expect(SIGHT_RADIUS_NODES).toBe(18);
   });
 
+  it('counts its reach in map points, where a diagonal half as wide as it is tall comes free', () => {
+    const ROWS = SIGHT_RADIUS_NODES; // an even row span, so no half-node lean applies
+    const FREE_COLUMNS = ROWS / 2;
+    for (const [columns, found] of [
+      [FREE_COLUMNS, true], // 27 Manhattan nodes off, still 18 map points
+      [FREE_COLUMNS + 1, false],
+    ] as const) {
+      const s = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(MAP_CELLS, ROWS) });
+      const soldier = fighterAtNode(s, 20, 0, VIKING, SOLDIER_SPEAR);
+      s.world.add(soldier, Owner, { player: P0 });
+      s.world.add(soldier, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
+      const enemy = fighterAtNode(s, 20 + columns, ROWS, SAXON, WOMAN);
+      s.world.add(enemy, Owner, { player: P1 });
+      s.world.add(enemy, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+      combatSystem(s.world, ctxOf(s));
+      expect(held(s, soldier)).toBe(found ? enemy : undefined);
+    }
+  });
+
   it('DEFEND looks 18 around its anchor and lets a held enemy go past 40', () => {
     expect([DEFEND_RADIUS_NODES, DEFEND_LEASH_NODES]).toEqual([18, 40]);
     const anchor = 10;

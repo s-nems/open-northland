@@ -20,7 +20,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { breakThroughWall } from '../palisades/breach.js';
 import { markLostWay } from '../settlers/lost-way.js';
-import { closer, manhattan, nearestCell } from '../spatial/metric.js';
+import { closer, hexNodeDistance, manhattan, nearestCell } from '../spatial/metric.js';
 import type { CombatantStance, EngageSpec } from './engagement.js';
 import type { MeleeSlots, WeaponBand } from './melee-slots.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
@@ -224,7 +224,7 @@ export function chase(
     return true;
   }
   // Anchor leash: a target hittable only by stepping past `leash` from the anchor is left alone.
-  if (defend !== null && manhattan(terrain, defend.anchorCell, dest) > defend.leash) {
+  if (defend !== null && leashDistance(terrain, defend, dest) > defend.leash) {
     breakOff(world, e, here, defend);
     return true;
   }
@@ -246,6 +246,13 @@ export function chase(
  *  after wildlife starts no siege. */
 function worthASiege(world: World, enemy: Entity): boolean {
   return world.has(enemy, Owner) && (world.has(enemy, Settler) || world.has(enemy, Building));
+}
+
+/** How far `dest` lies from the anchor of `defend`, in the metric its leash counts in. */
+function leashDistance(terrain: TerrainGraph, defend: NonNullable<DefendPost>, dest: NodeId): number {
+  return defend.metric === 'hex'
+    ? hexNodeDistance(terrain, defend.anchorCell, dest)
+    : manhattan(terrain, defend.anchorCell, dest);
 }
 
 /** `e`'s {@link Engagement} on `target`, added to repath at once on a first engagement. A stall is about one

@@ -30,15 +30,14 @@ import { vehicleWeapon } from './weapons.js';
 // conflict/ - nothing here reaches back into the drives that consult it.
 
 /**
- * How far (nodes) an owned combatant looks for an enemy to advance on - the radius an ATTACK fighter
- * scans around itself. Original behavior (18 map points; measured here in Manhattan nodes, an
- * approximation of the original's map-point distance).
+ * How far (map points) an owned combatant looks for an enemy to advance on - the radius an ATTACK fighter
+ * scans around itself, and a fleeing unit for a threat. Original behavior.
  */
 export const SIGHT_RADIUS_NODES = 18;
 
-/** How far a hostile wild animal spots a civilization victim to advance on - the animal twin of
- *  {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat sight radius"): no readable aggro field
- *  exists; half a soldier's sight reads as an ambush radius rather than a map-wide hunt. */
+/** How far (Manhattan nodes) a hostile wild animal spots a civilization victim to advance on - the animal
+ *  twin of {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat sight radius"): no readable aggro
+ *  field exists; half a soldier's sight reads as an ambush radius rather than a map-wide hunt. */
 export const ANIMAL_AGGRO_RADIUS_NODES = 8;
 
 /** A building, wall or vehicle: a hit on one is an impact on a hull, not a body - no blood, no scream. */

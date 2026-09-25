@@ -24,7 +24,7 @@ import {
   MILITARY_MODE,
   stanceMode,
 } from '../../../../../readviews/index.js';
-import { manhattan } from '../../../../../spatial/metric.js';
+import { hexNodeDistance } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 
 /**
@@ -88,8 +88,8 @@ export function provokeHostility(world: World, ctx: SystemContext, attacker: Ent
 
 /**
  * Turn a struck fighter on its attacker. Original behavior: a soldier or hero under ATTACK or DEFEND takes
- * the one who struck it for its target, unless the enemy it already holds stands no farther off. Only an
- * owned fighter holds a target, and an attack order outranks the reaction.
+ * the one who struck it for its target, unless the enemy it already holds stands no farther off in map
+ * points. Only an owned fighter holds a target, and an attack order outranks the reaction.
  */
 export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entity, victim: Entity): void {
   const terrain = ctx.terrain;
@@ -101,7 +101,7 @@ export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entit
   if (!world.has(attacker, Position) || !isValidTarget(world, ctx, victim, settler, attacker)) return;
   const here = entityNode(world, terrain, victim);
   const reach = (t: Entity): number =>
-    manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
+    hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
   const engagement = world.tryGet(victim, Engagement);
   const held = engagement?.target;
   if (held === attacker) return;

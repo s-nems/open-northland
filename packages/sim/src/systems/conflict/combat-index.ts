@@ -11,6 +11,7 @@ import {
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { vehicleFootprintNodes } from '../footprint/index.js';
@@ -23,6 +24,7 @@ import {
   coarseOf,
   combatGridOf,
   playerBit,
+  type SearchMetric,
   type WildClass,
 } from './combat-grid.js';
 import { firingBuildings } from './targeting.js';
@@ -56,7 +58,8 @@ export function passIndexOf(world: World, tick: number): CombatIndex | null {
  * are appended per build, so an index answers until the next one is built for the same world. Derived state, never
  * hashed.
  *
- * The coarse queries over-approximate (Chebyshev box ⊇ Manhattan diamond, cell granularity, and "owned by a
+ * The coarse queries over-approximate (Chebyshev box ⊇ Manhattan diamond and map-point disc, cell granularity,
+ * and "owned by a
  * player at war with the seeker either way, or unowned and not passive wildlife" ⊇ every gated accept
  * filter), so a `false` proves the nearest search would find nothing; a seeker whose filter breaks that
  * superset is ungated via a null `EngageSpec.player`.
@@ -128,7 +131,7 @@ export class CombatIndex {
   }
 
   /**
-   * The nearest indexed target to node (fromX, fromY) satisfying `accept`, over Manhattan `minDist..maxDist`:
+   * The nearest indexed target to node (fromX, fromY) satisfying `accept`, over `minDist..maxDist` by `metric`:
    * the min-distance, then min-id acceptor, `accept` asked in that order and stopped at the first yes.
    * `accept` must be total and pure over any indexed entity: a rejection is remembered for the call.
    * Members owned by `seeker` or by a player at peace with it both ways are never offered: every gated
@@ -142,8 +145,9 @@ export class CombatIndex {
     maxDist: number,
     accept: (e: Entity) => boolean,
     seeker: number | null,
+    metric: SearchMetric = 'manhattan',
   ): { entity: Entity; distance: number } | null {
-    const { keys, count } = this.bandScan(fromX, fromY, minDist, maxDist, seeker);
+    const { keys, count } = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
     // A member admitted at several nodes recurs at a larger distance; a rejection holds for all of them.
     const rejected = new Set<Entity>();
     this.depth++;
@@ -179,8 +183,9 @@ export class CombatIndex {
     limit: number,
     seeker: number | null,
     tailRings: number,
+    metric: SearchMetric = 'manhattan',
   ): readonly { entity: Entity; distance: number }[] {
-    const { keys, count } = this.bandScan(fromX, fromY, minDist, maxDist, seeker);
+    const { keys, count } = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
     const found: { entity: Entity; distance: number }[] = [];
     const seen = new Set<Entity>();
     let lastRing = maxDist;
@@ -254,6 +259,7 @@ export class CombatIndex {
     minDist: number,
     maxDist: number,
     seeker: number | null,
+    metric: SearchMetric,
   ): BandScan {
     const scan = this.grid.bandScanAt(this.depth);
     if (
@@ -262,6 +268,7 @@ export class CombatIndex {
       scan.y === fromY &&
       scan.minDist === minDist &&
       scan.maxDist === maxDist &&
+      scan.metric === metric &&
       scan.seeker === seeker
     ) {
       return scan;
@@ -278,7 +285,12 @@ export class CombatIndex {
         for (let i = 0; i < cell.count; i++) {
           const bit = memberBit[i] ?? 0;
           if (bit !== 0 && (bit & hostile) === 0) continue;
-          const distance = Math.abs((memberX[i] ?? 0) - fromX) + Math.abs((memberY[i] ?? 0) - fromY);
+          const mx = memberX[i] ?? 0;
+          const my = memberY[i] ?? 0;
+          const distance =
+            metric === 'hex'
+              ? hexDistanceBetween(fromX, fromY, mx, my)
+              : Math.abs(mx - fromX) + Math.abs(my - fromY);
           if (distance < minDist || distance > maxDist) continue;
           if (count === keys.length) {
             const grown = new Float64Array(keys.length * 2);
@@ -296,6 +308,7 @@ export class CombatIndex {
     scan.y = fromY;
     scan.minDist = minDist;
     scan.maxDist = maxDist;
+    scan.metric = metric;
     scan.seeker = seeker;
     scan.count = count;
     scan.keys = keys;

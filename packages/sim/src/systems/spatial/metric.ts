@@ -1,3 +1,4 @@
+import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 
 /** Injective per-node key for a spatial set/bucket (integer node `x`,`y`). A string so a consumer with no
@@ -13,6 +14,12 @@ export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
   const ca = terrain.coordsOf(a);
   const cb = terrain.coordsOf(b);
   return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
+}
+
+/** The original's map-point distance between two nodes ({@link hexDistanceBetween}), which its combat radii
+ *  and leashes count in. */
+export function hexNodeDistance(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
+  return hexDistanceBetween(terrain.xOf(a), terrain.yOf(a), terrain.xOf(b), terrain.yOf(b));
 }
 
 // The offsets at Manhattan distance exactly `radius`: for each `dy` in `[-radius, radius]` the one or two
