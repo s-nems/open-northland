@@ -3368,6 +3368,9 @@ button.portrait-box:hover {
   opacity: 1;
 }
 /* A need bar is the order for that need. */
+.bar-row {
+  height: 18px;
+}
 button.bar-row {
   width: 100%;
   padding: 0;
@@ -3375,14 +3378,22 @@ button.bar-row {
   border-radius: 3px;
   background: none;
   font: inherit;
+  line-height: inherit;
+  color: inherit;
   text-align: left;
   cursor: pointer;
+}
+/* The clickable need rows carry the panel's link mark: a dotted bronze underline on the label. */
+button.bar-row span:first-child {
+  align-self: center;
+  text-decoration: underline dotted #c9a26288;
+  text-underline-offset: 3px;
 }
 button.bar-row:hover {
   background: #c9a26218;
 }
 button.bar-row:hover span:first-child {
-  color: var(--text-hi);
+  color: var(--active);
 }
 .prod-lock {
   padding: 0;
