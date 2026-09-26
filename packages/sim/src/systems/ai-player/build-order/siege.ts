@@ -24,8 +24,8 @@ export interface Siege {
   readonly underFire: EnemyFire;
 }
 
-/** Cost: one walk over every person ({@link seatRaiders}, the scan the military module makes too, with no
- *  cache shared between the two) and one over the garrison markers. */
+/** Cost: the tick's shared walk over every person ({@link seatRaiders}) and one over the garrison
+ *  markers. */
 export function seatSiege(
   world: World,
   ctx: SystemContext,

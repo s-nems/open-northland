@@ -249,6 +249,24 @@ describe('military module - the soldiers outfit', () => {
     ]);
   });
 
+  it('counts the units a heap on the ground lends and none an enemy store holds', () => {
+    const sim = outfittedSeat([{ good: POTION, amount: 1 }], 4);
+    const door = rallyOf(sim);
+    sim.enqueueSetup({ kind: 'dropGood', good: POTION, x: door.x + 4, y: door.y + 2, amount: 1 });
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: FOE, tribes: [VIKING] });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HQ_TYPE,
+      x: FOE_HQ.x,
+      y: FOE_HQ.y,
+      tribe: VIKING,
+      owner: FOE,
+      initialGoods: [{ good: POTION, amount: 5 }],
+    });
+    sim.step();
+    expect(equipOrders(sim).map((c) => c.goodType)).toEqual([POTION, POTION]);
+  });
+
   it('counts a weapon good the waiting tribes share once, not once per tribe', () => {
     const sim = twoTribeSeat([{ good: SWORD, amount: 1 }]);
     const ctx = { ...ctxOf(sim), content: twoTribeContent() };

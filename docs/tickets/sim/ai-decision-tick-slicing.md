@@ -7,7 +7,9 @@ A due seat runs all five strategic modules in one tick (`runAiPlayerModules`, `a
 seat `p` is due when `tick % AI_DECISION_INTERVAL_TICKS === p % 24`), so with 13 seats 13 of every 24
 ticks carry one full pass. On `magiczny_las_12_players` with 13 AI seats, an instrumented replay from
 the 40k, 50k and 60k checkpoints (busy machine, so the ms are suspect) timed seat passes at a 1.0-1.2 ms
-median, a 2.6-3.1 ms p95 and warm worst passes of 4-5 ms.
+median, a 2.6-3.1 ms p95 and warm worst passes of 4-5 ms. A later `bench:map` of 4000 ticks from the
+40k checkpoint on the same map (shared box) put the `aiPlayer` system at a 1.8 ms median, a 5.7 ms
+p95 and a 38.7 ms max per tick, so the spikes remain.
 
 The stalled placement search behind most of those spikes now retries every
 `STALLED_PLACEMENT_RETRY_DECISIONS` decisions, and its occupied-anchor test is numeric. What remains

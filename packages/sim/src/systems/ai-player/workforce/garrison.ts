@@ -106,9 +106,12 @@ export function claimArmyFloor(
   const barracks = drillFloorOf(world, ctx, player);
   if (barracks === null) return [];
   if (ctx.tick < peaceEndsAt(world, player) - ARMY_FLOOR_LEAD_TICKS) return [];
+  // The seat's own roster settles the draftable count before the enemies' rosters are walked.
+  const surplus = bachelorSurplus(world, ctx, player);
+  if (surplus <= 0) return [];
   const floor = Math.max(ARMY_FLOOR_MIN, strongestEnemyStrength(world, ctx, player));
   const missing = floor - armyOnHand(world, ctx, player);
-  const claim = Math.min(missing, bachelorSurplus(world, ctx, player));
+  const claim = Math.min(missing, surplus);
   if (claim <= 0) return [];
   const next = force.remaining().find((e) => isDraftable(world, e));
   if (next === undefined || arms.classesFor(barracks, next).length === 0) return [];

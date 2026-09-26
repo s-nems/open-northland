@@ -292,6 +292,41 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(fallback.y).toBeGreaterThan(HQ_AT.y);
   });
 
+  it("breaks a tie between two enemy seats' equally near buildings by the lowest id, whichever seat it belongs to", () => {
+    const HQ_AT = { x: 128, y: 40 };
+    const WEST = { x: HQ_AT.x - 60, y: HQ_AT.y };
+    const EAST = { x: HQ_AT.x + 60, y: HQ_AT.y };
+    const front: BuildOrderEntry[] = [
+      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
+    ];
+    // Two enemy towers, one per seat, the same distance from the base: the one placed first, with the
+    // lower id, pulls the front whichever seat's roster is walked first.
+    const pulledBy = (first: { x: number; y: number }, second: { x: number; y: number }): number => {
+      const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+      placeHq(sim, HQ_AT.x, HQ_AT.y);
+      for (const [owner, at] of [
+        [SEAT + 2, first],
+        [SEAT + 1, second],
+      ] as const) {
+        sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: owner, tribes: [VIKING] });
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: TOWER_TYPE,
+          x: at.x,
+          y: at.y,
+          tribe: VIKING,
+          owner,
+        });
+      }
+      sim.step();
+      const spot = firstCommandOf(sim, front);
+      if (spot?.kind !== 'placeBuilding') throw new Error('expected a front-pulled placement');
+      return spot.x - HQ_AT.x;
+    };
+    expect(pulledBy(WEST, EAST)).toBeLessThan(0);
+    expect(pulledBy(EAST, WEST)).toBeGreaterThan(0);
+  });
+
   it('searches from the base when the affinity-pulled fan finds no room, so a wide settlement never stalls on its far side', () => {
     // Grass west of the water line, water east of it; a home stands far out on the water side (forced) and
     // the enemy beyond it, so the front-pulled centre lands east of the home and its fan never reaches the

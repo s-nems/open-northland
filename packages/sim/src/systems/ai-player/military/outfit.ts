@@ -6,7 +6,6 @@ import {
   ownersCompatible,
   playerGoodList,
   Settler,
-  Stockpile,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -17,7 +16,7 @@ import { ARMOR_MAIN_TYPE, armorByClass, isFighterJob } from '../../readviews/ind
 import { INTENT_WEAPON_CLASS } from '../../settlers/atomics/effects/goods/weapon-class.js';
 import { freeSlotFor, type GrantSpec } from '../../settlers/planner/assistant-grants.js';
 import { approachNode, armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
-import { interactionCell, storeYieldsGood } from '../../settlers/targets/index.js';
+import { FetchableStock, interactionCell, storeYieldsGood } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { accessibleStockAmounts } from '../../stores/index.js';
 import { seatBarracksOf } from '../base.js';
@@ -36,7 +35,7 @@ export const SOLDIER_OUTFIT_GOOD_IDS: readonly string[] = [
 
 /**
  * Send each soldier in `waiting` for the first thing he lacks: a weapon when he stands bare-handed, then
- * armour, then the {@link SOLDIER_OUTFIT_GOOD_IDS} he has no slot of (owner's rule: a man drilled while
+ * armour, then the {@link SOLDIER_OUTFIT_GOOD_IDS} he has no slot of (authored: a man drilled while
  * the shops were empty is dressed as their goods come in). One errand per man per decision, none for a
  * man whose errand is underway, and never more errands for a good than the stores the barracks door can
  * reach hold. `waiting` must be men the campaign leaves standing at the door this decision, since a walk
@@ -192,16 +191,25 @@ function spareStock(
   const spare = new Map<number, number>();
   const walls = buildingBlockedCells(world, ctx, terrain);
   const reach = networkLimitAt(world, terrain, player, terrain.xOf(door), terrain.yOf(door));
-  for (const store of world.query(Stockpile)) {
-    if (!ownersCompatible(player, ownerOf(world, store))) continue;
-    const amounts = accessibleStockAmounts(world, store);
-    if (amounts === undefined) continue;
-    let reached: boolean | undefined;
-    for (const { goodType } of outfit) {
+  // Only the stores the ledger lists as lending a good are read, so the walk is over the holders of the
+  // few outfit goods rather than every heap on the map; the totals are sums, so their order is moot.
+  const ledger = FetchableStock.of(world, ctx);
+  const reachedStores = new Map<Entity, boolean>();
+  const reachedStore = (store: Entity): boolean => {
+    let reached = reachedStores.get(store);
+    if (reached === undefined) {
+      reached = reach === null || reach.allowsNode(approachNode(world, ctx, terrain, store));
+      reachedStores.set(store, reached);
+    }
+    return reached;
+  };
+  for (const { goodType } of outfit) {
+    for (const store of ledger.holders(goodType)) {
+      if (!ownersCompatible(player, ownerOf(world, store))) continue;
       if (!storeYieldsGood(world, ctx, terrain, walls, store, goodType)) continue;
-      reached ??= reach === null || reach.allowsNode(approachNode(world, ctx, terrain, store));
-      if (!reached) break;
-      spare.set(goodType, (spare.get(goodType) ?? 0) + (amounts.get(goodType) ?? 0));
+      if (!reachedStore(store)) continue;
+      const units = accessibleStockAmounts(world, store)?.get(goodType) ?? 0;
+      spare.set(goodType, (spare.get(goodType) ?? 0) + units);
     }
   }
   for (const e of world.query(EquipOrder)) {

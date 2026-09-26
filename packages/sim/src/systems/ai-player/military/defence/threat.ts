@@ -1,6 +1,7 @@
 import {
   Building,
   DefenceMode,
+  DiplomacyRules,
   diplomacyStance,
   Garrison,
   Health,
@@ -84,14 +85,59 @@ export function watchBandOf(world: World, ctx: SystemContext, building: Entity):
  * garrison parked within reach of this seat's edge would otherwise hold the town in cover forever.
  *
  * Not fog-gated, like the campaign's own target scan: an alarm behind the fog would ring only once the
- * town had been walked into.
+ * town had been walked into. One scan a tick per seat, shared by every reader in that tick.
  */
 export function seatRaiders(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
-): Raider[] {
+): readonly Raider[] {
+  const key = scanKey(world);
+  let scans = raiderScans.get(world);
+  if (scans === undefined) {
+    scans = new Map();
+    raiderScans.set(world, scans);
+  }
+  const held = scans.get(player);
+  if (held !== undefined && held.content === ctx.content && sameKey(held.key, key)) return held.raiders;
+  const raiders = scanRaiders(world, ctx, terrain, player);
+  scans.set(player, { key, content: ctx.content, raiders });
+  return raiders;
+}
+
+/** One seat's raider scan, kept while nothing it read has changed: the build order and the military
+ *  module both read a seat's raiders in its decision tick. Derived read-state, never hashed. */
+interface RaiderScan {
+  readonly key: readonly number[];
+  readonly content: SystemContext['content'];
+  readonly raiders: readonly Raider[];
+}
+
+const raiderScans = new WeakMap<World, Map<number, RaiderScan>>();
+
+/** Every store the scan reads, membership and in-place writes: a man born, killed, moved, re-owned,
+ *  re-jobbed, re-armed or posted, or a stance changed, starts a fresh scan. */
+const SCAN_STORES = [Person, Owner, Position, Health, Settler, Weapon, Garrison, DiplomacyRules] as const;
+
+function scanKey(world: World): readonly number[] {
+  const key: number[] = [];
+  for (const store of SCAN_STORES) {
+    key.push(world.componentGeneration(store), world.componentValueGeneration(store));
+  }
+  return key;
+}
+
+function sameKey(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+function scanRaiders(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+): readonly Raider[] {
   const raiders: Raider[] = [];
   for (const e of world.canonicalQuery(Person, Owner)) {
     const owner = world.get(e, Owner).player;
@@ -107,7 +153,7 @@ export function seatRaiders(
     const reach = Math.max(weaponReach(world, ctx, e), SIGHT_RADIUS_NODES);
     raiders.push({ entity: e, ...terrain.coordsOf(at), component: terrain.componentOf(at), reach });
   }
-  return raiders;
+  return Object.freeze(raiders);
 }
 
 /** The weapon `e` fights with and its reach band, or null for an unarmed man. */

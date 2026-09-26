@@ -267,6 +267,24 @@ describe('build-order module - rebuilding under the enemy', () => {
     expect(fire.around(30, 10, 13, 1).reaches(15, 10, 0)).toBe(false);
   });
 
+  it("scans a seat's raiders once per world state, however many modules read them, and afresh once a man moves", () => {
+    const sim = razedBakerySim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: the fixture map builds no terrain graph');
+    spawnAt(sim, FAR_CORNER, SPEARMAN);
+    sim.step();
+    const ctx = ctxOf(sim);
+    const first = seatRaiders(sim.world, ctx, terrain, SEAT);
+    expect(first).toHaveLength(1);
+    // The build order and the military module both read the seat's raiders in its decision tick.
+    expect(seatRaiders(sim.world, ctx, terrain, SEAT)).toBe(first);
+    spawnAt(sim, { x: FAR_CORNER.x + 6, y: FAR_CORNER.y }, BOWMAN);
+    sim.step();
+    const next = seatRaiders(sim.world, ctxOf(sim), terrain, SEAT);
+    expect(next).not.toBe(first);
+    expect(next).toHaveLength(2);
+  });
+
   it('gives a loose raider at least his sight as reach, since he advances on what he sees', () => {
     const sim = razedBakerySim();
     const terrain = sim.terrain;

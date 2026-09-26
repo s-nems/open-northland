@@ -1,5 +1,5 @@
 import { type BuildingType, footprintCellDx, footprintCellMaxAbsDx } from '@open-northland/data';
-import { Building, diplomacyStance, Owner, ownerOf, Resource, Stockpile } from '../../../components/index.js';
+import { Building, diplomacyStance, MAX_PLAYERS, Resource, Stockpile } from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -14,6 +14,7 @@ import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { EnemyFire } from '../military/defence/index.js';
 import { anchorNodeOf, bestRingNode, towardNode } from '../node-geometry.js';
+import { ownedBuildings } from '../seat-roster.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
@@ -94,7 +95,7 @@ function frontEdgeNode(
 
 /** The seat's store holding the most units of the good, the lowest id on a tie, as a node, or null while
  *  none holds any: a workshop drawing on a good the map no longer offers stands beside the stock of it
- *  instead (owner's rule), as a late smithy does by the mined iron once the deposits are dug out. */
+ *  instead (authored), as a late smithy does by the mined iron once the deposits are dug out. */
 function stockedStoreNode(
   world: World,
   ctx: SystemContext,
@@ -158,8 +159,8 @@ function mapCentreNode(terrain: TerrainGraph): HalfCellNode {
 /**
  * The `front` target: the building nearest `anchor` (Manhattan) of a player the seat holds as enemy,
  * headquarters ranked ahead of everything else, so the pull points down the road the attacks come by
- * rather than at the middle of the map. Null while no enemy has a building. Strict `<` over the
- * canonical walk keeps the lowest id on ties.
+ * rather than at the middle of the map. Null while no enemy has a building. The lowest id wins a tie.
+ * Read off the enemy seats' building rosters, so the walk is over their buildings, not every seat's.
  */
 function frontNode(
   world: World,
@@ -169,21 +170,26 @@ function frontNode(
 ): HalfCellNode | null {
   const index = contentIndex(ctx.content);
   let best: HalfCellNode | null = null;
+  let bestEntity: Entity | null = null;
   let bestHq = false;
   let bestDistance = Number.POSITIVE_INFINITY;
-  for (const e of world.canonicalQuery(Building, Owner)) {
-    const owner = ownerOf(world, e);
-    if (owner === undefined || owner === player || diplomacyStance(world, player, owner) !== 'enemy')
-      continue;
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    const hq = index.buildings.get(world.get(e, Building).buildingType)?.id === HEADQUARTERS_BUILDING_ID;
-    if (bestHq && !hq) continue;
-    const distance = nodeDistance(node, anchor);
-    if ((hq && !bestHq) || distance < bestDistance) {
-      best = node;
-      bestHq = hq;
-      bestDistance = distance;
+  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
+    if (owner === player || diplomacyStance(world, player, owner) !== 'enemy') continue;
+    for (const e of ownedBuildings(world, owner)) {
+      const node = anchorNodeOf(world, e);
+      if (node === null) continue;
+      const hq = index.buildings.get(world.get(e, Building).buildingType)?.id === HEADQUARTERS_BUILDING_ID;
+      if (bestHq && !hq) continue;
+      const distance = nodeDistance(node, anchor);
+      // The seats' rosters are walked one after another, so the lowest id on a tie is kept explicitly.
+      const closer =
+        distance < bestDistance || (distance === bestDistance && bestEntity !== null && e < bestEntity);
+      if ((hq && !bestHq) || closer) {
+        best = node;
+        bestEntity = e;
+        bestHq = hq;
+        bestDistance = distance;
+      }
     }
   }
   return best;
@@ -408,7 +414,7 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
  * up that serves nothing.
  *
- * An affinity pull that finds nothing yields to the same search from `anchor` (owner's rule): a
+ * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
  * barracks or a mint anywhere in it beats a list stalled for half an hour.
  */
