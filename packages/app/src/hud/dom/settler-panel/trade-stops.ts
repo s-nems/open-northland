@@ -1,10 +1,11 @@
-import { formatMessage, messages } from '../../../i18n/index.js';
+import { messages } from '../../../i18n/index.js';
 import {
   type SettlerPanelModel,
   TRADE_ROUTE_HOUSES,
   type TradePanelModel,
   type TradeStopModel,
 } from '../../details-panel/model/index.js';
+import { createHouseCardLink, type HouseCardLink } from '../hover-card.js';
 import { GLYPH } from '../icons.js';
 import { button, element, setClass, setTip, write } from '../parts/dom.js';
 import { createRoundButton, type RoundButton } from '../parts/round-button.js';
@@ -17,6 +18,7 @@ interface SlotRow {
   readonly link: HTMLButtonElement;
   readonly heading: HTMLElement;
   readonly detach: RoundButton;
+  readonly card: HouseCardLink;
 }
 
 /** What a slot row shows: a stop, or the attach link on a free slot. The pick fills the first free
@@ -46,9 +48,6 @@ export function createTradeStops(
     return trade == null ? null : slotState(trade, slot);
   };
   const list = element('ul', 'on-stops');
-  /** The house the hover card shows; a changed stop takes its card with it, since a relabelled link
-   *  never reports the cursor leaving. */
-  let carded: number | null = null;
 
   const slotRow = (slot: number): SlotRow => {
     const item = element('li', 'on-stop');
@@ -64,19 +63,16 @@ export function createTradeStops(
       if (state?.kind === 'stop') actions.show(state.stop.house);
       else if (state?.kind === 'attach') actions.attachTradeHouse(id());
     });
-    const hover = (event: MouseEvent | null): void => {
+    const card = createHouseCardLink(deps.hoverCard, deps.buildingHover);
+    const hover = (event: MouseEvent): void => {
       const state = liveSlot(slot);
-      const house = state?.kind === 'stop' && event !== null ? state.stop.house : null;
-      const card = house === null ? null : deps.buildingHover(house);
-      carded = card === null ? null : house;
-      if (card === null || event === null) deps.hoverCard.hide();
-      else deps.hoverCard.show(event.clientX, event.clientY, card);
+      card.hover(state?.kind === 'stop' ? state.stop.house : null, event);
     };
     link.addEventListener('mouseenter', hover);
     link.addEventListener('mousemove', hover);
-    link.addEventListener('mouseleave', () => hover(null));
+    link.addEventListener('mouseleave', () => card.hover(null, null));
     item.append(badge, link, heading, detach.element);
-    return { item, link, heading, detach };
+    return { item, link, heading, detach, card };
   };
   const rows = Array.from({ length: TRADE_ROUTE_HOUSES }, (_unused, slot) => slotRow(slot));
   list.replaceChildren(...rows.map((row) => row.item));
@@ -86,14 +82,9 @@ export function createTradeStops(
     update(trade): void {
       const copy = messages().hud;
       const panel = copy.settlerPanel;
-      const shownHouses = new Set(trade.stops.map((stop) => stop.house));
-      if (carded !== null && !shownHouses.has(carded)) {
-        carded = null;
-        deps.hoverCard.hide();
-      }
       rows.forEach((row, slot) => {
         const state = slotState(trade, slot);
-        const badge = stopBadge(slot);
+        row.card.update(state.kind === 'stop' ? state.stop.house : null);
         setClass(row.item, 'on-stop--empty', state.kind !== 'stop');
         setClass(row.item, 'on-stop--foreign', state.kind === 'stop' && state.stop.foreign);
         setClass(row.item, 'on-stop--heading', state.kind === 'stop' && state.stop.heading);
@@ -102,11 +93,8 @@ export function createTradeStops(
         switch (state.kind) {
           case 'stop':
             write(row.link, state.stop.label);
-            // The hover card names the house's state; a tooltip would only cover it.
-            setTip(
-              row.link,
-              state.stop.foreign ? formatMessage(panel.tradeForeignStopTooltip, { badge }) : '',
-            );
+            // The hover card is the house's reference; a tooltip would only cover it.
+            setTip(row.link, '');
             row.detach.update({
               face: { glyph: GLYPH.close },
               label: copy.tradeDetachHouse,

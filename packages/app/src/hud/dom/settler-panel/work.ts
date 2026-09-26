@@ -6,6 +6,7 @@ import type {
   SettlerSeatRow,
   SettlerVehicleRow,
 } from '../../details-panel/model/index.js';
+import { createHouseCardLink } from '../hover-card.js';
 import { GLYPH } from '../icons.js';
 import { element, setHidden } from '../parts/dom.js';
 import { createLedger, type LedgerSegment } from '../parts/ledger.js';
@@ -91,6 +92,7 @@ export function createWorkSection(
   const id = (): number => current()?.entityId ?? -1;
   const root = element('div', '');
   const title = createSection();
+  const workplaceCard = createHouseCardLink(deps.hoverCard, deps.buildingHover);
 
   const workplace = createLedger({
     buttons: 2,
@@ -98,12 +100,7 @@ export function createWorkSection(
       const target = current()?.workplace?.target?.id;
       if (target != null) actions.select(target);
     },
-    onLinkHover: (_index, event) => {
-      const target = current()?.workplace?.target?.id;
-      const card = target == null || event === null ? null : deps.buildingHover(target);
-      if (card === null || event === null) deps.hoverCard.hide();
-      else deps.hoverCard.show(event.clientX, event.clientY, card);
-    },
+    onLinkHover: (_index, event) => workplaceCard.hover(current()?.workplace?.target?.id ?? null, event),
     onButton: (index) => (index === 0 ? actions.assignWorkplace(id()) : actions.unassignWorkplace(id())),
   });
   const home = createLedger({
@@ -138,9 +135,6 @@ export function createWorkSection(
     },
   });
   root.append(title.element, workplace.element, home.element, vehicle.element, family.element);
-  /** The building the workplace link names; a changed or dropped link takes its card with it, since a
-   *  replaced link never reports the cursor leaving. */
-  let linked: number | null = null;
 
   return {
     element: root,
@@ -150,9 +144,7 @@ export function createWorkSection(
       title.update(
         model.family !== null ? panel.workAndFamily : model.home !== null ? panel.workAndHome : copy.work,
       );
-      const target = model.workplace?.target?.id ?? null;
-      if (target !== linked) deps.hoverCard.hide();
-      linked = target;
+      workplaceCard.update(model.workplace?.target?.id ?? null);
       setHidden(workplace.element, model.workplace === null);
       if (model.workplace !== null) {
         workplace.update({

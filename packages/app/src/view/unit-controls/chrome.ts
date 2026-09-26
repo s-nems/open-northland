@@ -17,6 +17,7 @@ import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
 import type { HousePortrait } from '../../hud/dom/trade-window/window.js';
 import { clientToCanvas } from '../../hud/geometry.js';
 import { buildingHoverModel } from '../../hud/hover-card/building.js';
+import type { BuildingHoverModel } from '../../hud/hover-card/model.js';
 import { keyDisplayLabel } from '../../hud/keybindings.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
@@ -114,6 +115,17 @@ export async function createUnitChrome(
     uiString: opts.domHud.uiString,
   });
   const hoverContext = { buildings: opts.content.buildings, goods: opts.content.goods };
+  /** One card model per house and snapshot: a move over a link then only repositions the card. */
+  const hoverModels = memoBySnapshot(() => new Map<number, BuildingHoverModel | null>());
+  const buildingHover = (id: number): BuildingHoverModel | null => {
+    const snapshot = opts.snapshot();
+    const models = hoverModels(snapshot);
+    const known = models.get(id);
+    if (known !== undefined) return known;
+    const model = buildingHoverModel(snapshot, id, hoverContext);
+    models.set(id, model);
+    return model;
+  };
   // Its own chip: the Pixi details panel hides the shared one on every canvas mouse move off its rows.
   const panelChip = createTooltip();
   // The ring is down when it closed, or when its selection went and it lost its pin.
@@ -129,7 +141,7 @@ export async function createUnitChrome(
     keyLabel,
     hoverCard,
     tooltip: panelChip,
-    buildingHover: (id) => buildingHoverModel(opts.snapshot(), id, hoverContext),
+    buildingHover,
     now: () => performance.now(),
     cue: callbacks.cue,
     ...(opts.domHud.centralWindows !== undefined ? { centralWindows: opts.domHud.centralWindows } : {}),

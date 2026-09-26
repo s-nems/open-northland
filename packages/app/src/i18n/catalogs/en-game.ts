@@ -452,8 +452,6 @@ export const enGame = {
       regeneration: 'Food and sleep',
       allowed: 'Allowed',
       forbidden: 'Forbidden',
-      tradeForeignStopTooltip:
-        "Stop {badge}, another tribe's house: the trader exchanges goods here by the agreement · click: select and show",
       tradeHeading: 'The trader is heading here now',
       tradeAddStop: 'Add a trading post',
       tradeConfigure: 'Set up trade',

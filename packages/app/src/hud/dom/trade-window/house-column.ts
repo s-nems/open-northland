@@ -3,7 +3,7 @@ import { TRADE_SLOT_A, type TradePanelModel } from '../../details-panel/model/in
 import { stockTabLabels } from '../../good-categories.js';
 import type { BuildingHoverModel } from '../../hover-card/model.js';
 import type { GoodIconPainter } from '../good-art.js';
-import type { HoverCard } from '../hover-card.js';
+import { createHouseCardLink, type HoverCard } from '../hover-card.js';
 import { GLYPH, STOCK_TAB_GLYPHS } from '../icons.js';
 import { button, element, setAttribute, setClass, setTip, write } from '../parts/dom.js';
 import { createStockBrowser } from '../parts/stock-browser.js';
@@ -74,14 +74,11 @@ export function createHouseColumn(deps: HouseColumnDeps, slot: number): HouseCol
   portrait.addEventListener('click', () => {
     if (house !== null) deps.centre(house);
   });
-  const hover = (event: MouseEvent | null): void => {
-    const card = event === null || house === null ? null : deps.buildingHover(house);
-    if (card === null || event === null) deps.hoverCard.hide();
-    else deps.hoverCard.show(event.clientX, event.clientY, card);
-  };
+  const card = createHouseCardLink(deps.hoverCard, deps.buildingHover);
+  const hover = (event: MouseEvent): void => card.hover(house, event);
   link.addEventListener('mouseenter', hover);
   link.addEventListener('mousemove', hover);
-  link.addEventListener('mouseleave', () => hover(null));
+  link.addEventListener('mouseleave', () => card.hover(null, null));
 
   return {
     element: root,
@@ -90,9 +87,8 @@ export function createHouseColumn(deps: HouseColumnDeps, slot: number): HouseCol
     update(trade): void {
       const copy = messages().hud.tradeWindow;
       const stop = trade.stops.find((candidate) => candidate.slot === slot);
-      // Another house under the link takes its card with it: a relabelled link reports no leave.
-      if (stop?.house !== house) deps.hoverCard.hide();
       house = stop?.house ?? null;
+      card.update(house);
       const badgeText = stopBadge(slot);
       write(link, stop?.label ?? '');
       const centreTip = formatMessage(copy.portraitTooltip, { house: stop?.label ?? badgeText });

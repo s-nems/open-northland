@@ -350,7 +350,7 @@ button; for those the built panel is the reference.
   button, so every row keeps the same distances (8 px from the value to its chips). A button the
   sim would refuse stays visible, faded, with the reason in its tooltip (a person a mission holds to
   its task). Resting on the workplace link shows the building's hover card (state and stock) without
-  a click. Pojazd, under Dom, names the vehicle the person rides as a link that selects it, its hold
+  a click; the card follows the stock while the cursor rests. Pojazd, under Dom, names the vehicle the person rides as a link that selects it, its hold
   in the tooltip ("Wóz ręczny: 3 drewno, 2 żelazo"), with a wheel button that picks another and ×
   ("Zejdź z pojazdu"); without one it reads "Przydziel pojazd" in amber, a link that arms the ring's
   "Przydziel wehikuł" pick like the wheel. Only the carrier, the trader, the soldier and the hero
@@ -388,7 +388,8 @@ button; for those the built panel is the reference.
 - Handel, for a trader: a compact summary; the trade itself is set up in the trade window. One row
   per route slot, both always present so the section keeps its height. A row is the slot's badge (A
   for the first house, B for the second), the house's name as a link that selects it and brings it
-  into view (resting on it shows the building's hover card, another seat's house reads amber), a
+  into view (resting on it shows the building's hover card and no tooltip, which would cover it;
+  another seat's house reads amber), a
   bronze arrow on the stop the trader serves now and × to take the house off. Every free slot reads
   "Dodaj punkt handlowy" in amber, a link that arms the house pick, which fills the first free slot
   whichever row armed it. With both stops the player's own houses the two rows' × buttons step

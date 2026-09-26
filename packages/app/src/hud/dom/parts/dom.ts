@@ -20,8 +20,11 @@ export function button(className: string, html = ''): HTMLButtonElement {
   return node;
 }
 
-export function write(node: Element, text: string): void {
-  if (node.textContent !== text) node.textContent = text;
+/** Each writer below returns whether it changed the node. */
+export function write(node: Element, text: string): boolean {
+  if (node.textContent === text) return false;
+  node.textContent = text;
+  return true;
 }
 
 export function setAttribute(node: Element, name: string, value: string): void {
@@ -32,12 +35,16 @@ export function removeAttribute(node: Element, name: string): void {
   if (node.hasAttribute(name)) node.removeAttribute(name);
 }
 
-export function setHidden(node: HTMLElement, hidden: boolean): void {
-  if (node.hidden !== hidden) node.hidden = hidden;
+export function setHidden(node: HTMLElement, hidden: boolean): boolean {
+  if (node.hidden === hidden) return false;
+  node.hidden = hidden;
+  return true;
 }
 
-export function setClass(node: Element, name: string, on: boolean): void {
-  if (node.classList.contains(name) !== on) node.classList.toggle(name, on);
+export function setClass(node: Element, name: string, on: boolean): boolean {
+  if (node.classList.contains(name) === on) return false;
+  node.classList.toggle(name, on);
+  return true;
 }
 
 export function setTitle(node: HTMLElement, text: string): void {

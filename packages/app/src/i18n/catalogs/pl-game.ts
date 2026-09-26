@@ -439,8 +439,6 @@ export const plGame = {
       regeneration: 'Jedzenie i sen',
       allowed: 'Dozwolone',
       forbidden: 'Zabronione',
-      tradeForeignStopTooltip:
-        'Punkt {badge}, dom innego plemienia: tu kupiec wymienia towary według umowy · kliknij: zaznacz i pokaż',
       tradeHeading: 'Kupiec jedzie teraz tutaj',
       tradeAddStop: 'Dodaj punkt handlowy',
       tradeConfigure: 'Konfiguruj handel',
