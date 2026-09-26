@@ -24,6 +24,7 @@ export {
 } from './components/rules.js';
 export { SETTLER_NAME_MAX_CHARS } from './components/settler.js';
 export { WALK_RANGE_NODES } from './components/signpost.js';
+export { TRADE_LIMIT_NONE, type TradeImportMark } from './components/trade.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
 export type { LoggedCommand } from './core/command-queue.js';

@@ -8,6 +8,19 @@ export const TRADE_ROUTE_HOUSES = 2;
 /** The most agreements one map registers (reading: the merchant array holds 60). */
 export const TRADE_AGREEMENT_LIMIT = 60;
 
+/** The limit value that sets no limit: a mark whose `upTo` holds it fills the destination without a
+ *  ceiling, one whose `keep` holds it leaves nothing behind. */
+export const TRADE_LIMIT_NONE = 0;
+
+/** One good the player marked for import into a stop, with its two per-good limits in units. */
+export interface TradeImportMark {
+  readonly good: number;
+  /** Units the destination stop is filled up to; {@link TRADE_LIMIT_NONE} means no ceiling. */
+  readonly upTo: number;
+  /** Units left untouched in the other stop when loading this good; {@link TRADE_LIMIT_NONE} keeps none. */
+  readonly keep: number;
+}
+
 /** One stop of a trader's route. */
 export interface TradeStop {
   /** Which of the route's {@link TRADE_ROUTE_HOUSES} slots the stop fills, from 0. */
@@ -15,8 +28,8 @@ export interface TradeStop {
   readonly house: Entity;
   /** Whether the house belongs to another player: the stop the exchange happens at. */
   readonly foreign: boolean;
-  /** The goods the player marked for import into this house, ascending. */
-  imports: number[];
+  /** The goods the player marked for import into this house, ascending by good. */
+  imports: TradeImportMark[];
 }
 
 /**
@@ -102,18 +115,55 @@ export function removeTradeStop(world: World, e: Entity, house: Entity): boolean
 }
 
 /** Mark or clear one import; refused on a route with a foreign stop, where the agreement alone decides
- *  what moves. */
+ *  what moves. A new mark sets no limit. */
 export function setTradeImport(world: World, e: Entity, house: Entity, good: number, on: boolean): boolean {
-  const route = world.tryGet(e, TradeRoute);
-  const index = route?.stops.findIndex((s) => s.house === house) ?? -1;
-  if (route === undefined || index < 0 || route.stops.some((s) => s.foreign)) return false;
-  const has = route.stops[index]?.imports.includes(good) ?? false;
+  const index = domesticStopIndex(world, e, house);
+  if (index < 0) return false;
+  const has = world.get(e, TradeRoute).stops[index]?.imports.some((mark) => mark.good === good) ?? false;
   if (has === on) return true;
-  const live = world.mut(e, TradeRoute);
-  const stop = live.stops[index];
+  const stop = world.mut(e, TradeRoute).stops[index];
   if (stop === undefined) return false;
-  stop.imports = on ? [...stop.imports, good].sort((a, b) => a - b) : stop.imports.filter((g) => g !== good);
+  stop.imports = on
+    ? [...stop.imports, { good, upTo: TRADE_LIMIT_NONE, keep: TRADE_LIMIT_NONE }].sort(
+        (a, b) => a.good - b.good,
+      )
+    : stop.imports.filter((mark) => mark.good !== good);
   return true;
+}
+
+/** Set the two limits of an existing import mark; refused without that mark or for a limit that is no
+ *  non-negative whole number of units. */
+export function setTradeImportLimits(
+  world: World,
+  e: Entity,
+  house: Entity,
+  good: number,
+  upTo: number,
+  keep: number,
+): boolean {
+  if (!isUnitCount(upTo) || !isUnitCount(keep)) return false;
+  const index = domesticStopIndex(world, e, house);
+  if (index < 0) return false;
+  const marks = world.get(e, TradeRoute).stops[index]?.imports ?? [];
+  const at = marks.findIndex((mark) => mark.good === good);
+  const current = marks[at];
+  if (current === undefined) return false;
+  if (current.upTo === upTo && current.keep === keep) return true;
+  const stop = world.mut(e, TradeRoute).stops[index];
+  if (stop === undefined) return false;
+  stop.imports = stop.imports.map((mark, i) => (i === at ? { good, upTo, keep } : mark));
+  return true;
+}
+
+function isUnitCount(value: number): boolean {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
+/** The index of `house` among the route's stops, or -1 when it is none or the route has a foreign stop. */
+function domesticStopIndex(world: World, e: Entity, house: Entity): number {
+  const route = world.tryGet(e, TradeRoute);
+  if (route === undefined || route.stops.some((s) => s.foreign)) return -1;
+  return route.stops.findIndex((s) => s.house === house);
 }
 
 export function clearTradeImports(world: World, e: Entity): void {

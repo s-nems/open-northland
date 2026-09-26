@@ -324,6 +324,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'attachTradeHouse':
     case 'detachTradeHouse':
     case 'setTradeImport':
+    case 'setTradeImportLimits':
     case 'clearTradeImports':
     case 'setTradeAgreement':
       applyTradeCommand(world, ctx, command);

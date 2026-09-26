@@ -19,13 +19,23 @@ export type TradeCommand =
       readonly house: Entity;
     }
   | {
-      /** Mark `good` for import into `house` (a stop of the route), or clear the mark. A stop with no
-       *  marks takes every good the house stores. */
+      /** Mark `good` for import into `house` (a stop of the route), or clear the mark. A new mark sets
+       *  no limit. */
       readonly kind: 'setTradeImport';
       readonly entity: Entity;
       readonly house: Entity;
       readonly good: number;
       readonly on: boolean;
+    }
+  | {
+      /** Set the limits of the import mark on `good` at `house`, in units: fill `house` up to `upTo` and
+       *  leave `keep` in the other stop (`TRADE_LIMIT_NONE` sets no limit). A missing mark is skipped. */
+      readonly kind: 'setTradeImportLimits';
+      readonly entity: Entity;
+      readonly house: Entity;
+      readonly good: number;
+      readonly upTo: number;
+      readonly keep: number;
     }
   | {
       /** Clear every import mark on the trader's route. */

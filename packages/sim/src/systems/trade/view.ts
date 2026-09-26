@@ -1,4 +1,11 @@
-import { Building, MissionObjectId, ownerOf, Settler, tradeRouteOf } from '../../components/index.js';
+import {
+  Building,
+  MissionObjectId,
+  ownerOf,
+  Settler,
+  type TradeImportMark,
+  tradeRouteOf,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { isTraderJob } from '../readviews/jobs.js';
@@ -18,7 +25,8 @@ export interface TradeStopView {
   readonly slot: number;
   readonly house: Entity;
   readonly foreign: boolean;
-  readonly imports: readonly number[];
+  /** The import marks with their limits, ascending by good. */
+  readonly imports: readonly TradeImportMark[];
   /** The agreements the house offers; only a foreign stop lists any. */
   readonly offers: readonly TradeOffer[];
 }
@@ -95,7 +103,7 @@ export function traderView(world: World, ctx: ContentContext, trader: Entity): T
       slot: stop.slot,
       house: stop.house,
       foreign: stop.foreign,
-      imports: [...stop.imports],
+      imports: stop.imports.map((mark) => ({ good: mark.good, upTo: mark.upTo, keep: mark.keep })),
       offers: stop.foreign && player !== undefined ? agreementsAt(world, stop.house).map(offerOf) : [],
     })),
     current: route.current,

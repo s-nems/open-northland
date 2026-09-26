@@ -1,8 +1,10 @@
 import {
   Building,
   Position,
+  TRADE_LIMIT_NONE,
   TRADE_ROUTE_HOUSES,
   type TradeAgreement,
+  type TradeImportMark,
   TradeRoute,
   type TradeRouteView,
   type TradeStop,
@@ -334,6 +336,11 @@ function resetExchange(world: World, trader: Entity): void {
  *   room for it beside what is aboard.
  * - A good both stops mark is balanced: it is loaded while this stop holds more than the other plus
  *   what is aboard, and unloaded while the other stop holds more (score `(here - there - aboard) / 2`).
+ * - A mark limits the flow into its own stop: nothing is unloaded there once the stop holds `upTo`
+ *   units, nothing is loaded for it once its stock plus what is aboard reaches `upTo`, and loading for
+ *   it leaves `keep` units in the other stop. A balanced good is two such flows, each limited by the
+ *   mark at the stop it flows into. Approximation: `keep` stands in for the original's per-house
+ *   minimum stock setting, and the `upTo` ceiling is this build's own addition (owner's choice).
  * - With no mark on either stop nothing moves. The original then balances every good; this build waits
  *   for the player's marks instead (owner's choice).
  * Food is never taken out of a home. Approximations: the original ranks candidates by the houses'
@@ -347,17 +354,20 @@ function decideDomestic(
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): StopWork | NextStop {
-  const marked = (at: DeepReadonly<TradeStop>, good: number): boolean =>
-    at.imports.includes(good) || at.imports.includes(edibleGoodFormOf(ctx.content, good));
+  const markOf = (at: DeepReadonly<TradeStop>, good: number): TradeImportMark | undefined => {
+    const edible = edibleGoodFormOf(ctx.content, good);
+    return at.imports.find((mark) => mark.good === good || mark.good === edible);
+  };
   const hereType = world.get(stop.house, Building).buildingType;
 
   for (const [good, aboard] of hold.entries) {
     const slot = storableFormAt(world, ctx, stop.house, good);
     if (slot === undefined || roomFor(world, ctx, stop.house, slot) <= 0) continue;
-    const wantedHere = marked(stop, good);
-    const wantedThere = marked(other, good);
-    if (wantedThere && !wantedHere) continue;
-    if (wantedHere && wantedThere) {
+    const wantedHere = markOf(stop, good);
+    const wantedThere = markOf(other, good);
+    if (wantedThere !== undefined && wantedHere === undefined) continue;
+    if (wantedHere !== undefined && reachesCeiling(wantedHere, stockOf(world, stop.house, slot))) continue;
+    if (wantedHere !== undefined && wantedThere !== undefined) {
       const there = storableFormAt(world, ctx, other.house, good);
       const shortfall =
         (there === undefined ? 0 : stockOf(world, other.house, there)) - stockOf(world, stop.house, slot);
@@ -368,19 +378,26 @@ function decideDomestic(
 
   if (hold.room <= 0) return NEXT;
   for (const good of ownGoodsOf(ctx, hereType)) {
-    if (!marked(other, good) || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
-    if (spareOf(world, ctx, stop.house, good) <= 0) continue;
+    const wantedThere = markOf(other, good);
+    if (wantedThere === undefined || isFoodKeptAtHome(world, ctx, stop.house, good)) continue;
+    if (spareOf(world, ctx, stop.house, good) - wantedThere.keep <= 0) continue;
     const carried = edibleGoodFormOf(ctx.content, good);
     if (!hold.carries(carried)) continue;
     const slot = storableFormAt(world, ctx, other.house, carried);
     if (slot === undefined || roomFor(world, ctx, other.house, slot) - hold.amount(carried) <= 0) continue;
-    const balanced = marked(stop, good);
-    const surplus =
-      stockOf(world, stop.house, good) - stockOf(world, other.house, slot) - hold.amount(carried);
+    const bound = stockOf(world, other.house, slot) + hold.amount(carried);
+    if (reachesCeiling(wantedThere, bound)) continue;
+    const balanced = markOf(stop, good) !== undefined;
+    const surplus = stockOf(world, stop.house, good) - bound;
     if (balanced && Math.floor(surplus / 2) <= 0) continue;
     return { kind: 'load', good };
   }
   return NEXT;
+}
+
+/** Whether `units` in (or bound for) a mark's stop reach the mark's `upTo` ceiling. */
+function reachesCeiling(mark: DeepReadonly<TradeImportMark>, units: number): boolean {
+  return mark.upTo !== TRADE_LIMIT_NONE && units >= mark.upTo;
 }
 
 function unloadInto(world: World, ctx: SystemContext, house: Entity, good: number): TradeAction {

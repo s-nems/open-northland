@@ -138,6 +138,7 @@ export const COMMAND_ISSUER: {
   setVehicleStance: 'seat',
   setTradeAgreement: 'seat',
   setTradeImport: 'seat',
+  setTradeImportLimits: 'seat',
   setVehicleWanted: 'seat',
   clearVehicleWanted: 'seat',
   setWorkFlag: 'seat',

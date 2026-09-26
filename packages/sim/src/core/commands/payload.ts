@@ -14,11 +14,12 @@ import { CHILD_SEXES } from './unit-orders.js';
 /**
  * What one payload field must hold. Entity references, content ids and half-cell coordinates are all
  * `'integer'`: the sim indexes stores and grids with them, and a fractional or non-finite value would
- * write state no later read can find. `{ string: n }` is text of at most `n` code points with no control
- * character.
+ * write state no later read can find. `'count'` is a non-negative integer, a number of units.
+ * `{ string: n }` is text of at most `n` code points with no control character.
  */
 type FieldCheck =
   | 'integer'
+  | 'count'
   | 'boolean'
   | { readonly string: number }
   | { readonly oneOf: readonly string[] }
@@ -84,6 +85,9 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   attachTradeHouse: { required: { entity: 'integer', house: 'integer' } },
   detachTradeHouse: { required: { entity: 'integer', house: 'integer' } },
   setTradeImport: { required: { entity: 'integer', house: 'integer', good: 'integer', on: 'boolean' } },
+  setTradeImportLimits: {
+    required: { entity: 'integer', house: 'integer', good: 'integer', upTo: 'count', keep: 'count' },
+  },
   clearTradeImports: { required: { entity: 'integer' } },
   setTradeAgreement: { required: { entity: 'integer', agreement: 'integer' } },
   addTradeAgreement: {
@@ -311,6 +315,12 @@ function checkField(value: unknown, check: FieldCheck, at: string): void {
   if (check === 'integer') {
     if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
       throw new Error(`${at}: expected an integer, got ${described(value)}`);
+    }
+    return;
+  }
+  if (check === 'count') {
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+      throw new Error(`${at}: expected a non-negative integer, got ${described(value)}`);
     }
     return;
   }

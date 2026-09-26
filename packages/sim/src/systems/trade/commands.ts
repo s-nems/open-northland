@@ -8,6 +8,7 @@ import {
   Settler,
   setTradeAgreement,
   setTradeImport,
+  setTradeImportLimits,
   tradeAgreements,
   tradeRouteOf,
 } from '../../components/index.js';
@@ -59,6 +60,9 @@ export function applyTradeCommand(world: World, ctx: SystemContext, command: Tra
       return;
     case 'setTradeImport':
       setTradeImport(world, command.entity, command.house, command.good, command.on);
+      return;
+    case 'setTradeImportLimits':
+      setTradeImportLimits(world, command.entity, command.house, command.good, command.upTo, command.keep);
       return;
     case 'clearTradeImports':
       clearTradeImports(world, command.entity);

@@ -9,6 +9,8 @@ import {
   Position,
   Rider,
   Stockpile,
+  setStockAmount,
+  TRADE_LIMIT_NONE,
   TradeRoute,
   Vehicle,
   VehicleStock,
@@ -80,6 +82,12 @@ const PLENTY_OF_WOOD = 30;
 const SELL_OUT_TICKS = 4000;
 /** Where the player sends the trader mid-stop: the row below the houses, between them. */
 const ORDER_NODE = { hx: 8, hy: 4 } as const;
+/** The wood a mark's ceiling fills the far house up to, below what the near house holds. */
+const WOOD_CEILING = 5;
+/** The far house's wood once the player takes some out below the ceiling. */
+const WOOD_DRAWN_DOWN = 2;
+/** The wood a mark leaves in the near house. */
+const WOOD_KEPT = 4;
 
 function houseAt(
   sim: Simulation,
@@ -167,6 +175,20 @@ function attach(sim: Simulation, trader: Entity, house: Entity): void {
 /** Mark `good` for import into `house`; after the attaches, which clear every mark. */
 function mark(sim: Simulation, trader: Entity, house: Entity, good: number): void {
   sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeImport', entity: trader, house, good, on: true }));
+}
+
+/** Set the limits of the mark on `good` at `house`, in units. */
+function limit(
+  sim: Simulation,
+  trader: Entity,
+  house: Entity,
+  good: number,
+  upTo: number,
+  keep: number,
+): void {
+  sim.enqueue(
+    playerCommand(HUMAN, { kind: 'setTradeImportLimits', entity: trader, house, good, upTo, keep }),
+  );
 }
 
 /** A route of `near` then `far` with wood marked for import into `far`. */
@@ -302,6 +324,72 @@ describe('a trader between its own houses', () => {
     expect(stockOf(sim, far, PLANK)).toBeGreaterThan(0);
     expect(stockOf(sim, far, WOOD)).toBe(0);
     expect(stockOf(sim, near, WOOD)).toBe(10);
+  });
+
+  it("fills a house only up to its mark's ceiling and tops it up again once the stock drops", () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, PLENTY_OF_WOOD]]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    limit(sim, trader, far, WOOD, WOOD_CEILING, TRADE_LIMIT_NONE);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, far, WOOD)).toBe(WOOD_CEILING);
+    expect(cartOf(sim, trader, WOOD)).toBe(0);
+    expect(stockOf(sim, near, WOOD)).toBe(PLENTY_OF_WOOD - WOOD_CEILING);
+
+    setStockAmount(sim.world, far, WOOD, WOOD_DRAWN_DOWN);
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, far, WOOD)).toBe(WOOD_CEILING);
+    expect(stockOf(sim, near, WOOD)).toBe(PLENTY_OF_WOOD - 2 * WOOD_CEILING + WOOD_DRAWN_DOWN);
+  });
+
+  it('leaves the reserve a mark keeps in the house it loads from', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, PLENTY_OF_WOOD]]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    limit(sim, trader, far, WOOD, TRADE_LIMIT_NONE, WOOD_KEPT);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, near, WOOD)).toBe(WOOD_KEPT);
+    expect(stockOf(sim, far, WOOD)).toBe(PLENTY_OF_WOOD - WOOD_KEPT);
+  });
+
+  it('balances a good both houses mark no further than the ceiling of the house it flows into', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, PLENTY_OF_WOOD]]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    mark(sim, trader, near, WOOD);
+    limit(sim, trader, far, WOOD, WOOD_CEILING, TRADE_LIMIT_NONE);
+
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, far, WOOD)).toBe(WOOD_CEILING);
+    expect(stockOf(sim, near, WOOD) + cartOf(sim, trader, WOOD)).toBe(PLENTY_OF_WOOD - WOOD_CEILING);
+  });
+
+  it('sets the limits of an existing mark only, and shows them on the trader view', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN);
+    const far = houseAt(sim, FAR_X, HUMAN);
+    const trader = traderOnFoot(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    limit(sim, trader, far, WOOD, WOOD_CEILING, WOOD_KEPT);
+    limit(sim, trader, far, PLANK, WOOD_CEILING, WOOD_KEPT);
+    limit(sim, trader, near, WOOD, WOOD_CEILING, WOOD_KEPT);
+    sim.step();
+
+    const expected = [[], [{ good: WOOD, upTo: WOOD_CEILING, keep: WOOD_KEPT }]];
+    expect(sim.world.get(trader, TradeRoute).stops.map((stop) => stop.imports)).toEqual(expected);
+    expect(sim.traderView(trader)?.stops.map((stop) => stop.imports)).toEqual(expected);
   });
 
   it('lets a third house take the first slot of a full route, marks cleared', () => {
