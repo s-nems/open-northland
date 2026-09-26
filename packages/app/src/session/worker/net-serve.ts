@@ -76,7 +76,7 @@ class RelayConnection<B, E> {
       onError: (what, error) => post({ kind: 'failure', what, error: wireError(error) }),
     });
     this.client = client;
-    this.driver = relayedDriver(client);
+    this.driver = relayedDriver(client, () => this.postFacts());
     this.link = openLink(url, {
       onOpen: () => {
         client.hello();
@@ -158,6 +158,8 @@ class RelayConnection<B, E> {
   private forward(message: ServerMessage): void {
     // A world the client dropped is served no more.
     if (this.served !== null && this.client.worldId !== this.servedWorldId) this.endServed();
+    // A frame, or the clock, the client waited on may have come.
+    this.served?.wake();
     this.postFacts();
     if (this.forwarding && !staysInWorker(message)) this.post({ kind: 'message', message });
   }
@@ -177,7 +179,7 @@ class RelayConnection<B, E> {
     try {
       this.served = new ServedSession(
         post,
-        { sim: world.sim, driver: this.driver, extras: candidate.extras },
+        { sim: world.sim, driver: this.driver, extras: candidate.extras, awaitsFrames: true },
         candidate.options,
         candidate.buildMs,
       );
@@ -243,8 +245,9 @@ class RelayConnection<B, E> {
 /**
  * The client as the served session's driver. It never reads as paused: the relay's pause is the
  * client's to apply, which still runs the frames it holds, so the worker's timer keeps feeding it.
+ * `advanced` runs after each advance, which may settle the match end without stepping a tick.
  */
-function relayedDriver(client: RelayClient): SessionDriver {
+function relayedDriver(client: RelayClient, advanced: () => void): SessionDriver {
   return {
     get paused() {
       return false;
@@ -260,7 +263,11 @@ function relayedDriver(client: RelayClient): SessionDriver {
     },
     setPaused: (paused) => client.setPaused(paused),
     setSpeed: (speed) => client.setSpeed(speed),
-    advance: (elapsedMs, onTick) => client.advance(elapsedMs, onTick),
+    advance: (elapsedMs, onTick) => {
+      const alpha = client.advance(elapsedMs, onTick);
+      advanced();
+      return alpha;
+    },
     submit: (envelope) => client.submit(envelope),
     captureSave: (options) => client.captureSave(options),
   };

@@ -46,6 +46,9 @@ export interface OffClockRun {
 export interface HostedBuild<E> extends BuiltWorld<E> {
   readonly driver: SessionDriver;
   readonly run?: OffClockRun;
+  /** The driver may step nothing while it waits for another authority's frames; its session then
+   *  polls at {@link IDLE_POLL_TICKS} until `wake`. */
+  readonly awaitsFrames?: boolean;
 }
 
 export type WorldBuilder<B, E> = (boot: B, options: WorkerSessionOptions) => HostedBuild<E>;
@@ -61,6 +64,10 @@ export const UNDELIVERED_LIMIT_SECONDS = 2;
 export function undeliveredTickLimit(speed: number): number {
   return Math.ceil(UNDELIVERED_LIMIT_SECONDS * TICKS_PER_SECOND * speed);
 }
+
+/** A waiting driver's poll period, in tick periods at the session speed. A frame's arrival wakes the
+ *  session at once, so this only bounds how often a driver that holds no frame is asked again. */
+export const IDLE_POLL_TICKS = 0.5;
 
 /** Ticks `run` steps between yields, so heartbeats and deliveries are answered during a long run. */
 const RUN_SLICE_TICKS = 10;
@@ -107,6 +114,7 @@ export class ServedSession<E> {
   private readonly sim: Simulation;
   private readonly driver: SessionDriver;
   private readonly offClock: OffClockRun | undefined;
+  private readonly awaitsFrames: boolean;
   private readonly deltas: SnapshotDeltaStream;
   /** Answers the request-shaped reads as the inline host does, over this thread's sim. */
   private readonly answers: SessionHost;
@@ -118,6 +126,12 @@ export class ServedSession<E> {
   private fogSeat: number | null;
   private lastFogKey: string;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** The pending timer is a waiting driver's poll, which `wake` cuts short. */
+  private polling = false;
+  /** Every tick stepped, for telling an advance that stepped none. */
+  private steppedTicks = 0;
+  /** Advances in a row that stepped no tick. */
+  private idleAdvances = 0;
   private lastLoopMs = performance.now();
   private stepStartMs = 0;
   private started = false;
@@ -139,6 +153,7 @@ export class ServedSession<E> {
     this.options = options;
     this.driver = driver;
     this.offClock = built.run;
+    this.awaitsFrames = built.awaitsFrames === true;
     this.outbox = new TickOutbox(
       options.undelivered,
       driver.maxStepsPerFrame,
@@ -247,6 +262,13 @@ export class ServedSession<E> {
     }
   }
 
+  /** What a waiting driver waited on may have arrived: a pending poll steps now. */
+  wake(): void {
+    if (this.timer === null || !this.polling) return;
+    this.halt();
+    this.schedule(0);
+  }
+
   private post(message: FromWorker<E>, transfer?: readonly ArrayBuffer[]): void {
     if (!this.replaced) this.postToRuntime(message, transfer);
   }
@@ -274,15 +296,21 @@ export class ServedSession<E> {
     this.timer = null;
   }
 
-  private schedule(delayMs: number): void {
+  private schedule(delayMs: number, polling = false): void {
+    this.polling = polling;
     this.timer = setTimeout(() => {
       this.timer = null;
+      const before = this.steppedTicks;
       const alpha = this.stepNow();
+      if (alpha === null || !this.canStep()) return;
+      this.idleAdvances = this.steppedTicks === before ? this.idleAdvances + 1 : 0;
+      const tickMs = MS_PER_TICK / this.driver.speed;
+      // A second advance in a row that stepped nothing is a driver waiting or paused, whose leftover
+      // fraction says nothing of when to ask again; one alone may be a timer that fired a hair early.
+      if (this.awaitsFrames && this.idleAdvances > 1) this.schedule(IDLE_POLL_TICKS * tickMs, true);
       // Aimed at the next tick's due time, which the timestep's leftover fraction gives, so a late
       // timer is made up by the next one rather than lost.
-      if (alpha !== null && this.canStep()) {
-        this.schedule(Math.max(0, ((1 - alpha) * MS_PER_TICK) / this.driver.speed));
-      }
+      else this.schedule(Math.max(0, (1 - alpha) * tickMs));
     }, delayMs);
   }
 
@@ -303,6 +331,7 @@ export class ServedSession<E> {
 
   /** After every step, the driver's or `run`'s: record the tick and post it if the runtime has room. */
   private readonly stepped = (): void => {
+    this.steppedTicks++;
     const simMs = performance.now() - this.stepStartMs;
     const { sim } = this;
     const tick = sim.tick;
