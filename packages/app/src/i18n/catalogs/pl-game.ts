@@ -389,6 +389,7 @@ export const plGame = {
       swapWorn: '{slot}: {good} · {percent}% · Wymień',
       swapLabel: 'Wymień: {good}',
       fixedSlot: '{slot}: {good}',
+      lockedSlot: '{slot}: {good} · na stałe, nie można zdjąć',
       takeOff: 'Zdejmij: {good}',
       carrying: 'niesie',
       towards: 'do {place}',

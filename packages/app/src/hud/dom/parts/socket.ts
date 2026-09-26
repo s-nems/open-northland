@@ -48,7 +48,7 @@ export type SocketModel =
     });
 
 export interface SocketOptions {
-  /** A hero's fixed arms: a flat, frameless, inert socket. */
+  /** A hero's fixed arms: an inert socket with a lock badge where the × would be. */
   readonly fixed?: boolean;
   /** A bag cell: a dashed rim while empty. */
   readonly bag?: boolean;
@@ -70,6 +70,7 @@ export function createSocket(options: SocketOptions): Socket {
   const face = fixed ? element('span', 'on-socket on-socket--fixed') : button('on-socket');
   if (options.bag === true) face.classList.add('on-socket--bag');
   root.append(face);
+  if (fixed) root.append(element('span', 'on-socket__lock', GLYPH.lock));
   const off = fixed ? null : button('on-socket__off', GLYPH.close);
   if (off !== null) {
     root.append(off);

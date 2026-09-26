@@ -109,7 +109,7 @@ describe('equipment sockets', () => {
     expect(boots?.model.kind === 'empty' ? boots.model.ghost : null).not.toBeNull();
   });
 
-  it('gives a hero its arms alone, flat, inert and not removable', () => {
+  it('gives a hero only the arms it carries, locked and not removable', () => {
     const arms = { occupied: true, goodId: 'sword', label: 'Sword', conditionPct: null } as const;
     const sockets = equipmentSockets(
       [
@@ -120,10 +120,16 @@ describe('equipment sockets', () => {
       ],
       true,
     );
-    expect(sockets.worn.map((spec) => spec.ref.group)).toEqual(['weapon', 'armor']);
+    // The armour slot this hero's class leaves empty is not shown.
+    expect(sockets.worn.map((spec) => spec.ref.group)).toEqual(['weapon']);
     expect(sockets.bag).toEqual([]);
     expect(sockets.worn.every((spec) => spec.fixed && spec.model.inert)).toBe(true);
     expect(sockets.worn[0]?.model.kind === 'item' ? sockets.worn[0].model.removeLabel : 'x').toBeNull();
+    expect(sockets.worn[0]?.model.tooltip).toContain(
+      messages().hud.settlerPanel.lockedSlot.split('·')[1]?.trim(),
+    );
+    const armed = equipmentSockets([row('weapon', [arms], false), row('armor', [arms], false)], true);
+    expect(armed.worn.map((spec) => spec.ref.group)).toEqual(['weapon', 'armor']);
   });
 
   it('keeps a woman’s slots in place, faded and inert, saying she wears nothing', () => {

@@ -3,8 +3,8 @@ import type { EquipGroup, EquipRow, EquipSlotRef } from '../../details-panel/mod
 import { GLYPH } from '../icons.js';
 import type { SocketModel } from '../parts/socket.js';
 
-/** The worn slots in their fixed order (FOUNDATION.md); a person shows only the ones it has, a hero its
- *  arms alone. */
+/** The worn slots in their fixed order (FOUNDATION.md); a person shows only the ones it has, a hero only
+ *  the arms it carries. */
 const WORN_ORDER: readonly EquipGroup[] = ['weapon', 'armor', 'tool', 'boots'];
 const HERO_ORDER: readonly EquipGroup[] = ['weapon', 'armor'];
 
@@ -19,7 +19,7 @@ const GHOST: Readonly<Record<Exclude<EquipGroup, 'misc'>, string>> = {
 /** A condition below this is a part-used item, which taking off destroys. */
 const FULL_CONDITION_PCT = 100;
 
-/** One socket beside the portrait: its slot address and its look; an inert one (a hero's arms, a
+/** One socket beside the portrait: its slot address and its look; an inert one (a hero's locked arms, a
  *  fighter's stray tool) opens no picker. */
 export interface SocketSpec {
   readonly ref: EquipSlotRef;
@@ -47,7 +47,7 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
       bag,
       model: {
         kind: 'empty',
-        ghost: row.group === 'misc' || fixed ? null : GHOST[row.group],
+        ghost: row.group === 'misc' ? null : GHOST[row.group],
         inert: !row.wearable,
         label: formatMessage(copy.settlerPanel.equipLabel, { slot: label }),
         tooltip: row.wearable
@@ -58,11 +58,13 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
   }
   const good = cell.label ?? label;
   const values = { slot: label, good, percent: cell.conditionPct ?? 0 };
-  const tooltip = !row.wearable
-    ? formatMessage(copy.settlerPanel.fixedSlot, values)
-    : cell.conditionPct === null
-      ? formatMessage(copy.settlerPanel.swap, values)
-      : formatMessage(copy.settlerPanel.swapWorn, values);
+  const tooltip = hero
+    ? formatMessage(copy.settlerPanel.lockedSlot, values)
+    : !row.wearable
+      ? formatMessage(copy.settlerPanel.fixedSlot, values)
+      : cell.conditionPct === null
+        ? formatMessage(copy.settlerPanel.swap, values)
+        : formatMessage(copy.settlerPanel.swapWorn, values);
   const takeOff = formatMessage(copy.settlerPanel.takeOff, { good });
   const discards = cell.conditionPct !== null && cell.conditionPct < FULL_CONDITION_PCT;
   return {
@@ -81,11 +83,13 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
   };
 }
 
-/** The sockets a person's equipment rows show: a hero's fixed arms are flat and inert. */
+/** The sockets a person's equipment rows show: a hero's arms are locked and inert, and a slot its class
+ *  leaves empty is not shown. */
 export function equipmentSockets(rows: readonly EquipRow[], hero: boolean): EquipmentSockets {
   const worn = (hero ? HERO_ORDER : WORN_ORDER).flatMap((group) => {
     const row = rows.find((candidate) => candidate.group === group);
-    return row === undefined ? [] : [socketOf(row, 0, row.slotLabel, hero)];
+    if (row === undefined || (hero && row.slots[0]?.occupied !== true)) return [];
+    return [socketOf(row, 0, row.slotLabel, hero)];
   });
   const misc = rows.find((row) => row.group === 'misc');
   const bagLabel = messages().hud.settlerPanel.bag;

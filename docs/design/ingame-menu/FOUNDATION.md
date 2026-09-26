@@ -308,8 +308,8 @@ button; for those the built panel is the reference.
   figure on the panel's backdrop. The column beside it holds the equipment as two rows of 30 px sockets at the
   top and the status strip along the frame's floor. The sockets are the slots the person's kind
   has: the worn row in a fixed order (Broń, Zbroja, Narzędzia, Buty; a worker has the last two, a
-  soldier Broń, Zbroja, Buty, a hero its fixed arms as flat frameless sockets) and the four-cell
-  Torba row under it. A woman and a child show a worker's sockets faded and inert (the tooltip says
+  soldier Broń, Zbroja, Buty, a hero only the arms it carries, locked, with a lock badge in place
+  of the ×) and the four-cell Torba row under it. A woman and a child show a worker's sockets faded and inert (the tooltip says
   the person wears nothing), so their panel keeps the same shape. An empty worn socket shows a
   ghost glyph of what goes there (sword, armour, tool, boot) and opens the equip picker; an
   occupied socket holds the good's icon over its wear fill, the well filled from the floor up to

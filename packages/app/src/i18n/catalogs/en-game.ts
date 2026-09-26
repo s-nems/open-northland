@@ -402,6 +402,7 @@ export const enGame = {
       swapWorn: '{slot}: {good} · {percent}% · Swap',
       swapLabel: 'Swap: {good}',
       fixedSlot: '{slot}: {good}',
+      lockedSlot: '{slot}: {good} · fixed, cannot be taken off',
       takeOff: 'Take off: {good}',
       carrying: 'carrying',
       towards: 'to {place}',

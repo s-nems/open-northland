@@ -2778,10 +2778,31 @@ body.on-drag-scroll-cursor-hidden * {
   box-shadow: inset 0 0 0 1px #c9a26222;
   border-style: dashed;
 }
+/* A hero's arms belong to its class: the socket keeps its frame, a quieter rim, and a lock badge
+   sits where the × of a removable item would. */
 .on-hud .on-socket--fixed {
-  border-color: transparent;
-  background: none;
-  box-shadow: none;
+  border-color: var(--wood-lo);
+  box-shadow: inset 0 0 0 1px #c9a26218;
+  cursor: default;
+}
+.on-hud .on-socket__lock {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #4b4032, #1a1712 75%);
+  color: var(--bronze);
+  pointer-events: none;
+}
+.on-hud .on-socket__lock .on-glyph {
+  width: 9px;
+  height: 9px;
+  stroke-width: 2.4;
 }
 .on-hud .on-socket__wear {
   position: absolute;
