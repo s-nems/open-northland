@@ -461,7 +461,12 @@ function swingAt(
   if (owned) {
     const prior = world.tryGet(e, Engagement);
     if (prior === undefined) world.add(e, Engagement, { repathAt: ctx.tick });
-    else if (prior.stall !== undefined) world.mut(e, Engagement).stall = undefined; // it reached its target
+    else if (prior.stall !== undefined || prior.waiting !== undefined) {
+      // It reached its target, and a second rank that strikes stands in the front now.
+      const held = world.mut(e, Engagement);
+      held.stall = undefined;
+      held.waiting = undefined;
+    }
   }
   // The victim's armor material selects both the damage column and the impact sound, and fight experience
   // with this weapon class raises the column. Original behavior: a wall and a vehicle take the bare column,

@@ -502,11 +502,12 @@ describe('engagement - a crowd on one enemy', () => {
     expect(steppedIn).toBe(true);
   });
 
-  it('a waiting overflow strikes an enemy that steps up beside it', () => {
+  it('a waiting overflow strikes an enemy that steps up beside it and stands in the front', () => {
     const TURN_TICKS = 2 * REPATH_CADENCE;
     const { s, waiting } = settledOverflow();
     const waiter = waiting[0];
     if (waiter === undefined) throw new Error('nobody waits');
+    expect(s.world.get(waiter, Engagement).waiting).toBe(true);
     const p = s.world.get(waiter, Position);
     const at = nodeOfPosition(p.x, p.y);
     const occupied = new Set(
@@ -528,6 +529,7 @@ describe('engagement - a crowd on one enemy', () => {
       struck = swinging(s, waiter) === newcomer;
     }
     expect(struck).toBe(true);
+    expect(s.world.get(waiter, Engagement).waiting).toBeUndefined();
   });
 });
 
