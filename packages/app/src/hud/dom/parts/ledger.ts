@@ -1,5 +1,5 @@
 import type { GoodIconPainter } from '../good-art.js';
-import { button, element, setClass, setTitle, write } from './dom.js';
+import { button, element, setClass, setTip, write } from './dom.js';
 import { createRoundButton, type RoundButton, type RoundButtonModel } from './round-button.js';
 
 /** One piece of a ledger value: plain text, or a link the owner answers. `missing` reads amber (an
@@ -100,7 +100,7 @@ export function createLedger(options: LedgerOptions = {}): Ledger {
       write(text, model.label);
       write(note, model.labelNote ?? '');
       note.hidden = model.labelNote === undefined;
-      setTitle(root, model.tooltip ?? '');
+      setTip(root, model.tooltip ?? '');
       const nextShape = segmentShape(model.value);
       if (nextShape !== shape) {
         shape = nextShape;
@@ -110,7 +110,7 @@ export function createLedger(options: LedgerOptions = {}): Ledger {
         const piece = pieces[index];
         if (piece === undefined) return;
         write(piece, segment.text);
-        setTitle(piece, segment.tooltip ?? '');
+        setTip(piece, segment.tooltip ?? '');
         setClass(piece, 'on-ledger--missing', segment.tone === 'missing');
         setClass(piece, 'on-ledger--muted', segment.tone === 'muted');
       });

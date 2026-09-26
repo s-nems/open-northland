@@ -151,13 +151,13 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   return rows.map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
 }
 
-/** The rows the Doświadczenie section shows, two to a line: the current trade's, at most
- *  {@link EXPERIENCE_SHOWN_MAX}, or the single best-trained one for a person without a trained trade. */
-export const EXPERIENCE_SHOWN_MAX = 6;
+/** The rows a folded Doświadczenie section keeps: the current trade's, at most
+ *  {@link EXPERIENCE_FOLDED_MAX}, or the single best-trained one for a person without a trained trade. */
+export const EXPERIENCE_FOLDED_MAX = 3;
 
 export function experienceShown(rows: readonly ExperienceRowModel[]): number {
   const own = rows.filter((row) => row.own).length;
-  return Math.min(rows.length, EXPERIENCE_SHOWN_MAX, Math.max(1, own));
+  return Math.min(rows.length, EXPERIENCE_FOLDED_MAX, Math.max(1, own));
 }
 
 /** The live state the status line opens with, read off the settler's components. */

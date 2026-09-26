@@ -1,5 +1,5 @@
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setDisabled, setTitle, write } from './dom.js';
+import { button, element, onPress, setAttribute, setDisabled, setTip, write } from './dom.js';
 
 /** A counter's finite top and the sentinel above it that means "never stop" (shown as ∞). */
 export interface CounterRange {
@@ -7,22 +7,42 @@ export interface CounterRange {
   readonly unlimited: number;
 }
 
+/** The keys held with an arrow press: Shift jumps to that arrow's end, Ctrl steps by tens. */
+export interface CounterModifiers {
+  readonly jump: boolean;
+  readonly tens: boolean;
+}
+
+/** What a Ctrl press moves the counter by. */
+export const COUNTER_TENS_STEP = 10;
+
 /**
  * One press of a counter arrow. Original behavior (the human window's production counter): − at 0 wraps
  * to unlimited, + past the finite top reaches unlimited, Shift jumps to that arrow's end. + at unlimited
- * stays there, where the original wraps to 0: one more press must not stop a product.
+ * stays there, where the original wraps to 0: one more press must not stop a product. Ctrl moves by
+ * tens inside the finite range, wrapping at its ends as a single step does.
  */
-export function counterStep(range: CounterRange, current: number, delta: 1 | -1, jump: boolean): number {
-  if (jump) return delta > 0 ? range.unlimited : 0;
+export function counterStep(
+  range: CounterRange,
+  current: number,
+  delta: 1 | -1,
+  modifiers: CounterModifiers,
+): number {
+  if (modifiers.jump) return delta > 0 ? range.unlimited : 0;
+  const step = modifiers.tens ? COUNTER_TENS_STEP : 1;
   if (delta < 0) {
     if (current <= 0) return range.unlimited;
-    return current >= range.unlimited ? range.max : current - 1;
+    return current >= range.unlimited ? range.max : Math.max(0, current - step);
   }
-  return current >= range.max ? range.unlimited : current + 1;
+  return current >= range.max ? range.unlimited : Math.min(range.max, current + step);
 }
 
 export function counterText(range: CounterRange, value: number): string {
   return value >= range.unlimited ? '∞' : String(value);
+}
+
+export function counterModifiers(event: MouseEvent): CounterModifiers {
+  return { jump: event.shiftKey, tens: event.ctrlKey || event.metaKey };
 }
 
 export interface CounterModel {
@@ -48,11 +68,11 @@ export function createCounter(range: CounterRange, onChange: (next: number) => v
   root.append(less, value, more);
   let current = 0;
   const press = (delta: 1 | -1, event: MouseEvent): void => {
-    const next = counterStep(range, current, delta, event.shiftKey);
+    const next = counterStep(range, current, delta, counterModifiers(event));
     if (next !== current) onChange(next);
   };
-  less.addEventListener('click', (event) => press(-1, event));
-  more.addEventListener('click', (event) => press(1, event));
+  onPress(less, (event) => press(-1, event));
+  onPress(more, (event) => press(1, event));
   return {
     element: root,
     update(model): void {
@@ -60,8 +80,8 @@ export function createCounter(range: CounterRange, onChange: (next: number) => v
       write(value, counterText(range, model.value));
       setAttribute(less, 'aria-label', model.lessLabel);
       setAttribute(more, 'aria-label', model.moreLabel);
-      setTitle(less, model.lessTooltip);
-      setTitle(more, model.moreTooltip);
+      setTip(less, model.lessTooltip);
+      setTip(more, model.moreTooltip);
       setDisabled(more, model.value >= range.unlimited);
     },
   };

@@ -1,9 +1,17 @@
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setClass, setDisabled, setHidden, setTitle } from './dom.js';
+import { button, element, setAttribute, setClass, setDisabled, setHidden, setTip } from './dom.js';
 
-/** A worn item under a quarter of its life left shows its wear fill red. */
+/** A worn item under half its life shows its wear fill amber, under a quarter red. */
+export const SOCKET_WEARING_BELOW_PCT = 50;
 export const SOCKET_WORN_BELOW_PCT = 25;
+
+export type SocketWearTone = 'fresh' | 'wearing' | 'worn';
+
+export function socketWearTone(wearPct: number): SocketWearTone {
+  if (wearPct < SOCKET_WORN_BELOW_PCT) return 'worn';
+  return wearPct < SOCKET_WEARING_BELOW_PCT ? 'wearing' : 'fresh';
+}
 /** Design px of the good icon in a 30 px socket (foundation.css). */
 const SOCKET_ICON_PX = 23;
 
@@ -83,7 +91,7 @@ export function createSocket(options: SocketOptions): Socket {
       paint(model);
       setClass(face, 'on-socket--empty', model.kind === 'empty');
       if (!fixed) setDisabled(face, model.kind === 'empty' && model.inert);
-      setTitle(face, model.tooltip);
+      setTip(face, model.tooltip);
       setAttribute(face, 'aria-label', model.label);
       const wearPct = model.kind === 'item' ? model.wearPct : null;
       if (wear !== null) {
@@ -91,13 +99,15 @@ export function createSocket(options: SocketOptions): Socket {
         const fill = `${wearPct ?? 0}%`;
         if (wear.style.getPropertyValue('--value') !== fill) wear.style.setProperty('--value', fill);
       }
-      setClass(face, 'on-socket--worn', wearPct !== null && wearPct < SOCKET_WORN_BELOW_PCT);
+      const tone = wearPct === null ? 'fresh' : socketWearTone(wearPct);
+      setClass(face, 'on-socket--wearing', tone === 'wearing');
+      setClass(face, 'on-socket--worn', tone === 'worn');
       if (off !== null) {
         const removable = model.kind === 'item' && model.removeLabel !== null;
         setHidden(off, !removable);
         if (model.kind === 'item' && model.removeLabel !== null) {
           setAttribute(off, 'aria-label', model.removeLabel);
-          setTitle(off, model.removeLabel);
+          setTip(off, model.removeLabel);
         }
       }
     },

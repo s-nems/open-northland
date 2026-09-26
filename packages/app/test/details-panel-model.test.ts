@@ -1,4 +1,4 @@
-import { fx, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import { fx, ONE, PRODUCTION_UNLIMITED, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { shelterCapacityById } from '../src/catalog/defence.js';
 import {
@@ -904,7 +904,8 @@ describe('selection details panel model', () => {
       GOOD_GOLD,
       GOOD_MUSHROOM,
     ]);
-    expect(model.production?.rows.map((row) => row.count)).toEqual([0, 3, 11, 11, 11, 11]);
+    const open = PRODUCTION_UNLIMITED;
+    expect(model.production?.rows.map((row) => row.count)).toEqual([0, 3, open, open, open, open]);
   });
 
   // `jobtypes.ini` marks the hunter `userCanChangeProductionFlag 0`: the sim ignores its counters, so

@@ -2366,10 +2366,14 @@ body.on-drag-scroll-cursor-hidden * {
   mask-composite: exclude;
 }
 .on-hud .on-selection .on-window__head {
+  gap: 8px;
   padding: 10px 12px 8px;
 }
+/* Centred between the two medallions: the trade over the name, both read from the middle. */
 .on-hud .on-selection__heading {
+  flex: 1;
   min-width: 0;
+  text-align: center;
 }
 .on-hud .on-selection__title {
   margin: 0;
@@ -2383,19 +2387,20 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--muted);
   font-size: 11.5px;
 }
-.on-hud .on-selection__medallions {
-  display: inline-flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.on-hud .on-selection__medallions .on-medallion {
+.on-hud .on-selection__medallion {
   width: 26px;
   height: 26px;
+  flex-shrink: 0;
 }
-.on-hud .on-selection__medallions .on-glyph {
+.on-hud .on-selection__medallion .on-glyph {
   width: 14px;
   height: 14px;
   stroke-width: 2.2;
+}
+/* Another seat's person takes no orders: the medallion's place stays, so the heading keeps its centre. */
+.on-hud .on-medallion--void {
+  visibility: hidden;
+  pointer-events: none;
 }
 /* The one control a new player needs first: gold, so it reads as the way in, not as chrome. */
 .on-hud .on-medallion--gold {
@@ -2424,8 +2429,9 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-kicker {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  margin: 0 0 1px;
+  margin: 0 0 4px;
   font: 700 13px / 1.2 var(--font-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2530,6 +2536,7 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-ledger--ctl,
 .on-hud .on-selection .on-ledger--ctl {
   align-items: center;
+  gap: 8px;
   margin: 1px 0;
 }
 .on-hud .on-ledger__glyph {
@@ -2577,7 +2584,6 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-ledger__btns {
   display: inline-flex;
   gap: 4px;
-  margin-left: 2px;
 }
 /* Round chips: ledger assign/remove, a section title's add, a product's good, an import toggle. */
 .on-hud .on-round {
@@ -2799,6 +2805,9 @@ body.on-drag-scroll-cursor-hidden * {
   background: linear-gradient(180deg, #c3cf8633, #7c945099);
   pointer-events: none;
 }
+.on-hud .on-socket--wearing .on-socket__wear {
+  background: linear-gradient(180deg, #e8d48a33, #b8973a99);
+}
 .on-hud .on-socket--worn .on-socket__wear {
   background: linear-gradient(180deg, #efbe7033, #a8412f99);
 }
@@ -2935,6 +2944,8 @@ body.on-drag-scroll-cursor-hidden * {
   flex-shrink: 0;
   width: 6px;
   height: 6px;
+  /* The capitals' middle sits above the line box's middle at line-height 1. */
+  transform: translateY(-1px);
   border-radius: 50%;
   background: var(--ok);
   box-shadow: 0 0 4px var(--ok);
@@ -3070,28 +3081,28 @@ body.on-drag-scroll-cursor-hidden * {
   margin: 0 2px;
   stroke-width: 2.4;
 }
-/* Doświadczenie: the trained tracks two to a line, the unlocks and their meters across both columns. */
-.on-hud .on-experience {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 14px;
+/* Doświadczenie: one track to a line (a track's name can run long), the rows past the fold hidden
+   until the "jeszcze N" toggle in the title opens them. */
+.on-hud .on-experience .on-ledger--more {
+  display: none;
 }
-.on-hud .on-experience .on-ledger {
-  min-width: 0;
+.on-hud .on-experience--open .on-ledger--more {
+  display: flex;
 }
-.on-hud .on-selection .on-experience .on-ledger > span:first-child {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.on-hud .on-more {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bronze);
+  font: inherit;
+  font-size: 12px;
+  font-variant: normal;
+  letter-spacing: 0;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
-/* The repeats and the bonus are the point of the row: the label gives way, never the number. */
-.on-hud .on-selection .on-experience .on-ledger__value {
-  flex: 0 0 auto;
-}
-.on-hud .on-experience__wide {
-  grid-column: 1 / -1;
+.on-hud .on-more:hover {
+  color: var(--bronze-hi);
 }
 .on-hud .on-ledger--unlock {
   margin-bottom: 2px;

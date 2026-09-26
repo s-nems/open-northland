@@ -1,7 +1,8 @@
 import { navBeamRect } from '../nav-beam.js';
 import { TOP_BAR_HEIGHT } from '../regions.js';
 import { GLYPH } from './icons.js';
-import { button, element, setAttribute, setHidden, setTitle, write } from './parts/dom.js';
+import { button, element, setAttribute, setClass, setHidden, setTip, write } from './parts/dom.js';
+import { attachTipLayer, type TipChip } from './parts/tip-layer.js';
 import { WINDOW_ORNAMENTS } from './symbols.js';
 
 /** Design px between the summary bar and the panel's top when the panel is as tall as it gets. */
@@ -18,8 +19,9 @@ export function selectionBottomInset(plane: { readonly width: number; readonly h
   return beam.x + beam.w > plane.width - SELECTION_PANEL_W ? beam.h : 0;
 }
 
-/** The head of the selected thing: the kicker (with browsing), the title (with rename), the meta line,
- *  and the medallions: the gold orders one, when the thing takes orders, beside the close. */
+/** The head of the selected thing: the gold orders medallion at the left, when the thing takes orders,
+ *  the kicker (with browsing), the title (with rename) and the meta line centred, the close at the
+ *  right. */
 export interface SelectionHeadModel {
   readonly kicker: string;
   /** The chevrons and "i / n" over the kicker's peers; null shows the kicker alone. */
@@ -34,7 +36,7 @@ export interface SelectionHeadModel {
   /** The pen's tooltip and the longest name the field takes; null keeps the title read-only. */
   readonly rename: { readonly tooltip: string; readonly maxLength: number } | null;
   readonly meta: string | null;
-  /** The orders medallion's tooltip, which names the ring's hotkey; null leaves the close alone. */
+  /** The orders medallion's tooltip, which names the ring's hotkey; null blanks its place. */
   readonly orders: { readonly tooltip: string } | null;
   readonly labels: {
     readonly close: string;
@@ -96,12 +98,20 @@ export interface SelectionPanel {
   holeClientRect(): ClientRect | null;
   /** True when this client point is over the panel. */
   claims(clientX: number, clientY: number): boolean;
+  /** The content stands taller than the frame allows, so its bottom is cut: the owner folds something.
+   *  Reads the layout, so it is asked once per content change, never per tick. */
+  overflows(): boolean;
   /** The name field is open, so the owner leaves the title alone. */
   renaming(): boolean;
   dispose(): void;
 }
 
-export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPanelHandlers): SelectionPanel {
+/** `chip` shows the tooltips of every control on the panel (`setTip`), after the tip layer's delay. */
+export function createSelectionPanel(
+  plane: HTMLElement,
+  handlers: SelectionPanelHandlers,
+  chip: TipChip,
+): SelectionPanel {
   const root = element('aside', 'on-window on-selection');
   root.hidden = true;
   root.style.width = `${SELECTION_PANEL_W}px`;
@@ -132,23 +142,21 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
 
   const heading = element('div', 'on-selection__heading');
   heading.append(kicker, title, meta);
-  // Gold, first in the row: a new player finds the ring here, so it must not read as one more chrome
-  // control.
-  const orders = button('on-medallion on-medallion--gold', GLYPH.orders);
+  // Gold, at the left where a new player looks first, so it must not read as one more chrome control.
+  const orders = button('on-medallion on-medallion--gold on-selection__medallion', GLYPH.orders);
   orders.addEventListener('click', (event) =>
     handlers.onOrders({ x: event.clientX, y: event.clientY, panelLeft: root.getBoundingClientRect().left }),
   );
-  const close = button('on-medallion', GLYPH.close);
+  const close = button('on-medallion on-selection__medallion', GLYPH.close);
   close.addEventListener('click', () => handlers.onClose());
-  const medallions = element('span', 'on-selection__medallions');
-  medallions.append(orders, close);
   const head = element('header', 'on-window__head');
-  head.append(heading, medallions);
+  head.append(orders, heading, close);
   const body = element('div', 'on-selection__body');
   root.innerHTML = WINDOW_ORNAMENTS;
   root.prepend(fill);
   root.append(head, body);
   plane.append(root);
+  const tips = attachTipLayer(root, chip);
 
   let editing = false;
   let shownTitle = '';
@@ -228,6 +236,7 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
     },
     hide: () => {
       endRename(false);
+      tips.hide();
       setHidden(root, true);
     },
     isOpen: () => !root.hidden,
@@ -239,10 +248,10 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
       setHidden(kickerCount, browse === null);
       if (browse !== null) {
         write(kickerCount, `${browse.index} / ${browse.count}`);
-        setTitle(prev, browse.prevTooltip);
-        setTitle(next, browse.nextTooltip);
-        setTitle(kickerText, browse.kickerTooltip);
-      } else setTitle(kickerText, '');
+        setTip(prev, browse.prevTooltip);
+        setTip(next, browse.nextTooltip);
+        setTip(kickerText, browse.kickerTooltip);
+      } else setTip(kickerText, '');
       setAttribute(prev, 'aria-label', model.labels.prev);
       setAttribute(next, 'aria-label', model.labels.next);
       shownTitle = model.title;
@@ -252,18 +261,19 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
       setHidden(plainName, model.rename !== null);
       if (!editing) setHidden(renameButton, model.rename === null);
       if (model.rename !== null) {
-        setTitle(renameButton, model.rename.tooltip);
+        setTip(renameButton, model.rename.tooltip);
         if (field.maxLength !== model.rename.maxLength) field.maxLength = model.rename.maxLength;
       }
       setHidden(meta, model.meta === null);
       write(meta, model.meta ?? '');
-      setHidden(orders, model.orders === null);
+      // Blank, not gone: the heading stays centred between two medallion widths.
+      setClass(orders, 'on-medallion--void', model.orders === null);
       if (model.orders !== null) {
-        setTitle(orders, model.orders.tooltip);
+        setTip(orders, model.orders.tooltip);
         setAttribute(orders, 'aria-label', model.orders.tooltip);
       }
       setAttribute(close, 'aria-label', model.labels.close);
-      setTitle(close, model.labels.close);
+      setTip(close, model.labels.close);
       setAttribute(root, 'aria-label', model.title);
       invalidate();
     },
@@ -304,8 +314,10 @@ export function createSelectionPanel(plane: HTMLElement, handlers: SelectionPane
       const hit = document.elementFromPoint(clientX, clientY);
       return hit !== null && root.contains(hit);
     },
+    overflows: () => body.scrollHeight > body.clientHeight,
     renaming: () => editing,
     dispose(): void {
+      tips.dispose();
       window.removeEventListener('resize', invalidate);
       resizes.disconnect();
       root.remove();

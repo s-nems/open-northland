@@ -22,10 +22,11 @@ export const Production = defineComponent<{
   cycles: ProductionCycle[];
 }>('Production', 'economy');
 
-/** The largest finite production counter: units still to make of one product. */
-export const PRODUCTION_COUNT_MAX = 10;
+/** The largest finite production counter: units still to make of one product. Owner rule: the
+ *  original's window stops at 10; a hundred lets a batch be ordered without babysitting the counter. */
+export const PRODUCTION_COUNT_MAX = 100;
 /** The counter value meaning "keep making this product": it never decrements. */
-export const PRODUCTION_UNLIMITED = 11;
+export const PRODUCTION_UNLIMITED = PRODUCTION_COUNT_MAX + 1;
 /** One product's counter: `0` stopped, `1..PRODUCTION_COUNT_MAX` units still to make, or
  *  {@link PRODUCTION_UNLIMITED}. */
 export type ProductionCount = number;
@@ -35,7 +36,7 @@ export type ProductionCount = number;
  * harvests of each good its gathering trade takes, set by the `setProductionCount`, `setProductionGoods`
  * and `setGatherGood` commands. Original behavior: one counter per human and good it can produce, `0`
  * stopped, `1..10` units still to make, `11` unlimited, and "only this good" is that good unlimited with
- * every other one at `0`. Dropped on a change of trade and whenever a workplace binding is made or ended,
+ * every other one at `0`; here the finite top is {@link PRODUCTION_COUNT_MAX}. Dropped on a change of trade and whenever a workplace binding is made or ended,
  * since another post or trade offers a different set of goods; a re-order into the same trade keeps them.
  *
  * Craft: the rotation pool is every product whose counter is at least one, in the workplace's recipe order;

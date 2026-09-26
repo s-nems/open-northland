@@ -63,6 +63,9 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></svg>',
   armor:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6z"/></svg>',
+  /* Two wedding bands, linked: the family row's partner pick. */
+  rings:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="9" cy="13" r="5.5"/><circle cx="15" cy="13" r="5.5"/><path d="M7 7.5 9 4M17 7.5 15 4"/></svg>',
 } as const;
 
 /** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */

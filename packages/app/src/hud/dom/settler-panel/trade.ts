@@ -7,7 +7,7 @@ import type {
 } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setClass, setHidden, setTitle, write } from '../parts/dom.js';
+import { button, element, setAttribute, setClass, setHidden, setTip, write } from '../parts/dom.js';
 import { createRoundButton, type RoundButton } from '../parts/round-button.js';
 import { createSection } from '../parts/section.js';
 import type { SettlerPanelDeps } from './actions.js';
@@ -138,7 +138,7 @@ export function createTradeSection(
         if (view === undefined) return;
         setClass(view.item, 'on-stop--foreign', stop.foreign);
         write(view.name, stop.label);
-        setTitle(
+        setTip(
           view.name,
           formatMessage(stop.foreign ? panel.tradeForeignStop : panel.tradeStop, { house: stop.label }),
         );
@@ -168,7 +168,7 @@ export function createTradeSection(
         const chip = offerViews[index];
         if (chip === undefined) return;
         setAttribute(chip, 'aria-pressed', String(offer.selected));
-        setTitle(
+        setTip(
           chip,
           formatMessage(panel.agreementTooltip, {
             giveAmount: offer.give.amount,

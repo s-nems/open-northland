@@ -1,7 +1,7 @@
 import { messages } from '../../../i18n/index.js';
 import type { SettlerPanelModel, SettlerStatusModel } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
-import { button, element, setClass, setHidden, setTitle, write } from '../parts/dom.js';
+import { button, element, setClass, setHidden, setTip, write } from '../parts/dom.js';
 import { createSocket, type Socket } from '../parts/socket.js';
 import type { SettlerPanelDeps } from './actions.js';
 import { equipmentSockets, type SocketSpec, socketsKey } from './equipment.js';
@@ -44,6 +44,15 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
   const row = element('div', 'on-portrait');
   const frame = button('on-portrait__frame');
   frame.addEventListener('click', () => actions.centre(entity()));
+  // A right click on the figure orders it, as one on the figure in the world does.
+  frame.addEventListener('contextmenu', (event) => {
+    const panel = row.closest('.on-window');
+    actions.openOrders(entity(), {
+      x: event.clientX,
+      y: event.clientY,
+      panelLeft: (panel ?? row).getBoundingClientRect().left,
+    });
+  });
   const beside = element('div', 'on-portrait__beside');
   const equipment = element('div', 'on-equipment');
   const wornRow = element('div', 'on-equip-row');
@@ -111,7 +120,7 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
     frame,
     update(model): void {
       const copy = messages().hud.settlerPanel;
-      setTitle(frame, copy.centre);
+      setTip(frame, copy.centre);
       frame.setAttribute('aria-label', copy.centre);
       updateSockets(model);
       write(statusHead, statusText(model.status));
@@ -123,7 +132,7 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
       if (carried !== null) {
         write(carryWord, copy.carrying);
         write(carryGood, `×${carried.amount}`);
-        setTitle(carrying, `${copy.carrying} ${carried.label} ×${carried.amount}`);
+        setTip(carrying, `${copy.carrying} ${carried.label} ×${carried.amount}`);
         const good = carried.goodId ?? '';
         if (good !== carriedGood) {
           carriedGood = good;

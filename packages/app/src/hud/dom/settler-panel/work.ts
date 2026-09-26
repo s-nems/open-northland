@@ -39,6 +39,13 @@ export function seatValue(row: SettlerSeatRow, linkTooltip: string, foreign: boo
   return [{ text: row.target.label, link, ...(link ? { tooltip: linkTooltip } : {}) }];
 }
 
+/** The Rodzina row's button: the rings that arm the partner pick, while the person is free to marry. */
+export function familyButton(family: SettlerFamilyModel): RoundButtonModel | null {
+  if (!family.canPickPartner) return null;
+  const copy = messages().hud.settlerPanel;
+  return { face: { glyph: GLYPH.rings }, label: copy.noPartnerTooltip, tooltip: copy.noPartnerTooltip };
+}
+
 /** The Rodzina value: the spouse and the child as links, or "bez pary", a link while the partner pick
  *  is open to the person. */
 export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
@@ -94,6 +101,8 @@ export function createWorkSection(
     onButton: (index) => (index === 0 ? actions.assignHome(id()) : actions.unassignHome(id())),
   });
   const family = createLedger({
+    buttons: 1,
+    onButton: () => actions.pickPartner(id()),
     onLink: (index) => {
       const model = current()?.family;
       if (model == null) return;
@@ -153,7 +162,13 @@ export function createWorkSection(
         });
       }
       setHidden(family.element, model.family === null);
-      if (model.family !== null) family.update({ label: panel.family, value: familyValue(model.family) });
+      if (model.family !== null) {
+        family.update({
+          label: panel.family,
+          value: familyValue(model.family),
+          buttons: [familyButton(model.family)],
+        });
+      }
     },
   };
 }

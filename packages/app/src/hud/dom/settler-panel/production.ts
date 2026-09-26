@@ -8,21 +8,29 @@ import {
 } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
 import { type Counter, createCounter } from '../parts/counter.js';
-import { button, element, setAttribute, setClass, setHidden, setTitle, write } from '../parts/dom.js';
+import { button, element, setAttribute, setClass, setHidden, setTip, write } from '../parts/dom.js';
 import { createRoundButton, type RoundButton, type RoundButtonModel } from '../parts/round-button.js';
 import { createSection } from '../parts/section.js';
 import type { SettlerPanelDeps } from './actions.js';
 
 const COUNTER_RANGE = { max: PRODUCTION_COUNT_MAX, unlimited: PRODUCTION_UNLIMITED };
 
-/** The good's button is "only this one": its wording names making for a craft and gathering for a
- *  gatherer, the order is the same. */
+/** The good's button is "only this one", and with Ctrl it adds the good to what is made or takes it
+ *  out (its counter to ∞ or 0, the other rows untouched): its wording names making for a craft and
+ *  gathering for a gatherer, the orders are the same. */
 function goodButton(production: SettlerProductionModel, row: SettlerProductionRow): RoundButtonModel {
   const copy = messages().hud.settlerPanel;
   const face = { goodId: row.goodId };
   if (row.locked !== null) return { face, label: row.label, tooltip: row.locked, enabled: false };
   const label = formatMessage(copy.onlyThisLabel, { good: row.label });
-  return { face, label, tooltip: production.kind === 'craft' ? copy.onlyThis : copy.gatherOnly };
+  const only = production.kind === 'craft' ? copy.onlyThis : copy.gatherOnly;
+  const toggle = row.count === 0 ? copy.addProduct : copy.removeProduct;
+  return { face, label, tooltip: `${only} · ${toggle}` };
+}
+
+/** The Ctrl press's counter: a stopped good starts for good, a running one stops. */
+export function toggledProductionCount(count: number): number {
+  return count === 0 ? PRODUCTION_UNLIMITED : 0;
 }
 
 interface RowView {
@@ -55,7 +63,17 @@ export function createProductionSection(
   const rowView = (goodType: number): RowView => {
     const id = (): number => current()?.entityId ?? -1;
     const item = element('li', 'on-prod-row');
-    const good = createRoundButton('good', () => actions.onlyProduct(id(), goodType), deps.icons);
+    const good = createRoundButton(
+      'good',
+      (event) => {
+        const row = current()?.production?.rows.find((candidate) => candidate.goodType === goodType);
+        if (event.ctrlKey || event.metaKey) {
+          if (row !== undefined)
+            actions.setProductionCount(id(), goodType, toggledProductionCount(row.count));
+        } else actions.onlyProduct(id(), goodType);
+      },
+      deps.icons,
+    );
     const name = element('span', 'on-prod-row__name');
     const counter = createCounter(COUNTER_RANGE, (next) => actions.setProductionCount(id(), goodType, next));
     const lock = button('on-prod-row__lock', GLYPH.lock);
@@ -91,7 +109,7 @@ export function createProductionSection(
             reason: row.locked,
             good: row.label,
           });
-          setTitle(view.lock, lockTip);
+          setTip(view.lock, lockTip);
           setAttribute(
             view.lock,
             'aria-label',

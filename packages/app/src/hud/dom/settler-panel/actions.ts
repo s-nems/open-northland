@@ -4,6 +4,7 @@ import type { BuildingHoverModel } from '../../hover-card/model.js';
 import type { ResidentRow } from '../../tool-panel/residents/rows.js';
 import type { GoodIconPainter } from '../good-art.js';
 import type { HoverCard } from '../hover-card.js';
+import type { TipChip } from '../parts/tip-layer.js';
 import type { OrdersPress } from '../selection-panel.js';
 
 /**
@@ -19,7 +20,8 @@ export interface SettlerPanelActions {
   /** A double click on the trade: select every peer as a group. */
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly clearSelection: () => void;
-  /** Open the action ring for the settler beside the medallion press, clear of the panel. */
+  /** Open the action ring for the settler at the press (the medallion, a right click on the portrait),
+   *  as close to the cursor as the canvas under the panel allows. */
   readonly openOrders: (id: number, press: OrdersPress) => void;
   readonly rename: (id: number, name: string) => void;
   readonly orderNeed: (id: number, need: NeedKind) => void;
@@ -45,11 +47,6 @@ export interface SettlerPanelActions {
   readonly openKnowledge?: (goodType: number) => void;
 }
 
-export interface TextChip {
-  show(clientX: number, clientY: number, text: string): void;
-  hide(): void;
-}
-
 /** What the panel reads besides its model. */
 export interface SettlerPanelDeps {
   readonly plane: HTMLElement;
@@ -62,8 +59,9 @@ export interface SettlerPanelDeps {
   readonly keyLabel: (action: 'actionRing') => string;
   /** The card the workplace link shows while the cursor rests on it. */
   readonly hoverCard: HoverCard;
-  /** The cursor-following chip a stat line's numbers show in while the cursor is over it. */
-  readonly tooltip: TextChip;
+  /** The cursor-following chip every control's tooltip shows in after the tip layer's delay, and a
+   *  stat line's numbers at once while the cursor is over it. */
+  readonly tooltip: TipChip;
   readonly buildingHover: (id: number) => BuildingHoverModel | null;
   /** Wall clock in ms, the peer list's refresh cadence. */
   readonly now: () => number;

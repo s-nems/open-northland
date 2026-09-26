@@ -61,7 +61,7 @@ export {
   type UnitPanelModelContext,
 } from './context.js';
 export {
-  EXPERIENCE_SHOWN_MAX,
+  EXPERIENCE_FOLDED_MAX,
   type ExperienceRowModel,
   experienceShown,
   type SettlerState,

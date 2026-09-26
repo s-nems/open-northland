@@ -1,4 +1,4 @@
-import { button, element, setAttribute, setClass, setTitle, write } from './dom.js';
+import { button, element, setAttribute, setClass, setTip, write } from './dom.js';
 
 /** A fill under a third reads amber and under a sixth red (FOUNDATION.md), so trouble shows without
  *  words; the percent itself carries the same colour. */
@@ -59,7 +59,7 @@ export function createMeterRow(options: MeterRowOptions = {}): MeterRow {
       const width = `${model.pct}%`;
       if (meter.style.getPropertyValue('--value') !== width) meter.style.setProperty('--value', width);
       write(value, `${model.pct}%`);
-      if (onHover === undefined) setTitle(root, model.tooltip);
+      if (onHover === undefined) setTip(root, model.tooltip);
       const tone = meterTone(model.pct);
       setClass(root, 'on-meter-row--low', tone === 'low');
       setClass(root, 'on-meter-row--critical', tone === 'critical');

@@ -44,10 +44,31 @@ export function setTitle(node: HTMLElement, text: string): void {
   if (node.title !== text) node.title = text;
 }
 
+/** The attribute a tip layer (`tip-layer.ts`) reads the hovered control's tooltip from. */
+export const TIP_ATTRIBUTE = 'data-tip';
+
+/** The control's tooltip for the tip layer of the surface it sits on; empty removes it. */
+export function setTip(node: HTMLElement, text: string): void {
+  if (text === '') removeAttribute(node, TIP_ATTRIBUTE);
+  else setAttribute(node, TIP_ATTRIBUTE, text);
+}
+
 /** A control the player may see but not press: faded, still focusable, its reason in the tooltip. */
 export function setDisabled(node: HTMLElement, disabled: boolean): void {
   if (disabled) setAttribute(node, 'aria-disabled', 'true');
   else removeAttribute(node, 'aria-disabled');
+}
+
+/**
+ * A control's press, with the keys held. On macOS the browser turns Ctrl + left click into a context
+ * menu press and fires no `click`, so that press is taken as the Ctrl click it was; a plain right click
+ * is not a press.
+ */
+export function onPress(node: HTMLElement, handler: (event: MouseEvent) => void): void {
+  node.addEventListener('click', handler);
+  node.addEventListener('contextmenu', (event) => {
+    if (event.ctrlKey) handler(event);
+  });
 }
 
 export function isDisabled(node: Element): boolean {

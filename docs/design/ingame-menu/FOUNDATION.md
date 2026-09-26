@@ -214,21 +214,25 @@ on the beam opens it at once.
 ### Settler panel
 
 The selected person's panel (ticket 08), bottom right, 318 px wide, in the window frame. The head
-carries the trade as the bronze kicker (13 px, the line the player checks) over the person's name in
-smaller type (12.5 px), an owner line only when it says
-something (another seat's person, a child's age), and two medallions: the gold orders one, with the
-ring glyph and the ring hotkey in its tooltip, opens the action ring beside the cursor, pushed left
-so that no arm opens under the panel (gold, so a new player finds the ring; absent for another
-seat's person), and the bronze close clears the selection. The kicker browses the trade: chevrons on
-both sides and "2 / 5" step to the previous or next person of the same trade and bring them into
-view (Tab and Shift+Tab do the same while the panel is open and no field or other window has the
-focus); they are absent while the person is the only one of the trade. A double click on the trade
-selects every person of that trade as a group. The name is an in-place
-rename (a pen on hover), except for a hero and another seat's person. The panel is a quick look: every state fits the 810 px design plane without a scrollbar
-(the frame stops 16 px under the summary bar), so anything that would not fit is folded or cut at
-design time, never scrolled. It shows what the player can read or act on and nothing else: no
-explanatory lines, no help buttons. Review states: `settler.js` in the mockup, switched by the
-"Osadnik" buttons.
+is centred between two medallions: at the left the gold orders one, with the ring glyph and the ring
+hotkey in its tooltip (gold and first, so a new player finds the ring; blank for another seat's
+person, so the centre holds), at the right the bronze close that clears the selection. Between them
+the trade as the bronze kicker (13 px, the line the player checks) over the person's name in smaller
+type (12.5 px) with 4 px between them, and an owner line only when it says something (another seat's
+person, a child's age). The orders medallion and a right click on the portrait open the action ring
+for the person pinned on the cursor, pushed left of the panel's edge: the ring is drawn on the
+canvas under the plane, so an arm under the panel would be hidden. The kicker browses the trade:
+chevrons on both sides and "2 / 5" step to the previous or next person of the same trade and bring
+them into view (Tab and Shift+Tab do the same while the panel is open and no field or other window
+has the focus); they are absent while the person is the only one of the trade. A double click on
+the trade selects every person of that trade as a group. The name is an in-place rename (a pen on
+hover), except for a hero and another seat's person. The panel is a quick look: every state fits the
+810 px design plane without a scrollbar (the frame stops 16 px under the summary bar), so anything
+that would not fit is folded or cut at design time, never scrolled. It shows what the player can
+read or act on and nothing else: no explanatory lines, no help buttons. Every control's tooltip is a
+few words in the panel's own chip at the cursor after half a second (the browser's own tooltip
+waits a full one and cannot be told otherwise): what the press does, or why it is refused. Review
+states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
 
 - Portrait row: the live settler in the 96 × 92 px framed portrait is the centre-view button. The
   renderer paints its world cutout on the canvas under the plane, through a hole the panel's fill
@@ -242,10 +246,10 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   the person wears nothing), so their panel keeps the same shape. An empty worn socket shows a
   ghost glyph of what goes there (sword, armour, tool, boot) and opens the equip picker; an
   occupied socket holds the good's icon over its wear fill, the well filled from the floor up to
-  the life left (red under a quarter), its tooltip the wear left as a percent (the minutes it buys
-  wait for a wear-pace read seam); pressing it opens the picker to swap and a small × at its
-  corner, shown on hover or focus, takes the item off. No level medallion: the game has no settler
-  level.
+  the life left (green, amber under half, red under a quarter), its tooltip the wear left as a
+  percent (the minutes it buys wait for a wear-pace read seam); pressing it opens the picker to
+  swap and a small × at its corner, shown on hover or focus, takes the item off. No level
+  medallion: the game has no settler level.
 - Status strip along the frame's floor in the column beside it: a dark well, one 24 px line in 11 px
   type that never changes height, with a tone dot, the live state and its detail after a dot
   (ellipsized when long), and at the right end "niesie" with the carried good in a small well and
@@ -266,8 +270,8 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   order for that need: pressing Sytość, Sen, Towarzystwo or Religia sends the ring's Jedz, Śpij,
   Rozmawiaj or Módl się; Zdrowie has no order. The numbers show while the cursor rests on a line
   (health as points, a need as its percent with any stored reserve, and the order the press gives)
-  in the panel's own chip at the cursor, not the browser's tooltip, which a value ticking under the
-  cursor would hide.
+  in the panel's chip at the cursor at once, since a value ticking under the cursor would keep
+  restarting a delayed tip.
 - Praca i rodzina: ledger rows on one line each; the dotted leader gives way first, then a long
   building name ellipsizes. Praca and Dom name the building as a link that selects it (the
   original's "Pokaż miejsce pracy" and home buttons), followed by round buttons, assign (a house
@@ -277,21 +281,28 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   click employs the person, any other spot plants the flag there (a posted gatherer leaves its post
   for it) and the ghost goes; the tooltip says so. An empty seat the player can fill says "brak"
   in amber; when there is nothing to remove the × is absent and the value sits against the assign
-  button, so every row keeps the same distances. A button the sim would refuse
-  stays visible, faded, with the reason in its tooltip (a person a mission holds to its task). Resting on
-  the workplace link shows the building's hover card (state and stock) without a click. Rodzina
-  names the spouse and the growing child as links that select them, or "bez pary" in amber, which
-  opens the partner choice (the same pick flow as assigning a home, aimed at a person). A man without a trade has no Praca row, a woman and a
-  soldier have Dom and Rodzina only, a child a read-only Dom row, a hero no section.
+  button, so every row keeps the same distances (8 px from the value to its chips). A button the
+  sim would refuse stays visible, faded, with the reason in its tooltip (a person a mission holds to
+  its task). Resting on the workplace link shows the building's hover card (state and stock) without
+  a click. Rodzina names the spouse and the growing child as links that select them, or "bez pary"
+  in amber with a wedding-rings button after it; both open the partner choice (the same pick flow as
+  assigning a home, aimed at a person) while the person is free to marry. A man without a trade has
+  no Praca row, a woman and a soldier have Dom and Rodzina only, a child a read-only Dom row, a hero
+  no section.
 - Produkcja, under Praca for a craft operator and for a gatherer alike: one row per product the
   trade makes here, in recipe order, or per good it gathers here, in catalog order: the good's icon
   in a round button, its name and a −/n/+ counter. The counter is the original's human-window
   production counter, and a gatherer's counts down per landed unit (a stroke's yield, a catch): 0 stops the product (the row fades),
-  1 to 10 is how many more to make, ∞ never stops. − at 0 wraps to ∞ and Shift with an arrow jumps
-  to that end, as the original's window does; + at ∞ stays at ∞ with the arrow dimmed, where the
-  original wraps to 0 (a named approximation: one more click must not stop a product). The icon
-  button is "Tylko ten produkt" (for a gatherer "Tylko to dobro"): ∞ here, 0 on every other row (the
-  original's "Tylko produkuj").
+  1 to 100 is how many more to make (the original stops at 10; the wider range is an owner rule),
+  ∞ never stops. − at 0 wraps to ∞, + past 100 reaches ∞, Shift with an arrow jumps to that end,
+  as the original's window does, and Ctrl moves by ten inside the range, wrapping at its ends like a
+  single step; + at ∞ stays at ∞ with the arrow dimmed, where the original wraps to 0 (a named
+  approximation: one more click must not stop a product). The icon button is "Tylko ten produkt"
+  (for a gatherer "Tylko to dobro"): ∞ here, 0 on every other row (the original's "Tylko
+  produkuj"); with Ctrl it adds the good to what is made or takes it out (this row to ∞ or 0, the
+  others untouched), so a clay gatherer takes stone as well with one Ctrl press on the stone. On
+  macOS the browser turns Ctrl + click into a context-menu press; the panel takes that press as the
+  Ctrl click, and ⌘ + click works too.
   A product not yet earned is listed faded with a lock, the requirement and progress in the
   tooltip; the lock opens the good's Knowledge page once the Knowledge window exists. Products rotate
   one unit at a time in good order, as the sim does today. A job whose `userCanChangeProductionFlag` is
@@ -307,15 +318,18 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   remove button. Umowa lists the map's agreements as
   single-choice chips drawn as "2 [wood] → 1 [leather]". The route the trader drives is in the
   status line.
-- Doświadczenie: the trained specializations of the current trade as ledger rows two to a line (at
-  most six, or the single best-trained one for a person without a trade; the rest are not listed,
-  nothing folds), the bonus percent in green (the tooltip spells it out). Every fight track counts as
-  a soldier's and a hero's own (approximation: the weapon a class fights with is not read). Then the
-  upcoming discoveries across the whole width, at most three, nearest first: lock-marked "what
-  (track)" rows with "current / required" and a thin meter, for the professions and the goods the
-  tribe's `needforjob` and `needforgood` tables gate behind this trade's tracks (a potter reads how
-  many pots until tiles). A gated profession the picker never offers (the sea trades need a harbour
-  the game has none of) and a fighter trade are not promised. The section is absent when there is
+- Doświadczenie: the trained specializations as ledger rows one to a line (a track's name runs
+  long: "Murarz - kamienny blok"), the current trade's first, the bonus percent in green (the
+  tooltip spells it out). Every fight track counts as a soldier's and a hero's own (approximation:
+  the weapon a class fights with is not read). Then the upcoming discoveries, at most three,
+  nearest first: lock-marked "what (track)" rows with "current / required" and a thin meter, for
+  the professions and the goods the tribe's `needforjob` and `needforgood` tables gate behind this
+  trade's tracks (a potter reads how many pots until tiles). A gated profession the picker never
+  offers (the sea trades need a harbour the game has none of) and a fighter trade are not promised.
+  Every row shows while the whole panel fits the plane; when it would not, the section folds to the
+  current trade's first three tracks and two discoveries behind "jeszcze N" in its title, which
+  opens and closes it (open past the plane, the bottom is cut, never scrolled). A person whose rows
+  fit has no toggle; selecting a person opens the fold afresh. The section is absent when there is
   nothing to list.
 - No footer and no button row: the portrait centres, the head's gold medallion orders, the
   profession change is the ring's (and its hotkey's).

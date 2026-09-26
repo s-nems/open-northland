@@ -1,5 +1,14 @@
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
-import { button, isDisabled, removeAttribute, setAttribute, setClass, setDisabled, setTitle } from './dom.js';
+import {
+  button,
+  isDisabled,
+  onPress,
+  removeAttribute,
+  setAttribute,
+  setClass,
+  setDisabled,
+  setTip,
+} from './dom.js';
 
 /**
  * A round icon chip: a ledger row's assign or remove (18 px), a section title's add (20 px), a product's
@@ -49,14 +58,14 @@ function faceKey(face: RoundButtonFace): string {
 
 export function createRoundButton(
   kind: RoundButtonKind,
-  onPress: (event: MouseEvent) => void,
+  press: (event: MouseEvent) => void,
   icons?: GoodIconPainter,
 ): RoundButton {
   const element = button(KIND_CLASS[kind]);
   let face = '';
-  element.addEventListener('click', (event) => {
+  onPress(element, (event) => {
     if (isDisabled(element) || element.classList.contains('on-round--blank')) return;
-    onPress(event);
+    press(event);
   });
   const paintFace = (next: RoundButtonFace): void => {
     const key = faceKey(next);
@@ -84,7 +93,7 @@ export function createRoundButton(
       removeAttribute(element, 'tabindex');
       paintFace(model.face);
       setAttribute(element, 'aria-label', model.label);
-      setTitle(element, model.tooltip);
+      setTip(element, model.tooltip);
       setDisabled(element, model.enabled === false);
       if (model.pressed !== undefined) setAttribute(element, 'aria-pressed', String(model.pressed));
     },

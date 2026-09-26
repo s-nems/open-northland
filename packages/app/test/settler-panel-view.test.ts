@@ -1,6 +1,8 @@
 import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { EquipRow, SettlerPanelModel } from '../src/hud/details-panel/model/index.js';
+import { PRODUCTION_UNLIMITED } from '../src/hud/details-panel/model/index.js';
+import { socketWearTone } from '../src/hud/dom/parts/socket.js';
 import { equipmentSockets } from '../src/hud/dom/settler-panel/equipment.js';
 import { settlerHead } from '../src/hud/dom/settler-panel/head.js';
 import { stanceSegment } from '../src/hud/dom/settler-panel/military.js';
@@ -13,7 +15,8 @@ import {
   tradePeers,
 } from '../src/hud/dom/settler-panel/peers.js';
 import { statusText, statusTone } from '../src/hud/dom/settler-panel/portrait.js';
-import { familyValue, seatButton, seatValue } from '../src/hud/dom/settler-panel/work.js';
+import { toggledProductionCount } from '../src/hud/dom/settler-panel/production.js';
+import { familyButton, familyValue, seatButton, seatValue } from '../src/hud/dom/settler-panel/work.js';
 import type { ResidentRow } from '../src/hud/tool-panel/residents/rows.js';
 import { messages } from '../src/i18n/index.js';
 
@@ -147,6 +150,24 @@ describe('the settler panel’s rows', () => {
       messages().actionRing.sleep,
     );
     expect(needTooltip({ label: 'Zdrowie', pct: 40, hover: '4/10' })).toBe('Zdrowie: 4/10');
+  });
+
+  it('offers the rings only to a person free to marry', () => {
+    const free = { partner: null, child: null, canPickPartner: true };
+    expect(familyButton(free)?.tooltip).toBe(messages().hud.settlerPanel.noPartnerTooltip);
+    expect(familyButton({ ...free, canPickPartner: false })).toBeNull();
+  });
+
+  it('starts a stopped good for good on Ctrl and stops a running one', () => {
+    expect(toggledProductionCount(0)).toBe(PRODUCTION_UNLIMITED);
+    expect(toggledProductionCount(7)).toBe(0);
+    expect(toggledProductionCount(PRODUCTION_UNLIMITED)).toBe(0);
+  });
+
+  it('colours the wear fill green, amber under half, red under a quarter', () => {
+    expect(socketWearTone(80)).toBe('fresh');
+    expect(socketWearTone(49)).toBe('wearing');
+    expect(socketWearTone(24)).toBe('worn');
   });
 
   it('fades a refused seat button with the reason and blanks a missing one', () => {

@@ -54,15 +54,19 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     return true;
   };
   const ordersKey = (): string => deps.keyLabel('actionRing');
-  const frame = createSelectionPanel(deps.plane, {
-    onBrowse: (step) => browse(step),
-    onOrders: (press) => actions.openOrders(entity(), press),
-    onKickerDoubleClick: () => {
-      if (peers.ids.length > 0) actions.selectGroup(peers.ids);
+  const frame = createSelectionPanel(
+    deps.plane,
+    {
+      onBrowse: (step) => browse(step),
+      onOrders: (press) => actions.openOrders(entity(), press),
+      onKickerDoubleClick: () => {
+        if (peers.ids.length > 0) actions.selectGroup(peers.ids);
+      },
+      onRename: (name) => actions.rename(entity(), name),
+      onClose: () => actions.clearSelection(),
     },
-    onRename: (name) => actions.rename(entity(), name),
-    onClose: () => actions.clearSelection(),
-  });
+    deps.tooltip,
+  );
 
   const portrait = createPortraitSection(deps, entity);
   const needs = createNeedsSection(deps, entity);
@@ -71,14 +75,16 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const military = createMilitarySection(deps, entity);
   const trade = createTradeSection(deps, current);
   const experience = createExperienceSection();
-  const sections = (model: SettlerPanelModel): void => {
+  /** Paint every section; `fresh` is another person. The experience section opens in full and folds
+   *  only when the whole panel would then run past the plane, read once per change of its rows. */
+  const sections = (model: SettlerPanelModel, fresh: boolean): void => {
     portrait.update(model);
     needs.update(model);
     work.update(model);
     production.update(model);
     military.update(model);
     trade.update(model);
-    experience.update(model);
+    if (experience.update(model, fresh) && frame.overflows()) experience.fold();
   };
   frame.body.append(
     portrait.element,
@@ -105,19 +111,20 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
         hide();
         return;
       }
-      // Another person: the fold closes and the trade's people are read again.
+      // Another person: the fold opens and the trade's people are read again.
       const fresh = shown?.entityId !== model.entityId;
       shown = model;
       peers = model.foreign ? NO_PEERS : peerIndex.peersOf(model.entityId, model.jobType, fresh);
       frame.updateHead(settlerHead(model, peers, ordersKey()));
-      sections(model);
+      // Shown before the sections: the fold's overflow read needs the frame laid out.
       frame.show();
+      sections(model, fresh);
     },
     hide,
     warm(goodIds): void {
       const model = warmModel(goodIds);
       frame.updateHead(settlerHead(model, NO_PEERS, ordersKey()));
-      sections(model);
+      sections(model, true);
       frame.warm();
     },
     portrait(): PortraitSubject | null {
