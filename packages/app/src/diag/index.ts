@@ -1,10 +1,12 @@
 export {
+  answeredWithin,
   buildDiagnosticsBundle,
   DIAGNOSTICS_BUNDLE_KIND,
   DIAGNOSTICS_BUNDLE_VERSION,
   type DiagnosticsBundle,
   type DiagnosticsGameReport,
   downloadDiagnosticsBundle,
+  REPORT_ANSWER_TIMEOUT_MS,
   serializeDiagnosticsBundle,
 } from './bundle.js';
 export { dismissCrashBanner, installCrashCapture, showCrashBanner } from './crash.js';

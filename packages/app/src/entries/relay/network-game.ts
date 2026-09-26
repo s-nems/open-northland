@@ -3,7 +3,13 @@ import { verifyInitialSave } from '@open-northland/net-client';
 import { type ServerMessage, TICK_MS } from '@open-northland/net-protocol';
 import { serializeSaveGame } from '@open-northland/sim';
 import { errorText } from '../../diag/error-text.js';
-import { currentDiagGameSession, diag, setDiagGameSession } from '../../diag/index.js';
+import {
+  answeredWithin,
+  currentDiagGameSession,
+  diag,
+  REPORT_ANSWER_TIMEOUT_MS,
+  setDiagGameSession,
+} from '../../diag/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
 import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
@@ -25,6 +31,9 @@ import {
   type VerifiedStart,
 } from './relayed-world.js';
 import { roomExitObserver } from './room-exit.js';
+
+/** Within the bundle's wait for the whole net report, so the digests' own bound lands first. */
+const DIGESTS_ANSWER_TIMEOUT_MS = REPORT_ANSWER_TIMEOUT_MS / 2;
 
 export function renderNetworkGame(
   canvas: HTMLCanvasElement,
@@ -178,7 +187,8 @@ export function renderNetworkGame(
           lastDesync === null
             ? null
             : { tick: lastDesync.tick, domains: lastDesync.domains, reference: lastDesync.reference },
-        digests: await connection.digests(),
+        // A stalled worker costs the report its digests, not the desync notice this thread holds.
+        digests: (await answeredWithin(connection.digests(), DIGESTS_ANSWER_TIMEOUT_MS)) ?? [],
         delayTicks: client.delayTicks,
         roundTripMs: client.roundTripMs,
       }),

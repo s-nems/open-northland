@@ -89,7 +89,10 @@ class RelayConnection<B, E> {
           post({ kind: 'failure', what: 'message', error: wireError(error) });
         }
       },
-      onRetry: () => post({ kind: 'link', state: 'reconnecting' }),
+      onRetry: () => {
+        this.dropped();
+        post({ kind: 'link', state: 'reconnecting' });
+      },
       onClosed: (reason) => post({ kind: 'link', state: 'closed', reason }),
     });
     client.attach((message) => {
@@ -116,11 +119,6 @@ class RelayConnection<B, E> {
         return;
       case 'submit':
         client.submit(message.envelope);
-        return;
-      case 'reset':
-        client.welcomed = false;
-        if (message.left) this.quietly(() => client.receive({ kind: 'left' }));
-        this.postFacts();
         return;
       case 'leave':
         this.end(message.leave);
@@ -219,6 +217,15 @@ class RelayConnection<B, E> {
     if (this.lastFacts !== null && sameFacts(this.lastFacts, facts)) return;
     this.lastFacts = facts;
     this.post({ kind: 'facts', facts });
+  }
+
+  /** The link dropped: the relay welcomes the client anew once it is back, and a lobby room is left,
+   *  as its `left` would have. The runtime's mirror does the same on the `reconnecting` that follows. */
+  private dropped(): void {
+    const { client } = this;
+    client.welcomed = false;
+    if (client.room?.state === 'lobby') this.quietly(() => client.receive({ kind: 'left' }));
+    this.postFacts();
   }
 
   private quietly(apply: () => void): void {

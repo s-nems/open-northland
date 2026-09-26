@@ -54,6 +54,9 @@ type WorldRequest = Extract<FromNetWorker<unknown>, { readonly kind: 'openWorld'
  *  link's notice to carry. */
 const GAME_FAILURES: readonly string[] = ['open', 'restore', 'result', 'message'];
 
+/** What a request the worker will never answer rejects with. */
+const CLOSED_MESSAGE = 'the relay connection closed before the network worker answered';
+
 /** How long a leaving worker has to send its goodbye before it is terminated. */
 const LEAVE_GRACE_MS = 2000;
 
@@ -70,7 +73,11 @@ export class NetworkConnection {
   private readonly port: SessionPort;
   private readonly listeners = new Set<(event: ConnectionEvent) => void>();
   private readonly worlds: RelayedWorlds<MapWorldPlacements>;
-  private readonly answers = new Map<number, (answer: FromNetWorker<unknown> & { kind: 'answer' }) => void>();
+  /** The requests the worker has not answered yet; they reject once it never will. */
+  private readonly answers = new Map<
+    number,
+    { resolve(value: RelayAnswer): void; reject(error: Error): void }
+  >();
   private nextRequestId = 0;
   private readonly worldPort: Promise<NetWorldPort>;
   private resolveWorldPort: (port: NetWorldPort) => void = () => undefined;
@@ -97,6 +104,7 @@ export class NetworkConnection {
     this.port.listen((data, receiveMs) => this.receive(data as FromNetWorker<MapWorldPlacements>, receiveMs));
     this.port.listenFailure((error) => {
       this.worlds.fail(error);
+      this.rejectAnswers(error);
       this.emit({ kind: 'failure', error });
     });
     this.post({ kind: 'connect', url, ...identity });
@@ -126,11 +134,10 @@ export class NetworkConnection {
   }
 
   /** The link dropped: the relay welcomes this client anew once it is back, and a lobby room the menu
-   *  showed is left, as its `left` would have. */
+   *  showed is left, as its `left` would have. The worker's client did the same on its retry. */
   reset(): void {
     const left = this.client.room?.state === 'lobby';
     this.client.reset(left);
-    this.post({ kind: 'reset', left });
     if (left) this.emit({ kind: 'message', message: { kind: 'left' } });
   }
 
@@ -145,6 +152,7 @@ export class NetworkConnection {
     this.resolveWorldPort(REFUSING_PORT);
     // A world still opening settles; the one being shown is its view's to end.
     this.worlds.unadopted();
+    this.rejectAnswers(new Error(CLOSED_MESSAGE));
     this.post({ kind: 'leave', leave });
     this.leaveTimer = setTimeout(() => this.port.close(), LEAVE_GRACE_MS);
   }
@@ -156,6 +164,7 @@ export class NetworkConnection {
   private receive(message: FromNetWorker<MapWorldPlacements>, receiveMs: number): void {
     if (message.kind === 'closed') {
       if (this.leaveTimer !== null) clearTimeout(this.leaveTimer);
+      this.rejectAnswers(new Error(CLOSED_MESSAGE));
       this.port.close();
       return;
     }
@@ -192,10 +201,13 @@ export class NetworkConnection {
       case 'warning':
         diag.warn('net', message.message);
         return;
-      case 'answer':
-        this.answers.get(message.id)?.(message);
+      case 'answer': {
+        const pending = this.answers.get(message.id);
         this.answers.delete(message.id);
+        if (message.ok) pending?.resolve(message.value);
+        else pending?.reject(errorFromWire(message.error));
         return;
+      }
       default:
         this.worlds.route(message, receiveMs);
     }
@@ -244,14 +256,17 @@ export class NetworkConnection {
   }
 
   private request(request: RelayRequest): Promise<RelayAnswer> {
+    if (this.disposed) return Promise.reject(new Error(CLOSED_MESSAGE));
     const id = this.nextRequestId++;
     return new Promise((resolve, reject) => {
-      this.answers.set(id, (answer) => {
-        if (answer.ok) resolve(answer.value);
-        else reject(errorFromWire(answer.error));
-      });
+      this.answers.set(id, { resolve, reject });
       this.post({ kind: 'request', id, request });
     });
+  }
+
+  private rejectAnswers(error: Error): void {
+    for (const pending of this.answers.values()) pending.reject(error);
+    this.answers.clear();
   }
 
   private emit(event: ConnectionEvent): void {

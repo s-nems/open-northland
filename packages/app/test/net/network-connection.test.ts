@@ -136,7 +136,8 @@ describe('network connection mirror', () => {
     expect(connection.client.welcomed).toBe(false);
     expect(connection.client.room).toBeNull();
     expect(seen).toEqual(['welcome', 'room', 'left']);
-    expect(worker.posted.at(-1)).toEqual({ kind: 'reset', left: true });
+    // The worker's client left on its own retry.
+    expect(worker.posted.at(-1)?.kind).toBe('connect');
   });
 
   it('leaves on disposal unless told to keep the seat, and ends the worker once it closed', () => {

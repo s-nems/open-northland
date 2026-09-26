@@ -48,8 +48,6 @@ export type ToNetWorker<B> =
   | { readonly kind: 'clock'; readonly paused?: boolean; readonly speed?: number }
   /** End the connection; `leave` gives a seat in a started game up first. */
   | { readonly kind: 'leave'; readonly leave: boolean }
-  /** The link dropped: the client is no longer welcomed, and `left` leaves a lobby room it sat in. */
-  | { readonly kind: 'reset'; readonly left: boolean }
   /** The answer to a world request; null refuses it. */
   | { readonly kind: 'worldInputs'; readonly requestId: number; readonly world: RelayedWorldAnswer<B> | null }
   | { readonly kind: 'worldFailed'; readonly requestId: number; readonly error: WireError }

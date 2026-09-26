@@ -59,12 +59,15 @@ export async function buildDiagnosticsBundle(
 }
 
 /** How long the report waits for a host's answer: a worker silent this long counts as stalled. */
-const REPORT_ANSWER_TIMEOUT_MS = WORKER_STALL_TIMEOUT_MS;
+export const REPORT_ANSWER_TIMEOUT_MS = WORKER_STALL_TIMEOUT_MS;
 
-/** The answer, or null when it failed or did not land within {@link REPORT_ANSWER_TIMEOUT_MS}. */
-function answeredWithin<T>(answer: Promise<T>): Promise<T | null> {
+/** The answer, or null when it failed or did not land within `timeoutMs`. */
+export function answeredWithin<T>(
+  answer: Promise<T>,
+  timeoutMs = REPORT_ANSWER_TIMEOUT_MS,
+): Promise<T | null> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), REPORT_ANSWER_TIMEOUT_MS);
+    const timer = setTimeout(() => resolve(null), timeoutMs);
     answer.then(
       (value) => {
         clearTimeout(timer);
