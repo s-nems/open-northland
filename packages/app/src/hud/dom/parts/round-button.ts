@@ -37,6 +37,8 @@ export interface RoundButtonModel {
   readonly tooltip: string;
   /** False fades the chip and ignores the press; the tooltip then carries the reason. */
   readonly enabled?: boolean;
+  /** A toggle's state, lit while true; absent for a plain press. */
+  readonly pressed?: boolean;
 }
 
 export interface RoundButton {
@@ -88,6 +90,8 @@ export function createRoundButton(
       setAttribute(element, 'aria-label', model.label);
       setTip(element, model.tooltip);
       setDisabled(element, model.enabled === false);
+      if (model.pressed === undefined) removeAttribute(element, 'aria-pressed');
+      else setAttribute(element, 'aria-pressed', String(model.pressed));
     },
   };
 }
