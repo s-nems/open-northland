@@ -15,8 +15,8 @@ every `Settler` with a `Position`, people and animals alike:
 
 - `eachStandingFighter` (`movement/collision/bodies.ts`) behind `unitWalkBlocks`, built on every
   pathfinding tick that routes a collider (`movement/routing.ts`);
-- the same helper behind `standingFighterNodes`, which `MeleeSlots.isTaken` builds once per combat pass
-  that asks.
+- the same helper behind `standingFighterPosts`, which `MeleeSlots` builds once per combat pass that
+  asks for a taken contact slot or an enemy's crowding.
 
 With hundreds of fighters alive, some firm mover walks on every tick, so each is an O(population) pass
 per tick. Measured on `magiczny_las`, AI seats 0-6 (869-1015 fighters late), profile from the 80k
