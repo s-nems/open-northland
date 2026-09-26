@@ -57,7 +57,7 @@ export interface Segment {
   readonly systems: readonly SystemStat[];
 }
 
-/** The fold every window and the whole run share. Rows come out heaviest median first, ties broken
+/** The fold every window and the whole run share. Rows come out heaviest mean first, ties broken
  *  by name so a report is stable across runs. */
 export function summarizeSegment(
   perSystem: ReadonlyMap<string, readonly number[]>,
@@ -65,20 +65,23 @@ export function summarizeSegment(
 ): Segment {
   const rows = [...perSystem].map(([name, samples]) => {
     const sorted = [...samples].sort((a, b) => a - b);
+    const sumMs = samples.reduce((sum, ms) => sum + ms, 0);
     return {
       name,
+      sumMs,
+      meanMs: samples.length === 0 ? 0 : sumMs / samples.length,
       medianMs: sortedPercentile(sorted, 50),
       p95Ms: sortedPercentile(sorted, 95),
       maxMs: sorted.at(-1) ?? 0,
     };
   });
-  const medianTotal = rows.reduce((sum, r) => sum + r.medianMs, 0);
+  const total = rows.reduce((sum, r) => sum + r.sumMs, 0);
 
   const systems: SystemStat[] = rows
     // A zero total (an empty window) would make every share NaN - report 0 instead.
-    .map((r) => ({ ...r, sharePct: medianTotal === 0 ? 0 : (r.medianMs / medianTotal) * 100 }))
+    .map(({ sumMs, ...r }) => ({ ...r, sharePct: total === 0 ? 0 : (sumMs / total) * 100 }))
     // Codepoint order, not localeCompare: ICU collation varies by environment (AGENTS.md).
-    .sort((a, b) => b.medianMs - a.medianMs || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    .sort((a, b) => b.meanMs - a.meanMs || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   return { tickMs: tickStat(tickSamples), systems };
 }
@@ -157,8 +160,8 @@ export function summarize(
   };
 }
 
-/** A system's cost in the first window against the last - the growth axis. `factor` is null when the
- *  first window measured zero, where a ratio would be meaningless rather than infinite. */
+/** A system's mean cost in the first window against the last - the growth axis. `factor` is null when
+ *  the first window measured zero, where a ratio would be meaningless rather than infinite. */
 export interface SystemGrowth {
   readonly name: string;
   readonly firstMs: number;
@@ -173,14 +176,14 @@ export function systemGrowth(windows: readonly BenchWindow[]): readonly SystemGr
   const last = windows.at(-1);
   if (first === undefined || last === undefined || first === last) return [];
 
-  const firstMsByName = new Map(first.systems.map((s) => [s.name, s.medianMs]));
+  const firstMsByName = new Map(first.systems.map((s) => [s.name, s.meanMs]));
   return last.systems.map((s) => {
     const firstMs = firstMsByName.get(s.name) ?? 0;
     return {
       name: s.name,
       firstMs,
-      lastMs: s.medianMs,
-      factor: firstMs === 0 ? null : s.medianMs / firstMs,
+      lastMs: s.meanMs,
+      factor: firstMs === 0 ? null : s.meanMs / firstMs,
       lastSharePct: s.sharePct,
     };
   });

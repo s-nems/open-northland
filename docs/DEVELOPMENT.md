@@ -311,7 +311,9 @@ browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. 
 | `ON_BENCH_JSON` | where the report is written instead of `bench-out/` |
 
 `ON_CONTENT_DIR` points it at a content directory outside the checkout. `ON_BENCH_TICKS=50000` covers
-a full AI build-out. Each window reports the tick median, p95, p99 and max, the settlers, fighters
+a full AI build-out. Per system the report gives the mean, median, p95 and max per tick and the share of
+the summed time; a system that works one tick in many, such as an AI seat every 24 ticks, ranks by its
+mean, where its median would read as free. Each window reports the tick median, p95, p99 and max, the settlers, fighters
 (soldier and hero jobs) and buildings alive at its end, the GC pause time, count and longest pause from
 V8's `gc` entries, and heap and RSS at its end; the run lists its ten slowest ticks by sim tick with
 the three systems that filled each.

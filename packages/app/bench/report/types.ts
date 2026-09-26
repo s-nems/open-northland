@@ -5,9 +5,12 @@
 export const BENCH_REPORT_VERSION = 4;
 
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
- *  medians - the scale-invariant number a regression check can compare across machines. */
+ *  time - the scale-invariant number a regression check can compare across machines. */
 export interface SystemStat {
   readonly name: string;
+  /** Summed cost over the segment's ticks divided by their count: what a system that works one tick
+   *  in many (an AI seat every 24 ticks) really costs, which its median puts at zero. */
+  readonly meanMs: number;
   readonly medianMs: number;
   readonly p95Ms: number;
   /** The system's single worst tick in the segment: what a lockstep session waits for. */

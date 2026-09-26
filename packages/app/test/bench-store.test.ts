@@ -26,7 +26,7 @@ function report(startedAt: string, overrides: Partial<BenchReport> = {}): BenchR
     },
     ticks: { warmup: 60, measured: 600, windows: 1 },
     tickMs: { medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
-    systems: [{ name: 'ai', medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 100 }],
+    systems: [{ name: 'ai', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 100 }],
     slowestTicks: [],
     stutterSources: [],
     windows: [],

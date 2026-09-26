@@ -14,7 +14,9 @@ function window(index: number, medianMs: number): BenchWindow {
     fromTick: index * 100 + 1,
     toTick: index * 100 + 100,
     tickMs: { medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
-    systems: [{ name: 'ai', medianMs, p95Ms: medianMs * 2, maxMs: medianMs * 4, sharePct: 100 }],
+    systems: [
+      { name: 'ai', meanMs: medianMs, medianMs, p95Ms: medianMs * 2, maxMs: medianMs * 4, sharePct: 100 },
+    ],
     population: { settlers: 100, fighters: 20, buildings: 10, resourceNodes: 500 },
     rssMb: 200,
     heapUsedMb: 120,
@@ -39,8 +41,8 @@ function report(overrides: Partial<BenchReport> = {}): BenchReport {
     ticks: { warmup: 60, measured: 600, windows: 2 },
     tickMs: { medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
     systems: [
-      { name: 'ai', medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 80 },
-      { name: 'movement', medianMs: 1, p95Ms: 2, maxMs: 4, sharePct: 20 },
+      { name: 'ai', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 80 },
+      { name: 'movement', meanMs: 1, medianMs: 1, p95Ms: 2, maxMs: 4, sharePct: 20 },
     ],
     slowestTicks: [],
     stutterSources: [],
@@ -69,6 +71,7 @@ function report(overrides: Partial<BenchReport> = {}): BenchReport {
 function systemsOf(medians: Readonly<Record<string, number>>): BenchReport['systems'] {
   return Object.entries(medians).map(([name, medianMs]) => ({
     name,
+    meanMs: medianMs,
     medianMs,
     p95Ms: medianMs * 2,
     maxMs: medianMs * 4,

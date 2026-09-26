@@ -36,7 +36,7 @@ export interface Comparison {
   readonly noiseBandPct: number;
   readonly untrusted: boolean;
   readonly stateHashIdentical: boolean;
-  /** Per-system rows heaviest first, then the `tick total` (median) and `tick p99` rows. */
+  /** Per-system mean rows heaviest first, then the `tick total` (median) and `tick p99` rows. */
   readonly rows: readonly DeltaRow[];
   /** Per-window tick deltas; empty when the two runs were cut into different window counts. */
   readonly windowRows: readonly DeltaRow[];
@@ -104,8 +104,9 @@ function delta(name: string, beforeMs: number | null, afterMs: number | null, ba
   return { name, beforeMs, afterMs, deltaPct, verdict };
 }
 
-function medianByName(systems: readonly SystemStat[]): ReadonlyMap<string, number> {
-  return new Map(systems.map((s) => [s.name, s.medianMs]));
+/** Means, not medians: a system that works one tick in many would otherwise compare as free. */
+function meanByName(systems: readonly SystemStat[]): ReadonlyMap<string, number> {
+  return new Map(systems.map((s) => [s.name, s.meanMs]));
 }
 
 /** Whole-run tick growth: last window against first. Null when the run had one window. */
@@ -135,11 +136,11 @@ export function compareReports(before: BenchReport, after: BenchReport): Compari
   const notes: string[] = [];
   if (untrusted) notes.push('one side was flagged untrustworthy; the noise band is widened, not the verdict');
 
-  const beforeMedians = medianByName(before.systems);
-  const afterMedians = medianByName(after.systems);
-  const names = [...new Set([...beforeMedians.keys(), ...afterMedians.keys()])];
+  const beforeMeans = meanByName(before.systems);
+  const afterMeans = meanByName(after.systems);
+  const names = [...new Set([...beforeMeans.keys(), ...afterMeans.keys()])];
   const rows = names
-    .map((name) => delta(name, beforeMedians.get(name) ?? null, afterMedians.get(name) ?? null, noiseBandPct))
+    .map((name) => delta(name, beforeMeans.get(name) ?? null, afterMeans.get(name) ?? null, noiseBandPct))
     .sort(
       (a, b) =>
         (b.beforeMs ?? b.afterMs ?? 0) - (a.beforeMs ?? a.afterMs ?? 0) ||

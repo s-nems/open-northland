@@ -13,6 +13,7 @@ const SYSTEM_NAME_WIDTH = -25;
 
 const SYSTEM_COLUMNS: readonly Column[] = [
   { header: 'system', width: SYSTEM_NAME_WIDTH },
+  { header: 'mean ms', width: 11 },
   { header: 'median ms', width: 11 },
   { header: 'p95 ms', width: 11 },
   { header: 'max ms', width: 11 },
@@ -84,10 +85,17 @@ function banner(report: BenchReport): readonly string[] {
 }
 
 function systemRows(systems: readonly SystemStat[]): readonly (readonly string[])[] {
-  return systems.map((s) => [s.name, ms(s.medianMs), ms(s.p95Ms), ms(s.maxMs), `${s.sharePct.toFixed(1)}%`]);
+  return systems.map((s) => [
+    s.name,
+    ms(s.meanMs),
+    ms(s.medianMs),
+    ms(s.p95Ms),
+    ms(s.maxMs),
+    `${s.sharePct.toFixed(1)}%`,
+  ]);
 }
 
-/** First-vs-last window per system. Empty for a single-window run, where growth has no meaning. */
+/** First-vs-last window mean per system. Empty for a single-window run, where growth has no meaning. */
 function growthSection(report: BenchReport): readonly string[] {
   const growth = systemGrowth(report.windows);
   if (growth.length === 0) return [];

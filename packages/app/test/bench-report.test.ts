@@ -57,7 +57,9 @@ function windowFixture(index: number, medianMs: number, overrides: Partial<Bench
     fromTick: index * 100 + 1,
     toTick: index * 100 + 100,
     tickMs: { medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
-    systems: [{ name: 'ai', medianMs, p95Ms: medianMs * 2, maxMs: medianMs * 4, sharePct: 100 }],
+    systems: [
+      { name: 'ai', meanMs: medianMs, medianMs, p95Ms: medianMs * 2, maxMs: medianMs * 4, sharePct: 100 },
+    ],
     population: { settlers: 100 + index, fighters: 20 + index, buildings: 10 + index, resourceNodes: 500 },
     rssMb: 200 + index,
     heapUsedMb: 120 + index,
@@ -98,8 +100,10 @@ describe('summarize', () => {
   ]);
   const report = summarize(perSystem, [6, 6, 6, 20], META);
 
-  it('orders rows by median cost, heaviest first', () => {
-    expect(report.systems.map((s) => s.name)).toEqual(['movement', 'ai', 'combat']);
+  it('orders rows by mean cost, heaviest first, so a system that works one tick in many still ranks', () => {
+    // means: movement 3, ai 3, combat 1; the tie falls to name order.
+    expect(report.systems.map((s) => s.name)).toEqual(['ai', 'movement', 'combat']);
+    expect(report.systems.map((s) => s.meanMs)).toEqual([3, 3, 1]);
   });
 
   it('reports each system median, p95 and max (the tail exposes a spiking system its median hides)', () => {
@@ -109,16 +113,16 @@ describe('summarize', () => {
     expect(ai.maxMs).toBe(9);
   });
 
-  it('reports shares of the summed per-system medians', () => {
-    // medians: movement 3, ai 1, combat 1 -> total 5
-    expect(report.systems.map((s) => s.sharePct)).toEqual([60, 20, 20]);
+  it('reports shares of the summed per-system time, not of the medians', () => {
+    // sums: ai 12, movement 12, combat 4 -> total 28; by median ai would have shown as 20%.
+    expect(report.systems.map((s) => s.sharePct.toFixed(2))).toEqual(['42.86', '42.86', '14.29']);
   });
 
   it('reports whole-tick cost separately from the per-system rows', () => {
     expect(report.tickMs).toEqual({ medianMs: 6, p95Ms: 20, p99Ms: 20, maxMs: 20 });
   });
 
-  it('breaks median ties by name, so a report is stable across runs', () => {
+  it('breaks mean ties by name, so a report is stable across runs', () => {
     const tied = summarize(
       new Map([
         ['zebra', [1]],
@@ -163,6 +167,7 @@ describe('summarizeSegment', () => {
       [5],
     );
     expect(segment.systems.map((s) => s.sharePct)).toEqual([75, 25]);
+    expect(segment.systems.map((s) => s.meanMs)).toEqual([3, 1]);
   });
 });
 
@@ -230,7 +235,7 @@ describe('formatReport', () => {
     expect(text).toContain('10 warmup + 4 measured');
     expect(text).toContain('abc123');
     expect(text).toContain('tick total: median 2.250 ms');
-    expect(text).toMatch(/ai\s+1\.500\s+1\.500\s+1\.500\s+100\.0%/);
+    expect(text).toMatch(/ai\s+1\.500\s+1\.500\s+1\.500\s+1\.500\s+100\.0%/);
   });
 
   it('reports a population that moved across the window as a range, not a single number', () => {
