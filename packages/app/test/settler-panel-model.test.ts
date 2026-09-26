@@ -1,9 +1,27 @@
 import { type EntitySnapshot, systems, type TraderView } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_CIVILIST, JOB_COLLECTOR, JOB_SOLDIER, JOB_TRADER, JOB_WOMAN } from '../src/catalog/jobs.js';
+import {
+  JOB_CARRIER,
+  JOB_CIVILIST,
+  JOB_COLLECTOR,
+  JOB_HERO_SWORD,
+  JOB_HUNTER,
+  JOB_SCOUT,
+  JOB_SOLDIER,
+  JOB_TRADER,
+  JOB_WOMAN,
+} from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
-import { BUILDING_HOME_00, BUILDING_JOINERY } from '../src/game/sandbox/ids/index.js';
+import {
+  BUILDING_HOME_00,
+  BUILDING_JOINERY,
+  GOOD_IRON,
+  GOOD_WOOD,
+  VEHICLE_HANDCART,
+} from '../src/game/sandbox/ids/index.js';
+import { vehicleLabel } from '../src/game/technology.js';
 import { fixedViewerSeat } from '../src/game/viewer-seat.js';
+import { goodLabel } from '../src/hud/details-panel/model/context.js';
 import {
   buildUnitPanelModel,
   PRODUCTION_UNLIMITED,
@@ -11,7 +29,7 @@ import {
   type SettlerWorkStatus,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/model/index.js';
-import { messages } from '../src/i18n/index.js';
+import { formatMessage, messages } from '../src/i18n/index.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 const SETTLER = 1;
@@ -20,6 +38,9 @@ const CHILD = 3;
 const HOME = 10;
 const WORKSHOP = 11;
 const OTHER_SEAT = 3;
+const CART = 12;
+const WOOD_ABOARD = 3;
+const IRON_ABOARD = 2;
 
 const owned = (components: Record<string, unknown>): Record<string, unknown> => ({
   Owner: { player: HUMAN_PLAYER },
@@ -382,5 +403,99 @@ describe('the settler panel model', () => {
       { ...sandboxCtx(), viewer: fixedViewerSeat(HUMAN_PLAYER) },
     );
     expect(watched.foreign).toBe(true);
+  });
+});
+
+describe('the settler panel’s Pojazd row', () => {
+  const person = (jobType: number, components: Record<string, unknown> = {}): EntitySnapshot => ({
+    id: SETTLER,
+    components: owned({ Settler: { tribe: 1, jobType }, ...components }),
+  });
+  const cart = (lines: readonly [number, number][]): EntitySnapshot => ({
+    id: CART,
+    components: owned({
+      Vehicle: {
+        vehicleType: VEHICLE_HANDCART,
+        passengers: [{ entity: SETTLER, inside: false }],
+        vehicles: [],
+      },
+      VehicleStock: {
+        lines: lines.map(([good, current]) => [good, { current, wanted: 0, reserved: 0 }]),
+      },
+    }),
+  });
+  const cartName = (ctx: UnitPanelModelContext): string => {
+    const name = vehicleLabel({ vehicles: ctx.vehicles }, VEHICLE_HANDCART);
+    if (name === undefined) throw new Error('the sandbox names no handcart');
+    return name;
+  };
+
+  it('shows the row to the carrier, the trader, the soldier and the hero only', () => {
+    // The sandbox declares no hero, so one is added the way a mission map's content carries it.
+    const base = sandboxCtx();
+    const soldier = base.jobs.find((job) => job.typeId === JOB_SOLDIER);
+    if (soldier === undefined) throw new Error('the sandbox has no soldier');
+    const ctx = {
+      ...base,
+      jobs: [...base.jobs, { ...soldier, id: 'hero_sword_bjarni', typeId: JOB_HERO_SWORD }],
+    };
+    for (const job of [JOB_CARRIER, JOB_TRADER, JOB_SOLDIER, JOB_HERO_SWORD]) {
+      expect(settlerModel([person(job)], ctx).vehicle, `job ${job}`).toEqual({
+        target: null,
+        assign: true,
+        remove: null,
+      });
+    }
+    for (const job of [JOB_COLLECTOR, JOB_SCOUT, JOB_HUNTER, JOB_CIVILIST]) {
+      expect(settlerModel([person(job)], ctx).vehicle, `job ${job}`).toBeNull();
+    }
+  });
+
+  it('links the vehicle ridden, with its hold in the tooltip, and offers the way off', () => {
+    const ctx = sandboxCtx();
+    const loaded = settlerModel(
+      [
+        person(JOB_CARRIER, { Rider: { vehicle: CART, boarding: false } }),
+        cart([
+          [GOOD_WOOD, WOOD_ABOARD],
+          [GOOD_IRON, IRON_ABOARD],
+        ]),
+      ],
+      ctx,
+    );
+    const copy = messages().hud.settlerPanel;
+    const goods = [
+      formatMessage(copy.vehicleLoadGood, { amount: WOOD_ABOARD, good: goodLabel(ctx, GOOD_WOOD) }),
+      formatMessage(copy.vehicleLoadGood, { amount: IRON_ABOARD, good: goodLabel(ctx, GOOD_IRON) }),
+    ].join(', ');
+    expect(loaded.vehicle).toEqual({
+      target: {
+        id: CART,
+        label: cartName(ctx),
+        load: formatMessage(copy.vehicleLoad, { vehicle: cartName(ctx), goods }),
+      },
+      assign: true,
+      remove: true,
+    });
+
+    const empty = settlerModel(
+      [person(JOB_TRADER, { Rider: { vehicle: CART, boarding: true } }), cart([[GOOD_WOOD, 0]])],
+      ctx,
+    );
+    expect(empty.vehicle?.target?.load).toBe(
+      formatMessage(copy.vehicleLoad, { vehicle: cartName(ctx), goods: copy.vehicleEmpty }),
+    );
+  });
+
+  it('hides the row from another seat and fades it for a settler a mission holds', () => {
+    const foreign = settlerModel([
+      {
+        id: SETTLER,
+        components: { Owner: { player: OTHER_SEAT }, Settler: { tribe: 1, jobType: JOB_SOLDIER } },
+      },
+    ]);
+    expect(foreign.vehicle).toBeNull();
+    const held = settlerModel([person(JOB_SOLDIER, { MissionBehaviour: { flags: 0xffff } })]);
+    expect(held.vehicle?.assign).toBe(messages().hud.settlerPanel.scripted);
   });
 });

@@ -216,6 +216,7 @@ export async function createUnitChrome(
       livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
       vehicleLabel: (typeId) => vehicleLabel(opts.content, typeId),
+      isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
       ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
       ...(opts.packGoods !== undefined ? { packGoods: opts.packGoods } : {}),

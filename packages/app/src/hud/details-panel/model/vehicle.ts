@@ -137,7 +137,7 @@ interface StockLineSnapshot {
 }
 
 /** `VehicleStock.lines` as the snapshot clones the map: `[goodType, { current, wanted, reserved }]`. */
-function readStockLines(value: unknown): Map<number, StockLineSnapshot> {
+export function readStockLines(value: unknown): Map<number, StockLineSnapshot> {
   const lines = new Map<number, StockLineSnapshot>();
   const raw = (value as { lines?: unknown } | undefined)?.lines;
   if (!Array.isArray(raw)) return lines;

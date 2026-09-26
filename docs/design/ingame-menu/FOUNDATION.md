@@ -285,11 +285,16 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   button, so every row keeps the same distances (8 px from the value to its chips). A button the
   sim would refuse stays visible, faded, with the reason in its tooltip (a person a mission holds to
   its task). Resting on the workplace link shows the building's hover card (state and stock) without
-  a click. Rodzina names the spouse and the growing child as links that select them, or "bez pary"
-  in amber with a wedding-rings button after it; both open the partner choice (the same pick flow as
-  assigning a home, aimed at a person) while the person is free to marry. A man without a trade has
-  no Praca row, a woman and a soldier have Dom and Rodzina only, a child a read-only Dom row, a hero
-  no section.
+  a click. Pojazd, under Dom, names the vehicle the person rides as a link that selects it, its hold
+  in the tooltip ("Wóz ręczny: 3 drewno, 2 żelazo"), with a wheel button that picks another and ×
+  ("Zejdź z pojazdu"); without one it reads "Przydziel pojazd" in amber, a link that arms the ring's
+  "Przydziel wehikuł" pick like the wheel. Only the carrier, the trader, the soldier and the hero
+  have the row, by the owner's choice, even where a vehicle type admits other trades. Rodzina names
+  the spouse and the growing child as links that select them, or "bez pary" in amber with a
+  wedding-rings button after it; both open the partner choice (the same pick flow as assigning a
+  home, aimed at a person) while the person is free to marry. A man without a trade has no Praca
+  row, a woman has Dom and Rodzina only, a soldier Dom, Pojazd and Rodzina, a child a read-only Dom
+  row, a hero Pojazd alone.
 - Produkcja, under Praca for a craft operator and for a gatherer alike: one row per product the
   trade makes here, in recipe order, or per good it gathers here, in catalog order: the good's icon
   in a round button, its name and a −/n/+ counter. The counter is the original's human-window

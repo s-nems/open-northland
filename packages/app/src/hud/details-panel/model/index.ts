@@ -87,6 +87,7 @@ export type {
   SettlerStatusModel,
 } from './settler-panel.js';
 export type { UnlockProgressRowModel } from './settler-unlocks.js';
+export type { SettlerVehicleLink, SettlerVehicleRow } from './settler-vehicle.js';
 export type { SettlerPlace, SettlerProductionModel, SettlerProductionRow } from './settler-work.js';
 export type {
   TradeImportModel,

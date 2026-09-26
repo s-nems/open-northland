@@ -83,6 +83,9 @@ export function settlerPanelActions(
     assignHome: order(host.assignHome),
     unassignHome: order((id) => enqueue({ kind: 'unassignHouse', entity: id as Entity })),
     pickPartner: order(host.pickPartner),
+    // The ring's own orders, so a press obeys the same gates and arms the same pick as the ring button.
+    assignVehicle: order((id) => host.ringCommand('assignVehicle', [id])),
+    leaveVehicle: order((id) => host.ringCommand('removeVehicle', [id])),
     equip: order((id, ref) => equipPicker?.open(id, ref)),
     unequip: order((id, ref) =>
       enqueue({ kind: 'unequipGood', entity: id as Entity, group: ref.group, slot: ref.slot }),

@@ -43,6 +43,7 @@ import {
 } from './settler-household.js';
 import { settlerDisplayName } from './settler-name.js';
 import { type UnlockProgressRowModel, unlockProgressRows } from './settler-unlocks.js';
+import { type SettlerVehicleRow, vehicleRow } from './settler-vehicle.js';
 import { type SettlerProductionModel, type SettlerWorkModel, settlerWork } from './settler-work.js';
 import { type TradePanelModel, tradePanelModel } from './trade.js';
 
@@ -91,6 +92,7 @@ export interface SettlerPanelModel {
   readonly bars: readonly PanelBar[];
   readonly workplace: SettlerWorkplaceRow | null;
   readonly home: SettlerSeatRow | null;
+  readonly vehicle: SettlerVehicleRow | null;
   readonly family: SettlerFamilyModel | null;
   readonly production: SettlerProductionModel | null;
   readonly military: SettlerMilitaryModel | null;
@@ -227,6 +229,7 @@ export function settlerPanelModel(
       renamable: false,
       workplace: work.place === null ? null : { target: work.place, assign: null, remove: null, flag: false },
       home: null,
+      vehicle: null,
       family: null,
       production: null,
       military: null,
@@ -243,6 +246,7 @@ export function settlerPanelModel(
     renamable: !hero,
     workplace: role === 'worker' ? workplaceRow(ctx, ent, work.place, control) : null,
     home: homeRow(ctx, snapshot, ent, role, control),
+    vehicle: vehicleRow(ctx, snapshot, ent, role, control),
     family: familyModel(ctx, snapshot, ent, role, controllable),
     production: work.production,
     military:

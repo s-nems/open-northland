@@ -16,7 +16,13 @@ import {
 } from '../src/hud/dom/settler-panel/peers.js';
 import { statusText, statusTone } from '../src/hud/dom/settler-panel/portrait.js';
 import { toggledProductionCount } from '../src/hud/dom/settler-panel/production.js';
-import { familyButton, familyValue, seatButton, seatValue } from '../src/hud/dom/settler-panel/work.js';
+import {
+  familyButton,
+  familyValue,
+  seatButton,
+  seatValue,
+  vehicleValue,
+} from '../src/hud/dom/settler-panel/work.js';
 import type { ResidentRow } from '../src/hud/tool-panel/residents/rows.js';
 import { messages } from '../src/i18n/index.js';
 
@@ -206,6 +212,20 @@ describe('the settler panel’s rows', () => {
         canPickPartner: false,
       }).map((segment) => segment.text),
     ).toEqual(['Astrid', 'Tove']);
+  });
+
+  it('links the vehicle with its hold, else offers the pick in amber while the player may assign', () => {
+    const copy = messages().hud.settlerPanel;
+    const cart = { id: 7, label: 'Wóz ręczny', load: 'Wóz ręczny: 3 drewno' };
+    expect(vehicleValue({ target: cart, assign: true, remove: true })).toEqual([
+      { text: 'Wóz ręczny', link: true, tooltip: 'Wóz ręczny: 3 drewno' },
+    ]);
+    expect(vehicleValue({ target: null, assign: true, remove: null })).toEqual([
+      { text: copy.assignVehicle, link: true, tone: 'missing', tooltip: copy.assignVehicleTooltip },
+    ]);
+    expect(vehicleValue({ target: null, assign: copy.scripted, remove: null })).toEqual([
+      { text: copy.missing, tone: 'muted' },
+    ]);
   });
 
   it('writes the state and its detail after a dot', () => {

@@ -58,6 +58,8 @@ export interface UnitPanelModelContext {
   readonly standsTo?: ((entity: number) => boolean) | undefined;
   /** A vehicle type's name, for the cart a trader commands; absent names it the generic cart. */
   readonly vehicleLabel?: ((typeId: number) => string | undefined) | undefined;
+  /** The sim's land-trader test (`isTraderJob`); absent reads no trade as the trader. */
+  readonly isTraderJob?: ((jobType: number) => boolean) | undefined;
   /** The sim's trader read seam (`Simulation.traderView`); absent hides the Handel section. */
   readonly traderView?: ((entity: number) => TraderView | undefined) | undefined;
   /** The sim's agreement read seam (`Simulation.tradeOffersAt`); absent lists no offers on a house. */

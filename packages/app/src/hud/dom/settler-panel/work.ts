@@ -4,6 +4,7 @@ import type {
   SettlerFamilyModel,
   SettlerPanelModel,
   SettlerSeatRow,
+  SettlerVehicleRow,
 } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
 import { element, setHidden } from '../parts/dom.js';
@@ -39,6 +40,18 @@ export function seatValue(row: SettlerSeatRow, linkTooltip: string, foreign: boo
   return [{ text: row.target.label, link, ...(link ? { tooltip: linkTooltip } : {}) }];
 }
 
+/** The Pojazd value: the vehicle as a link with its hold in the tooltip, or "Przydziel pojazd" in amber,
+ *  a link that arms the pick while the player may assign one. */
+export function vehicleValue(row: SettlerVehicleRow): LedgerSegment[] {
+  const copy = messages().hud.settlerPanel;
+  if (row.target !== null) return [{ text: row.target.label, link: true, tooltip: row.target.load }];
+  return [
+    row.assign === true
+      ? { text: copy.assignVehicle, link: true, tone: 'missing', tooltip: copy.assignVehicleTooltip }
+      : { text: copy.missing, tone: 'muted' },
+  ];
+}
+
 /** The Rodzina row's button: the rings that arm the partner pick, while the person is free to marry. */
 export function familyButton(family: SettlerFamilyModel): RoundButtonModel | null {
   if (!family.canPickPartner) return null;
@@ -63,7 +76,8 @@ export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
   return people;
 }
 
-/** Praca i rodzina: the workplace and home rows with their assign and remove buttons, and the family. */
+/** Praca i rodzina: the workplace, home and vehicle rows with their assign and remove buttons, and the
+ *  family. */
 export interface WorkSection {
   readonly element: HTMLElement;
   update(model: SettlerPanelModel): void;
@@ -100,6 +114,16 @@ export function createWorkSection(
     },
     onButton: (index) => (index === 0 ? actions.assignHome(id()) : actions.unassignHome(id())),
   });
+  const vehicle = createLedger({
+    buttons: 2,
+    onLink: () => {
+      const row = current()?.vehicle;
+      if (row == null) return;
+      if (row.target === null) actions.assignVehicle(id());
+      else actions.select(row.target.id);
+    },
+    onButton: (index) => (index === 0 ? actions.assignVehicle(id()) : actions.leaveVehicle(id())),
+  });
   const family = createLedger({
     buttons: 1,
     onButton: () => actions.pickPartner(id()),
@@ -113,7 +137,7 @@ export function createWorkSection(
       }
     },
   });
-  root.append(title.element, workplace.element, home.element, family.element);
+  root.append(title.element, workplace.element, home.element, vehicle.element, family.element);
   /** The building the workplace link names; a changed or dropped link takes its card with it, since a
    *  replaced link never reports the cursor leaving. */
   let linked: number | null = null;
@@ -158,6 +182,17 @@ export function createWorkSection(
           buttons: [
             seatButton(model.home.assign, GLYPH.house, copy.assignHome, copy.assignHomeHint),
             seatButton(model.home.remove, GLYPH.close, copy.unassignHome, copy.unassignHomeHint),
+          ],
+        });
+      }
+      setHidden(vehicle.element, model.vehicle === null);
+      if (model.vehicle !== null) {
+        vehicle.update({
+          label: panel.vehicle,
+          value: vehicleValue(model.vehicle),
+          buttons: [
+            seatButton(model.vehicle.assign, GLYPH.wheel, panel.assignVehicle, panel.assignVehicleTooltip),
+            seatButton(model.vehicle.remove, GLYPH.close, panel.leaveVehicle, panel.leaveVehicle),
           ],
         });
       }

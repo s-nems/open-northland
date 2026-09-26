@@ -31,6 +31,9 @@ export interface SettlerPanelActions {
   readonly unassignHome: (id: number) => void;
   /** Arm the pick of the person to marry. */
   readonly pickPartner: (id: number) => void;
+  /** Arm the pick of the vehicle to ride, as the ring's "Przydziel wehikuł" does. */
+  readonly assignVehicle: (id: number) => void;
+  readonly leaveVehicle: (id: number) => void;
   readonly equip: (id: number, ref: EquipSlotRef) => void;
   readonly unequip: (id: number, ref: EquipSlotRef) => void;
   readonly setProductionCount: (id: number, goodType: number, count: number) => void;
