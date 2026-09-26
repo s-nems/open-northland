@@ -2,7 +2,6 @@ import {
   cellAnchorNode,
   components,
   type Entity,
-  fx,
   hexDistanceBetween,
   type MilitaryMode,
   nodeOfPosition,
@@ -38,8 +37,6 @@ const SOLDIER_X = 27;
 const SOLDIER_ROWS: readonly number[] = [ROW - 1, ROW, ROW + 1];
 /** Shot at all the while the swordsmen cross: the runs need a blow to follow, and the alarm a victim. */
 const MARK_HITPOINTS = 100_000;
-/** A run from a blow is ten map points, five cells along the row; a diagonal run keeps that much easting. */
-const RAN_CELLS = 4;
 const RUN_TICKS = 700;
 
 const { Engagement, Fleeing, Health, Owner, Position, Settler, Stance } = components;
@@ -101,8 +98,14 @@ function alarmedPastSight(sim: Simulation): boolean {
   );
 }
 
-function ranEast(sim: Simulation, jobType: number, from: { readonly x: number }): boolean {
-  return blueOfJob(sim, jobType).some((e) => sim.world.get(e, Position).x >= fx.fromInt(from.x + RAN_CELLS));
+/** Whether one of the blue `jobType` stands a blow's run east of `from`: the archer is due west, so the run
+ *  keeps its whole step of easting whether it goes along the row or a diagonal. */
+function ranEast(sim: Simulation, jobType: number, from: { readonly x: number; readonly y: number }): boolean {
+  const ranTo = cellAnchorNode(from.x, from.y).hx + systems.FLEE_STEP_NODES;
+  return blueOfJob(sim, jobType).some((e) => {
+    const p = sim.world.get(e, Position);
+    return nodeOfPosition(p.x, p.y).hx === ranTo;
+  });
 }
 
 function steadyRan(sim: Simulation): boolean {
