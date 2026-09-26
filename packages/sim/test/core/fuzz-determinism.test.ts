@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  AssistantWeaponVetoes,
   Building,
   Chest,
   JobAssignment,
@@ -118,9 +119,21 @@ function fuzzContent() {
       { typeId: CATAPULT_JOB, id: 'vehicle_catapult' },
     ],
     // The catapult's stone (`weapons.ini` type 21's shape), so a crewed catapult in the stream fires and
-    // its ground burst runs under the fuzzed orders.
+    // its ground burst runs under the fuzzed orders; and a sword class armed with the fixture's sword
+    // good, so a weapon veto roll can land on a good some class arms with instead of the skip alone.
     weapons: [
       ...base.weapons,
+      {
+        typeId: FUZZ_SWORD_WEAPON,
+        id: 'fuzz_sword',
+        tribeType: VIKING,
+        jobType: FIGHTER_JOB,
+        mainType: SWORD_MAIN_TYPE,
+        goodType: SWORD_GOOD,
+        minRange: 1,
+        maxRange: 1,
+        damage: { '0': 50 },
+      },
       {
         typeId: 21,
         id: 'fuzz_catapult',
@@ -235,6 +248,14 @@ const SHOES_GOOD = 8;
 const MEAD_GOOD = 13;
 const HEAL_POTION_GOOD = 16;
 const MAX_USE_PCT = 100;
+/** The fixture's sword good, the one weapon good the stream's veto rolls can land on. */
+const SWORD_GOOD = 9;
+/** A weapon type id no fixture row uses, for the sword class {@link fuzzContent} adds. */
+const FUZZ_SWORD_WEAPON = 22;
+/** The fixture's armed fighter job (`test_axe`'s), which the fuzz sword class shares. */
+const FIGHTER_JOB = 1;
+/** The sword class of the weapon table's `mainType` column. */
+const SWORD_MAIN_TYPE = 3;
 /** The fixture's wooden tool - the good a fighter may not wear, worn by some spawn rolls so the
  *  enlist shed (join-the-hands, ground drop, part-used destroy) runs mid-stream. */
 const TOOL_GOOD = 11;
@@ -247,7 +268,7 @@ const EQUIP_GROUPS = ['boots', 'tool', 'weapon', 'armor', 'misc'] as const;
  *  `equipGood` validation, the tool including the fighter-refusal and the shed-on-enlist branches. */
 const EQUIP_ORDER_GOODS = [
   SHOES_GOOD,
-  9,
+  SWORD_GOOD,
   10,
   TOOL_GOOD,
   RESOURCE_GOOD,
@@ -283,6 +304,9 @@ const TARGET_ID_RANGE = 80;
 const NUCLEUS_ID_RANGE = PREAMBLE_CHESTS.length + 8;
 /** The harness resends the scripted chest walk on this cadence until the chest opens. */
 const CHEST_REORDER_EVERY = 100;
+/** The harness flips the seat's veto on the sword good on this cadence, so a veto stands through most
+ *  of the run whatever the random rolls draw; the rolls still cover the refusals. */
+const WEAPON_VETO_EVERY = 150;
 /** Group orders carry up to one fewer than this many members, an empty group included. */
 const GROUP_SIZE_RANGE = 6;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
@@ -959,8 +983,8 @@ function nextCommand(rng: Rng): Command {
       return { kind: 'leaveCarrier', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 70:
       // A recruit weapon veto flip, the grant flip's twin: the AssistantWeaponVetoes carrier created,
-      // updated and destroyed under the arming pass; a good that arms no class and an out-of-range player
-      // hit the skip paths.
+      // updated and destroyed under the arming pass on the sword good; every other good is the
+      // arms-no-class skip and the out-of-range player the owner refusal.
       return {
         kind: 'setAssistantWeaponVeto',
         player: pick(rng, OWNERS),
@@ -1008,6 +1032,9 @@ interface FuzzRun {
   readonly chestOpened: boolean;
   /** Whether a stream order cut a gate into the preamble run and swung it, pinned like the latches above. */
   readonly gateSwung: boolean;
+  /** Whether a weapon veto roll ever stood as a non-empty list, so the arming pass read a veto rather
+   *  than every roll being the arms-no-class refusal. */
+  readonly weaponVetoed: boolean;
 }
 
 /** Export → parse → restore at a live checkpoint: the restored sim must hash exactly like the live
@@ -1115,12 +1142,17 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
   let attachedToWork = false;
   let chestOpened = false;
   let gateSwung = false;
+  let weaponVetoed = false;
   let catapultFired = false;
   for (let t = 0; t < ticks; t++) {
     // House one nucleus woman and man on the second tick (ids are monotonic: the chests, the home, then
     // the six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
     // AFTER that tick's commands applied, so a tick-1 assignHouse dies on the built gate. Fixed input,
     // logged like every command - replay fidelity covers it.
+    if (t % WEAPON_VETO_EVERY === 1) {
+      const vetoed = Math.floor(t / WEAPON_VETO_EVERY) % 2 === 0;
+      sim.enqueueSetup({ kind: 'setAssistantWeaponVeto', player: FUZZ_SEAT, goodType: SWORD_GOOD, vetoed });
+    }
     if (t === 1) {
       sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_WIFE, house: NUCLEUS_HOME });
       sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_HUSBAND, house: NUCLEUS_HOME });
@@ -1200,6 +1232,11 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     }
     if (!gateSwung)
       gateSwung = PREAMBLE_WALL_IDS.some((id) => sim.world.tryGet(id, Palisade)?.gate?.open === true);
+    if (!weaponVetoed) {
+      weaponVetoed = [...sim.world.query(AssistantWeaponVetoes)].some(
+        (e) => sim.world.get(e, AssistantWeaponVetoes).goods.length > 0,
+      );
+    }
     if (sim.tick % CHECKPOINT_EVERY === 0) {
       const hash = sim.hashState();
       checkpoints.push(hash);
@@ -1215,6 +1252,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     attachedToWork,
     chestOpened,
     gateSwung,
+    weaponVetoed,
     catapultFired,
     log: [...sim.commands.log],
   };
@@ -1237,6 +1275,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       expect(a.chestOpened).toBe(true); // and a chest really opened, not just refused
       expect(a.gateSwung).toBe(true); // and a gate really stood in the wall run and opened
       expect(a.catapultFired).toBe(true); // and a crewed catapult really loosed a stone
+      expect(a.weaponVetoed).toBe(true); // and a weapon veto really stood, not just the arms-no-class skip
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);
       // Checkpoint-wise equality first: on a divergence the failing index names the 50-tick window.
