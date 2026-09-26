@@ -670,6 +670,25 @@ describe('a fighter walled in with its enemy in sight', () => {
     expect(sim.world.get(order.target, Health).hitpoints).toBeLessThan(before);
   });
 
+  it('fights back against an enemy in reach by map points but not by grid steps', () => {
+    const { sim, prisoner } = walledIn(P0);
+    const order = breachOf(sim, prisoner);
+    if (order === undefined) throw new Error('expected the prisoner to go for the wall');
+    const at = nodeRow(sim, prisoner);
+    // The fixture weapon reaches 2 map points; on the half-cell lattice part of that ring lies more than 2
+    // grid steps away, and the breaker's rival check counts map points like every other search.
+    const beside = [...hexagonRing(at, 2)]
+      .map(({ point }) => point)
+      .find((n) => Math.abs(n.hx - at.hx) + Math.abs(n.hy - at.hy) > 2);
+    if (beside === undefined) throw new Error('expected a ring node beyond two grid steps');
+    const rival = fighter(sim, beside, P0);
+    // Holding its ground under IGNORE, the rival never walks into grid reach on its own.
+    sim.world.mut(rival, Stance).mode = MILITARY_MODE.IGNORE;
+    const hurt = (): boolean => sim.world.get(rival, Health).hitpoints < sim.world.get(rival, Health).max;
+    for (let tick = 0; tick < 200 && !hurt(); tick++) sim.step();
+    expect(hurt()).toBe(true);
+  });
+
   it('lets the wall be once the enemy it broke through for is gone', () => {
     const { sim, shooter, prisoner } = walledIn(P0);
     expect(breachOf(sim, prisoner)).toBeDefined();

@@ -60,11 +60,10 @@ import { hostileAnimalNow, isValidOrderedTarget, isValidTarget } from './targeti
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import {
   attackerWeapon,
-  damageVsTarget,
-  glancesOff,
   hitSoundVsMaterial,
   startAttack,
   targetMaterial,
+  wallBlowDamage,
 } from './weapons.js';
 
 /** The {@link attackerWeapon} resolution: the weapon plus its clamped reach band. */
@@ -469,13 +468,8 @@ function swingAt(
   const material = targetMaterial(world, ctx, target);
   const base = weaponDamageVsMaterial(weapon.weapon, material);
   const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
-  const damage = world.has(target, Palisade)
-    ? damageVsTarget(world, target, base)
-    : withFightExperience(base, hits);
-  const blow = {
-    damage,
-    hitSoundType: glancesOff(world, target, damage) ? undefined : hitSoundVsMaterial(weapon.weapon, material),
-  };
+  const damage = world.has(target, Palisade) ? wallBlowDamage(base) : withFightExperience(base, hits);
+  const blow = { damage, hitSoundType: hitSoundVsMaterial(weapon.weapon, material) };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
 }
 

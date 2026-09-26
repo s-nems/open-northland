@@ -23,7 +23,7 @@ import { type PendingHitReaction, resolveCombatHit } from '../settlers/atomics/e
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { passIndexOf } from './combat-index.js';
 import { isStructureTarget } from './targeting.js';
-import { damageVsTarget, glancesOff, hitSoundVsMaterial, targetMaterial } from './weapons.js';
+import { damageVsTarget, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 // A siege shot's burst: the original's delayed weapon hit fills its list from the one landing node -
 // every human and animal standing on it and the vehicle, house or wall whose body covers it - and lands
@@ -53,7 +53,7 @@ export function resolveGroundImpact(
     const material = targetMaterial(world, ctx, target);
     // A stone takes the bare column, as every shot does; the commander's experience steers only its aim.
     const damage = damageVsTarget(world, target, weaponDamageVsMaterial(proj, material));
-    const hitSoundType = glancesOff(world, target, damage) ? undefined : hitSoundVsMaterial(proj, material);
+    const hitSoundType = hitSoundVsMaterial(proj, material);
     const landed = resolveCombatHit(
       world,
       ctx,

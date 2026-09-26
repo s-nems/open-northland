@@ -330,6 +330,7 @@ export function resolveTarget(
             weapon.maxRange,
             (t) => !spec.lowPriority(t) && spec.accept(t),
             spec.player,
+            SEARCH_METRIC,
           );
     if (rival !== null) return { target: rival.entity, dist: rival.distance };
     return focusedOn(world, ctx, terrain, here, order.target);

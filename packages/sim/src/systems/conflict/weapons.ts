@@ -117,15 +117,10 @@ export function wallBlowDamage(houseDamage: number): number {
   return Math.trunc(Math.max(0, houseDamage) / HOUSE_DAMAGE_PER_WALL_VALENCY);
 }
 
-/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, else `damage` itself. */
+/** A blow's resolved damage against `target`: {@link wallBlowDamage} for a wall, else `damage` itself. A
+ *  blow that takes no valency off a wall resolves to 0 and, like every zero-damage blow, lands nothing. */
 export function damageVsTarget(world: World, target: Entity, damage: number): number {
   return world.has(target, Palisade) ? wallBlowDamage(damage) : damage;
-}
-
-/** Whether a blow of resolved `damage` leaves `target` untouched. Original behavior: a blow that takes no
- *  valency off a wall does nothing at all, and sounds no hit. */
-export function glancesOff(world: World, target: Entity, damage: number): boolean {
-  return damage <= 0 && world.has(target, Palisade);
 }
 
 /**
