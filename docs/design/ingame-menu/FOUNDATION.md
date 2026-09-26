@@ -234,8 +234,9 @@ assistive tech.
   flask), standing on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
   on Wojsko), a tab's tooltip is the category's name alone (a category the house holds nothing of
   reads faded), a lit dot marks a category with a transfer, and the
-  arrow keys move along the strip. A new trader opens each house on the first category it holds
-  anything of; the open tabs stay across ticks and a reopen for the same trader. The stock browser
+  arrow keys move along the strip. A new trader, or a slot that took another house since the last
+  open, opens that house on the first category it holds anything of; the open tabs stay across ticks
+  and a reopen for the same trader and houses. The stock browser
   owns the strip, so the building window can show the same per house.
 - Under the head the house's stock of the open tab: per good its icon, name, "amount / shelf" and a
   thin meter, the goods in stock first and the empty ones faded after them. That order is taken when

@@ -15,7 +15,9 @@ import { houseRows, transferLine, UP_TO_UNLIMITED, windowRoute } from '../src/hu
 import {
   flowAllowed,
   flowChanges,
+  keepsOpenTab,
   rowPress,
+  stopHouse,
   type TradeGood,
   tradeGood,
 } from '../src/hud/dom/trade-window/route.js';
@@ -184,6 +186,17 @@ describe('trade window model', () => {
       'toB',
       'both',
     ]);
+  });
+});
+
+describe('trade window reopen', () => {
+  it('keeps a house’s open tab only for the same trader and the same house in the slot', () => {
+    const house = stopHouse(ownRoute(), TRADE_SLOT_A);
+    expect(house).toBe(HOUSE_A);
+    expect(keepsOpenTab(true, HOUSE_A, house)).toBe(true);
+    expect(keepsOpenTab(false, HOUSE_A, house)).toBe(false);
+    expect(keepsOpenTab(true, HOUSE_B, house)).toBe(false);
+    expect(keepsOpenTab(true, null, house)).toBe(false);
   });
 });
 

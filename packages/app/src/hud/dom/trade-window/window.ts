@@ -171,11 +171,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   const show = (model: SettlerPanelModel, trade: TradePanelModel): void => {
     const again = trader === model.entityId;
     trader = model.entityId;
-    // Each open takes the lists' order and scroll afresh; the open tabs are kept for the same trader.
-    for (const { column } of columns) {
-      if (again) column.reorder();
-      else column.reset();
-    }
+    for (const { column } of columns) column.reopen(trade, again);
     hudWindow.element.setAttribute('aria-label', formatMessage(copy.tradeWindow.title, { name: model.name }));
     hudWindow.open();
     placeWindow();

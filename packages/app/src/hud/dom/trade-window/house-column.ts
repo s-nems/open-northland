@@ -8,7 +8,7 @@ import { GLYPH, STOCK_TAB_GLYPHS } from '../icons.js';
 import { button, element, setAttribute, setClass, setTip, write } from '../parts/dom.js';
 import { createStockBrowser } from '../parts/stock-browser.js';
 import { houseRows } from './model.js';
-import { stopBadge } from './route.js';
+import { keepsOpenTab, stopBadge, stopHouse } from './route.js';
 
 export interface HouseColumnDeps {
   readonly icons: GoodIconPainter;
@@ -32,10 +32,9 @@ export interface HouseColumn {
   /** The house shown, or null before the first paint. */
   house(): number | null;
   update(trade: TradePanelModel): void;
-  /** A reopened window: the list takes its order and scroll afresh, the open tab stays. */
-  reorder(): void;
-  /** A new trader: the open tab is chosen afresh too. */
-  reset(): void;
+  /** The window opens: the list takes its order and scroll afresh, and the open tab too unless the
+   *  trader and this slot's house are the ones shown before. */
+  reopen(trade: TradePanelModel, sameTrader: boolean): void;
   /** Focus the open category tab. */
   focusTabs(): void;
 }
@@ -102,8 +101,10 @@ export function createHouseColumn(deps: HouseColumnDeps, slot: number): HouseCol
         empty: copy.stockEmpty,
       });
     },
-    reorder: () => browser.reorder(),
-    reset: () => browser.reset(),
+    reopen(trade, sameTrader): void {
+      if (keepsOpenTab(sameTrader, house, stopHouse(trade, slot))) browser.reorder();
+      else browser.reset();
+    },
     focusTabs(): void {
       tabs.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
     },

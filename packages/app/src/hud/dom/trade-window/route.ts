@@ -54,6 +54,21 @@ export function routeHouses(stops: readonly TradeStopModel[]): RouteHouses | nul
   return a === undefined || b === undefined ? null : { a, b };
 }
 
+/** The house at the stop in `slot`, or null while the slot is free. */
+export function stopHouse(trade: TradePanelModel, slot: number): number | null {
+  return trade.stops.find((stop) => stop.slot === slot)?.house ?? null;
+}
+
+/** A reopened window keeps a house's open tab only for the same trader and the same house in the slot:
+ *  a stop changed between opens is another house's stock. */
+export function keepsOpenTab(
+  sameTrader: boolean,
+  shownHouse: number | null,
+  nextHouse: number | null,
+): boolean {
+  return sameTrader && shownHouse !== null && shownHouse === nextHouse;
+}
+
 export function stopLabel(trade: TradePanelModel, slot: number): string {
   return trade.stops.find((stop) => stop.slot === slot)?.label ?? stopBadge(slot);
 }
