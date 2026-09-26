@@ -1,6 +1,7 @@
 import type { Entity, SimEvent } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { NO_WATER } from '../src/data/terrain/index.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { WorldMarks, type WorldMarksFrame } from '../src/gpu/world-renderer/world-marks.js';
 import { cameraViewport, makeElevationField } from '../src/index.js';
@@ -37,6 +38,8 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     viewport: VIEWPORT,
     renderTime: 0,
     damaged: [],
+    ships: [],
+    water: NO_WATER,
     selection: new Set(),
     flagged: new Set(),
     workAreas: [],

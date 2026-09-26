@@ -18,6 +18,7 @@ import {
   SpriteSpatialIndex,
   screenDepth,
 } from '../../data/scene/index.js';
+import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
 import type { PlanStakeTextures } from '../plan-stake.js';
@@ -26,7 +27,7 @@ import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 import { LayerBinder } from './bind-layers.js';
-import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
+import { anchorOf, boundsOf, type DamagedBuilding, keelOf, pixelHit, type ShipAfloat } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
 import { presentEntity } from './present-entity.js';
@@ -129,6 +130,9 @@ export class SpritePool {
   private readonly sceneCache = new SpriteSceneCache();
   private lastItems: readonly SpriteDrawItem[] = [];
   private readonly damaged: DamagedBuilding[] = [];
+  private readonly ships: ShipAfloat[] = [];
+  /** Scratch {@link keelOf} answers in, valid until the next call. */
+  private readonly keelScratch: number[] = [];
   private readonly portrait: PortraitSubject;
   private readonly binder: LayerBinder;
   /** Last {@link reconcile}'s device grid, so the portrait pass re-places the meshes the way it drew
@@ -161,11 +165,23 @@ export class SpritePool {
     this.snapResolution = frame.snapResolution;
     this.portrait.release();
     this.damaged.length = 0;
+    this.ships.length = 0;
+    const vehicles = this.sheet?.bindings.vehicle;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
       if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
         this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
+      }
+      // A portrait-only ship is hidden on the map, so it pushes no water there.
+      const onMap = item.ghost !== true && item.portraitOnly !== true;
+      if (item.kind === 'vehicle' && onMap && vehicles !== undefined) {
+        // A moored ship still sits in the water: it keeps its lapping foam and lets a wake settle.
+        const look = vehicleLookFor(vehicles, item);
+        if (look?.afloat === true) {
+          const sailing = vehicleAfloat(look, item) === 'sailing';
+          this.ships.push({ ref: item.ref, facing: item.facing ?? DEFAULT_FACING, sailing });
+        }
       }
       const pe = this.pooledFor(item);
       // An entity absent from last frame's draw list holds the motion track from whenever it was last
@@ -280,6 +296,17 @@ export class SpritePool {
    *  the culled draw list, so the smoke overlay's cost tracks the screen. */
   damagedBuildings(): readonly DamagedBuilding[] {
     return this.damaged;
+  }
+
+  /** This frame's drawn ships, at sea or moored, valid until the next {@link reconcile}; off the culled
+   *  draw list like {@link damagedBuildings}. */
+  shipsAfloat(): readonly ShipAfloat[] {
+    return this.ships;
+  }
+
+  /** {@link keelOf} for `ref`, valid until the next call. */
+  keelOf(ref: number): readonly number[] | undefined {
+    return keelOf(this.pool.get(ref), this.frameId, this.keelScratch);
   }
 
   stats(): { drawn: number; pooled: number } {

@@ -9,6 +9,7 @@ import {
   makeElevationField,
   makeWaterField,
   NO_WATER,
+  type WaterField,
 } from '../../data/terrain/index.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { makeWaveUniforms, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../shading.js';
@@ -48,6 +49,7 @@ export class TerrainLayer {
    *  {@link animate} is one write per frame rather than one per chunk. */
   private waveGroup: WaveUniforms | undefined;
   private hasWater = false;
+  private water: WaterField = NO_WATER;
   private enhancedWater = false;
   private enhancedSampling = false;
 
@@ -100,6 +102,7 @@ export class TerrainLayer {
     // Water-wave amplitudes ride the shaded mesh path only, so a water map without a shading lane
     // draws stock meshes and stays still. The animate() gate needs both, not just the wave field.
     const water = makeWaterField(terrain.ground, terrain.width, terrain.height);
+    this.water = water;
     this.hasWater = water !== NO_WATER && this.brightnessTex !== undefined;
     this.waveGroup = makeWaveUniforms();
     this.waveGroup.uniforms.uEnhancedSampling = this.enhancedSampling ? 1 : 0;
@@ -167,5 +170,11 @@ export class TerrainLayer {
     this.field = makeBrightnessField(undefined, 0, 0);
     this.waveGroup = undefined;
     this.hasWater = false;
+    this.water = NO_WATER;
+  }
+
+  /** The current map's water mask; {@link NO_WATER} on a map whose ground paints none. */
+  waterField(): WaterField {
+    return this.water;
   }
 }

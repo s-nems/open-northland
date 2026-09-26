@@ -1,7 +1,7 @@
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
-import type { ElevationField } from '../../data/terrain/index.js';
+import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import {
   BadgeLayer,
   type BuildingSignGfx,
@@ -19,10 +19,11 @@ import {
   type SettlerBubble,
   type SettlerBubbleGfx,
   SettlerBubbleLayer,
+  ShipWakeLayer,
   ShotLayer,
   type WorkAreaRing,
 } from '../overlays/index.js';
-import type { DamagedBuilding, DrawnGeometry } from '../sprite-pool/index.js';
+import type { DamagedBuilding, DrawnGeometry, ShipAfloat } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import type { CombatBonesGfx } from './frame.js';
@@ -32,6 +33,7 @@ import type { WorldSceneLayers } from './painter-order.js';
 
 export type MarkSlots = Pick<
   WorldSceneLayers,
+  | 'wakes'
   | 'selection'
   | 'bones'
   | 'blood'
@@ -53,6 +55,10 @@ export interface WorldMarksFrame {
   /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
   readonly renderTime: number;
   readonly damaged: readonly DamagedBuilding[];
+  /** The drawn ships, off the pool's culled draw list like {@link damaged}. */
+  readonly ships: readonly ShipAfloat[];
+  /** The map's water mask the wakes fade off. */
+  readonly water: WaterField;
   readonly selection: ReadonlySet<number>;
   readonly flagged: ReadonlySet<number>;
   readonly workAreas: readonly WorkAreaRing[];
@@ -63,6 +69,7 @@ export interface WorldMarksFrame {
 }
 
 export class WorldMarks {
+  private readonly wakes = new ShipWakeLayer();
   private readonly selection = new SelectionLayer();
   /** Two containers, because blood paints over the struck body while bones litter the ground under it. */
   private readonly effects = new CombatEffectsLayer();
@@ -93,6 +100,7 @@ export class WorldMarks {
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
     this.slots = {
+      wakes: this.wakes.container,
       selection: this.selection.container,
       bones: this.effects.groundContainer,
       blood: this.effects.overlayContainer,
@@ -143,6 +151,7 @@ export class WorldMarks {
 
   draw(frame: WorldMarksFrame): void {
     const { drawn, elevation, viewport, renderTime } = frame;
+    this.wakes.draw(frame.ships, drawn, frame.water, renderTime);
     this.selection.draw(
       { snapshot: frame.snapshot, drawn, elevation },
       frame.selection,
@@ -160,6 +169,7 @@ export class WorldMarks {
   }
 
   destroy(): void {
+    this.wakes.destroy();
     this.selection.destroy();
     this.effects.destroy();
     this.collapses.destroy();

@@ -4,6 +4,7 @@ export interface WorldSceneLayers {
   readonly terrain: Container;
   readonly decorShadows: Container;
   readonly decor: Container;
+  readonly wakes: Container;
   readonly fog: Container;
   readonly constructionPlots: Container;
   readonly placementWash: Container;
@@ -24,6 +25,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.terrain,
     layers.decorShadows,
     layers.decor,
+    layers.wakes,
     layers.fog,
     layers.constructionPlots,
     layers.placementWash,

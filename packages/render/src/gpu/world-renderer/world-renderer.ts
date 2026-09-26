@@ -281,6 +281,8 @@ export class WorldRenderer {
       viewport: vp,
       renderTime: tick + alpha,
       damaged: this.pool.damagedBuildings(),
+      ships: this.pool.shipsAfloat(),
+      water: this.terrain.waterField(),
       selection,
       flagged,
       workAreas,

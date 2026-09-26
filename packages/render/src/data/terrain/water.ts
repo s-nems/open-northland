@@ -1,3 +1,4 @@
+import { TILE_HALF_H, TILE_HALF_W } from '../projection/index.js';
 import type { SceneGround } from '../scene/index.js';
 import { clampedCellAt } from './cell-field.js';
 import { nodeCell } from './tessellation.js';
@@ -14,6 +15,9 @@ import { nodeCell } from './tessellation.js';
 /** A terrain-mesh node's water value in [0, 1]. */
 export type WaterNodeFn = (hx: number, hy: number) => number;
 
+/** A cell's water value in [0, 1], the grid clamped at its edges. */
+export type WaterCellFn = (col: number, row: number) => number;
+
 /**
  * The per-node water inputs of a map's ground mesh: `wave` is the swell amplitude factor (0 = still
  * ground), `surface` the node cell's water fraction (the shading mask), `deep` its fraction drawn with
@@ -23,12 +27,14 @@ export interface WaterField {
   readonly wave: WaterNodeFn;
   readonly surface: WaterNodeFn;
   readonly deep: WaterNodeFn;
+  /** {@link surface} by cell, for a per-frame reader that must not allocate a node's cell. */
+  readonly surfaceCell: WaterCellFn;
 }
 
 const STILL: WaterNodeFn = () => 0;
 
 /** Shared so land maps allocate nothing. */
-export const NO_WATER: WaterField = { wave: STILL, surface: STILL, deep: STILL };
+export const NO_WATER: WaterField = { wave: STILL, surface: STILL, deep: STILL, surfaceCell: STILL };
 
 /** A ground pattern drawing water surface, by `EditName` ('water 01', 'block water …',
  *  'block water shallow …' across the owned corpus). */
@@ -82,13 +88,45 @@ export function makeWaterField(ground: SceneGround | undefined, width: number, h
   }
   // Surface and depth take the node's own cell, like the brightness lane: the varying then fades each
   // across the coast triangle instead of stepping at the node.
-  const nodeValue =
-    (values: Float32Array): WaterNodeFn =>
-    (hx, hy) => {
-      const [col, row] = nodeCell(hx, hy);
+  const cellValue =
+    (values: Float32Array): WaterCellFn =>
+    (col, row) => {
       const c = col < 0 ? 0 : col >= width ? width - 1 : col;
       const r = row < 0 ? 0 : row >= height ? height - 1 : row;
       return values[r * width + c] ?? 0;
     };
-  return { wave: nodeValue(amp), surface: nodeValue(water), deep: nodeValue(deep) };
+  const nodeValue = (atCell: WaterCellFn): WaterNodeFn => {
+    return (hx, hy) => {
+      const [col, row] = nodeCell(hx, hy);
+      return atCell(col, row);
+    };
+  };
+  const surfaceCell = cellValue(water);
+  return {
+    wave: nodeValue(cellValue(amp)),
+    surface: nodeValue(surfaceCell),
+    deep: nodeValue(cellValue(deep)),
+    surfaceCell,
+  };
+}
+
+/**
+ * `field`'s water surface at world px (`x`, `y`) on the unlifted water plane, blended across the
+ * staggered cell centres around it, so an overlay fading by it thins out over the last cell before a
+ * shore instead of stepping.
+ */
+export function waterSurfaceAt(field: WaterField, x: number, y: number): number {
+  const fy = y / TILE_HALF_H;
+  const r0 = Math.floor(fy);
+  const tr = fy - r0;
+  return rowSurface(field, x, r0) * (1 - tr) + rowSurface(field, x, r0 + 1) * tr;
+}
+
+/** Blend of row `r`'s two cell centres either side of `x`; cell `c` of row `r` centres at
+ *  `(2c + (r & 1)) * TILE_HALF_W`. */
+function rowSurface(field: WaterField, x: number, r: number): number {
+  const fc = (x / TILE_HALF_W - (r & 1)) / 2;
+  const c0 = Math.floor(fc);
+  const tc = fc - c0;
+  return field.surfaceCell(c0, r) * (1 - tc) + field.surfaceCell(c0 + 1, r) * tc;
 }

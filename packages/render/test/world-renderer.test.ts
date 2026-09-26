@@ -45,6 +45,7 @@ const SLOTS = [
   'terrain',
   'decorShadows',
   'decor',
+  'wakes',
   'fog',
   'constructionPlots',
   'placementWash',

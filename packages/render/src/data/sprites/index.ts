@@ -62,6 +62,8 @@ export type {
 export {
   resolveVehicleDraw,
   VEHICLE_ATTACK_TICKS,
+  type VehicleAfloat,
+  vehicleAfloat,
   vehicleLookFor,
   vehicleMovingRef,
 } from './vehicle.js';

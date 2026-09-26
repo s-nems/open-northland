@@ -34,3 +34,18 @@ export {
   type SmokePuffPose,
   smokePuff,
 } from './smoke.js';
+export {
+  CRESTS_PER_ARM,
+  crestMark,
+  facingHeading,
+  fitHull,
+  type Hull,
+  LAP_MARKS,
+  lapMark,
+  stepSailBlend,
+  WAKE_DRIFT_PX_PER_TICK,
+  WASH_PUFFS,
+  WATER_PLANE_SQUASH,
+  type WakeMark,
+  washMark,
+} from './wake.js';

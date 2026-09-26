@@ -1,6 +1,7 @@
 import { Sprite } from 'pixi.js';
 import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import { alphaMaskOf, maskSolidAt } from './alpha-mask.js';
+import { keelLine } from './keel-line.js';
 import type { EntityBounds, PalettedPooledEntity, PooledEntity } from './pooled-entity.js';
 
 /**
@@ -17,12 +18,50 @@ export interface DrawnGeometry {
   readonly selectionOf?: (ref: number) => SelectionEllipse | undefined;
   readonly boundsOf: (ref: number) => EntityBounds | undefined;
   readonly anchorOf: (ref: number) => { x: number; y: number } | undefined;
+  /** A drawn ship's keel line ({@link keelOf}), valid until the next call. */
+  readonly keelOf?: (ref: number) => readonly number[] | undefined;
 }
 
 /** One drawn, damaged finished building: its ref and the remaining Health fraction the smoke reads. */
 export interface DamagedBuilding {
   readonly ref: number;
   readonly hpFrac: number;
+}
+
+/** One drawn ship, at sea or moored, the input of the wake it pushes. */
+export interface ShipAfloat {
+  readonly ref: number;
+  /** The drawn render facing. */
+  readonly facing: number;
+  readonly sailing: boolean;
+}
+
+/**
+ * A drawn indexed ship's keel line ({@link keelLine}) as anchor-relative world px `(x, y)` pairs written
+ * into `out`, for the hull at rest on the water: the heave and roll its sway adds are left out.
+ * `undefined` when the body is not drawn this frame or its pixels are unreadable.
+ */
+export function keelOf(
+  pe: PooledEntity | undefined,
+  frameId: number,
+  out: number[],
+): readonly number[] | undefined {
+  if (pe === undefined || pe.lastSeen !== frameId || !pe.paletted) return undefined;
+  // A vehicle's silhouette lives in `pe.shadows`, so its first mesh is the body.
+  const body = pe.sprites[0];
+  const frame = body?.frame;
+  const source = body?.frameSource;
+  if (body === undefined || !body.visible || frame === undefined || source === undefined) return undefined;
+  const mask = alphaMaskOf(source);
+  if (mask === null) return undefined;
+  const keel = keelLine(mask, frame);
+  const scale = body.artScale;
+  out.length = keel.length;
+  for (let i = 0; i + 1 < keel.length; i += 2) {
+    out[i] = body.artDx + (frame.offsetX + (keel[i] ?? 0)) * scale;
+    out[i + 1] = (frame.offsetY + (keel[i + 1] ?? 0)) * scale;
+  }
+  return out;
 }
 
 /** The world-space bounding box of an entity's sprite as drawn this frame; `undefined` leaves the picker
