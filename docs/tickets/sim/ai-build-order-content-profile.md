@@ -9,14 +9,15 @@ original strategic AI's internals, so this is authored content, not pipeline out
 
 ## Scope
 
-Add a strict content schema mirroring the ordered `BuildOrderEntry` union: `place` with its affinities,
-ground rule, resource gate and `unlessWithin` skip, `upgrade`, `collector`, `towerCoverage` and `storeCoverage`. Move the current authored table into the
-committed fallback catalog, resolve the selected profile once per AI seat, and leave no content-id table
-in sim source. Workforce policy remains separate in
+Add a strict content schema mirroring the ordered `BuildOrderEntry` union: `place` with its
+affinities, ground rule, resource gate and `unlessWithin` skip, `upgrade`, `collector`,
+`towerCoverage` and `storeCoverage`, with the list's site pace and lane rules. Move the current
+authored table into the committed fallback catalog, resolve the selected profile once per AI seat,
+and leave no content-id table in sim source. Workforce policy remains separate in
 [ai-workforce-content-profile](ai-workforce-content-profile.md).
 
 ## Verify
 
-- Schema round-trips through `parseContentSet`; a fixture profile drives the executor in the existing
-  module tests; fallback content preserves the current command sequence and goldens; `npm test`,
-  `npm run check`, `npm run build`.
+- Schema round-trips through `parseContentSet`; a fixture profile drives the executor in the
+  existing module tests; fallback content preserves the current command sequence and goldens.
+- `npm test`, `npm run check`, `npm run build`.
