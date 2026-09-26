@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  aiPlayerEntity,
   Building,
+  BuildOrderFrontier,
   grantScriptUnlock,
   Owner,
   Settler,
+  StalledPlacement,
   setMapPermission,
   UnderConstruction,
 } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import { Simulation } from '../../../src/index.js';
+import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
 import {
   type BuildOrderEntry,
@@ -651,9 +655,10 @@ describe('build order - the bakery wells', () => {
     expect(Math.abs(well.x - FAR_BAKERY.x) + Math.abs(well.y - FAR_BAKERY.y)).toBeLessThan(WELL_REACH_NODES);
   });
 
-  it('passes the well over, rather than stalling the list, when no spot in reach of the bakery is legal', () => {
-    // Manned foe towers north and south of the far bakery put every node in a well's reach of it under
-    // fire: the reach disc is wider in rows than in columns, so one post's Manhattan reach cannot cover it.
+  /** The far bakery under fire: manned foe towers north and south of it put every node in a well's reach of
+   *  it under fire (the reach disc is wider in rows than in columns, so one post's Manhattan reach cannot
+   *  cover it), and the seat's well entry can only be passed over. */
+  function wellUnderFireSeat(): Simulation {
     const sim = aiSim();
     placeHq(sim);
     for (const site of [
@@ -695,10 +700,61 @@ describe('build order - the bakery wells', () => {
     }
     for (let i = 0; i < 200; i++) sim.step();
     for (const archer of archers) expect(standsAtPost(sim.world, archer)).not.toBeNull();
+    return sim;
+  }
 
+  it('passes the well over, rather than stalling the list, when no spot in reach of the bakery is legal', () => {
+    const sim = wellUnderFireSeat();
     expect([...buildOrderModule(order).run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,
+    });
+  });
+
+  it('keeps placing past a passed-over well decision after decision, its frontier and stall record untouched', () => {
+    // A seat with an AI carrier keeps a frontier: the passed-over well must not move it, or the well, unmet
+    // below it next decision, would read as a razed building and hold the list for the rebuild delay.
+    const sim = wellUnderFireSeat();
+    makeAiSeat(sim, SEAT);
+    const homesToo = buildOrderModule([...order, { kind: 'place', building: 'home_level_00', count: 3 }]);
+    const placed: number[] = [];
+    for (let decision = 0; decision < 5; decision++) {
+      const tick = SEAT + decision * AI_DECISION_INTERVAL_TICKS;
+      const command = [...homesToo.run(sim.world, ctxOf(sim, tick), SEAT)][0];
+      if (command === undefined) break;
+      if (command.kind !== 'placeBuilding') throw new Error('expected a placement');
+      placed.push(command.buildingType);
+      sim.enqueueSetup(command);
+      sim.step();
+      completeSites(sim);
+    }
+    expect(placed).toEqual([MILL_TYPE, HOME_TYPE, HOME_TYPE, HOME_TYPE]);
+    const carrier = aiPlayerEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    expect(sim.world.tryGet(carrier, BuildOrderFrontier)).toEqual({ entry: 3, rebuildTick: null });
+    expect(sim.world.has(carrier, StalledPlacement)).toBe(false);
+  });
+
+  it('opens the lanes behind a passed-over well', () => {
+    const sim = wellUnderFireSeat();
+    // A home out at the east edge, far from the fire in the west, re-arms the tower lane after the well.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: HQ_X + 31,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const laned = buildOrderModule([
+      order[0] ?? { kind: 'collector', good: 'wood' },
+      { kind: 'towerCoverage', building: 'tower_01', lane: true },
+      { kind: 'place', building: 'work_mill_00', count: 1 },
+    ]);
+    expect([...laned.run(sim.world, ctxOf(sim, LATE_GAME_FROM_TICKS), SEAT)][0]).toMatchObject({
+      kind: 'placeBuilding',
+      buildingType: TOWER_TYPE,
     });
   });
 
@@ -747,5 +803,54 @@ describe('build order - the animal farm well', () => {
     if (well?.kind !== 'placeBuilding') throw new Error('expected a well placement');
     expect(well.buildingType).toBe(WELL_TYPE);
     expect(Math.abs(well.x - FARM.x) + Math.abs(well.y - FARM.y)).toBeLessThan(WELL_REACH_NODES);
+  });
+});
+
+describe('build order - a coverage entry with no spot', () => {
+  const WATER = 1;
+  const POCKET_RADIUS = 10;
+  const ISLAND = { x: HQ_X + 31, y: HQ_Y };
+
+  /** Grass in a pocket round the HQ and on one far node, water everywhere else: nothing within a tower's
+   *  reach of the far node is buildable, so no tower can ever cover a home standing on it. */
+  function islandSim(): Simulation {
+    const width = 64;
+    const height = 32;
+    const typeIds = new Array<number>(width * height).fill(WATER);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= POCKET_RADIUS) typeIds[y * width + x] = 0;
+      }
+    }
+    typeIds[ISLAND.y * width + ISLAND.x] = 0;
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: { resolution: 'half-cell', width, height, typeIds },
+    });
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      ...ISLAND,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+    });
+    sim.step();
+    return sim;
+  }
+
+  it('passes a tower entry over, like a store entry, when no target it has can be covered', () => {
+    const sim = islandSim();
+    expect(sim.world.get(entityOfBuilding(sim, HOME_TYPE), Building).buildingType).toBe(HOME_TYPE);
+    const towersFirst = buildOrderModule([
+      { kind: 'towerCoverage', building: 'tower_01' },
+      { kind: 'place', building: 'work_mill_00', count: 1 },
+    ]);
+    expect([...towersFirst.run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
+      kind: 'placeBuilding',
+      buildingType: MILL_TYPE,
+    });
   });
 });
