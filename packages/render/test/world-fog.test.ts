@@ -1,8 +1,8 @@
 import { FOG_MODE, FOG_STATE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { ONE } from '../src/data/projection/index.js';
-import { WorldFog } from '../src/gpu/world-renderer/world-fog.js';
-import { entity, fogViewOf, snapshotOf } from './support/fixtures.js';
+import { type FogPoolFrame, WorldFog } from '../src/gpu/world-renderer/world-fog.js';
+import { drawableGhosts, entity, fogViewOf, snapshotOf } from './support/fixtures.js';
 
 const VIEWPORT = { minX: -1000, minY: -1000, maxX: 1000, maxY: 1000 };
 // Both fixtures sit on even rows, where the stagger is 0 and cell (cx, cy) = (⌊tileX⌋, tileY).
@@ -16,6 +16,7 @@ const watching = (cell: string, generation: number) =>
   fogViewOf(new Map([[cell, FOG_STATE.VISIBLE]]), generation);
 const explored = (cell: string, generation: number) =>
   fogViewOf(new Map([[cell, FOG_STATE.EXPLORED]]), generation);
+const ghostsOf = (frame: FogPoolFrame) => (frame.ghosts === undefined ? [] : drawableGhosts(frame.ghosts));
 
 describe('WorldFog', () => {
   it('omits the fog cull and gates nothing while the view is off', () => {
@@ -59,14 +60,14 @@ describe('WorldFog', () => {
   it('emits a remembered static once its cell regresses to EXPLORED, and forgets it when fog goes off', () => {
     const fog = new WorldFog();
     fog.setView(watching(HOUSE_CELL, 1));
-    expect(fog.update(WORLD, VIEWPORT).ghosts).toBeUndefined(); // watched: the live entity draws
+    expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toEqual([]); // watched: the live entity draws
     fog.setView(explored(HOUSE_CELL, 2));
-    expect(fog.update(WORLD, VIEWPORT).ghosts).toMatchObject([{ ref: HOUSE.id, kind: 'building' }]);
+    expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toMatchObject([{ ref: HOUSE.id, kind: 'building' }]);
     fog.setView(null);
     expect(fog.update(WORLD, VIEWPORT).ghosts).toBeUndefined();
     // Memory really cleared, not just withheld: the same explored view starts over with nothing seen.
     fog.setView(explored(HOUSE_CELL, 2));
-    expect(fog.update(WORLD, VIEWPORT).ghosts).toBeUndefined();
+    expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toEqual([]);
   });
 
   it('remembers an adopted ref that was never seen, the static-layer handover', () => {
@@ -74,10 +75,10 @@ describe('WorldFog', () => {
     fog.setStaticallyDrawnRefs(new Set([TREE.id]));
     fog.setView(explored(TREE_CELL, 1));
     // Still drawn by the retained static layer: it is its own ghost, so the store skips it.
-    expect(fog.update(WORLD, VIEWPORT).ghosts).toBeUndefined();
+    expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toEqual([]);
     fog.setStaticallyDrawnRefs(new Set());
     fog.adoptGhost(TREE.id);
-    expect(fog.update(WORLD, VIEWPORT).ghosts).toMatchObject([{ ref: TREE.id, kind: 'resource' }]);
+    expect(ghostsOf(fog.update(WORLD, VIEWPORT))).toMatchObject([{ ref: TREE.id, kind: 'resource' }]);
   });
 
   it('holds the fog epoch on a steady mask and bumps it on a generation or mode change', () => {
@@ -104,13 +105,13 @@ describe('WorldFog', () => {
     const seen = fog.update(WORLD, VIEWPORT);
     fog.setView(explored(HOUSE_CELL, 3));
     const remembered = fog.update(WORLD, VIEWPORT);
-    expect(remembered.ghosts).toMatchObject([{ ref: HOUSE.id }]);
+    expect(ghostsOf(remembered)).toMatchObject([{ ref: HOUSE.id }]);
     // The other seat never saw the house: same generation and mode, a different perspective.
     fog.setView({ ...explored(HOUSE_CELL, 3), player: 1 });
     const switched = fog.update(WORLD, VIEWPORT);
     expect(switched.fogEpoch).not.toBe(remembered.fogEpoch);
     expect(switched.fogEpoch).not.toBe(seen.fogEpoch);
-    expect(switched.ghosts).toBeUndefined();
+    expect(ghostsOf(switched)).toEqual([]);
   });
 
   it('reads the mask once per generation, not once per frame', () => {

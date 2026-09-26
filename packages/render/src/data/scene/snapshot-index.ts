@@ -1,4 +1,12 @@
-import { type EntitySnapshot, entityById, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type EntitySnapshot,
+  entitiesWith,
+  entityById,
+  indexesOf,
+  listedWhere,
+  type SnapshotIndexSpec,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { readSiegeShot, type SiegeShot } from './shot-flight.js';
 import {
   readActingAtomic,
@@ -10,9 +18,9 @@ import {
 } from './snapshot-readers/index.js';
 
 /**
- * The scene build's per-snapshot pre-scans, memoized on snapshot identity so they run once per tick
- * rather than once per frame. The atomic ids are transcribed rather than imported: render reads the
- * snapshot's plain ids, never sim code.
+ * The scene build's snapshot-wide lookups, kept per change on the snapshot's indexes (`indexesOf`) so a
+ * tick costs its changes rather than a walk. The atomic ids are transcribed rather than imported: render
+ * reads the snapshot's plain ids, never sim code.
  */
 
 /** A combat attack swing - the original's `setatomic <job> 81 "..._attack"`, the attack slot across
@@ -72,15 +80,103 @@ export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   ...FISHING_ATOMIC_IDS,
 ]);
 
-interface SceneIndex {
-  readonly enterableStores: ReadonlySet<number>;
-  readonly targetPositions: ReadonlyMap<number, { x: number; y: number }>;
-  readonly signposts: readonly EntitySnapshot[];
-  readonly palisades: readonly EntitySnapshot[];
-  readonly siegeShots: readonly SiegeShot[];
+function isEnterableStore(components: Readonly<Record<string, unknown>>): boolean {
+  return 'Building' in components && readBuiltPct(components) === undefined;
 }
 
-const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
+const ENTERABLE_STORES: SnapshotIndexSpec<Set<number>> = {
+  empty: () => new Set(),
+  add: (ids, entity) => {
+    if (isEnterableStore(entity.components)) ids.add(entity.id);
+  },
+  remove: (ids, entity) => {
+    ids.delete(entity.id);
+  },
+  replace: (ids, previous, next) => {
+    const was = previous.components;
+    const is = next.components;
+    if (was.Building === is.Building && was.Upgrading === is.Upgrading) return;
+    if (isEnterableStore(is)) ids.add(next.id);
+    else ids.delete(next.id);
+  },
+};
+
+/** The target of an actor's target-facing atomic, or null. */
+function facedTargetOf(components: Readonly<Record<string, unknown>>): number | null {
+  const acting = readActingAtomic(components);
+  if (acting === null || !TARGET_FACING_ATOMIC_IDS.has(acting)) return null;
+  return readAtomicTargetEntity(components);
+}
+
+/** Add `step` to `id`'s reference count, dropping an id no actor references any more. */
+function countTarget(counts: Map<number, number>, id: number | null, step: number): void {
+  if (id === null) return;
+  const left = (counts.get(id) ?? 0) + step;
+  if (left > 0) counts.set(id, left);
+  else counts.delete(id);
+}
+
+/** The workplace a worker performs its craft at: it is drawn against that building's own anchor, not
+ *  its doorstep. */
+function craftWorkplaceOf(components: Readonly<Record<string, unknown>>): number | null {
+  return readCraftPerformance(components)?.workplace ?? null;
+}
+
+function countTargetsOf(counts: Map<number, number>, entity: EntitySnapshot, step: number): void {
+  countTarget(counts, facedTargetOf(entity.components), step);
+  countTarget(counts, craftWorkplaceOf(entity.components), step);
+}
+
+/** Move one reference from `before` to `after`, leaving the counts alone when the id is unchanged. */
+function moveTarget(counts: Map<number, number>, before: number | null, after: number | null): void {
+  if (before === after) return;
+  countTarget(counts, before, -1);
+  countTarget(counts, after, 1);
+}
+
+/** Each id some actor faces or crafts at, with how many actors reference it. Both references read
+ *  `CurrentAtomic` alone. */
+const WANTED_TARGETS: SnapshotIndexSpec<Map<number, number>> = {
+  empty: () => new Map(),
+  add: (counts, entity) => countTargetsOf(counts, entity, 1),
+  remove: (counts, entity) => countTargetsOf(counts, entity, -1),
+  replace: (counts, previous, next) => {
+    const was = previous.components;
+    const is = next.components;
+    if (was.CurrentAtomic === is.CurrentAtomic) return;
+    moveTarget(counts, facedTargetOf(was), facedTargetOf(is));
+    moveTarget(counts, craftWorkplaceOf(was), craftWorkplaceOf(is));
+  },
+};
+
+const carriesPalisade = (entity: EntitySnapshot): boolean => 'Palisade' in entity.components;
+
+const PALISADE_ENTRIES = listedWhere(carriesPalisade);
+
+/** The palisades, and a copy of them dropped whenever a change touches one: `palisadeLayoutOf` keeps
+ *  its layout while the list it gets is the same array, and the held list is edited in place. */
+interface PalisadeList {
+  readonly held: EntitySnapshot[];
+  copy: readonly EntitySnapshot[] | null;
+}
+
+const PALISADES: SnapshotIndexSpec<PalisadeList> = {
+  empty: () => ({ held: PALISADE_ENTRIES.empty(), copy: null }),
+  add: (list, entity) => {
+    if (!carriesPalisade(entity)) return;
+    PALISADE_ENTRIES.add(list.held, entity);
+    list.copy = null;
+  },
+  remove: (list, entity) => {
+    if (!carriesPalisade(entity)) return;
+    PALISADE_ENTRIES.remove(list.held, entity);
+    list.copy = null;
+  },
+};
+
+const positionsBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, { x: number; y: number }>>();
+
+const shotsBySnapshot = new WeakMap<WorldSnapshot, readonly SiegeShot[]>();
 
 /** Shared empty index, so a snapshot with no target-facing actor allocates nothing. */
 const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
@@ -92,10 +188,11 @@ const NO_SHOTS: readonly SiegeShot[] = [];
 /**
  * Completed buildings, the stores a settler can walk into. A settler exchanging goods with one is not
  * drawn: observed original, where the carrier vanishes into the house. A ground pile, flag or
- * construction site is not enterable, so those exchanges keep their animation.
+ * construction site is not enterable, so those exchanges keep their animation. A mirror edits the set in
+ * place as it advances, so read it within the frame.
  */
 export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
-  return sceneIndexOf(snapshot).enterableStores;
+  return indexesOf(snapshot).get(ENTERABLE_STORES);
 }
 
 /**
@@ -130,75 +227,54 @@ export function isIndoorSettler(
  * still in raw `Fixed` units: the `/ONE` to tile space is deferred to the rare lookups.
  */
 export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
-  return sceneIndexOf(snapshot).targetPositions;
+  let positions = positionsBySnapshot.get(snapshot);
+  if (positions === undefined) {
+    positions = positionsOfRefs(snapshot, indexesOf(snapshot).get(WANTED_TARGETS));
+    positionsBySnapshot.set(snapshot, positions);
+  }
+  return positions;
 }
 
-/** The snapshot's signpost entities, in its own ascending id order. */
+/** The snapshot's signpost entities, ascending by id. A mirror edits the list in place as it advances,
+ *  so read it within the frame. */
 export function signpostsOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] {
-  return sceneIndexOf(snapshot).signposts;
+  return entitiesWith(snapshot, 'Signpost');
 }
 
-/** The snapshot's walls, gates and wall sites, in its own ascending id order. */
+/** The snapshot's walls, gates and wall sites, ascending by id: the same array for as long as no change
+ *  touches one. */
 export function palisadesOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] {
-  return sceneIndexOf(snapshot).palisades;
+  const list = indexesOf(snapshot).get(PALISADES);
+  list.copy ??= list.held.length > 0 ? list.held.slice() : NO_ENTITIES;
+  return list.copy;
 }
 
-/** The snapshot's siege shots in flight, in its own ascending id order. */
+/** The snapshot's siege shots in flight, ascending by id. */
 export function siegeShotsOf(snapshot: WorldSnapshot): readonly SiegeShot[] {
-  return sceneIndexOf(snapshot).siegeShots;
-}
-
-function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
-  const cached = indexBySnapshot.get(snapshot);
+  const cached = shotsBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
-  const enterableStores = new Set<number>();
-  const wanted = new Set<number>();
-  const signposts: EntitySnapshot[] = [];
-  const palisades: EntitySnapshot[] = [];
-  let siegeShots: SiegeShot[] | undefined;
-  for (const entity of snapshot.entities) {
-    const components = entity.components;
-    if ('Building' in components && readBuiltPct(components) === undefined) {
-      enterableStores.add(entity.id);
-    }
-    const acting = readActingAtomic(components);
-    if (acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) {
-      const target = readAtomicTargetEntity(components);
-      if (target !== null) wanted.add(target);
-    }
-    // A worker performing its craft is drawn against its workplace's own anchor, not its doorstep.
-    const craft = readCraftPerformance(components);
-    if (craft !== null) wanted.add(craft.workplace);
-    if ('Signpost' in components) signposts.push(entity);
-    if ('Palisade' in components) palisades.push(entity);
-    if ('Projectile' in components) {
-      const shot = readSiegeShot(entity.id, components);
-      if (shot !== null) {
-        siegeShots ??= [];
-        siegeShots.push(shot);
-      }
+  let shots: SiegeShot[] | undefined;
+  for (const entity of entitiesWith(snapshot, 'Projectile')) {
+    const shot = readSiegeShot(entity.id, entity.components);
+    if (shot !== null) {
+      shots ??= [];
+      shots.push(shot);
     }
   }
-  const index: SceneIndex = {
-    enterableStores,
-    targetPositions: positionsOfRefs(snapshot, wanted),
-    signposts: signposts.length > 0 ? signposts : NO_ENTITIES,
-    palisades: palisades.length > 0 ? palisades : NO_ENTITIES,
-    siegeShots: siegeShots ?? NO_SHOTS,
-  };
-  indexBySnapshot.set(snapshot, index);
-  return index;
+  const result = shots ?? NO_SHOTS;
+  shotsBySnapshot.set(snapshot, result);
+  return result;
 }
 
 /** `entityById` binary-searches, so this relies on the snapshot's ascending-id contract: a re-ordered
  *  entity list must never reach here. */
 function positionsOfRefs(
   snapshot: WorldSnapshot,
-  refs: ReadonlySet<number>,
+  refs: ReadonlyMap<number, number>,
 ): ReadonlyMap<number, { x: number; y: number }> {
   if (refs.size === 0) return EMPTY_POS_INDEX;
   const byRef = new Map<number, { x: number; y: number }>();
-  for (const ref of refs) {
+  for (const ref of refs.keys()) {
     const found = entityById(snapshot, ref);
     if (found === undefined) continue;
     const p = readPosition(found.components);

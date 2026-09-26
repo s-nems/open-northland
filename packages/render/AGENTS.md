@@ -23,9 +23,13 @@ this frame: the settler panel's portrait and the trade window's two houses. Each
 render of the world layer, so the cost grows with the boxes on screen, not the map; the app passes
 the same list object while the boxes hold still.
 
-The current sprite visibility pass may still inspect all entities, but submitted draw work must stay
-close to the visible set. If that CPU scan becomes material, add a tested spatial query rather than
-weakening culling.
+A scene build takes its candidates from the snapshot's position index over the viewport
+(`positionedWithin`, `data/scene/entity-source.ts`) and culls each candidate. The lookups a build
+needs (enterable stores, the ids actors face or craft at, palisades, signposts, HUD totals) are indexes
+the mirror maintains per change, read through `indexesOf`. The target-position and siege-shot readers
+are per-snapshot passes over those small index lists, and the fog ghost store is render-owned, updated
+per fog generation from the position index. No per-tick pass over `snapshot.entities` belongs in this
+package; a build without a viewport (a screenshot entry, a test oracle) is the one full walk.
 
 ## Depth, colour, and shadows
 

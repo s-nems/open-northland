@@ -1,9 +1,10 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { FogGhost } from '../fog/index.js';
+import type { FogGhost, GhostSource } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { spriteDepth } from './depth.js';
 import type { MutableDrawItem, MutableSpriteDrawItem } from './draw-item.js';
+import { anchorTileBox } from './entity-source.js';
 import type { InHouseOverlay } from './in-house.js';
 import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from './projectile-arc.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
@@ -247,22 +248,24 @@ export function assignProjectileArc(
   return arc.lift;
 }
 
+/** Reused query output, emptied around each build so it holds no ghost past it. */
+const ghostCandidates: FogGhost[] = [];
+
 /**
- * Append the viewer's remembered statics, each projected with the same anchor, lift and depth formula
- * as a live static so it occludes correctly at the fog boundary. A ghost joins `liveRefs` before the
- * cull, so a dead entity keeps its pooled sprite for as long as the memory draws. A ghost whose ref
- * `drawnLive` holds is skipped: its entity is already on screen in sight.
+ * Append the viewer's remembered statics under `viewport` (every one without it), each projected with
+ * the same anchor, lift and depth formula as a live static so it occludes correctly at the fog
+ * boundary. A ghost whose ref `drawnLive` holds is skipped: its entity is already on screen in sight.
  */
 export function pushGhostItems(
   items: MutableSpriteDrawItem[],
-  liveRefs: Set<number>,
-  ghosts: readonly FogGhost[],
+  ghosts: GhostSource,
   viewport: Viewport | undefined,
   elevation: ElevationField | undefined,
   drawnLive: ReadonlySet<number> | undefined,
 ): void {
-  for (const g of ghosts) {
-    liveRefs.add(g.ref);
+  ghostCandidates.length = 0;
+  ghosts.within(viewport === undefined ? undefined : anchorTileBox(viewport), ghostCandidates);
+  for (const g of ghostCandidates) {
     if (drawnLive?.has(g.ref) === true) continue;
     const screen = tileToScreen(g.tileX, g.tileY);
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
@@ -280,4 +283,5 @@ export function pushGhostItems(
     if (lift !== 0) item.lift = lift;
     items.push(item);
   }
+  ghostCandidates.length = 0;
 }

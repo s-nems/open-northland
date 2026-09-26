@@ -6,6 +6,7 @@ import {
   fogSettings,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import type { FogGhost, GhostSource } from '../../src/data/fog/index.js';
 import { ONE } from '../../src/data/projection/index.js';
 import type { SpriteState } from '../../src/data/scene/index.js';
 import { lookupFrame, resolveSpriteBobId } from '../../src/data/sprites/index.js';
@@ -104,4 +105,22 @@ export function fogViewOf(
       return raw;
     },
   };
+}
+
+/** A {@link GhostSource} over a fixed list of drawable ghosts; every query answers with the whole list,
+ *  the widest superset the contract allows. */
+export function ghostSourceOf(ghosts: readonly FogGhost[]): GhostSource {
+  return {
+    version: 0,
+    within: (_box, out) => {
+      out.push(...ghosts);
+      return out;
+    },
+    has: (ref) => ghosts.some((ghost) => ghost.ref === ref),
+  };
+}
+
+/** Every ghost a store draws, ascending by ref. */
+export function drawableGhosts(source: GhostSource): FogGhost[] {
+  return source.within(undefined, []).sort((a, b) => a.ref - b.ref);
 }

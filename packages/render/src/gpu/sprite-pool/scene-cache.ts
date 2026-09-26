@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { FogGhost } from '../../data/fog/index.js';
+import type { GhostSource } from '../../data/fog/index.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { SpriteScene } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
@@ -13,14 +13,15 @@ export interface SceneFrameKey {
   readonly staticRefs?: ReadonlySet<number> | undefined;
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
   readonly fogEpoch?: number | undefined;
-  readonly ghosts?: readonly FogGhost[] | undefined;
+  readonly ghosts?: GhostSource | undefined;
   readonly portraitRef?: number | undefined;
   readonly portraitHouse?: number | undefined;
   readonly insetRefs?: readonly number[] | undefined;
 }
 
 /** {@link SceneFrameKey} flattened to identity/value comparisons. `staticCount` trips on in-place
- *  mutation of the live static-refs set, whose seam contract is shrink-only. */
+ *  mutation of the live static-refs set, whose seam contract is shrink-only; `ghostsVersion` on the
+ *  ghost source's in-place updates. */
 interface StoredInputs {
   readonly snapshot: WorldSnapshot;
   readonly minX: number;
@@ -32,7 +33,8 @@ interface StoredInputs {
   readonly staticCount: number;
   readonly fogVisible: SceneFrameKey['fogVisible'];
   readonly fogEpoch: number | undefined;
-  readonly ghosts: readonly FogGhost[] | undefined;
+  readonly ghosts: GhostSource | undefined;
+  readonly ghostsVersion: number | undefined;
   readonly portraitRef: number | undefined;
   readonly portraitHouse: number | undefined;
   /** Copied: the caller hands a new list every frame, so it keys by value. */
@@ -74,6 +76,7 @@ export class SpriteSceneCache {
       c.fogVisible === frame.fogVisible &&
       c.fogEpoch === frame.fogEpoch &&
       c.ghosts === frame.ghosts &&
+      c.ghostsVersion === frame.ghosts?.version &&
       c.portraitRef === frame.portraitRef &&
       c.portraitHouse === frame.portraitHouse &&
       sameRefs(c.insetRefs, frame.insetRefs)
@@ -102,6 +105,7 @@ export class SpriteSceneCache {
       fogVisible: frame.fogVisible,
       fogEpoch: frame.fogEpoch,
       ghosts: frame.ghosts,
+      ghostsVersion: frame.ghosts?.version,
       portraitRef: frame.portraitRef,
       portraitHouse: frame.portraitHouse,
       insetRefs: [...(frame.insetRefs ?? [])],

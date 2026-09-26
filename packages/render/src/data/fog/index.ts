@@ -1,4 +1,4 @@
-export { type FogGhost, FogGhostStore } from './ghosts.js';
+export { type FogGhost, FogGhostStore, type GhostSource } from './ghosts.js';
 export {
   FOG_EXPLORED_ALPHA,
   FOG_GHOST_TINT,

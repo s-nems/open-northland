@@ -72,12 +72,12 @@ export class WorldFog {
       this.lastPlayer = view.player;
       this.lastMode = view.mode;
     }
-    const ghosts = this.ghosts.update(snapshot, view, staticRefs, elevation);
+    this.ghosts.update(snapshot, view, staticRefs, elevation);
     return {
       ...(staticRefs !== undefined ? { staticRefs } : {}),
       fogVisible: this.visibleAt,
       fogEpoch: this.epoch,
-      ...(ghosts.length > 0 ? { ghosts } : {}),
+      ghosts: this.ghosts,
     };
   }
 

@@ -5,7 +5,7 @@ import { tileToScreen } from '../../src/data/projection/index.js';
 import { buildSpriteScene } from '../../src/data/scene/index.js';
 import { classify } from '../../src/data/scene/snapshot-readers/index.js';
 import { GFX_DIR_TO_FACING } from '../../src/data/sprites/settler.js';
-import { entity, fogViewOf, snapshotOf } from '../support/fixtures.js';
+import { drawableGhosts, entity, fogViewOf, ghostSourceOf, snapshotOf } from '../support/fixtures.js';
 
 /**
  * A `Vehicle` entity becomes one `vehicle` draw item carrying its binding keys, heading, owner, task and
@@ -166,7 +166,8 @@ describe('vehicle draw items', () => {
     const seen = vehicle(1, { facing: HEX_SOUTH_WEST });
     const cell = '4,2';
     store.update(snapshotOf([seen]), fogViewOf(new Map([[cell, FOG_STATE.VISIBLE]]), 1));
-    const ghosts = store.update(snapshotOf([]), fogViewOf(new Map([[cell, FOG_STATE.EXPLORED]]), 2));
+    store.update(snapshotOf([seen]), fogViewOf(new Map([[cell, FOG_STATE.EXPLORED]]), 2));
+    const ghosts = drawableGhosts(store);
     expect(ghosts).toHaveLength(1);
     expect(ghosts[0]).toMatchObject({
       kind: 'vehicle',
@@ -176,22 +177,22 @@ describe('vehicle draw items', () => {
       facing: GFX_DIR_TO_FACING[HEX_SOUTH_WEST],
       player: PLAYER,
     });
-    const [item] = buildSpriteScene(snapshotOf([]), { ghosts });
+    const [item] = buildSpriteScene(snapshotOf([]), { ghosts: store });
     expect(item).toMatchObject({ kind: 'vehicle', ghost: true, facing: GFX_DIR_TO_FACING[HEX_SOUTH_WEST] });
   });
 
   it('draws a vehicle driven out of its fogged memory into sight once, live', () => {
-    // Remembered two cells west on fogged ground; the ghost list stays cached while the mask does not change.
-    const ghost = { ref: 1, kind: 'vehicle', tileX: 2, tileY: 2, typeId: OXCART } as const;
+    // Remembered two cells west on fogged ground, where the memory stays until that cell is re-seen.
+    const ghost = ghostSourceOf([{ ref: 1, kind: 'vehicle', tileX: 2, tileY: 2, typeId: OXCART }]);
     const items = buildSpriteScene(snapshotOf([vehicle(1)]), {
-      ghosts: [ghost],
+      ghosts: ghost,
       fogVisible: (tileX) => tileX >= 4,
     });
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ ref: 1, kind: 'vehicle' });
     expect(items[0]?.ghost).toBeUndefined();
     // Still fogged at its live spot, the memory draws instead.
-    const fogged = buildSpriteScene(snapshotOf([vehicle(1)]), { ghosts: [ghost], fogVisible: () => false });
+    const fogged = buildSpriteScene(snapshotOf([vehicle(1)]), { ghosts: ghost, fogVisible: () => false });
     expect(fogged).toEqual([expect.objectContaining({ ref: 1, ghost: true })]);
   });
 });

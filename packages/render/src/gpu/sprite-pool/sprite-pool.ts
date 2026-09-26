@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
-import type { FogGhost } from '../../data/fog/index.js';
+import type { GhostSource } from '../../data/fog/index.js';
 import {
   type Camera,
   cameraScreenX,
@@ -15,7 +15,6 @@ import {
   type LiveRefs,
   type SpriteDrawItem,
   type SpriteScene,
-  SpriteSpatialIndex,
   screenDepth,
 } from '../../data/scene/index.js';
 import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
@@ -77,7 +76,7 @@ export interface PoolFrame {
    *  differently; a bump invalidates the cached scene build. Absent = no fog. */
   readonly fogEpoch?: number;
   /** Remembered statics drawn dimmed on explored ground in place of their fog-culled or dead entities. */
-  readonly ghosts?: readonly FogGhost[];
+  readonly ghosts?: GhostSource;
   /** Workplace-assignment highlight: building id → assignable (green tint) or not (red). Transient view
    *  state like the selection, never sim state. */
   readonly highlight?: ReadonlyMap<number, boolean>;
@@ -119,8 +118,6 @@ const MAP_VIEW_BOUNDS_FRAME = -1;
 
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
-  /** The retained viewport index the scene build walks instead of every snapshot entity. */
-  private readonly spatial = new SpriteSpatialIndex();
   /** The pooled entities currently attached to {@link spriteLayer}, kept in sync with each entity's
    *  `attached` flag. */
   private readonly attached = new Set<PooledEntity>();
@@ -248,8 +245,9 @@ export class SpritePool {
   /**
    * One indexed pass yields both the culled draw list and the pre-cull liveness view the reap needs,
    * reused across frames while every input is unchanged - at high frame rates most frames only move
-   * `alpha`, which the build never reads. The cached liveness view stays valid because only a rebuild
-   * ever advances the spatial index it reads.
+   * `alpha`, which the build never reads. The cached liveness view reads the snapshot's position index,
+   * which answers for the mirror's newest snapshot; a mirror hands out a new snapshot object per delta,
+   * so a cache hit is always on the newest one.
    */
   private sceneFor(frame: PoolFrame): SpriteScene {
     const cached = this.sceneCache.lookup(frame);
@@ -258,7 +256,6 @@ export class SpritePool {
       viewport: frame.viewport,
       elevation: frame.elevation,
       staticRefs: frame.staticRefs,
-      index: this.spatial,
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
       ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
@@ -373,7 +370,6 @@ export class SpritePool {
     const items = buildSpriteScene(view.snapshot, {
       viewport: view.viewport,
       elevation: view.elevation,
-      index: this.spatial,
       staticRefs: view.staticRefs,
       keepIndoorSettlers: view.solo !== undefined,
       ...(view.solo !== undefined ? { onlyRefs: new Set([view.solo]) } : {}),

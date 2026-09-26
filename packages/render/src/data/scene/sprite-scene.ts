@@ -1,6 +1,6 @@
 import { UNLOADED_GOOD_TYPE } from '@open-northland/data';
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
-import type { FogGhost } from '../fog/index.js';
+import type { GhostSource } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import type { ElevationField } from '../terrain/index.js';
 import { pushBuildingFxItems, pushCraftFxItems, pushGhostItems } from './collect-fields.js';
@@ -13,9 +13,8 @@ import { palisadeLayoutOf } from './palisade-connections.js';
 import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose, vehiclePose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
 import { classify, readPosition, vehicleDrawTile } from './snapshot-readers/index.js';
-import type { SpriteSpatialIndex } from './spatial-index.js';
 
-/** Whether a ref is alive (drawable) this frame. A `ReadonlySet` satisfies it; the index-backed build
+/** Whether a ref is alive (drawable) this frame. A `ReadonlySet` satisfies it; the viewport build
  *  serves it without materializing the map-wide set, which is why it is not a set type. */
 export interface LiveRefs {
   has(ref: number): boolean;
@@ -24,32 +23,31 @@ export interface LiveRefs {
 export interface SpriteScene {
   readonly items: SpriteDrawItem[];
   /** Membership over every drawable entity before the cull: a ref answering false has died, one
-   *  answering true but absent from {@link items} is merely off-screen. The index-backed view reads
-   *  shared mutable state, so it stays valid only until the index is next updated. */
+   *  answering true but absent from {@link items} is merely off-screen. The viewport build's view reads
+   *  the snapshot's position index, which a mirror advances in place, so it answers for the mirror's
+   *  newest snapshot. */
   readonly liveRefs: LiveRefs;
 }
 
 /** Every field accepts an explicit `undefined` so callers can pass through their own optionals. */
 export interface SpriteSceneOptions {
-  /** The (margin-inflated) world-space camera box - cull to it; absent = emit every sprite. */
+  /** The (margin-inflated) world-space camera box - cull to it; absent = emit every sprite. With it
+   *  (and no `onlyRefs`) the build reads only the snapshot's positioned entities under the box. */
   readonly viewport?: Viewport | undefined;
   /** The map's terrain-height field; absent/flat = no lift. */
   readonly elevation?: ElevationField | undefined;
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) -
    *  skipped entirely: no draw item, excluded from {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
-  /** The caller's retained {@link SpriteSpatialIndex}: with a `viewport`, the build walks only its
-   *  buckets under the camera instead of every snapshot entity, and updates the index itself. Ignored
-   *  without a `viewport` or with `onlyRefs`. */
-  readonly index?: SpriteSpatialIndex | undefined;
   /** The fog-of-war cull; absent = no fog. An entity whose tile it rejects is treated like a
    *  viewport-culled one: no draw item, but kept live so its pooled sprite survives until the fog
    *  lifts. */
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
-  /** The viewer's remembered statics, drawn dimmed on explored ground and joined to
-   *  {@link SpriteScene.liveRefs}. A ref never yields two items: the store deletes records on visible
+  /** The viewer's remembered statics, drawn dimmed on explored ground; every drawable ghost, on screen
+   *  or not, answers live in {@link SpriteScene.liveRefs}, so a dead entity keeps its pooled sprite for
+   *  as long as the memory draws. A ref never yields two items: the store holds no record on visible
    *  ground, the fog cull drops live items elsewhere, and a vehicle drawn live suppresses its ghost. */
-  readonly ghosts?: readonly FogGhost[] | undefined;
+  readonly ghosts?: GhostSource | undefined;
   /** Keep settlers that are inside a building, forced to the `idle` standing pose. The map hides these
    *  (observed original: off-duty workers wait in the house). Approximation: how the original's
    *  building window presents one indoors is unverified. */
@@ -82,8 +80,8 @@ export interface SpriteSceneOptions {
  * else died" and destroy the map's sprites.
  */
 export interface DrawListOptions extends SpriteSceneOptions {
-  /** Emit draw items for these entities only; absent = every entity. Every pre-scan still reads the
-   *  whole snapshot, so indoor state and target-derived facing resolve exactly as on the map. */
+  /** Emit draw items for these entities only; absent = every entity. The snapshot-wide lookups still
+   *  cover the whole snapshot, so indoor state and target-derived facing resolve exactly as on the map. */
   readonly onlyRefs?: ReadonlySet<number> | undefined;
 }
 
@@ -96,7 +94,7 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions 
 /**
  * Build the draw list and the pre-cull liveness view in one pass, so a caller needing both does not
  * classify every entity twice per frame. The emitted order is total and stable, so neither culling nor
- * the entity source (full walk or the index's arbitrary bucket order) changes the list.
+ * the entity source (full walk or the position index's arbitrary bucket order) changes the list.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
   return collectScene(snapshot, opts);
@@ -121,7 +119,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   const collected = new Set<number>();
   const posByRef = targetPositionsOf(snapshot);
   // Vehicles are the one ghost kind that moves: one driven out of its fogged memory into sight draws live
-  // while the ghost list, cached until the next mask rebuild, still holds it. Allocated on first need.
+  // while its memory, kept until its cell is re-seen, still holds it. Allocated on first need.
   let liveVehicles: Set<number> | undefined;
   const build: SceneBuild = {
     snapshot,
@@ -211,8 +209,10 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     items.push(item);
   };
 
-  const liveRefs = emitEntities(snapshot, opts, collected, emit);
-  if (ghosts !== undefined) pushGhostItems(items, collected, ghosts, viewport, elevation, liveVehicles);
+  const emitted = emitEntities(snapshot, opts, collected, emit);
+  if (ghosts !== undefined) pushGhostItems(items, ghosts, viewport, elevation, liveVehicles);
+  const liveRefs: LiveRefs =
+    ghosts === undefined ? emitted : { has: (ref) => emitted.has(ref) || ghosts.has(ref) };
   // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
   return { items, liveRefs };
