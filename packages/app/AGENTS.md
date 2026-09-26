@@ -15,7 +15,8 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   operations, not loop fields. Do not mutate live component stores from UI or renderer glue.
 - The runtime reads the world through `src/session/` `SessionHost` alone: snapshots, the fog view, the
   probes and the request-shaped reads it names. `Simulation` is constructed and typed only by hosts:
-  entries, scenes, `game/sandbox/`, `game/world/` and the inline host.
+  entries, scenes, `game/sandbox/`, `game/world/` and the inline host, which serves snapshots off a
+  delta-fed `SnapshotMirror` by default, so a snapshot kept past the next tick copies its entity list.
 - Load generated content through `src/content/net.ts` by its root-relative URL and validate it with
   the `@open-northland/data` schemas. A checkout without `content/` must still boot using synthetic
   fallback content or a clear unavailable state.

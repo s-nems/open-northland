@@ -1,6 +1,7 @@
-import { intEnv } from './knobs.js';
+import { boolEnv, intEnv } from './knobs.js';
 import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './map-world.js';
 import { measureWindows } from './measure.js';
+import { MirrorProbe } from './mirror-probe.js';
 import type { BenchWindow } from './report/index.js';
 import { publishReport, reportFrom } from './run.js';
 
@@ -18,7 +19,8 @@ import { publishReport, reportFrom } from './run.js';
  * Knobs (env, all optional): `ON_BENCH_MAP`, `ON_BENCH_SEATS` (a count or a comma list),
  * `ON_BENCH_PROGRESSION` and `ON_BENCH_NEEDS` (`on`/`off`), `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
  * `ON_BENCH_WINDOWS`, `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, the lockstep session's
- * cost), `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`),
+ * cost), `ON_BENCH_MIRROR` (sample the snapshot delta path per tick, see `mirror-probe.ts`),
+ * `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`),
  * `ON_BENCH_JSON=<path>` (write the machine-readable report).
  */
 
@@ -46,14 +48,21 @@ async function main(): Promise<void> {
   const startMs = performance.now();
   const world = await mapBenchWorld(knobs, knobs.warmupTicks + knobs.measuredTicks);
   for (const line of worldSourceLines(world, knobs)) console.log(line);
+  const mirror = boolEnv('ON_BENCH_MIRROR') ? new MirrorProbe(world.sim) : null;
 
   const measurement = await measureWindows(world.sim, {
     warmupTicks: knobs.warmupTicks,
     measuredTicks: knobs.measuredTicks,
     windows,
     // A multi-hour run must report progress rather than go silent for an hour.
-    onWindow: (window) => console.log(progressLine(window, windows)),
-    afterTick: world.afterStep,
+    onWindow: (window) => {
+      console.log(progressLine(window, windows));
+      if (mirror !== null) console.log(mirror.windowLine());
+    },
+    afterTick: () => {
+      world.afterStep();
+      mirror?.tick();
+    },
   });
 
   const report = reportFrom({

@@ -33,8 +33,8 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [02 Snapshot delta and mirror](02-snapshot-delta-and-mirror.md) | A per-tick delta from the clone cache and a mirror that rebuilds the snapshot with its identities | 00 |
-| [03 Mirror indexes](03-mirror-indexes.md) | Per-kind, per-player and spatial indexes maintained from the delta; no per-tick pass over every entity in the app | 00, 02 |
+| [02 Component-level delta](02-component-level-delta.md) | A touched entity carries only its changed components, so a tick of walking settlers posts a few numbers each, not whole entities | none |
+| [03 Mirror indexes](03-mirror-indexes.md) | Per-kind, per-player and spatial indexes maintained from the delta; no per-tick pass over every entity in the app | 00 |
 | [04 Sim worker host](04-sim-worker-host.md) | Sim, driver and timestep in a worker behind the seam; inline host kept for tests and scenes | 00, 02 |
 | [05 Transport in the worker](05-transport-in-worker.md) | Loopback, then the relay client with its digests and pacer, inside the worker | 04 |
 | [06 Draw loop on the mirror](06-draw-loop-on-mirror.md) | The frame loop draws the mirror and interpolates; shortfall visible in the HUD | 00, 04 |
@@ -46,11 +46,13 @@ policies so that optimisation has a ceiling worth reaching.
 
 The runtime already reads the world through one host interface, `SessionHost` in
 `packages/app/src/session/`, with `inlineSessionHost` over the live `Simulation`; the entries, scenes,
-`game/sandbox/` and `game/world/` are the hosts that construct a `Simulation`. 00 lands first, then 02
-and 03, which are behaviour-preserving. 04 to 06 are the worker. 07 and 08 are the networking change
-and can proceed in parallel with the worker. 09 to 11 close the epic. Contract edits land with the
-ticket that makes them true: 03 removes the render visibility-pass allowance and the matching
-exception in root `AGENTS.md`, 04 rewrites `packages/app/AGENTS.md`.
+`game/sandbox/` and `game/world/` are the hosts that construct a `Simulation`. The inline host already
+reads snapshots off a `SnapshotMirror` fed by `Simulation.snapshotDeltas()`, the per-tick delta of
+touched entities the worker will post; 02 shrinks that delta to the changed components before 04 posts
+it per tick. 00 lands first, then 02 and 03, which are behaviour-preserving. 04 to 06 are the worker. 07 and 08 are the networking change and can proceed in parallel with the worker.
+09 to 11 close the epic. Contract edits land with the ticket that makes them true: 03 removes the
+render visibility-pass allowance and the matching exception in root `AGENTS.md`, 04 rewrites
+`packages/app/AGENTS.md`.
 
 ## Not in this epic
 

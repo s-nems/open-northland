@@ -29,7 +29,9 @@ version keys do not churn on idle entities. Clear an optional field by assigning
 and the hash, digest, save and snapshot walks read an `undefined` key as absent.
 
 Snapshots are detached plain-data read views. Do not expose live component objects through a read
-seam or read presentation state back into sim logic.
+seam or read presentation state back into sim logic. `Simulation.snapshotDeltas()` streams the touched
+entities per tick from the snapshot clone cache, and `SnapshotMirror` rebuilds the snapshot from them
+with the same entity identities; a mirror snapshot's entity list is edited in place per delta.
 
 ## Ordering
 

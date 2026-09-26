@@ -45,6 +45,7 @@ import {
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
+import { SnapshotDeltaStream } from './inspect/snapshot-clones.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
 import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
@@ -319,6 +320,12 @@ export class Simulation {
     // Stamp the version the snapshot was built from, not a re-read one: a later bump must invalidate it.
     this.snapshotMemo = { tick: this.currentTick, version, snap };
     return snap;
+  }
+
+  /** Open the change feed a `SnapshotMirror` rebuilds the snapshot from, one stream per mirror. Its
+   *  first delta rebuilds; taken after every `step()`, each later one is that tick's changes. */
+  snapshotDeltas(): SnapshotDeltaStream {
+    return new SnapshotDeltaStream(this);
   }
 
   unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): UnlockStatus {

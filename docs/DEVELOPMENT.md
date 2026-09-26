@@ -308,6 +308,7 @@ browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. 
 | `ON_BENCH_PROGRESSION`, `ON_BENCH_NEEDS` | `on`/`off`, the `?progression=` and `?needs=` overrides; unset keeps the map's rule |
 | `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS` | measured ticks (default 20k), unmeasured warm-up, report segments |
 | `ON_BENCH_SYNC_DIGEST` | fold the per-tick sync digest, what a networked session pays |
+| `ON_BENCH_MIRROR` | `on` measures the snapshot delta path per tick (take, `structuredClone`, mirror apply, delta size) and checks the mirror against the live snapshot at each window's end; that check and its full-snapshot clone add GC to the next window |
 | `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP`, `ON_BENCH_CHECKPOINTS` | checkpoints, below |
 | `ON_BENCH_JSON` | where the report is written instead of `bench-out/` |
 

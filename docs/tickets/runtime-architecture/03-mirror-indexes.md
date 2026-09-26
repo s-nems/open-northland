@@ -1,7 +1,7 @@
 # Maintain entity indexes on the mirror and stop per-tick passes over every entity
 
 **Area:** app, render · **Focus:** game/snapshot-base, view/projections, data/scene · **Priority:** P2
-**Blocked by:** [00 Heavy-load reference](00-heavy-load-reference.md), [02 Snapshot delta and mirror](02-snapshot-delta-and-mirror.md)
+**Blocked by:** [00 Heavy-load reference](00-heavy-load-reference.md)
 
 Several passes still visit every entity once per tick, memoised by snapshot identity so they run
 once per tick rather than once per frame: the shared actor walk `indexOf` in
@@ -14,7 +14,8 @@ entities for 544 settlers, 36 times a second at speed x3, per pass.
 
 ## Scope
 
-- The mirror maintains, from each delta's touched and removed sets alone: entities by kind
+- `SnapshotMirror` (`packages/sim/src/inspect/`) maintains, from each delta's touched and removed sets
+  alone: entities by kind
   (settlers and animals, buildings, heaps and stockpiles, resource nodes, vehicles, crops by farm),
   by owning player, and one spatial index by half-cell node for positioned entities. The existing
   identity-stable `SpriteSpatialIndex` becomes that spatial index, fed incrementally, rather than a

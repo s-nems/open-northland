@@ -88,12 +88,14 @@ export {
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
+export { type SnapshotDelta, SnapshotDeltaStream } from './inspect/snapshot-clones.js';
 export {
   type ChangedEntity,
   type ComponentChange,
   diffSnapshots,
   type SnapshotDiff,
 } from './inspect/snapshot-diff.js';
+export { SnapshotMirror } from './inspect/snapshot-mirror.js';
 export type { BlockOverlay } from './nav/block-overlay.js';
 export { ClearanceField, MAX_CLEARANCE_CLASS } from './nav/clearance.js';
 export {

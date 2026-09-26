@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defineComponent } from '../../src/ecs/world.js';
-import { type Command, Simulation, type WorldSnapshot } from '../../src/index.js';
+import { type Command, Simulation, SnapshotMirror, type WorldSnapshot } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
@@ -35,6 +35,37 @@ function realRunSnapshot(): WorldSnapshot {
   }
   return sim.snapshot();
 }
+
+describe('snapshot delta is structured-cloneable (Web-Worker boundary)', () => {
+  it('a mirror fed with structured-cloned deltas rebuilds the live snapshot, owning its own copies', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(6, 1) });
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    const schedule = new Map<number, Command[]>([
+      [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING }]],
+      [3, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING }]],
+    ]);
+    let touchedAcrossRun = 0;
+    for (let tick = 1; tick <= 8; tick++) {
+      for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
+      sim.step();
+      const delta = deltas.next();
+      if (delta === null) throw new Error('a stepped tick must yield a delta');
+      touchedAcrossRun += delta.touched.length;
+      const cloned = structuredClone(delta);
+      expect(cloned).toEqual(delta);
+      expect(JSON.stringify(cloned)).toBe(JSON.stringify(delta));
+      mirror.apply(cloned);
+    }
+    expect(touchedAcrossRun).toBeGreaterThan(0);
+    const live = sim.snapshot();
+    const mirrored = mirror.snapshot();
+    expect(JSON.stringify(mirrored)).toBe(JSON.stringify(live));
+    // The mirror owns copies, as a worker's receiver would: no entity object is the sim's.
+    for (const entity of mirrored.entities)
+      expect(entity).not.toBe(live.entities.find((e) => e.id === entity.id));
+  });
+});
 
 describe('snapshot is structured-cloneable (Web-Worker boundary)', () => {
   it('survives structuredClone - no functions / class instances / live Maps', () => {
