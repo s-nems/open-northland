@@ -52,7 +52,7 @@ export interface ExtraPostsStep {
 }
 
 /**
- * The posts a good gains by the game clock (owner's rule), steps ascending, filled at the top-up rung once
+ * The posts a good gains by the game clock (authored), steps ascending, filled at the top-up rung once
  * the seat can spare the men. Until the mid game only the shortage posts grow a good past its row. From
  * the mid game every good whose standing resource takes ground a building could use holds posts whatever
  * the stock, wood most: a settlement that has spread out by then fells and digs itself room for its
@@ -238,7 +238,7 @@ export function wantedCollectorGoods(
         : Math.max(fixed + scheduled, entryCount);
     const sitePosts = fixed === undefined ? 0 : siteShortagePosts(ctx.tick);
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
-    // A building good's row stands whole before the reserve (owner's rule): the standard one gatherer
+    // A building good's row stands whole before the reserve (authored): the standard one gatherer
     // each is what a seat of fifteen men keeps in its first minutes, its other men building.
     let min = fixed ?? 1;
     if (mostExtra > 0) {
@@ -247,7 +247,7 @@ export function wantedCollectorGoods(
       if (extra > 0) {
         target += extra;
         // Iron or gold running short idles the smiths, not the builders, so its posts wait behind the
-        // reserve like any other extra. So do a building good's until the growth clock (owner's rule): a
+        // reserve like any other extra. So do a building good's until the growth clock (authored): a
         // seat of fifteen men whose first sites ate its starting stock would otherwise turn half of them
         // into gatherers at once, with nobody left to raise what they bring in.
         if (COLLECTED_GOOD_IDS.includes(goodId) && ctx.tick >= BUILDING_GOODS_GROW_FROM_TICKS) min = target;

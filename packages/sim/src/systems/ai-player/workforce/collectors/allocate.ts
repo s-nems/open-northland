@@ -333,17 +333,17 @@ function farFromNearest(
 }
 
 /** The goods whose standing resource takes ground a building could use, by stable content id, the one
- *  the generic posts go for first ahead (owner's rule): a tree blocks the walk and the build, a rock the
+ *  the generic posts go for first ahead (authored): a tree blocks the walk and the build, a rock the
  *  build; clay and mushrooms block nothing and the ore lies up in the mountains. */
 export const CLEARING_GOOD_IDS: readonly string[] = ['wood', 'stone'];
 
 /** How much farther than the nearest rock the nearest tree may stand and still be the pick, in lattice
- *  Manhattan nodes (owner's rule): the wood is what walls a base in, so a post goes for it unless the rock
+ *  Manhattan nodes (authored): the wood is what walls a base in, so a post goes for it unless the rock
  *  is much nearer. The build search's reach radius. */
 export const WOOD_OVER_STONE_NODES = BUILD_SEARCH_MAX_RADIUS_NODES;
 
 /** How near another generic post's flag a clearing resource may stand, in lattice Manhattan nodes
- *  (owner's rule): farther, so a stall's extra posts open ground on different sides of the base instead
+ *  (authored): farther, so a stall's extra posts open ground on different sides of the base instead
  *  of felling one grove together. */
 export const CLEARING_SPREAD_NODES = 12;
 

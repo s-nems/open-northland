@@ -15,7 +15,7 @@ function minutesToTicks(minutes: number): number {
 export const MID_GAME_FROM_TICKS = minutesToTicks(60);
 export const LATE_GAME_FROM_TICKS = minutesToTicks(90);
 
-/** From when the headquarters and the warehouses run transport carriers (owner's rule): the late game. */
+/** From when the headquarters and the warehouses run transport carriers (authored): the late game. */
 export const STORE_CARRIERS_FROM_TICKS = LATE_GAME_FROM_TICKS;
 
 /** From when a core workshop (farm, mill, pottery, mason hut) never rests its first craftsman, whatever
@@ -23,11 +23,11 @@ export const STORE_CARRIERS_FROM_TICKS = LATE_GAME_FROM_TICKS;
 export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
 
 /** From when the seat's construction goods grow their gatherer posts past the opening's one each, by
- *  shortage (owner's rule): from then the sites' and workshops' drain sets the count, while the first
+ *  shortage (authored): from then the sites' and workshops' drain sets the count, while the first
  *  minutes keep the standard three gatherers and every other man building. */
 export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(10);
 
-/** From when a building good's shortage posts follow every site the clock keeps open (owner's rule);
+/** From when a building good's shortage posts follow every site the clock keeps open (authored);
  *  between the growth clock and this one site's worth answers the drain, so a seat of fifteen men still
  *  keeps most of them building. */
 export const BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS = minutesToTicks(30);

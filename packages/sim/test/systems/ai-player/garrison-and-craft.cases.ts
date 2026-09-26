@@ -984,7 +984,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it("fills a standing workshop's target crew before the army floor claims its men", () => {
     // The joinery plans two joiners: the first a minimum post, the second a target-tier one. The floor is
-    // short of the rival either way, and the second joiner still comes before its claim (owner's rule: a
+    // short of the rival either way, and the second joiner still comes before its claim (authored: a
     // seat staffs what it built).
     const seat = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS, {
       setup: (sim) =>

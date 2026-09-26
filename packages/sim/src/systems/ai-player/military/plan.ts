@@ -21,7 +21,7 @@ export const OPENING_WAVE: WaveBand = { min: WAVE_MIN_SOLDIERS, max: 10 };
 /** The late-game assault the band grows into (authored). */
 export const LATE_WAVE: WaveBand = { min: 50, max: 100 };
 
-/** The army the seat never holds past (owner's rule): from this many live fighters the door sends the
+/** The army the seat never holds past (authored): from this many live fighters the door sends the
  *  band it has, whatever size the wave was drawn to and whatever the odds, so a seat whose build order
  *  has settled does not hoard two hundred men at its barracks. It still waits for the men walking in,
  *  up to one gather window, so the army leaves as one wave and not in the fives that form up between

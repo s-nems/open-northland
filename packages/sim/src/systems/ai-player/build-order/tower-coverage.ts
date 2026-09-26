@@ -18,8 +18,8 @@ import { buildReach, spotAcceptor } from './placement.js';
 // `systems/defence/`.
 
 /** Planning radius of a tower's or the base's assumed defence circle, in world-metric nodes.
- *  Deliberately under the house bow's own 0-29 reach (`readviews/defence.ts`): observation - towers
- *  ringed at full bow range stand too far out to read as part of the settlement. */
+ *  Deliberately under the house bow's own 0-29 reach (`readviews/defence.ts`), tuned by watching a
+ *  settlement grow (authored): towers ringed at full bow range stand too far out to read as part of it. */
 export const TOWER_DEFENCE_RADIUS_NODES = 19;
 
 /** Covering towers are an id allowlist, not `kind === 'tower'`: `work_pottery_02` shares the kind but

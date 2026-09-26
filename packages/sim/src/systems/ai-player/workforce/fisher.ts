@@ -21,14 +21,14 @@ import type { SpareForce } from './pool.js';
 
 /** How many fishers the seat keeps while fish swim in reach (authored): the first is hired beside the
  *  first collector posts, the second only as a top-up. */
-export const FISHER_TARGET = 2;
+const FISHER_TARGET = 2;
 
 /** How far past a fisher's own shore search his water may lie from a store's door, in Manhattan nodes
  *  (authored): the store's carriers walk the catch in from his flag, so the trip is theirs, not his. */
 const FISHING_WALK_NODES = 48;
 
 /** How far from a store's door a seat posts a fisher's flag, in Manhattan nodes. */
-export const FISHING_TRIP_RADIUS_NODES = FISHING_WALK_NODES + FISH_SHORE_SEARCH_RADIUS;
+const FISHING_TRIP_RADIUS_NODES = FISHING_WALK_NODES + FISH_SHORE_SEARCH_RADIUS;
 
 /** How far from the shore he casts from a fisher's flag stands, in Manhattan nodes (authored): beside the
  *  water, so each catch is dropped where it is caught instead of walked to the store by the fisher. */

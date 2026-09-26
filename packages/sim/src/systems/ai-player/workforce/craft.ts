@@ -54,7 +54,7 @@ export const CRAFT_GLUT_BAND_UNITS = 8;
 
 /** The iron tools in stock at which the joiners turn to furniture (authored). Every worker wears one and
  *  no bill or shelf sizes them, so they take no supply lines and the glut is authored. */
-export const JOINERY_TOOL_GLUT_UNITS = 24;
+const JOINERY_TOOL_GLUT_UNITS = 24;
 
 /** A joiner's seat: iron tools until they reach {@link JOINERY_TOOL_GLUT_UNITS}, furniture meanwhile. */
 const JOINERY_SEAT: CraftSeat = {
@@ -84,9 +84,9 @@ const SHOE_SEAT: CraftSeat = {
 
 /** The most plentiful seats a short product takes at once ({@link shortFirst}) (authored): enough to turn a
  *  pottery's crockery seat to a short building material and still leave its other lines a hand. */
-export const SHORT_PRODUCT_SEATS = 2;
+const SHORT_PRODUCT_SEATS = 2;
 
-/** The coins in stock at which a mint's top-up coiners turn to amulets (owner's rule): the druids draw a
+/** The coins in stock at which a mint's top-up coiners turn to amulets (authored): the druids draw a
  *  couple per potion, so a score in store keeps them brewing, and every coin past it is gold the amulets
  *  could have had. Every seat but the first reads it; the first coiner never stops. */
 export const COIN_GLUT_UNITS = 20;
@@ -124,28 +124,17 @@ const DRUID_SEATS = 12;
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
  * runs its main lines. Whatever the lists say, a product the build order runs short of comes first
- * ({@link tuneCraftSelections}). The smithies' seats open on plate armour and long swords, then add the iron
- * spear, whose wooden shaft the first armourer makes between his long bows, and mail; five smithies' ten
- * smiths forge three plate, two mail, two long swords, two iron spears, and one short sword, the weapon
- * only the strength amulet takes, and the late game's two more smithies add a short sword, an iron spear,
- * a plate and a mail. One druid in twelve boils holy oil for the temple and the rest brew the big potion.
- * The mints keep one coiner on coins for good, two more only while the coins run under
- * {@link COIN_GLUT_UNITS}, and the rest on amulets: defence while leather armour is in store, strength
- * while short swords are. Every joiner makes iron tools and turns to furniture only while the tools pile
- * up. The first potter works bricks and
- * tiles and the second crockery, which doubles a stocked home's food, until it piles up; a short building
- * material takes the crockery seat, from the mid game on as soon as it falls under its comfort line, and
- * both potters turn to crockery while bricks and tiles lie at their glut lines. The first tailor sews shoes
- * and the second leather armour, each turning to the other's good while his own piles up, as the armour does
- * once plate armour has come in; the small tailor's one man sews shoes, and leather armour meanwhile. The
- * first armourer works long bows and wooden spears, dropping whichever has piled up so the other, the spear
- * the smithy's iron spear needs or the bow, gets his whole time; every other armourer makes long bows only.
- * Bakers bake only bread and breeders keep only cattle.
+ * ({@link tuneCraftSelections}); over the lists, a type's sink takes the whole crew while its stocked
+ * products lie at glut ({@link sinkHolds}). The reason for each row stands beside it.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
+  // Every joiner makes iron tools and turns to furniture only while the tools pile up.
   work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT] },
   work_joinery_02: { seats: [JOINERY_SEAT, JOINERY_SEAT, JOINERY_SEAT] },
   work_joinery_03: { seats: [JOINERY_SEAT, JOINERY_SEAT, JOINERY_SEAT] },
+  // The first potter works bricks and tiles, the second crockery, which doubles a stocked home's food,
+  // until it piles up; a short building material takes the crockery seat, and both potters turn to
+  // crockery while bricks and tiles lie at their glut lines.
   work_pottery_01: {
     seats: [
       ['brick', 'tile'],
@@ -156,6 +145,9 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   },
   work_mason_hut_01: { seats: [['pillar', 'ornament']] },
   work_animal_farm: { seats: [['cattle']] },
+  // The small tailor's one man sews shoes, and leather armour meanwhile; the first tailor sews shoes and
+  // the second leather armour, each turning to the other's good while his own piles up, as the armour
+  // does once plate armour has come in.
   work_sewery_00: { seats: [SHOE_SEAT] },
   work_sewery_01: {
     seats: [
@@ -168,6 +160,10 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
     ],
   },
   work_bakery_01: { seats: [['bread']] },
+  // The smithies open on plate armour and long swords, then add the iron spear, whose wooden shaft the
+  // first armourer makes between his long bows, and mail. Five smithies' ten smiths forge three plate,
+  // two mail, two long swords, two iron spears and one short sword, the weapon only the strength amulet
+  // takes; the late game's two more smithies add a short sword, an iron spear, a plate and a mail.
   work_smithy_01: {
     seats: [
       ['armor_plate'],
@@ -186,6 +182,8 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       ['armor_chain'],
     ],
   },
+  // The first armourer works long bows and wooden spears, dropping whichever has piled up so the other,
+  // the spear the smithy's iron spear needs or the bow, gets his whole time; the rest make long bows.
   work_armory_01: {
     seats: [
       { goods: ['bow_long', 'spear_wooden'], glut: { bow_long: 20, spear_wooden: 20 } },
@@ -194,9 +192,12 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       ['bow_long'],
     ],
   },
+  // One druid in twelve boils holy oil for the temple and the rest brew the big potion.
   work_druid_01: {
     seats: [['holy_oil'], ...Array.from({ length: DRUID_SEATS - 1 }, (): CraftSeat => ['potion_heal_big'])],
   },
+  // One coiner on coins for good, two more only while the coins run under the glut line, and the rest
+  // on amulets: defence while leather armour is in store, strength while short swords are.
   work_coin_mint: { seats: MINT_SEATS },
 };
 

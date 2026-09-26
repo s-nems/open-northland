@@ -63,7 +63,7 @@ export function isLaneEntry(entry: BuildOrderEntry): boolean {
 
 /** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
  *  {@link TOWER_DEFENCE_RADIUS_NODES}, so the finished settlement stands under overlapping towers. */
-export const DENSE_TOWER_RADIUS_NODES = 14;
+const DENSE_TOWER_RADIUS_NODES = 14;
 
 /** How near a water-drinking workshop (the bakery, the brewery, the animal farm) a well must stand to
  *  serve it, in world-metric nodes (authored); a farther one gets another well beside the workshop. */
@@ -72,11 +72,11 @@ export const WELL_REACH_NODES = 12;
 /** How near a brewery its hive must stand to count as its honey source, in world-metric nodes (authored):
  *  wider than the well's reach, since the well entry serving the same brewery comes first in the list and
  *  takes the nearest room, and the brewer's carrier walks the little further for honey. */
-export const HIVE_REACH_NODES = 18;
+const HIVE_REACH_NODES = 18;
 
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
-export const STORE_COVERAGE_RADIUS_NODES = 32;
+const STORE_COVERAGE_RADIUS_NODES = 32;
 
 /** The two deposits a joinery or a smithy draws on, in the order its recipes weigh them. */
 const WOOD_AND_IRON: readonly PlacementAffinity[] = [
@@ -277,7 +277,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
   },
   // From here the warehouses and the denser tower ring run as lanes beside the list, one site each out of
-  // the four the late game opens (owner's rule): a warehouse wherever a workshop or a work flag stands
+  // the four the late game opens (authored): a warehouse wherever a workshop or a work flag stands
   // beyond every store's reach, so the smithies unload nearby and the ore piled at the mines gets carried
   // in; a tower wherever the ring leaves a building out. A filled settlement with no room for a tower
   // holds the lane, not the list.
@@ -328,7 +328,7 @@ export interface SitePace {
 /** The pace by game clock (authored): the opening's two sites, a third with one more entry of lookahead
  *  from {@link SITES_GROW_FROM_TICKS}, a fourth with one more again from the late game, when the builder
  *  reserve grows to match (`workforce/staffing.ts`). */
-export const SITE_PACE_STEPS: readonly SitePace[] = [
+const SITE_PACE_STEPS: readonly SitePace[] = [
   { fromTick: 0, sites: MAX_ACTIVE_CONSTRUCTION_SITES, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES },
   {
     fromTick: SITES_GROW_FROM_TICKS,

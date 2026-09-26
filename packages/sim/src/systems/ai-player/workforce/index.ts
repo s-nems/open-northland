@@ -155,7 +155,7 @@ function runWorkforce(
     ),
   ];
   // The standing buildings' target crews and the gatherers the reached entries count come before the army
-  // floor (owner's rule): both are bounded by what stands, so a seat staffs every building it raised and
+  // floor (authored): both are bounded by what stands, so a seat staffs every building it raised and
   // still leaves the rest to the army. The floor outranks the surplus tier and the generic posts, which
   // could absorb every man.
   const targets = [

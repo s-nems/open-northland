@@ -33,7 +33,7 @@ export const GROWN_SEAT_BUILDER_CAP = 14;
  *  four sites open (`build-order/entries.ts`). */
 export const LATE_GAME_BUILDER_CAP = 16;
 
-/** The reserve while a build-order placement finds no spot (owner's rule): the few sites the stall leaves
+/** The reserve while a build-order placement finds no spot (authored): the few sites the stall leaves
  *  need few hands, and every other man fells and digs the room the placement waits for. */
 export const STALLED_BUILDER_CAP = 4;
 

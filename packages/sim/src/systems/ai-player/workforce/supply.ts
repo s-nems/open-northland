@@ -36,7 +36,7 @@ export type SupplyLine = 'short' | 'comfort' | 'glut';
  * draw at their own pace, nor the coins, whose mint seats keep an authored glut (`craft.ts`). A stocked
  * product's consumers, not the sites, size it, so it hoards no more with the game phase.
  */
-export const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour'];
+const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour'];
 
 /** The unit of a good no bill takes and no workshop shelves. */
 const FALLBACK_SUPPLY_UNIT = 1;

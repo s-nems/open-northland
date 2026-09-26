@@ -109,7 +109,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
  *  sites the farthest apart. */
 export const LATE_GAME_CIVILIANS = 60;
 
-/** The storage plan before {@link STORE_CARRIERS_FROM_TICKS}: no carrier (owner's rule). The builders
+/** The storage plan before {@link STORE_CARRIERS_FROM_TICKS}: no carrier (authored). The builders
  *  fetch from the gatherers' piles themselves, and the supply governor counts those piles as the seat's
  *  stock, so a store carrier would only cost a civilian a craftsman could use. */
 const EARLY_STORAGE_STAFFING: BuildingStaffing = {
@@ -131,7 +131,7 @@ export const STORE_CARRIERS: Readonly<Record<'carrierMin' | 'carrierTarget' | 'c
 const LATE_STORAGE_STAFFING: BuildingStaffing = { ...EARLY_STORAGE_STAFFING, ...STORE_CARRIERS };
 
 /** The storage plan at `tick`. */
-export function storageStaffing(tick: number): BuildingStaffing {
+function storageStaffing(tick: number): BuildingStaffing {
   return tick >= STORE_CARRIERS_FROM_TICKS ? LATE_STORAGE_STAFFING : EARLY_STORAGE_STAFFING;
 }
 

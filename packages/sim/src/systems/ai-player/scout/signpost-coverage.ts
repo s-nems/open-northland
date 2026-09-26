@@ -128,7 +128,7 @@ function corridorSamples(anchor: HalfCellNode, goal: HalfCellNode): HalfCellNode
 /**
  * The corridor goals the lattice reaches out to: every live work flag of the seat's settlers, and the
  * nearest live deposit on the base's ground of each good the seat gathers, the standing
- * {@link COLLECTED_GOOD_IDS} and the `order`'s collector goods, reached or not (owner's rule): the network
+ * {@link COLLECTED_GOOD_IDS} and the `order`'s collector goods, reached or not (authored): the network
  * grows toward a deposit before its gatherer is posted, since the engine drops a flag aimed past it.
  */
 function corridorGoals(
