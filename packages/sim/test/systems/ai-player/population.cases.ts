@@ -1,4 +1,4 @@
-import { parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AssistantRecruit,
@@ -7,6 +7,7 @@ import {
   Residence,
   Settler,
 } from '../../../src/components/index.js';
+import type { PlayerCommand } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
 import { populationModule } from '../../../src/systems/ai-player/index.js';
@@ -26,6 +27,36 @@ import {
   VIKING,
   WOMAN,
 } from './support.js';
+
+const HOLY_OIL = 99;
+
+/** `content` plus a holy oil good that serves a home's piety. */
+function withHolyOil(content: ContentSet): ContentSet {
+  const oil = parseContentSet({
+    manifest: content.manifest,
+    goods: [
+      {
+        typeId: HOLY_OIL,
+        id: 'holy_oil',
+        homeQuality: {
+          effect: 'piety',
+          deliveryValue: 1000,
+          capacity: 5000,
+          useCost: 3,
+          fetchBelow: 3000,
+          minimumHomeLevel: 2,
+        },
+      },
+    ],
+    jobs: [],
+    buildings: [],
+  }).goods;
+  return { ...content, goods: [...content.goods, ...oil] };
+}
+
+function isOilOrder(command: PlayerCommand): boolean {
+  return command.kind === 'setHouseholdGoodUse';
+}
 
 describe('population module (homeExpansion)', () => {
   function populationSim(): Simulation {
@@ -51,6 +82,22 @@ describe('population module (homeExpansion)', () => {
       .filter((e) => sim.world.get(e, Settler).jobType === WOMAN)
       .sort((a, b) => a - b);
   }
+
+  it('lets its homes burn holy oil once, when the content has it', () => {
+    const sim = populationSim();
+    expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)].filter(isOilOrder)).toEqual([]);
+
+    const content = withHolyOil(aiContent());
+    const oily = aiSim(1, content);
+    placeHq(oily);
+    oily.step();
+    const oilyCtx = { ...ctxOf(oily), content };
+    const orders = [...populationModule.run(oily.world, oilyCtx, SEAT)].filter(isOilOrder);
+    expect(orders).toEqual([{ kind: 'setHouseholdGoodUse', player: SEAT, effect: 'piety', allowed: true }]);
+    for (const c of orders) oily.enqueueSetup(c);
+    oily.step();
+    expect([...populationModule.run(oily.world, oilyCtx, SEAT)].filter(isOilOrder)).toEqual([]);
+  });
 
   it('marries every single woman while single men exist', () => {
     const sim = populationSim();

@@ -66,13 +66,22 @@ export const HomeQuality = defineComponent<{
   piety: number;
 }>('HomeQuality', 'settlers');
 
-/** Settlement-wide permission to supply and consume each household good. Absent means all are allowed. */
+/** Settlement-wide permission to supply and consume each household good. Absent means
+ *  {@link DEFAULT_HOUSEHOLD_GOOD_POLICY}. */
 export const HouseholdGoodPolicy = defineComponent<{
   player: number;
   cooking: boolean;
   rest: boolean;
   piety: boolean;
 }>('HouseholdGoodPolicy', 'players');
+
+/** A player's household-good policy until it changes one: holy oil starts off, so its homes burn none
+ *  unless the player allows it (owner rule). */
+export const DEFAULT_HOUSEHOLD_GOOD_POLICY: Readonly<{ cooking: boolean; rest: boolean; piety: boolean }> = {
+  cooking: true,
+  rest: true,
+  piety: false,
+};
 
 /**
  * A home where a resident couple is currently making love - both parents inside, hearts over the house (the

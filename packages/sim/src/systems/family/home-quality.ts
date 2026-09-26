@@ -1,6 +1,7 @@
 import type { HomeQualityEffect, HomeQualityUse } from '@open-northland/data';
 import {
   Building,
+  DEFAULT_HOUSEHOLD_GOOD_POLICY,
   HomeQuality,
   HouseholdGoodPolicy,
   isValidPlayer,
@@ -40,9 +41,13 @@ export function homeQualityValue(world: World, home: Entity, effect: HomeQuality
 
 export function homeQualityAllowed(world: World, home: Entity, effect: HomeQualityEffect): boolean {
   const owner = ownerOf(world, home);
-  if (owner === undefined) return true;
-  const carrier = householdGoodPolicyEntity(world, owner);
-  return carrier === null ? true : world.get(carrier, HouseholdGoodPolicy)[effect];
+  return owner === undefined || householdGoodAllowed(world, owner, effect);
+}
+
+/** Whether `player`'s settlement-wide policy currently allows `effect`. */
+export function householdGoodAllowed(world: World, player: number, effect: HomeQualityEffect): boolean {
+  const carrier = householdGoodPolicyEntity(world, player);
+  return (carrier === null ? DEFAULT_HOUSEHOLD_GOOD_POLICY : world.get(carrier, HouseholdGoodPolicy))[effect];
 }
 
 export function householdGoodPolicyEntity(world: World, player: number): Entity | null {
@@ -177,7 +182,7 @@ export function setHouseholdGoodUse(
   if (policy === undefined) return;
 
   const carrier = householdGoodPolicyEntity(world, command.player);
-  const current = carrier === null ? DEFAULT_POLICY : world.get(carrier, HouseholdGoodPolicy);
+  const current = carrier === null ? DEFAULT_HOUSEHOLD_GOOD_POLICY : world.get(carrier, HouseholdGoodPolicy);
   if (current[command.effect] === command.allowed) return;
   const next = {
     player: command.player,
@@ -186,17 +191,15 @@ export function setHouseholdGoodUse(
     piety: current.piety,
     [command.effect]: command.allowed,
   };
-  if (next.cooking && next.rest && next.piety) {
+  const isDefault =
+    next.cooking === DEFAULT_HOUSEHOLD_GOOD_POLICY.cooking &&
+    next.rest === DEFAULT_HOUSEHOLD_GOOD_POLICY.rest &&
+    next.piety === DEFAULT_HOUSEHOLD_GOOD_POLICY.piety;
+  if (isDefault) {
     if (carrier !== null) world.destroy(carrier);
   } else if (carrier === null) world.add(world.create(), HouseholdGoodPolicy, next);
   else Object.assign(world.mut(carrier, HouseholdGoodPolicy), next);
 }
-
-const DEFAULT_POLICY: Readonly<Record<HomeQualityEffect, boolean>> = {
-  cooking: true,
-  rest: true,
-  piety: true,
-};
 
 /** Burn the sacred fire once per game second in every eligible finished home. A remainder smaller than
  * one use stays in the pool, as in the original. */

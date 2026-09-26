@@ -33,6 +33,7 @@ import {
   drainHolyOil,
   homeQualityActive,
   homeQualityAllowed,
+  setHouseholdGoodUse,
   spendHomeQuality,
 } from '../../src/systems/family/home-quality.js';
 import { ExternalQualityIndex } from '../../src/systems/family/quality-search.js';
@@ -118,10 +119,12 @@ function content() {
   });
 }
 
-function setup(): { sim: Simulation; home: Entity; carrier: Entity } {
+/** Player 0 with one mature home; holy oil is switched on unless `oilAllowed` is false. */
+function setup(oilAllowed = true): { sim: Simulation; home: Entity; carrier: Entity } {
   const sim = new Simulation({ seed: 1, content: content() });
   const home = addHome(sim, 0, 2);
   const carrier = sim.world.create();
+  if (oilAllowed) setHouseholdGoodUse(sim.world, ctxOf(sim), { player: 0, effect: 'piety', allowed: true });
   return { sim, home, carrier };
 }
 
@@ -182,6 +185,28 @@ describe('household quality goods', () => {
     expect(sim.world.get(home, HomeQuality).piety).toBe(1000);
     drainHolyOil(sim.world, ctxOf(sim));
     expect(sim.world.get(home, HomeQuality).piety).toBe(997);
+  });
+
+  it('starts every player with holy oil off: no demand, no delivery, no fire', () => {
+    const { sim, home, carrier } = setup(false);
+    const woman = sim.world.create();
+    addPerson(sim.world, woman, {
+      tribe: TRIBE,
+      jobType: JOB,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+    });
+    expect(householdGoodPolicyView(sim.snapshot(), 0)).toEqual({ cooking: true, rest: true, piety: false });
+    expect(demandedHomeQualityGoods(sim.world, ctxOf(sim), woman, home)).toEqual(
+      new Set([CROCKERY, FURNITURE]),
+    );
+    expect(deliver(sim, carrier, home, OIL)).toBe(0);
+
+    toggle(sim, 'piety', true);
+    expect(deliver(sim, carrier, home, OIL)).toBe(1);
+    expect(homeQualityActive(sim.world, ctxOf(sim), home, 'piety')).toBe(true);
   });
 
   it('does not request sacred oil until the home reaches zero-based level two', () => {

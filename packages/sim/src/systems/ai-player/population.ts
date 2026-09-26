@@ -15,6 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
 import { isAdultSettler, isOnMission, mayMarry } from '../family/eligibility.js';
+import { homeQualityUseFor, householdGoodAllowed } from '../family/home-quality.js';
 import { familiesOf } from '../family/households.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
@@ -29,7 +30,8 @@ export const IDLE_MEN_HOLD_BIRTHS = 3;
 /**
  * The HomeExpansion module (authored): who marries, which family takes a free home slot, and the birth
  * counters the settlement assistant is held at - daughters up to the housing stock, sons unbounded
- * unless idle men stand beyond the builder reserve ({@link idleMenHoldBirths}).
+ * unless idle men stand beyond the builder reserve ({@link idleMenHoldBirths}). It also lets its homes
+ * burn the holy oil its druid boils, which a player's policy leaves off by default.
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
@@ -92,6 +94,9 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   const held = idleMenHoldBirths(world, ctx, player);
   const sons = assistantCounterCommand(world, player, 'extraMen', 0, !held);
   if (sons !== null) commands.push(sons);
+  if (homeQualityUseFor(ctx, 'piety') !== undefined && !householdGoodAllowed(world, player, 'piety')) {
+    commands.push({ kind: 'setHouseholdGoodUse', player, effect: 'piety', allowed: true });
+  }
   return commands;
 }
 

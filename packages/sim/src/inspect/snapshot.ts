@@ -1,3 +1,4 @@
+import { DEFAULT_HOUSEHOLD_GOOD_POLICY } from '../components/family.js';
 import type { SimEvent } from '../core/events.js';
 import { isPlainRecord, sortedMapEntries, valueShapeName } from '../core/plain-value.js';
 import type { Entity, World } from '../ecs/world.js';
@@ -43,7 +44,7 @@ export function homeQualityView(snapshot: WorldSnapshot, home: number): HomeQual
   return { cooking, rest, piety };
 }
 
-/** Decode one player's settlement-wide household-good policy. An absent policy is default-allowed. */
+/** Decode one player's settlement-wide household-good policy; an absent one is the default. */
 export function householdGoodPolicyView(snapshot: WorldSnapshot, player: number): HouseholdGoodPolicyView {
   for (const entity of snapshot.entities) {
     const raw = entity.components.HouseholdGoodPolicy;
@@ -52,7 +53,7 @@ export function householdGoodPolicyView(snapshot: WorldSnapshot, player: number)
     if (typeof cooking !== 'boolean' || typeof rest !== 'boolean' || typeof piety !== 'boolean') continue;
     return { cooking, rest, piety };
   }
-  return { cooking: true, rest: true, piety: true };
+  return DEFAULT_HOUSEHOLD_GOOD_POLICY;
 }
 
 /**

@@ -428,6 +428,10 @@ describe('selection details panel model', () => {
             HomeQuality: quality,
           },
         }),
+        {
+          id: 99,
+          components: { HouseholdGoodPolicy: { player: 0, cooking: true, rest: true, piety: true } },
+        },
       ]),
       new Set([1]),
       sandboxCtx(),

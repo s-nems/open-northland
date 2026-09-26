@@ -2,6 +2,7 @@ import type { Entity, Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_WOMAN } from '../catalog/jobs.js';
+import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_DRUID_HUT,
   BUILDING_HOME_00,
@@ -63,6 +64,8 @@ function build(sim: Simulation): void {
 
   const homemaker = spawnSettlerDirect(sim, JOB_WOMAN, HOME_3.x - 2, HOME_3.y + 2);
   sim.world.add(homemaker, Residence, { home: homeEntity });
+  // Holy oil starts off; the scene shows it stocked and burning.
+  sim.enqueueSetup({ kind: 'setHouseholdGoodUse', player: HUMAN_PLAYER, effect: 'piety', allowed: true });
 }
 
 export const householdGoodsScene: SceneDefinition = {

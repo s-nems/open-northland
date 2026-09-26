@@ -19,9 +19,12 @@ const lookup: HolyFireLookup = (tribe, typeId, level) => {
   return undefined;
 };
 
+/** Player 0 has switched holy oil on; the default leaves it off. */
+const OIL_ON = { cooking: true, rest: true, piety: true };
+
 const snapshot = (
   home: Readonly<Record<string, unknown>> = components,
-  policy: { cooking: boolean; rest: boolean; piety: boolean } | null = null,
+  policy: { cooking: boolean; rest: boolean; piety: boolean } | null = OIL_ON,
 ): WorldSnapshot => ({
   tick: 0,
   events: [],
@@ -44,6 +47,7 @@ describe('home holy fire projection', () => {
         lookup,
       ),
     ).toEqual([]);
+    expect(holyFireOverlays(snapshot(components, null), HOME, components, lookup)).toEqual([]);
     const empty = {
       ...components,
       HomeQuality: { cooking: 0, rest: 0, piety: 0 },

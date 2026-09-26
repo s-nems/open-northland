@@ -287,9 +287,11 @@ function devoutAt(sim: Simulation, x: number, home?: Entity): Entity {
   return e;
 }
 
+/** A home of {@link PLAYER} holding oil, whose policy lets it burn. */
 function litHomeAt(sim: Simulation, x: number): Entity {
   const home = ownedAt(sim, x, HOME_TYPE);
   sim.world.add(home, HomeQuality, { cooking: 0, rest: 0, piety: LIT });
+  setHouseholdGoodUse(sim.world, ctxOf(sim), { player: PLAYER, effect: 'piety', allowed: true });
   return home;
 }
 
