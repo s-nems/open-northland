@@ -6,8 +6,9 @@ import {
   type UnlockProgressRowModel,
 } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setClass, setHidden, write } from '../parts/dom.js';
+import { button, element, setAttribute, setClass, setHidden, setStyleVar, write } from '../parts/dom.js';
 import { createLedger, type Ledger, type LedgerModel } from '../parts/ledger.js';
+import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 
 function trainedRow(row: ExperienceRowModel): LedgerModel {
@@ -122,9 +123,7 @@ export function createExperienceSection(): ExperienceSection {
         unlock.ledger.update(unlockRow(row));
         setClass(unlock.ledger.element, 'on-ledger--more', index >= shownUnlocks);
         setClass(unlock.meter, 'on-ledger--more', index >= shownUnlocks);
-        const width = `${Math.round((row.current / Math.max(1, row.required)) * 100)}%`;
-        if (unlock.meter.style.getPropertyValue('--value') !== width)
-          unlock.meter.style.setProperty('--value', width);
+        setStyleVar(unlock.meter, '--value', meterFill(row.current, row.required));
       });
       paintToggle();
       return fresh || reshaped;

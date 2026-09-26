@@ -2,7 +2,8 @@ import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SettlerPanelModel, TradeOfferModel, TradePanelModel } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setClass, setTip, write } from '../parts/dom.js';
+import { button, element, setAttribute, setClass, setStyleVar, setTip, write } from '../parts/dom.js';
+import { meterFill } from '../parts/meter-row.js';
 import type { SettlerPanelDeps } from './actions.js';
 
 /** Design px of a good on an agreement chip (foundation.css `.on-offer`). */
@@ -12,11 +13,6 @@ function offersKey(trade: TradePanelModel): string {
   return trade.offers
     .map((offer) => `${offer.index}:${offer.give.goodType}.${offer.take.goodType}`)
     .join('|');
-}
-
-/** A meter's fill as a CSS percentage of `whole`. */
-function fillOf(part: number, whole: number): string {
-  return `${Math.round((Math.min(part, whole) / Math.max(1, whole)) * 100)}%`;
 }
 
 function offerTooltip(trade: TradePanelModel, offer: TradeOfferModel): string {
@@ -112,13 +108,8 @@ export function createTradeAgreement(
         setClass(view.slot, 'on-offer-slot--running', offer.progress !== null);
         setClass(view.slot, 'on-offer-slot--stalled', offer.progress !== null && !trade.agreementHolds);
         const progress = offer.progress ?? { given: 0, received: 0 };
-        const given = fillOf(progress.given, offer.give.amount);
-        const received = fillOf(progress.received, offer.take.amount);
-        if (view.given.style.getPropertyValue('--value') !== given)
-          view.given.style.setProperty('--value', given);
-        if (view.received.style.getPropertyValue('--value') !== received) {
-          view.received.style.setProperty('--value', received);
-        }
+        setStyleVar(view.given, '--value', meterFill(progress.given, offer.give.amount));
+        setStyleVar(view.received, '--value', meterFill(progress.received, offer.take.amount));
       });
     },
   };

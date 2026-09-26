@@ -1,7 +1,12 @@
 import { PRODUCTION_COUNT_MAX, PRODUCTION_UNLIMITED } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { COUNTER_TENS_STEP, counterStep, counterText } from '../src/hud/dom/parts/counter.js';
-import { METER_CRITICAL_BELOW_PCT, METER_LOW_BELOW_PCT, meterTone } from '../src/hud/dom/parts/meter-row.js';
+import {
+  METER_CRITICAL_BELOW_PCT,
+  METER_LOW_BELOW_PCT,
+  meterFill,
+  meterTone,
+} from '../src/hud/dom/parts/meter-row.js';
 import { selectionBottomInset } from '../src/hud/dom/selection-panel.js';
 import { NAV_BEAM_H } from '../src/hud/nav-beam.js';
 
@@ -73,6 +78,15 @@ describe('the meter row tone', () => {
     expect(meterTone(METER_LOW_BELOW_PCT - 1)).toBe('low');
     expect(meterTone(METER_CRITICAL_BELOW_PCT)).toBe('low');
     expect(meterTone(METER_CRITICAL_BELOW_PCT - 1)).toBe('critical');
+  });
+});
+
+describe('the meter fill', () => {
+  const SHELF = 40;
+  it('is a capped CSS percentage that survives an empty whole', () => {
+    expect(meterFill(SHELF / 2, SHELF)).toBe('50%');
+    expect(meterFill(SHELF * 2, SHELF)).toBe('100%');
+    expect(meterFill(0, 0)).toBe('0%');
   });
 });
 

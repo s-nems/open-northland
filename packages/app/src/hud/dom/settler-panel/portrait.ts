@@ -1,7 +1,7 @@
 import { messages } from '../../../i18n/index.js';
 import type { SettlerPanelModel, SettlerStatusModel } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
-import { button, element, setClass, setHidden, setTip, write } from '../parts/dom.js';
+import { button, element, setAttribute, setClass, setHidden, setTip, write } from '../parts/dom.js';
 import { createSocket, type Socket } from '../parts/socket.js';
 import type { SettlerPanelDeps } from './actions.js';
 import { equipmentSockets, type SocketSpec, socketsKey } from './equipment.js';
@@ -116,7 +116,7 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
     update(model): void {
       const copy = messages().hud.settlerPanel;
       setTip(frame, copy.centre);
-      frame.setAttribute('aria-label', copy.centre);
+      setAttribute(frame, 'aria-label', copy.centre);
       updateSockets(model);
       write(statusHead, statusText(model.status));
       const tone = statusTone(model.status);

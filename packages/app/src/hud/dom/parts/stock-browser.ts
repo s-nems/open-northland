@@ -1,6 +1,7 @@
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { type CategoryTab, createCategoryTabs } from './category-tabs.js';
-import { element, setAttribute, setClass, setTip, write } from './dom.js';
+import { element, setAttribute, setClass, setStyleVar, setTip, write } from './dom.js';
+import { meterFill } from './meter-row.js';
 import { createRoundButton, type RoundButton } from './round-button.js';
 
 /** Design px of a good's icon on a stock row (foundation.css `.on-stock-row`). */
@@ -95,10 +96,6 @@ export function stockGoodsKey(rows: readonly StockBrowserRow[]): string {
 /** Whole units as integers, a banked fraction with one decimal. */
 export function amountText(amount: number): string {
   return Number.isInteger(amount) ? String(amount) : amount.toFixed(1);
-}
-
-function fillOf(amount: number, capacity: number): string {
-  return `${Math.round((Math.min(amount, capacity) / Math.max(1, capacity)) * 100)}%`;
 }
 
 /** The goods in the order a list takes afresh: in stock first, then empty, each group in the owner's
@@ -232,9 +229,7 @@ export function createStockBrowser(
       if (view === undefined) continue;
       write(view.name, row.label);
       write(view.amount, `${amountText(row.amount)} / ${row.capacity}`);
-      const fill = fillOf(row.amount, row.capacity);
-      if (view.meter.style.getPropertyValue('--value') !== fill)
-        view.meter.style.setProperty('--value', fill);
+      setStyleVar(view.meter, '--value', meterFill(row.amount, row.capacity));
       setClass(view.item, 'on-stock-row--out', row.amount <= 0);
       setClass(view.item, 'on-stock-row--lit', row.action?.pressed === true);
       setTip(view.info, row.tooltip);

@@ -56,7 +56,6 @@ export const GLYPH = {
   minus: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 12h12"/></svg>',
   plus: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg>',
   lock: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
-  prev: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>',
   next: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg>',
   pen: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m4 20 4-1L19 8l-3-3L5 16zM14 7l3 3"/></svg>',
   arrow:

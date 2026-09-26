@@ -1,4 +1,4 @@
-import { button, element, setAttribute, setClass, setTip, write } from './dom.js';
+import { button, element, setAttribute, setClass, setStyleVar, setTip, write } from './dom.js';
 
 /** A fill under a third reads amber and under a sixth red (FOUNDATION.md), so trouble shows without
  *  words; the percent itself carries the same colour. */
@@ -6,6 +6,11 @@ export const METER_LOW_BELOW_PCT = 34;
 export const METER_CRITICAL_BELOW_PCT = 17;
 
 export type MeterTone = 'ok' | 'low' | 'critical';
+
+/** A meter's fill: `part` of `whole` as a CSS percentage, capped at full and safe for an empty whole. */
+export function meterFill(part: number, whole: number): string {
+  return `${Math.round((Math.min(part, whole) / Math.max(1, whole)) * 100)}%`;
+}
 
 export function meterTone(pct: number): MeterTone {
   if (pct < METER_CRITICAL_BELOW_PCT) return 'critical';
@@ -56,8 +61,7 @@ export function createMeterRow(options: MeterRowOptions = {}): MeterRow {
       write(label, model.label);
       setAttribute(meter, 'aria-label', model.label);
       setAttribute(meter, 'aria-valuenow', String(model.pct));
-      const width = `${model.pct}%`;
-      if (meter.style.getPropertyValue('--value') !== width) meter.style.setProperty('--value', width);
+      setStyleVar(meter, '--value', `${model.pct}%`);
       write(value, `${model.pct}%`);
       if (onHover === undefined) setTip(root, model.tooltip);
       const tone = meterTone(model.pct);

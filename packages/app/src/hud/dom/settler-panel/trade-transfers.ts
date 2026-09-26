@@ -7,11 +7,8 @@ import {
 } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
 import { button, element, setHidden, setTip, write } from '../parts/dom.js';
-import { oneWayStops, stopBadge } from '../trade-window/route.js';
+import { oneWayStops, stopBadge, TRANSFER_ICON_PX } from '../trade-window/route.js';
 import type { SettlerPanelDeps } from './actions.js';
-
-/** Design px of a transfer's good in its well (foundation.css `.on-good-well`). */
-const LINE_ICON_PX = 16;
 
 /** "A → B · do 10 · zostaw 2", or "A ⇄ B" for a balanced good. */
 export function transferSummary(transfer: TradeTransferModel): string {
@@ -104,10 +101,10 @@ export function createTradeTransfers(deps: SettlerPanelDeps, onOpenWindow: () =>
 
   const lineView = (transfer: TradeTransferModel): LineView => {
     const item = element('li', 'on-trade-line');
-    const well = element('span', 'on-good-well', goodIconMarkup(LINE_ICON_PX));
+    const well = element('span', 'on-good-well', goodIconMarkup(TRANSFER_ICON_PX));
     const frame = well.querySelector('.on-good__frame');
     if (transfer.goodId !== undefined && frame instanceof HTMLElement) {
-      deps.icons(frame, transfer.goodId, LINE_ICON_PX);
+      deps.icons(frame, transfer.goodId, TRANSFER_ICON_PX);
     }
     const name = element('span', 'on-trade-line__name');
     const summary = element('b', 'on-trade-line__summary');

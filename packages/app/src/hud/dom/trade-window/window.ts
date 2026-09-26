@@ -86,19 +86,19 @@ export interface TradeWindow {
 
 export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   const copy = messages().hud;
-  const window = createHudWindow(deps.plane, {
+  const hudWindow = createHudWindow(deps.plane, {
     title: copy.trade,
     closeLabel: copy.shell.close,
     width: TRADE_WINDOW_W,
     headless: true,
   });
-  window.element.classList.add('on-window--trade');
-  window.body.classList.add('on-window__body--column');
+  hudWindow.element.classList.add('on-window--trade');
+  hudWindow.body.classList.add('on-window__body--column');
   // The slate under the content, with a hole over each house's portrait (foundation.css).
   const fill = element('div', 'on-window__fill');
-  window.element.prepend(fill);
-  const placeWindow = centralWindowPlacer(window, deps.plane, TRADE_WINDOW_W);
-  const tips = attachTipLayer(window.element, deps.tooltip);
+  hudWindow.element.prepend(fill);
+  const placeWindow = centralWindowPlacer(hudWindow, deps.plane, TRADE_WINDOW_W);
+  const tips = attachTipLayer(hudWindow.element, deps.tooltip);
 
   /** The trader the window is open for, and its model as last painted. */
   let trader: number | null = null;
@@ -132,7 +132,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   });
   const lower = element('div', 'on-trade-transfers');
   lower.append(transfersTitle, transfers.element);
-  window.body.append(houses, lower);
+  hudWindow.body.append(houses, lower);
 
   /** The portraits' client boxes, measured once per change of the layout, the scale or the screen. */
   let holes: readonly ClientRect[] | null = null;
@@ -141,10 +141,10 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   const invalidate = (): void => {
     dirty = true;
   };
-  globalThis.addEventListener('resize', invalidate);
+  window.addEventListener('resize', invalidate);
   const resizes = new ResizeObserver(invalidate);
-  resizes.observe(window.element);
-  const showing = (): boolean => window.isOpen() && !window.element.classList.contains(WARM_CLASS);
+  resizes.observe(hudWindow.element);
+  const showing = (): boolean => hudWindow.isOpen() && !hudWindow.element.classList.contains(WARM_CLASS);
 
   const paint = (trade: TradePanelModel): void => {
     shown = trade;
@@ -161,9 +161,9 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   const close = (): void => {
     tips.hide();
     deps.hoverCard.hide();
-    window.close();
+    hudWindow.close();
   };
-  window.onDismiss(() => {
+  hudWindow.onDismiss(() => {
     tips.hide();
     deps.hoverCard.hide();
   });
@@ -176,27 +176,27 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
       if (again) column.reorder();
       else column.reset();
     }
-    window.element.setAttribute('aria-label', formatMessage(copy.tradeWindow.title, { name: model.name }));
-    window.open();
+    hudWindow.element.setAttribute('aria-label', formatMessage(copy.tradeWindow.title, { name: model.name }));
+    hudWindow.open();
     placeWindow();
     invalidate();
     paint(trade);
   };
 
   return {
-    isOpen: () => window.isOpen() && !window.element.classList.contains(WARM_CLASS),
+    isOpen: () => hudWindow.isOpen() && !hudWindow.element.classList.contains(WARM_CLASS),
     open(model): void {
       const trade = windowRoute(model);
       if (trade === null) return;
       deps.centralWindows?.close();
-      window.element.classList.remove(WARM_CLASS);
+      hudWindow.element.classList.remove(WARM_CLASS);
       show(model, trade);
       houseA.focusTabs();
     },
-    dismiss: () => window.dismiss(),
+    dismiss: () => hudWindow.dismiss(),
     close,
     update(model): void {
-      if (!window.isOpen() || window.element.classList.contains(WARM_CLASS)) return;
+      if (!hudWindow.isOpen() || hudWindow.element.classList.contains(WARM_CLASS)) return;
       const trade = windowRoute(model);
       if (model.entityId !== trader || trade === null) {
         close();
@@ -205,7 +205,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
       paint(trade);
     },
     refresh(): void {
-      if (!window.isOpen()) return;
+      if (!hudWindow.isOpen()) return;
       if (deps.centralWindows?.isOpen() === true) {
         close();
         return;
@@ -213,24 +213,24 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
       if (placeWindow()) invalidate();
       tips.refresh();
     },
-    onDismiss: (listener) => window.onDismiss(listener),
+    onDismiss: (listener) => hudWindow.onDismiss(listener),
     claims(clientX, clientY): boolean {
-      if (!window.isOpen()) return false;
+      if (!hudWindow.isOpen()) return false;
       const hit = document.elementFromPoint(clientX, clientY);
-      return hit !== null && window.element.contains(hit);
+      return hit !== null && hudWindow.element.contains(hit);
     },
-    clientRight: () => (showing() ? window.element.getBoundingClientRect().right : null),
+    clientRight: () => (showing() ? hudWindow.element.getBoundingClientRect().right : null),
     warm(model): void {
       const trade = windowRoute(model);
       if (trade === null) return;
-      window.element.classList.add(WARM_CLASS);
+      hudWindow.element.classList.add(WARM_CLASS);
       show(model, trade);
       // Two frames: the first commits the style, the second rasters it.
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          if (!window.element.classList.contains(WARM_CLASS)) return;
-          window.element.classList.remove(WARM_CLASS);
-          window.close();
+          if (!hudWindow.element.classList.contains(WARM_CLASS)) return;
+          hudWindow.element.classList.remove(WARM_CLASS);
+          hudWindow.close();
           trader = null;
         }),
       );
@@ -264,10 +264,10 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
     invalidate,
     dispose(): void {
       tips.dispose();
-      globalThis.removeEventListener('resize', invalidate);
+      window.removeEventListener('resize', invalidate);
       resizes.disconnect();
       for (const { hole } of columns) closePortraitHole(fill, hole);
-      window.dispose();
+      hudWindow.dispose();
     },
   };
 }

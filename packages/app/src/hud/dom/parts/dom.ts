@@ -47,6 +47,11 @@ export function setClass(node: Element, name: string, on: boolean): boolean {
   return true;
 }
 
+/** A CSS custom property on the node's inline style, such as a meter's `--value`. */
+export function setStyleVar(node: HTMLElement, name: `--${string}`, value: string): void {
+  if (node.style.getPropertyValue(name) !== value) node.style.setProperty(name, value);
+}
+
 export function setTitle(node: HTMLElement, text: string): void {
   if (node.title !== text) node.title = text;
 }

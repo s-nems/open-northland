@@ -118,7 +118,7 @@ export function createSelectionPanel(
   root.style.width = `${SELECTION_PANEL_W}px`;
   const fill = element('div', 'on-selection__fill');
 
-  const prev = button('on-browse', GLYPH.prev);
+  const prev = button('on-browse', GLYPH.back);
   const next = button('on-browse', GLYPH.next);
   const kickerText = element('span', '', '<span></span> <small></small>');
   const [kickerName, kickerCount] = [kickerText.children[0], kickerText.children[1]];

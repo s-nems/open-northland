@@ -10,6 +10,10 @@ import {
 } from '../../details-panel/model/index.js';
 import type { TradeMarkChange } from '../settler-panel/actions.js';
 
+/** Design px of a transfer line's good in its well (foundation.css `.on-good-well`), in the settler
+ *  panel's Handel and in the trade window alike. */
+export const TRANSFER_ICON_PX = 16;
+
 /** A good's flow on the route: a transfer's direction, or none while it is not marked. */
 export type TradeFlow = TradeDirection | 'none';
 
