@@ -91,11 +91,11 @@ function bakingSnapshot(elapsed = 30, duration = 100) {
     Resting: { at: 10 },
     CurrentAtomic: {
       atomicId: MAKE_BREAD,
-      elapsed,
       duration,
       effect: { kind: 'produce', recipeOutput: BREAD },
       targetEntity: 10,
     },
+    AtomicClock: { elapsed },
   });
   return snapshotOf([bakery, baker]);
 }

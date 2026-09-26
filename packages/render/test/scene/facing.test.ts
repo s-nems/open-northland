@@ -152,7 +152,8 @@ describe('buildScene - settler facing derivation', () => {
   it('a builder hammering a wall segment (atomic 42) faces the segment', () => {
     const builder = entity(1, 2, 1, {
       Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 42, elapsed: 3, targetEntity: 2, targetTile: null },
+      CurrentAtomic: { atomicId: 42, targetEntity: 2, targetTile: null },
+      AtomicClock: { elapsed: 3 },
       PathFollow: { waypoints: [{ x: 3 * ONE, y: 1 * ONE }], index: 0 },
     });
     const segment = entity(2, 1, 1, { Palisade: { gfxIndex: 691, built: 0 }, UnderConstruction: {} });

@@ -42,13 +42,12 @@ export interface CraftPerformance {
  *  or `null` when its atomic is anything else. */
 export function readCraftPerformance(components: Readonly<Record<string, unknown>>): CraftPerformance | null {
   const a = components.CurrentAtomic as
-    | { effect?: { kind?: unknown }; targetEntity?: unknown; elapsed?: unknown; duration?: unknown }
+    | { effect?: { kind?: unknown }; targetEntity?: unknown; duration?: unknown }
     | undefined;
   if (a?.effect?.kind !== 'produce') return null;
-  const { targetEntity, elapsed, duration } = a;
-  if (typeof targetEntity !== 'number' || typeof elapsed !== 'number' || typeof duration !== 'number') {
-    return null;
-  }
+  const { targetEntity, duration } = a;
+  const elapsed = readAtomicElapsed(components);
+  if (typeof targetEntity !== 'number' || elapsed === null || typeof duration !== 'number') return null;
   return { workplace: targetEntity, elapsed, duration };
 }
 

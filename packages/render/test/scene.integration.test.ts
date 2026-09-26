@@ -1,6 +1,8 @@
+import type { GfxInHouseProgram } from '@open-northland/data';
 import { components, fx, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
+import { collectSpriteScene } from '../src/data/scene/index.js';
 import { buildScene, type SceneTerrain } from '../src/index.js';
 
 /**
@@ -17,8 +19,10 @@ const HEADQUARTERS = 1;
 const SAWMILL = 2;
 const VIKING = 1;
 const HARVEST_ATOMIC = 24;
+/** Any atomic id: the program lookup below answers every one. */
+const CRAFT_ATOMIC = 47;
 
-const { Position, Resource } = components;
+const { addCurrentAtomic, Building, Position, Resource, Resting, Settler } = components;
 
 function grassMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
@@ -59,5 +63,37 @@ describe('buildScene over a real Simulation snapshot', () => {
     // A second snapshot of the same state yields the same scene.
     const again = buildScene(sim.snapshot(), terrain);
     expect(JSON.stringify(again)).toBe(JSON.stringify(scene));
+  });
+});
+
+describe('a workplace craft over a real Simulation snapshot', () => {
+  it('draws the worker its program choreographs, clocked by the atomic the sim runs', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(6, 1) });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SAWMILL, x: 4, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.run(1);
+    const [sawmill] = sim.world.query(Building);
+    const [worker] = sim.world.query(Settler);
+    if (sawmill === undefined || worker === undefined) throw new Error('setup placed no sawmill or worker');
+    const craft = { kind: 'produce', recipeOutput: WOOD } as const;
+    sim.world.add(worker, Resting, { at: sawmill });
+    addCurrentAtomic(
+      sim.world,
+      worker,
+      { atomicId: CRAFT_ATOMIC, duration: 100, effect: craft, targetEntity: sawmill, targetTile: null },
+      30,
+    );
+    const program: GfxInHouseProgram = {
+      tribe: VIKING,
+      job: WOODCUTTER,
+      action: CRAFT_ATOMIC,
+      entries: [{ kind: 'clip', action: CRAFT_ATOMIC, subId: 1, dir: 0, from: 20, to: 60 }],
+    };
+
+    const scene = collectSpriteScene(sim.snapshot(), { inHousePrograms: () => program });
+
+    const drawn = scene.items.find((i) => i.kind === 'settler');
+    expect(drawn).toMatchObject({ inHouse: true, state: 'acting' });
+    expect(drawn?.craftClip).toEqual({ action: CRAFT_ATOMIC, subId: 1, progress: 0.25 });
   });
 });
