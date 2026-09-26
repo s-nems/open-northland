@@ -371,8 +371,8 @@ every tick, answers pings and snapshot requests, and asks a diverged world's hos
 the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scaling the time it feeds
 the driver, never by skipping a tick, so a late frame lands inside the buffer. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
-refused stays closed. The desktop and browser app plays through the `?relay=` entry, the headless
-test client through an in-memory network.
+refused stays closed. The desktop and browser app plays through the `?relay=` entry, whose client,
+link and world run in a network worker, the headless test client through an in-memory network.
 
 ## Operations
 

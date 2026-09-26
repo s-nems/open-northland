@@ -27,8 +27,8 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   `snapshot.entities`. A walk is for a click, an order or a one-off setup.
 - `Simulation` is constructed and typed only by hosts: the entries' world builders, scenes,
   `game/sandbox/`, `game/world/`, the inline host and the worker's session in `session/worker/`. The
-  worker host serves the `?map=` entry. The inline host serves scenes, tests and the relayed entry
-  until the relay client runs in the worker. `entries/shot.ts` and one-off sims, such as a
+  worker host serves the `?map=` entry and, in the network worker, the relayed entry's world. The
+  inline host serves scenes and tests. `entries/shot.ts` and one-off sims, such as a
   sub-mission's restore check, step their `Simulation` on the main thread with no host.
 - Load generated content through `src/content/net.ts` by its root-relative URL and validate it with
   the `@open-northland/data` schemas. A checkout without `content/` must still boot using synthetic
@@ -38,9 +38,10 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   import anywhere in the shell puts every mode back into the first download, which the build's size
   report shows but does not block.
 - A world is assembled from the session descriptor alone, never from the local seat: two clients of
-  one relayed session must enqueue the same setup. The `?relay=` entry runs the shared map boot
-  on the inline host, and `@open-northland/net-client`'s `RelayClient` is the session driver and clock
-  there, on the main thread.
+  one relayed session must enqueue the same setup. The `?relay=` entry assembles the shared map boot
+  here and hands its inputs to the network worker, where `@open-northland/net-client`'s `RelayClient`
+  owns the relay link, the clock and the sim; this thread reads the client through a mirror fed by
+  the relay messages and facts the worker forwards.
 - The menu hands over to a game through `swapToEntry`, never by assigning `window.location`. A
   document navigation ends the browser's fullscreen grant, and the next document can only take it
   back on the player's next click. Entries that still navigate owe the player that flash.

@@ -10,7 +10,7 @@ import {
   type TerrainTextureSet,
   type WorldRenderer,
 } from '@open-northland/render';
-import type { MatchRulesView, SaveGame, Simulation } from '@open-northland/sim';
+import type { MatchRulesView, SaveGame, SaveGameHeader } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { loadAmbientCreatures } from '../../content/animal-gfx/index.js';
 import { loadGroundWaves } from '../../content/ground-waves.js';
@@ -35,7 +35,7 @@ import type { SessionRosterSlot } from '../../game/session-url.js';
 import { terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
 import { type PresentationPack, presentationPack } from '../../presentation/pack.js';
-import { inlineSessionHost, type SessionHost } from '../../session/index.js';
+import type { SessionHost } from '../../session/index.js';
 import { type BootPhase, type BootProgress, mountBootProgress } from '../../view/boot-progress.js';
 import {
   createWorldRenderer,
@@ -44,7 +44,7 @@ import {
   loadLocalizedRealContent,
 } from '../../view/runtime/world-bootstrap.js';
 import { readStoredSettings } from '../../view/settings-store.js';
-import { buildMapWorldFromInputs, type MapWorldInputs, type MapWorldPlacements } from './world-inputs.js';
+import type { MapWorldDocuments, MapWorldPlacements } from './world-inputs.js';
 
 export { type MapRuntime, presentMapWorld } from './present.js';
 
@@ -69,28 +69,19 @@ export interface HostedMapWorld {
   readonly seed: number;
 }
 
-/** A world whose sim runs on this thread, for a driver that needs the sim itself. */
-export interface InlineMapWorld extends HostedMapWorld {
-  readonly sim: Simulation;
-}
-
-export function inlineMapWorld(inputs: MapWorldInputs): Promise<InlineMapWorld> {
-  const { sim, extras } = buildMapWorldFromInputs(inputs);
-  return Promise.resolve({
-    sim,
-    host: inlineSessionHost(sim),
-    placements: extras,
-    matchRules: sim.matchRules(),
-    seed: sim.seed,
-  });
+/** What the boot reads of the save a world restores from; the host holds the save itself. */
+export interface RestoredSave {
+  readonly header: Pick<SaveGameHeader, 'tick' | 'mapId'>;
+  /** The mission save a sub-mission's save continues. */
+  readonly parent?: SaveGame;
 }
 
 export interface MapBootPlan<H extends HostedMapWorld> {
   /** Stands the world up from the loaded documents; a rejection of a staged save halts the boot. */
-  readonly hostWorld: (inputs: MapWorldInputs) => Promise<H>;
+  readonly hostWorld: (inputs: MapWorldDocuments) => Promise<H>;
   readonly multiplayer?: boolean;
   readonly mapId: string | null;
-  readonly stagedSave: SaveGame | null;
+  readonly stagedSave: RestoredSave | null;
   readonly verifiedMap?: VerifiedMapDocuments;
   /** The session once the map's roster is known. A relayed boot ignores the roster: its descriptor was
    *  broadcast whole. */
@@ -237,7 +228,6 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
         // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
         // world never reads it.
         missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
-        save: stagedSave,
       });
     } catch (err) {
       if (stagedSave === null) throw err;

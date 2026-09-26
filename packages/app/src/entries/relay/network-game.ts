@@ -1,13 +1,14 @@
 import type { GameSession } from '@open-northland/lockstep';
-import { decodeSnapshot, verifyInitialSave, type WorldPort } from '@open-northland/net-client';
-import { DESCRIPTOR_WORLD, TICK_MS } from '@open-northland/net-protocol';
-import type { SaveGame } from '@open-northland/sim';
+import { verifyInitialSave } from '@open-northland/net-client';
+import { type ServerMessage, TICK_MS } from '@open-northland/net-protocol';
+import { serializeSaveGame } from '@open-northland/sim';
 import { errorText } from '../../diag/error-text.js';
-import { diag } from '../../diag/index.js';
+import { currentDiagGameSession, diag, setDiagGameSession } from '../../diag/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
+import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
 import type { NetworkHandover } from '../../net/handover.js';
-import { relayFailureText, relayReasonText } from '../../net/relay-reason.js';
+import { relayedSessionDriver } from '../../net/net-worker-client.js';
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
@@ -15,14 +16,14 @@ import { BUTTON_STYLE, el, mountMessage } from '../../view/overlay.js';
 import { menuSearch } from '../../view/params.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
-import {
-  type AssembledMapWorld,
-  assembleMapWorld,
-  type InlineMapWorld,
-  inlineMapWorld,
-  presentMapWorld,
-} from '../map/boot.js';
+import { type AssembledMapWorld, assembleMapWorld, presentMapWorld, type RestoredSave } from '../map/boot.js';
 import { mountNetHud, type NetHud } from './net-hud.js';
+import {
+  hostRelayedWorld,
+  type RelayedMapWorld,
+  releaseRelayedWorld,
+  type VerifiedStart,
+} from './relayed-world.js';
 import { roomExitObserver } from './room-exit.js';
 
 export function renderNetworkGame(
@@ -31,7 +32,7 @@ export function renderNetworkGame(
   handover: NetworkHandover,
 ): void {
   const { connection, map, initialSave } = handover;
-  const { client, socket } = connection;
+  const { client } = connection;
   const copy = messages().net;
   const scope = new AbortController();
   bindDisplayMode(params, undefined, scope.signal);
@@ -39,20 +40,21 @@ export function renderNetworkGame(
   let canvasUsed = false;
   let closed = false;
   let revision = 0;
-  let assembled: AssembledMapWorld<InlineMapWorld> | null = null;
+  let assembled: AssembledMapWorld<RelayedMapWorld> | null = null;
   let view: GameViewHandle | null = null;
   let hud: NetHud | null = null;
   let transition: Promise<unknown> = Promise.resolve();
   let presentation: Promise<void> = Promise.resolve();
-  let presentingWorld: AssembledMapWorld<InlineMapWorld> | null = null;
+  let presentingWorld: AssembledMapWorld<RelayedMapWorld> | null = null;
+  let lastDesync: Extract<ServerMessage, { kind: 'desync' }> | null = null;
   const released = new WeakSet<AssembledMapWorld>();
-  function release(world: AssembledMapWorld): void {
+  function release(world: AssembledMapWorld<RelayedMapWorld>): void {
     if (released.has(world)) return;
     released.add(world);
-    world.app.destroy(false, { children: true });
+    releaseRelayedWorld(world);
   }
   const readout = (): NetReadout => ({
-    connected: socket.connected,
+    connected: connection.connected,
     roundTripMs: client.roundTripMs,
     delayTicks: client.delayTicks,
     delayMs: client.delayTicks === null ? null : (client.delayTicks * TICK_MS) / client.speed,
@@ -100,11 +102,9 @@ export function renderNetworkGame(
     back.addEventListener('click', () => {
       void swapToEntry(menuSearch(), () => back.parentElement?.remove());
     });
-    mountMessage(formatMessage(copy.bootFailed, { reason: relayFailureText(error) }), '', [back]);
+    mountMessage(formatMessage(copy.bootFailed, { reason: errorText(error) }), '', [back]);
   }
-  const exit = roomExitObserver((reason) =>
-    fail(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`),
-  );
+  const exit = roomExitObserver((reason) => fail(reason ?? copy.roomEnded));
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'failure') {
       fail(event.error);
@@ -115,6 +115,7 @@ export function renderNetworkGame(
       return;
     }
     if (exit(event.message)) return;
+    if (event.message.kind === 'desync') lastDesync = event.message;
     if (event.message.kind === 'kicked' && event.message.player === client.session?.localSeat) {
       fail(copy.youWereKicked);
       return;
@@ -122,12 +123,18 @@ export function renderNetworkGame(
     hud?.observe(event.message);
   });
 
-  function build(session: GameSession, save: SaveGame | null, mine: number) {
+  function build(
+    session: GameSession,
+    save: RestoredSave | null,
+    start: VerifiedStart | null,
+    host: RelayedWorldHosting,
+    mine: number,
+  ): Promise<void> {
     const previous = transition;
     const work = async () => {
       await previous.catch(() => undefined);
       await presentation.catch(() => undefined);
-      if (closed || mine !== revision) return null;
+      if (closed || mine !== revision) return;
       if (
         session.world.kind !== 'map' ||
         session.world.mapId !== map.mapId ||
@@ -137,7 +144,7 @@ export function renderNetworkGame(
       clearWorld();
       canvasUsed = true;
       const world = await assembleMapWorld(activeCanvas, params, {
-        hostWorld: inlineMapWorld,
+        hostWorld: (inputs) => hostRelayedWorld(host, inputs, params, start),
         multiplayer: true,
         mapId: map.mapId,
         stagedSave: save,
@@ -146,7 +153,7 @@ export function renderNetworkGame(
       });
       if (closed || mine !== revision) {
         if (world !== null) release(world);
-        return null;
+        return;
       }
       if (world === null) throw new Error('The verified map could not be opened');
       if (world.loaded === null) {
@@ -154,41 +161,57 @@ export function renderNetworkGame(
         throw new Error('The verified map could not be opened');
       }
       assembled = world;
-      return { sim: world.hosted.sim, generation: save === null ? DESCRIPTOR_WORLD : save.header.tick };
     };
     const result = work();
     transition = result;
     return result;
   }
 
-  const port: WorldPort = {
-    async open(session, snapshotTick) {
+  /** The relayed session's part of a diagnostics bundle. */
+  function reportNet(): void {
+    const diagSession = currentDiagGameSession();
+    if (diagSession === null) return;
+    setDiagGameSession({
+      ...diagSession,
+      net: async () => ({
+        desync:
+          lastDesync === null
+            ? null
+            : { tick: lastDesync.tick, domains: lastDesync.domains, reference: lastDesync.reference },
+        digests: await connection.digests(),
+        delayTicks: client.delayTicks,
+        roundTripMs: client.roundTripMs,
+      }),
+    });
+  }
+
+  const port: NetWorldPort = {
+    async open(session, snapshotTick, host) {
       const mine = ++revision;
       if (session.initialSave) {
         if (initialSave === null || (snapshotTick !== null && snapshotTick !== session.initialSave.tick)) {
-          return null;
+          return;
         }
         const save = await verifyInitialSave(initialSave.bytes, session.initialSave, map.mapId);
-        const opened = await build(session, save, mine);
-        return opened === null
-          ? null
-          : { ...opened, initialSaveFingerprint: initialSave.identity.fingerprint };
+        const start = { text: serializeSaveGame(save), fingerprint: initialSave.identity.fingerprint };
+        await build(session, save, start, host, mine);
+        return;
       }
-      if (snapshotTick !== null) return null;
-      return build(session, null, mine);
+      if (snapshotTick !== null) return;
+      await build(session, null, null, host, mine);
     },
-    async restore(session, bytes) {
-      const mine = ++revision;
-      return build(session, await decodeSnapshot(bytes), mine);
+    async restore(session, header, host) {
+      await build(session, { header }, null, host, ++revision);
     },
   };
-  connection.bindWorld(port, ({ worldId }) => {
+  connection.bindWorld(port, ({ worldId, session }) => {
     const world = assembled;
     const mine = revision;
-    if (closed || world === null) return;
+    if (closed || world === null || world.hosted.worker !== session) return;
     presentingWorld = world;
     presentation = presentMapWorld(world, {
-      driver: client,
+      driver: relayedSessionDriver(session.driver, client),
+      offThreadTickCost: session.offThreadTickCost,
       sharedClock: true,
       confirmedMatchEnd: () => client.endedTick,
       networkSave: networkSaveSession(client, worldId),
@@ -204,7 +227,8 @@ export function renderNetworkGame(
         }
         view = presented;
         hud = mountNetHud({ client, view, readout });
-        if (!socket.connected) hud.link('reconnecting');
+        if (!connection.connected) hud.link('reconnecting');
+        reportNet();
       })
       .catch((error: unknown) => {
         if (!closed && mine === revision) fail(error);

@@ -32,7 +32,7 @@ export interface DiagGameSession {
   /** State-hash ring when `?debug=diag` recording is on; `null` otherwise. */
   readonly hashTrace: HashTrace | null;
   /** The relayed session's report at bundle time; absent in a local session. */
-  readonly net?: () => DiagNetReport;
+  readonly net?: () => Promise<DiagNetReport>;
 }
 
 /**

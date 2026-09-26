@@ -1,11 +1,8 @@
-import type { MapText } from '@open-northland/data';
 import { MAX_NICK_LENGTH } from '@open-northland/net-protocol';
-import { loadMapList } from '../../../content/maps-index.js';
 import { errorText } from '../../../diag/error-text.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { type ConnectionEvent, NetworkConnection } from '../../../net/connection.js';
-import { relayCloseText, relayReasonText } from '../../../net/relay-reason.js';
 import { readStoredSettings } from '../../../view/settings-store.js';
 import { relayIdentity } from '../../relay/identity.js';
 import { node } from '../dom.js';
@@ -15,7 +12,7 @@ import { screenHead } from '../screen-head.js';
 import { roomAssets } from './assets.js';
 import { createPanel } from './create.js';
 import { prepareRoomCreation } from './creation.js';
-import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick, worldTitle } from './model.js';
+import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick } from './model.js';
 import { button, field } from './parts.js';
 import { DEFAULT_RELAY_URL } from './relay-default.js';
 import { mountNetworkRoom } from './room/index.js';
@@ -53,14 +50,6 @@ export function networkScreen(
   let busy = false;
   let generation = 0;
   let enteredStartedRoom = false;
-  /** Map names for the room header; a room shown before the listing answers names its map by id. */
-  let mapNames: ReadonlyMap<string, MapText | undefined> = new Map();
-  void loadMapList().then((entries) => {
-    mapNames = new Map(entries.map((entry) => [entry.id, entry.name]));
-    const current = connection;
-    if (!disposed && room !== null && current?.client.room)
-      room.update(current.client.room, current.socket.connected);
-  });
 
   const notice = (text: string): void => {
     status.textContent = text;
@@ -95,12 +84,12 @@ export function networkScreen(
     async create(choice) {
       const current = connection;
       const mine = generation;
-      if (current === null || !current.socket.connected || !current.client.welcomed || busy) return;
+      if (current === null || !current.connected || !current.client.welcomed || busy) return;
       busy = true;
       sync();
       try {
         const creation = await prepareRoomCreation(choice, params);
-        if (disposed || mine !== generation || connection !== current || !current.socket.connected) return;
+        if (disposed || mine !== generation || connection !== current || !current.connected) return;
         assets?.prepare(creation.initial, creation.handle);
         current.client.createRoom(creation.settings, creation.seats);
       } finally {
@@ -119,7 +108,7 @@ export function networkScreen(
   element.append(head, status, browser, create.mapList, roomHost);
 
   function sync(): void {
-    const connected = connection?.socket.connected === true && connection.client.welcomed;
+    const connected = connection?.connected === true && connection.client.welcomed;
     address.disabled = connection !== null;
     nick.disabled = connection !== null;
     connect.disabled = connection !== null;
@@ -148,7 +137,7 @@ export function networkScreen(
         row.append(
           title,
           button(copy.join, () => {
-            if (current.socket.connected && !busy) {
+            if (current.connected && !busy) {
               busy = true;
               sync();
               current.client.joinRoom(summary.id);
@@ -164,7 +153,7 @@ export function networkScreen(
 
   function leaveRoom(): void {
     generation++;
-    if (connection?.socket.connected) connection.client.leaveRoom();
+    if (connection?.connected) connection.client.leaveRoom();
     else {
       unsubscribe();
       assets?.dispose();
@@ -211,11 +200,11 @@ export function networkScreen(
       if (event.state === 'reconnecting') {
         generation++;
         busy = false;
-        current.client.welcomed = false;
-        if (current.client.room?.state === 'lobby') current.client.receive({ kind: 'left' });
+        current.reset();
         notice(copy.reconnecting);
-      } else if (event.state === 'closed') notice(relayCloseText(event.reason));
-      room && current.client.room && room.update(current.client.room, current.socket.connected);
+      } else if (event.state === 'closed')
+        notice(formatMessage(messages().net.closed, { reason: event.reason ?? '' }));
+      room && current.client.room && room.update(current.client.room, current.connected);
       sync();
       return;
     }
@@ -241,13 +230,12 @@ export function networkScreen(
             onLeave: leaveRoom,
             rejoin: enteredStartedRoom ? launchGame : null,
             onRetryCompatibility: () => assets?.retry(),
-            worldTitle: (world) => worldTitle(world, mapNames),
           });
           roomHost.replaceChildren(room.element);
           browser.hidden = true;
           status.textContent = '';
         }
-        room.update(message.room, current.socket.connected);
+        room.update(message.room, current.connected);
         assets?.observe(message.room);
         sync();
         break;
@@ -269,13 +257,11 @@ export function networkScreen(
       case 'rejected':
         room?.rejected(message.of);
         busy = false;
-        notice(formatMessage(messages().net.refused, { reason: relayReasonText(message.reason) }));
+        notice(formatMessage(messages().net.refused, { reason: message.reason }));
         sync();
         break;
       case 'error':
-        notice(
-          formatMessage(messages().networkRelay.serverSays, { reason: relayReasonText(message.reason) }),
-        );
+        notice(message.reason);
         break;
       case 'start':
         // A token put back into a started room gets its `start` on connect; there the player
@@ -303,7 +289,7 @@ export function networkScreen(
       connection = new NetworkConnection(url, relayIdentity(url, nick.value.trim()));
       assets = roomAssets(connection.client, failure, {}, () => {
         const current = connection;
-        if (room && current?.client.room) room.update(current.client.room, current.socket.connected);
+        if (room && current?.client.room) room.update(current.client.room, current.connected);
       });
       unsubscribe = connection.subscribe(observe);
       notice(copy.connecting);

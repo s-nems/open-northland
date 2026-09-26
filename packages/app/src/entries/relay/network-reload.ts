@@ -20,18 +20,15 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
   let closed = false;
   let opening = false;
   let handedOff = false;
-  const dispose = (detach = true) => {
+  const dispose = (leave = true) => {
     if (closed) return;
     closed = true;
     unsubscribe();
-    if (!handedOff) {
-      if (detach) connection.dispose();
-      else connection.socket.close();
-    }
+    if (!handedOff) connection.dispose(leave);
   };
-  const fail = (error: unknown, detach = true) => {
+  const fail = (error: unknown, leave = true) => {
     if (closed) return;
-    dispose(detach);
+    dispose(leave);
     const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
     back.type = 'button';
     back.addEventListener('click', () => {
@@ -100,7 +97,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
       if (closed) return;
       closed = true;
       unsubscribe();
-      connection.socket.close();
+      connection.dispose(false);
     },
     { once: true },
   );

@@ -89,6 +89,7 @@ async function gameReport(session: DiagGameSession): Promise<DiagnosticsGameRepo
   const log = await answeredWithin(host.commandLog());
   const commandLog = (log ?? []).filter((entry) => entry.applyTick <= tick);
   const finalHash = hashed?.hash ?? null;
+  const net = session.net === undefined ? null : await answeredWithin(session.net());
   return {
     entry: session.entry,
     worldId: session.worldId,
@@ -102,7 +103,7 @@ async function gameReport(session: DiagGameSession): Promise<DiagnosticsGameRepo
     ...(session.hashTrace !== null
       ? { hashes: session.hashTrace.list().map(({ tick, hash }) => ({ tick, hash })) }
       : {}),
-    ...(session.net !== undefined ? { net: session.net() } : {}),
+    ...(net !== null ? { net } : {}),
   };
 }
 
