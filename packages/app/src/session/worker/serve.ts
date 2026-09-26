@@ -139,11 +139,16 @@ export class ServedSession<E> {
     this.options = options;
     this.driver = driver;
     this.offClock = built.run;
-    this.outbox = new TickOutbox(options.undelivered, driver.maxStepsPerFrame, {
-      take: (records, shedTicks) => this.takeBatch(records, shedTicks),
-      post: (batch) => this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog)),
-      limit: () => undeliveredTickLimit(this.driver.speed),
-    });
+    this.outbox = new TickOutbox(
+      options.undelivered,
+      driver.maxStepsPerFrame,
+      {
+        take: (records, shedTicks) => this.takeBatch(records, shedTicks),
+        post: (batch) => this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog)),
+        limit: () => undeliveredTickLimit(this.driver.speed),
+      },
+      new Set(options.retainedEventKinds),
+    );
     this.answers = inlineSessionHost(sim, { snapshots: 'live' });
     // Without the events: each tick's record carries its own, so the stream's clone would be dropped.
     this.deltas = new SnapshotDeltaStream({

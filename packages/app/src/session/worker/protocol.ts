@@ -37,12 +37,15 @@ export interface WorkerSessionOptions {
   readonly pauseOnSubMission: boolean;
   /** What the worker does once the runtime leaves `undeliveredTickLimit` ticks undelivered. */
   readonly undelivered: UndeliveredTicks;
+  /** The event kinds a shed tick still delivers, ahead of the next delivered tick's own; absent
+   *  retains none. */
+  readonly retainedEventKinds?: readonly SimEvent['kind'][];
 }
 
 /**
  * `hold` stops the clock until the runtime delivers again, as a local session may. `shed` keeps
  * stepping, as a session whose clock another authority runs must, and drops the oldest undelivered
- * ticks' records: the delta still spans them, so only their events are lost.
+ * ticks' records: the delta still spans them, so only their events are lost, except the retained kinds.
  */
 export type UndeliveredTicks = 'hold' | 'shed';
 

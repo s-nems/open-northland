@@ -20,8 +20,8 @@ export class ShedLog {
       this.episode = null;
       diag.warn(
         'sim',
-        `the runtime fell behind the sim worker: the events of ${episode.ticks} ticks between ticks ` +
-          `${episode.firstTick} and ${episode.lastTick} were dropped`,
+        `the runtime fell behind the sim worker: the transient events of ${episode.ticks} ticks between ` +
+          `ticks ${episode.firstTick} and ${episode.lastTick} were dropped`,
         episode,
       );
       return;

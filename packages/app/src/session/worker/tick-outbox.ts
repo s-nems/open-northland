@@ -1,3 +1,4 @@
+import type { SimEvent } from '@open-northland/sim';
 import type { TickBatch, TickRecord, UndeliveredTicks } from './protocol.js';
 
 /**
@@ -27,11 +28,16 @@ export class TickOutbox {
   private readonly inFlight: number[] = [];
   private inFlightTicks = 0;
   private shedTicks = 0;
+  /** The retained events of the ticks shed since the last batch, in order; the next batch's first
+   *  record carries them. Only the retained kinds, world changes a presentation keeps and a few per
+   *  tick, so a long episode holds its world changes and none of its transient events. */
+  private carried: SimEvent[] = [];
 
   constructor(
     private readonly policy: UndeliveredTicks,
     private readonly maxTicksPerBatch: number,
     private readonly link: TickOutboxLink,
+    private readonly retained: ReadonlySet<SimEvent['kind']>,
   ) {}
 
   /** Whether a tick recorded now is posted at once, so its live event list may go uncloned. */
@@ -71,8 +77,9 @@ export class TickOutbox {
   private shed(): void {
     const limit = this.link.limit();
     while (this.pending.length > 1 && this.inFlightTicks + this.pending.length > limit) {
-      this.pending.shift();
+      const record = this.pending.shift();
       this.shedTicks++;
+      for (const event of record?.events ?? []) if (this.retained.has(event.kind)) this.carried.push(event);
     }
   }
 
@@ -98,6 +105,11 @@ export class TickOutbox {
   private takePending(): TickBatch {
     const records = this.pending;
     this.pending = [];
+    const first = records[0];
+    if (this.carried.length > 0 && first !== undefined) {
+      records[0] = { ...first, events: [...this.carried, ...first.events] };
+      this.carried = [];
+    }
     const batch = this.link.take(records, this.shedTicks);
     this.shedTicks = 0;
     return batch;

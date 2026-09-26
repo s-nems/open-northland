@@ -2,6 +2,7 @@ import { type GameSession, isSpectator, localPlayerOf } from '@open-northland/lo
 import { HASH_TRACE_DEBUG_FLAG, hasDebugFlag } from '../../diag/index.js';
 import type { RelayedMapSession, RelayedWorldHosting } from '../../net/connection.js';
 import type { WorkerSessionOptions } from '../../session/worker/protocol.js';
+import { DURABLE_EVENT_KINDS } from '../../view/runtime/world-events.js';
 import type { AssembledMapWorld, HostedMapWorld } from '../map/boot.js';
 import type { MapWorldDocuments } from '../map/world-inputs.js';
 
@@ -48,6 +49,7 @@ function relayedSessionOptions(session: GameSession, params: URLSearchParams): W
     pauseOnSubMission: false,
     // The relay runs the clock, so a runtime that stops drawing cannot hold it.
     undelivered: 'shed',
+    retainedEventKinds: DURABLE_EVENT_KINDS,
   };
 }
 
