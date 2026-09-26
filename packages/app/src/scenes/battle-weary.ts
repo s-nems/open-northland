@@ -42,8 +42,8 @@ const LARDER_RATIONS = 40;
 const SENTRY = { x: 30, y: 14 } as const;
 const RAIDER = { x: 17, y: 14 } as const;
 /** The flank's rows. Keyed on the row, not the column, so the marching raider stays the flank's business
- *  all the way across. */
-const FLANK_ROW = 12;
+ *  all the way across; south of where the reserve beds down beside the larder once it has eaten. */
+const FLANK_ROW = 13;
 /** A night's sleep far longer than the run, so only the raider can end it. */
 const SENTRY_NIGHT_TICKS = 10_000;
 /** A lighter raider, so the sentry who gets up to meet it wins. */
