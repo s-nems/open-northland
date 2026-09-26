@@ -1,16 +1,40 @@
-import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
-import type { SaveGame } from '@open-northland/sim';
+import { localPlayerOf } from '@open-northland/lockstep';
+import { hasDebugFlag } from '../diag/debug-flags.js';
+import { diag, HASH_TRACE_DEBUG_FLAG, showCrashBanner } from '../diag/index.js';
 import { mapIdParam, mapSession } from '../game/session-url.js';
+import { formatMessage, messages } from '../i18n/index.js';
+import { endpointPort } from '../session/worker/port.js';
+import type { StallReports } from '../session/worker/stall-watch.js';
+import { startWorkerSession, type WorkerSession } from '../session/worker/worker-session.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { introParam } from '../view/params.js';
-import { takeStagedSession } from '../view/runtime/save-load/index.js';
+import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { haltOnFailedRestore } from '../view/runtime/world-bootstrap.js';
-import { assembleMapWorld, presentMapWorld } from './map/boot.js';
+import { assembleMapWorld, type HostedMapWorld, presentMapWorld } from './map/boot.js';
+import type { MapWorkerBoot, MapWorldInputs, MapWorldPlacements } from './map/world-inputs.js';
 
 export { MAP_BOOT_PHASES } from './map/boot.js';
 
-/** The decoded-map entry (`?map=<id>`): the search describes the session, and the loopback transport
- *  runs it as a single-player game. */
+/** A world whose sim, driver and clock run in the session worker. */
+interface WorkerMapWorld extends HostedMapWorld {
+  readonly worker: WorkerSession<MapWorldPlacements>;
+}
+
+const MS_PER_SECOND = 1000;
+
+/** A frozen world under a live UI is what the crash banner is for: the player learns the game stopped
+ *  and can download the diagnostics that name the tick. */
+const workerStallReports: StallReports = {
+  stalled: (silentMs) => {
+    diag.error('sim', `the sim worker has not answered for ${Math.round(silentMs)} ms`, { silentMs });
+    const seconds = Math.round(silentMs / MS_PER_SECOND);
+    showCrashBanner(formatMessage(messages().hud.simStalled, { seconds }));
+  },
+  recovered: (silentMs) => diag.info('sim', `the sim worker answered again after ${Math.round(silentMs)} ms`),
+};
+
+/** The decoded-map entry (`?map=<id>`): the search describes the session, which a worker runs as a
+ *  single-player game over the loopback transport. */
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   // A sub-mission swaps this document's entry, so the binding ends with the world, not the document.
   const scope = new AbortController();
@@ -18,35 +42,71 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const mapId = mapIdParam(params);
   // Consumed before any other boot work: a staged save that fails from here on halts the boot rather
   // than silently starting a fresh world.
-  let stagedSave: SaveGame | null;
-  let resume = false;
+  let staged: StagedSession;
   try {
-    const staged = await takeStagedSession(mapId);
-    stagedSave = staged.save;
-    resume = staged.resume;
+    staged = await takeStagedSession(mapId);
   } catch (err) {
     scope.abort();
     haltOnFailedRestore(err);
     return;
   }
+  // Held outside the boot so a boot that fails after the worker stood up still ends it.
+  const booted: { session: WorkerSession<MapWorldPlacements> | null } = { session: null };
+  const stagedSave = staged.save;
+  const hostWorld = async ({ save: _parsed, ...inputs }: MapWorldInputs): Promise<WorkerMapWorld> => {
+    const worker = new Worker(new URL('./map/sim-worker.ts', import.meta.url), { type: 'module' });
+    const port = endpointPort(worker, () => worker.terminate());
+    const session = await startWorkerSession<MapWorkerBoot, MapWorldPlacements>(
+      port,
+      { ...inputs, saveText: staged.text },
+      {
+        speed: inputs.session.speed,
+        paused: stagedSave !== null && !staged.resume,
+        fogSeat: localPlayerOf(inputs.session),
+        diagnostics: hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG),
+        pauseOnSubMission: true,
+      },
+      workerStallReports,
+    );
+    booted.session = session;
+    diag.info('boot', 'sim worker ready', { ...session.boot });
+    return {
+      worker: session,
+      host: session.host,
+      placements: session.extras,
+      matchRules: session.matchRules,
+      seed: session.seed,
+    };
+  };
   const world = await assembleMapWorld(canvas, params, {
+    hostWorld,
     mapId,
     stagedSave,
     sessionFor: (roster) => mapSession(params, roster),
+  }).catch((err: unknown) => {
+    booted.session?.dispose();
+    throw err;
   });
   if (world === null) {
+    booted.session?.dispose();
     scope.abort();
     return;
   }
-  const driver = new LockstepDriver({
-    sim: world.sim,
-    transport: new LoopbackTransport(),
-    speed: world.session.speed,
-    paused: stagedSave !== null && !resume,
-  });
+  const { worker } = world.hosted;
   const view = await presentMapWorld(world, {
-    driver,
+    driver: worker.driver,
+    offThreadTickCost: worker.offThreadTickCost,
     introAtStart: stagedSave === null && introParam(params),
+  }).catch((err: unknown) => {
+    worker.dispose();
+    throw err;
   });
-  view.lifetime.addEventListener('abort', () => scope.abort(), { once: true });
+  view.lifetime.addEventListener(
+    'abort',
+    () => {
+      worker.dispose();
+      scope.abort();
+    },
+    { once: true },
+  );
 }

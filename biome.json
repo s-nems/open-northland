@@ -45,7 +45,9 @@
         "!packages/app/src/scenes/**",
         "!packages/app/src/game/sandbox/**",
         "!packages/app/src/game/world/**",
-        "!packages/app/src/session/inline-host.ts"
+        "!packages/app/src/session/inline-host.ts",
+        "!packages/app/src/session/worker/serve.ts",
+        "!packages/app/src/session/worker/facts.ts"
       ],
       "linter": {
         "rules": {

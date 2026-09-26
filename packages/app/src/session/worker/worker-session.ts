@@ -1,0 +1,477 @@
+import type { SessionDriver } from '@open-northland/lockstep';
+import {
+  components,
+  type EntitySnapshot,
+  type ExportSaveOptions,
+  type FogMaskAnswer,
+  type FogView,
+  fogViewOfMask,
+  type MatchRulesView,
+  type SaveGame,
+  type SimEvent,
+  SnapshotMirror,
+} from '@open-northland/sim';
+import type { SystemProfileRow } from '../../diag/system-profile.js';
+import type { OffThreadTickCost, SessionHost, StateHash, SystemSpanSink, TickDiagnostics } from '../host.js';
+import type { SessionPort } from './port.js';
+import {
+  type AssistantFacts,
+  errorFromWire,
+  type FromWorker,
+  type HostRequestName,
+  type HostRequests,
+  type TickBatch,
+  type ToWorker,
+  type WireError,
+  type WorkerCall,
+  type WorkerReady,
+  type WorkerSessionOptions,
+  type WorldFacts,
+} from './protocol.js';
+import { ArrivalAlpha } from './render-alpha.js';
+import {
+  HEARTBEAT_INTERVAL_MS,
+  type StallReports,
+  StallWatch,
+  WORKER_STALL_TIMEOUT_MS,
+} from './stall-watch.js';
+
+/** The runtime's side of a session whose sim runs in a worker. */
+export interface WorkerSession<E> {
+  readonly host: SessionHost;
+  readonly driver: SessionDriver;
+  /** What the world's builder handed over beside the sim. */
+  readonly extras: E;
+  readonly matchRules: MatchRulesView;
+  readonly seed: number;
+  readonly boot: WorkerBootCost;
+  /** What the ticks the driver's last `advance` delivered cost. */
+  offThreadTickCost(): OffThreadTickCost;
+  /** Stop the worker; answers still pending never land. Idempotent. */
+  dispose(): void;
+}
+
+/** Milliseconds of the boot handover. */
+export interface WorkerBootCost {
+  /** This thread's structured clone of the boot message. */
+  readonly postMs: number;
+  /** The worker's world build. */
+  readonly buildMs: number;
+  /** This thread's deserialization of the ready message, the world's first delta included. */
+  readonly readyReceiveMs: number;
+  /** From the post to the first delta applied. */
+  readonly totalMs: number;
+}
+
+export interface WorkerSessionTimings {
+  readonly heartbeatMs?: number;
+  readonly stallTimeoutMs?: number;
+}
+
+type Queued =
+  | {
+      readonly kind: 'ticks';
+      readonly batch: TickBatch;
+      readonly receiveMs: number;
+      readonly arrivedMs: number;
+    }
+  | { readonly kind: 'fog'; readonly fog: FogMaskAnswer | null };
+
+interface PendingCall {
+  resolve(answer: { readonly value: unknown; readonly tick: number }): void;
+  reject(error: Error): void;
+}
+
+interface TickWaiter {
+  readonly tick: number;
+  resolve(): void;
+}
+
+const NO_EVENTS: readonly SimEvent[] = [];
+
+/**
+ * Boot a session in the worker behind `port` and resolve once its world stands. The driver's
+ * `advance` delivers what the worker stepped: it applies each queued batch to the mirror and runs the
+ * per-tick callback once per tick the batch spans, with that tick's events behind `tickEvents()`, then
+ * acknowledges the batches so the worker may post more. Rejects when the worker cannot build the world.
+ */
+export function startWorkerSession<B, E>(
+  port: SessionPort,
+  boot: B,
+  options: WorkerSessionOptions,
+  reports: StallReports,
+  timings: WorkerSessionTimings = {},
+): Promise<WorkerSession<E>> {
+  return new Promise((resolve, reject) => {
+    let client: WorkerClient<E> | null = null;
+    const startMs = performance.now();
+    let postMs = 0;
+    port.listen((data, receiveMs) => {
+      const message = data as FromWorker<E>;
+      if (client !== null) {
+        client.receive(message, receiveMs);
+        return;
+      }
+      if (message.kind === 'bootFailed') {
+        port.close();
+        reject(errorFromWire(message.error));
+      } else if (message.kind === 'ready') {
+        client = new WorkerClient(port, message.ready, options, reports, timings);
+        const bootCost = {
+          postMs,
+          buildMs: message.ready.buildMs,
+          readyReceiveMs: receiveMs,
+          totalMs: performance.now() - startMs,
+        };
+        resolve(client.session(bootCost));
+      }
+    });
+    const post = (message: ToWorker<B>): void => port.post(message);
+    post({ kind: 'boot', boot, options });
+    postMs = performance.now() - startMs;
+  });
+}
+
+class WorkerClient<E> {
+  private readonly mirror = new SnapshotMirror();
+  private readonly queue: Queued[] = [];
+  private readonly calls = new Map<number, PendingCall>();
+  private readonly waiters: TickWaiter[] = [];
+  private readonly alpha: ArrivalAlpha;
+  private readonly watch: StallWatch;
+  private readonly heartbeat: ReturnType<typeof setInterval>;
+  /** Adds to a worker clock reading to place it on this thread's clock. */
+  private readonly workerClockOffsetMs: number;
+  private nextCallId = 0;
+  private tick: number;
+  private events: readonly SimEvent[] = NO_EVENTS;
+  private diagnostics: TickDiagnostics | null = null;
+  private departed: readonly EntitySnapshot[] = [];
+  private facts: WorldFacts;
+  private fog: FogView | null;
+  private fogSeat: number | null;
+  private paused: boolean;
+  private speed: number;
+  private droppedTicks = 0;
+  private lastCost: OffThreadTickCost = { simMs: 0, receiveMs: 0 };
+  private tickError: WireError | null = null;
+  private started = false;
+  private spans: SystemSpanSink | null = null;
+  private disposed = false;
+
+  constructor(
+    private readonly port: SessionPort,
+    private readonly ready: WorkerReady<E>,
+    options: WorkerSessionOptions,
+    reports: StallReports,
+    timings: WorkerSessionTimings,
+  ) {
+    this.mirror.apply(ready.delta);
+    this.tick = ready.delta.tick;
+    this.facts = ready.facts;
+    this.fog = ready.fog === null ? null : fogViewOfMask(ready.fog);
+    this.fogSeat = options.fogSeat;
+    this.paused = options.paused;
+    this.speed = options.speed;
+    this.alpha = new ArrivalAlpha(options.speed, options.paused);
+    this.workerClockOffsetMs = ready.timeOrigin - performance.timeOrigin;
+    const heartbeatMs = timings.heartbeatMs ?? HEARTBEAT_INTERVAL_MS;
+    this.watch = new StallWatch(
+      reports,
+      timings.stallTimeoutMs ?? WORKER_STALL_TIMEOUT_MS,
+      heartbeatMs,
+      performance.now(),
+    );
+    this.heartbeat = setInterval(() => {
+      this.post({ kind: 'ping' });
+      this.watch.check(performance.now());
+    }, heartbeatMs);
+  }
+
+  receive(message: FromWorker<E>, receiveMs: number): void {
+    if (this.disposed) return;
+    const nowMs = performance.now();
+    this.watch.heard(nowMs);
+    switch (message.kind) {
+      case 'ticks':
+        this.queue.push({ kind: 'ticks', batch: message.batch, receiveMs, arrivedMs: nowMs });
+        return;
+      case 'fog':
+        this.queue.push({ kind: 'fog', fog: message.update.fog });
+        return;
+      case 'reply': {
+        const call = this.calls.get(message.id);
+        this.calls.delete(message.id);
+        if (message.ok) call?.resolve({ value: message.value, tick: message.tick });
+        else call?.reject(errorFromWire(message.error));
+        return;
+      }
+      case 'tickError':
+        this.tickError = message.error;
+        return;
+      case 'ready':
+      case 'bootFailed':
+      case 'pong':
+        return;
+    }
+  }
+
+  session(boot: WorkerBootCost): WorkerSession<E> {
+    return {
+      host: this.host(),
+      driver: this.driver(),
+      extras: this.ready.extras,
+      matchRules: this.ready.matchRules,
+      seed: this.ready.seed,
+      boot,
+      offThreadTickCost: () => this.lastCost,
+      dispose: () => this.dispose(),
+    };
+  }
+
+  private post(message: ToWorker<unknown>): void {
+    if (!this.disposed) this.port.post(message);
+  }
+
+  /** Deliver every queued batch; see {@link startWorkerSession}. Then rethrows a tick error the worker
+   *  posted, after the ticks before it, where the inline driver's step would have thrown. */
+  private advance(onTick?: () => void): number {
+    if (!this.started) {
+      this.started = true;
+      this.post({ kind: 'start' });
+    }
+    let delivered = 0;
+    let simMs = 0;
+    let receiveMs = 0;
+    const departed: EntitySnapshot[] = [];
+    while (this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (item === undefined) break;
+      if (item.kind === 'fog') {
+        this.setFog(item.fog);
+        continue;
+      }
+      const { batch } = item;
+      const applyStartMs = performance.now();
+      this.mirror.apply(batch.delta);
+      departed.push(...this.mirror.departed);
+      if (Object.keys(batch.facts).length > 0) this.facts = { ...this.facts, ...batch.facts };
+      if (batch.fog !== null) this.setFog(batch.fog.fog);
+      this.droppedTicks = batch.droppedTicks;
+      receiveMs += item.receiveMs + (performance.now() - applyStartMs);
+      if (batch.spans !== null) this.emitSpans(batch.spans);
+      for (const record of batch.ticks) {
+        this.tick = record.tick;
+        this.events = record.events;
+        this.diagnostics = record.diagnostics;
+        simMs += record.simMs;
+        onTick?.();
+      }
+      this.alpha.arrived(item.arrivedMs);
+      delivered++;
+    }
+    this.tick = this.mirror.tick ?? this.tick;
+    this.lastCost = { simMs, receiveMs };
+    if (delivered > 0) {
+      this.departed = departed;
+      this.post({ kind: 'delivered', messages: delivered });
+      this.settleWaiters();
+    }
+    if (this.tickError !== null) throw errorFromWire(this.tickError);
+    return this.alpha.at(performance.now());
+  }
+
+  private setFog(answer: FogMaskAnswer | null): void {
+    this.fog = answer === null ? null : fogViewOfMask(answer);
+  }
+
+  private emitSpans(spans: TickBatch['spans']): void {
+    const sink = this.spans;
+    if (sink === null || spans === null) return;
+    const offset = this.workerClockOffsetMs;
+    for (const span of spans) sink(span.system, span.startMs + offset, span.endMs + offset);
+  }
+
+  private call(call: WorkerCall): Promise<{ readonly value: unknown; readonly tick: number }> {
+    return new Promise((resolve, reject) => {
+      if (this.disposed) return;
+      const id = this.nextCallId++;
+      this.calls.set(id, { resolve, reject });
+      this.post({ kind: 'call', id, call });
+    });
+  }
+
+  private ask<K extends HostRequestName>(
+    name: K,
+    args: Parameters<HostRequests[K]>,
+  ): ReturnType<HostRequests[K]> {
+    // The worker answers the same member over its sim, so the value is that member's answer.
+    return this.call({ method: 'host', name, args }).then(({ value }) => value) as ReturnType<
+      HostRequests[K]
+    >;
+  }
+
+  /** Resolves once the delivered tick reaches `tick`. */
+  private untilDelivered(tick: number): Promise<void> {
+    if (this.tick >= tick) return Promise.resolve();
+    return new Promise((resolve) => this.waiters.push({ tick, resolve }));
+  }
+
+  private settleWaiters(): void {
+    for (let i = this.waiters.length - 1; i >= 0; i--) {
+      const waiter = this.waiters[i];
+      if (waiter === undefined || waiter.tick > this.tick) continue;
+      this.waiters.splice(i, 1);
+      waiter.resolve();
+    }
+  }
+
+  /** A read still pending never lands: its asker belongs to the view being torn down, and a
+   *  rejection there would read as a crash. */
+  private dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    clearInterval(this.heartbeat);
+    this.port.close();
+    this.calls.clear();
+    this.waiters.length = 0;
+  }
+
+  private host(): SessionHost {
+    const client = this;
+    const ready = this.ready;
+    const facts = (): WorldFacts => this.facts;
+    return {
+      content: ready.content,
+      mapFingerprint: ready.mapFingerprint,
+      landscapeTypes: ready.landscapeTypes,
+      missions: ready.missions,
+
+      get tick() {
+        return client.tick;
+      },
+      snapshot: () => this.mirror.snapshot(),
+      departed: () => this.departed,
+      fogView: (player) => {
+        if (player !== this.fogSeat) {
+          this.fogSeat = player;
+          this.post({ kind: 'fogSeat', player });
+        }
+        // Until the new seat's masks land the previous seat's stay drawn: an unfogged frame would
+        // show the whole map for a moment.
+        return this.fog;
+      },
+      constructionPlots: () => facts().constructionPlots,
+      placementBlockerVersion: () => facts().placementBlockerVersion,
+      signpostBlockerVersion: () => facts().signpostBlockerVersion,
+      palisadeLayoutVersion: () => facts().palisadeLayoutVersion,
+      diplomacyStance: (from, to) => facts().stances[seatIndex(from, to)] ?? 'enemy',
+      hasMetPlayer: (viewer, other) => facts().met[seatIndex(viewer, other)] ?? false,
+      assistantCounters: (player) => assistantFacts(facts(), player).counters,
+      assistantGrants: (player) => assistantFacts(facts(), player).grants,
+      assistantWeaponVetoes: (player) => assistantFacts(facts(), player).weaponVetoes,
+      needsEnabled: () => facts().needsEnabled,
+      fogMode: () => facts().fogMode,
+      matchOutcome: (player) => facts().matchOutcomes[player] ?? 'undecided',
+      missionStatus: () => facts().missionStatus,
+
+      tickEvents: () => this.events,
+      tickDiagnostics: () =>
+        this.diagnostics === null
+          ? Promise.reject(new Error(`the session took no diagnostics at tick ${this.tick}`))
+          : Promise.resolve(this.diagnostics),
+      hashState: () => this.call({ method: 'hashState' }).then(({ value }) => value as StateHash),
+
+      placementProbe: (...args) => this.ask('placementProbe', args),
+      signpostProbe: (...args) => this.ask('signpostProbe', args),
+      palisadeProbe: (...args) => this.ask('palisadeProbe', args),
+      palisadeGateProbe: (...args) => this.ask('palisadeGateProbe', args),
+      palisadeGateSites: (...args) => this.ask('palisadeGateSites', args),
+      ownPalisadeNodes: (...args) => this.ask('ownPalisadeNodes', args),
+      mooringProbe: (...args) => this.ask('mooringProbe', args),
+      unlockStatus: (...args) => this.ask('unlockStatus', args),
+      canChooseJob: (...args) => this.ask('canChooseJob', args),
+      equipPickList: (...args) => this.ask('equipPickList', args),
+      standsTo: (...args) => this.ask('standsTo', args),
+      papers: (...args) => this.ask('papers', args),
+      diplomacyLocked: (...args) => this.ask('diplomacyLocked', args),
+      goodsTradedWith: (...args) => this.ask('goodsTradedWith', args),
+      openTributes: (...args) => this.ask('openTributes', args),
+      tradeOffersOf: (...args) => this.ask('tradeOffersOf', args),
+      tradeOffersAt: (...args) => this.ask('tradeOffersAt', args),
+      traderView: (...args) => this.ask('traderView', args),
+      tradeHousesAttachableBy: (...args) => this.ask('tradeHousesAttachableBy', args),
+      vehiclesAttachableBy: (...args) => this.ask('vehiclesAttachableBy', args),
+      missionBriefingHistory: (...args) => this.ask('missionBriefingHistory', args),
+      missionBriefingPage: (...args) => this.ask('missionBriefingPage', args),
+      missionHuman: (...args) => this.ask('missionHuman', args),
+      missionPresentation: (...args) => this.ask('missionPresentation', args),
+      infoLines: (...args) => this.ask('infoLines', args),
+      landscapeEdits: (...args) => this.ask('landscapeEdits', args),
+      exportSave: (...args) => this.ask('exportSave', args),
+      commandLog: (...args) => this.ask('commandLog', args),
+
+      installInstruments: ({ profile, spans }) => {
+        this.spans = spans;
+        this.post({ kind: 'instruments', profile, spans: spans !== null });
+        if (!profile) return null;
+        return {
+          rows: () =>
+            this.call({ method: 'profileRows' }).then(({ value }) => value as readonly SystemProfileRow[]),
+          reset: () => this.post({ kind: 'profileReset' }),
+        };
+      },
+      run: (ticks) => this.call({ method: 'run', ticks }).then(({ tick }) => this.untilDelivered(tick)),
+      settled: () => this.call({ method: 'settle' }).then(({ tick }) => this.untilDelivered(tick)),
+    };
+  }
+
+  private driver(): SessionDriver {
+    const client = this;
+    return {
+      get paused() {
+        return client.paused;
+      },
+      get speed() {
+        return client.speed;
+      },
+      get droppedTicks() {
+        return client.droppedTicks;
+      },
+      maxStepsPerFrame: this.ready.maxStepsPerFrame,
+      setPaused: (paused) => {
+        if (paused === this.paused) return;
+        this.paused = paused;
+        this.alpha.setPaused(paused, performance.now());
+        this.post({ kind: 'pause', paused });
+      },
+      setSpeed: (speed) => {
+        if (!Number.isFinite(speed) || speed <= 0) {
+          throw new Error(`session speed must be a positive number, got ${speed}`);
+        }
+        this.speed = speed;
+        this.alpha.setSpeed(speed, performance.now());
+        this.post({ kind: 'speed', speed });
+      },
+      advance: (_elapsedMs, onTick) => this.advance(onTick),
+      submit: (envelope) => this.post({ kind: 'submit', envelope }),
+      captureSave: (options: ExportSaveOptions = {}) =>
+        this.call({ method: 'captureSave', options }).then(({ value }) => value as SaveGame),
+    };
+  }
+}
+
+/** The seat pair's place in a facts table; a seat outside the table reads the sim's default. */
+function seatIndex(row: number, column: number): number {
+  return row * components.MAX_PLAYERS + column;
+}
+
+function assistantFacts(facts: WorldFacts, player: number): AssistantFacts {
+  return (
+    facts.assistants[player] ?? {
+      counters: components.defaultAssistantCounters(),
+      grants: [],
+      weaponVetoes: [],
+    }
+  );
+}

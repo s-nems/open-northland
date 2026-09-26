@@ -1,5 +1,6 @@
 import { parseSaveGame, SAVE_FORMAT_VERSION, SAVE_KIND, type SaveGame } from '@open-northland/sim';
 
+import { saveDocumentOf } from './codec.js';
 import { rootWorldId } from './related-world.js';
 
 /** The live session identity a candidate save must match before the page reloads into it. */
@@ -16,12 +17,6 @@ export type SaveRejection = 'corrupt' | 'incompatibleVersion' | 'wrongContent' |
 export type EvaluatedSave =
   | { readonly ok: true; readonly save: SaveGame }
   | { readonly ok: false; readonly reason: SaveRejection };
-
-/** Decode save text to its JSON document, tolerating an editor-added BOM. The one parse seam shared
- *  with the staged boot, so a file accepted here cannot fail the reload's parse. */
-export function saveDocumentOf(text: string): unknown {
-  return JSON.parse(text.replace(/^\uFEFF/, ''));
-}
 
 export type EvaluatedDocument =
   | { readonly ok: true; readonly save: SaveGame }

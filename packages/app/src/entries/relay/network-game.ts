@@ -15,7 +15,13 @@ import { BUTTON_STYLE, el, mountMessage } from '../../view/overlay.js';
 import { menuSearch } from '../../view/params.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
-import { type AssembledMapWorld, assembleMapWorld, presentMapWorld } from '../map/boot.js';
+import {
+  type AssembledMapWorld,
+  assembleMapWorld,
+  type InlineMapWorld,
+  inlineMapWorld,
+  presentMapWorld,
+} from '../map/boot.js';
 import { mountNetHud, type NetHud } from './net-hud.js';
 import { roomExitObserver } from './room-exit.js';
 
@@ -33,12 +39,12 @@ export function renderNetworkGame(
   let canvasUsed = false;
   let closed = false;
   let revision = 0;
-  let assembled: AssembledMapWorld | null = null;
+  let assembled: AssembledMapWorld<InlineMapWorld> | null = null;
   let view: GameViewHandle | null = null;
   let hud: NetHud | null = null;
   let transition: Promise<unknown> = Promise.resolve();
   let presentation: Promise<void> = Promise.resolve();
-  let presentingWorld: AssembledMapWorld | null = null;
+  let presentingWorld: AssembledMapWorld<InlineMapWorld> | null = null;
   const released = new WeakSet<AssembledMapWorld>();
   function release(world: AssembledMapWorld): void {
     if (released.has(world)) return;
@@ -131,6 +137,7 @@ export function renderNetworkGame(
       clearWorld();
       canvasUsed = true;
       const world = await assembleMapWorld(activeCanvas, params, {
+        hostWorld: inlineMapWorld,
         multiplayer: true,
         mapId: map.mapId,
         stagedSave: save,
@@ -147,7 +154,7 @@ export function renderNetworkGame(
         throw new Error('The verified map could not be opened');
       }
       assembled = world;
-      return { sim: world.sim, generation: save === null ? DESCRIPTOR_WORLD : save.header.tick };
+      return { sim: world.hosted.sim, generation: save === null ? DESCRIPTOR_WORLD : save.header.tick };
     };
     const result = work();
     transition = result;
@@ -184,7 +191,7 @@ export function renderNetworkGame(
       driver: client,
       sharedClock: true,
       confirmedMatchEnd: () => client.endedTick,
-      networkSave: networkSaveSession(client, world),
+      networkSave: networkSaveSession(client, world.hosted),
       introAtStart: false,
       netReadout: readout,
       onReturnToMenu: returnToMenu,

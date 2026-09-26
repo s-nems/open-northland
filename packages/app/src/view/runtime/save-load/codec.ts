@@ -57,3 +57,10 @@ export async function decodeSaveText(
   }
   return new TextDecoder().decode(joined);
 }
+
+/** Decode save text to its JSON document, tolerating an editor-added BOM. The one parse seam shared
+ *  by the file picker, the staged boot and the sim worker, so a file accepted by one cannot fail
+ *  another's parse. */
+export function saveDocumentOf(text: string): unknown {
+  return JSON.parse(text.replace(/^\uFEFF/, ''));
+}

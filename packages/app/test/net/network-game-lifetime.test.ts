@@ -6,6 +6,7 @@ import type { NetworkHandover } from '../../src/net/handover.js';
 const mocks = vi.hoisted(() => ({ assemble: vi.fn(), present: vi.fn() }));
 vi.mock('../../src/entries/map/boot.js', () => ({
   assembleMapWorld: mocks.assemble,
+  inlineMapWorld: vi.fn(),
   presentMapWorld: mocks.present,
 }));
 vi.mock('../../src/view/fullscreen.js', () => ({ bindDisplayMode: vi.fn() }));
@@ -26,7 +27,7 @@ it('replaces the canvas before a resync assembles another WebGL renderer', async
   const secondCanvas = {};
   const canvas = { cloneNode: vi.fn(() => secondCanvas), replaceWith: vi.fn() };
   const destroy = vi.fn();
-  mocks.assemble.mockResolvedValue({ app: { destroy }, loaded: {}, sim: {} });
+  mocks.assemble.mockResolvedValue({ app: { destroy }, loaded: {}, hosted: { sim: {} } });
   let port: WorldPort | undefined;
   const handover = {
     connection: {

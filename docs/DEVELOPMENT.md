@@ -242,14 +242,18 @@ live inside a running game. A relayed session shows only the readout, since the 
 trusted world edits with no wire.
 
 A running game exposes `window.__opennorthland`. Besides the session `host` (the world as the runtime
-reads it: `tick` and `snapshot()` synchronously, and `await hashState()` and `await run(ticks)`, which
-steps a paused session), the live
-`renderer`, `sheet` and `cameraCtl`, it answers `perf()` with one JSON-serialisable performance
+reads it: `tick` and `snapshot()` synchronously, `await hashState()` for the hash and the tick it was
+taken at, and `await run(ticks)`, which steps a paused session), the live
+`renderer`, `sheet` and `cameraCtl`, it answers `await perf()` with one JSON-serialisable performance
 report, so an automated probe reads numbers instead of screenshotting the on-canvas readout.
 `resetPerf()` opens a fresh measurement window, and `setSpeed()` / `setPaused()` put the session into
 a state worth measuring: `setSpeed(1)` gives a baseline the per-frame step cap cannot distort, and
-pausing isolates the render half of a frame. Read `sampling.hidden` before trusting any timing: a
-background tab throttles its frame loop and every millisecond becomes fiction.
+pausing isolates the render half of a frame. The `?map=` entry runs its sim in a worker, which may
+have stepped past the drawn tick, so `await setPaused(true)` before reading `host.tick` as the tick
+the session stopped on. There `frame.simMs` and `window.simMsPerTick` time the worker's steps, and
+`frame.receiveMs` and `window.receiveMsPerTick` this thread's cost of taking them in. Read
+`sampling.hidden` before trusting any timing: a background tab throttles its frame loop and every
+millisecond becomes fiction.
 
 A stored fullscreen preference is taken back on the session's first gesture, so a probe that clicks
 resizes the viewport mid-measurement and also records its own window mode. Add `&fullscreen=off` to a

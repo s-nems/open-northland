@@ -5,7 +5,7 @@ import { browserSaveDownload, pickSaveFile } from './file-access.js';
 import { storePendingLoad } from './pending-store.js';
 import { browserSaveStore } from './store-browser.js';
 
-export { takeStagedSave, takeStagedSession } from './boot.js';
+export { type StagedSession, takeStagedSave, takeStagedSession } from './boot.js';
 export type { LoadOutcome, SaveLoadSession, SaveOutcome } from './controller.js';
 export { saveLoadSession } from './controller.js';
 export { evaluateSaveFile, type LiveWorldIdentity, type SaveRejection } from './evaluate.js';

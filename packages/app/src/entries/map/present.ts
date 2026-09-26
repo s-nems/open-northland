@@ -34,6 +34,8 @@ import { mapSubMissionLoader, validateSavedMap } from './sub-missions.js';
 /** How the assembled world runs: the driver the frame loop feeds and the HUD sets the clock on. */
 export interface MapRuntime {
   readonly driver: SessionDriver;
+  /** Present when the sim runs on another thread. */
+  readonly offThreadTickCost?: GameViewDeps['offThreadTickCost'];
   /** True for a relayed session, whose clock every client shares. */
   readonly sharedClock?: boolean;
   readonly confirmedMatchEnd?: () => number | null;
@@ -66,8 +68,7 @@ export async function presentMapWorld(
     params,
     boot,
     session,
-    sim,
-    host,
+    hosted,
     renderer,
     terrainGrid,
     loaded,
@@ -77,6 +78,7 @@ export async function presentMapWorld(
     pack,
   } = world;
   const { mapId, stagedSave } = world.plan;
+  const { host } = hosted;
   const localPlayer = localPlayerOf(session);
   const playerColourOf = seatColourOf(session);
   const staticObjects = world.staticObjects;
@@ -89,23 +91,26 @@ export async function presentMapWorld(
           stagedSave === null
             ? {
                 kind: 'fresh',
-                placementByEntity: world.harvestablePlacements,
-                pooledPlacements: world.pooledPlacements,
+                placementByEntity: hosted.placements.harvestablePlacements,
+                pooledPlacements: hosted.placements.pooledPlacements,
               }
-            : { kind: 'restored', placements: harvestablePlacementOrdinals(sim.content, loaded.objects, ir) },
-          sim.content,
-          () => sim.snapshot(),
+            : {
+                kind: 'restored',
+                placements: harvestablePlacementOrdinals(host.content, loaded.objects, ir),
+              },
+          host.content,
+          () => host.snapshot(),
         )
       : null;
 
   const landscapes =
-    sim.missions !== undefined && ir !== null
+    host.missions !== undefined && ir !== null
       ? bindScriptLandscapes(
           host,
           renderer,
           staticObjects?.byPlacement ?? new Map(),
           await loadScriptLandscapeSprites(
-            sim.missions,
+            host.missions,
             ir,
             world.elevation,
             renderer.brightnessField(),
@@ -116,8 +121,8 @@ export async function presentMapWorld(
           world.groundWaves,
         )
       : null;
-  const related = { ir, content: { content: sim.content }, params };
-  const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
+  const related = { ir, content: { content: host.content }, params };
+  const focus = mapStartFocus(host.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
   const initialViewport = { width: app.screen.width, height: app.screen.height };
   const zoom = mapZoomParam(params);
   const initialCamera =
@@ -147,6 +152,7 @@ export async function presentMapWorld(
     sheet: world.sheet,
     host,
     driver: runtime.driver,
+    ...(runtime.offThreadTickCost !== undefined ? { offThreadTickCost: runtime.offThreadTickCost } : {}),
     ...(runtime.confirmedMatchEnd === undefined ? {} : { confirmedMatchEnd: runtime.confirmedMatchEnd }),
     ...(runtime.networkSave === undefined ? {} : { networkSave: runtime.networkSave }),
     ...(runtime.sharedClock !== undefined ? { sharedClock: runtime.sharedClock } : {}),
@@ -184,13 +190,13 @@ export async function presentMapWorld(
         }),
     worldToken: mapId,
     saveEntrySearch: formatSearch(sessionSearch(session, script === null ? [] : mapLobbySlots(script))),
-    introAtStart: runtime.introAtStart && sim.missions === undefined,
+    introAtStart: runtime.introAtStart && host.missions === undefined,
     musicType: meta?.musicType ?? null,
     missionBriefSource: {
       page: (id) => briefingPage(world.briefing, currentLocale(), id),
       fallback: mapBriefFallback(meta, currentLocale()),
       skirmishGoal:
-        !isSpectator(session) && hasEliminationGoal(sim.matchRules(), localPlayer)
+        !isSpectator(session) && hasEliminationGoal(hosted.matchRules, localPlayer)
           ? messages().hud.skirmishGoal
           : null,
     },

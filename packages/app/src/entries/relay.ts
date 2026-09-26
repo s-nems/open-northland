@@ -14,7 +14,13 @@ import type { NetReadout } from '../view/runtime/net-readout.js';
 import { takeStagedSave } from '../view/runtime/save-load/index.js';
 import { storePendingLoad } from '../view/runtime/save-load/pending-store.js';
 import { haltOnFailedRestore } from '../view/runtime/world-bootstrap.js';
-import { type AssembledMapWorld, assembleMapWorld, presentMapWorld } from './map/boot.js';
+import {
+  type AssembledMapWorld,
+  assembleMapWorld,
+  type InlineMapWorld,
+  inlineMapWorld,
+  presentMapWorld,
+} from './map/boot.js';
 import { lobbyCompatibilityReporter } from './relay/compatibility.js';
 import { roomCreation } from './relay/creation.js';
 import { devRelayExit } from './relay/dev-exit.js';
@@ -69,7 +75,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  let world: AssembledMapWorld | null = null;
+  let world: AssembledMapWorld<InlineMapWorld> | null = null;
   let view: GameViewHandle | null = null;
   let hud: NetHud | null = null;
   let urlPinned = roomPlan.kind === 'join';
@@ -115,6 +121,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       if (verifiedMap === null) throw new Error('Missing or incompatible verified map');
       card.dismiss();
       const assembled = await assembleMapWorld(canvas, params, {
+        hostWorld: inlineMapWorld,
         multiplayer: true,
         mapId,
         stagedSave: staged,
@@ -129,7 +136,10 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       // The fallback strip takes its owner from the local seat, which two clients would do differently.
       if (assembled.loaded === null) throw new Error(`no decoded map ${mapId}`);
       world = assembled;
-      return { sim: assembled.sim, generation: staged === null ? DESCRIPTOR_WORLD : assembled.sim.tick };
+      return {
+        sim: assembled.hosted.sim,
+        generation: staged === null ? DESCRIPTOR_WORLD : assembled.hosted.sim.tick,
+      };
     },
     async restore(_session, snapshot) {
       // The world is rebuilt by a fresh boot over the staged snapshot, the way a loaded save is: the
@@ -288,7 +298,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       onReturnToMenu: () => exit.quit(),
       introAtStart: false,
       netReadout: readout,
-      networkSave: networkSaveSession(client, world),
+      networkSave: networkSaveSession(client, world.hosted),
     });
     if (out) {
       presented.destroy();

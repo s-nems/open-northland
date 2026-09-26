@@ -1,5 +1,5 @@
 import { mapLobbySlots } from '@open-northland/data';
-import { type GameSession, localPlayerOf, seatColourOf } from '@open-northland/lockstep';
+import { type GameSession, seatColourOf } from '@open-northland/lockstep';
 import {
   createWindowPixiApp,
   type ElevationField,
@@ -10,11 +10,10 @@ import {
   type TerrainTextureSet,
   type WorldRenderer,
 } from '@open-northland/render';
-import type { Entity, SaveGame, Simulation } from '@open-northland/sim';
+import type { MatchRulesView, SaveGame, Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { loadAmbientCreatures } from '../../content/animal-gfx/index.js';
 import { loadGroundWaves } from '../../content/ground-waves.js';
-import { buildingFootprints } from '../../content/ir/joins.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import {
@@ -33,8 +32,7 @@ import { assertMultiplayerMap } from '../../game/multiplayer-map.js';
 import { sandboxGoods } from '../../game/sandbox/index.js';
 import { onOffParam } from '../../game/session-rules.js';
 import type { SessionRosterSlot } from '../../game/session-url.js';
-import { sessionWorldOptions } from '../../game/session-world.js';
-import { mapScriptWorld, terrainSceneFor } from '../../game/world/index.js';
+import { terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
 import { type PresentationPack, presentationPack } from '../../presentation/pack.js';
 import { inlineSessionHost, type SessionHost } from '../../session/index.js';
@@ -46,7 +44,7 @@ import {
   loadLocalizedRealContent,
 } from '../../view/runtime/world-bootstrap.js';
 import { readStoredSettings } from '../../view/settings-store.js';
-import { buildMapWorld, restoreMapWorld } from './world.js';
+import { buildMapWorldFromInputs, type MapWorldInputs, type MapWorldPlacements } from './world-inputs.js';
 
 export { type MapRuntime, presentMapWorld } from './present.js';
 
@@ -62,7 +60,34 @@ export const MAP_BOOT_PHASES = [
   'hud',
 ] as const satisfies readonly BootPhase[];
 
-export interface MapBootPlan {
+/** The running world as the presentation half reads it, whichever thread its sim runs on. */
+export interface HostedMapWorld {
+  readonly host: SessionHost;
+  readonly placements: MapWorldPlacements;
+  /** As the world stood when built, for the briefing's skirmish goal. */
+  readonly matchRules: MatchRulesView;
+  readonly seed: number;
+}
+
+/** A world whose sim runs on this thread, for a driver that needs the sim itself. */
+export interface InlineMapWorld extends HostedMapWorld {
+  readonly sim: Simulation;
+}
+
+export function inlineMapWorld(inputs: MapWorldInputs): Promise<InlineMapWorld> {
+  const { sim, extras } = buildMapWorldFromInputs(inputs);
+  return Promise.resolve({
+    sim,
+    host: inlineSessionHost(sim),
+    placements: extras,
+    matchRules: sim.matchRules(),
+    seed: sim.seed,
+  });
+}
+
+export interface MapBootPlan<H extends HostedMapWorld> {
+  /** Stands the world up from the loaded documents; a rejection of a staged save halts the boot. */
+  readonly hostWorld: (inputs: MapWorldInputs) => Promise<H>;
   readonly multiplayer?: boolean;
   readonly mapId: string | null;
   readonly stagedSave: SaveGame | null;
@@ -76,16 +101,15 @@ type LoadedMap = Awaited<ReturnType<typeof loadTerrainMap>>;
 type LoadedObjects = Awaited<ReturnType<typeof loadMapObjects>>;
 
 /** Everything the presentation half needs from the assembly half. */
-export interface AssembledMapWorld {
+export interface AssembledMapWorld<H extends HostedMapWorld = HostedMapWorld> {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly params: URLSearchParams;
   readonly boot: BootProgress;
-  readonly plan: MapBootPlan;
+  readonly plan: MapBootPlan<H>;
   readonly session: GameSession;
-  readonly sim: Simulation;
-  /** The runtime's view of `sim`; the presentation half and the diag session share this one object. */
-  readonly host: SessionHost;
+  /** Its host is the one object the presentation half and the diag session share. */
+  readonly hosted: H;
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet;
   readonly pack: PresentationPack | null;
@@ -102,18 +126,14 @@ export interface AssembledMapWorld {
   readonly staticObjects: LoadedObjects | undefined;
   /** The map's shore waves by placement ordinal, the key a script's landscape removal names them by. */
   readonly groundWaves: ReadonlyMap<number, GroundWave>;
-  readonly harvestablePlacements: readonly (readonly [Entity, number])[];
-  /** The chest and ground-goods placements the sim draws from tick zero; empty on a restore, whose
-   *  entities come out of the save. */
-  readonly pooledPlacements: readonly number[];
 }
 
 /** Assemble the map's world up to a sim standing at a tick boundary; null when the boot halted. */
-export async function assembleMapWorld(
+export async function assembleMapWorld<H extends HostedMapWorld>(
   canvas: HTMLCanvasElement,
   params: URLSearchParams,
-  plan: MapBootPlan,
-): Promise<AssembledMapWorld | null> {
+  plan: MapBootPlan<H>,
+): Promise<AssembledMapWorld<H> | null> {
   const { mapId, stagedSave } = plan;
   const pack = presentationPack(params);
   if (plan.verifiedMap !== undefined && mapId === null) throw new Error('Verified map requires a map id');
@@ -137,7 +157,6 @@ export async function assembleMapWorld(
     ]);
     if (plan.multiplayer) assertMultiplayerMap(script);
     const session = plan.sessionFor(script === null ? [] : mapLobbySlots(script));
-    const localPlayer = localPlayerOf(session);
     const playerColourOf = seatColourOf(session);
     diag.info('boot', 'game start', { entry: 'map', decodedMap: loaded !== null, session });
     const terrainGrid = terrainSceneFor(loaded ?? undefined);
@@ -206,53 +225,31 @@ export async function assembleMapWorld(
       }
     }
     await boot.begin('world');
-    const footprints = buildingFootprints(ir);
-    // The render layers read the raw map; the sim runs on the collision resolution of the same map.
-    const missionWorld = mapScriptWorld(script, ir);
-    const worldOptions = {
-      script: missionWorld,
-      map: loaded,
-      ir,
-      playerRoster: script?.players ?? [],
-      specialItems: script?.specialItems ?? [],
-      content: {
-        footprints,
+    let hosted: H;
+    try {
+      hosted = await plan.hostWorld({
+        map: loaded,
+        ir,
+        script,
         goodNames,
-        ...(realContent !== null ? { content: realContent.content } : {}),
-      },
-      // Only the no-decodable-map fallback takes ownership from the session seat; a real map takes it
-      // from map data.
-      demoOwner: localPlayer,
-    };
-    let sim: Simulation;
-    let harvestablePlacements: readonly (readonly [Entity, number])[] = [];
-    let pooledPlacements: readonly number[] = [];
-    if (stagedSave !== null) {
-      try {
-        sim = restoreMapWorld(worldOptions, stagedSave).sim;
-      } catch (err) {
-        haltOnFailedRestore(err);
-        return null;
-      }
-    } else {
-      const world = buildMapWorld({
-        ...worldOptions,
-        ...sessionWorldOptions(session, script, missionWorld),
-        seed: session.seed,
+        content: realContent?.content ?? null,
+        session,
         // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
         // world never reads it.
         missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
+        save: stagedSave,
       });
-      sim = world.sim;
-      harvestablePlacements = world.harvestablePlacements;
-      pooledPlacements = world.pooledPlacements;
+    } catch (err) {
+      if (stagedSave === null) throw err;
+      haltOnFailedRestore(err);
+      return null;
     }
-    const host = inlineSessionHost(sim);
+    const { host } = hosted;
     setDiagGameSession({
       entry: 'map',
       worldId: mapId,
-      seed: sim.seed,
-      restoredAtTick: stagedSave !== null ? sim.tick : null,
+      seed: hosted.seed,
+      restoredAtTick: stagedSave !== null ? host.tick : null,
       host,
       hashTrace: hashTraceFor(params),
     });
@@ -264,8 +261,7 @@ export async function assembleMapWorld(
       boot,
       plan,
       session,
-      sim,
-      host,
+      hosted,
       renderer,
       sheet,
       pack,
@@ -281,8 +277,6 @@ export async function assembleMapWorld(
       tribes,
       staticObjects,
       groundWaves,
-      harvestablePlacements,
-      pooledPlacements,
     };
   } finally {
     if (!assembled) app.destroy(false, { children: true });

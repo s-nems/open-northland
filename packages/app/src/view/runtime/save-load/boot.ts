@@ -1,7 +1,6 @@
 import { parseSaveGame, type SaveGame } from '@open-northland/sim';
 import { diag } from '../../../diag/index.js';
-import { decodeSaveText } from './codec.js';
-import { saveDocumentOf } from './evaluate.js';
+import { decodeSaveText, saveDocumentOf } from './codec.js';
 import { takePendingSession } from './pending-store.js';
 
 /** Parse staged text through the same seam that accepted it, and pin it to this boot's world. */
@@ -24,20 +23,25 @@ export async function takeStagedSave(worldToken: string | null): Promise<SaveGam
   return (await takeStagedSession(worldToken)).save;
 }
 
-export async function takeStagedSession(
-  worldToken: string | null,
-): Promise<{ save: SaveGame | null; resume: boolean }> {
+/** A staged save, with the text it was staged as: a host on another thread takes the text, which
+ *  crosses as one string where the parsed save is cloned object by object. */
+export interface StagedSession {
+  readonly save: SaveGame | null;
+  readonly text: string | null;
+  readonly resume: boolean;
+}
+
+const NOTHING_STAGED: StagedSession = { save: null, text: null, resume: false };
+
+export async function takeStagedSession(worldToken: string | null): Promise<StagedSession> {
   let pending: Awaited<ReturnType<typeof takePendingSession>>;
   try {
     pending = await takePendingSession();
   } catch (err) {
     diag.warn('boot', `pending-load store unavailable: ${String(err)}`);
-    return { save: null, resume: false };
+    return NOTHING_STAGED;
   }
-  return pending === null
-    ? { save: null, resume: false }
-    : {
-        save: stagedSaveFrom(await decodeSaveText(pending.bytes), worldToken),
-        resume: pending.resume,
-      };
+  if (pending === null) return NOTHING_STAGED;
+  const text = await decodeSaveText(pending.bytes);
+  return { save: stagedSaveFrom(text, worldToken), text, resume: pending.resume };
 }
