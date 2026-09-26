@@ -36,20 +36,16 @@ function nodeOf(sim: Simulation, e: Entity): { x: number; y: number } {
   return { x: hx, y: hy };
 }
 
-function inHutReserved(at: { x: number; y: number }): boolean {
+/** A hut two rows above {@link ANCHOR}'s zone: its zone abuts the first one without overlapping it. */
+const NORTH_ANCHOR = { x: ANCHOR.x, y: ANCHOR.y - 4 };
+
+function inHutReserved(at: { x: number; y: number }, anchor = ANCHOR): boolean {
   // On an even anchor row every footprint cell keeps its plain dx.
-  return HUT_FOOTPRINT.reserved.some((c) => ANCHOR.x + c.dx === at.x && ANCHOR.y + c.dy === at.y);
+  return HUT_FOOTPRINT.reserved.some((c) => anchor.x + c.dx === at.x && anchor.y + c.dy === at.y);
 }
 
-function placeHut(sim: Simulation, owner: number): void {
-  sim.enqueueSetup({
-    kind: 'placeBuilding',
-    buildingType: HUT,
-    x: ANCHOR.x,
-    y: ANCHOR.y,
-    tribe: VIKING,
-    owner,
-  });
+function placeHut(sim: Simulation, owner: number, at = ANCHOR): void {
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: at.x, y: at.y, tribe: VIKING, owner });
   sim.step();
 }
 
@@ -88,6 +84,22 @@ describe('building over signposts', () => {
     expect(sim.world.get(neighbour, Signpost).links).toEqual([covered]);
     const sites = signpostNetwork(sim.world).get(P0) ?? [];
     expect(sites.find((s) => s.entity === covered)).toMatchObject({ hx: moved.x, hy: moved.y });
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it("keeps a post pushed by a second building out of the first one's zone", () => {
+    const sim = mappedSim();
+    const covered = post(sim, ANCHOR.x, ANCHOR.y, P0);
+    placeHut(sim, P0);
+    const first = nodeOf(sim, covered);
+    expect(inHutReserved(first, NORTH_ANCHOR)).toBe(true); // the second hut must push it again
+
+    placeHut(sim, P0, NORTH_ANCHOR);
+
+    expect(buildingsPlaced(sim)).toBe(2);
+    const second = nodeOf(sim, covered);
+    expect(inHutReserved(second, NORTH_ANCHOR)).toBe(false);
+    expect(inHutReserved(second)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 });

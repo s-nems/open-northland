@@ -5,6 +5,7 @@
 
 export { placementBlockerVersion } from './blockers.js';
 export {
+  buildingZoneTest,
   canPlaceBuilding,
   canPlacePalisadeAnchor,
   type PlacementProbe,

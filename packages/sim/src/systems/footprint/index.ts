@@ -25,6 +25,7 @@ export {
   resourceWorkCell,
 } from './interaction.js';
 export {
+  buildingZoneTest,
   canPlaceBuilding,
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,

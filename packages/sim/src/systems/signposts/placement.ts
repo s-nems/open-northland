@@ -12,7 +12,12 @@ import { hexDistanceBetween, nodeOfPosition, positionOfNode } from '../../nav/ha
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { canPlaceWorkFlag, nearestWorkFlagPlacement, workFlagPlacementTest } from '../footprint/index.js';
+import {
+  buildingZoneTest,
+  canPlaceWorkFlag,
+  nearestWorkFlagPlacement,
+  workFlagPlacementTest,
+} from '../footprint/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { settleSignpostLinks, unlinkSignpost } from './links.js';
 import { type SignpostSite, signpostNetwork } from './network.js';
@@ -105,10 +110,11 @@ export function razeSignpost(world: World, post: Entity): void {
 }
 
 /**
- * Push every signpost inside a just-placed `building`'s reserved zone to the nearest node outside it that
- * the erect rule's ground test accepts, on the same static ground, and re-link it there. The placement
- * gate lets a player build over only their own posts. Spacing to the other posts is not re-checked: the
- * post moves, nobody erects it. A post with no such node within {@link SIGNPOST_DISPLACE_RADIUS_NODES}
+ * Push every signpost inside a just-placed `building`'s reserved zone to the nearest node outside every
+ * building's reserved zone that the erect rule's ground test accepts, on the same static ground, and
+ * re-link it there. Landing in a neighbour's zone would stand the post under that building's margin art.
+ * The placement gate lets a player build over only their own posts. Spacing to the other posts is not
+ * re-checked: the post moves, nobody erects it. A post with no such node within {@link SIGNPOST_DISPLACE_RADIUS_NODES}
  * falls. Project rule, as the original never builds on a post.
  */
 export function displaceSignpostsFromReserved(world: World, ctx: SystemContext, building: Entity): void {
@@ -123,12 +129,15 @@ export function displaceSignpostsFromReserved(world: World, ctx: SystemContext, 
   const enclosed = [...world.query(Signpost, Position)].filter((e) =>
     cells.has(entityNode(world, terrain, e)),
   );
+  if (enclosed.length === 0) return;
+  // The grid already holds the new building's zone; a post moving changes no zone.
+  const zoned = buildingZoneTest(world, ctx.content, terrain);
   // Canonical order, and each relocation lands before the next search, so two posts never share a node.
   for (const post of canonicalById(enclosed)) {
     const from = entityNode(world, terrain, post);
     const ground = terrain.componentOf(from);
     const to = nearestWorkFlagPlacement(world, ctx, terrain, from, {
-      accept: (n) => !cells.has(n) && terrain.componentOf(n) === ground,
+      accept: (n) => !zoned(n) && terrain.componentOf(n) === ground,
       withinRadius: SIGNPOST_DISPLACE_RADIUS_NODES,
     });
     if (to === null) razeSignpost(world, post);
