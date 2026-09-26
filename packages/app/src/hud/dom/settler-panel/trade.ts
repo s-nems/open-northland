@@ -9,24 +9,22 @@ import { markedGoods } from './trade-marks.js';
 import { createTradeStops } from './trade-stops.js';
 
 /** What the section shows under its stop rows: the goods of two own stops, the foreign stop's
- *  agreements, or the line asking for a second stop. */
-type TradeBody = 'goods' | 'agreement' | 'hint';
-
-function bodyOf(trade: TradePanelModel): TradeBody {
-  if (trade.foreign) return 'agreement';
-  return trade.categories.length > 0 ? 'goods' : 'hint';
+ *  agreements, or, with neither, the line asking for a second stop. A route never has both; the
+ *  warm-up model does, so one paint rasters both. */
+interface TradeBody {
+  readonly goods: boolean;
+  readonly agreement: boolean;
 }
 
-/** What decides the section's height: its body and how many chip rows or agreement chips it holds. */
+function bodyOf(trade: TradePanelModel): TradeBody {
+  return { goods: trade.categories.length > 0, agreement: trade.foreign };
+}
+
+/** What decides the section's height: its bodies and how many chip rows or agreement chips they hold. */
 function shapeOf(trade: TradePanelModel, body: TradeBody): string {
-  switch (body) {
-    case 'goods':
-      return `goods:${reservedChipRows(trade.categories)}`;
-    case 'agreement':
-      return `agreement:${trade.offers.length}`;
-    case 'hint':
-      return 'hint';
-  }
+  const goods = body.goods ? reservedChipRows(trade.categories) : 0;
+  const offers = body.agreement ? trade.offers.length : 0;
+  return `${goods}:${offers}`;
 }
 
 /**
@@ -57,7 +55,7 @@ export function createTradeSection(
   let open = true;
   /** The section had to fold for this person, so the toggle stays offered while it is open again. */
   let folded = false;
-  let body: TradeBody = 'hint';
+  let body: TradeBody = { goods: false, agreement: false };
   let shape = '';
   /** What "jeszcze N" counts: the marked goods or the agreements the fold hides. */
   let hidden = 0;
@@ -70,9 +68,9 @@ export function createTradeSection(
       open ? copy.fewerRows : hidden > 0 ? formatMessage(copy.moreRows, { count: hidden }) : copy.unfold,
     );
     setAttribute(toggle, 'aria-expanded', String(open));
-    setHidden(goods.element, !open || body !== 'goods');
-    setHidden(agreement.element, !open || body !== 'agreement');
-    setHidden(hint, body !== 'hint');
+    setHidden(goods.element, !open || !body.goods);
+    setHidden(agreement.element, !open || !body.agreement);
+    setHidden(hint, body.goods || body.agreement);
   };
   toggle.addEventListener('click', () => {
     open = !open;
@@ -94,10 +92,10 @@ export function createTradeSection(
       title.update(copy.trade);
       body = bodyOf(trade);
       stops.update(trade);
-      if (body === 'goods') goods.update(trade);
-      if (body === 'agreement') agreement.update(trade);
+      if (body.goods) goods.update(trade);
+      if (body.agreement) agreement.update(trade);
       write(hint, copy.settlerPanel.tradeNeedsTwo);
-      hidden = body === 'goods' ? markedGoods(trade.categories) : trade.offers.length;
+      hidden = markedGoods(trade.categories) + (body.agreement ? trade.offers.length : 0);
       const next = shapeOf(trade, body);
       const reshaped = next !== shape;
       shape = next;
@@ -105,7 +103,7 @@ export function createTradeSection(
       return fresh || reshaped;
     },
     fold(): void {
-      if (!open || body === 'hint') return;
+      if (!open || (!body.goods && !body.agreement)) return;
       open = false;
       folded = true;
       paintToggle();

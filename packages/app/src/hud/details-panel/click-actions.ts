@@ -81,8 +81,12 @@ export function applyPanelClick(
       actions.onSetTradeImport?.(click.entityId, click.house, click.goodType, click.on);
       return;
     case 'setTradeBalance':
-      for (const house of click.houses)
+      // A mark kept for the balance is cleared first, so it sheds the one-way limits a balanced flow
+      // does not show (the settler panel's direction strip does the same).
+      for (const house of click.houses) {
+        if (click.on) actions.onSetTradeImport?.(click.entityId, house, click.goodType, false);
         actions.onSetTradeImport?.(click.entityId, house, click.goodType, click.on);
+      }
       return;
     case 'setTradeAgreement':
       actions.onSetTradeAgreement?.(click.entityId, click.agreement);

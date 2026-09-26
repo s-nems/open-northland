@@ -41,6 +41,25 @@ const ROUTES: readonly (readonly [PanelClick, Call])[] = [
 ];
 
 describe('applyPanelClick', () => {
+  it('sets a balance mark again at each house, so a kept mark sheds its one-way limits', () => {
+    const calls: Call[] = [];
+    const record = (...args: unknown[]): void => {
+      calls.push(['onSetTradeImport', ...args]);
+    };
+    const [a, b, good] = [1, 2, 3];
+    applyPanelClick(
+      { kind: 'setTradeBalance', entityId: ENTITY, houses: [a, b], goodType: good, on: true },
+      { ...recordingActions([]), onSetTradeImport: record },
+      () => undefined,
+    );
+    expect(calls).toEqual([
+      ['onSetTradeImport', ENTITY, a, good, false],
+      ['onSetTradeImport', ENTITY, a, good, true],
+      ['onSetTradeImport', ENTITY, b, good, false],
+      ['onSetTradeImport', ENTITY, b, good, true],
+    ]);
+  });
+
   it.each(ROUTES)('routes %o to its handler', (click, expected) => {
     const calls: Call[] = [];
     applyPanelClick(click, recordingActions(calls), () => {

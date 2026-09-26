@@ -4,10 +4,10 @@ import type { SettlerPanelModel } from '../../details-panel/model/index.js';
  * A made-up person that lights every part of the panel at once: sockets worn and empty, a bag, a
  * status with a carried good, bars at every tone, seat rows with a link, a missing seat and a refused
  * button, craft rows with a live, a stopped and a locked product, the military choices, a trade route
- * with marked goods, and experience with an unlock. The panel paints it once at map start
- * (`SettlerPanel.warm`), so the browser's first raster of these styles (each a pipeline it compiles
- * on first use) happens behind the loading screen, not on the first click. Only the shapes matter;
- * the words are never read.
+ * with marked goods and a running agreement, and experience with an unlock. The panel paints it once
+ * at map start (`SettlerPanel.warm`), so the browser's first raster of these styles (each a pipeline
+ * it compiles on first use) happens behind the loading screen, not on the first click. Only the
+ * shapes matter; the words are never read.
  */
 export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
   const good = (index: number): { goodId: string } | Record<string, never> => {
@@ -64,10 +64,11 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     trade: {
       stops: [
         { slot: 0, house: 1, label: 'Warm', foreign: false, heading: true },
-        { slot: 1, house: 2, label: 'Warm', foreign: false, heading: false },
+        { slot: 1, house: 2, label: 'Warm', foreign: true, heading: false },
       ],
       attachSlot: null,
-      foreign: false,
+      // Goods and an agreement at once, which no route has, so one paint lights both.
+      foreign: true,
       categories: [
         {
           tab: 0,
@@ -78,8 +79,17 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
           ],
         },
       ],
-      offers: [],
-      agreementHolds: false,
+      offers: [
+        {
+          index: 0,
+          label: 'Warm',
+          give: { amount: 1, goodType: 0, ...good(6), label: 'Warm' },
+          take: { amount: 2, goodType: 1, ...good(7), label: 'Warm' },
+          selected: true,
+          progress: { given: 1, received: 0 },
+        },
+      ],
+      agreementHolds: true,
     },
     experience: [
       { label: 'Warm', repeats: 1, bonusPct: 5, own: true },
