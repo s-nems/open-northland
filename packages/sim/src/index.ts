@@ -192,8 +192,8 @@ export {
 } from './simulation.js';
 export type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
-export { RUIN_COLLAPSE_TICKS } from './systems/lifecycle/ruins.js';
 export type { LandscapeEditView } from './systems/landscape/view.js';
+export { RUIN_COLLAPSE_TICKS } from './systems/lifecycle/ruins.js';
 export type {
   InfoLineView,
   MissionDefinition,

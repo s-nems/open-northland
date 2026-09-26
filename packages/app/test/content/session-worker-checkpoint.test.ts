@@ -9,6 +9,7 @@ import {
   nodeOfPosition,
   parseSaveGame,
   playerCommand,
+  SAVE_FORMAT_VERSION,
   type Simulation,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -42,6 +43,13 @@ const ORDERED_SEAT = 0;
 const ORDER_OFFSETS = [10, 60, 150, 260] as const;
 const RUN_TICKS = 400;
 const CHECKPOINT_TIMEOUT_MS = 240_000;
+
+/** A checkpoint from another save format is as absent as a missing one: this build cannot read it. */
+function checkpointReadable(): boolean {
+  if (!existsSync(CHECKPOINT)) return false;
+  const head = JSON.parse(readFileSync(CHECKPOINT, 'utf8')) as { header?: { formatVersion?: unknown } };
+  return head.header?.formatVersion === SAVE_FORMAT_VERSION;
+}
 
 async function checkpointInputs(): Promise<MapWorldInputs> {
   const script = realMapScript(MAP_ID);
@@ -81,7 +89,7 @@ function walkOrder(sim: Simulation, settlers: readonly Entity[], index: number) 
 describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
   'session worker host on a late checkpoint',
   () => {
-    it.skipIf(!existsSync(CHECKPOINT))(
+    it.skipIf(!checkpointReadable())(
       "keeps the inline host's state hashes and log under player orders",
       { timeout: CHECKPOINT_TIMEOUT_MS },
       async () => {

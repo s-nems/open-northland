@@ -422,6 +422,7 @@ class WorkerClient<E> {
       canChooseJob: (...args) => this.ask('canChooseJob', args),
       equipPickList: (...args) => this.ask('equipPickList', args),
       standsTo: (...args) => this.ask('standsTo', args),
+      workStatus: (...args) => this.ask('workStatus', args),
       papers: (...args) => this.ask('papers', args),
       diplomacyLocked: (...args) => this.ask('diplomacyLocked', args),
       goodsTradedWith: (...args) => this.ask('goodsTradedWith', args),

@@ -6,6 +6,7 @@ import type {
   TraderView,
   UnlockKind,
   UnlockStatus,
+  WorkStatus,
 } from '@open-northland/sim';
 import { type BuildingAvailability, OPEN_AVAILABILITY } from '../../hud/tool-panel/building-menu.js';
 import {
@@ -57,6 +58,8 @@ export interface HostAnswers {
   ) => UnlockStatus | undefined;
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
   readonly standsTo: (entity: number) => boolean;
+  /** Undefined while unanswered, which leaves the status detail out. */
+  readonly workStatus: (entity: number) => WorkStatus | undefined;
   readonly traderView: (trader: number) => TraderView | undefined;
   readonly tradeOffersAt: (house: number) => readonly TradeOffer[];
   /** The pick highlights' rules, read off one answer per unit rather than one per building. */
@@ -70,7 +73,7 @@ export interface HostAnswers {
   readonly missionHuman: (missionId: number) => number | null;
   /** Each consumer's own version, bumped only when a read it takes answers differently. */
   readonly versions: {
-    /** The details panel: technology, battle alert, trader and house offers. */
+    /** The details panel: technology, battle alert, work status, trader and house offers. */
     readonly unitPanel: () => number;
     readonly technology: () => number;
     readonly attachPicks: () => number;
@@ -103,6 +106,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
   const availabilities = cache<BuildingAvailability>();
   const statuses = cache<UnlockStatus>({ same: samePlainData });
   const stands = cache<boolean>();
+  const workStatuses = cache<WorkStatus | undefined>({ same: samePlainData });
   const jobChoices = cache<boolean>({ capacity: ROSTER_CAPACITY });
   const traders = cache<TraderView | undefined>({ same: samePlainData });
   const tradeHouses = cache<ReadonlySet<number>>({ same: sameIds });
@@ -142,6 +146,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
       perTick(jobChoices, `${entity}:${jobType}`, () => host.canChooseJob(entity as Entity, jobType)) ===
       true,
     standsTo: (entity) => perTick(stands, `${entity}`, () => host.standsTo(entity as Entity)) === true,
+    workStatus: (entity) => perTick(workStatuses, `${entity}`, () => host.workStatus(entity as Entity)),
     traderView: (trader) => perTick(traders, `${trader}`, () => host.traderView(trader as Entity)),
     tradeOffersAt: (house) =>
       perTick(offersAt, `${house}`, () => host.tradeOffersAt(house as Entity)) ?? NO_OFFERS,
@@ -161,7 +166,8 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
     missionHuman: (missionId) =>
       perTick(missionEntities, `human:${missionId}`, () => host.missionHuman(missionId)) ?? null,
     versions: {
-      unitPanel: () => statuses.version + stands.version + traders.version + offersAt.version,
+      unitPanel: () =>
+        statuses.version + stands.version + workStatuses.version + traders.version + offersAt.version,
       technology: () => statuses.version,
       attachPicks: () => tradeHouses.version + vehicles.version,
       jobChoices: () => jobChoices.version,

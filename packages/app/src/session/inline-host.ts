@@ -81,6 +81,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     canChooseJob: (entity, jobType) => Promise.resolve(sim.canChooseJob(entity, jobType)),
     equipPickList: (entity, group) => Promise.resolve(sim.equipPickList(entity, group)),
     standsTo: (entity) => Promise.resolve(sim.standsTo(entity)),
+    workStatus: (entity) => Promise.resolve(sim.workStatus(entity)),
     papers: (player) => Promise.resolve(sim.papers(player)),
     diplomacyLocked: (a, b) => Promise.resolve(sim.diplomacyLocked(a, b)),
     goodsTradedWith: (player, partner) => Promise.resolve(sim.goodsTradedWith(player, partner)),

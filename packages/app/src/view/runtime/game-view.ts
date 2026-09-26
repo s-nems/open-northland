@@ -678,11 +678,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         scale: hudDom.currentScale,
         pack,
         uiString: toolPanel.controller.uiString,
-        residents: () => residentsFor(sim.snapshot()),
+        residents: () => residentsFor(host.snapshot()),
         centralWindows: toolPanel.controller.centralWindows,
       },
-      workStatus: (entity) => sim.workStatus(entity as Entity),
-      diplomacyStance: (owner) => sim.diplomacyStance(viewerPlayer(), owner),
+      workStatus: answers.workStatus,
+      diplomacyStance: (owner) => host.diplomacyStance(viewerPlayer(), owner),
     });
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;

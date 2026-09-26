@@ -30,6 +30,7 @@ import type {
   TraderView,
   UnlockKind,
   UnlockStatus,
+  WorkStatus,
   WorldSnapshot,
 } from '@open-northland/sim';
 import type { SystemProfileRow } from '../diag/system-profile.js';
@@ -164,6 +165,8 @@ export interface SessionHost {
   equipPickList(entity: Entity, group: EquipCategory): Promise<readonly EquipPickEntry[]>;
   /** Whether a unit is holding its ground on battle alert. */
   standsTo(entity: Entity): Promise<boolean>;
+  /** Why a tradesman works or stands idle; undefined when no status applies. */
+  workStatus(entity: Entity): Promise<WorkStatus | undefined>;
   papers(player: number): Promise<readonly Paper[]>;
   /** Whether the pair's stances are locked, so neither seat's declaration changes them. */
   diplomacyLocked(a: number, b: number): Promise<boolean>;

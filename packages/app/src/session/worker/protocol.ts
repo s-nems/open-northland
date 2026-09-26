@@ -51,6 +51,7 @@ export const HOST_REQUESTS = [
   'canChooseJob',
   'equipPickList',
   'standsTo',
+  'workStatus',
   'papers',
   'diplomacyLocked',
   'goodsTradedWith',
