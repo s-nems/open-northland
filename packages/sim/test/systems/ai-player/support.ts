@@ -43,6 +43,9 @@ export const JOINER = 16;
 export const FARMER = 18;
 export const BAKER = 20;
 export const CARRIER = 24;
+export const MILLER = 19;
+/** The weaponless base class the barracks drill enlists into. */
+export const UNARMED = 31;
 export const SCOUT = 27;
 export const WOMAN = 5;
 export const HQ_TYPE = 1;

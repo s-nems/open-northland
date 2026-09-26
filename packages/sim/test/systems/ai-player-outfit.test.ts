@@ -11,6 +11,7 @@ import type { SystemContext } from '../../src/systems/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
+import { armedContent, SWORD, UNARMED } from './ai-player/support.js';
 
 // The soldiers' outfit: the heal potion and the defence amulet the military module sends a man waiting at
 // the barracks to fetch.
@@ -20,6 +21,8 @@ const SEAT = 2;
 const HQ_TYPE = 1;
 const BARRACKS_TYPE = 12;
 const SPEARMAN = 32;
+/** A second tribe whose sword class arms with the same short sword good as the viking one. */
+const CELT = 2;
 const FOE = 3;
 /** A seed whose opening wave draw is its floor, so a band of that floor charges at once. */
 const CHARGING_SEED = 7;
@@ -87,6 +90,57 @@ function outfittedSeat(stock: readonly { good: number; amount: number }[], count
       x: door.x + i,
       y: door.y,
       tribe: VIKING,
+      owner: SEAT,
+    });
+  }
+  sim.step();
+  return sim;
+}
+
+/** {@link armedContent} with a second tribe binding the short sword to its own sword class. */
+function twoTribeContent(): ContentSet {
+  const base = armedContent();
+  const viking = base.tribes.find((t) => t.typeId === VIKING);
+  const sword = base.weapons.find((w) => w.goodType === SWORD);
+  if (viking === undefined || sword === undefined) throw new Error('setup: the armed content');
+  return parseContentSet({
+    ...base,
+    tribes: [...base.tribes, { ...viking, typeId: CELT, id: 'celt' }],
+    weapons: [...base.weapons, { ...sword, id: 'celt_sword_short', tribeType: CELT }],
+  });
+}
+
+/** A seat on {@link twoTribeContent} with `stock` in its headquarters and one bare-handed recruit of each
+ *  tribe waiting at the barracks door. */
+function twoTribeSeat(stock: readonly { good: number; amount: number }[]): Simulation {
+  const content = twoTribeContent();
+  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(96, 64) });
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: HQ_TYPE,
+    x: HQ.x,
+    y: HQ.y,
+    tribe: VIKING,
+    owner: SEAT,
+    initialGoods: stock,
+  });
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: BARRACKS_TYPE,
+    x: BARRACKS.x,
+    y: BARRACKS.y,
+    tribe: VIKING,
+    owner: SEAT,
+  });
+  sim.step();
+  const door = rallyOf(sim);
+  for (const [i, tribe] of [VIKING, CELT].entries()) {
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: UNARMED,
+      x: door.x + i,
+      y: door.y,
+      tribe,
       owner: SEAT,
     });
   }
@@ -193,6 +247,18 @@ describe('military module - the soldiers outfit', () => {
     expect(equipOrders(sim)).toEqual([
       { kind: 'equipGood', entity: man, group: 'misc', slot: 2, goodType: STRENGTH_AMULET },
     ]);
+  });
+
+  it('counts a weapon good the waiting tribes share once, not once per tribe', () => {
+    const sim = twoTribeSeat([{ good: SWORD, amount: 1 }]);
+    const ctx = { ...ctxOf(sim), content: twoTribeContent() };
+    const errands = [...militaryModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'equipGood');
+    expect(errands.map((c) => c.goodType)).toEqual([SWORD]);
+    expect(errands.map((c) => c.group)).toEqual(['weapon']);
+    // Both recruits stand bare-handed at the door; only the one unit in store goes out.
+    expect(
+      [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === UNARMED),
+    ).toHaveLength(2);
   });
 
   it('never sends a band that charges this decision, only one that waits', () => {

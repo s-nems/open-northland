@@ -60,10 +60,20 @@ export function outfitOrders(
     const { tribe } = world.get(e, Settler);
     if (!armsFor.has(tribe)) armsFor.set(tribe, armsByClass(world, ctx, player, tribe));
   }
+  // Each weapon good once, however many of the waiting tribes arm a class with it, so a store's units
+  // are not counted once per tribe.
+  const weaponGoods = new Set<number>();
+  for (const arms of armsFor.values())
+    for (const goods of arms) for (const good of goods) weaponGoods.add(good);
   const counted: GrantSpec[] = [
     ...misc,
     ...armour,
-    ...[...armsFor.values()].flat(2).map((goodType): GrantSpec => ({ goodType, category: 'weapon' })),
+    ...[...weaponGoods].map(
+      (goodType): GrantSpec => ({
+        goodType,
+        category: 'weapon',
+      }),
+    ),
   ];
   let stock: SpareStock | undefined; // stock minus errands underway, walked on first need
   const spare = (): SpareStock => (stock ??= spareStock(world, ctx, terrain, player, barracks, counted));
@@ -78,7 +88,13 @@ export function outfitOrders(
       for (const rank of classesBehindShare(fielded)) {
         const good = (arms[rank] ?? []).find((g) => spare().take(g));
         if (good === undefined) continue;
-        errand = { kind: 'equipGood', entity: e, group: 'weapon', slot: 0, goodType: good };
+        errand = {
+          kind: 'equipGood',
+          entity: e,
+          group: 'weapon',
+          slot: 0,
+          goodType: good,
+        };
         fielded[rank] = (fielded[rank] ?? 0) + 1;
         break;
       }
@@ -87,7 +103,13 @@ export function outfitOrders(
       if (errand !== null) break;
       const slot = freeSlotFor(eq, spec);
       if (slot === null || !spare().take(spec.goodType)) continue;
-      errand = { kind: 'equipGood', entity: e, group: spec.category, slot, goodType: spec.goodType };
+      errand = {
+        kind: 'equipGood',
+        entity: e,
+        group: spec.category,
+        slot,
+        goodType: spec.goodType,
+      };
     }
     if (errand !== null) commands.push(errand);
   }
