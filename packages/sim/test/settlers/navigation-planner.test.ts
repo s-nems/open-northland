@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, PathRoute, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
+import { cellAnchorNode, fx, type NodeId, Simulation } from '../../src/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -167,6 +167,50 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     sim.step();
     expect(sim.world.has(e, PathRequest)).toBe(false);
     expect(sim.world.has(e, MoveGoal)).toBe(true); // untouched
+  });
+});
+
+describe('plannerSystem - navigation planner: later passes over the same world', () => {
+  /** A walker on a route to `goal`, planned once so the planner holds it as settled. */
+  function settledWalker(sim: Simulation, goal: NodeId): Entity {
+    const e = travellerAt(sim, 0, 0, goal);
+    sim.world.add(e, PathRoute, { waypoints: [{ x: fx.fromInt(3), y: fx.fromInt(0), node: goal }] });
+    sim.world.add(e, PathFollow, { index: 0, legTicks: 0, legCost: 0 });
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(e, PathRequest)).toBe(false);
+    return e;
+  }
+
+  it('re-routes a settled walker whose goal is rewritten in place', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = settledWalker(sim, anchorCell(sim, 3, 0));
+    sim.world.mut(e, MoveGoal).cell = anchorCell(sim, 1, 0);
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, PathRequest).goal).toBe(anchorCell(sim, 1, 0));
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('re-routes a settled walker whose route is replaced by one ending elsewhere', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = settledWalker(sim, anchorCell(sim, 3, 0));
+    sim.world.add(e, PathRoute, {
+      waypoints: [{ x: fx.fromInt(1), y: fx.fromInt(0), node: anchorCell(sim, 1, 0) }],
+    });
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, PathRequest).goal).toBe(anchorCell(sim, 3, 0));
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('re-issues a failed request once another system drops it, and not before', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
+    sim.world.add(e, PathRequest, { start: 0, goal: 1, failed: true });
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, PathRequest).failed).toBe(true);
+    sim.world.remove(e, PathRequest);
+    expect(sim.world.verifyCaches()).toEqual([]);
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, PathRequest)).toMatchObject({ goal: anchorCell(sim, 3, 0), failed: false });
   });
 });
 

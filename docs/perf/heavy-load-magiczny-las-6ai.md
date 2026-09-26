@@ -199,7 +199,8 @@ evidence, all under `docs/tickets/sim/`:
 - [`planner-standing-waits-replan-every-tick.md`](../tickets/sim/planner-standing-waits-replan-every-tick.md):
   seated crafters, loiterers and site-waiting builders re-planned every tick (owner ruling on latency).
 - `planner-idle-settlers-visited-every-tick.md` (done): idle settlers visited before the idle gate.
-- [`navigation-planner-rechecks-every-walker.md`](../tickets/sim/navigation-planner-rechecks-every-walker.md).
+- `navigation-planner-rechecks-every-walker.md` (done): the navigation planner visits only walkers a
+  change feed names.
 - [`standing-fighters-full-settler-scans.md`](../tickets/sim/standing-fighters-full-settler-scans.md):
   the full-population fighter scans behind separation, routing and melee slots.
 - [`combat-pass-visits-every-combatant.md`](../tickets/sim/combat-pass-visits-every-combatant.md): the
