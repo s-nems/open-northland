@@ -1,4 +1,4 @@
-import type { VehicleType } from '@open-northland/data';
+import { BUILDING_KIND, type VehicleType } from '@open-northland/data';
 import {
   Building,
   CargoRun,
@@ -37,11 +37,8 @@ import {
   startPickup,
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
-import type { PlannerSpacing } from '../../planner/spacing.js';
 import { interactionCell, QUALIFIES } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
-import { planDelivery } from './delivery.js';
-import { deliveryTargetFor } from './delivery-targets.js';
 
 /**
  * How far from the vehicle's door the original's carrier looks for loose goods and houses before it asks
@@ -65,7 +62,6 @@ const CARGO_UNIT = 1;
  */
 export function planVehicleCargo(
   plan: PlannerContext,
-  spacing: PlannerSpacing,
   load: { goodType: number; amount: number } | undefined,
 ): boolean {
   const { world, entity: e } = plan;
@@ -86,8 +82,7 @@ export function planVehicleCargo(
   }
   if (loaded)
     return (
-      bringLoad(plan, vehicle, served.type, served.door, load) ||
-      placeRefusedLoad(plan, spacing, served.door, load)
+      bringLoad(plan, vehicle, served.type, served.door, load) || placeRefusedLoad(plan, served.door, load)
     );
   return fetchShortfall(plan, vehicle, served.type, served.door) || flushSurplus(plan, vehicle, served.door);
 }
@@ -144,29 +139,63 @@ function bringLoad(
 }
 
 /**
- * A unit the hold will not take, a flushed one among them, is delivered to a store within
- * {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door; with none that near it is set down where the hand
- * stands, so a crew unloading on a far shore empties the hold onto the ground there (owner's choice; the
- * original carries it to a consumer or a pile point near the carrier). The rung places it itself, so no
- * stance or errand below it holds a hand with a load at the door.
+ * A unit the hold will not take, a flushed one among them, goes into the nearest warehouse or
+ * headquarters within {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door that has room for it; with none
+ * that near it is set down where the hand stands, so a crew unloading on a far shore empties the hold
+ * onto the ground there (owner's choice: never into a workplace's shelves, where the original carries it
+ * to a consumer or a pile point near the carrier). The rung places it itself, so no stance or errand
+ * below it holds a hand with a load at the door.
  */
 function placeRefusedLoad(
   plan: PlannerContext,
-  spacing: PlannerSpacing,
   door: NodeId,
   load: { goodType: number; amount: number },
 ): true {
-  const { world, ctx, terrain, entity: e } = plan;
-  const store = deliveryTargetFor(plan, load.goodType);
-  if (
-    store !== null &&
-    manhattan(terrain, door, interactionCell(world, ctx, terrain, store, door)) <= VEHICLE_CARGO_SEARCH_RADIUS
-  ) {
-    planDelivery(plan, spacing, load);
-  } else {
+  const { world, ctx, terrain, entity: e, here } = plan;
+  const store = nearestStorageFor(plan, load.goodType, door);
+  if (store === null) {
     startDrop(world, ctx, e);
+    return true;
   }
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, store, here), () =>
+    startAtomic(
+      world,
+      e,
+      PILEUP_ATOMIC_ID,
+      { kind: 'pileup', store },
+      atomicDuration(ctx.content, plan, PILEUP_ATOMIC_ID),
+      store,
+    ),
+  );
   return true;
+}
+
+/** The nearest own storage house on the door's continent, within the search radius of it, that takes
+ *  `goodType` now. */
+function nearestStorageFor(plan: PlannerContext, goodType: number, door: NodeId): Entity | null {
+  const { world, ctx, terrain, entity: e, targets } = plan;
+  const buildings = contentIndex(ctx.content).buildings;
+  const continent = terrain.componentOf(door);
+  const accept = (store: Entity): typeof QUALIFIES | null => {
+    const building = world.tryGet(store, Building);
+    if (building === undefined || buildings.get(building.buildingType)?.kind !== BUILDING_KIND.storage)
+      return null;
+    const cell = interactionCell(world, ctx, terrain, store, door);
+    return terrain.componentOf(cell) === continent &&
+      manhattan(terrain, door, cell) <= VEHICLE_CARGO_SEARCH_RADIUS
+      ? QUALIFIES
+      : null;
+  };
+  const hit = targets.bands
+    .sinksFor(goodType, false)
+    .nearest(
+      door,
+      accept,
+      plan.limit ?? undefined,
+      unreachableGoalVeto(world, ctx, e),
+      sameSideAs(world, plan.owner),
+    );
+  return hit?.entity ?? null;
 }
 
 /** One `vehicleStockEntries` pair: the canonical good and its line. */

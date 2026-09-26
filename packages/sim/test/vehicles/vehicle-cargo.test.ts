@@ -59,8 +59,13 @@ const CART_AT = { hx: 20, hy: 20 };
 /** A carrier's round trip to a source four nodes from the door beside the cart at its nine ticks a
  *  node, with the pickup and pileup clips: one unit a trip. */
 const TRIP_TICKS = 120;
+const SOURCE_AT_HX = 24;
 /** The source piles and houses stand this far east of the cart's door. */
-const SOURCE_AT = { hx: 24, hy: 20 };
+const SOURCE_AT = { hx: SOURCE_AT_HX, hy: 20 };
+/** A workplace whose recipe consumes wood, so its shelf would take a unit a general delivery brings. */
+const SAWMILL = 2;
+/** A headquarters farther from the cart's door than the sawmill, still within the cargo search radius. */
+const STORE_BEYOND_SAWMILL_AT = { hx: SOURCE_AT_HX + 12, hy: 20 };
 /** Food a home holds, which a cargo hand leaves there. */
 const HOME_FOOD = 5;
 /** A house beyond the cargo search radius of the cart's door. */
@@ -110,10 +115,11 @@ function placeHq(
   s: Simulation,
   at: { hx: number; hy: number },
   goods?: { good: number; amount: number }[],
+  buildingType = HEADQUARTERS,
 ): Entity {
   s.enqueueSetup({
     kind: 'placeBuilding',
-    buildingType: HEADQUARTERS,
+    buildingType,
     tribe: VIKING,
     x: at.hx,
     y: at.hy,
@@ -384,6 +390,31 @@ describe('the carrier rung', () => {
     attachCarrier(s, cart);
     s.run(TRIP_TICKS);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(pileAmount(s, WOOD)).toBe(1);
+  });
+
+  it('unloads into a warehouse or headquarters, never onto a nearer workplace shelf', () => {
+    const s = sim();
+    const cart = spawnCart(s, CART_AT, [{ good: WOOD, amount: 1 }]);
+    clearVehicleWanted(s.world, cart);
+    const sawmill = placeHq(s, SOURCE_AT, undefined, SAWMILL);
+    const hq = placeHq(s, STORE_BEYOND_SAWMILL_AT);
+    attachCarrier(s, cart);
+    s.run(TRIP_TICKS * 2);
+    expect(line(s, cart, WOOD).current).toBe(0);
+    expect(s.world.get(sawmill, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
+  });
+
+  it('sets unloaded goods on the ground when only a workplace would take them', () => {
+    const s = sim();
+    const cart = spawnCart(s, CART_AT, [{ good: WOOD, amount: 1 }]);
+    clearVehicleWanted(s.world, cart);
+    const sawmill = placeHq(s, SOURCE_AT, undefined, SAWMILL);
+    attachCarrier(s, cart);
+    s.run(TRIP_TICKS);
+    expect(line(s, cart, WOOD).current).toBe(0);
+    expect(s.world.get(sawmill, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
     expect(pileAmount(s, WOOD)).toBe(1);
   });
 

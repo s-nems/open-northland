@@ -211,9 +211,9 @@ takes food out of a home, the trader's rule (owner's choice). The alias goes thr
 dish-to-edible seam, which also maps meat and sausage (approximation: the original's table lists
 neither). Further approximations: the nearest source wins where the original draws at random, ties by
 good id, every source on the door's continent as the original's flood implies; the guide network is
-the carrier's signpost confinement; a lifted-out unit goes where the delivery ladder sends an unbound
-settler's load when that store lies within radius 40 of the door, and onto the ground where the hand
-stands otherwise (owner's choice); a house source must hold the hold's canonical good, never a dish it
+the carrier's signpost confinement; a lifted-out unit goes into the nearest own warehouse or
+headquarters with room within radius 40 of the door, never onto a workplace's shelf, and onto the
+ground where the hand stands otherwise (owner's choice); a house source must hold the hold's canonical good, never a dish it
 would alias to it; a cargo hand whose walk to a source or store fails takes the planner's stranded
 recovery and keeps its seat, where only a failed walk to the door drops it. The trader's own write is
 `tradeVehicleStock`: booked and stowed in one step, and the wanted amount set to the actual one
