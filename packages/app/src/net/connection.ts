@@ -181,7 +181,7 @@ export class NetworkConnection {
         void this.answerWorld(message);
         return;
       case 'unadopted':
-        this.worlds.unadopted();
+        this.worlds.unadopted(message.requestId);
         return;
       case 'failure': {
         const error = errorFromWire(message.error);
@@ -214,7 +214,7 @@ export class NetworkConnection {
         ...(initialSaveFingerprint === undefined ? {} : { initialSaveFingerprint }),
       };
       const message: ToNetWorker<MapWorkerBoot> = { kind: 'worldInputs', requestId, world: answer };
-      const world = this.worlds.host(message, options).then((session) => {
+      const world = this.worlds.host(requestId, message, options).then((session) => {
         // The worker posts the adopted world's facts before its session's `ready`.
         const worldId = this.client.worldId;
         if (worldId === null) throw new WorldNotAdoptedError();

@@ -21,6 +21,8 @@ export class WorldNotAdoptedError extends Error {
  */
 export class RelayedWorlds<E> {
   private opening: WorkerSessionOpening<E> | null = null;
+  /** The worker client's request the opening world answers. */
+  private openingRequest: number | null = null;
   private served: WorkerSessionOpening<E> | null = null;
 
   constructor(
@@ -29,7 +31,7 @@ export class RelayedWorlds<E> {
   ) {}
 
   /** Post the world's inputs and resolve once the worker serves it; a world still opening is dropped. */
-  host(inputs: unknown, options: WorkerSessionOptions): Promise<WorkerSession<E>> {
+  host(requestId: number, inputs: unknown, options: WorkerSessionOptions): Promise<WorkerSession<E>> {
     this.opening?.fail(new WorldNotAdoptedError());
     const opening: WorkerSessionOpening<E> = sessionOverPort<E>(
       {
@@ -45,6 +47,7 @@ export class RelayedWorlds<E> {
       this.reports,
     );
     this.opening = opening;
+    this.openingRequest = requestId;
     opening.postBoot(inputs);
     return opening.ready;
   }
@@ -60,8 +63,10 @@ export class RelayedWorlds<E> {
     opening?.receive(message, receiveMs);
   }
 
-  /** The opening world will not be served: its client did not take it, or the connection ended. */
-  unadopted(): void {
+  /** The opening world will not be served: its client did not take the world `requestId` asked
+   *  for, or the connection ended (no id). A request an opening already replaced changes nothing. */
+  unadopted(requestId?: number): void {
+    if (requestId !== undefined && requestId !== this.openingRequest) return;
     const opening = this.opening;
     this.opening = null;
     opening?.fail(new WorldNotAdoptedError());

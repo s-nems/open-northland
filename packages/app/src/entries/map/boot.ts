@@ -34,6 +34,7 @@ import { onOffParam } from '../../game/session-rules.js';
 import type { SessionRosterSlot } from '../../game/session-url.js';
 import { terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
+import { WorldNotAdoptedError } from '../../net/relayed-worlds.js';
 import { type PresentationPack, presentationPack } from '../../presentation/pack.js';
 import type { SessionHost } from '../../session/index.js';
 import { type BootPhase, type BootProgress, mountBootProgress } from '../../view/boot-progress.js';
@@ -117,6 +118,23 @@ export interface AssembledMapWorld<H extends HostedMapWorld = HostedMapWorld> {
   readonly staticObjects: LoadedObjects | undefined;
   /** The map's shore waves by placement ordinal, the key a script's landscape removal names them by. */
   readonly groundWaves: ReadonlyMap<number, GroundWave>;
+}
+
+/**
+ * Host the planned world; null when a staged save failed to restore, which halts the boot. A world
+ * the relay client dropped for a newer one, or on leaving, failed no load: its entry settles it.
+ */
+export async function hostMapWorld<H extends HostedMapWorld>(
+  plan: MapBootPlan<H>,
+  documents: MapWorldDocuments,
+): Promise<H | null> {
+  try {
+    return await plan.hostWorld(documents);
+  } catch (err) {
+    if (plan.stagedSave === null || err instanceof WorldNotAdoptedError) throw err;
+    haltOnFailedRestore(err);
+    return null;
+  }
 }
 
 /** Assemble the map's world up to a sim standing at a tick boundary; null when the boot halted. */
@@ -216,24 +234,18 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       }
     }
     await boot.begin('world');
-    let hosted: H;
-    try {
-      hosted = await plan.hostWorld({
-        map: loaded,
-        ir,
-        script,
-        goodNames,
-        content: realContent?.content ?? null,
-        session,
-        // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
-        // world never reads it.
-        missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
-      });
-    } catch (err) {
-      if (stagedSave === null) throw err;
-      haltOnFailedRestore(err);
-      return null;
-    }
+    const hosted = await hostMapWorld(plan, {
+      map: loaded,
+      ir,
+      script,
+      goodNames,
+      content: realContent?.content ?? null,
+      session,
+      // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed
+      // world never reads it.
+      missions: plan.multiplayer ? null : onOffParam(params, 'missions'),
+    });
+    if (hosted === null) return null;
     const { host } = hosted;
     setDiagGameSession({
       entry: 'map',
