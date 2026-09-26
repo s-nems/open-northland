@@ -466,9 +466,10 @@ Rules the shell enforces:
 - Closing with Esc or the close medallion returns keyboard focus to the beam entry that owns the
   window. Only the mission sheet and the system menu hold the simulation paused; other windows never
   touch the pause.
-- A wheel over a DOM region never reaches the camera, and the edge pan pauses while the pointer is
-  over one. Presses on a region never reach the map; presses on the map keep the window open and
-  select independently, with the details panel in its own corner.
+- A wheel over a DOM region never reaches the camera. The edge pan keeps working over every region,
+  so chrome along a screen edge never blocks scrolling. Presses on a region never reach the map;
+  presses on the map keep the window open and select independently, with the details panel in its
+  own corner.
 - A legacy window that cannot fit above the beam shortens its list or lifts toward the top bar; a
   window wider than the region centres on the screen and yields to the minimap as before.
 - The DOM plane takes every press inside a window, so a central window never stands over the minimap:

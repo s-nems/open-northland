@@ -62,6 +62,8 @@ export interface MinimapOptions {
 export interface MinimapHandle {
   /** True when the client point is over the framed window. */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** True while a left-drag that began in the map hole steers the camera. */
+  dragging(): boolean;
   /** The framed window's screen-px box, which the tool panel's pop-up lists must stay clear of, or null
    *  while the window is not shown. Resolved against the live screen, since the panel refreshes first. */
   panelRect(): Rect | null;
@@ -83,6 +85,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   });
   return {
     claimsPointer: (clientX, clientY) => mounts.current().claimsPointer(clientX, clientY),
+    dragging: () => mounts.current().dragging(),
     panelRect: () => mounts.current().panelRect(),
     update: (snapshot, fog) => mounts.current().update(snapshot, fog),
     setHidden: (next) => {
@@ -239,6 +242,7 @@ async function mountMinimapAtScale(opts: MinimapOptions): Promise<MountedMinimap
         const p = opts.toScreenPx(clientX, clientY);
         return pointOverMinimap(layout, p.x, p.y);
       },
+      dragging: () => dragging,
       panelRect: () =>
         container.visible && !hidden ? minimapLayout(bounds, app.screen.height, opts.uiscale).panel : null,
       update: (snapshot, fog = null) => {

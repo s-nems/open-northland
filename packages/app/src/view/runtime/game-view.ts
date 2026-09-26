@@ -593,7 +593,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       toScreenPx: clientToScreen,
     });
 
-    // Open windows, the minimap and the DOM regions claim against both camera gestures.
+    // Open windows, the minimap and the DOM regions keep the wheel from zooming under them.
     const mountedMinimap = minimap;
     cleanup.push(() => mountedMinimap.dispose());
     const hudClaims = (clientX: number, clientY: number): boolean =>
@@ -601,7 +601,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       mountedMinimap.claimsPointer(clientX, clientY) ||
       hudDom.claims(clientX, clientY);
     cameraCtl.setPointerGuard(hudClaims);
-    cameraCtl.setEdgeGuard(hudClaims);
+    // A minimap drag jumps the camera on every move, which an edge pan in between would fight.
+    cameraCtl.setEdgeHold(() => mountedMinimap.dragging());
 
     // Late-bound: the badge projection below needs the fog gates and the building index.
     let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;

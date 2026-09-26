@@ -48,11 +48,8 @@ export interface CameraController {
    * pop-up windows only, since the wheel should still zoom over the strip and during placement.
    */
   setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
-  /**
-   * Claim a client point for the HUD against edge scrolling; `null` clears. The tool-panel strip
-   * deliberately does not claim: it hugs the left screen edge, where edge-pan must keep working.
-   */
-  setEdgeGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
+  /** Hold edge scrolling while a HUD gesture steers the camera itself; `null` clears. */
+  setEdgeHold(hold: (() => boolean) | null): void;
   dispose(): void;
 }
 
@@ -86,15 +83,16 @@ export function createCameraController(
   let lastX = 0;
   let lastY = 0;
   let pointerGuard: ((clientX: number, clientY: number) => boolean) | null = null;
-  let edgeGuard: ((clientX: number, clientY: number) => boolean) | null = null;
+  let edgeHold: (() => boolean) | null = null;
   // The clamped scale the wheel glide eases toward, anchored at the last wheel cursor in screen px, so
   // a burst of notches magnifies smoothly about one point.
   let targetScale = initial.scale ?? 1;
   let minZoom = MIN_ZOOM;
   let zoomAnchorX = 0;
   let zoomAnchorY = 0;
-  // The edge-scroll probe: the last `mousemove` sample that landed on the canvas, in client px. Null
-  // while the cursor is elsewhere or nothing has moved yet, so a parked cursor waits.
+  // The edge-scroll probe: the last `mousemove` sample in client px, whatever element it hit, so HUD
+  // chrome along a screen edge still scrolls. Null once the cursor leaves the window or before any
+  // move, so a parked cursor waits.
   let pointerSample: { readonly x: number; readonly y: number } | null = null;
   let suspended = false;
   const setDragScrollCursorHidden = (hidden: boolean): void => {
@@ -117,8 +115,8 @@ export function createCameraController(
   const onMouseMove = (e: MouseEvent): void => {
     if (suspended) return;
     // Every move re-arms the probe, because `mouseenter` fires only on a boundary crossing and a refocus
-    // over the canvas gets none. Tested by hit target, so a DOM element stacked over the canvas disarms it.
-    pointerSample = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
+    // gets none.
+    pointerSample = { x: e.clientX, y: e.clientY };
     if (!dragging) return;
     const { sx, sy } = screenScale(canvas, resolution());
     const direction = activeInputSettings.invertDragScroll ? -1 : 1;
@@ -133,9 +131,10 @@ export function createCameraController(
   const onMouseUp = (e: MouseEvent): void => {
     if (e.button === 1) endMiddleDrag();
   };
-  // The crossing still disarms: a cursor that leaves the browser window lands no further `mousemove`.
-  const onMouseLeave = (): void => {
-    pointerSample = null;
+  // Leaving the browser window disarms, because the cursor lands no further `mousemove` there. A null
+  // `relatedTarget` marks that crossing; moves between page elements carry one.
+  const onMouseOut = (e: MouseEvent): void => {
+    if (e.relatedTarget === null) pointerSample = null;
   };
   const onWheel = (e: WheelEvent): void => {
     if (suspended) return;
@@ -188,7 +187,7 @@ export function createCameraController(
   canvas.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
-  canvas.addEventListener('mouseleave', onMouseLeave);
+  window.addEventListener('mouseout', onMouseOut);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -227,8 +226,8 @@ export function createCameraController(
     setPointerGuard: (guard) => {
       pointerGuard = guard;
     },
-    setEdgeGuard: (guard) => {
-      edgeGuard = guard;
+    setEdgeHold: (hold) => {
+      edgeHold = hold;
     },
     update: (dtMs) => {
       if (suspended) return;
@@ -246,26 +245,24 @@ export function createCameraController(
       if (held.has('panRight')) desiredX -= keyboardSpeed;
       if (held.has('panUp')) desiredY += keyboardSpeed;
       if (held.has('panDown')) desiredY -= keyboardSpeed;
-      // Edge scroll is suppressed mid middle-drag, while the window is unfocused, and wherever a HUD
-      // surface claims the point. A left-drag marquee is deliberately not suppressed, so dragging a
-      // selection box into the margin pans under it.
+      // Edge scroll is suppressed while the window is unfocused and while a drag steers the camera (a
+      // middle-drag or an edge hold), never by HUD surfaces over the margin. A left-drag marquee is
+      // deliberately not suppressed, so dragging a selection box into the margin pans under it.
       if (
         activeInputSettings.edgeScrollEnabled &&
         pointerSample &&
         !dragging &&
-        document.hasFocus() &&
-        edgeGuard?.(pointerSample.x, pointerSample.y) !== true
+        edgeHold?.() !== true &&
+        document.hasFocus()
       ) {
         const { sx, sy, rect } = screenScale(canvas, resolution());
-        const edge = edgePanVelocity(
-          pointerSample.x - rect.left,
-          pointerSample.y - rect.top,
-          rect.width,
-          rect.height,
-          tuning.edgeScrollSpeed,
-        );
-        desiredX += edge.vx * sx * activeInputSettings.edgeScrollSpeed; // CSS px/s to screen px/s
-        desiredY += edge.vy * sy * activeInputSettings.edgeScrollSpeed;
+        const x = pointerSample.x - rect.left;
+        const y = pointerSample.y - rect.top;
+        if (x >= 0 && y >= 0 && x <= rect.width && y <= rect.height) {
+          const edge = edgePanVelocity(x, y, rect.width, rect.height, tuning.edgeScrollSpeed);
+          desiredX += edge.vx * sx * activeInputSettings.edgeScrollSpeed; // CSS px/s to screen px/s
+          desiredY += edge.vy * sy * activeInputSettings.edgeScrollSpeed;
+        }
       }
       if (desiredX !== 0 || desiredY !== 0) {
         cam = panCamera(cam, (desiredX * dt) / 1000, (desiredY * dt) / 1000);
@@ -276,7 +273,7 @@ export function createCameraController(
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('mouseleave', onMouseLeave);
+      window.removeEventListener('mouseout', onMouseOut);
       canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);

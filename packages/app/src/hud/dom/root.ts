@@ -11,8 +11,8 @@ export interface HudPlane {
   /** `HudScaleTarget` seam shared with the Pixi HUD parts. */
   setUiScale(scale: number): Promise<void>;
   currentScale(): number;
-  /** True when a region of the plane is under this client point, so the camera's edge pan and the
-   *  world hover yield the way they do for the Pixi HUD. */
+  /** True when a region of the plane is under this client point, so the wheel zoom and the world
+   *  hover yield the way they do for the Pixi HUD. */
   claims(clientX: number, clientY: number): boolean;
 }
 

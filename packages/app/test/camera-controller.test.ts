@@ -177,23 +177,37 @@ describe('createCameraController edge-scroll arming', () => {
     ctl.dispose();
   });
 
-  it('disarms on a mousemove over a DOM element stacked above the canvas', () => {
+  it('arms on a mousemove over HUD chrome stacked above the canvas edge', () => {
     const { ctl, move } = install();
-    move(LEFT_BAND_X, CENTRE_Y);
-    expect(panStep(ctl)).toBeGreaterThan(0);
-    move(LEFT_BAND_X, CENTRE_Y, { modalBackdrop: true });
-    expect(panStep(ctl)).toBe(0);
-    // Closing the window puts the cursor back on the canvas: the next move re-arms.
-    move(LEFT_BAND_X, CENTRE_Y);
+    move(LEFT_BAND_X, CENTRE_Y, { hudBeam: true });
     expect(panStep(ctl)).toBeGreaterThan(0);
     ctl.dispose();
   });
 
-  it('disarms on mouseleave, the crossing that carries the cursor out of the window', () => {
-    const { ctl, canvasEvents, move } = install();
+  it('holds while an edge hold claims the camera', () => {
+    const { ctl, move } = install();
+    let held = true;
+    ctl.setEdgeHold(() => held);
     move(LEFT_BAND_X, CENTRE_Y);
+    expect(panStep(ctl)).toBe(0);
+    held = false;
     expect(panStep(ctl)).toBeGreaterThan(0);
-    canvasEvents.emit('mouseleave');
+    ctl.dispose();
+  });
+
+  it('ignores a pointer outside the canvas rectangle', () => {
+    const { ctl, move } = install();
+    move(-LEFT_BAND_X, CENTRE_Y, { pageMargin: true });
+    expect(panStep(ctl)).toBe(0);
+    ctl.dispose();
+  });
+
+  it('disarms when the cursor leaves the browser window, not when it crosses onto HUD chrome', () => {
+    const { ctl, win, move } = install();
+    move(LEFT_BAND_X, CENTRE_Y);
+    win.emit('mouseout', { relatedTarget: { hudBeam: true } });
+    expect(panStep(ctl)).toBeGreaterThan(0);
+    win.emit('mouseout', { relatedTarget: null });
     expect(panStep(ctl)).toBe(0);
     move(LEFT_BAND_X, CENTRE_Y);
     expect(panStep(ctl)).toBeGreaterThan(0);
