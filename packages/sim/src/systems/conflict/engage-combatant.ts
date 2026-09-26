@@ -316,13 +316,13 @@ function resolveFleeState(
 ): boolean {
   // A settler that has claimed a shelter never flees: the run for cover is its flight. Running would take
   // it back into the open, or abandon the walk it holds a seat for, leaving the building reporting itself
-  // full while standing empty.
-  const sheltering = stance.ordered || world.has(e, Sheltering);
-  if (stance.mode !== MILITARY_MODE.FLEE || sheltering) {
+  // full while standing empty. A player's order holds it back the same way.
+  const heldBack = stance.ordered || world.has(e, Sheltering);
+  if (stance.mode !== MILITARY_MODE.FLEE || heldBack) {
     if (!world.has(e, Fleeing)) return false;
     // The blow's run under IGNORE: the unit finishes it, then hands itself back where it stands. Only the
     // marker owns it meanwhile, so the planner and the hunt leave the runner alone.
-    if (!sheltering && stance.mode !== null && runsFromBlows(ctx, attacker, stance.mode)) {
+    if (!heldBack && stance.mode !== null && runsFromBlows(ctx, attacker, stance.mode)) {
       world.remove(e, Engagement);
       world.remove(e, HuntFocus);
       if (startBlowRun(world, ctx, terrain, e)) return true;

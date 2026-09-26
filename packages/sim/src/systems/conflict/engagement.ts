@@ -552,9 +552,10 @@ const OPEN_CROWDING: Crowding = { occupied: 0, sealed: false };
  * The enemy a fighter about to strike turns to instead: one within reach or a step outside it, of a kind
  * no worse than `heldTarget`, with strictly fewer bodies standing at it than the held one; among those the
  * nearest, then the lowest id. Null keeps the held one. Asked on the ticks a swing could start, so before
- * a walker's first blow and after every one, and never mid-swing, and it costs one band scan a step wider than the weapon's reach, so the work follows
- * the fighters in contact. Owner rule: the original never lets go of a live target it can reach; here
- * it is what keeps three swords off one man once the lines have mixed.
+ * a walker's first blow and after every one, and never mid-swing, and it costs one band scan a step wider
+ * than the weapon's reach, so the work follows the fighters in contact. Owner rule: the original never
+ * lets go of a live target it can reach; here it is what keeps three swords off one man once the lines
+ * have mixed.
  */
 function lessCrowdedInReach(
   world: World,

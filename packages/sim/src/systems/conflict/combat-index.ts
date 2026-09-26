@@ -58,11 +58,10 @@ export function passIndexOf(world: World, tick: number): CombatIndex | null {
  * are appended per build, so an index answers until the next one is built for the same world. Derived state, never
  * hashed.
  *
- * The coarse queries over-approximate (Chebyshev box ⊇ Manhattan diamond and map-point disc, cell granularity,
- * and "owned by a
- * player at war with the seeker either way, or unowned and not passive wildlife" ⊇ every gated accept
- * filter), so a `false` proves the nearest search would find nothing; a seeker whose filter breaks that
- * superset is ungated via a null `EngageSpec.player`.
+ * The coarse queries over-approximate (Chebyshev box ⊇ Manhattan diamond and map-point disc, cell
+ * granularity, and "owned by a player at war with the seeker either way, or unowned and not passive
+ * wildlife" ⊇ every gated accept filter), so a `false` proves the nearest search would find nothing; a
+ * seeker whose filter breaks that superset is ungated via a null `EngageSpec.player`.
  *
  * A nearest query scans the members of the coarse cells its box overlaps rather than walking every node of
  * every ring: a search band of radius 20 holds 840 nodes but rarely more than a few dozen members. The

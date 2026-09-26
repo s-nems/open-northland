@@ -170,11 +170,13 @@ export function runsFromBlows(ctx: SystemContext, runner: SettlerIdentity, mode:
 
 /**
  * Start `e` running a {@link FLEE_STEP_NODES} step away from `from`, the node a blow on it or on a
- * neighbour came from, unless it is already running, sheltering, under a player's order or too worn out to
- * run. Original behavior. A runner a clip holds, the struck one flinching or a worker mid-stroke, owes the
- * run until the clip ends, and one that carries a haul sets it down first. Under FLEE the drive then keeps
- * it running from what it sees and winds down after {@link FLEE_COOLDOWN_TICKS} in the clear; under any
- * other stance the run is the whole reaction, and the unit goes back to its work where it ends.
+ * neighbour came from. Original behavior. It stands instead while already running, sheltering, under a
+ * player's order, too worn out to run or script-passive: gates of this sim's own (approximation: the
+ * original's own gates are not all mapped onto these). A runner a clip holds, the struck one flinching or
+ * a worker mid-stroke, owes the run until the clip ends, and one that carries a haul sets it down first.
+ * Under FLEE the drive then keeps it running from what it sees and winds down after
+ * {@link FLEE_COOLDOWN_TICKS} in the clear; under any other stance the run is the whole reaction, and the
+ * unit goes back to its work where it ends.
  */
 export function runFromBlow(
   world: World,
