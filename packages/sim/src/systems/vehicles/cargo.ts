@@ -2,7 +2,6 @@ import { CargoRun, Position, Rider, Vehicle, VehicleDrive, VehicleStock } from '
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { canonicalById } from '../spatial/nodes.js';
 import { isShipAtSea, landingOf, refuseCrew, setDownRider } from './crew.js';
 import { cargoHandHasWork, clearVehicleWanted, hasCargoHand, setVehicleWanted } from './stock.js';
 
@@ -65,7 +64,7 @@ export function abandonCargoRun(world: World, carrier: Entity): void {
  * the hand is planned the tick it lands.
  */
 export const cargoHandDisembarkSystem: System = (world, ctx) => {
-  for (const e of canonicalById(world.query(Rider))) {
+  for (const e of world.canonicalQuery(Rider)) {
     if (world.has(e, Position)) continue;
     const vehicle = world.get(e, Rider).vehicle;
     const state = world.tryGet(vehicle, Vehicle);

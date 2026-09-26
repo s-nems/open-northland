@@ -83,6 +83,22 @@ export interface TargetCandidates {
   readonly yard: YardTargets;
 }
 
+interface SiteSplit {
+  readonly construction: readonly Entity[];
+  readonly vehicle: Entity[];
+}
+
+/** The construction sites split into the vehicle sites and the rest; the rest is the shared canonical
+ *  list itself while no vehicle site stands. */
+function splitVehicleSites(world: World, ctx: SystemContext): SiteSplit {
+  const sites = world.canonicalQuery(UnderConstruction, Building, Position);
+  const index = contentIndex(ctx.content);
+  const isVehicleSite = (e: Entity): boolean =>
+    index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.vehicle;
+  const vehicle = sites.filter(isVehicleSite);
+  return { construction: vehicle.length === 0 ? sites : sites.filter((e) => !isVehicleSite(e)), vehicle };
+}
+
 /** Snapshot the planner's canonical target categories once for the tick.
  *
  *  The getters are memoized for the tick, so a view no settler asks for is never built. A first-access
@@ -96,13 +112,8 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
 
   const stockpiles = world.canonicalQuery(Stockpile, Position);
   const buildings = world.canonicalQuery(Building, Position);
-  const constructionSites: Entity[] = [];
-  const vehicleSites: Entity[] = [];
-  const index = contentIndex(ctx.content);
-  for (const e of world.canonicalQuery(UnderConstruction, Building, Position)) {
-    const kind = index.buildings.get(world.get(e, Building).buildingType)?.kind;
-    (kind === BUILDING_KIND.vehicle ? vehicleSites : constructionSites).push(e);
-  }
+  let sites: SiteSplit | undefined;
+  const siteSplit = (): SiteSplit => (sites ??= splitVehicleSites(world, ctx));
   let cropsByFarm: Map<Entity, Entity[]> | undefined;
   let stockpileCells: InteractionCellIndex | undefined;
   let buildingCells: InteractionCellIndex | undefined;
@@ -126,10 +137,14 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       buildingCells ??= new InteractionCellIndex(world, ctx, terrain, buildings);
       return buildingCells;
     },
-    constructionSites,
-    vehicleSites,
+    get constructionSites() {
+      return siteSplit().construction;
+    },
+    get vehicleSites() {
+      return siteSplit().vehicle;
+    },
     get constructionSiteCells() {
-      constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, constructionSites);
+      constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, siteSplit().construction);
       return constructionSiteCells;
     },
     get wallSiteCells() {

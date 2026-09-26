@@ -238,7 +238,9 @@ function stationaryNode(world: World, e: Entity): NodeXY | undefined {
 
 const stationary = new WeakMap<World, StationaryOwned>();
 
-function stationaryOwnedSettlers(world: World): NodeBuckets {
+/** The world's stationary owned settlers by node, caught up to the live world. A caller outside the
+ *  planner pass (the vehicle shove) may catch it up too: the buckets are a function of the world alone. */
+export function stationaryOwnedSettlers(world: World): NodeBuckets {
   let held = stationary.get(world);
   if (held === undefined) {
     const created = new StationaryOwned(world);

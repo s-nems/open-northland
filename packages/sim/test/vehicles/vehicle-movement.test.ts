@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   Health,
   MoveGoal,
@@ -10,7 +10,7 @@ import {
   Vehicle,
   VehicleDrive,
 } from '../../src/components/index.js';
-import type { Entity } from '../../src/ecs/world.js';
+import type { Component, Entity } from '../../src/ecs/world.js';
 import {
   exportSaveGame,
   type HalfCellNode,
@@ -41,6 +41,7 @@ import {
   VEHICLE_TARGET_SNAP_RADIUS,
   VEHICLE_WALK_RANGE_NODES,
   vehicleLegTicks,
+  vehicleMovementSystem,
   vehicleMovePeriod,
   vehicleProgressPerTick,
 } from '../../src/systems/vehicles/index.js';
@@ -123,6 +124,10 @@ function commanded(s: Simulation, vehicleType: number, x: number, y: number, own
 function anchorOf(s: Simulation, e: Entity): HalfCellNode {
   const p = s.world.get(e, Position);
   return nodeOfPosition(p.x, p.y);
+}
+
+function sameNode(a: HalfCellNode, b: HalfCellNode): boolean {
+  return a.hx === b.hx && a.hy === b.hy;
 }
 
 function order(s: Simulation, vehicle: Entity, x: number, y: number, player = P0): void {
@@ -424,6 +429,22 @@ describe('moveVehicle', () => {
     expect(s.world.has(bystander, MoveGoal)).toBe(false);
   });
 
+  it('shoves from the stationary settler index without walking the settler store per node', () => {
+    const s = sim();
+    const catapult = commanded(s, CATAPULT, 4, 8);
+    const bystander = spawnSettler(s, 8, 8);
+    order(s, catapult, 8, 8);
+    s.step();
+    const queries = vi.spyOn(s.world, 'query');
+    for (let t = 0; t < SHOVE_WALK_TICKS * 4 && s.world.has(catapult, VehicleDrive); t++) {
+      vehicleMovementSystem(s.world, ctxOf(s));
+    }
+    expect(queries.mock.calls.some((args) => args.includes(Settler as Component<unknown>))).toBe(false);
+    queries.mockRestore();
+    expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+    expect(s.world.has(bystander, MoveGoal)).toBe(true);
+  });
+
   it('parks where another vehicle stands only outside its cells and routes around it', () => {
     const s = sim();
     const terrain = s.terrain;
@@ -484,6 +505,23 @@ describe('moveVehicle', () => {
     expect(canPlaceWorkFlag(s.world, ctx, terrain, oldRing)).toBe(true);
     expect(canPlaceWorkFlag(s.world, ctx, terrain, newRing)).toBe(false);
     expect(placementBlockerVersion(s.world)).not.toBe(before);
+    expect(s.world.verifyCaches()).toEqual([]);
+  });
+
+  it('keeps the placement-blocker version across a leg under way and moves it on each node entered', () => {
+    const s = sim();
+    const cart = commanded(s, HANDCART, 4, 8);
+    order(s, cart, 12, 8);
+    s.step(); // the drive starts; the first leg enters its node on the next pass
+    s.step();
+    const entered = anchorOf(s, cart);
+    const version = placementBlockerVersion(s.world);
+    s.world.mut(cart, Vehicle).facing = HEX_WEST; // a facing, task or seat write moves no cell
+    s.world.mut(cart, Vehicle).task = 'interrupted';
+    expect(placementBlockerVersion(s.world)).toBe(version);
+    for (let tick = 0; tick < 2 * CART_PERIOD_GRASS && sameNode(anchorOf(s, cart), entered); tick++) s.step();
+    expect(sameNode(anchorOf(s, cart), entered)).toBe(false);
+    expect(placementBlockerVersion(s.world)).not.toBe(version);
     expect(s.world.verifyCaches()).toEqual([]);
   });
 

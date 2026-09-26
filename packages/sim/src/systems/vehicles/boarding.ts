@@ -20,8 +20,9 @@ import { clearNavState, redirectRoute } from '../movement/nav-state.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { markLostWay } from '../settlers/lost-way.js';
+import { type IdleStands, wakeIdle } from '../settlers/planner/idle-replan.js';
 import type { PlannerSpacing } from '../settlers/planner/spacing.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { isCarrierJob } from '../stores/workplace.js';
 import {
   boardingNode,
@@ -36,6 +37,7 @@ import {
 } from './crew.js';
 import { startDock } from './dock.js';
 import { refuseMove, startVehicleDrive } from './movement.js';
+import { type VehicleWorkFilter, vehiclesAtWork } from './registry.js';
 import { cargoHandHasWork } from './stock.js';
 
 // The boarding drives of docs/formats/VEHICLES.md "Crew" and "Ships and docking": a vehicle that needs its
@@ -51,7 +53,7 @@ function continentAt(terrain: TerrainGraph, point: HalfCellNode): number {
 /**
  * One pass of the crew's boarding: every rider still outside is asked in when it stands on the door's
  * continent, and detached where it stands when on another continent. Returns whether the whole crew is
- * inside; a carried vehicle counts once it rides inside too. Deviation (user rule): the original skips a
+ * inside; a carried vehicle counts once it rides inside too. Deviation (owner's choice): the original skips a
  * rider with a pending need; here the vehicle's order is a forced boarding, and the rider rung answers
  * it over the need, which stands still aboard.
  */
@@ -72,8 +74,10 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
       continue;
     }
     allInside = false;
-    const live = world.tryMut(rider, Rider);
-    if (live !== undefined && !live.boarding) live.boarding = true;
+    if (world.tryGet(rider, Rider)?.boarding === false) {
+      world.mut(rider, Rider).boarding = true;
+      wakeIdle(world, rider); // a rider waiting by the door answers the ask on this tick's pass
+    }
   }
   for (const seat of carriedVehicles(state)) {
     if (!seat.inside && world.isAlive(seat.entity)) allInside = false;
@@ -84,7 +88,7 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
 /**
  * Whether a rider steps in as soon as it reaches the door, unasked: everyone but the crew that works its
  * vehicle from outside, a carrier serving the hold, a trader working a route or a commander with cargo
- * to move, who wait by the door for their own rungs until the vehicle asks. Deviation (user rule): the
+ * to move, who wait by the door for their own rungs until the vehicle asks. Deviation (owner's choice): the
  * original keeps every rider outside until the vehicle's order asks it in.
  */
 function boardsUnasked(world: World, ctx: SystemContext, vehicle: Entity, e: Entity): boolean {
@@ -115,7 +119,8 @@ function standsAtDoor(
 /**
  * The rider rung of the drive ladder, for an idle attached settler: walk to the vehicle's boarding node
  * and step in there, at once for a passenger, once the vehicle asks for a carrier or trader. True when
- * the rung took the settler.
+ * the rung took the settler. A rider left waiting by the door, or with no door to walk to, stands on the
+ * idle cadence: the vehicle's ask, an order or a route command wakes it.
  */
 export function planRider(
   world: World,
@@ -123,17 +128,22 @@ export function planRider(
   terrain: TerrainGraph,
   e: Entity,
   spacing: PlannerSpacing,
+  idle: IdleStands,
 ): boolean {
   const rider = world.tryGet(e, Rider);
   if (rider === undefined) return false;
   const vehicle = rider.vehicle;
   if (!world.has(vehicle, Vehicle)) return false;
   const doorNode = boardingNode(world, ctx, terrain, vehicle);
-  if (doorNode === null) return true; // the vehicle rides a carrier: nowhere to walk to
+  if (doorNode === null) {
+    idle.stand(e, false); // the vehicle rides a carrier: nowhere to walk to
+    return true;
+  }
   const here = entityNode(world, terrain, e);
   if (standsAtDoor(terrain, spacing, e, here, doorNode)) {
     const steps = rider.boarding || boardsUnasked(world, ctx, vehicle, e);
     if (steps && !isShipAtSea(ctx, world.get(vehicle, Vehicle))) boardRider(world, e, vehicle);
+    else idle.stand(e, false);
     return true;
   }
   redirectRoute(world, e, doorNode);
@@ -149,7 +159,7 @@ export function planRider(
  */
 export const riderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
-  for (const e of canonicalById(world.query(Rider))) {
+  for (const e of world.canonicalQuery(Rider)) {
     const rider = world.get(e, Rider);
     const state = world.tryGet(rider.vehicle, Vehicle);
     const seated = state?.passengers.some((seat) => seat !== null && seat.entity === e) === true;
@@ -158,7 +168,7 @@ export const riderSystem: System = (world, ctx) => {
         const landing = landingOf(world, ctx, rider.vehicle) ?? vehicleAnchor(world, rider.vehicle);
         if (landing !== null) setDownRider(world, e, landing);
       }
-      world.remove(e, Rider);
+      releaseRider(world, e, rider.vehicle); // gives any cargo booking back too
       continue;
     }
     const request = world.tryGet(e, PathRequest);
@@ -267,13 +277,18 @@ export function leaveCarrier(
   return true;
 }
 
-/** The vehicle's own boarding step for a goto: a held goal starts its drive once the crew is inside. */
+/** The vehicle's own boarding step for a goto: a held goal starts its drive once the crew is inside,
+ *  unless its commander left meanwhile, in which case the order lapses with the no-commander note. */
 function resumeHeldGoal(world: World, ctx: SystemContext, terrain: TerrainGraph, vehicle: Entity): void {
   const live = world.mut(vehicle, Vehicle);
   const goal = live.heldGoal;
   live.heldGoal = null;
   live.task = 'none';
   if (goal === null) return;
+  if (vehicleCommander(live) === null) {
+    refuseMove(world, ctx, vehicle, 'noCommander');
+    return;
+  }
   const node = terrain.nodeAtClamped(goal.hx, goal.hy);
   if (!startVehicleDrive(world, ctx, terrain, vehicle, node)) {
     refuseMove(world, ctx, vehicle, 'noPath'); // still moored where it lay, its door on the old mooring
@@ -298,6 +313,12 @@ function resumeHeldDock(world: World, ctx: SystemContext, terrain: TerrainGraph,
   startDock(world, ctx, terrain, vehicle, { hx: point.hx, hy: point.hy });
 }
 
+/** The tasks the boarding pass drives. */
+const boardingTask: VehicleWorkFilter = (_content, state) =>
+  state.task === 'waitsForHuman' ||
+  state.task === 'boardsShip' ||
+  (state.task === 'docks' && state.heldGoal !== null);
+
 /**
  * Drive the vehicles that wait on their crew or board a ship. `waitsForHuman` ends, and any held goto
  * starts, once every rider is inside; a dock point held under `docks` starts its sail the same way.
@@ -308,7 +329,8 @@ function resumeHeldDock(world: World, ctx: SystemContext, terrain: TerrainGraph,
 export const vehicleBoardingSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
-  for (const e of canonicalById(world.query(Vehicle, Position))) {
+  for (const e of vehiclesAtWork(world, ctx.content, boardingTask)) {
+    if (!world.has(e, Position)) continue;
     const state = world.get(e, Vehicle);
     if (state.task === 'waitsForHuman') {
       if (boardCrew(world, ctx, e)) resumeHeldGoal(world, ctx, terrain, e);

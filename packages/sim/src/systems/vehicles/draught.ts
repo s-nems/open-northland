@@ -1,4 +1,4 @@
-import type { VehicleType } from '@open-northland/data';
+import type { ContentSet, VehicleType } from '@open-northland/data';
 import {
   CurrentAtomic,
   commanderSlotOf,
@@ -7,6 +7,7 @@ import {
   Frightened,
   Health,
   Livestock,
+  Owner,
   ownerOf,
   Position,
   Resting,
@@ -23,9 +24,10 @@ import type { System, SystemContext } from '../context.js';
 import { removeSettlerSilently } from '../lifecycle/death.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { awaitsDraughtAnimal } from '../readviews/vehicles.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { boardingNode } from './crew.js';
 import { nodeOf } from './movement.js';
+import { type VehicleWorkFilter, vehiclesAtWork } from './registry.js';
 
 // The draught animal of docs/formats/VEHICLES.md "Lifecycle": a cart whose type names a
 // `draggingAnimalTribe` waits under task 4 and recruits the animal itself from its owner's herd on the
@@ -44,8 +46,8 @@ export const DRAUGHT_BREEDING_PAIR = 2;
  * The owner's animal of `tribe` the cart takes: alive on the map, not inside a farm, booked by no visit
  * or other cart, not scattering, and on the door's continent; the first {@link DRAUGHT_BREEDING_PAIR}
  * such animals by id are passed over and the nearest of the rest by hexagon distance wins, ties to the
- * lower id. The scan walks the livestock store, since only a catchable species is ever owned. Null for
- * an unowned cart.
+ * lower id. The scan walks the owned livestock only, since only a catchable species is ever owned and a
+ * wild animal carries no owner. Null for an unowned cart.
  */
 export function pickDraughtAnimal(
   world: World,
@@ -61,8 +63,9 @@ export function pickDraughtAnimal(
   let passed = 0;
   let best: Entity | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
-  for (const e of canonicalById(world.query(Livestock, Settler, Position))) {
-    if (world.get(e, Settler).tribe !== tribe || ownerOf(world, e) !== owner) continue;
+  for (const e of world.canonicalQuery(Livestock, Owner)) {
+    const animal = world.tryGet(e, Settler);
+    if (animal?.tribe !== tribe || ownerOf(world, e) !== owner || !world.has(e, Position)) continue;
     if (world.has(e, DraughtAnimal) || world.tryGet(e, FarmAnimal)?.summoner != null) continue;
     if (world.has(e, Resting)) continue;
     if (world.has(e, Frightened)) continue;
@@ -147,12 +150,15 @@ function escort(world: World, terrain: TerrainGraph, animal: Entity, door: NodeI
 }
 
 function draughtTribeOf(
-  ctx: SystemContext,
+  content: ContentSet,
   state: { vehicleType: number; harnessed: boolean },
 ): number | null {
-  const type: VehicleType | undefined = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  const type: VehicleType | undefined = contentIndex(content).vehicles.get(state.vehicleType);
   return type !== undefined && awaitsDraughtAnimal(type, state) ? (type.draggingAnimalTribe ?? null) : null;
 }
+
+/** The carts still waiting for their draught animal. */
+const awaitsAnimal: VehicleWorkFilter = (content, state) => draughtTribeOf(content, state) !== null;
 
 /**
  * Drive every cart that waits for its animal: a recruit on its way is kept aimed at the cart's boarding
@@ -165,12 +171,12 @@ export const draughtAnimalSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   const recruits = new Map<Entity, Entity>();
-  for (const animal of canonicalById(world.query(DraughtAnimal))) {
+  for (const animal of world.canonicalQuery(DraughtAnimal)) {
     const vehicle = world.get(animal, DraughtAnimal).vehicle;
     const state = world.tryGet(vehicle, Vehicle);
     if (
       state === undefined ||
-      draughtTribeOf(ctx, state) === null ||
+      draughtTribeOf(ctx.content, state) === null ||
       !world.has(vehicle, Position) ||
       recruits.has(vehicle) // a second recruit for one cart: only a hand-made fixture books two
     ) {
@@ -180,10 +186,10 @@ export const draughtAnimalSystem: System = (world, ctx) => {
     recruits.set(vehicle, animal);
   }
   const scanDue = ctx.tick % DRAUGHT_RECRUIT_CADENCE_TICKS === 0;
-  for (const e of canonicalById(world.query(Vehicle, Position))) {
+  for (const e of vehiclesAtWork(world, ctx.content, awaitsAnimal)) {
     const state = world.get(e, Vehicle);
-    const tribe = draughtTribeOf(ctx, state);
-    if (tribe === null || state.carrier !== null) continue;
+    const tribe = draughtTribeOf(ctx.content, state);
+    if (tribe === null || state.carrier !== null || !world.has(e, Position)) continue;
     if (state.task !== 'waitsForAnimal') world.mut(e, Vehicle).task = 'waitsForAnimal';
     const recruit = recruits.get(e);
     if (recruit === undefined && !scanDue) continue; // the boarding-node search is the costly part

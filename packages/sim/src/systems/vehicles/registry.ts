@@ -1,4 +1,7 @@
-import { MissionObjectId, Owner, Vehicle } from '../../components/index.js';
+import type { ContentSet } from '@open-northland/data';
+import { MissionObjectId, Owner, Vehicle, type VehicleStateView } from '../../components/index.js';
+import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
+import { JournaledCaptures } from '../../ecs/journaled-captures.js';
 import type { Entity, World } from '../../ecs/world.js';
 
 /**
@@ -62,4 +65,94 @@ export function vehicleIndex(world: World): VehicleIndex {
   const index = buildIndex(world);
   vehicleIndexCache.set(world, { key, index });
   return index;
+}
+
+/** Whether a vehicle's own state puts it on a per-tick drive. Reads the `Vehicle` value and the content
+ *  only, so a list keyed on it is caught up from that store's journals. */
+export type VehicleWorkFilter = (content: ContentSet, state: VehicleStateView) => boolean;
+
+const byId = (e: Entity): number => e;
+
+/** One filter's vehicles in ascending id, kept across ticks and caught up by {@link vehiclesAtWork}. */
+class VehicleWorkList {
+  private readonly ids: Entity[] = [];
+  private frozen: readonly Entity[] | null = null;
+  readonly captures: JournaledCaptures<true>;
+
+  constructor(
+    private readonly world: World,
+    readonly content: ContentSet,
+    private readonly filter: VehicleWorkFilter,
+  ) {
+    this.captures = new JournaledCaptures<true>(
+      world,
+      { membership: [Vehicle], values: [Vehicle] },
+      () => world.canonicalQuery(Vehicle),
+      {
+        capture: (e) => (this.matches(e) ? true : null),
+        apply: (e) => {
+          insertSortedById(this.ids, e, byId);
+          this.frozen = null;
+        },
+        withdraw: (e) => {
+          removeSortedById(this.ids, e, byId);
+          this.frozen = null;
+        },
+        clear: () => {
+          this.ids.length = 0;
+          this.frozen = null;
+        },
+      },
+    );
+  }
+
+  private matches(e: Entity): boolean {
+    const state = this.world.tryGet(e, Vehicle);
+    return state !== undefined && this.filter(this.content, state);
+  }
+
+  /** The matching vehicles as of the last catch-up, shared and frozen. */
+  list(): readonly Entity[] {
+    this.frozen ??= Object.freeze(this.ids.slice());
+    return this.frozen;
+  }
+
+  verify(): string[] {
+    this.captures.catchUp();
+    const held = this.list();
+    const fresh = this.world.canonicalQuery(Vehicle).filter((e) => this.matches(e));
+    const same = fresh.length === held.length && fresh.every((e, i) => e === held[i]);
+    return same ? [] : ['vehiclesAtWork disagrees with a fresh vehicle scan'];
+  }
+}
+
+const workListsByWorld = new WeakMap<World, Map<VehicleWorkFilter, VehicleWorkList>>();
+
+/**
+ * The vehicles `filter` admits, ascending by id, so a per-tick drive walks the vehicles its task or type
+ * puts to work instead of every vehicle. Caught up from the `Vehicle` journals, so a tick in which no
+ * vehicle was written costs nothing. `filter` must be a module-level constant: it keys the list.
+ */
+export function vehiclesAtWork(
+  world: World,
+  content: ContentSet,
+  filter: VehicleWorkFilter,
+): readonly Entity[] {
+  let lists = workListsByWorld.get(world);
+  if (lists === undefined) {
+    const created = new Map<VehicleWorkFilter, VehicleWorkList>();
+    world.registerCacheVerifier('vehiclesAtWork', () =>
+      [...created.values()].flatMap((list) => list.verify()),
+    );
+    workListsByWorld.set(world, created);
+    lists = created;
+  }
+  const held = lists.get(filter);
+  if (held !== undefined && held.content === content) {
+    held.captures.catchUp();
+    return held.list();
+  }
+  const fresh = new VehicleWorkList(world, content, filter);
+  lists.set(filter, fresh);
+  return fresh.list();
 }

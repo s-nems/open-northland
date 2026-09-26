@@ -4,11 +4,12 @@ import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { dynamicBlockOverlay } from './blocked.js';
+import { structureBlockOverlay } from './blocked.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 
-// The lazy route-region memo over the building and resource walk-block overlay: the "clear cell sealed
-// inside blocker walls" signal that static terrain components cannot give. Derived state, never hashed.
+// The lazy route-region memo over the building, resource and landscape walk-block overlay: the "clear cell
+// sealed inside blocker walls" signal that static terrain components cannot give. Vehicles are left out
+// like unit bodies: the labels key on the structures only. Derived state, never hashed.
 
 /**
  * The flood cap that separates a provable pocket from the open world, in expanded nodes. Approximation:
@@ -66,8 +67,8 @@ export class RouteRegions {
   /**
    * Whether a walk from `from` to `to` provably has no route under the overlay: one endpoint sits in a
    * sealed pocket the other is not in. True is a proof; false is not a routability promise, since two open
-   * endpoints may be walled apart beyond the cap, unit bodies are not in this overlay, and a blocked
-   * endpoint always reads false because findPath exempts a blocked start.
+   * endpoints may be walled apart beyond the cap, unit bodies and vehicles are not in this overlay, and a
+   * blocked endpoint always reads false because findPath exempts a blocked start.
    */
   unroutable(from: NodeId, to: NodeId): boolean {
     if (from === to) return false;
@@ -113,7 +114,7 @@ export class RouteRegions {
     cache.buildingCells = buildingCells;
     cache.resourceGeneration = resourceGeneration;
     cache.landscapeGeneration = landscapeGeneration;
-    cache.blocked = dynamicBlockOverlay(world, this.ctx, cache.terrain);
+    cache.blocked = structureBlockOverlay(world, this.ctx, cache.terrain);
     cache.nextPocket = 0;
     if (cache.epoch >= MAX_EPOCH) {
       cache.stamps.fill(0);

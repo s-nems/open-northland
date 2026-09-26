@@ -3,15 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { Building, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
+import { vehicleBlockedCells } from '../../src/systems/footprint/index.js';
 import {
   ROUTE_REGION_POCKET_CAP,
   routeRegions,
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../../src/systems/index.js';
-import { TEST_MANIFEST } from '../fixtures/content.js';
+import { createVehicle, removeVehicle } from '../../src/systems/vehicles/index.js';
+import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { grassNodeMap } from '../fixtures/terrain.js';
+import { grassCellMap, grassNodeMap } from '../fixtures/terrain.js';
 import { grassMap, mappedSim, terrainOf } from './resource-footprint/support.js';
 
 /**
@@ -119,6 +121,37 @@ describe('routeRegions', () => {
     expect(regions.unroutable(outside, sealed)).toBe(false);
   });
 
+  it('leaves a cart standing in a wall gap out of its labels, so a warm cache agrees with a cold one', () => {
+    const map = grassCellMap(CART_MAP_CELLS, CART_MAP_CELLS);
+    const cartSim = new Simulation({ seed: 1, content: testContent(), map });
+    const twin = new Simulation({ seed: 1, content: testContent(), map });
+    const terrain = terrainOf(cartSim);
+    const cart = createVehicle(cartSim.world, ctxOf(cartSim), {
+      vehicleType: HANDCART,
+      x: CART_GAP_X,
+      y: CART_GAP_Y,
+      tribe: VIKING,
+      owner: 0,
+    });
+    if (cart === null) throw new Error('handcart missing from the fixture');
+    // The yard's east side is the cart: every wall node its disc covers is left out of the wall.
+    const cartCells = vehicleBlockedCells(cartSim.world, ctxOf(cartSim), terrain);
+    const wall = rectangleWall(YARD_WIDTH, YARD_HEIGHT);
+    const gapped = wall.filter(({ dx, dy }) => !cartCells.has(terrain.nodeAt(YARD_X + dx, YARD_Y + dy)));
+    expect(gapped.length).toBeLessThan(wall.length);
+    wallAt(cartSim, YARD_X, YARD_Y, gapped);
+    wallAt(twin, YARD_X, YARD_Y, gapped);
+    const inside = terrain.nodeAt(YARD_X + 2, CART_GAP_Y);
+    const outside = terrain.nodeAt(CART_GAP_X + YARD_WIDTH, CART_GAP_Y);
+    const warm = routeRegions(cartSim.world, ctxOf(cartSim), terrain);
+
+    expect(warm.unroutable(outside, inside)).toBe(false);
+    removeVehicle(cartSim.world, ctxOf(cartSim), cart, 'script');
+    const cold = routeRegions(twin.world, ctxOf(twin), terrainOf(twin));
+    expect(warm.unroutable(outside, inside)).toBe(cold.unroutable(outside, inside));
+    expect(cold.unroutable(outside, inside)).toBe(false);
+  });
+
   it('never vetoes from a blocked start - the walker may step off its own blocked node', () => {
     const sim = mappedSim(grassMap(12, 6));
     const terrain = terrainOf(sim);
@@ -176,6 +209,17 @@ describe('routeRegions', () => {
     expect(regions.unroutable(outside, inside)).toBe(false);
   });
 });
+
+const VIKING = 1;
+const HANDCART = 1;
+const CART_MAP_CELLS = 16;
+/** A yard perimeter whose east side runs through the cart's anchor node. */
+const YARD_X = 4;
+const YARD_Y = 8;
+const YARD_WIDTH = 9;
+const YARD_HEIGHT = 17;
+const CART_GAP_X = YARD_X + YARD_WIDTH - 1;
+const CART_GAP_Y = YARD_Y + (YARD_HEIGHT - 1) / 2;
 
 const RING_TYPE = 30; // walls off its anchor node alone
 const OPEN_TYPE = 31; // no walk-block

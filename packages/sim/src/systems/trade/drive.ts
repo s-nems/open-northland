@@ -266,8 +266,9 @@ function decidePreparation(
  * house runs out of the take good mid-batch (what was handed over stays given, as the original's goods
  * vanish into the house). Nothing is handed over while the house holds fewer take goods than one batch
  * pays out, where the original delivers regardless: the trader waits at the house for its seat's refill
- * instead, so one trip sells the whole load (owner's choice). At a house no refill tops up again, a
- * trader with only give goods aboard waits there, one with anything else aboard carries it home first.
+ * instead, so one trip sells the whole load (owner's choice). At a house no refill tops up again, or
+ * whose take good the cart cannot carry, a trader with only give goods aboard waits there, one with
+ * anything else aboard carries it home first.
  */
 function decideExchange(
   world: World,
@@ -283,9 +284,11 @@ function decideExchange(
   const onOffer = stocked === undefined ? 0 : stockOf(world, house, stocked);
   if (route.given < agreement.giveAmount) {
     if (aboard + route.given < agreement.giveAmount) return NEXT;
+    const otherAboard = hold.entries.some(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
+    // A cart whose hold cannot take the take good would hand the give goods over for nothing.
+    if (stocked !== undefined && !hold.carries(stocked)) return otherAboard ? NEXT : WAIT;
     if (route.given === 0 && onOffer < agreement.takeAmount) {
       if (refillRestores(world, ctx, house, agreement.takeGood, agreement.takeAmount)) return WAIT;
-      const otherAboard = hold.entries.some(([good]) => !sameFoodClass(ctx, good, agreement.giveGood));
       return otherAboard ? NEXT : WAIT;
     }
     // The cart holds a dish as its edible, so the unit handed over is whichever aboard good the

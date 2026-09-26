@@ -24,8 +24,8 @@ interface ClearanceMemo {
   readonly field: ClearanceField;
   /** Held membership generations of the journal-replayed stores. */
   readonly gens: Map<Component<unknown>, number>;
-  /** The tier upgrade swaps `buildingType` in place, a value bump with no membership entry; the held
-   *  type per building narrows that bump to the buildings whose cells actually moved. */
+  /** The tier upgrade swaps `buildingType` in place, a value bump with no membership entry; the value
+   *  journal and the held type per building narrow that bump to the buildings whose cells moved. */
   buildingValueGen: number;
   readonly buildingTypes: Map<Entity, number>;
   /** The scripted landscape edits the probe's landscape layer keys on; a resource-backed placement
@@ -105,6 +105,7 @@ function rebuild(world: World, ctx: ContentContext, terrain: TerrainGraph): Clea
     world.journalMembership(source);
     gens.set(source, world.componentGeneration(source));
   }
+  world.journalValueWrites(Building);
   const memo: ClearanceMemo = {
     content: ctx.content,
     terrain,
@@ -137,9 +138,12 @@ function catchUp(world: World, ctx: ContentContext, memo: ClearanceMemo): boolea
   }
   const buildingValueGen = world.componentValueGeneration(Building);
   if (buildingValueGen !== memo.buildingValueGen) {
-    for (const e of world.query(Building, Position)) {
-      if (memo.buildingTypes.get(e) !== world.get(e, Building).buildingType)
-        resyncEntity(world, memo, e, changed);
+    const written = world.valueWritesSince(Building, memo.buildingValueGen);
+    if (written === null) return false;
+    for (const e of written) {
+      const building = world.tryGet(e, Building);
+      if (building === undefined || !world.has(e, Position)) continue;
+      if (memo.buildingTypes.get(e) !== building.buildingType) resyncEntity(world, memo, e, changed);
     }
     memo.buildingValueGen = buildingValueGen;
   }

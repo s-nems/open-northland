@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Chat,
   JobAssignment,
+  Owner,
   PlayerOrder,
   Position,
   Rider,
@@ -31,6 +32,7 @@ import {
   stockVehicleGoods,
   VEHICLE_WALK_RANGE_NODES,
 } from '../../src/systems/vehicles/index.js';
+import { type VehicleWorkFilter, vehiclesAtWork } from '../../src/systems/vehicles/registry.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
@@ -358,6 +360,41 @@ describe('boarding', () => {
     expect(s.world.get(cart, Vehicle).task).toBe('none');
   });
 
+  it('lets a held goto lapse with noCommander when its only rider detaches before boarding', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    const scout = spawnSettler(s, 2, 6);
+    attach(s, scout, cart);
+    s.enqueue(playerCommand(P0, { kind: 'moveVehicle', vehicle: cart, x: 4, y: 12 }));
+    s.step();
+    expect(s.world.get(cart, Vehicle).task).toBe('waitsForHuman');
+    s.enqueue(playerCommand(P0, { kind: 'detachFromVehicle', entity: scout }));
+    s.step();
+    expect(moveRefusals(s)).toEqual([`${cart}:noCommander:${P0}`]);
+    expect(s.world.get(cart, Vehicle).task).toBe('none');
+    expect(s.world.get(cart, Vehicle).heldGoal).toBeNull();
+    s.run(ATTACH_WALK_TICKS);
+    expect(s.world.has(cart, VehicleDrive)).toBe(false);
+    expect(nodeOf(s, cart)).toEqual({ hx: 12, hy: 6 });
+  });
+
+  it('stops asking the crew in when an attack held for boarding is stopped', () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    const carrier = spawnSettler(s, 2, 6, CARRIER);
+    attach(s, carrier, cart);
+    // The state an attack order leaves while its crew is outside: no held goal, the boarding task.
+    s.world.mut(cart, Vehicle).task = 'waitsForHuman';
+    s.step();
+    expect(s.world.get(carrier, Rider).boarding).toBe(true);
+    s.enqueue(playerCommand(P0, { kind: 'stopVehicle', vehicle: cart }));
+    s.step();
+    expect(s.world.get(cart, Vehicle).task).toBe('interrupted');
+    expect(s.world.get(carrier, Rider).boarding).toBe(false);
+    s.run(CARRIER_WALK_TICKS);
+    expect(seatOf(s, cart, carrier)?.inside).toBe(false); // a carrier waits by the door unasked
+  });
+
   it('boardVehicle steps a rider standing on the door in without a goto', () => {
     const s = sim();
     const cart = spawn(s, HANDCART, 12, 6);
@@ -366,6 +403,27 @@ describe('boarding', () => {
     s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: scout }));
     boardOut(s, cart, scout);
     expect(s.world.has(scout, Position)).toBe(false);
+  });
+});
+
+describe('vehiclesAtWork', () => {
+  const waitsOnCrew: VehicleWorkFilter = (_content, state) => state.task === 'waitsForHuman';
+
+  it('lists the vehicles a filter admits in ascending id and follows their task writes', () => {
+    const s = sim();
+    const first = spawn(s, HANDCART, 12, 6);
+    const second = spawn(s, HANDCART, 12, 14);
+    const content = s.content;
+    expect(vehiclesAtWork(s.world, content, waitsOnCrew)).toEqual([]);
+    s.world.mut(second, Vehicle).task = 'waitsForHuman';
+    s.world.mut(first, Vehicle).task = 'waitsForHuman';
+    expect(vehiclesAtWork(s.world, content, waitsOnCrew)).toEqual([first, second]);
+    s.world.mut(first, Vehicle).facing = 1; // a write that keeps the task keeps the vehicle listed
+    s.world.mut(second, Vehicle).task = 'none';
+    expect(vehiclesAtWork(s.world, content, waitsOnCrew)).toEqual([first]);
+    s.world.destroy(first);
+    expect(vehiclesAtWork(s.world, content, waitsOnCrew)).toEqual([]);
+    expect(s.world.verifyCaches()).toEqual([]);
   });
 });
 
@@ -423,6 +481,20 @@ describe('leaving', () => {
     expect(s.world.get(cart, VehicleStock).lines.get(CART_GOOD)?.current).toBe(CART_LOAD);
     expect(vehicleCommander(s.world.get(cart, Vehicle))).toBe(scout);
     expect(s.world.has(scout, Position)).toBe(false); // still aboard: no route steps it out
+  });
+
+  it("leaves a vehicle a script handed to another player alone on its old commander's walk order", () => {
+    const s = sim();
+    const cart = spawn(s, HANDCART, 12, 6);
+    const scout = spawnSettler(s, 12, 6);
+    attach(s, scout, cart);
+    s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: scout }));
+    boardOut(s, cart, scout);
+    s.world.mut(cart, Owner).player = P1; // ChangeVehiclesPlayerId keeps the crew's owner
+    s.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: scout, x: 4, y: 6 }));
+    s.run(2);
+    expect(s.world.has(cart, VehicleDrive)).toBe(false);
+    expect(s.world.get(cart, Vehicle).heldGoal).toBeNull();
   });
 
   it("re-aims a driving vehicle on its commander's walk order and refuses one the vehicle cannot take", () => {

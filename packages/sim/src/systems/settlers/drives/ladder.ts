@@ -118,14 +118,17 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     return;
   }
 
-  // A vehicle that asked its crew in takes its empty-handed rider over every need below (user rule, a
+  // A vehicle that asked its crew in takes its empty-handed rider over every need below (owner's choice, a
   // deviation from the original's pending-need gate on the board request): the order is a forced
   // boarding, and a need waits for the ride. Any cargo booking is given back first, and a rider with a
   // unit on its back runs the ladder down to the delivery rung before it answers, so nothing rides
   // aboard in its hands. Whatever the rider waited in, it steps out of.
   if (world.tryGet(e, Rider)?.boarding === true) {
     abandonCargoRun(world, e);
-    if ((load === undefined || load.amount <= 0) && planRider(world, ctx, terrain, e, pass.spacing)) {
+    if (
+      (load === undefined || load.amount <= 0) &&
+      planRider(world, ctx, terrain, e, pass.spacing, pass.idle)
+    ) {
       stepOut(world, e);
       return;
     }
@@ -182,7 +185,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     // A trader commanding a cart works its route from here, above the rider rung that would otherwise
     // keep it at the door; the rung yields while the cart is under way, and the rider rung boards it.
     if (planTrader(plan)) return;
-    if (planRider(world, ctx, terrain, e, pass.spacing)) return;
+    if (planRider(world, ctx, terrain, e, pass.spacing, pass.idle)) return;
   }
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.

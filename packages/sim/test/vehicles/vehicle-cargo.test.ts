@@ -7,6 +7,7 @@ import {
   Rider,
   Settler,
   Stockpile,
+  Vehicle,
   VehicleDrive,
   VehicleStock,
 } from '../../src/components/index.js';
@@ -432,6 +433,23 @@ describe('the carrier rung', () => {
     expect(s.world.has(carrier, CargoRun)).toBe(false);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 1, reserved: 0 });
     expect(s.world.get(carrier, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
+  });
+
+  it('gives a booking back when the carrier loses its seat outside an order', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const carrier = attachCarrier(s, cart);
+    dropPile(s, WOOD, SOURCE_AT, 1);
+    want(s, cart, WOOD, 1);
+    for (let tick = 0; tick < TRIP_TICKS && !s.world.has(carrier, CargoRun); tick++) s.step();
+    expect(line(s, cart, WOOD).reserved).toBe(1);
+    // A seat dropped with no release (a transform's reseat past the new capacity): the rider pass frees it.
+    const seats = s.world.mut(cart, Vehicle).passengers;
+    seats[seats.findIndex((seat) => seat?.entity === carrier)] = null;
+    s.step();
+    expect(s.world.has(carrier, Rider)).toBe(false);
+    expect(s.world.has(carrier, CargoRun)).toBe(false);
+    expect(line(s, cart, WOOD).reserved).toBe(0);
   });
 
   it('boards a carrier asked in mid-trip with empty hands and its booking given back', () => {

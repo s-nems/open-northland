@@ -8,7 +8,6 @@ import {
   vehicleCommander,
 } from '../../components/index.js';
 import type { System } from '../context.js';
-import { canonicalById } from '../spatial/nodes.js';
 import { landingOf, setDownRider } from '../vehicles/crew.js';
 
 /**
@@ -20,7 +19,7 @@ import { landingOf, setDownRider } from '../vehicles/crew.js';
  * door for every unit; here the whole stop is worked from outside (approximation).
  */
 export const traderDisembarkSystem: System = (world, ctx) => {
-  for (const e of canonicalById(world.query(Rider, TradeRoute))) {
+  for (const e of world.canonicalQuery(Rider, TradeRoute)) {
     if (world.has(e, Position)) continue;
     if (world.get(e, TradeRoute).stops.length < TRADE_ROUTE_HOUSES) continue;
     const vehicle = world.get(e, Rider).vehicle;

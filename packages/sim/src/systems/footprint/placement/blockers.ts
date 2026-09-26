@@ -13,6 +13,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Component, Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
+import { vehicleAnchorRevision } from '../vehicle-anchors.js';
 import { hexDisc, vehicleAnchor } from '../vehicle-footprint.js';
 
 // The single definition of what a standing entity blocks, as (cell, channel) pairs. Every placement rule
@@ -180,12 +181,12 @@ export function eachBlockerCell(
 
 /**
  * A per-world version of the placement-blocker inputs: the `Building`, `Palisade`, `ResourceFootprint`,
- * `Signpost` and `Vehicle` membership generations, the scripted landscape placement revision, plus the
- * `Building` and `Vehicle` VALUE generations, since the home tier upgrade swaps `buildingType` in place
- * invisibly to membership. That swap cannot change the cells today (`familyBody` and `reserved` are
- * level-chain unions), so the value term only guards a future per-level footprint. A wall's placement
- * body changes only by a re-add, so its in-place claim and build writes stay out. It moves when those
- * cells can change rather than every tick.
+ * `Signpost` and `Vehicle` membership generations, the scripted landscape placement revision, the
+ * `Building` VALUE generation, since the home tier upgrade swaps `buildingType` in place invisibly to
+ * membership, and the vehicles' anchor revision, which moves when a vehicle enters a node rather than
+ * on every facing, task or seat write. The tier swap cannot change the cells today (`familyBody` and
+ * `reserved` are level-chain unions), so the value term only guards a future per-level footprint. A
+ * wall's placement body changes only by a re-add, so its in-place claim and build writes stay out.
  *
  * Exactness rests on buildings and footprinted objects never MOVING once placed, so a stored entity's
  * cells are fixed, and on a vehicle moving only through a `World.mut(e, Vehicle)` write. Completeness
@@ -194,5 +195,5 @@ export function eachBlockerCell(
  * sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${world.componentGeneration(Vehicle)}.${world.componentValueGeneration(Vehicle)}.${landscapePlacementRevision(world)}`;
+  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Palisade)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${world.componentGeneration(Vehicle)}.${vehicleAnchorRevision(world)}.${landscapePlacementRevision(world)}`;
 }

@@ -3,9 +3,8 @@ import {
   Chat,
   NODE_PROGRESS_FULL,
   Owner,
-  PathFollow,
   Position,
-  Settler,
+  Rider,
   VEHICLE_FACINGS,
   Vehicle,
   VehicleDrive,
@@ -29,11 +28,12 @@ import {
   vehicleFootprintNodes,
 } from '../footprint/index.js';
 import { groundBlockOverlay, vehicleClearance } from '../footprint/vehicle-clearance.js';
-import { redirectRoute } from '../movement/nav-state.js';
+import { isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { awaitsDraughtAnimal, isSiegeVehicle, vehicleTraversal } from '../readviews/vehicles.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { stationaryOwnedSettlers } from '../settlers/planner/spacing.js';
 import { endChat } from '../social/index.js';
-import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import type { NodeBuckets } from '../spatial/nodes.js';
 
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
 // target off the vehicle's continent or walk range, the route runs over the shared graph, on land or
@@ -387,23 +387,35 @@ export function crewInside(state: VehicleStateView): boolean {
   return state.passengers.every((seat) => seat === null || seat.inside);
 }
 
-/** The stop order (`p`): the drive ends on the node it is crossing, a goto or dock held for boarding
- *  is dropped, a dock under way forgets its shore, and the task reads `interrupted`. */
+/** The stop order (`p`): the drive ends on the node it is crossing, a goto, dock or attack held for
+ *  boarding is dropped and its riders still outside are no longer asked in, a dock under way forgets its
+ *  shore, and the task reads `interrupted`. */
 export function stopVehicle(world: World, command: Extract<Command, { kind: 'stopVehicle' }>): void {
   const e = command.vehicle;
   const state = world.tryGet(e, Vehicle);
   if (state === undefined) return;
+  const held = state.heldGoal !== null || state.task === 'waitsForHuman';
   dropAttack(world, e);
   const drive = world.tryMut(e, VehicleDrive);
-  if (drive === undefined && state.heldGoal === null) return;
+  if (drive === undefined && !held) return;
   if (drive !== undefined) {
     drive.route.length = 0;
     if (drive.from === null) world.remove(e, VehicleDrive);
   }
+  if (held) stopAskingCrewIn(world, state);
   const live = world.mut(e, Vehicle);
   live.heldGoal = null;
   live.task = 'interrupted';
   if (!live.moored) live.mooring = null;
+}
+
+/** Clear the boarding request on every rider still outside, so a lapsed order stops pulling them in. */
+function stopAskingCrewIn(world: World, state: VehicleStateView): void {
+  for (const seat of state.passengers) {
+    if (seat === null || seat.inside) continue;
+    const rider = world.tryGet(seat.entity, Rider);
+    if (rider?.boarding === true) world.mut(seat.entity, Rider).boarding = false;
+  }
 }
 
 /**
@@ -417,7 +429,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return;
   let standing: NodeBuckets | undefined;
-  for (const e of canonicalById(world.query(VehicleDrive, Vehicle, Position))) {
+  for (const e of world.canonicalQuery(VehicleDrive, Vehicle, Position)) {
     const drive = world.get(e, VehicleDrive);
     if (drive.from !== null) {
       const live = world.mut(e, VehicleDrive);
@@ -467,7 +479,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     pos.x = at.x;
     pos.y = at.y;
     world.mut(e, Vehicle).facing = facing;
-    standing ??= new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
+    standing ??= stationaryOwnedSettlers(world);
     shoveSettlers(world, ctx, terrain, standing, next, live.route, type.logicSize);
   }
 };
@@ -482,11 +494,29 @@ function reanchorGuard(world: World, e: Entity): void {
   world.mut(e, Vehicle).guard = anchor;
 }
 
+/** The nodes the footprints of a drive's remaining route cover, `entered` included. */
+function routeFootprint(
+  terrain: TerrainGraph,
+  entered: HalfCellNode,
+  route: readonly HalfCellNode[],
+  logicSize: number,
+): Set<NodeId> {
+  const ahead = new Set<NodeId>();
+  for (const centre of [entered, ...route]) {
+    for (const { hx, hy } of hexDisc(centre, logicSize)) {
+      if (terrain.inBounds(hx, hy)) ahead.add(terrain.nodeAt(hx, hy));
+    }
+  }
+  return ahead;
+}
+
 /**
- * Send every settler standing inside the footprint arriving at `entered` to the nearest open node
- * outside the footprints of the whole remaining route, so one shove clears the way. A settler mid-walk
- * leaves on its own and one held by an atomic finishes it first; a standing settler's own goal and
- * chat give way. Approximation: how the original picks the spot it sends a settler to is unconfirmed.
+ * Send every owned settler standing inside the footprint arriving at `entered` to the nearest open node
+ * outside the footprints of the whole remaining route, so one shove clears the way. `standing` holds the
+ * stationary owned settlers by node; a settler mid-walk, or sent off by a shove earlier this tick, leaves
+ * on its own and one held by an atomic finishes it first; a standing settler's own goal and chat give
+ * way. An unowned animal is not shoved: its next wander leg steps off the disc. Approximation: how the
+ * original picks the spot it sends a settler to is unconfirmed.
  */
 function shoveSettlers(
   world: World,
@@ -497,21 +527,19 @@ function shoveSettlers(
   route: readonly HalfCellNode[],
   logicSize: number,
 ): void {
-  const footprint = hexDisc(entered, logicSize);
-  const ahead = new Set<NodeId>();
-  for (const centre of [entered, ...route]) {
-    for (const { hx, hy } of hexDisc(centre, logicSize)) {
-      if (terrain.inBounds(hx, hy)) ahead.add(terrain.nodeAt(hx, hy));
-    }
-  }
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  let ahead: Set<NodeId> | undefined;
+  let blocked: BlockOverlay | undefined;
   const claimed = new Set<NodeId>();
-  for (const { hx, hy } of footprint) {
+  for (const { hx, hy } of hexDisc(entered, logicSize)) {
     for (const settler of standing.at(hx, hy)) {
-      if (world.has(settler, PathFollow) || atomicHoldsSettler(world, settler)) continue;
+      if (isTravelling(world, settler) || atomicHoldsSettler(world, settler)) continue;
       const from = terrain.nodeAtClamped(hx, hy);
+      ahead ??= routeFootprint(terrain, entered, route, logicSize);
+      blocked ??= dynamicBlockOverlay(world, ctx, terrain);
+      const onRoute = ahead;
+      const walls = blocked;
       const free = ringSearch(terrain, from, STAND_SEARCH_CAP, {
-        accept: (n) => !ahead.has(n) && !blocked.has(n) && !claimed.has(n),
+        accept: (n) => !onRoute.has(n) && !walls.has(n) && !claimed.has(n),
       });
       if (free === null) continue; // boxed in - the settler stays
       claimed.add(free);
