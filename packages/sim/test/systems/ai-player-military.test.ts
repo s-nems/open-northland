@@ -705,19 +705,86 @@ describe('military module - the campaign', () => {
     );
   });
 
-  it('sends whatever stands at the door once the army reaches the hard cap, whatever the draw or the odds', () => {
+  /** Ground between the two settlements nearer the foe's door than the seat's own, clear of the foe's men,
+   *  where a body of forward men stands in rows of {@link FORWARD_ROW}. */
+  const FORWARD = { x: 56, y: 70 };
+  const FORWARD_ROW = 15;
+  /** The far corner the rival's army stands in: out of reach of the forward ground, so nobody there is
+   *  in a fight when the wave is judged. */
+  const FOE_CAMP = { x: 96, y: 4 };
+
+  /** A seat at the {@link ARMY_CAP_SOLDIERS} against a rival far stronger than its whole army, so parity
+   *  alone would hold the band for good: `WAVE_MIN_SOLDIERS` formed at the door and the rest of the army
+   *  scattered over the settlement, walking in. */
+  function cappedSim(): { sim: Simulation; scattered: Entity[]; rally: { x: number; y: number } } {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const rally = rallyOf(sim);
+    spawn(sim, ARMY_CAP_SOLDIERS + 2 * WAVE_MIN_SOLDIERS, FOE_CAMP, SPEARMAN, FOE);
+    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS)).toEqual([]);
+    const scattered = spawn(sim, ARMY_CAP_SOLDIERS - WAVE_MIN_SOLDIERS, {
+      x: rally.x + RALLY_HOLD_RADIUS_NODES + 2,
+      y: 4,
+    });
+    return { sim, scattered, rally };
+  }
+
+  it('sends the whole army in one wave once it reaches the hard cap, whatever the draw or the odds', () => {
+    const { sim, scattered, rally } = cappedSim();
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    // The cap counts every live fighter, and the door calls the scattered men in rather than sending the
+    // few that stand at it: an army leaves whole, never in the bands that form up between decisions.
+    const held = run(sim, PATIENT_SEED, WAVE_GATHER_TICKS);
+    expect(assaulting(sim, held, foeHq)).toEqual([]);
+    expect(gatheringAt(sim, held, rally)).toBe(scattered.length);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(true);
+
+    // Nobody left walking in, the whole army goes in, whatever the odds: the men standing forward of the
+    // door, nearer the objective than home, press on with the wave rather than walk back to form up.
+    for (const e of scattered) sim.world.destroy(e);
+    spawnAt(
+      sim,
+      scattered.map((_, i) => ({
+        x: FORWARD.x + 2 * (i % FORWARD_ROW),
+        y: FORWARD.y + 2 * Math.floor(i / FORWARD_ROW),
+      })),
+      SPEARMAN,
+      SEAT,
+    );
+    expect(seatBand(sim)).toHaveLength(ARMY_CAP_SOLDIERS);
+    const wave = run(sim, PATIENT_SEED, WAVE_GATHER_TICKS);
+    expect(walks(wave)).toHaveLength(ARMY_CAP_SOLDIERS); // every man ordered out, past the door ring's spots
+    expect(gatheringAt(sim, wave, rally)).toBe(0);
+    expect(assaulting(sim, wave, foeHq).length).toBeGreaterThan(0);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(false);
+  });
+
+  it('does not hold a capped army past the gather window for men who never walk in', () => {
+    const { sim } = cappedSim();
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toEqual([]);
+    expect(assaulting(sim, run(sim, PATIENT_SEED, 2 * WAVE_GATHER_TICKS), foeHq)).toHaveLength(
+      WAVE_MIN_SOLDIERS,
+    );
+  });
+
+  it('draws the wave again once the band it was drawn from has grown past the held size', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
     const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
     const rally = rallyOf(sim);
-    // A rival far stronger than the whole army, so parity alone would hold the band for good.
-    spawn(sim, ARMY_CAP_SOLDIERS + 2 * WAVE_MIN_SOLDIERS, { x: 90, y: 40 }, SPEARMAN, FOE);
-    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS)).toEqual([]);
-    // The rest of the army stands scattered over the settlement: the cap counts every live fighter.
-    spawn(sim, ARMY_CAP_SOLDIERS - WAVE_MIN_SOLDIERS, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 2, y: 4 });
-    expect(
-      assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), buildingOfType(sim, HQ_TYPE, FOE)),
-    ).toHaveLength(WAVE_MIN_SOLDIERS);
-    expect(sim.world.has(barracks, MusterPlan)).toBe(false);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    // An opening draw, held on the barracks from the first sight of the band.
+    expect(run(sim, PATIENT_SEED)).toEqual([]);
+    expect(sim.world.get(barracks, MusterPlan).waveSize).toBe(CERTAIN_WAVE);
+
+    // Late in the game the band at the door outgrows that draw, but not the late band's floor, and one
+    // more man is still walking in: the held opening size would send the band, the redrawn one holds it.
+    pack(sim, HELD_WAVE + 2 - WAVE_MIN_SOLDIERS, { x: rally.x - 2, y: rally.y });
+    spawn(sim, 1, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 2, y: rally.y });
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_RAMP_TICKS), foeHq)).toEqual([]);
+    const redrawn = sim.world.get(barracks, MusterPlan);
+    expect(redrawn.waveSize).toBeGreaterThanOrEqual(LATE_WAVE.min);
+    expect(redrawn.drawnAt).toBe(0); // the window it started, not a new one
   });
 
   it('does not wait for a man who can never reach the door before sending a late wave', () => {

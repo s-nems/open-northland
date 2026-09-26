@@ -66,11 +66,13 @@ export function runOffensive(
   // Measured over the men this decision could order, not the whole army, so a wave already marching cannot
   // bench the band still at home for the front rank it took with it.
   const core = meleeCoreFor(weaponMix(world, ctx, free));
-  // The most the door can ever gather: a man across water or out on an errand never forms up.
   const doorSide = terrain.componentOf(home);
-  const gatherable = free.filter(
-    (e) => terrain.componentOf(entityNode(world, terrain, e)) === doorSide,
-  ).length;
+  const onDoorSide = (e: Entity): boolean => terrain.componentOf(entityNode(world, terrain, e)) === doorSide;
+  const door = {
+    mustered: army.length,
+    gatherable: free.filter(onDoorSide).length,
+    walkingIn: homing.filter(onDoorSide).length,
+  };
   // Both sides weighed whole, garrisons and men in a fight included, so a seat whose towers hold a third
   // of its men is not benched by its own defence; the target's posted men weigh what they kill.
   const targetOwner = ownerOf(world, target);
@@ -83,8 +85,7 @@ export function runOffensive(
     ctx,
     barracks,
     weaponMix(world, ctx, formed),
-    army.length,
-    gatherable,
+    door,
     core,
     peaceEnd,
     strength,
