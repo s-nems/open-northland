@@ -82,8 +82,8 @@ class WalkFrontier {
  * Dijkstra from `seeds` over the walkable nodes the `blocked` overlay leaves, run lazily: a query floods
  * on only until its node settles, so a near candidate costs a small disc and only an unreachable one
  * spends the whole `budget` (authored cap), after which every unsettled node reads unreached. The settle
- * order never depends on the queries, so the costs are byte-identical whatever is asked first. Seeds on
- * unwalkable ground start the flood but lead nowhere.
+ * order never depends on the queries, so the costs are byte-identical whatever is asked first. A seed's
+ * own ground is not checked: {@link walkSeedNear} finds a walkable one.
  */
 export class WalkFlood implements WalkDistances {
   private readonly settled = new Map<NodeId, Fixed>();

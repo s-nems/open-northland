@@ -77,6 +77,8 @@ import {
   IRON,
   JOINER,
   JOINERY_TYPE,
+  MILL_TYPE,
+  MILLER,
   makeAiSeat,
   placeHq,
   placeResources,
@@ -231,8 +233,18 @@ const RIVAL_CAMP = { x: 100, y: 20 };
 const RIVAL_FIGHTERS = ARMY_FLOOR_MIN + 2;
 /** Where the rival's tower stands: between the camps, clear of both settlements. */
 const RIVAL_TOWER = { x: 80, y: 8 };
-/** A crew whose collector top-ups, with no floor, leave fewer spare men than {@link RIVAL_FIGHTERS}. */
+/** A crew whose posts, with no floor, leave fewer spare men than {@link RIVAL_FIGHTERS}. */
 const FLOOR_CREW = 28;
+/** Men beyond {@link FLOOR_CREW}, so a floor of {@link RIVAL_FIGHTERS} plus a man or two leaves some
+ *  for the generic posts behind it and a case can tell the floor's size from the crew's. */
+const FLOOR_SLACK = 3;
+
+/** The generic gathering posts the ladder fills behind the floor. */
+function genericPosts(seat: ArmedSeat): number {
+  return [...collectModule.run(seat.sim.world, seat.ctx, SEAT)].filter(
+    (c) => c.kind === 'setGatherGood' && c.goodType === null,
+  ).length;
+}
 
 /** An armed seat with ground to gather on, `rivals` enemy spearmen, and its peace ending at `peaceUntil`.
  *  `setup` enqueues more before the one step that lands it all, so the seat's first decision is still the
@@ -889,21 +901,52 @@ describe('workforce module - the barracks and craft selections', () => {
   });
 
   it('keeps an army floor matching the strongest enemy once the peace lead is reached', () => {
-    // With no floor the collector top-ups take most of the crew and leave fewer men than the rival fields.
+    // With no floor the posts take most of the crew and leave fewer men than the rival fields.
     const peaceful = rivalSeat(RIVAL_FIGHTERS, DISTANT_PEACE);
     const spare = sparePool(peaceful);
     expect(drafted(peaceful)).toBe(spare);
     expect(spare).toBeLessThan(RIVAL_FIGHTERS);
 
-    // The lead reached, the floor claims its men ahead of those top-ups: one recruit per enemy fighter.
-    const armed = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS);
-    expect(drafted(armed)).toBe(RIVAL_FIGHTERS);
-    expect(sparePool(armed)).toBe(RIVAL_FIGHTERS);
+    // The lead reached, the floor claims its men ahead of the generic posts: one recruit per enemy
+    // fighter, and the generic posts get what the floor leaves of the slack.
+    const slack = { men: FLOOR_CREW + FLOOR_SLACK };
+    const armed = rivalSeat(RIVAL_FIGHTERS + 1, ARMY_FLOOR_LEAD_TICKS, slack);
+    const outnumbered = rivalSeat(RIVAL_FIGHTERS + FLOOR_SLACK, ARMY_FLOOR_LEAD_TICKS, slack);
+    expect(drafted(armed)).toBe(RIVAL_FIGHTERS + 1);
+    expect(drafted(outnumbered)).toBe(RIVAL_FIGHTERS + FLOOR_SLACK);
+    expect(genericPosts(armed)).toBe(genericPosts(outnumbered) + FLOOR_SLACK - 1);
+  });
+
+  it('claims the floor ahead of the surplus tier', () => {
+    // A mill plans one miller at the target tier and a second in surplus. Short of the rival, the floor
+    // takes the men the surplus miller would have had; with no floor to keep he is hired.
+    const mill = {
+      men: FLOOR_CREW + FLOOR_SLACK,
+      setup: (sim: Simulation) =>
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: MILL_TYPE,
+          x: SMITHY_AT.x,
+          y: SMITHY_AT.y,
+          tribe: VIKING,
+          owner: SEAT,
+        }),
+    };
+    const millers = (seat: ArmedSeat): number =>
+      [...collectModule.run(seat.sim.world, seat.ctx, SEAT)].filter(
+        (c) =>
+          c.kind === 'assignWorker' &&
+          c.building === entityOfBuilding(seat.sim, MILL_TYPE) &&
+          c.jobPriority[0] === MILLER,
+      ).length;
+    expect(millers(rivalSeat(RIVAL_FIGHTERS + FLOOR_SLACK, DISTANT_PEACE, mill))).toBe(2);
+    expect(millers(rivalSeat(RIVAL_FIGHTERS + FLOOR_SLACK, ARMY_FLOOR_LEAD_TICKS, mill))).toBe(1);
   });
 
   it("matches a rival's tower garrison one to one, whatever his post is worth to a wave marching on him", () => {
     // One rival archer holds a tower post: the world stands him on it without the walk-in.
     const seat = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS, {
+      men: FLOOR_CREW + FLOOR_SLACK,
       setup: (sim) => {
         sim.enqueueSetup({
           kind: 'placeBuilding',
@@ -936,7 +979,7 @@ describe('workforce module - the barracks and craft selections', () => {
     // A wave marching on him meets the post's weight; the floor counts him as the one man he is.
     expect(defendingStrength(world, seat.ctx, RIVAL)).toBe(RIVAL_FIGHTERS + TOWER_POST_STRENGTH);
     expect(strongestEnemyStrength(world, seat.ctx, SEAT)).toBe(RIVAL_FIGHTERS + 1);
-    expect(drafted(seat)).toBe(drafted(rivalSeat(RIVAL_FIGHTERS + 1, ARMY_FLOOR_LEAD_TICKS)));
+    expect(drafted(seat)).toBe(RIVAL_FIGHTERS + 1);
   });
 
   it("fills a standing workshop's target crew before the army floor claims its men", () => {
