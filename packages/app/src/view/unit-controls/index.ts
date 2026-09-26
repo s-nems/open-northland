@@ -75,7 +75,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       pickMode.arm({ kind: worksFromFlag(id) ? 'workplace-or-flag' : 'workplace', units: [id] }),
     assignHome: (id) => pickMode.arm({ kind: 'home', units: [id] }),
     attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', units: [id] }),
-    pickPartner: (id) => pickMode.arm({ kind: 'partner', settler: id }),
     selectEntity: (id) => applySelection([id], false),
     vehicleOrder: (vehicle, order) => issueVehicleOrder(vehicle, order, { enqueue: opts.enqueue, pickMode }),
     selectGroup: (ids) => applySelection(ids, false),
@@ -139,7 +138,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     canAttachToVehicle: opts.canAttachToVehicle,
     canAttachTradeHouse: opts.canAttachTradeHouse,
-    marry: (settler, partner) => chrome.marryPartner(settler, partner),
   });
 
   /** The hotkey obeys the ring's own gate for the settlers, so both ways of arming the order agree on

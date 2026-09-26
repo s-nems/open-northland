@@ -201,11 +201,10 @@ describe('command payload contracts', () => {
     expect(parse({ ...command, name: 'ż'.repeat(SETTLER_NAME_MAX_CHARS) })).toBeDefined();
   });
 
-  it('accepts a marry order with or without a chosen partner id', () => {
+  it('accepts a marry order for the settler alone and refuses a chosen partner', () => {
     expect(parse({ kind: 'marry', entity: UNIT })).toBeDefined();
-    expect(parse({ kind: 'marry', entity: UNIT, partner: UNIT + 1 })).toBeDefined();
-    expect(() => parse({ kind: 'marry', entity: UNIT, partner: 'him' })).toThrow(
-      /command\.partner: expected an integer/,
+    expect(() => parse({ kind: 'marry', entity: UNIT, partner: UNIT + 1 })).toThrow(
+      /unknown field 'partner'/,
     );
   });
 

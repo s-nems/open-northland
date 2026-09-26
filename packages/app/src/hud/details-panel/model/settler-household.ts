@@ -14,6 +14,7 @@ import {
   trainingHouseOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
+import { messages } from '../../../i18n/index.js';
 import { buildingTitle, type UnitPanelModelContext } from './context.js';
 import { settlerDisplayName, settlerGivenName } from './settler-name.js';
 import type { SettlerPlace } from './settler-work.js';
@@ -62,8 +63,9 @@ export interface SettlerPersonLink {
 export interface SettlerFamilyModel {
   readonly partner: SettlerPersonLink | null;
   readonly child: SettlerPersonLink | null;
-  /** Whether "bez pary" arms the partner pick: a grown person free to marry. */
-  readonly canPickPartner: boolean;
+  /** The find-a-partner button: live for a grown person free to marry, faded while a wedding it started
+   *  is under way, null when the person may not marry. */
+  readonly marry: SeatControl | null;
 }
 
 /**
@@ -126,12 +128,12 @@ export function familyModel(
   const child = marriage?.child == null ? undefined : entityById(snapshot, marriage.child);
   const partner =
     spouse === undefined ? null : { id: spouse.id, label: settlerDisplayName(ctx, snapshot, spouse) };
-  // The sim's `mayMarry`: grown, not wedding already, not in a drill, not a fighter or the scout.
-  const free =
+  // The sim's `mayMarry`: grown, not married, not in a drill, not a fighter or the scout; a wedding
+  // under way fades the button instead of dropping it.
+  const eligible =
     controllable &&
     partner === null &&
     !isBoundByMarriage(snapshot, ent) &&
-    !isMarrying(ent) &&
     trainingHouseOf(ent) === undefined &&
     role !== 'soldier' &&
     settlerJobType(ent) !== JOB_SCOUT;
@@ -139,6 +141,6 @@ export function familyModel(
     partner,
     child:
       child === undefined || isAdult(child) ? null : { id: child.id, label: settlerGivenName(ctx, child) },
-    canPickPartner: free,
+    marry: !eligible ? null : isMarrying(ent) ? messages().hud.settlerPanel.weddingUnderWay : true,
   };
 }

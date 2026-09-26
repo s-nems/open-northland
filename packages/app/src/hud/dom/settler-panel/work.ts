@@ -52,20 +52,20 @@ export function vehicleValue(row: SettlerVehicleRow): LedgerSegment[] {
   ];
 }
 
-/** The Rodzina row's button: the rings that arm the partner pick, while the person is free to marry. */
+/** The Rodzina row's button: the rings that send the person to find a partner, faded while a wedding
+ *  is under way. */
 export function familyButton(family: SettlerFamilyModel): RoundButtonModel | null {
-  if (!family.canPickPartner) return null;
-  const copy = messages().hud.settlerPanel;
-  return { face: { glyph: GLYPH.rings }, label: copy.noPartnerTooltip, tooltip: copy.noPartnerTooltip };
+  const find = messages().hud.settlerPanel.noPartnerTooltip;
+  return seatButton(family.marry, GLYPH.rings, find, find);
 }
 
-/** The Rodzina value: the spouse and the child as links, or "bez pary", a link while the partner pick
- *  is open to the person. */
+/** The Rodzina value: the spouse and the child as links, or "bez pary", a link while the person may go
+ *  and find a partner. */
 export function familyValue(family: SettlerFamilyModel): LedgerSegment[] {
   const copy = messages().hud.settlerPanel;
   if (family.partner === null) {
     return [
-      family.canPickPartner
+      family.marry === true
         ? { text: copy.noPartner, link: true, tone: 'missing', tooltip: copy.noPartnerTooltip }
         : { text: copy.noPartner, tone: 'muted' },
     ];
@@ -126,11 +126,11 @@ export function createWorkSection(
   });
   const family = createLedger({
     buttons: 1,
-    onButton: () => actions.pickPartner(id()),
+    onButton: () => actions.marry(id()),
     onLink: (index) => {
       const model = current()?.family;
       if (model == null) return;
-      if (model.partner === null) actions.pickPartner(id());
+      if (model.partner === null) actions.marry(id());
       else {
         const person = index === 0 ? model.partner : model.child;
         if (person !== null) actions.select(person.id);

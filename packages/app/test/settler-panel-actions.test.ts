@@ -7,10 +7,8 @@ import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
 import { orderRecipients } from '../src/view/unit-controls/action-ring/menu-state.js';
 import type { PickMode, PickModeController } from '../src/view/unit-controls/pick-mode.js';
-import { createPickModeController } from '../src/view/unit-controls/pick-mode.js';
 import { issueRingCommand } from '../src/view/unit-controls/ring-commands.js';
 import { settlerPanelActions } from '../src/view/unit-controls/settler-panel.js';
-import { NO_TARGETS } from './support/pick-mode.js';
 import { snapshotOf } from './support/sandbox.js';
 
 const OWN = 1;
@@ -50,7 +48,6 @@ function harness(
       assignWorkplace: () => undefined,
       assignHome: () => undefined,
       attachTradeHouse: () => undefined,
-      pickPartner: () => undefined,
       ringCommand: ringCommand ?? ((id, targets) => rings.push([id, targets])),
       cue: (cue) => cues.push(cue),
     },
@@ -153,37 +150,12 @@ describe('the Pojazd row', () => {
   });
 });
 
-describe('the partner pick', () => {
-  const pickUnder = (under: number | null) => {
-    const wed: [number, number][] = [];
-    const pickMode = createPickModeController({
-      snapshot: () => SNAPSHOT,
-      targets: { ...NO_TARGETS, owned: () => (under === null ? [] : [{ ref: under, x: 0, y: 0 }]) },
-      content: createSceneSim(sandboxScene).content,
-      mapSize: { width: 8, height: 8 },
-      toWorld: () => ({ x: 0, y: 0 }),
-      nodeAt: () => ({ col: 0, row: 0 }),
-      enqueue: () => undefined,
-      orders: () => {
-        throw new Error('no order controller in this test');
-      },
-      vehicleOrders: () => {
-        throw new Error('no vehicle order controller in this test');
-      },
-      setArmedCursor: () => undefined,
-      marry: (settler, partner) => wed.push([settler, partner]),
-    });
-    pickMode.arm({ kind: 'partner', settler: OWN });
-    const press = pickMode.handleMouseDown({ clientX: 0, clientY: 0, button: 0 } as MouseEvent);
-    return { press, wed };
-  };
-
-  it('weds the settler to the person under the press', () => {
-    expect(pickUnder(FOREIGN)).toEqual({ press: 'ordered', wed: [[OWN, FOREIGN]] });
-  });
-
-  it('misses on empty ground and on the settler itself', () => {
-    expect(pickUnder(null)).toEqual({ press: 'missed', wed: [] });
-    expect(pickUnder(OWN)).toEqual({ press: 'missed', wed: [] });
+describe('the Rodzina row', () => {
+  it('sends the plain marry at once, so the sim matches the nearest partner', () => {
+    const { actions, sent, cues } = harness();
+    actions.marry(OWN);
+    actions.marry(FOREIGN);
+    expect(sent).toEqual([{ kind: 'marry', entity: OWN }]);
+    expect(cues).toEqual(['confirm', 'fail']);
   });
 });

@@ -840,42 +840,19 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
   });
 });
 
-describe('marry with a chosen partner', () => {
-  /** A second bachelor placed nearer the woman than the scene's own man, so the default pick is him. */
-  function withNearerBachelor(sim: Simulation): Entity {
+describe('marry matches the nearest partner', () => {
+  it('weds the nearest eligible bachelor over a farther one', () => {
+    const { sim, woman, man } = familySim(3);
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 4, y: 0, tribe: VIKING, owner: PLAYER });
     sim.step();
     const men = [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === CIVILIST);
     const nearer = men.sort((a, b) => b - a)[0]; // the newest id is the one just spawned
     if (nearer === undefined) throw new Error('setup: second bachelor missing');
-    return nearer;
-  }
-
-  it('weds the chosen eligible partner over the nearest one', () => {
-    const { sim, woman, man } = familySim(3);
-    const nearer = withNearerBachelor(sim);
     expect(findPartnerFor(sim.world, sim.content, woman(), sim.terrain, null)).toBe(nearer);
-    sim.enqueueSetup({ kind: 'marry', entity: woman(), partner: man() });
+    sim.enqueueSetup({ kind: 'marry', entity: woman() });
     sim.step();
-    expect(sim.world.get(woman(), Wedding).partner).toBe(man());
-    expect(sim.world.get(man(), Wedding).partner).toBe(woman());
-    expect(sim.world.has(nearer, Wedding)).toBe(false);
-  });
-
-  it('an ineligible chosen partner cancels the order with marriageUnmatched', () => {
-    const { sim, woman, man } = familySim(3);
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 6, y: 0, tribe: VIKING, owner: PLAYER });
-    sim.step();
-    const other = [...sim.world.query(Settler)].find(
-      (e) => e !== woman() && sim.world.get(e, Settler).jobType === WOMAN,
-    );
-    if (other === undefined) throw new Error('setup: second woman missing');
-    sim.enqueueSetup({ kind: 'marry', entity: woman(), partner: other });
-    sim.step();
-    expect(sim.events.current().filter((ev) => ev.kind === 'marriageUnmatched')).toEqual([
-      { kind: 'marriageUnmatched', entity: woman() },
-    ]);
-    expect(sim.world.has(woman(), Wedding)).toBe(false);
+    expect(sim.world.get(woman(), Wedding).partner).toBe(nearer);
+    expect(sim.world.get(nearer, Wedding).partner).toBe(woman());
     expect(sim.world.has(man(), Wedding)).toBe(false);
   });
 });

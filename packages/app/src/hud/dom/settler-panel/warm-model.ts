@@ -60,7 +60,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     workplace: { target: { id: 1, label: 'Warm' }, assign: true, remove: 'warm', flag: false },
     home: { target: null, assign: true, remove: null },
     vehicle: { target: { id: 2, label: 'Warm', load: 'Warm' }, assign: true, remove: true },
-    family: { partner: null, child: null, canPickPartner: true },
+    family: { partner: null, child: null, marry: true },
     production: {
       kind: 'craft',
       rows: [

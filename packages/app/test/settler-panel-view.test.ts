@@ -158,10 +158,15 @@ describe('the settler panel’s rows', () => {
     expect(needTooltip({ label: 'Zdrowie', pct: 40, hover: '4/10' })).toBe('Zdrowie: 4/10');
   });
 
-  it('offers the rings only to a person free to marry', () => {
-    const free = { partner: null, child: null, canPickPartner: true };
-    expect(familyButton(free)?.tooltip).toBe(messages().hud.settlerPanel.noPartnerTooltip);
-    expect(familyButton({ ...free, canPickPartner: false })).toBeNull();
+  it('offers the rings to a person free to marry and fades them while the wedding runs', () => {
+    const copy = messages().hud.settlerPanel;
+    const free = { partner: null, child: null, marry: true } as const;
+    expect(familyButton(free)).toMatchObject({ enabled: true, tooltip: copy.noPartnerTooltip });
+    expect(familyButton({ ...free, marry: copy.weddingUnderWay })).toMatchObject({
+      enabled: false,
+      tooltip: copy.weddingUnderWay,
+    });
+    expect(familyButton({ ...free, marry: null })).toBeNull();
   });
 
   it('starts a stopped good for good on Ctrl and stops a running one', () => {
@@ -197,19 +202,20 @@ describe('the settler panel’s rows', () => {
     ]);
   });
 
-  it('offers "bez pary" as the partner pick only to a person free to marry', () => {
+  it('offers "bez pary" as the partner search only to a person free to marry', () => {
     const copy = messages().hud.settlerPanel;
-    expect(familyValue({ partner: null, child: null, canPickPartner: true })[0]).toMatchObject({
+    expect(familyValue({ partner: null, child: null, marry: true })[0]).toMatchObject({
       text: copy.noPartner,
       link: true,
       tone: 'missing',
     });
-    expect(familyValue({ partner: null, child: null, canPickPartner: false })[0]?.link).toBeUndefined();
+    expect(familyValue({ partner: null, child: null, marry: null })[0]?.link).toBeUndefined();
+    expect(familyValue({ partner: null, child: null, marry: copy.weddingUnderWay })[0]?.link).toBeUndefined();
     expect(
       familyValue({
         partner: { id: 2, label: 'Astrid' },
         child: { id: 3, label: 'Tove' },
-        canPickPartner: false,
+        marry: null,
       }).map((segment) => segment.text),
     ).toEqual(['Astrid', 'Tove']);
   });

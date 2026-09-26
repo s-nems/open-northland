@@ -378,14 +378,13 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Order one owned unmarried adult settler to wed: `partner` when given, else the nearest eligible
-       * partner of its tribe. A partner must be an unmarried adult of the same tribe and player and the
-       * opposite sex, inside the settler's signpost area; soldiers and scouts are ineligible on either
-       * side. The order auto-cancels with `marriageUnmatched` when no eligible partner exists right now.
+       * Order one owned unmarried adult settler to wed the nearest eligible partner of its tribe. A
+       * partner must be an unmarried adult of the same tribe and player and the opposite sex, inside the
+       * settler's signpost area; soldiers and scouts are ineligible on either side. The order
+       * auto-cancels with `marriageUnmatched` when no eligible partner exists right now.
        */
       readonly kind: 'marry';
       readonly entity: Entity;
-      readonly partner?: Entity;
     }
   | {
       /**

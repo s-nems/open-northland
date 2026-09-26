@@ -142,20 +142,31 @@ describe('the settler panel model', () => {
     expect(model.home).toMatchObject({ target: { id: HOME }, assign: true, remove: true });
     expect(model.family?.partner?.id).toBe(PARTNER);
     expect(model.family?.child?.id).toBe(CHILD);
-    expect(model.family?.canPickPartner).toBe(false);
+    expect(model.family?.marry).toBeNull();
   });
 
-  it('offers the partner pick to a free grown man and keeps it from a soldier', () => {
+  it('offers the partner search to a free grown man, fades it while he weds, keeps it from a soldier', () => {
     const single = settlerModel([
       { id: SETTLER, components: owned({ Settler: { tribe: 1, jobType: JOB_COLLECTOR } }) },
     ]);
-    expect(single.family).toEqual({ partner: null, child: null, canPickPartner: true });
+    expect(single.family).toEqual({ partner: null, child: null, marry: true });
+
+    const wedding = settlerModel([
+      {
+        id: SETTLER,
+        components: owned({
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          Wedding: { partner: PARTNER, kissing: false },
+        }),
+      },
+    ]);
+    expect(wedding.family?.marry).toBe(messages().hud.settlerPanel.weddingUnderWay);
 
     const soldier = settlerModel([
       { id: SETTLER, components: owned({ Settler: { tribe: 1, jobType: JOB_SOLDIER } }) },
     ]);
     expect(soldier.role).toBe('soldier');
-    expect(soldier.family?.canPickPartner).toBe(false);
+    expect(soldier.family?.marry).toBeNull();
     expect(soldier.workplace).toBeNull();
     expect(soldier.military).toEqual({ stance: null, regeneration: true });
   });
@@ -308,7 +319,7 @@ describe('the settler panel model', () => {
     ]);
     expect(model.home?.assign).toBe(messages().hud.settlerPanel.scripted);
     expect(model.home?.remove).toBe(messages().hud.settlerPanel.scripted);
-    expect(model.family?.canPickPartner).toBe(false);
+    expect(model.family?.marry).toBeNull();
   });
 
   it('gives a trader its route, its agreements as goods and the stop it heads to', () => {

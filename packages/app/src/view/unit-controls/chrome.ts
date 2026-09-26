@@ -49,7 +49,6 @@ export interface UnitChromeCallbacks {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
-  readonly pickPartner: (id: number) => void;
   readonly selectEntity: (id: number) => void;
   /** One of the vehicle window's order buttons. */
   readonly vehicleOrder: (vehicle: number, order: VehicleOrder) => void;
@@ -76,8 +75,6 @@ export interface UnitChromeHandle {
   /** Once a frame: the settler panel comes back once the ring it stepped aside for is down, and the
    *  trade window follows the plane and yields to a beam window. */
   refreshWindows(): void;
-  /** The partner pick named a person: wed them. */
-  marryPartner(settler: number, partner: number): void;
   /** Show the selection on the panel, or nothing while the HUD is hidden. */
   renderPanel(snapshot: WorldSnapshot): void;
   setHudHidden(hidden: boolean): void;
@@ -92,15 +89,12 @@ export async function createUnitChrome(
   equipPicker: EquipPickController | null,
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
-  // The settler panel's commands of the sim contract (`ProductionCounters.counters`, `renameSettler`, the
-  // chosen-partner `marry`).
+  // The settler panel's commands of the sim contract (`ProductionCounters.counters`, `renameSettler`).
   const contract: SettlerContractCommands = {
     rename: (id, name) => opts.enqueue({ kind: 'renameSettler', entity: id as Entity, name }),
     setProductionCount: (id, goodType, count) =>
       opts.enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
   };
-  const marryPartner = (settler: number, partner: number): void =>
-    opts.enqueue({ kind: 'marry', entity: settler as Entity, partner: partner as Entity });
 
   // Approximation: centring uses a building's base, so a tall house sits above the midpoint.
   const centre = (id: number): void => {
@@ -155,7 +149,6 @@ export async function createUnitChrome(
         assignWorkplace: callbacks.assignWorkplace,
         assignHome: callbacks.assignHome,
         attachTradeHouse: callbacks.attachTradeHouse,
-        pickPartner: callbacks.pickPartner,
         ringCommand: callbacks.ringCommand,
         cue: callbacks.cue,
       },
@@ -389,7 +382,6 @@ export async function createUnitChrome(
       veil.refresh();
       settlerPanel.refresh();
     },
-    marryPartner,
     renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
     setHudHidden: (hidden) => {
       hudHidden = hidden;

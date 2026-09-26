@@ -58,7 +58,6 @@ function harness(under: number): { press: () => void; issued: Command[]; schools
       throw new Error('no vehicle order controller in this test');
     },
     setArmedCursor: () => undefined,
-    marry: () => undefined,
   });
   return {
     press: () => {

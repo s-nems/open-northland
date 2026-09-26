@@ -394,7 +394,7 @@ function workMarkup(state) {
       `<button type="button" class="kv-link" title="${role}: zaznacz">${name}</button>`;
     const members =
       family.partner === null
-        ? '<button type="button" class="kv-link missing" title="Wybierz partnera">bez pary</button>'
+        ? '<button type="button" class="kv-link missing" title="Znajdź partnera">bez pary</button>'
         : `<b class="people">${person(family.partner, 'Partner')}${family.child === null ? '' : ` · ${person(family.child, 'Dziecko')}`}</b>`;
     rows.push(`<div class="kv"><span>Rodzina</span>${members}</div>`);
   }

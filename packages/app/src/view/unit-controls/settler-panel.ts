@@ -24,7 +24,6 @@ export interface SettlerPanelHost {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
-  readonly pickPartner: (id: number) => void;
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
   readonly cue: (cue: UiCue) => void;
 }
@@ -82,7 +81,7 @@ export function settlerPanelActions(
     unassignWorkplace: order((id) => enqueue({ kind: 'unassignWorker', entity: id as Entity })),
     assignHome: order(host.assignHome),
     unassignHome: order((id) => enqueue({ kind: 'unassignHouse', entity: id as Entity })),
-    pickPartner: order(host.pickPartner),
+    marry: order((id) => enqueue({ kind: 'marry', entity: id as Entity })),
     // The ring's own orders, so a press obeys the same gates and arms the same pick as the ring button.
     assignVehicle: order((id) => host.ringCommand('assignVehicle', [id])),
     leaveVehicle: order((id) => host.ringCommand('removeVehicle', [id])),

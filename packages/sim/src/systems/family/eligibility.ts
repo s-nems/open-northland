@@ -74,7 +74,7 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
  * tribe, player and opposite sex, and under signpost navigation standing inside the seeker's allowed area.
  * Original behavior: only the seeker's own player's humans of its tribe are candidates.
  */
-export function isEligiblePartner(
+function isEligiblePartner(
   world: World,
   content: ContentSet,
   seeker: Entity,

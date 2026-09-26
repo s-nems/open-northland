@@ -349,8 +349,9 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   "Przydziel wehikuł" pick like the wheel. Only the carrier, the trader, the soldier and the hero
   have the row, by the owner's choice, even where a vehicle type admits other trades. Rodzina names
   the spouse and the growing child as links that select them, or "bez pary" in amber with a
-  wedding-rings button after it; both open the partner choice (the same pick flow as assigning a
-  home, aimed at a person) while the person is free to marry. A man without a trade has no Praca
+  wedding-rings button after it; both send the person to find the nearest partner ("Znajdź
+  partnera") while the person is free to marry, and the button fades to "Ślub w toku" while the
+  wedding runs. The player never picks the partner. A man without a trade has no Praca
   row, a woman has Dom and Rodzina only, a soldier Dom, Pojazd and Rodzina, a child a read-only Dom
   row, a hero Pojazd alone.
 - Produkcja, under Praca for a craft operator and for a gatherer alike: one row per product the

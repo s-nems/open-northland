@@ -73,7 +73,6 @@ function harness(under: number | null): {
       throw new Error('no vehicle order controller in this test');
     },
     setArmedCursor: () => undefined,
-    marry: () => undefined,
   });
   return {
     pick: (units) => {
@@ -135,7 +134,6 @@ it('lights the workplaces that employ the trade while armed', () => {
       throw new Error('no vehicle order controller in this test');
     },
     setArmedCursor: () => undefined,
-    marry: () => undefined,
   });
   pickMode.arm({ kind: 'workplace-or-flag', units: [GATHERER] });
   expect(pickMode.highlight()?.map((item) => item.id)).toEqual([HUT]);

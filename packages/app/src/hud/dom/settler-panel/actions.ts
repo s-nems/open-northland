@@ -38,8 +38,8 @@ export interface SettlerPanelActions {
   readonly unassignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly unassignHome: (id: number) => void;
-  /** Arm the pick of the person to marry. */
-  readonly pickPartner: (id: number) => void;
+  /** Send the person to find the nearest partner and wed. */
+  readonly marry: (id: number) => void;
   /** Arm the pick of the vehicle to ride, as the ring's "Przydziel wehikuł" does. */
   readonly assignVehicle: (id: number) => void;
   readonly leaveVehicle: (id: number) => void;

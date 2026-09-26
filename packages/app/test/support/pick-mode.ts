@@ -42,6 +42,5 @@ export function buildingPickController(opts: {
       throw new Error('no vehicle order controller in this test');
     },
     setArmedCursor: () => undefined,
-    marry: () => undefined,
   });
 }
