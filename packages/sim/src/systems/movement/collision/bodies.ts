@@ -181,17 +181,18 @@ function eachStandingFighter(
 }
 
 /**
- * The nodes standing colliders occupy regardless of calm zones: an approach cell someone already stands on
- * is a taken melee slot even inside a town garrison.
+ * The nodes standing colliders occupy regardless of calm zones, each with the player standing there: an
+ * approach cell someone already stands on is a taken melee slot even inside a town garrison. Two soft-
+ * stacked bodies on one node keep the later one's player.
  */
-export function standingFighterNodes(
+export function standingFighterPosts(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
-): ReadonlySet<NodeId> {
-  const nodes = new Set<NodeId>();
-  eachStandingFighter(world, content, terrain, (_e, node) => nodes.add(node));
-  return nodes;
+): ReadonlyMap<NodeId, number> {
+  const posts = new Map<NodeId, number>();
+  eachStandingFighter(world, content, terrain, (_e, node, player) => posts.set(node, player));
+  return posts;
 }
 
 export function unitWalkBlocks(world: World, content: ContentSet, terrain: TerrainGraph): UnitWalkBlocks {

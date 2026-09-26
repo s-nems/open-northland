@@ -24,8 +24,9 @@ import {
   WOMAN,
 } from './combat-cadence/support.js';
 
-// The melee front without formations: a fighter picks the enemy fewest bodies already stand at, so two
-// lines meet along their length and the larger side wraps the smaller instead of piling onto one man.
+// The melee front without formations: a fighter picks the enemy fewest of its own side already stand at,
+// steps along a full front and turns from a crowded enemy after a blow, so two lines meet along their
+// length and the larger side wraps the smaller instead of piling onto one man.
 
 const P0 = 0;
 const P1 = 1;
@@ -191,7 +192,7 @@ describe('melee front - a fighter behind a full front steps along it', () => {
     const heldEnemy = enemy(s, HELD);
     ring(s, HELD, SPEAR_REACH); // every cell the spear could strike from is a friend's
     const other = enemy(s, OTHER);
-    ring(s, OTHER, 1); // as crowded as the held one, so the pick keeps the held one on a tie
+    ring(s, OTHER, 1); // its near ring full too: only the seam a step south reaches it
     s.world.add(spearman, Engagement, { repathAt: s.tick, target: heldEnemy, waiting });
     return { s, spearman, heldEnemy, other };
   }
@@ -208,7 +209,9 @@ describe('melee front - a fighter behind a full front steps along it', () => {
     const { s, spearman, other } = front();
     const terrain = s.terrain;
     if (terrain === undefined) throw new Error('mapless sim');
-    combatSystem(s.world, { ...ctxOf(s), tick: nextStride(s.tick, spearman) });
+    // Off its stride, so the pick never looks again and only the step along the front can turn it; a
+    // fighter first finding the front full asks for its step at once.
+    combatSystem(s.world, { ...ctxOf(s), tick: nextStride(s.tick, spearman) + 1 });
     expect(held(s, spearman)).toBe(other);
     expect(s.world.get(spearman, MoveGoal).cell).toBe(terrain.nodeAt(SEAM.hx, SEAM.hy));
     expect(s.world.get(spearman, Engagement).waiting).toBeUndefined();

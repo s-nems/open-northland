@@ -5,7 +5,7 @@ import { forEachRingNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { standingFighterNodes } from '../movement/collision/index.js';
+import { standingFighterPosts } from '../movement/collision/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 
 /** A weapon's reach band in map points ({@link hexNodeDistance}). Original behavior: a target is in reach
@@ -31,16 +31,15 @@ export function forEachNodeInBand(
   return true;
 }
 
-/** The map-point ring {@link MeleeSlots.crowdingAround} counts: the six nodes adjacent to a unit, where a
- *  melee attacker stands to strike it. */
-const CROWDING_RING = 1;
-
-/** {@link MeleeSlots.crowdingAround}: `occupied` neighbours, and `sealed` when no neighbour is left to
- *  step onto. */
+/** {@link MeleeSlots.crowdingAround}: `occupied` cells of the band held by the asker's own side, and
+ *  `sealed` when no cell of it is left to step onto. */
 export interface Crowding {
   readonly occupied: number;
   readonly sealed: boolean;
 }
+
+/** A side that claims a cell: a player, or null for an unowned combatant such as a hostile animal. */
+export type Side = number | null;
 
 /**
  * One combat tick's melee-slot bookkeeping: which contact cells are spoken for, and the derived views that
@@ -48,11 +47,13 @@ export interface Crowding {
  * is per-tick derived state, never hashed, and the world scans run on first ask.
  */
 export class MeleeSlots {
-  private standing?: ReadonlySet<NodeId>;
+  /** The standing bodies by node, each with its player. */
+  private standing?: ReadonlyMap<NodeId, number>;
   /** Goals en-route chasers already own: a slot dealt in an earlier tick stays taken while its owner is
    *  still walking to it, else two chasers dealt across ticks converge on one cell and stack. */
   private enRoute?: ReadonlySet<NodeId>;
-  private readonly claimed = new Set<NodeId>();
+  /** The cells dealt this tick, each with the side it was dealt to. */
+  private readonly claimed = new Map<NodeId, Side>();
   private blocked?: BlockOverlay;
   /** Encircle candidates per building and weapon band: a building never moves within a tick, so the band
    *  scan runs once and every chaser only filters taken slots over it. */
@@ -68,7 +69,7 @@ export class MeleeSlots {
    *  chaser's live goal. `ownGoal` is the asker's own goal and `standingOn` the node it stands on, neither
    *  taken to itself - a cadence repath may re-choose and keep either. */
   isTaken(cell: NodeId, ownGoal: NodeId | undefined, standingOn?: NodeId): boolean {
-    this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
+    this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
     if ((this.standing.has(cell) && cell !== standingOn) || this.claimed.has(cell)) return true;
     this.enRoute ??= enRouteChaseGoals(this.world);
     return this.enRoute.has(cell) && cell !== ownGoal;
@@ -77,28 +78,31 @@ export class MeleeSlots {
   /** Whether a body stands on `cell` or it was dealt earlier this tick: {@link isTaken} without the goals of
    *  chasers still walking, for a walker that is on the spot before them. */
   isOccupied(cell: NodeId): boolean {
-    this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
+    this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
     return this.standing.has(cell) || this.claimed.has(cell);
   }
 
   /**
-   * How crowded a unit standing on `node` is: how many of its six map-point neighbours a standing body or a
-   * cell dealt this tick holds, `except` (the asker's own node) not counted, and whether every in-bounds
-   * walkable neighbour is held. Any body counts, the unit's own side included: a fighter inside its own
-   * line reads as crowded and its flank as open, which is what makes numbers wrap a line instead of
-   * stacking on one man.
+   * How many of `side`'s own bodies already stand at a unit on `node`, or were dealt a cell there this
+   * tick, within `band` of it (the cells a weapon of that band strikes it from), `except` (the asker's own
+   * node) not counted; and whether the band is `sealed`, no cell of it left to step onto. The enemy's own
+   * neighbours are no crowd: they take sides away, which `sealed` and the slot deal answer, but a man at the
+   * edge of his own line is not a pile for standing beside his friends.
    */
-  crowdingAround(node: NodeId, except?: NodeId): Crowding {
-    this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
+  crowdingAround(node: NodeId, band: WeaponBand, side: Side, except?: NodeId): Crowding {
+    this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
     const standing = this.standing;
-    const at = { hx: this.terrain.xOf(node), hy: this.terrain.yOf(node) };
     let occupied = 0;
     let open = 0;
-    forEachRingNode(at, CROWDING_RING, this.terrain.width, this.terrain.height, (hx, hy) => {
-      const cell = this.terrain.nodeAt(hx, hy);
+    forEachNodeInBand(this.terrain, node, band, (cell) => {
       if (cell === except) return true;
-      if (standing.has(cell) || this.claimed.has(cell)) occupied++;
-      else if (this.terrain.isWalkable(cell)) open++;
+      const body = standing.get(cell);
+      const dealt = this.claimed.get(cell);
+      if (body === undefined && dealt === undefined) {
+        if (this.terrain.isWalkable(cell)) open++;
+      } else if (body === side || dealt === side) {
+        occupied++;
+      }
       return true;
     });
     return { occupied, sealed: open === 0 };
@@ -113,9 +117,9 @@ export class MeleeSlots {
     return !this.blocked.has(cell);
   }
 
-  /** Deal `cell` to the asking chaser - the tick's later chasers aim at the next free one. */
-  claim(cell: NodeId): void {
-    this.claimed.add(cell);
+  /** Deal `cell` to the asking chaser of `side` - the tick's later chasers aim at the next free one. */
+  claim(cell: NodeId, side: Side): void {
+    this.claimed.set(cell, side);
   }
 
   /**

@@ -33,7 +33,7 @@ import { onStride, REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
-import type { Crowding, WeaponBand } from './melee-slots.js';
+import type { Crowding, Side, WeaponBand } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, reachableTargetGate } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
@@ -416,9 +416,10 @@ function heldOrPicked(
     heldTarget !== undefined && world.isAlive(heldTarget) && hold.keep(heldTarget)
       ? focusedOn(world, ctx, terrain, here, heldTarget)
       : null;
+  const asker: Asker = { here, side: world.tryGet(self, Owner)?.player ?? null, band: hold.band };
   if (held !== null && heldTarget !== undefined && !rescanDue(world, ctx, self, held.dist, hold.band)) {
     if (!standsToStrike(world, self, held.dist, hold.band)) return held;
-    return lessCrowdedInReach(world, ctx, terrain, pass, spec, here, heldTarget, hold.band) ?? held;
+    return lessCrowdedInReach(world, ctx, terrain, pass, spec, asker, heldTarget) ?? held;
   }
   const { x, y } = terrain.coordsOf(here);
   if (
@@ -428,15 +429,22 @@ function heldOrPicked(
   ) {
     return null;
   }
-  const picked = pickByTier(world, ctx, terrain, pass, spec, here, x, y);
+  const picked = pickByTier(world, ctx, terrain, pass, spec, asker, x, y);
   if (picked === null) return held;
   // A search hit lies at its distance to the nearest wall in the band; the reach check measures to the
   // nearest wall of all.
   const pickedAt = focusedOn(world, ctx, terrain, here, picked.entity);
   if (held === null || heldTarget === undefined) return pickedAt;
-  const heldScore = crowdedScore(world, ctx, terrain, pass, here, heldTarget, held.dist);
-  const pickedScore = crowdedScore(world, ctx, terrain, pass, here, picked.entity, pickedAt.dist);
+  const heldScore = crowdedScore(world, ctx, terrain, pass, asker, heldTarget, held.dist);
+  const pickedScore = crowdedScore(world, ctx, terrain, pass, asker, picked.entity, pickedAt.dist);
   return pickedScore >= heldScore ? held : pickedAt;
+}
+
+/** Who asks how crowded an enemy is: from where, for which side, striking from which band. */
+interface Asker {
+  readonly here: NodeId;
+  readonly side: Side;
+  readonly band: WeaponBand;
 }
 
 /** How many walk steps a fighter takes between two looks for a nearer enemy. Original behavior. */
@@ -469,28 +477,28 @@ function rescanDue(
 }
 
 /**
- * How many map points one body already standing beside an enemy adds to that enemy's pick score.
+ * How many map points one friend already standing at an enemy adds to that enemy's pick score.
  * Approximation: owner rule, no counterpart in the original, which stacks every attacker on the nearest
- * enemy. Here bodies collide, so a fighter picks the enemy fewest others already stand at, and two lines
- * meet as a front that the larger side wraps rather than a pile on one man.
+ * enemy. Here bodies collide, so a fighter picks the enemy fewest of its own side already stand at, and
+ * two lines meet as a front that the larger side wraps rather than a pile on one man.
  */
 export const CROWDING_WEIGHT = 2;
 
 /**
- * An enemy's pick score from `here`: its distance plus {@link CROWDING_WEIGHT} for every body already
- * standing on one of its six neighbours ({@link MeleeSlots.crowdingAround}), the asker's own node not
- * counted. A building is scored by distance alone: it is besieged wall by wall, not surrounded.
+ * An enemy's pick score for `asker`: its distance plus {@link CROWDING_WEIGHT} for every friend already
+ * standing where the asker's weapon would strike it from ({@link MeleeSlots.crowdingAround}), the asker's
+ * own node not counted. A building is scored by distance alone: it is besieged wall by wall, not surrounded.
  */
 function crowdedScore(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   pass: CombatPass,
-  here: NodeId,
+  asker: Asker,
   target: Entity,
   dist: number,
 ): number {
-  return dist + CROWDING_WEIGHT * crowdingOf(world, ctx, terrain, pass, here, target).occupied;
+  return dist + CROWDING_WEIGHT * crowdingOf(world, ctx, terrain, pass, asker, target).occupied;
 }
 
 /** {@link MeleeSlots.crowdingAround} a unit target; a building is never crowded out. */
@@ -499,11 +507,12 @@ function crowdingOf(
   ctx: SystemContext,
   terrain: TerrainGraph,
   pass: CombatPass,
-  here: NodeId,
+  asker: Asker,
   target: Entity,
 ): Crowding {
   if (world.has(target, Building) || world.has(target, Palisade)) return OPEN_CROWDING;
-  return pass.slots.crowdingAround(combatTargetNode(world, ctx, terrain, here, target), here);
+  const at = combatTargetNode(world, ctx, terrain, asker.here, target);
+  return pass.slots.crowdingAround(at, asker.band, asker.side, asker.here);
 }
 
 const OPEN_CROWDING: Crowding = { occupied: 0, sealed: false };
@@ -527,16 +536,15 @@ function lessCrowdedInReach(
   terrain: TerrainGraph,
   pass: CombatPass,
   spec: EngageSpec,
-  here: NodeId,
+  asker: Asker,
   heldTarget: Entity,
-  band: WeaponBand,
 ): { target: Entity; dist: number } | null {
-  const heldCrowd = crowdingOf(world, ctx, terrain, pass, here, heldTarget).occupied;
+  const heldCrowd = crowdingOf(world, ctx, terrain, pass, asker, heldTarget).occupied;
   if (heldCrowd === 0) return null;
   const { index } = pass;
   const heldRank = tierRank(world, ctx, index, heldTarget);
-  const reach = { minRange: band.minRange, maxRange: band.maxRange + 1 };
-  const { x, y } = terrain.coordsOf(here);
+  const reach = { minRange: asker.band.minRange, maxRange: asker.band.maxRange + 1 };
+  const { x, y } = terrain.coordsOf(asker.here);
   const near = index.nearestFew(
     x,
     y,
@@ -551,13 +559,13 @@ function lessCrowdedInReach(
   let best: Entity | null = null;
   let bestCrowd = heldCrowd;
   for (const candidate of near) {
-    const crowd = crowdingOf(world, ctx, terrain, pass, here, candidate.entity).occupied;
+    const crowd = crowdingOf(world, ctx, terrain, pass, asker, candidate.entity).occupied;
     if (crowd < bestCrowd) {
       best = candidate.entity;
       bestCrowd = crowd;
     }
   }
-  return best === null ? null : focusedOn(world, ctx, terrain, here, best);
+  return best === null ? null : focusedOn(world, ctx, terrain, asker.here, best);
 }
 
 /** How many nodes lie in `band`, six per map point of radius: the most distinct unit targets a scan of it
@@ -582,7 +590,7 @@ function pickByTier(
   terrain: TerrainGraph,
   pass: CombatPass,
   spec: EngageSpec,
-  here: NodeId,
+  asker: Asker,
   x: number,
   y: number,
 ): { entity: Entity; distance: number } | null {
@@ -600,7 +608,7 @@ function pickByTier(
     );
     if (found.length === 0) continue;
     if (found.length === 1) return found[0] ?? null;
-    return leastCrowded(world, ctx, terrain, pass, here, found);
+    return leastCrowded(world, ctx, terrain, pass, asker, found);
   }
   return null;
 }
@@ -612,11 +620,11 @@ function leastCrowded(
   ctx: SystemContext,
   terrain: TerrainGraph,
   pass: CombatPass,
-  here: NodeId,
+  asker: Asker,
   found: readonly { entity: Entity; distance: number }[],
 ): { entity: Entity; distance: number } | null {
   const scored = found.map((candidate) => {
-    const crowding = crowdingOf(world, ctx, terrain, pass, here, candidate.entity);
+    const crowding = crowdingOf(world, ctx, terrain, pass, asker, candidate.entity);
     return {
       candidate,
       sealed: crowding.sealed,

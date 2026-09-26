@@ -265,7 +265,7 @@ export function chase(
     return true;
   }
   redirectRoute(world, e, dest); // keep the live route - dropping it reset the gait (chase stutter)
-  slots.claim(dest);
+  slots.claim(dest, world.tryGet(e, Owner)?.player ?? null);
   const held = world.mut(e, Engagement);
   held.repathAt = ctx.tick + REPATH_CADENCE;
   held.waiting = undefined;

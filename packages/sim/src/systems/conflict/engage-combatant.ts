@@ -409,7 +409,7 @@ function pullUpInReach(
     if (slots.isOccupied(cell)) continue;
     if (cell === goal) return true; // already walking there
     redirectRoute(world, e, cell);
-    slots.claim(cell);
+    slots.claim(cell, world.tryGet(e, Owner)?.player ?? null);
     const engagement = world.tryMut(e, Engagement);
     if (engagement !== undefined) engagement.repathAt = ctx.tick + REPATH_CADENCE;
     return true;
