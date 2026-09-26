@@ -291,15 +291,17 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   };
   const cancel = (): void => setMode(null);
 
-  const resolveBuilding = (
-    event: MouseEvent,
+  const buildingUnder = (event: MouseEvent, kind: BuildingPickKind): number | null => {
+    const w = deps.toWorld(event.clientX, event.clientY);
+    const candidates = kind === 'trade-house' ? deps.targets.buildings() : deps.targets.owned('building');
+    return pickTopAt(candidates, w.x, w.y);
+  };
+
+  const orderAtBuilding = (
+    building: number,
     kind: BuildingPickKind,
     settlers: readonly number[],
   ): boolean => {
-    const w = deps.toWorld(event.clientX, event.clientY);
-    const candidates = kind === 'trade-house' ? deps.targets.buildings() : deps.targets.owned('building');
-    const building = pickTopAt(candidates, w.x, w.y);
-    if (building === null) return false;
     const snapshot = deps.snapshot();
     if (kind === 'learning-place') {
       const learners = settlers.filter((settler) =>
@@ -310,6 +312,15 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     const orders = BUILDING_PICKS[kind].orders(snapshot, settlers, building, buildingsByType, canTrade);
     for (const order of orders) deps.enqueue(order);
     return orders.length > 0;
+  };
+
+  const resolveBuilding = (
+    event: MouseEvent,
+    kind: BuildingPickKind,
+    settlers: readonly number[],
+  ): boolean => {
+    const building = buildingUnder(event, kind);
+    return building !== null && orderAtBuilding(building, kind, settlers);
   };
 
   const resolveSpot = (mode: SpotMode, named: Tile): boolean => {
@@ -379,11 +390,14 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'learning-place':
       case 'trade-house':
         return resolveBuilding(event, mode.kind, mode.units);
-      case 'workplace-or-flag':
-        return (
-          resolveBuilding(event, 'workplace', mode.units) ||
-          resolveFlag(mode.units, deps.nodeAt(event.clientX, event.clientY))
-        );
+      case 'workplace-or-flag': {
+        // A building under the click answers for the press: one that turns the settler down refuses it,
+        // and the flag goes only where no own building stands.
+        const building = buildingUnder(event, 'workplace');
+        return building === null
+          ? resolveFlag(mode.units, deps.nodeAt(event.clientX, event.clientY))
+          : orderAtBuilding(building, 'workplace', mode.units);
+      }
       case 'attack-settler':
         return deps.orders().issueAttackTarget(event, 'settler', mode.units);
       case 'attack-building':

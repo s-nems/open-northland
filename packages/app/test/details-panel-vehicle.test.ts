@@ -375,13 +375,13 @@ describe('vehicle panel pointer intents', () => {
       goodType: row.goodType,
       amount: 1,
     });
-    expect(panelClickAt(view, more.x, more.y, { toggle: false, bigStep: true }, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(view, more.x, more.y, { bigStep: true }, ALL_STOCK_TAB)).toEqual({
       kind: 'setVehicleWanted',
       entityId: model.entityId,
       goodType: row.goodType,
       amount: WANTED_BIG_STEP,
     });
-    expect(panelClickAt(view, less.x, less.y, { toggle: false, bigStep: true }, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(view, less.x, less.y, { bigStep: true }, ALL_STOCK_TAB)).toEqual({
       kind: 'setVehicleWanted',
       entityId: model.entityId,
       goodType: row.goodType,

@@ -284,7 +284,7 @@ export const enGame = {
       standingTo: 'Standing to',
       idle: 'Idle',
     },
-    playerTribe: 'Player #{player} · {tribe}{stance}',
+    playerTribe: 'Player #{player} · {tribe}',
     age: 'Age: {years}',
     health: 'Health',
     hunger: 'Food',

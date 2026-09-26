@@ -281,7 +281,7 @@ export const plGame = {
       standingTo: 'Stoi na alarmie',
       idle: 'Bezczynny',
     },
-    playerTribe: 'Gracz #{player} · {tribe}{stance}',
+    playerTribe: 'Gracz #{player} · {tribe}',
     age: 'Wiek: {years}',
     health: 'Zdrowie',
     hunger: 'Sytość',

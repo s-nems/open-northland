@@ -177,8 +177,8 @@ const hitStockGood = (
   return rows[slot]?.label ?? null;
 };
 
-/** The hovered building health gauge ("Zdrowie: 300/1000"), or null. Unlike {@link hitBarValue} the
- *  tooltip carries the caption, since the drawn gauge has none. */
+/** The hovered building health gauge ("Zdrowie: 300/1000"), or null. The tooltip carries the caption,
+ *  since the drawn gauge has none. */
 const buildingHealthValue = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'building') return null;
   const health = view.model.health;

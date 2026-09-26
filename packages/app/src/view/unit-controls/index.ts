@@ -213,7 +213,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // too, since its own listener consumes left clicks only.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     // The details panel routes its buttons through the same claim, so no panel-owned listener races this one.
-    const modifiers = { toggle: e.ctrlKey || e.metaKey, bigStep: e.shiftKey };
+    const modifiers = { bigStep: e.shiftKey };
     if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button, modifiers)) return;
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
     const pick = pickMode.handleMouseDown(e);

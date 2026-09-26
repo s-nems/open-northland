@@ -16,6 +16,8 @@ const POSTED = 2;
 const HUT = 10;
 /** The posted gatherer's own hut, elsewhere on the map, so the lit hut keeps its open slot. */
 const OTHER_HUT = 11;
+/** An own building with no post for the trade, so it turns the gatherer down. */
+const HOME = 12;
 const SPOT = { col: 5, row: 6 };
 
 const content = sandboxContent();
@@ -23,6 +25,7 @@ const gathererJob = content.jobs.find((job) => job.id === 'collector')?.typeId;
 const hutType = content.buildings.find((row) =>
   row.workers.some((slot) => slot.jobType === gathererJob),
 )?.typeId;
+const homeType = content.buildings.find((row) => row.workers.length === 0)?.typeId;
 
 const gatherer = (id: number, posted: boolean): Ent => ({
   id,
@@ -41,6 +44,14 @@ const WORLD = snapshotOf([
     components: {
       Building: { buildingType: hutType, tribe: TRIBE, built: ONE },
       Position: { x: fx.fromInt(2), y: fx.fromInt(2) },
+      Owner: { player: PLAYER },
+    },
+  },
+  {
+    id: HOME,
+    components: {
+      Building: { buildingType: homeType, tribe: TRIBE, built: ONE },
+      Position: { x: fx.fromInt(4), y: fx.fromInt(4) },
       Owner: { player: PLAYER },
     },
   },
@@ -100,6 +111,13 @@ it('employs the gatherer at a lit building under the click', () => {
   ]);
   expect(h.flags).toEqual([]);
   expect(h.flagActive()).toBe(false);
+});
+
+it('refuses the press on an own building that turns the gatherer down, planting no flag', () => {
+  const h = harness(HOME);
+  expect(h.pick([POSTED])).not.toBe('ordered');
+  expect(h.issued).toEqual([]);
+  expect(h.flags).toEqual([]);
 });
 
 it('plants the flag where the click names no building', () => {

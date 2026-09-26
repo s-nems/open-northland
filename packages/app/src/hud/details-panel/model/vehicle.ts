@@ -351,7 +351,6 @@ export function vehiclePanelModel(
     meta: formatMessage(hud.playerTribe, {
       player: ownerPlayerOf(ent) ?? '-',
       tribe: tribeName(tribe, tribeRow?.name ?? tribeRow?.id),
-      stance: '',
     }),
     task,
     taskLabel: formatMessage(hud.vehicleTask, { task: hud.vehicleTasks[task] }),

@@ -151,10 +151,10 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   return rows.map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
 }
 
-/** The rows a folded Doświadczenie section keeps: the current trade's, at most
- *  {@link EXPERIENCE_FOLDED_MAX}, or the single best-trained one for a person without a trained trade. */
 export const EXPERIENCE_FOLDED_MAX = 3;
 
+/** The rows a folded Doświadczenie section keeps: the current trade's, at most
+ *  {@link EXPERIENCE_FOLDED_MAX}, or the single best-trained one for a person without a trained trade. */
 export function experienceShown(rows: readonly ExperienceRowModel[]): number {
   const own = rows.filter((row) => row.own).length;
   return Math.min(rows.length, EXPERIENCE_FOLDED_MAX, Math.max(1, own));
@@ -217,7 +217,7 @@ function atomicState(components: Comp): SettlerState | null {
   const atomic = components.CurrentAtomic as { effect?: { kind?: unknown } } | undefined;
   if (atomic === undefined) return null;
   const kind = atomic.effect?.kind;
-  return typeof kind === 'string' && kind in ATOMIC_STATE
+  return typeof kind === 'string' && Object.hasOwn(ATOMIC_STATE, kind)
     ? ATOMIC_STATE[kind as AtomicEffect['kind']]
     : 'working';
 }

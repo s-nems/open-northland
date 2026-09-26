@@ -18,14 +18,12 @@ import type { PanelView } from './selection-view.js';
 export const WANTED_STEP = 1;
 export const WANTED_BIG_STEP = 10;
 
-/** The keys held on a panel click: Shift takes the big wanted step; Ctrl/Cmd is read for the toggle
- *  the DOM settler panel handles itself. */
+/** The keys held on a panel click: Shift takes the big wanted step. */
 export interface PanelClickModifiers {
-  readonly toggle: boolean;
   readonly bigStep: boolean;
 }
 
-export const NO_MODIFIERS: PanelClickModifiers = { toggle: false, bigStep: false };
+export const NO_MODIFIERS: PanelClickModifiers = { bigStep: false };
 
 /** One resolved left-click intent: `stockTab` re-bakes the panel and `centerOnEntity` moves the view,
  *  the rest are player orders. */
