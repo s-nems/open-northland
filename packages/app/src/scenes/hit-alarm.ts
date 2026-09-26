@@ -100,7 +100,11 @@ function alarmedPastSight(sim: Simulation): boolean {
 
 /** Whether one of the blue `jobType` stands a blow's run east of `from`: the archer is due west, so the run
  *  keeps its whole step of easting whether it goes along the row or a diagonal. */
-function ranEast(sim: Simulation, jobType: number, from: { readonly x: number; readonly y: number }): boolean {
+function ranEast(
+  sim: Simulation,
+  jobType: number,
+  from: { readonly x: number; readonly y: number },
+): boolean {
   const ranTo = cellAnchorNode(from.x, from.y).hx + systems.FLEE_STEP_NODES;
   return blueOfJob(sim, jobType).some((e) => {
     const p = sim.world.get(e, Position);
