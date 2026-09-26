@@ -317,7 +317,9 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
 - Handel, for a trader: a round add button in the section title (Dodaj punkt handlowy), then one
   row per stop: the house's name (an other seat's house in amber), its import goods as round icon
   toggles (the good's name in the tooltip; a foreign stop has none, it trades on the agreement) and a
-  remove button. Umowa lists the map's agreements as
+  remove button. Wyrównuj, for two own stops, lists the goods both houses store as the same toggles:
+  a lit good is marked at both stops, so the trader evens their stocks out instead of carrying it one
+  way. Umowa lists the map's agreements as
   single-choice chips drawn as "2 [wood] → 1 [leather]". The route the trader drives is in the
   status line.
 - Doświadczenie: the trained specializations as ledger rows one to a line (a track's name runs

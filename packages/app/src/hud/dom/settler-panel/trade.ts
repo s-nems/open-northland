@@ -25,6 +25,10 @@ function stopsKey(trade: TradePanelModel): string {
     .join('|');
 }
 
+function balanceKey(trade: TradePanelModel): string {
+  return trade.balance.map((mark) => mark.goodType).join('.');
+}
+
 function offersKey(trade: TradePanelModel): string {
   return trade.offers
     .map((offer) => `${offer.index}:${offer.give.goodType}.${offer.take.goodType}`)
@@ -39,7 +43,8 @@ interface StopView {
 }
 
 /** Handel: the add button in the title, one row per stop (its name, its import toggles, a remove
- *  button) and the map's agreements as single-choice chips. */
+ *  button), the goods to balance between two own stops as toggles, and the map's agreements as
+ *  single-choice chips. */
 export interface TradeSection {
   readonly element: HTMLElement;
   update(model: SettlerPanelModel): void;
@@ -60,10 +65,17 @@ export function createTradeSection(
   if (agreementLabel === null) throw new Error('trade: agreement row');
   const offers = element('span', 'on-offers');
   agreement.append(offers);
-  root.append(title.element, stops, agreement);
+  const balance = element('div', 'on-ledger on-ledger--ctl', '<span></span>');
+  const balanceLabel = balance.firstElementChild;
+  if (balanceLabel === null) throw new Error('trade: balance row');
+  const balanceRow = element('span', 'on-imports');
+  balance.append(balanceRow);
+  root.append(title.element, stops, balance, agreement);
 
   let shownStops = '';
   let stopViews: StopView[] = [];
+  let shownBalance = '';
+  let balanceViews: RoundButton[] = [];
   let shownOffers = '';
   let offerViews: HTMLButtonElement[] = [];
 
@@ -92,6 +104,18 @@ export function createTradeSection(
     item.append(row);
     return { item, name, imports, remove };
   };
+
+  /** A balance mark marks or clears its good at both stops at once; the live model says which way. */
+  const balanceView = (goodType: number): RoundButton =>
+    createRoundButton(
+      'toggle',
+      () => {
+        const trade = current()?.trade;
+        const selected = trade?.balance.find((mark) => mark.goodType === goodType)?.selected ?? false;
+        for (const stop of trade?.stops ?? []) actions.setTradeImport(id(), stop.house, goodType, !selected);
+      },
+      deps.icons,
+    );
 
   const offerView = (offer: TradeOfferModel): HTMLButtonElement => {
     const chip = button(
@@ -154,6 +178,22 @@ export function createTradeSection(
           face: { glyph: GLYPH.close },
           label: copy.tradeDetachHouse,
           tooltip: copy.tradeDetachHouse,
+        });
+      });
+      setHidden(balance, trade.balance.length === 0);
+      write(balanceLabel, panel.balance);
+      const balanceGoods = balanceKey(trade);
+      if (balanceGoods !== shownBalance) {
+        shownBalance = balanceGoods;
+        balanceViews = trade.balance.map((mark) => balanceView(mark.goodType));
+        balanceRow.replaceChildren(...balanceViews.map((view) => view.element));
+      }
+      trade.balance.forEach((mark, index) => {
+        balanceViews[index]?.update({
+          face: { goodId: mark.goodId },
+          label: mark.label,
+          tooltip: formatMessage(mark.selected ? panel.balanceOn : panel.balanceOff, { good: mark.label }),
+          pressed: mark.selected,
         });
       });
       setHidden(agreement, trade.offers.length === 0);
