@@ -1,4 +1,11 @@
-import { components, type Entity, playerCommand, type Simulation, SUCCESSFUL_IF } from '@open-northland/sim';
+import {
+  components,
+  type Entity,
+  playerCommand,
+  type Simulation,
+  SUCCESSFUL_IF,
+  systems,
+} from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_ARCHER, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
@@ -28,6 +35,9 @@ const MAP_H = 18;
 const CATAPULT_AT = { x: 5, y: 9 } as const;
 /** The commander stands beside the catapult, off its footprint. */
 const COMMANDER_AT = { x: 3, y: 9 } as const;
+/** Catapult hits the commander has landed: enough stones fly true to raze the hut, whose clean-room
+ *  body is its one door node, inside the run, while the rest still scatter around the picket. */
+const COMMANDER_CATAPULT_HITS = 30;
 /** Eighteen nodes east: inside the 8..24 band, so the first stone flies without a drive. */
 const ENEMY_HUT: readonly [string, number, number] = ['home_level_00', 14, 9];
 /** The picket: an archer in bow reach of the hull, and a swordsman standing off. */
@@ -43,11 +53,14 @@ const RUN_TICKS = 700;
 /** Between the catapult and the hut, so the browser opens on the whole exchange. */
 const CAMERA_AT = { hx: 20, hy: 19 } as const;
 
-const { Health, Owner, Vehicle } = components;
+const { Health, Owner, SettlerProgress, Vehicle } = components;
 
 function build(sim: Simulation): void {
   const catapult = spawnVehicleDirect(sim, VEHICLE_CATAPULT, CATAPULT_AT.x, CATAPULT_AT.y);
   const commander = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, COMMANDER_AT.x, COMMANDER_AT.y);
+  sim.world
+    .mut(commander, SettlerProgress)
+    .experience.set(systems.FIGHT_EXPERIENCE_TYPE.CATAPULT, COMMANDER_CATAPULT_HITS);
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity: commander, vehicle: catapult }));
   const hut = placeBuiltSandboxBuilding(sim, ENEMY_HUT[0], ENEMY_HUT[1], ENEMY_HUT[2], ENEMY_PLAYER);
   for (const [job, weaponTypeId, x, y] of ENEMY_PICKET) {

@@ -18,13 +18,13 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../progression/index.js';
 import { isAreaWeapon } from '../readviews/index.js';
-import { manhattan } from '../spatial/metric.js';
+import { hexNodeDistance } from '../spatial/metric.js';
 import {
   crewInside,
   facingOfStep,
@@ -42,20 +42,20 @@ import { attackClipTiming, vehicleWeapon } from './weapons.js';
 
 // The siege vehicle's fight (docs/formats/VEHICLES.md "Catapult"): a stance-driven scan, a target it
 // backs off from, closes on or fires at, and the shot itself, a ground burst the projectile system
-// flies to its scattered landing node. An attack-move's march is driven from here too. Ranges are
-// Manhattan half-cell nodes, the metric every other weapon band here uses (approximation: the original
-// measures its hexagon distance).
+// flies to its scattered landing node. An attack-move's march is driven from here too. Ranges are map
+// points (`hexNodeDistance`), the metric every other weapon band counts in. Original behavior.
 
-/** How far an attacking or defending siege vehicle looks for an enemy (original behavior). */
-export const VEHICLE_SCAN_RADIUS_NODES = 40;
-/** How far from its guard position a defending vehicle keeps a chase before dropping the target
- *  (original behavior). */
-export const VEHICLE_DEFENCE_LEASH_NODES = 60;
+/** How far, in map points, an attacking or defending siege vehicle looks for an enemy (original
+ *  behavior). */
+export const VEHICLE_SCAN_RADIUS_POINTS = 40;
+/** How far, in map points, from its guard position a defending vehicle keeps a chase before dropping the
+ *  target (original behavior). */
+export const VEHICLE_DEFENCE_LEASH_POINTS = 60;
 /** How long a march drives on unscanning after a chase could not reach its find: a few legs, so it
  *  gets past enemies it cannot close on. Approximation: the settlers' march rests one repath cadence,
  *  which is shorter than one vehicle leg. */
 const MARCH_REST_TICKS = 5 * TICKS_PER_SECOND;
-/** A vehicle too far from its target drives to a node this many nodes inside its far reach
+/** A vehicle too far from its target drives to a node this many map points inside its far reach
  *  (original behavior: `maxRange - 5`). */
 const APPROACH_BAND_DEPTH = 5;
 /** The scatter roll is a percent; the base accuracy every commander has before any catapult
@@ -217,7 +217,7 @@ function scanForTarget(
 ): VehicleAttackTarget | null {
   const centre = stance === 'attack' || guard === null ? here : terrain.nodeAtClamped(guard.hx, guard.hy);
   const minDist = stance === 'hold' ? weapon.minRange : 1;
-  const maxDist = stance === 'hold' ? weapon.maxRange : VEHICLE_SCAN_RADIUS_NODES;
+  const maxDist = stance === 'hold' ? weapon.maxRange : VEHICLE_SCAN_RADIUS_POINTS;
   const { x, y } = terrain.coordsOf(centre);
   const owner = world.tryGet(e, Owner);
   if (owner !== undefined && !pass.index.othersWithin(owner.player, x, y, maxDist)) return held;
@@ -226,12 +226,16 @@ function scanForTarget(
     givenUp?.(t) !== true &&
     isValidTarget(world, ctx, e, identity, t) &&
     (owner === undefined || playerSeesEntity(world, ctx.fog, owner.player, t));
-  const found = pass.index.nearest(x, y, minDist, maxDist, accept, owner?.player ?? null);
+  const found = pass.index.nearest(x, y, minDist, maxDist, accept, owner?.player ?? null, 'hex');
   if (found === null) return held;
   if (held !== null && held.kind === 'entity') {
     if (held.entity === found.entity) return held;
     // Both measured from the scan centre, the metric the find carries.
-    const heldDist = manhattan(terrain, centre, combatTargetNode(world, ctx, terrain, centre, held.entity));
+    const heldDist = hexNodeDistance(
+      terrain,
+      centre,
+      combatTargetNode(world, ctx, terrain, centre, held.entity),
+    );
     if (heldDist <= found.distance) return held;
   }
   return { kind: 'entity', entity: found.entity };
@@ -256,13 +260,13 @@ function actOnTarget(
   const state = world.get(e, Vehicle);
   const targetNode = aimNode(world, ctx, terrain, here, target);
   if (stance === 'defence' && state.guard !== null) {
-    const leash = manhattan(terrain, terrain.nodeAtClamped(state.guard.hx, state.guard.hy), here);
-    if (leash > VEHICLE_DEFENCE_LEASH_NODES) {
+    const leash = hexNodeDistance(terrain, terrain.nodeAtClamped(state.guard.hx, state.guard.hy), here);
+    if (leash > VEHICLE_DEFENCE_LEASH_POINTS) {
       dropTarget(world, e);
       return;
     }
   }
-  const dist = manhattan(terrain, here, targetNode);
+  const dist = hexNodeDistance(terrain, here, targetNode);
   if (dist >= weapon.minRange && dist <= weapon.maxRange) {
     if (finishLeg(world, e)) return; // fire once the leg is done
 
@@ -307,8 +311,8 @@ function aimNode(
 }
 
 /**
- * The node nearest `here` (Manhattan, then node id) that the vehicle may stand on, lies on its own
- * continent and is `band` nodes from `target`. Approximation: the original walks its own move-point
+ * The node nearest `here` (map points, then node id) that the vehicle may stand on, lies on its own
+ * continent and is `band` map points from `target`. Approximation: the original walks its own move-point
  * search near the target and floods a radius-5 disc for a firing spot across a continent seam; a
  * target with no such node on this continent is unreachable here too.
  */
@@ -329,16 +333,18 @@ function firingNode(
   const t = terrain.coordsOf(target);
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
+  // A map-point disc of radius `hi` spans `hi` rows and, on any row, `hi` columns plus the odd-row lean.
+  const columns = hi + 1;
   for (let dy = -hi; dy <= hi; dy++) {
-    for (let dx = -hi; dx <= hi; dx++) {
-      const reach = Math.abs(dx) + Math.abs(dy);
-      if (reach < lo || reach > hi) continue;
+    for (let dx = -columns; dx <= columns; dx++) {
       const x = t.x + dx;
       const y = t.y + dy;
       if (!terrain.inBounds(x, y)) continue;
+      const reach = hexDistanceBetween(t.x, t.y, x, y);
+      if (reach < lo || reach > hi) continue;
       const node = terrain.nodeAt(x, y);
       if (terrain.componentOf(node) !== continent || blocked.has(node)) continue;
-      const dist = manhattan(terrain, here, node);
+      const dist = hexNodeDistance(terrain, here, node);
       if (dist < bestDist || (dist === bestDist && best !== null && node < best)) {
         best = node;
         bestDist = dist;
@@ -420,7 +426,7 @@ function scatter(
   const roll = ctx.rng.int(SCATTER_ROLL);
   const accuracy = skill + SCATTER_BASE_ACCURACY;
   if (roll <= accuracy) return { hx: aim.x, hy: aim.y };
-  const dist = manhattan(terrain, here, terrain.nodeAt(aim.x, aim.y));
+  const dist = hexNodeDistance(terrain, here, terrain.nodeAt(aim.x, aim.y));
   const spread = Math.floor(((roll - accuracy) * Math.floor(dist / SCATTER_DISTANCE_DIVISOR)) / roll);
   const half = spread >> 1;
   const dx = ctx.rng.int(spread + 1) - half;

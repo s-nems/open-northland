@@ -351,16 +351,18 @@ landscape on 51 % of footprint nodes and drop all cargo within radius 10.
 A scripted removal draws no ruins, spills nothing and draws no random number; a player leaving the
 game removes his vehicles with ruins but without the cargo spill.
 
-Open Northland (`packages/sim/src/systems/conflict/engage-vehicle.ts`, `ground-impact.ts`): the
+Open Northland (`packages/sim/src/systems/conflict/engage-vehicle.ts`, `projectile.ts`): the
 stance, guard position and attack ride on the `Vehicle` component; the guard position is set by
 the stance order and a goto's end (approximation: which order writes the original's is not read).
-Ranges are Manhattan half-cell nodes like every other weapon band (approximation: the original
-measures hexagon distance). The four-step target preference is one nearest search (approximation).
-The stone is a `Projectile` with a ground-burst payload that covers its release chord in equal steps
-over `dist * 8 / speed` ticks and lands a tick after it reaches the aim, so the drawn stone finishes its
-last segment (approximation: the original lands on the last flight tick); the burst treats a house as covering its walls, its
-reserved ring and its anchor (approximation: the original's in-house test area is not read), and it
-strikes a garrison standing on its tower's node (*open*: whether the original's hidden-human skip
+Ranges are map points, the hexagon distance every other weapon band counts in. The four-step target
+preference is one nearest search (approximation). The stone is a `Projectile` with a ground-burst
+payload that covers its release chord in equal steps over `dist * 8 / speed` ticks and lands a tick
+after it reaches the aim, so the drawn stone finishes its last segment (approximation: the original
+lands on the last flight tick). It lands through the one pipeline every shot lands through: the men
+and beasts out in the open on the landing point and its six neighbours, then the vehicles and houses
+whose bodies cover one, then the walls, from the combat pass's index; a house is struck on its wall
+cells, as every weapon reaches it (approximation: the original's in-house test area is not read), and a
+garrison standing on its tower's node is struck (*open*: whether the original's hidden-human skip
 covers a posted archer is not read). A wall stands as a palisade entity, so the burst strikes the
 segment whose body covers the node and takes `damage[7] / 100` off its hitpoints through the walls'
 own rule, the one every other weapon's blow goes through. The commander's experience scales the
@@ -370,8 +372,8 @@ settler resting indoors is passed over, as every other shot passes over it, and 
 name a wall. A fleeing settler runs from an armed vehicle and never from a cart or ship
 (approximation). The note is raised for any striker (approximation). An auto target no firing node reaches is
 given up for the combat memo's 30 seconds (approximation: the original drops it and scans again on
-its next update). `hitself` is not extracted; the burst hits every
-side, which the data's `hitself 1` also says. A victim whose player is not at war with the shooter's
+its next update). The row's `hitself 1` is extracted, so the burst strikes every side, the shooter's
+own included. A victim whose player is not at war with the shooter's
 either way is wounded without the blow changing the stance or recording an attack (approximation: the
 original's reaction to friendly splash is unconfirmed). `removeVehicle` (`systems/vehicles/remove.ts`) draws
 the ruin nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the

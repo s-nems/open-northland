@@ -35,11 +35,12 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
-import { resolveGroundImpact } from '../../src/systems/conflict/ground-impact.js';
+import { combatSystem } from '../../src/systems/conflict/combat.js';
+import { projectileSystem } from '../../src/systems/conflict/projectile.js';
 import { isFleeThreat } from '../../src/systems/conflict/targeting.js';
 import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../src/systems/conflict/unreachable-targets.js';
-import { vehiclesGone } from '../../src/systems/missions/goals/casualties.js';
 import { REGENERATION_HITPOINTS_PER_TICK } from '../../src/systems/lifecycle/needs/index.js';
+import { vehiclesGone } from '../../src/systems/missions/goals/casualties.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
 import { ARMOR_MATERIAL, MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
@@ -150,6 +151,7 @@ function siegeContent(): ContentSet {
         munitionType: 2,
         speed: 3,
         damageType: 2,
+        hitSelf: true,
         minRange: CATAPULT_MIN_RANGE,
         maxRange: CATAPULT_MAX_RANGE,
         damage: { '0': CATAPULT_VS_BARE, '6': CATAPULT_VS_VEHICLE, '7': CATAPULT_VS_HOUSE },
@@ -284,8 +286,8 @@ describe('catapult stances and scans', () => {
   it('holding, fires at an enemy house inside its band and never at one beyond it', () => {
     const s = sim(grass(40, 10));
     const catapult = catapultAt(s, 6, 8, P1);
-    const near = houseAt(s, 22, 8, P2, TOUGH_HOUSE); // 16 nodes east: inside 8..24
-    houseAt(s, 60, 8, P2); // 54 nodes: beyond the band
+    const near = houseAt(s, 22, 8, P2, TOUGH_HOUSE); // 16 map points east: inside 8..24
+    houseAt(s, 60, 8, P2); // 54 map points: beyond the band
     const hits = collect(s, SHOT_TICKS, ['projectileHit']);
     expect(hits.length).toBeGreaterThan(0);
     expect(new Set(hits.map((ev) => (ev.kind === 'projectileHit' ? ev.target : -1)))).toEqual(
@@ -302,7 +304,7 @@ describe('catapult stances and scans', () => {
   it('holding, ignores a house too close for the band and stays put', () => {
     const s = sim(grass(20, 10));
     const catapult = catapultAt(s, 6, 8, P1);
-    houseAt(s, 10, 8, P2); // 4 nodes: under the near reach
+    houseAt(s, 10, 8, P2); // 4 map points: under the near reach
     const hits = collect(s, SHOT_TICKS, ['projectileHit', 'projectileLaunched']);
     expect(hits).toEqual([]);
     expect(s.world.get(catapult, Vehicle).attack).toBeNull();
@@ -312,7 +314,7 @@ describe('catapult stances and scans', () => {
   it('in the attack stance, backs off from a house that stands inside the near reach and then fires', () => {
     const s = sim(grass(30, 12));
     const catapult = catapultAt(s, 8, 8, P1);
-    const house = houseAt(s, 12, 8, P2); // 4 nodes: the catapult must open the distance
+    const house = houseAt(s, 12, 8, P2); // 4 map points: the catapult must open the distance
     s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
     s.run(3);
     expect(s.world.has(catapult, VehicleDrive)).toBe(true);
@@ -487,9 +489,9 @@ describe('the clip and its target', () => {
 });
 
 describe('the attack-move march', () => {
-  /** The march's goal, 58 nodes east: inside the walk range. */
+  /** The march's goal, 58 map points east: inside the walk range. */
   const GOAL = { hx: 62, hy: 8 };
-  /** Within the scan from the start (34 nodes), beyond it from the goal (52): only a march fights it. */
+  /** Within the scan from the start (34 map points), beyond it from the goal (52): only a march fights it. */
   const ROADSIDE_HOUSE = { hx: 24, hy: 22 };
   /** Under one stone's structure damage, so the first hit razes it. */
   const FRAIL_HOUSE = 3000;
@@ -653,7 +655,7 @@ describe('the scatter roll', () => {
   it('lands every stone of an untrained commander within a quarter of the distance on each axis', () => {
     const s = sim(grass(40, 20), 7);
     const catapult = catapultAt(s, 8, 10, P1, 0);
-    const house = houseAt(s, 28, 10, P2, TOUGH_HOUSE); // 20 nodes: spread up to 5
+    const house = houseAt(s, 28, 10, P2, TOUGH_HOUSE); // 20 map points: spread up to 5
     order(s, catapult, P1, house);
     const landings = collect(s, 20 * VEHICLE_ATTACK_CLIP_TICKS, ['projectileHit', 'projectileMissed']);
     expect(landings.length).toBeGreaterThanOrEqual(15);
@@ -757,14 +759,16 @@ describe('the ground burst', () => {
 
   it('passes over a man resting inside the house its stone strikes', () => {
     const s = sim(grass(40, 10));
-    const terrain = s.terrain;
-    if (terrain === undefined) throw new Error('terrain');
     const house = houseAt(s, 22, 8, P2);
     const inside = fighterAt(s, 22, 8, P2); // on the house's anchor node, but indoors
-    s.world.add(inside, Resting, { at: house });
     const shooter = fighterAt(s, 6, 8, P1);
+    // The combat pass and the landing are driven directly, so no planner pass steps the man back out.
+    s.step();
+    s.world.add(inside, Resting, { at: house });
     const aim = positionOfNode(22, 8);
-    const stone = {
+    const stone = s.world.create();
+    s.world.add(stone, Position, { x: aim.x, y: aim.y });
+    s.world.add(stone, Projectile, {
       source: shooter,
       target: null,
       player: P1,
@@ -774,18 +778,25 @@ describe('the ground burst', () => {
       missSounds: {},
       munitionType: 0,
       hitSelf: true,
-      area: false,
+      area: true,
       originX: aim.x,
       originY: aim.y,
       aimX: aim.x,
       aimY: aim.y,
       cover: null,
-      launchTick: 0,
-      landTick: 1,
+      launchTick: s.tick - 1,
+      landTick: s.tick,
       impact: { smokeTicks: null },
-    };
+    });
     const houseBefore = s.world.get(house, Health).hitpoints;
-    expect(resolveGroundImpact(s.world, ctxOf(s), terrain, s.world.create(), stone, [])).toBe(true);
+    const ctx = ctxOf(s);
+    combatSystem(s.world, ctx);
+    projectileSystem(s.world, ctx);
+    const struck = s.events
+      .current()
+      .filter((ev) => ev.kind === 'projectileHit')
+      .map((ev) => (ev.kind === 'projectileHit' ? ev.target : -1));
+    expect(struck).toEqual([house]);
     expect(s.world.get(house, Health).hitpoints).toBeLessThan(houseBefore);
     expect(s.world.get(inside, Health).hitpoints).toBe(s.world.get(inside, Health).max);
   });
