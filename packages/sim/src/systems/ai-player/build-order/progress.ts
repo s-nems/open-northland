@@ -4,6 +4,7 @@ import { type ContentIndex, contentIndex } from '../../../core/content-index.js'
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
 import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
@@ -95,7 +96,7 @@ export function entryStatus(
       if (good?.atomics?.harvest === undefined) return 'skip';
       let holders = 0;
       for (const e of ownedSettlers(world, player)) {
-        if (liveWorkFlag(world, e)?.goodType === good.typeId) holders++;
+        if (liveWorkFlag(world, e) !== undefined && heldGatherGood(world, ctx, e) === good.typeId) holders++;
       }
       if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.

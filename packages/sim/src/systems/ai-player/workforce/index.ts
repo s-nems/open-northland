@@ -31,7 +31,7 @@ import {
   topUpCollectors,
   wantedCollectorGoods,
 } from './collectors/index.js';
-import { tuneCraftSelections } from './craft.js';
+import { tuneCraftCounters } from './craft.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes } from './flag-spots.js';
 import { claimArmyFloor, garrisonArms, trainGarrison } from './garrison.js';
@@ -174,7 +174,7 @@ function runWorkforce(
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force, armyFloor, arms),
-    ...tuneCraftSelections(world, ctx, player, supply),
+    ...tuneCraftCounters(world, ctx, player, supply),
   ];
 }
 

@@ -2,6 +2,7 @@ import { HuntFocus, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { openGatherGoods } from '../../economy/gather-goods.js';
 import { isLastResortPrey } from '../../readviews/index.js';
 import { hexNodeDistance, manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
@@ -54,8 +55,22 @@ export function hunterEngageSpec(
   const reachablePrey = (t: Entity): boolean =>
     isHuntTarget(world, ctx, t, jobType) &&
     terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent;
+  // A hunter whose production counters stop every good it plucks takes no game at all; resolved on the
+  // first candidate like the colleague lookup.
+  let huntsAny: boolean | null = null;
+  const hunts = (): boolean => {
+    if (huntsAny === null) {
+      const open = jobType === null ? undefined : openGatherGoods(world, ctx, e, jobType);
+      huntsAny = open === undefined || open.size > 0;
+    }
+    return huntsAny;
+  };
   const acceptPrey = (t: Entity): boolean =>
-    reachablePrey(t) && !heldByColleague(t) && seesTarget(t) && (givenUp === undefined || !givenUp(t));
+    hunts() &&
+    reachablePrey(t) &&
+    !heldByColleague(t) &&
+    seesTarget(t) &&
+    (givenUp === undefined || !givenUp(t));
   const lastResortLivestock = (t: Entity): boolean => {
     const s = world.tryGet(t, Settler);
     return s !== undefined && isLastResortPrey(ctx.content, s.tribe);

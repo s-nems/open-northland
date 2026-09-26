@@ -2,10 +2,10 @@ import type { BuildingType } from '@open-northland/data';
 import {
   Building,
   CompletedCycles,
-  CraftSelection,
-  type CraftSelectionView,
   JobAssignment,
   PRODUCTION_UNLIMITED,
+  ProductionCounters,
+  type ProductionCountersView,
   productionCountOf,
   Settler,
   UnderConstruction,
@@ -127,7 +127,7 @@ const DRUID_SEATS = 12;
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
  * runs its main lines. Whatever the lists say, a product the build order runs short of comes first
- * ({@link tuneCraftSelections}); over the lists, a type's sink takes the whole crew while its stocked
+ * ({@link tuneCraftCounters}); over the lists, a type's sink takes the whole crew while its stocked
  * products lie at glut ({@link sinkHolds}). The reason for each row stands beside it.
  */
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
@@ -223,17 +223,17 @@ interface RestrictedCrew {
 }
 
 /**
- * Keep every operator of a restricted workplace type on the plan's product list for its seat. `CraftSelection`
- * is per worker, not per building, and any employment change clears it (`reidleAsJob`), so the check runs
- * every decision and issues a command only when the live counters differ from "these products
- * unlimited, every other one stopped". An empty result issues
- * nothing, because `setCraftGoods []` would mean "every product", the opposite of a restriction.
+ * Keep every operator of a restricted workplace type on the plan's product list for its seat.
+ * `ProductionCounters` is per worker, not per building, and any employment change clears it (`reidleAsJob`),
+ * so the check runs every decision and issues a command only when the live counters differ from "these
+ * products unlimited, every other one stopped". An empty result issues nothing, because
+ * `setProductionGoods []` would mean "every product", the opposite of a restriction.
  *
  * Over the lists, the plan's sink takes the whole crew while the type's products with supply lines lie at
  * glut ({@link sinkHolds}), and otherwise a short product takes one or two seats whose own goods are
  * plentiful ({@link shortFirst}). A crew member on an opening run keeps it.
  */
-export function tuneCraftSelections(
+export function tuneCraftCounters(
   world: World,
   ctx: SystemContext,
   player: number,
@@ -279,7 +279,7 @@ export function tuneCraftSelections(
     const recipeProducts = [...(index.recipeByProductByBuilding.get(type.typeId)?.keys() ?? [])].sort(
       (a, b) => a - b,
     );
-    const current = crew.map((e) => selectedGoods(world.tryGet(e, CraftSelection), recipeProducts));
+    const current = crew.map((e) => selectedGoods(world.tryGet(e, ProductionCounters), recipeProducts));
     const listed: (readonly number[])[] = [];
     const free: number[] = []; // the crew members off any opening run
     for (const [seat, workplace] of workplaces.entries()) {
@@ -305,7 +305,7 @@ export function tuneCraftSelections(
     for (const [seat, e] of crew.entries()) {
       const goods = listed[seat] ?? [];
       if (goods.length === 0 || sameGoods(current[seat] ?? [], goods)) continue;
-      commands.push({ kind: 'setCraftGoods', entity: e, goods });
+      commands.push({ kind: 'setProductionGoods', entity: e, goods });
     }
   }
   return commands;
@@ -404,12 +404,12 @@ function sameGoods(a: readonly number[], b: readonly number[]): boolean {
 }
 
 /**
- * The list `setCraftGoods` leaves on `selection`: its unlimited products when every other one of
+ * The list `setProductionGoods` leaves on `selection`: its unlimited products when every other one of
  * `recipeProducts` (ascending) is stopped. Empty for no selection or for a finite counter the player set,
  * so the tuner reissues its list.
  */
 function selectedGoods(
-  selection: CraftSelectionView | undefined,
+  selection: ProductionCountersView | undefined,
   recipeProducts: readonly number[],
 ): readonly number[] {
   if (selection === undefined) return [];

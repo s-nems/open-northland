@@ -74,6 +74,7 @@ import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js
 import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
+import { gatherPick } from '../../fixtures/production-counters.js';
 import { grassNodeMap, waterColumnMap } from '../../fixtures/terrain.js';
 import {
   aiSim,
@@ -247,7 +248,7 @@ const posted = (commands: readonly Command[]) =>
   commands.flatMap((c) => (c.kind === 'setGatherGood' ? [c.goodType] : []));
 
 const holdersOf = (sim: Simulation, good: number) =>
-  [...sim.world.query(Settler, WorkFlag)].filter((e) => sim.world.get(e, WorkFlag).goodType === good);
+  [...sim.world.query(Settler, WorkFlag)].filter((e) => gatherPick(sim, e) === good);
 
 /** The allocator's hiring ladder: collector posts, workshop staffing tiers, scout, builder reserve. */
 
@@ -320,7 +321,7 @@ describe('workforce module (collectResources)', () => {
     expect([...collectModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
     const bound = [...sim.world.query(Settler, WorkFlag)];
     expect(bound).toHaveLength(3);
-    expect(bound.map((e) => sim.world.get(e, WorkFlag).goodType).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual(
+    expect(bound.map((e) => gatherPick(sim, e)).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual(
       [WOOD, MUD, STONE].sort((a, b) => a - b),
     );
   });
@@ -697,9 +698,7 @@ describe('workforce module (collectResources)', () => {
       return commands;
     };
     const generic = () =>
-      [...sim.world.query(Settler, WorkFlag)].filter(
-        (e) => sim.world.get(e, WorkFlag).goodType === undefined,
-      );
+      [...sim.world.query(Settler, WorkFlag)].filter((e) => gatherPick(sim, e) === undefined);
     const builders = () =>
       [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === BUILDER);
     expect(posted(decideAt(0))).toEqual([MUD, STONE, WOOD, null, null]);
@@ -1277,7 +1276,7 @@ describe('workforce module (collectResources)', () => {
     // with a dry pool the two goods would swap the same man every decision, each swap dropping his
     // load. He stays on stone; wood waits for a fresh hire.
     const posted = [...sim.world.query(Settler, WorkFlag)];
-    expect(posted.map((e) => sim.world.get(e, WorkFlag).goodType)).toEqual([STONE]);
+    expect(posted.map((e) => gatherPick(sim, e))).toEqual([STONE]);
     expect([...both.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 

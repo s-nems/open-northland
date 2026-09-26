@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
-  CraftSelection,
   CurrentAtomic,
   JobAssignment,
   MoveGoal,
   Owner,
   Position,
+  ProductionCounters,
   Settler,
   SettlerProgress,
   Stockpile,
@@ -197,7 +197,7 @@ describe('construction site staffing - the slots a building offers while it is r
       post(sim, mason, smithy, [MASON]);
       post(sim, hauler, smithy, [CARRIER]);
       if (selection !== 'implicit') {
-        sim.world.add(mason, CraftSelection, {
+        sim.world.add(mason, ProductionCounters, {
           counters: selection === 'counted' ? [[STONE, STONE_LEFT]] : [],
           cursor: 0,
         });
@@ -210,10 +210,10 @@ describe('construction site staffing - the slots a building offers while it is r
       expect(sim.world.get(smithy, Building).buildingType).toBe(SMITHY_L1);
       // The new product starts stopped; the incumbent stone counter carries over.
       const stopped = [WOOD, 0];
-      expect(sim.world.get(mason, CraftSelection).counters).toEqual(
+      expect(sim.world.get(mason, ProductionCounters).counters).toEqual(
         selection === 'counted' ? [[STONE, STONE_LEFT], stopped] : [stopped],
       );
-      expect(sim.world.has(hauler, CraftSelection)).toBe(false);
+      expect(sim.world.has(hauler, ProductionCounters)).toBe(false);
       const recipes = contentIndex(sim.content).recipeByProductByBuilding.get(SMITHY_L1);
       expect(recipes).toBeDefined();
       if (recipes === undefined) return;

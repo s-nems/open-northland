@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CurrentAtomic,
-  Felling,
-  Owner,
-  Position,
-  Resource,
-  WorkFlag,
-} from '../../../../src/components/index.js';
+import { CurrentAtomic, Felling, Owner, Position, Resource } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
 import {
@@ -16,6 +9,7 @@ import {
   stampResourceFootprintData,
 } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
+import { gatherPick } from '../../../fixtures/production-counters.js';
 import {
   bindToFlag,
   ctxOf,
@@ -64,7 +58,7 @@ describe('flag-bound gatherer - works only within its flag radius (req 3)', () =
     stampResourceFootprintData(sim.world, stone, anchorOnlyFootprint());
 
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: 4 });
-    expect(sim.world.get(gatherer, WorkFlag).goodType).toBe(4);
+    expect(gatherPick(sim, gatherer)).toBe(4);
     plannerSystem(sim.world, ctxOf(sim));
     const filtered = sim.world.get(gatherer, CurrentAtomic);
     expect(filtered.effect.kind === 'harvest' && filtered.effect.resource).toBe(stone);

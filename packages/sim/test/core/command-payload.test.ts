@@ -159,10 +159,10 @@ describe('command payload contracts', () => {
   });
 
   it('refuses an array whose elements are not all of the declared type', () => {
-    expect(() => parse({ kind: 'setCraftGoods', entity: UNIT, goods: [1, '2'] })).toThrow(
+    expect(() => parse({ kind: 'setProductionGoods', entity: UNIT, goods: [1, '2'] })).toThrow(
       'envelope.command.goods[1]: expected an integer, got "2"',
     );
-    expect(() => parse({ kind: 'setCraftGoods', entity: UNIT, goods: 1 })).toThrow(
+    expect(() => parse({ kind: 'setProductionGoods', entity: UNIT, goods: 1 })).toThrow(
       /command\.goods: expected an array/,
     );
   });

@@ -10,7 +10,9 @@ import {
   HuntRest,
   KilledBy,
   Position,
+  ProductionCounters,
   Resource,
+  ResourceLayers,
   removeCurrentAtomic,
   Stance,
   WorkFlag,
@@ -41,6 +43,7 @@ import { COW, ctxOf, DEER, fighterAtNode, HUNTER } from './support.js';
  */
 /** The fixture meat good and its harvest_cadaver atomic - the hunter's own trade (granted to job 15). */
 const MEAT = 21;
+const LEATHER = 22;
 const HARVEST_CADAVER = 33;
 /** The fixture woodcutter's good and harvest atomic - another trade's resource, never the hunter's work. */
 const WOOD = 1;
@@ -210,6 +213,61 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
 
     combatSystem(sim.world, ctxOf(sim));
 
+    expect(sim.world.has(hunter, Engagement)).toBe(false);
+  });
+
+  it('a carcass holding no good its production counters leave open does not gate new kills', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, 12);
+    const cow = fighterAtNode(sim, 43, 40, COW, null);
+    const carcass = sim.world.create();
+    sim.world.add(carcass, Position, positionOfNode(38, 40));
+    sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
+    sim.world.add(hunter, ProductionCounters, { counters: [[MEAT, 0]], cursor: 0 }); // leather only
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+  });
+
+  it('a body still worth an open good gates new kills, whatever stage lies on top', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, 12);
+    fighterAtNode(sim, 43, 40, COW, null);
+    const carcass = sim.world.create();
+    sim.world.add(carcass, Position, positionOfNode(38, 40));
+    sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 1, harvestAtomic: HARVEST_CADAVER });
+    sim.world.add(carcass, ResourceLayers, {
+      layers: [{ goodType: LEATHER, amount: 1, harvestAtomic: HARVEST_CADAVER }],
+    });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
+    sim.world.add(hunter, ProductionCounters, { counters: [[MEAT, 0]], cursor: 0 }); // leather only
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(hunter, Engagement)).toBe(false);
+  });
+
+  it('takes no game at all while its counters stop every good it plucks', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, 12);
+    fighterAtNode(sim, 45, 40, DEER, null);
+    sim.world.add(hunter, ProductionCounters, {
+      counters: [
+        [MEAT, 0],
+        [LEATHER, 0],
+      ],
+      cursor: 0,
+    });
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
     expect(sim.world.has(hunter, Engagement)).toBe(false);
   });
 

@@ -16,7 +16,7 @@ import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 import { buildingFlagBodyNodes } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
@@ -28,10 +28,7 @@ import { canonicalById, entityNode } from '../spatial/nodes.js';
 // moment a settler becomes a gatherer is a convention of this engine rather than observed behavior.
 
 /** The field worker's flag while its marker entity still exists; a stale binding reads as undefined. */
-export function liveWorkFlag(
-  world: World,
-  e: Entity,
-): { flag: Entity; radius: number; goodType?: number | undefined } | undefined {
+export function liveWorkFlag(world: World, e: Entity): { flag: Entity; radius: number } | undefined {
   const wf = world.tryGet(e, WorkFlag);
   return wf !== undefined && world.has(wf.flag, Position) ? wf : undefined;
 }
@@ -140,7 +137,7 @@ export function evictWorkFlagsFromCells(
  * Whether `jobType` may harvest `goodType`: the good needs a harvest atomic the trade is granted, and a
  * field-farmed good is never flag-harvested.
  */
-export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType: number): boolean {
+export function jobCanHarvestGood(ctx: ContentContext, jobType: number, goodType: number): boolean {
   const index = contentIndex(ctx.content);
   const good = index.goods.get(goodType);
   const harvest = good?.atomics.harvest;
@@ -158,12 +155,8 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
   if (jobUsesWorkFlag(ctx, jobType) && usesFlag) {
     const live = liveWorkFlag(world, e);
     if (live !== undefined) {
-      // Keep the flag, re-fitting the binding to the new trade.
-      const binding = world.mut(e, WorkFlag);
-      binding.radius = workFlagRadiusFor(ctx, jobType);
-      if (binding.goodType !== undefined && !jobCanHarvestGood(ctx, jobType, binding.goodType)) {
-        binding.goodType = undefined;
-      }
+      // Keep the flag, re-fitting its radius to the new trade.
+      world.mut(e, WorkFlag).radius = workFlagRadiusFor(ctx, jobType);
       return;
     }
     plantWorkFlagAtFeet(world, ctx, e);

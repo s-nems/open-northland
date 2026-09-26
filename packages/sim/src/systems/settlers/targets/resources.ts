@@ -27,7 +27,7 @@ export function nearestHarvestableFor(
   opts: {
     /** Bound the scan to this circle and rank from its centre, so a flag-bound gatherer sweeps outward
      *  from its flag rather than from wherever it stands. */
-    readonly area?: { center: NodeId; radius: number; goodType?: number };
+    readonly area?: { center: NodeId; radius: number };
     /** Bound the scan to this circle but keep the ranking on the settler, for a bound that is a work
      *  area rather than a sweep origin. Pass this or {@link area}, never both. */
     readonly within?: { center: NodeId; radius: number };
@@ -37,12 +37,14 @@ export function nearestHarvestableFor(
     /** A node reserved to another settler across ticks, rejected even though this settler's trade
      *  could work it. */
     readonly reserved?: (node: Entity) => boolean;
+    /** The settler's own per-node gate, such as its production counters; a node it rejects is skipped. */
+    readonly admits?: (node: Entity) => boolean;
   } = {},
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here, targets } = plan;
   const settler = plan;
   const candidates = targets.resources;
-  const { area, within, goodFilter, exclude, reserved } = opts;
+  const { area, within, goodFilter, exclude, reserved, admits } = opts;
   const gate = plan.limit ?? undefined; // the settler's signpost confinement
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: when the job's atomics intersect no harvest atomic present on any standing resource,
@@ -91,7 +93,6 @@ export function nearestHarvestableFor(
     if (exclude?.has(e)) return null; // a colleague already digs this node
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) return null;
-    if (area?.goodType !== undefined && res.goodType !== area.goodType) return null;
     if (goodFilter !== undefined && !goodFilter.has(res.goodType)) return null; // not a good the caller forages for
     const p = world.tryGet(e, Position);
     if (p === undefined) return null;
@@ -104,6 +105,7 @@ export function nearestHarvestableFor(
     }
     // Probed behind the atomic gate, so the rule only ever costs a lookup on the trade's own nodes.
     if (reserved?.(e) === true) return null;
+    if (admits?.(e) === false) return null;
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
     let meetsNeed = meetsNeedByGood.get(res.goodType);
     if (meetsNeed === undefined) {

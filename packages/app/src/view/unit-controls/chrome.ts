@@ -82,7 +82,7 @@ export async function createUnitChrome(
   equipPicker: EquipPickController | null,
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
-  // The settler panel's commands of the sim contract (`CraftSelection.counters`, `renameSettler`, the
+  // The settler panel's commands of the sim contract (`ProductionCounters.counters`, `renameSettler`, the
   // chosen-partner `marry`).
   const contract: SettlerContractCommands = {
     rename: (id, name) => opts.enqueue({ kind: 'renameSettler', entity: id as Entity, name }),

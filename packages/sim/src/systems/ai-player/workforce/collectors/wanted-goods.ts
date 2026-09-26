@@ -11,6 +11,7 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
+import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import {
@@ -297,7 +298,8 @@ function flagHolders(world: World, ctx: SystemContext, player: number, goodType:
   for (const e of ownedSettlers(world, player)) {
     if (world.has(e, JobAssignment)) continue;
     const job = world.get(e, Settler).jobType;
-    if (job === null || liveWorkFlag(world, e)?.goodType !== goodType) continue;
+    if (job === null || liveWorkFlag(world, e) === undefined) continue;
+    if (heldGatherGood(world, ctx, e) !== goodType) continue;
     if (jobCanHarvestGood(ctx, job, goodType)) holders++;
   }
   return holders;

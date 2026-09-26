@@ -25,6 +25,7 @@ import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
+import { holdToGatherGood } from '../economy/gather-goods.js';
 import { jobCanHarvestGood, syncWorkFlagToJob } from '../economy/work-flag.js';
 import { isFemaleJobId } from '../family/eligibility.js';
 import { spawnAgeTicks } from '../lifecycle/ageclass.js';
@@ -177,9 +178,9 @@ export function spawnSettler(
 }
 
 /**
- * Narrow a freshly spawned gatherer's work flag to its authored `gatherGood` (a decoded map's
- * `setproducedgood`), so an imported wood collector does not start on the gather-everything default. Bad
- * input leaves that default: no pick, a trade with no flag, or a good the trade cannot harvest.
+ * Hold a freshly spawned flag gatherer to its authored `gatherGood` (a decoded map's `setproducedgood`)
+ * through its production counters, so an imported wood collector does not start on the gather-everything
+ * default. Bad input leaves that default: no pick, a trade with no flag, or a good the trade cannot harvest.
  *
  * Approximation: only a flag-harvestable pick on an unposted settler lands. A settler its map also posts
  * to a workplace has no flag left to narrow by the time this runs, and a workshop product, a farm-bound
@@ -193,9 +194,8 @@ function stampGatherGood(
 ): void {
   const goodType = command.gatherGood;
   if (goodType === undefined) return;
-  const flag = world.tryGet(e, WorkFlag);
-  if (flag === undefined || !jobCanHarvestGood(ctx, command.jobType, goodType)) return;
-  world.mut(e, WorkFlag).goodType = goodType;
+  if (!world.has(e, WorkFlag) || !jobCanHarvestGood(ctx, command.jobType, goodType)) return;
+  holdToGatherGood(world, ctx, e, command.jobType, goodType);
 }
 
 /** One command equipment slot → the component's {@link EquipmentSlot} (or null for an empty slot). The raw

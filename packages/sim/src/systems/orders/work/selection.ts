@@ -1,30 +1,22 @@
-import type { Recipe } from '@open-northland/data';
 import {
   Building,
-  CraftSelection,
   CurrentAtomic,
-  GatherSelection,
   HarvestFocus,
   JobAssignment,
   PRODUCTION_UNLIMITED,
+  ProductionCounters,
   removeCurrentAtomic,
   Settler,
-  WorkFlag,
   writeProductionCount,
+  writeProductionGoods,
 } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-import {
-  bindFreshFlag,
-  jobCanHarvest,
-  jobCanHarvestGood,
-  jobUsesWorkFlag,
-  liveWorkFlag,
-  relocateWorkFlag,
-} from '../../economy/work-flag.js';
+import { holdToGatherGood, jobGatherGoods, jobGathersGood } from '../../economy/gather-goods.js';
+import { bindFreshFlag, jobUsesWorkFlag, liveWorkFlag, relocateWorkFlag } from '../../economy/work-flag.js';
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { navigationLimitFor } from '../../signposts/index.js';
@@ -87,10 +79,12 @@ export function setWorkFlag(
   clearNavState(world, e);
 }
 
-/** Set a gatherer's resource filter. Flag-bound: {@link WorkFlag.goodType} (`null` = every map good
- * its job may harvest). Flag-less but employed at a stocking building: {@link GatherSelection}, valid
- * only for a good the workplace stores (`null` = every stored good). Changing the filter abandons a stale
- * harvest route immediately. */
+/**
+ * Hold a gatherer to one good, or with `null` release it to every good - see the command doc. The pick
+ * writes the counters {@link holdToGatherGood} describes. An employed gatherer forages only for its
+ * workplace, so its pick must be a good that workplace stocks, judged by the same test the gatherer drive
+ * filters on. Changing the pick abandons a stale harvest route immediately.
+ */
 export function setGatherGood(
   world: World,
   ctx: SystemContext,
@@ -98,31 +92,19 @@ export function setGatherGood(
 ): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
-  const settler = world.get(e, Settler);
-  if (settler.jobType === null || !jobCanHarvest(ctx, settler.jobType)) return;
+  const jobType = world.get(e, Settler).jobType;
+  if (jobType === null || jobGatherGoods(ctx, jobType).length === 0) return;
   const goodType = command.goodType;
-  if (goodType !== null && !jobCanHarvestGood(ctx, settler.jobType, goodType)) return;
-  const flag = liveWorkFlag(world, e);
-  if (flag !== undefined) {
-    const binding = world.mut(e, WorkFlag);
-    binding.goodType = goodType ?? undefined;
-  } else {
-    // An employed gatherer forages only for its workplace, so the pick must be a good that workplace
-    // stockpiles, judged by the same test the gatherer drive filters on.
+  if (goodType !== null && !jobGathersGood(ctx, jobType, goodType)) return;
+  if (goodType !== null && liveWorkFlag(world, e) === undefined) {
     const workplace = world.tryGet(e, JobAssignment)?.workplace;
-    if (workplace === undefined || !world.isAlive(workplace)) return;
-    if (goodType === null) {
-      world.remove(e, GatherSelection); // back to every stored good
-    } else {
+    if (workplace !== undefined) {
+      if (!world.isAlive(workplace)) return;
       const stored = workplaceStoredGoods(world, ctx, workplace);
       if (stored === undefined || !workplaceStocksGood(ctx, stored, goodType)) return;
-      if (!world.has(e, GatherSelection)) {
-        world.add(e, GatherSelection, { goodType });
-      } else {
-        world.mut(e, GatherSelection).goodType = goodType;
-      }
     }
   }
+  holdToGatherGood(world, ctx, e, jobType, goodType);
   const atomic = world.tryGet(e, CurrentAtomic);
   if (atomic?.effect.kind === 'harvest' || atomic?.effect.kind === 'harvestFollowThrough') {
     removeCurrentAtomic(world, e);
@@ -131,61 +113,57 @@ export function setGatherGood(
   clearNavState(world, e);
 }
 
-/** The recipe products of `e`'s workplace, or undefined when `e` is no orderable recipe-workplace worker. */
-function workplaceProducts(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-): ReadonlyMap<number, Recipe> | undefined {
+/**
+ * The goods `e`'s production counters name, or undefined when `e` is no orderable worker with any: a
+ * gathering trade's goods, else the recipe products of its workplace. The gather list wins, since such a
+ * trade runs the gatherer drive, never the craft loop.
+ */
+function productionGoodsOf(world: World, ctx: SystemContext, e: Entity): readonly number[] | undefined {
   if (!isOrderableSettler(world, e)) return undefined;
+  const jobType = world.get(e, Settler).jobType;
+  if (jobType === null) return undefined;
+  const gathered = jobGatherGoods(ctx, jobType);
+  if (gathered.length > 0) return gathered;
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   if (workplace === undefined) return undefined;
   const buildingType = world.tryGet(workplace, Building)?.buildingType;
   if (buildingType === undefined) return undefined;
-  return contentIndex(ctx.content).recipeByProductByBuilding.get(buildingType);
+  const products = contentIndex(ctx.content).recipeByProductByBuilding.get(buildingType);
+  return products === undefined ? undefined : [...products.keys()];
 }
 
 /**
- * Make only the listed products, each unlimited, and stop every other one - see the command doc. An empty
- * list removes the counters, so every product is unlimited again. The rotation restarts at its first
- * product; a batch already grinding keeps its product, so the choice applies from the next cycle start.
+ * Make only the listed goods, each unlimited, and stop every other one - see the command doc. An empty
+ * list removes the counters, so every good is unlimited again. The craft rotation restarts at its first
+ * product; a batch already grinding keeps its product and a stroke already swinging lands, so the choice
+ * applies from the next cycle start or harvest pick.
  */
-export function setCraftGoods(
+export function setProductionGoods(
   world: World,
   ctx: SystemContext,
-  command: Extract<Command, { kind: 'setCraftGoods' }>,
+  command: Extract<Command, { kind: 'setProductionGoods' }>,
 ): void {
   const e = command.entity;
-  const products = workplaceProducts(world, ctx, e);
-  if (products === undefined) return; // not a recipe workplace - nothing to choose
+  const goods = productionGoodsOf(world, ctx, e);
+  if (goods === undefined) return; // nothing to choose
   if (command.goods.length === 0) {
-    world.remove(e, CraftSelection); // back to the all-products default
+    world.remove(e, ProductionCounters); // back to the all-goods default
     return;
   }
-  const listed = new Set(command.goods.filter((g) => products.has(g)));
-  if (listed.size === 0) return; // named nothing this workplace makes
-  const counters: [number, number][] = [...products.keys()]
-    .filter((g) => !listed.has(g))
-    .sort((a, b) => a - b)
-    .map((g) => [g, 0]);
-  if (!world.has(e, CraftSelection)) {
-    world.add(e, CraftSelection, { counters, cursor: 0 });
-  } else {
-    const selection = world.mut(e, CraftSelection);
-    selection.counters = counters;
-    selection.cursor = 0;
-  }
+  const listed = new Set(command.goods.filter((g) => goods.includes(g)));
+  if (listed.size === 0) return; // named nothing this worker makes
+  writeProductionGoods(world, e, goods, listed);
 }
 
-/** Set how many more units of one product a craft worker makes - see the command doc. */
+/** Set how many more units of one good a worker makes or gathers - see the command doc. */
 export function setProductionCount(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'setProductionCount' }>,
 ): void {
   const e = command.entity;
-  const products = workplaceProducts(world, ctx, e);
-  if (products === undefined || !products.has(command.goodType)) return;
+  const goods = productionGoodsOf(world, ctx, e);
+  if (goods === undefined || !goods.includes(command.goodType)) return;
   const count = Math.min(Math.max(command.count, 0), PRODUCTION_UNLIMITED);
   writeProductionCount(world, e, command.goodType, count);
 }

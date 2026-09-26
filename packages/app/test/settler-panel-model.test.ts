@@ -174,7 +174,7 @@ describe('the settler panel model', () => {
           components: owned({
             Settler: { tribe: 1, jobType: operator },
             JobAssignment: { workplace: WORKSHOP },
-            CraftSelection: { counters: [[first, 3]], cursor: 0 },
+            ProductionCounters: { counters: [[first, 3]], cursor: 0 },
           }),
         },
       ],

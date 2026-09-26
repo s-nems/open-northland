@@ -1,11 +1,11 @@
-# Apply authored `setproducedgood` picks to workshop craft selections
+# Apply authored `setproducedgood` picks to workshop production counters
 
 **Area:** sim, app · **Priority:** P3
 
 `setproducedgood` is the original's per-human **produced good**, not only a gatherer's resource pick, and
-it is authored for workshop trades too. The import chain now lands it on `WorkFlag.goodType`
-(`stampGatherGood`, `packages/sim/src/systems/spawn/settlers.ts`), which covers 573 of the
-decoded corpus's 819 picks. The remainder is dropped and the drop is named in that function's doc. This
+it is authored for workshop trades too. The import chain now lands it on a flag gatherer's
+`ProductionCounters` (`stampGatherGood`, `packages/sim/src/systems/spawn/settlers.ts`), which covers 573
+of the decoded corpus's 819 picks. The remainder is dropped and the drop is named in that function's doc. This
 ticket is the follow-up for the part that is a real gap.
 
 The blocker is gone: `attachtohouse` now imports, so an authored workshop settler reaches a bound
@@ -21,8 +21,8 @@ Measured breakdown of the 246 that do not land (re-measure before acting - count
 - **86 `„gold”`** - a source typo covered by
   [typographic-quoted values](../pipeline/setproducedgood-typographic-quotes.md). Not this ticket.
 - **62 `fisher` → `fish`** - use the fisher's work flag as the catch-delivery yard; the dedicated
-  fishing drive selects authored `lafm` swarms and can produce only fish. These rows still do not land as craft selections,
-  but no gameplay choice is lost.
+  fishing drive selects authored `lafm` swarms and can produce only fish. These rows still do not land as
+  counters, but no gameplay choice is lost.
 - **38 `hunter` → `prey` / 13 `farmer` → `wheat`** - **no action needed, do not "fix" these.** `prey` is
   the resource, not a good; the hunter falls back to every good it can harvest (`leather` + `meat` +
   `wool`, all harvest atomic 33), which is what hunted carcasses yield. A farmer is bound to its farm by
@@ -30,13 +30,14 @@ Measured breakdown of the 246 that do not land (re-measure before acting - count
 
 ## Scope
 
-- `setCraftGoods` (`packages/sim/src/systems/orders/work/selection.ts`) already models a per-settler product
-  selection as `CraftSelection` - the natural home for `baker` → `bread`.
-- `setCraftGoods` requires a bound workplace (`JobAssignment`), which an imported settler now gets from
-  its `attachtohouse`. Employment REMOVES the selection (`bindEmployment`), so the pick has to be applied
-  after the attachment; `spawnSettler` already runs them in that order.
-- Keep the `spawnSettler` seam honest: either a second field or one product-neutral field that routes to
-  the flag or the craft selection by what the trade is. Do not silently widen `gatherGood`.
+- `setProductionGoods` (`packages/sim/src/systems/orders/work/selection.ts`) already models a per-settler
+  product choice as `ProductionCounters`, for a craft worker and a gatherer alike - the natural home for
+  `baker` → `bread`.
+- A craft worker's products come from its bound workplace (`JobAssignment`), which an imported settler now
+  gets from its `attachtohouse`. Employment REMOVES the counters (`bindEmployment`), so the pick has to be
+  applied after the attachment; `spawnSettler` already runs them in that order.
+- Keep the `spawnSettler` seam honest: either a second field or one product-neutral field that writes the
+  counters by what the trade makes. Do not silently widen `gatherGood`.
 
 ## Verify
 

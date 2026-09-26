@@ -314,8 +314,12 @@ export type UnitOrderCommand =
       readonly y: number;
     }
   | {
-      /** Choose which map good a flag-bound gatherer harvests. `null` restores the all-goods mode. The
-       * selected good must expose a non-farming harvest atomic allowed by the settler's current job. */
+      /**
+       * Hold a gatherer to one good: its production counter for `goodType` becomes unlimited and every other
+       * good its trade gathers `0`, as `setProductionGoods` with that one good writes them. `null` removes
+       * the counters, so it gathers every good again. The good must be one the settler's trade gathers and,
+       * for a flag-less gatherer posted to a building, one that building stocks. Cuts a harvest in progress.
+       */
       readonly kind: 'setGatherGood';
       readonly entity: Entity;
       readonly goodType: number | null;
@@ -333,21 +337,22 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Make only the listed products of a craft worker's workplace: each listed product's counter becomes
-       * unlimited and every other product's `0`, so one good is "only this product". An empty list removes
-       * the counters, making every product unlimited again. Goods the workplace does not make are dropped,
-       * and a list with none left is ignored. The rotation restarts at its first product.
+       * Make only the listed goods of a worker - the products of a craft worker's workplace or the goods a
+       * gatherer's trade gathers: each listed good's counter becomes unlimited and every other one `0`, so
+       * one good is "only this good". An empty list removes the counters, making every good unlimited
+       * again. Goods the worker does not make are dropped, and a list with none left is ignored. The craft
+       * rotation restarts at its first product.
        */
-      readonly kind: 'setCraftGoods';
+      readonly kind: 'setProductionGoods';
       readonly entity: Entity;
       readonly goods: readonly number[];
     }
   | {
       /**
-       * Set how many more units of `goodType` a craft worker makes: `0` stops the product,
-       * `1..PRODUCTION_COUNT_MAX` counts down one per started cycle, and `PRODUCTION_UNLIMITED` never
-       * runs out. The count is clamped to `0..PRODUCTION_UNLIMITED`; a good its workplace does not make
-       * is ignored.
+       * Set how many more units of `goodType` a worker makes: `0` stops the good, `1..PRODUCTION_COUNT_MAX`
+       * counts down one per started craft cycle or per gathered unit that lands, and `PRODUCTION_UNLIMITED`
+       * never runs out. The count is clamped to `0..PRODUCTION_UNLIMITED`. A gathering trade takes only the
+       * goods it gathers, any other worker only its workplace's products; every other good is ignored.
        */
       readonly kind: 'setProductionCount';
       readonly entity: Entity;

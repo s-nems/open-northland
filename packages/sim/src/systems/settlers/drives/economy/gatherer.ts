@@ -1,11 +1,4 @@
-import {
-  GatherSelection,
-  HarvestFocus,
-  JobAssignment,
-  Position,
-  Resource,
-  WorkFlag,
-} from '../../../../components/index.js';
+import { HarvestFocus, JobAssignment, Position, Resource, WorkFlag } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
@@ -14,6 +7,7 @@ import {
   HUNT_CARCASS_SLACK_NODES,
   huntingGround,
 } from '../../../conflict/hunting/index.js';
+import { nodeHoldsOpenGood, openGatherGoods } from '../../../economy/gather-goods.js';
 import { dynamicBlockOverlay, resourceStanceCells, routeRegions } from '../../../footprint/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { isHunterJob } from '../../../readviews/index.js';
@@ -37,8 +31,8 @@ import type { HarvestClaims } from './harvest-claims.js';
  * unbound roamer takes the nearest standing resource or loose trunk of its trade, whichever is nearer,
  * and returns false when nothing is reachable.
  *
- * Harvesting is gated by the job's atomic permissions and the good's `needforgood` XP threshold; collecting
- * an already-dropped good is hauling, not harvesting.
+ * Harvesting is gated by the job's atomic permissions, the good's `needforgood` XP threshold and the
+ * gatherer's production counters; collecting an already-dropped good is hauling, not harvesting.
  */
 export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims, idle: IdleStands): boolean {
   const { world, ctx, terrain, entity: e } = plan;
@@ -50,10 +44,11 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
 
   // A building-employed roamer forages only goods its workplace stocks, banked form included: an
   // HQ-employed hunter's meat shelves as food, and filtering the carcass out would wedge him after one
-  // kill. A GatherSelection pick narrows it further; an unemployed roamer stays unrestricted.
+  // kill. The production counters narrow which nodes it harvests, never which loose piles it carries
+  // off: a felled trunk or chipped ore pile holds units its counter already spent.
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   const rawStored = workplace !== undefined ? workplaceStoredGoods(world, plan.ctx, workplace) : undefined;
-  const stored =
+  const goodFilter =
     rawStored !== undefined
       ? new Set(
           plan.ctx.content.goods
@@ -61,9 +56,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
             .filter((g) => workplaceStocksGood(plan.ctx, rawStored, g)),
         )
       : undefined;
-  const pick = world.tryGet(e, GatherSelection)?.goodType;
-  const goodFilter =
-    stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
+  const admits = countersAdmit(plan);
 
   const hunter = isHunterJob(ctx.content, plan.jobType);
   // A hunter is bounded to its own hunting ground, the same band the one-kill gate probes, so the gate and
@@ -76,12 +69,15 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
     plan,
     harvestClaims,
     (node, goodType) =>
-      (goodFilter === undefined || goodFilter.has(goodType)) && !(hunter && foreignKill(plan)(node)),
+      (goodFilter === undefined || goodFilter.has(goodType)) &&
+      (admits === undefined || admits(node)) &&
+      !(hunter && foreignKill(plan)(node)),
   );
   if (focus !== null && startHarvestFromNode(plan, focus, harvestClaims, huntArea)) return true;
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
     ...(goodFilter !== undefined ? { goodFilter } : {}),
+    ...(admits !== undefined ? { admits } : {}),
     ...(huntArea !== undefined ? { within: huntArea } : {}),
     ...(hunter ? { reserved: foreignKill(plan) } : {}),
   });
@@ -108,7 +104,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
  */
 function planFlagGatherer(
   plan: PlannerContext,
-  flag: { flag: Entity; radius: number; goodType?: number | undefined },
+  flag: { flag: Entity; radius: number },
   harvestClaims: HarvestClaims,
   idle: IdleStands,
 ): boolean {
@@ -120,26 +116,21 @@ function planFlagGatherer(
     walkPickupBatch(plan, own.pile, own.goodType);
     return true;
   }
-  // A hunter ignores its flag's good filter: a layered carcass re-arms through its goods in turn, so a
-  // meat-only pick would strand the body at its leather stage while the one-kill gate held forever.
   const hunter = isHunterJob(ctx.content, plan.jobType);
   const reach = { center: flagCell, radius: hunter ? carcassReach(plan, flag.radius) : flag.radius };
+  const admits = countersAdmit(plan);
   const focus = focusedHarvest(
     plan,
     harvestClaims,
-    (node, goodType) =>
-      (flag.goodType === undefined || hunter || goodType === flag.goodType) &&
-      !(hunter && foreignKill(plan)(node)),
+    (node) => (admits === undefined || admits(node)) && !(hunter && foreignKill(plan)(node)),
   );
   if (focus !== null && startHarvestFromNode(plan, focus, harvestClaims, reach)) return true;
 
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
     ...(hunter ? { reserved: foreignKill(plan) } : {}),
-    area: {
-      ...reach,
-      ...(flag.goodType !== undefined && !hunter ? { goodType: flag.goodType } : {}),
-    },
+    ...(admits !== undefined ? { admits } : {}),
+    area: reach,
   });
   if (node !== null && startHarvestFromNode(plan, node, harvestClaims, reach)) return true;
 
@@ -147,6 +138,17 @@ function planFlagGatherer(
   idle.stand(e, false);
   atOrWalk(world, e, here, flagCell, () => {});
   return true;
+}
+
+/**
+ * The production counters' node gate, or undefined while the gatherer holds none: a node is work while it
+ * holds a good whose counter is at least one. A carcass body worth such a good is worked through its
+ * stopped stages too, and the one-kill gate (`huntingGroundHoldsCarcass`) reads bodies the same way, so a
+ * hunter held to one good neither leaves a half-plucked body nor wedges on one it will not touch.
+ */
+function countersAdmit(plan: PlannerContext): ((node: Entity) => boolean) | undefined {
+  const open = openGatherGoods(plan.world, plan.ctx, plan.entity, plan.jobType);
+  return open === undefined ? undefined : (node) => nodeHoldsOpenGood(plan.world, node, open);
 }
 
 /**

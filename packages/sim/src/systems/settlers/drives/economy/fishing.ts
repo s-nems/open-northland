@@ -1,9 +1,9 @@
 import { FishSwarm, JobAssignment, Position } from '../../../../components/index.js';
-import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { hexDistance, hexNeighboursOf, nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
-import { FISH_CAST_ATOMIC, FISH_SHORE_SEARCH_RADIUS } from '../../../economy/fish.js';
+import { FISH_CAST_ATOMIC, FISH_SHORE_SEARCH_RADIUS, fishGoodOf } from '../../../economy/fish.js';
+import { gatherGoodOpen } from '../../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
 import { toolWorkFactorPct } from '../../../equipment/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../../footprint/index.js';
@@ -27,13 +27,15 @@ interface FishingTarget {
   readonly dist: number;
 }
 
-/** Plan the land fisher onto a reachable shore near his {@link shoreSearchOrigin} from which an authored
- *  swarm is in range. */
+/**
+ * Plan the land fisher onto a reachable shore near his {@link shoreSearchOrigin} from which an authored
+ * swarm is in range, while its production counter for the raw fish lets it fish.
+ */
 export function planFisher(plan: PlannerContext): boolean {
   const { world, ctx, terrain, entity: fisher, here } = plan;
   if (!isFisherJob(ctx.content, plan.jobType)) return false;
-  const fishGood = contentIndex(ctx.content).goodTypeBySlug.get('fish');
-  if (fishGood === undefined) return false;
+  const fishGood = fishGoodOf(ctx.content);
+  if (fishGood === undefined || !gatherGoodOpen(world, fisher, fishGood)) return false;
   if (!workplaceCanBankCatch(plan, edibleGoodFormOf(ctx.content, fishGood))) return false;
 
   const gates = {

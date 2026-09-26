@@ -8,32 +8,20 @@ import type { NodeId } from '../../nav/terrain/index.js';
  *  - it harvests only nodes within `radius` (integer node-distance) of `flag`, and with nothing in range
  *    stands idle beside the flag rather than roaming the map;
  *  - it collects only its own harvested drops ({@link HarvestedBy} keyed to it), leaving loose piles alone;
- *  - it delivers its load onto loose ground heaps around `flag`, not into the nearest store;
- *  - `goodType` narrows new harvest targets to one map good; absence accepts every good the job may harvest.
+ *  - it delivers its load onto loose ground heaps around `flag`, not into the nearest store.
  *
  * A gatherer without the component roams for the nearest node anywhere and hauls to the nearest store.
  * An unposted fisher carries one so its catch returns to the player's chosen yard; a posted fisher banks
  * directly into its workplace.
  */
-export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number | undefined }>(
-  'WorkFlag',
-  'economy',
-);
-
-/**
- * A building-employed gatherer's single-good harvest pick - the flag-less sibling of {@link WorkFlag}'s
- * `goodType`. An employed gatherer roams only for goods its workplace's stockpile stores; this narrows that
- * set to one. Absent means every stored good. Removed on any employment change, since a new workplace stores
- * a different set.
- */
-export const GatherSelection = defineComponent<{ goodType: number }>('GatherSelection', 'economy');
+export const WorkFlag = defineComponent<{ flag: Entity; radius: number }>('WorkFlag', 'economy');
 
 /**
  * The node a gatherer is taking up and, once drawn, the stance it approaches it from, kept until the
  * stroke lands so a walk over several planner passes keeps one goal. The stroke cadence
  * (`atomics/stroke-cadence.ts`) decides whether the stance survives a counted stroke. Removed when the
- * node is gone, extracted or claimed by a colleague, when the rung picks another, and on any change of
- * trade, flag or gather good.
+ * node is gone, extracted or claimed by a colleague, when the rung picks another, once the gatherer's
+ * counter stops its good, and on any change of trade, flag or gather good.
  */
 export const HarvestFocus = defineComponent<{ node: Entity; stance?: NodeId | undefined }>(
   'HarvestFocus',

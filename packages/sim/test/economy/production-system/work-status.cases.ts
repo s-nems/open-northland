@@ -12,7 +12,7 @@ import { ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
-import { setCraftGoods, setProductionCount } from '../../../src/systems/orders/index.js';
+import { setProductionCount, setProductionGoods } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { CARPENTER, ctxOf, PLANK_GATE_EARNED, spawnSettler, WOOD, WOODCUTTER } from './support.js';
 
@@ -47,7 +47,7 @@ describe('Simulation.workStatus - why a craft worker works or idles', () => {
   it('names the next product that waits for its inputs', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { smith } = forge(sim, 0);
-    setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD] });
+    setProductionGoods(sim.world, ctxOf(sim), { kind: 'setProductionGoods', entity: smith, goods: [FOOD] });
     expect(sim.workStatus(smith)).toEqual({ kind: 'waitingInput', goodType: FOOD });
   });
 

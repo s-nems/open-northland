@@ -11,11 +11,9 @@ affordances whose data or target does not exist yet. The spec names each gap whe
 ## Scope
 
 - **Gatherer quota.** A gatherer's Produkcja rows carry the icon button alone (`production.ts`,
-  `gatherTarget`): the sim holds a gatherer to one good or to all through `setGatherGood`, with no
-  per-good count. Add a per-good quota to the sim (the craft counters' semantics: 0 stops, 1..10
-  counts down, unlimited never stops), then give gatherer rows the same counter part
-  (`hud/dom/parts/counter.ts`) the craft rows use. Name where the quota decrements, as the craft
-  counter's approximation does.
+  `gatherTarget`). The sim keeps a gatherer's per-good counters in `ProductionCounters`, set by
+  `setProductionCount` and `setProductionGoods` and spent per landed unit (`jobGatherGoods` lists the
+  goods). Give gatherer rows the same counter part (`hud/dom/parts/counter.ts`) the craft rows use.
 - **Knowledge link.** The lock on a locked product calls `SettlerPanelActions.openKnowledge`, which
   `view/unit-controls/settler-panel.ts` leaves unwired. Wire it to the good's Knowledge entry once
   ticket 16 provides one.

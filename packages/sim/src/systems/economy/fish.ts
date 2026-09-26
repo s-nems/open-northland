@@ -1,4 +1,6 @@
+import type { ContentSet } from '@open-northland/data';
 import { FishSwarm, Position } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistance, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { FishSwarmInput, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -13,6 +15,12 @@ export const FISH_FAILED_ATOMIC = 38;
 export const FISH_SHORE_SEARCH_RADIUS = 20;
 /** The original's fish reproduction fires exactly once per 2160 game ticks. */
 export const FISH_REPRODUCTION_TICKS = 2160;
+
+/** The raw fish, the fisher's work and experience good whatever form lands in hand. Resolved by slug so
+ *  modded numeric ids stay valid. */
+export function fishGoodOf(content: ContentSet): number | undefined {
+  return contentIndex(content).goodTypeBySlug.get('fish');
+}
 
 /**
  * Add authored swarms before tick zero, retaining source order as entity order. Original

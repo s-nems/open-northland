@@ -1,4 +1,10 @@
-import { type CurrentAtomic, clearNeedOrder, ownerOf, Settler } from '../../../../components/index.js';
+import {
+  type CurrentAtomic,
+  clearNeedOrder,
+  ownerOf,
+  Settler,
+  spendProductionCount,
+} from '../../../../components/index.js';
 import { assertNever } from '../../../../core/brand.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { openChest } from '../../../chests/index.js';
@@ -47,7 +53,8 @@ export function applyEffect(
   const effect = atomic.effect;
   switch (effect.kind) {
     // Original behavior: a split-up or transform clip is one stroke of the worker's per-unit count and
-    // wears the tool; a pickup clip takes a unit outright. Either trains once per unit it frees.
+    // wears the tool; a pickup clip takes a unit outright. Either trains once per unit it frees, and each
+    // unit it frees spends one of the gatherer's own counter for the good.
     case 'harvest': {
       const identity = world.tryGet(settler, Settler);
       const strokeCounted =
@@ -57,7 +64,10 @@ export function applyEffect(
         : PICKUP_STROKES_PER_UNIT;
       const units = harvestFromNode(world, ctx, settler, effect.resource, effect.goodType, needed);
       if (strokeCounted) wearWornTool(world, ctx, settler);
-      if (units > 0) grantWorkExperience(world, ctx, settler, effect.goodType, 1);
+      if (units > 0) {
+        grantWorkExperience(world, ctx, settler, effect.goodType, 1);
+        spendProductionCount(world, settler, effect.goodType, units);
+      }
       return units;
     }
     // Fishing owns its multi-clip state machine in the executor; it never reaches the generic applier.

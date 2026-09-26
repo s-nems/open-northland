@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
-  CraftSelection,
   JobAssignment,
   Owner,
   Position,
   Production,
+  ProductionCounters,
   SettlerProgress,
   SiteAssignment,
   Stockpile,
@@ -23,7 +23,7 @@ import {
   VEHICLE_SITE_REUSE_RINGS,
 } from '../../src/systems/footprint/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
-import { setCraftGoods } from '../../src/systems/orders/index.js';
+import { setProductionGoods } from '../../src/systems/orders/index.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -259,7 +259,7 @@ function vehiclesOf(s: Simulation, vehicleType: number): Entity[] {
 
 /** Narrow `worker`'s products to `goods`, as the player's product choice does. */
 function craftOnly(s: Simulation, worker: Entity, goods: readonly number[]): void {
-  setCraftGoods(s.world, ctxOf(s), { kind: 'setCraftGoods', entity: worker, goods: [...goods] });
+  setProductionGoods(s.world, ctxOf(s), { kind: 'setProductionGoods', entity: worker, goods: [...goods] });
 }
 
 /** A wainwright at the map's middle with its carpenter on the door and an HQ full of wood beside it. */
@@ -478,6 +478,6 @@ describe('building the vehicle', () => {
     expect(vehiclesOf(s, HANDCART)).toHaveLength(1);
     expect(plankStarted).toBe(true); // the plank turn came first, and its batch waits for the operator
     expect(stepUntilReleased(s, worker)).toBe(true);
-    expect(s.world.get(worker, CraftSelection).cursor).toBe(0); // past the cart, back to the plank
+    expect(s.world.get(worker, ProductionCounters).cursor).toBe(0); // past the cart, back to the plank
   });
 });

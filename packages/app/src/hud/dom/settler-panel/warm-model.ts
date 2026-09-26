@@ -54,12 +54,14 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     trade: {
       stops: [
         {
+          slot: 0,
           house: 1,
           label: 'Warm',
           foreign: false,
           imports: [{ goodType: 0, ...good(4), label: 'Warm', selected: true }],
         },
         {
+          slot: 1,
           house: 2,
           label: 'Warm',
           foreign: true,
@@ -69,13 +71,17 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       offers: [
         {
           index: 0,
+          label: 'Warm',
           give: { amount: 1, goodType: 0, ...good(6), label: 'Warm' },
           take: { amount: 2, goodType: 1, ...good(7), label: 'Warm' },
           selected: true,
         },
       ],
+      balance: [],
+      status: [],
       destination: null,
       canAttach: true,
+      attachFirst: false,
     },
     experience: [
       { label: 'Warm', repeats: 1, bonusPct: 5, own: true },

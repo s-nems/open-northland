@@ -4,6 +4,7 @@ import {
   type CurrentAtomic,
   FishSwarm,
   Settler,
+  spendProductionCount,
 } from '../../../../../components/index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
@@ -60,9 +61,11 @@ export function advanceFishingAtomic(
   const caught = caughtFrom !== null;
   if (caught) {
     // The original catch puts good 16 (`food_simple`) in the fisher's hands, while the raw fish
-    // id remains the work/experience specialization. Resolve by slug so modded numeric ids stay valid.
+    // id remains the work/experience specialization and the counter the catch spends. Resolve by slug so
+    // modded numeric ids stay valid.
     world.add(fisher, Carrying, { goodType: edibleGoodFormOf(ctx.content, effect.goodType), amount: 1 });
     grantWorkExperience(world, ctx, fisher, effect.goodType, 1);
+    spendProductionCount(world, fisher, effect.goodType, 1);
   }
   transition(world, ctx, fisher, atomic, caught ? FISH_CAUGHT_ATOMIC : FISH_FAILED_ATOMIC, {
     ...effect,

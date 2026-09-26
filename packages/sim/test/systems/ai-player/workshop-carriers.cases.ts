@@ -5,8 +5,8 @@ import {
   Building,
   Carrying,
   CompletedCycles,
-  CraftSelection,
   JobAssignment,
+  ProductionCounters,
   productionCountOf,
   Resource,
   removeCurrentAtomic,
@@ -44,7 +44,7 @@ import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   CROCKERY_GLUT_UNITS,
-  tuneCraftSelections,
+  tuneCraftCounters,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import {
   claimFlagNode,
@@ -285,7 +285,7 @@ function selections(seat: Seat, building: Entity, job: number): (readonly number
   const { world } = seat.sim;
   const ctx = { ...ctxOf(seat.sim), content: workshopsContent() };
   const supply = SeatSupply.of(world, ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
-  seat.apply(tuneCraftSelections(world, ctx, SEAT, supply));
+  seat.apply(tuneCraftCounters(world, ctx, SEAT, supply));
   const recipes = contentIndex(ctx.content).recipeByProductByBuilding.get(
     world.get(building, Building).buildingType,
   );
@@ -294,7 +294,7 @@ function selections(seat: Seat, building: Entity, job: number): (readonly number
     .crew(building, job)
     .sort((a, b) => a - b)
     .map((e) => {
-      const selection = world.tryGet(e, CraftSelection);
+      const selection = world.tryGet(e, ProductionCounters);
       return selection && products.filter((good) => productionCountOf(selection, good) !== 0);
     });
 }

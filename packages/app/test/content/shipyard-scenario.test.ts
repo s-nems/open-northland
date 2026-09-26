@@ -13,7 +13,7 @@ import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
  * Shipbuilding over the REAL merged content, the way a player reaches it: a level-4 joinery on a shore,
- * its joiners picked onto the small ship through `setCraftGoods`, wood and leather in a warehouse. The
+ * its joiners picked onto the small ship through `setProductionGoods`, wood and leather in a warehouse. The
  * ship yard opens on the water beside the shop and its finished site becomes a moored ship. The sandbox
  * scene `?scene=vehicle-shipyard` proves the same loop on synthetic content only.
  */
@@ -135,7 +135,9 @@ describe.runIf(hasRealIr())('shipbuilding over real content', () => {
     sim.step();
     for (const e of joiners) {
       expect(sim.world.tryGet(e, JobAssignment)?.workplace).toBe(shopEntity);
-      sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'setCraftGoods', entity: e, goods: [ship.typeId] }));
+      sim.enqueue(
+        playerCommand(HUMAN_PLAYER, { kind: 'setProductionGoods', entity: e, goods: [ship.typeId] }),
+      );
     }
     const shipsAfloat = () =>
       [...sim.world.query(Vehicle)].filter((e) => sim.world.get(e, Vehicle).vehicleType === shipType.typeId);

@@ -1,9 +1,9 @@
 import type { Recipe } from '@open-northland/data';
 import {
   Building,
-  CraftSelection,
   ownerOf,
   PRODUCTION_UNLIMITED,
+  ProductionCounters,
   productionCountOf,
   writeProductionCount,
 } from '../../../components/index.js';
@@ -14,10 +14,11 @@ import { beginCycle, canStartCycle, isYardBuilt, waitingForRecipeInput } from '.
 
 /**
  * The products of `recipes` this operator may craft, in rotation order: every product whose
- * {@link CraftSelection} counter is at least one, in recipe order, narrowed to what the operator has earned.
- * Observed: a `needforgood` XP threshold locks a ware until the operator's repeats clear it. When every
- * live product is still locked, the pool degrades to every earned product, stopped ones included, rather
- * than stalling a staffed workshop; with every counter at `0` it is empty and the operator starts nothing.
+ * {@link ProductionCounters} counter is at least one, in recipe order, narrowed to what the operator has
+ * earned. Observed: a `needforgood` XP threshold locks a ware until the operator's repeats clear it. When
+ * every live product is still locked, the pool degrades to every earned product, stopped ones included,
+ * rather than stalling a staffed workshop; with every counter at `0` it is empty and the operator starts
+ * nothing.
  */
 export function craftablePool(
   world: World,
@@ -27,7 +28,7 @@ export function craftablePool(
 ): readonly number[] {
   const subject = needSubjectOf(world, operator);
   const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
-  const selection = world.tryGet(operator, CraftSelection);
+  const selection = world.tryGet(operator, ProductionCounters);
   const pool: number[] = [];
   let lockedLive = false;
   for (const good of recipes.keys()) {
@@ -61,7 +62,7 @@ export function nextRotationPick(
 ): RotationPick | null {
   const pool = craftablePool(world, ctx, operator, recipes);
   if (pool.length === 0) return null; // no recipes at all, or none this operator has earned yet
-  const cursor = world.tryGet(operator, CraftSelection)?.cursor ?? 0;
+  const cursor = world.tryGet(operator, ProductionCounters)?.cursor ?? 0;
   for (let i = 0; i < pool.length; i++) {
     const index = (cursor + i) % pool.length;
     const good = pool[index];
@@ -86,8 +87,9 @@ function yardTurnOpen(world: World, ctx: SystemContext, building: Entity, recipe
 /** Move the rotation past `pick` without a start, so a skipped turn resumes after the product. A
  *  first-ever advance stamps an empty selection so the rotation position persists. */
 export function advanceRotation(world: World, operator: Entity, pick: RotationPick): void {
-  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { counters: [], cursor: 0 });
-  world.mut(operator, CraftSelection).cursor = (pick.index + 1) % pick.pool.length;
+  if (!world.has(operator, ProductionCounters))
+    world.add(operator, ProductionCounters, { counters: [], cursor: 0 });
+  world.mut(operator, ProductionCounters).cursor = (pick.index + 1) % pick.pool.length;
 }
 
 /**
@@ -96,14 +98,15 @@ export function advanceRotation(world: World, operator: Entity, pick: RotationPi
  * start stamps an empty selection so the position persists.
  */
 export function spendRotationPick(world: World, operator: Entity, pick: RotationPick): void {
-  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { counters: [], cursor: 0 });
-  const count = productionCountOf(world.get(operator, CraftSelection), pick.good);
+  if (!world.has(operator, ProductionCounters))
+    world.add(operator, ProductionCounters, { counters: [], cursor: 0 });
+  const count = productionCountOf(world.get(operator, ProductionCounters), pick.good);
   const spent = count > 0 && count < PRODUCTION_UNLIMITED;
   if (spent) writeProductionCount(world, operator, pick.good, count - 1);
   const leaves = spent && count === 1;
   const size = leaves ? pick.pool.length - 1 : pick.pool.length;
   const next = leaves ? pick.index : pick.index + 1;
-  world.mut(operator, CraftSelection).cursor = size > 0 ? next % size : 0;
+  world.mut(operator, ProductionCounters).cursor = size > 0 ? next % size : 0;
 }
 
 /** Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start or
@@ -144,7 +147,7 @@ export function skipUnfundedRecipe(
   own: readonly Recipe[],
 ): void {
   if (own.length < 2) return;
-  const selection = world.tryGet(operator, CraftSelection);
+  const selection = world.tryGet(operator, ProductionCounters);
   const cursor = (selection?.cursor ?? 0) % own.length;
   for (let i = 0; i < own.length; i++) {
     const index = (cursor + i) % own.length;
@@ -156,8 +159,8 @@ export function skipUnfundedRecipe(
       const alternative = own[alternativeIndex];
       if (alternative === undefined || !canStartCycle(world, ctx, building, alternative)) continue;
       if (selection === undefined)
-        world.add(operator, CraftSelection, { counters: [], cursor: alternativeIndex });
-      else world.mut(operator, CraftSelection).cursor = alternativeIndex;
+        world.add(operator, ProductionCounters, { counters: [], cursor: alternativeIndex });
+      else world.mut(operator, ProductionCounters).cursor = alternativeIndex;
       return;
     }
     return;

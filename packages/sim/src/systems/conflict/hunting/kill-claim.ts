@@ -4,6 +4,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { nodeHoldsOpenGood, openGatherGoods } from '../../economy/gather-goods.js';
 import { isHunterJob, MILITARY_MODE, stanceMode } from '../../readviews/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../../settlers/unreachable-goals.js';
 import { manhattan } from '../../spatial/metric.js';
@@ -48,10 +49,10 @@ export function claimedByAnotherHunter(
  * Whether the hunter's ground still holds a carcass node its trade can harvest - the one-kill gate's probe:
  * standing work means no new target. The box query is a Manhattan superset, so each hit is re-checked at its
  * exact distance. It must not out-claim the harvest drive: a carcass the hunter provably cannot bank - a
- * colleague's claimed kill, one across a static terrain component seam, or one on a cell its routes just
- * failed on - counts as no work, else a body it may never pluck would stall its hunting for good. The box
- * walk still visits every resource in it, but another trade's node is dropped by its indexed harvest atomic
- * before any store read.
+ * colleague's claimed kill, one across a static terrain component seam, one on a cell its routes just
+ * failed on, or a body holding no good its production counters leave open - counts as no work, else a body it may
+ * never pluck would stall its hunting for good. The box walk still visits every resource in it, but another
+ * trade's node is dropped by its indexed harvest atomic before any store read.
  */
 export function huntingGroundHoldsCarcass(
   world: World,
@@ -65,6 +66,8 @@ export function huntingGroundHoldsCarcass(
   const allowed = contentIndex(ctx.content).atomicsByJob.get(jobType);
   if (allowed === undefined) return false;
   if (!anyHarvestAtomicPresent(world, allowed)) return false;
+  const open = openGatherGoods(world, ctx, hunter, jobType);
+  if (open !== undefined && open.size === 0) return false;
   const memo = unreachableGoals(world, ctx, hunter);
   const hunterComponent = terrain.componentOf(entityNode(world, terrain, hunter));
   const ax = terrain.xOf(ground.anchorCell);
@@ -79,6 +82,7 @@ export function huntingGroundHoldsCarcass(
     (node) => {
       const res = world.get(node, Resource);
       if (res.remaining <= 0) return false;
+      if (open !== undefined && !nodeHoldsOpenGood(world, node, open)) return false;
       const cell = entityNode(world, terrain, node);
       // Cheapest first: an array read and a ≤8-entry memo walk before the claim resolves a killer.
       if (terrain.componentOf(cell) !== hunterComponent) return false;

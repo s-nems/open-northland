@@ -2,28 +2,30 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Felling,
-  GatherSelection,
   JobAssignment,
   Owner,
   Position,
+  ProductionCounters,
+  productionCountOf,
   Resource,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { anchorOnlyFootprint, stampResourceFootprintData, stockCapacity } from '../../src/systems/index.js';
-import { setGatherGood, setJob } from '../../src/systems/orders/index.js';
+import { setGatherGood, setJob, setProductionCount } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { gatherPick } from '../fixtures/production-counters.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * THE EMPLOYED GATHERER'S STORE FILTER (user rule 2026-07-16): a flag-less gatherer bound to a stocking
  * building forages ONLY for goods that building's stockpile stores - a smithy's collector fetches its
- * iron/wood, never the quarry's stone - narrowed further to one good by the `setGatherGood` command
- * (stored in {@link GatherSelection}; `null` resets to every stored good). The fixture collector (job 7)
- * may harvest wood AND stone; the sawmill stores wood only, so stone is what the filter must exclude.
+ * iron/wood, never the quarry's stone - narrowed further by its {@link ProductionCounters}, which the
+ * `setGatherGood` command sets to one good (`null` resets to every stored good). The fixture collector
+ * (job 7) may harvest wood AND stone; the sawmill stores wood only, so stone is what the filter must exclude.
  */
 
 const WOOD = 1;
@@ -90,7 +92,7 @@ describe('employed gatherer - the workplace store filter', () => {
     // The wood was worked instead: the tree is being chopped (or already fell and was reaped).
     const chopped = !sim.world.isAlive(tree) || sim.world.get(tree, Felling).chops > 0;
     expect(chopped).toBe(true);
-    expect(sim.world.has(worker, GatherSelection)).toBe(false); // no pick made - filter alone did this
+    expect(sim.world.has(worker, ProductionCounters)).toBe(false); // no pick made - filter alone did this
   });
 
   it('an unemployed roamer keeps the old behaviour: takes the nearest node regardless of good', () => {
@@ -110,12 +112,12 @@ describe('employed gatherer - the workplace store filter', () => {
     const store = placeBuilding(sim, WAREHOUSE, 1, 1); // stocks wood AND stone
     const worker = employedCollector(sim, 8, 1, store);
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: WOOD });
-    expect(sim.world.get(worker, GatherSelection).goodType).toBe(WOOD);
+    expect(gatherPick(sim, worker)).toBe(WOOD);
     const stone = placeStone(sim, 9, 1);
     sim.run(120);
     expect(sim.world.get(stone, Resource).remaining).toBe(5); // pinned to wood - the stone is not its pick
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: null });
-    expect(sim.world.has(worker, GatherSelection)).toBe(false);
+    expect(sim.world.has(worker, ProductionCounters)).toBe(false);
   });
 
   // The pin accepts a good the workplace stores in its BANKED form, matching the forage filter above and
@@ -130,7 +132,7 @@ describe('employed gatherer - the workplace store filter', () => {
 
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: hunter, goodType: MEAT });
 
-    expect(sim.world.get(hunter, GatherSelection).goodType).toBe(MEAT);
+    expect(gatherPick(sim, hunter)).toBe(MEAT);
   });
 
   // The gate reads the building TYPE's slots, not a live store's capacity: employment has no built gate,
@@ -147,7 +149,7 @@ describe('employed gatherer - the workplace store filter', () => {
 
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: WOOD });
 
-    expect(sim.world.get(worker, GatherSelection).goodType).toBe(WOOD);
+    expect(gatherPick(sim, worker)).toBe(WOOD);
   });
 
   it('rejects a good the workplace does not store (recoverable bad input)', () => {
@@ -155,7 +157,7 @@ describe('employed gatherer - the workplace store filter', () => {
     const mill = placeBuilding(sim, SAWMILL, 1, 1);
     const worker = employedCollector(sim, 8, 1, mill);
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: STONE });
-    expect(sim.world.has(worker, GatherSelection)).toBe(false);
+    expect(sim.world.has(worker, ProductionCounters)).toBe(false);
   });
 
   it('an employment change clears the pick (the selection was made under the old workplace)', () => {
@@ -163,8 +165,43 @@ describe('employed gatherer - the workplace store filter', () => {
     const store = placeBuilding(sim, WAREHOUSE, 1, 1);
     const worker = employedCollector(sim, 8, 1, store);
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: WOOD });
-    expect(sim.world.has(worker, GatherSelection)).toBe(true);
+    expect(sim.world.has(worker, ProductionCounters)).toBe(true);
     setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: worker, jobType: WOODCUTTER });
-    expect(sim.world.has(worker, GatherSelection)).toBe(false);
+    expect(sim.world.has(worker, ProductionCounters)).toBe(false);
+  });
+
+  it('carries off the whole felled trunk even once the fell spent its last counted unit', () => {
+    const sim = sceneSim();
+    const mill = placeBuilding(sim, SAWMILL, 1, 1);
+    const worker = employedCollector(sim, 8, 1, mill);
+    setProductionCount(sim.world, ctxOf(sim), {
+      kind: 'setProductionCount',
+      entity: worker,
+      goodType: WOOD,
+      count: 1,
+    });
+    const tree = placeTree(sim, 14, 1);
+    const yieldUnits = sim.world.get(tree, Resource).remaining;
+    sim.run(3000);
+    expect(productionCountOf(sim.world.get(worker, ProductionCounters), WOOD)).toBe(0);
+    expect(sim.world.get(mill, Stockpile).amounts.get(WOOD) ?? 0).toBe(yieldUnits);
+  });
+
+  it('obeys its counters on top of the store filter: a stopped stored good is left standing', () => {
+    const sim = sceneSim();
+    const store = placeBuilding(sim, WAREHOUSE, 1, 1); // stocks wood AND stone
+    const worker = employedCollector(sim, 8, 1, store);
+    setProductionCount(sim.world, ctxOf(sim), {
+      kind: 'setProductionCount',
+      entity: worker,
+      goodType: STONE,
+      count: 0,
+    });
+    const stone = placeStone(sim, 9, 1); // right beside the collector
+    const tree = placeTree(sim, 14, 1);
+    sim.run(200);
+    expect(sim.world.get(stone, Resource).remaining).toBe(5);
+    const chopped = !sim.world.isAlive(tree) || sim.world.get(tree, Felling).chops > 0;
+    expect(chopped).toBe(true);
   });
 });

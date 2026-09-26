@@ -12,6 +12,7 @@ import {
   PathRequest,
   PlayerOrder,
   Position,
+  ProductionCounters,
   Settler,
   Stranded,
   SupplyRun,
@@ -23,6 +24,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, nodeOfPosition } from '../../../src/index.js';
 import { setJob } from '../../../src/systems/index.js';
 import { ctxOf } from '../../fixtures/context.js';
+import { gatherPick } from '../../fixtures/production-counters.js';
 import {
   CARPENTER,
   HUNTER,
@@ -190,19 +192,33 @@ describe('setJob work-flag lifecycle', () => {
     expect(nodeOfPosition(flagPos.x, flagPos.y)).not.toEqual(nodeOfPosition(resourcePos.x, resourcePos.y));
   });
 
-  it('clears a resource filter that the new gathering trade cannot harvest', () => {
+  it('drops the production counters on a change of trade', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 2, 1);
     s.enqueueSetup({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
     s.step();
-    s.enqueueSetup({ kind: 'setGatherGood', entity: e, goodType: 1 });
+    s.enqueueSetup({ kind: 'setGatherGood', entity: e, goodType: WOOD });
     s.step();
-    expect(s.world.get(e, WorkFlag).goodType).toBe(1);
+    expect(gatherPick(s, e)).toBe(WOOD);
 
     s.enqueueSetup({ kind: 'setJob', entity: e, jobType: 5 }); // miner: stone only
     s.step();
 
-    expect(s.world.get(e, WorkFlag).goodType).toBeUndefined();
+    expect(s.world.has(e, ProductionCounters)).toBe(false);
+  });
+
+  it('keeps the production counters when the order names the trade the settler already holds', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 2, 1);
+    s.enqueueSetup({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    s.step();
+    s.enqueueSetup({ kind: 'setGatherGood', entity: e, goodType: WOOD });
+    s.step();
+
+    s.enqueueSetup({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    s.step();
+
+    expect(gatherPick(s, e)).toBe(WOOD);
   });
 
   it('keeps the same flag when the profession stays a gathering trade', () => {

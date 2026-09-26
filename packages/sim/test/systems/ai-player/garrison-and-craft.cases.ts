@@ -9,12 +9,12 @@ import {
   aiPlayerEntity,
   Building,
   CompletedCycles,
-  CraftSelection,
   EquipOrder,
   Garrison,
   JobAssignment,
   Owner,
   Position,
+  ProductionCounters,
   Settler,
   setStockAmount,
   TrainingOrder,
@@ -46,7 +46,7 @@ import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
-  tuneCraftSelections,
+  tuneCraftCounters,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { ARMY_FLOOR_LEAD_TICKS, ARMY_FLOOR_MIN } from '../../../src/systems/ai-player/workforce/garrison.js';
 import { mayMarry } from '../../../src/systems/family/eligibility.js';
@@ -449,7 +449,7 @@ function glutOf(buildingId: string, index: number, goodId: string): number {
 /** One decision's craft selections, over the seat's supply at the time. */
 function tune(world: World, ctx: SystemContext): PlayerCommand[] {
   const supply = SeatSupply.of(world, ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
-  return tuneCraftSelections(world, ctx, SEAT, supply);
+  return tuneCraftCounters(world, ctx, SEAT, supply);
 }
 
 /** A recast joinery at (40, 16) with `crew` builders hired as its joiners, lowest id first; the
@@ -484,7 +484,7 @@ function crewedWorkshop(content: ContentSet, crew: number) {
       const commands = tune(sim.world, ctx);
       for (const c of commands) sim.enqueueSetup(c);
       sim.step();
-      return commands.flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
+      return commands.flatMap((c) => (c.kind === 'setProductionGoods' ? [c.goods] : []));
     },
   };
 }
@@ -1077,22 +1077,22 @@ describe('workforce module - the barracks and craft selections', () => {
 
     // The min pass assigns the joiner; its craft selection only exists once the binding stands.
     const first = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
-    expect(first.filter((c) => c.kind === 'setCraftGoods')).toEqual([]);
+    expect(first.filter((c) => c.kind === 'setProductionGoods')).toEqual([]);
     for (const c of first) sim.enqueueSetup(c);
     sim.step();
 
     const second = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
-    const tuned = second.filter((c) => c.kind === 'setCraftGoods');
+    const tuned = second.filter((c) => c.kind === 'setProductionGoods');
     const joiner = [...sim.world.query(Settler, JobAssignment)].find(
       (e) => sim.world.get(e, JobAssignment).workplace === entityOfBuilding(sim, JOINERY_TYPE),
     );
-    expect(tuned).toEqual([{ kind: 'setCraftGoods', entity: joiner, goods: [TOOL_IRON] }]);
+    expect(tuned).toEqual([{ kind: 'setProductionGoods', entity: joiner, goods: [TOOL_IRON] }]);
 
     // Applied once, the selection matches - the next decision issues nothing.
     for (const c of second) sim.enqueueSetup(c);
     sim.step();
     expect(
-      [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setCraftGoods'),
+      [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setProductionGoods'),
     ).toEqual([]);
   });
 
@@ -1169,10 +1169,10 @@ describe('workforce module - the barracks and craft selections', () => {
     sim.step();
     completeSites(sim);
     expect(sim.world.get(hut, Building).buildingType).toBe(UPGRADED_HUT);
-    expect(sim.world.get(mason, CraftSelection).counters).toEqual([[ORNAMENT, 0]]);
+    expect(sim.world.get(mason, ProductionCounters).counters).toEqual([[ORNAMENT, 0]]);
 
     // The upgraded hut opens on a marble run, counted on the hut itself.
-    const run = { kind: 'setCraftGoods', entity: mason, goods: [ORNAMENT] } as const;
+    const run = { kind: 'setProductionGoods', entity: mason, goods: [ORNAMENT] } as const;
     expect(tune(sim.world, ctx)).toEqual([run]);
     sim.enqueueSetup(run);
     sim.step();
@@ -1182,11 +1182,11 @@ describe('workforce module - the barracks and craft selections', () => {
 
     // With the run done, the mason alternates stone blocks and marble.
     sim.world.mut(hut, CompletedCycles).byGood.set(ORNAMENT, cycles);
-    const choice = { kind: 'setCraftGoods', entity: mason, goods: [PILLAR, ORNAMENT] } as const;
+    const choice = { kind: 'setProductionGoods', entity: mason, goods: [PILLAR, ORNAMENT] } as const;
     expect(tune(sim.world, ctx)).toEqual([choice]);
     sim.enqueueSetup(choice);
     sim.step();
-    expect(sim.world.get(mason, CraftSelection).counters).toEqual([]);
+    expect(sim.world.get(mason, ProductionCounters).counters).toEqual([]);
     expect(tune(sim.world, ctx)).toEqual([]);
   });
 
@@ -1218,9 +1218,11 @@ describe('workforce module - the barracks and craft selections', () => {
       .filter((e) => sim.world.get(e, Settler).jobType === BREEDER)
       .sort((a, b) => a - b);
     expect(breeders).toHaveLength(2);
-    expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setCraftGoods')).toEqual([
-      { kind: 'setCraftGoods', entity: breeders[0], goods: [CATTLE] },
-      { kind: 'setCraftGoods', entity: breeders[1], goods: [CATTLE] },
+    expect(
+      [...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'setProductionGoods'),
+    ).toEqual([
+      { kind: 'setProductionGoods', entity: breeders[0], goods: [CATTLE] },
+      { kind: 'setProductionGoods', entity: breeders[1], goods: [CATTLE] },
     ]);
   });
 
@@ -1268,7 +1270,7 @@ describe('workforce module - the barracks and craft selections', () => {
         const commands = tune(sim.world, ctx);
         for (const c of commands) sim.enqueueSetup(c);
         sim.step();
-        return commands.flatMap((c) => (c.kind === 'setCraftGoods' ? [c.goods] : []));
+        return commands.flatMap((c) => (c.kind === 'setProductionGoods' ? [c.goods] : []));
       },
     };
   }
@@ -1521,8 +1523,8 @@ describe('workforce module - the barracks and craft selections', () => {
       .sort((a, b) => a - b);
     expect(tailors).toHaveLength(2);
     expect(tune(sim.world, ctx)).toEqual([
-      { kind: 'setCraftGoods', entity: tailors[0], goods: [SHOES] },
-      { kind: 'setCraftGoods', entity: tailors[1], goods: [LEATHER_ARMOUR] },
+      { kind: 'setProductionGoods', entity: tailors[0], goods: [SHOES] },
+      { kind: 'setProductionGoods', entity: tailors[1], goods: [LEATHER_ARMOUR] },
     ]);
   });
 });

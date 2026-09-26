@@ -3,13 +3,11 @@ import {
   AssistantRecruit,
   AttackOrder,
   Carrying,
-  CraftSelection,
   Engagement,
   Equipment,
   EquipOrder,
   ExploreOrder,
   Fleeing,
-  GatherSelection,
   HarvestFocus,
   HuntFocus,
   HuntRest,
@@ -21,6 +19,7 @@ import {
   OpenChestOrder,
   Owner,
   Position,
+  ProductionCounters,
   Settler,
   SettlerProgress,
   SiteAssignment,
@@ -53,6 +52,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   // A script may fix a unit's trade (`MISSIONS.md`, behaviour bit 6). It holds against every player
   // order, drill and equipment promotion; growing out of an age class still reclasses the settler.
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED)) return;
+  const tradeChanged = world.get(e, Settler).jobType !== jobType;
   rememberCurrentJob(world, e, jobType);
   setSettlerJob(world, e, jobType);
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand
@@ -84,8 +84,8 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
     world.remove(e, AssistantRecruit); // leaving the fighter band cancels the assistant's booking
   }
   syncWorkFlagToJob(world, ctx, e, jobType);
-  world.remove(e, GatherSelection); // the picks die with the employment they were made under
-  world.remove(e, CraftSelection);
+  // The counters name the old trade's goods; a re-order into the same trade keeps them.
+  if (tradeChanged) world.remove(e, ProductionCounters);
 }
 
 /** A profession already practised by this settler remains available after retraining. */

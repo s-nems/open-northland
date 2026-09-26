@@ -44,11 +44,11 @@ import {
   setAssistantCounter,
   setAssistantGrant,
   setAssistantWeaponVeto,
-  setCraftGoods,
   setDefenceMode,
   setGatherGood,
   setJob,
   setProductionCount,
+  setProductionGoods,
   setRegeneration,
   setStance,
   setWorkFlag,
@@ -270,8 +270,8 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'setProfessionProgression':
       setProfessionProgression(world, command.enabled);
       return;
-    case 'setCraftGoods':
-      setCraftGoods(world, ctx, command);
+    case 'setProductionGoods':
+      setProductionGoods(world, ctx, command);
       return;
     case 'setProductionCount':
       setProductionCount(world, ctx, command);

@@ -51,7 +51,7 @@ describe('the settler panel’s orders', () => {
   it('sends an order for the seat’s own settler and confirms the press', () => {
     const { actions, sent, cues } = harness();
     actions.onlyProduct(OWN, GOOD);
-    expect(sent).toEqual([{ kind: 'setCraftGoods', entity: OWN, goods: [GOOD] }]);
+    expect(sent).toEqual([{ kind: 'setProductionGoods', entity: OWN, goods: [GOOD] }]);
     expect(cues).toEqual(['confirm']);
   });
 
@@ -91,6 +91,9 @@ describe('the partner pick', () => {
       enqueue: () => undefined,
       orders: () => {
         throw new Error('no order controller in this test');
+      },
+      vehicleOrders: () => {
+        throw new Error('no vehicle order controller in this test');
       },
       setArmedCursor: () => undefined,
       marry: (settler, partner) => wed.push([settler, partner]),

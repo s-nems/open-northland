@@ -2,13 +2,13 @@ import { parseContentSet } from '@open-northland/data';
 import { expect, it } from 'vitest';
 import {
   Carrying,
-  CraftSelection,
   JobAssignment,
   MoveGoal,
   Owner,
   PathRequest,
   PlayerOrder,
   Production,
+  ProductionCounters,
   Resting,
   Settler,
   SettlerProgress,
@@ -18,7 +18,7 @@ import {
 import { Simulation } from '../../src/index.js';
 import { plannerSystem, productionSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { pinProducts } from '../fixtures/craft-selection.js';
+import { pinProducts } from '../fixtures/production-counters.js';
 import {
   BAKEHOUSE,
   buildingAt,
@@ -96,7 +96,7 @@ it('a recipe waiting for a unit a colleague set off for this pass keeps its rota
   pinProducts(sim, waiting, [PLANK, FOOD_SIMPLE], 1);
   plannerSystem(sim.world, ctxOf(sim));
   expect(sim.world.get(fetcher, SupplyRun).goodType).toBe(WOOD);
-  expect(sim.world.get(waiting, CraftSelection).cursor).toBe(1);
+  expect(sim.world.get(waiting, ProductionCounters).cursor).toBe(1);
   expect(sim.world.tryGet(waiting, Resting)).toEqual({ at: shop });
 });
 

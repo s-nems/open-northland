@@ -69,7 +69,7 @@ export interface UnitPanelModelContext {
 export type DiplomacyStance = 'friend' | 'neutral' | 'enemy';
 
 /** The sim's own status union and counter range, so the panel cannot drift from `Simulation.workStatus`
- *  and `CraftSelection.counters`. */
+ *  and `ProductionCounters.counters`. */
 export type SettlerWorkStatus = WorkStatus;
 export { PRODUCTION_COUNT_MAX, PRODUCTION_UNLIMITED, SETTLER_NAME_MAX_CHARS };
 

@@ -2,6 +2,7 @@ import { Female, JobAssignment, Settler, TrainingOrder } from '../../../componen
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { isFighterJob, isFisherJob, isScoutJob } from '../../readviews/index.js';
@@ -88,10 +89,11 @@ export function classifyWorkforce(
       continue;
     }
     const flag = job === null ? undefined : liveWorkFlag(world, e);
+    const goodType = flag === undefined ? undefined : heldGatherGood(world, ctx, e);
     if (
       job !== null &&
       flag !== undefined &&
-      flag.goodType === undefined &&
+      goodType === undefined &&
       index.harvestJobs.has(job) &&
       genericCollectors.length < genericTarget
     ) {
@@ -99,7 +101,6 @@ export function classifyWorkforce(
       continue;
     }
     spares.push(e);
-    const goodType = flag?.goodType;
     if (job === null || goodType === undefined) continue;
     const want = wanted.find((w) => w.good.typeId === goodType && jobAtomics(ctx, job).has(w.harvestAtomic));
     if (want === undefined) continue;

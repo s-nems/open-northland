@@ -193,7 +193,7 @@ function gatherProduction(
 /**
  * A craft operator's products with their counters, or null when there is nothing to choose. Operator
  * slots follow the sim's `operatorJobsOf`: worker slots minus the carrier transport slot, unless every
- * slot is a carrier one, when the carrier does choose. A product missing from `CraftSelection.counters`
+ * slot is a carrier one, when the carrier does choose. A product missing from `ProductionCounters.counters`
  * never stops, as does every product of an operator without the component.
  */
 function craftProduction(
@@ -218,9 +218,9 @@ function craftProduction(
   return rows.length === 0 ? null : { kind: 'craft', rows, selectedGood: null };
 }
 
-/** `CraftSelection.counters` as the snapshot serializes it: [goodType, count] pairs. */
+/** `ProductionCounters.counters` as the snapshot serializes it: [goodType, count] pairs. */
 function craftCounters(comps: Comp): ReadonlyMap<number, number> {
-  const raw = (comps.CraftSelection as { counters?: unknown } | undefined)?.counters;
+  const raw = (comps.ProductionCounters as { counters?: unknown } | undefined)?.counters;
   const counters = new Map<number, number>();
   if (!Array.isArray(raw)) return counters;
   for (const pair of raw) {

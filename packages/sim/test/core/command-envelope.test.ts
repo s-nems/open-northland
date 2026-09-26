@@ -94,7 +94,7 @@ describe('parseCommandLog', () => {
 describe('CommandQueue', () => {
   it('owns its copy of the payload', () => {
     const queue = new CommandQueue();
-    const source = { kind: 'setCraftGoods', entity: UNIT, goods: [1, 2] } as const;
+    const source = { kind: 'setProductionGoods', entity: UNIT, goods: [1, 2] } as const;
     const mutable = { ...source, goods: [...source.goods] as number[] };
     queue.enqueue(playerCommand(SEAT, mutable));
     mutable.goods.push(3);
@@ -104,7 +104,11 @@ describe('CommandQueue', () => {
 
   it('refuses a payload that is not plain serializable data', () => {
     const queue = new CommandQueue();
-    const command = { kind: 'setCraftGoods', entity: UNIT, goods: new Set([1]) } as unknown as PlayerCommand;
+    const command = {
+      kind: 'setProductionGoods',
+      entity: UNIT,
+      goods: new Set([1]),
+    } as unknown as PlayerCommand;
 
     expect(() => queue.enqueue(playerCommand(SEAT, command))).toThrow(/non-serializable Set/);
   });

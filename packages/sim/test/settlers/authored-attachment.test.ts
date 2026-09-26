@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   JobAssignment,
+  ProductionCounters,
   Residence,
   Settler,
   WALK_RANGE_NODES,
@@ -13,6 +14,7 @@ import { type Entity, Simulation } from '../../src/index.js';
 import { assignWorker } from '../../src/systems/orders/work/employment.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { gatherPick } from '../fixtures/production-counters.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
@@ -208,8 +210,8 @@ describe('authored attachtohouse on spawn', () => {
     expect(sim.world.has(settlers(sim)[0] as Entity, JobAssignment)).toBe(false);
   });
 
-  // Employment retires the work flag a bound gatherer no longer works, so its authored `setproducedgood`
-  // has nothing left to narrow.
+  // Employment retires the work flag a bound gatherer no longer works, and with it the counters its
+  // authored `setproducedgood` would set.
   it('retires an employed gatherer’s work flag, and with it the authored gather pick', () => {
     const sim = attachWorld(
       { type: YARD, x: NEAR_X },
@@ -217,8 +219,9 @@ describe('authored attachtohouse on spawn', () => {
       settler(COLLECTOR, 1, { gatherGood: 1, workplace: { x: NEAR_X, y: 2 } }),
     );
     const [unposted, posted] = settlers(sim) as [Entity, Entity];
-    expect(sim.world.get(unposted, WorkFlag).goodType).toBe(1);
+    expect(gatherPick(sim, unposted)).toBe(1);
     expect(sim.world.has(posted, JobAssignment)).toBe(true);
     expect(sim.world.has(posted, WorkFlag)).toBe(false);
+    expect(sim.world.has(posted, ProductionCounters)).toBe(false);
   });
 });

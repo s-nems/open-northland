@@ -31,35 +31,41 @@ export const PRODUCTION_UNLIMITED = 11;
 export type ProductionCount = number;
 
 /**
- * A craft worker's production counters - how many more units of each of its workplace's products it makes,
- * set by the `setProductionCount` and `setCraftGoods` commands. Original behavior: one counter per human
- * and product, `0` stopped, `1..10` units still to make, `11` unlimited.
+ * A worker's production counters: how many more units it makes of each product of its craft workplace, or
+ * harvests of each good its gathering trade takes, set by the `setProductionCount`, `setProductionGoods`
+ * and `setGatherGood` commands. Original behavior: one counter per human and good it can produce, `0`
+ * stopped, `1..10` units still to make, `11` unlimited, and "only this good" is that good unlimited with
+ * every other one at `0`. Dropped on a change of trade and whenever a workplace binding is made or ended,
+ * since another post or trade offers a different set of goods; a re-order into the same trade keeps them.
  *
- * The rotation pool is every product whose counter is at least one, in the workplace's recipe order; each
- * started cycle takes the one at `cursor`, skipping a full output slot but waiting for missing inputs
+ * Craft: the rotation pool is every product whose counter is at least one, in the workplace's recipe order;
+ * each started cycle takes the one at `cursor`, skipping a full output slot but waiting for missing inputs
  * before advancing past it. A finite counter decrements when the operator starts a cycle of that product,
  * and at `0` the product leaves the pool. Approximation: the original decrements on the finished unit;
  * cycles here are not attributed to an operator after they start.
  *
- * Authored: an absent component, or a product without an entry, reads as {@link PRODUCTION_UNLIMITED},
- * so a fresh hire rotates through every product. The original starts a fresh hire on its first product
- * unlimited and every other product at `0`. Authored: the 1:1 alternation over several live products is
- * a design choice, since the original's per-worker product scheduling is unknown.
+ * Gather: a good is harvested only while its counter is at least one, and a finite counter decrements by
+ * each unit the gatherer's own stroke or catch lands. A gatherer ignores `cursor`.
+ *
+ * Authored: an absent component, or a good without an entry, reads as {@link PRODUCTION_UNLIMITED}, so a
+ * fresh hire works every product or good. The original starts a fresh hire on its first product unlimited
+ * and every other product at `0`. Authored: the 1:1 alternation over several live products is a design
+ * choice, since the original's per-worker product scheduling is unknown.
  */
-export const CraftSelection = defineComponent<{
-  /** `[goodType, count]` for each product below {@link PRODUCTION_UNLIMITED}, ascending goodType, only
-   *  goods the workplace makes; a product without an entry is unlimited. */
+export const ProductionCounters = defineComponent<{
+  /** `[goodType, count]` for each good below {@link PRODUCTION_UNLIMITED}, ascending goodType; a good
+   *  without an entry is unlimited. */
   counters: [goodType: number, count: ProductionCount][];
-  /** Rotation position into the effective product list (`>= 0`; consumers take it modulo the list). */
+  /** Craft rotation position into the effective product list (`>= 0`; consumers take it modulo the list). */
   cursor: number;
-}>('CraftSelection', 'economy');
+}>('ProductionCounters', 'economy');
 
-/** A read-only {@link CraftSelection} value, as `World.get` and a snapshot hand it out. */
-export type CraftSelectionView = DeepReadonly<NonNullable<(typeof CraftSelection)['__value']>>;
+/** A read-only {@link ProductionCounters} value, as `World.get` and a snapshot hand it out. */
+export type ProductionCountersView = DeepReadonly<NonNullable<(typeof ProductionCounters)['__value']>>;
 
 /** The counter `selection` holds for `goodType`; no selection or no entry reads as unlimited. */
 export function productionCountOf(
-  selection: CraftSelectionView | undefined,
+  selection: ProductionCountersView | undefined,
   goodType: number,
 ): ProductionCount {
   if (selection === undefined) return PRODUCTION_UNLIMITED;
@@ -89,8 +95,8 @@ export const CompletedCycles = defineComponent<{
 }>('CompletedCycles', 'economy');
 
 /**
- * Set `entity`'s counter for `goodType`, keeping {@link CraftSelection.counters} canonical: ascending, with
- * no entry for an unlimited product. Stamps the component when it is missing; an unchanged value writes
+ * Set `entity`'s counter for `goodType`, keeping {@link ProductionCounters.counters} canonical: ascending,
+ * with no entry for an unlimited good. Stamps the component when it is missing; an unchanged value writes
  * nothing.
  */
 export function writeProductionCount(
@@ -99,13 +105,13 @@ export function writeProductionCount(
   goodType: number,
   count: ProductionCount,
 ): void {
-  const selection = world.tryGet(entity, CraftSelection);
+  const selection = world.tryGet(entity, ProductionCounters);
   if (productionCountOf(selection, goodType) === count) return;
   if (selection === undefined) {
-    world.add(entity, CraftSelection, { counters: [[goodType, count]], cursor: 0 });
+    world.add(entity, ProductionCounters, { counters: [[goodType, count]], cursor: 0 });
     return;
   }
-  const counters = world.mut(entity, CraftSelection).counters;
+  const counters = world.mut(entity, ProductionCounters).counters;
   const at = counters.findIndex(([good]) => good >= goodType);
   const entry = at < 0 ? undefined : counters[at];
   if (entry !== undefined && entry[0] === goodType) {
@@ -114,4 +120,37 @@ export function writeProductionCount(
     return;
   }
   counters.splice(at < 0 ? counters.length : at, 0, [goodType, count]);
+}
+
+/**
+ * Spend `units` of `entity`'s finite counter for `goodType`, flooring at `0`. An unlimited or absent
+ * counter is left alone.
+ */
+export function spendProductionCount(world: World, entity: Entity, goodType: number, units: number): void {
+  const count = productionCountOf(world.tryGet(entity, ProductionCounters), goodType);
+  if (count <= 0 || count >= PRODUCTION_UNLIMITED) return;
+  writeProductionCount(world, entity, goodType, Math.max(0, count - units));
+}
+
+/**
+ * Make each of `goods` that `listed` names unlimited and every other one `0`, restarting the craft rotation
+ * at its first product. Writes the canonical entries: one `0` per unlisted good, ascending.
+ */
+export function writeProductionGoods(
+  world: World,
+  entity: Entity,
+  goods: Iterable<number>,
+  listed: ReadonlySet<number>,
+): void {
+  const counters: [number, ProductionCount][] = [...goods]
+    .filter((good) => !listed.has(good))
+    .sort((a, b) => a - b)
+    .map((good) => [good, 0]);
+  if (!world.has(entity, ProductionCounters)) {
+    world.add(entity, ProductionCounters, { counters, cursor: 0 });
+    return;
+  }
+  const selection = world.mut(entity, ProductionCounters);
+  selection.counters = counters;
+  selection.cursor = 0;
 }

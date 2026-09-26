@@ -131,7 +131,7 @@ describe('the full strategic registry - determinism and replay', () => {
     const log = sim.commands.log.map((c) => c.command);
     expect(log.some((c) => c.kind === 'setGatherGood' && c.goodType === IRON)).toBe(true);
     expect(
-      log.some((c) => c.kind === 'setCraftGoods' && c.goods.length === 1 && c.goods[0] === TOOL_IRON),
+      log.some((c) => c.kind === 'setProductionGoods' && c.goods.length === 1 && c.goods[0] === TOOL_IRON),
     ).toBe(true);
     const builders = [...sim.world.query(Settler)].filter(
       (e) => sim.world.get(e, Settler).jobType === BUILDER && !sim.world.has(e, JobAssignment),

@@ -1,4 +1,4 @@
-import { components, halfCellMapFromCells } from '@open-northland/sim';
+import { components, halfCellMapFromCells, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { HUMAN_PLAYER } from '../../src/game/rules.js';
@@ -6,6 +6,7 @@ import { runAuthoredMap } from '../../src/game/world/index.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 const { Settler, WorkFlag } = components;
+const { heldGatherGood } = systems;
 
 const MAP_CELLS = 40;
 /** The real `[jobtype]` slug and goodtype names a decoded map authors - the join keys, not sim typeIds. */
@@ -26,7 +27,7 @@ function grassMap(cells: number) {
 /**
  * A decoded map authors each human's produced good as a `setproducedgood` in its `sethuman` block (819
  * across the decoded corpus). This covers the half after the decoder - the name→typeId join and the
- * `spawnSettler` command - landing a pick on the settler's auto-planted `WorkFlag.goodType` (the
+ * `spawnSettler` command - holding the settler's production counters to the pick (the
  * decoder's own half is pinned in `tools/asset-pipeline/test/ini-maps.test.ts`). The real-content twin
  * of the synthetic sim cases: same rule, but over the real goodtype/jobtype name join, so a renamed or
  * rescoped id surfaces here instead of silently reverting every imported collector to gather-everything.
@@ -68,9 +69,9 @@ describe.runIf(hasRealIr())('authored decoded-map gatherers - the setproducedgoo
     // All five humans resolved - a dropped join would pass the picks assertion vacuously.
     const settlers = [...sim.world.query(Settler)];
     expect(settlers.length).toBe(5);
-    // Only the two ordinary flag-harvestable picks narrow a flag; the fisher's flag is not a generic
-    // resource filter.
-    const picks = settlers.map((e) => sim.world.tryGet(e, WorkFlag)?.goodType);
+    // Only the two ordinary flag-harvestable picks set counters; the fisher's pick names the one good it
+    // gathers anyway.
+    const picks = settlers.map((e) => heldGatherGood(sim.world, merge, e));
     expect(picks).toEqual([goodTypeOf(WOOD), goodTypeOf(STONE), undefined, undefined, undefined]);
     // The dedicated fisher carries its own movable catch-delivery flag.
     const fisher = settlers[4];

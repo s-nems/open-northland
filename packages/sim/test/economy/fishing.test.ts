@@ -14,6 +14,8 @@ import {
   MoveGoal,
   Owner,
   Position,
+  ProductionCounters,
+  productionCountOf,
   SettlerProgress,
   Stockpile,
   WorkFlag,
@@ -30,7 +32,7 @@ import {
 } from '../../src/systems/economy/fish.js';
 import { syncWorkFlagToJob } from '../../src/systems/economy/work-flag.js';
 import { wearStepOf } from '../../src/systems/equipment/index.js';
-import { assignWorker, unassignWorker } from '../../src/systems/orders/index.js';
+import { assignWorker, setProductionCount, unassignWorker } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -291,6 +293,52 @@ describe('fishing', () => {
     }
     expect(seen).toEqual([FISH_CAST_ATOMIC, FISH_CAUGHT_ATOMIC]);
     expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
+  });
+
+  it('fishes only while its counter for the raw fish is at least one, and a catch spends one', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 5, hy: 3, count: 2, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+    const fisher = fisherAt(sim, c.x, c.y);
+    sim.world.add(fisher, Owner, { player: 0 });
+    sim.world.mut(fisher, SettlerProgress).experience.set(900, 10_000); // one cast per catch
+    const setCount = (count: number): void =>
+      setProductionCount(sim.world, ctxOf(sim), {
+        kind: 'setProductionCount',
+        entity: fisher,
+        goodType: FISH,
+        count,
+      });
+
+    setCount(0);
+    for (let tick = 0; tick < 12; tick++) sim.step();
+    expect(sim.world.tryGet(fisher, CurrentAtomic)?.atomicId).not.toBe(FISH_CAST_ATOMIC);
+    expect(sim.world.get(swarm, FishSwarm).count).toBe(2);
+    expect(sim.workStatus(fisher)).toEqual({ kind: 'nothingSelected' });
+
+    setCount(2);
+    // Long enough to finish whatever idle clip the stopped fisher took up before it casts again.
+    for (let tick = 0; tick < 300 && !sim.world.has(fisher, Carrying); tick++) sim.step();
+    expect(sim.world.get(fisher, Carrying)).toEqual({ goodType: FOOD, amount: 1 });
+    expect(productionCountOf(sim.world.tryGet(fisher, ProductionCounters), FISH)).toBe(1);
+  });
+
+  it('refuses a counter for a good the fisher does not gather', () => {
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(12, 6) });
+    const fisher = fisherAt(sim, 4, 3);
+    sim.world.add(fisher, Owner, { player: 0 });
+    setProductionCount(sim.world, ctxOf(sim), {
+      kind: 'setProductionCount',
+      entity: fisher,
+      goodType: FOOD,
+      count: 0,
+    });
+    expect(sim.world.has(fisher, ProductionCounters)).toBe(false);
   });
 
   it('an iron tool cuts a novice down to two casts and wears one use per cast', () => {

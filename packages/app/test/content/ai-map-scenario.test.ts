@@ -6,8 +6,13 @@ import { realMapPath, realMapWorld } from './real-map-world.js';
 
 const { Building, JobAssignment, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } =
   components;
-const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET, isHunterJob, MAX_ACTIVE_CONSTRUCTION_SITES } =
-  systems;
+const {
+  COLLECTOR_TARGET_BY_GOOD_ID,
+  DEFAULT_COLLECTOR_TARGET,
+  heldGatherGood,
+  isHunterJob,
+  MAX_ACTIVE_CONSTRUCTION_SITES,
+} = systems;
 
 /** The decoded map under test - a free-play start where every seat opens with an authored, stocked
  *  viking headquarters (the fortress-map convention the AI keys on). */
@@ -64,7 +69,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     const flagNodes: string[] = [];
     for (const e of sim.world.query(Settler, WorkFlag)) {
       if (sim.world.tryGet(e, Owner)?.player !== AI_SEAT) continue;
-      const goodType = sim.world.get(e, WorkFlag).goodType;
+      const goodType = heldGatherGood(sim.world, { content }, e);
       if (goodType !== undefined) pinned.push(goodType);
       const flagPos = sim.world.tryGet(sim.world.get(e, WorkFlag).flag, Position);
       if (flagPos !== undefined) flagNodes.push(`${flagPos.x},${flagPos.y}`);

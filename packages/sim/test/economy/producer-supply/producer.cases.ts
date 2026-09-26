@@ -20,7 +20,7 @@ import {
   stockCapacity,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { pinProducts } from '../../fixtures/craft-selection.js';
+import { pinProducts } from '../../fixtures/production-counters.js';
 
 import {
   BAKEHOUSE,

@@ -67,7 +67,7 @@ function build(sim: Simulation): void {
   const turns = () => [goodBySlug(sim, 'ship_small'), goodBySlug(sim, 'catapult')]; // one list per settler
   for (const e of sim.world.query(Settler, JobAssignment)) {
     if (sim.world.get(e, JobAssignment).workplace !== joinery) continue;
-    sim.enqueueSetup({ kind: 'setCraftGoods', entity: e, goods: turns() });
+    sim.enqueueSetup({ kind: 'setProductionGoods', entity: e, goods: turns() });
   }
 }
 
