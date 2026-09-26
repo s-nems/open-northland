@@ -19,6 +19,7 @@ import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { breakThroughWall } from '../palisades/breach.js';
+import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, manhattan, nearestHexCell } from '../spatial/metric.js';
 import { type CombatantStance, type EngageSpec, enemyInReachFrom } from './engagement.js';
@@ -68,11 +69,13 @@ export const SEALED_TARGET_ROUTE_FAILURES = 3;
 
 /** Send a DEFEND unit back to its anchor when no enemy is in its defend radius. The {@link Engagement} always
  *  drops here, or the planner's Engagement gate would bench the guard for good; the walk home defers to a live
- *  equip errand, whose end re-holds the unchanged anchor. */
-function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeId): void {
+ *  equip errand, whose end re-holds the unchanged anchor, and to a pressing need, which the planner answers
+ *  above the DEFEND hold. Without that, a guard facing an enemy it cannot reach is turned back from every
+ *  meal and starves beside the store. */
+function returnToAnchor(world: World, ctx: SystemContext, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
   world.remove(e, HuntFocus); // a post-holder holds no prey
-  if (world.has(e, EquipOrder)) return;
+  if (world.has(e, EquipOrder) || anyNeedPressing(world, ctx.content, e)) return;
   clearNavState(world, e);
   if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
 }
@@ -80,8 +83,14 @@ function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeI
 /** Hand a combatant that will not advance this tick back to its idle duty: a post-holder walks back to its
  *  anchor, everyone else disengages. A hunter's leash carries `hold: false` because its between-hunts time
  *  belongs to the flag-gatherer drive, which a combat walk-back would fight for the unit. */
-export function breakOff(world: World, e: Entity, here: NodeId, defend: DefendPost): void {
-  if (defend?.hold === true) returnToAnchor(world, e, here, defend.anchorCell);
+export function breakOff(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  here: NodeId,
+  defend: DefendPost,
+): void {
+  if (defend?.hold === true) returnToAnchor(world, ctx, e, here, defend.anchorCell);
   else disengage(world, e);
 }
 
@@ -189,7 +198,7 @@ export function chase(
       }
       noteUnreachableTarget(world, ctx, e, target.entity);
       markLostWay(world, ctx, e);
-      breakOff(world, e, here, defend);
+      breakOff(world, ctx, e, here, defend);
       return true;
     }
     const held = world.mut(e, Engagement);
@@ -253,12 +262,12 @@ export function chase(
   // on. Only the walk is refused - the reach check ran before the chase, so an archer still shoots across
   // water. Giving up here is an approximation (source basis "Combat chase").
   if (!commanded && !onOurBank(dest)) {
-    breakOff(world, e, here, defend);
+    breakOff(world, ctx, e, here, defend);
     return true;
   }
   // Anchor leash: a target hittable only by stepping past `leash` from the anchor is left alone.
   if (defend !== null && leashDistance(terrain, defend, dest) > defend.leash) {
-    breakOff(world, e, here, defend);
+    breakOff(world, ctx, e, here, defend);
     return true;
   }
   if (dest === here && !travelling) {

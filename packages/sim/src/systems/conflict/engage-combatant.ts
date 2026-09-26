@@ -169,7 +169,7 @@ export function engageCombatant(
       return;
     }
     restPreySearch(world, ctx, e, spec);
-    breakOff(world, e, here, spec.defend);
+    breakOff(world, ctx, e, here, spec.defend);
     return;
   }
 

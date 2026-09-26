@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   CurrentAtomic,
   Engagement,
   MoveGoal,
   Position,
   Resource,
+  Settler,
   Stance,
+  Stockpile,
 } from '../../../src/components/index.js';
-import { fx } from '../../../src/core/fixed.js';
+import { fx, ONE } from '../../../src/core/fixed.js';
 import { Simulation } from '../../../src/index.js';
 import {
   anchorOnlyFootprint,
   combatSystem,
   DEFEND_LEASH_NODES,
   DEFEND_RADIUS_NODES,
+  NEED_DRIVE_THRESHOLD,
   stampResourceFootprintData,
 } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
@@ -91,5 +95,30 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
 
     sim.run(30);
     expect(tileOf(sim, guard)).toEqual({ x: 5, y: 0 }); // stayed on its post, never walked to the wood
+  });
+
+  it('walks to a meal, eats it and returns to its post while an enemy stands in sight beyond the defend radius', () => {
+    const FOOD = 3; // the fixture's `food_simple`
+    const HEADQUARTERS = 1; // the fixture building with a food slot
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
+    sim.world.mut(guard, Stance).anchorCell = cell(sim, 10, 0);
+    sim.world.mut(guard, Settler).hunger = fx.add(NEED_DRIVE_THRESHOLD, fx.div(ONE, fx.fromInt(100)));
+    const store = sim.world.create();
+    sim.world.add(store, Position, { x: fx.fromInt(16), y: fx.fromInt(0) });
+    sim.world.add(store, Building, { buildingType: HEADQUARTERS, tribe: 1, built: ONE, level: 0 });
+    sim.world.add(store, Stockpile, { amounts: new Map([[FOOD, 5]]) });
+    // In sight from the store, past the defend radius measured from the anchor: nothing the guard may strike.
+    const anchorToEnemyCells = DEFEND_RADIUS_NODES / 2 + 1;
+    combatant(sim, 10 + anchorToEnemyCells, 0, P1, MILITARY_MODE.IGNORE, { hitpoints: 100000 });
+
+    let ate = false;
+    for (let t = 0; t < 600 && !ate; t++) {
+      sim.run(1);
+      ate = sim.world.tryGet(guard, CurrentAtomic)?.effect.kind === 'eat';
+    }
+    expect(ate).toBe(true);
+    sim.run(300);
+    expect(tileOf(sim, guard)).toEqual({ x: 10, y: 0 }); // fed, back on its post
   });
 });
