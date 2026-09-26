@@ -39,8 +39,9 @@ function readAttackClipStart(components: Readonly<Record<string, unknown>>): num
 
 /**
  * The fields a vehicle keeps through the fog: its type and tribe (the binding key), its owner's colour
- * and its heading. `Vehicle.facing` is one of the six map-point directions, whose order matches the
- * source's `<dir>` ring, so the same remap the frame lists use turns it into a render facing.
+ * and its heading. `Vehicle.facing` is a walk heading, numbered like the source's `<dir>` ring with N
+ * and S after the six map-point directions, so the same remap the frame lists use turns it into a render
+ * facing.
  */
 export function readVehicleStaticFields(
   target: StaticDrawFields,

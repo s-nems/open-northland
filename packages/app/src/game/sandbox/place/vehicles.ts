@@ -27,7 +27,7 @@ export function spawnVehicleDirect(
   vehicleType: number,
   x: number,
   y: number,
-  opts: { readonly tribe?: number; readonly owner?: number; readonly facing?: number } = {},
+  opts: { readonly tribe?: number; readonly owner?: number; readonly facing?: components.WalkDirection } = {},
 ): Entity {
   const node = cellAnchorNode(x, y);
   const e = systems.createVehicle(sim.world, spawnContext(sim), {

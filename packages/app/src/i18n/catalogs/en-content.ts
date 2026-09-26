@@ -265,6 +265,11 @@ export const enContent = {
       summary:
         'A level-3 joinery whose two joiners are set to make handcarts: each opens a hidden cart yard beside the shop, carries the wood in from the warehouse, hammers on the site, and the finished yard becomes a handcart standing where it stood.',
     },
+    'vehicle-ship-column': {
+      title: 'Ships sailing north and south',
+      summary:
+        'Two crewed ships on open water: the small one sails straight north, the big one straight south, then both turn about and sail back. Each keeps its column and shows its bow-up or bow-down hull with the wake behind it, instead of zigzagging between the diagonals.',
+    },
     'vehicle-shipyard': {
       title: 'Shipyard',
       summary:

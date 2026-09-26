@@ -5,11 +5,12 @@ import {
   Owner,
   Position,
   Rider,
-  VEHICLE_FACINGS,
   Vehicle,
   VehicleDrive,
   type VehicleStateView,
   vehicleCommander,
+  WALK_DIRECTION,
+  type WalkDirection,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -29,6 +30,7 @@ import {
 } from '../footprint/index.js';
 import { groundBlockOverlay, vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { headingToward, walkTurnSteps } from '../movement/turning.js';
 import { awaitsDraughtAnimal, isSiegeVehicle, vehicleTraversal } from '../readviews/vehicles.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { stationaryOwnedSettlers } from '../settlers/planner/spacing.js';
@@ -56,22 +58,10 @@ const MOVE_PERIOD_PER_CLASS = 2;
 const MOVE_PERIOD_MIN = 3;
 /** The catapult crosses a node in twice the period: a one-bit shift of the sum. */
 const SIEGE_PERIOD_SHIFT = 1;
-/** The ticks a vehicle holds turning through one of the six map-point directions (original behavior;
- *  a human takes 1). */
+/** The ticks a vehicle holds turning through one step of its heading ring (original behavior per
+ *  hexagon direction; a human takes 1). Approximation: the ring here has eight headings, N and S
+ *  between the diagonals, so a half turn holds 8 ticks where the original's six-direction one holds 6. */
 export const VEHICLE_TURN_TICKS_PER_DIRECTION = 2;
-
-/** The node pitch in pixels, the measured 68 x 38 px projection halved, for the facing pick. */
-const HALF_COLUMN_PX = 34;
-const HALF_ROW_PX = 19;
-/** The six map-point directions as pixel vectors in `HEX_DIRECTIONS` order: E, SE, SW, W, NW, NE. */
-const FACING_VECTORS_PX: readonly (readonly [number, number])[] = [
-  [HALF_COLUMN_PX, 0],
-  [HALF_COLUMN_PX / 2, HALF_ROW_PX],
-  [-HALF_COLUMN_PX / 2, HALF_ROW_PX],
-  [-HALF_COLUMN_PX, 0],
-  [-HALF_COLUMN_PX / 2, -HALF_ROW_PX],
-  [HALF_COLUMN_PX / 2, -HALF_ROW_PX],
-];
 
 /** The ticks a vehicle spends crossing one map point from a node whose ground reads class `g`. */
 export function vehicleMovePeriod(g: number, siege: boolean): number {
@@ -94,34 +84,13 @@ export function vehicleLegTicks(period: number, mapPoints: number): number {
   return period * Math.max(1, mapPoints);
 }
 
-/** The direction steps between two facings the short way round, 0..3. */
-export function facingTurnSteps(from: number, to: number): number {
-  const d = (((to - from) % VEHICLE_FACINGS) + VEHICLE_FACINGS) % VEHICLE_FACINGS;
-  return Math.min(d, VEHICLE_FACINGS - d);
-}
-
 /**
- * The facing the six map-point directions give a lattice step: the direction whose pixel vector has the
- * largest dot product with the step in world pixels, where an odd row sits half a node to the right.
- * Every lattice edge is one or two equal hexagon steps, so the pick is exact; the tie-break only guards
- * a degenerate zero step. Approximation: the original turns toward its own six-direction path.
+ * The heading a vehicle faces along a lattice step, the screen octant a walker would face: a vertical
+ * half-row step is N or S, so a vehicle sails straight up or down on its drawn N/S frames. A zero step
+ * keeps east.
  */
-export function facingOfStep(from: HalfCellNode, to: HalfCellNode): number {
-  const stagger = ((to.hy & 1) - (from.hy & 1)) * (HALF_COLUMN_PX / 2);
-  const dx = (to.hx - from.hx) * HALF_COLUMN_PX + stagger;
-  const dy = (to.hy - from.hy) * HALF_ROW_PX;
-  let best = 0;
-  let bestDot = Number.NEGATIVE_INFINITY;
-  for (let facing = 0; facing < VEHICLE_FACINGS; facing++) {
-    const vector = FACING_VECTORS_PX[facing];
-    if (vector === undefined) continue;
-    const dot = dx * vector[0] + dy * vector[1];
-    if (dot > bestDot) {
-      bestDot = dot;
-      best = facing;
-    }
-  }
-  return best;
+export function facingOfStep(from: HalfCellNode, to: HalfCellNode): WalkDirection {
+  return headingToward(positionOfNode(from.hx, from.hy), positionOfNode(to.hx, to.hy)) ?? WALK_DIRECTION.E;
 }
 
 /** The continent key a vehicle's goto compares: the anchor's static component, a land or a water
@@ -467,7 +436,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
     const period = vehicleMovePeriod(terrain.roughnessAt(here), isSiegeVehicle(type));
     const facing = facingOfStep(anchor, next);
-    const turnTicks = facingTurnSteps(state.facing, facing) * VEHICLE_TURN_TICKS_PER_DIRECTION;
+    const turnTicks = walkTurnSteps(state.facing, facing) * VEHICLE_TURN_TICKS_PER_DIRECTION;
     const live = world.mut(e, VehicleDrive);
     live.route.shift();
     live.from = anchor;

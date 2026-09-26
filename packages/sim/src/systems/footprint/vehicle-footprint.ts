@@ -1,5 +1,5 @@
 import type { ContentSet, VehicleType } from '@open-northland/data';
-import { Position, VEHICLE_FACINGS, Vehicle, type VehicleStateView } from '../../components/index.js';
+import { Position, Vehicle, type VehicleStateView } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext } from '../context.js';
+import { hexHeadingOfWalk } from '../movement/turning.js';
 
 // A vehicle's ground geometry: the hex disc of radius `logicSize` it occupies and the door point its
 // crew boards and leaves at (original behavior in docs/formats/VEHICLES.md). Pure over the component
@@ -55,8 +56,8 @@ export function vehicleFootprintNodes(
 /**
  * The authored entry point: a moored ship's mooring node on the shore; otherwise
  * `passengerVector` walked from the anchor in the direction `facing + direction` (modulo the six
- * map-point directions), which is the anchor itself for a cart or catapult that authors no vector.
- * Unclamped.
+ * map-point directions, a N or S facing read as NE or SW), which is the anchor itself for a cart or
+ * catapult that authors no vector. Unclamped.
  */
 export function vehicleEntryPoint(
   vehicle: VehicleStateView,
@@ -66,7 +67,8 @@ export function vehicleEntryPoint(
   if (vehicle.moored && vehicle.mooring !== null) return { hx: vehicle.mooring.hx, hy: vehicle.mooring.hy };
   const vector = type.passengerVector;
   if (vector === undefined) return anchor;
-  const direction = HEX_DIRECTIONS[(vehicle.facing + vector.direction) % VEHICLE_FACINGS];
+  const direction =
+    HEX_DIRECTIONS[(hexHeadingOfWalk(vehicle.facing) + vector.direction) % HEX_DIRECTIONS.length];
   if (direction === undefined) return anchor;
   let at = anchor;
   for (let i = 0; i < vector.distance; i++) at = stepHex(at, direction);

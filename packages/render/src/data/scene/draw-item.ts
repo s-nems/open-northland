@@ -81,7 +81,7 @@ export interface StaticDrawFields {
    * For a settler or vehicle: facing direction index (0..7) a directional binding indexes by. The
    * `CR_Hum_Body` blocks are not a uniform rotation (source basis "Settler facing"): `0 SW, 1 W, 2 NW,
    * 3 NE, 4 E, 5 SE, 6 S, 7 N`. Omitted for a settler that is not moving; a vehicle always carries its
-   * `Vehicle.facing`, remapped from the six map-point directions.
+   * `Vehicle.facing`, remapped from its eight walk headings.
    */
   facing?: number;
   /** For a settler, signpost or vehicle: the team-colour slot - the row of the `256×N` colour LUT a

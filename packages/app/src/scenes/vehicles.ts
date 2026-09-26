@@ -42,15 +42,7 @@ const SHORE_X = 17;
 const FRANK_TRIBE = 2;
 const RIVAL_PLAYER = 1;
 
-const { Vehicle } = components;
-
-/** The six map-point facings, `nav/halfcell.ts` `HEX_DIRECTIONS` order: E, SE, SW, W, NW, NE. */
-const FACING_EAST = 0;
-const FACING_SOUTH_EAST = 1;
-const FACING_SOUTH_WEST = 2;
-const FACING_WEST = 3;
-const FACING_NORTH_WEST = 4;
-const FACING_NORTH_EAST = 5;
+const { Vehicle, WALK_DIRECTION } = components;
 
 const LOADED_WOOD = 8;
 
@@ -58,24 +50,24 @@ interface Spawn {
   readonly type: number;
   readonly x: number;
   readonly y: number;
-  readonly facing: number;
+  readonly facing: components.WalkDirection;
 }
 
 /** The viking row, top; the frank row below it. Ships sit off the shore. */
 const VIKING_ROW: readonly Spawn[] = [
-  { type: VEHICLE_HANDCART, x: 3, y: 3, facing: FACING_EAST },
-  { type: VEHICLE_CART_NO_OX, x: 6, y: 3, facing: FACING_SOUTH_EAST },
-  { type: VEHICLE_OXCART, x: 9, y: 3, facing: FACING_SOUTH_WEST },
-  { type: VEHICLE_CATAPULT, x: 13, y: 3, facing: FACING_EAST },
-  { type: VEHICLE_SHIP_SMALL, x: 18, y: 2, facing: FACING_WEST },
-  { type: VEHICLE_SHIP_BIG, x: 18, y: 7, facing: FACING_NORTH_WEST },
+  { type: VEHICLE_HANDCART, x: 3, y: 3, facing: WALK_DIRECTION.E },
+  { type: VEHICLE_CART_NO_OX, x: 6, y: 3, facing: WALK_DIRECTION.SE },
+  { type: VEHICLE_OXCART, x: 9, y: 3, facing: WALK_DIRECTION.SW },
+  { type: VEHICLE_CATAPULT, x: 13, y: 3, facing: WALK_DIRECTION.E },
+  { type: VEHICLE_SHIP_SMALL, x: 18, y: 2, facing: WALK_DIRECTION.W },
+  { type: VEHICLE_SHIP_BIG, x: 18, y: 7, facing: WALK_DIRECTION.NW },
 ];
 const FRANK_ROW: readonly Spawn[] = [
-  { type: VEHICLE_HANDCART, x: 3, y: 9, facing: FACING_WEST },
-  { type: VEHICLE_CART_NO_OX, x: 6, y: 9, facing: FACING_NORTH_WEST },
-  { type: VEHICLE_OXCART, x: 9, y: 9, facing: FACING_NORTH_EAST },
-  { type: VEHICLE_CATAPULT, x: 13, y: 9, facing: FACING_SOUTH_WEST },
-  { type: VEHICLE_SHIP_SMALL, x: 18, y: 12, facing: FACING_EAST },
+  { type: VEHICLE_HANDCART, x: 3, y: 9, facing: WALK_DIRECTION.W },
+  { type: VEHICLE_CART_NO_OX, x: 6, y: 9, facing: WALK_DIRECTION.N },
+  { type: VEHICLE_OXCART, x: 9, y: 9, facing: WALK_DIRECTION.S },
+  { type: VEHICLE_CATAPULT, x: 13, y: 9, facing: WALK_DIRECTION.SW },
+  { type: VEHICLE_SHIP_SMALL, x: 18, y: 12, facing: WALK_DIRECTION.E },
 ];
 /** The wreck: a viking catapult killed a second in, so its ruins spread over its seven-node footprint
  *  while the browser watches (the scene entry runs tick 1 before its frame loop collects events). */
@@ -160,7 +152,7 @@ function spawnDriver(
   drive: Drive,
   sequence: number,
 ): void {
-  const vehicle = spawnVehicleDirect(sim, type, drive.from.x, drive.from.y, { facing: FACING_EAST });
+  const vehicle = spawnVehicleDirect(sim, type, drive.from.x, drive.from.y, { facing: WALK_DIRECTION.E });
   const commander = spawnSettlerDirect(sim, commanderJob, drive.from.x + COMMANDER_OFFSET_X, drive.from.y);
   sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity: commander, vehicle }));
   const goal = cellAnchorNode(drive.to.x, drive.to.y);

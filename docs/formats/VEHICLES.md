@@ -252,8 +252,12 @@ distance gate on the goto; an off-continent or out-of-range target raises `vehic
 being ignored; a goto held for a crew still outside is refused at once when no route exists at order
 time, where the original's pathfinder runs after the boarding; the anchor and footprint move at the
 start of a leg, not halfway; a lattice edge of two map points takes two periods; the vehicle faces
-the hexagon direction its lattice step is made of at once and holds on the node it leaves for the
-turn's 2 ticks per direction, drawn there while its progress stays below zero; parked vehicles' cells are
+its lattice step's screen heading at once, among the eight walk headings, and holds on the node it
+leaves for the turn's 2 ticks per step of that ring, drawn there while its progress stays below zero.
+Deviation (owner's choice): the original steers through the six hexagon directions only, so a vehicle
+heading up or down a column zigzags NE/NW and its N/S frames show only mid-turn; here a vertical
+half-row step faces N or S and the vehicle sails straight on those frames, and a half turn holds 8
+ticks where the original's holds 6; parked vehicles' cells are
 routed around by vehicles and humans alike (the original's humans walk through them, see "Crew"), the
 shove happens on entering a node only and sends a settler outside the discs of the whole remaining
 route. Open Northland shoves only owned settlers standing still (the planner's kept occupancy): one
@@ -285,7 +289,8 @@ crew dies and a carried vehicle is removed with the ship. Ships leave no wreck a
 
 Open Northland: a spawned ship's mooring point is the nearest walkable node in hexagon-ring order
 within the door distance; the door direction adds the vector's offset to the vehicle's facing in the
-six map-point directions (approximation: the vehicle facing space is not read). Which node the
+six map-point directions, a N facing read as NE and a S facing as SW, the way a human's walk facing
+reads as a map-point heading (approximation). Which node the
 original stores as the spawn mooring is *open*. `dockVehicle` (`systems/vehicles/dock.ts`) holds the
 point under the `docks` task while the crew boards, the twin of the goto's `waitsForHuman` hold; a
 ring node is open when the ship's walk-block admits it, which adds other vehicles' cells to the size
@@ -564,7 +569,9 @@ these choices for the holes:
   hull, a ship standing or sailing at sea the set one; the `wood` gait the rows author as the loaded
   drive is the furled hull too and plays as authored while a loaded ship sails. Which state the
   original draws action 4 in is not read; the moored reading follows the observed game.
-- The ships' `gfxturnframelist` in-place turns are not played; a facing change snaps.
+- The ships' `gfxturnframelist` in-place turns are not played; a facing change snaps. The N and S
+  frames, which the original shows only mid-turn, are the headings of a vehicle moving straight up or
+  down ("Movement").
 - A wreck's `ruins` nodes draw the `debris wood` `[GfxLandscape]` records for the bone pile's lifetime
   (approximation: the ruin landscape type is unidentified, see above).
 - A handcart or ox cart whose commander rides inside and is a trader (25) or carrier (24) is not drawn

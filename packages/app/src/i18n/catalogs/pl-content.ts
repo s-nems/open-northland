@@ -263,6 +263,11 @@ export const plContent = {
       summary:
         'Stolarnia trzeciego poziomu, której dwaj stolarze mają robić wózki ręczne: każdy otwiera ukryty plac budowy wozu obok warsztatu, przynosi drewno z magazynu, pracuje młotkiem na placu, a ukończony plac zamienia się w wózek stojący w jego miejscu.',
     },
+    'vehicle-ship-column': {
+      title: 'Statki na północ i południe',
+      summary:
+        'Dwa obsadzone statki na otwartym morzu: mały płynie prosto na północ, duży prosto na południe, potem oba zawracają i płyną z powrotem. Każdy trzyma swoją kolumnę i pokazuje kadłub dziobem w górę lub w dół ze śladem piany za rufą, zamiast kluczyć między przekątnymi.',
+    },
     'vehicle-shipyard': {
       title: 'Stocznia',
       summary:

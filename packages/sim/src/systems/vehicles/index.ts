@@ -36,7 +36,6 @@ export {
 } from './draught.js';
 export {
   facingOfStep,
-  facingTurnSteps,
   moveVehicle,
   sendVehicleTo,
   snapVehicleTarget,

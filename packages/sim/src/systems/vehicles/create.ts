@@ -8,6 +8,7 @@ import {
   Vehicle,
   type VehicleSeat,
   VehicleStock,
+  WALK_DIRECTION,
 } from '../../components/index.js';
 import type { CreateVehicleCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -19,7 +20,7 @@ import { awaitsDraughtAnimal, isShipVehicle } from '../readviews/vehicles.js';
 import { stockVehicleGoods } from './stock.js';
 
 /** The facing a fresh vehicle takes. Approximation: neither `setvehicle` nor a yard authors one. */
-const SPAWN_FACING = 0;
+const SPAWN_FACING = WALK_DIRECTION.E;
 
 function emptySeats(count: number): (VehicleSeat | null)[] {
   return new Array<VehicleSeat | null>(count).fill(null);

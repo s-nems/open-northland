@@ -4,16 +4,12 @@ import {
   Palisade,
   Position,
   Vehicle,
-  WALK_DIRECTION,
-  type WalkDirection,
   WalkFacing,
 } from '../../../../../../components/index.js';
 import type { Fixed } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import {
-  HEX_HEADING,
   HEX_HEADING_COUNT,
-  type HexHeading,
   hexHeadingBetween,
   nodeHxOfPosition,
   nodeHyOfPosition,
@@ -21,7 +17,7 @@ import {
 import { targetBlocking } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
 import { damageDealtBy, damageTakenBy } from '../../../../../equipment/index.js';
-import { INITIAL_WALK_DIRECTION } from '../../../../../movement/turning.js';
+import { hexHeadingOfWalk, INITIAL_WALK_DIRECTION } from '../../../../../movement/turning.js';
 
 const PERCENT = 100;
 /** Original behavior: a blow from the back sides lands x1.25, from behind x1.5, in percent. */
@@ -35,18 +31,6 @@ const BEHIND_HIT_PCT = 150;
  * front side count as behind there, depending on the headings' numbering; here the bins are symmetric.
  */
 const HIT_DIRECTION_PCT: readonly number[] = [PERCENT, PERCENT, BACK_SIDE_HIT_PCT, BEHIND_HIT_PCT];
-
-/** Original behavior: a victim's walk facing reads as a map-point heading, north as NE and south as SW. */
-const HEX_HEADING_OF_FACING: Readonly<Record<WalkDirection, HexHeading>> = {
-  [WALK_DIRECTION.E]: HEX_HEADING.E,
-  [WALK_DIRECTION.SE]: HEX_HEADING.SE,
-  [WALK_DIRECTION.SW]: HEX_HEADING.SW,
-  [WALK_DIRECTION.W]: HEX_HEADING.W,
-  [WALK_DIRECTION.NW]: HEX_HEADING.NW,
-  [WALK_DIRECTION.NE]: HEX_HEADING.NE,
-  [WALK_DIRECTION.N]: HEX_HEADING.NE,
-  [WALK_DIRECTION.S]: HEX_HEADING.SW,
-};
 
 /**
  * The hitpoints one landed blow takes from `target`, from `base`: the weapon's column for the target,
@@ -94,6 +78,6 @@ function hitDirectionPct(
     nodeHxOfPosition(from.x, from.y),
     nodeHyOfPosition(from.y),
   );
-  const apart = Math.abs(toward - HEX_HEADING_OF_FACING[facing]);
+  const apart = Math.abs(toward - hexHeadingOfWalk(facing));
   return HIT_DIRECTION_PCT[Math.min(apart, HEX_HEADING_COUNT - apart)] ?? PERCENT;
 }

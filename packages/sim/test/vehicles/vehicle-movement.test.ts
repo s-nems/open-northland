@@ -9,6 +9,7 @@ import {
   seatPassenger,
   Vehicle,
   VehicleDrive,
+  WALK_DIRECTION,
 } from '../../src/components/index.js';
 import type { Component, Entity } from '../../src/ecs/world.js';
 import {
@@ -32,11 +33,11 @@ import {
   vehicleBlockedCells,
 } from '../../src/systems/footprint/index.js';
 import { vehicleClearance } from '../../src/systems/footprint/vehicle-clearance.js';
+import { walkTurnSteps } from '../../src/systems/movement/turning.js';
 import {
   boardRider,
   createVehicle,
   facingOfStep,
-  facingTurnSteps,
   snapVehicleTarget,
   VEHICLE_TARGET_SNAP_RADIUS,
   VEHICLE_WALK_RANGE_NODES,
@@ -74,12 +75,7 @@ const CART_PERIOD_GRASS = 8;
 const CATAPULT_PERIOD_GRASS = 16;
 /** One map-point direction of turning holds the vehicle this long. */
 const ONE_DIRECTION_TURN = 2;
-const HEX_EAST = 0;
-const HEX_SOUTH_EAST = 1;
-const HEX_SOUTH_WEST = 2;
-const HEX_WEST = 3;
-const HEX_NORTH_WEST = 4;
-const HEX_NORTH_EAST = 5;
+const { E, SE, S, SW, W, NW, N, NE } = WALK_DIRECTION;
 /** A one-node wall row a `placePalisade` stands up. */
 const WALL_TYPE = 1;
 const WALL_HITPOINTS = 100;
@@ -184,14 +180,16 @@ describe('vehicle move period', () => {
     expect(vehicleLegTicks(CATAPULT_PERIOD_GRASS, 2)).toBe(2 * CATAPULT_PERIOD_GRASS);
   });
 
-  it('counts a turn in map-point directions the short way round', () => {
-    expect(facingTurnSteps(HEX_EAST, HEX_EAST)).toBe(0);
-    expect(facingTurnSteps(HEX_EAST, HEX_SOUTH_EAST)).toBe(1);
-    expect(facingTurnSteps(HEX_NORTH_EAST, HEX_EAST)).toBe(1);
-    expect(facingTurnSteps(HEX_EAST, HEX_WEST)).toBe(3);
-    expect(facingTurnSteps(HEX_SOUTH_EAST, HEX_NORTH_WEST)).toBe(3);
-    expect(facingTurnSteps(HEX_SOUTH_WEST, HEX_NORTH_EAST)).toBe(3);
-    expect(facingTurnSteps(HEX_WEST, HEX_NORTH_EAST)).toBe(2);
+  it('counts a turn around the eight headings the short way round', () => {
+    expect(walkTurnSteps(E, E)).toBe(0);
+    expect(walkTurnSteps(E, SE)).toBe(1);
+    expect(walkTurnSteps(SE, S)).toBe(1);
+    expect(walkTurnSteps(NE, E)).toBe(1);
+    expect(walkTurnSteps(NE, N)).toBe(1);
+    expect(walkTurnSteps(NE, NW)).toBe(2);
+    expect(walkTurnSteps(E, W)).toBe(4);
+    expect(walkTurnSteps(N, S)).toBe(4);
+    expect(walkTurnSteps(SW, NE)).toBe(4);
   });
 
   it('holds on its node through the turn, then crosses a two-point diagonal in twice the period', () => {
@@ -200,7 +198,7 @@ describe('vehicle move period', () => {
     order(s, cart, 5, 10); // one SE lattice diagonal, (+1, +2): two map points, a turn from the spawn's east
     s.step();
     expect(anchorOf(s, cart)).toEqual({ hx: 5, hy: 10 });
-    expect(s.world.get(cart, Vehicle).facing).toBe(HEX_SOUTH_EAST);
+    expect(s.world.get(cart, Vehicle).facing).toBe(SE);
     const legTicks = ONE_DIRECTION_TURN + 2 * CART_PERIOD_GRASS;
     // Drawn on `from` while it turns: the leg's progress stays at or below zero.
     for (let t = 0; t < ONE_DIRECTION_TURN; t++) {
@@ -216,16 +214,34 @@ describe('vehicle move period', () => {
     expect(s.world.has(cart, VehicleDrive)).toBe(false);
   });
 
-  it('turns a lattice step into the map-point facing it is made of', () => {
-    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 5, hy: 4 })).toBe(HEX_EAST);
-    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 3, hy: 4 })).toBe(HEX_WEST);
-    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 5, hy: 6 })).toBe(HEX_SOUTH_EAST);
-    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 3, hy: 2 })).toBe(HEX_NORTH_WEST);
-    // A vertical lattice step is one hexagon step whose side the row stagger decides.
-    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 4, hy: 5 })).toBe(HEX_SOUTH_EAST);
-    expect(facingOfStep({ hx: 4, hy: 5 }, { hx: 4, hy: 6 })).toBe(HEX_SOUTH_WEST);
-    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 4, hy: 3 })).toBe(HEX_NORTH_EAST);
-    expect(facingOfStep({ hx: 4, hy: 5 }, { hx: 4, hy: 4 })).toBe(HEX_NORTH_WEST);
+  it('faces the screen heading of a lattice step, straight up or down on a vertical one', () => {
+    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 5, hy: 4 })).toBe(E);
+    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 3, hy: 4 })).toBe(W);
+    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 5, hy: 6 })).toBe(SE);
+    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 3, hy: 2 })).toBe(NW);
+    // Whatever the row's parity: no NE/NW zigzag up a column.
+    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 4, hy: 5 })).toBe(S);
+    expect(facingOfStep({ hx: 4, hy: 5 }, { hx: 4, hy: 6 })).toBe(S);
+    expect(facingOfStep({ hx: 4, hy: 4 }, { hx: 4, hy: 3 })).toBe(N);
+    expect(facingOfStep({ hx: 4, hy: 5 }, { hx: 4, hy: 4 })).toBe(N);
+  });
+
+  it('drives straight north facing north, with no turn between its legs', () => {
+    const s = sim();
+    const cart = commanded(s, HANDCART, 8, 12);
+    order(s, cart, 8, 6);
+    const facings = new Set<number>();
+    let turnHolds = 0;
+    s.step(); // the command applies and the first leg starts
+    for (let t = 0; t < 200 && s.world.has(cart, VehicleDrive); t++) {
+      facings.add(s.world.get(cart, Vehicle).facing);
+      if ((s.vehicleView(cart)?.leg?.progress ?? 0) < 0) turnHolds++;
+      s.step();
+    }
+    expect(anchorOf(s, cart)).toEqual({ hx: 8, hy: 6 });
+    expect([...facings]).toEqual([N]);
+    // Only the first leg turns, from the spawn's east through NE to N: two ring steps.
+    expect(turnHolds).toBeLessThanOrEqual(2 * ONE_DIRECTION_TURN);
   });
 });
 
@@ -237,7 +253,7 @@ describe('moveVehicle', () => {
     s.step(); // the command applies; the first leg starts on this tick's movement pass
     expect(s.world.has(cart, VehicleDrive)).toBe(true);
     expect(anchorOf(s, cart)).toEqual({ hx: 5, hy: 8 });
-    expect(s.world.get(cart, Vehicle).facing).toBe(HEX_EAST);
+    expect(s.world.get(cart, Vehicle).facing).toBe(E);
     const view = s.vehicleView(cart);
     expect(view?.goal).toEqual({ hx: 12, hy: 8 });
     expect(view?.leg).toEqual({
@@ -516,7 +532,7 @@ describe('moveVehicle', () => {
     s.step();
     const entered = anchorOf(s, cart);
     const version = placementBlockerVersion(s.world);
-    s.world.mut(cart, Vehicle).facing = HEX_WEST; // a facing, task or seat write moves no cell
+    s.world.mut(cart, Vehicle).facing = W; // a facing, task or seat write moves no cell
     s.world.mut(cart, Vehicle).task = 'interrupted';
     expect(placementBlockerVersion(s.world)).toBe(version);
     for (let tick = 0; tick < 2 * CART_PERIOD_GRASS && sameNode(anchorOf(s, cart), entered); tick++) s.step();

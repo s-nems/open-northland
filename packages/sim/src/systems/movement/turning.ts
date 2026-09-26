@@ -1,6 +1,7 @@
 import { WALK_DIRECTION, type WalkDirection, WalkFacing } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { HEX_HEADING, type HexHeading } from '../../nav/halfcell.js';
 import { ROW_STEP, worldX } from '../../nav/world-metric.js';
 
 const { E, SE, SW, W, NW, NE, N, S } = WALK_DIRECTION;
@@ -28,10 +29,32 @@ export function nextWalkDirection(from: WalkDirection, to: WalkDirection): WalkD
   return TURN_RING[(start + Math.sign(delta) + RING_SIZE) % RING_SIZE] ?? to;
 }
 
+/** The steps between two headings the short way round the turning ring, 0..4. */
+export function walkTurnSteps(from: WalkDirection, to: WalkDirection): number {
+  const d = Math.abs(TURN_RING.indexOf(to) - TURN_RING.indexOf(from));
+  return Math.min(d, RING_SIZE - d);
+}
+
+/** Original behavior: a walk facing reads as a map-point heading, north as NE and south as SW. */
+const HEX_HEADING_OF_WALK: Readonly<Record<WalkDirection, HexHeading>> = {
+  [E]: HEX_HEADING.E,
+  [SE]: HEX_HEADING.SE,
+  [SW]: HEX_HEADING.SW,
+  [W]: HEX_HEADING.W,
+  [NW]: HEX_HEADING.NW,
+  [NE]: HEX_HEADING.NE,
+  [N]: HEX_HEADING.NE,
+  [S]: HEX_HEADING.SW,
+};
+
+export function hexHeadingOfWalk(direction: WalkDirection): HexHeading {
+  return HEX_HEADING_OF_WALK[direction];
+}
+
 type Point = { readonly x: Fixed; readonly y: Fixed };
 
 /** The screen octant heading from `from` toward `to`; undefined when the two coincide. */
-function headingToward(from: Point, to: Point): WalkDirection | undefined {
+export function headingToward(from: Point, to: Point): WalkDirection | undefined {
   if (from.x === to.x && from.y === to.y) return undefined;
   const dx = worldX(to.x, to.y) - worldX(from.x, from.y);
   const dy = fx.mul(fx.sub(to.y, from.y), ROW_STEP);

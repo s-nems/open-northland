@@ -1,6 +1,6 @@
 import { type DeepReadonly, defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { HalfCellNode } from '../nav/halfcell.js';
-import { Position } from './movement.js';
+import { Position, type WalkDirection } from './movement.js';
 
 /** The tasks the original's vehicle window shows, in its numbering 0..6. */
 export const VEHICLE_TASKS = [
@@ -45,11 +45,6 @@ export interface VehicleMarch {
   restUntil: number;
 }
 
-/** The six map-point directions a vehicle faces, indexing `nav/halfcell.ts`'s `HEX_DIRECTIONS`.
- *  Approximation: the original's facing count for vehicles is not read; the door offset is a hexagon
- *  direction, so the facing is kept in the same space. */
-export const VEHICLE_FACINGS = 6;
-
 /** One occupied slot: who holds it, and whether the rider is aboard (off the map) rather than still
  *  walking to the door. */
 export interface VehicleSeat {
@@ -67,7 +62,10 @@ export const Vehicle = defineComponent<{
   vehicleType: number;
   tribe: number;
   task: VehicleTask;
-  facing: number;
+  /** One of the eight walk headings, N and S included, which the drawn frames cover. Deviation (owner's
+   *  choice): the original steers a vehicle through the six map-point directions only and shows its
+   *  N/S frames mid-turn. */
+  facing: WalkDirection;
   /** A ship lying at a shore; its door is then `mooring`, the shore point it docked at. A ship under
    *  the `docks` task carries the point it sails toward here before it moors. */
   moored: boolean;

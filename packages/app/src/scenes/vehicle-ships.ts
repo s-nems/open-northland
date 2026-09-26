@@ -29,10 +29,7 @@ const MAP_H = 16;
 const STRAIT_FROM = 9;
 const STRAIT_TO = 21;
 
-const { Position, Rider, Settler } = components;
-
-/** The six map-point facings, `nav/halfcell.ts` `HEX_DIRECTIONS` order: E, SE, SW, W, NW, NE. */
-const FACING_EAST = 0;
+const { Position, Rider, Settler, WALK_DIRECTION } = components;
 
 /** The ship lies three nodes off the west shore, within its door distance of the land. */
 const SHIP_AT = { x: STRAIT_FROM + 1, y: 7 } as const;
@@ -65,7 +62,9 @@ function straitTerrain(): CellTerrainMap {
 }
 
 function build(sim: Simulation): void {
-  const ship = spawnVehicleDirect(sim, VEHICLE_SHIP_SMALL, SHIP_AT.x, SHIP_AT.y, { facing: FACING_EAST });
+  const ship = spawnVehicleDirect(sim, VEHICLE_SHIP_SMALL, SHIP_AT.x, SHIP_AT.y, {
+    facing: WALK_DIRECTION.E,
+  });
   for (const member of PARTY_AT) {
     const entity = spawnSettlerDirect(sim, member.job, member.x, member.y, HUMAN_PLAYER);
     sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'attachToVehicle', entity, vehicle: ship }));

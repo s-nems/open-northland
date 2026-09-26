@@ -13,6 +13,7 @@ import {
   vehicleLoad,
   vehiclePassengers,
   vehicleStockEntries,
+  type WalkDirection,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -36,7 +37,7 @@ export interface VehicleView {
   readonly owner: number | null;
   readonly missionId: number | null;
   readonly task: VehicleTask;
-  readonly facing: number;
+  readonly facing: WalkDirection;
   readonly hitpoints: number;
   readonly maxHitpoints: number;
   readonly moored: boolean;
