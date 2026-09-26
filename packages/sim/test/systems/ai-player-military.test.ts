@@ -30,6 +30,7 @@ import {
 } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
+  ARMY_CAP_SOLDIERS,
   ASSAULT_RING_RADIUS_NODES,
   campaignTarget,
   LATE_WAVE,
@@ -702,6 +703,21 @@ describe('military module - the campaign', () => {
     expect(assaulting(sim, run(sim, EAGER_SEED, WAVE_RAMP_TICKS + WAVE_GATHER_TICKS), foeHq)).toHaveLength(
       WAVE_MIN_SOLDIERS + 1,
     );
+  });
+
+  it('sends whatever stands at the door once the army reaches the hard cap, whatever the draw or the odds', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    const rally = rallyOf(sim);
+    // A rival far stronger than the whole army, so parity alone would hold the band for good.
+    spawn(sim, ARMY_CAP_SOLDIERS + 2 * WAVE_MIN_SOLDIERS, { x: 90, y: 40 }, SPEARMAN, FOE);
+    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS)).toEqual([]);
+    // The rest of the army stands scattered over the settlement: the cap counts every live fighter.
+    spawn(sim, ARMY_CAP_SOLDIERS - WAVE_MIN_SOLDIERS, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 2, y: 4 });
+    expect(
+      assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), buildingOfType(sim, HQ_TYPE, FOE)),
+    ).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(false);
   });
 
   it('does not wait for a man who can never reach the door before sending a late wave', () => {

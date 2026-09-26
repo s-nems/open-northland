@@ -21,6 +21,11 @@ export const OPENING_WAVE: WaveBand = { min: WAVE_MIN_SOLDIERS, max: 10 };
 /** The late-game assault the band grows into (authored). */
 export const LATE_WAVE: WaveBand = { min: 50, max: 100 };
 
+/** The army the seat never holds past (owner's rule): from this many live fighters the door sends the
+ *  band it has, whatever size the wave was drawn to, however long it has gathered and whatever the odds,
+ *  so a seat whose build order has settled does not hoard two hundred men at its barracks. */
+export const ARMY_CAP_SOLDIERS = 150;
+
 const SECONDS_PER_HOUR = 3600;
 /** The tick the seat's first wave may march from: the end of its {@link AiPeace}, else the start. */
 export function peaceEndsAt(world: World, player: number): number {
@@ -66,7 +71,8 @@ function outnumbered({ own, opposing }: Strength): boolean {
  * Nothing marches while the target's owner {@link outnumbered} the seat by `strength`, not even on a spent
  * window: the band keeps gathering and the plan is kept. Both sides are whole armies, the seat's own beyond
  * `mustered`, since a garrison defends what a wave would take and the seat's towers should not bench the
- * band at its door. A first strength judgement: head counts and tower posts, blind to weapons, armour,
+ * band at its door. The one rule above all of that is the {@link ARMY_CAP_SOLDIERS}: an army that size
+ * goes in as it stands. A first strength judgement: head counts and tower posts, blind to weapons, armour,
  * amulets, potions and experience.
  */
 export function decideWave(
@@ -85,6 +91,10 @@ export function decideWave(
     return false;
   }
   if (!waveWorthy(band, meleeCore)) return false;
+  if (strength.own >= ARMY_CAP_SOLDIERS) {
+    abandonWave(world, barracks);
+    return true;
+  }
   const plan = wavePlan(world, ctx, barracks, peaceEnd);
   if (outnumbered(strength)) return false;
   if (band.total < plan.waveSize) {

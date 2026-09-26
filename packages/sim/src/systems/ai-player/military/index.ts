@@ -35,6 +35,7 @@ export {
 export { ASSAULT_RING_RADIUS_NODES, RALLY_HOLD_RADIUS_NODES, WAVE_MIN_SOLDIERS } from './muster.js';
 export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
 export {
+  ARMY_CAP_SOLDIERS,
   LATE_WAVE,
   OPENING_WAVE,
   WAVE_GATHER_TICKS,
