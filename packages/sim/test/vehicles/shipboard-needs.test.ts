@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Settler, seatPassenger, VehicleStock } from '../../src/components/index.js';
+import { Health, Settler, seatPassenger, VehicleStock } from '../../src/components/index.js';
 import { ONE, ZERO } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
@@ -133,5 +133,18 @@ describe('needs aboard a ship', () => {
     expect(s.world.get(rider, Settler).hunger).toBe(ONE);
     expect(s.world.get(rider, Settler).fatigue).toBe(ONE);
     expect(foodAboard(s, cart)).toBe(5);
+  });
+
+  it("keeps a wounded cart rider's hitpoints where they stood with the needs rule off", () => {
+    const s = sim();
+    s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    s.step();
+    const cart = vehicle(s, HANDCART, CART_X);
+    const [rider] = passengers(s, cart, 1);
+    if (rider === undefined) throw new Error('no rider');
+    const pool = s.world.get(rider, Health).max;
+    s.world.add(rider, Health, { hitpoints: pool / 2, max: pool });
+    s.run(VOYAGE_TICKS);
+    expect(s.world.get(rider, Health).hitpoints).toBe(pool / 2);
   });
 });
