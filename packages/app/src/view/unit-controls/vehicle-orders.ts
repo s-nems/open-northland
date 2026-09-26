@@ -37,7 +37,7 @@ export interface VehicleOrderDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   /** The sim's attach rule; absent, every own vehicle under the cursor takes the attach click. */
   readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
-  /** The sim's mooring rule (`Simulation.mooringProbe`); absent, every spot takes the dock click and a
+  /** The sim's mooring rule (`SessionHost.mooringProbe`); absent, every spot takes the dock click and a
    *  ship's right-click is always a goto. */
   readonly canMoorAt?: ((vehicle: number, x: number, y: number) => boolean) | undefined;
 }

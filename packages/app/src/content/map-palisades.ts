@@ -1,5 +1,6 @@
 import type { TerrainObjects } from '@open-northland/data';
-import type { Command, Simulation } from '@open-northland/sim';
+import type { Command } from '@open-northland/sim';
+import type { WorldSetup } from '../game/world/index.js';
 import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 import { playerWallRows } from './palisade-rows.js';
@@ -51,7 +52,7 @@ export function mapPalisadeSpawns(objects: TerrainObjects, ir: ContentIr): MapPa
  * layer does not draw them as scenery.
  */
 export function spawnMapPalisades(
-  sim: Pick<Simulation, 'enqueueSetup'>,
+  sim: WorldSetup,
   objects: TerrainObjects,
   ir: ContentIr,
   tribeForOwner: (owner: number | undefined) => number,

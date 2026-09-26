@@ -139,7 +139,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     pointer: pointerAt,
     syncViewport,
   } = loop;
-  const { app, renderer, sim, cameraCtl } = deps;
+  const { app, renderer, host, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
   // Frame phases join the sim instrument's per-system slices in one `?debug=perf` / `?debug=trace` recording.
@@ -162,14 +162,14 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // the stance read alone.
   const musicStanding = (snap: WorldSnapshot): MusicStanding => ({
     population: hudModelFor(snap).population,
-    stance: harshestStance(sim, musicRoster),
+    stance: harshestStance(host, musicRoster),
   });
   // Bound once, so a frame never mints a fresh pair of closures.
   const buildingOverlay = (buildingType: number, paper?: Paper) =>
     overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height, paper);
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const frameReport = () => frameStats.report();
-  const visiblePlots = createVisiblePlots(() => sim.constructionPlots(), fogGates.seesNode);
+  const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
   // The started wall line lights its reach, the gate tool the spans it can cut into.
   const palisadeWash = () => {
     const line = toolPanel.controller.activeLine();
@@ -184,8 +184,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   let steps = 0;
   const collect = (): void => {
     steps++;
-    recordDiagHash(sim);
-    for (const ev of sim.events.current()) {
+    recordDiagHash(host);
+    for (const ev of host.tickEvents()) {
       frameEvents.push(ev);
       if (ev.kind === 'missionSubMission' && !deps.sharedClock) driver.setPaused(true);
     }
@@ -215,7 +215,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     if (frameEvents.length > 0) deps.onEvents?.(frameEvents);
     if (deps.sharedClock && deps.confirmedMatchEnd?.() != null) loop.onMatchEnd?.();
     const snap0 = performance.now();
-    const snap = sim.snapshot();
+    const snap = host.snapshot();
     const snapMs = performance.now() - snap0;
     // One fog read shared by the renderer, the minimap mask and the event filter, so no consumer can
     // disagree about a cell. `null` is fog off; a spectator gets it view-only, sim fog state untouched.
@@ -239,8 +239,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog
     // generation change.
     mountedMinimap.update(snap, fogView);
-    // Decided here from the sim's placement probe and handed over as plain data: the renderer stays a
-    // pure projection and never calls back into the sim.
+    // Decided here from the host's placement probe and handed over as plain data: the renderer stays a
+    // pure projection and never calls back into the host.
     const cursor = placementCursor({
       placementType: toolPanel.controller.placementType(),
       placementPaper: toolPanel.controller.placementPaper(),

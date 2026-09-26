@@ -13,7 +13,7 @@ import { messages } from '../../i18n/index.js';
 import { createPickerWindow, type PickerWindow } from './picker-window.js';
 
 export interface EquipPickControllerOptions {
-  /** The sim's pick-list read seam (`Simulation.equipPickList`), bound by the shell. */
+  /** The sim's pick-list read seam (`SessionHost.equipPickList`), bound by the shell. */
   readonly pickList: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
   readonly content: ContentSet;
   readonly snapshot: () => WorldSnapshot;

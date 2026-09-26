@@ -19,6 +19,7 @@ import {
   WEAPON_SWORD,
 } from '../src/game/sandbox/index.js';
 import { sandboxPalisadeTypes } from '../src/game/sandbox/palisades.js';
+import { inlineSessionHost } from '../src/session/index.js';
 import { makeOverlayFrameSource } from '../src/view/placement-overlay.js';
 import { createFogGates } from '../src/view/projections/index.js';
 import { createPlacementGates, type PlacementGates } from '../src/view/runtime/placement-gates.js';
@@ -40,7 +41,7 @@ function openField(): { sim: Simulation; gates: PlacementGates; fog: ReturnType<
   });
   const fog = createFogGates();
   fog.setFrame(null); // fog off: only the placement rules decide
-  return { sim, gates: createPlacementGates(sim, fog, HUMAN_PLAYER), fog };
+  return { sim, gates: createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER), fog };
 }
 
 describe('placement gates - the ground an enemy army contests', () => {
@@ -62,7 +63,7 @@ describe('placement gates - the ground an enemy army contests', () => {
 
   it('omits only the technology tribe from a paper-paid probe', () => {
     const { sim, fog } = openField();
-    const gates = createPlacementGates(sim, fog, HUMAN_PLAYER, VIKING);
+    const gates = createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER, VIKING);
     const probe = vi.spyOn(sim, 'placementProbe');
     const paper = { kind: 'placeAny', param: 0 } as const;
 

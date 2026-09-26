@@ -1,11 +1,12 @@
 /** The machine-readable debug seam both playable entries expose, installed by `startGameView`. */
 import type { SessionDriver } from '@open-northland/lockstep';
 import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
-import { type Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
+import { TICKS_PER_SECOND } from '@open-northland/sim';
 import type { FrameStats, FrameStatsReport } from '../../diag/frame-stats.js';
 import { heapMb } from '../../diag/heap.js';
 import type { SystemProfile, SystemProfileRow } from '../../diag/system-profile.js';
 import { recordedTraceEvents, type TraceEvent } from '../../diag/trace.js';
+import type { SessionHost } from '../../session/index.js';
 import type { CameraController } from '../camera/index.js';
 import type { NetReadout } from './net-readout.js';
 
@@ -72,9 +73,9 @@ export interface PerfReport {
 }
 
 export interface OpenNorthlandDebug {
-  /** The live instances, read-only: a console mutation bypasses the command pipeline and voids that
-   *  session's determinism. */
-  readonly sim: Simulation;
+  /** The world as the runtime reads it; `run` steps a paused session for the cross-engine probes. */
+  readonly host: SessionHost;
+  /** Live instances, read-only: a console mutation bypasses the runtime and voids the frame. */
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet | undefined;
   readonly cameraCtl: CameraController;
@@ -146,7 +147,7 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
 }
 
 export interface DebugHandleDeps {
-  readonly sim: Simulation;
+  readonly host: SessionHost;
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet | undefined;
   readonly cameraCtl: CameraController;
@@ -168,7 +169,7 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
   });
 
   window.__opennorthland = {
-    sim: deps.sim,
+    host: deps.host,
     renderer: deps.renderer,
     sheet: deps.sheet,
     cameraCtl: deps.cameraCtl,

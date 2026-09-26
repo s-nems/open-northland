@@ -5,15 +5,15 @@ import {
   SPRITE_CULL_MARGIN,
   type WorldRenderer,
 } from '@open-northland/render';
-import type { Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
+import type { SessionHost } from '../../session/index.js';
 import type { CameraController } from '../camera/index.js';
 import { type Pickable, pickTopAt, screenToWorld } from '../picking.js';
 import type { DebugTargetKind } from './actions-catalog.js';
 
 export interface AdminEntityPickerDeps {
   readonly app: Application;
-  readonly sim: Simulation;
+  readonly host: Pick<SessionHost, 'snapshot'>;
   readonly renderer: WorldRenderer;
   readonly camera: CameraController;
   readonly toScreen: (clientX: number, clientY: number) => { x: number; y: number };
@@ -35,7 +35,7 @@ export function createAdminEntityPicker(
       SPRITE_CULL_MARGIN + (deps.elevation?.maxLift ?? 0),
     );
     const targets: Pickable[] = [];
-    for (const item of buildSpriteScene(deps.sim.snapshot(), {
+    for (const item of buildSpriteScene(deps.host.snapshot(), {
       viewport,
       elevation: deps.elevation,
     })) {

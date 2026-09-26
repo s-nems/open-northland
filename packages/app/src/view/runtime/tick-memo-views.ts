@@ -1,20 +1,21 @@
-import type { OpenTribute, Simulation, TradeOffer } from '@open-northland/sim';
+import type { OpenTribute, TradeOffer, UnlockStatus } from '@open-northland/sim';
 import { type BuildingAvailability, OPEN_AVAILABILITY } from '../../hud/tool-panel/building-menu.js';
+import type { SessionHost } from '../../session/index.js';
 import type { DiplomacySimView } from '../projections/diplomacy-rows.js';
 
 /** A house's place in the construction window: banned entries are never listed, undiscovered ones
  *  wait at the end. */
-function technologyAvailability(status: ReturnType<Simulation['unlockStatus']>): BuildingAvailability {
+function technologyAvailability(status: UnlockStatus): BuildingAvailability {
   if (!status.allowed) return { kind: 'forbidden' };
   return status.enabled ? OPEN_AVAILABILITY : { kind: 'locked' };
 }
 
 /**
- * The sim reads an open HUD window pulls every frame, memoized per tick: the tribute probe walks the
+ * The host reads an open HUD window pulls every frame, memoized per tick: the tribute probe walks the
  * payer's houses and the unlock reason builds strings, and nothing either reads moves between ticks.
  */
 export function createTickMemoViews(
-  sim: Simulation,
+  host: SessionHost,
   tribeOf: (player: number) => number,
 ): {
   readonly diplomacyView: DiplomacySimView;
@@ -31,35 +32,37 @@ export function createTickMemoViews(
     null;
   return {
     diplomacyView: {
-      hasMetPlayer: (viewer, other) => sim.hasMetPlayer(viewer, other),
-      diplomacyStance: (from, to) => sim.diplomacyStance(from, to),
-      diplomacyLocked: (a, b) => sim.diplomacyLocked(a, b),
-      goodsTradedWith: (player, partner) => sim.goodsTradedWith(player, partner),
+      hasMetPlayer: (viewer, other) => host.hasMetPlayer(viewer, other),
+      diplomacyStance: (from, to) => host.diplomacyStance(from, to),
+      diplomacyLocked: (a, b) => host.diplomacyLocked(a, b),
+      goodsTradedWith: (player, partner) => host.goodsTradedWith(player, partner),
       tradeOffersOf: (partner) => {
-        if (offersMemo === null || offersMemo.tick !== sim.tick) {
-          offersMemo = { tick: sim.tick, byPartner: new Map() };
+        if (offersMemo === null || offersMemo.tick !== host.tick) {
+          offersMemo = { tick: host.tick, byPartner: new Map() };
         }
         let offers = offersMemo.byPartner.get(partner);
         if (offers === undefined) {
-          offers = sim.tradeOffersOf(partner);
+          offers = host.tradeOffersOf(partner);
           offersMemo.byPartner.set(partner, offers);
         }
         return offers;
       },
       openTributes: (payer) => {
-        if (owedMemo === null || owedMemo.tick !== sim.tick || owedMemo.payer !== payer) {
-          owedMemo = { tick: sim.tick, payer, owed: sim.openTributes(payer) };
+        if (owedMemo === null || owedMemo.tick !== host.tick || owedMemo.payer !== payer) {
+          owedMemo = { tick: host.tick, payer, owed: host.openTributes(payer) };
         }
         return owedMemo.owed;
       },
     },
     buildAvailability: (player, typeId) => {
-      if (reasonMemo === null || reasonMemo.tick !== sim.tick)
-        reasonMemo = { tick: sim.tick, reasons: new Map() };
+      if (reasonMemo === null || reasonMemo.tick !== host.tick)
+        reasonMemo = { tick: host.tick, reasons: new Map() };
       const key = `${player}:${typeId}`;
       const known = reasonMemo.reasons.get(key);
       if (known !== undefined) return known;
-      const availability = technologyAvailability(sim.unlockStatus('house', typeId, tribeOf(player), player));
+      const availability = technologyAvailability(
+        host.unlockStatus('house', typeId, tribeOf(player), player),
+      );
       reasonMemo.reasons.set(key, availability);
       return availability;
     },

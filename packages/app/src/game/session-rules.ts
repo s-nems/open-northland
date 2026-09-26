@@ -1,6 +1,6 @@
 import type { SessionRules } from '@open-northland/lockstep';
-import type { Simulation } from '@open-northland/sim';
 import { fogModeParam } from './fog.js';
+import type { WorldSetup } from './world/index.js';
 
 /** Parse an `on`/`off` rule URL flag; null for absent or unrecognized, which keeps the world's rule. */
 export function onOffParam(params: URLSearchParams, name: string): boolean | null {
@@ -24,7 +24,7 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
  * rules, so a flag wins in either direction; an absent flag enqueues nothing, keeping the command
  * stream byte-identical.
  */
-export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRules): void {
+export function applySessionRuleOverrides(sim: WorldSetup, overrides: SessionRules): void {
   if (overrides.fog !== null) sim.enqueueSetup({ kind: 'setFogMode', mode: overrides.fog });
   if (overrides.progression !== null) {
     sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: overrides.progression });

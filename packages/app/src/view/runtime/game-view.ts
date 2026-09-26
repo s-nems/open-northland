@@ -20,7 +20,6 @@ import {
   playerCommand,
   type SaveGame,
   type SimEvent,
-  type Simulation,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
@@ -60,6 +59,7 @@ import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
+import type { SessionHost } from '../../session/index.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
@@ -130,7 +130,8 @@ export interface GameViewDeps {
   readonly renderer: WorldRenderer;
   /** Absent in a checkout without decoded content, which leaves the animated worker field empty. */
   readonly sheet?: SpriteSheet;
-  readonly sim: Simulation;
+  /** The world as the runtime reads it; the entry owns the simulation behind it. */
+  readonly host: SessionHost;
   /** The session this client runs: it decides which ticks run, owns tempo and pause, and is where every
    *  HUD command goes. */
   readonly driver: SessionDriver;
@@ -224,7 +225,7 @@ const BESIDE_MINIMAP_GAP_PX = 12;
 
 /** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
-  const { app, canvas, params, renderer, sim, driver, cameraCtl } = deps;
+  const { app, canvas, params, renderer, host, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
   // A spectator with a picker follows the seat it chose to watch; the overseer sees the whole map with
   // its own seat's figures; a played session's view is its own seat for good.
@@ -236,14 +237,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const viewerPlayer = (): number => viewer.seat() ?? localPlayer;
   const fogViewOf = (): FogView | null => {
     const seat = viewer.seat();
-    return viewer.wholeMap() || seat === null ? null : sim.fogView(seat);
+    return viewer.wholeMap() || seat === null ? null : host.fogView(seat);
   };
   const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
   const sharedClock = deps.sharedClock === true;
   const netReadout = deps.netReadout ?? ((): null => null);
 
   // Installed before the HUD mounts so the system menu sees an active recording.
-  const profile = installSessionInstruments(sim, params);
+  const profile = installSessionInstruments(host, params);
 
   let loop: RafLoop | null = null;
   let systemMenu: ReturnType<typeof createSystemMenu> | null = null;
@@ -251,7 +252,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let verdict: MatchResultOverlay | null = null;
   let destroyed = false;
   const lifetime = new AbortController();
-  logGpuContextLoss(canvas, () => sim.tick, lifetime.signal);
+  logGpuContextLoss(canvas, () => host.tick, lifetime.signal);
   const teardownWorld = createWorldTeardown({
     app,
     canvas,
@@ -262,7 +263,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const saveLoad = createSaveLoadSession({
     ...deps.networkSave,
     captureSave: (options) => driver.captureSave(options),
-    sim,
+    host,
     worldToken: deps.worldToken ?? null,
     ...(deps.saveEntrySearch !== undefined ? { entrySearch: deps.saveEntrySearch } : {}),
     // A shared clock is nobody's to hold: the save dialog and the overlays above pause nothing.
@@ -296,9 +297,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         errors.push(error);
       }
     }
-    // Leaving the debug seams set would pin this sim, renderer and stats for the document's lifetime.
-    if (window.__opennorthland?.sim === sim) delete window.__opennorthland;
-    if (currentDiagGameSession()?.sim === sim) setDiagGameSession(null);
+    // Leaving the debug seams set would pin this world, renderer and stats for the document's lifetime.
+    if (window.__opennorthland?.host === host) delete window.__opennorthland;
+    if (currentDiagGameSession()?.host === host) setDiagGameSession(null);
     if (errors.length > 0) throw new AggregateError(errors, 'Game view cleanup failed');
   };
   const onReturnToMenu = deps.onReturnToMenu;
@@ -349,7 +350,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       palisadeBuiltAt,
       palisadeGateProbe,
       palisadeGateSites,
-    } = createPlacementGates(sim, fogGates, localPlayer, seatTribeOf(localPlayer));
+    } = createPlacementGates(host, fogGates, localPlayer, seatTribeOf(localPlayer));
 
     // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
     // draws over the strip's lower buttons on a short screen.
@@ -359,7 +360,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // the sim on every mousemove.
     const pointerAt = trackCanvasPointer(canvas, lifetime.signal);
 
-    // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
+    // A read-only spectator drops every HUD command here. Setup commands enqueue on the world's builder.
     // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
     // seat reaching into another's units.
     const readOnly = deps.readOnly === true;
@@ -376,8 +377,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       if (settler !== undefined) soundDriver?.respond(settler);
     };
 
-    const goodLabelByType = goodLabelsFromContent(sim.content);
-    const { diplomacyView, buildAvailability } = createTickMemoViews(sim, seatTribeOf);
+    const goodLabelByType = goodLabelsFromContent(host.content);
+    const { diplomacyView, buildAvailability } = createTickMemoViews(host, seatTribeOf);
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
         localPlayer: viewerPlayer(),
@@ -405,9 +406,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         : missionBriefReader(
             deps.missionBriefSource,
             {
-              tick: () => sim.tick,
-              status: () => sim.missionStatus(),
-              outcome: () => sim.matchOutcome(viewerPlayer()),
+              tick: () => host.tick,
+              status: () => host.missionStatus(),
+              outcome: () => host.matchOutcome(viewerPlayer()),
             },
             mapText,
           );
@@ -417,13 +418,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let selectEntity: ((id: number) => void) | null = null;
     let unitSelection: Pick<UnitControls, 'select' | 'selectedIds' | 'selectionVersion'> | null = null;
     const NO_SELECTION: ReadonlySet<number> = new Set();
-    const meadGood = sim.content.goods.find((good) => good.id === MEAD_GOOD_ID)?.typeId;
+    const meadGood = host.content.goods.find((good) => good.id === MEAD_GOOD_ID)?.typeId;
     const residentsFor = memoBySnapshot(
       (snapshot: WorldSnapshot) => {
         const seat = viewer.seat();
         return seat === null
           ? NO_RESIDENTS
-          : residentRows(snapshot, { localPlayer: seat, content: sim.content, mapText, meadGood });
+          : residentRows(snapshot, { localPlayer: seat, content: host.content, mapText, meadGood });
       },
       () => viewer.version(),
     );
@@ -444,18 +445,18 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       camera: () => cameraCtl.camera(),
       enqueue: issueCommand,
       ...(sharedClock ? {} : { enqueueTrusted: issueTrusted }),
-      grants: assistantGrantsSeam(sim, sim.content, viewer.seat, issueCommand, !readOnly),
-      counters: assistantCountersSeam(sim, viewer.seat, issueCommand, !readOnly),
+      grants: assistantGrantsSeam(host, host.content, viewer.seat, issueCommand, !readOnly),
+      counters: assistantCountersSeam(host, viewer.seat, issueCommand, !readOnly),
       papers: {
         read: () => {
           const seat = viewer.seat();
-          return seat === null ? NO_PAPERS : sim.papers(seat);
+          return seat === null ? NO_PAPERS : host.papers(seat);
         },
       },
       residents: {
-        rows: () => residentsFor(sim.snapshot()),
-        snapshot: () => sim.snapshot(),
-        canBecome: (id, jobType) => sim.canChooseJob(id as Entity, jobType),
+        rows: () => residentsFor(host.snapshot()),
+        snapshot: () => host.snapshot(),
+        canBecome: (id, jobType) => host.canChooseJob(id as Entity, jobType),
         selection: {
           ids: () => unitSelection?.selectedIds() ?? NO_SELECTION,
           version: () => unitSelection?.selectionVersion() ?? 0,
@@ -464,7 +465,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           unitSelection?.select(ids);
           const [only] = ids;
           if (!show || ids.length !== 1 || only === undefined) return;
-          const at = entityAnchor(sim.snapshot(), only, deps.elevation);
+          const at = entityAnchor(host.snapshot(), only, deps.elevation);
           if (at !== null) jumpToWorld(at.x, at.y);
         },
       },
@@ -478,19 +479,19 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       palisadeBuiltAt,
       palisadeGateProbe,
       palisadeGateSites,
-      palisadeTools: palisadeToolsOf(sim),
+      palisadeTools: palisadeToolsOf(host),
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-      buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
+      buildings: menuEntriesFromContent(host.content, lang).map((entry) => ({
         ...entry,
         availability: () => buildAvailability(viewerPlayer(), entry.typeId),
       })),
-      buildingLabels: buildingLabelsFromContent(sim.content, lang),
-      technologyLabel: (kind, typeId) => technologyLabel(sim.content, kind, typeId),
+      buildingLabels: buildingLabelsFromContent(host.content, lang),
+      technologyLabel: (kind, typeId) => technologyLabel(host.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),
-      goods: sim.content.goods,
+      goods: host.content.goods,
       pack,
-      vehicleLabel: (typeId) => vehicleLabel(sim.content, typeId),
+      vehicleLabel: (typeId) => vehicleLabel(host.content, typeId),
       lang,
       bindings: keyBindings,
       tribe: seatTribeOf(localPlayer),
@@ -510,9 +511,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       missionBrief: briefFor,
-      missionBriefingHistory: () => sim.missionBriefingHistory(),
-      missionReplayPage: () => sim.missionBriefingPage(),
-      missionHuman: (missionId) => sim.missionHuman(missionId),
+      missionBriefingHistory: () => host.missionBriefingHistory(),
+      missionReplayPage: () => host.missionBriefingPage(),
+      missionHuman: (missionId) => host.missionHuman(missionId),
       // The original stops game time behind its large windows.
       onLargeWindow: (open) => {
         missionWindowOpen = open;
@@ -522,7 +523,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       onSelectMessageTarget: (target) => {
-        const at = messageTargetAnchor(sim.snapshot(), target, deps.elevation);
+        const at = messageTargetAnchor(host.snapshot(), target, deps.elevation);
         if (at !== null) jumpToWorld(at.x, at.y);
         if (target.entity !== null) selectEntity?.(target.entity);
       },
@@ -547,10 +548,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       });
     }
     // Assembled below, once the controls and the camera it steers exist.
-    const terrainColors = await mountScriptTerrainColors(sim, renderer);
+    const terrainColors = await mountScriptTerrainColors(host, renderer);
     let presentation: ReturnType<typeof createScriptPresentation> | null = null;
     const subMissions = createSubMissions({
-      sim,
+      host,
       captureSave: (options) => driver.captureSave(options),
       params,
       worldToken: deps.worldToken ?? null,
@@ -614,21 +615,21 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const detailsTooltip = createTooltip();
     cleanup.push(() => detailsTooltip.destroy());
     const controls = await createUnitControls({
-      technologyStatus: (kind, typeId, tribe, player) => sim.unlockStatus(kind, typeId, tribe, player),
-      canChooseJob: (id, jobType) => sim.canChooseJob(id as Entity, jobType),
+      technologyStatus: (kind, typeId, tribe, player) => host.unlockStatus(kind, typeId, tribe, player),
+      canChooseJob: (id, jobType) => host.canChooseJob(id as Entity, jobType),
       app,
       canvas,
       uiscale,
       camera: () => cameraCtl.camera(),
-      snapshot: () => sim.snapshot(),
+      snapshot: () => host.snapshot(),
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       viewer,
-      hostileToward: (owner) => sim.diplomacyStance(viewerPlayer(), owner) === 'enemy',
+      hostileToward: (owner) => host.diplomacyStance(viewerPlayer(), owner) === 'enemy',
       lang,
       bindings: keyBindings,
       professions: pickerEntries(),
-      content: sim.content,
+      content: host.content,
       mapText,
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(pack !== null ? { packGoods: pack.goodTextures(deps.sheet) } : {}),
@@ -641,15 +642,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         return fog === null || fogTileVisible(fog, tileX, tileY);
       },
       doorBadges: () => pickableDoorBadges?.() ?? [],
-      equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
-      standsTo: (entity) => sim.standsTo(entity as Entity),
-      traderView: (entity) => sim.traderView(entity as Entity),
-      tradeOffersAt: (house) => sim.tradeOffersAt(house as Entity),
-      canAttachTradeHouse: (trader, house) => sim.canAttachTradeHouse(trader as Entity, house as Entity),
-      canAttachToVehicle: (settler, vehicle) => sim.canAttachToVehicle(settler as Entity, vehicle as Entity),
+      equipPickList: (entity, group) => host.equipPickList(entity as Entity, group),
+      standsTo: (entity) => host.standsTo(entity as Entity),
+      traderView: (entity) => host.traderView(entity as Entity),
+      tradeOffersAt: (house) => host.tradeOffersAt(house as Entity),
+      canAttachTradeHouse: (trader, house) => host.canAttachTradeHouse(trader as Entity, house as Entity),
+      canAttachToVehicle: (settler, vehicle) => host.canAttachToVehicle(settler as Entity, vehicle as Entity),
       // The fog gate matches the overlay's, so a dimmed shore in the fog takes no dock click either.
       canMoorAt: (vehicle, x, y) =>
-        fogGates.seesNode(x, y) && sim.mooringProbe(vehicle as Entity)?.canMoor(x, y) === true,
+        fogGates.seesNode(x, y) && host.mooringProbe(vehicle as Entity)?.canMoor(x, y) === true,
       boundsOf: (ref) => renderer.entityBounds(ref),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       claimPointer: (x: number, y: number) =>
@@ -691,7 +692,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifeHeartsFor,
     } = await createViewReadModels({
       placementTribe: seatTribeOf(localPlayer),
-      sim,
+      host,
       mapSize: deps.mapSize,
       localPlayer,
       viewer,
@@ -701,7 +702,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       selection: { ids: controls.selectedIds, version: controls.selectionVersion },
     });
-    pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
+    pickableDoorBadges = () => doorBadgesFor(host.snapshot());
 
     // The script's markers and washes draw over the world and under every HUD plane.
     const scriptOverlay = new Container();
@@ -709,7 +710,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     scriptOverlay.zIndex = SCRIPT_OVERLAY_Z;
     app.stage.addChild(scriptOverlay);
     presentation = createScriptPresentation({
-      sim,
+      host,
       missionTrace: hasDebugFlag(params, 'missions'),
       seat: viewer.seat,
       toolPanel,
@@ -732,7 +733,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       app,
       canvas,
       params,
-      sim,
+      host,
       perf,
       initialToolsEnabled: storedSettings.debugToolsEnabled,
       paletteTop: debugPaletteTopForUiScale(uiscale),
@@ -768,8 +769,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // filter, so a farm's herd is one of its store lines, as the original's card lists it; the details
     // panel filters it out only because its own Produkcja window already counts the herd.
     const hoverContext: BuildingStockContext = {
-      buildings: sim.content.buildings,
-      goods: sim.content.goods,
+      buildings: host.content.buildings,
+      goods: host.content.goods,
     };
 
     // The parchment card a hovered settler or building opens, on the DOM plane the redesigned regions
@@ -788,12 +789,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       camera: () => cameraCtl.camera(),
       clientToScreen,
       goodLabel,
-      vehicleLabel: (typeId) => vehicleLabel(sim.content, typeId),
-      ...chestTooltipLines(sim.content, toolPanel.controller.uiString, viewerPlayer, controls.selectedIds),
+      vehicleLabel: (typeId) => vehicleLabel(host.content, typeId),
+      ...chestTooltipLines(host.content, toolPanel.controller.uiString, viewerPlayer, controls.selectedIds),
       card: hoverCard,
       buildingModel: (snapshot, entityId) => buildingHoverModel(snapshot, entityId, hoverContext),
       settlerModel: (snapshot, entityId) =>
-        settlerHoverModel(snapshot, entityId, { jobs: sim.content.jobs, mapText }),
+        settlerHoverModel(snapshot, entityId, { jobs: host.content.jobs, mapText }),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>
@@ -814,7 +815,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       fogGates.setFrame(fogViewOf());
       controls.select([]);
       if (seat === null) return;
-      const focus = mapStartFocus(sim.snapshot(), deps.mapSize.width, deps.mapSize.height, seat);
+      const focus = mapStartFocus(host.snapshot(), deps.mapSize.width, deps.mapSize.height, seat);
       const zoom = cameraCtl.camera().scale ?? 1;
       cameraCtl.jumpTo(cameraCenteredOnTile(focus.x, focus.y, zoom, app.screen.width, app.screen.height));
     });
@@ -855,7 +856,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
 
     installDebugHandle({
-      sim,
+      host,
       renderer,
       sheet: deps.sheet,
       cameraCtl,
@@ -873,7 +874,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       fpsLimit: storedSettings.fpsLimit,
       fogView: fogViewOf,
       viewer,
-      onMatchEnd: () => verdict?.finish(sim.matchOutcome(localPlayer)),
+      onMatchEnd: () => verdict?.finish(host.matchOutcome(localPlayer)),
       isDisposed: () => destroyed,
       driver,
       frameStats,
@@ -908,7 +909,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     if (deps.introAtStart === true) toolPanel.controller.openMission();
     // A restored save of a decided match says so at once, since no event will repeat the verdict.
-    if (deps.observer !== true) verdict?.announce(sim.matchOutcome(localPlayer));
+    if (deps.observer !== true) verdict?.announce(host.matchOutcome(localPlayer));
 
     return {
       destroy,

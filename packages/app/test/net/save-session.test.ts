@@ -46,7 +46,7 @@ it('captures the current public roster and does not upload an old world after re
     ],
     members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null }],
   };
-  const hooks = networkSaveSession(client, sim);
+  const hooks = networkSaveSession(client, { sim });
   const metadata = parseSavedSessionMetadata(hooks.sessionMetadata?.());
   expect(metadata?.descriptor.seats[1]?.mode).toBe('ai');
   expect(metadata?.roster).toEqual([

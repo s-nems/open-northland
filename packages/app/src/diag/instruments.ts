@@ -1,8 +1,8 @@
 /**
- * `Simulation.setInstrument` has a single slot, so every consumer of the per-system seam is fanned
- * out from this one installer.
+ * The host's instrument slot takes one hook, so every consumer of the per-system seam is fanned out
+ * from this one installer.
  */
-import type { Simulation } from '@open-northland/sim';
+import type { SessionHost } from '../session/index.js';
 import { hasDebugFlag } from './debug-flags.js';
 import { emitPerfMeasure, PERF_MARKS_DEBUG_FLAG } from './perf-marks.js';
 import { PROFILE_DEBUG_FLAG, SystemProfile } from './system-profile.js';
@@ -12,13 +12,16 @@ import { recordTraceEvent, startTraceRecording, TRACE_DEBUG_FLAG } from './trace
 export type PhaseEmitter = (name: string, startMs: number, endMs: number) => void;
 
 /** With no `?debug=` flag set nothing is installed, so an ordinary session keeps the sim's direct call. */
-export function installSessionInstruments(sim: Simulation, params: URLSearchParams): SystemProfile | null {
+export function installSessionInstruments(
+  host: Pick<SessionHost, 'setInstrument'>,
+  params: URLSearchParams,
+): SystemProfile | null {
   const profile = hasDebugFlag(params, PROFILE_DEBUG_FLAG) ? new SystemProfile() : null;
   const emit = framePhaseEmitter(params);
   if (profile === null && emit === null) return null;
 
   if (hasDebugFlag(params, TRACE_DEBUG_FLAG)) startTraceRecording();
-  sim.setInstrument((name, run) => {
+  host.setInstrument((name, run) => {
     // Timed tight around `run`; the fan-out below lands outside the interval.
     const start = performance.now();
     run();

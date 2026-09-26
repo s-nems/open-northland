@@ -1,6 +1,6 @@
 import type { MapScript } from '@open-northland/data';
 import { components, type Simulation } from '@open-northland/sim';
-import { playerTribe } from './map-roster.js';
+import { playerTribe } from '../map-roster.js';
 
 /** A new world takes every seat's placement authority from the same roster as the HUD; a save
  *  carries the declarations it was built with. */

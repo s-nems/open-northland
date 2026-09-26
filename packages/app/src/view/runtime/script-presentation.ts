@@ -1,10 +1,11 @@
 import type { Camera, ElevationField } from '@open-northland/render';
 import { halfCellToScreen } from '@open-northland/render';
-import type { Entity, HalfCellNode, SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
+import type { Entity, HalfCellNode, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { entityById, nodeOfPosition, TICKS_PER_SECOND } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { infoLineTexts } from '../../game/info-lines.js';
 import { positionOf } from '../../game/snapshot-base.js';
+import type { SessionHost } from '../../session/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { CameraJitter, ScriptEffects } from '../script-effects.js';
 import type { ScriptMarkers } from '../script-markers.js';
@@ -18,7 +19,7 @@ const INFO_LINE_REFRESH_SECONDS = 2;
 const INFO_LINE_REFRESH_TICKS = INFO_LINE_REFRESH_SECONDS * TICKS_PER_SECOND;
 
 export interface ScriptPresentationDeps {
-  readonly sim: Pick<Simulation, 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'>;
+  readonly host: Pick<SessionHost, 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'>;
   readonly missionTrace?: boolean;
   /** Whose info lines the panel shows, read on every refresh; null shows none. */
   readonly seat: () => number | null;
@@ -52,13 +53,13 @@ export interface ScriptPresentation {
  * diagnostics log for what the script asked for and did not get.
  */
 export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPresentation {
-  const { sim, toolPanel, controls, markers, effects } = deps;
-  const trace = deps.missionTrace === true ? mountMissionTrace(sim) : null;
+  const { host, toolPanel, controls, markers, effects } = deps;
+  const trace = deps.missionTrace === true ? mountMissionTrace(host) : null;
   let linesTick = Number.NEGATIVE_INFINITY;
   let linesSeat: number | null = null;
   let lines: string[] = [];
 
-  const saved = sim.missionPresentation();
+  const saved = host.missionPresentation();
   for (const marker of saved.guiMarkers) {
     markers.apply({ kind: 'missionGuiMarker', ...marker, placed: true });
   }
@@ -83,7 +84,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
   };
 
   const entityNode = (entity: Entity): HalfCellNode | null => {
-    const ent = entityById(sim.snapshot(), entity);
+    const ent = entityById(host.snapshot(), entity);
     const at = ent === undefined ? undefined : positionOf(ent);
     return at === undefined ? null : nodeOfPosition(at.x, at.y);
   };
@@ -145,7 +146,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
       if (seat !== linesSeat || snapshot.tick - linesTick >= INFO_LINE_REFRESH_TICKS) {
         linesTick = snapshot.tick;
         linesSeat = seat;
-        lines = seat === null ? [] : infoLineTexts(sim.infoLines(seat), deps.mapText);
+        lines = seat === null ? [] : infoLineTexts(host.infoLines(seat), deps.mapText);
       }
       // Pushed every frame: the panel remounts on a scale change and starts blank.
       toolPanel.controller.setInfoLines(lines);

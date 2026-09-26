@@ -1,9 +1,10 @@
 import type { ElevationField, WorldRenderer } from '@open-northland/render';
-import type { Command, Simulation } from '@open-northland/sim';
+import type { Command } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
 import { vehicleLabel } from '../../game/technology.js';
+import type { SessionHost } from '../../session/index.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { type AdminDebugHandle, mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera/index.js';
@@ -21,7 +22,7 @@ export interface DebugMountsOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly params: URLSearchParams;
-  readonly sim: Simulation;
+  readonly host: SessionHost;
   readonly renderer: WorldRenderer;
   readonly cameraCtl: CameraController;
   readonly perf: PerfOverlayHandle;
@@ -131,7 +132,7 @@ function mountAdminPalette(
   top: number,
   zoomOut: { readonly unlocked: () => boolean; readonly setUnlocked: (unlocked: boolean) => void },
 ): AdminDebugHandle {
-  const { app, canvas, sim, renderer } = opts;
+  const { app, canvas, host, renderer } = opts;
   return mountAdminDebug({
     canvas,
     enqueue: opts.enqueue,
@@ -140,7 +141,7 @@ function mountAdminPalette(
     // per-frame hover set.
     pickEntity: createAdminEntityPicker({
       app,
-      sim,
+      host,
       renderer,
       camera: opts.cameraCtl,
       toScreen: opts.clientToScreen,
@@ -150,29 +151,28 @@ function mountAdminPalette(
     goodLabel: (typeId) => opts.goodLabel(typeId),
     seatTribeOf: (player) => opts.seatTribeOf(player),
     ...(opts.enterStandingWall !== undefined ? { enterStandingWall: opts.enterStandingWall } : {}),
-    goods: sim.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
+    goods: host.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
     // Skips decorative swarms (hitpoints 0) and species with no body in the render roster; first-wins
     // dedup matches the sim's `animalRecord` read, so a listed entry is the record a spawn consumes.
-    animals: sim.content.animals
+    animals: host.content.animals
       .filter(
         (a, i) =>
           a.hitpointsAdult > 0 &&
           ANIMAL_PALETTE_BY_TRIBE.has(a.tribeType) &&
-          sim.content.animals.findIndex((b) => b.tribeType === a.tribeType) === i,
+          host.content.animals.findIndex((b) => b.tribeType === a.tribeType) === i,
       )
       .map((a) => ({
         tribe: a.tribeType,
-        id: sim.content.tribes.find((t) => t.typeId === a.tribeType)?.id ?? a.id,
+        id: host.content.tribes.find((t) => t.typeId === a.tribeType)?.id ?? a.id,
       }))
       .sort((a, b) => a.tribe - b.tribe),
     // The content's own row order, which keeps the carts together ahead of the ships.
-    vehicles: sim.content.vehicles.map((v) => ({
+    vehicles: host.content.vehicles.map((v) => ({
       vehicleType: v.typeId,
-      label: vehicleLabel(sim.content, v.typeId) ?? v.id,
+      label: vehicleLabel(host.content, v.typeId) ?? v.id,
     })),
-    // Read through the sim's sanctioned accessor, never the live component stores.
-    needsEnabled: () => sim.needsEnabled(),
-    fogMode: () => sim.fogMode(),
+    needsEnabled: () => host.needsEnabled(),
+    fogMode: () => host.fogMode(),
     geometryEnabled: geometryDebug.enabled,
     setGeometryEnabled,
     zoomOutUnlocked: zoomOut.unlocked,

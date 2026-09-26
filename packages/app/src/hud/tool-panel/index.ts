@@ -145,7 +145,7 @@ export interface ToolPanelOptions {
   readonly onDeclareDiplomacy: (player: number, state: DiplomacyState) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
-  /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
+  /** The sim's live placement rule (`SessionHost.placementProbe`), which gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
   readonly palisadeBuiltAt?: (owner: number, col: number, row: number) => boolean;

@@ -1,5 +1,5 @@
 import type { PrayerSite } from '@open-northland/data';
-import { type CellTerrainMap, components, type Simulation } from '@open-northland/sim';
+import type { CellTerrainMap } from '@open-northland/sim';
 import { HIVE_DRAW_ATOMIC, WELL_DRAW_ATOMIC } from './atomics.js';
 import { TERRAIN_OPEN } from './terrain.js';
 
@@ -21,8 +21,6 @@ export const VIKING = 1;
 /** The walkable, buildable grass typeId scene terrain uses, so scene grass resolves against the sim's
  *  `landscape` table. */
 export const GRASS = TERRAIN_OPEN;
-const { Building } = components;
-
 export interface VikingBuilding {
   /** The `[GfxHouse]` `LogicType`: `Building.buildingType` in the sim, the bob-binding key in render. */
   readonly typeId: number;
@@ -138,11 +136,4 @@ export function resolveVikingBuilding(ref: number | string): VikingBuilding {
 /** An all-grass cell grid in the scene-authoring shape; the sim seam upsamples it to half-cells. */
 export function grassTerrain(width: number, height: number): CellTerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
-
-/** The distinct building typeIds currently placed in the world. */
-export function placedBuildingTypes(sim: Simulation): Set<number> {
-  const types = new Set<number>();
-  for (const e of sim.world.query(Building)) types.add(sim.world.get(e, Building).buildingType);
-  return types;
 }

@@ -1,6 +1,7 @@
 import type { GroundWave, MapObjectSprite } from '@open-northland/render';
-import type { SimEvent, Simulation } from '@open-northland/sim';
+import type { SimEvent } from '@open-northland/sim';
 import type { ScriptLandscapeSprite } from '../../content/script-landscape-sprites.js';
+import type { SessionHost } from '../../session/index.js';
 
 interface LandscapeSurface {
   addMapObjects(sprites: readonly MapObjectSprite[]): void;
@@ -9,7 +10,7 @@ interface LandscapeSurface {
 }
 
 export function bindScriptLandscapes(
-  sim: Pick<Simulation, 'landscapeEdits'>,
+  host: Pick<SessionHost, 'landscapeEdits'>,
   surface: LandscapeSurface,
   initial: ReadonlyMap<number, MapObjectSprite>,
   spriteFor: ScriptLandscapeSprite,
@@ -18,7 +19,7 @@ export function bindScriptLandscapes(
   const removed = new Set<number>();
   const added = new Map<number, MapObjectSprite>();
   const sync = (): void => {
-    const edits = sim.landscapeEdits();
+    const edits = host.landscapeEdits();
     for (const id of edits.removed) {
       if (removed.has(id)) continue;
       removed.add(id);

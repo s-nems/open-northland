@@ -25,6 +25,7 @@ import {
   SCENES,
 } from '../scenes/index.js';
 import type { SceneDefinition } from '../scenes/types.js';
+import { inlineSessionHost } from '../session/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
@@ -122,12 +123,13 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   } else {
     sim = createSceneWorld(scene, worldOptions);
   }
+  const host = inlineSessionHost(sim);
   setDiagGameSession({
     entry: 'scene',
     worldId: sceneId,
     seed: sim.seed,
     restoredAtTick: stagedSave !== null ? sim.tick : null,
-    sim,
+    host,
     hashTrace: hashTraceFor(params),
   });
   // The session rule flags override the scene's own rules: a named divergence from the headless twin,
@@ -200,7 +202,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     initialViewport,
     renderer,
     sheet,
-    sim,
+    host,
     driver,
     cameraCtl,
     terrainGrid,

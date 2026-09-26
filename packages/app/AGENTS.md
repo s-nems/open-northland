@@ -2,9 +2,8 @@
 
 `packages/app` is the browser shell. It translates input into sim commands, runs the frame loop over
 a `@open-northland/lockstep` session driver, and gives snapshots and events to render, audio, and the
-HUD. It is the only package allowed to
-own both a live simulation and a renderer. Audio may use the pure `@open-northland/render/data`
-projection helpers.
+HUD. It is the only package allowed to own both a live simulation and a renderer. Audio may use the
+pure `@open-northland/render/data` projection helpers.
 
 The root [`AGENTS.md`](../../AGENTS.md) still applies.
 
@@ -14,7 +13,9 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
 - Submit a running session's state changes through `LockstepDriver.submit()` in a seat or admin
   envelope, and pre-tick world assembly through `sim.enqueueSetup()`. Tempo and pause are session clock
   operations, not loop fields. Do not mutate live component stores from UI or renderer glue.
-- Read the world through snapshots and explicit simulation probes.
+- The runtime reads the world through `src/session/` `SessionHost` alone: snapshots, the fog view, the
+  probes and the request-shaped reads it names. `Simulation` is constructed and typed only by hosts:
+  entries, scenes, `game/sandbox/`, `game/world/` and the inline host.
 - Load generated content through `src/content/net.ts` by its root-relative URL and validate it with
   the `@open-northland/data` schemas. A checkout without `content/` must still boot using synthetic
   fallback content or a clear unavailable state.
@@ -86,6 +87,7 @@ world, then apply the recorded command log to the stored tick.
 Group code by user-facing concern:
 
 - `entries/`: top-level URL modes;
+- `session/`: the host interface the runtime reads the world through, and its inline implementation;
 - `view/runtime/`: shared playable runtime and frame loop;
 - `content/`: generated-content loaders and pure bindings;
 - `catalog/` and `game/sandbox/`: fallback content and rules;

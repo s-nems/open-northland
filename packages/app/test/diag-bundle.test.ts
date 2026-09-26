@@ -12,6 +12,7 @@ import {
   setDiagGameSession,
 } from '../src/diag/index.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
+import { inlineSessionHost } from '../src/session/index.js';
 
 /**
  * The diagnostics bundle's core promise: a tester's downloaded JSON is a FULL session repro. World
@@ -42,7 +43,7 @@ describe('diagnostics bundle', () => {
       entry: 'scene',
       worldId: scene.id,
       seed: scene.seed,
-      sim,
+      host: inlineSessionHost(sim),
       hashTrace: trace,
     });
 
@@ -84,7 +85,7 @@ describe('diagnostics bundle', () => {
       entry: 'scene',
       worldId: scene.id,
       seed: scene.seed,
-      sim,
+      host: inlineSessionHost(sim),
       hashTrace: null,
     });
     const parsed = JSON.parse(serializeDiagnosticsBundle(bundle)) as DiagnosticsBundle;
@@ -108,7 +109,7 @@ describe('diagnostics bundle', () => {
       entry: 'scene',
       worldId: scene.id,
       seed: scene.seed,
-      sim,
+      host: inlineSessionHost(sim),
       hashTrace: null,
     });
     const parsed = JSON.parse(serializeDiagnosticsBundle(bundle)) as DiagnosticsBundle;
@@ -133,13 +134,14 @@ describe('diagnostics bundle', () => {
     const sim = createSceneSim(scene);
     const other = createSceneSim(scene);
     const trace = new HashTrace();
-    setDiagGameSession({ entry: 'scene', worldId: scene.id, seed: scene.seed, sim, hashTrace: trace });
+    const host = inlineSessionHost(sim);
+    setDiagGameSession({ entry: 'scene', worldId: scene.id, seed: scene.seed, host, hashTrace: trace });
     try {
       for (let tick = 1; tick <= HASH_TRACE_EVERY_TICKS; tick++) {
         sim.step();
-        recordDiagHash(sim);
+        recordDiagHash(host);
         other.step();
-        recordDiagHash(other); // an unregistered sim must never taint the trace
+        recordDiagHash(inlineSessionHost(other)); // an unregistered world must never taint the trace
       }
     } finally {
       setDiagGameSession(null);

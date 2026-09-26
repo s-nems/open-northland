@@ -8,7 +8,7 @@ export interface ResidentsSeam {
   readonly rows: () => readonly ResidentRow[];
   /** The snapshot those rows came from, which the row figures are drawn off. */
   readonly snapshot: () => WorldSnapshot;
-  /** Whether the sim would let the settler take the trade (`Simulation.canChooseJob`). */
+  /** Whether the sim would let the settler take the trade (`SessionHost.canChooseJob`). */
   readonly canBecome: (id: number, jobType: number) => boolean;
   /** The unit controls' selection; `version` moves with every change. */
   readonly selection: { readonly ids: () => ReadonlySet<number>; readonly version: () => number };

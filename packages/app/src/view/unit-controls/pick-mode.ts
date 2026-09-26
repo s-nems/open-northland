@@ -215,7 +215,7 @@ export interface PickModeDeps {
   readonly vehicleOrders: () => VehicleOrderController;
   /** Named addition: the original signals an armed mode with prompt text, not a cursor. */
   readonly setArmedCursor: (armed: boolean) => void;
-  /** The sim's attach rule (`Simulation.canAttachToVehicle`), which the "Assign Vehicle" pick lights
+  /** The sim's attach rule (`SessionHost.canAttachToVehicle`), which the "Assign Vehicle" pick lights
    *  the settler's own vehicles by; absent, the pick lights nothing. */
   readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
   /** The sim's trade-stop rule, which the trade-house pick lights and orders by; absent, the pick

@@ -1,5 +1,6 @@
 /** The running game's diagnostics identity; the view that registers it clears it when it closes. */
-import { HashTrace, type Simulation, type SyncDomain } from '@open-northland/sim';
+import { HashTrace, type SyncDomain } from '@open-northland/sim';
+import type { SessionHost } from '../session/index.js';
 import { hasDebugFlag } from './debug-flags.js';
 
 /** What a relayed session adds to a bundle: where the relay said this client parted from the room,
@@ -26,7 +27,7 @@ export interface DiagGameSession {
   /** The tick a restored session started from, so a bundle is not read as a run from tick 0; null
    *  for a world that booted fresh. */
   readonly restoredAtTick?: number | null;
-  readonly sim: Simulation;
+  readonly host: SessionHost;
   /** State-hash ring when `?debug=diag` recording is on; `null` otherwise. */
   readonly hashTrace: HashTrace | null;
   /** The relayed session's report at bundle time; absent in a local session. */
@@ -53,13 +54,13 @@ export function currentDiagGameSession(): DiagGameSession | null {
 }
 
 /**
- * Record the stepped sim's state hash on the HASH_TRACE_EVERY_TICKS cadence. No-op when `sim` is not
- * the registered session's sim, so a stale registration cannot taint another sim's trace.
+ * Record the stepped world's state hash on the HASH_TRACE_EVERY_TICKS cadence. No-op when `host` is
+ * not the registered session's host, so a stale registration cannot taint another world's trace.
  */
-export function recordDiagHash(sim: Simulation): void {
-  const trace = current !== null && current.sim === sim ? current.hashTrace : null;
-  if (trace === null || sim.tick % HASH_TRACE_EVERY_TICKS !== 0) return;
-  trace.record(sim.tick, sim.hashState());
+export function recordDiagHash(host: Pick<SessionHost, 'tick' | 'hashState'>): void {
+  const trace = current !== null && current.host === host ? current.hashTrace : null;
+  if (trace === null || host.tick % HASH_TRACE_EVERY_TICKS !== 0) return;
+  trace.record(host.tick, host.hashState());
 }
 
 export function hashTraceFor(params: URLSearchParams): HashTrace | null {

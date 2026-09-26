@@ -8,7 +8,6 @@ import {
   type DiplomacyState,
   type Paper,
   type PlayerCommand,
-  type Simulation,
 } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
@@ -34,6 +33,7 @@ import type { GateSites, PalisadeGateProbeView } from '../hud/tool-panel/placeme
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
 import { bcp47Tag, compareLabels, currentLocale, type Locale } from '../i18n/index.js';
 import type { PresentationPack } from '../presentation/pack.js';
+import type { SessionHost } from '../session/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 
@@ -205,8 +205,8 @@ export function goodLabelsFromContent(content: {
 }
 
 /** The quick row's wall-line tool and axis-detecting gate-conversion tool, from the map catalog. */
-export function palisadeToolsOf(sim: Simulation): PalisadeTools {
-  const types = sim.terrain?.landscapes?.types ?? [];
+export function palisadeToolsOf(host: Pick<SessionHost, 'landscapeTypes'>): PalisadeTools {
+  const types = host.landscapeTypes;
   const wall = types.find((type) => type.wall !== undefined && type.wall.gate === undefined);
   const gate = types.find((type) => type.wall?.gate?.open === false);
   return { wall: wall?.typeId ?? null, gate: gate?.typeId ?? null };

@@ -41,7 +41,7 @@ function harness(
   const calls: string[] = [];
   const infoLines: (readonly string[])[] = [];
   let tick = 0;
-  const sim = {
+  const host = {
     get tick() {
       return tick;
     },
@@ -69,7 +69,7 @@ function harness(
     dispose: () => undefined,
   };
   const presentation = createScriptPresentation({
-    sim,
+    host,
     seat,
     toolPanel,
     controls: { select: (ids) => calls.push(`select:${[...ids].join()}`) },

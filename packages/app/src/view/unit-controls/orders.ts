@@ -32,6 +32,7 @@ import {
   settlerJobType,
   vehicleSeatsOf,
 } from '../../game/snapshot.js';
+import type { SessionHost } from '../../session/index.js';
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
@@ -41,8 +42,8 @@ import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
   readonly uiscale?: number;
-  readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'] | undefined;
-  /** The sim's equip pick-list read seam (`Simulation.equipPickList`); absent, a click on a goods heap
+  readonly technologyStatus?: SessionHost['unlockStatus'] | undefined;
+  /** The sim's equip pick-list read seam (`SessionHost.equipPickList`); absent, a click on a goods heap
    *  is a walk. */
   readonly equipPickList?: ((entity: number, group: EquipCategory) => readonly EquipPickEntry[]) | undefined;
   readonly selected: () => ReadonlySet<number>;

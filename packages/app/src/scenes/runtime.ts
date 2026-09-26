@@ -1,11 +1,11 @@
 import { halfCellMapFromCells, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
-import { setupPlacementTribes } from '../game/placement-tribes.js';
 import {
   resolveWorldContent,
   sandboxPalisadeTypes,
   type WorldContentOptions,
 } from '../game/sandbox/index.js';
+import { setupPlacementTribes } from '../game/world/index.js';
 import type { SceneWorld } from './types.js';
 
 function sceneTerrain(scene: SceneWorld) {

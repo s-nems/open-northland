@@ -15,3 +15,5 @@ export {
   resolveMissionScript,
   UNRESOLVED_NAME,
 } from './mission-script.js';
+export { setupPlacementTribes } from './placement-tribes.js';
+export type { WorldSetup } from './setup.js';

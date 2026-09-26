@@ -11,6 +11,7 @@ import {
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { runDemoWorld } from '../src/game/world/index.js';
+import { inlineSessionHost } from '../src/session/index.js';
 import { stagedSaveFrom } from '../src/view/runtime/save-load/boot.js';
 import { decodeSaveText, isGzipSave, type SaveBytes } from '../src/view/runtime/save-load/codec.js';
 import type { PickedSaveFile } from '../src/view/runtime/save-load/file-access.js';
@@ -137,7 +138,7 @@ function harness(
     ...(overrides.captureSave === undefined ? {} : { captureSave: overrides.captureSave }),
     ...(overrides.sessionMetadata === undefined ? {} : { sessionMetadata: overrides.sessionMetadata }),
     ...(overrides.onSaved === undefined ? {} : { onSaved: overrides.onSaved }),
-    sim,
+    host: inlineSessionHost(sim),
     worldToken: WORLD_TOKEN,
     entrySearch: ENTRY_SEARCH,
     setPaused: (value) => {

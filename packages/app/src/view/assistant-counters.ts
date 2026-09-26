@@ -1,7 +1,8 @@
-import type { PlayerCommand, Simulation } from '@open-northland/sim';
+import type { PlayerCommand } from '@open-northland/sim';
 import type { AssistantCounterId } from '../hud/tool-panel/extras-menu.js';
 import { type AssistantCounterFace, SIM_KIND_BY_COUNTER_ID } from '../hud/tool-panel/extras-menu.js';
 import type { ExtrasCountersSeam } from '../hud/tool-panel/extras-window.js';
+import type { SessionHost } from '../session/index.js';
 
 const COUNTER_OFF: AssistantCounterFace = { value: 0, infinite: false };
 
@@ -12,7 +13,7 @@ const COUNTER_OFF: AssistantCounterFace = { value: 0, infinite: false };
  * command the sim would drop.
  */
 export function assistantCountersSeam(
-  sim: Pick<Simulation, 'assistantCounters'>,
+  host: Pick<SessionHost, 'assistantCounters'>,
   player: () => number | null,
   enqueue: (command: PlayerCommand) => void,
   writable = true,
@@ -20,7 +21,7 @@ export function assistantCountersSeam(
   return {
     read: () => {
       const seat = player();
-      const live = seat === null ? null : sim.assistantCounters(seat);
+      const live = seat === null ? null : host.assistantCounters(seat);
       const face = (id: AssistantCounterId): AssistantCounterFace => {
         if (live === null) return COUNTER_OFF;
         const kind = live[SIM_KIND_BY_COUNTER_ID[id]];

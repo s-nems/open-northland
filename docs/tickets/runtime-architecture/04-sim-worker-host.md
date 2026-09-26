@@ -1,7 +1,7 @@
 # Host the simulation and the lockstep driver in a dedicated worker
 
 **Area:** app, sim, lockstep, desktop · **Focus:** view/runtime · **Priority:** P2
-**Blocked by:** [00 Heavy-load reference](00-heavy-load-reference.md), [01 Session host seam](01-session-host-seam.md), [02 Snapshot delta and mirror](02-snapshot-delta-and-mirror.md)
+**Blocked by:** [00 Heavy-load reference](00-heavy-load-reference.md), [02 Snapshot delta and mirror](02-snapshot-delta-and-mirror.md)
 
 A frame that carries a tick pays tick, snapshot and draw on the main thread inside one display
 period. At speed x3 three of five frames at 60 Hz carry a tick, and those are the frames that miss
@@ -11,7 +11,7 @@ the acknowledgement the relay waits for.
 
 ## Scope
 
-- A worker host behind the interface of 01: it owns the `Simulation`, `LockstepDriver`,
+- A worker host behind `SessionHost` (`packages/app/src/session/`): it owns the `Simulation`, `LockstepDriver`,
   `FixedTimestep`, the command queue, the command log, the hash trace, the invariant checks and save
   export. Its loop is timer-driven at the tick rate times the session speed, independent of
   `requestAnimationFrame`.
@@ -19,9 +19,10 @@ the acknowledgement the relay waits for.
   the main thread never draws. The main-thread queue is bounded: deltas may coalesce when the main
   thread is behind, events never drop.
 - The fog view crosses on a `generation` change as its masks; `FogView.stateAt` is an accessor over
-  live fog state, so the main side rebuilds the accessor over the received masks. Probes and rare
-  reads of 01 become requests answered asynchronously; the frame's synchronous reads are served from
-  the mirror and the last fog view.
+  live fog state, so the main side rebuilds the accessor over the received masks. The host's probes
+  and request-shaped reads become requests answered asynchronously; its per-frame reads are served
+  from the mirror and the last fog view, and its per-tick `tickEvents` from the posted ticks, so the
+  frame loop's per-tick callback keeps its contract.
 - The worker is constructible from content plus map and from a `SaveGame`, since a staged save load
   reboots the page and restores at boot. The content set and the decoded map reach it by transfer or a
   second load; the cost is measured and stated in boot time and memory.
@@ -29,8 +30,9 @@ the acknowledgement the relay waits for.
   (`packages/desktop/src/protocol.ts`; `protocol-routing.ts` already records a Pixi worker URL quirk
   there).
 - The `?debug=profile` per-system report is assembled in the worker and requested by the main thread;
-  `window.__opennorthland` and `perf()` become asynchronous where they read the sim, and the Playwright
-  probes that use them are updated in the same change.
+  `window.__opennorthland.host` (`run`, `hashState`) and `perf()` become asynchronous where they read
+  the sim, and the Playwright probes that use them (`packages/app/test/engines/support/harness.ts`,
+  `packages/desktop/test-e2e/`) are updated in the same change.
 - A thrown tick error surfaces on the main thread as it does inline; a stalled worker is reported
   within a bounded time instead of leaving a frozen world under a live UI.
 - Single-player pause semantics are unchanged: the pauses the frame loop raises today (sub-mission

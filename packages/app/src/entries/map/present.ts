@@ -60,8 +60,22 @@ export async function presentMapWorld(
   world: AssembledMapWorld,
   runtime: MapRuntime,
 ): Promise<GameViewHandle> {
-  const { app, canvas, params, boot, session, sim, renderer, terrainGrid, loaded, ir, script, meta, pack } =
-    world;
+  const {
+    app,
+    canvas,
+    params,
+    boot,
+    session,
+    sim,
+    host,
+    renderer,
+    terrainGrid,
+    loaded,
+    ir,
+    script,
+    meta,
+    pack,
+  } = world;
   const { mapId, stagedSave } = world.plan;
   const localPlayer = localPlayerOf(session);
   const playerColourOf = seatColourOf(session);
@@ -87,7 +101,7 @@ export async function presentMapWorld(
   const landscapeEvents =
     sim.missions !== undefined && ir !== null
       ? bindScriptLandscapes(
-          sim,
+          host,
           renderer,
           staticObjects?.byPlacement ?? new Map(),
           await loadScriptLandscapeSprites(
@@ -131,7 +145,7 @@ export async function presentMapWorld(
     initialViewport,
     renderer,
     sheet: world.sheet,
-    sim,
+    host,
     driver: runtime.driver,
     ...(runtime.confirmedMatchEnd === undefined ? {} : { confirmedMatchEnd: runtime.confirmedMatchEnd }),
     ...(runtime.networkSave === undefined ? {} : { networkSave: runtime.networkSave }),

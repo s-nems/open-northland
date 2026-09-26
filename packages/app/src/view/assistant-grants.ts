@@ -1,6 +1,8 @@
-import type { PlayerCommand, Simulation } from '@open-northland/sim';
+import type { PlayerCommand } from '@open-northland/sim';
+import type { WorldSetup } from '../game/world/index.js';
 import { type AssistantGrantId, GRANT_IDS } from '../hud/tool-panel/extras-menu.js';
 import type { ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
+import type { SessionHost } from '../session/index.js';
 
 type WeaponSwitchId = Extract<AssistantGrantId, `allow${string}`>;
 type GiveSwitchId = Exclude<AssistantGrantId, WeaponSwitchId>;
@@ -53,7 +55,7 @@ function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, read
  *  spectator session (`writable: false`) rejects every write, so the window never echoes a command
  *  the sim would drop. */
 export function assistantGrantsSeam(
-  sim: Pick<Simulation, 'assistantGrants' | 'assistantWeaponVetoes'>,
+  host: Pick<SessionHost, 'assistantGrants' | 'assistantWeaponVetoes'>,
   content: GrantContent,
   player: () => number | null,
   enqueue: (command: PlayerCommand) => void,
@@ -63,8 +65,8 @@ export function assistantGrantsSeam(
   return {
     read: () => {
       const seat = player();
-      const granted = new Set(seat === null ? [] : sim.assistantGrants(seat));
-      const vetoed = new Set(seat === null ? [] : sim.assistantWeaponVetoes(seat));
+      const granted = new Set(seat === null ? [] : host.assistantGrants(seat));
+      const vetoed = new Set(seat === null ? [] : host.assistantWeaponVetoes(seat));
       const on = (id: AssistantGrantId): boolean => {
         const goods = grantGoods[id];
         if (seat === null || goods.length === 0) return false;
@@ -90,7 +92,7 @@ export function assistantGrantsSeam(
 
 /** Grants start enabled in a playable map only; scenes keep the sim default of nothing granted. */
 export function grantAssistantDefaults(
-  sim: Pick<Simulation, 'enqueueSetup'>,
+  sim: WorldSetup,
   content: GrantContent,
   players: readonly number[],
 ): void {

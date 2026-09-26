@@ -1,3 +1,4 @@
+export type { AssistantCounterValues } from './components/assistant.js';
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
 export {
   PRODUCTION_COUNT_MAX,
@@ -25,6 +26,7 @@ export {
 export { SETTLER_NAME_MAX_CHARS } from './components/settler.js';
 export { WALK_RANGE_NODES } from './components/signpost.js';
 export { TRADE_LIMIT_NONE, TRADE_ROUTE_HOUSES, type TradeImportMark } from './components/trade.js';
+export type { UnlockKind } from './components/unlocks.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
 export type { LoggedCommand } from './core/command-queue.js';
@@ -158,8 +160,10 @@ export {
   type SyncDigest,
   type SystemInstrument,
 } from './simulation.js';
+export type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
 export { RUIN_COLLAPSE_TICKS } from './systems/lifecycle/ruins.js';
+export type { LandscapeEditView } from './systems/landscape/view.js';
 export type {
   InfoLineView,
   MissionDefinition,
@@ -178,10 +182,13 @@ export {
 } from './systems/missions/index.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
 // independently without restating the sim's travel time.
+export type { PalisadeGateProbeResult } from './systems/palisades/index.js';
+export type { UnlockStatus } from './systems/progression/index.js';
 export * as systems from './systems/public.js';
 export type { EquipPickEntry, MilitaryMode } from './systems/readviews/index.js';
 export type { WorkStatus } from './systems/readviews/work-status.js';
+export type { SignpostProbe } from './systems/signposts/index.js';
 export { heapReach } from './systems/stores/seat-stock.js';
 export type { TradeOffer, TraderView, TradeStopView } from './systems/trade/index.js';
-export type { VehicleStockView, VehicleView } from './systems/vehicles/index.js';
+export type { MooringProbe, VehicleStockView, VehicleView } from './systems/vehicles/index.js';
 export { FOG_STATE } from './systems/vision/index.js';

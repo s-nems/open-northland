@@ -197,6 +197,16 @@ export function typeAllowed(
   );
 }
 
+/** Whether a tribe may have a job, house or good at all, and whether `owner` has unlocked it yet. */
+export interface UnlockStatus {
+  allowed: boolean;
+  enabled: boolean;
+  enablingJobs: number[];
+  requiredJobs: number[];
+  /** Each good the house still waits on, with the jobs whose work discovers it. */
+  requiredGoods: { good: number; jobs: number[] }[];
+}
+
 export function unlockStatus(
   world: World,
   ctx: ContentContext,
@@ -204,14 +214,7 @@ export function unlockStatus(
   tribe: number,
   kind: UnlockKind,
   typeId: number,
-): {
-  allowed: boolean;
-  enabled: boolean;
-  enablingJobs: number[];
-  requiredJobs: number[];
-  /** Each good the house still waits on, with the jobs whose work discovers it. */
-  requiredGoods: { good: number; jobs: number[] }[];
-} {
+): UnlockStatus {
   const allowed = typeAllowed(world, ctx, owner, tribe, kind, typeId);
   const enabled =
     kind === 'house'

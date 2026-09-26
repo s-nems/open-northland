@@ -37,6 +37,7 @@ import { sessionWorldOptions } from '../../game/session-world.js';
 import { mapScriptWorld, terrainSceneFor } from '../../game/world/index.js';
 import { type WorldTribes, worldTribes } from '../../game/world-tribes.js';
 import { type PresentationPack, presentationPack } from '../../presentation/pack.js';
+import { inlineSessionHost, type SessionHost } from '../../session/index.js';
 import { type BootPhase, type BootProgress, mountBootProgress } from '../../view/boot-progress.js';
 import {
   createWorldRenderer,
@@ -83,6 +84,8 @@ export interface AssembledMapWorld {
   readonly plan: MapBootPlan;
   readonly session: GameSession;
   readonly sim: Simulation;
+  /** The runtime's view of `sim`; the presentation half and the diag session share this one object. */
+  readonly host: SessionHost;
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet;
   readonly pack: PresentationPack | null;
@@ -244,12 +247,13 @@ export async function assembleMapWorld(
       harvestablePlacements = world.harvestablePlacements;
       pooledPlacements = world.pooledPlacements;
     }
+    const host = inlineSessionHost(sim);
     setDiagGameSession({
       entry: 'map',
       worldId: mapId,
       seed: sim.seed,
       restoredAtTick: stagedSave !== null ? sim.tick : null,
-      sim,
+      host,
       hashTrace: hashTraceFor(params),
     });
     assembled = true;
@@ -261,6 +265,7 @@ export async function assembleMapWorld(
       plan,
       session,
       sim,
+      host,
       renderer,
       sheet,
       pack,

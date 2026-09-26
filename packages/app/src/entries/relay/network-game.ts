@@ -184,7 +184,7 @@ export function renderNetworkGame(
       driver: client,
       sharedClock: true,
       confirmedMatchEnd: () => client.endedTick,
-      networkSave: networkSaveSession(client, world.sim),
+      networkSave: networkSaveSession(client, world),
       introAtStart: false,
       netReadout: readout,
       onReturnToMenu: returnToMenu,

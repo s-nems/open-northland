@@ -4,7 +4,6 @@ import {
   type Entity,
   entityById,
   type PlayerCommand,
-  type Simulation,
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -23,6 +22,7 @@ import {
 import { technologyLabel } from '../../game/technology.js';
 import { createChoiceWindow } from '../../hud/dom/choice-window.js';
 import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
+import type { SessionHost } from '../../session/index.js';
 import { orderRecipients } from './action-ring/menu-state.js';
 
 export interface SchoolCourse {
@@ -140,7 +140,7 @@ export interface SchoolDialogOptions {
   readonly settlers: readonly number[];
   readonly house: number;
   readonly enqueue: (command: PlayerCommand) => void;
-  readonly status?: Simulation['unlockStatus'] | undefined;
+  readonly status?: SessionHost['unlockStatus'] | undefined;
   readonly cue?: ((cue: UiCue) => void) | undefined;
   readonly scale: number;
 }

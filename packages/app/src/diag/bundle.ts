@@ -56,11 +56,11 @@ export function buildDiagnosticsBundle(
 }
 
 function gameReport(session: DiagGameSession): DiagnosticsGameReport {
-  const { sim } = session;
+  const { host } = session;
   // Hashing walks every component, so a wedged world may throw; a null hash must not lose the bundle.
   let finalHash: string | null = null;
   try {
-    finalHash = sim.hashState();
+    finalHash = host.hashState();
   } catch {
     // A null hash still leaves a replayable command log.
   }
@@ -68,12 +68,12 @@ function gameReport(session: DiagGameSession): DiagnosticsGameReport {
     entry: session.entry,
     worldId: session.worldId,
     seed: session.seed,
-    tick: sim.tick,
+    tick: host.tick,
     ...(session.restoredAtTick !== undefined && session.restoredAtTick !== null
       ? { restoredAtTick: session.restoredAtTick }
       : {}),
     finalHash,
-    commandLog: sim.commands.log,
+    commandLog: host.commandLog,
     ...(session.hashTrace !== null
       ? { hashes: session.hashTrace.list().map(({ tick, hash }) => ({ tick, hash })) }
       : {}),

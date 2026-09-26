@@ -75,7 +75,7 @@ export interface PlacementDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
-  /** The sim's live placement rule for the held type at a tile (`Simulation.placementProbe`); a click on
+  /** The sim's live placement rule for the held type at a tile (`SessionHost.placementProbe`); a click on
    *  a rejecting tile is inert, so build mode only ends on a placement that lands. */
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;

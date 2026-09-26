@@ -82,12 +82,14 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
     assert.deepEqual(routes[0]?.bytes.slice(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
 
     await page.goto(`${MENU}&map=magiczny_las&intro=off&uiscale=1`);
-    await page.waitForFunction(() => (window.__opennorthland?.sim.tick ?? 0) >= 3, null, { timeout: 90_000 });
+    await page.waitForFunction(() => (window.__opennorthland?.host.tick ?? 0) >= 3, null, {
+      timeout: 90_000,
+    });
     const saved = await page.evaluate(() => {
       const game = window.__opennorthland;
       if (game === undefined) throw new Error('Game did not mount');
       game.setPaused(true);
-      return { tick: game.sim.tick, hash: game.sim.hashState() };
+      return { tick: game.host.tick, hash: game.host.hashState() };
     });
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -130,8 +132,8 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
       const game = window.__opennorthland;
       if (game === undefined) throw new Error('Save did not mount');
       return {
-        tick: game.sim.tick,
-        hash: game.sim.hashState(),
+        tick: game.host.tick,
+        hash: game.host.hashState(),
         paused: game.perf().paused,
         map: new URLSearchParams(location.search).get('map'),
       };

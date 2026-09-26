@@ -2,7 +2,7 @@ import type { BuildingHighlightItem } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { num } from '../../../game/snapshot.js';
 
-/** The sim's trade-stop rule (`Simulation.canAttachTradeHouse`): whether the trader's route takes the
+/** The sim's trade-stop rule (`SessionHost.canAttachTradeHouse`): whether the trader's route takes the
  *  house. */
 export type TradeHouseRule = (trader: number, house: number) => boolean;
 

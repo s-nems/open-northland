@@ -23,7 +23,6 @@ import type { ContentIr } from '../../content/ir/rows.js';
 import { spawnMapPalisades } from '../../content/map-palisades.js';
 import { buildScriptLandscapeTerrain } from '../../content/script-landscape.js';
 import { playerTribe } from '../../game/map-roster.js';
-import { setupPlacementTribes } from '../../game/placement-tribes.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   resolveWorldContent,
@@ -44,6 +43,7 @@ import {
   runAuthoredMap,
   runBareMap,
   runDemoWorld,
+  setupPlacementTribes,
   withNeutralRosterPairs,
 } from '../../game/world/index.js';
 import { grantAssistantDefaults } from '../../view/assistant-grants.js';

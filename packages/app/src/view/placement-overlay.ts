@@ -4,10 +4,11 @@ import {
   type PlacementOverlayFrame,
   visibleTileRange,
 } from '@open-northland/render';
-import { type Entity, FOG_STATE, type Paper, type Simulation } from '@open-northland/sim';
+import { type Entity, FOG_STATE, type Paper } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { type ActiveLine, type LineFan, lineFan, lineReach } from '../hud/tool-panel/line-tool.js';
 import type { LitNodes } from '../hud/tool-panel/placement.js';
+import type { SessionHost } from '../session/index.js';
 import { nodeBandOfCells } from './picking.js';
 
 /** Tiles beyond the visible band the overlay also probes, so its edge never shows during a pan. */
@@ -21,7 +22,7 @@ const OVERLAY_BAND_MARGIN = 2;
  * dim too, mirroring the `canPlaceAt` fog gate.
  */
 export function makeOverlayFrameSource(
-  sim: Simulation,
+  host: Pick<SessionHost, 'placementProbe' | 'placementBlockerVersion' | 'fogView'>,
   mapSize: { readonly width: number; readonly height: number },
   // The seat whose fog and enemies gate the overlay.
   player: number = HUMAN_PLAYER,
@@ -33,12 +34,12 @@ export function makeOverlayFrameSource(
   screenH: number,
   paper?: Paper,
 ) => PlacementOverlayFrame | null {
-  const band = makeBandProber(sim, mapSize, player);
+  const band = makeBandProber(host, mapSize, player);
   return (buildingType, camera, screenW, screenH, paper) =>
     band(
-      () => sim.placementProbe(buildingType, player, paper === undefined ? tribe : undefined),
+      () => host.placementProbe(buildingType, player, paper === undefined ? tribe : undefined),
       (probe, band) =>
-        `b${buildingType}:${paper === undefined ? 'tech' : 'paper'}:${sim.placementBlockerVersion()}:${probe.contestedKeyWithin(band.minCol, band.maxCol, band.minRow, band.maxRow)}`,
+        `b${buildingType}:${paper === undefined ? 'tech' : 'paper'}:${host.placementBlockerVersion()}:${probe.contestedKeyWithin(band.minCol, band.maxCol, band.minRow, band.maxRow)}`,
       camera,
       screenW,
       screenH,
@@ -50,15 +51,15 @@ export function makeOverlayFrameSource(
  * which also tracks the work-flag markers buildings ignore.
  */
 export function makeSignpostOverlaySource(
-  sim: Simulation,
+  host: Pick<SessionHost, 'signpostProbe' | 'signpostBlockerVersion' | 'fogView'>,
   mapSize: { readonly width: number; readonly height: number },
   player: number = HUMAN_PLAYER,
 ): (camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
-  const band = makeBandProber(sim, mapSize, player);
+  const band = makeBandProber(host, mapSize, player);
   return (camera, screenW, screenH) =>
     band(
-      () => sim.signpostProbe(player),
-      () => `s:${sim.signpostBlockerVersion()}`,
+      () => host.signpostProbe(player),
+      () => `s:${host.signpostBlockerVersion()}`,
       camera,
       screenW,
       screenH,
@@ -71,14 +72,14 @@ export function makeSignpostOverlaySource(
  * blocker or the fog changes.
  */
 export function makeLineReachSource(
-  sim: Simulation,
+  host: Pick<SessionHost, 'placementBlockerVersion' | 'fogView'>,
   player: number = HUMAN_PLAYER,
 ): (line: ActiveLine) => LitNodes {
   let lit: LitNodes = { key: '', has: () => false };
   let fan: LineFan | null = null;
   return (line) => {
-    const fog = sim.fogView(player);
-    const key = `line:${line.tool}:${line.anchor.col},${line.anchor.row}:${sim.placementBlockerVersion()}:${fog === null ? 'off' : `${fog.mode}:${fog.generation}`}`;
+    const fog = host.fogView(player);
+    const key = `line:${line.tool}:${line.anchor.col},${line.anchor.row}:${host.placementBlockerVersion()}:${fog === null ? 'off' : `${fog.mode}:${fog.generation}`}`;
     if (key !== lit.key) {
       if (
         fan === null ||
@@ -97,11 +98,11 @@ export function makeLineReachSource(
 
 /** The wash of a tool that lights a node set of its own: everything dims but `lit`. */
 export function makeLitOverlaySource(
-  sim: Simulation,
+  host: Pick<SessionHost, 'fogView'>,
   mapSize: { readonly width: number; readonly height: number },
   player: number = HUMAN_PLAYER,
 ): (lit: LitNodes, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
-  const band = makeBandProber(sim, mapSize, player);
+  const band = makeBandProber(host, mapSize, player);
   return (lit, camera, screenW, screenH) =>
     band(
       () => ({ canPlace: (x: number, y: number) => lit.has(x, y) }),
@@ -118,15 +119,15 @@ export function makeLitOverlaySource(
  * ship's position and the walk-blockers, so an armed pick over a still sea re-walks nothing.
  */
 export function makeDockOverlaySource(
-  sim: Simulation,
+  host: Pick<SessionHost, 'mooringProbe' | 'fogView'>,
   mapSize: { readonly width: number; readonly height: number },
   player: number = HUMAN_PLAYER,
 ): (vehicle: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
-  const band = makeBandProber(sim, mapSize, player);
+  const band = makeBandProber(host, mapSize, player);
   return (vehicle, camera, screenW, screenH) =>
     band(
       () => {
-        const probe = sim.mooringProbe(vehicle as Entity);
+        const probe = host.mooringProbe(vehicle as Entity);
         return probe === null ? null : { canPlace: probe.canMoor, key: probe.key };
       },
       (probe) => `d${vehicle}:${probe.key}`,
@@ -143,7 +144,7 @@ interface NodeProbe {
 /** Memoizes the whole frame on (probe key, fog, band). The probe is built every frame - the fighter scan
  *  behind it is memoized per world mutation - and its key over the band decides whether to walk again. */
 function makeBandProber(
-  sim: Simulation,
+  host: Pick<SessionHost, 'fogView'>,
   mapSize: { readonly width: number; readonly height: number },
   player: number,
 ): <P extends NodeProbe>(
@@ -165,7 +166,7 @@ function makeBandProber(
       OVERLAY_BAND_MARGIN,
     );
     const range = nodeBandOfCells(cells);
-    const fog = sim.fogView(player);
+    const fog = host.fogView(player);
     const fogKey = fog === null ? 'off' : `${fog.mode}:${fog.generation}`;
     const nextKey = `${keyOf(probe, range)}:${fogKey}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
     if (nextKey === key && frame !== null) return frame;

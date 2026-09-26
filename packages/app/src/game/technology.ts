@@ -1,12 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
-import type { Simulation } from '@open-northland/sim';
+import type { UnlockStatus } from '@open-northland/sim';
 import { professionDefForJob } from '../catalog/professions.js';
 import { messages, professionLabel } from '../i18n/index.js';
 
-export function technologyReason(
-  content: ContentSet,
-  status: ReturnType<Simulation['unlockStatus']>,
-): string | null {
+export function technologyReason(content: ContentSet, status: UnlockStatus): string | null {
   if (!status.allowed) return messages().hud.technologyForbidden;
   if (status.enabled) return null;
   const jobs = (

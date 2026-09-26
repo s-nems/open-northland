@@ -1,6 +1,6 @@
 import type { Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
-import { grassTerrain, placedBuildingTypes, VIKING_BUILDINGS } from '../../catalog/buildings.js';
+import { grassTerrain, VIKING_BUILDINGS } from '../../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import {
   placeBuiltSandboxBuilding,
@@ -32,7 +32,7 @@ import {
   WAREHOUSE_IDS,
 } from './placements.js';
 
-const { Chat, Owner, Settler } = components;
+const { Building, Chat, Owner, Settler } = components;
 
 const MAP_W = 96;
 const MAP_H = 96;
@@ -81,6 +81,13 @@ function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
 export function buildSandboxSettlement(sim: Simulation, ox = 0, oy = 0): void {
   buildVillage(sim, ox, oy);
   buildResourceBase(sim, ox, oy);
+}
+
+/** The distinct building types standing in the world. */
+function placedBuildingTypes(sim: Simulation): Set<number> {
+  const types = new Set<number>();
+  for (const e of sim.world.query(Building)) types.add(sim.world.get(e, Building).buildingType);
+  return types;
 }
 
 function build(sim: Simulation): void {

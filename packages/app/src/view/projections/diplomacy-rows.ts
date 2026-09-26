@@ -4,19 +4,18 @@ import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import type { DiplomacyPanelRow, TributePanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { MetSeat } from '../../hud/tool-panel/messages/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
+import type { SessionHost } from '../../session/index.js';
 
-/** The sim reads the roster projection needs; `Simulation` satisfies it structurally. */
-export interface DiplomacySimView {
-  hasMetPlayer(viewer: number, other: number): boolean;
-  diplomacyStance(from: number, to: number): DiplomacyState;
-  diplomacyLocked(a: number, b: number): boolean;
-  /** The open tributes `payer` owes, as the sim's probe lists them. */
-  openTributes(payer: number): readonly OpenTribute[];
-  /** The units `player`'s traders took out of `partner`'s houses under a trade agreement. */
-  goodsTradedWith(player: number, partner: number): number;
-  /** The map agreements `partner`'s houses offer a visiting trader, each once. */
-  tradeOffersOf(partner: number): readonly TradeOffer[];
-}
+/** The host reads the roster projection needs. */
+export type DiplomacySimView = Pick<
+  SessionHost,
+  | 'hasMetPlayer'
+  | 'diplomacyStance'
+  | 'diplomacyLocked'
+  | 'openTributes'
+  | 'goodsTradedWith'
+  | 'tradeOffersOf'
+>;
 
 export interface DiplomacyRosterOptions {
   readonly localPlayer: number;

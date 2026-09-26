@@ -26,7 +26,7 @@ it('polls confirmed finish when an adopted terminal save advances zero ticks and
     deps: {
       app: {},
       renderer: { setPaused: vi.fn() },
-      sim: {
+      host: {
         snapshot: () => {
           throw afterPoll;
         },
@@ -62,7 +62,7 @@ it('does not touch camera, snapshot or renderer after a driver error disposes th
     deps: {
       app: {},
       renderer: { setPaused, update: render },
-      sim: { snapshot },
+      host: { snapshot },
       cameraCtl: { update: cameraUpdate },
       params: new URLSearchParams(),
     },

@@ -288,7 +288,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       onReturnToMenu: () => exit.quit(),
       introAtStart: false,
       netReadout: readout,
-      networkSave: networkSaveSession(client, world.sim),
+      networkSave: networkSaveSession(client, world),
     });
     if (out) {
       presented.destroy();

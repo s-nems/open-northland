@@ -53,14 +53,15 @@ export interface UnitPanelModelContext {
   /** The map's own string by id, which names a settler the map or its script named. Absent, or a
    *  missing id, leaves the generated name. */
   readonly mapText?: ((stringId: number) => string | undefined) | undefined;
-  /** The sim's battle-alert read seam (`Simulation.standsTo`): whether a unit is holding its ground
+  /** The sim's battle-alert read seam (`SessionHost.standsTo`): whether a unit is holding its ground
    *  because fighting is going on around it. Absent leaves such a unit reading as idle. */
   readonly standsTo?: ((entity: number) => boolean) | undefined;
   /** The sim's land-trader test (`isTraderJob`); absent reads no trade as the trader. */
   readonly isTraderJob?: ((jobType: number) => boolean) | undefined;
   /** The sim's trader read seam (`Simulation.traderView`); absent hides the Handel section. */
+  /** The sim's trader read seam (`SessionHost.traderView`); absent hides the Handel section. */
   readonly traderView?: ((entity: number) => TraderView | undefined) | undefined;
-  /** The sim's agreement read seam (`Simulation.tradeOffersAt`); absent lists no offers on a house. */
+  /** The sim's agreement read seam (`SessionHost.tradeOffersAt`); absent lists no offers on a house. */
   readonly tradeOffersAt?: ((house: number) => readonly TradeOffer[]) | undefined;
   /** The sim's work-status read seam (`Simulation.workStatus`) for the one selected tradesman; absent
    *  leaves the status line without a product or an idle reason. */

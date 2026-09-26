@@ -78,7 +78,7 @@ import {
   palisadeLayoutVersion,
   palisadePlacementProbe,
 } from './systems/palisades/index.js';
-import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression/index.js';
+import { canChooseJob, needSubjectOf, type UnlockStatus, unlockStatus } from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { type WorkStatus, workStatus } from './systems/readviews/work-status.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
@@ -321,12 +321,7 @@ export class Simulation {
     return snap;
   }
 
-  unlockStatus(
-    kind: UnlockKind,
-    typeId: number,
-    tribe: number,
-    player?: number,
-  ): ReturnType<typeof unlockStatus> {
+  unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): UnlockStatus {
     return unlockStatus(this.world, { content: this.content }, player, tribe, kind, typeId);
   }
 

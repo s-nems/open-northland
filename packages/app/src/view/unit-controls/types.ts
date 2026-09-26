@@ -27,10 +27,11 @@ import type { CentralWindows } from '../../hud/dom/trade-window/window.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import type { PresentationPack } from '../../presentation/pack.js';
+import type { SessionHost } from '../../session/index.js';
 import type { OverviewPress } from './overview-orders.js';
 
 export interface UnitControlsOptions {
-  readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'];
+  readonly technologyStatus?: SessionHost['unlockStatus'];
   /** The sim's own answer to whether a settler may take a trade; the picker offers a row when a selected
    *  settler the profession order reaches may, and changes only those who may. */
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
@@ -68,19 +69,19 @@ export interface UnitControlsOptions {
   readonly resourceVisible?: (tileX: number, tileY: number) => boolean;
   /** The frame's fog-filtered door badges; absent or empty disables badge picking. */
   readonly doorBadges?: () => readonly DoorBadge[];
-  /** The sim's equip pick-list read seam (`Simulation.equipPickList`); absent leaves the equipment
+  /** The sim's equip pick-list read seam (`SessionHost.equipPickList`); absent leaves the equipment
    *  panel's plus/swap buttons inert. */
   readonly equipPickList?: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
-  /** The sim's battle-alert read seam (`Simulation.standsTo`); absent leaves a unit holding its ground
+  /** The sim's battle-alert read seam (`SessionHost.standsTo`); absent leaves a unit holding its ground
    *  under fire captioned as idle. */
   readonly standsTo?: (entity: number) => boolean;
-  /** The sim's trader read seams (`Simulation.traderView` / `tradeOffersAt`); absent hides trade. */
+  /** The sim's trader read seams (`SessionHost.traderView` / `tradeOffersAt`); absent hides trade. */
   readonly traderView?: (entity: number) => TraderView | undefined;
   readonly tradeOffersAt?: (house: number) => readonly TradeOffer[];
-  /** The sim's trade-stop rule (`Simulation.canAttachTradeHouse`), which lights the trade-house pick's
+  /** The sim's trade-stop rule (`SessionHost.canAttachTradeHouse`), which lights the trade-house pick's
    *  targets and gates a trader's right-click on a house; absent, neither puts a house on a route. */
   readonly canAttachTradeHouse?: (trader: number, house: number) => boolean;
-  /** The sim's vehicle rules (`Simulation.canAttachToVehicle` / `mooringProbe`), which light the
+  /** The sim's vehicle rules (`SessionHost.canAttachToVehicle` / `mooringProbe`), which light the
    *  "Assign Vehicle" and dock picks' targets and gate their clicks; absent, the picks light nothing
    *  and the sim alone refuses. */
   readonly canAttachToVehicle?: (settler: number, vehicle: number) => boolean;

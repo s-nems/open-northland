@@ -1,11 +1,12 @@
 import { lastByTypeId } from '@open-northland/data';
-import { type Simulation, systems } from '@open-northland/sim';
+import { systems } from '@open-northland/sim';
 import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
+import type { SessionHost } from '../../session/index.js';
 import {
   makeDockOverlaySource,
   makeLineReachSource,
@@ -24,7 +25,7 @@ import {
 
 export interface ViewReadModelDeps {
   readonly placementTribe?: number;
-  readonly sim: Simulation;
+  readonly host: SessionHost;
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The seat that places and probes; the HUD figures follow `viewer` instead. */
   readonly localPlayer: number;
@@ -43,7 +44,7 @@ export interface ViewReadModelDeps {
 /** The building read models: the geometry every type shares, plus the per-skin sign-post and
  *  garrison-mast anchors. */
 export function buildingModels(
-  buildings: Simulation['content']['buildings'],
+  buildings: SessionHost['content']['buildings'],
   ir: ContentIr | null,
   tribes: WorldTribes,
 ): { readonly byType: ReadonlyMap<number, GeometryBuildingInfo>; readonly infoOf: BuildingDoorInfoOf } {
@@ -85,18 +86,18 @@ export interface ViewReadModels extends ReturnType<typeof createSnapshotProjecti
 }
 
 export async function createViewReadModels(deps: ViewReadModelDeps): Promise<ViewReadModels> {
-  const { sim, mapSize, localPlayer, fogGates } = deps;
-  const goodLabelByType = new Map(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
+  const { host, mapSize, localPlayer, fogGates } = deps;
+  const goodLabelByType = new Map(host.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
   const ir = await loadIr();
-  const buildings = buildingModels(sim.content.buildings, ir, deps.tribes);
+  const buildings = buildingModels(host.content.buildings, ir, deps.tribes);
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     buildingDoors: buildings.byType,
-    overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer, deps.placementTribe),
-    signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
-    lineReach: makeLineReachSource(sim, localPlayer),
-    litOverlayFrame: makeLitOverlaySource(sim, mapSize, localPlayer),
-    dockOverlayFrame: makeDockOverlaySource(sim, mapSize, localPlayer),
+    overlayFrame: makeOverlayFrameSource(host, mapSize, localPlayer, deps.placementTribe),
+    signpostOverlayFrame: makeSignpostOverlaySource(host, mapSize, localPlayer),
+    lineReach: makeLineReachSource(host, localPlayer),
+    litOverlayFrame: makeLitOverlaySource(host, mapSize, localPlayer),
+    dockOverlayFrame: makeDockOverlaySource(host, mapSize, localPlayer),
     ...createSnapshotProjections(
       deps.viewer,
       buildings.infoOf,
@@ -104,7 +105,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
       fogGates,
       {
         // The same content read the sim's capture drive keys on.
-        isLivestockTribe: (tribe) => systems.isCatchableAnimal(sim.content, tribe),
+        isLivestockTribe: (tribe) => systems.isCatchableAnimal(host.content, tribe),
         playerColourOf: deps.playerColourOf,
         selection: deps.selection,
       },

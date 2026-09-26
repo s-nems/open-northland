@@ -33,10 +33,9 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [01 Session host seam](01-session-host-seam.md) | The runtime reads the world through one host interface; `Simulation` only in entries, scenes, sandbox | none |
-| [02 Snapshot delta and mirror](02-snapshot-delta-and-mirror.md) | A per-tick delta from the clone cache and a mirror that rebuilds the snapshot with its identities | 00, 01 |
+| [02 Snapshot delta and mirror](02-snapshot-delta-and-mirror.md) | A per-tick delta from the clone cache and a mirror that rebuilds the snapshot with its identities | 00 |
 | [03 Mirror indexes](03-mirror-indexes.md) | Per-kind, per-player and spatial indexes maintained from the delta; no per-tick pass over every entity in the app | 00, 02 |
-| [04 Sim worker host](04-sim-worker-host.md) | Sim, driver and timestep in a worker behind the seam; inline host kept for tests and scenes | 00, 01, 02 |
+| [04 Sim worker host](04-sim-worker-host.md) | Sim, driver and timestep in a worker behind the seam; inline host kept for tests and scenes | 00, 02 |
 | [05 Transport in the worker](05-transport-in-worker.md) | Loopback, then the relay client with its digests and pacer, inside the worker | 04 |
 | [06 Draw loop on the mirror](06-draw-loop-on-mirror.md) | The frame loop draws the mirror and interpolates; shortfall visible in the HUD | 00, 04 |
 | [07 Client load telemetry](07-client-load-telemetry.md) | Each client reports tick cost and backlog to the relay on the protocol | 00 |
@@ -45,10 +44,13 @@ policies so that optimisation has a ceiling worth reaching.
 | [10 Desync forensics](10-desync-forensics.md) | Both sides of a divergence capture the disputed tick per domain into the bundle | none |
 | [11 Background tab ticking](11-background-tab-ticking.md) | Verify and document whether the worker host keeps ticking in a hidden tab | 05 |
 
-00 lands first, then 01 to 03, which are behaviour-preserving. 04 to 06 are the worker. 07 and 08
-are the networking change and can proceed in parallel with the worker. 09 to 11 close the epic.
-Contract edits land with the ticket that makes them true: 03 removes the render visibility-pass
-allowance and the matching exception in root `AGENTS.md`, 04 rewrites `packages/app/AGENTS.md`.
+The runtime already reads the world through one host interface, `SessionHost` in
+`packages/app/src/session/`, with `inlineSessionHost` over the live `Simulation`; the entries, scenes,
+`game/sandbox/` and `game/world/` are the hosts that construct a `Simulation`. 00 lands first, then 02
+and 03, which are behaviour-preserving. 04 to 06 are the worker. 07 and 08 are the networking change
+and can proceed in parallel with the worker. 09 to 11 close the epic. Contract edits land with the
+ticket that makes them true: 03 removes the render visibility-pass allowance and the matching
+exception in root `AGENTS.md`, 04 rewrites `packages/app/AGENTS.md`.
 
 ## Not in this epic
 
@@ -63,4 +65,4 @@ allowance and the matching exception in root `AGENTS.md`, 04 rewrites `packages/
 ## Shared verification
 
 Every ticket runs the gates in `docs/TESTING.md` and reports its numbers from the 00 reference. State
-hashes and goldens change only where a ticket names the behaviour change; 01 to 06 name none.
+hashes and goldens change only where a ticket names the behaviour change; 02 to 06 name none.

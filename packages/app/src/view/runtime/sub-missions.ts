@@ -1,14 +1,13 @@
 import {
   type ExportSaveOptions,
-  exportSaveGame,
   parseSaveGame,
   type SaveGame,
   type SimEvent,
-  type Simulation,
   serializeSaveGame,
 } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { swapToEntry } from '../../launch.js';
+import type { SessionHost } from '../../session/index.js';
 import { compressSaveText } from './save-load/codec.js';
 import { clearPendingLoad, storePendingLoad } from './save-load/pending-store.js';
 import { relaunchSearch } from './save-load/relaunch.js';
@@ -18,7 +17,7 @@ export type SubMissionTransition = Extract<SimEvent, { kind: 'missionSubMission'
 export type PrepareSubMission = (transition: SubMissionTransition, current: SaveGame) => Promise<SaveGame>;
 
 export interface SubMissionDeps {
-  readonly sim: Simulation;
+  readonly host: Pick<SessionHost, 'exportSave'>;
   readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
   readonly worldToken: string | null;
   readonly params: URLSearchParams;
@@ -44,7 +43,7 @@ export function createSubMissions(deps: SubMissionDeps): {
     const run = async (): Promise<void> => {
       if (deps.prepare === undefined || deps.worldToken === null)
         throw new Error('This world cannot load sub-missions');
-      const capture = deps.captureSave ?? ((options: ExportSaveOptions) => exportSaveGame(deps.sim, options));
+      const capture = deps.captureSave ?? ((options: ExportSaveOptions) => deps.host.exportSave(options));
       const current = await capture({
         mapId: deps.worldToken,
         entry: `?${deps.params}`,

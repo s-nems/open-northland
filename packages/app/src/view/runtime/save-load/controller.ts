@@ -1,11 +1,6 @@
-import {
-  type ExportSaveOptions,
-  exportSaveGame,
-  type SaveGame,
-  type Simulation,
-  serializeSaveGame,
-} from '@open-northland/sim';
+import { type ExportSaveOptions, type SaveGame, serializeSaveGame } from '@open-northland/sim';
 import { diag } from '../../../diag/index.js';
+import type { SessionHost } from '../../../session/index.js';
 import { compressSaveText, isGzipSave, type SaveBytes } from './codec.js';
 import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
@@ -21,7 +16,8 @@ export type LoadOutcome =
   | { kind: 'rejected'; reason: SaveRejection | 'storage' | 'missing' };
 
 export interface SaveLoadDeps {
-  readonly sim: Simulation;
+  readonly host: Pick<SessionHost, 'mapFingerprint' | 'content' | 'exportSave'>;
+  /** The session's capture, with its accepted future input; absent, the host exports the world alone. */
   readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
   readonly parent?: SaveGame;
   readonly loadRelatedWorld?: (save: SaveGame, bytes: SaveBytes) => Promise<void>;
@@ -66,7 +62,7 @@ export interface SaveLoadSession {
  * paused on its own.
  */
 export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
-  const { sim, worldToken } = deps;
+  const { host, worldToken } = deps;
   let forced: { priorPaused: boolean } | null = null;
   const forcePause = (): void => {
     if (forced !== null) return;
@@ -94,8 +90,8 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
       ...(deps.loadRelatedWorld !== undefined
         ? { rootWorldToken: deps.parent !== undefined ? rootWorldId(deps.parent) : worldToken }
         : {}),
-      mapFingerprint: sim.mapFingerprint ?? null,
-      irVersion: sim.content.manifest.version,
+      mapFingerprint: host.mapFingerprint ?? null,
+      irVersion: host.content.manifest.version,
     });
     if (!evaluated.ok) return { kind: 'rejected', reason: evaluated.reason };
     if (evaluated.save.header.mapId !== worldToken && deps.loadRelatedWorld !== undefined) {
@@ -123,7 +119,7 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 
     async saveGame(name: string): Promise<SaveOutcome> {
       try {
-        const capture = deps.captureSave ?? ((options: ExportSaveOptions) => exportSaveGame(sim, options));
+        const capture = deps.captureSave ?? ((options: ExportSaveOptions) => host.exportSave(options));
         const save = await capture({
           savedAt: Date.now(),
           ...(deps.sessionMetadata === undefined ? {} : { session: deps.sessionMetadata() }),

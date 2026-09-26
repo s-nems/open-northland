@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { currentDiagGameSession, setDiagGameSession } from '../src/diag/session.js';
 import * as hudDom from '../src/hud/dom/root.js';
+import { inlineSessionHost } from '../src/session/index.js';
 import * as toolPanel from '../src/view/game-tool-panel.js';
 import * as perfOverlay from '../src/view/perf-overlay.js';
 import * as presentation from '../src/view/runtime/game-presentation.js';
@@ -64,9 +65,10 @@ it.each([false, true])(
 
     for (let attempt = 0; attempt < 2; attempt++) {
       const sim = new Simulation({ seed: 7, content: testContent() });
-      setDiagGameSession({ entry: 'scene', worldId: 'mount-test', seed: 7, sim, hashTrace: null });
+      const host = inlineSessionHost(sim);
+      setDiagGameSession({ entry: 'scene', worldId: 'mount-test', seed: 7, host, hashTrace: null });
       const deps = {
-        sim,
+        host,
         params: new URLSearchParams(),
         canvas: new EventTarget(),
         initialViewport: { width: 1000, height: 600 },
