@@ -131,7 +131,8 @@ function land(
 /**
  * Land shot `proj`'s blow on `victim`; true when it did damage. The victim's armor picks the damage column,
  * as a melee swing's does. Original behavior: the blow comes from where the shot was loosed, which a
- * person's hit direction reads. A side not at war with the shooter, which only a `hitSelf` weapon reaches,
+ * person's hit direction reads, and a siege shot (the only kind with an `impact`) is a vehicle's, which the
+ * commander's amulets do not raise. A side not at war with the shooter, which only a `hitSelf` weapon reaches,
  * takes the wound without turning hostile over it (approximation: the original's diplomacy reaction to
  * friendly splash is unconfirmed).
  */
@@ -148,6 +149,7 @@ function strike(
     weaponMainType: proj.weaponMainType,
     hitSoundType: hitSoundVsMaterial(proj, material) ?? null,
     from: { x: proj.originX, y: proj.originY },
+    vehicleShot: proj.impact !== null,
   };
   const source = atWar(world, proj.player ?? undefined, ownerOf(world, victim)) ? 'projectile' : 'collateral';
   return resolveCombatHit(world, ctx, proj.source, victim, blow, pendingReactions, source);

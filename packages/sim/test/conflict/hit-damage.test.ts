@@ -58,7 +58,7 @@ function blowFrom(
   node: { hx: number; hy: number } | undefined,
 ) {
   if (node === undefined) throw new Error('missing neighbour');
-  return landedDamage(sim.world, ctxOf(sim), striker, victim, BASE, positionOfNode(node.hx, node.hy));
+  return landedDamage(sim.world, ctxOf(sim), striker, victim, BASE, positionOfNode(node.hx, node.hy), true);
 }
 
 describe('hexHeadingBetween - the map-point heading toward another node', () => {
@@ -131,7 +131,7 @@ describe('landedDamage - a person struck from each side', () => {
     facing(sim, victim, WALK_DIRECTION.E);
     expect(blowFrom(sim, striker, victim, WEST)).toBe((BASE * 3) / 2 - ARMOR_BLOCKING);
     const from = positionOfNode(VICTIM.hx + 1, VICTIM.hy);
-    expect(landedDamage(sim.world, ctxOf(sim), striker, victim, ARMOR_BLOCKING, from)).toBe(0);
+    expect(landedDamage(sim.world, ctxOf(sim), striker, victim, ARMOR_BLOCKING, from, true)).toBe(0);
   });
 });
 
@@ -152,7 +152,7 @@ describe('landedDamage - animals and buildings', () => {
     expect(targetMaterial(sim.world, ctxOf(sim), house)).toBe(ARMOR_MATERIAL.HOUSE);
     expect(blowFrom(sim, striker, house, WEST)).toBe(BASE);
     const from = positionOfNode(VICTIM.hx + 1, VICTIM.hy);
-    expect(landedDamage(sim.world, ctxOf(sim), striker, house, 0, from)).toBe(0);
+    expect(landedDamage(sim.world, ctxOf(sim), striker, house, 0, from, true)).toBe(0);
   });
 });
 

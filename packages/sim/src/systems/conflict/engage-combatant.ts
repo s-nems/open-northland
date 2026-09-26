@@ -23,6 +23,7 @@ import {
   type SettlerIdentity,
   SettlerProgress,
   Sheltering,
+  Vehicle,
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -463,13 +464,15 @@ function swingAt(
     else if (prior.stall !== undefined) world.mut(e, Engagement).stall = undefined; // it reached its target
   }
   // The victim's armor material selects both the damage column and the impact sound, and fight experience
-  // with this weapon class raises the column. Original behavior: a wall takes the bare column, unscaled by
-  // experience. A ranged swing's shot resolves the column again, without the experience, against whatever
-  // it strikes.
+  // with this weapon class raises the column. Original behavior: a wall and a vehicle take the bare column,
+  // unscaled by experience. A ranged swing's shot resolves the column again, without the experience,
+  // against whatever it strikes.
   const material = targetMaterial(world, ctx, target);
   const base = weaponDamageVsMaterial(weapon.weapon, material);
   const hits = weaponClassHits(world.get(e, SettlerProgress).experience, weapon.weapon.mainType);
-  const damage = world.has(target, Palisade) ? wallBlowDamage(base) : withFightExperience(base, hits);
+  let damage = withFightExperience(base, hits);
+  if (world.has(target, Palisade)) damage = wallBlowDamage(base);
+  else if (world.has(target, Vehicle)) damage = base;
   const blow = { damage, hitSoundType: hitSoundVsMaterial(weapon.weapon, material) };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
 }

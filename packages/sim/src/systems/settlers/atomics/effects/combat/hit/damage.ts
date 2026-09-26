@@ -50,14 +50,14 @@ const HEX_HEADING_OF_FACING: Readonly<Record<WalkDirection, HexHeading>> = {
 
 /**
  * The hitpoints one landed blow takes from `target`, from `base`: the weapon's column for the target,
- * already raised by the striker's fight experience on a melee blow. Original behavior, by what is struck:
+ * already raised by the striker's fight experience on a melee blow at a person, a beast or a building.
+ * Original behavior, by what is struck:
  * - a person: the hit direction multiplier, then its armor's `blockingValue` off, then the striker's
  *   amulets, then the person's own defence amulet;
  * - a building or a wall: nothing for a zero base, then the striker's amulets;
- * - an animal: the striker's amulets;
- * - a vehicle: the wood column with no armour; that the striker's amulets raise it as against a beast is
- *   an approximation, unconfirmed against the running original.
- * A result at or below zero does nothing: no damage and no fight experience.
+ * - an animal or a vehicle: the striker's amulets.
+ * `strikerAmulets` is false for a vehicle's shot, which no amulet raises. A result at or below zero does
+ * nothing: no damage and no fight experience.
  */
 export function landedDamage(
   world: World,
@@ -66,15 +66,14 @@ export function landedDamage(
   target: Entity,
   base: number,
   from: { readonly x: Fixed; readonly y: Fixed } | undefined,
+  strikerAmulets: boolean,
 ): number {
-  if (world.has(target, Building) || world.has(target, Palisade)) {
-    return base === 0 ? 0 : damageDealtBy(world, ctx, attacker, base);
-  }
-  if (isWildlife(world, target) || world.has(target, Vehicle))
-    return damageDealtBy(world, ctx, attacker, base);
+  const dealtBy = (raw: number): number => (strikerAmulets ? damageDealtBy(world, ctx, attacker, raw) : raw);
+  if (world.has(target, Building) || world.has(target, Palisade)) return base === 0 ? 0 : dealtBy(base);
+  if (isWildlife(world, target) || world.has(target, Vehicle)) return dealtBy(base);
   const directed = Math.trunc((base * hitDirectionPct(world, target, from)) / PERCENT);
   const blocked = directed - targetBlocking(world, ctx, target);
-  return damageTakenBy(world, ctx, target, damageDealtBy(world, ctx, attacker, blocked));
+  return damageTakenBy(world, ctx, target, dealtBy(blocked));
 }
 
 /**

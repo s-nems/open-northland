@@ -67,9 +67,11 @@ export function resolveAttackHit(
  *  by the striker's experience on a melee blow), the striker's weapon class for the fight-experience
  *  bucket, and the impact sound the weapon lists for the victim's material. `from` is where the blow
  *  comes from, which a person's hit direction reads: a shot's release point, or the striker's own
- *  position when absent. */
+ *  position when absent. `vehicleShot` marks a vehicle's stone, which the commander's amulets do not
+ *  raise. */
 export interface LandingBlow {
   readonly damage: number;
+  readonly vehicleShot?: boolean;
   readonly weaponMainType?: number | null;
   readonly hitSoundType?: number | null;
   readonly from?: { readonly x: Fixed; readonly y: Fixed };
@@ -125,7 +127,7 @@ export function resolveCombatHit(
   const pool = world.tryGet(target, Health);
   if (pool === undefined || pool.hitpoints <= 0) return false;
   const from = blow.from ?? world.tryGet(attacker, Position);
-  const damage = landedDamage(world, ctx, attacker, target, blow.damage, from);
+  const damage = landedDamage(world, ctx, attacker, target, blow.damage, from, blow.vehicleShot !== true);
   const weaponMainType = blow.weaponMainType ?? undefined;
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
   // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.

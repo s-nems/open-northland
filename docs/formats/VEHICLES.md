@@ -356,18 +356,18 @@ stance, guard position and attack ride on the `Vehicle` component; the guard pos
 the stance order and a goto's end (approximation: which order writes the original's is not read).
 Ranges are map points, the hexagon distance every other weapon band counts in. The four-step target
 preference is one nearest search (approximation). The stone is a `Projectile` with a ground-burst
-payload that covers its release chord in equal steps over `dist * 8 / speed` ticks and lands a tick
-after it reaches the aim, so the drawn stone finishes its last segment (approximation: the original
-lands on the last flight tick). It lands through the one pipeline every shot lands through: the men
+payload. Its flight time is `dist * 8 / speed` ticks, as an arrow's is: it covers its release chord
+in equal steps over two ticks fewer and strikes on the tick before the flight time runs out, where
+the original's delayed hit lands. It lands through the one pipeline every shot lands through: the men
 and beasts out in the open on the landing point and its six neighbours, then the vehicles and houses
 whose bodies cover one, then the walls, from the combat pass's index; a house is struck on its wall
 cells, as every weapon reaches it (approximation: the original's in-house test area is not read), and a
 garrison standing on its tower's node is struck (*open*: whether the original's hidden-human skip
 covers a posted archer is not read). A wall stands as a palisade entity, so the burst strikes the
 segment whose body covers the node and takes `damage[7] / 100` off its hitpoints through the walls'
-own rule, the one every other weapon's blow goes through. The commander's experience scales the
-stone as it scales a swing: the house formula against a building, the fight bonus against anyone
-else, nothing against a wall (approximation: the original's delayed hit is not read for it). A
+own rule, the one every other weapon's blow goes through. A stone strikes with the bare column: neither
+the commander's experience nor his amulets raise it. A stone that damages anything trains the
+commander once. A
 settler resting indoors is passed over, as every other shot passes over it, and an ordered stone may
 name a wall. A fleeing settler runs from an armed vehicle and never from a cart or ship
 (approximation). The note is raised for any striker (approximation). An auto target no firing node reaches is

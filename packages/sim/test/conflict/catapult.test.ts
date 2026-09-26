@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
+  CurrentAtomic,
   diplomacyStance,
+  Equipment,
   Health,
   Owner,
   Palisade,
@@ -18,6 +20,7 @@ import {
   UnreachableTargets,
   Vehicle,
   VehicleDrive,
+  vehicleCommander,
   wasAttackedBy,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -95,11 +98,21 @@ const MASTER_SKILL = 100;
 const SHOT_TICKS = 120;
 /** A house no run of stones brings down, so a long shot series keeps its mark. */
 const TOUGH_HOUSE = 1_000_000;
+/** A strength amulet: a person's blow deals 3/2. */
+const AMULET_STRENGTH = 25;
 
 function siegeContent(): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
-    goods: [{ typeId: 0, id: 'none' }],
+    goods: [
+      { typeId: 0, id: 'none' },
+      {
+        typeId: AMULET_STRENGTH,
+        id: 'amulet_strength',
+        weight: 0,
+        equip: { category: 'misc', damageDealtPct: 150 },
+      },
+    ],
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: SOLDIER, id: 'soldier_unarmed' },
@@ -293,12 +306,28 @@ describe('catapult stances and scans', () => {
     expect(new Set(hits.map((ev) => (ev.kind === 'projectileHit' ? ev.target : -1)))).toEqual(
       new Set([near]),
     );
-    // Every stone lands at least the column; the commander's growing experience raises it further.
-    expect(TOUGH_HOUSE - s.world.get(near, Health).hitpoints).toBeGreaterThanOrEqual(
-      hits.length * CATAPULT_VS_HOUSE,
-    );
+    // Every stone lands the bare column, whatever the commander's experience.
+    expect(TOUGH_HOUSE - s.world.get(near, Health).hitpoints).toBe(hits.length * CATAPULT_VS_HOUSE);
     expect(s.world.get(catapult, Vehicle).task).toBe('attacks');
     expect(s.world.has(catapult, VehicleDrive)).toBe(false);
+  });
+
+  it('lands the bare column though the commander wears a strength amulet', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const commander = vehicleCommander(s.world.get(catapult, Vehicle));
+    if (commander === null) throw new Error('no commander');
+    s.world.add(commander, Equipment, {
+      boots: null,
+      tool: null,
+      weapon: null,
+      armor: null,
+      misc: [{ goodType: AMULET_STRENGTH, degreeOfUse: fx.fromInt(0) }, null, null, null],
+    });
+    const near = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    const hits = collect(s, SHOT_TICKS, ['projectileHit']);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(TOUGH_HOUSE - s.world.get(near, Health).hitpoints).toBe(hits.length * CATAPULT_VS_HOUSE);
   });
 
   it('holding, ignores a house too close for the band and stays put', () => {
@@ -904,6 +933,28 @@ describe('vehicles as targets', () => {
     s.enqueue(playerCommand(P1, { kind: 'attackUnit', entity: soldier, target }));
     const wrecked = collect(s, 400, ['vehicleDestroyed']);
     expect(wrecked.map((ev) => (ev.kind === 'vehicleDestroyed' ? ev.entity : -1))).toEqual([target]);
+  });
+
+  it("a trained swordsman's blow on a vehicle is the bare column, unraised by his experience", () => {
+    const s = sim(grass(20, 6));
+    const soldier = fighterAt(s, 6, 4, P1);
+    s.world.mut(soldier, SettlerProgress).experience.set(FIGHT_EXPERIENCE_TYPE.SWORD, MASTER_SKILL);
+    const target = createVehicle(s.world, ctxOf(s), {
+      vehicleType: CATAPULT,
+      x: 7,
+      y: 4,
+      tribe: VIKING,
+      owner: P2,
+    });
+    if (target === null) throw new Error('catapult');
+    s.enqueue(playerCommand(P1, { kind: 'attackUnit', entity: soldier, target }));
+    let swing: number | null = null;
+    for (let tick = 0; tick < SHOT_TICKS && swing === null; tick++) {
+      s.step();
+      const effect = s.world.tryGet(soldier, CurrentAtomic)?.effect;
+      if (effect?.kind === 'attack') swing = effect.damage;
+    }
+    expect(swing).toBe(MACE_VS_VEHICLE);
   });
 
   it('VehiclesDied holds once the vehicle carrying the mission id is gone', () => {

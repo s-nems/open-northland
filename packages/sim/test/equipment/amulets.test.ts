@@ -159,6 +159,16 @@ describe('combat amulets', () => {
     expect(s.rng.getState()).toBe(before); // neither rolled the critical hit
   });
 
+  it("a vehicle's shot carries none of its commander's amulets", () => {
+    const s = sim();
+    const { attacker, target } = duel(s, [worn(AMULET_STRENGTH), worn(AMULET_CRITICAL_HIT)]);
+    const before = s.rng.getState();
+    const stone = { damage: BLOW, vehicleShot: true };
+    resolveCombatHit(s.world, ctxOf(s), attacker, target, stone, [], 'projectile');
+    expect(HP - s.world.get(target, Health).hitpoints).toBe(BLOW);
+    expect(s.rng.getState()).toBe(before); // no critical hit rolled
+  });
+
   it('a critical hit doubles about one blow in five, after strength, drawn only while carried', () => {
     const s = sim();
     const plain = duel(s, []);
