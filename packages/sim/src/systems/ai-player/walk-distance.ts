@@ -79,32 +79,44 @@ class WalkFrontier {
 }
 
 /**
- * Dijkstra from `seeds` over the walkable nodes the `blocked` overlay leaves, settling at most `budget`
- * nodes (authored cap): past it every farther node reads unreached, which a ranking then falls back to a
- * straight-line measure for. Seeds on unwalkable ground start the flood but lead nowhere.
+ * Dijkstra from `seeds` over the walkable nodes the `blocked` overlay leaves, run lazily: a query floods
+ * on only until its node settles, so a near candidate costs a small disc and only an unreachable one
+ * spends the whole `budget` (authored cap), after which every unsettled node reads unreached. The settle
+ * order never depends on the queries, so the costs are byte-identical whatever is asked first. Seeds on
+ * unwalkable ground start the flood but lead nowhere.
  */
-export function walkDistancesFrom(
-  terrain: TerrainGraph,
-  blocked: BlockOverlay,
-  seeds: readonly NodeId[],
-  budget: number,
-): WalkDistances {
-  const settled = new Map<NodeId, Fixed>();
-  const frontier = new WalkFrontier();
-  for (const seed of seeds) frontier.push(fx.fromInt(0), seed);
-  const steps = new StepBuffer();
-  while (frontier.size > 0 && settled.size < budget) {
-    const { cost, node } = frontier.pop();
-    if (settled.has(node)) continue;
-    settled.set(node, cost);
-    terrain.stepsInto(node, blocked, steps);
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps.at(i);
-      if (settled.has(step.node)) continue;
-      frontier.push(fx.add(cost, step.cost), step.node);
-    }
+export class WalkFlood implements WalkDistances {
+  private readonly settled = new Map<NodeId, Fixed>();
+  private readonly frontier = new WalkFrontier();
+  private readonly steps = new StepBuffer();
+
+  constructor(
+    private readonly terrain: TerrainGraph,
+    private readonly blocked: BlockOverlay,
+    seeds: readonly NodeId[],
+    private readonly budget: number,
+  ) {
+    for (const seed of seeds) this.frontier.push(fx.fromInt(0), seed);
   }
-  return { costTo: (node) => settled.get(node) };
+
+  costTo(node: NodeId): Fixed | undefined {
+    const known = this.settled.get(node);
+    if (known !== undefined) return known;
+    const { settled, frontier, steps } = this;
+    while (frontier.size > 0 && settled.size < this.budget) {
+      const { cost, node: next } = frontier.pop();
+      if (settled.has(next)) continue;
+      settled.set(next, cost);
+      this.terrain.stepsInto(next, this.blocked, steps);
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps.at(i);
+        if (settled.has(step.node)) continue;
+        frontier.push(fx.add(cost, step.cost), step.node);
+      }
+      if (next === node) return cost;
+    }
+    return undefined;
+  }
 }
 
 /** The walkable unblocked node nearest `node` within `radius` Manhattan nodes, or null: the flood seed

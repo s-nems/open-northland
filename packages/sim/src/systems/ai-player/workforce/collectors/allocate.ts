@@ -228,12 +228,13 @@ export function topUpCollectors(
     if (holders.length === 0) continue;
     const { free } = seatGood(world, ground, w, holders);
     const veteranFirst = experienceRank(world, ctx, w.job, w.good.typeId);
+    const qualifies = (e: Entity): boolean => meetsNeed(world, ctx, e, w.good.typeId);
     while (holders.length < w.target) {
       const anchor = free.shift();
-      if (anchor === undefined) break;
+      if (anchor === undefined || !force.any(qualifies)) break;
       const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, ground.workable);
       if (spot === null) break;
-      const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId), veteranFirst);
+      const spare = force.take(qualifies, veteranFirst);
       if (spare === null) break;
       postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
     }
@@ -300,6 +301,7 @@ export function allocateGenericCollectors(
   if (job === null) return commands;
   const veteranFirst = experienceRank(world, ctx, job);
   for (let hired = genericCollectors.length; hired < target; hired++) {
+    if (!force.any()) break;
     const resource =
       clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags)) ??
       clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up

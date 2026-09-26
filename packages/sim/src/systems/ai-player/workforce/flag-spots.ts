@@ -1,6 +1,5 @@
 import { type Fixed, fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { HALF_COLUMN } from '../../../nav/world-metric.js';
@@ -9,7 +8,7 @@ import { dynamicBlockOverlay, resourceStanceCells, workFlagPlacementTest } from 
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
-import { type WalkDistances, walkDistancesFrom, walkSeedNear } from '../walk-distance.js';
+import { type WalkDistances, WalkFlood, walkSeedNear } from '../walk-distance.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;
@@ -54,16 +53,20 @@ export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
 }
 
 /**
- * One decision's ground for the seat's flags: the terrain, the live walk-block overlay the floods walk
- * round, the placement test, and the seat's signpost confinement from `baseNode`, which every flag must
+ * One decision's ground for the seat's flags: the terrain, the walks over the live walk-block overlay,
+ * the placement test, and the seat's signpost confinement from `baseNode`, which every flag must
  * lie inside, since the engine snaps a `setWorkFlag` only within that reach and drops one aimed past it
  * (`orders/work/selection.ts`). Null while navigation is unconfined.
  */
 export interface FlagGround {
   readonly terrain: TerrainGraph;
-  readonly blocked: BlockOverlay;
   readonly limit: NavigationLimit | null;
   readonly placeable: (node: NodeId) => boolean;
+  /** The carriers' walk out from `origin`, one lazy flood per origin for the whole decision: every spot
+   *  search from the base or a workshop shares it instead of flooding anew. */
+  readonly walkFrom: (origin: HalfCellNode) => WalkDistances;
+  /** The gatherer's walk out from `resource`'s work cells, one lazy flood per resource for the decision. */
+  readonly walkOut: (resource: Entity) => WalkDistances;
 }
 
 export function flagGround(
@@ -73,11 +76,31 @@ export function flagGround(
   player: number,
   baseNode: HalfCellNode,
 ): FlagGround {
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const fromOrigin = new Map<NodeId | null, WalkDistances>();
+  const fromResource = new Map<Entity, WalkDistances>();
   return {
     terrain,
-    blocked: dynamicBlockOverlay(world, ctx, terrain),
     limit: networkLimitAt(world, terrain, player, baseNode.hx, baseNode.hy),
     placeable: workFlagPlacementTest(world, ctx.content, terrain),
+    walkFrom: (origin) => {
+      const seed = walkSeedNear(terrain, blocked, origin, ORIGIN_SEED_RADIUS_NODES);
+      let flood = fromOrigin.get(seed);
+      if (flood === undefined) {
+        flood = new WalkFlood(terrain, blocked, seed === null ? [] : [seed], ORIGIN_FLOOD_BUDGET_NODES);
+        fromOrigin.set(seed, flood);
+      }
+      return flood;
+    },
+    walkOut: (resource) => {
+      let flood = fromResource.get(resource);
+      if (flood === undefined) {
+        const cells = resourceStanceCells(world, terrain, resource);
+        flood = new WalkFlood(terrain, blocked, cells, RESOURCE_FLOOD_BUDGET_NODES);
+        fromResource.set(resource, flood);
+      }
+      return flood;
+    },
   };
 }
 
@@ -113,21 +136,10 @@ export function flagSpotNear(
 ): HalfCellNode | null {
   const centre = anchorNodeOf(world, resource);
   if (centre === null) return null;
-  const { terrain, blocked } = ground;
+  const { terrain } = ground;
   const legal = legalFlagNodeTest(ground, taken);
-  const originSeed = walkSeedNear(terrain, blocked, origin, ORIGIN_SEED_RADIUS_NODES);
-  const fromOrigin = walkDistancesFrom(
-    terrain,
-    blocked,
-    originSeed === null ? [] : [originSeed],
-    ORIGIN_FLOOD_BUDGET_NODES,
-  );
-  const fromResource = walkDistancesFrom(
-    terrain,
-    blocked,
-    resourceStanceCells(world, terrain, resource),
-    RESOURCE_FLOOD_BUDGET_NODES,
-  );
+  const fromOrigin = ground.walkFrom(origin);
+  const fromResource = ground.walkOut(resource);
   const unreached = fx.fromInt(UNREACHED_WALK_PENALTY_TILES);
   const cost = (x: number, y: number): Fixed => {
     const node = terrain.nodeAt(x, y);

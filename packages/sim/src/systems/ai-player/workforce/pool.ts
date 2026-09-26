@@ -150,6 +150,15 @@ export class SpareForce {
     return spare;
   }
 
+  /** Whether a `take` with the same test would find someone, without claiming him: a caller pays a
+   *  spot search only for a man it can post. */
+  any(qualifies?: (e: Entity) => boolean): boolean {
+    for (const e of this.pool) {
+      if (!this.used.has(e) && (qualifies === undefined || qualifies(e))) return true;
+    }
+    return false;
+  }
+
   remaining(): Entity[] {
     return this.pool.filter((e) => !this.used.has(e));
   }
