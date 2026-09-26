@@ -8,11 +8,11 @@ import type { FromWorker } from '../src/session/worker/protocol.js';
 import { ArrivalAlpha } from '../src/session/worker/render-alpha.js';
 import {
   serveSession,
-  TICK_BATCHES_IN_FLIGHT,
   UNDELIVERED_LIMIT_SECONDS,
   undeliveredTickLimit,
 } from '../src/session/worker/serve.js';
 import { StallWatch } from '../src/session/worker/stall-watch.js';
+import { TICK_BATCHES_IN_FLIGHT } from '../src/session/worker/tick-outbox.js';
 import { startWorkerSession } from '../src/session/worker/worker-session.js';
 import { nodeParentPort } from './support/session-worker/node-ports.js';
 import { DEFAULT_TEST_OPTIONS, SILENT_STALL_REPORTS } from './support/session-worker/start-worker.js';
@@ -127,8 +127,10 @@ function inProcessSession(boot: TestWorldBoot, speed = 1, paused = true) {
 }
 
 const MS_PER_SECOND = 1000;
-/** How far past the limit's wall time the hold test waits. */
-const PAST_THE_LIMIT = 1.5;
+/** How long past reaching its limit, in the limit's wall time, the hold test watches the worker. */
+const PAST_THE_LIMIT = 0.5;
+/** How long the hold test waits for the worker to reach its limit on a loaded machine. */
+const REACH_LIMIT_TIMEOUT_MS = 30_000;
 const settle = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 /** A polling interval while the other end of an in-process channel works. */
 const TURN_MS = 10;
@@ -189,12 +191,15 @@ describe('tick batch queue', () => {
       // One frame starts the clock; nothing is delivered after it, so past the limit the worker stops
       // stepping instead of banking ticks.
       session.driver.advance(0);
+      const lead = async () => (await session.host.hashState()).tick - session.host.tick;
+      const deadline = performance.now() + REACH_LIMIT_TIMEOUT_MS;
+      while ((await lead()) < undeliveredTickLimit(FAST)) {
+        if (performance.now() > deadline) throw new Error('the worker did not reach its limit');
+        await settle(TURN_MS);
+      }
       await settle(UNDELIVERED_LIMIT_SECONDS * MS_PER_SECOND * PAST_THE_LIMIT);
-      const { tick } = await session.host.hashState();
       // Checked between the timer's steps, so the last of them may carry it a step or few past.
-      const lead = tick - session.host.tick;
-      expect(lead).toBeGreaterThanOrEqual(undeliveredTickLimit(FAST));
-      expect(lead).toBeLessThan(undeliveredTickLimit(FAST) + session.driver.maxStepsPerFrame);
+      expect(await lead()).toBeLessThan(undeliveredTickLimit(FAST) + session.driver.maxStepsPerFrame);
     } finally {
       session.dispose();
     }

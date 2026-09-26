@@ -72,6 +72,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
         fogSeat: isSpectator(inputs.session) ? null : localPlayerOf(inputs.session),
         diagnostics: hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG),
         pauseOnSubMission: true,
+        // A local session is its own clock, so a runtime that stops drawing stops it too.
+        undelivered: 'hold',
       },
       workerStallReports,
     );

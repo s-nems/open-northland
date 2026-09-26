@@ -4,7 +4,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import { build } from 'esbuild';
-import type { WorkerSessionOptions } from '../../../src/session/worker/protocol.js';
+import type { SessionPort } from '../../../src/session/worker/port.js';
+import type { FromWorker, WorkerSessionOptions } from '../../../src/session/worker/protocol.js';
 import type { StallReports } from '../../../src/session/worker/stall-watch.js';
 import {
   startWorkerSession,
@@ -43,7 +44,25 @@ export const DEFAULT_TEST_OPTIONS: WorkerSessionOptions = {
   fogSeat: null,
   diagnostics: false,
   pauseOnSubMission: false,
+  undelivered: 'hold',
 };
+
+/** The runtime's end over a new test worker; `observe` sees each message before the session does. */
+export function testWorkerPort(
+  workerPath: string,
+  observe?: (message: FromWorker<null>) => void,
+): SessionPort {
+  const port = nodeWorkerPort(new Worker(workerPath));
+  if (observe === undefined) return port;
+  return {
+    ...port,
+    listen: (receive) =>
+      port.listen((message, receiveMs) => {
+        observe(message as FromWorker<null>);
+        receive(message, receiveMs);
+      }),
+  };
+}
 
 export function startTestSession(
   workerPath: string,
@@ -51,8 +70,9 @@ export function startTestSession(
   options: Partial<WorkerSessionOptions> = {},
   reports: StallReports = SILENT_STALL_REPORTS,
   timings: WorkerSessionTimings = {},
+  observe?: (message: FromWorker<null>) => void,
 ): Promise<WorkerSession<null>> {
-  const port = nodeWorkerPort(new Worker(workerPath));
+  const port = testWorkerPort(workerPath, observe);
   return startWorkerSession<TestWorldBoot, null>(
     port,
     boot,
@@ -85,13 +105,17 @@ export async function pumpUntil(
 }
 
 /** Await `promise` while the frame loop stand-in keeps delivering. */
-export async function pumpWhile<T>(session: WorkerSession<unknown>, promise: Promise<T>): Promise<T> {
+export async function pumpWhile<T>(
+  session: WorkerSession<unknown>,
+  promise: Promise<T>,
+  onTick?: () => void,
+): Promise<T> {
   let settled = false;
   const guarded = promise.finally(() => {
     settled = true;
   });
   // Handled here so a rejection while pumping is not reported as unhandled; the await below rethrows.
   guarded.catch(() => undefined);
-  await pumpUntil(session, () => settled);
+  await pumpUntil(session, () => settled, onTick);
   return guarded;
 }

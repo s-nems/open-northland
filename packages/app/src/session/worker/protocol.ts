@@ -35,7 +35,16 @@ export interface WorkerSessionOptions {
   /** Stop the clock on the tick a sub-mission transition fires, where the single-player frame loop
    *  would have stopped stepping, so the sheet captures that tick. */
   readonly pauseOnSubMission: boolean;
+  /** What the worker does once the runtime leaves `undeliveredTickLimit` ticks undelivered. */
+  readonly undelivered: UndeliveredTicks;
 }
+
+/**
+ * `hold` stops the clock until the runtime delivers again, as a local session may. `shed` keeps
+ * stepping, as a session whose clock another authority runs must, and drops the oldest undelivered
+ * ticks' records: the delta still spans them, so only their events are lost.
+ */
+export type UndeliveredTicks = 'hold' | 'shed';
 
 /** The async `SessionHost` reads the worker answers by calling the same member on the host over its
  *  sim; `hashState`, `run` and `settled` carry the worker's tick and have their own calls. */
@@ -182,6 +191,8 @@ export interface TickBatch {
   readonly droppedTicks: number;
   /** Present while the runtime asked for per-system spans. */
   readonly spans: readonly SystemSpan[] | null;
+  /** Ticks since the previous batch whose records the worker shed; they directly precede `ticks`. */
+  readonly shedTicks: number;
 }
 
 /** What the runtime reads of the built world before its first frame. */

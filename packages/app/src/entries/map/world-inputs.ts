@@ -5,7 +5,9 @@ import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { sessionWorldOptions } from '../../game/session-world.js';
 import { mapScriptWorld } from '../../game/world/mission-script.js';
-import type { HostedBuild } from '../../session/worker/serve.js';
+import { servedOverLoopback } from '../../session/worker/loopback.js';
+import type { WorkerSessionOptions } from '../../session/worker/protocol.js';
+import type { BuiltWorld, HostedBuild } from '../../session/worker/serve.js';
 import { saveDocumentOf } from '../../view/runtime/save-load/codec.js';
 import { buildMapWorld, restoreMapWorld } from './world.js';
 
@@ -39,7 +41,7 @@ export interface MapWorldPlacements {
 const NO_PLACEMENTS: MapWorldPlacements = { harvestablePlacements: [], pooledPlacements: [] };
 
 /** Build or restore the world standing at a tick boundary; throws when a save does not fit it. */
-export function buildMapWorldFromInputs(inputs: MapWorldInputs): HostedBuild<MapWorldPlacements> {
+export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapWorldPlacements> {
   const { map, ir, script, session, save } = inputs;
   // The render layers read the raw map; the sim runs on the collision resolution of the same map.
   const missionWorld = mapScriptWorld(script, ir);
@@ -80,8 +82,12 @@ export interface MapWorkerBoot extends Omit<MapWorldInputs, 'save'> {
   readonly saveText: string | null;
 }
 
-export function buildMapWorkerWorld(boot: MapWorkerBoot): HostedBuild<MapWorldPlacements> {
+/** The world a single-player session serves over the loopback transport. */
+export function buildMapWorkerWorld(
+  boot: MapWorkerBoot,
+  options: WorkerSessionOptions,
+): HostedBuild<MapWorldPlacements> {
   const { saveText, ...inputs } = boot;
   const save = saveText === null ? null : parseSaveGame(saveDocumentOf(saveText));
-  return buildMapWorldFromInputs({ ...inputs, save });
+  return servedOverLoopback(buildMapWorldFromInputs({ ...inputs, save }), options);
 }

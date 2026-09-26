@@ -10,16 +10,27 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { diag } from '../src/diag/log.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
-import { undeliveredTickLimit } from '../src/session/worker/serve.js';
+import type {
+  FromWorker,
+  TickBatch,
+  ToWorker,
+  WorkerSessionOptions,
+} from '../src/session/worker/protocol.js';
+import { REPLACED_SESSION_MESSAGE, undeliveredTickLimit } from '../src/session/worker/serve.js';
+import { sessionOverPort, type WorkerSessionOpening } from '../src/session/worker/worker-session.js';
 import {
   bundleTestWorker,
+  DEFAULT_TEST_OPTIONS,
   pumpUntil,
   pumpWhile,
+  SILENT_STALL_REPORTS,
   startTestSession,
+  testWorkerPort,
 } from './support/session-worker/start-worker.js';
-import { INJECTED_FAULT_MESSAGE } from './support/session-worker/test-world.js';
+import { INJECTED_FAULT_MESSAGE, type TestWorldBoot } from './support/session-worker/test-world.js';
 
 /**
  * The worker host under Node's `worker_threads`: the same world, run in the worker and inline, reaches
@@ -50,6 +61,15 @@ const UNDRAWN_MS = 400;
 const SUBMIT_EVERY_FRAMES = 7;
 const AFTER_RESTORE_TICKS = 20;
 const WORKER_BUNDLE_TIMEOUT_MS = 60_000;
+const SHED_SPEED = 16;
+/** How long the shed test waits for the worker to step past its limit on a loaded machine. */
+const PAST_THE_LIMIT_TIMEOUT_MS = 30_000;
+/** A polling interval while the worker steps. */
+const TURN_MS = 50;
+/** A run the replacing boot lands in the middle of. */
+const LONG_RUN_TICKS = 100_000;
+/** How long the replaced session is watched for posts. */
+const QUIET_MS = 300;
 
 function scene(id: string) {
   const found = SCENES.find((s) => s.id === id);
@@ -71,6 +91,12 @@ function canonicalEntities(snapshot: WorldSnapshot): string {
 
 function needsToggle(enabled: boolean): CommandEnvelope {
   return adminCommand({ kind: 'setNeedsEnabled', enabled });
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+function ticksBetween(first: number, last: number): number[] {
+  return Array.from({ length: Math.max(0, last - first + 1) }, (_, i) => first + i);
 }
 
 function fogCells(view: { stateAt(x: number, y: number): number; cellsWide: number; cellsHigh: number }) {
@@ -347,6 +373,123 @@ describe('session worker host', () => {
       expect(session.host.diplomacyStance(0, outside)).toBe(sim.diplomacyStance(0, outside));
       expect(session.host.hasMetPlayer(outside, outside)).toBe(sim.hasMetPlayer(outside, outside));
       expect(session.host.hasMetPlayer(0, outside)).toBe(sim.hasMetPlayer(0, outside));
+    } finally {
+      session.dispose();
+    }
+  });
+  it('keeps stepping past the limit when it sheds, delivering the newest records over an exact mirror', async () => {
+    const batches: TickBatch[] = [];
+    const session = await startTestSession(
+      bundle.path,
+      { kind: 'scene', id: 'sandbox' },
+      { speed: SHED_SPEED, paused: false, undelivered: 'shed' },
+      undefined,
+      undefined,
+      (message) => {
+        if (message.kind === 'ticks') batches.push(message.batch);
+      },
+    );
+    const delivered: number[] = [];
+    const onTick = () => delivered.push(session.host.tick);
+    try {
+      const start = session.host.tick;
+      // One frame starts the clock; nothing is delivered after it until the worker is past the point
+      // where a holding session would have stopped.
+      session.driver.advance(0, onTick);
+      const pastHold = undeliveredTickLimit(SHED_SPEED) + session.driver.maxStepsPerFrame;
+      const deadline = performance.now() + PAST_THE_LIMIT_TIMEOUT_MS;
+      while ((await session.host.hashState()).tick - session.host.tick <= pastHold) {
+        if (performance.now() > deadline) throw new Error('the shedding worker stopped at its limit');
+        await sleep(TURN_MS);
+      }
+
+      session.driver.setPaused(true);
+      await pumpWhile(session, session.host.settled(), onTick);
+      // A batch with nothing shed ends the episode, which the runtime then logs.
+      await pumpWhile(session, session.host.run(1), onTick);
+
+      expect(batches.some((batch) => batch.shedTicks > 0)).toBe(true);
+      // Each batch's records are the newest ticks it spans; the shed ones directly precede them.
+      let previous = start;
+      for (const batch of batches) {
+        expect(batch.ticks.map((record) => record.tick)).toEqual(
+          ticksBetween(previous + 1 + batch.shedTicks, batch.delta.tick),
+        );
+        previous = batch.delta.tick;
+      }
+      expect(delivered).toEqual(batches.flatMap((batch) => batch.ticks.map((record) => record.tick)));
+      expect(
+        diag
+          .entries()
+          .some(
+            (entry) => entry.channel === 'sim' && entry.level === 'warn' && entry.message.includes('dropped'),
+          ),
+      ).toBe(true);
+
+      const hashed = await session.host.hashState();
+      expect(hashed.tick).toBe(session.host.tick);
+      const direct = createSceneSim(scene('sandbox'));
+      direct.run(hashed.tick - direct.tick);
+      expect(hashed.hash).toBe(direct.hashState());
+      expect(canonicalEntities(session.host.snapshot())).toBe(canonicalEntities(direct.snapshot()));
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it('replaces the served session when another world boots on the same port', async () => {
+    const heard: FromWorker<null>[] = [];
+    const port = testWorkerPort(bundle.path, (message) => heard.push(message));
+    // The worker answers a boot with its ready or failure; everything else belongs to the session
+    // served until then.
+    let served: WorkerSessionOpening<null> | null = null;
+    let booting: WorkerSessionOpening<null> | null = null;
+    port.listen((message, receiveMs) => {
+      const landed = message as FromWorker<null>;
+      if ((landed.kind === 'ready' || landed.kind === 'bootFailed') && booting !== null) {
+        served = booting;
+        booting = null;
+      }
+      served?.receive(landed, receiveMs);
+    });
+    port.listenFailure((error) => (booting ?? served)?.fail(error));
+    const outlet = { post: port.post, close: () => undefined };
+    const boot = (world: TestWorldBoot, options: WorkerSessionOptions) => {
+      const opening = sessionOverPort<null>(outlet, options, SILENT_STALL_REPORTS);
+      booting = opening;
+      const message: ToWorker<TestWorldBoot> = { kind: 'boot', boot: world, options };
+      opening.postBoot(message);
+      return opening.ready;
+    };
+    try {
+      const first = await boot(
+        { kind: 'scene', id: 'sandbox' },
+        { ...DEFAULT_TEST_OPTIONS, speed: FAST_SPEED, paused: false },
+      );
+      const start = first.host.tick;
+      await pumpUntil(first, () => first.host.tick > start);
+      const running = first.host.run(LONG_RUN_TICKS);
+      running.catch(() => undefined);
+
+      const second = await boot({ kind: 'scene', id: 'construction' }, DEFAULT_TEST_OPTIONS);
+      await expect(running).rejects.toThrow(REPLACED_SESSION_MESSAGE);
+      first.dispose();
+      const afterReady = heard.length;
+      await sleep(QUIET_MS);
+      expect(heard.slice(afterReady).filter((message) => message.kind !== 'pong')).toEqual([]);
+
+      const fresh = createSceneSim(scene('construction'));
+      expect(await second.host.hashState()).toEqual({ tick: fresh.tick, hash: fresh.hashState() });
+      second.dispose();
+    } finally {
+      port.close();
+    }
+  });
+
+  it('rejects `run` on a session that steps only on its clock', async () => {
+    const session = await startTestSession(bundle.path, { kind: 'scene', id: 'sandbox', clockOnly: true });
+    try {
+      await expect(session.host.run(1)).rejects.toThrow('steps only on its clock');
     } finally {
       session.dispose();
     }

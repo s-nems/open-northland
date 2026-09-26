@@ -30,6 +30,7 @@ import {
   type WorldFacts,
 } from './protocol.js';
 import { ArrivalAlpha } from './render-alpha.js';
+import { ShedLog } from './shed-log.js';
 import {
   HEARTBEAT_INTERVAL_MS,
   type StallReports,
@@ -90,41 +91,64 @@ interface TickWaiter {
 
 const NO_EVENTS: readonly SimEvent[] = [];
 
+/** What a session needs of its port once the caller routes the worker's messages to it. */
+export type SessionOutlet = Pick<SessionPort, 'post' | 'close'>;
+
+/** A session the worker is about to build, over a port whose listener the caller owns. */
+export interface WorkerSessionOpening<E> {
+  /** The worker's messages for this session, routed here from before {@link postBoot} on. */
+  receive(message: FromWorker<E>, receiveMs: number): void;
+  /** The worker failed: `ready` rejects, or the running session's next `advance` throws. */
+  fail(error: Error): void;
+  /** Post the message that makes the worker build the world; the boot's cost counts from here. */
+  postBoot(message: unknown): void;
+  /** Resolves once the worker posts `ready`; rejects when it cannot build the world. */
+  readonly ready: Promise<WorkerSession<E>>;
+}
+
 /**
- * Boot a session in the worker behind `port` and resolve once its world stands. The driver's
- * `advance` delivers what the worker stepped: it applies each queued batch to the mirror and runs the
- * per-tick callback once per tick the batch spans, with that tick's events behind `tickEvents()`, then
- * acknowledges the batches so the worker may post more. Rejects when the worker cannot build the world.
+ * The runtime's side of one session served on `port`. The driver's `advance` delivers what the worker
+ * stepped: it applies each queued batch to the mirror and runs the per-tick callback once per tick
+ * record the batch carries, with that tick's events behind `tickEvents()`, then acknowledges the
+ * batches so the worker may post more.
  */
-export function startWorkerSession<B, E>(
-  port: SessionPort,
-  boot: B,
+export function sessionOverPort<E>(
+  port: SessionOutlet,
   options: WorkerSessionOptions,
   reports: StallReports,
   timings: WorkerSessionTimings = {},
-): Promise<WorkerSession<E>> {
-  return new Promise((resolve, reject) => {
-    let client: WorkerClient<E> | null = null;
-    const startMs = performance.now();
-    let postMs = 0;
-    port.listenFailure((error) => {
-      if (client !== null) {
-        client.fail(error);
-        return;
-      }
-      port.close();
-      reject(error);
-    });
-    port.listen((data, receiveMs) => {
-      const message = data as FromWorker<E>;
+): WorkerSessionOpening<E> {
+  let client: WorkerClient<E> | null = null;
+  let settle: { resolve(session: WorkerSession<E>): void; reject(error: Error): void } | null = null;
+  const ready = new Promise<WorkerSession<E>>((resolve, reject) => {
+    settle = { resolve, reject };
+  });
+  let startMs = 0;
+  let postMs = 0;
+  const refuse = (error: Error): void => {
+    port.close();
+    settle?.reject(error);
+    settle = null;
+  };
+  return {
+    ready,
+    postBoot: (message) => {
+      startMs = performance.now();
+      port.post(message);
+      postMs = performance.now() - startMs;
+    },
+    fail: (error) => {
+      if (client !== null) client.fail(error);
+      else refuse(error);
+    },
+    receive: (message, receiveMs) => {
       if (client !== null) {
         client.receive(message, receiveMs);
         return;
       }
       if (message.kind === 'bootFailed') {
         relayWorkerLog(message.log);
-        port.close();
-        reject(errorFromWire(message.error));
+        refuse(errorFromWire(message.error));
       } else if (message.kind === 'ready') {
         relayWorkerLog(message.ready.log);
         client = new WorkerClient(port, message.ready, options, reports, timings);
@@ -134,13 +158,28 @@ export function startWorkerSession<B, E>(
           readyReceiveMs: receiveMs,
           totalMs: performance.now() - startMs,
         };
-        resolve(client.session(bootCost));
+        settle?.resolve(client.session(bootCost));
+        settle = null;
       }
-    });
-    const post = (message: ToWorker<B>): void => port.post(message);
-    post({ kind: 'boot', boot, options });
-    postMs = performance.now() - startMs;
-  });
+    },
+  };
+}
+
+/** Boot a session in the worker behind `port`, the port's only session, and resolve once its world
+ *  stands; see {@link sessionOverPort}. */
+export function startWorkerSession<B, E>(
+  port: SessionPort,
+  boot: B,
+  options: WorkerSessionOptions,
+  reports: StallReports,
+  timings: WorkerSessionTimings = {},
+): Promise<WorkerSession<E>> {
+  const opening = sessionOverPort<E>(port, options, reports, timings);
+  port.listenFailure((error) => opening.fail(error));
+  port.listen((data, receiveMs) => opening.receive(data as FromWorker<E>, receiveMs));
+  const message: ToWorker<B> = { kind: 'boot', boot, options };
+  opening.postBoot(message);
+  return opening.ready;
 }
 
 class WorkerClient<E> {
@@ -169,10 +208,11 @@ class WorkerClient<E> {
   private failure: Error | null = null;
   private started = false;
   private spans: SystemSpanSink | null = null;
+  private readonly shedLog = new ShedLog();
   private disposed = false;
 
   constructor(
-    private readonly port: SessionPort,
+    private readonly port: SessionOutlet,
     private readonly ready: WorkerReady<E>,
     options: WorkerSessionOptions,
     reports: StallReports,
@@ -250,7 +290,7 @@ class WorkerClient<E> {
     if (!this.disposed) this.port.post(message);
   }
 
-  /** Deliver the queued batches, a frame's worth of ticks; see {@link startWorkerSession}. Then rethrows
+  /** Deliver the queued batches, a frame's worth of ticks; see {@link sessionOverPort}. Then rethrows
    *  a failure: a tick error after the ticks before it, where the inline driver's step would have thrown. */
   private advance(onTick?: () => void): number {
     if (!this.started) {
@@ -280,6 +320,7 @@ class WorkerClient<E> {
       this.droppedTicks = batch.droppedTicks;
       receiveMs += item.receiveMs + (performance.now() - applyStartMs);
       if (batch.spans !== null) this.emitSpans(batch.spans);
+      this.shedLog.note(batch);
       for (const record of batch.ticks) {
         this.tick = record.tick;
         this.events = record.events;
