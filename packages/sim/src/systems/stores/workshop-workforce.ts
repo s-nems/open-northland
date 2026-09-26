@@ -193,7 +193,7 @@ function caughtUp(world: World, ctx: SystemContext): WorkforceIndex {
     if (deltas === null) return rebuild(world, ctx);
     for (const e of deltas) for (const worker of assignedWorkers(world, e)) dirty.add(worker);
   }
-  const trades = settlerTradeLog(world);
+  const trades = settlerTradeLog(world, 'workshopWorkforce');
   for (const e of trades) dirty.add(e);
   trades.clear();
   noteGenerations(world, held);
@@ -206,7 +206,7 @@ function caughtUp(world: World, ctx: SystemContext): WorkforceIndex {
 function rebuild(world: World, ctx: SystemContext): WorkforceIndex {
   for (const component of MEMBERSHIP_JOURNALS) world.journalMembership(component);
   for (const component of VALUE_JOURNALS) world.journalValueWrites(component);
-  settlerTradeLog(world).clear();
+  settlerTradeLog(world, 'workshopWorkforce').clear();
   const index = deriveIndex(world, ctx, (indexes.get(world)?.epoch ?? 0) + 1);
   indexes.set(world, index);
   return index;

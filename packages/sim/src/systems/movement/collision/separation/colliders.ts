@@ -1,10 +1,11 @@
-import { Obstructed, PathFollow, PathRoute, Position, Settler } from '../../../../components/index.js';
+import { Obstructed, PathFollow, PathRoute, Position } from '../../../../components/index.js';
 import { ZERO } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import type { NodeBuckets } from '../../../spatial/nodes.js';
 import { writeLegHeading } from '../../stepping.js';
-import { hasBodyCollision, hasSoftCollision, isStanding } from '../bodies.js';
+import { hasSoftCollision, isStanding } from '../bodies.js';
+import { hasBodyCollision, ownedFighters } from '../owned-fighters.js';
 import type { MoverSnapshot, SeparationScratch } from './scratch.js';
 
 export interface TickColliders {
@@ -60,17 +61,17 @@ export function collectColliders(
   if (moverCount === 0) return null;
   movers.sort(ascending);
 
-  // The immovable posts firm movers resolve against, scanned only when a firm mover exists: soft-only
-  // traffic (a civilian economy tick) never reads the index, so it skips the full-settler scan entirely.
+  // The immovable posts firm movers resolve against, ascending like the fighter index, gathered only when a
+  // firm mover exists: soft-only traffic (a civilian economy tick) never reads the post index.
   let postCount = 0;
   if (firmCount > 0) {
-    for (const e of world.query(Settler, Position)) {
-      if (hasBodyCollision(world, ctx.content, e) && isStanding(world, e)) posts[postCount++] = e;
+    for (const e of ownedFighters(world, ctx.content)) {
+      if (world.has(e, Position) && isStanding(world, e)) posts[postCount++] = e;
     }
   }
   posts.length = postCount;
   const { moverIndex, postIndex } = scratch;
-  postIndex.refill(world, posts.sort(ascending));
+  postIndex.refill(world, posts);
   moverIndex.refill(world, movers);
 
   for (const e of movers) {

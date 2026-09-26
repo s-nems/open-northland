@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { isFighterJob } from '../../readviews/index.js';
+import { ownedFighters } from './owned-fighters.js';
 
 /**
  * Unit body collision is an authored deviation: the original is observed letting walkers pass through each
@@ -19,13 +19,6 @@ import { isFighterJob } from '../../readviews/index.js';
  * exemption. Approximation: sized to cover a building footprint plus its door approaches.
  */
 const CALM_ZONE_RADIUS_NODES = 8;
-
-/** Whether `e` is a firm collider: an owned fighter. */
-export function hasBodyCollision(world: World, content: ContentSet, e: Entity): boolean {
-  if (!world.has(e, Owner)) return false;
-  const settler = world.tryGet(e, Settler);
-  return settler !== undefined && isFighterJob(content, settler.jobType);
-}
 
 /**
  * Whether `e` takes part in soft mover-vs-mover separation: any owned settler, fighter or civilian. The Owner
@@ -163,16 +156,16 @@ export interface UnitWalkBlocks {
 
 const postScratch = new WeakMap<TerrainGraph, Uint16Array>();
 
-/** Visit every post with its in-bounds node and owning player. */
+/** Visit every post with its in-bounds node and owning player, in ascending id. */
 function eachStandingFighter(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   visit: (e: Entity, node: NodeId, player: number) => void,
 ): void {
-  for (const e of world.query(Settler, Position)) {
-    if (!hasBodyCollision(world, content, e) || !isStanding(world, e)) continue;
-    const p = world.get(e, Position);
+  for (const e of ownedFighters(world, content)) {
+    const p = world.tryGet(e, Position);
+    if (p === undefined || !isStanding(world, e)) continue;
     const hx = nodeHxOfPosition(p.x, p.y);
     const hy = nodeHyOfPosition(p.y);
     if (!terrain.inBounds(hx, hy)) continue;
@@ -183,7 +176,7 @@ function eachStandingFighter(
 /**
  * The nodes standing colliders occupy regardless of calm zones, each with the player standing there: an
  * approach cell someone already stands on is a taken melee slot even inside a town garrison. Two soft-
- * stacked bodies on one node keep the later one's player.
+ * stacked bodies on one node keep the higher id's player.
  */
 export function standingFighterPosts(
   world: World,

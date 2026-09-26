@@ -201,8 +201,8 @@ evidence, all under `docs/tickets/sim/`:
 - `planner-idle-settlers-visited-every-tick.md` (done): idle settlers visited before the idle gate.
 - `navigation-planner-rechecks-every-walker.md` (done): the navigation planner visits only walkers a
   change feed names.
-- [`standing-fighters-full-settler-scans.md`](../tickets/sim/standing-fighters-full-settler-scans.md):
-  the full-population fighter scans behind separation, routing and melee slots.
+- `standing-fighters-full-settler-scans.md` (done): separation, routing and melee slots read a kept
+  owned-fighter index instead of scanning every settler.
 - [`combat-pass-visits-every-combatant.md`](../tickets/sim/combat-pass-visits-every-combatant.md): the
   per-combatant ladder with no war.
 - [`combat-target-search-at-army-scale.md`](../tickets/sim/combat-target-search-at-army-scale.md) and

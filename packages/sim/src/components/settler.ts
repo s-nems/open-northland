@@ -95,7 +95,7 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
   const s = world.mut(entity, Settler);
   (s as SettlerTradeWrite).jobType = jobType;
   noteSettlerProgress(world, entity);
-  tradeLogs.get(world)?.add(entity);
+  for (const log of tradeLogs.get(world)?.values() ?? []) log.add(entity);
 }
 
 /**
@@ -121,16 +121,24 @@ export function settlerProgressLog(world: World): Set<Entity> {
   return log;
 }
 
-/** Per world, the settlers whose trade {@link setSettlerJob} wrote since the workshop workforce index
- *  last drained the log: the progress log's narrower twin, for a reader that ignores experience. */
-const tradeLogs = new WeakMap<World, Set<Entity>>();
+/** The indexes that drain a trade log, each its own. */
+export type SettlerTradeReader = 'workshopWorkforce' | 'ownedFighters';
 
-/** `world`'s trade log, opened on first use, for the workshop workforce index to drain. */
-export function settlerTradeLog(world: World): Set<Entity> {
-  let log = tradeLogs.get(world);
+/** Per world and reader, the settlers whose trade {@link setSettlerJob} wrote since that reader last
+ *  drained its log: the progress log's narrower twin, for a reader that ignores experience. */
+const tradeLogs = new WeakMap<World, Map<SettlerTradeReader, Set<Entity>>>();
+
+/** `reader`'s trade log in `world`, opened on first use; it records only from then on. */
+export function settlerTradeLog(world: World, reader: SettlerTradeReader): Set<Entity> {
+  let logs = tradeLogs.get(world);
+  if (logs === undefined) {
+    logs = new Map();
+    tradeLogs.set(world, logs);
+  }
+  let log = logs.get(reader);
   if (log === undefined) {
     log = new Set();
-    tradeLogs.set(world, log);
+    logs.set(reader, log);
   }
   return log;
 }
