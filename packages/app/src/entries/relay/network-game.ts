@@ -8,7 +8,7 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
 import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
 import type { NetworkHandover } from '../../net/handover.js';
-import { relayedSessionDriver } from '../../net/net-worker-client.js';
+import { deliveredMatchEnd, relayedSessionDriver } from '../../net/net-worker-client.js';
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
@@ -213,7 +213,7 @@ export function renderNetworkGame(
       driver: relayedSessionDriver(session.driver, client),
       offThreadTickCost: session.offThreadTickCost,
       sharedClock: true,
-      confirmedMatchEnd: () => client.endedTick,
+      confirmedMatchEnd: () => deliveredMatchEnd(client, session.host),
       networkSave: networkSaveSession(client, worldId),
       introAtStart: false,
       netReadout: readout,

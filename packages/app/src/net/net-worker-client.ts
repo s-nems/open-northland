@@ -207,3 +207,15 @@ export function relayedSessionDriver(
     captureSave: (options) => session.captureSave(options),
   };
 }
+
+/**
+ * The tick the relay confirmed the match ended at, once the runtime delivered it: the facts arrive
+ * ahead of the ticks a frame delivers, and the outcome is read off the delivered world with them.
+ */
+export function deliveredMatchEnd(
+  client: Pick<RelayClientView, 'endedTick'>,
+  delivered: { readonly tick: number },
+): number | null {
+  const ended = client.endedTick;
+  return ended !== null && delivered.tick >= ended ? ended : null;
+}
