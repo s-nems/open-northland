@@ -28,6 +28,7 @@ import { combatSystem, SIGHT_RADIUS_NODES } from '../../src/systems/index.js';
 import { moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
+import { SLEEP_ATOMIC_ID } from '../../src/systems/settlers/atomics/start.js';
 import {
   ATTACKED_ATOMIC,
   combatCadenceContent,
@@ -275,6 +276,40 @@ describe('hit alarm - who does not answer', () => {
     combatSystem(dead.world, ctxOf(dead));
     expect(held(dead, comrade)).toBeUndefined();
     expect(dead.world.has(neighbour, Fleeing)).toBe(false);
+  });
+
+  it('a person asleep in the open, unless the blow was on it and wakes it', () => {
+    const NAP_TICKS = 100;
+    const nap = {
+      atomicId: SLEEP_ATOMIC_ID,
+      duration: NAP_TICKS,
+      effect: { kind: 'sleep' },
+      targetEntity: null,
+      targetTile: null,
+    } as const;
+    const beside = sim();
+    const { victim, attacker } = struck(beside);
+    const sleeper = unit(beside, VICTIM_AT + BESIDE, P0, MILITARY_MODE.FLEE, WOMAN);
+    addCurrentAtomic(beside.world, sleeper, nap);
+    resolveCombatHit(beside.world, ctxOf(beside), attacker, victim, BLOW, [], 'melee');
+    combatSystem(beside.world, ctxOf(beside));
+    expect(runsEast(beside, victim, VICTIM_AT)).toBe(true);
+    expect(beside.world.has(sleeper, Fleeing)).toBe(false);
+    removeCurrentAtomic(beside.world, sleeper); // the nap ends with the attacker long gone
+    combatSystem(beside.world, { ...ctxOf(beside), tick: beside.tick + NAP_TICKS });
+    expect(beside.world.has(sleeper, Fleeing)).toBe(false);
+    expect(beside.world.has(sleeper, MoveGoal)).toBe(false);
+
+    // A shot is answered as it lands, before the wake it earns the sleeper is applied.
+    const shot = sim();
+    const napping = struck(shot);
+    addCurrentAtomic(shot.world, napping.victim, nap);
+    combatSystem(shot.world, ctxOf(shot));
+    resolveCombatHit(shot.world, ctxOf(shot), napping.attacker, napping.victim, BLOW, [], 'projectile');
+    expect(shot.world.has(napping.victim, Fleeing)).toBe(true);
+    removeCurrentAtomic(shot.world, napping.victim); // the wake
+    combatSystem(shot.world, { ...ctxOf(shot), tick: shot.tick + 1 });
+    expect(runsEast(shot, napping.victim, VICTIM_AT)).toBe(true);
   });
 
   it('a soldier inside a house', () => {

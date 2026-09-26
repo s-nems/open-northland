@@ -1,4 +1,4 @@
-import { Owner, Person, Position, Resting, Settler } from '../../components/index.js';
+import { CurrentAtomic, Owner, Person, Position, Resting, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -91,7 +91,8 @@ export function answerQueuedAlarms(
  * answers each (player, attacker) pair once, around its first victim, so a second victim of the same area
  * shot does not widen the circle. No one inside a house but a man on his tower answers: a soldier asleep
  * at home would otherwise wake holding a raider long gone and chase it (whether the original's alarm
- * reaches indoors is unconfirmed).
+ * reaches indoors is unconfirmed). A person asleep in the open sleeps through it too, for the same reason;
+ * the struck one is woken by the blow itself and runs.
  */
 function answerAlarm(
   world: World,
@@ -125,6 +126,7 @@ function answerAlarm(
     } else if (
       runsFromBlows(ctx, settler, mode) &&
       distance <= ALARM_PEOPLE_RADIUS_NODES &&
+      (entity === alarm.victim || !asleep(world, entity)) &&
       isFleeThreat(world, ctx, entity, settler, alarm.attacker, index.firing)
     ) {
       runFromBlow(world, ctx, terrain, entity, from);
@@ -135,4 +137,8 @@ function answerAlarm(
 /** Inside a house, unless standing on its tower post. */
 function indoors(world: World, e: Entity): boolean {
   return world.has(e, Resting) && standsAtPost(world, e) === null;
+}
+
+function asleep(world: World, e: Entity): boolean {
+  return world.tryGet(e, CurrentAtomic)?.effect.kind === 'sleep';
 }
