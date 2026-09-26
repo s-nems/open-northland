@@ -138,8 +138,9 @@ function catchUp(world: World, ctx: ContentContext, memo: ClearanceMemo): boolea
   }
   const buildingValueGen = world.componentValueGeneration(Building);
   if (buildingValueGen !== memo.buildingValueGen) {
-    const written = world.valueWritesSince(Building, memo.buildingValueGen);
-    if (written === null) return false;
+    // A journal gap falls back to comparing every building's type, never to a whole-map rebuild.
+    const written =
+      world.valueWritesSince(Building, memo.buildingValueGen) ?? world.query(Building, Position);
     for (const e of written) {
       const building = world.tryGet(e, Building);
       if (building === undefined || !world.has(e, Position)) continue;

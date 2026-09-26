@@ -161,9 +161,10 @@ interface NodeXY {
 }
 
 /**
- * The owned settlers standing still, bucketed by node. Kept across ticks per world and caught up only
- * by {@link stationaryOwnedSettlers} at the start of a planner pass, so the pass reads the occupancy
- * as it began while its own walks and a garrison's `stepOut` land. Every walker's step feeds it, which
+ * The owned settlers standing still, bucketed by node. Kept across ticks per world and caught up by
+ * {@link stationaryOwnedSettlers}, at the start of a planner pass and by the vehicle shove, which runs
+ * after the planner, so the pass reads the occupancy as it began while its own walks and a garrison's
+ * `stepOut` land. Every walker's step feeds it, which
  * is still cheaper than re-bucketing every stationary settler each pass.
  */
 class StationaryOwned {

@@ -18,6 +18,8 @@ const BLOCK_TYPE = 30; // walk-blocks its anchor node
 const OPEN_TYPE = 31; // no walk-block
 const VIKING = 1;
 const SITE_AT = { hx: 10, hy: 6 };
+/** More Building value writes than the world's value journal keeps, so the catch-up meets a gap. */
+const JOURNAL_OVERFLOW_WRITES = 1100;
 
 function siteSim(): Simulation {
   const content = parseContentSet({
@@ -58,6 +60,24 @@ describe('vehicleClearance', () => {
 
     sim.world.mut(site, Building).buildingType = OPEN_TYPE;
     expect(vehicleClearance(sim.world, ctxOf(sim), terrain).classOf(node)).toBeGreaterThan(0);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('keeps its field through more progress writes than the value journal holds', () => {
+    const sim = siteSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(SITE_AT.hx, SITE_AT.hy));
+    sim.world.add(site, Building, {
+      buildingType: BLOCK_TYPE,
+      tribe: VIKING,
+      built: fx.fromInt(0),
+      level: 0,
+    });
+    const field = vehicleClearance(sim.world, ctxOf(sim), terrain);
+    for (let i = 0; i < JOURNAL_OVERFLOW_WRITES; i++) sim.world.mut(site, Building).built = fx.fromInt(i % 2);
+    expect(vehicleClearance(sim.world, ctxOf(sim), terrain)).toBe(field);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 });
