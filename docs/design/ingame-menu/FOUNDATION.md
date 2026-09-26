@@ -211,6 +211,49 @@ on the beam opens it at once.
   Esc clears a typed query and the next one closes.
 - Empty states: "Nikt nie pasuje" with its own clear button, and "Nie masz mieszkańców".
 
+### Trade window (Okno handlu)
+
+The trade between a trader's two own houses, opened by "Konfiguruj handel" in the settler panel: a
+central window 720 px wide, in the construction window's frame, so on the 1365 px plane of a
+1280 × 720 screen it clears the settler panel, which stays open at the right edge. The head reads
+"Handel · " and the trader's name.
+
+- Tabs: the eight stock categories as text tabs, one strip shared by both houses. A tab counts the
+  kinds of goods either house holds (not units; empty at none), carries a lit dot while a transfer
+  of that category runs, and says both in its tooltip. The arrow keys move along the strip. A new
+  trader opens on the first category either house holds anything of; the open tab stays across ticks
+  and a reopen for the same trader.
+- Houses: one parchment, house A left and house B right, each headed by its badge, its name as a link
+  (select and bring into view, which closes the window with the trader's selection, as a residents
+  row does; resting shows the hover card) and the arrow while the trader heads there. Under it the
+  house's stock of the open category: per good its icon, name, "amount / shelf" and a thin meter,
+  the goods in stock first and the empty ones faded after them. That order is taken when the window
+  opens or the tab changes and kept while amounts change, so no row moves under the cursor. Every list
+  shows eight 28 px rows whatever the tab holds, so switching tabs moves nothing; a longer category
+  ("Inne" in a warehouse) scrolls inside its list, never the window.
+- A row's arrow sets up the transfer into the other house: "→" in A's list ("Wieź do punktu B"), "←"
+  in B's, Ctrl (or ⌘) + click balances the good instead (Ctrl on a one-way good turns it balanced).
+  A good in a transfer has its arrow lit on both sides, pointing the way it goes ("⇄" when balanced),
+  and a plain press on it removes the transfer. An arrow into a house that does not store the good is
+  faded with the reason in its tooltip.
+- Przewozy: one 32 px line per transfer in good order: the good in its well and its name, a strip
+  "A → B", "⇄", "B → A" (the lit option stays lit on a press; an option into a house that does not
+  store the good is faded with the reason), and for a one-way transfer "do N", the ceiling the
+  destination is filled to (1 to 100, ∞ for none), and "zostaw N", the units always left in the
+  source (0 to 100), both the production counter's −/n/+ with its Shift and Ctrl keys; ✕ removes the
+  transfer. A balanced line keeps the counters' place empty, so the columns line up; turning a
+  limited one-way good balanced sets its kept mark again, so a balanced flow never carries a limit
+  the window does not show. Five lines show, more scroll inside the list; with none it reads "Brak
+  przewozów. Kliknij strzałkę przy towarze, żeby dodać." The window keeps one height whatever the
+  route moves.
+- Live: the window repaints from the settler panel's model every tick, rebuilding a list only when
+  its set of goods changes and otherwise rewriting words and attributes, so counters, tooltips and
+  the hover card never flicker.
+- Closing: the cross, Esc (after the action ring's job list, before an armed pick and the selection),
+  another selection, or a route that loses an own house. Esc or the cross hands focus back to
+  "Konfiguruj handel". It takes turns with the beam's windows: opening it closes the open one, and a
+  beam window opened later closes it.
+
 ### Settler panel
 
 The selected person's panel (ticket 08), bottom right, 318 px wide, in the window frame. The head
@@ -319,41 +362,26 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   a fleeing unit lights none) and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action
   ring issues. Every segmented strip is the same width (174 px) with its options sharing it equally,
   so the two rows line up.
-- Handel, for a trader: one row per route slot, both always present so the section keeps its
-  height. A row is the slot's badge (A for the first house, B for the second), the house's name as a
-  link that selects it and brings it into view (resting on it shows the building's hover card, an
-  other seat's house reads amber), a bronze arrow on the stop the trader serves now and × to take the
-  house off. The free slot the next house goes to reads "Dodaj punkt handlowy" in amber, a link that
-  arms the house pick; a later free slot has a dashed badge and "wolne miejsce". With fewer than two
-  stops one muted line follows: "Dodaj drugi punkt, żeby wybrać towary". Two own stops show the
-  goods either house stores: a strip of the eight stock-category tabs, each face the icon of the
-  category's first good, its name in the tooltip, faded when neither house stores any, and a gold
-  dot under a tab holding a marked good. Under it the open tab's goods as 26 px round chips, ten to
-  a row, the area as tall as the fullest tab needs so switching tabs moves nothing: the corner badge
-  is the stock of A and B together (a chip at 0 fades but still answers), a gold ring and an A or B
-  corner mark for a good carried one way, a green ring and ⇄ for a balanced one, the tooltip the
-  name, "A 12 · B 0", the direction and the shortcuts. Ctrl (or ⌘) + click on a chip toggles the
-  balance, Shift + click toggles "→ B", Ctrl + click on a tab sends the whole category to B or, when
-  every good of it already goes there, clears them. A press on a chip chooses it; the chosen chip
-  is outlined and stays chosen across ticks and tabs until another is pressed or another person is
-  selected, and a fresh selection chooses the open tab's first stocked good so the detail is never
-  empty. The detail under the chips is the good's icon, name and "A 12 · B 0", a three-way strip
-  "→ A", "⇄", "→ B" (a mark at A only carries the good from B into A, marks at both balance it;
-  pressing the lit option clears both marks; an option into a house that does not store the good is
-  faded with the reason) and, for a one-way good, "do N" and "zostaw N" under it: the ceiling the
-  destination is filled to (1 to 100, ∞ for none, the production counter's arrows and keys) and the
-  units always left in the source (0 to 100, no ∞). Both counters edit the destination's mark and
-  keep their place, hidden, for ⇄ and for an unmarked good; turning a one-way good balanced sets its
-  kept mark again, so a balanced flow never carries a limit the panel does not show. With another
-  tribe's house on the route the goods give way to Umowa: the map's agreements as single-choice chips
-  "1 [coin] → 4 [iron]" ("Sprzedaj 1 × Moneta, otrzymaj 4 × Żelazo"), a second press drops the
+- Handel, for a trader: a compact summary; the trade itself is set up in the trade window. One row
+  per route slot, both always present so the section keeps its height. A row is the slot's badge (A
+  for the first house, B for the second), the house's name as a link that selects it and brings it
+  into view (resting on it shows the building's hover card, another seat's house reads amber), a
+  bronze arrow on the stop the trader serves now and × to take the house off. Every free slot reads
+  "Dodaj punkt handlowy" in amber, a link that arms the house pick, which fills the first free slot
+  whichever row armed it. With both stops the player's own houses a full-width "Konfiguruj handel"
+  button opens the trade window, and under it the transfers as read-only lines: the good's icon and
+  name, a dotted leader, and its direction with the limits set ("A → B · do 10 · zostaw 2", "A ⇄ B"),
+  the tooltip saying the same in words. Nothing on these lines is pressed. With fewer than two stops
+  one muted line follows the rows instead: "Dodaj oba punkty, żeby ustawić przewozy". With another
+  tribe's house on the route there is no button: Umowa lists the map's agreements as single-choice
+  chips "1 [coin] → 4 [iron]" ("Sprzedaj 1 × Moneta, otrzymaj 4 × Żelazo"), a second press drops the
   choice, and under the chosen chip two thin meters of the running exchange, the given half and the
   received half, faded while the partner is no friend (the tooltip says so). The route has no other
   status line: the trader's destination is in the status strip. The section starts open; when the
   panel would run past the plane, the foldable sections fold in order, Doświadczenie first,
   Produkcja next and Handel last, since the route is the trader's main control: Handel then keeps its
-  stop rows and offers "jeszcze N" (the marked goods, or the agreements) in its title, which opens
-  and closes it; another person starts open again.
+  stop rows and the button and offers "jeszcze N" (the transfers, or the agreements) in its title,
+  which opens and closes it; another person starts open again.
 - Doświadczenie: the trained specializations as ledger rows one to a line (a track's name runs
   long: "Murarz - kamienny blok"), the current trade's first, the bonus percent in green (the
   tooltip spells it out). Every fight track counts as a soldier's and a hero's own (approximation:
