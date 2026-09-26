@@ -14,6 +14,9 @@ export interface HudWindowSpec {
   /** Design px; the height follows the body. */
   readonly width: number;
   readonly compact?: boolean;
+  /** No head at all: the title only names the window for assistive tech, and the close medallion sits
+   *  on the frame's top-right corner, so the body starts at the top rail. */
+  readonly headless?: boolean;
 }
 
 /** A framed window on the DOM plane: wood rails, knot ornaments, a head with a close medallion and a
@@ -40,11 +43,17 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
   element.style.width = `${spec.width}px`;
   element.setAttribute('aria-label', spec.title);
   const compact = spec.compact === true;
-  element.innerHTML = `${WINDOW_ORNAMENTS}<header class="on-window__head${compact ? ' on-window__head--compact' : ''}"><div class="on-window__heading">${spec.art ?? ''}<div>${
-    spec.kicker === undefined ? '' : `<p class="on-window__kicker"></p>`
-  }<h2 class="on-window__title${compact ? ' on-window__title--compact' : ''}"></h2>${
-    spec.subtitle === undefined ? '' : `<p class="on-window__subtitle"></p>`
-  }</div></div><button type="button" class="on-medallion on-window__close">${GLYPH.close}</button></header><div class="on-window__body"></div>`;
+  const closeMarkup = `<button type="button" class="on-medallion on-window__close">${GLYPH.close}</button>`;
+  const head =
+    spec.headless === true
+      ? closeMarkup
+      : `<header class="on-window__head${compact ? ' on-window__head--compact' : ''}"><div class="on-window__heading">${spec.art ?? ''}<div>${
+          spec.kicker === undefined ? '' : `<p class="on-window__kicker"></p>`
+        }<h2 class="on-window__title${compact ? ' on-window__title--compact' : ''}"></h2>${
+          spec.subtitle === undefined ? '' : `<p class="on-window__subtitle"></p>`
+        }</div></div>${closeMarkup}</header>`;
+  if (spec.headless === true) element.classList.add('on-window--headless');
+  element.innerHTML = `${WINDOW_ORNAMENTS}${head}<div class="on-window__body"></div>`;
   const text = (selector: string, value: string | undefined): void => {
     const node = element.querySelector(selector);
     if (node !== null && value !== undefined) node.textContent = value;
@@ -52,8 +61,8 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
   text('.on-window__title', spec.title);
   text('.on-window__kicker', spec.kicker);
   text('.on-window__subtitle', spec.subtitle);
-  const closeButton = element.querySelector('button');
-  if (closeButton === null) throw new Error('hud window: close button missing');
+  const closeButton = element.querySelector('.on-window__close');
+  if (!(closeButton instanceof HTMLButtonElement)) throw new Error('hud window: close button missing');
   closeButton.setAttribute('aria-label', spec.closeLabel);
   const body = element.querySelector('.on-window__body');
   if (!(body instanceof HTMLElement)) throw new Error('hud window: body missing');

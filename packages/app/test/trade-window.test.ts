@@ -8,11 +8,11 @@ import {
   type TradePanelModel,
 } from '../src/hud/details-panel/model/index.js';
 import { GLYPH } from '../src/hud/dom/icons.js';
+import { firstStockedTab, stockTabStates } from '../src/hud/dom/parts/stock-browser.js';
 import type { TradeMarkChange } from '../src/hud/dom/settler-panel/actions.js';
 import { createTradeCommands } from '../src/hud/dom/trade-window/commands.js';
 import {
-  categoryTabs,
-  firstStockedTab,
+  describeTab,
   houseRows,
   transferLine,
   UP_TO_UNLIMITED,
@@ -38,8 +38,14 @@ import {
 } from './support/trade-route.js';
 
 const CEILING = 10;
+const CATEGORIES = 8;
 const RESERVE = 2;
 const TRADER = 5;
+
+/** The house's rows its browser lists under `category`. */
+function tabRows(trade: TradePanelModel, slot: number, category: number) {
+  return houseRows(trade, slot).filter((row) => row.category === category);
+}
 
 function good(flow: TradeGood['flow'], extra: Partial<TradeGood> = {}): TradeGood {
   return {
@@ -128,39 +134,50 @@ describe('trade window model', () => {
     expect(windowRoute(settler(null))).toBeNull();
   });
 
-  it('counts the kinds in stock per tab, lights a tab with a transfer and opens on the first stocked one', () => {
-    const tabs = categoryTabs(ownRoute([transfer(SWORD, 'toB')]));
-    expect(tabs[FOOD_TAB]).toMatchObject({ count: 1, marked: false });
-    expect(tabs[MILITARY_TAB]).toMatchObject({ count: 1, marked: true });
-    expect(tabs[MILITARY_TAB]?.tooltip).toContain(tabs[MILITARY_TAB]?.label ?? '?');
-    expect(tabs.filter((tab) => tab.count === 0)).toHaveLength(tabs.length - 2);
-    expect(firstStockedTab(ownRoute())).toBe(FOOD_TAB);
+  it('gives each house its own tabs: kinds in stock, a dot where a transfer runs, the first stocked open', () => {
+    const trade = ownRoute([transfer(SWORD, 'toB')]);
+    const a = stockTabStates(houseRows(trade, TRADE_SLOT_A), CATEGORIES);
+    expect(a[FOOD_TAB]).toEqual({ stocked: 1, marked: false });
+    expect(a[MILITARY_TAB]).toEqual({ stocked: 1, marked: true });
+    expect(a.filter((tab) => tab.stocked === 0)).toHaveLength(CATEGORIES - 2);
+    expect(firstStockedTab(a)).toBe(FOOD_TAB);
+    // B holds no sword yet: nothing in stock, still the transfer's dot; a house holding nothing opens first.
+    const b = stockTabStates(houseRows(trade, TRADE_SLOT_B), CATEGORIES);
+    expect(b[MILITARY_TAB]).toEqual({ stocked: 0, marked: true });
+    expect(firstStockedTab(b)).toBe(0);
+  });
+
+  it('names a tab and says its kinds in stock and its transfers in the tooltip', () => {
+    const tab = describeTab(MILITARY_TAB, 2, true);
+    expect(tab.label).toBe('Wojsko');
+    expect(tab.tooltip).toBe('Wojsko · rodzaje na stanie: 2 · są tu przewożone towary');
+    expect(describeTab(FOOD_TAB, 0, false).tooltip).toBe('Żywność · nic na stanie');
   });
 
   it('lists a house’s goods of the open tab with an arrow into the other house', () => {
     const trade = ownRoute();
-    const [sword] = houseRows(trade, TRADE_SLOT_A, MILITARY_TAB);
+    const [sword] = tabRows(trade, TRADE_SLOT_A, MILITARY_TAB);
     expect(sword).toMatchObject({ goodType: SWORD, amount: SWORDS_AT_A });
     expect(sword?.action).toMatchObject({ glyph: GLYPH.arrow, pressed: false, enabled: true });
     expect(sword?.tooltip).toContain(`A ${SWORDS_AT_A}`);
     // B stores no food, so A's food cannot go there.
-    expect(houseRows(trade, TRADE_SLOT_A, FOOD_TAB)[0]?.action?.enabled).toBe(false);
-    expect(houseRows(trade, TRADE_SLOT_B, MILITARY_TAB)[0]?.action?.glyph).toBe(GLYPH.arrowLeft);
-    expect(houseRows(trade, TRADE_SLOT_B, FOOD_TAB)).toEqual([]);
+    expect(tabRows(trade, TRADE_SLOT_A, FOOD_TAB)[0]?.action?.enabled).toBe(false);
+    expect(tabRows(trade, TRADE_SLOT_B, MILITARY_TAB)[0]?.action?.glyph).toBe(GLYPH.arrowLeft);
+    expect(tabRows(trade, TRADE_SLOT_B, FOOD_TAB)).toEqual([]);
   });
 
   it('lights the arrow of a good in a transfer on both sides, pointing the way it goes', () => {
     const trade = ownRoute([transfer(SWORD, 'toB')]);
-    expect(houseRows(trade, TRADE_SLOT_A, MILITARY_TAB)[0]?.action).toMatchObject({
+    expect(tabRows(trade, TRADE_SLOT_A, MILITARY_TAB)[0]?.action).toMatchObject({
       glyph: GLYPH.arrow,
       pressed: true,
     });
-    expect(houseRows(trade, TRADE_SLOT_B, MILITARY_TAB)[0]?.action).toMatchObject({
+    expect(tabRows(trade, TRADE_SLOT_B, MILITARY_TAB)[0]?.action).toMatchObject({
       glyph: GLYPH.arrow,
       pressed: true,
     });
     const balanced = ownRoute([transfer(SWORD, 'both')]);
-    expect(houseRows(balanced, TRADE_SLOT_B, MILITARY_TAB)[0]?.action?.glyph).toBe(GLYPH.swap);
+    expect(tabRows(balanced, TRADE_SLOT_B, MILITARY_TAB)[0]?.action?.glyph).toBe(GLYPH.swap);
   });
 
   it('gives a transfer line its lit direction, the refused ones and the one-way limits', () => {

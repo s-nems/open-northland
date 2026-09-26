@@ -1,75 +1,63 @@
-import { button, element, setAttribute, setClass, setTip, write } from './dom.js';
+import { button, element, setAttribute, setClass, setTip } from './dom.js';
 
-/** One text tab: its caption, the count after it (hidden at 0) and a lit dot for "something here". */
+/** One icon tab: faded while its category holds nothing, a lit dot for "something runs here". */
 export interface CategoryTab {
   readonly label: string;
-  readonly count: number;
+  readonly empty: boolean;
   readonly marked: boolean;
   readonly tooltip: string;
 }
 
-/** A strip of text tabs over a parchment, as the construction window's categories: one open at a time.
- *  The strip knows no content; its owner keeps which tab is open and passes it with every update. */
+/** A strip of square icon tabs over a list, one open at a time. The strip knows no content; its owner
+ *  keeps which tab is open and passes it with every update. */
 export interface CategoryTabs {
   readonly element: HTMLElement;
   update(tabs: readonly CategoryTab[], open: number): void;
 }
 
-interface TabView {
-  readonly tab: HTMLButtonElement;
-  readonly caption: HTMLElement;
-  readonly count: HTMLElement;
-}
-
 const STEP_KEYS: Readonly<Record<string, 1 | -1>> = { ArrowRight: 1, ArrowLeft: -1 };
 
-export function createCategoryTabs(groupLabel: string, onPick: (index: number) => void): CategoryTabs {
-  const root = element('div', 'on-tabs on-tabs--categories');
+export function createCategoryTabs(
+  glyphs: readonly string[],
+  groupLabel: string,
+  onPick: (index: number) => void,
+): CategoryTabs {
+  const root = element('div', 'on-tabs on-tabs--icons');
   root.setAttribute('role', 'tablist');
   root.setAttribute('aria-label', groupLabel);
-  let views: TabView[] = [];
   let open = 0;
-
-  const view = (index: number): TabView => {
-    const tab = button(
-      'on-tab',
-      '<span class="on-tab__caption"></span><span class="on-tab__count"></span><i class="on-tab__dot"></i>',
-    );
+  const tabs = glyphs.map((glyph, index) => {
+    const tab = button('on-tab on-tab--icon', `${glyph}<i class="on-tab__dot"></i>`);
     tab.setAttribute('role', 'tab');
-    const [caption, count] = [tab.children[0], tab.children[1]];
-    if (!(caption instanceof HTMLElement) || !(count instanceof HTMLElement)) throw new Error('tabs: tab');
     tab.addEventListener('click', () => onPick(index));
-    return { tab, caption, count };
-  };
+    root.append(tab);
+    return tab;
+  });
   // Arrow keys step to the neighbouring tab and open it, as a tab list does.
   root.addEventListener('keydown', (event) => {
     const step = STEP_KEYS[event.key];
-    if (step === undefined || views.length === 0) return;
+    if (step === undefined) return;
     event.preventDefault();
-    const next = (open + step + views.length) % views.length;
+    const next = (open + step + tabs.length) % tabs.length;
     onPick(next);
-    views[next]?.tab.focus();
+    tabs[next]?.focus();
   });
 
   return {
     element: root,
-    update(tabs, openIndex): void {
+    update(models, openIndex): void {
       open = openIndex;
-      if (views.length !== tabs.length) {
-        views = tabs.map((_tab, index) => view(index));
-        root.replaceChildren(...views.map((entry) => entry.tab));
-      }
-      tabs.forEach((tab, index) => {
-        const entry = views[index];
-        if (entry === undefined) return;
+      models.forEach((model, index) => {
+        const tab = tabs[index];
+        if (tab === undefined) return;
         const selected = index === openIndex;
-        write(entry.caption, tab.label);
-        write(entry.count, tab.count > 0 ? String(tab.count) : '');
-        setClass(entry.tab, 'on-tab--marked', tab.marked);
-        setAttribute(entry.tab, 'aria-selected', String(selected));
+        setClass(tab, 'on-tab--empty', model.empty);
+        setClass(tab, 'on-tab--marked', model.marked);
+        setAttribute(tab, 'aria-selected', String(selected));
+        setAttribute(tab, 'aria-label', model.label);
         // One tab stop for the strip: the open tab; the arrows reach the rest.
-        setAttribute(entry.tab, 'tabindex', selected ? '0' : '-1');
-        setTip(entry.tab, tab.tooltip);
+        setAttribute(tab, 'tabindex', selected ? '0' : '-1');
+        setTip(tab, model.tooltip);
       });
     },
   };

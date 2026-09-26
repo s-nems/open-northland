@@ -75,6 +75,19 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="9" cy="13" r="5.5"/><circle cx="15" cy="13" r="5.5"/><path d="M7 7.5 9 4M17 7.5 15 4"/></svg>',
 } as const;
 
+/** The stock categories' tab faces, indexed by stock tab (`good-categories.ts`): a loaf, a drop, a log,
+ *  bricks, a hammer, a pot, a sword and an asterisk for the rest. */
+export const STOCK_TAB_GLYPHS: readonly string[] = [
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 17v-3c0-3.9 3.6-7 8-7s8 3.1 8 7v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1ZM9 10.5l1.2 2.5M12.5 10l.5 3M16 10.5l-.8 2.5"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.8-6.5 6-10.8ZM9.5 15.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><ellipse cx="17" cy="12" rx="3" ry="4.5"/><path d="M17 7.5H7c-1.7 0-3 2-3 4.5s1.3 4.5 3 4.5h10M17 11.5v1"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 7h18v10H3ZM3 12h18M9 7v5M15 7v5M6 12v5M12 12v5M18 12v5"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 4h8l3 3v2H6ZM11.5 9v11"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M8 5h8M9 5v3c-2.5 1-4 3.3-4 6a7 7 0 0 0 14 0c0-2.7-1.5-5-4-6V5"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M19 3 9 13M7 11l6 6M5 19l3-3M19 3h-4M19 3v4"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 4v16M5.1 8l13.8 8M18.9 8 5.1 16"/></svg>',
+];
+
 /** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */
 export const FIGURE = {
   woman:

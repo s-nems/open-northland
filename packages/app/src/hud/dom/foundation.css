@@ -3081,11 +3081,6 @@ body.on-drag-scroll-cursor-hidden * {
   height: 13px;
   stroke-width: 2.4;
 }
-.on-hud .on-trade-hint {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-}
 /* "Konfiguruj handel": the one way into the trade window, under the stop rows. */
 .on-hud .on-trade-configure {
   display: flex;
@@ -3106,8 +3101,11 @@ body.on-drag-scroll-cursor-hidden * {
   grid-template-columns: 20px minmax(0, max-content) minmax(12px, 1fr) auto;
   align-items: center;
   gap: 6px;
-  min-height: 22px;
+  height: 24px;
   font-size: 12.5px;
+}
+.on-hud .on-trade-line[hidden] {
+  display: none;
 }
 .on-hud .on-trade-line::after {
   content: "";
@@ -3124,6 +3122,19 @@ body.on-drag-scroll-cursor-hidden * {
   order: 1;
   color: var(--text-hi);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* The lines past the free height: one link in the last line's place, opening the trade window. */
+.on-hud .on-trade-line--more {
+  display: flex;
+}
+.on-hud .on-trade-line--more::after {
+  content: none;
+}
+.on-hud .on-trade-line__more {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .on-hud .on-trade-limit {
@@ -3211,30 +3222,159 @@ body.on-drag-scroll-cursor-hidden * {
   margin-bottom: 2px;
 }
 
-/* ---------- trade window: shared category tabs, both houses' stock, the transfers ---------- */
-/* Eight tabs share the strip; a long caption ellipsizes (its tooltip has it whole). A lit dot marks a
-   category with a transfer. */
-.on-hud .on-tabs--categories .on-tab {
-  position: relative;
+/* ---------- trade window: both houses with their portraits and tabs, the transfers ---------- */
+/* No head: the close medallion takes the top-right corner ornament's place, the body starts under the
+   top rail. The slate is a fill with a hole over each house's portrait (`--hole-a-*`, `--hole-b-*` in
+   design px, set from TS), so the renderer's live cutouts under the plane show through. */
+.on-hud .on-window--headless > .on-window__close {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 4;
+}
+.on-hud .on-window--headless > .on-window__corner--tr {
+  display: none;
+}
+.on-hud .on-window--trade {
+  background: none;
+  backdrop-filter: none;
+  isolation: isolate;
+}
+.on-hud .on-window--trade > .on-window__fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(125deg, color-mix(in srgb, var(--fill) 88%, transparent), var(--deep) 80%),
+    var(--on-surface);
+  background-position:
+    0 0,
+    center 40%;
+  background-size:
+    auto,
+    720px auto;
+  background-color: var(--deep);
+  box-shadow:
+    inset 0 0 0 1px var(--bronze),
+    inset 0 0 0 3px var(--deep);
+  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-size:
+    var(--hole-a-w, 0px) var(--hole-a-h, 0px),
+    var(--hole-b-w, 0px) var(--hole-b-h, 0px),
+    100% 100%;
+  mask-position:
+    var(--hole-a-x, 0px) var(--hole-a-y, 0px),
+    var(--hole-b-x, 0px) var(--hole-b-y, 0px),
+    0 0;
+  mask-repeat: no-repeat;
+  mask-composite: exclude;
+}
+/* Clear of the corner medallion, which reaches 21 px into the window over B's portrait. */
+.on-hud .on-window--trade > .on-window__body {
+  padding-top: 24px;
+}
+/* A left, B right; B mirrors A, so the portraits sit at the outer edges and the row arrows flank the
+   gap between the two lists. */
+.on-hud .on-trade-houses {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 12px;
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0 14px 4px;
+}
+.on-hud .on-trade-house {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+/* The portrait beside the name over the tabs, the tabs standing on the list's parchment. */
+.on-hud .on-trade-house__head {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.on-hud .on-trade-house--mirrored .on-trade-house__head {
+  flex-direction: row-reverse;
+}
+.on-hud button.on-trade-house__portrait {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+}
+.on-hud .on-trade-house__beside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.on-hud .on-trade-house__title {
   display: flex;
   align-items: center;
-  flex: 0 1 auto;
+  gap: 7px;
   min-width: 0;
-  padding: 7px 10px;
+  padding: 0 2px;
+  font-size: 13px;
 }
-.on-hud .on-tab__caption {
+.on-hud .on-trade-house--mirrored .on-trade-house__title {
+  justify-content: flex-end;
+}
+.on-hud .on-trade-house__title > .on-stop__badge {
+  flex-shrink: 0;
+}
+.on-hud .on-trade-house__name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
-.on-hud .on-tab__count:empty {
-  display: none;
+.on-hud .on-trade-house__heading {
+  display: inline-flex;
+  flex-shrink: 0;
+  visibility: hidden;
+  color: var(--bronze);
+}
+.on-hud .on-trade-house--heading .on-trade-house__heading {
+  visibility: visible;
+}
+.on-hud .on-trade-house__heading .on-glyph {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.4;
+}
+/* Eight square icon tabs share the column beside the portrait; a lit dot marks a category with a
+   transfer, a category the house holds nothing of reads faded. */
+.on-hud .on-tabs--icons {
+  gap: 3px;
+  padding: 0;
+}
+.on-hud .on-tab--icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+}
+.on-hud .on-tab--icon .on-glyph {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
+.on-hud .on-tab--empty .on-glyph {
+  opacity: 0.45;
 }
 .on-hud .on-tab__dot {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 3px;
+  right: 3px;
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -3245,68 +3385,20 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-tab--marked .on-tab__dot {
   visibility: visible;
 }
-/* House A left, B right on one parchment, each its head over its stock list. */
-.on-hud .on-trade-houses {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  flex: 0 1 auto;
-  /* A short plane shrinks the lists, never below a house's head and three rows. */
-  min-height: 140px;
-  margin: 0 10px 4px;
-  padding: 10px 12px;
-  overflow: hidden;
-}
-.on-hud .on-trade-house {
+.on-hud .on-trade-house__stock {
   display: flex;
   flex-direction: column;
-  min-width: 0;
   min-height: 0;
-}
-.on-hud .on-trade-house + .on-trade-house {
-  margin-left: 12px;
-  padding-left: 12px;
-  border-left: 1px solid #8d754966;
-}
-.on-hud .on-trade-house__head {
-  display: grid;
-  grid-template-columns: 18px minmax(0, max-content) 14px;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  padding: 0 4px 6px;
-  border-bottom: 1px solid #8d7549aa;
-  font-size: 13px;
-}
-.on-hud .on-trade-house__name {
-  min-width: 0;
+  margin: 0;
+  padding: 4px 6px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-  color: var(--ink);
 }
-.on-hud .on-trade-house__name:hover {
-  color: var(--bronze-lo);
-}
-.on-hud .on-trade-house__heading {
-  display: inline-flex;
-  visibility: hidden;
-  color: var(--bronze-lo);
-}
-.on-hud .on-trade-house--heading .on-trade-house__heading {
-  visibility: visible;
-}
-.on-hud .on-trade-house__heading .on-glyph {
-  width: 13px;
-  height: 13px;
-  stroke-width: 2.4;
-}
-/* A stock list: 28 px rows and eight of them shown, whatever the open tab holds, so switching tabs
-   moves nothing; a longer category ("Inne" in a warehouse) scrolls inside the list, never the window. */
+/* A stock list: 28 px rows and nine of them shown, whatever the open tab holds, so switching tabs
+   moves nothing; a longer category ("Inne" in a warehouse) scrolls inside the list, never the window.
+   Nine is what the trade window fits on the 768 px plane of a 1280 × 720 screen. */
 .on-hud .on-stock {
   --stock-row: 28px;
-  --stock-rows: 8;
+  --stock-rows: 9;
   /* A plane too short for the whole window (a large UI scale) shrinks both lists, down to this. */
   --stock-rows-least: 3;
   display: flex;
@@ -3341,6 +3433,9 @@ body.on-drag-scroll-cursor-hidden * {
   padding: 0 4px;
   border-bottom: 1px solid #8d754944;
   color: var(--ink);
+}
+.on-hud .on-stock--lead .on-stock-row {
+  grid-template-columns: 22px minmax(0, 1fr);
 }
 .on-hud .on-stock-row__info {
   display: grid;

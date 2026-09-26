@@ -11,7 +11,6 @@ import {
 } from '../../details-panel/model/index.js';
 import { stockTabLabels } from '../../good-categories.js';
 import { GLYPH } from '../icons.js';
-import type { CategoryTab } from '../parts/category-tabs.js';
 import type { CounterRange } from '../parts/counter.js';
 import type { StockBrowserRow, StockRowAction } from '../parts/stock-browser.js';
 import {
@@ -40,37 +39,19 @@ export function windowRoute(model: SettlerPanelModel): TradePanelModel | null {
   return model.trade?.stock == null ? null : model.trade;
 }
 
-/** How many kinds of goods of `category` either house holds: the tab's count. */
-export function stockedKinds(trade: TradePanelModel, category: number): number {
-  const kinds = new Set<number>();
-  for (const row of [...(trade.stock?.a ?? []), ...(trade.stock?.b ?? [])]) {
-    if (row.category === category && row.amount > 0) kinds.add(row.goodType);
-  }
-  return kinds.size;
-}
-
-/** The eight category tabs: the kinds in stock, a lit dot where a transfer runs, both in the tooltip. */
-export function categoryTabs(trade: TradePanelModel): CategoryTab[] {
+/** A house's category tab: its name, and its kinds in stock and transfers in the tooltip. */
+export function describeTab(
+  category: number,
+  stocked: number,
+  marked: boolean,
+): { readonly label: string; readonly tooltip: string } {
   const copy = messages().hud.tradeWindow;
-  return stockTabLabels().map((label, category) => {
-    const count = stockedKinds(trade, category);
-    const moving = trade.transfers.filter((transfer) => transfer.category === category).length;
-    const stock =
-      count > 0
-        ? formatMessage(copy.tabTooltip, { category: label, count })
-        : formatMessage(copy.tabEmptyTooltip, { category: label });
-    const tooltip = moving > 0 ? `${stock} · ${formatMessage(copy.tabTransfers, { count: moving })}` : stock;
-    return { label, count, marked: moving > 0, tooltip };
-  });
-}
-
-/** The tab a new trader opens on: the first category either house holds anything of. */
-export function firstStockedTab(trade: TradePanelModel): number {
-  const categories = stockTabLabels().length;
-  for (let category = 0; category < categories; category++) {
-    if (stockedKinds(trade, category) > 0) return category;
-  }
-  return 0;
+  const label = stockTabLabels()[category] ?? '';
+  const stock =
+    stocked > 0
+      ? formatMessage(copy.tabTooltip, { category: label, count: stocked })
+      : formatMessage(copy.tabEmptyTooltip, { category: label });
+  return { label, tooltip: marked ? `${stock} · ${copy.tabTransfers}` : stock };
 }
 
 function otherSlot(slot: number): number {
@@ -120,25 +101,26 @@ function rowAction(trade: TradePanelModel, slot: number, goodType: number, label
   };
 }
 
-/** The stock rows of the house in `slot` for the open category, in its stock table's order. */
-export function houseRows(trade: TradePanelModel, slot: number, category: number): StockBrowserRow[] {
+/** Every good the house in `slot` stores, in its stock table's order; the browser lists a tab's. */
+export function houseRows(trade: TradePanelModel, slot: number): StockBrowserRow[] {
   const copy = messages().hud.tradeWindow;
   const rows = (slot === TRADE_SLOT_A ? trade.stock?.a : trade.stock?.b) ?? [];
-  return rows
-    .filter((row) => row.category === category)
-    .map((row) => {
-      const there = stockAt(trade, otherSlot(slot), row.goodType)?.amount ?? 0;
-      const [stockA, stockB] = slot === TRADE_SLOT_A ? [row.amount, there] : [there, row.amount];
-      return {
-        goodType: row.goodType,
-        ...(row.goodId !== undefined ? { goodId: row.goodId } : {}),
-        label: row.label,
-        amount: row.amount,
-        capacity: row.capacity,
-        tooltip: formatMessage(copy.rowTooltip, { good: row.label, stockA, stockB }),
-        action: rowAction(trade, slot, row.goodType, row.label),
-      };
-    });
+  const moving = new Set(trade.transfers.map((transfer) => transfer.goodType));
+  return rows.map((row) => {
+    const there = stockAt(trade, otherSlot(slot), row.goodType)?.amount ?? 0;
+    const [stockA, stockB] = slot === TRADE_SLOT_A ? [row.amount, there] : [there, row.amount];
+    return {
+      goodType: row.goodType,
+      ...(row.goodId !== undefined ? { goodId: row.goodId } : {}),
+      label: row.label,
+      category: row.category,
+      marked: moving.has(row.goodType),
+      amount: row.amount,
+      capacity: row.capacity,
+      tooltip: formatMessage(copy.rowTooltip, { good: row.label, stockA, stockB }),
+      action: rowAction(trade, slot, row.goodType, row.label),
+    };
+  });
 }
 
 export interface DirectionOption {

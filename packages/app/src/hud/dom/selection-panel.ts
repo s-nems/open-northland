@@ -3,6 +3,7 @@ import { TOP_BAR_HEIGHT } from '../regions.js';
 import { GLYPH } from './icons.js';
 import { button, element, setAttribute, setClass, setHidden, setTip, write } from './parts/dom.js';
 import { attachTipLayer, type TipChip } from './parts/tip-layer.js';
+import { type ClientRect, closePortraitHole, cutPortraitHole } from './portrait-hole.js';
 import { WINDOW_ORNAMENTS } from './symbols.js';
 
 /** Design px between the summary bar and the panel's top when the panel is as tall as it gets. */
@@ -13,6 +14,8 @@ export const SELECTION_PANEL_W = 318;
 const WARM_CLASS = 'on-selection--warm';
 /** The panel stepped aside for the action ring (foundation.css). */
 const VEIL_CLASS = 'on-selection--veiled';
+/** The fill's hole over the portrait frame (foundation.css `--hole-*`). */
+const HOLE = 'hole';
 
 /** Design px the panel stands above the plane's bottom: the beam's height when the beam reaches under
  *  the panel's column on a narrow plane, else none. */
@@ -62,14 +65,6 @@ export interface SelectionPanelHandlers {
   readonly onClose: () => void;
 }
 
-/** The part of the canvas the panel leaves open for the renderer, in client (CSS) px. */
-export interface ClientRect {
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-  readonly height: number;
-}
-
 /**
  * The bottom-right selection window (FOUNDATION.md, "Settler panel"): framed like the other windows,
  * as tall as its content up to the summary bar and never scrolled. Its owner fills `body` and says
@@ -101,9 +96,10 @@ export interface SelectionPanel {
   /** Take the panel out of the way (unseen, no pointer) while the action ring opened from it stands
    *  where the panel was; the ring is drawn on the canvas under the plane. */
   veil(on: boolean): void;
-  /** The content stands taller than the frame allows, so its bottom is cut: the owner folds something.
-   *  Reads the layout, so it is asked once per content change, never per tick. */
-  overflows(): boolean;
+  /** Design px the content stands taller than the frame allows, so its bottom is cut (0 when it
+   *  fits): the owner folds something. Reads the layout, so it is asked once per content change,
+   *  never per tick. */
+  overflow(): number;
   /** The name field is open, so the owner leaves the title alone. */
   renaming(): boolean;
   dispose(): void;
@@ -208,22 +204,7 @@ export function createSelectionPanel(
   const measure = (): ClientRect | null => {
     place();
     if (holeFrame === null || root.hidden) return null;
-    const frameBox = holeFrame.getBoundingClientRect();
-    const fillBox = fill.getBoundingClientRect();
-    // Client px per design px: the plane is scaled as a whole.
-    const scale = fill.offsetWidth === 0 ? 1 : fillBox.width / fill.offsetWidth;
-    const x = (frameBox.left - fillBox.left) / scale + holeFrame.clientLeft;
-    const y = (frameBox.top - fillBox.top) / scale + holeFrame.clientTop;
-    fill.style.setProperty('--hole-x', `${x}px`);
-    fill.style.setProperty('--hole-y', `${y}px`);
-    fill.style.setProperty('--hole-w', `${holeFrame.clientWidth}px`);
-    fill.style.setProperty('--hole-h', `${holeFrame.clientHeight}px`);
-    return {
-      left: frameBox.left + holeFrame.clientLeft * scale,
-      top: frameBox.top + holeFrame.clientTop * scale,
-      width: holeFrame.clientWidth * scale,
-      height: holeFrame.clientHeight * scale,
-    };
+    return cutPortraitHole(fill, holeFrame, HOLE);
   };
 
   return {
@@ -281,9 +262,7 @@ export function createSelectionPanel(
     setHole(frame): void {
       if (frame === holeFrame) return;
       holeFrame = frame;
-      if (frame === null) {
-        for (const name of ['--hole-x', '--hole-y', '--hole-w', '--hole-h']) fill.style.removeProperty(name);
-      }
+      if (frame === null) closePortraitHole(fill, HOLE);
       invalidate();
     },
     invalidate,
@@ -319,7 +298,7 @@ export function createSelectionPanel(
       if (on) tips.hide();
       setClass(root, VEIL_CLASS, on);
     },
-    overflows: () => body.scrollHeight > body.clientHeight,
+    overflow: () => Math.max(0, body.scrollHeight - body.clientHeight),
     renaming: () => editing,
     dispose(): void {
       tips.dispose();

@@ -122,7 +122,8 @@ export interface UnitControls {
   readonly overviewPress: OverviewPress;
   /** Replace the selection, as a map script's `SelectHuman` does. */
   readonly select: (ids: Iterable<number>) => void;
-  readonly portrait: () => PortraitBox | null;
+  /** The live cutouts the frame paints: the selection's portrait and the trade window's houses. */
+  readonly portraits: () => readonly PortraitBox[];
   readonly flaggedFlagIds: () => ReadonlySet<number>;
   /** The work-area circles the "Show Work Area" order has switched on. */
   readonly workAreaRings: () => readonly WorkAreaRing[];

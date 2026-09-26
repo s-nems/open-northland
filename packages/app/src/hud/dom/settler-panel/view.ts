@@ -1,6 +1,7 @@
 import type { SettlerPanelModel, UnitPanelModel } from '../../details-panel/model/index.js';
-import { type ClientRect, createSelectionPanel } from '../selection-panel.js';
-import { createTradeWindow } from '../trade-window/window.js';
+import type { ClientRect } from '../portrait-hole.js';
+import { createSelectionPanel } from '../selection-panel.js';
+import { createTradeWindow, type HousePortrait } from '../trade-window/window.js';
 import type { SettlerPanelDeps } from './actions.js';
 import { createExperienceSection } from './experience.js';
 import { settlerHead } from './head.js';
@@ -20,14 +21,17 @@ export interface SettlerPanel {
   hide(): void;
   /** The shown person and the client box the renderer paints its live figure into. */
   portrait(): PortraitSubject | null;
+  /** The trade window's houses and their portrait boxes while it is open. */
+  tradePortraits(): readonly HousePortrait[];
   claims(clientX: number, clientY: number): boolean;
   /** Tab and Shift+Tab: show the next or previous person of the trade; false when there is none. */
   browse(step: 1 | -1): boolean;
-  /** The HUD scale changed: the portrait's box is measured again. */
+  /** The HUD scale changed: the portraits' boxes are measured again. */
   invalidate(): void;
   /** Step aside (unseen, no pointer, no portrait) while the ring opened from the panel is up. */
   veil(on: boolean): void;
-  /** Once a frame: the trade window follows the plane and yields to a beam window. */
+  /** Once a frame: the trade window follows the plane and yields to a beam window, and the transfer
+   *  lines fit again after another section or the plane changed size. */
   refresh(): void;
   /** Escape: close the trade window; false when it was not open. */
   closeTradeWindow(): boolean;
@@ -91,10 +95,33 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   });
   tradeWindow.onDismiss(() => trade.focusConfigure());
   const experience = createExperienceSection();
-  /** Paint every section; `fresh` is another person. The foldable sections open in full; when the
-   *  whole panel would then run past the plane (read once per change of their rows) the experience
-   *  folds first, the production only if that was not enough, and the trade last: the products and
-   *  the route are what the player came for. */
+  /**
+   * Fit the panel to the plane, measured with every transfer line shown. `full` (a foldable section
+   * changed its rows) folds the experience first, the production only if that was not enough, and
+   * then keeps the transfer lines that fit: the products and the route are what the player came for.
+   * Otherwise only the transfer lines follow the room other sections left.
+   */
+  const fit = (full: boolean): void => {
+    trade.unfit();
+    let overflow = frame.overflow();
+    if (overflow === 0) return;
+    if (full) {
+      experience.fold();
+      overflow = frame.overflow();
+      if (overflow > 0) {
+        production.fold();
+        overflow = frame.overflow();
+      }
+    }
+    if (overflow > 0) trade.fit(overflow);
+  };
+  /** Another section or the plane changed size: the transfer lines fit again on the next frame. */
+  let refit = false;
+  const resizes = new ResizeObserver(() => {
+    refit = true;
+  });
+  /** Paint every section; `fresh` is another person. The foldable sections open in full, and fit
+   *  when one of them changed its rows. */
   const sections = (model: SettlerPanelModel, fresh: boolean): void => {
     portrait.update(model);
     needs.update(model);
@@ -103,11 +130,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     military.update(model);
     const reshapedTrade = trade.update(model, fresh);
     const reshapedExperience = experience.update(model, fresh);
-    if ((reshapedProduction || reshapedTrade || reshapedExperience) && frame.overflows()) {
-      experience.fold();
-      if (frame.overflows()) production.fold();
-      if (frame.overflows()) trade.fold();
-    }
+    if (reshapedProduction || reshapedTrade || reshapedExperience) fit(true);
   };
   frame.body.append(
     portrait.element,
@@ -119,6 +142,18 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     experience.element,
   );
   frame.setHole(portrait.frame);
+  // The trade section is left out: its own lines are what the fit changes.
+  for (const node of [
+    frame.body,
+    portrait.element,
+    needs.element,
+    work.element,
+    production.element,
+    military.element,
+    experience.element,
+  ]) {
+    resizes.observe(node);
+  }
 
   const hide = (): void => {
     shown = null;
@@ -153,7 +188,12 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       frame.warm();
       tradeWindow.warm(model);
     },
-    refresh: () => tradeWindow.refresh(),
+    refresh(): void {
+      tradeWindow.refresh();
+      if (!refit || shown === null) return;
+      refit = false;
+      fit(false);
+    },
     closeTradeWindow(): boolean {
       if (!tradeWindow.isOpen()) return false;
       tradeWindow.dismiss();
@@ -174,7 +214,11 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     },
     claims: (clientX, clientY) => frame.claims(clientX, clientY) || tradeWindow.claims(clientX, clientY),
     browse,
-    invalidate: () => frame.invalidate(),
+    invalidate(): void {
+      frame.invalidate();
+      tradeWindow.invalidate();
+    },
+    tradePortraits: () => tradeWindow.portraits(),
     veil(on): void {
       frame.veil(on);
       tradeWindow.veil(on);
@@ -182,6 +226,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     dispose(): void {
       deps.hoverCard.hide();
       deps.tooltip.hide();
+      resizes.disconnect();
       tradeWindow.dispose();
       frame.dispose();
     },

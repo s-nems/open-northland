@@ -8,14 +8,14 @@ import {
 import type { BuildingHoverModel } from '../../hover-card/model.js';
 import type { GoodIconPainter } from '../good-art.js';
 import type { HoverCard } from '../hover-card.js';
-import { createCategoryTabs } from '../parts/category-tabs.js';
 import { element, write } from '../parts/dom.js';
 import { attachTipLayer, type TipChip } from '../parts/tip-layer.js';
+import { type ClientRect, closePortraitHole, cutPortraitHole } from '../portrait-hole.js';
 import type { SettlerPanelActions } from '../settler-panel/actions.js';
 import { centralWindowPlacer, createHudWindow } from '../window.js';
 import { createTradeCommands } from './commands.js';
-import { createHouseColumn } from './house-column.js';
-import { categoryTabs, firstStockedTab, windowRoute } from './model.js';
+import { createHouseColumn, type HouseColumn } from './house-column.js';
+import { windowRoute } from './model.js';
 import { createTransfersList } from './transfers.js';
 
 /** Design px (FOUNDATION.md, "Okno handlu"): two stock lists side by side, and on the 1365 px plane
@@ -24,6 +24,11 @@ const TRADE_WINDOW_W = 720;
 /** The window painted out of sight for its warm-up frame, and stepped aside for the action ring. */
 const WARM_CLASS = 'on-window--warm';
 const VEIL_CLASS = 'on-window--veiled';
+/** The fill's holes over the two houses' portraits (foundation.css `--hole-a-*`, `--hole-b-*`). */
+const HOLE_A = 'hole-a';
+const HOLE_B = 'hole-b';
+/** A closed or veiled window paints no portrait. */
+const NO_PORTRAITS: readonly HousePortrait[] = [];
 
 /** The tool panel's central windows (construction, residents, ...), which the trade window shares the
  *  centre of the screen with: one central window at a time. */
@@ -38,16 +43,22 @@ export interface TradeWindowDeps {
   readonly tooltip: TipChip;
   readonly hoverCard: HoverCard;
   readonly buildingHover: (id: number) => BuildingHoverModel | null;
-  readonly actions: Pick<SettlerPanelActions, 'show' | 'setTradeMarks' | 'setTradeImportLimits'>;
+  readonly actions: Pick<SettlerPanelActions, 'show' | 'centre' | 'setTradeMarks' | 'setTradeImportLimits'>;
   readonly centralWindows?: CentralWindows;
+}
+
+/** A house's live portrait in the window: the house and the client box the renderer paints it into. */
+export interface HousePortrait {
+  readonly entityRef: number;
+  readonly rect: ClientRect;
 }
 
 /**
  * The trade between a trader's two own houses, in the centre of the screen (FOUNDATION.md, "Okno
- * handlu"): one category tab strip over both houses' stock, an arrow per good that sets up a
- * transfer into the other house, and the transfers with their direction and limits. It belongs to
- * the selected trader: another selection, a route without two own stops or a beam window opened
- * after it closes it.
+ * handlu"): each house's live portrait, name and own category tabs over its stock, an arrow per good
+ * that sets up a transfer into the other house, and the transfers with their direction and limits. It
+ * belongs to the selected trader: another selection, a route without two own stops or a beam window
+ * opened after it closes it.
  */
 export interface TradeWindow {
   isOpen(): boolean;
@@ -65,6 +76,10 @@ export interface TradeWindow {
   veil(on: boolean): void;
   /** Paint once out of sight at map start, so the first open costs no first-paint work. */
   warm(model: SettlerPanelModel): void;
+  /** The houses' portraits while the window shows; the same list while nothing moved. */
+  portraits(): readonly HousePortrait[];
+  /** The HUD scale changed: the portraits' boxes are measured again. */
+  invalidate(): void;
   dispose(): void;
 }
 
@@ -74,37 +89,39 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
     title: copy.trade,
     closeLabel: copy.shell.close,
     width: TRADE_WINDOW_W,
-    compact: true,
+    headless: true,
   });
   window.element.classList.add('on-window--trade');
   window.body.classList.add('on-window__body--column');
-  const title = window.element.querySelector('.on-window__title');
+  // The slate under the content, with a hole over each house's portrait (foundation.css).
+  const fill = element('div', 'on-window__fill');
+  window.element.prepend(fill);
   const placeWindow = centralWindowPlacer(window, deps.plane, TRADE_WINDOW_W);
   const tips = attachTipLayer(window.element, deps.tooltip);
 
   /** The trader the window is open for, and its model as last painted. */
   let trader: number | null = null;
   let shown: TradePanelModel | null = null;
-  let tab: number | null = null;
 
   const commands = createTradeCommands(deps.actions, () =>
     trader === null || shown === null ? null : { trader, trade: shown },
   );
 
-  const tabs = createCategoryTabs(copy.tradeWindow.tabs, (index) => {
-    tab = index;
-    if (shown !== null) paint(shown);
-  });
   const columnDeps = {
     icons: deps.icons,
     hoverCard: deps.hoverCard,
     buildingHover: deps.buildingHover,
     show: (house: number) => deps.actions.show(house),
+    centre: (house: number) => deps.actions.centre(house),
     onArrow: commands.arrow,
   };
   const houseA = createHouseColumn(columnDeps, TRADE_SLOT_A);
   const houseB = createHouseColumn(columnDeps, TRADE_SLOT_B);
-  const houses = element('div', 'on-parchment on-trade-houses');
+  const columns: readonly { readonly column: HouseColumn; readonly hole: string }[] = [
+    { column: houseA, hole: HOLE_A },
+    { column: houseB, hole: HOLE_B },
+  ];
+  const houses = element('div', 'on-trade-houses');
   houses.append(houseA.element, houseB.element);
   const transfersTitle = element('div', 'on-section on-trade-transfers__title', '<span></span>');
   const transfers = createTransfersList({
@@ -114,15 +131,27 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   });
   const lower = element('div', 'on-trade-transfers');
   lower.append(transfersTitle, transfers.element);
-  window.body.append(tabs.element, houses, lower);
+  window.body.append(houses, lower);
+
+  /** The portraits' client boxes, measured once per change of the layout, the scale or the screen. */
+  let holes: readonly ClientRect[] | null = null;
+  let dirty = true;
+  let listed: readonly HousePortrait[] = NO_PORTRAITS;
+  const invalidate = (): void => {
+    dirty = true;
+  };
+  globalThis.addEventListener('resize', invalidate);
+  const resizes = new ResizeObserver(invalidate);
+  resizes.observe(window.element);
+  const showing = (): boolean =>
+    window.isOpen() &&
+    !window.element.classList.contains(WARM_CLASS) &&
+    !window.element.classList.contains(VEIL_CLASS);
 
   const paint = (trade: TradePanelModel): void => {
     shown = trade;
-    const open = tab ?? firstStockedTab(trade);
-    tab = open;
-    tabs.update(categoryTabs(trade), open);
-    houseA.update(trade, open);
-    houseB.update(trade, open);
+    houseA.update(trade);
+    houseB.update(trade);
     const heading = transfersTitle.firstElementChild;
     if (heading !== null) {
       const count = trade.transfers.length;
@@ -142,16 +171,17 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   });
 
   const show = (model: SettlerPanelModel, trade: TradePanelModel): void => {
-    if (trader !== model.entityId) {
-      trader = model.entityId;
-      tab = null;
+    const again = trader === model.entityId;
+    trader = model.entityId;
+    // Each open takes the lists' order and scroll afresh; the open tabs are kept for the same trader.
+    for (const { column } of columns) {
+      if (again) column.reorder();
+      else column.reset();
     }
-    // Each open takes the lists' order and scroll afresh; the tab is kept for the same trader.
-    houseA.reset();
-    houseB.reset();
-    if (title !== null) write(title, formatMessage(copy.tradeWindow.title, { name: model.name }));
+    window.element.setAttribute('aria-label', formatMessage(copy.tradeWindow.title, { name: model.name }));
     window.open();
     placeWindow();
+    invalidate();
     paint(trade);
   };
 
@@ -163,8 +193,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
       deps.centralWindows?.close();
       window.element.classList.remove(WARM_CLASS);
       show(model, trade);
-      const selected = tabs.element.querySelector<HTMLElement>('[aria-selected="true"]');
-      selected?.focus();
+      houseA.focusTabs();
     },
     dismiss: () => window.dismiss(),
     close,
@@ -183,7 +212,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
         close();
         return;
       }
-      placeWindow();
+      if (placeWindow()) invalidate();
     },
     onDismiss: (listener) => window.onDismiss(listener),
     claims(clientX, clientY): boolean {
@@ -210,8 +239,38 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
         }),
       );
     },
+    portraits(): readonly HousePortrait[] {
+      if (!showing()) return NO_PORTRAITS;
+      if (dirty || holes === null) {
+        dirty = false;
+        holes = columns.map(({ column, hole }) => cutPortraitHole(fill, column.portrait, hole));
+        listed = NO_PORTRAITS;
+      }
+      const boxes = holes;
+      // A new list only when a box was measured again or a house changed under it.
+      const stale =
+        listed.length !== columns.length ||
+        columns.some(({ column }, index) => {
+          const was = listed[index];
+          return was === undefined || was.entityRef !== column.house() || was.rect !== boxes[index];
+        });
+      if (stale) {
+        const next: HousePortrait[] = [];
+        columns.forEach(({ column }, index) => {
+          const house = column.house();
+          const rect = boxes[index];
+          if (house !== null && rect !== undefined) next.push({ entityRef: house, rect });
+        });
+        listed = next;
+      }
+      return listed;
+    },
+    invalidate,
     dispose(): void {
       tips.dispose();
+      globalThis.removeEventListener('resize', invalidate);
+      resizes.disconnect();
+      for (const { hole } of columns) closePortraitHole(fill, hole);
       window.dispose();
     },
   };

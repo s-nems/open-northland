@@ -12,8 +12,9 @@ import {
 } from '../../hud/details-panel/index.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
-import type { ClientRect } from '../../hud/dom/selection-panel.js';
+import type { ClientRect } from '../../hud/dom/portrait-hole.js';
 import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
+import type { HousePortrait } from '../../hud/dom/trade-window/window.js';
 import { clientToCanvas } from '../../hud/geometry.js';
 import { buildingHoverModel } from '../../hud/hover-card/building.js';
 import { keyDisplayLabel } from '../../hud/keybindings.js';
@@ -61,8 +62,9 @@ export interface UnitChromeCallbacks {
 export interface UnitChromeHandle {
   panel(): UnitPanel;
   actions(): SettlerActions;
-  /** The live figure's box on the canvas: the DOM settler panel's frame, else the Pixi panel's. */
-  portrait(): PortraitBox | null;
+  /** The live cutouts' boxes on the canvas: the settler's (the DOM settler panel's frame, else the Pixi
+   *  panel's), then the trade window's houses while it is open. */
+  portraits(): readonly PortraitBox[];
   /** True over either details panel. */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade. */
@@ -159,6 +161,13 @@ export async function createUnitChrome(
       equipPicker,
     ),
   });
+  const canvasRect = (client: ClientRect): PortraitBox['rect'] => {
+    const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
+    const { left, top, width, height } = client;
+    const from = clientToCanvas(scale, left, top);
+    const to = clientToCanvas(scale, left + width, top + height);
+    return { x: from.x, y: from.y, w: to.x - from.x, h: to.y - from.y };
+  };
   /** The canvas box of the DOM portrait, converted once per measured client box and settler. */
   let portraitMemo: { client: ClientRect; box: PortraitBox } | null = null;
   const domPortrait = (): PortraitBox | null => {
@@ -170,11 +179,6 @@ export async function createUnitChrome(
       portraitMemo.box.inside !== shown.inside ||
       portraitMemo.box.aboard !== shown.aboard
     ) {
-      const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
-      const { left, top, width, height } = shown.rect;
-      const from = clientToCanvas(scale, left, top);
-      const to = clientToCanvas(scale, left + width, top + height);
-      const rect = { x: from.x, y: from.y, w: to.x - from.x, h: to.y - from.y };
       portraitMemo = {
         client: shown.rect,
         box: {
@@ -182,11 +186,41 @@ export async function createUnitChrome(
           kind: shown.kind,
           ...(shown.inside === undefined ? {} : { inside: shown.inside }),
           ...(shown.aboard === undefined ? {} : { aboard: shown.aboard }),
-          rect,
+          rect: canvasRect(shown.rect),
         },
       };
     }
     return portraitMemo.box;
+  };
+  /** The trade window's house portraits on the canvas, converted once per list the window measured. */
+  let housesMemo: { client: readonly HousePortrait[]; boxes: readonly PortraitBox[] } | null = null;
+  const housePortraits = (): readonly PortraitBox[] => {
+    const shown = settlerPanel.tradePortraits();
+    if (housesMemo?.client !== shown) {
+      housesMemo = {
+        client: shown,
+        boxes: shown.map((house) => ({
+          entityRef: house.entityRef,
+          kind: 'building',
+          rect: canvasRect(house.rect),
+        })),
+      };
+    }
+    return housesMemo.boxes;
+  };
+  /** Every portrait of the frame, the settler's first; the same list while its boxes are the same. */
+  let portraitsMemo: {
+    settler: PortraitBox | null;
+    houses: readonly PortraitBox[];
+    list: readonly PortraitBox[];
+  } | null = null;
+  const portraits = (): readonly PortraitBox[] => {
+    const settler = domPortrait() ?? mounts.current().panel.portrait();
+    const houses = housePortraits();
+    if (portraitsMemo?.settler !== settler || portraitsMemo.houses !== houses) {
+      portraitsMemo = { settler, houses, list: settler === null ? houses : [settler, ...houses] };
+    }
+    return portraitsMemo.list;
   };
 
   const mountPanel = (uiscale: number): Promise<UnitPanel> =>
@@ -344,7 +378,7 @@ export async function createUnitChrome(
   return {
     panel: () => mounts.current().panel,
     actions: () => mounts.current().actions,
-    portrait: () => domPortrait() ?? mounts.current().panel.portrait(),
+    portraits,
     claimsPointer: (x, y) => settlerPanel.claims(x, y) || mounts.current().panel.claimsPointer(x, y),
     browse: settlerPanel.browse,
     closeTradeWindow: settlerPanel.closeTradeWindow,
