@@ -16,6 +16,7 @@ export {
   constructionTribeOf,
   deliveredConstructionFraction,
   neededConstructionGoods,
+  razeSalvageOf,
   upgradeTierOf,
 } from './construction.js';
 export { accessibleStockAmounts, setAccessibleStockAmount } from './inventory.js';

@@ -39,11 +39,15 @@ function spillOf(
 }
 
 /**
- * Everything inside `store` that should end up on the ground when it is destroyed: its {@link Stockpile}
- * plus an upgrading building's stashed pre-upgrade inventory, which {@link Upgrading} holds aside. Call it
- * before the destroy.
+ * Everything inside `store` that should end up on the ground when it is destroyed: its {@link Stockpile},
+ * an upgrading building's stashed pre-upgrade inventory, which {@link Upgrading} holds aside, and any
+ * `salvage` from the structure itself. Call it before the destroy.
  */
-export function spilledStockOf(world: World, store: Entity): SpilledStock | null {
+export function spilledStockOf(
+  world: World,
+  store: Entity,
+  salvage: readonly GoodsLine[] = [],
+): SpilledStock | null {
   const pos = world.tryGet(store, Position);
   if (pos === undefined) return null;
   const held = new Map<number, number>();
@@ -54,6 +58,7 @@ export function spilledStockOf(world: World, store: Entity): SpilledStock | null
   if (stock !== undefined) for (const [goodType, amount] of stock.amounts) add(goodType, amount);
   const upgrading = world.tryGet(store, Upgrading);
   if (upgrading !== undefined) for (const [good, amount] of upgrading.savedStock) add(good, amount);
+  for (const line of salvage) add(line.goodType, line.amount);
   return spillOf(pos, held);
 }
 

@@ -5,16 +5,26 @@ import {
   Position,
   Stockpile,
   setStockAmount,
+  UnderConstruction,
   Upgrading,
   Vehicle,
 } from '../../src/components/index.js';
+import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import type { Simulation } from '../../src/index.js';
+import { Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { manhattan } from '../../src/systems/spatial/metric.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
-import { HUT, HUT_FOOTPRINT, mappedSim, terrainOf, VIKING } from '../footprint/building-placement/support.js';
+import {
+  grassMap,
+  HUT,
+  HUT_FOOTPRINT,
+  mappedSim,
+  placementContent,
+  terrainOf,
+  VIKING,
+} from '../footprint/building-placement/support.js';
 
 /**
  * A destroyed building leaves its contents on the ground under it, in the ordinary max-5 heaps the ground
@@ -170,5 +180,80 @@ describe('a razed building spills its contents on the ground', () => {
       return heaps(sim);
     };
     expect(layout()).toEqual(layout());
+  });
+});
+
+describe('a razed standing building gives back half its construction bill, rounded up', () => {
+  const HUT_WOOD_COST = 5;
+  const HUT_PLANK_COST = 4;
+  const WOOD_SALVAGE = 3;
+  const PLANK_SALVAGE = 2;
+
+  /** The placement fixture with a HUT that costs wood and planks to raise. */
+  function costedHutSim(): Simulation {
+    const content = placementContent();
+    const buildings = content.buildings.map((type) =>
+      type.typeId === HUT
+        ? {
+            ...type,
+            construction: [
+              { goodType: WOOD, amount: HUT_WOOD_COST },
+              { goodType: PLANK, amount: HUT_PLANK_COST },
+            ],
+          }
+        : type,
+    );
+    return new Simulation({ seed: 1, content: { ...content, buildings }, map: grassMap(16, 16) });
+  }
+
+  /** A setup-placed building stands finished; this turns it back into a site. */
+  function reopenAsSite(sim: Simulation, hut: Entity): void {
+    sim.world.add(hut, UnderConstruction, { labor: fx.fromInt(0) });
+  }
+
+  it('on demolition, on top of what the building held', () => {
+    const sim = costedHutSim();
+    const hut = stockedHut(sim, ANCHOR, [[WOOD, 1]]);
+
+    demolish(sim, hut);
+
+    const spilled = heaps(sim);
+    expect(unitsOf(spilled, WOOD)).toBe(WOOD_SALVAGE + 1);
+    expect(unitsOf(spilled, PLANK)).toBe(PLANK_SALVAGE);
+  });
+
+  it('when razed in combat', () => {
+    const sim = costedHutSim();
+    const hut = stockedHut(sim, ANCHOR, []);
+    sim.world.add(hut, Health, { hitpoints: 0, max: 10 });
+
+    sim.step();
+
+    expect(sim.world.isAlive(hut)).toBe(false);
+    expect(unitsOf(heaps(sim), WOOD)).toBe(WOOD_SALVAGE);
+    expect(unitsOf(heaps(sim), PLANK)).toBe(PLANK_SALVAGE);
+  });
+
+  it('but an unfinished site leaves only the materials delivered to it', () => {
+    const sim = costedHutSim();
+    const site = stockedHut(sim, ANCHOR, [[WOOD, 2]]);
+    reopenAsSite(sim, site);
+
+    demolish(sim, site);
+
+    expect(unitsOf(heaps(sim), WOOD)).toBe(2);
+    expect(unitsOf(heaps(sim), PLANK)).toBe(0);
+  });
+
+  it('and an upgrading house salvages the tier still standing under its site', () => {
+    const sim = costedHutSim();
+    const hut = stockedHut(sim, ANCHOR, [[PLANK, 1]]); // the upgrade's delivered hold
+    reopenAsSite(sim, hut);
+    sim.world.add(hut, Upgrading, { savedStock: new Map(), seeded: new Map() });
+
+    demolish(sim, hut);
+
+    expect(unitsOf(heaps(sim), WOOD)).toBe(WOOD_SALVAGE);
+    expect(unitsOf(heaps(sim), PLANK)).toBe(PLANK_SALVAGE + 1);
   });
 });

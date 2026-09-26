@@ -5,6 +5,7 @@ import {
   holdsAll,
   Palisade,
   Stockpile,
+  UnderConstruction,
   Upgrading,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -39,6 +40,28 @@ export function constructionBillOf(world: World, ctx: ContentContext, site: Enti
     return upgradeTierOf(type, ctx)?.construction ?? EMPTY_CONSTRUCTION;
   }
   return contentIndex(ctx.content).constructionBillByBuilding.get(b.buildingType) ?? EMPTY_CONSTRUCTION;
+}
+
+/** A razed standing building gives back each bill line divided by this, rounded up. */
+const RAZE_SALVAGE_DIVISOR = 2;
+
+/**
+ * The materials a building leaves when it comes down, on top of its hold: half of each line of the
+ * standing house's from-scratch bill, rounded up, whether combat razed it or its owner demolished it. A
+ * plain site pays its bill only at completion, so its delivered hold is all it leaves; an upgrading house
+ * still stands under its site and salvages as its current tier.
+ *
+ * Source basis: remembered behavior of the original, not confirmed against the running original.
+ */
+export function razeSalvageOf(world: World, ctx: ContentContext, building: Entity): readonly GoodsLine[] {
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return EMPTY_CONSTRUCTION;
+  if (world.has(building, UnderConstruction) && !world.has(building, Upgrading)) return EMPTY_CONSTRUCTION;
+  const bill = contentIndex(ctx.content).constructionBillByBuilding.get(b.buildingType) ?? EMPTY_CONSTRUCTION;
+  return bill.map((line) => ({
+    goodType: line.goodType,
+    amount: Math.ceil(line.amount / RAZE_SALVAGE_DIVISOR),
+  }));
 }
 
 /** The civilization whose builders may raise this site, independent of the structure kind. */

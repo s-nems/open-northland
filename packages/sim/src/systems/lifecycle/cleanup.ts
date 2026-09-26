@@ -6,6 +6,7 @@ import type { System, SystemContext } from '../context.js';
 import { scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { evictResidentsOf } from '../family/households.js';
 import { releaseWallBreaches } from '../palisades/breach.js';
+import { razeSalvageOf } from '../stores/index.js';
 import { removeVehicle } from '../vehicles/remove.js';
 import { reap } from './death.js';
 
@@ -37,8 +38,9 @@ export const cleanupSystem: System = (world, ctx) => {
 
 /**
  * The teardown seam combat razing and the player's `demolish` command share: release every bound settler,
- * announce it, remove the building, and heap whatever was inside on the ground where it stood. The event
- * is emitted before the destroy so the entity's `Owner`, `Position`, and `Building` are still readable.
+ * announce it, remove the building, and heap whatever was inside plus its {@link razeSalvageOf} materials
+ * on the ground where it stood. The event is emitted before the destroy so the entity's `Owner`,
+ * `Position`, and `Building` are still readable.
  */
 export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
@@ -54,7 +56,7 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
     ...(world.has(e, Upgrading) ? { upgrading: true } : {}),
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
-  const spill = spilledStockOf(world, e);
+  const spill = spilledStockOf(world, e, razeSalvageOf(world, ctx, e));
   removeBuildingSilently(world, ctx, e);
   scatterSpilledStock(world, ctx, spill);
 }
