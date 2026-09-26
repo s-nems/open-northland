@@ -215,24 +215,34 @@ on the beam opens it at once.
 
 The trade between a trader's two own houses, opened by "Konfiguruj handel" in the settler panel: a
 central window 720 px wide, in the construction window's frame, so on the 1365 px plane of a
-1280 × 720 screen it clears the settler panel, which stays open at the right edge. The head reads
-"Handel · " and the trader's name.
+1280 × 720 screen it clears the settler panel, which stays open at the right edge. It has no head:
+the bronze close medallion takes the frame's top-right corner ornament, and the height a title
+took goes to the lists. The window names itself ("Handel · " and the trader's name) only for
+assistive tech.
 
-- Tabs: the eight stock categories as text tabs, one strip shared by both houses. A tab counts the
-  kinds of goods either house holds (not units; empty at none), carries a lit dot while a transfer
-  of that category runs, and says both in its tooltip. The arrow keys move along the strip. A new
-  trader opens on the first category either house holds anything of; the open tab stays across ticks
-  and a reopen for the same trader.
-- Houses: one parchment, house A left and house B right, each headed by its badge, its name as a link
-  (select and bring into view, which closes the window with the trader's selection, as a residents
-  row does; resting shows the hover card) and the arrow while the trader heads there. Under it the
-  house's stock of the open category: per good its icon, name, "amount / shelf" and a thin meter,
-  the goods in stock first and the empty ones faded after them. That order is taken when the window
-  opens or the tab changes and kept while amounts change, so no row moves under the cursor. Every list
-  shows eight 28 px rows whatever the tab holds, so switching tabs moves nothing; a longer category
-  ("Inne" in a warehouse) scrolls inside its list, never the window.
-- A row's arrow sets up the transfer into the other house: "→" in A's list ("Wieź do punktu B"), "←"
-  in B's, Ctrl (or ⌘) + click balances the good instead (Ctrl on a one-way good turns it balanced).
+- Houses: house A left and house B right, B mirroring A. Each is headed by a live portrait of the
+  house, a 64 px square in the settler portrait's frame at the outer edge (A's left, B's right),
+  painted by the renderer through a hole in the window's slate like the settler panel's portrait. A
+  click on it brings the house into view and keeps the trader's selection and the window. Beside the
+  portrait its badge, its name as a link (select and bring into view, which closes the window with
+  the trader's selection, as a residents row does; resting shows the hover card) and the arrow while
+  the trader heads there, over the house's own strip of the eight stock categories as square icon
+  tabs, standing on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
+  on Wojsko), a tab's tooltip says the category and how many kinds of goods the house holds (a
+  category it holds nothing of reads faded), a lit dot marks a category with a transfer, and the
+  arrow keys move along the strip. A new trader opens each house on the first category it holds
+  anything of; the open tabs stay across ticks and a reopen for the same trader. The stock browser
+  owns the strip, so the building window can show the same per house.
+- Under the head the house's stock of the open tab: per good its icon, name, "amount / shelf" and a
+  thin meter, the goods in stock first and the empty ones faded after them. That order is taken when
+  the window opens or the tab changes and kept while amounts change, so no row moves under the
+  cursor. Every list shows nine 28 px rows whatever the tab holds, so switching tabs moves nothing,
+  and nine is what fits the 768 px plane of a 1280 × 720 screen (the window stands 567 px of its
+  592 px allowance); a longer category ("Inne" in a warehouse) scrolls inside its list, never the
+  window.
+- A row's arrow sets up the transfer into the other house: "→" at the right end of A's rows ("Wieź do
+  punktu B"), "←" at the left end of B's, so the two lists' arrows flank the gap between them; Ctrl (or
+  ⌘) + click balances the good instead (Ctrl on a one-way good turns it balanced).
   A good in a transfer has its arrow lit on both sides, pointing the way it goes ("⇄" when balanced),
   and a plain press on it removes the transfer. An arrow into a house that does not store the good is
   faded with the reason in its tooltip.
@@ -369,18 +379,21 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   bronze arrow on the stop the trader serves now and × to take the house off. Every free slot reads
   "Dodaj punkt handlowy" in amber, a link that arms the house pick, which fills the first free slot
   whichever row armed it. With both stops the player's own houses a full-width "Konfiguruj handel"
-  button opens the trade window, and under it the transfers as read-only lines: the good's icon and
-  name, a dotted leader, and its direction with the limits set ("A → B · do 10 · zostaw 2", "A ⇄ B"),
-  the tooltip saying the same in words. Nothing on these lines is pressed. With fewer than two stops
-  one muted line follows the rows instead: "Dodaj oba punkty, żeby ustawić przewozy". With another
-  tribe's house on the route there is no button: Umowa lists the map's agreements as single-choice
-  chips "1 [coin] → 4 [iron]" ("Sprzedaj 1 × Moneta, otrzymaj 4 × Żelazo"), a second press drops the
+  button opens the trade window, and under it the transfers as read-only lines: the good's icon
+  centred in its well and its name, a dotted leader, and its direction with the limits set ("A → B
+  · do 10 · zostaw 2", "A ⇄ B"), the tooltip saying the same in words. Nothing on these lines is
+  pressed. With fewer than two stops only the two stop rows show. With another tribe's house on the
+  route there is no button: Umowa lists the map's agreements as single-choice chips "1 [coin] → 4 [iron]" ("Sprzedaj 1 × Moneta, otrzymaj 4 × Żelazo"), a second press drops the
   choice, and under the chosen chip two thin meters of the running exchange, the given half and the
   received half, faded while the partner is no friend (the tooltip says so). The route has no other
   status line: the trader's destination is in the status strip. The section starts open; when the
   panel would run past the plane, the foldable sections fold in order, Doświadczenie first,
-  Produkcja next and Handel last, since the route is the trader's main control: Handel then keeps its
-  stop rows and the button and offers "jeszcze N" (the transfers, or the agreements) in its title,
+  Produkcja next and Handel last, since the route is the trader's main control. Handel then lists
+  only the transfer lines that fit, and the last line kept is a link "jeszcze N przewozów · otwórz
+  okno" (the tooltip: the window lists them all) that opens the trade window; the count follows
+  when another section or the plane changes size. In the 1280 × 720 trade scene a trader without
+  experience shows twelve lines, the link from the thirteenth transfer on. With no room even for the
+  link (or for the agreements) the section folds: it keeps its stop rows and the button and offers "jeszcze N" (the transfers, or the agreements) in its title,
   which opens and closes it; another person starts open again.
 - Doświadczenie: the trained specializations as ledger rows one to a line (a track's name runs
   long: "Murarz - kamienny blok"), the current trade's first, the bonus percent in green (the

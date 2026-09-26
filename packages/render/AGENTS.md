@@ -18,6 +18,11 @@ Per-frame draw cost must follow the viewport, not total map size.
 - Preserve batching. Per-sprite filters, masks, and blend modes need a measured reason.
 - Keep zoom-out bounded. A wider view needs a deliberate level-of-detail strategy.
 
+Portrait insets (`WorldRenderer.setPortraitInsets`) take every HUD box that shows a live world cutout
+this frame: the settler panel's portrait and the trade window's two houses. Each is one more framed
+render of the world layer, so the cost grows with the boxes on screen, not the map; the app passes
+the same list object while the boxes hold still.
+
 The current sprite visibility pass may still inspect all entities, but submitted draw work must stay
 close to the visible set. If that CPU scan becomes material, add a tested spatial query rather than
 weakening culling.
