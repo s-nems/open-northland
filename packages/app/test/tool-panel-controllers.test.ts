@@ -477,6 +477,52 @@ describe('placement controller', () => {
     return { placement, commands, cues, strip, cancels };
   }
 
+  it('places a building once the sim answers the click, and orders once for clicks made meanwhile', async () => {
+    let answer: (ok: boolean) => void = () => undefined;
+    const asked: number[] = [];
+    const { placement, commands } = mount(
+      () => ({ col: 4, row: 2 }),
+      () => false, // the cursor's last answer refuses; the click asks afresh
+      undefined,
+      undefined,
+      {
+        clickAsks: {
+          askPlaceAt: (typeId) => {
+            asked.push(typeId);
+            return new Promise((resolve) => {
+              answer = resolve;
+            });
+          },
+          palisadeLineReady: () => Promise.resolve(),
+          askPalisadeGate: () => Promise.resolve(null),
+        },
+      },
+    );
+    placement.enter(23);
+    expect(placement.handleClick(10, 10)).toBe(true);
+    expect(placement.handleClick(10, 10)).toBe(true);
+    expect(asked).toEqual([23]);
+    answer(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(commands.map((command) => command.kind)).toEqual(['placeBuilding']);
+    expect(placement.isActive()).toBe(false);
+  });
+
+  it('drops an answered click once the panel is gone', async () => {
+    const { placement, commands } = mount(() => ({ col: 4, row: 2 }), undefined, undefined, undefined, {
+      clickAsks: {
+        askPlaceAt: () => Promise.resolve(true),
+        palisadeLineReady: () => Promise.resolve(),
+        askPalisadeGate: () => Promise.resolve(null),
+      },
+    });
+    placement.enter(23);
+    placement.handleClick(10, 10);
+    placement.dispose();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(commands).toEqual([]);
+  });
+
   it('names the held building on the strip, clears it with the mode, and reports only a cancel, with its unspent plan', () => {
     const { placement, strip, cancels } = mount(() => ({ col: 4, row: 2 }));
     placement.enter(23);

@@ -9,6 +9,7 @@ import {
 } from '../src/game/sandbox/index.js';
 import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import { type Pickable, worldToTile } from '../src/view/picking.js';
+import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
 import { createPickModeController } from '../src/view/unit-controls/pick-mode.js';
 import { issueRingCommand } from '../src/view/unit-controls/ring-commands.js';
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
@@ -138,10 +139,21 @@ const targetsOf = (arms: Arms): UnitTargets => ({
   ownedSettlersIn: () => (arms.settlers ?? []).map((ref) => ({ ref, x: 0, y: 0 })),
 });
 
+/** A synchronous rule as the host answers it: a Promise, landing a microtask later. */
+function answering<A extends unknown[]>(
+  rule: ((...args: A) => boolean) | undefined,
+): ((...args: A) => Promise<boolean>) | undefined {
+  return rule === undefined ? undefined : (...args) => Promise.resolve(rule(...args));
+}
+
+/** Let the answers a click waits on land. */
+const landed = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
 function harness(selected: readonly number[], arms: Arms) {
   const issued: Command[] = [];
   const targets = targetsOf(arms);
   const controller = createVehicleOrderController({
+    answered: createAnsweredOrders(),
     selected: () => new Set(selected),
     targets,
     snapshot: () => WORLD,
@@ -150,10 +162,11 @@ function harness(selected: readonly number[], arms: Arms) {
     viewer: fixedViewerSeat(HUMAN_PLAYER),
     toWorld: (x, y) => ({ x, y }),
     enqueue: (command) => issued.push(command),
-    canMoorAt: arms.canMoorAt,
-    canAttachToVehicle: arms.canAttachToVehicle,
+    askMoorAt: answering(arms.canMoorAt),
+    askAttachToVehicle: answering(arms.canAttachToVehicle),
   });
   const pickMode = createPickModeController({
+    answered: createAnsweredOrders(),
     snapshot: () => WORLD,
     targets,
     content: sandboxContent(),
@@ -215,13 +228,17 @@ describe('vehicle right-click defaults', () => {
     expect(issued).toEqual([{ kind: 'moveVehicle', vehicle: HANDCART, x: spot.col, y: spot.row }]);
   });
 
-  it('moors a ship on a shore its mooring rule accepts and drives it anywhere else', () => {
+  it('moors a ship on a shore its mooring rule accepts and drives it anywhere else', async () => {
     const spot = worldToTile(CLICK.x, CLICK.y);
     const shore = harness([SHIP], { canMoorAt: (_vehicle, x, y) => x === spot.col && y === spot.row });
     expect(shore.controller.issueRightClick(rightClick)).toBe(true);
+    // The order waits on the mooring rule's answer, asked as the click lands.
+    expect(shore.issued).toEqual([]);
+    await landed();
     expect(shore.issued).toEqual([{ kind: 'dockVehicle', vehicle: SHIP, x: spot.col, y: spot.row }]);
     const sea = harness([SHIP], { canMoorAt: () => false });
     expect(sea.controller.issueRightClick(rightClick)).toBe(true);
+    await landed();
     expect(sea.issued).toEqual([{ kind: 'moveVehicle', vehicle: SHIP, x: spot.col, y: spot.row }]);
     // A land vehicle never docks, whatever the rule says of the spot.
     const cart = harness([HANDCART], { canMoorAt: () => true });
@@ -274,14 +291,15 @@ describe('vehicle right-click defaults', () => {
 });
 
 describe('right-click attach', () => {
-  it('assigns each selected settler the attach rule admits to the own vehicle under the cursor', () => {
+  it('assigns each selected settler the attach rule admits to the own vehicle under the cursor', async () => {
     const second = OWN_SETTLER + 1;
     const h = harness([OWN_SETTLER, second], {
       vehicles: [under(SHIP, 'vehicle')],
       settlers: [OWN_SETTLER, second],
       canAttachToVehicle: (settler) => settler === OWN_SETTLER,
     });
-    expect(h.controller.issueAttachSelected(rightClick)).toBe(true);
+    expect(h.controller.issueAttachSelected(rightClick, () => undefined)).toBe(true);
+    await landed();
     expect(h.issued).toEqual([{ kind: 'attachToVehicle', entity: OWN_SETTLER, vehicle: SHIP }]);
   });
 
@@ -291,26 +309,29 @@ describe('right-click attach', () => {
       settlersUnder: [under(CART_COMMANDER, 'settler')],
       settlers: [OWN_SETTLER],
     });
-    expect(rider.controller.issueAttachSelected(rightClick)).toBe(false);
+    expect(rider.controller.issueAttachSelected(rightClick, () => undefined)).toBe(false);
     const enemy = harness([OWN_SETTLER], {
       vehicles: [under(SHIP, 'vehicle')],
       enemies: [under(ENEMY_SOLDIER, 'settler')],
       settlers: [OWN_SETTLER],
     });
-    expect(enemy.controller.issueAttachSelected(rightClick)).toBe(false);
+    expect(enemy.controller.issueAttachSelected(rightClick, () => undefined)).toBe(false);
     expect([...rider.issued, ...enemy.issued]).toEqual([]);
   });
 
-  it('orders nothing when no vehicle lies under the cursor or nobody selected may board', () => {
+  it('orders nothing when no vehicle lies under the cursor, and hands the click on when nobody may board', async () => {
     const none = harness([OWN_SETTLER], { settlers: [OWN_SETTLER] });
-    expect(none.controller.issueAttachSelected(rightClick)).toBe(false);
+    expect(none.controller.issueAttachSelected(rightClick, () => undefined)).toBe(false);
     const refused = harness([OWN_SETTLER], {
       vehicles: [under(SHIP_AT_SEA, 'vehicle')],
       settlers: [OWN_SETTLER],
       canAttachToVehicle: () => false,
     });
-    expect(refused.controller.issueAttachSelected(rightClick)).toBe(false);
+    let handedOn = 0;
+    expect(refused.controller.issueAttachSelected(rightClick, () => handedOn++)).toBe(true);
+    await landed();
     expect(refused.issued).toEqual([]);
+    expect(handedOn).toBe(1);
   });
 });
 
@@ -352,17 +373,18 @@ describe('vehicle picks', () => {
     expect(new Set(goals).size).toBe(2);
   });
 
-  it('names the ship of an armed dock pick, and drops a dock click on a spot the mooring rule rejects', () => {
+  it('names the ship of an armed dock pick, and drops a dock click on a spot the mooring rule rejects', async () => {
     const { issued, pickMode } = harness([SHIP], { canMoorAt: () => false });
     expect(pickMode.dockVehicle()).toBeNull();
     pickMode.arm({ kind: 'vehicle-dock', vehicle: SHIP });
     expect(pickMode.dockVehicle()).toBe(SHIP);
-    expect(pickMode.handleMouseDown(leftClick)).toBe('missed');
+    pickMode.handleMouseDown(leftClick);
     expect(pickMode.dockVehicle()).toBeNull();
+    await landed();
     expect(issued).toEqual([]);
   });
 
-  it('lights the own vehicles of an armed assign-vehicle pick by the attach rule and drops a red click', () => {
+  it('lights the own vehicles of an armed assign-vehicle pick by the attach rule and drops a red click', async () => {
     const { issued, pickMode } = harness([OWN_SETTLER], {
       vehicles: [under(HANDCART, 'vehicle')],
       canAttachToVehicle: (_settler, vehicle) => vehicle === SHIP,
@@ -376,12 +398,13 @@ describe('vehicle picks', () => {
       { id: SHIP_AT_SEA, ok: false },
       { id: CARRIED_CART, ok: false },
     ]);
-    expect(pickMode.handleMouseDown(leftClick)).toBe('missed');
+    pickMode.handleMouseDown(leftClick);
+    await landed();
     expect(issued).toEqual([]);
     expect(pickMode.highlight()).toBeNull();
   });
 
-  it("arms the ring's assign-vehicle pick, which attaches the settler to the own vehicle it clicks", () => {
+  it("arms the ring's assign-vehicle pick, which attaches the settler to the own vehicle it clicks", async () => {
     const { issued, pickMode } = harness([OWN_SETTLER], { vehicles: [under(HANDCART, 'vehicle')] });
     issueRingCommand('assignVehicle', [OWN_SETTLER], {
       enqueue: () => undefined,
@@ -392,6 +415,7 @@ describe('vehicle picks', () => {
     });
     expect(pickMode.isArmed()).toBe(true);
     expect(pickMode.handleMouseDown(leftClick)).toBe('ordered');
+    await landed();
     expect(issued).toEqual([{ kind: 'attachToVehicle', entity: OWN_SETTLER, vehicle: HANDCART }]);
     // A miss on empty ground orders nothing and drops the mode.
     pickMode.arm({ kind: 'vehicle', settler: OWN_SETTLER });

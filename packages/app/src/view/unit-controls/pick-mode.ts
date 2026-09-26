@@ -11,6 +11,7 @@ import {
 import { ownerPlayerOf, workplaceOf } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
+import type { AnsweredOrders } from './answered-orders.js';
 import {
   computeAssignHighlight,
   computeHouseHighlight,
@@ -86,14 +87,16 @@ interface BuildingPick {
     byType: ReadonlyMap<number, BuildingType>,
     canTrade: TradeHouseRule,
   ) => BuildingHighlightItem[];
-  /** The orders a click on `building` issues, empty when that building refuses every settler. */
-  readonly orders: (
-    snapshot: WorldSnapshot,
-    settlers: readonly number[],
-    building: number,
-    byType: ReadonlyMap<number, BuildingType>,
-    canTrade: TradeHouseRule,
-  ) => PlayerCommand[];
+  /** The orders a click on `building` issues, empty when that building refuses every settler; null for
+   *  the trade-house pick, whose click asks the sim first. */
+  readonly orders:
+    | ((
+        snapshot: WorldSnapshot,
+        settlers: readonly number[],
+        building: number,
+        byType: ReadonlyMap<number, BuildingType>,
+      ) => PlayerCommand[])
+    | null;
 }
 
 /**
@@ -137,14 +140,7 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
   'trade-house': {
     highlight: (snapshot, settlers, _byType, canTrade) =>
       tradeHousePick.highlight(snapshot, settlers, canTrade),
-    orders: (_snapshot, settlers, building, _byType, canTrade) =>
-      settlers
-        .filter((settler) => canTrade(settler, building))
-        .map((settler) => ({
-          kind: 'attachTradeHouse',
-          entity: settler as Entity,
-          house: building as Entity,
-        })),
+    orders: null,
   },
   // A school is resolved before these orders: its pick opens the course dialog instead.
   'learning-place': {
@@ -223,12 +219,16 @@ export interface PickModeDeps {
   readonly vehicleOrders: () => VehicleOrderController;
   /** Named addition: the original signals an armed mode with prompt text, not a cursor. */
   readonly setArmedCursor: (armed: boolean) => void;
-  /** The sim's attach rule (`SessionHost.canAttachToVehicle`), which the "Assign Vehicle" pick lights
-   *  the settler's own vehicles by; absent, the pick lights nothing. */
+  /** The sim's attach rule as its last answer, which the "Assign Vehicle" pick lights the settler's own
+   *  vehicles by; absent, the pick lights nothing. */
   readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
-  /** The sim's trade-stop rule, which the trade-house pick lights and orders by; absent, the pick
-   *  lights nothing and orders nothing. */
+  /** The sim's trade-stop rule as its last answer, which the trade-house pick lights by; absent, the
+   *  pick lights nothing. */
   readonly canAttachTradeHouse?: TradeHouseRule | undefined;
+  /** The same rule asked as the pick's click lands, which it orders by; absent, it orders nothing. */
+  readonly askAttachTradeHouse?: ((trader: number, house: number) => Promise<boolean>) | undefined;
+  /** Where the orders a host answer decides wait for it. */
+  readonly answered: AnsweredOrders;
 }
 
 /**
@@ -324,7 +324,9 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       );
       if (learners.length > 0) return deps.orders().openSchool(building, learners);
     }
-    const orders = BUILDING_PICKS[kind].orders(snapshot, settlers, building, buildingsByType, canTrade);
+    const pick = BUILDING_PICKS[kind].orders;
+    if (pick === null) return attachTradeHouse(settlers, building);
+    const orders = pick(snapshot, settlers, building, buildingsByType);
     for (const order of orders) deps.enqueue(order);
     return orders.length > 0;
   };
@@ -336,6 +338,19 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   ): boolean => {
     const building = buildingUnder(event, kind);
     return building !== null && orderAtBuilding(building, kind, settlers);
+  };
+
+  /** Put `house` on the route of each trader the sim admits, once it answered. */
+  const attachTradeHouse = (traders: readonly number[], house: number): boolean => {
+    const ask = deps.askAttachTradeHouse;
+    if (ask === undefined || traders.length === 0) return false;
+    deps.answered.after(Promise.all(traders.map((trader) => ask(trader, house))), (verdicts) => {
+      traders.forEach((trader, index) => {
+        if (verdicts[index] === true)
+          deps.enqueue({ kind: 'attachTradeHouse', entity: trader as Entity, house: house as Entity });
+      });
+    });
+    return true;
   };
 
   const resolveSpot = (mode: SpotMode, named: Tile): boolean => {

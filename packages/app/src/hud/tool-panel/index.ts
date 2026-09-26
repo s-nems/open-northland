@@ -68,6 +68,7 @@ import {
   type GateSites,
   type PalisadeGateProbeView,
   type PalisadePlacementMode,
+  type PlacementClickAsks,
   type PlacementState,
 } from './placement.js';
 import { ResidentFigures } from './residents/figures.js';
@@ -152,6 +153,8 @@ export interface ToolPanelOptions {
   readonly palisadeBuiltAt?: (owner: number, col: number, row: number) => boolean;
   readonly palisadeGateProbe?: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
+  /** The placement rules a click asks the sim as it lands. */
+  readonly placementClickAsks?: PlacementClickAsks;
   /** The wall and closed-gate graphics rows the quick row's palisade and gate tools place; a missing
    *  row leaves its button disabled. */
   readonly palisadeTools?: PalisadeTools;
@@ -379,6 +382,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       ...(opts.palisadeBuiltAt !== undefined ? { palisadeBuiltAt: opts.palisadeBuiltAt } : {}),
       ...(opts.palisadeGateProbe !== undefined ? { palisadeGateProbe: opts.palisadeGateProbe } : {}),
       ...(opts.palisadeGateSites !== undefined ? { palisadeGateSites: opts.palisadeGateSites } : {}),
+      ...(opts.placementClickAsks !== undefined ? { clickAsks: opts.placementClickAsks } : {}),
       ...(opts.enqueueTrusted !== undefined ? { enqueueTrusted: opts.enqueueTrusted } : {}),
       tribe: opts.tribe,
       owner: opts.owner,
@@ -677,6 +681,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         applyHudHidden(state.hudHidden);
       },
       dispose(): void {
+        placement.dispose();
         infoLines.dispose();
         disposeAll();
       },

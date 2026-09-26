@@ -136,8 +136,10 @@ export interface SessionHost {
   tradeOffersOf(partner: number): Promise<readonly TradeOffer[]>;
   tradeOffersAt(house: Entity): Promise<readonly TradeOffer[]>;
   traderView(trader: Entity): Promise<TraderView | undefined>;
-  canAttachTradeHouse(trader: Entity, house: Entity): Promise<boolean>;
-  canAttachToVehicle(settler: Entity, vehicle: Entity): Promise<boolean>;
+  /** The houses the `attachTradeHouse` command would put on the trader's route now, ascending. */
+  tradeHousesAttachableBy(trader: Entity): Promise<readonly Entity[]>;
+  /** The vehicles the `attachToVehicle` command would seat the settler on now, ascending. */
+  vehiclesAttachableBy(settler: Entity): Promise<readonly Entity[]>;
   missionBriefingHistory(): Promise<readonly number[]>;
   missionBriefingPage(): Promise<number | null>;
   missionHuman(id: number): Promise<Entity | null>;

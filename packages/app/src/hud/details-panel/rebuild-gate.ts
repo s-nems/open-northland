@@ -57,8 +57,15 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
   let lastModelKey = '';
   let lastStructureKey = '';
   let lastRebuildAt = Number.NEGATIVE_INFINITY;
+  /** The snapshot the last structural rebuild baked, whose read answers may still be landing, and the
+   *  answers version the last rebuild read. */
+  let structuralSnapshot: WorldSnapshot | null = null;
+  let rebuiltAnswers = 0;
 
-  const modelFor = (snapshot: WorldSnapshot, force: boolean): { model: UnitPanelModel; json: string } => {
+  const modelFor = (
+    snapshot: WorldSnapshot,
+    force: boolean,
+  ): { model: UnitPanelModel; json: string; answers: number } => {
     const answers = deps.answersVersion?.() ?? 0;
     if (!force && derived !== null && derived.snapshot === snapshot && derived.answers === answers) {
       return derived;
@@ -70,14 +77,19 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
 
   return {
     decide(snapshot, screen, force): PanelRebuild | null {
-      const { model, json } = modelFor(snapshot, force);
+      const { model, json, answers } = modelFor(snapshot, force);
       // The screen size joins the value key so a resize re-anchors the panel.
       const key = `${json}|${screen.width}x${screen.height}`;
       if (!force && key === lastModelKey) return null;
       const structureKey = structureKeyOf(model);
       const structural = force || structureKey !== lastStructureKey;
-      // A refused change keeps the old keys, so a later frame of the same tick still rebuilds it.
-      if (!structural && deps.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return null;
+      // A refused change keeps the old keys, so a later frame of the same tick still rebuilds it. A new
+      // selection's answers landing under the snapshot it was baked from are not throttled: they fill in
+      // what the first bake had to refuse.
+      const landing = snapshot === structuralSnapshot && answers !== rebuiltAnswers;
+      if (!structural && !landing && deps.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return null;
+      if (structural) structuralSnapshot = snapshot;
+      rebuiltAnswers = answers;
       lastModelKey = key;
       lastStructureKey = structureKey;
       return { model, structural };

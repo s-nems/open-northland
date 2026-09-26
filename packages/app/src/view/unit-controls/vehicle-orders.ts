@@ -17,6 +17,7 @@ import {
 } from '../../game/snapshot.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
+import type { AnsweredOrders } from './answered-orders.js';
 import { formationTiles } from './formation.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
@@ -35,11 +36,14 @@ export interface VehicleOrderDeps {
   readonly viewer: ViewerSeat;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
   readonly enqueue: (command: PlayerCommand) => void;
-  /** The sim's attach rule; absent, every own vehicle under the cursor takes the attach click. */
-  readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
-  /** The sim's mooring rule (`SessionHost.mooringProbe`); absent, every spot takes the dock click and a
-   *  ship's right-click is always a goto. */
-  readonly canMoorAt?: ((vehicle: number, x: number, y: number) => boolean) | undefined;
+  /** The sim's attach rule, asked as the click lands; absent, every own vehicle under the cursor takes
+   *  the attach click. */
+  readonly askAttachToVehicle?: ((settler: number, vehicle: number) => Promise<boolean>) | undefined;
+  /** The sim's mooring rule (`SessionHost.mooringProbe`), asked as the click lands; absent, every spot
+   *  takes the dock click and a ship's right-click is always a goto. */
+  readonly askMoorAt?: ((vehicle: number, x: number, y: number) => Promise<boolean>) | undefined;
+  /** Where the orders a host answer decides wait for it. */
+  readonly answered: AnsweredOrders;
 }
 
 /**
@@ -69,15 +73,17 @@ export interface VehicleOrderController {
   /** March `vehicles` to `target`, each to its own slot of a spaced formation around it, fighting
    *  whatever they meet on the way. */
   issueAttackMove(vehicles: readonly number[], target: Tile): boolean;
-  /** Moor `vehicle` at `target`; a spot the mooring rule rejects orders nothing. */
+  /** Moor `vehicle` at `target` once the mooring rule accepts the spot; a spot it rejects orders
+   *  nothing. */
   issueDock(vehicle: number, target: Tile): boolean;
   issueAttackPosition(vehicle: number, target: Tile): boolean;
   /** Aim `vehicle` at the enemy of `kind` under the cursor; a click that hits none orders nothing. */
   issueAttackTarget(event: MouseEvent, vehicle: number, kind: UnitTargetKind): boolean;
   /** Load `vehicle` into the own ship under the cursor. */
   issueLoadInto(event: MouseEvent, vehicle: number): boolean;
-  /** Attach `settler` to the own vehicle under the cursor (the ring's "Assign Vehicle"); a vehicle the
-   *  attach rule refuses orders nothing, the way a red building cancels a building pick. */
+  /** Attach `settler` to the own vehicle under the cursor (the ring's "Assign Vehicle") once the attach
+   *  rule admits it; a vehicle it refuses orders nothing, the way a red building cancels a building
+   *  pick. */
   issueAttach(event: MouseEvent, settler: number): boolean;
   /** The same attach from the vehicle's side: the own settler under the cursor takes a seat on
    *  `vehicle`, the commander's first. */
@@ -87,8 +93,9 @@ export interface VehicleOrderController {
   /** The selected settlers' right-click on an own vehicle: each one the attach rule admits is assigned
    *  to it (approximation, owner's choice: the original assigns through the ring's pick only). False when
    *  no vehicle lies under the cursor, an own settler or an enemy drawn there takes the click first (a
-   *  crew waiting by the door stands over the hull), or nobody selected may board it. */
-  issueAttachSelected(event: MouseEvent): boolean;
+   *  crew waiting by the door stands over the hull), or nobody is selected. `onNoneBoards` runs once the
+   *  rule refused every selected settler, so the click can take its usual order instead. */
+  issueAttachSelected(event: MouseEvent, onNoneBoards: () => void): boolean;
 }
 
 export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrderController {
@@ -196,13 +203,17 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return vehicles.length > 0;
   };
 
-  const canMoorAt = (vehicle: number, node: Tile): boolean =>
-    deps.canMoorAt === undefined || deps.canMoorAt(vehicle, node.col, node.row);
+  const dock = (vehicle: number, node: Tile): void =>
+    deps.enqueue({ kind: 'dockVehicle', vehicle: vehicle as Entity, x: node.col, y: node.row });
 
   const issueDock = (vehicle: number, target: Tile): boolean => {
     const node = clampNode(target);
-    if (!canMoorAt(vehicle, node)) return false;
-    deps.enqueue({ kind: 'dockVehicle', vehicle: vehicle as Entity, x: node.col, y: node.row });
+    const ask = deps.askMoorAt;
+    if (ask === undefined) dock(vehicle, node);
+    else
+      deps.answered.after(ask(vehicle, node.col, node.row), (moors) => {
+        if (moors) dock(vehicle, node);
+      });
     return true;
   };
 
@@ -260,17 +271,31 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     const world = deps.toWorld(event.clientX, event.clientY);
     const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
     if (vehicle === null) return false;
-    if (deps.canAttachToVehicle !== undefined && !deps.canAttachToVehicle(settler, vehicle)) return false;
-    deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
+    attachWhenAdmitted([settler], vehicle, () => undefined);
     return true;
+  };
+
+  /** Attach each of `settlers` the rule admits, once it answered; `onNone` when it admitted nobody. */
+  const attachWhenAdmitted = (settlers: readonly number[], vehicle: number, onNone: () => void): void => {
+    const attach = (settler: number): void =>
+      deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
+    const ask = deps.askAttachToVehicle;
+    if (ask === undefined) {
+      for (const settler of settlers) attach(settler);
+      return;
+    }
+    deps.answered.after(Promise.all(settlers.map((settler) => ask(settler, vehicle))), (verdicts) => {
+      const admitted = settlers.filter((_settler, index) => verdicts[index] === true);
+      for (const settler of admitted) attach(settler);
+      if (admitted.length === 0) onNone();
+    });
   };
 
   const issueSeatRider = (event: MouseEvent, vehicle: number): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const settler = pickTopAt(deps.targets.owned('settler'), world.x, world.y);
     if (settler === null) return false;
-    if (deps.canAttachToVehicle !== undefined && !deps.canAttachToVehicle(settler, vehicle)) return false;
-    deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
+    attachWhenAdmitted([settler], vehicle, () => undefined);
     return true;
   };
 
@@ -284,20 +309,17 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return vehicle !== null && loadInto(vehicle, ship);
   };
 
-  const issueAttachSelected = (event: MouseEvent): boolean => {
+
+  const issueAttachSelected = (event: MouseEvent, onNoneBoards: () => void): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
     if (vehicle === null) return false;
     if (pickTopAt(deps.targets.owned('settler'), world.x, world.y) !== null) return false;
     if (pickTopAt(deps.targets.enemies(), world.x, world.y) !== null) return false;
-    let sent = false;
-    for (const target of deps.targets.ownedSettlersIn(deps.selected())) {
-      const settler = target.ref;
-      if (deps.canAttachToVehicle !== undefined && !deps.canAttachToVehicle(settler, vehicle)) continue;
-      deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
-      sent = true;
-    }
-    return sent;
+    const settlers = deps.targets.ownedSettlersIn(deps.selected()).map((target) => target.ref);
+    if (settlers.length === 0) return false;
+    attachWhenAdmitted(settlers, vehicle, onNoneBoards);
+    return true;
   };
 
   /** A group's right-click (see {@link VehicleOrderController.issueRightClick}). An own settler under
@@ -341,10 +363,16 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
       if (enemy !== null) return strike(vehicle, enemy);
     }
     const target = worldToTile(world.x, world.y, deps.elevation);
-    if (!land && deps.canMoorAt !== undefined && canMoorAt(vehicle, clampNode(target))) {
-      return issueDock(vehicle, target);
-    }
-    return issueMoveTo(vehicle, target);
+    const ask = deps.askMoorAt;
+    if (land || ask === undefined) return issueMoveTo(vehicle, target);
+    // A ship docks where its mooring rule, asked as the click lands, accepts the shore, and sails there
+    // otherwise.
+    const node = clampNode(target);
+    deps.answered.after(ask(vehicle, node.col, node.row), (moors) => {
+      if (moors) dock(vehicle, node);
+      else issueMoveTo(vehicle, target);
+    });
+    return true;
   };
 
   return {

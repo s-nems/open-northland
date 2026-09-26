@@ -352,7 +352,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       palisadeBuiltAt,
       palisadeGateProbe,
       palisadeGateSites,
-      canMoorAt,
     } = placementGates;
 
     // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
@@ -462,7 +461,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         rows: () => residentsFor(host.snapshot()),
         snapshot: () => host.snapshot(),
         canBecome: answers.canChooseJob,
-        answersVersion: answers.version,
+        answersVersion: answers.versions.jobChoices,
         selection: {
           ids: () => unitSelection?.selectedIds() ?? NO_SELECTION,
           version: () => unitSelection?.selectionVersion() ?? 0,
@@ -485,6 +484,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       palisadeBuiltAt,
       palisadeGateProbe,
       palisadeGateSites,
+      placementClickAsks: placementGates,
       palisadeTools: palisadeToolsOf(host),
       mapSize: deps.mapSize,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
@@ -520,7 +520,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       missionBriefingHistory: answers.missionBriefingHistory,
       missionReplayPage: answers.missionBriefingPage,
       missionHuman: answers.missionHuman,
-      missionAnswersVersion: answers.missionVersion,
+      missionAnswersVersion: answers.versions.mission,
       // The original stops game time behind its large windows.
       onLargeWindow: (open) => {
         missionWindowOpen = open;
@@ -556,6 +556,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     }
     // Assembled below, once the controls and the camera it steers exist.
     const terrainColors = await mountScriptTerrainColors(host, renderer);
+    cleanup.push(() => terrainColors.dispose());
     let presentation: ReturnType<typeof createScriptPresentation> | null = null;
     const subMissions = createSubMissions({
       host,
@@ -574,15 +575,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
     const onEvents = createWorldEventHandler({
       forward: (events) => deps.onEvents?.(events),
-      terrainColors,
+      terrainColors: terrainColors.onEvents,
       subMissions: (events) => !sharedClock && subMissions.onEvents(events),
       verdict: (events) => {
         if (deps.observer !== true) verdict?.onEvents(events);
       },
-      presentation: (events) => {
-        answers.onEvents(events);
-        presentation?.onEvents(events);
-      },
+      presentation: (events) => presentation?.onEvents(events),
     });
 
     // Injected rather than imported: `hud/` never imports `view/`.
@@ -626,8 +624,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     cleanup.push(() => detailsTooltip.destroy());
     const controls = await createUnitControls({
       technologyStatus: answers.technologyStatus,
+      technologyVersion: answers.versions.technology,
+      panelAnswersVersion: answers.versions.unitPanel,
+      attachPicksVersion: answers.versions.attachPicks,
       canChooseJob: answers.canChooseJob,
-      answersVersion: answers.version,
       app,
       canvas,
       uiscale,
@@ -653,15 +653,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         return fog === null || fogTileVisible(fog, tileX, tileY);
       },
       doorBadges: () => pickableDoorBadges?.() ?? [],
-      equipPickList: answers.equipPickList,
       requestEquipPicks: (entity, group) => host.equipPickList(entity as Entity, group),
       standsTo: answers.standsTo,
       traderView: answers.traderView,
       tradeOffersAt: answers.tradeOffersAt,
       canAttachTradeHouse: answers.canAttachTradeHouse,
+      askAttachTradeHouse: answers.askAttachTradeHouse,
       canAttachToVehicle: answers.canAttachToVehicle,
+      askAttachToVehicle: answers.askAttachToVehicle,
       // The fog gate matches the overlay's, so a dimmed shore in the fog takes no dock click either.
-      canMoorAt,
+      askMoorAt: placementGates.askMoorAt,
       boundsOf: (ref) => renderer.entityBounds(ref),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       claimPointer: (x: number, y: number) =>

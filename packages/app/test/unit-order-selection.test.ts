@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import type { Tile } from '../src/view/picking.js';
+import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
 import { createUnitOrderController, type UnitOrderController } from '../src/view/unit-controls/orders.js';
 import { createUnitSelection, type UnitSelection } from '../src/view/unit-controls/selection.js';
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
@@ -84,6 +85,7 @@ function harness(initiallySelected: readonly number[] = []): {
   const selection = createUnitSelection();
   selection.apply(initiallySelected, false);
   const orders = createUnitOrderController({
+    answered: createAnsweredOrders(),
     selected: selection.ids,
     targets,
     snapshot: () => WORLD,
@@ -167,6 +169,7 @@ describe('unit orders against a selection that moves under them', () => {
     const target = { id: 50, at: OPEN_GROUND };
     const p = halfCellToScreen(target.at.hx, target.at.hy);
     const orders = createUnitOrderController({
+      answered: createAnsweredOrders(),
       selected: () => new Set([SCOUT.id]),
       targets: {
         ...targets,
@@ -226,6 +229,7 @@ describe('unit orders against a selection that moves under them', () => {
       { id: resource.id, components: { Resource: { goodType: resource.goodType } } },
     ]);
     const orders = createUnitOrderController({
+      answered: createAnsweredOrders(),
       selected: () => new Set([SCOUT.id]),
       targets: resourceTargets,
       snapshot: () => snapshot,
@@ -249,6 +253,7 @@ describe('unit orders against a selection that moves under them', () => {
     // current controls frame; the sim validates the selected settler and good when applying the command.
     const snapshot = snapshotOf(UNITS.map(standing));
     const orders = createUnitOrderController({
+      answered: createAnsweredOrders(),
       selected: () => new Set([SCOUT.id]),
       targets: {
         ...targets,

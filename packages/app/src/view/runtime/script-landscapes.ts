@@ -9,13 +9,19 @@ interface LandscapeSurface {
   removeGroundWave(wave: GroundWave): void;
 }
 
+/** The script's landscape edits kept on the surface: synced on its events, and never after `dispose`. */
+export interface ScriptLandscapes {
+  readonly onEvents: (events: readonly SimEvent[]) => void;
+  readonly dispose: () => void;
+}
+
 export function bindScriptLandscapes(
   host: Pick<SessionHost, 'landscapeEdits'>,
   surface: LandscapeSurface,
   initial: ReadonlyMap<number, MapObjectSprite>,
   spriteFor: ScriptLandscapeSprite,
   initialWaves: ReadonlyMap<number, GroundWave>,
-): (events: readonly SimEvent[]) => void {
+): ScriptLandscapes {
   const removed = new Set<number>();
   const added = new Map<number, MapObjectSprite>();
   const apply = (edits: LandscapeEditView): void => {
@@ -43,16 +49,22 @@ export function bindScriptLandscapes(
     }
     if (fresh.length > 0) surface.addMapObjects(fresh);
   };
-  // Each answer is the whole edit state, so only the latest asked is applied.
+  // Each answer is the whole edit state, so only the latest asked is applied, and none once disposed.
   let asked = 0;
+  let disposed = false;
   const sync = (): void => {
     const request = ++asked;
     void host.landscapeEdits().then((edits) => {
-      if (request === asked) apply(edits);
+      if (request === asked && !disposed) apply(edits);
     });
   };
   sync();
-  return (events) => {
-    if (events.some((event) => event.kind === 'missionLandscapeChanged')) sync();
+  return {
+    onEvents: (events) => {
+      if (events.some((event) => event.kind === 'missionLandscapeChanged')) sync();
+    },
+    dispose: () => {
+      disposed = true;
+    },
   };
 }

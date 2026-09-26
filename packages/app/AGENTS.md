@@ -17,7 +17,7 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   probes and the request-shaped reads it names. Only its per-frame reads answer synchronously; a
   consumer that must read another one synchronously goes through a `LastAnswerCache` and keys its
   memos on the cache's version as well, so an answer that lands under an unchanged snapshot still
-  shows. `Simulation` is constructed and typed only by hosts:
+  shows. A click never orders on a last answer: it awaits the host's answer as of now. `Simulation` is constructed and typed only by hosts:
   entries, scenes, `game/sandbox/`, `game/world/` and the inline host, which serves snapshots off a
   delta-fed `SnapshotMirror` by default, so a snapshot kept past the next tick copies its entity list.
   A kind subset, an owner's entities, a per-key group or count and the actors come from the indexes the

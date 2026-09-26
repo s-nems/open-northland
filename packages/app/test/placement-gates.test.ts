@@ -77,6 +77,19 @@ describe('placement gates - the ground an enemy army contests', () => {
     expect(gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).toBe(true);
   });
 
+  it("answers a click on ground no cursor asked about with the sim's verdict as of now", async () => {
+    const { sim, gates } = openField();
+    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, RAIDER.x, RAIDER.y, ENEMY_PLAYER, {
+      weaponTypeId: WEAPON_SWORD,
+    });
+    sim.step();
+    await expect(gates.askPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).resolves.toBe(false);
+    await expect(gates.askPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy)).resolves.toBe(true);
+    for (const e of [...sim.world.query(components.Settler)]) sim.world.destroy(e);
+    sim.step();
+    await expect(gates.askPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).resolves.toBe(true);
+  });
+
   it('omits only the technology tribe from a paper-paid probe', () => {
     const { sim, fog } = openField();
     const gates = createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER, VIKING);

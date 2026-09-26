@@ -3,6 +3,7 @@ import { type Command, fx, ONE, systems } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { JOB_CIVILIST } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
+import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
 import type { UnitOrderController } from '../src/view/unit-controls/orders.js';
 import { createPickModeController } from '../src/view/unit-controls/pick-mode.js';
 import { NO_TARGETS } from './support/pick-mode.js';
@@ -46,6 +47,7 @@ function harness(under: number): { press: () => void; issued: Command[]; schools
     },
   } as Partial<UnitOrderController> as UnitOrderController;
   const pickMode = createPickModeController({
+    answered: createAnsweredOrders(),
     snapshot: () => WORLD,
     targets: { ...NO_TARGETS, owned: () => [{ ref: under, x: 0, y: 0 }] },
     content,

@@ -42,9 +42,14 @@ export type TechnologyStatusRead = (
 
 export interface UnitControlsOptions {
   readonly technologyStatus?: TechnologyStatusRead;
-  /** Bumped whenever one of the sim reads below answered anew, so a panel or dialog memoized per
-   *  snapshot rebuilds on it too; absent, only a new snapshot rebuilds. */
-  readonly answersVersion?: () => number;
+  /** Bumped when a `technologyStatus` answer changes, which rebuilds the school dialog under one
+   *  snapshot; absent, only a new snapshot does. */
+  readonly technologyVersion?: () => number;
+  /** Bumped when an answer the details panel reads changes (technology, battle alert, trader, house
+   *  offers). */
+  readonly panelAnswersVersion?: () => number;
+  /** Bumped when an attach rule's answer changes, which re-lights the picks. */
+  readonly attachPicksVersion?: () => number;
   /** The sim's own answer to whether a settler may take a trade; the picker offers a row when a selected
    *  settler the profession order reaches may, and changes only those who may. */
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
@@ -82,11 +87,8 @@ export interface UnitControlsOptions {
   readonly resourceVisible?: (tileX: number, tileY: number) => boolean;
   /** The frame's fog-filtered door badges; absent or empty disables badge picking. */
   readonly doorBadges?: () => readonly DoorBadge[];
-  /** The sim's equip pick-list (`SessionHost.equipPickList`) as its last answer, which gates a click on a
-   *  goods heap; absent, the click is a walk. */
-  readonly equipPickList?: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
-  /** The same list asked afresh, which the equip windows wait for; absent leaves the equipment panel's
-   *  plus/swap buttons inert. */
+  /** The sim's equip pick-list (`SessionHost.equipPickList`), asked as a window opens or a goods heap is
+   *  clicked; absent leaves the equipment panel's plus/swap buttons inert and the heap click a walk. */
   readonly requestEquipPicks?: (entity: number, group: EquipCategory) => Promise<readonly EquipPickEntry[]>;
   /** The sim's battle-alert read seam (`SessionHost.standsTo`); absent leaves a unit holding its ground
    *  under fire captioned as idle. */
@@ -94,14 +96,18 @@ export interface UnitControlsOptions {
   /** The sim's trader read seams (`SessionHost.traderView` / `tradeOffersAt`); absent hides trade. */
   readonly traderView?: (entity: number) => TraderView | undefined;
   readonly tradeOffersAt?: (house: number) => readonly TradeOffer[];
-  /** The sim's trade-stop rule (`SessionHost.canAttachTradeHouse`), which lights the trade-house pick's
-   *  targets and gates a trader's right-click on a house; absent, neither puts a house on a route. */
+  /** The sim's trade-stop rule (`SessionHost.tradeHousesAttachableBy`) as its last answer, which lights
+   *  the trade-house pick's targets; absent, the pick lights nothing. */
   readonly canAttachTradeHouse?: (trader: number, house: number) => boolean;
-  /** The sim's vehicle rules (`SessionHost.canAttachToVehicle` / `mooringProbe`), which light the
-   *  "Assign Vehicle" and dock picks' targets and gate their clicks; absent, the picks light nothing
-   *  and the sim alone refuses. */
+  /** The same rule asked as a click lands, which gates the pick's click and a trader's right-click on a
+   *  house; absent, neither puts a house on a route. */
+  readonly askAttachTradeHouse?: (trader: number, house: number) => Promise<boolean>;
+  /** The sim's vehicle attach rule (`SessionHost.vehiclesAttachableBy`) as its last answer, which lights
+   *  the "Assign Vehicle" pick's targets; absent, the pick lights nothing. */
   readonly canAttachToVehicle?: (settler: number, vehicle: number) => boolean;
-  readonly canMoorAt?: (vehicle: number, x: number, y: number) => boolean;
+  /** The attach and mooring rules asked as a click lands; absent, the sim alone refuses. */
+  readonly askAttachToVehicle?: (settler: number, vehicle: number) => Promise<boolean>;
+  readonly askMoorAt?: (vehicle: number, x: number, y: number) => Promise<boolean>;
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
   readonly pixelHitOf?: (ref: number, wx: number, wy: number) => boolean | undefined;
   readonly claimPointer?: (clientX: number, clientY: number) => boolean;

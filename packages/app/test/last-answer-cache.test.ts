@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { diag } from '../src/diag/log.js';
 import { createLastAnswerCache } from '../src/session/last-answer-cache.js';
 
 /** A host that answers only when told to, so a test controls when each answer lands. */
@@ -75,19 +76,82 @@ describe('last-answer cache', () => {
     expect(host.asks()).toBe(3);
   });
 
-  it('keeps separate answers per key and forgets the key asked longest ago past its capacity', async () => {
+  it('forgets past its capacity only keys no read asked for since the previous tick', async () => {
     const host = deferredHost();
-    const cache = createLastAnswerCache<string>({ tick: () => 0, capacity: 2 });
-    for (const key of ['a', 'b']) {
+    let tick = 0;
+    const cache = createLastAnswerCache<string>({ tick: () => tick, capacity: 2 });
+    for (const key of ['a', 'b', 'c']) {
       cache.read(key, host.ask);
       await host.answer(key);
     }
-    expect(cache.read('a', host.ask)).toBe('a');
-    expect(cache.read('b', host.ask)).toBe('b');
+    // Three keys read this tick outgrow the capacity of two and are all kept, so each answers.
+    expect(['a', 'b', 'c'].map((key) => cache.read(key, host.ask))).toEqual(['a', 'b', 'c']);
+    tick = 2;
+    // Only `c` is read again: past capacity, the stale `a` and `b` make room for `d`.
     cache.read('c', host.ask);
-    await host.answer('c');
-    expect(cache.read('b', host.ask)).toBe('b');
+    cache.read('d', host.ask);
+    await host.answer('d');
+    expect(cache.read('d', host.ask)).toBe('d');
     expect(cache.read('a', host.ask)).toBeUndefined();
+  });
+
+  it('reads more keys per tick than its capacity and still answers every one', async () => {
+    const cache = createLastAnswerCache<number>({ tick: () => 0, capacity: 4 });
+    const keys = Array.from({ length: 12 }, (_value, index) => index);
+    for (const key of keys) cache.read(`${key}`, () => Promise.resolve(key));
+    await Promise.resolve();
+    expect(keys.map((key) => cache.read(`${key}`, () => Promise.resolve(key)))).toEqual(keys);
+  });
+
+  it('answers a click as of now: the held answer when current, else a fresh ask', async () => {
+    const host = deferredHost();
+    let tick = 0;
+    const cache = createLastAnswerCache<string>({ tick: () => tick });
+    cache.read('k', host.ask, '', true);
+    await host.answer('held');
+    await expect(cache.fresh('k', host.ask, '', true)).resolves.toBe('held');
+    expect(host.asks()).toBe(1);
+    tick = 1;
+    const asked = cache.fresh('k', host.ask, '', true);
+    await host.answer('now');
+    await expect(asked).resolves.toBe('now');
+    expect(cache.read('k', host.ask, '', true)).toBe('now');
+  });
+
+  it('reports a failed ask once and asks again only when the inputs change', async () => {
+    let asks = 0;
+    const failing = (): Promise<string> => {
+      asks++;
+      return Promise.reject(new Error('the host is gone'));
+    };
+    let tick = 0;
+    const cache = createLastAnswerCache<string>({ tick: () => tick });
+    const warn = vi.spyOn(diag, 'warn').mockImplementation(() => undefined);
+    try {
+      cache.read('k', failing, 'v1', true);
+      await Promise.resolve();
+      await Promise.resolve();
+      tick = 1;
+      cache.read('k', failing, 'v1', true);
+      expect(asks).toBe(1);
+      expect(warn).toHaveBeenCalledTimes(1);
+      cache.read('k', failing, 'v2', true);
+      expect(asks).toBe(2);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('keeps its version for an answer its equality calls unchanged', async () => {
+    const cache = createLastAnswerCache<{ readonly n: number }>({
+      tick: () => 0,
+      same: (held, landed) => held.n === landed.n,
+    });
+    cache.read('k', () => Promise.resolve({ n: 1 }), 'v1');
+    await Promise.resolve();
+    cache.read('k', () => Promise.resolve({ n: 1 }), 'v2');
+    await Promise.resolve();
+    expect(cache.version).toBe(1);
   });
 
   it('settles once the asks in flight land, and drops what lands after disposal', async () => {

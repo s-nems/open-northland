@@ -14,15 +14,22 @@ function gateOver(model: UnitPanelModel) {
   let current = model;
   let derives = 0;
   let clock = 1000;
+  let answers = 0;
   const gate = createPanelRebuildGate({
     derive: () => {
       derives++;
       return current;
     },
     now: () => clock,
+    answersVersion: () => answers,
   });
   return {
     gate,
+    /** A read the model takes answers anew. */
+    land: (next: UnitPanelModel): void => {
+      current = next;
+      answers++;
+    },
     show: (next: UnitPanelModel): void => {
       current = next;
     },
@@ -99,6 +106,17 @@ describe('details panel rebuild gate', () => {
 
     g.show({ kind: 'generic', count: 3 });
     expect(g.frame()).toBeNull();
+  });
+
+  it("fills in a new selection's landed answers at once, under the snapshot it was baked from", () => {
+    const g = gateOver({ kind: 'generic', count: 2 });
+    const snapshot = snapshotOf([]);
+    g.frame(snapshot);
+    g.land({ kind: 'generic', count: 3 });
+    expect(g.frame(snapshot)).toEqual({ model: { kind: 'generic', count: 3 }, structural: false });
+    // A value change the next snapshot brings keeps the throttle.
+    g.show({ kind: 'generic', count: 4 });
+    expect(g.frame(snapshotOf([]))).toBeNull();
   });
 
   it('re-anchors on a resize, at the same throttle as a value change', () => {

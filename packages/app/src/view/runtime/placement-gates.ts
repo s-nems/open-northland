@@ -1,9 +1,11 @@
-import type {
-  Entity,
-  MooringProbe,
-  NodeGridAnswer,
-  PalisadeGateProbeResult,
-  Paper,
+import {
+  type Entity,
+  type MooringProbe,
+  type NodeGridAnswer,
+  type NodeSetAnswer,
+  nodeSetHas,
+  type PalisadeGateProbeResult,
+  type Paper,
 } from '@open-northland/sim';
 import type { GateSites, PalisadeGateProbeView } from '../../hud/tool-panel/placement.js';
 import {
@@ -11,8 +13,12 @@ import {
   mooringProbeOf,
   type NodeGridProbe,
   nodeGridProbe,
-  nodeSetTest,
+  PROBE_AREA_NODES,
   type SessionHost,
+  sameGridAnswer,
+  sameMooring,
+  sameNodeSet,
+  samePlainData,
 } from '../../session/index.js';
 import type { FogGates } from '../projections/index.js';
 
@@ -27,8 +33,24 @@ export interface PlacementProbeViews {
   readonly version: () => number;
 }
 
-/** The live placement rules the click gates and the cursor ghosts share. */
-export interface PlacementGates {
+/** The placement rules a click decides on: each awaits the host's answer as of now. */
+export interface PlacementClickGates {
+  readonly askPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => Promise<boolean>;
+  /** Brings the wall answers within `reach` nodes of a line's anchor, and `owner`'s built nodes, up to
+   *  now, so a line decided right after reads current answers through the synchronous rules. */
+  readonly palisadeLineReady: (
+    gfxIndex: number,
+    owner: number,
+    anchor: { readonly col: number; readonly row: number },
+    reach: number,
+  ) => Promise<void>;
+  /** The gate conversion a click at a node would make, its span centre resolved as the preview does. */
+  readonly askPalisadeGate: (col: number, row: number) => Promise<PalisadeGateProbeView | null>;
+  readonly askMoorAt: (vehicle: number, col: number, row: number) => Promise<boolean>;
+}
+
+/** The placement rules the cursor ghosts and overlays read, and the click gates beside them. */
+export interface PlacementGates extends PlacementClickGates {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
@@ -36,8 +58,6 @@ export interface PlacementGates {
   readonly palisadeBuiltAt: (owner: number, col: number, row: number) => boolean;
   readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
-  /** Whether a dock order for `vehicle` at a node would find a mooring. */
-  readonly canMoorAt: (vehicle: number, col: number, row: number) => boolean;
   readonly probes: PlacementProbeViews;
   dispose(): void;
 }
@@ -53,7 +73,8 @@ const NO_GATE_SITES: readonly PalisadeGateProbeResult[] = [];
  * Click gate and cursor ghost both read these, so a ghost cannot preview what a click would refuse.
  * A mapless world has no probe: buildings place freely, signposts never do. The fog rule is app-side
  * only (genre convention, not the original), so the ungated sim command still serves admin spawns.
- * Every rule reads the host's last answer, and a node whose answer is still on its way is refused.
+ * The synchronous rules read the host's last answer and refuse a node whose answer is still on its way;
+ * the `ask*` rules a click decides on await the host.
  */
 export function createPlacementGates(
   host: SessionHost,
@@ -65,11 +86,11 @@ export function createPlacementGates(
     .filter((type) => type.wall?.gate?.open === false)
     .map((type) => type.typeId);
   const tick = (): number => host.tick;
-  const grids = createLastAnswerCache<NodeGridAnswer | null>({ tick });
-  const ownNodes = createLastAnswerCache<(col: number, row: number) => boolean>({ tick });
-  const siteLists = createLastAnswerCache<readonly PalisadeGateProbeResult[]>({ tick });
-  const gateProbes = createLastAnswerCache<PalisadeGateProbeResult | null>({ tick });
-  const moorings = createLastAnswerCache<MooringProbe | null>({ tick });
+  const grids = createLastAnswerCache<NodeGridAnswer | null>({ tick, same: sameGridAnswer });
+  const ownNodes = createLastAnswerCache<NodeSetAnswer>({ tick, same: sameNodeSet });
+  const siteLists = createLastAnswerCache<readonly PalisadeGateProbeResult[]>({ tick, same: samePlainData });
+  const gateProbes = createLastAnswerCache<PalisadeGateProbeResult | null>({ tick, same: samePlainData });
+  const moorings = createLastAnswerCache<MooringProbe | null>({ tick, same: sameMooring });
   const blockerVersion = (): string => host.placementBlockerVersion();
 
   const gridProbes = new Map<string, NodeGridProbe>();
@@ -108,17 +129,16 @@ export function createPlacementGates(
     gridProbe(`p${gfxIndex}`, () =>
       nodeGridProbe(grids, `p${gfxIndex}`, (area) => host.palisadeProbe(gfxIndex, area), blockerVersion),
     );
+  const askMooring = (vehicle: number) => (): Promise<MooringProbe | null> =>
+    host.mooringProbe(vehicle as Entity).then((answer) => (answer === null ? null : mooringProbeOf(answer)));
+  // Asked every tick besides: the ship's own position is an input too.
   const mooring = (vehicle: number): MooringProbe | null | undefined =>
-    moorings.read(
-      `${vehicle}`,
-      () =>
-        host
-          .mooringProbe(vehicle as Entity)
-          .then((answer) => (answer === null ? null : mooringProbeOf(answer))),
-      blockerVersion(),
-      // The ship's own position is an input too.
-      true,
-    );
+    moorings.read(`${vehicle}`, askMooring(vehicle), blockerVersion(), true);
+  const askOwnNodes = (owner: number) => (): Promise<NodeSetAnswer> => host.ownPalisadeNodes(owner);
+  const askSites = (): Promise<readonly PalisadeGateProbeResult[]> =>
+    host.palisadeGateSites(closedGates, localPlayer);
+  const askGateProbe = (col: number, row: number) => (): Promise<PalisadeGateProbeResult | null> =>
+    host.palisadeGateProbe(col, row, closedGates, localPlayer);
 
   // The gate spans are indexed once per wall layout, fog and landed answer.
   let sites: IndexedGateSites = {
@@ -134,9 +154,7 @@ export function createPlacementGates(
   };
   const gateSites = (): IndexedGateSites => {
     const layout = host.palisadeLayoutVersion();
-    const listed =
-      siteLists.read('sites', () => host.palisadeGateSites(closedGates, localPlayer), layout) ??
-      NO_GATE_SITES;
+    const listed = siteLists.read('sites', askSites, layout) ?? NO_GATE_SITES;
     const key = `gate:${layout}:${fogKey()}:${siteLists.version}`;
     if (key !== sites.key) sites = gateSitesOf(listed, fogGates, key);
     return sites;
@@ -151,28 +169,50 @@ export function createPlacementGates(
     canPlaceSignpostAt: (col, row) => fogGates.seesNode(col, row) && signpost().at(col, row) === true,
     canPlacePalisadeAt: (gfxIndex, col, row) =>
       fogGates.seesNode(col, row) && palisade(gfxIndex).at(col, row) === true,
-    palisadeBuiltAt: (owner, col, row) =>
-      ownNodes.read(
-        `${owner}`,
-        () => host.ownPalisadeNodes(owner).then(nodeSetTest),
-        blockerVersion(),
-      )?.(col, row) === true,
+    palisadeBuiltAt: (owner, col, row) => {
+      const built = ownNodes.read(`${owner}`, askOwnNodes(owner), blockerVersion());
+      return built !== undefined && nodeSetHas(built, col, row);
+    },
     palisadeGateProbe: (col, row) => {
       if (!fogGates.seesNode(col, row)) return null;
       // Only a convertible centre reaches the probe's mover test, so only there is it re-asked each tick.
       const live = gateSites().isCenter(col, row);
       return (
-        gateProbes.read(
-          `${col},${row}`,
-          () => host.palisadeGateProbe(col, row, closedGates, localPlayer),
-          host.palisadeLayoutVersion(),
-          live,
-        ) ?? null
+        gateProbes.read(`${col},${row}`, askGateProbe(col, row), host.palisadeLayoutVersion(), live) ?? null
       );
     },
     palisadeGateSites: gateSites,
-    canMoorAt: (vehicle, col, row) =>
-      fogGates.seesNode(col, row) && mooring(vehicle)?.canMoor(col, row) === true,
+    askPlaceAt: (typeId, col, row, paper) =>
+      fogGates.seesNode(col, row)
+        ? building(typeId, paper)
+            .freshAt(col, row)
+            .then((verdict) => verdict !== false)
+        : Promise.resolve(false),
+    palisadeLineReady: async (gfxIndex, owner, anchor, reach) => {
+      const probe = palisade(gfxIndex);
+      const asked: Promise<unknown>[] = [ownNodes.fresh(`${owner}`, askOwnNodes(owner), blockerVersion())];
+      const first = (node: number): number => Math.floor((node - reach) / PROBE_AREA_NODES);
+      const last = (node: number): number => Math.floor((node + reach) / PROBE_AREA_NODES);
+      for (let ay = first(anchor.row); ay <= last(anchor.row); ay++) {
+        for (let ax = first(anchor.col); ax <= last(anchor.col); ax++) {
+          asked.push(probe.freshAt(ax * PROBE_AREA_NODES, ay * PROBE_AREA_NODES));
+        }
+      }
+      await Promise.all(asked);
+    },
+    askPalisadeGate: async (col, row) => {
+      const layout = host.palisadeLayoutVersion();
+      const listed = await siteLists.fresh('sites', askSites, layout);
+      const at = gateSitesOf(listed, fogGates, layout).centerFor(col, row) ?? { col, row };
+      if (!fogGates.seesNode(at.col, at.row)) return null;
+      return gateProbes.fresh(`${at.col},${at.row}`, askGateProbe(at.col, at.row), layout, true);
+    },
+    askMoorAt: (vehicle, col, row) =>
+      fogGates.seesNode(col, row)
+        ? moorings
+            .fresh(`${vehicle}`, askMooring(vehicle), blockerVersion(), true)
+            .then((probe) => probe?.canMoor(col, row) === true)
+        : Promise.resolve(false),
     probes: {
       building,
       signpost,

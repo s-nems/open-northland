@@ -98,7 +98,7 @@ export async function presentMapWorld(
         )
       : null;
 
-  const landscapeEvents =
+  const landscapes =
     sim.missions !== undefined && ir !== null
       ? bindScriptLandscapes(
           host,
@@ -172,7 +172,7 @@ export async function presentMapWorld(
     elevation: world.elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     onEvents: (events) => {
       staticLayer?.(events);
-      landscapeEvents?.(events);
+      landscapes?.onEvents(events);
     },
     mapText: mapStringLookup(world.strings, currentLocale()),
     ...(stagedSave?.parent !== undefined ? { parentSave: stagedSave.parent } : {}),
@@ -196,5 +196,7 @@ export async function presentMapWorld(
     },
   });
   await boot.finish();
+  // A late edit answer never lands on the renderer of a view that is gone.
+  view.lifetime.addEventListener('abort', () => landscapes?.dispose(), { once: true });
   return view;
 }

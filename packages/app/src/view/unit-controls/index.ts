@@ -7,6 +7,7 @@ import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
 import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
 import { orderRecipients } from './action-ring/index.js';
+import { createAnsweredOrders } from './answered-orders.js';
 import { createUnitChrome } from './chrome.js';
 import { createClickHits } from './click-hits.js';
 import {
@@ -48,6 +49,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   // nothing.
   const cue: (kind: UiCue) => void = opts.onUiCue ?? ((): void => undefined);
   const selection = createUnitSelection();
+  const answered = createAnsweredOrders();
   const controlGroups = createControlGroups();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
   const equipPicker: EquipPickController | null =
@@ -138,7 +140,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     canAttachToVehicle: opts.canAttachToVehicle,
     canAttachTradeHouse: opts.canAttachTradeHouse,
-    ...(opts.answersVersion !== undefined ? { answersVersion: opts.answersVersion } : {}),
+    askAttachTradeHouse: opts.askAttachTradeHouse,
+    answered,
+    ...(opts.attachPicksVersion !== undefined ? { answersVersion: opts.attachPicksVersion } : {}),
   });
 
   /** The hotkey obeys the ring's own gate for the settlers, so both ways of arming the order agree on
@@ -172,8 +176,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const orders = createUnitOrderController({
     uiscale: opts.uiscale ?? 1,
     technologyStatus: opts.technologyStatus,
-    answersVersion: opts.answersVersion,
-    equipPickList: opts.equipPickList,
+    technologyVersion: opts.technologyVersion,
+    requestEquipPicks: opts.requestEquipPicks,
+    answered,
     selected: selection.ids,
     targets: unitTargets,
     snapshot: opts.snapshot,
@@ -185,7 +190,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectOwnSettler: (id) => applySelection([id], false),
     openActions: (atClient) => chrome.actions().open(atClient),
     cue,
-    canAttachTradeHouse: opts.canAttachTradeHouse,
+    askAttachTradeHouse: opts.askAttachTradeHouse,
   });
 
   const vehicleOrders = createVehicleOrderController({
@@ -198,8 +203,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     viewer: opts.viewer,
     toWorld,
     enqueue: opts.enqueue,
-    canAttachToVehicle: opts.canAttachToVehicle,
-    canMoorAt: opts.canMoorAt,
+    askAttachToVehicle: opts.askAttachToVehicle,
+    askMoorAt: opts.askMoorAt,
+    answered,
   });
 
   const overviewPress = createOverviewOrders({
@@ -233,21 +239,27 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (marker?.kind === 'settler') {
         applySelection([marker.ref], false);
         cue('confirm');
-      } else if (vehicleOrders.issueAttachSelected(e)) {
-        cue('confirm');
       } else {
-        // Settlers and vehicles selected together both take the click. One that picks an own settler
-        // replaces the selection first, which leaves no vehicle selected to drive.
+        // Settlers the vehicle under the cursor refuses take the usual right-click once it answered.
         const onBuilding = marker?.kind === 'building' ? marker.ref : null;
-        const settlersTook = orders.issueRightClick(e, onBuilding);
-        // A trader riding its cart takes a house onto its route instead of driving the cart there.
-        const vehiclesTook = orders.issueRiderTradeHouse(e, onBuilding) || vehicleOrders.issueRightClick(e);
-        if (settlersTook || vehiclesTook) cue('confirm');
+        if (vehicleOrders.issueAttachSelected(e, () => rightClickOrders(e, onBuilding))) cue('confirm');
+        else if (rightClickOrders(e, onBuilding)) cue('confirm');
       }
       return;
     }
     if (e.button !== 0) return; // middle belongs to the camera controller's pan
     marquee.begin(e.clientX, e.clientY);
+  };
+
+  /** Settlers and vehicles selected together both take the click. One that picks an own settler replaces
+   *  the selection first, which leaves no vehicle selected to drive. */
+  const rightClickOrders = (e: MouseEvent, onBuilding: number | null): boolean => {
+    const settlersTook = orders.issueRightClick(e, onBuilding);
+    // A trader riding its cart takes a house onto its route instead of driving the cart there.
+    const vehiclesTook =
+      orders.issueRiderTradeHouse(e, onBuilding, () => vehicleOrders.issueRightClick(e)) ||
+      vehicleOrders.issueRightClick(e);
+    return settlersTook || vehiclesTook;
   };
 
   const onMouseMove = (e: MouseEvent): void => {
@@ -421,6 +433,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('keydown', onKeyDown);
+      answered.dispose();
       orders.dispose();
       marquee.dispose();
       chrome.dispose();

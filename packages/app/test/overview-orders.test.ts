@@ -4,6 +4,7 @@ import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
+import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
 import { createUnitOrderController } from '../src/view/unit-controls/orders.js';
 import { createOverviewOrders, type OverviewPress } from '../src/view/unit-controls/overview-orders.js';
 import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
@@ -74,6 +75,7 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
   const selection = createUnitSelection();
   selection.apply([SCOUT.id], false);
   const orders = createUnitOrderController({
+    answered: createAnsweredOrders(),
     selected: selection.ids,
     targets,
     snapshot: () => WORLD,
@@ -85,6 +87,7 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
     openActions: () => {},
   });
   const pickMode = createPickModeController({
+    answered: createAnsweredOrders(),
     snapshot: () => WORLD,
     targets,
     content: sandboxContent(),

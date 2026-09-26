@@ -65,6 +65,20 @@ export interface GateSites extends LitNodes {
   readonly highlight: readonly { readonly id: number; readonly ok: boolean }[];
 }
 
+/** The placement rules as a click asks them: each awaits the sim's answer as of now. */
+export interface PlacementClickAsks {
+  readonly askPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => Promise<boolean>;
+  /** Resolves once the wall answers within `reach` nodes of `anchor` and `owner`'s built nodes are
+   *  current, so the line decided next reads them through the synchronous rules. */
+  readonly palisadeLineReady: (
+    gfxIndex: number,
+    owner: number,
+    anchor: LineNode,
+    reach: number,
+  ) => Promise<void>;
+  readonly askPalisadeGate: (col: number, row: number) => Promise<PalisadeGateProbeView | null>;
+}
+
 export interface PlacementDeps {
   readonly ctx: PanelContext;
   /** The strip that names the held building while placing. */
@@ -85,6 +99,9 @@ export interface PlacementDeps {
   readonly palisadeGateSites?: () => GateSites;
   /** The admin channel a standing-wall line commits through; absent, that tool lays nothing. */
   readonly enqueueTrusted?: (command: Command) => void;
+  /** The rules a click decides on, asked of the sim as it lands; absent, a click decides on the
+   *  synchronous rules above. */
+  readonly clickAsks?: PlacementClickAsks;
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
@@ -131,6 +148,8 @@ export interface PlacementController {
   state(): PlacementState;
   /** Hold a placement again as {@link state} took it; a started wall line is not kept. */
   restore(state: PlacementState): void;
+  /** Drop the click still waiting on the sim's answer. */
+  dispose(): void;
 }
 
 export function createPlacementController(deps: PlacementDeps): PlacementController {
@@ -213,12 +232,55 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     return { col: centre.hx, row: centre.hy, gfxIndex: probe.gfxIndex, ok: probe.canConvert };
   };
 
-  const convertGate = (tile: LineNode | null): void => {
-    const probe = tile === null ? null : gateProbeAt(tile);
+  const convert = (probe: PalisadeGateProbeView | null): void => {
     if (probe?.canConvert !== true || probe.center === null || probe.gfxIndex === null) return;
     deps.enqueue({ kind: 'convertPalisadeGate', palisade: probe.center, gfxIndex: probe.gfxIndex });
     ctx.cue('confirm');
     exitPlacement();
+  };
+
+  /** One placement click waits on the sim at a time; a click meanwhile, or a changed tool when the answer
+   *  lands, drops it, so a click orders once and never after the panel is gone. */
+  let deciding = false;
+  let disposed = false;
+  const decideLater = <T>(answer: Promise<T>, then: (value: T) => void): void => {
+    deciding = true;
+    const armed = { type: placementType, paper: placementPaper, palisade };
+    // A host that fails to answer is reported where the answer is cached; the click then places nothing.
+    void answer
+      .then(
+        (value) => {
+          const unchanged =
+            placementType === armed.type && placementPaper === armed.paper && palisade === armed.palisade;
+          if (!disposed && unchanged) then(value);
+        },
+        () => undefined,
+      )
+      .finally(() => {
+        deciding = false;
+      });
+  };
+
+  const placeBuilding = (typeId: number, paper: Paper | null, tile: LineNode): void => {
+    deps.enqueue({
+      kind: 'placeBuilding',
+      buildingType: typeId,
+      x: tile.col,
+      y: tile.row,
+      tribe: deps.tribe,
+      owner: deps.owner,
+      // The foundation stands at 0% and builders raise it, unless a paper pays for it finished.
+      underConstruction: true,
+      ...(paper !== null ? { paper } : {}),
+    });
+    ctx.cue('confirm');
+    exitPlacement();
+  };
+
+  const clickLine = (held: NonNullable<typeof palisade>, tile: LineNode | null, keep: boolean): void => {
+    // A laid line ends the tool like a placed building, unless Ctrl draws on from where it ends.
+    if (held.line.click(tile, { straight, chain: keep }) && !keep) exitPlacement();
+    else showPalisadeStrip();
   };
 
   const enter = (typeId: number, paper?: Paper): void => {
@@ -265,38 +327,36 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     },
     handleClick: (clientX, clientY, mods): boolean => {
       if (placementType === null && palisade === null) return false;
+      if (deciding) return true;
       const tile = deps.screenToTile(clientX, clientY);
+      const asks = deps.clickAsks;
+      const keep = mods?.keep === true;
       if (palisade !== null) {
-        if (palisade.mode === 'gate') convertGate(tile);
-        // A laid line ends the tool like a placed building, unless Ctrl draws on from where it ends.
-        else if (palisade.line.click(tile, { straight, chain: mods?.keep === true }) && mods?.keep !== true)
-          exitPlacement();
-        else showPalisadeStrip();
+        const held = palisade;
+        if (held.mode === 'gate') {
+          if (tile === null) return true;
+          if (asks === undefined) convert(gateProbeAt(tile));
+          else decideLater(asks.askPalisadeGate(tile.col, tile.row), convert);
+        } else if (asks === undefined || tile === null) clickLine(held, tile, keep);
+        else {
+          const anchor = held.line.anchor() ?? tile;
+          decideLater(
+            asks.palisadeLineReady(held.gfxIndex, held.side.owner, anchor, PALISADE_LINE_MAX_EDGES),
+            () => clickLine(held, tile, keep),
+          );
+        }
         return true;
       }
-      if (
-        placementType !== null &&
-        tile !== null &&
-        deps.canPlaceAt(
-          placementType,
-          tile.col,
-          tile.row,
-          placementPaper === null ? undefined : placementPaper,
-        )
-      ) {
-        deps.enqueue({
-          kind: 'placeBuilding',
-          buildingType: placementType,
-          x: tile.col,
-          y: tile.row,
-          tribe: deps.tribe,
-          owner: deps.owner,
-          // The foundation stands at 0% and builders raise it, unless a paper pays for it finished.
-          underConstruction: true,
-          ...(placementPaper !== null ? { paper: placementPaper } : {}),
+      if (placementType === null || tile === null) return true;
+      const typeId = placementType;
+      const paper = placementPaper;
+      if (asks === undefined) {
+        if (deps.canPlaceAt(typeId, tile.col, tile.row, paper ?? undefined))
+          placeBuilding(typeId, paper, tile);
+      } else {
+        decideLater(asks.askPlaceAt(typeId, tile.col, tile.row, paper ?? undefined), (ok) => {
+          if (ok) placeBuilding(typeId, paper, tile);
         });
-        ctx.cue('confirm');
-        exitPlacement();
       }
       return true;
     },
@@ -314,6 +374,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       palisade:
         palisade === null ? null : { gfxIndex: palisade.gfxIndex, mode: palisade.mode, side: palisade.side },
     }),
+    dispose: (): void => {
+      disposed = true;
+    },
     restore: (state): void => {
       if (state.type !== null) enter(state.type, state.paper ?? undefined);
       else if (state.palisade !== null)

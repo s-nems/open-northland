@@ -9,25 +9,37 @@ interface TerrainColorSurface {
   ): void;
 }
 
+/** The script's terrain tints kept on the surface: synced on its events, and never after `dispose`. */
+export interface ScriptTerrainColors {
+  readonly onEvents: (events: readonly SimEvent[]) => void;
+  readonly dispose: () => void;
+}
+
 export async function mountScriptTerrainColors(
   host: Pick<SessionHost, 'missions' | 'landscapeEdits'>,
   surface: TerrainColorSurface,
-): Promise<(events: readonly SimEvent[]) => void> {
+): Promise<ScriptTerrainColors> {
   const hasColors = host.missions?.missions.some((mission) =>
     mission.results.some((op) => op.opcode === 'SetVertexColor' || op.opcode === 'SetVertexColorOnLand'),
   );
-  if (!hasColors) return () => undefined;
+  if (!hasColors) return { onEvents: () => undefined, dispose: () => undefined };
   const palette = await loadVertexPalette();
-  // Each answer is the whole tint state, so only the latest asked is applied.
+  // Each answer is the whole tint state, so only the latest asked is applied, and none once disposed.
   let asked = 0;
+  let disposed = false;
   const sync = (): void => {
     const request = ++asked;
     void host.landscapeEdits().then((edits) => {
-      if (request === asked) surface.applyTerrainVertexColors(edits.tints, palette ?? undefined);
+      if (request === asked && !disposed) surface.applyTerrainVertexColors(edits.tints, palette ?? undefined);
     });
   };
   sync();
-  return (events) => {
-    if (events.some((event) => event.kind === 'missionVertexColor')) sync();
+  return {
+    onEvents: (events) => {
+      if (events.some((event) => event.kind === 'missionVertexColor')) sync();
+    },
+    dispose: () => {
+      disposed = true;
+    },
   };
 }

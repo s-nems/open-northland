@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { type Entity, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { type Entity, entityById, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
@@ -41,6 +41,14 @@ import { armedVehiclePick, vehiclePanelActions, vehiclePeersOf } from './vehicle
 const NO_SELECTION: ReadonlySet<number> = new Set();
 /** Goods the warm-up paints icons of, enough to fill every icon slot of the warm model. */
 const WARM_GOOD_ICONS = 12;
+/** An unanswered technology read refuses, as every unanswered rule does. */
+const UNANSWERED_STATUS: UnlockStatus = {
+  allowed: false,
+  enabled: false,
+  enablingJobs: [],
+  requiredJobs: [],
+  requiredGoods: [],
+};
 
 interface MountedUnitChrome {
   readonly panel: UnitPanel;
@@ -274,23 +282,18 @@ export async function createUnitChrome(
           : (kind, typeId, tribe, player) =>
               technologyReason(
                 opts.content,
-                opts.technologyStatus?.(kind, typeId, tribe, player) ?? {
-                  allowed: true,
-                  enabled: true,
-                  enablingJobs: [],
-                  requiredJobs: [],
-                  requiredGoods: [],
-                },
+                opts.technologyStatus?.(kind, typeId, tribe, player) ?? UNANSWERED_STATUS,
               ),
       goodAllowed: (good, tribe, player) =>
-        opts.technologyStatus?.('good', good, tribe, player)?.allowed ?? true,
+        opts.technologyStatus === undefined ||
+        opts.technologyStatus('good', good, tribe, player)?.allowed === true,
       buildings: opts.content.buildings,
       goods: opts.content.goods,
       jobs: opts.content.jobs,
       jobExperience: opts.content.jobExperience,
       tribes: opts.content.tribes,
       ...(opts.standsTo !== undefined ? { standsTo: opts.standsTo } : {}),
-      ...(opts.answersVersion !== undefined ? { answersVersion: opts.answersVersion } : {}),
+      ...(opts.panelAnswersVersion !== undefined ? { answersVersion: opts.panelAnswersVersion } : {}),
       vehicles: opts.content.vehicles,
       isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
       usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
+import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
 import { createUnitOrderController } from '../src/view/unit-controls/orders.js';
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
 
@@ -50,6 +51,7 @@ function rightClick(sim: Simulation, settlers: readonly Entity[], chest: Entity)
     ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),
   };
   createUnitOrderController({
+    answered: createAnsweredOrders(),
     selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,

@@ -16,6 +16,7 @@ import {
   VEHICLE_SHIP_SMALL,
 } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
+import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
 import { sitePick } from '../src/view/unit-controls/highlights/own-building-picks.js';
 import { createUnitOrderController } from '../src/view/unit-controls/orders.js';
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
@@ -93,26 +94,27 @@ function settlerAt(sim: Simulation, jobType: number | null): Entity {
 
 /** Right-click `building` with `settlers` selected and return the commands it enqueued. `content` overrides
  *  the sim's own content set - the routing decision is a pure function of (snapshot, content). */
-function rightClick(
+async function rightClick(
   sim: Simulation,
   settlers: readonly Entity[],
   building: Entity,
   content: ContentSet = sim.content,
   owned = true,
   click: 'settlers' | 'riders' = 'settlers',
-): Command[] {
-  return pressRightClick(sim, settlers, building, content, owned, click).issued;
+): Promise<Command[]> {
+  return (await pressRightClick(sim, settlers, building, content, owned, click)).issued;
 }
 
-/** {@link rightClick} with the press's own verdict, which decides whether the click confirms. */
-function pressRightClick(
+/** {@link rightClick} with the press's own verdict, which decides whether the click confirms. The orders
+ *  a trader's route toggle waits on the sim for are in once its answer landed. */
+async function pressRightClick(
   sim: Simulation,
   settlers: readonly Entity[],
   building: Entity,
   content: ContentSet = sim.content,
   owned = true,
   click: 'settlers' | 'riders' = 'settlers',
-): { issued: Command[]; ordered: boolean } {
+): Promise<{ issued: Command[]; ordered: boolean }> {
   const issued: Command[] = [];
   const snapshot = sim.snapshot();
   const pickable: Pickable = { ref: building, x: 0, y: 0 };
@@ -129,6 +131,7 @@ function pressRightClick(
     ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),
   };
   const controller = createUnitOrderController({
+    answered: createAnsweredOrders(),
     selected: () => new Set<number>(settlers),
     targets,
     snapshot: (): WorldSnapshot => snapshot,
@@ -138,10 +141,14 @@ function pressRightClick(
     enqueue: (command) => issued.push(command),
     selectOwnSettler: () => {},
     openActions: () => {},
-    canAttachTradeHouse: (trader, house) => sim.canAttachTradeHouse(trader as Entity, house as Entity),
+    askAttachTradeHouse: (trader, house) =>
+      Promise.resolve(sim.canAttachTradeHouse(trader as Entity, house as Entity)),
   });
   const ordered =
-    click === 'settlers' ? controller.issueRightClick(CLICK) : controller.issueRiderTradeHouse(CLICK);
+    click === 'settlers'
+      ? controller.issueRightClick(CLICK)
+      : controller.issueRiderTradeHouse(CLICK, null, () => undefined);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   return { issued, ordered };
 }
 
@@ -182,68 +189,70 @@ function postedWorkers(issued: readonly Command[], building: Entity): readonly G
 }
 
 describe('right-clicking a construction site', () => {
-  it('puts a builder on the foundation', () => {
+  it('puts a builder on the foundation', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, bakery(sim).typeId);
     const builder = settlerAt(sim, JOB_BUILDER);
 
-    expect(rightClick(sim, [builder], site)).toEqual([{ kind: 'assignBuilder', entity: builder, site }]);
+    expect(await rightClick(sim, [builder], site)).toEqual([
+      { kind: 'assignBuilder', entity: builder, site },
+    ]);
   });
 
-  it('does not turn a non-builder with the hammer atomic into a site builder', () => {
+  it('does not turn a non-builder with the hammer atomic into a site builder', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, bakery(sim).typeId); // a bakery employs no joiner - nothing to post him into
     const joiner = settlerAt(sim, JOB_JOINER);
 
-    const [posted] = postedWorkers(rightClick(sim, [joiner], site, alsoBuilds(sim, JOB_JOINER)), site);
+    const [posted] = postedWorkers(await rightClick(sim, [joiner], site, alsoBuilds(sim, JOB_JOINER)), site);
     expect(posted?.entity).toBe(joiner);
     expect(posted?.jobPriority).not.toContain(JOB_BUILDER);
   });
 
-  it('posts a craft worker into his future workshop to carry its materials', () => {
+  it('posts a craft worker into his future workshop to carry its materials', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const { typeId, craftJob } = workplace(sim, JOINERY);
     const site = siteAt(sim, typeId);
     const joiner = settlerAt(sim, craftJob);
 
-    const [posted] = postedWorkers(rightClick(sim, [joiner], site, alsoBuilds(sim, craftJob)), site);
+    const [posted] = postedWorkers(await rightClick(sim, [joiner], site, alsoBuilds(sim, craftJob)), site);
     expect(posted?.entity).toBe(joiner);
     expect(posted?.jobPriority[0]).toBe(craftJob);
   });
 
-  it('employs a builder at a STANDING building - the crew rung belongs to the foundation alone', () => {
+  it('employs a builder at a STANDING building - the crew rung belongs to the foundation alone', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const standing = buildingAt(sim, bakery(sim).typeId, ONE);
     const builder = settlerAt(sim, JOB_BUILDER);
 
-    expect(postedWorkers(rightClick(sim, [builder], standing), standing).map((w) => w.entity)).toEqual([
+    expect(postedWorkers(await rightClick(sim, [builder], standing), standing).map((w) => w.entity)).toEqual([
       builder,
     ]);
   });
 
-  it('sends a builder to mend a damaged standing building rather than employing him there', () => {
+  it('sends a builder to mend a damaged standing building rather than employing him there', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const damaged = damagedAt(sim, bakery(sim).typeId);
     const builder = settlerAt(sim, JOB_BUILDER);
 
-    expect(rightClick(sim, [builder], damaged)).toEqual([
+    expect(await rightClick(sim, [builder], damaged)).toEqual([
       { kind: 'assignBuilder', entity: builder, site: damaged },
     ]);
   });
 
-  it('sends the builder of a mixed selection to mend a damaged home and houses the rest', () => {
+  it('sends the builder of a mixed selection to mend a damaged home and houses the rest', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = damagedAt(sim, BUILDING_HOME_00);
     const builder = settlerAt(sim, JOB_BUILDER);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, [builder, idle], home)).toEqual([
+    expect(await rightClick(sim, [builder, idle], home)).toEqual([
       { kind: 'assignBuilder', entity: builder, site: home },
       { kind: 'assignHouseGroup', members: [{ entity: idle }], house: home },
     ]);
   });
 
-  it('houses a builder in a damaged home whose repair crew is already full', () => {
+  it('houses a builder in a damaged home whose repair crew is already full', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = damagedAt(sim, BUILDING_HOME_00);
     for (let i = 0; i < systems.REPAIR_CREW_LIMIT; i++) {
@@ -251,79 +260,81 @@ describe('right-clicking a construction site', () => {
     }
     const [spare, sixth] = [settlerAt(sim, JOB_BUILDER), settlerAt(sim, JOB_BUILDER)];
 
-    expect(rightClick(sim, [spare, sixth], home)).toEqual([
+    expect(await rightClick(sim, [spare, sixth], home)).toEqual([
       { kind: 'assignHouseGroup', members: [{ entity: spare }, { entity: sixth }], house: home },
     ]);
   });
 
-  it('hires any other trade into the building the foundation will become', () => {
+  it('hires any other trade into the building the foundation will become', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const { typeId, craftJob } = bakery(sim);
     const site = siteAt(sim, typeId);
     const idle = settlerAt(sim, null);
 
-    const [posted] = postedWorkers(rightClick(sim, [idle], site), site);
+    const [posted] = postedWorkers(await rightClick(sim, [idle], site), site);
     expect(posted?.entity).toBe(idle);
     // The craft slot leads the priority list - the carrier slot is only the fallback (assignmentPriority).
     expect(posted?.jobPriority[0]).toBe(craftJob);
   });
 
-  it('staffs a barracks foundation instead of sending the settler to drill in it', () => {
+  it('staffs a barracks foundation instead of sending the settler to drill in it', async () => {
     // Drilling needs the barracks standing (mayDrillAt), so the site takes the settler into its own
     // transport slot instead; the drill offer comes back the moment the barracks is finished.
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, BUILDING_BARRACKS);
     const idle = settlerAt(sim, null);
 
-    expect(postedWorkers(rightClick(sim, [idle], site), site).map((w) => w.entity)).toEqual([idle]);
+    expect(postedWorkers(await rightClick(sim, [idle], site), site).map((w) => w.entity)).toEqual([idle]);
   });
 
-  it('reserves a home foundation for the selected family', () => {
+  it('reserves a home foundation for the selected family', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, BUILDING_HOME_00);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, [idle], site)).toEqual([
+    expect(await rightClick(sim, [idle], site)).toEqual([
       { kind: 'assignHouseGroup', members: [{ entity: idle }], house: site },
     ]);
   });
 });
 
 describe('right-clicking a standing building', () => {
-  it('moves the family into a finished home', () => {
+  it('moves the family into a finished home', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, [idle], home)).toEqual([
+    expect(await rightClick(sim, [idle], home)).toEqual([
       { kind: 'assignHouseGroup', members: [{ entity: idle }], house: home },
     ]);
   });
 
-  it('sends a whole group to a home as one order, so the sim houses the homeless first', () => {
+  it('sends a whole group to a home as one order, so the sim houses the homeless first', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const group = [settlerAt(sim, null), settlerAt(sim, null), settlerAt(sim, null)];
 
-    expect(rightClick(sim, group, home)).toEqual([
+    expect(await rightClick(sim, group, home)).toEqual([
       { kind: 'assignHouseGroup', members: group.map((entity) => ({ entity })), house: home },
     ]);
   });
 
-  it('posts a whole group to a workplace as one order, so the sim seats the unemployed first', () => {
+  it('posts a whole group to a workplace as one order, so the sim seats the unemployed first', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const standing = buildingAt(sim, bakery(sim).typeId, ONE);
     const group = [settlerAt(sim, null), settlerAt(sim, null)];
 
-    expect(postedWorkers(rightClick(sim, group, standing), standing).map((w) => w.entity)).toEqual(group);
+    expect(postedWorkers(await rightClick(sim, group, standing), standing).map((w) => w.entity)).toEqual(
+      group,
+    );
   });
 
-  it('sends a trade the barracks does not employ to drill there', () => {
+  it('sends a trade the barracks does not employ to drill there', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const barracks = buildingAt(sim, BUILDING_BARRACKS, ONE);
     const idle = settlerAt(sim, null);
 
-    expect(rightClick(sim, [idle], barracks)).toEqual([
+    expect(await rightClick(sim, [idle], barracks)).toEqual([
       { kind: 'trainSoldier', entity: idle, house: barracks },
     ]);
   });
@@ -336,33 +347,33 @@ describe('a right-click that orders nobody', () => {
     return school.typeId;
   };
 
-  it('reports nothing when no selected settler may learn at the school', () => {
+  it('reports nothing when no selected settler may learn at the school', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const school = buildingAt(sim, schoolType(sim), ONE);
     const woman = settlerAt(sim, null);
     sim.world.add(woman, Female, { female: true });
 
-    expect(pressRightClick(sim, [woman], school)).toEqual({ issued: [], ordered: false });
+    expect(await pressRightClick(sim, [woman], school)).toEqual({ issued: [], ordered: false });
   });
 
-  it('reports nothing when the foundation takes none of the selection', () => {
+  it('reports nothing when the foundation takes none of the selection', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const site = siteAt(sim, schoolType(sim)); // a school employs nobody and teaches only once it stands
     const idle = settlerAt(sim, null);
 
-    expect(pressRightClick(sim, [idle], site)).toEqual({ issued: [], ordered: false });
+    expect(await pressRightClick(sim, [idle], site)).toEqual({ issued: [], ordered: false });
   });
 
-  it('reports the order a building did take', () => {
+  it('reports the order a building did take', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
 
-    expect(pressRightClick(sim, [settlerAt(sim, null)], home).ordered).toBe(true);
+    expect((await pressRightClick(sim, [settlerAt(sim, null)], home)).ordered).toBe(true);
   });
 });
 
 describe("the action ring's site pick", () => {
-  it('offers a damaged building to a builder until its repair crew is full', () => {
+  it('offers a damaged building to a builder until its repair crew is full', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const byType = lastByTypeId(sim.content.buildings);
     const home = damagedAt(sim, BUILDING_HOME_00);
@@ -396,86 +407,88 @@ function tradingPost(sim: Simulation): Entity {
 }
 
 describe('right-clicking a standing house with a trader', () => {
-  it('puts the house on the trade route instead of hiring or housing the trader', () => {
+  it('puts the house on the trade route instead of hiring or housing the trader', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
 
-    expect(rightClick(sim, [trader], home)).toEqual([
+    expect(await rightClick(sim, [trader], home)).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },
     ]);
   });
 
-  it('puts the house on the route of a trader riding inside its cart, which the cart does not drive to', () => {
+  it('puts the house on the route of a trader riding inside its cart, which the cart does not drive to', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
     sim.world.remove(trader, Position);
     sim.world.add(trader, Rider, { vehicle: sim.world.create(), boarding: false });
 
-    expect(rightClick(sim, [trader], home, sim.content, true, 'riders')).toEqual([
+    expect(await rightClick(sim, [trader], home, sim.content, true, 'riders')).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },
     ]);
   });
 
-  it('puts the house on the route of a trader waiting inside a house', () => {
+  it('puts the house on the route of a trader waiting inside a house', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
     sim.world.remove(trader, Position);
 
-    expect(rightClick(sim, [trader], home, sim.content, true, 'riders')).toEqual([
+    expect(await rightClick(sim, [trader], home, sim.content, true, 'riders')).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },
     ]);
   });
 
-  it("puts the house on the route of a selected cart's trader standing beside it", () => {
+  it("puts the house on the route of a selected cart's trader standing beside it", async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
     const cart = riddenVehicle(sim, VEHICLE_HANDCART, trader);
 
-    expect(rightClick(sim, [cart], home, sim.content, true, 'riders')).toEqual([
+    expect(await rightClick(sim, [cart], home, sim.content, true, 'riders')).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },
     ]);
   });
 
-  it("leaves a selected ship's trader passenger alone, so the ship takes the click", () => {
+  it("leaves a selected ship's trader passenger alone, so the ship takes the click", async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const ship = riddenVehicle(sim, VEHICLE_SHIP_SMALL, settlerAt(sim, JOB_TRADER));
 
-    expect(pressRightClick(sim, [ship], home, sim.content, true, 'riders')).toEqual({
+    expect(await pressRightClick(sim, [ship], home, sim.content, true, 'riders')).toEqual({
       issued: [],
       ordered: false,
     });
   });
 
-  it('takes a house the route already names off it', () => {
+  it('takes a house the route already names off it', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
     components.addTradeStop(sim.world, trader, home, false);
 
-    expect(rightClick(sim, [trader], home)).toEqual([
+    expect(await rightClick(sim, [trader], home)).toEqual([
       { kind: 'detachTradeHouse', entity: trader, house: home },
     ]);
   });
 
-  it('leaves the rest of the selection to the usual ladder', () => {
+  it('leaves the rest of the selection to the usual ladder', async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const shop = bakery(sim);
     const house = buildingAt(sim, shop.typeId, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
     const baker = settlerAt(sim, shop.craftJob);
 
-    const [route, ...rest] = rightClick(sim, [trader, baker], house);
+    const issued = await rightClick(sim, [trader, baker], house);
+    const route = issued.filter((order) => order.kind === 'attachTradeHouse');
+    const rest = issued.filter((order) => order.kind !== 'attachTradeHouse');
 
-    expect(route).toEqual({ kind: 'attachTradeHouse', entity: trader, house });
+    expect(route).toEqual([{ kind: 'attachTradeHouse', entity: trader, house }]);
     expect(postedWorkers(rest, house).map((member) => member.entity)).toEqual([baker]);
   });
 
-  it("walks the rest of the selection to another tribe's house the trader routes", () => {
+  it("walks the rest of the selection to another tribe's house the trader routes", async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const post = tradingPost(sim);
     const trader = settlerAt(sim, JOB_TRADER);
@@ -488,18 +501,20 @@ describe('right-clicking a standing house with a trader', () => {
       takeAmount: 1,
     });
 
-    const issued = rightClick(sim, [trader, builder], post, sim.content, false);
+    const issued = await rightClick(sim, [trader, builder], post, sim.content, false);
 
-    expect(issued[0]).toEqual({ kind: 'attachTradeHouse', entity: trader, house: post });
-    expect(issued.slice(1).map((order) => ('entity' in order ? order.entity : undefined))).toEqual([builder]);
+    const route = issued.filter((order) => order.kind === 'attachTradeHouse');
+    const rest = issued.filter((order) => order.kind !== 'attachTradeHouse');
+    expect(route).toEqual([{ kind: 'attachTradeHouse', entity: trader, house: post }]);
+    expect(rest.map((order) => ('entity' in order ? order.entity : undefined))).toEqual([builder]);
   });
 
-  it("walks a trader to another tribe's house that offers no agreement", () => {
+  it("walks a trader to another tribe's house that offers no agreement", async () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const post = tradingPost(sim);
     const trader = settlerAt(sim, JOB_TRADER);
 
-    const issued = rightClick(sim, [trader], post, sim.content, false);
+    const issued = await rightClick(sim, [trader], post, sim.content, false);
 
     expect(issued.map((order) => order.kind)).toEqual(['moveUnit']);
   });

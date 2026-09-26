@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import type { PlayerCommand, WorldSnapshot } from '@open-northland/sim';
+import { createAnsweredOrders } from '../../src/view/unit-controls/answered-orders.js';
 import { createPickModeController, type PickModeController } from '../../src/view/unit-controls/pick-mode.js';
 import type { UnitTargets } from '../../src/view/unit-controls/unit-targets.js';
 
@@ -28,6 +29,7 @@ export function buildingPickController(opts: {
   readonly enqueue?: (command: PlayerCommand) => void;
 }): PickModeController {
   return createPickModeController({
+    answered: createAnsweredOrders(),
     snapshot: opts.snapshot,
     targets: opts.targets ?? NO_TARGETS,
     content: opts.content,

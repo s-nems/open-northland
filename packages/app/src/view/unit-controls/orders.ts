@@ -33,9 +33,10 @@ import {
   vehicleSeatsOf,
 } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
+import type { AnsweredOrders } from './answered-orders.js';
 import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
-import { type TradeHouseRule, tradeHousePick } from './highlights/index.js';
+import { tradeHousePick } from './highlights/index.js';
 import { openSchoolDialog, type SchoolDialog } from './school-dialog.js';
 import type { TechnologyStatusRead } from './types.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
@@ -43,10 +44,15 @@ import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 export interface UnitOrderDeps {
   readonly uiscale?: number;
   readonly technologyStatus?: TechnologyStatusRead | undefined;
-  readonly answersVersion?: (() => number) | undefined;
-  /** The sim's equip pick-list read seam (`SessionHost.equipPickList`); absent, a click on a goods heap
-   *  is a walk. */
-  readonly equipPickList?: ((entity: number, group: EquipCategory) => readonly EquipPickEntry[]) | undefined;
+  /** Bumped when a `technologyStatus` answer changes, which the school dialog rebuilds on. */
+  readonly technologyVersion?: (() => number) | undefined;
+  /** The sim's equip pick-list (`SessionHost.equipPickList`), asked as the click lands; absent, a click
+   *  on a goods heap is a walk. */
+  readonly requestEquipPicks?:
+    | ((entity: number, group: EquipCategory) => Promise<readonly EquipPickEntry[]>)
+    | undefined;
+  /** Where the orders a host answer decides wait for it. */
+  readonly answered: AnsweredOrders;
   readonly selected: () => ReadonlySet<number>;
   readonly targets: UnitTargets;
   readonly snapshot: () => WorldSnapshot;
@@ -59,8 +65,9 @@ export interface UnitOrderDeps {
   readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
   /** The GUI click the school dialog's buttons confirm with; absent, silent. */
   readonly cue?: (cue: UiCue) => void;
-  /** The sim's trade-stop rule; absent, a trader's right-click puts no house on its route. */
-  readonly canAttachTradeHouse?: TradeHouseRule | undefined;
+  /** The sim's trade-stop rule, asked as the click lands; absent, a trader's right-click puts no house on
+   *  its route. */
+  readonly askAttachTradeHouse?: ((trader: number, house: number) => Promise<boolean>) | undefined;
 }
 
 /**
@@ -74,8 +81,13 @@ export interface UnitOrderController {
   issueRightClick(event: MouseEvent, onBuilding?: number | null): boolean;
   /** The trade-route toggle for the selected traders off the map (riding inside a cart, or inside a
    *  house), which the settlers' click skips, and for the crew of a selected cart, whose window shows its
-   *  trader's route. True when any of them took the house. */
-  issueRiderTradeHouse(event: MouseEvent, onBuilding?: number | null): boolean;
+   *  trader's route. True when any of them took the click; `onNoneTook` runs once the sim refused every
+   *  one asked about, so the cart can take the click instead. */
+  issueRiderTradeHouse(
+    event: MouseEvent,
+    onBuilding: number | null | undefined,
+    onNoneTook: () => void,
+  ): boolean;
   /** Move the selected gatherers' work flags to a world click; clicking a resource also narrows their
    *  gathering filter to that resource's good. */
   issueSetWorkFlagAt(event: MouseEvent): boolean;
@@ -101,6 +113,15 @@ export interface UnitOrderController {
 }
 
 type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['kind'];
+
+/** What a right-click lands on, read as it lands: an order decided later still aims there. */
+interface RightClickAim {
+  /** Any building under the cursor, a trader's route candidate. */
+  readonly house: number | null;
+  /** An own building under the cursor, the ladder's building rung. */
+  readonly building: number | null;
+  readonly tile: Tile;
+}
 
 /** Whether the snapshot settler's fixed `group` slot already holds `goodType`, worn or not. */
 function wearsGood(
@@ -157,7 +178,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       house,
       enqueue: deps.enqueue,
       status: deps.technologyStatus,
-      answersVersion: deps.answersVersion,
+      answersVersion: deps.technologyVersion,
       cue: deps.cue,
       scale: uiScale,
     });
@@ -183,17 +204,37 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const goods = deps.targets.goods();
     const pile = pickTopAt(goods, world.x, world.y);
     const pileGood = pile === null ? undefined : goods.find((target) => target.ref === pile)?.goodType;
-    if (pileGood !== undefined && wearFromGround(commanded, pileGood)) return true;
-    const routed = routeTradeHouse(
-      commanded,
-      onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y),
-    );
+    const aim: RightClickAim = {
+      house: onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y),
+      building: onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y),
+      tile: worldToTile(world.x, world.y, deps.elevation),
+    };
+    if (
+      pileGood !== undefined &&
+      wearFromGround(commanded, pileGood, (unworn) => rightClickRest(event, unworn, aim))
+    ) {
+      return true;
+    }
+    return rightClickRest(event, commanded, aim);
+  };
+
+  /** The ladder past the goods heap: a trader's route toggle, then the building, then the walk. A trader
+   *  the sim then refuses the house to takes the rest of the ladder once the answer lands. */
+  const rightClickRest = (
+    event: MouseEvent,
+    commanded: readonly FormationUnit[],
+    aim: RightClickAim,
+  ): boolean => {
+    const routed = routeTradeHouse(commanded, aim.house, (refused) => orderPastRoute(event, refused, aim));
     const others = routed.size === 0 ? commanded : commanded.filter((unit) => !routed.has(unit.ref));
     if (others.length === 0) return true;
-    const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
-    if (building !== null) return orderAtBuilding(event, others, building) || routed.size > 0;
-    return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), others, 'moveUnit');
+    return orderPastRoute(event, others, aim) || routed.size > 0;
   };
+
+  const orderPastRoute = (event: MouseEvent, units: readonly FormationUnit[], aim: RightClickAim): boolean =>
+    aim.building !== null
+      ? orderAtBuilding(event, units, aim.building)
+      : issueWalkOrder(aim.tile, units, 'moveUnit');
 
   /** The right-click ladder over an own building; true when it opened the school dialog or enqueued an
    *  order, so a building that takes none of the selection stays silent. */
@@ -287,32 +328,48 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   /**
    * Original behavior: a trader's right-click on a standing house puts it on the trade route, another
    * tribe's house included, and takes it off when the route already names it. Which houses a route
-   * takes is the sim's rule. The traders that took the order are returned; the rest of the selection
-   * handles the click as usual.
+   * takes is the sim's rule, asked as the click lands. The traders that took the click are returned,
+   * those asked about included; the rest of the selection handles the click as usual, and the asked
+   * traders the sim refuses reach `onRefused` once the answer lands.
    */
-  const routeTradeHouse = (
-    commanded: readonly { readonly ref: number }[],
+  const routeTradeHouse = <U extends { readonly ref: number }>(
+    commanded: readonly U[],
     house: number | null,
+    onRefused: (refused: readonly U[]) => void,
   ): Set<number> => {
     const routed = new Set<number>();
+    const ask = deps.askAttachTradeHouse;
     if (house === null) return routed;
     const snapshot = deps.snapshot();
+    const asked: U[] = [];
     for (const unit of commanded) {
       const self = entityById(snapshot, unit.ref);
       if (self === undefined || !systems.isTraderJob(deps.content, settlerJobType(self) ?? null)) continue;
       if (tradeHousePick.onRoute(snapshot, house, unit.ref)) {
         deps.enqueue({ kind: 'detachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
-      } else if (deps.canAttachTradeHouse?.(unit.ref, house) === true) {
-        deps.enqueue({ kind: 'attachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
-      } else continue;
+      } else if (ask !== undefined) asked.push(unit);
+      else continue;
       routed.add(unit.ref);
     }
+    if (ask === undefined || asked.length === 0) return routed;
+    deps.answered.after(Promise.all(asked.map((unit) => ask(unit.ref, house))), (verdicts) => {
+      const refused = asked.filter((_unit, index) => verdicts[index] !== true);
+      for (const unit of asked) {
+        if (refused.includes(unit)) continue;
+        deps.enqueue({ kind: 'attachTradeHouse', entity: unit.ref as Entity, house: house as Entity });
+      }
+      if (refused.length > 0) onRefused(refused);
+    });
     return routed;
   };
 
   /** A house click for the selected settlers off the map and the riders of a selected cart. A ship's
    *  passengers are left out: the ship takes the click itself, as its window has no Handel tab. */
-  const issueRiderTradeHouse = (event: MouseEvent, onBuilding?: number | null): boolean => {
+  const issueRiderTradeHouse = (
+    event: MouseEvent,
+    onBuilding: number | null | undefined,
+    onNoneTook: () => void,
+  ): boolean => {
     const snapshot = deps.snapshot();
     const traders: { readonly ref: number }[] = [];
     for (const id of deps.selected()) {
@@ -329,9 +386,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     }
     if (traders.length === 0) return false;
     const world = deps.toWorld(event.clientX, event.clientY);
-    return (
-      routeTradeHouse(traders, onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y)).size > 0
-    );
+    const house = onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y);
+    const took = routeTradeHouse(traders, house, (refused) => {
+      if (refused.length === took.size) onNoneTook();
+    });
+    return took.size > 0;
   };
 
   /** Send every commanded settler that may open the chest; true when anyone was sent. Filtered here as
@@ -362,23 +421,37 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
    * check, as its slots stack. The gate is the sim's pick list, the same read the equip window shows.
    * Unlike an order from the equip window or the ring, the settler does not walk back to where it stood.
    */
-  const wearFromGround = (commanded: readonly FormationUnit[], goodType: number): boolean => {
-    const pickList = deps.equipPickList;
+  const wearFromGround = (
+    commanded: readonly FormationUnit[],
+    goodType: number,
+    onNoneWears: (commanded: readonly FormationUnit[]) => void,
+  ): boolean => {
+    const request = deps.requestEquipPicks;
     const group = goodsByType.get(goodType)?.equip?.category;
-    if (pickList === undefined || group === undefined) return false;
+    if (request === undefined || group === undefined) return false;
     const snapshot = deps.snapshot();
-    const wearers = commanded
+    const candidates = commanded
       .map((unit) => unit.ref)
       .filter((ref) => {
         const self = entityById(snapshot, ref);
-        if (self === undefined || (group !== 'misc' && wearsGood(self.components, group, goodType))) {
-          return false;
-        }
-        return pickList(ref, group).some((row) => row.goodType === goodType);
+        return self !== undefined && (group === 'misc' || !wearsGood(self.components, group, goodType));
       });
-    const commands = selectionEquipCommands(snapshot, wearers, { goodType, group }, { skipReturn: true });
-    for (const command of commands) deps.enqueue(command);
-    return commands.length > 0;
+    if (candidates.length === 0) return false;
+    // The pick lists are asked as the click lands; with nobody able to wear it the click walks on.
+    deps.answered.after(Promise.all(candidates.map((ref) => request(ref, group))), (lists) => {
+      const wearers = candidates.filter((_ref, index) =>
+        lists[index]?.some((row) => row.goodType === goodType),
+      );
+      const commands = selectionEquipCommands(
+        deps.snapshot(),
+        wearers,
+        { goodType, group },
+        { skipReturn: true },
+      );
+      for (const command of commands) deps.enqueue(command);
+      if (commands.length === 0) onNoneWears(commanded);
+    });
+    return true;
   };
 
   /** The selected settlers an order goes to: all of them, or only `units` among them. */

@@ -22,7 +22,7 @@ it('hydrates saved replacements and reconciles later removals without rebuilding
   const replacement = sprite();
   const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
   const factory = vi.fn(() => replacement);
-  const events = bindScriptLandscapes(
+  const landscapes = bindScriptLandscapes(
     { landscapeEdits: () => Promise.resolve(state) },
     surface,
     new Map([[0, initial]]),
@@ -32,12 +32,12 @@ it('hydrates saved replacements and reconciles later removals without rebuilding
   await landed();
   expect(surface.removeMapObject).toHaveBeenCalledWith(initial);
   expect(surface.addMapObjects).toHaveBeenCalledExactlyOnceWith([replacement]);
-  events([{ kind: 'missionLandscapeChanged' }]);
+  landscapes.onEvents([{ kind: 'missionLandscapeChanged' }]);
   await landed();
   expect(factory).toHaveBeenCalledTimes(1);
   expect(surface.removeMapObject).toHaveBeenCalledTimes(1);
   state = { ...state, revision: 2, added: [] };
-  events([{ kind: 'missionLandscapeChanged' }]);
+  landscapes.onEvents([{ kind: 'missionLandscapeChanged' }]);
   await landed();
   expect(surface.removeMapObject).toHaveBeenLastCalledWith(replacement);
 });
@@ -46,14 +46,14 @@ it('applies only the latest of two asks when they land out of order', async () =
   const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
   const first = sprite();
   const answers: ((edits: ReturnType<Simulation['landscapeEdits']>) => void)[] = [];
-  const events = bindScriptLandscapes(
+  const landscapes = bindScriptLandscapes(
     { landscapeEdits: () => new Promise((resolve) => answers.push(resolve)) },
     surface,
     new Map([[1, first]]),
     vi.fn(sprite),
     new Map(),
   );
-  events([{ kind: 'missionLandscapeChanged' }]);
+  landscapes.onEvents([{ kind: 'missionLandscapeChanged' }]);
   answers[1]?.({ revision: 2, removed: [], added: [], tints: [] });
   answers[0]?.({ revision: 1, removed: [1], added: [], tints: [] });
   await landed();
@@ -95,5 +95,19 @@ it("takes a removed placement's shore wave off the ground", async () => {
   );
   await landed();
   expect(surface.removeGroundWave).toHaveBeenCalledExactlyOnceWith(wave);
+  expect(surface.removeMapObject).not.toHaveBeenCalled();
+});
+
+it('applies nothing that lands after disposal', async () => {
+  const surface = { addMapObjects: vi.fn(), removeMapObject: vi.fn(), removeGroundWave: vi.fn() };
+  const landscapes = bindScriptLandscapes(
+    { landscapeEdits: () => Promise.resolve({ revision: 1, removed: [1], added: [], tints: [] }) },
+    surface,
+    new Map([[1, sprite()]]),
+    vi.fn(sprite),
+    new Map(),
+  );
+  landscapes.dispose();
+  await landed();
   expect(surface.removeMapObject).not.toHaveBeenCalled();
 });

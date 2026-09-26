@@ -247,8 +247,11 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
     const capacity = type?.schoolSize;
     const occupied = trainingOccupancyOf(state, house);
     choices = schoolChoices(
-      groups.filter((group) => status?.('job', group.jobType, tribeId, player)?.allowed ?? true),
-      (course) => status?.(course.target, course.typeId, tribeId, player)?.enabled ?? true,
+      groups.filter(
+        (group) => status === undefined || status('job', group.jobType, tribeId, player)?.allowed === true,
+      ),
+      (course) =>
+        status === undefined || status(course.target, course.typeId, tribeId, player)?.enabled === true,
     );
     reasons = new Map();
     for (const group of choices)
