@@ -1,7 +1,7 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
-import type { VehicleOrder, VehiclePanelModel } from '../model/index.js';
-import { DETAILS_STOCK_TAB_COUNT, stockTabRects } from '../stock-tabs.js';
+import { VEHICLE_ORDERS, type VehicleOrder, type VehiclePanelModel } from '../model/index.js';
+import { DETAILS_STOCK_TAB_COUNT, largestHoldTab, stockTabRects } from '../stock-tabs.js';
 import { BAR_H, type ButtonHit, STOCK_ROW_H } from './building.js';
 import { layoutTrade, mapTradeLayout, type TradeLayout, tradeBodyHeight } from './settler-trade.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
@@ -13,7 +13,7 @@ export const vehicleOrderAction = (order: VehicleOrder): VehicleOrderAction => `
 
 /** The order behind a button action, or undefined for an action of another window. */
 export function vehicleOrderOf(action: string): VehicleOrder | undefined {
-  return action.startsWith('vehicle-') ? (action.slice('vehicle-'.length) as VehicleOrder) : undefined;
+  return VEHICLE_ORDERS.find((order) => vehicleOrderAction(order) === action);
 }
 
 /** An order button's height and the gap between two; two columns keep a catapult's twelve orders short. */
@@ -26,8 +26,8 @@ const HEALTH_ROW_H = 13;
 const CARGO_TAB_H = 18;
 /** Gap under the tab strip before the first cargo row. */
 const CARGO_TAB_GAP = 4;
-/** Cargo cells per column; two columns, so twelve goods show per tab, which fits the biggest category. */
-export const CARGO_ROWS = 6;
+/** Cargo cell columns; the rows follow from the fullest tab, so every tab shows all its goods. */
+const CARGO_COLUMNS = 2;
 /** Horizontal gap between the two cargo columns. */
 const CARGO_COL_GAP = WIN_PAD;
 /** A cargo cell's good icon column. */
@@ -69,7 +69,7 @@ export interface VehicleLayout {
   /** Null for a vehicle without a hold. */
   readonly cargo: SectionRect | null;
   readonly cargoTabHits: readonly Rect[];
-  /** Column-major cells, the visible rows of the active tab fill them in order. */
+  /** Column-major cells, enough for the fullest tab; the visible rows of the active tab fill them in order. */
   readonly cargoCells: readonly VehicleCargoCell[];
 }
 
@@ -82,20 +82,20 @@ export function vehicleGeneralLines(model: VehiclePanelModel): string[] {
   return lines;
 }
 
-function cargoCells(body: Rect, s: number): VehicleCargoCell[] {
+function cargoCells(body: Rect, rows: number, s: number): VehicleCargoCell[] {
   const colGap = Math.round(CARGO_COL_GAP * s);
-  const colW = Math.round((body.w - colGap) / 2);
+  const colW = Math.round((body.w - colGap * (CARGO_COLUMNS - 1)) / CARGO_COLUMNS);
   const cellH = Math.round(STOCK_ROW_H * s);
   const iconW = Math.round(CARGO_ICON_W * s);
   const btn = Math.round(CARGO_STEP_BTN * s);
   const btnGap = Math.round(CARGO_STEP_GAP * s);
-  const rowsTop = body.y + body.h - CARGO_ROWS * cellH;
+  const rowsTop = body.y + body.h - rows * cellH;
   const cells: VehicleCargoCell[] = [];
-  for (let i = 0; i < CARGO_ROWS * 2; i++) {
-    const col = Math.floor(i / CARGO_ROWS);
+  for (let i = 0; i < rows * CARGO_COLUMNS; i++) {
+    const col = Math.floor(i / rows);
     const cell: Rect = {
       x: body.x + col * (colW + colGap),
-      y: rowsTop + (i % CARGO_ROWS) * cellH,
+      y: rowsTop + (i % rows) * cellH,
       w: colW,
       h: cellH,
     };
@@ -133,8 +133,9 @@ export function layoutVehicle(
   const bodyW = sectionAt(0, 0, w, 0, s).body.w;
   const tradeBodyH = model.trade === null ? 0 : tradeBodyHeight(model.trade.panel, bodyW, s);
   const hasCargo = model.cargo.length > 0;
+  const cargoRows = Math.ceil(largestHoldTab(model.cargo) / CARGO_COLUMNS);
   const cargoBodyH = hasCargo
-    ? Math.round(CARGO_TAB_H * s) + Math.round(CARGO_TAB_GAP * s) + CARGO_ROWS * Math.round(STOCK_ROW_H * s)
+    ? Math.round(CARGO_TAB_H * s) + Math.round(CARGO_TAB_GAP * s) + cargoRows * Math.round(STOCK_ROW_H * s)
     : 0;
 
   const heights = [generalBodyH, ordersBodyH, peopleBodyH, ...(model.trade === null ? [] : [tradeBodyH])].map(
@@ -197,7 +198,7 @@ export function layoutVehicle(
           s,
           DETAILS_STOCK_TAB_COUNT,
         );
-  const cells = cargo === null ? [] : cargoCells(cargo.body, s);
+  const cells = cargo === null ? [] : cargoCells(cargo.body, cargoRows, s);
 
   return {
     kind: 'vehicle',

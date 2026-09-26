@@ -1,11 +1,86 @@
-import { DEFAULT_FACING, frameOf, type SpriteSheet, type VehicleLook } from '@open-northland/render';
+import {
+  type AtlasFrame,
+  DEFAULT_FACING,
+  frameOf,
+  type SpriteAtlas,
+  type SpriteSheet,
+  type VehicleBinding,
+  type VehicleLook,
+} from '@open-northland/render';
 import { Rectangle, Texture } from 'pixi.js';
 
 /**
  * A vehicle good's HUD icon is the vehicle itself, standing: the wait clip's frame at the default facing,
  * cut from the loaded vehicle atlas. A vehicle good has no `ls_goods` pile (it is built on a yard, never
- * shelved), so the generic heap it would otherwise draw reads as a pile of wood.
+ * shelved), so the generic heap it would otherwise draw reads as a pile of wood. An indexed look's atlas
+ * holds palette indices, not colours, so its icon cuts from the baked copy of its standing frames the
+ * loader files under {@link vehicleIconStem}.
  */
+
+const RGBA_BYTES = 4;
+
+function standingFrame(look: VehicleLook): number {
+  return frameOf(look.idle, DEFAULT_FACING, 0);
+}
+
+/** The family an indexed body's icons cut from; a loader-built page, not a served stem. */
+export function vehicleIconStem(indexedStem: string): string {
+  return `${indexedStem}.icons`;
+}
+
+/** The standing frame of every indexed look, by its indexed stem: what the loader bakes icons from. */
+export function indexedStandingFrames(binding: VehicleBinding | undefined): Map<string, Set<number>> {
+  const byStem = new Map<string, Set<number>>();
+  for (const looks of Object.values(binding?.byTribe ?? {})) {
+    for (const look of Object.values(looks)) {
+      if (look.indexed !== true) continue;
+      const frames = byStem.get(look.layer) ?? new Set<number>();
+      frames.add(standingFrame(look));
+      byStem.set(look.layer, frames);
+    }
+  }
+  return byStem;
+}
+
+/** A decoded RGBA page, row-major from the top-left. */
+export interface RgbaImage {
+  readonly width: number;
+  readonly height: number;
+  readonly data: Uint8Array | Uint8ClampedArray;
+}
+
+/**
+ * Copy `ids` out of a decoded baked page side by side into one small RGBA page, keeping their ids and
+ * draw offsets; `undefined` when the page holds none of them.
+ */
+export function packIconFrames(
+  image: RgbaImage,
+  atlas: SpriteAtlas,
+  ids: Iterable<number>,
+): { readonly pixels: Uint8Array; readonly atlas: SpriteAtlas } | undefined {
+  const picked: [number, AtlasFrame][] = [];
+  for (const id of ids) {
+    const frame = atlas.frames.get(id);
+    const inside =
+      frame !== undefined && frame.x + frame.width <= image.width && frame.y + frame.height <= image.height;
+    if (inside && frame.width > 0 && frame.height > 0) picked.push([id, frame]);
+  }
+  if (picked.length === 0) return undefined;
+  const width = picked.reduce((sum, [, f]) => sum + f.width, 0);
+  const height = picked.reduce((max, [, f]) => Math.max(max, f.height), 0);
+  const pixels = new Uint8Array(width * height * RGBA_BYTES);
+  const frames = new Map<number, AtlasFrame>();
+  let x = 0;
+  for (const [id, f] of picked) {
+    for (let row = 0; row < f.height; row++) {
+      const from = ((f.y + row) * image.width + f.x) * RGBA_BYTES;
+      pixels.set(image.data.subarray(from, from + f.width * RGBA_BYTES), (row * width + x) * RGBA_BYTES);
+    }
+    frames.set(id, { x, y: 0, width: f.width, height: f.height, offsetX: f.offsetX, offsetY: f.offsetY });
+    x += f.width;
+  }
+  return { pixels, atlas: { width, height, frames } };
+}
 
 /** The content slice the icon join reads: a good's yard house, the house's vehicle, the vehicle's
  *  harnessed form. */
@@ -72,9 +147,10 @@ export function vehicleGoodIcons(
     if (good.vehicleHouse === undefined) continue;
     const vehicleType = vehicleTypeOfGood(content, good.id);
     const look = vehicleType === undefined ? undefined : anyTribeLook(sheet, vehicleType);
-    const layer = look === undefined ? undefined : sheet.families?.[look.layer];
-    const frame =
-      look === undefined ? undefined : layer?.atlas.frames.get(frameOf(look.idle, DEFAULT_FACING, 0));
+    if (look === undefined) continue;
+    // Without its baked icon page an indexed look has no icon: the generic heap beats a red silhouette.
+    const layer = sheet.families?.[look.indexed === true ? vehicleIconStem(look.layer) : look.layer];
+    const frame = layer?.atlas.frames.get(standingFrame(look));
     if (layer === undefined || frame === undefined) continue;
     // The frame's feet-anchor offset is discarded: the icon is centred on the picture's bounding box.
     icons.set(

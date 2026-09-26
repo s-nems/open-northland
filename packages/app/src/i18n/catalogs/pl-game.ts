@@ -150,7 +150,6 @@ export const plGame = {
     vehicleCrewOutside: 'na zewnątrz',
     vehicleCrewCount: '{count}/{capacity}',
     vehicleNoCrew: 'Brak załogi: zaznacz osadnika i wydaj rozkaz „Przydziel wehikuł”.',
-    vehicleCarriedVehicle: 'Na pokładzie: {vehicle}',
     vehicleCarrier: 'Na pokładzie: {carrier}',
     vehicleSelectHint: 'Kliknij, aby zaznaczyć',
     vehicleOrderGoTo: 'Idź do', // misclogic 142

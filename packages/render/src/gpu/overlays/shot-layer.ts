@@ -29,7 +29,7 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
  * the original files a particle into the row of the map point beneath it.
  *
  * Original behavior: the stone (`[particel] Rock`) loops its 8 tumble frames a tick each and spawns its
- * `spawnparticelId` puff (`Rock Smoke`) every tick from its second on, each puff playing once over 4 ticks
+ * `spawnparticelId` puff (`Rock Smoke`) every tick from its second on, each puff playing its frames once
  * while it sinks; the weapon's `createsmoke` raises `Smoke.org` on the landing point for `smokelifetime`
  * less up to 9 random ticks, cut off part-grown. It draws no shadow: the shadow, the smoke's full growth and
  * fade-out, and its sorting in front of what it struck are Open Northland's.
@@ -107,7 +107,8 @@ export class ShotLayer {
       // The pool draws each entity a tick behind the snapshot, sliding from its previous anchor; the stone
       // keeps that pace, so it lands as the snapshot that drops it arrives.
       const flown = frame.renderTime - SNAPSHOT_LAG_TICKS - shot.launchTick;
-      if (flown > shot.flightTicks + TRAIL_LIFE_TICKS + 1) {
+      const trail = trails[shot.munitionType];
+      if (flown > shot.flightTicks + (trail === undefined ? 0 : trailLifeTicks(trail)) + 1) {
         this.tracks.delete(ref);
         continue;
       }
@@ -117,7 +118,6 @@ export class ShotLayer {
       if (track.inFlight) track.visible = frame.drawn.anchorOf(ref) !== undefined;
       if (track.visible !== true) continue;
       if (track.inFlight) this.drawStone(frame, track, stone, flown);
-      const trail = trails[shot.munitionType];
       if (trail !== undefined) this.drawTrail(frame, shot, path, trail, flown);
     }
   }
@@ -144,12 +144,13 @@ export class ShotLayer {
     trail: ParticleRef,
     flown: number,
   ): void {
+    const life = trailLifeTicks(trail);
     const newest = Math.min(Math.floor(flown), shot.flightTicks);
-    const oldest = Math.max(1, newest - TRAIL_LIFE_TICKS + 1);
+    const oldest = Math.max(1, newest - life + 1);
     const sink = elevationLiftPerUnit() * TRAIL_SINK_UNITS_PER_TICK;
     for (let spawned = oldest; spawned <= newest; spawned++) {
       const age = flown - spawned;
-      if (age < 0 || age >= TRAIL_LIFE_TICKS) continue;
+      if (age < 0 || age >= life) continue;
       const bob = particleFrame(trail, age);
       if (bob === undefined) continue;
       const pose = shotPoseAt(path, shot, spawned);
@@ -278,9 +279,11 @@ interface ImpactSmoke {
 
 /** The pool's one-tick draw lag behind the snapshot, which the stone keeps. */
 const SNAPSHOT_LAG_TICKS = 1;
-/** A trail puff's life: its 4 shrinking frames, a tick each (original behavior). */
-const TRAIL_LIFE_TICKS = 4;
-/** How far a puff sinks per tick, in elevation units (original behavior, about one a tick). */
+/** A trail puff's life: its shrinking frames once through, a tick each (approximation of the pacing). */
+function trailLifeTicks(trail: ParticleRef): number {
+  return trail.valencies[0]?.length ?? 0;
+}
+/** How far a puff sinks per tick, in elevation units (approximation, about one a tick). */
 const TRAIL_SINK_UNITS_PER_TICK = 1;
 /** Trail puffs draw translucent (`bobtype 2`); the blend strength is an approximation. The landing smoke's
  *  own pixels are faint enough to draw opaque. */

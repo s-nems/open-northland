@@ -179,4 +179,19 @@ describe('vehicle draw items', () => {
     const [item] = buildSpriteScene(snapshotOf([]), { ghosts });
     expect(item).toMatchObject({ kind: 'vehicle', ghost: true, facing: GFX_DIR_TO_FACING[HEX_SOUTH_WEST] });
   });
+
+  it('draws a vehicle driven out of its fogged memory into sight once, live', () => {
+    // Remembered two cells west on fogged ground; the ghost list stays cached while the mask does not change.
+    const ghost = { ref: 1, kind: 'vehicle', tileX: 2, tileY: 2, typeId: OXCART } as const;
+    const items = buildSpriteScene(snapshotOf([vehicle(1)]), {
+      ghosts: [ghost],
+      fogVisible: (tileX) => tileX >= 4,
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ ref: 1, kind: 'vehicle' });
+    expect(items[0]?.ghost).toBeUndefined();
+    // Still fogged at its live spot, the memory draws instead.
+    const fogged = buildSpriteScene(snapshotOf([vehicle(1)]), { ghosts: [ghost], fogVisible: () => false });
+    expect(fogged).toEqual([expect.objectContaining({ ref: 1, ghost: true })]);
+  });
 });

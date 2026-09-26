@@ -71,6 +71,10 @@ describe('munition sprites', () => {
     expect(refs.trailByMunition[ROCK]?.valencies).toEqual([[4, 3]]);
     expect(refs.trailByMunition[ARROW]).toBeUndefined(); // an arrow spawning itself leaves no trail
     expect(refs.impactSmoke?.valencies).toEqual([[187, 188]]);
+    // The spawned record is named by its index, not its place in the list.
+    const shuffled = resolveMunitionRefs({ particles: [...(ir.particles ?? [])].reverse() });
+    expect(shuffled.trailByMunition[ROCK]?.valencies).toEqual([[4, 3]]);
+    expect(shuffled.trailByMunition[ARROW]).toBeUndefined();
     expect([...munitionAtlasStems(refs)].sort()).toEqual([
       'ls_smoke.rock03',
       'ls_smoke.smoke',

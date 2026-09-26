@@ -53,6 +53,7 @@ import {
   createMessageCenter,
   type MessageFeedState,
   type MessageTarget,
+  type MetSeat,
   type NoticeGallery,
 } from './messages/index.js';
 import type { MissionHumanLookup } from './mission/index.js';
@@ -132,9 +133,10 @@ export interface ToolPanelOptions {
   readonly papers: PapersSeam;
   /** The residents window's seam: the seat's people, the sim's trade rule and the selection. */
   readonly residents: ResidentsSeam;
-  /** The roster of discovered players, one row each: read by the diplomacy window while it is open,
-   *  and once a tick by the message centre. */
+  /** The roster of discovered players, one row each, which the diplomacy window reads while it is open. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
+  /** The discovered players and their stance toward the viewer, which the message centre reads a tick. */
+  readonly metSeats: () => readonly MetSeat[];
   /** A seat's roster name, which the diplomacy rows withhold for the viewer's own and unmet seats. */
   readonly seatNameOf?: (player: number) => string | undefined;
   /** The diplomacy window's pay button: the seat pays the tribute slot. */
@@ -535,7 +537,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       vehicleLabel: opts.vehicleLabel,
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
-      metSeats: opts.diplomacyRows,
+      metSeats: opts.metSeats,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
       gallery: opts.noticeGallery,
     });

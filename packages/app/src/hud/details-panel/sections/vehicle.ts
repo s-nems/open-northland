@@ -231,7 +231,7 @@ function drawCargoSection(
     const lit = hover.cargoStep?.goodType === row.goodType ? hover.cargoStep.step : 0;
     chrome.roundButton(cell.less, row.wanted > 0, lit === -1);
     chrome.glyphMinus(cell.less, row.wanted > 0);
-    chrome.roundButton(cell.more, true, lit === 1);
+    chrome.roundButton(cell.more, view.model.wantedRoom > 0, lit === 1);
     chrome.glyphPlus(cell.more);
   });
 }

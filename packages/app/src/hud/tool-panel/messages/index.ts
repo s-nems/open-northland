@@ -33,6 +33,7 @@ import { composeMessageText, type MessageText, type ShortLabels } from './text.j
 import type { UserMessage } from './types.js';
 
 export type { MessageFeedState } from './feed.js';
+export type { MetSeat } from './from-diplomacy.js';
 export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 
 /** The `miscwindow` row heading an unnamed seat, ahead of its slot number. */

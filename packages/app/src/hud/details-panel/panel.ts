@@ -7,6 +7,7 @@ import { vehicleGoodIcons } from '../../content/vehicle-gfx/index.js';
 import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { buildingPreviews, loadDetailsPanelArt } from './assets.js';
+import { createCargoWantedEcho } from './cargo-echo.js';
 import { applyPanelClick, type PanelClickActions } from './click-actions.js';
 import { tooltipTextAt } from './hit-test.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
@@ -110,6 +111,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     now: () => performance.now(),
   });
   let view: PanelView = EMPTY_PANEL_VIEW;
+  /** The model the gate last handed out, before the hold's wanted echo is laid over it. */
+  let liveModel: UnitPanelModel | null = null;
+  const cargoEcho = createCargoWantedEcho();
   let hover: PanelHover = NO_PANEL_HOVER;
   /** The last known cursor position over the canvas (client coords), or null after it left, so a rebuild
    *  can refresh a still cursor's tooltip with live values. */
@@ -119,7 +123,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   const rebuild = (model: UnitPanelModel): void => {
     rebuildGate.rebuilt();
-    view = panelViewFor(model, app.screen, scale);
+    liveModel = model;
+    view = panelViewFor(cargoEcho.apply(model), app.screen, scale);
     stage.paint(view, hover, activeStockTab);
     if (view.kind === 'empty') {
       opts.tooltip?.hide();
@@ -131,7 +136,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   /** Re-bake the current selection after a panel-local change (hover, stock tab); inert while empty. */
   const rebuildCurrent = (): void => {
-    if (view.kind !== 'empty') rebuild(view.model);
+    if (view.kind !== 'empty' && liveModel !== null) rebuild(liveModel);
   };
 
   const updateModel = (snapshot: WorldSnapshot, force = false): void => {
@@ -176,6 +181,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (click !== null) {
       opts.onUiCue?.('confirm');
       applyPanelClick(click, opts, selectStockTab);
+      if (click.kind === 'setVehicleWanted' && opts.onSetVehicleWanted !== undefined) {
+        if (liveModel?.kind === 'vehicle') cargoEcho.hold(liveModel, click.goodType, click.amount);
+        rebuildCurrent();
+      }
     }
     return true;
   };

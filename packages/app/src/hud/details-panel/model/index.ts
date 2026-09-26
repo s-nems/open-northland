@@ -77,6 +77,7 @@ export type { UnlockProgressRowModel } from './settler-unlocks.js';
 export type { TradeImportModel, TradeOfferModel, TradePanelModel, TradeStopModel } from './trade.js';
 export {
   VEHICLE_ORDER_STRING,
+  VEHICLE_ORDERS,
   VEHICLEWINDOW,
   type VehicleCargoRow,
   type VehicleCrewRow,

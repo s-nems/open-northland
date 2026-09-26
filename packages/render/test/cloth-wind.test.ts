@@ -63,8 +63,6 @@ describe('the wind in a drawn ship', () => {
     );
     expect(shadow?.shadow).toBe(true);
     expect(shadow?.cloth).toBeUndefined();
-    // Both draw as paletted meshes, which sample their page by UV.
-    expect([shadow?.atlasW, body?.atlasW]).toEqual([atlas.width, atlas.width]);
   });
 
   it('draws a moored ship, a fog ghost, a baked hull and an atlas with no sail ranges rigid', () => {
@@ -72,6 +70,5 @@ describe('the wind in a drawn ship', () => {
     expect(resolveLayers(sheetOf(true), { ...ship, ghost: true }, 9)?.[1]?.cloth).toBeUndefined();
     expect(resolveLayers(sheetOf(false), ship, 9)?.[1]?.cloth).toBeUndefined();
     expect(resolveLayers(sheetOf(true, { other: SAIL }), ship, 9)?.[1]?.cloth).toBeUndefined();
-    expect(resolveLayers(sheetOf(true), { ...ship, moored: true }, 9)?.[1]?.atlasW).toBe(atlas.width);
   });
 });

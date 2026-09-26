@@ -26,9 +26,11 @@ import {
   chestKindOf,
   isBuilding,
   isSettler,
+  isVehicle,
   num,
   positionOf,
   settlerJobType,
+  vehicleSeatsOf,
 } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { selectionEquipCommands } from './equip-picker.js';
@@ -115,6 +117,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   let uiScale = deps.uiscale ?? 1;
   const buildingsByType = lastByTypeId(deps.content.buildings);
   const goodsByType = lastByTypeId(deps.content.goods);
+  const vehiclesByType = lastByTypeId(deps.content.vehicles);
 
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const occupied = new Set<string>();
@@ -304,15 +307,22 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return routed;
   };
 
+  /** A house click for the selected settlers off the map and the riders of a selected cart. A ship's
+   *  passengers are left out: the ship takes the click itself, as its window has no Handel tab. */
   const issueRiderTradeHouse = (event: MouseEvent, onBuilding?: number | null): boolean => {
     const snapshot = deps.snapshot();
-    const selected = deps.selected();
     const traders: { readonly ref: number }[] = [];
-    for (const e of snapshot.entities) {
-      const rider = e.components.Rider as { vehicle?: unknown } | undefined;
-      const offMap = selected.has(e.id) && positionOf(e) === undefined;
-      const ofSelectedCart = rider !== undefined && selected.has(num(rider.vehicle) ?? -1);
-      if (offMap || ofSelectedCart) traders.push({ ref: e.id });
+    for (const id of deps.selected()) {
+      const e = entityById(snapshot, id);
+      if (e === undefined) continue;
+      if (!isVehicle(e)) {
+        if (positionOf(e) === undefined) traders.push({ ref: id });
+        continue;
+      }
+      const v = e.components.Vehicle as { vehicleType?: unknown; passengers?: unknown };
+      const type = vehiclesByType.get(num(v.vehicleType) ?? -1);
+      if (type === undefined || systems.isShipVehicle(type)) continue;
+      for (const seat of vehicleSeatsOf(v.passengers)) traders.push({ ref: seat.entity });
     }
     if (traders.length === 0) return false;
     const world = deps.toWorld(event.clientX, event.clientY);

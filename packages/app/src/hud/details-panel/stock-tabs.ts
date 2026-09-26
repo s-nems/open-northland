@@ -40,6 +40,32 @@ export function visibleStockRows<T extends { readonly category: number; readonly
 }
 
 /**
+ * A vehicle hold's rows for a details tab, in the model's fixed order rather than by amount, so a cell
+ * keeps its good while the player steps the wanted amounts.
+ */
+export function holdTabRows<T extends { readonly category: number; readonly amount: number }>(
+  rows: readonly T[],
+  activeTab: number,
+): T[] {
+  if (activeTab === ALL_STOCK_TAB) return rows.filter((row) => row.amount > 0);
+  const category = activeTab - 1;
+  return rows.filter((row) => row.category === category);
+}
+
+/** The most rows {@link holdTabRows} lists on any one tab, the size a hold's grid shows in full. */
+export function largestHoldTab(
+  rows: readonly { readonly category: number; readonly amount: number }[],
+): number {
+  const counts = new Array<number>(DETAILS_STOCK_TAB_COUNT).fill(0);
+  for (const row of rows) {
+    const tab = row.category + 1;
+    counts[tab] = (counts[tab] ?? 0) + 1;
+    if (row.amount > 0) counts[ALL_STOCK_TAB] = (counts[ALL_STOCK_TAB] ?? 0) + 1;
+  }
+  return Math.max(...counts);
+}
+
+/**
  * The tab-plate rects across the strip, the one geometry both the tab drawing and the pointer hit-test
  * consume. `count` defaults to the plain eight categories.
  */

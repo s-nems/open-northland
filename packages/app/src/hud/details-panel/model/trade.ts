@@ -128,15 +128,16 @@ export function tradePanelModel(
         : importChoices(ctx, snapshot, stop.house, (good) => stop.imports.includes(good)),
   }));
   const [first, second] = view.stops;
-  const balance =
-    foreign !== undefined || first === undefined || second === undefined
-      ? []
-      : importChoices(
-          ctx,
-          snapshot,
-          first.house,
-          (good) => first.imports.includes(good) && second.imports.includes(good),
-        ).filter((choice) => storedGoodsOf(ctx, snapshot, second.house).includes(choice.goodType));
+  let balance: TradeImportModel[] = [];
+  if (foreign === undefined && first !== undefined && second !== undefined) {
+    const storedAtSecond = new Set(storedGoodsOf(ctx, snapshot, second.house));
+    balance = importChoices(
+      ctx,
+      snapshot,
+      first.house,
+      (good) => first.imports.includes(good) && second.imports.includes(good),
+    ).filter((choice) => storedAtSecond.has(choice.goodType));
+  }
   const offers: TradeOfferModel[] = (foreign?.offers ?? []).map((offer) => ({
     index: offer.index,
     label: tradeOfferLabel(ctx, offer),

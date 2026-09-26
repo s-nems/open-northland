@@ -1,11 +1,13 @@
 import type { VehicleType } from '@open-northland/data';
-import { type components, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { components, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   isVehicle,
   num,
   ownerPlayerOf,
   type SnapshotEntity,
+  type VehicleSeatSnapshot,
   vehicleCommanderOf,
+  vehicleSeatsOf,
 } from '../../../game/snapshot.js';
 import { vehicleLabel } from '../../../game/technology.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
@@ -43,21 +45,24 @@ export const VEHICLE_ORDER_STRING = {
 } as const;
 
 /** The orders the vehicle window's buttons issue. */
-export type VehicleOrder =
-  | 'goTo'
-  | 'dock'
-  | 'unloadPeople'
-  | 'stop'
-  | 'attackInhabitants'
-  | 'attackBuilding'
-  | 'attackVehicle'
-  | 'attackPosition'
-  | 'stanceAttack'
-  | 'stanceDefence'
-  | 'stanceHold'
-  | 'loadIntoShip'
-  | 'leaveShip'
-  | 'unloadGoods';
+export const VEHICLE_ORDERS = [
+  'goTo',
+  'dock',
+  'unloadPeople',
+  'stop',
+  'attackInhabitants',
+  'attackBuilding',
+  'attackVehicle',
+  'attackPosition',
+  'stanceAttack',
+  'stanceDefence',
+  'stanceHold',
+  'loadIntoShip',
+  'leaveShip',
+  'unloadGoods',
+] as const;
+
+export type VehicleOrder = (typeof VEHICLE_ORDERS)[number];
 
 export type VehicleTask = components.VehicleTask;
 export type VehicleStance = components.VehicleStance;
@@ -86,7 +91,7 @@ export interface VehicleCargoRow {
   readonly current: number;
   readonly wanted: number;
   readonly reserved: number;
-  /** `visibleStockRows` sorts a category tab's rows by this: a line the player touched leads. */
+  /** The "Wszystkie" tab lists the rows where this is above zero. */
   readonly amount: number;
 }
 
@@ -115,27 +120,13 @@ export interface VehiclePanelModel {
   readonly crewCount: number;
   readonly crewCapacity: number;
   readonly orders: readonly VehicleOrderModel[];
-  /** Every good the hold may carry, the live lines first; empty without a hold. The stock tabs
-   *  filter it: "Wszystkie" lists the lines with anything aboard, wanted or booked. */
+  /** Every good the hold may carry, in the type's list order and then any other live line by good, so
+   *  a row keeps its place as its counts change; empty without a hold. The stock tabs filter it:
+   *  "Wszystkie" lists the lines with anything aboard, wanted or booked. */
   readonly cargo: readonly VehicleCargoRow[];
+  /** Hold units no line asks for yet; the sim clamps a wanted step up to it (`setVehicleWanted`). */
+  readonly wantedRoom: number;
   readonly trade: VehicleTradeModel | null;
-}
-
-interface SeatSnapshot {
-  readonly entity: number;
-  readonly inside: boolean;
-}
-
-/** A `Vehicle.passengers` / `vehicles` slot as the snapshot clones it: `{ entity, inside }` or null. */
-function readSeats(value: unknown): SeatSnapshot[] {
-  if (!Array.isArray(value)) return [];
-  const seats: SeatSnapshot[] = [];
-  for (const seat of value) {
-    const entity = num((seat as { entity?: unknown } | null)?.entity);
-    if (entity === undefined) continue;
-    seats.push({ entity, inside: (seat as { inside?: unknown }).inside === true });
-  }
-  return seats;
 }
 
 interface StockLineSnapshot {
@@ -231,12 +222,12 @@ function orderRows(
 function crewRows(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
-  passengers: readonly SeatSnapshot[],
-  vehicles: readonly SeatSnapshot[],
+  passengers: readonly VehicleSeatSnapshot[],
+  vehicles: readonly VehicleSeatSnapshot[],
   commander: number | undefined,
 ): VehicleCrewRow[] {
   const rows: VehicleCrewRow[] = [];
-  const rider = (seat: SeatSnapshot, role: 'commander' | 'passenger'): void => {
+  const rider = (seat: VehicleSeatSnapshot, role: 'commander' | 'passenger'): void => {
     const e = entityById(snapshot, seat.entity);
     const label = e === undefined ? `#${seat.entity}` : settlerDisplayName(ctx, snapshot, e);
     rows.push({ entity: seat.entity, label, role, inside: seat.inside });
@@ -284,11 +275,18 @@ function cargoRows(
       amount: Math.max(current, wanted, reserved),
     });
   };
-  // A hold's live lines may name a good outside the type's list (a scripted stow); they lead so the
-  // window never hides cargo that is aboard.
-  for (const line of [...lines.values()].sort((a, b) => a.good - b.good)) push(line.good, line);
   for (const goodType of type.cargoGoods) push(goodType, lines.get(goodType));
+  // A scripted stow may put a good outside the type's list aboard.
+  for (const line of [...lines.values()].sort((a, b) => a.good - b.good)) push(line.good, line);
   return rows;
+}
+
+/** The sim's one budget every wanted amount shares: the type's slots, never above a line's byte. */
+function wantedRoomOf(type: VehicleType | undefined, lines: ReadonlyMap<number, StockLineSnapshot>): number {
+  if (type === undefined) return 0;
+  let wanted = 0;
+  for (const line of lines.values()) wanted += line.wanted;
+  return Math.max(0, Math.min(type.stockSlots, components.VEHICLE_STOCK_BYTE_MAX) - wanted);
 }
 
 /**
@@ -300,7 +298,7 @@ function vehicleTrade(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   type: VehicleType | undefined,
-  passengers: readonly SeatSnapshot[],
+  passengers: readonly VehicleSeatSnapshot[],
 ): VehicleTradeModel | null {
   if (type !== undefined && systems.isShipVehicle(type)) return null;
   for (const seat of passengers) {
@@ -319,8 +317,8 @@ export function vehiclePanelModel(
   const v = (ent.components.Vehicle ?? {}) as Comp;
   const typeId = num(v.vehicleType);
   const type = vehicleTypeOf(ctx, typeId);
-  const passengers = readSeats(v.passengers);
-  const vehicles = readSeats(v.vehicles);
+  const passengers = vehicleSeatsOf(v.passengers);
+  const vehicles = vehicleSeatsOf(v.vehicles);
   const commander = vehicleCommanderOf(ent);
   const task = taskOf(v.task);
   const stance = stanceOf(v.stance);
@@ -367,6 +365,7 @@ export function vehiclePanelModel(
     crewCapacity: passengerCapacity + vehicleCapacity,
     orders: orderRows(type, stance, carrier !== undefined, commander !== undefined, v.moored === true),
     cargo: cargoRows(ctx, type, lines),
+    wantedRoom: wantedRoomOf(type, lines),
     trade: vehicleTrade(ctx, snapshot, type, passengers),
   };
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {
   type DiplomacySimView,
+  diplomacyMetSeats,
   diplomacyPanelRows,
   harshestStance,
 } from '../src/view/projections/diplomacy-rows.js';
@@ -204,6 +205,20 @@ describe('diplomacyPanelRows', () => {
         (r) => r.player,
       ),
     ).toEqual([1, 2]);
+  });
+});
+
+describe('diplomacyMetSeats', () => {
+  it("lists the window's players and their stance without building the trade lines", () => {
+    const sim: DiplomacySimView = {
+      ...simView([[0, 2]], [[2, 0, 'friend']]),
+      tradeOffersOf: () => {
+        throw new Error('the per-tick read built the trade lines');
+      },
+    };
+    expect(diplomacyMetSeats(sim, { localPlayer: 0, rosterPlayers: [0, 1, 2], observer: false })).toEqual([
+      { player: 2, towardYou: 'friend' },
+    ]);
   });
 });
 

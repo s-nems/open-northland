@@ -13,7 +13,7 @@ import {
 } from './layout/index.js';
 import type { VehicleCargoRow, VehicleOrder } from './model/index.js';
 import type { PanelView } from './selection-view.js';
-import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
+import { detailsStockTabLabels, holdTabRows, visibleStockRows } from './stock-tabs.js';
 
 // Pure probes for the details panel: map a canvas point in the current PanelView to the action target
 // under it or the tooltip text that names it. No Pixi or DOM.
@@ -61,9 +61,10 @@ export const hitStockTab = (view: PanelView, x: number, y: number): number | nul
 
 type VehicleView = Extract<PanelView, { kind: 'vehicle' }>;
 
-/** The hold's rows for the active tab, cell by cell: one source for the section's draw and the hit-tests. */
+/** The hold's rows for the active tab, cell by cell: one source for the section's draw and the hit-tests.
+ *  The layout sizes the grid from the same rows, so none is cut off. */
 export const visibleCargoRows = (view: VehicleView, activeStockTab: number): VehicleCargoRow[] =>
-  visibleStockRows(view.model.cargo, false, activeStockTab).slice(0, view.layout.cargoCells.length);
+  holdTabRows(view.model.cargo, activeStockTab);
 
 /** A wanted-amount step button under a canvas point: the good and the direction, or undefined. */
 export interface VehicleCargoStepHit {

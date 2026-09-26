@@ -41,7 +41,6 @@ export {
 } from './settler-trade.js';
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
 export {
-  CARGO_ROWS,
   layoutVehicle,
   type VehicleCargoCell,
   type VehicleCrewRowRect,

@@ -215,7 +215,7 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
   }
 };
 
-/** The intent of the vehicle window's crew rows and hold cells, which sit above the button list. */
+/** The intent of the vehicle window's crew rows and hold cells, probed before the order buttons. */
 const vehicleFieldClick = (
   view: Extract<PanelView, { kind: 'vehicle' }>,
   x: number,
@@ -228,7 +228,8 @@ const vehicleFieldClick = (
   if (crew !== undefined) return { kind: 'selectEntity', entityId: crew };
   const step = hitVehicleCargoStep(view, x, y, activeStockTab);
   if (step === undefined) return null;
-  const amount = Math.max(0, step.row.wanted + step.step * (bigStep ? WANTED_BIG_STEP : WANTED_STEP));
+  const delta = step.step * (bigStep ? WANTED_BIG_STEP : WANTED_STEP);
+  const amount = Math.max(0, step.row.wanted + Math.min(delta, view.model.wantedRoom));
   return { kind: 'setVehicleWanted', entityId, goodType: step.row.goodType, amount };
 };
 

@@ -118,14 +118,34 @@ export function vehicleCommanderOf(e: SnapshotEntity): number | undefined {
   return num((slots[slots.length - 1] as { entity?: unknown } | null)?.entity);
 }
 
+/** One `Vehicle.passengers` or `Vehicle.vehicles` seat as the snapshot clones it. */
+export interface VehicleSeatSnapshot {
+  readonly entity: number;
+  /** Aboard, rather than still walking to the door. */
+  readonly inside: boolean;
+}
+
+/** The taken seats of a `Vehicle.passengers` or `Vehicle.vehicles` slot list, in slot order. */
+export function vehicleSeatsOf(slots: unknown): VehicleSeatSnapshot[] {
+  if (!Array.isArray(slots)) return [];
+  const seats: VehicleSeatSnapshot[] = [];
+  for (const seat of slots) {
+    const entity = num((seat as { entity?: unknown } | null)?.entity);
+    if (entity === undefined) continue;
+    seats.push({ entity, inside: (seat as { inside?: unknown }).inside === true });
+  }
+  return seats;
+}
+
 /** The vehicle `e` commands and that stands on the map: the one its `Rider` names when `e` holds the
- *  commander seat and the vehicle rides no carrier (the sim's `commandedVehicleOf`). */
+ *  commander seat, both have one owner and the vehicle rides no carrier (the sim's `commandedVehicleOf`). */
 export function commandedVehicleOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
   const vehicle = num((e.components.Rider as { vehicle?: unknown } | undefined)?.vehicle);
   if (vehicle === undefined) return undefined;
   const self = entityById(snapshot, vehicle);
   if (self === undefined || vehicleCommanderOf(self) !== e.id || positionOf(self) === undefined)
     return undefined;
+  if (ownerPlayerOf(self) !== ownerPlayerOf(e)) return undefined;
   const carrier = (self.components.Vehicle as { carrier?: unknown }).carrier;
   return carrier === null ? vehicle : undefined;
 }

@@ -5,9 +5,9 @@ import { shipSway } from '../ship-sway.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { cartDriveLook, pushCartDriveLayers } from './cart-drive.js';
 import { hasLoadedFamily, pushLayeredWithShadow } from './layered-layers.js';
-import { LayerBuffer, type ResolvedLayer } from './resolved-layer.js';
+import { LayerBuffer } from './resolved-layer.js';
 
-/** Scratch for {@link pushVehicleLayers}: the `[shadow, body]` before the swell and the atlas size. */
+/** Scratch for {@link pushVehicleLayers}: the `[shadow, body]` before the swell. */
 const VEHICLE_BODY = new LayerBuffer();
 
 /**
@@ -37,8 +37,7 @@ export function pushVehicleLayers(
       ? sheet.vehiclePalette?.sailRanges?.[draw.layer]
       : undefined;
   const cloth = sails === undefined ? undefined : sailWind(sails, tick, item.x, item.y, underSail);
-  for (const resolved of VEHICLE_BODY.finish()) {
-    const layer = draw.indexed ? withAtlasSize(sheet, draw.layer, resolved) : resolved;
+  for (const layer of VEHICLE_BODY.finish()) {
     out.push(
       sway === null || layer.shadow
         ? layer
@@ -46,11 +45,4 @@ export function pushVehicleLayers(
     );
   }
   return true;
-}
-
-/** An indexed look draws as paletted meshes, which sample their page by UV and so need its size. */
-function withAtlasSize(sheet: SpriteSheet, family: string | undefined, layer: ResolvedLayer): ResolvedLayer {
-  const body = family === undefined ? undefined : sheet.families?.[family];
-  const atlas = layer.shadow === true ? body?.shadow?.atlas : body?.atlas;
-  return atlas === undefined ? layer : { ...layer, atlasW: atlas.width, atlasH: atlas.height };
 }

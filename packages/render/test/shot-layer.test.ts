@@ -24,8 +24,10 @@ const SHOT = 7;
 const LAUNCH = 10;
 /** 16 map points east at weapon speed 3. */
 const FLIGHT = 42;
-/** The trail's four puff ticks plus the tick the track is kept past them. */
-const TRAIL_TAIL = 5;
+/** The `Rock Smoke` puff's frames, one a tick. */
+const PUFF_FRAMES = [4, 3, 2, 1, 0];
+/** The trail's puff ticks plus the tick the track is kept past them. */
+const TRAIL_TAIL = PUFF_FRAMES.length + 1;
 const SMOKE_TICKS = 20;
 /** The pool draws a tick behind the snapshot. */
 const LAG = 1;
@@ -49,14 +51,14 @@ const sheet: SpriteSheet = {
         [ARROW]: { layer: 'arrow', valencies: [[0], [1], [2], [3]], loop: true, directional: true },
       },
       trailByMunition: {
-        [ROCK]: { layer: 'smoke', valencies: [[4, 3, 2, 1]], loop: false, directional: false },
+        [ROCK]: { layer: 'smoke', valencies: [PUFF_FRAMES], loop: false, directional: false },
       },
       impactSmoke: { layer: 'smoke', valencies: [[187, 188]], loop: false, directional: false },
     },
   },
   families: {
     rock: { source, atlas: atlas([212, 213]) },
-    smoke: { source, atlas: atlas([1, 2, 3, 4, 187, 188]) },
+    smoke: { source, atlas: atlas([...PUFF_FRAMES, 187, 188]) },
     arrow: { source, atlas: atlas([0, 1, 2, 3]) },
   },
 };
@@ -107,6 +109,8 @@ describe('ShotLayer', () => {
     const draw = (snapshot: typeof inFlight, renderTime: number) =>
       shots.draw({ snapshot, drawn: drawnShot, elevation: FLAT, viewport: VIEW_ALL, renderTime });
     draw(inFlight, LAUNCH + LAG + FLIGHT);
+    // A puff per flight tick still alive, the oldest on its last frame.
+    expect(sprites(spriteLayer).filter((p) => p.alpha < 1)).toHaveLength(PUFF_FRAMES.length);
     draw(landed, LAUNCH + LAG + FLIGHT + 1);
     const puffs = sprites(spriteLayer);
     expect(puffs.length).toBeGreaterThan(0);

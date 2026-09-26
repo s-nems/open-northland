@@ -11,6 +11,9 @@ import {
   GOOD_STONE,
   GOOD_WOOD,
   sandboxContent,
+  spawnVehicleDirect,
+  VEHICLE_HANDCART,
+  VEHICLE_SHIP_SMALL,
 } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
 import { sitePick } from '../src/view/unit-controls/highlights/own-building-picks.js';
@@ -37,6 +40,7 @@ const {
   SiteAssignment,
   Stockpile,
   UnderConstruction,
+  Vehicle,
 } = components;
 
 /** Another tribe's player, and the mission id the map stamps on its trading house. */
@@ -372,6 +376,17 @@ describe("the action ring's site pick", () => {
   });
 });
 
+/** Where {@link riddenVehicle} stands its vehicle; the click never reads it. */
+const VEHICLE_AT = { x: 2, y: 2 } as const;
+
+/** A vehicle of `vehicleType` with `rider` in its first seat, still walking to the door. */
+function riddenVehicle(sim: Simulation, vehicleType: number, rider: Entity): Entity {
+  const vehicle = spawnVehicleDirect(sim, vehicleType, VEHICLE_AT.x, VEHICLE_AT.y);
+  sim.world.mut(vehicle, Vehicle).passengers[0] = { entity: rider, inside: false };
+  sim.world.add(rider, Rider, { vehicle, boarding: false });
+  return vehicle;
+}
+
 /** A standing house of {@link NEIGHBOUR} stamped as the map's trading post. */
 function tradingPost(sim: Simulation): Entity {
   const post = buildingAt(sim, BUILDING_HOME_00, ONE);
@@ -418,12 +433,22 @@ describe('right-clicking a standing house with a trader', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
-    const cart = sim.world.create();
-    sim.world.add(trader, Rider, { vehicle: cart, boarding: false });
+    const cart = riddenVehicle(sim, VEHICLE_HANDCART, trader);
 
     expect(rightClick(sim, [cart], home, sim.content, true, 'riders')).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },
     ]);
+  });
+
+  it("leaves a selected ship's trader passenger alone, so the ship takes the click", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const ship = riddenVehicle(sim, VEHICLE_SHIP_SMALL, settlerAt(sim, JOB_TRADER));
+
+    expect(pressRightClick(sim, [ship], home, sim.content, true, 'riders')).toEqual({
+      issued: [],
+      ordered: false,
+    });
   });
 
   it('takes a house the route already names off it', () => {

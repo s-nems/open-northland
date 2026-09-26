@@ -48,7 +48,7 @@ export interface SpriteSceneOptions {
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
   /** The viewer's remembered statics, drawn dimmed on explored ground and joined to
    *  {@link SpriteScene.liveRefs}. A ref never yields two items: the store deletes records on visible
-   *  ground, and the fog cull drops live items elsewhere. */
+   *  ground, the fog cull drops live items elsewhere, and a vehicle drawn live suppresses its ghost. */
   readonly ghosts?: readonly FogGhost[] | undefined;
   /** Keep settlers that are inside a building, forced to the `idle` standing pose. The map hides these
    *  (observed original: off-duty workers wait in the house). Approximation: how the original's
@@ -110,6 +110,9 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   const items: MutableSpriteDrawItem[] = [];
   const collected = new Set<number>();
   const posByRef = targetPositionsOf(snapshot);
+  // Vehicles are the one ghost kind that moves: one driven out of its fogged memory into sight draws live
+  // while the ghost list, cached until the next mask rebuild, still holds it. Allocated on first need.
+  let liveVehicles: Set<number> | undefined;
   const build: SceneBuild = {
     snapshot,
     items,
@@ -186,11 +189,15 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
         tileY,
       );
     }
+    if (kind === 'vehicle' && item.portraitOnly !== true) {
+      liveVehicles ??= new Set();
+      liveVehicles.add(entity.id);
+    }
     items.push(item);
   };
 
   const liveRefs = emitEntities(snapshot, opts, collected, emit);
-  if (ghosts !== undefined) pushGhostItems(items, collected, ghosts, viewport, elevation);
+  if (ghosts !== undefined) pushGhostItems(items, collected, ghosts, viewport, elevation, liveVehicles);
   // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
   return { items, liveRefs };

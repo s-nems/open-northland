@@ -18,6 +18,7 @@ import {
   VEHICLE_OXCART,
   VEHICLE_SHIP_SMALL,
 } from '../src/game/sandbox/index.js';
+import { createCargoWantedEcho } from '../src/hud/details-panel/cargo-echo.js';
 import { applyPanelClick, type PanelClickActions } from '../src/hud/details-panel/click-actions.js';
 import {
   hitButton,
@@ -31,7 +32,7 @@ import {
 } from '../src/hud/details-panel/hit-test.js';
 import { buildUnitPanelModel, type UnitPanelModelContext } from '../src/hud/details-panel/index.js';
 import type { TradeLayout } from '../src/hud/details-panel/layout/index.js';
-import type { VehiclePanelModel } from '../src/hud/details-panel/model/index.js';
+import type { VehicleCargoRow, VehiclePanelModel } from '../src/hud/details-panel/model/index.js';
 import {
   NO_MODIFIERS,
   NO_PANEL_HOVER,
@@ -42,6 +43,7 @@ import {
 } from '../src/hud/details-panel/pointer-intent.js';
 import type { PanelView } from '../src/hud/details-panel/selection-view.js';
 import { ALL_STOCK_TAB } from '../src/hud/details-panel/stock-tabs.js';
+import { goodCategoryTab } from '../src/hud/good-categories.js';
 import { messages } from '../src/i18n/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sceneTrader, tradeScene } from '../src/scenes/trade.js';
@@ -438,5 +440,82 @@ describe('vehicle panel pointer intents', () => {
       ['onVehicleOrder', 5, 'dock'],
       ['onSetVehicleWanted', 5, 7, 3],
     ]);
+  });
+});
+
+/** The real hold's fullest tab: coin, six potions and six amulets all fall on "Inne". */
+const REAL_OTHER_TAB_GOODS = 13;
+/** The "Inne" category and its details tab, which follows "Wszystkie". */
+const OTHER_CATEGORY = goodCategoryTab(undefined);
+const OTHER_TAB = OTHER_CATEGORY + 1;
+/** The food tab, the first category after "Wszystkie". */
+const FOOD_TAB = 1;
+/** A good type clear of the sandbox's own, for synthetic cargo rows. */
+const FIRST_SYNTHETIC_GOOD = 1000;
+
+const cargoRow = (goodType: number, category: number, current: number): VehicleCargoRow => ({
+  goodType,
+  label: `good ${goodType}`,
+  category,
+  current,
+  wanted: 0,
+  reserved: 0,
+  amount: current,
+});
+
+describe('vehicle hold grid', () => {
+  it('shows and reaches every good of a tab as full as the real hold lists', () => {
+    const world = vehiclesWorld();
+    const cargo = Array.from({ length: REAL_OTHER_TAB_GOODS }, (_unused, i) =>
+      cargoRow(FIRST_SYNTHETIC_GOOD + i, OTHER_CATEGORY, 1),
+    );
+    const view = vehicleView({ ...vehicleModel(world, VEHICLE_OXCART), cargo });
+    for (const tab of [ALL_STOCK_TAB, OTHER_TAB]) {
+      const rows = visibleCargoRows(view, tab);
+      expect(rows.map((row) => row.goodType)).toEqual(cargo.map((row) => row.goodType));
+      const last = rows[REAL_OTHER_TAB_GOODS - 1];
+      const cell = view.layout.cargoCells[REAL_OTHER_TAB_GOODS - 1];
+      if (last === undefined || cell === undefined) throw new Error('expected a cell for the last good');
+      const more = center(cell.more);
+      expect(hitVehicleCargoStep(view, more.x, more.y, tab)).toEqual({ row: last, step: 1 });
+    }
+  });
+});
+
+describe('vehicle hold wanted steps', () => {
+  it('adds up steps sent within one snapshot and keeps each good in its cell', () => {
+    const world = vehiclesWorld();
+    const live = vehicleModel(world, VEHICLE_HANDCART);
+    const echo = createCargoWantedEcho();
+    let view = vehicleView(live);
+    const order = visibleCargoRows(view, FOOD_TAB).map((row) => row.goodType);
+    const lastIndex = order.length - 1;
+    const target = order[lastIndex];
+    const cell = view.layout.cargoCells[lastIndex];
+    if (lastIndex < 1 || target === undefined || cell === undefined)
+      throw new Error('expected two food cells');
+    const more = center(cell.more);
+    for (const amount of [1, 2]) {
+      const click = panelClickAt(view, more.x, more.y, NO_MODIFIERS, FOOD_TAB);
+      expect(click).toEqual({ kind: 'setVehicleWanted', entityId: live.entityId, goodType: target, amount });
+      echo.hold(live, target, amount);
+      view = viewOfKind(echo.apply(live), 'vehicle');
+      expect(visibleCargoRows(view, FOOD_TAB).map((row) => row.goodType)).toEqual(order);
+    }
+    const caughtUp: VehiclePanelModel = {
+      ...live,
+      cargo: live.cargo.map((row) => (row.goodType === target ? { ...row, wanted: 2, amount: 2 } : row)),
+    };
+    expect(echo.apply(caughtUp)).toBe(caughtUp);
+  });
+
+  it('asks for no more than the hold has room for', () => {
+    const world = vehiclesWorld();
+    const view = vehicleView({ ...vehicleModel(world, VEHICLE_HANDCART), wantedRoom: 0 });
+    const row = visibleCargoRows(view, FOOD_TAB)[0];
+    const cell = view.layout.cargoCells[0];
+    if (row === undefined || cell === undefined) throw new Error('expected a food cell');
+    const more = center(cell.more);
+    expect(panelClickAt(view, more.x, more.y, NO_MODIFIERS, FOOD_TAB)).toMatchObject({ amount: row.wanted });
   });
 });

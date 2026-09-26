@@ -2,6 +2,7 @@ import type { MapRelationFlag } from '@open-northland/data';
 import type { DiplomacyState, OpenTribute, TradeOffer } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import type { DiplomacyPanelRow, TributePanelRow } from '../../hud/tool-panel/diplomacy/index.js';
+import type { MetSeat } from '../../hud/tool-panel/messages/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 
 /** The sim reads the roster projection needs; `Simulation` satisfies it structurally. */
@@ -72,17 +73,41 @@ function flagged(
   return flags.some((f) => f.kind === kind && ((f.a === a && f.b === b) || (f.a === b && f.b === a)));
 }
 
-/** One diplomacy-window row per roster player the viewer has discovered and the map does not hide, the
- *  viewer itself excluded, each carrying the tributes the viewer owes that player. */
+/** The roster players the viewer has discovered and the map does not hide, the viewer itself excluded. */
+function listedPlayers(
+  sim: Pick<DiplomacySimView, 'hasMetPlayer'>,
+  opts: Pick<DiplomacyRosterOptions, 'localPlayer' | 'rosterPlayers' | 'observer' | 'relationFlags'>,
+): number[] {
+  const flags = opts.relationFlags ?? [];
+  const local = opts.localPlayer;
+  return opts.rosterPlayers.filter(
+    (other) =>
+      other !== local &&
+      !flagged(flags, 'hide', local, other) &&
+      (opts.observer || sim.hasMetPlayer(local, other)),
+  );
+}
+
+/** The seats {@link diplomacyPanelRows} lists, with only the stance toward the viewer: the per-tick read
+ *  of the message centre, which leaves the window's tributes and trade lines unbuilt. */
+export function diplomacyMetSeats(
+  sim: Pick<DiplomacySimView, 'hasMetPlayer' | 'diplomacyStance'>,
+  opts: Pick<DiplomacyRosterOptions, 'localPlayer' | 'rosterPlayers' | 'observer' | 'relationFlags'>,
+): MetSeat[] {
+  return listedPlayers(sim, opts).map((player) => ({
+    player,
+    towardYou: sim.diplomacyStance(player, opts.localPlayer),
+  }));
+}
+
+/** One diplomacy-window row per listed player, each carrying the tributes the viewer owes that player. */
 export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterOptions): DiplomacyPanelRow[] {
   const colourOf = opts.playerColourOf ?? ((player: number): number => player);
   const flags = opts.relationFlags ?? [];
   const local = opts.localPlayer;
   const owed = sim.openTributes(local);
   const rows: DiplomacyPanelRow[] = [];
-  for (const other of opts.rosterPlayers) {
-    if (other === local || flagged(flags, 'hide', local, other)) continue;
-    if (!opts.observer && !sim.hasMetPlayer(local, other)) continue;
+  for (const other of listedPlayers(sim, opts)) {
     const name = opts.seatNameOf?.(other);
     const towardYou = sim.diplomacyStance(other, local);
     const yourStance = sim.diplomacyStance(local, other);

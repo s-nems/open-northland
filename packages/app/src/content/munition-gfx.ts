@@ -24,6 +24,7 @@ function particleRef(record: ParticleGfx): ParticleRef | undefined {
  *  the shot itself), and the landing smoke, before the atlas load decides which ones bind. */
 export function resolveMunitionRefs(ir: ContentIr | null): MunitionBinding {
   const particles = ir?.particles ?? [];
+  const byIndex = new Map(particles.map((p) => [p.index, p] as const));
   const byMunition: Record<number, ParticleRef> = {};
   const trailByMunition: Record<number, ParticleRef> = {};
   for (const record of particles) {
@@ -31,7 +32,7 @@ export function resolveMunitionRefs(ir: ContentIr | null): MunitionBinding {
     const shot = particleRef(record);
     if (shot === undefined) continue;
     byMunition[record.munitionType] ??= shot;
-    const spawned = record.spawnParticle === undefined ? undefined : particles[record.spawnParticle];
+    const spawned = record.spawnParticle === undefined ? undefined : byIndex.get(record.spawnParticle);
     const trail = spawned === undefined || spawned === record ? undefined : particleRef(spawned);
     if (trail !== undefined) trailByMunition[record.munitionType] ??= trail;
   }

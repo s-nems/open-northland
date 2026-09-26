@@ -54,7 +54,7 @@ import { settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
-import { NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
+import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
 import { MEAD_GOOD_ID, residentRows } from '../../hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
@@ -81,6 +81,7 @@ import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import {
   createFogGates,
+  diplomacyMetSeats,
   diplomacyPanelRows,
   entityAnchor,
   memoBySnapshot,
@@ -386,6 +387,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
         ...(deps.mapText !== undefined ? { tributeText: deps.mapText } : {}),
       });
+    const metSeats = (): readonly MetSeat[] =>
+      diplomacyMetSeats(diplomacyView, {
+        localPlayer: viewerPlayer(),
+        rosterPlayers: deps.rosterPlayers ?? [],
+        observer: viewer.wholeMap(),
+        ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
+      });
     const mapText = deps.mapText ?? ((): undefined => undefined);
     const briefFor: (page: number | null) => MissionBrief | null =
       deps.missionBriefSource === undefined
@@ -457,6 +465,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         },
       },
       diplomacyRows,
+      metSeats,
       onPayTribute: (slot) => issueCommand({ kind: 'payTribute', player: localPlayer, slot }),
       onDeclareDiplomacy: (other, state) =>
         issueCommand({ kind: 'declareDiplomacy', player: localPlayer, other, state }),

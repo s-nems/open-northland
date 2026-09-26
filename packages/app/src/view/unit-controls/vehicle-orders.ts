@@ -80,7 +80,7 @@ export interface VehicleOrderController {
    *  attach rule refuses orders nothing, the way a red building cancels a building pick. */
   issueAttach(event: MouseEvent, settler: number): boolean;
   /** The selected settlers' right-click on an own vehicle: each one the attach rule admits is assigned
-   *  to it (approximation, user rule: the original assigns through the ring's pick only). False when
+   *  to it (approximation, owner's choice: the original assigns through the ring's pick only). False when
    *  no vehicle lies under the cursor, an own settler or an enemy drawn there takes the click first (a
    *  crew waiting by the door stands over the hull), or nobody selected may board it. */
   issueAttachSelected(event: MouseEvent): boolean;

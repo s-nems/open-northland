@@ -250,7 +250,8 @@ export function assignProjectileArc(
 /**
  * Append the viewer's remembered statics, each projected with the same anchor, lift and depth formula
  * as a live static so it occludes correctly at the fog boundary. A ghost joins `liveRefs` before the
- * cull, so a dead entity keeps its pooled sprite for as long as the memory draws.
+ * cull, so a dead entity keeps its pooled sprite for as long as the memory draws. A ghost whose ref
+ * `drawnLive` holds is skipped: its entity is already on screen in sight.
  */
 export function pushGhostItems(
   items: MutableSpriteDrawItem[],
@@ -258,9 +259,11 @@ export function pushGhostItems(
   ghosts: readonly FogGhost[],
   viewport: Viewport | undefined,
   elevation: ElevationField | undefined,
+  drawnLive: ReadonlySet<number> | undefined,
 ): void {
   for (const g of ghosts) {
     liveRefs.add(g.ref);
+    if (drawnLive?.has(g.ref) === true) continue;
     const screen = tileToScreen(g.tileX, g.tileY);
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
     const lift = terrainLiftAt(elevation, g.tileX, g.tileY);

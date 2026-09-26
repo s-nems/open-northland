@@ -153,7 +153,6 @@ export const enGame = {
     vehicleCrewOutside: 'outside',
     vehicleCrewCount: '{count}/{capacity}',
     vehicleNoCrew: 'No crew: select a settler and give it the "Assign vehicle" order.',
-    vehicleCarriedVehicle: 'Aboard: {vehicle}',
     vehicleCarrier: 'On board: {carrier}',
     vehicleSelectHint: 'Click to select',
     vehicleOrderGoTo: 'Go to', // misclogic 142

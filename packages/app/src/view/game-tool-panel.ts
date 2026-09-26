@@ -28,7 +28,7 @@ import {
   type ToolPanelController,
   type ToolPanelOptions,
 } from '../hud/tool-panel/index.js';
-import type { MessageTarget, NoticeGallery } from '../hud/tool-panel/messages/index.js';
+import type { MessageTarget, MetSeat, NoticeGallery } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { GateSites, PalisadeGateProbeView } from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
@@ -91,6 +91,8 @@ export interface GameToolPanelDeps {
   readonly residents: ResidentsSeam;
   /** The diplomacy window's roster: one row per discovered player. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
+  /** The discovered players and their stance toward the viewer, the message centre's per-tick read. */
+  readonly metSeats: () => readonly MetSeat[];
   /** A seat's roster name, for the note about an eliminated player. */
   readonly seatNameOf?: (player: number) => string | undefined;
   /** The diplomacy window's pay button; a closure, so it follows a scene restart. */
@@ -243,6 +245,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       papers: deps.papers,
       residents: deps.residents,
       diplomacyRows: deps.diplomacyRows,
+      metSeats: deps.metSeats,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       onPayTribute: deps.onPayTribute,
       onDeclareDiplomacy: deps.onDeclareDiplomacy,
