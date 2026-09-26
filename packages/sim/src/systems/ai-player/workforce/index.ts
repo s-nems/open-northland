@@ -153,16 +153,21 @@ function runWorkforce(
       ctx,
     ),
   ];
-  // The army floor outranks the clearing and every target and top-up post, so trades that could absorb
-  // every man still leave an army.
-  const arms = garrisonArms(world, ctx, player);
-  const armyFloor = claimArmyFloor(world, ctx, player, force, arms);
-  return [
-    ...essentials,
+  // The standing buildings' target crews and the gatherers the reached entries count come before the army
+  // floor (owner's rule): both are bounded by what stands, so a seat staffs every building it raised and
+  // still leaves the rest to the army. The floor outranks the surplus tier and the generic posts, which
+  // could absorb every man.
+  const targets = [
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
     ...(clearing > 0 ? generic() : []),
     ...staffBuildings(world, ctx, seat, force, tally, 'target'),
     ...(ground === null ? [] : topUpCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken)),
+  ];
+  const arms = garrisonArms(world, ctx, player);
+  const armyFloor = claimArmyFloor(world, ctx, player, force, arms);
+  return [
+    ...essentials,
+    ...targets,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),

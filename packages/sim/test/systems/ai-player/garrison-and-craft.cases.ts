@@ -11,7 +11,10 @@ import {
   CompletedCycles,
   CraftSelection,
   EquipOrder,
+  Garrison,
   JobAssignment,
+  Owner,
+  Position,
   Settler,
   setStockAmount,
   TrainingOrder,
@@ -32,6 +35,11 @@ import {
   SeatSupply,
   supplyLines,
 } from '../../../src/systems/ai-player/index.js';
+import {
+  defendingStrength,
+  strongestEnemyStrength,
+  TOWER_POST_STRENGTH,
+} from '../../../src/systems/ai-player/military/census.js';
 import { ownedBuildings, ownedSettlers } from '../../../src/systems/ai-player/seat-roster.js';
 import {
   COIN_GLUT_UNITS,
@@ -221,12 +229,21 @@ const RIVAL = 3;
 const RIVAL_CAMP = { x: 100, y: 20 };
 /** A rival stronger than the floor's minimum, so the match, not the minimum, sets the floor. */
 const RIVAL_FIGHTERS = ARMY_FLOOR_MIN + 2;
+/** Where the rival's tower stands: between the camps, clear of both settlements. */
+const RIVAL_TOWER = { x: 80, y: 8 };
 /** A crew whose collector top-ups, with no floor, leave fewer spare men than {@link RIVAL_FIGHTERS}. */
 const FLOOR_CREW = 28;
 
-/** An armed seat with ground to gather on, `rivals` enemy spearmen, and its peace ending at `peaceUntil`. */
-function rivalSeat(rivals: number, peaceUntil: number, options: SeatOptions = {}): ArmedSeat {
-  const seat = armedSeat([{ good: SWORD, amount: 1 }], { men: FLOOR_CREW, ...options });
+/** An armed seat with ground to gather on, `rivals` enemy spearmen, and its peace ending at `peaceUntil`.
+ *  `setup` enqueues more before the one step that lands it all, so the seat's first decision is still the
+ *  one a case reads. */
+function rivalSeat(
+  rivals: number,
+  peaceUntil: number,
+  options: SeatOptions & { readonly setup?: (sim: Simulation) => void } = {},
+): ArmedSeat {
+  const { setup, ...seatOptions } = options;
+  const seat = armedSeat([{ good: SWORD, amount: 1 }], { men: FLOOR_CREW, ...seatOptions });
   placeResources(seat.sim);
   for (let i = 0; i < rivals; i++) {
     seat.sim.enqueueSetup({
@@ -238,6 +255,7 @@ function rivalSeat(rivals: number, peaceUntil: number, options: SeatOptions = {}
       owner: RIVAL,
     });
   }
+  setup?.(seat.sim);
   seat.sim.step();
   const carrier = aiPlayerEntity(seat.sim.world, SEAT);
   if (carrier === null) throw new Error('setup: no AI seat');
@@ -881,6 +899,68 @@ describe('workforce module - the barracks and craft selections', () => {
     const armed = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS);
     expect(drafted(armed)).toBe(RIVAL_FIGHTERS);
     expect(sparePool(armed)).toBe(RIVAL_FIGHTERS);
+  });
+
+  it("matches a rival's tower garrison one to one, whatever his post is worth to a wave marching on him", () => {
+    // One rival archer holds a tower post: the world stands him on it without the walk-in.
+    const seat = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS, {
+      setup: (sim) => {
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: TOWER_TYPE,
+          x: RIVAL_TOWER.x,
+          y: RIVAL_TOWER.y,
+          tribe: VIKING,
+          owner: RIVAL,
+        });
+        sim.enqueueSetup({
+          kind: 'spawnSettler',
+          jobType: BOWMAN,
+          x: RIVAL_TOWER.x + 4,
+          y: RIVAL_TOWER.y,
+          tribe: VIKING,
+          owner: RIVAL,
+        });
+      },
+    });
+    const { world } = seat.sim;
+    const tower = [...world.query(Building, Owner)].find(
+      (e) => world.get(e, Building).buildingType === TOWER_TYPE && world.get(e, Owner).player === RIVAL,
+    );
+    const archer = ownedSettlers(world, RIVAL).find((e) => world.get(e, Settler).jobType === BOWMAN);
+    if (tower === undefined || archer === undefined) throw new Error('setup: the rival tower and archer');
+    const post = world.get(tower, Position);
+    world.add(archer, JobAssignment, { workplace: tower });
+    world.add(archer, Garrison, { post: tower, returnTo: { x: post.x, y: post.y } });
+    world.add(archer, Position, { x: post.x, y: post.y });
+    // A wave marching on him meets the post's weight; the floor counts him as the one man he is.
+    expect(defendingStrength(world, seat.ctx, RIVAL)).toBe(RIVAL_FIGHTERS + TOWER_POST_STRENGTH);
+    expect(strongestEnemyStrength(world, seat.ctx, SEAT)).toBe(RIVAL_FIGHTERS + 1);
+    expect(drafted(seat)).toBe(drafted(rivalSeat(RIVAL_FIGHTERS + 1, ARMY_FLOOR_LEAD_TICKS)));
+  });
+
+  it("fills a standing workshop's target crew before the army floor claims its men", () => {
+    // The joinery plans two joiners: the first a minimum post, the second a target-tier one. The floor is
+    // short of the rival either way, and the second joiner still comes before its claim (owner's rule: a
+    // seat staffs what it built).
+    const seat = rivalSeat(RIVAL_FIGHTERS, ARMY_FLOOR_LEAD_TICKS, {
+      setup: (sim) =>
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: JOINERY_TYPE,
+          x: SMITHY_AT.x,
+          y: SMITHY_AT.y,
+          tribe: VIKING,
+          owner: SEAT,
+        }),
+    });
+    const joinery = entityOfBuilding(seat.sim, JOINERY_TYPE);
+    const commands = [...collectModule.run(seat.sim.world, seat.ctx, SEAT)];
+    const joiners = commands.filter(
+      (c) => c.kind === 'assignWorker' && c.building === joinery && c.jobPriority[0] === JOINER,
+    );
+    expect(joiners).toHaveLength(2);
+    expect(drafted(seat)).toBeLessThan(RIVAL_FIGHTERS);
   });
 
   it('drafts nothing for the army floor while the peace is further off than its lead', () => {

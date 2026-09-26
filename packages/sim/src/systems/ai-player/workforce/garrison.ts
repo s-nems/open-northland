@@ -90,9 +90,10 @@ export function garrisonArms(world: World, ctx: SystemContext, player: number): 
  * peaceEndsAt}, the start when there is none), the seat keeps as many fighters as its strongest enemy
  * fields ({@link strongestEnemyStrength}), one to one and never fewer than {@link ARMY_FLOOR_MIN}. Its
  * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
- * `force`, which the ladder calls ahead of the target-tier posts: a seat whose trades could absorb every
- * man still raises an army. Capped by the {@link bachelorSurplus} and by the men draftable at all, and
- * nobody is claimed while the draft has no class to put him in.
+ * `force`, which the ladder calls after the target-tier posts and ahead of the surplus ones: a seat staffs
+ * what it built, and the trades that could absorb every man still leave an army. Capped by the
+ * {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed while the draft has no
+ * class to put him in.
  * Returns the claimed men for {@link trainGarrison} to publish.
  */
 export function claimArmyFloor(
