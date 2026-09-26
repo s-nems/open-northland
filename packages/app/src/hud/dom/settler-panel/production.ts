@@ -41,11 +41,18 @@ interface RowView {
   readonly lock: HTMLButtonElement;
 }
 
+/** The rows a folded Produkcja keeps; the fold is the last resort when the panel would run past the
+ *  plane with the experience section already folded. */
+export const PRODUCTION_FOLDED_MAX = 3;
+
 /** Produkcja: one row per product the trade makes or gathers here, the good's button, its name, and
- *  its counter or a locked product's lock. */
+ *  its counter or a locked product's lock. Open in full for every person; folds behind "jeszcze N"
+ *  only on the owner's word, and opens again for another person. */
 export interface ProductionSection {
   readonly element: HTMLElement;
-  update(model: SettlerPanelModel): void;
+  /** True when the rows changed shape, so the owner asks the frame whether everything fits. */
+  update(model: SettlerPanelModel, fresh: boolean): boolean;
+  fold(): void;
 }
 
 export function createProductionSection(
@@ -54,11 +61,28 @@ export function createProductionSection(
 ): ProductionSection {
   const { actions } = deps;
   const root = element('div', '');
-  const title = createSection();
+  const toggle = button('on-more');
+  const title = createSection(toggle);
   const list = element('ul', 'on-prod');
   root.append(title.element, list);
   let shown = '';
   let rows: RowView[] = [];
+  let open = true;
+  let folded = false;
+  const paintToggle = (): void => {
+    const copy = messages().hud.settlerPanel;
+    const hidden = Math.max(0, rows.length - PRODUCTION_FOLDED_MAX);
+    setHidden(toggle, hidden === 0 || !folded);
+    write(toggle, open ? copy.fewerRows : formatMessage(copy.moreRows, { count: hidden }));
+    setAttribute(toggle, 'aria-expanded', String(open));
+    setClass(list, 'on-prod--open', open);
+    for (const [index, view] of rows.entries())
+      setClass(view.item, 'on-prod-row--more', index >= PRODUCTION_FOLDED_MAX);
+  };
+  toggle.addEventListener('click', () => {
+    open = !open;
+    paintToggle();
+  });
 
   const rowView = (goodType: number): RowView => {
     const id = (): number => current()?.entityId ?? -1;
@@ -84,18 +108,24 @@ export function createProductionSection(
 
   return {
     element: root,
-    update(model): void {
+    update(model, fresh): boolean {
       const production = model.production;
       setHidden(root, production === null);
-      if (production === null) return;
+      if (production === null) return false;
+      if (fresh) {
+        open = true;
+        folded = false;
+      }
       const copy = messages().hud;
       title.update(copy.production);
       const key = `${production.kind}:${production.rows.map((row) => row.goodType).join(',')}`;
-      if (key !== shown) {
+      const reshaped = key !== shown;
+      if (reshaped) {
         shown = key;
         rows = production.rows.map((row) => rowView(row.goodType));
         list.replaceChildren(...rows.map((view) => view.item));
       }
+      paintToggle();
       production.rows.forEach((row, index) => {
         const view = rows[index];
         if (view === undefined) return;
@@ -125,6 +155,13 @@ export function createProductionSection(
           moreTooltip: copy.settlerPanel.moreTooltip,
         });
       });
+      return fresh || reshaped;
+    },
+    fold(): void {
+      if (!open || rows.length <= PRODUCTION_FOLDED_MAX) return;
+      open = false;
+      folded = true;
+      paintToggle();
     },
   };
 }

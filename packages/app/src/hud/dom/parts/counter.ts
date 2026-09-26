@@ -1,5 +1,5 @@
 import { GLYPH } from '../icons.js';
-import { button, element, onPress, setAttribute, setDisabled, setTip, write } from './dom.js';
+import { button, element, onPress, setAttribute, setTip, write } from './dom.js';
 
 /** A counter's finite top and the sentinel above it that means "never stop" (shown as ∞). */
 export interface CounterRange {
@@ -18,9 +18,9 @@ export const COUNTER_TENS_STEP = 10;
 
 /**
  * One press of a counter arrow. Original behavior (the human window's production counter): − at 0 wraps
- * to unlimited, + past the finite top reaches unlimited, Shift jumps to that arrow's end. + at unlimited
- * stays there, where the original wraps to 0: one more press must not stop a product. Ctrl moves by
- * tens inside the finite range, wrapping at its ends as a single step does.
+ * to unlimited, + past the finite top reaches unlimited and + at unlimited wraps to 0, Shift jumps to
+ * that arrow's end. Ctrl moves by tens inside the finite range, wrapping at its ends as a single step
+ * does.
  */
 export function counterStep(
   range: CounterRange,
@@ -34,6 +34,7 @@ export function counterStep(
     if (current <= 0) return range.unlimited;
     return current >= range.unlimited ? range.max : Math.max(0, current - step);
   }
+  if (current >= range.unlimited) return 0;
   return current >= range.max ? range.unlimited : Math.min(range.max, current + step);
 }
 
@@ -82,7 +83,6 @@ export function createCounter(range: CounterRange, onChange: (next: number) => v
       setAttribute(more, 'aria-label', model.moreLabel);
       setTip(less, model.lessTooltip);
       setTip(more, model.moreTooltip);
-      setDisabled(more, model.value >= range.unlimited);
     },
   };
 }

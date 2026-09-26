@@ -21,6 +21,7 @@ import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
+import { createTooltip } from '../tooltip.js';
 import {
   mountSettlerActions,
   orderRecipients,
@@ -35,8 +36,6 @@ import type { UnitControlsOptions } from './types.js';
 const NO_SELECTION: ReadonlySet<number> = new Set();
 /** Goods the warm-up paints icons of, enough to fill every icon slot of the warm model. */
 const WARM_GOOD_ICONS = 12;
-/** Without a chip from the host (tests) a stat line's hover shows nothing. */
-const NO_CHIP = { show: (): void => undefined, hide: (): void => undefined };
 
 interface MountedUnitChrome {
   readonly panel: UnitPanel;
@@ -112,6 +111,15 @@ export async function createUnitChrome(
     uiString: opts.domHud.uiString,
   });
   const hoverContext = { buildings: opts.content.buildings, goods: opts.content.goods };
+  // Its own chip: the Pixi details panel hides the shared one on every canvas mouse move off its rows.
+  const panelChip = createTooltip();
+  /** The ring is up from a press in the panel, which stepped aside for it until the ring closes. */
+  let veiled = false;
+  const unveil = (): void => {
+    if (!veiled) return;
+    veiled = false;
+    settlerPanel.veil(false);
+  };
   // Mounted once on the plane, which scales as a whole: a HUD scale change remounts only the Pixi parts.
   const settlerPanel = createSettlerPanel({
     plane: opts.domHud.plane,
@@ -119,7 +127,7 @@ export async function createUnitChrome(
     residents: opts.domHud.residents,
     keyLabel,
     hoverCard,
-    tooltip: opts.tooltip ?? NO_CHIP,
+    tooltip: panelChip,
     buildingHover: (id) => buildingHoverModel(opts.snapshot(), id, hoverContext),
     now: () => performance.now(),
     actions: settlerPanelActions(
@@ -128,8 +136,11 @@ export async function createUnitChrome(
         selectEntity: callbacks.selectEntity,
         selectGroup: callbacks.selectGroup,
         centre,
-        openOrders: (press) =>
-          mounts.current().actions.open({ x: press.x, y: press.y, keepLeftOf: press.panelLeft }),
+        openOrders: (press) => {
+          mounts.current().actions.open({ x: press.x, y: press.y });
+          veiled = true;
+          settlerPanel.veil(true);
+        },
         assignWorkplace: callbacks.assignWorkplace,
         assignHome: callbacks.assignHome,
         attachTradeHouse: callbacks.attachTradeHouse,
@@ -327,7 +338,12 @@ export async function createUnitChrome(
     claimsPointer: (x, y) => settlerPanel.claims(x, y) || mounts.current().panel.claimsPointer(x, y),
     browse: settlerPanel.browse,
     marryPartner,
-    renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
+    renderPanel: (snapshot) => {
+      // The ring is down when it closed, or when its selection went and it lost its pin.
+      const ring = mounts.current().actions.state();
+      if (veiled && (ring.mode === 'closed' || ring.anchor === null)) unveil();
+      mounts.current().panel.render(snapshot, panelIds());
+    },
     setHudHidden: (hidden) => {
       hudHidden = hidden;
       const { panel, actions } = mounts.current();
@@ -347,6 +363,7 @@ export async function createUnitChrome(
       mounts.dispose();
       settlerPanel.dispose();
       hoverCard.dispose();
+      panelChip.destroy();
     },
   };
 }

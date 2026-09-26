@@ -11,6 +11,8 @@ const SELECTION_TOP_GAP_PX = 16;
 export const SELECTION_PANEL_W = 318;
 /** The panel painted out of sight for its warm-up frame (foundation.css). */
 const WARM_CLASS = 'on-selection--warm';
+/** The panel stepped aside for the action ring (foundation.css). */
+const VEIL_CLASS = 'on-selection--veiled';
 
 /** Design px the panel stands above the plane's bottom: the beam's height when the beam reaches under
  *  the panel's column on a narrow plane, else none. */
@@ -45,12 +47,10 @@ export interface SelectionHeadModel {
   };
 }
 
-/** Where the orders medallion was pressed, in client (CSS) px, with the panel's left edge, so the ring
- *  opens beside the cursor without an arm under the panel. */
+/** Where the orders medallion was pressed, in client (CSS) px: the ring opens around it. */
 export interface OrdersPress {
   readonly x: number;
   readonly y: number;
-  readonly panelLeft: number;
 }
 
 export interface SelectionPanelHandlers {
@@ -98,6 +98,9 @@ export interface SelectionPanel {
   holeClientRect(): ClientRect | null;
   /** True when this client point is over the panel. */
   claims(clientX: number, clientY: number): boolean;
+  /** Take the panel out of the way (unseen, no pointer) while the action ring opened from it stands
+   *  where the panel was; the ring is drawn on the canvas under the plane. */
+  veil(on: boolean): void;
   /** The content stands taller than the frame allows, so its bottom is cut: the owner folds something.
    *  Reads the layout, so it is asked once per content change, never per tick. */
   overflows(): boolean;
@@ -144,9 +147,7 @@ export function createSelectionPanel(
   heading.append(kicker, title, meta);
   // Gold, at the left where a new player looks first, so it must not read as one more chrome control.
   const orders = button('on-medallion on-medallion--gold on-selection__medallion', GLYPH.orders);
-  orders.addEventListener('click', (event) =>
-    handlers.onOrders({ x: event.clientX, y: event.clientY, panelLeft: root.getBoundingClientRect().left }),
-  );
+  orders.addEventListener('click', (event) => handlers.onOrders({ x: event.clientX, y: event.clientY }));
   const close = button('on-medallion on-selection__medallion', GLYPH.close);
   close.addEventListener('click', () => handlers.onClose());
   const head = element('header', 'on-window__head');
@@ -302,7 +303,7 @@ export function createSelectionPanel(
       );
     },
     holeClientRect(): ClientRect | null {
-      if (root.hidden) return null;
+      if (root.hidden || root.classList.contains(VEIL_CLASS)) return null;
       if (dirty) {
         hole = measure();
         dirty = false;
@@ -313,6 +314,10 @@ export function createSelectionPanel(
       if (root.hidden) return false;
       const hit = document.elementFromPoint(clientX, clientY);
       return hit !== null && root.contains(hit);
+    },
+    veil(on): void {
+      if (on) tips.hide();
+      setClass(root, VEIL_CLASS, on);
     },
     overflows: () => body.scrollHeight > body.clientHeight,
     renaming: () => editing,

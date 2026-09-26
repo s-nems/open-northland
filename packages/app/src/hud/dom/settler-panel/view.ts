@@ -24,6 +24,8 @@ export interface SettlerPanel {
   browse(step: 1 | -1): boolean;
   /** The HUD scale changed: the portrait's box is measured again. */
   invalidate(): void;
+  /** Step aside (unseen, no pointer, no portrait) while the ring opened from the panel is up. */
+  veil(on: boolean): void;
   /** Paint every section once at map start (`SelectionPanel.warm`) with a few of the game's goods on
    *  the icons, so the first selection costs no first-paint work. */
   warm(goodIds: readonly string[]): void;
@@ -75,16 +77,22 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const military = createMilitarySection(deps, entity);
   const trade = createTradeSection(deps, current);
   const experience = createExperienceSection();
-  /** Paint every section; `fresh` is another person. The experience section opens in full and folds
-   *  only when the whole panel would then run past the plane, read once per change of its rows. */
+  /** Paint every section; `fresh` is another person. Both foldable sections open in full; when the
+   *  whole panel would then run past the plane (read once per change of their rows) the experience
+   *  folds first and the production only if that was not enough: the products are what the player
+   *  came for. */
   const sections = (model: SettlerPanelModel, fresh: boolean): void => {
     portrait.update(model);
     needs.update(model);
     work.update(model);
-    production.update(model);
+    const reshapedProduction = production.update(model, fresh);
     military.update(model);
     trade.update(model);
-    if (experience.update(model, fresh) && frame.overflows()) experience.fold();
+    const reshapedExperience = experience.update(model, fresh);
+    if ((reshapedProduction || reshapedExperience) && frame.overflows()) {
+      experience.fold();
+      if (frame.overflows()) production.fold();
+    }
   };
   frame.body.append(
     portrait.element,
@@ -141,6 +149,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
     browse,
     invalidate: () => frame.invalidate(),
+    veil: (on) => frame.veil(on),
     dispose(): void {
       deps.hoverCard.hide();
       deps.tooltip.hide();

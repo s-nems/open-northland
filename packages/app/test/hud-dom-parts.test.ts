@@ -23,7 +23,7 @@ describe('the counter part', () => {
 
   it('reaches unlimited past the finite top and stays there', () => {
     expect(counterStep(RANGE, RANGE.max, 1, PLAIN)).toBe(RANGE.unlimited);
-    expect(counterStep(RANGE, RANGE.unlimited, 1, PLAIN)).toBe(RANGE.unlimited);
+    expect(counterStep(RANGE, RANGE.unlimited, 1, PLAIN)).toBe(0);
   });
 
   it('jumps to the arrow end with Shift', () => {
@@ -39,6 +39,7 @@ describe('the counter part', () => {
     expect(counterStep(RANGE, RANGE.max, 1, TENS)).toBe(RANGE.unlimited);
     expect(counterStep(RANGE, 0, -1, TENS)).toBe(RANGE.unlimited);
     expect(counterStep(RANGE, RANGE.unlimited, -1, TENS)).toBe(RANGE.max);
+    expect(counterStep(RANGE, RANGE.unlimited, 1, TENS)).toBe(0);
   });
 
   it('shows unlimited as the infinity sign', () => {

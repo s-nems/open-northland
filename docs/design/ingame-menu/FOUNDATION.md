@@ -220,8 +220,9 @@ person, so the centre holds), at the right the bronze close that clears the sele
 the trade as the bronze kicker (13 px, the line the player checks) over the person's name in smaller
 type (12.5 px) with 4 px between them, and an owner line only when it says something (another seat's
 person, a child's age). The orders medallion and a right click on the portrait open the action ring
-for the person pinned on the cursor, pushed left of the panel's edge: the ring is drawn on the
-canvas under the plane, so an arm under the panel would be hidden. The kicker browses the trade:
+around the cursor, as a right click on the figure in the world does; the panel steps aside (unseen,
+taking no pointer) while that ring is up, since the ring is drawn on the canvas under the plane, and
+comes back the moment the ring closes. The kicker browses the trade:
 chevrons on both sides and "2 / 5" step to the previous or next person of the same trade and bring
 them into view (Tab and Shift+Tab do the same while the panel is open and no field or other window
 has the focus); they are absent while the person is the only one of the trade. A double click on
@@ -295,9 +296,8 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   production counter, and a gatherer's counts down per landed unit (a stroke's yield, a catch): 0 stops the product (the row fades),
   1 to 100 is how many more to make (the original stops at 10; the wider range is an owner rule),
   ∞ never stops. − at 0 wraps to ∞, + past 100 reaches ∞, Shift with an arrow jumps to that end,
-  as the original's window does, and Ctrl moves by ten inside the range, wrapping at its ends like a
-  single step; + at ∞ stays at ∞ with the arrow dimmed, where the original wraps to 0 (a named
-  approximation: one more click must not stop a product). The icon button is "Tylko ten produkt"
+  and + at ∞ wraps to 0, as the original's window does, and Ctrl moves by ten inside the range,
+  wrapping at its ends like a single step. The icon button is "Tylko ten produkt"
   (for a gatherer "Tylko to dobro"): ∞ here, 0 on every other row (the original's "Tylko
   produkuj"); with Ctrl it adds the good to what is made or takes it out (this row to ∞ or 0, the
   others untouched), so a clay gatherer takes stone as well with one Ctrl press on the stone. On
@@ -307,7 +307,9 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   tooltip; the lock opens the good's Knowledge page once the Knowledge window exists. Products rotate
   one unit at a time in good order, as the sim does today. A job whose `userCanChangeProductionFlag` is
   0 (the hunter, who takes every good of every kill) has no Produkcja section at all: the sim ignores
-  its counters and refuses the orders that would set them.
+  its counters and refuses the orders that would set them. The rows are 24 px with 22 px chips, the
+  list always open for a fresh selection; it folds to the first three rows behind "jeszcze N" only as
+  the last resort, when the panel still runs past the plane with the experience section folded.
 - Wojsko, for a soldier and a hero: Postawa as a three-way segmented control (Atak, Obrona, Ignoruj;
   a fleeing unit lights none) and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action
   ring issues. Every segmented strip is the same width (174 px) with its options sharing it equally,
@@ -326,11 +328,11 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   the professions and the goods the tribe's `needforjob` and `needforgood` tables gate behind this
   trade's tracks (a potter reads how many pots until tiles). A gated profession the picker never
   offers (the sea trades need a harbour the game has none of) and a fighter trade are not promised.
-  Every row shows while the whole panel fits the plane; when it would not, the section folds to the
-  current trade's first three tracks and two discoveries behind "jeszcze N" in its title, which
-  opens and closes it (open past the plane, the bottom is cut, never scrolled). A person whose rows
-  fit has no toggle; selecting a person opens the fold afresh. The section is absent when there is
-  nothing to list.
+  Every row shows while the whole panel fits the plane; when it would not, this section folds first
+  (before Produkcja) to the current trade's first three tracks and two discoveries behind "jeszcze
+  N" in its title, which opens and closes it (open past the plane, the bottom is cut, never
+  scrolled). A person whose rows fit has no toggle; selecting a person opens the fold afresh. The
+  section is absent when there is nothing to list.
 - No footer and no button row: the portrait centres, the head's gold medallion orders, the
   profession change is the ring's (and its hotkey's).
 - First paint at map start: the panel paints a made-up person once, out of sight, when the game

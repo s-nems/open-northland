@@ -20,8 +20,8 @@ export interface SettlerPanelActions {
   /** A double click on the trade: select every peer as a group. */
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly clearSelection: () => void;
-  /** Open the action ring for the settler at the press (the medallion, a right click on the portrait),
-   *  as close to the cursor as the canvas under the panel allows. */
+  /** Open the action ring for the settler around the press (the medallion, a right click on the
+   *  portrait); the panel steps aside while the ring is up. */
   readonly openOrders: (id: number, press: OrdersPress) => void;
   readonly rename: (id: number, name: string) => void;
   readonly orderNeed: (id: number, need: NeedKind) => void;

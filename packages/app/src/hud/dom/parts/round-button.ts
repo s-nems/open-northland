@@ -12,7 +12,7 @@ import {
 
 /**
  * A round icon chip: a ledger row's assign or remove (18 px), a section title's add (20 px), a product's
- * good (26 px) or a trade stop's import toggle (24 px). The size is the kind's; the face is a line glyph
+ * good (22 px) or a trade stop's import toggle (24 px). The size is the kind's; the face is a line glyph
  * or a good's icon.
  */
 export type RoundButtonKind = 'ledger' | 'title' | 'good' | 'toggle';
@@ -28,7 +28,7 @@ const KIND_CLASS: Readonly<Record<RoundButtonKind, string>> = {
 const GOOD_ICON_PX: Readonly<Record<RoundButtonKind, number>> = {
   ledger: 12,
   title: 14,
-  good: 18,
+  good: 16,
   toggle: 18,
 };
 

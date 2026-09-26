@@ -2424,6 +2424,11 @@ body.on-drag-scroll-cursor-hidden * {
   opacity: 0;
   pointer-events: none;
 }
+/* Stepped aside for the action ring opened from the panel, which is drawn on the canvas under it. */
+.on-hud .on-selection--veiled {
+  visibility: hidden;
+  pointer-events: none;
+}
 /* Head: the kicker browses the trade with its chevrons, the name renames under the pen. The trade is
    what the player checks, so it carries the weight; the name sits smaller under it. */
 .on-hud .on-kicker {
@@ -2628,8 +2633,8 @@ body.on-drag-scroll-cursor-hidden * {
   height: 11px;
 }
 .on-hud .on-round--good {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   background: radial-gradient(circle at 45% 40%, #3f3223, #1d160f 85%);
   box-shadow: inset 0 0 0 1px #c9a26233;
 }
@@ -2715,7 +2720,7 @@ body.on-drag-scroll-cursor-hidden * {
 /* The −/n/+ counter. */
 .on-hud .on-counter {
   display: inline-grid;
-  grid-template-columns: 26px 28px 26px;
+  grid-template-columns: 24px 28px 24px;
   align-items: center;
   border: 1px solid var(--wood-lo);
   border-radius: 13px;
@@ -2723,7 +2728,7 @@ body.on-drag-scroll-cursor-hidden * {
   box-shadow: inset 0 1px 2px #000a;
 }
 .on-hud .on-counter__step {
-  height: 26px;
+  height: 22px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -2741,18 +2746,10 @@ body.on-drag-scroll-cursor-hidden * {
   height: 12px;
   stroke-width: 2.4;
 }
-.on-hud .on-counter__step[aria-disabled="true"] {
-  opacity: 0.3;
-  cursor: default;
-}
-.on-hud .on-counter__step[aria-disabled="true"]:hover {
-  background: none;
-  color: var(--bronze);
-}
 .on-hud .on-counter__value {
   text-align: center;
   color: var(--text-hi);
-  font: 700 13px var(--font-body);
+  font: 700 12.5px var(--font-body);
   font-variant-numeric: tabular-nums;
 }
 /* Equipment sockets: a wooden well with the good over its wear, a fill from the floor up to the life
@@ -2994,18 +2991,25 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-prod-row {
   display: grid;
-  grid-template-columns: 26px 1fr auto;
+  grid-template-columns: 22px 1fr auto;
   align-items: center;
   gap: 6px;
-  min-height: 27px;
+  min-height: 24px;
   padding: 0;
   border-bottom: 1px dotted #c9a26233;
 }
 .on-hud .on-prod-row:last-child {
   border-bottom: 0;
 }
+/* The fold's rows past the first three, until the "jeszcze N" toggle opens them. */
+.on-hud .on-prod-row--more {
+  display: none;
+}
+.on-hud .on-prod--open .on-prod-row--more {
+  display: grid;
+}
 .on-hud .on-prod-row__name {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-hi);
 }
 .on-hud .on-prod-row--stopped .on-prod-row__name,

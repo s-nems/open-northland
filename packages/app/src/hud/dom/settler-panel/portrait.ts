@@ -45,14 +45,9 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
   const frame = button('on-portrait__frame');
   frame.addEventListener('click', () => actions.centre(entity()));
   // A right click on the figure orders it, as one on the figure in the world does.
-  frame.addEventListener('contextmenu', (event) => {
-    const panel = row.closest('.on-window');
-    actions.openOrders(entity(), {
-      x: event.clientX,
-      y: event.clientY,
-      panelLeft: (panel ?? row).getBoundingClientRect().left,
-    });
-  });
+  frame.addEventListener('contextmenu', (event) =>
+    actions.openOrders(entity(), { x: event.clientX, y: event.clientY }),
+  );
   const beside = element('div', 'on-portrait__beside');
   const equipment = element('div', 'on-equipment');
   const wornRow = element('div', 'on-equip-row');
