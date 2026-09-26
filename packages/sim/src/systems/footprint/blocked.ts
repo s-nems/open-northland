@@ -6,7 +6,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { landscapeBlocks } from '../landscape/view.js';
-import { buildingBlockedLayer } from './building-blocked-cache.js';
+import { buildingBlockedLayer, doorPassage } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedLayer } from './resource-blocked-cache.js';
 import { vehicleBlockedLayer } from './vehicle-blocked-cache.js';
@@ -104,8 +104,8 @@ function writesKeepSiteTypes(world: World, memo: ConstructionPlotMemo, valueGene
   return true;
 }
 
-/** One building's walk-blocked body: its footprint `blocked` cells on the map minus its door cell, or null
- *  when the type blocks nothing. A displacement search may cross this body but no other blocked cell. */
+/** One building's walk-blocked body: its footprint `blocked` cells on the map minus its door passage, or
+ *  null when the type blocks nothing. A displacement search may cross this body but no other blocked cell. */
 export function walkBlockedBodyOf(
   world: World,
   ctx: ContentContext,
@@ -122,7 +122,9 @@ export function walkBlockedBodyOf(
   const door = footprint.door;
   if (door !== undefined) {
     const doorX = ax + footprintCellDx(ay, door);
-    if (terrain.inBounds(doorX, ay + door.dy)) body.delete(terrain.nodeAt(doorX, ay + door.dy));
+    if (terrain.inBounds(doorX, ay + door.dy)) {
+      for (const cell of doorPassage(terrain, body, terrain.nodeAt(doorX, ay + door.dy))) body.delete(cell);
+    }
   }
   return body.size === 0 ? null : body;
 }

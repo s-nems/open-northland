@@ -36,7 +36,7 @@ const buildingBlockedCache = new WeakMap<World, BuildingBlockedCache>();
 
 /** Open the shortest passage through a building's own walk block to exterior ground.
  * Some door points are ringed by wall cells; clearing the point alone leaves the door unreachable. */
-function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, door: NodeId): NodeId[] {
+export function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, door: NodeId): NodeId[] {
   const queue: NodeId[] = [door];
   const parent = new Map<NodeId, NodeId>();
   const depth = new Map<NodeId, number>([[door, 0]]);

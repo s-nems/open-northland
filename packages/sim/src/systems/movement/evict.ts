@@ -1,4 +1,4 @@
-import { Position, Settler } from '../../components/index.js';
+import { PathRequest, Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
@@ -7,44 +7,53 @@ import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
+import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
-import { isTravelling } from './nav-state.js';
+import { dropPath, isTravelling } from './nav-state.js';
 
 /**
  * Move every settler standing inside `building`'s walk-blocked footprint, and every one the stamp just
- * sealed into a one-node nook beside it, onto the nearest free cell. The move is instant because an
- * enclosed cell has no walkable route out: the pathfinder exempts only a blocked start node. Travellers
- * are left alone. Approximation: nook eviction and the missing Owner gate (neutral fixtures and animals
- * are displaced too) have no observed original counterpart.
+ * sealed into a one-node nook beside it, walkers included, onto the nearest free cell, and stop every
+ * walker whose route runs into the body short of it. The move is instant because an enclosed cell has no
+ * walkable route out: the pathfinder exempts only a blocked start node. A walker moved off routes again
+ * from where it lands. Approximation: nook eviction and the missing Owner gate (neutral fixtures and
+ * animals are displaced too) have no observed original counterpart.
  */
 export function evictSettlersFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no cells to stand on
   const body = walkBlockedBodyOf(world, ctx, terrain, building);
   if (body === null) return; // nothing impassable
-  evictSettlersFromCells(world, ctx, terrain, body);
+  evictSettlersFromCells(world, ctx, terrain, body, 'move');
+  if (anyRouteFollowed(world)) invalidateRoutesThrough(world, terrain, body);
 }
 
-/** {@link evictSettlersFromFootprint} over cells that already block, such as a finished wall's body and
- *  joint seals. */
+/** Whether an eviction also moves settlers on their way off the cells, where a route could leave them
+ *  walled in; a wall site instead waits for them to pass. */
+export type WalkerEviction = 'move' | 'wait';
+
+/** {@link evictSettlersFromFootprint}'s move over cells that already block, such as a finished wall's body
+ *  and joint seals. */
 export function evictSettlersFromCells(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   body: ReadonlySet<NodeId>,
+  walkers: WalkerEviction,
 ): void {
-  // Only the settlers on the cells or beside them can be evicted, looked up by node. Travellers stay put.
+  // Only the settlers on the cells or beside them can be evicted, looked up by node.
+  const evictable = (e: Entity): boolean => walkers === 'move' || !isTravelling(world, e);
   const byNode = settlersByNode(world);
   const evicteesUnsorted: Entity[] = [];
   const nookCandidates = new Set<Entity>();
   for (const cell of body) {
     for (const e of byNode.at(terrain.xOf(cell), terrain.yOf(cell))) {
-      if (!isTravelling(world, e)) evicteesUnsorted.push(e);
+      if (evictable(e)) evicteesUnsorted.push(e);
     }
     for (const n of terrain.neighbours(cell)) {
       if (body.has(n)) continue;
       for (const e of byNode.at(terrain.xOf(n), terrain.yOf(n))) {
-        if (!isTravelling(world, e)) nookCandidates.add(e);
+        if (evictable(e)) nookCandidates.add(e);
       }
     }
   }
@@ -83,6 +92,9 @@ export function evictSettlersFromCells(
     const pos = world.mut(e, Position);
     pos.x = centre.x;
     pos.y = centre.y;
+    // The navigation planner routes a walker's goal again from the landing.
+    dropPath(world, e);
+    world.remove(e, PathRequest);
   }
 }
 
@@ -123,15 +135,14 @@ export function evictSettlerFromBlockedSpawn(
   p.y = centre.y;
 }
 
-/** The half-cell node a settler stands on, clamped into bounds. */
-/** The settlers on each node, shared by every eviction until one moves, joins or leaves: a map's load
- *  settles its walls one after another in one tick with nobody moving in between. */
+/** The settlers on each node, shared by every eviction and wall-site check until one moves, joins or
+ *  leaves: a map's load settles its walls one after another in one tick with nobody moving in between. */
 const settlerNodeCache = new WeakMap<
   World,
   { settlers: number; positions: number; moves: number; buckets: NodeBuckets }
 >();
 
-function settlersByNode(world: World): NodeBuckets {
+export function settlersByNode(world: World): NodeBuckets {
   const settlers = world.componentGeneration(Settler);
   const positions = world.componentGeneration(Position);
   const moves = world.componentValueGeneration(Position);
@@ -149,6 +160,7 @@ function settlersByNode(world: World): NodeBuckets {
   return buckets;
 }
 
+/** The half-cell node a settler stands on, clamped into bounds. */
 function settlerNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const p = world.get(e, Position);
   const n = nodeOfPosition(p.x, p.y);

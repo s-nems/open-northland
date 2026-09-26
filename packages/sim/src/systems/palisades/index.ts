@@ -30,7 +30,7 @@ import { canPlacePalisadeAnchor, type PlacementProbe } from '../footprint/placem
 import { wallClosingCells } from '../footprint/wall-joints.js';
 import { anyRouteFollowed, invalidateRoutesThrough } from '../landscape/routes.js';
 import { landscapeTypes } from '../landscape/view.js';
-import { evictSettlersFromCells } from '../movement/evict.js';
+import { evictSettlersFromCells, settlersByNode } from '../movement/evict.js';
 import { isTravelling } from '../movement/nav-state.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
@@ -189,7 +189,7 @@ export function settleClosedWall(world: World, ctx: SystemContext, terrain: Terr
   const closing = closingCellsOf(world, ctx, terrain, e, world.get(e, Palisade).walk);
   // A map's authored walls stand before anyone walks, so its load skips the route scan.
   if (anyRouteFollowed(world)) invalidateRoutesThrough(world, terrain, closing);
-  evictSettlersFromCells(world, ctx, terrain, closing);
+  evictSettlersFromCells(world, ctx, terrain, closing, 'wait');
   evictLooseGoodsFromCells(world, ctx, terrain, closing);
   // Built only when a flag is enclosed: a map's load places every wall before any flag stands.
   let blocked: BlockOverlay | null = null;
@@ -199,28 +199,20 @@ export function settleClosedWall(world: World, ctx: SystemContext, terrain: Terr
   });
 }
 
-/** The settlers standing on each node, filled on first use, so a construction pass pays one settler scan
- *  however many wall sites wait on it. An eviction moves only idle settlers, never a traveller, which is
- *  all this reads. */
-export class WallSiteOccupancy {
-  private byNode: NodeBuckets | null = null;
-
-  constructor(
-    private readonly world: World,
-    private readonly ctx: SystemContext,
-  ) {}
-
-  /** Whether a traveller stands where wall site `e` would close, which the finish waits out. */
-  travellerOnClosing(terrain: TerrainGraph, e: Entity): boolean {
-    const world = this.world;
-    this.byNode ??= new NodeBuckets(world, world.query(Settler, Position));
-    for (const cell of closingCellsOf(world, this.ctx, terrain, e, world.get(e, Palisade).walk)) {
-      for (const settler of this.byNode.at(terrain.xOf(cell), terrain.yOf(cell))) {
-        if (isTravelling(world, settler)) return true;
-      }
+/** Whether a traveller stands where wall site `e` would close, which the finish waits out. */
+export function travellerOnClosing(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+): boolean {
+  const byNode = settlersByNode(world);
+  for (const cell of closingCellsOf(world, ctx, terrain, e, world.get(e, Palisade).walk)) {
+    for (const settler of byNode.at(terrain.xOf(cell), terrain.yOf(cell))) {
+      if (isTravelling(world, settler)) return true;
     }
-    return false;
   }
+  return false;
 }
 
 /** The completed gate of `player` standing on `hx,hy` - the anchor itself or any node its closed body

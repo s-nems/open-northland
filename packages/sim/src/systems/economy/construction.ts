@@ -23,7 +23,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { toolWorkFactorPct } from '../equipment/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
-import { settleClosedWall, WallSiteOccupancy } from '../palisades/index.js';
+import { settleClosedWall, travellerOnClosing } from '../palisades/index.js';
 import { dropLapsedClaim, holdsPalisadeClaim } from '../palisades/reservation.js';
 import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.js';
 import { assignedWorkers } from '../stores/assigned-workers.js';
@@ -55,7 +55,6 @@ import { destroyStumpsInReserved } from './stumps.js';
  * falls to a single blow.
  */
 export const constructionSystem: System = (world, ctx) => {
-  const occupancy = new WallSiteOccupancy(world, ctx);
   // A finished vehicle site is destroyed, so launches wait for the walk to end.
   const launches: Entity[] = [];
   // Sites only, in ascending id: the pass scales with what is being built, and two sites finishing on
@@ -77,7 +76,7 @@ export const constructionSystem: System = (world, ctx) => {
         launches.push(e);
       }
     } else if (wall !== undefined) {
-      advanceWallSite(world, ctx, e, wall, constructionBillOf(world, ctx, e), occupancy);
+      advanceWallSite(world, ctx, e, wall, constructionBillOf(world, ctx, e));
     }
   }
   for (const site of launches) launchVehicle(world, ctx, site);
@@ -122,11 +121,10 @@ function advanceWallSite(
   e: Entity,
   wall: DeepReadonly<PalisadeState>,
   cost: ReadonlyArray<{ goodType: number; amount: number }>,
-  occupancy: WallSiteOccupancy,
 ): void {
   const labor = world.get(e, UnderConstruction).labor;
   if (labor >= ONE && constructionMaterialsPresent(world, ctx, e)) {
-    if (ctx.terrain !== undefined && occupancy.travellerOnClosing(ctx.terrain, e)) return;
+    if (ctx.terrain !== undefined && travellerOnClosing(world, ctx, ctx.terrain, e)) return;
     consumeMaterials(world, e, cost);
     finishWall(world, ctx, e);
     return;

@@ -10,6 +10,7 @@ import {
   GroundDrop,
   HerdMember,
   MoveGoal,
+  PathFollow,
   Position,
   Settler,
   Stockpile,
@@ -164,14 +165,18 @@ describe('footprint displacement - settlers never end up standing inside walls',
     expect(nodeOf(sim, unowned)).not.toEqual(nodeOf(sim, cow)); // fanned onto distinct cells
   });
 
-  it('leaves a mid-transit walker alone - its own route plays out', () => {
+  it('moves a walker off the body too, and it walks on to its goal from the landing', () => {
     const sim = mappedSim();
     const walker = settlerAtNode(sim, 6, 5, PLAYER);
-    sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(10, 5) }); // passing through
+    const goal = { x: 10, y: 5 };
+    sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(goal.x, goal.y) }); // passing through
+    sim.step(); // routed and walking
+    expect(sim.world.has(walker, PathFollow)).toBe(true);
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
-    // The walker was not teleported by the eviction - it is still travelling its own route.
-    expect(sim.world.has(walker, MoveGoal) || onBody(sim, walker)).toBe(true);
+    expect(onBody(sim, walker)).toBe(false);
+    for (let i = 0; i < 400 && sim.world.has(walker, MoveGoal); i++) sim.step();
+    expect(nodeOf(sim, walker)).toEqual(goal);
   });
 
   it('never lands an evictee on a cell a neutral bystander occupies', () => {
@@ -511,6 +516,125 @@ describe('footprint displacement - a finish that seals a nook beside the body di
     const atDoor = settlerAtNode(sim, NOOK.x, NOOK.y, PLAYER);
     constructionSystem(sim.world, ctxOf(sim));
     expect(nodeOf(sim, atDoor)).toEqual(NOOK);
+  });
+});
+
+/**
+ * An upgrade finish on settlers bound for the grown walls. The tier-2 body grows from the anchor node to a
+ * 7x5 block, so its inner cells have no unblocked neighbour: a settler left there can never route out.
+ */
+describe('footprint displacement - an upgrade finish never walls in a settler on its way', () => {
+  const HOME_S = 20;
+  const HOME_L = 21;
+  const STONE = 1;
+  const HOME = { x: 10, y: 10 };
+  const HALF_WIDTH = 3;
+  const HALF_DEPTH = 2;
+
+  /** `hole` leaves one cell of the grown block open; `door` sets HOME_L's door cell. */
+  function upgradingHome(
+    shape: { hole?: { dx: number; dy: number }; door?: { dx: number; dy: number } } = {},
+  ): { sim: Simulation; home: Entity } {
+    const grown = [];
+    for (let dy = -HALF_DEPTH; dy <= HALF_DEPTH; dy++) {
+      for (let dx = -HALF_WIDTH; dx <= HALF_WIDTH; dx++) {
+        if (dx !== shape.hole?.dx || dy !== shape.hole?.dy) grown.push({ dx, dy });
+      }
+    }
+    const content = parseContentSet({
+      manifest: TEST_MANIFEST,
+      goods: [
+        { typeId: 0, id: 'none' },
+        { typeId: STONE, id: 'stone' },
+      ],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
+      buildings: [
+        {
+          typeId: HOME_S,
+          id: 'home_level_00',
+          kind: 'home',
+          homeSize: 1,
+          construction: [{ goodType: STONE, amount: 1 }],
+          footprint: { blocked: [{ dx: 0, dy: 0 }] },
+          upgradeTarget: HOME_L,
+        },
+        {
+          typeId: HOME_L,
+          id: 'home_level_01',
+          kind: 'home',
+          homeSize: 2,
+          construction: [{ goodType: STONE, amount: 1 }],
+          footprint: { blocked: grown, ...(shape.door !== undefined ? { door: shape.door } : {}) },
+        },
+      ],
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(24, 24) });
+    const home = sim.world.create();
+    sim.world.add(home, Position, positionOfNode(HOME.x, HOME.y));
+    sim.world.add(home, Building, { buildingType: HOME_S, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(home, Stockpile, { amounts: new Map<number, number>() });
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
+    sim.step();
+    return { sim, home };
+  }
+
+  /** Deliver the difference and hammer the site out, so the next construction pass adopts HOME_L. */
+  function readyToFinish(sim: Simulation, home: Entity): void {
+    sim.world.mut(home, Stockpile).amounts.set(STONE, 1);
+    sim.world.mut(home, UnderConstruction).labor = ONE;
+  }
+
+  function insideGrownBody(sim: Simulation, e: Entity): boolean {
+    const n = nodeOf(sim, e);
+    return Math.abs(n.x - HOME.x) <= HALF_WIDTH && Math.abs(n.y - HOME.y) <= HALF_DEPTH;
+  }
+
+  it('stops a walker whose route ends inside the grown walls short of them', () => {
+    const { sim, home } = upgradingHome();
+    const walker = settlerAtNode(sim, 3, 11, PLAYER);
+    sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(12, 11) }); // legal ground until the finish
+    sim.step();
+    expect(sim.world.has(walker, PathFollow)).toBe(true); // routed before the walls grow
+    readyToFinish(sim, home);
+    for (let i = 0; i < 400 && sim.world.has(walker, PathFollow); i++) sim.step();
+    expect(sim.world.get(home, Building).buildingType).toBe(HOME_L);
+    expect(sim.world.has(walker, PathFollow)).toBe(false); // it gave up on the walled-in goal…
+    expect(insideGrownBody(sim, walker)).toBe(false); // …outside the walls
+    expect(standable(sim, walker)).toBe(true);
+  });
+
+  it('evicts a settler still waiting on its route from an inner cell of the grown walls', () => {
+    const { sim, home } = upgradingHome();
+    const waiting = settlerAtNode(sim, 12, 10, PLAYER);
+    sim.world.add(waiting, MoveGoal, { cell: terrainOf(sim).nodeAt(20, 20) }); // no route yet
+    readyToFinish(sim, home);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(home, Building).buildingType).toBe(HOME_L);
+    expect(insideGrownBody(sim, waiting)).toBe(false);
+    expect(standable(sim, waiting)).toBe(true);
+    expect(sim.world.has(waiting, MoveGoal)).toBe(true); // it still means to go
+  });
+
+  it('evicts a walker from a hole the grown walls enclose on every side', () => {
+    const { sim, home } = upgradingHome({ hole: { dx: 2, dy: 0 } });
+    const walker = settlerAtNode(sim, 12, 10, PLAYER); // on the hole: open ground, no way out
+    sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(20, 20) });
+    readyToFinish(sim, home);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(insideGrownBody(sim, walker)).toBe(false);
+    expect(standable(sim, walker)).toBe(true);
+  });
+
+  it('leaves a settler standing in the passage the walls keep open to a ringed door', () => {
+    // The door sits one row inside the block, so the walk-block also opens the edge cell below it.
+    const { sim, home } = upgradingHome({ door: { dx: 0, dy: HALF_DEPTH - 1 } });
+    const passage = { x: HOME.x, y: HOME.y + HALF_DEPTH };
+    const inPassage = settlerAtNode(sim, passage.x, passage.y, PLAYER);
+    readyToFinish(sim, home);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(nodeOf(sim, inPassage)).toEqual(passage);
+    expect(standable(sim, inPassage)).toBe(true);
   });
 });
 
