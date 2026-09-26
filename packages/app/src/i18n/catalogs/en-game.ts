@@ -425,7 +425,6 @@ export const enGame = {
       weddingUnderWay: 'Wedding under way',
       partnerTooltip: 'Partner: select',
       childTooltip: 'Child: select',
-      workplaceTooltip: 'Select the building · hover: its state',
       buildingTooltip: 'Select the building',
       vehicle: 'Vehicle',
       assignVehicle: 'Assign a vehicle',

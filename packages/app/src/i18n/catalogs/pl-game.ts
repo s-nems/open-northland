@@ -412,7 +412,6 @@ export const plGame = {
       weddingUnderWay: 'Ślub w toku',
       partnerTooltip: 'Partner: zaznacz',
       childTooltip: 'Dziecko: zaznacz',
-      workplaceTooltip: 'Zaznacz budynek · najedź: stan budynku',
       buildingTooltip: 'Zaznacz budynek',
       vehicle: 'Pojazd',
       assignVehicle: 'Przydziel pojazd',

@@ -38,7 +38,7 @@ export function seatValue(row: SettlerSeatRow, linkTooltip: string, foreign: boo
     return [{ text: copy.missing, tone: row.assign === true ? 'missing' : 'muted' }];
   }
   const link = !foreign && row.target.id !== null;
-  return [{ text: row.target.label, link, ...(link ? { tooltip: linkTooltip } : {}) }];
+  return [{ text: row.target.label, link, ...(link && linkTooltip !== '' ? { tooltip: linkTooltip } : {}) }];
 }
 
 /** The Pojazd value: the vehicle as a link with its hold in the tooltip, or "Przydziel pojazd" in amber,
@@ -149,7 +149,8 @@ export function createWorkSection(
       if (model.workplace !== null) {
         workplace.update({
           label: panel.workplace,
-          value: seatValue(model.workplace, panel.workplaceTooltip, model.foreign),
+          // The workplace link shows its hover card alone; a tip would only cover it.
+          value: seatValue(model.workplace, '', model.foreign),
           buttons: [
             seatButton(
               model.workplace.assign,

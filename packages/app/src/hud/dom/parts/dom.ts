@@ -70,7 +70,9 @@ export function setTip(node: HTMLElement, text: string): void {
     return;
   }
   setAttribute(node, TIP_ATTRIBUTE, text);
-  setAttribute(node, DESCRIPTION_ATTRIBUTE, text);
+  // A tip that is the control's name already would be read twice as its description.
+  if (node.getAttribute('aria-label') === text) removeAttribute(node, DESCRIPTION_ATTRIBUTE);
+  else setAttribute(node, DESCRIPTION_ATTRIBUTE, text);
 }
 
 /** A control the player may see but not press: faded, still focusable, its reason in the tooltip. */
