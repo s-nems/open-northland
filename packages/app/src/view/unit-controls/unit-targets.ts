@@ -6,7 +6,7 @@ import {
   projectTile,
   tileToScreen,
 } from '@open-northland/render';
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { entitiesWith, entityById, type WorldSnapshot } from '@open-northland/sim';
 import {
   gathererByFlag,
   isPlayerControllable,
@@ -14,10 +14,10 @@ import {
   isWildlife,
   ownerPlayerOf,
   positionOf,
+  type SnapshotEntity,
 } from '../../game/snapshot.js';
 import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { isHitTarget, type Pickable } from '../picking.js';
-import { memoBySnapshot } from '../projections/index.js';
 import type { FormationUnit } from './formation.js';
 
 /** What the pickable target sets need from the unit-controls options (a subset threaded through). */
@@ -86,20 +86,15 @@ export interface UnitTargets {
 
 /** Turns the frame the player is looking at into the {@link Pickable}s a click hit-tests against. */
 export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
-  // Memoized by snapshot identity, so this O(entities) pass runs once per tick rather than once per
-  // builder: a single click-release chains owned, flags and signposts.
-  const ownersOf = memoBySnapshot((snap: WorldSnapshot) => {
-    const ownerOf = new Map<number, number>();
-    // Claimed livestock is the player's property rather than a unit: the herd drives itself, so it is
-    // neither pickable nor orderable.
-    const livestock = new Set<number>();
-    for (const e of snap.entities) {
-      const player = ownerPlayerOf(e);
-      if (player !== undefined) ownerOf.set(e.id, player);
-      if (e.components.Livestock !== undefined) livestock.add(e.id);
-    }
-    return { ownerOf, livestock };
-  });
+  /** The owner of a drawn item's entity; a synthetic ref or a departed entity has none. */
+  const ownerOfRef = (snapshot: WorldSnapshot, ref: number): number | undefined => {
+    const e = entityById(snapshot, ref);
+    return e === undefined ? undefined : ownerPlayerOf(e);
+  };
+
+  /** Claimed livestock is the player's property rather than a unit: the herd drives itself, so it is
+   *  neither pickable nor orderable. */
+  const isLivestock = (e: SnapshotEntity): boolean => e.components.Livestock !== undefined;
 
   /** Whether an entity with this owner belongs to the pickable "ours" set. */
   const pickableOwner = (owner: number | undefined): boolean => {
@@ -132,15 +127,15 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
   return {
     owned(kind?: UnitTargetKind): Pickable[] {
-      const { ownerOf, livestock } = ownersOf(deps.snapshot());
+      const snapshot = deps.snapshot();
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         const itemKind = unitKindOf(it);
         if (itemKind === null) continue;
         if (kind === undefined ? itemKind === 'vehicle' : itemKind !== kind) continue;
         if (!isHitTarget(it)) continue;
-        if (!pickableOwner(ownerOf.get(it.ref))) continue;
-        if (livestock.has(it.ref)) continue; // see the livestock note on the memo
+        const e = entityById(snapshot, it.ref);
+        if (e === undefined || !pickableOwner(ownerPlayerOf(e)) || isLivestock(e)) continue;
         out.push(hitTarget(it, itemKind));
       }
       return out;
@@ -157,7 +152,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
     enemies(opts): Pickable[] {
       const neutralWalls = opts?.neutralWalls === true && pickableSeat(deps.viewer) !== null;
-      const { ownerOf } = ownersOf(deps.snapshot());
+      const snapshot = deps.snapshot();
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         // A unit, a building or a vehicle is an attack target - a warrior can raze an enemy structure
@@ -167,7 +162,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         // The ghost guard fog-gates the attack set: a remembered structure still draws, but no swing
         // can be ordered at it.
         if (!isHitTarget(it)) continue;
-        const owner = ownerOf.get(it.ref);
+        const owner = ownerOfRef(snapshot, it.ref);
         if (owner === undefined) {
           // Other neutral entities are never attack targets, and observers issue no attacks.
           if (itemKind === 'palisade' && neutralWalls) out.push(hitTarget(it, itemKind));
@@ -198,25 +193,24 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
     wildlife(): Pickable[] {
       const snapshot = deps.snapshot();
-      const { ownerOf } = ownersOf(snapshot);
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         if (it.kind !== 'settler' || !isHitTarget(it)) continue;
-        if (ownerOf.has(it.ref)) continue; // owned - a person or someone's livestock, not game
         const e = entityById(snapshot, it.ref);
         if (e === undefined || !isWildlife(e)) continue;
+        if (ownerPlayerOf(e) !== undefined) continue; // owned - a person or someone's livestock, not game
         out.push(hitTarget(it, 'settler'));
       }
       return out;
     },
 
     signposts(): Pickable[] {
-      const { ownerOf } = ownersOf(deps.snapshot());
+      const snapshot = deps.snapshot();
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         // Only the post itself - its direction boards ride synthetic negative refs (see sprite-scene.ts).
         if (it.kind !== 'signpost' || it.ref <= 0 || !isHitTarget(it)) continue;
-        if (!pickableOwner(ownerOf.get(it.ref))) continue;
+        if (!pickableOwner(ownerOfRef(snapshot, it.ref))) continue;
         out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
       }
       return out;
@@ -266,8 +260,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       // Virgin decoded-map resources are retained by the landscape layer and deliberately omitted from
       // the entity draw list. Project those live snapshot entities here so Ctrl+RMB can still identify
       // the tree/deposit the player sees; once first worked, the ordinary draw-item path takes over.
-      for (const entity of deps.snapshot().entities) {
-        if (emitted.has(entity.id) || entity.components.LandscapeResource === undefined) continue;
+      for (const entity of entitiesWith(deps.snapshot(), 'LandscapeResource')) {
+        if (emitted.has(entity.id)) continue;
         const value = entity.components.Resource as { goodType?: unknown } | undefined;
         const position = positionOf(entity);
         if (typeof value?.goodType !== 'number' || position === undefined) continue;
@@ -287,7 +281,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const ref of refs) {
         const e = entityById(snapshot, ref);
         if (e === undefined || !isSettler(e) || !pickableOwner(ownerPlayerOf(e))) continue;
-        if (e.components.Livestock !== undefined) continue; // see the livestock note on the memo
+        if (isLivestock(e)) continue;
         if (!isPlayerControllable(e)) continue;
         const pos = positionOf(e);
         if (pos === undefined) continue;

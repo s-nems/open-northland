@@ -1,7 +1,6 @@
 import type { SettlerBubble, SettlerBubbleKind } from '@open-northland/render';
-import { systems, type WorldSnapshot } from '@open-northland/sim';
+import { indexesOf, listedWhere, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
-  actorsOf,
   childOrderOf,
   isMarrying,
   isSettler,
@@ -18,8 +17,8 @@ import {
  */
 export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] {
   const out: SettlerBubble[] = [];
-  for (const e of actorsOf(snapshot)) {
-    if (!isSettler(e) || ownedByComputerSeat(snapshot, e)) continue;
+  for (const e of indexesOf(snapshot).get(BUBBLE_CARRIERS)) {
+    if (ownedByComputerSeat(snapshot, e)) continue;
     const kind = bubbleKindOf(e);
     if (kind === undefined) continue;
     const pos = positionOf(e);
@@ -28,6 +27,10 @@ export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] 
   }
   return out;
 }
+
+/** The settlers some bubble would float over, whatever their seat: a small crowd, so the read scales with
+ *  it rather than with the population. */
+const BUBBLE_CARRIERS = listedWhere((e) => isSettler(e) && bubbleKindOf(e) !== undefined);
 
 function bubbleKindOf(e: SnapshotEntity): SettlerBubbleKind | undefined {
   if (childOrderOf(e) !== undefined) return 'child';

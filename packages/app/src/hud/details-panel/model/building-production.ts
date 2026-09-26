@@ -1,4 +1,4 @@
-import { nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
+import { groupedBy, indexesOf, listedWhere, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
@@ -53,63 +53,28 @@ export type ProductionModel =
       readonly ripe: number;
     };
 
-interface FieldCounts {
-  readonly growing: number;
-  readonly ripe: number;
+interface CropSnapshot {
+  readonly farm?: unknown;
+  readonly goodType?: unknown;
+  readonly stage?: unknown;
+  readonly stages?: unknown;
 }
 
-/** Keyed by snapshot: the panel re-derives its model every tick a farm stays selected, and `Crop` is
- *  outside `actorsOf`, so the full-entity walk below would otherwise repeat. */
-interface UnownedField {
-  readonly goodType: number;
-  readonly hx: number;
-  readonly hy: number;
-  readonly ripe: boolean;
+function cropOf(e: SnapshotEntity): CropSnapshot | undefined {
+  return e.components.Crop as CropSnapshot | undefined;
 }
 
-const FIELD_COUNTS = new WeakMap<
-  WorldSnapshot,
-  { readonly byFarm: ReadonlyMap<number, FieldCounts>; readonly unowned: readonly UnownedField[] }
->();
-
-/** Every farm's field tally in one entity pass, split into still growing vs ripe (`stage >= stages`). */
-function fieldCountsByFarm(snapshot: WorldSnapshot): {
-  readonly byFarm: ReadonlyMap<number, FieldCounts>;
-  readonly unowned: readonly UnownedField[];
-} {
-  const cached = FIELD_COUNTS.get(snapshot);
-  if (cached !== undefined) return cached;
-  const byFarm = new Map<number, { growing: number; ripe: number }>();
-  const unowned: UnownedField[] = [];
-  for (const e of snapshot.entities) {
-    const crop = e.components.Crop as
-      | { farm?: unknown; goodType?: unknown; stage?: unknown; stages?: unknown }
-      | undefined;
-    if (crop === undefined) continue;
-    const farm = num(crop.farm);
-    const stage = num(crop.stage) ?? 0;
-    const stages = num(crop.stages) ?? Number.POSITIVE_INFINITY;
-    if (farm === undefined) {
-      const goodType = num(crop.goodType);
-      const pos = positionOf(e);
-      if (crop.farm === null && goodType !== undefined && pos !== undefined) {
-        const node = nodeOfPosition(pos.x, pos.y);
-        unowned.push({ goodType, hx: node.hx, hy: node.hy, ripe: stage >= stages });
-      }
-      continue;
-    }
-    let counts = byFarm.get(farm);
-    if (counts === undefined) {
-      counts = { growing: 0, ripe: 0 };
-      byFarm.set(farm, counts);
-    }
-    if (stage >= stages) counts.ripe++;
-    else counts.growing++;
-  }
-  const result = { byFarm, unowned };
-  FIELD_COUNTS.set(snapshot, result);
-  return result;
+/** A field past its top stage awaits the scythe; one without a stage count never ripens. */
+function isRipe(crop: CropSnapshot): boolean {
+  return (num(crop.stage) ?? 0) >= (num(crop.stages) ?? Number.POSITIVE_INFINITY);
 }
+
+const CROPS_BY_FARM = groupedBy((e) => {
+  const crop = cropOf(e);
+  return crop === undefined ? undefined : num(crop.farm);
+});
+
+const UNOWNED_CROPS = listedWhere((e) => cropOf(e)?.farm === null);
 
 export function productionModel(
   ctx: UnitPanelModelContext,
@@ -121,18 +86,25 @@ export function productionModel(
   // abstract recipe for every producer, so a farm would otherwise draw a dead recipe bar.
   const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
-    const fields = fieldCountsByFarm(snapshot);
-    const own = fields.byFarm.get(ent.id) ?? { growing: 0, ripe: 0 };
-    let growing = own.growing;
-    let ripe = own.ripe;
+    let growing = 0;
+    let ripe = 0;
+    for (const field of indexesOf(snapshot).get(CROPS_BY_FARM).get(ent.id) ?? []) {
+      const crop = cropOf(field);
+      if (crop === undefined) continue;
+      if (isRipe(crop)) ripe++;
+      else growing++;
+    }
     const pos = positionOf(ent);
     if (pos !== undefined && fieldGood.farming !== undefined) {
       const anchor = nodeOfPosition(pos.x, pos.y);
-      for (const crop of fields.unowned) {
-        if (crop.goodType !== fieldGood.typeId) continue;
-        if (Math.abs(crop.hx - anchor.hx) + Math.abs(crop.hy - anchor.hy) > fieldGood.farming.fieldRadius)
+      for (const field of indexesOf(snapshot).get(UNOWNED_CROPS)) {
+        const crop = cropOf(field);
+        const at = positionOf(field);
+        if (crop === undefined || at === undefined || num(crop.goodType) !== fieldGood.typeId) continue;
+        const node = nodeOfPosition(at.x, at.y);
+        if (Math.abs(node.hx - anchor.hx) + Math.abs(node.hy - anchor.hy) > fieldGood.farming.fieldRadius)
           continue;
-        if (crop.ripe) ripe++;
+        if (isRipe(crop)) ripe++;
         else growing++;
       }
     }

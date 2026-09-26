@@ -2,7 +2,7 @@ import { terrainWorldBounds } from '@open-northland/render';
 import { FOG_MODE, FOG_STATE, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../src/game/sandbox/index.js';
-import { actorsOf, trainingOccupancyOf } from '../src/game/snapshot.js';
+import { trainingOccupancyOf } from '../src/game/snapshot.js';
 import { fixedViewerSeat, switchableViewerSeat } from '../src/game/viewer-seat.js';
 import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
 import { createFogGates, createSnapshotProjections } from '../src/view/projections/index.js';
@@ -133,10 +133,10 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
 
 /**
  * The scale half of the same contract: a decoded map's entity count is dominated by scenery, so the
- * per-tick projections must share ONE walk of it (`actorsOf`) instead of each re-walking the map. Pinned
- * by counting entities handed out, because a projection that quietly walks `entities` again still returns
- * the right answer. The heart projection also reaches for render's scene index, a second walk with a memo
- * of its own; the last case below bounds that one.
+ * per-tick projections read the snapshot's indexes (`actorsOf` and the groups) instead of each re-walking
+ * the map. Pinned by counting entities handed out, because a projection that quietly walks `entities`
+ * again still returns the right answer. The heart projection also reaches for render's scene index, a
+ * second walk with a memo of its own; the last case below bounds that one.
  */
 describe('per-tick projections - one walk of the map between them', () => {
   const HOME_TYPE = 2;
@@ -156,25 +156,28 @@ describe('per-tick projections - one walk of the map between them', () => {
     },
   });
 
-  it('hands out each entity once, not once per projection', () => {
+  it('walks the entity list only to build the indexes, never inside a projection', () => {
     const entities: Ent[] = [owned(building(10, HOME_TYPE, 1, 1), 1, 1), owned(settler(11, 0, 10), 2, 2)];
     for (let i = 0; i < SCENERY; i++) entities.push(tree(100 + i));
     const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
+    const project = (): void => {
+      const { doorBadgesFor, settlerBubblesFor, lifeHeartsFor } = createSnapshotProjections(
+        fixedViewerSeat(PLAYER),
+        () => undefined,
+        workerRoleOf,
+        createFogGates(),
+        { isLivestockTribe: () => false },
+      );
+      doorBadgesFor(snapshot);
+      settlerBubblesFor(snapshot);
+      lifeHeartsFor(snapshot);
+      forEachMinimapDot(snapshot, null, terrainWorldBounds(8, 8), 0.5, undefined, () => undefined);
+    };
 
-    const { doorBadgesFor, settlerBubblesFor, lifeHeartsFor } = createSnapshotProjections(
-      fixedViewerSeat(PLAYER),
-      () => undefined,
-      workerRoleOf,
-      createFogGates(),
-      { isLivestockTribe: () => false },
-    );
-    doorBadgesFor(snapshot); // a tally pass, a projection pass, and the household grouping
-    settlerBubblesFor(snapshot);
-    lifeHeartsFor(snapshot);
-    forEachMinimapDot(snapshot, null, terrainWorldBounds(8, 8), 0.5, undefined, () => undefined);
-
-    // One shared pass builds the actor index; each projection then reads only that.
-    expect(visits()).toBe(entities.length);
+    project(); // builds each index once; a mirror then maintains them per change
+    const built = visits();
+    project(); // fresh projection memos over the standing indexes
+    expect(visits()).toBe(built);
   });
 
   it("builds render's scene index once for a heart-wearer mid store-exchange, however many ask", () => {
@@ -219,7 +222,7 @@ describe('per-tick projections - one walk of the map between them', () => {
   });
 });
 
-it('counts reserved training places in the shared snapshot walk and releases them next tick', () => {
+it('counts reserved training places from one index build and releases them next tick', () => {
   const entities = [
     { id: 1, components: { Settler: {}, TrainingOrder: { house: 10 } } },
     { id: 2, components: { Settler: {}, TrainingOrder: { house: 10 }, Indoors: { building: 10 } } },
@@ -227,9 +230,8 @@ it('counts reserved training places in the shared snapshot walk and releases the
     ...Array.from({ length: 400 }, (_, i) => ({ id: i + 30, components: { Settler: {} } })),
   ];
   const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
-  actorsOf(snapshot);
-  const before = visits();
   expect(trainingOccupancyOf(snapshot, 10)).toBe(2);
+  const before = visits();
   expect(trainingOccupancyOf(snapshot, 20)).toBe(1);
   expect(trainingOccupancyOf(snapshot, 30)).toBe(0);
   expect(visits()).toBe(before);

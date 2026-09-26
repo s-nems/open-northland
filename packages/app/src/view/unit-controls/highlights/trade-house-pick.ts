@@ -1,5 +1,5 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { entitiesWith, entityById, type WorldSnapshot } from '@open-northland/sim';
 import { num } from '../../../game/snapshot.js';
 
 /** The sim's trade-stop rule (`SessionHost.canAttachTradeHouse`): whether the trader's route takes the
@@ -31,8 +31,7 @@ export const tradeHousePick = {
   ): BuildingHighlightItem[] {
     const routes = settlers.map((settler) => routeHousesOf(snapshot, settler));
     const items: BuildingHighlightItem[] = [];
-    for (const e of snapshot.entities) {
-      if (e.components.Building === undefined) continue;
+    for (const e of entitiesWith(snapshot, 'Building')) {
       if (settlers.some((settler) => canAttach(settler, e.id))) items.push({ id: e.id, ok: true });
       else if (routes.some((taken) => taken.has(e.id))) items.push({ id: e.id, ok: false });
     }

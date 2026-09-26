@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { JOB_ARCHER } from '../src/catalog/jobs.js';
-import { actorsOf } from '../src/game/snapshot.js';
 import {
   boundWorkers,
   FAMILY_GAP_FRAC,
@@ -177,12 +176,12 @@ describe('cost follows the selection, not the map', () => {
       })),
     ]);
 
-  it('boundWorkers rides the snapshot-shared actors walk instead of adding one', () => {
+  it('boundWorkers reads its building groups off the standing indexes, not the map', () => {
     const { snapshot, visits } = visitCountingSnapshot(crowded());
-    actorsOf(snapshot); // the walk the frame's other projections already paid for
-    const shared = visits();
-    expect(boundWorkers(snapshot, BUILDING, false)).toEqual([1]);
-    expect(visits()).toBe(shared);
+    expect(boundWorkers(snapshot, OTHER, true)).toEqual([]); // builds the indexes a mirror maintains
+    const built = visits();
+    expect(boundWorkers(snapshot, BUILDING, true)).toEqual([1]);
+    expect(visits()).toBe(built);
   });
 
   it('groupedWorkers reads only the ids it was handed', () => {

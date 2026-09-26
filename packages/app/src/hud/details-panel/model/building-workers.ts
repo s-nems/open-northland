@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
-import { actorsOf, isSettler, num } from '../../../game/snapshot.js';
+import { num, staffOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type BuildingDef, type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
 
@@ -16,10 +16,7 @@ export interface WorkerSlotRow {
 
 function boundCountsByJob(snapshot: WorldSnapshot, buildingId: number): Map<number, number> {
   const counts = new Map<number, number>();
-  for (const e of actorsOf(snapshot)) {
-    if (!isSettler(e)) continue;
-    const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
-    if (num(assignment?.workplace) !== buildingId) continue;
+  for (const e of staffOf(snapshot, buildingId)) {
     const jobType = num((e.components.Settler as Comp | undefined)?.jobType);
     if (jobType === undefined) continue;
     counts.set(jobType, (counts.get(jobType) ?? 0) + 1);

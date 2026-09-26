@@ -1,12 +1,13 @@
 import {
   entityById,
+  type HouseholdGoodPolicyView,
   homeQualityView,
   householdGoodPolicyView,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import {
-  familiesByHome,
+  homeFamiliesOf,
   isBuilding,
   isFemale,
   isPalisade,
@@ -162,6 +163,8 @@ export type UnitPanelModel =
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
+const ALL_HOUSEHOLD_GOODS: HouseholdGoodPolicyView = { cooking: true, rest: true, piety: true };
+
 export function buildUnitPanelModel(
   snapshot: WorldSnapshot,
   selected: ReadonlySet<number>,
@@ -248,7 +251,8 @@ export function buildUnitPanelModel(
     const finished = ent.components.UnderConstruction === undefined && pct(num(b.built)) >= 100;
     const pools = homeQualityView(snapshot, entityId) ?? { cooking: 0, rest: 0, piety: 0 };
     const ownerPlayer = ownerPlayerOf(ent);
-    const policy = householdGoodPolicyView(snapshot, ownerPlayer ?? -1);
+    const policy =
+      ownerPlayer === undefined ? ALL_HOUSEHOLD_GOODS : householdGoodPolicyView(snapshot, ownerPlayer);
     const effectOrder = { cooking: 0, rest: 1, piety: 2 } as const;
     const homeQuality =
       def?.kind === 'home' && finished
@@ -292,7 +296,7 @@ export function buildUnitPanelModel(
       home:
         def?.kind === 'home'
           ? {
-              families: (familiesByHome(snapshot).get(entityId) ?? []).map((f) => ({
+              families: (homeFamiliesOf(snapshot, entityId) ?? []).map((f) => ({
                 members: [
                   ...f.members.slice(0, f.adults).sort((a, b) => {
                     const left = entityById(snapshot, a);

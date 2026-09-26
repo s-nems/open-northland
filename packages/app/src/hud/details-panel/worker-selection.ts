@@ -1,13 +1,13 @@
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, groupedBy, indexesOf, type WorldSnapshot } from '@open-northland/sim';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import {
-  actorsOf,
-  buildSiteOf,
   isSettler,
   num,
-  shelterOf,
+  shelterersOf,
+  siteCrewOf,
+  staffOf,
+  supplyRunsTo,
   trainingHouseOf,
-  workplaceOf,
 } from '../../game/snapshot.js';
 
 /** Cap on the settler sprites drawn in one field; the field squeezes its cells to fit them. */
@@ -58,8 +58,7 @@ export function fieldWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
 function shelteringIn(snapshot: WorldSnapshot, buildingId: number): number[] {
   const inside: number[] = [];
   const running: number[] = [];
-  for (const e of actorsOf(snapshot)) {
-    if (!isSettler(e) || shelterOf(e) !== buildingId) continue;
+  for (const e of shelterersOf(snapshot, buildingId)) {
     const rest = e.components.Resting as { at?: unknown } | undefined;
     (num(rest?.at) === buildingId ? inside : running).push(e.id);
   }
@@ -73,27 +72,35 @@ function shelteringIn(snapshot: WorldSnapshot, buildingId: number): number[] {
 export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
   const garrison: number[] = [];
   const posted: number[] = [];
-  const crew: number[] = [];
+  for (const e of staffOf(snapshot, buildingId)) (mansAPost(e) ? garrison : posted).push(e.id);
+  if (garrison.length >= MAX_WORKERS) return garrison.slice(0, MAX_WORKERS);
+  // Each settler is listed once, under the first of its bonds: staff, then crew, then drill.
+  const listed = new Set([...garrison, ...posted]);
+  const crew = siteCrew ? raisingCrew(snapshot, buildingId).filter((id) => !listed.has(id)) : [];
+  for (const id of crew) listed.add(id);
   const drilling: number[] = [];
-  // The scan stops once the garrison alone fills the field: nothing below it could be drawn.
-  const push = (into: number[], id: number): void => {
-    if (into.length < MAX_WORKERS) into.push(id);
-  };
-  for (const e of actorsOf(snapshot)) {
-    if (garrison.length >= MAX_WORKERS) break;
-    if (!isSettler(e)) continue;
-    const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
-    const supply = e.components.SupplyRun as { site?: unknown } | undefined;
-    const raising =
-      siteCrew &&
-      (buildSiteOf(e) === buildingId ||
-        num(atomic?.targetEntity) === buildingId ||
-        num(supply?.site) === buildingId);
-    if (workplaceOf(e) === buildingId) push(mansAPost(e) ? garrison : posted, e.id);
-    else if (raising) push(crew, e.id);
-    else if (trainingHouseOf(e) === buildingId) push(drilling, e.id);
+  for (const e of indexesOf(snapshot).get(TRAINEES).get(buildingId) ?? []) {
+    if (!listed.has(e.id)) drilling.push(e.id);
   }
   return [...garrison, ...posted, ...crew, ...drilling].slice(0, MAX_WORKERS);
+}
+
+const ATOMIC_TARGETS = groupedBy((e) =>
+  isSettler(e)
+    ? num((e.components.CurrentAtomic as { targetEntity?: unknown } | undefined)?.targetEntity)
+    : undefined,
+);
+
+const TRAINEES = groupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined));
+
+/** The settlers raising `site`, ascending by id: its assigned builders, the ones working on it right now
+ *  and the ones supplying it. */
+function raisingCrew(snapshot: WorldSnapshot, site: number): number[] {
+  const ids = new Set<number>();
+  for (const e of siteCrewOf(snapshot, site)) if (isSettler(e)) ids.add(e.id);
+  for (const e of indexesOf(snapshot).get(ATOMIC_TARGETS).get(site) ?? []) ids.add(e.id);
+  for (const e of supplyRunsTo(snapshot, site)) ids.add(e.id);
+  return [...ids].sort((a, b) => a - b);
 }
 
 /** Whether this settler's trade is a tower post rather than ordinary work at its building. */

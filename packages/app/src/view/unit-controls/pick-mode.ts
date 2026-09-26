@@ -1,8 +1,14 @@
 import type { UiCue } from '@open-northland/audio';
 import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { type Entity, entityById, type PlayerCommand, type WorldSnapshot } from '@open-northland/sim';
-import { isVehicle, ownerPlayerOf, workplaceOf } from '../../game/snapshot.js';
+import {
+  type Entity,
+  entitiesWith,
+  entityById,
+  type PlayerCommand,
+  type WorldSnapshot,
+} from '@open-northland/sim';
+import { ownerPlayerOf, workplaceOf } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, type Tile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import {
@@ -279,8 +285,8 @@ function computeVehicleHighlight(
   const owner = self === undefined ? undefined : ownerPlayerOf(self);
   if (owner === undefined) return [];
   const items: BuildingHighlightItem[] = [];
-  for (const e of snapshot.entities) {
-    if (!isVehicle(e) || ownerPlayerOf(e) !== owner) continue;
+  for (const e of entitiesWith(snapshot, 'Vehicle')) {
+    if (ownerPlayerOf(e) !== owner) continue;
     items.push({ id: e.id, ok: canAttach(settler, e.id) });
   }
   return items;

@@ -1,9 +1,8 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { entitiesWith, entityById, type WorldSnapshot } from '@open-northland/sim';
 import {
   buildingTypeOf,
-  familiesByHome,
-  type HomeFamily,
+  homeFamiliesOf,
   isBuilding,
   ownerPlayerOf,
   ownerTribeKeyOf,
@@ -53,9 +52,9 @@ function moversOf(snapshot: WorldSnapshot, settlerIds: readonly number[]): Mover
 
 /** Whether `house` is an own home of some mover, and whether one mover not yet living there fits. */
 function houseVerdict(
+  snapshot: WorldSnapshot,
   house: SnapshotEntity,
   movers: Movers,
-  families: ReadonlyMap<number, readonly HomeFamily[]>,
   housesByType: ReadonlyMap<number, HouseInfo>,
 ): { readonly candidate: boolean; readonly ok: boolean } {
   if (!isBuilding(house)) return { candidate: false, ok: false };
@@ -66,7 +65,7 @@ function houseVerdict(
   }
   const key = ownerTribeKeyOf(house);
   const moving = (movers.byKey.get(key) ?? 0) - (movers.livingAt.get(house.id)?.get(key) ?? 0);
-  const free = (families.get(house.id)?.length ?? 0) < (info.homeSize ?? 0);
+  const free = (homeFamiliesOf(snapshot, house.id)?.length ?? 0) < (info.homeSize ?? 0);
   return { candidate: true, ok: moving > 0 && free };
 }
 
@@ -82,10 +81,9 @@ export function computeHouseHighlight(
 ): BuildingHighlightItem[] {
   const movers = moversOf(snapshot, settlerIds);
   if (movers === null) return [];
-  const families = familiesByHome(snapshot);
   const items: BuildingHighlightItem[] = [];
-  for (const e of snapshot.entities) {
-    const { candidate, ok } = houseVerdict(e, movers, families, housesByType);
+  for (const e of entitiesWith(snapshot, 'Building')) {
+    const { candidate, ok } = houseVerdict(snapshot, e, movers, housesByType);
     if (candidate) items.push({ id: e.id, ok });
   }
   return items;
@@ -102,5 +100,5 @@ export function houseAssignableAt(
   const house = entityById(snapshot, buildingId);
   const movers = moversOf(snapshot, settlerIds);
   if (house === undefined || movers === null) return false;
-  return houseVerdict(house, movers, familiesByHome(snapshot), housesByType).ok;
+  return houseVerdict(snapshot, house, movers, housesByType).ok;
 }

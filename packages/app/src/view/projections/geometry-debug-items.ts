@@ -1,7 +1,7 @@
 import type { BuildingFootprint } from '@open-northland/data';
 import type { GeometryDebugItem } from '@open-northland/render';
-import { nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
-import { buildingTypeOf, isBuilding, positionOf } from '../../game/snapshot.js';
+import { entitiesWith, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
+import { buildingTypeOf, positionOf } from '../../game/snapshot.js';
 import { workerIconNode } from './building-points.js';
 
 /** The per-building footprint diagram behind the `?debug=geometry` flag. */
@@ -16,8 +16,7 @@ export function computeGeometryDebugItems(
   buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>,
 ): GeometryDebugItem[] {
   const items: GeometryDebugItem[] = [];
-  for (const e of snapshot.entities) {
-    if (!isBuilding(e)) continue;
+  for (const e of entitiesWith(snapshot, 'Building')) {
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const anchor = nodeOfPosition(pos.x, pos.y);
@@ -48,8 +47,7 @@ export function buildingSetFingerprint(
 ): number {
   // Seeded with the table size so a content swap invalidates too.
   let h = buildingsByType.size | 0;
-  for (const e of snapshot.entities) {
-    if (!isBuilding(e)) continue;
+  for (const e of entitiesWith(snapshot, 'Building')) {
     const pos = positionOf(e);
     h = (Math.imul(h, 31) + e.id) | 0;
     h = (Math.imul(h, 31) + (buildingTypeOf(e) ?? -1)) | 0;

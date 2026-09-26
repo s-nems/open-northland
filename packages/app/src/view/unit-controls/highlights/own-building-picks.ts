@@ -1,6 +1,6 @@
 import type { BuildingType } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entitiesWith, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   builderCrewHasRoom,
   buildingTribeOf,
@@ -52,7 +52,8 @@ function ownBuildingPick(rule: PickRule): OwnBuildingPick {
       const settlers = settlersIn(snapshot, settlerIds);
       const items: BuildingHighlightItem[] = [];
       if (settlers.length === 0) return items;
-      for (const e of snapshot.entities) {
+      // Every rule's candidate is a building.
+      for (const e of entitiesWith(snapshot, 'Building')) {
         if (!rule.candidate(e, byType)) continue;
         const owned = settlers.filter((settler) => ownerPlayerOf(e) === ownerPlayerOf(settler));
         if (owned.length > 0)

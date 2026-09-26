@@ -22,7 +22,10 @@ const unit = (id: number, tribe: number, player: number, health?: Pool): Ent => 
 });
 
 const animal = (id: number, health?: Pool): Ent => unit(id, LIVESTOCK_TRIBE, PLAYER, health);
-const person = (id: number, health?: Pool, player = PLAYER): Ent => unit(id, PEOPLE_TRIBE, player, health);
+const person = (id: number, health?: Pool, player = PLAYER): Ent => {
+  const body = unit(id, PEOPLE_TRIBE, player, health);
+  return { id, components: { ...body.components, Person: { person: true } } };
+};
 
 const heartsOf = (entities: Ent[], selected?: ReadonlySet<number>) =>
   computeLifeHearts(snapshotOf(entities), {
@@ -86,5 +89,17 @@ describe('computeLifeHearts - who among the people wears one', () => {
     };
     expect(hearts(hurt)).toHaveLength(1); // the same settler, still outside
     expect(heartsOf([store, inside])).toHaveLength(0);
+  });
+
+  it('lists stock, the wounded and the selected by ascending id, whatever order the selection holds', () => {
+    const entities = [
+      person(1, { hitpoints: 100, max: 100 }),
+      animal(2),
+      person(3, { hitpoints: 50, max: 100 }),
+      person(4, { hitpoints: 100, max: 100 }),
+      person(5, { hitpoints: 100, max: 100 }),
+    ];
+    const ids = heartsOf(entities, new Set([5, 1, 3])).map((heart) => heart.id);
+    expect(ids).toEqual([1, 2, 3, 5]);
   });
 });

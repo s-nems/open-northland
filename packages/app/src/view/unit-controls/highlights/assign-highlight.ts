@@ -1,14 +1,20 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { type Entity, entityById, type GroupWorker, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type Entity,
+  entitiesWith,
+  entityById,
+  type GroupWorker,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { canonicalJobType } from '../../../game/sandbox/ids/index.js';
 import {
   buildingTypeOf,
   isBuilding,
-  isSettler,
   ownerTribeKeyOf,
   type SnapshotEntity,
   settlerJobType,
   settlersIn,
+  staffOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
 
@@ -27,21 +33,14 @@ export interface AssignBuildingInfo {
   readonly workers?: WorkerSlots | undefined;
 }
 
-/** The bound-settler headcount per (building id, jobType) - the capacity check reads it. */
-type Staffing = Map<number, Map<number, number>>;
-
-function buildStaffing(snapshot: WorldSnapshot): Staffing {
-  const staffing: Staffing = new Map();
-  for (const e of snapshot.entities) {
-    if (!isSettler(e)) continue;
+/** The settlers bound to `building` counted by jobType - the capacity check reads it. */
+function staffingOf(snapshot: WorldSnapshot, building: number): Map<number, number> {
+  const byJob = new Map<number, number>();
+  for (const e of staffOf(snapshot, building)) {
     const jobType = settlerJobType(e);
-    const workplace = workplaceOf(e);
-    if (jobType === undefined || workplace === undefined) continue;
-    const byJob = staffing.get(workplace) ?? new Map<number, number>();
-    byJob.set(jobType, (byJob.get(jobType) ?? 0) + 1);
-    staffing.set(workplace, byJob);
+    if (jobType !== undefined) byJob.set(jobType, (byJob.get(jobType) ?? 0) + 1);
   }
-  return staffing;
+  return byJob;
 }
 
 /**
@@ -112,9 +111,9 @@ function slotsOf(
  * staff from the moment the foundation is placed.
  */
 function workplaceVerdict(
+  snapshot: WorldSnapshot,
   building: SnapshotEntity,
   crew: Crew,
-  staffing: Staffing,
   buildingsByType: ReadonlyMap<number, AssignBuildingInfo>,
 ): { readonly candidate: boolean; readonly ok: boolean } {
   const slots = slotsOf(building, buildingsByType);
@@ -123,9 +122,9 @@ function workplaceVerdict(
   const seats = slots.map((slot) => ({ slot, key: seatKey(team, slot.jobType) }));
   const unemployedHere = seats.some(({ key }) => (crew.unemployed.get(key) ?? 0) > 0);
   const employedHere = crew.employedAt.get(building.id);
-  const staffed = staffing.get(building.id);
+  const staffed = staffingOf(snapshot, building.id);
   const ok = seats.some(({ slot, key }) => {
-    if ((staffed?.get(slot.jobType) ?? 0) >= slot.count) return false;
+    if ((staffed.get(slot.jobType) ?? 0) >= slot.count) return false;
     if (unemployedHere) return (crew.unemployed.get(key) ?? 0) > 0;
     return (crew.all.get(key) ?? 0) - (employedHere?.get(key) ?? 0) > 0;
   });
@@ -145,10 +144,9 @@ export function computeAssignHighlight(
   const settlers = settlersIn(snapshot, settlerIds);
   if (settlers.length === 0) return [];
   const crew = crewOf(settlers);
-  const staffing = buildStaffing(snapshot);
   const items: BuildingHighlightItem[] = [];
-  for (const e of snapshot.entities) {
-    const { candidate, ok } = workplaceVerdict(e, crew, staffing, buildingsByType);
+  for (const e of entitiesWith(snapshot, 'Building')) {
+    const { candidate, ok } = workplaceVerdict(snapshot, e, crew, buildingsByType);
     if (candidate) items.push({ id: e.id, ok });
   }
   return items;
@@ -168,7 +166,7 @@ export function workerGroupAt(
   const building = entityById(snapshot, buildingId);
   if (building === undefined) return null;
   const settlers = settlersIn(snapshot, settlerIds);
-  if (!workplaceVerdict(building, crewOf(settlers), buildStaffing(snapshot), buildingsByType).ok) return null;
+  if (!workplaceVerdict(snapshot, building, crewOf(settlers), buildingsByType).ok) return null;
   const slots = slotsOf(building, buildingsByType);
   const team = ownerTribeKeyOf(building);
   const workers: GroupWorker[] = [];

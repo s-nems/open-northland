@@ -1,7 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
-  actorsOf,
+  entityById,
+  groupedBy,
+  indexesOf,
+  type SnapshotIndexSpec,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
+import {
+  isActor,
   isSettler,
   num,
   positionOf,
@@ -129,26 +136,26 @@ export function surnameSourceOf(snapshot: WorldSnapshot, e: SnapshotEntity): num
 
 /** A growing child's father, which its home and surname follow; undefined for an adult. */
 export function fatherOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
-  return isAdult(e) ? undefined : fathersByChild(snapshot).get(e.id);
+  return isAdult(e) ? undefined : fatherOfChild(snapshot, e.id);
 }
 
-const fatherIndex = new WeakMap<WorldSnapshot, ReadonlyMap<number, number>>();
+/** The child `marriageOf` reports, read without its allocation: the key runs on every touched actor. */
+function marriageChildOf(e: SnapshotEntity): number | undefined {
+  const m = e.components.Marriage as { spouse?: unknown; child?: unknown } | undefined;
+  return num(m?.spouse) !== undefined ? num(m?.child) : undefined;
+}
 
-/** Every growing child's father, from one walk over the snapshot's actors: a list naming a whole
- *  settlement asks once per child, which a scan per question would turn into a walk per child. */
-function fathersByChild(snapshot: WorldSnapshot): ReadonlyMap<number, number> {
-  let fathers = fatherIndex.get(snapshot);
-  if (fathers === undefined) {
-    const built = new Map<number, number>();
-    for (const parent of actorsOf(snapshot)) {
-      const m = marriageOf(parent);
-      if (m === undefined || m.child === null || built.has(m.child)) continue;
-      built.set(m.child, isFemale(parent) ? m.spouse : parent.id);
-    }
-    fathers = built;
-    fatherIndex.set(snapshot, built);
-  }
-  return fathers;
+/** The actors naming each growing child in their `Marriage`, ascending by id. */
+const PARENTS = groupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined));
+
+/** A growing child's father, named by its lowest-id parent: a list naming a whole settlement asks once
+ *  per child, so the parents come from a maintained index rather than a walk per question. */
+function fatherOfChild(snapshot: WorldSnapshot, child: number): number | undefined {
+  const parent = indexesOf(snapshot).get(PARENTS).get(child)?.[0];
+  if (parent === undefined) return undefined;
+  const marriage = marriageOf(parent);
+  if (marriage === undefined) return undefined;
+  return isFemale(parent) ? marriage.spouse : parent.id;
 }
 
 /** One family living in a home, mirroring the sim's `familiesOf` grouping unit. */
@@ -159,43 +166,85 @@ export interface HomeFamily {
   readonly minors: number;
 }
 
+const residentHomeOf = (e: SnapshotEntity): number | undefined =>
+  isSettler(e) ? residenceHomeOf(e) : undefined;
+
+const RESIDENTS = groupedBy(residentHomeOf);
+
+/** Whether two objects of one entity group identically: a family reads only the home, adulthood and the
+ *  marriage's spouse and child. */
+function sameFamilyFacts(previous: SnapshotEntity, next: SnapshotEntity): boolean {
+  // The mirror keeps the objects of the components a change left alone.
+  const was = previous.components;
+  const is = next.components;
+  if (
+    was.Residence === is.Residence &&
+    was.Marriage === is.Marriage &&
+    was.Age === is.Age &&
+    (was.Settler === undefined) === (is.Settler === undefined)
+  )
+    return true;
+  if (residentHomeOf(previous) !== residentHomeOf(next) || isAdult(previous) !== isAdult(next)) return false;
+  const wasMarriage = marriageOf(previous);
+  const isMarriage = marriageOf(next);
+  return wasMarriage?.spouse === isMarriage?.spouse && wasMarriage?.child === isMarriage?.child;
+}
+
+/** Each home's grouped families, built on read and dropped when a change may regroup that home: every
+ *  fact a grouping reads belongs to the home's own residents. */
+const FAMILIES: SnapshotIndexSpec<Map<number, readonly HomeFamily[]>> = {
+  empty: () => new Map(),
+  add: (families, e) => forgetHomeOf(families, e),
+  remove: (families, e) => forgetHomeOf(families, e),
+  replace: (families, previous, next) => {
+    if (sameFamilyFacts(previous, next)) return;
+    forgetHomeOf(families, previous);
+    forgetHomeOf(families, next);
+  },
+};
+
+function forgetHomeOf(families: Map<number, readonly HomeFamily[]>, e: SnapshotEntity): void {
+  const home = residentHomeOf(e);
+  if (home !== undefined) families.delete(home);
+}
+
 /**
- * Group every home's residents into families, mirroring the sim's `familiesOf`: an adult, its
- * cohabiting spouse and the couple's growing child, with an orphaned minor its own household. `homeSize`
- * caps families rather than settlers. Family order follows the lowest member id.
+ * The families living in `home`, mirroring the sim's `familiesOf`: an adult, its cohabiting spouse and
+ * the couple's growing child, with an orphaned minor its own household. `homeSize` caps families rather
+ * than settlers. Undefined for a home nobody lives in.
  */
-export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[]> {
+export function homeFamiliesOf(snapshot: WorldSnapshot, home: number): readonly HomeFamily[] | undefined {
+  const residents = indexesOf(snapshot).get(RESIDENTS).get(home);
+  if (residents === undefined) return undefined;
+  const families = indexesOf(snapshot).get(FAMILIES);
+  let grouped = families.get(home);
+  if (grouped === undefined) {
+    grouped = groupFamilies(residents);
+    families.set(home, grouped);
+  }
+  return grouped;
+}
+
+/** Adult families in the order their lowest member appears, then the orphaned minors. */
+function groupFamilies(residents: readonly SnapshotEntity[]): HomeFamily[] {
   interface Group {
     members: number[];
     adults: number;
     minors: number;
   }
-  const residents: { e: SnapshotEntity; home: number }[] = [];
-  const residentHomes = new Map<number, number>();
-  for (const e of actorsOf(snapshot)) {
-    const home = residenceHomeOf(e);
-    if (home === undefined || !isSettler(e)) continue;
-    residents.push({ e, home });
-    residentHomes.set(e.id, home);
-  }
+  const living = new Set(residents.map((e) => e.id));
   // An adult groups with its cohabiting spouse only, so a spouse living elsewhere heads its own family.
-  const groupsByHome = new Map<number, Map<number, Group>>();
+  const groups = new Map<number, Group>();
   const groupByChild = new Map<number, Group>();
-  const minors: { e: SnapshotEntity; home: number }[] = [];
-  for (const { e, home } of residents) {
+  const minors: SnapshotEntity[] = [];
+  for (const e of residents) {
     if (!isAdult(e)) {
-      minors.push({ e, home });
+      minors.push(e);
       continue;
     }
     const marriage = marriageOf(e);
-    const spouse =
-      marriage !== undefined && residentHomes.get(marriage.spouse) === home ? marriage.spouse : undefined;
+    const spouse = marriage !== undefined && living.has(marriage.spouse) ? marriage.spouse : undefined;
     const head = spouse !== undefined && spouse < e.id ? spouse : e.id;
-    let groups = groupsByHome.get(home);
-    if (groups === undefined) {
-      groups = new Map();
-      groupsByHome.set(home, groups);
-    }
     let group = groups.get(head);
     if (group === undefined) {
       group = { members: [], adults: 0, minors: 0 };
@@ -204,24 +253,16 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
     group.members.push(e.id);
     group.adults++;
     const child = marriage?.child;
-    if (child !== null && child !== undefined && residentHomes.get(child) === home)
-      groupByChild.set(child, group);
+    if (child !== null && child !== undefined && living.has(child)) groupByChild.set(child, group);
   }
-  for (const { e, home } of minors) {
+  for (const e of minors) {
     let group = groupByChild.get(e.id);
     if (group === undefined) {
-      let groups = groupsByHome.get(home);
-      if (groups === undefined) {
-        groups = new Map();
-        groupsByHome.set(home, groups);
-      }
       group = { members: [], adults: 0, minors: 0 };
       groups.set(e.id, group);
     }
     group.members.push(e.id);
     group.minors++;
   }
-  const out = new Map<number, HomeFamily[]>();
-  for (const [home, groups] of groupsByHome) out.set(home, [...groups.values()]);
-  return out;
+  return [...groups.values()];
 }

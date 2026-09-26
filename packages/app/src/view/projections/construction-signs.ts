@@ -1,7 +1,6 @@
 import type { ConstructionSign } from '@open-northland/render';
-import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
+import { entitiesWith, nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import {
-  actorsOf,
   buildingTribeOf,
   buildingTypeOf,
   isBuilding,
@@ -21,8 +20,8 @@ export function computeConstructionSigns(
   buildingInfoOf: BuildingDoorInfoOf,
 ): ConstructionSign[] {
   const out: ConstructionSign[] = [];
-  for (const e of actorsOf(snapshot)) {
-    if (!isBuilding(e) || e.components.UnderConstruction === undefined) continue;
+  for (const e of entitiesWith(snapshot, 'UnderConstruction')) {
+    if (!isBuilding(e)) continue;
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e));

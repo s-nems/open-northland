@@ -6,6 +6,7 @@ import {
 } from '@open-northland/render';
 import { ONE, tileToScreen } from '@open-northland/render/data';
 import {
+  entitiesWith,
   entityById,
   type Fixed,
   nodeOfPosition,
@@ -14,20 +15,18 @@ import {
 } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import {
-  actorsOf,
   buildingTribeOf,
   buildingTypeOf,
-  familiesByHome,
   type HomeFamily,
+  homeFamiliesOf,
   isAdult,
-  isBuilding,
   isFemale,
   isMakingLove,
-  isSettler,
   ownerPlayerOf,
   positionOf,
+  type SnapshotEntity,
   settlerJobType,
-  workplaceOf,
+  staffOf,
 } from '../../game/snapshot.js';
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
@@ -61,44 +60,11 @@ export function computeDoorBadges(
   buildingInfoOf: BuildingDoorInfoOf,
   roleOf: (jobType: number) => WorkerRole,
 ): DoorBadge[] {
-  // Buckets follow the snapshot's ascending-id actor order, so each one is deterministic.
-  const tally = new Map<
-    number,
-    { craftsmen: number[]; carriers: number[]; gatherers: number[]; garrison: number }
-  >();
-  // One banner row per resident family.
-  const households = familiesByHome(snapshot);
-  const actors = actorsOf(snapshot);
-  for (const e of actors) {
-    if (!isSettler(e)) continue;
-    const workplace = workplaceOf(e);
-    if (workplace === undefined) continue; // an unbound settler shows no building badge
-    const jobType = settlerJobType(e);
-    if (jobType === undefined) continue;
-    const bucket = tally.get(workplace) ?? { craftsmen: [], carriers: [], gatherers: [], garrison: 0 };
-    switch (roleOf(jobType)) {
-      case 'carrier':
-        bucket.carriers.push(e.id);
-        break;
-      case 'gatherer':
-        bucket.gatherers.push(e.id);
-        break;
-      // Counted rather than bucketed: the post flies one flag, and its soldiers stay unpickable inside.
-      case 'garrison':
-        bucket.garrison++;
-        break;
-      case 'craftsman':
-        bucket.craftsmen.push(e.id);
-        break;
-    }
-    tally.set(workplace, bucket);
-  }
-
   const out: DoorBadge[] = [];
-  for (const e of actors) {
-    if (!isBuilding(e)) continue;
-    const counts = tally.get(e.id);
-    const families = households.get(e.id);
+  for (const e of entitiesWith(snapshot, 'Building')) {
+    const counts = staffTallyOf(staffOf(snapshot, e.id), roleOf);
+    // One banner row per resident family.
+    const families = homeFamiliesOf(snapshot, e.id);
     const hearts = isMakingLove(e);
     if (counts === undefined && families === undefined && !hearts) continue;
     // No flag over a foundation: the mast point is the finished tower's, some 239 px up, and the sim
@@ -130,6 +96,43 @@ export function computeDoorBadges(
     });
   }
   return out;
+}
+
+interface StaffTally {
+  readonly craftsmen: number[];
+  readonly carriers: number[];
+  readonly gatherers: number[];
+  garrison: number;
+}
+
+/** A building's staff by role, each list ascending by id like the staff; undefined when no member holds
+ *  a job, so the building shows no worker row. */
+function staffTallyOf(
+  staff: readonly SnapshotEntity[],
+  roleOf: (jobType: number) => WorkerRole,
+): StaffTally | undefined {
+  let tally: StaffTally | undefined;
+  for (const e of staff) {
+    const jobType = settlerJobType(e);
+    if (jobType === undefined) continue;
+    tally ??= { craftsmen: [], carriers: [], gatherers: [], garrison: 0 };
+    switch (roleOf(jobType)) {
+      case 'carrier':
+        tally.carriers.push(e.id);
+        break;
+      case 'gatherer':
+        tally.gatherers.push(e.id);
+        break;
+      // Counted rather than bucketed: the post flies one flag, and its soldiers stay unpickable inside.
+      case 'garrison':
+        tally.garrison++;
+        break;
+      case 'craftsman':
+        tally.craftsmen.push(e.id);
+        break;
+    }
+  }
+  return tally;
 }
 
 /** Both anchors reach the layer as the building's position plus a screen-px offset, so the layer

@@ -1,12 +1,12 @@
 import type { LifeHeart } from '@open-northland/render';
 // The Pixi-free entry: the root barrel would drag Pixi into headless callers.
 import { isIndoorSettler } from '@open-northland/render/data';
-import type { WorldSnapshot } from '@open-northland/sim';
+import { entityById, indexesOf, listedWhere, type WorldSnapshot } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import {
-  actorsOf,
   healthOf,
   isSettler,
+  isWildlife,
   ownerPlayerOf,
   positionOf,
   type SnapshotEntity,
@@ -36,8 +36,7 @@ export interface LifeHeartInputs {
  */
 export function computeLifeHearts(snapshot: WorldSnapshot, inputs: LifeHeartInputs): LifeHeart[] {
   const out: LifeHeart[] = [];
-  for (const e of actorsOf(snapshot)) {
-    if (!isSettler(e)) continue;
+  for (const e of heartCandidatesOf(snapshot, inputs.selected)) {
     const player = ownerPlayerOf(e);
     if (player === undefined) continue; // wild - no faction, no heart
     const tribe = settlerTribeOf(e);
@@ -53,6 +52,39 @@ export function computeLifeHearts(snapshot: WorldSnapshot, inputs: LifeHeartInpu
     out.push({ id: e.id, x: pos.x, y: pos.y, colour, life });
   }
   return out;
+}
+
+/** An owned settler that may wear a heart unselected: a wounded one, or a creature, the only kind a
+ *  livestock tribe spawns. */
+function mayWearHeartUnselected(e: SnapshotEntity): boolean {
+  if (!isSettler(e) || ownerPlayerOf(e) === undefined) return false;
+  return isWildlife(e) || lifeFractionOf(e) <= WOUNDED_LIFE_FRACTION;
+}
+
+const UNSELECTED_CANDIDATES = listedWhere(mayWearHeartUnselected);
+
+/** The index's candidates merged with the selected settlers it leaves out, ascending by id. */
+function heartCandidatesOf(
+  snapshot: WorldSnapshot,
+  selected: ReadonlySet<number> | undefined,
+): readonly SnapshotEntity[] {
+  const listed = indexesOf(snapshot).get(UNSELECTED_CANDIDATES);
+  if (selected === undefined || selected.size === 0) return listed;
+  const extra: SnapshotEntity[] = [];
+  for (const id of selected) {
+    const e = entityById(snapshot, id);
+    if (e !== undefined && isSettler(e) && !mayWearHeartUnselected(e)) extra.push(e);
+  }
+  if (extra.length === 0) return listed;
+  extra.sort((a, b) => a.id - b.id);
+  const merged: SnapshotEntity[] = [];
+  let i = 0;
+  for (const e of listed) {
+    for (let next = extra[i]; next !== undefined && next.id < e.id; next = extra[++i]) merged.push(next);
+    merged.push(e);
+  }
+  for (const e of extra.slice(i)) merged.push(e);
+  return merged;
 }
 
 /** Claimed stock always; a person only while the player has it selected or it is wounded. */

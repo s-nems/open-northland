@@ -17,6 +17,10 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   probes and the request-shaped reads it names. `Simulation` is constructed and typed only by hosts:
   entries, scenes, `game/sandbox/`, `game/world/` and the inline host, which serves snapshots off a
   delta-fed `SnapshotMirror` by default, so a snapshot kept past the next tick copies its entity list.
+  A kind subset, an owner's entities, a per-key group or count and the actors come from the indexes the
+  mirror maintains per change (`indexesOf`, `entitiesWith`, `groupedBy`, `countedBy` in `@open-northland/sim`;
+  `actorsOf` and the group readers in `game/snapshot-base.ts`), never from a per-tick walk over
+  `snapshot.entities`. A walk is for a click, an order or a one-off setup.
 - Load generated content through `src/content/net.ts` by its root-relative URL and validate it with
   the `@open-northland/data` schemas. A checkout without `content/` must still boot using synthetic
   fallback content or a clear unavailable state.
@@ -106,7 +110,7 @@ source of truth.
   test helpers they share, into `dist/` beside the package's own output; that output is rooted at the
   package rather than at `src/`, so a compiled helper's `../../src/...` import still resolves.
 - Snapshot at the normal runtime seam; do not clone or scan the full world again in individual HUD
-  controls.
+  controls. A control that needs a subset or an aggregate reads or defines a snapshot index.
 - Cache decoded assets and joins by stable inputs.
 - Do not cache small images as one canvas each. Chrome backs every 2d canvas, `OffscreenCanvas`
   included, with its own GPU surface until garbage collection; thousands of them exhaust macOS

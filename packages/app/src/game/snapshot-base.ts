@@ -1,4 +1,16 @@
-import { components, entityById, type Fixed, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  components,
+  countedBy,
+  entitiesWith,
+  entityById,
+  type Fixed,
+  groupedBy,
+  indexesOf,
+  listedWhere,
+  ONE,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 
 // Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
 // `undefined` for a missing component or field, because a snapshot entity carries only the components it
@@ -36,15 +48,18 @@ export function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } 
  * settler is never gated.
  */
 export function progressionGatesSettler(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
-  const { progressionEnabled, aiSeats } = worldRuleFacts(snapshot);
-  if (!progressionEnabled) return false;
+  if (!progressionRuleEnabled(snapshot)) return false;
   const owner = ownerPlayerOf(e);
-  return owner === undefined || !aiSeats.has(owner);
+  return owner === undefined || !isComputerSeat(snapshot, owner);
 }
 
-/** Whether the needs mechanic runs, so a surface can drop what the rule has stopped moving. */
+/** Whether the needs mechanic runs, so a surface can drop what the rule has stopped moving. An absent
+ *  `WorldRules` singleton means the sim default (enabled); the lowest-id carrier decides. */
 export function needsRuleEnabled(snapshot: WorldSnapshot): boolean {
-  return worldRuleFacts(snapshot).needsEnabled;
+  const rules = entitiesWith(snapshot, 'WorldRules')[0]?.components.WorldRules as
+    | { needsEnabled?: unknown }
+    | undefined;
+  return rules?.needsEnabled !== false;
 }
 
 /**
@@ -54,21 +69,23 @@ export function needsRuleEnabled(snapshot: WorldSnapshot): boolean {
  */
 export function ownedByComputerSeat(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const owner = ownerPlayerOf(e);
-  return owner !== undefined && worldRuleFacts(snapshot).aiSeats.has(owner);
+  return owner !== undefined && isComputerSeat(snapshot, owner);
 }
 
-interface WorldRuleFacts {
-  /** The `ProgressionRules` singleton's toggle; an absent singleton means the sim default (enabled). */
-  readonly progressionEnabled: boolean;
-  /** The `WorldRules` singleton's needs toggle; an absent singleton means the sim default (enabled). */
-  readonly needsEnabled: boolean;
-  /** The computer seats (their `AiPlayer` carriers), whatever their handlers are set to. */
-  readonly aiSeats: ReadonlySet<number>;
+/** The `ProgressionRules` singleton's toggle; an absent singleton means the sim default (enabled), and
+ *  the lowest-id carrier decides. */
+function progressionRuleEnabled(snapshot: WorldSnapshot): boolean {
+  const rules = entitiesWith(snapshot, 'ProgressionRules')[0]?.components.ProgressionRules as
+    | { professionProgressionEnabled?: unknown }
+    | undefined;
+  return rules?.professionProgressionEnabled !== false;
 }
 
-/** The world-wide facts a HUD surface consults, read off the snapshot's one shared walk. */
-function worldRuleFacts(snapshot: WorldSnapshot): WorldRuleFacts {
-  return indexOf(snapshot).facts;
+/** The computer seats by their `AiPlayer` carriers, whatever their handlers are set to. */
+const AI_SEATS = countedBy((e) => num((e.components.AiPlayer as { player?: unknown } | undefined)?.player));
+
+function isComputerSeat(snapshot: WorldSnapshot, player: number): boolean {
+  return indexesOf(snapshot).get(AI_SEATS).has(player);
 }
 
 /** The snapshot serializes `SettlerProgress.experience` as sorted `[spec, points]` pairs. Empty for a
@@ -150,64 +167,62 @@ export function commandedVehicleOf(snapshot: WorldSnapshot, e: SnapshotEntity): 
   return carrier === null ? vehicle : undefined;
 }
 
-interface SnapshotIndex {
-  readonly actors: readonly SnapshotEntity[];
-  readonly trainingOccupancy: ReadonlyMap<number, number>;
-  readonly facts: WorldRuleFacts;
+/** A settler or a building, the entities {@link actorsOf} lists. */
+export function isActor(e: SnapshotEntity): boolean {
+  return isSettler(e) || isBuilding(e);
 }
 
-/** Keyed by snapshot: a snapshot is a frozen per-frame value, so an entry lives exactly one frame. */
-const INDEX = new WeakMap<WorldSnapshot, SnapshotIndex>();
+const ACTORS = listedWhere(isActor);
 
 /**
- * The one walk over a snapshot's entities every projection and HUD surface shares: the actors, and
- * the world-wide rule facts. Each rule stays null until its first carrier decides it, so a later
- * duplicate cannot overwrite the winner.
- */
-function indexOf(snapshot: WorldSnapshot): SnapshotIndex {
-  const cached = INDEX.get(snapshot);
-  if (cached !== undefined) return cached;
-  const actors: SnapshotEntity[] = [];
-  const trainingOccupancy = new Map<number, number>();
-  const aiSeats = new Set<number>();
-  let progressionEnabled: boolean | null = null;
-  let needsEnabled: boolean | null = null;
-  for (const e of snapshot.entities) {
-    if (isSettler(e) || isBuilding(e)) actors.push(e);
-    const house = trainingHouseOf(e);
-    if (house !== undefined) trainingOccupancy.set(house, (trainingOccupancy.get(house) ?? 0) + 1);
-    const progression = e.components.ProgressionRules as
-      | { professionProgressionEnabled?: unknown }
-      | undefined;
-    if (progression !== undefined && progressionEnabled === null) {
-      progressionEnabled = progression.professionProgressionEnabled !== false;
-    }
-    const needs = e.components.WorldRules as { needsEnabled?: unknown } | undefined;
-    if (needs !== undefined && needsEnabled === null) needsEnabled = needs.needsEnabled !== false;
-    const seat = num((e.components.AiPlayer as { player?: unknown } | undefined)?.player);
-    if (seat !== undefined) aiSeats.add(seat);
-  }
-  const index: SnapshotIndex = {
-    actors,
-    trainingOccupancy,
-    facts: { progressionEnabled: progressionEnabled ?? true, needsEnabled: needsEnabled ?? true, aiSeats },
-  };
-  INDEX.set(snapshot, index);
-  return index;
-}
-
-/**
- * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`. Iterate
- * it; it is not a snapshot's own entity lane, so never hand it to `entityById`, whose binary search
- * would miss everything this filtered out.
+ * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`, maintained
+ * per change on a mirror. Read it within the frame: a delta that rebuilds the mirror leaves a held list
+ * frozen. Iterate it; it is not a snapshot's own entity lane, so never hand it to `entityById`, whose
+ * binary search would miss everything this filtered out.
  */
 export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
-  return indexOf(snapshot).actors;
+  return indexesOf(snapshot).get(ACTORS);
 }
+
+const TRAINING_OCCUPANCY = countedBy(trainingHouseOf);
 
 /** Includes reserved places for learners still walking to their school or barracks. */
 export function trainingOccupancyOf(snapshot: WorldSnapshot, house: number): number {
-  return indexOf(snapshot).trainingOccupancy.get(house) ?? 0;
+  return indexesOf(snapshot).get(TRAINING_OCCUPANCY).get(house) ?? 0;
+}
+
+const NO_ENTITIES: readonly SnapshotEntity[] = [];
+
+const STAFF = groupedBy((e) => (isSettler(e) ? workplaceOf(e) : undefined));
+
+/** The settlers employed at `building` (`JobAssignment.workplace`), ascending by id. */
+export function staffOf(snapshot: WorldSnapshot, building: number): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(STAFF).get(building) ?? NO_ENTITIES;
+}
+
+const SITE_CREWS = groupedBy(buildSiteOf);
+
+/** The entities assigned to build or repair `site` (`SiteAssignment.site`), pinned or not, ascending by
+ *  id. */
+export function siteCrewOf(snapshot: WorldSnapshot, site: number): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(SITE_CREWS).get(site) ?? NO_ENTITIES;
+}
+
+const SUPPLY_RUNS = groupedBy((e) =>
+  isSettler(e) ? num((e.components.SupplyRun as { site?: unknown } | undefined)?.site) : undefined,
+);
+
+/** The settlers whose `SupplyRun` names `site`, ascending by id, whether or not the errand is still
+ *  under way. */
+export function supplyRunsTo(snapshot: WorldSnapshot, site: number): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(SUPPLY_RUNS).get(site) ?? NO_ENTITIES;
+}
+
+const SHELTERERS = groupedBy((e) => (isSettler(e) ? shelterOf(e) : undefined));
+
+/** The settlers that claimed `building` as their shelter, en route or inside, ascending by id. */
+export function shelterersOf(snapshot: WorldSnapshot, building: number): readonly SnapshotEntity[] {
+  return indexesOf(snapshot).get(SHELTERERS).get(building) ?? NO_ENTITIES;
 }
 
 export function buildingTypeOf(e: SnapshotEntity): number | undefined {
@@ -264,21 +279,9 @@ export function pinnedSiteOf(e: SnapshotEntity): number | undefined {
   return a?.pinned === true ? num(a.site) : undefined;
 }
 
-const BUILDER_CREWS = new WeakMap<WorldSnapshot, ReadonlyMap<number, number>>();
-
-/** Builders assigned to `siteId`, pinned or not, counted once per snapshot. */
+/** Builders assigned to `siteId`, pinned or not. */
 export function builderCrewSize(snapshot: WorldSnapshot, siteId: number): number {
-  let crews = BUILDER_CREWS.get(snapshot);
-  if (crews === undefined) {
-    const counted = new Map<number, number>();
-    for (const e of snapshot.entities) {
-      const site = buildSiteOf(e);
-      if (site !== undefined) counted.set(site, (counted.get(site) ?? 0) + 1);
-    }
-    crews = counted;
-    BUILDER_CREWS.set(snapshot, crews);
-  }
-  return crews.get(siteId) ?? 0;
+  return siteCrewOf(snapshot, siteId).length;
 }
 
 /** Whether the sim takes a builder order on `building` from `builder`: a foundation or upgrade site always,
@@ -400,11 +403,7 @@ export function shelterOf(e: SnapshotEntity): number | undefined {
  *  already inside, matching the sim's own capacity ledger, so the HUD cannot advertise room a runner
  *  already holds. */
 export function shelterClaimCount(snapshot: WorldSnapshot, building: number): number {
-  let count = 0;
-  for (const e of actorsOf(snapshot)) {
-    if (isSettler(e) && shelterOf(e) === building) count++;
-  }
-  return count;
+  return shelterersOf(snapshot, building).length;
 }
 
 export function settlerLearnedOf(

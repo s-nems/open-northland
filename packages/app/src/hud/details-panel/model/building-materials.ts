@@ -1,5 +1,5 @@
 import { constructionBillForType, type Fixed, fx, systems, type WorldSnapshot } from '@open-northland/sim';
-import { actorsOf, isSettler, num, type SnapshotEntity } from '../../../game/snapshot.js';
+import { isSettler, num, type SnapshotEntity, siteCrewOf, supplyRunsTo } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import {
   type BuildingDef,
@@ -184,17 +184,14 @@ export function constructionModel(
   return { rows, status: constructionStatus(ent, rows, activity.hasBuilder) };
 }
 
-/** One bounded actor pass collects the two live facts the selected site's construction status needs. */
+/** The two live facts the selected site's construction status needs, off its crew and supply runs. */
 function constructionActivity(
   snapshot: WorldSnapshot,
   siteId: number,
 ): { readonly inbound: ReadonlyMap<number, number>; readonly hasBuilder: boolean } {
   const inbound = new Map<number, number>();
-  let hasBuilder = false;
-  for (const actor of actorsOf(snapshot)) {
-    if (!isSettler(actor)) continue;
-    const assignment = actor.components.SiteAssignment as { readonly site?: unknown } | undefined;
-    if (num(assignment?.site) === siteId) hasBuilder = true;
+  const hasBuilder = siteCrewOf(snapshot, siteId).some(isSettler);
+  for (const actor of supplyRunsTo(snapshot, siteId)) {
     const run = actor.components.SupplyRun as
       | {
           readonly site?: unknown;
@@ -203,7 +200,7 @@ function constructionActivity(
           readonly source?: unknown;
         }
       | undefined;
-    if (run === undefined || num(run.site) !== siteId) continue;
+    if (run === undefined) continue;
     const goodType = num(run?.goodType);
     const amount = num(run?.amount);
     if (goodType === undefined || amount === undefined || amount <= 0) continue;
