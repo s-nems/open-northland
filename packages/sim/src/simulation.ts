@@ -60,7 +60,14 @@ import {
   placementAnswerFor,
   signpostAnswerFor,
 } from './simulation/probe-answers.js';
-import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
+import {
+  type FogMaskAnswer,
+  type FogView,
+  fogMaskAnswerFor,
+  fogViewFor,
+  placementProbeFor,
+  signpostProbeFor,
+} from './simulation/read-seams.js';
 import { type SyncDigest, SyncDigestRecorder } from './simulation/sync-digest.js';
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
 import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
@@ -114,7 +121,7 @@ import {
 } from './systems/vehicles/index.js';
 import { FogState, playerHasMet } from './systems/vision/index.js';
 
-export type { FogView } from './simulation/read-seams.js';
+export type { FogMaskAnswer, FogView } from './simulation/read-seams.js';
 export type { SyncDigest } from './simulation/sync-digest.js';
 
 export interface SimOptions {
@@ -662,6 +669,11 @@ export class Simulation {
    */
   fogView(player: number): FogView | null {
     return fogViewFor(this.world, this.fog, player);
+  }
+
+  /** {@link fogView}'s masks as plain data, for a reader on another thread. */
+  fogMaskAnswer(player: number): FogMaskAnswer | null {
+    return fogMaskAnswerFor(this.world, this.fog, player);
   }
 
   run(ticks: number): void {

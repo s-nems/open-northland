@@ -20,7 +20,7 @@ import {
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, Simulation } from '../../src/index.js';
+import { cellAnchorNode, fogViewOfMask, Simulation } from '../../src/index.js';
 import { FLEE_CHECK_STRIDE_TICKS } from '../../src/systems/conflict/flee.js';
 import { SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
 import { SCOUT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
@@ -632,5 +632,48 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
       sim.run(FLEE_CHECK_STRIDE_TICKS); // a calm civilian looks once per stride
       expect(sim.world.has(civ, Fleeing)).toBe(flees);
     }
+  });
+});
+
+describe('fog mask answer - the view a reader on another thread rebuilds', () => {
+  const W = 24;
+  const H = 8;
+  /** Includes cells just outside the grid, which read UNEXPLORED raw. */
+  const cellsAround = function* (): Generator<[number, number]> {
+    for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) yield [x, y];
+  };
+
+  it('reads every cell as the live view does, the RECON mapping included, at the same generation', () => {
+    for (const mode of [FOG_MODE.CLASSIC, FOG_MODE.RECON_FOG_OF_WAR]) {
+      const sim = simOn(mode, W, H);
+      unit(sim, 2, 2, P0);
+      sim.run(1);
+      const live = sim.fogView(P0);
+      const answer = sim.fogMaskAnswer(P0);
+      if (live === null || answer === null) throw new Error('fog is on, so both views exist');
+      const view = fogViewOfMask(answer);
+      expect([view.player, view.mode, view.generation]).toEqual([P0, mode, live.generation]);
+      for (const [x, y] of cellsAround()) expect(view.stateAt(x, y)).toBe(live.stateAt(x, y));
+      expect(view.stateAt(20, 2)).toBe(
+        mode === FOG_MODE.RECON_FOG_OF_WAR ? FOG_STATE.EXPLORED : FOG_STATE.UNEXPLORED,
+      );
+    }
+  });
+
+  it('copies the mask, so a later rebuild leaves an answer as it was taken', () => {
+    const sim = simOn(FOG_MODE.CLASSIC, W, H);
+    const e = unit(sim, 2, 2, P0);
+    sim.run(1);
+    const answer = sim.fogMaskAnswer(P0);
+    teleport(sim, e, 20, 2);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(sim.fogView(P0)?.stateAt(20, 2)).toBe(FOG_STATE.VISIBLE);
+    expect(answer === null ? null : fogViewOfMask(answer).stateAt(20, 2)).toBe(FOG_STATE.UNEXPLORED);
+  });
+
+  it('is null with fog off, as the live view', () => {
+    const sim = simOn(FOG_MODE.OFF, W, H);
+    sim.run(1);
+    expect(sim.fogMaskAnswer(P0)).toBeNull();
   });
 });

@@ -21,7 +21,11 @@ export function effectiveFogState(
   cellX: number,
   cellY: number,
 ): number {
-  const raw = fog.stateAt(player, cellX, cellY);
+  return viewedFogState(fog.stateAt(player, cellX, cellY), mode);
+}
+
+/** A raw cell state as `mode` shows it: a RECON map's terrain is known, so its UNEXPLORED reads EXPLORED. */
+export function viewedFogState(raw: number, mode: FogMode): number {
   if (raw === FOG_STATE.UNEXPLORED && fogSettings(mode)?.terrainKnown === true) return FOG_STATE.EXPLORED;
   return raw;
 }

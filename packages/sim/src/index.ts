@@ -87,7 +87,12 @@ export {
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
-export { type EntityDelta, type SnapshotDelta, SnapshotDeltaStream } from './inspect/snapshot-clones.js';
+export {
+  cloneEvents,
+  type EntityDelta,
+  type SnapshotDelta,
+  SnapshotDeltaStream,
+} from './inspect/snapshot-clones.js';
 export {
   type ChangedEntity,
   type ComponentChange,
@@ -176,7 +181,9 @@ export {
   nodeGridAccepts,
   nodeSetHas,
 } from './simulation/probe-answers.js';
+export { fogViewOfMask } from './simulation/read-seams.js';
 export {
+  type FogMaskAnswer,
   type FogView,
   type SimOptions,
   Simulation,

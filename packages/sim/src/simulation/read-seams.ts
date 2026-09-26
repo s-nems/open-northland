@@ -9,7 +9,7 @@ import type { TerrainGraph } from '../nav/terrain/index.js';
 import { type PlayerPlacementProbe, seatPlacementProbe } from '../systems/conflict/contested-ground.js';
 import { buildingEnabled } from '../systems/progression/index.js';
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
-import { effectiveFogState, type FogState } from '../systems/vision/index.js';
+import { effectiveFogState, type FogState, maskFogState, viewedFogState } from '../systems/vision/index.js';
 
 /** One viewer player's fog: plain data and one pure accessor over the live {@link FogState}. */
 export interface FogView {
@@ -70,5 +70,50 @@ export function fogViewFor(world: World, fog: FogState | undefined, player: numb
     cellsHigh: fog.cellsHigh,
     generation: fog.generation,
     stateAt: (cellX: number, cellY: number) => effectiveFogState(fog, mode, player, cellX, cellY),
+  };
+}
+
+/** One viewer player's fog as plain data, for a reader on another thread: the raw bytes of the
+ *  viewer's vision-group mask (a copy), null while the group has none. {@link fogViewOfMask} reads it. */
+export interface FogMaskAnswer {
+  readonly player: number;
+  readonly mode: FogMode;
+  readonly cellsWide: number;
+  readonly cellsHigh: number;
+  readonly generation: number;
+  readonly mask: Uint8Array | null;
+}
+
+/** Null when fog is OFF or the sim is mapless, as {@link fogViewFor}. */
+export function fogMaskAnswerFor(
+  world: World,
+  fog: FogState | undefined,
+  player: number,
+): FogMaskAnswer | null {
+  if (fog === undefined) return null;
+  const mode = fogMode(world);
+  if (mode === FOG_MODE.OFF) return null;
+  return {
+    player,
+    mode,
+    cellsWide: fog.cellsWide,
+    cellsHigh: fog.cellsHigh,
+    generation: fog.generation,
+    mask: fog.tryMaskFor(player)?.slice() ?? null,
+  };
+}
+
+/** The {@link FogView} over a mask answer: the same states `fogViewFor` answers at that generation. */
+export function fogViewOfMask(answer: FogMaskAnswer): FogView {
+  const { mode, cellsWide, cellsHigh } = answer;
+  const mask = answer.mask ?? undefined;
+  return {
+    player: answer.player,
+    mode,
+    cellsWide,
+    cellsHigh,
+    generation: answer.generation,
+    stateAt: (cellX: number, cellY: number) =>
+      viewedFogState(maskFogState(mask, cellsWide, cellsHigh, cellX, cellY), mode),
   };
 }

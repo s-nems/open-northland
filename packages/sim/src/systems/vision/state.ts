@@ -496,14 +496,30 @@ export class FogState {
    *  grid or maskless reads UNEXPLORED. A RECON map's terrain-known-from-the-start is a view mapping in
    *  `effectiveFogState`, not raw state. */
   stateAt(player: number, cellX: number, cellY: number): number {
-    if (cellX < 0 || cellY < 0 || cellX >= this.cellsWide || cellY >= this.cellsHigh) {
-      return FOG_STATE.UNEXPLORED;
-    }
-    const mask = this.masks.get(this.visionGroupOf(player));
-    if (mask === undefined) return FOG_STATE.UNEXPLORED;
-    const byte = mask[cellY * this.cellsWide + cellX] ?? FOG_STATE.UNEXPLORED;
-    return byte === REVEALED_BYTE ? FOG_STATE.VISIBLE : byte;
+    return maskFogState(
+      this.masks.get(this.visionGroupOf(player)),
+      this.cellsWide,
+      this.cellsHigh,
+      cellX,
+      cellY,
+    );
   }
+}
+
+/** The raw {@link FOG_STATE} of a cell in one group's mask bytes, a revealed cell reading VISIBLE;
+ *  out of grid or maskless reads UNEXPLORED. */
+export function maskFogState(
+  mask: Uint8Array | undefined,
+  cellsWide: number,
+  cellsHigh: number,
+  cellX: number,
+  cellY: number,
+): number {
+  if (mask === undefined || cellX < 0 || cellY < 0 || cellX >= cellsWide || cellY >= cellsHigh) {
+    return FOG_STATE.UNEXPLORED;
+  }
+  const byte = mask[cellY * cellsWide + cellX] ?? FOG_STATE.UNEXPLORED;
+  return byte === REVEALED_BYTE ? FOG_STATE.VISIBLE : byte;
 }
 
 /** Whether any of cell (c, r)'s four nodes lies within `range` map points of `point`. */
