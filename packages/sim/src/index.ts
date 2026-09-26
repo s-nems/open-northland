@@ -159,6 +159,7 @@ export {
   type SystemInstrument,
 } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
+export { RUIN_COLLAPSE_TICKS } from './systems/lifecycle/ruins.js';
 export type {
   InfoLineView,
   MissionDefinition,

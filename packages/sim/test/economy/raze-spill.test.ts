@@ -11,7 +11,7 @@ import {
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { RUIN_COLLAPSE_TICKS, Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { manhattan } from '../../src/systems/spatial/metric.js';
@@ -27,8 +27,8 @@ import {
 } from '../footprint/building-placement/support.js';
 
 /**
- * A destroyed building leaves its contents on the ground under it, in the ordinary max-5 heaps the ground
- * holds. `razeBuilding` is the one teardown seam the player's demolish and a combat kill share, so both
+ * A destroyed building leaves its contents on the ground under it once its collapse ends, in the ordinary
+ * max-5 heaps the ground holds. `razeBuilding` is the one teardown seam the player's demolish and a combat kill share, so both
  * spill alike.
  *
  * The HUT fixture is a footprinted workplace stocking goods 1 and 2; anchored at (5,5) its body is
@@ -80,9 +80,15 @@ function stockedHut(
   return placed;
 }
 
+/** Step through a collapse begun on the last tick, to the tick its goods land. */
+function settleRuins(sim: Simulation): void {
+  for (let i = 0; i < RUIN_COLLAPSE_TICKS; i++) sim.step();
+}
+
 function demolish(sim: Simulation, building: Entity): void {
   sim.enqueueSetup({ kind: 'demolish', building });
   sim.step();
+  settleRuins(sim);
 }
 
 describe('a razed building spills its contents on the ground', () => {
@@ -122,12 +128,27 @@ describe('a razed building spills its contents on the ground', () => {
     expect(new Set(spilled.map((h) => h.node)).size).toBe(spilled.length);
   });
 
+  it('holds the goods back until the collapse has sunk the building', () => {
+    const sim = mappedSim();
+    const hut = stockedHut(sim, ANCHOR, [[WOOD, 4]]);
+    sim.enqueueSetup({ kind: 'demolish', building: hut });
+    sim.step();
+
+    for (let i = 1; i < RUIN_COLLAPSE_TICKS; i++) sim.step();
+    expect(sim.world.isAlive(hut)).toBe(false);
+    expect(heaps(sim)).toEqual([]);
+
+    sim.step();
+    expect(unitsOf(heaps(sim), WOOD)).toBe(4);
+  });
+
   it('spills the same way when the building is razed in combat', () => {
     const sim = mappedSim();
     const hut = stockedHut(sim, ANCHOR, [[WOOD, 6]]);
     sim.world.add(hut, Health, { hitpoints: 0, max: 10 }); // the CleanupSystem reaps a drained pool
 
     sim.step();
+    settleRuins(sim);
 
     expect(sim.world.isAlive(hut)).toBe(false);
     expect(unitsOf(heaps(sim), WOOD)).toBe(6);
@@ -228,6 +249,7 @@ describe('a razed standing building gives back half its construction bill, round
     sim.world.add(hut, Health, { hitpoints: 0, max: 10 });
 
     sim.step();
+    settleRuins(sim);
 
     expect(sim.world.isAlive(hut)).toBe(false);
     expect(unitsOf(heaps(sim), WOOD)).toBe(WOOD_SALVAGE);

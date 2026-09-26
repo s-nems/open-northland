@@ -9,6 +9,7 @@ import { releaseWallBreaches } from '../palisades/breach.js';
 import { razeSalvageOf } from '../stores/index.js';
 import { removeVehicle } from '../vehicles/remove.js';
 import { reap } from './death.js';
+import { holdRuinSpill } from './ruins.js';
 
 /**
  * Destroy every entity whose {@link Health} pool has been drained to 0 and announce it with a
@@ -39,8 +40,8 @@ export const cleanupSystem: System = (world, ctx) => {
 /**
  * The teardown seam combat razing and the player's `demolish` command share: release every bound settler,
  * announce it, remove the building, and heap whatever was inside plus its {@link razeSalvageOf} materials
- * on the ground where it stood. The event is emitted before the destroy so the entity's `Owner`,
- * `Position`, and `Building` are still readable.
+ * on the ground where it stood once its collapse ends. The event is emitted before the destroy so the
+ * entity's `Owner`, `Position`, and `Building` are still readable.
  */
 export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
@@ -58,7 +59,7 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
   });
   const spill = spilledStockOf(world, e, razeSalvageOf(world, ctx, e));
   removeBuildingSilently(world, ctx, e);
-  scatterSpilledStock(world, ctx, spill);
+  holdRuinSpill(world, ctx, spill);
 }
 
 /** Destroy a building and release every settler bound to it: its workers and the families living in it.

@@ -17,6 +17,7 @@ import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
 import { needsSystem } from './lifecycle/needs/index.js';
+import { ruinSystem } from './lifecycle/ruins.js';
 import { templeAuraSystem } from './lifecycle/temple-aura.js';
 import {
   livestockAssignmentSystem,
@@ -137,6 +138,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'templeAura', system: templeAuraSystem },
   { name: 'growth', system: growthSystem },
   { name: 'technologyAfterWork', system: technologySystem },
+  { name: 'ruins', system: ruinSystem },
   { name: 'cleanup', system: cleanupSystem },
   // After cleanup, so a man reaped this tick is already gone when the death check counts, and before
   // the AI, so a seat that just died issues nothing.

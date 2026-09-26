@@ -102,3 +102,14 @@ export const Upgrading = defineComponent<{
  * sending a repair crew; null when the pool came up short without a blow, as after a script level change.
  */
 export const Damaged = defineComponent<{ lastHitTick: number | null }>('Damaged', 'economy');
+
+/**
+ * A razed building's contents on their way to the ground, on a bare entity of its own: the heaps land at
+ * `releaseTick`, once the collapse has sunk the body, and the entity goes with them.
+ */
+export const FallingRuin = defineComponent<{
+  x: Fixed;
+  y: Fixed;
+  goods: GoodsLine[];
+  releaseTick: number;
+}>('FallingRuin', 'economy');

@@ -1,4 +1,4 @@
-import type { SimEvent } from '@open-northland/sim';
+import { RUIN_COLLAPSE_TICKS, type SimEvent } from '@open-northland/sim';
 import { clamp01 } from '../math.js';
 import { ONE } from '../projection/index.js';
 import { frac } from './blood.js';
@@ -27,8 +27,8 @@ export interface BuildingCollapse {
   readonly spawnTick: number;
 }
 
-/** Ticks a collapse takes from intact to fully sunk (~1.7 s at 12 Hz) - feel-tuned. */
-export const COLLAPSE_TICKS = 20;
+/** Ticks a collapse takes from intact to fully sunk: the sim's span, so the goods land as the body goes. */
+export const COLLAPSE_TICKS = RUIN_COLLAPSE_TICKS;
 
 /** Ticks the ground-line dust cloud outlives the sunk body, settling instead of blinking out. */
 export const DUST_SETTLE_TICKS = 10;
