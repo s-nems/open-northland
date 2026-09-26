@@ -34,13 +34,14 @@ function ownedBy(e: SnapshotEntity, player: number): boolean {
 }
 
 /**
- * The local player's messages raised by one frame's sim events. `previous` is the snapshot before the
- * frame's steps, the only place a settler reaped this frame can still be named.
+ * The local player's messages raised by one frame's sim events. `departed` holds the entities the
+ * frame's steps removed, as the world last held them: the only place a settler reaped this frame can
+ * still be named.
  */
 export function messagesFromEvents(
   events: readonly SimEvent[],
   snapshot: WorldSnapshot,
-  previous: WorldSnapshot | null,
+  departed: readonly SnapshotEntity[],
   localPlayer: number,
   naming: MessageNaming,
 ): RaisedMessage[] {
@@ -96,10 +97,8 @@ export function messagesFromEvents(
       },
       () => {
         let named: { readonly name: string; readonly jobLabel: string | null } | null = null;
-        if (previous !== null) {
-          const before = entityById(previous, entity);
-          if (before !== undefined && isPerson(before)) named = naming.settler(before, previous);
-        }
+        const before = departed.find((e) => e.id === entity);
+        if (before !== undefined && isPerson(before)) named = naming.settler(before, snapshot);
         return naming.text(USER_MESSAGE_TYPE.humanDied, {
           subjectName: named?.name ?? null,
           jobLabel: named?.jobLabel ?? null,

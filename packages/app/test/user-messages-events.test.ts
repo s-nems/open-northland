@@ -60,8 +60,8 @@ const naming: MessageNaming = {
 };
 
 /** Raised messages flattened for assertions: the identity fields plus the composed text. */
-const run = (events: SimEvent[], snap: WorldSnapshot, previous: WorldSnapshot | null = null) =>
-  messagesFromEvents(events, snap, previous, LOCAL, naming).map((r) => ({
+const run = (events: SimEvent[], snap: WorldSnapshot, departed: WorldSnapshot['entities'] = []) =>
+  messagesFromEvents(events, snap, departed, LOCAL, naming).map((r) => ({
     ...r.pending,
     text: r.compose().full,
   }));
@@ -95,8 +95,8 @@ describe('user messages from sim events', () => {
     expect(out[0]?.at).toEqual({ hx: 6, hy: 4 });
   });
 
-  it('names a reaped settler off the snapshot before the frame, else reports an unknown hero', () => {
-    const before = snapshot(49, [{ id: 1, player: LOCAL, kind: 'person' }]);
+  it('names a reaped settler off the entities the frame removed, else reports an unknown hero', () => {
+    const departed = snapshot(49, [{ id: 1, player: LOCAL, kind: 'person' }]).entities;
     const after = snapshot(50, []);
     const events: SimEvent[] = [
       { kind: 'settlerDied', entity: e(1), cause: 'combat', player: LOCAL, at: { hx: 4, hy: 4 } },
@@ -104,7 +104,7 @@ describe('user messages from sim events', () => {
       { kind: 'settlerDied', entity: e(3), cause: 'combat', player: LOCAL, animal: true },
       { kind: 'settlerDied', entity: e(4), cause: 'combat', player: ENEMY },
     ];
-    const out = run(events, after, before);
+    const out = run(events, after, departed);
     expect(out.map((m) => [m.type, m.subject, m.at, m.text])).toEqual([
       [USER_MESSAGE_TYPE.humanDied, null, { hx: 4, hy: 4 }, `S1:${USER_MESSAGE_TYPE.humanDied}`],
       [USER_MESSAGE_TYPE.humanDied, null, { hx: 8, hy: 8 }, `?:${USER_MESSAGE_TYPE.humanDied}`],
@@ -163,7 +163,7 @@ describe('user messages from sim events', () => {
         },
       ],
       snap,
-      null,
+      [],
       LOCAL,
       counting,
     );
@@ -265,7 +265,7 @@ describe('user messages from sim events', () => {
         { kind: 'settlerTrained', entity: e(3), course: 'school', target: 'job', typeId: 12 },
       ],
       snap,
-      null,
+      [],
       LOCAL,
       trainedNaming,
     );

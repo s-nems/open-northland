@@ -160,6 +160,7 @@ export interface SnapshotDeltaSource {
 }
 
 const NO_TICK = -1;
+const NO_VERSION = -1;
 
 /**
  * The per-tick change feed one mirror rebuilds the snapshot from. Each stream accumulates on its own,
@@ -170,7 +171,8 @@ export class SnapshotDeltaStream {
   private readonly clones: SnapshotClones;
   private readonly pending: PendingDelta;
   private lastTick = NO_TICK;
-  private lastVersion = NO_TICK;
+  private lastVersion = NO_VERSION;
+  private closed = false;
 
   constructor(private readonly source: SnapshotDeltaSource) {
     this.clones = snapshotClonesFor(source.world);
@@ -183,6 +185,7 @@ export class SnapshotDeltaStream {
    * and carries the last one's events.
    */
   next(): SnapshotDelta | null {
+    if (this.closed) throw new Error('snapshot delta stream: closed, its changes are no longer collected');
     const { world, tick } = this.source;
     const version = world.mutationVersion;
     if (tick === this.lastTick && version === this.lastVersion) return null;
@@ -206,7 +209,9 @@ export class SnapshotDeltaStream {
     return delta;
   }
 
+  /** Stop collecting; a later `next()` throws rather than hand a mirror a delta missing changes. */
   close(): void {
+    this.closed = true;
     this.clones.close(this.pending);
   }
 }

@@ -4,6 +4,7 @@ import type { HudLayout, HudModel, MapViewFrame, SpriteSheet } from '@open-north
 import type {
   Command,
   DiplomacyState,
+  EntitySnapshot,
   Paper,
   PlayerCommand,
   SimEvent,
@@ -235,9 +236,14 @@ export interface ToolPanelController {
   update(hudFor: () => HudLayout, model: HudModel): void;
   /** The world views an open briefing's pictures paint this frame; read after {@link update}. */
   mapViews(): readonly MapViewFrame[];
-  /** Per-frame hook for the notification column: this frame's unfiltered sim events and the snapshot
-   *  after them. */
-  presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[], alpha: number): void;
+  /** Per-frame hook for the notification column: this frame's unfiltered sim events, the snapshot
+   *  after them and the entities its steps removed. */
+  presentMessages(
+    snapshot: WorldSnapshot,
+    events: readonly SimEvent[],
+    departed: readonly EntitySnapshot[],
+    alpha: number,
+  ): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
   /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
@@ -643,7 +649,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         infoLines.refresh();
       },
       mapViews: () => windows.mission.mapViews(),
-      presentMessages: (snapshot, events, alpha) => messageCenter.present(snapshot, events, alpha),
+      presentMessages: (snapshot, events, departed, alpha) =>
+        messageCenter.present(snapshot, events, departed, alpha),
       state: () => ({
         speed: speed.state(),
         windows: windows.state(),

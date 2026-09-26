@@ -13,6 +13,7 @@ export class SnapshotMirror {
   private readonly entities: EntitySnapshot[] = [];
   private current: WorldSnapshot | null = null;
   private applied = 0;
+  private dropped: EntitySnapshot[] = [];
 
   /** The tick of the last applied delta; null before the first. */
   get tick(): number | null {
@@ -24,9 +25,16 @@ export class SnapshotMirror {
     return this.applied;
   }
 
+  /** The entities the last applied delta removed, ascending by id, as the snapshot before it held them:
+   *  the one place a settler reaped in that stretch can still be named. Empty after a rebuild. */
+  get departed(): readonly EntitySnapshot[] {
+    return this.dropped;
+  }
+
   /** Apply the next delta. Throws on a delta that does not follow the last applied one, since a dropped
    *  delta would leave the mirror silently stale. */
   apply(delta: SnapshotDelta): void {
+    this.dropped = [];
     if (delta.rebuild) {
       this.entities.length = 0;
       for (const entity of delta.touched) this.entities.push(entity);
@@ -71,6 +79,7 @@ export class SnapshotMirror {
       let id = removed[next];
       while (id !== undefined && id < entity.id) id = removed[++next];
       if (id === entity.id) {
+        this.dropped.push(entity);
         next++;
         continue;
       }

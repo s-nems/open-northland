@@ -1,5 +1,6 @@
 import type { SpriteSheet } from '@open-northland/render';
 import {
+  type EntitySnapshot,
   entityById,
   type HalfCellNode,
   type Paper,
@@ -89,7 +90,12 @@ export interface MessageCenter {
   /** Per frame: raise this frame's events and a due snapshot sweep as notes, retire the stale ones,
    *  redraw what changed and paint the figures; `alpha` is the frame's inter-tick fraction, as the map
    *  draws with. */
-  present(snapshot: WorldSnapshot, events: readonly SimEvent[], alpha: number): void;
+  present(
+    snapshot: WorldSnapshot,
+    events: readonly SimEvent[],
+    departed: readonly EntitySnapshot[],
+    alpha: number,
+  ): void;
   state(): MessageFeedState;
   /** Adopt another mount's feed, so a HUD rescale keeps the notes and the level. */
   restore(state: MessageFeedState): void;
@@ -247,13 +253,13 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   };
 
   return {
-    present: (snapshot, events, alpha): void => {
+    present: (snapshot, events, departed, alpha): void => {
       const seat = deps.viewer.seat();
       if (seat !== feeds.seat) switchSeat(seat);
       // The same snapshot object means no tick ran, so nothing was raised and nothing aged.
       if (snapshot !== previous) {
         if (seat !== null && events.length > 0) {
-          for (const raised of messagesFromEvents(events, snapshot, previous, seat, naming)) {
+          for (const raised of messagesFromEvents(events, snapshot, departed, seat, naming)) {
             feeds.current.add(raised.pending, snapshot.tick, raised.compose);
           }
         }

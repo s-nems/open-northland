@@ -229,7 +229,7 @@ describe('snapshot delta stream', () => {
     expect(canonicalJson(mirror.snapshot())).toBe(canonicalJson(sim.snapshot()));
   });
 
-  it('a closed stream stops accumulating', () => {
+  it('a closed stream refuses to answer rather than hand out a delta missing changes', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     bareResource(sim, 5);
     const deltas = sim.snapshotDeltas();
@@ -237,8 +237,7 @@ describe('snapshot delta stream', () => {
     deltas.close();
     bareResource(sim, 2);
     sim.step();
-    // The stream still answers, but without the changes it no longer receives.
-    expect(nonNull(deltas.next()).touched).toEqual([]);
+    expect(() => deltas.next()).toThrow(/closed/);
   });
 });
 
@@ -274,10 +273,15 @@ describe('snapshot mirror list edits', () => {
     expect(mirror.version).toBe(2);
   });
 
-  it('drops removed entities from the head, the middle and the tail in one pass', () => {
+  it('drops removed entities from the head, the middle and the tail in one pass, and keeps them as departed', () => {
     const mirror = seeded([10, 20, 30, 40, 50]);
+    const before = mirror.snapshot().entities.slice();
     mirror.apply(delta({ removed: [10, 30, 50] }));
     expect(ids(mirror.snapshot())).toEqual([20, 40]);
+    expect(mirror.departed).toEqual([before[0], before[2], before[4]]);
+    expect(mirror.departed[0]).toBe(before[0]);
+    mirror.apply(delta({ tick: 2, baseTick: 1 }));
+    expect(mirror.departed).toEqual([]);
   });
 
   it('applies removals and insertions of one delta together', () => {

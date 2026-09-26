@@ -1,4 +1,5 @@
 import {
+  type EntitySnapshot,
   type ExportSaveOptions,
   exportSaveGame,
   type ScriptLandscapeType,
@@ -9,12 +10,13 @@ import {
 import type { SessionHost } from './host.js';
 
 const NO_LANDSCAPE_TYPES: readonly ScriptLandscapeType[] = [];
+const NO_ENTITIES: readonly EntitySnapshot[] = [];
 
 export interface InlineSessionHostOptions {
   /**
    * `mirror` (the default) reads snapshots off a `SnapshotMirror` fed by the sim's delta stream, the
    * path a host off the main thread serves, so the game exercises it before any worker exists. `live`
-   * reads `Simulation.snapshot()` itself, for a test that stubs it.
+   * reads `Simulation.snapshot()` itself, for a test that stubs it, and names no departed entities.
    */
   readonly snapshots?: 'mirror' | 'live';
 }
@@ -22,7 +24,10 @@ export interface InlineSessionHostOptions {
 /** The host over a live simulation on the same thread: every read is the sim's own, at call time, so
  *  a test may still stub the sim's methods. */
 export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOptions = {}): SessionHost {
-  const snapshot = options.snapshots === 'live' ? () => sim.snapshot() : mirroredSnapshots(sim);
+  const { snapshot, departed } =
+    options.snapshots === 'live'
+      ? { snapshot: () => sim.snapshot(), departed: () => NO_ENTITIES }
+      : mirroredSnapshots(sim);
   return {
     content: sim.content,
     get mapFingerprint() {
@@ -35,6 +40,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
       return sim.tick;
     },
     snapshot,
+    departed,
     fogView: (player) => sim.fogView(player),
     constructionPlots: () => sim.constructionPlots(),
     placementProbe: (buildingType, player, tribe) => sim.placementProbe(buildingType, player, tribe),
@@ -90,13 +96,18 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
 }
 
 /** Pull the sim's pending changes into the mirror on every read, so a frame between ticks reads the
- *  same snapshot object and a stepped tick reads a new one. */
-function mirroredSnapshots(sim: Simulation): () => WorldSnapshot {
+ *  same snapshot object and a stepped tick reads a new one; either read pulls, so their order within a
+ *  frame does not matter. */
+function mirroredSnapshots(sim: Simulation): Pick<SessionHost, 'snapshot' | 'departed'> {
   const deltas = sim.snapshotDeltas();
   const mirror = new SnapshotMirror();
-  return () => {
+  const pull = (): SnapshotMirror => {
     const delta = deltas.next();
     if (delta !== null) mirror.apply(delta);
-    return mirror.snapshot();
+    return mirror;
+  };
+  return {
+    snapshot: (): WorldSnapshot => pull().snapshot(),
+    departed: (): readonly EntitySnapshot[] => pull().departed,
   };
 }

@@ -52,7 +52,7 @@ export class MirrorProbe {
     const fullCloneMs = performance.now() - t0;
     const line =
       `  mirror  entities ${live.entities.length}  changed/tick p50 ${percentile(this.touched, 50).toFixed(0)} ` +
-      `p95 ${percentile(this.touched, 95).toFixed(0)}  delta KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
+      `p95 ${percentile(this.touched, 95).toFixed(0)}  delta JSON KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
       `p95 ${percentile(this.kilobytes, 95).toFixed(1)}  take µs ${us(this.takeUs)}  clone µs ${us(this.cloneUs)}  ` +
       `apply µs ${us(this.applyUs)}  full snapshot clone ${fullCloneMs.toFixed(0)} ms`;
     this.takeUs = [];
