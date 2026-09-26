@@ -1,4 +1,4 @@
-import type { BuildingType } from '@open-northland/data';
+import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
 import {
   aiPlayerEntity,
   Building,
@@ -44,6 +44,17 @@ export {
 export { type Siege, seatSiege } from './siege.js';
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
+/** The seat's open sites that count against its pace: a workshop's hidden vehicle yard is the crew's own
+ *  cycle, never a placement the list made, so it holds no slot. */
+function constructionSites(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity[] {
+  const index = contentIndex(ctx.content);
+  return owned.filter(
+    (e) =>
+      world.has(e, UnderConstruction) &&
+      index.buildings.get(world.get(e, Building).buildingType)?.kind !== BUILDING_KIND.vehicle,
+  );
+}
+
 /**
  * Acts on the first unmet entry, so a razed building is re-placed, after {@link REBUILD_DELAY_TICKS},
  * before any entry the seat has not reached yet. A placed site meets its entry at once, so up to the
@@ -83,7 +94,7 @@ function runBuildOrder(
   const owned = ownedBuildings(world, player);
   const base = seatBaseOf(world, ctx, player);
   const siteCap = base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(ctx.tick).sites;
-  const sites = owned.filter((e) => world.has(e, UnderConstruction));
+  const sites = constructionSites(world, ctx, owned);
   if (sites.length >= siteCap) return [];
 
   const tribe = playerPlacementTribes(world, player)?.[0];

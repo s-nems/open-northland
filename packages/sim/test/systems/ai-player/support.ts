@@ -63,6 +63,8 @@ export const STOCK_TYPE = 13;
 export const STOCK_TOP_TYPE = 14;
 export const TOWER_TYPE = 15;
 export const WALL_TYPE = 16;
+/** The fixture's vehicle-kind yard site, opened by a workshop crew rather than the build order. */
+export const VEHICLE_YARD_TYPE = 77;
 /** An animal tribe id no fixture civilization uses - the round-up's claimable creatures. */
 const COW_TRIBE = 13;
 /** The animal farm and its trade - added by {@link husbandryContent} on free fixture slots. */

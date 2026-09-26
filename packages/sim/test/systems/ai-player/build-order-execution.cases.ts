@@ -55,6 +55,7 @@ import {
   SEAT,
   STOCK_TYPE,
   TOWER_TYPE,
+  VEHICLE_YARD_TYPE,
   VIKING,
   WELL_TYPE,
 } from './support.js';
@@ -187,6 +188,36 @@ describe('build-order module (houseBuild)', () => {
       expect(next.buildingType).toBe(expected);
       applyAndFinish(sim, next);
     }
+    expect(nextPlacement(sim)).toBeUndefined();
+  });
+
+  it('keeps placing beside the vehicle yard a workshop crew opened, which holds no site slot', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.iron]);
+    sim.step();
+    const first = nextPlacement(sim);
+    if (first?.kind !== 'placeBuilding') throw new Error('expected the opening placement');
+    sim.enqueueSetup(first);
+    // A joiner's cart cycle opened a yard site of its own; the list did not place it.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: VEHICLE_YARD_TYPE,
+      x: HQ_X + 6,
+      y: HQ_Y + 6,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.step();
+    expect([...sim.world.query(UnderConstruction)]).toHaveLength(2);
+
+    // Two sites stand, yet only the farm counts: the second slot of the opening pace is still free.
+    const second = nextPlacement(sim);
+    expect(second).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
+    if (second?.kind !== 'placeBuilding') return;
+    sim.enqueueSetup(second);
+    sim.step();
     expect(nextPlacement(sim)).toBeUndefined();
   });
 

@@ -340,6 +340,13 @@ export function aiContent(): ContentSet {
         kind: 'tower',
         construction: [{ goodType: 1, amount: 2 }],
       },
+      // A workshop's hidden vehicle yard: the site a joiner's cart cycle opens, never one the list places.
+      {
+        typeId: 77,
+        id: 'handcart_yard',
+        kind: 'vehicle',
+        construction: [{ goodType: 1, amount: 2 }],
+      },
     ],
     // The collector's per-good XP tracks (real track ids 4/5 back iron's `needforgood` below; the
     // factors mirror the base data - one completed dig clears the threshold).
