@@ -33,13 +33,12 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [03 Mirror indexes](03-mirror-indexes.md) | Per-kind, per-player and spatial indexes maintained from the delta; no per-tick pass over every entity in the app | 00 |
 | [04 Sim worker host](04-sim-worker-host.md) | Sim, driver and timestep in a worker behind the seam; inline host kept for tests and scenes | 00 |
 | [05 Transport in the worker](05-transport-in-worker.md) | Loopback, then the relay client with its digests and pacer, inside the worker | 04 |
 | [06 Draw loop on the mirror](06-draw-loop-on-mirror.md) | The frame loop draws the mirror and interpolates; shortfall visible in the HUD | 00, 04 |
 | [07 Client load telemetry](07-client-load-telemetry.md) | Each client reports tick cost and backlog to the relay on the protocol | 00 |
 | [08 Room pace governor](08-room-pace-governor.md) | Free band, governed speed with a named limiter, kick vote; no clock hold for lag | 07 |
-| [09 Zoom-out LOD](09-zoom-out-lod.md) | Frame cost bounded across the zoom range by named detail tiers | 00, 03 |
+| [09 Zoom-out LOD](09-zoom-out-lod.md) | Frame cost bounded across the zoom range by named detail tiers | 00 |
 | [10 Desync forensics](10-desync-forensics.md) | Both sides of a divergence capture the disputed tick per domain into the bundle | none |
 | [11 Background tab ticking](11-background-tab-ticking.md) | Verify and document whether the worker host keeps ticking in a hidden tab | 05 |
 
@@ -47,11 +46,12 @@ The runtime already reads the world through one host interface, `SessionHost` in
 `packages/app/src/session/`, with `inlineSessionHost` over the live `Simulation`; the entries, scenes,
 `game/sandbox/` and `game/world/` are the hosts that construct a `Simulation`. The inline host already
 reads snapshots off a `SnapshotMirror` fed by `Simulation.snapshotDeltas()`, the per-tick delta the
-worker will post: per touched entity only the components written since the last delta. 00 lands first,
-then 03, which is behaviour-preserving. 04 to 06 are the worker. 07 and 08 are the networking change
-and can proceed in parallel with the worker. 09 to 11 close the epic. Contract edits land with the
-ticket that makes them true: 03 removes the render visibility-pass allowance and the matching exception
-in root `AGENTS.md`, 04 rewrites `packages/app/AGENTS.md`.
+worker will post: per touched entity only the components written since the last delta. The mirror also
+maintains the snapshot indexes (`indexesOf`: kind lists, owner groups, counts, position buckets and the
+consumers' own aggregates) from the same edits, so the app and the renderer read those instead of
+walking the entity list per tick. 00 lands first. 04 to 06 are the worker. 07 and 08 are the networking
+change and can proceed in parallel with the worker. 09 to 11 close the epic. Contract edits land with
+the ticket that makes them true: 04 rewrites `packages/app/AGENTS.md`.
 
 ## Not in this epic
 

@@ -35,8 +35,9 @@ the canonical legal wording.
    Per-frame rendering and audio work scales with the visible screen, not the map. Memoization by
    snapshot identity removes repeats within a tick, never the pass itself. A projection, HUD model or
    index that runs per tick scales with the entities that changed or are visible; a per-tick pass over
-   every entity is a scale violation whatever caches it, and the render contract's visibility-pass
-   allowance is the one standing exception. Hot paths allocate per change, not per entity per frame.
+   every entity is a scale violation whatever caches it. Read a kind, an owner, a place or an aggregate
+   off the snapshot indexes the mirror maintains per change (`indexesOf` in `packages/sim/src/inspect/`)
+   instead of walking the entity list. Hot paths allocate per change, not per entity per frame.
    A performance claim names the scenario and the numbers; "bounded by memoization" or
    "screen-bounded by construction" without a measurement is not one. `docs/DEVELOPMENT.md` says
    which tool answers which question, and what voids a measurement.
