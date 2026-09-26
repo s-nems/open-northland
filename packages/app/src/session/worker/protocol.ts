@@ -37,9 +37,8 @@ export interface WorkerSessionOptions {
   readonly pauseOnSubMission: boolean;
   /** What the worker does once the runtime leaves `undeliveredTickLimit` ticks undelivered. */
   readonly undelivered: UndeliveredTicks;
-  /** The event kinds a shed tick still delivers, ahead of the next delivered tick's own; absent
-   *  retains none. */
-  readonly retainedEventKinds?: readonly SimEvent['kind'][];
+  /** The event kinds a shed tick still delivers, ahead of the next delivered tick's own. */
+  readonly retainedEventKinds: readonly SimEvent['kind'][];
 }
 
 /**

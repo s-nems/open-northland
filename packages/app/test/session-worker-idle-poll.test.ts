@@ -3,6 +3,7 @@ import { MS_PER_TICK } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import { IDLE_POLL_TICKS, ServedSession } from '../src/session/worker/serve.js';
+import { DURABLE_EVENT_KINDS } from '../src/view/runtime/world-events.js';
 
 /** Slow, so the poll period dwarfs a timer's jitter. */
 const SPEED = 0.25;
@@ -52,6 +53,7 @@ function servedWaiting() {
       diagnostics: false,
       pauseOnSubMission: false,
       undelivered: 'shed',
+      retainedEventKinds: DURABLE_EVENT_KINDS,
     },
     0,
   );

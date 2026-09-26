@@ -15,6 +15,7 @@ import { type HostedRelayedWorld, NetworkConnection } from '../../../src/net/con
 import { relayedSessionDriver } from '../../../src/net/net-worker-client.js';
 import type { SessionPort } from '../../../src/session/worker/port.js';
 import type { FromWorker, WorkerSessionOptions } from '../../../src/session/worker/protocol.js';
+import { DURABLE_EVENT_KINDS } from '../../../src/view/runtime/world-events.js';
 import { nodeWorkerPort } from '../session-worker/node-ports.js';
 import type { NetWorkerData } from './node-net-worker.js';
 import type { FromWorkerLink, ToWorkerLink } from './port-link.js';
@@ -58,6 +59,7 @@ function relayedOptions(session: GameSession): WorkerSessionOptions {
     diagnostics: false,
     pauseOnSubMission: false,
     undelivered: 'shed',
+    retainedEventKinds: DURABLE_EVENT_KINDS,
   };
 }
 
