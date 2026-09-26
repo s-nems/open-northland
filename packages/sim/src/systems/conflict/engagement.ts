@@ -27,7 +27,7 @@ import {
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
-import { REPATH_CADENCE } from './chase.js';
+import { onStride, REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
@@ -84,7 +84,7 @@ export function engageSpec(
   here: NodeId,
   stance: CombatantStance,
   attacker: SettlerIdentity,
-  weapon: { minRange: number; maxRange: number },
+  weapon: WeaponBand,
 ): EngageSpec {
   const { owned, ordered } = stance;
   // Fog gate (authored): an owned unit auto-acquires only targets its player currently sees. The
@@ -292,7 +292,7 @@ export interface EngageSpec {
    *  it strikes one from. */
   readonly hold?: {
     readonly keep: (t: Entity) => boolean;
-    readonly band: { readonly minRange: number; readonly maxRange: number };
+    readonly band: WeaponBand;
   };
 }
 
@@ -451,16 +451,11 @@ function rescanDue(
   ctx: SystemContext,
   self: Entity,
   heldDist: number,
-  band: { readonly minRange: number; readonly maxRange: number },
+  band: WeaponBand,
 ): boolean {
   if (isTravelling(world, self)) return onStride(ctx.tick, self, RESCAN_PERIOD_TICKS);
   if (heldDist >= band.minRange && heldDist <= band.maxRange) return false;
   return onStride(ctx.tick, self, REPATH_CADENCE);
-}
-
-/** Whether `tick` is one of `e`'s every-`period` ticks, spread across entities by id. */
-function onStride(tick: number, e: Entity, period: number): boolean {
-  return (tick + e) % period === 0;
 }
 
 /**

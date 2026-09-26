@@ -12,7 +12,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
+import { forEachRingNode, hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -45,7 +45,7 @@ export interface ApproachBand extends WeaponBand {
 }
 
 /** How far from itself (map points) a melee attacker looks for a contact slot, and among how many of the
- *  free slots nearest it it draws one. Original behavior. */
+ *  free slots at the nearest distance it finds one it draws. Original behavior. */
 export const CONTACT_SLOT_RADIUS = 5;
 export const CONTACT_SLOT_CHOICES = 6;
 
@@ -209,6 +209,9 @@ export function chase(
     goal: ownGoal,
     standingOn: onNodeCentre(world, terrain, e, here) ? here : undefined,
   };
+  // A waiting second rank re-asks each tick, but draws a contact slot only on its cadence: the draw walks
+  // the whole disc around it, and the nearest free side is what puts it in when a front-liner steps off.
+  const drawSlot = engagement.waiting !== true || onStride(ctx.tick, e, REPATH_CADENCE);
   // The near-side node a breach dealt this breaker comes first, while it is open and untaken.
   const stand = breachStand(world, terrain, e, target, weapon);
   const approach: Approach =
@@ -216,13 +219,17 @@ export function chase(
       ? { cell: stand, waiting: false }
       : target.body !== null && target.body.length > 0
         ? faceApproach(terrain, slots, here, target, weapon, mine, onOurBank)
-        : approachCell(ctx, terrain, here, target.node, weapon, slots, mine, onOurBank);
+        : approachCell(ctx, terrain, here, target.node, weapon, slots, mine, onOurBank, drawSlot);
   if (approach.waiting && approach.cell === here && mine.standingOn !== undefined) {
     // A second rank standing where it waits: idle, with no route for the render to read as a walk. It keeps
     // its target and re-asks each tick, which puts it in the moment a front-liner falls or steps off.
     // Routing was not asked, so no refusal stands against the target.
     clearNavState(world, e);
-    if (engagement.stall !== undefined) world.mut(e, Engagement).stall = undefined;
+    if (engagement.stall !== undefined || engagement.waiting !== true) {
+      const held = world.mut(e, Engagement);
+      held.stall = undefined;
+      held.waiting = true;
+    }
     return false;
   }
   const dest = approach.cell;
@@ -248,7 +255,9 @@ export function chase(
   }
   redirectRoute(world, e, dest); // keep the live route - dropping it reset the gait (chase stutter)
   slots.claim(dest);
-  world.mut(e, Engagement).repathAt = ctx.tick + REPATH_CADENCE;
+  const held = world.mut(e, Engagement);
+  held.repathAt = ctx.tick + REPATH_CADENCE;
+  held.waiting = undefined;
   return false;
 }
 
@@ -256,6 +265,11 @@ export function chase(
  *  after wildlife starts no siege. */
 function worthASiege(world: World, enemy: Entity): boolean {
   return world.has(enemy, Owner) && (world.has(enemy, Settler) || world.has(enemy, Building));
+}
+
+/** Whether `tick` is one of `e`'s every-`period` ticks, spread across entities by id. */
+export function onStride(tick: number, e: Entity, period: number): boolean {
+  return (tick + e) % period === 0;
 }
 
 /** How far `dest` lies from the anchor of `defend`, in the metric its leash counts in. */
@@ -341,10 +355,12 @@ function approachCell(
   slots: MeleeSlots,
   mine: OwnClaims,
   reachable: (cell: NodeId) => boolean,
+  drawSlot: boolean,
 ): Approach {
-  const slot = weapon.contact
-    ? contactSlot(ctx, terrain, from, targetCell, weapon, slots, mine, reachable)
-    : null;
+  const slot =
+    weapon.contact && drawSlot
+      ? contactSlot(ctx, terrain, from, targetCell, weapon, slots, mine, reachable)
+      : null;
   if (slot !== null) return { cell: slot, waiting: false };
   const front = nearestFreeInBand(terrain, from, targetCell, weapon, slots, mine, reachable);
   if (front.free !== null) return { cell: front.free, waiting: false };
@@ -376,11 +392,14 @@ function faceApproach(
 
 /**
  * A melee attacker's contact slot: its own goal while that is still a free cell of the band, else one
- * drawn at random among the {@link CONTACT_SLOT_CHOICES} free cells of the band nearest the attacker,
- * searched out to {@link CONTACT_SLOT_RADIUS} around it; null when none lies that near, and the chase
- * closes on the nearest free cell instead. Original behavior. Approximation: the original searches by
- * walking steps from the attacker where this counts map points. Keeping a goal still free is authored, so
- * a cadence re-path does not redraw the slot.
+ * drawn at random among up to {@link CONTACT_SLOT_CHOICES} free cells of the band at the nearest distance
+ * from the attacker that holds one, searched ring by ring out to {@link CONTACT_SLOT_RADIUS}; null when
+ * none lies that near, and the chase closes on the nearest free cell instead. Original behavior: the draw
+ * never reaches past the first distance with a free cell, so a lone attacker takes the near side.
+ * Approximations: the original searches by walking steps from the attacker where this counts map points,
+ * and its taken cell is one an own-side human stands on attacking, where {@link MeleeSlots.isTaken} also
+ * counts cells dealt this tick and the goals of chasers still walking. Keeping a goal still free is
+ * authored, so a cadence re-path does not redraw the slot.
  */
 function contactSlot(
   ctx: SystemContext,
@@ -400,10 +419,14 @@ function contactSlot(
     slots.isOpen(cell) && reachable(cell) && !slots.isTaken(cell, mine.goal, mine.standingOn);
   if (mine.goal !== undefined && inBand(mine.goal) && free(mine.goal)) return mine.goal;
   const choices: NodeId[] = [];
-  forEachNodeInBand(terrain, from, { minRange: 0, maxRange: CONTACT_SLOT_RADIUS }, (cell) => {
-    if (inBand(cell) && free(cell)) choices.push(cell);
-    return choices.length < CONTACT_SLOT_CHOICES;
-  });
+  const at = { hx: terrain.xOf(from), hy: terrain.yOf(from) };
+  for (let ring = 0; ring <= CONTACT_SLOT_RADIUS && choices.length === 0; ring++) {
+    forEachRingNode(at, ring, terrain.width, terrain.height, (hx, hy) => {
+      const cell = terrain.nodeAt(hx, hy);
+      if (inBand(cell) && free(cell)) choices.push(cell);
+      return choices.length < CONTACT_SLOT_CHOICES;
+    });
+  }
   if (choices.length <= 1) return choices[0] ?? null;
   return choices[ctx.rng.int(choices.length)] ?? null;
 }

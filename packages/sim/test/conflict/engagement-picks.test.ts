@@ -513,7 +513,8 @@ describe('engagement - a crowd on one enemy', () => {
     );
     const beside = hexNeighboursOf(at.hx, at.hy).find((n) => !occupied.has(`${n.hx},${n.hy}`));
     if (beside === undefined) throw new Error('no free side');
-    const newcomer = fighterAtNode(s, beside.hx, beside.hy, SAXON, WOMAN);
+    // A fighter: the first kind the pick takes, so the draw among the nearest persons cannot keep the held one.
+    const newcomer = fighterAtNode(s, beside.hx, beside.hy, SAXON, SOLDIER_SPEAR);
     s.world.add(newcomer, Owner, { player: P1 });
     s.world.add(newcomer, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
     let struck = false;
