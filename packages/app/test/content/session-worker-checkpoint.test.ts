@@ -35,7 +35,7 @@ const SEARCH = `map=${MAP_ID}&player=observer&ai=0,1,2,3,4,5&fog=classic`;
 // A local benchmark artefact, ignored by Git, so the test skips where it was never taken.
 const CHECKPOINT = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  '../../../../bench-out/ml6-s51.t40000.checkpoint',
+  '../../../../bench-out/ml6-s53.t40000.checkpoint',
 );
 /** The seat whose settlers take the orders. */
 const ORDERED_SEAT = 0;
