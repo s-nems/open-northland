@@ -172,8 +172,9 @@ describe('build-order module (houseBuild)', () => {
       expect(sim.world.get(upgrade.building, Building).buildingType).toBe(BAKERY_TYPE);
       applyAndFinish(sim, upgrade);
     }
-    // The settlement stays inside every coverage circle, so neither coverage entry raises anything.
-    for (const expected of [BAKERY_TOP_TYPE, BAKERY_TOP_TYPE, BREWERY_TYPE, BREWERY_TYPE]) {
+    // The joinery stands between the wood and the iron, out past the base's defence circle, so the opening
+    // tower entry raises one tower over it; every other building sits inside the store and tower circles.
+    for (const expected of [TOWER_TYPE, BAKERY_TOP_TYPE, BAKERY_TOP_TYPE, BREWERY_TYPE, BREWERY_TYPE]) {
       const next = nextPlacement(sim);
       if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
       expect(next.buildingType).toBe(expected);

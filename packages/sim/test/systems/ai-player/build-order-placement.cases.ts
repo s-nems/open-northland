@@ -6,6 +6,7 @@ import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.
 import {
   buildingSpotAccept,
   buildReach,
+  FRONT_EDGE_STEP_NODES,
   HQ_PULL_DIVISOR_NODES,
 } from '../../../src/systems/ai-player/build-order/placement.js';
 import {
@@ -216,9 +217,37 @@ describe('build-order placement - affinity and ground rules', () => {
     ];
     const spot = firstCommandOf(sim, front);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected a front-pulled placement');
-    // Pulled hard south toward the enemy headquarters, past the nearer tower's eastward pull.
-    expect(spot.y - HQ_AT.y).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2);
+    // South toward the enemy headquarters, past the nearer tower's eastward pull, but only a step past
+    // the settlement's edge - here the headquarters alone - never a whole reach out.
+    expect(spot.y - HQ_AT.y).toBeGreaterThan(0);
+    expect(spot.y - HQ_AT.y).toBeLessThanOrEqual(FRONT_EDGE_STEP_NODES + HQ_PULL_DIVISOR_NODES);
     expect(Math.abs(spot.x - HQ_AT.x)).toBeLessThan(BUILD_SEARCH_MAX_RADIUS_NODES / 4);
+
+    // A home standing out toward the enemy is the settlement's edge: the placement steps past it, not past
+    // the headquarters, and never a reach beyond it.
+    const OUTPOST = { x: HQ_AT.x, y: HQ_AT.y + 40 };
+    const grown = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    placeHq(grown, HQ_AT.x, HQ_AT.y);
+    grown.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: ENEMY, tribes: [VIKING] });
+    for (const [buildingType, at, owner] of [
+      [HQ_TYPE, ENEMY_HQ, ENEMY],
+      [HOME_TYPE, OUTPOST, SEAT],
+    ] as const) {
+      grown.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType,
+        x: at.x,
+        y: at.y,
+        tribe: VIKING,
+        owner,
+        force: true,
+      });
+    }
+    grown.step();
+    const edge = firstCommandOf(grown, front);
+    if (edge?.kind !== 'placeBuilding') throw new Error('expected an edge placement');
+    expect(edge.y - OUTPOST.y).toBeGreaterThan(0);
+    expect(edge.y - OUTPOST.y).toBeLessThanOrEqual(FRONT_EDGE_STEP_NODES + HQ_PULL_DIVISOR_NODES);
 
     // No enemy building anywhere: the pull falls back to the middle of the map, east and south of here.
     const alone = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });

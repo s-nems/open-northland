@@ -27,7 +27,6 @@ import {
   SEAT,
   spawnMen,
   TOOL_IRON,
-  TOWER_TYPE,
   VIKING,
   WELL_TYPE,
   WOMAN,
@@ -92,9 +91,8 @@ describe('the full strategic registry - determinism and replay', () => {
     // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, three
     // TOP-tier homes (the tail's further homes name a tier above this content set's chain, so they
     // skip here), the upgraded bakery plus the three direct-placed level-2 bakeries, three breweries,
-    // the joinery and the barracks. Every building sits inside the HQ's store circle and the opening
-    // tower circle, so the store entry raises nothing; the dense ring that closes the list raises its
-    // first tower.
+    // the joinery and the barracks. Every building, the joinery between the wood and the iron included,
+    // sits inside the HQ's store circle and both tower circles, so neither coverage entry raises anything.
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
       [
         HOME_TOP_TYPE,
@@ -112,7 +110,6 @@ describe('the full strategic registry - determinism and replay', () => {
         BREWERY_TYPE,
         JOINERY_TYPE,
         BARRACKS_TYPE,
-        TOWER_TYPE,
       ].sort((a, b) => a - b),
     );
     // The crew clears the reserve, so the farm reaches its target-tier hands and the bakery keeps

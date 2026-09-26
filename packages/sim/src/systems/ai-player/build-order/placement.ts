@@ -13,7 +13,7 @@ import { resourcesAtNode } from '../../spatial/resources.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
 import type { EnemyFire } from '../military/defence/index.js';
-import { anchorNodeOf, bestRingNode } from '../node-geometry.js';
+import { anchorNodeOf, bestRingNode, towardNode } from '../node-geometry.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
@@ -51,8 +51,43 @@ function affinityNode(
     case 'mapCentre':
       return mapCentreNode(terrain);
     case 'front':
-      return frontNode(world, ctx, player, anchor) ?? mapCentreNode(terrain);
+      return frontEdgeNode(
+        world,
+        owned,
+        anchor,
+        frontNode(world, ctx, player, anchor) ?? mapCentreNode(terrain),
+      );
   }
+}
+
+/** How far past the settlement's front-most building a `front` placement aims, in Manhattan nodes
+ *  (authored): on the settlement's edge toward the enemy, never a whole reach out from it. */
+export const FRONT_EDGE_STEP_NODES = 8;
+
+/**
+ * The settlement's edge toward `target`: the seat's building nearest it (the lowest id on a tie, `owned`
+ * walking ascending), or `anchor` while none has a node, pushed {@link FRONT_EDGE_STEP_NODES} toward it.
+ * Aimed at the enemy itself, the pull would land a whole reach past the nearest building, and each
+ * building raised there would carry the next one further, until two seats' barracks met mid-map.
+ */
+function frontEdgeNode(
+  world: World,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+  target: HalfCellNode,
+): HalfCellNode {
+  let edge = anchor;
+  let edgeDistance = Number.POSITIVE_INFINITY;
+  for (const e of owned) {
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    const distance = nodeDistance(node, target);
+    if (distance < edgeDistance) {
+      edge = node;
+      edgeDistance = distance;
+    }
+  }
+  return towardNode(edge, target, FRONT_EDGE_STEP_NODES);
 }
 
 /** The seat's buildings of the content id or a tier above it, canonical ascending; none for an unknown id. */
@@ -96,7 +131,7 @@ function mapCentreNode(terrain: TerrainGraph): HalfCellNode {
 }
 
 /**
- * The `front` anchor: the building nearest `anchor` (Manhattan) of a player the seat holds as enemy,
+ * The `front` target: the building nearest `anchor` (Manhattan) of a player the seat holds as enemy,
  * headquarters ranked ahead of everything else, so the pull points down the road the attacks come by
  * rather than at the middle of the map. Null while no enemy has a building. Strict `<` over the
  * canonical walk keeps the lowest id on ties.

@@ -42,6 +42,21 @@ export function outwardNode(origin: HalfCellNode, from: HalfCellNode, push: numb
 }
 
 /**
+ * The node `push` nodes from `from` along the straight ray to `target`, `target` itself once that is nearer.
+ * Integer-trunc ray projection as in {@link outwardNode}, byte-identical across engines.
+ */
+export function towardNode(from: HalfCellNode, target: HalfCellNode, push: number): HalfCellNode {
+  const dx = target.hx - from.hx;
+  const dy = target.hy - from.hy;
+  const dist = Math.abs(dx) + Math.abs(dy);
+  if (dist <= push) return target;
+  return {
+    hx: from.hx + Math.trunc((dx * push) / dist),
+    hy: from.hy + Math.trunc((dy * push) / dist),
+  };
+}
+
+/**
  * The first node accepted while walking expanding Manhattan rings around `(cx, cy)` - the modules'
  * "closest legal spot" pick. Deterministic: ascending radius, then ascending dx, north (y−) before
  * south (y+), so the winner never depends on iteration state. `accept` must reject out-of-bounds

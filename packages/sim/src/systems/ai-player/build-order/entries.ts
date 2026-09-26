@@ -2,8 +2,9 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../game-phase.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
- *  each kind to a node. `front` is the nearest enemy seat, its headquarters before any other building,
- *  and the map centre while no enemy has a building standing. */
+ *  each kind to a node. `front` is the settlement's own edge toward the nearest enemy seat, its
+ *  headquarters before any other building, and toward the map centre while no enemy has a building
+ *  standing. */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
@@ -57,6 +58,16 @@ export const HIVE_REACH_NODES = WELL_REACH_NODES;
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
 export const STORE_COVERAGE_RADIUS_NODES = 32;
+
+/** The two deposits a joinery or a smithy draws on, in the order its recipes weigh them. */
+const WOOD_AND_IRON: readonly PlacementAffinity[] = [
+  { kind: 'resource', good: 'wood' },
+  { kind: 'resource', good: 'iron' },
+];
+const IRON_AND_WOOD: readonly PlacementAffinity[] = [
+  { kind: 'resource', good: 'iron' },
+  { kind: 'resource', good: 'wood' },
+];
 
 /**
  * Authored: the opening list is a plan, not extracted data. It is ordered so each entry's materials
@@ -123,10 +134,13 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     count: 1,
     near: [{ kind: 'building', id: 'work_animal_farm' }],
   },
-  { kind: 'place', building: 'work_joinery_01', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
+  // The joinery works iron tools out of wood and iron, the smithy its wares out of iron and wood: each
+  // stands between its two deposits, so neither carrier walks far.
+  { kind: 'place', building: 'work_joinery_01', count: 1, near: WOOD_AND_IRON },
   { kind: 'collector', good: 'iron' },
-  { kind: 'place', building: 'work_smithy_01', count: 1, near: [{ kind: 'resource', good: 'iron' }] },
-  // Toward the nearest enemy, where the attacks come from; the barracks also holds the line in defence.
+  { kind: 'place', building: 'work_smithy_01', count: 1, near: IRON_AND_WOOD },
+  // On the settlement's edge toward the nearest enemy, where the attacks come from; the barracks also
+  // holds the line in defence.
   { kind: 'place', building: 'barracks', count: 1, near: [{ kind: 'front' }] },
   // The armourer turns wood into bows and spear shafts, so it stands by the wood like the joinery.
   { kind: 'place', building: 'work_armory_01', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
@@ -134,7 +148,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
   { kind: 'towerCoverage', building: 'tower_01' },
-  { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
+  { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD },
   { kind: 'place', building: 'home_level_04', count: 5 },
   // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
   {
@@ -171,13 +185,13 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'building', id: 'work_herb_hut' }],
     needsResources: ['mushroom', 'gold'],
   },
-  { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
-  // Toward the front like the barracks.
+  { kind: 'place', building: 'work_smithy_01', count: 4, near: IRON_AND_WOOD },
+  // Beside the barracks: the temple stands with the army it blesses, not on a front of its own.
   {
     kind: 'place',
     building: 'work_temple',
     count: 1,
-    near: [{ kind: 'front' }],
+    near: [{ kind: 'building', id: 'barracks' }],
     needsResources: ['mushroom', 'gold'],
   },
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },

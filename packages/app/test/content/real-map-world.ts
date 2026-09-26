@@ -30,6 +30,8 @@ export interface RealMapWorldOptions {
   readonly humanSeats?: readonly number[];
   /** Omitted runs on the browser entry's default seed. */
   readonly seed?: number;
+  /** Seats the lobby left off the map, as the browser's `?absent=` does. */
+  readonly absentSeats?: readonly number[];
   /** A session's rule overrides; omitted leaves the sim's defaults. */
   readonly rules?: SessionRules;
   /** Also spawn the map's berry bushes (the `?map=` entry does; a scenario that ignores food need not). */
@@ -81,6 +83,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // footprint overlay would be ignored (see resolveWorldContent).
     content: { content: merge.content },
     aiSeats: options.aiSeats,
+    absentSeats: options.absentSeats ?? [],
     playerRoster: script?.players ?? [],
     script: missionWorld,
     missions: options.missions ?? null,
