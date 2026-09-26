@@ -78,13 +78,12 @@ export {
   type HashTraceEntry,
   type HashTraceOptions,
 } from './inspect/hashtrace.js';
+export { type HouseholdGoodPolicyView, householdGoodPolicyView } from './inspect/household-policy.js';
 export {
   type EntitySnapshot,
   entityById,
   type HomeQualityView,
-  type HouseholdGoodPolicyView,
   homeQualityView,
-  householdGoodPolicyView,
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
@@ -95,7 +94,20 @@ export {
   diffSnapshots,
   type SnapshotDiff,
 } from './inspect/snapshot-diff.js';
+export {
+  countedBy,
+  entitiesWith,
+  groupedBy,
+  indexesOf,
+  isPositioned,
+  listedWhere,
+  positionedWithin,
+  type SnapshotIndexReader,
+  type SnapshotIndexSpec,
+  withComponent,
+} from './inspect/snapshot-indexes.js';
 export { SnapshotMirror } from './inspect/snapshot-mirror.js';
+export { TILE_BUCKET_SIZE, type TileBox, TileBuckets } from './inspect/tile-buckets.js';
 export type { BlockOverlay } from './nav/block-overlay.js';
 export { ClearanceField, MAX_CLEARANCE_CLASS } from './nav/clearance.js';
 export {

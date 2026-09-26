@@ -1,4 +1,3 @@
-import { DEFAULT_HOUSEHOLD_GOOD_POLICY } from '../components/family.js';
 import type { SimEvent } from '../core/events.js';
 import { isPlainRecord } from '../core/plain-value.js';
 import type { World } from '../ecs/world.js';
@@ -33,12 +32,6 @@ export interface HomeQualityView {
   readonly piety: number;
 }
 
-export interface HouseholdGoodPolicyView {
-  readonly cooking: boolean;
-  readonly rest: boolean;
-  readonly piety: boolean;
-}
-
 /** Decode one home's detached quality pools from a snapshot. */
 export function homeQualityView(snapshot: WorldSnapshot, home: number): HomeQualityView | null {
   const raw = entityById(snapshot, home)?.components.HomeQuality;
@@ -46,18 +39,6 @@ export function homeQualityView(snapshot: WorldSnapshot, home: number): HomeQual
   const { cooking, rest, piety } = raw;
   if (typeof cooking !== 'number' || typeof rest !== 'number' || typeof piety !== 'number') return null;
   return { cooking, rest, piety };
-}
-
-/** Decode one player's settlement-wide household-good policy; an absent one is the default. */
-export function householdGoodPolicyView(snapshot: WorldSnapshot, player: number): HouseholdGoodPolicyView {
-  for (const entity of snapshot.entities) {
-    const raw = entity.components.HouseholdGoodPolicy;
-    if (!isPlainRecord(raw) || raw.player !== player) continue;
-    const { cooking, rest, piety } = raw;
-    if (typeof cooking !== 'boolean' || typeof rest !== 'boolean' || typeof piety !== 'boolean') continue;
-    return { cooking, rest, piety };
-  }
-  return DEFAULT_HOUSEHOLD_GOOD_POLICY;
 }
 
 /**

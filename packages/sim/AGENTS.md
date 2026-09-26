@@ -33,7 +33,10 @@ seam or read presentation state back into sim logic. `Simulation.snapshotDeltas(
 from the snapshot clone cache, each touched entity's written components and the names it lost, and
 `SnapshotMirror` patches its entities from them, keeping an untouched entity's object and an unwritten
 component's clone; a mirror snapshot's entity list is edited in place per delta, and a component added
-to a held entity lands last in its record, so read components by name.
+to a held entity lands last in its record, so read components by name. `indexesOf(snapshot)` serves
+the views a consumer registers as a `SnapshotIndexSpec` (kind lists, groups, counts, the position
+buckets), maintained by the mirror from the same edits and built by one walk for a snapshot taken off
+the sim; the lists it hands out are live and ascending by id.
 
 ## Ordering
 

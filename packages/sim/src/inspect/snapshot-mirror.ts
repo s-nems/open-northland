@@ -1,6 +1,7 @@
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 import { indexOfEntity } from './snapshot.js';
 import type { EntityDelta, SnapshotDelta } from './snapshot-clones.js';
+import { attachIndexes, SnapshotIndexes } from './snapshot-indexes.js';
 
 /**
  * The consumer side of one `SnapshotDeltaStream`: applies each of its deltas to one entity list kept
@@ -9,10 +10,12 @@ import type { EntityDelta, SnapshotDelta } from './snapshot-clones.js';
  * the object the previous snapshot held, a touched one is a new object over the previous clones of the
  * components its entry left alone, and the snapshot object is new per applied delta; the list itself
  * is edited in place, per change. Entries are diffed against what their own stream carried last, so
- * deltas of two streams must not be mixed into one mirror.
+ * deltas of two streams must not be mixed into one mirror. The same edits feed the `indexesOf` views
+ * over its snapshots, so a consumer reads those instead of walking the list per tick.
  */
 export class SnapshotMirror {
   private readonly entities: EntitySnapshot[] = [];
+  private readonly indexes = new SnapshotIndexes(() => this.entities);
   private current: WorldSnapshot | null = null;
   private applied = 0;
   private dropped: EntitySnapshot[] = [];
@@ -41,6 +44,7 @@ export class SnapshotMirror {
     if (delta.rebuild) {
       this.entities.length = 0;
       for (const entry of delta.touched) this.entities.push(created(entry));
+      this.indexes.reset();
     } else {
       const current = this.current;
       if (current === null) throw new Error('snapshot mirror: the first delta must rebuild');
@@ -59,6 +63,7 @@ export class SnapshotMirror {
     }
     this.applied++;
     this.current = { tick: delta.tick, entities: this.entities, events: delta.events };
+    attachIndexes(this.current, this.indexes);
   }
 
   /** The snapshot the applied deltas add up to. Throws before the first delta: there is no world yet. */
@@ -83,6 +88,7 @@ export class SnapshotMirror {
       while (id !== undefined && id < entity.id) id = removed[++next];
       if (id === entity.id) {
         this.dropped.push(entity);
+        this.indexes.removed(entity);
         next++;
         continue;
       }
@@ -99,8 +105,15 @@ export class SnapshotMirror {
     for (const entry of touched) {
       const at = indexOfEntity(list, entry.id);
       const held = at >= 0 ? list[at] : undefined;
-      if (held !== undefined) list[at] = patched(held, entry);
-      else inserts.push(created(entry));
+      if (held !== undefined) {
+        const next = patched(held, entry);
+        list[at] = next;
+        this.indexes.replaced(held, next);
+      } else {
+        const entity = created(entry);
+        inserts.push(entity);
+        this.indexes.added(entity);
+      }
     }
     if (inserts.length === 0) return;
     let read = list.length - 1;

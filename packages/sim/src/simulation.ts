@@ -36,12 +36,11 @@ import { EventBuffer } from './core/events.js';
 import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
+import { type HouseholdGoodPolicyView, householdGoodPolicyView } from './inspect/household-policy.js';
 import { mapFingerprint } from './inspect/map-fingerprint.js';
 import {
   type HomeQualityView,
-  type HouseholdGoodPolicyView,
   homeQualityView,
-  householdGoodPolicyView,
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
