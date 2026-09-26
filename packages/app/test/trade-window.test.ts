@@ -11,7 +11,13 @@ import { GLYPH } from '../src/hud/dom/icons.js';
 import { firstStockedTab, stockTabStates } from '../src/hud/dom/parts/stock-browser.js';
 import type { TradeMarkChange } from '../src/hud/dom/settler-panel/actions.js';
 import { createTradeCommands } from '../src/hud/dom/trade-window/commands.js';
-import { houseRows, transferLine, UP_TO_UNLIMITED, windowRoute } from '../src/hud/dom/trade-window/model.js';
+import {
+  DIRECTIONS,
+  houseRows,
+  transferLine,
+  UP_TO_UNLIMITED,
+  windowRoute,
+} from '../src/hud/dom/trade-window/model.js';
 import {
   flowAllowed,
   flowChanges,
@@ -171,18 +177,15 @@ describe('trade window model', () => {
 
   it('gives a transfer line its lit direction, the refused ones and the one-way limits', () => {
     const line = transferLine(ownRoute(), transfer(SWORD, 'toB', { upTo: CEILING, keep: RESERVE }));
-    expect(line.directions.map((option) => [option.direction, option.pressed, option.enabled])).toEqual([
-      ['toB', true, true],
-      ['both', false, true],
-      ['toA', false, true],
-    ]);
+    expect(line.chosen).toBe('toB');
+    expect(DIRECTIONS.filter((direction) => line.directions[direction].enabled === false)).toEqual([]);
     expect(line.limits).toMatchObject({ upTo: CEILING, keep: RESERVE });
     expect(line.limits?.upToTooltip).toContain('Koszary');
     expect(line.limits?.keepTooltip).toContain('Magazyn');
     expect(transferLine(ownRoute(), transfer(SWORD, 'toB')).limits?.upTo).toBe(UP_TO_UNLIMITED);
     expect(transferLine(ownRoute(), transfer(SWORD, 'both')).limits).toBeNull();
     const food = transferLine(ownRoute(), transfer(FOOD, 'toA'));
-    expect(food.directions.filter((option) => !option.enabled).map((option) => option.direction)).toEqual([
+    expect(DIRECTIONS.filter((direction) => food.directions[direction].enabled === false)).toEqual([
       'toB',
       'both',
     ]);

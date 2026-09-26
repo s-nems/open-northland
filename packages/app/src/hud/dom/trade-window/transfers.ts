@@ -1,28 +1,18 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   TRADE_LIMIT_MAX,
+  type TradeDirection,
   type TradePanelModel,
   type TradeTransferModel,
 } from '../../details-panel/model/index.js';
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
 import { type Counter, createCounter } from '../parts/counter.js';
-import {
-  button,
-  element,
-  isDisabled,
-  setAttribute,
-  setClass,
-  setDisabled,
-  setTip,
-  write,
-} from '../parts/dom.js';
+import { element, setClass, setTip, write } from '../parts/dom.js';
 import { createRoundButton, type RoundButton } from '../parts/round-button.js';
+import { createSegmented, type Segmented } from '../parts/segmented.js';
 import { DIRECTIONS, KEEP_RANGE, type TransferLine, transferLine, UP_TO_RANGE } from './model.js';
-import type { TradeFlow } from './route.js';
-
-/** Design px of a transfer's good in its well (foundation.css `.on-good-well`). */
-const LINE_ICON_PX = 16;
+import { TRANSFER_ICON_PX, type TradeFlow } from './route.js';
 
 export interface TransfersDeps {
   readonly icons: GoodIconPainter;
@@ -35,8 +25,7 @@ export interface TransfersDeps {
 interface LineView {
   readonly item: HTMLLIElement;
   readonly name: HTMLElement;
-  readonly strip: HTMLElement;
-  readonly options: readonly HTMLButtonElement[];
+  readonly strip: Segmented<TradeDirection>;
   readonly upToLabel: HTMLElement;
   readonly keepLabel: HTMLElement;
   readonly upTo: Counter;
@@ -68,23 +57,16 @@ export function createTransfersList(deps: TransfersDeps): TransfersList {
   const lineView = (transfer: TradeTransferModel): LineView => {
     const goodType = transfer.goodType;
     const item = element('li', 'on-transfer');
-    const well = element('span', 'on-good-well', goodIconMarkup(LINE_ICON_PX));
+    const well = element('span', 'on-good-well', goodIconMarkup(TRANSFER_ICON_PX));
     const frame = well.querySelector('.on-good__frame');
     if (transfer.goodId !== undefined && frame instanceof HTMLElement) {
-      deps.icons(frame, transfer.goodId, LINE_ICON_PX);
+      deps.icons(frame, transfer.goodId, TRANSFER_ICON_PX);
     }
     const name = element('span', 'on-transfer__name');
-    const strip = element('span', 'on-segmented on-transfer__direction');
-    strip.setAttribute('role', 'group');
-    const options = DIRECTIONS.map((direction) => {
-      const option = button('');
-      option.addEventListener('click', () => {
-        if (isDisabled(option) || option.getAttribute('aria-pressed') === 'true') return;
-        deps.setFlow(goodType, direction);
-      });
-      strip.append(option);
-      return option;
-    });
+    const strip = createSegmented(DIRECTIONS, transfer.label, (direction) =>
+      deps.setFlow(goodType, direction),
+    );
+    strip.element.classList.add('on-transfer__direction');
     const counterRow = (counter: Counter, modifier: string): { row: HTMLElement; label: HTMLElement } => {
       const row = element('span', `on-trade-limit ${modifier}`);
       const label = element('span', 'on-trade-limit__label');
@@ -103,12 +85,11 @@ export function createTransfersList(deps: TransfersDeps): TransfersList {
     const upToRow = counterRow(upTo, 'on-trade-limit--up-to');
     const keepRow = counterRow(keep, 'on-trade-limit--keep');
     const remove = createRoundButton('ledger', () => deps.setFlow(goodType, 'none'));
-    item.append(well, name, strip, upToRow.row, keepRow.row, remove.element);
+    item.append(well, name, strip.element, upToRow.row, keepRow.row, remove.element);
     return {
       item,
       name,
       strip,
-      options,
       upToLabel: upToRow.label,
       keepLabel: keepRow.label,
       upTo,
@@ -121,16 +102,7 @@ export function createTransfersList(deps: TransfersDeps): TransfersList {
     const copy = messages().hud.tradeWindow;
     write(view.name, line.label);
     setTip(view.name, line.label);
-    setAttribute(view.strip, 'aria-label', formatMessage(copy.direction, { good: line.label }));
-    line.directions.forEach((direction, index) => {
-      const option = view.options[index];
-      if (option === undefined) return;
-      write(option, direction.label);
-      setAttribute(option, 'aria-pressed', String(direction.pressed));
-      setDisabled(option, !direction.enabled);
-      setTip(option, direction.tooltip);
-      setAttribute(option, 'aria-label', direction.tooltip);
-    });
+    view.strip.update(line.directions, line.chosen, formatMessage(copy.direction, { good: line.label }));
     view.remove.update({
       face: { glyph: GLYPH.close },
       label: formatMessage(copy.removeLabel, { good: line.label }),

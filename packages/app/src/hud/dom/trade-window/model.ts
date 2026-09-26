@@ -11,6 +11,7 @@ import {
 } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
 import type { CounterRange } from '../parts/counter.js';
+import type { SegmentedOption } from '../parts/segmented.js';
 import type { StockBrowserRow, StockRowAction } from '../parts/stock-browser.js';
 import {
   flowAllowed,
@@ -102,14 +103,6 @@ export function houseRows(trade: TradePanelModel, slot: number): StockBrowserRow
   });
 }
 
-export interface DirectionOption {
-  readonly direction: TradeDirection;
-  readonly label: string;
-  readonly pressed: boolean;
-  readonly enabled: boolean;
-  readonly tooltip: string;
-}
-
 /** A one-way transfer's two counters: the ceiling in the house it fills, the reserve in the source. */
 export interface TransferLimits {
   /** The "do" counter's value: the ceiling, or {@link UP_TO_UNLIMITED} for none. */
@@ -122,7 +115,9 @@ export interface TransferLimits {
 export interface TransferLine {
   readonly goodType: number;
   readonly label: string;
-  readonly directions: readonly DirectionOption[];
+  /** The direction strip's options; the lit one is {@link TransferLine.chosen}. */
+  readonly directions: Readonly<Record<TradeDirection, SegmentedOption>>;
+  readonly chosen: TradeDirection;
   /** Null on a balanced line: the counters keep their place, hidden. */
   readonly limits: TransferLimits | null;
 }
@@ -137,7 +132,7 @@ function directionLabel(direction: TradeDirection): string {
 export function transferLine(trade: TradePanelModel, transfer: TradeTransferModel): TransferLine {
   const copy = messages().hud.tradeWindow;
   const good = tradeGood(trade, transfer.goodType);
-  const directions = DIRECTIONS.map((direction): DirectionOption => {
+  const option = (direction: TradeDirection): SegmentedOption => {
     const enabled = good === null || flowAllowed(good, direction);
     const stops = oneWayStops(direction);
     const lacking = good?.storedA === false ? TRADE_SLOT_A : TRADE_SLOT_B;
@@ -146,19 +141,14 @@ export function transferLine(trade: TradePanelModel, transfer: TradeTransferMode
       : stops === null
         ? copy.balance
         : formatMessage(copy.carryFromTo, { from: stopBadge(stops.from), into: stopBadge(stops.into) });
-    return {
-      direction,
-      label: directionLabel(direction),
-      pressed: transfer.direction === direction,
-      enabled,
-      tooltip,
-    };
-  });
+    return { label: directionLabel(direction), enabled, tooltip };
+  };
   const stops = oneWayStops(transfer.direction);
   return {
     goodType: transfer.goodType,
     label: transfer.label,
-    directions,
+    directions: { toA: option('toA'), toB: option('toB'), both: option('both') },
+    chosen: transfer.direction,
     limits:
       stops === null
         ? null

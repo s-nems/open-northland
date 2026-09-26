@@ -61,11 +61,14 @@ export function createMilitarySection(deps: SettlerPanelDeps, entity: () => numb
       write(stanceRow.label, hud.settlerPanel.stance);
       write(regenerationRow.label, hud.settlerPanel.regeneration);
       stance.update(
-        { attack: hud.attack, defend: hud.defend, ignore: hud.ignore },
+        { attack: { label: hud.attack }, defend: { label: hud.defend }, ignore: { label: hud.ignore } },
         stanceSegment(military.stance),
       );
       regeneration.update(
-        { allowed: hud.settlerPanel.allowed, forbidden: hud.settlerPanel.forbidden },
+        {
+          allowed: { label: hud.settlerPanel.allowed },
+          forbidden: { label: hud.settlerPanel.forbidden },
+        },
         military.regeneration ? 'allowed' : 'forbidden',
       );
     },
