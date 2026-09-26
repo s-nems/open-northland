@@ -33,7 +33,11 @@ class WalkFrontier {
     }
   }
 
-  pop(): { cost: Fixed; node: NodeId } {
+  /** The cost of the entry the last {@link pop} returned. */
+  poppedCost: Fixed = fx.fromInt(0);
+
+  /** The least entry's node; its cost lands in {@link poppedCost}, so a settle allocates nothing. */
+  pop(): NodeId {
     const cost = this.costs[0];
     const node = this.nodes[0];
     if (cost === undefined || node === undefined) throw new Error('pop on an empty frontier');
@@ -54,7 +58,8 @@ class WalkFrontier {
         i = least;
       }
     }
-    return { cost, node };
+    this.poppedCost = cost;
+    return node;
   }
 
   private before(a: number, b: number): boolean {
@@ -87,6 +92,9 @@ class WalkFrontier {
  */
 export class WalkFlood implements WalkDistances {
   private readonly settled = new Map<NodeId, Fixed>();
+  /** The least cost queued for each unsettled node: a step that cannot beat it would only pop after it
+   *  and be skipped, so it is never queued. */
+  private readonly queued = new Map<NodeId, Fixed>();
   private readonly frontier = new WalkFrontier();
   private readonly steps = new StepBuffer();
 
@@ -102,16 +110,22 @@ export class WalkFlood implements WalkDistances {
   costTo(node: NodeId): Fixed | undefined {
     const known = this.settled.get(node);
     if (known !== undefined) return known;
-    const { settled, frontier, steps } = this;
+    const { settled, queued, frontier, steps } = this;
     while (frontier.size > 0 && settled.size < this.budget) {
-      const { cost, node: next } = frontier.pop();
+      const next = frontier.pop();
+      const cost = frontier.poppedCost;
       if (settled.has(next)) continue;
       settled.set(next, cost);
+      queued.delete(next);
       this.terrain.stepsInto(next, this.blocked, steps);
       for (let i = 0; i < steps.length; i++) {
         const step = steps.at(i);
         if (settled.has(step.node)) continue;
-        frontier.push(fx.add(cost, step.cost), step.node);
+        const stepCost = fx.add(cost, step.cost);
+        const best = queued.get(step.node);
+        if (best !== undefined && best <= stepCost) continue;
+        queued.set(step.node, stepCost);
+        frontier.push(stepCost, step.node);
       }
       if (next === node) return cost;
     }

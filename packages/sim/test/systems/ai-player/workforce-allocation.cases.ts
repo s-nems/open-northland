@@ -1377,6 +1377,16 @@ describe('workforce module (collectResources)', () => {
     if (terrain === undefined || deposit === undefined || holder === undefined) throw new Error('setup');
     const flagAt = sim.world.get(sim.world.get(holder, WorkFlag).flag, Position);
     const flagNode = nodeOfPosition(flagAt.x, flagAt.y);
+    // The live patch leaves the deposit as its witness, which the verdict below must not trust blindly.
+    const workedRadius = sim.world.get(holder, WorkFlag).radius;
+    expect(
+      gathererReach(sim.world, ctxAt(), terrain).patchHarvestable(
+        holder,
+        flagNode,
+        workedRadius,
+        (g) => g === MUD,
+      ),
+    ).toBe(true);
 
     // A shed on the one stance cell the gatherer walks to from his flag: the deposit keeps clear sides, but
     // he would never dig it from here. A fresh deposit waits across the map.

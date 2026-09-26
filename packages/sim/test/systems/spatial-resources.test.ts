@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
+import { anyLiveResource, nearestLiveResource } from '../../src/systems/ai-player/live-resources.js';
 import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import {
   anyResourceNear,
   canonicalResources,
+  resourceBoxHoldsAll,
   resourceHarvestAtomics,
   resourcesAtNode,
   resourcesNearNode,
@@ -188,5 +190,26 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     expect(canonicalResources(sim.world)).toBe(first); // same generation → same array (no re-sort)
     const b = nodeAt(sim, 6, 6);
     expect(canonicalResources(sim.world)).toEqual([a, b]); // generation moved → rebuilt
+  });
+});
+
+describe('resourceBoxHoldsAll (the dry-map stop of the expanding searches)', () => {
+  it('holds only when every occupied region lies inside the box', () => {
+    const sim = newSim();
+    expect(resourceBoxHoldsAll(sim.world, 50, 20, 0)).toBe(true); // nothing to miss
+    nodeAt(sim, 5, 5);
+    nodeAt(sim, 100, 40);
+    expect(resourceBoxHoldsAll(sim.world, 50, 20, 40)).toBe(false); // region 0 starts left of the box
+    expect(resourceBoxHoldsAll(sim.world, 50, 20, 100)).toBe(true);
+  });
+
+  it('lets the nearest and existence searches answer an absent good without changing a found one', () => {
+    const sim = newSim();
+    const ABSENT_GOOD = 99;
+    const far = nodeAt(sim, 400, 300); // good 1, far past the first boxes
+    expect(nearestLiveResource(sim.world, ABSENT_GOOD, { hx: 10, hy: 10 })).toBeNull();
+    expect(anyLiveResource(sim.world, ABSENT_GOOD, { hx: 10, hy: 10 })).toBe(false);
+    expect(nearestLiveResource(sim.world, 1, { hx: 10, hy: 10 })).toBe(far);
+    expect(nearestLiveResource(sim.world, 1, { hx: 10, hy: 10 }, (e) => e !== far)).toBeNull();
   });
 });

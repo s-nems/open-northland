@@ -53,6 +53,8 @@ export function upkeepHolders(
   const { workable } = ground;
   const reach = gathererReach(world, ctx, ground.flags.terrain);
   const ofGood = (goodType: number): boolean => goodType === w.good.typeId;
+  // Holders sharing an anchor share its drift target: nothing this pass does moves a resource.
+  const driftTargets = new Map<string, HalfCellNode | null>();
   for (const [rank, holder] of holders.entries()) {
     const flag = liveWorkFlag(world, holder);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
@@ -65,8 +67,13 @@ export function upkeepHolders(
       nearestLiveResource(world, w.good.typeId, anchor, (e) => workable(e) && open(e));
     if (alive) {
       // Cheap drift check first: a flag still in its nearest resource's band pays no spot search.
-      const current = nearest(everyResource);
-      const currentNode = current === null ? null : anchorNodeOf(world, current);
+      const key = `${anchor.hx},${anchor.hy}`;
+      let currentNode = driftTargets.get(key);
+      if (currentNode === undefined) {
+        const current = nearest(everyResource);
+        currentNode = current === null ? null : anchorNodeOf(world, current);
+        driftTargets.set(key, currentNode);
+      }
       if (currentNode === null || nodeDistance(flagNode, currentNode) <= FLAG_MAX_DISTANCE_NODES) continue;
     }
     const replant = replantSpot(world, ground.flags, holder, flag.radius, nearest, anchor, reach, taken);

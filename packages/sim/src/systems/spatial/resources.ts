@@ -80,6 +80,11 @@ export function resourcesNearNode(
   );
 }
 
+/** Whether the box `reach` nodes around `(hx, hy)` provably holds every resource on the map. */
+export function resourceBoxHoldsAll(world: World, hx: number, hy: number, reach: number): boolean {
+  return index.boxHoldsAll(world, hx, hy, reach);
+}
+
 /** Every resource whose anchor node is exactly `(hx, hy)`. The index's live bucket, so copy it before
  *  destroying members. */
 export function resourcesAtNode(world: World, hx: number, hy: number): readonly Entity[] {

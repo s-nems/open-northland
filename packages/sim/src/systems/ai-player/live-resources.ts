@@ -12,7 +12,12 @@ import { interactionCell, jobAtomics } from '../settlers/targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spatial/resources.js';
+import {
+  anyResourceNear,
+  canonicalResources,
+  resourceBoxHoldsAll,
+  resourcesNearNode,
+} from '../spatial/resources.js';
 import { anchorNodeOf } from './node-geometry.js';
 
 /** The first expanding-box reach of the live-resource searches below (Chebyshev half-cell nodes). */
@@ -97,6 +102,16 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
     const holderComponent = world.has(holder, Position)
       ? terrain.componentOf(entityNode(world, terrain, holder))
       : NO_COMPONENT;
+    // One flag centre per call, so its pocket verdict is read once rather than per candidate.
+    let sealedCenter: NodeId | null = null;
+    let sealed = false;
+    const centerPocketed = (center: NodeId): boolean => {
+      if (center !== sealedCenter) {
+        sealed = regions.pocketed(center);
+        sealedCenter = center;
+      }
+      return sealed;
+    };
     return {
       allowed,
       /** Whether the holder can walk to a flag on `center` at all; the per-resource test assumes it. */
@@ -115,7 +130,7 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
         if (manhattan(terrain, center, cell) > radius) return false;
         if (terrain.componentOf(cell) !== terrain.componentOf(center)) return false;
         if (cell !== center && (blocked.has(cell) || isUnreachableGoal(memo, cell))) return false;
-        return regions.pocketed(center) || !regions.unroutable(center, cell);
+        return centerPocketed(center) || !regions.unroutable(center, cell);
       },
     };
   };
@@ -131,16 +146,57 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
       const center = centerOf(flag);
       if (!reachesFlag(center)) return false;
       const reach = radius + contentIndex(ctx.content).maxResourceWorkOffset;
-      return anyResourceNear(
+      const witnesses = patchWitnesses(world);
+      const witness = witnesses.get(holder);
+      if (
+        witness !== undefined &&
+        world.has(witness, Resource) &&
+        inBox(world, witness, flag, reach) &&
+        takes(center, radius, witness, wanted)
+      ) {
+        return true;
+      }
+      let found: Entity | undefined;
+      const worked = anyResourceNear(
         world,
         flag.hx,
         flag.hy,
         reach,
-        (e) => takes(center, radius, e, wanted),
+        (e) => {
+          if (!takes(center, radius, e, wanted)) return false;
+          found = e;
+          return true;
+        },
         allowed,
       );
+      if (found === undefined) witnesses.delete(holder);
+      else witnesses.set(holder, found);
+      return worked;
     },
   };
+}
+
+/**
+ * The resource that last proved each holder's patch harvestable, tried first on the next decision. The
+ * verdict is existence only, and a witness that passes the same filters inside the same box is one of
+ * the candidates the scan would accept, so the hint changes the cost and never the answer. Derived read
+ * state, never hashed or saved.
+ */
+const patchWitnessesByWorld = new WeakMap<World, Map<Entity, Entity>>();
+
+function patchWitnesses(world: World): Map<Entity, Entity> {
+  let witnesses = patchWitnessesByWorld.get(world);
+  if (witnesses === undefined) {
+    witnesses = new Map();
+    patchWitnessesByWorld.set(world, witnesses);
+  }
+  return witnesses;
+}
+
+/** Whether `e` stands inside the Chebyshev `reach` box around `from`, the box the region scan walks. */
+function inBox(world: World, e: Entity, from: HalfCellNode, reach: number): boolean {
+  const node = anchorNodeOf(world, e);
+  return node !== null && Math.abs(node.hx - from.hx) <= reach && Math.abs(node.hy - from.hy) <= reach;
 }
 
 /** The best `(Manhattan distance, entity id)` live `goodType` resource `workable` accepts inside the
@@ -188,7 +244,11 @@ export function nearestLiveResource(
 ): Entity | null {
   for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
     const hit = bestLiveResourceInBox(world, goodType, from, reach, workable);
-    if (hit === null) continue;
+    if (hit === null) {
+      // A miss in a box holding every resource is final, so an absent good skips the larger boxes and the list.
+      if (resourceBoxHoldsAll(world, from.hx, from.hy, reach)) return null;
+      continue;
+    }
     // A winner at Manhattan ≤ reach is global: every node outside the Chebyshev `reach` box lies at
     // Manhattan ≥ reach+1, so nothing outside can beat or tie it.
     if (hit.distance <= reach) return hit.entity;
@@ -216,8 +276,8 @@ export function nearestLiveResource(
 /**
  * Whether any not-yet-empty resource of `goodType` stands on the map - existence only, so the first
  * box holding a live node answers without ranking it. `near` seeds the expanding-box search (the
- * seat's base - collector goods are gathered around it); a null seed or a within-cap miss falls back
- * to the early-exit canonical scan, which alone decides a truly dry map.
+ * seat's base - collector goods are gathered around it). A miss in a box holding every resource decides
+ * a dry map; a null seed or a miss within the cap falls back to the early-exit canonical scan.
  */
 export function anyLiveResource(world: World, goodType: number, near: HalfCellNode | null): boolean {
   if (near !== null) {
@@ -225,6 +285,7 @@ export function anyLiveResource(world: World, goodType: number, near: HalfCellNo
       if (anyResourceNear(world, near.hx, near.hy, reach, (e) => isLiveResource(world, e, goodType))) {
         return true;
       }
+      if (resourceBoxHoldsAll(world, near.hx, near.hy, reach)) return false;
     }
   }
   for (const e of canonicalResources(world)) {

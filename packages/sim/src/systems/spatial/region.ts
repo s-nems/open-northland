@@ -91,6 +91,9 @@ export interface RegionIndex<Extra, Capture> {
     test: (e: Entity) => boolean,
     keep?: (capture: Capture) => boolean,
   ): boolean;
+  /** Whether the box `reach` nodes around `(hx, hy)` holds every indexed entity, so a miss inside it is
+   *  a miss everywhere. Judged by whole regions, so a false answer proves nothing. */
+  boxHoldsAll(world: World, hx: number, hy: number, reach: number): boolean;
   /** Every indexed entity whose anchor node is exactly `(hx, hy)`, ascending-id. This is the index's live
    *  bucket, not a copy, so a caller that destroys members must copy it first. */
   atNode(world: World, hx: number, hy: number): readonly Entity[];
@@ -264,6 +267,15 @@ export function createRegionIndex<Extra, Capture>(
       // first-wins tie-break depends on the canonical ascending-id order.
       out.sort((a, b) => a - b);
       return out;
+    },
+    boxHoldsAll: (world, hx, hy, reach) => {
+      for (const key of memo.read(world).byRegion.keys()) {
+        const minHx = Math.floor(key / REGION_KEY_STRIDE) * REGION_NODES;
+        const minHy = (key % REGION_KEY_STRIDE) * REGION_NODES;
+        if (minHx < hx - reach || minHx + REGION_NODES - 1 > hx + reach) return false;
+        if (minHy < hy - reach || minHy + REGION_NODES - 1 > hy + reach) return false;
+      }
+      return true;
     },
     atNode: (world, hx, hy) => {
       const state = memo.read(world);
