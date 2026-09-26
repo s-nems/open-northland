@@ -5,6 +5,7 @@ import {
   Engagement,
   isWildlife,
   Owner,
+  Palisade,
   Person,
   Settler,
   type SettlerIdentity,
@@ -31,7 +32,7 @@ import { onStride, REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
-import type { WeaponBand } from './melee-slots.js';
+import type { Crowding, WeaponBand } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, reachableTargetGate } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
@@ -394,9 +395,10 @@ const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatInde
 
 /**
  * The enemy an owned combatant fights: the one it holds while its stance still keeps it, unless a rescan
- * finds one strictly nearer. Original behavior: a fighter keeps its target until it is gone or strays past
- * its leash, and a new scan takes over only a nearer enemy. It scans when it has no target, then while it
- * walks every tenth step ({@link RESCAN_WALK_STEPS}), and never between blows.
+ * finds one that scores strictly better ({@link crowdedScore}). Original behavior: a fighter keeps its
+ * target until it is gone or strays past its leash, and a new scan takes over only a nearer enemy. It scans
+ * when it has no target, then while it walks every tenth step ({@link RESCAN_WALK_STEPS}), and never
+ * between blows.
  */
 function heldOrPicked(
   world: World,
@@ -422,12 +424,15 @@ function heldOrPicked(
   ) {
     return null;
   }
-  const picked = pickByTier(world, ctx, pass, spec, x, y);
+  const picked = pickByTier(world, ctx, terrain, pass, spec, here, x, y);
   if (picked === null) return held;
   // A search hit lies at its distance to the nearest wall in the band; the reach check measures to the
   // nearest wall of all.
   const pickedAt = focusedOn(world, ctx, terrain, here, picked.entity);
-  return held !== null && pickedAt.dist >= held.dist ? held : pickedAt;
+  if (held === null || heldTarget === undefined) return pickedAt;
+  const heldScore = crowdedScore(world, ctx, terrain, pass, here, heldTarget, held.dist);
+  const pickedScore = crowdedScore(world, ctx, terrain, pass, here, picked.entity, pickedAt.dist);
+  return pickedScore >= heldScore ? held : pickedAt;
 }
 
 /** How many walk steps a fighter takes between two looks for a nearer enemy. Original behavior. */
@@ -460,14 +465,58 @@ function rescanDue(
 }
 
 /**
- * The original's pick: the first kind in {@link PICK_TIERS} with a candidate, and among its
- * {@link PICK_CANDIDATES} nearest within {@link PICK_SPREAD_NODES} of the nearest, one at random.
+ * How many map points one body already standing beside an enemy adds to that enemy's pick score.
+ * Approximation: owner rule, no counterpart in the original, which stacks every attacker on the nearest
+ * enemy. Here bodies collide, so a fighter picks the enemy fewest others already stand at, and two lines
+ * meet as a front that the larger side wraps rather than a pile on one man.
+ */
+export const CROWDING_WEIGHT = 2;
+
+/**
+ * An enemy's pick score from `here`: its distance plus {@link CROWDING_WEIGHT} for every body already
+ * standing on one of its six neighbours ({@link MeleeSlots.crowdingAround}), the asker's own node not
+ * counted. A building is scored by distance alone: it is besieged wall by wall, not surrounded.
+ */
+function crowdedScore(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  here: NodeId,
+  target: Entity,
+  dist: number,
+): number {
+  return dist + CROWDING_WEIGHT * crowdingOf(world, ctx, terrain, pass, here, target).occupied;
+}
+
+/** {@link MeleeSlots.crowdingAround} a unit target; a building is never crowded out. */
+function crowdingOf(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  here: NodeId,
+  target: Entity,
+): Crowding {
+  if (world.has(target, Building) || world.has(target, Palisade)) return OPEN_CROWDING;
+  return pass.slots.crowdingAround(combatTargetNode(world, ctx, terrain, here, target), here);
+}
+
+const OPEN_CROWDING: Crowding = { occupied: 0, sealed: false };
+
+/**
+ * The pick: the first kind in {@link PICK_TIERS} with a candidate, and among its {@link PICK_CANDIDATES}
+ * nearest within {@link PICK_SPREAD_NODES} of the nearest, the lowest {@link crowdedScore}, one at random
+ * among equal scores. Original behavior draws among the nearest few alone; the crowding weight is the
+ * owner's rule. An enemy nobody can step up to any more is taken only when the kind offers no other.
  */
 function pickByTier(
   world: World,
   ctx: SystemContext,
+  terrain: TerrainGraph,
   pass: CombatPass,
   spec: EngageSpec,
+  here: NodeId,
   x: number,
   y: number,
 ): { entity: Entity; distance: number } | null {
@@ -484,10 +533,37 @@ function pickByTier(
       SEARCH_METRIC,
     );
     if (found.length === 0) continue;
-    const pick = found.length === 1 ? found[0] : found[ctx.rng.int(found.length)];
-    if (pick !== undefined) return pick;
+    if (found.length === 1) return found[0] ?? null;
+    return leastCrowded(world, ctx, terrain, pass, here, found);
   }
   return null;
+}
+
+/** The lowest-scoring of `found` (in ascending distance, then id), drawn at random among equal scores;
+ *  sealed enemies stand aside while an open one is among them. */
+function leastCrowded(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  here: NodeId,
+  found: readonly { entity: Entity; distance: number }[],
+): { entity: Entity; distance: number } | null {
+  const scored = found.map((candidate) => {
+    const crowding = crowdingOf(world, ctx, terrain, pass, here, candidate.entity);
+    return {
+      candidate,
+      sealed: crowding.sealed,
+      score: candidate.distance + CROWDING_WEIGHT * crowding.occupied,
+    };
+  });
+  const open = scored.filter((c) => !c.sealed);
+  const pool = open.length > 0 ? open : scored;
+  let best = Number.POSITIVE_INFINITY;
+  for (const c of pool) best = Math.min(best, c.score);
+  const ties = pool.filter((c) => c.score === best);
+  const pick = ties.length === 1 ? ties[0] : ties[ctx.rng.int(ties.length)];
+  return pick?.candidate ?? null;
 }
 
 type TargetTier = 'primary' | 'low';

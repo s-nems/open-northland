@@ -257,12 +257,12 @@ describe('engagement - which enemy it picks', () => {
     expect(held(s, soldier)).toBe(wolf);
   });
 
-  it('draws among the five nearest only, however many stand within the spread', () => {
+  it('draws at random between two equally near open enemies, and never takes a farther one', () => {
     const at = 20;
-    // Seven candidates within 3 of the nearest: two at 6, two at 7, two at 8, one at 9. By (distance, id)
-    // the draw keeps the pairs at 6 and 7 and the first one at 8.
+    // Seven candidates within 3 of the nearest: two at 6, two at 7, two at 8, one at 9. With nobody
+    // standing at any of them the two at 6 score lowest, and the draw is between them alone.
     const offsets = [-6, 6, -7, 7, -8, 8, -9];
-    const FIVE_NEAREST = [0, 1, 2, 3, 4];
+    const TWO_NEAREST = [0, 1];
     const drawn = new Set<number>();
     for (let seed = 1; seed <= 40; seed++) {
       const s = sim(seed);
@@ -273,23 +273,7 @@ describe('engagement - which enemy it picks', () => {
       if (target === undefined) throw new Error('nothing picked');
       drawn.add(candidates.indexOf(target));
     }
-    expect([...drawn].sort()).toEqual(FIVE_NEAREST);
-  });
-
-  it('draws among the nearest within 3 nodes of the nearest, never one farther', () => {
-    const picked = new Set<string>();
-    for (let seed = 1; seed <= 24; seed++) {
-      const s = sim(seed);
-      const soldier = unit(s, 0, P0, MILITARY_MODE.ATTACK);
-      const nearest = unit(s, 6, P1, MILITARY_MODE.IGNORE, WOMAN);
-      const within = unit(s, 9, P1, MILITARY_MODE.IGNORE, WOMAN);
-      const past = unit(s, 10, P1, MILITARY_MODE.IGNORE, WOMAN);
-      combatSystem(s.world, ctxOf(s));
-      const target = held(s, soldier);
-      expect(target).not.toBe(past);
-      picked.add(target === nearest ? 'nearest' : target === within ? 'within' : 'other');
-    }
-    expect([...picked].sort()).toEqual(['nearest', 'within']);
+    expect([...drawn].sort()).toEqual(TWO_NEAREST);
   });
 
   it('keeps a held enemy unless a pick is strictly nearer', () => {

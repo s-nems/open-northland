@@ -31,6 +31,17 @@ export function forEachNodeInBand(
   return true;
 }
 
+/** The map-point ring {@link MeleeSlots.crowdingAround} counts: the six nodes adjacent to a unit, where a
+ *  melee attacker stands to strike it. */
+const CROWDING_RING = 1;
+
+/** {@link MeleeSlots.crowdingAround}: `occupied` neighbours, and `sealed` when no neighbour is left to
+ *  step onto. */
+export interface Crowding {
+  readonly occupied: number;
+  readonly sealed: boolean;
+}
+
 /**
  * One combat tick's melee-slot bookkeeping: which contact cells are spoken for, and the derived views that
  * answer it. Chasers are served in the canonical combatant order, so the deal is deterministic; every view
@@ -68,6 +79,29 @@ export class MeleeSlots {
   isOccupied(cell: NodeId): boolean {
     this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
     return this.standing.has(cell) || this.claimed.has(cell);
+  }
+
+  /**
+   * How crowded a unit standing on `node` is: how many of its six map-point neighbours a standing body or a
+   * cell dealt this tick holds, `except` (the asker's own node) not counted, and whether every in-bounds
+   * walkable neighbour is held. Any body counts, the unit's own side included: a fighter inside its own
+   * line reads as crowded and its flank as open, which is what makes numbers wrap a line instead of
+   * stacking on one man.
+   */
+  crowdingAround(node: NodeId, except?: NodeId): Crowding {
+    this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
+    const standing = this.standing;
+    const at = { hx: this.terrain.xOf(node), hy: this.terrain.yOf(node) };
+    let occupied = 0;
+    let open = 0;
+    forEachRingNode(at, CROWDING_RING, this.terrain.width, this.terrain.height, (hx, hy) => {
+      const cell = this.terrain.nodeAt(hx, hy);
+      if (cell === except) return true;
+      if (standing.has(cell) || this.claimed.has(cell)) occupied++;
+      else if (this.terrain.isWalkable(cell)) open++;
+      return true;
+    });
+    return { occupied, sealed: open === 0 };
   }
 
   /** Whether `cell` is ground a route can actually deliver to. A cell under another building's body or a
