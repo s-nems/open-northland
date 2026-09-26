@@ -304,7 +304,7 @@ describe('a trader between its own houses', () => {
     expect(stockOf(sim, near, WOOD)).toBe(10);
   });
 
-  it('lets a third house take the older stop of a full route, marks cleared', () => {
+  it('lets a third house take the first slot of a full route, marks cleared', () => {
     const sim = newSim();
     const first = houseAt(sim, NEAR_X, HUMAN);
     const second = houseAt(sim, FAR_X, HUMAN);
@@ -315,11 +315,32 @@ describe('a trader between its own houses', () => {
     sim.step();
 
     const route = sim.world.get(trader, TradeRoute);
-    expect(route.stops.map((stop) => stop.house)).toEqual([second, third]);
+    expect(route.stops.map((stop) => stop.house)).toEqual([third, second]);
     expect(route.stops.every((stop) => stop.imports.length === 0)).toBe(true);
   });
 
-  it("lets a foreign house take the route's foreign stop and drops its agreement", () => {
+  it('fills the first free slot, so a house detached from the first slot is replaced there', () => {
+    const sim = newSim();
+    const first = houseAt(sim, NEAR_X, HUMAN);
+    const second = houseAt(sim, FAR_X, HUMAN);
+    const third = houseAt(sim, MIDDLE_X, HUMAN);
+    const trader = traderOnFoot(sim, NEAR_X);
+    attach(sim, trader, first);
+    attach(sim, trader, second);
+    sim.step();
+    sim.enqueue(playerCommand(HUMAN, { kind: 'detachTradeHouse', entity: trader, house: first }));
+    sim.step();
+    attach(sim, trader, third);
+    sim.step();
+
+    const route = sim.world.get(trader, TradeRoute);
+    expect(route.stops.map((stop) => [stop.slot, stop.house])).toEqual([
+      [0, third],
+      [1, second],
+    ]);
+  });
+
+  it('lets a foreign house take the first slot of a full route and drops the agreement it held', () => {
     const sim = newSim();
     const own = houseAt(sim, NEAR_X, HUMAN);
     const post = houseAt(sim, FAR_X, NEIGHBOUR, [], TRADING_POST_ID);
@@ -334,7 +355,7 @@ describe('a trader between its own houses', () => {
     sim.step();
 
     const route = sim.world.get(trader, TradeRoute);
-    expect(route.stops.map((stop) => stop.house)).toEqual([own, other]);
+    expect(route.stops.map((stop) => stop.house)).toEqual([other, own]);
     expect(route.agreement).toBe(-1);
   });
 

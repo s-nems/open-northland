@@ -10,6 +10,8 @@ export const TRADE_AGREEMENT_LIMIT = 60;
 
 /** One stop of a trader's route. */
 export interface TradeStop {
+  /** Which of the route's {@link TRADE_ROUTE_HOUSES} slots the stop fills, from 0. */
+  readonly slot: number;
   readonly house: Entity;
   /** Whether the house belongs to another player: the stop the exchange happens at. */
   readonly foreign: boolean;
@@ -54,28 +56,31 @@ export function ensureTradeRoute(world: World, e: Entity): void {
 }
 
 /**
- * Add a stop; refused for a house already on the route. On a full route the new house takes the place
- * of a fallen stop, else of the route's foreign stop when it is foreign too, else of the older stop
- * (the original refuses a full route; this build replaces, owner's choice), and the trader starts over
- * from the first stop. The import flags of every stop are cleared, as the original does on any route
- * change.
+ * Add a stop; refused for a house already on the route. The house takes the first free slot; on a full
+ * route it takes the first slot's place (the original refuses a full route; this build replaces, owner's
+ * choice), and the trader starts over from the first stop. `stops` stays in slot order, so a full route
+ * reads as `[first, second]`. The import flags of every stop are cleared, as the original does on any
+ * route change.
  */
 export function addTradeStop(world: World, e: Entity, house: Entity, foreign: boolean): boolean {
   ensureTradeRoute(world, e);
   const route = world.get(e, TradeRoute);
   if (route.stops.some((s) => s.house === house)) return false;
   const live = world.mut(e, TradeRoute);
-  if (live.stops.length >= TRADE_ROUTE_HOUSES) {
-    const fallenAt = live.stops.findIndex((s) => !world.isAlive(s.house));
-    const foreignAt = foreign ? live.stops.findIndex((s) => s.foreign) : -1;
-    const [dropped] = live.stops.splice(fallenAt >= 0 ? fallenAt : Math.max(foreignAt, 0), 1);
+  let slot = 0;
+  while (slot < TRADE_ROUTE_HOUSES && live.stops.some((s) => s.slot === slot)) slot++;
+  if (slot === TRADE_ROUTE_HOUSES) {
+    slot = 0;
+    const dropped = live.stops.find((s) => s.slot === slot);
+    live.stops = live.stops.filter((s) => s.slot !== slot);
     if (dropped?.foreign === true) live.agreement = -1;
-    live.current = -1;
-    live.given = 0;
-    live.received = 0;
   }
-  live.stops.push({ house, foreign, imports: [] });
+  live.stops.push({ slot, house, foreign, imports: [] });
+  live.stops.sort((a, b) => a.slot - b.slot);
   for (const stop of live.stops) stop.imports = [];
+  live.current = -1;
+  live.given = 0;
+  live.received = 0;
   return true;
 }
 

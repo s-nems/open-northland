@@ -65,6 +65,14 @@ export type PanelClick =
       readonly goodType: number;
       readonly on: boolean;
     }
+  | {
+      /** A balance mark: the good marked or cleared at both stops at once. */
+      readonly kind: 'setTradeBalance';
+      readonly entityId: number;
+      readonly houses: readonly number[];
+      readonly goodType: number;
+      readonly on: boolean;
+    }
   | { readonly kind: 'setTradeAgreement'; readonly entityId: number; readonly agreement: number }
   | { readonly kind: 'selectEntity'; readonly entityId: number }
   | { readonly kind: 'vehicleOrder'; readonly entityId: number; readonly order: VehicleOrder }
@@ -83,6 +91,15 @@ const tradeClick = (view: PanelView, x: number, y: number): PanelClick | null =>
   if (target === null) return null;
   const entityId = target.trader;
   const mark = hitTradeImport(view, x, y);
+  if (mark?.pair != null) {
+    return {
+      kind: 'setTradeBalance',
+      entityId,
+      houses: [mark.house, mark.pair],
+      goodType: mark.goodType,
+      on: !mark.selected,
+    };
+  }
   if (mark !== undefined) {
     return {
       kind: 'setTradeImport',
@@ -250,7 +267,11 @@ export interface PanelHover {
   /** The hovered equip button's {@link equipActionKey}, stable across rebuilds. */
   readonly equipAction: string | null;
   /** The hovered import mark of a trader's route, by stop house and good. */
-  readonly tradeImport: { readonly house: number; readonly goodType: number } | null;
+  readonly tradeImport: {
+    readonly house: number;
+    readonly pair: number | null;
+    readonly goodType: number;
+  } | null;
   /** The hovered agreement row's table index. */
   readonly tradeOffer: number | null;
   /** The house whose detach button is hovered. */
@@ -281,7 +302,7 @@ export const panelHoverAt = (view: PanelView, x: number, y: number, activeStockT
     action: hitButton(view, x, y)?.action ?? null,
     choiceGood: gather !== undefined ? gather : hitCraftChoice(view, x, y),
     equipAction: equipHit !== undefined ? equipActionKey(equipHit) : null,
-    tradeImport: mark === undefined ? null : { house: mark.house, goodType: mark.goodType },
+    tradeImport: mark === undefined ? null : { house: mark.house, pair: mark.pair, goodType: mark.goodType },
     tradeOffer: hitTradeOffer(view, x, y)?.index ?? null,
     tradeDetach: hitTradeDetach(view, x, y) ?? null,
     cargoStep: step === undefined ? null : { goodType: step.row.goodType, step: step.step },
@@ -294,6 +315,7 @@ export const sameHover = (a: PanelHover, b: PanelHover): boolean =>
   a.choiceGood === b.choiceGood &&
   a.equipAction === b.equipAction &&
   a.tradeImport?.house === b.tradeImport?.house &&
+  a.tradeImport?.pair === b.tradeImport?.pair &&
   a.tradeImport?.goodType === b.tradeImport?.goodType &&
   a.tradeOffer === b.tradeOffer &&
   a.tradeDetach === b.tradeDetach &&

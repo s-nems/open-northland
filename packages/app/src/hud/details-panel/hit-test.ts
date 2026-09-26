@@ -171,7 +171,7 @@ export const hitTradeImport = (view: PanelView, x: number, y: number): TradeImpo
     const hit = stop.imports.find((h) => contains(h.rect, x, y));
     if (hit !== undefined) return hit;
   }
-  return undefined;
+  return trade.balance.find((h) => contains(h.rect, x, y));
 };
 
 /** The agreement row under a canvas point in a Handel section, or undefined. */
@@ -261,7 +261,11 @@ const tradeControlHint = (view: PanelView, x: number, y: number): string | null 
   if (hitTradeAttach(view, x, y)) return hud.tradeAttachHouseHint;
   if (hitTradeDetach(view, x, y) !== undefined) return hud.tradeDetachHouse;
   const mark = hitTradeImport(view, x, y);
-  if (mark !== undefined) return formatMessage(hud.tradeImportHint, { good: mark.label });
+  if (mark !== undefined) {
+    return formatMessage(mark.pair === null ? hud.tradeImportHint : hud.tradeBalanceHint, {
+      good: mark.label,
+    });
+  }
   if (hitTradeOffer(view, x, y) !== undefined) return hud.tradeOfferHint;
   return null;
 };

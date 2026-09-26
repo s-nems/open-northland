@@ -230,6 +230,8 @@ export const enGame = {
     tradeNotFriends: 'Trades only with a friendly tribe',
     tradeExchange: 'Given {given}/{giveAmount}, received {received}/{takeAmount}',
     tradeOffers: 'Trade agreements',
+    tradeBalanceCaption: 'Even out between both houses:',
+    tradeBalanceHint: 'Keep {good} even between both houses.',
     tradeOffersCaption: 'Trade agreement, pick one:',
     systemMenu: 'Menu',
     missionTitle: 'Mission',

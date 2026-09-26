@@ -15,6 +15,7 @@ export interface TradeOffer {
 }
 
 export interface TradeStopView {
+  readonly slot: number;
   readonly house: Entity;
   readonly foreign: boolean;
   readonly imports: readonly number[];
@@ -91,6 +92,7 @@ export function traderView(world: World, ctx: ContentContext, trader: Entity): T
   const player = ownerOf(world, trader);
   return {
     stops: route.stops.map((stop) => ({
+      slot: stop.slot,
       house: stop.house,
       foreign: stop.foreign,
       imports: [...stop.imports],

@@ -667,9 +667,11 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   balanced toward the house that is shorter of it, and cargo neither house marks is unloaded at the
   first house that stores it. With no mark on either house the original balances every good; this
   build moves nothing until the player sets a mark (owner's choice). A stop with nothing to move hands
-  the turn to the other stop and the cart stays parked until that stop has a unit to move. A full
-  route refuses a third house in the original; this build replaces the route's foreign stop with a
-  new foreign house and otherwise the older stop (owner's choice). This build also takes only an own
+  the turn to the other stop and the cart stays parked until that stop has a unit to move. The two
+  stops are fixed slots: a new house takes the first free one, and a full route, which refuses a
+  third house in the original, gives this build's new house the first slot (owner's choice). The
+  panel's balance row marks a good at both own stops in one click, and every stop offers a mark for
+  each good its house stores, held anywhere or not (owner's choice). This build also takes only an own
   house that keeps a stock, or another player's house that offers an agreement, and keeps no import
   mark on a route with a foreign stop, where the agreement alone decides (owner's choice). Every unit
   loaded out of the foreign house adds one to the player's tally with the house's owner, which the

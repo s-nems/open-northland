@@ -2,7 +2,7 @@ import { messages } from '../../../i18n/index.js';
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
-import { type ButtonAction, ROW_TEXT_PAD, type TradeLayout } from '../layout/index.js';
+import { type ButtonAction, ROW_TEXT_PAD, type TradeImportHit, type TradeLayout } from '../layout/index.js';
 import type { TradePanelModel } from '../model/index.js';
 
 /** Inset of a good icon inside its round import-mark button, so the pile clears the rim. */
@@ -21,7 +21,11 @@ export function drawTradeSection(
   model: TradePanelModel,
   hoverAction: ButtonAction | null,
   hovered: {
-    readonly import: { readonly house: number; readonly goodType: number } | null;
+    readonly import: {
+      readonly house: number;
+      readonly pair: number | null;
+      readonly goodType: number;
+    } | null;
     readonly offer: number | null;
     readonly detach: number | null;
   },
@@ -43,15 +47,18 @@ export function drawTradeSection(
     else chrome.glyphAll(face);
   };
 
+  const drawMark = (hit: TradeImportHit): void => {
+    const on = hovered.import;
+    const lit = on?.house === hit.house && on.pair === hit.pair && on.goodType === hit.goodType;
+    drawIcon(hit.rect, hit.goodId, hit.selected || lit);
+  };
+
   layout.stops.forEach((stop, i) => {
     const stopModel = model.stops[i];
     chrome.textLeftMiddle(stopModel?.label ?? '', stop.label.x, stop.label.y + stop.label.h / 2, 'white');
     chrome.roundButton(stop.detach.rect, stop.detach.enabled, hovered.detach === stop.house);
     chrome.glyphHouse(stop.detach.rect, stop.detach.enabled);
-    for (const hit of stop.imports) {
-      const lit = hovered.import?.house === hit.house && hovered.import.goodType === hit.goodType;
-      drawIcon(hit.rect, hit.goodId, hit.selected || lit);
-    }
+    for (const hit of stop.imports) drawMark(hit);
   });
   if (layout.attach !== null) {
     const { button, label } = layout.attach;
@@ -59,6 +66,11 @@ export function drawTradeSection(
     chrome.roundButton(button.rect, button.enabled, hoverAction === 'attach-trade-house');
     chrome.glyphHouse(button.rect, button.enabled);
   }
+  if (layout.balanceCaption !== null) {
+    const caption = layout.balanceCaption;
+    chrome.textAt(hud.tradeBalanceCaption, caption.x, caption.y + ROW_TEXT_PAD * s, 'dimmed');
+  }
+  for (const hit of layout.balance) drawMark(hit);
   if (layout.offersCaption !== null) {
     const caption = layout.offersCaption;
     chrome.textAt(hud.tradeOffersCaption, caption.x, caption.y + ROW_TEXT_PAD * s, 'dimmed');

@@ -26,6 +26,7 @@ import {
   chestKindOf,
   isBuilding,
   isSettler,
+  num,
   positionOf,
   settlerJobType,
 } from '../../game/snapshot.js';
@@ -67,8 +68,9 @@ export interface UnitOrderController {
    *  (a garrison flag hangs far above the tower it stands for). True when the press selected a settler
    *  or gave the selected settlers an order. */
   issueRightClick(event: MouseEvent, onBuilding?: number | null): boolean;
-  /** The trade-route toggle for the selected traders riding inside their carts, which the settlers'
-   *  click skips as they stand nowhere on the map. True when any of them took the house. */
+  /** The trade-route toggle for the selected traders off the map (riding inside a cart, or inside a
+   *  house), which the settlers' click skips, and for the crew of a selected cart, whose window shows its
+   *  trader's route. True when any of them took the house. */
   issueRiderTradeHouse(event: MouseEvent, onBuilding?: number | null): boolean;
   /** Move the selected gatherers' work flags to a world click; clicking a resource also narrows their
    *  gathering filter to that resource's good. */
@@ -304,16 +306,18 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   const issueRiderTradeHouse = (event: MouseEvent, onBuilding?: number | null): boolean => {
     const snapshot = deps.snapshot();
-    const riders: { readonly ref: number }[] = [];
-    for (const ref of deps.selected()) {
-      const e = entityById(snapshot, ref);
-      if (e !== undefined && e.components.Rider !== undefined && positionOf(e) === undefined)
-        riders.push({ ref });
+    const selected = deps.selected();
+    const traders: { readonly ref: number }[] = [];
+    for (const e of snapshot.entities) {
+      const rider = e.components.Rider as { vehicle?: unknown } | undefined;
+      const offMap = selected.has(e.id) && positionOf(e) === undefined;
+      const ofSelectedCart = rider !== undefined && selected.has(num(rider.vehicle) ?? -1);
+      if (offMap || ofSelectedCart) traders.push({ ref: e.id });
     }
-    if (riders.length === 0) return false;
+    if (traders.length === 0) return false;
     const world = deps.toWorld(event.clientX, event.clientY);
     return (
-      routeTradeHouse(riders, onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y)).size > 0
+      routeTradeHouse(traders, onBuilding ?? pickTopAt(deps.targets.buildings(), world.x, world.y)).size > 0
     );
   };
 

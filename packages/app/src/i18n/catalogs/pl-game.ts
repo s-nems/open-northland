@@ -228,6 +228,8 @@ export const plGame = {
     tradeNotFriends: 'Handluje tylko z przyjaznym plemieniem',
     tradeExchange: 'Oddano {given}/{giveAmount}, odebrano {received}/{takeAmount}',
     tradeOffers: 'Umowy handlowe',
+    tradeBalanceCaption: 'Wyrównuj między domami:',
+    tradeBalanceHint: 'Wyrównuj {good} między oboma domami.',
     tradeOffersCaption: 'Umowa handlowa, wybierz jedną:',
     systemMenu: 'Menu',
     missionTitle: 'Misja',

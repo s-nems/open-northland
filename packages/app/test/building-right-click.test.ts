@@ -403,6 +403,29 @@ describe('right-clicking a standing house with a trader', () => {
     ]);
   });
 
+  it('puts the house on the route of a trader waiting inside a house', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+    sim.world.remove(trader, Position);
+
+    expect(rightClick(sim, [trader], home, sim.content, true, 'riders')).toEqual([
+      { kind: 'attachTradeHouse', entity: trader, house: home },
+    ]);
+  });
+
+  it("puts the house on the route of a selected cart's trader standing beside it", () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const home = buildingAt(sim, BUILDING_HOME_00, ONE);
+    const trader = settlerAt(sim, JOB_TRADER);
+    const cart = sim.world.create();
+    sim.world.add(trader, Rider, { vehicle: cart, boarding: false });
+
+    expect(rightClick(sim, [cart], home, sim.content, true, 'riders')).toEqual([
+      { kind: 'attachTradeHouse', entity: trader, house: home },
+    ]);
+  });
+
   it('takes a house the route already names off it', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);

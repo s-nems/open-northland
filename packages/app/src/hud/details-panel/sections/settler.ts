@@ -43,7 +43,7 @@ export function drawSettler(
   hoveredEquipAction: string | null,
   s: number,
   hoveredTrade: {
-    import: { house: number; goodType: number } | null;
+    import: { house: number; pair: number | null; goodType: number } | null;
     offer: number | null;
     detach: number | null;
   },

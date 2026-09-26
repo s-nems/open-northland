@@ -1,7 +1,6 @@
 import { entityById, type TradeOffer, type TraderView, type WorldSnapshot } from '@open-northland/sim';
 import { num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { liveAmounts } from './building-materials.js';
 import { buildingTitle, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 
 /** One import toggle of a route stop: a good the house may take in, marked or not. */
@@ -13,6 +12,7 @@ export interface TradeImportModel {
 }
 
 export interface TradeStopModel {
+  readonly slot: number;
   readonly house: number;
   readonly label: string;
   readonly foreign: boolean;
@@ -29,10 +29,15 @@ export interface TradeOfferModel {
  *  foreign stop offers, the cart it commands with its load, and the running exchange. */
 export interface TradePanelModel {
   readonly stops: readonly TradeStopModel[];
+  /** The goods both own stops store, each lit while both stops mark it: the trader then evens the two
+   *  stocks out instead of carrying the good one way. Empty on a route that is not two own houses. */
+  readonly balance: readonly TradeImportModel[];
   readonly offers: readonly TradeOfferModel[];
   readonly status: readonly string[];
   /** Whether the route has a free stop to attach a house to. */
   readonly canAttach: boolean;
+  /** Whether that free stop is the first slot, so its attach row goes above the stops. */
+  readonly attachFirst: boolean;
 }
 
 /** "you give N X, you get M Y", the wording of an agreement wherever it is listed. */
@@ -46,37 +51,25 @@ export function tradeOfferLabel(ctx: UnitPanelModelContext, offer: TradeOffer): 
 }
 
 /**
- * The goods a stop offers import marks for: what its house stores that the other stop currently holds,
- * a held dish counting as its edible (a bakery's bread offers `food_simple` at a storehouse), plus
- * every good already marked, so a mark can always be cleared. Authored: the original lists the house's
- * whole stock table, which for a warehouse is every good in the game.
+ * The goods a stop offers import marks for: everything its house stores, so the trader can be told to
+ * bring a good the other stop does not hold yet. Authored: the original lists the house's whole stock
+ * table, which for a warehouse is every good in the game.
  */
 function importChoices(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   house: number,
-  other: number | undefined,
-  marked: readonly number[],
+  marked: (goodType: number) => boolean,
 ): TradeImportModel[] {
-  const stored = storedGoodsOf(ctx, snapshot, house);
-  const held = new Set<number>();
-  for (const good of other === undefined ? [] : heldGoodsOf(snapshot, other)) {
-    held.add(good);
-    held.add(ctx.edibleGoodForm?.(good) ?? good);
-  }
-  const choices: TradeImportModel[] = [];
-  for (const goodType of stored) {
-    const selected = marked.includes(goodType);
-    if (!selected && !held.has(goodType)) continue;
+  return storedGoodsOf(ctx, snapshot, house).map((goodType) => {
     const def = goodDef(ctx, goodType);
-    choices.push({
+    return {
       goodType,
       label: goodLabel(ctx, goodType),
       ...(def?.id !== undefined ? { goodId: def.id } : {}),
-      selected,
-    });
-  }
-  return choices;
+      selected: marked(goodType),
+    };
+  });
 }
 
 function storedGoodsOf(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, house: number): number[] {
@@ -84,14 +77,6 @@ function storedGoodsOf(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, hous
   const typeId = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = ctx.buildings.find((b) => b.typeId === typeId);
   return (def?.stock ?? []).map((slot) => slot.goodType).sort((a, b) => a - b);
-}
-
-function heldGoodsOf(snapshot: WorldSnapshot, house: number): number[] {
-  const held: number[] = [];
-  for (const [good, amount] of liveAmounts(entityById(snapshot, house)?.components.Stockpile)) {
-    if (amount > 0) held.push(good);
-  }
-  return held;
 }
 
 function houseLabel(
@@ -132,15 +117,26 @@ export function tradePanelModel(
   const hud = messages().hud;
   const foreign = view.stops.find((stop) => stop.foreign);
   // With another tribe the agreement alone decides what moves, so no stop offers import marks.
-  const stops: TradeStopModel[] = view.stops.map((stop, i) => ({
+  const stops: TradeStopModel[] = view.stops.map((stop) => ({
+    slot: stop.slot,
     house: stop.house,
     label: houseLabel(ctx, snapshot, stop.house, stop.foreign),
     foreign: stop.foreign,
     imports:
       foreign !== undefined
         ? []
-        : importChoices(ctx, snapshot, stop.house, view.stops[1 - i]?.house, stop.imports),
+        : importChoices(ctx, snapshot, stop.house, (good) => stop.imports.includes(good)),
   }));
+  const [first, second] = view.stops;
+  const balance =
+    foreign !== undefined || first === undefined || second === undefined
+      ? []
+      : importChoices(
+          ctx,
+          snapshot,
+          first.house,
+          (good) => first.imports.includes(good) && second.imports.includes(good),
+        ).filter((choice) => storedGoodsOf(ctx, snapshot, second.house).includes(choice.goodType));
   const offers: TradeOfferModel[] = (foreign?.offers ?? []).map((offer) => ({
     index: offer.index,
     label: tradeOfferLabel(ctx, offer),
@@ -165,5 +161,6 @@ export function tradePanelModel(
       );
     }
   }
-  return { stops, offers, status, canAttach: view.stops.length < 2 };
+  const canAttach = view.stops.length < 2;
+  return { stops, balance, offers, status, canAttach, attachFirst: canAttach && first?.slot !== 0 };
 }

@@ -282,7 +282,19 @@ describe('vehicle panel trade tab', () => {
     expect(tooltipTextAt(view, onMark.x, onMark.y, 1, ALL_STOCK_TAB)).toContain(mark.label);
     expect(panelHoverAt(view, onMark.x, onMark.y, ALL_STOCK_TAB).tradeImport).toEqual({
       house: mark.house,
+      pair: null,
       goodType: mark.goodType,
+    });
+
+    const even = trade.balance.find((hit) => hit.goodType === GOOD_IRON);
+    if (even === undefined) throw new Error('expected a balance mark for iron');
+    const onEven = center(even.rect);
+    expect(panelClickAt(view, onEven.x, onEven.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+      kind: 'setTradeBalance',
+      entityId: trader,
+      houses: trade.stops.map((stop) => stop.house),
+      goodType: GOOD_IRON,
+      on: true,
     });
   });
 
