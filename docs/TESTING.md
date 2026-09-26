@@ -162,9 +162,23 @@ the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serve
 runs the worker as plain JavaScript over the workspace packages' built output, so the tests first
 bundle it from source with esbuild. They check that four acceptance scenes reach the same state in the
 worker as inline, and that the runtime's side sees every tick the worker stepped.
+`session-worker-shed-events.test.ts` and the in-process `session-worker-idle-poll.test.ts` cover
+the relayed policy: a shedding worker still delivers the durable events of the ticks it shed, and a worker
+waiting for relay frames polls at its idle period instead of spinning.
 `test:content` repeats the parity check in `session-worker-checkpoint.test.ts` on a late six-AI
 `magiczny_las` checkpoint under player orders; the checkpoint is a local `bench-out/` file, so the
 test skips where it was never written.
+
+The network worker runs `NetworkConnection` against the worker's `serveRelay`.
+`packages/app/test/net/network-worker*.test.ts` drive it in process over a scripted relay link:
+lobby, a hosted world, relay frames, the link's lifecycle and the answers a closed worker
+still owes. `relayed-world-superseded.test.ts` covers a world the client dropped before its entry
+hosted it. `relay-worker-stall.test.ts` and the third case of `relay-map-parity.test.ts` run the
+worker under `worker_threads` beside inline headless clients on the virtual relay: the worker cannot
+follow a virtual clock, so `PacedStage` (`test/support/net-worker/`) advances the network and relay
+by the real time each turn took. The stall test stops the runtime's deliveries and checks that
+acknowledgements keep their cadence and the relay never waits; the parity case checks that the
+worker client's digests and final state match the inline client's on `magiczny_las`.
 
 ## Desktop boot and persistence
 

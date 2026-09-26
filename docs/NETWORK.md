@@ -289,7 +289,8 @@ ticks and order.
 A client keeps the custom maps it verified in browser storage, capped at four maps and 64 MiB of
 encoded transfer text, and validates a copy again against its fingerprint and permitted origin before
 playing it; base and unknown origins are never served from that store. A reload rejoins on the token,
-checks compatibility, and rebuilds from the relay snapshot over the retained map.
+checks compatibility, and rebuilds over the retained map from the relay's cached snapshot, or from the
+descriptor while the relay still holds every frame.
 
 ## Resync and catching up
 
@@ -372,7 +373,9 @@ the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scali
 the driver, never by skipping a tick, so a late frame lands inside the buffer. `RelaySocket` keeps
 the connection and reopens it on the same token after a drop; a connection the relay replaced or
 refused stays closed. The desktop and browser app plays through the `?relay=` entry, whose client,
-link and world run in a network worker, the headless test client through an in-memory network.
+link and world run in a network worker, the headless test client through an in-memory network. A
+stalled display thread does not delay the app's acknowledgements: the worker keeps stepping and
+acknowledging, and drops the transient events of ticks the display has not taken.
 
 ## Operations
 

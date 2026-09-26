@@ -11,17 +11,25 @@ requests. The root [`AGENTS.md`](../../AGENTS.md) applies in full; the wire cont
 - Depends on `net-protocol`, `lockstep`, `sim` and the pure `@noble/hashes` SHA-256 implementation
   (save verification must also work on HTTP LAN origins), and on the Web platform only through
   `WebSocket`, the compression streams, `Response`, the text codecs, base64, timers, `performance`
-  and `crypto`, never the document. The DOM lib is on for their types; the headless client under
+  and `crypto`, never the document. A dedicated worker has all of them, and the app runs the client,
+  its link and its world in one. The DOM lib is on for their types; the headless client under
   `packages/net-server/test/support/`, which runs this package under Node, is what holds the
   boundary.
 - Holds no display and no content. The world comes through a `WorldPort` the host supplies: a build
   from the descriptor, a restore from a snapshot, or a refusal that asks the relay for its cached
   snapshot. The host decides what a served snapshot does to its world; the client only drops the one
   it had.
-- `RelayClient` is the frame loop's `SessionDriver` and the HUD's `SessionClock`: elapsed time in,
-  paced a frame or two behind the relay to hold the jitter buffer; tempo and pause read as the relay
-  last broadcast them, a decided or confirmed match reading as paused, and a change is a request the
-  relay applies for everyone.
+- The host wires the client to a `RelayLink`, `attach` for what it sends and `receive` for what
+  arrives: `RelaySocket` over a `WebSocket`, or a test's link reporting through the same
+  `RelayLinkEvents`.
+- `RelayClient` is the `SessionDriver` of the world it adopted: elapsed time in, paced a frame or two
+  behind the relay to hold the jitter buffer; tempo and pause read as the relay last broadcast them,
+  a decided or confirmed match reading as paused, and a change is a request the relay applies for
+  everyone. It numbers each adopted world (`worldId`, null while it holds none), so a host can tell
+  whether a save or a request still belongs to the running world.
+- `RelayClientView` is what a display reads of the client and asks of it. `RelayState` turns relay
+  messages into the lobby and session state; the client applies each message through it, so a mirror
+  elsewhere that applies the same messages in the same order reaches the same state.
 - The snapshot encoding is this package's contract with every other client: gzip of the canonical
   save JSON, base64 on the wire, the session's map named in the header.
 
@@ -29,4 +37,5 @@ requests. The root [`AGENTS.md`](../../AGENTS.md) applies in full; the wire cont
 
 Unit tests cover the pieces with a clock or a socket behind them. The state machine is proven end
 to end by the headless client under `packages/net-server/test/support/`, which wraps `RelayClient`
-over an in-memory relay, and by the decoded-map run in `packages/app/test/content/`.
+over an in-memory relay, and by the decoded-map run in `packages/app/test/content/`, which also plays
+one client in the app's network worker.

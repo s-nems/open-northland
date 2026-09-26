@@ -2,9 +2,9 @@
 
 `packages/app` is the browser shell. It translates input into sim commands, advances a
 `@open-northland/lockstep` session driver from the frame loop, and gives snapshots and events to
-render, audio, and the HUD. For the `?map=` entry the worker host owns the simulation, the lockstep
-driver and the clock; the app owns the mirror, the renderer and the HUD. It is the only package
-allowed to host both a simulation and a renderer. Audio may use the pure
+render, audio, and the HUD. For the `?map=` and `?relay=` entries a worker owns the simulation, the
+session driver and the clock; the main thread owns the mirror, the renderer and the HUD. It is the
+only package allowed to host both a simulation and a renderer. Audio may use the pure
 `@open-northland/render/data` projection helpers.
 
 The root [`AGENTS.md`](../../AGENTS.md) still applies.
@@ -26,10 +26,21 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   `actorsOf` and the group readers in `game/snapshot-base.ts`), never from a per-tick walk over
   `snapshot.entities`. A walk is for a click, an order or a one-off setup.
 - `Simulation` is constructed and typed only by hosts: the entries' world builders, scenes,
-  `game/sandbox/`, `game/world/`, the inline host and the worker's session in `session/worker/`. The
-  worker host serves the `?map=` entry and, in the network worker, the relayed entry's world. The
-  inline host serves scenes and tests. `entries/shot.ts` and one-off sims, such as a
-  sub-mission's restore check, step their `Simulation` on the main thread with no host.
+  `game/sandbox/`, `game/world/`, the inline host, and in `session/worker/` the served session, its
+  facts and the network worker's world port; the `biome.json` override lists them. The inline host
+  serves scenes and tests. `entries/shot.ts` and one-off sims, such as a sub-mission's restore check,
+  step their `Simulation` on the main thread with no host.
+- Two worker entries run a world off the main thread. `entries/map/sim-worker.ts` serves the `?map=`
+  world over the loopback transport with `undelivered: 'hold'`: past `UNDELIVERED_LIMIT_SECONDS` of
+  ticks the runtime has not taken, the clock stops. `entries/relay/net-worker.ts` starts with a
+  `NetworkConnection` and owns the relay link, the `RelayClient` and each world the client adopts,
+  with `undelivered: 'shed'`: the relay runs the clock, so the worker keeps stepping and
+  acknowledging and drops the oldest undelivered ticks' events, except `DURABLE_EVENT_KINDS`
+  (`view/runtime/world-events.ts`).
+- No relayed world's `Simulation` is referenced on the main thread. The main thread reads the client
+  through `RelayClientMirror` (the relay messages the worker's client applied, and its facts), each
+  adopted world through that world's `WorkerSession`, and matches a save to the running world by
+  `worldId`.
 - Load generated content through `src/content/net.ts` by its root-relative URL and validate it with
   the `@open-northland/data` schemas. A checkout without `content/` must still boot using synthetic
   fallback content or a clear unavailable state.
@@ -39,9 +50,8 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   report shows but does not block.
 - A world is assembled from the session descriptor alone, never from the local seat: two clients of
   one relayed session must enqueue the same setup. The `?relay=` entry assembles the shared map boot
-  here and hands its inputs to the network worker, where `@open-northland/net-client`'s `RelayClient`
-  owns the relay link, the clock and the sim; this thread reads the client through a mirror fed by
-  the relay messages and facts the worker forwards.
+  on the main thread when the worker's client asks for a world, and posts its inputs to the network
+  worker, which builds, adopts and serves it.
 - The menu hands over to a game through `swapToEntry`, never by assigning `window.location`. A
   document navigation ends the browser's fullscreen grant, and the next document can only take it
   back on the player's next click. Entries that still navigate owe the player that flash.
