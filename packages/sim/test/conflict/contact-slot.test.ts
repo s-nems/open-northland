@@ -9,7 +9,7 @@ import {
   hexNeighboursOf,
 } from '../../src/nav/halfcell.js';
 import { combatSystem } from '../../src/systems/index.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import {
   combatCadenceContent,
   ctxOf,
@@ -38,7 +38,7 @@ function distance(a: HalfCellNode, b: HalfCellNode): number {
 /** The cell a lone swordsman starting at `from` is dealt against an enemy at {@link ENEMY}, per seed. */
 function dealtSlot(seed: number, from: HalfCellNode): HalfCellNode {
   const s = new Simulation({ seed, content: combatCadenceContent(), map: grass(MAP_CELLS, MAP_ROWS) });
-  const at = (node: HalfCellNode, owner: number, mode: number, job: number): Entity => {
+  const at = (node: HalfCellNode, owner: number, mode: MilitaryMode, job: number): Entity => {
     const e = fighterAtNode(s, node.hx, node.hy, owner === P0 ? VIKING : SAXON, job);
     s.world.add(e, Owner, { player: owner });
     s.world.add(e, Stance, { mode, anchorCell: null });

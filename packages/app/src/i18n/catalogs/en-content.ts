@@ -210,6 +210,11 @@ export const enContent = {
       summary:
         'A warband ordered across the map cuts down the picket blocking its path, then walks on to the ordered spot.',
     },
+    'hit-alarm': {
+      title: 'Alarm',
+      summary:
+        'An arrow in a woman sends her and the hunter beside her running, a civilian set to defend stands, and swordsmen past their own sight turn on the archer.',
+    },
     diplomacy: {
       title: 'Diplomacy',
       summary:

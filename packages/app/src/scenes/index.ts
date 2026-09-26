@@ -21,6 +21,7 @@ import { familyScene } from './family.js';
 import { farmConstructionScene } from './farm-construction.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { gossipScene } from './gossip.js';
+import { hitAlarmScene } from './hit-alarm.js';
 import { householdGoodsScene } from './household-goods.js';
 import { huntingScene } from './hunting.js';
 import { livestockScene } from './livestock.js';
@@ -69,6 +70,7 @@ export const SCENES: readonly SceneDefinition[] = [
   repairScene,
   towerDefenceScene,
   attackMoveScene,
+  hitAlarmScene,
   diplomacyScene,
   teamVisionScene,
   goodsCatalogScene,

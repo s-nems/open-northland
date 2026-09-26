@@ -208,6 +208,11 @@ export const plContent = {
       summary:
         'Drużyna wysłana przez mapę wycina posterunek stojący jej na drodze, po czym maszeruje dalej we wskazane miejsce.',
     },
+    'hit-alarm': {
+      title: 'Alarm',
+      summary:
+        'Strzała trafia kobietę: ona i stojący obok myśliwy uciekają, osadnik z rozkazem obrony stoi, a wojownicy spoza zasięgu wzroku ruszają na łucznika.',
+    },
     diplomacy: {
       title: 'Dyplomacja',
       summary:

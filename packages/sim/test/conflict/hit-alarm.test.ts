@@ -7,8 +7,8 @@ import {
   MoveGoal,
   Owner,
   Position,
-  removeCurrentAtomic,
   Resting,
+  removeCurrentAtomic,
   Stance,
   setDiplomacyStance,
 } from '../../src/components/index.js';

@@ -4,6 +4,7 @@ import {
   components,
   type Entity,
   fx,
+  type MilitaryMode,
   type Simulation,
   systems,
 } from '@open-northland/sim';
@@ -101,8 +102,6 @@ function dress(sim: Simulation, e: Entity, armor: string | null, amulets: readon
     misc,
   });
 }
-
-type MilitaryMode = (typeof systems.MILITARY_MODE)[keyof typeof systems.MILITARY_MODE];
 
 function setStance(sim: Simulation, e: Entity, mode: MilitaryMode): void {
   const stance = sim.world.mut(e, Stance);
