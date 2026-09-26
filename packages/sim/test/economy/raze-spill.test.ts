@@ -11,7 +11,14 @@ import {
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { RUIN_COLLAPSE_TICKS, Simulation } from '../../src/index.js';
+import {
+  exportSaveGame,
+  parseSaveGame,
+  RUIN_COLLAPSE_TICKS,
+  restoreSimulation,
+  Simulation,
+  serializeSaveGame,
+} from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { manhattan } from '../../src/systems/spatial/metric.js';
@@ -140,6 +147,24 @@ describe('a razed building spills its contents on the ground', () => {
 
     sim.step();
     expect(unitsOf(heaps(sim), WOOD)).toBe(4);
+  });
+
+  it('carries a falling ruin through a save and back', () => {
+    const sim = mappedSim();
+    const hut = stockedHut(sim, ANCHOR, [[WOOD, 4]]);
+    sim.enqueueSetup({ kind: 'demolish', building: hut });
+    sim.step();
+
+    const saved = serializeSaveGame(exportSaveGame(sim));
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(saved)), {
+      content: placementContent(),
+      map: grassMap(16, 16),
+    });
+    settleRuins(sim);
+    settleRuins(restored);
+
+    expect(unitsOf(heaps(restored), WOOD)).toBe(4);
+    expect(restored.hashState()).toBe(sim.hashState());
   });
 
   it('spills the same way when the building is razed in combat', () => {
