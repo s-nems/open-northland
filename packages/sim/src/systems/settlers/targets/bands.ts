@@ -3,6 +3,7 @@ import {
   Building,
   DeliveryFlag,
   GroundDrop,
+  Palisade,
   Position,
   Stockpile,
   UnderConstruction,
@@ -10,14 +11,15 @@ import {
   Vehicle,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
-import { accessibleStockAmounts, mayFetchGoodFrom } from '../../stores/index.js';
+import { lowestStockedGood } from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { FetchableStock } from './stores/fetchable-stock.js';
-import { buriedUnderBuilding, canStoreGood } from './stores/stock.js';
+import { StoreSinks } from './stores/sinks.js';
+import { buriedUnderBuilding } from './stores/stock.js';
 
 /**
  * Tick-local memo of question-keyed candidate bands: the candidates passing one question's
@@ -35,15 +37,15 @@ export class TargetBands {
   private readonly holdingByGood = new Map<number, InteractionCellIndex>();
   private readonly sinksByGood = new Map<number, InteractionCellIndex>();
   private readonly storageSinksByGood = new Map<number, InteractionCellIndex>();
-  private readonly inputSourcesByGood = new Map<number, InteractionCellIndex>();
   private readonly prayerSiteBands = new Map<PrayerSite, InteractionCellIndex>();
+  private groundPileBand: InteractionCellIndex | undefined;
   private stamp: number;
 
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph,
-    /** Canonical ascending-id `Stockpile + Position` candidates, the store questions' universe. */
+    /** Canonical ascending-id `Stockpile + Position` candidates, the ground-pile question's universe. */
     private readonly stockpiles: readonly Entity[],
     /** Canonical ascending-id `Building + Position` candidates, the prayer-site questions' universe. */
     private readonly buildings: readonly Entity[],
@@ -69,30 +71,40 @@ export class TargetBands {
     return index;
   }
 
-  /** Stores {@link canStoreGood} accepts `goodType` into, keyed separately per `excludeProducers` mode. */
+  /** Stores {@link canStoreGood} accepts `goodType` into, keyed separately per `excludeProducers` mode and
+   *  drawn from the cross-tick sink ledger. */
   sinksFor(goodType: number, excludeProducers: boolean): InteractionCellIndex {
     this.ensureFresh();
     const memo = excludeProducers ? this.storageSinksByGood : this.sinksByGood;
     let index = memo.get(goodType);
     if (index === undefined) {
-      index = this.indexOver(
-        this.stockpiles.filter((e) => canStoreGood(this.world, this.ctx, e, goodType, excludeProducers)),
-      );
+      const sinks = StoreSinks.of(this.world, this.ctx).sinks(goodType, excludeProducers);
+      index = this.indexOver([...sinks].sort((a, b) => a - b));
       memo.set(goodType, index);
     }
     return index;
   }
 
-  /** Stores a producer may fetch a missing recipe input of `goodType` from. */
-  inputSources(goodType: number): InteractionCellIndex {
+  /** Unburied building-less piles holding any good, loose heaps and boat hulls alike: the porter pickup's
+   *  seeker-independent half. */
+  groundPiles(): InteractionCellIndex {
     this.ensureFresh();
-    let band = this.inputSourcesByGood.get(goodType);
-    if (band === undefined) {
-      const walls = buildingBlockedCells(this.world, this.ctx, this.terrain);
-      band = this.indexOver(this.stockpiles.filter((e) => this.isInputSource(walls, e, goodType)));
-      this.inputSourcesByGood.set(goodType, band);
+    if (this.groundPileBand === undefined) {
+      const { world, terrain } = this;
+      const walls = buildingBlockedCells(world, this.ctx, terrain);
+      this.groundPileBand = this.indexOver(
+        this.stockpiles.filter((e) => {
+          if (world.has(e, Building) || !world.has(e, Position)) return false;
+          const stock = world.tryGet(e, Stockpile);
+          return (
+            stock !== undefined &&
+            lowestStockedGood(stock) !== null &&
+            !buriedUnderBuilding(world, terrain, walls, e)
+          );
+        }),
+      );
     }
-    return band;
+    return this.groundPileBand;
   }
 
   /** The player-blind band of finished `site` buildings; a seeker's own-side filter stays per query. */
@@ -106,15 +118,6 @@ export class TargetBands {
       this.prayerSiteBands.set(site, band);
     }
     return band;
-  }
-
-  private isInputSource(walls: ReadonlySet<NodeId>, e: Entity, goodType: number): boolean {
-    const { world, ctx, terrain } = this;
-    return (
-      (accessibleStockAmounts(world, e)?.get(goodType) ?? 0) > 0 &&
-      mayFetchGoodFrom(world, ctx, e, goodType) &&
-      !buriedUnderBuilding(world, terrain, walls, e)
-    );
   }
 
   private indexOver(members: readonly Entity[]): InteractionCellIndex {
@@ -132,6 +135,7 @@ export class TargetBands {
       w.componentGeneration(UnderConstruction) +
       w.componentGeneration(GroundDrop) +
       w.componentGeneration(Building) +
+      w.componentGeneration(Palisade) +
       w.componentValueGeneration(Building) +
       w.componentGeneration(Upgrading) +
       w.componentValueGeneration(Upgrading) +
@@ -147,7 +151,7 @@ export class TargetBands {
     this.holdingByGood.clear();
     this.sinksByGood.clear();
     this.storageSinksByGood.clear();
-    this.inputSourcesByGood.clear();
     this.prayerSiteBands.clear();
+    this.groundPileBand = undefined;
   }
 }

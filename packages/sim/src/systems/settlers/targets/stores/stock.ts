@@ -10,7 +10,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
-import type { SystemContext } from '../../../context.js';
+import type { ContentContext, SystemContext } from '../../../context.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import {
   accessibleStockAmounts,
@@ -67,18 +67,33 @@ export function nearestStoreFor(
  * that lands. The structural rejects come first because resolving the slot costs a capacity lookup. */
 export function canStoreGood(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   entity: Entity,
   goodType: number,
   excludeProducers = false,
 ): boolean {
+  return takesDeposits(world, entity) && acceptsGood(world, ctx, entity, goodType, excludeProducers);
+}
+
+/** {@link canStoreGood}'s good-independent rejects: whether `entity` is a store any deposit may land in. */
+export function takesDeposits(world: World, entity: Entity): boolean {
   if (!world.has(entity, Stockpile) || !world.has(entity, Position)) return false;
   if (world.has(entity, GroundDrop)) return false;
   if (isYardHeap(world, entity)) return false;
   // A site takes material only through the delivery rules that count inbound errands. As a general sink
   // it would accept a distant load against a bill line a nearer fetch already covers, and that fetch
   // would then stand down.
-  if (world.has(entity, UnderConstruction)) return false;
+  return !world.has(entity, UnderConstruction);
+}
+
+/** {@link canStoreGood}'s per-good half, for a store {@link takesDeposits} already admitted. */
+export function acceptsGood(
+  world: World,
+  ctx: ContentContext,
+  entity: Entity,
+  goodType: number,
+  excludeProducers: boolean,
+): boolean {
   const slot = bankedSlot(world, ctx, entity, goodType);
   if (excludeProducers && buildingProduces(world, ctx, entity).includes(slot.goodType)) return false;
   const recipe = mergedRecipeOf(world, ctx, entity);

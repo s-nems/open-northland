@@ -1,7 +1,8 @@
 import type { Recipe } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { Owner, Position, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import {
   type InputShortfall,
   nearestMissingInputSource,
@@ -38,6 +39,8 @@ const CARRIER_SHORTFALL: InputShortfall = { restockToCapacity: true };
 const OPERATOR_SHORTFALL: InputShortfall = { restockToCapacity: false };
 /** Enough of each good in the warehouse that any input can be fetched from it. */
 const WAREHOUSE_UNITS = 50;
+const SEEKER = 0;
+const RIVAL = 1;
 
 function recipeOf(inputs: Array<[goodType: number, amount: number]>): Recipe {
   return {
@@ -160,5 +163,27 @@ describe('a producer fetches the scarcest recipe input first', () => {
     ];
     expect(fetchedGood(stocked, [WOOD, WHEAT], recipe, CARRIER_SHORTFALL)).toBe(WHEAT);
     expect(fetchedGood(stocked, [WOOD, WHEAT], recipe, OPERATOR_SHORTFALL)).toBe(WOOD);
+  });
+
+  it("passes over an input only a rival holds, but an owned seeker still takes an unowned pile's", () => {
+    const recipe = recipeOf([[WHEAT, 1]]);
+    const { plan, workplace, warehouse } = bakehouseScene([], [WHEAT]);
+    plan.world.add(warehouse, Owner, { player: RIVAL });
+    const owned = { ...plan, owner: SEEKER };
+    expect(nearestMissingInputSource(owned, workplace, recipe, CARRIER_SHORTFALL)).toBeNull();
+
+    // An unowned seeker is on every side, so the rival's warehouse still supplies it.
+    expect(nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL)).toEqual({
+      store: warehouse,
+      goodType: WHEAT,
+    });
+
+    const pile = plan.world.create(); // unowned, so on the owned seeker's side too
+    plan.world.add(pile, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
+    plan.world.add(pile, Stockpile, { amounts: new Map([[WHEAT, 1]]) });
+    expect(nearestMissingInputSource(owned, workplace, recipe, CARRIER_SHORTFALL)).toEqual({
+      store: pile,
+      goodType: WHEAT,
+    });
   });
 });

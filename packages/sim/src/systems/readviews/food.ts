@@ -2,7 +2,7 @@ import { BUILDING_KIND, type ContentSet } from '@open-northland/data';
 import { Building } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 
 /** Matches the eat-slot goods `food_simple`/`food_extra`, and not the separate `potion_food_*` line. */
 const FOOD_GOOD_ID_PREFIX = 'food_';
@@ -84,7 +84,7 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
  * producing house slots the dish. This resolves the mapping only; the carry seams decide when a lift or a
  * deposit applies it.
  */
-export function exportedGoodForm(ctx: SystemContext, goodType: number): number {
+export function exportedGoodForm(ctx: ContentContext, goodType: number): number {
   return edibleGoodFormOf(ctx.content, goodType);
 }
 

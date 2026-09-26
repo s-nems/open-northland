@@ -10,7 +10,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
 
 /**
@@ -18,7 +18,7 @@ import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
  * extracted - the `[GfxHouse]` record's `LogicType` table gives the typeId at the next `sizeIdx`; the
  * wonder maps every size level to one typeId, a self-link the extractor skips.
  */
-export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingType | undefined {
+export function upgradeTierOf(type: BuildingType, ctx: ContentContext): BuildingType | undefined {
   if (type.upgradeTarget === undefined) return undefined;
   return contentIndex(ctx.content).buildings.get(type.upgradeTarget);
 }
@@ -28,7 +28,7 @@ export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingT
  * every chain stage for a leveled type, while an {@link Upgrading} building costs the target tier's own
  * `construction`, the level difference the source encodes per tier.
  */
-export function constructionBillOf(world: World, ctx: SystemContext, site: Entity): readonly GoodsLine[] {
+export function constructionBillOf(world: World, ctx: ContentContext, site: Entity): readonly GoodsLine[] {
   const wall = world.tryGet(site, Palisade);
   if (wall !== undefined) return wall.construction;
   const b = world.tryGet(site, Building);

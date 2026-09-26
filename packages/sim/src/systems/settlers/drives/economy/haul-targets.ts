@@ -1,11 +1,9 @@
-import { Building, JobAssignment, Position, Stockpile, sameSideAs } from '../../../../components/index.js';
+import { JobAssignment, Position, Stockpile, sameSideAs } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
-import { buildingBlockedCells } from '../../../footprint/index.js';
 import { buildingProduces, lowestStockedGood } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
-import { buriedUnderBuilding, interactionCell, nearestByCell } from '../../targets/index.js';
-import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
+import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
 import { isFarmCarrierHaulOutRole } from './store-policy.js';
 
@@ -22,27 +20,16 @@ export function nearestGroundPile(
   plan: PlannerContext,
   opts: { readonly deliverable: (goodType: number) => boolean },
 ): { pile: Entity; goodType: number } | null {
-  const { world, ctx, terrain, here, targets } = plan;
+  const { world, here, targets } = plan;
   const { deliverable } = opts;
-  const gate = plan.limit ?? undefined; // the porter's confinement: an out-of-area pile is not one it fetches
-  const walls = buildingBlockedCells(world, ctx, terrain);
-  const memo = unreachableGoals(world, ctx, plan.entity);
-  const best = nearestByCell(
-    terrain,
-    targets.stockpiles,
+  const best = targets.bands.groundPiles().nearest(
     here,
     (e) => {
-      if (world.has(e, Building)) return null;
-      if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
       const good = lowestStockedGood(world.get(e, Stockpile));
-      if (good === null) return null;
-      if (!deliverable(good)) return null;
-      if (buriedUnderBuilding(world, terrain, walls, e)) return null;
-      const cell = interactionCell(world, ctx, terrain, e, here);
-      if (cell !== here && isUnreachableGoal(memo, cell)) return null;
-      if (gate !== undefined && !gate.allowsNode(cell)) return null;
-      return { cell, payload: good };
+      return good !== null && deliverable(good) ? { payload: good } : null;
     },
+    plan.limit ?? undefined, // the porter's confinement: an out-of-area pile is not one it fetches
+    unreachableGoalVeto(world, plan.ctx, plan.entity),
     sameSideAs(world, plan.owner),
   );
   return best === null ? null : { pile: best.entity, goodType: best.payload };

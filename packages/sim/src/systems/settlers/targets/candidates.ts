@@ -215,7 +215,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
       return zones;
     },
     harvestAtomicByGood,
-    sinks: new SinkAvailability(stockpiles, world, ctx),
+    sinks: new SinkAvailability(world, ctx),
     bands: new TargetBands(world, ctx, terrain, stockpiles, buildings),
     yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupancy(world, terrain) },
   };

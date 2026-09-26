@@ -152,13 +152,13 @@ describe('porter dormancy', () => {
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
 
     // The elision is real: a bare Map write defeating the readonly view (bypassing World.mut, which
-    // every system stock write reaches through setStockAmount) is invisible to the dormant porter -
-    // and the coherence verifier catches exactly this incoherence, so a future unlogged write cannot
-    // slip past invariant-checked runs.
+    // every system stock write reaches through setStockAmount) is invisible to the dormant porter and
+    // to the sink ledger its pickup probe reads - and the ledger's verifier catches exactly this
+    // incoherence, so a future unlogged write cannot slip past invariant-checked runs.
     (sim.world.get(hq, Stockpile).amounts as Map<number, number>).set(PLANK, 0);
     planDue(sim, porter);
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
-    expect(sim.world.verifyCaches().some((m) => m.includes('porter'))).toBe(true);
+    expect(sim.world.verifyCaches().some((m) => m.includes('storeSinks'))).toBe(true);
 
     // Logged through the seam (the value generation the dormancy version tracks), the freed sink
     // wakes the porter.

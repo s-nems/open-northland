@@ -62,7 +62,7 @@ export function recipesByProductOf(
  * synthesizes a recipe for every producing building (`fillBuildingRecipes`), so a field producer must be
  * keyed on the good's `farming` block (`farmWorkGood`), never on recipe absence.
  */
-export function buildingProduces(world: World, ctx: SystemContext, building: Entity): readonly number[] {
+export function buildingProduces(world: World, ctx: ContentContext, building: Entity): readonly number[] {
   const b = world.tryGet(building, Building);
   if (b === undefined) return EMPTY_PRODUCES;
   return contentIndex(ctx.content).buildings.get(b.buildingType)?.produces ?? EMPTY_PRODUCES;

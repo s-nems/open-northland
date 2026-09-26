@@ -193,9 +193,8 @@ evidence, all under `docs/tickets/sim/`:
   its terms; the consecutive-tick seat slots and the shared flag-relocation round are fixed.
 - `ai-seat-stock-ledger.md` (done, `systems/stores/seat-stock-ledger.ts`): `deriveSeatStock` folded from
   scratch per AI query because its memo keys on generations that move every tick.
-- [`planner-store-searches-scan-every-stockpile.md`](../tickets/sim/planner-store-searches-scan-every-stockpile.md):
-  `inputSources` duplicating the fetchable-stock ledger, `sinksFor`, the porter's pile scan and the
-  cell index's linear fallback.
+- `planner-store-searches-scan-every-stockpile.md` (done): `inputSources` duplicating the
+  fetchable-stock ledger, `sinksFor`, the porter's pile scan and the cell index's linear fallback.
 - [`planner-standing-waits-replan-every-tick.md`](../tickets/sim/planner-standing-waits-replan-every-tick.md):
   seated crafters, loiterers and site-waiting builders re-planned every tick (owner ruling on latency).
 - `planner-idle-settlers-visited-every-tick.md` (done): idle settlers visited before the idle gate.

@@ -135,16 +135,15 @@ describe('carrier at a PRODUCING building - hauls the finished output OUT to a w
     // wheat and bank it straight back - a per-tick pickup/deposit ping-pong.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const farm = buildingAt(sim, FARM, 2, 0, [[WHEAT, 20]]);
-    const granary = buildingAt(sim, GRANARY, 6, 0);
+    buildingAt(sim, GRANARY, 6, 0); // the store that takes the wheat
     const farmer = settlerAt(sim, 2, 0, FARMER, farm);
     const carrier = settlerAt(sim, 2, 0, CARRIER, farm);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('map sim always has terrain');
-    const candidates = [farm, granary];
     const ctx = ctxOf(sim);
-    // The pickup deliverability probe the planner would build - "some candidate store takes it" is
-    // enough here; the role split under test lives in boundProducerOutputToHaul itself.
-    const sinks = new SinkAvailability(candidates, sim.world, ctx);
+    // The pickup deliverability probe the planner would build - "some store takes it" is enough here;
+    // the role split under test lives in boundProducerOutputToHaul itself.
+    const sinks = new SinkAvailability(sim.world, ctx);
     const deliverable = (good: number): boolean => sinks.has(good, /* excludeProducers */ true);
 
     expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, farmer, FARMER, VIKING)).toBeNull();

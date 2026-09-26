@@ -2,7 +2,7 @@ import { Building, DeliveryFlag, GroundDrop, Palisade, Position, Stockpile } fro
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext } from '../context.js';
 import { exportedGoodForm } from '../readviews/food.js';
 import { constructionBillOf } from './construction.js';
 
@@ -20,7 +20,7 @@ export const MAX_GROUND_STACK = 5;
  * The total per-good ceiling of a store's stockpile, not the room left: callers subtract what is on hand.
  * A vehicle is no `Stockpile` store; its hold is `VehicleStock`, served by the vehicle systems.
  */
-export function stockCapacity(world: World, ctx: SystemContext, store: Entity, goodType: number): number {
+export function stockCapacity(world: World, ctx: ContentContext, store: Entity, goodType: number): number {
   const building = world.tryGet(store, Building);
   if (building !== undefined) {
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
@@ -46,6 +46,32 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
   return UNCAPPED_CAPACITY;
 }
 
+/** The goods {@link stockCapacity} gives `store` a nonzero ceiling for, branch for branch: every content
+ *  good where it caps none out (an empty ground heap, a position-less fixture store). */
+export function slottedGoods(world: World, ctx: ContentContext, store: Entity): Iterable<number> {
+  const index = contentIndex(ctx.content);
+  const building = world.tryGet(store, Building);
+  if (building !== undefined) {
+    const type = index.buildings.get(building.buildingType);
+    if (type === undefined) return NO_GOODS;
+    if (building.built < ONE) {
+      return constructionBillOf(world, ctx, store)
+        .filter((line) => line.amount > 0)
+        .map((line) => line.goodType);
+    }
+    const slots = index.stockSlotCapacityByBuilding.get(type.typeId);
+    return slots === undefined ? NO_GOODS : [...slots.keys()].filter((good) => (slots.get(good) ?? 0) > 0);
+  }
+  const stock = world.tryGet(store, Stockpile);
+  if (stock !== undefined && world.has(store, Position)) {
+    const held = lowestStockedGood(stock);
+    if (held !== null) return [held];
+  }
+  return index.goods.keys();
+}
+
+const NO_GOODS: readonly number[] = [];
+
 /**
  * The slot `store` would shelve a delivered unit of `goodType` in: the good's own where the store type
  * declares one, else its edible form's ({@link exportedGoodForm}), so a larder with no raw dish slot banks
@@ -53,7 +79,7 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
  */
 export function bankedSlot(
   world: World,
-  ctx: SystemContext,
+  ctx: ContentContext,
   store: Entity,
   goodType: number,
 ): { readonly goodType: number; readonly capacity: number } {

@@ -12,7 +12,7 @@ import {
   stockCapacity,
 } from '../../../../stores/index.js';
 import type { PlannerContext } from '../../../planner/context.js';
-import { QUALIFIES } from '../../../targets/index.js';
+import { FetchableStock, QUALIFIES } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 
 // The producer supply scans: a worker fetches the recipe inputs its workplace is short on and hauls the
@@ -125,19 +125,29 @@ export function nearestMissingInputSource(
     }
     const input = inputs[pick];
     if (input === undefined) return null;
-    const winner = targets.bands.inputSources(input.goodType).nearest(
-      here,
-      // The workplace never supplies itself.
-      (e) => (e === workplace ? null : QUALIFIES),
-      plan.limit ?? undefined,
-      avoid,
-      sameSideAs(world, plan.owner),
-    );
+    const winner = sideHoldsNone(plan, input.goodType)
+      ? null
+      : targets.bands.holding(input.goodType).nearest(
+          here,
+          // The workplace never supplies itself.
+          (e) => (e === workplace ? null : QUALIFIES),
+          plan.limit ?? undefined,
+          avoid,
+          sameSideAs(world, plan.owner),
+        );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType };
     lastIndex = pick;
     lastHave = pickHave;
     lastTarget = pickTarget;
   }
+}
+
+/** Whether no store on the seeker's side or unowned lends a unit of `goodType`, so no source can pass the
+ *  side filter and the search would scan the whole band for nothing. An unowned seeker keeps the search. */
+function sideHoldsNone(plan: PlannerContext, goodType: number): boolean {
+  return (
+    plan.owner !== undefined && !FetchableStock.of(plan.world, plan.ctx).exceeds(plan.owner, goodType, 0)
+  );
 }
 
 /** Whether short input `a` fills less of its target than `b` (`have / target` compared by
