@@ -229,7 +229,8 @@ assistive tech.
   names it), the name as a link (select and bring into view, which closes the window with
   the trader's selection, as a residents row does; resting shows the hover card) and the arrow while
   the trader heads there, over the house's own strip of the eight stock categories as square icon
-  tabs, standing on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
+  tabs with solid silhouettes (a loaf, a tankard, a log, bricks, a mallet, a boot, a sword, a potion
+  flask), standing on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
   on Wojsko), a tab's tooltip says the category and how many kinds of goods the house holds (a
   category it holds nothing of reads faded), a lit dot marks a category with a transfer, and the
   arrow keys move along the strip. A new trader opens each house on the first category it holds

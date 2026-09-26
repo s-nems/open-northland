@@ -95,6 +95,11 @@ body.on-drag-scroll-cursor-hidden * {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* A filled silhouette whose detail is cut out of the fill, like the residents' figures. */
+.on-hud .on-glyph--solid {
+  fill: currentColor;
+  stroke: none;
+}
 
 .on-hud .on-sr {
   position: absolute;

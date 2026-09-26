@@ -78,17 +78,18 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="9" cy="13" r="5.5"/><circle cx="15" cy="13" r="5.5"/><path d="M7 7.5 9 4M17 7.5 15 4"/></svg>',
 } as const;
 
-/** The stock categories' tab faces, indexed by stock tab (`good-categories.ts`): a loaf, a drop, a log,
- *  bricks, a hammer, a pot, a sword and an asterisk for the rest. */
+/** The stock categories' tab faces, indexed by stock tab (`good-categories.ts`), as solid silhouettes
+ *  with cut-out detail like the residents' figures: a loaf, a tankard, a log, bricks, a mallet, a boot,
+ *  a sword and a potion flask for the rest. */
 export const STOCK_TAB_GLYPHS: readonly string[] = [
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 17v-3c0-3.9 3.6-7 8-7s8 3.1 8 7v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1ZM9 10.5l1.2 2.5M12.5 10l.5 3M16 10.5l-.8 2.5"/></svg>',
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.8-6.5 6-10.8ZM9.5 15.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>',
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><ellipse cx="17" cy="12" rx="3" ry="4.5"/><path d="M17 7.5H7c-1.7 0-3 2-3 4.5s1.3 4.5 3 4.5h10M17 11.5v1"/></svg>',
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 7h18v10H3ZM3 12h18M9 7v5M15 7v5M6 12v5M12 12v5M18 12v5"/></svg>',
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 4h8l3 3v2H6ZM11.5 9v11"/></svg>',
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M8 5h8M9 5v3c-2.5 1-4 3.3-4 6a7 7 0 0 0 14 0c0-2.7-1.5-5-4-6V5"/></svg>',
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M19 3 9 13M7 11l6 6M5 19l3-3M19 3h-4M19 3v4"/></svg>',
-  '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 4v16M5.1 8l13.8 8M18.9 8 5.1 16"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 15.5C4 11.4 7.6 8.5 12 8.5s8 2.9 8 7c0 1.6-.9 2.5-2.3 2.5H6.3C4.9 18 4 17.1 4 15.5ZM7.3 14.2l2.3-3.2 1.3.9-2.3 3.2ZM11 14.2l2.3-3.4 1.3.9-2.3 3.4ZM14.7 14.2 17 11l1.3.9-2.3 3.2Z"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path d="M4.9 8.3c-.7-1.9.6-3.7 2.5-3.4.6-1.4 2.4-2 3.7-1.1 1.2-1 3.1-.6 3.7.8 1.7-.1 2.7 1.7 1.9 3.7Z"/><path fill-rule="evenodd" d="M5.5 9.3h9.5v9.2a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5ZM7.7 11.6h1.2v5.9H7.7ZM11.6 11.6h1.2v5.9h-1.2Z"/><path d="M15 10.5h2.3a2.7 2.7 0 0 1 2.7 2.7v2.1a2.7 2.7 0 0 1-2.7 2.7H15v-1.9h2.2a.9.9 0 0 0 .9-.9v-1.9a.9.9 0 0 0-.9-.9H15Z"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path d="M14 6.5H7.5C5.3 6.5 3.5 9 3.5 12s1.8 5.5 4 5.5H14C11.3 15 11.3 9 14 6.5Z"/><path fill-rule="evenodd" d="M16.5 6.5c2.1 0 3.8 2.5 3.8 5.5s-1.7 5.5-3.8 5.5-3.8-2.5-3.8-5.5 1.7-5.5 3.8-5.5Zm0 3.3c-.7 0-1.3 1-1.3 2.2s.6 2.2 1.3 2.2 1.3-1 1.3-2.2-.6-2.2-1.3-2.2Z"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><rect x="3" y="4.5" width="8.3" height="4" rx=".6"/><rect x="12.7" y="4.5" width="8.3" height="4" rx=".6"/><rect x="3" y="10" width="3.8" height="4" rx=".6"/><rect x="8.2" y="10" width="7.6" height="4" rx=".6"/><rect x="17.2" y="10" width="3.8" height="4" rx=".6"/><rect x="3" y="15.5" width="8.3" height="4" rx=".6"/><rect x="12.7" y="15.5" width="8.3" height="4" rx=".6"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path d="M11.9 2.6l7.8 7.8-3.9 3.9-7.8-7.8ZM12.6 10.4l1.4 1.4-8.4 8.4a1 1 0 0 1-1.4 0 1 1 0 0 1 0-1.4Z"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><rect x="4.5" y="3" width="7.2" height="2.6" rx=".6"/><path d="M5.2 6.9H11v5.9l5.6 2.3c1.5.6 2.6 1.6 2.9 2.9H5.2ZM5 19h14.7c0 1.1-.6 1.8-1.6 1.8H5Z"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path d="M12 1.8l2.6 3.4v8.4H9.4V5.2ZM5.5 13.6h13v2.6h-13ZM10.7 16.2h2.6v2.6h-2.6Z"/><circle cx="12" cy="20.4" r="1.9"/></svg>',
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M9.5 3h5v2.2h-.9v3.4c3.1 1 5.4 3.8 5.4 7 0 3.8-3.1 6.4-7 6.4s-7-2.6-7-6.4c0-3.2 2.3-6 5.4-7V5.2h-.9ZM11.6 10c-2.3.8-3.9 2.3-4.3 4.2h9.4c-.4-1.9-2-3.4-4.3-4.2l-.2-.1V6.6h-.4v3.3Z"/></svg>',
 ];
 
 /** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */
