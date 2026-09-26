@@ -8,7 +8,7 @@ import { landscapeEditState } from '../../../components/landscape.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { type PlacementGrid, placementBlockerGrid } from './blocker-grid.js';
 
@@ -139,17 +139,6 @@ function ownSignpostSlots(terrain: TerrainGraph, posts: readonly HalfCellNode[])
     slots.set(slot, (slots.get(slot) ?? 0) + 1);
   }
   return slots;
-}
-
-/** A node test for ground inside any standing building's reserved zone, over the live placement grid (its
- *  slot is the node id). Resolve it after the last building change it must see. */
-export function buildingZoneTest(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-): (node: NodeId) => boolean {
-  const { buildingZone } = placementBlockerGrid(world, content, terrain);
-  return (node) => (buildingZone[node] ?? 0) > 0;
 }
 
 /** Whether a script closed the node to building; a node off the map is nobody's to forbid. */
