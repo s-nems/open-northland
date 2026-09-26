@@ -9,6 +9,8 @@ misses. `InteractionCellIndex.nearest` then runs its accept over every wall site
 this on every plan: once for a task (`hasTask`), then twice more for a staging site. The tick cost is
 therefore O(idle builders × waiting segments). A player who lays long wall lines ahead of their wood
 pays it every tick until the wood arrives.
+On the real-map reference (`docs/perf/heavy-load-magiczny-las-6ai.md`, 80k checkpoint profile), `planBuilder`
+is 1.0% of the profile with `linearNearest` under `nearestBuilderSite` 0.48% of it.
 
 Measured on the development machine, 30 builders, mean of 200 ticks after 200 warm-up ticks:
 

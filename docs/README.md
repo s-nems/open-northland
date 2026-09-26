@@ -23,6 +23,7 @@ Other references:
 - [`formats/`](formats/): notes about decoded file formats
 - [`ORIGINAL-INGAME-MENU-BAR.md`](ORIGINAL-INGAME-MENU-BAR.md): the original in-game menu bar
 - [`design/`](design/): UI design references, such as the [in-game menu](design/ingame-menu/)
+- [`perf/`](perf/): measured performance references the runtime-architecture epic verifies against
 
 ## Work tracker
 

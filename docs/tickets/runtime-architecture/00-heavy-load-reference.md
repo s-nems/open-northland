@@ -2,7 +2,14 @@
 
 **Area:** tooling, app, sim, net-server · **Focus:** bench, diag, conflict · **Priority:** P2
 
-The heaviest economy the project measures is the checkpointed 13-seat run on `magiczny_las_12_players`
+The current yardstick is the 100k-tick run of `magiczny_las` under seven AI seats in
+[`docs/perf/heavy-load-magiczny-las-6ai.md`](../../perf/heavy-load-magiczny-las-6ai.md): 2700 settlers
+and 1050 fighters at 90k, a 20 ms tick median with the planner at a third of it and the AI seat passes
+at a fifth, the sync digest at +3.3 ms, and an 11 ms draw per stepped frame at speed 1. It covers the
+economy and the frame split; the war scenario, the multi-client run and the per-frame-class statistics
+below remain this ticket's work.
+
+The heaviest economy measured before it is the checkpointed 13-seat run on `magiczny_las_12_players`
 with progression and needs on (`docs/DEVELOPMENT.md`, "Measuring performance"): at ticks 40k to 60k
 it holds about 1000 settlers and 230 buildings at a tick median of 19 to 24 ms, with the planner near
 half of the tick and combat near a quarter without a war. Players will load a relayed room harder

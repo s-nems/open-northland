@@ -1,37 +1,49 @@
-# Bound one AI seat's decision pass
+# Bound one AI seat's decision pass and spread the seats over the interval
 
 **Area:** sim · **Focus:** ai-player · **Priority:** P2
-**Needs user:** splitting a seat's modules across ticks moves when their commands land
+**Needs user:** moving a seat's decision slot or its flag-relocation round changes when AI commands land
 
-A due seat runs all five strategic modules in one tick (`runAiPlayerModules`, `ai-player/index.ts`;
-seat `p` is due when `tick % AI_DECISION_INTERVAL_TICKS === p % 24`), so with 13 seats 13 of every 24
-ticks carry one full pass. On `magiczny_las_12_players` with 13 AI seats, an instrumented replay from
-the 40k, 50k and 60k checkpoints (busy machine, so the ms are suspect) timed seat passes at a 1.0-1.2 ms
-median, a 2.6-3.1 ms p95 and warm worst passes of 4-5 ms. A later `bench:map` of 4000 ticks from the
-40k checkpoint on the same map (shared box) put the `aiPlayer` system at a 1.8 ms median, a 5.7 ms
-p95 and a 38.7 ms max per tick, so the spikes remain.
+A due seat runs all five strategic modules in one tick (`runAiPlayerModules`, `ai-player/index.ts`).
+Seat `p` is due when `ctx.tick % AI_DECISION_INTERVAL_TICKS === seat.player % AI_DECISION_INTERVAL_TICKS`
+(24), so seats 0-6 decide on seven consecutive ticks and the next 17 carry none. `flagRelocateDue`
+(`workforce/collectors/upkeep.ts`) reads only `floor(tick / 24) % FLAG_RELOCATE_EVERY_DECISIONS`, so
+every seat re-aims all its collector flags in the same seven-tick run, once per 720 ticks.
 
-The stalled placement search behind most of those spikes now retries every
-`STALLED_PLACEMENT_RETRY_DECISIONS` decisions, and its occupied-anchor test is numeric. What remains
-is the workforce module (`collectResources`, mean 0.8-0.9 ms, peaks 4 ms in the same replay):
-`upkeepHolders` 15-18% of `aiPlayer`, `allocateScout` -> `nextSignpostTarget` 6-11% (it refloods
-route-region pockets, which construction progress no longer drops; re-measure), generic collector
-allocation 8-10%.
+Measured on `magiczny_las`, AI seats 0-5 plus the map's seat 6, busy box (shares hold, ms indicative):
+late-window `aiPlayer` median 0.003 ms, p95 15-37 ms, max 357 ms, the top system in 10.2k slow ticks.
+All ten slowest ticks of the 80k and 100k profiles sit on ticks 0-6 of a relocation round (for example
+89280-89285, 100800-100805), 100-210 ms of `aiPlayer` each: about a second of stall per minute of play,
+on top of the seven-tick cluster every 24 ticks.
+
+80k-checkpoint profile (2000 ticks), share of the whole profile: `aiPlayer` 15.8%, `runWorkforce` 13.7%:
+
+- `upkeepHolders` 5.7%. `patchWorked` -> `patchHarvestable` -> `anyResourceNear` -> `region.someNear`
+  2.9%, paid by every holder not mid-action on every decision. `replantSpot` -> `flagSpotNear` ->
+  `cheapestRingNode` -> `legOf` (lazy `WalkFlood.costTo`) 2.5%, 4.5% in a window with two relocation
+  rounds: a relocating seat pays a drift check per holder and up to `REPLANT_ATTEMPTS` spot searches.
+- `SeatSupply.of` -> `seatStockOf` 3.2%, owned by [the seat stock ledger](ai-seat-stock-ledger.md).
+- `allocateScout` -> `nextSignpostTarget` 2.1%, mostly `corridorGoals` -> `nearestLiveResource`, which
+  doubles its box up to `RESOURCE_BOX_REACH_MAX` and then scans every resource whenever a collected good
+  has no live node on the seat's own ground.
+- Generic collector allocation 0.6%.
 
 ## Scope
 
-- Measure first: on an idle box, `ON_BENCH_CHECKPOINT=<40k checkpoint> ON_BENCH_TICKS=4000
-  npm run bench:map` with the session env from `docs/DEVELOPMENT.md` (Measuring performance), trust
-  clean. If `aiPlayer` p95 and max are within about 2 ms, delete this ticket.
-- Otherwise cut the workforce module's per-decision cost without changing its answers (state hash
-  unchanged), starting with `upkeepHolders` and the generic collector allocation.
-- Only if warm passes still exceed about 2 ms after that, and with the user's decision: spread one
-  seat's modules across consecutive ticks (module slot derived from tick and seat). This moves when
-  each module's commands land and changes state hashes. Modules communicate only through commands
-  applied next tick; show that the module pairs sharing a tick today do not couple before splitting.
+- Without changing answers (state hash unchanged at the same checkpoint and tick count): share the
+  drift check's nearest resource per (good, anchor) within a decision, reuse `patchHarvestable`'s verdict
+  for a holder whose flag and reach did not change, and let `corridorGoals` stop rescanning the map for
+  a good the seat's ground holds none of.
+- With the owner's ruling, one commit each, goldens moved and named: stagger the relocation round by
+  seat (for example `(floor(tick / 24) + player) % 30 === 0`), and spread the seat slots over the
+  interval (for example seat `p` on `(p * 7) % 24`, which keeps seats 0-6 at least three ticks apart).
+- Splitting one seat's modules across ticks stays out unless warm passes still exceed about 10 ms after
+  both; modules then must be shown not to couple through the tick they share today.
 
 ## Verify
 
-- `bench:map` before and after on an idle box, then `npm run bench:compare`: `aiPlayer` p95 and max
-  fall toward the median. A workforce-only change keeps the state hash.
+- On an idle box, from the 80k checkpoint of one 100k run (`docs/DEVELOPMENT.md`, Measuring
+  performance): `ON_BENCH_MAP=magiczny_las ON_BENCH_SEATS=0,1,2,3,4,5
+  ON_BENCH_CHECKPOINT=bench-out/ml6.t80000.checkpoint ON_BENCH_TICKS=4000 npm run bench:map` before and
+  after, then `npm run bench:compare`. `aiPlayer` p95 and max fall, the slowest-tick list shows no run of
+  consecutive seat ticks, and the hash-identical step keeps the printed state hash.
 - `npm test`, `npm run check`, `npm run build`.
