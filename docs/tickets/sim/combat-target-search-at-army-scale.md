@@ -35,6 +35,11 @@ the blow alarm at once with a 40 map point `ownedWithin` scan (`conflict/hit-ala
   remaining cell can beat the best accepted candidate, with the `(distance, id)` order kept; reuse a
   rejected-set scratch per depth; walk `approachCell`'s band ring by ring outward from the chaser's side
   and stop at the first ring with an open cell, keeping its tie-break.
+- With the owner's ruling, measured on the same battle first: doubling the chase and flight repath
+  cadences (`REPATH_CADENCE` 8, `FLEE_REPATH_CADENCE` 6, `RESCAN_PERIOD_TICKS` with them) halves the
+  repath and rescan load under contact at the price of a slightly later turn toward a moving target or
+  away from a moving threat. The owner takes it only if the gain over the hash-identical cuts is large
+  and the battle still reads well; it moves goldens.
 
 ## Verify
 

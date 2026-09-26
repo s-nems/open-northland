@@ -27,6 +27,7 @@ Profile of the same ticks, share of the whole profile: `aiPlayer` 16.4%, `runWor
 
 ## Scope
 
+- The pass rate is [its own decided ticket](ai-decision-interval-48.md); this one cuts what a pass costs.
 - Without changing answers: a per-good view of the resource region index for the nearest searches, and
   a walk-flood cache that outlives one decision, keyed on the overlay it was flooded over.
 - With the owner's ruling, one commit each, goldens moved and named: re-aim a seat's holders over
