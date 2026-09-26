@@ -90,8 +90,9 @@ export function provokeHostility(world: World, ctx: SystemContext, attacker: Ent
 /**
  * Turn a struck fighter on its attacker. Original behavior: a soldier or hero under ATTACK or DEFEND takes
  * the one who struck it for its target, unless the enemy it already holds stands no farther off in map
- * points. Only an owned fighter holds a target, and an attack order outranks the reaction; so does a
- * player's walk order, which an attack-move march alone leaves open to the fight.
+ * points. Only an owned fighter holds a target, and an attack order outranks the reaction. Original
+ * behavior: a walking soldier ignores a blow only for its first ten steps, then turns. Deviation: a plain
+ * move order is the player's and holds for its whole walk; attack-move turns.
  */
 export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entity, victim: Entity): void {
   const terrain = ctx.terrain;

@@ -127,7 +127,15 @@ describe('weapon reach - a bow', () => {
     const enemy = unitAt(s, mark, P1, MILITARY_MODE.IGNORE, WOMAN);
     combatSystem(s.world, ctxOf(s));
     expect(swingsAt(s, archer, enemy)).toBe(false);
-    expect(distance(goalOf(s, archer), mark)).toBeGreaterThanOrEqual(BOW_MIN_RANGE);
+    // The nearest node at its near reach, canonical by (distance, cell id): of the steps that put the mark
+    // a near reach away, the lowest node.
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    const back = hexNeighboursOf(here.hx, here.hy)
+      .filter((n) => distance(n, mark) === BOW_MIN_RANGE)
+      .map((n) => terrain.nodeAt(n.hx, n.hy));
+    expect(back.length).toBeGreaterThan(0);
+    expect(s.world.get(archer, MoveGoal).cell).toBe(Math.min(...back));
   });
 
   it('closes on a far target to the standoff (2 * max - min) / 2 in map points', () => {
