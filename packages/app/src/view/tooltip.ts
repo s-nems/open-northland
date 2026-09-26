@@ -10,8 +10,24 @@ const MAX_WIDTH = 300;
 /** Minimum gap kept between the chip and the viewport edges when clamping (CSS px). */
 const EDGE_MARGIN = 6;
 
+/** Where a chip of `width` × `height` goes for a cursor at (`clientX`, `clientY`): below-right of it,
+ *  pulled in from the right edge, and above the cursor when the bottom edge is too near. */
+export function chipPlacement(
+  clientX: number,
+  clientY: number,
+  width: number,
+  height: number,
+  viewportWidth: number,
+  viewportHeight: number,
+): { readonly left: number; readonly top: number } {
+  const left = Math.min(clientX + CURSOR_OFFSET, viewportWidth - width - EDGE_MARGIN);
+  const below = clientY + CURSOR_OFFSET;
+  const top = below + height + EDGE_MARGIN > viewportHeight ? clientY - CURSOR_OFFSET - height : below;
+  return { left: Math.max(EDGE_MARGIN, left), top: Math.max(EDGE_MARGIN, top) };
+}
+
 export interface Tooltip {
-  /** Anchors `text` below-right of a client (CSS) point. */
+  /** Anchors `text` below-right of a client (CSS) point, above it when the bottom edge is near. */
   show(clientX: number, clientY: number, text: string): void;
   hide(): void;
   destroy(): void;
@@ -51,9 +67,16 @@ export function createTooltip(): Tooltip {
         visible = true;
       }
       // Clamped after the text is set and the chip shown, so the measured width is the final one.
-      const left = Math.min(clientX + CURSOR_OFFSET, window.innerWidth - el.offsetWidth - EDGE_MARGIN);
-      el.style.left = `${Math.max(EDGE_MARGIN, left)}px`;
-      el.style.top = `${clientY + CURSOR_OFFSET}px`;
+      const { left, top } = chipPlacement(
+        clientX,
+        clientY,
+        el.offsetWidth,
+        el.offsetHeight,
+        window.innerWidth,
+        window.innerHeight,
+      );
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
     },
     hide(): void {
       if (visible) {
