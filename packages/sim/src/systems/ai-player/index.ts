@@ -5,7 +5,7 @@ import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { catchUpSeatStock } from '../stores/index.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
-import { AI_DECISION_INTERVAL_TICKS } from './cadence.js';
+import { aiDecisionDue } from './cadence.js';
 import { militaryModule } from './military/index.js';
 import { populationModule } from './population.js';
 import { scoutModule } from './scout/index.js';
@@ -56,8 +56,8 @@ export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
 
 /**
  * One tick of the strategic AI over `modules`. Seats run in ascending player order (the canonical
- * decision order); a seat is due when the tick lands on its stagger slot, so up to MAX_PLAYERS seats
- * spread their decision cost across the interval instead of spiking on one tick.
+ * decision order); a seat is due when the tick lands on its slot ({@link aiDecisionDue}), so the seats
+ * spread their decision cost across the interval instead of spiking on one tick or a run of them.
  */
 export function runAiPlayerModules(
   world: World,
@@ -69,7 +69,7 @@ export function runAiPlayerModules(
   for (const e of world.query(AiPlayer)) seats.push(world.get(e, AiPlayer));
   seats.sort((a, b) => a.player - b.player);
   for (const seat of seats) {
-    if (ctx.tick % AI_DECISION_INTERVAL_TICKS !== seat.player % AI_DECISION_INTERVAL_TICKS) continue;
+    if (!aiDecisionDue(ctx.tick, seat.player)) continue;
     // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
     if (isPlayerDead(world, seat.player)) continue;
     for (const module of modules) {

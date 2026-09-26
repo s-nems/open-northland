@@ -285,7 +285,8 @@ describe('build-order module (houseBuild)', () => {
   it('raises a razed building again only after the rebuild delay, after every loss', () => {
     const sim = aiSim();
     placeHq(sim);
-    makeAiSeat(sim, SEAT);
+    // The seat's own decisions during the steps below would move the frontier with the default list.
+    makeAiSeat(sim, SEAT, { houseBuild: false });
     sim.step();
     // The opening coverage entry sits between the two buildings: re-arming it must not lower the frontier.
     const chain = buildOrderModule([

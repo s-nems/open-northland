@@ -7,6 +7,17 @@ import type { World } from '../../ecs/world.js';
  */
 export const AI_DECISION_INTERVAL_TICKS = 24;
 
+/** How far apart consecutive seats' decision slots lie, in ticks (authored). Coprime with the interval,
+ *  so every seat below 24 gets a slot of its own, and seats 0-6 land at least three ticks apart. */
+const AI_SEAT_SLOT_STEP_TICKS = 7;
+
+/** Whether `tick` is one of `player`'s strategic decisions. */
+export function aiDecisionDue(tick: number, player: number): boolean {
+  return (
+    tick % AI_DECISION_INTERVAL_TICKS === (player * AI_SEAT_SLOT_STEP_TICKS) % AI_DECISION_INTERVAL_TICKS
+  );
+}
+
 /**
  * The scripted handlers' round-robin. Original behavior: each seat's handler gets one
  * turn per 60 ticks, seat `p` on tick `3p` of the round, with the round's index as its turn number.

@@ -6,6 +6,7 @@ import { EventBuffer, Rng, replay, Simulation, stepReplaying } from '../../src/i
 import {
   AI_DECISION_INTERVAL_TICKS,
   type AiPlayerModule,
+  aiDecisionDue,
   runAiPlayerModules,
 } from '../../src/systems/ai-player/index.js';
 import {
@@ -171,13 +172,32 @@ describe('AiPlayerSystem - cadence, stagger, and module gates', () => {
     for (let tick = 1; tick <= 2 * AI_DECISION_INTERVAL_TICKS; tick++) {
       runAiPlayerModules(world, ctxAt(tick, commands), [stub]);
     }
+    const OTHER_SEAT_SLOT = 11; // (5 × 7) mod 24
     expect(calls).toEqual([
-      { tick: OTHER_SEAT, player: OTHER_SEAT },
+      { tick: OTHER_SEAT_SLOT, player: OTHER_SEAT },
       { tick: AI_DECISION_INTERVAL_TICKS, player: 0 },
-      { tick: AI_DECISION_INTERVAL_TICKS + OTHER_SEAT, player: OTHER_SEAT },
+      { tick: AI_DECISION_INTERVAL_TICKS + OTHER_SEAT_SLOT, player: OTHER_SEAT },
       { tick: 2 * AI_DECISION_INTERVAL_TICKS, player: 0 },
     ]);
     expect(commands.pendingCount).toBe(calls.length); // every returned command was enqueued
+  });
+
+  it('keeps seven seats at least three ticks apart around the interval', () => {
+    const SEATS = 7;
+    const MIN_GAP_TICKS = 3;
+    const slots: number[] = [];
+    for (let player = 0; player < SEATS; player++) {
+      const due = [];
+      for (let tick = 0; tick < AI_DECISION_INTERVAL_TICKS; tick++)
+        if (aiDecisionDue(tick, player)) due.push(tick);
+      expect(due).toHaveLength(1);
+      slots.push(...due);
+    }
+    slots.sort((a, b) => a - b);
+    const gaps = slots.map(
+      (slot, i) => (slots[i + 1] ?? AI_DECISION_INTERVAL_TICKS + (slots[0] ?? 0)) - slot,
+    );
+    expect(Math.min(...gaps)).toBe(MIN_GAP_TICKS);
   });
 
   it('skips a disabled module for the seat that disabled it and runs it for the rest', () => {
