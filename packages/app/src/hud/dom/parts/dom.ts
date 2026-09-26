@@ -47,10 +47,18 @@ export function setTitle(node: HTMLElement, text: string): void {
 /** The attribute a tip layer (`tip-layer.ts`) reads the hovered control's tooltip from. */
 export const TIP_ATTRIBUTE = 'data-tip';
 
+/** Where assistive tech reads a tip: a disabled control's reason lives only there and in the chip. */
+const DESCRIPTION_ATTRIBUTE = 'aria-description';
+
 /** The control's tooltip for the tip layer of the surface it sits on; empty removes it. */
 export function setTip(node: HTMLElement, text: string): void {
-  if (text === '') removeAttribute(node, TIP_ATTRIBUTE);
-  else setAttribute(node, TIP_ATTRIBUTE, text);
+  if (text === '') {
+    removeAttribute(node, TIP_ATTRIBUTE);
+    removeAttribute(node, DESCRIPTION_ATTRIBUTE);
+    return;
+  }
+  setAttribute(node, TIP_ATTRIBUTE, text);
+  setAttribute(node, DESCRIPTION_ATTRIBUTE, text);
 }
 
 /** A control the player may see but not press: faded, still focusable, its reason in the tooltip. */

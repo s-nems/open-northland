@@ -292,7 +292,10 @@ hover), except for a hero and another seat's person. The panel is a quick look: 
 that would not fit is folded or cut at design time, never scrolled. It shows what the player can
 read or act on and nothing else: no explanatory lines, no help buttons. Every control's tooltip is a
 few words in the panel's own chip at the cursor after half a second (the browser's own tooltip
-waits a full one and cannot be told otherwise): what the press does, or why it is refused. Review
+waits a full one and cannot be told otherwise): what the press does, or why it is refused. Keyboard
+focus shows the focused control's tip at once, at the control; a shown tip follows its text when a
+tick changes it and goes when the control does. The same text is the control's accessible
+description. Review
 states: `settler.js` in the mockup, switched by the "Osadnik" buttons. The mockup's trader and
 family states predate the Handel section, the trade window, the Pojazd row and the wedding-rings
 button; for those the built panel is the reference.

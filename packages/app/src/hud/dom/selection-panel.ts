@@ -102,6 +102,8 @@ export interface SelectionPanel {
   overflow(): number;
   /** The name field is open, so the owner leaves the title alone. */
   renaming(): boolean;
+  /** Once a frame after the paint: a shown tip follows its control (`TipLayer.refresh`). */
+  refreshTip(): void;
   dispose(): void;
 }
 
@@ -244,6 +246,9 @@ export function createSelectionPanel(
       if (!editing) setHidden(renameButton, model.rename === null);
       if (model.rename !== null) {
         setTip(renameButton, model.rename.tooltip);
+        // Named by what they do: the button's own text is only the name it would change.
+        setAttribute(renameButton, 'aria-label', model.rename.tooltip);
+        setAttribute(field, 'aria-label', model.rename.tooltip);
         if (field.maxLength !== model.rename.maxLength) field.maxLength = model.rename.maxLength;
       }
       setHidden(meta, model.meta === null);
@@ -300,6 +305,7 @@ export function createSelectionPanel(
     },
     overflow: () => Math.max(0, body.scrollHeight - body.clientHeight),
     renaming: () => editing,
+    refreshTip: () => tips.refresh(),
     dispose(): void {
       tips.dispose();
       window.removeEventListener('resize', invalidate);

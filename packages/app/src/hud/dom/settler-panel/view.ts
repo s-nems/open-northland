@@ -33,8 +33,9 @@ export interface SettlerPanel {
   veil(on: boolean): void;
   /** The trade window's client right edge while it is open, else null. */
   tradeWindowRight(): number | null;
-  /** Once a frame: the trade window follows the plane and yields to a beam window, and the transfer
-   *  lines fit again after another section or the plane changed size. */
+  /** Once a frame, after the paint: the trade window follows the plane and yields to a beam window,
+   *  the transfer lines fit again after another section or the plane changed size, and a shown tip
+   *  follows its control. */
   refresh(): void;
   /** Escape: close the trade window; false when it was not open. */
   closeTradeWindow(): boolean;
@@ -193,6 +194,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     },
     refresh(): void {
       tradeWindow.refresh();
+      frame.refreshTip();
       if (!refit || shown === null) return;
       refit = false;
       fit(false);

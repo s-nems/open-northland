@@ -68,7 +68,8 @@ export interface TradeWindow {
   close(): void;
   /** The shown settler's model; closes the window when it no longer fits. */
   update(model: SettlerPanelModel): void;
-  /** Once a frame: re-place on a new plane size and yield to a beam window opened after it. */
+  /** Once a frame, after the paint: re-place on a new plane size, yield to a beam window opened after
+   *  it, and let a shown tip follow its control. */
   refresh(): void;
   onDismiss(listener: () => void): void;
   claims(clientX: number, clientY: number): boolean;
@@ -210,6 +211,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
         return;
       }
       if (placeWindow()) invalidate();
+      tips.refresh();
     },
     onDismiss: (listener) => window.onDismiss(listener),
     claims(clientX, clientY): boolean {
