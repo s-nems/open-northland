@@ -21,7 +21,8 @@ on top of the seven-tick cluster every 24 ticks.
   2.9%, paid by every holder not mid-action on every decision. `replantSpot` -> `flagSpotNear` ->
   `cheapestRingNode` -> `legOf` (lazy `WalkFlood.costTo`) 2.5%, 4.5% in a window with two relocation
   rounds: a relocating seat pays a drift check per holder and up to `REPLANT_ATTEMPTS` spot searches.
-- `SeatSupply.of` -> `seatStockOf` 3.2%, owned by [the seat stock ledger](ai-seat-stock-ledger.md).
+- `SeatSupply.of` -> `seatStockOf` 3.2%. The seat stock is now an incremental ledger; re-profile it from a
+  current 80k checkpoint, target below 0.3%.
 - `allocateScout` -> `nextSignpostTarget` 2.1%, mostly `corridorGoals` -> `nearestLiveResource`, which
   doubles its box up to `RESOURCE_BOX_REACH_MAX` and then scans every resource whenever a collected good
   has no live node on the seat's own ground.

@@ -3,6 +3,7 @@ import { isPlayerDead } from '../../components/match.js';
 import { aiCommand, type PlayerCommand } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { catchUpSeatStock } from '../stores/index.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from './cadence.js';
 import { militaryModule } from './military/index.js';
@@ -63,6 +64,7 @@ export function runAiPlayerModules(
   ctx: SystemContext,
   modules: readonly AiPlayerModule[],
 ): void {
+  catchUpSeatStock(world);
   const seats: Array<{ player: number; modules: Record<AiModuleId, boolean>; scripted: boolean }> = [];
   for (const e of world.query(AiPlayer)) seats.push(world.get(e, AiPlayer));
   seats.sort((a, b) => a.player - b.player);

@@ -26,7 +26,8 @@ export {
   presentOperators,
   type WorkplaceOperators,
 } from './operators.js';
-export { heapReach, type SeatStock, seatStockOf } from './seat-stock.js';
+export { heapReach, type SeatStock } from './seat-stock.js';
+export { catchUpSeatStock, seatStockOf } from './seat-stock-ledger.js';
 export {
   collectInboundSupply,
   hasInboundSupply,

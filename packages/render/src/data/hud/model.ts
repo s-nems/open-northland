@@ -73,7 +73,7 @@ function nodeOf(components: Readonly<Record<string, unknown>>): HalfCellNode | n
  * a heap on the ground, which the anchors below hand to whoever can reach it; a neutral store standing
  * in reach of two seats would therefore count for both. No decoded map authors one.
  *
- * Stock follows the sim's one seat-stock rule (`seatStockOf`, `systems/stores/seat-stock.ts`), read off the
+ * Stock follows the sim's one seat-stock rule (`SeatStock`, `systems/stores/seat-stock.ts`), read off the
  * snapshot here: every owned pile, the inventory a building keeps aside while it upgrades, the unit in a
  * settler's hands, and every heap on the ground in `heapReach` of the seat's signposts and buildings.
  * Output ordering is total (sorted by id), so the same snapshot yields an identical model every call.

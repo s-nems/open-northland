@@ -191,7 +191,7 @@ evidence, all under `docs/tickets/sim/`:
 
 - [`ai-decision-tick-slicing.md`](../tickets/sim/ai-decision-tick-slicing.md) (rewritten): the seat
   pass cost, its terms, the consecutive-tick seat slots and the flag-relocation round.
-- [`ai-seat-stock-ledger.md`](../tickets/sim/ai-seat-stock-ledger.md): `deriveSeatStock` folded from
+- `ai-seat-stock-ledger.md` (done, `systems/stores/seat-stock-ledger.ts`): `deriveSeatStock` folded from
   scratch per AI query because its memo keys on generations that move every tick.
 - [`planner-store-searches-scan-every-stockpile.md`](../tickets/sim/planner-store-searches-scan-every-stockpile.md):
   `inputSources` duplicating the fetchable-stock ledger, `sinksFor`, the porter's pile scan and the

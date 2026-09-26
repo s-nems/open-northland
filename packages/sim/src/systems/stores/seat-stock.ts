@@ -29,9 +29,31 @@ export interface SeatStock {
   exceeds(goodType: number, units: number): boolean;
 }
 
-/** The bucket a node falls in: one square of {@link WALK_RANGE_NODES} on the half-cell lattice. */
-const bucketKey = (hx: number, hy: number): string =>
-  `${Math.floor(hx / WALK_RANGE_NODES)}:${Math.floor(hy / WALK_RANGE_NODES)}`;
+export function seatStockFrom(totals: ReadonlyMap<number, number>): SeatStock {
+  return {
+    units: (goodType) => totals.get(goodType) ?? 0,
+    exceeds: (goodType, units) => (totals.get(goodType) ?? 0) > units,
+  };
+}
+
+/** Rows of reach buckets are this many keys apart. Two buckets share a key only on a map thousands of
+ *  buckets wide, and a shared key costs extra exact distance tests, never a wrong answer. */
+const BUCKET_ROW_STRIDE = 1 << 16;
+
+/** The reach bucket a node falls in: one square of {@link WALK_RANGE_NODES} on the half-cell lattice. */
+export function reachBucketOf(hx: number, hy: number): number {
+  return Math.floor(hy / WALK_RANGE_NODES) * BUCKET_ROW_STRIDE + Math.floor(hx / WALK_RANGE_NODES);
+}
+
+/** A bucket key plus one of these is the bucket itself or one of its eight neighbours. */
+export const NEIGHBOUR_BUCKET_OFFSETS: readonly number[] = [-1, 0, 1].flatMap((dy) =>
+  [-1, 0, 1].map((dx) => dy * BUCKET_ROW_STRIDE + dx),
+);
+
+/** Whether a heap on `heap` lies in reach of an anchor on `anchor`. */
+export function anchorReaches(anchor: HalfCellNode, heap: HalfCellNode): boolean {
+  return hexDistanceBetween(anchor.hx, anchor.hy, heap.hx, heap.hy) < WALK_RANGE_NODES;
+}
 
 /**
  * Whether a heap on `node` lies strictly under {@link WALK_RANGE_NODES} of one of `anchors`. A hexagon of
@@ -40,68 +62,27 @@ const bucketKey = (hx: number, hy: number): string =>
  * heaps beside a settlement rather than one distance test per anchor for every heap on the map.
  */
 export function heapReach(anchors: readonly HalfCellNode[]): (node: HalfCellNode) => boolean {
-  const buckets = new Map<string, HalfCellNode[]>();
+  const buckets = new Map<number, HalfCellNode[]>();
   for (const anchor of anchors) {
-    const key = bucketKey(anchor.hx, anchor.hy);
+    const key = reachBucketOf(anchor.hx, anchor.hy);
     const bucket = buckets.get(key);
     if (bucket === undefined) buckets.set(key, [anchor]);
     else bucket.push(anchor);
   }
   return (node) => {
-    const bx = Math.floor(node.hx / WALK_RANGE_NODES);
-    const by = Math.floor(node.hy / WALK_RANGE_NODES);
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        const bucket = buckets.get(`${bx + dx}:${by + dy}`);
-        if (bucket === undefined) continue;
-        for (const anchor of bucket) {
-          if (hexDistanceBetween(anchor.hx, anchor.hy, node.hx, node.hy) < WALK_RANGE_NODES) return true;
-        }
-      }
+    const key = reachBucketOf(node.hx, node.hy);
+    for (const offset of NEIGHBOUR_BUCKET_OFFSETS) {
+      const bucket = buckets.get(key + offset);
+      if (bucket === undefined) continue;
+      for (const anchor of bucket) if (anchorReaches(anchor, node)) return true;
     }
     return false;
   };
 }
 
-/** The stores the figure reads; a cache over them is fresh while none has changed. */
-const STOCK_STORES = [Stockpile, Owner, Position, Carrying, Upgrading, Building, Signpost] as const;
-
-interface StockCache {
-  readonly generations: readonly number[];
-  readonly byPlayer: Map<number, SeatStock>;
-}
-
-const stockCaches = new WeakMap<World, StockCache>();
-
-function stockGenerations(world: World): number[] {
-  const generations: number[] = [];
-  for (const store of STOCK_STORES) {
-    generations.push(world.componentGeneration(store), world.componentValueGeneration(store));
-  }
-  return generations;
-}
-
-/**
- * `player`'s {@link SeatStock} as the world stands. Derived read-state, never hashed, memoized per world
- * until any store it reads changes: the modules of one seat's decision, and the seats deciding on one tick,
- * share a single pass over the stockpiles, the anchors and the carried units.
- */
-export function seatStockOf(world: World, player: number): SeatStock {
-  const generations = stockGenerations(world);
-  let cache = stockCaches.get(world);
-  if (cache === undefined || cache.generations.some((g, i) => g !== generations[i])) {
-    cache = { generations, byPlayer: new Map() };
-    stockCaches.set(world, cache);
-  }
-  let stock = cache.byPlayer.get(player);
-  if (stock === undefined) {
-    stock = deriveSeatStock(world, player);
-    cache.byPlayer.set(player, stock);
-  }
-  return stock;
-}
-
-function deriveSeatStock(world: World, player: number): SeatStock {
+/** `player`'s units by good, folded from scratch over the map: the reference the incremental ledger is
+ *  verified against. */
+export function deriveSeatStockTotals(world: World, player: number): Map<number, number> {
   const totals = new Map<number, number>();
   const add = (amounts: ReadonlyMap<number, number> | undefined): void => {
     if (amounts === undefined) return;
@@ -132,8 +113,5 @@ function deriveSeatStock(world: World, player: number): SeatStock {
     const p = world.get(heap, Position);
     if (inReach(nodeOfPosition(p.x, p.y))) add(world.get(heap, Stockpile).amounts);
   }
-  return {
-    units: (goodType) => totals.get(goodType) ?? 0,
-    exceeds: (goodType, units) => (totals.get(goodType) ?? 0) > units,
-  };
+  return totals;
 }
