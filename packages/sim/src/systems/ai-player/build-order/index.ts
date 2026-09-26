@@ -156,10 +156,14 @@ function runBuildOrder(
 
   for (const [entryIndex, entry] of order.entries()) {
     if (isLaneEntry(entry) || statuses[entryIndex] !== 'unmet') continue;
+    const { attacked, underFire } = siegeOf();
+    if (attacked) {
+      holdRebuildUnderAttack(world, player, entryIndex, entry, ctx.tick);
+      return [];
+    }
     const verdict = verdictOf(entryIndex);
     if (verdict.kind === 'pass') continue;
-    const { attacked, underFire } = siegeOf();
-    if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick, attacked) || attacked) return [];
+    if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick)) return [];
     if (listSites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
     searches.acting(entryIndex);
     if (verdict.placement !== null) return [verdict.placement];
@@ -324,7 +328,6 @@ function awaitingRebuild(
   entryIndex: number,
   entry: BuildOrderEntry,
   tick: number,
-  attacked: boolean,
 ): boolean {
   const carrier = aiPlayerEntity(world, player);
   if (carrier === null) return false;
@@ -335,11 +338,30 @@ function awaitingRebuild(
   }
   if (entry.kind !== 'place' && entry.kind !== 'upgrade') return false;
   const held = frontier.rebuildTick;
-  if (held === null || (attacked && held < tick + REBUILD_DELAY_TICKS)) {
+  if (held === null) {
     world.mut(carrier, BuildOrderFrontier).rebuildTick = tick + REBUILD_DELAY_TICKS;
     return true;
   }
   return tick < held;
+}
+
+/** Under siege the list acts on nothing and searches nothing, so a lost entry below the frontier only has
+ *  its rebuild wait pushed out to run from the siege's end; the frontier stays where it is. */
+function holdRebuildUnderAttack(
+  world: World,
+  player: number,
+  entryIndex: number,
+  entry: BuildOrderEntry,
+  tick: number,
+): void {
+  const carrier = aiPlayerEntity(world, player);
+  if (carrier === null) return;
+  const frontier = world.tryGet(carrier, BuildOrderFrontier);
+  if (frontier === undefined || entryIndex >= frontier.entry) return;
+  if (entry.kind !== 'place' && entry.kind !== 'upgrade') return;
+  const held = frontier.rebuildTick;
+  if (held === null || held < tick + REBUILD_DELAY_TICKS)
+    world.mut(carrier, BuildOrderFrontier).rebuildTick = tick + REBUILD_DELAY_TICKS;
 }
 
 /** Raise the seat's frontier to `entryIndex`, the first unmet entry at or past it (the list's length once all

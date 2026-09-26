@@ -24,8 +24,8 @@ export const LATE_WAVE: WaveBand = { min: 50, max: 100 };
 /** The army the seat never holds past (authored): from this many live fighters the door sends the
  *  band it has, whatever size the wave was drawn to and whatever the odds, so a seat whose build order
  *  has settled does not hoard two hundred men at its barracks. It still waits for the men walking in,
- *  up to one gather window, so the army leaves as one wave and not in the fives that form up between
- *  decisions. */
+ *  up to one gather window from the tick the cap was first reached, so the army leaves as one wave and
+ *  not in the fives that form up between decisions. */
 export const ARMY_CAP_SOLDIERS = 150;
 
 const SECONDS_PER_HOUR = 3600;
@@ -110,7 +110,9 @@ export function decideWave(
   const plan = wavePlan(world, ctx, barracks, peaceEnd);
   const windowOpen = ctx.tick - plan.drawnAt < WAVE_GATHER_TICKS;
   if (strength.own >= ARMY_CAP_SOLDIERS) {
-    if (door.walkingIn > 0 && windowOpen) return false;
+    const cappedAt = plan.cappedAt ?? ctx.tick;
+    if (plan.cappedAt === null) world.mut(barracks, MusterPlan).cappedAt = cappedAt;
+    if (door.walkingIn > 0 && ctx.tick - cappedAt < WAVE_GATHER_TICKS) return false;
     abandonWave(world, barracks);
     return true;
   }
@@ -133,9 +135,9 @@ export function abandonWave(world: World, barracks: Entity): void {
 function wavePlan(world: World, ctx: SystemContext, barracks: Entity, peaceEnd: number): MusterPlanState {
   const { min, max } = waveBandAt(ctx.tick - peaceEnd);
   const held = world.tryGet(barracks, MusterPlan);
-  if (held !== undefined && held.waveSize >= min) return { waveSize: held.waveSize, drawnAt: held.drawnAt };
+  if (held !== undefined && held.waveSize >= min) return { ...held };
   const waveSize = min + ctx.rng.int(max - min + 1);
-  const drawnAt = held?.drawnAt ?? ctx.tick;
-  world.add(barracks, MusterPlan, { waveSize, drawnAt });
-  return { waveSize, drawnAt };
+  const plan = { waveSize, drawnAt: held?.drawnAt ?? ctx.tick, cappedAt: held?.cappedAt ?? null };
+  world.add(barracks, MusterPlan, plan);
+  return plan;
 }

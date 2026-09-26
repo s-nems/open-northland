@@ -1032,8 +1032,8 @@ interface FuzzRun {
   readonly chestOpened: boolean;
   /** Whether a stream order cut a gate into the preamble run and swung it, pinned like the latches above. */
   readonly gateSwung: boolean;
-  /** Whether a weapon veto roll ever stood as a non-empty list, so the arming pass read a veto rather
-   *  than every roll being the arms-no-class refusal. */
+  /** Whether the harness's own sword veto ever stood as a non-empty list, so the arming pass read a veto
+   *  and the random veto rolls land on a good that arms a class rather than all being refused. */
   readonly weaponVetoed: boolean;
 }
 

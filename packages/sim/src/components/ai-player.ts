@@ -42,6 +42,9 @@ export interface MusterPlanState {
   waveSize: number;
   /** The tick this wave was drawn - the gathering window runs from here. */
   drawnAt: number;
+  /** The tick the army first stood at its cap with this plan, or null: the men still walking in get one
+   *  gather window from here, so the first capped wave leaves as whole as the later ones. */
+  cappedAt: number | null;
 }
 
 /**
