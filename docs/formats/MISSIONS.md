@@ -684,7 +684,7 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
 - The partner pays out of real stock: the trader's fetch fails at a shelf holding nothing, and he
   comes back for the goods he is owed without paying again (reading). A computer seat's houses of the
   storage main type hold it because its scripted handler writes 5 over every one of their stock
-  slots on every sixth turn (`turn % 6 == 0`), a fuller shelf cut down too (original behavior;
+  slots on every sixth turn (`turn % 6 == 0`), a fuller shelf cut down too (reading;
   `AI_Disable` stops the handler and the refill with it). The corpus relies on it: most computer seats' trade houses are authored empty, the trade
   tutorial's among them, and no row pays out more than 5 a batch.
 - This build registers the rows through the `addTradeAgreement` setup command

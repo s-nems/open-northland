@@ -18,9 +18,11 @@ import { bankedSlot } from '../stores/index.js';
 
 /**
  * Handler turns between one computer seat's stock refills, and the level a refilled shelf is left at.
- * Original behavior: on every sixth of its turns the scripted AI handler writes 5 over every stock
- * slot of the seat's finished houses of the storage main type, and `AI_Disable` stops the handler. A trader's partner pays out of that shelf: the corpus authors most computer seats' trade
- * houses empty, the trade tutorial's among them, and no agreement pays out more than 5 a batch.
+ * Reading, unconfirmed against the running original: on every sixth of its turns the scripted AI
+ * handler writes 5 over every stock slot of the seat's finished houses of the storage main type, and
+ * `AI_Disable` stops the handler. A trader's partner pays out of that shelf: the corpus authors most
+ * computer seats' trade houses empty, the trade tutorial's among them, and no agreement pays out more
+ * than 5 a batch.
  */
 export const AI_STOCK_REFILL_TURNS = 6;
 export const AI_STOCK_REFILL_LEVEL = 5;

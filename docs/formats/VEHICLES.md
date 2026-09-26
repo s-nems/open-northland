@@ -1,11 +1,11 @@
 # Vehicles
 
 Handcarts, ox carts, ships and catapults are one entity class in the original. This reference
-holds the original's vehicle behavior and the mod's readable `.ini` files. Every rule below states
-original behavior unless marked *inferred* or *open*.
-Corpus counts are over the decoded `content/maps` of `CNMod-1.3.2` (123 maps). Tickets under
-`docs/tickets/features/vehicles-*` implement this document; Open Northland approximations are named
-where they are made. The IR carries the type table as `vehicles` (`VehicleType`, with `jobId`, the
+holds the original's vehicle behavior and the mod's readable `.ini` files. A rule that cites an `.ini`
+key or a corpus count is read from that data; every other unmarked rule is a reading of the original's
+behavior, unconfirmed against the running game. *Inferred* and *open* mark weaker claims.
+Corpus counts are over the decoded `content/maps` of `CNMod-1.3.2` (123 maps). Open Northland
+approximations are named where they are made. The IR carries the type table as `vehicles` (`VehicleType`, with `jobId`, the
 slug `cart_no_ox` for type 6, `passengerJobs`, `commanderJob`, `vehicleSlots`, `passengerVector`,
 `draggingAnimalTribe`, `transformVehicleType`, `hitpoints`), the yards as `vehicle`-kind buildings with
 `vehicleType` and `ignoreContinents`, the good-to-yard pairing as `GoodType.vehicleHouse`, and the
@@ -131,12 +131,12 @@ land (owner's choice; whether the original serves a rider aboard is unconfirmed)
 unconfined walk order and ends any chat it was in; the rider rung of the drive ladder
 (`systems/vehicles/boarding.ts`) steps a passenger in as soon as it reaches the door, while a carrier
 or trader, the crew that works its vehicle from outside, waits by the door until the vehicle asks
-(deviation, user rule: the original keeps every rider outside until asked). A rider on a neighbour of a
+(deviation, owner's choice: the original keeps every rider outside until asked). A rider on a neighbour of a
 door another settler holds boards from there (approximation: the original's humans stand through each
 other, a collider here cannot). A goto with anyone outside holds its goal under `waitsForHuman` and
 starts once the crew is inside, as the original boards its crew ahead of a target;
 the request is a forced boarding that outranks the rider's needs, which wait for the ride (deviation,
-user rule: the original skips a rider with a pending need). `loadIntoVehicle` is the load and move-inside orders in one. An attack order given while the crew is still outside
+owner's choice: the original skips a rider with a pending need). `loadIntoVehicle` is the load and move-inside orders in one. An attack order given while the crew is still outside
 waits under `waitsForHuman` like a goto's goal and the combat pass takes it up once everyone is in
 (approximation: the original boards its crew ahead of any target, which is confirmed for the goto
 only). Named approximations: the job and
@@ -152,7 +152,7 @@ onto that door node or, where another blocker covers it, the nearest open node b
 whose walk to the door fails is dropped with a
 lost note; the ordinary orders that detach first are the walk, attack, work, trade, home, school,
 drill, marriage, need, equipment, explore, signpost and chest orders; a commander detaching mid-drive
-leaves the drive running. Deviation (user decision): a walk or attack-position order given to a
+leaves the drive running. Deviation (owner's choice): a walk or attack-position order given to a
 vehicle's commander, aboard or standing beside it, is handed to the vehicle as its goto
 (`systems/vehicles/commander.ts`), so a trader ordered somewhere takes the cart and its cargo along;
 the vehicle's refusals apply and a refused point leaves the commander seated. The original detaches
@@ -256,7 +256,9 @@ the hexagon direction its lattice step is made of at once and holds on the node 
 turn's 2 ticks per direction, drawn there while its progress stays below zero; parked vehicles' cells are
 routed around by vehicles and humans alike (the original's humans walk through them, see "Crew"), the
 shove happens on entering a node only and sends a settler outside the discs of the whole remaining
-route. A real map's water is the cells whose two ground triangles are both
+route. Open Northland shoves only owned settlers standing still (the planner's kept occupancy): one
+already walking passes on, and an unowned animal's next wander leg steps it off the disc
+(approximation). A real map's water is the cells whose two ground triangles are both
 `isWater` pattern types (approximation of the per-node rule; an unknown or border pattern counts as
 land, so a ship never sails onto the map edge).
 
@@ -289,8 +291,8 @@ point under the `docks` task while the crew boards, the twin of the goto's `wait
 ring node is open when the ship's walk-block admits it, which adds other vehicles' cells to the size
 class test, and lies within the ship's walk range; a ship already on a ring node moors in place and
 drops any drive under way (approximation: the original ends the order with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
-ship moors on the arrival tick with a `vehicleDocked` event, since the dock clip has no graphics
-record and its length is not read; a goto clears the pending mooring point and never re-moors on
+ship moors on the arrival tick with a `vehicleDocked` event (approximation: the tribe binds atomic 84
+to a 12-tick dock clip, which is not played); a goto clears the pending mooring point and never re-moors on
 arrival (the commander-less re-mooring is not implemented, a goto needs a commander anyway); a dock
 walk that loses its route drops the mooring point behind the `vehicleNoPath` note. A sunk ship's
 crew is reaped like any death, so the owner's casualty tallies count it. The dock pick shows where the
@@ -306,7 +308,8 @@ bounded to the walk-range disc, so a route that leaves the disc and returns is n
 Crew: one soldier or hero (jobs 31..47); the crewman gains experience for weapon 21. Weapon 21
 (`weapons.ini`, equal for all tribes): range 8..24, munition type 2, speed 3, `hitself 1`,
 `createsmoke 1` lifetime 20, damage `0:8000 1:4000 2:6000 3:2000 4:2000 6:350 7:3625`, hit
-sound 90. No ammunition and no reload counter; cadence is the 48-tick attack clip.
+sound 90. No ammunition and no reload counter; cadence is the attack clip job 54 binds to atomic 81
+(`viking_catapult_attack`: `length 48`, the shot at its `event 1 25`), read from content.
 
 The original's goto never scans while the vehicle drives. Open Northland adds an attack-move
 (`moveVehicle` with `attackMove`: the attack-move key with a catapult selected, or its commander's own
@@ -368,7 +371,9 @@ name a wall. A fleeing settler runs from an armed vehicle and never from a cart 
 (approximation). The note is raised for any striker (approximation). An auto target no firing node reaches is
 given up for the combat memo's 30 seconds (approximation: the original drops it and scans again on
 its next update). `hitself` is not extracted; the burst hits every
-side, which the data's `hitself 1` also says. `removeVehicle` (`systems/vehicles/remove.ts`) draws
+side, which the data's `hitself 1` also says. A victim whose player is not at war with the shooter's
+either way is wounded without the blow changing the stance or recording an attack (approximation: the
+original's reaction to friendly splash is unconfirmed). `removeVehicle` (`systems/vehicles/remove.ts`) draws
 the ruin nodes through the seeded RNG and carries them on the `vehicleDestroyed` event for the
 renderer's decals, since the ruin landscape type is not identified (*open*); the cargo spill walks
 the shared Manhattan spill rings (approximation). The match rule's defeat teardown reuses the
@@ -430,7 +435,7 @@ never boarding or docking; the ring's "Assign Vehicle" is offered
 to every grown settler, its pick lights the settler's own vehicles green where `canAttachToVehicle`
 (job list, free seat, a door on the settler's continent) takes it and red otherwise, and a red vehicle
 drops the click; the selected settlers' right-click on an own vehicle attaches each one that rule
-admits (approximation, user rule: the original assigns through the pick only); a commander selected while aboard (through the Mieszkańcy row) stands for its
+admits (approximation, owner's choice: the original assigns through the pick only); a commander selected while aboard (through the Mieszkańcy row) stands for its
 vehicle, so a right-click on the ground drives the vehicle whether the commander is aboard or beside
 it, and the ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message ids
 0x0f (no raise site, *open*) and 0x16 (no vehicle discovery event) have no raiser yet; 0x35 is the
@@ -443,8 +448,8 @@ goto refusal above.
 - `setvehicle <player> "<tribe>" "<type>" <x> <y> <missionId>`: seven columns; an eighth `0` on
   15 corpus rows is never read. The row runs only for an occupied seat (the same gate as `sethuman`
   and `sethouse`, with no `player >= 20` bypass), and a dropped row also drops
-  its trailing modifiers. 623 rows in 56 of 123 maps: catapult 386, ship small 130, ox cart 58,
-  handcart 41, ship big 8; 52 rows carry a mission id and 53 an `addgoods` run. The type is a
+  its trailing modifiers. 633 rows in 57 of 123 maps: catapult 386, ship small 140, ox cart 58,
+  handcart 41, ship big 8; 62 rows carry a mission id and 53 an `addgoods` run. The type is a
   `name` resolved against the seven `[vehicletype]` records in type-id order, so `oxcart` is the ox
   cart (2), never the ox-less cart (6); a name nothing matches is type 0 and places nothing.
 - `addgoods "<good>" <n>` after `setvehicle`: books `n` units, then stows them, and the stow sets
@@ -452,11 +457,11 @@ goto refusal above.
   always: the cargo is booked, stowed and asked for, so a carrier seated by a later row neither
   fetches nor flushes it.
 - `attachtovehicle <x> <y>` after `sethuman`: attaches the human to the first vehicle on that node,
-  through the normal attach gate (the first one becomes commander); it does not move him. 13 corpus
-  rows on 4 maps, every one on a `setvehicle` node of its map; decoded as the human's
+  through the normal attach gate (the first one becomes commander); it does not move him. 23 corpus
+  rows on 5 maps, every one on a `setvehicle` node of its map; decoded as the human's
   `boardVehicleAt`.
 - `moveintovehicle`: the human boards the vehicle he was attached to wherever he
-  stands (removed from the map). 10 corpus rows, all after an `attachtovehicle`; decoded as
+  stands (removed from the map). 20 corpus rows, all after an `attachtovehicle`; decoded as
   `boardVehicleAt.inside`.
 
 Open Northland (`packages/app/src/game/world/authored-placements.ts`, `systems/spawn/attach.ts`):
@@ -566,7 +571,7 @@ these choices for the holes:
   `[gfxwalkatomic]` job 25 with the cart good (`human_man_z00Trader_walk` for good 59,
   `human_man_z01TraderOx_walk` for 60) while it drives, `[gfxanimatomic]` action 2 or 3 standing, in the
   commander's tribe and player colours through the human palette patched by the `randompalette.ini`
-  recipe `good_HandCart` or `good_OxCart` (original behavior, read from the program, not checked against
+  recipe `good_HandCart` or `good_OxCart` (original behavior, unconfirmed against
   the running game). The patched rows are two more blocks of the player LUT after the armor tiers
   (`packages/data/src/player-lut.ts`). A parked cart, or one whose trader walks outside to load, draws its
   own sprite, the ox cart with its all-brown `oxcart` palette; the trader or carrier outside walks as a
