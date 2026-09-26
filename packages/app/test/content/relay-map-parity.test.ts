@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { mapLobbySlots } from '@open-northland/data';
 import { aiSeatsOf, type GameSession, humanSeatsOf } from '@open-northland/lockstep';
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
@@ -12,8 +13,13 @@ import {
   VirtualClock,
   VirtualNetwork,
 } from '../../../net-server/test/support/virtual-network.js';
+import type { ContentIr } from '../../src/content/ir/rows.js';
 import { authoredVacantMode, vacantOffers } from '../../src/entries/main-menu/lobby/roster-state.js';
-import { hasRealIr } from './helpers.js';
+import { buildRelayedMapWorld, type MapWorkerBoot } from '../../src/entries/map/world-inputs.js';
+import { assemblePacedRoom, PacedStage } from '../support/net-worker/paced-stage.js';
+import { WorkerHeadlessClient } from '../support/net-worker/worker-headless-client.js';
+import { bundleTestWorker } from '../support/session-worker/start-worker.js';
+import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 import { realMapPath, realMapScript, realMapWorld, restoreRealMapWorld } from './real-map-world.js';
 
 /**
@@ -41,6 +47,16 @@ const LOBBY_SETTLE_MS = 800;
 const RUN_TIMEOUT_MS = 900_000;
 /** The tick one client's RNG is pushed off its stream on, once the economy has something to diverge. */
 const DIVERGE_AT_TICK = 200;
+const NET_WORKER_ENTRY = fileURLToPath(new URL('../support/net-worker/node-net-worker.ts', import.meta.url));
+/** A worker-hosted client plays in real time, so its room runs faster and shorter than the inline
+ *  runs; within the digest trail a client keeps, so every acknowledged tick is compared. */
+const WORKER_ROOM_SPEED = 4;
+const WORKER_RUN_TICKS = 240;
+const WORKER_STEP_TIMEOUT_MS = 20_000;
+const WORKER_OPEN_TIMEOUT_MS = 120_000;
+const WORKER_RUN_TIMEOUT_MS = 120_000;
+/** Real time for the frames in flight on the slowest link to land once the relay holds. */
+const LINK_DRAIN_MS = 500;
 
 async function buildWorld(session: GameSession): Promise<Simulation> {
   if (session.world.kind !== 'map') throw new Error(`a map session, not ${session.world.kind}`);
@@ -79,7 +95,7 @@ function stageFor(seed: number): Stage {
   return { clock, relay, network: new VirtualNetwork(clock, relay, seededRandom(seed)) };
 }
 
-function orderAt(client: HeadlessClient, tick: number): void {
+function orderAt(client: Pick<HeadlessClient, 'session' | 'submit'>, tick: number): void {
   const seat = client.session?.localSeat;
   if (typeof seat !== 'number' || tick % ORDER_EVERY_TICKS !== seat % ORDER_EVERY_TICKS) return;
   client.submit(
@@ -91,6 +107,29 @@ function orderAt(client: HeadlessClient, tick: number): void {
       infinite: false,
     }),
   );
+}
+
+/** The inputs the relayed entry hands its network worker for a session on `mapId`: the documents the
+ *  runtime loaded and the session. */
+async function relayedMapBoot(mapId: string): Promise<(session: GameSession) => MapWorkerBoot> {
+  const { merge } = await loadContentUnderTest();
+  const map = JSON.parse(readFileSync(realMapPath(mapId), 'utf8'));
+  const ir = rawIrUnderTest() as ContentIr;
+  const script = realMapScript(mapId);
+  return (session) => ({
+    map,
+    ir,
+    script,
+    goodNames: new Map(),
+    content: merge.content,
+    session,
+    missions: null,
+    saveText: null,
+  });
+}
+
+function ticksFrom(first: number, last: number): number[] {
+  return Array.from({ length: Math.max(0, last - first + 1) }, (_, i) => first + i);
 }
 
 interface PlayOptions {
@@ -187,5 +226,93 @@ describe.runIf(RUN_PARITY)('relayed sessions on a decoded map', () => {
     expect(diverged?.restoredFrom).toHaveLength(1);
     expect(reference?.snapshotsSent).toBe(1);
     expect(reference?.desyncs).toEqual([]);
+  });
+
+  it('a worker-hosted client acknowledges the inline client’s digests and ends on its state', {
+    timeout: RUN_TIMEOUT_MS,
+  }, async () => {
+    const bundle = await bundleTestWorker(NET_WORKER_ENTRY);
+    const boot = await relayedMapBoot(MAP_ID);
+    // Both clients build through the relayed entry's builder: the worker from the inputs it was
+    // posted, the inline client from the same inputs on this thread.
+    const peer = new HeadlessClient({
+      token: 'client-0-token-0123456789',
+      nick: 'Gracz 0',
+      buildWorld: async (session) => buildRelayedMapWorld(boot(session), null).sim,
+      restoreWorld: async (session, save) => buildRelayedMapWorld(boot(session), save).sim,
+    });
+    const hosted = new WorkerHeadlessClient({
+      workerPath: bundle.path,
+      token: 'client-1-token-0123456789',
+      nick: 'Gracz 1',
+      boot,
+    });
+    try {
+      const stage = stageFor(LINKS.length);
+      const seats = seatsFromScript(MAP_ID);
+      const openSeats = seats.filter((seat) => seat.mode === 'idle').map((seat) => seat.player);
+      stage.network.link(peer, LINKS[0]);
+      stage.network.link(hosted, LINKS[1]);
+      const paced = new PacedStage(stage, [peer], [hosted], (member, tick) => orderAt(member, tick));
+      await assemblePacedRoom(paced, [peer, hosted], {
+        settings: {
+          name: MAP_ID,
+          world: { kind: 'map', mapId: MAP_ID },
+          seed: 7,
+          rules: RULES,
+          speed: WORKER_ROOM_SPEED,
+        },
+        seats,
+        seatOf: (i) => openSeats[i] ?? -1,
+        stepTimeoutMs: WORKER_STEP_TIMEOUT_MS,
+      });
+      await paced.until(
+        'both clients hold the world',
+        () => peer.sim !== null && hosted.world !== null,
+        WORKER_OPEN_TIMEOUT_MS,
+      );
+      await paced.until(
+        `both clients pass tick ${WORKER_RUN_TICKS}`,
+        () => (peer.tick ?? 0) >= WORKER_RUN_TICKS && hosted.ackedTick >= WORKER_RUN_TICKS,
+        WORKER_RUN_TIMEOUT_MS,
+      );
+      paced.relayHeld = true;
+      await paced.runFor(LINK_DRAIN_MS);
+      await paced.until(
+        'both clients rest on the relay’s last frame',
+        () =>
+          hosted.ackedTick === hosted.lastFrameTick &&
+          hosted.tick === hosted.lastFrameTick &&
+          peer.tick === hosted.lastFrameTick,
+        WORKER_STEP_TIMEOUT_MS,
+      );
+
+      const lastTick = hosted.lastFrameTick;
+      const { world } = hosted;
+      const sim = peer.sim;
+      if (world === null || sim === null) throw new Error('a client lost its world');
+      expect(await world.session.host.hashState()).toEqual({ tick: lastTick, hash: sim.hashState() });
+      // Every tick the worker stepped was acknowledged with the inline client's digest.
+      const digests = await hosted.connection.digests();
+      expect(digests.map((entry) => entry.tick)).toEqual(ticksFrom((hosted.openedAtTick ?? 0) + 1, lastTick));
+      expect(digests).toEqual(peer.digests.list());
+      expect(hosted.acks.map(({ tick, digest }) => ({ tick, digest }))).toEqual(digests);
+      const log = await world.session.host.commandLog();
+      expect(log).toEqual(sim.commands.log);
+      const seatsHeard = new Set(log.flatMap((command) => ('player' in command ? [command.player] : [])));
+      for (const client of [peer, hosted]) {
+        const seat = client.session?.localSeat;
+        expect(typeof seat === 'number' && seatsHeard.has(seat), client.nick).toBe(true);
+      }
+      expect(peer.rejections).toEqual([]);
+      expect(peer.dropped).toEqual([]);
+      expect(peer.desyncs).toEqual([]);
+      expect(hosted.rejections).toEqual([]);
+      expect(hosted.failures).toEqual([]);
+      expect(hosted.desyncs).toEqual([]);
+    } finally {
+      hosted.dispose();
+      await bundle.dispose();
+    }
   });
 });

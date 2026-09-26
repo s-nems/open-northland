@@ -7,7 +7,6 @@ import {
   parseCommandLog,
   type Simulation,
   stepReplaying,
-  type WorldSnapshot,
 } from '@open-northland/sim';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { diag } from '../src/diag/log.js';
@@ -21,6 +20,7 @@ import type {
 } from '../src/session/worker/protocol.js';
 import { REPLACED_SESSION_MESSAGE, undeliveredTickLimit } from '../src/session/worker/serve.js';
 import { sessionOverPort, type WorkerSessionOpening } from '../src/session/worker/worker-session.js';
+import { canonicalEntities } from './support/session-worker/canonical-entities.js';
 import {
   bundleTestWorker,
   DEFAULT_TEST_OPTIONS,
@@ -75,18 +75,6 @@ function scene(id: string) {
   const found = SCENES.find((s) => s.id === id);
   if (found === undefined) throw new Error(`no '${id}' scene in the registry`);
   return found;
-}
-
-/** Component records in name order: the mirror appends a component an entity gains, the sim does not. */
-function canonicalEntities(snapshot: WorldSnapshot): string {
-  return JSON.stringify(
-    snapshot.entities.map((entity) => ({
-      id: entity.id,
-      components: Object.fromEntries(
-        Object.entries(entity.components).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-      ),
-    })),
-  );
 }
 
 function needsToggle(enabled: boolean): CommandEnvelope {

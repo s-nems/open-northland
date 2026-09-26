@@ -1,6 +1,11 @@
 import type { ClientMessage, ServerMessage } from '@open-northland/net-protocol';
 import type { Connection, Relay } from '@open-northland/net-server';
-import type { HeadlessClient } from './headless-client.js';
+
+/** A relay client as the network reaches it: what arrives, and where it sends. */
+export interface LinkedClient {
+  receive(raw: unknown): void;
+  attach(send: (message: ClientMessage) => void): void;
+}
 
 /** mulberry32: a small seeded generator, so an injected jitter schedule is the same on every run. */
 export function seededRandom(seed: number): () => number {
@@ -64,7 +69,7 @@ export class VirtualNetwork {
   ) {}
 
   /** Connect `client` over a fresh link; a client linked again speaks through the new one. */
-  link(client: HeadlessClient, options: LinkOptions = {}): Link {
+  link(client: LinkedClient, options: LinkOptions = {}): Link {
     const latency = options.latencyMs ?? 0;
     const jitter = options.jitterMs ?? 0;
     const up: Direction = { lastAt: 0 };

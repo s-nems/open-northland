@@ -1,6 +1,6 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
 import { build } from 'esbuild';
@@ -18,14 +18,17 @@ import type { TestWorldBoot } from './test-world.js';
 const here = dirname(fileURLToPath(import.meta.url));
 
 /**
- * The test worker bundled into one Node module: `worker_threads` runs plain JavaScript and resolves
- * the workspace packages to their built output, where the tests read the sources.
+ * A test worker bundled into one Node module: `worker_threads` runs plain JavaScript and resolves
+ * the workspace packages to their built output, where the tests read the sources. `entry` defaults to
+ * the session worker beside this file.
  */
-export async function bundleTestWorker(): Promise<{ readonly path: string; dispose(): Promise<void> }> {
+export async function bundleTestWorker(
+  entry = resolve(here, 'node-sim-worker.ts'),
+): Promise<{ readonly path: string; dispose(): Promise<void> }> {
   const dir = await mkdtemp(join(tmpdir(), 'on-session-worker-'));
-  const path = join(dir, 'node-sim-worker.mjs');
+  const path = join(dir, `${basename(entry, extname(entry))}.mjs`);
   await build({
-    entryPoints: [resolve(here, 'node-sim-worker.ts')],
+    entryPoints: [entry],
     bundle: true,
     platform: 'node',
     format: 'esm',
