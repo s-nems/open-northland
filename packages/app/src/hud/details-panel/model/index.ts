@@ -89,12 +89,19 @@ export type {
 export type { UnlockProgressRowModel } from './settler-unlocks.js';
 export type { SettlerVehicleLink, SettlerVehicleRow } from './settler-vehicle.js';
 export type { SettlerPlace, SettlerProductionModel, SettlerProductionRow } from './settler-work.js';
-export type {
-  TradeImportModel,
-  TradeOfferModel,
-  TradeOfferSide,
-  TradePanelModel,
-  TradeStopModel,
+export {
+  TRADE_LIMIT_MAX,
+  TRADE_LIMIT_NONE,
+  TRADE_ROUTE_HOUSES,
+  TRADE_SLOT_A,
+  TRADE_SLOT_B,
+  type TradeCategoryModel,
+  type TradeDirection,
+  type TradeGoodModel,
+  type TradeOfferModel,
+  type TradeOfferSide,
+  type TradePanelModel,
+  type TradeStopModel,
 } from './trade.js';
 export {
   VEHICLE_ORDER_STRING,

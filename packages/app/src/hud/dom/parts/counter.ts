@@ -1,10 +1,13 @@
 import { GLYPH } from '../icons.js';
 import { button, element, onPress, setAttribute, setTip, write } from './dom.js';
 
-/** A counter's finite top and the sentinel above it that means "never stop" (shown as ∞). */
+/** A counter's finite range and, optionally, the sentinel above it that means "never stop" (shown
+ *  as ∞). Without the sentinel the arrows stop at the range's ends. */
 export interface CounterRange {
+  /** The lowest finite value; 0 when absent. */
+  readonly min?: number;
   readonly max: number;
-  readonly unlimited: number;
+  readonly unlimited?: number;
 }
 
 /** The keys held with an arrow press: Shift jumps to that arrow's end, Ctrl steps by tens. */
@@ -17,10 +20,10 @@ export interface CounterModifiers {
 export const COUNTER_TENS_STEP = 10;
 
 /**
- * One press of a counter arrow. Original behavior (the human window's production counter): − at 0 wraps
- * to unlimited, + past the finite top reaches unlimited and + at unlimited wraps to 0, Shift jumps to
- * that arrow's end. Ctrl moves by tens inside the finite range, wrapping at its ends as a single step
- * does.
+ * One press of a counter arrow. Original behavior (the human window's production counter): − at the
+ * bottom wraps to unlimited, + past the finite top reaches unlimited and + at unlimited wraps to the
+ * bottom, Shift jumps to that arrow's end. Ctrl moves by tens inside the finite range, wrapping at its
+ * ends as a single step does. A range without the unlimited sentinel clamps at both ends instead.
  */
 export function counterStep(
   range: CounterRange,
@@ -28,18 +31,24 @@ export function counterStep(
   delta: 1 | -1,
   modifiers: CounterModifiers,
 ): number {
-  if (modifiers.jump) return delta > 0 ? range.unlimited : 0;
+  const min = range.min ?? 0;
+  const { max, unlimited } = range;
   const step = modifiers.tens ? COUNTER_TENS_STEP : 1;
-  if (delta < 0) {
-    if (current <= 0) return range.unlimited;
-    return current >= range.unlimited ? range.max : Math.max(0, current - step);
+  if (unlimited === undefined) {
+    if (modifiers.jump) return delta > 0 ? max : min;
+    return Math.min(max, Math.max(min, current + delta * step));
   }
-  if (current >= range.unlimited) return 0;
-  return current >= range.max ? range.unlimited : Math.min(range.max, current + step);
+  if (modifiers.jump) return delta > 0 ? unlimited : min;
+  if (delta < 0) {
+    if (current <= min) return unlimited;
+    return current >= unlimited ? max : Math.max(min, current - step);
+  }
+  if (current >= unlimited) return min;
+  return current >= max ? unlimited : Math.min(max, current + step);
 }
 
 export function counterText(range: CounterRange, value: number): string {
-  return value >= range.unlimited ? '∞' : String(value);
+  return range.unlimited !== undefined && value >= range.unlimited ? '∞' : String(value);
 }
 
 export function counterModifiers(event: MouseEvent): CounterModifiers {

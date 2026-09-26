@@ -307,7 +307,7 @@ describe('the settler panel model', () => {
     expect(model.family?.canPickPartner).toBe(false);
   });
 
-  it('gives a trader its route, its agreements as goods and its destination', () => {
+  it('gives a trader its route, its agreements as goods and the stop it heads to', () => {
     const ctx = sandboxCtx();
     const [giveGood, takeGood] = ctx.goods;
     if (giveGood === undefined || takeGood === undefined) throw new Error('sandbox has no goods');
@@ -358,7 +358,9 @@ describe('the settler panel model', () => {
         selected: true,
       },
     ]);
-    expect(model.trade?.destination).toBe(model.trade?.stops[1]?.label);
+    expect(model.trade?.stops.map((stop) => stop.heading)).toEqual([false, true]);
+    expect(model.trade?.foreign).toBe(true);
+    expect(model.trade?.categories).toEqual([]);
     expect(model.status.state).toBe('walking');
     expect(model.status.detail).toContain(model.trade?.stops[1]?.label ?? '?');
   });

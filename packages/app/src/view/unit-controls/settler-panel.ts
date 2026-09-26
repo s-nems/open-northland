@@ -4,7 +4,7 @@ import { ownerPlayerOf } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import type { OrdersPress } from '../../hud/dom/selection-panel.js';
-import type { SettlerPanelActions } from '../../hud/dom/settler-panel/actions.js';
+import type { SettlerPanelActions, TradeMarkChange } from '../../hud/dom/settler-panel/actions.js';
 import { NEED_ORDER } from '../../hud/dom/settler-panel/needs.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { UnitControlsOptions } from './types.js';
@@ -68,7 +68,7 @@ export function settlerPanelActions(
   return {
     centre: view(host.centre),
     select: view(host.selectEntity),
-    showPeer: view((id: number) => {
+    show: view((id: number) => {
       host.selectEntity(id);
       host.centre(id);
     }),
@@ -102,8 +102,26 @@ export function settlerPanelActions(
     detachTradeHouse: order((id, house: number) =>
       enqueue({ kind: 'detachTradeHouse', entity: id as Entity, house: house as Entity }),
     ),
-    setTradeImport: order((id, house: number, good: number, on: boolean) =>
-      enqueue({ kind: 'setTradeImport', entity: id as Entity, house: house as Entity, good, on }),
+    setTradeMarks: order((id, changes: readonly TradeMarkChange[]) => {
+      for (const change of changes) {
+        enqueue({
+          kind: 'setTradeImport',
+          entity: id as Entity,
+          house: change.house as Entity,
+          good: change.goodType,
+          on: change.on,
+        });
+      }
+    }),
+    setTradeImportLimits: order((id, house: number, good: number, upTo: number, keep: number) =>
+      enqueue({
+        kind: 'setTradeImportLimits',
+        entity: id as Entity,
+        house: house as Entity,
+        good,
+        upTo,
+        keep,
+      }),
     ),
     setTradeAgreement: order((id, agreement: number) =>
       enqueue({ kind: 'setTradeAgreement', entity: id as Entity, agreement }),

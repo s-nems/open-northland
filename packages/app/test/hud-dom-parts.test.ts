@@ -42,6 +42,24 @@ describe('the counter part', () => {
     expect(counterStep(RANGE, RANGE.unlimited, 1, TENS)).toBe(0);
   });
 
+  it('starts a range at its minimum, wrapping − there to unlimited and + at unlimited back to it', () => {
+    const ceiling = { min: 1, max: 100, unlimited: 101 };
+    expect(counterStep(ceiling, 1, -1, PLAIN)).toBe(ceiling.unlimited);
+    expect(counterStep(ceiling, ceiling.unlimited, 1, PLAIN)).toBe(ceiling.min);
+    expect(counterStep(ceiling, 4, -1, JUMP)).toBe(ceiling.min);
+    expect(counterStep(ceiling, 5, -1, TENS)).toBe(ceiling.min);
+  });
+
+  it('clamps a range without unlimited at both ends and never shows ∞', () => {
+    const reserve = { max: 100 };
+    expect(counterStep(reserve, 0, -1, PLAIN)).toBe(0);
+    expect(counterStep(reserve, reserve.max, 1, PLAIN)).toBe(reserve.max);
+    expect(counterStep(reserve, 95, 1, TENS)).toBe(reserve.max);
+    expect(counterStep(reserve, 4, 1, JUMP)).toBe(reserve.max);
+    expect(counterStep(reserve, 4, -1, JUMP)).toBe(0);
+    expect(counterText(reserve, 0)).toBe('0');
+  });
+
   it('shows unlimited as the infinity sign', () => {
     expect(counterText(RANGE, RANGE.unlimited)).toBe('∞');
     expect(counterText(RANGE, 7)).toBe('7');

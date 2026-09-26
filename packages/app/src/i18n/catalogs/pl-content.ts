@@ -233,6 +233,11 @@ export const plContent = {
       summary:
         'Neutralny magazyn oferuje cztery żelaza za monetę; kupiec wozi monety z własnego magazynu, przywozi żelazo, a wymienione towary zmieniają nastawienie nacji na przyjazne. Zaznacz kupca, żeby zobaczyć sekcję Handel, a daleki magazyn, żeby zobaczyć umowy.',
     },
+    'trade-domestic': {
+      title: 'Handel między własnymi magazynami',
+      summary:
+        'Kupiec z wózkiem ręcznym kursuje między dwoma własnymi magazynami o różnych zapasach, bez zaznaczonych towarów, więc nic się nie rusza. Zaznacz kupca i w sekcji Handel wybierz dla towaru kierunek (→ A, ⇄, → B), pułap i zapas, który zostaje.',
+    },
     tribute: {
       title: 'Trybuty',
       summary:

@@ -7,6 +7,13 @@ import type { HoverCard } from '../hover-card.js';
 import type { TipChip } from '../parts/tip-layer.js';
 import type { OrdersPress } from '../selection-panel.js';
 
+/** One import mark to set or clear: `goodType` carried into `house`. */
+export interface TradeMarkChange {
+  readonly house: number;
+  readonly goodType: number;
+  readonly on: boolean;
+}
+
 /**
  * What the settler panel's controls ask for. The owner checks the viewer's ownership and the sim's
  * gates before a command leaves; the panel only decides which control was pressed.
@@ -15,8 +22,8 @@ export interface SettlerPanelActions {
   readonly centre: (id: number) => void;
   /** A link: the workplace, the home, the spouse or the child. */
   readonly select: (id: number) => void;
-  /** A browse chevron or Tab: select this peer and bring it into view. */
-  readonly showPeer: (id: number) => void;
+  /** Select this entity and bring it into view: a browse chevron or Tab, a trade stop's house. */
+  readonly show: (id: number) => void;
   /** A double click on the trade: select every peer as a group. */
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly clearSelection: () => void;
@@ -43,7 +50,16 @@ export interface SettlerPanelActions {
   readonly setRegeneration: (id: number, allowed: boolean) => void;
   readonly attachTradeHouse: (id: number) => void;
   readonly detachTradeHouse: (id: number, house: number) => void;
-  readonly setTradeImport: (id: number, house: number, goodType: number, on: boolean) => void;
+  /** Set or clear import marks on the trader's route, in order, as one press. */
+  readonly setTradeMarks: (id: number, changes: readonly TradeMarkChange[]) => void;
+  /** The fill ceiling and source reserve of an existing mark, in units (`TRADE_LIMIT_NONE`: none). */
+  readonly setTradeImportLimits: (
+    id: number,
+    house: number,
+    goodType: number,
+    upTo: number,
+    keep: number,
+  ) => void;
   /** Trade on the agreement at `index` in the map's table; -1 drops the choice. */
   readonly setTradeAgreement: (id: number, index: number) => void;
   /** The good's Knowledge page, once the Knowledge window exists; absent leaves the lock inert. */

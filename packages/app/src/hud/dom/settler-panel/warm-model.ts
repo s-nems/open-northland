@@ -4,7 +4,7 @@ import type { SettlerPanelModel } from '../../details-panel/model/index.js';
  * A made-up person that lights every part of the panel at once: sockets worn and empty, a bag, a
  * status with a carried good, bars at every tone, seat rows with a link, a missing seat and a refused
  * button, craft rows with a live, a stopped and a locked product, the military choices, a trade route
- * with imports and offers, and experience with an unlock. The panel paints it once at map start
+ * with marked goods, and experience with an unlock. The panel paints it once at map start
  * (`SettlerPanel.warm`), so the browser's first raster of these styles (each a pipeline it compiles
  * on first use) happens behind the loading screen, not on the first click. Only the shapes matter;
  * the words are never read.
@@ -14,6 +14,15 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     const id = goodIds[index % Math.max(1, goodIds.length)];
     return id === undefined ? {} : { goodId: id };
   };
+  const warmGood = (index: number) => ({
+    goodType: index,
+    ...good(index),
+    label: 'Warm',
+    storedA: true,
+    storedB: true,
+    upTo: 0,
+    keep: 0,
+  });
   const bar = (label: string, pct: number, need?: 'hunger' | 'fatigue' | 'enjoyment' | 'piety') => ({
     label,
     pct,
@@ -54,35 +63,23 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     military: { stance: null, regeneration: true },
     trade: {
       stops: [
+        { slot: 0, house: 1, label: 'Warm', foreign: false, heading: true },
+        { slot: 1, house: 2, label: 'Warm', foreign: false, heading: false },
+      ],
+      attachSlot: null,
+      foreign: false,
+      categories: [
         {
-          slot: 0,
-          house: 1,
+          tab: 0,
           label: 'Warm',
-          foreign: false,
-          imports: [{ goodType: 0, ...good(4), label: 'Warm', selected: true }],
-        },
-        {
-          slot: 1,
-          house: 2,
-          label: 'Warm',
-          foreign: true,
-          imports: [{ goodType: 1, ...good(5), label: 'Warm', selected: false }],
+          goods: [
+            { ...warmGood(4), direction: 'toB', stockA: 3, stockB: 0 },
+            { ...warmGood(5), direction: 'both', stockA: 0, stockB: 0 },
+          ],
         },
       ],
-      offers: [
-        {
-          index: 0,
-          label: 'Warm',
-          give: { amount: 1, goodType: 0, ...good(6), label: 'Warm' },
-          take: { amount: 2, goodType: 1, ...good(7), label: 'Warm' },
-          selected: true,
-        },
-      ],
-      balance: [],
-      status: [],
-      destination: null,
-      canAttach: true,
-      attachFirst: false,
+      offers: [],
+      agreementHolds: false,
     },
     experience: [
       { label: 'Warm', repeats: 1, bonusPct: 5, own: true },

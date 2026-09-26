@@ -43,7 +43,7 @@ export function drawVehicle(
   drawPeopleSection(chrome, layout, model, ui, hover.crewRow);
   if (layout.trade !== null && model.trade !== null) {
     const hovered = { import: hover.tradeImport, offer: hover.tradeOffer, detach: hover.tradeDetach };
-    drawTradeSection(chrome, layout.trade, model.trade.panel, hover.action, hovered, s);
+    drawTradeSection(chrome, layout.trade, model.trade, hover.action, hovered, s);
   }
   if (layout.cargo !== null) drawCargoSection(chrome, view, layout, ui, hover, activeStockTab, s);
 }

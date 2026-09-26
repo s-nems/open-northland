@@ -155,8 +155,9 @@ function statusDetail(
 ): string | null {
   const copy = messages().hud.settlerPanel;
   if (work.lesson !== null) return work.lesson;
-  if (trade !== null && state === 'walking' && trade.destination !== null) {
-    return formatMessage(copy.towards, { place: trade.destination });
+  const heading = trade?.stops.find((stop) => stop.heading);
+  if (heading !== undefined && state === 'walking') {
+    return formatMessage(copy.towards, { place: heading.label });
   }
   const idle = state === 'idle' || state === 'awaitingWorkplace';
   const status = ctx.workStatus?.(entityId);

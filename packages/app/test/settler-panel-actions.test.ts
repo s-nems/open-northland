@@ -20,6 +20,8 @@ const OTHER_SEAT = 3;
 const GOOD = 40;
 const RIDER = 4;
 const CART = 5;
+const HOUSE_A = 6;
+const HOUSE_B = 7;
 
 const SNAPSHOT = snapshotOf([
   { id: OWN, components: { Owner: { player: SEAT }, Settler: { tribe: 1, jobType: 8 } } },
@@ -85,6 +87,23 @@ describe('the settler panel’s orders', () => {
     const { actions, rings } = harness();
     actions.orderNeed(OWN, 'piety');
     expect(rings).toEqual([['pray', [OWN]]]);
+  });
+});
+
+describe('the Handel section', () => {
+  it('sends a press’s mark changes in order under one confirm, and the limits of a mark', () => {
+    const { actions, sent, cues } = harness();
+    actions.setTradeMarks(OWN, [
+      { house: HOUSE_A, goodType: GOOD, on: false },
+      { house: HOUSE_B, goodType: GOOD, on: true },
+    ]);
+    actions.setTradeImportLimits(OWN, HOUSE_B, GOOD, 10, 0);
+    expect(sent).toEqual([
+      { kind: 'setTradeImport', entity: OWN, house: HOUSE_A, good: GOOD, on: false },
+      { kind: 'setTradeImport', entity: OWN, house: HOUSE_B, good: GOOD, on: true },
+      { kind: 'setTradeImportLimits', entity: OWN, house: HOUSE_B, good: GOOD, upTo: 10, keep: 0 },
+    ]);
+    expect(cues).toEqual(['confirm', 'confirm']);
   });
 });
 

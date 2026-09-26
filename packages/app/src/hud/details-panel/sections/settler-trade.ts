@@ -3,7 +3,7 @@ import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
 import { type ButtonAction, ROW_TEXT_PAD, type TradeImportHit, type TradeLayout } from '../layout/index.js';
-import type { TradePanelModel } from '../model/index.js';
+import type { VehicleTradeModel } from '../model/index.js';
 
 /** Inset of a good icon inside its round import-mark button, so the pile clears the rim. */
 const IMPORT_ICON_PAD = 3;
@@ -18,7 +18,7 @@ const OFFER_CHOSEN_SCRIM = 0.25;
 export function drawTradeSection(
   chrome: Chrome,
   layout: TradeLayout,
-  model: TradePanelModel,
+  trade: VehicleTradeModel,
   hoverAction: ButtonAction | null,
   hovered: {
     readonly import: {
@@ -54,7 +54,7 @@ export function drawTradeSection(
   };
 
   layout.stops.forEach((stop, i) => {
-    const stopModel = model.stops[i];
+    const stopModel = trade.panel.stops[i];
     chrome.textLeftMiddle(stopModel?.label ?? '', stop.label.x, stop.label.y + stop.label.h / 2, 'white');
     chrome.roundButton(stop.detach.rect, stop.detach.enabled, hovered.detach === stop.house);
     chrome.glyphHouse(stop.detach.rect, stop.detach.enabled);
@@ -90,7 +90,7 @@ export function drawTradeSection(
     );
   }
   layout.statusRows.forEach((row, i) => {
-    const line = model.status[i];
+    const line = trade.status[i];
     if (line !== undefined) chrome.textAt(line, row.x, row.y + ROW_TEXT_PAD * s, 'dimmed');
   });
 }

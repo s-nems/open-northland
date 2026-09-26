@@ -196,7 +196,7 @@ describe('vehicle panel trade tab', () => {
     const model = vehicleModel(world, VEHICLE_HANDCART);
     expect(cart.commander).not.toBeNull();
     expect(model.trade?.trader).toBe(cart.commander);
-    expect(model.trade?.panel.canAttach).toBe(true);
+    expect(model.trade?.panel.attachSlot).not.toBeNull();
     expect(vehicleView(model).layout.trade).not.toBeNull();
   });
 

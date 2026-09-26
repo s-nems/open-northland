@@ -1,6 +1,11 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
-import type { TradePanelModel } from '../model/index.js';
+import {
+  TRADE_SLOT_A,
+  type TradeGoodModel,
+  type TradePanelModel,
+  type VehicleTradeModel,
+} from '../model/index.js';
 import type { ButtonHit } from './building.js';
 import { ROW_H, type SectionRect } from './shared.js';
 
@@ -56,6 +61,42 @@ export interface TradeLayout {
   readonly statusRows: readonly Rect[];
 }
 
+/** A good the section offers as a round toggle, lit while its mark is set. */
+interface TradeMarkChoice {
+  readonly goodType: number;
+  readonly goodId?: string;
+  readonly label: string;
+  readonly selected: boolean;
+}
+
+function choiceOf(good: TradeGoodModel, selected: boolean): TradeMarkChoice {
+  return {
+    goodType: good.goodType,
+    ...(good.goodId !== undefined ? { goodId: good.goodId } : {}),
+    label: good.label,
+    selected,
+  };
+}
+
+function goodsOf(panel: TradePanelModel): TradeGoodModel[] {
+  return panel.categories.flatMap((category) => category.goods).sort((a, b) => a.goodType - b.goodType);
+}
+
+/** The goods the stop in `slot` stores, each lit while it is carried into that stop. */
+function stopChoices(panel: TradePanelModel, slot: number): TradeMarkChoice[] {
+  const atA = slot === TRADE_SLOT_A;
+  return goodsOf(panel)
+    .filter((good) => (atA ? good.storedA : good.storedB))
+    .map((good) => choiceOf(good, good.direction === 'both' || good.direction === (atA ? 'toA' : 'toB')));
+}
+
+/** The goods both stops store, each lit while it is balanced between them. */
+function balanceChoices(panel: TradePanelModel): TradeMarkChoice[] {
+  return goodsOf(panel)
+    .filter((good) => good.storedA && good.storedB)
+    .map((good) => choiceOf(good, good.direction === 'both'));
+}
+
 interface TradeMetrics {
   readonly icon: number;
   readonly iconGap: number;
@@ -83,18 +124,23 @@ function importBlockH(count: number, m: TradeMetrics): number {
 }
 
 /** The body height the section reserves for `model`, measured with the same metrics the layout uses. */
-export function tradeBodyHeight(model: TradePanelModel, bodyW: number, s: number): number {
+export function tradeBodyHeight(model: VehicleTradeModel, bodyW: number, s: number): number {
   const m = metricsFor(bodyW, s);
+  const panel = model.panel;
   let h = 0;
-  for (const stop of model.stops) h += m.icon + importBlockH(stop.imports.length, m) + m.stopGap;
-  if (model.canAttach) h += m.icon + m.stopGap;
-  if (model.balance.length > 0) h += m.rowH + importBlockH(model.balance.length, m) + m.stopGap;
-  if (model.offers.length > 0) h += m.rowH + model.offers.length * (m.icon + m.stopGap);
+  for (const stop of panel.stops) {
+    h += m.icon + importBlockH(stopChoices(panel, stop.slot).length, m) + m.stopGap;
+  }
+  if (panel.attachSlot !== null) h += m.icon + m.stopGap;
+  const balance = balanceChoices(panel).length;
+  if (balance > 0) h += m.rowH + importBlockH(balance, m) + m.stopGap;
+  if (panel.offers.length > 0) h += m.rowH + panel.offers.length * (m.icon + m.stopGap);
   h += model.status.length * m.rowH;
   return h;
 }
 
-export function layoutTrade(model: TradePanelModel, section: SectionRect, s: number): TradeLayout {
+export function layoutTrade(trade: VehicleTradeModel, section: SectionRect, s: number): TradeLayout {
+  const model = trade.panel;
   const body = section.body;
   const m = metricsFor(body.w, s);
   const pad = Math.round(WIN_PAD * s);
@@ -104,7 +150,7 @@ export function layoutTrade(model: TradePanelModel, section: SectionRect, s: num
 
   /** One block of round good buttons from `y` down, advancing `y` past it. */
   const marks = (
-    choices: TradePanelModel['balance'],
+    choices: readonly TradeMarkChoice[],
     house: number,
     pair: number | null,
   ): TradeImportHit[] => {
@@ -137,7 +183,8 @@ export function layoutTrade(model: TradePanelModel, section: SectionRect, s: num
     };
     y += m.icon + m.stopGap;
   };
-  if (model.canAttach && model.attachFirst) attachRow();
+  const attachFirst = model.attachSlot === TRADE_SLOT_A;
+  if (model.attachSlot !== null && attachFirst) attachRow();
 
   const stops: TradeStopLayout[] = model.stops.map((stop) => {
     const detach: ButtonHit = {
@@ -147,20 +194,21 @@ export function layoutTrade(model: TradePanelModel, section: SectionRect, s: num
     };
     const label: Rect = { x: labelX, y, w: labelW, h: m.icon };
     y += m.icon;
-    const imports = marks(stop.imports, stop.house, null);
+    const imports = marks(stopChoices(model, stop.slot), stop.house, null);
     y += m.stopGap;
     return { house: stop.house, detach, label, imports };
   });
 
-  if (model.canAttach && !model.attachFirst) attachRow();
+  if (model.attachSlot !== null && !attachFirst) attachRow();
 
   let balanceCaption: Rect | null = null;
   let balance: TradeImportHit[] = [];
   const [first, second] = model.stops;
-  if (model.balance.length > 0 && first !== undefined && second !== undefined) {
+  const balanceGoods = balanceChoices(model);
+  if (balanceGoods.length > 0 && first !== undefined && second !== undefined) {
     balanceCaption = { x: body.x, y, w: body.w, h: m.rowH };
     y += m.rowH;
-    balance = marks(model.balance, first.house, second.house);
+    balance = marks(balanceGoods, first.house, second.house);
     y += m.stopGap;
   }
 
@@ -176,7 +224,7 @@ export function layoutTrade(model: TradePanelModel, section: SectionRect, s: num
     return { index: offer.index, label: offer.label, selected: offer.selected, rect, button };
   });
 
-  const statusRows: Rect[] = model.status.map(() => {
+  const statusRows: Rect[] = trade.status.map(() => {
     const rect: Rect = { x: body.x, y, w: body.w, h: m.rowH };
     y += m.rowH;
     return rect;

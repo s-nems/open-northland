@@ -235,6 +235,11 @@ export const enContent = {
       summary:
         'A neutral warehouse offers four iron for a coin; the trader carts coins over from the home warehouse, brings the iron back, and the goods traded turn the nation friendly. Select the trader for its Handel section, and the far warehouse for its agreements.',
     },
+    'trade-domestic': {
+      title: 'Trade between own warehouses',
+      summary:
+        "A trader with a handcart plies between two of your warehouses with different stocks and no good marked, so nothing moves. Select the trader and, in its Handel section, choose a good's direction (→ A, ⇄, → B), its ceiling and the reserve left behind.",
+    },
     tribute: {
       title: 'Tributes',
       summary:

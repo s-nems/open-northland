@@ -52,7 +52,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const browse = (step: 1 | -1): boolean => {
     const next = shown === null ? null : peerAt(peers, step);
     if (next === null) return false;
-    actions.showPeer(next);
+    actions.show(next);
     return true;
   };
   const ordersKey = (): string => deps.keyLabel('actionRing');
@@ -77,21 +77,22 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const military = createMilitarySection(deps, entity);
   const trade = createTradeSection(deps, current);
   const experience = createExperienceSection();
-  /** Paint every section; `fresh` is another person. Both foldable sections open in full; when the
+  /** Paint every section; `fresh` is another person. The foldable sections open in full; when the
    *  whole panel would then run past the plane (read once per change of their rows) the experience
-   *  folds first and the production only if that was not enough: the products are what the player
-   *  came for. */
+   *  folds first, the production only if that was not enough, and the trade last: the products and
+   *  the route are what the player came for. */
   const sections = (model: SettlerPanelModel, fresh: boolean): void => {
     portrait.update(model);
     needs.update(model);
     work.update(model);
     const reshapedProduction = production.update(model, fresh);
     military.update(model);
-    trade.update(model);
+    const reshapedTrade = trade.update(model, fresh);
     const reshapedExperience = experience.update(model, fresh);
-    if ((reshapedProduction || reshapedExperience) && frame.overflows()) {
+    if ((reshapedProduction || reshapedTrade || reshapedExperience) && frame.overflows()) {
       experience.fold();
       if (frame.overflows()) production.fold();
+      if (frame.overflows()) trade.fold();
     }
   };
   frame.body.append(

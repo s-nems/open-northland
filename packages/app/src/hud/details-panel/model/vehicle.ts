@@ -16,6 +16,7 @@ import { healthBar, type PanelBar } from './bars.js';
 import { type Comp, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 import { settlerDisplayName } from './settler-name.js';
 import { type TradePanelModel, tradePanelModel } from './trade.js';
+import { tradeStatusLines } from './trade-status.js';
 
 /**
  * `vehiclewindow` string ids resolved at draw time from `content/gui/strings/<lang>.json`, the original
@@ -99,6 +100,8 @@ export interface VehicleCargoRow {
 export interface VehicleTradeModel {
   readonly trader: number;
   readonly panel: TradePanelModel;
+  /** The cart's load and what the route lacks, under the section. */
+  readonly status: readonly string[];
 }
 
 export interface VehiclePanelModel {
@@ -303,7 +306,10 @@ function vehicleTrade(
   if (type !== undefined && systems.isShipVehicle(type)) return null;
   for (const seat of passengers) {
     const panel = tradePanelModel(ctx, snapshot, seat.entity);
-    if (panel !== null) return { trader: seat.entity, panel };
+    const view = ctx.traderView?.(seat.entity);
+    if (panel !== null && view !== undefined) {
+      return { trader: seat.entity, panel, status: tradeStatusLines(ctx, view) };
+    }
   }
   return null;
 }

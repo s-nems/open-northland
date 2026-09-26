@@ -131,7 +131,7 @@ export function layoutVehicle(
   const ordersBodyH = orderRowCount * buttonH + Math.max(0, orderRowCount - 1) * buttonGap;
   const peopleBodyH = Math.max(1, model.crew.length) * rowH;
   const bodyW = sectionAt(0, 0, w, 0, s).body.w;
-  const tradeBodyH = model.trade === null ? 0 : tradeBodyHeight(model.trade.panel, bodyW, s);
+  const tradeBodyH = model.trade === null ? 0 : tradeBodyHeight(model.trade, bodyW, s);
   const hasCargo = model.cargo.length > 0;
   const cargoRows = Math.ceil(largestHoldTab(model.cargo) / CARGO_COLUMNS);
   const cargoBodyH = hasCargo
@@ -187,7 +187,7 @@ export function layoutVehicle(
   const crewHint: Rect | null =
     model.crew.length > 0 ? null : { x: people.body.x, y: people.body.y, w: people.body.w, h: rowH };
 
-  const trade = model.trade === null ? null : layoutTrade(model.trade.panel, next(tradeBodyH), s);
+  const trade = model.trade === null ? null : layoutTrade(model.trade, next(tradeBodyH), s);
 
   const cargo = hasCargo ? next(cargoBodyH) : null;
   const cargoTabHits =

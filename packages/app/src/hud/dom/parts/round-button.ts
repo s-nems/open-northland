@@ -11,25 +11,20 @@ import {
 } from './dom.js';
 
 /**
- * A round icon chip: a ledger row's assign or remove (18 px), a section title's add (20 px), a product's
- * good (22 px) or a trade stop's import toggle (24 px). The size is the kind's; the face is a line glyph
- * or a good's icon.
+ * A round icon chip: a ledger row's assign or remove (18 px) or a product's good (22 px). The size is
+ * the kind's; the face is a line glyph or a good's icon.
  */
-export type RoundButtonKind = 'ledger' | 'title' | 'good' | 'toggle';
+export type RoundButtonKind = 'ledger' | 'good';
 
 const KIND_CLASS: Readonly<Record<RoundButtonKind, string>> = {
   ledger: 'on-round',
-  title: 'on-round on-round--title',
   good: 'on-round on-round--good',
-  toggle: 'on-round on-round--toggle',
 };
 
 /** Design px of a good icon on each kind's face (foundation.css sizes the chips around them). */
 const GOOD_ICON_PX: Readonly<Record<RoundButtonKind, number>> = {
   ledger: 12,
-  title: 14,
   good: 16,
-  toggle: 18,
 };
 
 export type RoundButtonFace = { readonly glyph: string } | { readonly goodId: string | undefined };
@@ -42,8 +37,6 @@ export interface RoundButtonModel {
   readonly tooltip: string;
   /** False fades the chip and ignores the press; the tooltip then carries the reason. */
   readonly enabled?: boolean;
-  /** A toggle chip's state; absent on a plain button. */
-  readonly pressed?: boolean;
 }
 
 export interface RoundButton {
@@ -95,7 +88,6 @@ export function createRoundButton(
       setAttribute(element, 'aria-label', model.label);
       setTip(element, model.tooltip);
       setDisabled(element, model.enabled === false);
-      if (model.pressed !== undefined) setAttribute(element, 'aria-pressed', String(model.pressed));
     },
   };
 }

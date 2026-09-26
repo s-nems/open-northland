@@ -2590,7 +2590,7 @@ body.on-drag-scroll-cursor-hidden * {
   display: inline-flex;
   gap: 4px;
 }
-/* Round chips: ledger assign/remove, a section title's add, a product's good, an import toggle. */
+/* Round chips: ledger assign/remove, a product's good. */
 .on-hud .on-round {
   width: 18px;
   height: 18px;
@@ -2624,14 +2624,6 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-round--blank {
   display: none;
 }
-.on-hud .on-round--title {
-  width: 20px;
-  height: 20px;
-}
-.on-hud .on-round--title .on-glyph {
-  width: 11px;
-  height: 11px;
-}
 .on-hud .on-round--good {
   width: 22px;
   height: 22px;
@@ -2641,19 +2633,6 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-round--good:hover {
   border-color: var(--bronze);
   box-shadow: 0 0 0 2px #c9a26244;
-}
-.on-hud .on-round--toggle {
-  width: 24px;
-  height: 24px;
-  border-radius: 12px;
-  background: linear-gradient(var(--wood-hi), var(--wood-lo));
-  box-shadow: none;
-  color: #e6d9bd;
-}
-.on-hud .on-round--toggle[aria-pressed="true"] {
-  background: linear-gradient(#e8c479, #b58a3f);
-  border-color: var(--bronze-lo);
-  color: var(--ink);
 }
 /* One 18 px stat line: label, quarter-ticked meter, percent; a need line is the order for that need. */
 .on-hud .on-meter-row {
@@ -3039,12 +3018,212 @@ body.on-drag-scroll-cursor-hidden * {
   height: 13px;
   stroke-width: 2;
 }
+/* Handel: one row per route slot, the A/B badge, the house as a link, the heading arrow and the
+   detach; a free slot's badge is dashed. */
 .on-hud .on-stops {
   margin: 0;
   padding: 0;
   list-style: none;
 }
+.on-hud .on-stop {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 14px 18px;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  font-size: 12.5px;
+}
+.on-hud .on-stop__badge {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 50%;
+  background: linear-gradient(var(--parchment-hi), var(--parchment-lo));
+  color: var(--ink);
+  font: 700 10.5px / 1 var(--font-body);
+}
+.on-hud .on-stop--empty .on-stop__badge {
+  border: 1px dashed var(--bronze-lo);
+  background: none;
+  color: var(--muted);
+}
 .on-hud .on-stop__name {
+  justify-self: start;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.on-hud .on-stop--foreign .on-stop__name {
+  color: var(--warning);
+}
+.on-hud .on-stop__heading {
+  display: inline-flex;
+  visibility: hidden;
+  color: var(--bronze);
+}
+.on-hud .on-stop--heading .on-stop__heading {
+  visibility: visible;
+}
+.on-hud .on-stop__heading .on-glyph {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.4;
+}
+.on-hud .on-trade-hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+/* The eight category tabs: a good's icon on each face, a dot under a tab with a marked good. */
+.on-hud .on-trade-tabs {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  margin: 6px 0 0;
+  border-bottom: 1px solid var(--bronze-lo);
+}
+.on-hud .on-trade-tab {
+  position: relative;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--wood-lo);
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(var(--wood-hi), var(--wood));
+  box-shadow: inset 0 1px #fff2;
+}
+.on-hud .on-trade-tab:hover {
+  background: linear-gradient(#8a6d4a, var(--wood-hi));
+}
+.on-hud .on-trade-tab[aria-selected="true"] {
+  background: linear-gradient(var(--parchment-hi), var(--parchment));
+  border-color: #8d7549;
+  box-shadow: inset 0 2px #fff8;
+}
+.on-hud .on-trade-tab[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.on-hud .on-trade-tab__dot {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--active);
+  box-shadow: 0 0 0 1px #0008;
+  visibility: hidden;
+}
+.on-hud .on-trade-tab--marked .on-trade-tab__dot {
+  visibility: visible;
+}
+/* The open tab's goods: round chips with the stock of both houses in a corner badge. The area keeps
+   the rows of the fullest tab (`--rows`), so switching tabs moves nothing below it. */
+.on-hud .on-trade-chips {
+  display: grid;
+  grid-template-columns: repeat(10, 26px);
+  grid-auto-rows: 26px;
+  justify-content: space-between;
+  align-content: start;
+  row-gap: 4px;
+  min-height: calc(var(--rows, 1) * 30px - 4px);
+  margin: 6px 0 0;
+}
+.on-hud .on-chip {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--wood-lo);
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, #6b5638, #33271a 85%);
+  box-shadow: inset 0 0 0 1px #c9a26233;
+}
+.on-hud .on-chip:hover {
+  border-color: var(--bronze);
+}
+.on-hud .on-chip--empty > .on-good {
+  opacity: 0.5;
+}
+.on-hud .on-chip--one-way {
+  border-color: var(--active);
+  box-shadow: 0 0 0 1px var(--active);
+}
+.on-hud .on-chip--both {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 1px var(--ok);
+}
+.on-hud .on-chip[aria-pressed="true"] {
+  background: radial-gradient(circle at 45% 40%, #a08458, #4f3c27 85%);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.on-hud .on-chip__count {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  min-width: 13px;
+  padding: 0 2px;
+  border-radius: 6px;
+  background: var(--deep);
+  box-shadow: 0 0 0 1px var(--bronze-lo);
+  color: var(--text-hi);
+  font: 700 9px / 12px var(--font-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.on-hud .on-chip--empty .on-chip__count {
+  color: var(--muted);
+}
+.on-hud .on-chip__mark {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  font: 700 9px / 11px var(--font-body);
+  font-style: normal;
+  color: var(--ink);
+  min-width: 11px;
+  border-radius: 6px;
+  background: var(--active);
+  text-align: center;
+}
+.on-hud .on-chip--both .on-chip__mark {
+  background: var(--ok);
+}
+.on-hud .on-chip__mark:empty {
+  display: none;
+}
+/* The chosen good: its line, then the direction and, for a one-way good, the ceiling and the reserve
+   under it. The block keeps its height whatever is chosen. */
+.on-hud .on-trade-detail {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: 24px 26px 26px;
+  align-items: center;
+  column-gap: 8px;
+  margin: 8px 0 0;
+  padding: 6px 0 0;
+  border-top: 1px dotted #c9a26255;
+}
+.on-hud .on-trade-detail__head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12.5px;
+}
+.on-hud .on-trade-detail__name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -3052,14 +3231,56 @@ body.on-drag-scroll-cursor-hidden * {
   white-space: nowrap;
   color: var(--text-hi);
 }
-.on-hud .on-stop--foreign .on-stop__name {
-  color: var(--warning);
+.on-hud .on-trade-detail__stock {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
-.on-hud .on-imports,
+.on-hud .on-trade-detail--idle .on-good-well {
+  display: none;
+}
+.on-hud .on-trade-detail--idle .on-trade-detail__name {
+  color: var(--muted);
+  font-weight: 400;
+}
+.on-hud .on-trade-dir {
+  grid-row: 2;
+  grid-column: 1;
+  width: 132px;
+}
+.on-hud .on-trade-dir > button[aria-disabled="true"] {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.on-hud .on-trade-limit {
+  grid-column: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.on-hud .on-trade-limit--up-to {
+  grid-row: 2;
+}
+.on-hud .on-trade-limit--keep {
+  grid-row: 3;
+}
+.on-hud .on-trade-detail--idle .on-trade-dir,
+.on-hud .on-trade-detail--idle .on-trade-limit,
+.on-hud .on-trade-detail--balanced .on-trade-limit {
+  visibility: hidden;
+}
+/* Umowa: the agreements as single-choice chips, the chosen one with its exchange meter under it. */
 .on-hud .on-offers {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+.on-hud .on-offer-slot {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
 }
 .on-hud .on-offer {
   display: inline-flex;
@@ -3084,6 +3305,21 @@ body.on-drag-scroll-cursor-hidden * {
   height: 11px;
   margin: 0 2px;
   stroke-width: 2.4;
+}
+.on-hud .on-offer__meter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  visibility: hidden;
+}
+.on-hud .on-offer__meter .on-meter--mini {
+  margin: 0;
+}
+.on-hud .on-offer-slot--running .on-offer__meter {
+  visibility: visible;
+}
+.on-hud .on-offer-slot--stalled .on-offer__meter {
+  opacity: 0.4;
 }
 /* Doświadczenie: one track to a line (a track's name can run long), the rows past the fold hidden
    until the "jeszcze N" toggle in the title opens them. */
