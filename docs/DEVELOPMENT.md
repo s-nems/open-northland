@@ -311,9 +311,10 @@ browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. 
 | `ON_BENCH_JSON` | where the report is written instead of `bench-out/` |
 
 `ON_CONTENT_DIR` points it at a content directory outside the checkout. `ON_BENCH_TICKS=50000` covers
-a full AI build-out. Each window reports the tick median, p95, p99 and max, the GC pause time, count
-and longest pause from V8's `gc` entries, and heap and RSS at its end; the run lists its ten slowest
-ticks by sim tick with the three systems that filled each.
+a full AI build-out. Each window reports the tick median, p95, p99 and max, the settlers, fighters
+(soldier and hero jobs) and buildings alive at its end, the GC pause time, count and longest pause from
+V8's `gc` entries, and heap and RSS at its end; the run lists its ten slowest ticks by sim tick with
+the three systems that filled each.
 
 `npm run bench:profile` runs that same world and CPU-profiles the measured ticks, printing the top
 functions by self time and by total time (self plus callees) and the top files next to the per-system

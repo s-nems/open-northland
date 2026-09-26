@@ -2,7 +2,7 @@
 
 /** The report layout the reader accepts; a layout change bumps it, and a report of any other version is
  *  refused rather than read. */
-export const BENCH_REPORT_VERSION = 3;
+export const BENCH_REPORT_VERSION = 4;
 
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
  *  medians - the scale-invariant number a regression check can compare across machines. */
@@ -81,6 +81,8 @@ export interface BenchWindow {
   readonly systems: readonly SystemStat[];
   readonly population: {
     readonly settlers: number;
+    /** The settlers in a soldier or hero job: the combat-scale axis the economy counts hide. */
+    readonly fighters: number;
     readonly buildings: number;
     readonly resourceNodes: number;
   };

@@ -8,7 +8,7 @@
  */
 import { type PerformanceEntry, PerformanceObserver } from 'node:perf_hooks';
 import { setImmediate as nextTurn } from 'node:timers/promises';
-import { type Component, components, type Simulation } from '@open-northland/sim';
+import { type Component, components, type Simulation, systems } from '@open-northland/sim';
 import { calibrationMs, loadPerCpu } from './environment.js';
 import { type BenchWindow, type GcStat, summarizeSegment } from './report/index.js';
 
@@ -44,6 +44,15 @@ export interface Measurement {
 function count(sim: Simulation, component: Component<unknown>): number {
   let n = 0;
   for (const _ of sim.world.query(component)) n++;
+  return n;
+}
+
+/** Settlers whose job is a soldier or hero class, the content's own role table deciding. */
+function countFighters(sim: Simulation): number {
+  let n = 0;
+  for (const entity of sim.world.query(Settler)) {
+    if (systems.isFighterJob(sim.content, sim.world.get(entity, Settler).jobType)) n++;
+  }
   return n;
 }
 
@@ -193,6 +202,7 @@ export async function measureWindows(sim: Simulation, options: MeasureOptions): 
       ...summarizeSegment(sliceSamples(perSystem, bound), tickSamples.slice(bound.from, bound.to)),
       population: {
         settlers: count(sim, Settler),
+        fighters: countFighters(sim),
         buildings: count(sim, Building),
         resourceNodes: count(sim, Resource),
       },

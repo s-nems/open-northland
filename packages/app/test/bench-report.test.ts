@@ -58,7 +58,7 @@ function windowFixture(index: number, medianMs: number, overrides: Partial<Bench
     toTick: index * 100 + 100,
     tickMs: { medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
     systems: [{ name: 'ai', medianMs, p95Ms: medianMs * 2, maxMs: medianMs * 4, sharePct: 100 }],
-    population: { settlers: 100 + index, buildings: 10 + index, resourceNodes: 500 },
+    population: { settlers: 100 + index, fighters: 20 + index, buildings: 10 + index, resourceNodes: 500 },
     rssMb: 200 + index,
     heapUsedMb: 120 + index,
     gc: { count: 3, ms: 2.5, maxMs: 1.25 },
@@ -270,9 +270,10 @@ describe('formatReport', () => {
     const text = formatReport(summarize(new Map([['ai', [1]]]), [1], windowed));
     expect(text).toContain('growth (window 1 -> 2)');
     expect(text).toMatch(/ai\s+1\.000\s+4\.000\s+4\.0x/);
-    // Window 2: median 4, p95 8, p99 12, max 16, then GC 2.5 ms over 3 collections, longest 1.3, heap 121.
+    // Window 2: median 4, p95 8, p99 12, max 16, 101 settlers, 21 fighters, 11 buildings, then GC 2.5 ms
+    // over 3 collections, longest 1.3, heap 121.
     expect(text).toMatch(
-      /2\/2\s+101\.\.200\s+4\.000\s+8\.000\s+12\.000\s+16\.000\s+101\s+11\s+2\.5\s+3\s+1\.3\s+121/,
+      /2\/2\s+101\.\.200\s+4\.000\s+8\.000\s+12\.000\s+16\.000\s+101\s+21\s+11\s+2\.5\s+3\s+1\.3\s+121/,
     );
     expect(text).toContain('gc: 6 collection(s), 5.0 ms paused, longest 1.3 ms   heap at end 121 MB');
   });

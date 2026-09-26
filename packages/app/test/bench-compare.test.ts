@@ -15,7 +15,7 @@ function window(index: number, medianMs: number): BenchWindow {
     toTick: index * 100 + 100,
     tickMs: { medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
     systems: [{ name: 'ai', medianMs, p95Ms: medianMs * 2, maxMs: medianMs * 4, sharePct: 100 }],
-    population: { settlers: 100, buildings: 10, resourceNodes: 500 },
+    population: { settlers: 100, fighters: 20, buildings: 10, resourceNodes: 500 },
     rssMb: 200,
     heapUsedMb: 120,
     gc: { count: 4, ms: 3, maxMs: 1 },
