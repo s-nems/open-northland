@@ -19,6 +19,7 @@ import {
   SAXON,
   SOLDIER_SPEAR,
   SOLDIER_SWORD_SHORT,
+  startSwing,
   VIKING,
   WOMAN,
 } from './combat-cadence/support.js';
@@ -227,5 +228,62 @@ describe('melee front - a fighter behind a full front steps along it', () => {
     }
     expect(struck).toBe(true);
     expect(s.world.get(spearman, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: other });
+  });
+});
+
+describe('melee front - a fighter about to strike turns to a less crowded enemy in reach or a step off', () => {
+  /** In the swordsman's reach. */
+  const STRUCK: HalfCellNode = { hx: PICKER.hx + 1, hy: ROW };
+  /** A step outside its reach, the other way. */
+  const OPEN: HalfCellNode = { hx: PICKER.hx - 2, hy: ROW };
+  const SWING_TICKS = 12;
+
+  /** The swordsman holding an enemy in reach that `others` more blue swordsmen also stand at. */
+  function inContact(others: number): { s: Simulation; soldier: Entity; struck: Entity } {
+    const s = sim();
+    const soldier = picker(s);
+    const struck = enemy(s, STRUCK);
+    // East of the struck enemy, away from the swordsman's own node.
+    const sides = hexNeighboursOf(STRUCK.hx, STRUCK.hy).sort((a, b) => b.hx - a.hx || a.hy - b.hy);
+    for (const n of sides.slice(0, others)) unit(s, n, P0, MILITARY_MODE.IGNORE, SOLDIER_SWORD_SHORT);
+    s.world.add(soldier, Engagement, { repathAt: s.tick, target: struck });
+    return { s, soldier, struck };
+  }
+
+  it('turns to an enemy a step off that nobody stands at when two friends share its own', () => {
+    const { s, soldier } = inContact(2);
+    const open = enemy(s, OPEN);
+    combatSystem(s.world, ctxOf(s));
+    expect(held(s, soldier)).toBe(open);
+    expect(s.world.has(soldier, CurrentAtomic)).toBe(false); // it walks the step before it strikes
+    expect(s.world.has(soldier, MoveGoal)).toBe(true);
+  });
+
+  it('keeps striking when the other enemy is as crowded, and never turns mid-swing', () => {
+    const { s, soldier, struck } = inContact(1);
+    enemy(s, OPEN);
+    crowd(s, OPEN, 1);
+    combatSystem(s.world, ctxOf(s));
+    expect(held(s, soldier)).toBe(struck);
+    expect(s.world.get(soldier, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: struck });
+
+    const mid = inContact(2);
+    const open = enemy(mid.s, OPEN);
+    startSwing(mid.s, mid.soldier, { target: mid.struck, damage: 1 }, SWING_TICKS);
+    combatSystem(mid.s.world, ctxOf(mid.s));
+    expect(held(mid.s, mid.soldier)).toBe(mid.struck);
+    expect(held(mid.s, mid.soldier)).not.toBe(open);
+  });
+
+  it('never turns from an enemy fighter to a civilian, however open she stands', () => {
+    const s = sim();
+    const soldier = picker(s);
+    const fighter = unit(s, STRUCK, P1, MILITARY_MODE.IGNORE, SOLDIER_SWORD_SHORT);
+    const sides = hexNeighboursOf(STRUCK.hx, STRUCK.hy).sort((a, b) => b.hx - a.hx || a.hy - b.hy);
+    for (const n of sides.slice(0, 2)) unit(s, n, P0, MILITARY_MODE.IGNORE, SOLDIER_SWORD_SHORT);
+    enemy(s, OPEN);
+    s.world.add(soldier, Engagement, { repathAt: s.tick, target: fighter });
+    combatSystem(s.world, ctxOf(s));
+    expect(held(s, soldier)).toBe(fighter);
   });
 });

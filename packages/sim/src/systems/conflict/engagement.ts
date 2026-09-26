@@ -13,6 +13,7 @@ import {
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { HEX_HEADING_COUNT } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isTravelling } from '../movement/nav-state.js';
@@ -415,7 +416,10 @@ function heldOrPicked(
     heldTarget !== undefined && world.isAlive(heldTarget) && hold.keep(heldTarget)
       ? focusedOn(world, ctx, terrain, here, heldTarget)
       : null;
-  if (held !== null && !rescanDue(world, ctx, self, held.dist, hold.band)) return held;
+  if (held !== null && heldTarget !== undefined && !rescanDue(world, ctx, self, held.dist, hold.band)) {
+    if (!standsToStrike(world, self, held.dist, hold.band)) return held;
+    return lessCrowdedInReach(world, ctx, terrain, pass, spec, here, heldTarget, hold.band) ?? held;
+  }
   const { x, y } = terrain.coordsOf(here);
   if (
     held === null &&
@@ -503,6 +507,68 @@ function crowdingOf(
 }
 
 const OPEN_CROWDING: Crowding = { occupied: 0, sealed: false };
+
+/** Whether a combatant holding a target `heldDist` off is standing in reach of it: the tick a swing starts. */
+function standsToStrike(world: World, self: Entity, heldDist: number, band: WeaponBand): boolean {
+  return heldDist >= band.minRange && heldDist <= band.maxRange && !isTravelling(world, self);
+}
+
+/**
+ * The enemy a fighter about to strike turns to instead: one within reach or a step outside it, of a kind
+ * no worse than `heldTarget`, with strictly fewer bodies standing at it than the held one; among those the
+ * nearest, then the lowest id. Null keeps the held one. Asked as each swing starts, so after every blow
+ * and never mid-swing, and it costs one band scan a step wider than the weapon's reach, so the work follows
+ * the fighters in contact. Owner rule: the original never lets go of a live target it can reach; here
+ * it is what keeps three swords off one man once the lines have mixed.
+ */
+function lessCrowdedInReach(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  spec: EngageSpec,
+  here: NodeId,
+  heldTarget: Entity,
+  band: WeaponBand,
+): { target: Entity; dist: number } | null {
+  const heldCrowd = crowdingOf(world, ctx, terrain, pass, here, heldTarget).occupied;
+  if (heldCrowd === 0) return null;
+  const { index } = pass;
+  const heldRank = tierRank(world, ctx, index, heldTarget);
+  const reach = { minRange: band.minRange, maxRange: band.maxRange + 1 };
+  const { x, y } = terrain.coordsOf(here);
+  const near = index.nearestFew(
+    x,
+    y,
+    reach.minRange,
+    reach.maxRange,
+    (t) => t !== heldTarget && tierRank(world, ctx, index, t) <= heldRank && spec.accept(t),
+    nodesInBand(reach),
+    spec.player,
+    reach.maxRange,
+    SEARCH_METRIC,
+  );
+  let best: Entity | null = null;
+  let bestCrowd = heldCrowd;
+  for (const candidate of near) {
+    const crowd = crowdingOf(world, ctx, terrain, pass, here, candidate.entity).occupied;
+    if (crowd < bestCrowd) {
+      best = candidate.entity;
+      bestCrowd = crowd;
+    }
+  }
+  return best === null ? null : focusedOn(world, ctx, terrain, here, best);
+}
+
+/** How many nodes lie in `band`, six per map point of radius: the most distinct unit targets a scan of it
+ *  can return. */
+function nodesInBand(band: WeaponBand): number {
+  let count = 0;
+  for (let ring = band.minRange; ring <= band.maxRange; ring++) {
+    count += ring === 0 ? 1 : HEX_HEADING_COUNT * ring;
+  }
+  return count;
+}
 
 /**
  * The pick: the first kind in {@link PICK_TIERS} with a candidate, and among its {@link PICK_CANDIDATES}
