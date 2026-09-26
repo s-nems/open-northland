@@ -93,3 +93,35 @@ export function bestRingNode(
   }
   return best;
 }
+
+/**
+ * The accepted node nearest `origin` (Manhattan) on the innermost ring of `minRadius..maxRadius` around
+ * `(cx, cy)` holding one, the first walked on ties, or null: the {@link firstRingNode} walk with each
+ * ring settled toward `origin`, so a spot beside a resource lands on the side its walkers come from.
+ */
+export function nearestRingNode(
+  cx: number,
+  cy: number,
+  minRadius: number,
+  maxRadius: number,
+  origin: HalfCellNode,
+  accept: (x: number, y: number) => boolean,
+): HalfCellNode | null {
+  for (let r = minRadius; r <= maxRadius; r++) {
+    let best: HalfCellNode | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (let dx = -r; dx <= r; dx++) {
+      const dy = r - Math.abs(dx);
+      for (let side = dy === 0 ? 1 : 0; side < 2; side++) {
+        const x = cx + dx;
+        const y = side === 0 ? cy - dy : cy + dy;
+        const distance = Math.abs(x - origin.hx) + Math.abs(y - origin.hy);
+        if (distance >= bestDistance || !accept(x, y)) continue;
+        best = { hx: x, hy: y };
+        bestDistance = distance;
+      }
+    }
+    if (best !== null) return best;
+  }
+  return null;
+}

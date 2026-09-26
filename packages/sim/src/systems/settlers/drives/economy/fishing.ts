@@ -4,6 +4,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import { hexDistance, hexNeighboursOf, nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { FISH_CAST_ATOMIC, FISH_SHORE_SEARCH_RADIUS } from '../../../economy/fish.js';
+import { liveWorkFlag } from '../../../economy/work-flag.js';
 import { toolWorkFactorPct } from '../../../equipment/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../../footprint/index.js';
 import { jobExperiencePercent, strokesPerUnit, workRepeatsFor } from '../../../progression/index.js';
@@ -12,6 +13,7 @@ import { edibleGoodFormOf } from '../../../readviews/food.js';
 import { isFisherJob } from '../../../readviews/index.js';
 import { fishSwarmsNearNode } from '../../../spatial/fish.js';
 import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
+import { entityNode } from '../../../spatial/nodes.js';
 import { atOrWalk, startAtomic } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { unreachableWorkCell } from '../../targets/index.js';
@@ -25,7 +27,8 @@ interface FishingTarget {
   readonly dist: number;
 }
 
-/** Plan the land fisher onto a nearby reachable shore from which an authored swarm is in range. */
+/** Plan the land fisher onto a reachable shore near his {@link shoreSearchOrigin} from which an authored
+ *  swarm is in range. */
 export function planFisher(plan: PlannerContext): boolean {
   const { world, ctx, terrain, entity: fisher, here } = plan;
   if (!isFisherJob(ctx.content, plan.jobType)) return false;
@@ -70,9 +73,20 @@ export function planFisher(plan: PlannerContext): boolean {
 }
 
 /**
+ * Where the fisher's shore search starts: his catch-delivery flag while he holds a live one, else his own
+ * feet. Authored: the flag is the water he was posted to, so a man back from a meal or a nap returns to it
+ * instead of idling wherever he stands, out of reach of any shore. Routability is still judged from his feet.
+ */
+function shoreSearchOrigin(plan: PlannerContext): NodeId {
+  const { world, terrain, entity, here } = plan;
+  const flag = liveWorkFlag(world, entity);
+  return flag === undefined ? here : entityNode(world, terrain, flag.flag);
+}
+
+/**
  * The original's shore search for fishing searches outward from the fisher and retains at most eight
- * reachable land points beside water. We do that scan once per fisher, then pick its canonical nearest result
- * rather than the original's random candidate.
+ * reachable land points beside water. We do that scan once per fisher, from his {@link shoreSearchOrigin},
+ * then pick its canonical nearest result rather than the original's random candidate.
  */
 function nearbyFishingTargets(
   plan: PlannerContext,
@@ -80,7 +94,8 @@ function nearbyFishingTargets(
   regions: ReturnType<typeof routeRegions>,
 ): FishingTarget[] {
   const { terrain, here } = plan;
-  const origin = terrain.coordsOf(here);
+  const from = shoreSearchOrigin(plan);
+  const origin = terrain.coordsOf(from);
   const found: FishingTarget[] = [];
   for (let radius = 0; radius <= FISH_SHORE_SEARCH_RADIUS; radius++) {
     const count = ringOffsetCount(radius);
@@ -94,7 +109,7 @@ function nearbyFishingTargets(
       if (unreachableWorkCell(gates, here, shore) || regions.unroutable(here, shore)) continue;
       const target = fishAtWaterEdge(plan, x, y);
       if (target !== null) {
-        found.push({ ...target, shore, dist: manhattan(terrain, here, shore) });
+        found.push({ ...target, shore, dist: manhattan(terrain, from, shore) });
         if (found.length === 8) return found;
       }
     }
@@ -141,13 +156,14 @@ function syntheticFishingTarget(
   regions: ReturnType<typeof routeRegions>,
 ): FishingTarget | null {
   const { world, terrain, here } = plan;
-  const at = terrain.coordsOf(here);
+  const from = shoreSearchOrigin(plan);
+  const at = terrain.coordsOf(from);
   let best: FishingTarget | null = null;
   for (const entity of fishSwarmsNearNode(world, at.x, at.y, 2 * FISH_SHORE_SEARCH_RADIUS)) {
     const swarm = world.get(entity, FishSwarm);
     if (swarm.count <= 0 || swarm.shore === null) continue;
     const shore = swarm.shore;
-    const dist = manhattan(terrain, here, shore);
+    const dist = manhattan(terrain, from, shore);
     if (dist > FISH_SHORE_SEARCH_RADIUS) continue;
     if (plan.limit !== null && !plan.limit.allowsNode(shore)) continue;
     if (unreachableWorkCell(gates, here, shore) || regions.unroutable(here, shore)) continue;

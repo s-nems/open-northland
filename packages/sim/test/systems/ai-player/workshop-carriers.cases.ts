@@ -684,7 +684,14 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
       [low, BASE_STONE],
       [high, HUT_STONE],
     ] as const) {
-      const spot = flagSpotNear(sim.world, ctx, terrain, { hx: stone.x, hy: stone.y }, taken);
+      const spot = flagSpotNear(
+        sim.world,
+        ctx,
+        terrain,
+        { hx: stone.x, hy: stone.y },
+        { hx: stone.x, hy: stone.y },
+        taken,
+      );
       if (spot === null) throw new Error('setup: a flag spot');
       claimFlagNode(taken, spot);
       sim.enqueueSetup({ kind: 'setWorkFlag', entity: man, x: spot.hx, y: spot.hy });

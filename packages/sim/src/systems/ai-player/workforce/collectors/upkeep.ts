@@ -69,7 +69,7 @@ export function upkeepHolders(
       const currentNode = current === null ? null : anchorNodeOf(world, current);
       if (currentNode === null || nodeDistance(flagNode, currentNode) <= FLAG_MAX_DISTANCE_NODES) continue;
     }
-    const replant = replantSpot(world, ctx, terrain, holder, flag.radius, nearest, reach, taken);
+    const replant = replantSpot(world, ctx, terrain, holder, flag.radius, nearest, anchor, reach, taken);
     if (replant === 'dry') {
       // The map ran out of this good - the collector rejoins the builder pool.
       if (!alive && builderJob !== null)

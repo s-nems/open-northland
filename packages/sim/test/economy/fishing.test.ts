@@ -112,6 +112,41 @@ describe('fishing', () => {
     });
   });
 
+  it('searches for a shore from his flag, so a flag fisher far from his water walks back to it', () => {
+    // The water sits at the west end of a long strip, the fisher at the east end, well past his own
+    // 20-node shore search; his flag stands on the swarm's shore.
+    const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(96, 6) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test needs terrain');
+    const [swarm] = addFishSwarms(sim.world, terrain, [{ hx: 5, hy: 3, count: 5, continent: 7 }]);
+    if (swarm === undefined) throw new Error('fish swarm did not spawn');
+    const shore = sim.world.get(swarm, FishSwarm).shore;
+    if (shore === null) throw new Error('fish swarm has no shore');
+    const c = terrain.coordsOf(shore);
+    const fisher = fisherAt(sim, 90, 3);
+    sim.world.add(fisher, Owner, { player: 0 });
+    syncWorkFlagToJob(sim.world, ctxOf(sim), fisher, FISHER);
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: fisher, x: c.x, y: c.y });
+    sim.step();
+
+    let cast = false;
+    for (let tick = 0; tick < 900 && !cast; tick++) {
+      sim.step();
+      cast = sim.world.tryGet(fisher, CurrentAtomic)?.atomicId === FISH_CAST_ATOMIC;
+    }
+    expect(cast).toBe(true);
+
+    // Without a flag the same man searches from his feet and never finds the water.
+    const idle = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(96, 6) });
+    const idleTerrain = idle.terrain;
+    if (idleTerrain === undefined) throw new Error('test needs terrain');
+    addFishSwarms(idle.world, idleTerrain, [{ hx: 5, hy: 3, count: 5, continent: 7 }]);
+    const stranded = fisherAt(idle, 90, 3);
+    for (let tick = 0; tick < 900; tick++) idle.step();
+    expect(idle.world.tryGet(stranded, CurrentAtomic)?.atomicId).not.toBe(FISH_CAST_ATOMIC);
+    expect(idle.world.has(stranded, MoveGoal)).toBe(false);
+  });
+
   it('retires the flag of an HQ-employed fisher and banks the catch directly into the HQ', () => {
     const sim = new Simulation({ seed: 4, content: fishingContent(), map: grassNodeMap(16, 6) });
     const terrain = sim.terrain;

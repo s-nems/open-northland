@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler } from '../../family/eligibility.js';
-import { isFighterJob, isScoutJob } from '../../readviews/index.js';
+import { isFighterJob, isFisherJob, isScoutJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
 import { ownedSettlers } from '../seat-roster.js';
@@ -21,6 +21,8 @@ export interface Workforce {
   /** Collect-anything gatherers (a live flag with no good filter), capped at the decision's generic
    *  target. */
   readonly genericCollectors: Entity[];
+  /** The flag fishers, kept at their water; the fisher module alone re-plants or retires them. */
+  readonly fishers: Entity[];
   readonly scouts: Entity[];
 }
 
@@ -53,7 +55,8 @@ export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): b
 
 /**
  * Classify the seat's adult men: employed workers, the collectors of each wanted good up to its target,
- * the generic collectors and the scouts are recognized in place; everyone else lands in the spare pool.
+ * the generic collectors, the fishers and the scouts are recognized in place; everyone else lands in the
+ * spare pool.
  * A good's holders are ranked most experienced first on its `(job, good)` track, ascending id on ties,
  * before the target caps them, so an over-target good hands back its greenest gatherers.
  */
@@ -70,6 +73,7 @@ export function classifyWorkforce(
   const collectorsByGood = new Map<number, Entity[]>();
   const targets = new Map<number, number>();
   const genericCollectors: Entity[] = [];
+  const fishers: Entity[] = [];
   const scouts: Entity[] = [];
   for (const e of ownedSettlers(world, player)) {
     if (!isAllocatableMan(world, ctx, e)) continue;
@@ -77,6 +81,10 @@ export function classifyWorkforce(
     if (world.has(e, JobAssignment)) continue; // staffing a building - keep the post
     if (isScoutJob(ctx.content, job)) {
       scouts.push(e);
+      continue;
+    }
+    if (isFisherJob(ctx.content, job)) {
+      fishers.push(e);
       continue;
     }
     const flag = job === null ? undefined : liveWorkFlag(world, e);
@@ -111,7 +119,7 @@ export function classifyWorkforce(
     for (const e of holders) kept.add(e);
   }
   const pool = spares.filter((e) => !kept.has(e));
-  return { pool, collectorsByGood, genericCollectors, scouts };
+  return { pool, collectorsByGood, genericCollectors, fishers, scouts };
 }
 
 /**

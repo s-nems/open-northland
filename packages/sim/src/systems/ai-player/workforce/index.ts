@@ -95,7 +95,7 @@ function runWorkforce(
   const baseNode = anchorNodeOf(world, base);
   const farGround = baseNode === null ? 0 : farGroundExtras(world, ctx, owned, baseNode);
   const genericTarget = GENERIC_COLLECTOR_TARGET + clearing + farGround;
-  const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(
+  const { pool, collectorsByGood, genericCollectors, fishers, scouts } = classifyWorkforce(
     world,
     ctx,
     player,
@@ -105,7 +105,7 @@ function runWorkforce(
   const force = new SpareForce(pool);
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
-  const fishing = fishingPlan(world, ctx, player);
+  const fishing = fishingPlan(world, ctx, player, fishers);
   const seat: SeatStaffing = { player, owned, supply };
   const ground = collectorGround(world, ctx, seat.owned, baseNode);
   const generic = (): PlayerCommand[] =>
@@ -138,7 +138,7 @@ function runWorkforce(
           builderJob,
         )),
     ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
-    ...allocateFishers(world, ctx, fishing, force, builderJob, 'first'),
+    ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'first'),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
@@ -163,7 +163,7 @@ function runWorkforce(
     ...(clearing > 0 ? generic() : []),
     ...staffBuildings(world, ctx, seat, force, tally, 'target'),
     ...(ground === null ? [] : topUpCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken)),
-    ...allocateFishers(world, ctx, fishing, force, builderJob, 'topUp'),
+    ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
     ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force, armyFloor, arms),

@@ -300,7 +300,7 @@ export function allocateGenericCollectors(
     const nearest = (open: WorkableTest): Entity | null =>
       clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
     if (alive && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
-    const replant = replantSpot(world, ctx, terrain, g, flag.radius, nearest, reach, taken);
+    const replant = replantSpot(world, ctx, terrain, g, flag.radius, nearest, baseNode, reach, taken);
     if (replant === 'dry') {
       if (!alive && builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
       continue;
@@ -322,7 +322,7 @@ export function allocateGenericCollectors(
       clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up
     const node = resource === null ? null : anchorNodeOf(world, resource);
     if (node === null) break; // no clearing good stands anywhere - no generic post
-    const spot = flagSpotNear(world, ctx, terrain, node, taken);
+    const spot = flagSpotNear(world, ctx, terrain, node, baseNode, taken);
     if (spot === null) break;
     const spare = force.take(undefined, veteranFirst);
     if (spare === null) break;

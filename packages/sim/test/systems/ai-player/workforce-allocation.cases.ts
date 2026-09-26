@@ -1465,8 +1465,13 @@ describe('workforce module (collectResources)', () => {
     // callers issue nothing on null. With no candidate at all the answer is dry.
     const refusing = { canWork: () => false, patchHarvestable: () => false };
     const { radius } = sim.world.get(holder, WorkFlag);
-    expect(replantSpot(sim.world, ctx, terrain, holder, radius, nearest, refusing, new Set())).toBeNull();
-    expect(replantSpot(sim.world, ctx, terrain, holder, radius, () => null, refusing, new Set())).toBe('dry');
+    const origin = { hx: HQ_X, hy: HQ_Y };
+    expect(
+      replantSpot(sim.world, ctx, terrain, holder, radius, nearest, origin, refusing, new Set()),
+    ).toBeNull();
+    expect(
+      replantSpot(sim.world, ctx, terrain, holder, radius, () => null, origin, refusing, new Set()),
+    ).toBe('dry');
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {
@@ -1565,6 +1570,17 @@ describe('workforce module (collectResources)', () => {
 });
 
 describe('flagSpotNear', () => {
+  it('plants the flag on the origin side of the resource, on the innermost band ring', () => {
+    const sim = aiSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const resource = { hx: 20, hy: 16 };
+    const east = flagSpotNear(sim.world, ctxOf(sim), terrain, resource, { hx: 60, hy: 16 }, new Set());
+    const north = flagSpotNear(sim.world, ctxOf(sim), terrain, resource, { hx: 20, hy: 0 }, new Set());
+    expect(east).toEqual({ hx: resource.hx + FLAG_MIN_DISTANCE_NODES, hy: resource.hy });
+    expect(north).toEqual({ hx: resource.hx, hy: resource.hy - FLAG_MIN_DISTANCE_NODES });
+  });
+
   it('never picks a node a landscape object blocks', () => {
     const MAP_NODES = 24;
     const resource = { hx: 12, hy: 12 };
@@ -1586,7 +1602,7 @@ describe('flagSpotNear', () => {
       });
     const spotIn = (sim: Simulation) => {
       if (sim.terrain === undefined) throw new Error('mapped sim');
-      return flagSpotNear(sim.world, ctxOf(sim), sim.terrain, resource, new Set());
+      return flagSpotNear(sim.world, ctxOf(sim), sim.terrain, resource, resource, new Set());
     };
     const open = spotIn(withStoneAt());
     if (open === null) throw new Error('open ground has a spot');

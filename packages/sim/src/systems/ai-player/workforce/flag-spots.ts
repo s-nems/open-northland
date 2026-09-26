@@ -4,7 +4,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { workFlagPlacementTest } from '../../footprint/index.js';
 import { type GathererReach, nearestLiveResource, type WorkableTest } from '../live-resources.js';
-import { anchorNodeOf, firstRingNode } from '../node-geometry.js';
+import { anchorNodeOf, nearestRingNode } from '../node-geometry.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;
@@ -33,23 +33,42 @@ export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
   taken.add(flagNodeKey(spot.hx, spot.hy));
 }
 
-/** The closest legal work-flag node in the 2-3-tile band around a resource, falling back to any nearby
- *  legal node when the band is fully blocked, or null. One blocker scan per call. */
+/** The decision's legal work-flag test over `taken`, resolved once per spot search (one blocker scan). */
+export function legalFlagNodeTest(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  taken: TakenFlagNodes,
+): (x: number, y: number) => boolean {
+  const placeable = workFlagPlacementTest(world, ctx.content, terrain);
+  return (x, y) => terrain.inBounds(x, y) && placeable(terrain.nodeAt(x, y)) && !taken.has(flagNodeKey(x, y));
+}
+
+/**
+ * The legal work-flag node in the 2-3-tile band around a resource nearest `origin`, the base or workshop
+ * its gatherer walks out from, on the band's innermost ring holding one; any nearby legal node when the
+ * band is fully blocked, nearest `origin` again; null when none. The origin side keeps the flag between
+ * the settlement and the deposit rather than behind it, where a man would round the whole deposit to dig
+ * its far edge.
+ */
 export function flagSpotNear(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   resource: HalfCellNode,
+  origin: HalfCellNode,
   taken: TakenFlagNodes,
 ): HalfCellNode | null {
-  const placeable = workFlagPlacementTest(world, ctx.content, terrain);
-  const legal = (x: number, y: number): boolean =>
-    terrain.inBounds(x, y) && placeable(terrain.nodeAt(x, y)) && !taken.has(flagNodeKey(x, y));
-  const inBand = (x: number, y: number): boolean =>
-    Math.abs(x - resource.hx) + Math.abs(y - resource.hy) >= FLAG_MIN_DISTANCE_NODES && legal(x, y);
+  const legal = legalFlagNodeTest(world, ctx, terrain, taken);
   return (
-    firstRingNode(resource.hx, resource.hy, FLAG_MAX_DISTANCE_NODES, inBand) ??
-    firstRingNode(resource.hx, resource.hy, FLAG_FALLBACK_MAX_DISTANCE_NODES, legal)
+    nearestRingNode(
+      resource.hx,
+      resource.hy,
+      FLAG_MIN_DISTANCE_NODES,
+      FLAG_MAX_DISTANCE_NODES,
+      origin,
+      legal,
+    ) ?? nearestRingNode(resource.hx, resource.hy, 0, FLAG_FALLBACK_MAX_DISTANCE_NODES, origin, legal)
   );
 }
 
@@ -67,7 +86,7 @@ export function collectorSpot(
   const resource: Entity | null = nearestLiveResource(world, goodType, anchor, workable);
   if (resource === null) return null;
   const node = anchorNodeOf(world, resource);
-  return node === null ? null : flagSpotNear(world, ctx, terrain, node, taken);
+  return node === null ? null : flagSpotNear(world, ctx, terrain, node, anchor, taken);
 }
 
 /** A re-plant: the resource the flag moves after and the spot beside it, `dry` when the map holds no
@@ -77,10 +96,11 @@ export function collectorSpot(
 export type Replant = { readonly target: HalfCellNode; readonly spot: HalfCellNode } | 'dry' | null;
 
 /**
- * Where `holder` re-plants a flag of `radius`: beside the resource `nearest` picks, checked with the
- * gatherer's own filters from the new spot, trying the next nearest after a miss. `nearest` must honour the
- * `open` test it is given, which drops the resources already tried. Up to {@link REPLANT_ATTEMPTS} spot
- * searches per call; the callers pay them only for a holder not mid-action or on the periodic upkeep.
+ * Where `holder` re-plants a flag of `radius`: beside the resource `nearest` picks, on its `origin` side
+ * (the anchor the search runs from), checked with the gatherer's own filters from the new spot, trying the
+ * next nearest after a miss. `nearest` must honour the `open` test it is given, which drops the resources
+ * already tried. Up to {@link REPLANT_ATTEMPTS} spot searches per call; the callers pay them only for a
+ * holder not mid-action or on the periodic upkeep.
  */
 export function replantSpot(
   world: World,
@@ -89,6 +109,7 @@ export function replantSpot(
   holder: Entity,
   radius: number,
   nearest: (open: WorkableTest) => Entity | null,
+  origin: HalfCellNode,
   reach: GathererReach,
   taken: TakenFlagNodes,
 ): Replant {
@@ -98,7 +119,7 @@ export function replantSpot(
     const resource = nearest(open);
     if (resource === null) return attempt === 0 ? 'dry' : null;
     const target = anchorNodeOf(world, resource);
-    const spot = target === null ? null : flagSpotNear(world, ctx, terrain, target, taken);
+    const spot = target === null ? null : flagSpotNear(world, ctx, terrain, target, origin, taken);
     if (target !== null && spot !== null && reach.canWork(holder, spot, radius, resource)) {
       return { target, spot };
     }

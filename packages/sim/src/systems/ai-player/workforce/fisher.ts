@@ -1,20 +1,12 @@
-import {
-  Building,
-  CurrentAtomic,
-  FishSwarm,
-  JobAssignment,
-  MoveGoal,
-  PlayerOrder,
-  Position,
-  Settler,
-} from '../../../components/index.js';
+import { Building, CurrentAtomic, FishSwarm } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
+import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { FISH_SHORE_SEARCH_RADIUS } from '../../economy/fish.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
 import { routeRegions } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isFisherJob } from '../../readviews/index.js';
@@ -22,28 +14,32 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { manhattan } from '../../spatial/metric.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../seat-roster.js';
+import { anchorNodeOf, nearestRingNode } from '../node-geometry.js';
+import { isBuilt, ownedBuildings } from '../seat-roster.js';
+import { claimFlagNode, legalFlagNodeTest, type TakenFlagNodes } from './flag-spots.js';
 import type { SpareForce } from './pool.js';
 
 /** How many fishers the seat keeps while fish swim in reach (authored): the first is hired beside the
  *  first collector posts, the second only as a top-up. */
 export const FISHER_TARGET = 2;
 
-/** How far past his own shore search a fisher is walked from his store's door, in Manhattan nodes
- *  (authored). */
+/** How far past a fisher's own shore search his water may lie from a store's door, in Manhattan nodes
+ *  (authored): the store's carriers walk the catch in from his flag, so the trip is theirs, not his. */
 const FISHING_WALK_NODES = 48;
 
-/** How far from its store's door a seat sends a fisher to a shore, in Manhattan nodes. */
+/** How far from a store's door a seat posts a fisher's flag, in Manhattan nodes. */
 export const FISHING_TRIP_RADIUS_NODES = FISHING_WALK_NODES + FISH_SHORE_SEARCH_RADIUS;
 
-interface FishingStore {
+/** How far from the shore he casts from a fisher's flag stands, in Manhattan nodes (authored): beside the
+ *  water, so each catch is dropped where it is caught instead of walked to the store by the fisher. */
+export const FISHER_FLAG_MAX_DISTANCE_NODES = 4;
+
+/** One store's fishing water: the fished shore nearest its door within {@link FISHING_TRIP_RADIUS_NODES}. */
+interface FishingStand {
   readonly store: Entity;
   readonly door: NodeId;
-  readonly seats: number;
-  readonly fishers: Entity[];
-  /** Where an idle fisher out of reach of any fish is walked: the door while fish swim within his search
-   *  from it, else the nearest fished shore within {@link FISHING_TRIP_RADIUS_NODES}; null when neither. */
-  readonly stand: NodeId | null;
+  readonly shore: NodeId;
+  readonly trip: number;
 }
 
 /** The seat's fishing posts for one decision, shared by both hiring phases so a first-phase hire counts
@@ -51,49 +47,44 @@ interface FishingStore {
 export interface FishingPlan {
   readonly job: number;
   readonly terrain: TerrainGraph;
-  readonly stores: readonly FishingStore[];
+  /** The stands nearest their water first, so a warehouse on the shore posts before a distant base. */
+  readonly stands: readonly FishingStand[];
+  /** The seat's flag fishers; the decision's hires are pushed in and its retirements taken out. */
+  readonly fishers: Entity[];
 }
 
 /**
- * The seat's built stores that offer fisher seats - the headquarters and warehouses do, and bank the
- * catch as food - with the fishers each employs and each store's fishing stand. Null when the content
- * lacks the fisher trade or the map has no terrain.
+ * The seat's fishing stands, one per built store with fished water within a trip of its door, and its
+ * flag `fishers`. Null when the content lacks the fisher trade or the map has no terrain.
  */
-export function fishingPlan(world: World, ctx: SystemContext, player: number): FishingPlan | null {
+export function fishingPlan(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  fishers: readonly Entity[],
+): FishingPlan | null {
   const terrain = ctx.terrain;
   const job = ctx.content.jobs.find((j) => isFisherJob(ctx.content, j.typeId))?.typeId;
   if (terrain === undefined || job === undefined) return null;
   const index = contentIndex(ctx.content);
-  const stores: FishingStore[] = [];
+  const stands: FishingStand[] = [];
   for (const e of ownedBuildings(world, player)) {
     if (!isBuilt(world, e)) continue;
-    const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type?.kind !== 'storage') continue;
-    const seats = type.workers.find((w) => w.jobType === job)?.count ?? 0;
-    if (seats <= 0) continue;
+    if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'storage') continue;
     const door = interactionCell(world, ctx, terrain, e);
-    stores.push({
-      store: e,
-      door,
-      seats,
-      fishers: [],
-      stand: fishingStand(world, ctx, terrain, player, door),
-    });
+    const shore = fishedShoreNear(world, ctx, terrain, player, door);
+    if (shore !== null) stands.push({ store: e, door, shore, trip: manhattan(terrain, door, shore) });
   }
-  if (stores.length === 0) return null;
-  for (const e of ownedSettlers(world, player)) {
-    const workplace = world.tryGet(e, JobAssignment)?.workplace;
-    if (workplace === undefined || !isFisherJob(ctx.content, world.get(e, Settler).jobType)) continue;
-    stores.find((s) => s.store === workplace)?.fishers.push(e);
-  }
-  return { job, terrain, stores };
+  stands.sort((a, b) => a.trip - b.trip || a.store - b.store);
+  return { job, terrain, stands, fishers: [...fishers] };
 }
 
 /**
- * The first phase hires one fisher, hands the fishers of a store whose water ran dry back as builders,
- * and walks an idle fisher out of reach of any fish (back from banking a catch, a meal, a nap) to his
- * store's fishing stand, since a fisher searches for a shore from where he stands; the walk order keeps
- * his post. The top-up phase hires toward {@link FISHER_TARGET}. A man mid-action is left alone.
+ * The first phase keeps every fisher's flag on fished water: a flag whose water ran dry moves to the
+ * seat's nearest stand, and its holder is handed back as a builder when no stand is left; a man mid-action
+ * is left alone. It then hires one fisher, the top-up phase toward {@link FISHER_TARGET}. A hire is a flag
+ * fisher rather than a store's employee: he drops each catch at the flag beside his water for the
+ * carriers, where an employee walks every fish to the store himself.
  */
 export function allocateFishers(
   world: World,
@@ -101,64 +92,87 @@ export function allocateFishers(
   plan: FishingPlan | null,
   force: SpareForce,
   builderJob: number | null,
+  taken: TakenFlagNodes,
   phase: 'first' | 'topUp',
 ): PlayerCommand[] {
   if (plan === null) return [];
   const commands: PlayerCommand[] = [];
-  let posted = 0;
-  for (const s of plan.stores) {
-    if (s.stand !== null) posted += s.fishers.length;
-    if (phase === 'topUp') continue;
-    for (const e of s.fishers) {
-      if (world.has(e, CurrentAtomic)) continue;
-      if (s.stand === null) {
-        if (builderJob !== null) commands.push({ kind: 'setJob', entity: e, jobType: builderJob });
-      } else if (
-        !world.has(e, MoveGoal) &&
-        !world.has(e, PlayerOrder) &&
-        !fishInReach(world, plan.terrain, nodeOf(plan.terrain, world, e))
-      ) {
-        const stand = plan.terrain.coordsOf(s.stand);
-        commands.push({ kind: 'moveUnit', entity: e, x: stand.x, y: stand.y });
-      }
-    }
-  }
+  if (phase === 'first') keepFlagsOnWater(world, ctx, plan, builderJob, taken, commands);
   const want = phase === 'first' ? 1 : FISHER_TARGET;
-  // Stores nearest their water hire first, so a warehouse on the shore staffs before a distant base.
-  const byTrip = plan.stores
-    .flatMap((s) => (s.stand === null ? [] : [{ s, trip: manhattan(plan.terrain, s.door, s.stand) }]))
-    .sort((a, b) => a.trip - b.trip || a.s.store - b.s.store);
-  for (const { s } of byTrip) {
-    for (let seated = s.fishers.length; seated < s.seats && posted < want; seated++) {
+  for (const stand of plan.stands) {
+    while (plan.fishers.length < want) {
+      const spot = fisherFlagSpot(world, ctx, plan, stand, taken);
+      if (spot === null) break;
       const spare = force.take((e) => settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', plan.job));
       if (spare === null) return commands;
-      commands.push({ kind: 'assignWorker', entity: spare, building: s.store, jobPriority: [plan.job] });
-      s.fishers.push(spare);
-      posted++;
+      commands.push({ kind: 'setJob', entity: spare, jobType: plan.job });
+      commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
+      claimFlagNode(taken, spot);
+      plan.fishers.push(spare);
     }
   }
   return commands;
 }
 
-function nodeOf(terrain: TerrainGraph, world: World, e: Entity): NodeId {
-  const at = world.get(e, Position);
-  const node = nodeOfPosition(at.x, at.y);
-  return terrain.nodeAtClamped(node.hx, node.hy);
+function keepFlagsOnWater(
+  world: World,
+  ctx: SystemContext,
+  plan: FishingPlan,
+  builderJob: number | null,
+  taken: TakenFlagNodes,
+  commands: PlayerCommand[],
+): void {
+  const { terrain } = plan;
+  for (const fisher of [...plan.fishers]) {
+    const flag = liveWorkFlag(world, fisher);
+    const at = flag === undefined ? null : anchorNodeOf(world, flag.flag);
+    if (at !== null && fishInReach(world, terrain, terrain.nodeAtClamped(at.hx, at.hy))) continue;
+    // Not mid-action, walking included: a walk carries no CurrentAtomic.
+    if (world.has(fisher, CurrentAtomic)) continue;
+    const stand = plan.stands[0];
+    const spot = stand === undefined ? null : fisherFlagSpot(world, ctx, plan, stand, taken);
+    if (spot !== null) {
+      commands.push({ kind: 'setWorkFlag', entity: fisher, x: spot.hx, y: spot.hy });
+      claimFlagNode(taken, spot);
+    } else if (builderJob !== null) {
+      commands.push({ kind: 'setJob', entity: fisher, jobType: builderJob });
+      plan.fishers.splice(plan.fishers.indexOf(fisher), 1);
+    }
+  }
+}
+
+/** The legal flag node within {@link FISHER_FLAG_MAX_DISTANCE_NODES} of the stand's shore nearest the
+ *  store's door, the shore itself first, or null when the bank is blocked. */
+function fisherFlagSpot(
+  world: World,
+  ctx: SystemContext,
+  plan: FishingPlan,
+  stand: FishingStand,
+  taken: TakenFlagNodes,
+): HalfCellNode | null {
+  const shore = plan.terrain.coordsOf(stand.shore);
+  const door = plan.terrain.coordsOf(stand.door);
+  return nearestRingNode(
+    shore.x,
+    shore.y,
+    0,
+    FISHER_FLAG_MAX_DISTANCE_NODES,
+    { hx: door.x, hy: door.y },
+    legalFlagNodeTest(world, ctx, plan.terrain, taken),
+  );
 }
 
 /**
- * Where a fisher of the store at `door` fishes from: the door itself while fish swim within his search of
- * it, else the nearest shore of a swarm holding fish within {@link FISHING_TRIP_RADIUS_NODES} that a man
- * can walk to from the door, on its ground and inside the seat's signpost reach.
+ * The nearest shore of a swarm holding fish within {@link FISHING_TRIP_RADIUS_NODES} of the store's `door`
+ * that a man can walk to from it, on its ground and inside the seat's signpost reach, or null.
  */
-function fishingStand(
+function fishedShoreNear(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
   door: NodeId,
 ): NodeId | null {
-  if (fishInReach(world, terrain, door)) return door;
   const at = terrain.coordsOf(door);
   const shores: { node: NodeId; dist: number }[] = [];
   for (const e of fishSwarmsNearNode(
@@ -189,7 +203,7 @@ function fishingStand(
 }
 
 /** Whether a swarm holding fish has its shore inside a fisher's shore search from `from`, which walks
- *  Manhattan rings. An emptied swarm never refills, so a dry store stays dry. */
+ *  Manhattan rings. An emptied swarm never refills, so a dry flag stays dry. */
 function fishInReach(world: World, terrain: TerrainGraph, from: NodeId): boolean {
   const at = terrain.coordsOf(from);
   // A swarm's shore lies within the search radius of the swarm, so twice the radius bounds the query.
