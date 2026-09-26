@@ -1,12 +1,11 @@
 import { MAX_NICK_LENGTH } from '@open-northland/net-protocol';
 import { errorText } from '../../../diag/error-text.js';
-import { bcp47Tag, formatMessage, messages } from '../../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { type ConnectionEvent, NetworkConnection } from '../../../net/connection.js';
 import { readStoredSettings } from '../../../view/settings-store.js';
 import { relayIdentity } from '../../relay/identity.js';
 import { node } from '../dom.js';
-import { pluralForm } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
 import type { MenuSound } from '../music.js';
 import { screenHead } from '../screen-head.js';

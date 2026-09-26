@@ -117,3 +117,23 @@ export function uiLabel(key: keyof Messages['hud'], locale: Locale = currentLoca
 }
 
 export type { Messages } from './en.js';
+
+export interface PluralForms {
+  readonly one: string;
+  readonly few: string;
+  readonly many: string;
+}
+
+const pluralRulesByTag = new Map<string, Intl.PluralRules>();
+
+/** Picks the CLDR plural form for `count`; categories beyond one/few (`many`, `other`) fall to
+ *  `many`, which is also English's plural. One `Intl.PluralRules` per locale: lists ask per row. */
+export function pluralForm(count: number, forms: PluralForms, localeTag: string): string {
+  let rules = pluralRulesByTag.get(localeTag);
+  if (rules === undefined) {
+    rules = new Intl.PluralRules(localeTag);
+    pluralRulesByTag.set(localeTag, rules);
+  }
+  const category = rules.select(count);
+  return category === 'one' ? forms.one : category === 'few' ? forms.few : forms.many;
+}

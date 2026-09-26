@@ -1,5 +1,5 @@
 import { loadMapList } from '../../content/maps-index.js';
-import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages, pluralForm } from '../../i18n/index.js';
 import { MAP_SCENES, SCENES } from '../../scenes/index.js';
 import { createMapDetailsCard, metaLine } from './map-card.js';
 import { generatedMapPreview } from './map-preview.js';
@@ -12,7 +12,6 @@ import {
   type MapSelectItem,
   type MapSelectMemory,
   mapItem,
-  pluralForm,
   sceneItem,
 } from './map-select-model.js';
 

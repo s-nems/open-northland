@@ -1,7 +1,7 @@
 import { playerSwatchHex } from '../../catalog/roster.js';
-import { bcp47Tag, formatMessage, messages, tribeName } from '../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages, pluralForm, tribeName } from '../../i18n/index.js';
 import { generatedMapPreview } from './map-preview.js';
-import { type MapSelectItem, mapCategory, pluralForm } from './map-select-model.js';
+import { type MapSelectItem, mapCategory } from './map-select-model.js';
 
 /**
  * The map details card shown by both map select and the lobby. The owning screen appends its own

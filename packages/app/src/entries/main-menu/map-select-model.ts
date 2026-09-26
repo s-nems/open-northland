@@ -181,24 +181,3 @@ export function filterItems(
   if (filter !== 'tutorial') return matches;
   return matches.sort((a, b) => (a.tutorialStep ?? 0) - (b.tutorialStep ?? 0));
 }
-
-export interface PluralForms {
-  readonly one: string;
-  readonly few: string;
-  readonly many: string;
-}
-
-const pluralRulesByTag = new Map<string, Intl.PluralRules>();
-
-/** Picks the CLDR plural form for `count`; categories beyond one/few (`many`, `other`) fall to
- *  `many`, which is also English's plural. One `Intl.PluralRules` per locale - the list calls
- *  this per rendered row on every keystroke. */
-export function pluralForm(count: number, forms: PluralForms, localeTag: string): string {
-  let rules = pluralRulesByTag.get(localeTag);
-  if (rules === undefined) {
-    rules = new Intl.PluralRules(localeTag);
-    pluralRulesByTag.set(localeTag, rules);
-  }
-  const category = rules.select(count);
-  return category === 'one' ? forms.one : category === 'few' ? forms.few : forms.many;
-}

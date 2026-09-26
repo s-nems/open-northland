@@ -6,11 +6,11 @@ import {
   listedIn,
   mapCategory,
   mapItem,
-  pluralForm,
   ROOM_TABS,
   SINGLE_PLAYER_TABS,
   sceneItem,
 } from '../src/entries/main-menu/map-select-model.js';
+import { pluralForm } from '../src/i18n/index.js';
 
 function slot(player: number, hidden = false): MapsIndexPlayerSlot {
   return {
