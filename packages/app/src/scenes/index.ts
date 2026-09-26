@@ -25,6 +25,7 @@ import { hitAlarmScene } from './hit-alarm.js';
 import { householdGoodsScene } from './household-goods.js';
 import { huntingScene } from './hunting.js';
 import { livestockScene } from './livestock.js';
+import { meleeFrontScene } from './melee-front.js';
 import { movementContinuityScene } from './movement-continuity.js';
 import { palisadeScene } from './palisade.js';
 import { presentationScene } from './presentation.js';
@@ -71,6 +72,7 @@ export const SCENES: readonly SceneDefinition[] = [
   towerDefenceScene,
   attackMoveScene,
   hitAlarmScene,
+  meleeFrontScene,
   diplomacyScene,
   teamVisionScene,
   goodsCatalogScene,

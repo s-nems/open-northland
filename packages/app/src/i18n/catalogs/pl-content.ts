@@ -213,6 +213,11 @@ export const plContent = {
       summary:
         'Strzała trafia kobietę: ona i stojący obok myśliwy uciekają, osadnik z rozkazem obrony stoi, a wojownicy spoza zasięgu wzroku ruszają na łucznika.',
     },
+    'melee-front': {
+      title: 'Front walki wręcz',
+      summary:
+        'Dwie drużyny posłane na siebie spotykają się frontem: walczą ci na styku, tył wchodzi w luki obok nich, a większa drużyna oskrzydla mniejszą, zamiast rzucać się na jednego.',
+    },
     diplomacy: {
       title: 'Dyplomacja',
       summary:

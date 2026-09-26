@@ -215,6 +215,11 @@ export const enContent = {
       summary:
         'An arrow in a woman sends her and the hunter beside her running, a civilian set to defend stands, and swordsmen past their own sight turn on the archer.',
     },
+    'melee-front': {
+      title: 'Melee front',
+      summary:
+        'Two warbands ordered at each other meet as a front: the men at the seam fight, the rear steps into the gaps beside them, and the larger band wraps the smaller one instead of piling onto one man.',
+    },
     diplomacy: {
       title: 'Diplomacy',
       summary:
