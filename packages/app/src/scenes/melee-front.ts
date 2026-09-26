@@ -30,7 +30,7 @@ const RED_LAST_ROW = 16;
 /** Swordsmen and spearmen alternate by row, so both reaches meet at the seam. */
 const JOBS_BY_ROW: readonly number[] = [JOB_SOLDIER_SWORD, JOB_SOLDIER_SPEAR];
 
-/** The bands meet around tick 125 and the last red man falls around tick 345. */
+/** The bands meet around tick 125 and the last red man falls around tick 315. */
 const RUN_TICKS = 400;
 
 /** Bodies collide, so the men who can strike one enemy at once are the ones on its free sides; four is
@@ -66,7 +66,7 @@ function build(sim: Simulation): void {
 /** What a fresh run of the scene shows tick by tick: the most men swinging at one living enemy in any tick
  *  while the red band still outnumbers {@link MAX_STRIKERS_ON_ONE}, the red men who fought, and the tick
  *  the fight ended. */
-export interface MeleeFrontObservation {
+interface MeleeFrontObservation {
   readonly maxStrikersOnOne: number;
   readonly redEngaged: number;
   readonly redCount: number;
@@ -74,7 +74,7 @@ export interface MeleeFrontObservation {
 }
 
 /** Re-simulate the scene, sampling after every step. A full run, so a check pays it only once. */
-export function observeMeleeFront(ticks: number): MeleeFrontObservation {
+function observeMeleeFront(ticks: number): MeleeFrontObservation {
   const sim = createSceneSim(meleeFrontScene);
   let maxStrikersOnOne = 0;
   const redEngaged = new Set<Entity>();
@@ -112,7 +112,7 @@ function observation(): MeleeFrontObservation {
 
 export const meleeFrontScene: SceneDefinition = {
   id: 'melee-front',
-  seed: 31,
+  seed: 33,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: RUN_TICKS,
@@ -127,8 +127,8 @@ export const meleeFrontScene: SceneDefinition = {
       predicate: () => observation().redEngaged >= Math.ceil(MIN_ENGAGED_SHARE * RED_COUNT),
     },
     {
-      label: 'the fight ends with one side dead',
-      predicate: (sim) => blueLivingSettlers(sim) === 0 || enemyLivingSettlers(sim) === 0,
+      label: 'the fight ends with the smaller band dead and the larger one standing',
+      predicate: (sim) => enemyLivingSettlers(sim) === 0 && blueLivingSettlers(sim) > 0,
     },
   ],
 };
