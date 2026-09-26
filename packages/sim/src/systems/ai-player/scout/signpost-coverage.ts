@@ -1,15 +1,21 @@
 import type { World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { signpostNetwork, signpostProbe } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
+import type { BuildOrderEntry } from '../build-order/entries.js';
+import { goodTypeByContentId } from '../content-lookup.js';
+import { nearestLiveResource, reachableResourceTest } from '../live-resources.js';
 import { anchorNodeOf, firstRingNode } from '../node-geometry.js';
-import { ownedBuildings } from '../seat-roster.js';
+import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
+import { COLLECTED_GOOD_IDS } from '../workforce/collectors/wanted-goods.js';
 
 /**
  * The signpost lattice the scout tiles the settlement with (authored): the covered field grows with the
- * settlement instead of being laid out up front.
+ * settlement instead of being laid out up front, and reaches out along corridors to the seat's work flags
+ * and the deposits it gathers from, so a gatherer posted far out still walks inside his network.
  */
 
 /** Hex distance between neighbouring lattice targets. With two posts each up to the tolerance off
@@ -53,6 +59,15 @@ const RING_STEP_NODES = SIGNPOST_LATTICE_SPACING_NODES;
  *  expansion module's concern, not lattice growth around the seat's base. */
 const MAX_LATTICE_RING = 8;
 
+/** How far apart the points a corridor is sampled at lie, in nodes: half the spacing, so no lattice
+ *  target within the corridor's half width is missed between two samples. */
+const CORRIDOR_SAMPLE_STEP_NODES = SIGNPOST_LATTICE_SPACING_NODES / 2;
+
+/** How far from a corridor's line a lattice target is wanted, in hex nodes (authored): over the lattice's
+ *  covering radius (a spacing over root three, under 13 nodes), so a corridor in any direction crosses a
+ *  target on every ring, and under a spacing, so it takes that target and not the two beside it. */
+const CORRIDOR_HALF_WIDTH_NODES = 16;
+
 /** The axial walk tracing hex ring k counter-clockwise from its east corner (k, 0). */
 const RING_WALK: readonly { q: number; r: number }[] = [
   { q: -1, r: 1 },
@@ -79,11 +94,11 @@ function latticeRing(k: number): { q: number; r: number }[] {
   return out;
 }
 
-/** The outermost ring worth scanning for this settlement, from the farthest building's hex distance. */
-function latticeRingBound(anchor: HalfCellNode, buildings: readonly HalfCellNode[]): number {
+/** The outermost ring worth scanning for this settlement, from the farthest wanted point's hex distance. */
+function latticeRingBound(anchor: HalfCellNode, points: readonly HalfCellNode[]): number {
   let extent = 0;
-  for (const b of buildings) {
-    const d = hexDistanceBetween(anchor.hx, anchor.hy, b.hx, b.hy);
+  for (const p of points) {
+    const d = hexDistanceBetween(anchor.hx, anchor.hy, p.hx, p.hy);
     if (d > extent) extent = d;
   }
   const rings = Math.ceil((extent + SIGNPOST_LATTICE_SPACING_NODES) / RING_STEP_NODES);
@@ -91,12 +106,72 @@ function latticeRingBound(anchor: HalfCellNode, buildings: readonly HalfCellNode
 }
 
 /**
- * The next erectable lattice target for the seat: the first spot, rings inside-out, that is wanted (ring
- * within {@link BASE_RING}, or an owned building within one lattice spacing), has no own post within
- * the tolerance, and offers a legal node to erect on. Null when the wanted lattice stands complete or
- * every remaining target is unbuildable.
+ * The points the corridor from `anchor` to `goal` is sampled at, every {@link CORRIDOR_SAMPLE_STEP_NODES}
+ * along the straight run, the goal itself last. Integer-trunc ray projection, byte-identical across
+ * engines.
  */
-export function nextSignpostTarget(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
+function corridorSamples(anchor: HalfCellNode, goal: HalfCellNode): HalfCellNode[] {
+  const dx = goal.hx - anchor.hx;
+  const dy = goal.hy - anchor.hy;
+  const length = Math.abs(dx) + Math.abs(dy);
+  const count = Math.max(1, Math.ceil(length / CORRIDOR_SAMPLE_STEP_NODES));
+  const samples: HalfCellNode[] = [];
+  for (let k = 1; k <= count; k++) {
+    samples.push({
+      hx: anchor.hx + Math.trunc((dx * k) / count),
+      hy: anchor.hy + Math.trunc((dy * k) / count),
+    });
+  }
+  return samples;
+}
+
+/**
+ * The corridor goals the lattice reaches out to: every live work flag of the seat's settlers, and the
+ * nearest live deposit on the base's ground of each good the seat gathers, the standing
+ * {@link COLLECTED_GOOD_IDS} and the `order`'s collector goods, reached or not (owner's rule): the network
+ * grows toward a deposit before its gatherer is posted, since the engine drops a flag aimed past it.
+ */
+function corridorGoals(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  anchor: HalfCellNode,
+  order: readonly BuildOrderEntry[],
+): HalfCellNode[] {
+  const goals: HalfCellNode[] = [];
+  for (const e of ownedSettlers(world, player)) {
+    const flag = liveWorkFlag(world, e);
+    const node = flag === undefined ? null : anchorNodeOf(world, flag.flag);
+    if (node !== null) goals.push(node);
+  }
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return goals;
+  const onOwnGround = reachableResourceTest(world, ctx, terrain, anchor, () => true);
+  const goodIds = new Set(COLLECTED_GOOD_IDS);
+  for (const entry of order) if (entry.kind === 'collector') goodIds.add(entry.good);
+  for (const goodId of goodIds) {
+    const good = goodTypeByContentId(ctx.content, goodId);
+    if (good === undefined) continue;
+    const resource = nearestLiveResource(world, good.typeId, anchor, onOwnGround);
+    const node = resource === null ? null : anchorNodeOf(world, resource);
+    if (node !== null) goals.push(node);
+  }
+  return goals;
+}
+
+/**
+ * The next erectable lattice target for the seat: the first spot, rings inside-out, that is wanted (ring
+ * within {@link BASE_RING}, an owned building within one lattice spacing, or a {@link corridorGoals}
+ * corridor passing within {@link CORRIDOR_HALF_WIDTH_NODES}), has no own post within the tolerance, and
+ * offers a legal node to erect
+ * on. Null when the wanted lattice stands complete or every remaining target is unbuildable.
+ */
+export function nextSignpostTarget(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  order: readonly BuildOrderEntry[],
+): HalfCellNode | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return null;
   const base = seatBaseOf(world, ctx, player);
@@ -111,6 +186,13 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
     const node = anchorNodeOf(world, e);
     if (node !== null) buildings.push(node);
   }
+  const corridors = corridorGoals(world, ctx, player, anchor, order).map((goal) =>
+    corridorSamples(anchor, goal),
+  );
+  const nearCorridor = (tx: number, ty: number): boolean =>
+    corridors.some((samples) =>
+      samples.some((p) => hexDistanceBetween(p.hx, p.hy, tx, ty) <= CORRIDOR_HALF_WIDTH_NODES),
+    );
   let probe: ReturnType<typeof signpostProbe> | null = null;
   // The sealed-pocket veto: without it a provably sealed spot wins the search and the module re-aims at
   // it every decision. Judged from the base's door because the scout's own cell is unknowable in a
@@ -119,7 +201,7 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
   let veto: ReturnType<typeof routeRegions> | null = null;
   const refNode =
     door !== null ? terrain.nodeAtClamped(door.x, door.y) : terrain.nodeAtClamped(anchor.hx, anchor.hy);
-  const maxRing = latticeRingBound(anchor, buildings);
+  const maxRing = latticeRingBound(anchor, [...buildings, ...corridors.flat()]);
   for (let ring = 0; ring <= maxRing; ring++) {
     for (const { q, r } of latticeRing(ring)) {
       const offset = signpostLatticeOffset(q, r);
@@ -128,14 +210,15 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
         ring === 0 && door !== null ? { hx: door.x - CENTRE_DOOR_CLEARANCE_NODES, hy: door.y } : anchor;
       const tx = centre.hx + offset.dx;
       const ty = centre.hy + offset.dy;
-      const wanted =
-        ring <= BASE_RING ||
-        buildings.some((b) => hexDistanceBetween(b.hx, b.hy, tx, ty) <= SIGNPOST_LATTICE_SPACING_NODES);
-      if (!wanted) continue;
       const satisfied = posts.some(
         (s) => hexDistanceBetween(s.hx, s.hy, tx, ty) <= SIGNPOST_TARGET_TOLERANCE_NODES,
       );
       if (satisfied) continue;
+      const wanted =
+        ring <= BASE_RING ||
+        buildings.some((b) => hexDistanceBetween(b.hx, b.hy, tx, ty) <= SIGNPOST_LATTICE_SPACING_NODES) ||
+        nearCorridor(tx, ty);
+      if (!wanted) continue;
       if (probe === null) {
         probe = signpostProbe(world, ctx.content, terrain, player);
         const regions = routeRegions(world, ctx, terrain);

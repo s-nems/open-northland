@@ -14,6 +14,7 @@ import {
   claimFlagNode,
   collectorSpot,
   FLAG_MAX_DISTANCE_NODES,
+  type FlagGround,
   flagSpotNear,
   nodeDistance,
   replantSpot,
@@ -85,11 +86,12 @@ function stealVeteranFor(
   return null;
 }
 
-/** Where one decision's flag gatherers stand: each good's anchors, and which resources can still be
- *  worked. */
+/** Where one decision's flag gatherers stand: each good's anchors, the ground the flags go on, and which
+ *  resources can still be worked. */
 export interface CollectorGround {
   readonly anchors: CollectorAnchors;
   readonly baseNode: HalfCellNode;
+  readonly flags: FlagGround;
   readonly workable: WorkableTest;
 }
 
@@ -142,8 +144,6 @@ export function allocateCollectors(
   taken: TakenFlagNodes,
   builderJob: number | null,
 ): PlayerCommand[] {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return [];
   const commands: PlayerCommand[] = [];
   const relocateDue = flagRelocateDue(ctx);
   const { workable } = ground;
@@ -152,22 +152,10 @@ export function allocateCollectors(
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     const seated = seatGood(world, ground, w, holders);
-    upkeepHolders(
-      world,
-      ctx,
-      terrain,
-      w,
-      holders,
-      seated.anchors,
-      workable,
-      taken,
-      relocateDue,
-      builderJob,
-      commands,
-    );
+    upkeepHolders(world, ctx, ground, w, holders, seated.anchors, taken, relocateDue, builderJob, commands);
     const anchor = seated.free[0];
     if (holders.length >= w.min || anchor === undefined) continue;
-    const spot = collectorSpot(world, ctx, terrain, anchor, w.good.typeId, taken, workable);
+    const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     if (holders.length > 0 && builderJob !== null)
       builders ??= seatBuilders(world, player, force, builderJob);
@@ -234,8 +222,6 @@ export function topUpCollectors(
   force: SpareForce,
   taken: TakenFlagNodes,
 ): PlayerCommand[] {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return [];
   const commands: PlayerCommand[] = [];
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
@@ -245,7 +231,7 @@ export function topUpCollectors(
     while (holders.length < w.target) {
       const anchor = free.shift();
       if (anchor === undefined) break;
-      const spot = collectorSpot(world, ctx, terrain, anchor, w.good.typeId, taken, ground.workable);
+      const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, ground.workable);
       if (spot === null) break;
       const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId), veteranFirst);
       if (spare === null) break;
@@ -266,19 +252,16 @@ export function topUpCollectors(
 export function allocateGenericCollectors(
   world: World,
   ctx: SystemContext,
-  base: Entity,
-  workable: WorkableTest,
+  ground: CollectorGround,
   genericCollectors: readonly Entity[],
   force: SpareForce,
   taken: TakenFlagNodes,
   builderJob: number | null,
   target: number,
 ): PlayerCommand[] {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return [];
   const commands: PlayerCommand[] = [];
-  const baseNode = anchorNodeOf(world, base);
-  const reach = gathererReach(world, ctx, terrain);
+  const { baseNode, workable } = ground;
+  const reach = gathererReach(world, ctx, ground.flags.terrain);
   const relocateDue = flagRelocateDue(ctx);
   // The other posts' flags: a re-plant or a hire keeps its resource clear of them, so the posts fan out.
   const flags: HalfCellNode[] = [];
@@ -290,7 +273,7 @@ export function allocateGenericCollectors(
   for (const g of genericCollectors) {
     const flag = liveWorkFlag(world, g);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
-    if (flag === undefined || flagNode === null || baseNode === null) continue;
+    if (flag === undefined || flagNode === null) continue;
     const job = world.get(g, Settler).jobType;
     if (job === null) continue;
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
@@ -300,7 +283,7 @@ export function allocateGenericCollectors(
     const nearest = (open: WorkableTest): Entity | null =>
       clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
     if (alive && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
-    const replant = replantSpot(world, ctx, terrain, g, flag.radius, nearest, baseNode, reach, taken);
+    const replant = replantSpot(world, ground.flags, g, flag.radius, nearest, baseNode, reach, taken);
     if (replant === 'dry') {
       if (!alive && builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
       continue;
@@ -314,15 +297,14 @@ export function allocateGenericCollectors(
     flags.push(spot);
   }
   const job = genericCollectorJob(ctx);
-  if (job === null || baseNode === null) return commands;
+  if (job === null) return commands;
   const veteranFirst = experienceRank(world, ctx, job);
   for (let hired = genericCollectors.length; hired < target; hired++) {
     const resource =
       clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags)) ??
       clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up
-    const node = resource === null ? null : anchorNodeOf(world, resource);
-    if (node === null) break; // no clearing good stands anywhere - no generic post
-    const spot = flagSpotNear(world, ctx, terrain, node, baseNode, taken);
+    if (resource === null) break; // no clearing good stands anywhere - no generic post
+    const spot = flagSpotNear(world, ground.flags, resource, baseNode, taken);
     if (spot === null) break;
     const spare = force.take(undefined, veteranFirst);
     if (spare === null) break;

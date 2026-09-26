@@ -48,7 +48,7 @@ export interface AiPlayerModule {
 export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
   workforceModule(DEFAULT_BUILD_ORDER),
   buildOrderModule(DEFAULT_BUILD_ORDER),
-  scoutModule,
+  scoutModule(DEFAULT_BUILD_ORDER),
   populationModule,
   militaryModule,
 ];

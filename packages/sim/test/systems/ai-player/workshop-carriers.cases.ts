@@ -7,6 +7,7 @@ import {
   CompletedCycles,
   CraftSelection,
   JobAssignment,
+  Resource,
   removeCurrentAtomic,
   Settler,
   setStockAmount,
@@ -45,7 +46,11 @@ import {
   CROCKERY_GLUT_UNITS,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
-import { claimFlagNode, flagSpotNear } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import {
+  claimFlagNode,
+  flagGround,
+  flagSpotNear,
+} from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import {
   type BuildingStaffing,
   buildingStaffing,
@@ -69,6 +74,8 @@ import {
   FARM_TYPE,
   FARMER,
   HQ_TYPE,
+  HQ_X,
+  HQ_Y,
   IRON,
   MILL_TYPE,
   MUD,
@@ -680,18 +687,17 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
     if (low === undefined || high === undefined) throw new Error('setup: two gatherers');
     // The lower id works the base's stone, the higher one the hut's: the reverse of their rank order.
     const taken = new Set<string>();
+    const ground = flagGround(sim.world, ctx, terrain, SEAT, { hx: HQ_X, hy: HQ_Y });
     for (const [man, stone] of [
       [low, BASE_STONE],
       [high, HUT_STONE],
     ] as const) {
-      const spot = flagSpotNear(
-        sim.world,
-        ctx,
-        terrain,
-        { hx: stone.x, hy: stone.y },
-        { hx: stone.x, hy: stone.y },
-        taken,
-      );
+      const deposit = [...sim.world.query(Resource)].find((e) => {
+        const at = anchorNodeOf(sim.world, e);
+        return at?.hx === stone.x && at.hy === stone.y;
+      });
+      if (deposit === undefined) throw new Error('setup: the deposit');
+      const spot = flagSpotNear(sim.world, ground, deposit, { hx: stone.x, hy: stone.y }, taken);
       if (spot === null) throw new Error('setup: a flag spot');
       claimFlagNode(taken, spot);
       sim.enqueueSetup({ kind: 'setWorkFlag', entity: man, x: spot.hx, y: spot.hy });

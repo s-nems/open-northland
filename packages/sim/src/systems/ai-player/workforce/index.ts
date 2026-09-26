@@ -12,6 +12,7 @@ import type { SystemContext } from '../../context.js';
 import { isMarried } from '../../family/eligibility.js';
 import { scoutJobType } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
+import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
@@ -32,7 +33,7 @@ import {
 } from './collectors/index.js';
 import { tuneCraftSelections } from './craft.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
-import type { TakenFlagNodes } from './flag-spots.js';
+import { flagGround, type TakenFlagNodes } from './flag-spots.js';
 import { claimArmyFloor, garrisonArms, trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
@@ -105,17 +106,16 @@ function runWorkforce(
   const force = new SpareForce(pool);
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
-  const fishing = fishingPlan(world, ctx, player, fishers);
   const seat: SeatStaffing = { player, owned, supply };
-  const ground = collectorGround(world, ctx, seat.owned, baseNode);
+  const ground = collectorGround(world, ctx, player, seat.owned, baseNode);
+  const fishing = fishingPlan(world, ctx, player, ground?.flags ?? null, fishers);
   const generic = (): PlayerCommand[] =>
     ground === null
       ? []
       : allocateGenericCollectors(
           world,
           ctx,
-          base,
-          ground.workable,
+          ground,
           genericCollectors,
           force,
           taken,
@@ -139,7 +139,7 @@ function runWorkforce(
         )),
     ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'first'),
-    ...allocateScout(world, ctx, player, scouts, force, builderJob),
+    ...allocateScout(world, ctx, player, order, scouts, force, builderJob),
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
     ...staffBuildings(world, ctx, seat, force, tally, 'min'),
@@ -172,20 +172,35 @@ function runWorkforce(
 }
 
 /** The decision's {@link CollectorGround}, or null on a mapless sim or a base with no node. A resource
- *  counts as workable only on the base's own walkable component, where the seat's men stand. */
+ *  counts as workable only on the base's own walkable component, where the seat's men stand, and with its
+ *  work cell inside the seat's signpost reach, where its gatherer may walk. */
 function collectorGround(
   world: World,
   ctx: SystemContext,
+  player: number,
   owned: readonly Entity[],
   baseNode: HalfCellNode | null,
 ): CollectorGround | null {
   if (ctx.terrain === undefined || baseNode === null) return null;
   const terrain = ctx.terrain;
-  return {
-    anchors: collectorAnchors(world, ctx, owned, baseNode),
+  const flags = flagGround(world, ctx, terrain, player, baseNode);
+  const reachable = reachableResourceTest(
+    world,
+    ctx,
+    terrain,
     baseNode,
-    workable: reachableResourceTest(world, ctx, terrain, baseNode, workableResourceTest(world, ctx, terrain)),
-  };
+    workableResourceTest(world, ctx, terrain),
+  );
+  const { limit } = flags;
+  const workable =
+    limit === null
+      ? reachable
+      : (e: Entity): boolean => {
+          if (!reachable(e)) return false;
+          const origin = terrain.nodeAtClamped(baseNode.hx, baseNode.hy);
+          return limit.allowsNode(interactionCell(world, ctx, terrain, e, origin));
+        };
+  return { anchors: collectorAnchors(world, ctx, owned, baseNode), baseNode, flags, workable };
 }
 
 /**
@@ -234,6 +249,7 @@ function allocateScout(
   world: World,
   ctx: SystemContext,
   player: number,
+  order: readonly BuildOrderEntry[],
   scouts: readonly Entity[],
   force: SpareForce,
   builderJob: number | null,
@@ -243,7 +259,7 @@ function allocateScout(
   // The round-up probes first even though it ranks second: a satisfied lattice has to scan every ring
   // to answer null, so the cheaper herd scan short-circuits it.
   const hasScoutWork =
-    nextLivestockCatch(world, ctx, player) !== null || nextSignpostTarget(world, ctx, player) !== null;
+    nextLivestockCatch(world, ctx, player) !== null || nextSignpostTarget(world, ctx, player, order) !== null;
   const keepScoutAs = scoutJob !== null && hasScoutWork ? scoutJob : null;
   if (keepScoutAs !== null && scouts.length === 0) {
     const spare = force.take((e) => !isMarried(world, e));

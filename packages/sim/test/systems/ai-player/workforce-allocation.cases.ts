@@ -65,7 +65,11 @@ import {
   WOOD_OVER_STONE_NODES,
   wantedCollectorGoods,
 } from '../../../src/systems/ai-player/workforce/collectors/index.js';
-import { flagSpotNear, replantSpot } from '../../../src/systems/ai-player/workforce/flag-spots.js';
+import {
+  flagGround,
+  flagSpotNear,
+  replantSpot,
+} from '../../../src/systems/ai-player/workforce/flag-spots.js';
 import { builderCap } from '../../../src/systems/ai-player/workforce/staffing.js';
 import { resourceStanceCells, resourceWorkCell } from '../../../src/systems/footprint/interaction.js';
 import { canPlaceWorkFlag, type SystemContext } from '../../../src/systems/index.js';
@@ -1466,12 +1470,11 @@ describe('workforce module (collectResources)', () => {
     const refusing = { canWork: () => false, patchHarvestable: () => false };
     const { radius } = sim.world.get(holder, WorkFlag);
     const origin = { hx: HQ_X, hy: HQ_Y };
-    expect(
-      replantSpot(sim.world, ctx, terrain, holder, radius, nearest, origin, refusing, new Set()),
-    ).toBeNull();
-    expect(
-      replantSpot(sim.world, ctx, terrain, holder, radius, () => null, origin, refusing, new Set()),
-    ).toBe('dry');
+    const ground = flagGround(sim.world, ctx, terrain, SEAT, origin);
+    expect(replantSpot(sim.world, ground, holder, radius, nearest, origin, refusing, new Set())).toBeNull();
+    expect(replantSpot(sim.world, ground, holder, radius, () => null, origin, refusing, new Set())).toBe(
+      'dry',
+    );
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {
@@ -1570,15 +1573,80 @@ describe('workforce module (collectResources)', () => {
 });
 
 describe('flagSpotNear', () => {
-  it('plants the flag on the origin side of the resource, on the innermost band ring', () => {
+  /** The one deposit standing on `sim`. */
+  const depositOf = (sim: Simulation): Entity => {
+    const [deposit] = sim.world.query(Resource);
+    if (deposit === undefined) throw new Error('setup: a deposit');
+    return deposit;
+  };
+  const groundOf = (sim: Simulation, origin: { hx: number; hy: number }) => {
+    if (sim.terrain === undefined) throw new Error('mapped sim');
+    return flagGround(sim.world, ctxOf(sim), sim.terrain, SEAT, origin);
+  };
+
+  it('plants the flag in the band on the origin side of the resource, the shortest walk from both', () => {
     const sim = aiSim();
-    const terrain = sim.terrain;
-    if (terrain === undefined) throw new Error('mapped sim');
     const resource = { hx: 20, hy: 16 };
-    const east = flagSpotNear(sim.world, ctxOf(sim), terrain, resource, { hx: 60, hy: 16 }, new Set());
-    const north = flagSpotNear(sim.world, ctxOf(sim), terrain, resource, { hx: 20, hy: 0 }, new Set());
-    expect(east).toEqual({ hx: resource.hx + FLAG_MIN_DISTANCE_NODES, hy: resource.hy });
-    expect(north).toEqual({ hx: resource.hx, hy: resource.hy - FLAG_MIN_DISTANCE_NODES });
+    sim.enqueueSetup({
+      kind: 'placeResource',
+      good: MUD,
+      x: resource.hx,
+      y: resource.hy,
+      remaining: 5,
+      harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+    });
+    sim.step();
+    const deposit = depositOf(sim);
+    const eastOrigin = { hx: 60, hy: 16 };
+    const northOrigin = { hx: 20, hy: 0 };
+    const east = flagSpotNear(sim.world, groundOf(sim, eastOrigin), deposit, eastOrigin, new Set());
+    const north = flagSpotNear(sim.world, groundOf(sim, northOrigin), deposit, northOrigin, new Set());
+    if (east === null || north === null) throw new Error('a spot on open ground');
+    for (const spot of [east, north]) {
+      const distance = Math.abs(spot.hx - resource.hx) + Math.abs(spot.hy - resource.hy);
+      expect(distance).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
+      expect(distance).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+    }
+    expect(east.hx).toBeGreaterThan(resource.hx);
+    expect(north.hy).toBeLessThan(resource.hy);
+  });
+
+  it('walks round a wall: the flag goes where the gatherer reaches his deposit, not on its straight-line side', () => {
+    // A wall of landscape blockers east of the deposit, gapped only far to the north, so the band nodes
+    // toward the eastern origin lie a long walk from the work cells while the western ones lie a few
+    // steps away.
+    const MAP_NODES = 48;
+    const resource = { hx: 20, hy: 24 };
+    const wallColumn = resource.hx + 2;
+    const wall: { hx: number; hy: number }[] = [];
+    for (let hy = 6; hy < MAP_NODES; hy++) wall.push({ hx: wallColumn, hy });
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: {
+        ...grassNodeMap(MAP_NODES, MAP_NODES),
+        landscapes: {
+          types: [{ typeId: 1, walk: [{ dx: 0, dy: 0 }], build: [], groups: ['blocker'] }],
+          placements: wall.map((at, id) => ({ id, typeId: 1, ...at, level: 0 })),
+        },
+      },
+    });
+    sim.enqueueSetup({
+      kind: 'placeResource',
+      good: MUD,
+      x: resource.hx,
+      y: resource.hy,
+      remaining: 5,
+      harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+    });
+    sim.step();
+    const origin = { hx: 40, hy: 24 };
+    const spot = flagSpotNear(sim.world, groundOf(sim, origin), depositOf(sim), origin, new Set());
+    if (spot === null) throw new Error('a spot beside the deposit');
+    expect(spot.hx).toBeLessThan(wallColumn);
+    expect(Math.abs(spot.hx - resource.hx) + Math.abs(spot.hy - resource.hy)).toBeLessThanOrEqual(
+      FLAG_MAX_DISTANCE_NODES,
+    );
   });
 
   it('never picks a node a landscape object blocks', () => {
@@ -1601,8 +1669,16 @@ describe('flagSpotNear', () => {
         },
       });
     const spotIn = (sim: Simulation) => {
-      if (sim.terrain === undefined) throw new Error('mapped sim');
-      return flagSpotNear(sim.world, ctxOf(sim), sim.terrain, resource, resource, new Set());
+      sim.enqueueSetup({
+        kind: 'placeResource',
+        good: MUD,
+        x: resource.hx,
+        y: resource.hy,
+        remaining: 5,
+        harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+      });
+      sim.step();
+      return flagSpotNear(sim.world, groundOf(sim, resource), depositOf(sim), resource, new Set());
     };
     const open = spotIn(withStoneAt());
     if (open === null) throw new Error('open ground has a spot');

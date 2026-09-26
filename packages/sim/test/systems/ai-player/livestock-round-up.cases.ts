@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { Owner, Settler } from '../../../src/components/index.js';
+import { Owner, Resource, Settler } from '../../../src/components/index.js';
 import { positionOfNode, Simulation } from '../../../src/index.js';
 import {
+  DEFAULT_BUILD_ORDER,
   SCOUT_CATCH_RADIUS_NODES,
   scoutModule,
   signpostLatticeOffset,
@@ -27,6 +28,8 @@ import {
 } from './support.js';
 
 /** The scout's second duty: walking into nearby un-owned livestock so contact claims it. */
+
+const guideBuild = scoutModule(DEFAULT_BUILD_ORDER);
 
 describe('scout module (guideBuild) - the livestock round-up', () => {
   const CENTER = { x: 128, y: 128 };
@@ -58,7 +61,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     placeAnimal(sim, CENTER.x + 20, CENTER.y);
     const near = placeAnimal(sim, CENTER.x + 10, CENTER.y);
 
-    const order = [...scoutModule.run(sim.world, ctxOf(sim), SEAT)][0];
+    const order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
     if (order?.kind !== 'moveUnit') throw new Error('expected a round-up walk');
     expect({ x: order.x, y: order.y }).toEqual({ x: CENTER.x + 10, y: CENTER.y });
     expect(sim.world.has(near, Owner)).toBe(false); // contact does the claiming, not the module
@@ -71,13 +74,13 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     sim.step();
     placeAnimal(sim, CENTER.x + 4, CENTER.y);
 
-    expect([...scoutModule.run(sim.world, ctxOf(sim), SEAT)][0]?.kind).toBe('placeSignpost');
+    expect([...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0]?.kind).toBe('placeSignpost');
   });
 
   it('leaves an animal beyond the round-up radius alone', () => {
     const sim = tiledSim();
     placeAnimal(sim, CENTER.x + SCOUT_CATCH_RADIUS_NODES + 1, CENTER.y);
-    expect([...scoutModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+    expect([...guideBuild.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 
   it('skips an animal sealed away from the settlement, and retires the scout for it', () => {
@@ -93,9 +96,11 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
       }
     }
     wallOver(sim, walls);
+    // The wall is a wood resource; drained, so the lattice reaches out along no corridor to it.
+    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
     placeAnimal(sim, pen.x, pen.y);
 
-    expect([...scoutModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+    expect([...guideBuild.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
     const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
     expect(
       [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
@@ -109,7 +114,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     const sim = tiledSim();
     const first = placeAnimal(sim, CENTER.x + 10, CENTER.y);
     placeAnimal(sim, CENTER.x - 10, CENTER.y);
-    const order = [...scoutModule.run(sim.world, ctxOf(sim), SEAT)][0];
+    const order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
     if (order?.kind !== 'moveUnit') throw new Error('expected a round-up walk');
     expect({ x: order.x, y: order.y }).toEqual({ x: CENTER.x + 10, y: CENTER.y });
     expect(sim.world.has(first, Owner)).toBe(false);

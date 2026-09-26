@@ -16,7 +16,7 @@ import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { manhattan } from '../../spatial/metric.js';
 import { anchorNodeOf, nearestRingNode } from '../node-geometry.js';
 import { isBuilt, ownedBuildings } from '../seat-roster.js';
-import { claimFlagNode, legalFlagNodeTest, type TakenFlagNodes } from './flag-spots.js';
+import { claimFlagNode, type FlagGround, legalFlagNodeTest, type TakenFlagNodes } from './flag-spots.js';
 import type { SpareForce } from './pool.js';
 
 /** How many fishers the seat keeps while fish swim in reach (authored): the first is hired beside the
@@ -47,6 +47,7 @@ interface FishingStand {
 export interface FishingPlan {
   readonly job: number;
   readonly terrain: TerrainGraph;
+  readonly ground: FlagGround;
   /** The stands nearest their water first, so a warehouse on the shore posts before a distant base. */
   readonly stands: readonly FishingStand[];
   /** The seat's flag fishers; the decision's hires are pushed in and its retirements taken out. */
@@ -61,11 +62,12 @@ export function fishingPlan(
   world: World,
   ctx: SystemContext,
   player: number,
+  ground: FlagGround | null,
   fishers: readonly Entity[],
 ): FishingPlan | null {
   const terrain = ctx.terrain;
   const job = ctx.content.jobs.find((j) => isFisherJob(ctx.content, j.typeId))?.typeId;
-  if (terrain === undefined || job === undefined) return null;
+  if (terrain === undefined || ground === null || job === undefined) return null;
   const index = contentIndex(ctx.content);
   const stands: FishingStand[] = [];
   for (const e of ownedBuildings(world, player)) {
@@ -76,7 +78,7 @@ export function fishingPlan(
     if (shore !== null) stands.push({ store: e, door, shore, trip: manhattan(terrain, door, shore) });
   }
   stands.sort((a, b) => a.trip - b.trip || a.store - b.store);
-  return { job, terrain, stands, fishers: [...fishers] };
+  return { job, terrain, ground, stands, fishers: [...fishers] };
 }
 
 /**
@@ -97,11 +99,11 @@ export function allocateFishers(
 ): PlayerCommand[] {
   if (plan === null) return [];
   const commands: PlayerCommand[] = [];
-  if (phase === 'first') keepFlagsOnWater(world, ctx, plan, builderJob, taken, commands);
+  if (phase === 'first') keepFlagsOnWater(world, plan, builderJob, taken, commands);
   const want = phase === 'first' ? 1 : FISHER_TARGET;
   for (const stand of plan.stands) {
     while (plan.fishers.length < want) {
-      const spot = fisherFlagSpot(world, ctx, plan, stand, taken);
+      const spot = fisherFlagSpot(plan, stand, taken);
       if (spot === null) break;
       const spare = force.take((e) => settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', plan.job));
       if (spare === null) return commands;
@@ -116,7 +118,6 @@ export function allocateFishers(
 
 function keepFlagsOnWater(
   world: World,
-  ctx: SystemContext,
   plan: FishingPlan,
   builderJob: number | null,
   taken: TakenFlagNodes,
@@ -130,7 +131,7 @@ function keepFlagsOnWater(
     // Not mid-action, walking included: a walk carries no CurrentAtomic.
     if (world.has(fisher, CurrentAtomic)) continue;
     const stand = plan.stands[0];
-    const spot = stand === undefined ? null : fisherFlagSpot(world, ctx, plan, stand, taken);
+    const spot = stand === undefined ? null : fisherFlagSpot(plan, stand, taken);
     if (spot !== null) {
       commands.push({ kind: 'setWorkFlag', entity: fisher, x: spot.hx, y: spot.hy });
       claimFlagNode(taken, spot);
@@ -143,13 +144,7 @@ function keepFlagsOnWater(
 
 /** The legal flag node within {@link FISHER_FLAG_MAX_DISTANCE_NODES} of the stand's shore nearest the
  *  store's door, the shore itself first, or null when the bank is blocked. */
-function fisherFlagSpot(
-  world: World,
-  ctx: SystemContext,
-  plan: FishingPlan,
-  stand: FishingStand,
-  taken: TakenFlagNodes,
-): HalfCellNode | null {
+function fisherFlagSpot(plan: FishingPlan, stand: FishingStand, taken: TakenFlagNodes): HalfCellNode | null {
   const shore = plan.terrain.coordsOf(stand.shore);
   const door = plan.terrain.coordsOf(stand.door);
   return nearestRingNode(
@@ -158,7 +153,7 @@ function fisherFlagSpot(
     0,
     FISHER_FLAG_MAX_DISTANCE_NODES,
     { hx: door.x, hy: door.y },
-    legalFlagNodeTest(world, ctx, plan.terrain, taken),
+    legalFlagNodeTest(plan.ground, taken),
   );
 }
 

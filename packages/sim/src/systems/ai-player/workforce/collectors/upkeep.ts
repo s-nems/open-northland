@@ -2,7 +2,6 @@ import { CurrentAtomic } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
-import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../cadence.js';
@@ -20,6 +19,7 @@ import {
   replantSpot,
   type TakenFlagNodes,
 } from '../flag-spots.js';
+import type { CollectorGround } from './allocate.js';
 import type { WantedGood } from './wanted-goods.js';
 
 /** Every how many of a seat's decisions the collector flags are re-aimed at the nearest live resource
@@ -41,17 +41,17 @@ export function flagRelocateDue(ctx: SystemContext): boolean {
 export function upkeepHolders(
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
+  ground: CollectorGround,
   w: WantedGood,
   holders: readonly Entity[],
   anchors: readonly HalfCellNode[],
-  workable: WorkableTest,
   taken: TakenFlagNodes,
   relocateDue: boolean,
   builderJob: number | null,
   commands: PlayerCommand[],
 ): void {
-  const reach = gathererReach(world, ctx, terrain);
+  const { workable } = ground;
+  const reach = gathererReach(world, ctx, ground.flags.terrain);
   const ofGood = (goodType: number): boolean => goodType === w.good.typeId;
   for (const [rank, holder] of holders.entries()) {
     const flag = liveWorkFlag(world, holder);
@@ -69,7 +69,7 @@ export function upkeepHolders(
       const currentNode = current === null ? null : anchorNodeOf(world, current);
       if (currentNode === null || nodeDistance(flagNode, currentNode) <= FLAG_MAX_DISTANCE_NODES) continue;
     }
-    const replant = replantSpot(world, ctx, terrain, holder, flag.radius, nearest, anchor, reach, taken);
+    const replant = replantSpot(world, ground.flags, holder, flag.radius, nearest, anchor, reach, taken);
     if (replant === 'dry') {
       // The map ran out of this good - the collector rejoins the builder pool.
       if (!alive && builderJob !== null)
