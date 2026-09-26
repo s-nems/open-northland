@@ -1,3 +1,5 @@
+import { compareLabels } from '../../../i18n/index.js';
+
 /** Who a resident is, as the original subjects window groups its people: one group each. */
 export type ResidentKind = 'child' | 'woman' | 'worker' | 'civilian' | 'soldier' | 'hero';
 
@@ -156,6 +158,7 @@ export function listResidents(
   const lacks = Object.fromEntries(RESIDENT_LACKS.map((id) => [id, 0])) as Record<ResidentLack, number>;
   const professions = new Map<string, number>();
   const shown: ResidentRow[] = [];
+  const compare = compareLabels(locale);
   const needle = filters.query.trim().toLocaleLowerCase(locale);
   for (const row of rows) {
     const verdict = verdictOf(row, filters, needle, locale, canBecome);
@@ -175,7 +178,7 @@ export function listResidents(
     counts: { groups, lacks },
     professions: [...professions]
       .map(([profession, count]) => ({ profession, count }))
-      .sort((a, b) => a.profession.localeCompare(b.profession, locale)),
+      .sort((a, b) => compare(a.profession, b.profession)),
   };
 }
 
@@ -224,7 +227,7 @@ export function sortResidents(
   locale: string,
 ): ResidentRow[] {
   const sign = sort.descending ? -1 : 1;
-  const text = (a: string, b: string): number => a.localeCompare(b, locale);
+  const text = compareLabels(locale);
   const byKey = (a: ResidentRow, b: ResidentRow): number => {
     switch (sort.key) {
       case 'name':

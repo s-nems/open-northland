@@ -2,6 +2,7 @@ import type { BuildingType } from '@open-northland/data';
 import { constructionBillForType } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE_KINDS } from '../src/hud/tool-panel/building-menu.js';
+import { bcp47Tag, compareLabels } from '../src/i18n/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
 import { buildingLabelsFromContent, menuEntriesFromContent } from '../src/view/game-tool-panel.js';
@@ -23,7 +24,7 @@ describe('construction catalogue entries from content', () => {
       { ...sample, typeId: WONDER, id: 'test_wonder', kind: 'wonder' },
       { ...sample, typeId: VEHICLE, id: 'test_vehicle', kind: 'vehicle' },
     ];
-    const entries = menuEntriesFromContent({ buildings }, 'pl');
+    const entries = menuEntriesFromContent({ buildings }, 'pol');
     const listed = new Set(entries.map((entry) => entry.typeId));
     for (const building of buildings) {
       const bill = constructionBillForType(buildings, building.typeId);
@@ -37,7 +38,7 @@ describe('construction catalogue entries from content', () => {
   });
 
   it('charges the from-scratch bill the sim charges, a leveled tier summing its chain', () => {
-    const entries = menuEntriesFromContent(content, 'pl');
+    const entries = menuEntriesFromContent(content, 'pol');
     for (const entry of entries) {
       expect(entry.cost).toEqual(constructionBillForType(content.buildings, entry.typeId));
       expect(entry.cost.length).toBeGreaterThan(0);
@@ -52,12 +53,19 @@ describe('construction catalogue entries from content', () => {
     expect(sum(tier.cost)).toBe(sum(own.construction) + sum(base.construction));
   });
 
+  it('lists the entries alphabetically in the language they are named in', () => {
+    for (const lang of ['pol', 'eng'] as const) {
+      const labels = menuEntriesFromContent(content, lang).map((entry) => entry.label);
+      expect(labels, lang).toEqual([...labels].sort(compareLabels(bcp47Tag(lang))));
+    }
+  });
+
   it('names every building type, catalogue or not, so a note or a paper never shows a bare id', () => {
     const labels = buildingLabelsFromContent(content, 'pl');
     for (const building of content.buildings) {
       expect(labels.get(building.typeId), building.id).toBeTruthy();
     }
-    for (const entry of menuEntriesFromContent(content, 'pl')) {
+    for (const entry of menuEntriesFromContent(content, 'pol')) {
       expect(labels.get(entry.typeId)).toBe(entry.label);
     }
   });

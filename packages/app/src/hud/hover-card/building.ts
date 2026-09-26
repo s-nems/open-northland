@@ -1,5 +1,6 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { buildingTypeOf, builtFractionOf, isBuilding, type SnapshotEntity } from '../../game/snapshot.js';
+import { compareLabels } from '../../i18n/index.js';
 import { pct } from '../details-panel/model/bars.js';
 import { constructionBillRows, stockRows } from '../details-panel/model/building-materials.js';
 import {
@@ -70,5 +71,6 @@ function held(ctx: BuildingStockContext, def: BuildingDef | undefined, ent: Snap
 
 /** The original's order: the localized good name, so one store's lines never swap places mid-work. */
 function sortByLabel(rows: HoverCardRow[]): HoverCardRow[] {
-  return rows.sort((a, b) => a.label.localeCompare(b.label));
+  const compare = compareLabels();
+  return rows.sort((a, b) => compare(a.label, b.label));
 }

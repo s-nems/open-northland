@@ -1,5 +1,6 @@
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/data';
 import { MAP_TYPE } from '@open-northland/data';
+import { compareLabels } from '../../i18n/index.js';
 
 /**
  * Pure state for the map list: the row items it renders, which menu lists a map, the segmented
@@ -178,6 +179,8 @@ export function filterItems(
     if (needle === '') return true;
     return item.title.toLowerCase().includes(needle) || item.id.toLowerCase().includes(needle);
   });
-  if (filter !== 'tutorial') return matches;
-  return matches.sort((a, b) => (a.tutorialStep ?? 0) - (b.tutorialStep ?? 0));
+  if (filter === 'scenes') return matches;
+  if (filter === 'tutorial') return matches.sort((a, b) => (a.tutorialStep ?? 0) - (b.tutorialStep ?? 0));
+  const compare = compareLabels();
+  return matches.sort((a, b) => compare(a.title, b.title) || a.id.localeCompare(b.id));
 }

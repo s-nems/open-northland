@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import { pickerEntries } from '../../catalog/professions.js';
-import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import type { ResidentFigureBox, ResidentFigureSlot } from '../tool-panel/residents/figures.js';
 import {
   filtersActive,
@@ -99,7 +99,7 @@ function capitalized(text: string, locale: string): string {
 
 export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindow {
   const copy = messages().hud.residentsWindow;
-  const locale = currentLocale() === 'pol' ? 'pl' : 'en';
+  const locale = bcp47Tag();
   const window = createHudWindow(deps.plane, {
     title: copy.title,
     art: RESIDENTS_TOKEN,

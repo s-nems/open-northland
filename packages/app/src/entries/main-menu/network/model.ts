@@ -1,4 +1,5 @@
 import { parseNick, type RoomSummary } from '@open-northland/net-protocol';
+import { compareLabels } from '../../../i18n/index.js';
 
 export { relayAddress } from '../../../net/address.js';
 
@@ -21,6 +22,10 @@ export function escapeLeavesRoom(target: EventTarget | null): boolean {
   return !(editable && typeof field.value === 'string' && field.value !== '');
 }
 
+/** The lobbies by the name each row shows; the id only breaks a tie between alike names. */
 export function openRooms(rooms: readonly RoomSummary[]): readonly RoomSummary[] {
-  return rooms.filter((room) => room.state === 'lobby').sort((a, b) => a.id.localeCompare(b.id));
+  const compare = compareLabels();
+  return rooms
+    .filter((room) => room.state === 'lobby')
+    .sort((a, b) => compare(a.name, b.name) || a.id.localeCompare(b.id));
 }

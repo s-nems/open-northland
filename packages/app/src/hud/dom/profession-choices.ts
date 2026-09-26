@@ -1,5 +1,5 @@
 import type { PickerEntry } from '../../catalog/professions.js';
-import { bcp47Tag, messages } from '../../i18n/index.js';
+import { compareLabels, messages } from '../../i18n/index.js';
 import type { ChoiceGroup } from './choice-window.js';
 
 export function professionChoices(
@@ -29,7 +29,7 @@ export function professionChoices(
   // The leading ungrouped civilian, gathering and transport rows form the compact basic group.
   const basics = groups.splice(0, 3);
   groups.unshift({ label: messages().hud.choiceBasic, rows: basics.flatMap((part) => part.rows) });
-  const compare = new Intl.Collator(bcp47Tag(), { sensitivity: 'base' }).compare;
+  const compare = compareLabels();
   for (const part of groups) part.rows.sort((a, b) => compare(a.label, b.label));
   return groups.filter((part) => part.rows.length > 0);
 }

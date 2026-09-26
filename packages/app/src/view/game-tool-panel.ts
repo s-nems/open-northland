@@ -32,7 +32,7 @@ import type { MessageTarget, MetSeat, NoticeGallery } from '../hud/tool-panel/me
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { GateSites, PalisadeGateProbeView } from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
-import { currentLocale } from '../i18n/index.js';
+import { bcp47Tag, compareLabels, currentLocale, type Locale } from '../i18n/index.js';
 import type { PresentationPack } from '../presentation/pack.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -167,16 +167,20 @@ export function applyGameSpeed(
  * authored name. As the original's selection window, it skips the vehicles and the wonders, and a
  * type that costs nothing: the headquarters stands from the map and the wall segment comes from the
  * wall tool, never from the catalogue. Each entry carries the from-scratch bill the sim charges.
+ * The entries are in `lang`'s alphabetical order, not the content's.
  */
 export function menuEntriesFromContent(
   content: Pick<ContentSet, 'buildings'>,
-  lang: string = currentLocale(),
+  lang: Locale = currentLocale(),
 ): MenuBuildingEntry[] {
-  return content.buildings.flatMap((b) => {
-    const cost = constructionBillForType(content.buildings, b.typeId);
-    if (!CATALOGUE_KINDS.has(b.kind) || cost.length === 0) return [];
-    return [{ typeId: b.typeId, label: buildingLabel(b, lang), kind: b.kind, cost }];
-  });
+  const compare = compareLabels(bcp47Tag(lang));
+  return content.buildings
+    .flatMap((b) => {
+      const cost = constructionBillForType(content.buildings, b.typeId);
+      if (!CATALOGUE_KINDS.has(b.kind) || cost.length === 0) return [];
+      return [{ typeId: b.typeId, label: buildingLabel(b, lang), kind: b.kind, cost }];
+    })
+    .sort((a, b) => compare(a.label, b.label) || a.typeId - b.typeId);
 }
 
 /** Every building type's localized name, the catalogue's and the rest alike (the headquarters a

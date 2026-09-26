@@ -22,7 +22,7 @@ import {
 } from '../../game/snapshot.js';
 import { technologyLabel } from '../../game/technology.js';
 import { createChoiceWindow } from '../../hud/dom/choice-window.js';
-import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
 import { orderRecipients } from './action-ring/menu-state.js';
 
 export interface SchoolCourse {
@@ -53,7 +53,7 @@ export function schoolChoices(
 export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[] {
   const tribe = content.tribes.find((row) => row.typeId === tribeId);
   if (tribe === undefined) return [];
-  const collator = new Intl.Collator(bcp47Tag(), { sensitivity: 'base' });
+  const compare = compareLabels();
   const groups = new Map<number, SchoolCourse[]>();
   const training = new Set(
     tribe.jobRequirements
@@ -92,13 +92,13 @@ export function schoolGroups(content: ContentSet, tribeId: number): SchoolGroup[
       label: technologyLabel(content, 'job', jobType),
       courses: courses.sort((a, b) =>
         a.target === b.target
-          ? collator.compare(a.label, b.label) || a.typeId - b.typeId
+          ? compare(a.label, b.label) || a.typeId - b.typeId
           : a.target === 'job'
             ? -1
             : 1,
       ),
     }))
-    .sort((a, b) => collator.compare(a.label, b.label) || a.jobType - b.jobType);
+    .sort((a, b) => compare(a.label, b.label) || a.jobType - b.jobType);
 }
 
 /** The sim's `learn` rule on a snapshot learner: its current trade counts as known. */

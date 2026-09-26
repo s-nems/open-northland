@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   filterItems,
   listedIn,
+  type MapSelectItem,
   mapCategory,
   mapItem,
   ROOM_TABS,
@@ -174,8 +175,8 @@ describe('filterItems', () => {
   });
   const items = [subMission, secondLesson, free, arena, firstLesson, scene];
 
-  it('lists every root map under "all" and keeps test scenes to their own filter', () => {
-    expect(filterItems(items, 'single', 'all', '')).toEqual([secondLesson, free, arena, firstLesson]);
+  it('lists every root map under "all" by title and keeps test scenes to their own filter', () => {
+    expect(filterItems(items, 'single', 'all', '')).toEqual([free, secondLesson, firstLesson, arena]);
     expect(filterItems(items, 'single', 'scenes', '')).toEqual([scene]);
     expect(filterItems(items, 'multiplayer', 'all', '')).toEqual([arena]);
   });
@@ -196,6 +197,21 @@ describe('filterItems', () => {
     });
     expect(filterItems([both], 'single', 'all', '')).toEqual([both]);
     expect(filterItems([both], 'single', 'multiplayer', '')).toEqual([]);
+  });
+
+  it('orders maps by title as the language reads them, a number by its value', () => {
+    const titled = (id: string, name: string): MapSelectItem =>
+      mapItem({ id, name, minimap: false, mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE] });
+    const tenth = titled('a', 'Wyspa 10');
+    const second = titled('b', 'Wyspa 2');
+    const accented = titled('c', 'Łąka');
+    const plain = titled('d', 'Las');
+    expect(filterItems([tenth, accented, second, plain], 'single', 'free', '')).toEqual([
+      plain,
+      accented,
+      second,
+      tenth,
+    ]);
   });
 
   it('searches the title case-insensitively and the id stem', () => {

@@ -48,6 +48,19 @@ export function bcp47Tag(locale: Locale = currentLocale()): string {
   return LOCALE_TAGS[locale];
 }
 
+const labelCollators = new Map<string, Intl.Collator>();
+
+/** Orders names a player reads, as `tag`'s language sorts them, digits by value ("Mission 2" before
+ *  "Mission 10"). ICU collation may vary by host, so nothing deterministic may sort with it. */
+export function compareLabels(tag: string = bcp47Tag()): (a: string, b: string) => number {
+  let collator = labelCollators.get(tag);
+  if (collator === undefined) {
+    collator = new Intl.Collator(tag, { numeric: true });
+    labelCollators.set(tag, collator);
+  }
+  return collator.compare;
+}
+
 export function setActiveLocale(locale: Locale): void {
   activeLocale = locale;
   if (typeof document !== 'undefined') document.documentElement.lang = bcp47Tag(locale);

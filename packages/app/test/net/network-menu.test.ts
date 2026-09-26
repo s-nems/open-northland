@@ -1,3 +1,4 @@
+import type { RoomSummary } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { openRooms, relayAddress, validNetworkNick } from '../../src/entries/main-menu/network/model.js';
 
@@ -30,5 +31,22 @@ describe('network menu inputs', () => {
         { ...common, id: 'a', state: 'running' },
       ]).map((room) => room.id),
     ).toEqual(['b']);
+  });
+  it('lists the open rooms by the name they show, the id breaking a tie', () => {
+    const room = (id: string, name: string): RoomSummary => ({
+      id,
+      name,
+      state: 'lobby',
+      members: 1,
+      seats: 4,
+    });
+    expect(
+      openRooms([
+        room('f3', 'Zamek'),
+        room('a1', 'Bitwa 10'),
+        room('c2', 'Bitwa 2'),
+        room('0e', 'Zamek'),
+      ]).map((entry) => entry.id),
+    ).toEqual(['c2', 'a1', '0e', 'f3']);
   });
 });
