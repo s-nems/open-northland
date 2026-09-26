@@ -28,7 +28,7 @@ import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { attackMoveUnit, attackUnit, moveUnit } from '../../src/systems/orders/index.js';
 import { palisadeBarring } from '../../src/systems/palisades/breach.js';
 import { fightExperienceTypeFor } from '../../src/systems/progression/experience.js';
-import { ARMOR_MATERIAL, MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { ARMOR_MATERIAL, MILITARY_MODE, WEAPON_MAIN_TYPE } from '../../src/systems/readviews/index.js';
 import { fighterAt } from '../conflict/melee-engagement/support.js';
 import { combatContent } from '../fixtures/content/combat.js';
 import { economyContent } from '../fixtures/content/economy.js';
@@ -47,9 +47,12 @@ const BEAR = 10;
 const P0 = 0;
 const P1 = 1;
 /** The axe weapon class, whose fight bucket seasons the woodcutter's swing. */
-const AXE_CLASS = 5;
+/** The fixture axe is stamped a sword so its striker can carry a fight bucket the wall must ignore. */
+const STRIKER_CLASS = WEAPON_MAIN_TYPE.SWORD;
 /** Landed hits past the building-damage experience cap, which would double a blow on a house. */
 const SEASONED_HITS = 100;
+/** The fixture axe's far reach (map points). */
+const WEAPON_REACH = 2;
 /** Building-column damage that takes one valency off a wall per blow. */
 const HOUSE_DAMAGE = 150;
 
@@ -118,7 +121,7 @@ function wallBreakingContent(): ContentSet {
     ...societyContent,
     weapons: combatContent.weapons.map((w) =>
       w.id === 'test_axe'
-        ? { ...dentsWalls(w), mainType: AXE_CLASS }
+        ? { ...dentsWalls(w), mainType: STRIKER_CLASS }
         : w.id === 'test_spear'
           ? dentsWalls(w)
           : w,
@@ -403,8 +406,8 @@ describe('walls as targets', () => {
       if (wall === undefined) throw new Error('expected a wall');
       const soldier = fighter(sim, { hx: GATE_X, hy: WALL_ROW - 2 }, P0);
       if (seasoned) {
-        const bucket = fightExperienceTypeFor(AXE_CLASS);
-        if (bucket === undefined) throw new Error('expected an axe fight bucket');
+        const bucket = fightExperienceTypeFor(STRIKER_CLASS);
+        if (bucket === undefined) throw new Error('expected a sword fight bucket');
         sim.world.mut(soldier, SettlerProgress).experience = new Map([[bucket, SEASONED_HITS]]);
       }
       attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: soldier, target: wall });
@@ -513,15 +516,18 @@ describe('an attack-move against a sealed palisade', () => {
     expect(new Set(columns).size).toBe(squad.length);
     expect(Math.max(...columns) - Math.min(...columns)).toBe(squad.length - 1);
 
-    // A wall takes far longer to fall, so every breaker ends up swinging from its own node.
+    // A wall takes far longer to fall, so every breaker ends up swinging from the near side, on or beside
+    // the column of the node it was dealt: a walker stops once its wall comes into reach, so it may pull up
+    // a node short of that dealt node. The fixture's civilians carry no body, so two may share a node here.
     sim.run(200);
     const terrain = mapped(sim);
     for (const [at, raider] of squad.entries()) {
       const stand = orders[at]?.breach?.stand;
       if (stand === undefined || stand === null) throw new Error('expected a dealt node');
       const here = nodeRow(sim, raider);
-      expect(terrain.nodeAt(here.hx, here.hy)).toBe(stand);
-      expect(here.hy).toBe(WALL_ROW - 1);
+      expect(Math.abs(here.hx - terrain.xOf(stand))).toBeLessThanOrEqual(1);
+      expect(here.hy).toBeLessThan(WALL_ROW);
+      expect(hexDistance(here, { hx: here.hx, hy: WALL_ROW })).toBeLessThanOrEqual(WEAPON_REACH);
     }
   });
 

@@ -132,6 +132,8 @@ function shootAt(
     weapon: {
       munitionType: ARROW,
       speed: ARROW_SPEED,
+      hitSelf: false,
+      area: false,
       damage: { [ARMOR_MATERIAL.HOUSE]: houseDamage },
       hitSounds: { [ARMOR_MATERIAL.HOUSE]: WALL_HIT_SOUND },
       missSounds: {},
@@ -170,7 +172,7 @@ describe('arrows at a wall', () => {
 });
 
 describe('a blow too weak to dent a wall', () => {
-  it('sounds no hit and leaves the wall whole, where a denting one sounds', () => {
+  it('lands no hit and leaves the wall whole, where a denting one sounds', () => {
     const firstBlow = (houseDamage: number) => {
       const { sim, gate } = gated(houseDamage);
       const soldier = striker(sim, WOODCUTTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 1 });
@@ -179,19 +181,23 @@ describe('a blow too weak to dent a wall', () => {
       return { blow, health: sim.world.get(gate, Health) };
     };
     const glancing = firstBlow(GLANCING);
-    expect(glancing.blow?.kind).toBe('combatHit');
-    expect(glancing.blow?.soundType).toBeUndefined();
+    expect(glancing.blow).toBeUndefined();
     expect(glancing.health.hitpoints).toBe(glancing.health.max);
     expect(firstBlow(DENTING).blow?.soundType).toBe(WALL_HIT_SOUND);
   });
 
-  it('lands silent from an arrow too', () => {
+  it('thuds like a miss from an arrow too', () => {
     const { sim, gate } = gated(GLANCING);
     const archer = striker(sim, HUNTER, { hx: GATE_AT.hx, hy: GATE_AT.hy - 8 });
     shootAt(sim, archer, gate, GATE_AT, GLANCING);
-    const [hit] = eventsOver(sim, 60, struck);
-    expect(hit?.kind).toBe('projectileHit');
-    expect(hit?.soundType).toBeUndefined();
+    const missed = (ev: SimEvent): ev is Extract<SimEvent, { kind: 'projectileMissed' }> =>
+      ev.kind === 'projectileMissed';
+    const events = eventsOver(
+      sim,
+      60,
+      (ev): ev is Struck | Extract<SimEvent, { kind: 'projectileMissed' }> => struck(ev) || missed(ev),
+    );
+    expect(events.map((ev) => ev.kind)).toEqual(['projectileMissed']);
     const health = sim.world.get(gate, Health);
     expect(health.hitpoints).toBe(health.max);
   });
