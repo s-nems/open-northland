@@ -5,14 +5,18 @@ import {
   Chat,
   type CurrentAtomicState,
   Engagement,
+  FarmTask,
+  Fleeing,
   Garrison,
   IdleStand,
   MoveGoal,
   Owner,
   PathRequest,
   Position,
+  Resting,
   Stranded,
   SupplyRun,
+  TALK_ATOMIC_ID,
   UnreachableGoals,
   UnreachableTargets,
   Wedding,
@@ -24,7 +28,11 @@ import { positionOfNode, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import type { ShelterSites } from '../../src/systems/defence/index.js';
 import { collectFarmClaims } from '../../src/systems/settlers/drives/farming/index.js';
-import { wakeIdle } from '../../src/systems/settlers/planner/idle-replan.js';
+import {
+  IDLE_REPLAN_PERIOD_TICKS,
+  idleBeatOf,
+  wakeIdle,
+} from '../../src/systems/settlers/planner/idle-replan.js';
 import { idleRelease, releaseStaleIntent } from '../../src/systems/settlers/planner/replan.js';
 import { sweepOrder } from '../../src/systems/settlers/planner/sweep.js';
 import { collectInboundSupply } from '../../src/systems/stores/index.js';
@@ -35,8 +43,8 @@ import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
  * The planner sweep passes by a settler whose visit would change nothing: an atomic or a live route
- * holds it and it carries nothing the release reconciles. Everyone else is visited in ascending id,
- * including a settler an earlier visit in the same pass woke.
+ * holds it and it carries nothing the release reconciles, or it stands idle off its re-plan beat.
+ * Everyone else is visited in ascending id, including a settler an earlier visit in the same pass woke.
  */
 
 const BEAR = 0;
@@ -49,6 +57,8 @@ const ALARMED = 0;
 const CALM = 1;
 const WOODCUTTER = 1;
 const PLANK = 2;
+/** The sweep's idle beat that lets every idler through. */
+const EVERY_IDLER = undefined;
 
 function atomic(effect: CurrentAtomicState['effect'], atomicId: number): CurrentAtomicState {
   return { atomicId, duration: ATOMIC_TICKS, effect, targetEntity: null, targetTile: null };
@@ -64,6 +74,13 @@ function settler(world: World): Entity {
 function walking(world: World): Entity {
   const e = settler(world);
   world.add(e, MoveGoal, { cell: GOAL });
+  return e;
+}
+
+function idler(world: World): Entity {
+  const e = settler(world);
+  world.add(e, IdleStand, { standing: true });
+  world.add(e, Owner, { player: CALM });
   return e;
 }
 
@@ -84,7 +101,7 @@ describe('planner sweep order', () => {
     const failedRoute = walking(world);
     world.add(failedRoute, PathRequest, { start: GOAL, goal: GOAL, failed: true });
 
-    expect([...sweepOrder(world, NO_SHELTERS)]).toEqual([standing, idleWalker, failedRoute]);
+    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual([standing, idleWalker, failedRoute]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -93,7 +110,7 @@ describe('planner sweep order', () => {
     const first = settler(world);
     const walker = walking(world);
     const visited: Entity[] = [];
-    for (const e of sweepOrder(world, NO_SHELTERS)) {
+    for (const e of sweepOrder(world, NO_SHELTERS, EVERY_IDLER)) {
       visited.push(e);
       if (e === first) {
         world.remove(walker, MoveGoal);
@@ -107,12 +124,12 @@ describe('planner sweep order', () => {
     const world = new World();
     const [failing, engaged, supplying] = [walking(world), walking(world), walking(world)];
     world.add(failing, PathRequest, { start: GOAL, goal: GOAL, failed: false });
-    expect([...sweepOrder(world, NO_SHELTERS)]).toEqual([]);
+    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual([]);
 
     world.mut(failing, PathRequest).failed = true;
     world.add(engaged, Engagement, { repathAt: 0 });
     world.add(supplying, SupplyRun, { site: failing, goodType: PLANK, amount: 1, source: null });
-    expect([...sweepOrder(world, NO_SHELTERS)]).toEqual([failing, engaged, supplying]);
+    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual([failing, engaged, supplying]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -126,7 +143,28 @@ describe('planner sweep order', () => {
     const alarmedWorker = busy(world);
     world.add(alarmedWorker, Owner, { player: ALARMED });
     const alarm: ShelterSites = new Map([[ALARMED, []]]);
-    expect([...sweepOrder(world, alarm)]).toEqual([standing, alarmedWalker]);
+    expect([...sweepOrder(world, alarm, EVERY_IDLER)]).toEqual([standing, alarmedWalker]);
+    expect(world.verifyCaches()).toEqual([]);
+  });
+
+  it('visits an idler with nothing to shed on its beat, and every beat once alarmed or woken', () => {
+    const world = new World();
+    const idlers = Array.from({ length: IDLE_REPLAN_PERIOD_TICKS + 1 }, () => idler(world));
+    const [first, second, third] = idlers;
+    const last = idlers.at(-1);
+    if (first === undefined || second === undefined || third === undefined || last === undefined) {
+      throw new Error('too few idlers');
+    }
+    const beat = idleBeatOf(first);
+    const sweep = (shelters: ShelterSites): Entity[] => [...sweepOrder(world, shelters, beat)];
+    expect(sweep(NO_SHELTERS)).toEqual([first, last]);
+    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual(idlers);
+
+    world.add(second, Owner, { player: ALARMED });
+    expect(sweep(new Map([[ALARMED, []]]))).toEqual([first, second, last]);
+    wakeIdle(world, second);
+    world.add(third, MoveGoal, { cell: GOAL }); // its visit wakes a walking idler
+    expect(sweep(NO_SHELTERS)).toEqual([first, second, third, last]);
     expect(world.verifyCaches()).toEqual([]);
   });
 });
@@ -143,6 +181,7 @@ const STATES: Record<string, (world: World, e: Entity) => void> = {
     world.add(e, PathRequest, { start: GOAL, goal: GOAL, failed: true });
     world.add(e, Stranded, { retryAt: 0 });
   },
+  talking: (world, e) => addCurrentAtomic(world, e, atomic({ kind: 'idle' }, TALK_ATOMIC_ID)),
 };
 const MARKERS: Record<string, (world: World, e: Entity) => void> = {
   none: () => {},
@@ -159,8 +198,10 @@ const MARKERS: Record<string, (world: World, e: Entity) => void> = {
   companyChat: (world, e) =>
     world.add(e, Chat, { partner: e, seeker: true, talking: false, speaks: true, kind: 'company' }),
   wedding: (world, e) => world.add(e, Wedding, { partner: e, kissing: false }),
+  fleeing: (world, e) => world.add(e, Fleeing, { repathAt: 0, calmUntil: null }),
+  farmTask: (world, e) => world.add(e, FarmTask, { farm: e, node: GOAL, sow: false }),
+  resting: (world, e) => world.add(e, Resting, { at: e }),
 };
-
 describe('idle release contract', () => {
   it('passes by only settlers whose release and wake change nothing', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(16, 8) });
@@ -170,32 +211,36 @@ describe('idle release contract', () => {
     for (const shelters of [NO_SHELTERS, new Map([[ALARMED, []]]) as ShelterSites]) {
       for (const [state, enter] of Object.entries(STATES)) {
         for (const [marker, mark] of Object.entries(MARKERS)) {
-          const e = settlerAt(sim, { jobType: WOODCUTTER, position: positionOfNode(4, 4) });
-          world.add(e, Owner, { player: CALM });
-          enter(world, e);
-          mark(world, e);
-          const idle = idleRelease(world, e);
-          kinds.add(idle);
-          if (idle === null) continue;
-          const before = world.mutationVersion;
-          const planned = releaseStaleIntent(
-            world,
-            ctx,
-            e,
-            collectFarmClaims(world),
-            collectInboundSupply(world),
-            shelters,
-          );
-          wakeIdle(world, e);
-          expect({ state, marker, planned, wrote: world.mutationVersion !== before }).toEqual({
-            state,
-            marker,
-            planned: false,
-            wrote: false,
-          });
+          for (const idle of [false, true]) {
+            const e = settlerAt(sim, { jobType: WOODCUTTER, position: positionOfNode(4, 4) });
+            world.add(e, Owner, { player: CALM });
+            enter(world, e);
+            mark(world, e);
+            if (idle) world.add(e, IdleStand, { standing: true });
+            const release = idleRelease(world, e);
+            kinds.add(release);
+            if (release === null) continue;
+            const before = world.mutationVersion;
+            const planned = releaseStaleIntent(
+              world,
+              ctx,
+              e,
+              collectFarmClaims(world),
+              collectInboundSupply(world),
+              shelters,
+            );
+            if (!planned) wakeIdle(world, e);
+            expect({ state, marker, idle, planned, wrote: world.mutationVersion !== before }).toEqual({
+              state,
+              marker,
+              idle,
+              planned: release === 'idle',
+              wrote: false,
+            });
+          }
         }
       }
     }
-    expect(kinds).toEqual(new Set([null, 'held', 'travelling']));
+    expect(kinds).toEqual(new Set([null, 'held', 'travelling', 'idle']));
   });
 });

@@ -17,7 +17,7 @@ import { cutOffCheckDue, reconcileCutOff } from '../drives/cut-off.js';
 import { planAdult, planChild } from '../drives/ladder.js';
 import { clearLostWay } from '../lost-way.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
-import { waitsIdle, wakeIdle } from './idle-replan.js';
+import { idleBeatOfTick, waitsIdle, wakeIdle } from './idle-replan.js';
 import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './pass.js';
 import { dispatchRecruitArming } from './recruit-arming.js';
@@ -39,7 +39,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // fetch the same tick; arming first, so a recruit's weapon outranks its pair of boots.
   dispatchRecruitArming(pass);
   dispatchAssistantGrants(pass);
-  for (const e of sweepOrder(world, pass.shelters)) {
+  // Off its beat an idler's visit only runs the standing cut-off check, so that tick visits every idler.
+  const idleBeat = cutOffCheckDue(ctx) ? undefined : idleBeatOfTick(ctx.tick);
+  for (const e of sweepOrder(world, pass.shelters, idleBeat)) {
     // A busy settler plays its intent out, and is no longer idle; the rest shed what the previous plan
     // left before re-planning.
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound, pass.shelters)) {

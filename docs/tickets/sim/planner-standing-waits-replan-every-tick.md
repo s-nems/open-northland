@@ -34,6 +34,8 @@ profile does not split these by outcome.
   alarm, a shelter or an order.
 - Loiterers and `waitAtSite` stand through `pass.idle.stand(e, false)` and take
   `IDLE_REPLAN_PERIOD_TICKS`; `LOITER_PLAN_PERIOD_TICKS` follows so the chat roll keeps its mean wait.
+  The sweep leaves an `IdleStand` holder out between its beats only while `shedsNothing`
+  (`planner/replan.ts`) holds, so one that keeps a clip or `Resting` is still visited every tick.
 - This changes behavior (up to a second before new work is noticed, and the `CurrentAtomic` store's
   insertion order), so goldens move in the commit that names it. The owner rules the cadence per
   class before implementation.

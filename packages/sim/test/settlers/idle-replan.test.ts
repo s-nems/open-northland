@@ -9,11 +9,16 @@ import {
   Resource,
   WorkFlag,
 } from '../../src/components/index.js';
-import type { Entity } from '../../src/ecs/world.js';
+import { type Entity, World } from '../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../src/index.js';
 import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import * as ladder from '../../src/systems/settlers/drives/ladder.js';
-import { IDLE_REPLAN_PERIOD_TICKS, idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
+import {
+  IDLE_REPLAN_PERIOD_TICKS,
+  idleBeatOf,
+  idleBeatOfTick,
+  idleReplanDue,
+} from '../../src/systems/settlers/planner/idle-replan.js';
 import { testContent } from '../fixtures/content.js';
 import { settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -65,6 +70,15 @@ function plannedTicks(sim: Simulation, e: Entity, ticks: number): number[] {
 }
 
 describe('idle re-plan cadence', () => {
+  it('an idler is due exactly on the ticks of its beat', () => {
+    const span = 2 * IDLE_REPLAN_PERIOD_TICKS;
+    const world = new World();
+    const idlers = Array.from({ length: span }, () => world.create());
+    for (let tick = 0; tick < span; tick++) {
+      for (const e of idlers) expect(idleBeatOf(e) === idleBeatOfTick(tick)).toBe(idleReplanDue(tick, e));
+    }
+  });
+
   it('an idle settler re-plans on its due ticks only', () => {
     const sim = newSim();
     const idler = woodcutterAt(sim, 10, 10); // no tree anywhere

@@ -198,8 +198,7 @@ evidence, all under `docs/tickets/sim/`:
   cell index's linear fallback.
 - [`planner-standing-waits-replan-every-tick.md`](../tickets/sim/planner-standing-waits-replan-every-tick.md):
   seated crafters, loiterers and site-waiting builders re-planned every tick (owner ruling on latency).
-- [`planner-idle-settlers-visited-every-tick.md`](../tickets/sim/planner-idle-settlers-visited-every-tick.md):
-  idle settlers visited before the idle gate.
+- `planner-idle-settlers-visited-every-tick.md` (done): idle settlers visited before the idle gate.
 - [`navigation-planner-rechecks-every-walker.md`](../tickets/sim/navigation-planner-rechecks-every-walker.md).
 - [`standing-fighters-full-settler-scans.md`](../tickets/sim/standing-fighters-full-settler-scans.md):
   the full-population fighter scans behind separation, routing and melee slots.

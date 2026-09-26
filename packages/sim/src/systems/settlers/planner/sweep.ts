@@ -7,6 +7,7 @@ import {
 } from '../../../core/sorted-id.js';
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
 import type { ShelterSites } from '../../defence/index.js';
+import { IDLE_REPLAN_PERIOD_TICKS, idleBeatOf } from './idle-replan.js';
 import {
   idleRelease,
   RELEASE_IDLE_MEMBERSHIP,
@@ -21,11 +22,14 @@ const byId = (e: Entity): number => e;
  * The positioned settlers split by what their planner visit may do, each list in ascending id:
  * `acting` holds every one {@link idleRelease} does not pass by, wildlife included since the release
  * is the only failed-route recovery a parked creature has; `travelling` holds the quiet walkers only
- * an alarm can divert. Kept across ticks per world from a change feed.
+ * an alarm can divert; `idle` holds the idlers whose visit does something only on their re-plan beat,
+ * alarm or cut-off check, also split by beat. Kept across ticks per world from a change feed.
  */
 class SweepCandidates {
   private readonly acting: Entity[] = [];
   private readonly travelling: Entity[] = [];
+  private readonly idle: Entity[] = [];
+  private readonly idleByBeat: Entity[][] = Array.from({ length: IDLE_REPLAN_PERIOD_TICKS }, () => []);
   private readonly feed: ChangeFeed;
   private readonly refreshEntity = (e: Entity): void => this.refresh(e);
   /** Inserts and removals in `acting` so far: the index of the last answer stays a valid start for
@@ -41,20 +45,32 @@ class SweepCandidates {
 
   /**
    * The first settler above `cursor` to visit, caught up first, so one another's plan woke earlier in
-   * this pass is still reached in id order. With `shelters` on alarm a quiet walker counts too when
-   * its owner's cover may draw it; each walker is looked at once per pass, since the scan stops at the
-   * next acting settler.
+   * this pass is still reached in id order. An idler counts on `beat`, or on every beat when that is
+   * undefined. With `shelters` on alarm a quiet walker or an idler counts too when its owner's cover may
+   * draw it; each is looked at once per pass, since the scan stops at the next settler already chosen.
    */
-  after(cursor: number, shelters: ShelterSites): Entity | undefined {
+  after(cursor: number, shelters: ShelterSites, beat: number | undefined): Entity | undefined {
     this.catchUp();
-    const acting = this.acting[this.actingAbove(cursor)];
-    if (shelters.size === 0) return acting;
-    for (let i = indexAboveId(this.travelling, cursor, byId); i < this.travelling.length; i++) {
-      const walker = this.travelling[i];
-      if (walker === undefined || (acting !== undefined && walker > acting)) break;
-      if (takesCoverFrom(this.world, walker, shelters)) return walker;
+    const idlers = beat === undefined ? this.idle : this.idlersOn(beat);
+    const next = earlier(this.acting[this.actingAbove(cursor)], idlers[indexAboveId(idlers, cursor, byId)]);
+    if (shelters.size === 0) return next;
+    const walker = this.firstTakingCover(this.travelling, cursor, next, shelters);
+    return beat === undefined ? walker : this.firstTakingCover(this.idle, cursor, walker, shelters);
+  }
+
+  /** The first of `ids` above `cursor` and below `bound` whose owner's cover may draw it, else `bound`. */
+  private firstTakingCover(
+    ids: readonly Entity[],
+    cursor: number,
+    bound: Entity | undefined,
+    shelters: ShelterSites,
+  ): Entity | undefined {
+    for (let i = indexAboveId(ids, cursor, byId); i < ids.length; i++) {
+      const e = ids[i];
+      if (e === undefined || (bound !== undefined && e > bound)) break;
+      if (takesCoverFrom(this.world, e, shelters)) return e;
     }
-    return acting;
+    return bound;
   }
 
   private actingAbove(cursor: number): number {
@@ -76,20 +92,34 @@ class SweepCandidates {
 
   private refresh(e: Entity): void {
     const positioned = this.world.has(e, Settler) && this.world.has(e, Position);
-    const idle = positioned ? idleRelease(this.world, e) : undefined;
-    if (setMember(this.acting, e, idle === null)) this.actingEdits++;
-    setMember(this.travelling, e, idle === 'travelling');
+    const release = positioned ? idleRelease(this.world, e) : undefined;
+    if (setMember(this.acting, e, release === null)) this.actingEdits++;
+    setMember(this.travelling, e, release === 'travelling');
+    setMember(this.idle, e, release === 'idle');
+    setMember(this.idlersOn(idleBeatOf(e)), e, release === 'idle');
   }
 
   private rebuild(): void {
     this.actingEdits++;
     this.acting.length = 0;
     this.travelling.length = 0;
+    this.idle.length = 0;
+    for (const beat of this.idleByBeat) beat.length = 0;
     for (const e of this.world.canonicalQuery(Settler, Position)) {
-      const idle = idleRelease(this.world, e);
-      if (idle === null) this.acting.push(e);
-      else if (idle === 'travelling') this.travelling.push(e);
+      const release = idleRelease(this.world, e);
+      if (release === null) this.acting.push(e);
+      else if (release === 'travelling') this.travelling.push(e);
+      else if (release === 'idle') {
+        this.idle.push(e);
+        this.idlersOn(idleBeatOf(e)).push(e);
+      }
     }
+  }
+
+  private idlersOn(beat: number): Entity[] {
+    const idlers = this.idleByBeat[beat];
+    if (idlers === undefined) throw new Error(`plannerSweep: no idle beat ${beat}`);
+    return idlers;
   }
 
   verify(): string[] {
@@ -97,14 +127,26 @@ class SweepCandidates {
     const all = this.world.canonicalQuery(Settler, Position);
     const acting = all.filter((e) => idleRelease(this.world, e) === null);
     const travelling = all.filter((e) => idleRelease(this.world, e) === 'travelling');
+    const idle = all.filter((e) => idleRelease(this.world, e) === 'idle');
     const problems: string[] = [];
     if (!sameIds(acting, this.acting))
       problems.push('plannerSweep acting settlers diverge from a fresh scan');
     if (!sameIds(travelling, this.travelling)) {
       problems.push('plannerSweep quiet walkers diverge from a fresh scan');
     }
+    if (!sameIds(idle, this.idle)) problems.push('plannerSweep idlers diverge from a fresh scan');
+    this.idleByBeat.forEach((ids, beat) => {
+      const fresh = idle.filter((e) => idleBeatOf(e) === beat);
+      if (!sameIds(fresh, ids))
+        problems.push(`plannerSweep idlers on beat ${beat} diverge from a fresh scan`);
+    });
     return problems;
   }
+}
+
+function earlier(a: Entity | undefined, b: Entity | undefined): Entity | undefined {
+  if (a === undefined) return b;
+  return b === undefined || a < b ? a : b;
 }
 
 /** Whether `ids` changed. */
@@ -123,12 +165,16 @@ const candidates = new WeakMap<World, SweepCandidates>();
 
 /**
  * The settlers the planner sweep visits this pass, in ascending id, read live between visits: the
- * ones whose {@link releaseStaleIntent} may change something. The pass's claim maps hand out targets
- * first come, first served, so this order decides who wins. Only settlers positioned when the sweep
- * starts take part; a settler never loses either component while alive, so one created mid-pass is
- * the only newcomer.
+ * ones whose {@link releaseStaleIntent} may change something, and the idlers due on `idleBeat`, or all
+ * of them when that is undefined. The pass's claim maps hand out targets first come, first served, so
+ * this order decides who wins. Only settlers positioned when the sweep starts take part; a settler
+ * never loses either component while alive, so one created mid-pass is the only newcomer.
  */
-export function* sweepOrder(world: World, shelters: ShelterSites): Generator<Entity> {
+export function* sweepOrder(
+  world: World,
+  shelters: ShelterSites,
+  idleBeat: number | undefined,
+): Generator<Entity> {
   let held = candidates.get(world);
   if (held === undefined) {
     const created = new SweepCandidates(world);
@@ -137,7 +183,11 @@ export function* sweepOrder(world: World, shelters: ShelterSites): Generator<Ent
     held = created;
   }
   const createdMidPass = world.nextEntityId;
-  for (let e = held.after(0, shelters); e !== undefined && e < createdMidPass; e = held.after(e, shelters)) {
+  for (
+    let e = held.after(0, shelters, idleBeat);
+    e !== undefined && e < createdMidPass;
+    e = held.after(e, shelters, idleBeat)
+  ) {
     yield e;
   }
 }

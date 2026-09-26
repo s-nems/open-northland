@@ -1,7 +1,9 @@
 import {
   Chat,
   CurrentAtomic,
+  chatAtomicRunning,
   Engagement,
+  FarmTask,
   Fleeing,
   Frightened,
   Garrison,
@@ -148,28 +150,34 @@ export const RELEASE_IDLE_MEMBERSHIP: readonly Component<unknown>[] = [
   PathFollow,
   SupplyRun,
   Engagement,
+  FarmTask,
+  Resting,
 ];
 export const RELEASE_IDLE_VALUES: readonly Component<unknown>[] = [CurrentAtomic, Chat, PathRequest];
 
-/** Why {@link releaseStaleIntent} passes a settler by without changing anything. */
-export type IdleRelease = 'held' | 'travelling';
+/**
+ * Why the sweep's visit of a settler changes nothing: an atomic holds it or it walks a quiet route, so
+ * {@link releaseStaleIntent} passes it by, or its release sheds nothing and the idle gate skips it off
+ * its re-plan beat.
+ */
+export type IdleRelease = 'held' | 'travelling' | 'idle';
 
 /**
  * How the sweep's visit of `e` changes nothing, or null when it may: an atomic holds it, or it walks
  * a live route that only a shelter of its owner on alarm diverts ({@link takesCoverFrom}), and it
- * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes. Keep in
- * step with that call's early-outs.
+ * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes; or it
+ * stands idle carrying nothing that call sheds. Keep in step with that call's early-outs.
  */
 export function idleRelease(world: World, e: Entity): IdleRelease | null {
   if (
     world.has(e, YardDeliveryRoute) ||
     world.has(e, UnreachableGoals) ||
     world.has(e, UnreachableTargets) ||
-    world.has(e, Garrison) ||
-    world.has(e, IdleStand)
+    world.has(e, Garrison)
   ) {
     return null;
   }
+  if (world.has(e, IdleStand)) return shedsNothing(world, e) ? 'idle' : null;
   if (atomicHoldsSettler(world, e)) return 'held';
   const quiet =
     isTravelling(world, e) &&
@@ -177,6 +185,19 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
     !world.has(e, Engagement) &&
     world.tryGet(e, PathRequest)?.failed !== true;
   return quiet ? 'travelling' : null;
+}
+
+/** Whether {@link releaseStaleIntent} returns true for `e` without a write: nothing holds or walks it,
+ *  no errand or farm claim to release, not indoors, and no clip but a pastime chat's, which it keeps.
+ *  A flight only matters to an alarm, and the sweep visits an alarmed owner's idlers every tick. */
+function shedsNothing(world: World, e: Entity): boolean {
+  return (
+    !isTravelling(world, e) &&
+    !world.has(e, SupplyRun) &&
+    !world.has(e, FarmTask) &&
+    !world.has(e, Resting) &&
+    (!world.has(e, CurrentAtomic) || (inPastimeChat(world, e) && chatAtomicRunning(world, e)))
+  );
 }
 
 /** Whether one of `e`'s owner's buildings on alarm may draw it off its route. */

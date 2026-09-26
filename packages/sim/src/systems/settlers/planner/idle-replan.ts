@@ -15,6 +15,16 @@ export function idleReplanDue(tick: number, e: Entity, periodTicks = IDLE_REPLAN
   return (tick + e) % periodTicks === 0;
 }
 
+/** The beat of the idle period `e` re-plans on: {@link idleReplanDue} holds on the ticks whose
+ *  {@link idleBeatOfTick} is this. */
+export function idleBeatOf(e: Entity): number {
+  return e % IDLE_REPLAN_PERIOD_TICKS;
+}
+
+export function idleBeatOfTick(tick: number): number {
+  return (IDLE_REPLAN_PERIOD_TICKS - (tick % IDLE_REPLAN_PERIOD_TICKS)) % IDLE_REPLAN_PERIOD_TICKS;
+}
+
 /**
  * The ticks between idle `e`'s ladder runs: the idle period, or every tick while its owner has buildings
  * on alarm, since taking shelter outranks every other drive.
