@@ -45,7 +45,9 @@ import type { ArmedWith } from './weapons.js';
 // Re-exported so the combat modules keep one import site for the stance ladder.
 export { stanceMode };
 
-/** DEFEND stance - how far (map points) from its anchor a defender looks for an enemy. Original behavior. */
+/** DEFEND stance - how far (map points) from its anchor a defender looks for an enemy. Original behavior.
+ *  The pick ranks what it finds by distance from the defender, where the original ranks it from the anchor
+ *  (approximation: they differ only while the defender stands off its anchor). */
 export const DEFEND_RADIUS_NODES = 18;
 
 /** DEFEND stance - how far (map points) from its anchor an enemy a defender already holds may go before it
@@ -108,7 +110,6 @@ export function engageSpec(
   // The default deprioritized tier: plain buildings fall behind units and high-value structures.
   const lowPriorityBuildings = (t: Entity): boolean => index.isLowPriorityBuilding(t);
   const minDist = weapon.minRange;
-  const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
   // Original behavior: an advancing search starts at the unit's own node, so an archer sees an enemy inside
   // its dead zone and the chase steps it back out to its reach.
   const advanceNear = 0;
@@ -215,7 +216,7 @@ export function engageSpec(
       seesTarget,
       givenUp,
       minDist,
-      sight,
+      SIGHT_RADIUS_NODES,
     );
   }
 
@@ -226,7 +227,7 @@ export function engageSpec(
     return {
       accept: adultOnly(world, advanceAccept),
       minDist: advanceNear,
-      searchRadius: sight,
+      searchRadius: SIGHT_RADIUS_NODES,
       player,
       lowPriority: lowPriorityBuildings,
       lock: null,
@@ -393,10 +394,11 @@ const PICK_SPREAD_NODES = 3;
 
 /**
  * The kinds of enemy a fighter looks for, in the order it looks: its first pass takes enemy fighters, then
- * military buildings, then wild animals; its second anyone else, then any building. Original behavior. The
- * military buildings here are the ones that are not {@link CombatIndex.isLowPriorityBuilding} (headquarters
- * and towers), an approximation of the original's own military house class. A vehicle joins the last pass on
- * a building's terms; where the original ranks a cart or ship is unconfirmed (approximation).
+ * military buildings, then wild animals; its second anyone else, then any vehicle, then any building.
+ * Original behavior. The military buildings here are the ones that are not
+ * {@link CombatIndex.isLowPriorityBuilding} (headquarters and towers), an approximation of the original's
+ * own military house class. The original's first pass also takes some vehicles ahead of its houses; which
+ * ones is unconfirmed, so every vehicle waits for the second pass (approximation).
  */
 const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatIndex, t: Entity) => boolean)[] =
   [
@@ -405,7 +407,8 @@ const PICK_TIERS: readonly ((world: World, ctx: SystemContext, index: CombatInde
     (world, _ctx, index, t) => world.has(t, Building) && !index.isLowPriorityBuilding(t),
     (world, _ctx, _index, t) => isWildlife(world, t),
     (world, _ctx, _index, t) => world.has(t, Person),
-    (world, _ctx, _index, t) => world.has(t, Building) || world.has(t, Vehicle),
+    (world, _ctx, _index, t) => world.has(t, Vehicle),
+    (world, _ctx, _index, t) => world.has(t, Building),
   ];
 
 /**

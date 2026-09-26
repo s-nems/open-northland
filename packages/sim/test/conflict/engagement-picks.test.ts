@@ -103,6 +103,25 @@ describe('engagement - how far each stance looks', () => {
     expect(SIGHT_RADIUS_NODES).toBe(18);
   });
 
+  it('ATTACK looks no farther with a bow that reaches past 18', () => {
+    const LONG_BOW_REACH = SIGHT_RADIUS_NODES + 5;
+    const base = combatCadenceContent();
+    const content = {
+      ...base,
+      weapons: base.weapons.map((w) => (w.jobType === SOLDIER_BOW ? { ...w, maxRange: LONG_BOW_REACH } : w)),
+    };
+    for (const [off, found] of [
+      [SIGHT_RADIUS_NODES, true],
+      [SIGHT_RADIUS_NODES + 1, false],
+    ] as const) {
+      const s = new Simulation({ seed: 1, content, map: grass(MAP_CELLS, 2) });
+      const archer = unit(s, 0, P0, MILITARY_MODE.ATTACK, SOLDIER_BOW);
+      const enemy = unit(s, off, P1, MILITARY_MODE.IGNORE, WOMAN);
+      combatSystem(s.world, ctxOf(s));
+      expect(held(s, archer)).toBe(found ? enemy : undefined);
+    }
+  });
+
   it('counts its reach in map points, where a diagonal half as wide as it is tall comes free', () => {
     const ROWS = SIGHT_RADIUS_NODES; // an even row span, so no half-node lean applies
     const FREE_COLUMNS = ROWS / 2;

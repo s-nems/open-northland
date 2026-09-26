@@ -5,6 +5,7 @@ import {
   Building,
   CurrentAtomic,
   diplomacyStance,
+  Engagement,
   Equipment,
   Health,
   Owner,
@@ -933,6 +934,22 @@ describe('vehicles as targets', () => {
     s.enqueue(playerCommand(P1, { kind: 'attackUnit', entity: soldier, target }));
     const wrecked = collect(s, 400, ['vehicleDestroyed']);
     expect(wrecked.map((ev) => (ev.kind === 'vehicleDestroyed' ? ev.entity : -1))).toEqual([target]);
+  });
+
+  it('a fighter looking for an enemy takes a vehicle ahead of a nearer house', () => {
+    const s = sim(grass(30, 10));
+    const soldier = fighterAt(s, 10, 8, P1);
+    houseAt(s, 14, 8, P2, TOUGH_HOUSE);
+    const cart = createVehicle(s.world, ctxOf(s), {
+      vehicleType: HANDCART,
+      x: 20,
+      y: 8,
+      tribe: VIKING,
+      owner: P2,
+    });
+    if (cart === null) throw new Error('cart');
+    combatSystem(s.world, ctxOf(s));
+    expect(s.world.get(soldier, Engagement).target).toBe(cart);
   });
 
   it("a trained swordsman's blow on a vehicle is the bare column, unraised by his experience", () => {

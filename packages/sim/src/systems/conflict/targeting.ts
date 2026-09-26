@@ -31,7 +31,7 @@ import { vehicleWeapon } from './weapons.js';
 
 /**
  * How far (map points) an owned combatant looks for an enemy to advance on - the radius an ATTACK fighter
- * scans around itself, and a fleeing unit for a threat. Original behavior.
+ * scans around itself whatever its weapon's reach, and a fleeing unit for a threat. Original behavior.
  */
 export const SIGHT_RADIUS_NODES = 18;
 
