@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import type { Simulation } from '@open-northland/sim';
 import { createSceneSim, getScene } from '../../../src/scenes/index.js';
 import { hasRealIr, loadContentUnderTest } from '../../content/helpers.js';
-import { realMapPath, realMapWorld } from '../../content/real-map-world.js';
+import { realMapPath, realMapSessionWorld } from '../../content/real-map-world.js';
 
 /**
  * The worlds the cross-engine determinism check runs in every JavaScript engine, each paired with the
@@ -38,6 +38,7 @@ const SCENE_HASH_EVERY = 20;
 
 /** No audio, and no fullscreen prompt to take the session's first gesture away from the probe. */
 const COMMON_QUERY = 'sound=off&fullscreen=off';
+const MAP_QUERY = `map=${MAP_ID}&ai=${AI_SEATS.join(',')}&player=observer&${COMMON_QUERY}`;
 
 function scene() {
   const found = getScene(SCENE_ID);
@@ -61,16 +62,11 @@ export const ENGINE_WORKLOADS: readonly EngineWorkload[] = [
   },
   {
     id: MAP_ID,
-    query: `map=${MAP_ID}&ai=${AI_SEATS.join(',')}&player=observer&${COMMON_QUERY}`,
+    query: MAP_QUERY,
     endTick: MAP_TICKS,
     hashEvery: MAP_HASH_EVERY,
     available: () => hasRealIr() && existsSync(realMapPath(MAP_ID)),
-    build: async () => {
-      // `berryBushes` and the observer seat mirror the entry: it spawns the map's bushes and, for an
-      // observer, grants the assistant to the AI seats alone.
-      const { sim } = await realMapWorld({ mapId: MAP_ID, aiSeats: AI_SEATS, berryBushes: true });
-      return sim;
-    },
+    build: () => realMapSessionWorld(MAP_QUERY),
   },
 ];
 
