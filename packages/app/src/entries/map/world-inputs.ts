@@ -1,11 +1,13 @@
 import type { ContentSet, MapScript, TerrainMapFile } from '@open-northland/data';
 import { type GameSession, localPlayerOf } from '@open-northland/lockstep';
+import { DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
 import { type Entity, parseSaveGame, type SaveGame } from '@open-northland/sim';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { sessionWorldOptions } from '../../game/session-world.js';
 import { mapScriptWorld } from '../../game/world/mission-script.js';
 import { servedOverLoopback } from '../../session/worker/loopback.js';
+import type { RelayedBuild } from '../../session/worker/net-world-port.js';
 import type { WorkerSessionOptions } from '../../session/worker/protocol.js';
 import type { BuiltWorld, HostedBuild } from '../../session/worker/serve.js';
 import { saveDocumentOf } from '../../view/runtime/save-load/codec.js';
@@ -73,12 +75,15 @@ export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapW
   };
 }
 
+/** The inputs a host builds its world from, the save it restores from held on its own side. */
+export type MapWorldDocuments = Omit<MapWorldInputs, 'save'>;
+
 /**
  * The worker's boot message: the inputs with the staged save as the text it was staged as. The text
  * crosses as one string; the parsed save of the six-AI magiczny_las world at tick 40000 took about
  * 200 ms of this thread's time to post.
  */
-export interface MapWorkerBoot extends Omit<MapWorldInputs, 'save'> {
+export interface MapWorkerBoot extends MapWorldDocuments {
   readonly saveText: string | null;
 }
 
@@ -90,4 +95,16 @@ export function buildMapWorkerWorld(
   const { saveText, ...inputs } = boot;
   const save = saveText === null ? null : parseSaveGame(saveDocumentOf(saveText));
   return servedOverLoopback(buildMapWorldFromInputs({ ...inputs, save }), options);
+}
+
+/** A relayed session's world: restored from the snapshot the relay served, else from the boot's save
+ *  or its descriptor. */
+export function buildRelayedMapWorld(
+  boot: MapWorkerBoot,
+  snapshot: SaveGame | null,
+): RelayedBuild<MapWorldPlacements> {
+  const { saveText, ...inputs } = boot;
+  const save = snapshot ?? (saveText === null ? null : parseSaveGame(saveDocumentOf(saveText)));
+  const world = buildMapWorldFromInputs({ ...inputs, save });
+  return { ...world, generation: save === null ? DESCRIPTOR_WORLD : save.header.tick };
 }

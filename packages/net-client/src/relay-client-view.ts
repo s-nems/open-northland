@@ -4,22 +4,30 @@ import type { CommandEnvelope, SaveGame } from '@open-northland/sim';
 import type { RelayLobby } from './lobby.js';
 import type { ClockState } from './relay-state.js';
 
-type LobbyAction =
-  | 'listRooms'
-  | 'createRoom'
-  | 'joinRoom'
-  | 'leaveRoom'
-  | 'claimSeat'
-  | 'setSeat'
-  | 'setSettings'
-  | 'requestInitialSave'
-  | 'requestMap'
-  | 'setCompatibility'
-  | 'setReady'
-  | 'start'
-  | 'say'
-  | 'kick'
-  | 'sendBlob';
+/** The lobby requests a display makes of the client, by the `RelayLobby` method that sends each. */
+const LOBBY_ACTIONS = [
+  'listRooms',
+  'createRoom',
+  'joinRoom',
+  'leaveRoom',
+  'claimSeat',
+  'setSeat',
+  'setSettings',
+  'requestInitialSave',
+  'requestMap',
+  'setCompatibility',
+  'setReady',
+  'start',
+  'say',
+  'kick',
+  'sendBlob',
+] as const satisfies readonly (keyof RelayLobby)[];
+
+export type LobbyAction = (typeof LOBBY_ACTIONS)[number];
+
+export function isLobbyAction(name: string): name is LobbyAction {
+  return (LOBBY_ACTIONS as readonly string[]).includes(name);
+}
 
 /** What a display reads of a relayed session's client and asks of it, whether the client runs beside
  *  it or elsewhere: the relay's lobby and session state, the clock of the adopted world, and requests. */

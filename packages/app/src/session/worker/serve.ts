@@ -100,10 +100,10 @@ export function serveSession<B, E>(port: SessionPort, build: WorldBuilder<B, E>)
   });
 }
 
-type Post<E> = (message: FromWorker<E>, transfer?: readonly ArrayBuffer[]) => void;
+export type Post<E> = (message: FromWorker<E>, transfer?: readonly ArrayBuffer[]) => void;
 
 /** The worker's side of a running session: its sim, driver, clock and the batches it owes the runtime. */
-class ServedSession<E> {
+export class ServedSession<E> {
   private readonly sim: Simulation;
   private readonly driver: SessionDriver;
   private readonly offClock: OffClockRun | undefined;
