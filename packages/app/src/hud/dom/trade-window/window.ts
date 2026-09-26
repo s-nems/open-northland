@@ -21,13 +21,12 @@ import { createTransfersList } from './transfers.js';
 /** Design px (FOUNDATION.md, "Okno handlu"): two stock lists side by side, and on the 1365 px plane
  *  of a 1280 × 720 screen the centred window still clears the 318 px settler panel. */
 const TRADE_WINDOW_W = 720;
-/** The window painted out of sight for its warm-up frame, and stepped aside for the action ring. */
+/** The window painted out of sight for its warm-up frame. */
 const WARM_CLASS = 'on-window--warm';
-const VEIL_CLASS = 'on-window--veiled';
 /** The fill's holes over the two houses' portraits (foundation.css `--hole-a-*`, `--hole-b-*`). */
 const HOLE_A = 'hole-a';
 const HOLE_B = 'hole-b';
-/** A closed or veiled window paints no portrait. */
+/** A closed window paints no portrait. */
 const NO_PORTRAITS: readonly HousePortrait[] = [];
 
 /** The tool panel's central windows (construction, residents, ...), which the trade window shares the
@@ -73,7 +72,8 @@ export interface TradeWindow {
   refresh(): void;
   onDismiss(listener: () => void): void;
   claims(clientX: number, clientY: number): boolean;
-  veil(on: boolean): void;
+  /** The client right edge while the window shows, else null. */
+  clientRight(): number | null;
   /** Paint once out of sight at map start, so the first open costs no first-paint work. */
   warm(model: SettlerPanelModel): void;
   /** The houses' portraits while the window shows; the same list while nothing moved. */
@@ -143,10 +143,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
   globalThis.addEventListener('resize', invalidate);
   const resizes = new ResizeObserver(invalidate);
   resizes.observe(window.element);
-  const showing = (): boolean =>
-    window.isOpen() &&
-    !window.element.classList.contains(WARM_CLASS) &&
-    !window.element.classList.contains(VEIL_CLASS);
+  const showing = (): boolean => window.isOpen() && !window.element.classList.contains(WARM_CLASS);
 
   const paint = (trade: TradePanelModel): void => {
     shown = trade;
@@ -220,10 +217,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
       const hit = document.elementFromPoint(clientX, clientY);
       return hit !== null && window.element.contains(hit);
     },
-    veil(on): void {
-      if (on) tips.hide();
-      window.element.classList.toggle(VEIL_CLASS, on);
-    },
+    clientRight: () => (showing() ? window.element.getBoundingClientRect().right : null),
     warm(model): void {
       const trade = windowRoute(model);
       if (trade === null) return;

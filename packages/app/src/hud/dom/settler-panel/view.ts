@@ -28,8 +28,11 @@ export interface SettlerPanel {
   browse(step: 1 | -1): boolean;
   /** The HUD scale changed: the portraits' boxes are measured again. */
   invalidate(): void;
-  /** Step aside (unseen, no pointer, no portrait) while the ring opened from the panel is up. */
+  /** Step aside (unseen, no pointer, no portrait) while the ring opened from the panel is up. The
+   *  trade window stays: the ring keeps right of it (`tradeWindowRight`). */
   veil(on: boolean): void;
+  /** The trade window's client right edge while it is open, else null. */
+  tradeWindowRight(): number | null;
   /** Once a frame: the trade window follows the plane and yields to a beam window, and the transfer
    *  lines fit again after another section or the plane changed size. */
   refresh(): void;
@@ -219,10 +222,8 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       tradeWindow.invalidate();
     },
     tradePortraits: () => tradeWindow.portraits(),
-    veil(on): void {
-      frame.veil(on);
-      tradeWindow.veil(on);
-    },
+    veil: (on) => frame.veil(on),
+    tradeWindowRight: () => tradeWindow.clientRight(),
     dispose(): void {
       deps.hoverCard.hide();
       deps.tooltip.hide();

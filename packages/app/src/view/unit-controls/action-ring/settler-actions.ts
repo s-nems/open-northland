@@ -155,7 +155,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
           ? null
           : {
               ...toCanvas(pin.x, pin.y),
-              rightBound: pin.keepLeftOf === undefined ? null : toCanvas(pin.keepLeftOf, 0).x,
+              leftBound: pin.keepRightOf === undefined ? null : toCanvas(pin.keepRightOf, 0).x,
             };
       menu = null;
     };
@@ -198,16 +198,22 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       }
       // A caller without a pointer sample falls back to the selection centroid on the session's first
       // frame, then freezes it like any other anchor.
-      anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y), rightBound: null };
+      anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y), leftBound: null };
       if (menu === null || !sameIds(menu.ids, centre.ids)) {
         menu = {
           ids: centre.ids,
           groups: actionRingMenu(allowedActions(opts.content, snapshot, centre.ids)),
         };
       }
-      const screenW =
-        anchor.rightBound === null ? app.screen.width : Math.min(app.screen.width, anchor.rightBound);
-      layout = layoutActionRing(menu.groups, anchor.x, anchor.y, scale, screenW, app.screen.height);
+      layout = layoutActionRing(
+        menu.groups,
+        anchor.x,
+        anchor.y,
+        scale,
+        app.screen.width,
+        app.screen.height,
+        anchor.leftBound ?? 0,
+      );
       visuals.placeLayout(layout);
       root.visible = true;
     };
@@ -246,8 +252,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       close: closeMenu,
       claimsPointer: input.claimsPointer,
       handleEscape: (): boolean => {
-        if (mode !== 'jobs') return false;
-        closeJobWindow();
+        if (mode === 'closed') return false;
+        if (mode === 'jobs') closeJobWindow();
+        else closeMenu();
         return true;
       },
       state: () => ({ mode, anchor, pickerScrollTop: picker.scrollTop() }),

@@ -30,6 +30,7 @@ import {
   selectionCentre,
 } from './action-ring/index.js';
 import type { EquipPickController } from './equip-picker.js';
+import { createRingVeil } from './ring-veil.js';
 import type { UnitSelection } from './selection.js';
 import { type SettlerContractCommands, settlerPanelActions } from './settler-panel.js';
 import type { UnitControlsOptions } from './types.js';
@@ -72,7 +73,8 @@ export interface UnitChromeHandle {
   /** Escape: close the trade window; false when it was not open. */
   closeTradeWindow(): boolean;
   tradeWindowOpen(): boolean;
-  /** Once a frame: the trade window follows the plane and yields to a beam window. */
+  /** Once a frame: the settler panel comes back once the ring it stepped aside for is down, and the
+   *  trade window follows the plane and yields to a beam window. */
   refreshWindows(): void;
   /** The partner pick named a person: wed them. */
   marryPartner(settler: number, partner: number): void;
@@ -120,13 +122,11 @@ export async function createUnitChrome(
   const hoverContext = { buildings: opts.content.buildings, goods: opts.content.goods };
   // Its own chip: the Pixi details panel hides the shared one on every canvas mouse move off its rows.
   const panelChip = createTooltip();
-  /** The ring is up from a press in the panel, which stepped aside for it until the ring closes. */
-  let veiled = false;
-  const unveil = (): void => {
-    if (!veiled) return;
-    veiled = false;
-    settlerPanel.veil(false);
-  };
+  // The ring is down when it closed, or when its selection went and it lost its pin.
+  const veil = createRingVeil({ veil: (on) => settlerPanel.veil(on) }, () => {
+    const ring = mounts.current().actions.state();
+    return ring.mode !== 'closed' && ring.anchor !== null;
+  });
   // Mounted once on the plane, which scales as a whole: a HUD scale change remounts only the Pixi parts.
   const settlerPanel = createSettlerPanel({
     plane: opts.domHud.plane,
@@ -146,9 +146,11 @@ export async function createUnitChrome(
         selectGroup: callbacks.selectGroup,
         centre,
         openOrders: (press) => {
-          mounts.current().actions.open({ x: press.x, y: press.y });
-          veiled = true;
-          settlerPanel.veil(true);
+          const edge = settlerPanel.tradeWindowRight();
+          mounts
+            .current()
+            .actions.open({ x: press.x, y: press.y, ...(edge === null ? {} : { keepRightOf: edge }) });
+          veil.raise();
         },
         assignWorkplace: callbacks.assignWorkplace,
         assignHome: callbacks.assignHome,
@@ -383,14 +385,12 @@ export async function createUnitChrome(
     browse: settlerPanel.browse,
     closeTradeWindow: settlerPanel.closeTradeWindow,
     tradeWindowOpen: settlerPanel.tradeWindowOpen,
-    refreshWindows: settlerPanel.refresh,
-    marryPartner,
-    renderPanel: (snapshot) => {
-      // The ring is down when it closed, or when its selection went and it lost its pin.
-      const ring = mounts.current().actions.state();
-      if (veiled && (ring.mode === 'closed' || ring.anchor === null)) unveil();
-      mounts.current().panel.render(snapshot, panelIds());
+    refreshWindows: () => {
+      veil.refresh();
+      settlerPanel.refresh();
     },
+    marryPartner,
+    renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
     setHudHidden: (hidden) => {
       hudHidden = hidden;
       const { panel, actions } = mounts.current();

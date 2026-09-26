@@ -363,7 +363,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {
       e.preventDefault();
     } else if (e.code === 'Escape') {
-      // Escape steps back one level: job list, the trade window, an armed pick mode, the selection.
+      // Escape steps back one level: the ring (its job list first), the trade window, an armed pick
+      // mode, the selection.
       if (chrome.actions().handleEscape()) return;
       if (chrome.closeTradeWindow()) return;
       if (pickMode.isArmed()) {
@@ -391,7 +392,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     signpostPlacementActive: pickMode.signpostActive,
     workFlagPlacementActive: pickMode.flagActive,
     claimsEscape: () =>
-      chrome.actions().state().mode === 'jobs' ||
+      chrome.actions().state().mode !== 'closed' ||
       chrome.tradeWindowOpen() ||
       pickMode.isArmed() ||
       selection.ids().size > 0,

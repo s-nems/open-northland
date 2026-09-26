@@ -122,19 +122,26 @@ function boundsOf(rects: readonly Rect[]): Rect {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
-/** Shift a placed set by the smallest delta that pulls its bounds fully inside `[0,w]×[0,h]` (rigid move). */
-function clampOnScreen(placed: PlacedActionCommand[], screenW: number, screenH: number): ActionRingLayout {
+/** The smallest delta that pulls `[start, start + size]` inside `[min, max]`, or 0 when it is wider. */
+function clampSpan(start: number, size: number, min: number, max: number): number {
+  if (size > max - min) return 0;
+  if (start < min) return min - start;
+  if (start + size > max) return max - (start + size);
+  return 0;
+}
+
+/** Shift a placed set by the smallest delta that pulls its bounds fully inside `[left,w]×[0,h]` (rigid
+ *  move); a menu wider than that band keeps inside `[0,w]` instead. */
+function clampOnScreen(
+  placed: PlacedActionCommand[],
+  left: number,
+  screenW: number,
+  screenH: number,
+): ActionRingLayout {
   const b = boundsOf(placed.map((p) => p.rect));
-  let dx = 0;
-  let dy = 0;
-  if (b.w <= screenW) {
-    if (b.x < 0) dx = -b.x;
-    else if (b.x + b.w > screenW) dx = screenW - (b.x + b.w);
-  }
-  if (b.h <= screenH) {
-    if (b.y < 0) dy = -b.y;
-    else if (b.y + b.h > screenH) dy = screenH - (b.y + b.h);
-  }
+  const minX = b.w <= screenW - left ? left : 0;
+  const dx = clampSpan(b.x, b.w, minX, screenW);
+  const dy = clampSpan(b.y, b.h, 0, screenH);
   const moved =
     dx === 0 && dy === 0
       ? placed
@@ -144,9 +151,10 @@ function clampOnScreen(placed: PlacedActionCommand[], screenW: number, screenH: 
 
 /**
  * Lay the menu's arms out around a screen-space centre, then nudge the whole menu inside
- * `[0,screenW]x[0,screenH]`. `scale` is the ring's effective scale, where sub-1 values are legal. The
- * clamp uses the actual button bounds rather than the original's nominal 232 px box, so a long arm
- * overflowing that box is covered too.
+ * `[left,screenW]x[0,screenH]`, where `left` is the edge of a window the menu must not open under
+ * (0 for none). `scale` is the ring's effective scale, where sub-1 values are legal. The clamp uses
+ * the actual button bounds rather than the original's nominal 232 px box, so a long arm overflowing
+ * that box is covered too.
  */
 export function layoutActionRing(
   groups: readonly ActionGroup[],
@@ -155,10 +163,11 @@ export function layoutActionRing(
   scale: number,
   screenW: number,
   screenH: number,
+  left = 0,
 ): ActionRingLayout {
   const placed: PlacedActionCommand[] = [];
   for (const g of groups) placed.push(...placeArm(g, centreX, centreY, scale));
-  return clampOnScreen(placed, screenW, screenH);
+  return clampOnScreen(placed, left, screenW, screenH);
 }
 
 /**

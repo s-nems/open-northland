@@ -2426,8 +2426,7 @@ body.on-drag-scroll-cursor-hidden * {
   pointer-events: none;
 }
 /* Stepped aside for the action ring opened from the panel, which is drawn on the canvas under it. */
-.on-hud .on-selection--veiled,
-.on-hud .on-window--veiled {
+.on-hud .on-selection--veiled {
   visibility: hidden;
   pointer-events: none;
 }

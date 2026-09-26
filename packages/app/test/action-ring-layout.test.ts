@@ -124,6 +124,17 @@ describe('action-ring-layout - arm footprint', () => {
     // The whole menu shifted as a rigid body - relative spacing is preserved (bottom row still 32 apart).
     expect(xOf(l, 'haveBoy') - xOf(l, 'haveGirl')).toBe(32);
   });
+
+  it('keeps right of a window edge when the band fits the menu, and on-screen when it does not', () => {
+    const arms = [trio(BOTTOM_ARM, BOTTOM_TRIO), trio(TOP_ARM, TOP_TRIO), trio(RIGHT_ARM, TOP_TRIO)];
+    const edge = 700;
+    const kept = layoutActionRing(arms, 720, 400, 1, 1000, 800, edge);
+    expect(kept.bounds.x).toBe(edge);
+    expect(kept.bounds.x + kept.bounds.w).toBeLessThanOrEqual(1000);
+    // A band narrower than the menu leaves it where the screen alone puts it.
+    const tight = layoutActionRing(arms, 720, 400, 1, 1000, 800, 950);
+    expect(tight).toEqual(layoutActionRing(arms, 720, 400, 1, 1000, 800));
+  });
 });
 
 describe('action-ring-layout - hit-test (a click → the right order)', () => {

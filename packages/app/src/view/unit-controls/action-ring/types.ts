@@ -46,8 +46,9 @@ export interface SettlerActions {
   close(): void;
   /** True when a client point is over a visible menu button; the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** Consume Escape while the job list is open: closes it back to the ring and keeps the selection.
-   *  unit-controls consults this before its own Escape fallback, so listener order never matters. */
+  /** Consume Escape while the menu is up: the job list steps back to the ring, the ring closes, and
+   *  the selection and any open window stay. unit-controls consults this before its own Escape
+   *  fallback, so listener order never matters. */
   handleEscape(): boolean;
   state(): SettlerActionsState;
   restore(state: SettlerActionsState): void;
@@ -55,19 +56,19 @@ export interface SettlerActions {
 }
 
 /** Where the menu pins: a client (CSS) point, as the original pins on the cursor at bring-up, and for a
- *  press from inside the selection panel that panel's client left edge, which the whole menu keeps
- *  left of so no arm opens under it. */
+ *  press from the settler panel while the trade window is open that window's client right edge, which
+ *  the whole menu keeps right of so no arm opens under it. */
 export interface RingPin {
   readonly x: number;
   readonly y: number;
-  readonly keepLeftOf?: number;
+  readonly keepRightOf?: number;
 }
 
-/** The pin in screen (canvas) px; `rightBound` is the panel's edge, null for the open screen. */
+/** The pin in screen (canvas) px; `leftBound` is the window's edge, null for the open screen. */
 export interface RingAnchor {
   readonly x: number;
   readonly y: number;
-  readonly rightBound: number | null;
+  readonly leftBound: number | null;
 }
 
 export interface SettlerActionsState {

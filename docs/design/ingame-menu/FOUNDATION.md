@@ -259,7 +259,7 @@ assistive tech.
 - Live: the window repaints from the settler panel's model every tick, rebuilding a list only when
   its set of goods changes and otherwise rewriting words and attributes, so counters, tooltips and
   the hover card never flicker.
-- Closing: the cross, Esc (after the action ring's job list, before an armed pick and the selection),
+- Closing: the cross, Esc (after an open action ring, before an armed pick and the selection),
   another selection, or a route that loses an own house. Esc or the cross hands focus back to
   "Konfiguruj handel". It takes turns with the beam's windows: opening it closes the open one, and a
   beam window opened later closes it.
@@ -275,7 +275,9 @@ type (12.5 px) with 4 px between them, and an owner line only when it says somet
 person, a child's age). The orders medallion and a right click on the portrait open the action ring
 around the cursor, as a right click on the figure in the world does; the panel steps aside (unseen,
 taking no pointer) while that ring is up, since the ring is drawn on the canvas under the plane, and
-comes back the moment the ring closes. The kicker browses the trade:
+comes back the moment the ring closes, whether an order, Space or Esc closed it (Esc closes the ring
+first and keeps the selection). An open trade window stays: that ring keeps right of its edge, so no
+arm opens under it. The kicker browses the trade:
 chevrons on both sides and "2 / 5" step to the previous or next person of the same trade and bring
 them into view (Tab and Shift+Tab do the same while the panel is open and no field or other window
 has the focus); they are absent while the person is the only one of the trade. A double click on
