@@ -145,8 +145,8 @@ export const battleWearyScene: SceneDefinition = {
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   needs: true,
-  // The picket falls near tick 150 and the raider soon after; the warband eats, sleeps and is up again
-  // well inside the tail.
+  // The picket falls by tick 130 and the raider by 240; the warband eats, sleeps and is up again well
+  // inside the tail.
   runTicks: 900,
   initialZoom: 0.55,
   checks: [
