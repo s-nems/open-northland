@@ -75,7 +75,8 @@ export interface PerfReport {
 export interface OpenNorthlandDebug {
   /** The world as the runtime reads it; `run` steps a paused session for the cross-engine probes. */
   readonly host: SessionHost;
-  /** Live instances, read-only: a console mutation bypasses the runtime and voids the frame. */
+  /** Live instances, read-only: the runtime owns their state, and no replay or bundle reproduces a
+   *  console mutation of them. */
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet | undefined;
   readonly cameraCtl: CameraController;

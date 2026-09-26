@@ -245,11 +245,10 @@ A running game exposes `window.__opennorthland`. Besides the session `host` (the
 reads it: `tick`, `snapshot()`, `hashState()`, and `run(ticks)` to step a paused session), the live
 `renderer`, `sheet` and `cameraCtl`, it answers `perf()` with one JSON-serialisable performance
 report, so an automated probe reads numbers instead of screenshotting the on-canvas readout.
-`resetPerf()` opens a fresh measurement
-window, and `setSpeed()` / `setPaused()` put the session into a state worth measuring: `setSpeed(1)`
-gives a baseline the per-frame step cap cannot distort, and pausing isolates the render half of a
-frame. Read `sampling.hidden` before trusting any timing: a background tab throttles its frame loop
-and every millisecond becomes fiction.
+`resetPerf()` opens a fresh measurement window, and `setSpeed()` / `setPaused()` put the session into
+a state worth measuring: `setSpeed(1)` gives a baseline the per-frame step cap cannot distort, and
+pausing isolates the render half of a frame. Read `sampling.hidden` before trusting any timing: a
+background tab throttles its frame loop and every millisecond becomes fiction.
 
 A stored fullscreen preference is taken back on the session's first gesture, so a probe that clicks
 resizes the viewport mid-measurement and also records its own window mode. Add `&fullscreen=off` to a
@@ -404,9 +403,11 @@ join with:
 Each window sits in the first open seat and reports ready on its own; the creator starts once
 everyone is. The reconnect token is stored separately for each relay origin and path; the nickname is
 shared in stored settings. A reload rejoins the same seat; two windows of one browser profile share
-the identity for that relay, so give the second a private window
-or another profile. Enter opens the chat line. The perf overlay's third line and `perf().net` carry
-the round trip, the assigned input delay, the click-to-apply time and the jitter buffer's depth.
+the identity for that relay, so give the second a private window or another profile. Enter opens the
+chat line. The perf overlay's third line and `perf().net` carry the round trip, the assigned input
+delay, the click-to-apply time and the jitter buffer's depth. The runtime has no write access to the
+world, so a forced divergence for a resync check runs in the headless multi-client harness under
+`packages/net-server/test/support/`, not from a browser console.
 
 ## Build version
 

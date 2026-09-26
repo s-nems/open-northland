@@ -11,7 +11,7 @@ import { type EngineWorkload, hashGrid } from './workloads.js';
 /** Boots the app in one JavaScript engine and reads its state hashes on a workload's tick grid. */
 
 /** The part of the app's debug handle this harness drives, read inside the page. */
-type SimHandle = Pick<OpenNorthlandDebug, 'host' | 'setPaused'>;
+type HostHandle = Pick<OpenNorthlandDebug, 'host' | 'setPaused'>;
 
 export type EngineId = 'chromium' | 'electron' | 'firefox' | 'webkit';
 
@@ -168,7 +168,7 @@ async function pauseAt(page: Page, errors: readonly string[]): Promise<number> {
     throw err;
   }
   return page.evaluate(() => {
-    const debug: SimHandle | undefined = window.__opennorthland;
+    const debug: HostHandle | undefined = window.__opennorthland;
     if (debug === undefined) throw new Error('the game view installed no debug handle');
     debug.setPaused(true);
     return debug.host.tick;
@@ -177,7 +177,7 @@ async function pauseAt(page: Page, errors: readonly string[]): Promise<number> {
 
 async function hashAt(page: Page, tick: number): Promise<string> {
   const result = await page.evaluate((target) => {
-    const debug: SimHandle | undefined = window.__opennorthland;
+    const debug: HostHandle | undefined = window.__opennorthland;
     if (debug === undefined) throw new Error('the game view installed no debug handle');
     debug.host.run(target - debug.host.tick);
     return { tick: debug.host.tick, hash: debug.host.hashState() };
