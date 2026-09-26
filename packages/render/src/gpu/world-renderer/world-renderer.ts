@@ -254,6 +254,7 @@ export class WorldRenderer {
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
     this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha);
     const portraitRef = this.portrait.subjectRef();
+    const portraitHouse = this.portrait.subjectHouse();
     this.pool.reconcile({
       snapshot,
       viewport: vp,
@@ -271,6 +272,7 @@ export class WorldRenderer {
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(portraitRef !== null ? { portraitRef } : {}),
+      ...(portraitHouse !== null ? { portraitHouse } : {}),
     });
     this.marks.draw({
       snapshot,

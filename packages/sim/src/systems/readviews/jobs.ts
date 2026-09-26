@@ -64,6 +64,15 @@ export function jobIgnoresHomeHouse(content: ContentSet, jobType: number | null)
   return jobType !== null && contentIndex(content).jobs.get(jobType)?.ignoresHomeHouse === true;
 }
 
+/**
+ * Whether the player sets what the trade makes or gathers (`jobtypes.ini` `userCanChangeProductionFlag`;
+ * the hunter's is 0, so it takes every good of every kill). A record without the flag reads as
+ * changeable. The production counters of a trade that cannot change them never apply.
+ */
+export function jobChangesProduction(content: ContentSet, jobType: number | null): boolean {
+  return jobType !== null && contentIndex(content).jobs.get(jobType)?.changesProduction !== false;
+}
+
 /** The transport trade, for the same row-holding callers as {@link isFighterJobRow}. */
 export function isCarrierJobRow(job: Pick<JobType, 'id'>): boolean {
   return isCarrierJobId(job.id);

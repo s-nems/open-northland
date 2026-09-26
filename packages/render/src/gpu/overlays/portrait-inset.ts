@@ -11,6 +11,9 @@ export interface PortraitInsetFrame {
   readonly rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
   readonly entityRef: number;
   readonly kind: 'settler' | 'building';
+  /** A settler subject's building while it is inside one: kept through the cull for the portrait and
+   *  framed whenever the scene draws no figure for the subject (nothing choreographs it in there). */
+  readonly inside?: number;
 }
 
 /**
@@ -69,6 +72,11 @@ export class PortraitInsetLayer {
     return this.frame?.entityRef ?? null;
   }
 
+  /** The building the settler subject is inside, kept through the cull so the portrait can frame it. */
+  subjectHouse(): number | null {
+    return this.frame?.inside ?? null;
+  }
+
   /**
    * The inset camera framing (world centre + px-per-world scale), or null when the entity wasn't drawn
    * this frame. A building fits its static drawn bounds in the box; a settler frames a fixed window off
@@ -81,14 +89,25 @@ export class PortraitInsetLayer {
   ): { cx: number; cy: number; scale: number } | null {
     if (f.kind === 'settler') {
       const anchor = this.pool.anchorOf(f.entityRef);
-      if (anchor === undefined) return null;
+      if (anchor === undefined) {
+        // Hidden inside a building the scene shows nobody in: the cutout frames the building instead.
+        return f.inside === undefined ? null : this.buildingFraming(f.inside, w, h);
+      }
       return {
         cx: anchor.x,
         cy: anchor.y - SETTLER_VIEW_HEIGHT * (SETTLER_FEET_FRACTION - 0.5),
         scale: h / SETTLER_VIEW_HEIGHT,
       };
     }
-    const bounds = this.pool.boundsOf(f.entityRef);
+    return this.buildingFraming(f.entityRef, w, h);
+  }
+
+  private buildingFraming(
+    ref: number,
+    w: number,
+    h: number,
+  ): { cx: number; cy: number; scale: number } | null {
+    const bounds = this.pool.boundsOf(ref);
     if (bounds === undefined) return null;
     const cx = (bounds.minX + bounds.maxX) / 2;
     const cy = (bounds.minY + bounds.maxY) / 2;

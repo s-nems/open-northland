@@ -57,6 +57,8 @@ export interface SandboxJob {
   /** `jobtypes.ini` `needsReligionFlag` / `ignoresHomeHouseFlag`, stamped from the catalog's own sets. */
   readonly needsReligion?: boolean;
   readonly ignoresHomeHouse?: boolean;
+  /** `jobtypes.ini` `userCanChangeProductionFlag`, 0 on the hunter alone among the sandbox trades. */
+  readonly changesProduction?: boolean;
 }
 
 /** Extracted `jobtypes.ini` 15 `allowatomic 33/81`; the rebase-exempt hunter slot shares it by identity. */
@@ -101,6 +103,7 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       id: 'hunter',
       name: professionLabel('hunter'),
       allowedAtomics: HUNTER_JOB_ATOMICS,
+      changesProduction: false,
     },
     {
       typeId: JOB_FISHER,

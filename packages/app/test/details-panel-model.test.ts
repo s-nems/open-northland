@@ -37,7 +37,6 @@ import {
   GOOD_HANDCART,
   GOOD_HOLY_OIL,
   GOOD_IRON,
-  GOOD_MEAT,
   GOOD_MUD,
   GOOD_MUSHROOM,
   GOOD_PLANK,
@@ -59,7 +58,7 @@ import {
   type SettlerPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
-import { jobDisplayName } from '../src/hud/details-panel/model/context.js';
+import { goodLabel, jobDisplayName } from '../src/hud/details-panel/model/context.js';
 import { experienceShown, type PanelBar } from '../src/hud/details-panel/model/index.js';
 import { messages } from '../src/i18n/index.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
@@ -908,24 +907,42 @@ describe('selection details panel model', () => {
     expect(model.production?.rows.map((row) => row.count)).toEqual([0, 3, 11, 11, 11, 11]);
   });
 
-  // The HQ has no raw meat slot - it banks a hunter's kill as food - so a raw-slot-only menu filter drops
-  // Mięso and leaves the settlement's hunter unable to be pinned to his own product. Twin of the sim's
-  // forage filter and of `setGatherGood`'s gate, which read the same banked form.
-  it('offers an HQ hunter the meat his larder banks as food', () => {
-    const snapshot = snapshotOf([
+  // `jobtypes.ini` marks the hunter `userCanChangeProductionFlag 0`: the sim ignores its counters, so
+  // the panel lists no products for him, at his HQ post and at his flag alike.
+  it('lists no products for the hunter, whose production the player cannot set', () => {
+    const posted = snapshotOf([
       buildingEntity(2, BUILDING_HEADQUARTERS),
+      { id: 1, components: { Settler: { tribe: 1, jobType: JOB_HUNTER }, JobAssignment: { workplace: 2 } } },
+    ]);
+    const model = buildUnitPanelModel(posted, new Set([1]), sandboxCtx());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.workplace?.target?.id).toBe(2);
+    expect(model.production).toBeNull();
+
+    const flagged = snapshotOf([
       {
         id: 1,
-        components: {
-          Settler: { tribe: 1, jobType: JOB_HUNTER },
-          JobAssignment: { workplace: 2 },
-        },
+        components: { Settler: { tribe: 1, jobType: JOB_HUNTER }, WorkFlag: { flag: 2, radius: 24 } },
       },
     ]);
-    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
-    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    const atFlag = buildUnitPanelModel(flagged, new Set([1]), sandboxCtx());
+    if (atFlag.kind !== 'settler') throw new Error('expected a settler model');
+    expect(atFlag.production).toBeNull();
+  });
 
-    expect(model.production?.rows.map((row) => row.goodType)).toContain(GOOD_MEAT);
+  it('names the building the person stepped into, for the portrait to frame', () => {
+    const inside = snapshotOf([
+      buildingEntity(2, BUILDING_HEADQUARTERS),
+      { id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Resting: { at: 2 } } },
+    ]);
+    const model = buildUnitPanelModel(inside, new Set([1]), sandboxCtx());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.inside).toBe(2);
+
+    const outside = snapshotOf([{ id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } } }]);
+    const walking = buildUnitPanelModel(outside, new Set([1]), sandboxCtx());
+    if (walking.kind !== 'settler') throw new Error('expected a settler model');
+    expect(walking.inside).toBeNull();
   });
 
   it('locks a needforgood-gated ware in the gather list until the settler earns it', () => {
@@ -1303,6 +1320,7 @@ describe('settler upcoming-unlock rows', () => {
   const SOLDIER_JOB = 33;
   const MET_JOB = 11;
   const FOREIGN_JOB = 12;
+  const SEA_JOB = 26;
   const unlockCtx = (): UnitPanelModelContext => {
     const base = sandboxCtx();
     const tribe = base.tribes[0];
@@ -1346,6 +1364,22 @@ describe('settler upcoming-unlock rows', () => {
               experienceTypes: [WOOD_TRACK],
             },
             { requirement: 'need', target: 'job', targetId: FOREIGN_JOB, amount: 10, experienceTypes: [99] },
+            // The sea trader needs a harbour the game has none of: never a promise, however near.
+            {
+              requirement: 'need',
+              target: 'job',
+              targetId: SEA_JOB,
+              amount: 5,
+              experienceTypes: [WOOD_TRACK],
+            },
+            // A ware gate on the same track: shown as a good's row after the nearer job row.
+            {
+              requirement: 'need',
+              target: 'good',
+              targetId: GOOD_IRON,
+              amount: 20,
+              experienceTypes: [WOOD_TRACK],
+            },
           ],
         },
       ],
@@ -1359,13 +1393,17 @@ describe('settler upcoming-unlock rows', () => {
     },
   });
 
-  it('shows repeats-progress toward reachable unmet gates only (no fighters, no met, no foreign)', () => {
+  it('shows repeats-progress toward reachable unmet gates only (no fighters, no met, no foreign, no sea)', () => {
     const model = buildUnitPanelModel(snapshotOf([collector(1)]), new Set([1]), unlockCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    // Only the in-progress civilian gate survives: the soldier target is barracks territory, the met
-    // threshold has nothing left to promise, and the foreign-track requirement isn't this job's path.
-    expect(model.upcomingUnlocks.map((r) => ({ current: r.current, required: r.required }))).toEqual([
-      { current: 4, required: 10 },
+    // The in-progress civilian job gate and the ware gate survive, nearest first: the soldier target is
+    // barracks territory, the met threshold has nothing left to promise, the foreign-track requirement
+    // isn't this job's path, and the sea trade is off the profession roster.
+    expect(
+      model.upcomingUnlocks.map((r) => ({ unlocks: r.unlocks, current: r.current, required: r.required })),
+    ).toEqual([
+      { unlocks: jobDisplayName(unlockCtx(), GATED_JOB), current: 4, required: 10 },
+      { unlocks: goodLabel(unlockCtx(), GOOD_IRON), current: 4, required: 20 },
     ]);
     expect(model.upcomingUnlocks[0]?.track).toBe('Zbieracz Drewna'); // the tracked path named
   });

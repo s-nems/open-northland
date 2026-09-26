@@ -440,11 +440,9 @@ export const plGame = {
       importOff: 'Przywoź: {good}',
       agreement: 'Umowa',
       agreementTooltip: 'Umowa: {giveAmount} × {give} za {takeAmount} × {take}',
-      moreRows: '{count} więcej',
-      fewerRows: 'mniej',
       repeats: '{count} razy',
       repeatsBonus: '{count} razy, wydajność +{bonus}%',
-      unlockTooltip: 'Postęp do zawodu {job} przez {track}',
+      unlockTooltip: 'Odblokowuje: {unlocks} (doświadczenie: {track})',
     },
     residentsWindow: {
       title: 'Mieszkańcy',

@@ -35,7 +35,7 @@ export function planFisher(plan: PlannerContext): boolean {
   const { world, ctx, terrain, entity: fisher, here } = plan;
   if (!isFisherJob(ctx.content, plan.jobType)) return false;
   const fishGood = fishGoodOf(ctx.content);
-  if (fishGood === undefined || !gatherGoodOpen(world, fisher, fishGood)) return false;
+  if (fishGood === undefined || !gatherGoodOpen(world, ctx, fisher, plan.jobType, fishGood)) return false;
   if (!workplaceCanBankCatch(plan, edibleGoodFormOf(ctx.content, fishGood))) return false;
 
   const gates = {

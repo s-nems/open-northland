@@ -65,6 +65,7 @@ allowatomic 12
 allowatomic 19
 forbidatomic 88
 canBeTrainedFlag 0
+userCanChangeProductionFlag 0
 [jobtype]
 type 40
 name "reed & moss picker"

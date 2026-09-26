@@ -53,6 +53,15 @@ function threeGoodContent(): ContentSet {
   };
 }
 
+/** The three-good woodcutter as a trade whose production the player cannot set (`userCanChangeProductionFlag 0`). */
+function fixedProductionContent(): ContentSet {
+  const base = threeGoodContent();
+  return {
+    ...base,
+    jobs: base.jobs.map((job) => (job.typeId === WOODCUTTER ? { ...job, changesProduction: false } : job)),
+  };
+}
+
 function flagGatherer(sim: Simulation): Entity {
   const gatherer = makeWoodcutter(sim, 2, 0);
   sim.world.add(gatherer, Owner, { player: 0 });
@@ -160,6 +169,27 @@ describe('flag-bound gatherer - production counters', () => {
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: null });
     expect(sim.world.has(gatherer, ProductionCounters)).toBe(false);
     expect(sim.workStatus(gatherer)).toBeUndefined();
+  });
+
+  it('a trade whose production the player cannot set refuses the orders and gathers past stale counters', () => {
+    const sim = new Simulation({ seed: 4, content: fixedProductionContent(), map: grassMap(8, 1) });
+    const gatherer = flagGatherer(sim);
+    const tree = placeFellableTree(sim, 2, 0);
+    placeNode(sim, 2, STONE, STONE_HARVEST, 2);
+
+    setCount(sim, gatherer, WOOD, 0);
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: STONE });
+    setProductionGoods(sim.world, ctxOf(sim), {
+      kind: 'setProductionGoods',
+      entity: gatherer,
+      goods: [STONE],
+    });
+    expect(sim.world.has(gatherer, ProductionCounters)).toBe(false);
+
+    // Counters an earlier trade left behind do not hold the person either.
+    sim.world.add(gatherer, ProductionCounters, { counters: [[WOOD, 0]], cursor: 0 });
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(harvestTarget(sim, gatherer)).toBe(tree);
   });
 
   it('setProductionCount accepts a good the trade harvests and refuses any other', () => {

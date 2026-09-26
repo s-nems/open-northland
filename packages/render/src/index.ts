@@ -36,6 +36,7 @@ export {
   type HolyFireBinding,
   type HolyFireLookup,
   type InHouseProgramLookup,
+  indoorHouseOf,
   isIndoorSettler,
   palisadeStaggerX,
   type SceneGround,

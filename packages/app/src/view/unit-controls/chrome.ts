@@ -146,13 +146,25 @@ export async function createUnitChrome(
   const domPortrait = (): PortraitBox | null => {
     const shown = settlerPanel.portrait();
     if (shown === null) return null;
-    if (portraitMemo?.client !== shown.rect || portraitMemo.box.entityRef !== shown.entityRef) {
+    if (
+      portraitMemo?.client !== shown.rect ||
+      portraitMemo.box.entityRef !== shown.entityRef ||
+      portraitMemo.box.inside !== shown.inside
+    ) {
       const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
       const { left, top, width, height } = shown.rect;
       const from = clientToCanvas(scale, left, top);
       const to = clientToCanvas(scale, left + width, top + height);
       const rect = { x: from.x, y: from.y, w: to.x - from.x, h: to.y - from.y };
-      portraitMemo = { client: shown.rect, box: { entityRef: shown.entityRef, kind: 'settler', rect } };
+      portraitMemo = {
+        client: shown.rect,
+        box: {
+          entityRef: shown.entityRef,
+          kind: shown.kind,
+          ...(shown.inside === undefined ? {} : { inside: shown.inside }),
+          rect,
+        },
+      };
     }
     return portraitMemo.box;
   };

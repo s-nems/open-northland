@@ -1,3 +1,4 @@
+import { indoorHouseOf } from '@open-northland/render';
 import { systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   isPlayerControllable,
@@ -80,6 +81,8 @@ export interface SettlerPanelModel {
   readonly role: SettlerRole;
   /** Another seat's person: trade, name, owner line, state, health and workplace, no controls. */
   readonly foreign: boolean;
+  /** The building the person has stepped into, which the portrait frames instead; null out of doors. */
+  readonly inside: number | null;
   readonly renamable: boolean;
   /** The owner line: another seat's owner and stance, or a child's age; null when it says nothing. */
   readonly meta: string | null;
@@ -213,6 +216,7 @@ export function settlerPanelModel(
     jobType: jobType ?? null,
     role,
     foreign,
+    inside: indoorHouseOf(snapshot, comps),
     meta: metaLine(ctx, ent, foreign, role),
     status,
     bars,

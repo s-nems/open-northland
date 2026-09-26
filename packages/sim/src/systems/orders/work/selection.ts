@@ -19,6 +19,7 @@ import { holdToGatherGood, jobGatherGoods, jobGathersGood } from '../../economy/
 import { bindFreshFlag, jobUsesWorkFlag, liveWorkFlag, relocateWorkFlag } from '../../economy/work-flag.js';
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
+import { jobChangesProduction } from '../../readviews/jobs.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js';
 import { isOrderableSettler } from '../guards.js';
@@ -93,7 +94,8 @@ export function setGatherGood(
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
   const jobType = world.get(e, Settler).jobType;
-  if (jobType === null || jobGatherGoods(ctx, jobType).length === 0) return;
+  if (jobType === null || !jobChangesProduction(ctx.content, jobType)) return;
+  if (jobGatherGoods(ctx, jobType).length === 0) return;
   const goodType = command.goodType;
   if (goodType !== null && !jobGathersGood(ctx, jobType, goodType)) return;
   if (goodType !== null && liveWorkFlag(world, e) === undefined) {
@@ -116,12 +118,13 @@ export function setGatherGood(
 /**
  * The goods `e`'s production counters name, or undefined when `e` is no orderable worker with any: a
  * gathering trade's goods, else the recipe products of its workplace. The gather list wins, since such a
- * trade runs the gatherer drive, never the craft loop.
+ * trade runs the gatherer drive, never the craft loop. A trade the player cannot set the production of
+ * names none.
  */
 function productionGoodsOf(world: World, ctx: SystemContext, e: Entity): readonly number[] | undefined {
   if (!isOrderableSettler(world, e)) return undefined;
   const jobType = world.get(e, Settler).jobType;
-  if (jobType === null) return undefined;
+  if (jobType === null || !jobChangesProduction(ctx.content, jobType)) return undefined;
   const gathered = jobGatherGoods(ctx, jobType);
   if (gathered.length > 0) return gathered;
   const workplace = world.tryGet(e, JobAssignment)?.workplace;

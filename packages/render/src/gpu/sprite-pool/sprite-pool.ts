@@ -83,6 +83,9 @@ export interface PoolFrame {
   /** The details-panel portrait's subject: force-drawn through the cull so its cutout survives
    *  off-screen or indoors, but hidden on the main map (see {@link DrawItem.portraitOnly}). */
   readonly portraitRef?: number;
+  /** The building the portrait's settler subject is inside: kept through the cull in the subject's
+   *  place while nothing choreographs the subject in there (see {@link SpriteSceneOptions.portraitHouse}). */
+  readonly portraitHouse?: number;
 }
 
 /** One camera framing of a {@link SpritePool.portraitPass} render; the size is the render target's
@@ -242,6 +245,7 @@ export class SpritePool {
       ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
       ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
       ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
+      ...(frame.portraitHouse !== undefined ? { portraitHouse: frame.portraitHouse } : {}),
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
     this.sceneCache.store(frame, scene);

@@ -2373,7 +2373,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-selection__title {
   margin: 0;
-  font: 700 15px / 1 var(--font-title);
+  font: 600 12.5px / 1 var(--font-title);
   letter-spacing: 0.02em;
   color: var(--text-hi);
   text-shadow: 0 2px 2px #000;
@@ -2419,18 +2419,20 @@ body.on-drag-scroll-cursor-hidden * {
   opacity: 0;
   pointer-events: none;
 }
-/* Head: the kicker browses the trade with its chevrons, the name renames under the pen. */
+/* Head: the kicker browses the trade with its chevrons, the name renames under the pen. The trade is
+   what the player checks, so it carries the weight; the name sits smaller under it. */
 .on-hud .on-kicker {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 0 0 2px;
-  font: 700 10px var(--font-body);
-  letter-spacing: 0.14em;
+  margin: 0 0 1px;
+  font: 700 13px / 1.2 var(--font-body);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--bronze);
 }
 .on-hud .on-kicker small {
+  font-size: 11px;
   font-weight: 400;
   letter-spacing: 0;
   color: var(--muted);
@@ -2866,21 +2868,6 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--ink);
   box-shadow: inset 0 1px 3px #0006;
 }
-.on-hud .on-more {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--bronze);
-  font: inherit;
-  font-size: 12px;
-  font-variant: normal;
-  letter-spacing: 0;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
-.on-hud .on-more:hover {
-  color: var(--bronze-hi);
-}
 
 /* ---------- settler panel: portrait row, status, production, trade ---------- */
 /* The frame with a column beside it: the sockets at the top, the status strip along the frame's
@@ -3083,11 +3070,28 @@ body.on-drag-scroll-cursor-hidden * {
   margin: 0 2px;
   stroke-width: 2.4;
 }
-.on-hud .on-experience .on-ledger--more {
-  display: none;
+/* Doświadczenie: the trained tracks two to a line, the unlocks and their meters across both columns. */
+.on-hud .on-experience {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 14px;
 }
-.on-hud .on-experience--open .on-ledger--more {
-  display: flex;
+.on-hud .on-experience .on-ledger {
+  min-width: 0;
+}
+.on-hud .on-selection .on-experience .on-ledger > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The repeats and the bonus are the point of the row: the label gives way, never the number. */
+.on-hud .on-selection .on-experience .on-ledger__value {
+  flex: 0 0 auto;
+}
+.on-hud .on-experience__wide {
+  grid-column: 1 / -1;
 }
 .on-hud .on-ledger--unlock {
   margin-bottom: 2px;

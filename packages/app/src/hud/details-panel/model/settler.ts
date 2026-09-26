@@ -151,9 +151,9 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   return rows.map(({ label, repeats, bonusPct, own }) => ({ label, repeats, bonusPct, own }));
 }
 
-/** The rows the Doświadczenie section shows before its fold: the current trade's, at most
+/** The rows the Doświadczenie section shows, two to a line: the current trade's, at most
  *  {@link EXPERIENCE_SHOWN_MAX}, or the single best-trained one for a person without a trained trade. */
-export const EXPERIENCE_SHOWN_MAX = 3;
+export const EXPERIENCE_SHOWN_MAX = 6;
 
 export function experienceShown(rows: readonly ExperienceRowModel[]): number {
   const own = rows.filter((row) => row.own).length;

@@ -58,6 +58,10 @@ export interface SpriteSceneOptions {
    *  indoor-settler suppression would drop it, so its live cutout never blanks. Absent = no portrait
    *  open. */
   readonly portraitRef?: number | undefined;
+  /** The building the portrait's settler subject is inside. With it named, a subject nothing
+   *  choreographs in there is left hidden (no frozen figure over the panel's backdrop) and the building
+   *  is emitted through the cull in its place, so the portrait can frame the house the person went into. */
+  readonly portraitHouse?: number | undefined;
   /** Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
    *  default. Absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
@@ -103,6 +107,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     ghosts,
     keepIndoorSettlers,
     portraitRef,
+    portraitHouse,
     playerColourOf,
     inHousePrograms,
     holyFire,
@@ -131,7 +136,9 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     if (kind === null) return;
     const pos = readPosition(components);
     if (pos === null) return;
-    const isPortrait = portraitRef !== undefined && entity.id === portraitRef;
+    const isPortrait =
+      (portraitRef !== undefined && entity.id === portraitRef) ||
+      (portraitHouse !== undefined && entity.id === portraitHouse);
     collected.add(entity.id);
     // An indoor settler stays live and pooled but draws nothing, unless kept or forced here - or unless
     // it is performing a craft the content choreographs, which the house then shows it doing. The portrait
@@ -157,6 +164,8 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
 
     const inHouse = craft !== undefined ? inHouseDrawAt(craft, inHousePrograms) : undefined;
     if (craft !== undefined && inHouse === undefined && !isPortrait) return;
+    // The portrait subject inside a house nothing shows it in: with the house named, the house stands in.
+    if (isPortrait && hiddenIndoors && inHouse === undefined && portraitHouse !== undefined) return;
     const pose =
       inHouse?.pose ??
       (kind === 'settler' && !indoorSettler

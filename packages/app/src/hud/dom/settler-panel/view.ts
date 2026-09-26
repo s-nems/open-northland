@@ -17,8 +17,8 @@ export interface SettlerPanel {
   /** Show the model when it is a single settler, else hide. */
   update(model: UnitPanelModel): void;
   hide(): void;
-  /** The shown settler and the client box the renderer paints its live figure into. */
-  portrait(): { readonly entityRef: number; readonly rect: ClientRect } | null;
+  /** The shown person and the client box the renderer paints its live figure into. */
+  portrait(): PortraitSubject | null;
   claims(clientX: number, clientY: number): boolean;
   /** Tab and Shift+Tab: show the next or previous person of the trade; false when there is none. */
   browse(step: 1 | -1): boolean;
@@ -28,6 +28,15 @@ export interface SettlerPanel {
    *  the icons, so the first selection costs no first-paint work. */
   warm(goodIds: readonly string[]): void;
   dispose(): void;
+}
+
+/** The portrait hole's subject and its client box; `inside` names the building the person stepped
+ *  into, for the renderer to frame while it draws no figure for them. */
+export interface PortraitSubject {
+  readonly entityRef: number;
+  readonly kind: 'settler';
+  readonly inside?: number;
+  readonly rect: ClientRect;
 }
 
 export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
@@ -62,14 +71,14 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const military = createMilitarySection(deps, entity);
   const trade = createTradeSection(deps, current);
   const experience = createExperienceSection();
-  const sections = (model: SettlerPanelModel, fresh: boolean): void => {
+  const sections = (model: SettlerPanelModel): void => {
     portrait.update(model);
     needs.update(model);
     work.update(model);
     production.update(model);
     military.update(model);
     trade.update(model);
-    experience.update(model, fresh);
+    experience.update(model);
   };
   frame.body.append(
     portrait.element,
@@ -101,20 +110,26 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       shown = model;
       peers = model.foreign ? NO_PEERS : peerIndex.peersOf(model.entityId, model.jobType, fresh);
       frame.updateHead(settlerHead(model, peers, ordersKey()));
-      sections(model, fresh);
+      sections(model);
       frame.show();
     },
     hide,
     warm(goodIds): void {
       const model = warmModel(goodIds);
       frame.updateHead(settlerHead(model, NO_PEERS, ordersKey()));
-      sections(model, true);
+      sections(model);
       frame.warm();
     },
-    portrait(): { readonly entityRef: number; readonly rect: ClientRect } | null {
+    portrait(): PortraitSubject | null {
       if (shown === null) return null;
       const rect = frame.holeClientRect();
-      return rect === null ? null : { entityRef: shown.entityId, rect };
+      if (rect === null) return null;
+      return {
+        entityRef: shown.entityId,
+        kind: 'settler',
+        ...(shown.inside === null ? {} : { inside: shown.inside }),
+        rect,
+      };
     },
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
     browse,

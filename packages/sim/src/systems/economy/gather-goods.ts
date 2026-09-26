@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
-import { isFisherJob } from '../readviews/index.js';
+import { isFisherJob, jobChangesProduction } from '../readviews/index.js';
 import { fishGoodOf } from './fish.js';
 import { jobCanHarvestGood } from './work-flag.js';
 
@@ -44,14 +44,23 @@ export function jobGathersGood(ctx: ContentContext, jobType: number, goodType: n
   return jobGatherGoods(ctx, jobType).includes(goodType);
 }
 
-/** Whether `e`'s counters still let it gather `goodType`: the counter is at least one. */
-export function gatherGoodOpen(world: World, e: Entity, goodType: number): boolean {
+/** Whether `e`'s counters still let it gather `goodType`: the counter is at least one, or the trade
+ *  holds no counters the player can set ({@link jobChangesProduction}). */
+export function gatherGoodOpen(
+  world: World,
+  ctx: ContentContext,
+  e: Entity,
+  jobType: number | null,
+  goodType: number,
+): boolean {
+  if (!jobChangesProduction(ctx.content, jobType)) return true;
   return productionCountOf(world.tryGet(e, ProductionCounters), goodType) >= 1;
 }
 
 /**
  * The goods of `jobType` that `e`'s counters still let it gather, or undefined when it holds no counters
- * and so gathers every one.
+ * and so gathers every one. A trade whose production the player cannot change gathers every good,
+ * whatever counters an earlier trade left on the person.
  */
 export function openGatherGoods(
   world: World,
@@ -59,6 +68,7 @@ export function openGatherGoods(
   e: Entity,
   jobType: number,
 ): ReadonlySet<number> | undefined {
+  if (!jobChangesProduction(ctx.content, jobType)) return undefined;
   const counters = world.tryGet(e, ProductionCounters);
   if (counters === undefined) return undefined;
   return new Set(jobGatherGoods(ctx, jobType).filter((g) => productionCountOf(counters, g) >= 1));

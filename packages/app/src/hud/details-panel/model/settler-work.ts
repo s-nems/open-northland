@@ -96,12 +96,15 @@ export function settlerWork(
     return goodExperienceLock(ctx, comps, progressionGated, goodType);
   };
   const counters = productionCounters(comps);
+  // A trade the player cannot set the production of (the hunter) lists no products: the sim ignores
+  // its counters, so a row would promise a choice that changes nothing.
+  const chooses = ctx.jobs.find((job) => job.typeId === jobType)?.changesProduction !== false;
 
   if (comps.WorkFlag !== undefined) {
     const goods = harvestableGoodsFor(ctx, jobType);
     return {
       place: { id: null, label: messages().hud.workFlag },
-      production: gatherProduction(ctx, goods, experienceGate, counters),
+      production: chooses ? gatherProduction(ctx, goods, experienceGate, counters) : null,
       lesson: null,
     };
   }
@@ -126,6 +129,7 @@ export function settlerWork(
   );
   const def = buildingDef(ctx, rawType);
   const place: SettlerPlace = { id: workplaceId, label: buildingTitle(ctx, rawType) };
+  if (!chooses) return { place, production: null, lesson: null };
   // The gather list wins over the craft list: such a job runs the sim's gather drive, never the craft
   // loop.
   const harvestable = harvestableGoodsFor(ctx, jobType);

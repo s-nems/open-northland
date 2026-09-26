@@ -214,7 +214,8 @@ on the beam opens it at once.
 ### Settler panel
 
 The selected person's panel (ticket 08), bottom right, 318 px wide, in the window frame. The head
-carries the trade as the bronze kicker over the person's name, an owner line only when it says
+carries the trade as the bronze kicker (13 px, the line the player checks) over the person's name in
+smaller type (12.5 px), an owner line only when it says
 something (another seat's person, a child's age), and two medallions: the gold orders one, with the
 ring glyph and the ring hotkey in its tooltip, opens the action ring beside the cursor, pushed left
 so that no arm opens under the panel (gold, so a new player finds the ring; absent for another
@@ -231,7 +232,9 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
 
 - Portrait row: the live settler in the 96 × 92 px framed portrait is the centre-view button. The
   renderer paints its world cutout on the canvas under the plane, through a hole the panel's fill
-  leaves at the frame. The column beside it holds the equipment as two rows of 30 px sockets at the
+  leaves at the frame. A person inside a building shows the building instead, fitted to the frame
+  (a craft the content choreographs still shows the worker at it), never an empty frame or a frozen
+  figure on the panel's backdrop. The column beside it holds the equipment as two rows of 30 px sockets at the
   top and the status strip along the frame's floor. The sockets are the slots the person's kind
   has: the worn row in a fixed order (Broń, Zbroja, Narzędzia, Buty; a worker has the last two, a
   soldier Broń, Zbroja, Buty, a hero its fixed arms as flat frameless sockets) and the four-cell
@@ -291,8 +294,9 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   original's "Tylko produkuj").
   A product not yet earned is listed faded with a lock, the requirement and progress in the
   tooltip; the lock opens the good's Knowledge page once the Knowledge window exists. Products rotate
-  one unit at a time in good order, as the sim does today; a job whose `userCanChangeProductionFlag` is
-  0 (the hunter) shows no counters.
+  one unit at a time in good order, as the sim does today. A job whose `userCanChangeProductionFlag` is
+  0 (the hunter, who takes every good of every kill) has no Produkcja section at all: the sim ignores
+  its counters and refuses the orders that would set them.
 - Wojsko, for a soldier and a hero: Postawa as a three-way segmented control (Atak, Obrona, Ignoruj;
   a fleeing unit lights none) and Jedzenie i sen as Dozwolone / Zabronione, the same orders the action
   ring issues. Every segmented strip is the same width (174 px) with its options sharing it equally,
@@ -303,13 +307,15 @@ explanatory lines, no help buttons. Review states: `settler.js` in the mockup, s
   remove button. Umowa lists the map's agreements as
   single-choice chips drawn as "2 [wood] → 1 [leather]". The route the trader drives is in the
   status line.
-- Doświadczenie: one ledger row per trained specialization of the current trade (at most three, or
-  the single best-trained one for a person without a trade), the bonus percent in green (the tooltip
-  spells it out); every other track folds behind an "N więcej" toggle at the right of the section
-  title, so the fold costs no row. Every fight track counts as a soldier's and a hero's own
-  (approximation: the weapon a class fights with is not read). Then the upcoming unlocks as lock-marked "job (track)" rows with
-  "current / required" and a thin meter, the first two shown and the rest behind the same fold, so a
-  gatherer's six goods and four unlocks still fit the plane. The section is absent when there is
+- Doświadczenie: the trained specializations of the current trade as ledger rows two to a line (at
+  most six, or the single best-trained one for a person without a trade; the rest are not listed,
+  nothing folds), the bonus percent in green (the tooltip spells it out). Every fight track counts as
+  a soldier's and a hero's own (approximation: the weapon a class fights with is not read). Then the
+  upcoming discoveries across the whole width, at most three, nearest first: lock-marked "what
+  (track)" rows with "current / required" and a thin meter, for the professions and the goods the
+  tribe's `needforjob` and `needforgood` tables gate behind this trade's tracks (a potter reads how
+  many pots until tiles). A gated profession the picker never offers (the sea trades need a harbour
+  the game has none of) and a fighter trade are not promised. The section is absent when there is
   nothing to list.
 - No footer and no button row: the portrait centres, the head's gold medallion orders, the
   profession change is the ring's (and its hotkey's).

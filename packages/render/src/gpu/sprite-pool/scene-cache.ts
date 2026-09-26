@@ -15,6 +15,7 @@ export interface SceneFrameKey {
   readonly fogEpoch?: number | undefined;
   readonly ghosts?: readonly FogGhost[] | undefined;
   readonly portraitRef?: number | undefined;
+  readonly portraitHouse?: number | undefined;
 }
 
 /** {@link SceneFrameKey} flattened to identity/value comparisons. `staticCount` trips on in-place
@@ -32,6 +33,7 @@ interface StoredInputs {
   readonly fogEpoch: number | undefined;
   readonly ghosts: readonly FogGhost[] | undefined;
   readonly portraitRef: number | undefined;
+  readonly portraitHouse: number | undefined;
 }
 
 /** A fog cull without an epoch has no change signal, so such a frame never keys the cache. */
@@ -63,7 +65,8 @@ export class SpriteSceneCache {
       c.fogVisible === frame.fogVisible &&
       c.fogEpoch === frame.fogEpoch &&
       c.ghosts === frame.ghosts &&
-      c.portraitRef === frame.portraitRef
+      c.portraitRef === frame.portraitRef &&
+      c.portraitHouse === frame.portraitHouse
     ) {
       return this.scene;
     }
@@ -90,6 +93,7 @@ export class SpriteSceneCache {
       fogEpoch: frame.fogEpoch,
       ghosts: frame.ghosts,
       portraitRef: frame.portraitRef,
+      portraitHouse: frame.portraitHouse,
     };
     this.scene = scene;
   }

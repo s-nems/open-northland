@@ -4,7 +4,7 @@ import type { SettlerPanelModel } from '../../details-panel/model/index.js';
  * A made-up person that lights every part of the panel at once: sockets worn and empty, a bag, a
  * status with a carried good, bars at every tone, seat rows with a link, a missing seat and a refused
  * button, craft rows with a live, a stopped and a locked product, the military choices, a trade route
- * with imports and offers, and folded experience. The panel paints it once at map start
+ * with imports and offers, and experience with an unlock. The panel paints it once at map start
  * (`SettlerPanel.warm`), so the browser's first raster of these styles (each a pipeline it compiles
  * on first use) happens behind the loading screen, not on the first click. Only the shapes matter;
  * the words are never read.
@@ -28,6 +28,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     jobType: null,
     role: 'worker',
     foreign: false,
+    inside: null,
     renamable: true,
     meta: 'Warm',
     status: {
@@ -86,7 +87,7 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       { label: 'Warm', repeats: 1, bonusPct: 5, own: true },
       { label: 'Warm', repeats: 1, bonusPct: null, own: false },
     ],
-    upcomingUnlocks: [{ job: 'Warm', track: 'warm', current: 1, required: 4 }],
+    upcomingUnlocks: [{ unlocks: 'Warm', track: 'warm', current: 1, required: 4 }],
     equipmentRows: [
       {
         slotLabel: 'Warm',

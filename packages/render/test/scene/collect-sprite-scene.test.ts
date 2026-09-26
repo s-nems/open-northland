@@ -205,4 +205,20 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     expect(subject?.frozen).toBe(true);
     expect(subject?.state).toBe('idle');
   });
+
+  it('portraitHouse leaves the unchoreographed indoor subject hidden and forces its house through the cull', () => {
+    const near = tileToScreen(40, 40);
+    const viewport = { minX: near.x - 10, maxX: near.x + 10, minY: near.y - 10, maxY: near.y + 10 };
+    const snapshot = snapshotOf([
+      entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+      entity(1, 2, 2, { Settler: { tribe: 0 }, Resting: { at: 10 } }),
+    ]);
+    // Control: both are off screen, and the subject alone would be force-drawn as the frozen figure.
+    expect(collectSpriteScene(snapshot, { viewport }).items).toEqual([]);
+    expect(collectSpriteScene(snapshot, { viewport, portraitRef: 1 }).items.map((d) => d.ref)).toEqual([1]);
+    const framed = collectSpriteScene(snapshot, { viewport, portraitRef: 1, portraitHouse: 10 });
+    expect(framed.items.map((d) => d.ref)).toEqual([10]);
+    expect(framed.items[0]?.portraitOnly).toBe(true);
+    expect(framed.liveRefs.has(1)).toBe(true); // still live and pooled, only undrawn
+  });
 });

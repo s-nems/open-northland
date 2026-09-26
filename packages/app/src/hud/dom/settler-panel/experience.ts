@@ -6,7 +6,7 @@ import {
   type UnlockProgressRowModel,
 } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setClass, setHidden, write } from '../parts/dom.js';
+import { element } from '../parts/dom.js';
 import { createLedger, type Ledger, type LedgerModel } from '../parts/ledger.js';
 import { createSection } from '../parts/section.js';
 
@@ -28,87 +28,64 @@ function trainedRow(row: ExperienceRowModel): LedgerModel {
 
 function unlockRow(row: UnlockProgressRowModel): LedgerModel {
   return {
-    label: row.job,
+    label: row.unlocks,
     labelGlyph: GLYPH.lock,
     labelNote: `(${row.track})`,
-    tooltip: formatMessage(messages().hud.settlerPanel.unlockTooltip, { job: row.job, track: row.track }),
+    tooltip: formatMessage(messages().hud.settlerPanel.unlockTooltip, {
+      unlocks: row.unlocks,
+      track: row.track,
+    }),
     value: [{ text: `${row.current} / ${row.required}` }],
   };
 }
 
-/** The upcoming unlocks shown before the fold: a gatherer with six goods and four unlocks would
- *  otherwise push the panel past the plane. */
-export const UNLOCKS_SHOWN_MAX = 2;
-
-/** Doświadczenie: the current trade's tracks and the first upcoming unlocks with a thin meter each; the
- *  rest of both fold behind one "N więcej" in the title. */
+/** Doświadczenie: the current trade's tracks two to a line, then the upcoming unlocks with a thin meter
+ *  each, across the whole width. Nothing folds: the model caps both lists so the panel keeps the plane. */
 export interface ExperienceSection {
   readonly element: HTMLElement;
-  update(model: SettlerPanelModel, structural: boolean): void;
+  update(model: SettlerPanelModel): void;
 }
 
 export function createExperienceSection(): ExperienceSection {
-  const toggle = button('on-more');
-  const title = createSection(toggle);
+  const title = createSection();
   const rows = element('div', 'on-experience');
   const root = element('div', '');
   root.append(title.element, rows);
-  let open = false;
   let trained: Ledger[] = [];
   let unlocks: { ledger: Ledger; meter: HTMLElement }[] = [];
-  let hidden = 0;
-  const paintToggle = (): void => {
-    const copy = messages().hud.settlerPanel;
-    setHidden(toggle, hidden === 0);
-    write(toggle, open ? copy.fewerRows : formatMessage(copy.moreRows, { count: hidden }));
-    setAttribute(toggle, 'aria-expanded', String(open));
-    setClass(rows, 'on-experience--open', open);
-  };
-  toggle.addEventListener('click', () => {
-    open = !open;
-    paintToggle();
-  });
 
   return {
     element: root,
-    update(model, structural): void {
-      const empty = model.experience.length === 0 && model.upcomingUnlocks.length === 0;
-      setHidden(root, empty);
+    update(model): void {
+      const shown = experienceShown(model.experience);
+      const empty = shown === 0 && model.upcomingUnlocks.length === 0;
+      root.hidden = empty;
       if (empty) return;
-      if (structural) open = false;
       title.update(messages().hud.experience);
-      if (trained.length !== model.experience.length || unlocks.length !== model.upcomingUnlocks.length) {
-        trained = model.experience.map(() => createLedger());
-        unlocks = model.upcomingUnlocks.map(() => ({
-          ledger: createLedger(),
-          meter: element('div', 'on-meter on-meter--mini'),
-        }));
+      if (trained.length !== shown || unlocks.length !== model.upcomingUnlocks.length) {
+        trained = model.experience.slice(0, shown).map(() => createLedger());
+        unlocks = model.upcomingUnlocks.map(() => {
+          const ledger = createLedger();
+          ledger.element.classList.add('on-ledger--unlock', 'on-experience__wide');
+          return { ledger, meter: element('div', 'on-meter on-meter--mini on-experience__wide') };
+        });
         rows.replaceChildren(
           ...trained.map((ledger) => ledger.element),
           ...unlocks.flatMap((unlock) => [unlock.ledger.element, unlock.meter]),
         );
       }
-      const shown = experienceShown(model.experience);
-      const shownUnlocks = Math.min(model.upcomingUnlocks.length, UNLOCKS_SHOWN_MAX);
-      hidden = model.experience.length - shown + model.upcomingUnlocks.length - shownUnlocks;
-      model.experience.forEach((row, index) => {
-        const ledger = trained[index];
-        if (ledger === undefined) return;
-        ledger.update(trainedRow(row));
-        setClass(ledger.element, 'on-ledger--more', index >= shown);
+      trained.forEach((ledger, index) => {
+        const row = model.experience[index];
+        if (row !== undefined) ledger.update(trainedRow(row));
       });
       model.upcomingUnlocks.forEach((row, index) => {
         const unlock = unlocks[index];
         if (unlock === undefined) return;
         unlock.ledger.update(unlockRow(row));
-        setClass(unlock.ledger.element, 'on-ledger--unlock', true);
-        setClass(unlock.ledger.element, 'on-ledger--more', index >= shownUnlocks);
-        setClass(unlock.meter, 'on-ledger--more', index >= shownUnlocks);
         const width = `${Math.round((row.current / Math.max(1, row.required)) * 100)}%`;
         if (unlock.meter.style.getPropertyValue('--value') !== width)
           unlock.meter.style.setProperty('--value', width);
       });
-      paintToggle();
     },
   };
 }

@@ -19,7 +19,7 @@ export {
   type Viewport,
   visibleTileRange,
 } from './projection/index.js';
-export { isIndoorSettler } from './scene/snapshot-index.js';
+export { indoorHouseOf, isIndoorSettler } from './scene/snapshot-index.js';
 export type { SceneGround } from './scene/terrain-scene.js';
 export {
   averagePatternColour,

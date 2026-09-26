@@ -29,11 +29,17 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
         forbiddenAtomics: getIntList(sec, 'forbidatomic'),
         needsReligion: getInt(sec, 'needsReligionFlag') === 1,
         ignoresHomeHouse: getInt(sec, 'ignoresHomeHouseFlag') === 1,
+        changesProduction: optionalFlag(getInt(sec, 'userCanChangeProductionFlag')),
         source: makeSource(src, 'jobtype'),
       }),
     );
   }
   return jobs;
+}
+
+/** A `0`/`1` flag the record may leave out; the reader owns the default for an absent one. */
+function optionalFlag(value: number | undefined): boolean | undefined {
+  return value === undefined ? undefined : value === 1;
 }
 
 /** A track always names its owning `job`, so a record without one throws. */

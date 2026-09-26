@@ -99,19 +99,29 @@ export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> 
 }
 
 /**
- * Whether the scene hides this settler inside a building: a `Resting` marker in its workplace, or a
- * goods exchange against an enterable store played as the generic pick-up rather than the store's own
- * outdoor action. Shared so an overlay does not hang over an empty doorway the scene drew nobody in.
+ * The building the scene hides this settler inside, or null: the `Resting` marker's building, or an
+ * enterable store the settler exchanges goods with through the generic pick-up rather than the store's
+ * own outdoor action. Shared so an overlay does not hang over an empty doorway the scene drew nobody
+ * in, and so the portrait can frame the building instead.
  */
+export function indoorHouseOf(
+  snapshot: WorldSnapshot,
+  components: Readonly<Record<string, unknown>>,
+): number | null {
+  const resting = (components.Resting as { at?: unknown } | undefined)?.at;
+  if (typeof resting === 'number') return resting;
+  if ('Resting' in components) return null; // the marker without a readable building: indoors, unframed
+  const store = readStoreExchangeRef(components);
+  if (store === null || !enterableStoresOf(snapshot).has(store)) return null;
+  const acting = readActingAtomic(components);
+  return acting === null || !OUTDOOR_EXCHANGE_ATOMIC_IDS.has(acting) ? store : null;
+}
+
 export function isIndoorSettler(
   snapshot: WorldSnapshot,
   components: Readonly<Record<string, unknown>>,
 ): boolean {
-  if ('Resting' in components) return true;
-  const store = readStoreExchangeRef(components);
-  if (store === null || !enterableStoresOf(snapshot).has(store)) return false;
-  const acting = readActingAtomic(components);
-  return acting === null || !OUTDOOR_EXCHANGE_ATOMIC_IDS.has(acting);
+  return 'Resting' in components || indoorHouseOf(snapshot, components) !== null;
 }
 
 /**

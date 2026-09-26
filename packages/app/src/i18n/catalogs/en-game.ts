@@ -453,11 +453,9 @@ export const enGame = {
       importOff: 'Bring: {good}',
       agreement: 'Agreement',
       agreementTooltip: 'Agreement: {giveAmount} × {give} for {takeAmount} × {take}',
-      moreRows: '{count} more',
-      fewerRows: 'fewer',
       repeats: '{count} times',
       repeatsBonus: '{count} times, output +{bonus}%',
-      unlockTooltip: 'Progress to {job} through {track}',
+      unlockTooltip: 'Unlocks {unlocks} (experience: {track})',
     },
     residentsWindow: {
       title: 'Residents',

@@ -27,7 +27,7 @@ export {
   shotPath,
   shotPoseAt,
 } from './shot-flight.js';
-export { isIndoorSettler, siegeShotsOf } from './snapshot-index.js';
+export { indoorHouseOf, isIndoorSettler, siegeShotsOf } from './snapshot-index.js';
 export { depositVisualLevel } from './snapshot-readers/index.js';
 export { SpriteSpatialIndex } from './spatial-index.js';
 export { buildSpriteScene, collectSpriteScene, type LiveRefs, type SpriteScene } from './sprite-scene.js';
