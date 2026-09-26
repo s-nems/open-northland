@@ -40,10 +40,11 @@ const BANNER_BUTTON_STYLE = [
   'cursor:pointer',
 ].join(';');
 
-let banner: { readonly root: HTMLElement; readonly message: HTMLElement } | null = null;
+let banner: { readonly root: HTMLElement; readonly message: HTMLElement; cause: string | null } | null = null;
 
-/** Created lazily so the banner copy reads the locale active at crash time. */
-export function showCrashBanner(text: string): void {
+/** Created lazily so the banner copy reads the locale active at crash time. `cause` names a banner a
+ *  later {@link dismissCrashBanner} may take down; a crash without one replaces it for good. */
+export function showCrashBanner(text: string, cause: string | null = null): void {
   if (banner === null) {
     const copy = messages().hud;
     const root = document.createElement('div');
@@ -85,9 +86,17 @@ export function showCrashBanner(text: string): void {
       root.append(browser);
     }
     document.body.append(root);
-    banner = { root, message };
+    banner = { root, message, cause };
   }
   banner.message.textContent = text;
+  banner.cause = cause;
+}
+
+/** Take down the banner while it still shows what `cause` raised. */
+export function dismissCrashBanner(cause: string): void {
+  if (banner === null || banner.cause !== cause) return;
+  banner.root.remove();
+  banner = null;
 }
 
 let installed = false;

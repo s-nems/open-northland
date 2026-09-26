@@ -7,7 +7,7 @@ export {
   downloadDiagnosticsBundle,
   serializeDiagnosticsBundle,
 } from './bundle.js';
-export { installCrashCapture, showCrashBanner } from './crash.js';
+export { dismissCrashBanner, installCrashCapture, showCrashBanner } from './crash.js';
 export { debugFlags, hasDebugFlag, setDebugFlag } from './debug-flags.js';
 export { downloadFile, downloadJsonFile } from './download.js';
 export { logBootHeader } from './env-header.js';

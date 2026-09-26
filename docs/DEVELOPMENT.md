@@ -251,7 +251,12 @@ a state worth measuring: `setSpeed(1)` gives a baseline the per-frame step cap c
 pausing isolates the render half of a frame. The `?map=` entry runs its sim in a worker, which may
 have stepped past the drawn tick, so `await setPaused(true)` before reading `host.tick` as the tick
 the session stopped on. There `frame.simMs` and `window.simMsPerTick` time the worker's steps, and
-`frame.receiveMs` and `window.receiveMsPerTick` this thread's cost of taking them in. Read
+`frame.receiveMs` and `window.receiveMsPerTick` this thread's cost of taking them in; the receive cost
+counts message deserialization only in Chromium, which deserializes on the first read of the message,
+so elsewhere it is the mirror apply alone. A main thread that cannot keep up shows in
+`throughput.deliveredSpeed`, not in `droppedTicks`: the worker holds its clock two seconds of session
+time past the last delivered tick instead of dropping ticks, and a frame delivers at most
+`maxStepsPerFrame` ticks. Read
 `sampling.hidden` before trusting any timing: a background tab throttles its frame loop and every
 millisecond becomes fiction.
 

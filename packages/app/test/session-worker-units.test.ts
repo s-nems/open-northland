@@ -105,6 +105,7 @@ function inProcessSession(boot: TestWorldBoot, speed = 1, paused = true) {
   const batches: number[] = [];
   const port: SessionPort = {
     post: inner.post,
+    listenFailure: inner.listenFailure,
     close: () => {
       channel.port1.close();
       channel.port2.close();
@@ -146,10 +147,21 @@ describe('tick batch queue', () => {
 
       const ticks: number[] = [];
       const onTick = () => ticks.push(session.host.tick);
+      // The held ticks go out in batches of a frame's worth, and a frame delivers one frame's worth.
+      const frame = session.driver.maxStepsPerFrame;
+      const spanning = Array.from({ length: (RUN_TICKS - TICK_BATCHES_IN_FLIGHT) / frame }, () => frame);
       session.driver.advance(0, onTick);
-      while (batches.length <= TICK_BATCHES_IN_FLIGHT) await settle(TURN_MS);
-      expect(batches).toEqual([1, 1, RUN_TICKS - TICK_BATCHES_IN_FLIGHT]);
-      session.driver.advance(0, onTick);
+      while (batches.length < TICK_BATCHES_IN_FLIGHT + spanning.length) {
+        session.driver.advance(0, onTick);
+        await settle(TURN_MS);
+      }
+      expect(batches).toEqual([1, 1, ...spanning]);
+      while (ticks.length < RUN_TICKS) {
+        const before = ticks.length;
+        session.driver.advance(0, onTick);
+        expect(ticks.length - before).toBeLessThanOrEqual(frame);
+        await settle(TURN_MS);
+      }
       await run;
       expect(ticks).toEqual(Array.from({ length: RUN_TICKS }, (_, i) => start + 1 + i));
       expect(session.host.tick).toBe(start + RUN_TICKS);

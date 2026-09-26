@@ -11,6 +11,10 @@ export function nodeWorkerPort(worker: Worker): SessionPort {
     listen: (receive) => {
       worker.on('message', (message: unknown) => receive(message, UNMEASURED_MS));
     },
+    listenFailure: (fail) => {
+      worker.on('error', (error: Error) => fail(error));
+      worker.on('messageerror', (error: Error) => fail(error));
+    },
     close: () => void worker.terminate(),
   };
 }
@@ -21,6 +25,9 @@ export function nodeParentPort(port: MessagePort): SessionPort {
     post: (message, transfer = []) => port.postMessage(message, [...transfer]),
     listen: (receive) => {
       port.on('message', (message: unknown) => receive(message, UNMEASURED_MS));
+    },
+    listenFailure: (fail) => {
+      port.on('messageerror', (error: Error) => fail(error));
     },
     close: () => port.close(),
   };

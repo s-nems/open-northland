@@ -15,6 +15,7 @@ import type {
   SimEvent,
   SnapshotDelta,
 } from '@open-northland/sim';
+import type { DiagEntry } from '../../diag/log.js';
 import type { SessionHost, TickDiagnostics } from '../host.js';
 
 /**
@@ -198,13 +199,15 @@ export interface WorkerReady<E> {
   readonly timeOrigin: number;
   /** How long the worker took to build the world from its boot message. */
   readonly buildMs: number;
+  /** What the worker logged while it built the world, for the runtime's own log. */
+  readonly log: readonly DiagEntry[];
   /** What the world's builder hands the runtime beside the sim. */
   readonly extras: E;
 }
 
 export type FromWorker<E> =
   | { readonly kind: 'ready'; readonly ready: WorkerReady<E> }
-  | { readonly kind: 'bootFailed'; readonly error: WireError }
+  | { readonly kind: 'bootFailed'; readonly error: WireError; readonly log: readonly DiagEntry[] }
   | { readonly kind: 'ticks'; readonly batch: TickBatch }
   | { readonly kind: 'fog'; readonly update: FogUpdate }
   | {

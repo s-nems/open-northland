@@ -3,6 +3,7 @@ import {
   components,
   type EntitySnapshot,
   type ExportSaveOptions,
+  FOG_MODE,
   type FogMaskAnswer,
   type FogView,
   fogViewOfMask,
@@ -11,6 +12,7 @@ import {
   type SimEvent,
   SnapshotMirror,
 } from '@open-northland/sim';
+import { type DiagEntry, diag } from '../../diag/log.js';
 import type { SystemProfileRow } from '../../diag/system-profile.js';
 import type { OffThreadTickCost, SessionHost, StateHash, SystemSpanSink, TickDiagnostics } from '../host.js';
 import type { SessionPort } from './port.js';
@@ -22,7 +24,6 @@ import {
   type HostRequests,
   type TickBatch,
   type ToWorker,
-  type WireError,
   type WorkerCall,
   type WorkerReady,
   type WorkerSessionOptions,
@@ -106,6 +107,14 @@ export function startWorkerSession<B, E>(
     let client: WorkerClient<E> | null = null;
     const startMs = performance.now();
     let postMs = 0;
+    port.listenFailure((error) => {
+      if (client !== null) {
+        client.fail(error);
+        return;
+      }
+      port.close();
+      reject(error);
+    });
     port.listen((data, receiveMs) => {
       const message = data as FromWorker<E>;
       if (client !== null) {
@@ -113,9 +122,11 @@ export function startWorkerSession<B, E>(
         return;
       }
       if (message.kind === 'bootFailed') {
+        relayWorkerLog(message.log);
         port.close();
         reject(errorFromWire(message.error));
       } else if (message.kind === 'ready') {
+        relayWorkerLog(message.ready.log);
         client = new WorkerClient(port, message.ready, options, reports, timings);
         const bootCost = {
           postMs,
@@ -154,7 +165,8 @@ class WorkerClient<E> {
   private speed: number;
   private droppedTicks = 0;
   private lastCost: OffThreadTickCost = { simMs: 0, receiveMs: 0 };
-  private tickError: WireError | null = null;
+  /** A tick error the worker posted, or its own failure; `advance` rethrows it. */
+  private failure: Error | null = null;
   private started = false;
   private spans: SystemSpanSink | null = null;
   private disposed = false;
@@ -207,7 +219,7 @@ class WorkerClient<E> {
         return;
       }
       case 'tickError':
-        this.tickError = message.error;
+        this.fail(errorFromWire(message.error));
         return;
       case 'ready':
       case 'bootFailed':
@@ -229,22 +241,30 @@ class WorkerClient<E> {
     };
   }
 
+  /** The worker cannot go on: the next frame's `advance` throws, where the crash capture sees it. */
+  fail(error: Error): void {
+    this.failure ??= error;
+  }
+
   private post(message: ToWorker<unknown>): void {
     if (!this.disposed) this.port.post(message);
   }
 
-  /** Deliver every queued batch; see {@link startWorkerSession}. Then rethrows a tick error the worker
-   *  posted, after the ticks before it, where the inline driver's step would have thrown. */
+  /** Deliver the queued batches, a frame's worth of ticks; see {@link startWorkerSession}. Then rethrows
+   *  a failure: a tick error after the ticks before it, where the inline driver's step would have thrown. */
   private advance(onTick?: () => void): number {
     if (!this.started) {
       this.started = true;
       this.post({ kind: 'start' });
     }
     let delivered = 0;
+    let deliveredTicks = 0;
     let simMs = 0;
     let receiveMs = 0;
     const departed: EntitySnapshot[] = [];
-    while (this.queue.length > 0) {
+    // A frame delivers at most the inline driver's step cap of ticks, so a runtime catching up after
+    // a stall, such as a hidden tab, spreads the backlog's sounds and notes over its next frames.
+    while (this.queue.length > 0 && deliveredTicks < this.ready.maxStepsPerFrame) {
       const item = this.queue.shift();
       if (item === undefined) break;
       if (item.kind === 'fog') {
@@ -269,6 +289,7 @@ class WorkerClient<E> {
       }
       this.alpha.arrived(item.arrivedMs);
       delivered++;
+      deliveredTicks += batch.ticks.length;
     }
     this.tick = this.mirror.tick ?? this.tick;
     this.lastCost = { simMs, receiveMs };
@@ -277,7 +298,7 @@ class WorkerClient<E> {
       this.post({ kind: 'delivered', messages: delivered });
       this.settleWaiters();
     }
-    if (this.tickError !== null) throw errorFromWire(this.tickError);
+    if (this.failure !== null) throw this.failure;
     return this.alpha.at(performance.now());
   }
 
@@ -365,8 +386,16 @@ class WorkerClient<E> {
       placementBlockerVersion: () => facts().placementBlockerVersion,
       signpostBlockerVersion: () => facts().signpostBlockerVersion,
       palisadeLayoutVersion: () => facts().palisadeLayoutVersion,
-      diplomacyStance: (from, to) => facts().stances[seatIndex(from, to)] ?? 'enemy',
-      hasMetPlayer: (viewer, other) => facts().met[seatIndex(viewer, other)] ?? false,
+      diplomacyStance: (from, to) => {
+        const at = seatIndex(from, to);
+        return at === null ? UNSET_STANCE : (facts().stances[at] ?? UNSET_STANCE);
+      },
+      hasMetPlayer: (viewer, other) => {
+        const at = seatIndex(viewer, other);
+        // Outside the table the sim's own rule: a player knows itself, and fog off shows everyone.
+        if (at === null) return viewer === other || facts().fogMode === FOG_MODE.OFF;
+        return facts().met[at] ?? false;
+      },
       assistantCounters: (player) => assistantFacts(facts(), player).counters,
       assistantGrants: (player) => assistantFacts(facts(), player).grants,
       assistantWeaponVetoes: (player) => assistantFacts(facts(), player).weaponVetoes,
@@ -461,9 +490,19 @@ class WorkerClient<E> {
   }
 }
 
-/** The seat pair's place in a facts table; a seat outside the table reads the sim's default. */
-function seatIndex(row: number, column: number): number {
-  return row * components.MAX_PLAYERS + column;
+/** A pair never set, or naming no seat, reads `enemy` in the sim. */
+const UNSET_STANCE = 'enemy';
+
+/** The seat pair's place in a facts table, or null for a pair outside it. */
+function seatIndex(row: number, column: number): number | null {
+  const seats = components.MAX_PLAYERS;
+  const inTable = (seat: number) => Number.isInteger(seat) && seat >= 0 && seat < seats;
+  return inTable(row) && inTable(column) ? row * seats + column : null;
+}
+
+/** The worker's boot log, entered into this thread's ring and console as it was logged there. */
+function relayWorkerLog(entries: readonly DiagEntry[]): void {
+  for (const entry of entries) diag.log(entry.channel, entry.level, `worker: ${entry.message}`, entry.data);
 }
 
 function assistantFacts(facts: WorldFacts, player: number): AssistantFacts {

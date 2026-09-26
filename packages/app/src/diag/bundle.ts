@@ -3,7 +3,7 @@
  * named by `entry` and `worldId` reproduces the session up to `tick`.
  */
 import type { LoggedCommand } from '@open-northland/sim';
-import type { StateHash } from '../session/index.js';
+import { WORKER_STALL_TIMEOUT_MS } from '../session/worker/stall-watch.js';
 import { downloadJsonFile } from './download.js';
 import { type DiagEntry, type DiagLog, diag } from './log.js';
 import { currentDiagGameSession, type DiagGameSession, type DiagNetReport } from './session.js';
@@ -58,19 +58,36 @@ export async function buildDiagnosticsBundle(
   };
 }
 
+/** How long the report waits for a host's answer: a worker silent this long counts as stalled. */
+const REPORT_ANSWER_TIMEOUT_MS = WORKER_STALL_TIMEOUT_MS;
+
+/** The answer, or null when it failed or did not land within {@link REPORT_ANSWER_TIMEOUT_MS}. */
+function answeredWithin<T>(answer: Promise<T>): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), REPORT_ANSWER_TIMEOUT_MS);
+    answer.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
+
 async function gameReport(session: DiagGameSession): Promise<DiagnosticsGameReport> {
   const { host } = session;
-  // Hashing walks every component, so a wedged world may throw; a null hash must not lose the bundle.
-  let hashed: StateHash | null = null;
-  try {
-    hashed = await host.hashState();
-  } catch {
-    // A null hash still leaves a replayable command log.
-  }
+  // Hashing walks every component, so a wedged world may throw, and a stalled worker never answers; a
+  // null hash must not lose the bundle, whose log and hash trace this thread holds.
+  const hashed = await answeredWithin(host.hashState());
   const tick = hashed?.tick ?? host.tick;
   // Asked after the hash, so the log holds every command up to the hashed tick; a sim on another
   // thread may have applied more since, which a replay to that tick must not see.
-  const commandLog = (await host.commandLog()).filter((entry) => entry.applyTick <= tick);
+  const log = await answeredWithin(host.commandLog());
+  const commandLog = (log ?? []).filter((entry) => entry.applyTick <= tick);
   const finalHash = hashed?.hash ?? null;
   return {
     entry: session.entry,

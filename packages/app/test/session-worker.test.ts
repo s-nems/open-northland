@@ -2,6 +2,7 @@ import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
 import {
   adminCommand,
   type CommandEnvelope,
+  components,
   exportSaveGame,
   parseCommandLog,
   type Simulation,
@@ -11,7 +12,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
-import { TICK_BATCHES_IN_FLIGHT, undeliveredTickLimit } from '../src/session/worker/serve.js';
+import { undeliveredTickLimit } from '../src/session/worker/serve.js';
 import {
   bundleTestWorker,
   pumpUntil,
@@ -40,6 +41,9 @@ const STALL_TIMEOUT_MS = 400;
 const BLOCK_MS = 1500;
 const RESTORE_AT_TICKS = 40;
 const SUBMISSIONS = 6;
+/** Several of the run's slices, so a command lands while it yields. */
+const RUN_WITH_ORDER_TICKS = 60;
+const MISSING_WORKER = '/nonexistent/session-worker.mjs';
 /** Long enough at the fast speed for the worker to step well past the batches in flight. */
 const UNDRAWN_MS = 400;
 /** Frames between two submissions, so they land at scattered worker ticks. */
@@ -210,8 +214,8 @@ describe('session worker host', () => {
     }
     expect(delivered.map((d) => d.events)).toEqual(reference);
     expect(reference.some((events) => events !== '[]')).toBe(true);
-    // The batches in flight carry a tick each; the one posted once they are delivered spans the rest.
-    expect(mostInOneFrame).toBeGreaterThan(TICK_BATCHES_IN_FLIGHT);
+    // The backlog arrives spread over frames, a frame's worth at a time.
+    expect(mostInOneFrame).toBe(session.driver.maxStepsPerFrame);
   });
 
   it('posts the seat fog masks as their generation changes, and the next seat on request', async () => {
@@ -309,6 +313,40 @@ describe('session worker host', () => {
           ? commands.continuation.map((c) => [c.applyTick, c.envelope.command.kind])
           : null,
       ).toEqual([[sim.tick + 1, 'setNeedsEnabled']]);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it('rejects the boot of a worker that does not load', async () => {
+    await expect(startTestSession(MISSING_WORKER, { kind: 'scene', id: 'sandbox' })).rejects.toThrow();
+  });
+
+  it('applies a command submitted while a run yields, at the tick the worker gave it', async () => {
+    const session = await startTestSession(bundle.path, { kind: 'scene', id: 'sandbox' });
+    try {
+      const run = session.host.run(RUN_WITH_ORDER_TICKS);
+      // Arrives between the run's slices, which admit it like the clock would.
+      session.driver.submit(needsToggle(false));
+      await pumpWhile(session, run);
+      const log = await session.host.commandLog();
+      expect(log.filter((entry) => entry.origin === 'admin')).toHaveLength(1);
+      const captured = await session.driver.captureSave();
+      const commands = captured.sections.find((section) => section.id === 'commands');
+      expect(commands?.id === 'commands' ? commands.continuation : null).toEqual([]);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("answers the sim's defaults for a seat outside the facts table", async () => {
+    const session = await startTestSession(bundle.path, { kind: 'scene', id: 'sandbox' });
+    try {
+      const outside = components.MAX_PLAYERS;
+      const sim = createSceneSim(scene('sandbox'));
+      expect(session.host.diplomacyStance(0, outside)).toBe(sim.diplomacyStance(0, outside));
+      expect(session.host.hasMetPlayer(outside, outside)).toBe(sim.hasMetPlayer(outside, outside));
+      expect(session.host.hasMetPlayer(0, outside)).toBe(sim.hasMetPlayer(0, outside));
     } finally {
       session.dispose();
     }

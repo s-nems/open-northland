@@ -2,10 +2,12 @@ import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
 import {
   cloneEvents,
   MS_PER_TICK,
+  type SimEvent,
   type Simulation,
-  type SnapshotDeltaStream,
+  SnapshotDeltaStream,
   TICKS_PER_SECOND,
 } from '@open-northland/sim';
+import { diag } from '../../diag/log.js';
 import { diagCadenceAt } from '../../diag/session.js';
 import { profiledInstrument, SystemProfile } from '../../diag/system-profile.js';
 import type { SessionHost } from '../host.js';
@@ -17,6 +19,7 @@ import {
   type FromWorker,
   isHostRequest,
   type SystemSpan,
+  type TickBatch,
   type TickRecord,
   type ToWorker,
   type WorkerCall,
@@ -55,6 +58,8 @@ export function undeliveredTickLimit(speed: number): number {
 /** Ticks `run` steps between yields, so heartbeats and deliveries are answered during a long run. */
 const RUN_SLICE_TICKS = 10;
 
+const NO_EVENTS: readonly SimEvent[] = [];
+
 const yieldToMessages = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** Serve one session on `port`: build its world from the first `boot` message, then run it. */
@@ -75,7 +80,7 @@ export function serveSession<B, E>(port: SessionPort, build: WorldBuilder<B, E>)
         const built = build(message.boot);
         session = new ServedSession(post, built, message.options, performance.now() - startMs);
       } catch (err) {
-        post({ kind: 'bootFailed', error: wireError(err) });
+        post({ kind: 'bootFailed', error: wireError(err), log: diag.entries() });
       }
       return;
     }
@@ -93,8 +98,12 @@ class ServedSession<E> {
   /** Answers the request-shaped reads as the inline host does, over this thread's sim. */
   private readonly answers: SessionHost;
   private readonly options: WorkerSessionOptions;
-  /** Stepped ticks not yet posted. */
+  private readonly transport = new LoopbackTransport();
+  /** Stepped ticks no batch carries yet. */
   private pending: TickRecord[] = [];
+  /** Batches taken while the runtime had no room, oldest first: each spans at most
+   *  {@link maxTicksPerBatch} ticks, so the runtime can deliver them a frame's worth at a time. */
+  private readonly held: TickBatch[] = [];
   /** Per batch posted and not yet delivered, its tick count, oldest first. */
   private readonly inFlight: number[] = [];
   private undeliveredTicks = 0;
@@ -121,12 +130,19 @@ class ServedSession<E> {
     this.options = options;
     this.driver = new LockstepDriver({
       sim,
-      transport: new LoopbackTransport(),
+      transport: this.transport,
       speed: options.speed,
       paused: options.paused,
     });
     this.answers = inlineSessionHost(sim, { snapshots: 'live' });
-    this.deltas = sim.snapshotDeltas();
+    // Without the events: each tick's record carries its own, so the stream's clone would be dropped.
+    this.deltas = new SnapshotDeltaStream({
+      world: sim.world,
+      get tick() {
+        return sim.tick;
+      },
+      events: { current: () => NO_EVENTS },
+    });
     this.fogSeat = options.fogSeat;
     this.lastFacts = readWorldFacts(sim);
     const delta = this.deltas.next();
@@ -148,6 +164,8 @@ class ServedSession<E> {
         maxStepsPerFrame: this.driver.maxStepsPerFrame,
         timeOrigin: performance.timeOrigin,
         buildMs,
+        // The build's warnings land in this thread's ring, which no diagnostics report reads.
+        log: diag.entries(),
         extras: built.extras,
       },
     });
@@ -198,8 +216,17 @@ class ServedSession<E> {
 
   private delivered(messages: number): void {
     for (let i = 0; i < messages; i++) this.undeliveredTicks -= this.inFlight.shift() ?? 0;
-    if (this.pending.length > 0 && this.inFlight.length < TICK_BATCHES_IN_FLIGHT) this.flush();
+    while (this.hasRoom() && (this.held.length > 0 || this.pending.length > 0)) this.flush();
     this.resume();
+  }
+
+  private hasRoom(): boolean {
+    return this.inFlight.length < TICK_BATCHES_IN_FLIGHT;
+  }
+
+  /** The runtime delivers at most a frame's worth of ticks per frame, the inline driver's step cap. */
+  private get maxTicksPerBatch(): number {
+    return this.driver.maxStepsPerFrame;
   }
 
   private canStep(): boolean {
@@ -208,7 +235,7 @@ class ServedSession<E> {
       !this.driver.paused &&
       !this.broken &&
       !this.running &&
-      this.undeliveredTicks + this.pending.length < undeliveredTickLimit(this.driver.speed)
+      this.undeliveredTicks + this.heldTicks() + this.pending.length < undeliveredTickLimit(this.driver.speed)
     );
   }
 
@@ -262,7 +289,7 @@ class ServedSession<E> {
       this.halt();
     }
     const cadence = this.options.diagnostics ? diagCadenceAt(tick) : null;
-    const room = this.inFlight.length < TICK_BATCHES_IN_FLIGHT;
+    const room = this.hasRoom() && this.held.length === 0;
     this.pending.push({
       tick,
       // Posted now, the live list is cloned by the post; held back, it must outlive the next step.
@@ -274,40 +301,46 @@ class ServedSession<E> {
           : { hash: sim.hashState(), violations: cadence.invariants ? sim.checkInvariants() : null },
     });
     if (room) this.flush();
+    else if (this.pending.length >= this.maxTicksPerBatch) this.held.push(this.takeBatch());
     this.stepStartMs = performance.now();
   };
 
+  /** Post the oldest held batch, or one over the pending ticks. */
   private flush(): void {
+    const batch = this.held.shift() ?? (this.pending.length > 0 ? this.takeBatch() : null);
+    if (batch === null) return;
+    this.inFlight.push(batch.ticks.length);
+    this.undeliveredTicks += batch.ticks.length;
+    this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog));
+  }
+
+  private heldTicks(): number {
+    let ticks = 0;
+    for (const batch of this.held) ticks += batch.ticks.length;
+    return ticks;
+  }
+
+  /** The pending ticks as one batch, its delta taken now: a delta is taken only for ticks a batch
+   *  carries, since one taken and not posted would leave the mirror a gap. */
+  private takeBatch(): TickBatch {
     const ticks = this.pending;
     const last = ticks[ticks.length - 1];
-    // Taken only for ticks it will carry: a delta taken and not posted would leave the mirror a gap.
-    if (last === undefined) return;
     const delta = this.deltas.next();
-    if (delta === null) return;
+    if (last === undefined || delta === null) throw new Error('a batch needs a stepped tick');
     this.pending = [];
     const facts = readWorldFacts(this.sim);
     const changed = changedFacts(this.lastFacts, facts);
     this.lastFacts = facts;
-    const fog = this.fogChange();
     const spans = this.spans;
     if (spans !== null) this.spans = [];
-    this.inFlight.push(ticks.length);
-    this.undeliveredTicks += ticks.length;
-    this.post(
-      {
-        kind: 'ticks',
-        batch: {
-          // The last tick's events ride once: the record and the delta share the list.
-          delta: { ...delta, events: last.events },
-          ticks,
-          facts: changed,
-          fog,
-          droppedTicks: this.driver.droppedTicks,
-          spans,
-        },
-      },
-      fogTransfer(fog),
-    );
+    return {
+      delta: { ...delta, events: last.events },
+      ticks,
+      facts: changed,
+      fog: this.fogChange(),
+      droppedTicks: this.driver.droppedTicks,
+      spans,
+    };
   }
 
   private fogKey(): string {
@@ -371,8 +404,8 @@ class ServedSession<E> {
     }
   }
 
-  /** Step outside the session clock, as the inline host's `run` does: the driver's transport is not
-   *  asked for these ticks. */
+  /** Step outside the session clock, paused or not. Each tick still takes its frame from the
+   *  transport, so a command submitted while the run yields applies at the tick it was given. */
   private async run(ticks: number): Promise<void> {
     this.running = true;
     this.halt();
@@ -381,6 +414,10 @@ class ServedSession<E> {
         const slice = Math.min(RUN_SLICE_TICKS, ticks - done);
         for (let i = 0; i < slice; i++) {
           this.stepStartMs = performance.now();
+          const tick = this.sim.tick + 1;
+          for (const command of this.transport.take(tick).commands) {
+            this.sim.enqueueAt(command.envelope, tick, command.sequence);
+          }
           this.sim.step();
           this.stepped();
         }
@@ -401,7 +438,7 @@ class ServedSession<E> {
     this.broken = true;
     this.halt();
     // The ticks before the failing one are the runtime's to deliver first, bound or not.
-    this.flush();
+    while (this.held.length > 0 || this.pending.length > 0) this.flush();
     this.post({ kind: 'tickError', error: wireError(err) });
   }
 }

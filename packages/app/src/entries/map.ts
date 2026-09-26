@@ -1,6 +1,6 @@
-import { localPlayerOf } from '@open-northland/lockstep';
+import { isSpectator, localPlayerOf } from '@open-northland/lockstep';
 import { hasDebugFlag } from '../diag/debug-flags.js';
-import { diag, HASH_TRACE_DEBUG_FLAG, showCrashBanner } from '../diag/index.js';
+import { diag, dismissCrashBanner, HASH_TRACE_DEBUG_FLAG, showCrashBanner } from '../diag/index.js';
 import { mapIdParam, mapSession } from '../game/session-url.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { endpointPort } from '../session/worker/port.js';
@@ -21,6 +21,8 @@ interface WorkerMapWorld extends HostedMapWorld {
 }
 
 const MS_PER_SECOND = 1000;
+/** Names the banner a stall raised, so its recovery takes down that banner alone. */
+const STALL_BANNER = 'sim-stall';
 
 /** A frozen world under a live UI is what the crash banner is for: the player learns the game stopped
  *  and can download the diagnostics that name the tick. */
@@ -28,9 +30,13 @@ const workerStallReports: StallReports = {
   stalled: (silentMs) => {
     diag.error('sim', `the sim worker has not answered for ${Math.round(silentMs)} ms`, { silentMs });
     const seconds = Math.round(silentMs / MS_PER_SECOND);
-    showCrashBanner(formatMessage(messages().hud.simStalled, { seconds }));
+    showCrashBanner(formatMessage(messages().hud.simStalled, { seconds }), STALL_BANNER);
   },
-  recovered: (silentMs) => diag.info('sim', `the sim worker answered again after ${Math.round(silentMs)} ms`),
+  // The world runs again, so the stall's banner goes; a banner another crash took over stays.
+  recovered: (silentMs) => {
+    diag.info('sim', `the sim worker answered again after ${Math.round(silentMs)} ms`);
+    dismissCrashBanner(STALL_BANNER);
+  },
 };
 
 /** The decoded-map entry (`?map=<id>`): the search describes the session, which a worker runs as a
@@ -62,7 +68,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       {
         speed: inputs.session.speed,
         paused: stagedSave !== null && !staged.resume,
-        fogSeat: localPlayerOf(inputs.session),
+        // The overseer sees the whole map; a spectator's seat pick asks for its masks.
+        fogSeat: isSpectator(inputs.session) ? null : localPlayerOf(inputs.session),
         diagnostics: hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG),
         pauseOnSubMission: true,
       },
