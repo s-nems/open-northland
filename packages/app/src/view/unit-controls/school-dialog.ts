@@ -22,8 +22,8 @@ import {
 import { technologyLabel } from '../../game/technology.js';
 import { createChoiceWindow } from '../../hud/dom/choice-window.js';
 import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
-import type { SessionHost } from '../../session/index.js';
 import { orderRecipients } from './action-ring/menu-state.js';
+import type { TechnologyStatusRead } from './types.js';
 
 export interface SchoolCourse {
   readonly target: 'job' | 'good';
@@ -140,7 +140,9 @@ export interface SchoolDialogOptions {
   readonly settlers: readonly number[];
   readonly house: number;
   readonly enqueue: (command: PlayerCommand) => void;
-  readonly status?: SessionHost['unlockStatus'] | undefined;
+  readonly status?: TechnologyStatusRead | undefined;
+  /** Bumped when a status answer lands, so the dialog rebuilds without a new snapshot. */
+  readonly answersVersion?: (() => number) | undefined;
   readonly cue?: ((cue: UiCue) => void) | undefined;
   readonly scale: number;
 }
@@ -160,6 +162,7 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
   let choices: SchoolGroup[] = [];
   let closed = false;
   let lastSnapshot: WorldSnapshot | undefined;
+  let lastAnswers = -1;
   let reasons = new Map<string, string | undefined>();
   const courseKey = (course: SchoolCourse): string => `${course.target}:${course.typeId}`;
   const dispose = (): void => {
@@ -219,8 +222,10 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
   const refresh = (force = false): void => {
     if (closed) return;
     const state = snapshot();
-    if (!force && state === lastSnapshot) return;
+    const answers = opts.answersVersion?.() ?? 0;
+    if (!force && state === lastSnapshot && answers === lastAnswers) return;
     lastSnapshot = state;
+    lastAnswers = answers;
     const building = entityById(state, house);
     const learners = students.map((id) => entityById(state, id));
     if (building === undefined || learners.some((learner) => learner === undefined)) {
@@ -242,8 +247,8 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
     const capacity = type?.schoolSize;
     const occupied = trainingOccupancyOf(state, house);
     choices = schoolChoices(
-      groups.filter((group) => status?.('job', group.jobType, tribeId, player).allowed ?? true),
-      (course) => status?.(course.target, course.typeId, tribeId, player).enabled ?? true,
+      groups.filter((group) => status?.('job', group.jobType, tribeId, player)?.allowed ?? true),
+      (course) => status?.(course.target, course.typeId, tribeId, player)?.enabled ?? true,
     );
     reasons = new Map();
     for (const group of choices)

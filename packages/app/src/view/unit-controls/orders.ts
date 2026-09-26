@@ -32,17 +32,18 @@ import {
   settlerJobType,
   vehicleSeatsOf,
 } from '../../game/snapshot.js';
-import type { SessionHost } from '../../session/index.js';
 import { clampTile, nodeBounds, pickNearestAt, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { selectionEquipCommands } from './equip-picker.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import { type TradeHouseRule, tradeHousePick } from './highlights/index.js';
 import { openSchoolDialog, type SchoolDialog } from './school-dialog.js';
+import type { TechnologyStatusRead } from './types.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
   readonly uiscale?: number;
-  readonly technologyStatus?: SessionHost['unlockStatus'] | undefined;
+  readonly technologyStatus?: TechnologyStatusRead | undefined;
+  readonly answersVersion?: (() => number) | undefined;
   /** The sim's equip pick-list read seam (`SessionHost.equipPickList`); absent, a click on a goods heap
    *  is a walk. */
   readonly equipPickList?: ((entity: number, group: EquipCategory) => readonly EquipPickEntry[]) | undefined;
@@ -156,6 +157,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       house,
       enqueue: deps.enqueue,
       status: deps.technologyStatus,
+      answersVersion: deps.answersVersion,
       cue: deps.cue,
       scale: uiScale,
     });

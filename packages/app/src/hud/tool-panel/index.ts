@@ -182,6 +182,8 @@ export interface ToolPanelOptions {
   readonly missionReplayPage?: () => number | null;
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
+  /** Bumped when a mission read above lands anew, which rebuilds an open mission window. */
+  readonly missionAnswersVersion?: () => number;
   readonly onLargeWindow?: (open: boolean) => void;
   /** The map's sprite sheet, which draws a settler on its notice card and a building on its
    *  construction card; absent leaves the thumbnails bare. */
@@ -428,6 +430,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           plane,
           rows: opts.residents.rows,
           canBecome: opts.residents.canBecome,
+          ...(opts.residents.answersVersion !== undefined
+            ? { answersVersion: opts.residents.answersVersion }
+            : {}),
           trades: PROFESSIONS.map((p) => ({ jobType: p.jobType, label: professionLabel(p.key) })),
           selection: opts.residents.selection,
           onSelect: opts.residents.onSelect,
@@ -474,6 +479,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       missionReplayPage: opts.missionReplayPage ?? ((): null => null),
       history,
       ...(opts.missionHuman !== undefined ? { missionHuman: opts.missionHuman } : {}),
+      ...(opts.missionAnswersVersion !== undefined
+        ? { missionAnswersVersion: opts.missionAnswersVersion }
+        : {}),
       onLargeWindow: (open) => {
         // A briefing must cover the selected unit's details and its worker sprites.
         root.zIndex = open ? 1004 : 1000;

@@ -6,6 +6,7 @@ import {
   FOG_STATE,
   type FogView,
   halfCellMapFromCells,
+  NODE_SET_STRIDE,
   Simulation,
 } from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
@@ -31,6 +32,11 @@ const VIKING = 1;
 const RAIDER = { x: 6, y: 4 };
 const NEAR = cellAnchorNode(8, 4);
 const FAR = cellAnchorNode(18, 8);
+/** A screen that frames the whole field at scale 1. */
+const WIDE_SCREEN = { width: 1920, height: 1080 };
+
+/** Let the inline host's answers land: each resolves one microtask after it was asked. */
+const landed = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 function openField(): { sim: Simulation; gates: PlacementGates; fog: ReturnType<typeof createFogGates> } {
   const terrain = grassTerrain(MAP_W, MAP_H);
@@ -45,8 +51,12 @@ function openField(): { sim: Simulation; gates: PlacementGates; fog: ReturnType<
 }
 
 describe('placement gates - the ground an enemy army contests', () => {
-  it('refuses the click and the ghost beside an enemy soldier, and admits them again once he is gone', () => {
+  it('refuses the click and the ghost beside an enemy soldier, and admits them again once he is gone', async () => {
     const { sim, gates } = openField();
+    // Unanswered ground is refused until the host's answer lands.
+    expect(gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).toBe(false);
+    gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy);
+    await landed();
     expect(gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).toBe(true);
     expect(gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy)).toBe(true);
 
@@ -54,29 +64,35 @@ describe('placement gates - the ground an enemy army contests', () => {
       weaponTypeId: WEAPON_SWORD,
     });
     sim.step();
+    gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy);
+    gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy);
+    await landed();
     expect(gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).toBe(false);
     expect(gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy)).toBe(true);
 
     for (const e of [...sim.world.query(components.Settler)]) sim.world.destroy(e);
+    sim.step();
+    gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy);
+    await landed();
     expect(gates.canPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).toBe(true);
   });
 
   it('omits only the technology tribe from a paper-paid probe', () => {
     const { sim, fog } = openField();
     const gates = createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER, VIKING);
-    const probe = vi.spyOn(sim, 'placementProbe');
+    const probe = vi.spyOn(sim, 'placementAnswer');
     const paper = { kind: 'placeAny', param: 0 } as const;
 
     gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy);
     gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy, paper);
 
-    expect(probe.mock.calls).toEqual([
+    expect(probe.mock.calls.map(([type, , player, tribe]) => [type, player, tribe])).toEqual([
       [BUILDING_HOME_00, HUMAN_PLAYER, VIKING],
       [BUILDING_HOME_00, HUMAN_PLAYER, undefined],
     ]);
   });
 
-  it('probes authored closed-gate rows at the hovered wall node', () => {
+  it('probes authored closed-gate rows at the hovered wall node', async () => {
     const { sim, gates } = openField();
     const gate = sim.terrain?.landscapes?.types.find((type) => type.wall?.gate?.open === false);
     expect(gate).toBeDefined();
@@ -91,6 +107,8 @@ describe('placement gates - the ground an enemy army contests', () => {
       span: [{ hx: 8, hy: 6 }],
     });
 
+    expect(gates.palisadeGateProbe(8, 6)).toBeNull();
+    await landed();
     expect(gates.palisadeGateProbe(8, 6)).toMatchObject({
       gfxIndex: gate.typeId,
       canConvert: false,
@@ -103,7 +121,7 @@ describe('placement gates - the ground an enemy army contests', () => {
     expect(probe).toHaveBeenCalledWith(8, 6, orientations, HUMAN_PLAYER);
   });
 
-  it('asks the hovered gate probe once per wall layout, and once per tick only on a convertible centre', () => {
+  it('asks the hovered gate probe once per wall layout, and once per tick only on a convertible centre', async () => {
     const { sim, gates } = openField();
     const probe = vi.spyOn(sim, 'palisadeGateProbe').mockReturnValue({
       canConvert: false,
@@ -126,9 +144,12 @@ describe('placement gates - the ground an enemy army contests', () => {
       },
     ]);
 
+    gates.palisadeGateSites();
+    await landed();
     // Bare ground: the answer follows the wall layout alone, so neither a second frame nor a tick asks again.
     gates.palisadeGateProbe(12, 2);
     gates.palisadeGateProbe(12, 2);
+    await landed();
     sim.step();
     gates.palisadeGateProbe(12, 2);
     expect(probe).toHaveBeenCalledTimes(1);
@@ -136,28 +157,35 @@ describe('placement gates - the ground an enemy army contests', () => {
     // A convertible centre: a mover may step into the opening on any tick, so each tick asks once.
     gates.palisadeGateProbe(6, 6);
     gates.palisadeGateProbe(6, 6);
+    await landed();
+    gates.palisadeGateProbe(6, 6);
     expect(probe).toHaveBeenCalledTimes(2);
     sim.step();
     gates.palisadeGateProbe(6, 6);
     expect(probe).toHaveBeenCalledTimes(3);
+    await landed();
 
     vi.spyOn(sim, 'palisadeLayoutVersion').mockReturnValue('next');
     gates.palisadeGateProbe(12, 2);
     expect(probe).toHaveBeenCalledTimes(4);
   });
 
-  it("tests the built nodes of the owner a line is laid for, not the seat's", () => {
+  it("tests the built nodes of the owner a line is laid for, not the seat's", async () => {
     const { sim, gates } = openField();
+    const wallNode = 2 * NODE_SET_STRIDE + 4;
     const own = vi
-      .spyOn(sim, 'ownPalisadeNodes')
-      .mockImplementation((player) => () => player === ENEMY_PLAYER);
+      .spyOn(sim, 'ownPalisadeNodeSet')
+      .mockImplementation((player) => Uint32Array.of(...(player === ENEMY_PLAYER ? [wallNode] : [])));
+    expect(gates.palisadeBuiltAt(ENEMY_PLAYER, 4, 2)).toBe(false);
+    gates.palisadeBuiltAt(HUMAN_PLAYER, 4, 2);
+    await landed();
     expect(gates.palisadeBuiltAt(ENEMY_PLAYER, 4, 2)).toBe(true);
     expect(gates.palisadeBuiltAt(HUMAN_PLAYER, 4, 2)).toBe(false);
     expect(gates.palisadeBuiltAt(HUMAN_PLAYER, 5, 2)).toBe(false);
     expect(own.mock.calls).toEqual([[ENEMY_PLAYER], [HUMAN_PLAYER]]);
   });
 
-  it('indexes the gate spans once per wall layout and aims each node at its nearest centre', () => {
+  it('indexes the gate spans once per wall layout and aims each node at its nearest centre', async () => {
     const { sim, gates } = openField();
     const site = (center: number, walls: readonly number[]) => ({
       canConvert: true,
@@ -173,6 +201,8 @@ describe('placement gates - the ground an enemy army contests', () => {
       .spyOn(sim, 'palisadeGateSites')
       .mockReturnValue([site(6, [1, 2, 3, 4, 5]), site(7, [2, 3, 4, 5, 6])]);
 
+    expect(gates.palisadeGateSites().has(4, 6)).toBe(false);
+    await landed();
     const sites = gates.palisadeGateSites();
     expect(sites.has(4, 6)).toBe(true);
     expect(sites.has(10, 6)).toBe(false);
@@ -188,7 +218,7 @@ describe('placement gates - the ground an enemy army contests', () => {
     expect(probe).toHaveBeenCalledTimes(2);
   });
 
-  it('leaves a gate span unlit while its centre is fogged', () => {
+  it('leaves a gate span unlit while its centre is fogged', async () => {
     const { sim, gates, fog } = openField();
     vi.spyOn(sim, 'palisadeGateSites').mockReturnValue([
       {
@@ -211,24 +241,57 @@ describe('placement gates - the ground an enemy army contests', () => {
     };
     fog.setFrame(hidden);
     vi.spyOn(sim, 'fogView').mockReturnValue(hidden);
+    gates.palisadeGateSites();
+    await landed();
     const sites = gates.palisadeGateSites();
     expect(sites.has(6, 6)).toBe(false);
     expect(sites.highlight).toEqual([]);
   });
 
   it('uses the same paper technology bypass for the bright buildable-ground overlay', () => {
-    const { sim } = openField();
-    const overlay = makeOverlayFrameSource(sim, { width: MAP_W, height: MAP_H }, HUMAN_PLAYER, VIKING);
-    const probe = vi.spyOn(sim, 'placementProbe');
+    const { sim, fog } = openField();
+    const host = inlineSessionHost(sim);
+    const gates = createPlacementGates(host, fog, HUMAN_PLAYER, VIKING);
+    const overlay = makeOverlayFrameSource(gates.probes, host, { width: MAP_W, height: MAP_H }, HUMAN_PLAYER);
+    const probe = vi.spyOn(sim, 'placementAnswer');
     const camera = { offsetX: 0, offsetY: 0, scale: 1 };
     const paper = { kind: 'placeHouse', param: BUILDING_HOME_00 } as const;
 
     overlay(BUILDING_HOME_00, camera, 320, 200);
+    const techAreas = probe.mock.calls.length;
     overlay(BUILDING_HOME_00, camera, 320, 200, paper);
 
-    expect(probe.mock.calls).toEqual([
-      [BUILDING_HOME_00, HUMAN_PLAYER, VIKING],
-      [BUILDING_HOME_00, HUMAN_PLAYER, undefined],
+    const tribes = probe.mock.calls.map(([, , player, tribe]) => `${player}:${tribe}`);
+    expect(techAreas).toBeGreaterThan(0);
+    expect(tribes).toEqual([
+      ...Array<string>(techAreas).fill(`${HUMAN_PLAYER}:${VIKING}`),
+      ...Array<string>(techAreas).fill(`${HUMAN_PLAYER}:undefined`),
     ]);
+  });
+
+  it('draws the overlay from the landed answers and dims the ground the click refuses', async () => {
+    const { sim, fog } = openField();
+    const host = inlineSessionHost(sim);
+    const gates = createPlacementGates(host, fog, HUMAN_PLAYER);
+    const overlay = makeOverlayFrameSource(gates.probes, host, { width: MAP_W, height: MAP_H }, HUMAN_PLAYER);
+    const camera = { offsetX: 0, offsetY: 0, scale: 1 };
+    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, RAIDER.x, RAIDER.y, ENEMY_PLAYER, {
+      weaponTypeId: WEAPON_SWORD,
+    });
+    sim.step();
+
+    expect(overlay(BUILDING_HOME_00, camera, WIDE_SCREEN.width, WIDE_SCREEN.height)).toBeNull();
+    await landed();
+    const frame = overlay(BUILDING_HOME_00, camera, WIDE_SCREEN.width, WIDE_SCREEN.height);
+    if (frame === null) throw new Error('no overlay once the answers landed');
+    const blocked = new Set(frame.blocked.map(({ col, row }) => `${col},${row}`));
+    for (let row = frame.minRow; row <= frame.maxRow; row++) {
+      for (let col = frame.minCol; col <= frame.maxCol; col++) {
+        expect(blocked.has(`${col},${row}`)).toBe(!gates.canPlaceAt(BUILDING_HOME_00, col, row));
+      }
+    }
+    // The raider's ground is inside the band and dimmed; the far site is lit.
+    expect(blocked.has(`${NEAR.hx},${NEAR.hy}`)).toBe(true);
+    expect(blocked.has(`${FAR.hx},${FAR.hy}`)).toBe(false);
   });
 });

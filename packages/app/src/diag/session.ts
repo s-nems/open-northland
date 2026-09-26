@@ -54,13 +54,15 @@ export function currentDiagGameSession(): DiagGameSession | null {
 }
 
 /**
- * Record the stepped world's state hash on the HASH_TRACE_EVERY_TICKS cadence. No-op when `host` is
- * not the registered session's host, so a stale registration cannot taint another world's trace.
+ * Record the stepped world's state hash on the HASH_TRACE_EVERY_TICKS cadence, under the tick it was
+ * asked at, once it lands. No-op when `host` is not the registered session's host, so a stale
+ * registration cannot taint another world's trace.
  */
 export function recordDiagHash(host: Pick<SessionHost, 'tick' | 'hashState'>): void {
   const trace = current !== null && current.host === host ? current.hashTrace : null;
-  if (trace === null || host.tick % HASH_TRACE_EVERY_TICKS !== 0) return;
-  trace.record(host.tick, host.hashState());
+  const tick = host.tick;
+  if (trace === null || tick % HASH_TRACE_EVERY_TICKS !== 0) return;
+  void host.hashState().then((hash) => trace.record(tick, hash));
 }
 
 export function hashTraceFor(params: URLSearchParams): HashTrace | null {

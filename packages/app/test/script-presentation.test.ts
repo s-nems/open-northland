@@ -25,6 +25,9 @@ const HERO_NODE = { hx: 11, hy: 10 };
 const CAMERA: Camera = { offsetX: 0, offsetY: 0, scale: 1 };
 const SCREEN = { width: 800, height: 600 };
 
+/** Let the host's answers land: each resolves a microtask after it was asked. */
+const landed = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
 function snapshotAt(tick: number): WorldSnapshot {
   return {
     tick,
@@ -46,8 +49,8 @@ function harness(
       return tick;
     },
     snapshot: () => snapshotAt(tick),
-    infoLines: (player: number) => lines.filter((line) => line.index === player),
-    missionPresentation: () => saved,
+    infoLines: (player: number) => Promise.resolve(lines.filter((line) => line.index === player)),
+    missionPresentation: () => Promise.resolve(saved),
     missionStatus: () => [],
   };
   const toolPanel = {
@@ -92,7 +95,7 @@ function harness(
 }
 
 describe('createScriptPresentation', () => {
-  it('hydrates persistent overlays before the first frame without replaying transient presentation', () => {
+  it('hydrates persistent overlays once they land without replaying transient presentation', async () => {
     const { calls, presentation } = harness([], {
       guiMarkers: [{ marker: 2, point: HERO_NODE }],
       groundMarkers: [
@@ -105,6 +108,7 @@ describe('createScriptPresentation', () => {
         { weather: 'snow', min: HERO_NODE, max: HERO_NODE, density: 0 },
       ],
     });
+    await landed();
     expect(calls).toEqual([
       'marker:missionGuiMarker',
       'marker:missionAreaMarkers',
@@ -144,21 +148,28 @@ describe('createScriptPresentation', () => {
     ]);
   });
 
-  it('pushes the formatted info lines every frame and re-reads their tallies every two seconds', () => {
+  it('pushes the formatted info lines every frame and re-reads their tallies every two seconds', async () => {
     const lines: InfoLineView[] = [{ index: 0, stringId: 7, count: 1, extra: 4 }];
     const { presentation, infoLines, advance } = harness(lines);
     presentation.frame(snapshotAt(0), CAMERA, 0);
-    expect(infoLines).toEqual([['Held: 1 of 4']]);
+    expect(infoLines).toEqual([[]]);
+    await landed();
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual(['Held: 1 of 4']);
     lines[0] = { index: 0, stringId: 7, count: 2, extra: 4 };
     advance(12);
+    presentation.frame(snapshotAt(12), CAMERA, 0);
+    await landed();
     presentation.frame(snapshotAt(12), CAMERA, 0);
     expect(infoLines.at(-1)).toEqual(['Held: 1 of 4']);
     advance(24);
     presentation.frame(snapshotAt(24), CAMERA, 0);
+    await landed();
+    presentation.frame(snapshotAt(24), CAMERA, 0);
     expect(infoLines.at(-1)).toEqual(['Held: 2 of 4']);
   });
 
-  it('re-reads the lines at once when the watched seat changes, and shows none for no seat', () => {
+  it('re-reads the lines at once when the watched seat changes, and shows none for no seat', async () => {
     // The fixture files each seat's line under its own index.
     const lines: InfoLineView[] = [
       { index: 0, stringId: 7, count: 1, extra: 4 },
@@ -167,8 +178,12 @@ describe('createScriptPresentation', () => {
     let seat: number | null = 0;
     const { presentation, infoLines } = harness(lines, undefined, () => seat);
     presentation.frame(snapshotAt(0), CAMERA, 0);
+    await landed();
+    presentation.frame(snapshotAt(0), CAMERA, 0);
     expect(infoLines.at(-1)).toEqual(['Held: 1 of 4']);
     seat = 1;
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    await landed();
     presentation.frame(snapshotAt(0), CAMERA, 0);
     expect(infoLines.at(-1)).toEqual(['Held: 3 of 4']);
     seat = null;

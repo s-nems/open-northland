@@ -73,6 +73,9 @@ export interface MissionWindowDeps {
   readonly loadPicture?: PictureLoader;
   /** The human a page's picture of a mission id shows; without it those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
+  /** Bumped when the briefing history, the replay page or a mission human lands anew; an open window
+   *  folds the history again and rebuilds. */
+  readonly answersVersion?: () => number;
   /** Monotonic ms clock the creep is timed against. */
   readonly now?: () => number;
 }
@@ -135,6 +138,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   let creep: SheetCreep | null = null;
   let hovered: Rect | null = null;
   let screenKey = '';
+  /** The mission answers the sheet was built from. */
+  let answersKey = 0;
   /** A restored reading the next opening resumes instead of starting fresh; any other opening drops it. */
   let resume: MissionReading | null = null;
 
@@ -180,6 +185,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     clear();
     const screen = deps.ctx.screen();
     screenKey = `${screen.width}x${screen.height}`;
+    answersKey = deps.answersVersion?.() ?? 0;
     // Centred above the navigation beam; text runs still take the full screen for their resolution.
     const built = layoutMissionWindow(screen, sheet, deps.ctx.layout.sheetArea(screen));
     layout = built;
@@ -419,6 +425,11 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       if (!shell.isOpen()) return;
       const screen = deps.ctx.screen();
       if (`${screen.width}x${screen.height}` !== screenKey) build();
+      // A page or a named human the sheet was built without has landed since.
+      else if ((deps.answersVersion?.() ?? 0) !== answersKey) {
+        shown.fold(deps.briefingHistory?.() ?? []);
+        build();
+      }
       // A mark on the goal list follows the sim; the sheet's text never moves under the reader.
       else if (tab === 'goals' && goalsKeyOf(deps.brief(shown.page)) !== goalsKey) build();
       if (creep !== null && layout !== null) scrollTo(creep.advance(now(), layout.scale));

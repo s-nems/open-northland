@@ -1,11 +1,17 @@
 import type { Camera, ElevationField } from '@open-northland/render';
 import { halfCellToScreen } from '@open-northland/render';
-import type { Entity, HalfCellNode, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type {
+  Entity,
+  HalfCellNode,
+  MissionPresentationView,
+  SimEvent,
+  WorldSnapshot,
+} from '@open-northland/sim';
 import { entityById, nodeOfPosition, TICKS_PER_SECOND } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { infoLineTexts } from '../../game/info-lines.js';
 import { positionOf } from '../../game/snapshot-base.js';
-import type { SessionHost } from '../../session/index.js';
+import { createLastAnswerCache, type SessionHost } from '../../session/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { CameraJitter, ScriptEffects } from '../script-effects.js';
 import type { ScriptMarkers } from '../script-markers.js';
@@ -17,9 +23,13 @@ const DIAG_CHANNEL = 'missions';
  *  seconds (reading). */
 const INFO_LINE_REFRESH_SECONDS = 2;
 const INFO_LINE_REFRESH_TICKS = INFO_LINE_REFRESH_SECONDS * TICKS_PER_SECOND;
+const NO_LINES: readonly string[] = [];
 
 export interface ScriptPresentationDeps {
-  readonly host: Pick<SessionHost, 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'>;
+  readonly host: Pick<
+    SessionHost,
+    'tick' | 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'
+  >;
   readonly missionTrace?: boolean;
   /** Whose info lines the panel shows, read on every refresh; null shows none. */
   readonly seat: () => number | null;
@@ -57,25 +67,30 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
   const trace = deps.missionTrace === true ? mountMissionTrace(host) : null;
   let linesTick = Number.NEGATIVE_INFINITY;
   let linesSeat: number | null = null;
-  let lines: string[] = [];
+  const lineAnswers = createLastAnswerCache<readonly string[]>({ tick: () => host.tick });
+  let disposed = false;
 
-  const saved = host.missionPresentation();
-  for (const marker of saved.guiMarkers) {
-    markers.apply({ kind: 'missionGuiMarker', ...marker, placed: true });
-  }
-  for (const marker of saved.groundMarkers) {
-    markers.apply(
-      marker.style === 'import'
-        ? { kind: 'missionImportMarker', point: marker.point, placed: true }
-        : {
-            kind: 'missionAreaMarkers',
-            points: [marker.point],
-            magic: marker.style === 'magic',
-            placed: true,
-          },
-    );
-  }
-  for (const region of saved.weather) effects.setWeather({ kind: 'missionWeather', ...region });
+  const restore = (saved: MissionPresentationView): void => {
+    for (const marker of saved.guiMarkers) {
+      markers.apply({ kind: 'missionGuiMarker', ...marker, placed: true });
+    }
+    for (const marker of saved.groundMarkers) {
+      markers.apply(
+        marker.style === 'import'
+          ? { kind: 'missionImportMarker', point: marker.point, placed: true }
+          : {
+              kind: 'missionAreaMarkers',
+              points: [marker.point],
+              magic: marker.style === 'magic',
+              placed: true,
+            },
+      );
+    }
+    for (const region of saved.weather) effects.setWeather({ kind: 'missionWeather', ...region });
+  };
+  void host.missionPresentation().then((saved) => {
+    if (!disposed) restore(saved);
+  });
 
   const centreOn = (point: HalfCellNode): void => {
     const world = halfCellToScreen(point.hx, point.hy);
@@ -146,8 +161,15 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
       if (seat !== linesSeat || snapshot.tick - linesTick >= INFO_LINE_REFRESH_TICKS) {
         linesTick = snapshot.tick;
         linesSeat = seat;
-        lines = seat === null ? [] : infoLineTexts(host.infoLines(seat), deps.mapText);
       }
+      const lines =
+        seat === null
+          ? NO_LINES
+          : (lineAnswers.read(
+              `${seat}`,
+              () => host.infoLines(seat).then((views) => infoLineTexts(views, deps.mapText)),
+              `${linesTick}`,
+            ) ?? NO_LINES);
       // Pushed every frame: the panel remounts on a scale change and starts blank.
       toolPanel.controller.setInfoLines(lines);
       const screen = deps.screen();
@@ -155,6 +177,8 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
       effects.update(camera, screen);
     },
     dispose() {
+      disposed = true;
+      lineAnswers.dispose();
       trace?.dispose();
       markers.dispose();
       effects.dispose();

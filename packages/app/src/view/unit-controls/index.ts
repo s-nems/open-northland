@@ -51,10 +51,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const controlGroups = createControlGroups();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
   const equipPicker: EquipPickController | null =
-    opts.equipPickList === undefined
+    opts.requestEquipPicks === undefined
       ? null
       : await mountEquipPicker({
-          pickList: opts.equipPickList,
+          pickList: opts.requestEquipPicks,
           content: opts.content,
           snapshot: opts.snapshot,
           enqueue: opts.enqueue,
@@ -138,6 +138,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     canAttachToVehicle: opts.canAttachToVehicle,
     canAttachTradeHouse: opts.canAttachTradeHouse,
+    ...(opts.answersVersion !== undefined ? { answersVersion: opts.answersVersion } : {}),
   });
 
   /** The hotkey obeys the ring's own gate for the settlers, so both ways of arming the order agree on
@@ -171,6 +172,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const orders = createUnitOrderController({
     uiscale: opts.uiscale ?? 1,
     technologyStatus: opts.technologyStatus,
+    answersVersion: opts.answersVersion,
     equipPickList: opts.equipPickList,
     selected: selection.ids,
     targets: unitTargets,

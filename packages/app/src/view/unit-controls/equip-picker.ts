@@ -12,9 +12,12 @@ import type { EquipSlotRef } from '../../hud/details-panel/index.js';
 import { messages } from '../../i18n/index.js';
 import { createPickerWindow, type PickerWindow } from './picker-window.js';
 
+/** The goods a settler could fetch and wear in one slot group. */
+type PickList = (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
+
 export interface EquipPickControllerOptions {
-  /** The sim's pick-list read seam (`SessionHost.equipPickList`), bound by the shell. */
-  readonly pickList: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
+  /** The sim's pick-list read (`SessionHost.equipPickList`), asked afresh as a window opens. */
+  readonly pickList: (entity: number, group: EquipCategory) => Promise<readonly EquipPickEntry[]>;
   readonly content: ContentSet;
   readonly snapshot: () => WorldSnapshot;
   readonly enqueue: (command: PlayerCommand) => void;
@@ -39,7 +42,7 @@ const EQUIP_GROUPS: readonly EquipCategory[] = ['boots', 'tool', 'weapon', 'armo
 export function commonEquipPicks(
   content: ContentSet,
   settlerIds: readonly number[],
-  pickList: EquipPickControllerOptions['pickList'],
+  pickList: PickList,
 ): CommonEquipPick[] {
   if (settlerIds.length === 0) return [];
   const picksBySettler = settlerIds.map((entity) => {
@@ -120,52 +123,75 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
     return window_;
   };
 
+  // Each open supersedes the one before it, so a slow answer never fills a window opened since.
+  let opening = 0;
   const controller: EquipPickController = {
     open: (settlerId: number, ref: EquipSlotRef): void => {
-      const w = win();
-      w.setTitle(slotTitle(ref.group));
-      w.clearList();
-      const rows = opts.pickList(settlerId, ref.group);
-      if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
-      for (const row of rows) {
-        const def = goods.find((g) => g.typeId === row.goodType);
-        const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
-        w.addRow(label, () => {
-          opts.enqueue({
-            kind: 'equipGood',
-            entity: settlerId as Entity,
-            group: ref.group,
-            slot: ref.slot,
-            goodType: row.goodType,
-          });
-          w.hide();
-        });
-      }
-      w.show();
+      const request = ++opening;
+      void opts.pickList(settlerId, ref.group).then((rows) => {
+        if (request === opening) showSlotPicks(settlerId, ref, rows);
+      });
     },
     openAll: (settlerIds): void => {
       const snapshot = opts.snapshot();
       const targets = settlerIds.filter((id) => entityById(snapshot, id) !== undefined);
       if (targets.length === 0) return;
-      const w = win();
-      w.setTitle(messages().actionRing.changeEquipment);
-      w.clearList();
-      const rows = commonEquipPicks(opts.content, targets, opts.pickList);
-      if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
-      for (const row of rows) {
-        const def = goods.find((g) => g.typeId === row.goodType);
-        const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
-        w.addRow(label, () => {
-          for (const command of selectionEquipCommands(opts.snapshot(), targets, row)) opts.enqueue(command);
-          w.hide();
-        });
-      }
-      w.show();
+      const request = ++opening;
+      const asked = targets.flatMap((entity) =>
+        EQUIP_GROUPS.map((group) =>
+          opts.pickList(entity, group).then((rows) => [`${entity}:${group}`, rows] as const),
+        ),
+      );
+      void Promise.all(asked).then((answered) => {
+        if (request !== opening) return;
+        const lists = new Map(answered);
+        showCommonPicks(targets, (entity, group) => lists.get(`${entity}:${group}`) ?? []);
+      });
     },
     dispose: (): void => {
+      opening++;
       window_?.dispose();
       window_ = null;
     },
   };
+
+  function showSlotPicks(settlerId: number, ref: EquipSlotRef, rows: readonly EquipPickEntry[]): void {
+    const w = win();
+    w.setTitle(slotTitle(ref.group));
+    w.clearList();
+    if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
+    for (const row of rows) {
+      const def = goods.find((g) => g.typeId === row.goodType);
+      const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
+      w.addRow(label, () => {
+        opts.enqueue({
+          kind: 'equipGood',
+          entity: settlerId as Entity,
+          group: ref.group,
+          slot: ref.slot,
+          goodType: row.goodType,
+        });
+        w.hide();
+      });
+    }
+    w.show();
+  }
+
+  function showCommonPicks(targets: readonly number[], pickList: PickList): void {
+    const w = win();
+    w.setTitle(messages().actionRing.changeEquipment);
+    w.clearList();
+    const rows = commonEquipPicks(opts.content, targets, pickList);
+    if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
+    for (const row of rows) {
+      const def = goods.find((g) => g.typeId === row.goodType);
+      const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
+      w.addRow(label, () => {
+        for (const command of selectionEquipCommands(opts.snapshot(), targets, row)) opts.enqueue(command);
+        w.hide();
+      });
+    }
+    w.show();
+  }
   return controller;
 }

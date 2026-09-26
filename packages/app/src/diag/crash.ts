@@ -62,7 +62,7 @@ function showCrashBanner(text: string): void {
     download.type = 'button';
     download.textContent = copy.downloadDiagnostics;
     download.style.cssText = BANNER_BUTTON_STYLE;
-    download.addEventListener('click', () => downloadDiagnosticsBundle());
+    download.addEventListener('click', () => void downloadDiagnosticsBundle());
 
     const dismiss = document.createElement('button');
     dismiss.type = 'button';

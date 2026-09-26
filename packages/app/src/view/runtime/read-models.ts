@@ -22,9 +22,11 @@ import {
   type GeometryBuildingInfo,
   type HeartSelection,
 } from '../projections/index.js';
+import type { PlacementProbeViews } from './placement-gates.js';
 
 export interface ViewReadModelDeps {
-  readonly placementTribe?: number;
+  /** The placement answers the overlays walk, shared with the click gates. */
+  readonly probes: PlacementProbeViews;
   readonly host: SessionHost;
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The seat that places and probes; the HUD figures follow `viewer` instead. */
@@ -93,11 +95,11 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     buildingDoors: buildings.byType,
-    overlayFrame: makeOverlayFrameSource(host, mapSize, localPlayer, deps.placementTribe),
-    signpostOverlayFrame: makeSignpostOverlaySource(host, mapSize, localPlayer),
-    lineReach: makeLineReachSource(host, localPlayer),
+    overlayFrame: makeOverlayFrameSource(deps.probes, host, mapSize, localPlayer),
+    signpostOverlayFrame: makeSignpostOverlaySource(deps.probes, host, mapSize, localPlayer),
+    lineReach: makeLineReachSource(host, deps.probes, localPlayer),
     litOverlayFrame: makeLitOverlaySource(host, mapSize, localPlayer),
-    dockOverlayFrame: makeDockOverlaySource(host, mapSize, localPlayer),
+    dockOverlayFrame: makeDockOverlaySource(deps.probes, host, mapSize, localPlayer),
     ...createSnapshotProjections(
       deps.viewer,
       buildings.infoOf,

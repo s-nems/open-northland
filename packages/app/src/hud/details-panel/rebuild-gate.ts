@@ -25,6 +25,9 @@ export interface PanelRebuildGate {
 export interface PanelRebuildGateDeps {
   /** Build the panel model for a snapshot against the caller's current selection. */
   readonly derive: (snapshot: WorldSnapshot) => UnitPanelModel;
+  /** Bumped when a sim read the model takes lands anew, which re-derives under an unchanged snapshot;
+   *  absent, only a new snapshot does. */
+  readonly answersVersion?: () => number;
   /** Wall clock in ms, the value throttle's only time source. */
   readonly now: () => number;
 }
@@ -49,15 +52,19 @@ const structureKeyOf = (model: UnitPanelModel): string => {
 export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuildGate {
   /** Keyed on snapshot identity, not `snapshot.tick`: a same-tick world mutation hands out a new snapshot
    *  object under an unchanged tick, and a paused tick never advances to heal a stale model. */
-  let derived: { snapshot: WorldSnapshot; model: UnitPanelModel; json: string } | null = null;
+  let derived: { snapshot: WorldSnapshot; answers: number; model: UnitPanelModel; json: string } | null =
+    null;
   let lastModelKey = '';
   let lastStructureKey = '';
   let lastRebuildAt = Number.NEGATIVE_INFINITY;
 
   const modelFor = (snapshot: WorldSnapshot, force: boolean): { model: UnitPanelModel; json: string } => {
-    if (!force && derived !== null && derived.snapshot === snapshot) return derived;
+    const answers = deps.answersVersion?.() ?? 0;
+    if (!force && derived !== null && derived.snapshot === snapshot && derived.answers === answers) {
+      return derived;
+    }
     const model = deps.derive(snapshot);
-    derived = { snapshot, model, json: JSON.stringify(model) };
+    derived = { snapshot, answers, model, json: JSON.stringify(model) };
     return derived;
   };
 

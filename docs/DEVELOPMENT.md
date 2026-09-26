@@ -242,7 +242,8 @@ live inside a running game. A relayed session shows only the readout, since the 
 trusted world edits with no wire.
 
 A running game exposes `window.__opennorthland`. Besides the session `host` (the world as the runtime
-reads it: `tick`, `snapshot()`, `hashState()`, and `run(ticks)` to step a paused session), the live
+reads it: `tick` and `snapshot()` synchronously, and `await hashState()` and `await run(ticks)`, which
+steps a paused session), the live
 `renderer`, `sheet` and `cameraCtl`, it answers `perf()` with one JSON-serialisable performance
 report, so an automated probe reads numbers instead of screenshotting the on-canvas readout.
 `resetPerf()` opens a fresh measurement window, and `setSpeed()` / `setPaused()` put the session into

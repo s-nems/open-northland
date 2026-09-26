@@ -1,5 +1,5 @@
 import type { GroundWave, MapObjectSprite } from '@open-northland/render';
-import type { SimEvent } from '@open-northland/sim';
+import type { LandscapeEditView, SimEvent } from '@open-northland/sim';
 import type { ScriptLandscapeSprite } from '../../content/script-landscape-sprites.js';
 import type { SessionHost } from '../../session/index.js';
 
@@ -18,8 +18,7 @@ export function bindScriptLandscapes(
 ): (events: readonly SimEvent[]) => void {
   const removed = new Set<number>();
   const added = new Map<number, MapObjectSprite>();
-  const sync = (): void => {
-    const edits = host.landscapeEdits();
+  const apply = (edits: LandscapeEditView): void => {
     for (const id of edits.removed) {
       if (removed.has(id)) continue;
       removed.add(id);
@@ -43,6 +42,14 @@ export function bindScriptLandscapes(
       fresh.push(sprite);
     }
     if (fresh.length > 0) surface.addMapObjects(fresh);
+  };
+  // Each answer is the whole edit state, so only the latest asked is applied.
+  let asked = 0;
+  const sync = (): void => {
+    const request = ++asked;
+    void host.landscapeEdits().then((edits) => {
+      if (request === asked) apply(edits);
+    });
   };
   sync();
   return (events) => {

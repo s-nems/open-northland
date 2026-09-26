@@ -206,6 +206,8 @@ const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<
 
 export interface PickModeDeps {
   readonly snapshot: () => WorldSnapshot;
+  /** Bumped when an attach rule's answer lands anew, which re-lights the picks under one snapshot. */
+  readonly answersVersion?: () => number;
   readonly targets: UnitTargets;
   readonly content: ContentSet;
   readonly mapSize: { readonly width: number; readonly height: number };
@@ -466,7 +468,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   };
 
   /** Read every frame, so the O(entities) pass is memoized on everything it reads: the snapshot instance
-   *  plus `pickVersion`, which every arm and cancel bumps. */
+   *  plus `pickVersion`, which every arm and cancel bumps, and the attach rules' landed answers. */
   const highlightFor = memoBySnapshot(
     (snapshot: WorldSnapshot) => {
       const mode = pickMode;
@@ -480,7 +482,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       if (kind === null || !('units' in mode)) return null;
       return BUILDING_PICKS[kind].highlight(snapshot, mode.units, buildingsByType, canTrade);
     },
-    () => pickVersion,
+    () => pickVersion + (deps.answersVersion?.() ?? 0),
   );
 
   return {

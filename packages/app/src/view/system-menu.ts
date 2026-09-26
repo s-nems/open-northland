@@ -149,7 +149,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   });
 
   // The same report path the crash banner offers, also reachable without a crash.
-  const diagnostics = button(copy.downloadDiagnostics, () => downloadDiagnosticsBundle());
+  const diagnostics = button(copy.downloadDiagnostics, () => void downloadDiagnosticsBundle());
 
   // Present only while a `?debug=trace` recording is live.
   const trace = isTraceRecording() ? button(copy.downloadTrace, () => downloadTraceFile()) : null;

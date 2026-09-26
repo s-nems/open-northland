@@ -103,6 +103,7 @@ import {
   perfCornerForUiScale,
 } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
+import { createHostAnswers } from './host-answers.js';
 import { createMenuExit } from './menu-exit.js';
 import type { NetReadout } from './net-readout.js';
 import { createPauseHolds } from './pause-holds.js';
@@ -115,7 +116,6 @@ import { relatedWorldLoader } from './save-load/related-world.js';
 import { createScriptPresentation } from './script-presentation.js';
 import { mountScriptTerrainColors } from './script-terrain-colors.js';
 import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
-import { createTickMemoViews } from './tick-memo-views.js';
 import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
 
@@ -343,6 +343,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
     const fogGates = createFogGates();
 
+    const placementGates = createPlacementGates(host, fogGates, localPlayer, seatTribeOf(localPlayer));
+    cleanup.push(() => placementGates.dispose());
     const {
       canPlaceAt,
       canPlaceSignpostAt,
@@ -350,7 +352,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       palisadeBuiltAt,
       palisadeGateProbe,
       palisadeGateSites,
-    } = createPlacementGates(host, fogGates, localPlayer, seatTribeOf(localPlayer));
+      canMoorAt,
+    } = placementGates;
 
     // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
     // draws over the strip's lower buttons on a short screen.
@@ -378,7 +381,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     };
 
     const goodLabelByType = goodLabelsFromContent(host.content);
-    const { diplomacyView, buildAvailability } = createTickMemoViews(host, seatTribeOf);
+    const answers = createHostAnswers(host, seatTribeOf);
+    cleanup.push(() => answers.dispose());
+    const { diplomacyView, buildAvailability } = answers;
     const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
       diplomacyPanelRows(diplomacyView, {
         localPlayer: viewerPlayer(),
@@ -450,13 +455,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       papers: {
         read: () => {
           const seat = viewer.seat();
-          return seat === null ? NO_PAPERS : host.papers(seat);
+          return seat === null ? NO_PAPERS : answers.papers(seat);
         },
       },
       residents: {
         rows: () => residentsFor(host.snapshot()),
         snapshot: () => host.snapshot(),
-        canBecome: (id, jobType) => host.canChooseJob(id as Entity, jobType),
+        canBecome: answers.canChooseJob,
+        answersVersion: answers.version,
         selection: {
           ids: () => unitSelection?.selectedIds() ?? NO_SELECTION,
           version: () => unitSelection?.selectionVersion() ?? 0,
@@ -511,9 +517,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       missionBrief: briefFor,
-      missionBriefingHistory: () => host.missionBriefingHistory(),
-      missionReplayPage: () => host.missionBriefingPage(),
-      missionHuman: (missionId) => host.missionHuman(missionId),
+      missionBriefingHistory: answers.missionBriefingHistory,
+      missionReplayPage: answers.missionBriefingPage,
+      missionHuman: answers.missionHuman,
+      missionAnswersVersion: answers.missionVersion,
       // The original stops game time behind its large windows.
       onLargeWindow: (open) => {
         missionWindowOpen = open;
@@ -572,7 +579,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       verdict: (events) => {
         if (deps.observer !== true) verdict?.onEvents(events);
       },
-      presentation: (events) => presentation?.onEvents(events),
+      presentation: (events) => {
+        answers.onEvents(events);
+        presentation?.onEvents(events);
+      },
     });
 
     // Injected rather than imported: `hud/` never imports `view/`.
@@ -615,8 +625,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const detailsTooltip = createTooltip();
     cleanup.push(() => detailsTooltip.destroy());
     const controls = await createUnitControls({
-      technologyStatus: (kind, typeId, tribe, player) => host.unlockStatus(kind, typeId, tribe, player),
-      canChooseJob: (id, jobType) => host.canChooseJob(id as Entity, jobType),
+      technologyStatus: answers.technologyStatus,
+      canChooseJob: answers.canChooseJob,
+      answersVersion: answers.version,
       app,
       canvas,
       uiscale,
@@ -642,15 +653,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         return fog === null || fogTileVisible(fog, tileX, tileY);
       },
       doorBadges: () => pickableDoorBadges?.() ?? [],
-      equipPickList: (entity, group) => host.equipPickList(entity as Entity, group),
-      standsTo: (entity) => host.standsTo(entity as Entity),
-      traderView: (entity) => host.traderView(entity as Entity),
-      tradeOffersAt: (house) => host.tradeOffersAt(house as Entity),
-      canAttachTradeHouse: (trader, house) => host.canAttachTradeHouse(trader as Entity, house as Entity),
-      canAttachToVehicle: (settler, vehicle) => host.canAttachToVehicle(settler as Entity, vehicle as Entity),
+      equipPickList: answers.equipPickList,
+      requestEquipPicks: (entity, group) => host.equipPickList(entity as Entity, group),
+      standsTo: answers.standsTo,
+      traderView: answers.traderView,
+      tradeOffersAt: answers.tradeOffersAt,
+      canAttachTradeHouse: answers.canAttachTradeHouse,
+      canAttachToVehicle: answers.canAttachToVehicle,
       // The fog gate matches the overlay's, so a dimmed shore in the fog takes no dock click either.
-      canMoorAt: (vehicle, x, y) =>
-        fogGates.seesNode(x, y) && host.mooringProbe(vehicle as Entity)?.canMoor(x, y) === true,
+      canMoorAt,
       boundsOf: (ref) => renderer.entityBounds(ref),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       claimPointer: (x: number, y: number) =>
@@ -691,7 +702,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
     } = await createViewReadModels({
-      placementTribe: seatTribeOf(localPlayer),
+      probes: placementGates.probes,
       host,
       mapSize: deps.mapSize,
       localPlayer,
@@ -907,7 +918,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       syncViewport: liveSettings.syncViewport,
     });
 
-    if (deps.introAtStart === true) toolPanel.controller.openMission();
+    // The window opens on the briefing the host names, so it waits for that answer.
+    if (deps.introAtStart === true) {
+      answers.missionBriefingHistory();
+      answers.missionBriefingPage();
+      await answers.settled();
+      if (!destroyed) toolPanel.controller.openMission();
+    }
     // A restored save of a decided match says so at once, since no event will repeat the verdict.
     if (deps.observer !== true) verdict?.announce(host.matchOutcome(localPlayer));
 

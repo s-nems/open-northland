@@ -123,6 +123,8 @@ export interface GameToolPanelDeps {
   readonly missionReplayPage?: () => number | null;
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: (missionId: number) => number | null;
+  /** Bumped when a mission read above lands anew, which rebuilds an open mission window. */
+  readonly missionAnswersVersion?: () => number;
   readonly onLargeWindow?: (open: boolean) => void;
   /** The map's sprite sheet for the cards' settler figures; absent leaves the thumbnails bare. */
   readonly sheet?: SpriteSheet;
@@ -276,6 +278,9 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
         : {}),
       ...(deps.missionReplayPage !== undefined ? { missionReplayPage: deps.missionReplayPage } : {}),
       ...(deps.missionHuman !== undefined ? { missionHuman: deps.missionHuman } : {}),
+      ...(deps.missionAnswersVersion !== undefined
+        ? { missionAnswersVersion: deps.missionAnswersVersion }
+        : {}),
       ...(deps.onLargeWindow !== undefined ? { onLargeWindow: deps.onLargeWindow } : {}),
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),

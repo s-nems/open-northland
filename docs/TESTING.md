@@ -135,7 +135,8 @@ violations in `packages/sim/src`.
 Every determinism proof above runs in one Node process. Lockstep multiplayer needs the same state
 from every JavaScript engine that ships the game, so this mode boots the app in each engine, pauses
 the session, steps the sim through the same `window.__opennorthland` handle the performance probes
-use, and compares the state-hash sequence with a Node run of the same world:
+use (its `host.run` and `host.hashState` answer Promises, which the probe awaits), and compares the
+state-hash sequence with a Node run of the same world:
 
 ```bash
 npm run test:engines                              # Electron, Chromium, WebKit, Firefox

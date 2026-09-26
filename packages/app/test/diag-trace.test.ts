@@ -51,12 +51,12 @@ describe('trace recording', () => {
     expect(parsed.traceEvents[0]?.ph).toBe('X');
   });
 
-  it('attaches to the diagnostics bundle only while recording', () => {
+  it('attaches to the diagnostics bundle only while recording', async () => {
     const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
-    expect(buildDiagnosticsBundle(log, null, null).trace).toBeUndefined();
+    expect((await buildDiagnosticsBundle(log, null, null)).trace).toBeUndefined();
     startTraceRecording();
     recordTraceEvent('sim/vision', 3, 4);
-    const bundle = buildDiagnosticsBundle(log, null);
+    const bundle = await buildDiagnosticsBundle(log, null);
     expect(bundle.trace).toHaveLength(1);
   });
 });

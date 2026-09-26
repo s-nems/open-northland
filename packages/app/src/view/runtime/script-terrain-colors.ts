@@ -18,8 +18,13 @@ export async function mountScriptTerrainColors(
   );
   if (!hasColors) return () => undefined;
   const palette = await loadVertexPalette();
+  // Each answer is the whole tint state, so only the latest asked is applied.
+  let asked = 0;
   const sync = (): void => {
-    surface.applyTerrainVertexColors(host.landscapeEdits().tints, palette ?? undefined);
+    const request = ++asked;
+    void host.landscapeEdits().then((edits) => {
+      if (request === asked) surface.applyTerrainVertexColors(edits.tints, palette ?? undefined);
+    });
   };
   sync();
   return (events) => {

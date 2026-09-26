@@ -85,11 +85,11 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
     await page.waitForFunction(() => (window.__opennorthland?.host.tick ?? 0) >= 3, null, {
       timeout: 90_000,
     });
-    const saved = await page.evaluate(() => {
+    const saved = await page.evaluate(async () => {
       const game = window.__opennorthland;
       if (game === undefined) throw new Error('Game did not mount');
       game.setPaused(true);
-      return { tick: game.host.tick, hash: game.host.hashState() };
+      return { tick: game.host.tick, hash: await game.host.hashState() };
     });
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -128,12 +128,12 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
     await page.locator('[data-nav-id="load"]').click();
     await page.getByRole('button').filter({ hasText: SAVE_NAME }).dblclick();
     await page.waitForFunction(() => window.__opennorthland !== undefined, null, { timeout: 90_000 });
-    const restored = await page.evaluate(() => {
+    const restored = await page.evaluate(async () => {
       const game = window.__opennorthland;
       if (game === undefined) throw new Error('Save did not mount');
       return {
         tick: game.host.tick,
-        hash: game.host.hashState(),
+        hash: await game.host.hashState(),
         paused: game.perf().paused,
         map: new URLSearchParams(location.search).get('map'),
       };

@@ -176,11 +176,11 @@ async function pauseAt(page: Page, errors: readonly string[]): Promise<number> {
 }
 
 async function hashAt(page: Page, tick: number): Promise<string> {
-  const result = await page.evaluate((target) => {
+  const result = await page.evaluate(async (target) => {
     const debug: HostHandle | undefined = window.__opennorthland;
     if (debug === undefined) throw new Error('the game view installed no debug handle');
-    debug.host.run(target - debug.host.tick);
-    return { tick: debug.host.tick, hash: debug.host.hashState() };
+    await debug.host.run(target - debug.host.tick);
+    return { tick: debug.host.tick, hash: await debug.host.hashState() };
   }, tick);
   if (result.tick !== tick) {
     throw new Error(`the session ran past tick ${tick} on its own and reached ${result.tick}`);

@@ -6,16 +6,14 @@ import type { MetSeat } from '../../hud/tool-panel/messages/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { SessionHost } from '../../session/index.js';
 
-/** The host reads the roster projection needs. */
-export type DiplomacySimView = Pick<
-  SessionHost,
-  | 'hasMetPlayer'
-  | 'diplomacyStance'
-  | 'diplomacyLocked'
-  | 'openTributes'
-  | 'goodsTradedWith'
-  | 'tradeOffersOf'
->;
+/** The world reads the roster projection needs, answered synchronously: the stances and the met
+ *  flags are per-frame host reads, the rest the last answers a `LastAnswerCache` holds. */
+export interface DiplomacySimView extends Pick<SessionHost, 'hasMetPlayer' | 'diplomacyStance'> {
+  diplomacyLocked(a: number, b: number): boolean;
+  goodsTradedWith(player: number, partner: number): number;
+  openTributes(payer: number): readonly OpenTribute[];
+  tradeOffersOf(partner: number): readonly TradeOffer[];
+}
 
 export interface DiplomacyRosterOptions {
   readonly localPlayer: number;

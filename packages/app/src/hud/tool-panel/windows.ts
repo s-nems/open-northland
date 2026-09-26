@@ -74,6 +74,8 @@ export interface ToolWindowsDeps {
   readonly history: HypertextBook | null;
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
+  /** Bumped when a mission read above lands anew, which rebuilds an open mission window. */
+  readonly missionAnswersVersion?: () => number;
   readonly onLargeWindow?: (open: boolean) => void;
   /** The place-any plan the construction window holds for its next catalogue pick. */
   readonly heldPaper: HeldPaperController;
@@ -136,6 +138,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     replayPage: deps.missionReplayPage,
     history: deps.history,
     ...(deps.missionHuman !== undefined ? { missionHuman: deps.missionHuman } : {}),
+    ...(deps.missionAnswersVersion !== undefined ? { answersVersion: deps.missionAnswersVersion } : {}),
     ...(deps.onLargeWindow !== undefined ? { onOpenChange: deps.onLargeWindow } : {}),
   });
   /** Show `target` alone, as a beam press would. */

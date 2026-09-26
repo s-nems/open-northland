@@ -27,7 +27,7 @@ if (scene === undefined) throw new Error('no registered scenes - the bundle roun
 const RUN_TICKS = 60;
 
 describe('diagnostics bundle', () => {
-  it('serializes a live session and replays back to the recorded finalHash', () => {
+  it('serializes a live session and replays back to the recorded finalHash', async () => {
     const sim = createSceneSim(scene);
     const trace = new HashTrace();
     for (let tick = 1; tick <= RUN_TICKS; tick++) {
@@ -39,7 +39,7 @@ describe('diagnostics bundle', () => {
 
     const log = new DiagLog({ consoleLevel: 'silent', now: () => 7 });
     log.warn('content', 'synthetic pre-crash entry');
-    const bundle = buildDiagnosticsBundle(log, {
+    const bundle = await buildDiagnosticsBundle(log, {
       entry: 'scene',
       worldId: scene.id,
       seed: scene.seed,
@@ -71,7 +71,7 @@ describe('diagnostics bundle', () => {
     expect(replayed.hashState()).toBe(game.hashes?.at(-1)?.hash);
   });
 
-  it('never cuts shared references inside the replay payload', () => {
+  it('never cuts shared references inside the replay payload', async () => {
     const sim = createSceneSim(scene);
     // The same command OBJECT enqueued twice - commands are held by reference in the log, so a
     // naive whole-bundle cycle guard would stringify the second occurrence as "[circular]".
@@ -81,7 +81,7 @@ describe('diagnostics bundle', () => {
     sim.enqueueSetup(shared);
     sim.step();
     const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
-    const bundle = buildDiagnosticsBundle(log, {
+    const bundle = await buildDiagnosticsBundle(log, {
       entry: 'scene',
       worldId: scene.id,
       seed: scene.seed,
@@ -96,16 +96,16 @@ describe('diagnostics bundle', () => {
     cyclic.self = cyclic;
     log.warn('content', 'cyclic payload', cyclic);
     const reserialized = JSON.parse(
-      serializeDiagnosticsBundle(buildDiagnosticsBundle(log, null)),
+      serializeDiagnosticsBundle(await buildDiagnosticsBundle(log, null)),
     ) as DiagnosticsBundle;
     expect(reserialized.log[0]?.data).toEqual({ self: '[circular]' });
   });
 
-  it('refuses an imported log whose envelope claims authority it may not have', () => {
+  it('refuses an imported log whose envelope claims authority it may not have', async () => {
     const sim = createSceneSim(scene);
     sim.step();
     const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
-    const bundle = buildDiagnosticsBundle(log, {
+    const bundle = await buildDiagnosticsBundle(log, {
       entry: 'scene',
       worldId: scene.id,
       seed: scene.seed,
@@ -120,17 +120,17 @@ describe('diagnostics bundle', () => {
     expect(() => parseCommandLog(forged)).toThrow(/may not issue/);
   });
 
-  it('degrades to a log-only bundle when no game session is registered', () => {
+  it('degrades to a log-only bundle when no game session is registered', async () => {
     const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
     log.error('crash', 'boot failure');
     const parsed = JSON.parse(
-      serializeDiagnosticsBundle(buildDiagnosticsBundle(log, null)),
+      serializeDiagnosticsBundle(await buildDiagnosticsBundle(log, null)),
     ) as DiagnosticsBundle;
     expect(parsed.game).toBeNull();
     expect(parsed.log).toHaveLength(1);
   });
 
-  it('records hashes through the session on the fixed cadence, only for the registered sim', () => {
+  it('records hashes through the session on the fixed cadence, only for the registered sim', async () => {
     const sim = createSceneSim(scene);
     const other = createSceneSim(scene);
     const trace = new HashTrace();
@@ -143,6 +143,8 @@ describe('diagnostics bundle', () => {
         other.step();
         recordDiagHash(inlineSessionHost(other)); // an unregistered world must never taint the trace
       }
+      // The hash lands after it is asked for, under the tick it was asked at.
+      await Promise.resolve();
     } finally {
       setDiagGameSession(null);
     }

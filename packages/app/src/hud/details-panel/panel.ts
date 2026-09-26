@@ -30,6 +30,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActio
   /** The resolved HUD scale, shared with the left tool panel and action ring. May be fractional. */
   readonly uiscale?: number;
   readonly lang: string;
+  /** Bumped when a sim read the model takes (the context's seams) lands anew. */
+  readonly answersVersion?: () => number;
   /** Client→canvas coordinate mapping, injected so the hud layer stays view-free. */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   /** Sprite sheet for the animated worker field; absent → the field stays empty. */
@@ -99,6 +101,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const rebuildGate = createPanelRebuildGate({
     derive: (snapshot) => buildUnitPanelModel(snapshot, selectedIds, ctx),
     now: () => performance.now(),
+    ...(opts.answersVersion !== undefined ? { answersVersion: opts.answersVersion } : {}),
   });
   let view: PanelView = EMPTY_PANEL_VIEW;
   /** The model the gate last handed out. */

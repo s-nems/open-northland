@@ -40,27 +40,32 @@ export interface DiagnosticsBundle {
   readonly trace?: readonly TraceEvent[];
 }
 
-export function buildDiagnosticsBundle(
+export async function buildDiagnosticsBundle(
   log: DiagLog = diag,
   session: DiagGameSession | null = currentDiagGameSession(),
   trace: readonly TraceEvent[] | null = recordedTraceEvents(),
-): DiagnosticsBundle {
+): Promise<DiagnosticsBundle> {
+  const generatedAt = new Date().toISOString();
+  const entries = log.entries();
   return {
     kind: DIAGNOSTICS_BUNDLE_KIND,
     version: DIAGNOSTICS_BUNDLE_VERSION,
-    generatedAt: new Date().toISOString(),
-    log: log.entries(),
-    game: session === null ? null : gameReport(session),
+    generatedAt,
+    log: entries,
+    game: session === null ? null : await gameReport(session),
     ...(trace !== null ? { trace } : {}),
   };
 }
 
-function gameReport(session: DiagGameSession): DiagnosticsGameReport {
+async function gameReport(session: DiagGameSession): Promise<DiagnosticsGameReport> {
   const { host } = session;
+  // Both reads answer at the tick they were asked at.
+  const tick = host.tick;
+  const commandLog = host.commandLog();
   // Hashing walks every component, so a wedged world may throw; a null hash must not lose the bundle.
   let finalHash: string | null = null;
   try {
-    finalHash = host.hashState();
+    finalHash = await host.hashState();
   } catch {
     // A null hash still leaves a replayable command log.
   }
@@ -68,12 +73,12 @@ function gameReport(session: DiagGameSession): DiagnosticsGameReport {
     entry: session.entry,
     worldId: session.worldId,
     seed: session.seed,
-    tick: host.tick,
+    tick,
     ...(session.restoredAtTick !== undefined && session.restoredAtTick !== null
       ? { restoredAtTick: session.restoredAtTick }
       : {}),
     finalHash,
-    commandLog: host.commandLog,
+    commandLog: await commandLog,
     ...(session.hashTrace !== null
       ? { hashes: session.hashTrace.list().map(({ tick, hash }) => ({ tick, hash })) }
       : {}),
@@ -108,9 +113,10 @@ export function serializeDiagnosticsBundle(bundle: DiagnosticsBundle): string {
   return JSON.stringify({ ...bundle, log }, null, 2);
 }
 
-export function downloadDiagnosticsBundle(bundle: DiagnosticsBundle = buildDiagnosticsBundle()): void {
+export async function downloadDiagnosticsBundle(bundle?: DiagnosticsBundle): Promise<void> {
+  const built = bundle ?? (await buildDiagnosticsBundle());
   downloadJsonFile(
-    `opennorthland-diagnostics-${bundle.generatedAt.replaceAll(':', '-')}.json`,
-    serializeDiagnosticsBundle(bundle),
+    `opennorthland-diagnostics-${built.generatedAt.replaceAll(':', '-')}.json`,
+    serializeDiagnosticsBundle(built),
   );
 }

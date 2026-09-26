@@ -16,15 +16,15 @@ import type {
   MissionPresentationView,
   MissionScript,
   MissionStatus,
-  MooringProbe,
+  MooringAnswer,
+  NodeArea,
+  NodeGridAnswer,
+  NodeSetAnswer,
   OpenTribute,
   PalisadeGateProbeResult,
   Paper,
-  PlacementProbe,
-  PlayerPlacementProbe,
   SaveGame,
   ScriptLandscapeType,
-  SignpostProbe,
   SimEvent,
   SystemInstrument,
   TradeOffer,
@@ -38,7 +38,9 @@ import type {
  * Everything the running game reads of the world. The runtime (frame loop, HUD, controls, saves,
  * diagnostics) consumes this interface and never the `Simulation` behind it, which a host owns: an
  * entry, a scene, or the inline host over a live sim. Members are grouped by the cadence the runtime
- * reads them at, the split a host off the main thread serves differently.
+ * reads them at. A per-frame member answers synchronously from what a host keeps beside its snapshot;
+ * everything else answers a Promise of structured-cloneable data, so a host may run the sim on another
+ * thread. A synchronous consumer of an asynchronous read goes through a `LastAnswerCache`.
  */
 export interface SessionHost {
   // Session inputs, fixed for the session.
@@ -62,22 +64,12 @@ export interface SessionHost {
   /** The seat's fog masks, keyed by their `generation`; null with fog off. */
   fogView(player: number): FogView | null;
   constructionPlots(): readonly ConstructionPlot[];
-  placementProbe(buildingType: number, player?: number, tribe?: number): PlayerPlacementProbe | null;
-  /** Changes when a placement blocker does, not per tick; overlay memos key on it. */
+  /** Changes when a placement blocker does, not per tick; building, wall and mooring answers follow it. */
   placementBlockerVersion(): string;
-  signpostProbe(player: number): SignpostProbe | null;
+  /** Changes when a signpost answer may. */
   signpostBlockerVersion(): string;
-  palisadeProbe(gfxIndex: number): PlacementProbe | null;
-  palisadeGateProbe(
-    hx: number,
-    hy: number,
-    closedGateGfxIndexes: readonly number[],
-    player?: number,
-  ): PalisadeGateProbeResult | null;
+  /** Changes when a gate answer may, movers aside. */
   palisadeLayoutVersion(): string;
-  palisadeGateSites(closedGateGfxIndexes: readonly number[], player: number): PalisadeGateProbeResult[];
-  ownPalisadeNodes(player: number): (hx: number, hy: number) => boolean;
-  mooringProbe(vehicle: Entity): MooringProbe | null;
   /** The directed stance `from` holds toward `to`; a pair never set reads `enemy`. */
   diplomacyStance(from: number, to: number): DiplomacyState;
   hasMetPlayer(viewer: number, other: number): boolean;
@@ -88,6 +80,8 @@ export interface SessionHost {
   assistantWeaponVetoes(player: number): readonly number[];
   needsEnabled(): boolean;
   fogMode(): FogMode;
+  matchOutcome(player: number): MatchOutcome;
+  missionStatus(): readonly MissionStatus[];
 
   // Per tick.
 
@@ -95,44 +89,69 @@ export interface SessionHost {
    *  next step replaces them. */
   tickEvents(): readonly SimEvent[];
   /** Walks every component of every entity: the diag trace's cadence read, never per frame. */
-  hashState(): string;
+  hashState(): Promise<string>;
 
-  // Rare, request-shaped.
+  // Probes: the placement rules as data over a node area, or null for a mapless world.
 
-  unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): UnlockStatus;
-  canChooseJob(entity: Entity, jobType: number): boolean;
-  equipPickList(entity: Entity, group: EquipCategory): EquipPickEntry[];
+  /** The `placeBuilding` rule; with a `player` it also refuses the ground a hostile army contests, and a
+   *  `tribe` adds the seat's technology gate. */
+  placementProbe(
+    buildingType: number,
+    area: NodeArea,
+    player?: number,
+    tribe?: number,
+  ): Promise<NodeGridAnswer | null>;
+  signpostProbe(player: number, area: NodeArea): Promise<NodeGridAnswer | null>;
+  palisadeProbe(gfxIndex: number, area: NodeArea): Promise<NodeGridAnswer | null>;
+  palisadeGateProbe(
+    hx: number,
+    hy: number,
+    closedGateGfxIndexes: readonly number[],
+    player?: number,
+  ): Promise<PalisadeGateProbeResult | null>;
+  palisadeGateSites(
+    closedGateGfxIndexes: readonly number[],
+    player: number,
+  ): Promise<readonly PalisadeGateProbeResult[]>;
+  /** The nodes `player`'s walls, gates and wall sites stand on. */
+  ownPalisadeNodes(player: number): Promise<NodeSetAnswer>;
+  /** Null for a vehicle that takes no dock order. */
+  mooringProbe(vehicle: Entity): Promise<MooringAnswer | null>;
+
+  // Request-shaped.
+
+  unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): Promise<UnlockStatus>;
+  canChooseJob(entity: Entity, jobType: number): Promise<boolean>;
+  equipPickList(entity: Entity, group: EquipCategory): Promise<readonly EquipPickEntry[]>;
   /** Whether a unit is holding its ground on battle alert. */
-  standsTo(entity: Entity): boolean;
-  papers(player: number): Paper[];
+  standsTo(entity: Entity): Promise<boolean>;
+  papers(player: number): Promise<readonly Paper[]>;
   /** Whether the pair's stances are locked, so neither seat's declaration changes them. */
-  diplomacyLocked(a: number, b: number): boolean;
+  diplomacyLocked(a: number, b: number): Promise<boolean>;
   /** The units `player`'s traders took out of `partner`'s houses under a trade agreement. */
-  goodsTradedWith(player: number, partner: number): number;
+  goodsTradedWith(player: number, partner: number): Promise<number>;
   /** The open tributes `payer` owes. */
-  openTributes(payer: number): readonly OpenTribute[];
+  openTributes(payer: number): Promise<readonly OpenTribute[]>;
   /** The map agreements `partner`'s houses offer a visiting trader, each once. */
-  tradeOffersOf(partner: number): readonly TradeOffer[];
-  tradeOffersAt(house: Entity): readonly TradeOffer[];
-  traderView(trader: Entity): TraderView | undefined;
-  canAttachTradeHouse(trader: Entity, house: Entity): boolean;
-  canAttachToVehicle(settler: Entity, vehicle: Entity): boolean;
-  missionStatus(): readonly MissionStatus[];
-  missionBriefingHistory(): readonly number[];
-  missionBriefingPage(): number | null;
-  missionHuman(id: number): Entity | null;
-  missionPresentation(): MissionPresentationView;
-  infoLines(player: number): readonly InfoLineView[];
-  landscapeEdits(): LandscapeEditView;
-  matchOutcome(player: number): MatchOutcome;
+  tradeOffersOf(partner: number): Promise<readonly TradeOffer[]>;
+  tradeOffersAt(house: Entity): Promise<readonly TradeOffer[]>;
+  traderView(trader: Entity): Promise<TraderView | undefined>;
+  canAttachTradeHouse(trader: Entity, house: Entity): Promise<boolean>;
+  canAttachToVehicle(settler: Entity, vehicle: Entity): Promise<boolean>;
+  missionBriefingHistory(): Promise<readonly number[]>;
+  missionBriefingPage(): Promise<number | null>;
+  missionHuman(id: number): Promise<Entity | null>;
+  missionPresentation(): Promise<MissionPresentationView>;
+  infoLines(player: number): Promise<readonly InfoLineView[]>;
+  landscapeEdits(): Promise<LandscapeEditView>;
   /** The world alone; a session driver's capture adds the accepted future input. */
-  exportSave(options?: ExportSaveOptions): SaveGame;
+  exportSave(options?: ExportSaveOptions): Promise<SaveGame>;
 
   // Diagnostics.
 
-  readonly commandLog: readonly LoggedCommand[];
+  commandLog(): Promise<readonly LoggedCommand[]>;
   /** One slot; every consumer of the per-system seam fans out from `installSessionInstruments`. */
   setInstrument(instrument: SystemInstrument | null): void;
   /** Step the world outside the session clock: the cross-engine probes step a paused session by it. */
-  run(ticks: number): void;
+  run(ticks: number): Promise<void>;
 }

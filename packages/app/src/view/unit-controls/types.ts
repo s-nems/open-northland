@@ -15,6 +15,8 @@ import type {
   PlayerCommand,
   TradeOffer,
   TraderView,
+  UnlockKind,
+  UnlockStatus,
   WorldSnapshot,
 } from '@open-northland/sim';
 import type { Application, Texture } from 'pixi.js';
@@ -27,11 +29,22 @@ import type { CentralWindows } from '../../hud/dom/trade-window/window.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import type { PresentationPack } from '../../presentation/pack.js';
-import type { SessionHost } from '../../session/index.js';
 import type { OverviewPress } from './overview-orders.js';
 
+/** The sim's technology read (`SessionHost.unlockStatus`) as its last answer; undefined until one
+ *  landed. */
+export type TechnologyStatusRead = (
+  kind: UnlockKind,
+  typeId: number,
+  tribe: number,
+  player?: number,
+) => UnlockStatus | undefined;
+
 export interface UnitControlsOptions {
-  readonly technologyStatus?: SessionHost['unlockStatus'];
+  readonly technologyStatus?: TechnologyStatusRead;
+  /** Bumped whenever one of the sim reads below answered anew, so a panel or dialog memoized per
+   *  snapshot rebuilds on it too; absent, only a new snapshot rebuilds. */
+  readonly answersVersion?: () => number;
   /** The sim's own answer to whether a settler may take a trade; the picker offers a row when a selected
    *  settler the profession order reaches may, and changes only those who may. */
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
@@ -69,9 +82,12 @@ export interface UnitControlsOptions {
   readonly resourceVisible?: (tileX: number, tileY: number) => boolean;
   /** The frame's fog-filtered door badges; absent or empty disables badge picking. */
   readonly doorBadges?: () => readonly DoorBadge[];
-  /** The sim's equip pick-list read seam (`SessionHost.equipPickList`); absent leaves the equipment
-   *  panel's plus/swap buttons inert. */
+  /** The sim's equip pick-list (`SessionHost.equipPickList`) as its last answer, which gates a click on a
+   *  goods heap; absent, the click is a walk. */
   readonly equipPickList?: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
+  /** The same list asked afresh, which the equip windows wait for; absent leaves the equipment panel's
+   *  plus/swap buttons inert. */
+  readonly requestEquipPicks?: (entity: number, group: EquipCategory) => Promise<readonly EquipPickEntry[]>;
   /** The sim's battle-alert read seam (`SessionHost.standsTo`); absent leaves a unit holding its ground
    *  under fire captioned as idle. */
   readonly standsTo?: (entity: number) => boolean;

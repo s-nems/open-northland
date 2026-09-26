@@ -73,7 +73,8 @@ export interface PerfReport {
 }
 
 export interface OpenNorthlandDebug {
-  /** The world as the runtime reads it; `run` steps a paused session for the cross-engine probes. */
+  /** The world as the runtime reads it; the probes await `run`, which steps a paused session, and
+   *  `hashState`. */
   readonly host: SessionHost;
   /** Live instances, read-only: the runtime owns their state, and no replay or bundle reproduces a
    *  console mutation of them. */

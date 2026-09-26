@@ -50,6 +50,9 @@ export interface ResidentsWindowDeps {
   readonly rows: () => readonly ResidentRow[];
   /** The sim's rule behind the "can become" filter, asked only while that filter is set. */
   readonly canBecome: (id: number, jobType: number) => boolean;
+  /** Bumped when a `canBecome` answer lands anew, which relists under unchanged rows; absent, only new
+   *  rows relist. */
+  readonly answersVersion?: () => number;
   /** The trades the "can become" filter offers, in picker order. */
   readonly trades: readonly { readonly jobType: number; readonly label: string }[];
   /** The unit controls' selection, which the rows light for; `version` moves with every change. */
@@ -279,6 +282,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   let shownIds: readonly number[] = [];
   let rows: readonly ResidentRow[] | null = null;
   let shownSelection = -1;
+  let listedAnswers = -1;
   let figuresStale = true;
 
   /** The last row pressed without Shift, where a range press starts. */
@@ -575,8 +579,10 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       if (!window.isOpen()) return;
       place();
       const next = deps.rows();
-      if (next !== rows) {
+      const answers = deps.answersVersion?.() ?? 0;
+      if (next !== rows || (state.filters.canBecome !== null && answers !== listedAnswers)) {
         rows = next;
+        listedAnswers = answers;
         relist();
       } else if (deps.selection.version() !== shownSelection) {
         showSelection();

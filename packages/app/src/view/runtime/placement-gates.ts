@@ -1,7 +1,31 @@
-import type { Paper } from '@open-northland/sim';
+import type {
+  Entity,
+  MooringProbe,
+  NodeGridAnswer,
+  PalisadeGateProbeResult,
+  Paper,
+} from '@open-northland/sim';
 import type { GateSites, PalisadeGateProbeView } from '../../hud/tool-panel/placement.js';
-import type { SessionHost } from '../../session/index.js';
+import {
+  createLastAnswerCache,
+  mooringProbeOf,
+  type NodeGridProbe,
+  nodeGridProbe,
+  nodeSetTest,
+  type SessionHost,
+} from '../../session/index.js';
 import type { FogGates } from '../projections/index.js';
+
+/** The host's placement answers the overlays walk; the gates below read the same ones. */
+export interface PlacementProbeViews {
+  /** The held building's rule for the local seat; a paper waives the seat's technology gate. */
+  readonly building: (typeId: number, paper?: Paper) => NodeGridProbe;
+  readonly signpost: () => NodeGridProbe;
+  /** The ship's mooring spots; undefined while they are being answered. */
+  readonly mooring: (vehicle: number) => MooringProbe | null | undefined;
+  /** Bumped by every answer that lands, for a memo over what the gates answered. */
+  readonly version: () => number;
+}
 
 /** The live placement rules the click gates and the cursor ghosts share. */
 export interface PlacementGates {
@@ -12,15 +36,24 @@ export interface PlacementGates {
   readonly palisadeBuiltAt: (owner: number, col: number, row: number) => boolean;
   readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
+  /** Whether a dock order for `vehicle` at a node would find a mooring. */
+  readonly canMoorAt: (vehicle: number, col: number, row: number) => boolean;
+  readonly probes: PlacementProbeViews;
+  dispose(): void;
 }
 
 /** The span's centre sits at this index of the probe's five nodes. */
 const GATE_SPAN_CENTER = 2;
 
+type IndexedGateSites = GateSites & { readonly isCenter: (col: number, row: number) => boolean };
+
+const NO_GATE_SITES: readonly PalisadeGateProbeResult[] = [];
+
 /**
  * Click gate and cursor ghost both read these, so a ghost cannot preview what a click would refuse.
  * A mapless world has no probe: buildings place freely, signposts never do. The fog rule is app-side
  * only (genre convention, not the original), so the ungated sim command still serves admin spawns.
+ * Every rule reads the host's last answer, and a node whose answer is still on its way is refused.
  */
 export function createPlacementGates(
   host: SessionHost,
@@ -31,75 +64,137 @@ export function createPlacementGates(
   const closedGates = host.landscapeTypes
     .filter((type) => type.wall?.gate?.open === false)
     .map((type) => type.typeId);
-  // Each index walks every wall, so each is kept until what it reads changes: the built nodes follow the
-  // placement blockers, the gate spans the wall layout and the fog, and the hovered probe the wall layout.
-  let builtKey = '';
-  let builtAt: (col: number, row: number) => boolean = () => false;
-  let sites: GateSites & { readonly isCenter: (col: number, row: number) => boolean } = {
+  const tick = (): number => host.tick;
+  const grids = createLastAnswerCache<NodeGridAnswer | null>({ tick });
+  const ownNodes = createLastAnswerCache<(col: number, row: number) => boolean>({ tick });
+  const siteLists = createLastAnswerCache<readonly PalisadeGateProbeResult[]>({ tick });
+  const gateProbes = createLastAnswerCache<PalisadeGateProbeResult | null>({ tick });
+  const moorings = createLastAnswerCache<MooringProbe | null>({ tick });
+  const blockerVersion = (): string => host.placementBlockerVersion();
+
+  const gridProbes = new Map<string, NodeGridProbe>();
+  const gridProbe = (family: string, make: () => NodeGridProbe): NodeGridProbe => {
+    let probe = gridProbes.get(family);
+    if (probe === undefined) {
+      probe = make();
+      gridProbes.set(family, probe);
+    }
+    return probe;
+  };
+  const building = (typeId: number, paper?: Paper): NodeGridProbe => {
+    const gateTribe = paper === undefined ? tribe : undefined;
+    const family = `b${typeId}:${gateTribe ?? ''}`;
+    // Asked every tick besides: a hostile fighter's step and a technology unlock move no blocker version.
+    return gridProbe(family, () =>
+      nodeGridProbe(
+        grids,
+        family,
+        (area) => host.placementProbe(typeId, area, localPlayer, gateTribe),
+        blockerVersion,
+        true,
+      ),
+    );
+  };
+  const signpost = (): NodeGridProbe =>
+    gridProbe('s', () =>
+      nodeGridProbe(
+        grids,
+        's',
+        (area) => host.signpostProbe(localPlayer, area),
+        () => host.signpostBlockerVersion(),
+      ),
+    );
+  const palisade = (gfxIndex: number): NodeGridProbe =>
+    gridProbe(`p${gfxIndex}`, () =>
+      nodeGridProbe(grids, `p${gfxIndex}`, (area) => host.palisadeProbe(gfxIndex, area), blockerVersion),
+    );
+  const mooring = (vehicle: number): MooringProbe | null | undefined =>
+    moorings.read(
+      `${vehicle}`,
+      () =>
+        host
+          .mooringProbe(vehicle as Entity)
+          .then((answer) => (answer === null ? null : mooringProbeOf(answer))),
+      blockerVersion(),
+      // The ship's own position is an input too.
+      true,
+    );
+
+  // The gate spans are indexed once per wall layout, fog and landed answer.
+  let sites: IndexedGateSites = {
     key: '',
     has: () => false,
     centerFor: () => null,
     isCenter: () => false,
     highlight: [],
   };
-  let probeKey = '';
-  let probe: PalisadeGateProbeView | null = null;
   const fogKey = (): string => {
     const fog = host.fogView(localPlayer);
     return fog === null ? 'off' : `${fog.mode}:${fog.generation}`;
   };
-  const gateSites = (): typeof sites => {
-    const key = `gate:${host.palisadeLayoutVersion()}:${fogKey()}`;
-    if (key !== sites.key) sites = gateSitesOf(host, closedGates, localPlayer, fogGates, key);
+  const gateSites = (): IndexedGateSites => {
+    const layout = host.palisadeLayoutVersion();
+    const listed =
+      siteLists.read('sites', () => host.palisadeGateSites(closedGates, localPlayer), layout) ??
+      NO_GATE_SITES;
+    const key = `gate:${layout}:${fogKey()}:${siteLists.version}`;
+    if (key !== sites.key) sites = gateSitesOf(listed, fogGates, key);
     return sites;
   };
   return {
     // A paper bypasses only technology; fog, footprint and contested-ground rules still apply.
-    canPlaceAt: (typeId, col, row, paper) =>
-      fogGates.seesNode(col, row) &&
-      (host
-        .placementProbe(typeId, localPlayer, paper === undefined ? tribe : undefined)
-        ?.canPlace(col, row) ??
-        true),
-    canPlaceSignpostAt: (col, row) =>
-      fogGates.seesNode(col, row) && (host.signpostProbe(localPlayer)?.canPlace(col, row) ?? false),
-    canPlacePalisadeAt: (gfxIndex, col, row) =>
-      fogGates.seesNode(col, row) && (host.palisadeProbe(gfxIndex)?.canPlace(col, row) ?? false),
-    palisadeBuiltAt: (owner, col, row) => {
-      const key = `${owner}:${host.placementBlockerVersion()}`;
-      if (key !== builtKey) {
-        builtAt = host.ownPalisadeNodes(owner);
-        builtKey = key;
-      }
-      return builtAt(col, row);
+    canPlaceAt: (typeId, col, row, paper) => {
+      if (!fogGates.seesNode(col, row)) return false;
+      const verdict = building(typeId, paper).at(col, row);
+      return verdict === null || verdict === true;
     },
+    canPlaceSignpostAt: (col, row) => fogGates.seesNode(col, row) && signpost().at(col, row) === true,
+    canPlacePalisadeAt: (gfxIndex, col, row) =>
+      fogGates.seesNode(col, row) && palisade(gfxIndex).at(col, row) === true,
+    palisadeBuiltAt: (owner, col, row) =>
+      ownNodes.read(
+        `${owner}`,
+        () => host.ownPalisadeNodes(owner).then(nodeSetTest),
+        blockerVersion(),
+      )?.(col, row) === true,
     palisadeGateProbe: (col, row) => {
       if (!fogGates.seesNode(col, row)) return null;
       // Only a convertible centre reaches the probe's mover test, so only there is it re-asked each tick.
-      const live = gateSites().isCenter(col, row) ? `:${host.tick}` : '';
-      const key = `${col},${row}:${host.palisadeLayoutVersion()}${live}`;
-      if (key !== probeKey) {
-        probe = host.palisadeGateProbe(col, row, closedGates, localPlayer);
-        probeKey = key;
-      }
-      return probe;
+      const live = gateSites().isCenter(col, row);
+      return (
+        gateProbes.read(
+          `${col},${row}`,
+          () => host.palisadeGateProbe(col, row, closedGates, localPlayer),
+          host.palisadeLayoutVersion(),
+          live,
+        ) ?? null
+      );
     },
     palisadeGateSites: gateSites,
+    canMoorAt: (vehicle, col, row) =>
+      fogGates.seesNode(col, row) && mooring(vehicle)?.canMoor(col, row) === true,
+    probes: {
+      building,
+      signpost,
+      mooring,
+      version: () => grids.version + ownNodes.version,
+    },
+    dispose: () => {
+      for (const cache of [grids, ownNodes, siteLists, gateProbes, moorings]) cache.dispose();
+    },
   };
 }
 
 function gateSitesOf(
-  host: Pick<SessionHost, 'palisadeGateSites'>,
-  closedGates: readonly number[],
-  localPlayer: number,
+  listed: readonly PalisadeGateProbeResult[],
   fogGates: FogGates,
   key: string,
-): GateSites & { readonly isCenter: (col: number, row: number) => boolean } {
+): IndexedGateSites {
   // Node key -> the centre of the covering span and how far along it the node sits.
   const covering = new Map<string, { col: number; row: number; distance: number }>();
   const centers = new Set<string>();
   const walls = new Set<number>();
-  for (const site of host.palisadeGateSites(closedGates, localPlayer)) {
+  for (const site of listed) {
     const center = site.span[GATE_SPAN_CENTER];
     if (center === undefined || !fogGates.seesNode(center.hx, center.hy)) continue;
     centers.add(`${center.hx},${center.hy}`);

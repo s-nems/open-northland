@@ -14,7 +14,10 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   envelope, and pre-tick world assembly through `sim.enqueueSetup()`. Tempo and pause are session clock
   operations, not loop fields. Do not mutate live component stores from UI or renderer glue.
 - The runtime reads the world through `src/session/` `SessionHost` alone: snapshots, the fog view, the
-  probes and the request-shaped reads it names. `Simulation` is constructed and typed only by hosts:
+  probes and the request-shaped reads it names. Only its per-frame reads answer synchronously; a
+  consumer that must read another one synchronously goes through a `LastAnswerCache` and keys its
+  memos on the cache's version as well, so an answer that lands under an unchanged snapshot still
+  shows. `Simulation` is constructed and typed only by hosts:
   entries, scenes, `game/sandbox/`, `game/world/` and the inline host, which serves snapshots off a
   delta-fed `SnapshotMirror` by default, so a snapshot kept past the next tick copies its entity list.
   A kind subset, an owner's entities, a per-key group or count and the actors come from the indexes the

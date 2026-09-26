@@ -10,6 +10,8 @@ export interface ResidentsSeam {
   readonly snapshot: () => WorldSnapshot;
   /** Whether the sim would let the settler take the trade (`SessionHost.canChooseJob`). */
   readonly canBecome: (id: number, jobType: number) => boolean;
+  /** Bumped when a `canBecome` answer lands anew. */
+  readonly answersVersion?: () => number;
   /** The unit controls' selection; `version` moves with every change. */
   readonly selection: { readonly ids: () => ReadonlySet<number>; readonly version: () => number };
   /** Replace the selection with `ids`; with `show` the map also centres on a single one. */
