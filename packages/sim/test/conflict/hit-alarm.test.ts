@@ -6,14 +6,16 @@ import {
   Health,
   MoveGoal,
   Owner,
+  PathRequest,
   Position,
+  Resource,
   Resting,
   removeCurrentAtomic,
   Stance,
   setDiplomacyStance,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { positionOfNode, Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
 import { FLEE_STEP_NODES } from '../../src/systems/conflict/flee.js';
@@ -21,6 +23,7 @@ import {
   ALARM_PEOPLE_RADIUS_NODES,
   ALARM_SOLDIER_RADIUS_NODES,
 } from '../../src/systems/conflict/hit-alarm.js';
+import { stampResourceFootprintData } from '../../src/systems/footprint/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../src/systems/index.js';
 import { moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
@@ -42,6 +45,9 @@ const P0 = 0;
 const P1 = 1;
 const ROW = 0;
 const MAP_CELLS = 50;
+const MAP_ROWS = 2;
+/** Every node row of the map, which a wall of trees across them all seals. */
+const NODE_ROWS = 2 * MAP_ROWS;
 const VICTIM_AT = 10;
 const BLOW = { damage: 10 };
 /** A blow that does no damage, which leaves the struck side's diplomacy as it was. */
@@ -54,7 +60,15 @@ const FAR_PERSON = 25; // past the people's alarm, inside the soldiers'
 const BESIDE = 5; // well inside both
 
 function sim(): Simulation {
-  return new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(MAP_CELLS, 2) });
+  return new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(MAP_CELLS, MAP_ROWS) });
+}
+
+/** A tree: a resource whose one node blocks the walk without changing the map's static walk components. */
+function treeAtNode(s: Simulation, hx: number, hy: number): void {
+  const e = s.world.create();
+  s.world.add(e, Position, positionOfNode(hx, hy));
+  s.world.add(e, Resource, { goodType: 1, remaining: 1, harvestAtomic: 0 });
+  stampResourceFootprintData(s.world, e, { walk: [{ dx: 0, dy: 0 }], build: [], work: [] });
 }
 
 function unit(s: Simulation, hx: number, owner: number, mode: MilitaryMode, job = SOLDIER_SPEAR): Entity {
@@ -162,6 +176,30 @@ describe('hit alarm - a blow alarms the struck person side', () => {
     const p = s.world.get(hunter, Position);
     expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: VICTIM_AT + FLEE_STEP_NODES, hy: ROW });
     expect(s.world.has(hunter, Fleeing)).toBe(false);
+  });
+
+  it('ends a run whose route fails and hands the runner back where it stands', () => {
+    const WALL_AT = 5; // map points east of the hunter, short of its away-cell
+    const SETTLE_TICKS = 20;
+    const s = sim();
+    const hunter = unit(s, VICTIM_AT, P0, MILITARY_MODE.IGNORE, HUNTER);
+    const attacker = unit(s, VICTIM_AT - 1, P1, MILITARY_MODE.IGNORE, WOMAN); // strikes once, by hand
+    for (let hy = 0; hy < NODE_ROWS; hy++) treeAtNode(s, VICTIM_AT + WALL_AT, hy);
+
+    resolveCombatHit(s.world, ctxOf(s), attacker, hunter, BLOW, [], 'melee');
+    combatSystem(s.world, ctxOf(s));
+    expect(s.world.has(hunter, Fleeing)).toBe(true);
+    expect(s.terrain?.coordsOf(s.world.get(hunter, MoveGoal).cell)).toEqual({
+      x: VICTIM_AT + FLEE_STEP_NODES,
+      y: ROW,
+    });
+
+    for (let t = 0; t < SETTLE_TICKS; t++) s.step();
+    expect(s.world.has(hunter, Fleeing)).toBe(false);
+    expect(s.world.has(hunter, PathRequest)).toBe(false);
+    expect(s.world.has(hunter, MoveGoal)).toBe(false);
+    const p = s.world.get(hunter, Position);
+    expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: VICTIM_AT, hy: ROW });
   });
 
   it('owes a struck person its run while its flinch holds it, and runs it once the clip ends', () => {

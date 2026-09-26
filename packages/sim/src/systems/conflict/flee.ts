@@ -193,12 +193,18 @@ export function runFromBlow(
 /**
  * Issue the run `e` owes for a blow: drop a haul first (the drop clip re-owes it), else route away from
  * the blow's node and clear the debt. Answers whether the runner is still on its way, walking or dropping;
- * a boxed-in one has nowhere to run and its debt is cleared with it standing.
+ * a boxed-in one has nowhere to run and its debt is cleared with it standing. A run whose route the
+ * routing refused ends where the runner stands: the away-cell was walkable but sealed off, and a runner left
+ * holding the failed request would stay fleeing for good, since only the marker's owner re-plans it.
  */
 export function startBlowRun(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): boolean {
   const fleeing = world.get(e, Fleeing);
   const from = fleeing.blow;
-  if (from === undefined) return isTravelling(world, e);
+  if (from === undefined) {
+    if (world.tryGet(e, PathRequest)?.failed !== true) return isTravelling(world, e);
+    clearNavState(world, e);
+    return false;
+  }
   if (world.has(e, Carrying)) {
     startDrop(world, ctx, e);
     return true;
