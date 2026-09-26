@@ -3,6 +3,7 @@ import {
   Engagement,
   Fleeing,
   HuntFocus,
+  ownerOf,
   PlayerOrder,
   Position,
   Rider,
@@ -21,12 +22,14 @@ import { moveVehicle } from './movement.js';
 // commander is aboard or stands beside it (the deviation named in docs/formats/VEHICLES.md "Crew").
 
 /** The vehicle `e` commands and that stands on the map: the vehicle its `Rider` names when `e` holds the
- *  commander seat. Null for a settler on foot, an ordinary passenger, or a vehicle riding a carrier. */
+ *  commander seat. Null for a settler on foot, an ordinary passenger, a vehicle riding a carrier, or one
+ *  a script handed to another player while its commander kept its own owner. */
 export function commandedVehicleOf(world: World, e: Entity): Entity | null {
   const rider = world.tryGet(e, Rider);
   if (rider === undefined) return null;
   const state = world.tryGet(rider.vehicle, Vehicle);
   if (state === undefined || vehicleCommander(state) !== e || state.carrier !== null) return null;
+  if (ownerOf(world, rider.vehicle) !== ownerOf(world, e)) return null;
   return vehicleAnchor(world, rider.vehicle) === null ? null : rider.vehicle;
 }
 

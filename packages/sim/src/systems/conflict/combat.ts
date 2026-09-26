@@ -12,8 +12,6 @@ import { fireFromShelters } from './shelter-fire.js';
 // Re-exported so the public surface keeps its single combat import site; the rest of the folder is internal.
 export { REPATH_CADENCE } from './chase.js';
 export {
-  VEHICLE_ATTACK_CLIP_TICKS,
-  VEHICLE_ATTACK_EVENT_TICK,
   VEHICLE_DEFENCE_LEASH_NODES,
   VEHICLE_SCAN_RADIUS_NODES,
 } from './engage-vehicle.js';

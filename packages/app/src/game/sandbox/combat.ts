@@ -66,6 +66,8 @@ export const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
 export const SHORT_BOW_RELEASE_FRAME = 10;
 export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
+export const CATAPULT_SHOT_LENGTH = 48; // viking_catapult_attack
+export const CATAPULT_SHOT_FRAME = 1;
 // Bare-target damage per weapon, extracted from `weapons.ini` `damagevalue 0`, so sandbox combat
 // resolves on the same scale as real content.
 const FIST_DAMAGE = 400; // fist

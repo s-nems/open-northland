@@ -40,7 +40,7 @@ import {
 } from '../../../../catalog/jobs.js';
 import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
 import { PRIMARY_TRIBE } from '../../../rules.js';
-import { GATHERERS, JOB_FARMER_SLOT, rebaseSlotJob } from '../../ids/index.js';
+import { GATHERERS, JOB_FARMER_SLOT, JOB_VEHICLE_CATAPULT, rebaseSlotJob } from '../../ids/index.js';
 import {
   CIVILIST_EAT_ANIMATION,
   CIVILIST_PRAY_ANIMATION,
@@ -72,6 +72,7 @@ import {
 } from '../../work-animations.js';
 import type { SandboxContentExtras } from '../types.js';
 import { SANDBOX_ANIMAL_TRIBES } from './animals.js';
+import { CATAPULT_ANIMATION } from './atomic-animations.js';
 import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
 
 /** `logicdefines.inc` MAKE_LOVE. The sim pins the same decoded define, so neither can drift alone. */
@@ -186,6 +187,7 @@ export function buildSandboxTribes(
       { jobType: JOB_ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
       { jobType: JOB_ARCHER_LONG, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_long_attack' },
       { jobType: JOB_HUNTER, atomicId: ATTACK_ATOMIC, animation: 'viking_hunter_attack' },
+      { jobType: JOB_VEHICLE_CATAPULT, atomicId: ATTACK_ATOMIC, animation: CATAPULT_ANIMATION },
       {
         jobType: JOB_HUNTER,
         atomicId: HARVEST_CADAVER_ATOMIC,

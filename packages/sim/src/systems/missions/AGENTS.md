@@ -33,8 +33,8 @@ format and the execution semantics live in [`docs/formats/MISSIONS.md`](../../..
   `placeBuilding`. It never assembles an entity of its own, so a scripted unit and a placed one carry
   the same components in the same order.
 - A script removal is not a death: only a drained life pool reaches the reaper and the player tallies.
-- Two goals write as well as read: `BuildHumans` and `BuildHouses` stamp the object id on what they
-  counted, which is why they collect and sort where the other counting goals do not.
+- Three goals write as well as read: `BuildHumans`, `BuildHouses` and `BuildVehicles` stamp the object
+  id on what they counted, which is why they collect and sort where the other counting goals do not.
 
 ## The behaviour mask
 

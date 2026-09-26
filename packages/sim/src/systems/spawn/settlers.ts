@@ -169,9 +169,9 @@ export function spawnSettler(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'spawnSettler' }>,
-): void {
+): Entity | null {
   const e = createSettler(world, ctx.content, ctx.rng, command);
-  if (e === null) return;
+  if (e === null) return null;
   // A commanded spawn takes its (x,y) on trust and authored maps routinely name a cell inside a house body,
   // so the eviction must run before anything reads the position, including the work flag planted below.
   evictSettlerFromBlockedSpawn(world, ctx, e);
@@ -186,6 +186,7 @@ export function spawnSettler(
   // spawns exactly as a settler ordered aboard from a post would.
   attachAuthoredVehicle(world, ctx, e, command);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
+  return e;
 }
 
 /**

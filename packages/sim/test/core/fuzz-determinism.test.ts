@@ -10,6 +10,7 @@ import {
   Settler,
   Sheltering,
   VEHICLE_STANCES,
+  Vehicle,
 } from '../../src/components/index.js';
 import { COMMAND_ISSUER } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -111,7 +112,30 @@ function fuzzContent() {
   const base = testContent();
   return parseContentSet({
     ...base,
-    jobs: [...base.jobs, { typeId: WOMAN_TYPE, id: 'woman' }],
+    jobs: [
+      ...base.jobs,
+      { typeId: WOMAN_TYPE, id: 'woman' },
+      { typeId: CATAPULT_JOB, id: 'vehicle_catapult' },
+    ],
+    // The catapult's stone (`weapons.ini` type 21's shape), so a crewed catapult in the stream fires and
+    // its ground burst runs under the fuzzed orders.
+    weapons: [
+      ...base.weapons,
+      {
+        typeId: 21,
+        id: 'fuzz_catapult',
+        tribeType: VIKING,
+        jobType: CATAPULT_JOB,
+        mainType: 7,
+        munitionType: 2,
+        speed: 3,
+        damageType: 2,
+        minRange: 8,
+        maxRange: 24,
+        damage: { '0': 8000, '6': 350, '7': 3625 },
+        impactSmokeTicks: 20,
+      },
+    ],
     buildings: [
       ...base.buildings,
       {
@@ -189,12 +213,15 @@ function fuzzContent() {
  *  stamps {@link import('../../src/components/index.js').Female}, so `marry` can find opposite-sex
  *  pairs and `makeChild`/the hoard rung run their accept paths - the fixture's own jobs are all male. */
 const WOMAN_TYPE = 7;
-/** Job types: idle / woodcutter / carpenter / hunter / scout / carrier / woman / unknown. */
-const JOB_TYPES = [0, 1, 2, 15, 27, 36, WOMAN_TYPE, INVALID_TYPE] as const;
+/** Job types: idle / woodcutter / carpenter / hunter / scout / soldier (a catapult's crew) / carrier / woman /
+ *  unknown. */
+const JOB_TYPES = [0, 1, 2, 15, 27, 31, 36, WOMAN_TYPE, INVALID_TYPE] as const;
+/** The fixture catapult's vehicle job, which the fuzz-local stone is bound to. */
+const CATAPULT_JOB = 54;
 /** Herd tribes: bear pack / bee / boar / cow / deer, the hitpoints-0 decorative butterfly (spawns
  *  nothing), plus two non-animals (viking, unknown) - skipped. */
-/** A cart, a ship and an id the fixture lacks. */
-const VEHICLE_TYPES = [1, 3, INVALID_TYPE] as const;
+/** A cart, a ship, a catapult and an id the fixture lacks. */
+const VEHICLE_TYPES = [1, 3, 5, INVALID_TYPE] as const;
 const HERD_TRIBES = [10, 11, 12, 13, 14, 15, VIKING, INVALID_TYPE] as const;
 /** The viking woodcutter's weapon (test_axe) and leather armor - the combatant-spawn extras. */
 const AXE = 7;
@@ -327,6 +354,17 @@ const PREAMBLE_WALL_XS = [8, 9, 10, 11, 12] as const;
  *  {@link runFuzz}, so the aimed wall rolls keep hitting them. */
 const PREAMBLE_WALL_IDS = PREAMBLE_WALL_XS.map((_, i) => (ATTACHED_SETTLER + 4 + i) as Entity);
 
+/** The preamble's catapult and its soldier, minted after the walls; the harness crews it and orders a
+ *  shot at open ground inside its band, so the burst runs on every seed under the stream's orders. */
+const PREAMBLE_CATAPULT = (ATTACHED_SETTLER + 4 + PREAMBLE_WALL_XS.length) as Entity;
+const PREAMBLE_GUNNER = (PREAMBLE_CATAPULT + 1) as Entity;
+const PREAMBLE_CATAPULT_NODE = { x: 4, y: 20 } as const;
+const PREAMBLE_GUNNER_NODE = { x: 4, y: 17 } as const;
+/** Twelve nodes north of the catapult: inside the stone's 8..24 band. */
+const PREAMBLE_SHOT_NODE = { hx: 4, hy: 8 } as const;
+const CATAPULT_TYPE = 5;
+const SOLDIER_JOB = 31;
+
 /** The middle wall of the preamble run, where the harness cuts its gate. */
 const PREAMBLE_GATE_CENTRE = (ATTACHED_SETTLER + 6) as Entity;
 
@@ -355,7 +393,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(67);
+  const roll = rng.int(70);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -896,8 +934,8 @@ function nextCommand(rng: Rng): Command {
         stance: pick(rng, VEHICLE_STANCES),
       };
     case 66:
-      // An attack order on a random id at a random unit or tile: no armed vehicle stands in this
-      // stream, so every roll is the unarmed skip, past the target checks that must still replay.
+      // An attack order on a random id at a random unit or tile: a crewed catapult fires and bursts,
+      // an uncrewed one refuses, and every other id is the unarmed skip past the target checks.
       return {
         kind: 'attackWithVehicle',
         vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
@@ -906,6 +944,19 @@ function nextCommand(rng: Rng): Command {
             ? { kind: 'entity', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity }
             : { kind: 'ground', hx: x, hy: y },
       };
+    case 67:
+      // A board order at a random id: an attached rider walks in, which a later goto or attack drives.
+      return { kind: 'boardVehicle', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 68:
+      // A vehicle loaded into a random carrier: a cart or catapult into a ship, and the refusals.
+      return {
+        kind: 'loadIntoVehicle',
+        vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        carrier: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
+    case 69:
+      // The unload twin: a carried vehicle set down on its carrier's door, or released on its way.
+      return { kind: 'leaveCarrier', vehicle: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
@@ -940,6 +991,8 @@ interface FuzzRun {
   /** Whether the preamble's authored attachment actually took a post - pinned so a gate change cannot
    *  quietly turn every attached spawn in the stream into a refusal. */
   readonly attachedToWork: boolean;
+  /** Whether the preamble's crewed catapult loosed a stone - pinned so the siege clip and burst run. */
+  readonly catapultFired: boolean;
   /** Whether the preamble's food chest was opened - pinned so a gate change cannot quietly turn every
    *  open-chest order in the stream into a refusal. */
   readonly chestOpened: boolean;
@@ -1028,6 +1081,21 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       owner: 0,
     });
   }
+  // A catapult and the soldier who crews it, placed last so the pinned ids above hold.
+  sim.enqueueSetup({
+    kind: 'createVehicle',
+    vehicleType: CATAPULT_TYPE,
+    ...PREAMBLE_CATAPULT_NODE,
+    tribe: VIKING,
+    owner: 0,
+  });
+  sim.enqueueSetup({
+    kind: 'spawnSettler',
+    jobType: SOLDIER_JOB,
+    ...PREAMBLE_GUNNER_NODE,
+    tribe: VIKING,
+    owner: 0,
+  });
   // An independent generator stream (any fixed derivation of the fuzz seed works - it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
@@ -1037,6 +1105,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
   let attachedToWork = false;
   let chestOpened = false;
   let gateSwung = false;
+  let catapultFired = false;
   for (let t = 0; t < ticks; t++) {
     // House one nucleus woman and man on the second tick (ids are monotonic: the chests, the home, then
     // the six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
@@ -1079,11 +1148,25 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       });
     }
     if (t === 2) sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: PREAMBLE_GATE_CENTRE, open: true });
+    // Crew the preamble catapult and aim it at open ground, so its boarding, clip and burst run under the
+    // stream's orders on every seed. Fixed input, logged like every command.
+    if (t === 1)
+      sim.enqueueSetup({ kind: 'attachToVehicle', entity: PREAMBLE_GUNNER, vehicle: PREAMBLE_CATAPULT });
+    if (t === 2) {
+      sim.enqueueSetup({
+        kind: 'attackWithVehicle',
+        vehicle: PREAMBLE_CATAPULT,
+        target: { kind: 'ground', ...PREAMBLE_SHOT_NODE },
+      });
+    }
     if (gen.int(COMMAND_EVERY) === 0) submit(sim, gen, nextCommand(gen));
     sim.step();
     if (t === 0) {
       for (const id of PREAMBLE_WALL_IDS) {
         if (!sim.world.has(id, Palisade)) throw new Error(`preamble wall id ${id} drifted`);
+      }
+      if (!sim.world.has(PREAMBLE_CATAPULT, Vehicle) || !sim.world.has(PREAMBLE_GUNNER, Settler)) {
+        throw new Error('preamble catapult or gunner id drifted');
       }
     }
     // A per-tick snapshot populates the clone cache, arming the cachesCoherent invariant's stale-clone
@@ -1100,6 +1183,11 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       attachedToWork = sim.world.has(ATTACHED_SETTLER, JobAssignment);
     }
     if (!chestOpened) chestOpened = !sim.world.has(FOOD_CHEST_ID, Chest);
+    if (!catapultFired) {
+      catapultFired = sim.events
+        .current()
+        .some((ev) => ev.kind === 'projectileLaunched' && ev.shooter === PREAMBLE_GUNNER);
+    }
     if (!gateSwung)
       gateSwung = PREAMBLE_WALL_IDS.some((id) => sim.world.tryGet(id, Palisade)?.gate?.open === true);
     if (sim.tick % CHECKPOINT_EVERY === 0) {
@@ -1117,6 +1205,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     attachedToWork,
     chestOpened,
     gateSwung,
+    catapultFired,
     log: [...sim.commands.log],
   };
 }
@@ -1137,6 +1226,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       expect(a.attachedToWork).toBe(true); // and the authored attachment really bound, not just refused
       expect(a.chestOpened).toBe(true); // and a chest really opened, not just refused
       expect(a.gateSwung).toBe(true); // and a gate really stood in the wall run and opened
+      expect(a.catapultFired).toBe(true); // and a crewed catapult really loosed a stone
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);
       // Checkpoint-wise equality first: on a divergence the failing index names the 50-tick window.

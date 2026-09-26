@@ -102,7 +102,8 @@ function meleeTargetOutOfReach(
  * striker's experience on a melee blow; the striker's and the target's carried amulets adjust it here, on
  * contact. Original behavior: only a living human striker's amulets count, so a defence-mode building's shot
  * carries none. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end of the tick. A dead
- * attacker is tolerated, since a dead archer's arrow still lands.
+ * attacker is tolerated, since a dead archer's arrow still lands. A `collateral` blow, a siege burst on a side
+ * not at war with the shooter, wounds as any other but provokes no stance change and records no attack.
  */
 export function resolveCombatHit(
   world: World,
@@ -111,7 +112,7 @@ export function resolveCombatHit(
   target: Entity,
   blow: LandingBlow,
   pendingReactions: PendingHitReaction[],
-  source: 'melee' | 'projectile',
+  source: 'melee' | 'projectile' | 'collateral',
 ): void {
   // A target felled earlier this tick still holds its Health until cleanup reaps it: a blow there lands on a
   // corpse, which earns nothing and provokes no one, the same as a shot that is never loosed at one.
@@ -149,10 +150,10 @@ export function resolveCombatHit(
   }
   provokeAnger(world, ctx, target);
   frightenStruckAnimal(world, ctx, attacker, target);
-  provokeHostility(world, ctx, attacker, target);
+  if (source !== 'collateral') provokeHostility(world, ctx, attacker, target);
   // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
   // the original marks it on the computed damage, before the pool is touched.
-  if (dealtDamage && world.has(target, Person)) {
+  if (dealtDamage && source !== 'collateral' && world.has(target, Person)) {
     recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
   }
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);

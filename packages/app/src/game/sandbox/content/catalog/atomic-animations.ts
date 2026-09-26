@@ -10,6 +10,8 @@ import {
   ATTACK_EVENT_TYPE,
   BROADSWORD_HIT_FRAME,
   BROADSWORD_SWING_LENGTH,
+  CATAPULT_SHOT_FRAME,
+  CATAPULT_SHOT_LENGTH,
   FIST_HIT_FRAME,
   FIST_SWING_LENGTH,
   LONG_BOW_DRAW_LENGTH,
@@ -131,6 +133,8 @@ function slayClip(species: string, name: string) {
   return workClip(name, BREEDER_CLIP_LENGTH, deposits);
 }
 
+export const CATAPULT_ANIMATION = 'viking_catapult_attack';
+
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
     ...GATHERERS.map((gatherer) =>
@@ -184,6 +188,8 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     swingClip('viking_hunter_attack', HUNTER_BOW_DRAW_LENGTH, HUNTER_BOW_RELEASE_FRAME, WORK_DRAIN_VALUE),
     workClip('viking_hunter_harvest_cadaver', HUNTER_HARVEST_CADAVER_LENGTH),
     swingClip('viking_bow_long_attack', LONG_BOW_DRAW_LENGTH, LONG_BOW_RELEASE_FRAME),
+    // The catapult crews no body of its own: its shot clip carries only the release.
+    clip(CATAPULT_ANIMATION, CATAPULT_SHOT_LENGTH, [{ at: CATAPULT_SHOT_FRAME, type: ATTACK_EVENT_TYPE }]),
     workClip(BUILD_HOUSE_ANIMATION, BUILD_HOUSE_SWING_LENGTH),
     workClip(BUILD_WALL_ANIMATION, BUILD_WALL_SWING_LENGTH),
     workClip(BUILD_GUIDE_ANIMATION, BUILD_GUIDE_SWING_LENGTH),

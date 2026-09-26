@@ -72,8 +72,7 @@ export function spawnScriptedVehicle(
   const door = vehicleDoorNode(world, ctx, vehicle);
   const jobType = type.commanderJob;
   if (door === null || jobType === undefined || !terrain.inBounds(door.hx, door.hy)) return;
-  const captain = world.nextEntityId as Entity; // the id the spawn's `create` takes
-  spawnSettler(world, ctx, {
+  const captain = spawnSettler(world, ctx, {
     kind: 'spawnSettler',
     jobType,
     tribe: op.tribe,
@@ -82,7 +81,7 @@ export function spawnScriptedVehicle(
     owner: op.player,
     missionId: op.vehicleId,
   });
-  if (!world.isAlive(captain) || !world.has(captain, Settler)) return; // the trade is not in the content
+  if (captain === null) return; // the trade is not in the content
   if (!attachToVehicle(world, ctx, { kind: 'attachToVehicle', entity: captain, vehicle })) {
     removeSettlerSilently(world, captain);
     return;

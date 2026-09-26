@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
+  diplomacyStance,
   Health,
   Owner,
   Palisade,
@@ -13,9 +14,11 @@ import {
   SettlerProgress,
   Stance,
   seatPassenger,
+  setDiplomacyStance,
   UnreachableTargets,
   Vehicle,
   VehicleDrive,
+  wasAttackedBy,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
@@ -32,7 +35,6 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
-import { VEHICLE_ATTACK_CLIP_TICKS, VEHICLE_ATTACK_EVENT_TICK } from '../../src/systems/conflict/combat.js';
 import { resolveGroundImpact } from '../../src/systems/conflict/ground-impact.js';
 import { isFleeThreat } from '../../src/systems/conflict/targeting.js';
 import { UNREACHABLE_TARGET_MEMO_SIZE } from '../../src/systems/conflict/unreachable-targets.js';
@@ -54,6 +56,7 @@ const ARCHER = 40;
 const CATAPULT_JOB = 54;
 const P1 = 1;
 const P2 = 2;
+const P3 = 3;
 const GRASS = 0;
 const WATER = 1;
 const HANDCART = 1;
@@ -69,6 +72,11 @@ const CATAPULT_MAX_RANGE = 24;
 const CATAPULT_VS_BARE = 8000;
 const CATAPULT_VS_VEHICLE = 350;
 const CATAPULT_VS_HOUSE = 3625;
+/** The catapult's attack clip (`atomicanimations.ini` `viking_catapult_attack`: `length 48`, `event 1 25`). */
+const VEHICLE_ATTACK_CLIP_TICKS = 48;
+const VEHICLE_ATTACK_EVENT_TICK = 1;
+const ATTACK_ATOMIC = 81;
+const ATOMIC_EVENT_ATTACK = 25;
 /** Every armor material a weapon row lists damage for. */
 const ALL_MATERIALS = Object.values(ARMOR_MATERIAL);
 /** The row's `createsmoke 1` / `smokelifetime 20`. */
@@ -165,12 +173,21 @@ function siegeContent(): ContentSet {
         typeId: VIKING,
         id: 'viking',
         atomicBindings: [
-          { jobType: SOLDIER, atomicId: 81, animation: 'viking_attack' },
-          { jobType: ARCHER, atomicId: 81, animation: 'viking_attack' },
+          { jobType: SOLDIER, atomicId: ATTACK_ATOMIC, animation: 'viking_attack' },
+          { jobType: ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_attack' },
+          { jobType: CATAPULT_JOB, atomicId: ATTACK_ATOMIC, animation: 'viking_catapult_attack' },
         ],
       },
     ],
-    atomicAnimations: [{ id: 'viking_attack', name: 'viking_attack', length: 4 }],
+    atomicAnimations: [
+      { id: 'viking_attack', name: 'viking_attack', length: 4 },
+      {
+        id: 'viking_catapult_attack',
+        name: 'viking_catapult_attack',
+        length: VEHICLE_ATTACK_CLIP_TICKS,
+        events: [{ at: VEHICLE_ATTACK_EVENT_TICK, type: ATOMIC_EVENT_ATTACK }],
+      },
+    ],
   });
 }
 
@@ -698,6 +715,22 @@ describe('the ground burst', () => {
     const ownHits = struck.filter((t) => t === own).length;
     expect(ownHits).toBeGreaterThan(0);
     expect(100_000 - s.world.get(own, Health).hitpoints).toBeGreaterThanOrEqual(ownHits * CATAPULT_VS_BARE);
+  });
+
+  it("wounds an ally's man on the landing node without turning his player hostile", () => {
+    const s = sim(grass(40, 10));
+    setDiplomacyStance(s.world, P1, P3, 'friend');
+    setDiplomacyStance(s.world, P3, P1, 'friend');
+    const catapult = catapultAt(s, 6, 8, P1);
+    const house = houseAt(s, 22, 8, P2);
+    const ally = fighterAt(s, 22, 8, P3);
+    s.world.mut(ally, Stance).mode = MILITARY_MODE.IGNORE;
+    order(s, catapult, P1, house);
+    const hits = collect(s, SHOT_TICKS, ['projectileHit']);
+    expect(hits.some((ev) => ev.kind === 'projectileHit' && ev.target === ally)).toBe(true);
+    expect(s.world.get(ally, Health).hitpoints).toBeLessThan(s.world.get(ally, Health).max);
+    expect(diplomacyStance(s.world, P3, P1)).toBe('friend');
+    expect(wasAttackedBy(s.world, P3, P1)).toBe(false);
   });
 
   it('passes over a man resting inside the house its stone strikes', () => {

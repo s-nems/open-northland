@@ -195,6 +195,18 @@ export function startAttack(
   // sync with the visible strike.
 }
 
+/** The attack clip `attacker`'s trade binds: its length in ticks and the tick of it the shot leaves at,
+ *  the clip's attack event, or its last tick when it has none. */
+export function attackClipTiming(
+  content: SystemContext['content'],
+  attacker: SettlerIdentity,
+): { readonly length: number; readonly shotAt: number } {
+  const clip = boundAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID);
+  const length = atomicDurationForName(content, clip);
+  const event = clip === undefined ? undefined : atomicEventFrame(content, clip, ATOMIC_EVENT_TYPE_ATTACK);
+  return { length, shotAt: Math.min(event ?? length, length) };
+}
+
 /**
  * The numeric atomic id a combatant runs to attack - the original's `setatomic <job> 81 "..._attack"`
  * (id 81 is the attack slot across every fighting job's bindings, verified in

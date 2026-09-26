@@ -1,6 +1,9 @@
+import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import {
   Building,
+  diplomacyStance,
   Health,
+  ownerOf,
   Palisade,
   Position,
   type ProjectileStateView,
@@ -14,25 +17,27 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
+import { buildingFootprintOf } from '../footprint/geometry.js';
+import { vehicleFootprintNodes } from '../footprint/index.js';
 import { weaponClassHits, withFightDamageBonus, withHouseDamageExperience } from '../progression/index.js';
 import { weaponDamageVsMaterial } from '../readviews/index.js';
 import { type PendingHitReaction, resolveCombatHit } from '../settlers/atomics/effects/combat/index.js';
 import { canonicalById, entityNode } from '../spatial/nodes.js';
-import { targetBodyNodes } from './target-node.js';
+import { passIndexOf } from './combat-index.js';
 import { isStructureTarget } from './targeting.js';
 import { damageVsTarget, glancesOff, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 // A siege shot's burst: the original's delayed weapon hit fills its list from the one landing node -
 // every human and animal standing on it and the vehicle, house or wall whose body covers it - and lands
 // one blow on each, the shooter's own side included (original behavior, docs/formats/VEHICLES.md
-// "Catapult"). A wall takes the blow through its own valency rule, like any other weapon's.
+// "Catapult"). A wall takes the blow through its own valency rule, like any other weapon's. A side not at
+// war with the shooter takes the wound without turning hostile over it (approximation: the original's
+// diplomacy reaction to friendly splash is unconfirmed).
 
 /**
  * Land a ground-burst shot on its aim: strike everything on its node and report whether anything was hit.
  * The victims are visited in ascending entity order, so two runs land the same staggers and the same kill
- * tallies. The scan over the standing settlers is a filter of the whole store, paid once per landing shot
- * rather than per tick (approximation of cost, not behaviour).
+ * tallies.
  */
 export function resolveGroundImpact(
   world: World,
@@ -46,6 +51,7 @@ export function resolveGroundImpact(
   const at = eventAt(proj.aimX, proj.aimY);
   const experience = world.tryGet(proj.source, SettlerProgress)?.experience;
   const hits = experience === undefined ? 0 : weaponClassHits(experience, proj.weaponMainType);
+  const shooter = ownerOf(world, proj.source);
   let struck = false;
   for (const target of victimsOn(world, ctx, terrain, node)) {
     const material = targetMaterial(world, ctx, target);
@@ -58,7 +64,7 @@ export function resolveGroundImpact(
       target,
       { damage, weaponMainType: proj.weaponMainType, hitSoundType: hitSoundType ?? null },
       pendingReactions,
-      'projectile',
+      atWar(world, shooter, ownerOf(world, target)) ? 'projectile' : 'collateral',
     );
     ctx.events.emit({
       kind: 'projectileHit',
@@ -83,27 +89,64 @@ function burstDamage(world: World, target: Entity, base: number, hits: number): 
   return withFightDamageBonus(base, hits);
 }
 
+/** Whether a blow between these owners is an act of war: either side holds `enemy` toward the other, or
+ *  one of them is no player (wildlife and neutral bodies take no diplomacy). */
+function atWar(world: World, shooter: number | undefined, victim: number | undefined): boolean {
+  if (shooter === undefined || victim === undefined) return true;
+  if (shooter === victim) return false;
+  return (
+    diplomacyStance(world, shooter, victim) === 'enemy' || diplomacyStance(world, victim, shooter) === 'enemy'
+  );
+}
+
 /** Everything with a pool standing on `node`, ascending by id: the settlers and animals out in the open
- *  on it, and the vehicles, buildings and walls whose bodies cover it. A felled one (0 hitpoints, unreaped) is skipped. */
+ *  on it, and the vehicles, buildings and walls whose bodies cover it. A felled one (0 hitpoints, unreaped)
+ *  is skipped. The combat pass's index answers for the settlers and vehicles when it ran this tick; the
+ *  buildings and walls are matched cell by cell without allocating. */
 function victimsOn(world: World, ctx: SystemContext, terrain: TerrainGraph, node: NodeId): Entity[] {
   const out: Entity[] = [];
-  for (const e of world.query(Settler, Health, Position)) {
-    // A settler resting indoors is out of reach, as for every other shot.
-    if (!world.has(e, Resting) && entityNode(world, terrain, e) === node) out.push(e);
-  }
-  for (const e of world.query(Vehicle, Health, Position)) {
-    if (targetBodyNodes(world, ctx, terrain, e)?.includes(node)) out.push(e);
+  const x = terrain.xOf(node);
+  const y = terrain.yOf(node);
+  const index = passIndexOf(world, ctx.tick);
+  if (index !== null) {
+    // The index holds every settler at its node and every vehicle at each node of its disc.
+    const unit = (e: Entity): boolean => !world.has(e, Building) && !world.has(e, Resting);
+    for (const { entity } of index.nearestFew(x, y, 0, 0, unit, Number.MAX_SAFE_INTEGER, null, 0))
+      out.push(entity);
+  } else {
+    for (const e of world.query(Settler, Health, Position)) {
+      // A settler resting indoors is out of reach, as for every other shot.
+      if (!world.has(e, Resting) && entityNode(world, terrain, e) === node) out.push(e);
+    }
+    for (const e of world.query(Vehicle, Health, Position)) {
+      if (vehicleFootprintNodes(world, ctx.content, terrain, e).includes(node)) out.push(e);
+    }
   }
   for (const e of world.query(Palisade, Health, Position)) {
-    if (targetBodyNodes(world, ctx, terrain, e)?.includes(node)) out.push(e);
+    const anchor = terrain.coordsOf(entityNode(world, terrain, e));
+    const walk = world.get(e, Palisade).walk;
+    const covers =
+      walk.length === 0 ? anchor.x === x && anchor.y === y : coversCell(walk, anchor.x, anchor.y, x, y);
+    if (covers) out.push(e);
   }
   for (const e of world.query(Building, Health, Position)) {
-    if (buildingCoversNode(world, ctx, terrain, e, node)) out.push(e);
+    if (buildingCoversNode(world, ctx, terrain, e, x, y)) out.push(e);
   }
   return canonicalById(out).filter((e) => world.get(e, Health).hitpoints > 0);
 }
 
-/** Whether a stone on `node` strikes building `e`: its walls, its reserved ground or its anchor.
+/** Whether one of `cells`, laid at the anchor, lands on node (x, y). */
+function coversCell(
+  cells: readonly FootprintCell[],
+  anchorX: number,
+  anchorY: number,
+  x: number,
+  y: number,
+): boolean {
+  return cells.some((c) => anchorY + c.dy === y && anchorX + footprintCellDx(anchorY, c) === x);
+}
+
+/** Whether a stone on node (x, y) strikes building `e`: its walls, its reserved ground or its anchor.
  *  Approximation: the original asks the house whether the point lies inside it, an area it does not
  *  spell out; the footprint's reserved ring stands in for the yard around the walls. */
 function buildingCoversNode(
@@ -111,14 +154,15 @@ function buildingCoversNode(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  node: NodeId,
+  x: number,
+  y: number,
 ): boolean {
-  if (entityNode(world, terrain, e) === node) return true;
+  const anchor = terrain.coordsOf(entityNode(world, terrain, e));
+  if (anchor.x === x && anchor.y === y) return true;
   const footprint = buildingFootprintOf(ctx.content, world.get(e, Building).buildingType);
   if (footprint === undefined) return false;
-  const anchor = terrain.coordsOf(entityNode(world, terrain, e));
   return (
-    translatedCells(terrain, footprint.blocked, anchor.x, anchor.y).includes(node) ||
-    translatedCells(terrain, footprint.reserved, anchor.x, anchor.y).includes(node)
+    coversCell(footprint.blocked, anchor.x, anchor.y, x, y) ||
+    coversCell(footprint.reserved, anchor.x, anchor.y, x, y)
   );
 }

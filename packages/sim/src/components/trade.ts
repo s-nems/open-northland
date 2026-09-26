@@ -58,7 +58,8 @@ export function ensureTradeRoute(world: World, e: Entity): void {
 /**
  * Add a stop; refused for a house already on the route. The house takes the first free slot; on a full
  * route it takes the first slot's place (the original refuses a full route; this build replaces, owner's
- * choice), and the trader starts over from the first stop. `stops` stays in slot order, so a full route
+ * choice), and the trader starts over from the first stop. A route trades with one foreign house at most:
+ * another player's house takes the place of the foreign stop already on it. `stops` stays in slot order, so a full route
  * reads as `[first, second]`. The import flags of every stop are cleared, as the original does on any
  * route change.
  */
@@ -69,11 +70,13 @@ export function addTradeStop(world: World, e: Entity, house: Entity, foreign: bo
   const live = world.mut(e, TradeRoute);
   let slot = 0;
   while (slot < TRADE_ROUTE_HOUSES && live.stops.some((s) => s.slot === slot)) slot++;
-  if (slot === TRADE_ROUTE_HOUSES) {
-    slot = 0;
-    const dropped = live.stops.find((s) => s.slot === slot);
-    live.stops = live.stops.filter((s) => s.slot !== slot);
-    if (dropped?.foreign === true) live.agreement = -1;
+  const foreignStop = foreign ? live.stops.find((s) => s.foreign) : undefined;
+  if (foreignStop !== undefined) slot = foreignStop.slot;
+  else if (slot === TRADE_ROUTE_HOUSES) slot = 0;
+  const dropped = live.stops.find((s) => s.slot === slot);
+  if (dropped !== undefined) {
+    live.stops = live.stops.filter((s) => s !== dropped);
+    if (dropped.foreign) live.agreement = -1;
   }
   live.stops.push({ slot, house, foreign, imports: [] });
   live.stops.sort((a, b) => a.slot - b.slot);

@@ -359,6 +359,28 @@ describe('a trader between its own houses', () => {
     expect(route.agreement).toBe(-1);
   });
 
+  it('lets a second foreign house take the foreign stop, never a route of two foreign houses', () => {
+    const sim = newSim();
+    const own = houseAt(sim, NEAR_X, HUMAN);
+    const post = houseAt(sim, FAR_X, NEIGHBOUR, [], TRADING_POST_ID);
+    const other = houseAt(sim, MIDDLE_X, OUTSIDER, [], TRADING_POST_ID);
+    const trader = traderOnFoot(sim, NEAR_X);
+    offerWoodForPlanks(sim);
+    attach(sim, trader, own);
+    attach(sim, trader, post);
+    sim.step();
+    sim.world.mut(trader, TradeRoute).agreement = 0;
+    attach(sim, trader, other);
+    sim.step();
+
+    const route = sim.world.get(trader, TradeRoute);
+    expect(route.stops.map((stop) => [stop.slot, stop.house])).toEqual([
+      [0, own],
+      [1, other],
+    ]);
+    expect(route.agreement).toBe(-1);
+  });
+
   it('takes no foreign house that offers no agreement', () => {
     const sim = newSim();
     const own = houseAt(sim, NEAR_X, HUMAN);

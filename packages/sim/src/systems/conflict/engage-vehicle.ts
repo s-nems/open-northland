@@ -36,7 +36,7 @@ import type { CombatPass } from './pass.js';
 import { combatTargetNode } from './target-node.js';
 import { isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { givenUpTargetVeto, noteUnreachableTarget } from './unreachable-targets.js';
-import { vehicleWeapon } from './weapons.js';
+import { attackClipTiming, vehicleWeapon } from './weapons.js';
 
 // The siege vehicle's fight (docs/formats/VEHICLES.md "Catapult"): a stance-driven scan, a target it
 // backs off from, closes on or fires at, and the shot itself, a ground burst the projectile system
@@ -49,9 +49,6 @@ export const VEHICLE_SCAN_RADIUS_NODES = 40;
 /** How far from its guard position a defending vehicle keeps a chase before dropping the target
  *  (original behavior). */
 export const VEHICLE_DEFENCE_LEASH_NODES = 60;
-/** Ticks one attack clip takes; the shot leaves at {@link VEHICLE_ATTACK_EVENT_TICK} of it. */
-export const VEHICLE_ATTACK_CLIP_TICKS = 48;
-export const VEHICLE_ATTACK_EVENT_TICK = 1;
 /** How long a march drives on unscanning after a chase could not reach its find: a few legs, so it
  *  gets past enemies it cannot close on. Approximation: the settlers' march rests one repath cadence,
  *  which is shorter than one vehicle leg. */
@@ -105,8 +102,9 @@ export function engageVehicle(
     // target is judged again below (the original checks the target's validity before the roll).
     if (!targetStands(world, ctx, e, identity, state.attack)) endClip(world, e, state);
     else {
-      if (elapsed === VEHICLE_ATTACK_EVENT_TICK) fire(world, ctx, terrain, e, state, weapon.weapon, here);
-      if (elapsed < VEHICLE_ATTACK_CLIP_TICKS) return;
+      const clip = attackClipTiming(ctx.content, identity);
+      if (elapsed === clip.shotAt) fire(world, ctx, terrain, e, state, weapon.weapon, here);
+      if (elapsed < clip.length) return;
       endClip(world, e, state); // the clip is over; the target is judged again below, this tick
     }
   }
