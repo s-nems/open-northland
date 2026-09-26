@@ -88,7 +88,9 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
 
   const session = sceneSession(params, sceneId, scene.seed);
   diag.info('boot', 'game start', { entry: 'scene', session });
-  bindDisplayMode(params);
+  // Quitting to the menu swaps this document's entry, so the binding ends with the world.
+  const displayScope = new AbortController();
+  bindDisplayMode(params, undefined, displayScope.signal);
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
   // Window-tracking backing store at the stored render scale times the device oversample: resizing
@@ -113,6 +115,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     try {
       sim = restoreSceneSim(scene, stagedSave, worldOptions);
     } catch (err) {
+      displayScope.abort();
       haltOnFailedRestore(err);
       return;
     }
@@ -190,7 +193,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   );
 
   await boot.begin('hud');
-  await startGameView({
+  const view = await startGameView({
     app,
     canvas,
     params,
@@ -208,6 +211,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     worldToken,
     missionBriefSource: sceneBriefSource(scene),
   });
+  view.lifetime.addEventListener('abort', () => displayScope.abort(), { once: true });
   await boot.finish();
 }
 

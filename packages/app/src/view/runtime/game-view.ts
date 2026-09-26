@@ -77,7 +77,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
-import { floatParam, menuSearch } from '../params.js';
+import { floatParam } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import {
   createFogGates,
@@ -103,6 +103,7 @@ import {
   perfCornerForUiScale,
 } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
+import { createMenuExit } from './menu-exit.js';
 import type { NetReadout } from './net-readout.js';
 import { createPauseHolds } from './pause-holds.js';
 import { createPlacementGates } from './placement-gates.js';
@@ -300,11 +301,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     if (currentDiagGameSession()?.sim === sim) setDiagGameSession(null);
     if (errors.length > 0) throw new AggregateError(errors, 'Game view cleanup failed');
   };
-  const quitToMenu = (): void => {
-    destroy();
-    if (deps.onReturnToMenu !== undefined) deps.onReturnToMenu();
-    else window.location.search = menuSearch();
-  };
+  const onReturnToMenu = deps.onReturnToMenu;
+  const quitToMenu =
+    onReturnToMenu !== undefined
+      ? (): void => {
+          destroy();
+          onReturnToMenu();
+        }
+      : createMenuExit({ teardown: teardownWorld });
 
   try {
     const storedSettings = readStoredSettings();
