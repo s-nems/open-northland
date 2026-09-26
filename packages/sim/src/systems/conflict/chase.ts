@@ -21,8 +21,9 @@ import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-stat
 import { breakThroughWall } from '../palisades/breach.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, manhattan, nearestHexCell } from '../spatial/metric.js';
-import type { CombatantStance, EnemyInReachFrom, EngageSpec } from './engagement.js';
-import { forEachNodeInBand, type MeleeSlots, type WeaponBand } from './melee-slots.js';
+import { type CombatantStance, type EngageSpec, enemyInReachFrom } from './engagement.js';
+import { forEachNodeInBand, type MeleeSlots, type OwnClaims, type WeaponBand } from './melee-slots.js';
+import type { CombatPass } from './pass.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser
@@ -113,7 +114,7 @@ function sealedByStructures(
  * chaser whose nearest face is fully manned encircle to a free slot on another face.
  *
  * A melee chaser standing behind a fully taken front steps along it instead ({@link seamStep}) when
- * `seam` is given.
+ * `front` carries the spec whose targets it may turn to.
  *
  * Returns whether it gave the target up this tick.
  */
@@ -121,15 +122,16 @@ export function chase(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  slots: MeleeSlots,
+  pass: CombatPass,
   e: Entity,
   here: NodeId,
   target: ChaseTarget,
   weapon: ApproachBand,
   stance: CombatantStance,
   defend: DefendPost,
-  seam: EnemyInReachFrom | null = null,
+  front: EngageSpec | null,
 ): boolean {
+  const { slots } = pass;
   const engagement = engagementFor(world, ctx, e, target.entity);
 
   const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
@@ -227,7 +229,10 @@ export function chase(
   // The enemy a step along the front brings into reach, taken up in place of the held one.
   let alongFront: Entity | null = null;
   if (approach.waiting && approach.cell === here && mine.standingOn !== undefined) {
-    const step = seam === null || !drawSlot ? null : seamStep(terrain, slots, here, mine, onOurBank, seam);
+    const step =
+      front === null || !drawSlot
+        ? null
+        : seamStep(world, ctx, terrain, pass, front, target.entity, weapon, here, mine, onOurBank);
     if (step === null) {
       // A second rank standing where it waits: idle, with no route for the render to read as a walk. It
       // keeps its target and re-asks each tick, which puts it in the moment a front-liner falls or steps
@@ -282,13 +287,19 @@ export function chase(
  * queueing behind one of them.
  */
 function seamStep(
+  world: World,
+  ctx: SystemContext,
   terrain: TerrainGraph,
-  slots: MeleeSlots,
+  pass: CombatPass,
+  front: EngageSpec,
+  held: Entity,
+  weapon: WeaponBand,
   here: NodeId,
   mine: OwnClaims,
   onOurBank: (cell: NodeId) => boolean,
-  seam: EnemyInReachFrom,
 ): { cell: NodeId; enemy: Entity } | null {
+  const { slots } = pass;
+  const seam = enemyInReachFrom(world, ctx, terrain, pass, front, held, weapon);
   let best: { cell: NodeId; enemy: Entity } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
@@ -356,12 +367,6 @@ function onNodeCentre(world: World, terrain: TerrainGraph, e: Entity, node: Node
   const centre = positionOfNode(terrain.xOf(node), terrain.yOf(node));
   const p = world.get(e, Position);
   return p.x === centre.x && p.y === centre.y;
-}
-
-/** The cells a chaser already holds for itself: its live goal and the node it stands on. */
-interface OwnClaims {
-  readonly goal: NodeId | undefined;
-  readonly standingOn: NodeId | undefined;
 }
 
 /** Where a chaser heads: a cell that brings its target into reach, or with every such cell taken a cell a

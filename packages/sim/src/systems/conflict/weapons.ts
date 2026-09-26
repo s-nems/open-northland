@@ -68,6 +68,9 @@ export function attackerWeapon(
   return withReach(weapon);
 }
 
+/** The {@link attackerWeapon} resolution: the weapon plus its clamped reach band. */
+export type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
+
 /** The vehicle's weapon: the row its type's job binds for its tribe (weapon 21 for the catapult's job
  *  54). Null for every unarmed vehicle - the carts and ships. */
 export function vehicleWeapon(

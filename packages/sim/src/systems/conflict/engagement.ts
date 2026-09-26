@@ -4,6 +4,7 @@ import {
   Building,
   Engagement,
   isWildlife,
+  MoveGoal,
   Owner,
   Palisade,
   Person,
@@ -22,6 +23,7 @@ import {
   isAnimalTribe,
   isFighterJob,
   isHunterJob,
+  isRangedWeapon,
   MILITARY_MODE,
   type MilitaryMode,
   stanceMode,
@@ -33,11 +35,12 @@ import { onStride, REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
-import type { Crowding, Side, WeaponBand } from './melee-slots.js';
+import { type Crowding, type OwnClaims, type Side, type WeaponBand, withinBand } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, reachableTargetGate } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 import { givenUpTargetVeto } from './unreachable-targets.js';
+import type { ArmedWith } from './weapons.js';
 
 // Re-exported so the combat modules keep one import site for the stance ladder.
 export { stanceMode };
@@ -86,9 +89,12 @@ export function engageSpec(
   here: NodeId,
   stance: CombatantStance,
   attacker: SettlerIdentity,
-  weapon: WeaponBand,
+  weapon: ArmedWith,
 ): EngageSpec {
   const { owned, ordered } = stance;
+  // Only a melee fighter on its feet forms a front: a bow keeps its standoff and a garrison never leaves
+  // its tower, so neither weighs crowding, turns after a blow or steps along a seam.
+  const contact = stance.post === null && !isRangedWeapon(weapon.weapon);
   // Fog gate (authored): an owned unit auto-acquires only targets its player currently sees. The
   // explicit-AttackOrder path stays ungated - an ordered chase follows its target into fog. Unowned
   // combatants have no fog.
@@ -130,6 +136,7 @@ export function engageSpec(
       hold: {
         keep: (t) => holdable(t) && inReachOf(terrain, world, ctx, here, t, weapon.maxRange),
         band: weapon,
+        contact,
       },
     };
   }
@@ -137,10 +144,8 @@ export function engageSpec(
   // An advancing seeker also skips the enemies its chase gave up as sealed off, unless one stands inside its
   // band: only the walk is refused, so the swing lands the moment a defender steps out of its compound.
   const givenUp = givenUpTargetVeto(world, ctx, e);
-  const inBand = (t: Entity): boolean => {
-    const dist = hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
-    return dist >= weapon.minRange && dist <= weapon.maxRange;
-  };
+  const inBand = (t: Entity): boolean =>
+    withinBand(weapon, hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t)));
   const advanceAccept =
     givenUp === undefined
       ? generalAccept
@@ -162,7 +167,7 @@ export function engageSpec(
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES + weapon.maxRange, metric: 'hex', hold: true },
-      hold: { keep: (t) => nearAnchor(t, DEFEND_LEASH_NODES) && holdable(t), band: weapon },
+      hold: { keep: (t) => nearAnchor(t, DEFEND_LEASH_NODES) && holdable(t), band: weapon, contact },
     };
   }
 
@@ -188,6 +193,7 @@ export function engageSpec(
           hexNodeDistance(terrain, anchor, entityNode(world, terrain, t)) <= IGNORE_LEASH_NODES &&
           holdable(t),
         band: weapon,
+        contact,
       },
     };
   }
@@ -225,7 +231,7 @@ export function engageSpec(
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: null,
-      hold: { keep: holdable, band: weapon },
+      hold: { keep: holdable, band: weapon, contact },
     };
   }
   return {
@@ -295,6 +301,10 @@ export interface EngageSpec {
   readonly hold?: {
     readonly keep: (t: Entity) => boolean;
     readonly band: WeaponBand;
+    /** A melee fighter on its feet, the only kind that forms a front: it weighs crowding in its pick, turns
+     *  to a less crowded enemy after a blow and steps along a full front. False for a bow or a garrison,
+     *  which keep the original's plain nearest pick and random draw. */
+    readonly contact: boolean;
   };
 }
 
@@ -303,7 +313,8 @@ export interface EngageSpec {
  * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the nearest search; a fighter's own
  * breach yields to a primary-tier target inside `weapon`'s band. Otherwise the nearest target `spec.accept`
  * admits within `[spec.minDist, spec.searchRadius]`, with the `spec.lowPriority` tier searched only when the
- * primary tier finds nothing in sight.
+ * primary tier finds nothing in sight. `moving` is the swing gate's own reading of whether the unit still
+ * walks, so the held enemy is weighed against its neighbours on exactly the ticks a swing could start.
  */
 export function resolveTarget(
   world: World,
@@ -314,6 +325,7 @@ export function resolveTarget(
   here: NodeId,
   spec: EngageSpec,
   weapon: WeaponBand,
+  moving: boolean,
 ): { target: Entity; dist: number } | null {
   const { index } = pass;
   const { x, y } = terrain.coordsOf(here);
@@ -337,7 +349,9 @@ export function resolveTarget(
     if (rival !== null) return { target: rival.entity, dist: rival.distance };
     return focusedOn(world, ctx, terrain, here, order.target);
   }
-  if (spec.hold !== undefined) return heldOrPicked(world, ctx, terrain, pass, self, here, spec, spec.hold);
+  if (spec.hold !== undefined) {
+    return heldOrPicked(world, ctx, terrain, pass, self, here, spec, spec.hold, moving);
+  }
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
     // A commitment ignores `minDist`: prey that closes inside the weapon's dead zone is backed off by the
@@ -410,15 +424,23 @@ function heldOrPicked(
   here: NodeId,
   spec: EngageSpec,
   hold: NonNullable<EngageSpec['hold']>,
+  moving: boolean,
 ): { target: Entity; dist: number } | null {
   const heldTarget = world.tryGet(self, Engagement)?.target;
   const held =
     heldTarget !== undefined && world.isAlive(heldTarget) && hold.keep(heldTarget)
       ? focusedOn(world, ctx, terrain, here, heldTarget)
       : null;
-  const asker: Asker = { here, side: world.tryGet(self, Owner)?.player ?? null, band: hold.band };
+  const asker: Asker | null = hold.contact
+    ? {
+        here,
+        side: world.tryGet(self, Owner)?.player ?? null,
+        band: hold.band,
+        mine: { goal: world.tryGet(self, MoveGoal)?.cell, standingOn: here },
+      }
+    : null;
   if (held !== null && heldTarget !== undefined && !rescanDue(world, ctx, self, held.dist, hold.band)) {
-    if (!standsToStrike(world, self, held.dist, hold.band)) return held;
+    if (asker === null || moving || !withinBand(hold.band, held.dist)) return held;
     return lessCrowdedInReach(world, ctx, terrain, pass, spec, asker, heldTarget) ?? held;
   }
   const { x, y } = terrain.coordsOf(here);
@@ -435,16 +457,19 @@ function heldOrPicked(
   // nearest wall of all.
   const pickedAt = focusedOn(world, ctx, terrain, here, picked.entity);
   if (held === null || heldTarget === undefined) return pickedAt;
+  if (asker === null) return pickedAt.dist >= held.dist ? held : pickedAt;
   const heldScore = crowdedScore(world, ctx, terrain, pass, asker, heldTarget, held.dist);
   const pickedScore = crowdedScore(world, ctx, terrain, pass, asker, picked.entity, pickedAt.dist);
   return pickedScore >= heldScore ? held : pickedAt;
 }
 
-/** Who asks how crowded an enemy is: from where, for which side, striking from which band. */
+/** Who asks how crowded an enemy is: from where, for which side, striking from which band, and the cells
+ *  it already holds for itself. */
 interface Asker {
   readonly here: NodeId;
   readonly side: Side;
   readonly band: WeaponBand;
+  readonly mine: OwnClaims;
 }
 
 /** How many walk steps a fighter takes between two looks for a nearer enemy. Original behavior. */
@@ -472,7 +497,7 @@ function rescanDue(
   band: WeaponBand,
 ): boolean {
   if (isTravelling(world, self)) return onStride(ctx.tick, self, RESCAN_PERIOD_TICKS);
-  if (heldDist >= band.minRange && heldDist <= band.maxRange) return false;
+  if (withinBand(band, heldDist)) return false;
   return onStride(ctx.tick, self, REPATH_CADENCE);
 }
 
@@ -487,7 +512,8 @@ export const CROWDING_WEIGHT = 2;
 /**
  * An enemy's pick score for `asker`: its distance plus {@link CROWDING_WEIGHT} for every friend already
  * standing where the asker's weapon would strike it from ({@link MeleeSlots.crowdingAround}), the asker's
- * own node not counted. A building is scored by distance alone: it is besieged wall by wall, not surrounded.
+ * own node not counted. A building or a vehicle is scored by distance alone: a building is besieged wall by
+ * wall, not surrounded, and a vehicle is a body like it, not a fighter on foot.
  */
 function crowdedScore(
   world: World,
@@ -501,7 +527,7 @@ function crowdedScore(
   return dist + CROWDING_WEIGHT * crowdingOf(world, ctx, terrain, pass, asker, target).occupied;
 }
 
-/** {@link MeleeSlots.crowdingAround} a unit target; a building is never crowded out. */
+/** {@link MeleeSlots.crowdingAround} a unit target; a building or a vehicle is never crowded out. */
 function crowdingOf(
   world: World,
   ctx: SystemContext,
@@ -510,23 +536,20 @@ function crowdingOf(
   asker: Asker,
   target: Entity,
 ): Crowding {
-  if (world.has(target, Building) || world.has(target, Palisade)) return OPEN_CROWDING;
+  if (world.has(target, Building) || world.has(target, Palisade) || world.has(target, Vehicle)) {
+    return OPEN_CROWDING;
+  }
   const at = combatTargetNode(world, ctx, terrain, asker.here, target);
-  return pass.slots.crowdingAround(at, asker.band, asker.side, asker.here);
+  return pass.slots.crowdingAround(at, asker.band, asker.side, asker.mine);
 }
 
 const OPEN_CROWDING: Crowding = { occupied: 0, sealed: false };
 
-/** Whether a combatant holding a target `heldDist` off is standing in reach of it: the tick a swing starts. */
-function standsToStrike(world: World, self: Entity, heldDist: number, band: WeaponBand): boolean {
-  return heldDist >= band.minRange && heldDist <= band.maxRange && !isTravelling(world, self);
-}
-
 /**
  * The enemy a fighter about to strike turns to instead: one within reach or a step outside it, of a kind
  * no worse than `heldTarget`, with strictly fewer bodies standing at it than the held one; among those the
- * nearest, then the lowest id. Null keeps the held one. Asked as each swing starts, so after every blow
- * and never mid-swing, and it costs one band scan a step wider than the weapon's reach, so the work follows
+ * nearest, then the lowest id. Null keeps the held one. Asked on the ticks a swing could start, so before
+ * a walker's first blow and after every one, and never mid-swing, and it costs one band scan a step wider than the weapon's reach, so the work follows
  * the fighters in contact. Owner rule: the original never lets go of a live target it can reach; here
  * it is what keeps three swords off one man once the lines have mixed.
  */
@@ -580,9 +603,9 @@ function nodesInBand(band: WeaponBand): number {
 
 /**
  * The pick: the first kind in {@link PICK_TIERS} with a candidate, and among its {@link PICK_CANDIDATES}
- * nearest within {@link PICK_SPREAD_NODES} of the nearest, the lowest {@link crowdedScore}, one at random
- * among equal scores. Original behavior draws among the nearest few alone; the crowding weight is the
- * owner's rule. An enemy nobody can step up to any more is taken only when the kind offers no other.
+ * nearest within {@link PICK_SPREAD_NODES} of the nearest, one at random. Original behavior. A melee
+ * `asker` instead takes the lowest {@link crowdedScore} of them, drawn at random among equal scores, and
+ * an enemy nobody can step up to any more only when the kind offers no other: the owner's rule.
  */
 function pickByTier(
   world: World,
@@ -590,7 +613,7 @@ function pickByTier(
   terrain: TerrainGraph,
   pass: CombatPass,
   spec: EngageSpec,
-  asker: Asker,
+  asker: Asker | null,
   x: number,
   y: number,
 ): { entity: Entity; distance: number } | null {
@@ -608,6 +631,7 @@ function pickByTier(
     );
     if (found.length === 0) continue;
     if (found.length === 1) return found[0] ?? null;
+    if (asker === null) return found[ctx.rng.int(found.length)] ?? null;
     return leastCrowded(world, ctx, terrain, pass, asker, found);
   }
   return null;

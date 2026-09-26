@@ -1,4 +1,4 @@
-import { Engagement, MoveGoal } from '../../components/index.js';
+import { Engagement, MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { forEachRingNode } from '../../nav/halfcell.js';
@@ -13,6 +13,17 @@ import { hexNodeDistance } from '../spatial/metric.js';
 export interface WeaponBand {
   readonly minRange: number;
   readonly maxRange: number;
+}
+
+/** Whether a target `dist` map points off is inside `band`. */
+export function withinBand(band: WeaponBand, dist: number): boolean {
+  return dist >= band.minRange && dist <= band.maxRange;
+}
+
+/** The cells a chaser already holds for itself: its live goal and the node it stands on. */
+export interface OwnClaims {
+  readonly goal: NodeId | undefined;
+  readonly standingOn: NodeId | undefined;
 }
 
 /** Visit every node within `band` of `centre`, nearest ring first, until `visit` answers false; answers
@@ -49,9 +60,10 @@ export type Side = number | null;
 export class MeleeSlots {
   /** The standing bodies by node, each with its player. */
   private standing?: ReadonlyMap<NodeId, number>;
-  /** Goals en-route chasers already own: a slot dealt in an earlier tick stays taken while its owner is
-   *  still walking to it, else two chasers dealt across ticks converge on one cell and stack. */
-  private enRoute?: ReadonlySet<NodeId>;
+  /** Goals en-route chasers already own, each with the chaser's side: a slot dealt in an earlier tick
+   *  stays taken while its owner is still walking to it, else two chasers dealt across ticks converge on
+   *  one cell and stack. */
+  private enRoute?: ReadonlyMap<NodeId, Side>;
   /** The cells dealt this tick, each with the side it was dealt to. */
   private readonly claimed = new Map<NodeId, Side>();
   private blocked?: BlockOverlay;
@@ -83,24 +95,30 @@ export class MeleeSlots {
   }
 
   /**
-   * How many of `side`'s own bodies already stand at a unit on `node`, or were dealt a cell there this
-   * tick, within `band` of it (the cells a weapon of that band strikes it from), `except` (the asker's own
-   * node) not counted; and whether the band is `sealed`, no cell of it left to step onto. The enemy's own
-   * neighbours are no crowd: they take sides away, which `sealed` and the slot deal answer, but a man at the
-   * edge of his own line is not a pile for standing beside his friends.
+   * How many of `side`'s own bodies already stand at a unit on `node`, were dealt a cell there this tick,
+   * or are walking to one, within `band` of it (the cells a weapon of that band strikes it from), the
+   * asker's own node and goal not counted; and whether the band is `sealed`: no cell of it the slot deal
+   * would still hand out, the asker's own node counting as free. The enemy's own neighbours are no crowd:
+   * they take sides away, which `sealed` and the slot deal answer, but a man at the edge of his own line
+   * is not a pile for standing beside his friends.
    */
-  crowdingAround(node: NodeId, band: WeaponBand, side: Side, except?: NodeId): Crowding {
+  crowdingAround(node: NodeId, band: WeaponBand, side: Side, mine: OwnClaims): Crowding {
     this.standing ??= standingFighterPosts(this.world, this.ctx.content, this.terrain);
-    const standing = this.standing;
+    this.enRoute ??= enRouteChaseGoals(this.world);
+    const { standing, enRoute } = this;
     let occupied = 0;
     let open = 0;
     forEachNodeInBand(this.terrain, node, band, (cell) => {
-      if (cell === except) return true;
+      if (cell === mine.standingOn) {
+        if (this.isOpen(cell)) open++;
+        return true;
+      }
       const body = standing.get(cell);
       const dealt = this.claimed.get(cell);
-      if (body === undefined && dealt === undefined) {
-        if (this.terrain.isWalkable(cell)) open++;
-      } else if (body === side || dealt === side) {
+      const walking = cell === mine.goal ? undefined : enRoute.get(cell);
+      if (body === undefined && dealt === undefined && walking === undefined) {
+        if (this.isOpen(cell)) open++;
+      } else if (body === side || dealt === side || walking === side) {
         occupied++;
       }
       return true;
@@ -156,11 +174,14 @@ export class MeleeSlots {
   }
 }
 
-/** The chase destinations en-route chasers already own. Membership-only, so query order carries no
- *  decision; conservatively stale within the tick, which only delays a slot's reuse by one tick. */
-function enRouteChaseGoals(world: World): ReadonlySet<NodeId> {
-  const out = new Set<NodeId>();
-  for (const e of world.query(Engagement, MoveGoal)) out.add(world.get(e, MoveGoal).cell);
+/** The chase destinations en-route chasers already own, by the chaser's side. Membership and side only,
+ *  so query order carries no decision; conservatively stale within the tick, which only delays a slot's
+ *  reuse by one tick. */
+function enRouteChaseGoals(world: World): ReadonlyMap<NodeId, Side> {
+  const out = new Map<NodeId, Side>();
+  for (const e of world.query(Engagement, MoveGoal)) {
+    out.set(world.get(e, MoveGoal).cell, world.tryGet(e, Owner)?.player ?? null);
+  }
   return out;
 }
 

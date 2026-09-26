@@ -50,30 +50,22 @@ import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { type ApproachBand, breakOff, type ChaseTarget, chase, disengage, REPATH_CADENCE } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
-import {
-  type CombatantStance,
-  enemyInReachFrom,
-  engageSpec,
-  resolveTarget,
-  stanceMode,
-} from './engagement.js';
+import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive, runsFromBlows, startBlowRun } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
-import type { MeleeSlots } from './melee-slots.js';
+import { type MeleeSlots, withinBand } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, targetBodyNodes } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget, isValidTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import {
+  type ArmedWith,
   attackerWeapon,
   hitSoundVsMaterial,
   startAttack,
   targetMaterial,
   wallBlowDamage,
 } from './weapons.js';
-
-/** The {@link attackerWeapon} resolution: the weapon plus its clamped reach band. */
-type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
 
 /**
  * Resolve and act on one combatant's engagement this tick: swing, chase, hold a post, flee, or hand back to
@@ -164,7 +156,8 @@ export function engageCombatant(
 
   const here = entityNode(world, terrain, e);
   const spec = engageSpec(world, ctx, terrain, index, e, here, stance, attacker, weapon);
-  const found = resolveTarget(world, ctx, terrain, pass, e, here, spec, weapon);
+  const moving = travelling && !arrivedAtGoal(world, e, terrain);
+  const found = resolveTarget(world, ctx, terrain, pass, e, here, spec, weapon, moving);
   if (found === null) {
     // Nothing to strike yet, but a fight near enough to stand to still gets it up. A guard's walk back to
     // its anchor waits for the next pass.
@@ -184,7 +177,6 @@ export function engageCombatant(
   // Woken: the rest already slept keeps, the clip is cut where it stands.
   if (dozing) removeCurrentAtomic(world, e);
   holdPrey(world, e, spec, target);
-  const moving = travelling && !arrivedAtGoal(world, e, terrain);
   if (inReachAndStanding(dist, weapon, moving)) {
     turnToStrike(world, terrain, e, combatTargetNode(world, ctx, terrain, here, target));
     swingAt(world, ctx, e, attacker, owned, target, weapon);
@@ -194,7 +186,11 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
-  if (moving && inBand(dist, weapon) && pullUpInReach(world, ctx, terrain, slots, e, here, target, weapon))
+  if (
+    moving &&
+    withinBand(weapon, dist) &&
+    pullUpInReach(world, ctx, terrain, slots, e, here, target, weapon)
+  )
     return;
   // Advance on the combat node the reach check measured, so the chase walks toward where the swing lands. A
   // building's full wall list rides along so a chaser whose nearest face is manned encircles to another.
@@ -203,13 +199,21 @@ export function engageCombatant(
     node: combatTargetNode(world, ctx, terrain, here, target),
     body: targetBodyNodes(world, ctx, terrain, target),
   };
-  const band = approachBand(weapon);
   // Only a melee fighter holding a unit forms a front to step along; a besieger encircles its wall instead.
-  const seam =
-    spec.hold !== undefined && band.contact && chaseTarget.body === null
-      ? enemyInReachFrom(world, ctx, terrain, pass, spec, target, weapon)
-      : null;
-  const gaveUp = chase(world, ctx, terrain, slots, e, here, chaseTarget, band, stance, spec.defend, seam);
+  const front = spec.hold?.contact === true && chaseTarget.body === null ? spec : null;
+  const gaveUp = chase(
+    world,
+    ctx,
+    terrain,
+    pass,
+    e,
+    here,
+    chaseTarget,
+    approachBand(weapon),
+    stance,
+    spec.defend,
+    front,
+  );
   if (gaveUp) restPreySearch(world, ctx, e, spec);
 }
 
@@ -377,11 +381,6 @@ function standsDownAsPassiveAnimal(
   return !hostileAnimalNow(world, ctx, e, attacker.tribe);
 }
 
-/** Inside the weapon's reach band. */
-function inBand(dist: number, weapon: ArmedWith): boolean {
-  return dist >= weapon.minRange && dist <= weapon.maxRange;
-}
-
 /**
  * Stop a walker that has come into reach of its target: on the stop it is walking toward when its target is
  * still in reach from there, else back on the node it is crossing, whichever no body holds. It arrives,
@@ -403,7 +402,9 @@ function pullUpInReach(
   const stop = follow === undefined ? undefined : world.tryGet(e, PathRoute)?.waypoints[follow.index]?.node;
   const goal = world.tryGet(e, MoveGoal)?.cell;
   for (const cell of stop === undefined ? [here] : [stop, here]) {
-    if (!inBand(hexNodeDistance(terrain, cell, combatTargetNode(world, ctx, terrain, cell, target)), weapon))
+    if (
+      !withinBand(weapon, hexNodeDistance(terrain, cell, combatTargetNode(world, ctx, terrain, cell, target)))
+    )
       continue;
     // A body can step onto the goal ahead of it, and two never share a node.
     if (slots.isOccupied(cell)) continue;
@@ -421,7 +422,7 @@ function pullUpInReach(
  *  can read as in-band mid-stride and swinging there would freeze it off any node centre, reading as a
  *  glide; gated, it finishes its braked last leg onto the slot's centre first. */
 function inReachAndStanding(dist: number, weapon: ArmedWith, moving: boolean): boolean {
-  return inBand(dist, weapon) && !moving;
+  return withinBand(weapon, dist) && !moving;
 }
 
 /** Whether `e` is route-free and standing on the exact centre of the goal it still carries - the remnant

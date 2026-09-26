@@ -8,7 +8,9 @@ import {
   hexDistanceBetween,
   hexNeighboursOf,
 } from '../../src/nav/halfcell.js';
+import type { NodeId } from '../../src/nav/terrain/index.js';
 import { CROWDING_WEIGHT } from '../../src/systems/conflict/engagement.js';
+import { MeleeSlots, type OwnClaims } from '../../src/systems/conflict/melee-slots.js';
 import { combatSystem, REPATH_CADENCE } from '../../src/systems/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import {
@@ -17,6 +19,7 @@ import {
   fighterAtNode,
   grass,
   SAXON,
+  SOLDIER_BOW,
   SOLDIER_SPEAR,
   SOLDIER_SWORD_SHORT,
   startSwing,
@@ -49,9 +52,9 @@ function unit(s: Simulation, at: HalfCellNode, owner: number, mode: MilitaryMode
   return e;
 }
 
-/** A blue swordsman set to ATTACK at {@link PICKER}. */
-function picker(s: Simulation): Entity {
-  return unit(s, PICKER, P0, MILITARY_MODE.ATTACK, SOLDIER_SWORD_SHORT);
+/** A blue fighter of `job` set to ATTACK at {@link PICKER}. */
+function picker(s: Simulation, job = SOLDIER_SWORD_SHORT): Entity {
+  return unit(s, PICKER, P0, MILITARY_MODE.ATTACK, job);
 }
 
 /** A red civilian standing still at `at`, a target that neither strikes nor runs. */
@@ -77,12 +80,15 @@ function nextStride(from: number, e: Entity): number {
   return tick;
 }
 
-/** Which of `build`'s two enemies the picker takes over {@link SEEDS} seeds: 'near', 'far' or both. */
-function picksOver(build: (s: Simulation) => { near: Entity; far: Entity }): string[] {
+/** Which of `build`'s two enemies a picker of `job` takes over {@link SEEDS} seeds: 'near', 'far' or both. */
+function picksOver(
+  build: (s: Simulation) => { near: Entity; far: Entity },
+  job = SOLDIER_SWORD_SHORT,
+): string[] {
   const picked = new Set<string>();
   for (let seed = 1; seed <= SEEDS; seed++) {
     const s = sim(seed);
-    const soldier = picker(s);
+    const soldier = picker(s, job);
     const { near, far } = build(s);
     combatSystem(s.world, ctxOf(s));
     const target = held(s, soldier);
@@ -93,14 +99,13 @@ function picksOver(build: (s: Simulation) => { near: Entity; far: Entity }): str
 
 describe('melee front - the pick weighs the bodies already standing at an enemy', () => {
   const NEAR: HalfCellNode = { hx: PICKER.hx + 6, hy: ROW };
-  /** Within the draw's spread of the nearest, so both are candidates. */
-  const FAR: HalfCellNode = { hx: PICKER.hx + 8, hy: ROW };
+  /** One friend's weight farther, within the draw's spread of the nearest, so both are candidates. */
+  const FAR: HalfCellNode = { hx: NEAR.hx + CROWDING_WEIGHT, hy: ROW };
 
   it('takes the nearer of two open enemies, and the farther one when two friends stand at the nearer', () => {
-    expect(CROWDING_WEIGHT).toBe(2);
-    expect(hexDistanceBetween(PICKER.hx, PICKER.hy, FAR.hx, FAR.hy)).toBe(8);
+    expect(hexDistanceBetween(PICKER.hx, PICKER.hy, FAR.hx, FAR.hy)).toBe(6 + CROWDING_WEIGHT);
     expect(picksOver((s) => ({ near: enemy(s, NEAR), far: enemy(s, FAR) }))).toEqual(['near']);
-    // Two bodies cost the nearer enemy four map points against the two it is nearer by.
+    // Two bodies cost the nearer enemy twice the weight against the one weight it is nearer by.
     expect(
       picksOver((s) => {
         const near = enemy(s, NEAR);
@@ -117,6 +122,18 @@ describe('melee front - the pick weighs the bodies already standing at an enemy'
         crowd(s, NEAR, 1);
         return { near, far: enemy(s, FAR) };
       }),
+    ).toEqual(['far', 'near']);
+  });
+
+  it('leaves an archer to the plain draw among the nearest few, whoever stands at them', () => {
+    // Both enemies lie inside the bow's band; the two friends at the nearer one would decide a swordsman's
+    // pick, and a bow keeps its standoff instead of forming a front.
+    expect(
+      picksOver((s) => {
+        const near = enemy(s, NEAR);
+        crowd(s, NEAR, 2);
+        return { near, far: enemy(s, FAR) };
+      }, SOLDIER_BOW),
     ).toEqual(['far', 'near']);
   });
 
@@ -288,5 +305,54 @@ describe('melee front - a fighter about to strike turns to a less crowded enemy 
     s.world.add(soldier, Engagement, { repathAt: s.tick, target: fighter });
     combatSystem(s.world, ctxOf(s));
     expect(held(s, soldier)).toBe(fighter);
+  });
+});
+
+describe("melee front - what counts as an enemy's crowd", () => {
+  const SWORD_REACH = { minRange: 1, maxRange: 1 };
+  const AT: HalfCellNode = { hx: PICKER.hx + 1, hy: ROW };
+  /** The enemy's sides other than the asker's own node. */
+  const otherSides = hexNeighboursOf(AT.hx, AT.hy).filter((n) => n.hx !== PICKER.hx || n.hy !== ROW);
+
+  function slotsOf(s: Simulation): { slots: MeleeSlots; node: (n: HalfCellNode) => NodeId } {
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    return { slots: new MeleeSlots(s.world, ctxOf(s), terrain), node: (n) => terrain.nodeAt(n.hx, n.hy) };
+  }
+
+  it("counts the asker's own node as a side left to strike from, not as crowd", () => {
+    const s = sim();
+    picker(s);
+    enemy(s, AT);
+    for (const n of otherSides) unit(s, n, P0, MILITARY_MODE.IGNORE, SOLDIER_SWORD_SHORT);
+    const { slots, node } = slotsOf(s);
+    const standing: OwnClaims = { goal: undefined, standingOn: node(PICKER) };
+    expect(slots.crowdingAround(node(AT), SWORD_REACH, P0, standing)).toEqual({ occupied: 5, sealed: false });
+    const elsewhere: OwnClaims = { goal: undefined, standingOn: undefined };
+    expect(slots.crowdingAround(node(AT), SWORD_REACH, P0, elsewhere)).toEqual({ occupied: 6, sealed: true });
+  });
+
+  it('counts a friend still walking to a side as crowd, and any walker as taking the side', () => {
+    const FAR_OFF: HalfCellNode = { hx: PICKER.hx + 10, hy: ROW + 4 };
+    for (const [walkerSide, occupied] of [
+      [P0, 6],
+      [P1, 5],
+    ] as const) {
+      const s = sim();
+      picker(s);
+      enemy(s, AT);
+      const [free, ...taken] = otherSides;
+      if (free === undefined) throw new Error('fixture: no free side');
+      for (const n of taken) unit(s, n, P0, MILITARY_MODE.IGNORE, SOLDIER_SWORD_SHORT);
+      const walker = unit(s, FAR_OFF, walkerSide, MILITARY_MODE.IGNORE, SOLDIER_SWORD_SHORT);
+      const { slots, node } = slotsOf(s);
+      // Asked from elsewhere, so the picker's own node is one more taken side.
+      const mine: OwnClaims = { goal: undefined, standingOn: undefined };
+      expect(slots.crowdingAround(node(AT), SWORD_REACH, P0, mine)).toEqual({ occupied: 5, sealed: false });
+      s.world.add(walker, Engagement, { repathAt: s.tick });
+      s.world.add(walker, MoveGoal, { cell: node(free) });
+      const later = slotsOf(s).slots;
+      expect(later.crowdingAround(node(AT), SWORD_REACH, P0, mine)).toEqual({ occupied, sealed: true });
+    }
   });
 });
