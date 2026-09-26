@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { Simulation } from '../../src/index.js';
+import { Rng, Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { anyLiveResource, nearestLiveResource } from '../../src/systems/ai-player/live-resources.js';
 import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
@@ -50,6 +50,19 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     expect(near).toEqual([b, c]); // ascending id, both border-straddling nodes present
     expect(near).not.toContain(far);
     expect(near).not.toContain(beyond);
+  });
+
+  it('leaves out an inner box already searched, whole regions and straddling members alike', () => {
+    const sim = newSim();
+    // Around (48, 48) the skipped box [8, 88] holds region (1, 1) whole and region (2, 1) in part.
+    const inner = nodeAt(sim, 40, 40); // in the whole region
+    const straddlingIn = nodeAt(sim, 86, 50); // in the partial region, inside the skipped box
+    const straddlingOut = nodeAt(sim, 90, 50); // in the partial region, past it
+    const ring = nodeAt(sim, 120, 48); // past the skipped box, inside the outer one
+    const outside = nodeAt(sim, 200, 48);
+    expect(resourcesNearNode(sim.world, 48, 48, 80, undefined, 40)).toEqual([straddlingOut, ring]);
+    expect(resourcesNearNode(sim.world, 48, 48, 80)).toEqual([inner, straddlingIn, straddlingOut, ring]);
+    expect(resourcesNearNode(sim.world, 48, 48, 80)).not.toContain(outside);
   });
 
   it('narrows the box to the given harvest atomics, still ascending-id', () => {
@@ -211,5 +224,46 @@ describe('resourceBoxHoldsAll (the dry-map stop of the expanding searches)', () 
     expect(anyLiveResource(sim.world, ABSENT_GOOD, { hx: 10, hy: 10 })).toBe(false);
     expect(nearestLiveResource(sim.world, 1, { hx: 10, hy: 10 })).toBe(far);
     expect(nearestLiveResource(sim.world, 1, { hx: 10, hy: 10 }, (e) => e !== far)).toBeNull();
+  });
+
+  it("picks the reference scan's winner, corner hits past a searched box included", () => {
+    const TRIALS = 40;
+    const NODES = 30;
+    const QUERIES = 10;
+    const SPAN = 480; // a map-sized span: misses, corner hits and a box that holds every region
+    const GOODS = 3;
+    const rng = new Rng(7);
+    for (let trial = 0; trial < TRIALS; trial++) {
+      const sim = newSim();
+      const nodes: { e: number; hx: number; hy: number }[] = [];
+      for (let i = 0; i < NODES; i++) {
+        const e = sim.world.create();
+        const hx = rng.int(SPAN);
+        const hy = rng.int(SPAN);
+        sim.world.add(e, Position, positionOfNode(hx, hy));
+        sim.world.add(e, Resource, { goodType: rng.int(GOODS), remaining: rng.int(2), harvestAtomic: 24 });
+        stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
+        nodes.push({ e, hx, hy });
+      }
+      const odd = (e: number): boolean => e % 2 === 1;
+      for (let q = 0; q < QUERIES; q++) {
+        const from = { hx: rng.int(SPAN), hy: rng.int(SPAN) };
+        const good = rng.int(GOODS + 1); // one good no node carries
+        for (const workable of [undefined, odd]) {
+          let best: number | null = null;
+          let bestDistance = Number.POSITIVE_INFINITY;
+          for (const { e, hx, hy } of nodes) {
+            const r = sim.world.get(e, Resource);
+            if (r.goodType !== good || r.remaining <= 0 || (workable !== undefined && !workable(e))) continue;
+            const distance = Math.abs(hx - from.hx) + Math.abs(hy - from.hy);
+            if (distance < bestDistance) {
+              best = e;
+              bestDistance = distance;
+            }
+          }
+          expect(nearestLiveResource(sim.world, good, from, workable)).toBe(best);
+        }
+      }
+    }
   });
 });

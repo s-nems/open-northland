@@ -62,14 +62,15 @@ export function anyHarvestAtomicPresent(world: World, atomics: ReadonlySet<numbe
 }
 
 /** Every resource whose anchor node lies within the box `reach` nodes around `(hx, hy)`, ascending-id,
- *  narrowed to the harvest atomics in `atomics` when given. A candidate superset, so pass a `reach`
- *  covering the radius plus the largest work-cell offset. */
+ *  narrowed to the harvest atomics in `atomics` when given and past the inner box `skipReach` when
+ *  given. A candidate superset, so pass a `reach` covering the radius plus the largest work-cell offset. */
 export function resourcesNearNode(
   world: World,
   hx: number,
   hy: number,
   reach: number,
   atomics?: ReadonlySet<number>,
+  skipReach?: number,
 ): Entity[] {
   return index.near(
     world,
@@ -77,6 +78,7 @@ export function resourcesNearNode(
     hy,
     reach,
     atomics === undefined ? undefined : (atomic) => atomics.has(atomic),
+    skipReach,
   );
 }
 

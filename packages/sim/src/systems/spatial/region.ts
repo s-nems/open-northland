@@ -79,8 +79,16 @@ export interface RegionIndex<Extra, Capture> {
   /** Every indexed entity whose anchor node lies within the axis-aligned box `reach` nodes around
    *  `(hx, hy)`, ascending-id. A candidate superset, valid only when `reach` covers the caller's radius
    *  plus the largest anchor-to-interaction-cell offset. `keep` drops a member by its capture before the
-   *  sort, so it must reject only members the caller's own filter would reject too. */
-  near(world: World, hx: number, hy: number, reach: number, keep?: (capture: Capture) => boolean): Entity[];
+   *  sort, so it must reject only members the caller's own filter would reject too. `skipReach` leaves
+   *  out the inner box a caller already searched, so an expanding search reads each member once. */
+  near(
+    world: World,
+    hx: number,
+    hy: number,
+    reach: number,
+    keep?: (capture: Capture) => boolean,
+    skipReach?: number,
+  ): Entity[];
   /** Whether any indexed entity inside the same box passes `test`. Unordered and first-hit, which a pure
    *  existence question does not need. `keep` skips a member by its capture before `test` reads it. */
   someNear(
@@ -123,6 +131,18 @@ function boxRegionRange(
     minRy: Math.floor(Math.max(0, hy - reach) / REGION_NODES),
     maxRy: Math.floor((hy + reach) / REGION_NODES),
   };
+}
+
+/** Whether every node of region `(rx, ry)` lies inside the box `reach` nodes around `(hx, hy)`. */
+function regionInBox(rx: number, ry: number, hx: number, hy: number, reach: number): boolean {
+  const minHx = rx * REGION_NODES;
+  const minHy = ry * REGION_NODES;
+  return (
+    minHx >= hx - reach &&
+    minHx + REGION_NODES - 1 <= hx + reach &&
+    minHy >= hy - reach &&
+    minHy + REGION_NODES - 1 <= hy + reach
+  );
 }
 
 function inBox(m: RegionMember<unknown>, hx: number, hy: number, reach: number): boolean {
@@ -250,16 +270,18 @@ export function createRegionIndex<Extra, Capture>(
       return state.frozen;
     },
     extra: (world) => memo.read(world).extra,
-    near: (world, hx, hy, reach, keep) => {
+    near: (world, hx, hy, reach, keep, skipReach) => {
       const index = memo.read(world);
       const { minRx, maxRx, minRy, maxRy } = boxRegionRange(hx, hy, reach);
       const out: Entity[] = [];
       for (let rx = minRx; rx <= maxRx; rx++) {
         for (let ry = minRy; ry <= maxRy; ry++) {
+          if (skipReach !== undefined && regionInBox(rx, ry, hx, hy, skipReach)) continue;
           const bucket = index.byRegion.get(regionKey(rx, ry));
           if (bucket === undefined) continue;
           for (const m of bucket) {
-            if (inBox(m, hx, hy, reach) && (keep === undefined || keep(m.capture))) out.push(m.e);
+            if (!inBox(m, hx, hy, reach) || (keep !== undefined && !keep(m.capture))) continue;
+            if (skipReach === undefined || !inBox(m, hx, hy, skipReach)) out.push(m.e);
           }
         }
       }
@@ -270,10 +292,9 @@ export function createRegionIndex<Extra, Capture>(
     },
     boxHoldsAll: (world, hx, hy, reach) => {
       for (const key of memo.read(world).byRegion.keys()) {
-        const minHx = Math.floor(key / REGION_KEY_STRIDE) * REGION_NODES;
-        const minHy = (key % REGION_KEY_STRIDE) * REGION_NODES;
-        if (minHx < hx - reach || minHx + REGION_NODES - 1 > hx + reach) return false;
-        if (minHy < hy - reach || minHy + REGION_NODES - 1 > hy + reach) return false;
+        if (!regionInBox(Math.floor(key / REGION_KEY_STRIDE), key % REGION_KEY_STRIDE, hx, hy, reach)) {
+          return false;
+        }
       }
       return true;
     },

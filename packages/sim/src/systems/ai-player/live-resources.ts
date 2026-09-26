@@ -180,7 +180,8 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
  * The resource that last proved each holder's patch harvestable, tried first on the next decision. The
  * verdict is existence only, and a witness that passes the same filters inside the same box is one of
  * the candidates the scan would accept, so the hint changes the cost and never the answer. Derived read
- * state, never hashed or saved.
+ * state, never hashed or saved. An entry outlives its holder: entity ids are never reused, so a stale one
+ * costs memory, one entry per holder ever checked.
  */
 const patchWitnessesByWorld = new WeakMap<World, Map<Entity, Entity>>();
 
@@ -200,18 +201,20 @@ function inBox(world: World, e: Entity, from: HalfCellNode, reach: number): bool
 }
 
 /** The best `(Manhattan distance, entity id)` live `goodType` resource `workable` accepts inside the
- *  Chebyshev `reach` box around `from`, or null. Candidates arrive ascending-id, so the strict `<` keeps
- *  the lowest id among the minimum distance - the same winner the reference scan picks. */
+ *  Chebyshev `reach` box around `from` and past the `searched` box, which held none, or null. Candidates
+ *  arrive ascending-id, so the strict `<` keeps the lowest id among the minimum distance - the same winner
+ *  the reference scan picks. */
 function bestLiveResourceInBox(
   world: World,
   goodType: number,
   from: HalfCellNode,
   reach: number,
   workable: WorkableTest | undefined,
+  searched: number | undefined,
 ): { entity: Entity; distance: number } | null {
   let best: Entity | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
-  for (const e of resourcesNearNode(world, from.hx, from.hy, reach)) {
+  for (const e of resourcesNearNode(world, from.hx, from.hy, reach, undefined, searched)) {
     if (!isLiveResource(world, e, goodType)) continue;
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
@@ -242,11 +245,13 @@ export function nearestLiveResource(
   from: HalfCellNode,
   workable?: WorkableTest,
 ): Entity | null {
+  let searched: number | undefined; // the largest box that held no candidate; later boxes skip its members
   for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
-    const hit = bestLiveResourceInBox(world, goodType, from, reach, workable);
+    const hit = bestLiveResourceInBox(world, goodType, from, reach, workable, searched);
     if (hit === null) {
       // A miss in a box holding every resource is final, so an absent good skips the larger boxes and the list.
       if (resourceBoxHoldsAll(world, from.hx, from.hy, reach)) return null;
+      searched = reach;
       continue;
     }
     // A winner at Manhattan ≤ reach is global: every node outside the Chebyshev `reach` box lies at
@@ -254,7 +259,7 @@ export function nearestLiveResource(
     if (hit.distance <= reach) return hit.entity;
     // Only a box-corner hit (Manhattan up to 2·reach): every node at Manhattan ≤ hit.distance lies
     // inside the Chebyshev `hit.distance` box, so one exact re-query settles the winner.
-    const exact = bestLiveResourceInBox(world, goodType, from, hit.distance, workable);
+    const exact = bestLiveResourceInBox(world, goodType, from, hit.distance, workable, searched);
     return (exact ?? hit).entity;
   }
   // Nothing within the cap - the reference scan finds the same winner the uncapped search would.

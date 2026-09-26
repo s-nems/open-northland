@@ -180,17 +180,17 @@ frame class; here it is read from three separate windows instead.
   compressed and binary form is a 00/10 decision, not a sim one.
 - The digest adds 17% to a lockstep tick at 2700 settlers; the split digest of 10 should be measured
   against that number.
-- The AI stall cluster is the single largest frame-level defect and is independent of the epic: see
-  the AI decision ticket. Spreading seats or modules across the 24-tick window is a behaviour change
-  the owner has to rule on.
+- The AI stall cluster is the single largest frame-level defect and is independent of the epic. The
+  seats now decide on spread slots and relocate on rounds of their own; what one seat's pass costs is
+  left to the AI decision ticket.
 
 ## Tickets filed from this run
 
 Per-system optimisation runs beside the epic; these tickets carry the numbers above and the code
 evidence, all under `docs/tickets/sim/`:
 
-- [`ai-decision-tick-slicing.md`](../tickets/sim/ai-decision-tick-slicing.md) (rewritten): the seat
-  pass cost, its terms, the consecutive-tick seat slots and the flag-relocation round.
+- [`ai-decision-tick-slicing.md`](../tickets/sim/ai-decision-tick-slicing.md): one seat's pass cost and
+  its terms; the consecutive-tick seat slots and the shared flag-relocation round are fixed.
 - `ai-seat-stock-ledger.md` (done, `systems/stores/seat-stock-ledger.ts`): `deriveSeatStock` folded from
   scratch per AI query because its memo keys on generations that move every tick.
 - [`planner-store-searches-scan-every-stockpile.md`](../tickets/sim/planner-store-searches-scan-every-stockpile.md):

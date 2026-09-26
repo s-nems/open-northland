@@ -1,50 +1,43 @@
-# Bound one AI seat's decision pass and spread the seats over the interval
+# Bound one AI seat's decision pass
 
 **Area:** sim · **Focus:** ai-player · **Priority:** P2
-**Needs user:** moving a seat's decision slot or its flag-relocation round changes when AI commands land
+**Needs user:** re-aiming a seat's flags over several decisions, or running its modules on different
+ticks, changes when AI commands land
 
-A due seat runs all five strategic modules in one tick (`runAiPlayerModules`, `ai-player/index.ts`).
-Seat `p` is due when `ctx.tick % AI_DECISION_INTERVAL_TICKS === seat.player % AI_DECISION_INTERVAL_TICKS`
-(24), so seats 0-6 decide on seven consecutive ticks and the next 17 carry none. `flagRelocateDue`
-(`workforce/collectors/upkeep.ts`) reads only `floor(tick / 24) % FLAG_RELOCATE_EVERY_DECISIONS`, so
-every seat re-aims all its collector flags in the same seven-tick run, once per 720 ticks.
+Seats decide on their own slots (`aiDecisionDue`, `ai-player/cadence.ts`) and re-aim their collector
+flags on their own round (`flagRelocateDue`, `workforce/collectors/upkeep.ts`), so no two of seats 0-6
+pay a pass on the same or neighbouring ticks. One seat still runs all five modules in one tick, and its
+relocation round is the heaviest pass it has.
 
-Measured on `magiczny_las`, AI seats 0-5 plus the map's seat 6, busy box (shares hold, ms indicative):
-late-window `aiPlayer` median 0.003 ms, p95 15-37 ms, max 357 ms, the top system in 10.2k slow ticks.
-All ten slowest ticks of the 80k and 100k profiles sit on ticks 0-6 of a relocation round (for example
-89280-89285, 100800-100805), 100-210 ms of `aiPlayer` each: about a second of stall per minute of play,
-on top of the seven-tick cluster every 24 ticks.
+Measured on `magiczny_las`, AI seats 0-5 plus the map's seat 6, 1500 ticks from a 60k checkpoint, quiet
+box: `aiPlayer` mean 2.0 ms, p95 7.6 ms, max 62 ms. Every tick in the slowest list is one seat's
+relocation round at 35-62 ms; ordinary passes stay under that.
 
-80k-checkpoint profile (2000 ticks), share of the whole profile: `aiPlayer` 15.8%, `runWorkforce` 13.7%:
+Profile of the same ticks, share of the whole profile: `aiPlayer` 16.4%, `runWorkforce` 14.0%:
 
-- `upkeepHolders` 5.7%. `patchWorked` -> `patchHarvestable` -> `anyResourceNear` -> `region.someNear`
-  2.9%, paid by every holder not mid-action on every decision. `replantSpot` -> `flagSpotNear` ->
-  `cheapestRingNode` -> `legOf` (lazy `WalkFlood.costTo`) 2.5%, 4.5% in a window with two relocation
-  rounds: a relocating seat pays a drift check per holder and up to `REPLANT_ATTEMPTS` spot searches.
-- `SeatSupply.of` -> `seatStockOf` 3.2%. The seat stock is now an incremental ledger; re-profile it from a
-  current 80k checkpoint, target below 0.3%.
-- `allocateScout` -> `nextSignpostTarget` 2.1%, mostly `corridorGoals` -> `nearestLiveResource`, which
-  doubles its box up to `RESOURCE_BOX_REACH_MAX` and then scans every resource whenever a collected good
-  has no live node on the seat's own ground.
-- Generic collector allocation 0.6%.
+- `upkeepHolders` 4.4%. `patchWorked` 2.2%, most of it `RouteRegions.pocketed` flooding a flag centre
+  after the building overlay changed. `replantSpot` 2.1%, the flag-spot walk floods: one full relocation
+  cycle (every seat once) settles about 272k nodes, with 8 floods reaching their budget and no query for
+  a blocked or unwalkable node, so the floods measure real distance rather than waste.
+- `SeatSupply.of` -> `seatStockOf` 3.3%, measured before the seat stock became an incremental ledger;
+  re-profile it from a current checkpoint, target below 0.3%.
+- `corridorGoals` -> `nearestLiveResource` 2.5%: the region index collects and sorts every resource of
+  every good in the box, so a good that stands only far away, or not on the seat's ground, pays for the
+  whole map once per decision.
 
 ## Scope
 
-- Without changing answers (state hash unchanged at the same checkpoint and tick count): share the
-  drift check's nearest resource per (good, anchor) within a decision, reuse `patchHarvestable`'s verdict
-  for a holder whose flag and reach did not change, and let `corridorGoals` stop rescanning the map for
-  a good the seat's ground holds none of.
-- With the owner's ruling, one commit each, goldens moved and named: stagger the relocation round by
-  seat (for example `(floor(tick / 24) + player) % 30 === 0`), and spread the seat slots over the
-  interval (for example seat `p` on `(p * 7) % 24`, which keeps seats 0-6 at least three ticks apart).
-- Splitting one seat's modules across ticks stays out unless warm passes still exceed about 10 ms after
-  both; modules then must be shown not to couple through the tick they share today.
+- Without changing answers: a per-good view of the resource region index for the nearest searches, and
+  a walk-flood cache that outlives one decision, keyed on the overlay it was flooded over.
+- With the owner's ruling, one commit each, goldens moved and named: re-aim a seat's holders over
+  several decisions instead of all on its round (each holder still once per round; an origin flood is
+  then paid on more decisions unless cached), or run the seat's modules on separate ticks after showing
+  they do not couple through the tick they share today.
 
 ## Verify
 
-- On an idle box, from the 80k checkpoint of one 100k run (`docs/DEVELOPMENT.md`, Measuring
-  performance): `ON_BENCH_MAP=magiczny_las ON_BENCH_SEATS=0,1,2,3,4,5
-  ON_BENCH_CHECKPOINT=bench-out/ml6.t80000.checkpoint ON_BENCH_TICKS=4000 npm run bench:map` before and
-  after, then `npm run bench:compare`. `aiPlayer` p95 and max fall, the slowest-tick list shows no run of
-  consecutive seat ticks, and the hash-identical step keeps the printed state hash.
+- On an idle box, from a late checkpoint of one run (`docs/DEVELOPMENT.md`, Measuring performance):
+  `ON_BENCH_MAP=magiczny_las ON_BENCH_SEATS=0,1,2,3,4,5 ON_BENCH_CHECKPOINT=<checkpoint>
+  ON_BENCH_TICKS=1500 npm run bench:map` before and after, then `npm run bench:compare`. The slowest
+  relocation-round pass falls toward 10 ms, and the hash-identical step keeps the printed state hash.
 - `npm test`, `npm run check`, `npm run build`.
