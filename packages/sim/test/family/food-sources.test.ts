@@ -19,6 +19,8 @@ import { ctxOf } from '../fixtures/context.js';
 
 const WOOD = 1;
 const FOOD = 16; // `food_simple`: the `food_` prefix is what makes it edible
+const FOOD_EXTRA = 17;
+const LARDER_SLOT = 5;
 const HOME = 2;
 const WAREHOUSE = 7;
 const VIKING = 1;
@@ -31,6 +33,7 @@ function foodContent(): ContentSet {
       { typeId: 0, id: 'none' },
       { typeId: WOOD, id: 'wood' },
       { typeId: FOOD, id: 'food_simple' },
+      { typeId: FOOD_EXTRA, id: 'food_extra' },
     ],
     jobs: [],
     landscape: [],
@@ -41,9 +44,20 @@ function foodContent(): ContentSet {
         id: 'home_level_00',
         kind: 'home',
         homeSize: 3,
-        stock: [{ goodType: FOOD, capacity: 5 }],
+        stock: [
+          { goodType: FOOD, capacity: LARDER_SLOT },
+          { goodType: FOOD_EXTRA, capacity: LARDER_SLOT },
+        ],
       },
-      { typeId: WAREHOUSE, id: 'warehouse', kind: 'storage', stock: [{ goodType: FOOD, capacity: 99 }] },
+      {
+        typeId: WAREHOUSE,
+        id: 'warehouse',
+        kind: 'storage',
+        stock: [
+          { goodType: FOOD, capacity: 99 },
+          { goodType: FOOD_EXTRA, capacity: 99 },
+        ],
+      },
     ],
   });
 }
@@ -128,12 +142,30 @@ describe('foodSourcesOf', () => {
   it('holds still for the pass that caught it up', () => {
     const sim = new Simulation({ seed: 1, content: foodContent() });
     const wood = storeAt(sim, 1, WOOD, 1);
+    const home = storeAt(sim, 9, FOOD, 0, HOME);
     const from = { hx: 0, hy: 2 };
     const pass = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined);
     sim.world.mut(wood, Stockpile).amounts.set(FOOD, 1); // a drop later in the same pass
-    expect(pass.nearest(from, undefined, null)).toBeNull();
+    expect(pass.nearest(from, undefined, home, null)).toBeNull();
     const next = new ExternalFoodIndex(sim.world, ctxOf(sim), undefined);
-    expect(next.nearest(from, undefined, null)).toEqual({ store: wood, goodType: FOOD });
+    expect(next.nearest(from, undefined, home, null)).toEqual({ store: wood, goodType: FOOD });
+  });
+
+  it("offers only a food the seeker's larder has room for", () => {
+    const sim = new Simulation({ seed: 1, content: foodContent() });
+    const home = storeAt(sim, 9, FOOD, LARDER_SLOT, HOME); // the `food_simple` slot is full
+    const near = storeAt(sim, 1, FOOD, 3, WAREHOUSE);
+    const far = storeAt(sim, 5, FOOD, 3, WAREHOUSE);
+    sim.world.mut(far, Stockpile).amounts.set(FOOD_EXTRA, 1);
+    const from = { hx: 0, hy: 2 };
+    const search = (): ReturnType<ExternalFoodIndex['nearest']> =>
+      new ExternalFoodIndex(sim.world, ctxOf(sim), undefined).nearest(from, undefined, home, null);
+
+    expect(search()).toEqual({ store: far, goodType: FOOD_EXTRA });
+    sim.world.mut(home, Stockpile).amounts.set(FOOD_EXTRA, LARDER_SLOT);
+    expect(search()).toBeNull();
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, LARDER_SLOT - 1);
+    expect(search()).toEqual({ store: near, goodType: FOOD });
   });
 
   it('verifier reports a stock change that bypassed the mut seam', () => {

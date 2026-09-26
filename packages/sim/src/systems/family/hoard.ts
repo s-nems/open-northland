@@ -84,7 +84,9 @@ export function planWomanHoard(
   const owner = ownerOf(world, e);
   const avoid = unreachableGoalVeto(world, ctx, e);
   const foodSource =
-    storedFoodUnits(world, ctx, home) < capacity ? externalFood.nearest(hereNode, owner, limit, avoid) : null;
+    storedFoodUnits(world, ctx, home) < capacity
+      ? externalFood.nearest(hereNode, owner, home, limit, avoid)
+      : null;
   const demanded = demandedHomeQualityGoods(world, ctx, e, home);
   const qualitySource =
     demanded.size > 0 ? externalQuality.nearest(hereNode, owner, demanded, limit, avoid) : null;

@@ -58,6 +58,8 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 const VIKING = 1;
 const PLAYER = 0;
 const FOOD = 16; // slug `food_simple` - the `food_` prefix is what makes it edible (isFood)
+const FOOD_EXTRA = 17;
+const LARDER_SLOT = 5;
 const WOMAN = 5;
 const CIVILIST = 6;
 const SOLDIER = 31;
@@ -74,6 +76,7 @@ function familyContent(): ContentSet {
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: FOOD, id: 'food_simple' },
+      { typeId: FOOD_EXTRA, id: 'food_extra' },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
@@ -92,7 +95,11 @@ function familyContent(): ContentSet {
         id: 'home_level_00',
         kind: 'home',
         homeSize: 3,
-        stock: [{ goodType: FOOD, capacity: 5 }],
+        // Every real larder slots both foods.
+        stock: [
+          { goodType: FOOD, capacity: LARDER_SLOT },
+          { goodType: FOOD_EXTRA, capacity: LARDER_SLOT },
+        ],
       },
       // A non-home food store (the settlement HQ): its stock feeds anyone, unlike a home larder.
       { typeId: WAREHOUSE, id: 'warehouse', kind: 'storage', stock: [{ goodType: FOOD, capacity: 99 }] },
@@ -804,6 +811,40 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const at = sim.world.get(woman(), Position);
     expect(nodeOfPosition(at.x, at.y)).not.toEqual({ hx: sim.terrain.xOf(door), hy: sim.terrain.yOf(door) });
     expect(sim.world.get(home(), Stockpile).amounts.get(FOOD)).toBe(5);
+  });
+
+  it("a housewife leaves a store's food alone while her larder slot for it is full", () => {
+    const sim = new Simulation({ seed: 5, content: familyContent(), map: grassMap(40, 4) });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 10, y: 1, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: WAREHOUSE, x: 24, y: 2, tribe: VIKING });
+    sim.step();
+    const woman = [...sim.world.query(Female)][0] as Entity;
+    const home = homeOf(sim);
+    const warehouse = [...sim.world.query(Building)].find(
+      (e) => sim.world.get(e, Building).buildingType === WAREHOUSE,
+    ) as Entity;
+    const HELD = 10;
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, LARDER_SLOT);
+    sim.world.mut(warehouse, Stockpile).amounts.set(FOOD, HELD);
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman, house: home });
+
+    // The `food_extra` slot is empty, but the store holds no `food_extra`: nothing to fetch.
+    for (let i = 0; i < 600; i++) {
+      sim.step();
+      expect(sim.world.has(woman, Carrying)).toBe(false);
+    }
+    expect(sim.world.get(warehouse, Stockpile).amounts.get(FOOD)).toBe(HELD);
+
+    sim.world.mut(warehouse, Stockpile).amounts.set(FOOD_EXTRA, 1);
+    runUntil(
+      sim,
+      () => (sim.world.get(home, Stockpile).amounts.get(FOOD_EXTRA) ?? 0) === 1,
+      2000,
+      'extra haul',
+    );
+    expect(sim.world.get(warehouse, Stockpile).amounts.get(FOOD)).toBe(HELD);
   });
 
   it('a hoarding wife whose route to the nearest pile failed hauls from the second pile instead', () => {

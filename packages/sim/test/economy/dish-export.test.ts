@@ -112,9 +112,10 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
     // Any stocked dish reads as food now - the family's own lift converts it - so the nearer shelf
     // wins whether or not it is the kitchen that cooked the loaf. She asks for the good to LIFT (raw).
     const hq = buildingAt(sim, HEADQUARTERS, 0, 0, [[BREAD, 3]]);
+    const larder = buildingAt(sim, HEADQUARTERS, 3, 0); // an empty destination with room for any food
     const index = new ExternalFoodIndex(sim.world, ctxOf(sim), sim.terrain);
 
-    expect(index.nearest({ hx: 0, hy: 0 }, undefined, null)).toEqual({ store: hq, goodType: BREAD });
+    expect(index.nearest({ hx: 0, hy: 0 }, undefined, larder, null)).toEqual({ store: hq, goodType: BREAD });
   });
 
   it('the baker walking away from the kitchen is holding food, not bread', () => {

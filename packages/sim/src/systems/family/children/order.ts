@@ -168,6 +168,7 @@ function haulFood(
   const source = pass.externalFood.nearest(
     hereNode,
     ownerOf(world, woman),
+    home,
     limit,
     unreachableGoalVeto(world, ctx, woman),
   );
