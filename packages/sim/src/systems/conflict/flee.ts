@@ -217,7 +217,7 @@ export function startBlowRun(world: World, ctx: SystemContext, terrain: TerrainG
   return true;
 }
 
-/** The cell a fleeing unit should run to: the cell {@link FLEE_STEP_NODES} away, of the eight compass
+/** The cell a fleeing unit should run to: the cell `step` nodes away, of the eight compass
  *  directions, that is farthest from the threat, tie-broken by min cell id. Where `admits` refuses that cell,
  *  the direction's nearer cells stand in for it, the farthest admitted first. A candidate must be one a route
  *  can reach: walkable, outside the `blocked` walk-block, and in the runner's static walk component (a runner
@@ -228,6 +228,7 @@ export function fleeDestination(
   blocked: BlockOverlay,
   here: NodeId,
   threatCell: NodeId,
+  step: number = FLEE_STEP_NODES,
   admits: (cell: NodeId) => boolean = () => true,
 ): NodeId {
   const h = terrain.coordsOf(here);
@@ -236,12 +237,12 @@ export function fleeDestination(
   let best: NodeId = here;
   let bestScore = Math.abs(h.x - t.x) + Math.abs(h.y - t.y); // a candidate must beat staying put
   for (const [dx, dy] of COMPASS_DIRECTIONS) {
-    if (!terrain.inBounds(h.x + dx * FLEE_STEP_NODES, h.y + dy * FLEE_STEP_NODES)) continue;
-    let step = FLEE_STEP_NODES;
-    while (step > 0 && !admits(terrain.nodeAt(h.x + dx * step, h.y + dy * step))) step--;
-    if (step === 0) continue;
-    const x = h.x + dx * step;
-    const y = h.y + dy * step;
+    if (!terrain.inBounds(h.x + dx * step, h.y + dy * step)) continue;
+    let reach = step;
+    while (reach > 0 && !admits(terrain.nodeAt(h.x + dx * reach, h.y + dy * reach))) reach--;
+    if (reach === 0) continue;
+    const x = h.x + dx * reach;
+    const y = h.y + dy * reach;
     const cell = terrain.nodeAt(x, y);
     if (!terrain.isWalkable(cell) || blocked.has(cell)) continue;
     if (bank >= 0 && terrain.componentOf(cell) !== bank) continue;

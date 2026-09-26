@@ -24,6 +24,10 @@ import { fleeDestination } from './flee.js';
 // struck it. Original behavior: the struck animal and the animals of its kind and side nearby run from the
 // attacker, and a shot that misses scares nothing. All three knobs below are approximations of the run.
 
+/** How far an animal runs from its scare, along one of the eight walk directions. Original behavior: a
+ *  struck animal runs 20 map points from its attacker; the nodes along a diagonal are the flee stance's
+ *  approximation. */
+export const FRIGHT_STEP_NODES = 20;
 /** How far (Manhattan nodes) from the struck animal the scare carries. */
 export const FRIGHT_RADIUS_NODES = 12;
 /** How long (ticks) a frightened animal keeps running before it calms and its herd drives resume. */
@@ -95,6 +99,7 @@ export const animalFrightSystem: System = (world, ctx) => {
       blocked,
       here,
       f.from,
+      FRIGHT_STEP_NODES,
       withinTerritory(world, ctx, terrain, e, here),
     );
     if (dest === here) {

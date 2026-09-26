@@ -24,7 +24,11 @@ import { LayeredBlocks } from '../../src/nav/block-overlay.js';
 import type { TerrainGraph } from '../../src/nav/terrain/index.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
 import { FLEE_REPATH_CADENCE, fleeDestination } from '../../src/systems/conflict/flee.js';
-import { animalFrightSystem, FRIGHT_REPATH_CADENCE } from '../../src/systems/conflict/fright.js';
+import {
+  animalFrightSystem,
+  FRIGHT_REPATH_CADENCE,
+  FRIGHT_STEP_NODES,
+} from '../../src/systems/conflict/fright.js';
 import { firingBuildings, isFleeThreat, SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
 import { dynamicBlockOverlay, stampResourceFootprintData } from '../../src/systems/footprint/index.js';
 import { combatSystem } from '../../src/systems/index.js';
@@ -303,7 +307,13 @@ describe('FLEE and fright - a cornered or refused run waits for the cadence', ()
     const cow = fighterAtNode(s, 30, 30, COW, null);
     s.world.add(cow, StayPoint, { cell: terrain.nodeAt(30, 30) });
     const scare = terrain.nodeAt(34, 30);
-    const best = fleeDestination(terrain, new LayeredBlocks([]), terrain.nodeAt(30, 30), scare);
+    const best = fleeDestination(
+      terrain,
+      new LayeredBlocks([]),
+      terrain.nodeAt(30, 30),
+      scare,
+      FRIGHT_STEP_NODES,
+    );
     const { x, y } = terrain.coordsOf(best);
     buildingAtNode(s, HOUSE, x - 1, y, P0);
     const from = ctxOf(s).tick;

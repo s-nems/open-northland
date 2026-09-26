@@ -4,6 +4,7 @@ import {
   Frightened,
   Health,
   HerdMember,
+  MoveGoal,
   Owner,
   Projectile,
   Resting,
@@ -12,8 +13,10 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, positionOfNode, Simulation } from '../../src/index.js';
 import {
+  animalFrightSystem,
   FRIGHT_DURATION_TICKS,
   FRIGHT_RADIUS_NODES,
+  FRIGHT_STEP_NODES,
   frightenKin,
 } from '../../src/systems/conflict/fright.js';
 import { isTravelling } from '../../src/systems/movement/nav-state.js';
@@ -156,6 +159,19 @@ describe('animalFrightSystem - the scatter and the calm-down', () => {
     // The scare lapses: the marker is shed and the animal is the herd drives' again.
     for (let i = 0; i < FRIGHT_DURATION_TICKS; i++) sim.step();
     expect(sim.world.has(cow, Frightened)).toBe(false);
+  });
+
+  it('aims the run the full fright step away from the scare', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const cow = wildAtNode(sim, 30, 40, COW);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test map missing');
+    frightenKin(sim.world, ctxOf(sim), terrain, cow, terrain.nodeAt(29, 40));
+    animalFrightSystem(sim.world, ctxOf(sim));
+    const goal = terrain.coordsOf(sim.world.get(cow, MoveGoal).cell);
+    // One of the eight walk directions, the full step along each axis it moves on.
+    expect(Math.max(Math.abs(goal.x - 30), Math.abs(goal.y - 40))).toBe(FRIGHT_STEP_NODES);
+    expect(goal.x).toBeGreaterThan(30);
   });
 
   it('the lapse tick hands the animal straight back to herding (fright runs before the recall)', () => {
