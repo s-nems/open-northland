@@ -25,8 +25,9 @@ export class SnapshotMirror {
     return this.applied;
   }
 
-  /** The entities the last applied delta removed, ascending by id, as the snapshot before it held them:
-   *  the one place a settler reaped in that stretch can still be named. Empty after a rebuild. */
+  /** The entities the last applied delta removed, ascending by id, as the previous snapshot held them
+   *  (a mutation before the death inside the stretch is not seen): the one place a settler reaped in
+   *  that stretch can still be named. Empty after a rebuild. */
   get departed(): readonly EntitySnapshot[] {
     return this.dropped;
   }

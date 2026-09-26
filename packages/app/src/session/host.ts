@@ -57,7 +57,7 @@ export interface SessionHost {
   /** The same object while the tick and the world's mutation version hold; memoize by its identity. */
   snapshot(): WorldSnapshot;
   /** The entities that left the world between the previous `snapshot()` and the current one, ascending
-   *  by id, as the world last held them: a settler reaped this frame is named from here. */
+   *  by id, as the previous snapshot held them: a settler reaped this frame is named from here. */
   departed(): readonly EntitySnapshot[];
   /** The seat's fog masks, keyed by their `generation`; null with fog off. */
   fogView(player: number): FogView | null;
