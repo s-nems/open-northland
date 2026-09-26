@@ -86,6 +86,9 @@ export interface PoolFrame {
   /** The building the portrait's settler subject is inside: kept through the cull in the subject's
    *  place while nothing choreographs the subject in there (see {@link SpriteSceneOptions.portraitHouse}). */
   readonly portraitHouse?: number;
+  /** The other portrait insets' subjects (the trade window's houses, a rider's vehicle): force-drawn
+   *  through the cull like {@link portraitRef}, and hidden on the main map when only an inset keeps them. */
+  readonly insetRefs?: readonly number[];
 }
 
 /** One camera framing of a {@link SpritePool.portraitPass} render; the size is the render target's
@@ -186,7 +189,7 @@ export class SpritePool {
         this.attached.add(pe);
       }
       pe.lastSeen = this.frameId;
-      if (item.portraitOnly === true) this.portrait.capture(pe, item.frozen === true);
+      if (item.portraitOnly === true) this.portrait.capture(item.ref, pe, item.frozen === true);
     }
     this.lastItems = scene.items;
 
@@ -246,6 +249,7 @@ export class SpritePool {
       ...(this.sheet?.holyFire !== undefined ? { holyFire: this.sheet.holyFire } : {}),
       ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
       ...(frame.portraitHouse !== undefined ? { portraitHouse: frame.portraitHouse } : {}),
+      ...(frame.insetRefs !== undefined ? { insetRefs: frame.insetRefs } : {}),
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
     this.sceneCache.store(frame, scene);
@@ -305,19 +309,24 @@ export class SpritePool {
   }
 
   /**
-   * Scope the details-panel portrait's second render: re-place the self-placing paletted meshes for the
-   * inset camera, reveal the force-hidden subject, solo an indoor one, then restore all of it even if
+   * Scope one portrait inset's render: re-place the self-placing paletted meshes for the inset camera,
+   * reveal the inset's force-hidden `subjects`, solo an indoor one, then restore all of it even if
    * `render` throws - a failed cutout must not leave a real unit hidden on the main map.
    */
-  portraitPass(inset: PortraitView, main: PortraitView, render: (soloKeep: Container | null) => void): void {
+  portraitPass(
+    subjects: readonly number[],
+    inset: PortraitView,
+    main: PortraitView,
+    render: (soloKeep: Container | null) => void,
+  ): void {
     this.placePaletted(inset.camera, inset.width, inset.height);
-    this.portrait.show();
-    const soloKeep = this.portrait.beginSoloIfIndoor();
+    this.portrait.show(subjects);
+    const soloKeep = this.portrait.beginSoloIfIndoor(subjects);
     try {
       render(soloKeep);
     } finally {
       this.portrait.endSolo();
-      this.portrait.hide();
+      this.portrait.hide(subjects);
       this.placePaletted(main.camera, main.width, main.height);
     }
   }

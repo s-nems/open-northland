@@ -16,6 +16,7 @@ export interface SceneFrameKey {
   readonly ghosts?: readonly FogGhost[] | undefined;
   readonly portraitRef?: number | undefined;
   readonly portraitHouse?: number | undefined;
+  readonly insetRefs?: readonly number[] | undefined;
 }
 
 /** {@link SceneFrameKey} flattened to identity/value comparisons. `staticCount` trips on in-place
@@ -34,6 +35,14 @@ interface StoredInputs {
   readonly ghosts: readonly FogGhost[] | undefined;
   readonly portraitRef: number | undefined;
   readonly portraitHouse: number | undefined;
+  /** Copied: the caller hands a new list every frame, so it keys by value. */
+  readonly insetRefs: readonly number[];
+}
+
+/** Two ref lists hold the same refs in the same order. */
+function sameRefs(a: readonly number[], b: readonly number[] | undefined): boolean {
+  const other = b ?? [];
+  return a.length === other.length && a.every((ref, index) => ref === other[index]);
 }
 
 /** A fog cull without an epoch has no change signal, so such a frame never keys the cache. */
@@ -66,7 +75,8 @@ export class SpriteSceneCache {
       c.fogEpoch === frame.fogEpoch &&
       c.ghosts === frame.ghosts &&
       c.portraitRef === frame.portraitRef &&
-      c.portraitHouse === frame.portraitHouse
+      c.portraitHouse === frame.portraitHouse &&
+      sameRefs(c.insetRefs, frame.insetRefs)
     ) {
       return this.scene;
     }
@@ -94,6 +104,7 @@ export class SpriteSceneCache {
       ghosts: frame.ghosts,
       portraitRef: frame.portraitRef,
       portraitHouse: frame.portraitHouse,
+      insetRefs: [...(frame.insetRefs ?? [])],
     };
     this.scene = scene;
   }

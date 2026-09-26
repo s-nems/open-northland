@@ -4,8 +4,9 @@ import type { SpritePool } from '../sprite-pool/index.js';
 import { renderFramedWorld } from './framed-world-render.js';
 
 /**
- * The details-panel portrait window: a live cutout of the world centred on the selected entity, drawn
- * into the panel's preview box each frame. `rect` is that box in screen px; `kind` picks the framing.
+ * One portrait window: a live cutout of the world centred on an entity, drawn into a HUD box each frame
+ * (the details panel's portrait, the trade window's houses). `rect` is that box in screen px; `kind`
+ * picks the framing.
  */
 export interface PortraitInsetFrame {
   readonly rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
@@ -14,6 +15,18 @@ export interface PortraitInsetFrame {
   /** A settler subject's building while it is inside one: kept through the cull for the portrait and
    *  framed whenever the scene draws no figure for the subject (nothing choreographs it in there). */
   readonly inside?: number;
+  /** The vehicle a settler subject rides: a rider draws no figure of its own, so the settler framing
+   *  centres on the vehicle it sits on. */
+  readonly aboard?: number;
+}
+
+/** The subjects the insets force through the pool's cull this frame. */
+export interface PortraitSubjects {
+  /** The first settler inset's subject, which may be hidden indoors or soloed. */
+  readonly ref: number | null;
+  readonly house: number | null;
+  /** Every other subject: building insets' houses and a rider's vehicle. */
+  readonly others: readonly number[];
 }
 
 /**
@@ -52,8 +65,9 @@ const SETTLER_FEET_FRACTION = 0.84;
  * details-panel re-bake. `clear: false` keeps the panel's own backdrop behind a sparse cutout.
  */
 export class PortraitInsetLayer {
-  private frame: PortraitInsetFrame | null = null;
-  /** The ground-coloured off-map floor quad, parented into the world only for the pass. */
+  private frames: readonly PortraitInsetFrame[] = [];
+  private subjectsNow: PortraitSubjects = { ref: null, house: null, others: [] };
+  /** The ground-coloured floor quad, parented into the world only for a pass. */
   private readonly backdrop = new Sprite(Texture.WHITE);
 
   constructor(
@@ -62,25 +76,33 @@ export class PortraitInsetLayer {
     private readonly pool: SpritePool,
   ) {}
 
-  set(frame: PortraitInsetFrame | null): void {
-    this.frame = frame;
+  /** The insets drawn this frame, each painted like the others; an empty list draws none. */
+  set(frames: readonly PortraitInsetFrame[]): void {
+    this.frames = frames;
+    let ref: number | null = null;
+    let house: number | null = null;
+    const others: number[] = [];
+    for (const f of frames) {
+      if (f.kind === 'settler' && ref === null) {
+        ref = f.entityRef;
+        house = f.inside ?? null;
+      } else others.push(f.entityRef);
+      if (f.aboard !== undefined) others.push(f.aboard);
+    }
+    this.subjectsNow = { ref, house, others };
   }
 
-  /** The entity the portrait is centred on, so the sprite pool can force-draw it through the cull: the
-   *  cutout must survive the subject scrolling off-screen or stepping inside a building. */
-  subjectRef(): number | null {
-    return this.frame?.entityRef ?? null;
-  }
-
-  /** The building the settler subject is inside, kept through the cull so the portrait can frame it. */
-  subjectHouse(): number | null {
-    return this.frame?.inside ?? null;
+  /** The entities the insets are centred on, so the sprite pool can force-draw them through the cull:
+   *  a cutout must survive its subject scrolling off-screen or stepping inside a building. */
+  subjects(): PortraitSubjects {
+    return this.subjectsNow;
   }
 
   /**
-   * The inset camera framing (world centre + px-per-world scale), or null when the entity wasn't drawn
-   * this frame. A building fits its static drawn bounds in the box; a settler frames a fixed window off
-   * its stable feet anchor, never the swaying animation bounds, so a standing unit's cutout holds still.
+   * The inset camera framing (world centre + px-per-world scale), or null when nothing it frames was
+   * drawn this frame. A building fits its static drawn bounds in the box; a settler frames a fixed
+   * window off its stable feet anchor (or off the vehicle it rides), never the swaying animation bounds,
+   * so a standing unit's cutout holds still.
    */
   private framing(
     f: PortraitInsetFrame,
@@ -88,7 +110,7 @@ export class PortraitInsetLayer {
     h: number,
   ): { cx: number; cy: number; scale: number } | null {
     if (f.kind === 'settler') {
-      const anchor = this.pool.anchorOf(f.entityRef);
+      const anchor = this.pool.anchorOf(f.entityRef) ?? this.aboardAnchor(f);
       if (anchor === undefined) {
         // Hidden inside a building the scene shows nobody in: the cutout frames the building instead.
         return f.inside === undefined ? null : this.buildingFraming(f.inside, w, h);
@@ -100,6 +122,10 @@ export class PortraitInsetLayer {
       };
     }
     return this.buildingFraming(f.entityRef, w, h);
+  }
+
+  private aboardAnchor(f: PortraitInsetFrame): { x: number; y: number } | undefined {
+    return f.aboard === undefined ? undefined : this.pool.anchorOf(f.aboard);
   }
 
   private buildingFraming(
@@ -121,31 +147,45 @@ export class PortraitInsetLayer {
   }
 
   /**
-   * Paint the portrait window: re-aim `worldLayer` onto the selected entity and render it into the
-   * preview box's screen viewport (`frame` is in logical px, which the render target scales by its
-   * resolution). `SpritePool.portraitPass` scopes the pool's half of the borrow; the callback restores
-   * its own - world transform, solo stash, backdrop quad and terrain cull - even if the render throws.
-   * Must run after the pool reconcile and after the main stage render.
+   * Paint every inset: re-aim `worldLayer` onto each subject and render it into its box's screen
+   * viewport (`frame` is in logical px, which the render target scales by its resolution).
+   * `SpritePool.portraitPass` scopes the pool's half of the borrow; the callback restores its own -
+   * world transform, solo stash, backdrop quad and terrain cull - even if the render throws. Must run
+   * after the pool reconcile and after the main stage render.
    */
   draw(mainCamera: Camera, terrain?: InsetTerrainCull): void {
-    const f = this.frame;
-    if (f === null || f.rect.w < 1 || f.rect.h < 1) return;
+    for (const f of this.frames) this.drawOne(f, mainCamera, terrain);
+  }
+
+  private drawOne(f: PortraitInsetFrame, mainCamera: Camera, terrain?: InsetTerrainCull): void {
+    if (f.rect.w < 1 || f.rect.h < 1) return;
     const w = Math.round(f.rect.w);
     const h = Math.round(f.rect.h);
+    const frame = new Rectangle(f.rect.x, f.rect.y, w, h);
     const framing = this.framing(f, w, h);
-    if (framing === null) return;
+    if (framing === null) {
+      // Nothing to frame (a subject not drawn this frame): the box still gets its floor, or the map the
+      // main render drew under the HUD box would show through and scroll with the camera.
+      if (terrain !== undefined) this.fillOnly(frame, terrain.backdrop);
+      return;
+    }
     const { cx, cy, scale } = framing;
     const insetCamera: Camera = { offsetX: w / 2 - cx * scale, offsetY: h / 2 - cy * scale, scale };
     const inset = { camera: insetCamera, width: w, height: h };
     const main = { camera: mainCamera, width: this.app.screen.width, height: this.app.screen.height };
-    this.pool.portraitPass(inset, main, (soloKeep) => {
+    const subjects = [
+      f.entityRef,
+      ...(f.inside === undefined ? [] : [f.inside]),
+      ...(f.aboard === undefined ? [] : [f.aboard]),
+    ];
+    this.pool.portraitPass(subjects, inset, main, (soloKeep) => {
       try {
         // Re-cull the ground to the inset frame, so a subject at the screen edge still has terrain around
         // it. Inside the try, so its `restore()` below always pairs.
         terrain?.toInset(insetCamera, w, h);
         renderFramedWorld(this.app, this.worldLayer, this.backdrop, {
           camera: insetCamera,
-          frame: new Rectangle(f.rect.x, f.rect.y, w, h),
+          frame,
           // The region framed past the map edge has no terrain, and the screen pass cannot `clear` just its
           // frame region, so floor it with the ground colour. An indoor solo keeps the panel's backdrop.
           fill: terrain !== undefined && soloKeep === null ? terrain.backdrop : null,
@@ -156,6 +196,16 @@ export class PortraitInsetLayer {
       } finally {
         terrain?.restore();
       }
+    });
+  }
+
+  /** The floor alone: a render that keeps only the floor quad, parked where no world layer draws. */
+  private fillOnly(frame: Rectangle, fill: number): void {
+    renderFramedWorld(this.app, this.worldLayer, this.backdrop, {
+      camera: { offsetX: 0, offsetY: 0, scale: 1 },
+      frame,
+      fill,
+      keep: this.backdrop,
     });
   }
 }

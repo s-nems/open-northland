@@ -167,7 +167,8 @@ export async function createUnitChrome(
     if (
       portraitMemo?.client !== shown.rect ||
       portraitMemo.box.entityRef !== shown.entityRef ||
-      portraitMemo.box.inside !== shown.inside
+      portraitMemo.box.inside !== shown.inside ||
+      portraitMemo.box.aboard !== shown.aboard
     ) {
       const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
       const { left, top, width, height } = shown.rect;
@@ -180,6 +181,7 @@ export async function createUnitChrome(
           entityRef: shown.entityRef,
           kind: shown.kind,
           ...(shown.inside === undefined ? {} : { inside: shown.inside }),
+          ...(shown.aboard === undefined ? {} : { aboard: shown.aboard }),
           rect,
         },
       };

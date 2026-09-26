@@ -3,7 +3,7 @@ import type { DrawListOptions, LiveRefs } from './sprite-scene.js';
 
 export type EntitySource = Pick<
   DrawListOptions,
-  'viewport' | 'index' | 'onlyRefs' | 'staticRefs' | 'portraitRef'
+  'viewport' | 'index' | 'onlyRefs' | 'staticRefs' | 'portraitRef' | 'portraitHouse' | 'insetRefs'
 >;
 
 /** The returned view reads `collected` live, so refs the caller adds afterwards count too. Only the
@@ -15,17 +15,21 @@ export function emitEntities(
   collected: Set<number>,
   emit: (entity: EntitySnapshot) => void,
 ): LiveRefs {
-  const { viewport, index, onlyRefs, staticRefs, portraitRef } = source;
+  const { viewport, index, onlyRefs, staticRefs, portraitRef, portraitHouse, insetRefs } = source;
   if (index !== undefined && viewport !== undefined && onlyRefs === undefined) {
     // Each bucket candidate still runs the emitter's per-item cull, so the emitted set matches the full
     // walk's.
     index.update(snapshot);
     for (const entity of index.query(viewport)) emit(entity);
-    // The portrait subject may sit outside the queried buckets.
-    if (portraitRef !== undefined && !collected.has(portraitRef)) {
-      const subject = entityById(snapshot, portraitRef);
+    // The portrait subjects may sit outside the queried buckets.
+    const force = (ref: number | undefined): void => {
+      if (ref === undefined || collected.has(ref)) return;
+      const subject = entityById(snapshot, ref);
       if (subject !== undefined) emit(subject);
-    }
+    };
+    force(portraitRef);
+    force(portraitHouse);
+    for (const ref of insetRefs ?? []) force(ref);
     return { has: (ref) => collected.has(ref) || (index.has(ref) && staticRefs?.has(ref) !== true) };
   }
   if (onlyRefs !== undefined) {

@@ -1,6 +1,6 @@
 import type { MusicStanding } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
-import type { DrawItem, HudLayout, HudModel } from '@open-northland/render';
+import type { DrawItem, HudLayout, HudModel, PortraitInsetFrame } from '@open-northland/render';
 import type { FogView, Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
@@ -34,6 +34,20 @@ import { placementCursor } from './placement-cursor.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
 import type { ScriptPresentation } from './script-presentation.js';
 import { createVisiblePlots } from './visible-plots.js';
+
+/** The portrait insets of a frame without one. */
+const NO_PORTRAITS: readonly PortraitInsetFrame[] = [];
+
+/** A one-inset list per portrait box, kept while the memoised box is the same object, so a still
+ *  portrait allocates nothing per frame. */
+function portraitInsetList(): (box: PortraitInsetFrame | null) => readonly PortraitInsetFrame[] {
+  let last: { readonly box: PortraitInsetFrame; readonly list: readonly PortraitInsetFrame[] } | null = null;
+  return (box) => {
+    if (box === null) return NO_PORTRAITS;
+    if (last?.box !== box) last = { box, list: [box] };
+    return last.list;
+  };
+}
 
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
@@ -179,6 +193,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     dockOverlayFrame(vehicle, cameraCtl.camera(), app.screen.width, app.screen.height);
   // A frame may advance several ticks; `steps` is read back after the driver returns.
   let steps = 0;
+  const portraitInsets = portraitInsetList();
   const collect = (): void => {
     steps++;
     recordDiagHash(sim);
@@ -263,9 +278,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Before `renderer.update`, so the panel a rebuild bakes and the portrait inset painted over it both
     // show this frame's state.
     controls.tick(snap);
-    // A world cutout centred on the selection, rendered into the portrait box during `renderer.update`.
-    // Null when the selection has no portrait.
-    renderer.setPortraitInset(loop.portraitVisible() ? controls.portrait() : null);
+    // A world cutout centred on the selection, rendered into the portrait box during `renderer.update`;
+    // none while the selection has no portrait.
+    renderer.setPortraitInsets(portraitInsets(loop.portraitVisible() ? controls.portrait() : null));
     renderer.updateConstructionPlots(visiblePlots(fogView));
     geometryDebug.update(snap);
     // The gate tool tints the walls it can cut into; otherwise an assignment tints its candidates.

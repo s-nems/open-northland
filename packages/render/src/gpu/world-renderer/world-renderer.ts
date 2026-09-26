@@ -253,8 +253,7 @@ export class WorldRenderer {
     this.terrain.animate(tick + alpha);
     const fogFrame = this.fog.update(snapshot, vp, this.elevation);
     this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch, tick + alpha);
-    const portraitRef = this.portrait.subjectRef();
-    const portraitHouse = this.portrait.subjectHouse();
+    const portrait = this.portrait.subjects();
     this.pool.reconcile({
       snapshot,
       viewport: vp,
@@ -271,8 +270,9 @@ export class WorldRenderer {
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
-      ...(portraitRef !== null ? { portraitRef } : {}),
-      ...(portraitHouse !== null ? { portraitHouse } : {}),
+      ...(portrait.ref !== null ? { portraitRef: portrait.ref } : {}),
+      ...(portrait.house !== null ? { portraitHouse: portrait.house } : {}),
+      ...(portrait.others.length > 0 ? { insetRefs: portrait.others } : {}),
     });
     this.marks.draw({
       snapshot,
@@ -340,8 +340,10 @@ export class WorldRenderer {
     this.mapViews.set(views);
   }
 
-  setPortraitInset(frame: PortraitInsetFrame | null): void {
-    this.portrait.set(frame);
+  /** The portrait insets drawn after the main render this frame (the details panel's, a window's
+   *  houses); an empty list draws none. */
+  setPortraitInsets(frames: readonly PortraitInsetFrame[]): void {
+    this.portrait.set(frames);
   }
 
   updatePlacementOverlay(frame: PlacementOverlayFrame | null): void {

@@ -62,6 +62,10 @@ export interface SpriteSceneOptions {
    *  choreographs in there is left hidden (no frozen figure over the panel's backdrop) and the building
    *  is emitted through the cull in its place, so the portrait can frame the house the person went into. */
   readonly portraitHouse?: number | undefined;
+  /** The other portrait insets' subjects (buildings a window frames, the vehicle a portrait subject
+   *  rides): emitted through the viewport and fog culls like {@link portraitRef}, `portraitOnly` when the
+   *  main map would have dropped them. */
+  readonly insetRefs?: readonly number[] | undefined;
   /** Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
    *  default. Absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
@@ -108,6 +112,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     keepIndoorSettlers,
     portraitRef,
     portraitHouse,
+    insetRefs,
     playerColourOf,
     inHousePrograms,
     holyFire,
@@ -138,7 +143,8 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     if (pos === null) return;
     const isPortrait =
       (portraitRef !== undefined && entity.id === portraitRef) ||
-      (portraitHouse !== undefined && entity.id === portraitHouse);
+      (portraitHouse !== undefined && entity.id === portraitHouse) ||
+      (insetRefs?.includes(entity.id) ?? false);
     collected.add(entity.id);
     // An indoor settler stays live and pooled but draws nothing, unless kept or forced here - or unless
     // it is performing a craft the content choreographs, which the house then shows it doing. The portrait

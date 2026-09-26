@@ -44,6 +44,8 @@ export interface PortraitSubject {
   readonly entityRef: number;
   readonly kind: 'settler';
   readonly inside?: number;
+  /** The vehicle the person rides, which the cutout frames while it draws no figure of its own. */
+  readonly aboard?: number;
   readonly rect: ClientRect;
 }
 
@@ -166,6 +168,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
         entityRef: shown.entityId,
         kind: 'settler',
         ...(shown.inside === null ? {} : { inside: shown.inside }),
+        ...(shown.aboard === null ? {} : { aboard: shown.aboard }),
         rect,
       };
     },

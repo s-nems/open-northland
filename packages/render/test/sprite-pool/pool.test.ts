@@ -352,7 +352,7 @@ describe('SpritePool - details-panel portrait subject visibility', () => {
     pool.reconcile({ ...poolFrame(snapshotOf([onScreen, subject]), FRAMES_FIRST), portraitRef: 2 });
 
     const subjectContainer = hiddenSubject(layer);
-    pool.portraitPass(INSET, MAIN, (soloKeep) => {
+    pool.portraitPass([2], INSET, MAIN, (soloKeep) => {
       expect(soloKeep).toBeNull(); // off-screen but not indoor, so it renders with the world around it
       expect(subjectContainer.visible).toBe(true);
     });
@@ -386,11 +386,31 @@ describe('SpritePool - details-panel portrait subject visibility', () => {
     const subjectContainer = hiddenSubject(layer);
 
     const before = layer.children.map((c) => c.visible);
-    pool.portraitPass(INSET, MAIN, (soloKeep) => {
+    pool.portraitPass([1], INSET, MAIN, (soloKeep) => {
       expect(soloKeep).toBe(layer); // indoor: keep the sprite layer, blank the rest of the world
       for (const c of layer.children) expect(c.visible).toBe(c === subjectContainer);
     });
     expect(layer.children.map((c) => c.visible)).toEqual(before);
+  });
+
+  it("reveals only the pass's own subjects when several insets hold off-screen subjects", () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const onScreen = building(1, 0, 0);
+    const settlerSubject = settler(2, 0, 20);
+    const house = building(3, 0, 24);
+
+    pool.reconcile({
+      ...poolFrame(snapshotOf([onScreen, settlerSubject, house]), FRAMES_FIRST),
+      portraitRef: 2,
+      insetRefs: [3],
+    });
+    const hidden = layer.children.filter((c) => !c.visible);
+    expect(hidden).toHaveLength(2);
+    pool.portraitPass([3], INSET, MAIN, () => {
+      expect(layer.children.filter((c) => !c.visible)).toHaveLength(1);
+    });
+    expect(layer.children.filter((c) => !c.visible)).toHaveLength(2);
   });
 
   it('restores the borrow when the render throws - no unit stays hidden, no sibling stays blanked', () => {
@@ -404,7 +424,7 @@ describe('SpritePool - details-panel portrait subject visibility', () => {
     const before = layer.children.map((c) => c.visible);
 
     expect(() =>
-      pool.portraitPass(INSET, MAIN, () => {
+      pool.portraitPass([1], INSET, MAIN, () => {
         throw new Error('render died');
       }),
     ).toThrow('render died');
