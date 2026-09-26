@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { Rng, Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { anyLiveResource, nearestLiveResource } from '../../src/systems/ai-player/live-resources.js';
@@ -235,7 +236,7 @@ describe('resourceBoxHoldsAll (the dry-map stop of the expanding searches)', () 
     const rng = new Rng(7);
     for (let trial = 0; trial < TRIALS; trial++) {
       const sim = newSim();
-      const nodes: { e: number; hx: number; hy: number }[] = [];
+      const nodes: { e: Entity; hx: number; hy: number }[] = [];
       for (let i = 0; i < NODES; i++) {
         const e = sim.world.create();
         const hx = rng.int(SPAN);
@@ -245,12 +246,12 @@ describe('resourceBoxHoldsAll (the dry-map stop of the expanding searches)', () 
         stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
         nodes.push({ e, hx, hy });
       }
-      const odd = (e: number): boolean => e % 2 === 1;
+      const odd = (e: Entity): boolean => e % 2 === 1;
       for (let q = 0; q < QUERIES; q++) {
         const from = { hx: rng.int(SPAN), hy: rng.int(SPAN) };
         const good = rng.int(GOODS + 1); // one good no node carries
         for (const workable of [undefined, odd]) {
-          let best: number | null = null;
+          let best: Entity | null = null;
           let bestDistance = Number.POSITIVE_INFINITY;
           for (const { e, hx, hy } of nodes) {
             const r = sim.world.get(e, Resource);
