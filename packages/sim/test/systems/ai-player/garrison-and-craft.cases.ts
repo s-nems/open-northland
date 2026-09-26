@@ -34,10 +34,10 @@ import {
 } from '../../../src/systems/ai-player/index.js';
 import { ownedBuildings, ownedSettlers } from '../../../src/systems/ai-player/seat-roster.js';
 import {
+  COIN_GLUT_UNITS,
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
-  SHORT_PRODUCT_SEATS,
   tuneCraftSelections,
 } from '../../../src/systems/ai-player/workforce/craft.js';
 import { ARMY_FLOOR_LEAD_TICKS, ARMY_FLOOR_MIN } from '../../../src/systems/ai-player/workforce/garrison.js';
@@ -391,12 +391,21 @@ function potteryContent(): ContentSet {
   });
 }
 
+/** The mint with its amulet inputs as plain goods, so the seat's stock of them can feed an amulet seat. */
 function mintContent(): ContentSet {
-  return joineryRecastAs('work_coin_mint', [
+  const recast = joineryRecastAs('work_coin_mint', [
     { typeId: COIN, id: 'coin' },
     { typeId: DEFENCE_AMULET, id: 'amulet_defense' },
     { typeId: STRENGTH_AMULET, id: 'amulet_strength' },
   ]);
+  return parseContentSet({
+    ...recast,
+    goods: [
+      ...recast.goods,
+      { typeId: LEATHER_ARMOUR, id: 'armor_leather', weight: 1 },
+      { typeId: SWORD_SHORT, id: 'sword_shord', weight: 1 },
+    ],
+  });
 }
 
 /** The glut a plan's seat `index` drops `goodId` at, or a failure when the plan does not cap it. */
@@ -1141,69 +1150,48 @@ describe('workforce module - the barracks and craft selections', () => {
     };
   }
 
-  /** Three mints of four coiners' seats with `crew` builders deciding at `tick`; the coins' lines then. */
-  function crewedMints(crew: number, tick = 0) {
-    const content = mintContent();
-    const mints = crewedWorkshops(content, 3, crew, tick);
-    const coins = supplyLines(content, DEFAULT_BUILD_ORDER, gamePhase(tick)).get(COIN);
-    if (coins === undefined) throw new Error('setup: coins take supply lines');
-    return { ...mints, coins, stockCoins: (units: number) => mints.stock(COIN, units) };
+  /** Three mints of two coiners' seats each with `crew` builders to hire. */
+  function crewedMints(crew: number) {
+    const mints = crewedWorkshops(mintContent(), 3, crew);
+    return { ...mints, stockCoins: (units: number) => mints.stock(COIN, units) };
   }
 
-  it('turns a defence coiner to coins once the third mint brings the strength-amulet pair', () => {
+  it('keeps one coiner on coins for good and two more only under the coin glut; the rest make amulets', () => {
     const mints = crewedMints(6);
-    // Coins at their comfort line, so the plan's lists stand.
-    mints.stockCoins(mints.coins.comfort);
-    mints.hire(0, 4);
-    expect(mints.products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
-    // The crowded seats: the third coiner turns to coins and the new pair takes the strength amulets.
-    mints.hire(4, 6);
-    expect(mints.products()).toEqual([[COIN], [STRENGTH_AMULET], [STRENGTH_AMULET]]);
+    // At the glut the plan's lists stand: one coiner, and every other seat on both amulet lines, since the
+    // seat holds neither a leather armour nor a short sword to feed one line first.
+    mints.stockCoins(COIN_GLUT_UNITS);
+    mints.hire(0, 6);
+    const amulets = [DEFENCE_AMULET, STRENGTH_AMULET];
+    expect(mints.products()).toEqual([[COIN], amulets, amulets, amulets, amulets, amulets]);
+    // Under the glut by the band the two top-up seats turn to coins; the amulet seats stay.
+    mints.stockCoins(COIN_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS);
+    expect(mints.products()).toEqual([]);
+    mints.stockCoins(COIN_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS - 1);
+    expect(mints.products()).toEqual([[COIN], [COIN]]);
+    // They hold to the glut, and go back to amulets there; the first coiner never moves.
+    mints.stockCoins(COIN_GLUT_UNITS - 1);
+    expect(mints.products()).toEqual([]);
+    mints.stockCoins(COIN_GLUT_UNITS);
+    expect(mints.products()).toEqual([amulets, amulets]);
   });
 
-  it('turns up to two amulet makers to coins while the coins run short, one per unit they lack', () => {
+  it('puts an amulet seat on defence amulets while leather armour is in store, on strength amulets while short swords are, and on both while neither', () => {
     const mints = crewedMints(4);
-    const { unit, short, comfort } = mints.coins;
-    mints.stockCoins(comfort);
+    mints.stockCoins(COIN_GLUT_UNITS);
+    mints.stock(LEATHER_ARMOUR, 1);
     mints.hire(0, 4);
     expect(mints.products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
-    // At the short line nothing moves. Under it the last amulet seats turn to coins, one per unit lacking
-    // to comfort and never more than the cap, whatever the lack.
-    mints.stockCoins(short);
-    expect(mints.products()).toEqual([]);
-    expect(Math.ceil(comfort / unit)).toBeGreaterThan(SHORT_PRODUCT_SEATS);
-    mints.stockCoins(0);
-    expect(mints.products()).toEqual([[COIN], [COIN]]);
-    // The turned seats hold to the comfort line, the first of them the last to go.
-    mints.stockCoins(comfort - unit);
-    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
-    mints.stockCoins(comfort - 1);
-    expect(mints.products()).toEqual([]);
-    mints.stockCoins(comfort);
-    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
-  });
-
-  it('turns up to two amulet makers to coins under the comfort line from the mid game, and holds them to the glut', () => {
-    const mints = crewedMints(4, MID_GAME_FROM_TICKS);
-    const { unit, short, comfort, glut } = mints.coins;
-    mints.stockCoins(glut);
-    mints.hire(0, 4);
-    expect(mints.products()).toEqual([[COIN], [DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
-    // Above the short line but under comfort: both capped seats turn, one per unit lacking to the glut.
-    expect(comfort - 1).toBeGreaterThanOrEqual(short);
-    expect(Math.ceil((glut - comfort + 1) / unit)).toBeGreaterThan(SHORT_PRODUCT_SEATS);
-    mints.stockCoins(comfort - 1);
-    expect(mints.products()).toEqual([[COIN], [COIN]]);
-    // The plan's own coin seat never counts among the two: both turned seats hold while two units or more
-    // lack to the glut, the last of them goes back at one unit, the first at the glut.
-    mints.stockCoins(comfort);
-    expect(mints.products()).toEqual([]);
-    mints.stockCoins(glut - unit - 1);
-    expect(mints.products()).toEqual([]);
-    mints.stockCoins(glut - 1);
-    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
-    mints.stockCoins(glut);
-    expect(mints.products()).toEqual([[DEFENCE_AMULET]]);
+    mints.stock(LEATHER_ARMOUR, 0);
+    mints.stock(SWORD_SHORT, 1);
+    expect(mints.products()).toEqual([[STRENGTH_AMULET], [STRENGTH_AMULET], [STRENGTH_AMULET]]);
+    // Both in store: the defence line comes first.
+    mints.stock(LEATHER_ARMOUR, 1);
+    expect(mints.products()).toEqual([[DEFENCE_AMULET], [DEFENCE_AMULET], [DEFENCE_AMULET]]);
+    mints.stock(LEATHER_ARMOUR, 0);
+    mints.stock(SWORD_SHORT, 0);
+    const amulets = [DEFENCE_AMULET, STRENGTH_AMULET];
+    expect(mints.products()).toEqual([amulets, amulets, amulets]);
   });
 
   it('turns the first armourer to wooden spears alone while the long bows pile up, and back once they are drawn down', () => {

@@ -140,8 +140,8 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(linesOf('wheat'), `wheat in the ${phase}`).toEqual(STOCKED_LINES);
       // No bill takes flour: the bakery's ten-unit flour shelf is its unit.
       expect(linesOf('flour'), `flour in the ${phase}`).toEqual(STOCKED_LINES);
-      // No bill takes coins: the druid hut's ten-unit coin shelf is their unit.
-      expect(linesOf('coin'), `coins in the ${phase}`).toEqual(STOCKED_LINES);
+      // The coins take no lines: the mint's own seats cap them at an authored glut.
+      expect(linesOf('coin'), `coins in the ${phase}`).toBeUndefined();
     }
   });
 
@@ -264,6 +264,13 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(building, `tower id ${towerId}`).toBeDefined();
       expect(building?.kind, `tower kind of ${towerId}`).toBe('tower');
     }
+    type Seat = (typeof CRAFT_PLANS_BY_BUILDING_ID)[string]['seats'][number];
+    /** The goods a seat may list, its fallback seats included. */
+    const seatGoods = (seat: Seat): string[] => {
+      if ('firstFed' in seat) return seat.firstFed.map((line) => line.good);
+      if (!('goods' in seat)) return [...seat];
+      return [...seat.goods, ...(seat.otherwise === undefined ? [] : seatGoods(seat.otherwise))];
+    };
     /** The ids of the building and every tier its `upgradeTarget` chain leads to. */
     const tiersFrom = (startId: string): Set<string> => {
       const ids = new Set<string>();
@@ -291,20 +298,23 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
             : most,
         0,
       );
-      const seatLists = [plan.seats, plan.crowded?.seats ?? []];
-      for (const seats of seatLists) {
-        expect(
-          (operatorSeats ?? 0) * planned,
-          `operator seats of every planned ${id}`,
-        ).toBeGreaterThanOrEqual(seats.length);
-      }
+      expect((operatorSeats ?? 0) * planned, `operator seats of every planned ${id}`).toBeGreaterThanOrEqual(
+        plan.seats.length,
+      );
       const listed: string[] = [...(plan.alone ?? []), ...(plan.sink ?? [])];
-      for (const seat of seatLists.flat()) {
-        if (!('goods' in seat)) {
-          listed.push(...seat);
+      for (const seat of plan.seats) {
+        listed.push(...seatGoods(seat));
+        if ('firstFed' in seat) {
+          // A line fed by a good the content lacks would never be picked first.
+          for (const line of seat.firstFed) {
+            expect(
+              content.goods.find((g) => g.id === line.input),
+              `${id} input ${line.input}`,
+            ).toBeDefined();
+          }
           continue;
         }
-        listed.push(...seat.goods, ...(seat.otherwise ?? []));
+        if (!('goods' in seat)) continue;
         for (const capped of Object.keys(seat.glut)) {
           // A glut on a good the seat never works would cap nothing, and a good with supply lines takes
           // its glut from them.

@@ -30,13 +30,13 @@ export type SupplyLine = 'short' | 'comfort' | 'glut';
 
 /**
  * The goods the seat's own workshops pass between themselves whose makers' crews and seats the supply lines
- * size, by stable content ids (authored): the farm's grain, the mill's flour and the mint's coins the druids'
- * potions take. The list is authored rather than every intermediate good, because a managed good's lines
- * hire and release its makers; that suits a chain whose consumers' shelves measure its use, not goods such
- * as mead or shoes that settlers draw at their own pace. A stocked product's consumers, not the sites, size
- * it, so it hoards no more with the game phase.
+ * size, by stable content ids (authored): the farm's grain and the mill's flour. The list is authored
+ * rather than every intermediate good, because a managed good's lines hire and release its makers; that
+ * suits a chain whose consumers' shelves measure its use, not goods such as mead or shoes that settlers
+ * draw at their own pace, nor the coins, whose mint seats keep an authored glut (`craft.ts`). A stocked
+ * product's consumers, not the sites, size it, so it hoards no more with the game phase.
  */
-export const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour', 'coin'];
+export const STOCKED_PRODUCT_GOOD_IDS: readonly string[] = ['wheat', 'flour'];
 
 /** The unit of a good no bill takes and no workshop shelves. */
 const FALLBACK_SUPPLY_UNIT = 1;
