@@ -2436,7 +2436,7 @@ body.on-drag-scroll-cursor-hidden * {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  margin: 0 0 4px;
+  margin: 3px 0 4px;
   font: 700 13px / 1.2 var(--font-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
