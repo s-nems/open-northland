@@ -9,7 +9,7 @@ import {
   Signpost,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { hexDistanceBetween, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { hexDistanceBetween, type NodeArea, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFlagBodyNodes, buildingFootprintOf } from '../footprint/geometry.js';
@@ -42,6 +42,18 @@ export function canPlaceSignpost(
   return !insideSpacing(signpostNetwork(world).get(player) ?? [], c.x, c.y);
 }
 
+/** Whether `post`'s spacing can cover a node of `area`: the hex distance is at least the row gap and at
+ *  least one less than the column gap. */
+function spacingReaches(post: SignpostSite, area: NodeArea): boolean {
+  const rows = gapOutside(post.hy, area.minHy, area.maxHy);
+  const columns = gapOutside(post.hx, area.minHx, area.maxHx);
+  return rows < SIGNPOST_SPACING_NODES && columns - 1 < SIGNPOST_SPACING_NODES;
+}
+
+function gapOutside(value: number, min: number, max: number): number {
+  return value < min ? min - value : value > max ? value - max : 0;
+}
+
 function insideSpacing(posts: readonly SignpostSite[], x: number, y: number): boolean {
   for (const s of posts) {
     if (hexDistanceBetween(s.hx, s.hy, x, y) < SIGNPOST_SPACING_NODES) return true;
@@ -59,16 +71,19 @@ export interface SignpostProbe {
 /**
  * Build a {@link SignpostProbe} for `player` over the live blocked set and the current network, so each
  * `canPlace` costs only the player's post count. Both inputs are live views: ask the probe within one
- * decision or frame and build a fresh one after the world changes.
+ * decision or frame and build a fresh one after the world changes. A probe asked only `within` a node box
+ * keeps just the posts whose spacing can reach into it.
  */
 export function signpostProbe(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   player: number,
+  within?: NodeArea,
 ): SignpostProbe {
   const placeable = workFlagPlacementTest(world, content, terrain);
-  const posts = signpostNetwork(world).get(player) ?? [];
+  const network = signpostNetwork(world).get(player) ?? [];
+  const posts = within === undefined ? network : network.filter((post) => spacingReaches(post, within));
   return {
     canPlace: (x, y) =>
       terrain.inBounds(x, y) && placeable(terrain.nodeAt(x, y)) && !insideSpacing(posts, x, y),

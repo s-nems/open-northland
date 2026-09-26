@@ -133,8 +133,13 @@ export interface MooringProbe {
   readonly key: string;
 }
 
-interface MooringMemo {
+/** Where a ship's dock order would moor, as the node set behind {@link MooringProbe}. */
+export interface MooringSpots {
   readonly key: string;
+  readonly spots: ReadonlySet<NodeId>;
+}
+
+interface MooringMemo extends MooringSpots {
   readonly terrain: TerrainGraph;
   readonly probe: MooringProbe;
 }
@@ -157,6 +162,25 @@ export function mooringProbe(
   terrain: TerrainGraph,
   vehicle: Entity,
 ): MooringProbe | null {
+  return mooringMemoOf(world, ctx, terrain, vehicle)?.probe ?? null;
+}
+
+/** The spot set behind {@link mooringProbe}, from the same memo. */
+export function mooringSpotsOf(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+): MooringSpots | null {
+  return mooringMemoOf(world, ctx, terrain, vehicle);
+}
+
+function mooringMemoOf(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  vehicle: Entity,
+): MooringMemo | null {
   const state = world.tryGet(vehicle, Vehicle);
   const anchor = vehicleAnchor(world, vehicle);
   if (state === undefined || anchor === null || state.carrier !== null) return null;
@@ -166,15 +190,16 @@ export function mooringProbe(
   if (!terrain.inBounds(anchor.hx, anchor.hy)) return null;
   const key = `${placementBlockerVersion(world)}:${vehicle}:${anchor.hx},${anchor.hy}`;
   const cached = mooringMemo.get(world);
-  if (cached !== undefined && cached.key === key && cached.terrain === terrain) return cached.probe;
+  if (cached !== undefined && cached.key === key && cached.terrain === terrain) return cached;
   const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
   const spots = mooringSpots(terrain, blocked, anchor, vector.distance);
   const probe: MooringProbe = {
     key,
     canMoor: (x, y) => terrain.inBounds(x, y) && spots.has(terrain.nodeAt(x, y)),
   };
-  mooringMemo.set(world, { key, terrain, probe });
-  return probe;
+  const memo: MooringMemo = { key, spots, terrain, probe };
+  mooringMemo.set(world, memo);
+  return memo;
 }
 
 /** The land nodes at exactly `doorDistance` from any water node the ship can reach from `anchor`. A

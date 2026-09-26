@@ -16,7 +16,7 @@ import type { Command } from '../../core/commands/index.js';
 import { fx, ONE } from '../../core/fixed.js';
 import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, ScriptLandscapeType, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { evictLooseGoodsFromCells } from '../economy/goods-evict.js';
@@ -409,6 +409,17 @@ export function palisadeLayoutVersion(world: World): string {
 export function ownPalisadeNodes(world: World, player: number): (hx: number, hy: number) => boolean {
   const byNode = palisadesByNode(world);
   return (hx, hy) => byNode.at(hx, hy).some((e) => ownerOf(world, e) === player);
+}
+
+/** The nodes {@link ownPalisadeNodes} accepts, listed. */
+export function ownPalisadeNodeList(world: World, player: number): HalfCellNode[] {
+  const nodes: HalfCellNode[] = [];
+  for (const e of world.query(Palisade, Position)) {
+    if (ownerOf(world, e) !== player) continue;
+    const p = world.get(e, Position);
+    nodes.push(nodeOfPosition(p.x, p.y));
+  }
+  return nodes;
 }
 
 const NO_GATE_PROBE: PalisadeGateProbeResult = {

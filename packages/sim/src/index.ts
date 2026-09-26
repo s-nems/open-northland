@@ -117,6 +117,7 @@ export {
   type HalfCellNode,
   hexDistanceBetween,
   hexNeighboursOf,
+  type NodeArea,
   nodeOfPosition,
   positionOfNode,
 } from './nav/halfcell.js';
@@ -167,6 +168,16 @@ export {
 } from './save/index.js';
 // The idle-adult job key of the HUD population tally: a façade read view, not a system.
 export { IDLE_JOB } from './simulation/hud.js';
+export {
+  type MooringAnswer,
+  NODE_SET_STRIDE,
+  type NodeGridAnswer,
+  type NodeSetAnswer,
+  nodeAreaHeight,
+  nodeAreaWidth,
+  nodeGridAccepts,
+  nodeSetHas,
+} from './simulation/probe-answers.js';
 export {
   type FogView,
   type SimOptions,

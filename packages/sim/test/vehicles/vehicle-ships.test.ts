@@ -21,6 +21,7 @@ import {
   type MissionResultOp,
   type MissionScript,
   nodeOfPosition,
+  nodeSetHas,
   parseSaveGame,
   playerCommand,
   restoreSimulation,
@@ -479,6 +480,15 @@ describe('dockVehicle', () => {
       t.step();
       expect(refusals(t)).toEqual([]);
       expect(t.world.get(crewed.ship, Vehicle).mooring).toEqual({ hx: EAST_SHORE_X + 1, hy });
+    }
+    // The plain-data answer lights the same nodes under the same key.
+    const answer = s.mooringAnswer(ship);
+    if (answer === null) throw new Error('no answer for a ship');
+    expect(answer.key).toBe(probe.key);
+    for (let hy = -1; hy <= terrain.height; hy++) {
+      for (let hx = -1; hx <= terrain.width; hx++) {
+        expect(nodeSetHas(answer.spots, hx, hy)).toBe(probe.canMoor(hx, hy));
+      }
     }
     // The same ship answers from the memo until a blocker changes; a land vehicle has no probe.
     expect(s.mooringProbe(ship)).toBe(probe);

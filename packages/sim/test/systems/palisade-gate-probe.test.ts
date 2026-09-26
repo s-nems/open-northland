@@ -3,6 +3,7 @@ import { addWildlife, Damaged, Health, Palisade, Position, stampOwner } from '..
 import {
   cellOfNode,
   type Entity,
+  nodeSetHas,
   positionOfNode,
   type ScriptLandscapeType,
   Simulation,
@@ -363,5 +364,18 @@ describe('ownPalisadeNodes', () => {
     expect(SPAN_HX.every((hx) => own(hx, CENTRE.hy))).toBe(true);
     expect(own(SPAN_HX[4] + 1, CENTRE.hy)).toBe(false);
     expect(sim.ownPalisadeNodes(OTHER_PLAYER)(CENTRE.hx, CENTRE.hy)).toBe(false);
+  });
+
+  it('lists the same nodes as plain data', () => {
+    const { sim } = runOfFive();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map missing');
+    for (const player of [OWNER, OTHER_PLAYER]) {
+      const own = sim.ownPalisadeNodes(player);
+      const set = sim.ownPalisadeNodeSet(player);
+      for (let hy = 0; hy < terrain.height; hy++) {
+        for (let hx = 0; hx < terrain.width; hx++) expect(nodeSetHas(set, hx, hy)).toBe(own(hx, hy));
+      }
+    }
   });
 });

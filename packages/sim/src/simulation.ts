@@ -45,8 +45,19 @@ import {
   type WorldSnapshot,
 } from './inspect/snapshot.js';
 import { SnapshotDeltaStream } from './inspect/snapshot-clones.js';
+import type { NodeArea } from './nav/halfcell.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
+import {
+  type MooringAnswer,
+  mooringAnswerFor,
+  type NodeGridAnswer,
+  type NodeSetAnswer,
+  ownPalisadeNodeSet,
+  palisadeAnswerFor,
+  placementAnswerFor,
+  signpostAnswerFor,
+} from './simulation/probe-answers.js';
 import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
 import { type SyncDigest, SyncDigestRecorder } from './simulation/sync-digest.js';
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
@@ -346,6 +357,25 @@ export class Simulation {
     return placementProbeFor(this.world, this.content, this.terrain, this.fog, buildingType, player, tribe);
   }
 
+  /** {@link placementProbe}'s verdict over every node of `area`, as plain data. */
+  placementAnswer(
+    buildingType: number,
+    area: NodeArea,
+    player?: number,
+    tribe?: number,
+  ): NodeGridAnswer | null {
+    return placementAnswerFor(
+      this.world,
+      this.content,
+      this.terrain,
+      this.fog,
+      buildingType,
+      area,
+      player,
+      tribe,
+    );
+  }
+
   /** Collision probe for one data-described palisade or gate graphic. Null for an unknown row or mapless sim. */
   palisadeProbe(gfxIndex: number): PlacementProbe | null {
     if (this.terrain === undefined) return null;
@@ -381,6 +411,16 @@ export class Simulation {
     return ownPalisadeNodes(this.world, player);
   }
 
+  /** {@link palisadeProbe}'s verdict over every node of `area`, as plain data. */
+  palisadeAnswer(gfxIndex: number, area: NodeArea): NodeGridAnswer | null {
+    return palisadeAnswerFor(this.world, this.content, this.terrain, gfxIndex, area);
+  }
+
+  /** The nodes {@link ownPalisadeNodes} accepts, as plain data. */
+  ownPalisadeNodeSet(player: number): NodeSetAnswer {
+    return ownPalisadeNodeSet(this.world, player);
+  }
+
   /**
    * An opaque token over the placement-blocker inputs, changing when one of them does rather than per
    * tick. Overlay memos key on it. The signpost network revision is one, since a building probe lets its
@@ -396,6 +436,11 @@ export class Simulation {
    */
   signpostProbe(player: number): SignpostProbe | null {
     return signpostProbeFor(this.world, this.content, this.terrain, player);
+  }
+
+  /** {@link signpostProbe}'s verdict over every node of `area`, as plain data. */
+  signpostAnswer(player: number, area: NodeArea): NodeGridAnswer | null {
+    return signpostAnswerFor(this.world, this.content, this.terrain, player, area);
   }
 
   /**
@@ -552,6 +597,11 @@ export class Simulation {
   mooringProbe(vehicle: Entity): MooringProbe | null {
     if (this.terrain === undefined) return null;
     return mooringProbe(this.world, { content: this.content }, this.terrain, vehicle);
+  }
+
+  /** {@link mooringProbe}'s spots, as plain data. */
+  mooringAnswer(vehicle: Entity): MooringAnswer | null {
+    return mooringAnswerFor(this.world, this.content, this.terrain, vehicle);
   }
 
   /** Every mission of the map's script with its live flags, for the mission window's goal list;

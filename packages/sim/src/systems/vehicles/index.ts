@@ -26,7 +26,7 @@ export {
   passengerJobAllowed,
   unloadPeople,
 } from './crew.js';
-export { dockVehicle, type MooringProbe, mooringProbe } from './dock.js';
+export { dockVehicle, type MooringProbe, type MooringSpots, mooringProbe, mooringSpotsOf } from './dock.js';
 export {
   DRAUGHT_BREEDING_PAIR,
   DRAUGHT_RECRUIT_CADENCE_TICKS,

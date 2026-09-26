@@ -16,6 +16,14 @@ export interface HalfCellNode {
   readonly hy: number;
 }
 
+/** An inclusive box of half-cell nodes; its corners may lie off the map. */
+export interface NodeArea {
+  readonly minHx: number;
+  readonly minHy: number;
+  readonly maxHx: number;
+  readonly maxHy: number;
+}
+
 /**
  * The half-cell node a fixed-point position occupies: its world coordinates scaled to half-cell units and
  * truncated, so a position standing exactly on a node maps to it exactly. The result is unclamped, and
