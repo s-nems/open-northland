@@ -50,7 +50,7 @@ export class StoreSinks {
           UnderConstruction,
           Upgrading,
         ],
-        values: [Stockpile, Building, Palisade],
+        values: [Stockpile, Building],
       },
       () => world.canonicalQuery(Stockpile, Position),
       {
