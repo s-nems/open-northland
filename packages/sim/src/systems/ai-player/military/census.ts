@@ -87,16 +87,18 @@ function armyStrength(world: World, ctx: SystemContext, player: number, postedWe
 }
 
 /**
- * The {@link defendingStrength} of the strongest player `player` holds an `enemy` stance toward, 0 when no
- * enemy fields anyone: the army the seat must raise to march on him at all. One roster pass per enemy
- * slot, so the cost is the enemies' people, the same order as the campaign's target scan. Not fog-gated,
- * like that scan; that the original's AI sees through the fog too is unconfirmed.
+ * The {@link fighterStrength} of the strongest player `player` holds an `enemy` stance toward, 0 when no
+ * enemy fields anyone: the men he could march with, counted one to one like the seat's own, so the army
+ * floor (`workforce/garrison.ts`) can be met. The weight his tower posts add is the offensive's concern
+ * ({@link defendingStrength}), read for the one target it picks. One roster pass per enemy slot, so the
+ * cost is the enemies' people, the same order as the campaign's target scan. Not fog-gated, like that
+ * scan; that the original's AI sees through the fog too is unconfirmed.
  */
 export function strongestEnemyStrength(world: World, ctx: SystemContext, player: number): number {
   let strongest = 0;
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (other === player || diplomacyStance(world, player, other) !== 'enemy') continue;
-    strongest = Math.max(strongest, defendingStrength(world, ctx, other));
+    strongest = Math.max(strongest, fighterStrength(world, ctx, other));
   }
   return strongest;
 }
