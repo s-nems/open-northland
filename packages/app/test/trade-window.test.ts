@@ -11,13 +11,7 @@ import { GLYPH } from '../src/hud/dom/icons.js';
 import { firstStockedTab, stockTabStates } from '../src/hud/dom/parts/stock-browser.js';
 import type { TradeMarkChange } from '../src/hud/dom/settler-panel/actions.js';
 import { createTradeCommands } from '../src/hud/dom/trade-window/commands.js';
-import {
-  describeTab,
-  houseRows,
-  transferLine,
-  UP_TO_UNLIMITED,
-  windowRoute,
-} from '../src/hud/dom/trade-window/model.js';
+import { houseRows, transferLine, UP_TO_UNLIMITED, windowRoute } from '../src/hud/dom/trade-window/model.js';
 import {
   flowAllowed,
   flowChanges,
@@ -145,13 +139,6 @@ describe('trade window model', () => {
     const b = stockTabStates(houseRows(trade, TRADE_SLOT_B), CATEGORIES);
     expect(b[MILITARY_TAB]).toEqual({ stocked: 0, marked: true });
     expect(firstStockedTab(b)).toBe(0);
-  });
-
-  it('names a tab and says its kinds in stock and its transfers in the tooltip', () => {
-    const tab = describeTab(MILITARY_TAB, 2, true);
-    expect(tab.label).toBe('Wojsko');
-    expect(tab.tooltip).toBe('Wojsko · rodzaje na stanie: 2 · są tu przewożone towary');
-    expect(describeTab(FOOD_TAB, 0, false).tooltip).toBe('Żywność · nic na stanie');
   });
 
   it('lists a house’s goods of the open tab with an arrow into the other house', () => {

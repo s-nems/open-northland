@@ -227,12 +227,13 @@ assistive tech.
   portrait its badge (26 px) and its name in the settler panel's name type at 15 px, large so A and B
   read at a glance within the portrait's height (a long name ends in an ellipsis; the hover card
   names it), the name as a link (select and bring into view, which closes the window with
-  the trader's selection, as a residents row does; resting shows the hover card) and the arrow while
+  the trader's selection, as a residents row does; resting shows the hover card and no tooltip, which
+  would cover it) and the arrow while
   the trader heads there, over the house's own strip of the eight stock categories as square icon
   tabs with solid silhouettes (a loaf, a tankard, a log, bricks, a mallet, a boot, a sword, a potion
   flask), standing on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
-  on Wojsko), a tab's tooltip says the category and how many kinds of goods the house holds (a
-  category it holds nothing of reads faded), a lit dot marks a category with a transfer, and the
+  on Wojsko), a tab's tooltip is the category's name alone (a category the house holds nothing of
+  reads faded), a lit dot marks a category with a transfer, and the
   arrow keys move along the strip. A new trader opens each house on the first category it holds
   anything of; the open tabs stay across ticks and a reopen for the same trader. The stock browser
   owns the strip, so the building window can show the same per house.
@@ -243,9 +244,10 @@ assistive tech.
   and nine is what fits the 768 px plane of a 1280 × 720 screen (the window stands 567 px of its
   592 px allowance); a longer category ("Inne" in a warehouse) scrolls inside its list, never the
   window.
-- A row's arrow sets up the transfer into the other house: "→" at the right end of A's rows ("Wieź do
-  punktu B"), "←" at the left end of B's, so the two lists' arrows flank the gap between them; Ctrl (or
-  ⌘) + click balances the good instead (Ctrl on a one-way good turns it balanced).
+- A row's arrow sets up the transfer into the other house: "→" at the right end of A's rows (named
+  "Wieź do punktu B" for assistive tech; it shows no tooltip), "←" at the left end of B's, so the two
+  lists' arrows flank the gap between them; Ctrl (or ⌘) + click balances the good instead (Ctrl on a
+  one-way good turns it balanced).
   A good in a transfer has its arrow lit on both sides, pointing the way it goes ("⇄" when balanced),
   and a plain press on it removes the transfer. An arrow into a house that does not store the good is
   faded with the reason in its tooltip.

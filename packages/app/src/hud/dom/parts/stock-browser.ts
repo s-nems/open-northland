@@ -46,15 +46,8 @@ export interface StockBrowserTabs {
   /** One face per category, in tab order. */
   readonly glyphs: readonly string[];
   readonly groupLabel: string;
-  /** The tab's name and its tooltip from the kinds in stock and whether a marked good sits there. */
-  readonly describe: (
-    category: number,
-    stocked: number,
-    marked: boolean,
-  ) => {
-    readonly label: string;
-    readonly tooltip: string;
-  };
+  /** The categories' names in tab order, read at each paint for the current language. */
+  readonly labels: () => readonly string[];
 }
 
 /**
@@ -212,10 +205,12 @@ export function createStockBrowser(
     const states = stockTabStates(rows, tabsOptions.glyphs.length);
     const open = active ?? firstStockedTab(states);
     active = open;
-    const tabs: CategoryTab[] = states.map((state, category) => {
-      const { label, tooltip } = tabsOptions.describe(category, state.stocked, state.marked);
-      return { label, tooltip, empty: state.stocked === 0, marked: state.marked };
-    });
+    const labels = tabsOptions.labels();
+    const tabs: CategoryTab[] = states.map((state, category) => ({
+      label: labels[category] ?? '',
+      empty: state.stocked === 0,
+      marked: state.marked,
+    }));
     strip.update(tabs, open);
     return open;
   };

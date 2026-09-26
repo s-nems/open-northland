@@ -102,11 +102,10 @@ export function createTradeStops(
         switch (state.kind) {
           case 'stop':
             write(row.link, state.stop.label);
+            // The hover card names the house's state; a tooltip would only cover it.
             setTip(
               row.link,
-              formatMessage(state.stop.foreign ? panel.tradeForeignStopTooltip : panel.tradeStopTooltip, {
-                badge,
-              }),
+              state.stop.foreign ? formatMessage(panel.tradeForeignStopTooltip, { badge }) : '',
             );
             row.detach.update({
               face: { glyph: GLYPH.close },

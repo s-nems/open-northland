@@ -1,12 +1,13 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { TRADE_SLOT_A, type TradePanelModel } from '../../details-panel/model/index.js';
+import { stockTabLabels } from '../../good-categories.js';
 import type { BuildingHoverModel } from '../../hover-card/model.js';
 import type { GoodIconPainter } from '../good-art.js';
 import type { HoverCard } from '../hover-card.js';
 import { GLYPH, STOCK_TAB_GLYPHS } from '../icons.js';
 import { button, element, setAttribute, setClass, setTip, write } from '../parts/dom.js';
 import { createStockBrowser } from '../parts/stock-browser.js';
-import { describeTab, houseRows } from './model.js';
+import { houseRows } from './model.js';
 import { stopBadge } from './route.js';
 
 export interface HouseColumnDeps {
@@ -54,7 +55,7 @@ export function createHouseColumn(deps: HouseColumnDeps, slot: number): HouseCol
     deps.icons,
     (goodType, event) => deps.onArrow(slot, goodType, event.ctrlKey || event.metaKey),
     {
-      tabs: { glyphs: STOCK_TAB_GLYPHS, groupLabel: messages().hud.tradeWindow.tabs, describe: describeTab },
+      tabs: { glyphs: STOCK_TAB_GLYPHS, groupLabel: messages().hud.tradeWindow.tabs, labels: stockTabLabels },
       actionSide: left ? 'end' : 'start',
     },
   );
@@ -94,7 +95,6 @@ export function createHouseColumn(deps: HouseColumnDeps, slot: number): HouseCol
       house = stop?.house ?? null;
       const badgeText = stopBadge(slot);
       write(link, stop?.label ?? '');
-      setTip(link, formatMessage(copy.stopTooltip, { badge: badgeText }));
       const centreTip = formatMessage(copy.portraitTooltip, { house: stop?.label ?? badgeText });
       setTip(portrait, centreTip);
       setAttribute(portrait, 'aria-label', centreTip);

@@ -1,11 +1,11 @@
 import { button, element, setAttribute, setClass, setTip } from './dom.js';
 
-/** One icon tab: faded while its category holds nothing, a lit dot for "something runs here". */
+/** One icon tab: faded while its category holds nothing, a lit dot for "something runs here". The
+ *  label is the tab's name and its whole tooltip. */
 export interface CategoryTab {
   readonly label: string;
   readonly empty: boolean;
   readonly marked: boolean;
-  readonly tooltip: string;
 }
 
 /** A strip of square icon tabs over a list, one open at a time. The strip knows no content; its owner
@@ -57,7 +57,7 @@ export function createCategoryTabs(
         setAttribute(tab, 'aria-label', model.label);
         // One tab stop for the strip: the open tab; the arrows reach the rest.
         setAttribute(tab, 'tabindex', selected ? '0' : '-1');
-        setTip(tab, model.tooltip);
+        setTip(tab, model.label);
       });
     },
   };

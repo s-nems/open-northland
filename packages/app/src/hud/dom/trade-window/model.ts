@@ -9,7 +9,6 @@ import {
   type TradePanelModel,
   type TradeTransferModel,
 } from '../../details-panel/model/index.js';
-import { stockTabLabels } from '../../good-categories.js';
 import { GLYPH } from '../icons.js';
 import type { CounterRange } from '../parts/counter.js';
 import type { StockBrowserRow, StockRowAction } from '../parts/stock-browser.js';
@@ -39,21 +38,6 @@ export function windowRoute(model: SettlerPanelModel): TradePanelModel | null {
   return model.trade?.stock == null ? null : model.trade;
 }
 
-/** A house's category tab: its name, and its kinds in stock and transfers in the tooltip. */
-export function describeTab(
-  category: number,
-  stocked: number,
-  marked: boolean,
-): { readonly label: string; readonly tooltip: string } {
-  const copy = messages().hud.tradeWindow;
-  const label = stockTabLabels()[category] ?? '';
-  const stock =
-    stocked > 0
-      ? formatMessage(copy.tabTooltip, { category: label, count: stocked })
-      : formatMessage(copy.tabEmptyTooltip, { category: label });
-  return { label, tooltip: marked ? `${stock} · ${copy.tabTransfers}` : stock };
-}
-
 function otherSlot(slot: number): number {
   return slot === TRADE_SLOT_A ? TRADE_SLOT_B : TRADE_SLOT_A;
 }
@@ -67,7 +51,8 @@ function arrowGlyph(flow: TradeFlow, slot: number): string {
 }
 
 /** A stock row's arrow: lit while the good is in a transfer (a press removes it), else "carry into the
- *  other house", refused while that house does not store the good. */
+ *  other house", refused while that house does not store the good. Its name says all that; only the
+ *  refused arrow shows a tooltip, with the reason. */
 function rowAction(trade: TradePanelModel, slot: number, goodType: number, label: string): StockRowAction {
   const copy = messages().hud.tradeWindow;
   const other = otherSlot(slot);
@@ -77,14 +62,10 @@ function rowAction(trade: TradePanelModel, slot: number, goodType: number, label
   const flow = good?.flow ?? 'none';
   const glyph = arrowGlyph(flow, slot);
   if (flow !== 'none') {
-    const tooltip =
-      flow === 'both'
-        ? copy.balanced
-        : formatMessage(flow === outOf(slot) ? copy.carriedOut : copy.carriedIn, { badge, house });
     return {
       glyph,
       label: formatMessage(copy.stopLabel, { good: label }),
-      tooltip,
+      tooltip: '',
       pressed: true,
       enabled: true,
     };
@@ -93,9 +74,7 @@ function rowAction(trade: TradePanelModel, slot: number, goodType: number, label
   return {
     glyph,
     label: formatMessage(copy.carryLabel, { good: label, badge }),
-    tooltip: enabled
-      ? formatMessage(copy.carryTo, { badge, house })
-      : formatMessage(copy.cannotStore, { house }),
+    tooltip: enabled ? '' : formatMessage(copy.cannotStore, { house }),
     pressed: false,
     enabled,
   };
