@@ -50,6 +50,7 @@ import {
   vehicleBoardingSystem,
   vehicleMovementSystem,
 } from './vehicles/index.js';
+import { shipboardNeedsSystem } from './vehicles/shipboard-needs.js';
 import { visionSystem } from './vision/index.js';
 
 /** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
@@ -71,6 +72,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // qualifying releases its civilians in time to claim another one on this same pass.
   { name: 'defence', system: defenceSystem },
   { name: 'needs', system: needsSystem },
+  { name: 'shipboardNeeds', system: shipboardNeedsSystem },
   // Before herding, so a fresh scatter outranks the cohesion recall.
   { name: 'animalFright', system: animalFrightSystem },
   { name: 'herding', system: herdingSystem },

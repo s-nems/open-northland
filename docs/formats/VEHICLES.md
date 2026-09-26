@@ -122,8 +122,12 @@ heaps any surplus delivered past the bill. The chest catapult takes the opener's
 
 Open Northland: `Rider` (`packages/sim/src/components/vehicle.ts`) marks an attached settler and the
 seat's `inside` says whether it is aboard; a rider aboard has no `Position`, which is what keeps it
-out of every map query, and its needs and hitpoints stand still (approximation: the original's
-hitpoint step aboard is not read). `attachToVehicle` walks the rider to the door through the
+out of every map query. Inside a cart its needs and hitpoints stand still (approximation: the
+original's hitpoint step aboard is not read); inside a ship they run on, and `shipboardNeedsSystem`
+(`systems/vehicles/shipboard-needs.ts`) serves them aboard: a hungry passenger eats a unit of food out
+of the hold, a tired one sleeps, a lonely one chats with a fellow passenger, each worth what the clip
+it would play on land pays in, rest at the open-air half, at most once per clip length. Piety waits for
+land (owner's choice; whether the original serves a rider aboard is unconfirmed). `attachToVehicle` walks the rider to the door through the
 unconfined walk order and ends any chat it was in; the rider rung of the drive ladder
 (`systems/vehicles/boarding.ts`) steps a passenger in as soon as it reaches the door, while a carrier
 or trader, the crew that works its vehicle from outside, waits by the door until the vehicle asks
@@ -131,7 +135,7 @@ or trader, the crew that works its vehicle from outside, waits by the door until
 door another settler holds boards from there (approximation: the original's humans stand through each
 other, a collider here cannot). A goto with anyone outside holds its goal under `waitsForHuman` and
 starts once the crew is inside, as the original boards its crew ahead of a target;
-the request is a forced boarding that outranks the rider's needs, which stand still aboard (deviation,
+the request is a forced boarding that outranks the rider's needs, which wait for the ride (deviation,
 user rule: the original skips a rider with a pending need). `loadIntoVehicle` is the load and move-inside orders in one. An attack order given while the crew is still outside
 waits under `waitsForHuman` like a goto's goal and the combat pass takes it up once everyone is in
 (approximation: the original boards its crew ahead of any target, which is confirmed for the goto

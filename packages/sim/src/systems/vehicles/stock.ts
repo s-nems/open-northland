@@ -210,6 +210,27 @@ export function tradeVehicleStock(
 }
 
 /**
+ * Use up one unit of `goodType` aboard, a passenger's meal: the unit leaves the hold and its booking.
+ * The wanted amount stays for a seated cargo hand to restock at the next landing, and follows the actual
+ * one without a hand, as any stock change does. False with none aboard.
+ */
+export function consumeVehicleGood(
+  world: World,
+  vehicle: Entity,
+  content: ContentSet,
+  goodType: number,
+): boolean {
+  const hold = holdOf(world, vehicle, content, goodType);
+  const have = hold?.stock.lines.get(hold.good)?.current ?? 0;
+  if (hold === null || have <= 0) return false;
+  const line = lineOf(world.mut(vehicle, VehicleStock), hold.good);
+  line.current = have - 1;
+  line.reserved = Math.max(0, line.reserved - 1);
+  if (!hasCargoHand(world, content, vehicle)) line.wanted = line.current;
+  return true;
+}
+
+/**
  * Ask for `amount` units of `goodType`: clamped below at 0 and above so the
  * wanted amounts over every good stay within the budget. Returns false for an uncarriable good.
  */

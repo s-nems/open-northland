@@ -18,6 +18,7 @@ import { handlerTurn, scriptedSeatOnTurn } from '../../ai-player/cadence.js';
 import type { System, SystemContext } from '../../context.js';
 import { woundBearer } from '../../equipment/index.js';
 import { declaresNoTrades, isFighterJob, isHeroJob } from '../../readviews/index.js';
+import { isAboardShip } from '../../readviews/vehicles.js';
 import {
   applyNeedUnits,
   NEED_CRITICAL_THRESHOLD,
@@ -108,7 +109,8 @@ export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
   const refilling = seatRefillingAt(world, ctx.tick);
   for (const e of world.query(Person)) {
-    if (isAboardVehicle(world, e)) continue; // frozen aboard, hitpoints included (approximation)
+    // Frozen inside a cart, hitpoints included (approximation); a ship's passengers eat and sleep aboard.
+    if (isAboardVehicle(world, e) && !isAboardShip(world, ctx.content, e)) continue;
     if (refilling !== null && ownerOf(world, e) === refilling) refillCriticalNeeds(world, ctx, e);
     const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);

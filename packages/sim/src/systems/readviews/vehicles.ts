@@ -1,5 +1,7 @@
 import type { ContentSet, VehicleType } from '@open-northland/data';
+import { Rider, Settler, Vehicle } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { Traversal } from '../../nav/terrain/index.js';
 
 /**
@@ -9,6 +11,15 @@ import type { Traversal } from '../../nav/terrain/index.js';
  */
 export function isShipVehicle(vehicle: VehicleType): boolean {
   return vehicle.passengerSlots > 0;
+}
+
+/** Whether `e` is attached to a ship, whose riders' needs run on aboard (a cart's stand still). */
+export function isAboardShip(world: World, content: ContentSet, e: Entity): boolean {
+  const rider = world.tryGet(e, Rider);
+  if (rider === undefined || !world.has(e, Settler)) return false;
+  const state = world.tryGet(rider.vehicle, Vehicle);
+  const type = state === undefined ? undefined : contentIndex(content).vehicles.get(state.vehicleType);
+  return type !== undefined && isShipVehicle(type);
 }
 
 /** The ground a vehicle moves over: ships sail the water bodies, every other vehicle drives the land. */
