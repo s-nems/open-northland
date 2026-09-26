@@ -1,6 +1,6 @@
 import type { PlayerCommand } from '@open-northland/sim';
+import { type AssistantGrantId, GRANT_IDS } from '../game/assistant-grant-ids.js';
 import type { WorldSetup } from '../game/world/index.js';
-import { type AssistantGrantId, GRANT_IDS } from '../hud/tool-panel/extras-menu.js';
 import type { ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { SessionHost } from '../session/index.js';
 

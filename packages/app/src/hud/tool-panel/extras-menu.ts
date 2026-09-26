@@ -1,4 +1,5 @@
 import { components } from '@open-northland/sim';
+import { type AssistantGrantId, GRANT_IDS } from '../../game/assistant-grant-ids.js';
 import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
@@ -30,17 +31,6 @@ export type AssistantCounterId =
   | 'trainSwordsmen'
   | 'trainSpearmen'
   | 'trainArchers';
-
-/** The assistant's switch rows: four "give everyone …" grants, then three that let recruits be armed with
- *  a class's weaker weapon. */
-export type AssistantGrantId =
-  | 'giveBoots'
-  | 'giveWoodenTools'
-  | 'giveIronTools'
-  | 'giveMead'
-  | 'allowShortSwords'
-  | 'allowWoodenSpears'
-  | 'allowShortBows';
 
 /** One counter's face: the queued amount and whether the queue never drains. */
 export interface AssistantCounterFace {
@@ -202,16 +192,6 @@ export const COUNTER_IDS: readonly AssistantCounterId[] = [
   'trainSpearmen',
   'trainArchers',
 ];
-export const GRANT_IDS: readonly AssistantGrantId[] = [
-  'giveBoots',
-  'giveWoodenTools',
-  'giveIronTools',
-  'giveMead',
-  'allowShortSwords',
-  'allowWoodenSpears',
-  'allowShortBows',
-];
-
 /** Resolve the window to screen rects, with every row's controls right-aligned on a shared column. */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
   // Kept fractional, like the text runs, so a long grant label cannot overrun its switch.

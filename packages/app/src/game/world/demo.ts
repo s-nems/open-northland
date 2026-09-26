@@ -1,5 +1,5 @@
 import type { ContentSet, TerrainMapFile } from '@open-northland/data';
-import { type SceneTerrain, terrainMapToScene } from '@open-northland/render';
+import { type SceneTerrain, terrainMapToScene } from '@open-northland/render/data';
 import {
   type CellTerrainMap,
   halfCellMapFromCells,

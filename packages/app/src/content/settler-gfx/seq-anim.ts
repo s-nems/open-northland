@@ -1,4 +1,4 @@
-import { type DirectionalAnim, GFX_DIR_TO_FACING } from '@open-northland/render';
+import { type DirectionalAnim, GFX_DIR_TO_FACING } from '@open-northland/render/data';
 import type { BobSeqRow } from '../ir/rows.js';
 import { DIRS } from './sequences.js';
 

@@ -4,7 +4,7 @@ import { type Entity, parseSaveGame, type SaveGame } from '@open-northland/sim';
 import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { sessionWorldOptions } from '../../game/session-world.js';
-import { mapScriptWorld } from '../../game/world/index.js';
+import { mapScriptWorld } from '../../game/world/mission-script.js';
 import type { HostedBuild } from '../../session/worker/serve.js';
 import { saveDocumentOf } from '../../view/runtime/save-load/codec.js';
 import { buildMapWorld, restoreMapWorld } from './world.js';

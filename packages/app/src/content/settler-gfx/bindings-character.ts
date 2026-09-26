@@ -7,7 +7,7 @@ import {
   type SpriteAtlas,
   type SpriteFrameRef,
   subClipKey,
-} from '@open-northland/render';
+} from '@open-northland/render/data';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram, type TribeClip, type TribeJobSeqs } from '../ir/joins.js';
 import type { BobSeqRow, GfxAnimAtomicRow } from '../ir/rows.js';

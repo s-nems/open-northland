@@ -1,17 +1,17 @@
 import { Container } from 'pixi.js';
+import { type AssistantGrantId, GRANT_IDS } from '../../game/assistant-grant-ids.js';
 import { messages } from '../../i18n/index.js';
 import { CLOSE_X_COLOR, drawBevel } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import { liftedTop } from '../regions.js';
 import type { PanelContext } from './context.js';
-import type { AssistantCounterFace, AssistantCounterId, AssistantGrantId } from './extras-menu.js';
+import type { AssistantCounterFace, AssistantCounterId } from './extras-menu.js';
 import {
   type AssistantState,
   adjustCounter,
   COUNTER_IDS,
   defaultAssistantState,
   type ExtrasMenuLayout,
-  GRANT_IDS,
   hitTestExtrasMenu,
   layoutExtrasMenu,
   toggleGrant,

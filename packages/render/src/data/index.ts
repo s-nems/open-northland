@@ -20,7 +20,17 @@ export {
   visibleTileRange,
 } from './projection/index.js';
 export { indoorHouseOf, isIndoorSettler } from './scene/snapshot-index.js';
-export type { SceneGround } from './scene/terrain-scene.js';
+export { type SceneGround, type SceneTerrain, terrainMapToScene } from './scene/terrain-scene.js';
+export type { SpriteAtlas } from './sprites/atlas.js';
+export { GFX_DIR_TO_FACING, subClipKey } from './sprites/settler.js';
+export type {
+  CarryingBinding,
+  CartDriveAnim,
+  DirectionalAnim,
+  FrameListAnim,
+  SettlerStateBinding,
+  SpriteFrameRef,
+} from './sprites/settler-bindings.js';
 export {
   averagePatternColour,
   cellColourResolver,

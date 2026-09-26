@@ -3,6 +3,7 @@ import type { HudLayout } from '@open-northland/render';
 import type { Command, Entity, Paper } from '@open-northland/sim';
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import type { AssistantGrantId } from '../src/game/assistant-grant-ids.js';
 import type { Rect } from '../src/hud/geometry.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import {
@@ -14,7 +15,6 @@ import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import {
   type AssistantCounterFace,
   type AssistantCounterId,
-  type AssistantGrantId,
   defaultAssistantState,
   layoutExtrasMenu,
 } from '../src/hud/tool-panel/extras-menu.js';
