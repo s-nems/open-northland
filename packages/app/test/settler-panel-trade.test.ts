@@ -1,95 +1,48 @@
 import { describe, expect, it } from 'vitest';
-import {
-  TRADE_LIMIT_NONE,
-  type TradeCategoryModel,
-  type TradeDirection,
-  type TradeGoodModel,
-} from '../src/hud/details-panel/model/index.js';
-import { reservedChipRows, TRADE_CHIPS_PER_ROW } from '../src/hud/dom/settler-panel/trade-goods.js';
-import {
-  categoryDirection,
-  chipShortcut,
-  directionAllowed,
-  directionChanges,
-  markedGoods,
-  pressedDirection,
-} from '../src/hud/dom/settler-panel/trade-marks.js';
+import type { TradePanelModel } from '../src/hud/details-panel/model/index.js';
+import { bodyOf } from '../src/hud/dom/settler-panel/trade.js';
+import { slotState } from '../src/hud/dom/settler-panel/trade-stops.js';
+import { transferSummary, transferTooltip } from '../src/hud/dom/settler-panel/trade-transfers.js';
+import { messages } from '../src/i18n/index.js';
+import { ownRoute, SWORD, transfer } from './support/trade-route.js';
 
-const HOUSES = { a: 10, b: 20 };
-const SWORD = 42;
-const CEILING = 5;
+const CEILING = 10;
+const RESERVE = 2;
 
-function good(direction: TradeDirection, extra: Partial<TradeGoodModel> = {}): TradeGoodModel {
-  return {
-    goodType: SWORD,
-    label: 'Sword',
-    stockA: 12,
-    stockB: 0,
-    storedA: true,
-    storedB: true,
-    direction,
-    upTo: TRADE_LIMIT_NONE,
-    keep: TRADE_LIMIT_NONE,
-    ...extra,
-  };
-}
-
-function category(goods: readonly TradeGoodModel[]): TradeCategoryModel {
-  return { tab: 0, label: 'Wojsko', goods };
-}
-
-describe('the Handel direction', () => {
-  it('moves only the marks that change', () => {
-    expect(directionChanges(good('none'), 'toB', HOUSES)).toEqual([{ house: 20, goodType: SWORD, on: true }]);
-    expect(directionChanges(good('toA'), 'toB', HOUSES)).toEqual([
-      { house: 10, goodType: SWORD, on: false },
-      { house: 20, goodType: SWORD, on: true },
-    ]);
-    expect(directionChanges(good('both'), 'none', HOUSES)).toEqual([
-      { house: 10, goodType: SWORD, on: false },
-      { house: 20, goodType: SWORD, on: false },
-    ]);
+describe('the settler panel’s Handel summary', () => {
+  it('offers the trade window only for two own stops, the agreement for a foreign one', () => {
+    expect(bodyOf(ownRoute())).toEqual({ own: true, agreement: false });
+    const foreign: TradePanelModel = { ...ownRoute(), stock: null, foreign: true };
+    expect(bodyOf(foreign)).toEqual({ own: false, agreement: true });
+    const one: TradePanelModel = {
+      ...ownRoute(),
+      stops: ownRoute().stops.slice(0, 1),
+      stock: null,
+      attachSlot: 1,
+    };
+    expect(bodyOf(one)).toEqual({ own: false, agreement: false });
   });
 
-  it('sets a kept mark again when the good turns balanced, so it sheds the limits it no longer shows', () => {
-    expect(directionChanges(good('toB', { upTo: CEILING }), 'both', HOUSES)).toEqual([
-      { house: 10, goodType: SWORD, on: true },
-      { house: 20, goodType: SWORD, on: false },
-      { house: 20, goodType: SWORD, on: true },
-    ]);
-    expect(directionChanges(good('toB'), 'both', HOUSES)).toEqual([{ house: 10, goodType: SWORD, on: true }]);
+  it('reads "Dodaj punkt handlowy" on both free slots, also while A is empty', () => {
+    const empty: TradePanelModel = { ...ownRoute(), stops: [], stock: null, attachSlot: 0 };
+    expect([slotState(empty, 0).kind, slotState(empty, 1).kind]).toEqual(['attach', 'attach']);
+    const onlyB: TradePanelModel = {
+      ...ownRoute(),
+      stops: ownRoute().stops.slice(1),
+      stock: null,
+      attachSlot: 0,
+    };
+    expect([slotState(onlyB, 0).kind, slotState(onlyB, 1).kind]).toEqual(['attach', 'stop']);
+    expect(messages().hud.settlerPanel.tradeAddStop).toBe('Dodaj punkt handlowy');
   });
 
-  it('clears the good when the lit segment is pressed again', () => {
-    expect(pressedDirection('toB', 'toB')).toBe('none');
-    expect(pressedDirection('toB', 'both')).toBe('both');
-  });
-
-  it('toggles the balance on Ctrl and "→ B" on Shift, and leaves a plain press to choosing', () => {
-    expect(chipShortcut('none', { ctrl: true, shift: false })).toBe('both');
-    expect(chipShortcut('both', { ctrl: true, shift: false })).toBe('none');
-    expect(chipShortcut('toA', { ctrl: false, shift: true })).toBe('toB');
-    expect(chipShortcut('toB', { ctrl: false, shift: true })).toBe('none');
-    expect(chipShortcut('toB', { ctrl: false, shift: false })).toBeNull();
-  });
-
-  it('refuses a direction into a house that does not store the good', () => {
-    const onlyA = good('none', { storedB: false });
-    expect(directionAllowed(onlyA, 'toA')).toBe(true);
-    expect(directionAllowed(onlyA, 'toB')).toBe(false);
-    expect(directionAllowed(onlyA, 'both')).toBe(false);
-    expect(directionAllowed(onlyA, 'none')).toBe(true);
-  });
-
-  it('sends a whole tab to B on Ctrl, and clears it once every good already goes there', () => {
-    expect(categoryDirection(category([good('toB'), good('none')]))).toBe('toB');
-    expect(categoryDirection(category([good('toB'), good('toB')]))).toBe('none');
-    expect(markedGoods([category([good('toB'), good('none'), good('both')])])).toBe(2);
-  });
-
-  it('reserves the chip rows of the fullest tab', () => {
-    const many = Array.from({ length: TRADE_CHIPS_PER_ROW + 1 }, () => good('none'));
-    expect(reservedChipRows([category([good('none')]), category(many)])).toBe(2);
-    expect(reservedChipRows([category([])])).toBe(1);
+  it('writes a transfer as its direction and its limits, and says it in words in the tooltip', () => {
+    const limited = transfer(SWORD, 'toB', { upTo: CEILING, keep: RESERVE });
+    expect(transferSummary(limited)).toBe('A → B · do 10 · zostaw 2');
+    expect(transferSummary(transfer(SWORD, 'toA'))).toBe('B → A');
+    expect(transferSummary(transfer(SWORD, 'both'))).toBe('A ⇄ B');
+    expect(transferTooltip(limited)).toBe(
+      `${limited.label}: wieź z A do B, aż w B będzie 10, zawsze zostaw 2 w A`,
+    );
   });
 });

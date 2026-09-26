@@ -61,6 +61,10 @@ export const GLYPH = {
   pen: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m4 20 4-1L19 8l-3-3L5 16zM14 7l3 3"/></svg>',
   arrow:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></svg>',
+  arrowLeft:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>',
+  /* Two opposed arrows: a good balanced between two houses. */
+  swap: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4"/></svg>',
   armor:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6z"/></svg>',
   /* A spoked cart wheel: the vehicle row's pick. */

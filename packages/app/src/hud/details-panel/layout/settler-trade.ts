@@ -2,8 +2,9 @@ import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import {
   TRADE_SLOT_A,
-  type TradeGoodModel,
+  type TradeDirection,
   type TradePanelModel,
+  type TradeStockRow,
   type VehicleTradeModel,
 } from '../model/index.js';
 import type { ButtonHit } from './building.js';
@@ -69,32 +70,41 @@ interface TradeMarkChoice {
   readonly selected: boolean;
 }
 
-function choiceOf(good: TradeGoodModel, selected: boolean): TradeMarkChoice {
+/** A stop's stored goods ascending by good, each with the way the route moves it (null: not at all). */
+function stopGoods(
+  panel: TradePanelModel,
+  slot: number,
+): readonly { readonly row: TradeStockRow; readonly direction: TradeDirection | null }[] {
+  const rows = slot === TRADE_SLOT_A ? panel.stock?.a : panel.stock?.b;
+  const moving = new Map(panel.transfers.map((transfer) => [transfer.goodType, transfer.direction]));
+  return [...(rows ?? [])]
+    .sort((x, y) => x.goodType - y.goodType)
+    .map((row) => ({ row, direction: moving.get(row.goodType) ?? null }));
+}
+
+function choiceOf(row: TradeStockRow, selected: boolean): TradeMarkChoice {
   return {
-    goodType: good.goodType,
-    ...(good.goodId !== undefined ? { goodId: good.goodId } : {}),
-    label: good.label,
+    goodType: row.goodType,
+    ...(row.goodId !== undefined ? { goodId: row.goodId } : {}),
+    label: row.label,
     selected,
   };
 }
 
-function goodsOf(panel: TradePanelModel): TradeGoodModel[] {
-  return panel.categories.flatMap((category) => category.goods).sort((a, b) => a.goodType - b.goodType);
-}
-
 /** The goods the stop in `slot` stores, each lit while it is carried into that stop. */
 function stopChoices(panel: TradePanelModel, slot: number): TradeMarkChoice[] {
-  const atA = slot === TRADE_SLOT_A;
-  return goodsOf(panel)
-    .filter((good) => (atA ? good.storedA : good.storedB))
-    .map((good) => choiceOf(good, good.direction === 'both' || good.direction === (atA ? 'toA' : 'toB')));
+  const into: TradeDirection = slot === TRADE_SLOT_A ? 'toA' : 'toB';
+  return stopGoods(panel, slot).map(({ row, direction }) =>
+    choiceOf(row, direction === 'both' || direction === into),
+  );
 }
 
 /** The goods both stops store, each lit while it is balanced between them. */
 function balanceChoices(panel: TradePanelModel): TradeMarkChoice[] {
-  return goodsOf(panel)
-    .filter((good) => good.storedA && good.storedB)
-    .map((good) => choiceOf(good, good.direction === 'both'));
+  const atB = new Set((panel.stock?.b ?? []).map((row) => row.goodType));
+  return stopGoods(panel, TRADE_SLOT_A)
+    .filter(({ row }) => atB.has(row.goodType))
+    .map(({ row, direction }) => choiceOf(row, direction === 'both'));
 }
 
 interface TradeMetrics {

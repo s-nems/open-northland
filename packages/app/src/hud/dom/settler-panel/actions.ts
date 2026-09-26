@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import type { NeedKind } from '@open-northland/sim';
 import type { EquipSlotRef } from '../../details-panel/model/index.js';
 import type { BuildingHoverModel } from '../../hover-card/model.js';
@@ -6,6 +7,7 @@ import type { GoodIconPainter } from '../good-art.js';
 import type { HoverCard } from '../hover-card.js';
 import type { TipChip } from '../parts/tip-layer.js';
 import type { OrdersPress } from '../selection-panel.js';
+import type { CentralWindows } from '../trade-window/window.js';
 
 /** One import mark to set or clear: `goodType` carried into `house`. */
 export interface TradeMarkChange {
@@ -84,4 +86,8 @@ export interface SettlerPanelDeps {
   readonly buildingHover: (id: number) => BuildingHoverModel | null;
   /** Wall clock in ms, the peer list's refresh cadence. */
   readonly now: () => number;
+  /** The GUI click a press that only opens a surface makes. */
+  readonly cue: (cue: UiCue) => void;
+  /** The tool panel's central windows, which the trade window takes turns with. */
+  readonly centralWindows?: CentralWindows;
 }

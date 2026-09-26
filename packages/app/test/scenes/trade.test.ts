@@ -102,10 +102,8 @@ it('offers the edible of a dish the other stop holds as a good to carry', () => 
   const model = tradePanelModel(ctx, sim.snapshot(), trader);
 
   expect(model?.stops.map((stop) => stop.house)).toEqual([bakery, store]);
-  const food = model?.categories
-    .flatMap((category) => category.goods)
-    .find((good) => good.goodType === GOOD_FOOD_SIMPLE);
-  expect(food).toMatchObject({ storedB: true, direction: 'none' });
+  expect(model?.stock?.b.some((row) => row.goodType === GOOD_FOOD_SIMPLE)).toBe(true);
+  expect(model?.transfers).toEqual([]);
   const view = sim.traderView(trader);
   expect(view === undefined ? [] : tradeStatusLines(ctx, view)).toContain(messages().hud.tradeNoImports);
 });

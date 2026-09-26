@@ -1,5 +1,6 @@
 import type { SettlerPanelModel, UnitPanelModel } from '../../details-panel/model/index.js';
 import { type ClientRect, createSelectionPanel } from '../selection-panel.js';
+import { createTradeWindow } from '../trade-window/window.js';
 import type { SettlerPanelDeps } from './actions.js';
 import { createExperienceSection } from './experience.js';
 import { settlerHead } from './head.js';
@@ -26,6 +27,11 @@ export interface SettlerPanel {
   invalidate(): void;
   /** Step aside (unseen, no pointer, no portrait) while the ring opened from the panel is up. */
   veil(on: boolean): void;
+  /** Once a frame: the trade window follows the plane and yields to a beam window. */
+  refresh(): void;
+  /** Escape: close the trade window; false when it was not open. */
+  closeTradeWindow(): boolean;
+  tradeWindowOpen(): boolean;
   /** Paint every section once at map start (`SelectionPanel.warm`) with a few of the game's goods on
    *  the icons, so the first selection costs no first-paint work. */
   warm(goodIds: readonly string[]): void;
@@ -75,7 +81,13 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const work = createWorkSection(deps, current);
   const production = createProductionSection(deps, current);
   const military = createMilitarySection(deps, entity);
-  const trade = createTradeSection(deps, current);
+  const tradeWindow = createTradeWindow(deps);
+  const trade = createTradeSection(deps, current, () => {
+    if (shown === null) return;
+    deps.cue('confirm');
+    tradeWindow.open(shown);
+  });
+  tradeWindow.onDismiss(() => trade.focusConfigure());
   const experience = createExperienceSection();
   /** Paint every section; `fresh` is another person. The foldable sections open in full; when the
    *  whole panel would then run past the plane (read once per change of their rows) the experience
@@ -108,6 +120,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
 
   const hide = (): void => {
     shown = null;
+    tradeWindow.close();
     peers = NO_PEERS;
     deps.hoverCard.hide();
     deps.tooltip.hide();
@@ -128,6 +141,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       // Shown before the sections: the fold's overflow read needs the frame laid out.
       frame.show();
       sections(model, fresh);
+      tradeWindow.update(model);
     },
     hide,
     warm(goodIds): void {
@@ -135,7 +149,15 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       frame.updateHead(settlerHead(model, NO_PEERS, ordersKey()));
       sections(model, true);
       frame.warm();
+      tradeWindow.warm(model);
     },
+    refresh: () => tradeWindow.refresh(),
+    closeTradeWindow(): boolean {
+      if (!tradeWindow.isOpen()) return false;
+      tradeWindow.dismiss();
+      return true;
+    },
+    tradeWindowOpen: () => tradeWindow.isOpen(),
     portrait(): PortraitSubject | null {
       if (shown === null) return null;
       const rect = frame.holeClientRect();
@@ -147,13 +169,17 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
         rect,
       };
     },
-    claims: (clientX, clientY) => frame.claims(clientX, clientY),
+    claims: (clientX, clientY) => frame.claims(clientX, clientY) || tradeWindow.claims(clientX, clientY),
     browse,
     invalidate: () => frame.invalidate(),
-    veil: (on) => frame.veil(on),
+    veil(on): void {
+      frame.veil(on);
+      tradeWindow.veil(on);
+    },
     dispose(): void {
       deps.hoverCard.hide();
       deps.tooltip.hide();
+      tradeWindow.dispose();
       frame.dispose();
     },
   };

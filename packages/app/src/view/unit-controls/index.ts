@@ -363,8 +363,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {
       e.preventDefault();
     } else if (e.code === 'Escape') {
-      // Escape steps back one level: job list, then an armed pick mode, then the selection itself.
+      // Escape steps back one level: job list, the trade window, an armed pick mode, the selection.
       if (chrome.actions().handleEscape()) return;
+      if (chrome.closeTradeWindow()) return;
       if (pickMode.isArmed()) {
         pickMode.cancel();
         cue('fail'); // approximation: the original's cancel click is a mouse path; Esc is unverified
@@ -390,7 +391,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     signpostPlacementActive: pickMode.signpostActive,
     workFlagPlacementActive: pickMode.flagActive,
     claimsEscape: () =>
-      chrome.actions().state().mode === 'jobs' || pickMode.isArmed() || selection.ids().size > 0,
+      chrome.actions().state().mode === 'jobs' ||
+      chrome.tradeWindowOpen() ||
+      pickMode.isArmed() ||
+      selection.ids().size > 0,
     dockPickVehicle: pickMode.dockVehicle,
     // Includes the details panel, so a consumer gating on this treats a point over the panel as HUD
     // rather than world.
@@ -403,6 +407,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (selectionGone(snapshot)) applySelection([], false);
       orders.refresh();
       chrome.panel().tick(snapshot);
+      chrome.refreshWindows();
       // Re-anchors the ring on the selection's on-screen centroid; a no-op while it is closed.
       chrome.actions().update(opts.camera(), snapshot);
     },

@@ -4,7 +4,7 @@ import type { SettlerPanelModel } from '../../details-panel/model/index.js';
  * A made-up person that lights every part of the panel at once: sockets worn and empty, a bag, a
  * status with a carried good, bars at every tone, seat rows with a link, a missing seat and a refused
  * button, craft rows with a live, a stopped and a locked product, the military choices, a trade route
- * with marked goods and a running agreement, and experience with an unlock. The panel paints it once
+ * with transfers and a running agreement, and experience with an unlock. The panel paints it once
  * at map start (`SettlerPanel.warm`), so the browser's first raster of these styles (each a pipeline
  * it compiles on first use) happens behind the loading screen, not on the first click. Only the
  * shapes matter; the words are never read.
@@ -14,14 +14,22 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     const id = goodIds[index % Math.max(1, goodIds.length)];
     return id === undefined ? {} : { goodId: id };
   };
-  const warmGood = (index: number) => ({
+  const stockRow = (index: number, amount: number) => ({
     goodType: index,
     ...good(index),
     label: 'Warm',
-    storedA: true,
-    storedB: true,
-    upTo: 0,
-    keep: 0,
+    category: 0,
+    amount,
+    capacity: 5,
+  });
+  const transfer = (index: number, direction: 'toB' | 'both') => ({
+    goodType: index,
+    ...good(index),
+    label: 'Warm',
+    category: 0,
+    direction,
+    upTo: 3,
+    keep: 1,
   });
   const bar = (label: string, pct: number, need?: 'hunger' | 'fatigue' | 'enjoyment' | 'piety') => ({
     label,
@@ -69,16 +77,8 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       attachSlot: null,
       // Goods and an agreement at once, which no route has, so one paint lights both.
       foreign: true,
-      categories: [
-        {
-          tab: 0,
-          label: 'Warm',
-          goods: [
-            { ...warmGood(4), direction: 'toB', stockA: 3, stockB: 0 },
-            { ...warmGood(5), direction: 'both', stockA: 0, stockB: 0 },
-          ],
-        },
-      ],
+      stock: { a: [stockRow(4, 3), stockRow(5, 0)], b: [stockRow(4, 0), stockRow(5, 2)] },
+      transfers: [transfer(4, 'toB'), transfer(5, 'both')],
       offers: [
         {
           index: 0,

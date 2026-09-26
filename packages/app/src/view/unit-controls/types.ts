@@ -23,6 +23,7 @@ import type { UiString } from '../../content/gui-gfx.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
 import type { DiplomacyStance, SettlerWorkStatus } from '../../hud/details-panel/model/index.js';
+import type { CentralWindows } from '../../hud/dom/trade-window/window.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import type { PresentationPack } from '../../presentation/pack.js';
@@ -103,6 +104,8 @@ export interface UnitControlsOptions {
     readonly uiString: UiString;
     /** The seat's people, memoized per snapshot by the caller. */
     readonly residents: () => readonly ResidentRow[];
+    /** The tool panel's central windows, which the trade window takes turns with. */
+    readonly centralWindows?: CentralWindows;
   };
   /** The sim's work-status read seam (`Simulation.workStatus`); absent leaves the status detail out. */
   readonly workStatus?: (entity: number) => SettlerWorkStatus | undefined;

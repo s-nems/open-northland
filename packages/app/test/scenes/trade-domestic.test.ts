@@ -60,15 +60,14 @@ it('carries long swords into B under the ceiling its mark sets, and nothing else
   expect(spear === undefined ? -1 : tradeDomesticStock(sim, houses.b, spear)).toBe(0);
 });
 
-it("sorts the route's goods into the Handel section's categories with both stocks and the mark", () => {
+it("gives the Handel model both houses' stock and the mark as a transfer", () => {
   const { sim, trader, houses, sword } = sceneRoute();
   const ctx = { ...ctxOf(sim), traderView: (entity: number) => sim.traderView(entity as Entity) };
-  const goodOf = () =>
-    tradePanelModel(ctx, sim.snapshot(), trader)
-      ?.categories.flatMap((category) => category.goods)
-      .find((good) => good.goodType === sword);
+  const model = () => tradePanelModel(ctx, sim.snapshot(), trader);
 
-  expect(goodOf()).toMatchObject({ stockA: SWORDS_AT_A, stockB: 0, direction: 'none', storedB: true });
+  expect(model()?.stock?.a.find((row) => row.goodType === sword)?.amount).toBe(SWORDS_AT_A);
+  expect(model()?.stock?.b.find((row) => row.goodType === sword)?.amount).toBe(0);
+  expect(model()?.transfers).toEqual([]);
   sim.enqueue(
     playerCommand(HUMAN_PLAYER, {
       kind: 'setTradeImport',
@@ -79,5 +78,5 @@ it("sorts the route's goods into the Handel section's categories with both stock
     }),
   );
   sim.step();
-  expect(goodOf()).toMatchObject({ direction: 'toB', upTo: TRADE_LIMIT_NONE });
+  expect(model()?.transfers).toMatchObject([{ goodType: sword, direction: 'toB', upTo: TRADE_LIMIT_NONE }]);
 });

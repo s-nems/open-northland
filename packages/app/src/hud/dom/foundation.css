@@ -2420,12 +2420,14 @@ body.on-drag-scroll-cursor-hidden * {
   overflow: hidden;
 }
 /* The warm-up frame at map start: painted, so its raster pipelines compile, but not to be seen. */
-.on-hud .on-selection--warm {
+.on-hud .on-selection--warm,
+.on-hud .on-window--warm {
   opacity: 0;
   pointer-events: none;
 }
 /* Stepped aside for the action ring opened from the panel, which is drawn on the canvas under it. */
-.on-hud .on-selection--veiled {
+.on-hud .on-selection--veiled,
+.on-hud .on-window--veiled {
   visibility: hidden;
   pointer-events: none;
 }
@@ -2614,6 +2616,12 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-round:hover {
   border-color: var(--bronze);
   color: var(--bronze-hi);
+}
+/* A toggle chip that is on: lit like a chosen segment. */
+.on-hud .on-round[aria-pressed="true"] {
+  border-color: var(--bronze-lo);
+  background: linear-gradient(#e8c479, #b58a3f);
+  color: var(--ink);
 }
 .on-hud .on-round[aria-disabled="true"] {
   opacity: 0.38;
@@ -3078,198 +3086,53 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--muted);
   font-size: 12px;
 }
-/* The eight category tabs: a good's icon on each face, a dot under a tab with a marked good. */
-.on-hud .on-trade-tabs {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 2px;
-  margin: 6px 0 0;
-  border-bottom: 1px solid var(--bronze-lo);
+/* "Konfiguruj handel": the one way into the trade window, under the stop rows. */
+.on-hud .on-trade-configure {
+  display: flex;
+  width: 100%;
+  margin: 6px 0 2px;
 }
-.on-hud .on-trade-tab {
-  position: relative;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--wood-lo);
-  border-bottom: 0;
-  border-radius: 5px 5px 0 0;
-  background: linear-gradient(var(--wood-hi), var(--wood));
-  box-shadow: inset 0 1px #fff2;
-}
-.on-hud .on-trade-tab:hover {
-  background: linear-gradient(#8a6d4a, var(--wood-hi));
-}
-.on-hud .on-trade-tab[aria-selected="true"] {
-  background: linear-gradient(var(--parchment-hi), var(--parchment));
-  border-color: #8d7549;
-  box-shadow: inset 0 2px #fff8;
-}
-.on-hud .on-trade-tab[aria-disabled="true"] {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.on-hud .on-trade-tab__dot {
-  position: absolute;
-  bottom: -7px;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  margin-left: -2.5px;
-  border-radius: 50%;
-  background: var(--active);
-  box-shadow: 0 0 0 1px #0008;
-  visibility: hidden;
-}
-.on-hud .on-trade-tab--marked .on-trade-tab__dot {
-  visibility: visible;
-}
-/* The open tab's goods: round chips with the stock of both houses in a corner badge. The area keeps
-   the rows of the fullest tab (`--rows`), so switching tabs moves nothing below it. */
-.on-hud .on-trade-chips {
-  display: grid;
-  grid-template-columns: repeat(10, 26px);
-  grid-auto-rows: 26px;
-  justify-content: space-between;
-  align-content: start;
-  row-gap: 4px;
-  min-height: calc(var(--rows, 1) * 30px - 4px);
-  margin: 6px 0 0;
-}
-.on-hud .on-chip {
-  position: relative;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--wood-lo);
-  border-radius: 50%;
-  background: radial-gradient(circle at 45% 40%, #6b5638, #33271a 85%);
-  box-shadow: inset 0 0 0 1px #c9a26233;
-}
-.on-hud .on-chip:hover {
-  border-color: var(--bronze);
-}
-.on-hud .on-chip--empty > .on-good {
-  opacity: 0.5;
-}
-.on-hud .on-chip--one-way {
-  border-color: var(--active);
-  box-shadow: 0 0 0 1px var(--active);
-}
-.on-hud .on-chip--both {
-  border-color: var(--ok);
-  box-shadow: 0 0 0 1px var(--ok);
-}
-.on-hud .on-chip[aria-pressed="true"] {
-  background: radial-gradient(circle at 45% 40%, #a08458, #4f3c27 85%);
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-.on-hud .on-chip__count {
-  position: absolute;
-  right: -5px;
-  bottom: -4px;
-  min-width: 13px;
-  padding: 0 2px;
-  border-radius: 6px;
-  background: var(--deep);
-  box-shadow: 0 0 0 1px var(--bronze-lo);
-  color: var(--text-hi);
-  font: 700 9px / 12px var(--font-body);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-.on-hud .on-chip--empty .on-chip__count {
-  color: var(--muted);
-}
-.on-hud .on-chip__mark {
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  font: 700 9px / 11px var(--font-body);
-  font-style: normal;
-  color: var(--ink);
-  min-width: 11px;
-  border-radius: 6px;
-  background: var(--active);
-  text-align: center;
-}
-.on-hud .on-chip--both .on-chip__mark {
-  background: var(--ok);
-}
-.on-hud .on-chip__mark:empty {
+.on-hud .on-trade-configure[hidden] {
   display: none;
 }
-/* The chosen good: its line, then the direction and, for a one-way good, the ceiling and the reserve
-   under it. The block keeps its height whatever is chosen. */
-.on-hud .on-trade-detail {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-rows: 24px 26px 26px;
-  align-items: center;
-  column-gap: 8px;
-  margin: 8px 0 0;
-  padding: 6px 0 0;
-  border-top: 1px dotted #c9a26255;
+/* The transfers as read-only lines: the good, a dotted leader, the direction with its limits. */
+.on-hud .on-trade-lines {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
 }
-.on-hud .on-trade-detail__head {
-  grid-column: 1 / -1;
-  display: flex;
+.on-hud .on-trade-line {
+  display: grid;
+  grid-template-columns: 20px minmax(0, max-content) minmax(12px, 1fr) auto;
   align-items: center;
   gap: 6px;
-  min-width: 0;
+  min-height: 22px;
   font-size: 12.5px;
 }
-.on-hud .on-trade-detail__name {
-  flex: 1;
-  min-width: 0;
+.on-hud .on-trade-line::after {
+  content: "";
+  border-bottom: 1px dotted #c9a26255;
+  transform: translateY(3px);
+}
+.on-hud .on-trade-line__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #c7bda3;
+}
+.on-hud .on-trade-line__summary {
+  order: 1;
   color: var(--text-hi);
-}
-.on-hud .on-trade-detail__stock {
-  color: var(--muted);
   font-variant-numeric: tabular-nums;
-}
-.on-hud .on-trade-detail--idle .on-good-well {
-  display: none;
-}
-.on-hud .on-trade-detail--idle .on-trade-detail__name {
-  color: var(--muted);
-  font-weight: 400;
-}
-.on-hud .on-trade-dir {
-  grid-row: 2;
-  grid-column: 1;
-  width: 132px;
-}
-.on-hud .on-trade-dir > button[aria-disabled="true"] {
-  opacity: 0.38;
-  cursor: not-allowed;
+  white-space: nowrap;
 }
 .on-hud .on-trade-limit {
-  grid-column: 3;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
   font-size: 12px;
   color: var(--muted);
-}
-.on-hud .on-trade-limit--up-to {
-  grid-row: 2;
-}
-.on-hud .on-trade-limit--keep {
-  grid-row: 3;
-}
-.on-hud .on-trade-detail--idle .on-trade-dir,
-.on-hud .on-trade-detail--idle .on-trade-limit,
-.on-hud .on-trade-detail--balanced .on-trade-limit {
-  visibility: hidden;
 }
 /* Umowa: the agreements as single-choice chips, the chosen one with its exchange meter under it. */
 .on-hud .on-offers {
@@ -3346,4 +3209,235 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-ledger--unlock {
   margin-bottom: 2px;
+}
+
+/* ---------- trade window: shared category tabs, both houses' stock, the transfers ---------- */
+/* Eight tabs share the strip; a long caption ellipsizes (its tooltip has it whole). A lit dot marks a
+   category with a transfer. */
+.on-hud .on-tabs--categories .on-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+}
+.on-hud .on-tab__caption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.on-hud .on-tab__count:empty {
+  display: none;
+}
+.on-hud .on-tab__dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--active);
+  box-shadow: 0 0 0 1px #0008;
+  visibility: hidden;
+}
+.on-hud .on-tab--marked .on-tab__dot {
+  visibility: visible;
+}
+/* House A left, B right on one parchment, each its head over its stock list. */
+.on-hud .on-trade-houses {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  flex: 0 1 auto;
+  /* A short plane shrinks the lists, never below a house's head and three rows. */
+  min-height: 140px;
+  margin: 0 10px 4px;
+  padding: 10px 12px;
+  overflow: hidden;
+}
+.on-hud .on-trade-house {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.on-hud .on-trade-house + .on-trade-house {
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid #8d754966;
+}
+.on-hud .on-trade-house__head {
+  display: grid;
+  grid-template-columns: 18px minmax(0, max-content) 14px;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid #8d7549aa;
+  font-size: 13px;
+}
+.on-hud .on-trade-house__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  color: var(--ink);
+}
+.on-hud .on-trade-house__name:hover {
+  color: var(--bronze-lo);
+}
+.on-hud .on-trade-house__heading {
+  display: inline-flex;
+  visibility: hidden;
+  color: var(--bronze-lo);
+}
+.on-hud .on-trade-house--heading .on-trade-house__heading {
+  visibility: visible;
+}
+.on-hud .on-trade-house__heading .on-glyph {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.4;
+}
+/* A stock list: 28 px rows and eight of them shown, whatever the open tab holds, so switching tabs
+   moves nothing; a longer category ("Inne" in a warehouse) scrolls inside the list, never the window. */
+.on-hud .on-stock {
+  --stock-row: 28px;
+  --stock-rows: 8;
+  /* A plane too short for the whole window (a large UI scale) shrinks both lists, down to this. */
+  --stock-rows-least: 3;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  height: calc(var(--stock-rows) * var(--stock-row));
+  min-height: calc(var(--stock-rows-least) * var(--stock-row));
+}
+.on-hud .on-stock__list {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.on-hud .on-stock__empty {
+  margin: 8px 4px;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+}
+.on-hud .on-stock:not(.on-stock--empty) .on-stock__empty {
+  display: none;
+}
+.on-hud .on-stock-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 8px;
+  height: var(--stock-row);
+  padding: 0 4px;
+  border-bottom: 1px solid #8d754944;
+  color: var(--ink);
+}
+.on-hud .on-stock-row__info {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 48px 40px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+.on-hud .on-stock-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.on-hud .on-stock-row__amount {
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.on-hud .on-stock-row__meter {
+  margin: 0;
+}
+.on-hud .on-stock-row--out .on-stock-row__info {
+  opacity: 0.5;
+}
+.on-hud .on-stock-row--lit {
+  background: linear-gradient(90deg, #c9a26266, #c9a2621a);
+}
+.on-hud .on-stock-row .on-round {
+  width: 22px;
+  height: 22px;
+}
+.on-hud .on-stock-row .on-round .on-glyph {
+  width: 13px;
+  height: 13px;
+}
+/* Przewozy: five 32 px lines shown and more scrolling inside the list; the height holds with none,
+   so the window keeps one size whatever the route moves. */
+.on-hud .on-trade-transfers {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
+  padding: 0 14px 12px;
+}
+.on-hud .on-trade-transfers__title {
+  margin: 6px 0 2px;
+}
+.on-hud .on-transfers {
+  --transfer-row: 32px;
+  --transfer-rows: 5;
+  --transfer-rows-least: 2;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  height: calc(var(--transfer-rows) * var(--transfer-row));
+  min-height: calc(var(--transfer-rows-least) * var(--transfer-row));
+}
+.on-hud .on-transfers__list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.on-hud .on-transfers__empty {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.on-hud .on-transfers:not(.on-transfers--empty) .on-transfers__empty,
+.on-hud .on-transfers--empty .on-transfers__list {
+  display: none;
+}
+.on-hud .on-transfer {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 174px auto auto 18px;
+  align-items: center;
+  column-gap: 12px;
+  height: var(--transfer-row);
+  padding-right: 4px;
+  border-bottom: 1px dotted #c9a26233;
+  font-size: 12.5px;
+}
+.on-hud .on-transfer__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-hi);
+  font-weight: 600;
+}
+.on-hud .on-transfer__direction > button[aria-disabled="true"] {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.on-hud .on-transfer--balanced .on-trade-limit {
+  visibility: hidden;
 }

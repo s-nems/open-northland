@@ -206,6 +206,9 @@ export interface ToolPanelController {
   /** Hide the info lines with the rest of the HUD. Hiding closes the open windows, so none is left
    *  taking presses unseen; a window opened while hidden shows. */
   setHudHidden(hidden: boolean): void;
+  /** The central windows the beam opens, for a window opened elsewhere that shares the centre (the
+   *  trade window): one central window at a time. */
+  readonly centralWindows: { isOpen(): boolean; close(): void };
   /** True when a client point should be claimed by the HUD (over an open window or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
@@ -609,6 +612,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       setHudHidden: (hidden) => {
         if (hidden) windows.closeAll();
         applyHudHidden(hidden);
+      },
+      centralWindows: {
+        isOpen: () => windows.openId() !== null,
+        close: () => windows.closeAll(),
       },
       claimsPointer,
       claimsWheel,

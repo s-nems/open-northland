@@ -9,8 +9,8 @@ import {
 } from '@open-northland/sim';
 import { num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { stockTabLabels } from '../../good-categories.js';
-import { type StockRow, stockRows } from './building-materials.js';
+import { goodCategoryTab } from '../../good-categories.js';
+import { stockRows } from './building-materials.js';
 import { buildingDef, buildingTitle, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 
 export { TRADE_LIMIT_NONE, TRADE_ROUTE_HOUSES };
@@ -23,8 +23,8 @@ export const TRADE_SLOT_B = 1;
  *  warehouse shelf holds 45 of a good, so the top leaves room for a larger store. */
 export const TRADE_LIMIT_MAX = 100;
 
-/** Which way a good moves between two own stops: carried into A, into B, balanced, or not at all. */
-export type TradeDirection = 'none' | 'toA' | 'toB' | 'both';
+/** Which way a transfer moves its good between two own stops: carried into A, into B, or balanced. */
+export type TradeDirection = 'toA' | 'toB' | 'both';
 
 export interface TradeStopModel {
   readonly slot: number;
@@ -35,28 +35,35 @@ export interface TradeStopModel {
   readonly heading: boolean;
 }
 
-/** One good either own stop stores, with both stocks and the marks that move it. */
-export interface TradeGoodModel {
+/** One good an own stop's house stores: its stock table's line with the units it holds now. */
+export interface TradeStockRow {
   readonly goodType: number;
   readonly goodId?: string;
   readonly label: string;
-  readonly stockA: number;
-  readonly stockB: number;
-  /** Whether each stop's house keeps the good at all, so it can be carried into it. */
-  readonly storedA: boolean;
-  readonly storedB: boolean;
-  readonly direction: TradeDirection;
-  /** The one-way destination mark's fill ceiling and source reserve; {@link TRADE_LIMIT_NONE} for a
-   *  balanced or unmarked good. */
-  readonly upTo: number;
-  readonly keep: number;
+  /** The stock category tab (0-7) the good belongs to. */
+  readonly category: number;
+  readonly amount: number;
+  /** The house's shelf for the good, in units. */
+  readonly capacity: number;
 }
 
-/** One of the eight stock categories and its goods, ascending by good. */
-export interface TradeCategoryModel {
-  readonly tab: number;
+/** What each stop of a two-stop own route stores, in its stock table's order. */
+export interface TradeRouteStock {
+  readonly a: readonly TradeStockRow[];
+  readonly b: readonly TradeStockRow[];
+}
+
+/** One good the route moves: the good marked at one stop (carried into it) or at both (balanced). */
+export interface TradeTransferModel {
+  readonly goodType: number;
+  readonly goodId?: string;
   readonly label: string;
-  readonly goods: readonly TradeGoodModel[];
+  readonly category: number;
+  readonly direction: TradeDirection;
+  /** The one-way destination mark's fill ceiling and source reserve; {@link TRADE_LIMIT_NONE} for a
+   *  balanced good. */
+  readonly upTo: number;
+  readonly keep: number;
 }
 
 /** One side of an agreement: so many units of a good. */
@@ -78,8 +85,9 @@ export interface TradeOfferModel {
 }
 
 /**
- * The Handel section of a trader: the route's stops by slot, the goods two own stops can move sorted
- * into the stock categories, or the agreements a foreign stop offers.
+ * The Handel model of a trader, for the settler panel's summary, the trade window and the vehicle
+ * window: the route's stops by slot, what two own stops store and move, or the agreements a foreign
+ * stop offers.
  */
 export interface TradePanelModel {
   /** The occupied stops in slot order. */
@@ -88,8 +96,11 @@ export interface TradePanelModel {
   readonly attachSlot: number | null;
   /** A stop belongs to another tribe: the agreement alone decides what moves. */
   readonly foreign: boolean;
-  /** One entry per stock category, empty unless the route is two own stops. */
-  readonly categories: readonly TradeCategoryModel[];
+  /** Both houses' stock tables while the route is two own stops, else null. Always built: the vehicle
+   *  window reads it too, and it costs two stock tables of the trader's own route. */
+  readonly stock: TradeRouteStock | null;
+  /** The marked goods in good order; empty unless the route is two own stops. */
+  readonly transfers: readonly TradeTransferModel[];
   readonly offers: readonly TradeOfferModel[];
   /** Whether the chosen agreement trades now; false while none is chosen or the partner is no friend. */
   readonly agreementHolds: boolean;
@@ -106,10 +117,17 @@ export function tradeOfferLabel(ctx: UnitPanelModelContext, offer: TradeOffer): 
 }
 
 /** The goods a house keeps (its type's stock table) with the units it holds now. */
-function houseStock(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, house: number): StockRow[] {
+function houseStock(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, house: number): TradeStockRow[] {
   const ent = entityById(snapshot, house);
   const typeId = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
-  return stockRows(ctx, buildingDef(ctx, typeId), ent?.components.Stockpile);
+  return stockRows(ctx, buildingDef(ctx, typeId), ent?.components.Stockpile).map((row) => ({
+    goodType: row.goodType,
+    ...(row.goodId !== undefined ? { goodId: row.goodId } : {}),
+    label: row.label,
+    category: row.category,
+    amount: row.amount,
+    capacity: row.capacity ?? 0,
+  }));
 }
 
 function houseLabel(
@@ -127,53 +145,37 @@ function houseLabel(
     : title;
 }
 
-function directionOf(atA: boolean, atB: boolean): TradeDirection {
+function directionOf(atA: boolean, atB: boolean): TradeDirection | null {
   if (atA && atB) return 'both';
   if (atA) return 'toA';
-  return atB ? 'toB' : 'none';
+  return atB ? 'toB' : null;
 }
 
-/** Every good either stop stores, grouped into the eight stock categories. */
-function categoriesOf(
-  ctx: UnitPanelModelContext,
-  snapshot: WorldSnapshot,
-  a: TradeStopView,
-  b: TradeStopView,
-): TradeCategoryModel[] {
-  const stockA = new Map(houseStock(ctx, snapshot, a.house).map((row) => [row.goodType, row]));
-  const stockB = new Map(houseStock(ctx, snapshot, b.house).map((row) => [row.goodType, row]));
+/** One transfer per good marked at either stop, ascending by good. */
+function transfersOf(ctx: UnitPanelModelContext, a: TradeStopView, b: TradeStopView): TradeTransferModel[] {
   const marksA = new Map(a.imports.map((mark) => [mark.good, mark]));
   const marksB = new Map(b.imports.map((mark) => [mark.good, mark]));
-  const labels = stockTabLabels();
-  const categories: TradeCategoryModel[] = labels.map((label, tab) => ({ tab, label, goods: [] }));
-  const goods = [...new Set([...stockA.keys(), ...stockB.keys()])].sort((x, y) => x - y);
-  for (const goodType of goods) {
-    const rowA = stockA.get(goodType);
-    const rowB = stockB.get(goodType);
-    const row = rowA ?? rowB;
-    if (row === undefined) continue;
+  const goods = [...new Set([...marksA.keys(), ...marksB.keys()])].sort((x, y) => x - y);
+  return goods.flatMap((goodType) => {
     const markA = marksA.get(goodType);
     const markB = marksB.get(goodType);
     const direction = directionOf(markA !== undefined, markB !== undefined);
+    if (direction === null) return [];
     const limits: TradeImportMark | undefined =
       direction === 'toA' ? markA : direction === 'toB' ? markB : undefined;
     const goodId = goodDef(ctx, goodType)?.id;
-    const good: TradeGoodModel = {
-      goodType,
-      label: row.label,
-      ...(goodId !== undefined ? { goodId } : {}),
-      stockA: rowA?.amount ?? 0,
-      stockB: rowB?.amount ?? 0,
-      storedA: rowA !== undefined,
-      storedB: rowB !== undefined,
-      direction,
-      upTo: limits?.upTo ?? TRADE_LIMIT_NONE,
-      keep: limits?.keep ?? TRADE_LIMIT_NONE,
-    };
-    const category = categories[row.category];
-    if (category !== undefined) categories[row.category] = { ...category, goods: [...category.goods, good] };
-  }
-  return categories;
+    return [
+      {
+        goodType,
+        ...(goodId !== undefined ? { goodId } : {}),
+        label: goodLabel(ctx, goodType),
+        category: goodCategoryTab(goodId),
+        direction,
+        upTo: limits?.upTo ?? TRADE_LIMIT_NONE,
+        keep: limits?.keep ?? TRADE_LIMIT_NONE,
+      },
+    ];
+  });
 }
 
 /** The first slot no stop fills, or null on a full route. */
@@ -202,8 +204,7 @@ export function tradePanelModel(
   }));
   const a = view.stops.find((stop) => stop.slot === TRADE_SLOT_A);
   const b = view.stops.find((stop) => stop.slot === TRADE_SLOT_B);
-  const categories =
-    foreign === undefined && a !== undefined && b !== undefined ? categoriesOf(ctx, snapshot, a, b) : [];
+  const own = foreign === undefined && a !== undefined && b !== undefined ? { a, b } : null;
   const side = (amount: number, goodType: number): TradeOfferSide => {
     const def = goodDef(ctx, goodType);
     return {
@@ -228,7 +229,11 @@ export function tradePanelModel(
     stops,
     attachSlot: freeSlot(view.stops),
     foreign: foreign !== undefined,
-    categories,
+    stock:
+      own === null
+        ? null
+        : { a: houseStock(ctx, snapshot, own.a.house), b: houseStock(ctx, snapshot, own.b.house) },
+    transfers: own === null ? [] : transfersOf(ctx, own.a, own.b),
     offers,
     agreementHolds: view.agreementHolds,
   };

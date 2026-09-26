@@ -6,37 +6,26 @@ import {
   type TradeStopModel,
 } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setClass, setHidden, setTip, write } from '../parts/dom.js';
+import { button, element, setClass, setTip, write } from '../parts/dom.js';
 import { createRoundButton, type RoundButton } from '../parts/round-button.js';
+import { stopBadge } from '../trade-window/route.js';
 import type { SettlerPanelDeps } from './actions.js';
-
-/** The route's stops by slot: A is the first house, B the second. Letters, not words, in every locale. */
-const STOP_BADGES: readonly string[] = ['A', 'B'];
-
-export function stopBadge(slot: number): string {
-  return STOP_BADGES[slot] ?? String(slot + 1);
-}
 
 interface SlotRow {
   readonly item: HTMLLIElement;
-  /** The house as a link, or the attach link on the free slot the next house goes to. */
+  /** The house as a link, or the attach link on a free slot. */
   readonly link: HTMLButtonElement;
-  /** A free slot after that one. */
-  readonly note: HTMLElement;
   readonly heading: HTMLElement;
   readonly detach: RoundButton;
 }
 
-/** What a slot row shows: a stop, the free slot the attach pick fills, or a later free slot. */
-type SlotState =
-  | { readonly kind: 'stop'; readonly stop: TradeStopModel }
-  | { readonly kind: 'attach' }
-  | { readonly kind: 'free' };
+/** What a slot row shows: a stop, or the attach link on a free slot. The pick fills the first free
+ *  slot whichever free row armed it, so both read the same. */
+type SlotState = { readonly kind: 'stop'; readonly stop: TradeStopModel } | { readonly kind: 'attach' };
 
-function slotState(trade: TradePanelModel, slot: number): SlotState {
+export function slotState(trade: TradePanelModel, slot: number): SlotState {
   const stop = trade.stops.find((candidate) => candidate.slot === slot);
-  if (stop !== undefined) return { kind: 'stop', stop };
-  return slot === trade.attachSlot ? { kind: 'attach' } : { kind: 'free' };
+  return stop === undefined ? { kind: 'attach' } : { kind: 'stop', stop };
 }
 
 /** One row per route slot, both always present so the section never changes height with the route:
@@ -65,7 +54,6 @@ export function createTradeStops(
     const item = element('li', 'on-stop');
     const badge = element('span', 'on-stop__badge', stopBadge(slot));
     const link = button('on-ledger__link on-stop__name');
-    const note = element('span', 'on-stop__name on-ledger--muted');
     const heading = element('span', 'on-stop__heading', GLYPH.arrow);
     const detach = createRoundButton('ledger', () => {
       const state = liveSlot(slot);
@@ -87,8 +75,8 @@ export function createTradeStops(
     link.addEventListener('mouseenter', hover);
     link.addEventListener('mousemove', hover);
     link.addEventListener('mouseleave', () => hover(null));
-    item.append(badge, link, note, heading, detach.element);
-    return { item, link, note, heading, detach };
+    item.append(badge, link, heading, detach.element);
+    return { item, link, heading, detach };
   };
   const rows = Array.from({ length: TRADE_ROUTE_HOUSES }, (_unused, slot) => slotRow(slot));
   list.replaceChildren(...rows.map((row) => row.item));
@@ -109,8 +97,6 @@ export function createTradeStops(
         setClass(row.item, 'on-stop--empty', state.kind !== 'stop');
         setClass(row.item, 'on-stop--foreign', state.kind === 'stop' && state.stop.foreign);
         setClass(row.item, 'on-stop--heading', state.kind === 'stop' && state.stop.heading);
-        setHidden(row.link, state.kind === 'free');
-        setHidden(row.note, state.kind !== 'free');
         setClass(row.link, 'on-ledger--missing', state.kind === 'attach');
         setTip(row.heading, panel.tradeHeading);
         switch (state.kind) {
@@ -131,14 +117,6 @@ export function createTradeStops(
           case 'attach':
             write(row.link, panel.tradeAddStop);
             setTip(row.link, copy.tradeAttachHouseHint);
-            row.detach.update(null);
-            return;
-          case 'free':
-            write(row.note, panel.tradeFreeSlot);
-            setTip(
-              row.note,
-              formatMessage(panel.tradeFreeSlotTooltip, { badge: stopBadge(trade.attachSlot ?? slot) }),
-            );
             row.detach.update(null);
             return;
         }

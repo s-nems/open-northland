@@ -659,6 +659,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         pack,
         uiString: toolPanel.controller.uiString,
         residents: () => residentsFor(sim.snapshot()),
+        centralWindows: toolPanel.controller.centralWindows,
       },
       workStatus: (entity) => sim.workStatus(entity as Entity),
       diplomacyStance: (owner) => sim.diplomacyStance(viewerPlayer(), owner),

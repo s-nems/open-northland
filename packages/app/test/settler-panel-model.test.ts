@@ -15,6 +15,7 @@ import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
   BUILDING_HOME_00,
   BUILDING_JOINERY,
+  BUILDING_WAREHOUSE_00,
   GOOD_IRON,
   GOOD_WOOD,
   VEHICLE_HANDCART,
@@ -41,6 +42,9 @@ const OTHER_SEAT = 3;
 const CART = 12;
 const WOOD_ABOARD = 3;
 const IRON_ABOARD = 2;
+/** An import mark's fill ceiling and source reserve, in units. */
+const IRON_CEILING = 10;
+const IRON_RESERVE = 2;
 
 const owned = (components: Record<string, unknown>): Record<string, unknown> => ({
   Owner: { player: HUMAN_PLAYER },
@@ -360,9 +364,70 @@ describe('the settler panel model', () => {
     ]);
     expect(model.trade?.stops.map((stop) => stop.heading)).toEqual([false, true]);
     expect(model.trade?.foreign).toBe(true);
-    expect(model.trade?.categories).toEqual([]);
+    expect(model.trade?.stock).toBeNull();
+    expect(model.trade?.transfers).toEqual([]);
     expect(model.status.state).toBe('walking');
     expect(model.status.detail).toContain(model.trade?.stops[1]?.label ?? '?');
+  });
+
+  it('gives a route of two own houses both stock tables and one transfer per marked good', () => {
+    const ctx = sandboxCtx();
+    const view: TraderView = {
+      stops: [
+        {
+          slot: 0,
+          house: HOME as never,
+          foreign: false,
+          imports: [{ good: GOOD_IRON, upTo: IRON_CEILING, keep: IRON_RESERVE }],
+          offers: [],
+        },
+        {
+          slot: 1,
+          house: WORKSHOP as never,
+          foreign: false,
+          imports: [{ good: GOOD_WOOD, upTo: 0, keep: 0 }],
+          offers: [],
+        },
+      ],
+      current: 0,
+      agreement: -1,
+      agreementHolds: false,
+      given: 0,
+      received: 0,
+      cart: null,
+      cargo: [],
+    };
+    // Wood marked at A too: balanced, so it carries no limits.
+    const both: TraderView = {
+      ...view,
+      stops: view.stops.map((stop) =>
+        stop.slot === 0
+          ? { ...stop, imports: [...stop.imports, { good: GOOD_WOOD, upTo: 0, keep: 0 }] }
+          : stop,
+      ),
+    };
+    const world = [
+      buildingEntity(HOME, BUILDING_WAREHOUSE_00, {
+        components: { Stockpile: { amounts: [[GOOD_WOOD, WOOD_ABOARD]] } },
+      }),
+      buildingEntity(WORKSHOP, BUILDING_WAREHOUSE_00),
+      { id: SETTLER, components: owned({ Settler: { tribe: 1, jobType: JOB_TRADER } }) },
+    ];
+    const model = settlerModel(world, { ...ctx, traderView: () => view });
+    const stock = model.trade?.stock;
+    if (stock == null) throw new Error('expected both houses’ stock');
+    const woodAtA = stock.a.find((row) => row.goodType === GOOD_WOOD);
+    expect(woodAtA).toMatchObject({ amount: WOOD_ABOARD, label: goodLabel(ctx, GOOD_WOOD) });
+    expect(woodAtA?.capacity).toBeGreaterThan(0);
+    expect(stock.b.find((row) => row.goodType === GOOD_WOOD)?.amount).toBe(0);
+    expect(model.trade?.transfers).toMatchObject(
+      [
+        { goodType: GOOD_WOOD, direction: 'toB', upTo: 0, keep: 0 },
+        { goodType: GOOD_IRON, direction: 'toA', upTo: IRON_CEILING, keep: IRON_RESERVE },
+      ].sort((x, y) => x.goodType - y.goodType),
+    );
+    const balanced = settlerModel(world, { ...ctx, traderView: () => both }).trade?.transfers;
+    expect(balanced?.find((transfer) => transfer.goodType === GOOD_WOOD)?.direction).toBe('both');
   });
 
   it('carries the good in hand to the status line', () => {

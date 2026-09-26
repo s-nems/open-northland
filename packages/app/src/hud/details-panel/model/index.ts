@@ -95,13 +95,14 @@ export {
   TRADE_ROUTE_HOUSES,
   TRADE_SLOT_A,
   TRADE_SLOT_B,
-  type TradeCategoryModel,
   type TradeDirection,
-  type TradeGoodModel,
   type TradeOfferModel,
   type TradeOfferSide,
   type TradePanelModel,
+  type TradeRouteStock,
+  type TradeStockRow,
   type TradeStopModel,
+  type TradeTransferModel,
 } from './trade.js';
 export {
   VEHICLE_ORDER_STRING,

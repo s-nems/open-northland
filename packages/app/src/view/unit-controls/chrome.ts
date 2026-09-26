@@ -67,6 +67,11 @@ export interface UnitChromeHandle {
   claimsPointer(clientX: number, clientY: number): boolean;
   /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade. */
   browse(step: 1 | -1): boolean;
+  /** Escape: close the trade window; false when it was not open. */
+  closeTradeWindow(): boolean;
+  tradeWindowOpen(): boolean;
+  /** Once a frame: the trade window follows the plane and yields to a beam window. */
+  refreshWindows(): void;
   /** The partner pick named a person: wed them. */
   marryPartner(settler: number, partner: number): void;
   /** Show the selection on the panel, or nothing while the HUD is hidden. */
@@ -130,6 +135,8 @@ export async function createUnitChrome(
     tooltip: panelChip,
     buildingHover: (id) => buildingHoverModel(opts.snapshot(), id, hoverContext),
     now: () => performance.now(),
+    cue: callbacks.cue,
+    ...(opts.domHud.centralWindows !== undefined ? { centralWindows: opts.domHud.centralWindows } : {}),
     actions: settlerPanelActions(
       opts,
       {
@@ -338,6 +345,9 @@ export async function createUnitChrome(
     portrait: () => domPortrait() ?? mounts.current().panel.portrait(),
     claimsPointer: (x, y) => settlerPanel.claims(x, y) || mounts.current().panel.claimsPointer(x, y),
     browse: settlerPanel.browse,
+    closeTradeWindow: settlerPanel.closeTradeWindow,
+    tradeWindowOpen: settlerPanel.tradeWindowOpen,
+    refreshWindows: settlerPanel.refresh,
     marryPartner,
     renderPanel: (snapshot) => {
       // The ring is down when it closed, or when its selection went and it lost its pin.
