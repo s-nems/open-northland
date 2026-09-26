@@ -63,9 +63,45 @@ export function heapReach(anchors: readonly HalfCellNode[]): (node: HalfCellNode
   };
 }
 
-/** `player`'s {@link SeatStock} as the world stands: one pass over the stockpiles, the anchors and the
- *  carried units, so a caller takes it once per decision and reads it many times. */
+/** The stores the figure reads; a cache over them is fresh while none has changed. */
+const STOCK_STORES = [Stockpile, Owner, Position, Carrying, Upgrading, Building, Signpost] as const;
+
+interface StockCache {
+  readonly generations: readonly number[];
+  readonly byPlayer: Map<number, SeatStock>;
+}
+
+const stockCaches = new WeakMap<World, StockCache>();
+
+function stockGenerations(world: World): number[] {
+  const generations: number[] = [];
+  for (const store of STOCK_STORES) {
+    generations.push(world.componentGeneration(store), world.componentValueGeneration(store));
+  }
+  return generations;
+}
+
+/**
+ * `player`'s {@link SeatStock} as the world stands. Derived read-state, never hashed, memoized per world
+ * until any store it reads changes: the modules of one seat's decision, and the seats deciding on one tick,
+ * share a single pass over the stockpiles, the anchors and the carried units.
+ */
 export function seatStockOf(world: World, player: number): SeatStock {
+  const generations = stockGenerations(world);
+  let cache = stockCaches.get(world);
+  if (cache === undefined || cache.generations.some((g, i) => g !== generations[i])) {
+    cache = { generations, byPlayer: new Map() };
+    stockCaches.set(world, cache);
+  }
+  let stock = cache.byPlayer.get(player);
+  if (stock === undefined) {
+    stock = deriveSeatStock(world, player);
+    cache.byPlayer.set(player, stock);
+  }
+  return stock;
+}
+
+function deriveSeatStock(world: World, player: number): SeatStock {
   const totals = new Map<number, number>();
   const add = (amounts: ReadonlyMap<number, number> | undefined): void => {
     if (amounts === undefined) return;
@@ -81,12 +117,11 @@ export function seatStockOf(world: World, player: number): SeatStock {
     }
     if (owner === player) add(world.get(e, Stockpile).amounts);
   }
-  for (const e of world.query(Owner, Position)) {
+  // Owner alone: a unit in the hands of a rider seated in a vehicle counts, though he stands nowhere.
+  for (const e of world.query(Owner)) {
     if (world.get(e, Owner).player !== player) continue;
-    if (world.has(e, Building) || world.has(e, Signpost)) {
-      const p = world.get(e, Position);
-      anchors.push(nodeOfPosition(p.x, p.y));
-    }
+    const p = world.has(e, Building) || world.has(e, Signpost) ? world.tryGet(e, Position) : undefined;
+    if (p !== undefined) anchors.push(nodeOfPosition(p.x, p.y));
     add(world.tryGet(e, Upgrading)?.savedStock);
     const carried = world.tryGet(e, Carrying);
     if (carried !== undefined)
