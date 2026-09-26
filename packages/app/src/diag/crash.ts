@@ -43,7 +43,7 @@ const BANNER_BUTTON_STYLE = [
 let banner: { readonly root: HTMLElement; readonly message: HTMLElement } | null = null;
 
 /** Created lazily so the banner copy reads the locale active at crash time. */
-function showCrashBanner(text: string): void {
+export function showCrashBanner(text: string): void {
   if (banner === null) {
     const copy = messages().hud;
     const root = document.createElement('div');

@@ -104,7 +104,9 @@ export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: numb
       const fps = ema.frameMs > 0 ? Math.round(1000 / ema.frameMs) : 0;
       // The frame budget splits into CPU (what the loop timed) and GPU/compositor (the rest).
       const gpu = Math.max(0, ema.frameMs - ema.cpuMs);
-      const split = ` (${copy.sim} ${ema.simMs.toFixed(1)} ${copy.snapshot} ${ema.snapMs.toFixed(1)} ${copy.draw} ${ema.drawMs.toFixed(1)})`;
+      // Receive shows only when the sim runs on another thread, the one case it costs anything.
+      const receive = ema.receiveMs > 0 ? ` ${copy.receive} ${ema.receiveMs.toFixed(1)}` : '';
+      const split = ` (${copy.sim} ${ema.simMs.toFixed(1)}${receive} ${copy.snapshot} ${ema.snapMs.toFixed(1)} ${copy.draw} ${ema.drawMs.toFixed(1)})`;
       let perf =
         `${copy.fps} ${fps}  ${copy.cpu} ${ema.cpuMs.toFixed(1)}${split}` +
         `  ${copy.gpu} ${gpu.toFixed(1)}  ${copy.worst} ${recent.worstMs.toFixed(0)}ms`;

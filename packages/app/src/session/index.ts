@@ -1,4 +1,12 @@
-export type { SessionHost } from './host.js';
+export type {
+  InstrumentRequest,
+  OffThreadTickCost,
+  ProfileSource,
+  SessionHost,
+  StateHash,
+  SystemSpanSink,
+  TickDiagnostics,
+} from './host.js';
 export { inlineSessionHost } from './inline-host.js';
 export {
   type AnswerCacheControl,

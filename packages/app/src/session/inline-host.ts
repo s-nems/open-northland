@@ -7,6 +7,8 @@ import {
   SnapshotMirror,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import { diagCadenceAt } from '../diag/session.js';
+import { profiledInstrument, SystemProfile } from '../diag/system-profile.js';
 import type { SessionHost } from './host.js';
 
 const NO_LANDSCAPE_TYPES: readonly ScriptLandscapeType[] = [];
@@ -57,7 +59,12 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     missionStatus: () => sim.missionStatus(),
 
     tickEvents: () => sim.events.current(),
-    hashState: () => Promise.resolve(sim.hashState()),
+    tickDiagnostics: () =>
+      Promise.resolve({
+        hash: sim.hashState(),
+        violations: diagCadenceAt(sim.tick)?.invariants === true ? sim.checkInvariants() : null,
+      }),
+    hashState: () => Promise.resolve({ tick: sim.tick, hash: sim.hashState() }),
 
     placementProbe: (buildingType, area, player, tribe) =>
       Promise.resolve(sim.placementAnswer(buildingType, area, player, tribe)),
@@ -92,8 +99,13 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     exportSave: (options?: ExportSaveOptions) => Promise.resolve(exportSaveGame(sim, options)),
 
     commandLog: () => Promise.resolve(sim.commands.log),
-    setInstrument: (instrument) => sim.setInstrument(instrument),
+    installInstruments: ({ profile, spans }) => {
+      const kept = profile ? new SystemProfile() : null;
+      sim.setInstrument(profiledInstrument(kept, spans));
+      return kept === null ? null : { rows: () => Promise.resolve(kept.rows()), reset: () => kept.reset() };
+    },
     run: (ticks) => Promise.resolve(sim.run(ticks)),
+    settled: () => Promise.resolve(),
   };
 }
 

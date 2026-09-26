@@ -6,8 +6,10 @@ import {
   DIAGNOSTICS_BUNDLE_VERSION,
   DiagLog,
   type DiagnosticsBundle,
+  diag,
   HASH_TRACE_EVERY_TICKS,
-  recordDiagHash,
+  INVARIANT_CHECK_EVERY_TICKS,
+  recordTickDiagnostics,
   serializeDiagnosticsBundle,
   setDiagGameSession,
 } from '../src/diag/index.js';
@@ -139,9 +141,9 @@ describe('diagnostics bundle', () => {
     try {
       for (let tick = 1; tick <= HASH_TRACE_EVERY_TICKS; tick++) {
         sim.step();
-        recordDiagHash(host);
+        recordTickDiagnostics(host);
         other.step();
-        recordDiagHash(inlineSessionHost(other)); // an unregistered world must never taint the trace
+        recordTickDiagnostics(inlineSessionHost(other)); // an unregistered world must never taint the trace
       }
       // The hash lands after it is asked for, under the tick it was asked at.
       await Promise.resolve();
@@ -150,5 +152,40 @@ describe('diagnostics bundle', () => {
     }
     expect(trace.list().map((e) => e.tick)).toEqual([HASH_TRACE_EVERY_TICKS]);
     expect(trace.hashAt(HASH_TRACE_EVERY_TICKS)).toBe(sim.hashState());
+  });
+
+  it('logs the invariant violations the cadence finds at error level with their tick, and nothing healthy', async () => {
+    const sim = createSceneSim(scene);
+    const host = inlineSessionHost(sim);
+    const violations = () => diag.entries().filter((e) => e.message.startsWith('invariant violations'));
+    const runCadence = async (): Promise<void> => {
+      const target = sim.tick + INVARIANT_CHECK_EVERY_TICKS;
+      while (sim.tick < target) {
+        sim.step();
+        recordTickDiagnostics(host);
+      }
+      await Promise.resolve();
+    };
+    setDiagGameSession({
+      entry: 'scene',
+      worldId: scene.id,
+      seed: scene.seed,
+      host,
+      hashTrace: new HashTrace(),
+    });
+    try {
+      const before = violations().length;
+      await runCadence();
+      expect(violations()).toHaveLength(before);
+      const FORCED = 'forced negative stock';
+      sim.checkInvariants = () => [FORCED];
+      await runCadence();
+      const logged = violations().slice(before);
+      expect(logged.map((e) => [e.level, e.channel, e.data])).toEqual([
+        ['error', 'sim', { tick: sim.tick - (sim.tick % INVARIANT_CHECK_EVERY_TICKS), violations: [FORCED] }],
+      ]);
+    } finally {
+      setDiagGameSession(null);
+    }
   });
 });

@@ -20,6 +20,7 @@ function sample(overrides: Partial<FrameSample> = {}): FrameSample {
     pooled: 130,
     cpuMs: 10,
     simMs: 6,
+    receiveMs: 0,
     snapMs: 1,
     drawMs: 3,
     ...overrides,

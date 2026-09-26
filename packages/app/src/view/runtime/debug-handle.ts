@@ -4,9 +4,9 @@ import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
 import { TICKS_PER_SECOND } from '@open-northland/sim';
 import type { FrameStats, FrameStatsReport } from '../../diag/frame-stats.js';
 import { heapMb } from '../../diag/heap.js';
-import type { SystemProfile, SystemProfileRow } from '../../diag/system-profile.js';
+import type { SystemProfileRow } from '../../diag/system-profile.js';
 import { recordedTraceEvents, type TraceEvent } from '../../diag/trace.js';
-import type { SessionHost } from '../../session/index.js';
+import type { ProfileSource, SessionHost } from '../../session/index.js';
 import type { CameraController } from '../camera/index.js';
 import type { NetReadout } from './net-readout.js';
 
@@ -29,7 +29,7 @@ export interface PerfSampling {
 
 export interface PerfReport {
   /** Format version, so a probe can pin its parsing. */
-  readonly version: 1;
+  readonly version: 2;
   readonly tick: number;
   readonly paused: boolean;
   readonly entities: number;
@@ -50,7 +50,10 @@ export interface PerfReport {
     readonly fps: number;
     readonly meanMs: number;
     readonly cpuMs: number;
+    /** The sim's stepping time per frame, on whichever thread it runs. */
     readonly simMs: number;
+    /** This thread's cost per frame of taking in ticks from a sim on another thread; 0 inline. */
+    readonly receiveMs: number;
     readonly snapMs: number;
     readonly drawMs: number;
     /** Frame budget the loop could not time: GPU and compositor. */
@@ -62,7 +65,13 @@ export interface PerfReport {
     readonly p99Ms: number;
     readonly maxMs: number;
   };
-  readonly window: { readonly ms: number; readonly frames: number; readonly steps: number };
+  readonly window: {
+    readonly ms: number;
+    readonly frames: number;
+    readonly steps: number;
+    readonly simMsPerTick: number;
+    readonly receiveMsPerTick: number;
+  };
   /** True when `?debug=profile` is on, which inflates every absolute sim millisecond above. */
   readonly profiling: boolean;
   /** Per-system sim cost since the window opened; empty unless profiling. */
@@ -81,13 +90,15 @@ export interface OpenNorthlandDebug {
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet | undefined;
   readonly cameraCtl: CameraController;
-  perf(): PerfReport;
+  /** Asynchronous because the per-system rows are kept where the sim runs. */
+  perf(): Promise<PerfReport>;
   /** Open a fresh measurement window for {@link perf}. */
   resetPerf(): void;
   /** Sets the session's speed directly, reaching multipliers the tool panel's button cannot; the panel
    *  glyph does not follow, and a multiplier of zero or less is refused - `setPaused` stops the clock. */
   setSpeed(multiplier: number): void;
-  setPaused(paused: boolean): void;
+  /** Resolves once the host shows the tick the clock stopped or started on. */
+  setPaused(paused: boolean): Promise<void>;
   /** The `?debug=trace` ring (a bounded tail), or null when not recording. */
   trace(): readonly TraceEvent[] | null;
 }
@@ -111,7 +122,7 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
   const last = frame.last;
   const meanMs = frame.ema.frameMs;
   return {
-    version: 1,
+    version: 2,
     tick: last?.tick ?? 0,
     paused: inputs.paused,
     entities: last?.entities ?? 0,
@@ -131,6 +142,7 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
       meanMs,
       cpuMs: frame.ema.cpuMs,
       simMs: frame.ema.simMs,
+      receiveMs: frame.ema.receiveMs,
       snapMs: frame.ema.snapMs,
       drawMs: frame.ema.drawMs,
       gpuMs: Math.max(0, meanMs - frame.ema.cpuMs),
@@ -140,7 +152,13 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
       p99Ms: frame.window.frameMs.p99Ms,
       maxMs: frame.window.frameMs.maxMs,
     },
-    window: { ms: frame.window.ms, frames: frame.window.frames, steps: frame.window.steps },
+    window: {
+      ms: frame.window.ms,
+      frames: frame.window.frames,
+      steps: frame.window.steps,
+      simMsPerTick: frame.window.simMsPerTick,
+      receiveMsPerTick: frame.window.receiveMsPerTick,
+    },
     profiling: inputs.profiling,
     systems: inputs.systems,
     sampling,
@@ -158,7 +176,7 @@ export interface DebugHandleDeps {
   readonly netReadout: () => NetReadout | null;
   readonly frameStats: FrameStats;
   /** Null unless `?debug=profile` asked for a running per-system profile. */
-  readonly profile: SystemProfile | null;
+  readonly profile: ProfileSource | null;
 }
 
 export function installDebugHandle(deps: DebugHandleDeps): void {
@@ -175,24 +193,29 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
     renderer: deps.renderer,
     sheet: deps.sheet,
     cameraCtl: deps.cameraCtl,
-    perf: () =>
-      buildPerfReport({
+    perf: async () => {
+      // The frame figures are read before the rows' round trip, so they describe the moment asked.
+      const inputs = {
         frame: deps.frameStats.report(),
         requestedSpeed: deps.driver.speed,
         paused: deps.driver.paused,
         maxStepsPerFrame: deps.driver.maxStepsPerFrame,
         droppedTicksTotal: deps.driver.droppedTicks,
         profiling: deps.profile !== null,
-        systems: deps.profile?.rows() ?? [],
         sampling: sampling(),
         net: deps.netReadout(),
-      }),
+      };
+      return buildPerfReport({ ...inputs, systems: (await deps.profile?.rows()) ?? [] });
+    },
     resetPerf: () => {
       deps.frameStats.reset();
       deps.profile?.reset();
     },
     setSpeed: (multiplier) => deps.driver.setSpeed(multiplier),
-    setPaused: (paused) => deps.driver.setPaused(paused),
+    setPaused: (paused) => {
+      deps.driver.setPaused(paused);
+      return deps.host.settled();
+    },
     trace: () => recordedTraceEvents(),
   };
 }

@@ -88,8 +88,8 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
     const saved = await page.evaluate(async () => {
       const game = window.__opennorthland;
       if (game === undefined) throw new Error('Game did not mount');
-      game.setPaused(true);
-      return { tick: game.host.tick, hash: await game.host.hashState() };
+      await game.setPaused(true);
+      return game.host.hashState();
     });
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -132,9 +132,8 @@ test('boots app://, lists map previews, and restores a save after relaunch', {
       const game = window.__opennorthland;
       if (game === undefined) throw new Error('Save did not mount');
       return {
-        tick: game.host.tick,
-        hash: await game.host.hashState(),
-        paused: game.perf().paused,
+        ...(await game.host.hashState()),
+        paused: (await game.perf()).paused,
         map: new URLSearchParams(location.search).get('map'),
       };
     });

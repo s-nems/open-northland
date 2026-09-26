@@ -374,6 +374,7 @@ export const plSurfaces = {
     fps: 'kl./s',
     cpu: 'procesor',
     sim: 'symulacja',
+    receive: 'odbiór',
     snapshot: 'migawka',
     draw: 'rysowanie',
     gpu: 'grafika',

@@ -7,7 +7,7 @@ export {
   downloadDiagnosticsBundle,
   serializeDiagnosticsBundle,
 } from './bundle.js';
-export { installCrashCapture } from './crash.js';
+export { installCrashCapture, showCrashBanner } from './crash.js';
 export { debugFlags, hasDebugFlag, setDebugFlag } from './debug-flags.js';
 export { downloadFile, downloadJsonFile } from './download.js';
 export { logBootHeader } from './env-header.js';
@@ -32,14 +32,22 @@ export {
 export { emitPerfMeasure, PERF_MARKS_DEBUG_FLAG } from './perf-marks.js';
 export {
   currentDiagGameSession,
+  type DiagCadence,
   type DiagGameSession,
+  diagCadenceAt,
   HASH_TRACE_DEBUG_FLAG,
   HASH_TRACE_EVERY_TICKS,
   hashTraceFor,
-  recordDiagHash,
+  INVARIANT_CHECK_EVERY_TICKS,
+  recordTickDiagnostics,
   setDiagGameSession,
 } from './session.js';
-export { PROFILE_DEBUG_FLAG, SystemProfile, type SystemProfileRow } from './system-profile.js';
+export {
+  PROFILE_DEBUG_FLAG,
+  profiledInstrument,
+  SystemProfile,
+  type SystemProfileRow,
+} from './system-profile.js';
 export {
   downloadTraceFile,
   isTraceRecording,

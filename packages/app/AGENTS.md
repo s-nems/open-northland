@@ -80,11 +80,12 @@ Use `src/diag/` instead of ad hoc logging:
 - `debug=profile` accumulates per-system sim cost in constant memory.
 
 `?debug=` is a comma-separated set. The sim exposes one instrument slot, so every consumer of it is
-fanned out from `installSessionInstruments`; do not call `setInstrument` a second time.
+fanned out from `installSessionInstruments`, the one caller of the host's `installInstruments`.
 
 `window.__opennorthland.perf()` is the machine-readable performance seam an automated probe reads
-instead of the on-canvas overlay. Keep it JSON-serialisable: it is returned through `page.evaluate`,
-which throws on anything that does not survive structured cloning.
+instead of the on-canvas overlay. It answers a Promise, since the per-system rows are kept where the
+sim runs. Keep it JSON-serialisable: it is returned through `page.evaluate`, which throws on anything
+that does not survive structured cloning.
 
 Do not add raw `console.*` calls to app source. A diagnostic report must remain bounded and safe to
 serialize. Replays rebuild the named entry/world, discard setup enqueues already represented by that

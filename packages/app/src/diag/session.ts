@@ -2,6 +2,7 @@
 import { HashTrace, type SyncDomain } from '@open-northland/sim';
 import type { SessionHost } from '../session/index.js';
 import { hasDebugFlag } from './debug-flags.js';
+import { diag } from './log.js';
 
 /** What a relayed session adds to a bundle: where the relay said this client parted from the room,
  *  and the digests it acknowledged around there. */
@@ -54,15 +55,38 @@ export function currentDiagGameSession(): DiagGameSession | null {
 }
 
 /**
- * Record the stepped world's state hash on the HASH_TRACE_EVERY_TICKS cadence, under the tick it was
- * asked at, once it lands. No-op when `host` is not the registered session's host, so a stale
- * registration cannot taint another world's trace.
+ * The ticks between invariant checks, on hash-trace ticks. `checkInvariants()` re-derives every cache:
+ * measured at about 100 ms against a 20 ms tick on the six-AI magiczny_las world at tick 40000, so
+ * checking on every hash would add a quarter to the tick cost; every sixth adds about 4%.
  */
-export function recordDiagHash(host: Pick<SessionHost, 'tick' | 'hashState'>): void {
+export const INVARIANT_CHECK_EVERY_TICKS = 120;
+
+/** What the diag trace reads on a tick, or null for a tick it skips. */
+export interface DiagCadence {
+  readonly invariants: boolean;
+}
+
+export function diagCadenceAt(tick: number): DiagCadence | null {
+  if (tick % HASH_TRACE_EVERY_TICKS !== 0) return null;
+  return { invariants: tick % INVARIANT_CHECK_EVERY_TICKS === 0 };
+}
+
+/**
+ * Record the delivered tick's state hash on the diag cadence, once it lands, and log the invariant
+ * violations it found at error level. No-op when `host` is not the registered session's host, so a
+ * stale registration cannot taint another world's trace. Observational only: a violation raises no
+ * banner.
+ */
+export function recordTickDiagnostics(host: Pick<SessionHost, 'tick' | 'tickDiagnostics'>): void {
   const trace = current !== null && current.host === host ? current.hashTrace : null;
   const tick = host.tick;
-  if (trace === null || tick % HASH_TRACE_EVERY_TICKS !== 0) return;
-  void host.hashState().then((hash) => trace.record(tick, hash));
+  if (trace === null || diagCadenceAt(tick) === null) return;
+  void host.tickDiagnostics().then(({ hash, violations }) => {
+    trace.record(tick, hash);
+    if (violations !== null && violations.length > 0) {
+      diag.error('sim', `invariant violations at tick ${tick}`, { tick, violations });
+    }
+  });
 }
 
 export function hashTraceFor(params: URLSearchParams): HashTrace | null {

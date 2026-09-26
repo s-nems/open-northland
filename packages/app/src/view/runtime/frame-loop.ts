@@ -3,7 +3,7 @@ import type { SessionDriver } from '@open-northland/lockstep';
 import type { DrawItem, HudLayout, HudModel, PortraitInsetFrame } from '@open-northland/render';
 import type { FogView, Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
-import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
+import { type FrameStats, framePhaseEmitter, recordTickDiagnostics } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
@@ -184,7 +184,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   let steps = 0;
   const collect = (): void => {
     steps++;
-    recordDiagHash(host);
+    recordTickDiagnostics(host);
     for (const ev of host.tickEvents()) {
       frameEvents.push(ev);
       if (ev.kind === 'missionSubMission' && !deps.sharedClock) driver.setPaused(true);
@@ -205,7 +205,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const renderAlpha = driver.advance(elapsed, collect);
     // A synchronous driver failure can tear down the view while advance is on the stack.
     if (loop.isDisposed?.()) return;
-    const simMs = performance.now() - cpu0;
+    const advanceMs = performance.now() - cpu0;
+    const offThread = deps.offThreadTickCost?.() ?? null;
     cameraCtl.update(elapsed); // a no-op while the system menu holds the camera suspended
     // Idempotent: the sepia wash mirrors the pause flag every frame rather than on transitions, so a
     // pauser never has to know about the renderer.
@@ -324,11 +325,11 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       });
     }
     const cpuMs = performance.now() - cpu0;
-    // The remainder after sim and snapshot, so the three sum to cpuMs.
-    const drawMs = cpuMs - simMs - snapMs;
+    // The remainder after the driver and the snapshot, so the three sum to cpuMs.
+    const drawMs = cpuMs - advanceMs - snapMs;
     if (emitPhase !== null) {
       // Named approximation: drawMs spans two disjoint intervals but is emitted as the tail one.
-      emitPhase('frame/sim', cpu0, cpu0 + simMs);
+      emitPhase('frame/sim', cpu0, cpu0 + advanceMs);
       emitPhase('frame/snapshot', snap0, snap0 + snapMs);
       emitPhase('frame/draw', snap0 + snapMs, cpu0 + cpuMs);
     }
@@ -342,7 +343,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       paused: driver.paused,
       entities: snap.entities.length,
       cpuMs,
-      simMs,
+      simMs: offThread?.simMs ?? advanceMs,
+      receiveMs: offThread?.receiveMs ?? 0,
       snapMs,
       drawMs,
       ...renderer.stats(),

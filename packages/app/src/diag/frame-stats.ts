@@ -21,9 +21,14 @@ export interface FrameSample {
   readonly pooled: number;
   /** CPU time (ms) the loop spent this frame; the remainder of the frame budget is GPU/compositor. */
   readonly cpuMs: number;
+  /** The sim's own stepping time for this frame's ticks, on whichever thread it runs. */
   readonly simMs: number;
+  /** This thread's cost of taking in this frame's ticks from a sim on another thread: message
+   *  deserialization, mirror apply and index upkeep. 0 for a sim on this thread. */
+  readonly receiveMs: number;
   readonly snapMs: number;
-  /** Render build and submit plus the rest of the frame's app work; `simMs + snapMs + drawMs = cpuMs`. */
+  /** Render build and submit plus the rest of the frame's app work. With the sim on this thread
+   *  `simMs + snapMs + drawMs = cpuMs`; off it, the frame's mirror apply takes `simMs`'s place. */
   readonly drawMs: number;
 }
 
@@ -31,6 +36,7 @@ export interface FrameEma {
   readonly frameMs: number;
   readonly cpuMs: number;
   readonly simMs: number;
+  readonly receiveMs: number;
   readonly snapMs: number;
   readonly drawMs: number;
 }
@@ -71,6 +77,10 @@ export interface FrameStatsReport {
     /** Ticks dropped since the window opened. */
     readonly droppedTicks: number;
     readonly deliveredSpeed: number;
+    /** The window's sim stepping time over its ticks. */
+    readonly simMsPerTick: number;
+    /** The window's {@link FrameSample.receiveMs} over its ticks. */
+    readonly receiveMsPerTick: number;
     readonly frameMs: FrameDistribution;
   };
 }
@@ -112,6 +122,7 @@ export class FrameStats {
   private avgFrameMs = 0;
   private avgCpuMs = 0;
   private avgSimMs = 0;
+  private avgReceiveMs = 0;
   private avgSnapMs = 0;
   private avgDrawMs = 0;
 
@@ -126,6 +137,8 @@ export class FrameStats {
   private frames = 0;
   private windowMs = 0;
   private windowSteps = 0;
+  private windowSimMs = 0;
+  private windowReceiveMs = 0;
   private windowMaxMs = 0;
   private droppedAtWindowStart = 0;
   private droppedTotal = 0;
@@ -144,9 +157,12 @@ export class FrameStats {
     }
     this.avgCpuMs = ema(this.avgCpuMs, sample.cpuMs);
     this.avgSimMs = ema(this.avgSimMs, sample.simMs);
+    this.avgReceiveMs = ema(this.avgReceiveMs, sample.receiveMs);
     this.avgSnapMs = ema(this.avgSnapMs, sample.snapMs);
     this.avgDrawMs = ema(this.avgDrawMs, sample.drawMs);
     this.windowSteps += sample.steps;
+    this.windowSimMs += sample.simMs;
+    this.windowReceiveMs += sample.receiveMs;
     this.recordRecent(sample);
     // Assigned last: a window opening on this frame must start from the previous total, or this
     // frame's drops fall between the two windows.
@@ -183,6 +199,8 @@ export class FrameStats {
     this.frames = 0;
     this.windowMs = 0;
     this.windowSteps = 0;
+    this.windowSimMs = 0;
+    this.windowReceiveMs = 0;
     this.windowMaxMs = 0;
     this.droppedAtWindowStart = this.droppedTotal;
     this.buckets.fill(0);
@@ -210,6 +228,7 @@ export class FrameStats {
         frameMs: this.avgFrameMs,
         cpuMs: this.avgCpuMs,
         simMs: this.avgSimMs,
+        receiveMs: this.avgReceiveMs,
         snapMs: this.avgSnapMs,
         drawMs: this.avgDrawMs,
       },
@@ -225,6 +244,8 @@ export class FrameStats {
         steps: this.windowSteps,
         droppedTicks: this.droppedTotal - this.droppedAtWindowStart,
         deliveredSpeed: windowSeconds === 0 ? 0 : this.windowSteps / windowSeconds / TICKS_PER_SECOND,
+        simMsPerTick: this.windowSteps === 0 ? 0 : this.windowSimMs / this.windowSteps,
+        receiveMsPerTick: this.windowSteps === 0 ? 0 : this.windowReceiveMs / this.windowSteps,
         frameMs: {
           p50Ms: this.quantileMs(0.5),
           p95Ms: this.quantileMs(0.95),

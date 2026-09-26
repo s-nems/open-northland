@@ -3,6 +3,7 @@
  * named by `entry` and `worldId` reproduces the session up to `tick`.
  */
 import type { LoggedCommand } from '@open-northland/sim';
+import type { StateHash } from '../session/index.js';
 import { downloadJsonFile } from './download.js';
 import { type DiagEntry, type DiagLog, diag } from './log.js';
 import { currentDiagGameSession, type DiagGameSession, type DiagNetReport } from './session.js';
@@ -59,16 +60,18 @@ export async function buildDiagnosticsBundle(
 
 async function gameReport(session: DiagGameSession): Promise<DiagnosticsGameReport> {
   const { host } = session;
-  // Both reads answer at the tick they were asked at.
-  const tick = host.tick;
-  const commandLog = host.commandLog();
   // Hashing walks every component, so a wedged world may throw; a null hash must not lose the bundle.
-  let finalHash: string | null = null;
+  let hashed: StateHash | null = null;
   try {
-    finalHash = await host.hashState();
+    hashed = await host.hashState();
   } catch {
     // A null hash still leaves a replayable command log.
   }
+  const tick = hashed?.tick ?? host.tick;
+  // Asked after the hash, so the log holds every command up to the hashed tick; a sim on another
+  // thread may have applied more since, which a replay to that tick must not see.
+  const commandLog = (await host.commandLog()).filter((entry) => entry.applyTick <= tick);
+  const finalHash = hashed?.hash ?? null;
   return {
     entry: session.entry,
     worldId: session.worldId,
@@ -78,7 +81,7 @@ async function gameReport(session: DiagGameSession): Promise<DiagnosticsGameRepo
       ? { restoredAtTick: session.restoredAtTick }
       : {}),
     finalHash,
-    commandLog: await commandLog,
+    commandLog,
     ...(session.hashTrace !== null
       ? { hashes: session.hashTrace.list().map(({ tick, hash }) => ({ tick, hash })) }
       : {}),

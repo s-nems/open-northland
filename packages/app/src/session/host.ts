@@ -26,13 +26,48 @@ import type {
   SaveGame,
   ScriptLandscapeType,
   SimEvent,
-  SystemInstrument,
   TradeOffer,
   TraderView,
   UnlockKind,
   UnlockStatus,
   WorldSnapshot,
 } from '@open-northland/sim';
+import type { SystemProfileRow } from '../diag/system-profile.js';
+
+/** A state hash and the tick it was taken at. */
+export interface StateHash {
+  readonly tick: number;
+  readonly hash: string;
+}
+
+/** What the diag cadence reads of one tick (`diagCadenceAt`): its state hash, and the invariant
+ *  violations on a tick the cadence checks them, else null. */
+export interface TickDiagnostics {
+  readonly hash: string;
+  readonly violations: readonly string[] | null;
+}
+
+/** Receives one system's interval of a tick, in milliseconds on this thread's clock. */
+export type SystemSpanSink = (system: string, startMs: number, endMs: number) => void;
+
+export interface InstrumentRequest {
+  /** Keep a running per-system profile. */
+  readonly profile: boolean;
+  readonly spans: SystemSpanSink | null;
+}
+
+/** What the ticks a driver's last `advance` delivered cost, for a sim on another thread: its own
+ *  stepping time there, and this thread's cost of taking them in. */
+export interface OffThreadTickCost {
+  readonly simMs: number;
+  readonly receiveMs: number;
+}
+
+/** The running per-system profile, kept where the sim runs. */
+export interface ProfileSource {
+  rows(): Promise<readonly SystemProfileRow[]>;
+  reset(): void;
+}
 
 /**
  * Everything the running game reads of the world. The runtime (frame loop, HUD, controls, saves,
@@ -88,8 +123,12 @@ export interface SessionHost {
   /** The events the last stepped tick emitted; read inside the driver's per-tick callback, since the
    *  next step replaces them. */
   tickEvents(): readonly SimEvent[];
-  /** Walks every component of every entity: the diag trace's cadence read, never per frame. */
-  hashState(): Promise<string>;
+  /** The diag cadence's reads of the tick the per-tick callback delivers, as they stood at that tick;
+   *  rejects on a tick off the cadence. */
+  tickDiagnostics(): Promise<TickDiagnostics>;
+  /** Walks every component of every entity, so never per frame; answers for the tick the sim stands
+   *  at, which a host off this thread may have stepped past `tick`. */
+  hashState(): Promise<StateHash>;
 
   // Probes: the placement rules as data over a node area, or null for a mapless world.
 
@@ -152,8 +191,13 @@ export interface SessionHost {
   // Diagnostics.
 
   commandLog(): Promise<readonly LoggedCommand[]>;
-  /** One slot; every consumer of the per-system seam fans out from `installSessionInstruments`. */
-  setInstrument(instrument: SystemInstrument | null): void;
-  /** Step the world outside the session clock: the cross-engine probes step a paused session by it. */
+  /** One slot; every consumer of the per-system seam fans out from `installSessionInstruments`. Null
+   *  when no profile was asked for. */
+  installInstruments(request: InstrumentRequest): ProfileSource | null;
+  /** Step the world outside the session clock: the cross-engine probes step a paused session by it.
+   *  Resolves once `tick` shows the last of them, which needs the frame loop running. */
   run(ticks: number): Promise<void>;
+  /** Resolves once `tick` shows every tick the sim had stepped when asked, which needs the frame loop
+   *  running: after a pause it reads the tick the session stopped on. */
+  settled(): Promise<void>;
 }

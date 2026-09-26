@@ -378,6 +378,7 @@ export const enSurfaces = {
     fps: 'fps',
     cpu: 'cpu',
     sim: 'sim',
+    receive: 'receive',
     snapshot: 'snapshot',
     draw: 'draw',
     gpu: 'gpu',

@@ -59,7 +59,7 @@ import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
-import type { SessionHost } from '../../session/index.js';
+import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
@@ -135,6 +135,8 @@ export interface GameViewDeps {
   /** The session this client runs: it decides which ticks run, owns tempo and pause, and is where every
    *  HUD command goes. */
   readonly driver: SessionDriver;
+  /** Present when the sim runs on another thread: what the ticks the driver delivered cost. */
+  readonly offThreadTickCost?: () => OffThreadTickCost;
   /** True when the clock is shared with other clients: the menus and sheets that hold a local game
    *  paused hold nothing, and a file cannot be loaded over the shared world. */
   readonly sharedClock?: boolean;

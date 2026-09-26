@@ -6,6 +6,8 @@
  * uniformly, so the proportions survive it while the totals do not.
  */
 
+import type { SystemInstrument } from '@open-northland/sim';
+
 /** The `?debug=` value that turns the running profile on. */
 export const PROFILE_DEBUG_FLAG = 'profile';
 
@@ -56,4 +58,19 @@ export class SystemProfile {
       }))
       .sort((a, b) => b.totalMs - a.totalMs || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
+}
+
+/** The sim instrument that times each system tight around its run and hands the interval to the
+ *  profile and the span sink; either may be absent. */
+export function profiledInstrument(
+  profile: SystemProfile | null,
+  spans: ((system: string, startMs: number, endMs: number) => void) | null,
+): SystemInstrument {
+  return (name, run) => {
+    const start = performance.now();
+    run();
+    const end = performance.now();
+    profile?.record(name, end - start);
+    spans?.(name, start, end);
+  };
 }
