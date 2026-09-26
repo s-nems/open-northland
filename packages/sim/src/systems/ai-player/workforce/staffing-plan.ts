@@ -32,7 +32,6 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
   carrierTarget: 0,
 };
 
-/** One {@link STAFFING_BY_BUILDING_ID} row. */
 /** A row's tiers plus the floor a product gate keeps. */
 interface StaffingTiers extends Partial<BuildingStaffing> {
   /** The operators a product gate never cuts the crew below, the tiers permitting; default
@@ -43,6 +42,7 @@ interface StaffingTiers extends Partial<BuildingStaffing> {
 /** The product gate keeps at least the first craftsman. */
 const DEFAULT_GATE_FLOOR = 1;
 
+/** One {@link STAFFING_BY_BUILDING_ID} row. */
 export interface StaffingRow extends StaffingTiers {
   /** The minimum and target tiers' operators beyond the first are posts only while one of the type's
    *  products with supply lines ({@link SeatSupply}) is short: under its comfort line while one man or

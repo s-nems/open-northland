@@ -106,9 +106,10 @@ export interface MapWorld {
 const PLACEMENT_DRAIN_TICKS = 1;
 
 const SECONDS_PER_MINUTE = 60;
-
 /** How long a lobby computer seat's waves stay at home: the usual multiplayer peace time (authored). */
-export const LOBBY_AI_PEACE_TICKS = 60 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+const LOBBY_AI_PEACE_MINUTES = 60;
+
+export const LOBBY_AI_PEACE_TICKS = LOBBY_AI_PEACE_MINUTES * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 
 /** The tribes whose computer seats get the scripted handler alone: the original
  *  withholds the strategic handler from a `PLAYER_TYPE_AI` seat of either. */

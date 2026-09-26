@@ -74,8 +74,9 @@ export { SeatSupply, type SupplyLines, supplyLines } from './supply.js';
 
 /**
  * The CollectResources module - the seat's one workforce allocator: no other module ever claims a
- * settler. The returned array's order is the allocation priority, essentials first, then the army floor,
- * garrison sizing last, and every target is recomputed from live state, so a transient conflict
+ * settler. The returned array's order is the allocation priority: essentials first, then the clearing posts,
+ * the standing buildings' target crews and the reached gatherer posts, then the army floor, the surplus
+ * tier and the generic posts, garrison sizing last, and every target is recomputed from live state, so a transient conflict
  * self-heals on the next decision.
  */
 function runWorkforce(

@@ -6,6 +6,7 @@ import type { SystemContext } from '../../../context.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../../content-lookup.js';
 import { anchorNodeOf } from '../../node-geometry.js';
+import { nodeDistance } from '../flag-spots.js';
 
 /** The workshop a good's gatherers supply, and how many of its holders do (all when `posts` is absent). */
 interface CollectorWorkshop {
@@ -62,10 +63,6 @@ export function seatHolders(
     return free.splice(pick, 1)[0] ?? fallback;
   });
   return { anchors, free };
-}
-
-function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
-  return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
 }
 
 /** The decision's {@link CollectorAnchors} over the seat's `owned` buildings, sites included, since a
