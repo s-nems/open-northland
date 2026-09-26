@@ -3,7 +3,7 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import { assembleBuilding } from '../../../command/placement.js';
-import { advanceRotation, nextRotationPick } from '../../../economy/production.js';
+import { advanceRotation, nextRotationPick, spendRotationPick } from '../../../economy/production.js';
 import { findVehicleSite, reusableVehicleSite } from '../../../footprint/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { vehicleHouseOfGood } from '../../../readviews/index.js';
@@ -69,7 +69,7 @@ export function planVehicleYard(plan: PlannerContext, workplace: Entity, spacing
 
 /**
  * A site this worker was crewing that no longer stands under construction has finished (or fallen): its
- * turn is over, so the rotation moves past the vehicle good it was for and the crew membership ends.
+ * turn is over, so the rotation spends the vehicle good it was for and the crew membership ends.
  */
 function releaseFinishedSite(
   plan: PlannerContext,
@@ -82,7 +82,7 @@ function releaseFinishedSite(
   world.remove(e, SiteAssignment);
   const pick = nextRotationPick(world, ctx, workplace, e, recipes);
   if (pick !== null && vehicleHouseOfGood(ctx.content, pick.good) !== undefined)
-    advanceRotation(world, e, pick);
+    spendRotationPick(world, e, pick);
 }
 
 /**

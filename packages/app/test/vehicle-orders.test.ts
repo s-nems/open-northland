@@ -167,6 +167,7 @@ function harness(selected: readonly number[], arms: Arms) {
     vehicleOrders: () => controller,
     setArmedCursor: () => undefined,
     canAttachToVehicle: arms.canAttachToVehicle,
+    marry: () => undefined,
   });
   return { issued, controller, pickMode };
 }

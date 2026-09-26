@@ -1169,7 +1169,7 @@ describe('workforce module - the barracks and craft selections', () => {
     sim.step();
     completeSites(sim);
     expect(sim.world.get(hut, Building).buildingType).toBe(UPGRADED_HUT);
-    expect(sim.world.get(mason, CraftSelection).goods).toEqual([PILLAR]);
+    expect(sim.world.get(mason, CraftSelection).counters).toEqual([[ORNAMENT, 0]]);
 
     // The upgraded hut opens on a marble run, counted on the hut itself.
     const run = { kind: 'setCraftGoods', entity: mason, goods: [ORNAMENT] } as const;
@@ -1186,7 +1186,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(tune(sim.world, ctx)).toEqual([choice]);
     sim.enqueueSetup(choice);
     sim.step();
-    expect(sim.world.get(mason, CraftSelection).goods).toEqual([PILLAR, ORNAMENT]);
+    expect(sim.world.get(mason, CraftSelection).counters).toEqual([]);
     expect(tune(sim.world, ctx)).toEqual([]);
   });
 

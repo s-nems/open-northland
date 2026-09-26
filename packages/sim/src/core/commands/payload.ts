@@ -200,6 +200,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setAssistantGrant: { required: { player: 'integer', goodType: 'integer', enabled: 'boolean' } },
   setAssistantWeaponVeto: { required: { player: 'integer', goodType: 'integer', vetoed: 'boolean' } },
   setCraftGoods: { required: { entity: 'integer', goods: { arrayOf: 'integer' } } },
+  setProductionCount: { required: { entity: 'integer', goodType: 'integer', count: 'integer' } },
   setDefenceMode: { required: { building: 'integer', enabled: 'boolean' } },
   setDiplomacy: { required: { from: 'integer', to: 'integer', state: { oneOf: DIPLOMACY_STATES } } },
   setFogMode: { required: { mode: 'integer' } },

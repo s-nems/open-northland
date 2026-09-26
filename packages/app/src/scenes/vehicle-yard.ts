@@ -28,7 +28,7 @@ const JOINERS = 2;
 /** Headroom over the measured first cart: seed 13 launches it by tick 700. */
 const RUN_TICKS = 1_500;
 
-const { Building, CraftSelection, JobAssignment, Settler, Stockpile, UnderConstruction, Vehicle } =
+const { Building, JobAssignment, Settler, Stockpile, UnderConstruction, Vehicle } =
   components;
 
 /** The cart good and its yard, by slug: the sandbox keeps the good at +100 while real content keeps
@@ -59,7 +59,7 @@ function build(sim: Simulation): void {
   spawnWorkersAtDoor(sim, joinery, JOINERS);
   for (const e of sim.world.query(Settler, JobAssignment)) {
     if (sim.world.get(e, JobAssignment).workplace !== joinery) continue;
-    sim.world.add(e, CraftSelection, { goods: [handcartGood(sim)], cursor: 0 });
+    sim.enqueueSetup({ kind: 'setCraftGoods', entity: e, goods: [handcartGood(sim)] });
   }
 }
 

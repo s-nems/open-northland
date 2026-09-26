@@ -47,6 +47,7 @@ import {
   setDefenceMode,
   setGatherGood,
   setJob,
+  setProductionCount,
   setRegeneration,
   setStance,
   setWorkFlag,
@@ -270,6 +271,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setCraftGoods':
       setCraftGoods(world, ctx, command);
+      return;
+    case 'setProductionCount':
+      setProductionCount(world, ctx, command);
       return;
     case 'setDefenceMode':
       setDefenceMode(world, ctx, command);

@@ -38,6 +38,7 @@ export {
   nextRotationPick,
   type RotationPick,
   skipUnfundedRecipe,
+  spendRotationPick,
 } from './production/rotation.js';
 
 /**

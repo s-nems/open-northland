@@ -1,16 +1,23 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, CraftSelection, ownerOf } from '../../../components/index.js';
+import {
+  Building,
+  CraftSelection,
+  ownerOf,
+  PRODUCTION_UNLIMITED,
+  productionCountOf,
+  writeProductionCount,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, recipeOutputsEnabled, settlerMeetsNeed } from '../../progression/index.js';
 import { beginCycle, canStartCycle, isYardBuilt, waitingForRecipeInput } from './cycles.js';
 
 /**
- * The products of `recipes` this operator may craft, in rotation order: its {@link CraftSelection} goods,
- * else every product of the workplace, each narrowed to what the operator has earned. Observed: a
- * `needforgood` XP threshold locks a ware until the operator's repeats clear it. A selection naming nothing
- * this workplace makes, or nothing earned, degrades to the all-products default rather than stalling a
- * staffed workshop.
+ * The products of `recipes` this operator may craft, in rotation order: every product whose
+ * {@link CraftSelection} counter is at least one, in recipe order, narrowed to what the operator has earned.
+ * Observed: a `needforgood` XP threshold locks a ware until the operator's repeats clear it. When every
+ * live product is still locked, the pool degrades to every earned product, stopped ones included, rather
+ * than stalling a staffed workshop; with every counter at `0` it is empty and the operator starts nothing.
  */
 export function craftablePool(
   world: World,
@@ -20,9 +27,15 @@ export function craftablePool(
 ): readonly number[] {
   const subject = needSubjectOf(world, operator);
   const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
-  const picked =
-    world.tryGet(operator, CraftSelection)?.goods.filter((g) => recipes.has(g) && earned(g)) ?? [];
-  return picked.length > 0 ? picked : [...recipes.keys()].filter(earned);
+  const selection = world.tryGet(operator, CraftSelection);
+  const pool: number[] = [];
+  let lockedLive = false;
+  for (const good of recipes.keys()) {
+    if (productionCountOf(selection, good) <= 0) continue;
+    if (earned(good)) pool.push(good);
+    else lockedLive = true;
+  }
+  return pool.length > 0 || !lockedLive ? pool : [...recipes.keys()].filter(earned);
 }
 
 /** The product an operator's rotation takes next: `good` at `index` into its craftable `pool`. */
@@ -70,15 +83,31 @@ function yardTurnOpen(world: World, ctx: SystemContext, building: Entity, recipe
   return recipeOutputsEnabled(world, ctx, ownerOf(world, building), b.tribe, recipe);
 }
 
-/** Move the rotation past `pick`, so alternation resumes after the product just taken. A first-ever
- *  advance stamps an empty selection so the rotation position persists. */
+/** Move the rotation past `pick` without a start, so a skipped turn resumes after the product. A
+ *  first-ever advance stamps an empty selection so the rotation position persists. */
 export function advanceRotation(world: World, operator: Entity, pick: RotationPick): void {
-  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
+  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { counters: [], cursor: 0 });
   world.mut(operator, CraftSelection).cursor = (pick.index + 1) % pick.pool.length;
 }
 
+/**
+ * A start of `pick`: spend one unit of its finite counter and move the rotation past it. A product whose
+ * counter runs out leaves the pool, and the cursor stays on the product that followed it. A first-ever
+ * start stamps an empty selection so the position persists.
+ */
+export function spendRotationPick(world: World, operator: Entity, pick: RotationPick): void {
+  if (!world.has(operator, CraftSelection)) world.add(operator, CraftSelection, { counters: [], cursor: 0 });
+  const count = productionCountOf(world.get(operator, CraftSelection), pick.good);
+  const spent = count > 0 && count < PRODUCTION_UNLIMITED;
+  if (spent) writeProductionCount(world, operator, pick.good, count - 1);
+  const leaves = spent && count === 1;
+  const size = leaves ? pick.pool.length - 1 : pick.pool.length;
+  const next = leaves ? pick.index : pick.index + 1;
+  world.mut(operator, CraftSelection).cursor = size > 0 ? next % size : 0;
+}
+
 /** Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start or
- *  the choice is a yard-built vehicle, whose turn the planner takes and advances. */
+ *  the choice is a yard-built vehicle, whose turn the planner takes and spends. */
 export function startCycleFor(
   world: World,
   ctx: SystemContext,
@@ -89,7 +118,7 @@ export function startCycleFor(
   const choice = nextCycleFor(world, ctx, building, operator, recipes);
   if (choice === undefined) return;
   beginCycle(world, building, choice.recipe, choice.good);
-  advanceRotation(world, operator, choice);
+  spendRotationPick(world, operator, choice);
 }
 
 /** {@link nextRotationPick} as a cycle to begin, or undefined when the pick is a yard-built vehicle. */
@@ -127,7 +156,7 @@ export function skipUnfundedRecipe(
       const alternative = own[alternativeIndex];
       if (alternative === undefined || !canStartCycle(world, ctx, building, alternative)) continue;
       if (selection === undefined)
-        world.add(operator, CraftSelection, { goods: [], cursor: alternativeIndex });
+        world.add(operator, CraftSelection, { counters: [], cursor: alternativeIndex });
       else world.mut(operator, CraftSelection).cursor = alternativeIndex;
       return;
     }

@@ -3,7 +3,10 @@ import {
   Building,
   CompletedCycles,
   CraftSelection,
+  type CraftSelectionView,
   JobAssignment,
+  PRODUCTION_UNLIMITED,
+  productionCountOf,
   Settler,
   UnderConstruction,
 } from '../../../components/index.js';
@@ -222,7 +225,8 @@ interface RestrictedCrew {
 /**
  * Keep every operator of a restricted workplace type on the plan's product list for its seat. `CraftSelection`
  * is per worker, not per building, and any employment change clears it (`reidleAsJob`), so the check runs
- * every decision and issues a command only when the live selection differs. An empty result issues
+ * every decision and issues a command only when the live counters differ from "these products
+ * unlimited, every other one stopped". An empty result issues
  * nothing, because `setCraftGoods []` would mean "every product", the opposite of a restriction.
  *
  * Over the lists, the plan's sink takes the whole crew while the type's products with supply lines lie at
@@ -272,7 +276,10 @@ export function tuneCraftSelections(
         ),
       ].sort((a, b) => a - b);
     const { seats } = plan;
-    const current = crew.map((e) => world.tryGet(e, CraftSelection)?.goods ?? []);
+    const recipeProducts = [...(index.recipeByProductByBuilding.get(type.typeId)?.keys() ?? [])].sort(
+      (a, b) => a - b,
+    );
+    const current = crew.map((e) => selectedGoods(world.tryGet(e, CraftSelection), recipeProducts));
     const listed: (readonly number[])[] = [];
     const free: number[] = []; // the crew members off any opening run
     for (const [seat, workplace] of workplaces.entries()) {
@@ -394,6 +401,25 @@ export function craftGlutPending(
 
 function sameGoods(a: readonly number[], b: readonly number[]): boolean {
   return a.length === b.length && a.every((g, i) => g === b[i]);
+}
+
+/**
+ * The list `setCraftGoods` leaves on `selection`: its unlimited products when every other one of
+ * `recipeProducts` (ascending) is stopped. Empty for no selection or for a finite counter the player set,
+ * so the tuner reissues its list.
+ */
+function selectedGoods(
+  selection: CraftSelectionView | undefined,
+  recipeProducts: readonly number[],
+): readonly number[] {
+  if (selection === undefined) return [];
+  const goods: number[] = [];
+  for (const good of recipeProducts) {
+    const count = productionCountOf(selection, good);
+    if (count === PRODUCTION_UNLIMITED) goods.push(good);
+    else if (count !== 0) return [];
+  }
+  return goods;
 }
 
 /**

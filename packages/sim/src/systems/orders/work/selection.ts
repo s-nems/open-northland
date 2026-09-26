@@ -1,3 +1,4 @@
+import type { Recipe } from '@open-northland/data';
 import {
   Building,
   CraftSelection,
@@ -5,13 +6,15 @@ import {
   GatherSelection,
   HarvestFocus,
   JobAssignment,
+  PRODUCTION_UNLIMITED,
   removeCurrentAtomic,
   Settler,
   WorkFlag,
+  writeProductionCount,
 } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { World } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import {
@@ -128,10 +131,24 @@ export function setGatherGood(
   clearNavState(world, e);
 }
 
+/** The recipe products of `e`'s workplace, or undefined when `e` is no orderable recipe-workplace worker. */
+function workplaceProducts(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+): ReadonlyMap<number, Recipe> | undefined {
+  if (!isOrderableSettler(world, e)) return undefined;
+  const workplace = world.tryGet(e, JobAssignment)?.workplace;
+  if (workplace === undefined) return undefined;
+  const buildingType = world.tryGet(workplace, Building)?.buildingType;
+  if (buildingType === undefined) return undefined;
+  return contentIndex(ctx.content).recipeByProductByBuilding.get(buildingType);
+}
+
 /**
- * Set a craft worker's product selection - see the command doc. The selection is stored ascending and
- * deduped, so the rotation order is by goodType rather than click order. A batch already grinding keeps its
- * product, so the choice applies from the next cycle start.
+ * Make only the listed products, each unlimited, and stop every other one - see the command doc. An empty
+ * list removes the counters, so every product is unlimited again. The rotation restarts at its first
+ * product; a batch already grinding keeps its product, so the choice applies from the next cycle start.
  */
 export function setCraftGoods(
   world: World,
@@ -139,24 +156,36 @@ export function setCraftGoods(
   command: Extract<Command, { kind: 'setCraftGoods' }>,
 ): void {
   const e = command.entity;
-  if (!isOrderableSettler(world, e)) return;
-  const workplace = world.tryGet(e, JobAssignment)?.workplace;
-  if (workplace === undefined) return;
-  const buildingType = world.tryGet(workplace, Building)?.buildingType;
-  if (buildingType === undefined) return;
-  const recipes = contentIndex(ctx.content).recipeByProductByBuilding.get(buildingType);
-  if (recipes === undefined) return; // not a recipe workplace - nothing to choose
+  const products = workplaceProducts(world, ctx, e);
+  if (products === undefined) return; // not a recipe workplace - nothing to choose
   if (command.goods.length === 0) {
     world.remove(e, CraftSelection); // back to the all-products default
     return;
   }
-  const goods = [...new Set(command.goods)].filter((g) => recipes.has(g)).sort((a, b) => a - b);
-  if (goods.length === 0) return; // named nothing this workplace makes
+  const listed = new Set(command.goods.filter((g) => products.has(g)));
+  if (listed.size === 0) return; // named nothing this workplace makes
+  const counters: [number, number][] = [...products.keys()]
+    .filter((g) => !listed.has(g))
+    .sort((a, b) => a - b)
+    .map((g) => [g, 0]);
   if (!world.has(e, CraftSelection)) {
-    world.add(e, CraftSelection, { goods, cursor: 0 });
+    world.add(e, CraftSelection, { counters, cursor: 0 });
   } else {
     const selection = world.mut(e, CraftSelection);
-    selection.goods = goods;
+    selection.counters = counters;
     selection.cursor = 0;
   }
+}
+
+/** Set how many more units of one product a craft worker makes - see the command doc. */
+export function setProductionCount(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'setProductionCount' }>,
+): void {
+  const e = command.entity;
+  const products = workplaceProducts(world, ctx, e);
+  if (products === undefined || !products.has(command.goodType)) return;
+  const count = Math.min(Math.max(command.count, 0), PRODUCTION_UNLIMITED);
+  writeProductionCount(world, e, command.goodType, count);
 }

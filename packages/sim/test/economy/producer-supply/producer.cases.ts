@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   Carrying,
   Chat,
-  CraftSelection,
   CurrentAtomic,
   LISTEN_ATOMIC_ID,
   MoveGoal,
@@ -21,6 +20,7 @@ import {
   stockCapacity,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { pinProducts } from '../../fixtures/craft-selection.js';
 
 import {
   BAKEHOUSE,
@@ -211,7 +211,7 @@ describe('producer self-service - fetching a missing recipe input', () => {
     buildingAt(sim, HEADQUARTERS, 2, 0, [[WOOD, 5]]);
     pileAt(sim, 5, 0, [[WHEAT, 5]]);
     const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.add(baker, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+    pinProducts(sim, baker, [FOOD_SIMPLE]);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -257,7 +257,7 @@ describe('producer self-service - fetching a missing recipe input', () => {
     const forge = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
     const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
-    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+    pinProducts(sim, smith, [FOOD_SIMPLE]);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -443,7 +443,7 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     settlerAt(sim, 5, 0, WOODCUTTER); // alive → PLANK is tech-unlocked, so the plank recipe really can start
     const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
     sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+    pinProducts(sim, smith, [FOOD_SIMPLE]);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -497,9 +497,9 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const oldWorker = settlerAt(sim, 0, 0, CARPENTER, shop);
     sim.world.mut(oldWorker, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(oldWorker, CraftSelection, { goods: [PLANK], cursor: 0 });
+    pinProducts(sim, oldWorker, [PLANK]);
     const newWorker = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.add(newWorker, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+    pinProducts(sim, newWorker, [FOOD_SIMPLE]);
 
     for (let i = 0; i < 500; i++) sim.step();
 
@@ -514,7 +514,7 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     ]);
     buildingAt(sim, HEADQUARTERS, 3, 0);
     const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+    pinProducts(sim, smith, [FOOD_SIMPLE]);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -569,7 +569,7 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     sim.world.add(shop, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] });
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
     const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+    pinProducts(sim, smith, [FOOD_SIMPLE]);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -633,7 +633,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
     sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 0 });
+    pinProducts(sim, smith, [PLANK, FOOD_SIMPLE]);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -657,7 +657,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
     sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+    pinProducts(sim, smith, [PLANK, FOOD_SIMPLE], 1);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -701,7 +701,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
     sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+    pinProducts(sim, smith, [PLANK, FOOD_SIMPLE], 1);
 
     sim.step();
 
@@ -728,7 +728,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
     sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE, 7], cursor: 0 });
+    pinProducts(sim, smith, [PLANK, FOOD_SIMPLE, 7]);
 
     sim.step();
 
@@ -748,7 +748,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
     sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+    pinProducts(sim, smith, [PLANK, FOOD_SIMPLE], 1);
     const carrier = settlerAt(sim, 3, 0, CARRIER, forge);
     sim.world.add(carrier, Carrying, { goodType: WOOD, amount: 1 });
 
@@ -770,7 +770,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
     sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD_SIMPLE], cursor: 1 });
+    pinProducts(sim, smith, [PLANK, FOOD_SIMPLE], 1);
     const diverted = settlerAt(sim, 3, 0, CARRIER, forge);
     sim.world.add(diverted, Carrying, { goodType: WOOD, amount: 1 });
     sim.world.add(diverted, PlayerOrder, {});

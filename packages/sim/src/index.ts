@@ -1,4 +1,10 @@
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
+export {
+  PRODUCTION_COUNT_MAX,
+  PRODUCTION_UNLIMITED,
+  type ProductionCount,
+  productionCountOf,
+} from './components/economy/production.js';
 export * as components from './components/index.js';
 export type { MatchOutcome, MatchRulesView } from './components/match.js';
 export { BRIEFING_HISTORY_LIMIT } from './components/mission.js';

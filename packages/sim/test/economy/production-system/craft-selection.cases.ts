@@ -5,14 +5,16 @@ import {
   JobAssignment,
   Owner,
   Position,
+  PRODUCTION_UNLIMITED,
   Production,
+  productionCountOf,
   SettlerProgress,
   Stockpile,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
-import { setCraftGoods, setJob } from '../../../src/systems/orders/index.js';
+import { setCraftGoods, setJob, setProductionCount } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
 import {
   CARPENTER,
@@ -99,7 +101,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { smith } = forge(sim, 4);
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD] });
-    expect(sim.world.get(smith, CraftSelection).goods).toEqual([FOOD]);
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([[PLANK, 0]]);
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [] });
     expect(sim.world.has(smith, CraftSelection)).toBe(false);
   });
@@ -110,7 +112,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [UNMADE] });
     expect(sim.world.has(smith, CraftSelection)).toBe(false); // recoverable bad input - no-op
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [UNMADE, FOOD] });
-    expect(sim.world.get(smith, CraftSelection).goods).toEqual([FOOD]); // invalid entry dropped
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([[PLANK, 0]]); // invalid entry dropped
   });
 
   it('an employment change clears the pick (setJob routes through reidleAsJob)', () => {
@@ -122,11 +124,11 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     expect(sim.world.has(smith, CraftSelection)).toBe(false);
   });
 
-  it('an orphaned pick (naming nothing this workplace makes) degrades to all-products, not a stall', () => {
+  it('an orphaned counter (a good this workplace does not make) leaves its own products unlimited', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f, smith } = forge(sim, 4);
-    // Stamp a pick for a good the forge has no recipe for - the state a content rebase could leave.
-    sim.world.add(smith, CraftSelection, { goods: [UNMADE], cursor: 0 });
+    // Stamp a counter for a good the forge has no recipe for - the state a content rebase could leave.
+    sim.world.add(smith, CraftSelection, { counters: [[UNMADE, 0]], cursor: 0 });
     runCycles(sim, 2);
     const stock = sim.world.get(f, Stockpile).amounts;
     expect((stock.get(PLANK) ?? 0) + (stock.get(FOOD) ?? 0)).toBeGreaterThan(0); // still producing
@@ -173,10 +175,90 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     secondRecipe.inputs = [{ goodType: 6, amount: 1 }];
     const sim = new Simulation({ seed: 1, content });
     const { forge: f, smith } = forge(sim, 1);
-    sim.world.add(smith, CraftSelection, { goods: [PLANK, FOOD], cursor: 1 });
+    sim.world.add(smith, CraftSelection, { counters: [], cursor: 1 });
 
     productionSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(f, Production).cycles[0]?.goodType).toBe(PLANK);
+  });
+});
+
+describe('productionSystem - production counters', () => {
+  const setCount = (sim: Simulation, entity: Entity, goodType: number, count: number): void =>
+    setProductionCount(sim.world, ctxOf(sim), { kind: 'setProductionCount', entity, goodType, count });
+
+  it('setProductionCount stores a counter, clamps it and ignores a good the workplace does not make', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { smith } = forge(sim, 4);
+    setCount(sim, smith, FOOD, 3);
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([[FOOD, 3]]);
+    setCount(sim, smith, PLANK, -3);
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([
+      [PLANK, 0],
+      [FOOD, 3],
+    ]);
+    setCount(sim, smith, FOOD, PRODUCTION_UNLIMITED + 5); // clamped to unlimited, which keeps no entry
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([[PLANK, 0]]);
+    setCount(sim, smith, UNMADE, 2);
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([[PLANK, 0]]);
+    expect(productionCountOf(sim.world.get(smith, CraftSelection), FOOD)).toBe(PRODUCTION_UNLIMITED);
+  });
+
+  it('setCraftGoods with one good is "only this product": it unlimited, every other product stopped', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { smith } = forge(sim, 4);
+    setCount(sim, smith, FOOD, 2);
+    setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD] });
+    const selection = sim.world.get(smith, CraftSelection);
+    expect(productionCountOf(selection, FOOD)).toBe(PRODUCTION_UNLIMITED);
+    expect(productionCountOf(selection, PLANK)).toBe(0);
+  });
+
+  it('a counter of 2 starts exactly two cycles, then the product leaves the pool', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 4);
+    setCount(sim, smith, PLANK, 0);
+    setCount(sim, smith, FOOD, 2);
+    runCycles(sim, 4);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect(stock.get(FOOD)).toBe(2); // two batches bank 17+29% bonus, short of a whole unit
+    expect(stock.get(WOOD)).toBe(2); // nothing else started
+    expect(stock.get(PLANK) ?? 0).toBe(0);
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([
+      [PLANK, 0],
+      [FOOD, 0],
+    ]);
+  });
+
+  it('a spent counter hands the turn to the next live product', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 4);
+    setCount(sim, smith, PLANK, 1);
+    runCycles(sim, 4);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect(stock.get(PLANK)).toBe(1);
+    expect(stock.get(FOOD)).toBeGreaterThanOrEqual(3);
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([[PLANK, 0]]);
+  });
+
+  it('a stopped product is skipped and an unlimited one never counts down', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 4);
+    setCount(sim, smith, PLANK, 0);
+    runCycles(sim, 4);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect(stock.get(PLANK) ?? 0).toBe(0);
+    expect(stock.get(WOOD)).toBe(0);
+    expect(sim.world.get(smith, CraftSelection).counters).toEqual([[PLANK, 0]]);
+  });
+
+  it('every counter at 0 starts nothing', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 4);
+    setCount(sim, smith, PLANK, 0);
+    setCount(sim, smith, FOOD, 0);
+    runCycles(sim, 2);
+    expect(sim.world.has(f, Production)).toBe(false);
+    expect(sim.world.get(f, Stockpile).amounts.get(WOOD)).toBe(4);
   });
 });

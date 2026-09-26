@@ -36,7 +36,7 @@ const JOINERS = 3;
  *  three joiners) and the catapult by tick 4540. */
 const RUN_TICKS = 5_000;
 
-const { CraftSelection, JobAssignment, Settler } = components;
+const { JobAssignment, Settler } = components;
 
 function shoreTerrain(): CellTerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H);
@@ -67,7 +67,7 @@ function build(sim: Simulation): void {
   const turns = () => [goodBySlug(sim, 'ship_small'), goodBySlug(sim, 'catapult')]; // one list per settler
   for (const e of sim.world.query(Settler, JobAssignment)) {
     if (sim.world.get(e, JobAssignment).workplace !== joinery) continue;
-    sim.world.add(e, CraftSelection, { goods: turns(), cursor: 0 });
+    sim.enqueueSetup({ kind: 'setCraftGoods', entity: e, goods: turns() });
   }
 }
 

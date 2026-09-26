@@ -1,7 +1,6 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
-  CraftSelection,
   consumeGoods,
   type GoodsLine,
   Health,
@@ -15,6 +14,7 @@ import {
   stockpileEntries,
   UnderConstruction,
   Upgrading,
+  writeProductionCount,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
@@ -201,8 +201,8 @@ function finishBuilding(
   );
 }
 
-/** Pin an implicit "all products" choice to the old tier's products when an upgrade adds recipes,
- * so workers start making the new products only after the player selects them. */
+/** Stop every product an upgrade adds for the workplace's operators, so they start making the new products
+ * only after the player raises their counters. The retained products keep their counters. */
 function preserveProductionChoices(
   world: World,
   ctx: SystemContext,
@@ -214,16 +214,13 @@ function preserveProductionChoices(
   const oldProducts = recipes.get(oldType);
   const newProducts = recipes.get(newType);
   if (oldProducts === undefined || newProducts === undefined) return;
-  if (![...newProducts.keys()].some((good) => !oldProducts.has(good))) return;
-  const retained = [...oldProducts.keys()].filter((good) => newProducts.has(good)).sort((a, b) => a - b);
-  if (retained.length === 0) return;
+  const added = [...newProducts.keys()].filter((good) => !oldProducts.has(good));
+  if (added.length === 0) return;
+  if (![...oldProducts.keys()].some((good) => newProducts.has(good))) return;
   for (const worker of assignedWorkers(world, building)) {
     const jobType = world.tryGet(worker, Settler)?.jobType;
     if (jobType == null || !isWorkplaceOperator(world, ctx, building, jobType)) continue;
-    const selection = world.tryGet(worker, CraftSelection);
-    if (selection !== undefined && selection.goods.length > 0) continue;
-    if (selection === undefined) world.add(worker, CraftSelection, { goods: retained.slice(), cursor: 0 });
-    else world.mut(worker, CraftSelection).goods = retained.slice();
+    for (const good of added) writeProductionCount(world, worker, good, 0);
   }
 }
 

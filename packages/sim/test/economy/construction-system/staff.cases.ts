@@ -49,6 +49,8 @@ const MASON = 9;
 const STORE = 1; // a passive store - where the site's material comes from
 const SMITHY_L0 = 10; // 1 mason + 1 carrier, upgrades into SMITHY_L1
 const SMITHY_L1 = 11; // 2 masons + 1 carrier - the seat an upgrade may not fill early
+/** A finite stone counter the upgrade must carry over unchanged. */
+const STONE_LEFT = 5;
 const GRASS = 0;
 /** The half-cell lattice these cases play on: 20 tiles wide (a tile is 2 nodes), a few rows deep so a
  *  site has a perimeter to spread its crew over. */
@@ -185,7 +187,7 @@ function perimeterOf(sim: Simulation, site: Entity): readonly NodeId[] {
 }
 
 describe('construction site staffing - the slots a building offers while it is raised', () => {
-  it.each(['implicit', 'rotating', 'explicit'] as const)(
+  it.each(['implicit', 'rotating', 'counted'] as const)(
     'keeps an incumbent %s production choice when the new tier offers another product',
     (selection) => {
       const sim = new Simulation({ seed: 1, content: staffContent(true), map: grassMap(NODES_W, NODES_H) });
@@ -196,7 +198,7 @@ describe('construction site staffing - the slots a building offers while it is r
       post(sim, hauler, smithy, [CARRIER]);
       if (selection !== 'implicit') {
         sim.world.add(mason, CraftSelection, {
-          goods: selection === 'explicit' ? [STONE] : [],
+          counters: selection === 'counted' ? [[STONE, STONE_LEFT]] : [],
           cursor: 0,
         });
       }
@@ -206,7 +208,11 @@ describe('construction site staffing - the slots a building offers while it is r
       forceFinishConstruction(sim.world, ctxOf(sim), smithy);
 
       expect(sim.world.get(smithy, Building).buildingType).toBe(SMITHY_L1);
-      expect(sim.world.get(mason, CraftSelection).goods).toEqual([STONE]);
+      // The new product starts stopped; the incumbent stone counter carries over.
+      const stopped = [WOOD, 0];
+      expect(sim.world.get(mason, CraftSelection).counters).toEqual(
+        selection === 'counted' ? [[STONE, STONE_LEFT], stopped] : [stopped],
+      );
       expect(sim.world.has(hauler, CraftSelection)).toBe(false);
       const recipes = contentIndex(sim.content).recipeByProductByBuilding.get(SMITHY_L1);
       expect(recipes).toBeDefined();

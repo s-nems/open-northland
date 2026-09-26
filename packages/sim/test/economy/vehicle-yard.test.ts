@@ -23,6 +23,7 @@ import {
   VEHICLE_SITE_REUSE_RINGS,
 } from '../../src/systems/footprint/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
+import { setCraftGoods } from '../../src/systems/orders/index.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -256,13 +257,18 @@ function vehiclesOf(s: Simulation, vehicleType: number): Entity[] {
   return [...s.world.query(Vehicle)].filter((e) => s.world.get(e, Vehicle).vehicleType === vehicleType);
 }
 
+/** Narrow `worker`'s products to `goods`, as the player's product choice does. */
+function craftOnly(s: Simulation, worker: Entity, goods: readonly number[]): void {
+  setCraftGoods(s.world, ctxOf(s), { kind: 'setCraftGoods', entity: worker, goods: [...goods] });
+}
+
 /** A wainwright at the map's middle with its carpenter on the door and an HQ full of wood beside it. */
 function yardWorld(s: Simulation, select: readonly number[] = [HANDCART_GOOD]) {
   const shop = buildingAt(s, WAINWRIGHT, 12, 12);
   const store = buildingAt(s, HEADQUARTERS, 6, 12);
   s.world.mut(store, Stockpile).amounts.set(WOOD, 10);
   const worker = carpenterAt(s, 12, 13, shop);
-  s.world.add(worker, CraftSelection, { goods: [...select], cursor: 0 });
+  craftOnly(s, worker, select);
   return { shop, store, worker };
 }
 
@@ -301,7 +307,7 @@ describe('the yard site search', () => {
     const s = sim();
     const { shop, worker } = yardWorld(s);
     const mate = carpenterAt(s, 13, 13, shop);
-    s.world.add(mate, CraftSelection, { goods: [HANDCART_GOOD], cursor: 0 });
+    craftOnly(s, mate, [HANDCART_GOOD]);
     plannerSystem(s.world, ctxOf(s));
     const [site, ...others] = sitesOf(s, HANDCART_YARD);
     expect(others).toEqual([]);
@@ -355,7 +361,7 @@ describe('the yard site search', () => {
     const s = sim(grassCellMap(2, 2));
     const shop = buildingAt(s, WAINWRIGHT, 1, 1);
     const worker = carpenterAt(s, 1, 1, shop);
-    s.world.add(worker, CraftSelection, { goods: [HANDCART_GOOD], cursor: 0 });
+    craftOnly(s, worker, [HANDCART_GOOD]);
     const refusals = () =>
       s.events
         .current()
@@ -374,7 +380,7 @@ describe('the yard site search', () => {
     if (terrain === undefined) throw new Error('mapped sim');
     const shop = buildingAt(s, WAINWRIGHT, 12, 13); // two cell rows below the shore
     const worker = carpenterAt(s, 12, 14, shop);
-    s.world.add(worker, CraftSelection, { goods: [SHIP_GOOD], cursor: 0 });
+    craftOnly(s, worker, [SHIP_GOOD]);
     plannerSystem(s.world, ctxOf(s));
     const [site] = sitesOf(s, SHIP_YARD);
     if (site === undefined) throw new Error('no ship yard opened');

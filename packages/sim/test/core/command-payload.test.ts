@@ -167,6 +167,12 @@ describe('command payload contracts', () => {
     );
   });
 
+  it('holds a production counter order to whole numbers', () => {
+    const command = { kind: 'setProductionCount', entity: UNIT, goodType: 3, count: 4 };
+    expect(parse(command)).toEqual(imported(command));
+    expect(() => parse({ ...command, count: 1.5 })).toThrow(/command\.count: expected an integer/);
+  });
+
   it('refuses a value outside a fixed set', () => {
     expect(() => parse({ kind: 'makeChild', entity: UNIT, child: 'other' })).toThrow(
       'envelope.command.child: expected one of female, male, got "other"',

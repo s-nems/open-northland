@@ -7,4 +7,4 @@ export {
   unassignBuilder,
   unassignWorker,
 } from './employment.js';
-export { setCraftGoods, setGatherGood, setWorkFlag } from './selection.js';
+export { setCraftGoods, setGatherGood, setProductionCount, setWorkFlag } from './selection.js';

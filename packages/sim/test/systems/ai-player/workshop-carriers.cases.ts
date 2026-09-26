@@ -7,6 +7,7 @@ import {
   CompletedCycles,
   CraftSelection,
   JobAssignment,
+  productionCountOf,
   Resource,
   removeCurrentAtomic,
   Settler,
@@ -278,16 +279,24 @@ function hireSpare(seat: Seat, building: Entity, job: number): void {
   seat.apply([{ kind: 'assignWorker', entity: spare, building, jobPriority: [job] }]);
 }
 
-/** The `job` crew's live selections at `building` in id order, once one decision's tuning has applied. */
+/** The `job` crew's live selections at `building` in id order, once one decision's tuning has applied: the
+ *  products each worker still makes, or undefined while he has no counters. */
 function selections(seat: Seat, building: Entity, job: number): (readonly number[] | undefined)[] {
   const { world } = seat.sim;
   const ctx = { ...ctxOf(seat.sim), content: workshopsContent() };
   const supply = SeatSupply.of(world, ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
   seat.apply(tuneCraftSelections(world, ctx, SEAT, supply));
+  const recipes = contentIndex(ctx.content).recipeByProductByBuilding.get(
+    world.get(building, Building).buildingType,
+  );
+  const products = [...(recipes?.keys() ?? [])].sort((a, b) => a - b);
   return seat
     .crew(building, job)
     .sort((a, b) => a - b)
-    .map((e) => world.tryGet(e, CraftSelection)?.goods);
+    .map((e) => {
+      const selection = world.tryGet(e, CraftSelection);
+      return selection && products.filter((good) => productionCountOf(selection, good) !== 0);
+    });
 }
 
 describe('workforce module - the supply lines', () => {

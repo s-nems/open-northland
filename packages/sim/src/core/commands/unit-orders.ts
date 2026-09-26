@@ -333,13 +333,26 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Choose which of its workplace's products a craft worker makes; several selected alternate per
-       * started cycle, and an empty list restores the all-products mode. Goods the workplace does not
-       * make are dropped, and a selection with none left is ignored.
+       * Make only the listed products of a craft worker's workplace: each listed product's counter becomes
+       * unlimited and every other product's `0`, so one good is "only this product". An empty list removes
+       * the counters, making every product unlimited again. Goods the workplace does not make are dropped,
+       * and a list with none left is ignored. The rotation restarts at its first product.
        */
       readonly kind: 'setCraftGoods';
       readonly entity: Entity;
       readonly goods: readonly number[];
+    }
+  | {
+      /**
+       * Set how many more units of `goodType` a craft worker makes: `0` stops the product,
+       * `1..PRODUCTION_COUNT_MAX` counts down one per started cycle, and `PRODUCTION_UNLIMITED` never
+       * runs out. The count is clamped to `0..PRODUCTION_UNLIMITED`; a good its workplace does not make
+       * is ignored.
+       */
+      readonly kind: 'setProductionCount';
+      readonly entity: Entity;
+      readonly goodType: number;
+      readonly count: number;
     }
   | {
       /**
