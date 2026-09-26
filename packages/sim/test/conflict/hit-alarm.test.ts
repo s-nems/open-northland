@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  addCurrentAtomic,
   Engagement,
   Fleeing,
   Health,
   MoveGoal,
   Owner,
   Position,
+  removeCurrentAtomic,
   Resting,
   Stance,
   setDiplomacyStance,
@@ -14,6 +16,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import { CombatIndex } from '../../src/systems/conflict/combat-index.js';
+import { FLEE_STEP_NODES } from '../../src/systems/conflict/flee.js';
 import {
   ALARM_PEOPLE_RADIUS_NODES,
   ALARM_SOLDIER_RADIUS_NODES,
@@ -23,10 +26,12 @@ import { moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import {
+  ATTACKED_ATOMIC,
   combatCadenceContent,
   ctxOf,
   fighterAtNode,
   grass,
+  HUNTER,
   SAXON,
   SOLDIER_SPEAR,
   VIKING,
@@ -70,6 +75,12 @@ function held(s: Simulation, e: Entity): Entity | undefined {
   return s.world.tryGet(e, Engagement)?.target;
 }
 
+/** Whether `e` runs east, away from an attacker standing west of the victim. */
+function runsEast(s: Simulation, e: Entity, fromHx: number): boolean {
+  const goal = s.world.tryGet(e, MoveGoal)?.cell;
+  return goal !== undefined && (s.terrain?.xOf(goal) ?? 0) > fromHx;
+}
+
 describe('hit alarm - a blow alarms the struck person side', () => {
   it('turns a soldier past its own sight on the attacker once the combat pass answers a melee blow', () => {
     const s = sim();
@@ -98,38 +109,81 @@ describe('hit alarm - a blow alarms the struck person side', () => {
     expect(held(s, comrade)).toBe(attacker);
   });
 
-  it('runs the near people and leaves the far ones and a soldier under IGNORE alone', () => {
+  it('runs the struck person and the near people, and leaves the far ones and a soldier under IGNORE alone', () => {
     const s = sim();
     const { victim, attacker } = struck(s);
     const near = unit(s, VICTIM_AT + NEAR_PERSON, P0, MILITARY_MODE.FLEE, WOMAN);
+    const ignoringNear = unit(s, VICTIM_AT + BESIDE, P0, MILITARY_MODE.IGNORE, WOMAN);
     const far = unit(s, VICTIM_AT + FAR_PERSON, P0, MILITARY_MODE.FLEE, WOMAN);
-    const ignoring = unit(s, VICTIM_AT + BESIDE, P0, MILITARY_MODE.IGNORE);
+    const ignoring = unit(s, VICTIM_AT + BESIDE + 1, P0, MILITARY_MODE.IGNORE);
     expect(NEAR_PERSON).toBeLessThanOrEqual(ALARM_PEOPLE_RADIUS_NODES);
     expect(FAR_PERSON).toBeGreaterThan(ALARM_PEOPLE_RADIUS_NODES);
 
     resolveCombatHit(s.world, ctxOf(s), attacker, victim, BLOW, [], 'melee');
     combatSystem(s.world, ctxOf(s));
 
-    expect(s.world.has(near, Fleeing)).toBe(true);
-    const goal = s.world.get(near, MoveGoal).cell;
-    expect(s.terrain?.xOf(goal)).toBeGreaterThan(VICTIM_AT + NEAR_PERSON); // away from the attacker
+    expect(runsEast(s, victim, VICTIM_AT)).toBe(true);
+    expect(runsEast(s, near, VICTIM_AT + NEAR_PERSON)).toBe(true);
+    expect(runsEast(s, ignoringNear, VICTIM_AT + BESIDE)).toBe(true);
     expect(s.world.has(far, Fleeing)).toBe(false);
     expect(s.world.has(ignoring, Engagement)).toBe(false);
+    expect(s.world.has(ignoring, Fleeing)).toBe(false);
   });
 
-  it('never runs a soldier, whatever its stance, and holds a civilian under IGNORE', () => {
+  it('never runs a soldier, whatever its stance, and holds a civilian set to ATTACK or DEFEND', () => {
     const s = sim();
     const { victim, attacker } = struck(s);
     const fleeingSoldier = unit(s, VICTIM_AT + BESIDE, P0, MILITARY_MODE.FLEE);
-    const ignoringCivilian = unit(s, VICTIM_AT + NEAR_PERSON, P0, MILITARY_MODE.IGNORE, WOMAN);
+    const attackingCivilian = unit(s, VICTIM_AT + NEAR_PERSON, P0, MILITARY_MODE.ATTACK, WOMAN);
+    const defendingCivilian = unit(s, VICTIM_AT + NEAR_PERSON + 1, P0, MILITARY_MODE.DEFEND, WOMAN);
 
     resolveCombatHit(s.world, ctxOf(s), attacker, victim, BLOW, [], 'melee');
     combatSystem(s.world, ctxOf(s));
 
-    for (const e of [fleeingSoldier, ignoringCivilian]) {
+    for (const e of [fleeingSoldier, attackingCivilian, defendingCivilian]) {
       expect(s.world.has(e, Fleeing)).toBe(false);
-      expect(held(s, e)).toBeUndefined();
     }
+    expect(held(s, fleeingSoldier)).toBeUndefined();
+  });
+
+  it('runs a struck hunter under IGNORE ten map points from the blow, then hands it back where it stops', () => {
+    const RUN_TICKS = 200;
+    const s = sim();
+    const hunter = unit(s, VICTIM_AT, P0, MILITARY_MODE.IGNORE, HUNTER);
+    const attacker = unit(s, VICTIM_AT - 1, P1, MILITARY_MODE.IGNORE, WOMAN); // strikes once, by hand
+
+    resolveCombatHit(s.world, ctxOf(s), attacker, hunter, BLOW, [], 'melee');
+    combatSystem(s.world, ctxOf(s));
+    expect(s.world.has(hunter, Fleeing)).toBe(true);
+    const goal = s.world.get(hunter, MoveGoal).cell;
+    expect(s.terrain?.coordsOf(goal)).toEqual({ x: VICTIM_AT + FLEE_STEP_NODES, y: ROW });
+
+    for (let t = 0; t < RUN_TICKS; t++) s.step();
+    const p = s.world.get(hunter, Position);
+    expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: VICTIM_AT + FLEE_STEP_NODES, hy: ROW });
+    expect(s.world.has(hunter, Fleeing)).toBe(false);
+  });
+
+  it('owes a struck person its run while its flinch holds it, and runs it once the clip ends', () => {
+    const FLINCH_TICKS = 12;
+    const s = sim();
+    const { victim, attacker } = struck(s);
+    addCurrentAtomic(s.world, victim, {
+      atomicId: ATTACKED_ATOMIC,
+      duration: FLINCH_TICKS,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
+
+    resolveCombatHit(s.world, ctxOf(s), attacker, victim, BLOW, [], 'melee');
+    combatSystem(s.world, ctxOf(s));
+    expect(s.world.has(victim, Fleeing)).toBe(true);
+    expect(s.world.has(victim, MoveGoal)).toBe(false);
+
+    removeCurrentAtomic(s.world, victim);
+    combatSystem(s.world, { ...ctxOf(s), tick: s.tick + 1 });
+    expect(runsEast(s, victim, VICTIM_AT)).toBe(true);
   });
 
   it('answers each attacker once a tick, however many blows it lands', () => {

@@ -2,6 +2,8 @@ import {
   AttackOrder,
   Carrying,
   Fleeing,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   Owner,
   PathRequest,
   PlayerOrder,
@@ -15,8 +17,8 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
-import { clearNavState, redirectRoute } from '../movement/nav-state.js';
-import { isHunterJob } from '../readviews/index.js';
+import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
+import { isFighterJob, isHunterJob, type MilitaryMode, stanceFights } from '../readviews/index.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
@@ -25,7 +27,8 @@ import type { CombatIndex } from './combat-index.js';
 import { isFleeThreat, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // The FLEE drive - the civilian raid reaction: path away from the nearest threat at the unit's normal pace
-// (no run gait exists), wind a cool-down down once clear, and yield to a collapsing need.
+// (no run gait exists), wind a cool-down down once clear, and yield to a collapsing need. The run a blow
+// starts for anyone who is not a fighter lives here too.
 
 /**
  * FLEE stance - how many ticks a fleeing unit must go with no threat in sight before it returns to the
@@ -41,7 +44,7 @@ const FLEE_COOLDOWN_TICKS = 40;
  * up to 15 on a diagonal, an approximation. Running from any threat in sight, not only from a blow, is
  * this sim's FLEE stance.
  */
-const FLEE_STEP_NODES = 10;
+export const FLEE_STEP_NODES = 10;
 
 /**
  * FLEE stance - how many ticks a fleeing unit holds its current route before re-aiming away from the moving
@@ -90,6 +93,11 @@ export function fleeDrive(
     return;
   }
   if (!world.has(e, Fleeing) && (ctx.tick + e) % FLEE_CHECK_STRIDE_TICKS !== 0) return;
+  // A blow's run still owed, its runner's clip over: it goes before any look around.
+  if (world.tryGet(e, Fleeing)?.blow !== undefined) {
+    startBlowRun(world, ctx, terrain, e);
+    return;
+  }
 
   const here = entityNode(world, terrain, e);
   const { x, y } = terrain.coordsOf(here);
@@ -152,11 +160,21 @@ export function fleeDrive(
 }
 
 /**
- * Start `e` running a {@link FLEE_STEP_NODES} step away from `from`, the node a blow on a neighbour came
- * from, unless it is already running, sheltering, busy with an action, under a player's order or too worn
- * out to run. A unit that carries a haul sets it down first and runs once its drive sees the threat. With
- * no threat in its own sight the drive winds the run down after {@link FLEE_COOLDOWN_TICKS}, an
- * approximation of where the original's run from a blow ends.
+ * Who runs from a blow on itself or beside it: anyone who is not a fighter, under any stance but one the
+ * player set to fight. Original behavior: every non-soldier runs whatever its stance. Deviation: a civilian
+ * the player set to ATTACK or DEFEND stands, as that setting says; a fighter's answer is to turn, never run.
+ */
+export function runsFromBlows(ctx: SystemContext, runner: SettlerIdentity, mode: MilitaryMode): boolean {
+  return !isFighterJob(ctx.content, runner.jobType) && !stanceFights(mode);
+}
+
+/**
+ * Start `e` running a {@link FLEE_STEP_NODES} step away from `from`, the node a blow on it or on a
+ * neighbour came from, unless it is already running, sheltering, under a player's order or too worn out to
+ * run. Original behavior. A runner a clip holds, the struck one flinching or a worker mid-stroke, owes the
+ * run until the clip ends, and one that carries a haul sets it down first. Under FLEE the drive then keeps
+ * it running from what it sees and winds down after {@link FLEE_COOLDOWN_TICKS} in the clear; under any
+ * other stance the run is the whole reaction, and the unit goes back to its work where it ends.
  */
 export function runFromBlow(
   world: World,
@@ -166,15 +184,31 @@ export function runFromBlow(
   from: NodeId,
 ): void {
   if (world.has(e, Fleeing) || world.has(e, Sheltering) || world.has(e, PlayerOrder)) return;
-  if (world.has(e, AttackOrder) || atomicHoldsSettler(world, e) || needCollapsing(world, e)) return;
-  world.add(e, Fleeing, { repathAt: ctx.tick + FLEE_REPATH_CADENCE, calmUntil: null });
+  if (world.has(e, AttackOrder) || needCollapsing(world, e)) return;
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.PASSIVE)) return; // a script-passive unit stands and takes it
+  world.add(e, Fleeing, { repathAt: ctx.tick + FLEE_REPATH_CADENCE, calmUntil: null, blow: from });
+  if (!atomicHoldsSettler(world, e)) startBlowRun(world, ctx, terrain, e);
+}
+
+/**
+ * Issue the run `e` owes for a blow: drop a haul first (the drop clip re-owes it), else route away from
+ * the blow's node and clear the debt. Answers whether the runner is still on its way, walking or dropping;
+ * a boxed-in one has nowhere to run and its debt is cleared with it standing.
+ */
+export function startBlowRun(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): boolean {
+  const fleeing = world.get(e, Fleeing);
+  const from = fleeing.blow;
+  if (from === undefined) return isTravelling(world, e);
   if (world.has(e, Carrying)) {
     startDrop(world, ctx, e);
-    return;
+    return true;
   }
+  world.mut(e, Fleeing).blow = undefined;
   const here = entityNode(world, terrain, e);
   const dest = fleeDestination(terrain, dynamicBlockOverlay(world, ctx, terrain), here, from);
-  if (dest !== here) redirectRoute(world, e, dest);
+  if (dest === here) return false;
+  redirectRoute(world, e, dest);
+  return true;
 }
 
 /** The cell a fleeing unit should run to: the cell {@link FLEE_STEP_NODES} away, of the eight compass

@@ -27,16 +27,17 @@ import type { SceneWorld } from '../src/scenes/types.js';
  * `armortypes.ini` rows, pinning the final state hash and the ordered hit trace. The hash says that combat
  * changed; the trace says which blow changed and when, with the hitpoints it left.
  *
- * Each lane is one blue striker ordered onto one red civilian who holds under IGNORE, never strikes back
- * and never turns, so every blow in a lane is one weapon on one armor column from one side:
+ * Each lane is one blue striker ordered onto one red civilian set to DEFEND, so it stands under the blows
+ * instead of running from them, and being unarmed never strikes back or turns; every blow in a lane is
+ * then one weapon on one armor column from one side:
  *  - short sword vs wool and vs chain, from the east, the victim's back side (x1.25);
  *  - long sword vs leather from the west, its front, and vs plate from the north-east, behind it (x1.5);
  *  - iron spear vs plate from the east, the column where spear and long sword swap;
  *  - short bow vs leather and long bow vs plate from fresh archers, whose shots scatter.
  * Every melee lane ends in its victim's death, and the rising fight experience lifts later blows. Far off,
- * a swordsman with the strength and critical-hit amulets kills a rival wearing the defence amulet, both
- * striking and turning, and a wounded civilian alone on the field regenerates, as every victim does
- * between blows.
+ * a swordsman with the strength and critical-hit amulets fights a rival wearing the defence amulet to the
+ * death, both striking and turning, and a wounded civilian alone on the field regenerates, as every victim
+ * does between blows.
  */
 
 const BLUE = 0;
@@ -101,10 +102,23 @@ function dress(sim: Simulation, e: Entity, armor: string | null, amulets: readon
   });
 }
 
-function holdGround(sim: Simulation, e: Entity): void {
+type MilitaryMode = (typeof systems.MILITARY_MODE)[keyof typeof systems.MILITARY_MODE];
+
+function setStance(sim: Simulation, e: Entity, mode: MilitaryMode): void {
   const stance = sim.world.mut(e, Stance);
-  stance.mode = systems.MILITARY_MODE.IGNORE;
+  stance.mode = mode;
   stance.anchorCell = null;
+}
+
+/** A fighter that stands where it is once its order is done, instead of joining another lane. */
+function holdGround(sim: Simulation, e: Entity): void {
+  setStance(sim, e, systems.MILITARY_MODE.IGNORE);
+}
+
+/** An unarmed civilian that stands under blows: set to DEFEND by hand, it neither runs from a blow, as any
+ *  other non-fighting stance would have it do, nor has anything to hit back with. */
+function standAndTakeIt(sim: Simulation, e: Entity): void {
+  setStance(sim, e, systems.MILITARY_MODE.DEFEND);
 }
 
 function build(sim: Simulation): void {
@@ -112,8 +126,7 @@ function build(sim: Simulation): void {
     const y = FIRST_LANE_Y + i * LANE_PITCH;
     const victim = spawnSettlerDirect(sim, JOB_CIVILIST, TARGET_X, y, LANE_RED);
     dress(sim, victim, lane.armor, []);
-    holdGround(sim, victim);
-    // IGNORE once the order is done, so a striker that wins its lane stands instead of joining another.
+    standAndTakeIt(sim, victim);
     const striker = spawnSettlerDirect(sim, lane.job, TARGET_X + lane.from.dx, y + lane.from.dy, BLUE);
     holdGround(sim, striker);
     sim.enqueueSetup({ kind: 'attackUnit', entity: striker, target: victim });
@@ -176,7 +189,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
   // bow on leather, 13/14 long bow on plate), then 15 the amuleted champion, 16 its rival, 17 the
   // convalescent. Hitpoints are read after the tick, so a victim between blows shows its regeneration.
   // Reading the first blows: 995 is 800 x1.25 less 5 blocked, 1420 is 950 x1.5 less 5, 1200 is 1600 x3/2
-  // halved by the defence amulet and 2400 the same blow doubled.
+  // halved by the defence amulet, and the rival's 1600 is the plain short-sword blow on bare cloth.
   const GOLDEN_TRACE: readonly string[] = [
     '23:miss:12',
     '29:hit:15>16:3800',
@@ -187,28 +200,29 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '34:hit:16>15:3400',
     '34:shot:12>11:4605',
     '35:hit:4>3:2155',
-    '39:miss:14',
+    '40:miss:14',
     '41:hit:15>16:2606',
     '46:hit:2>1:3017',
     '46:hit:6>5:4020',
     '46:hit:16>15:1804',
-    '46:shot:12>11:4222',
-    '53:hit:15>16:194',
-    '57:miss:12',
+    '46:miss:12',
+    '53:hit:15>16:1406',
     '58:hit:2>1:2024',
     '58:hit:6>5:3532',
     '58:hit:16>15:200',
+    '58:shot:12>11:4234',
     '61:hit:10>9:gone',
     '61:died:9',
     '62:hit:8>7:2183',
     '64:hit:4>3:gone',
     '64:died:3',
-    '65:hit:15>16:gone',
-    '65:died:16',
-    '68:miss:14',
+    '65:hit:15>16:200',
+    '69:miss:14',
     '70:hit:2>1:1026',
     '70:hit:6>5:3042',
-    '71:miss:12',
+    '70:hit:16>15:gone',
+    '70:died:15',
+    '72:miss:12',
     '82:hit:2>1:23',
     '82:hit:6>5:2549',
     '83:miss:12',
@@ -216,45 +230,47 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
     '94:hit:2>1:gone',
     '94:hit:6>5:2054',
     '94:shot:14>13:4645',
-    '94:shot:12>11:3875',
+    '94:miss:12',
     '94:died:1',
     '106:hit:6>5:1556',
-    '107:miss:12',
+    '106:shot:12>11:3887',
     '118:hit:6>5:1056',
-    '118:shot:12>11:3504',
+    '119:miss:12',
     '120:hit:8>7:gone',
     '120:died:7',
-    '124:miss:14',
+    '123:miss:14',
     '130:hit:6>5:553',
-    '130:shot:12>11:3121',
+    '131:miss:12',
     '142:hit:6>5:48',
-    '142:shot:12>11:2738',
-    '150:miss:14',
+    '142:shot:12>11:3528',
+    '149:miss:14',
     '154:hit:6>5:gone',
+    '154:miss:12',
     '154:died:5',
-    '156:miss:12',
-    '166:shot:12>11:2367',
-    '178:shot:12>11:1984',
-    '180:miss:14',
-    '189:miss:12',
-    '202:shot:12>11:1613',
-    '207:miss:14',
-    '214:shot:12>11:1230',
-    '226:shot:12>11:847',
+    '166:miss:12',
+    '178:miss:14',
+    '178:shot:12>11:3169',
+    '190:shot:12>11:2786',
+    '202:shot:12>11:2403',
+    '209:miss:14',
+    '214:shot:12>11:2020',
+    '226:shot:12>11:1637',
     '235:miss:14',
-    '238:shot:12>11:464',
-    '251:miss:12',
-    '262:shot:14>13:4458',
-    '263:miss:12',
-    '274:miss:12',
-    '286:shot:12>11:117',
-    '293:miss:14',
-    '300:miss:12',
-    '310:shot:12>11:gone',
-    '310:died:11',
-    '318:shot:14>13:4159',
+    '240:miss:12',
+    '249:miss:12',
+    '262:miss:14',
+    '262:shot:12>11:1278',
+    '274:shot:12>11:895',
+    '286:miss:12',
+    '291:miss:14',
+    '299:miss:12',
+    '310:shot:12>11:536',
+    '321:miss:14',
+    '322:shot:12>11:153',
+    '334:shot:12>11:gone',
+    '334:died:11',
     '348:miss:14',
-    '374:shot:14>13:3860',
+    '376:miss:14',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -263,7 +279,7 @@ describe('golden: a seeded fight over the extracted weapon and armor rows', () =
 
   it('matches the golden final state hash', () => {
     // Moves on any intentional combat change; name the change in the commit that moves it.
-    expect(runCombat(TICKS).hash).toBe('38bc58bb');
+    expect(runCombat(TICKS).hash).toBe('4b42a8f2');
   });
 
   it('matches the golden hit trace', () => {

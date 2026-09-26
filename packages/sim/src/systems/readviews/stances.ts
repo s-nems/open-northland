@@ -15,6 +15,9 @@ import { isFighterJob, isHunterJob, isScoutJob } from './jobs.js';
  *    lets it go once it strays too far from the anchor; a civilian never fights. An explicit attack order
  *    still works.
  *  - FLEE: run away from the nearest threat.
+ *
+ * Whoever is not a fighter runs from a blow on itself or beside it under IGNORE and FLEE alike; only ATTACK
+ * or DEFEND set on it keeps it standing (`conflict/flee.ts`).
  */
 export const MILITARY_MODE = {
   NONE: 0,

@@ -6,7 +6,7 @@ import { isFighterJob, MILITARY_MODE, stanceMode } from '../readviews/index.js';
 import { turnOnAttacker } from '../settlers/atomics/effects/combat/hit/reactions.js';
 import { entityNode } from '../spatial/nodes.js';
 import { type CombatIndex, passIndexOf } from './combat-index.js';
-import { runFromBlow } from './flee.js';
+import { runFromBlow, runsFromBlows } from './flee.js';
 import { isFleeThreat } from './targeting.js';
 import { standsAtPost } from './tower-post.js';
 
@@ -84,15 +84,14 @@ export function answerQueuedAlarms(
 
 /**
  * The side's answer to one alarm. Original behavior: a soldier or hero under ATTACK or DEFEND turns on the
- * attacker the way a struck one does, and under any other stance does nothing; everyone else near enough
- * runs from the attacker.
+ * attacker the way a struck one does, and under any other stance does nothing; everyone else near enough,
+ * the struck person first of all, runs from the attacker whatever its stance ({@link runsFromBlows}).
  *
- * Intentional deviations: a civilian runs only under FLEE, so one the player set to IGNORE holds its ground
- * and one set to ATTACK or DEFEND stays to fight, as their stances say. A tick answers each (player,
- * attacker) pair once, around its first victim, so a second victim of the same area shot does not widen
- * the circle. No one inside a house but a man on his tower answers: a soldier asleep at home would
- * otherwise wake holding a raider long gone and chase it (whether the original's alarm reaches indoors is
- * unconfirmed).
+ * Intentional deviations: a civilian the player set to ATTACK or DEFEND stays, as that setting says. A tick
+ * answers each (player, attacker) pair once, around its first victim, so a second victim of the same area
+ * shot does not widen the circle. No one inside a house but a man on his tower answers: a soldier asleep
+ * at home would otherwise wake holding a raider long gone and chase it (whether the original's alarm
+ * reaches indoors is unconfirmed).
  */
 function answerAlarm(
   world: World,
@@ -114,15 +113,17 @@ function answerAlarm(
     ALARM_SOLDIER_RADIUS_NODES,
     'hex',
   )) {
-    if (entity === alarm.victim || !world.has(entity, Person) || indoors(world, entity)) continue;
+    if (!world.has(entity, Person) || indoors(world, entity)) continue;
     const settler = world.get(entity, Settler);
     const mode = stanceMode(world, ctx.content, entity, settler.jobType);
     if (isFighterJob(ctx.content, settler.jobType)) {
+      // The struck fighter itself turned as the blow landed.
+      if (entity === alarm.victim) continue;
       if (mode === MILITARY_MODE.ATTACK || mode === MILITARY_MODE.DEFEND) {
         turnOnAttacker(world, ctx, alarm.attacker, entity);
       }
     } else if (
-      mode === MILITARY_MODE.FLEE &&
+      runsFromBlows(ctx, settler, mode) &&
       distance <= ALARM_PEOPLE_RADIUS_NODES &&
       isFleeThreat(world, ctx, entity, settler, alarm.attacker, index.firing)
     ) {

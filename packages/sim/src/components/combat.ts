@@ -90,11 +90,18 @@ export const UnreachableTargets = defineComponent<{ entries: readonly Unreachabl
 export const Stance = defineComponent<{ mode: MilitaryMode; anchorCell: NodeId | null }>('Stance', 'combat');
 
 /**
- * A {@link Stance} `FLEE` combatant's active run-away state, distinct from the persistent mode: a FLEE unit
- * with no threat in sight carries none. `repathAt` throttles the flee-destination recompute; `calmUntil` is
- * null while a threat is in sight, and set to `tick + cool-down` when the last one leaves.
+ * A running unit's state, distinct from the persistent {@link Stance}: a FLEE unit with no threat in sight
+ * carries none, and a unit of any other non-fighting stance carries it only for the run a blow started.
+ * `repathAt` throttles the flee-destination recompute; `calmUntil` is null while a threat is in sight, and
+ * set to `tick + cool-down` when the last one leaves. `blow` is the node a blow came from whose run is
+ * still owed, held while a clip has the runner; absent (never null) once the run is issued, so a runner
+ * without one keeps its serialized shape.
  */
-export const Fleeing = defineComponent<{ repathAt: number; calmUntil: number | null }>('Fleeing', 'combat');
+export const Fleeing = defineComponent<{
+  repathAt: number;
+  calmUntil: number | null;
+  blow?: NodeId | undefined;
+}>('Fleeing', 'combat');
 
 /**
  * A combatant posted to a defensive building and standing on it; `returnTo` is the doorstep it walked in

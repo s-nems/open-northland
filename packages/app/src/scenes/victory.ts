@@ -19,7 +19,9 @@ const WARBAND_X = 6;
 const WARBAND_Y = 6;
 const WARBAND_SIZE = 3;
 const RIVAL_AT = { x: 15, y: 6 } as const;
-const RIVAL_WOMAN_AT = { x: 19, y: 9 } as const;
+/** The far corner: past the warband's sight and the blow's alarm once the rival falls, so she neither runs
+ *  nor draws the swordsmen on, and stands there when the verdict comes. */
+const RIVAL_WOMAN_AT = { x: 22, y: 11 } as const;
 
 /** The first death check past the grace period; the fight is over well before it. */
 const FIRST_CHECK_TICK =

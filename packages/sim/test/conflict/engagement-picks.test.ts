@@ -30,6 +30,7 @@ import {
   ctxOf,
   fighterAtNode,
   grass,
+  OTHER,
   SAXON,
   SOLDIER_BOW,
   SOLDIER_SPEAR,
@@ -410,12 +411,13 @@ describe('engagement - a crowd on one enemy', () => {
   /** The nodes a map point from one enemy: a reach-1 weapon's whole band. */
   const HEX_SIDES = 6;
 
-  /** `size` owned ATTACK soldiers of `job` in a column ten nodes off one tough enemy woman. */
+  /** `size` owned ATTACK soldiers of `job` in a column ten nodes off one tough enemy woman of a tribe with
+   *  no weapon rows, set to DEFEND: she stands under the blows, neither running from them nor hitting back. */
   function crowd(size: number, job: number): { s: Simulation; target: Entity; crowd: Entity[] } {
     const s = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(MAP_CELLS, 12) });
-    const target = fighterAtNode(s, 30, 10, SAXON, WOMAN, { hitpoints: 100_000_000 });
+    const target = fighterAtNode(s, 30, 10, OTHER, WOMAN, { hitpoints: 100_000_000 });
     s.world.add(target, Owner, { player: P1 });
-    s.world.add(target, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
+    s.world.add(target, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: null });
     const members: Entity[] = [];
     for (let i = 0; i < size; i++) {
       const e = fighterAtNode(s, 20, 6 + i, VIKING, job);

@@ -13,8 +13,8 @@ const BLUE_X: readonly number[] = [2, 3];
 const BLUE_Y_FIRST = 5;
 const BLUE_Y_LAST = 8;
 
-/** Halfway along the route: unarmed men who never pick a fight, so only an attack-moving warband ever
- *  fights them. */
+/** Halfway along the route: unarmed men who never pick a fight and, set to DEFEND, stand under blows
+ *  instead of running from them, so only an attack-moving warband ever fights them, where they stand. */
 const PICKET_X = 16;
 const PICKET_Y: readonly number[] = [5, 6, 7, 8];
 
@@ -38,13 +38,14 @@ function build(sim: Simulation): void {
       sim.enqueueSetup({ kind: 'attackMoveUnit', entity: warrior, x: goal.hx, y: goal.hy });
     }
   }
-  for (const y of PICKET_Y) standDown(sim, spawnSettlerDirect(sim, JOB_CIVILIST, PICKET_X, y, ENEMY_PLAYER));
+  for (const y of PICKET_Y) standFast(sim, spawnSettlerDirect(sim, JOB_CIVILIST, PICKET_X, y, ENEMY_PLAYER));
 }
 
-/** IGNORE keeps a civilian where it stands: it neither runs nor picks a fight. */
-function standDown(sim: Simulation, e: Entity): void {
+/** DEFEND set by hand keeps an unarmed civilian where it stands: any other non-fighting stance has it run
+ *  from a blow, and with nothing to hit back with it never picks a fight. */
+function standFast(sim: Simulation, e: Entity): void {
   const stance = sim.world.mut(e, Stance);
-  stance.mode = systems.MILITARY_MODE.IGNORE;
+  stance.mode = systems.MILITARY_MODE.DEFEND;
   stance.anchorCell = null;
 }
 

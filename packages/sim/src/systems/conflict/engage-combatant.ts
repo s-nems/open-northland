@@ -51,7 +51,7 @@ import { entityNode } from '../spatial/nodes.js';
 import { type ApproachBand, breakOff, type ChaseTarget, chase, disengage, REPATH_CADENCE } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
-import { fleeDrive } from './flee.js';
+import { fleeDrive, runsFromBlows, startBlowRun } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import type { MeleeSlots } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
@@ -298,8 +298,9 @@ function liveAttackOrder(
   return false;
 }
 
-/** Run the FLEE stance's drive, or shed the flee state of a unit that has stopped fleeing (its stance
- *  changed, or an order took over). Returns whether the flee took the combatant for this tick. */
+/** Run the FLEE stance's drive, run out the run a blow started under another non-fighting stance, or shed
+ *  the flee state of a unit that has stopped fleeing (its stance changed, or an order took over). Returns
+ *  whether the run took the combatant for this tick. */
 function resolveFleeState(
   world: World,
   ctx: SystemContext,
@@ -312,11 +313,18 @@ function resolveFleeState(
   // A settler that has claimed a shelter never flees: the run for cover is its flight. Running would take
   // it back into the open, or abandon the walk it holds a seat for, leaving the building reporting itself
   // full while standing empty.
-  if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered || world.has(e, Sheltering)) {
-    if (world.has(e, Fleeing)) {
-      world.remove(e, Fleeing);
-      clearNavState(world, e); // drop the run route with the marker
+  const sheltering = stance.ordered || world.has(e, Sheltering);
+  if (stance.mode !== MILITARY_MODE.FLEE || sheltering) {
+    if (!world.has(e, Fleeing)) return false;
+    // The blow's run under IGNORE: the unit finishes it, then hands itself back where it stands. Only the
+    // marker owns it meanwhile, so the planner and the hunt leave the runner alone.
+    if (!sheltering && stance.mode !== null && runsFromBlows(ctx, attacker, stance.mode)) {
+      world.remove(e, Engagement);
+      world.remove(e, HuntFocus);
+      if (startBlowRun(world, ctx, terrain, e)) return true;
     }
+    world.remove(e, Fleeing);
+    clearNavState(world, e); // drop the run route with the marker
     return false;
   }
   // A marker outliving the flee would bench the unit and keep combat awake forever.

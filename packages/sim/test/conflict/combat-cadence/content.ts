@@ -19,6 +19,7 @@ export const OTHER = 99; // a tribe with NO content record - a valid PvP enemy (
 export const WOLF_TRIBE = 20; // an animal tribe (carries an `animals` row) - its swings must train nothing
 
 export const WOMAN = 5;
+export const HUNTER = 6; // a civilian trade that ignores people by default, and fights only game
 export const SOLDIER_UNARMED = 31;
 export const SOLDIER_SPEAR = 33;
 export const SOLDIER_SWORD_SHORT = 34;
@@ -169,6 +170,7 @@ export function combatCadenceContent(): ContentSet {
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: WOMAN, id: 'woman' },
+      { typeId: HUNTER, id: 'hunter' },
       // `jobtypes.ini` marks every soldier and hero `ignoresHomeHouseFlag 1`: they never go home, so
       // what a swing costs their rest is not halved for being out in the field.
       ...soldierJobs.map((typeId) => ({ typeId, id: `soldier_${typeId}`, ignoresHomeHouse: true })),
