@@ -126,18 +126,24 @@ export function canPlaceBuilding(
 }
 
 /** The placing player's signposts as grid slot -> post count: each stamps one OBSTACLE on its anchor, which
- *  a building of that player may cover. Project rule: the original blocks building on any signpost. */
+ *  a building of that player may cover. */
 type OwnSignpostSlots = ReadonlyMap<number, number>;
 const NO_SIGNPOSTS: OwnSignpostSlots = new Map();
+/** Keyed on the network's per-player list, which stays the same array until the network changes, so a
+ *  per-frame overlay probe allocates nothing. */
+const slotsByPosts = new WeakMap<readonly HalfCellNode[], OwnSignpostSlots>();
 
 function ownSignpostSlots(terrain: TerrainGraph, posts: readonly HalfCellNode[]): OwnSignpostSlots {
   if (posts.length === 0) return NO_SIGNPOSTS;
+  const held = slotsByPosts.get(posts);
+  if (held !== undefined) return held;
   const slots = new Map<number, number>();
   for (const { hx, hy } of posts) {
     if (!terrain.inBounds(hx, hy)) continue; // an off-map post stamps nothing (see PlacementGrid)
     const slot = hy * terrain.width + hx;
     slots.set(slot, (slots.get(slot) ?? 0) + 1);
   }
+  slotsByPosts.set(posts, slots);
   return slots;
 }
 
@@ -165,7 +171,7 @@ export function placementProbe(
   content: ContentSet,
   terrain: TerrainGraph,
   buildingType: number,
-  ownSignposts: readonly HalfCellNode[] = [],
+  ownSignposts: readonly HalfCellNode[],
 ): PlacementProbe {
   const building = contentIndex(content).buildings.get(buildingType);
   const footprint = building?.footprint;

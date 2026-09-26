@@ -137,8 +137,8 @@ export function placeBuilding(
   stampOwner(world, e, command.owner);
   stampMissionId(world, e, command.missionId);
   // The plot is impassable from this tick. The placement gates ignore work flags, loose goods and the
-  // placer's own signposts, so a house may legally land on any of them; each is displaced outward rather
-  // than walled in.
+  // placer's own signposts, and a forced placement ignores every post, so a house may legally land on any
+  // of them; each is displaced outward rather than walled in.
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
   displaceSignpostsFromFootprint(world, ctx, e);

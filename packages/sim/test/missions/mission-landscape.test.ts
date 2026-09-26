@@ -39,7 +39,7 @@ describe('script landscape state and blockers', () => {
     // The authored wall at POINT covers (8,8) and (9,8); a wall one point left covers (7,8) and (8,8).
     const shared = terrain.nodeAt(8, 8);
     // Built now, so the verifier at the end proves the grid replayed every change below.
-    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(10, 8)).toBe(false);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT, []).canPlace(10, 8)).toBe(false);
     expect(setLandscape(sim.world, ctx, { hx: 7, hy: 8 }, 1, 0)).toBe(true);
     const doubled = landscapeBlocks(sim.world, terrain);
     expect(doubled.walk.has(shared)).toBe(true);
@@ -61,7 +61,7 @@ describe('script landscape state and blockers', () => {
       { node: shared, channel: 'walk', entered: false },
     ]);
     expect(dynamicBlockOverlay(sim.world, ctx, terrain).has(shared)).toBe(false);
-    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(10, 8)).toBe(true);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT, []).canPlace(10, 8)).toBe(true);
     expect(placementGridRebuilds(sim.world)).toBe(1);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
@@ -70,7 +70,7 @@ describe('script landscape state and blockers', () => {
     const sim = fresh();
     const terrain = terrainOf(sim);
     const ctx = ctxOf(sim);
-    const probe = () => placementProbe(sim.world, sim.content, terrain, HUT);
+    const probe = () => placementProbe(sim.world, sim.content, terrain, HUT, []);
     expect(probe().canPlace(10, 8)).toBe(false);
     // Three edits with no read of the layer between them: one catch-up carries all of them.
     removeLandscapes(sim.world, terrain, POINT, 0);
@@ -122,10 +122,10 @@ describe('script landscape state and blockers', () => {
     const ctx = ctxOf(sim);
     const node = terrain.nodeAt(9, 8);
     expect(dynamicBlockOverlay(sim.world, ctx, terrain).has(node)).toBe(true);
-    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(10, 8)).toBe(false);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT, []).canPlace(10, 8)).toBe(false);
     removeLandscapes(sim.world, terrain, POINT, 0);
     expect(dynamicBlockOverlay(sim.world, ctx, terrain).has(node)).toBe(false);
-    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(10, 8)).toBe(true);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT, []).canPlace(10, 8)).toBe(true);
     expect(sim.landscapeEdits().removed).toEqual([0]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
@@ -167,9 +167,9 @@ describe('script landscape state and blockers', () => {
     const terrain = terrainOf(sim);
     setBuildForbidden(sim.world, terrain, POINT, 1_000_000_000, true);
     expect(landscapeEditState(sim.world).forbidden.size).toBe(256);
-    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(3, 3)).toBe(false);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT, []).canPlace(3, 3)).toBe(false);
     setBuildForbidden(sim.world, terrain, { hx: 3, hy: 3 }, 3, false);
-    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(3, 3)).toBe(true);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT, []).canPlace(3, 3)).toBe(true);
     setVertexColors(sim.world, terrain, POINT, 1_000_000_000, 100, false);
     setVertexColors(sim.world, terrain, POINT, 1_000_000_000, 200, true);
     expect(sim.landscapeEdits().tints).toHaveLength(256);
@@ -195,7 +195,7 @@ describe('script landscape state and blockers', () => {
     ).toBe(false);
     // The restored world's layer and grid start from the saved edits and keep taking new ones.
     const restoredTerrain = terrainOf(restored);
-    const probe = () => placementProbe(restored.world, restored.content, restoredTerrain, HUT);
+    const probe = () => placementProbe(restored.world, restored.content, restoredTerrain, HUT, []);
     expect(probe().canPlace(5, 3)).toBe(true);
     expect(setLandscape(restored.world, ctxOf(restored), { hx: 3, hy: 3 }, 1, 0)).toBe(true);
     expect(probe().canPlace(5, 3)).toBe(false);

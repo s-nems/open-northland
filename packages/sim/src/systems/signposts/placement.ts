@@ -1,9 +1,10 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import {
   Building,
   Owner,
   Position,
   SIGNPOST_DISPLACE_RADIUS_NODES,
+  SIGNPOST_LINK_RANGE_NODES,
   SIGNPOST_SPACING_NODES,
   Signpost,
 } from '../../components/index.js';
@@ -11,7 +12,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
+import { buildingFlagBodyNodes, buildingFootprintOf } from '../footprint/geometry.js';
 import {
   buildingDoorNodes,
   canPlaceWorkFlag,
@@ -110,12 +111,14 @@ export function razeSignpost(world: World, post: Entity): void {
 }
 
 /**
- * Push every signpost under a just-placed `building`'s walls to the nearest node the erect rule's ground
- * test accepts, off every door and on the same static ground, and re-link it there. The post may stay in
- * the building's reserved margin: no later building's zone may overlap that one, so nothing covers the post
- * again. Spacing to the other posts is not re-checked, since the post moves and nobody erects it. A post
- * with no such node within {@link SIGNPOST_DISPLACE_RADIUS_NODES} falls. Project rule, as the original
- * never builds on a post.
+ * Push every signpost under a just-placed `building`'s walls or on its door to the nearest node the erect
+ * rule's ground test accepts, off every door and on the same static ground, and re-link it there. It
+ * prefers, in turn, a node that keeps every link in range, so the push does not split the network, and a
+ * row south of the anchor, which the renderer draws over the building rather than behind its art. The
+ * post may stay in the building's reserved margin: no later building's zone may overlap that one, so
+ * nothing covers the post again. Spacing to the other posts is not re-checked, since the post moves and
+ * nobody erects it. A post with no such node within {@link SIGNPOST_DISPLACE_RADIUS_NODES} falls. Project
+ * rule, as the original never builds on a post.
  */
 export function displaceSignpostsFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
@@ -124,11 +127,15 @@ export function displaceSignpostsFromFootprint(world: World, ctx: SystemContext,
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return;
   const anchor = nodeOfPosition(p.x, p.y);
-  const body = new Set(
-    translatedCells(terrain, buildingFlagBody(ctx.content, b.buildingType), anchor.hx, anchor.hy),
-  );
+  const covered = buildingFlagBodyNodes(ctx.content, terrain, b.buildingType, anchor.hx, anchor.hy);
+  const door = buildingFootprintOf(ctx.content, b.buildingType)?.door;
+  if (door !== undefined) {
+    const x = anchor.hx + footprintCellDx(anchor.hy, door);
+    const y = anchor.hy + door.dy;
+    if (terrain.inBounds(x, y)) covered.add(terrain.nodeAt(x, y));
+  }
   const enclosed = [...world.query(Signpost, Position)].filter((e) =>
-    body.has(entityNode(world, terrain, e)),
+    covered.has(entityNode(world, terrain, e)),
   );
   if (enclosed.length === 0) return;
   const doors = buildingDoorNodes(world, ctx, terrain);
@@ -136,10 +143,25 @@ export function displaceSignpostsFromFootprint(world: World, ctx: SystemContext,
   for (const post of canonicalById(enclosed)) {
     const from = entityNode(world, terrain, post);
     const ground = terrain.componentOf(from);
-    const to = nearestWorkFlagPlacement(world, ctx, terrain, from, {
-      accept: (n) => !doors.has(n) && terrain.componentOf(n) === ground,
-      withinRadius: SIGNPOST_DISPLACE_RADIUS_NODES,
-    });
+    const standable = (n: NodeId): boolean => !doors.has(n) && terrain.componentOf(n) === ground;
+    const neighbours = world.get(post, Signpost).links.map((e) => entityNode(world, terrain, e));
+    const keepsLinks = (n: NodeId): boolean =>
+      neighbours.every(
+        (m) =>
+          hexDistanceBetween(terrain.xOf(n), terrain.yOf(n), terrain.xOf(m), terrain.yOf(m)) <
+          SIGNPOST_LINK_RANGE_NODES,
+      );
+    const search = (accept: (n: NodeId) => boolean): NodeId | null =>
+      nearestWorkFlagPlacement(world, ctx, terrain, from, {
+        accept,
+        withinRadius: SIGNPOST_DISPLACE_RADIUS_NODES,
+      });
+    const inFront = (n: NodeId): boolean => terrain.yOf(n) > anchor.hy;
+    const to =
+      search((n) => standable(n) && keepsLinks(n) && inFront(n)) ??
+      search((n) => standable(n) && keepsLinks(n)) ??
+      search((n) => standable(n) && inFront(n)) ??
+      search(standable);
     if (to === null) razeSignpost(world, post);
     else relocateSignpost(world, terrain, post, to);
   }

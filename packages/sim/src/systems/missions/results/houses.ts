@@ -128,7 +128,8 @@ function nearestBuildableSpot(
 ): HalfCellNode | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return point;
-  const probe = placementProbe(world, ctx.content, terrain, buildingType);
+  // A scripted house has no seat, so every signpost blocks it.
+  const probe = placementProbe(world, ctx.content, terrain, buildingType, []);
   let best: HalfCellNode | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   // A column step never costs less than a row step, so every node in range fits this square.

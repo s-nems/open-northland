@@ -3,10 +3,10 @@ import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * A standing signpost (the original's guidepost, `ls_guidepost.bmd`) - the scout-erected navigation marker.
- * It stands on one half-cell node, never moves, and blocks building placement on its cell but never
- * movement. `links` are the same-player posts it is connected to, symmetric and in ascending entity
- * order; they are settled when a post rises or falls, as the original keeps each guide's connection
- * list.
+ * It stands on one half-cell node and moves only when its owner's building covers it, by a re-add of this
+ * component. It blocks a work flag and a rival's building zone on its cell, never movement. `links` are
+ * the same-player posts it is connected to, symmetric and in ascending entity order; they are settled when
+ * a post rises, falls or moves, as the original keeps each guide's connection list.
  */
 export const Signpost = defineComponent<{ links: readonly Entity[] }>('Signpost', 'economy');
 
@@ -59,8 +59,7 @@ export const SIGNPOST_LINK_RANGE_NODES = 40;
 export const SIGNPOST_SPACING_NODES = 16;
 
 /** How far a building placed over its owner's signpost may push the post, in the work-flag search's ring
- *  distance from where it stood. Authored, no original counterpart: the original never builds on a post.
- *  Past it the post falls rather than jumping to far-off ground. */
+ *  distance from where it stood. Authored. Past it the post falls rather than jumping to far-off ground. */
 export const SIGNPOST_DISPLACE_RADIUS_NODES = 16;
 
 /** The post's standing fog eye, in nodes on the world metric. Authored, no original counterpart. */

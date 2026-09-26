@@ -64,14 +64,23 @@ export function buildingFieldZone(content: ContentSet, buildingType: number): re
   return ANCHOR_ONLY;
 }
 
-/** The cells of `buildingType` that a work flag may not occupy, anchor-relative: its family body (a
- *  level-0 house reserves its top tier's space), or the bare anchor for a footprint-less type. Shared by
- *  the rule that REFUSES a flag here (`eachBlockerCell`'s OBSTACLE channel) and the push-out that CLEARS
- *  one from here (`evictWorkFlagsFromFootprint`), so a placement cannot leave a flag on ground the plant
- *  rule rejects. */
+/** The cells the walls of `buildingType` own, anchor-relative: its family body (a level-0 house reserves
+ *  its top tier's space), or the bare anchor for a footprint-less type. No marker stands there: the
+ *  OBSTACLE channel refuses one, and a placement pushes a standing one off, so the two cannot disagree. */
 export function buildingFlagBody(content: ContentSet, buildingType: number): readonly FootprintCell[] {
   const fp = buildingFootprintOf(content, buildingType);
   return fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
+}
+
+/** {@link buildingFlagBody} as the nodes of a building anchored at `(anchorHx, anchorHy)`. */
+export function buildingFlagBodyNodes(
+  content: ContentSet,
+  terrain: TerrainGraph,
+  buildingType: number,
+  anchorHx: number,
+  anchorHy: number,
+): Set<NodeId> {
+  return new Set(translatedCells(terrain, buildingFlagBody(content, buildingType), anchorHx, anchorHy));
 }
 
 /** A building's reserved build-exclusion zone as {@link NodeId}s. See {@link reservedZoneOf}. */

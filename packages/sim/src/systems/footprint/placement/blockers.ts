@@ -21,9 +21,9 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  * What a standing entity contributes to a cell - merged across entity KIND within each channel, because
  * every rule treats resource and building the same within one:
  *  - **OBSTACLE** - resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
- *    building candidate's RESERVED zone (the "minimum distance from a node/wall"), a wall's body and any
- *    work flag. A building's door is part of its family body, so it stays walkable for routing but takes
- *    no flag.
+ *    building candidate's RESERVED zone (the "minimum distance from a node/wall"; only a rival's, for a
+ *    signpost), a wall's body and any work flag. A door outside the family body is not stamped, so it
+ *    stays open ground for a flag.
  *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY, whose walls may not
  *    sit in a resource's build margin; still open ground for a wall and a work flag.
  *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,

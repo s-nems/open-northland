@@ -17,7 +17,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
+import { buildingFlagBodyNodes } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isFisherJob, isHunterJob } from '../readviews/index.js';
@@ -93,11 +93,11 @@ export function relocateWorkFlag(
  * Push every work flag standing inside `building`'s family body out to the nearest legal field, so a
  * `placeBuilding` over already-flagged ground cannot seal one inside walls no flag may be planted on.
  *
- * The body is the family-wide {@link buildingFlagBody}, not the walk-blocked set the settler twin uses:
+ * The body is the family-wide {@link buildingFlagBodyNodes}, not the walk-blocked set the settler twin uses:
  * flag legality is family-body-wide, so a construction finish or a home tier upgrade encloses no cell that
- * was not already flag-blocked the moment the {@link Building} appeared, and only `placeBuilding` needs
- * this pass. Flags relocate in canonical ascending-id order and each search re-reads the live blocker set,
- * so an earlier evictee's new cell already blocks the next pick and no claimed-set has to be threaded.
+ * was not already flag-blocked the moment the {@link Building} appeared, and only `placeBuilding` needs this
+ * pass. Flags relocate in canonical ascending-id order and each search re-reads the live blocker set, so an
+ * earlier evictee's new cell already blocks the next pick and no claimed-set has to be threaded.
  *
  * Authored: push-out, chosen over refusing the placement so the building rule keeps ignoring markers; the
  * original's handling of a house raised over a standing flag is unobserved.
@@ -109,13 +109,8 @@ export function evictWorkFlagsFromFootprint(world: World, ctx: SystemContext, bu
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return;
   const anchor = nodeOfPosition(p.x, p.y);
-  const cells = buildingFlagBody(ctx.content, b.buildingType);
-  evictWorkFlagsFromCells(
-    world,
-    ctx,
-    terrain,
-    new Set(translatedCells(terrain, cells, anchor.hx, anchor.hy)),
-  );
+  const body = buildingFlagBodyNodes(ctx.content, terrain, b.buildingType, anchor.hx, anchor.hy);
+  evictWorkFlagsFromCells(world, ctx, terrain, body);
 }
 
 /** Push every work flag on `body` out to the nearest legal field `accept` also takes, as
