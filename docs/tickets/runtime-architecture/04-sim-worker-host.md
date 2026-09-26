@@ -1,7 +1,7 @@
 # Host the simulation and the lockstep driver in a dedicated worker
 
 **Area:** app, sim, lockstep, desktop · **Focus:** view/runtime · **Priority:** P2
-**Blocked by:** [00 Heavy-load reference](00-heavy-load-reference.md), [02 Component-level delta](02-component-level-delta.md)
+**Blocked by:** [00 Heavy-load reference](00-heavy-load-reference.md)
 
 A frame that carries a tick pays tick, snapshot and draw on the main thread inside one display
 period. At speed x3 three of five frames at 60 Hz carry a tick, and those are the frames that miss
@@ -16,9 +16,10 @@ the acknowledgement the relay waits for.
   export. Its loop is timer-driven at the tick rate times the session speed, independent of
   `requestAnimationFrame`.
 - Per stepped tick the worker posts the `SnapshotDelta` of `Simulation.snapshotDeltas()`, which carries
-  the tick's events, in order, including ticks
-  the main thread never draws. The main-thread queue is bounded: deltas may coalesce when the main
-  thread is behind, events never drop.
+  the tick's events, in order, including ticks the main thread never draws. The main-thread queue is
+  bounded: when the main thread is behind, the worker takes the next delta later so it spans the
+  ticks between (the stream already does; an entry diffs against the stream's last take, so entries
+  are never merged on the main thread), and events never drop.
 - The fog view crosses on a `generation` change as its masks; `FogView.stateAt` is an accessor over
   live fog state, so the main side rebuilds the accessor over the received masks. The host's probes
   and request-shaped reads become requests answered asynchronously; its per-frame reads are served

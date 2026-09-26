@@ -4,6 +4,8 @@ import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../../src/ecs/touched-log.js';
 import {
   type Command,
   type Entity,
+  type EntityDelta,
+  type EntitySnapshot,
   entityById,
   fx,
   Simulation,
@@ -12,12 +14,14 @@ import {
   type WorldSnapshot,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { expectSameWorld } from '../fixtures/snapshot-parity.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
  * A `SnapshotMirror` fed by `Simulation.snapshotDeltas()` must read exactly what `Simulation.snapshot()`
- * reads, with the clone cache's identities, so the runtime can move from the live snapshot to the mirror
- * (and later to a mirror behind a worker) without any consumer noticing. The parity run drives a real
+ * reads, keeping an untouched entity's object and an unwritten component's clone across deltas, so the
+ * runtime can move from the live snapshot to the mirror (and later to a mirror behind a worker) without
+ * any consumer noticing. The parity run drives a real
  * settlement; the small worlds pin the list edits and the refusals one by one.
  */
 
@@ -41,10 +45,6 @@ const SETUP = new Map<number, Command[]>([
 const PLANT_TICK = 200;
 const FELL_TICK = 250;
 
-function canonicalJson(snapshot: WorldSnapshot): string {
-  return JSON.stringify(snapshot);
-}
-
 function bareResource(sim: Simulation, remaining: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: 0, y: 0 });
@@ -61,8 +61,20 @@ function nonNull<T>(value: T | null): T {
   return value;
 }
 
+/** The mirror's identity contract for a touched entity: the entry's clones replace the written
+ *  components, the previous object's clones stay for the rest, and the removed ones are gone. */
+function expectPatched(entity: EntitySnapshot, before: EntitySnapshot | undefined, entry: EntityDelta): void {
+  for (const [name, value] of Object.entries(entry.components)) expect(entity.components[name]).toBe(value);
+  for (const name of entry.removed) expect(name in entity.components).toBe(false);
+  if (before === undefined) return;
+  for (const [name, value] of Object.entries(before.components)) {
+    if (name in entry.components || entry.removed.includes(name)) continue;
+    expect(entity.components[name]).toBe(value);
+  }
+}
+
 describe('snapshot mirror parity over a settlement run', () => {
-  it('equals the live snapshot after every tick and keeps untouched entity identities', () => {
+  it('equals the live snapshot after every tick and keeps untouched entity and component identities', () => {
     const sim = settlementSim();
     const deltas = sim.snapshotDeltas();
     const mirror = new SnapshotMirror();
@@ -84,14 +96,19 @@ describe('snapshot mirror parity over a settlement run', () => {
       const mirrored = mirror.snapshot();
       const live = sim.snapshot();
       expect(mirror.tick).toBe(sim.tick);
-      expect(canonicalJson(mirrored)).toBe(canonicalJson(live));
+      expectSameWorld(mirrored, live);
       expect(mirrored).not.toBe(previous);
       if (previous !== null) {
-        const touched = new Set(delta.touched.map((e) => e.id));
+        const touched = new Map(delta.touched.map((entry) => [entry.id, entry]));
         for (const entity of mirrored.entities) {
           const before = entityById(previous, entity.id);
-          if (touched.has(entity.id)) expect(entity).not.toBe(before);
-          else expect(entity).toBe(before);
+          const entry = touched.get(entity.id);
+          if (entry === undefined) {
+            expect(entity).toBe(before);
+          } else {
+            expect(entity).not.toBe(before);
+            expectPatched(entity, before, entry);
+          }
         }
         for (const id of delta.removed) expect(entityById(mirrored, id)).toBeUndefined();
       }
@@ -105,19 +122,25 @@ describe('snapshot mirror parity over a settlement run', () => {
     expect(removedTicks).toBeGreaterThan(0);
   });
 
-  it('shares the clone cache with the live snapshot on the same thread: one object per entity', () => {
+  it('carries a walking settler as its moved components, not the whole entity', () => {
     const sim = settlementSim();
     const deltas = sim.snapshotDeltas();
     const mirror = new SnapshotMirror();
-    for (let tick = 1; tick <= 40; tick++) {
+    let partial = 0;
+    for (let tick = 1; tick <= 120; tick++) {
       for (const cmd of SETUP.get(tick) ?? []) sim.enqueueSetup(cmd);
       sim.step();
-      mirror.apply(nonNull(deltas.next()));
-      const live = sim.snapshot();
-      const mirrored = mirror.snapshot();
-      expect(mirrored.entities.length).toBe(live.entities.length);
-      for (const [i, entity] of mirrored.entities.entries()) expect(entity).toBe(live.entities[i]);
+      const delta = nonNull(deltas.next());
+      mirror.apply(delta);
+      for (const entry of delta.touched) {
+        const held = entityById(mirror.snapshot(), entry.id);
+        if (held === undefined) throw new Error(`touched entity ${entry.id} left the mirror`);
+        const carried = Object.keys(entry.components).length;
+        expect(carried).toBeLessThanOrEqual(Object.keys(held.components).length);
+        if (carried < Object.keys(held.components).length) partial++;
+      }
     }
+    expect(partial).toBeGreaterThan(50);
   });
 
   it('a live snapshot taken between two deltas loses the stream nothing', () => {
@@ -130,7 +153,7 @@ describe('snapshot mirror parity over a settlement run', () => {
       if (tick % 2 === 0) sim.snapshot(); // drains the touched log ahead of the stream's own take
       mirror.apply(nonNull(deltas.next()));
     }
-    expect(canonicalJson(mirror.snapshot())).toBe(canonicalJson(sim.snapshot()));
+    expectSameWorld(mirror.snapshot(), sim.snapshot());
   });
 
   it('a delta taken every few ticks spans them and still lands on the live snapshot', () => {
@@ -144,7 +167,7 @@ describe('snapshot mirror parity over a settlement run', () => {
         const delta = nonNull(deltas.next());
         expect(delta.baseTick).toBe(tick === 7 ? -1 : tick - 7);
         mirror.apply(delta);
-        expect(canonicalJson(mirror.snapshot())).toBe(canonicalJson(sim.snapshot()));
+        expectSameWorld(mirror.snapshot(), sim.snapshot());
       }
     }
   });
@@ -161,9 +184,9 @@ describe('snapshot mirror parity over a settlement run', () => {
       mirrorA.apply(nonNull(a.next()));
       if (tick % 3 === 0) mirrorB.apply(nonNull(b.next()));
     }
-    const live = canonicalJson(sim.snapshot());
-    expect(canonicalJson(mirrorA.snapshot())).toBe(live);
-    expect(canonicalJson(mirrorB.snapshot())).toBe(live);
+    const live = sim.snapshot();
+    expectSameWorld(mirrorA.snapshot(), live);
+    expectSameWorld(mirrorB.snapshot(), live);
   });
 });
 
@@ -193,8 +216,64 @@ describe('snapshot delta stream', () => {
     sim.world.destroy(other);
     const delta = nonNull(deltas.next());
     expect(delta.touched.map((e) => e.id)).toEqual([node]);
-    expect(delta.touched[0]?.components.Resource).toMatchObject({ remaining: 4 });
+    expect(delta.touched[0]?.components).toEqual({
+      Resource: { goodType: 1, remaining: 4, harvestAtomic: 24 },
+    });
+    expect(delta.touched[0]?.removed).toEqual([]);
     expect(delta.removed).toEqual([other]);
+  });
+
+  it('carries a removed component by name and a re-added one as written', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const node = bareResource(sim, 5);
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    mirror.apply(nonNull(deltas.next()));
+    const position = entityById(mirror.snapshot(), node)?.components.Position;
+    sim.world.remove(node, Resource);
+    const dropped = nonNull(deltas.next());
+    expect(dropped.touched).toEqual([{ id: node, components: {}, removed: ['Resource'] }]);
+    mirror.apply(dropped);
+    const bare = entityById(mirror.snapshot(), node);
+    expect(bare?.components).toEqual({ Position: { x: 0, y: 0 } });
+    expect(bare?.components.Position).toBe(position);
+    sim.world.add(node, Resource, { goodType: 2, remaining: 1, harvestAtomic: 24 });
+    const readded = nonNull(deltas.next());
+    expect(readded.touched).toEqual([
+      { id: node, components: { Resource: { goodType: 2, remaining: 1, harvestAtomic: 24 } }, removed: [] },
+    ]);
+    mirror.apply(readded);
+    expectSameWorld(mirror.snapshot(), sim.snapshot());
+  });
+
+  it('a component removed and re-added inside one stretch is carried as written, not as removed', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const node = bareResource(sim, 5);
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    mirror.apply(nonNull(deltas.next()));
+    sim.world.remove(node, Resource);
+    sim.snapshot(); // the cache re-clones the node without the component in between
+    sim.world.add(node, Resource, { goodType: 3, remaining: 9, harvestAtomic: 24 });
+    const delta = nonNull(deltas.next());
+    expect(delta.touched).toEqual([
+      { id: node, components: { Resource: { goodType: 3, remaining: 9, harvestAtomic: 24 } }, removed: [] },
+    ]);
+    mirror.apply(delta);
+    expectSameWorld(mirror.snapshot(), sim.snapshot());
+  });
+
+  it('a delta taken after the entity was carried once diffs against that take, not the live cache', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const node = bareResource(sim, 5);
+    const deltas = sim.snapshotDeltas();
+    deltas.next();
+    sim.world.mut(node, Resource).remaining = 4;
+    sim.snapshot(); // refreshes the cache's clone of the node before the stream looks
+    sim.world.mut(node, Position).x = fx.fromInt(1);
+    sim.snapshot();
+    const delta = nonNull(deltas.next());
+    expect(Object.keys(delta.touched[0]?.components ?? {}).sort()).toEqual(['Position', 'Resource']);
   });
 
   it('an entity created and destroyed inside one stretch is only a removal, which the mirror skips', () => {
@@ -226,7 +305,7 @@ describe('snapshot delta stream', () => {
     expect(delta.removed).toEqual([]);
     mirror.apply(delta);
     expect(ids(mirror.snapshot())).toEqual(survivors);
-    expect(canonicalJson(mirror.snapshot())).toBe(canonicalJson(sim.snapshot()));
+    expectSameWorld(mirror.snapshot(), sim.snapshot());
   });
 
   it('a closed stream refuses to answer rather than hand out a delta missing changes', () => {
@@ -245,8 +324,8 @@ describe('snapshot mirror list edits', () => {
   function delta(partial: Partial<SnapshotDelta>): SnapshotDelta {
     return { tick: 1, baseTick: 0, rebuild: false, touched: [], removed: [], events: [], ...partial };
   }
-  function entity(id: number, mark = 0) {
-    return { id, components: { mark } };
+  function entity(id: number, mark = 0): EntityDelta {
+    return { id, components: { mark }, removed: [] };
   }
   function seeded(ids: readonly number[]): SnapshotMirror {
     const mirror = new SnapshotMirror();
@@ -260,17 +339,26 @@ describe('snapshot mirror list edits', () => {
     expect(ids(mirror.snapshot())).toEqual([5, 10, 15, 20, 25, 30, 35, 40]);
   });
 
-  it('replaces a held entity in place with the delta object', () => {
+  it('patches a held entity in place: a new object, the untouched clones kept, the written ones replaced', () => {
     const mirror = seeded([10, 20, 30]);
     const before = mirror.snapshot();
-    const replacement = entity(20, 1);
-    mirror.apply(delta({ touched: [replacement] }));
+    const held = entityById(before, 20);
+    const mark = held?.components.mark;
+    const size = { w: 1 };
+    mirror.apply(delta({ touched: [{ id: 20, components: { size }, removed: [] }] }));
     const after = mirror.snapshot();
     expect(ids(after)).toEqual([10, 20, 30]);
-    expect(entityById(after, 20)).toBe(replacement);
+    const patched = entityById(after, 20);
+    expect(patched).not.toBe(held);
+    expect(patched?.components).toEqual({ mark: 0, size: { w: 1 } });
+    expect(patched?.components.mark).toBe(mark);
+    expect(patched?.components.size).toBe(size);
+    expect(held?.components).toEqual({ mark: 0 }); // the previous snapshot's object is left alone
     expect(entityById(after, 10)).toBe(entityById(before, 10));
     expect(after).not.toBe(before);
     expect(mirror.version).toBe(2);
+    mirror.apply(delta({ tick: 2, baseTick: 1, touched: [{ id: 20, components: {}, removed: ['mark'] }] }));
+    expect(entityById(mirror.snapshot(), 20)?.components).toEqual({ size: { w: 1 } });
   });
 
   it('drops removed entities from the head, the middle and the tail in one pass, and keeps them as departed', () => {
@@ -289,6 +377,7 @@ describe('snapshot mirror list edits', () => {
     mirror.apply(delta({ touched: [entity(25), entity(30, 1)], removed: [10] }));
     expect(ids(mirror.snapshot())).toEqual([20, 25, 30]);
     expect(entityById(mirror.snapshot(), 30)?.components).toEqual({ mark: 1 });
+    expect(entityById(mirror.snapshot(), 25)?.components).toEqual({ mark: 0 });
   });
 
   it('refuses a delta that does not follow its tick, a delta before the rebuild, and a read before any', () => {

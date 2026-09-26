@@ -22,7 +22,8 @@ export interface WorldSnapshot {
 
 export interface EntitySnapshot {
   readonly id: number;
-  /** componentName -> a plain-cloned copy of its value (Maps become `[key, value]` arrays). */
+  /** componentName -> a plain-cloned copy of its value (Maps become `[key, value]` arrays). Read by
+   *  name: a mirror lists a component added to a held entity last, not in the live walk's order. */
   readonly components: Readonly<Record<string, unknown>>;
 }
 
@@ -71,7 +72,7 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
   const clones = snapshotClonesFor(world);
   clones.refresh();
   const entities: EntitySnapshot[] = [];
-  for (const id of world.canonicalEntities()) entities.push(clones.snapOf(id));
+  for (const id of world.canonicalEntities()) entities.push(clones.entryOf(id).snap);
   return { tick, entities, events: cloneEvents(events) };
 }
 

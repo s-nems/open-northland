@@ -1,4 +1,4 @@
-import { type Simulation, SnapshotMirror } from '@open-northland/sim';
+import { diffSnapshots, type Simulation, SnapshotMirror } from '@open-northland/sim';
 import { percentile } from './report/index.js';
 
 const BYTES_PER_KB = 1024;
@@ -17,6 +17,7 @@ export class MirrorProbe {
   private cloneUs: number[] = [];
   private applyUs: number[] = [];
   private touched: number[] = [];
+  private components: number[] = [];
   private kilobytes: number[] = [];
 
   constructor(private readonly sim: Simulation) {
@@ -37,6 +38,10 @@ export class MirrorProbe {
     this.cloneUs.push((t2 - t1) * US_PER_MS);
     this.applyUs.push((t3 - t2) * US_PER_MS);
     this.touched.push(delta.touched.length + delta.removed.length);
+    let components = 0;
+    for (const entry of delta.touched)
+      components += Object.keys(entry.components).length + entry.removed.length;
+    this.components.push(components);
     this.kilobytes.push(JSON.stringify(delta).length / BYTES_PER_KB);
   }
 
@@ -44,21 +49,32 @@ export class MirrorProbe {
    *  and the live snapshot disagree. */
   windowLine(): string {
     const live = this.sim.snapshot();
-    if (JSON.stringify(this.mirror.snapshot()) !== JSON.stringify(live)) {
-      throw new Error(`mirror diverged from the live snapshot at tick ${this.sim.tick}`);
+    const mirrored = this.mirror.snapshot();
+    const diff = diffSnapshots(mirrored, live);
+    if (
+      mirrored.tick !== live.tick ||
+      diff.added.length + diff.removed.length + diff.changed.length > 0 ||
+      JSON.stringify(mirrored.events) !== JSON.stringify(live.events)
+    ) {
+      throw new Error(
+        `mirror diverged from the live snapshot at tick ${this.sim.tick}: ${diff.added.length} added, ` +
+          `${diff.removed.length} removed, ${diff.changed.length} changed`,
+      );
     }
     const t0 = performance.now();
     structuredClone(live);
     const fullCloneMs = performance.now() - t0;
     const line =
       `  mirror  entities ${live.entities.length}  changed/tick p50 ${percentile(this.touched, 50).toFixed(0)} ` +
-      `p95 ${percentile(this.touched, 95).toFixed(0)}  delta JSON KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
+      `p95 ${percentile(this.touched, 95).toFixed(0)}  components/tick p50 ${percentile(this.components, 50).toFixed(0)} ` +
+      `p95 ${percentile(this.components, 95).toFixed(0)}  delta JSON KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
       `p95 ${percentile(this.kilobytes, 95).toFixed(1)}  take µs ${us(this.takeUs)}  clone µs ${us(this.cloneUs)}  ` +
       `apply µs ${us(this.applyUs)}  full snapshot clone ${fullCloneMs.toFixed(0)} ms`;
     this.takeUs = [];
     this.cloneUs = [];
     this.applyUs = [];
     this.touched = [];
+    this.components = [];
     this.kilobytes = [];
     return line;
   }

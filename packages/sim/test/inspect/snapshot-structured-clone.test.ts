@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defineComponent } from '../../src/ecs/world.js';
 import { type Command, Simulation, SnapshotMirror, type WorldSnapshot } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { expectSameWorld } from '../fixtures/snapshot-parity.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -46,6 +47,7 @@ describe('snapshot delta is structured-cloneable (Web-Worker boundary)', () => {
       [3, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING }]],
     ]);
     let touchedAcrossRun = 0;
+    let partialAcrossRun = 0;
     for (let tick = 1; tick <= 8; tick++) {
       for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
       sim.step();
@@ -56,11 +58,17 @@ describe('snapshot delta is structured-cloneable (Web-Worker boundary)', () => {
       expect(cloned).toEqual(delta);
       expect(JSON.stringify(cloned)).toBe(JSON.stringify(delta));
       mirror.apply(cloned);
+      for (const entry of delta.touched) {
+        const held = mirror.snapshot().entities.find((e) => e.id === entry.id);
+        if (held === undefined) throw new Error(`touched entity ${entry.id} left the mirror`);
+        if (Object.keys(entry.components).length < Object.keys(held.components).length) partialAcrossRun++;
+      }
     }
     expect(touchedAcrossRun).toBeGreaterThan(0);
+    expect(partialAcrossRun).toBeGreaterThan(0); // entries carrying part of their entity crossed too
     const live = sim.snapshot();
     const mirrored = mirror.snapshot();
-    expect(JSON.stringify(mirrored)).toBe(JSON.stringify(live));
+    expectSameWorld(mirrored, live);
     // The mirror owns copies, as a worker's receiver would: no entity object is the sim's.
     for (const entity of mirrored.entities)
       expect(entity).not.toBe(live.entities.find((e) => e.id === entity.id));

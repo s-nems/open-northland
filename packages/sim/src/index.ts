@@ -88,7 +88,7 @@ export {
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
-export { type SnapshotDelta, SnapshotDeltaStream } from './inspect/snapshot-clones.js';
+export { type EntityDelta, type SnapshotDelta, SnapshotDeltaStream } from './inspect/snapshot-clones.js';
 export {
   type ChangedEntity,
   type ComponentChange,

@@ -1,13 +1,15 @@
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 import { indexOfEntity } from './snapshot.js';
-import type { SnapshotDelta } from './snapshot-clones.js';
+import type { EntityDelta, SnapshotDelta } from './snapshot-clones.js';
 
 /**
- * The consumer side of a `SnapshotDeltaStream`: applies each delta to one entity list kept in
- * canonical order and hands out a `WorldSnapshot` over it with the clone cache's identities, so
- * memoisation by snapshot and by entity keeps working as it does on `Simulation.snapshot()`. An
- * untouched entity is the object the previous snapshot held, a touched one is the delta's, and the
- * snapshot object is new per applied delta; the list itself is edited in place, per change.
+ * The consumer side of one `SnapshotDeltaStream`: applies each of its deltas to one entity list kept
+ * in canonical order and hands out a `WorldSnapshot` over it in its own entity objects, so memoisation
+ * by snapshot and by entity keeps working as it does on `Simulation.snapshot()`. An untouched entity is
+ * the object the previous snapshot held, a touched one is a new object over the previous clones of the
+ * components its entry left alone, and the snapshot object is new per applied delta; the list itself
+ * is edited in place, per change. Entries are diffed against what their own stream carried last, so
+ * deltas of two streams must not be mixed into one mirror.
  */
 export class SnapshotMirror {
   private readonly entities: EntitySnapshot[] = [];
@@ -38,7 +40,7 @@ export class SnapshotMirror {
     this.dropped = [];
     if (delta.rebuild) {
       this.entities.length = 0;
-      for (const entity of delta.touched) this.entities.push(entity);
+      for (const entry of delta.touched) this.entities.push(created(entry));
     } else {
       const current = this.current;
       if (current === null) throw new Error('snapshot mirror: the first delta must rebuild');
@@ -89,15 +91,16 @@ export class SnapshotMirror {
     list.length = write;
   }
 
-  /** Replace the touched entities the list holds in place and merge the new ones in back to front, so
+  /** Patch the touched entities the list holds in place and merge the new ones in back to front, so
    *  the list grows in place and only the suffix from the first insertion moves. */
-  private merge(touched: readonly EntitySnapshot[]): void {
+  private merge(touched: readonly EntityDelta[]): void {
     const list = this.entities;
     const inserts: EntitySnapshot[] = [];
-    for (const entity of touched) {
-      const at = indexOfEntity(list, entity.id);
-      if (at >= 0) list[at] = entity;
-      else inserts.push(entity);
+    for (const entry of touched) {
+      const at = indexOfEntity(list, entry.id);
+      const held = at >= 0 ? list[at] : undefined;
+      if (held !== undefined) list[at] = patched(held, entry);
+      else inserts.push(created(entry));
     }
     if (inserts.length === 0) return;
     let read = list.length - 1;
@@ -116,4 +119,20 @@ export class SnapshotMirror {
       }
     }
   }
+}
+
+function created(entry: EntityDelta): EntitySnapshot {
+  return { id: entry.id, components: entry.components };
+}
+
+/** The new object of a held entity: the previous clones of the components the entry left alone, the
+ *  entry's fresh clones over them, without the components it removed. */
+function patched(held: EntitySnapshot, entry: EntityDelta): EntitySnapshot {
+  const components = { ...held.components, ...entry.components };
+  if (entry.removed.length === 0) return { id: entry.id, components };
+  const kept: Record<string, unknown> = {};
+  for (const name of Object.keys(components)) {
+    if (!entry.removed.includes(name)) kept[name] = components[name];
+  }
+  return { id: entry.id, components: kept };
 }

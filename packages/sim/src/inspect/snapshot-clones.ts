@@ -14,16 +14,26 @@ export interface SnapshotDelta {
   /** The mirror tick it applies on, the previous delta's `tick`; a mirror at another tick refuses it.
    *  Meaningless with `rebuild`. */
   readonly baseTick: number;
-  /** The touched log overflowed or the stream just opened: `touched` is every alive entity and the
-   *  mirror replaces its whole list. */
+  /** The touched log overflowed or the stream just opened: `touched` carries every alive entity whole
+   *  and the mirror replaces its whole list. */
   readonly rebuild: boolean;
-  /** A fresh clone of every entity created or mutated since the base and still alive, ascending by id. */
-  readonly touched: readonly EntitySnapshot[];
+  /** Every entity created or mutated since the base and still alive, ascending by id. */
+  readonly touched: readonly EntityDelta[];
   /** Ids destroyed since the base, ascending; empty with `rebuild`. May name an entity that was
    *  created and destroyed inside the stretch, which the mirror never held. */
   readonly removed: readonly number[];
   /** The events of `tick`, as the snapshot carries them. */
   readonly events: readonly SimEvent[];
+}
+
+/** One touched entity's changes since the base. An entity the base did not hold, and every entity of
+ *  a rebuild, carries all of its components. */
+export interface EntityDelta {
+  readonly id: number;
+  /** componentName -> a fresh clone, for the components written since the base. */
+  readonly components: Readonly<Record<string, unknown>>;
+  /** The components the entity carried at the base and no longer does. */
+  readonly removed: readonly string[];
 }
 
 /** A cache entry: untouched entities reuse the whole entry; touched entities reuse every component
@@ -89,14 +99,14 @@ class SnapshotClones {
     }
   }
 
-  /** The clone of an alive entity, remade when a drained mutation marked it dirty. */
-  snapOf(id: Entity): EntitySnapshot {
+  /** The cached clone of an alive entity, remade when a drained mutation marked it dirty. */
+  entryOf(id: Entity): CachedEntity {
     let cached = this.entries.get(id);
     if (cached === undefined || cached.dirty) {
       cached = cloneEntity(this.world, id, cached);
       this.entries.set(id, cached);
     }
-    return cached.snap;
+    return cached;
   }
 
   /** Open a stream whose first delta rebuilds. */
@@ -161,6 +171,7 @@ export interface SnapshotDeltaSource {
 
 const NO_TICK = -1;
 const NO_VERSION = -1;
+const NO_COMPONENT_NAMES: readonly string[] = [];
 
 /**
  * The per-tick change feed one mirror rebuilds the snapshot from. Each stream accumulates on its own,
@@ -170,6 +181,9 @@ const NO_VERSION = -1;
 export class SnapshotDeltaStream {
   private readonly clones: SnapshotClones;
   private readonly pending: PendingDelta;
+  /** Per entity the mirror holds, the component revisions of the clones the last delta carried: what a
+   *  touched entity's next entry is diffed against, so no value is compared and no world pass is made. */
+  private readonly sent = new Map<Entity, Readonly<Record<string, number>>>();
   private lastTick = NO_TICK;
   private lastVersion = NO_VERSION;
   private closed = false;
@@ -191,14 +205,23 @@ export class SnapshotDeltaStream {
     if (tick === this.lastTick && version === this.lastVersion) return null;
     this.clones.refresh();
     const pending = this.pending;
+    let touched: EntityDelta[];
+    let removed: Entity[];
+    if (pending.rebuild) {
+      this.sent.clear();
+      touched = world.canonicalEntities().map((id) => this.whole(id));
+      removed = [];
+    } else {
+      removed = ascending(pending.removed);
+      for (const id of removed) this.sent.delete(id);
+      touched = ascending(pending.touched).map((id) => this.changesOf(id));
+    }
     const delta: SnapshotDelta = {
       tick,
       baseTick: this.lastTick,
       rebuild: pending.rebuild,
-      touched: (pending.rebuild ? world.canonicalEntities() : ascending(pending.touched)).map((id) =>
-        this.clones.snapOf(id),
-      ),
-      removed: pending.rebuild ? [] : ascending(pending.removed),
+      touched,
+      removed,
       events: cloneEvents(this.source.events.current()),
     };
     pending.touched.clear();
@@ -212,7 +235,37 @@ export class SnapshotDeltaStream {
   /** Stop collecting; a later `next()` throws rather than hand a mirror a delta missing changes. */
   close(): void {
     this.closed = true;
+    this.sent.clear();
     this.clones.close(this.pending);
+  }
+
+  /** The entity with all of its components, as a rebuild and a creation carry it. */
+  private whole(id: Entity): EntityDelta {
+    const cached = this.clones.entryOf(id);
+    this.sent.set(id, cached.componentRevisions);
+    return { id, components: cached.snap.components, removed: NO_COMPONENT_NAMES };
+  }
+
+  /** The components whose revision moved since the last delta carried the entity, and the ones it lost. */
+  private changesOf(id: Entity): EntityDelta {
+    const base = this.sent.get(id);
+    if (base === undefined) return this.whole(id);
+    const cached = this.clones.entryOf(id);
+    this.sent.set(id, cached.componentRevisions);
+    const revisions = cached.componentRevisions;
+    const components: Record<string, unknown> = {};
+    let stillCarried = 0;
+    for (const name of Object.keys(revisions)) {
+      const before = base[name];
+      if (before !== undefined) stillCarried++;
+      if (before !== revisions[name]) components[name] = cached.snap.components[name];
+    }
+    const baseNames = Object.keys(base);
+    const removed =
+      stillCarried === baseNames.length
+        ? NO_COMPONENT_NAMES
+        : baseNames.filter((name) => !Object.hasOwn(revisions, name));
+    return { id, components, removed };
   }
 }
 
