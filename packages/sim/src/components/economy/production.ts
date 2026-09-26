@@ -36,8 +36,9 @@ export type ProductionCount = number;
  * harvests of each good its gathering trade takes, set by the `setProductionCount`, `setProductionGoods`
  * and `setGatherGood` commands. Original behavior: one counter per human and good it can produce, `0`
  * stopped, `1..10` units still to make, `11` unlimited, and "only this good" is that good unlimited with
- * every other one at `0`; here the finite top is {@link PRODUCTION_COUNT_MAX}. Dropped on a change of trade and whenever a workplace binding is made or ended,
- * since another post or trade offers a different set of goods; a re-order into the same trade keeps them.
+ * every other one at `0`; here the finite top is {@link PRODUCTION_COUNT_MAX}. Dropped on a change of
+ * trade and whenever a workplace binding is made or ended, since another post or trade offers a
+ * different set of goods; a re-order into the same trade keeps them.
  *
  * Craft: the rotation pool is every product whose counter is at least one, in the workplace's recipe order;
  * each started cycle takes the one at `cursor`, skipping a full output slot but waiting for missing inputs

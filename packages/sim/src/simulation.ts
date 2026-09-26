@@ -418,8 +418,8 @@ export class Simulation {
   }
 
   /**
-   * Why a craft worker works or stands idle, for the settler panel; undefined when no status applies.
-   * Reads the settler and its workplace only, never a scan.
+   * Why a craft worker or gatherer works or stands idle, for the settler panel; undefined when no status
+   * applies. Reads the settler and its workplace only, never a scan.
    */
   workStatus(entity: Entity): WorkStatus | undefined {
     return workStatus(this.world, this.context(), entity);

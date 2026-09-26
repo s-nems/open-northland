@@ -65,22 +65,28 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
   const ground = hunter ? huntingGround(world, terrain, e) : null;
   const huntArea =
     ground === null ? undefined : { center: ground.anchorCell, radius: carcassReach(plan, ground.radius) };
-  const focus = focusedHarvest(
-    plan,
-    harvestClaims,
-    (node, goodType) =>
-      (goodFilter === undefined || goodFilter.has(goodType)) &&
-      (admits === undefined || admits(node)) &&
-      !(hunter && foreignKill(plan)(node)),
-  );
+  const focus =
+    admits === null
+      ? null
+      : focusedHarvest(
+          plan,
+          harvestClaims,
+          (node, goodType) =>
+            (goodFilter === undefined || goodFilter.has(goodType)) &&
+            (admits === undefined || admits(node)) &&
+            !(hunter && foreignKill(plan)(node)),
+        );
   if (focus !== null && startHarvestFromNode(plan, focus, harvestClaims, huntArea)) return true;
-  const node = nearestHarvestableFor(plan, {
-    exclude: harvestClaims,
-    ...(goodFilter !== undefined ? { goodFilter } : {}),
-    ...(admits !== undefined ? { admits } : {}),
-    ...(huntArea !== undefined ? { within: huntArea } : {}),
-    ...(hunter ? { reserved: foreignKill(plan) } : {}),
-  });
+  const node =
+    admits === null
+      ? null
+      : nearestHarvestableFor(plan, {
+          exclude: harvestClaims,
+          ...(goodFilter !== undefined ? { goodFilter } : {}),
+          ...(admits !== undefined ? { admits } : {}),
+          ...(huntArea !== undefined ? { within: huntArea } : {}),
+          ...(hunter ? { reserved: foreignKill(plan) } : {}),
+        });
   const trunk = nearestCollectablePileFor(plan, {
     ...(goodFilter !== undefined ? { goodFilter } : {}),
     ...(huntArea !== undefined ? { within: huntArea } : {}),
@@ -119,19 +125,25 @@ function planFlagGatherer(
   const hunter = isHunterJob(ctx.content, plan.jobType);
   const reach = { center: flagCell, radius: hunter ? carcassReach(plan, flag.radius) : flag.radius };
   const admits = countersAdmit(plan);
-  const focus = focusedHarvest(
-    plan,
-    harvestClaims,
-    (node) => (admits === undefined || admits(node)) && !(hunter && foreignKill(plan)(node)),
-  );
+  const focus =
+    admits === null
+      ? null
+      : focusedHarvest(
+          plan,
+          harvestClaims,
+          (node) => (admits === undefined || admits(node)) && !(hunter && foreignKill(plan)(node)),
+        );
   if (focus !== null && startHarvestFromNode(plan, focus, harvestClaims, reach)) return true;
 
-  const node = nearestHarvestableFor(plan, {
-    exclude: harvestClaims,
-    ...(hunter ? { reserved: foreignKill(plan) } : {}),
-    ...(admits !== undefined ? { admits } : {}),
-    area: reach,
-  });
+  const node =
+    admits === null
+      ? null
+      : nearestHarvestableFor(plan, {
+          exclude: harvestClaims,
+          ...(hunter ? { reserved: foreignKill(plan) } : {}),
+          ...(admits !== undefined ? { admits } : {}),
+          area: reach,
+        });
   if (node !== null && startHarvestFromNode(plan, node, harvestClaims, reach)) return true;
 
   // Nothing in reach: stand idle beside the flag.
@@ -146,9 +158,13 @@ function planFlagGatherer(
  * stopped stages too, and the one-kill gate (`huntingGroundHoldsCarcass`) reads bodies the same way, so a
  * hunter held to one good neither leaves a half-plucked body nor wedges on one it will not touch.
  */
-function countersAdmit(plan: PlannerContext): ((node: Entity) => boolean) | undefined {
+/** The node filter the production counters set: undefined for a trade without counters, null when every
+ *  counter is at 0, so no node scan is worth running (loose piles are still carried off). */
+function countersAdmit(plan: PlannerContext): ((node: Entity) => boolean) | null | undefined {
   const open = openGatherGoods(plan.world, plan.ctx, plan.entity, plan.jobType);
-  return open === undefined ? undefined : (node) => nodeHoldsOpenGood(plan.world, node, open);
+  if (open === undefined) return undefined;
+  if (open.size === 0) return null;
+  return (node) => nodeHoldsOpenGood(plan.world, node, open);
 }
 
 /**

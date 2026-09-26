@@ -8,6 +8,7 @@ import {
   PAPER_KINDS,
   Palisade,
   type Paper,
+  PRODUCTION_UNLIMITED,
   Settler,
   Sheltering,
   VEHICLE_STANCES,
@@ -417,7 +418,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(71);
+  const roll = rng.int(72);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -990,6 +991,16 @@ function nextCommand(rng: Rng): Command {
         player: pick(rng, OWNERS),
         goodType: pick(rng, EQUIP_ORDER_GOODS),
         vetoed: rng.int(2) === 0,
+      };
+    case 71:
+      // A production counter at a random id and good: owned gatherers and craft workers (the counter the
+      // rotation and the harvest spend from), plus trades without counters, unknown goods, unowned/dead
+      // ids and counts past the unlimited sentinel (refused, still logged).
+      return {
+        kind: 'setProductionCount',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        goodType: pick(rng, [RESOURCE_GOOD, INVALID_TYPE]),
+        count: rng.int(PRODUCTION_UNLIMITED + 2),
       };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);

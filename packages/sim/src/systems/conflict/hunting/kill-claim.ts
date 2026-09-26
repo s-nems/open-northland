@@ -50,9 +50,9 @@ export function claimedByAnotherHunter(
  * standing work means no new target. The box query is a Manhattan superset, so each hit is re-checked at its
  * exact distance. It must not out-claim the harvest drive: a carcass the hunter provably cannot bank - a
  * colleague's claimed kill, one across a static terrain component seam, one on a cell its routes just
- * failed on, or a body holding no good its production counters leave open - counts as no work, else a body it may
- * never pluck would stall its hunting for good. The box walk still visits every resource in it, but another
- * trade's node is dropped by its indexed harvest atomic before any store read.
+ * failed on, or a body holding no good its production counters leave open - counts as no work, else a
+ * body it may never pluck would stall its hunting for good. The box walk still visits every resource in
+ * it, but another trade's node is dropped by its indexed harvest atomic before any store read.
  */
 export function huntingGroundHoldsCarcass(
   world: World,

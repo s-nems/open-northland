@@ -70,33 +70,11 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
 }
 
 /**
- * Whether `candidate` may wed `seeker`: another settler who may marry ({@link mayMarry}), of the seeker's
- * tribe, player and opposite sex, and under signpost navigation standing inside the seeker's allowed area.
- * Original behavior: only the seeker's own player's humans of its tribe are candidates.
- */
-function isEligiblePartner(
-  world: World,
-  content: ContentSet,
-  seeker: Entity,
-  candidate: Entity,
-  terrain: TerrainGraph | undefined,
-  limit: NavigationLimit | null,
-): boolean {
-  if (candidate === seeker || !mayMarry(world, content, candidate)) return false;
-  const p = world.tryGet(candidate, Position);
-  if (p === undefined) return false;
-  if (world.get(candidate, Settler).tribe !== world.get(seeker, Settler).tribe) return false;
-  if (ownerOf(world, candidate) !== ownerOf(world, seeker)) return false;
-  if (world.has(candidate, Female) === world.has(seeker, Female)) return false;
-  if (limit === null || terrain === undefined) return true;
-  const node = nodeOfPosition(p.x, p.y);
-  return limit.allowsNode(terrain.nodeAtClamped(node.hx, node.hy));
-}
-
-/**
- * The nearest {@link isEligiblePartner} for `seeker`, or null when none exists. Nearest by half-cell
- * Manhattan distance with an ascending-entity-id tie-break, so the winner never depends on store insertion
- * order. Approximation: the whole-map nearest pick; the original searches a bounded area around the seeker.
+ * The nearest eligible partner for `seeker`, or null when none exists. Nearest by half-cell Manhattan
+ * distance with an ascending-entity-id tie-break, so the winner never depends on store insertion order;
+ * under signpost navigation a partner outside the seeker's allowed area is not eligible. Original
+ * behavior: only the seeker's own player's humans of its tribe are candidates. Approximation: the
+ * whole-map nearest pick; the original searches a bounded area around the seeker.
  */
 export function findPartnerFor(
   world: World,
@@ -108,11 +86,23 @@ export function findPartnerFor(
   const seekerPos = world.tryGet(seeker, Position);
   if (seekerPos === undefined) return null;
   const from = nodeOfPosition(seekerPos.x, seekerPos.y);
+  const tribe = world.get(seeker, Settler).tribe;
+  const owner = ownerOf(world, seeker);
+  const seekerFemale = world.has(seeker, Female);
   let best: { entity: Entity; dist: number } | null = null;
   for (const e of world.canonicalQuery(Person, Position)) {
-    if (!isEligiblePartner(world, content, seeker, e, terrain, limit)) continue;
+    if (e === seeker || !mayMarry(world, content, e)) continue;
+    if (world.get(e, Settler).tribe !== tribe || ownerOf(world, e) !== owner) continue;
+    if (world.has(e, Female) === seekerFemale) continue;
     const p = world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
+    if (
+      limit !== null &&
+      terrain !== undefined &&
+      !limit.allowsNode(terrain.nodeAtClamped(node.hx, node.hy))
+    ) {
+      continue;
+    }
     const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
     if (best === null || dist < best.dist) best = { entity: e, dist };
   }
