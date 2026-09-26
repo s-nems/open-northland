@@ -3348,22 +3348,28 @@ body.on-drag-scroll-cursor-hidden * {
   flex: 1;
   min-width: 0;
 }
+/* The badge and the name in the settler name line's type, larger, so A and B read at a glance; the
+   title (26 px), the gap and the 28 px tabs stay within the portrait's 68 px. */
 .on-hud .on-trade-house__title {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
   padding: 0 2px;
-  font-size: 13px;
 }
 .on-hud .on-trade-house--mirrored .on-trade-house__title {
   justify-content: flex-end;
 }
 .on-hud .on-trade-house__title > .on-stop__badge {
   flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  font: 700 14px / 1 var(--font-title);
 }
 .on-hud .on-trade-house__name {
   min-width: 0;
+  font: 600 15px / 1.2 var(--font-title);
+  letter-spacing: 0.02em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3379,8 +3385,8 @@ body.on-drag-scroll-cursor-hidden * {
   visibility: visible;
 }
 .on-hud .on-trade-house__heading .on-glyph {
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   stroke-width: 2.4;
 }
 /* Eight square icon tabs share the column beside the portrait; a lit dot marks a category with a

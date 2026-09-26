@@ -224,7 +224,9 @@ assistive tech.
   house, a 64 px square in the settler portrait's frame at the outer edge (A's left, B's right),
   painted by the renderer through a hole in the window's slate like the settler panel's portrait. A
   click on it brings the house into view and keeps the trader's selection and the window. Beside the
-  portrait its badge, its name as a link (select and bring into view, which closes the window with
+  portrait its badge (26 px) and its name in the settler panel's name type at 15 px, large so A and B
+  read at a glance within the portrait's height (a long name ends in an ellipsis; the hover card
+  names it), the name as a link (select and bring into view, which closes the window with
   the trader's selection, as a residents row does; resting shows the hover card) and the arrow while
   the trader heads there, over the house's own strip of the eight stock categories as square icon
   tabs, standing on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
