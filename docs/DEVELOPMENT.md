@@ -225,7 +225,8 @@ interpolated presentation clocks.
 
 Debug modes:
 
-- `debug=diag` records replay and state-hash diagnostics;
+- `debug=diag` records replay and state-hash diagnostics, and every 120 ticks checks the sim's
+  invariants and logs any violation;
 - `debug=perf` adds browser performance marks;
 - `debug=trace` records a trace that can be exported for offline profiling;
 - `debug=profile` accumulates per-system sim cost for the whole session;

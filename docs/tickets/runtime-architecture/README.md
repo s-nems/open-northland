@@ -33,25 +33,24 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [04 Sim worker host](04-sim-worker-host.md) | Sim, driver and timestep in a worker behind the seam; inline host kept for tests and scenes | 00 |
-| [05 Transport in the worker](05-transport-in-worker.md) | Loopback, then the relay client with its digests and pacer, inside the worker | 04 |
-| [06 Draw loop on the mirror](06-draw-loop-on-mirror.md) | The frame loop draws the mirror and interpolates; shortfall visible in the HUD | 00, 04 |
+| [05 Transport in the worker](05-transport-in-worker.md) | The relayed session boots through the worker, and the relay client with its digests and pacer runs there | 00 |
+| [06 Speed shortfall in the menu](06-speed-shortfall-in-menu.md) | A sustained shortfall, dropped ticks or a held worker clock, shown in the system menu | 00 |
 | [07 Client load telemetry](07-client-load-telemetry.md) | Each client reports tick cost and backlog to the relay on the protocol | 00 |
 | [08 Room pace governor](08-room-pace-governor.md) | Free band, governed speed with a named limiter, kick vote; no clock hold for lag | 07 |
 | [09 Zoom-out LOD](09-zoom-out-lod.md) | Frame cost bounded across the zoom range by named detail tiers | 00 |
 | [10 Desync forensics](10-desync-forensics.md) | Both sides of a divergence capture the disputed tick per domain into the bundle | none |
 | [11 Background tab ticking](11-background-tab-ticking.md) | Verify and document whether the worker host keeps ticking in a hidden tab | 05 |
 
-The runtime already reads the world through one host interface, `SessionHost` in
-`packages/app/src/session/`, with `inlineSessionHost` over the live `Simulation`; the entries, scenes,
-`game/sandbox/` and `game/world/` are the hosts that construct a `Simulation`. The inline host already
-reads snapshots off a `SnapshotMirror` fed by `Simulation.snapshotDeltas()`, the per-tick delta the
-worker will post: per touched entity only the components written since the last delta. The mirror also
-maintains the snapshot indexes (`indexesOf`: kind lists, owner groups, counts, position buckets and the
-consumers' own aggregates) from the same edits, so the app and the renderer read those instead of
-walking the entity list per tick. 00 lands first. 04 to 06 are the worker. 07 and 08 are the networking
-change and can proceed in parallel with the worker. 09 to 11 close the epic. Contract edits land with
-the ticket that makes them true: 04 rewrites `packages/app/AGENTS.md`.
+The runtime reads the world through one host interface, `SessionHost` in `packages/app/src/session/`.
+The `?map=` entry runs its `Simulation`, `LockstepDriver` over `LoopbackTransport` and fixed timestep
+in a Web Worker (`session/worker/`), which posts per-tick deltas of the written components, fog masks
+per generation and small facts on change; the main thread applies them to a `SnapshotMirror` and its
+indexes, and interpolates by the tick arrival time. Probes and request-shaped reads answer Promises,
+which the last-answer cache serves to synchronous HUD reads. Scenes, tests and the relayed entry
+still run `inlineSessionHost` on the main thread, over the same mirror. 00 lands first. 05 moves the
+relayed session into the worker and 06 surfaces the shortfall. 07 and 08 are the networking change and
+can proceed in parallel. 09 to 11 close the epic. Contract edits land with the ticket that makes them
+true: 05 rewrites the relayed-entry lines of `packages/app/AGENTS.md` and `packages/net-client/AGENTS.md`.
 
 ## Not in this epic
 
@@ -66,4 +65,4 @@ the ticket that makes them true: 04 rewrites `packages/app/AGENTS.md`.
 ## Shared verification
 
 Every ticket runs the gates in `docs/TESTING.md` and reports its numbers from the 00 reference. State
-hashes and goldens change only where a ticket names the behaviour change; 03 to 06 name none.
+hashes and goldens change only where a ticket names the behaviour change; 05 and 06 name none.

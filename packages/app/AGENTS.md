@@ -1,29 +1,35 @@
 # App package contract
 
-`packages/app` is the browser shell. It translates input into sim commands, runs the frame loop over
-a `@open-northland/lockstep` session driver, and gives snapshots and events to render, audio, and the
-HUD. It is the only package allowed to own both a live simulation and a renderer. Audio may use the
-pure `@open-northland/render/data` projection helpers.
+`packages/app` is the browser shell. It translates input into sim commands, advances a
+`@open-northland/lockstep` session driver from the frame loop, and gives snapshots and events to
+render, audio, and the HUD. For the `?map=` entry the worker host owns the simulation, the lockstep
+driver and the clock; the app owns the mirror, the renderer and the HUD. It is the only package
+allowed to host both a simulation and a renderer. Audio may use the pure
+`@open-northland/render/data` projection helpers.
 
 The root [`AGENTS.md`](../../AGENTS.md) still applies.
 
 ## Boundaries
 
 - Browser APIs, I/O, wall-clock time, and presentation floats belong here, not in sim.
-- Submit a running session's state changes through `LockstepDriver.submit()` in a seat or admin
+- Submit a running session's state changes through the session driver's `submit()` in a seat or admin
   envelope, and pre-tick world assembly through `sim.enqueueSetup()`. Tempo and pause are session clock
   operations, not loop fields. Do not mutate live component stores from UI or renderer glue.
-- The runtime reads the world through `src/session/` `SessionHost` alone: snapshots, the fog view, the
-  probes and the request-shaped reads it names. Only its per-frame reads answer synchronously; a
-  consumer that must read another one synchronously goes through a `LastAnswerCache` and keys its
-  memos on the cache's version as well, so an answer that lands under an unchanged snapshot still
-  shows. A click never orders on a last answer: it awaits the host's answer as of now. `Simulation` is constructed and typed only by hosts:
-  entries, scenes, `game/sandbox/`, `game/world/` and the inline host, which serves snapshots off a
-  delta-fed `SnapshotMirror` by default, so a snapshot kept past the next tick copies its entity list.
+- The runtime reads the world through `src/session/` `SessionHost` alone. Per-frame reads answer
+  synchronously off a delta-fed `SnapshotMirror` and the facts the host keeps beside it, so a snapshot
+  kept past the next tick copies its entity list. Probes and request-shaped reads answer Promises of
+  cloneable data; a consumer that must read one synchronously goes through a `LastAnswerCache` and
+  keys its memos on the cache's version as well, so an answer that lands under an unchanged snapshot
+  still shows. A click never orders on a last answer: it awaits the host's answer as of now.
   A kind subset, an owner's entities, a per-key group or count and the actors come from the indexes the
   mirror maintains per change (`indexesOf`, `entitiesWith`, `groupedBy`, `countedBy` in `@open-northland/sim`;
   `actorsOf` and the group readers in `game/snapshot-base.ts`), never from a per-tick walk over
   `snapshot.entities`. A walk is for a click, an order or a one-off setup.
+- `Simulation` is constructed and typed only by hosts: the entries' world builders, scenes,
+  `game/sandbox/`, `game/world/`, the inline host and the worker's session in `session/worker/`. The
+  worker host serves the `?map=` entry. The inline host serves scenes, tests and the relayed entry
+  until the relay client runs in the worker. `entries/shot.ts` and one-off sims, such as a
+  sub-mission's restore check, step their `Simulation` on the main thread with no host.
 - Load generated content through `src/content/net.ts` by its root-relative URL and validate it with
   the `@open-northland/data` schemas. A checkout without `content/` must still boot using synthetic
   fallback content or a clear unavailable state.
@@ -33,7 +39,8 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   report shows but does not block.
 - A world is assembled from the session descriptor alone, never from the local seat: two clients of
   one relayed session must enqueue the same setup. The `?relay=` entry runs the shared map boot
-  through `@open-northland/net-client`, which is the session driver and clock there.
+  on the inline host, and `@open-northland/net-client`'s `RelayClient` is the session driver and clock
+  there, on the main thread.
 - The menu hands over to a game through `swapToEntry`, never by assigning `window.location`. A
   document navigation ends the browser's fullscreen grant, and the next document can only take it
   back on the player's next click. Entries that still navigate owe the player that flash.
@@ -96,8 +103,9 @@ world, then apply the recorded command log to the stored tick.
 Group code by user-facing concern:
 
 - `entries/`: top-level URL modes;
-- `session/`: the host interface the runtime reads the world through, and its inline implementation;
-- `view/runtime/`: shared playable runtime and frame loop;
+- `session/`: the host interface the runtime reads the world through, the inline host, the worker host
+  (`session/worker/`) and the last-answer cache;
+- `view/runtime/`: shared playable runtime, frame loop and the host's cached answers;
 - `content/`: generated-content loaders and pure bindings;
 - `catalog/` and `game/sandbox/`: fallback content and rules;
 - `game/world/`: the deterministic worlds a playable entry builds over decoded or fallback content;

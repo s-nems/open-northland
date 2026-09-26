@@ -151,9 +151,20 @@ ticket naming the first diverging tick. An unknown or empty `ON_ENGINES` selecti
 instead of passing with nothing compared.
 
 The workloads are the `sandbox` scene over its acceptance run, hashed every 20 ticks, and 2000 ticks
-of `magiczny_las` with six AI seats, hashed every 100 because a full hash of that world is slow. A
-divergence names the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serves
-the checkout's `content/` only.
+of `magiczny_las` with six AI seats, hashed every 100 because a full hash of that world is slow. The
+map workload boots the `?map=` entry, so its sim runs in the worker host there. A divergence names
+the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serves the checkout's
+`content/` only.
+
+## Sim worker host
+
+`packages/app/test/session-worker*.test.ts` run the worker host under Node's `worker_threads`. Node
+runs the worker as plain JavaScript over the workspace packages' built output, so the tests first
+bundle it from source with esbuild. They check that four acceptance scenes reach the same state in the
+worker as inline, and that the runtime's side sees every tick the worker stepped.
+`test:content` repeats the parity check in `session-worker-checkpoint.test.ts` on a late six-AI
+`magiczny_las` checkpoint under player orders; the checkpoint is a local `bench-out/` file, so the
+test skips where it was never written.
 
 ## Desktop boot and persistence
 

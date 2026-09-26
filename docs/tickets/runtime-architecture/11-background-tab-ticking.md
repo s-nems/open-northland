@@ -3,9 +3,11 @@
 **Area:** app, net-client · **Focus:** worker host · **Priority:** P3
 **Blocked by:** [05 Transport in the worker](05-transport-in-worker.md)
 
-A hidden browser tab stops `requestAnimationFrame`, so today a browser client stops ticking and
-acknowledging, and the room waits for it. The desktop build disables Electron's background
-throttling and is the primary target, so this is a check, not a design driver.
+A hidden browser tab stops `requestAnimationFrame`, so today a relayed browser client stops ticking
+and acknowledging, and the room waits for it. A single-player `?map=` session stops by design: its
+worker holds the clock two seconds of session time past the last tick the main thread delivered.
+The desktop build disables Electron's background throttling and is the primary target, so this is a
+check, not a design driver.
 
 ## Scope
 
