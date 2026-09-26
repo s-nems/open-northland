@@ -3037,7 +3037,7 @@ body.on-drag-scroll-cursor-hidden * {
   grid-template-columns: 18px minmax(0, 1fr) 14px 18px;
   align-items: center;
   gap: 8px;
-  min-height: 22px;
+  min-height: var(--stop-row);
   font-size: 12.5px;
 }
 .on-hud .on-stop__badge {
@@ -3080,14 +3080,50 @@ body.on-drag-scroll-cursor-hidden * {
   height: 13px;
   stroke-width: 2.4;
 }
-/* "Konfiguruj handel": the one way into the trade window, under the stop rows. */
-.on-hud .on-trade-configure {
+/* The stop rows with, while both stops are own houses, the joint at their right: a bracket from the two
+   rows' detach buttons to "Konfiguruj handel", the one way into the trade window. Without it the rows
+   keep the full width. */
+.on-hud .on-trade-route {
+  --stop-row: 22px;
   display: flex;
-  width: 100%;
-  margin: 6px 0 2px;
+  align-items: stretch;
 }
-.on-hud .on-trade-configure[hidden] {
+.on-hud .on-trade-route > .on-stops {
+  flex: 1;
+  min-width: 0;
+}
+.on-hud .on-trade-joint {
+  --joint-button: 24px;
+  --joint-arm: 10px;
+  position: relative;
+  display: grid;
+  align-items: center;
+  justify-items: end;
+  flex-shrink: 0;
+  width: calc(var(--joint-arm) + var(--joint-button));
+  margin-left: 2px;
+}
+.on-hud .on-trade-joint[hidden] {
   display: none;
+}
+/* The arms stand at the two rows' mid-lines and meet behind the button's centre. */
+.on-hud .on-trade-joint::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--stop-row) / 2) calc(var(--joint-button) / 2) calc(var(--stop-row) / 2) 0;
+  border: 1px solid var(--bronze-lo);
+  border-left: 0;
+  border-radius: 0 4px 4px 0;
+}
+.on-hud button.on-trade-configure {
+  position: relative;
+  width: var(--joint-button);
+  height: var(--joint-button);
+}
+.on-hud .on-trade-configure .on-glyph {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
 }
 /* The transfers as read-only lines: the good, a dotted leader, the direction with its limits. */
 .on-hud .on-trade-lines {

@@ -380,12 +380,15 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   into view (resting on it shows the building's hover card, another seat's house reads amber), a
   bronze arrow on the stop the trader serves now and × to take the house off. Every free slot reads
   "Dodaj punkt handlowy" in amber, a link that arms the house pick, which fills the first free slot
-  whichever row armed it. With both stops the player's own houses a full-width "Konfiguruj handel"
-  button opens the trade window, and under it the transfers as read-only lines: the good's icon
+  whichever row armed it. With both stops the player's own houses the two rows' × buttons step
+  left for one 24 px round button at the right edge, the balance-scale glyph with "Konfiguruj
+  handel" as its tooltip, centred between the rows on a thin bronze bracket from both × so it reads
+  as joining the two stops; it opens the trade window. Without it the rows keep the full width. Under
+  the rows the transfers as read-only lines: the good's icon
   centred in its well and its name, a dotted leader, and its direction with the limits set ("A → B
   · do 10 · zostaw 2", "A ⇄ B"), the tooltip saying the same in words. Nothing on these lines is
   pressed. With fewer than two stops only the two stop rows show. With another tribe's house on the
-  route there is no button: Umowa lists the map's agreements as single-choice chips "1 [coin] → 4 [iron]" ("Sprzedaj 1 × Moneta, otrzymaj 4 × Żelazo"), a second press drops the
+  route there is no configure button: Umowa lists the map's agreements as single-choice chips "1 [coin] → 4 [iron]" ("Sprzedaj 1 × Moneta, otrzymaj 4 × Żelazo"), a second press drops the
   choice, and under the chosen chip two thin meters of the running exchange, the given half and the
   received half, faded while the partner is no friend (the tooltip says so). The route has no other
   status line: the trader's destination is in the status strip. The section starts open; when the
@@ -395,7 +398,7 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   okno" (the tooltip: the window lists them all) that opens the trade window; the count follows
   when another section or the plane changes size. In the 1280 × 720 trade scene a trader without
   experience shows twelve lines, the link from the thirteenth transfer on. With no room even for the
-  link (or for the agreements) the section folds: it keeps its stop rows and the button and offers "jeszcze N" (the transfers, or the agreements) in its title,
+  link (or for the agreements) the section folds: it keeps its stop rows and offers "jeszcze N" (the transfers, or the agreements) in its title,
   which opens and closes it; another person starts open again.
 - Doświadczenie: the trained specializations as ledger rows one to a line (a track's name runs
   long: "Murarz - kamienny blok"), the current trade's first, the bonus percent in green (the

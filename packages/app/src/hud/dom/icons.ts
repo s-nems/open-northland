@@ -65,6 +65,9 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>',
   /* Two opposed arrows: a good balanced between two houses. */
   swap: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4"/></svg>',
+  /* A balance scale: the trade window, set up between a trader's two houses. */
+  scales:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 4v16M8 20h8M4 7h16M4 7l-2.5 7M4 7l2.5 7M20 7l-2.5 7M20 7l2.5 7M1.5 14h5a2.5 2.5 0 0 1-5 0ZM17.5 14h5a2.5 2.5 0 0 1-5 0Z"/></svg>',
   armor:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6z"/></svg>',
   /* A spoked cart wheel: the vehicle row's pick. */

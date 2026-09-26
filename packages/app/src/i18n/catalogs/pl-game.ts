@@ -444,7 +444,6 @@ export const plGame = {
       tradeHeading: 'Kupiec jedzie teraz tutaj',
       tradeAddStop: 'Dodaj punkt handlowy',
       tradeConfigure: 'Konfiguruj handel',
-      tradeConfigureTooltip: 'Otwórz okno handlu: towary obu domów i przewozy między nimi',
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'do {count}',

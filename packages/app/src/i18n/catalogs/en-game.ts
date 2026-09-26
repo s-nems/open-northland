@@ -457,7 +457,6 @@ export const enGame = {
       tradeHeading: 'The trader is heading here now',
       tradeAddStop: 'Add a trading post',
       tradeConfigure: 'Set up trade',
-      tradeConfigureTooltip: "Open the trade window: both houses' goods and the transfers between them",
       tradeTransferTo: '{from} → {into}',
       tradeTransferBoth: '{a} ⇄ {b}',
       tradeTransferUpTo: 'up to {count}',

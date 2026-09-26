@@ -1,5 +1,6 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SettlerPanelModel, TradePanelModel } from '../../details-panel/model/index.js';
+import { GLYPH } from '../icons.js';
 import { button, element, setAttribute, setHidden, setTip, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import type { SettlerPanelDeps } from './actions.js';
@@ -7,9 +8,9 @@ import { createTradeAgreement } from './trade-agreement.js';
 import { createTradeStops } from './trade-stops.js';
 import { createTradeTransfers, fitTransferLines } from './trade-transfers.js';
 
-/** What the section shows under its stop rows: the configure button and the transfers of two own
- *  stops, the foreign stop's agreements, or nothing more while a stop is missing. A route never has
- *  both; the warm-up model does, so one paint rasters both. */
+/** What the section shows beside and under its stop rows: the configure button and the transfers of
+ *  two own stops, the foreign stop's agreements, or nothing more while a stop is missing. A route
+ *  never has both; the warm-up model does, so one paint rasters both. */
 export interface TradeBody {
   readonly own: boolean;
   readonly agreement: boolean;
@@ -20,12 +21,12 @@ export function bodyOf(trade: TradePanelModel): TradeBody {
 }
 
 /**
- * Handel: the route's two slot rows, then "Konfiguruj handel" and the transfers as read-only lines,
- * or the agreement. Open for every person; when the panel would run past the plane with the other
- * foldable sections folded, it lists only the transfer lines that fit, the last one kept linking to
- * the trade window for the rest. With no room even for that link, or for the agreements, it folds to
- * the stop rows and the button behind "jeszcze N" in its title, and opens again on a click or for
- * another person.
+ * Handel: the route's two slot rows, joined at the right by the configure button while both stops are
+ * own houses, then the transfers as read-only lines, or the agreement. Open for every person; when
+ * the panel would run past the plane with the other foldable sections folded, it lists only the
+ * transfer lines that fit, the last one kept linking to the trade window for the rest. With no room
+ * even for that link, or for the agreements, it folds to the stop rows behind "jeszcze N" in its
+ * title, and opens again on a click or for another person.
  */
 export interface TradeSection {
   readonly element: HTMLElement;
@@ -48,12 +49,16 @@ export function createTradeSection(
   const toggle = button('on-more');
   const title = createSection(toggle);
   const stops = createTradeStops(deps, current);
-  const configure = button('on-button on-button--rounded on-trade-configure');
+  const joint = element('div', 'on-trade-joint');
+  const configure = button('on-medallion on-trade-configure', GLYPH.scales);
   configure.addEventListener('click', onConfigure);
+  joint.append(configure);
+  const route = element('div', 'on-trade-route');
+  route.append(stops.element, joint);
   const lines = createTradeTransfers(deps, onConfigure);
   const agreement = createTradeAgreement(deps, current);
   const root = element('div', '');
-  root.append(title.element, stops.element, configure, lines.element, agreement.element);
+  root.append(title.element, route, lines.element, agreement.element);
   let open = true;
   /** The section had to fold for this person, so the toggle stays offered while it is open again. */
   let folded = false;
@@ -71,7 +76,7 @@ export function createTradeSection(
       open ? copy.fewerRows : hidden > 0 ? formatMessage(copy.moreRows, { count: hidden }) : copy.unfold,
     );
     setAttribute(toggle, 'aria-expanded', String(open));
-    setHidden(configure, !body.own);
+    setHidden(joint, !body.own);
     setHidden(lines.element, !open || !body.own);
     setHidden(agreement.element, !open || !body.agreement);
   };
@@ -100,8 +105,8 @@ export function createTradeSection(
       title.update(copy.trade);
       body = bodyOf(trade);
       stops.update(trade);
-      write(configure, copy.settlerPanel.tradeConfigure);
-      setTip(configure, copy.settlerPanel.tradeConfigureTooltip);
+      setTip(configure, copy.settlerPanel.tradeConfigure);
+      setAttribute(configure, 'aria-label', copy.settlerPanel.tradeConfigure);
       if (body.own) lines.update(trade.transfers);
       if (body.agreement) agreement.update(trade);
       transfers = body.own ? trade.transfers.length : 0;
@@ -125,7 +130,7 @@ export function createTradeSection(
       fold();
     },
     focusConfigure(): void {
-      if (!configure.hidden) configure.focus();
+      if (!joint.hidden) configure.focus();
     },
   };
 }
