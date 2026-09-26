@@ -173,8 +173,6 @@ export {
   NODE_SET_STRIDE,
   type NodeGridAnswer,
   type NodeSetAnswer,
-  nodeAreaHeight,
-  nodeAreaWidth,
   nodeGridAccepts,
   nodeSetHas,
 } from './simulation/probe-answers.js';

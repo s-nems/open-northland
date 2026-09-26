@@ -7,6 +7,7 @@ import {
   AssistantWeaponVetoes,
   assistantCountersEntity,
   assistantGrantedGoods,
+  Building,
   type DiplomacyState,
   defaultAssistantCounters,
   diplomacyLocked,
@@ -26,6 +27,7 @@ import {
   playerPaperSlots,
   professionProgressionEnabled,
   Settler,
+  Vehicle,
 } from './components/index.js';
 import { type MatchRulesView, matchRulesView } from './components/match.js';
 import { type MissionPresentationView, missionPresentation } from './components/mission-presentation.js';
@@ -587,6 +589,23 @@ export class Simulation {
   /** Whether the `attachToVehicle` command would seat `settler` on `vehicle` right now. */
   canAttachToVehicle(settler: Entity, vehicle: Entity): boolean {
     return canAttachToVehicle(this.world, this.mapContext(), settler, vehicle);
+  }
+
+  /** Every house {@link canAttachTradeHouse} admits for `trader`, ascending by id: one answer for the
+   *  trade-house pick instead of one per building. */
+  tradeHousesAttachableBy(trader: Entity): Entity[] {
+    const ctx = this.mapContext();
+    return this.world
+      .canonicalQuery(Building)
+      .filter((house) => canAttachTradeHouse(this.world, ctx, trader, house));
+  }
+
+  /** Every vehicle {@link canAttachToVehicle} admits for `settler`, ascending by id. */
+  vehiclesAttachableBy(settler: Entity): Entity[] {
+    const ctx = this.mapContext();
+    return this.world
+      .canonicalQuery(Vehicle)
+      .filter((vehicle) => canAttachToVehicle(this.world, ctx, settler, vehicle));
   }
 
   /**

@@ -497,6 +497,10 @@ describe('a trader between its own houses', () => {
 
     expect(sim.canAttachTradeHouse(trader, temple)).toBe(false);
     expect(sim.canAttachTradeHouse(trader, site)).toBe(false);
+    // The batched read lists what the rule admits: the route already holds `own`, so nothing is left.
+    expect(sim.tradeHousesAttachableBy(trader)).toEqual(
+      [own, temple, site].filter((house) => sim.canAttachTradeHouse(trader, house)),
+    );
     expect(sim.world.get(trader, TradeRoute).stops.map((stop) => stop.house)).toEqual([own]);
   });
 

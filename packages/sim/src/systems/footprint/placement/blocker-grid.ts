@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { landscapeEditState } from '../../../components/landscape.js';
 import type { World } from '../../../ecs/world.js';
+import type { NodeArea } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { type LandscapeBlocks, landscapeBlocks } from '../../landscape/view.js';
 import { type BlockerJournal, startBlockerJournal } from './blocker-journal.js';
@@ -35,6 +36,43 @@ export interface PlacementGrid {
   readonly exclusion: Uint16Array;
   readonly palisadeBody: Uint16Array;
   readonly buildingZone: Uint16Array;
+  readonly changes: GridChanges;
+}
+
+/** Edge in half-cell nodes of the square regions whose count changes the grid tallies. */
+const CHANGE_REGION_NODES = 32;
+
+/** Per-region tallies of count changes, so a reader of one area knows whether anything near it moved.
+ *  Derived read-state, never hashed. */
+export interface GridChanges {
+  /** Bumped by a full rebuild, which may change every region at once. */
+  epoch: number;
+  readonly regionsWide: number;
+  readonly regionsHigh: number;
+  readonly revisions: Uint32Array;
+}
+
+/** A token over every count the nodes of `area`, widened by `reach` nodes, read: it changes whenever one
+ *  of them may have. */
+export function gridChangeKey(grid: PlacementGrid, area: NodeArea, reach: number): string {
+  const { changes } = grid;
+  const region = (node: number, regions: number): number =>
+    Math.min(regions - 1, Math.max(0, Math.floor(node / CHANGE_REGION_NODES)));
+  let sum = 0;
+  for (
+    let ry = region(area.minHy - reach, changes.regionsHigh);
+    ry <= region(area.maxHy + reach, changes.regionsHigh);
+    ry++
+  ) {
+    for (
+      let rx = region(area.minHx - reach, changes.regionsWide);
+      rx <= region(area.maxHx + reach, changes.regionsWide);
+      rx++
+    ) {
+      sum += changes.revisions[ry * changes.regionsWide + rx] ?? 0;
+    }
+  }
+  return `${changes.epoch}.${sum}`;
 }
 
 /** One entity's stamped slots per channel. */
@@ -78,32 +116,44 @@ const gridMemo = new WeakMap<World, IncrementalGrid>();
 
 function emptyGrid(terrain: TerrainGraph): PlacementGrid {
   const size = terrain.width * terrain.height;
+  const regionsWide = Math.ceil(terrain.width / CHANGE_REGION_NODES);
+  const regionsHigh = Math.ceil(terrain.height / CHANGE_REGION_NODES);
   return {
     terrain,
     obstacle: new Uint16Array(size),
     exclusion: new Uint16Array(size),
     palisadeBody: new Uint16Array(size),
     buildingZone: new Uint16Array(size),
+    changes: { epoch: 0, regionsWide, regionsHigh, revisions: new Uint32Array(regionsWide * regionsHigh) },
   };
 }
 
-/** `delta` onto every listed slot. Slots are captured in bounds, so the `?? 0` fallback that
- *  `noUncheckedIndexedAccess` demands is unreachable. */
-function addCounts(counts: Uint16Array, slots: Iterable<number>, delta: number): void {
-  for (const slot of slots) counts[slot] = (counts[slot] ?? 0) + delta;
+/** `delta` onto every listed slot of one of `grid`'s channels, tallying the change in the slot's region.
+ *  Slots are captured in bounds, so the `?? 0` fallbacks that `noUncheckedIndexedAccess` demands are
+ *  unreachable. */
+function addCounts(grid: PlacementGrid, counts: Uint16Array, slots: Iterable<number>, delta: number): void {
+  const { changes } = grid;
+  const width = grid.terrain.width;
+  for (const slot of slots) {
+    counts[slot] = (counts[slot] ?? 0) + delta;
+    const region =
+      Math.floor(Math.floor(slot / width) / CHANGE_REGION_NODES) * changes.regionsWide +
+      Math.floor((slot % width) / CHANGE_REGION_NODES);
+    changes.revisions[region] = (changes.revisions[region] ?? 0) + 1;
+  }
 }
 
 function applySlots(grid: PlacementGrid, slots: StampedSlots, delta: number): void {
-  addCounts(grid.obstacle, slots.obstacle, delta);
-  addCounts(grid.exclusion, slots.exclusion, delta);
-  addCounts(grid.palisadeBody, slots.palisadeBody, delta);
-  addCounts(grid.buildingZone, slots.buildingZone, delta);
+  addCounts(grid, grid.obstacle, slots.obstacle, delta);
+  addCounts(grid, grid.exclusion, slots.exclusion, delta);
+  addCounts(grid, grid.palisadeBody, slots.palisadeBody, delta);
+  addCounts(grid, grid.buildingZone, slots.buildingZone, delta);
 }
 
 function applyLandscapeLayer(grid: PlacementGrid, layer: LandscapeLayer, delta: number): void {
-  addCounts(grid.obstacle, layer.blocks.walk, delta);
-  addCounts(grid.exclusion, layer.blocks.build, delta);
-  addCounts(grid.obstacle, layer.forbidden, delta);
+  addCounts(grid, grid.obstacle, layer.blocks.walk, delta);
+  addCounts(grid, grid.exclusion, layer.blocks.build, delta);
+  addCounts(grid, grid.obstacle, layer.forbidden, delta);
 }
 
 /** Replay the landscape views minted after `held` up to `current`, cell by cell, so a script edit costs
@@ -118,7 +168,7 @@ function applyLandscapeChanges(
   while (view !== undefined) {
     for (const change of view.changes) {
       const counts = change.channel === 'walk' ? grid.obstacle : grid.exclusion;
-      addCounts(counts, [change.node], change.entered ? STAMP : WITHDRAW);
+      addCounts(grid, counts, [change.node], change.entered ? STAMP : WITHDRAW);
     }
     if (view === current) return true;
     view = view.next;
@@ -173,6 +223,7 @@ function rebuildGrid(
   reuse: IncrementalGrid | undefined,
 ): IncrementalGrid {
   const grid = reuse?.grid ?? emptyGrid(terrain);
+  grid.changes.epoch++;
   grid.obstacle.fill(0);
   grid.exclusion.fill(0);
   grid.palisadeBody.fill(0);
@@ -205,9 +256,9 @@ function catchUp(world: World, state: IncrementalGrid): boolean {
   const edits = landscapeEditState(world);
   let forbidden = held.forbidden;
   if (edits.forbiddenRevision !== held.forbiddenRevision) {
-    addCounts(state.grid.obstacle, held.forbidden, WITHDRAW);
+    addCounts(state.grid, state.grid.obstacle, held.forbidden, WITHDRAW);
     forbidden = [...edits.forbidden.keys()];
-    addCounts(state.grid.obstacle, forbidden, STAMP);
+    addCounts(state.grid, state.grid.obstacle, forbidden, STAMP);
   }
   state.landscape = { blocks, forbidden, forbiddenRevision: edits.forbiddenRevision };
   return true;

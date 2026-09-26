@@ -4,6 +4,7 @@
  * live probe the command gates on, so the two cannot disagree.
  */
 import type { ContentSet } from '@open-northland/data';
+import { contentIndex } from '../core/content-index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { HalfCellNode, NodeArea } from '../nav/halfcell.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
@@ -13,6 +14,7 @@ import {
   placementProbe,
   workFlagBlockerVersion,
 } from '../systems/footprint/index.js';
+import { gridChangeKey, placementBlockerGrid } from '../systems/footprint/placement/blocker-grid.js';
 import { ownPalisadeNodeList, palisadePlacementProbe } from '../systems/palisades/index.js';
 import { buildingEnabled } from '../systems/progression/index.js';
 import { signpostNetwork, signpostNetworkRevision, signpostProbe } from '../systems/signposts/index.js';
@@ -41,11 +43,11 @@ export interface MooringAnswer {
   readonly spots: NodeSetAnswer;
 }
 
-export function nodeAreaWidth(area: NodeArea): number {
+function nodeAreaWidth(area: NodeArea): number {
   return area.maxHx - area.minHx + 1;
 }
 
-export function nodeAreaHeight(area: NodeArea): number {
+function nodeAreaHeight(area: NodeArea): number {
   return area.maxHy - area.minHy + 1;
 }
 
@@ -93,18 +95,30 @@ function areaKey(area: NodeArea): string {
   return `${area.minHx},${area.minHy},${area.maxHx},${area.maxHy}`;
 }
 
-/** Footprint grids stay valid while the placement blockers and the signpost network hold; the contested
- *  ground and the technology gate are laid over them per answer. A read-path cache, never hashed. */
-interface FootprintGrids {
-  readonly version: string;
-  readonly grids: Map<string, Uint8Array>;
+/** A footprint grid with the token over the blocker counts and the signpost network it read. */
+interface FootprintGrid {
+  readonly key: string;
+  readonly grid: Uint8Array;
 }
 
-/** Grids kept per world before the oldest go: a panned view keeps asking for new areas under one
- *  blocker version. */
+/** Grids kept per world before they are all dropped: a panned view keeps asking for new areas. */
 const MAX_FOOTPRINT_GRIDS = 256;
 
-const footprintGrids = new WeakMap<World, FootprintGrids>();
+/** Footprint grids by (type, placer, area), each valid while the blocker counts near its area and the
+ *  signpost network hold, so a blocker changing across the map leaves them standing. The contested
+ *  ground and the technology gate are laid over them per answer. A read-path cache, never hashed. */
+const footprintGrids = new WeakMap<World, Map<string, FootprintGrid>>();
+
+/** How far past an anchor a footprint cell reaches, in nodes: its offsets, plus the row parity's shift. */
+function footprintReach(content: ContentSet, buildingType: number): number {
+  const footprint = contentIndex(content).buildings.get(buildingType)?.footprint;
+  if (footprint === undefined) return 0;
+  let reach = 0;
+  for (const cells of [footprint.reserved, footprint.familyBody, footprint.blocked]) {
+    for (const cell of cells) reach = Math.max(reach, Math.abs(cell.dx) + 1, Math.abs(cell.dy));
+  }
+  return reach;
+}
 
 function footprintGrid(
   world: World,
@@ -113,22 +127,23 @@ function footprintGrid(
   buildingType: number,
   player: number | undefined,
   area: NodeArea,
-  version: string,
-): Uint8Array {
-  let memo = footprintGrids.get(world);
-  if (memo === undefined || memo.version !== version) {
-    memo = { version, grids: new Map() };
-    footprintGrids.set(world, memo);
+): FootprintGrid {
+  let grids = footprintGrids.get(world);
+  if (grids === undefined) {
+    grids = new Map();
+    footprintGrids.set(world, grids);
   }
-  const key = `${buildingType}:${player ?? ''}:${areaKey(area)}`;
-  const held = memo.grids.get(key);
-  if (held !== undefined) return held;
+  const blockers = placementBlockerGrid(world, content, terrain);
+  const key = `${gridChangeKey(blockers, area, footprintReach(content, buildingType))}.${signpostNetworkRevision(world)}`;
+  const slot = `${buildingType}:${player ?? ''}:${areaKey(area)}`;
+  const held = grids.get(slot);
+  if (held !== undefined && held.key === key) return held;
   const ownSignposts = player === undefined ? [] : (signpostNetwork(world).get(player) ?? []);
   const probe = placementProbe(world, content, terrain, buildingType, ownSignposts);
-  const grid = gridOver(area, (hx, hy) => probe.canPlace(hx, hy));
-  if (memo.grids.size >= MAX_FOOTPRINT_GRIDS) memo.grids.clear();
-  memo.grids.set(key, grid);
-  return grid;
+  const fresh = { key, grid: gridOver(area, (hx, hy) => probe.canPlace(hx, hy)) };
+  if (grids.size >= MAX_FOOTPRINT_GRIDS && held === undefined) grids.clear();
+  grids.set(slot, fresh);
+  return fresh;
 }
 
 /** The building placement probe's answer over `area`: footprint, contested ground and, with a tribe, the
@@ -144,8 +159,14 @@ export function placementAnswerFor(
   tribe?: number,
 ): NodeGridAnswer | null {
   if (terrain === undefined) return null;
-  const version = `${placementBlockerVersion(world)}.${signpostNetworkRevision(world)}`;
-  const footprint = footprintGrid(world, content, terrain, buildingType, player, area, version);
+  const { key: version, grid: footprint } = footprintGrid(
+    world,
+    content,
+    terrain,
+    buildingType,
+    player,
+    area,
+  );
   const enabled = tribe === undefined || buildingEnabled(world, { content }, player, tribe, buildingType);
   if (player === undefined) {
     return {
@@ -205,6 +226,9 @@ export function palisadeAnswerFor(
   };
 }
 
+/** The spot set stays the same object while the mooring memo's key holds, so it is packed once. */
+const packedSpots = new WeakMap<ReadonlySet<number>, NodeSetAnswer>();
+
 /** The mooring probe's answer; null where the probe is. */
 export function mooringAnswerFor(
   world: World,
@@ -215,12 +239,17 @@ export function mooringAnswerFor(
   if (terrain === undefined) return null;
   const held = mooringSpotsOf(world, { content }, terrain, vehicle);
   if (held === null) return null;
-  const nodes: HalfCellNode[] = [];
-  for (const node of held.spots) {
-    const { x, y } = terrain.coordsOf(node);
-    nodes.push({ hx: x, hy: y });
+  let spots = packedSpots.get(held.spots);
+  if (spots === undefined) {
+    const nodes: HalfCellNode[] = [];
+    for (const node of held.spots) {
+      const { x, y } = terrain.coordsOf(node);
+      nodes.push({ hx: x, hy: y });
+    }
+    spots = packedNodeSet(nodes);
+    packedSpots.set(held.spots, spots);
   }
-  return { key: held.key, spots: packedNodeSet(nodes) };
+  return { key: held.key, spots };
 }
 
 /** The nodes `player`'s walls, gates and wall sites stand on. */

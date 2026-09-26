@@ -253,8 +253,10 @@ describe('attachToVehicle', () => {
     expect(s.canAttachToVehicle(second, cart)).toBe(false); // the one seat is taken
     const ship = spawn(s, SHIP_SMALL, 4, 12);
     expect(s.canAttachToVehicle(second, ship)).toBe(true);
+    expect(s.vehiclesAttachableBy(second)).toEqual([ship]); // the batched read lists what the rule admits
     s.world.mut(ship, Vehicle).moored = false; // a ship at sea has no door to walk to
     expect(s.canAttachToVehicle(second, ship)).toBe(false);
+    expect(s.vehiclesAttachableBy(second)).toEqual([]);
   });
 
   it('promotes the first ordinary passenger when the commander detaches', () => {
