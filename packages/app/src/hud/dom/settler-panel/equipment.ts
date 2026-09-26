@@ -19,13 +19,12 @@ const GHOST: Readonly<Record<Exclude<EquipGroup, 'misc'>, string>> = {
 /** A condition below this is a part-used item, which taking off destroys. */
 const FULL_CONDITION_PCT = 100;
 
-/** One socket beside the portrait: its slot address, its look, and whether a press opens the picker. */
+/** One socket beside the portrait: its slot address and its look; an inert one (a hero's arms, a
+ *  fighter's stray tool) opens no picker. */
 export interface SocketSpec {
   readonly ref: EquipSlotRef;
   readonly fixed: boolean;
   readonly bag: boolean;
-  /** False for a hero's arms and a fighter's stray tool: nothing the picker could put there. */
-  readonly pressable: boolean;
   readonly model: SocketModel;
 }
 
@@ -46,7 +45,6 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
       ref,
       fixed,
       bag,
-      pressable: row.wearable,
       model: {
         kind: 'empty',
         ghost: row.group === 'misc' || fixed ? null : GHOST[row.group],
@@ -71,9 +69,9 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
     ref,
     fixed,
     bag,
-    pressable: row.wearable,
     model: {
       kind: 'item',
+      inert: !row.wearable,
       goodId: cell.goodId,
       wearPct: cell.conditionPct,
       label: formatMessage(copy.settlerPanel.swapLabel, { good }),

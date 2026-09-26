@@ -375,7 +375,7 @@ button; for those the built panel is the reference.
   macOS the browser turns Ctrl + click into a context-menu press; the panel takes that press as the
   Ctrl click, and ⌘ + click works too.
   A product not yet earned is listed faded with a lock, the requirement and progress in the
-  tooltip; the lock opens the good's Knowledge page once the Knowledge window exists. Products rotate
+  tooltip; the lock is a marker, not a button, and carries the same requirement. Products rotate
   one unit at a time in the workplace's recipe order. A job whose `userCanChangeProductionFlag` is
   0 (the hunter, who takes every good of every kill) has no Produkcja section at all: the sim ignores
   its counters and refuses the orders that would set them. The rows are 24 px with 22 px chips, the

@@ -64,8 +64,6 @@ export interface SettlerPanelActions {
   ) => void;
   /** Trade on the agreement at `index` in the map's table; -1 drops the choice. */
   readonly setTradeAgreement: (id: number, index: number) => void;
-  /** The good's Knowledge page, once the Knowledge window exists; absent leaves the lock inert. */
-  readonly openKnowledge?: (goodType: number) => void;
 }
 
 /** What the panel reads besides its model. */

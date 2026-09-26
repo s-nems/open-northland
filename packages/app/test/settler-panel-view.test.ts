@@ -100,7 +100,7 @@ describe('equipment sockets', () => {
     expect(sockets.worn.map((spec) => spec.ref.group)).toEqual(['tool', 'boots']);
     expect(sockets.bag).toHaveLength(4);
     const [tool, boots] = sockets.worn;
-    expect(tool?.model).toMatchObject({ kind: 'item', wearPct: 12 });
+    expect(tool?.model).toMatchObject({ kind: 'item', wearPct: 12, inert: false });
     // A part-used item warns that taking it off destroys it.
     expect(tool?.model.kind === 'item' ? tool.model.removeLabel : null).toContain(
       messages().hud.usedItemDiscardHint,
@@ -122,7 +122,7 @@ describe('equipment sockets', () => {
     );
     expect(sockets.worn.map((spec) => spec.ref.group)).toEqual(['weapon', 'armor']);
     expect(sockets.bag).toEqual([]);
-    expect(sockets.worn.every((spec) => spec.fixed && !spec.pressable)).toBe(true);
+    expect(sockets.worn.every((spec) => spec.fixed && spec.model.inert)).toBe(true);
     expect(sockets.worn[0]?.model.kind === 'item' ? sockets.worn[0].model.removeLabel : 'x').toBeNull();
   });
 
@@ -134,13 +134,18 @@ describe('equipment sockets', () => {
     expect(sockets.worn.map((spec) => spec.ref.group)).toEqual(['tool', 'boots']);
     expect(sockets.bag).toHaveLength(2);
     for (const spec of [...sockets.worn, ...sockets.bag]) {
-      expect(spec.pressable).toBe(false);
       expect(spec.fixed).toBe(false);
       expect(spec.model).toMatchObject({ kind: 'empty', inert: true });
       expect(spec.model.tooltip).toContain(messages().hud.settlerPanel.cannotWear.split(':')[1]?.trim());
     }
     const wearable = equipmentSockets([row('boots', [EMPTY])], false);
     expect(wearable.worn[0]?.model).toMatchObject({ kind: 'empty', inert: false });
+  });
+
+  it('marks an item the picker cannot swap, a fighter’s stray tool, inert', () => {
+    const tool = { occupied: true, goodId: 'tool_iron', label: 'Tool', conditionPct: null } as const;
+    const [socket] = equipmentSockets([row('tool', [tool], false)], false).worn;
+    expect(socket?.model).toMatchObject({ kind: 'item', inert: true });
   });
 });
 

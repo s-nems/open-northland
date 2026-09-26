@@ -38,7 +38,7 @@ interface RowView {
   readonly good: RoundButton;
   readonly name: HTMLElement;
   readonly counter: Counter;
-  readonly lock: HTMLButtonElement;
+  readonly lock: HTMLElement;
 }
 
 /** The rows a folded Produkcja keeps; the fold is the last resort when the panel would run past the
@@ -100,8 +100,9 @@ export function createProductionSection(
     );
     const name = element('span', 'on-prod-row__name');
     const counter = createCounter(COUNTER_RANGE, (next) => actions.setProductionCount(id(), goodType, next));
-    const lock = button('on-prod-row__lock', GLYPH.lock);
-    lock.addEventListener('click', () => actions.openKnowledge?.(goodType));
+    // A marker, not a control: the good's button beside it already says why the product is locked.
+    const lock = element('span', 'on-prod-row__lock', GLYPH.lock);
+    lock.setAttribute('role', 'img');
     item.append(good.element, name, counter.element, lock);
     return { item, good, name, counter, lock };
   };
@@ -135,16 +136,8 @@ export function createProductionSection(
         setClass(view.item, 'on-prod-row--stopped', row.count === 0);
         setHidden(view.lock, row.locked === null);
         if (row.locked !== null) {
-          const lockTip = formatMessage(copy.settlerPanel.lockTooltip, {
-            reason: row.locked,
-            good: row.label,
-          });
-          setTip(view.lock, lockTip);
-          setAttribute(
-            view.lock,
-            'aria-label',
-            formatMessage(copy.settlerPanel.knowledgeLabel, { good: row.label }),
-          );
+          setTip(view.lock, row.locked);
+          setAttribute(view.lock, 'aria-label', row.locked);
         }
         setHidden(view.counter.element, row.locked !== null);
         view.counter.update({

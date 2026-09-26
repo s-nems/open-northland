@@ -431,8 +431,6 @@ export const plGame = {
       more: 'Więcej: {good}',
       lessTooltip: 'Mniej · Ctrl: o 10 · Shift: zatrzymaj',
       moreTooltip: 'Więcej · Ctrl: o 10 · Shift: bez końca',
-      lockTooltip: '{reason} · Wiedza: {good}',
-      knowledgeLabel: 'Wiedza: {good}',
       goodLock: 'Wymaga doświadczenia: {current}/{required} ({track})',
       military: 'Wojsko',
       stance: 'Postawa',

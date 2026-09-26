@@ -79,7 +79,7 @@ export function createPortraitSection(deps: SettlerPanelDeps, entity: () => numb
   let carriedGood = '';
   const pressable = (spec: SocketSpec): boolean =>
     specs.some(
-      (live) => live.ref.group === spec.ref.group && live.ref.slot === spec.ref.slot && live.pressable,
+      (live) => live.ref.group === spec.ref.group && live.ref.slot === spec.ref.slot && !live.model.inert,
     );
   const updateSockets = (model: SettlerPanelModel): void => {
     const rows = equipmentSockets(model.equipmentRows, model.role === 'hero');

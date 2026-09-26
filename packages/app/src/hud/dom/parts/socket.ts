@@ -1,6 +1,15 @@
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
-import { button, element, setAttribute, setClass, setDisabled, setHidden, setTip } from './dom.js';
+import {
+  button,
+  element,
+  setAttribute,
+  setClass,
+  setDisabled,
+  setHidden,
+  setStyleVar,
+  setTip,
+} from './dom.js';
 
 /** A worn item under half its life shows its wear fill amber, under a quarter red. */
 export const SOCKET_WEARING_BELOW_PCT = 50;
@@ -15,26 +24,28 @@ export function socketWearTone(wearPct: number): SocketWearTone {
 /** Design px of the good icon in a 30 px socket (foundation.css). */
 const SOCKET_ICON_PX = 23;
 
+interface SocketBase {
+  /** A slot the picker cannot fill (a woman's, a child's, a fighter's stray tool): faded, announced
+   *  as disabled, a press does nothing. */
+  readonly inert: boolean;
+  readonly label: string;
+  readonly tooltip: string;
+}
+
 export type SocketModel =
-  | {
+  | (SocketBase & {
       readonly kind: 'empty';
       /** The line glyph of what goes here; null for a bag cell, which takes anything. */
       readonly ghost: string | null;
-      /** A slot this person never fills (a woman's, a child's): faded, a press does nothing. */
-      readonly inert: boolean;
-      readonly label: string;
-      readonly tooltip: string;
-    }
-  | {
+    })
+  | (SocketBase & {
       readonly kind: 'item';
       readonly goodId: string | undefined;
       /** The life left in percent, null for a good that does not wear. */
       readonly wearPct: number | null;
-      readonly label: string;
-      readonly tooltip: string;
       /** The × that takes the item off, null when it cannot come off. */
       readonly removeLabel: string | null;
-    };
+    });
 
 export interface SocketOptions {
   /** A hero's fixed arms: a flat, frameless, inert socket. */
@@ -90,14 +101,13 @@ export function createSocket(options: SocketOptions): Socket {
     update(model): void {
       paint(model);
       setClass(face, 'on-socket--empty', model.kind === 'empty');
-      if (!fixed) setDisabled(face, model.kind === 'empty' && model.inert);
+      if (!fixed) setDisabled(face, model.inert);
       setTip(face, model.tooltip);
       setAttribute(face, 'aria-label', model.label);
       const wearPct = model.kind === 'item' ? model.wearPct : null;
       if (wear !== null) {
         setHidden(wear, wearPct === null);
-        const fill = `${wearPct ?? 0}%`;
-        if (wear.style.getPropertyValue('--value') !== fill) wear.style.setProperty('--value', fill);
+        setStyleVar(wear, '--value', `${wearPct ?? 0}%`);
       }
       const tone = wearPct === null ? 'fresh' : socketWearTone(wearPct);
       setClass(face, 'on-socket--wearing', tone === 'wearing');

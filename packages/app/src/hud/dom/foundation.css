@@ -3017,13 +3017,7 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-prod-row__lock {
   display: inline-flex;
   align-items: center;
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--muted);
-}
-.on-hud .on-prod-row__lock:hover {
-  color: var(--bronze-hi);
 }
 .on-hud .on-prod-row__lock .on-glyph {
   width: 13px;

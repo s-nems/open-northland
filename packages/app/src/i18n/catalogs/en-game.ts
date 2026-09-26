@@ -444,8 +444,6 @@ export const enGame = {
       more: 'More: {good}',
       lessTooltip: 'Fewer · Ctrl: by 10 · Shift: stop',
       moreTooltip: 'More · Ctrl: by 10 · Shift: never stop',
-      lockTooltip: '{reason} · Knowledge: {good}',
-      knowledgeLabel: 'Knowledge: {good}',
       goodLock: 'Needs experience: {current}/{required} ({track})',
       military: 'Military',
       stance: 'Stance',
