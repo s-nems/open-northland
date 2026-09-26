@@ -4,7 +4,7 @@ export interface ParticleRef {
   readonly valencies: readonly (readonly number[])[];
   /** The frame list repeats for the particle's whole life; otherwise it holds its last frame. */
   readonly loop: boolean;
-  /** The valency is the heading, clockwise from screen-up over the lists. */
+  /** The valency is the heading: valency 0 points screen-down and the lists turn counter-clockwise. */
   readonly directional: boolean;
 }
 
@@ -26,10 +26,13 @@ export function particleFrame(ref: ParticleRef, age: number, valency = 0): numbe
   return step < frames.length ? frames[step] : undefined;
 }
 
-/** The valency a directional particle shows flying along screen angle `rotation` (radians, y down):
- *  valency 0 points screen-up and the lists turn clockwise. */
+/**
+ * The valency a directional particle shows flying along screen angle `rotation` (radians, y down, 0 =
+ * screen-east). Source basis: the served `test_arrow` frames, whose pale head points screen-down at
+ * valency 0 and turns counter-clockwise, a quarter of the lists per quarter turn (8 of 32 points east).
+ */
 export function headingValency(rotation: number, count: number): number {
   if (count <= 0) return 0;
-  const turn = (rotation + Math.PI / 2) / (2 * Math.PI);
+  const turn = (Math.PI / 2 - rotation) / (2 * Math.PI);
   return ((Math.round(turn * count) % count) + count) % count;
 }

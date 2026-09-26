@@ -4,6 +4,7 @@ import {
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
 } from '../../src/data/scene/index.js';
+import { headingValency } from '../../src/data/sprites/index.js';
 import { buildScene, ONE, tileToScreen } from '../../src/index.js';
 import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
@@ -138,6 +139,56 @@ describe('buildScene - projectile arc & aim', () => {
     const arrow = scene.find((d) => d.kind === 'projectile');
     expect(arrow?.rotation ?? 0).toBeGreaterThan(0);
     expect(arrow?.lift ?? 0).toBeGreaterThan(0); // still airborne
+  });
+
+  /** The sim's whole `Projectile` payload for a bow shot loosed from `(ox, oy)` at `(ax, ay)`, so the
+   *  readers see the exact shape a snapshot carries. */
+  function bowShot(ox: number, oy: number, ax: number, ay: number): Record<string, unknown> {
+    return {
+      Projectile: {
+        source: 3,
+        target: 2,
+        player: 0,
+        hitSelf: false,
+        area: false,
+        damage: { '1': 34 },
+        hitSounds: {},
+        weaponMainType: 6,
+        missSounds: {},
+        munitionType: 1,
+        originX: ox * ONE,
+        originY: oy * ONE,
+        aimX: ax * ONE,
+        aimY: ay * ONE,
+        cover: null,
+        launchTick: 10,
+        landTick: 20,
+        impact: null,
+      },
+    };
+  }
+
+  it('flies a ground lob with its nose tangent: up off the bow, level at the peak, down into the mark', () => {
+    // A 6-cell eastbound chord, sampled at a tenth, a half and nine tenths flown; the sheet's east frame
+    // is valency 8, its neighbours above and below 10 and 6.
+    const target = entity(2, 6, 1, { Settler: { tribe: 0 } });
+    const drawAt = (x: number) =>
+      buildScene(snapshotOf([entity(1, x, 1, bowShot(0, 1, 6, 1)), target]), FLAT_3x2).find(
+        (d) => d.kind === 'projectile',
+      );
+    const rising = drawAt(0.6);
+    const apex = drawAt(3);
+    const falling = drawAt(5.4);
+    expect(rising?.rotation ?? 0).toBeLessThan(0);
+    expect(apex?.rotation).toBeCloseTo(0);
+    expect(falling?.rotation ?? 0).toBeGreaterThan(0);
+    expect(falling?.rotation).toBeCloseTo(-(rising?.rotation ?? 0));
+    expect(headingValency(rising?.rotation ?? 0, 32)).toBe(10);
+    expect(headingValency(apex?.rotation ?? 0, 32)).toBe(8);
+    expect(headingValency(falling?.rotation ?? 0, 32)).toBe(6);
+    expect(rising?.lift ?? 0).toBeGreaterThan(0);
+    expect(apex?.lift ?? 0).toBeGreaterThan(rising?.lift ?? 0);
+    expect(falling?.lift).toBeCloseTo(rising?.lift ?? 0);
   });
 
   it('keeps a multi-row diagonal on one projected chord instead of following the stagger wave', () => {

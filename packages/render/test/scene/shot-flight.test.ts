@@ -104,11 +104,12 @@ describe('particle frames', () => {
     expect([0, 2, 3].map((age) => particleFrame(puff, age))).toEqual([4, 2, undefined]);
   });
 
-  it('turns a heading clockwise from screen-up onto its valencies', () => {
-    const up = -Math.PI / 2;
-    expect(headingValency(up, 32)).toBe(0);
-    expect(headingValency(0, 32)).toBe(8); // screen-east, a quarter turn clockwise
-    expect(headingValency(Math.PI / 2, 32)).toBe(16);
-    expect(headingValency(Math.PI, 32)).toBe(24);
+  it('turns a heading counter-clockwise from screen-down onto its valencies, as the arrow sheet is drawn', () => {
+    const down = Math.PI / 2;
+    expect(headingValency(down, 32)).toBe(0);
+    expect(headingValency(0, 32)).toBe(8); // screen-east, a quarter turn counter-clockwise
+    expect(headingValency(-Math.PI / 2, 32)).toBe(16); // screen-up
+    expect(headingValency(Math.PI, 32)).toBe(24); // screen-west, from either side of the branch cut
+    expect(headingValency(-Math.PI, 32)).toBe(24);
   });
 });
