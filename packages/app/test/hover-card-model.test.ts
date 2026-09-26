@@ -11,7 +11,8 @@ import {
   GOOD_STONE,
   GOOD_WOOD,
 } from '../src/game/sandbox/ids/index.js';
-import { buildingHoverModel } from '../src/hud/hover-card/building.js';
+import { fixedViewerSeat, overseerViewerSeat, type ViewerSeat } from '../src/game/viewer-seat.js';
+import { type BuildingHoverContext, buildingHoverModel } from '../src/hud/hover-card/building.js';
 import { settlerHoverModel } from '../src/hud/hover-card/settler.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
@@ -20,9 +21,17 @@ function stockpile(amounts: readonly (readonly [number, number])[]): Record<stri
   return { Stockpile: { amounts: amounts.map(([goodType, amount]) => [goodType, amount]) } };
 }
 
+/** Another seat than the viewer's. */
+const OTHER_PLAYER = HUMAN_PLAYER + 1;
+
+/** The card's content, read by the human seat unless another viewer is given. */
+function hoverCtx(viewer: ViewerSeat = fixedViewerSeat(HUMAN_PLAYER)): BuildingHoverContext {
+  return { ...sandboxCtx(), viewer };
+}
+
 describe('building hover card model', () => {
   it('lists what a standing store holds, by good name, leaving its empty slots out', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const snapshot = snapshotOf([
       buildingEntity(1, BUILDING_WAREHOUSE_00, {
         components: stockpile([
@@ -44,7 +53,7 @@ describe('building hover card model', () => {
   });
 
   it('reads a site as its bill against what is delivered, with the built percentage', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const snapshot = snapshotOf([
       buildingEntity(2, BUILDING_JOINERY, {
         built: ONE / 4,
@@ -62,7 +71,7 @@ describe('building hover card model', () => {
   });
 
   it('reads an upgrading building as the upgrade, against the target tier cost', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const target = ctx.buildings.find((b) => b.typeId === BUILDING_JOINERY_01);
     const snapshot = snapshotOf([
       buildingEntity(3, BUILDING_JOINERY, {
@@ -80,7 +89,7 @@ describe('building hover card model', () => {
   });
 
   it('names a building that holds nothing, so every kind answers the cursor', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const snapshot = snapshotOf([buildingEntity(4, BUILDING_WATCHTOWER)]);
 
     const model = buildingHoverModel(snapshot, 4, ctx);
@@ -89,8 +98,49 @@ describe('building hover card model', () => {
     expect(model?.rows).toEqual([]);
   });
 
+  it("shows another seat's building by its health, keeping its store and bill to the owner", () => {
+    const ctx = hoverCtx();
+    const foreign = { Owner: { player: OTHER_PLAYER }, Health: { hitpoints: 30, max: 120 } };
+    const snapshot = snapshotOf([
+      buildingEntity(6, BUILDING_WAREHOUSE_00, {
+        components: { ...foreign, ...stockpile([[GOOD_WOOD, 4]]) },
+      }),
+      buildingEntity(7, BUILDING_JOINERY, {
+        built: ONE / 2,
+        components: { ...foreign, UnderConstruction: { labor: 0 }, ...stockpile([[GOOD_WOOD, 2]]) },
+      }),
+    ]);
+
+    const store = buildingHoverModel(snapshot, 6, ctx);
+    const site = buildingHoverModel(snapshot, 7, ctx);
+
+    expect(store?.rows).toEqual([]);
+    expect(store?.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '30/120' });
+    expect(site?.rows).toEqual([]);
+    expect(site?.state).toEqual({ kind: 'construction', pct: 50 });
+  });
+
+  it('lists the own store without a health line, and every store on the whole map', () => {
+    const snapshot = snapshotOf([
+      buildingEntity(8, BUILDING_WAREHOUSE_00, {
+        components: { Health: { hitpoints: 30, max: 120 }, ...stockpile([[GOOD_WOOD, 4]]) },
+      }),
+      buildingEntity(9, BUILDING_WAREHOUSE_00, {
+        components: { Owner: { player: OTHER_PLAYER }, ...stockpile([[GOOD_STONE, 1]]) },
+      }),
+    ]);
+
+    const own = buildingHoverModel(snapshot, 8, hoverCtx());
+    const overseen = buildingHoverModel(snapshot, 9, hoverCtx(overseerViewerSeat(HUMAN_PLAYER)));
+
+    expect(own?.health).toBeNull();
+    expect(own?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 4 }]);
+    expect(overseen?.health).toBeNull();
+    expect(overseen?.rows).toEqual([{ goodId: 'stone', label: 'stone', amount: 1 }]);
+  });
+
   it('has nothing to say about an entity that is not a building', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const snapshot = snapshotOf([{ id: 5, components: { Settler: { jobType: 1 } } }]);
 
     expect(buildingHoverModel(snapshot, 5, ctx)).toBeNull();

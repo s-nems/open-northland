@@ -1,3 +1,5 @@
+import type { PanelBar } from '../details-panel/model/bars.js';
+
 /**
  * What the cursor card says about the thing under it. A settler and a building share one card: a title,
  * one line under it, and the good rows only a store fills.
@@ -22,6 +24,8 @@ export interface BuildingHoverModel {
   readonly title: string;
   /** Null for a finished building; otherwise the state and how far it has come. */
   readonly state: { readonly kind: BuildingHoverState; readonly pct: number } | null;
+  /** Another seat's building shows its health in place of its store, which stays its owner's secret. */
+  readonly health: PanelBar | null;
   readonly rows: readonly HoverCardRow[];
 }
 

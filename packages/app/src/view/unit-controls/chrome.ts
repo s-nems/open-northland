@@ -126,7 +126,7 @@ export async function createUnitChrome(
     pack: opts.domHud.pack,
     uiString: opts.domHud.uiString,
   });
-  const hoverContext = { buildings: opts.content.buildings, goods: opts.content.goods };
+  const hoverContext = { buildings: opts.content.buildings, goods: opts.content.goods, viewer: opts.viewer };
   /** One card model per house and snapshot: a move over a link then only repositions the card. */
   const hoverModels = memoBySnapshot(() => new Map<number, BuildingHoverModel | null>());
   const buildingHover = (id: number): BuildingHoverModel | null => {

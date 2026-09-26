@@ -1713,8 +1713,32 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--ink-muted);
 }
 .on-hud .on-hovercard__caption[hidden],
+.on-hud .on-hovercard__health[hidden],
 .on-hud .on-hovercard__rows[hidden] {
   display: none;
+}
+/* The settler panel's health line, at the card's small type. */
+.on-hud .on-hovercard .on-meter-row {
+  grid-template-columns: max-content minmax(64px, 1fr) 28px;
+  gap: 6px;
+  height: 12px;
+  margin: 0;
+  font-size: 9px;
+  color: var(--ink-muted);
+}
+.on-hud .on-hovercard .on-meter-row .on-meter {
+  height: 7px;
+  border-width: 1px;
+}
+/* The panel's figure colours are for dark wood; on parchment the figure takes the ink and wax tones. */
+.on-hud .on-hovercard .on-meter-row > b {
+  color: var(--ink);
+}
+.on-hud .on-hovercard .on-meter-row--low > b {
+  color: var(--wax-warn);
+}
+.on-hud .on-hovercard .on-meter-row--critical > b {
+  color: var(--wax-danger);
 }
 /* Column by column, so a warehouse's whole store stands in one card instead of one endless list. */
 .on-hud .on-hovercard__rows {

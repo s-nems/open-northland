@@ -10,11 +10,12 @@ import type {
 } from '../hover-card/model.js';
 import { createGoodIconPainter, goodIconMarkup } from './good-art.js';
 import { setClass, setHidden, write } from './parts/dom.js';
+import { createMeterRow } from './parts/meter-row.js';
 
 /**
  * The parchment card the cursor opens over the world: a settler's name and trade, or a building's name,
- * construction state and store. It rides the DOM plane in design px and never takes pointer events, so
- * the press under it still reaches the map.
+ * construction state and store, or another seat's building's health. It rides the DOM plane in design px
+ * and never takes pointer events, so the press under it still reaches the map.
  */
 
 /** Design px between the cursor and the card's near corner, so the card never covers what is pointed at. */
@@ -101,6 +102,9 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
   ) {
     throw new Error('hover card: template incomplete');
   }
+  const health = createMeterRow();
+  health.element.classList.add('on-hovercard__health');
+  caption.after(health.element);
   deps.plane.append(element);
 
   /** The model drawn now: the caller's per-tick object, so identity is the cheap unchanged test. */
@@ -157,6 +161,10 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
     const line = captionOf(model);
     changed = setHidden(caption, line === null) || changed;
     if (line !== null) changed = write(caption, line) || changed;
+    const bar = model.kind === 'building' ? model.health : null;
+    changed = setHidden(health.element, bar === null) || changed;
+    // The meter's width is fixed by its grid, so a new figure never changes the card's box.
+    if (bar !== null) health.update({ label: bar.label, pct: bar.pct, tooltip: bar.hover });
     return fillRows(model) || changed;
   };
 

@@ -1,7 +1,14 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { buildingTypeOf, builtFractionOf, isBuilding, type SnapshotEntity } from '../../game/snapshot.js';
+import {
+  buildingTypeOf,
+  builtFractionOf,
+  isBuilding,
+  ownerPlayerOf,
+  type SnapshotEntity,
+} from '../../game/snapshot.js';
+import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
 import { compareLabels } from '../../i18n/index.js';
-import { pct } from '../details-panel/model/bars.js';
+import { healthBar, pct } from '../details-panel/model/bars.js';
 import { constructionBillRows, stockRows } from '../details-panel/model/building-materials.js';
 import {
   type BuildingDef,
@@ -15,26 +22,37 @@ import type { BuildingHoverModel, HoverCardRow } from './model.js';
  * What the cursor card over a building says. Original behavior: the engine draws a tooltip overlay for
  * the house under the cursor with its name, its construction or upgrade state as a percentage, and one
  * line per good it holds, sorted by the localized good name; goods at zero are left out. A site's lines
- * additionally carry what the bill still needs, which the original leaves to its own window.
+ * additionally carry what the bill still needs, which the original leaves to its own window. Owner rule:
+ * another seat's building, ally or enemy, shows its health in place of its goods or bill.
  */
+
+export interface BuildingHoverContext extends BuildingStockContext {
+  /** Whose store the card may list: the viewer's own buildings, or every one on the whole map. */
+  readonly viewer: ViewerSeat;
+}
 
 /** The card's model for the building under the cursor, or null when `entityId` is not a building. */
 export function buildingHoverModel(
   snapshot: WorldSnapshot,
   entityId: number,
-  ctx: BuildingStockContext,
+  ctx: BuildingHoverContext,
 ): BuildingHoverModel | null {
   const ent = entityById(snapshot, entityId);
   if (ent === undefined || !isBuilding(ent)) return null;
   const typeId = buildingTypeOf(ent);
   const def = buildingDef(ctx, typeId);
   const site = ent.components.UnderConstruction !== undefined;
+  const seat = pickableSeat(ctx.viewer);
+  const owner = ownerPlayerOf(ent);
+  // An ownerless house (a scene's ruin) is nobody else's.
+  const foreign = seat !== null && owner !== undefined && owner !== seat;
   return {
     kind: 'building',
     entityId,
     title: buildingTitle(ctx, typeId),
     state: hoverState(ent),
-    rows: sortByLabel(site ? billRows(ctx, def, ent) : held(ctx, def, ent)),
+    health: foreign ? healthBar(ent) : null,
+    rows: foreign ? [] : sortByLabel(site ? billRows(ctx, def, ent) : held(ctx, def, ent)),
   };
 }
 

@@ -45,10 +45,9 @@ import {
   type ViewerSeat,
 } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
-import type { BuildingStockContext } from '../../hud/details-panel/model/context.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
-import { buildingHoverModel } from '../../hud/hover-card/building.js';
+import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
 import { settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -782,9 +781,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // A building's card reads content alone: names, store slots and construction bills. No species
     // filter, so a farm's herd is one of its store lines, as the original's card lists it; the details
     // panel filters it out only because its own Produkcja window already counts the herd.
-    const hoverContext: BuildingStockContext = {
+    const hoverContext: BuildingHoverContext = {
       buildings: host.content.buildings,
       goods: host.content.goods,
+      viewer,
     };
 
     // The parchment card a hovered settler or building opens, on the DOM plane the redesigned regions
