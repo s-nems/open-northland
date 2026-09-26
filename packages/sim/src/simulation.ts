@@ -361,10 +361,11 @@ export class Simulation {
 
   /**
    * An opaque token over the placement-blocker inputs, changing when one of them does rather than per
-   * tick. Overlay memos key on it.
+   * tick. Overlay memos key on it. The signpost network revision is one, since a building probe lets its
+   * player cover the posts that player holds now.
    */
   placementBlockerVersion(): string {
-    return placementBlockerVersion(this.world);
+    return `${placementBlockerVersion(this.world)}.${signpostNetworkRevision(this.world)}`;
   }
 
   /**

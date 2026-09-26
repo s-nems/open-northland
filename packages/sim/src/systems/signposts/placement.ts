@@ -1,10 +1,19 @@
 import type { ContentSet } from '@open-northland/data';
-import { Owner, Position, SIGNPOST_SPACING_NODES, Signpost } from '../../components/index.js';
+import {
+  Building,
+  Owner,
+  Position,
+  SIGNPOST_DISPLACE_RADIUS_NODES,
+  SIGNPOST_SPACING_NODES,
+  Signpost,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { hexDistanceBetween, positionOfNode } from '../../nav/halfcell.js';
+import { hexDistanceBetween, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { canPlaceWorkFlag, workFlagPlacementTest } from '../footprint/index.js';
+import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
+import { canPlaceWorkFlag, nearestWorkFlagPlacement, workFlagPlacementTest } from '../footprint/index.js';
+import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { settleSignpostLinks, unlinkSignpost } from './links.js';
 import { type SignpostSite, signpostNetwork } from './network.js';
 
@@ -93,4 +102,51 @@ export function createSignpost(world: World, terrain: TerrainGraph, node: NodeId
 export function razeSignpost(world: World, post: Entity): void {
   unlinkSignpost(world, post);
   world.destroy(post);
+}
+
+/**
+ * Push every signpost inside a just-placed `building`'s reserved zone to the nearest node outside it that
+ * the erect rule's ground test accepts, on the same static ground, and re-link it there. The placement
+ * gate lets a player build over only their own posts. Spacing to the other posts is not re-checked: the
+ * post moves, nobody erects it. A post with no such node within {@link SIGNPOST_DISPLACE_RADIUS_NODES}
+ * falls. Project rule, as the original never builds on a post.
+ */
+export function displaceSignpostsFromReserved(world: World, ctx: SystemContext, building: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return;
+  const b = world.tryGet(building, Building);
+  const p = world.tryGet(building, Position);
+  if (b === undefined || p === undefined) return;
+  const anchor = nodeOfPosition(p.x, p.y);
+  const zone = buildingFootprintOf(ctx.content, b.buildingType)?.reserved;
+  const cells = new Set(translatedCells(terrain, zone?.length ? zone : ANCHOR_ONLY, anchor.hx, anchor.hy));
+  const enclosed = [...world.query(Signpost, Position)].filter((e) =>
+    cells.has(entityNode(world, terrain, e)),
+  );
+  // Canonical order, and each relocation lands before the next search, so two posts never share a node.
+  for (const post of canonicalById(enclosed)) {
+    const from = entityNode(world, terrain, post);
+    const ground = terrain.componentOf(from);
+    const to = nearestWorkFlagPlacement(world, ctx, terrain, from, {
+      accept: (n) => !cells.has(n) && terrain.componentOf(n) === ground,
+      withinRadius: SIGNPOST_DISPLACE_RADIUS_NODES,
+    });
+    if (to === null) razeSignpost(world, post);
+    else relocateSignpost(world, terrain, post, to);
+  }
+}
+
+/** Stand `post` on `node` and re-link it there. The component is re-added rather than the Position written
+ *  in place: the placement blocker caches replay Signpost membership and hold a post's cell fixed while it
+ *  keeps the component. */
+function relocateSignpost(world: World, terrain: TerrainGraph, post: Entity, node: NodeId): void {
+  unlinkSignpost(world, post);
+  world.remove(post, Signpost);
+  const c = terrain.coordsOf(node);
+  const pos = world.mut(post, Position);
+  const centre = positionOfNode(c.x, c.y);
+  pos.x = centre.x;
+  pos.y = centre.y;
+  world.add(post, Signpost, { links: [] });
+  settleSignpostLinks(world, terrain, post);
 }

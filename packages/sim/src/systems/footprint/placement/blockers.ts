@@ -96,8 +96,9 @@ function palisadeBodyCells(world: World, e: Entity, visit: BlockerVisit): void {
   for (const c of wall.placementWalk) visit(hx + footprintCellDx(hy, c), hy + c.dy, PALISADE_BODY);
 }
 
-/** One signpost's contribution: its anchor is an OBSTACLE - no building's reserved zone and no
- *  work flag may cover it (observed original behaviour). It never blocks movement (no walk overlay). */
+/** One signpost's contribution: its anchor is an OBSTACLE - no work flag and no other player's building
+ *  reserved zone may cover it (observed original behaviour; the owner's own building pushes it aside, a
+ *  project rule). It never blocks movement (no walk overlay). */
 function signpostBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
   const p = world.tryGet(e, Position);
   if (p === undefined) return;

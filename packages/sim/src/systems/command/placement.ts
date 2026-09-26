@@ -32,6 +32,7 @@ import { destroyStumpsInReserved } from '../economy/stumps.js';
 import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
+import { displaceSignpostsFromReserved } from '../signposts/index.js';
 import { upgradeTierOf } from '../stores/index.js';
 
 /**
@@ -135,10 +136,12 @@ export function placeBuilding(
   world.add(e, Stockpile, { amounts });
   stampOwner(world, e, command.owner);
   stampMissionId(world, e, command.missionId);
-  // The plot is impassable from this tick. The placement gates ignore work flags and loose goods, so a house
-  // may legally land on either; both are displaced outward rather than walled in.
+  // The plot is impassable from this tick. The placement gates ignore work flags, loose goods and the
+  // placer's own signposts, so a house may legally land on any of them; each is displaced outward rather
+  // than walled in.
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
+  displaceSignpostsFromReserved(world, ctx, e);
   evictLooseGoodsFromFootprint(world, ctx, e);
   // Bushes and felled-tree stumps are walkable and not a placement obstacle, so the plot may cover them; the
   // original clears landscape decoration in a building's reserved zone.

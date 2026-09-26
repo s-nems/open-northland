@@ -7,6 +7,7 @@ import {
 import { landscapeEditState } from '../../../components/landscape.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
+import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { type PlacementGrid, placementBlockerGrid } from './blocker-grid.js';
@@ -30,6 +31,7 @@ function canPlaceAnchor(
   grid: PlacementGrid,
   footprint: BuildingFootprint,
   buildOnBioPattern: boolean,
+  ownSignposts: OwnSignpostSlots,
   x: number,
   y: number,
 ): boolean {
@@ -38,14 +40,14 @@ function canPlaceAnchor(
   const h = terrain.height;
   // 1. Reserved zone - the max-level body plus the source's margin ring: on the map, on buildable ground,
   //    clear of OBSTACLE nodes and other buildings' reserved zones, so two buildings' reserved rings never
-  //    overlap.
+  //    overlap. The placer's own signposts are discounted: placing the building pushes them aside.
   for (const c of footprint.reserved) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
     const slot = cy * w + cx;
-    if ((obstacle[slot] ?? 0) > 0 || (buildingZone[slot] ?? 0) > 0) return false;
+    if ((obstacle[slot] ?? 0) > (ownSignposts.get(slot) ?? 0) || (buildingZone[slot] ?? 0) > 0) return false;
   }
   // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones and wall
   //    bodies, so placing level 0 already reserves the top level's space. familyBody ⊆ reserved, so loop 1
@@ -117,9 +119,26 @@ export function canPlaceBuilding(
     placementBlockerGrid(world, ctx.content, terrain),
     footprint,
     buildOnBioPattern,
+    NO_SIGNPOSTS,
     x,
     y,
   );
+}
+
+/** The placing player's signposts as grid slot -> post count: each stamps one OBSTACLE on its anchor, which
+ *  a building of that player may cover. Project rule: the original blocks building on any signpost. */
+type OwnSignpostSlots = ReadonlyMap<number, number>;
+const NO_SIGNPOSTS: OwnSignpostSlots = new Map();
+
+function ownSignpostSlots(terrain: TerrainGraph, posts: readonly HalfCellNode[]): OwnSignpostSlots {
+  if (posts.length === 0) return NO_SIGNPOSTS;
+  const slots = new Map<number, number>();
+  for (const { hx, hy } of posts) {
+    if (!terrain.inBounds(hx, hy)) continue; // an off-map post stamps nothing (see PlacementGrid)
+    const slot = hy * terrain.width + hx;
+    slots.set(slot, (slots.get(slot) ?? 0) + 1);
+  }
+  return slots;
 }
 
 /** Whether a script closed the node to building; a node off the map is nobody's to forbid. */
@@ -138,13 +157,15 @@ export interface PlacementProbe {
  * whole band against the same rule the `placeBuilding` command gates on without re-resolving content per
  * cell. A footprint-less type has no collision rule but retains any bio-pattern ground restriction. The
  * probe reads the live shared count arrays, which the next blocker change updates in place, so drain a
- * probe's band before the world can change again.
+ * probe's band before the world can change again. `ownSignposts` are the placer's posts, which no longer
+ * block its reserved zone.
  */
 export function placementProbe(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   buildingType: number,
+  ownSignposts: readonly HalfCellNode[] = [],
 ): PlacementProbe {
   const building = contentIndex(content).buildings.get(buildingType);
   const footprint = building?.footprint;
@@ -157,7 +178,8 @@ export function placementProbe(
     };
   }
   const grid = placementBlockerGrid(world, content, terrain);
+  const own = ownSignpostSlots(terrain, ownSignposts);
   return {
-    canPlace: (x, y) => canPlaceAnchor(grid, footprint, buildOnBioPattern, x, y),
+    canPlace: (x, y) => canPlaceAnchor(grid, footprint, buildOnBioPattern, own, x, y),
   };
 }

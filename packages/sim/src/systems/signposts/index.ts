@@ -11,6 +11,7 @@ export {
 export {
   canPlaceSignpost,
   createSignpost,
+  displaceSignpostsFromReserved,
   erectSignpost,
   razeSignpost,
   type SignpostProbe,
