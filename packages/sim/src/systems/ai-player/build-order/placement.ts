@@ -1,5 +1,5 @@
 import { type BuildingType, footprintCellDx, footprintCellMaxAbsDx } from '@open-northland/data';
-import { Building, diplomacyStance, Owner, ownerOf, Resource } from '../../../components/index.js';
+import { Building, diplomacyStance, Owner, ownerOf, Resource, Stockpile } from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -46,7 +46,9 @@ function affinityNode(
       const good = goodTypeByContentId(ctx.content, affinity.good);
       if (good === undefined) return null;
       const resource = nearestLiveResource(world, good.typeId, anchor);
-      return resource === null ? null : anchorNodeOf(world, resource);
+      return resource === null
+        ? stockedStoreNode(world, ctx, owned, good.typeId)
+        : anchorNodeOf(world, resource);
     }
     case 'mapCentre':
       return mapCentreNode(terrain);
@@ -88,6 +90,29 @@ function frontEdgeNode(
     }
   }
   return towardNode(edge, target, FRONT_EDGE_STEP_NODES);
+}
+
+/** The seat's store holding the most units of the good, the lowest id on a tie, as a node, or null while
+ *  none holds any: a workshop drawing on a good the map no longer offers stands beside the stock of it
+ *  instead (owner's rule), as a late smithy does by the mined iron once the deposits are dug out. */
+function stockedStoreNode(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  goodType: number,
+): HalfCellNode | null {
+  const index = contentIndex(ctx.content);
+  let best: Entity | null = null;
+  let most = 0;
+  for (const e of owned) {
+    if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'storage') continue;
+    const units = world.tryGet(e, Stockpile)?.amounts.get(goodType) ?? 0;
+    if (units > most) {
+      best = e;
+      most = units;
+    }
+  }
+  return best === null ? null : anchorNodeOf(world, best);
 }
 
 /** The seat's buildings of the content id or a tier above it, canonical ascending; none for an unknown id. */

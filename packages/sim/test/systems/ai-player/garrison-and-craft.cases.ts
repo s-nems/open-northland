@@ -1246,6 +1246,25 @@ describe('workforce module - the barracks and craft selections', () => {
     expect([ARMOUR_PLATE, ARMOUR_CHAIN, SWORD_LONG, SPEAR_IRON, SWORD_SHORT].map(count)).toEqual([
       3, 2, 2, 2, 1,
     ]);
+    // The late game's sixth and seventh smithies add a short sword, an iron spear, a plate and a mail.
+    const sevenSmithies = crewedWorkshops(
+      joineryRecastAs('work_smithy_01', [
+        { typeId: SWORD_LONG, id: 'sword_long' },
+        { typeId: SWORD_SHORT, id: 'sword_shord' },
+        { typeId: SPEAR_IRON, id: 'spear_iron' },
+        { typeId: ARMOUR_CHAIN, id: 'armor_chain' },
+        { typeId: ARMOUR_PLATE, id: 'armor_plate' },
+      ]),
+      7,
+      14,
+    );
+    sevenSmithies.hire(0, 14);
+    expect(sevenSmithies.products().slice(10)).toEqual([
+      [SWORD_SHORT],
+      [SPEAR_IRON],
+      [ARMOUR_PLATE],
+      [ARMOUR_CHAIN],
+    ]);
     const armouries = crewedWorkshops(
       joineryRecastAs('work_armory_01', [
         { typeId: BOW_LONG, id: 'bow_long' },
@@ -1256,6 +1275,17 @@ describe('workforce module - the barracks and craft selections', () => {
     );
     armouries.hire(0, 4);
     expect(armouries.products()).toEqual([[BOW_LONG, SPEAR_WOODEN], [BOW_LONG], [BOW_LONG], [BOW_LONG]]);
+  });
+
+  it('boils holy oil at one druid seat in twelve and brews the big healing potion at the rest', () => {
+    const seats = CRAFT_PLANS_BY_BUILDING_ID.work_druid_01?.seats ?? [];
+    expect(seats).toHaveLength(12);
+    expect(seats[0]).toEqual(['holy_oil']);
+    expect(
+      seats
+        .slice(1)
+        .every((seat) => !('goods' in seat) && !('firstFed' in seat) && seat[0] === 'potion_heal_big'),
+    ).toBe(true);
   });
 
   /** One pottery past its opening run with both potters hired, deciding at `tick`; the bricks' lines then. */

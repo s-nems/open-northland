@@ -8,7 +8,7 @@ import {
   UnderConstruction,
 } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
-import type { Simulation } from '../../../src/index.js';
+import { Simulation } from '../../../src/index.js';
 import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../../../src/systems/ai-player/game-phase.js';
 import {
   type BuildOrderEntry,
@@ -19,6 +19,8 @@ import {
   WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
 import { standsAtPost } from '../../../src/systems/conflict/tower-post.js';
+import { aiContent } from '../../fixtures/ai-content.js';
+import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
   ANIMAL_FARM_TYPE,
   aiSim,
@@ -354,6 +356,80 @@ describe('build-order module (houseBuild)', () => {
       sim.step();
     }
     expect(openAt(LATE_GAME_FROM_TICKS)).toBeUndefined();
+  });
+
+  it('runs a reached lane beside the list: one site of its own, the rest of the clock to the list', () => {
+    const laned = buildOrderModule([
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+      { kind: 'towerCoverage', building: 'tower_01', lane: true },
+      { kind: 'place', building: 'home_level_00', count: 4 },
+    ]);
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const act = (): Command | undefined => {
+      const commands = [...laned.run(sim.world, ctxOf(sim, LATE_GAME_FROM_TICKS), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands[0];
+    };
+    const placed = (): number[] =>
+      [...sim.world.query(UnderConstruction)].map((e) => sim.world.get(e, Building).buildingType);
+    // The farm holds the list until its site stands; then the lane is reached, satisfied while every
+    // building sits in the HQ circle, and the list goes on to the homes.
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: FARM_TYPE });
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
+    // A home out at the edge re-arms the lane: the tower goes up first, out of the lane's own site.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: HQ_X + 31,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
+    // The late clock keeps four sites: the lane holds one, so the list still opens a third of its own
+    // beside the farm and the home, then stops at the clock's four.
+    expect(placed().sort((a, b) => a - b)).toEqual([FARM_TYPE, HOME_TYPE, TOWER_TYPE].sort((a, b) => a - b));
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
+    expect(act()).toBeUndefined();
+    expect(placed()).toHaveLength(sitePace(LATE_GAME_FROM_TICKS).sites);
+  });
+
+  it('never holds the list on a lane with no room for its building', () => {
+    // A store lane whose one target, a gatherer's flag, lies far past any spot the seat may build on: the
+    // lane finds nothing, and the list goes on regardless.
+    const STORE_RADIUS = 19;
+    const laned = buildOrderModule([
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+      { kind: 'storeCoverage', building: 'stock_02', radius: STORE_RADIUS, lane: true },
+      { kind: 'place', building: 'home_level_00', count: 2 },
+    ]);
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(240, 32) });
+    placeHq(sim);
+    const FAR_FLAG = { x: HQ_X + 190, y: HQ_Y };
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: COLLECTOR,
+      x: FAR_FLAG.x + 2,
+      y: FAR_FLAG.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const gatherer = [...sim.world.query(Settler)].find(
+      (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
+    );
+    if (gatherer === undefined) throw new Error('setup: a gatherer');
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, x: FAR_FLAG.x, y: FAR_FLAG.y });
+    sim.step();
+    const next = (): Command | undefined => [...laned.run(sim.world, ctxOf(sim), SEAT)][0];
+    const farm = next();
+    if (farm?.kind !== 'placeBuilding') throw new Error('expected the farm');
+    applyAndFinish(sim, farm);
+    expect(next()).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
   });
 
   it('looks one entry further past the oldest open site from each pace step', () => {

@@ -1,6 +1,6 @@
 import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
-import { Position, Resource } from '../../../src/components/index.js';
+import { Position, Resource, setStockAmount } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
 import {
@@ -31,6 +31,7 @@ import {
   HQ_TYPE,
   HQ_X,
   HQ_Y,
+  IRON,
   MUD,
   makeAiSeat,
   placeHq,
@@ -38,6 +39,7 @@ import {
   RESOURCE_SPOTS,
   SAND,
   SEAT,
+  STOCK_TYPE,
   STONE,
   STONE_HARVEST,
   TOWER_TYPE,
@@ -145,6 +147,37 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(toStone).toBeLessThanOrEqual(2); // beside the deposit, not beside the HQ
     expect(Math.abs(spot.x - HQ_X) + Math.abs(spot.y - HQ_Y)).toBeLessThanOrEqual(
       BUILD_SEARCH_MAX_RADIUS_NODES,
+    );
+  });
+
+  it('pulls a resource-affinity placement toward the store holding the most of the good once no deposit stands', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const FAR_STORE = { x: HQ_X + 28, y: HQ_Y };
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      x: FAR_STORE.x,
+      y: FAR_STORE.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    setStockAmount(sim.world, entityOfBuilding(sim, STOCK_TYPE), IRON, 40);
+    const order: BuildOrderEntry[] = [
+      { kind: 'place', building: 'work_bakery_00', count: 1, near: [{ kind: 'resource', good: 'iron' }] },
+    ];
+    const spot = firstCommandOf(sim, order);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
+    const toStore = Math.abs(spot.x - FAR_STORE.x) + Math.abs(spot.y - FAR_STORE.y);
+    const toHq = Math.abs(spot.x - HQ_X) + Math.abs(spot.y - HQ_Y);
+    expect(toStore).toBeLessThan(toHq); // beside the iron in store, not beside the HQ
+    // With the store emptied the pull is gone: the placement lands beside the HQ.
+    setStockAmount(sim.world, entityOfBuilding(sim, STOCK_TYPE), IRON, 0);
+    const bare = firstCommandOf(sim, order);
+    if (bare?.kind !== 'placeBuilding') throw new Error('expected a base placement');
+    expect(Math.abs(bare.x - HQ_X) + Math.abs(bare.y - HQ_Y)).toBeLessThan(
+      Math.abs(bare.x - FAR_STORE.x) + Math.abs(bare.y - FAR_STORE.y),
     );
   });
 

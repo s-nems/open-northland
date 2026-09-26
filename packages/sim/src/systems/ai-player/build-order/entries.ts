@@ -2,8 +2,9 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../game-phase.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
- *  each kind to a node. `front` is the settlement's own edge toward the nearest enemy seat, its
- *  headquarters before any other building, and toward the map centre while no enemy has a building
+ *  each kind to a node. `resource` is the good's nearest live deposit, or the seat's store holding the
+ *  most of the good once none stands. `front` is the settlement's own edge toward the nearest enemy seat,
+ *  its headquarters before any other building, and toward the map centre while no enemy has a building
  *  standing. */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
@@ -37,11 +38,28 @@ export type BuildOrderEntry =
   | { readonly kind: 'collector'; readonly good: string; readonly count?: number }
   /** Keep every owned building inside some tower's or the base's defence circle of `radius` nodes
    *  (default {@link TOWER_DEFENCE_RADIUS_NODES}). Unlike the counted entries it re-arms whenever a later
-   *  building lands uncovered, so the tower count is dynamic. */
-  | { readonly kind: 'towerCoverage'; readonly building: string; readonly radius?: number }
+   *  building lands uncovered, so the tower count is dynamic. A `lane` entry runs beside the list once
+   *  every counted entry before it stands met: it holds one site of its building at a time, taken out of
+   *  the clock's site count, never stalls the entries behind it, and they never wait on it. */
+  | {
+      readonly kind: 'towerCoverage';
+      readonly building: string;
+      readonly radius?: number;
+      readonly lane?: true;
+    }
   /** The same rule over the seat's stores: every owned building within `radius` nodes of the base or a
    *  warehouse, so goods never travel far to a store. */
-  | { readonly kind: 'storeCoverage'; readonly building: string; readonly radius: number };
+  | {
+      readonly kind: 'storeCoverage';
+      readonly building: string;
+      readonly radius: number;
+      readonly lane?: true;
+    };
+
+/** Whether `entry` is a lane running beside the list rather than a step of it. */
+export function isLaneEntry(entry: BuildOrderEntry): boolean {
+  return (entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true;
+}
 
 /** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
  *  {@link TOWER_DEFENCE_RADIUS_NODES}, so the finished settlement stands under overlapping towers. */
@@ -52,8 +70,9 @@ export const DENSE_TOWER_RADIUS_NODES = 14;
 export const WELL_REACH_NODES = 12;
 
 /** How near a brewery its hive must stand to count as its honey source, in world-metric nodes (authored):
- *  the well's reach, since the brewer's carrier walks to both. */
-export const HIVE_REACH_NODES = WELL_REACH_NODES;
+ *  wider than the well's reach, since the well entry serving the same brewery comes first in the list and
+ *  takes the nearest room, and the brewer's carrier walks the little further for honey. */
+export const HIVE_REACH_NODES = 18;
 
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
@@ -257,11 +276,24 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     near: [{ kind: 'building', id: 'work_brewery' }],
     unlessWithin: { building: 'work_brewery', radius: WELL_REACH_NODES },
   },
-  // Warehouses close the list, as the settlement needs them: one wherever a workshop or a work flag
-  // stands beyond every store's reach, so the smithies unload nearby and the ore piled at the mines
-  // gets carried in. Then the denser tower ring over the finished settlement.
-  { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES },
-  { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES },
+  // From here the warehouses and the denser tower ring run as lanes beside the list, one site each out of
+  // the four the late game opens (owner's rule): a warehouse wherever a workshop or a work flag stands
+  // beyond every store's reach, so the smithies unload nearby and the ore piled at the mines gets carried
+  // in; a tower wherever the ring leaves a building out. A filled settlement with no room for a tower
+  // holds the lane, not the list.
+  { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES, lane: true },
+  { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES, lane: true },
+  // The other two sites go on down the list: two more smithies, the joinery at its top tier for a third
+  // joiner on iron tools, and two more druid huts on the big healing potion.
+  { kind: 'place', building: 'work_smithy_01', count: 7, near: IRON_AND_WOOD },
+  { kind: 'upgrade', building: 'work_joinery_03', count: 1 },
+  {
+    kind: 'place',
+    building: 'work_druid_01',
+    count: 6,
+    near: [{ kind: 'building', id: 'work_druid_01' }],
+    needsResources: ['mushroom', 'gold'],
+  },
 ];
 
 /** What a seat with no base puts up: the headquarters declares an empty construction bill and would

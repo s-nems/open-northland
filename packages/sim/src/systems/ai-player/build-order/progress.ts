@@ -10,7 +10,7 @@ import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '..
 import { anyLiveResource } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
-import type { BuildOrderEntry } from './entries.js';
+import { type BuildOrderEntry, isLaneEntry } from './entries.js';
 import { unservedAnchor } from './placement.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
 
@@ -166,9 +166,9 @@ function collectorCount(entry: Extract<BuildOrderEntry, { kind: 'collector' }>):
 
 /**
  * The collector goods the list has reached, in order, each with the most gatherers a reached entry asks
- * for: an entry is reached while every entry before it is satisfied or skipped. Reached state is
- * re-derived each decision, so a regressing earlier entry drops a later collector and returns its holder
- * to the pool until the list re-reaches the entry.
+ * for: an entry is reached while every entry before it is satisfied or skipped, a lane running beside the
+ * list never holding it. Reached state is re-derived each decision, so a regressing earlier entry drops a
+ * later collector and returns its holder to the pool until the list re-reaches the entry.
  */
 export function collectorGoodsWanted(
   order: readonly BuildOrderEntry[],
@@ -176,6 +176,7 @@ export function collectorGoodsWanted(
 ): ReadonlyMap<string, number> {
   const wanted = new Map<string, number>();
   for (const [i, entry] of order.entries()) {
+    if (isLaneEntry(entry)) continue;
     const status = statuses[i];
     if (entry.kind === 'collector' && status !== 'skip') {
       wanted.set(entry.good, Math.max(wanted.get(entry.good) ?? 0, collectorCount(entry)));

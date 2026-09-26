@@ -18,7 +18,7 @@ import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../cadence.js';
-import { buildingTypeByContentId } from '../content-lookup.js';
+import { buildingTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import type { AiPlayerModule } from '../index.js';
 import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../node-geometry.js';
@@ -27,12 +27,13 @@ import {
   BASE_REPLACEMENT_ENTRY,
   BASELESS_CONSTRUCTION_SITES,
   type BuildOrderEntry,
+  isLaneEntry,
   REBUILD_DELAY_TICKS,
   STALLED_PLACEMENT_RETRY_DECISIONS,
   sitePace,
 } from './entries.js';
 import { placementSpot } from './placement.js';
-import { entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
+import { type EntryStatus, entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
 import { type Siege, seatSiege } from './siege.js';
 import { coverageOf, coveragePlacementSpot, uncoveredTargets } from './tower-coverage.js';
 import { upgradeBillCovered } from './upgrade-supply.js';
@@ -50,6 +51,8 @@ export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.
  * Acts on the first unmet entry, so a razed building is re-placed, after {@link REBUILD_DELAY_TICKS},
  * before any entry the seat has not reached yet. A placed site meets its entry at once, so up to the
  * clock's {@link sitePace} sites go up side by side, within its lookahead of the oldest unfinished one.
+ * A lane entry the list has reached runs beside it ({@link openLanes}): it takes one of those sites for
+ * itself and leaves the list the rest, so a tower ring with no room left stalls nothing.
  * An unmet entry with no legal action stalls rather than being skipped, so no later site draws off the
  * goods it waits for: most retry next decision, a placement that found no spot every
  * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an upgrade holds while a bill good only it or
@@ -79,12 +82,10 @@ function runBuildOrder(
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const owned = ownedBuildings(world, player);
-  let sites = 0;
-  for (const e of owned) {
-    if (world.has(e, UnderConstruction)) sites++;
-  }
   const base = seatBaseOf(world, ctx, player);
-  if (sites >= (base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(ctx.tick).sites)) return [];
+  const siteCap = base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(ctx.tick).sites;
+  const sites = owned.filter((e) => world.has(e, UnderConstruction));
+  if (sites.length >= siteCap) return [];
 
   const tribe = playerPlacementTribes(world, player)?.[0];
   // Scanned once the list has something to do: an idle decision never walks the map's people.
@@ -99,12 +100,34 @@ function runBuildOrder(
   const index = contentIndex(ctx.content);
 
   const live: LiveResourceMemo = new Map();
+  const statuses = order.map((entry) => entryStatus(world, ctx, player, owned, entry, live));
+  const lanes = openLanes(world, ctx, order, statuses, sites);
+  for (const lane of lanes) {
+    if (statuses[lane.entryIndex] !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
+    if (siegeOf().attacked) return [];
+    const placed = coverageCommand(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      tribe,
+      lane.entry,
+      siegeOf().underFire,
+    );
+    if (placed !== null) return [placed];
+  }
+  // The list keeps the sites the lanes leave it, at least one, and counts only its own.
+  let listSites = sites.length;
+  for (const lane of lanes) listSites -= lane.sites;
+  if (listSites >= Math.max(1, siteCap - lanes.length)) return [];
+
   for (const [entryIndex, entry] of order.entries()) {
-    const status = entryStatus(world, ctx, player, owned, entry, live);
-    if (status !== 'unmet') continue;
+    if (isLaneEntry(entry) || statuses[entryIndex] !== 'unmet') continue;
     const { attacked, underFire } = siegeOf();
     if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick, attacked) || attacked) return [];
-    if (sites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
+    if (listSites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
     const stall = placementStall(world, player, entryIndex);
     switch (entry.kind) {
       case 'place': {
@@ -137,36 +160,91 @@ function runBuildOrder(
       case 'towerCoverage':
       case 'storeCoverage': {
         if (tribe === undefined) return [];
-        const type = buildingTypeByContentId(ctx.content, entry.building);
-        if (type === undefined) return []; // unreachable after 'skip', kept for the type system
-        if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
-        const coverage = coverageOf(entry);
-        // The first target with a legal spot, in target order: a target none covers, a flag beyond the
-        // seat's build reach or ground another store already serves, is passed over, and a store entry
-        // with none left is passed over as a whole rather than stalled, since the goods still travel,
-        // only farther.
-        for (const target of uncoveredTargets(world, ctx, player, owned, coverage)) {
-          const spot = coveragePlacementSpot(
-            world,
-            ctx,
-            terrain,
-            player,
-            owned,
-            anchor,
-            type,
-            target,
-            coverage,
-            underFire,
-          );
-          if (spot !== null) return [siteCommand(type, spot, tribe, player)];
-        }
-        if (coverage.by === 'store') continue;
-        return [];
+        const placed = coverageCommand(world, ctx, terrain, player, owned, anchor, tribe, entry, underFire);
+        // A store entry with no target left is passed over as a whole rather than stalled, since the goods
+        // still travel, only farther.
+        if (placed === null && entry.kind === 'storeCoverage') continue;
+        return placed === null ? [] : [placed];
       }
     }
   }
   advanceFrontier(world, player, order.length);
   return [];
+}
+
+/** One lane of the list ({@link isLaneEntry}) and the sites of its building the seat has open. */
+interface OpenLane {
+  readonly entryIndex: number;
+  readonly entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>;
+  readonly sites: number;
+}
+
+/** The lanes the list has reached, in list order: every counted entry before each stands met. A lane's
+ *  sites are the open sites of its building or a tier above it, whichever entry placed them. */
+function openLanes(
+  world: World,
+  ctx: SystemContext,
+  order: readonly BuildOrderEntry[],
+  statuses: readonly EntryStatus[],
+  sites: readonly Entity[],
+): OpenLane[] {
+  const index = contentIndex(ctx.content);
+  const lanes: OpenLane[] = [];
+  let held = false;
+  for (const [entryIndex, entry] of order.entries()) {
+    if (entry.kind !== 'towerCoverage' && entry.kind !== 'storeCoverage') {
+      if (statuses[entryIndex] === 'unmet') held = true;
+      continue;
+    }
+    if (!isLaneEntry(entry)) {
+      if (statuses[entryIndex] === 'unmet') held = true;
+      continue;
+    }
+    if (held) continue;
+    const type = buildingTypeByContentId(ctx.content, entry.building);
+    const chain = type === undefined ? new Set<number>() : tiersAtOrAbove(index, type);
+    const own = sites.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
+    lanes.push({ entryIndex, entry, sites: own });
+  }
+  return lanes;
+}
+
+/**
+ * The site a coverage entry raises next, or null when no target has a legal spot: the first target with
+ * one, in target order; a target none covers, a flag beyond the seat's build reach or ground another
+ * store already serves, is passed over. Nothing while the building's tier is not enabled yet.
+ */
+function coverageCommand(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+  tribe: number,
+  entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
+  underFire: EnemyFire,
+): Extract<PlayerCommand, { kind: 'placeBuilding' }> | null {
+  const type = buildingTypeByContentId(ctx.content, entry.building);
+  if (type === undefined) return null; // unreachable after 'skip', kept for the type system
+  if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return null;
+  const coverage = coverageOf(entry);
+  for (const target of uncoveredTargets(world, ctx, player, owned, coverage)) {
+    const spot = coveragePlacementSpot(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      type,
+      target,
+      coverage,
+      underFire,
+    );
+    if (spot !== null) return siteCommand(type, spot, tribe, player);
+  }
+  return null;
 }
 
 /**
@@ -215,8 +293,8 @@ function advanceFrontier(world: World, player: number, entryIndex: number): void
  * Whether acting on `entryIndex` would take the list more than the clock's lookahead ({@link sitePace})
  * past the oldest one met only by a fresh site still going up. That entry is found by re-reading the list
  * over the buildings that stand, a building mid-upgrade counted at the tier it has. An entry unmet over
- * the sites too was passed over, not met by one, so it never holds the list; skipped entries do not
- * count toward the lookahead.
+ * the sites too was passed over, not met by one, so it never holds the list; skipped entries and lanes
+ * do not count toward the lookahead.
  */
 function outrunsSites(
   world: World,
@@ -233,15 +311,16 @@ function outrunsSites(
   let oldest = -1;
   for (let i = 0; i < entryIndex && oldest < 0; i++) {
     const entry = order[i];
-    if (entry === undefined || entryStatus(world, ctx, player, standing, entry, live, false) !== 'unmet')
-      continue;
+    if (entry === undefined || isLaneEntry(entry)) continue;
+    if (entryStatus(world, ctx, player, standing, entry, live, false) !== 'unmet') continue;
     if (entryStatus(world, ctx, player, owned, entry, live) !== 'unmet') oldest = i;
   }
   if (oldest < 0) return false;
   let ahead = 0;
   for (let i = oldest + 1; i <= entryIndex; i++) {
     const entry = order[i];
-    if (entry !== undefined && entryStatus(world, ctx, player, owned, entry, live) !== 'skip') ahead++;
+    if (entry === undefined || isLaneEntry(entry)) continue;
+    if (entryStatus(world, ctx, player, owned, entry, live) !== 'skip') ahead++;
   }
   return ahead > lookahead;
 }

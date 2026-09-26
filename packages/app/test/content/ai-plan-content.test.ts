@@ -264,18 +264,29 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(building, `tower id ${towerId}`).toBeDefined();
       expect(building?.kind, `tower kind of ${towerId}`).toBe('tower');
     }
+    /** The ids of the building and every tier its `upgradeTarget` chain leads to. */
+    const tiersFrom = (startId: string): Set<string> => {
+      const ids = new Set<string>();
+      let step = buildingById.get(startId);
+      while (step !== undefined && !ids.has(step.id)) {
+        ids.add(step.id);
+        const next = step.upgradeTarget;
+        step = next === undefined ? undefined : content.buildings.find((b) => b.typeId === next);
+      }
+      return ids;
+    };
     for (const [id, plan] of Object.entries(CRAFT_PLANS_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();
       const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
       // One list per operator seat across the type - the buildings the plan raises must offer every seat
-      // the table splits.
+      // the table splits. An entry plans a building for every tier its chain may upgrade it into.
       const operatorSeats = building?.workers
         .filter((w) => w.jobType !== carrierJob)
         .reduce((most, w) => Math.max(most, w.count), 0);
       const planned = DEFAULT_BUILD_ORDER.reduce(
         (most, entry) =>
-          (entry.kind === 'place' || entry.kind === 'upgrade') && entry.building === id
+          (entry.kind === 'place' || entry.kind === 'upgrade') && tiersFrom(entry.building).has(id)
             ? Math.max(most, entry.count)
             : most,
         0,
