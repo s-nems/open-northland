@@ -17,6 +17,7 @@ import type { Command } from '../../../src/core/commands/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, nodeOfPosition, Simulation } from '../../../src/index.js';
 import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
+import type { NodeId } from '../../../src/nav/terrain/index.js';
 import type { EntryStatus } from '../../../src/systems/ai-player/build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
@@ -460,7 +461,7 @@ describe('workforce module (collectResources)', () => {
 
   it("posts one more wood gatherer behind the builder reserve while the joinery eats the sites' wood", () => {
     // The joinery's recipes consume wood, the crew is the previous case's: nothing past the reserve. In
-    // the opening the extra post is a top-up (owner's rule: a small seat keeps its men building), so it
+    // the opening the extra post is a top-up (authored: a small seat keeps its men building), so it
     // waits for a man past the reserve.
     const sim = aiSim();
     placeHq(sim);
@@ -1395,6 +1396,62 @@ describe('workforce module (collectResources)', () => {
     const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
     if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to move');
     expect(flag.x !== flagNode.hx || flag.y !== flagNode.hy).toBe(true);
+    expect(reach.patchHarvestable(holder, { hx: flag.x, hy: flag.y }, radius, (g) => g === MUD)).toBe(true);
+  });
+
+  it('moves a flag whose deposit a blocker ring seals off, though the ring leaves the stance cells clear', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const terrain = sim.terrain;
+    const deposit = [...sim.world.query(Resource)].find((e) => sim.world.get(e, Resource).goodType === MUD);
+    const [holder] = holdersOf(sim, MUD);
+    if (terrain === undefined || deposit === undefined || holder === undefined) throw new Error('setup');
+    const at = sim.world.get(deposit, Position);
+    const depositNode = nodeOfPosition(at.x, at.y);
+    // The flag steps out to where the ring below leaves it on open ground, still within its circle.
+    const FLAG_AWAY = { hx: depositNode.hx + 6, hy: depositNode.hy + 6 };
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: holder, x: FLAG_AWAY.hx, y: FLAG_AWAY.hy });
+    sim.step();
+    const flagAt = sim.world.get(sim.world.get(holder, WorkFlag).flag, Position);
+    const flagNode = nodeOfPosition(flagAt.x, flagAt.y);
+    expect(flagNode).toEqual(FLAG_AWAY);
+
+    // A ring of blockers three pathfinder steps out seals the deposit and its stance cells into a pocket
+    // the flag stands outside of: the cells stay clear ground, but no walk from the flag reaches them.
+    const SEAL_DEPTH = 3;
+    const depth = new Map<NodeId, number>([[terrain.nodeAt(depositNode.hx, depositNode.hy), 0]]);
+    const queue: NodeId[] = [...depth.keys()];
+    for (let i = 0; i < queue.length; i++) {
+      const node = queue[i];
+      if (node === undefined) continue;
+      const d = depth.get(node);
+      if (d === undefined || d >= SEAL_DEPTH) continue;
+      for (const { node: next } of terrain.steps(node)) {
+        if (depth.has(next)) continue;
+        depth.set(next, d + 1);
+        queue.push(next);
+      }
+    }
+    const ring = [...depth]
+      .filter(([, d]) => d === SEAL_DEPTH)
+      .map(([node]) => ({ x: terrain.xOf(node), y: terrain.yOf(node) }));
+    expect(depth.has(terrain.nodeAt(flagNode.hx, flagNode.hy))).toBe(false);
+    wallOver(sim, ring);
+    const FRESH = { x: 50, y: 8 };
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...FRESH }]);
+    sim.step();
+    const radius = sim.world.get(holder, WorkFlag).radius;
+    const reach = gathererReach(sim.world, ctxOf(sim), terrain);
+    expect(reach.patchHarvestable(holder, flagNode, radius, (g) => g === MUD)).toBe(false);
+
+    const move = [...collectModule.run(sim.world, ctxOf(sim, AI_DECISION_INTERVAL_TICKS), SEAT)];
+    const flag = move.find((c) => c.kind === 'setWorkFlag' && c.entity === holder);
+    if (flag?.kind !== 'setWorkFlag') throw new Error('expected the flag to leave the sealed deposit');
     expect(reach.patchHarvestable(holder, { hx: flag.x, hy: flag.y }, radius, (g) => g === MUD)).toBe(true);
   });
 
