@@ -1,4 +1,10 @@
-import { type OpenedWorld, RelayClient, RelaySocket, type WorldPort } from '@open-northland/net-client';
+import {
+  type AdoptedWorld,
+  RelayClient,
+  type RelayLink,
+  RelaySocket,
+  type WorldPort,
+} from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
 import { errorText } from '../diag/error-text.js';
 import { diag } from '../diag/index.js';
@@ -10,11 +16,11 @@ export type ConnectionEvent =
 
 export class NetworkConnection {
   readonly client: RelayClient;
-  readonly socket: RelaySocket;
+  readonly socket: RelayLink;
   private readonly listeners = new Set<(event: ConnectionEvent) => void>();
   private readonly port: Promise<WorldPort>;
   private resolvePort: (port: WorldPort) => void = () => undefined;
-  private onWorld: (world: OpenedWorld) => void = () => undefined;
+  private onWorld: (world: AdoptedWorld) => void = () => undefined;
   private disposed = false;
 
   constructor(
@@ -74,7 +80,7 @@ export class NetworkConnection {
     };
   }
 
-  bindWorld(port: WorldPort, onWorld: (world: OpenedWorld) => void): void {
+  bindWorld(port: WorldPort, onWorld: (world: AdoptedWorld) => void): void {
     if (this.disposed) return;
     this.onWorld = onWorld;
     this.resolvePort(port);

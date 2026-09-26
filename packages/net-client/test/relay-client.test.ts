@@ -1,5 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
+  type AdoptedWorld,
   decodeSnapshot,
   type OpenedWorld,
   prepareInitialSave,
@@ -23,10 +24,11 @@ const SESSION: GameSession = {
   speed: 1,
 };
 const RESTORED_TICK = 40;
+const FIRST_WORLD_ID = 1;
 
 function harness(port: Partial<WorldPort>) {
   const sent: ClientMessage[] = [];
-  const worlds: OpenedWorld[] = [];
+  const worlds: AdoptedWorld[] = [];
   const client = new RelayClient({
     token: 'token-0123456789abcdef',
     nick: 'Ania',
@@ -344,7 +346,7 @@ describe('RelayClient world operation ownership', () => {
     older.release(fixtureWorld());
     await client.settled();
     expect(client.sim).toBe(expected.sim);
-    expect(worlds).toEqual([expected]);
+    expect(worlds).toEqual([{ ...expected, worldId: FIRST_WORLD_ID }]);
   });
 
   it('does not restart an in-flight restore on reconnect', async () => {
@@ -360,6 +362,25 @@ describe('RelayClient world operation ownership', () => {
     restore.release(fixtureWorld());
     await client.settled();
     expect(sent).toEqual([{ kind: 'loaded', tick: 0, world: DESCRIPTOR_WORLD }]);
+  });
+
+  it('numbers every adopted world and holds no number between worlds', async () => {
+    const { client, worlds } = harness({
+      open: async () => fixtureWorld(),
+      restore: async () => fixtureWorld(),
+    });
+    expect(client.worldId).toBeNull();
+    start(client, null);
+    await client.settled();
+    expect(client.worldId).toBe(FIRST_WORLD_ID);
+    client.receive({ kind: 'desync', tick: 5, domains: ['rng'], reference: 'Bartek' });
+    expect(client.worldId).toBeNull();
+    client.receive({ kind: 'blob', type: 'snapshot', from: 'Bartek', tick: 5, bytes: 'AAAA' });
+    await client.settled();
+    expect(client.worldId).toBe(FIRST_WORLD_ID + 1);
+    expect(worlds.map((world) => world.worldId)).toEqual([FIRST_WORLD_ID, FIRST_WORLD_ID + 1]);
+    client.receive({ kind: 'left' });
+    expect(client.worldId).toBeNull();
   });
 
   it('leaving cancels an open and clears the previous session clock', async () => {

@@ -3,19 +3,32 @@ import { CLOSE_PROTOCOL_ERROR, CLOSE_REPLACED, type ClientMessage } from '@open-
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 10_000;
 
-export interface RelaySocketOptions {
-  readonly url: string;
+/** What a relay link reports to its owner. */
+export interface RelayLinkEvents {
   /** Runs on every (re)connection; the client introduces itself again from here. */
   readonly onOpen: () => void;
   readonly onMessage: (raw: unknown) => void;
-  /** Runs once the socket will not reopen: closed here, replaced, or refused by the relay. */
+  /** Runs once the link will not reopen: closed here, replaced, or refused by the relay. */
   readonly onClosed: (reason: string) => void;
   readonly onRetry?: (attempt: number, inMs: number) => void;
+}
+
+/** A connection to the relay that carries client messages out and reports through `RelayLinkEvents`. */
+export interface RelayLink {
+  readonly connected: boolean;
+  /** False when nothing is connected; the message is dropped, since the client says everything that
+   *  matters again once it is back. */
+  send(message: ClientMessage): boolean;
+  close(): void;
+}
+
+export interface RelaySocketOptions extends RelayLinkEvents {
+  readonly url: string;
   readonly createSocket?: (url: string) => WebSocket;
 }
 
 /** One relay connection that comes back on its own after a drop, with the same identity. */
-export class RelaySocket {
+export class RelaySocket implements RelayLink {
   private socket: WebSocket | null = null;
   private attempt = 0;
   private retry: ReturnType<typeof setTimeout> | null = null;
@@ -31,8 +44,6 @@ export class RelaySocket {
     return this.socket !== null && this.socket.readyState === this.socket.OPEN;
   }
 
-  /** False when nothing is connected; the message is dropped, since the client says everything that
-   *  matters again once it is back. */
   send(message: ClientMessage): boolean {
     if (!this.connected || this.socket === null) return false;
     this.socket.send(JSON.stringify(message));

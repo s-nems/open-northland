@@ -26,7 +26,9 @@ import { CommandLatency } from './latency.js';
 import { RelayLobby } from './lobby.js';
 import { MatchCompletion } from './match-completion.js';
 import { paceScale } from './pacer.js';
+import type { RelayClientView } from './relay-client-view.js';
 import { RelayRefusal } from './relay-refusal.js';
+import type { ClockState } from './relay-state.js';
 import { SaveOrders } from './save-orders.js';
 import { encodeSnapshot } from './snapshot-codec.js';
 import { WorldLoader } from './world-loader.js';
@@ -37,6 +39,11 @@ export interface OpenedWorld {
   readonly sim: Simulation;
   readonly generation: number;
   readonly initialSaveFingerprint?: string;
+}
+
+/** A world the client adopted, numbered so a host can tell it from the worlds before and after it. */
+export interface AdoptedWorld extends OpenedWorld {
+  readonly worldId: number;
 }
 
 /**
@@ -50,8 +57,6 @@ export interface WorldPort {
   restore(session: GameSession, snapshot: string): Promise<OpenedWorld | null>;
 }
 
-export type ClockState = Extract<ServerMessage, { kind: 'clock' }>;
-
 export interface RelayClientOptions {
   readonly token: string;
   readonly nick: string;
@@ -59,7 +64,7 @@ export interface RelayClientOptions {
   /** Every relay message, after the client has acted on it: how a display follows the session. */
   readonly onMessage?: (message: ServerMessage) => void;
   /** A world adopted: built, or restored from a snapshot. */
-  readonly onWorld?: (world: OpenedWorld) => void;
+  readonly onWorld?: (world: AdoptedWorld) => void;
   readonly onDropped?: (tick: number, reason: string) => void;
   /** A world port or snapshot failure, and a command issued with no world or no connection to send it. */
   readonly onError?: (what: string, error: unknown) => void;
@@ -71,28 +76,45 @@ export interface RelayClientOptions {
 }
 
 /** One client of a relayed session, and the session driver and clock the host runs it through. */
-export class RelayClient extends RelayLobby implements SessionDriver {
-  session: GameSession | null = null;
+export class RelayClient extends RelayLobby implements SessionDriver, RelayClientView {
   sim: Simulation | null = null;
-  delayTicks: number | null = null;
-  /** The relay's smoothed round trip to this client, from its last ping. */
-  roundTripMs: number | null = null;
-  /** The relay's last word on the clock. */
-  clockState: ClockState | null = null;
-  /** The relay's last word on who the room waits for. */
-  waitingFor: readonly WaitedMember[] = [];
   readonly latency: CommandLatency;
   readonly digests = new DigestTrail();
   private driver: LockstepDriver | null = null;
   private transport: RelayTransport | null = null;
   private world = DESCRIPTOR_WORLD;
-  /** Set by a desync notice: the next world comes from a snapshot, whatever `start` offers. */
-  private outOfSync = false;
+  private adoptedWorlds = 0;
+  private currentWorldId: number | null = null;
   private readonly loader = new WorldLoader();
   private reportRestoredWorld = false;
   private alpha = 1;
   private readonly completion = new MatchCompletion();
   private readonly saveOrders = new SaveOrders();
+
+  get session(): GameSession | null {
+    return this.state.session;
+  }
+
+  get clockState(): ClockState | null {
+    return this.state.clockState;
+  }
+
+  get waitingFor(): readonly WaitedMember[] {
+    return this.state.waitingFor;
+  }
+
+  get delayTicks(): number | null {
+    return this.state.delayTicks;
+  }
+
+  get roundTripMs(): number | null {
+    return this.state.roundTripMs;
+  }
+
+  /** The adopted world's number, counted from 1 over this client's life; null while it holds none. */
+  get worldId(): number | null {
+    return this.currentWorldId;
+  }
 
   get resultTick(): number | null {
     return this.completion.resultTick;
@@ -153,11 +175,11 @@ export class RelayClient extends RelayLobby implements SessionDriver {
   }
 
   get isOutOfSync(): boolean {
-    return this.outOfSync;
+    return this.state.outOfSync;
   }
 
   captureSave(options: ExportSaveOptions = {}): Promise<SaveGame> {
-    if (this.sim === null || this.outOfSync || this.options.connected?.() === false)
+    if (this.sim === null || this.state.outOfSync || this.options.connected?.() === false)
       return Promise.reject(new Error('A save requires a connected, synchronized world'));
     const save = exportSaveGame(this.sim, { ...this.saveHeader(), ...options });
     return this.saveOrders.request(save, this.world, (message) => this.send(message));
@@ -197,60 +219,32 @@ export class RelayClient extends RelayLobby implements SessionDriver {
 
   receive(raw: unknown): void {
     const message = parseServerMessage(raw, parseGameSession);
+    this.state.apply(message);
     switch (message.kind) {
       case 'welcome':
         this.saveOrders.cancel('The relay connection changed while saving');
-        this.nick = message.nick;
-        this.welcomed = true;
-        break;
-      case 'rooms':
-        this.rooms = message.rooms;
-        break;
-      case 'room':
-        this.room = message.room;
         break;
       case 'saveOrders':
         this.saveOrders.receive(message);
         break;
       case 'ended':
         this.completion.confirm(message.tick, message.hash);
-        this.waitingFor = [];
         break;
       case 'left':
         this.completion.clear();
-        this.room = null;
-        this.session = null;
-        this.clockState = null;
-        this.waitingFor = [];
-        this.delayTicks = null;
-        this.outOfSync = false;
         this.dropWorld();
         break;
       case 'start':
         this.startSession(message.session, message.snapshotTick);
         break;
       case 'clock':
-        this.clockState = message;
         this.driver?.setSpeed(message.speed);
         break;
       case 'frame':
         if (this.transport === null) this.earlyFrames.push(message);
         else this.transport.receiveFrame(message);
         break;
-      case 'delay':
-        this.delayTicks = message.ticks;
-        break;
-      case 'waiting':
-        this.waitingFor = message.for;
-        break;
-      case 'mapRequest':
-      case 'kickVote':
-      case 'kicked':
-      case 'chat':
-      case 'error':
-        break;
       case 'desync':
-        this.outOfSync = true;
         this.dropWorld();
         break;
       case 'snapshotRequest':
@@ -261,7 +255,6 @@ export class RelayClient extends RelayLobby implements SessionDriver {
           this.restoreFrom(message.bytes, message.tick);
         break;
       case 'ping':
-        this.roundTripMs = message.roundTripMs;
         this.send({ kind: 'pong', t: message.t });
         break;
       case 'rejected':
@@ -271,7 +264,8 @@ export class RelayClient extends RelayLobby implements SessionDriver {
         if (message.of === 'loaded') this.options.onError?.('open', new RelayRefusal(message.reason));
         break;
       default:
-        assertNever(message);
+        // The rest only changes the lobby and session state applied above, or nothing here.
+        break;
     }
     this.options.onMessage?.(message);
   }
@@ -327,8 +321,7 @@ export class RelayClient extends RelayLobby implements SessionDriver {
 
   private startSession(session: GameSession, snapshotTick: number | null): void {
     this.completion.reconnect();
-    this.session = session;
-    if (this.sim !== null && !this.outOfSync) {
+    if (this.sim !== null && !this.state.outOfSync) {
       this.send({ kind: 'loaded', tick: this.sim.tick, world: this.world });
       return;
     }
@@ -336,7 +329,7 @@ export class RelayClient extends RelayLobby implements SessionDriver {
       this.reportRestoredWorld = true;
       return;
     }
-    if (this.outOfSync) {
+    if (this.state.outOfSync) {
       this.send({ kind: 'loaded', tick: null });
       return;
     }
@@ -390,7 +383,9 @@ export class RelayClient extends RelayLobby implements SessionDriver {
     sim.setSyncDigest(true);
     this.sim = sim;
     this.world = opened.generation;
-    this.outOfSync = false;
+    this.state.outOfSync = false;
+    this.adoptedWorlds++;
+    this.currentWorldId = this.adoptedWorlds;
     const seat = session.localSeat;
     this.transport = new RelayTransport({
       send: (message) => this.send(message),
@@ -413,7 +408,7 @@ export class RelayClient extends RelayLobby implements SessionDriver {
     this.driver = new LockstepDriver({ sim, transport: this.transport, speed: session.speed });
     const clock = this.clockState;
     if (clock !== null) this.driver.setSpeed(clock.speed);
-    this.options.onWorld?.(opened);
+    this.options.onWorld?.({ ...opened, worldId: this.adoptedWorlds });
   }
 
   private dropWorld(): void {
@@ -421,6 +416,7 @@ export class RelayClient extends RelayLobby implements SessionDriver {
     this.loader.invalidate();
     this.reportRestoredWorld = false;
     this.sim = null;
+    this.currentWorldId = null;
     this.completion.dropWorld();
     this.driver = null;
     this.transport = null;
@@ -459,8 +455,4 @@ export class RelayClient extends RelayLobby implements SessionDriver {
     );
     return work;
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unreachable: ${JSON.stringify(value)}`);
 }

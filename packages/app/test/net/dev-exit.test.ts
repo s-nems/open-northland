@@ -1,4 +1,4 @@
-import type { RelayClient, RelaySocket } from '@open-northland/net-client';
+import type { RelayClient, RelayLink } from '@open-northland/net-client';
 import { expect, it, vi } from 'vitest';
 import type { AssembledMapWorld } from '../../src/entries/map/boot.js';
 
@@ -23,7 +23,7 @@ it('leaves explicitly and replaces the canvas while safely finishing a pending p
   const exit = devRelayExit({
     canvas: canvas as unknown as HTMLCanvasElement,
     client: { room: {}, leaveRoom, receive } as unknown as RelayClient,
-    socket: { connected: true, close } as unknown as RelaySocket,
+    socket: { connected: true, close } as unknown as RelayLink,
     world: () => ({ app: { destroy } }) as unknown as AssembledMapWorld,
     presentation: () => pending,
     cleanup,

@@ -1,8 +1,8 @@
-import type { RelayClient } from '@open-northland/net-client';
+import type { RelayClientView } from '@open-northland/net-client';
 import { type LobbyCompatibility, type RoomView, sameCompatibility } from '@open-northland/net-protocol';
 import { loadLobbyCompatibility } from '../../content/lobby-identity.js';
 
-type Client = Pick<RelayClient, 'room' | 'nick' | 'setCompatibility'>;
+type Client = Pick<RelayClientView, 'room' | 'nick' | 'setCompatibility'>;
 
 export function lobbyCompatibilityReporter(
   client: Client,

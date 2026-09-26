@@ -1,4 +1,10 @@
-import { base64ToBytes, RelayClient, RelaySocket, type WorldPort } from '@open-northland/net-client';
+import {
+  base64ToBytes,
+  RelayClient,
+  type RelayLink,
+  RelaySocket,
+  type WorldPort,
+} from '@open-northland/net-client';
 import { DESCRIPTOR_WORLD, type ServerMessage, TICK_MS } from '@open-northland/net-protocol';
 import { loadRoomMapDocuments } from '../content/transfer/index.js';
 import { errorText } from '../diag/error-text.js';
@@ -155,8 +161,8 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     nick: identity.nick,
     world: port,
     onMessage: observe,
-    onWorld: () => {
-      presentation = present().catch((error: unknown) => {
+    onWorld: ({ worldId }) => {
+      presentation = present(worldId).catch((error: unknown) => {
         diag.warn('net', 'presentation failed', { error: errorText(error) });
         leave(formatMessage(copy.bootFailed, { reason: errorText(error) }));
       });
@@ -176,7 +182,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     },
     connected: () => socket.connected,
   });
-  const socket = new RelaySocket({
+  const socket: RelayLink = new RelaySocket({
     url: plan.url,
     onOpen: () => {
       hud?.link('ok');
@@ -289,7 +295,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     hud?.observe(message);
   }
 
-  async function present(): Promise<void> {
+  async function present(worldId: number): Promise<void> {
     if (out || world === null) return;
     const presented = await presentMapWorld(world, {
       driver: client,
@@ -298,7 +304,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       onReturnToMenu: () => exit.quit(),
       introAtStart: false,
       netReadout: readout,
-      networkSave: networkSaveSession(client, world.hosted),
+      networkSave: networkSaveSession(client, worldId),
     });
     if (out) {
       presented.destroy();

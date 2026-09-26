@@ -1,4 +1,4 @@
-import type { ClockState, RelayClient } from '@open-northland/net-client';
+import type { ClockState, RelayClientView } from '@open-northland/net-client';
 import type { RoomView, ServerMessage } from '@open-northland/net-protocol';
 import { diag } from '../../diag/index.js';
 import { DEFAULT_GAME_SPEED_CONTROL, type GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
@@ -14,7 +14,7 @@ import type { NetReadout } from '../../view/runtime/net-readout.js';
 export type LinkState = 'ok' | 'reconnecting' | 'closed';
 
 export interface NetHudDeps {
-  readonly client: RelayClient;
+  readonly client: RelayClientView;
   readonly view: GameViewHandle;
   readonly readout: () => NetReadout;
 }

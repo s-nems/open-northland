@@ -1,4 +1,4 @@
-import type { RelayClient, RelaySocket } from '@open-northland/net-client';
+import type { RelayClient, RelayLink } from '@open-northland/net-client';
 import { swapToEntry } from '../../launch.js';
 import { menuSearch } from '../../view/params.js';
 import type { AssembledMapWorld } from '../map/boot.js';
@@ -6,7 +6,7 @@ import type { AssembledMapWorld } from '../map/boot.js';
 export function devRelayExit(deps: {
   readonly canvas: HTMLCanvasElement;
   readonly client: RelayClient;
-  readonly socket: RelaySocket;
+  readonly socket: RelayLink;
   readonly world: () => AssembledMapWorld | null;
   readonly presentation: () => Promise<void>;
   readonly cleanup: () => void;

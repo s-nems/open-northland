@@ -1,10 +1,10 @@
 import type { SavedSessionMetadata, SessionWorld } from '@open-northland/lockstep';
-import type { RelayClient } from '@open-northland/net-client';
+import type { RelayClientView } from '@open-northland/net-client';
 import type { enNetworkRoom } from '../../../../i18n/catalogs/en-network-room.js';
 
 export type NetworkRoomCopy = { readonly [Key in keyof typeof enNetworkRoom]: string };
 export type RoomClient = Pick<
-  RelayClient,
+  RelayClientView,
   'nick' | 'claimSeat' | 'setSeat' | 'setSettings' | 'setReady' | 'start' | 'say'
 >;
 

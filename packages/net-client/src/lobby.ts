@@ -8,23 +8,45 @@ import {
   type RoomSummary,
   type RoomView,
 } from '@open-northland/net-protocol';
+import { RelayState } from './relay-state.js';
 
 type SeatChange = Omit<Extract<ClientMessage, { kind: 'setSeat' }>, 'kind' | 'player'>;
 type BlobUpload = Omit<Extract<ClientMessage, { kind: 'blob' }>, 'kind'>;
 
 export class RelayLobby {
   readonly token: string;
-  nick: string;
-  welcomed = false;
-  rooms: readonly RoomSummary[] = [];
-  room: RoomView | null = null;
+  protected readonly state: RelayState;
   protected send: (message: ClientMessage) => void = () => {
     throw new Error(`${this.nick} is not attached to a network`);
   };
 
   constructor(token: string, nick: string) {
     this.token = token;
-    this.nick = nick;
+    this.state = new RelayState(nick);
+  }
+
+  get nick(): string {
+    return this.state.nick;
+  }
+
+  get welcomed(): boolean {
+    return this.state.welcomed;
+  }
+
+  set welcomed(welcomed: boolean) {
+    this.state.welcomed = welcomed;
+  }
+
+  get rooms(): readonly RoomSummary[] {
+    return this.state.rooms;
+  }
+
+  get room(): RoomView | null {
+    return this.state.room;
+  }
+
+  set room(room: RoomView | null) {
+    this.state.room = room;
   }
 
   attach(send: (message: ClientMessage) => void): void {

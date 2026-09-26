@@ -182,7 +182,7 @@ export function renderNetworkGame(
       return build(session, await decodeSnapshot(bytes), mine);
     },
   };
-  connection.bindWorld(port, () => {
+  connection.bindWorld(port, ({ worldId }) => {
     const world = assembled;
     const mine = revision;
     if (closed || world === null) return;
@@ -191,7 +191,7 @@ export function renderNetworkGame(
       driver: client,
       sharedClock: true,
       confirmedMatchEnd: () => client.endedTick,
-      networkSave: networkSaveSession(client, world.hosted),
+      networkSave: networkSaveSession(client, worldId),
       introAtStart: false,
       netReadout: readout,
       onReturnToMenu: returnToMenu,

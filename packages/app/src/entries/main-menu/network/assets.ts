@@ -1,5 +1,5 @@
 import { parseSavedSessionMetadata, type SavedSessionMetadata } from '@open-northland/lockstep';
-import { type RelayClient, verifyInitialSave } from '@open-northland/net-client';
+import { type RelayClientView, verifyInitialSave } from '@open-northland/net-client';
 import {
   type LobbyCompatibility,
   type RoomView,
@@ -18,7 +18,7 @@ interface AssetServices {
 }
 
 export function roomAssets(
-  client: RelayClient,
+  client: RelayClientView,
   onError: (error: unknown) => void,
   services: Partial<AssetServices> = {},
   onChanged: () => void = () => undefined,
