@@ -50,7 +50,13 @@ import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
 import { type ApproachBand, breakOff, type ChaseTarget, chase, disengage, REPATH_CADENCE } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
-import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
+import {
+  type CombatantStance,
+  enemyInReachFrom,
+  engageSpec,
+  resolveTarget,
+  stanceMode,
+} from './engagement.js';
 import { fleeDrive, runsFromBlows, startBlowRun } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import type { MeleeSlots } from './melee-slots.js';
@@ -197,18 +203,13 @@ export function engageCombatant(
     node: combatTargetNode(world, ctx, terrain, here, target),
     body: targetBodyNodes(world, ctx, terrain, target),
   };
-  const gaveUp = chase(
-    world,
-    ctx,
-    terrain,
-    slots,
-    e,
-    here,
-    chaseTarget,
-    approachBand(weapon),
-    stance,
-    spec.defend,
-  );
+  const band = approachBand(weapon);
+  // Only a melee fighter holding a unit forms a front to step along; a besieger encircles its wall instead.
+  const seam =
+    spec.hold !== undefined && band.contact && chaseTarget.body === null
+      ? enemyInReachFrom(world, ctx, terrain, pass, spec, target, weapon)
+      : null;
+  const gaveUp = chase(world, ctx, terrain, slots, e, here, chaseTarget, band, stance, spec.defend, seam);
   if (gaveUp) restPreySearch(world, ctx, e, spec);
 }
 

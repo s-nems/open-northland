@@ -21,7 +21,7 @@ import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-stat
 import { breakThroughWall } from '../palisades/breach.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, manhattan, nearestHexCell } from '../spatial/metric.js';
-import type { CombatantStance, EngageSpec } from './engagement.js';
+import type { CombatantStance, EnemyInReachFrom, EngageSpec } from './engagement.js';
 import { forEachNodeInBand, type MeleeSlots, type WeaponBand } from './melee-slots.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
 
@@ -112,6 +112,9 @@ function sealedByStructures(
  * ordered unit whose route cannot resolve gives the order up at once. A building target's wall list lets a
  * chaser whose nearest face is fully manned encircle to a free slot on another face.
  *
+ * A melee chaser standing behind a fully taken front steps along it instead ({@link seamStep}) when
+ * `seam` is given.
+ *
  * Returns whether it gave the target up this tick.
  */
 export function chase(
@@ -125,6 +128,7 @@ export function chase(
   weapon: ApproachBand,
   stance: CombatantStance,
   defend: DefendPost,
+  seam: EnemyInReachFrom | null = null,
 ): boolean {
   const engagement = engagementFor(world, ctx, e, target.entity);
 
@@ -214,23 +218,30 @@ export function chase(
   const drawSlot = engagement.waiting !== true || onStride(ctx.tick, e, REPATH_CADENCE);
   // The near-side node a breach dealt this breaker comes first, while it is open and untaken.
   const stand = breachStand(world, terrain, e, target, weapon);
-  const approach: Approach =
+  let approach: Approach =
     stand !== null && slots.isOpen(stand) && !slots.isTaken(stand, mine.goal, mine.standingOn)
       ? { cell: stand, waiting: false }
       : target.body !== null && target.body.length > 0
         ? faceApproach(terrain, slots, here, target, weapon, mine, onOurBank)
         : approachCell(ctx, terrain, here, target.node, weapon, slots, mine, onOurBank, drawSlot);
+  // The enemy a step along the front brings into reach, taken up in place of the held one.
+  let alongFront: Entity | null = null;
   if (approach.waiting && approach.cell === here && mine.standingOn !== undefined) {
-    // A second rank standing where it waits: idle, with no route for the render to read as a walk. It keeps
-    // its target and re-asks each tick, which puts it in the moment a front-liner falls or steps off.
-    // Routing was not asked, so no refusal stands against the target.
-    clearNavState(world, e);
-    if (engagement.stall !== undefined || engagement.waiting !== true) {
-      const held = world.mut(e, Engagement);
-      held.stall = undefined;
-      held.waiting = true;
+    const step = seam === null || !drawSlot ? null : seamStep(terrain, slots, here, mine, onOurBank, seam);
+    if (step === null) {
+      // A second rank standing where it waits: idle, with no route for the render to read as a walk. It
+      // keeps its target and re-asks each tick, which puts it in the moment a front-liner falls or steps
+      // off. Routing was not asked, so no refusal stands against the target.
+      clearNavState(world, e);
+      if (engagement.stall !== undefined || engagement.waiting !== true) {
+        const held = world.mut(e, Engagement);
+        held.stall = undefined;
+        held.waiting = true;
+      }
+      return false;
     }
-    return false;
+    approach = { cell: step.cell, waiting: false };
+    alongFront = step.enemy;
   }
   const dest = approach.cell;
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand
@@ -258,7 +269,40 @@ export function chase(
   const held = world.mut(e, Engagement);
   held.repathAt = ctx.tick + REPATH_CADENCE;
   held.waiting = undefined;
+  if (alongFront !== null) held.target = alongFront;
   return false;
+}
+
+/**
+ * Where a melee fighter standing one step behind a full front steps next: the open, untaken cell one walk
+ * step from `here` that brings an enemy into reach, the one nearest an enemy body first, then the lowest
+ * cell id. Null when no step does, and the fighter holds where it stands. Intentional deviation: the
+ * original walks up and fights from a taken node, so it never waits behind a friend; with bodies
+ * colliding here, the rear presses into the gaps and seams between the friends in contact instead of
+ * queueing behind one of them.
+ */
+function seamStep(
+  terrain: TerrainGraph,
+  slots: MeleeSlots,
+  here: NodeId,
+  mine: OwnClaims,
+  onOurBank: (cell: NodeId) => boolean,
+  seam: EnemyInReachFrom,
+): { cell: NodeId; enemy: Entity } | null {
+  let best: { cell: NodeId; enemy: Entity } | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const step of terrain.steps(here)) {
+    const cell = step.node;
+    if (!onOurBank(cell) || !slots.isOpen(cell) || slots.isTaken(cell, mine.goal, mine.standingOn)) continue;
+    const found = seam(cell);
+    if (found !== null && closer(found.distance, cell, bestDist, bestCell)) {
+      best = { cell, enemy: found.entity };
+      bestDist = found.distance;
+      bestCell = cell;
+    }
+  }
+  return best;
 }
 
 /** Whether a fighter's own chase breaks walls to reach `enemy`: an enemy player's settler or building. A hunt

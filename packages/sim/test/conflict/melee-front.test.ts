@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Engagement, Owner, Stance } from '../../src/components/index.js';
+import { CurrentAtomic, Engagement, MoveGoal, Owner, Stance } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
-import { type HalfCellNode, hexDistanceBetween, hexNeighboursOf } from '../../src/nav/halfcell.js';
+import {
+  forEachRingNode,
+  type HalfCellNode,
+  hexDistanceBetween,
+  hexNeighboursOf,
+} from '../../src/nav/halfcell.js';
 import { CROWDING_WEIGHT } from '../../src/systems/conflict/engagement.js';
 import { combatSystem, REPATH_CADENCE } from '../../src/systems/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
@@ -12,6 +17,7 @@ import {
   fighterAtNode,
   grass,
   SAXON,
+  SOLDIER_SPEAR,
   SOLDIER_SWORD_SHORT,
   VIKING,
   WOMAN,
@@ -155,5 +161,71 @@ describe('melee front - the pick weighs the bodies already standing at an enemy'
     // A standing fighter with its target out of reach looks again on its re-path stride.
     combatSystem(s.world, { ...ctxOf(s), tick: nextStride(s.tick, soldier) });
     expect(held(s, soldier)).toBe(open);
+  });
+});
+
+describe('melee front - a fighter behind a full front steps along it', () => {
+  const SPEAR_REACH = 2;
+  /** The spearman stands a step behind the whole band around the enemy it holds. */
+  const HELD: HalfCellNode = { hx: PICKER.hx + SPEAR_REACH + 1, hy: ROW };
+  /** As far off, down the map: reached in one step from the node south of the spearman. */
+  const OTHER: HalfCellNode = { hx: PICKER.hx, hy: ROW + SPEAR_REACH + 1 };
+  const SEAM: HalfCellNode = { hx: PICKER.hx, hy: ROW + 1 };
+
+  /** Blue spearmen on every node within `radius` of `at`, striking it where they stand. */
+  function ring(s: Simulation, at: HalfCellNode, radius: number): void {
+    for (let r = 1; r <= radius; r++) {
+      forEachRingNode(at, r, 2 * MAP_CELLS, 2 * MAP_ROWS, (hx, hy) => {
+        unit(s, { hx, hy }, P0, MILITARY_MODE.IGNORE, SOLDIER_SPEAR);
+        return true;
+      });
+    }
+  }
+
+  /** The spearman holding an enemy whose whole band is taken; `waiting` marks one already standing in
+   *  the second rank, whose next look comes on its stride rather than at once. */
+  function front(waiting?: true): { s: Simulation; spearman: Entity; heldEnemy: Entity; other: Entity } {
+    const s = sim();
+    const spearman = unit(s, PICKER, P0, MILITARY_MODE.ATTACK, SOLDIER_SPEAR);
+    const heldEnemy = enemy(s, HELD);
+    ring(s, HELD, SPEAR_REACH); // every cell the spear could strike from is a friend's
+    const other = enemy(s, OTHER);
+    ring(s, OTHER, 1); // as crowded as the held one, so the pick keeps the held one on a tie
+    s.world.add(spearman, Engagement, { repathAt: s.tick, target: heldEnemy, waiting });
+    return { s, spearman, heldEnemy, other };
+  }
+
+  it('is the fixture it claims: a step behind both enemies, with the seam a step south', () => {
+    const dist = (a: HalfCellNode, b: HalfCellNode) => hexDistanceBetween(a.hx, a.hy, b.hx, b.hy);
+    expect(dist(PICKER, HELD)).toBe(SPEAR_REACH + 1);
+    expect(dist(PICKER, OTHER)).toBe(SPEAR_REACH + 1);
+    expect(dist(SEAM, OTHER)).toBe(SPEAR_REACH);
+    expect(dist(SEAM, HELD)).toBe(SPEAR_REACH + 1); // the seam is no cell of the held enemy's band
+  });
+
+  it('steps to the free node that brings another enemy into reach and takes that enemy up', () => {
+    const { s, spearman, other } = front();
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    combatSystem(s.world, { ...ctxOf(s), tick: nextStride(s.tick, spearman) });
+    expect(held(s, spearman)).toBe(other);
+    expect(s.world.get(spearman, MoveGoal).cell).toBe(terrain.nodeAt(SEAM.hx, SEAM.hy));
+    expect(s.world.get(spearman, Engagement).waiting).toBeUndefined();
+  });
+
+  it('holds where it stands between strides, and strikes from the seam once it gets there', () => {
+    const { s, spearman, heldEnemy, other } = front(true);
+    const off = nextStride(s.tick, spearman) + 1;
+    combatSystem(s.world, { ...ctxOf(s), tick: off });
+    expect(held(s, spearman)).toBe(heldEnemy);
+    expect(s.world.get(spearman, Engagement).waiting).toBe(true);
+    expect(s.world.has(spearman, MoveGoal)).toBe(false);
+    let struck = false;
+    for (let i = 0; i < 60 && !struck; i++) {
+      s.step();
+      struck = s.world.tryGet(spearman, CurrentAtomic)?.effect.kind === 'attack';
+    }
+    expect(struck).toBe(true);
+    expect(s.world.get(spearman, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: other });
   });
 });

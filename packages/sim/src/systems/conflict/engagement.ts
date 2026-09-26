@@ -566,6 +566,39 @@ function leastCrowded(
   return pick?.candidate ?? null;
 }
 
+/** The place of `t` in {@link PICK_TIERS}, one past the last for a target of no listed kind. */
+function tierRank(world: World, ctx: SystemContext, index: CombatIndex, t: Entity): number {
+  const rank = PICK_TIERS.findIndex((tier) => tier(world, ctx, index, t));
+  return rank < 0 ? PICK_TIERS.length : rank;
+}
+
+/** An enemy in reach from a node, or null: what a fighter standing behind a full front asks of the free
+ *  cells a step away. */
+export type EnemyInReachFrom = (node: NodeId) => { entity: Entity; distance: number } | null;
+
+/**
+ * The nearest enemy `spec` admits within `band` of a node, of a kind no worse than `than` (the enemy the
+ * fighter holds), so a fighter stepping along the front from one enemy fighter never turns on a nearby
+ * civilian or wall. One small band scan per node asked.
+ */
+export function enemyInReachFrom(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  pass: CombatPass,
+  spec: EngageSpec,
+  than: Entity,
+  band: WeaponBand,
+): EnemyInReachFrom {
+  const { index } = pass;
+  const heldRank = tierRank(world, ctx, index, than);
+  const accept = (t: Entity): boolean => tierRank(world, ctx, index, t) <= heldRank && spec.accept(t);
+  return (node) => {
+    const { x, y } = terrain.coordsOf(node);
+    return index.nearest(x, y, band.minRange, band.maxRange, accept, spec.player, SEARCH_METRIC);
+  };
+}
+
 type TargetTier = 'primary' | 'low';
 
 /** One priority tier's pick from the search band: the nearest target the stance admits. */
