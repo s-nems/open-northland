@@ -1,5 +1,6 @@
 import { Health, Position, Settler, Vehicle } from '../../components/index.js';
 import type { System } from '../context.js';
+import { mayEngage } from './acting.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex, holdPassIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
@@ -54,7 +55,10 @@ export const combatSystem: System = (world, ctx) => {
   };
   holdPassIndex(world, pass.index);
   answerQueuedAlarms(world, ctx, terrain, pass.index);
-  for (const e of combatants) engageCombatant(world, ctx, terrain, pass, e);
+  // Every combatant stays a target, but only one that may act runs the ladder.
+  for (const e of combatants) {
+    if (mayEngage(world, ctx, terrain, pass.index, e)) engageCombatant(world, ctx, terrain, pass, e);
+  }
   fireFromShelters(world, ctx, terrain, pass.index);
   // The siege vehicles fight after the men, off the same index, so a catapult's scan sees the tick's
   // settled positions and its aim never depends on where it sits in the vehicle store.

@@ -70,7 +70,8 @@ import {
 /**
  * Resolve and act on one combatant's engagement this tick: swing, chase, hold a post, flee, or hand back to
  * the economy. The gates run as a ladder whose order is behavior: each rung shields every rung under it
- * from a case it must not see.
+ * from a case it must not see. A rung that writes for a unit holding no combat state must widen
+ * `mayEngage` (`acting.ts`), which skips the units no rung touches.
  */
 export function engageCombatant(
   world: World,
@@ -225,7 +226,7 @@ function climbingToPost(world: World, e: Entity, posted: Entity | null, manning:
 
 /** Asleep in the open or on its tower, where an enemy can reach it; a settler asleep indoors elsewhere is
  *  out of the fight. */
-function asleepOnDuty(world: World, e: Entity): boolean {
+export function asleepOnDuty(world: World, e: Entity): boolean {
   if (world.tryGet(e, CurrentAtomic)?.effect.kind !== 'sleep') return false;
   return !world.has(e, Resting) || standsAtPost(world, e) !== null;
 }

@@ -42,11 +42,12 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
       civTribes.add(s.tribe);
       if (isHunterJob(ctx.content, s.jobType)) hasHunter = true;
     }
+    // The answer is fixed the moment one of these holds, so the walk stops there.
+    if (owners.size >= 2) return true; // two players → possible pvp
+    if (civTribes.size >= 2) return true; // two civilizations → civ-vs-civ (unowned scenarios)
+    if (hasHostileAnimal && hasCiv) return true; // an aggressive animal near a civilization
+    if (hasHunter && hasPrey) return true; // a hunter and huntable prey
   }
-  if (owners.size >= 2) return true; // two players → possible pvp
-  if (civTribes.size >= 2) return true; // two civilizations → civ-vs-civ (unowned scenarios)
-  if (hasHostileAnimal && hasCiv) return true; // an aggressive animal near a civilization
-  if (hasHunter && hasPrey) return true; // a hunter and huntable prey
   // A vehicle with a standing attack fights on its own, a marching one resumes its march from the
   // combat pass, and an owned one is a body another owner's unit may batter: its owner joins the set
   // the building tail below reads.

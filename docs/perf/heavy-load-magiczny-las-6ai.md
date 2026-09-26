@@ -202,8 +202,10 @@ evidence, all under `docs/tickets/sim/`:
   change feed names.
 - `standing-fighters-full-settler-scans.md` (done): separation, routing and melee slots read a kept
   owned-fighter index instead of scanning every settler.
-- [`combat-pass-visits-every-combatant.md`](../tickets/sim/combat-pass-visits-every-combatant.md): the
-  per-combatant ladder with no war.
+- `combat-pass-visits-every-combatant.md` (done): the combat pass runs its ladder only for units that
+  can act, hash-identical (340 of 2063 combatants at 80k). Combat median over 4000 ticks, main then
+  the change: from 40k 0.60 -> 0.51 ms, from 80k 2.05 -> 1.89 ms, with every seat pair at war 2.12 ->
+  1.92 ms. The rest at 80k is the index build and the fights themselves.
 - [`combat-target-search-at-army-scale.md`](../tickets/sim/combat-target-search-at-army-scale.md) and
   [`combat-route-searches-outside-budget.md`](../tickets/sim/combat-route-searches-outside-budget.md):
   the predicted army-scale terms (band collect and sort without a target lock, chase geometry,

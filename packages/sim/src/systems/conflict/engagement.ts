@@ -80,7 +80,7 @@ function stanceAnchor(world: World, e: Entity, here: NodeId): NodeId {
 /**
  * How a combatant acquires a target this tick, resolved from its stance: the nearest-search `accept` filter, the
  * near/far reach band (`minDist`/`searchRadius`), and the anchor leash the chase respects (a DEFEND post, a
- * hunter's ground).
+ * hunter's ground). A search radius past `mayEngage`'s bound (`acting.ts`) must widen it too.
  */
 export function engageSpec(
   world: World,
