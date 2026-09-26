@@ -54,7 +54,6 @@ import {
   CLEAR_GROUND_FROM_NODES,
   CLEARING_SPREAD_NODES,
   extraGatherers,
-  FLAG_RELOCATE_EVERY_DECISIONS,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
   MAX_CLEARING_COLLECTORS,
@@ -106,6 +105,7 @@ import {
   RESOURCE_SPOTS,
   SCOUT,
   SEAT,
+  SEAT_FLAG_RELOCATION_TICK,
   STOCK_TYPE,
   STONE,
   STONE_XP_TRACK,
@@ -894,7 +894,7 @@ describe('workforce module (collectResources)', () => {
     // A live patch is left alone on an ordinary decision…
     expect(flagMoves(AI_DECISION_INTERVAL_TICKS)).toEqual([]);
     // …and follows the nearer resource on the periodic upkeep.
-    const [moved] = flagMoves(AI_DECISION_INTERVAL_TICKS * FLAG_RELOCATE_EVERY_DECISIONS);
+    const [moved] = flagMoves(SEAT_FLAG_RELOCATION_TICK);
     if (moved?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
     expect(Math.abs(moved.x - NEAR.x) + Math.abs(moved.y - NEAR.y)).toBeLessThanOrEqual(
       FLAG_MAX_DISTANCE_NODES,
@@ -1579,8 +1579,8 @@ describe('workforce module (collectResources)', () => {
 
     // An ordinary decision (the second of the run) leaves the live flag alone…
     expect([...collectModule.run(sim.world, ctxOf(sim, 24), SEAT)]).toEqual([]);
-    // …the upkeep decision (every 30th - tick 720) re-plants it into the survivor's band.
-    const upkeep = [...collectModule.run(sim.world, ctxOf(sim, 720), SEAT)];
+    // …the seat's upkeep decision re-plants it into the survivor's band.
+    const upkeep = [...collectModule.run(sim.world, ctxOf(sim, SEAT_FLAG_RELOCATION_TICK), SEAT)];
     const moved = upkeep.find((c) => c.kind === 'setWorkFlag');
     if (moved === undefined) throw new Error('expected the periodic flag re-aim');
     const dist = Math.abs(moved.x - DRIFTED.x) + Math.abs(moved.y - DRIFTED.y);

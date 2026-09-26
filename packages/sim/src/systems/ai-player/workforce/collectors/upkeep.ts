@@ -26,8 +26,11 @@ import type { WantedGood } from './wanted-goods.js';
  *  (authored). 30 decisions is about 60 s at the base clock. */
 export const FLAG_RELOCATE_EVERY_DECISIONS = 30;
 
-export function flagRelocateDue(ctx: SystemContext): boolean {
-  return Math.floor(ctx.tick / AI_DECISION_INTERVAL_TICKS) % FLAG_RELOCATE_EVERY_DECISIONS === 0;
+/** Whether `player`'s decision on this tick re-aims its collector flags. Each seat's round is offset by its
+ *  number, so seats pay the re-aim on different decisions instead of all in one run of ticks. */
+export function flagRelocateDue(ctx: SystemContext, player: number): boolean {
+  const decision = Math.floor(ctx.tick / AI_DECISION_INTERVAL_TICKS);
+  return (decision + player) % FLAG_RELOCATE_EVERY_DECISIONS === 0;
 }
 
 /**

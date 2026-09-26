@@ -116,6 +116,7 @@ function runWorkforce(
       : allocateGenericCollectors(
           world,
           ctx,
+          player,
           ground,
           genericCollectors,
           force,

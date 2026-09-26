@@ -145,7 +145,7 @@ export function allocateCollectors(
   builderJob: number | null,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  const relocateDue = flagRelocateDue(ctx);
+  const relocateDue = flagRelocateDue(ctx, player);
   const { workable } = ground;
   const isBuilder = (e: Entity): boolean => world.get(e, Settler).jobType === builderJob;
   let builders: number | undefined; // counted once a post beyond a good's first needs a man
@@ -253,6 +253,7 @@ export function topUpCollectors(
 export function allocateGenericCollectors(
   world: World,
   ctx: SystemContext,
+  player: number,
   ground: CollectorGround,
   genericCollectors: readonly Entity[],
   force: SpareForce,
@@ -263,7 +264,7 @@ export function allocateGenericCollectors(
   const commands: PlayerCommand[] = [];
   const { baseNode, workable } = ground;
   const reach = gathererReach(world, ctx, ground.flags.terrain);
-  const relocateDue = flagRelocateDue(ctx);
+  const relocateDue = flagRelocateDue(ctx, player);
   // The other posts' flags: a re-plant or a hire keeps its resource clear of them, so the posts fan out.
   const flags: HalfCellNode[] = [];
   for (const g of genericCollectors) {

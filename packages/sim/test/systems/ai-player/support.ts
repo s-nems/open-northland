@@ -20,7 +20,9 @@ import {
   Rng,
   Simulation,
 } from '../../../src/index.js';
+import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import { DEFAULT_BUILD_ORDER, workforceModule } from '../../../src/systems/ai-player/index.js';
+import { FLAG_RELOCATE_EVERY_DECISIONS } from '../../../src/systems/ai-player/workforce/collectors/upkeep.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { createSignpost, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
@@ -36,6 +38,8 @@ import { grassNodeMap } from '../../fixtures/terrain.js';
 
 export const VIKING = 1;
 export const SEAT = 2;
+/** The first decision tick after zero on which {@link SEAT} re-aims its collector flags. */
+export const SEAT_FLAG_RELOCATION_TICK = AI_DECISION_INTERVAL_TICKS * (FLAG_RELOCATE_EVERY_DECISIONS - SEAT);
 export const CIVILIST = 6;
 export const BUILDER = 7;
 export const COLLECTOR = 8;

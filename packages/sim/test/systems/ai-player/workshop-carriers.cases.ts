@@ -39,7 +39,6 @@ import {
 import { anchorNodeOf } from '../../../src/systems/ai-player/node-geometry.js';
 import { ownedBuildings } from '../../../src/systems/ai-player/seat-roster.js';
 import { collectorAnchors, seatHolders } from '../../../src/systems/ai-player/workforce/collectors/anchor.js';
-import { FLAG_RELOCATE_EVERY_DECISIONS } from '../../../src/systems/ai-player/workforce/collectors/index.js';
 import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
@@ -83,6 +82,7 @@ import {
   placeResources,
   RESOURCE_SPOTS,
   SEAT,
+  SEAT_FLAG_RELOCATION_TICK,
   STONE,
   spawnMen,
   VIKING,
@@ -654,7 +654,7 @@ describe('workforce module - the clay gatherer serves the pottery', () => {
 
     // An ordinary decision leaves the working flag be; the periodic upkeep moves it to the pottery's clay.
     expect(run(AI_DECISION_INTERVAL_TICKS).filter((c) => c.kind === 'setWorkFlag')).toEqual([]);
-    const upkeep = run(AI_DECISION_INTERVAL_TICKS * FLAG_RELOCATE_EVERY_DECISIONS);
+    const upkeep = run(SEAT_FLAG_RELOCATION_TICK);
     expect(near(clayFlag(upkeep), POTTERY_CLAY)).toBe(true);
   });
 });
@@ -714,11 +714,7 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
     // So the periodic upkeep of a seat wanting both posts moves neither flag.
     const twoStonePosts = workforceModule([{ kind: 'collector', good: 'stone', count: 2 }]);
     const upkeep = [
-      ...twoStonePosts.run(
-        sim.world,
-        { ...ctxOf(sim, AI_DECISION_INTERVAL_TICKS * FLAG_RELOCATE_EVERY_DECISIONS), content },
-        SEAT,
-      ),
+      ...twoStonePosts.run(sim.world, { ...ctxOf(sim, SEAT_FLAG_RELOCATION_TICK), content }, SEAT),
     ];
     expect(upkeep.filter((c) => c.kind === 'setWorkFlag' && (c.entity === low || c.entity === high))).toEqual(
       [],
