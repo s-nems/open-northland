@@ -9,7 +9,15 @@ import { seatBarracksOf } from '../base.js';
 import { campaignTarget, objectiveNode } from './campaign.js';
 import { defendingStrength, fighterStrength, weaponMix } from './census.js';
 import { spokenFor } from './errand.js';
-import { formedUpAt, gatherAt, marchOrders, meleeCoreFor, musterAround, waveWorthy } from './muster.js';
+import {
+  formedUpAt,
+  gatherAt,
+  marchOrders,
+  meleeCoreFor,
+  musterAround,
+  rallyAt,
+  waveWorthy,
+} from './muster.js';
 import { abandonWave, decideWave, peaceEndsAt } from './plan.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
@@ -48,6 +56,7 @@ export function runOffensive(
   const barracks = seatBarracksOf(world, ctx, player);
   if (barracks === null) return NO_CAMPAIGN;
   const home = interactionCell(world, ctx, terrain, barracks);
+  const rally = rallyAt(world, ctx, terrain, home, [...army, ...awaitingWeapon]);
   // Sorted over the men this decision may actually order, so a wave is never measured at a strength the
   // march cannot fill. A man in transit sits out one decision and is read again once he arrives.
   const free = army.filter((e) => !spokenFor(world, e));
@@ -56,13 +65,13 @@ export function runOffensive(
   if (target === null) {
     abandonWave(world, barracks);
     return {
-      commands: gatherAt(world, terrain, [...army, ...awaitingWeapon], home),
-      waiting: free.filter((e) => formedUpAt(world, terrain, e, home)),
+      commands: gatherAt(world, terrain, [...army, ...awaitingWeapon], rally),
+      waiting: free.filter((e) => formedUpAt(world, terrain, e, rally)),
     };
   }
 
   const objective = objectiveNode(world, ctx, terrain, target);
-  const { formed, forward, homing } = musterAround(world, terrain, free, home, objective);
+  const { formed, forward, homing } = musterAround(world, terrain, free, rally, objective);
   // Measured over the men this decision could order, not the whole army, so a wave already marching cannot
   // bench the band still at home for the front rank it took with it.
   const core = meleeCoreFor(weaponMix(world, ctx, free));
@@ -102,7 +111,7 @@ export function runOffensive(
   return {
     commands: [
       ...marchOrders(world, terrain, marching, objective),
-      ...gatherAt(world, terrain, waiting, home),
+      ...gatherAt(world, terrain, waiting, rally),
     ],
     waiting: charges ? [] : formed,
   };

@@ -28,6 +28,7 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
+import { cellAnchorNode, cellOfAnchorNode } from '../../src/nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
   ARMY_CAP_SOLDIERS,
@@ -37,6 +38,7 @@ import {
   militaryModule,
   OPENING_WAVE,
   RALLY_HOLD_RADIUS_NODES,
+  rallyAt,
   TOWER_POST_STRENGTH,
   takeCensus,
   WAVE_GATHER_TICKS,
@@ -46,6 +48,7 @@ import {
   weaponMix,
 } from '../../src/systems/ai-player/index.js';
 import { standsAtPost } from '../../src/systems/conflict/tower-post.js';
+import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
@@ -208,8 +211,14 @@ function walksInto(
     .map((d) => d.entity);
 }
 
+/** The men `commands` call in to the hold ring the seat's whole army is gathered into. */
 function gatheringAt(sim: Simulation, commands: readonly Command[], rally: { x: number; y: number }): number {
-  return walksInto(sim, commands, rally, RALLY_HOLD_RADIUS_NODES).length;
+  const terrain = terrainOf(sim);
+  const ctx = ctxOf(sim);
+  const { ready, awaitingWeapon } = takeCensus(sim.world, ctx, SEAT);
+  const door = terrain.nodeAtClamped(rally.x, rally.y);
+  const { holdRadius } = rallyAt(sim.world, ctx, terrain, door, [...ready, ...awaitingWeapon]);
+  return walksInto(sim, commands, rally, holdRadius).length;
 }
 
 /** The men `commands` send in on `target` - each onto his own spot in the ring around its door. */
@@ -259,6 +268,29 @@ describe('military module - the muster', () => {
     expect(walks(commands)).toHaveLength(1);
     expect(gatheringAt(sim, commands, rally)).toBe(1);
     expect(commands.some((c) => c.kind === 'attackMoveUnit' && c.entity === stray)).toBe(true);
+  });
+
+  it('calls each man in onto a standing place of his own, clear of the door and the men formed up', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const rally = rallyOf(sim);
+    const formed = pack(sim, 3, { x: rally.x, y: rally.y + 2 });
+    const strays = spawn(sim, 20, { x: rally.x + 3 * RALLY_HOLD_RADIUS_NODES, y: rally.y });
+
+    const terrain = terrainOf(sim);
+    const destinations = walks(run(sim)).map((w) => terrain.nodeAtClamped(w.x, w.y));
+    expect(destinations).toHaveLength(strays.length);
+    expect(new Set(destinations).size).toBe(destinations.length);
+    expect(destinations).not.toContain(rally.node);
+    for (const e of formed) expect(destinations).not.toContain(entityNode(sim.world, terrain, e));
+    const blocked = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
+    expect(destinations.filter((node) => blocked.has(node))).toEqual([]);
+    // One visual cell apart: every place is a cell's centre node.
+    for (const node of destinations) {
+      const { x, y } = terrain.coordsOf(node);
+      const { cx, cy } = cellOfAnchorNode(x, y);
+      expect(Number.isInteger(cx) && cellAnchorNode(cx, cy).hx === x).toBe(true);
+    }
   });
 
   it('leaves a soldier on an errand the recall would throw away', () => {
@@ -713,6 +745,10 @@ describe('military module - the campaign', () => {
    *  in a fight when the wave is judged. */
   const FOE_CAMP = { x: 96, y: 4 };
 
+  /** Where the rest of a capped army stands scattered, in rows of eight: outside the hold ring even a
+   *  band of the cap is gathered into, and nearer home than the objective. */
+  const SCATTERED = { x: 2, y: 56 };
+
   /** A seat at the {@link ARMY_CAP_SOLDIERS} against a rival far stronger than its whole army, so parity
    *  alone would hold the band for good: `WAVE_MIN_SOLDIERS` formed at the door and the rest of the army
    *  scattered over the settlement, walking in. */
@@ -721,10 +757,7 @@ describe('military module - the campaign', () => {
     const rally = rallyOf(sim);
     spawn(sim, ARMY_CAP_SOLDIERS + 2 * WAVE_MIN_SOLDIERS, FOE_CAMP, SPEARMAN, FOE);
     expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS)).toEqual([]);
-    const scattered = spawn(sim, ARMY_CAP_SOLDIERS - WAVE_MIN_SOLDIERS, {
-      x: rally.x + RALLY_HOLD_RADIUS_NODES + 2,
-      y: 4,
-    });
+    const scattered = spawn(sim, ARMY_CAP_SOLDIERS - WAVE_MIN_SOLDIERS, SCATTERED);
     return { sim, scattered, rally };
   }
 
@@ -1058,6 +1091,36 @@ describe('military module - the live seat', { timeout: 60_000 }, () => {
     restored.run(MARCH_TICKS);
     expect(restored.hashState()).toBe(sim.hashState());
     expect(sim.commands.log.some((c) => c.command.kind === 'attackMoveUnit')).toBe(true);
+  });
+
+  it('lets a band called in to the door stand still once it has formed up', () => {
+    // More men than the door's smallest hold ring has room for, walking in from beyond it, with no enemy
+    // to march on: the seat only gathers. A ring that cannot hold the band pushes its last men out, and
+    // every decision calls them in again.
+    const BAND = 100;
+    const SETTLE_TICKS = 2000;
+    const WATCH_TICKS = 2000;
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const rally = rallyOf(sim);
+    const band = spawn(sim, BAND, { x: rally.x + 3 * RALLY_HOLD_RADIUS_NODES, y: rally.y });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    sim.run(SETTLE_TICKS);
+    const calledIn = new Set(
+      sim.commands.log.flatMap((c) => (c.command.kind === 'attackMoveUnit' ? [c.command.entity] : [])),
+    );
+    expect(calledIn.size).toBe(BAND);
+
+    const settledAt = sim.commands.log.length;
+    sim.run(WATCH_TICKS);
+    const recalls = sim.commands.log.slice(settledAt).filter((c) => c.command.kind === 'attackMoveUnit');
+    expect(recalls).toEqual([]);
+    const terrain = terrainOf(sim);
+    const { holdRadius } = rallyAt(sim.world, ctxOf(sim), terrain, rally.node, band);
+    const outside = band.filter(
+      (e) => manhattan(terrain, entityNode(sim.world, terrain, e), rally.node) > holdRadius,
+    );
+    expect(outside).toEqual([]);
   });
 
   it('stays out of the war when the seat has its military module switched off', () => {

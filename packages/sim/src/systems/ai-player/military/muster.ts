@@ -1,7 +1,10 @@
-import { Stance } from '../../../components/index.js';
+import { MoveGoal, PlayerOrder, Stance } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { ContentContext } from '../../context.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
+import { isTravelling } from '../../movement/nav-state.js';
 import { MILITARY_MODE } from '../../readviews/index.js';
 import { manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
@@ -11,9 +14,18 @@ import { spokenFor } from './errand.js';
 // Where the army gathers. The autonomous HAI exposes only `HAI_DisableMilitary`, so
 // every size and radius here is an approximation.
 
-/** How close to the barracks door (Manhattan half-cell nodes) counts as formed up; an idle fighter
- *  outside this ring is called in. */
+/** How close to the barracks door (Manhattan half-cell nodes) counts as formed up for a band small enough
+ *  to stand inside it; a larger band widens the ring ({@link rallyAt}). An idle fighter outside the ring is
+ *  called in. */
 export const RALLY_HOLD_RADIUS_NODES = 6;
+
+/** How far past its outermost standing place the hold ring reaches: one cell, so a man the idle de-stack
+ *  steps off his place to the next free node still counts as formed up and is not called in again. */
+const RALLY_HOLD_SLACK_NODES = 2;
+
+/** Nodes the rally's search may visit per man it places. Standing places sit one per visual cell, a
+ *  quarter of the nodes, so this leaves room for ground the barracks and its neighbours block. */
+const RALLY_SEARCH_NODES_PER_MAN = 16;
 
 /** How far (Manhattan half-cell nodes) from its objective a wave spreads out, and how near it has to stand
  *  before it is closing rather than marching. Wide enough to hold a full wave a few men to a spot, and well
@@ -49,9 +61,10 @@ export function musterAround(
   world: World,
   terrain: TerrainGraph,
   units: readonly Entity[],
-  home: NodeId,
+  rally: Rally,
   objective: NodeId,
 ): Muster {
+  const home = rally.door;
   const formed: Entity[] = [];
   const forward: Entity[] = [];
   const homing: Entity[] = [];
@@ -60,7 +73,7 @@ export function musterAround(
     const at = entityNode(world, terrain, e);
     const toHome = manhattan(terrain, at, home);
     if (terrain.componentOf(at) !== reachable) homing.push(e);
-    else if (toHome <= RALLY_HOLD_RADIUS_NODES) formed.push(e);
+    else if (toHome <= rally.holdRadius) formed.push(e);
     else if (manhattan(terrain, at, objective) < toHome) forward.push(e);
     else homing.push(e);
   }
@@ -100,39 +113,114 @@ export function marchOrders(
   return commands;
 }
 
+/** One decision's rally at a barracks door: how near counts as formed up, and where a man called in
+ *  stands. */
+export interface Rally {
+  readonly door: NodeId;
+  /** Manhattan half-cell nodes from the door. */
+  readonly holdRadius: number;
+  /** The standing places no man of the band stands on or walks to, nearest walk from the door first. */
+  readonly free: readonly NodeId[];
+}
+
 /**
- * Gather `units` at the seat's own door, each on his own spot in the hold ring, on the fighter default
- * ATTACK. This door is the army's only rally: waiting short of the objective instead puts the band inside
- * its fire.
+ * The rally for `band` at `door`: one standing place per man, on the cell-centre nodes nearest the door by
+ * walk over open, unblocked ground (one visual cell apart, the door node itself left clear for the
+ * barracks' own traffic), and a hold ring reaching {@link RALLY_HOLD_SLACK_NODES} past the farthest place.
+ * Sizing the ring from the band keeps every man the rally places inside it; a fixed ring filled past its
+ * capacity pushes its last men out of it, and the next decision calls them in again. Approximation: the
+ * original's rally shape is unobserved.
+ */
+export function rallyAt(
+  world: World,
+  ctx: ContentContext,
+  terrain: TerrainGraph,
+  door: NodeId,
+  band: readonly Entity[],
+): Rally {
+  const size = band.length;
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const spots: NodeId[] = [];
+  let holdRadius = RALLY_HOLD_RADIUS_NODES;
+  const seen = new Set<NodeId>([door]);
+  let frontier: NodeId[] = [door];
+  let budget = size * RALLY_SEARCH_NODES_PER_MAN;
+  while (spots.length < size && frontier.length > 0 && budget > 0) {
+    const next: NodeId[] = [];
+    for (const node of frontier) {
+      for (const n of terrain.walkableNeighbours(node)) {
+        if (seen.has(n) || blocked.has(n)) continue;
+        seen.add(n);
+        budget--;
+        next.push(n);
+        if (spots.length >= size || !isCellCentre(terrain, n)) continue;
+        spots.push(n);
+        holdRadius = Math.max(holdRadius, manhattan(terrain, n, door) + RALLY_HOLD_SLACK_NODES);
+      }
+    }
+    frontier = next;
+  }
+  const taken = takenPlaces(world, terrain, band);
+  return { door, holdRadius, free: spots.filter((spot) => !taken.has(spot)) };
+}
+
+/** Whether `node` is a visual cell's centre, `(2cx + (cy & 1), 2cy)` on the half-cell lattice. */
+function isCellCentre(terrain: TerrainGraph, node: NodeId): boolean {
+  const { x, y } = terrain.coordsOf(node);
+  return (y & 1) === 0 && ((x - ((y >> 1) & 1)) & 1) === 0;
+}
+
+/**
+ * Gather `units` at the seat's own door, each man called in onto a free standing place of the rally, on the
+ * fighter default ATTACK. This door is the army's only rally: waiting short of the objective instead puts
+ * the band inside its fire.
  *
  * The walk is an attack-move because a plain move order benches the engage rung for its whole length
  * (`conflict/engage-combatant.ts`, `suppressedByMoveOrder`), leaving every man called in across contested
  * ground a free target. Skipped for a man already spoken for, and for ground the door cannot be walked to,
- * which would be re-ordered every decision.
+ * which would be re-ordered every decision. A man the rally has no free place for waits where he is.
  */
 export function gatherAt(
   world: World,
   terrain: TerrainGraph,
   units: readonly Entity[],
-  home: NodeId,
+  rally: Rally,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  const reachable = terrain.componentOf(home);
+  const reachable = terrain.componentOf(rally.door);
+  let placed = 0;
   for (const e of units) {
     if (terrain.componentOf(entityNode(world, terrain, e)) !== reachable) continue;
     const restance: PlayerCommand[] =
       world.tryGet(e, Stance)?.mode === MILITARY_MODE.ATTACK
         ? []
         : [{ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK }];
-    if (formedUpAt(world, terrain, e, home)) {
+    if (formedUpAt(world, terrain, e, rally)) {
       commands.push(...restance);
       continue;
     }
     if (spokenFor(world, e)) continue;
-    const { x, y } = terrain.coordsOf(ringSpot(terrain, home, HOLD_SPOTS, e, reachable));
+    const spot = rally.free[placed++];
+    if (spot === undefined) continue;
+    const { x, y } = terrain.coordsOf(spot);
     commands.push(...restance, { kind: 'attackMoveUnit', entity: e, x, y });
   }
   return commands;
+}
+
+/** The nodes the band holds already: where its men are headed, and where the rest stand. An ordered walk
+ *  holds its goal while a fight or a load set down interrupts it, since the man walks on once it ends. */
+function takenPlaces(world: World, terrain: TerrainGraph, band: readonly Entity[]): Set<NodeId> {
+  const taken = new Set<NodeId>();
+  for (const e of band) {
+    const order = world.tryGet(e, PlayerOrder);
+    const headedFor =
+      order?.attackMove?.goal ??
+      order?.pendingGoal ??
+      (isTravelling(world, e) ? world.tryGet(e, MoveGoal)?.cell : undefined);
+    taken.add(headedFor ?? entityNode(world, terrain, e));
+  }
+  return taken;
 }
 
 /** The man's own standing place in the ring around `centre`, keyed off his entity id so it never moves
@@ -170,9 +258,8 @@ function ringSpots(radius: number): readonly RingOffset[] {
   return spots;
 }
 
-const HOLD_SPOTS = ringSpots(RALLY_HOLD_RADIUS_NODES);
 const ASSAULT_SPOTS = ringSpots(ASSAULT_RING_RADIUS_NODES);
 
-export function formedUpAt(world: World, terrain: TerrainGraph, e: Entity, rally: NodeId): boolean {
-  return manhattan(terrain, entityNode(world, terrain, e), rally) <= RALLY_HOLD_RADIUS_NODES;
+export function formedUpAt(world: World, terrain: TerrainGraph, e: Entity, rally: Rally): boolean {
+  return manhattan(terrain, entityNode(world, terrain, e), rally.door) <= rally.holdRadius;
 }
