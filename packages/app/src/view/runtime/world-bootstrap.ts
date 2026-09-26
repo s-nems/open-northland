@@ -1,7 +1,7 @@
 import type { SpriteSheet, TerrainTextureSet } from '@open-northland/render';
 import { WorldRenderer } from '@open-northland/render';
 import type { Application } from 'pixi.js';
-import { goodLocaleParam, loadGoodNameMap } from '../../content/good-names.js';
+import { loadGoodNameMap } from '../../content/good-names.js';
 import { loadPlanStakeArt } from '../../content/plan-stake-art.js';
 import {
   loadRuntimeRealContent,
@@ -9,7 +9,7 @@ import {
   type RealContentMerge,
 } from '../../content/real-content.js';
 import { diag } from '../../diag/index.js';
-import { messages } from '../../i18n/index.js';
+import { localeParam, messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
 import { enhancementsOf } from '../graphics-enhancements.js';
 import { mountMessage, navButton } from '../overlay.js';
@@ -20,14 +20,14 @@ import type { GameViewDeps } from './game-view.js';
 /** The localized real content a playable entry boots on. Both fields degrade on their own, so a
  *  checkout without `content/` still boots on the authored fallbacks. */
 export interface LocalizedRealContent {
-  /** The app-wide `?lang=` good-name map. */
+  /** The good-name map in the session's language. */
   readonly goodNames: ReadonlyMap<string, string>;
   /** The merged real content, or `null` when `content/` is absent. */
   readonly realContent: RealContentMerge | null;
 }
 
 export async function loadLocalizedRealContent(params: URLSearchParams): Promise<LocalizedRealContent> {
-  const goodNames = await loadGoodNameMap(goodLocaleParam(params));
+  const goodNames = await loadGoodNameMap(localeParam(params));
   const realContent = await loadRuntimeRealContent(goodNames);
   if (realContent !== null) logRealContentGaps(realContent);
   return { goodNames, realContent };
