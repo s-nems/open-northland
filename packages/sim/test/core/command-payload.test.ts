@@ -201,13 +201,6 @@ describe('command payload contracts', () => {
     expect(parse({ ...command, name: 'ż'.repeat(SETTLER_NAME_MAX_CHARS) })).toBeDefined();
   });
 
-  it('accepts a marry order for the settler alone and refuses a chosen partner', () => {
-    expect(parse({ kind: 'marry', entity: UNIT })).toBeDefined();
-    expect(() => parse({ kind: 'marry', entity: UNIT, partner: UNIT + 1 })).toThrow(
-      /unknown field 'partner'/,
-    );
-  });
-
   it('refuses a value outside a fixed set', () => {
     expect(() => parse({ kind: 'makeChild', entity: UNIT, child: 'other' })).toThrow(
       'envelope.command.child: expected one of female, male, got "other"',

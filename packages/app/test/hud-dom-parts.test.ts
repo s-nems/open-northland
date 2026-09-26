@@ -1,11 +1,12 @@
+import { PRODUCTION_COUNT_MAX, PRODUCTION_UNLIMITED } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { COUNTER_TENS_STEP, counterStep, counterText } from '../src/hud/dom/parts/counter.js';
 import { METER_CRITICAL_BELOW_PCT, METER_LOW_BELOW_PCT, meterTone } from '../src/hud/dom/parts/meter-row.js';
 import { selectionBottomInset } from '../src/hud/dom/selection-panel.js';
 import { NAV_BEAM_H } from '../src/hud/nav-beam.js';
 
-/** The production counter's range: 0 stops, 1..100 counts down, 101 never stops. */
-const RANGE = { max: 100, unlimited: 101 };
+/** The production counter's range: 0 stops, the finite counts count down, the sentinel never stops. */
+const RANGE = { max: PRODUCTION_COUNT_MAX, unlimited: PRODUCTION_UNLIMITED };
 const PLAIN = { jump: false, tens: false };
 const JUMP = { jump: true, tens: false };
 const TENS = { jump: false, tens: true };
@@ -21,7 +22,7 @@ describe('the counter part', () => {
     expect(counterStep(RANGE, RANGE.unlimited, -1, PLAIN)).toBe(RANGE.max);
   });
 
-  it('reaches unlimited past the finite top and stays there', () => {
+  it('reaches unlimited past the finite top and wraps back to 0 from it', () => {
     expect(counterStep(RANGE, RANGE.max, 1, PLAIN)).toBe(RANGE.unlimited);
     expect(counterStep(RANGE, RANGE.unlimited, 1, PLAIN)).toBe(0);
   });

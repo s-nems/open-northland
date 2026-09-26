@@ -293,7 +293,9 @@ that would not fit is folded or cut at design time, never scrolled. It shows wha
 read or act on and nothing else: no explanatory lines, no help buttons. Every control's tooltip is a
 few words in the panel's own chip at the cursor after half a second (the browser's own tooltip
 waits a full one and cannot be told otherwise): what the press does, or why it is refused. Review
-states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
+states: `settler.js` in the mockup, switched by the "Osadnik" buttons. The mockup's trader and
+family states predate the Handel section, the trade window, the Pojazd row and the wedding-rings
+button; for those the built panel is the reference.
 
 - Portrait row: the live settler in the 96 × 92 px framed portrait is the centre-view button. The
   renderer paints its world cutout on the canvas under the plane, through a hole the panel's fill
@@ -371,7 +373,7 @@ states: `settler.js` in the mockup, switched by the "Osadnik" buttons.
   Ctrl click, and ⌘ + click works too.
   A product not yet earned is listed faded with a lock, the requirement and progress in the
   tooltip; the lock opens the good's Knowledge page once the Knowledge window exists. Products rotate
-  one unit at a time in good order, as the sim does today. A job whose `userCanChangeProductionFlag` is
+  one unit at a time in the workplace's recipe order. A job whose `userCanChangeProductionFlag` is
   0 (the hunter, who takes every good of every kill) has no Produkcja section at all: the sim ignores
   its counters and refuses the orders that would set them. The rows are 24 px with 22 px chips, the
   list always open for a fresh selection; it folds to the first three rows behind "jeszcze N" only

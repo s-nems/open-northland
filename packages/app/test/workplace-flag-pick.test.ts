@@ -117,7 +117,6 @@ it('takes a posted gatherer off its post before planting its flag', () => {
 });
 
 it('lights the workplaces that employ the trade while armed', () => {
-  const h = harness(null);
   const issued: Command[] = [];
   const pickMode = createPickModeController({
     snapshot: () => WORLD,
@@ -137,5 +136,5 @@ it('lights the workplaces that employ the trade while armed', () => {
   });
   pickMode.arm({ kind: 'workplace-or-flag', units: [GATHERER] });
   expect(pickMode.highlight()?.map((item) => item.id)).toEqual([HUT]);
-  expect(h.flags).toEqual([]);
+  expect(issued).toEqual([]);
 });

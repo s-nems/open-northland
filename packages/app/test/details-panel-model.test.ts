@@ -660,7 +660,7 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // Pinned labels (deliberately diverging from the decoded humanwindow 12–14 stat names), in the
-    // fixed Zdrowie → Głód → Sen → Towarzystwo → Religia order.
+    // fixed Zdrowie → Sytość → Sen → Towarzystwo → Religia order.
     expect(model.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Sytość', 'Sen', 'Towarzystwo', 'Religia']);
     // Health: gauge = hp/max percent, hover = the raw points.
     expect(model.bars[0]).toMatchObject({ pct: 30, hover: '300/1000' });
