@@ -233,6 +233,9 @@ function searchCentre(
  *  the seat's buildings, sites included, so the settlement keeps growing from wherever it stands. */
 export interface BuildReach {
   contains(x: number, y: number): boolean;
+  /** Whether some building's disc meets the Manhattan disc of `span` around `centre`: what a search
+   *  fanning that far from its centre can reach at all. */
+  meets(centre: HalfCellNode, span: number): boolean;
   /** `node` itself when inside, else pulled onto the disc edge of the building nearest it. */
   clamp(node: HalfCellNode): HalfCellNode;
   /** The same reach cut to the buildings whose discs meet the Manhattan disc of `span` around `centre`,
@@ -266,6 +269,9 @@ function reachOver(centres: readonly HalfCellNode[], fallback: HalfCellNode): Bu
         return true;
       }
       return false;
+    },
+    meets(centre, span) {
+      return centres.some((c) => nodeDistance(c, centre) <= span + radius);
     },
     around(centre, span) {
       return reachOver(
@@ -329,26 +335,23 @@ function wallSpan(ctx: SystemContext, buildingTypeId: number): number {
 }
 
 /**
- * Shared legality test for a spot search: in-bounds buildable ground, off every existing building's
- * anchor (explicit, so a footprint-less synthetic type never stacks), out of every enemy fighter's reach
- * (`underFire`, judged at the walls and narrowed once to the shooters the `fan` around `centre` can meet),
- * accepted by the seat's placement probe, and with its reserved zone
- * off every live {@link DEPOSIT_GOOD_IDS} deposit's own node. The engine lets a building cover a deposit
- * that carries no walk or build block, such as clay, and so bury it; the seat never does. It scans the
- * occupied set once per call, so build the closure per search, not per candidate.
+ * The seat's placement test for one building type, built once a search: the anchors every building on
+ * the map holds, the seat's own placement probe, and the deposit zone. {@link SpotAcceptor.around} narrows
+ * it to one search's fan: a node is accepted when the building may anchor there, the anchor is free, and
+ * no enemy shooter reaches the site.
  */
-export function buildingSpotAccept(
+export interface SpotAcceptor {
+  around(underFire: EnemyFire, centre: HalfCellNode, fan: number): (x: number, y: number) => boolean;
+}
+
+export function spotAcceptor(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
   buildingTypeId: number,
-  underFire: EnemyFire,
-  centre: HalfCellNode,
-  fan: number,
-): (x: number, y: number) => boolean {
+): SpotAcceptor {
   const span = wallSpan(ctx, buildingTypeId);
-  const fire = underFire.around(centre.hx, centre.hy, fan, span);
   const occupied = new Set<NodeId>(); // an off-grid anchor can never match a candidate, so it is left out
   for (const e of world.query(Building)) {
     const node = anchorNodeOf(world, e);
@@ -362,11 +365,16 @@ export function buildingSpotAccept(
     const good = goodTypeByContentId(ctx.content, id);
     if (good !== undefined) deposits.add(good.typeId);
   }
-  return (x, y) => {
-    if (!terrain.inBounds(x, y)) return false;
-    const node = terrain.nodeAt(x, y);
-    if (!terrain.isBuildable(node) || occupied.has(node) || fire.reaches(x, y, span)) return false;
-    return probe.canPlace(x, y) && !coversLiveDeposit(world, deposits, zone, x, y);
+  return {
+    around(underFire, centre, fan) {
+      const fire = underFire.around(centre.hx, centre.hy, fan, span);
+      return (x, y) => {
+        if (!terrain.inBounds(x, y)) return false;
+        const node = terrain.nodeAt(x, y);
+        if (!terrain.isBuildable(node) || occupied.has(node) || fire.reaches(x, y, span)) return false;
+        return probe.canPlace(x, y) && !coversLiveDeposit(world, deposits, zone, x, y);
+      };
+    },
   };
 }
 
@@ -416,6 +424,7 @@ export function placementSpot(
   underFire: EnemyFire,
 ): HalfCellNode | null {
   const settlement = buildReach(world, owned, anchor);
+  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId);
   const { centre, serves } = searchCentre(
     world,
     ctx,
@@ -428,11 +437,10 @@ export function placementSpot(
     entry,
   );
   const pulled = spotAround(
-    world,
     ctx,
     terrain,
-    player,
     settlement,
+    acceptor,
     anchor,
     centre,
     serves,
@@ -441,15 +449,14 @@ export function placementSpot(
     underFire,
   );
   if (pulled !== null || (centre.hx === anchor.hx && centre.hy === anchor.hy)) return pulled;
-  return spotAround(world, ctx, terrain, player, settlement, anchor, anchor, serves, type, entry, underFire);
+  return spotAround(ctx, terrain, settlement, acceptor, anchor, anchor, serves, type, entry, underFire);
 }
 
 function spotAround(
-  world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  player: number,
   settlement: BuildReach,
+  acceptor: SpotAcceptor,
   anchor: HalfCellNode,
   centre: HalfCellNode,
   serves: HalfCellNode | null,
@@ -458,7 +465,7 @@ function spotAround(
   underFire: EnemyFire,
 ): HalfCellNode | null {
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
-  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire, centre, fan);
+  const accept = acceptor.around(underFire, centre, fan);
   const reach = settlement.around(centre, fan);
   const serveRadius = entry.unlessWithin?.radius ?? 0;
   const hqPull = (x: number, y: number): number =>

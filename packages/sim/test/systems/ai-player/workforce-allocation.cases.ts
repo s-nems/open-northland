@@ -7,7 +7,7 @@ import {
   Resource,
   Settler,
   SettlerProgress,
-  StalledPlacement,
+  StalledPlacements,
   Stockpile,
   setStockAmount,
   WALK_RANGE_NODES,
@@ -728,7 +728,10 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const carrier = aiPlayerEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
-    sim.world.add(carrier, StalledPlacement, { entry: 0, retryTick: Number.MAX_SAFE_INTEGER });
+    sim.world.add(carrier, StalledPlacements, {
+      retryTicks: new Map([[0, Number.MAX_SAFE_INTEGER]]),
+      holding: 0,
+    });
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     // The same men as the unstalled ladder above call for three clearing posts, and the reserve shrinks to
@@ -773,7 +776,10 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const carrier = aiPlayerEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
-    sim.world.add(carrier, StalledPlacement, { entry: 0, retryTick: Number.MAX_SAFE_INTEGER });
+    sim.world.add(carrier, StalledPlacements, {
+      retryTicks: new Map([[0, Number.MAX_SAFE_INTEGER]]),
+      holding: 0,
+    });
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const generic = new Set(
@@ -795,7 +801,10 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const carrier = aiPlayerEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
-    sim.world.add(carrier, StalledPlacement, { entry: 0, retryTick: Number.MAX_SAFE_INTEGER });
+    sim.world.add(carrier, StalledPlacements, {
+      retryTicks: new Map([[0, Number.MAX_SAFE_INTEGER]]),
+      holding: 0,
+    });
 
     const selections = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
       (c) => c.kind === 'setGatherGood',

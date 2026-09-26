@@ -361,7 +361,7 @@ export const REBUILD_DELAY_TICKS = 30 * TICKS_PER_SECOND;
  *  (authored): tight enough that the settlement grows as one piece. Every affinity pull stays inside it. */
 export const BUILD_SEARCH_MAX_RADIUS_NODES = 32;
 
-/** Decisions between a stalled placement's spot searches, about 60 s at the decision interval. It never
- *  gives up, since felled trees or a razed building can free room later. Approximation: a tuned
- *  cadence, not an original value. */
+/** Decisions between the spot searches of an entry whose last search found nothing, a lane's and a
+ *  passed-over entry's included, about 60 s at the decision interval. It never gives up, since felled
+ *  trees or a razed building can free room later. Approximation: a tuned cadence, not an original value. */
 export const STALLED_PLACEMENT_RETRY_DECISIONS = 30;

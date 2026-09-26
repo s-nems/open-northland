@@ -3,7 +3,7 @@ import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { withinNodeRadius } from '../../../nav/node-circle.js';
+import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
@@ -12,7 +12,7 @@ import type { EnemyFire } from '../military/defence/index.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
 import { ownedSettlers } from '../seat-roster.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
-import { buildingSpotAccept, buildReach } from './placement.js';
+import { buildReach, spotAcceptor } from './placement.js';
 
 // The coverage circle is a planning heuristic only; what a tower does under an alarm is
 // `systems/defence/`.
@@ -118,15 +118,16 @@ export function seatCovered(
 }
 
 /**
- * The spot the next covering building goes on, or null when none covers the target: a tower is seeded just
- * past the target, out from the settlement, a warehouse on the target itself. Two towers side by side
- * double the defence, but two stores side by side serve the same ground, so a warehouse's spot also lies
- * outside every standing store's own circle. The accept combines two metrics: world-metric coverage of the
- * target and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
+ * The search for the next covering building, built once a coverage entry: a tower is seeded just past the
+ * target, out from the settlement, a warehouse on the target itself. Two towers side by side double the
+ * defence, but two stores side by side serve the same ground, so a warehouse's spot also lies outside
+ * every standing store's own circle. The accept combines two metrics: world-metric coverage of the target
+ * and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
  * anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice the coverage radius
- * in rows from the target.
+ * in rows from the target. A target no building's reach comes near enough to cover, a flag far out on the
+ * map, is turned down before the walk.
  */
-export function coveragePlacementSpot(
+export function coverageSpotSearch(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -134,21 +135,29 @@ export function coveragePlacementSpot(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
-  target: HalfCellNode,
   coverage: Coverage,
   underFire: EnemyFire,
-): HalfCellNode | null {
-  const centroid = anchorCentroid(world, owned) ?? target;
-  const seed = coverage.by === 'tower' ? outwardNode(centroid, target, TOWER_OUTSKIRTS_PUSH_NODES) : target;
+): (target: HalfCellNode) => HalfCellNode | null {
+  const centroid = anchorCentroid(world, owned);
   const apartFrom = coverage.by === 'tower' ? [] : coverageCentres(world, ctx, player, owned, coverage);
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
-  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId, underFire, seed, fan);
-  const reach = buildReach(world, owned, anchor).around(seed, fan);
-  return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
-    // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
-    if (!withinNodeRadius(x, y, target.hx, target.hy, coverage.radius)) return false;
-    if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
-    if (!reach.contains(x, y)) return false;
-    return accept(x, y);
-  });
+  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId);
+  const settlement = buildReach(world, owned, anchor);
+  const box = nodeBoxOfCircles([{ x: 0, y: 0, r: coverage.radius }]);
+  // Every node covering a target lies within this Manhattan span of it.
+  const coverageSpan = box.maxX + box.maxY;
+  return (target) => {
+    if (!settlement.meets(target, coverageSpan)) return null;
+    const seed =
+      coverage.by === 'tower' ? outwardNode(centroid ?? target, target, TOWER_OUTSKIRTS_PUSH_NODES) : target;
+    const accept = acceptor.around(underFire, seed, fan);
+    const reach = settlement.around(seed, fan);
+    return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
+      // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
+      if (!withinNodeRadius(x, y, target.hx, target.hy, coverage.radius)) return false;
+      if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
+      if (!reach.contains(x, y)) return false;
+      return accept(x, y);
+    });
+  };
 }

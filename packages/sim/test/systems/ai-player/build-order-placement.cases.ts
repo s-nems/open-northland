@@ -4,10 +4,10 @@ import { Position, Resource, setStockAmount } from '../../../src/components/inde
 import type { Command } from '../../../src/core/commands/index.js';
 import { positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
 import {
-  buildingSpotAccept,
   buildReach,
   FRONT_EDGE_STEP_NODES,
   HQ_PULL_DIVISOR_NODES,
+  spotAcceptor,
 } from '../../../src/systems/ai-player/build-order/placement.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
@@ -498,12 +498,7 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(covered).toBe(false);
     expect(Math.abs(spot.x - clayX) + Math.abs(spot.y - clayY)).toBeLessThanOrEqual(CLAY_NEIGHBOURHOOD_NODES);
 
-    const accept = buildingSpotAccept(
-      sim.world,
-      { ...ctxOf(sim), content },
-      terrain,
-      SEAT,
-      PIT_HOUSE,
+    const accept = spotAcceptor(sim.world, { ...ctxOf(sim), content }, terrain, SEAT, PIT_HOUSE).around(
       enemyFire([]),
       { hx: clayX, hy: clayY },
       0,

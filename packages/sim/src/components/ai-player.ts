@@ -52,19 +52,22 @@ export interface MusterPlanState {
  */
 export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan', 'players');
 
-export interface StalledPlacementState {
-  /** The stalled entry's index in the seat's build order. */
-  entry: number;
-  /** The first tick the seat searches a spot for that entry again. */
-  retryTick: number;
+export interface StalledPlacementsState {
+  /** The first tick each entry, by its index in the seat's build order, searches a spot again after a
+   *  search that found nothing. */
+  retryTicks: Map<number, number>;
+  /** The entry whose failed search holds the list, or null while the list places freely: a passed-over
+   *  serving entry or a lane that finds nothing holds nothing. */
+  holding: number | null;
 }
 
 /**
- * The build-order placement whose spot search last found nothing, held on the seat's {@link AiPlayer}
- * carrier so it dies with the seat. The build order skips that entry's search until `retryTick` and
- * drops the record once the entry places or another entry acts.
+ * The build-order spot searches that last found nothing, held on the seat's {@link AiPlayer} carrier so
+ * they die with the seat. The build order skips an entry's search until its retry tick, drops the retry
+ * once the entry places or stands met, and drops the holding entry's once another entry acts. Absent
+ * while no search is pending.
  */
-export const StalledPlacement = defineComponent<StalledPlacementState>('StalledPlacement', 'players');
+export const StalledPlacements = defineComponent<StalledPlacementsState>('StalledPlacements', 'players');
 
 export interface BuildOrderFrontierState {
   /** The first unmet entry's index at the seat's last build-order decision. */

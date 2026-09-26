@@ -4,8 +4,6 @@ import {
   Building,
   BuildOrderFrontier,
   playerPlacementTribes,
-  StalledPlacement,
-  type StalledPlacementState,
   UnderConstruction,
   Upgrading,
 } from '../../../components/index.js';
@@ -17,7 +15,6 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
-import { AI_DECISION_INTERVAL_TICKS } from '../cadence.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import type { AiPlayerModule } from '../index.js';
 import type { EnemyFire } from '../military/defence/index.js';
@@ -29,13 +26,13 @@ import {
   type BuildOrderEntry,
   isLaneEntry,
   REBUILD_DELAY_TICKS,
-  STALLED_PLACEMENT_RETRY_DECISIONS,
   sitePace,
 } from './entries.js';
 import { placementSpot } from './placement.js';
 import { type EntryStatus, entryStatus, type LiveResourceMemo, upgradeCandidate } from './progress.js';
 import { type Siege, seatSiege } from './siege.js';
-import { coverageOf, coveragePlacementSpot, uncoveredTargets } from './tower-coverage.js';
+import { StalledSearches } from './stalled-searches.js';
+import { coverageOf, coverageSpotSearch, uncoveredTargets } from './tower-coverage.js';
 import { upgradeBillCovered } from './upgrade-supply.js';
 
 export * from './entries.js';
@@ -103,16 +100,31 @@ function runBuildOrder(
 
   const live: LiveResourceMemo = new Map();
   const statuses = order.map((entry) => entryStatus(world, ctx, player, owned, entry, live));
+  const searches = new StalledSearches(world, player, statuses);
   // One search per entry a decision: the lanes and the list share each verdict.
   const verdicts = new Map<number, Verdict>();
   const verdictOf = (entryIndex: number): Verdict => {
     const known = verdicts.get(entryIndex);
     if (known !== undefined) return known;
     const entry = order[entryIndex];
-    const verdict =
-      entry === undefined
-        ? ACTS
-        : searchVerdict(world, ctx, terrain, player, owned, anchor, tribe, entry, siegeOf().underFire);
+    let verdict = ACTS;
+    if (entry !== undefined && passesOver(entry)) {
+      if (searches.waits(entryIndex, ctx.tick)) verdict = PASSED_OVER;
+      else {
+        verdict = searchVerdict(
+          world,
+          ctx,
+          terrain,
+          player,
+          owned,
+          anchor,
+          tribe,
+          entry,
+          siegeOf().underFire,
+        );
+        if (tribe !== undefined) searches.searched(entryIndex, ctx.tick, verdict.kind === 'act', false);
+      }
+    }
     verdicts.set(entryIndex, verdict);
     return verdict;
   };
@@ -121,6 +133,7 @@ function runBuildOrder(
   const lanes = openLanes(world, ctx, order, statuses, sites, passedOver);
   for (const lane of lanes) {
     if (statuses[lane.entryIndex] !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
+    if (searches.waits(lane.entryIndex, ctx.tick)) continue;
     if (siegeOf().attacked) return [];
     const placed = coverageCommand(
       world,
@@ -133,6 +146,7 @@ function runBuildOrder(
       lane.entry,
       siegeOf().underFire,
     );
+    searches.searched(lane.entryIndex, ctx.tick, placed !== null, false);
     if (placed !== null) return [placed];
   }
   // The list keeps the sites the lanes leave it, at least one, and counts only its own.
@@ -147,7 +161,7 @@ function runBuildOrder(
     const { attacked, underFire } = siegeOf();
     if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick, attacked) || attacked) return [];
     if (listSites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, live)) return [];
-    const stall = placementStall(world, player, entryIndex);
+    searches.acting(entryIndex);
     if (verdict.placement !== null) return [verdict.placement];
     switch (entry.kind) {
       case 'place': {
@@ -155,9 +169,9 @@ function runBuildOrder(
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
-        if (stall !== null && ctx.tick < stall.retryTick) return [];
+        if (searches.waits(entryIndex, ctx.tick)) return [];
         const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry, underFire);
-        recordPlacementSearch(world, player, entryIndex, spot === null, ctx.tick);
+        searches.searched(entryIndex, ctx.tick, spot !== null, true);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
       case 'upgrade': {
@@ -196,6 +210,12 @@ type Verdict = { readonly kind: 'pass' } | { readonly kind: 'act'; readonly plac
 
 const ACTS: Verdict = { kind: 'act', placement: null };
 const PASSED_OVER: Verdict = { kind: 'pass' };
+
+/** Whether an unmet `entry` is one the list passes over rather than stalls on when its search finds nothing. */
+function passesOver(entry: BuildOrderEntry): boolean {
+  if (entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') return true;
+  return entry.kind === 'place' && entry.unlessWithin !== undefined;
+}
 
 function searchVerdict(
   world: World,
@@ -282,19 +302,9 @@ function coverageCommand(
   if (type === undefined) return null; // unreachable after 'skip', kept for the type system
   if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return null;
   const coverage = coverageOf(entry);
+  const spotFor = coverageSpotSearch(world, ctx, terrain, player, owned, anchor, type, coverage, underFire);
   for (const target of uncoveredTargets(world, ctx, player, owned, coverage)) {
-    const spot = coveragePlacementSpot(
-      world,
-      ctx,
-      terrain,
-      player,
-      owned,
-      anchor,
-      type,
-      target,
-      coverage,
-      underFire,
-    );
+    const spot = spotFor(target);
     if (spot !== null) return siteCommand(type, spot, tribe, player);
   }
   return null;
@@ -377,40 +387,6 @@ function outrunsSites(
     if (entryStatus(world, ctx, player, owned, entry, live) !== 'skip') ahead++;
   }
   return ahead > lookahead;
-}
-
-/** The seat's stall record when it names `entryIndex`; a record for any other entry is dropped, since
- *  the entry that stalled is no longer the one acting. */
-function placementStall(
-  world: World,
-  player: number,
-  entryIndex: number,
-): Readonly<StalledPlacementState> | null {
-  const carrier = aiPlayerEntity(world, player);
-  const stall = carrier === null ? undefined : world.tryGet(carrier, StalledPlacement);
-  if (carrier === null || stall === undefined) return null;
-  if (stall.entry === entryIndex) return stall;
-  world.remove(carrier, StalledPlacement);
-  return null;
-}
-
-/** Arm the retry after a search that found no spot, or clear the record after one that did. A seat with
- *  no AI carrier (a module run directly) keeps no record and searches every decision. */
-function recordPlacementSearch(
-  world: World,
-  player: number,
-  entryIndex: number,
-  stalled: boolean,
-  tick: number,
-): void {
-  const carrier = aiPlayerEntity(world, player);
-  if (carrier === null) return;
-  if (!stalled) {
-    world.remove(carrier, StalledPlacement);
-    return;
-  }
-  const retryTick = tick + STALLED_PLACEMENT_RETRY_DECISIONS * AI_DECISION_INTERVAL_TICKS;
-  world.add(carrier, StalledPlacement, { entry: entryIndex, retryTick });
 }
 
 function siteCommand(type: BuildingType, spot: HalfCellNode, tribe: number, player: number): PlaceCommand {

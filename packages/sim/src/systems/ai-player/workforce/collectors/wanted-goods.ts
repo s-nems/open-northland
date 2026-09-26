@@ -5,7 +5,7 @@ import {
   Building,
   JobAssignment,
   Settler,
-  StalledPlacement,
+  StalledPlacements,
 } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
@@ -122,7 +122,7 @@ export const NODES_PER_CLEARING_GATHERER = 8;
  *  while the stall lasts. */
 export function clearingCollectors(world: World, player: number, civilians: number): number {
   const carrier = aiPlayerEntity(world, player);
-  if (carrier === null || !world.has(carrier, StalledPlacement)) return 0;
+  if (carrier === null || (world.tryGet(carrier, StalledPlacements)?.holding ?? null) === null) return 0;
   // Only the build order clears the record, so a seat whose script switched it off keeps a stale one.
   if (!(world.tryGet(carrier, AiPlayer)?.modules.houseBuild ?? false)) return 0;
   return Math.min(

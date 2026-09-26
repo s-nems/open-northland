@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   aiPlayerEntity,
   Building,
@@ -6,7 +6,7 @@ import {
   grantScriptUnlock,
   Owner,
   Settler,
-  StalledPlacement,
+  StalledPlacements,
   setMapPermission,
   UnderConstruction,
 } from '../../../src/components/index.js';
@@ -19,6 +19,7 @@ import {
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
   REBUILD_DELAY_TICKS,
+  STALLED_PLACEMENT_RETRY_DECISIONS,
   sitePace,
   WELL_REACH_NODES,
 } from '../../../src/systems/ai-player/index.js';
@@ -711,7 +712,7 @@ describe('build order - the bakery wells', () => {
     });
   });
 
-  it('keeps placing past a passed-over well decision after decision, its frontier and stall record untouched', () => {
+  it('keeps placing past a passed-over well decision after decision, its frontier untouched and nothing holding the list', () => {
     // A seat with an AI carrier keeps a frontier: the passed-over well must not move it, or the well, unmet
     // below it next decision, would read as a razed building and hold the list for the rebuild delay.
     const sim = wellUnderFireSeat();
@@ -732,7 +733,10 @@ describe('build order - the bakery wells', () => {
     const carrier = aiPlayerEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
     expect(sim.world.tryGet(carrier, BuildOrderFrontier)).toEqual({ entry: 3, rebuildTick: null });
-    expect(sim.world.has(carrier, StalledPlacement)).toBe(false);
+    // The well's failed search waits out its retry like any other; it holds nothing.
+    const stalled = sim.world.tryGet(carrier, StalledPlacements);
+    expect(stalled?.holding).toBeNull();
+    expect([...(stalled?.retryTicks.keys() ?? [])]).toEqual([0]);
   });
 
   it('opens the lanes behind a passed-over well', () => {
@@ -840,6 +844,23 @@ describe('build order - a coverage entry with no spot', () => {
     sim.step();
     return sim;
   }
+
+  it('searches a lane with no room only every retry interval', () => {
+    const sim = islandSim();
+    makeAiSeat(sim, SEAT);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected a mapped sim');
+    const groundTests = vi.spyOn(terrain, 'isBuildable');
+    const lane = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01', lane: true }]);
+    const searchedAt: number[] = [];
+    for (let decision = 0; decision <= 2 * STALLED_PLACEMENT_RETRY_DECISIONS; decision++) {
+      const before = groundTests.mock.calls.length;
+      const tick = LATE_GAME_FROM_TICKS + SEAT + decision * AI_DECISION_INTERVAL_TICKS;
+      expect([...lane.run(sim.world, ctxOf(sim, tick), SEAT)]).toEqual([]);
+      if (groundTests.mock.calls.length > before) searchedAt.push(decision);
+    }
+    expect(searchedAt).toEqual([0, STALLED_PLACEMENT_RETRY_DECISIONS, 2 * STALLED_PLACEMENT_RETRY_DECISIONS]);
+  });
 
   it('passes a tower entry over, like a store entry, when no target it has can be covered', () => {
     const sim = islandSim();

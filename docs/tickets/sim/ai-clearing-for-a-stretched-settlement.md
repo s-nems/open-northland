@@ -2,7 +2,7 @@
 
 **Area:** sim · **Priority:** P3
 
-The AI hires clearing gatherers only while a placement finds no spot at all (`StalledPlacement`).
+The AI hires clearing gatherers only while a placement finds no spot at all (the holding entry of `StalledPlacements`).
 On maps where the base sits against forest, placements keep finding spots, but each lands farther
 out, so the settlement grows as a narrow strip away from the headquarters: long carrier walks and a
 front the towers cannot cover. Felling the forest beside the base would keep it compact.
