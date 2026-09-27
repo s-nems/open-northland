@@ -31,11 +31,10 @@ const MAX_SAFE = Number.MAX_SAFE_INTEGER; // 2^53 - 1
 /** The largest `wrap` period, so its mask `period - 1` fits an int32. */
 const MAX_WRAP_PERIOD = 2 ** 31;
 
-/** Dev-mode assertions on (overflow checks). Statically eliminated in production builds. */
-const DEV: boolean = ((): boolean => {
-  const g = globalThis as { process?: { env?: { NODE_ENV?: string } } };
-  return g.process?.env?.NODE_ENV !== 'production';
-})();
+/** Build-time switch for the overflow asserts. The app's production build defines it `false`, so the
+ *  minifier drops every assert branch; tests, benches and the dev server leave it undefined, asserts on. */
+declare const __SIM_ASSERTS__: boolean | undefined;
+const DEV: boolean = typeof __SIM_ASSERTS__ === 'boolean' ? __SIM_ASSERTS__ : true;
 
 function assertSafe(n: number, op: string): void {
   if (DEV && !Number.isSafeInteger(n)) {
@@ -44,7 +43,7 @@ function assertSafe(n: number, op: string): void {
 }
 
 /** Guard the intermediate `a*b` product of `mul`/`mulDiv` (already computed as `p`) against
- *  exceeding the exact-integer range; dev-only, statically eliminated in production. */
+ *  exceeding the exact-integer range; dev-only, compiled out of production builds. */
 function assertProductSafe(p: number, a: number, b: number, op: string): void {
   if (DEV && Math.abs(p) > MAX_SAFE) {
     throw new Error(`fixed-point overflow in ${op}: |${a} * ${b}| exceeds 2^53; reduce magnitudes`);
@@ -89,9 +88,9 @@ export const fx = {
   /** Divide two Fixeds. */
   div(a: Fixed, b: Fixed): Fixed {
     if (b === 0) throw new Error('fixed-point division by zero');
-    const v = Math.trunc((a * ONE) / b);
-    assertSafe(a * ONE, 'div');
-    return v as Fixed;
+    const scaled = a * ONE;
+    assertSafe(scaled, 'div');
+    return Math.trunc(scaled / b) as Fixed;
   },
   /**
    * Divide two Fixeds, rounding the quotient up. For minting per-tick step quanta from a duration:

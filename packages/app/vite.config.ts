@@ -28,6 +28,8 @@ export default defineConfig(async ({ command }) => ({
   define: {
     __CLIENT_BUILD__: JSON.stringify(clientBuildIdentity(resolve(here, '../..'))),
     __GAME_VERSION__: JSON.stringify(version),
+    // The sim's fixed-point overflow asserts run in the dev server and are compiled out of builds.
+    __SIM_ASSERTS__: JSON.stringify(command === 'serve'),
   },
   plugins: [
     devCheckout(resolve(here, '../..'), contentRoot),
