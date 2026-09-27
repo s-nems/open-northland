@@ -167,10 +167,11 @@ export class NetworkConnection {
 
   /** The link dropped: the relay welcomes this client anew once it is back, and a lobby room is left,
    *  as its `left` would have. The worker's client did the same on its retry. */
-  private dropped(): void {
+  /** Forget what the link drop invalidated; true when a lobby room was left with it. */
+  private dropped(): boolean {
     const left = this.client.room?.state === 'lobby';
     this.client.reset(left);
-    if (left) this.emit({ kind: 'message', message: { kind: 'left' } });
+    return left;
   }
 
   private post(message: ToNetWorker<MapWorkerBoot>): void {
@@ -193,15 +194,19 @@ export class NetworkConnection {
       case 'facts':
         this.client.follow(message.facts);
         return;
-      case 'link':
+      case 'link': {
         this.link = message.state;
-        if (message.state === 'reconnecting') this.dropped();
         this.lastLink =
           message.reason === undefined
             ? { state: message.state }
             : { state: message.state, reason: message.reason };
+        // The mirror forgets the room before anyone hears of the drop; the synthetic `left` follows the
+        // link event so a screen that ends on the drop never sees the room end for another reason.
+        const left = message.state === 'reconnecting' && this.dropped();
         this.emit({ kind: 'link', ...this.lastLink });
+        if (left) this.emit({ kind: 'message', message: { kind: 'left' } });
         return;
+      }
       case 'openWorld':
       case 'restoreWorld':
         void this.answerWorld(message);

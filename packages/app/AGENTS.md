@@ -15,9 +15,9 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
 - The sim stays single-threaded and synchronous inside its worker: no parallel section inside a tick.
   The renderer stays on the main thread and interpolates the mirror; rendering in a worker would split
   one Pixi scene between two threads without making a frame cheaper. Worlds cross to the main thread
-  only as per-tick deltas of written components over `postMessage`, never as full snapshots (a full
-  structured clone of a developed map costs hundreds of milliseconds, a delta a few) and not through
-  `SharedArrayBuffer`.
+  over `postMessage` as per-tick deltas of written components after an opening rebuild that carries
+  every entity whole (as does a rebuild after the touched log overflows); a full structured clone of a
+  developed map costs hundreds of milliseconds, a delta a few. `SharedArrayBuffer` is not used.
 - Submit a running session's state changes through the session driver's `submit()` in a seat or admin
   envelope, and pre-tick world assembly through `sim.enqueueSetup()`. Tempo and pause are session clock
   operations, not loop fields. Do not mutate live component stores from UI or renderer glue.

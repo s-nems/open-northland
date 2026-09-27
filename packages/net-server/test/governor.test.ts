@@ -58,6 +58,12 @@ describe('governed speed', () => {
     });
   });
 
+  it('releases a member whose share reaches the requested speed even from one step below it', () => {
+    const current = { nick: 'Bartek', speed: 1 - GOVERNED_SPEED_STEP };
+    expect(governedSpeed([sharing(1)], CLOCK_TICK, 1, current)).toBeNull();
+    expect(governedSpeed([sharing(2)], CLOCK_TICK, 1, current)).toBeNull();
+  });
+
   it('slows at once but speeds up only by whole rise steps, so a jittering report changes nothing', () => {
     const current = { nick: 'Bartek', speed: 0.4 };
     const oneStepUp = current.speed + GOVERNED_SPEED_STEP;

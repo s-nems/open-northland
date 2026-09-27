@@ -28,8 +28,8 @@ export function framesIn(ms: number, speed: number): number {
  * share of it, never above the requested speed nor below `MIN_GOVERNED_SPEED`. Before its first load
  * report a member gets the headroom share of the requested speed. The lowest speed wins; a tie goes to
  * the member furthest behind. A slow member whose share reaches the requested speed governs nothing: it
- * is behind for another reason and its own pacer catches up. Against the `current` governed speed a
- * rise under `GOVERNED_RISE_STEPS` steps is ignored.
+ * is behind for another reason and its own pacer catches up, whatever the `current` governed speed.
+ * Below that, a rise from `current` under `GOVERNED_RISE_STEPS` steps is ignored.
  */
 export function governedSpeed(
   slow: Iterable<Member>,
@@ -44,10 +44,9 @@ export function governedSpeed(
     if (limiter === null || speed < limiter.speed || (speed === limiter.speed && lag > limiter.lag))
       limiter = { nick: member.nick, speed, lag };
   }
-  if (limiter === null) return null;
+  if (limiter === null || limiter.speed >= requestedSpeed) return null;
   const speed = current === null ? limiter.speed : withoutSmallRise(limiter.speed, current.speed);
-  if (speed >= requestedSpeed) return null;
-  return { nick: limiter.nick, speed };
+  return { nick: limiter.nick, speed: Math.min(speed, requestedSpeed) };
 }
 
 function memberSpeed(member: Member, requestedSpeed: number): number {

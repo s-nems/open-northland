@@ -125,7 +125,7 @@ describe('network connection mirror', () => {
     ]);
   });
 
-  it('resets on a dropped link before announcing it: not welcomed, and a lobby room left as its `left` would', () => {
+  it('resets on a dropped link before announcing it, and a lobby room is left after the drop is heard', () => {
     const { connection, worker } = connect();
     const seen: string[] = [];
     connection.subscribe((event) => {
@@ -139,7 +139,7 @@ describe('network connection mirror', () => {
     worker.send({ kind: 'message', message: { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' } });
     worker.send({ kind: 'message', message: { kind: 'room', room: ROOM } });
     worker.send({ kind: 'link', state: 'reconnecting' });
-    expect(seen).toEqual(['ok', 'welcome', 'room', 'left', 'reconnecting']);
+    expect(seen).toEqual(['ok', 'welcome', 'room', 'reconnecting', 'left']);
     // The worker's client left on its own retry.
     expect(worker.posted.at(-1)?.kind).toBe('connect');
   });
