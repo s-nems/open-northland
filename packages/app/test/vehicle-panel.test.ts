@@ -24,7 +24,13 @@ import type {
 } from '../src/hud/details-panel/model/index.js';
 import { vehicleStatus } from '../src/hud/details-panel/model/vehicle.js';
 import { createCargoState } from '../src/hud/dom/vehicle-panel/cargo.js';
-import { commanderValue, seatWells } from '../src/hud/dom/vehicle-panel/crew.js';
+import {
+  commanderCaption,
+  commanderWell,
+  riderTooltip,
+  seatWells,
+  wellPress,
+} from '../src/hud/dom/vehicle-panel/crew.js';
 import { cargoFill, cargoFlow, cargoLineTooltip } from '../src/hud/dom/vehicle-panel/hold.js';
 import { orderTexts } from '../src/hud/dom/vehicle-panel/portrait.js';
 import { messages } from '../src/i18n/index.js';
@@ -257,16 +263,16 @@ describe('vehicle panel orders', () => {
     expect(armedVehiclePick({ kind: 'vehicle', settler: 7 }, 7)).toBeNull();
   });
 
-  it("says why an order is refused, the pick's prompt while armed, and the right click otherwise", () => {
+  it("says why an order is refused, the pick's prompt while armed, and the name otherwise", () => {
     const copy = messages().hud.vehiclePanel;
     expect(orderTexts({ order: 'goTo', control: 'no' }, 'cart', false)).toEqual({
       label: copy.orders.goTo,
       tooltip: 'no',
     });
-    expect(orderTexts({ order: 'goTo', control: true }, 'ship', false).label).toBe(copy.orders.sail);
-    expect(orderTexts({ order: 'goTo', control: true }, 'ship', false).tooltip).toContain(
-      copy.orderHints.sail,
-    );
+    expect(orderTexts({ order: 'goTo', control: true }, 'ship', false)).toEqual({
+      label: copy.orders.sail,
+      tooltip: copy.orders.sail,
+    });
     expect(orderTexts({ order: 'stop', control: true }, 'cart', true).tooltip).toContain(copy.orders.stop);
     expect(orderTexts({ order: 'stop', control: true }, 'cart', false).tooltip).toBe(copy.orders.stop);
   });
@@ -347,25 +353,47 @@ describe('vehicle crew', () => {
   it('offers one free seat as the seat pick while the player may seat someone', () => {
     expect(seatWells(crew({})).map((well) => well.kind)).toEqual(['rider', 'add', 'free']);
     expect(seatWells(crew({ assign: 'full' })).map((well) => well.kind)).toEqual(['rider', 'free', 'free']);
-    // Without a commander the commander's row offers the pick, which seats there first.
+    // Without a commander the commander's well offers the pick, which seats there first.
     expect(seatWells(crew({ commander: null })).map((well) => well.kind)).toEqual(['rider', 'free', 'free']);
   });
 
-  it('names the commander as a link, walking while it is not aboard, or the seat to fill', () => {
-    const model = (over: Partial<VehicleCrewModel>, foreign = false) => ({
-      vehicleClass: 'cart' as const,
-      foreign,
-      crew: crew(over),
-    });
+  it("marks the commander's well: the rider, the seat pick, or a seat nobody may fill", () => {
+    expect(commanderWell(crew({}))).toEqual({ kind: 'rider', rider: rider(1) });
+    expect(commanderWell(crew({ commander: null })).kind).toBe('add');
+    expect(commanderWell(crew({ commander: null, assign: 'full' })).kind).toBe('free');
+    expect(commanderWell(crew({ commander: null, assign: null })).kind).toBe('free');
+  });
+
+  it("captions a land vehicle's commander by role with the trade, the walk or the seat to fill", () => {
     const copy = messages().hud.vehiclePanel;
-    expect(commanderValue(model({ commander: rider(1, false) })).map((s) => s.text)).toEqual([
-      'R1',
-      copy.walking,
-    ]);
-    expect(commanderValue(model({}, true))[0]?.link).toBeUndefined();
-    expect(commanderValue(model({ commander: null }))).toEqual([
-      { text: copy.assignRole.cart, link: true, tone: 'missing', tooltip: copy.assignTooltip },
-    ]);
+    const caption = (over: Partial<VehicleCrewModel>) =>
+      commanderCaption({ vehicleClass: 'cart', crew: crew(over) });
+    expect(caption({})).toEqual({ role: copy.roles.cart, detail: 'J', missing: false });
+    expect(caption({ commander: rider(1, false) }).detail).toBe(copy.walking);
+    expect(caption({ commander: null })).toEqual({
+      role: copy.roles.cart,
+      detail: copy.assignRole.cart,
+      missing: true,
+    });
+    expect(caption({ commander: null, assign: null }).missing).toBe(false);
+  });
+
+  it('selects a rider on a click, steps it out on a Ctrl click and seats someone from the pick well', () => {
+    const own = { foreign: false, crew: crew({}) };
+    const riderWell = { kind: 'rider', rider: rider(2) } as const;
+    expect(wellPress(riderWell, own, false)).toBe('select');
+    expect(wellPress(riderWell, own, true)).toBe('leave');
+    expect(wellPress(riderWell, { foreign: false, crew: crew({ leave: 'at sea' }) }, true)).toBe('refuse');
+    expect(wellPress({ kind: 'add' }, own, true)).toBe('seat');
+    expect(wellPress({ kind: 'free' }, own, false)).toBeNull();
+    expect(wellPress(riderWell, { foreign: true, crew: crew({ leave: null }) }, false)).toBeNull();
+  });
+
+  it('names the commander by role and name, an ordinary rider by name, a foreign one by trade', () => {
+    const copy = messages().hud.vehiclePanel;
+    expect(riderTooltip(rider(1), false, copy.roles.ship)).toBe(`${copy.roles.ship} · R1`);
+    expect(riderTooltip(rider(2, false), false, null)).toBe('R2');
+    expect(riderTooltip(rider(2), true, null)).toBe('J');
   });
 });
 

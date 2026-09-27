@@ -456,8 +456,8 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
   order buttons, 30 px, five to a row: Jedź do (Płyń do on a ship), Zatrzymaj, and Wjedź na statek
   for a land vehicle (Zjedź ze statku while it rides one) or Zacumuj for a ship; a siege engine adds
   a second row of red attack orders (ludzi, budynek, pojazd, miejsce). A spot or target order arms
-  its pick and its button stays lit gold until the pick resolves or Esc drops it; its tooltip names
-  the right click that gives the same order on the map. A refused order is faded with the reason
+  its pick and its button stays lit gold until the pick resolves or Esc drops it; its tooltip is the
+  order's short name (Płyń do, Zacumuj), no ellipsis. A refused order is faded with the reason
   (no driver, standing on a ship, the ship at sea, waiting for the draught animal). The status strip
   along the frame's floor names the first state that holds: Na statku with the ship as a link,
   Wjeżdża na statek, Atakuje, Cumuje, Płynie or Jedzie, Czeka na zwierzę pociągowe, Czeka na
@@ -465,16 +465,18 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
   hand has a trip to make, Zacumowany, Zatrzymany, Stoi.
 - Wojsko (a siege engine only): Postawa as the soldier's three-way strip with the vehicle's stances,
   Atak, Obrona and Pozycja, each tooltip saying how it fights.
-- Załoga: the commander on a ledger row named by class (Woźnica, Kapitan, Obsługa), a link that
-  selects the person, "idzie" while it still walks to the door, and × to step out. Without one the
-  row reads "Przydziel woźnicę" in amber, a link that arms the pick of an own settler on the map
-  (the sim seats the commander first, then an ordinary seat). A ship lists its ordinary seats as
-  24 px wells under it, ten to a row: a rider's figure (a woman's warmer, a soldier's steel) selects
-  them, a rider still walking to the door is dashed and faded, the first free seat is the amber
-  seat pick, the rest are plain. A ship's deck is a Pojazd row: the carried cart as a link with the
-  button that drives it ashore, or "brak" with the button that arms the pick of an own cart to
-  drive aboard. The title carries the seats taken of all and "Wysadź wszystkich"; stepping in or
-  out is refused at sea.
+- Załoga: the commander is a 40 × 56 px well framed in bronze with its role's badge (a wheel for the
+  driver, an anchor for the captain, a crosshair for the crew), no name. Empty, it is the amber seat
+  pick that arms the pick of an own settler on the map (the sim seats the commander first, then an
+  ordinary seat). A land vehicle has its role line beside the well: Woźnica / Obsługa over the
+  trade, "idzie" or "Przydziel woźnicę" in amber. A ship's ordinary seats sit beside it as 24 px
+  wells, eight to a row: a rider's figure (a woman's warmer, a soldier's steel), a rider still
+  walking to the door dashed and faded, the first free seat the amber seat pick, the rest plain. A
+  click on any rider selects it and a Ctrl click steps it out; the tooltip is the role and the name
+  for the commander (Kapitan · the name), the name alone for a seat. A ship's deck is a Pojazd row:
+  the carried cart as a link with the button that drives it ashore, or "brak" with the button that
+  arms the pick of an own cart to drive aboard. The title carries the seats taken of all and "Wysadź
+  wszystkich"; stepping in or out is refused at sea.
 - Handel: a cart a trader rides shows the trader's Handel section as the settler panel does, and its
   configure button opens the same trade window, addressed to that trader.
 - Ładownia: a load gauge over the hold's units (aboard solid, on the way hatched, a mark at the sum
@@ -484,7 +486,9 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
   the plus, which fades with "Ładownia jest już w całości rozdzielona"). A thin rule under the line
   fills with the part of the target aboard; a line asked for less than it holds reads muted. The
   counter echoes a step until the snapshot carries it, so steps within one snapshot add up, and a
-  line keeps its place while its counts change. "Dodaj towar" opens the picker in place of the add
+  line keeps its place while its counts change. Past eight lines the manifest scrolls in place and
+  fades at the bottom while lines sit below; the add row stays under it, and a good added from the
+  picker scrolls into view. "Dodaj towar" opens the picker in place of the add
   row: the stock category tabs over the goods of the open one the type may carry, a listed good
   ticked; a press adds the line at zero (a second press on such a line takes it off). The title
   carries "Rozładuj wszystko" (every target to zero) and, while nobody works the hold (no commander

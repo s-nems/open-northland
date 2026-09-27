@@ -102,7 +102,13 @@ export function createHoldSection(
   ) {
     throw new Error('vehicle hold: gauge');
   }
-  const manifest = element('ul', 'on-manifest');
+  const manifest = element('ul', 'on-manifest on-manifest--lines');
+  // A manifest past its height fades out at the bottom while more lines sit below the fold.
+  const paintFold = (): void => {
+    const below = manifest.scrollTop + manifest.clientHeight < manifest.scrollHeight - 1;
+    setClass(manifest, 'on-manifest--more', below);
+  };
+  manifest.addEventListener('scroll', paintFold, { passive: true });
   const empty = element('li', 'on-cargo-add', '<span class="on-ledger--muted"></span>');
   const emptyText = empty.firstElementChild;
   if (emptyText === null) throw new Error('vehicle hold: empty');
@@ -111,6 +117,9 @@ export function createHoldSection(
   const addLink = button('on-more');
   addLink.addEventListener('click', () => togglePicker());
   addRow.append(addButton.element, addLink);
+  // Outside the manifest, so a long manifest scrolls under it and the add row stays in reach.
+  const addList = element('ul', 'on-manifest');
+  addList.append(addRow);
   const root = element('div', '');
 
   let shown: VehiclePanelModel | null = null;
@@ -124,7 +133,12 @@ export function createHoldSection(
         const line = lines.find((candidate) => candidate.goodType === goodType);
         if (line !== undefined && line.wanted === 0 && line.current === 0 && line.reserved === 0)
           state.unpin(goodType);
-      } else state.pin(goodType);
+      } else {
+        state.pin(goodType);
+        repaint();
+        views.get(goodType)?.item.scrollIntoView({ block: 'nearest' });
+        return;
+      }
       repaint();
     },
     () => {
@@ -132,7 +146,7 @@ export function createHoldSection(
       paintAdd();
     },
   );
-  root.append(title.element, gauge, manifest, picker.element);
+  root.append(title.element, gauge, manifest, addList, picker.element);
 
   const togglePicker = (): void => {
     const model = hold();
@@ -259,12 +273,13 @@ export function createHoldSection(
     for (const good of views.keys()) if (!lines.some((line) => line.goodType === good)) views.delete(good);
     write(emptyText, cargo.routed ? copy.emptyRouted : copy.empty);
     if (lines.length === 0) items.push(empty);
-    if (!cargo.routed) items.push(addRow);
+    setHidden(addList, cargo.routed);
     if (
       manifest.children.length !== items.length ||
       items.some((item, index) => manifest.children[index] !== item)
     ) {
       manifest.replaceChildren(...items);
+      paintFold();
     }
     if (cargo.routed && picker.isOpen()) picker.close();
     picker.update(cargo.goods, new Set(lines.map((line) => line.goodType)));
@@ -286,8 +301,12 @@ export function createHoldSection(
   return {
     element: root,
     update(model): void {
-      // Another vehicle: the picker closes and the local lines start afresh.
-      if (shown?.entityId !== model.entityId) picker.close();
+      // Another vehicle: the picker closes, the local lines start afresh and the manifest opens at its top.
+      const another = shown?.entityId !== model.entityId;
+      if (another) {
+        picker.close();
+        manifest.scrollTop = 0;
+      }
       shown = model;
       setHidden(root, model.hold === null);
       if (model.hold === null) {
@@ -296,6 +315,7 @@ export function createHoldSection(
       }
       state.show(model.entityId);
       repaint();
+      if (another) paintFold();
     },
     closePicker(): boolean {
       if (!picker.isOpen()) return false;

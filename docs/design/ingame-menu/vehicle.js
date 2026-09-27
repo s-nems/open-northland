@@ -207,6 +207,7 @@ function military(v) {
 }
 
 const FIGURE = { man: GLYPH.man, woman: GLYPH.woman };
+const ROLE_GLYPH = { Woźnica: GLYPH.wheel, Kapitan: GLYPH.anchor, Obsługa: GLYPH.crosshair };
 function crew(v) {
   const c = v.crew;
   if (!c) return '';
@@ -215,35 +216,31 @@ function crew(v) {
     : '';
   const rows = [];
   const lead = c.commander;
-  if (lead === null) {
-    rows.push(
-      ledger(
-        c.role,
-        link(
-          `Przydziel ${c.roleWho}`,
-          'Wskaż swojego osadnika na mapie · Esc anuluje',
-          ' on-ledger--missing',
-        ),
-        [round(ORDER_GLYPH.addPerson, `Przydziel ${c.roleWho}`)],
-      ),
-    );
-  } else if (lead) {
-    const who = `${link(lead.name, `${lead.job} · kliknij: zaznacz`)}${lead.walking ? ' <small class="on-ledger--muted">idzie</small>' : ''}`;
-    rows.push(ledger(c.role, who, v.foreign ? [] : [round(GLYPH.close, `Wysiądź: ${lead.name}`)]));
-  }
+  const badge = `<i class="on-seat-well__badge">${ROLE_GLYPH[c.role]}</i>`;
+  const helm =
+    lead === null
+      ? `<button class="on-seat-well on-seat-well--helm on-seat-well--empty on-seat-well--add" type="button"${tip(`Przydziel ${c.roleWho} · Wskaż swojego osadnika na mapie · Esc anuluje`)}>${ORDER_GLYPH.addPerson}${badge}</button>`
+      : `<button class="on-seat-well on-seat-well--helm${lead.walking ? ' on-seat-well--walking' : ''}" type="button"${tip(`${c.role} · ${v.foreign ? lead.job : lead.name}`)}>${FIGURE.man}${badge}</button>`;
+  let beside = '';
   if (c.seats) {
     const wells = c.seats
       .map((s) => {
         if (s === null) return '<span class="on-seat-well on-seat-well--empty"></span>';
         if (s === 'add')
-          return `<button class="on-seat-well on-seat-well--empty on-seat-well--add" type="button"${tip('Wsadź osadnika na pokład · Esc anuluje')}>${ORDER_GLYPH.addPerson}</button>`;
+          return `<button class="on-seat-well on-seat-well--empty on-seat-well--add" type="button"${tip('Wsadź osadnika · Wskaż swojego osadnika na mapie · Esc anuluje')}>${ORDER_GLYPH.addPerson}</button>`;
         const cls = `${s.walking ? ' on-seat-well--walking' : ''}${s.look === 'woman' ? ' on-seat-well--woman' : ''}${s.soldier ? ' on-seat-well--soldier' : ''}`;
-        const note = s.walking ? ' · idzie na pokład' : '';
-        return `<button class="on-seat-well${cls}" type="button"${tip(v.foreign ? `${s.job}` : `${s.name} · ${s.job}${note} · kliknij: zaznacz`)}>${FIGURE[s.look]}</button>`;
+        return `<button class="on-seat-well${cls}" type="button"${tip(v.foreign ? s.job : s.name)}>${FIGURE[s.look]}</button>`;
       })
       .join('');
-    rows.push(`<div class="on-seats">${wells}</div>`);
+    beside = `<div class="on-seats">${wells}</div>`;
+  } else {
+    const detail =
+      lead === null
+        ? `<span class="on-crew__missing">Przydziel ${c.roleWho}</span>`
+        : `<span>${lead.walking ? 'idzie' : lead.job}</span>`;
+    beside = `<span class="on-crew__caption"><b>${c.role}</b>${detail}</span>`;
   }
+  rows.push(`<div class="on-crew">${helm}${beside}</div>`);
   if (c.deck !== undefined) {
     rows.push(
       ledger(
@@ -341,12 +338,12 @@ const shot = (file, x, y, zoom = 1) =>
 const man = (name, job, extra = {}) => ({ name, job, look: 'man', ...extra });
 const woman = (name, job, extra = {}) => ({ name, job, look: 'woman', ...extra });
 const CART_ORDERS = (o = {}) => [
-  { glyph: 'goTo', label: 'Jedź do…', tip: o.goTip ?? 'Jedź do… · lub PPM na mapie', disabled: o.noDriver },
+  { glyph: 'goTo', label: 'Jedź do', tip: o.goTip ?? 'Jedź do', disabled: o.noDriver },
   { glyph: 'stop', label: 'Zatrzymaj', disabled: o.noDriver },
   {
     glyph: 'boardShip',
-    label: 'Wjedź na statek…',
-    tip: 'Wjedź na statek… · lub PPM na zacumowany statek',
+    label: 'Wjedź na statek',
+    tip: 'Wjedź na statek',
     disabled: o.noDriver,
   },
 ];
@@ -433,12 +430,12 @@ const STATES = {
     title: 'Mały statek',
     shot: shot('ships', 793, 153, 0.32),
     orders: [
-      { glyph: 'goTo', label: 'Płyń do…', tip: 'Płyń do… · lub PPM na wodzie' },
+      { glyph: 'goTo', label: 'Płyń do', tip: 'Płyń do' },
       { glyph: 'stop', label: 'Zatrzymaj' },
       {
         glyph: 'dock',
-        label: 'Zacumuj przy brzegu…',
-        tip: 'Zacumuj przy brzegu… · lub PPM na brzegu',
+        label: 'Zacumuj',
+        tip: 'Zacumuj',
         armed: false,
       },
     ],
@@ -482,9 +479,9 @@ const STATES = {
     title: 'Duży statek',
     shot: shot('ships', 793, 153, 0.32),
     orders: [
-      { glyph: 'goTo', label: 'Płyń do…', tip: 'Płyń do… · lub PPM na wodzie', armed: true },
+      { glyph: 'goTo', label: 'Płyń do', tip: 'Płyń do', armed: true },
       { glyph: 'stop', label: 'Zatrzymaj' },
-      { glyph: 'dock', label: 'Zacumuj przy brzegu…', tip: 'Zacumuj przy brzegu… · lub PPM na brzegu' },
+      { glyph: 'dock', label: 'Zacumuj', tip: 'Zacumuj' },
     ],
     moored: false,
     status: { text: 'Płynie · do przystani wschodniej' },
@@ -530,7 +527,7 @@ const STATES = {
     title: 'Wóz wołowy',
     shot: shot('carts', 668, 433, 1),
     orders: [
-      { glyph: 'goTo', label: 'Jedź do…', tip: 'Wóz stoi na statku', disabled: true },
+      { glyph: 'goTo', label: 'Jedź do', tip: 'Wóz stoi na statku', disabled: true },
       { glyph: 'stop', label: 'Zatrzymaj', disabled: true, tip: 'Wóz stoi na statku' },
       { glyph: 'leaveShip', label: 'Zjedź ze statku', tip: 'Zjedź ze statku na ląd' },
     ],
@@ -550,30 +547,30 @@ const STATES = {
     title: 'Katapulta',
     shot: shot('catapult', 270, 276, 0.8),
     orders: [
-      { glyph: 'goTo', label: 'Jedź do…', tip: 'Jedź do… · lub PPM na mapie' },
+      { glyph: 'goTo', label: 'Jedź do', tip: 'Jedź do' },
       { glyph: 'stop', label: 'Zatrzymaj' },
       {
         glyph: 'boardShip',
-        label: 'Wjedź na statek…',
-        tip: 'Wjedź na statek… · lub PPM na zacumowany statek',
+        label: 'Wjedź na statek',
+        tip: 'Wjedź na statek',
       },
       null,
       null,
       {
         glyph: 'attackPeople',
-        label: 'Atakuj ludzi…',
+        label: 'Atakuj ludzi',
         attack: true,
-        tip: 'Atakuj ludzi… · lub PPM na wrogu',
+        tip: 'Atakuj ludzi',
       },
       {
         glyph: 'attackBuilding',
-        label: 'Atakuj budynek…',
+        label: 'Atakuj budynek',
         attack: true,
         armed: true,
-        tip: 'Atakuj budynek… · lub PPM na wrogim budynku',
+        tip: 'Atakuj budynek',
       },
-      { glyph: 'attackVehicle', label: 'Atakuj pojazd…', attack: true },
-      { glyph: 'attackPosition', label: 'Ostrzelaj miejsce…', attack: true },
+      { glyph: 'attackVehicle', label: 'Atakuj pojazd', attack: true },
+      { glyph: 'attackPosition', label: 'Ostrzelaj miejsce', attack: true },
     ],
     status: { text: 'Atakuje · Dom mieszkalny' },
     hp: 81,

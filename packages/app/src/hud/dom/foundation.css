@@ -3386,12 +3386,81 @@ body.on-drag-scroll-cursor-hidden * {
   letter-spacing: 0;
   color: var(--warning);
 }
-/* Crew: the commander on its ledger row, a ship's seats as small wells under it. */
+/* Crew: the commander's well, taller and framed in bronze with its role's badge, then a ship's seats
+   as small wells or a land vehicle's role line. */
+.on-hud .on-crew {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
 .on-hud .on-seats {
   display: grid;
-  grid-template-columns: repeat(10, 24px);
+  grid-template-columns: repeat(8, 24px);
   gap: 4px;
-  margin: 4px 0 2px;
+}
+.on-hud .on-seat-well.on-seat-well--helm {
+  flex: none;
+  width: 40px;
+  height: 56px;
+  border-radius: 6px;
+  background: radial-gradient(circle at 50% 30%, #3a2a17, #1d160f 70%);
+  box-shadow:
+    inset 0 0 0 1px var(--bronze),
+    inset 0 0 0 3px #1d160f,
+    inset 0 0 0 4px #c9a26244;
+}
+.on-hud .on-seat-well.on-seat-well--helm .on-figure {
+  width: 26px;
+  height: 34px;
+  margin-bottom: 3px;
+}
+.on-hud .on-seat-well.on-seat-well--helm.on-seat-well--empty > .on-glyph {
+  width: 18px;
+  height: 18px;
+}
+.on-hud button.on-seat-well--helm.on-seat-well--add {
+  box-shadow:
+    inset 0 0 0 1px var(--warning),
+    inset 0 0 0 3px #1d160f,
+    inset 0 0 0 4px #efbe7044;
+}
+.on-hud button.on-seat-well--helm:hover,
+.on-hud button.on-seat-well--helm:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--bronze-hi),
+    inset 0 0 0 3px #1d160f,
+    inset 0 0 0 4px var(--bronze);
+}
+.on-hud .on-seat-well__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(var(--bronze-hi), var(--bronze));
+  box-shadow:
+    0 0 0 1px var(--wood-lo),
+    0 1px 2px #0006;
+  color: var(--ink);
+}
+.on-hud .on-seat-well__badge .on-glyph {
+  width: 11px;
+  height: 11px;
+}
+.on-hud .on-crew__caption {
+  display: grid;
+  gap: 2px;
+  align-self: center;
+}
+.on-hud .on-crew__caption > span {
+  color: var(--parchment-lo);
+}
+.on-hud .on-crew__caption > .on-crew__missing {
+  color: var(--warning);
 }
 .on-hud .on-seat-well {
   position: relative;
@@ -3421,7 +3490,7 @@ body.on-drag-scroll-cursor-hidden * {
   box-shadow: inset 0 0 0 1px #c9a26222;
   color: #c9a26244;
 }
-.on-hud .on-seat-well--empty .on-glyph {
+.on-hud .on-seat-well--empty > .on-glyph {
   width: 12px;
   height: 12px;
 }
@@ -3431,6 +3500,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 /* The seat or deck pick a control armed waits for its target, as a lit order button does. */
 .on-hud .on-seat-well--armed,
+.on-hud button.on-seat-well--helm.on-seat-well--armed,
 .on-hud .on-ledger--armed .on-round {
   box-shadow:
     0 0 0 1px var(--active),
@@ -3494,6 +3564,17 @@ body.on-drag-scroll-cursor-hidden * {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+/* Eight 25 px lines; a longer manifest scrolls inside the panel rather than pushing it off screen. */
+.on-hud .on-manifest--lines {
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--bronze-lo) transparent;
+  scrollbar-width: thin;
+}
+.on-hud .on-manifest--more {
+  mask-image: linear-gradient(#000 calc(100% - 24px), transparent);
 }
 .on-hud .on-cargo-row {
   position: relative;

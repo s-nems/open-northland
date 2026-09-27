@@ -39,24 +39,16 @@ function orderKey(order: VehicleOrder, vehicleClass: VehicleClass): keyof OrderC
   return order === 'goTo' && vehicleClass === 'ship' ? 'sail' : order;
 }
 
-/** The order's name, and what its tooltip says: the refusal, the armed pick's prompt, or the right
- *  click that gives the same order on the map. */
+/** The order's name, and what its tooltip says: the refusal, the armed pick's prompt, or the name. */
 export function orderTexts(
   model: VehicleOrderModel,
   vehicleClass: VehicleClass,
   armed: boolean,
 ): { label: string; tooltip: string } {
   const copy = messages().hud.vehiclePanel;
-  const key = orderKey(model.order, vehicleClass);
-  const label = copy.orders[key];
+  const label = copy.orders[orderKey(model.order, vehicleClass)];
   if (model.control !== true) return { label, tooltip: model.control };
-  if (armed) return { label, tooltip: formatMessage(copy.armedTooltip, { order: label }) };
-  const hints: Readonly<Partial<Record<keyof OrderCopy, string>>> = copy.orderHints;
-  const hint = hints[key];
-  return {
-    label,
-    tooltip: hint === undefined ? label : formatMessage(copy.orderTooltip, { order: label, hint }),
-  };
+  return { label, tooltip: armed ? formatMessage(copy.armedTooltip, { order: label }) : label };
 }
 
 /** The portrait block: the live vehicle's frame as the centre-view button with its wear under it, and
