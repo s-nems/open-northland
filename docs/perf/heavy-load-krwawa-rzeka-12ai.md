@@ -132,7 +132,7 @@ and 145 ticks.
 - Render: [sprite-layer-instruction-rebuild](../tickets/render/sprite-layer-instruction-rebuild.md),
   [zoom-out-detail-tiers](../tickets/render/zoom-out-detail-tiers.md),
   [scene-rebuild-and-depth-sort-churn](../tickets/render/scene-rebuild-and-depth-sort-churn.md).
-- Sim: [combat-pass-scans-every-combatant](../tickets/sim/combat-pass-scans-every-combatant.md),
+- Sim: [engage-spec-allocates-per-unit](../tickets/sim/engage-spec-allocates-per-unit.md),
   [planner-pile-searches-scan-every-pile](../tickets/sim/planner-pile-searches-scan-every-pile.md),
   [gossip-candidates-refill-every-tick](../tickets/sim/gossip-candidates-refill-every-tick.md).
 

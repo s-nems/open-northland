@@ -4,6 +4,7 @@ import { mayEngage } from './acting.js';
 import { BattleFront } from './battle-alert.js';
 import { CombatIndex, holdPassIndex } from './combat-index.js';
 import { combatPossible } from './dormancy.js';
+import { engageCandidates } from './engage-candidates.js';
 import { engageCombatant } from './engage-combatant.js';
 import { engageVehicle } from './engage-vehicle.js';
 import { answerQueuedAlarms } from './hit-alarm.js';
@@ -29,7 +30,8 @@ export { vehicleWeapon } from './weapons.js';
  *
  * The dormancy gate decides in one cheap pass whether any hostile pair or lingering combat state exists, so
  * a peaceful map costs nothing. The {@link CombatIndex} then answers a seeker's nearest-enemy query from the
- * coarse cells around it rather than with an O(entities) scan per seeker.
+ * coarse cells around it rather than with an O(entities) scan per seeker, and names the units near a
+ * stranger, so a pass visits those and the units holding combat state rather than every combatant.
  *
  * Two reach radii, both in map points: the weapon's extracted `[minRange, maxRange]` band is where a swing
  * lands, while {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on.
@@ -38,25 +40,23 @@ export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
   const terrain = ctx.terrain;
 
-  // The dormancy gate is order-independent, so it runs over the raw query and a tick with no fight never
-  // rebuilds the canonical join.
+  // The dormancy gate is order-independent, so it runs over the raw query.
   if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
 
-  // The scan order and the target index are built from the canonical (ascending-id) list, so a
-  // distance or first-match tie-break lands on the same winner.
-  const combatants = world.canonicalQuery(Settler, Health, Position);
   const pass: CombatPass = {
     // Attackable buildings and vehicles join the target index but never the seeker loop: a warrior can
     // strike an enemy building or cart, and a building on alarm fires on its own after the combatants have
     // moved; an armed vehicle fights below.
-    index: new CombatIndex(world, ctx, terrain, combatants),
+    index: new CombatIndex(world, ctx, terrain),
     slots: new MeleeSlots(world, ctx, terrain),
     front: new BattleFront(world, ctx),
   };
   holdPassIndex(world, pass.index);
   answerQueuedAlarms(world, ctx, terrain, pass.index);
-  // Every combatant stays a target, but only one that may act runs the ladder.
-  for (const e of combatants) {
+  // Every combatant stays a target, but only one that may act runs the ladder. Candidates come in ascending
+  // id, so a tie-break lands on the same winner. The ladder writes only the unit it runs for, so each reads
+  // at its turn as it did when drawn.
+  for (const e of engageCandidates(world, ctx, pass.index)) {
     if (mayEngage(world, ctx, terrain, pass.index, e)) engageCombatant(world, ctx, terrain, pass, e);
   }
   fireFromShelters(world, ctx, terrain, pass.index);

@@ -1,13 +1,10 @@
-import type { ContentSet } from '@open-northland/data';
 import {
-  Anger,
   diplomacyStance,
   Health,
   isValidPlayer,
   MAX_PLAYERS,
   Owner,
   Position,
-  Settler,
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -15,17 +12,16 @@ import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { vehicleFootprintNodes } from '../footprint/index.js';
-import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isLastResortPrey } from '../readviews/index.js';
-import { entityNode } from '../spatial/nodes.js';
 import {
   type BandScan,
   type CoarseCell,
   type CombatGrid,
   coarseOf,
   combatGridOf,
+  type MemberList,
   playerBit,
+  playerOfBit,
   type SearchMetric,
-  type WildClass,
 } from './combat-grid.js';
 import { firingBuildings } from './targeting.js';
 import { vehicleWeapon } from './weapons.js';
@@ -52,11 +48,11 @@ export function passIndexOf(world: World, tick: number): CombatIndex | null {
 }
 
 /**
- * The combat tick's target index over every combatant, every vehicle and every building with a Health pool,
- * a felled one included until cleanup reaps it: the coarse cells of the world's {@link CombatGrid}, each holding its
- * early-out tallies and its members. The buildings are the grid's held layer and the combatants and vehicles
- * are appended per build, so an index answers until the next one is built for the same world. Derived state, never
- * hashed.
+ * The combat tick's target index over every combatant (a Settler with a Health pool and a Position), every
+ * vehicle and every building with a Health pool, a felled one included until cleanup reaps it: the coarse
+ * cells of the world's {@link CombatGrid}, each holding its early-out tallies and its members. Buildings and
+ * combatants are the grid's held layers and vehicles are appended per build, so an index answers until the
+ * next one is built for the same world. Derived state, never hashed.
  *
  * The coarse queries over-approximate (Chebyshev box ⊇ Manhattan diamond and map-point disc, cell
  * granularity, and "owned by a player at war with the seeker either way, or unowned and not passive
@@ -70,7 +66,6 @@ export function passIndexOf(world: World, tick: number): CombatIndex | null {
  */
 export class CombatIndex {
   private readonly grid: CombatGrid;
-  private readonly content: ContentSet;
   /** The tick this index was built on. */
   readonly tick: number;
   /** Per player slot, the {@link playerBit}s of the players it holds `enemy` toward or from, resolved once at
@@ -83,16 +78,9 @@ export class CombatIndex {
    *  depth's buffer, leaving the outer band intact. */
   private depth = 0;
 
-  /** `combatants` are the seekers and unit targets. Every building holding a Health pool joins too, at every
-   *  wall node, and every vehicle at every node of its disc, so a search finds a body at the distance to its
-   *  nearest face. */
-  constructor(
-    private readonly world: World,
-    ctx: SystemContext,
-    terrain: TerrainGraph,
-    combatants: Iterable<Entity>,
-  ) {
-    this.content = ctx.content;
+  /** Every building holding a Health pool joins at every wall node, and every vehicle at every node of its
+   *  disc, so a search finds a body at the distance to its nearest face. */
+  constructor(world: World, ctx: SystemContext, terrain: TerrainGraph) {
     this.tick = ctx.tick;
     this.hostileMasks = hostileMasksOf(world);
     this.grid = combatGridOf(world, ctx, terrain);
@@ -100,18 +88,7 @@ export class CombatIndex {
     const firing = firingBuildings(world, ctx);
     for (const b of firing) this.grid.admitFiring(b);
     this.firing = firing;
-    for (const e of combatants) {
-      const node = entityNode(world, terrain, e);
-      const owner = world.tryGet(e, Owner);
-      const bit = owner === undefined ? 0 : playerBit(owner.player);
-      const unowned = owner === undefined ? world.tryGet(e, Settler) : undefined;
-      const game =
-        unowned !== undefined &&
-        isHuntablePrey(ctx.content, unowned.tribe) &&
-        !isLastResortPrey(ctx.content, unowned.tribe);
-      this.grid.admitUnit(e, terrain.xOf(node), terrain.yOf(node), bit, this.wildClassOf(e, unowned), game);
-    }
-    // A vehicle moves, so it joins per build rather than in the held building layer.
+    // A vehicle moves, so it joins per build rather than in a held layer.
     for (const v of world.query(Vehicle, Health, Position)) {
       const owner = world.tryGet(v, Owner);
       this.grid.admitBody(
@@ -227,16 +204,8 @@ export class CombatIndex {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
         if (cell === undefined || (cell.ownerMask & bit) === 0) continue;
-        for (let i = 0; i < cell.count; i++) {
-          if (cell.memberBit[i] !== bit) continue;
-          const mx = cell.memberX[i] ?? 0;
-          const my = cell.memberY[i] ?? 0;
-          const distance =
-            metric === 'hex'
-              ? hexDistanceBetween(fromX, fromY, mx, my)
-              : Math.abs(mx - fromX) + Math.abs(my - fromY);
-          if (distance <= maxDist) keys.push(distance * CANDIDATE_ID_SPAN + (cell.members[i] ?? 0));
-        }
+        appendOwned(keys, cell.bodies, bit, fromX, fromY, maxDist, metric);
+        appendOwned(keys, cell.units, bit, fromX, fromY, maxDist, metric);
       }
     }
     keys.sort((a, b) => a - b);
@@ -295,6 +264,23 @@ export class CombatIndex {
     return this.someCell(hx, hy, radius, (cell) => cell.game > 0);
   }
 
+  /**
+   * Push to `out` every owned unit in a slot whose {@link othersWithin} could be true at up to `radius` map
+   * points from its node: one in a cell whose neighbourhood of that reach holds an undiscounted member or a
+   * player at war with it either way. Every other owned unit proves that test false. Unordered.
+   */
+  unitsNearStrangers(radius: number, out: Entity[]): void {
+    for (const cell of this.grid.strangerCellsWithin(radius)) {
+      const { units, nearMask, nearUndiscounted } = cell;
+      for (let i = 0; i < units.count; i++) {
+        const unit = units.members[i];
+        const bit = units.bit[i] ?? 0;
+        if (unit === undefined || bit === 0) continue;
+        if (nearUndiscounted || (nearMask & this.hostileMaskOf(playerOfBit(bit))) !== 0) out.push(unit);
+      }
+    }
+  }
+
   /** Every (member, admitted node) pair within the band as sorted candidate keys, in this depth's scan. A
    *  seeker asks the same band once per target tier, so the second tier reuses the first tier's scan. */
   private bandScan(
@@ -318,35 +304,18 @@ export class CombatIndex {
       return scan;
     }
     const hostile = seeker === null ? EVERY_PLAYER : this.hostileMaskOf(seeker);
-    let keys = scan.keys;
     let count = 0;
     const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
     for (let cx = cx0; cx <= cx1; cx++) {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
         if (cell === undefined) continue;
-        const { members, memberX, memberY, memberBit } = cell;
-        for (let i = 0; i < cell.count; i++) {
-          const bit = memberBit[i] ?? 0;
-          if (bit !== 0 && (bit & hostile) === 0) continue;
-          const mx = memberX[i] ?? 0;
-          const my = memberY[i] ?? 0;
-          const distance =
-            metric === 'hex'
-              ? hexDistanceBetween(fromX, fromY, mx, my)
-              : Math.abs(mx - fromX) + Math.abs(my - fromY);
-          if (distance < minDist || distance > maxDist) continue;
-          if (count === keys.length) {
-            const grown = new Float64Array(keys.length * 2);
-            grown.set(keys);
-            keys = grown;
-          }
-          keys[count++] = distance * CANDIDATE_ID_SPAN + (members[i] ?? 0);
-        }
+        count = appendBand(scan, count, cell.bodies, fromX, fromY, minDist, maxDist, hostile, metric);
+        count = appendBand(scan, count, cell.units, fromX, fromY, minDist, maxDist, hostile, metric);
       }
     }
     // A typed array sorts numerically without a comparator call per compare.
-    keys.subarray(0, count).sort();
+    scan.keys.subarray(0, count).sort();
     scan.valid = true;
     scan.x = fromX;
     scan.y = fromY;
@@ -355,23 +324,7 @@ export class CombatIndex {
     scan.metric = metric;
     scan.seeker = seeker;
     scan.count = count;
-    scan.keys = keys;
     return scan;
-  }
-
-  /**
-   * Classify a member by `unowned`, its Settler when it carries no Owner, or null for anything owned or
-   * non-animal. `'passive'` is discounted from {@link othersWithin} and `'hostile'` additionally from
-   * {@link civsWithin}, so neither a grazing herd nor a wolf pack can defeat every gated seeker's early-out.
-   * Pure reads - the lapsed-Anger reap stays with the attacker pass, and it can only grow the passive share
-   * within the tick, which leaves the build-time tally conservative.
-   */
-  private wildClassOf(e: Entity, unowned: { readonly tribe: number } | undefined): WildClass {
-    const { world, content } = this;
-    if (unowned === undefined || !isAnimalTribe(content, unowned.tribe)) return null;
-    if (isAggressiveAnimal(content, unowned.tribe)) return 'hostile';
-    const anger = world.tryGet(e, Anger);
-    return anger !== undefined && this.tick < anger.until ? 'hostile' : 'passive';
   }
 
   /** The players `player` may fight or flee from; every slot for a player outside them, whom
@@ -407,6 +360,63 @@ function hostileMasksOf(world: World): number[] {
     masks.push(mask);
   }
   return masks;
+}
+
+/** Append to `scan` from `count` every member of `list` within `minDist..maxDist` of (fromX, fromY) that
+ *  `hostile` does not skip, growing its key buffer as needed; returns the new count. */
+function appendBand(
+  scan: BandScan,
+  count: number,
+  list: MemberList,
+  fromX: number,
+  fromY: number,
+  minDist: number,
+  maxDist: number,
+  hostile: number,
+  metric: SearchMetric,
+): number {
+  const { members, x, y, bit } = list;
+  let n = count;
+  for (let i = 0; i < list.count; i++) {
+    const memberBit = bit[i] ?? 0;
+    if (memberBit !== 0 && (memberBit & hostile) === 0) continue;
+    const mx = x[i] ?? 0;
+    const my = y[i] ?? 0;
+    const distance =
+      metric === 'hex'
+        ? hexDistanceBetween(fromX, fromY, mx, my)
+        : Math.abs(mx - fromX) + Math.abs(my - fromY);
+    if (distance < minDist || distance > maxDist) continue;
+    if (n === scan.keys.length) {
+      const grown = new Float64Array(scan.keys.length * 2);
+      grown.set(scan.keys);
+      scan.keys = grown;
+    }
+    scan.keys[n++] = distance * CANDIDATE_ID_SPAN + (members[i] ?? 0);
+  }
+  return n;
+}
+
+/** Push to `keys` every member of `list` owned by `bit` within `maxDist` of (fromX, fromY). */
+function appendOwned(
+  keys: number[],
+  list: MemberList,
+  bit: number,
+  fromX: number,
+  fromY: number,
+  maxDist: number,
+  metric: SearchMetric,
+): void {
+  for (let i = 0; i < list.count; i++) {
+    if (list.bit[i] !== bit) continue;
+    const mx = list.x[i] ?? 0;
+    const my = list.y[i] ?? 0;
+    const distance =
+      metric === 'hex'
+        ? hexDistanceBetween(fromX, fromY, mx, my)
+        : Math.abs(mx - fromX) + Math.abs(my - fromY);
+    if (distance <= maxDist) keys.push(distance * CANDIDATE_ID_SPAN + (list.members[i] ?? 0));
+  }
 }
 
 /** The inclusive coarse-cell range covering the box `radius` nodes around (hx, hy). */

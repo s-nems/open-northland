@@ -6,8 +6,7 @@ Predicted from the loop shapes, not measured at army scale. The 100k `magiczny_l
 `krwawa_rzeka` with 12 AI seats (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`), with 39 units engaged and
 60 fleeing a tick at t100k, `bandScan` is 0.76% self (0.31% at t80k), `CombatIndex.nearest` under
 `fleeDrive` 1.08%, `faceApproach` 1.06% and `approachCell` 0.49%. The work below scales with fighters
-times the hostiles in reach, so it is the first combat term expected to grow in a melee blob. The
-per-tick pass over every combatant is [its own ticket](combat-pass-scans-every-combatant.md).
+times the hostiles in reach, so it is the first combat term expected to grow in a melee blob.
 
 - `CombatIndex.bandScan` (`conflict/combat-index.ts`) collects every hostile (member, node) key in the
   box around a seeker and sorts them all: `keys.subarray(0, count).sort();`. Unowned members always pass

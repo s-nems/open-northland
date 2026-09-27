@@ -17,6 +17,7 @@ import {
   Settler,
   Sheltering,
   StayPoint,
+  setDiplomacyStance,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../src/index.js';
@@ -40,6 +41,9 @@ import { ctxOf, fleeCheckCtxOf } from '../fixtures/context.js';
 import { grassNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 import { COW, fighterAtNode } from './combat-system/support.js';
 import { combatantAtNode, P0, P1 } from './stances/support.js';
+
+/** A seat at peace with {@link P0}. */
+const NEUTRAL_SEAT = 2;
 
 /**
  * Where a runner may aim and how often it re-aims: the FLEE drive and the wildlife fright pick an away-cell
@@ -157,10 +161,10 @@ function manTower(s: Simulation, tower: Entity, owner: number): Entity {
 }
 
 /** Whether `e`'s player sees any flee threat around it, through the index's presence gate. */
-function threatsAround(s: Simulation, e: Entity, members: Entity[]): boolean {
+function threatsAround(s: Simulation, e: Entity): boolean {
   const terrain = terrainOf(s);
   const { x, y } = terrain.coordsOf(entityNode(s.world, terrain, e));
-  const index = new CombatIndex(s.world, ctxOf(s), terrain, members);
+  const index = new CombatIndex(s.world, ctxOf(s), terrain);
   return index.threatsWithin(s.world.get(e, Owner).player, x, y, SIGHT_RADIUS_NODES);
 }
 
@@ -347,7 +351,7 @@ describe('FLEE - only a building that shoots is a threat', () => {
     const house = buildingAtNode(s, HOUSE, 34, 30, P1);
 
     expect(scares(s, civ, house)).toBe(false);
-    expect(threatsAround(s, civ, [civ])).toBe(false);
+    expect(threatsAround(s, civ)).toBe(false);
     combatSystem(s.world, fleeCheckCtxOf(s, civ));
     expect(s.world.has(civ, Fleeing)).toBe(false);
   });
@@ -367,10 +371,10 @@ describe('FLEE - only a building that shoots is a threat', () => {
     const s = sim();
     const civ = combatantAtNode(s, 30, 30, P0, MILITARY_MODE.FLEE, { jobType: CIVILIAN_JOB });
     const tower = buildingAtNode(s, TOWER, 34, 30, P1);
-    const soldier = manTower(s, tower, P1);
+    manTower(s, tower, P1);
 
     expect(scares(s, civ, tower)).toBe(true);
-    expect(threatsAround(s, civ, [civ, soldier])).toBe(true);
+    expect(threatsAround(s, civ)).toBe(true);
     combatSystem(s.world, fleeCheckCtxOf(s, civ));
     expect(s.world.has(civ, Fleeing)).toBe(true);
   });
@@ -395,12 +399,15 @@ describe('FLEE - only a building that shoots is a threat', () => {
     const civ = combatantAtNode(s, 30, 30, P0, MILITARY_MODE.FLEE, { jobType: CIVILIAN_JOB });
     buildingAtNode(s, HOUSE, 34, 30, P1);
     const tower = buildingAtNode(s, TOWER, 30, 36, P1);
-    expect(threatsAround(s, civ, [civ])).toBe(false);
+    expect(threatsAround(s, civ)).toBe(false);
 
-    const soldier = manTower(s, tower, P1); // left out of the members, so only the tower's firing mark counts
-    expect(threatsAround(s, civ, [civ])).toBe(true);
+    // Manned by a neutral seat's soldier, so only the tower's firing mark can open the gate.
+    setDiplomacyStance(s.world, P0, NEUTRAL_SEAT, 'neutral');
+    setDiplomacyStance(s.world, NEUTRAL_SEAT, P0, 'neutral');
+    const soldier = manTower(s, tower, NEUTRAL_SEAT);
+    expect(threatsAround(s, civ)).toBe(true);
 
     s.world.remove(soldier, Garrison); // off duty: the next build drops the mark
-    expect(threatsAround(s, civ, [civ])).toBe(false);
+    expect(threatsAround(s, civ)).toBe(false);
   });
 });

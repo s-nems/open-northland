@@ -132,7 +132,7 @@ export function settlerProgressLog(world: World): Set<Entity> {
 }
 
 /** The indexes that drain a trade log, each its own. */
-export type SettlerTradeReader = 'workshopWorkforce' | 'ownedFighters';
+export type SettlerTradeReader = 'workshopWorkforce' | 'ownedFighters' | 'combatReady';
 
 /** Per world and reader, the settlers whose trade {@link setSettlerJob} wrote since that reader last
  *  drained its log: the progress log's narrower twin, for a reader that ignores experience. */

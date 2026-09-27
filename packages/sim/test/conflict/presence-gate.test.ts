@@ -186,21 +186,21 @@ describe('combat presence gate - diplomacy', () => {
     return e;
   }
 
-  /** Whether `player`'s gate at node (40, 40) opens over `members` and every live building. */
-  function gateOpens(sim: Simulation, members: readonly Entity[], player: number): boolean {
+  /** Whether `player`'s gate at node (40, 40) opens over every combatant and live building. */
+  function gateOpens(sim: Simulation, player: number): boolean {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
-    const index = new CombatIndex(sim.world, ctxOf(sim), terrain, members);
+    const index = new CombatIndex(sim.world, ctxOf(sim), terrain);
     return index.othersWithin(player, 40, 40, SIGHT_RADIUS_NODES);
   }
 
   /** P0's civilian at node (40, 40) with a P1 settler and a P1 building six nodes off, inside its sight box. */
-  function neighbours(): { sim: Simulation; members: Entity[] } {
+  function neighbours(): Simulation {
     const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
-    const civ = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE);
-    const settler = combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
+    combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE);
+    combatantAtNode(sim, 46, 40, P1, MILITARY_MODE.IGNORE);
     hqAtNode(sim, 40, 46, P1);
-    return { sim, members: [civ, settler] };
+    return sim;
   }
 
   function setPair(sim: Simulation, p0ToP1: string, p1ToP0: string): void {
@@ -210,27 +210,27 @@ describe('combat presence gate - diplomacy', () => {
 
   for (const stance of ['neutral', 'friend'] as const) {
     it(`stays closed on a ${stance} neighbour's settlers and buildings in the box`, () => {
-      const { sim, members } = neighbours();
+      const sim = neighbours();
       setPair(sim, stance, stance);
-      expect(gateOpens(sim, members, P0)).toBe(false);
-      expect(gateOpens(sim, members, P1)).toBe(false);
+      expect(gateOpens(sim, P0)).toBe(false);
+      expect(gateOpens(sim, P1)).toBe(false);
     });
   }
 
   it('opens on an enemy stance held in either direction', () => {
-    const { sim, members } = neighbours();
+    const sim = neighbours();
     setPair(sim, 'enemy', 'neutral');
-    expect([gateOpens(sim, members, P0), gateOpens(sim, members, P1)]).toEqual([true, true]);
+    expect([gateOpens(sim, P0), gateOpens(sim, P1)]).toEqual([true, true]);
     setPair(sim, 'neutral', 'enemy');
-    expect([gateOpens(sim, members, P0), gateOpens(sim, members, P1)]).toEqual([true, true]);
+    expect([gateOpens(sim, P0), gateOpens(sim, P1)]).toEqual([true, true]);
   });
 
   it('still opens on a hostile animal beside neighbours at peace', () => {
-    const { sim, members } = neighbours();
+    const sim = neighbours();
     setPair(sim, 'neutral', 'neutral');
-    const bear = fighterAtNode(sim, 44, 44, BEAR, null);
-    expect(gateOpens(sim, members, P0)).toBe(false);
-    expect(gateOpens(sim, [...members, bear], P0)).toBe(true);
+    expect(gateOpens(sim, P0)).toBe(false);
+    fighterAtNode(sim, 44, 44, BEAR, null);
+    expect(gateOpens(sim, P0)).toBe(true);
   });
 
   it('a civilian still flees a one-way aggressor it holds no grudge against', () => {
@@ -276,22 +276,22 @@ describe('combat presence gate - diplomacy', () => {
 describe('combat presence gate - game', () => {
   const RADIUS = 12;
 
-  function gameAround(sim: Simulation, members: readonly Entity[]): boolean {
+  function gameAround(sim: Simulation): boolean {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
-    return new CombatIndex(sim.world, ctxOf(sim), terrain, members).gameWithin(40, 40, RADIUS);
+    return new CombatIndex(sim.world, ctxOf(sim), terrain).gameWithin(40, 40, RADIUS);
   }
 
   it('tallies unowned huntable game, never last-resort livestock, an owned animal or game past the band', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
-    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
-    const cow = fighterAtNode(sim, 44, 40, COW, null);
+    combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    fighterAtNode(sim, 44, 40, COW, null);
     const ownedDeer = fighterAtNode(sim, 44, 42, DEER, null);
     sim.world.add(ownedDeer, Owner, { player: P0 });
-    const farDeer = fighterAtNode(sim, 40 + 4 * RADIUS, 40, DEER, null);
-    expect(gameAround(sim, [hunter, cow, ownedDeer, farDeer])).toBe(false);
+    fighterAtNode(sim, 40 + 4 * RADIUS, 40, DEER, null);
+    expect(gameAround(sim)).toBe(false);
 
-    const deer = fighterAtNode(sim, 46, 40, DEER, null);
-    expect(gameAround(sim, [hunter, cow, ownedDeer, farDeer, deer])).toBe(true);
+    fighterAtNode(sim, 46, 40, DEER, null);
+    expect(gameAround(sim)).toBe(true);
   });
 });

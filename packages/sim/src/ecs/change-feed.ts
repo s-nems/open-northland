@@ -35,6 +35,13 @@ export class ChangeFeed {
     return this.overflowed || this.entities.length > 0;
   }
 
+  /** Hand every recorded entity to `visit` without draining, for a verifier that must tell a known
+   *  pending change from staleness. Returns true instead when entries were lost to an overflow. */
+  peek(visit: (entity: Entity) => void): boolean {
+    if (!this.overflowed) for (let i = 0; i < this.entities.length; i++) visit(this.entities[i] as Entity);
+    return this.overflowed;
+  }
+
   /** Hand every recorded entity to `consume`, possibly repeated, and empty the feed. Returns true
    *  instead when entries were lost to an overflow, so the reader must rebuild from the stores. */
   drain(consume: (entity: Entity) => void): boolean {

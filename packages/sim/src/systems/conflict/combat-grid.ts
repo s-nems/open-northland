@@ -1,9 +1,25 @@
 import type { ContentSet } from '@open-northland/data';
-import { Building, Health, isValidPlayer, Owner, Position } from '../../components/index.js';
-import type { Component, Entity, World } from '../../ecs/world.js';
+import {
+  Anger,
+  Building,
+  Health,
+  isValidPlayer,
+  MAX_PLAYERS,
+  Owner,
+  Position,
+  Settler,
+} from '../../components/index.js';
+import type { ChangeFeed, Component, Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
-import { isLowPriorityBuildingTarget } from '../readviews/index.js';
+import {
+  isAggressiveAnimal,
+  isAnimalTribe,
+  isHuntablePrey,
+  isLastResortPrey,
+  isLowPriorityBuildingTarget,
+} from '../readviews/index.js';
+import { entityNode } from '../spatial/nodes.js';
 import { buildingBodyNodes } from './target-node.js';
 
 /** Coarse cell edge (half-cell nodes). A sight- or defend-radius query (≤ ~20 nodes) spans three or four
@@ -18,22 +34,45 @@ const BAND_SCAN_INITIAL_KEYS = 64;
  *  and a Health pool, at the presence bit of its Owner. */
 const LAYER_STORES: readonly Component<unknown>[] = [Building, Health, Position, Owner];
 
+/** The stores whose membership or value re-classes a unit in the unit layer: a unit is indexed while it
+ *  holds a Settler, a Health pool and a Position, and its Owner, tribe and Anger decide its tallies. The
+ *  tribe never changes, and an Anger that lapses without a write is re-read every build. A Position write
+ *  only moves a unit, so it has its own feed. */
+const UNIT_MEMBERSHIP: readonly Component<unknown>[] = [Settler, Health, Position, Owner, Anger];
+const UNIT_VALUES: readonly Component<unknown>[] = [Owner];
+
 /** A player's slot bit, or 0 for a player outside the slots. */
 export function playerBit(player: number): number {
   return isValidPlayer(player) ? 1 << player : 0;
 }
 
+/** The player slot a nonzero {@link playerBit} names. */
+export function playerOfBit(bit: number): number {
+  return 31 - Math.clz32(bit);
+}
+
 /** An unowned animal's presence class, or null for anything owned or non-animal. */
 export type WildClass = 'passive' | 'hostile' | null;
 
+/** A cell's members with the node each was admitted at. The arrays keep their longest length and
+ *  {@link count} is the live one, so a reset allocates nothing. */
+export interface MemberList {
+  count: number;
+  readonly members: Entity[];
+  readonly x: number[];
+  readonly y: number[];
+  /** The member's owner as a {@link playerBit}, 0 when unowned. */
+  readonly bit: number[];
+}
+
 /**
- * One coarse cell: its early-out tallies and its members with the node each was admitted at. Counts are per
- * member, not per node - both queries reduce to "does a member of some class exist here?", which no
- * weighting can change. The member arrays keep their longest length and {@link count} is the live one, so a
- * build's reset allocates nothing.
+ * One coarse cell: its early-out tallies and its members. Counts are per member, not per node - every
+ * query reduces to "does a member of some class exist here?", which no weighting can change. The tallies
+ * the queries read are the sum of three layers, re-derived by {@link refresh}: the held buildings, the kept
+ * units, and this build's vehicles and firing buildings.
  */
 export interface CoarseCell {
-  count: number;
+  readonly index: number;
   total: number;
   passive: number;
   hostileAnimal: number;
@@ -48,22 +87,39 @@ export interface CoarseCell {
    *  here, and how many such members no diplomacy can discount. A plain building adds to neither. */
   threatMask: number;
   threatUndiscounted: number;
-  readonly members: Entity[];
-  readonly memberX: number[];
-  readonly memberY: number[];
-  /** The member's owner as a {@link playerBit}, 0 when unowned. */
-  readonly memberBit: number[];
-  /** The last member tallied, so a building's several nodes in one cell count once. */
-  countedLast: Entity | null;
-  /** The building layer's share, which each build's reset restores. A building is never wildlife, so the
-   *  animal tallies restore to zero. */
-  baseCount: number;
+  /** The held buildings at each of their nodes, then this build's vehicles past {@link bodyBase}. */
+  readonly bodies: MemberList;
+  /** The kept units, one node each. */
+  readonly units: MemberList;
+  /** The building layer's share. A building is never wildlife. */
+  bodyBase: number;
   baseTotal: number;
   baseUndiscounted: number;
   baseOwnerMask: number;
-  /** Whether this build admitted a unit or a firing building here, so the next reset visits only such
+  /** The unit layer's share; a unit threatens where it stands, so its threat share is its owner share. */
+  unitPassive: number;
+  unitHostileAnimal: number;
+  unitGame: number;
+  unitUndiscounted: number;
+  /** Per player slot, the units it owns here, which keep {@link unitOwnerMask} exact as units leave. */
+  readonly unitOwners: number[];
+  unitOwnerMask: number;
+  /** This build's share: the vehicles, and the buildings able to fire. */
+  buildTotal: number;
+  buildUndiscounted: number;
+  buildOwnerMask: number;
+  buildThreatMask: number;
+  buildThreatUndiscounted: number;
+  /** The last body tallied, so a building's or vehicle's several nodes in one cell count once. */
+  countedLast: Entity | null;
+  /** Whether this build admitted a vehicle or a firing building here, so the next reset visits only such
    *  cells. */
-  unitsAdmitted: boolean;
+  builtOn: boolean;
+  /** Over the cells within the stranger reach of this one: the owner bits, and whether any holds an
+   *  undiscounted member. Current unless {@link nearDirty}. */
+  nearMask: number;
+  nearUndiscounted: boolean;
+  nearDirty: boolean;
 }
 
 /** How a combat search measures its band: Manhattan half-cell nodes, which work areas count in, or the
@@ -93,23 +149,40 @@ interface HeldBuilding {
   readonly nodes: readonly NodeId[];
 }
 
+/** A unit as the layer holds it: where in which cell, and the classes its tallies counted. */
+interface HeldUnit {
+  cell: CoarseCell;
+  slot: number;
+  readonly bit: number;
+  readonly wild: WildClass;
+  readonly game: boolean;
+}
+
 const grids = new WeakMap<World, CombatGrid>();
 
 /**
  * The per-world cell grid under the combat tick's target index. Buildings form a layer held across ticks,
  * rebuilt only when a building is placed, removed, retyped, re-owned or gains or loses its Position or Health
- * pool; units are appended each tick on top of it. A building's hitpoints are not a key: one felled this tick
- * stays in the layer until cleanup removes it, which only over-counts the presence tallies, and every target
- * filter already rejects a dead target. The cells hold owner bits only, never a stance, so a diplomacy change
- * needs no rebuild. Derived state, never hashed; the registered verifier re-derives the layer.
+ * pool. Units form a layer kept across ticks from a change feed, so a build costs the units that moved, joined,
+ * left or changed owner, tribe or Anger. Vehicles and the firing marks are appended each build on top.
+ * A building's hitpoints are not a key: one felled this tick stays in the layer until cleanup removes it,
+ * which only over-counts the presence tallies, and every target filter already rejects a dead target. The
+ * cells hold owner bits only, never a stance, so a diplomacy change needs no rebuild. Derived state, never
+ * hashed; the registered verifiers re-derive both held layers.
  */
 export function combatGridOf(world: World, ctx: SystemContext, terrain: TerrainGraph): CombatGrid {
   const held = grids.get(world);
   if (held !== undefined && held.terrain === terrain && held.content === ctx.content) return held;
-  const grid = new CombatGrid(terrain, ctx.content);
+  const grid = new CombatGrid(
+    terrain,
+    ctx.content,
+    world.watchChanges(UNIT_MEMBERSHIP, UNIT_VALUES),
+    world.watchChanges([], [Position]),
+  );
   grids.set(world, grid);
   for (const store of LAYER_STORES) world.journalMembership(store);
   world.registerCacheVerifier('combatBuildingLayer', () => grids.get(world)?.verify(world) ?? []);
+  world.registerCacheVerifier('combatUnitLayer', () => grids.get(world)?.verifyUnits(world) ?? []);
   return grid;
 }
 
@@ -117,7 +190,7 @@ export class CombatGrid {
   private readonly cols: number;
   private readonly rows: number;
   private readonly cells: (CoarseCell | undefined)[];
-  private readonly unitCells: CoarseCell[] = [];
+  private readonly builtCells: CoarseCell[] = [];
   private readonly buildings = new Map<Entity, HeldBuilding>();
   /** Members on the deprioritized siege tier, classified by type when the layer is built. */
   private readonly lowPriority = new Set<Entity>();
@@ -126,47 +199,48 @@ export class CombatGrid {
   private generations: number[] | null = null;
   private buildingValueGeneration = 0;
   private ownerValueGeneration = 0;
+  private readonly units = new Map<Entity, HeldUnit>();
+  /** Whether the unit layer was ever built; until then the feed's entries describe nothing held. */
+  private unitsBuilt = false;
+  /** The coarse cells the stranger neighbourhood spans each way; null until first asked. */
+  private nearCells: number | null = null;
+  private readonly nearDirtyCells: CoarseCell[] = [];
+  /** The cells whose neighbourhood holds an undiscounted member or two owners. */
+  private readonly strangerCells = new Set<CoarseCell>();
   private readonly bandScans: BandScan[] = [];
 
   constructor(
     readonly terrain: TerrainGraph,
     readonly content: ContentSet,
+    private readonly unitFeed: ChangeFeed,
+    private readonly moveFeed: ChangeFeed,
   ) {
     this.cols = Math.ceil(terrain.width / COARSE_CELL_NODES);
     this.rows = Math.ceil(terrain.height / COARSE_CELL_NODES);
     this.cells = new Array<CoarseCell | undefined>(this.cols * this.rows).fill(undefined);
   }
 
-  /** Bring the building layer up to date and drop the previous build's units, leaving the grid ready for
-   *  this build's unit admissions. */
+  /** Bring both held layers up to date and drop the previous build's vehicles and firing marks, leaving
+   *  the grid ready for this build's admissions. */
   startBuild(world: World, ctx: SystemContext): void {
     for (const scan of this.bandScans) scan.valid = false;
     if (!this.buildingsCurrent(world)) {
       this.rebuildBuildings(world, ctx);
-      return;
+    } else {
+      for (const cell of this.builtCells) {
+        cell.bodies.count = cell.bodyBase;
+        cell.buildTotal = 0;
+        cell.buildUndiscounted = 0;
+        cell.buildOwnerMask = 0;
+        cell.buildThreatMask = 0;
+        cell.buildThreatUndiscounted = 0;
+        cell.countedLast = null;
+        cell.builtOn = false;
+        this.refresh(cell);
+      }
+      this.builtCells.length = 0;
     }
-    for (const cell of this.unitCells) {
-      cell.count = cell.baseCount;
-      cell.total = cell.baseTotal;
-      cell.passive = 0;
-      cell.hostileAnimal = 0;
-      cell.game = 0;
-      cell.undiscounted = cell.baseUndiscounted;
-      cell.ownerMask = cell.baseOwnerMask;
-      cell.threatMask = 0;
-      cell.threatUndiscounted = 0;
-      cell.countedLast = null;
-      cell.unitsAdmitted = false;
-    }
-    this.unitCells.length = 0;
-  }
-
-  /** Append a unit at node (x, y) for this build; `game` says it counts toward {@link CoarseCell.game}. */
-  admitUnit(e: Entity, x: number, y: number, bit: number, wild: WildClass, game: boolean): void {
-    const cell = this.touchForBuild(x, y);
-    admit(cell, e, x, y, bit, wild);
-    if (game) cell.game++;
-    addThreat(cell, bit, wild);
+    this.syncUnits(world, ctx.tick);
   }
 
   /** Append moving body `e` (a vehicle) at each of its nodes for this build; an armed one threatens there
@@ -176,8 +250,15 @@ export class CombatGrid {
       const x = this.terrain.xOf(node);
       const y = this.terrain.yOf(node);
       const cell = this.touchForBuild(x, y);
-      admit(cell, e, x, y, bit, null);
-      if (armed) addThreat(cell, bit, null);
+      push(cell.bodies, e, x, y, bit);
+      if (cell.countedLast !== e) {
+        cell.countedLast = e;
+        cell.buildTotal++;
+        if (bit !== 0) cell.buildOwnerMask |= bit;
+        else cell.buildUndiscounted++;
+      }
+      if (armed) addBuildThreat(cell, bit);
+      this.refresh(cell);
     }
   }
 
@@ -186,7 +267,9 @@ export class CombatGrid {
     const held = this.buildings.get(b);
     if (held === undefined) return;
     for (const node of held.nodes) {
-      addThreat(this.touchForBuild(this.terrain.xOf(node), this.terrain.yOf(node)), held.bit, null);
+      const cell = this.touchForBuild(this.terrain.xOf(node), this.terrain.yOf(node));
+      addBuildThreat(cell, held.bit);
+      this.refresh(cell);
     }
   }
 
@@ -200,6 +283,29 @@ export class CombatGrid {
   cellAt(cx: number, cy: number): CoarseCell | undefined {
     if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) return undefined;
     return this.cells[cy * this.cols + cx];
+  }
+
+  /**
+   * The cells whose neighbourhood of `radius` map points holds an undiscounted member or two owners: a
+   * query of at most `radius` from any node in any other cell sees one owner at most and nothing
+   * undiscounted. Kept per change; a new radius re-derives every cell once.
+   */
+  strangerCellsWithin(radius: number): ReadonlySet<CoarseCell> {
+    const reach = Math.ceil(radius / COARSE_CELL_NODES);
+    if (reach !== this.nearCells) {
+      this.nearCells = reach;
+      for (const cell of this.cells) if (cell !== undefined) this.markNearDirty(cell);
+    }
+    for (const cell of this.nearDirtyCells) {
+      const { nearMask, nearUndiscounted } = this.nearOf(cell, reach);
+      cell.nearMask = nearMask;
+      cell.nearUndiscounted = nearUndiscounted;
+      cell.nearDirty = false;
+      if (nearUndiscounted || (nearMask & (nearMask - 1)) !== 0) this.strangerCells.add(cell);
+      else this.strangerCells.delete(cell);
+    }
+    this.nearDirtyCells.length = 0;
+    return this.strangerCells;
   }
 
   /** The band scan scratch for nesting depth `depth`. */
@@ -256,22 +362,23 @@ export class CombatGrid {
     return false;
   }
 
+  /** Re-admit every building, clearing this build's share with the old layer; the units stay. */
   private rebuildBuildings(world: World, ctx: SystemContext): void {
     for (const cell of this.cells) {
       if (cell === undefined) continue;
-      cell.count = 0;
-      cell.total = 0;
-      cell.passive = 0;
-      cell.hostileAnimal = 0;
-      cell.game = 0;
-      cell.undiscounted = 0;
-      cell.ownerMask = 0;
-      cell.threatMask = 0;
-      cell.threatUndiscounted = 0;
+      cell.bodies.count = 0;
+      cell.baseTotal = 0;
+      cell.baseUndiscounted = 0;
+      cell.baseOwnerMask = 0;
+      cell.buildTotal = 0;
+      cell.buildUndiscounted = 0;
+      cell.buildOwnerMask = 0;
+      cell.buildThreatMask = 0;
+      cell.buildThreatUndiscounted = 0;
       cell.countedLast = null;
-      cell.unitsAdmitted = false;
+      cell.builtOn = false;
     }
-    this.unitCells.length = 0;
+    this.builtCells.length = 0;
     this.buildings.clear();
     this.lowPriority.clear();
     for (const b of world.query(Building, Health, Position)) {
@@ -279,22 +386,181 @@ export class CombatGrid {
       for (const node of held.nodes) {
         const x = this.terrain.xOf(node);
         const y = this.terrain.yOf(node);
-        admit(this.cellFor(x, y), b, x, y, held.bit, null);
+        const cell = this.cellFor(x, y);
+        push(cell.bodies, b, x, y, held.bit);
+        if (cell.countedLast === b) continue;
+        cell.countedLast = b;
+        cell.baseTotal++;
+        if (held.bit !== 0) cell.baseOwnerMask |= held.bit;
+        else cell.baseUndiscounted++;
       }
       this.buildings.set(b, held);
       if (isLowPriorityBuildingTarget(world, ctx, b)) this.lowPriority.add(b);
     }
     for (const cell of this.cells) {
       if (cell === undefined) continue;
-      cell.baseCount = cell.count;
-      cell.baseTotal = cell.total;
-      cell.baseUndiscounted = cell.undiscounted;
-      cell.baseOwnerMask = cell.ownerMask;
+      cell.bodyBase = cell.bodies.count;
       cell.countedLast = null;
+      this.refresh(cell);
     }
     this.generations = LAYER_STORES.map((store) => world.componentGeneration(store));
     this.buildingValueGeneration = world.componentValueGeneration(Building);
     this.ownerValueGeneration = world.componentValueGeneration(Owner);
+  }
+
+  /** Replay the unit feeds onto the unit layer, or re-admit every unit when a feed lost entries. An Anger
+   *  lapses at its `until` tick without a write, so its holders are re-read every build. */
+  private syncUnits(world: World, tick: number): void {
+    const lost =
+      !this.unitsBuilt ||
+      this.unitFeed.drain((e) => this.placeUnit(world, tick, e)) ||
+      this.moveFeed.drain((e) => this.moveUnit(world, e));
+    if (lost) {
+      this.unitFeed.drain(() => {});
+      this.moveFeed.drain(() => {});
+      this.rebuildUnits(world, tick);
+    }
+    for (const e of world.query(Anger)) this.placeUnit(world, tick, e);
+  }
+
+  private rebuildUnits(world: World, tick: number): void {
+    for (const cell of this.cells) {
+      if (cell === undefined) continue;
+      cell.units.count = 0;
+      cell.unitPassive = 0;
+      cell.unitHostileAnimal = 0;
+      cell.unitGame = 0;
+      cell.unitUndiscounted = 0;
+      cell.unitOwners.fill(0);
+      cell.unitOwnerMask = 0;
+      this.refresh(cell);
+    }
+    this.units.clear();
+    for (const e of world.query(Settler, Health, Position)) this.placeUnit(world, tick, e);
+    this.unitsBuilt = true;
+  }
+
+  /** Bring `e`'s unit entry in line with the world: admit, move, re-class or drop it. */
+  private placeUnit(world: World, tick: number, e: Entity): void {
+    const held = this.units.get(e);
+    if (!isCombatant(world, e)) {
+      if (held !== undefined) this.dropUnit(e, held);
+      return;
+    }
+    const node = entityNode(world, this.terrain, e);
+    const x = this.terrain.xOf(node);
+    const y = this.terrain.yOf(node);
+    const owner = world.tryGet(e, Owner);
+    const bit = owner === undefined ? 0 : playerBit(owner.player);
+    const unowned = owner === undefined ? world.get(e, Settler) : undefined;
+    const wild = wildClassOf(world, this.content, tick, e, unowned);
+    const game = isGame(this.content, unowned);
+    if (held !== undefined) {
+      const cell = this.cellFor(x, y);
+      if (held.cell === cell && held.bit === bit && held.wild === wild && held.game === game) {
+        cell.units.x[held.slot] = x;
+        cell.units.y[held.slot] = y;
+        return;
+      }
+      this.dropUnit(e, held);
+    }
+    this.addUnit(e, x, y, bit, wild, game);
+  }
+
+  /** Follow held unit `e` to the node its Position now stands on; the membership feed, replayed first,
+   *  has already dropped one that left the layer. */
+  private moveUnit(world: World, e: Entity): void {
+    const held = this.units.get(e);
+    if (held === undefined) return;
+    const node = entityNode(world, this.terrain, e);
+    const x = this.terrain.xOf(node);
+    const y = this.terrain.yOf(node);
+    const units = held.cell.units;
+    if (units.x[held.slot] === x && units.y[held.slot] === y) return;
+    const cell = this.cellFor(x, y);
+    if (cell === held.cell) {
+      units.x[held.slot] = x;
+      units.y[held.slot] = y;
+      return;
+    }
+    this.dropUnit(e, held);
+    this.addUnit(e, x, y, held.bit, held.wild, held.game);
+  }
+
+  private addUnit(e: Entity, x: number, y: number, bit: number, wild: WildClass, game: boolean): void {
+    const cell = this.cellFor(x, y);
+    const slot = cell.units.count;
+    push(cell.units, e, x, y, bit);
+    this.units.set(e, { cell, slot, bit, wild, game });
+    tallyUnit(cell, bit, wild, game, 1);
+    this.refresh(cell);
+  }
+
+  /** Swap-remove `e` from its cell: the cell's last unit takes its slot. */
+  private dropUnit(e: Entity, held: HeldUnit): void {
+    const { cell, slot } = held;
+    const units = cell.units;
+    const last = units.count - 1;
+    const moved = units.members[last];
+    if (slot !== last && moved !== undefined) {
+      units.members[slot] = moved;
+      units.x[slot] = units.x[last] ?? 0;
+      units.y[slot] = units.y[last] ?? 0;
+      units.bit[slot] = units.bit[last] ?? 0;
+      const movedHeld = this.units.get(moved);
+      if (movedHeld !== undefined) movedHeld.slot = slot;
+    }
+    units.count = last;
+    this.units.delete(e);
+    tallyUnit(cell, held.bit, held.wild, held.game, -1);
+    this.refresh(cell);
+  }
+
+  /** Re-derive `cell`'s combined tallies from its layers, and flag the neighbourhood whose stranger test
+   *  may have changed with them. */
+  private refresh(cell: CoarseCell): void {
+    const wasOwners = cell.ownerMask;
+    const wasUndiscounted = cell.undiscounted > 0;
+    cell.total = cell.baseTotal + cell.units.count + cell.buildTotal;
+    cell.passive = cell.unitPassive;
+    cell.hostileAnimal = cell.unitHostileAnimal;
+    cell.game = cell.unitGame;
+    cell.undiscounted = cell.baseUndiscounted + cell.unitUndiscounted + cell.buildUndiscounted;
+    cell.ownerMask = cell.baseOwnerMask | cell.unitOwnerMask | cell.buildOwnerMask;
+    cell.threatMask = cell.unitOwnerMask | cell.buildThreatMask;
+    cell.threatUndiscounted = cell.unitUndiscounted + cell.buildThreatUndiscounted;
+    if (cell.ownerMask !== wasOwners || cell.undiscounted > 0 !== wasUndiscounted) this.markNearDirty(cell);
+  }
+
+  private markNearDirty(cell: CoarseCell): void {
+    const reach = this.nearCells;
+    if (reach === null) return;
+    const cx = cell.index % this.cols;
+    const cy = Math.floor(cell.index / this.cols);
+    for (let y = Math.max(0, cy - reach); y <= Math.min(this.rows - 1, cy + reach); y++) {
+      for (let x = Math.max(0, cx - reach); x <= Math.min(this.cols - 1, cx + reach); x++) {
+        const near = this.cells[y * this.cols + x];
+        if (near === undefined || near.nearDirty) continue;
+        near.nearDirty = true;
+        this.nearDirtyCells.push(near);
+      }
+    }
+  }
+
+  private nearOf(cell: CoarseCell, reach: number): { nearMask: number; nearUndiscounted: boolean } {
+    const cx = cell.index % this.cols;
+    const cy = Math.floor(cell.index / this.cols);
+    let nearMask = 0;
+    let nearUndiscounted = false;
+    for (let y = Math.max(0, cy - reach); y <= Math.min(this.rows - 1, cy + reach); y++) {
+      for (let x = Math.max(0, cx - reach); x <= Math.min(this.cols - 1, cx + reach); x++) {
+        const near = this.cells[y * this.cols + x];
+        if (near === undefined) continue;
+        nearMask |= near.ownerMask;
+        if (near.undiscounted > 0) nearUndiscounted = true;
+      }
+    }
+    return { nearMask, nearUndiscounted };
   }
 
   /** The `verifyCaches` tripwire: a layer no journaled change calls stale must match a fresh derivation. */
@@ -325,12 +591,91 @@ export class CombatGrid {
     return [];
   }
 
+  /** The unit layer's tripwire: every unit the feed does not name as pending sits where a fresh derivation
+   *  puts it, and every cell's unit tallies and stranger test match its entries. */
+  verifyUnits(world: World): string[] {
+    if (!this.unitsBuilt) return [];
+    const pending = new Set<Entity>();
+    const note = (e: Entity): void => {
+      pending.add(e);
+    };
+    if (this.unitFeed.peek(note) || this.moveFeed.peek(note)) return [];
+    for (const e of world.query(Settler, Health, Position)) {
+      if (pending.has(e)) continue;
+      const held = this.units.get(e);
+      if (held === undefined) return [`combatUnitLayer lacks unit ${e}`];
+      const node = entityNode(world, this.terrain, e);
+      const x = this.terrain.xOf(node);
+      const y = this.terrain.yOf(node);
+      const owner = world.tryGet(e, Owner);
+      const unowned = owner === undefined ? world.get(e, Settler) : undefined;
+      const units = held.cell.units;
+      if (
+        units.members[held.slot] !== e ||
+        units.x[held.slot] !== x ||
+        units.y[held.slot] !== y ||
+        held.cell !== this.cellFor(x, y) ||
+        held.bit !== (owner === undefined ? 0 : playerBit(owner.player)) ||
+        held.game !== isGame(this.content, unowned) ||
+        // An Anger's lapse is re-read at the next build, so the class of its holder may lag until then.
+        (!world.has(e, Anger) && held.wild !== wildClassOf(world, this.content, 0, e, unowned))
+      ) {
+        return [`combatUnitLayer holds a stale entry for unit ${e} - it changed without a feed entry`];
+      }
+    }
+    for (const e of this.units.keys()) {
+      if (!pending.has(e) && !isCombatant(world, e))
+        return [`combatUnitLayer still holds ${e}, no longer a unit`];
+    }
+    return this.verifyTallies();
+  }
+
+  private verifyTallies(): string[] {
+    const fresh = new Map<CoarseCell, { count: number; tallies: UnitTallies }>();
+    for (const held of this.units.values()) {
+      let tally = fresh.get(held.cell);
+      if (tally === undefined) {
+        tally = { count: 0, tallies: emptyUnitTallies() };
+        fresh.set(held.cell, tally);
+      }
+      tally.count++;
+      tallyUnit(tally.tallies, held.bit, held.wild, held.game, 1);
+    }
+    for (const cell of this.cells) {
+      if (cell === undefined) continue;
+      const { count, tallies } = fresh.get(cell) ?? { count: 0, tallies: emptyUnitTallies() };
+      if (
+        cell.units.count !== count ||
+        cell.unitPassive !== tallies.unitPassive ||
+        cell.unitHostileAnimal !== tallies.unitHostileAnimal ||
+        cell.unitGame !== tallies.unitGame ||
+        cell.unitUndiscounted !== tallies.unitUndiscounted ||
+        cell.unitOwnerMask !== tallies.unitOwnerMask ||
+        cell.unitOwners.some((owned, player) => owned !== tallies.unitOwners[player])
+      ) {
+        return [`combatUnitLayer cell ${cell.index} tallies drifted from its units`];
+      }
+      const reach = this.nearCells;
+      if (reach === null || cell.nearDirty) continue;
+      const { nearMask, nearUndiscounted } = this.nearOf(cell, reach);
+      const strange = nearUndiscounted || (nearMask & (nearMask - 1)) !== 0;
+      if (
+        cell.nearMask !== nearMask ||
+        cell.nearUndiscounted !== nearUndiscounted ||
+        this.strangerCells.has(cell) !== strange
+      ) {
+        return [`combatUnitLayer cell ${cell.index} holds a stale stranger neighbourhood`];
+      }
+    }
+    return [];
+  }
+
   /** The cell at node (x, y), listed for the next build's reset. */
   private touchForBuild(x: number, y: number): CoarseCell {
     const cell = this.cellFor(x, y);
-    if (!cell.unitsAdmitted) {
-      cell.unitsAdmitted = true;
-      this.unitCells.push(cell);
+    if (!cell.builtOn) {
+      cell.builtOn = true;
+      this.builtCells.push(cell);
     }
     return cell;
   }
@@ -340,7 +685,7 @@ export class CombatGrid {
     let cell = this.cells[i];
     if (cell === undefined) {
       cell = {
-        count: 0,
+        index: i,
         total: 0,
         passive: 0,
         hostileAnimal: 0,
@@ -349,18 +694,34 @@ export class CombatGrid {
         ownerMask: 0,
         threatMask: 0,
         threatUndiscounted: 0,
-        members: [],
-        memberX: [],
-        memberY: [],
-        memberBit: [],
-        countedLast: null,
-        baseCount: 0,
+        bodies: memberList(),
+        units: memberList(),
+        bodyBase: 0,
         baseTotal: 0,
         baseUndiscounted: 0,
         baseOwnerMask: 0,
-        unitsAdmitted: false,
+        unitPassive: 0,
+        unitHostileAnimal: 0,
+        unitGame: 0,
+        unitUndiscounted: 0,
+        unitOwners: new Array<number>(MAX_PLAYERS).fill(0),
+        unitOwnerMask: 0,
+        buildTotal: 0,
+        buildUndiscounted: 0,
+        buildOwnerMask: 0,
+        buildThreatMask: 0,
+        buildThreatUndiscounted: 0,
+        countedLast: null,
+        builtOn: false,
+        nearMask: 0,
+        nearUndiscounted: false,
+        nearDirty: false,
       };
       this.cells[i] = cell;
+      if (this.nearCells !== null) {
+        cell.nearDirty = true;
+        this.nearDirtyCells.push(cell);
+      }
     }
     return cell;
   }
@@ -369,6 +730,11 @@ export class CombatGrid {
 /** Whether `e` belongs in the building layer: a building with a Position and a Health pool. */
 function isLayerMember(world: World, e: Entity): boolean {
   return world.has(e, Building) && world.has(e, Health) && world.has(e, Position);
+}
+
+/** Whether `e` is a combatant, and so in the unit layer: a felled one included until cleanup reaps it. */
+export function isCombatant(world: World, e: Entity): boolean {
+  return world.has(e, Settler) && world.has(e, Health) && world.has(e, Position);
 }
 
 function heldBuilding(world: World, ctx: MapContext, terrain: TerrainGraph, b: Entity): HeldBuilding {
@@ -380,25 +746,82 @@ function heldBuilding(world: World, ctx: MapContext, terrain: TerrainGraph, b: E
   };
 }
 
-/** Tally `e` into `cell` and hold its node for the cell's member scan. */
-function admit(cell: CoarseCell, e: Entity, x: number, y: number, bit: number, wild: WildClass): void {
-  const i = cell.count++;
-  cell.members[i] = e;
-  cell.memberX[i] = x;
-  cell.memberY[i] = y;
-  cell.memberBit[i] = bit;
-  if (cell.countedLast === e) return;
-  cell.countedLast = e;
-  cell.total++;
-  if (wild === 'passive') cell.passive++;
-  else if (wild === 'hostile') cell.hostileAnimal++;
-  if (bit !== 0) cell.ownerMask |= bit;
-  else if (wild !== 'passive') cell.undiscounted++;
+/**
+ * Classify a unit by `unowned`, its Settler when it carries no Owner, or null for anything owned or
+ * non-animal. `'passive'` is discounted from the stranger tests and `'hostile'` additionally from the civ
+ * test, so neither a grazing herd nor a wolf pack can defeat every gated seeker's early-out. The lapsed-Anger
+ * reap stays with the attacker pass; the next build re-reads the class.
+ */
+function wildClassOf(
+  world: World,
+  content: ContentSet,
+  tick: number,
+  e: Entity,
+  unowned: { readonly tribe: number } | undefined,
+): WildClass {
+  if (unowned === undefined || !isAnimalTribe(content, unowned.tribe)) return null;
+  if (isAggressiveAnimal(content, unowned.tribe)) return 'hostile';
+  const anger = world.tryGet(e, Anger);
+  return anger !== undefined && tick < anger.until ? 'hostile' : 'passive';
 }
 
-function addThreat(cell: CoarseCell, bit: number, wild: WildClass): void {
-  if (bit !== 0) cell.threatMask |= bit;
-  else if (wild !== 'passive') cell.threatUndiscounted++;
+/** Whether an unowned unit counts toward {@link CoarseCell.game}. */
+function isGame(content: ContentSet, unowned: { readonly tribe: number } | undefined): boolean {
+  return (
+    unowned !== undefined &&
+    isHuntablePrey(content, unowned.tribe) &&
+    !isLastResortPrey(content, unowned.tribe)
+  );
+}
+
+function memberList(): MemberList {
+  return { count: 0, members: [], x: [], y: [], bit: [] };
+}
+
+function push(list: MemberList, e: Entity, x: number, y: number, bit: number): void {
+  const i = list.count++;
+  list.members[i] = e;
+  list.x[i] = x;
+  list.y[i] = y;
+  list.bit[i] = bit;
+}
+
+/** A cell's unit layer share. */
+type UnitTallies = Pick<
+  CoarseCell,
+  'unitPassive' | 'unitHostileAnimal' | 'unitGame' | 'unitUndiscounted' | 'unitOwners' | 'unitOwnerMask'
+>;
+
+function emptyUnitTallies(): UnitTallies {
+  return {
+    unitPassive: 0,
+    unitHostileAnimal: 0,
+    unitGame: 0,
+    unitUndiscounted: 0,
+    unitOwners: new Array<number>(MAX_PLAYERS).fill(0),
+    unitOwnerMask: 0,
+  };
+}
+
+/** Add (`sign` 1) or remove (-1) one unit's share of `cell`'s unit tallies. */
+function tallyUnit(cell: UnitTallies, bit: number, wild: WildClass, game: boolean, sign: 1 | -1): void {
+  if (wild === 'passive') cell.unitPassive += sign;
+  else if (wild === 'hostile') cell.unitHostileAnimal += sign;
+  if (game) cell.unitGame += sign;
+  if (bit === 0) {
+    if (wild !== 'passive') cell.unitUndiscounted += sign;
+    return;
+  }
+  const player = playerOfBit(bit);
+  const owned = (cell.unitOwners[player] ?? 0) + sign;
+  cell.unitOwners[player] = owned;
+  if (owned > 0) cell.unitOwnerMask |= bit;
+  else cell.unitOwnerMask &= ~bit;
+}
+
+function addBuildThreat(cell: CoarseCell, bit: number): void {
+  if (bit !== 0) cell.buildThreatMask |= bit;
+  else cell.buildThreatUndiscounted++;
 }
 
 export function coarseOf(node: number): number {
