@@ -206,7 +206,7 @@ export function upgradeBuilding(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'upgradeBuilding' }>,
 ): void {
-  const building = world.tryMut(command.building, Building);
+  const building = world.tryGet(command.building, Building);
   if (building === undefined || building.built < ONE) return;
   if (world.has(command.building, UnderConstruction)) return;
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
@@ -231,7 +231,7 @@ export function upgradeBuilding(
   }
   world.add(command.building, Upgrading, { savedStock: stock.amounts, seeded });
   world.mut(command.building, Stockpile).amounts = hold;
-  building.built = fx.fromInt(0);
+  world.mut(command.building, Building).built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
   wakeCrewInside(world, command.building); // the occupants leave now, not on the building's idle beat
   // The panel hides the defence window for a site, so an alarm left standing could be neither seen nor
@@ -246,20 +246,20 @@ export function upgradeBuilding(
  * Type, level, Health, and every binding never changed, so nothing else needs restoring.
  */
 export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'cancelUpgrade' }>): void {
-  const building = world.tryMut(command.building, Building);
-  const upgrading = world.tryMut(command.building, Upgrading);
-  if (building === undefined || upgrading === undefined) return;
+  const upgrading = world.tryGet(command.building, Upgrading);
+  if (upgrading === undefined || !world.has(command.building, Building)) return;
   const stock = world.tryGet(command.building, Stockpile);
   if (stock !== undefined) {
     // The min defends the invariant that nothing withdraws from a site mid-upgrade.
+    const saved = world.mut(command.building, Upgrading).savedStock;
     for (const [goodType, amount] of stockpileEntries({ amounts: upgrading.seeded })) {
       const back = Math.min(stock.amounts.get(goodType) ?? 0, amount);
-      if (back > 0) upgrading.savedStock.set(goodType, (upgrading.savedStock.get(goodType) ?? 0) + back);
+      if (back > 0) saved.set(goodType, (saved.get(goodType) ?? 0) + back);
     }
     // The stash Map is exclusively the marker's; with the marker removed below, handing it back whole is safe.
-    world.mut(command.building, Stockpile).amounts = upgrading.savedStock;
+    world.mut(command.building, Stockpile).amounts = saved;
   }
-  building.built = ONE;
+  world.mut(command.building, Building).built = ONE;
   world.remove(command.building, UnderConstruction);
   world.remove(command.building, Upgrading);
 }

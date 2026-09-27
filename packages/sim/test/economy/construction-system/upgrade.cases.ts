@@ -11,6 +11,8 @@ import {
   UnderConstruction,
   Upgrading,
 } from '../../../src/components/index.js';
+import type { ChangeFeed } from '../../../src/ecs/change-feed.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
 import { constructionSystem, stockCapacity } from '../../../src/systems/index.js';
@@ -27,6 +29,12 @@ import {
   VIKING,
   WOOD,
 } from './support.js';
+
+function writtenBy(feed: ChangeFeed): Entity[] {
+  const written: Entity[] = [];
+  feed.peek((e) => written.push(e));
+  return written;
+}
 
 /**
  * The MANUAL upgrade lifecycle (the `upgradeBuilding` command): a built chained building re-opens as a
@@ -180,8 +188,10 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     const home = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 1 });
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
+    const writes = sim.world.watchChanges([], [Building]);
     sim.step();
 
+    expect(writtenBy(writes)).not.toContain(top); // a refusal writes nothing a snapshot delta would carry
     expect(sim.world.has(top, Upgrading)).toBe(false);
     expect(sim.world.get(top, Stockpile).amounts.get(STONE)).toBe(9); // inventory untouched
     expect(sim.world.has(site, Upgrading)).toBe(false);
@@ -239,8 +249,10 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     const home = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
     sim.enqueueSetup({ kind: 'cancelUpgrade', building: site });
     sim.enqueueSetup({ kind: 'cancelUpgrade', building: home });
+    const writes = sim.world.watchChanges([], [Building]);
     sim.step();
 
+    expect(writtenBy(writes)).not.toContain(home);
     expect(sim.world.has(site, UnderConstruction)).toBe(true); // the site keeps rising
     expect(sim.world.get(site, Building).built).toBe(0);
     expect(sim.world.get(home, Stockpile).amounts.get(STONE)).toBe(2); // inventory untouched
