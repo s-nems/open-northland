@@ -203,7 +203,7 @@ describe('snapshot indexes over a mirror', () => {
     let tick = 0;
     const next = (touched: EntityDelta[], removed: number[] = [], rebuild = false): SnapshotDelta => {
       tick++;
-      return { tick, baseTick: tick - 1, rebuild, touched, removed, events: [] };
+      return { tick, sequence: tick, rebuild, touched, removed, events: [] };
     };
     const mirror = new SnapshotMirror();
     const check = (): void => {

@@ -242,7 +242,7 @@ describe('buildHud over a mirror', () => {
   it('keeps the walked figures through every hand-built change', () => {
     const mirror = new SnapshotMirror();
     const opening = OPENING.map((entity) => touch(entity.id, entity.components));
-    mirror.apply({ tick: 1, baseTick: 0, rebuild: true, touched: opening, removed: [], events: [] });
+    mirror.apply({ tick: 1, sequence: 0, rebuild: true, touched: opening, removed: [], events: [] });
     expectMatchesWalk(mirror.snapshot());
     const heldBefore = buildHud(mirror.snapshot(), PLAYER);
     expect(heldBefore.stocks).toEqual([
@@ -253,7 +253,7 @@ describe('buildHud over a mirror', () => {
       const tick = i + 2;
       const delta: SnapshotDelta = {
         tick,
-        baseTick: tick - 1,
+        sequence: tick - 1,
         rebuild: false,
         touched: step.touched ?? [],
         removed: step.removed ?? [],
@@ -273,7 +273,7 @@ describe('buildHud over a mirror', () => {
     const NEW_HEAP_ID = LATE_BUILDING_ID + 2;
     const mirror = new SnapshotMirror();
     const opening = OPENING.map((entity) => touch(entity.id, entity.components));
-    mirror.apply({ tick: 1, baseTick: 0, rebuild: true, touched: opening, removed: [], events: [] });
+    mirror.apply({ tick: 1, sequence: 0, rebuild: true, touched: opening, removed: [], events: [] });
     // One read registers the maintained totals; every later delta is applied without reading them.
     expectMatchesWalk(mirror.snapshot());
     const building = (site: { x: number; y: number }) => ({
@@ -304,7 +304,7 @@ describe('buildHud over a mirror', () => {
       const tick = i + 2;
       mirror.apply({
         tick,
-        baseTick: tick - 1,
+        sequence: tick - 1,
         rebuild: false,
         touched: step.touched ?? [],
         removed: step.removed ?? [],

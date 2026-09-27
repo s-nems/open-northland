@@ -68,7 +68,12 @@ import {
   placementProbeFor,
   signpostProbeFor,
 } from './simulation/read-seams.js';
-import { type SyncDigest, type SyncDigestInputs, SyncDigestRecorder } from './simulation/sync-digest.js';
+import {
+  type SyncDigest,
+  type SyncDigestInputs,
+  SyncDigestRecorder,
+  type SyncDigestRecorderOptions,
+} from './simulation/sync-digest.js';
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
 import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 import type { MapContext, SystemContext } from './systems/context.js';
@@ -699,7 +704,7 @@ export class Simulation {
    * seals covers the tick it was turned on for. `captureInputs` also keeps each seal's
    * {@link SyncDigestInputs}; changing it while on replaces the recorder and forgets the last digest.
    */
-  setSyncDigest(enabled: boolean, options: { readonly captureInputs?: boolean } = {}): void {
+  setSyncDigest(enabled: boolean, options: SyncDigestRecorderOptions = {}): void {
     const captureInputs = enabled && (options.captureInputs ?? false);
     if (enabled === (this.digest !== null) && captureInputs === (this.digest?.captureInputs ?? false)) return;
     this.lastDigest = null;

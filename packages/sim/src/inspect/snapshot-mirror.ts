@@ -17,17 +17,12 @@ export class SnapshotMirror {
   private readonly entities: EntitySnapshot[] = [];
   private readonly indexes = new SnapshotIndexes(() => this.entities);
   private current: WorldSnapshot | null = null;
-  private applied = 0;
+  private lastSequence = 0;
   private dropped: EntitySnapshot[] = [];
 
   /** The tick of the last applied delta; null before the first. */
   get tick(): number | null {
     return this.current?.tick ?? null;
-  }
-
-  /** Counts applied deltas: the key for a memo over the mirror's state. */
-  get version(): number {
-    return this.applied;
   }
 
   /** The entities the last applied delta removed, ascending by id, as the previous snapshot held them
@@ -37,8 +32,9 @@ export class SnapshotMirror {
     return this.dropped;
   }
 
-  /** Apply the next delta. Throws on a delta that does not follow the last applied one, since a dropped
-   *  delta would leave the mirror silently stale. */
+  /** Apply the next delta. Throws on a non-rebuild delta whose `sequence` does not directly follow the
+   *  last applied one, since a dropped delta would leave the mirror silently stale; a rebuild carries the
+   *  whole world and sets the base for the deltas after it. */
   apply(delta: SnapshotDelta): void {
     this.dropped = [];
     if (delta.rebuild) {
@@ -48,20 +44,15 @@ export class SnapshotMirror {
     } else {
       const current = this.current;
       if (current === null) throw new Error('snapshot mirror: the first delta must rebuild');
-      if (delta.baseTick !== current.tick) {
+      if (delta.sequence !== this.lastSequence + 1) {
         throw new Error(
-          `snapshot mirror at tick ${current.tick} refuses a delta from tick ${delta.baseTick}: a delta was skipped`,
-        );
-      }
-      if (delta.tick < current.tick) {
-        throw new Error(
-          `snapshot mirror at tick ${current.tick} refuses a delta to earlier tick ${delta.tick}`,
+          `snapshot mirror after delta ${this.lastSequence} refuses delta ${delta.sequence}: a delta was skipped`,
         );
       }
       this.drop(delta.removed);
       this.merge(delta.touched);
     }
-    this.applied++;
+    this.lastSequence = delta.sequence;
     this.current = { tick: delta.tick, entities: this.entities, events: delta.events };
     attachIndexes(this.current, this.indexes);
   }

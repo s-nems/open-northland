@@ -165,7 +165,7 @@ describe('snapshot mirror parity over a settlement run', () => {
       sim.step();
       if (tick % 7 === 0) {
         const delta = nonNull(deltas.next());
-        expect(delta.baseTick).toBe(tick === 7 ? -1 : tick - 7);
+        expect(delta.sequence).toBe(tick / 7 - 1);
         mirror.apply(delta);
         expectSameWorld(mirror.snapshot(), sim.snapshot());
       }
@@ -202,7 +202,7 @@ describe('snapshot delta stream', () => {
     expect(deltas.next()).toBeNull();
     sim.step();
     const stepped = nonNull(deltas.next());
-    expect(stepped).toMatchObject({ tick: 1, baseTick: 0, rebuild: false, touched: [], removed: [] });
+    expect(stepped).toMatchObject({ tick: 1, sequence: 1, rebuild: false, touched: [], removed: [] });
     expect(deltas.next()).toBeNull();
   });
 
@@ -221,6 +221,23 @@ describe('snapshot delta stream', () => {
     });
     expect(delta.touched[0]?.removed).toEqual([]);
     expect(delta.removed).toEqual([other]);
+  });
+
+  it('numbers two deltas of one tick apart, so a mirror given only the second refuses it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const node = bareResource(sim, 5);
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    mirror.apply(nonNull(deltas.next()));
+    sim.world.mut(node, Resource).remaining = 4;
+    const first = nonNull(deltas.next());
+    sim.world.mut(node, Resource).remaining = 3;
+    const second = nonNull(deltas.next());
+    expect(second.tick).toBe(first.tick);
+    expect(() => mirror.apply(second)).toThrow(/a delta was skipped/);
+    mirror.apply(first);
+    mirror.apply(second);
+    expect(entityById(mirror.snapshot(), node)?.components.Resource).toMatchObject({ remaining: 3 });
   });
 
   it('carries a removed component by name and a re-added one as written', () => {
@@ -322,14 +339,14 @@ describe('snapshot delta stream', () => {
 
 describe('snapshot mirror list edits', () => {
   function delta(partial: Partial<SnapshotDelta>): SnapshotDelta {
-    return { tick: 1, baseTick: 0, rebuild: false, touched: [], removed: [], events: [], ...partial };
+    return { tick: 1, sequence: 1, rebuild: false, touched: [], removed: [], events: [], ...partial };
   }
   function entity(id: number, mark = 0): EntityDelta {
     return { id, components: { mark }, removed: [] };
   }
   function seeded(ids: readonly number[]): SnapshotMirror {
     const mirror = new SnapshotMirror();
-    mirror.apply(delta({ tick: 0, baseTick: -1, rebuild: true, touched: ids.map((id) => entity(id)) }));
+    mirror.apply(delta({ tick: 0, sequence: 0, rebuild: true, touched: ids.map((id) => entity(id)) }));
     return mirror;
   }
 
@@ -356,8 +373,7 @@ describe('snapshot mirror list edits', () => {
     expect(held?.components).toEqual({ mark: 0 }); // the previous snapshot's object is left alone
     expect(entityById(after, 10)).toBe(entityById(before, 10));
     expect(after).not.toBe(before);
-    expect(mirror.version).toBe(2);
-    mirror.apply(delta({ tick: 2, baseTick: 1, touched: [{ id: 20, components: {}, removed: ['mark'] }] }));
+    mirror.apply(delta({ tick: 2, sequence: 2, touched: [{ id: 20, components: {}, removed: ['mark'] }] }));
     expect(entityById(mirror.snapshot(), 20)?.components).toEqual({ size: { w: 1 } });
   });
 
@@ -368,7 +384,7 @@ describe('snapshot mirror list edits', () => {
     expect(ids(mirror.snapshot())).toEqual([20, 40]);
     expect(mirror.departed).toEqual([before[0], before[2], before[4]]);
     expect(mirror.departed[0]).toBe(before[0]);
-    mirror.apply(delta({ tick: 2, baseTick: 1 }));
+    mirror.apply(delta({ tick: 2, sequence: 2 }));
     expect(mirror.departed).toEqual([]);
   });
 
@@ -380,15 +396,24 @@ describe('snapshot mirror list edits', () => {
     expect(entityById(mirror.snapshot(), 25)?.components).toEqual({ mark: 0 });
   });
 
-  it('refuses a delta that does not follow its tick, a delta before the rebuild, and a read before any', () => {
+  it('refuses a delta out of sequence, a delta before the rebuild, and a read before any', () => {
     const empty = new SnapshotMirror();
     expect(() => empty.snapshot()).toThrow(/no delta applied/);
     expect(() => empty.apply(delta({}))).toThrow(/first delta must rebuild/);
     const mirror = seeded([10]);
-    mirror.apply(delta({ tick: 1, baseTick: 0 }));
-    expect(() => mirror.apply(delta({ tick: 3, baseTick: 2 }))).toThrow(/refuses a delta from tick 2/);
-    expect(() => mirror.apply(delta({ tick: 0, baseTick: 1 }))).toThrow(/earlier tick 0/);
+    mirror.apply(delta({ tick: 1, sequence: 1 }));
+    expect(() => mirror.apply(delta({ tick: 3, sequence: 3 }))).toThrow(
+      /refuses delta 3: a delta was skipped/,
+    );
+    expect(() => mirror.apply(delta({ tick: 1, sequence: 1 }))).toThrow(/refuses delta 1/);
     expect(mirror.tick).toBe(1);
+  });
+
+  it('accepts a rebuild at any place in the sequence and counts on from it', () => {
+    const mirror = seeded([10]);
+    mirror.apply(delta({ tick: 5, sequence: 7, rebuild: true, touched: [entity(20)] }));
+    mirror.apply(delta({ tick: 6, sequence: 8 }));
+    expect(ids(mirror.snapshot())).toEqual([20]);
   });
 
   it('exposes the delta events on the snapshot and hands out the same object until the next delta', () => {

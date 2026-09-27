@@ -47,14 +47,15 @@ const TREE = { Resource: { goodType: 1 } };
 function mirrorOf(entities: readonly EntitySnapshot[]): SnapshotMirror {
   const mirror = new SnapshotMirror();
   const touched = entities.map((e) => ({ id: e.id, components: e.components, removed: [] }));
-  mirror.apply({ tick: 1, baseTick: 0, rebuild: true, touched, removed: [], events: [] });
+  mirror.apply({ tick: 1, sequence: 0, rebuild: true, touched, removed: [], events: [] });
   return mirror;
 }
 
 /** Apply one tick's changes on top of the mirror's last tick. */
 function advance(mirror: SnapshotMirror, touched: readonly EntityDelta[], removed: readonly number[] = []) {
-  const baseTick = mirror.tick ?? 0;
-  mirror.apply({ tick: baseTick + 1, baseTick, rebuild: false, touched, removed, events: [] });
+  const lastTick = mirror.tick ?? 0;
+  // One delta per tick from the tick-1 rebuild at sequence 0: the last tick is the next sequence.
+  mirror.apply({ tick: lastTick + 1, sequence: lastTick, rebuild: false, touched, removed, events: [] });
   return mirror.snapshot();
 }
 

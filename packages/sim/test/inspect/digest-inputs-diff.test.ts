@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Position } from '../../src/components/index.js';
+import { defineComponent } from '../../src/ecs/world.js';
 import {
   diffDigestInputs,
   digestInputsFromJson,
@@ -29,6 +30,9 @@ const WARMUP_TICKS = 3;
 /** The perturbed run's marker x, in whole visual cells. */
 const PERTURBED_X = 5;
 
+/** A second movement-domain store no system writes, so the test alone decides its touch order. */
+const OrderProbe = defineComponent<{ mark: number }>('DigestOrderProbe', 'movement');
+
 interface CapturedRun {
   readonly sim: Simulation;
   /** An inert entity holding only a `Position`, written once per tick by the test. */
@@ -47,24 +51,28 @@ function capturedRun(): CapturedRun {
   return { sim, marker };
 }
 
-/**
- * Step one tick, acquiring the marker's `Position` through `World.mut` inside the tick so the digest
- * folds it; `perturb` also changes its value.
- */
-function stepWritingMarker({ sim, marker }: CapturedRun, perturb: boolean): SyncDigestInputs {
-  let written = false;
+/** Step one tick, running `touch` inside it after the first system so the digest folds its writes. */
+function stepTouching(sim: Simulation, touch: () => void): SyncDigestInputs {
+  let touched = false;
   sim.setInstrument((_, run) => {
     run();
-    if (written) return;
-    written = true;
-    const position = sim.world.mut(marker, Position);
-    if (perturb) position.x = fx.fromInt(PERTURBED_X);
+    if (touched) return;
+    touched = true;
+    touch();
   });
   sim.step();
   sim.setInstrument(null);
   const inputs = sim.syncDigestInputs();
   if (inputs === null) throw new Error('the sim captured no digest inputs');
   return inputs;
+}
+
+/** Step one tick acquiring the marker's `Position` through `World.mut`; `perturb` also changes it. */
+function stepWritingMarker({ sim, marker }: CapturedRun, perturb: boolean): SyncDigestInputs {
+  return stepTouching(sim, () => {
+    const position = sim.world.mut(marker, Position);
+    if (perturb) position.x = fx.fromInt(PERTURBED_X);
+  });
 }
 
 describe('diffDigestInputs', () => {
@@ -110,6 +118,48 @@ describe('diffDigestInputs', () => {
     expect(diffDigestInputs(b, a)).toEqual({
       kind: 'componentSet',
       detail: 'onlyInB',
+      component: Position.name,
+    });
+  });
+
+  it('names the first entity out of order when both sides touch the same entities in another order', () => {
+    const touchedInOrder = (
+      swapped: boolean,
+    ): { readonly inputs: SyncDigestInputs; readonly marker: Entity } => {
+      const { sim, marker } = capturedRun();
+      const second = sim.world.create();
+      sim.world.add(second, Position, positionOfNode(0, 0));
+      const order = swapped ? [second, marker] : [marker, second];
+      const inputs = stepTouching(sim, () => {
+        for (const entity of order) sim.world.mut(entity, Position);
+      });
+      return { inputs, marker };
+    };
+    const a = touchedInOrder(false);
+    const b = touchedInOrder(true);
+    expect(diffDigestInputs(a.inputs, b.inputs)).toEqual({
+      kind: 'component',
+      domain: 'movement',
+      component: Position.name,
+      entity: a.marker,
+      detail: 'order',
+    });
+  });
+
+  it('names the first component out of order within its domain', () => {
+    const touchedInOrder = (swapped: boolean): SyncDigestInputs => {
+      const { sim, marker } = capturedRun();
+      sim.world.add(marker, OrderProbe, { mark: 0 });
+      return stepTouching(sim, () => {
+        const touchProbe = (): void => void sim.world.mut(marker, OrderProbe);
+        const touchPosition = (): void => void sim.world.mut(marker, Position);
+        for (const touch of swapped ? [touchProbe, touchPosition] : [touchPosition, touchProbe]) touch();
+      });
+    };
+    expect(diffDigestInputs(touchedInOrder(false), touchedInOrder(true))).toEqual({
+      kind: 'componentSet',
+      detail: 'order',
+      domain: 'movement',
       component: Position.name,
     });
   });

@@ -1,7 +1,8 @@
 import type { SyncDomain } from '../ecs/world.js';
 import type { DigestComponentInputs, SyncDigestInputs } from '../simulation/sync-digest.js';
 
-/** The first place two clients' {@link SyncDigestInputs} for one tick part. */
+/** The first place two clients' {@link SyncDigestInputs} for one tick part. An `order` detail means both
+ *  sides touched the same set in a different first-touch order, which the digest folds as a difference. */
 export type DigestInputDifference =
   | { readonly kind: 'rng'; readonly a: number; readonly b: number }
   | { readonly kind: 'entities'; readonly detail: 'nextEntityId' | 'entityCount' | 'allocations' }
@@ -10,15 +11,23 @@ export type DigestInputDifference =
       readonly kind: 'component';
       readonly domain: SyncDomain;
       readonly component: string;
+      /** For `order`, `a`'s entity at the first place the two entity orders part. */
       readonly entity: number;
-      readonly detail: 'word' | 'onlyInA' | 'onlyInB';
+      readonly detail: 'word' | 'onlyInA' | 'onlyInB' | 'order';
     }
-  | { readonly kind: 'componentSet'; readonly detail: 'onlyInA' | 'onlyInB'; readonly component: string };
+  | { readonly kind: 'componentSet'; readonly detail: 'onlyInA' | 'onlyInB'; readonly component: string }
+  | {
+      readonly kind: 'componentSet';
+      readonly detail: 'order';
+      readonly domain: SyncDomain;
+      /** `a`'s component at the first place the domain's two component orders part. */
+      readonly component: string;
+    };
 
 /**
  * The first difference between two captures of the same tick, or null when they agree. Checks rng, then
- * the entity allocator, then fog words, then which components were touched, then each component's
- * entities in `a`'s component order: `a`'s entities first, then entities only `b` touched.
+ * the entity allocator, then fog words, then which components were touched and their order within each
+ * domain, then each component in `a`'s order: which entities it touched, their order, their words.
  */
 export function diffDigestInputs(a: SyncDigestInputs, b: SyncDigestInputs): DigestInputDifference | null {
   if (a.tick !== b.tick) throw new Error(`diffDigestInputs compares one tick, got ${a.tick} and ${b.tick}`);
@@ -42,6 +51,8 @@ export function diffDigestInputs(a: SyncDigestInputs, b: SyncDigestInputs): Dige
       return { kind: 'componentSet', detail: 'onlyInB', component: component.name };
     }
   }
+  const orderDifference = diffComponentOrder(a.components, b.components);
+  if (orderDifference !== null) return orderDifference;
   for (const component of a.components) {
     const other = bByName.get(component.name);
     if (other === undefined) continue; // unreachable: the set check above returned
@@ -51,34 +62,54 @@ export function diffDigestInputs(a: SyncDigestInputs, b: SyncDigestInputs): Dige
   return null;
 }
 
+/** Each domain folds its components in turn, so only the order within one domain reaches the digest. */
+function diffComponentOrder(
+  a: readonly DigestComponentInputs[],
+  b: readonly DigestComponentInputs[],
+): DigestInputDifference | null {
+  const bByDomain = namesByDomain(b);
+  for (const [domain, aNames] of namesByDomain(a)) {
+    const bNames = bByDomain.get(domain);
+    for (const [i, name] of aNames.entries()) {
+      if (bNames?.[i] !== name) return { kind: 'componentSet', detail: 'order', domain, component: name };
+    }
+  }
+  return null;
+}
+
+function namesByDomain(components: readonly DigestComponentInputs[]): Map<SyncDomain, string[]> {
+  const names = new Map<SyncDomain, string[]>();
+  for (const component of components) {
+    const list = names.get(component.domain);
+    if (list === undefined) names.set(component.domain, [component.name]);
+    else list.push(component.name);
+  }
+  return names;
+}
+
 function diffComponent(a: DigestComponentInputs, b: DigestComponentInputs): DigestInputDifference | null {
-  const bWords = wordsByEntity(b);
   const aEntities = new Set<number>(a.entities);
-  const at = (entity: number, detail: 'word' | 'onlyInA' | 'onlyInB'): DigestInputDifference => ({
+  const bEntities = new Set<number>(b.entities);
+  const at = (entity: number, detail: 'word' | 'onlyInA' | 'onlyInB' | 'order'): DigestInputDifference => ({
     kind: 'component',
     domain: a.domain,
     component: a.name,
     entity,
     detail,
   });
-  for (const [i, entity] of a.entities.entries()) {
-    const other = bWords.get(entity);
-    if (other === undefined) return at(entity, 'onlyInA');
-    if (other !== a.words[i]) return at(entity, 'word');
+  for (const entity of a.entities) {
+    if (!bEntities.has(entity)) return at(entity, 'onlyInA');
   }
   for (const entity of b.entities) {
     if (!aEntities.has(entity)) return at(entity, 'onlyInB');
   }
-  return null;
-}
-
-function wordsByEntity(inputs: DigestComponentInputs): Map<number, number> {
-  const words = new Map<number, number>();
-  for (const [i, entity] of inputs.entities.entries()) {
-    const word = inputs.words[i];
-    if (word !== undefined) words.set(entity, word);
+  for (const [i, entity] of a.entities.entries()) {
+    if (b.entities[i] !== entity) return at(entity, 'order');
   }
-  return words;
+  for (const [i, entity] of a.entities.entries()) {
+    if (b.words[i] !== a.words[i]) return at(entity, 'word');
+  }
+  return null;
 }
 
 /** The first index where the arrays differ, counting a length mismatch at the shorter length. */

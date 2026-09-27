@@ -147,6 +147,25 @@ describe('sync digest', () => {
     expect(snapshotting).toEqual(sequence(watchedWorld(), 8));
   });
 
+  it('folds the tick s writes in first-touch order, so the same values touched in another order differ', () => {
+    const touchedInOrder = (swapped: boolean): SyncDigest => {
+      const sim = watchedWorld();
+      const markers = [sim.world.create(), sim.world.create()];
+      for (const marker of markers) sim.world.add(marker, Position, positionOfNode(0, 0));
+      const order = swapped ? markers.toReversed() : markers;
+      let touched = false;
+      sim.setInstrument((_, run) => {
+        run();
+        if (touched) return;
+        touched = true;
+        for (const marker of order) sim.world.mut(marker, Position);
+      });
+      sim.step();
+      return digestOf(sim);
+    };
+    expect(differingDomains(touchedInOrder(false), touchedInOrder(true))).toEqual(['movement']);
+  });
+
   it('does not depend on the touched log, even past its overflow', () => {
     // The touched log drops its contents wholesale past this many entities, so a digest folded from it
     // would depend on whether this client happened to snapshot before the overflow.

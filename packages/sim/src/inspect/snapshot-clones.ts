@@ -11,9 +11,9 @@ import type { EntitySnapshot } from './snapshot.js';
 export interface SnapshotDelta {
   /** The tick the delta brings a mirror to. */
   readonly tick: number;
-  /** The mirror tick it applies on, the previous delta's `tick`; a mirror at another tick refuses it.
-   *  Meaningless with `rebuild`. */
-  readonly baseTick: number;
+  /** The delta's place in its stream, counting from 0 and including rebuilds: a mirror refuses a
+   *  non-rebuild delta that does not directly follow the one it applied last. */
+  readonly sequence: number;
   /** The touched log overflowed or the stream just opened: `touched` carries every alive entity whole
    *  and the mirror replaces its whole list. */
   readonly rebuild: boolean;
@@ -186,6 +186,7 @@ export class SnapshotDeltaStream {
   private readonly sent = new Map<Entity, Readonly<Record<string, number>>>();
   private lastTick = NO_TICK;
   private lastVersion = NO_VERSION;
+  private sequence = 0;
   private closed = false;
 
   constructor(private readonly source: SnapshotDeltaSource) {
@@ -218,7 +219,7 @@ export class SnapshotDeltaStream {
     }
     const delta: SnapshotDelta = {
       tick,
-      baseTick: this.lastTick,
+      sequence: this.sequence++,
       rebuild: pending.rebuild,
       touched,
       removed,
