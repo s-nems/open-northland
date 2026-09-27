@@ -202,8 +202,8 @@ export function collectorSpot(
 
 /** A re-plant: the resource the flag moves after and the spot beside it, `dry` when the map holds no
  *  candidate at all, or null when none of the nearest {@link REPLANT_ATTEMPTS} was one the holder could
- *  work. On null the holder keeps his post and the next decision retries: re-hiring him at the anchor spot
- *  would only churn (hire, dead patch, retire, hire). */
+ *  work. On null the holder keeps his post and the upkeep retries on a backoff, retiring him only after
+ *  several misses: retiring him at once would churn (hire, dead patch, retire, hire) every decision. */
 export type Replant = { readonly target: HalfCellNode; readonly spot: HalfCellNode } | 'dry' | null;
 
 /**

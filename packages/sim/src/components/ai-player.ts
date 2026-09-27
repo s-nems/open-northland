@@ -87,6 +87,16 @@ export interface BuildOrderFrontierState {
 export const BuildOrderFrontier = defineComponent<BuildOrderFrontierState>('BuildOrderFrontier', 'players');
 
 /**
+ * How many re-plant searches in a row found nothing for a collector whose patch is worked out, held on
+ * the holder while his flag stands on half-cell node (`hx`, `hy`). A record for another node is stale
+ * and counts as none.
+ */
+export const ReplantMisses = defineComponent<{ hx: number; hy: number; misses: number }>(
+  'ReplantMisses',
+  'players',
+);
+
+/**
  * The tick before which the seat's waves never march, held on its {@link AiPlayer} carrier: a lobby
  * match's peace time. A seat without it, such as a map's own computer player, may march from the start.
  */

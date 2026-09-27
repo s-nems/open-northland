@@ -2,8 +2,10 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   aiPlayerEntity,
+  CurrentAtomic,
   Marriage,
   Position,
+  ReplantMisses,
   Resource,
   Settler,
   SettlerProgress,
@@ -59,6 +61,8 @@ import {
   MAX_CLEARING_COLLECTORS,
   NODES_PER_CLEARING_GATHERER,
   OPENING_SITE_SHORTAGE_POSTS,
+  REPLANT_MISSES_BEFORE_RETIRE,
+  REPLANT_RETRY_EVERY_DECISIONS,
   SHORTAGE_BUILDER_FLOOR,
   siteShortagePosts,
   type WantedGood,
@@ -128,6 +132,9 @@ const FIRST_WORKSHOP_SPOT = { x: 40, y: 16 };
 const FAR_MAP_WIDTH = 160;
 const SECOND_WORKSHOP_SPOT = { x: 40, y: 26 };
 const THIRD_WORKSHOP_SPOT = { x: 40, y: 36 };
+
+/** The farmer's atomic, which the fixture collector's trade lacks. */
+const FARM_ATOMIC = 29;
 
 /** Free fixture ids for {@link workshopContent}'s trades and workshops. */
 const POTTER = 29;
@@ -1550,6 +1557,62 @@ describe('workforce module (collectResources)', () => {
     expect(replantSpot(sim.world, ground, holder, radius, () => null, origin, refusing, new Set())).toBe(
       'dry',
     );
+  });
+
+  it('re-plants a worked-out holder on his own phase after a miss, and retires him after the last', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    sim.step();
+    const [holder] = holdersOf(sim, MUD);
+    if (holder === undefined) throw new Error('setup: the clay holder');
+
+    // The home deposit is dug out; the one left takes an atomic the collector's trade lacks, so every
+    // re-plant finds it and turns it down.
+    for (const e of sim.world.query(Resource)) sim.world.mut(e, Resource).remaining = 0;
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, x: 14, y: 8, harvest: FARM_ATOMIC }]);
+    sim.step();
+
+    let firstPhase = 2;
+    while ((firstPhase + holder) % REPLANT_RETRY_EVERY_DECISIONS !== 0) firstPhase++;
+    // Between searches he is caught mid-nap once: an action that is no harvest keeps his misses.
+    const napDecision = firstPhase === 2 ? 3 : 2;
+    const searchedOn: number[] = [];
+    let retiredOn: number | null = null;
+    const lastDecision = 1 + REPLANT_MISSES_BEFORE_RETIRE * REPLANT_RETRY_EVERY_DECISIONS;
+    for (let decision = 1; decision <= lastDecision && retiredOn === null; decision++) {
+      const before = sim.world.tryGet(holder, ReplantMisses)?.misses ?? 0;
+      const ctx = ctxOf(sim, decision * AI_DECISION_INTERVAL_TICKS);
+      if (decision === napDecision) {
+        sim.world.add(holder, CurrentAtomic, {
+          atomicId: 0,
+          duration: 1,
+          effect: { kind: 'sleep' },
+          targetEntity: null,
+          targetTile: null,
+        });
+      }
+      const own = [...collectModule.run(sim.world, ctx, SEAT)].filter(
+        (c) => 'entity' in c && c.entity === holder,
+      );
+      if (decision === napDecision) sim.world.remove(holder, CurrentAtomic);
+      if (own.length > 0) {
+        expect(own).toEqual([{ kind: 'setJob', entity: holder, jobType: BUILDER }]);
+        expect(sim.world.has(holder, ReplantMisses)).toBe(false);
+        retiredOn = decision;
+      } else if ((sim.world.tryGet(holder, ReplantMisses)?.misses ?? 0) > before) {
+        searchedOn.push(decision);
+      }
+    }
+    // The first miss comes at once; each later search waits for his phase of the retry cycle.
+    const phased = Array.from(
+      { length: REPLANT_MISSES_BEFORE_RETIRE - 1 },
+      (_, i) => firstPhase + i * REPLANT_RETRY_EVERY_DECISIONS,
+    );
+    expect([...searchedOn, retiredOn]).toEqual([1, ...phased]);
   });
 
   it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {

@@ -8,8 +8,7 @@ Seats decide on their own slots (`aiDecisionDue`, `ai-player/cadence.ts`) and re
 flags on their own round (`flagRelocateDue`, `workforce/collectors/upkeep.ts`), so no two of seats 0-6
 pay a pass on the same tick. With twelve seats, pairs (0,7), (1,8), (2,9), (3,10) and (4,11) decide on
 neighbouring ticks. One seat still runs all five modules in one tick, and its relocation round is the
-heaviest pass a healthy seat has. A seat whose collectors re-plant into nothing every decision pays more
-on ordinary passes; that loop is [its own ticket](ai-dead-holder-replant-retries.md).
+heaviest pass a healthy seat has.
 
 Measured on `magiczny_las`, AI seats 0-5 plus the map's seat 6, 1500 ticks from a 60k checkpoint, quiet
 box: `aiPlayer` mean 2.0 ms, p95 7.6 ms, max 62 ms. Every tick in the slowest list is one seat's

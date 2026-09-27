@@ -22,7 +22,17 @@ import {
 } from '../flag-spots.js';
 import type { SpareForce } from '../pool.js';
 import { type CollectorAnchors, type SeatedHolders, seatHolders } from './anchor.js';
-import { everyResource, flagRelocateDue, patchWorked, upkeepHolders } from './upkeep.js';
+import {
+  everyResource,
+  flagRelocateDue,
+  forgetReplantMisses,
+  forgetReplantMissesWhileHarvesting,
+  patchWorked,
+  replantDue,
+  replantMissed,
+  retireToBuilder,
+  upkeepHolders,
+} from './upkeep.js';
 import { genericCollectorJob, meetsNeed, needsVeteran, type WantedGood } from './wanted-goods.js';
 
 /** Post `spare` as a flag gatherer of `w` at `spot`, recorded into the decision's `holders` list and
@@ -248,7 +258,8 @@ export function topUpCollectors(
  * of its own, so extra posts clear the ground a stalled placement needs, in as many directions as there
  * are posts. Once the holder would find nothing to harvest from his flag, and on the periodic upkeep once
  * the clearing resource stands more than the band nearer than his flag, the flag moves beside it; the
- * gatherer retires to builder only when no clearing good is left (authored).
+ * gatherer retires to builder when no clearing good is left or his re-plants keep finding nothing
+ * (authored).
  */
 export function allocateGenericCollectors(
   world: World,
@@ -280,17 +291,19 @@ export function allocateGenericCollectors(
     if (job === null) continue;
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
     const alive = patchWorked(world, reach, g, flagNode, flag.radius, harvests);
-    if (alive && !relocateDue) continue;
+    if (alive) forgetReplantMissesWhileHarvesting(world, g);
+    if (alive ? !relocateDue : !replantDue(world, ctx, g, flagNode)) continue;
     const others = flags.filter((f) => f !== flagNode);
     const nearest = (open: WorkableTest): Entity | null =>
       clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
     if (alive && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
     const replant = replantSpot(world, ground.flags, g, flag.radius, nearest, baseNode, reach, taken);
-    if (replant === 'dry') {
-      if (!alive && builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
-      continue;
+    if (replant === 'dry' || replant === null) {
+      if (!alive && (replant === 'dry' || replantMissed(world, g, flagNode)) && builderJob !== null)
+        retireToBuilder(world, g, builderJob, commands);
+      continue; // on a miss short of retiring he keeps his post, see Replant
     }
-    if (replant === null) continue; // he keeps his post, see Replant
+    forgetReplantMisses(world, g);
     const { target: resource, spot } = replant;
     if (spot.hx === flagNode.hx && spot.hy === flagNode.hy) continue;
     if (alive && nodeDistance(spot, resource) >= nodeDistance(flagNode, resource)) continue; // no nearer spot
