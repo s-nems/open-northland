@@ -404,6 +404,8 @@ describe('a fighting unit on alert takes no rest', () => {
     expect(sim.standsTo(soldier)).toBe(true);
     expect(sim.standsTo(far)).toBe(false); // the fighting is past its clearance
     expect(sim.standsTo(hunter)).toBe(false); // a hunt is no battle
+    sim.world.remove(soldier, Position); // aboard a vehicle
+    expect(sim.standsTo(soldier)).toBe(false);
   });
 
   it('costs a settlement at peace nothing: no sweep unless a rung would act on the answer', () => {

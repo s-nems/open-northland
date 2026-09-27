@@ -23,6 +23,7 @@ import {
   type Paper,
   playerGoodList,
   playerPaperSlots,
+  Position,
   professionProgressionEnabled,
   Settler,
 } from './components/index.js';
@@ -266,9 +267,10 @@ export class Simulation {
    * Whether the battle alert holds `entity` where it stands - no rest, no meal it would have to walk to,
    * no company - because fighting is going on around it (`systems/conflict/battle-alert.ts`). The drive
    * ladder's own rule, for a HUD that would otherwise caption such a unit as idle. Reads the world as it
-   * stands; the index it builds lives for the call.
+   * stands; the index it builds lives for the call. A rider aboard a vehicle stands nowhere.
    */
   standsTo(entity: Entity): boolean {
+    if (!this.world.has(entity, Position)) return false;
     const ctx = this.context();
     return holdsGround(this.world, ctx, entity, new BattleFront(this.world, ctx));
   }
