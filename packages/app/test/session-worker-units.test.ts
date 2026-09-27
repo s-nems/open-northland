@@ -9,9 +9,14 @@ import { ArrivalAlpha } from '../src/session/worker/render-alpha.js';
 import { ASSUMED_FRAME_MS, leadTickLimit, serveSession } from '../src/session/worker/serve.js';
 import { StallWatch } from '../src/session/worker/stall-watch.js';
 import { startWorkerSession } from '../src/session/worker/worker-session.js';
+import { canonicalEntities } from './support/session-worker/canonical-entities.js';
 import { nodeParentPort } from './support/session-worker/node-ports.js';
 import { DEFAULT_TEST_OPTIONS, SILENT_STALL_REPORTS } from './support/session-worker/start-worker.js';
-import { buildTestWorld, type TestWorldBoot } from './support/session-worker/test-world.js';
+import {
+  buildTestWorld,
+  INJECTED_FAULT_MESSAGE,
+  type TestWorldBoot,
+} from './support/session-worker/test-world.js';
 
 const SPEED = 2;
 const HALF = 0.5;
@@ -34,6 +39,16 @@ describe('arrival alpha', () => {
     alpha.setPaused(false, PERIOD_MS * 10);
     expect(alpha.at(PERIOD_MS * 10)).toBeCloseTo(HALF);
     expect(alpha.at(PERIOD_MS * 10.25)).toBeCloseTo(HALF + 0.25);
+  });
+
+  it('draws a tick that lands while paused whole, and holds it until the next lands', () => {
+    const alpha = new ArrivalAlpha(SPEED, false);
+    alpha.arrived(0);
+    alpha.setPaused(true, PERIOD_MS * HALF);
+    alpha.arrived(PERIOD_MS * 2);
+    expect(alpha.at(PERIOD_MS * 3)).toBe(1);
+    alpha.setPaused(false, PERIOD_MS * 4);
+    expect(alpha.at(PERIOD_MS * 10)).toBe(1);
   });
 
   it('keeps its fraction across a speed change and runs the rest at the new pace', () => {
@@ -77,12 +92,15 @@ describe('stall watch', () => {
   });
 });
 
-describe('world facts', () => {
+function sandbox() {
   const scene = SCENES.find((s) => s.id === 'sandbox');
   if (scene === undefined) throw new Error('no sandbox scene');
+  return scene;
+}
 
+describe('world facts', () => {
   it('posts only what changed, the plots by identity', () => {
-    const sim = createSceneSim(scene);
+    const sim = createSceneSim(sandbox());
     sim.run(2);
     const first = readWorldFacts(sim);
     expect(changedFacts(first, readWorldFacts(sim))).toEqual({});
@@ -98,6 +116,7 @@ function inProcessSession(boot: TestWorldBoot, speed = 1, paused = true) {
   serveSession(nodeParentPort(channel.port1), buildTestWorld);
   const inner = nodeParentPort(channel.port2);
   const batches: number[] = [];
+  const failedTicks: number[] = [];
   const port: SessionPort = {
     post: inner.post,
     listenFailure: inner.listenFailure,
@@ -109,6 +128,7 @@ function inProcessSession(boot: TestWorldBoot, speed = 1, paused = true) {
       inner.listen((message, receiveMs) => {
         const landed = message as FromWorker<null>;
         if (landed.kind === 'ticks') batches.push(landed.batch.ticks.length);
+        if (landed.kind === 'tickError') failedTicks.push(landed.tick);
         receive(message, receiveMs);
       }),
   };
@@ -118,7 +138,7 @@ function inProcessSession(boot: TestWorldBoot, speed = 1, paused = true) {
     { ...DEFAULT_TEST_OPTIONS, speed, paused },
     SILENT_STALL_REPORTS,
   );
-  return { session, batches };
+  return { session, batches, failedTicks };
 }
 
 /** How long past reaching its limit the hold test watches the worker. */
@@ -200,6 +220,30 @@ describe('tick batch queue', () => {
 });
 
 describe('failures between the ends', () => {
+  it('keeps a failing tick and the ticks no batch carried yet out of the drawn world', async () => {
+    // Past the first tick, which posts at once, so the ticks between it and the fault are pending.
+    const FAULT_AFTER_TICKS = 5;
+    const direct = createSceneSim(sandbox());
+    const faultTick = direct.tick + FAULT_AFTER_TICKS;
+    const { session: started, failedTicks } = inProcessSession({
+      kind: 'scene',
+      id: 'sandbox',
+      fault: { tick: faultTick, kind: 'throwAfterWrites' },
+    });
+    const session = await started;
+    try {
+      await expect(session.host.run(FAULT_AFTER_TICKS)).rejects.toThrow(INJECTED_FAULT_MESSAGE);
+      while (failedTicks.length === 0) await settle(TURN_MS);
+      expect(failedTicks).toEqual([faultTick]);
+      expect(() => session.driver.advance(0)).toThrow(INJECTED_FAULT_MESSAGE);
+      expect(session.host.tick).toBeLessThan(faultTick);
+      direct.run(session.host.tick - direct.tick);
+      expect(canonicalEntities(session.host.snapshot())).toBe(canonicalEntities(direct.snapshot()));
+    } finally {
+      session.dispose();
+    }
+  });
+
   const CALL_ID = 7;
   const UNCLONEABLE = 'the answer could not be cloned';
   const WORKER_GONE = 'the worker is gone';

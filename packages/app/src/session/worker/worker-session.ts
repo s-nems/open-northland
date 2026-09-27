@@ -267,6 +267,7 @@ class WorkerClient<E> {
         return;
       }
       case 'tickError':
+        diag.error('session', `worker tick ${message.tick} threw; the view keeps an earlier whole tick`);
         this.fail(errorFromWire(message.error));
         return;
       case 'ready':

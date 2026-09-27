@@ -19,9 +19,7 @@ export interface TickOutboxLink {
 export class TickOutbox {
   /** Stepped ticks no batch carries yet. */
   private pending: TickRecord[] = [];
-  /** Per batch posted and not yet delivered, its tick count, oldest first. Only a failure posts past
-   *  the one batch in flight. */
-  private readonly inFlight: number[] = [];
+  /** The ticks of the batch posted and not yet delivered; 0 when none is in flight. */
   private inFlightTicks = 0;
   private shedTicks = 0;
   private peakUndelivered = 0;
@@ -29,6 +27,7 @@ export class TickOutbox {
    *  record carries them. Only the retained kinds, world changes a presentation keeps and a few per
    *  tick, so a long episode holds its world changes and none of its transient events. */
   private carried: SimEvent[] = [];
+  private abandoned = false;
 
   constructor(
     private readonly policy: UndeliveredTicks,
@@ -38,7 +37,7 @@ export class TickOutbox {
 
   /** Whether a tick recorded now is posted at once, so its live event list may go uncloned. */
   postsNow(): boolean {
-    return this.inFlight.length === 0;
+    return this.inFlightTicks === 0;
   }
 
   /** A holding outbox stops the clock at its limit; a shedding one never does. */
@@ -56,14 +55,15 @@ export class TickOutbox {
 
   /** The runtime delivered this many more batches: post what was stepped meanwhile. */
   delivered(batches: number): void {
-    for (let i = 0; i < batches; i++) this.inFlightTicks -= this.inFlight.shift() ?? 0;
+    if (batches > 0) this.inFlightTicks = 0;
     if (this.postsNow()) this.flush();
   }
 
-  /** Post the pending ticks regardless of the batch in flight: the ticks before a failing one are the
-   *  runtime's to deliver. */
-  flushAll(): void {
-    this.flush();
+  /** A tick failed: nothing more is posted, and the ticks no batch carries yet are dropped. */
+  abandon(): void {
+    this.abandoned = true;
+    this.pending = [];
+    this.carried = [];
   }
 
   /**
@@ -86,7 +86,7 @@ export class TickOutbox {
 
   private flush(): void {
     const records = this.pending;
-    if (records.length === 0) return;
+    if (records.length === 0 || this.abandoned) return;
     this.pending = [];
     const first = records[0];
     if (this.carried.length > 0 && first !== undefined) {
@@ -96,8 +96,7 @@ export class TickOutbox {
     const batch = this.link.take(records, this.shedTicks, this.peakUndelivered);
     this.shedTicks = 0;
     this.peakUndelivered = 0;
-    this.inFlight.push(records.length);
-    this.inFlightTicks += records.length;
+    this.inFlightTicks = records.length;
     this.link.post(batch);
   }
 }

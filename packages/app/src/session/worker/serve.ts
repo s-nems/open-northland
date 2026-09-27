@@ -179,6 +179,8 @@ export class ServedSession<E> {
   private polling = false;
   /** Every tick stepped, for telling an advance that stepped none. */
   private steppedTicks = 0;
+  /** The last tick the outbox holds a record of: a failure names the tick after it. */
+  private recordedTick: number;
   /** Advances in a row that stepped no tick. */
   private idleAdvances = 0;
   private lastLoopMs = performance.now();
@@ -228,6 +230,7 @@ export class ServedSession<E> {
       { digest: options.diagnostics },
     );
     this.fogSeat = options.fogSeat;
+    this.recordedTick = sim.tick;
     this.lastFacts = readWorldFacts(sim);
     const delta = this.deltas.next();
     if (delta === null) throw new Error('a fresh delta stream opens with a rebuild');
@@ -436,6 +439,7 @@ export class ServedSession<E> {
           ? null
           : { hash: sim.hashState(), violations: cadence.invariants ? sim.checkInvariants() : null },
     });
+    this.recordedTick = tick;
     this.stepStartMs = performance.now();
   };
 
@@ -572,9 +576,10 @@ export class ServedSession<E> {
     if (this.replaced) return;
     this.broken = true;
     this.halt();
-    // The ticks before the failing one are the runtime's to deliver first, bound or not.
-    this.outbox.flushAll();
-    this.post({ kind: 'tickError', error: wireError(err) });
+    // A delta taken now would carry the failing tick's partial writes under its advanced tick, so the
+    // ticks no batch carries yet are never posted: the runtime keeps the last whole tick it was sent.
+    this.outbox.abandon();
+    this.post({ kind: 'tickError', tick: this.recordedTick + 1, error: wireError(err) });
   }
 }
 

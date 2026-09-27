@@ -5,10 +5,10 @@ import { servedOverLoopback } from '../../../src/session/worker/loopback.js';
 import type { WorkerSessionOptions } from '../../../src/session/worker/protocol.js';
 import type { HostedBuild } from '../../../src/session/worker/serve.js';
 
-/** A tick that throws, or blocks the worker, when the sim steps into it. */
+/** A tick that throws, before or after its writes, or blocks the worker, when the sim steps into it. */
 export interface InjectedFault {
   readonly tick: number;
-  readonly kind: 'throw' | 'block';
+  readonly kind: 'throw' | 'throwAfterWrites' | 'block';
   /** How long a `block` holds the worker. */
   readonly blockMs?: number;
 }
@@ -42,11 +42,11 @@ export function buildTestWorld(boot: TestWorldBoot, options: WorkerSessionOption
 function injectFault(sim: Simulation, fault: InjectedFault): void {
   const step = sim.step.bind(sim);
   sim.step = (): void => {
-    if (sim.tick + 1 === fault.tick) {
-      if (fault.kind === 'throw') throw new Error(INJECTED_FAULT_MESSAGE);
-      holdThread(fault.blockMs ?? 0);
-    }
+    const faulting = sim.tick + 1 === fault.tick;
+    if (faulting && fault.kind === 'throw') throw new Error(INJECTED_FAULT_MESSAGE);
+    if (faulting && fault.kind === 'block') holdThread(fault.blockMs ?? 0);
     step();
+    if (faulting && fault.kind === 'throwAfterWrites') throw new Error(INJECTED_FAULT_MESSAGE);
   };
 }
 

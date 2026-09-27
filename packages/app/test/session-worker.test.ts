@@ -299,7 +299,7 @@ describe('session worker host', () => {
     );
     try {
       await expect(pumpUntil(session, () => false)).rejects.toThrow(INJECTED_FAULT_MESSAGE);
-      expect(session.host.tick).toBe(faultTick - 1);
+      expect(session.host.tick).toBeLessThan(faultTick);
     } finally {
       session.dispose();
     }

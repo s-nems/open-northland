@@ -19,7 +19,9 @@ export class ArrivalAlpha {
 
   arrived(nowMs: number): void {
     this.arrivedAtMs = nowMs;
-    if (this.paused) this.held = 0;
+    // A tick that lands while paused is drawn whole: the mirror holds it, and the held fraction was
+    // a fraction of the tick before.
+    if (this.paused) this.held = 1;
   }
 
   setPaused(paused: boolean, nowMs: number): void {

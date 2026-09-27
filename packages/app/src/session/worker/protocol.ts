@@ -244,5 +244,11 @@ export type FromWorker<E> =
       readonly ok: false;
       readonly error: WireError;
     }
-  | { readonly kind: 'tickError'; readonly error: WireError }
+  | {
+      readonly kind: 'tickError';
+      /** The tick that threw. The runtime keeps the last batch posted before it, which may end a few
+       *  ticks earlier: the ticks no batch carried yet are dropped with the failing tick's writes. */
+      readonly tick: number;
+      readonly error: WireError;
+    }
   | { readonly kind: 'pong' };
