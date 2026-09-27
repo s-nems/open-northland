@@ -105,7 +105,7 @@ export class SnapshotMirror {
       if (held !== undefined) {
         const next = patched(held, entry);
         list[at] = next;
-        this.indexes.replaced(held, next);
+        this.indexes.replaced(held, next, entry);
       } else {
         const entity = created(entry);
         inserts.push(entity);

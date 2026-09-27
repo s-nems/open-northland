@@ -7,6 +7,7 @@
  * the projection internals the main barrel withholds, and render-only `isVisible`.
  */
 
+export { type FrameIndexReader, RENDER_FRAME_INDEX_READERS } from './frame-indexes.js';
 export {
   aabbIntersects,
   type Box,

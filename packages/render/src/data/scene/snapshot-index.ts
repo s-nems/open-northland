@@ -4,6 +4,7 @@ import {
   entityById,
   firstDifference,
   indexesOf,
+  indexOfEntity,
   listedWhere,
   type SnapshotIndexSpec,
   type WorldSnapshot,
@@ -87,6 +88,7 @@ function isEnterableStore(components: Readonly<Record<string, unknown>>): boolea
 
 const ENTERABLE_STORES: SnapshotIndexSpec<Set<number>> = {
   name: 'enterable stores',
+  reads: { values: ['Building'], presence: ['Upgrading'] },
   empty: () => new Set(),
   add: (ids, entity) => {
     if (isEnterableStore(entity.components)) ids.add(entity.id);
@@ -94,11 +96,8 @@ const ENTERABLE_STORES: SnapshotIndexSpec<Set<number>> = {
   remove: (ids, entity) => {
     ids.delete(entity.id);
   },
-  replace: (ids, previous, next) => {
-    const was = previous.components;
-    const is = next.components;
-    if (was.Building === is.Building && was.Upgrading === is.Upgrading) return;
-    if (isEnterableStore(is)) ids.add(next.id);
+  replace: (ids, _previous, next) => {
+    if (isEnterableStore(next.components)) ids.add(next.id);
     else ids.delete(next.id);
   },
 };
@@ -137,17 +136,16 @@ function moveTarget(counts: Map<number, number>, before: number | null, after: n
 }
 
 /** Each id some actor faces or crafts at, with how many actors reference it. The craft reference also
- *  needs the `AtomicClock`, but only its presence, and the sim adds and removes that clock together with
- *  `CurrentAtomic`, so an unchanged `CurrentAtomic` object leaves both references unchanged. */
+ *  needs the `AtomicClock`, but only its presence. */
 const WANTED_TARGETS: SnapshotIndexSpec<Map<number, number>> = {
   name: 'wanted targets',
+  reads: { values: ['CurrentAtomic'], presence: ['AtomicClock'] },
   empty: () => new Map(),
   add: (counts, entity) => countTargetsOf(counts, entity, 1),
   remove: (counts, entity) => countTargetsOf(counts, entity, -1),
   replace: (counts, previous, next) => {
     const was = previous.components;
     const is = next.components;
-    if (was.CurrentAtomic === is.CurrentAtomic) return;
     moveTarget(counts, facedTargetOf(was), facedTargetOf(is));
     moveTarget(counts, craftWorkplaceOf(was), craftWorkplaceOf(is));
   },
@@ -166,6 +164,7 @@ interface PalisadeList {
 
 const PALISADES: SnapshotIndexSpec<PalisadeList> = {
   name: 'palisades',
+  reads: { presence: ['Palisade'] },
   empty: () => ({ held: PALISADE_ENTRIES.empty(), copy: null }),
   add: (list, entity) => {
     if (!carriesPalisade(entity)) return;
@@ -175,6 +174,12 @@ const PALISADES: SnapshotIndexSpec<PalisadeList> = {
   remove: (list, entity) => {
     if (!carriesPalisade(entity)) return;
     PALISADE_ENTRIES.remove(list.held, entity);
+    list.copy = null;
+  },
+  swap: (list, _previous, next) => {
+    const at = indexOfEntity(list.held, next.id);
+    if (at < 0) return;
+    list.held[at] = next;
     list.copy = null;
   },
   differs: (list, fresh) =>

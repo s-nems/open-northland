@@ -91,9 +91,13 @@ const ATOMIC_TARGETS = groupedBy(
       ? num((e.components.CurrentAtomic as { targetEntity?: unknown } | undefined)?.targetEntity)
       : undefined,
   'atomic targets',
+  { values: ['CurrentAtomic'], presence: ['Settler'] },
 );
 
-const TRAINEES = groupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined), 'trainees');
+const TRAINEES = groupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined), 'trainees', {
+  values: ['TrainingOrder'],
+  presence: ['Settler'],
+});
 
 /** The settlers raising `site`, ascending by id: its assigned builders, the ones working on it right now
  *  and the ones supplying it. */

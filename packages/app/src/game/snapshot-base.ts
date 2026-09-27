@@ -85,6 +85,7 @@ function progressionRuleEnabled(snapshot: WorldSnapshot): boolean {
 const AI_SEATS = countedBy(
   (e) => num((e.components.AiPlayer as { player?: unknown } | undefined)?.player),
   'AI seats',
+  { values: ['AiPlayer'] },
 );
 
 function isComputerSeat(snapshot: WorldSnapshot, player: number): boolean {
@@ -175,7 +176,10 @@ export function isActor(e: SnapshotEntity): boolean {
   return isSettler(e) || isBuilding(e);
 }
 
-const ACTORS = listedWhere(isActor, 'actors');
+/** The components {@link isActor} tests the presence of. */
+export const ACTOR_PRESENCE = ['Settler', 'Building'] as const;
+
+const ACTORS = listedWhere(isActor, 'actors', { presence: ACTOR_PRESENCE });
 
 /**
  * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`, maintained
@@ -187,7 +191,7 @@ export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
   return indexesOf(snapshot).get(ACTORS);
 }
 
-const TRAINING_OCCUPANCY = countedBy(trainingHouseOf, 'training occupancy');
+const TRAINING_OCCUPANCY = countedBy(trainingHouseOf, 'training occupancy', { values: ['TrainingOrder'] });
 
 /** Includes reserved places for learners still walking to their school or barracks. */
 export function trainingOccupancyOf(snapshot: WorldSnapshot, house: number): number {
@@ -196,14 +200,17 @@ export function trainingOccupancyOf(snapshot: WorldSnapshot, house: number): num
 
 const NO_ENTITIES: readonly SnapshotEntity[] = [];
 
-const STAFF = groupedBy((e) => (isSettler(e) ? workplaceOf(e) : undefined), 'staff');
+const STAFF = groupedBy((e) => (isSettler(e) ? workplaceOf(e) : undefined), 'staff', {
+  values: ['JobAssignment'],
+  presence: ['Settler'],
+});
 
 /** The settlers employed at `building` (`JobAssignment.workplace`), ascending by id. */
 export function staffOf(snapshot: WorldSnapshot, building: number): readonly SnapshotEntity[] {
   return indexesOf(snapshot).get(STAFF).get(building) ?? NO_ENTITIES;
 }
 
-const SITE_CREWS = groupedBy(buildSiteOf, 'site crews');
+const SITE_CREWS = groupedBy(buildSiteOf, 'site crews', { values: ['SiteAssignment'] });
 
 /** The entities assigned to build or repair `site` (`SiteAssignment.site`), pinned or not, ascending by
  *  id. */
@@ -214,6 +221,7 @@ export function siteCrewOf(snapshot: WorldSnapshot, site: number): readonly Snap
 const SUPPLY_RUNS = groupedBy(
   (e) => (isSettler(e) ? num((e.components.SupplyRun as { site?: unknown } | undefined)?.site) : undefined),
   'supply runs',
+  { values: ['SupplyRun'], presence: ['Settler'] },
 );
 
 /** The settlers whose `SupplyRun` names `site`, ascending by id, whether or not the errand is still
@@ -222,7 +230,10 @@ export function supplyRunsTo(snapshot: WorldSnapshot, site: number): readonly Sn
   return indexesOf(snapshot).get(SUPPLY_RUNS).get(site) ?? NO_ENTITIES;
 }
 
-const SHELTERERS = groupedBy((e) => (isSettler(e) ? shelterOf(e) : undefined), 'shelterers');
+const SHELTERERS = groupedBy((e) => (isSettler(e) ? shelterOf(e) : undefined), 'shelterers', {
+  values: ['Sheltering'],
+  presence: ['Settler'],
+});
 
 /** The settlers that claimed `building` as their shelter, en route or inside, ascending by id. */
 export function shelterersOf(snapshot: WorldSnapshot, building: number): readonly SnapshotEntity[] {

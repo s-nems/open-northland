@@ -128,7 +128,8 @@ and 145 ticks.
   `worker-edge-states-reach-the-view` (done).
 - Delta path: [delta-take-copies-carried-components](../tickets/sim/delta-take-copies-carried-components.md),
   [per-tick-counters-rewrite-every-settler](../tickets/sim/per-tick-counters-rewrite-every-settler.md),
-  [mirror-index-upkeep-per-touched-entity](../tickets/app/mirror-index-upkeep-per-touched-entity.md).
+  `mirror-index-upkeep-per-touched-entity` (done: specs declare their reads, upkeep over the bare
+  apply 1.0 ms at t60k and 1.5 ms at t100k).
 - Render: [sprite-layer-instruction-rebuild](../tickets/render/sprite-layer-instruction-rebuild.md),
   [zoom-out-detail-tiers](../tickets/render/zoom-out-detail-tiers.md),
   [scene-rebuild-and-depth-sort-churn](../tickets/render/scene-rebuild-and-depth-sort-churn.md).

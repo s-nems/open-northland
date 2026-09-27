@@ -334,8 +334,10 @@ browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. 
 | `ON_BENCH_PROGRESSION`, `ON_BENCH_NEEDS` | `on`/`off`, the `?progression=` and `?needs=` overrides; unset keeps the map's rule |
 | `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS` | measured ticks (default 20k), unmeasured warm-up, report segments |
 | `ON_BENCH_SYNC_DIGEST` | fold the per-tick sync digest, what a networked session pays |
-| `ON_BENCH_MIRROR` | `on` measures the snapshot delta path per delta (take, V8 serialize and deserialize as `postMessage` does them, mirror apply without the runtime's indexes, serialized size) and checks the mirror against the live snapshot at each window's end; that check and its full-snapshot clone add GC to the next window |
+| `ON_BENCH_MIRROR` | `on` measures the snapshot delta path per delta (take, V8 serialize and deserialize as `postMessage` does them, mirror apply bare and with the indexes the runtime's frame reads, serialized size) and checks the mirror against the live snapshot and its indexes against a fresh walk at each window's end; that check and its full-snapshot clone add GC to the next window |
 | `ON_BENCH_MIRROR_BATCH` | ticks per delta under `ON_BENCH_MIRROR` (default 1), the batching a worker does when several ticks reach one frame |
+| `ON_BENCH_MIRROR_SPLIT` | `on` under `ON_BENCH_MIRROR` times each frame index reader (`FRAME_INDEX_READERS`) on a mirror of its own and reports its median upkeep over a bare apply of the same delta |
+| `ON_BENCH_MIRROR_PARITY` | `on` under `ON_BENCH_MIRROR` draws each delta's span from 1 to 7 ticks and checks the indexes against a fresh walk after every delta; a difference fails the run |
 | `ON_BENCH_MIRROR_DIGEST` | `on` under `ON_BENCH_MIRROR` has the deltas carry the `debug=diag` truth digest: take includes the worker's fold, `truth` samples the main thread's check, and a mismatch fails the run |
 | `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP`, `ON_BENCH_CHECKPOINTS` | checkpoints, below |
 | `ON_BENCH_JSON` | where the report is written instead of `bench-out/` |

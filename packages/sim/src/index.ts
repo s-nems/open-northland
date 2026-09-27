@@ -97,6 +97,7 @@ export {
   entityById,
   type HomeQualityView,
   homeQualityView,
+  indexOfEntity,
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
@@ -115,6 +116,7 @@ export {
 } from './inspect/snapshot-diff.js';
 export {
   countedBy,
+  EntityGroups,
   entitiesWith,
   firstDifference,
   groupedBy,
@@ -123,6 +125,7 @@ export {
   listedWhere,
   positionedWithin,
   type SnapshotIndexReader,
+  type SnapshotIndexReads,
   type SnapshotIndexSpec,
   withComponent,
 } from './inspect/snapshot-indexes.js';

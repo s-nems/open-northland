@@ -36,7 +36,9 @@ component's clone; a mirror snapshot's entity list is edited in place per delta,
 to a held entity lands last in its record, so read components by name. `indexesOf(snapshot)` serves
 the views a consumer registers as a `SnapshotIndexSpec` (kind lists, groups, counts, the position
 buckets), maintained by the mirror from the same edits and built by one walk for a snapshot taken off
-the sim; the lists it hands out are live and ascending by id.
+the sim; the lists it hands out are live and ascending by id. A spec declares the components it places
+an entity by (`reads`, value or presence), so a change that wrote none of them only swaps the entity's
+object; an undeclared read leaves the view stale, which `verifyIndexes` reports.
 
 ## Ordering
 

@@ -30,7 +30,9 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   A kind subset, an owner's entities, a per-key group or count and the actors come from the indexes the
   mirror maintains per change (`indexesOf`, `entitiesWith`, `groupedBy`, `countedBy` in `@open-northland/sim`;
   `actorsOf` and the group readers in `game/snapshot-base.ts`), never from a per-tick walk over
-  `snapshot.entities`. A walk is for a click, an order or a one-off setup.
+  `snapshot.entities`. A walk is for a click, an order or a one-off setup. An index the frame reads
+  joins `FRAME_INDEX_READERS` (`view/projections/frame-indexes.ts`, render's own beside its readers),
+  which the mirror probe registers to measure the upkeep.
 - `Simulation` is constructed and typed only by hosts: the entries' world builders, scenes,
   `game/sandbox/`, `game/world/`, the inline host, and in `session/worker/` the served session, its
   facts and the network worker's world port; the `biome.json` override lists them. The inline host

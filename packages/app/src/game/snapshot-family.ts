@@ -9,6 +9,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import {
+  ACTOR_PRESENCE,
   isActor,
   isSettler,
   num,
@@ -147,7 +148,10 @@ function marriageChildOf(e: SnapshotEntity): number | undefined {
 }
 
 /** The actors naming each growing child in their `Marriage`, ascending by id. */
-const PARENTS = groupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined), 'parents');
+const PARENTS = groupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined), 'parents', {
+  values: ['Marriage'],
+  presence: ACTOR_PRESENCE,
+});
 
 /** A growing child's father, named by its lowest-id parent: a list naming a whole settlement asks once
  *  per child, so the parents come from a maintained index rather than a walk per question. */
@@ -170,7 +174,7 @@ export interface HomeFamily {
 const residentHomeOf = (e: SnapshotEntity): number | undefined =>
   isSettler(e) ? residenceHomeOf(e) : undefined;
 
-const RESIDENTS = groupedBy(residentHomeOf, 'residents');
+const RESIDENTS = groupedBy(residentHomeOf, 'residents', { values: ['Residence'], presence: ['Settler'] });
 
 /** Whether two objects of one entity group identically: a family reads only the home, adulthood and the
  *  marriage's spouse and child. */
@@ -195,6 +199,7 @@ function sameFamilyFacts(previous: SnapshotEntity, next: SnapshotEntity): boolea
  *  fact a grouping reads belongs to the home's own residents. */
 const FAMILIES: SnapshotIndexSpec<Map<number, readonly HomeFamily[]>> = {
   name: 'families',
+  reads: { values: ['Residence', 'Marriage'], presence: ['Settler', 'Age'] },
   empty: () => new Map(),
   add: (families, e) => forgetHomeOf(families, e),
   remove: (families, e) => forgetHomeOf(families, e),

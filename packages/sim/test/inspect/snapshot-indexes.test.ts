@@ -12,6 +12,7 @@ import {
   positionedWithin,
   Simulation,
   type SnapshotDelta,
+  type SnapshotIndexSpec,
   SnapshotMirror,
   TileBuckets,
   type WorldSnapshot,
@@ -193,6 +194,7 @@ describe('snapshot indexes over a mirror', () => {
       return typeof kind === 'number' ? kind : undefined;
     };
     const byMark = groupedBy(markOf);
+    const byMarkRead = groupedBy(markOf, 'marks', { values: ['Mark'] });
     const at = (x: number, y: number) => ({ x: x * ONE, y: y * ONE });
     const owner = (player: number) => ({ player });
     const entry = (id: number, components: Record<string, unknown>, removed: string[] = []): EntityDelta => ({
@@ -210,6 +212,7 @@ describe('snapshot indexes over a mirror', () => {
       const snapshot = mirror.snapshot();
       expectIndexesMatchWalk(snapshot);
       expectGroupsMatchWalk(indexesOf(snapshot).get(byMark), snapshot, markOf);
+      expectGroupsMatchWalk(indexesOf(snapshot).get(byMarkRead), snapshot, markOf);
     };
 
     mirror.apply(
@@ -245,6 +248,66 @@ describe('snapshot indexes over a mirror', () => {
     // A rebuild drops every maintained state; the next read walks the new list.
     mirror.apply(next([entry(4, { Settler: {}, Owner: owner(PLAYER), Position: at(2, 2) })], [], true));
     check();
+  });
+});
+
+describe('a spec that declares its reads', () => {
+  it('replaces an entity whose change wrote what it reads and swaps every other one', () => {
+    interface Calls {
+      readonly replaced: number[];
+      readonly swapped: number[];
+    }
+    const spy: SnapshotIndexSpec<Calls> = {
+      reads: { values: ['Mark'], presence: ['Settler'] },
+      empty: () => ({ replaced: [], swapped: [] }),
+      add: () => {},
+      remove: () => {},
+      replace: (calls, _previous, next) => calls.replaced.push(next.id),
+      swap: (calls, _previous, next) => calls.swapped.push(next.id),
+    };
+    const entry = (id: number, components: Record<string, unknown>, removed: string[] = []): EntityDelta => ({
+      id,
+      components,
+      removed,
+    });
+    const mirror = new SnapshotMirror();
+    mirror.apply({
+      tick: 1,
+      sequence: 0,
+      rebuild: true,
+      touched: [
+        entry(1, { Settler: { hunger: 0 }, Position: { x: 0, y: 0 } }),
+        entry(2, { Mark: { kind: 1 } }),
+        entry(3, { Position: { x: 0, y: 0 } }),
+      ],
+      removed: [],
+      events: [],
+    });
+    const calls = indexesOf(mirror.snapshot()).get(spy);
+    // A rewrite of a presence-read component and a write of an unread one swap; a value read replaces.
+    mirror.apply({
+      tick: 2,
+      sequence: 1,
+      rebuild: false,
+      touched: [
+        entry(1, { Settler: { hunger: 1 }, Position: { x: 1, y: 0 } }),
+        entry(2, { Mark: { kind: 2 } }),
+        entry(3, { Position: { x: 1, y: 0 } }),
+      ],
+      removed: [],
+      events: [],
+    });
+    expect(calls).toEqual({ replaced: [2], swapped: [1, 3] });
+    // Gaining or dropping a presence-read component replaces.
+    mirror.apply({
+      tick: 3,
+      sequence: 2,
+      rebuild: false,
+      touched: [entry(1, {}, ['Settler']), entry(3, { Settler: { hunger: 0 } })],
+      removed: [],
+      events: [],
+    });
+    expect(calls).toEqual({ replaced: [2, 1, 3], swapped: [1, 3] });
   });
 });
 

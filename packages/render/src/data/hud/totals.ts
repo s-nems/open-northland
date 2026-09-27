@@ -25,13 +25,15 @@ interface Anchor {
   count: number;
 }
 
-/** One player's running figures, kept per change by {@link HUD_TOTALS}. */
-interface PlayerTotals {
+/** One player's people, kept per change by {@link HUD_PEOPLE}; a player with nobody is absent. */
+interface People {
   population: number;
   /** Head-counts by job; a job nobody holds is absent. */
   readonly jobs: Map<number, JobTally>;
-  /** Units by good in the player's own piles, upgrade stashes and hands; a zero total is absent. */
-  readonly owned: Map<number, number>;
+}
+
+/** One player's reach over the ground heaps, kept per change by {@link HUD_REACH}. */
+interface Reach {
   /** The half-cell nodes of the player's signposts and buildings, by {@link nodeKey}, with how many
    *  stand on each. */
   readonly anchors: Map<string, Anchor>;
@@ -49,8 +51,8 @@ interface GroundHeap {
   readonly amounts: AmountPairs;
 }
 
-interface HudTotals {
-  readonly players: Map<number, PlayerTotals>;
+interface HudReach {
+  readonly players: Map<number, Reach>;
   /** Every ownerless positioned stockpile, by entity id. */
   readonly heaps: Map<number, GroundHeap>;
 }
@@ -59,6 +61,7 @@ interface HudTotals {
 export interface PlayerHudTotals {
   readonly population: number;
   readonly jobs: ReadonlyMap<number, Readonly<JobTally>>;
+  /** Units by good in the player's own piles, upgrade stashes and hands; a zero total is absent. */
   readonly owned: ReadonlyMap<number, number>;
   readonly heapStock: ReadonlyMap<number, number>;
 }
@@ -67,11 +70,9 @@ const ADD = 1;
 const SUBTRACT = -1;
 type Sign = typeof ADD | typeof SUBTRACT;
 
-/** The components each part of an entity's contribution reads; a replacement that keeps all of a
- *  part's objects leaves that part alone, since an unchanged component keeps its clone. */
+/** The components each part of the reach reads; a replacement that keeps all of a part's objects
+ *  leaves that part alone, since an unchanged component keeps its clone. */
 const ANCHOR_READS = ['Owner', 'Position', 'Signpost', 'Building'] as const;
-const PERSON_READS = ['Owner', 'Person', 'Settler', 'Female'] as const;
-const OWNED_STOCK_READS = ['Owner', 'Stockpile', 'Upgrading', 'Carrying'] as const;
 const HEAP_READS = ['Owner', 'Stockpile', 'Position'] as const;
 
 function sameReads(was: Components, is: Components, names: readonly string[]): boolean {
@@ -106,23 +107,6 @@ function nodeKey(node: HalfCellNode): string {
   return `${node.hx}:${node.hy}`;
 }
 
-function playerTotals(state: HudTotals, player: number): PlayerTotals {
-  let totals = state.players.get(player);
-  if (totals === undefined) {
-    totals = {
-      population: 0,
-      jobs: new Map(),
-      owned: new Map(),
-      anchors: new Map(),
-      heapStock: new Map(),
-      inReach: null,
-      reachStale: false,
-    };
-    state.players.set(player, totals);
-  }
-  return totals;
-}
-
 function adjust(totals: Map<number, number>, goodType: number, amount: number): void {
   const next = (totals.get(goodType) ?? 0) + amount;
   if (next === 0) totals.delete(goodType);
@@ -131,6 +115,99 @@ function adjust(totals: Map<number, number>, goodType: number, amount: number): 
 
 function adjustPairs(totals: Map<number, number>, pairs: AmountPairs, sign: Sign): void {
   for (const [goodType, amount] of pairs) adjust(totals, goodType, sign * amount);
+}
+
+/** The `Person` marker is the sim's own population query key, so wildlife and a claimed animal are
+ *  left out the same way. */
+function countPerson(people: Map<number, People>, components: Components, sign: Sign): void {
+  const player = ownerOf(components);
+  if (player === undefined || !('Person' in components)) return;
+  let totals = people.get(player);
+  if (totals === undefined) {
+    totals = { population: 0, jobs: new Map() };
+    people.set(player, totals);
+  }
+  totals.population += sign;
+  const jobType = jobTypeOf(components);
+  let tally = totals.jobs.get(jobType);
+  if (tally === undefined) {
+    tally = { count: 0, female: 0 };
+    totals.jobs.set(jobType, tally);
+  }
+  tally.count += sign;
+  if ('Female' in components) tally.female += sign;
+  if (tally.count === 0) totals.jobs.delete(jobType);
+  if (totals.population === 0) people.delete(player);
+}
+
+/** A person counts by owner, job and sex, so a `Settler` rewrite that keeps the job (a need bar
+ *  moving) leaves the tallies alone. */
+function samePerson(was: Components, is: Components): boolean {
+  return (
+    was.Owner === is.Owner &&
+    was.Person === is.Person &&
+    was.Female === is.Female &&
+    (was.Settler === is.Settler || jobTypeOf(was) === jobTypeOf(is))
+  );
+}
+
+/** Every player's population and job tallies. */
+const HUD_PEOPLE: SnapshotIndexSpec<Map<number, People>> = {
+  name: 'HUD people',
+  reads: { values: ['Owner', 'Settler'], presence: ['Person', 'Female'] },
+  empty: () => new Map(),
+  add: (people, entity) => countPerson(people, entity.components, ADD),
+  remove: (people, entity) => countPerson(people, entity.components, SUBTRACT),
+  replace: (people, previous, next) => {
+    if (samePerson(previous.components, next.components)) return;
+    countPerson(people, previous.components, SUBTRACT);
+    countPerson(people, next.components, ADD);
+  },
+};
+
+/** An owned pile is a building's or a boat hull's; the ground never carries an owner. */
+function countOwnedStock(owned: Map<number, Map<number, number>>, components: Components, sign: Sign): void {
+  const player = ownerOf(components);
+  if (player === undefined) return;
+  const piled = readStockpileAmounts(components);
+  const upgrading = components.Upgrading as { savedStock?: unknown } | undefined;
+  const saved = upgrading === undefined ? [] : readAmountPairs(upgrading.savedStock);
+  const carriedGood = readNumField(components, 'Carrying', 'goodType');
+  const carriedAmount = readNumField(components, 'Carrying', 'amount');
+  const carries = carriedGood !== undefined && carriedAmount !== undefined;
+  if (piled.length === 0 && saved.length === 0 && !carries) return;
+  let totals = owned.get(player);
+  if (totals === undefined) {
+    totals = new Map();
+    owned.set(player, totals);
+  }
+  adjustPairs(totals, piled, sign);
+  adjustPairs(totals, saved, sign);
+  if (carries) adjust(totals, carriedGood, sign * carriedAmount);
+  if (totals.size === 0) owned.delete(player);
+}
+
+/** Every player's units by good in its own piles, upgrade stashes and hands; a player holding nothing
+ *  is absent. */
+const HUD_OWNED_STOCK: SnapshotIndexSpec<Map<number, Map<number, number>>> = {
+  name: 'HUD owned stock',
+  reads: { values: ['Owner', 'Stockpile', 'Upgrading', 'Carrying'] },
+  empty: () => new Map(),
+  add: (owned, entity) => countOwnedStock(owned, entity.components, ADD),
+  remove: (owned, entity) => countOwnedStock(owned, entity.components, SUBTRACT),
+  replace: (owned, previous, next) => {
+    countOwnedStock(owned, previous.components, SUBTRACT);
+    countOwnedStock(owned, next.components, ADD);
+  },
+};
+
+function playerReach(state: HudReach, player: number): Reach {
+  let reach = state.players.get(player);
+  if (reach === undefined) {
+    reach = { anchors: new Map(), heapStock: new Map(), inReach: null, reachStale: false };
+    state.players.set(player, reach);
+  }
+  return reach;
 }
 
 interface AnchorAt {
@@ -148,57 +225,22 @@ function anchorOf(components: Components): AnchorAt | null {
 }
 
 /** Only a node gained or lost stales the reach; a second anchor on a held node changes nothing. */
-function countAnchor(state: HudTotals, anchor: AnchorAt, sign: Sign): void {
-  const totals = playerTotals(state, anchor.player);
-  const held = totals.anchors.get(anchor.key);
+function countAnchor(state: HudReach, anchor: AnchorAt, sign: Sign): void {
+  const reach = playerReach(state, anchor.player);
+  const held = reach.anchors.get(anchor.key);
   if (sign === ADD) {
     if (held !== undefined) held.count++;
     else {
-      totals.anchors.set(anchor.key, { node: anchor.node, count: 1 });
-      totals.reachStale = true;
+      reach.anchors.set(anchor.key, { node: anchor.node, count: 1 });
+      reach.reachStale = true;
     }
   } else if (held !== undefined) {
     held.count--;
     if (held.count === 0) {
-      totals.anchors.delete(anchor.key);
-      totals.reachStale = true;
+      reach.anchors.delete(anchor.key);
+      reach.reachStale = true;
     }
   }
-}
-
-/** The `Person` marker is the sim's own population query key, so wildlife and a claimed animal are
- *  left out the same way. */
-function countPerson(state: HudTotals, components: Components, sign: Sign): void {
-  const player = ownerOf(components);
-  if (player === undefined || !('Person' in components)) return;
-  const totals = playerTotals(state, player);
-  totals.population += sign;
-  const jobType = jobTypeOf(components);
-  let tally = totals.jobs.get(jobType);
-  if (tally === undefined) {
-    tally = { count: 0, female: 0 };
-    totals.jobs.set(jobType, tally);
-  }
-  tally.count += sign;
-  if ('Female' in components) tally.female += sign;
-  if (tally.count === 0) totals.jobs.delete(jobType);
-}
-
-/** An owned pile is a building's or a boat hull's; the ground never carries an owner. */
-function countOwnedStock(state: HudTotals, components: Components, sign: Sign): void {
-  const player = ownerOf(components);
-  if (player === undefined) return;
-  const piled = readStockpileAmounts(components);
-  const upgrading = components.Upgrading as { savedStock?: unknown } | undefined;
-  const saved = upgrading === undefined ? [] : readAmountPairs(upgrading.savedStock);
-  const carriedGood = readNumField(components, 'Carrying', 'goodType');
-  const carriedAmount = readNumField(components, 'Carrying', 'amount');
-  const carries = carriedGood !== undefined && carriedAmount !== undefined;
-  if (piled.length === 0 && saved.length === 0 && !carries) return;
-  const owned = playerTotals(state, player).owned;
-  adjustPairs(owned, piled, sign);
-  adjustPairs(owned, saved, sign);
-  if (carries) adjust(owned, carriedGood, sign * carriedAmount);
 }
 
 /** A heap on the ground belongs to nobody; the players whose anchors reach it count it. */
@@ -208,46 +250,50 @@ function heapOf(components: Components): GroundHeap | null {
   return node === null ? null : { node, amounts: readStockpileAmounts(components) };
 }
 
-function countHeap(state: HudTotals, heap: GroundHeap, sign: Sign): void {
-  for (const totals of state.players.values()) {
-    if (totals.reachStale || totals.inReach === null || !totals.inReach(heap.node)) continue;
-    adjustPairs(totals.heapStock, heap.amounts, sign);
+function countHeap(state: HudReach, heap: GroundHeap, sign: Sign): void {
+  for (const reach of state.players.values()) {
+    if (reach.reachStale || reach.inReach === null || !reach.inReach(heap.node)) continue;
+    adjustPairs(reach.heapStock, heap.amounts, sign);
   }
 }
 
-function addHeap(state: HudTotals, id: number, components: Components): void {
+function addHeap(state: HudReach, id: number, components: Components): void {
   const heap = heapOf(components);
   if (heap === null) return;
   state.heaps.set(id, heap);
   countHeap(state, heap, ADD);
 }
 
-function removeHeap(state: HudTotals, id: number): void {
+function removeHeap(state: HudReach, id: number): void {
   const heap = state.heaps.get(id);
   if (heap === undefined) return;
   state.heaps.delete(id);
   countHeap(state, heap, SUBTRACT);
 }
 
-function count(state: HudTotals, entity: EntitySnapshot, sign: Sign): void {
-  const components = entity.components;
-  const anchor = anchorOf(components);
+/** Whether an entity may anchor a reach or lie as a heap: a walking settler never does. */
+function anchorOrHeap(components: Components): boolean {
+  return 'Signpost' in components || 'Building' in components || 'Stockpile' in components;
+}
+
+function countReach(state: HudReach, entity: EntitySnapshot, sign: Sign): void {
+  const anchor = anchorOf(entity.components);
   if (anchor !== null) countAnchor(state, anchor, sign);
-  countPerson(state, components, sign);
-  countOwnedStock(state, components, sign);
-  if (sign === ADD) addHeap(state, entity.id, components);
+  if (sign === ADD) addHeap(state, entity.id, entity.components);
   else removeHeap(state, entity.id);
 }
 
-/** Every player's HUD figures, kept per change over one snapshot lineage. */
-const HUD_TOTALS: SnapshotIndexSpec<HudTotals> = {
-  name: 'HUD totals',
+/** Every player's anchors and the ground heaps their reach covers. */
+const HUD_REACH: SnapshotIndexSpec<HudReach> = {
+  name: 'HUD reach',
+  reads: { values: ['Owner', 'Position', 'Stockpile'], presence: ['Signpost', 'Building'] },
   empty: () => ({ players: new Map(), heaps: new Map() }),
-  add: (state, entity) => count(state, entity, ADD),
-  remove: (state, entity) => count(state, entity, SUBTRACT),
+  add: (state, entity) => countReach(state, entity, ADD),
+  remove: (state, entity) => countReach(state, entity, SUBTRACT),
   replace: (state, previous, next) => {
     const was = previous.components;
     const is = next.components;
+    if (!anchorOrHeap(was) && !anchorOrHeap(is)) return;
     if (!sameReads(was, is, ANCHOR_READS)) {
       const before = anchorOf(was);
       const after = anchorOf(is);
@@ -255,14 +301,6 @@ const HUD_TOTALS: SnapshotIndexSpec<HudTotals> = {
         if (before !== null) countAnchor(state, before, SUBTRACT);
         if (after !== null) countAnchor(state, after, ADD);
       }
-    }
-    if (!sameReads(was, is, PERSON_READS)) {
-      countPerson(state, was, SUBTRACT);
-      countPerson(state, is, ADD);
-    }
-    if (!sameReads(was, is, OWNED_STOCK_READS)) {
-      countOwnedStock(state, was, SUBTRACT);
-      countOwnedStock(state, is, ADD);
     }
     if (!sameReads(was, is, HEAP_READS)) {
       removeHeap(state, previous.id);
@@ -273,61 +311,54 @@ const HUD_TOTALS: SnapshotIndexSpec<HudTotals> = {
     const heaps = firstDifference(held.heaps, fresh.heaps, 'heaps');
     if (heaps !== null) return heaps;
     for (const player of new Set([...held.players.keys(), ...fresh.players.keys()])) {
-      const heldTotals = held.players.get(player) ?? UNCOUNTED;
-      const where = playerDifference(player, heldTotals, fresh, fresh.players.get(player) ?? UNCOUNTED);
+      const heldReach = held.players.get(player) ?? UNANCHORED;
+      const where = reachDifference(player, heldReach, fresh, fresh.players.get(player) ?? UNANCHORED);
       if (where !== null) return where;
     }
     return null;
   },
 };
 
-/** A player the state never counted reads as one whose counts all went back to nothing. */
-const UNCOUNTED: PlayerTotals = {
-  population: 0,
-  jobs: new Map(),
-  owned: new Map(),
-  anchors: new Map(),
-  heapStock: new Map(),
-  inReach: null,
-  reachStale: false,
-};
+/** A player the state never anchored reads as one whose anchors all went. */
+const UNANCHORED: Reach = { anchors: new Map(), heapStock: new Map(), inReach: null, reachStale: false };
 
-/** The counts compare as kept; the heap total only once the held side settled it, against the fresh
+/** The anchors compare as kept; the heap total only once the held side settled it, against the fresh
  *  side settled now, since both are derived on read. */
-function playerDifference(
-  player: number,
-  held: PlayerTotals,
-  fresh: HudTotals,
-  freshTotals: PlayerTotals,
-): string | null {
+function reachDifference(player: number, held: Reach, fresh: HudReach, freshReach: Reach): string | null {
   const at = `player ${player}`;
-  if (held.population !== freshTotals.population) return `${at} population`;
-  const counts =
-    firstDifference(held.jobs, freshTotals.jobs, `${at} jobs`) ??
-    firstDifference(held.owned, freshTotals.owned, `${at} owned`) ??
-    firstDifference(held.anchors, freshTotals.anchors, `${at} anchors`);
-  if (counts !== null || held.reachStale) return counts;
-  if (freshTotals.reachStale) settleReach(fresh, freshTotals);
-  return firstDifference(held.heapStock, freshTotals.heapStock, `${at} heap stock`);
+  const anchors = firstDifference(held.anchors, freshReach.anchors, `${at} anchors`);
+  if (anchors !== null || held.reachStale) return anchors;
+  if (freshReach.reachStale) settleReach(fresh, freshReach);
+  return firstDifference(held.heapStock, freshReach.heapStock, `${at} heap stock`);
 }
 
 /** Derive a stale player's reach and heap total again from every heap: once per anchor change. */
-function settleReach(state: HudTotals, totals: PlayerTotals): void {
-  totals.reachStale = false;
-  totals.heapStock.clear();
-  totals.inReach =
-    totals.anchors.size === 0 ? null : heapReach([...totals.anchors.values()].map((a) => a.node));
-  const inReach = totals.inReach;
+function settleReach(state: HudReach, reach: Reach): void {
+  reach.reachStale = false;
+  reach.heapStock.clear();
+  reach.inReach = reach.anchors.size === 0 ? null : heapReach([...reach.anchors.values()].map((a) => a.node));
+  const inReach = reach.inReach;
   if (inReach === null) return;
   for (const heap of state.heaps.values()) {
-    if (inReach(heap.node)) adjustPairs(totals.heapStock, heap.amounts, ADD);
+    if (inReach(heap.node)) adjustPairs(reach.heapStock, heap.amounts, ADD);
   }
 }
 
+const NO_COUNTS: ReadonlyMap<number, never> = new Map<number, never>();
+
 /** `player`'s maintained HUD figures over `snapshot`, or undefined for a player owning nothing. */
 export function hudTotalsOf(snapshot: WorldSnapshot, player: number): PlayerHudTotals | undefined {
-  const state = indexesOf(snapshot).get(HUD_TOTALS);
-  const totals = state.players.get(player);
-  if (totals?.reachStale) settleReach(state, totals);
-  return totals;
+  const indexes = indexesOf(snapshot);
+  const people = indexes.get(HUD_PEOPLE).get(player);
+  const owned = indexes.get(HUD_OWNED_STOCK).get(player);
+  const state = indexes.get(HUD_REACH);
+  const reach = state.players.get(player);
+  if (reach?.reachStale) settleReach(state, reach);
+  if (people === undefined && owned === undefined && reach === undefined) return undefined;
+  return {
+    population: people?.population ?? 0,
+    jobs: people?.jobs ?? NO_COUNTS,
+    owned: owned ?? NO_COUNTS,
+    heapStock: reach?.heapStock ?? NO_COUNTS,
+  };
 }

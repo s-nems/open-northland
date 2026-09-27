@@ -20,7 +20,9 @@ import { publishReport, reportFrom } from './run.js';
  * `ON_BENCH_PROGRESSION` and `ON_BENCH_NEEDS` (`on`/`off`), `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
  * `ON_BENCH_WINDOWS`, `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, the lockstep session's
  * cost), `ON_BENCH_MIRROR` (sample the snapshot delta path, see `mirror-probe.ts`) with
- * `ON_BENCH_MIRROR_BATCH` (ticks per delta, default 1) and `ON_BENCH_MIRROR_DIGEST` (carry the truth digest),
+ * `ON_BENCH_MIRROR_BATCH` (ticks per delta, default 1), `ON_BENCH_MIRROR_DIGEST` (carry the truth digest),
+ * `ON_BENCH_MIRROR_SPLIT` (time each frame index reader) and `ON_BENCH_MIRROR_PARITY` (random batches,
+ * indexes checked per delta),
  * `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`),
  * `ON_BENCH_JSON=<path>` (write the machine-readable report).
  */
@@ -50,7 +52,12 @@ async function main(): Promise<void> {
   const world = await mapBenchWorld(knobs, knobs.warmupTicks + knobs.measuredTicks);
   for (const line of worldSourceLines(world, knobs)) console.log(line);
   const mirror = boolEnv('ON_BENCH_MIRROR')
-    ? new MirrorProbe(world.sim, intEnv('ON_BENCH_MIRROR_BATCH', 1, 1), boolEnv('ON_BENCH_MIRROR_DIGEST'))
+    ? new MirrorProbe(world.sim, {
+        ticksPerDelta: intEnv('ON_BENCH_MIRROR_BATCH', 1, 1),
+        digest: boolEnv('ON_BENCH_MIRROR_DIGEST'),
+        split: boolEnv('ON_BENCH_MIRROR_SPLIT'),
+        parity: boolEnv('ON_BENCH_MIRROR_PARITY'),
+      })
     : null;
 
   const measurement = await measureWindows(world.sim, {
@@ -60,7 +67,7 @@ async function main(): Promise<void> {
     // A multi-hour run must report progress rather than go silent for an hour.
     onWindow: (window) => {
       console.log(progressLine(window, windows));
-      if (mirror !== null) console.log(mirror.windowLine());
+      if (mirror !== null) for (const line of mirror.windowLines()) console.log(line);
     },
     afterTick: () => {
       world.afterStep();
