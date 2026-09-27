@@ -98,7 +98,7 @@ export class Resync {
 
   /** Take a snapshot at `tick`; true when it is newer than the cached one. Whoever waits is served. */
   take(from: string, tick: number, bytes: string, now: number): boolean {
-    const newer = this.catchUp.cache({ tick, from, bytes });
+    const newer = this.catchUp.cache({ tick, from, bytes }, this.snapshotInvalid);
     if (newer || (this.catchUp.bytes === 0 && this.catchUp.snapshot?.tick === tick)) {
       this.lastRefreshAt = now;
       this.refreshing = false;

@@ -339,11 +339,11 @@ byte or age budget. `snapshotRequest` goes to the client in sync with the lowest
 answers with a `snapshot` blob at its current tick. An unanswered request is repeated every
 `SNAPSHOT_RETRY_MS` (10 s) to the next eligible donor, at once when the asked donor drops, and one
 request is outstanding however many members wait for it. A snapshot prunes the frames it covers.
-A same-tick upload replaces the cached bytes and donor, so a client still in sync can correct a
-diverged donor's snapshot; with no retained frames it also satisfies a paused refresh. An older
-upload leaves the cache and any pending resync unchanged.
 If the cached donor is found out of sync, reconnects wait for a replacement too; its cached tick
-still marks the start of retained replay history.
+still marks the start of retained replay history. A same-tick upload can replace that invalidated
+copy. Otherwise the first copy of a tick stays cached, so delayed duplicates cannot undo a correction.
+With no retained frames, a same-tick upload also satisfies a paused refresh. An older upload leaves
+the cache and any pending resync unchanged.
 
 If the age limit is reached or the next frame would exceed the byte limit, the relay ends that room:
 connected members receive `error` with the `historyBytes` or `historyAge` reason, then `left`. All members,
