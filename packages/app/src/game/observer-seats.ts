@@ -1,4 +1,4 @@
-import { type MapScript, mapLobbySlots } from '@open-northland/data';
+import { type MapScript, type MapTextLanguage, mapLobbySlots } from '@open-northland/data';
 import { type GameSession, orderedSeats } from '@open-northland/lockstep';
 import { playerNameMap } from './map-roster.js';
 
@@ -14,9 +14,13 @@ export interface ObserverSeatEntry {
  * hidden in the lobby, are left out, as is a seat sitting the game out or left off the map. A seat the roster never
  * authored counts as claimable, the way the session parser reads it.
  */
-export function observerSeats(session: GameSession, script: MapScript | null): ObserverSeatEntry[] {
+export function observerSeats(
+  session: GameSession,
+  script: MapScript | null,
+  lang: MapTextLanguage,
+): ObserverSeatEntry[] {
   const authored = new Map(script === null ? [] : mapLobbySlots(script).map((slot) => [slot.player, slot]));
-  const nameOf = playerNameMap(script);
+  const nameOf = playerNameMap(script, lang);
   const out: ObserverSeatEntry[] = [];
   for (const seat of orderedSeats(session.seats)) {
     if (seat.mode === 'idle' || seat.mode === 'absent' || authored.get(seat.player)?.claimable === false)

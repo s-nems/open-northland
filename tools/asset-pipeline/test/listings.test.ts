@@ -44,7 +44,7 @@ function converted(id: string, extra: Partial<MapDatConversion> = {}): MapDatCon
 
 const script = MapScript.parse({
   players: [
-    { player: 0, type: 'human', tribeId: 1, colorId: 0, name: 'Ragnar' },
+    { player: 0, type: 'human', tribeId: 1, colorId: 0, name: { pol: 'Ragnar', eng: 'Ragnar' } },
     { player: 1, type: 'ai', tribeId: 4, colorId: 9 },
   ],
   multiplayer: { slotOptions: [{ player: 1, allowed: ['human', 'ai'] }], hiddenSlots: [], fixedColors: true },
@@ -57,8 +57,8 @@ describe('mapsIndexEntries', () => {
         minimap: true,
         meta: {
           provenance: { kind: 'mod', folder: 'CnModMaps/arena' },
-          name: 'Arena',
-          description: 'Two against two.',
+          name: { pol: 'Arena', eng: 'Arena' },
+          description: { pol: 'Dwoch na dwoch.', eng: 'Two against two.' },
           musicType: 3,
           mapTypes: [4],
           multiplayerOnly: true,
@@ -70,8 +70,8 @@ describe('mapsIndexEntries', () => {
       {
         id: 'arena',
         provenance: { kind: 'mod', folder: 'CnModMaps/arena' },
-        name: 'Arena',
-        description: 'Two against two.',
+        name: { pol: 'Arena', eng: 'Arena' },
+        description: { pol: 'Dwoch na dwoch.', eng: 'Two against two.' },
         minimap: true,
         players: [
           {
@@ -79,7 +79,7 @@ describe('mapsIndexEntries', () => {
             type: 'human',
             tribeId: 1,
             colorId: 0,
-            name: 'Ragnar',
+            name: { pol: 'Ragnar', eng: 'Ragnar' },
             claimable: true,
             hidden: false,
             aiAllowed: true,
@@ -112,11 +112,11 @@ describe('mapsIndexEntries', () => {
   it('sorts by id and lets the last conversion of a repeated id win, like its files did', () => {
     const entries = mapsIndexEntries([
       converted('zeta'),
-      converted('alpha', { meta: { name: 'First' } }),
-      converted('alpha', { meta: { name: 'Second' } }),
+      converted('alpha', { meta: { name: { eng: 'First' } } }),
+      converted('alpha', { meta: { name: { eng: 'Second' } } }),
     ]);
     expect(entries.map((entry) => [entry.id, entry.name])).toEqual([
-      ['alpha', 'Second'],
+      ['alpha', { eng: 'Second' }],
       ['zeta', undefined],
     ]);
   });

@@ -45,7 +45,7 @@ describe('initialLobbyState', () => {
 describe('lobbySlotRows', () => {
   const players = [
     slot(0, { claimable: true, type: 'human' }),
-    slot(1, { name: 'Jarl Sigurd' }),
+    slot(1, { name: { pol: 'Jarl Sigurd' } }),
     slot(2, { claimable: true }),
     slot(3, { hidden: true }),
   ];

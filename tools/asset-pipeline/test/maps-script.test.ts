@@ -37,17 +37,17 @@ describe('resolveMapScript', () => {
     // The loose maps keep their seat toggles in ai.inc (cn_1's include order: mission, ai, player, misc).
     await writeFile(join(dir, 'ai.inc'), '[aidata]\nHAI_Disable 1\n');
     const script = await resolveMapScript(dir, 'x/map.dat', undefined, {
-      30: 'Defeat the Franks',
-      50: 'Ragnar',
-      51: 'Rurik',
+      pol: { 30: 'Pokonaj Frankow', 50: 'Ragnar', 51: 'Rurik' },
+      eng: { 30: 'Defeat the Franks', 51: 'Rurik the Bold' },
     });
+    // A seat name carries every language that ships it; the app picks the reader's.
     expect(script?.players).toEqual([
-      { player: 0, type: 'human', tribeId: 1, colorId: 0, name: 'Ragnar' },
-      { player: 1, type: 'ai', tribeId: 2, colorId: 1, name: 'Rurik' },
+      { player: 0, type: 'human', tribeId: 1, colorId: 0, name: { pol: 'Ragnar' } },
+      { player: 1, type: 'ai', tribeId: 2, colorId: 1, name: { pol: 'Rurik', eng: 'Rurik the Bold' } },
     ]);
     expect(script?.missions).toHaveLength(3);
     // `-1` and an id the table lacks stay textless; a resolvable id carries its goal text.
-    expect(script?.missions.map((m) => m.description)).toEqual([undefined, 'Defeat the Franks', undefined]);
+    expect(script?.missions.map((m) => m.description)).toEqual([undefined, 'Pokonaj Frankow', undefined]);
     expect(script?.ai.map((row) => [row.player, row.disabled, row.strategicOff.length])).toEqual([
       [1, false, 7],
     ]);
@@ -59,9 +59,9 @@ describe('resolveMapScript', () => {
       join(dir, 'player.inc'),
       '[playerdata]\nplayer 0 #PLAYER_TYPE_HUMAN #TRIBE_TYPE_HUMAN_VIKING #PLAYER_COLOR_ID_BLUE\n',
     );
-    const script = await resolveMapScript(dir, 'x/map.dat', undefined, undefined);
+    const script = await resolveMapScript(dir, 'x/map.dat', undefined, {});
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
-    expect(await resolveMapScript(`${dir}-missing`, 'x/map.dat', undefined, undefined)).toBeUndefined();
+    expect(await resolveMapScript(`${dir}-missing`, 'x/map.dat', undefined, {})).toBeUndefined();
   });
 
   it('reads player sections authored in misc.inc or inline in map.ini (9 + 1 corpus maps)', async () => {
@@ -71,7 +71,7 @@ describe('resolveMapScript', () => {
         '[multiplayer]\nplayeroption 0 #PLAYER_TYPE_HUMAN #PLAYER_TYPE_NONE\n',
     );
     await writeFile(join(dir, 'map.ini'), '[MissionData]\ndebuginfo "Inline"\ngoal "True"\n');
-    const script = await resolveMapScript(dir, 'x/map.dat', undefined, undefined);
+    const script = await resolveMapScript(dir, 'x/map.dat', undefined, {});
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
     expect(script?.multiplayer?.slotOptions).toEqual([{ player: 0, allowed: ['human', 'none'] }]);
     expect(script?.missions).toHaveLength(1);
@@ -89,7 +89,7 @@ describe('resolveMapScript', () => {
         props: [{ key: 'player', values: ['0', '1', '4', '7'] }],
       },
     ];
-    const script = await resolveMapScript(dir, 'x/map.dat', cifSections, undefined);
+    const script = await resolveMapScript(dir, 'x/map.dat', cifSections, {});
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 4, colorId: 7 }]);
     expect(script?.source?.file).toBe('x/map.cif');
   });

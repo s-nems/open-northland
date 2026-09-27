@@ -13,7 +13,7 @@ it.each([
 });
 
 it('reads a hand-edited sidecar without provenance and rejects unsafe provenance folders', () => {
-  expect(MapMeta.parse({ name: 'Edited' }).provenance).toBeUndefined();
+  expect(MapMeta.parse({ name: { eng: 'Edited' } }).provenance).toBeUndefined();
   for (const folder of ['/absolute', '../escape', 'C:/install', 'Data\\maps', 'a//b', './map']) {
     expect(MapProvenance.safeParse({ kind: 'unknown', folder }).success).toBe(false);
   }

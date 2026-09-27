@@ -287,7 +287,7 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
     // A navigation away detaches the list; a late response must not rasterize previews for it.
     if (!body.isConnected) return;
     mapsLoaded = true;
-    const maps = entries.map(mapItem).filter((item) => options.include?.(item) ?? true);
+    const maps = entries.map((entry) => mapItem(entry)).filter((item) => options.include?.(item) ?? true);
     items = [...maps, ...items];
     renderList();
     options.onMaps?.(maps.filter((item) => listedIn(item, options.listing)));

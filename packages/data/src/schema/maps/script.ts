@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provenance } from '../record.js';
+import { MapText } from './strings.js';
 
 /**
  * A map's decoded scripting payload: the `playerdata`/`playermisc`/`specialItems`/`MissionData`
@@ -31,9 +32,9 @@ export const MapPlayerSlot = z.strictObject({
     .int()
     .min(0)
     .max(MAP_PLAYER_COLOR_COUNT - 1),
-  /** The slot's authored display name (`playermisc` `nametribe` string id resolved against the map's
-   *  string table), when the map ships one. */
-  name: z.string().optional(),
+  /** The slot's authored display name (`playermisc` `nametribe` string id resolved against each of the
+   *  map's string tables), when the map ships one. */
+  name: MapText.optional(),
 });
 export type MapPlayerSlot = z.infer<typeof MapPlayerSlot>;
 

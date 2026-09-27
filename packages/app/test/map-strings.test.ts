@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapStringLookup } from '../src/game/map-strings.js';
+import { localizedMapText, mapStringLookup } from '../src/game/map-strings.js';
 
 describe('mapStringLookup', () => {
   const strings = {
@@ -20,5 +20,16 @@ describe('mapStringLookup', () => {
     expect(mapStringLookup(strings, 'eng')(9)).toBeUndefined();
     expect(mapStringLookup(strings, 'ger')(2)).toBe('Sakiewka monet'); // no German table: the preference order decides
     expect(mapStringLookup(null, 'pol')(1)).toBeUndefined();
+  });
+});
+
+describe('localizedMapText', () => {
+  it('reads the chosen language, else the first shipped one in preference order', () => {
+    const name = { pol: 'ARABSKIE WYSPY', eng: 'ARABIAN ISLANDS' };
+    expect(localizedMapText(name, 'eng')).toBe('ARABIAN ISLANDS');
+    expect(localizedMapText(name, 'pol')).toBe('ARABSKIE WYSPY');
+    expect(localizedMapText({ eng: 'Only English' }, 'pol')).toBe('Only English');
+    expect(localizedMapText({ rus: 'НОВАЯ' }, 'eng')).toBe('НОВАЯ');
+    expect(localizedMapText(undefined, 'eng')).toBeUndefined();
   });
 });

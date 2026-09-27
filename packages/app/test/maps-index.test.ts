@@ -10,8 +10,8 @@ describe('parseMapsIndex', () => {
   const arena = {
     id: 'arena',
     provenance: { kind: 'mod', folder: 'CnModMaps/arena' },
-    name: 'Arena',
-    description: 'Two against two.',
+    name: { pol: 'Arena', eng: 'Arena' },
+    description: { eng: 'Two against two.' },
     minimap: true,
     players: [
       {
@@ -19,7 +19,7 @@ describe('parseMapsIndex', () => {
         type: 'human',
         tribeId: 1,
         colorId: 7,
-        name: 'Ragnar',
+        name: { pol: 'Ragnar' },
         claimable: true,
         hidden: false,
         aiAllowed: true,

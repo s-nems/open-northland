@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   briefingPage,
   type MissionBriefSource,
+  mapBriefFallback,
   missionBrief,
   missionGoals,
 } from '../src/game/mission-brief.js';
@@ -119,5 +120,13 @@ describe('briefingPage and missionBrief', () => {
       goals: [],
     });
     expect(missionBrief(source(null), 7, [], textOf, 'undecided').title).toBe('Burza Piaskowa');
+  });
+});
+
+describe('mapBriefFallback', () => {
+  it('reads the menu name and description in the player language, else a shipped one', () => {
+    const meta = { name: { pol: 'Burza Piaskowa', eng: 'Sandstorm' }, description: { pol: 'Opis z menu.' } };
+    expect(mapBriefFallback(meta, 'eng')).toEqual({ title: 'Sandstorm', description: 'Opis z menu.' });
+    expect(mapBriefFallback(null, 'eng')).toEqual({ title: '' });
   });
 });

@@ -70,11 +70,11 @@ describe('loadTerrainMap', () => {
 describe('loadMapMeta and loadMapBriefing', () => {
   it('reads the meta sidecar fields and derives nothing from a 404', async () => {
     const fetchImpl = vi.fn(async () =>
-      jsonResponse({ name: 'Wody Nilu', description: 'Opis', musicType: 18, bogus: 1 }),
+      jsonResponse({ name: { pol: 'Wody Nilu' }, description: { pol: 'Opis' }, musicType: 18, bogus: 1 }),
     );
     expect(await loadMapMeta('wody_nilu', fetchImpl as unknown as typeof fetch)).toEqual({
-      name: 'Wody Nilu',
-      description: 'Opis',
+      name: { pol: 'Wody Nilu' },
+      description: { pol: 'Opis' },
       musicType: 18,
     });
     const missing = vi.fn(async () => jsonResponse(null, false, 404));

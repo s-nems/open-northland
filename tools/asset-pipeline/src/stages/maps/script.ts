@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import type { MapScript } from '@open-northland/data';
+import type { MapScript, MapText } from '@open-northland/data';
 import { extractMapScript, iniBytesToSections, type RuleSection } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitive } from '../../roots.js';
+import { type MapStringTables, mapTextOf, preferredStringTable } from './meta.js';
 
 /**
  * The plaintext script files an unpacked map folder ships: `player.inc` usually carries
@@ -25,7 +26,7 @@ export async function resolveMapScript(
   mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
-  strings: Record<number, string> | undefined,
+  tables: MapStringTables,
 ): Promise<MapScript | undefined> {
   let script =
     cifSections !== undefined
@@ -49,21 +50,22 @@ export async function resolveMapScript(
     }
   }
   if (script === undefined) return undefined;
-  return attachMissionDescriptions(attachPlayerNames(script, strings), strings);
+  return attachMissionDescriptions(attachPlayerNames(script, tables), preferredStringTable(tables));
 }
 
 /**
  * Decorates the roster with authored display names: the `nametribe <player> <stringId>` lines kept in
- * `misc`, resolved through the map's string table. A slot without a resolvable name stays nameless.
+ * `misc`, resolved through each of the map's string tables. A slot without a resolvable name stays
+ * nameless.
  */
-function attachPlayerNames(script: MapScript, strings: Record<number, string> | undefined): MapScript {
-  if (strings === undefined || script.players.length === 0) return script;
-  const nameBySlot = new Map<number, string>();
+function attachPlayerNames(script: MapScript, tables: MapStringTables): MapScript {
+  if (script.players.length === 0) return script;
+  const nameBySlot = new Map<number, MapText>();
   for (const line of script.misc) {
     if (line.key !== 'nametribe') continue;
     const player = Number.parseInt(line.values[0] ?? '', 10);
     const stringId = Number.parseInt(line.values[1] ?? '', 10);
-    const name = strings[stringId];
+    const name = mapTextOf(tables, stringId);
     if (!Number.isNaN(player) && name !== undefined && !nameBySlot.has(player)) {
       nameBySlot.set(player, name);
     }

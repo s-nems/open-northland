@@ -3,7 +3,7 @@ import { worldNameIndex, worldNamesOf } from '../src/view/runtime/save-load/worl
 
 describe('worldNamesOf', () => {
   const worldName = worldNamesOf([
-    { id: 'twierdza', name: 'Twierdza na wzgórzu', minimap: false },
+    { id: 'twierdza', name: { pol: 'Twierdza na wzgórzu', eng: 'Hilltop Fortress' }, minimap: false },
     { id: 'nameless', minimap: false },
   ]);
 
@@ -12,6 +12,14 @@ describe('worldNamesOf', () => {
     expect(worldName('nameless')).toBe('nameless');
     expect(worldName('SomeMapId')).toBe('SomeMapId');
     expect(worldName(null)).toBeNull();
+  });
+
+  it('names a map in the given language', () => {
+    const english = worldNamesOf(
+      [{ id: 'twierdza', name: { pol: 'Twierdza', eng: 'Fortress' }, minimap: false }],
+      'eng',
+    );
+    expect(english('twierdza')).toBe('Fortress');
   });
 
   it('resolves scene tokens to localized titles, falling back to the scene id', () => {

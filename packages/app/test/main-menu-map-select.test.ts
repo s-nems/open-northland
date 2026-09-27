@@ -41,7 +41,7 @@ describe('mapItem', () => {
   it('carries the maptype header and lists visible seats', () => {
     const free = mapItem({
       id: 'dolina',
-      name: 'Dolina',
+      name: { pol: 'Dolina' },
       minimap: false,
       mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE],
       players: [slot(0), slot(1, true)],
@@ -69,10 +69,21 @@ describe('mapItem', () => {
     expect(mapItem({ id: 'bare_map', minimap: false }).title).toBe('bare_map');
   });
 
+  it('reads the title and description in the given language, else in a shipped one', () => {
+    const entry = {
+      id: 'arabskie_wyspy',
+      name: { pol: 'ARABSKIE WYSPY', eng: 'ARABIAN ISLANDS' },
+      description: { pol: 'Opis' },
+      minimap: false,
+    };
+    expect(mapItem(entry, 'eng')).toMatchObject({ title: 'ARABIAN ISLANDS', description: 'Opis' });
+    expect(mapItem(entry, 'pol')).toMatchObject({ title: 'ARABSKIE WYSPY', description: 'Opis' });
+  });
+
   it('recognizes and orders tutorial lessons from campaign metadata instead of the map id', () => {
     const lesson = mapItem({
       id: 'renamed_lesson',
-      name: 'Sterowanie',
+      name: { pol: 'Sterowanie' },
       minimap: false,
       campaign: { campaignId: 100, missionId: 2 },
       mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
@@ -141,34 +152,34 @@ describe('listedIn', () => {
 describe('filterItems', () => {
   const subMission = mapItem({
     id: 'gringo_sub',
-    name: 'Gringo - bitwa',
+    name: { pol: 'Gringo - bitwa' },
     minimap: false,
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
     campaign: { campaignId: 0, missionId: 66641 },
   });
   const free = mapItem({
     id: 'dolina',
-    name: 'Dolina',
+    name: { pol: 'Dolina' },
     minimap: false,
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE],
   });
   const arena = mapItem({
     id: 'zatoka_arena',
-    name: 'Zatoka Mgieł',
+    name: { pol: 'Zatoka Mgieł' },
     minimap: true,
     mapTypes: [MAP_TYPE.MULTI_PLAYER_FREE],
   });
   const scene = sceneItem('battle', 'Bitwa', 'pokaz walki wręcz');
   const secondLesson = mapItem({
     id: 'renamed_second',
-    name: 'Każdy Wiking jest unikalny',
+    name: { pol: 'Każdy Wiking jest unikalny' },
     minimap: false,
     campaign: { campaignId: 100, missionId: 2 },
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
   });
   const firstLesson = mapItem({
     id: 'renamed_first',
-    name: 'Sterowanie',
+    name: { pol: 'Sterowanie' },
     minimap: false,
     campaign: { campaignId: 100, missionId: 1 },
     mapTypes: [MAP_TYPE.SINGLE_PLAYER_CAMPAIGN],
@@ -201,7 +212,7 @@ describe('filterItems', () => {
 
   it('orders maps by title as the language reads them, a number by its value', () => {
     const titled = (id: string, name: string): MapSelectItem =>
-      mapItem({ id, name, minimap: false, mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE] });
+      mapItem({ id, name: { pol: name }, minimap: false, mapTypes: [MAP_TYPE.SINGLE_PLAYER_FREE] });
     const tenth = titled('a', 'Wyspa 10');
     const second = titled('b', 'Wyspa 2');
     const accented = titled('c', 'Łąka');

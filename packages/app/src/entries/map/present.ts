@@ -14,7 +14,7 @@ import { playerNameMap, playerTribe } from '../../game/map-roster.js';
 import { mapStartFocus } from '../../game/map-start.js';
 import { mapStringLookup } from '../../game/map-strings.js';
 import { hasEliminationGoal } from '../../game/match-participants.js';
-import { briefingPage } from '../../game/mission-brief.js';
+import { briefingPage, mapBriefFallback } from '../../game/mission-brief.js';
 import { observerSeats } from '../../game/observer-seats.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { sessionSearch } from '../../game/session-url.js';
@@ -143,11 +143,13 @@ export async function presentMapWorld(
     localPlayer,
     observer: isSpectator(session),
     readOnly: isReadOnlySpectator(session),
-    ...(isReadOnlySpectator(session) ? { observerSeats: observerSeats(session, script) } : {}),
+    ...(isReadOnlySpectator(session)
+      ? { observerSeats: observerSeats(session, script, currentLocale()) }
+      : {}),
     playerColourOf,
     seatTribeOf: (player) => playerTribe(script, player),
     tribes: world.tribes,
-    seatNameOf: playerNameMap(script),
+    seatNameOf: playerNameMap(script, currentLocale()),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],
     relationFlags: script?.relationFlags ?? [],
     ...terrainColourOption(world.terrain),
@@ -172,10 +174,7 @@ export async function presentMapWorld(
     musicType: meta?.musicType ?? null,
     missionBriefSource: {
       page: (id) => briefingPage(world.briefing, currentLocale(), id),
-      fallback: {
-        title: meta?.name ?? '',
-        ...(meta?.description !== undefined ? { description: meta.description } : {}),
-      },
+      fallback: mapBriefFallback(meta, currentLocale()),
       skirmishGoal:
         !isSpectator(session) && hasEliminationGoal(sim.matchRules(), localPlayer)
           ? messages().hud.skirmishGoal

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MapProvenance } from './provenance.js';
+import { MapText } from './strings.js';
 
 /** `CLEAN_MAP_TYPE_*` codes of a `[misc_maptype]` `maptype` line (`logicdefines.inc`). */
 export const MAP_TYPE = {
@@ -19,8 +20,8 @@ export const MAP_TYPE_LIMIT = 7;
 export const MapMeta = z.object({
   provenance: MapProvenance.optional(),
   campaign: z.object({ campaignId: z.number().int(), missionId: z.number().int() }).optional(),
-  name: z.string().optional(),
-  description: z.string().optional(),
+  name: MapText.optional(),
+  description: MapText.optional(),
   /** `DM_MUSIC_TYPE_*` (0-38). */
   musicType: z.number().int().optional(),
   /** The distinct `maptype` codes in file order; absent when the header declares no valid one. */

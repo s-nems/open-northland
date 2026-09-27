@@ -13,7 +13,7 @@ import { collectSourceFilesNamed, findPathCaseInsensitive, type SourceRoots } fr
 import { MAPS_DIR } from '../content-tree.js';
 import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
 import { excludeStringTableCopies, mapIdFromPath } from './info.js';
-import { loadMapStringTables, preferredStringTable, resolveMapMeta } from './meta.js';
+import { loadMapStringTables, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
 import { mapProvenance } from './provenance.js';
 import { resolveMapScript } from './script.js';
@@ -118,13 +118,12 @@ export async function convertMapDatTree(
     if (Object.keys(stringTables).length > 0) {
       await writeFileWithParents(stringsPath, `${JSON.stringify(MapStrings.parse(stringTables))}\n`);
     }
-    const strings = preferredStringTable(stringTables);
-    const metadata = await resolveMapMeta(mapDir, rel, cifSections, strings);
+    const metadata = await resolveMapMeta(mapDir, rel, cifSections, stringTables);
     const metaFile: MapMeta = { ...metadata, provenance: mapProvenance(rel) };
     await writeFileWithParents(metaPath, `${JSON.stringify(metaFile)}\n`);
     let scriptFile: MapScript | undefined;
     try {
-      scriptFile = await resolveMapScript(mapDir, rel, cifSections, strings);
+      scriptFile = await resolveMapScript(mapDir, rel, cifSections, stringTables);
     } catch (err) {
       // A schema-invalid script degrades that map to no roster rather than aborting the batch.
       console.warn(`[pipeline] map ${rel}: script undecodable: ${errorMessage(err)}`);

@@ -1,5 +1,6 @@
-import type { HypertextBlock, MapBriefing } from '@open-northland/data';
+import type { HypertextBlock, MapBriefing, MapMeta, MapTextLanguage } from '@open-northland/data';
 import type { MatchOutcome, MissionStatus } from '@open-northland/sim';
+import { localizedMapText } from './map-strings.js';
 
 /**
  * What the mission window shows for one world: a briefing page and the goal list. Pure joins over the
@@ -32,6 +33,18 @@ export interface MissionBriefSource {
   /** The skirmish goal text, listed whenever a match runs, since it is the rule that decides; null
    *  for a world that declared none. */
   readonly skirmishGoal: string | null;
+}
+
+/** The map's menu name and description in `lang`, the task tab's text when no page is shipped. */
+export function mapBriefFallback(
+  meta: Pick<MapMeta, 'name' | 'description'> | null,
+  lang: MapTextLanguage,
+): MissionBriefSource['fallback'] {
+  const description = localizedMapText(meta?.description, lang);
+  return {
+    title: localizedMapText(meta?.name, lang) ?? '',
+    ...(description !== undefined ? { description } : {}),
+  };
 }
 
 /** A goal description starting with this is printed without it, in the window's emphasis colour

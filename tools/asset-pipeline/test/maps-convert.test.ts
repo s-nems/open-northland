@@ -133,12 +133,12 @@ describe('convertMapDatTree', () => {
     const done = await convertMapDatTree({ mod: game }, out);
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ minimap: true });
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toMatchObject({ name: 'BŁĘKIT', description: 'Opis mapy' });
+    expect(meta).toMatchObject({ name: { pol: 'BŁĘKIT' }, description: { pol: 'Opis mapy' } });
     const png = await decodePng(await readFile(join(out, 'maps', 'tutorial_002.png')));
     expect({ width: png.width, height: png.height }).toEqual({ width: 2, height: 1 });
   });
 
-  it('prefers pol over eng and resolves the string ids from the map.cif misc_mapname header', async () => {
+  it('emits every shipped language and resolves the string ids from the map.cif misc_mapname header', async () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
     // The header names non-default string ids (the tutorial maps really use 99/98).
     await writeFile(
@@ -164,7 +164,10 @@ describe('convertMapDatTree', () => {
     }
     await convertMapDatTree({ mod: game }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toMatchObject({ name: 'Samotnia', description: 'Desc pol' });
+    expect(meta).toMatchObject({
+      name: { pol: 'Samotnia', eng: 'Hermitage' },
+      description: { pol: 'Desc pol', eng: 'Desc eng' },
+    });
   });
 
   it('resolves the map cif case-insensitively (a mixed-case Map.CIF still yields its header)', async () => {
@@ -187,7 +190,7 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree({ mod: game }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toMatchObject({ name: 'Samotnia', description: 'Opis' });
+    expect(meta).toMatchObject({ name: { pol: 'Samotnia' }, description: { pol: 'Opis' } });
   });
 
   it('falls back to the encrypted strings.cif when no strings.ini exists (re-decoded to CP1250)', async () => {
@@ -204,7 +207,7 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree({ mod: game }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toMatchObject({ name: 'Błękit', description: 'Opis' });
+    expect(meta).toMatchObject({ name: { pol: 'Błękit' }, description: { pol: 'Opis' } });
   });
 
   it('prefers the readable strings.ini over a sibling strings.cif (golden rule 4)', async () => {
@@ -220,7 +223,7 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree({ mod: game }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toMatchObject({ name: 'Readable' });
+    expect(meta).toMatchObject({ name: { pol: 'Readable' } });
   });
 
   it('resolves the string ids from a readable misc.inc header before the encrypted map.cif', async () => {
@@ -249,7 +252,7 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree({ mod: game }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toMatchObject({ name: 'Wlasciwa', description: 'Opis99' });
+    expect(meta).toMatchObject({ name: { pol: 'Wlasciwa' }, description: { pol: 'Opis99' } });
   });
 
   it('removes stale metadata strings when a re-run no longer finds strings', async () => {

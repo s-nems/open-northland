@@ -31,18 +31,41 @@ describe('playerTribe', () => {
 describe('playerNameMap', () => {
   it('names the seats the roster names, and only those', () => {
     // Same tribe on both seats: the authored name is the only thing telling them apart.
-    const nameOf = playerNameMap({
-      players: [
-        { player: 0, type: 'human' as const, tribeId: 1, colorId: 7, name: 'Zachodni Wikingowie' },
-        { player: 1, type: 'ai' as const, tribeId: 1, colorId: 9 },
-      ],
-    });
+    const nameOf = playerNameMap(
+      {
+        players: [
+          { player: 0, type: 'human' as const, tribeId: 1, colorId: 7, name: { pol: 'Zachodni Wikingowie' } },
+          { player: 1, type: 'ai' as const, tribeId: 1, colorId: 9 },
+        ],
+      },
+      'pol',
+    );
     expect(nameOf(0)).toBe('Zachodni Wikingowie');
     expect(nameOf(1)).toBeUndefined(); // roster row without a name
     expect(nameOf(5)).toBeUndefined(); // off-roster
   });
 
+  it('reads a seat name in the given language, else in the one the map ships', () => {
+    const nameOf = playerNameMap(
+      {
+        players: [
+          {
+            player: 0,
+            type: 'human' as const,
+            tribeId: 1,
+            colorId: 0,
+            name: { pol: 'Wikingowie z Grasslandu', eng: 'Vikings from Grassland' },
+          },
+          { player: 1, type: 'ai' as const, tribeId: 2, colorId: 1, name: { pol: 'Frankowie' } },
+        ],
+      },
+      'eng',
+    );
+    expect(nameOf(0)).toBe('Vikings from Grassland');
+    expect(nameOf(1)).toBe('Frankowie');
+  });
+
   it('names nothing for a roster-less map, which leaves the header on the slot id', () => {
-    expect(playerNameMap(null)(0)).toBeUndefined();
+    expect(playerNameMap(null, 'eng')(0)).toBeUndefined();
   });
 });

@@ -134,6 +134,11 @@ sub-mission is found by (`docs/formats/MISSIONS.md`); the served `/maps-index` c
 so a `StartSubMission` finds its map without reading every sidecar. Which menu lists a map from
 these is the menu's rule (`map-select-model.ts`).
 
+The map's `name` and `description` (sidecar and `/maps-index`) and each roster seat's `name` (script
+sidecar and `/maps-index`) are `{ <lang>: text }` records with one entry per `text/<lang>/` table that
+carries the string. The app reads them in the player's language and falls back through the other
+shipped languages.
+
 ## Layering
 
 Prefer readable CulturesNation `.ini` files when they exist, then readable base-game `.ini` files.

@@ -1,6 +1,7 @@
-import type { MapsIndexEntry } from '@open-northland/data';
+import type { MapsIndexEntry, MapTextLanguage } from '@open-northland/data';
 import { loadMapList } from '../../../content/maps-index.js';
-import { sceneCopy } from '../../../i18n/index.js';
+import { localizedMapText } from '../../../game/map-strings.js';
+import { currentLocale, sceneCopy } from '../../../i18n/index.js';
 
 /** World tokens of scene entries; everything else is a decoded map id (`entries/scene.ts`). */
 export const SCENE_TOKEN_PREFIX = 'scene:';
@@ -8,12 +9,18 @@ export const SCENE_TOKEN_PREFIX = 'scene:';
 export type WorldNameOf = (token: string | null) => string | null;
 
 /**
- * The token-to-display-name join: a scene's localized title, a map's index display name, or the
- * raw token when neither source knows it.
+ * The token-to-display-name join: a scene's localized title, a map's index display name in `lang`, or
+ * the raw token when neither source knows it.
  */
-export function worldNamesOf(entries: readonly MapsIndexEntry[]): WorldNameOf {
+export function worldNamesOf(
+  entries: readonly MapsIndexEntry[],
+  lang: MapTextLanguage = currentLocale(),
+): WorldNameOf {
   const byId = new Map(
-    entries.flatMap((entry) => (entry.name !== undefined ? [[entry.id, entry.name] as const] : [])),
+    entries.flatMap((entry) => {
+      const name = localizedMapText(entry.name, lang);
+      return name !== undefined ? [[entry.id, name] as const] : [];
+    }),
   );
   return (token) => {
     if (token === null) return null;

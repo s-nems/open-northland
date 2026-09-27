@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MapScript, mapLobbySlots } from '../src/index.js';
 
 const roster = [
-  { player: 0, type: 'human', tribeId: 1, colorId: 0, name: 'Ragnar' },
+  { player: 0, type: 'human', tribeId: 1, colorId: 0, name: { pol: 'Ragnar' } },
   { player: 1, type: 'ai', tribeId: 4, colorId: 9 },
   { player: 2, type: 'ai', tribeId: 2, colorId: 3 },
 ];
@@ -16,7 +16,7 @@ describe('mapLobbySlots', () => {
         type: 'human',
         tribeId: 1,
         colorId: 0,
-        name: 'Ragnar',
+        name: { pol: 'Ragnar' },
         claimable: true,
         hidden: false,
         aiAllowed: true,

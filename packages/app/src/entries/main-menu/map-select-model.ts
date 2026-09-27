@@ -1,6 +1,7 @@
-import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/data';
+import type { MapsIndexEntry, MapsIndexPlayerSlot, MapTextLanguage } from '@open-northland/data';
 import { MAP_TYPE } from '@open-northland/data';
-import { compareLabels } from '../../i18n/index.js';
+import { localizedMapText } from '../../game/map-strings.js';
+import { compareLabels, currentLocale } from '../../i18n/index.js';
 
 /**
  * Pure state for the map list: the row items it renders, which menu lists a map, the segmented
@@ -59,7 +60,9 @@ export interface MapSelectItem {
   readonly minimap: boolean;
 }
 
-export function mapItem(entry: MapsIndexEntry): MapSelectItem {
+/** The row a map lists as, its title and description read in `lang`. */
+export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLocale()): MapSelectItem {
+  const description = localizedMapText(entry.description, lang);
   const listed = entry.players?.filter((slot) => !slot.hidden) ?? [];
   // The converted mod identifies its tutorial as campaign 100. Using campaign metadata keeps the
   // menu stable when a source folder or generated id is renamed.
@@ -67,14 +70,14 @@ export function mapItem(entry: MapsIndexEntry): MapSelectItem {
   return {
     kind: 'map',
     id: entry.id,
-    title: entry.name ?? entry.id,
+    title: localizedMapText(entry.name, lang) ?? entry.id,
     types: entry.mapTypes ?? [],
     multiplayerOnly: entry.multiplayerOnly === true,
     seats: listed.map((slot) => ({ tribeId: slot.tribeId, colorId: slot.colorId })),
     players: entry.players ?? [],
     fixedColors: entry.fixedColors === true,
     ...(tutorialStep !== undefined ? { tutorialStep } : {}),
-    ...(entry.description !== undefined ? { description: entry.description } : {}),
+    ...(description !== undefined ? { description } : {}),
     minimap: entry.minimap,
   };
 }

@@ -24,8 +24,8 @@ export const MapsIndexEntry = z.strictObject({
   id: z.string().min(1),
   provenance: MapProvenance.optional(),
   campaign: MapMeta.shape.campaign,
-  name: z.string().optional(),
-  description: z.string().optional(),
+  name: MapMeta.shape.name,
+  description: MapMeta.shape.description,
   /** Whether the minimap thumbnail `maps/<id>.png` exists. */
   minimap: z.boolean(),
   /** Absent when the map ships no decodable roster. */

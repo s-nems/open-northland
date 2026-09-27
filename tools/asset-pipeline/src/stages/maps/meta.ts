@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { MAP_TEXT_LANGUAGES, type MapMeta, type MapTextLanguage } from '@open-northland/data';
+import { MAP_TEXT_LANGUAGES, type MapMeta, type MapText, type MapTextLanguage } from '@open-northland/data';
 import {
   decodeCifStringTable,
   extractMapTypes,
@@ -125,8 +125,8 @@ export async function loadMapStringTables(mapDir: string, rel: string): Promise<
   return tables;
 }
 
-/** The table the map's own menu strings and mission texts resolve through: the first language the
- *  folder ships, in {@link MAP_TEXT_LANGUAGES} preference order. */
+/** The table the map's mission texts resolve through: the first language the folder ships, in
+ *  {@link MAP_TEXT_LANGUAGES} preference order. */
 export function preferredStringTable(tables: MapStringTables): Record<number, string> | undefined {
   for (const lang of MAP_TEXT_LANGUAGES) {
     const table = tables[lang];
@@ -135,26 +135,37 @@ export function preferredStringTable(tables: MapStringTables): Record<number, st
   return undefined;
 }
 
+/** One string id in every shipped language that carries it, so the app picks the reader's language;
+ *  undefined when no table has it. */
+export function mapTextOf(tables: MapStringTables, stringId: number): MapText | undefined {
+  const text: MapText = {};
+  for (const lang of MAP_TEXT_LANGUAGES) {
+    const value = tables[lang]?.[stringId];
+    if (value !== undefined) text[lang] = value;
+  }
+  return Object.keys(text).length > 0 ? text : undefined;
+}
+
 /**
  * Resolves one map folder's meta sidecar: the `[misc_mapname]` header's ids looked up in the folder's
- * string table, the `[misc_music]` code and the `[misc_maptype]` listing. Returns undefined when
- * nothing resolves. `cifSections` and `strings` come from the caller so each map decodes its cif and
- * loads its table once.
+ * string tables, the `[misc_music]` code and the `[misc_maptype]` listing. Returns undefined when
+ * nothing resolves. `cifSections` and `tables` come from the caller so each map decodes its cif and
+ * loads its tables once.
  */
 export async function resolveMapMeta(
   mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
-  strings?: Record<number, string>,
+  tables?: MapStringTables,
 ): Promise<MapMetaFile | undefined> {
-  strings ??= preferredStringTable(await loadMapStringTables(mapDir, rel));
+  tables ??= await loadMapStringTables(mapDir, rel);
   const { nameStringId, descriptionStringId, musicType, mapTypes } = await resolveMapHeader(
     mapDir,
     rel,
     cifSections,
   );
-  const name = strings?.[nameStringId];
-  const description = strings?.[descriptionStringId];
+  const name = mapTextOf(tables, nameStringId);
+  const description = mapTextOf(tables, descriptionStringId);
   const listing =
     mapTypes !== undefined &&
     (mapTypes.types.length > 0 || mapTypes.multiplayerOnly || mapTypes.campaign !== undefined);

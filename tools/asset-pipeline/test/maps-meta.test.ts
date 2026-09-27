@@ -7,7 +7,7 @@ import { makeTempDir } from './support/game-tree.js';
 
 /**
  * Covers the map meta sidecar resolution: the header-id fallback chain (misc.inc/map.ini/map.cif →
- * observed default 0/1), the pol-before-eng language preference, and the "no strings → no sidecar"
+ * observed default 0/1), every shipped language per text, and the "no strings → no sidecar"
  * degrade. Fixtures are plain ASCII `.ini` (windows-1250 decodes ASCII 1:1). Only `resolveMapMeta` is
  * public; the private id/table resolvers are exercised through it.
  */
@@ -42,8 +42,8 @@ describe('resolveMapMeta', () => {
     // Bare `string` lines take running ids from 0, so id 0 is the name, id 1 the description.
     await writeStrings(dir, 'pol', 'string "Green Valley"\nstring "A lush test map."');
     expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toEqual({
-      name: 'Green Valley',
-      description: 'A lush test map.',
+      name: { pol: 'Green Valley' },
+      description: { pol: 'A lush test map.' },
     });
   });
 
@@ -52,8 +52,8 @@ describe('resolveMapMeta', () => {
     await writeStrings(dir, 'pol', 'stringn 5 "Custom Name"\nstringn 6 "Custom Desc"');
     await writeFile(join(dir, 'misc.inc'), '[misc_mapname]\nmapnamestringid 5\nmapdescriptionstringid 6\n');
     expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toEqual({
-      name: 'Custom Name',
-      description: 'Custom Desc',
+      name: { pol: 'Custom Name' },
+      description: { pol: 'Custom Desc' },
     });
   });
 
@@ -74,19 +74,19 @@ describe('resolveMapMeta', () => {
     const typed = await mapFolder();
     await writeStrings(typed, 'pol', 'string "Nazwa"\nstring "Opis"');
     expect(await resolveMapMeta(typed, 'x/map.dat', cif)).toEqual({
-      name: 'Nazwa',
-      description: 'Opis',
+      name: { pol: 'Nazwa' },
+      description: { pol: 'Opis' },
       mapTypes: [2],
     });
   });
 
-  it('prefers the Polish string table over English', async () => {
+  it('carries the name and description in every language that ships them', async () => {
     const dir = await mapFolder();
     await writeStrings(dir, 'pol', 'string "Nazwa"\nstring "Opis"');
-    await writeStrings(dir, 'eng', 'string "Name"\nstring "Description"');
+    await writeStrings(dir, 'eng', 'string "Name"');
     expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toEqual({
-      name: 'Nazwa',
-      description: 'Opis',
+      name: { pol: 'Nazwa', eng: 'Name' },
+      description: { pol: 'Opis' },
     });
   });
 
@@ -95,8 +95,8 @@ describe('resolveMapMeta', () => {
     await writeStrings(dir, 'pol', 'stringn 5 "Cif Name"\nstringn 6 "Cif Desc"');
     const cifSections = parseIniSections('[misc_mapname]\nmapnamestringid 5\nmapdescriptionstringid 6\n');
     expect(await resolveMapMeta(dir, 'x/map.dat', cifSections)).toEqual({
-      name: 'Cif Name',
-      description: 'Cif Desc',
+      name: { pol: 'Cif Name' },
+      description: { pol: 'Cif Desc' },
     });
   });
 
@@ -113,8 +113,8 @@ describe('resolveMapMeta', () => {
     await writeStrings(dir, 'pol', 'string "Nazwa"\nstring "Opis"');
     await writeFile(join(dir, 'misc.inc'), '[misc_music]\nmusictype #DM_MUSIC_TYPE_MISSION_BYZANZ3\n');
     expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toEqual({
-      name: 'Nazwa',
-      description: 'Opis',
+      name: { pol: 'Nazwa' },
+      description: { pol: 'Opis' },
       musicType: 15,
     });
   });
@@ -130,7 +130,7 @@ describe('resolveMapMeta', () => {
     await writeStrings(dir, 'pol', 'string "Nazwa"');
     const cifSections = parseIniSections('[misc_music]\nmusictype 36\n');
     expect(await resolveMapMeta(dir, 'x/map.dat', cifSections)).toEqual({
-      name: 'Nazwa',
+      name: { pol: 'Nazwa' },
       musicType: 36,
     });
   });

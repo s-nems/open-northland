@@ -7,11 +7,11 @@ import { observerSeats } from '../src/game/observer-seats.js';
  *  person, the map's own locked computer seat, and a hidden one the lobby never lists. */
 const SCRIPT = {
   players: [
-    { player: 0, colorId: 0, type: 'human', name: 'Ragnar' },
+    { player: 0, colorId: 0, type: 'human', name: { pol: 'Ragnar', eng: 'Ragnar the Red' } },
     { player: 1, colorId: 1, type: 'human' },
     { player: 2, colorId: 2, type: 'ai' },
-    { player: 3, colorId: 3, type: 'ai', name: 'Wrogowie' },
-    { player: 4, colorId: 4, type: 'ai', name: 'Duchy' },
+    { player: 3, colorId: 3, type: 'ai', name: { pol: 'Wrogowie' } },
+    { player: 4, colorId: 4, type: 'ai', name: { pol: 'Duchy' } },
   ],
   multiplayer: {
     slotOptions: [
@@ -46,8 +46,9 @@ describe('observerSeats', () => {
         { player: 3, mode: 'ai', color: 3 },
       ]),
       SCRIPT,
+      'eng',
     );
-    expect(seats).toEqual([{ player: 0, name: 'Ragnar' }, { player: 1 }, { player: 2 }]);
+    expect(seats).toEqual([{ player: 0, name: 'Ragnar the Red' }, { player: 1 }, { player: 2 }]);
   });
 
   it('skips a seat sitting the game out or left off the map and the map’s locked and hidden computers', () => {
@@ -60,6 +61,7 @@ describe('observerSeats', () => {
         { player: 4, mode: 'ai', color: 4 },
       ]),
       SCRIPT,
+      'pol',
     );
     expect(seats.map((seat) => seat.player)).toEqual([0]);
   });
@@ -71,6 +73,7 @@ describe('observerSeats', () => {
         { player: 5, mode: 'ai', color: 5 },
       ]),
       null,
+      'pol',
     );
     expect(seats).toEqual([{ player: 0 }, { player: 5 }]);
   });

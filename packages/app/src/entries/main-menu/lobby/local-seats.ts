@@ -1,4 +1,5 @@
-import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
+import { localizedMapText } from '../../../game/map-strings.js';
+import { currentLocale, formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { colorChip, colorPalette } from '../lobby-controls/color.js';
 import { seatRow } from '../lobby-controls/seat.js';
 import { seatModeControl } from '../lobby-controls/seat-mode.js';
@@ -95,7 +96,7 @@ export function localSeatElements(
 
   const slotRow = (row: LobbySlotRow): HTMLElement => {
     const title =
-      row.slot.name ??
+      localizedMapText(row.slot.name, currentLocale()) ??
       (row.kind === 'open'
         ? lobby.freeSlot
         : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
