@@ -21,6 +21,8 @@ it('folds the frame stats and reads the connection only while the readout shows'
     cpuMs: 4,
     simMs: 1,
     receiveMs: 0,
+    batches: 0,
+    leadTicks: 0,
     snapMs: 1,
     drawMs: 2,
     drawn: 0,

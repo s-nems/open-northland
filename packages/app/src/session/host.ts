@@ -62,6 +62,10 @@ export interface InstrumentRequest {
 export interface OffThreadTickCost {
   readonly simMs: number;
   readonly receiveMs: number;
+  /** The tick batches taken in, one message each. */
+  readonly batches: number;
+  /** How far the sim's thread had stepped past the delivered tick, as its newest batch reported. */
+  readonly leadTicks: number;
 }
 
 /** The running per-system profile, kept where the sim runs. */

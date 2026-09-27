@@ -6,13 +6,8 @@ import { changedFacts, readWorldFacts } from '../src/session/worker/facts.js';
 import type { SessionPort } from '../src/session/worker/port.js';
 import type { FromWorker, ToWorker } from '../src/session/worker/protocol.js';
 import { ArrivalAlpha } from '../src/session/worker/render-alpha.js';
-import {
-  serveSession,
-  UNDELIVERED_LIMIT_SECONDS,
-  undeliveredTickLimit,
-} from '../src/session/worker/serve.js';
+import { ASSUMED_FRAME_MS, leadTickLimit, serveSession } from '../src/session/worker/serve.js';
 import { StallWatch } from '../src/session/worker/stall-watch.js';
-import { TICK_BATCHES_IN_FLIGHT } from '../src/session/worker/tick-outbox.js';
 import { startWorkerSession } from '../src/session/worker/worker-session.js';
 import { nodeParentPort } from './support/session-worker/node-ports.js';
 import { DEFAULT_TEST_OPTIONS, SILENT_STALL_REPORTS } from './support/session-worker/start-worker.js';
@@ -126,17 +121,24 @@ function inProcessSession(boot: TestWorldBoot, speed = 1, paused = true) {
   return { session, batches };
 }
 
-const MS_PER_SECOND = 1000;
-/** How long past reaching its limit, in the limit's wall time, the hold test watches the worker. */
-const PAST_THE_LIMIT = 0.5;
+/** How long past reaching its limit the hold test watches the worker. */
+const PAST_THE_LIMIT_MS = 500;
 /** How long the hold test waits for the worker to reach its limit on a loaded machine. */
 const REACH_LIMIT_TIMEOUT_MS = 30_000;
 const settle = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 /** A polling interval while the other end of an in-process channel works. */
 const TURN_MS = 10;
 
+describe('lead tick limit', () => {
+  it('leaves the batch in flight a tick to step behind it at x1 on fast displays', () => {
+    for (const frameMs of [ASSUMED_FRAME_MS, 1000 / 120, 1000 / 144]) {
+      expect(leadTickLimit(1, frameMs)).toBeGreaterThanOrEqual(2);
+    }
+  });
+});
+
 describe('tick batch queue', () => {
-  it('holds the batches in flight to its bound and posts the rest as one spanning batch', async () => {
+  it('keeps one batch in flight and posts every tick stepped meanwhile as one spanning batch', async () => {
     const { session: started, batches } = inProcessSession({ kind: 'scene', id: 'sandbox' });
     const session = await started;
     try {
@@ -145,25 +147,15 @@ describe('tick batch queue', () => {
       const run = session.host.run(RUN_TICKS);
       // The worker answers between the run's slices, so its tick shows how far the run got.
       while ((await session.host.hashState()).tick < start + RUN_TICKS) await settle(TURN_MS);
-      expect(batches).toEqual(Array.from({ length: TICK_BATCHES_IN_FLIGHT }, () => 1));
+      expect(batches).toEqual([1]);
 
       const ticks: number[] = [];
       const onTick = () => ticks.push(session.host.tick);
-      // The held ticks go out in batches of a frame's worth, and a frame delivers one frame's worth.
-      const frame = session.driver.maxStepsPerFrame;
-      const spanning = Array.from({ length: (RUN_TICKS - TICK_BATCHES_IN_FLIGHT) / frame }, () => frame);
+      // Delivering the first batch releases the rest as one, which the next frame delivers whole.
       session.driver.advance(0, onTick);
-      while (batches.length < TICK_BATCHES_IN_FLIGHT + spanning.length) {
-        session.driver.advance(0, onTick);
-        await settle(TURN_MS);
-      }
-      expect(batches).toEqual([1, 1, ...spanning]);
-      while (ticks.length < RUN_TICKS) {
-        const before = ticks.length;
-        session.driver.advance(0, onTick);
-        expect(ticks.length - before).toBeLessThanOrEqual(frame);
-        await settle(TURN_MS);
-      }
+      while (batches.length < 2) await settle(TURN_MS);
+      expect(batches).toEqual([1, RUN_TICKS - 1]);
+      session.driver.advance(0, onTick);
       await run;
       expect(ticks).toEqual(Array.from({ length: RUN_TICKS }, (_, i) => start + 1 + i));
       expect(session.host.tick).toBe(start + RUN_TICKS);
@@ -183,23 +175,24 @@ describe('tick batch queue', () => {
     }
   });
 
-  it('holds the clock once the runtime has left its limit of ticks undelivered', async () => {
+  it('holds the clock once the runtime has left its lead of ticks undelivered', async () => {
     const FAST = 16;
     const { session: started } = inProcessSession({ kind: 'scene', id: 'sandbox' }, FAST, false);
     const session = await started;
     try {
-      // One frame starts the clock; nothing is delivered after it, so past the limit the worker stops
-      // stepping instead of banking ticks.
+      // One frame starts the clock; nothing is delivered after it, so at its lead the worker stops
+      // stepping instead of banking ticks. No delivery has reported a frame interval yet.
       session.driver.advance(0);
+      const limit = leadTickLimit(FAST, ASSUMED_FRAME_MS);
       const lead = async () => (await session.host.hashState()).tick - session.host.tick;
       const deadline = performance.now() + REACH_LIMIT_TIMEOUT_MS;
-      while ((await lead()) < undeliveredTickLimit(FAST)) {
+      while ((await lead()) < limit) {
         if (performance.now() > deadline) throw new Error('the worker did not reach its limit');
         await settle(TURN_MS);
       }
-      await settle(UNDELIVERED_LIMIT_SECONDS * MS_PER_SECOND * PAST_THE_LIMIT);
-      // Checked between the timer's steps, so the last of them may carry it a step or few past.
-      expect(await lead()).toBeLessThan(undeliveredTickLimit(FAST) + session.driver.maxStepsPerFrame);
+      await settle(PAST_THE_LIMIT_MS);
+      // The clock feeds the driver a tick at a time, so it stops exactly at the limit.
+      expect(await lead()).toBe(limit);
     } finally {
       session.dispose();
     }

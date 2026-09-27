@@ -35,15 +35,16 @@ export interface WorkerSessionOptions {
   /** Stop the clock on the tick a sub-mission transition fires, where the single-player frame loop
    *  would have stopped stepping, so the sheet captures that tick. */
   readonly pauseOnSubMission: boolean;
-  /** What the worker does once the runtime leaves `undeliveredTickLimit` ticks undelivered. */
+  /** What the worker does once the runtime leaves too many ticks undelivered. */
   readonly undelivered: UndeliveredTicks;
   /** The event kinds a shed tick still delivers, ahead of the next delivered tick's own. */
   readonly retainedEventKinds: readonly SimEvent['kind'][];
 }
 
 /**
- * `hold` stops the clock until the runtime delivers again, as a local session may. `shed` keeps
- * stepping, as a session whose clock another authority runs must, and drops the oldest undelivered
+ * `hold` stops the clock at `leadTickLimit`, a couple of the runtime's frames past the drawn tick, as a
+ * local session may: the clock slows to what the runtime draws. `shed` keeps stepping, as a session
+ * whose clock another authority runs must, and past `undeliveredTickLimit` drops the oldest undelivered
  * ticks' records: the delta still spans them, so only their events are lost, except the retained kinds.
  */
 export type UndeliveredTicks = 'hold' | 'shed';
@@ -105,8 +106,9 @@ export type ToWorker<B> =
   | { readonly kind: 'submit'; readonly envelope: CommandEnvelope }
   | { readonly kind: 'pause'; readonly paused: boolean }
   | { readonly kind: 'speed'; readonly speed: number }
-  /** The runtime delivered this many more `ticks` messages. */
-  | { readonly kind: 'delivered'; readonly messages: number }
+  /** The runtime delivered this many more `ticks` messages, in a frame that followed the previous one
+   *  by `frameMs`. */
+  | { readonly kind: 'delivered'; readonly messages: number; readonly frameMs: number }
   | { readonly kind: 'fogSeat'; readonly player: number }
   | { readonly kind: 'instruments'; readonly profile: boolean; readonly spans: boolean }
   | { readonly kind: 'profileReset' }
@@ -195,6 +197,9 @@ export interface TickBatch {
   readonly spans: readonly SystemSpan[] | null;
   /** Ticks since the previous batch whose records the worker shed; they directly precede `ticks`. */
   readonly shedTicks: number;
+  /** The most ticks the worker had stepped past the runtime's delivered tick at any of this batch's
+   *  steps, counting the batch in flight as undelivered until the runtime says so. */
+  readonly leadTicks: number;
 }
 
 /** What the runtime reads of the built world before its first frame. */

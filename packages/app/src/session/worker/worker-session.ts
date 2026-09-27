@@ -110,9 +110,9 @@ export interface WorkerSessionOpening<E> {
 
 /**
  * The runtime's side of one session served on `port`. The driver's `advance` delivers what the worker
- * stepped: it applies each queued batch to the mirror and runs the per-tick callback once per tick
+ * stepped: it applies every queued batch to the mirror and runs the per-tick callback once per tick
  * record the batch carries, with that tick's events behind `tickEvents()`, then acknowledges the
- * batches so the worker may post more.
+ * batches with the frame's interval, which sets how far past the drawn tick the worker may step.
  */
 export function sessionOverPort<E>(
   port: SessionOutlet,
@@ -207,7 +207,9 @@ class WorkerClient<E> {
   private paused: boolean;
   private speed: number;
   private droppedTicks = 0;
-  private lastCost: OffThreadTickCost = { simMs: 0, receiveMs: 0 };
+  private lastCost: OffThreadTickCost = { simMs: 0, receiveMs: 0, batches: 0, leadTicks: 0 };
+  /** The newest batch's {@link TickBatch.leadTicks}. */
+  private leadTicks = 0;
   /** A tick error the worker posted, or its own failure; `advance` rethrows it. */
   private failure: Error | null = null;
   private started = false;
@@ -298,23 +300,19 @@ class WorkerClient<E> {
     if (!this.disposed) this.port.post(message);
   }
 
-  /** Deliver the queued batches, a frame's worth of ticks; see {@link sessionOverPort}. Then rethrows
-   *  a failure: a tick error after the ticks before it, where the inline driver's step would have thrown. */
-  private advance(onTick?: () => void): number {
+  /** Deliver the queued batches; see {@link sessionOverPort}. Then rethrows a failure: a tick error
+   *  after the ticks before it, where the inline driver's step would have thrown. */
+  private advance(frameMs: number, onTick?: () => void): number {
     if (!this.started) {
       this.started = true;
       this.post({ kind: 'start' });
     }
     let delivered = 0;
-    let deliveredTicks = 0;
     let simMs = 0;
     let receiveMs = 0;
     const departed: EntitySnapshot[] = [];
-    // A frame delivers at most the inline driver's step cap of ticks, so a runtime catching up after
-    // a stall, such as a hidden tab, spreads the backlog's sounds and notes over its next frames.
-    while (this.queue.length > 0 && deliveredTicks < this.ready.maxStepsPerFrame) {
-      const item = this.queue.shift();
-      if (item === undefined) break;
+    // The worker keeps one batch in flight, spanning every tick it stepped meanwhile.
+    for (let item = this.queue.shift(); item !== undefined; item = this.queue.shift()) {
       if (item.kind === 'fog') {
         this.setFog(item.fog);
         continue;
@@ -331,6 +329,7 @@ class WorkerClient<E> {
       this.truth?.applied(batch.delta);
       if (batch.spans !== null) this.emitSpans(batch.spans);
       this.shedLog.note(batch);
+      this.leadTicks = batch.leadTicks;
       for (const record of batch.ticks) {
         this.tick = record.tick;
         this.events = record.events;
@@ -346,13 +345,12 @@ class WorkerClient<E> {
       }
       this.alpha.arrived(item.arrivedMs);
       delivered++;
-      deliveredTicks += batch.ticks.length;
     }
     this.tick = this.mirror.tick ?? this.tick;
-    this.lastCost = { simMs, receiveMs };
+    this.lastCost = { simMs, receiveMs, batches: delivered, leadTicks: this.leadTicks };
     if (delivered > 0) {
       this.departed = departed;
-      this.post({ kind: 'delivered', messages: delivered });
+      this.post({ kind: 'delivered', messages: delivered, frameMs });
       this.settleWaiters();
     }
     if (this.failure !== null) throw this.failure;
@@ -552,7 +550,7 @@ class WorkerClient<E> {
         this.alpha.setSpeed(speed, performance.now());
         this.post({ kind: 'speed', speed });
       },
-      advance: (_elapsedMs, onTick) => this.advance(onTick),
+      advance: (elapsedMs, onTick) => this.advance(elapsedMs, onTick),
       submit: (envelope) => this.post({ kind: 'submit', envelope }),
       captureSave: (options: ExportSaveOptions = {}) =>
         this.call({ method: 'captureSave', options }).then(({ value }) => value as SaveGame),

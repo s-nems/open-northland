@@ -71,6 +71,10 @@ export interface PerfReport {
     readonly steps: number;
     readonly simMsPerTick: number;
     readonly receiveMsPerTick: number;
+    /** Tick messages a frame took in from a sim on another thread; 0 inline. */
+    readonly batchesPerFrame: number;
+    /** The most ticks a sim on another thread stepped past the drawn tick; 0 inline. */
+    readonly maxLeadTicks: number;
   };
   /** True when `?debug=profile` is on, which inflates every absolute sim millisecond above. */
   readonly profiling: boolean;
@@ -158,6 +162,8 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
       steps: frame.window.steps,
       simMsPerTick: frame.window.simMsPerTick,
       receiveMsPerTick: frame.window.receiveMsPerTick,
+      batchesPerFrame: frame.window.batchesPerFrame,
+      maxLeadTicks: frame.window.maxLeadTicks,
     },
     profiling: inputs.profiling,
     systems: inputs.systems,

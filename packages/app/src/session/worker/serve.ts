@@ -54,15 +54,41 @@ export interface HostedBuild<E> extends BuiltWorld<E> {
 export type WorldBuilder<B, E> = (boot: B, options: WorkerSessionOptions) => HostedBuild<E>;
 
 /**
- * Session time the worker may run past the last tick the runtime delivered before its undelivered
- * policy applies. A runtime that stops drawing, such as a hidden tab, would otherwise have the worker
- * bank every tick's events without bound; a slow frame shorter than this costs no ticks.
+ * Session time a shedding worker may run past the last tick the runtime delivered before it drops
+ * records. A runtime that stops drawing, such as a hidden tab, would otherwise have the worker bank
+ * every tick's events without bound; a slow frame shorter than this costs no ticks.
  */
 export const UNDELIVERED_LIMIT_SECONDS = 2;
 
 /** {@link UNDELIVERED_LIMIT_SECONDS} in ticks at a session speed. */
 export function undeliveredTickLimit(speed: number): number {
   return Math.ceil(UNDELIVERED_LIMIT_SECONDS * TICKS_PER_SECOND * speed);
+}
+
+/** The runtime's frames a holding worker may step past the delivered tick: a batch posted on one
+ *  frame's acknowledgement is drawn on the next, so the worker steps one frame ahead of the batch in
+ *  flight. */
+const LEAD_FRAMES = 2;
+
+/** Wall time on top of the lead's frames, so a frame late by a garbage collection costs no ticks. */
+const LEAD_GRACE_MS = 50;
+
+/** The longest frame the lead grows with. Past it the clock slows with the frame rate, as the inline
+ *  driver's per-frame step cap slows it. */
+const MAX_LEAD_FRAME_MS = 250;
+
+/** Whole ticks on top of the lead's time: the batch in flight holds at least one, and a slow speed's
+ *  lead of under two would stop the clock behind it until the next delivery. */
+const LEAD_SPARE_TICKS = 1;
+
+/** The frame interval a holding worker assumes until the runtime reports its first. */
+export const ASSUMED_FRAME_MS = 1000 / 60;
+
+/** The ticks a holding worker may step past the runtime's delivered tick, at a session speed and the
+ *  runtime's last frame interval. */
+export function leadTickLimit(speed: number, frameMs: number): number {
+  const leadMs = LEAD_FRAMES * Math.min(frameMs, MAX_LEAD_FRAME_MS) + LEAD_GRACE_MS;
+  return Math.ceil((leadMs / 1000) * TICKS_PER_SECOND * speed) + LEAD_SPARE_TICKS;
 }
 
 /** A waiting driver's poll period, in tick periods at the session speed. A frame's arrival wakes the
@@ -75,6 +101,22 @@ const RUN_SLICE_TICKS = 10;
 const NO_EVENTS: readonly SimEvent[] = [];
 
 const yieldToMessages = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+/** Run `task` as a task of its own, behind the messages already received. A zero-delay timer would do
+ *  the same, but browsers delay a chain of them by 4 ms each, which a sim stepping on at once pays per
+ *  tick. Returns the cancel. */
+function nextTask(task: () => void): () => void {
+  let live = true;
+  const { port1, port2 } = new MessageChannel();
+  port1.onmessage = () => {
+    port1.close();
+    if (live) task();
+  };
+  port2.postMessage(null);
+  return () => {
+    live = false;
+  };
+}
 
 /** What a replaced session's pending answers reject with. */
 export const REPLACED_SESSION_MESSAGE = 'the served world was replaced by a newly booted one';
@@ -120,13 +162,20 @@ export class ServedSession<E> {
   private readonly answers: SessionHost;
   private readonly options: WorkerSessionOptions;
   private readonly outbox: TickOutbox;
+  /** The runtime's last reported frame interval. */
+  private frameMs = ASSUMED_FRAME_MS;
+  /** Wall time the clock owes the driver and has not fed it yet. */
+  private owedMs = 0;
+  /** Session time the clock wrote off because the sim could not keep up with it. */
+  private droppedMs = 0;
   /** The calls being answered; a replacement rejects them. */
   private readonly answering = new Set<number>();
   private lastFacts: WorldFacts;
   private fogSeat: number | null;
   private lastFogKey: string;
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  /** The pending timer is a waiting driver's poll, which `wake` cuts short. */
+  /** Cancels the pending wakeup; null while none is pending. */
+  private cancelWakeup: (() => void) | null = null;
+  /** The pending wakeup is a waiting driver's poll, which `wake` cuts short. */
   private polling = false;
   /** Every tick stepped, for telling an advance that stepped none. */
   private steppedTicks = 0;
@@ -156,11 +205,13 @@ export class ServedSession<E> {
     this.awaitsFrames = built.awaitsFrames === true;
     this.outbox = new TickOutbox(
       options.undelivered,
-      driver.maxStepsPerFrame,
       {
-        take: (records, shedTicks) => this.takeBatch(records, shedTicks),
+        take: (records, shedTicks, leadTicks) => this.takeBatch(records, shedTicks, leadTicks),
         post: (batch) => this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog)),
-        limit: () => undeliveredTickLimit(this.driver.speed),
+        limit: () =>
+          options.undelivered === 'hold'
+            ? leadTickLimit(this.driver.speed, this.frameMs)
+            : undeliveredTickLimit(this.driver.speed),
       },
       new Set(options.retainedEventKinds),
     );
@@ -236,13 +287,16 @@ export class ServedSession<E> {
         else this.resume();
         return;
       case 'speed':
-        // Banks the time since the last step at the old pace before the new one applies.
+        // Banks the time since the last step at the old pace before the new one applies. What a sim
+        // behind its clock still owes is written off, so a slower clock replays none of the faster.
         this.halt();
         this.stepNow();
+        this.writeOff(this.owedMs);
         this.driver.setSpeed(message.speed);
         this.resume();
         return;
       case 'delivered':
+        this.frameMs = message.frameMs;
         this.outbox.delivered(message.messages);
         this.resume();
         return;
@@ -267,7 +321,7 @@ export class ServedSession<E> {
 
   /** What a waiting driver waited on may have arrived: a pending poll steps now. */
   wake(): void {
-    if (this.timer === null || !this.polling) return;
+    if (this.cancelWakeup === null || !this.polling) return;
     this.halt();
     this.schedule(0);
   }
@@ -289,20 +343,20 @@ export class ServedSession<E> {
 
   /** Restart the clock after a hold; the time held is not owed. */
   private resume(): void {
-    if (this.timer !== null || !this.canStep()) return;
+    if (this.cancelWakeup !== null || !this.canStep()) return;
     this.lastLoopMs = performance.now();
     this.schedule(0);
   }
 
   private halt(): void {
-    if (this.timer !== null) clearTimeout(this.timer);
-    this.timer = null;
+    this.cancelWakeup?.();
+    this.cancelWakeup = null;
   }
 
   private schedule(delayMs: number, polling = false): void {
     this.polling = polling;
-    this.timer = setTimeout(() => {
-      this.timer = null;
+    const wake = (): void => {
+      this.cancelWakeup = null;
       const before = this.steppedTicks;
       const alpha = this.stepNow();
       if (alpha === null || !this.canStep()) return;
@@ -311,25 +365,53 @@ export class ServedSession<E> {
       // A second advance in a row that stepped nothing is a driver waiting or paused, whose leftover
       // fraction says nothing of when to ask again; one alone may be a timer that fired a hair early.
       if (this.awaitsFrames && this.idleAdvances > 1) this.schedule(IDLE_POLL_TICKS * tickMs, true);
+      // A sim behind its clock steps on once the messages that came meanwhile are answered.
+      else if (this.owedMs > 0) this.schedule(0);
       // Aimed at the next tick's due time, which the timestep's leftover fraction gives, so a late
       // timer is made up by the next one rather than lost.
-      else this.schedule(Math.max(0, (1 - alpha) * tickMs));
-    }, delayMs);
+      else this.schedule((1 - alpha) * tickMs);
+    };
+    if (delayMs > 0) {
+      const timer = setTimeout(wake, delayMs);
+      this.cancelWakeup = () => clearTimeout(timer);
+    } else {
+      this.cancelWakeup = nextTask(wake);
+    }
   }
 
-  /** Feed the time since the last step to the driver; null when the session cannot step now. */
+  /**
+   * Feed the driver the time since the last step, at most a tick's worth at a time, so pause, speed and
+   * the runtime's deliveries are answered between ticks. Null when the session cannot step now.
+   */
   private stepNow(): number | null {
     if (!this.canStep()) return null;
     const nowMs = performance.now();
-    const elapsedMs = nowMs - this.lastLoopMs;
+    const tickMs = MS_PER_TICK / this.driver.speed;
+    this.owedMs += nowMs - this.lastLoopMs;
     this.lastLoopMs = nowMs;
+    // A sim slower than its clock owes more with each tick it steps: past a frame's cap of ticks the
+    // rest is written off, and the clock slows to what the sim delivers.
+    this.writeOff(this.owedMs - this.driver.maxStepsPerFrame * tickMs);
+    const feedMs = Math.min(this.owedMs, tickMs);
+    this.owedMs -= feedMs;
     this.stepStartMs = nowMs;
+    const before = this.steppedTicks;
     try {
-      return this.driver.advance(elapsedMs, this.stepped);
+      const alpha = this.driver.advance(feedMs, this.stepped);
+      // A driver that stepped nothing holds, as its timestep does, what it is owed while it waits.
+      if (this.steppedTicks === before) this.owedMs = 0;
+      return alpha;
     } catch (err) {
       this.fail(err);
       return null;
     }
+  }
+
+  /** Drop this much of the wall time owed, counted as dropped ticks. */
+  private writeOff(ms: number): void {
+    if (ms <= 0) return;
+    this.droppedMs += ms * this.driver.speed;
+    this.owedMs -= ms;
   }
 
   /** After every step, the driver's or `run`'s: record the tick and post it if the runtime has room. */
@@ -359,7 +441,7 @@ export class ServedSession<E> {
 
   /** The records as one batch, its delta taken now: a delta is taken only for ticks a batch carries,
    *  since one taken and not posted would leave the mirror a gap. */
-  private takeBatch(ticks: TickRecord[], shedTicks: number): TickBatch {
+  private takeBatch(ticks: TickRecord[], shedTicks: number, leadTicks: number): TickBatch {
     const last = ticks[ticks.length - 1];
     const delta = this.deltas.next();
     if (last === undefined || delta === null) throw new Error('a batch needs a stepped tick');
@@ -373,9 +455,10 @@ export class ServedSession<E> {
       ticks,
       facts: changed,
       fog: this.fogChange(),
-      droppedTicks: this.driver.droppedTicks,
+      droppedTicks: this.driver.droppedTicks + Math.round(this.droppedMs / MS_PER_TICK),
       spans,
       shedTicks,
+      leadTicks,
     };
   }
 

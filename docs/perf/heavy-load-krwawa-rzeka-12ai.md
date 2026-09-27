@@ -122,7 +122,7 @@ and 145 ticks.
 
 ## Tickets filed from this run
 
-- Runtime: [worker-lead-follows-drawn-frames](../tickets/app/worker-lead-follows-drawn-frames.md),
+- Runtime: `worker-lead-follows-drawn-frames` (done),
   [relay-pacing-sees-render-cost](../tickets/net-client/relay-pacing-sees-render-cost.md),
   `mirror-truth-check` (done: the `debug=diag` digest and index check),
   [worker-edge-states-reach-the-view](../tickets/app/worker-edge-states-reach-the-view.md).

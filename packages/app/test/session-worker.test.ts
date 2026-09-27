@@ -21,7 +21,12 @@ import type {
   ToWorker,
   WorkerSessionOptions,
 } from '../src/session/worker/protocol.js';
-import { REPLACED_SESSION_MESSAGE, undeliveredTickLimit } from '../src/session/worker/serve.js';
+import {
+  ASSUMED_FRAME_MS,
+  leadTickLimit,
+  REPLACED_SESSION_MESSAGE,
+  undeliveredTickLimit,
+} from '../src/session/worker/serve.js';
 import { sessionOverPort, type WorkerSessionOpening } from '../src/session/worker/worker-session.js';
 import { canonicalEntities } from './support/session-worker/canonical-entities.js';
 import {
@@ -165,9 +170,9 @@ describe('session worker host', () => {
         }
         return submittedAt.length >= SUBMISSIONS;
       });
-      // The worker leads the drawn tick by at most its undelivered limit, so past it the last
-      // command has applied.
-      const lastApplied = (submittedAt.at(-1) ?? 0) + undeliveredTickLimit(FAST_SPEED) + 1;
+      // The worker leads the drawn tick by at most its lead, so past it the last command has applied.
+      // The pump's frames are shorter than the one assumed before the first delivery.
+      const lastApplied = (submittedAt.at(-1) ?? 0) + leadTickLimit(FAST_SPEED, ASSUMED_FRAME_MS) + 1;
       await pumpUntil(session, () => session.host.tick > lastApplied);
       session.driver.setPaused(true);
       await pumpWhile(session, session.host.settled());
@@ -202,8 +207,8 @@ describe('session worker host', () => {
     const delivered: { tick: number; events: string }[] = [];
     let mostInOneFrame = 0;
     try {
-      // One frame starts the clock, then nothing is drawn for a while: the in-flight bound fills and
-      // later ticks ride one spanning batch.
+      // One frame starts the clock, then nothing is drawn for a while: the worker stops at its lead,
+      // and the ticks stepped behind the batch in flight ride one spanning batch.
       session.driver.advance(0);
       await new Promise((resolve) => setTimeout(resolve, UNDRAWN_MS));
       const target = session.host.tick + LOOP_TICKS;
@@ -231,25 +236,17 @@ describe('session worker host', () => {
     }
     expect(delivered.map((d) => d.events)).toEqual(reference);
     expect(reference.some((events) => events !== '[]')).toBe(true);
-    // The backlog arrives spread over frames, a frame's worth at a time.
-    expect(mostInOneFrame).toBe(session.driver.maxStepsPerFrame);
+    // The backlog behind the first batch is delivered whole by one frame, and it is no more than the
+    // lead the worker held at.
+    expect(mostInOneFrame).toBeGreaterThan(1);
+    expect(mostInOneFrame).toBeLessThanOrEqual(leadTickLimit(FAST_SPEED, ASSUMED_FRAME_MS));
   });
 
   it('posts the seat fog masks as their generation changes, and the next seat on request', async () => {
-    let switched = false;
-    let staleMasks = 0;
     const session = await startTestSession(
       bundle.path,
       { kind: 'scene', id: 'team-vision' },
       { speed: FAST_SPEED, paused: false, fogSeat: HUMAN_PLAYER },
-      SILENT_STALL_REPORTS,
-      {},
-      (message) => {
-        if (message.kind === 'fog') switched = true;
-        if (switched && message.kind === 'ticks' && message.batch.fog?.fog?.player === HUMAN_PLAYER) {
-          staleMasks++;
-        }
-      },
     );
     try {
       const generations = new Set<number>();
@@ -270,11 +267,8 @@ describe('session worker host', () => {
       expect([view.player, view.generation]).toEqual([HUMAN_PLAYER, live.generation]);
       expect(fogCells(view)).toEqual(fogCells(live));
 
-      // A backlog the runtime left undelivered was taken under the previous seat and lands after the
-      // next seat's masks; its masks must not replace them.
+      // Once the next seat's masks are drawn, the previous seat's never are again.
       session.driver.setPaused(false);
-      const lead = async () => (await session.host.hashState()).tick - session.host.tick;
-      while ((await lead()) < undeliveredTickLimit(FAST_SPEED)) await sleep(TURN_MS);
       session.host.fogView(TEAMMATE);
       const heldTo = (await session.host.hashState()).tick;
       const seatsDrawn: number[] = [];
@@ -283,7 +277,6 @@ describe('session worker host', () => {
         if (drawn !== undefined && (drawn === TEAMMATE || seatsDrawn.length > 0)) seatsDrawn.push(drawn);
         return session.host.tick >= heldTo;
       });
-      expect(staleMasks).toBeGreaterThan(0);
       expect(new Set(seatsDrawn)).toEqual(new Set([TEAMMATE]));
       session.driver.setPaused(true);
       await pumpWhile(session, session.host.settled());
@@ -410,8 +403,7 @@ describe('session worker host', () => {
     const onTick = () => delivered.push(session.host.tick);
     try {
       const start = session.host.tick;
-      // One frame starts the clock; nothing is delivered after it until the worker is past the point
-      // where a holding session would have stopped.
+      // One frame starts the clock; nothing is delivered after it until the worker is past its limit.
       session.driver.advance(0, onTick);
       const pastHold = undeliveredTickLimit(SHED_SPEED) + session.driver.maxStepsPerFrame;
       const deadline = performance.now() + PAST_THE_LIMIT_TIMEOUT_MS;

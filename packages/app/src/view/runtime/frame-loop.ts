@@ -363,6 +363,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       cpuMs,
       simMs: offThread?.simMs ?? advanceMs,
       receiveMs: offThread?.receiveMs ?? 0,
+      batches: offThread?.batches ?? 0,
+      leadTicks: offThread?.leadTicks ?? 0,
       snapMs,
       drawMs,
       ...renderer.stats(),

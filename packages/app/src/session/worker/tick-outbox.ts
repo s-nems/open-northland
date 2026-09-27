@@ -1,33 +1,30 @@
 import type { SimEvent } from '@open-northland/sim';
 import type { TickBatch, TickRecord, UndeliveredTicks } from './protocol.js';
 
-/**
- * Tick batches posted and not yet delivered past which the worker keeps stepping but holds its ticks
- * back, so the next batch spans them. Two lets one batch wait in the runtime's queue while the next is
- * already on its way.
- */
-export const TICK_BATCHES_IN_FLIGHT = 2;
-
 export interface TickOutboxLink {
-  /** The records as one batch, its delta taken now. */
-  take(records: TickRecord[], shedTicks: number): TickBatch;
+  /** The records as one batch, its delta taken now. `leadTicks` is the most ticks left undelivered
+   *  at any step the batch carries. */
+  take(records: TickRecord[], shedTicks: number, leadTicks: number): TickBatch;
   post(batch: TickBatch): void;
-  /** The undelivered ticks the policy allows at the session's current speed. */
+  /** The undelivered ticks the policy allows now. */
   limit(): number;
 }
 
-/** The stepped ticks the runtime has not delivered yet: posted, held back, or not yet in a batch. */
+/**
+ * The stepped ticks the runtime has not delivered yet: the batch posted and not yet delivered, and the
+ * ticks stepped since. One batch is in flight at a time and the next spans every tick stepped
+ * meanwhile, so the runtime takes in one delta per drawn frame however many ticks the frame shows: a
+ * delta's cost barely depends on the ticks it spans.
+ */
 export class TickOutbox {
   /** Stepped ticks no batch carries yet. */
   private pending: TickRecord[] = [];
-  /** Batches taken while the runtime had no room, oldest first: each spans at most
-   *  `maxTicksPerBatch` ticks, so the runtime can deliver them a frame's worth at a time. A shedding
-   *  outbox holds none, since a shed record's batch would still owe its delta. */
-  private readonly held: TickBatch[] = [];
-  /** Per batch posted and not yet delivered, its tick count, oldest first. */
+  /** Per batch posted and not yet delivered, its tick count, oldest first. Only a failure posts past
+   *  the one batch in flight. */
   private readonly inFlight: number[] = [];
   private inFlightTicks = 0;
   private shedTicks = 0;
+  private peakUndelivered = 0;
   /** The retained events of the ticks shed since the last batch, in order; the next batch's first
    *  record carries them. Only the retained kinds, world changes a presentation keeps and a few per
    *  tick, so a long episode holds its world changes and none of its transient events. */
@@ -35,14 +32,13 @@ export class TickOutbox {
 
   constructor(
     private readonly policy: UndeliveredTicks,
-    private readonly maxTicksPerBatch: number,
     private readonly link: TickOutboxLink,
     private readonly retained: ReadonlySet<SimEvent['kind']>,
   ) {}
 
   /** Whether a tick recorded now is posted at once, so its live event list may go uncloned. */
   postsNow(): boolean {
-    return this.hasRoom() && this.held.length === 0;
+    return this.inFlight.length === 0;
   }
 
   /** A holding outbox stops the clock at its limit; a shedding one never does. */
@@ -51,27 +47,28 @@ export class TickOutbox {
   }
 
   add(record: TickRecord): void {
-    const postNow = this.postsNow();
     this.pending.push(record);
+    const postNow = this.postsNow();
+    if (!postNow && this.policy === 'shed') this.shed();
+    this.peakUndelivered = Math.max(this.peakUndelivered, this.undeliveredTicks());
     if (postNow) this.flush();
-    else if (this.policy === 'shed') this.shed();
-    else if (this.pending.length >= this.maxTicksPerBatch) this.held.push(this.takePending());
   }
 
-  /** The runtime delivered this many more batches: post what now has room. */
+  /** The runtime delivered this many more batches: post what was stepped meanwhile. */
   delivered(batches: number): void {
     for (let i = 0; i < batches; i++) this.inFlightTicks -= this.inFlight.shift() ?? 0;
-    while (this.hasRoom() && (this.held.length > 0 || this.pending.length > 0)) this.flush();
+    if (this.postsNow()) this.flush();
   }
 
-  /** Post everything regardless of room: the ticks before a failing one are the runtime's to deliver. */
+  /** Post the pending ticks regardless of the batch in flight: the ticks before a failing one are the
+   *  runtime's to deliver. */
   flushAll(): void {
-    while (this.held.length > 0 || this.pending.length > 0) this.flush();
+    this.flush();
   }
 
   /**
    * Only records still in this outbox are shed: a posted batch is the runtime's, so the undelivered
-   * count stays within the limit plus what the batches in flight carry. The newest record is always
+   * count stays within the limit plus what the batch in flight carries. The newest record is always
    * kept, so the next batch's delta reaches the last stepped tick even if the clock stops here.
    */
   private shed(): void {
@@ -83,35 +80,24 @@ export class TickOutbox {
     }
   }
 
-  private hasRoom(): boolean {
-    return this.inFlight.length < TICK_BATCHES_IN_FLIGHT;
-  }
-
   private undeliveredTicks(): number {
-    let ticks = this.inFlightTicks + this.pending.length;
-    for (const batch of this.held) ticks += batch.ticks.length;
-    return ticks;
+    return this.inFlightTicks + this.pending.length;
   }
 
-  /** Post the oldest held batch, or one over the pending ticks. */
   private flush(): void {
-    const batch = this.held.shift() ?? (this.pending.length > 0 ? this.takePending() : null);
-    if (batch === null) return;
-    this.inFlight.push(batch.ticks.length);
-    this.inFlightTicks += batch.ticks.length;
-    this.link.post(batch);
-  }
-
-  private takePending(): TickBatch {
     const records = this.pending;
+    if (records.length === 0) return;
     this.pending = [];
     const first = records[0];
     if (this.carried.length > 0 && first !== undefined) {
       records[0] = { ...first, events: [...this.carried, ...first.events] };
       this.carried = [];
     }
-    const batch = this.link.take(records, this.shedTicks);
+    const batch = this.link.take(records, this.shedTicks, this.peakUndelivered);
     this.shedTicks = 0;
-    return batch;
+    this.peakUndelivered = 0;
+    this.inFlight.push(records.length);
+    this.inFlightTicks += records.length;
+    this.link.post(batch);
   }
 }

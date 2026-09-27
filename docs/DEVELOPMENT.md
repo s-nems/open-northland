@@ -265,12 +265,13 @@ have stepped past the drawn tick, so `await setPaused(true)` before reading `hos
 the session stopped on. There `frame.simMs` and `window.simMsPerTick` time the worker's steps, and
 `frame.receiveMs` and `window.receiveMsPerTick` this thread's cost of taking them in; the receive cost
 counts message deserialization only in Chromium, which deserializes on the first read of the message,
-so elsewhere it is the mirror apply alone. A main thread that cannot keep up shows in
-`throughput.deliveredSpeed`, not in `droppedTicks`: the worker holds its clock two seconds of session
-time past the last delivered tick instead of dropping ticks, and a frame delivers at most
-`maxStepsPerFrame` ticks. Either way the system menu shows delivered against requested speed once two
-consecutive windows, each with at least half a second of unpaused running, deliver under nine tenths
-of the requested ticks. Read
+so elsewhere it is the mirror apply alone. `window.batchesPerFrame` counts the tick messages a frame
+took in, and `window.maxLeadTicks` how far the worker stepped past the drawn tick. The worker steps at
+most the ticks of two frames and 50 ms of wall time, plus one, past the drawn tick (`leadTickLimit`),
+so a slow main thread first costs frame rate and, past 250 ms frames, delivered speed, which shows in
+`throughput.deliveredSpeed`; a sim slower than its clock shows in `droppedTicks`. Either way the
+system menu shows delivered against requested speed once two consecutive windows, each with at least
+half a second of unpaused running, deliver under nine tenths of the requested ticks. Read
 `sampling.hidden` before trusting any timing: a background tab throttles its frame loop and every
 millisecond becomes fiction.
 

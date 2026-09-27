@@ -26,6 +26,11 @@ export interface FrameSample {
   /** This thread's cost of taking in this frame's ticks from a sim on another thread: message
    *  deserialization, mirror apply and index upkeep. 0 for a sim on this thread. */
   readonly receiveMs: number;
+  /** Tick batches this frame took in from a sim on another thread; 0 for a sim on this thread. */
+  readonly batches: number;
+  /** How far a sim on another thread had stepped past the drawn tick, as its newest batch reported;
+   *  0 for a sim on this thread. */
+  readonly leadTicks: number;
   readonly snapMs: number;
   /** Render build and submit plus the rest of the frame's app work. With the sim on this thread
    *  `simMs + snapMs + drawMs = cpuMs`; off it, the frame's mirror apply takes `simMs`'s place. */
@@ -83,6 +88,10 @@ export interface FrameStatsReport {
     readonly simMsPerTick: number;
     /** The window's {@link FrameSample.receiveMs} over its ticks. */
     readonly receiveMsPerTick: number;
+    /** The window's {@link FrameSample.batches} over its frames. */
+    readonly batchesPerFrame: number;
+    /** The window's largest {@link FrameSample.leadTicks}. */
+    readonly maxLeadTicks: number;
     readonly frameMs: FrameDistribution;
   };
 }
@@ -157,6 +166,8 @@ export class FrameStats {
   private windowSteps = 0;
   private windowSimMs = 0;
   private windowReceiveMs = 0;
+  private windowBatches = 0;
+  private windowMaxLeadTicks = 0;
   private windowMaxMs = 0;
   private droppedAtWindowStart = 0;
   private droppedTotal = 0;
@@ -181,6 +192,8 @@ export class FrameStats {
     this.windowSteps += sample.steps;
     this.windowSimMs += sample.simMs;
     this.windowReceiveMs += sample.receiveMs;
+    this.windowBatches += sample.batches;
+    this.windowMaxLeadTicks = Math.max(this.windowMaxLeadTicks, sample.leadTicks);
     this.recordRecent(sample);
     // Assigned last: a window opening on this frame must start from the previous total, or this
     // frame's drops fall between the two windows.
@@ -258,6 +271,8 @@ export class FrameStats {
     this.windowSteps = 0;
     this.windowSimMs = 0;
     this.windowReceiveMs = 0;
+    this.windowBatches = 0;
+    this.windowMaxLeadTicks = 0;
     this.windowMaxMs = 0;
     this.droppedAtWindowStart = this.droppedTotal;
     this.buckets.fill(0);
@@ -302,6 +317,8 @@ export class FrameStats {
         deliveredSpeed: windowSeconds === 0 ? 0 : this.windowSteps / windowSeconds / TICKS_PER_SECOND,
         simMsPerTick: this.windowSteps === 0 ? 0 : this.windowSimMs / this.windowSteps,
         receiveMsPerTick: this.windowSteps === 0 ? 0 : this.windowReceiveMs / this.windowSteps,
+        batchesPerFrame: this.frames === 0 ? 0 : this.windowBatches / this.frames,
+        maxLeadTicks: this.windowMaxLeadTicks,
         frameMs: {
           p50Ms: this.quantileMs(0.5),
           p95Ms: this.quantileMs(0.95),
