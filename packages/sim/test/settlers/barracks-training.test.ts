@@ -16,6 +16,7 @@ import {
   Sheltering,
   Stockpile,
   setMissionBehaviour,
+  stampOwner,
   TrainingOrder,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -41,6 +42,7 @@ import { ctxOf, grassMap } from './needs/support.js';
 
 const VIKING = 1;
 const HUMAN_PLAYER = 0;
+const OTHER_PLAYER = 1;
 const CIVILIST_JOB = 6;
 const CARRIER_JOB = 24;
 const SOLDIER_JOB = 31;
@@ -438,6 +440,24 @@ describe('trainSoldier - the barracks drill', () => {
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
     expect(sim.world.has(recruit, Resting)).toBe(false);
     expect(jobOf(sim, recruit)).toBe(CIVILIST_JOB);
+  });
+
+  it('abandons the errand when a script hands the barracks to another player mid-term', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 3, 3);
+    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // at the door - it drills from tick one
+
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    sim.step();
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
+
+    stampOwner(sim.world, house, OTHER_PLAYER);
+    const events = run(sim, RUN_TICKS);
+
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
+    expect(sim.world.has(recruit, Resting)).toBe(false);
+    expect(jobOf(sim, recruit)).toBe(CIVILIST_JOB);
+    expect(events.some((event) => event.kind === 'settlerTrained')).toBe(false);
   });
 
   it('refuses a door the settler has just failed to reach, instead of stamping and abandoning', () => {

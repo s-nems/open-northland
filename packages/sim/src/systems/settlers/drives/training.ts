@@ -111,11 +111,8 @@ export function planTraining(
     }
     return true;
   }
-  if (order.lesson === undefined) {
-    if (!isBarracks(world, ctx, order.house)) return abandonDrill(world, e);
-  } else if (!isSchool(world, ctx, order.house) || !sameSide(world, e, order.house)) {
-    return abandonDrill(world, e);
-  }
+  const teaches = order.lesson === undefined ? isBarracks : isSchool;
+  if (!teaches(world, ctx, order.house) || !sameSide(world, e, order.house)) return abandonDrill(world, e);
   const door = interactionCell(world, ctx, terrain, order.house, here);
   if (!drillDoorOpen(world, ctx, e, door, limit)) return abandonDrill(world, e);
   enterBuilding(world, e, order.house, here, door, () =>
