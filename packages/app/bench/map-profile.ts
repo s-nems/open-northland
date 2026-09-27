@@ -1,15 +1,23 @@
+import { stringEnv } from './knobs.js';
 import { knobRecord, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './map-world.js';
 import { measureWindows } from './measure.js';
-import { captureCpuProfile, summarizeProfile } from './profile.js';
+import {
+  captureAllocationProfile,
+  captureCpuProfile,
+  type ProfileSummary,
+  summarizeAllocations,
+  summarizeProfile,
+} from './profile.js';
 import { formatProfile, formatReport } from './report/index.js';
 import { reportFrom } from './run.js';
-import { benchOutDir, storeCpuProfile } from './store.js';
+import { benchOutDir, type ProfileKind, storeProfile } from './store.js';
 
 /**
  * The function-level CPU profile of the same real-map world `npm run bench:map` measures -
  * `npm run bench:profile`. The per-system table says which system got slower; V8's sampler says
  * which function inside it burns the time. Both views cover the same ticks here, so they can be
- * read against each other.
+ * read against each other. `ON_BENCH_PROFILE=alloc` samples allocations instead of CPU: which
+ * function makes the garbage the window's GC columns pay for.
  *
  * Pair it with `ON_BENCH_CHECKPOINT`/`ON_BENCH_SKIP` (see `map-world.ts`) to profile late-game ticks
  * without rebuilding the settlement for every attempt; `ON_BENCH_CHECKPOINT` may name a mark file a
@@ -26,8 +34,34 @@ const DEFAULT_PROFILED_TICKS = 2_000;
 /** The profile covers one segment: the per-system table beside it describes those same ticks. */
 const PROFILE_WINDOWS = 1;
 
+function profileKind(): ProfileKind {
+  const kind = stringEnv('ON_BENCH_PROFILE', 'cpu');
+  if (kind !== 'cpu' && kind !== 'alloc') {
+    throw new Error(`ON_BENCH_PROFILE must be cpu or alloc, got '${kind}'`);
+  }
+  return kind;
+}
+
+/** Profile one run with the sampler `kind` names, summarized; the raw profile is what gets stored. */
+async function profiled<T>(
+  kind: ProfileKind,
+  run: () => Promise<T>,
+): Promise<{ readonly raw: unknown; readonly summary: ProfileSummary; readonly result: T }> {
+  switch (kind) {
+    case 'cpu': {
+      const { profile, result } = await captureCpuProfile(run);
+      return { raw: profile, summary: summarizeProfile(profile), result };
+    }
+    case 'alloc': {
+      const { profile, result } = await captureAllocationProfile(run);
+      return { raw: profile, summary: summarizeAllocations(profile), result };
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const knobs = mapBenchKnobs(DEFAULT_PROFILED_TICKS);
+  const kind = profileKind();
   if (knobs.checkpointMarks.length > 0) {
     throw new Error(
       'bench:profile takes no ON_BENCH_CHECKPOINTS; write the marks with bench:map and name one ' +
@@ -43,7 +77,11 @@ async function main(): Promise<void> {
   // Warm up outside the profile: cold-start tiering would otherwise dominate the sample counts.
   for (let i = 0; i < knobs.warmupTicks; i++) world.sim.step();
 
-  const { profile, result: measured } = await captureCpuProfile(() =>
+  const {
+    raw,
+    summary,
+    result: measured,
+  } = await profiled(kind, () =>
     measureWindows(world.sim, {
       warmupTicks: 0,
       measuredTicks: knobs.measuredTicks,
@@ -64,21 +102,20 @@ async function main(): Promise<void> {
       settlersAtEnd: measured.settlersAtEnd,
       buildings: measured.buildings,
     },
-    knobs: knobRecord(knobs),
+    knobs: { ...knobRecord(knobs), ON_BENCH_PROFILE: kind },
     ticks: { warmup: knobs.warmupTicks, measured: knobs.measuredTicks },
     stateHash: world.sim.hashState(),
     startedAtMs,
     wallSeconds: (performance.now() - startMs) / 1000,
   });
 
-  const summary = summarizeProfile(profile);
-  const written = storeCpuProfile(benchOutDir(), report, profile);
-  console.log(`\n${formatProfile(summary)}\n`);
+  const written = storeProfile(benchOutDir(), report, kind, raw);
+  console.log(`\n${formatProfile(summary, knobs.measuredTicks)}\n`);
   console.log(`${formatReport(report)}\n`);
-  console.log(`cpu profile written to ${written}`);
+  console.log(`${kind} profile written to ${written}`);
   console.log(`state hash: ${report.stateHash}\n`);
 
-  if (summary.functions.length === 0 || summary.sampledMs === 0) {
+  if (summary.functions.length === 0 || summary.sampled === 0) {
     throw new Error('the profiler sampled nothing over the measured ticks');
   }
   if (report.systems.length === 0) throw new Error('the measured ticks ran no systems');

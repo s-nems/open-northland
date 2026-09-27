@@ -298,6 +298,7 @@ frame. Replace a file there to change the rotation.
 | --- | --- |
 | what does the sim spend a tick on, and does it grow as the settlement develops? | `npm run bench:map` |
 | which function inside that tick burns the time? | `npm run bench:profile` |
+| which function makes a tick's garbage? | `ON_BENCH_PROFILE=alloc npm run bench:profile` |
 | does one axis (settlers, fighters) drive a system's cost? | `npm run bench:sim` |
 | did my change make it slower? | `npm run bench:compare` |
 | what does a live session spend a frame on, sim or render? | `?debug=profile` and `window.__opennorthland.perf()` |
@@ -349,7 +350,10 @@ AI seats and the first profiled tick, for DevTools or Speedscope. The profiled c
 output, unminified and source-mapped, so function names and `file:line` survive. It takes the
 `bench:map` controls except `ON_BENCH_WINDOWS`, `ON_BENCH_JSON` and `ON_BENCH_CHECKPOINTS`, and
 defaults to 2k ticks. It prints its per-system report rather than storing it: profiled timings are
-inflated by the sampler and must never become a `bench:compare` baseline.
+inflated by the sampler and must never become a `bench:compare` baseline. `ON_BENCH_PROFILE=alloc`
+samples allocations instead of CPU, garbage included: the same tables in kilobytes, the kilobytes a
+tick allocates, and a `.heapprofile` for DevTools' Memory panel. It answers which function makes the
+garbage the `bench:map` GC columns pay for.
 
 Both real-map benchmarks take a checkpoint so a late-game hotspot hunt does not rebuild the
 settlement every time:

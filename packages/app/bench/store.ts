@@ -12,7 +12,9 @@ import { formatSeats, readReport, worldIdentity } from './report/index.js';
 const BENCH_OUT_DIR = 'bench-out';
 const INDEX_DIGITS = 3;
 const REPORT_EXT = '.json';
-const PROFILE_EXT = '.cpuprofile';
+/** The extensions DevTools recognises when loading each profile kind. */
+const PROFILE_EXT = { cpu: '.cpuprofile', alloc: '.heapprofile' } as const;
+export type ProfileKind = keyof typeof PROFILE_EXT;
 
 export function benchOutDir(): string {
   return resolve(process.cwd(), BENCH_OUT_DIR);
@@ -65,11 +67,11 @@ export function storeReport(dir: string, report: BenchReport): string {
 }
 
 /** The raw V8 profile beside the reports, named the same way plus the first profiled tick, so a
- *  directory of late-game profiles says which checkpoint each started from. DevTools and Speedscope
- *  both open it. */
-export function storeCpuProfile(dir: string, report: BenchReport, profile: unknown): string {
+ *  directory of late-game profiles says which checkpoint each started from. DevTools opens both
+ *  kinds, Speedscope the CPU one. */
+export function storeProfile(dir: string, report: BenchReport, kind: ProfileKind, profile: unknown): string {
   const firstTick = report.windows.at(0)?.fromTick ?? 0;
-  const path = outPath(dir, report, PROFILE_EXT, `${worldSlug(report.world)}-t${firstTick}`);
+  const path = outPath(dir, report, PROFILE_EXT[kind], `${worldSlug(report.world)}-t${firstTick}`);
   writeFileSync(path, JSON.stringify(profile));
   return path;
 }
