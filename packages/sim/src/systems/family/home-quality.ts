@@ -4,7 +4,6 @@ import {
   DEFAULT_HOUSEHOLD_GOOD_POLICY,
   HomeQuality,
   HouseholdGoodPolicy,
-  isValidPlayer,
   ownerOf,
   Residence,
   Settler,
@@ -177,7 +176,6 @@ export function setHouseholdGoodUse(
   ctx: SystemContext,
   command: { readonly player: number; readonly effect: HomeQualityEffect; readonly allowed: boolean },
 ): void {
-  if (!isValidPlayer(command.player)) return;
   const policy = homeQualityUseFor(ctx, command.effect);
   if (policy === undefined) return;
 

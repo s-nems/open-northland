@@ -1,5 +1,4 @@
 import {
-  ASSISTANT_COUNTER_KINDS,
   ASSISTANT_COUNTER_MAX,
   ASSISTANT_COUNTER_MIN,
   type AssistantCounterKind,
@@ -10,7 +9,6 @@ import {
   assistantCountersEntity,
   defaultAssistantCounters,
   INFINITE_COUNTER_KINDS,
-  isValidPlayer,
   type PlayerGoodList,
   playerGoodListEntity,
 } from '../../components/index.js';
@@ -28,7 +26,6 @@ export function setAssistantGrant(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'setAssistantGrant' }>,
 ): void {
-  if (!isValidPlayer(command.player)) return;
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined) return; // only a wearable good is grantable
   setListed(world, AssistantGrants, command.player, command.goodType, command.enabled);
@@ -40,7 +37,6 @@ export function setAssistantWeaponVeto(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'setAssistantWeaponVeto' }>,
 ): void {
-  if (!isValidPlayer(command.player)) return;
   if (!ctx.content.weapons.some((w) => w.goodType === command.goodType)) return; // arms no class
   setListed(world, AssistantWeaponVetoes, command.player, command.goodType, command.vetoed);
 }
@@ -78,10 +74,7 @@ export function setAssistantCounter(
   _ctx: SystemContext,
   command: Extract<Command, { kind: 'setAssistantCounter' }>,
 ): void {
-  if (!isValidPlayer(command.player)) return;
-  // A replayed/hand-built command can carry any JSON: an unknown kind would write a key the default
-  // check never inspects, and a non-finite value escapes the clamp. Both are recoverable bad input.
-  if (!(ASSISTANT_COUNTER_KINDS as readonly string[]).includes(command.counter)) return;
+  // A typed producer skips the payload parser, and a non-finite value would escape the clamp.
   if (!Number.isFinite(command.value)) return;
   const value = Math.min(ASSISTANT_COUNTER_MAX, Math.max(ASSISTANT_COUNTER_MIN, Math.trunc(command.value)));
   const infinite = command.infinite && INFINITE_COUNTER_KINDS.has(command.counter);

@@ -5,7 +5,6 @@ import {
   aiModuleEnables,
   aiPlayerEntity,
   DefenceMode,
-  isValidPlayer,
   Owner,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -25,7 +24,6 @@ import { clearAssistantWeaponVetoes, resetAssistantCounters } from './assistant.
  * off.
  */
 export function setPlayerAi(world: World, command: Extract<Command, { kind: 'setPlayerAi' }>): void {
-  if (!isValidPlayer(command.player)) return;
   const carrier = aiPlayerEntity(world, command.player);
   if (!command.enabled) {
     if (carrier === null) return; // never AI-driven: nothing standing to withdraw
