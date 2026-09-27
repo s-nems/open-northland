@@ -8,6 +8,13 @@ Follow the [approved design and panel workflow](../../design/ingame-menu/README.
 [session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
 against this checkout before starting; the reference document describes an earlier implementation.
 
+## Design review
+
+Fourteen proposals await the owner's pick in `docs/design/ingame-menu/mission.html` (served by
+`serve.mjs` with the local review directory, `packages/app/src` and `packages/app/public`). Their page
+data, world captures and generated art live only in the local review directory under
+`mission-review/`; the chosen direction's art is delivered with its provenance before implementation.
+
 ## Scope
 
 - Design Task/Briefing, Objectives and History views, including voice controls, illustrations, long text, completed goals and mission updates.
