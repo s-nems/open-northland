@@ -114,12 +114,21 @@ export type VehicleStateView = DeepReadonly<VehicleState>;
 /** A node crossing is complete at this much progress: the original's per-node counter reaches 10000. */
 export const NODE_PROGRESS_FULL = 10000;
 
+/** A ship's helm on a drive: the heading its hull swings toward, its way in parts of
+ *  `SHIP_FULL_WAY` of the leg's rate, and the ticks until the hull swings one more heading step. */
+export interface ShipHelm {
+  heading: WalkDirection;
+  way: number;
+  swing: number;
+}
+
 /**
  * A vehicle's drive to `goal`, the movement twin of a settler's `PathFollow`. `route` holds the nodes
  * still to enter, the next first; `Position` already stands on the node of the current leg, and `from`
  * is the node that leg left (null between legs), so the renderer interpolates from it to `Position` by
- * `progress / NODE_PROGRESS_FULL`. `increment` is the progress a tick adds, fixed when the leg starts.
- * `progress` starts below zero while the vehicle turns on `from`, so readers clamp it.
+ * `progress / NODE_PROGRESS_FULL`. `increment` is the progress a tick adds at full way, fixed when the
+ * leg starts. A land vehicle's `progress` starts below zero while it turns on `from`, so readers clamp
+ * it; a ship turns under way through its `helm` instead (null for a land vehicle).
  */
 export const VehicleDrive = defineComponent<{
   goal: HalfCellNode;
@@ -127,6 +136,7 @@ export const VehicleDrive = defineComponent<{
   from: HalfCellNode | null;
   progress: number;
   increment: number;
+  helm: ShipHelm | null;
 }>('VehicleDrive', 'movement');
 
 /**

@@ -25,13 +25,8 @@ import { vehicleAnchor } from '../footprint/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../progression/index.js';
 import { isAreaWeapon } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
-import {
-  crewInside,
-  facingOfStep,
-  refuseMove,
-  startVehicleDrive,
-  vehicleWalkBlocks,
-} from '../vehicles/movement.js';
+import { facingOfStep } from '../vehicles/helm.js';
+import { crewInside, refuseMove, startVehicleDrive, vehicleWalkBlocks } from '../vehicles/movement.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatPass } from './pass.js';
 import { mapPointDistance, shotFlightTicks, shotLandDelay } from './shot-aim.js';

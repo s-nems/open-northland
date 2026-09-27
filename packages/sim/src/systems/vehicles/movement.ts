@@ -9,8 +9,6 @@ import {
   VehicleDrive,
   type VehicleStateView,
   vehicleCommander,
-  WALK_DIRECTION,
-  type WalkDirection,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -30,19 +28,33 @@ import {
 } from '../footprint/index.js';
 import { groundBlockOverlay, vehicleClearance } from '../footprint/vehicle-clearance.js';
 import { isTravelling, redirectRoute } from '../movement/nav-state.js';
-import { headingToward, walkTurnSteps } from '../movement/turning.js';
-import { awaitsDraughtAnimal, isSiegeVehicle, vehicleTraversal } from '../readviews/vehicles.js';
+import { walkTurnSteps } from '../movement/turning.js';
+import {
+  awaitsDraughtAnimal,
+  isShipVehicle,
+  isSiegeVehicle,
+  vehicleTraversal,
+} from '../readviews/vehicles.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { stationaryOwnedSettlers } from '../settlers/planner/spacing.js';
 import { endChat } from '../social/index.js';
 import type { NodeBuckets } from '../spatial/nodes.js';
+import {
+  facingOfStep,
+  restingHelm,
+  sailLeg,
+  shipCourse,
+  swingHull,
+  VEHICLE_TURN_TICKS_PER_DIRECTION,
+} from './helm.js';
 
 // The mover of docs/formats/VEHICLES.md "Movement": a goto is refused without a commander or for a
 // target off the vehicle's continent or walk range, the route runs over the shared graph, on land or
 // on water by the vehicle's traversal class, through nodes whose free-size class admits the vehicle's
-// `logicSize`, each leg takes the ground's move period per map point it crosses plus its turn, the footprint
-// travels with the anchor and shoves the settlers it lands on. A ship that starts a drive leaves its
-// mooring; one on a dock drive moors again where it arrives (`dock.ts`).
+// `logicSize`, each leg takes the ground's move period per map point it crosses plus its turn (a ship
+// turns under way, `helm.ts`), the footprint travels with the anchor and shoves the settlers it lands
+// on. A ship that starts a drive leaves its mooring; one on a dock drive moors again where it arrives
+// (`dock.ts`).
 
 /** The walk range of a vehicle goto in map-point steps from where it stands (original behavior,
  *  the vehicle twin of the humans' 50/63). */
@@ -58,11 +70,6 @@ const MOVE_PERIOD_PER_CLASS = 2;
 const MOVE_PERIOD_MIN = 3;
 /** The catapult crosses a node in twice the period: a one-bit shift of the sum. */
 const SIEGE_PERIOD_SHIFT = 1;
-/** The ticks a vehicle holds turning through one step of its heading ring (original behavior per
- *  hexagon direction; a human takes 1). Approximation: the ring here has eight headings, N and S
- *  between the diagonals, so a half turn holds 8 ticks where the original's six-direction one holds 6. */
-export const VEHICLE_TURN_TICKS_PER_DIRECTION = 2;
-
 /** The ticks a vehicle spends crossing one map point from a node whose ground reads class `g`. */
 export function vehicleMovePeriod(g: number, siege: boolean): number {
   const period = (g * MOVE_PERIOD_PER_CLASS + MOVE_PERIOD_BASE) << (siege ? SIEGE_PERIOD_SHIFT : 0);
@@ -82,15 +89,6 @@ export function vehicleProgressPerTick(period: number): number {
  */
 export function vehicleLegTicks(period: number, mapPoints: number): number {
   return period * Math.max(1, mapPoints);
-}
-
-/**
- * The heading a vehicle faces along a lattice step, the screen octant a walker would face: a vertical
- * half-row step is N or S, so a vehicle sails straight up or down on its drawn N/S frames. A zero step
- * keeps east.
- */
-export function facingOfStep(from: HalfCellNode, to: HalfCellNode): WalkDirection {
-  return headingToward(positionOfNode(from.hx, from.hy), positionOfNode(to.hx, to.hy)) ?? WALK_DIRECTION.E;
 }
 
 /** The continent key a vehicle's goto compares: the anchor's static component, a land or a water
@@ -195,15 +193,17 @@ export function startVehicleDrive(
   }
   const drive = world.tryMut(vehicle, VehicleDrive);
   if (drive === undefined) {
+    const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
     world.add(vehicle, VehicleDrive, {
       goal: nodeOf(terrain, goal),
       route,
       from: null,
       progress: 0,
       increment: 0,
+      helm: type !== undefined && isShipVehicle(type) ? restingHelm(state.facing) : null,
     });
   } else {
-    // A leg under way finishes on its node; only the route beyond it is replaced.
+    // A leg under way finishes on its node, a ship keeping its way; only the route beyond it is replaced.
     drive.goal = nodeOf(terrain, goal);
     drive.route = route;
   }
@@ -391,8 +391,9 @@ function stopAskingCrewIn(world: World, state: VehicleStateView): void {
  * Advance every drive one tick. A leg under way gains its increment and ends once full; a vehicle
  * between legs enters its next node, re-routing when that node closed since the route was found and
  * giving up with `vehicleNoPath` when nothing leads on. Entering a node moves the anchor and footprint
- * there at once, turns the vehicle to face the step, and shoves the settlers standing inside the
- * footprint (approximation: the original moves its anchor halfway through the leg).
+ * there at once, turns a land vehicle to face the step or sets a ship's helm onto it, and shoves the
+ * settlers standing inside the footprint (approximation: the original moves its anchor halfway through
+ * the leg).
  */
 export const vehicleMovementSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -400,6 +401,12 @@ export const vehicleMovementSystem: System = (world, ctx) => {
   let standing: NodeBuckets | undefined;
   for (const e of world.canonicalQuery(VehicleDrive, Vehicle, Position)) {
     const drive = world.get(e, VehicleDrive);
+    if (drive.from !== null && drive.helm !== null) {
+      const end = vehicleAnchor(world, e);
+      if (end === null) continue;
+      sailLeg(world, e, facingOfStep(drive.from, end), shipCourse(end, drive.route), false);
+      continue;
+    }
     if (drive.from !== null) {
       const live = world.mut(e, VehicleDrive);
       live.progress += live.increment;
@@ -411,6 +418,11 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     }
     const next = drive.route[0];
     const state = world.get(e, Vehicle);
+    if (next === undefined && drive.helm !== null && state.facing !== drive.helm.heading) {
+      const helm = world.mut(e, VehicleDrive).helm;
+      if (helm !== null) swingHull(world, e, helm); // a ship finishes swinging onto its last course
+      continue;
+    }
     if (next === undefined) {
       world.remove(e, VehicleDrive); // arrived, or stopped on its node
       if (state.task === 'docks') moorVehicle(world, ctx, e);
@@ -436,20 +448,27 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
     const period = vehicleMovePeriod(terrain.roughnessAt(here), isSiegeVehicle(type));
     const facing = facingOfStep(anchor, next);
-    const turnTicks = walkTurnSteps(state.facing, facing) * VEHICLE_TURN_TICKS_PER_DIRECTION;
+    const course = shipCourse(anchor, drive.route) ?? facing;
     const live = world.mut(e, VehicleDrive);
     live.route.shift();
     live.from = anchor;
     live.increment = vehicleProgressPerTick(vehicleLegTicks(period, hexDistance(anchor, next)));
-    // The turn holds the vehicle on `from`: progress below zero draws it there, facing the new way.
-    live.progress = live.increment * (1 - turnTicks);
+    if (live.helm !== null) {
+      live.helm.heading = course;
+      live.progress = 0;
+    } else {
+      // A land vehicle turns on `from`: progress below zero draws it there, facing the new way.
+      const turnTicks = walkTurnSteps(state.facing, facing) * VEHICLE_TURN_TICKS_PER_DIRECTION;
+      live.progress = live.increment * (1 - turnTicks);
+      world.mut(e, Vehicle).facing = facing;
+    }
     const at = positionOfNode(next.hx, next.hy);
     const pos = world.mut(e, Position);
     pos.x = at.x;
     pos.y = at.y;
-    world.mut(e, Vehicle).facing = facing;
     standing ??= stationaryOwnedSettlers(world);
     shoveSettlers(world, ctx, terrain, standing, next, live.route, type.logicSize);
+    if (live.helm !== null) sailLeg(world, e, facing, shipCourse(next, live.route), true);
   }
 };
 

@@ -254,6 +254,12 @@ time, where the original's pathfinder runs after the boarding; the anchor and fo
 start of a leg, not halfway; a lattice edge of two map points takes two periods; the vehicle faces
 its lattice step's screen heading at once, among the eight walk headings, and holds on the node it
 leaves for the turn's 2 ticks per step of that ring, drawn there while its progress stays below zero.
+Deviation (owner's choice): a ship never pivots on its node. It turns under way, its hull swinging one
+heading step per 2 ticks while the leg goes on, and its way eases toward the most the angle between
+hull and leg allows (full aligned, nearly nothing a half turn off, dropping at once when a reversed
+leg starts); it steers for the node three legs ahead so a lattice zigzag reads as one course, gathers
+way from rest, brakes over the last half of a leg into a sharp change of course and over its whole
+last leg onto its goal (`systems/vehicles/helm.ts`; the values are an approximation tuned by eye).
 Deviation (owner's choice): the original steers through the six hexagon directions only, so a vehicle
 heading up or down a column zigzags NE/NW and its N/S frames show only mid-turn; here a vertical
 half-row step faces N or S and the vehicle sails straight on those frames, and a half turn holds 8

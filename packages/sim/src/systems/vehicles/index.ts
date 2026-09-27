@@ -34,8 +34,8 @@ export {
   harnessVehicle,
   pickDraughtAnimal,
 } from './draught.js';
+export { facingOfStep, VEHICLE_TURN_TICKS_PER_DIRECTION } from './helm.js';
 export {
-  facingOfStep,
   moveVehicle,
   sendVehicleTo,
   snapVehicleTarget,
