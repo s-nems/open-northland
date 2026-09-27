@@ -9,6 +9,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
+import { wakeCrewInside } from '../settlers/planner/idle-replan.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 import { type WorkshopWorkforce, workshopWorkforce } from '../stores/workshop-workforce.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
@@ -74,6 +75,7 @@ export const productionSystem: System = (world, ctx) => {
       if (cycle.elapsed >= cycle.duration) finished++;
     }
     if (finished === 0) continue; // the usual tick: batches grind on with nothing to deposit
+    wakeCrewInside(world, e);
     const done = prod.cycles.filter((c) => c.elapsed >= c.duration);
     prod.cycles = prod.cycles.filter((c) => c.elapsed < c.duration);
     const recipes = recipesByProductOf(world, ctx, e);
@@ -141,6 +143,7 @@ export const productionSystem: System = (world, ctx) => {
       const operator = next.splice(winner, 1)[0];
       if (operator !== undefined) startCycleFor(world, ctx, e, operator, recipes);
     }
+    if ((world.tryGet(e, Production)?.cycles.length ?? 0) !== running) wakeCrewInside(world, e);
   }
 };
 

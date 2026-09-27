@@ -6,6 +6,7 @@ import {
   IdleStand,
   inPastimeChat,
   MoveGoal,
+  Resting,
   Settler,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -21,7 +22,7 @@ import { idleBeatOfTick, waitsIdle, wakeIdle } from './idle-replan.js';
 import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './pass.js';
 import { dispatchRecruitArming } from './recruit-arming.js';
-import { releaseStaleIntent, takesCoverFrom } from './replan.js';
+import { releaseStaleIntent, standsThroughPass, takesCoverFrom } from './replan.js';
 import { sweepOrder } from './sweep.js';
 
 /** The atomic pass runs before {@link navigationPlanner}, so a goal it sets is routed in the same tick
@@ -42,6 +43,11 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // Off its beat an idler's visit only runs the standing cut-off check, so that tick visits every idler.
   const idleBeat = cutOffCheckDue(ctx) ? undefined : idleBeatOfTick(ctx.tick);
   for (const e of sweepOrder(world, ctx.content, pass.shelters, idleBeat)) {
+    if (standsThroughPass(world, ctx, pass.shelters, e)) continue;
+    // Between its beats an idler runs only the shelter rung, and only when an alarm may draw it. One
+    // still inside a building runs its whole ladder: an alarm draws it from its wait there, or the wait
+    // no longer holds. Read before the release, which may step it out.
+    const offBeat = waitsIdle(world, ctx.tick, e) && !world.has(e, Resting);
     // A busy settler plays its intent out, and is no longer idle; the rest shed what the previous plan
     // left before re-planning.
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound, pass.shelters)) {
@@ -55,8 +61,6 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (world.has(e, Age)) {
       planChild(pass, e, settler);
     } else {
-      // Between its beats an idler runs only the shelter rung, and only when an alarm may draw it.
-      const offBeat = waitsIdle(world, ctx.tick, e);
       if (
         offBeat &&
         !(takesCoverFrom(world, ctx.content, e, pass.shelters) && planShelterRung(pass, e, settler))

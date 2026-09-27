@@ -3,7 +3,10 @@ import { Residence } from '../../../src/components/family.js';
 import {
   Building,
   DefenceMode,
+  IdleStand,
+  JobAssignment,
   Owner,
+  Resting,
   Stockpile,
   UnderConstruction,
   Upgrading,
@@ -50,6 +53,21 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     // could be neither seen nor lowered, and would call the garrison back when the upgrade finished.
     expect(sim.world.has(e, UnderConstruction)).toBe(true);
     expect(sim.world.has(e, DefenceMode)).toBe(false);
+  });
+
+  it('wakes the crew waiting inside, so it leaves on the order rather than on the building’s idle beat', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
+    const crew = sim.world.create();
+    sim.world.add(crew, JobAssignment, { workplace: e });
+    sim.world.add(crew, Resting, { at: e });
+    sim.world.add(crew, IdleStand, { standing: false });
+
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
+    sim.step();
+
+    expect(sim.world.has(e, UnderConstruction)).toBe(true);
+    expect(sim.world.has(crew, IdleStand)).toBe(false);
   });
 
   it('re-opens a built home as a site, seeding held bill goods into the hold and stashing the rest', () => {

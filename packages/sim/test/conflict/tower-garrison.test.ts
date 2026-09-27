@@ -11,6 +11,7 @@ import {
   EquipOrder,
   Garrison,
   Health,
+  IdleStand,
   JobAssignment,
   MoveGoal,
   Owner,
@@ -26,6 +27,7 @@ import { fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { garrisonReach, TOWER_RANGE_BONUS_NODES } from '../../src/systems/conflict/tower-post.js';
 import { plannerSystem } from '../../src/systems/index.js';
+import { razeBuilding } from '../../src/systems/lifecycle/cleanup.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap } from '../settlers/needs/support.js';
@@ -242,7 +244,7 @@ describe('the tower garrison - taking the post', () => {
     manTheTower(sim, soldier, tower);
     const rubble = tileOf(sim, soldier);
 
-    sim.world.destroy(tower);
+    razeBuilding(sim.world, ctxOf(sim), tower);
     run(sim, 2);
 
     expect(sim.world.has(soldier, Garrison)).toBe(false);
@@ -273,8 +275,11 @@ describe('the tower garrison - calling the posting off', () => {
     const tower = towerAt(sim, 6, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
+    expect(sim.world.has(soldier, IdleStand)).toBe(true); // standing the watch through his idle beats
 
     sim.enqueueSetup({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
+    sim.step();
+    expect(sim.world.has(soldier, Garrison)).toBe(false); // the order does not wait for his beat
     run(sim, 40);
 
     expect(sim.world.has(soldier, JobAssignment)).toBe(false); // the posting is cancelled outright

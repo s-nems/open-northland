@@ -42,7 +42,7 @@ export function operatorRecipes(
 /**
  * How many work seats the workplace offers this tick: the cycles already grinding, each of which needs one
  * present operator to advance, plus the further cycles this operator's own recipes could start. The planner
- * hands out seats in canonical settler order, so a worker that finds them all taken is surplus and is freed
+ * hands out seats to the crafters keeping theirs first, then in canonical settler order, so a worker that finds them all taken is surplus and is freed
  * to fetch inputs or haul output instead of idling inside while a colleague's batch finishes.
  *
  * Approximation: the further-seat estimate is the max over the operator's pool, so two spare operators

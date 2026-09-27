@@ -4,6 +4,7 @@ import type { System, SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { sheltersOnAlarm } from '../readviews/index.js';
 import { stepOut } from '../settlers/indoors.js';
+import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { shelterStillHolds } from './shelters.js';
 
 /**
@@ -35,4 +36,5 @@ export function releaseShelter(world: World, e: Entity): void {
   world.remove(e, Sheltering);
   stepOut(world, e);
   clearNavState(world, e);
+  wakeIdle(world, e);
 }

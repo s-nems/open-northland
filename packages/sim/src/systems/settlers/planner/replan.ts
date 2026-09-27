@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   chatAtomicRunning,
   Engagement,
+  FamilyDuty,
   FarmTask,
   Fleeing,
   Frightened,
@@ -11,6 +12,7 @@ import {
   HuntFocus,
   IdleStand,
   inPastimeChat,
+  JobAssignment,
   MoveGoal,
   ownerOf,
   PathFollow,
@@ -49,6 +51,7 @@ import { planShelter } from '../drives/shelter.js';
 import { heldIndoors, stepOut } from '../indoors.js';
 import { markLostWay } from '../lost-way.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
+import { waitsIdle } from './idle-replan.js';
 
 /** How long a stranded walker parks before shedding its failed route and re-planning: long enough that
  *  a permanently blocked target costs one path query per episode, short enough that a transient
@@ -151,13 +154,16 @@ export const RELEASE_IDLE_MEMBERSHIP: readonly Component<unknown>[] = [
   Engagement,
   FarmTask,
   Resting,
+  FamilyDuty,
+  JobAssignment,
+  Sheltering,
 ];
 export const RELEASE_IDLE_VALUES: readonly Component<unknown>[] = [CurrentAtomic, Chat, PathRequest];
 
 /**
  * Why the sweep's visit of a settler changes nothing: an atomic holds it or it walks a quiet route, so
- * {@link releaseStaleIntent} passes it by, or its release sheds nothing and the idle gate skips it off
- * its re-plan beat.
+ * {@link releaseStaleIntent} passes it by, or it stands idle off its re-plan beat, where the idle gate
+ * skips a release that sheds nothing or the whole visit of a wait inside a building.
  */
 export type IdleRelease = 'held' | 'travelling' | 'idle';
 
@@ -165,18 +171,15 @@ export type IdleRelease = 'held' | 'travelling' | 'idle';
  * How the sweep's visit of `e` changes nothing, or null when it may: an atomic holds it, or it walks
  * a live route that only a shelter of its owner on alarm diverts ({@link takesCoverFrom}), and it
  * carries nothing {@link releaseStaleIntent} reconciles on the way or the busy branch wakes; or it
- * stands idle carrying nothing that call sheds. Keep in step with that call's early-outs.
+ * stands idle carrying nothing that call sheds, or waits inside a building ({@link waitsInside}).
+ * Keep in step with that call's early-outs.
  */
 export function idleRelease(world: World, e: Entity): IdleRelease | null {
-  if (
-    world.has(e, YardDeliveryRoute) ||
-    world.has(e, UnreachableGoals) ||
-    world.has(e, UnreachableTargets) ||
-    world.has(e, Garrison)
-  ) {
+  if (world.has(e, YardDeliveryRoute) || world.has(e, UnreachableGoals) || world.has(e, UnreachableTargets)) {
     return null;
   }
-  if (world.has(e, IdleStand)) return shedsNothing(world, e) ? 'idle' : null;
+  if (world.has(e, IdleStand)) return shedsNothing(world, e) || waitsInside(world, e) ? 'idle' : null;
+  if (world.has(e, Garrison)) return null;
   if (atomicHoldsSettler(world, e)) return 'held';
   const quiet =
     isTravelling(world, e) &&
@@ -187,16 +190,55 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
 }
 
 /** Whether {@link releaseStaleIntent} returns true for `e` without a write: nothing holds or walks it,
- *  no errand or farm claim to release, not indoors, and no clip but a pastime chat's, which it keeps.
- *  A flight only matters to an alarm, and the sweep visits every idler an alarm may draw every tick. */
+ *  no errand or farm claim to release, not indoors or on a post, and no clip but a pastime chat's, which
+ *  it keeps. A flight only matters to an alarm, and the sweep visits every idler an alarm may draw every
+ *  tick. */
 function shedsNothing(world: World, e: Entity): boolean {
   return (
+    !world.has(e, Garrison) &&
     !isTravelling(world, e) &&
     !world.has(e, SupplyRun) &&
     !world.has(e, FarmTask) &&
     !world.has(e, Resting) &&
     (!world.has(e, CurrentAtomic) || (inPastimeChat(world, e) && chatAtomicRunning(world, e)))
   );
+}
+
+/**
+ * Whether idle `e` waits inside the building that holds it: seated at its craft or waiting there for an
+ * input on its way, manning its tower, or under cover. Its visit off its beat runs nothing, since
+ * {@link releaseStaleIntent} would shed the wait the ladder re-derives; a batch change or the end of the
+ * cover wakes it, and losing the building's hold makes it re-plan at once.
+ */
+function waitsInside(world: World, e: Entity): boolean {
+  const at = world.tryGet(e, Resting)?.at;
+  const holder = world.tryGet(e, Sheltering)?.shelter ?? world.tryGet(e, JobAssignment)?.workplace;
+  if (
+    at === undefined ||
+    at !== holder ||
+    isTravelling(world, e) ||
+    world.has(e, SupplyRun) ||
+    world.has(e, FarmTask) ||
+    world.has(e, Engagement) ||
+    world.has(e, Chat) ||
+    world.has(e, FamilyDuty)
+  ) {
+    return false;
+  }
+  const atomic = world.tryGet(e, CurrentAtomic);
+  return atomic === undefined || (atomic.effect.kind === 'produce' && !world.has(e, Wedding));
+}
+
+/** Whether `e` keeps its wait through this pass: {@link waitsInside} off its beat, and no alarm of its
+ *  owner may draw it, which runs its whole ladder. */
+export function standsThroughPass(
+  world: World,
+  ctx: SystemContext,
+  shelters: ShelterSites,
+  e: Entity,
+): boolean {
+  if (!waitsIdle(world, ctx.tick, e) || !waitsInside(world, e)) return false;
+  return shelters.size === 0 || world.has(e, Sheltering) || !takesCoverFrom(world, ctx.content, e, shelters);
 }
 
 /** Whether one of `e`'s owner's buildings on alarm may draw it off its route or its idle wait: the owner

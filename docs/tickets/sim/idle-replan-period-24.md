@@ -19,8 +19,8 @@ late instead of 1 s.
   beats an idler its owner's shelters may draw runs only the shelter rung.
 - Behaviour change: goldens and pinned hashes over idle settlers move in the same commit, which names
   this change. The planner already visits an idler only on its beat, so the saving is the ladder runs
-  themselves; [the standing-wait cadence ticket](planner-standing-waits-replan-every-tick.md) would give
-  seated crafters, garrisons and resting or sheltering settlers this period too.
+  themselves. Seated crafters, garrisons and settlers waiting inside or under cover share the period,
+  on their building's beat.
 - Count before and after through `Simulation.setInstrument`: idle ladder runs per tick.
 
 ## Verify

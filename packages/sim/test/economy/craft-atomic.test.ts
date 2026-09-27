@@ -4,19 +4,32 @@ import {
   AtomicClock,
   CurrentAtomic,
   DeferredOrder,
+  IdleStand,
   JobAssignment,
   Owner,
   PlayerOrder,
   Production,
   Resting,
   removeCurrentAtomic,
+  Settler,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { playerCommand, Simulation } from '../../src/index.js';
-import { atomicSystem, plannerSystem, productionSystem } from '../../src/systems/index.js';
+import {
+  atomicSystem,
+  plannerSystem,
+  productionSystem,
+  type SystemContext,
+} from '../../src/systems/index.js';
 import { startCraftAtomic } from '../../src/systems/settlers/drives/economy/workshop/craft.js';
+import {
+  IDLE_REPLAN_PERIOD_TICKS,
+  idleReplanDue,
+  wakeIdle,
+} from '../../src/systems/settlers/planner/idle-replan.js';
 import { testContent } from '../fixtures/content.js';
+import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
 import {
   buildingAt,
   CARPENTER,
@@ -100,8 +113,8 @@ describe('a workshop operator performing its craft', () => {
   it('follows the batch clock instead of restarting whenever the planner re-runs', () => {
     const shop = staffedKitchen(2);
     for (let i = 0; i < 4; i++) tick(shop);
-    // The planner re-derives the clip from the batch each tick and the executor advances it once, which
-    // lands it exactly on the batch's own progress rather than back at frame zero.
+    // The clip starts on the batch's own progress and the executor advances it in step with the batch,
+    // rather than back at frame zero whenever the crew re-plans.
     const elapsed = shop.sim.world.get(shop.shop, Production).cycles[0]?.elapsed;
     expect(elapsed).toBe(3);
     expect(shop.sim.world.get(shop.cook, AtomicClock).elapsed).toBe(elapsed);
@@ -195,5 +208,121 @@ describe('a workshop operator performing its craft', () => {
 
     expect(world.has(shop.cook, DeferredOrder)).toBe(false);
     expect(world.has(shop.cook, PlayerOrder)).toBe(true);
+  });
+});
+
+describe('a seated crafter between its idle beats', () => {
+  /** Step `shop` until its cook sits at a running batch's clip, standing through its idle beats. */
+  function seat(shop: Shop): void {
+    const { world } = shop.sim;
+    for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS; i++) {
+      if (world.has(shop.cook, CurrentAtomic) && world.has(shop.cook, IdleStand)) return;
+      shop.sim.step();
+    }
+    throw new Error('the cook never sat down');
+  }
+
+  it('keeps its clip instead of re-deriving it every tick, in step with the batch', () => {
+    const shop = staffedKitchen(3);
+    const { world } = shop.sim;
+    seat(shop);
+    let clipWrites = 0;
+    for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS; i++) {
+      const before = world.componentGeneration(CurrentAtomic);
+      shop.sim.step();
+      if (world.componentGeneration(CurrentAtomic) !== before) clipWrites++;
+    }
+    expect(clipWrites).toBeLessThanOrEqual(1); // the workshop's own beat
+    expect(world.get(shop.cook, AtomicClock).elapsed).toBe(
+      world.get(shop.shop, Production).cycles[0]?.elapsed,
+    );
+  });
+
+  it('leaves its seat for a meal within one idle period once hunger crosses the drive threshold', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const kitchen = buildingAt(sim, KITCHEN, 1, 0, [
+      [WOOD, 3],
+      [BREAD, 2],
+    ]);
+    const shop = { sim, shop: kitchen, cook: settlerAt(sim, 1, 0, CARPENTER, kitchen) };
+    seat(shop);
+
+    sim.world.mut(shop.cook, Settler).hunger = justAbove(NEED_DRIVE_THRESHOLD);
+    const eating = (): boolean => sim.world.tryGet(shop.cook, CurrentAtomic)?.effect.kind === 'eat';
+    for (let i = 0; i < IDLE_REPLAN_PERIOD_TICKS && !eating(); i++) sim.step();
+
+    expect(eating()).toBe(true);
+  });
+
+  /** A two-seat mill running `elapsed` batches, and a ctx off its crew's idle beat. */
+  function twinMill(...elapsed: number[]) {
+    const sim = new Simulation({ seed: 1, content: craftablePlankContent(), map: grassMap(8, 1) });
+    const mill = buildingAt(sim, TWIN_MILL, 1, 0, [[WOOD, 4]]);
+    if (elapsed.length > 0) {
+      sim.world.add(mill, Production, {
+        cycles: elapsed.map((e) => ({ elapsed: e, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK })),
+      });
+    }
+    const ctx = ctxOf(sim);
+    return { sim, mill, offBeat: { ...ctx, tick: idleReplanDue(ctx.tick, mill) ? ctx.tick + 1 : ctx.tick } };
+  }
+
+  /** Sit `e` at `mill`'s `batch`-th clip, standing through its idle beats. */
+  function sitAt(sim: Simulation, ctx: SystemContext, e: Entity, mill: Entity, batch: number): void {
+    sim.world.add(e, Resting, { at: mill });
+    startCraftAtomic(sim.world, ctx, e, mill, batch);
+    sim.world.add(e, IdleStand, { standing: false });
+  }
+
+  it('re-pairs the crew the tick a batch finishes, without waiting for the beat', () => {
+    const { sim, mill, offBeat } = twinMill(TWIN_MILL_RECIPE_TICKS - 1, 5);
+    const first = settlerAt(sim, 1, 0, CARPENTER, mill);
+    const second = settlerAt(sim, 1, 0, CARPENTER, mill);
+    sitAt(sim, offBeat, first, mill, 0);
+    sitAt(sim, offBeat, second, mill, 1);
+
+    productionSystem(sim.world, offBeat); // batch 0 lands; the one left advances to 6
+    plannerSystem(sim.world, offBeat);
+
+    expect(sim.world.get(first, AtomicClock).elapsed).toBe(6);
+    expect(sim.world.has(second, CurrentAtomic)).toBe(false); // a hand beyond the batches
+  });
+
+  it('re-pairs the whole crew when one crafter is woken alone', () => {
+    const { sim, mill, offBeat } = twinMill(3, 11);
+    const first = settlerAt(sim, 1, 0, CARPENTER, mill);
+    const second = settlerAt(sim, 1, 0, CARPENTER, mill);
+    sitAt(sim, offBeat, first, mill, 0);
+    sitAt(sim, offBeat, second, mill, 1);
+
+    wakeIdle(sim.world, first); // an order or errand addressed to it alone
+    plannerSystem(sim.world, offBeat);
+
+    expect(sim.world.get(first, AtomicClock).elapsed).toBe(3);
+    expect(sim.world.get(second, AtomicClock).elapsed).toBe(11);
+  });
+
+  it('hands a hand arriving between beats the next batch, not the one a seated crafter keeps', () => {
+    const sim = new Simulation({ seed: 1, content: craftablePlankContent(), map: grassMap(8, 1) });
+    const mill = buildingAt(sim, TWIN_MILL, 1, 0, [[WOOD, 4]]);
+    const arriving = settlerAt(sim, 1, 0, CARPENTER, mill); // lower id: plans first in the pass
+    const seated = settlerAt(sim, 1, 0, CARPENTER, mill);
+    const world = sim.world;
+    world.add(mill, Production, {
+      cycles: [
+        { elapsed: 3, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK },
+        { elapsed: 11, duration: TWIN_MILL_RECIPE_TICKS, goodType: PLANK },
+      ],
+    });
+    const ctx = ctxOf(sim);
+    const offBeat = { ...ctx, tick: idleReplanDue(ctx.tick, mill) ? ctx.tick + 1 : ctx.tick };
+    world.add(seated, Resting, { at: mill });
+    startCraftAtomic(world, offBeat, seated, mill, 0);
+    world.add(seated, IdleStand, { standing: false });
+
+    plannerSystem(world, offBeat);
+
+    expect(world.get(seated, AtomicClock).elapsed).toBe(3); // left on its seat
+    expect(world.get(arriving, AtomicClock).elapsed).toBe(11);
   });
 });

@@ -1,6 +1,7 @@
 import {
   Carrying,
   Chat,
+  CurrentAtomic,
   Engagement,
   Female,
   HuntFocus,
@@ -11,11 +12,13 @@ import {
   Rider,
   SettlerProgress,
   type SettlerView,
+  Sheltering,
   Stance,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { holdsGround } from '../../conflict/battle-alert.js';
+import { standsAtPost } from '../../conflict/tower-post.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
@@ -27,7 +30,7 @@ import { planTrader } from '../../trade/index.js';
 import { planRider } from '../../vehicles/boarding.js';
 import { abandonCargoRun } from '../../vehicles/cargo.js';
 import { heldOffEconomy } from '../action-owner.js';
-import { stepOut } from '../indoors.js';
+import { isInside, stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import { IDLE_REPLAN_PERIOD_TICKS } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
@@ -93,7 +96,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
 
   // The alarm outranks every other drive: hunger, the ownership gate, and a live equip errand alike.
-  if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
+  if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) {
+    standIfInside(pass, e, world.get(e, Sheltering).shelter);
+    return;
+  }
 
   // A pressing need on a fighting unit is answered from what it carries or what its post holds, never by
   // walking to food, a bed or a temple and never by lying down. Under the alarm, which still outranks
@@ -205,7 +211,11 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   }
   // TOWER WATCH: above the DEFEND hold below because it is the more specific standing order - a posted
   // archer whose stance is also DEFEND must still walk to his tower rather than freeze on the spot.
-  if (planTowerPost(world, ctx, terrain, e, jobType, here)) return;
+  if (planTowerPost(world, ctx, terrain, e, jobType, here)) {
+    const post = standsAtPost(world, e);
+    if (post !== null) standIfInside(pass, e, post);
+    return;
+  }
   // DEFEND hold: a guard keeps its post against the company and economy rungs, and the CombatSystem walks
   // it back when displaced. Below the equip errand on purpose: the one player order a guard still runs
   // without dropping its stance.
@@ -273,7 +283,7 @@ function planEconomy(
     if (isCarrierJob(ctx, plan.jobType)) {
       planWorkshopSupplier(plan, workplace, pass.seatClaims, pass.spacing);
     } else {
-      planProducer(plan, workplace, pass.seatClaims, pass.spacing);
+      planProducer(plan, workplace, pass.seatClaims, pass.spacing, pass.idle);
     }
     return;
   }
@@ -297,6 +307,11 @@ function planEconomy(
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, IDLE_REPLAN_PERIOD_TICKS, alert);
   }
+}
+
+/** Stand `e` through its idle beats when it waits inside `building` with no clip of its own running. */
+function standIfInside(pass: PlannerPass, e: Entity, building: Entity): void {
+  if (isInside(pass.world, e, building) && !pass.world.has(e, CurrentAtomic)) pass.idle.stand(e, false);
 }
 
 /** A script may pin a settler where it was left: it still works, shelters and answers its needs, but

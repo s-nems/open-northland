@@ -195,8 +195,8 @@ These tickets carry the numbers above and the code evidence, all under `docs/tic
   scratch per AI query because its memo keys on generations that move every tick.
 - `planner-store-searches-scan-every-stockpile.md` (done): `inputSources` duplicating the
   fetchable-stock ledger, `sinksFor`, the porter's pile scan and the cell index's linear fallback.
-- [`planner-standing-waits-replan-every-tick.md`](../tickets/sim/planner-standing-waits-replan-every-tick.md):
-  seated crafters, loiterers and site-waiting builders re-planned every tick (owner ruling on latency).
+- `planner-standing-waits-replan-every-tick.md` (done): seated crafters, garrisons and settlers waiting
+  inside or under cover stand through the idle beat of the building that holds them.
 - `planner-idle-settlers-visited-every-tick.md` (done): idle settlers visited before the idle gate.
 - `navigation-planner-rechecks-every-walker.md` (done): the navigation planner visits only walkers a
   change feed names.

@@ -13,6 +13,7 @@ import { ConstructionTaskClaims, RepairCrews, WorkSeatClaims } from '../drives/e
 import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
 import { IdleStands } from './idle-replan.js';
+import { standsThroughPass } from './replan.js';
 import { PlannerSpacing } from './spacing.js';
 
 /**
@@ -51,6 +52,7 @@ export interface PlannerPass {
 export function beginPlannerPass(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerPass {
   const targets = collectTargets(world, ctx, terrain);
   const front = new BattleFront(world, ctx);
+  const shelters = collectShelters(world, ctx);
   return {
     world,
     ctx,
@@ -61,7 +63,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     externalQuality: new ExternalQualityIndex(world, ctx, terrain),
     spacing: PlannerSpacing.forTick(world, ctx, terrain),
     farmClaims: collectFarmClaims(world),
-    seatClaims: new WorkSeatClaims(),
+    seatClaims: new WorkSeatClaims((e) => standsThroughPass(world, ctx, shelters, e)),
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
@@ -69,7 +71,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     constructionClaims: new ConstructionTaskClaims(world, ctx),
     repairCrews: new RepairCrews(world, ctx, front),
     seatDoors: new SeatDoors(world, ctx, terrain, targets.buildings),
-    shelters: collectShelters(world, ctx),
+    shelters,
     idle: new IdleStands(),
   };
 }

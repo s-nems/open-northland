@@ -9,6 +9,7 @@ import {
   Fleeing,
   Garrison,
   IdleStand,
+  JobAssignment,
   MoveGoal,
   Owner,
   PathRequest,
@@ -188,6 +189,24 @@ describe('planner sweep order', () => {
     wakeIdle(world, second);
     world.add(third, MoveGoal, { cell: GOAL }); // its visit wakes a walking idler
     expect(sweep(NO_SHELTERS)).toEqual([first, second, third, last]);
+    expect(world.verifyCaches()).toEqual([]);
+  });
+});
+
+describe('the beat an idler waits inside a building on', () => {
+  it('is the building’s own, and turns back to the settler’s once it steps out', () => {
+    const world = new World();
+    const workplace = world.create();
+    const crafter = idler(world);
+    world.add(crafter, JobAssignment, { workplace });
+    world.add(crafter, Resting, { at: workplace });
+    const onBeat = (e: Entity): Entity[] => [...sweepOrder(world, CONTENT, NO_SHELTERS, idleBeatOf(e))];
+    expect(onBeat(workplace)).toEqual([crafter]);
+    expect(onBeat(crafter)).toEqual([]);
+
+    world.remove(crafter, Resting);
+    expect(onBeat(workplace)).toEqual([]);
+    expect(onBeat(crafter)).toEqual([crafter]);
     expect(world.verifyCaches()).toEqual([]);
   });
 });

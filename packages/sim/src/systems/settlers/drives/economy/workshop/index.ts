@@ -2,6 +2,7 @@ import type { Recipe } from '@open-northland/data';
 import {
   Building,
   CARRY_CAPACITY,
+  CurrentAtomic,
   inPastimeChat,
   Owner,
   Production,
@@ -16,12 +17,14 @@ import {
 } from '../../../../economy/production.js';
 import { recipeOutputsEnabled } from '../../../../progression/index.js';
 import { planGossipIdle } from '../../../../social/index.js';
+import { assignedWorkers } from '../../../../stores/assigned-workers.js';
 import { isWorkplaceOperator, mergedRecipeOf } from '../../../../stores/index.js';
 import { stampSupplyRun } from '../../../../stores/supply-tally.js';
 import { type WorkshopWorkforce, workshopWorkforce } from '../../../../stores/workshop-workforce.js';
 import { atOrWalk, startPickup } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
+import type { IdleStands } from '../../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
@@ -55,10 +58,32 @@ interface PassErrand {
 }
 
 /** Per-planner-pass seat claims and incoming bound loads, indexed only when a workshop needs them. */
-export class WorkSeatClaims extends Map<Entity, WorkSeats> {
+export class WorkSeatClaims {
+  private readonly seats = new Map<Entity, WorkSeats>();
   private workforce: WorkshopWorkforce | undefined;
   private readonly recipesByWorkplace = new Map<Entity, Recipe[]>();
   private readonly errands = new Map<Entity, PassErrand>();
+
+  /** `keepsSeat` says whether a crafter keeps its clip through this pass without being visited. */
+  constructor(private readonly keepsSeat: (e: Entity) => boolean) {}
+
+  /**
+   * `workplace`'s tally this pass, counting first the crafters that keep their seats through it. They
+   * re-plan together, on the workplace's shared beat, a batch change or the wake of one of them, so they
+   * hold its first seats.
+   */
+  seatsAt(world: World, workplace: Entity): WorkSeats {
+    let seats = this.seats.get(workplace);
+    if (seats === undefined) {
+      let kept = 0;
+      for (const e of assignedWorkers(world, workplace)) {
+        if (world.tryGet(e, CurrentAtomic)?.targetEntity === workplace && this.keepsSeat(e)) kept++;
+      }
+      seats = { claimed: kept, performing: kept };
+      this.seats.set(workplace, seats);
+    }
+    return seats;
+  }
 
   recipesFor(world: World, ctx: PlannerContext['ctx'], workplace: Entity): readonly Recipe[] {
     let recipes = this.recipesByWorkplace.get(workplace);
@@ -114,6 +139,7 @@ export function planProducer(
   workplace: Entity,
   seatClaims: WorkSeatClaims,
   spacing: PlannerSpacing,
+  idle?: IdleStands,
 ): void {
   const { world, ctx } = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
@@ -123,15 +149,11 @@ export function planProducer(
   if (planVehicleYard(plan, workplace, spacing)) return;
 
   const own = operatorRecipes(world, ctx, workplace, plan.entity);
-  let seats = seatClaims.get(workplace);
-  if (seats === undefined) {
-    seats = { claimed: 0, performing: 0 };
-    seatClaims.set(workplace, seats);
-  }
+  const seats = seatClaims.seatsAt(world, workplace);
   const running = world.tryGet(workplace, Production)?.cycles.length ?? 0;
   if (seats.claimed < running) {
     seats.claimed += 1;
-    holdInsideWorkplace(plan, workplace, seats);
+    holdInsideWorkplace(plan, workplace, seats, idle);
     return;
   }
 
@@ -164,7 +186,7 @@ export function planProducer(
           seatClaims.inboundOf(plan, workplace, input.goodType) > 0,
       )
     ) {
-      holdInsideWorkplace(plan, workplace);
+      holdInsideWorkplace(plan, workplace, undefined, idle);
       return;
     }
   }
@@ -173,7 +195,7 @@ export function planProducer(
 
   if (seats.claimed < workSeatCount(world, ctx, workplace, own)) {
     seats.claimed += 1;
-    holdInsideWorkplace(plan, workplace, seats);
+    holdInsideWorkplace(plan, workplace, seats, idle);
     return;
   }
 
@@ -261,11 +283,17 @@ function routeToInputSource(
  * Stand on the workplace's door and step inside; that door presence is what drives the production gate.
  * An operator that arrives takes the next indoor seat's craft clip, which is what the render draws it
  * performing. Without `seats` - an idle shop, or an unowned fixture's carrier - it waits inside with
- * nothing to show.
+ * nothing to show. With `idle` it keeps that wait through its idle beats.
  */
-function holdInsideWorkplace(plan: PlannerContext, workplace: Entity, seats?: WorkSeats): void {
+function holdInsideWorkplace(
+  plan: PlannerContext,
+  workplace: Entity,
+  seats?: WorkSeats,
+  idle?: IdleStands,
+): void {
   const { world, ctx, terrain, entity, here } = plan;
   enterBuilding(world, entity, workplace, here, interactionCell(world, ctx, terrain, workplace, here), () => {
+    idle?.stand(entity, false);
     if (seats === undefined) return;
     startCraftAtomic(world, ctx, entity, workplace, seats.performing);
     seats.performing += 1;

@@ -359,6 +359,8 @@ describe('defence mode', () => {
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    sim.step();
+    expect(sim.world.has(farmer, IdleStand)).toBe(true); // under cover, it stands through its idle beats
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: false });
     sim.step();
@@ -582,6 +584,8 @@ describe('defence mode', () => {
     sim.enqueueSetup({ kind: 'setDefenceMode', building: west, enabled: true });
     sim.enqueueSetup({ kind: 'setDefenceMode', building: east, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === west);
+    sim.step();
+    expect(sim.world.has(farmer, IdleStand)).toBe(true); // under cover, standing through its idle beats
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: west, enabled: false });
     sim.step(); // ONE tick: the order, the release, and the re-claim

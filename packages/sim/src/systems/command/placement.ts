@@ -32,6 +32,7 @@ import { destroyStumpsInReserved } from '../economy/stumps.js';
 import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled } from '../progression/index.js';
+import { wakeCrewInside } from '../settlers/planner/idle-replan.js';
 import { displaceSignpostsFromFootprint } from '../signposts/index.js';
 import { upgradeTierOf } from '../stores/index.js';
 
@@ -232,6 +233,7 @@ export function upgradeBuilding(
   world.mut(command.building, Stockpile).amounts = hold;
   building.built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
+  wakeCrewInside(world, command.building); // the occupants leave now, not on the building's idle beat
   // The panel hides the defence window for a site, so an alarm left standing could be neither seen nor
   // lowered and would silently call the garrison back once the upgrade finished.
   world.remove(command.building, DefenceMode);
