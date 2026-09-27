@@ -29,6 +29,9 @@ export interface Verdict {
  */
 export class SyncLedger {
   private readonly pending = new Map<number, DigestReport[]>();
+  /** The keys of `pending` in ascending order from `head` on; entries before `head` are settled. */
+  private order: number[] = [];
+  private head = 0;
   private readonly references = new Map<number, DigestReport>();
 
   /** Record one client's digest. Judged at once against a settled tick, otherwise held; a client
@@ -42,6 +45,7 @@ export class SyncLedger {
     const reports = this.pending.get(tick);
     if (reports === undefined) {
       this.pending.set(tick, [entry]);
+      this.order.splice(this.insertionIndex(tick), 0, tick);
       return null;
     }
     const held = reports.findIndex((report) => report.token === entry.token);
@@ -55,9 +59,10 @@ export class SyncLedger {
    * been moved past, from the reports of `synced` alone; a tick none of them reported is dropped.
    */
   settle(passed: number, synced: ReadonlySet<string>): Verdict[] {
-    const due = [...this.pending.keys()].filter((tick) => tick <= passed).sort((a, b) => a - b);
     const verdicts: Verdict[] = [];
-    for (const tick of due) {
+    for (; this.head < this.order.length; this.head++) {
+      const tick = this.order[this.head];
+      if (tick === undefined || tick > passed) break;
       const reports = (this.pending.get(tick) ?? []).filter((report) => synced.has(report.token));
       this.pending.delete(tick);
       if (reports.length === 0) continue;
@@ -65,6 +70,7 @@ export class SyncLedger {
       this.references.set(tick, verdict.reference);
       if (verdict.outOfSync.length > 0) verdicts.push(verdict);
     }
+    if (this.head * 2 >= this.order.length) this.compact();
     return verdicts;
   }
 
@@ -75,6 +81,25 @@ export class SyncLedger {
       if (kept.length === 0) this.pending.delete(tick);
       else this.pending.set(tick, kept);
     }
+    this.compact();
+  }
+
+  /** Where `tick` belongs in the held order; a new tick almost always lands at the end. */
+  private insertionIndex(tick: number): number {
+    let low = this.head;
+    let high = this.order.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if ((this.order[middle] ?? tick) < tick) low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  }
+
+  /** Drop the settled front and any tick no longer held. */
+  private compact(): void {
+    this.order = this.order.slice(this.head).filter((tick) => this.pending.has(tick));
+    this.head = 0;
   }
 
   /** Forget references before `tick`, once no client can report a tick below it. */

@@ -1,6 +1,12 @@
 import { type ClientLoad, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import { GOVERNOR_HEADROOM, governedSpeed, MIN_GOVERNED_SPEED } from '../src/relay/governor.js';
+import {
+  GOVERNED_RISE_STEPS,
+  GOVERNED_SPEED_STEP,
+  GOVERNOR_HEADROOM,
+  governedSpeed,
+  MIN_GOVERNED_SPEED,
+} from '../src/relay/governor.js';
 import { createMember, type Member } from '../src/relay/member.js';
 
 const CLOCK_TICK = 100;
@@ -14,6 +20,11 @@ function slowMember(nick: string, tickCostTicks: number | null, ackedTick = 0): 
   member.load = load;
   member.ackedTick = ackedTick;
   return member;
+}
+
+/** A member whose headroom share of its sustainable speed is `share`. */
+function sharing(share: number): Member {
+  return slowMember('Bartek', GOVERNOR_HEADROOM / share);
 }
 
 describe('governed speed', () => {
@@ -45,5 +56,30 @@ describe('governed speed', () => {
       nick: 'Bartek',
       speed: MIN_GOVERNED_SPEED,
     });
+  });
+
+  it('slows at once but speeds up only by whole rise steps, so a jittering report changes nothing', () => {
+    const current = { nick: 'Bartek', speed: 0.4 };
+    const oneStepUp = current.speed + GOVERNED_SPEED_STEP;
+    const riseStepsUp = current.speed + GOVERNED_RISE_STEPS * GOVERNED_SPEED_STEP;
+    const oneStepDown = current.speed - GOVERNED_SPEED_STEP;
+    expect(governedSpeed([sharing(oneStepUp)], CLOCK_TICK, 1, current)).toEqual(current);
+    expect(governedSpeed([sharing(riseStepsUp)], CLOCK_TICK, 1, current)?.speed).toBeCloseTo(riseStepsUp);
+    expect(governedSpeed([sharing(oneStepDown)], CLOCK_TICK, 1, current)?.speed).toBeCloseTo(oneStepDown);
+
+    const boundary = current.speed + GOVERNED_SPEED_STEP / 2;
+    const jitter = GOVERNED_SPEED_STEP / 10;
+    let governed = governedSpeed([sharing(boundary - jitter)], CLOCK_TICK, 1);
+    expect(governed).toEqual(current);
+    for (let report = 0; report < 10; report++) {
+      const share = report % 2 === 0 ? boundary + jitter : boundary - jitter;
+      governed = governedSpeed([sharing(share)], CLOCK_TICK, 1, governed);
+      expect(governed).toEqual(current);
+    }
+  });
+
+  it('releases a governed clock the requested speed falls to', () => {
+    const current = { nick: 'Bartek', speed: 0.4 };
+    expect(governedSpeed([sharing(current.speed)], CLOCK_TICK, current.speed, current)).toBeNull();
   });
 });

@@ -6,6 +6,8 @@ import {
   closingCode,
   MAX_BLOB_BYTES,
   MAX_NICK_LENGTH,
+  MAX_REPORTED_BUFFERED,
+  MAX_REPORTED_TICK_MS,
   PROTOCOL_VERSION,
   parseClientMessage,
   parseServerMessage,
@@ -99,6 +101,13 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   { kind: 'loaded', tick: 300, world: 240 },
   { kind: 'loaded', tick: null },
   { kind: 'ack', tick: 12, digest: DIGEST, world: 0, load: { tickMs: 3.25, buffered: 2 } },
+  {
+    kind: 'ack',
+    tick: 13,
+    digest: DIGEST,
+    world: 0,
+    load: { tickMs: MAX_REPORTED_TICK_MS, buffered: MAX_REPORTED_BUFFERED },
+  },
   {
     kind: 'command',
     envelope: { v: 1, origin: 'player', player: 0, command: MOVE_ORDER },
@@ -226,6 +235,22 @@ describe('client messages', () => {
     [
       'a fractional backlog',
       { kind: 'ack', tick: 1, digest: DIGEST, world: 0, load: { ...LOAD, buffered: 0.5 } },
+      /ack\.load\.buffered/,
+    ],
+    [
+      'a tick cost past the reported bound',
+      { kind: 'ack', tick: 1, digest: DIGEST, world: 0, load: { ...LOAD, tickMs: MAX_REPORTED_TICK_MS + 1 } },
+      /ack\.load\.tickMs/,
+    ],
+    [
+      'a backlog past the reported bound',
+      {
+        kind: 'ack',
+        tick: 1,
+        digest: DIGEST,
+        world: 0,
+        load: { ...LOAD, buffered: MAX_REPORTED_BUFFERED + 1 },
+      },
       /ack\.load\.buffered/,
     ],
     [
@@ -451,6 +476,21 @@ describe('server messages', () => {
     expect(() =>
       parseServerMessage(wire({ ...room, room: { ...room.room, members } }), parseSession),
     ).toThrow(/members\[0\]\.load/);
+  });
+
+  it('refuses a room member whose load is past the reported bounds', () => {
+    const room = SERVER_MESSAGES.find((message) => message.kind === 'room');
+    if (room?.kind !== 'room') throw new Error('no room fixture');
+    const withLoad = (load: object) => ({
+      ...room,
+      room: { ...room.room, members: room.room.members.map((member) => ({ ...member, load })) },
+    });
+    expect(() =>
+      parseServerMessage(wire(withLoad({ tickMs: MAX_REPORTED_TICK_MS + 1, buffered: 0 })), parseSession),
+    ).toThrow(/members\[0\]\.load\.tickMs/);
+    expect(() =>
+      parseServerMessage(wire(withLoad({ tickMs: 1, buffered: MAX_REPORTED_BUFFERED + 1 })), parseSession),
+    ).toThrow(/members\[0\]\.load\.buffered/);
   });
 
   it('hands the session to the parser it was given', () => {

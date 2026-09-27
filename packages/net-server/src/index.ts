@@ -10,6 +10,8 @@ export { SILENT_AFTER_MS } from './relay/game.js';
 export {
   GOVERN_BEHIND_MS,
   GOVERN_RELEASE_MS,
+  GOVERNED_RISE_STEPS,
+  GOVERNED_SPEED_STEP,
   GOVERNOR_HEADROOM,
   MIN_GOVERNED_SPEED,
 } from './relay/governor.js';

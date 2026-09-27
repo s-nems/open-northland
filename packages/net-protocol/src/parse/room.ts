@@ -1,6 +1,8 @@
 import type { SeatMode, SessionRules, SessionWorld } from '@open-northland/lockstep';
 import {
   FOG_MODES,
+  MAX_REPORTED_BUFFERED,
+  MAX_REPORTED_TICK_MS,
   MAX_ROOM_ID_LENGTH,
   MAX_ROOM_NAME_LENGTH,
   MAX_SEATS,
@@ -173,9 +175,14 @@ function parseRoomMemberView(value: unknown, at: string): RoomMemberView {
 export function parseClientLoad(value: unknown, at: string): ClientLoad {
   const raw = asRecord(value, at);
   return {
-    tickMs: asNonNegativeNumber(raw.tickMs, `${at}.tickMs`),
-    buffered: asCount(raw.buffered, `${at}.buffered`),
+    tickMs: atMost(asNonNegativeNumber(raw.tickMs, `${at}.tickMs`), MAX_REPORTED_TICK_MS, `${at}.tickMs`),
+    buffered: atMost(asCount(raw.buffered, `${at}.buffered`), MAX_REPORTED_BUFFERED, `${at}.buffered`),
   };
+}
+
+function atMost(value: number, max: number, at: string): number {
+  if (value > max) throw new Error(`${at}: ${value} is above ${max}`);
+  return value;
 }
 
 export function parseRoomSummary(value: unknown, at: string): RoomSummary {

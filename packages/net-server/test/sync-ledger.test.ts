@@ -83,4 +83,21 @@ describe('sync ledger', () => {
     expect(ledger.settle(1, new Set(['a', 'lost']))).toEqual([]);
     expect(ledger.report(1, report('b', 2, 2))?.reference.token).toBe('a');
   });
+
+  it('settles ticks reported out of order in tick order, a partial settle leaving the rest held', () => {
+    const ledger = new SyncLedger();
+    for (const tick of [5, 2, 4, 1, 3]) {
+      ledger.report(tick, report('a', 0, 1));
+      ledger.report(tick, report('b', 1, 2));
+      ledger.report(tick, report('c', 2, 1));
+    }
+    expect(ledger.settle(3, ABC).map((verdict) => verdict.tick)).toEqual([1, 2, 3]);
+    ledger.report(7, report('a', 0, 1));
+    ledger.report(7, report('b', 1, 2));
+    ledger.report(6, report('a', 0, 1));
+    ledger.report(6, report('b', 1, 2));
+    ledger.forget('c');
+    expect(ledger.settle(7, AB).map((verdict) => verdict.tick)).toEqual([4, 5, 6, 7]);
+    expect(ledger.settle(7, AB)).toEqual([]);
+  });
 });

@@ -308,6 +308,19 @@ describe('pacing the clock for a slow member', () => {
     expect(framesOver(s, s.a, s.b, RELEASE_TICKS, RATE_WINDOW_MS)).toBeGreaterThanOrEqual(fullFrames - 1);
   });
 
+  it('announces a requested speed with the governed speed recomputed for it', () => {
+    const s = startedRoom();
+    trail(s, s.a, s.b, BEHIND_TICKS + 1, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
+    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED };
+    expect(s.b.last('clock')?.governed).toEqual(governed);
+    const aboveGoverned = SLOW_GOVERNED_SPEED * 2;
+    s.a.send({ kind: 'clock', speed: aboveGoverned });
+    expect(s.b.last('clock')).toMatchObject({ speed: aboveGoverned, by: 'Ania', governed });
+    const belowGoverned = SLOW_GOVERNED_SPEED / 2;
+    s.a.send({ kind: 'clock', speed: belowGoverned });
+    expect(s.b.last('clock')).toMatchObject({ speed: belowGoverned, by: 'Ania', governed: null });
+  });
+
   it('keeps the clock running for a slow member that never reports, and counts down its kick vote', () => {
     const s = startedRoom();
     play(s, [s.a], GOVERN_BEHIND_MS + TICK_MS * 2, [s.a, s.b]);

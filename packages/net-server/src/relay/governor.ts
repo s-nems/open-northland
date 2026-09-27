@@ -11,9 +11,11 @@ export const GOVERN_RELEASE_MS = 500;
 export const GOVERNOR_HEADROOM = 0.8;
 /** The floor of a governed clock; a client slower than this is left to the kick vote. */
 export const MIN_GOVERNED_SPEED = 0.25;
-/** A governed speed is rounded to this, so the relay and the clients run the same announced value and
- *  a jittering load report does not become a clock message per advance. */
+/** A governed speed is rounded to this, so the relay and the clients run the same announced value. */
 export const GOVERNED_SPEED_STEP = 0.05;
+/** Steps a governed speed must rise by before the clock speeds up; it slows at once. A load report
+ *  jittering across one rounding boundary therefore sends no clock message. */
+export const GOVERNED_RISE_STEPS = 2;
 
 /** Frames the clock emits in `ms` of wall time at `speed`, rounded up. */
 export function framesIn(ms: number, speed: number): number {
@@ -26,22 +28,26 @@ export function framesIn(ms: number, speed: number): number {
  * share of it, never above the requested speed nor below `MIN_GOVERNED_SPEED`. Before its first load
  * report a member gets the headroom share of the requested speed. The lowest speed wins; a tie goes to
  * the member furthest behind. A slow member whose share reaches the requested speed governs nothing: it
- * is behind for another reason and its own pacer catches up.
+ * is behind for another reason and its own pacer catches up. Against the `current` governed speed a
+ * rise under `GOVERNED_RISE_STEPS` steps is ignored.
  */
 export function governedSpeed(
   slow: Iterable<Member>,
   clockTick: number,
   requestedSpeed: number,
+  current: GovernedClock | null = null,
 ): GovernedClock | null {
   let limiter: { readonly nick: string; readonly speed: number; readonly lag: number } | null = null;
   for (const member of slow) {
-    const speed = clampSpeed(memberSpeed(member, requestedSpeed), requestedSpeed);
+    const speed = stepSpeed(memberSpeed(member, requestedSpeed));
     const lag = clockTick - member.ackedTick;
     if (limiter === null || speed < limiter.speed || (speed === limiter.speed && lag > limiter.lag))
       limiter = { nick: member.nick, speed, lag };
   }
-  if (limiter === null || limiter.speed >= requestedSpeed) return null;
-  return { nick: limiter.nick, speed: limiter.speed };
+  if (limiter === null) return null;
+  const speed = current === null ? limiter.speed : withoutSmallRise(limiter.speed, current.speed);
+  if (speed >= requestedSpeed) return null;
+  return { nick: limiter.nick, speed };
 }
 
 function memberSpeed(member: Member, requestedSpeed: number): number {
@@ -49,8 +55,13 @@ function memberSpeed(member: Member, requestedSpeed: number): number {
   return (TICK_MS / member.load.tickMs) * GOVERNOR_HEADROOM;
 }
 
-function clampSpeed(speed: number, requestedSpeed: number): number {
+function stepSpeed(speed: number): number {
   const stepsPerSpeed = 1 / GOVERNED_SPEED_STEP;
-  const rounded = Math.round(speed * stepsPerSpeed) / stepsPerSpeed;
-  return Math.min(requestedSpeed, Math.max(MIN_GOVERNED_SPEED, rounded));
+  return Math.max(MIN_GOVERNED_SPEED, Math.round(speed * stepsPerSpeed) / stepsPerSpeed);
+}
+
+/** Both speeds are whole steps, so the rise is counted in whole steps too. */
+function withoutSmallRise(speed: number, current: number): number {
+  const risenSteps = Math.round((speed - current) / GOVERNED_SPEED_STEP);
+  return risenSteps > 0 && risenSteps < GOVERNED_RISE_STEPS ? current : speed;
 }

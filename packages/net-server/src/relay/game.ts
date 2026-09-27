@@ -161,6 +161,7 @@ export class Game {
     }
     if (speed !== undefined) this.clock.setSpeed(speed);
     if (paused !== undefined) this.clock.setPaused(paused);
+    this.governFor(this.slowMembers());
     this.broadcast(this.clockMessage(member.nick));
     return null;
   }
@@ -301,10 +302,19 @@ export class Game {
     for (const member of slow) this.slowTokens.add(member.token);
     if (this.waiting.update(waited, now)) this.broadcast(this.waiting.message(now));
     this.clock.hold(waited.some((entry) => entry.reason !== 'slow'));
-    const governed = governedSpeed(slow, this.clock.tick, this.clock.speed);
-    if (sameGoverned(governed, this.clock.governed)) return;
+    if (this.governFor(slow) && this.clock.running) this.broadcast(this.clockMessage(null));
+  }
+
+  /** Pace the clock for `slow` at the requested speed; true when the governed clock changed. */
+  private governFor(slow: readonly Member[]): boolean {
+    const governed = governedSpeed(slow, this.clock.tick, this.clock.speed, this.clock.governed);
+    if (sameGoverned(governed, this.clock.governed)) return false;
     this.clock.govern(governed);
-    if (this.clock.running) this.broadcast(this.clockMessage(null));
+    return true;
+  }
+
+  private slowMembers(): Member[] {
+    return [...this.members.values()].filter((member) => this.slowTokens.has(member.token));
   }
 
   private waitReason(member: Member, now: number): WaitReason | null {
