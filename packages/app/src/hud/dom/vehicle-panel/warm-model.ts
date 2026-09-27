@@ -55,7 +55,7 @@ export function warmVehicleModel(goodIds: readonly string[]): VehiclePanelModel 
       seats: [rider(3, 'man', true), rider(4, 'woman', false), rider(5, 'soldier', true), null, null],
       count: 4,
       capacity: 6,
-      deck: { capacity: 1, vehicles: [{ entity: 6, label: 'Warm', inside: true }] },
+      deck: { capacity: 1, vehicles: [{ entity: 6, label: 'Warm' }] },
       assign: true,
       leave: true,
       unload: 'warm',
@@ -72,10 +72,8 @@ export function warmVehicleModel(goodIds: readonly string[]): VehiclePanelModel 
         label: 'Warm',
         category: goodType,
       })),
-      wantedRoom: 17,
       routed: false,
       cargoHand: false,
-      clear: true,
     },
   };
 }

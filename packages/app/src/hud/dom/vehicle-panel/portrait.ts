@@ -67,7 +67,7 @@ export interface PortraitSection {
   readonly frame: HTMLElement;
   update(model: VehiclePanelModel): void;
   /** Once a frame: the button whose pick waits for its target lights. */
-  refresh(): void;
+  refresh(armed: VehiclePick | null): void;
 }
 
 export function createPortraitSection(
@@ -181,9 +181,8 @@ export function createPortraitSection(
         setTip(carrier, copy.carrierTooltip);
       }
     },
-    refresh(): void {
+    refresh(next): void {
       const shown = current();
-      const next = shown === null ? null : deps.armedPick(shown.entityId);
       if (next === armed || shown === null) return;
       armed = next;
       paintOrders(shown);

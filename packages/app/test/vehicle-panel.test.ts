@@ -8,13 +8,13 @@ import {
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
-import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import {
   VEHICLE_CATAPULT,
   VEHICLE_HANDCART,
   VEHICLE_OXCART,
   VEHICLE_SHIP_SMALL,
 } from '../src/game/sandbox/index.js';
+import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import { buildUnitPanelModel, type UnitPanelModelContext } from '../src/hud/details-panel/index.js';
 import type {
   VehicleCrewModel,
@@ -98,7 +98,6 @@ describe('vehicle panel model', () => {
     expect(model.orders.every((row) => row.control === true)).toBe(true);
     expect(model.trade?.entityId).toBe(cart.commander);
     expect(model.hold?.routed).toBe(true);
-    expect(model.hold?.clear).toBeNull();
     expect(model.health).toEqual({ hitpoints: cart.hitpoints, max: cart.maxHitpoints });
   });
 
@@ -184,13 +183,23 @@ describe('vehicle panel model', () => {
   it("shows another seat's vehicle with its owner line and no controls", () => {
     const world = vehiclesWorld();
     const ship = ownVehicle(world.sim, VEHICLE_SHIP_SMALL).entity;
-    const model = modelOf({ ...world, ctx: { ...world.ctx, viewer: fixedViewerSeat(HUMAN_PLAYER + 1) } }, ship);
+    const model = modelOf(
+      { ...world, ctx: { ...world.ctx, viewer: fixedViewerSeat(HUMAN_PLAYER + 1) } },
+      ship,
+    );
     expect(model.foreign).toBe(true);
     expect(model.meta).not.toBeNull();
     expect(model.orders).toEqual([]);
     expect(model.hold).toBeNull();
     expect(model.crew.assign).toBeNull();
     expect(model.crew.unload).toBeNull();
+    const catapult = ownVehicle(world.sim, VEHICLE_CATAPULT).entity;
+    const foreignSiege = modelOf(
+      { ...world, ctx: { ...world.ctx, viewer: fixedViewerSeat(HUMAN_PLAYER + 1) } },
+      catapult,
+    );
+    expect(foreignSiege.stance).toBeNull();
+    expect(foreignSiege.attackOrders).toEqual([]);
   });
 });
 
@@ -255,7 +264,9 @@ describe('vehicle panel orders', () => {
       tooltip: 'no',
     });
     expect(orderTexts({ order: 'goTo', control: true }, 'ship', false).label).toBe(copy.orders.sail);
-    expect(orderTexts({ order: 'goTo', control: true }, 'ship', false).tooltip).toContain(copy.orderHints.sail);
+    expect(orderTexts({ order: 'goTo', control: true }, 'ship', false).tooltip).toContain(
+      copy.orderHints.sail,
+    );
     expect(orderTexts({ order: 'stop', control: true }, 'cart', true).tooltip).toContain(copy.orders.stop);
     expect(orderTexts({ order: 'stop', control: true }, 'cart', false).tooltip).toBe(copy.orders.stop);
   });
@@ -341,8 +352,11 @@ describe('vehicle crew', () => {
   });
 
   it('names the commander as a link, walking while it is not aboard, or the seat to fill', () => {
-    const model = (over: Partial<VehicleCrewModel>, foreign = false) =>
-      ({ vehicleClass: 'cart', foreign, crew: crew(over) }) as VehiclePanelModel;
+    const model = (over: Partial<VehicleCrewModel>, foreign = false) => ({
+      vehicleClass: 'cart' as const,
+      foreign,
+      crew: crew(over),
+    });
     const copy = messages().hud.vehiclePanel;
     expect(commanderValue(model({ commander: rider(1, false) })).map((s) => s.text)).toEqual([
       'R1',
@@ -360,10 +374,8 @@ describe('vehicle hold', () => {
     slots: 30,
     rows,
     goods: [1, 2, 3].map((goodType) => ({ goodType, label: `G${goodType}`, category: 0 })),
-    wantedRoom: 0,
     routed: false,
     cargoHand: true,
-    clear: true,
   });
   const row = (goodType: number, current: number, wanted: number, reserved: number) => ({
     goodType,

@@ -110,7 +110,6 @@ export const plGame = {
     demolishGate: 'Wyburz bramę',
     constructionProgress: 'Budowa: {percent}%',
     vehicle: 'Wehikuł', // vehiclewindow 0
-    vehicleOrders: 'Rozkazy',
     vehicleTask: 'Zadanie: {task}',
     vehicleTasks: {
       none: 'bezczynny',

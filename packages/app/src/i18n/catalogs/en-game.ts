@@ -110,10 +110,9 @@ export const enGame = {
     demolishPalisade: 'Demolish palisade',
     demolishGate: 'Demolish gate',
     constructionProgress: 'Construction: {percent}%',
-    // The vehicle window: `vehiclewindow` and `misclogic` gui strings where the original has one (ids
-    // in the glosses), the rest authored.
+    // The vehicle's hover line: `vehiclewindow` gui strings where the original has one (ids in the
+    // glosses), the rest authored.
     vehicle: 'Vehicle', // vehiclewindow 0
-    vehicleOrders: 'Orders',
     vehicleTask: 'Task: {task}',
     vehicleTasks: {
       none: 'idle',

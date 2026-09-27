@@ -19,7 +19,7 @@ import {
 import { createLedger, type LedgerSegment } from '../parts/ledger.js';
 import { createSection } from '../parts/section.js';
 import { seatButton } from '../settler-panel/work.js';
-import type { VehiclePanelDeps } from './actions.js';
+import type { VehiclePanelDeps, VehiclePick } from './actions.js';
 
 /** A rider's tooltip: who, what trade, and whether it still walks to the door. */
 export function riderTooltip(rider: VehicleRiderModel, foreign: boolean): string {
@@ -30,7 +30,9 @@ export function riderTooltip(rider: VehicleRiderModel, foreign: boolean): string
 
 /** The commander row's value: the rider as a link ("idzie" while it walks to the door), or the seat to
  *  fill in amber, a link that arms the pick while the player may. */
-export function commanderValue(model: VehiclePanelModel): LedgerSegment[] {
+export function commanderValue(
+  model: Pick<VehiclePanelModel, 'vehicleClass' | 'foreign' | 'crew'>,
+): LedgerSegment[] {
   const copy = messages().hud.vehiclePanel;
   const crew = model.crew;
   const lead = crew.commander;
@@ -74,6 +76,8 @@ export function seatWells(crew: VehicleCrewModel): SeatWell[] {
 export interface CrewSection {
   readonly element: HTMLElement;
   update(model: VehiclePanelModel): void;
+  /** Once a frame: the seat pick's controls or the deck pick's button light while their pick waits. */
+  refresh(armed: VehiclePick | null): void;
 }
 
 export function createCrewSection(
@@ -247,6 +251,13 @@ export function createCrewSection(
           ],
         });
       }
+    },
+    refresh(armed): void {
+      const seating = armed === 'seatRider';
+      setClass(commander.element, 'on-ledger--armed', seating);
+      for (const well of wells)
+        setClass(well, 'on-seat-well--armed', seating && well.classList.contains('on-seat-well--add'));
+      setClass(deck.element, 'on-ledger--armed', armed === 'loadVehicle');
     },
   };
 }

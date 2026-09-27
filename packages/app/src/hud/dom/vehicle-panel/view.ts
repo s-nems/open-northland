@@ -123,6 +123,7 @@ export function createVehiclePanel(deps: VehiclePanelDeps): VehiclePanel {
     if (shown === null) return;
     shown = null;
     peers = NO_PEERS;
+    hold.closePicker();
     tradeWindow.close();
     deps.hoverCard.hide();
     deps.tooltip.hide();
@@ -152,13 +153,15 @@ export function createVehiclePanel(deps: VehiclePanelDeps): VehiclePanel {
       frame.warm();
     },
     refresh(): void {
-      portrait.refresh();
+      const armed = shown === null ? null : deps.armedPick(shown.entityId);
+      portrait.refresh(armed);
+      crew.refresh(armed);
       frame.refreshTip();
       if (!refit || shown === null) return;
       refit = false;
       fit();
     },
-    closePicker: () => hold.closePicker(),
+    closePicker: () => shown !== null && hold.closePicker(),
     portrait(): VehiclePortraitSubject | null {
       if (shown === null) return null;
       const rect = frame.holeClientRect();

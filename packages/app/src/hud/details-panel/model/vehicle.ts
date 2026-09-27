@@ -76,7 +76,6 @@ export interface VehicleRiderModel {
 export interface VehicleDeckModel {
   readonly entity: number;
   readonly label: string;
-  readonly inside: boolean;
 }
 
 /**
@@ -130,14 +129,10 @@ export interface VehicleHoldModel {
   readonly rows: readonly VehicleCargoRow[];
   /** Everything the type may carry, in its list order. */
   readonly goods: readonly VehicleCargoGood[];
-  /** Units no line asks for yet; the sim clamps a wanted step to it (`setVehicleWanted`). */
-  readonly wantedRoom: number;
   /** A trader rides it: the route writes the wanted amounts, so the hold is read-only. */
   readonly routed: boolean;
   /** Someone works the hold: the commander, or a carrier in any seat (`hasCargoHand`). */
   readonly cargoHand: boolean;
-  /** "Rozładuj wszystko": true, the reason it is refused, or null with nothing asked for. */
-  readonly clear: SeatControl | null;
 }
 
 /** The Handel section of the trader riding the vehicle; its controls act on that trader. */
@@ -159,7 +154,7 @@ export interface VehiclePanelModel {
   /** The movement orders, then a siege engine's attack orders; empty for another seat's vehicle. */
   readonly orders: readonly VehicleOrderModel[];
   readonly attackOrders: readonly VehicleOrderModel[];
-  /** A siege engine's stance; null for every other vehicle. */
+  /** An own siege engine's stance; null for every other vehicle. */
   readonly stance: VehicleStance | null;
   readonly crew: VehicleCrewModel;
   readonly trade: VehicleTradeModel | null;
@@ -380,7 +375,7 @@ function crewModel(
           vehicles: carriedSeats.map((seat) => {
             const e = entityById(snapshot, seat.entity);
             const typeId = e === undefined ? undefined : num(vehicleComp(e).vehicleType);
-            return { entity: seat.entity, label: vehicleTitle(ctx, typeId), inside: seat.inside };
+            return { entity: seat.entity, label: vehicleTitle(ctx, typeId) };
           }),
         };
   const own = !inputs.foreign;
@@ -435,8 +430,6 @@ function holdModel(
   const goods = type.cargoGoods
     .filter((goodType) => ctx.livestockTribeOfGood?.(goodType) == null)
     .map((goodType) => ({ ...cargoGood(goodType), category: goodCategoryTab(goodDef(ctx, goodType)?.id) }));
-  let wanted = 0;
-  for (const line of lines.values()) wanted += line.wanted;
   const cargoHand = passengers.some((seat) => {
     if (seat.entity === commanderId) return true;
     const e = entityById(snapshot, seat.entity);
@@ -447,10 +440,8 @@ function holdModel(
     slots,
     rows,
     goods,
-    wantedRoom: Math.max(0, slots - wanted),
     routed,
     cargoHand,
-    clear: routed ? null : wanted > 0 ? true : null,
   };
 }
 
@@ -549,7 +540,7 @@ export function vehiclePanelModel(
     health: health === undefined || health.max <= 0 ? null : health,
     orders,
     attackOrders,
-    stance: vehicleClass === 'siege' ? stanceOf(v.stance) : null,
+    stance: !foreign && vehicleClass === 'siege' ? stanceOf(v.stance) : null,
     crew: crewModel(ctx, snapshot, v, commanderId, {
       vehicleClass,
       foreign,
