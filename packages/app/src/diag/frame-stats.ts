@@ -241,9 +241,13 @@ export class FrameStats {
   }
 
   /** The delivered speed while a sustained shortfall holds, else null. Allocation-free for a caller
-   *  that asks every frame. */
+   *  that asks every frame. A verdict held through a pause is dropped once the request itself came
+   *  down to what was delivered. */
   sustainedShortfallSpeed(): number | null {
-    return this.shortfallHolds() ? this.deliveredSpeed() : null;
+    if (!this.shortfallHolds()) return null;
+    const delivered = this.deliveredSpeed();
+    const requested = this.last?.speed ?? 0;
+    return delivered < requested * SHORTFALL_RATIO ? delivered : null;
   }
 
   /** Opens a fresh measurement window. The EMAs keep their values: they describe "recently", not the
