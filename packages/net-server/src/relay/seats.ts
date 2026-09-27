@@ -59,9 +59,9 @@ export class SeatTable {
 
   claim(member: Member, player: number): Refusal {
     const seat = this.at(player);
-    if (seat === null) return `no seat ${player}`;
+    if (seat === null) return { code: 'noSeat', player };
     if (seat.member !== null && seat.member !== member)
-      return `seat ${player} is taken by ${seat.member.nick}`;
+      return { code: 'seatTaken', player, nick: seat.member.nick };
     this.standUp(member);
     seat.member = member;
     member.seat = player;
@@ -79,10 +79,11 @@ export class SeatTable {
   /** Change a seat's lobby setting; the mode of a taken seat is its occupant's, not the creator's. */
   setUp(player: number, change: SeatChange): Refusal {
     const seat = this.at(player);
-    if (seat === null) return `no seat ${player}`;
+    if (seat === null) return { code: 'noSeat', player };
     if (change.mode !== undefined) {
-      if (seat.member !== null) return `seat ${player} is taken by ${seat.member.nick}`;
-      if (!seat.offers.includes(change.mode)) return `seat ${player} does not offer ${change.mode}`;
+      if (seat.member !== null) return { code: 'seatTaken', player, nick: seat.member.nick };
+      if (!seat.offers.includes(change.mode))
+        return { code: 'seatModeUnavailable', player, mode: change.mode };
       seat.vacantMode = change.mode;
     }
     if (change.color !== undefined) seat.color = change.color;

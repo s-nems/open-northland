@@ -35,5 +35,5 @@ export function relayBlob(
       return null;
     }
   }
-  return `no ${upload.to} in the room`;
+  return { code: 'noRecipient', nick: upload.to };
 }

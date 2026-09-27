@@ -1,5 +1,5 @@
 import type { GameSession } from '@open-northland/lockstep';
-import { MAX_CHAT_LENGTH, MAX_REASON_LENGTH, MAX_SPEED } from '../limits.js';
+import { MAX_CHAT_LENGTH, MAX_SPEED } from '../limits.js';
 import type { ServerMessage, WaitedMember, WaitReason } from '../messages.js';
 import {
   asArray,
@@ -9,10 +9,10 @@ import {
   asOneOf,
   asPositiveNumber,
   asRecord,
-  asString,
   keysOf,
 } from '../untrusted.js';
 import { CLIENT_KINDS } from './client.js';
+import { parseRelayReason } from './reason.js';
 import { DEPARTED_SEAT_MODES, parseRoomSummary, parseRoomView, parseSeatIndex } from './room.js';
 import { parseSaveOrders } from './save-orders.js';
 import { assertNever, asTimestamp, parseLine, parseNick } from './text.js';
@@ -159,11 +159,11 @@ export function parseServerMessage(
       return {
         kind,
         of: asOneOf(raw.of, CLIENT_KINDS, 'rejected.of'),
-        reason: asString(raw.reason, 'rejected.reason', MAX_REASON_LENGTH),
+        reason: parseRelayReason(raw.reason, 'rejected.reason'),
         ...(raw.requestId === undefined ? {} : { requestId: asCount(raw.requestId, 'rejected.requestId') }),
       };
     case 'error':
-      return { kind, reason: asString(raw.reason, 'error.reason', MAX_REASON_LENGTH) };
+      return { kind, reason: parseRelayReason(raw.reason, 'error.reason') };
     default:
       return assertNever(kind);
   }

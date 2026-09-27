@@ -106,7 +106,7 @@ export class Resync {
 
   /** Unanswered refreshes retry even when no member is currently waiting for resync. */
   advance(now: number): Refusal {
-    if (this.catchUp.expired(now)) return 'snapshot refresh failed: relay replay history age limit';
+    if (this.catchUp.expired(now)) return { code: 'historyAge' };
     const refreshDue = this.catchUp.needsRefresh(now) || now - this.lastRefreshAt >= SNAPSHOT_REFRESH_MS;
     if (refreshDue && !this.refreshing) {
       this.refreshing = true;

@@ -27,11 +27,11 @@ export class MatchEnd {
 
   report(member: Member, report: FinishReport): Refusal {
     if (report.world !== member.world || member.outOfSync !== null) return null;
-    if (!isSynced(member)) return 'not loaded';
-    if (report.tick !== member.ackedTick) return 'the result must name the acknowledged tick';
-    if (this.result !== null) return sameResult(this.result, report) ? null : 'the match has ended';
+    if (!isSynced(member)) return { code: 'notLoaded' };
+    if (report.tick !== member.ackedTick) return { code: 'resultTickUnacknowledged' };
+    if (this.result !== null) return sameResult(this.result, report) ? null : { code: 'matchEnded' };
     const previous = this.reports.get(member.token);
-    if (previous !== undefined && !sameResult(previous, report)) return 'a result was already reported';
+    if (previous !== undefined && !sameResult(previous, report)) return { code: 'resultAlreadyReported' };
     this.reports.set(member.token, report);
     this.settle();
     return null;
@@ -60,7 +60,7 @@ export class MatchEnd {
     }
     if (candidate === null) return;
     if (mismatch) {
-      this.failure = 'match result disagreement: connected players reported different final states';
+      this.failure = { code: 'resultDisagreement' };
       return;
     }
     this.result = candidate;

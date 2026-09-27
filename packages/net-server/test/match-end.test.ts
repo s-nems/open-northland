@@ -17,7 +17,7 @@ describe('terminal room consensus', () => {
     s.a.send(finish(1));
     s.b.send(finish(1, 0, '87654321'));
     s.advance(1);
-    expect(s.a.last('error')?.reason).toMatch(/match result disagreement/);
+    expect(s.a.last('error')?.reason).toEqual({ code: 'resultDisagreement' });
     expect(s.b.last('left')).toEqual({ kind: 'left' });
     expect(s.relay.roomCount).toBe(0);
     expect(s.a.handle.room).toBeNull();
@@ -100,14 +100,14 @@ describe('terminal room consensus', () => {
   it('ignores stale generations and rejects future ticks or conflicting result reports', () => {
     const s = acknowledged();
     s.a.send(finish(2));
-    expect(s.a.last('rejected')?.reason).toMatch(/acknowledged/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'resultTickUnacknowledged' });
     s.a.send(finish(1, 9));
     s.b.send(finish(1));
     expect(s.a.last('ended')).toBeUndefined();
     s.a.send(finish(1, 0, '87654321'));
     expect(s.a.last('ended')).toBeUndefined();
     s.a.send(finish(1));
-    expect(s.a.last('rejected')?.reason).toMatch(/already reported/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'resultAlreadyReported' });
   });
   it('requires a fresh report after a return even if the snapshot generation is unchanged', () => {
     const s = acknowledged();

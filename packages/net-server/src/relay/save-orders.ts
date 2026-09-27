@@ -12,14 +12,14 @@ export class SaveOrders {
   ) {}
 
   capture(member: Member, request: Extract<ClientMessage, { kind: 'saveOrders' }>): Refusal {
-    if (!isSynced(member)) return 'save orders require a connected, loaded and synced member';
-    if (request.world !== member.world) return 'save orders belong to another world generation';
+    if (!isSynced(member)) return { code: 'saveUnsynced' };
+    if (request.world !== member.world) return { code: 'saveOtherWorld' };
     const initial = this.initialTick();
-    if (initial === null || request.tick < initial) return 'save orders predate the initial world tick';
+    if (initial === null || request.tick < initial) return { code: 'saveBeforeStart' };
     if (request.tick > member.ackedTick || request.tick > this.clock.tick)
-      return 'save orders require an acknowledged emitted tick';
+      return { code: 'saveUnacknowledged' };
     const emitted = this.history.framesAfter(request.tick);
-    if (emitted === null) return 'save orders are no longer retained; retry from the current world';
+    if (emitted === null) return { code: 'saveExpired' };
     const frames = [...emitted, ...this.clock.pendingFrames()].filter((frame) => frame.commands.length > 0);
     try {
       const message: Extract<ServerMessage, { kind: 'saveOrders' }> = {
@@ -32,8 +32,8 @@ export class SaveOrders {
       // A detached copy: no command accepted after this reply can reach into its frames.
       this.deliver(member, structuredClone(message));
       return null;
-    } catch (error) {
-      return error instanceof Error ? error.message : 'save order capture failed';
+    } catch {
+      return { code: 'saveTooLarge' };
     }
   }
 }

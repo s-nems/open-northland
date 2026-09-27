@@ -171,7 +171,7 @@ describe('a relayed session under faults', () => {
     expect(ania.waits.at(-1)?.for).toMatchObject([{ nick: 'Bartek', reason: 'lagging' }]);
     ania.kick(1);
     await runFor(stage, [ania], SETTLE_MS);
-    expect(ania.rejections.at(-1)?.reason).toMatch(/opens in/);
+    expect(ania.rejections.at(-1)?.reason).toMatchObject({ code: 'voteNotOpen' });
 
     const captures = await runUntil(stage, [ania, bartek], RUN_TICKS, { onTick: orderAt });
     expectAgreement(captures, [ania, bartek]);
@@ -180,7 +180,7 @@ describe('a relayed session under faults', () => {
     expect(bartek.kicks).toEqual([]);
     ania.kick(1);
     await runFor(stage, [ania, bartek], SETTLE_MS);
-    expect(ania.rejections.at(-1)?.reason).toMatch(/not being waited for/);
+    expect(ania.rejections.at(-1)?.reason).toEqual({ code: 'notWaitedFor', nick: 'Bartek' });
   });
 
   it('offers a vote for a connected client that stops ticking, without automatically removing it', async () => {
@@ -243,7 +243,7 @@ describe('a relayed session under faults', () => {
     await runFor(stage, [ania, bartek], SETTLE_MS);
     ania.kick(2);
     await runFor(stage, [ania, bartek], SETTLE_MS);
-    expect(ania.rejections.at(-1)?.reason).toMatch(/opens in/);
+    expect(ania.rejections.at(-1)?.reason).toMatchObject({ code: 'voteNotOpen' });
     await runFor(stage, [ania, bartek], KICK_COUNTDOWN_MS);
     expect(ania.waits.at(-1)).toEqual({
       kind: 'waiting',
@@ -340,7 +340,7 @@ describe('a relayed session under faults', () => {
     ania.sendBlob({ type: 'map', to: 'Bartek', tick: null, bytes });
     settle(stage, SETTLE_MS);
     expect(bartek.blobs).toEqual([]);
-    expect(ania.rejections.at(-1)).toMatchObject({ reason: 'lobby files are fixed after start' });
+    expect(ania.rejections.at(-1)).toMatchObject({ reason: { code: 'lobbyFilesFixed' } });
     expect(ania.blobs).toEqual([]);
   });
 });

@@ -1,4 +1,9 @@
-import { DESCRIPTOR_WORLD, type LobbyCompatibility, type ServerMessage } from '@open-northland/net-protocol';
+import {
+  DESCRIPTOR_WORLD,
+  type LobbyCompatibility,
+  type RelayReason,
+  type ServerMessage,
+} from '@open-northland/net-protocol';
 
 export interface Member {
   readonly token: string;
@@ -66,6 +71,6 @@ export function broadcast(members: Iterable<Member>, deliver: Deliver, message: 
 }
 
 /** Null when the action went through, otherwise why it was refused. */
-export type Refusal = string | null;
+export type Refusal = RelayReason | null;
 
 export type Deliver = (member: Member, message: ServerMessage) => void;

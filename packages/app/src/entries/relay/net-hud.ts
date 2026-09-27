@@ -3,6 +3,7 @@ import type { RoomView, ServerMessage } from '@open-northland/net-protocol';
 import { diag } from '../../diag/index.js';
 import { DEFAULT_GAME_SPEED_CONTROL, type GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { formatMessage, messages } from '../../i18n/index.js';
+import { relayCloseText, relayReasonText } from '../../net/relay-reason.js';
 import { type ChatPanel, mountChatPanel } from '../../view/net/chat-panel.js';
 import { memberRows } from '../../view/net/net-status.js';
 import { clockAnnouncement, speedControlFor } from '../../view/net/session-clock.js';
@@ -110,12 +111,14 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           chat.append({ from: message.from, text: message.text });
           return;
         case 'rejected':
-          announce(formatMessage(copy.refused, { reason: message.reason }));
+          announce(formatMessage(copy.refused, { reason: relayReasonText(message.reason) }));
           // The speed button moved on the click; the relay did not, so the button follows it back.
           if (message.of === 'clock' && previousClock !== null) syncClock(previousClock);
           return;
         case 'error':
-          announce(message.reason);
+          announce(
+            formatMessage(messages().networkRelay.serverSays, { reason: relayReasonText(message.reason) }),
+          );
           return;
         case 'desync':
           worldNotice = formatMessage(copy.desync, { nick: message.reference, tick: message.tick });
@@ -136,11 +139,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     },
     link(state, reason): void {
       linkNotice =
-        state === 'ok'
-          ? null
-          : state === 'reconnecting'
-            ? copy.reconnecting
-            : formatMessage(copy.closed, { reason: reason ?? '' });
+        state === 'ok' ? null : state === 'reconnecting' ? copy.reconnecting : relayCloseText(reason);
       refreshNotice();
       refreshStatus();
     },

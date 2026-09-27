@@ -32,13 +32,13 @@ export class Lobby {
   }
 
   setSettings(member: Member, settings: LobbySettings): Refusal {
-    if (member !== this.creator()) return 'only the creator changes room settings';
+    if (member !== this.creator()) return { code: 'creatorOnly' };
     const before = this.settings;
     if (
       before.initialSave !== undefined &&
       (before.seed !== settings.seed || !sameSessionRules(before.rules, settings.rules))
     ) {
-      return 'saved world seed and rules are fixed';
+      return { code: 'savedRulesFixed' };
     }
     if (sameLobbySettings(before, settings)) return null;
     this.settings = {
@@ -65,11 +65,11 @@ export class Lobby {
   }
 
   setSeat(member: Member, player: number, change: SeatChange): Refusal {
-    if (member !== this.creator()) return 'only the creator sets up seats';
+    if (member !== this.creator()) return { code: 'creatorOnly' };
     if (this.settings.initialSave !== undefined && (change.color !== undefined || change.team !== undefined))
-      return 'saved seat colors and teams are fixed';
+      return { code: 'savedSeatsFixed' };
     if (this.settings.initialSave !== undefined && change.mode === 'absent')
-      return 'a saved world already places every seat';
+      return { code: 'savedSeatsFixed' };
     const before = this.seats.views().find((seat) => seat.player === player);
     const refusal = this.seats.setUp(player, change);
     if (refusal !== null) return refusal;
@@ -86,7 +86,7 @@ export class Lobby {
   }
 
   setReady(member: Member, ready: boolean): Refusal {
-    if (member.seat === null) return 'take a seat first';
+    if (member.seat === null) return { code: 'seatRequired' };
     if (ready) {
       const refusal = this.compatibilityRefusal();
       if (refusal !== null) return refusal;
@@ -101,17 +101,17 @@ export class Lobby {
     const compatibility = this.compatibilityRefusal();
     if (compatibility !== null) return compatibility;
     for (const member of this.members.values()) {
-      if (member.seat === null) return `${member.nick} has no seat`;
-      if (!member.ready) return `${member.nick} is not ready`;
+      if (member.seat === null) return { code: 'memberUnseated', nick: member.nick };
+      if (!member.ready) return { code: 'memberNotReady', nick: member.nick };
     }
     return null;
   }
 
   private compatibilityRefusal(): Refusal {
     const creator = this.creator();
-    if (creator === null) return 'the room has no creator';
+    if (creator === null) return { code: 'noCreator' };
     const issue = compatibilityIssues([...this.members.values()], creator.nick, this.settings.initialSave)[0];
     if (issue === undefined) return null;
-    return `${issue.nick}: ${issue.kind} compatibility ${issue.reason}`;
+    return { code: 'incompatible', ...issue };
   }
 }

@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { decodeSnapshot, type OpenedWorld, RelayClient, type WorldPort } from '@open-northland/net-client';
-import { DESCRIPTOR_WORLD, type ServerMessage } from '@open-northland/net-protocol';
+import { DESCRIPTOR_WORLD, type RelayReason, type ServerMessage } from '@open-northland/net-protocol';
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import { TEST_COMPATIBILITY } from './compatibility.js';
 
@@ -26,8 +26,8 @@ interface Recorded {
   /** Blobs other than the snapshots this client rebuilt from. */
   readonly blobs: Notice<'blob'>[];
   readonly restoredFrom: number[];
-  readonly rejections: { readonly of: string; readonly reason: string }[];
-  readonly errors: string[];
+  readonly rejections: { readonly of: string; readonly reason: RelayReason }[];
+  readonly errors: RelayReason[];
   readonly dropped: string[];
   snapshotsSent: number;
 }
@@ -154,11 +154,11 @@ export class HeadlessClient extends RelayClient {
     return this.recorded.snapshotsSent;
   }
 
-  get rejections(): readonly { readonly of: string; readonly reason: string }[] {
+  get rejections(): readonly { readonly of: string; readonly reason: RelayReason }[] {
     return this.recorded.rejections;
   }
 
-  get errors(): readonly string[] {
+  get errors(): readonly RelayReason[] {
     return this.recorded.errors;
   }
 

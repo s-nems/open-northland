@@ -20,7 +20,7 @@ const parse = (value: unknown) =>
   });
 describe('saved accepted order wire contract', () => {
   it('preserves rejection correlation and refuses malformed request ids', () => {
-    const rejection = { kind: 'rejected', of: 'saveOrders', reason: 'stale', requestId: 7 };
+    const rejection = { kind: 'rejected', of: 'saveOrders', reason: { code: 'saveExpired' }, requestId: 7 };
     expect(parse(rejection)).toEqual(rejection);
     for (const requestId of [-1, 0.5, null, '7', Number.MAX_SAFE_INTEGER + 1])
       expect(() => parse({ ...rejection, requestId })).toThrow();

@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 8` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 9` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -27,7 +27,10 @@ client may reconnect on its token.
 
 The relay replies to a message it cannot honour with `rejected { of, reason }`, naming the kind it
 refused, and keeps the connection. A violation of the protocol itself gets `error { reason }`
-followed by a close.
+followed by a close whose reason text is the bare code. A `reason` is never prose: it is
+`{ code, ...values }`, one of the codes in `net-protocol`'s `RelayReason` with the values that code
+names (a seat index, a nick, a count), and each client words it in its player's language. Only
+`malformed` carries text, the parser's `detail`, which is a developer diagnostic and is not shown.
 
 ## Identity
 
@@ -35,12 +38,13 @@ The first message on a connection is `hello { protocol, token, nick }`. The `tok
 client generated and stored (16 to 128 URL-safe characters). Browser clients keep a separate token
 for each normalized relay origin and path so another relay cannot impersonate them. The token is the
 identity and is never shown to other clients. The `nick` is display only. The relay answers `welcome { protocol, nick }`,
-or `error { reason }` naming both versions when it speaks another, and closes. The shapes of `hello`,
+or `error { reason: { code: "protocolUnsupported", client, relay } }` naming both versions when it
+speaks another, and closes. The shapes of `hello`,
 `welcome` and `error` hold across versions, so a mismatch reads the same on any pair. A connection
 that has not said `hello` within `HELLO_TIMEOUT_MS` (10 s) is closed.
 
 A `hello` with a token already connected replaces that connection: the older one gets
-`error "replaced by a newer connection"` and is closed, and its room membership carries over. A token
+`error { reason: { code: "replaced" } }` and is closed, and its room membership carries over. A token
 that belongs to a started room, connected or not, is put back into that room by `hello` alone; in
 the lobby a dropped connection is a leave, so only a running game keeps a member across a drop. Its
 welcome uses the room's retained canonical nick. When a join assigns a numeric suffix, a further
@@ -301,7 +305,7 @@ request is outstanding however many members wait for it. A snapshot prunes the f
 a paused game a snapshot at the cached tick counts as the refresh.
 
 If the age limit is reached or the next frame would exceed the byte limit, the relay ends that room:
-connected members receive `error` with an explicit retention-limit reason, then `left`. All members,
+connected members receive `error` with the `historyBytes` or `historyAge` reason, then `left`. All members,
 including disconnected ones, lose their room association, and the snapshot and history are released.
 Their connections remain usable and other rooms continue. The relay never silently discards a frame
 needed to replay from its advertised snapshot.
@@ -355,7 +359,7 @@ replaces the client's world, and the frames that follow are applied through the 
 | `KICK_COUNTDOWN_MS` | 60 s |
 | `SNAPSHOT_REFRESH_MS` / `SNAPSHOT_RETRY_MS` | 5 min / 10 s |
 | nick / room name / chat line | 24 / 48 / 500 characters |
-| room id / world id / command kind / refusal reason | 32 / 128 / 64 / 200 characters |
+| room id / world id / command kind / `malformed` detail | 32 / 128 / 64 / 200 characters |
 | `MAX_SEED` | 2^32 - 1 |
 | token | 16 to 128 URL-safe characters |
 

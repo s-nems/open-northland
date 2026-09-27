@@ -1,3 +1,4 @@
+import type { RelayReason } from '@open-northland/net-protocol';
 import type { Deliver } from './member.js';
 import type { Room } from './room.js';
 
@@ -6,7 +7,7 @@ export function retireRoomMembers(
   room: Room,
   detach: (token: string) => void,
   deliver: Deliver,
-  reason?: string,
+  reason?: RelayReason,
 ): void {
   const tokens = room.memberTokens();
   for (const token of tokens) detach(token);

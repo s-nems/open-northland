@@ -30,24 +30,24 @@ export class LobbyTransfers {
 
   readyRefusal(): Refusal {
     return this.settings().initialSave !== undefined && this.snapshot === null
-      ? `${this.creator()?.nick ?? 'creator'}: initial save upload missing`
+      ? { code: 'initialSaveMissing' }
       : null;
   }
 
   upload(member: Member, upload: BlobUpload): Refusal {
-    if (upload.type !== 'map' && upload.type !== 'initialSave') return 'the game has not started';
-    if (member !== this.creator()) return 'only the creator supplies lobby files';
+    if (upload.type !== 'map' && upload.type !== 'initialSave') return { code: 'gameNotStarted' };
+    if (member !== this.creator()) return { code: 'creatorOnly' };
     if (upload.type === 'map') {
-      if (this.settings().mapOrigin === undefined) return 'this room does not permit map delivery';
-      if (upload.tick !== null) return 'a map upload has no tick';
+      if (this.settings().mapOrigin === undefined) return { code: 'mapDeliveryOff' };
+      if (upload.tick !== null) return { code: 'mapUploadHasTick' };
       return relayBlob(this.members.values(), this.deliver, member, upload);
     }
     const identity = this.settings().initialSave;
-    if (identity === undefined) return 'the room does not start from a save';
-    if (upload.to !== null) return 'the initial save is shared with the whole room';
-    if (upload.tick !== identity.tick) return 'initial save tick mismatch';
+    if (identity === undefined) return { code: 'notFromSave' };
+    if (upload.to !== null) return { code: 'initialSaveForEveryone' };
+    if (upload.tick !== identity.tick) return { code: 'initialSaveTickMismatch' };
     if (createHash('sha256').update(upload.bytes).digest('hex') !== identity.fingerprint) {
-      return 'initial save fingerprint mismatch';
+      return { code: 'initialSaveFingerprintMismatch' };
     }
     this.snapshot = { tick: identity.tick, from: member.nick, bytes: upload.bytes };
     broadcast(this.members.values(), this.deliver, {
@@ -61,10 +61,10 @@ export class LobbyTransfers {
   }
 
   requestInitialSave(member: Member, now: number): Refusal {
-    if (this.settings().initialSave === undefined) return 'the room does not start from a save';
+    if (this.settings().initialSave === undefined) return { code: 'notFromSave' };
     const snapshot = this.snapshot;
     if (snapshot === null) return this.readyRefusal();
-    if (this.tooSoon(this.saveRequests, member, now)) return 'initial save retry is too soon';
+    if (this.tooSoon(this.saveRequests, member, now)) return { code: 'retryTooSoon' };
     this.deliver(member, {
       kind: 'blob',
       type: 'initialSave',
@@ -83,11 +83,11 @@ export class LobbyTransfers {
   }
 
   requestMap(member: Member, now: number): Refusal {
-    if (this.settings().mapOrigin === undefined) return 'this room does not permit map delivery';
+    if (this.settings().mapOrigin === undefined) return { code: 'mapDeliveryOff' };
     const creator = this.creator();
-    if (creator === null || !creator.connected) return 'the map provider is not connected';
-    if (creator === member) return 'the creator supplies the map';
-    if (this.tooSoon(this.mapRequests, member, now)) return 'map retry is too soon';
+    if (creator === null || !creator.connected) return { code: 'mapProviderAway' };
+    if (creator === member) return { code: 'creatorHasMap' };
+    if (this.tooSoon(this.mapRequests, member, now)) return { code: 'retryTooSoon' };
     this.deliver(creator, { kind: 'mapRequest', from: member.nick });
     return null;
   }

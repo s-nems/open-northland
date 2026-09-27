@@ -1,9 +1,11 @@
-import type { ServerMessage } from '@open-northland/net-protocol';
+import type { RelayReason, ServerMessage } from '@open-northland/net-protocol';
 import type { Member } from './member.js';
 import type { Waiting } from './waiting.js';
 
+const MS_PER_SECOND = 1000;
+
 export type KickOutcome =
-  | { readonly refused: string }
+  | { readonly refused: RelayReason }
   | { readonly tally: ServerMessage; readonly kicked: Member | null };
 
 /** One yes for kicking the member in seat `player`, allowed once its countdown is over; the vote
@@ -16,11 +18,16 @@ export function castKickVote(
   now: number,
 ): KickOutcome {
   const target = [...members.values()].find((member) => member.seat === player);
-  if (target === undefined) return { refused: `nobody sits in seat ${player}` };
-  if (target === voter) return { refused: 'a vote against yourself counts for nothing' };
-  if (!waiting.isWaitedFor(target.token)) return { refused: `${target.nick} is not being waited for` };
+  if (target === undefined) return { refused: { code: 'seatEmpty', player } };
+  if (target === voter) return { refused: { code: 'voteSelf' } };
+  if (!waiting.isWaitedFor(target.token)) return { refused: { code: 'notWaitedFor', nick: target.nick } };
   if (!waiting.voteOpen(target.token, now)) {
-    return { refused: `the vote opens in ${Math.ceil(waiting.voteAfterMs(target.token, now) / 1000)} s` };
+    return {
+      refused: {
+        code: 'voteNotOpen',
+        seconds: Math.ceil(waiting.voteAfterMs(target.token, now) / MS_PER_SECOND),
+      },
+    };
   }
   const voters = waiting.vote(target.token, voter.token);
   let electorate = 0;

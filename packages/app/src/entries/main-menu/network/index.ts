@@ -3,6 +3,7 @@ import { errorText } from '../../../diag/error-text.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { type ConnectionEvent, NetworkConnection } from '../../../net/connection.js';
+import { relayCloseText, relayReasonText } from '../../../net/relay-reason.js';
 import { readStoredSettings } from '../../../view/settings-store.js';
 import { relayIdentity } from '../../relay/identity.js';
 import { node } from '../dom.js';
@@ -203,8 +204,7 @@ export function networkScreen(
         current.client.welcomed = false;
         if (current.client.room?.state === 'lobby') current.client.receive({ kind: 'left' });
         notice(copy.reconnecting);
-      } else if (event.state === 'closed')
-        notice(formatMessage(messages().net.closed, { reason: event.reason ?? '' }));
+      } else if (event.state === 'closed') notice(relayCloseText(event.reason));
       room && current.client.room && room.update(current.client.room, current.socket.connected);
       sync();
       return;
@@ -258,11 +258,13 @@ export function networkScreen(
       case 'rejected':
         room?.rejected(message.of);
         busy = false;
-        notice(formatMessage(messages().net.refused, { reason: message.reason }));
+        notice(formatMessage(messages().net.refused, { reason: relayReasonText(message.reason) }));
         sync();
         break;
       case 'error':
-        notice(message.reason);
+        notice(
+          formatMessage(messages().networkRelay.serverSays, { reason: relayReasonText(message.reason) }),
+        );
         break;
       case 'start':
         // A token put back into a started room gets its `start` on connect; there the player

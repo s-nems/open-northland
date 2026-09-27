@@ -35,7 +35,7 @@ export function dispatchRoomMessage(room: Room, member: Member, message: RoomMes
       return room.ack(member, message.tick, message.digest, message.world, now);
     case 'command': {
       const bytes = Buffer.byteLength(JSON.stringify(message.envelope));
-      if (bytes > MAX_ENVELOPE_BYTES) return `envelope of ${bytes} bytes over ${MAX_ENVELOPE_BYTES}`;
+      if (bytes > MAX_ENVELOPE_BYTES) return { code: 'envelopeTooLarge' };
       return room.submit(member, message.envelope, message.fromTick);
     }
     case 'clock':

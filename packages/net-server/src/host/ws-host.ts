@@ -3,8 +3,10 @@ import { Socket } from 'node:net';
 import {
   CLOSE_PROTOCOL_ERROR,
   CLOSE_REPLACED,
+  type ClosingCode,
   MAX_BLOB_MESSAGE_BYTES,
   PROTOCOL_VERSION,
+  type RelayReasonCode,
   type ServerMessage,
 } from '@open-northland/net-protocol';
 import { type RawData, type WebSocket, WebSocketServer } from 'ws';
@@ -15,10 +17,9 @@ import { DEFAULT_MAX_CONNECTIONS, RecoveryBudget, SocketBudget, sendBounded } fr
 const POLL_INTERVAL_MS = 5;
 /** RFC 6455 close code for a relay fault, after which a client may reconnect. */
 const CLOSE_INTERNAL_ERROR = 1011;
-/** The close frame's reason field holds at most 123 bytes; a longer reason is replaced, since `ws`
- *  throws on it and the `error` message already carried the detail. */
-const MAX_CLOSE_REASON_BYTES = 123;
-const CLOSE_REASON_FALLBACK = 'protocol violation';
+/** Close reasons are relay reason codes, which a client words in its own language. */
+const TRAFFIC_LIMIT: ClosingCode = 'trafficLimit';
+const RELAY_FAULT: RelayReasonCode = 'relayFault';
 export const HEALTH_PATH = '/healthz';
 const MS_PER_SECOND = 1000;
 const HTTP_CONNECTION_HEADROOM = 16;
@@ -160,16 +161,12 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         sendBounded(socket, encode(message));
       },
       close: (reason) => {
-        const code = reason === 'replaced' ? CLOSE_REPLACED : CLOSE_PROTOCOL_ERROR;
-        socket.close(
-          code,
-          Buffer.byteLength(reason) <= MAX_CLOSE_REASON_BYTES ? reason : CLOSE_REASON_FALLBACK,
-        );
+        socket.close(reason === 'replaced' ? CLOSE_REPLACED : CLOSE_PROTOCOL_ERROR, reason);
       },
     };
     const client = relay.connect(connection);
     const refuseTraffic = (): void => {
-      socket.close(CLOSE_PROTOCOL_ERROR, 'relay traffic limit');
+      socket.close(CLOSE_PROTOCOL_ERROR, TRAFFIC_LIMIT);
       relay.disconnect(client);
     };
     const acceptTraffic = (bytes: number): boolean => {
@@ -208,7 +205,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         relay.receive(client, raw, byteLength(data));
       } catch (err) {
         log('receive failed', { error: String(err) });
-        socket.close(CLOSE_INTERNAL_ERROR, 'relay fault');
+        socket.close(CLOSE_INTERNAL_ERROR, RELAY_FAULT);
       }
     });
     // A fault in departure handling is logged; it never reaches the process.

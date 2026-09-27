@@ -85,7 +85,7 @@ try {
   const refused = await firstAnswer(url, hello);
   check(
     'another protocol is refused by name',
-    refused.kind === 'error' && /protocol/.test(refused.reason),
+    refused.kind === 'error' && refused.reason?.code === 'protocolUnsupported',
     JSON.stringify(refused),
   );
   const welcomed = await firstAnswer(url, { ...hello, protocol: health.protocol });

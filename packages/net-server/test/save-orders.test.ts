@@ -60,15 +60,15 @@ describe('accepted order capture', () => {
   it('rejects stale generations, unacknowledged snapshots, disconnected members and missing replay', () => {
     const s = startedRoom();
     s.a.send(ask(0, 99));
-    expect(s.a.last('rejected')?.reason).toMatch(/generation/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'saveOtherWorld' });
     s.a.send(ask(1));
-    expect(s.a.last('rejected')?.reason).toMatch(/acknowledged/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'saveUnacknowledged' });
     s.advance(TICK_MS * 4);
     ackThrough(s.a, 1, 4);
     ackThrough(s.b, 1, 4);
     s.a.send({ kind: 'blob', type: 'snapshot', tick: 3, to: null, bytes: 'AAAA' });
     s.a.send(ask(1));
-    expect(s.a.last('rejected')?.reason).toMatch(/no longer retained/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'saveExpired' });
     const member = createMember('token', 'Nick', 0, { delayTicks: 1, roundTripMs: 0 });
     member.loaded = true;
     member.connected = false;
@@ -81,7 +81,9 @@ describe('accepted order capture', () => {
         throw new Error('must not deliver');
       },
     );
-    expect(capture.capture(member, { kind: 'saveOrders', id: 1, tick: 0, world: 0 })).toMatch(/connected/);
+    expect(capture.capture(member, { kind: 'saveOrders', id: 1, tick: 0, world: 0 })).toEqual({
+      code: 'saveUnsynced',
+    });
   });
   it('refuses an oversized capture atomically instead of returning a truncated order list', () => {
     const member = createMember('token', 'Nick', 0, { delayTicks: 1, roundTripMs: 0 });
@@ -104,7 +106,9 @@ describe('accepted order capture', () => {
       () => 0,
       (_m, message) => sent.push(message),
     );
-    expect(capture.capture(member, { kind: 'saveOrders', id: 1, tick: 0, world: 0 })).toMatch(/byte budget/);
+    expect(capture.capture(member, { kind: 'saveOrders', id: 1, tick: 0, world: 0 })).toEqual({
+      code: 'saveTooLarge',
+    });
     expect(sent).toEqual([]);
   });
 });

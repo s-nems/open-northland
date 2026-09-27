@@ -113,7 +113,7 @@ describe('room assets coordinator', () => {
     h.assets.observeMessage({
       kind: 'rejected',
       of: 'requestInitialSave',
-      reason: 'Bartek: initial save upload missing',
+      reason: { code: 'initialSaveMissing' },
     });
     h.assets.observe({
       ...joined,

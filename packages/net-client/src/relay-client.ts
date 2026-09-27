@@ -26,6 +26,7 @@ import { CommandLatency } from './latency.js';
 import { RelayLobby } from './lobby.js';
 import { MatchCompletion } from './match-completion.js';
 import { paceScale } from './pacer.js';
+import { RelayRefusal } from './relay-refusal.js';
 import { SaveOrders } from './save-orders.js';
 import { encodeSnapshot } from './snapshot-codec.js';
 import { WorldLoader } from './world-loader.js';
@@ -267,7 +268,7 @@ export class RelayClient extends RelayLobby implements SessionDriver {
         if (message.of === 'saveOrders') this.saveOrders.refuse(message.requestId, message.reason);
         if (message.of === 'command') this.latency.refused();
         // A world the relay would not take leaves this client with nothing to run; the host decides.
-        if (message.of === 'loaded') this.options.onError?.('open', new Error(message.reason));
+        if (message.of === 'loaded') this.options.onError?.('open', new RelayRefusal(message.reason));
         break;
       default:
         assertNever(message);

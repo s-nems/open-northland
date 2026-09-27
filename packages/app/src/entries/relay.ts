@@ -5,6 +5,7 @@ import { errorText } from '../diag/error-text.js';
 import { currentDiagGameSession, diag, setDiagGameSession } from '../diag/index.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { takeNetworkHandover } from '../net/handover.js';
+import { relayCloseText, relayFailureText, relayReasonText } from '../net/relay-reason.js';
 import { networkSaveSession } from '../net/save-session.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { BUTTON_STYLE, el, mountMessage } from '../view/overlay.js';
@@ -55,6 +56,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
   const copy = messages().net;
+  const relayCopy = messages().networkRelay;
   const identity = relayIdentity(plan.url, params.get('nick'));
   const card = mountLobbyCard();
   card.connecting(plan.url);
@@ -63,7 +65,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
   const creation = roomPlan.kind === 'create' ? await roomCreation(params, roomPlan.mapId) : null;
   if (roomPlan.kind === 'create' && creation?.seats.length === 0) {
     card.dismiss();
-    mountMessage(roomPlan.mapId, copy.roomNoSeats);
+    mountMessage(relayCopy.createRoomFailed, copy.roomNoSeats);
     return;
   }
 
@@ -86,7 +88,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
   });
 
   const observeExit = roomExitObserver((reason) =>
-    leave(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${reason}`),
+    leave(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`),
   );
 
   const port: WorldPort = {
@@ -154,7 +156,10 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       diag.warn('net', `${what} failed`, { error: errorText(error) });
       if (what === 'open' || what === 'restore') {
         card.dismiss();
-        mountMessage(what, formatMessage(copy.bootFailed, { reason: errorText(error) }));
+        mountMessage(
+          what === 'open' ? relayCopy.openFailed : relayCopy.restoreFailed,
+          formatMessage(copy.bootFailed, { reason: relayFailureText(error) }),
+        );
       } else if (what === 'result') {
         leave(formatMessage(copy.bootFailed, { reason: errorText(error) }));
       }
@@ -179,7 +184,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       // With no HUD to carry the notice, the lobby card gives way to it and a way back.
       if (hud === null) {
         card.dismiss();
-        leave(formatMessage(copy.closed, { reason }));
+        leave(relayCloseText(reason));
       } else hud.link('closed', reason);
     },
     onRetry: () => hud?.link('reconnecting'),
@@ -246,12 +251,18 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
         // A refusal that ends the boot: the room could not be entered, or the world was not taken.
         if (entering || message.of === 'loaded') {
           card.dismiss();
-          mountMessage(message.of, formatMessage(copy.refused, { reason: message.reason }));
+          const title =
+            message.of === 'joinRoom'
+              ? relayCopy.joinRoomFailed
+              : message.of === 'createRoom'
+                ? relayCopy.createRoomFailed
+                : relayCopy.worldRefused;
+          mountMessage(title, formatMessage(copy.refused, { reason: relayReasonText(message.reason) }));
           return;
         }
         // A lobby step the walk repeats on the next room view, such as a seat two joiners raced for.
         if (world === null) {
-          card.note(formatMessage(copy.refused, { reason: message.reason }));
+          card.note(formatMessage(copy.refused, { reason: relayReasonText(message.reason) }));
           return;
         }
         break;

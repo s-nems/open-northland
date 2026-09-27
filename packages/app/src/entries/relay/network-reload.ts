@@ -1,10 +1,10 @@
 import { compatibilityIssues } from '@open-northland/net-protocol';
 import { loadLobbyCompatibility } from '../../content/lobby-identity.js';
 import { loadRoomMapDocuments } from '../../content/transfer/index.js';
-import { errorText } from '../../diag/error-text.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
 import { NetworkConnection } from '../../net/connection.js';
+import { relayCloseText, relayFailureText, relayReasonText } from '../../net/relay-reason.js';
 import { BUTTON_STYLE, el, mountMessage } from '../../view/overlay.js';
 import { menuSearch } from '../../view/params.js';
 import { relayIdentity } from './identity.js';
@@ -37,11 +37,11 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
     back.addEventListener('click', () => {
       void swapToEntry(menuSearch(), () => back.parentElement?.remove());
     });
-    mountMessage(formatMessage(messages().net.bootFailed, { reason: errorText(error) }), '', [back]);
+    mountMessage(formatMessage(messages().net.bootFailed, { reason: relayFailureText(error) }), '', [back]);
   };
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'link' && event.state === 'closed') {
-      fail(event.reason ?? 'Connection closed');
+      fail(relayCloseText(event.reason));
       return;
     }
     if (event.kind === 'failure') {
@@ -51,13 +51,13 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
     if (event.kind !== 'message') return;
     const message = event.message;
     if (wrongReconnectRoom(message, roomId)) {
-      fail('Reconnect token belongs to another room', false);
+      fail(messages().networkRelay.reconnectOtherRoom, false);
       return;
     }
     if (ignoreReconnectRejection(message, roomId, connection.client.room?.id ?? null)) return;
     if (message.kind === 'welcome') connection.client.joinRoom(roomId);
     if (message.kind === 'left' || message.kind === 'error' || message.kind === 'rejected') {
-      fail(message.kind === 'left' ? messages().net.roomEnded : message.reason);
+      fail(message.kind === 'left' ? messages().net.roomEnded : relayReasonText(message.reason));
       return;
     }
     if (message.kind !== 'start' || opening) return;
@@ -82,7 +82,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
         room.creator,
         room.settings.initialSave,
       );
-      if (issues.length > 0) throw new Error('Reconnect content differs from the session');
+      if (issues.length > 0) throw new Error(messages().networkRelay.reconnectContentDiffers);
       handedOff = true;
       dispose();
       try {

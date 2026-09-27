@@ -2,6 +2,7 @@ import type { ClientMessage } from '@open-northland/net-protocol';
 import { exportSaveGame, restoreSimulation, Simulation } from '@open-northland/sim';
 import { afterEach, expect, it, vi } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
+import { RelayRefusal } from '../src/relay-refusal.js';
 import { SaveOrders } from '../src/save-orders.js';
 
 const order = {
@@ -96,12 +97,12 @@ it('does not let a delayed refusal of a timed out save cancel a newer capture', 
   orders.cancel('expired');
   await failure;
   const next = orders.request(save, 0, () => undefined);
-  orders.refuse(1, 'old failure');
-  orders.refuse(undefined, 'uncorrelated failure');
+  orders.refuse(1, { code: 'saveExpired' });
+  orders.refuse(undefined, { code: 'saveExpired' });
   orders.receive({ kind: 'saveOrders', id: 2, tick: 0, frames: [] });
   expect(await next).toEqual(save);
   const latest = orders.request(save, 0, () => undefined);
-  const refused = expect(latest).rejects.toThrow(/current failure/);
-  orders.refuse(3, 'current failure');
+  const refused = expect(latest).rejects.toEqual(new RelayRefusal({ code: 'saveUnacknowledged' }));
+  orders.refuse(3, { code: 'saveUnacknowledged' });
   await refused;
 });

@@ -145,7 +145,7 @@ describe('waiting for a member', () => {
     a.send({ kind: 'start' });
     a.send({ kind: 'loaded', tick: 1, world: 0 });
     b.send({ kind: 'loaded', tick: 3, world: 0 });
-    expect(b.last('rejected')?.reason).toMatch(/stands at tick 1/);
+    expect(b.last('rejected')?.reason).toEqual({ code: 'worldTickMismatch', tick: 1 });
     b.send({ kind: 'loaded', tick: 1, world: 0 });
     expect(a.last('clock')).toMatchObject({ tick: 2 });
     s.advance(TICK_MS);
@@ -198,7 +198,7 @@ describe('waiting for a member', () => {
     s.relay.disconnect(s.b.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
     back.send({ kind: 'loaded', tick: 9, world: 0 });
-    expect(back.last('rejected')?.reason).toMatch(/tick 9 has not been emitted/);
+    expect(back.last('rejected')?.reason).toEqual({ code: 'tickNotEmitted', tick: 9 });
     back.send({ kind: 'loaded', tick: 3, world: 0 });
     expect(back.of('rejected')).toHaveLength(1);
   });
@@ -240,7 +240,7 @@ describe('waiting for a member', () => {
     expect(bartek?.voteAfterMs).toBeGreaterThan(KICK_COUNTDOWN_MS / 3);
     expect(Number.isInteger(bartek?.voteAfterMs)).toBe(true);
     a.send({ kind: 'kick', player: 1 });
-    expect(a.last('rejected')?.reason).toMatch(/opens in/);
+    expect(a.last('rejected')?.reason).toMatchObject({ code: 'voteNotOpen' });
     a.send({ kind: 'kick', player: 2 });
     expect(a.last('kicked')?.nick).toBe('Cezary');
   });
@@ -249,12 +249,12 @@ describe('waiting for a member', () => {
     const s = startedRoom();
     s.advance(TICK_MS * 3);
     s.a.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0 });
-    expect(s.a.last('rejected')?.reason).toMatch(/tick 1/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'ackOutOfOrder', expected: 1 });
     s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
     s.a.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0 });
     s.a.send({ kind: 'ack', tick: 3, digest: digest(1), world: 0 });
     s.a.send({ kind: 'ack', tick: 4, digest: digest(1), world: 0 });
-    expect(s.a.last('rejected')?.reason).toMatch(/not been emitted/);
+    expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'tickNotEmitted' });
   });
 });
 
@@ -291,7 +291,7 @@ describe('kick votes', () => {
     s.relay.disconnect(s.c.handle);
     s.advance(TICK_MS);
     s.a.send({ kind: 'kick', player: 2 });
-    expect(s.a.last('rejected')?.reason).toMatch(/opens in 60 s/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'voteNotOpen', seconds: 60 });
     tick(s, [s.a, s.b], KICK_COUNTDOWN_MS + TICK_MS);
     expect(s.a.last('waiting')).toEqual({
       kind: 'waiting',
@@ -349,7 +349,7 @@ describe('kick votes', () => {
     for (const peer of peers) peer.send({ kind: 'loaded', tick: 0, world: 0 });
     s.advance(TICK_MS * 2);
     b.send({ kind: 'kick', player: 3 });
-    expect(b.last('rejected')?.reason).toMatch(/not being waited for/);
+    expect(b.last('rejected')?.reason).toMatchObject({ code: 'notWaitedFor' });
     s.relay.disconnect(d.handle);
     tick(s, [a, b, c], KICK_COUNTDOWN_MS + TICK_MS);
     a.send({ kind: 'kick', player: 3 });
@@ -431,10 +431,10 @@ describe('digests and resync', () => {
     for (const peer of [a, b]) peer.send({ kind: 'setReady', ready: true });
     a.send({ kind: 'start' });
     a.send(seatCommand(0));
-    expect(a.last('rejected')?.reason).toMatch(/no world has loaded/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'noWorldYet' });
     a.send({ kind: 'loaded', tick: 0, world: 0 });
     a.send({ kind: 'loaded', tick: 0, world: 0 });
-    expect(a.last('rejected')?.reason).toMatch(/already loaded/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'alreadyLoaded' });
     b.send({ kind: 'loaded', tick: 0, world: 0 });
     a.send(seatCommand(0));
     expect(a.of('rejected')).toHaveLength(2);
@@ -500,7 +500,7 @@ describe('digests and resync', () => {
     expect(back.of('desync')).toHaveLength(1);
     expect(back.last('start')?.snapshotTick).toBe(1);
     back.send({ kind: 'loaded', tick: 1, world: 0 });
-    expect(back.last('rejected')?.reason).toMatch(/out of sync/);
+    expect(back.last('rejected')?.reason).toEqual({ code: 'worldOutOfSync' });
     back.send({ kind: 'loaded', tick: null });
     expect(back.of('blob').map((blob) => blob.tick)).toEqual([1]);
     s.advance(TICK_MS);
@@ -599,11 +599,11 @@ describe('digests and resync', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 5, bytes: BLOB });
-    expect(s.a.last('rejected')?.reason).toMatch(/not been emitted/);
+    expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'tickNotEmitted' });
     s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
     s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
     s.b.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
-    expect(s.b.last('rejected')?.reason).toMatch(/in sync only/);
+    expect(s.b.last('rejected')?.reason).toEqual({ code: 'snapshotUnsynced' });
   });
 });
 
@@ -615,7 +615,7 @@ describe('catching up', () => {
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.last('start')?.snapshotTick).toBeNull();
     back.send({ kind: 'loaded', tick: null });
-    expect(back.last('rejected')?.reason).toMatch(/no snapshot is cached/);
+    expect(back.last('rejected')?.reason).toEqual({ code: 'noSnapshot' });
     back.send({ kind: 'loaded', tick: 1, world: 0 });
     expect(back.of('frame').map((frame) => frame.tick)).toEqual([2, 3, 4]);
   });
@@ -631,7 +631,7 @@ describe('catching up', () => {
     s.relay.disconnect(s.b.handle);
     const first = s.introduce(TOKEN_B, 'Bartek');
     first.send({ kind: 'loaded', tick: null });
-    expect(first.last('rejected')?.reason).toMatch(/no snapshot is cached/);
+    expect(first.last('rejected')?.reason).toEqual({ code: 'noSnapshot' });
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 3, bytes: BLOB });
     s.relay.disconnect(first.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
@@ -664,7 +664,7 @@ describe('catching up', () => {
     s.a.send({ kind: 'blob', type: 'map', to: 'Bartek', tick: null, bytes: BLOB });
     expect(s.b.last('blob')).toEqual({ kind: 'blob', type: 'map', from: 'Ania', tick: null, bytes: BLOB });
     s.a.send({ kind: 'blob', type: 'map', to: 'Zenon', tick: null, bytes: BLOB });
-    expect(s.a.last('rejected')?.reason).toMatch(/no Zenon/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'noRecipient', nick: 'Zenon' });
   });
 
   it('caps every message but a blob at the client message size', () => {
@@ -675,8 +675,8 @@ describe('catching up', () => {
     );
     expect(s.a.of('error')).toEqual([]);
     s.a.send({ kind: 'chat', text: 'hej' }, MAX_CLIENT_MESSAGE_BYTES + 1);
-    expect(s.a.last('error')?.reason).toMatch(/over 16384/);
-    expect(s.a.closed()).toMatch(/over/);
+    expect(s.a.last('error')?.reason).toEqual({ code: 'messageTooLarge' });
+    expect(s.a.closed()).toBe('messageTooLarge');
   });
 });
 
@@ -689,6 +689,6 @@ describe('a room that never started', () => {
     tick(s, [], SILENT_AFTER_MS * 2);
     expect(a.of('waiting')).toEqual([]);
     a.send(seatCommand(0));
-    expect(a.last('rejected')?.reason).toBe('the game has not started');
+    expect(a.last('rejected')?.reason).toEqual({ code: 'gameNotStarted' });
   });
 });

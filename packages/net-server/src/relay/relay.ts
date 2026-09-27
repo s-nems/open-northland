@@ -1,11 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import {
   type ClientMessage,
+  type ClosingCode,
+  type ClosingReason,
   clientMessageKind,
   MAX_CLIENT_MESSAGE_BYTES,
   MAX_REASON_LENGTH,
   PROTOCOL_VERSION,
   parseClientMessage,
+  type RelayReason,
   type ServerMessage,
 } from '@open-northland/net-protocol';
 import { LatencyProbe } from './input-delay.js';
@@ -18,7 +21,7 @@ import { saveOrdersRequestId } from './save-orders.js';
 export interface Connection {
   send(message: ServerMessage): void;
   /** Close the transport after `error` has been sent. */
-  close(reason: string): void;
+  close(reason: ClosingCode): void;
 }
 
 export type RelayLog = (event: string, fields?: Record<string, unknown>) => void;
@@ -108,22 +111,25 @@ export class Relay {
     // A closed or replaced connection may still deliver what its socket had queued; none of it counts.
     if (!this.clients.has(client)) return;
     if (bytes !== undefined && bytes > MAX_CLIENT_MESSAGE_BYTES && clientMessageKind(raw) !== 'blob') {
-      this.fail(client, `message of ${bytes} bytes over ${MAX_CLIENT_MESSAGE_BYTES}`);
+      this.fail(client, { code: 'messageTooLarge' });
       return;
     }
     let message: ClientMessage;
     try {
       message = parseClientMessage(raw);
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const malformed: ClosingReason = {
+        code: 'malformed',
+        detail: (err instanceof Error ? err.message : String(err)).slice(0, MAX_REASON_LENGTH),
+      };
       const of = clientMessageKind(raw);
-      if (of === null || client.token === null) this.fail(client, `malformed message: ${reason}`);
-      else this.reject(client, of, reason, raw);
+      if (of === null || client.token === null) this.fail(client, malformed);
+      else this.reject(client, of, malformed, raw);
       return;
     }
     if (client.token === null) {
       if (message.kind === 'hello') this.hello(client, message);
-      else this.fail(client, 'hello first');
+      else this.fail(client, { code: 'helloFirst' });
       return;
     }
     const refusal = this.dispatch(client, message);
@@ -149,7 +155,7 @@ export class Relay {
       return room.advance(elapsed, now);
     } catch (err) {
       this.log('room fault', { room: room.id, error: String(err) });
-      return 'relay fault';
+      return { code: 'relayFault' };
     }
   }
 
@@ -157,7 +163,7 @@ export class Relay {
   private pollClients(now: number): void {
     for (const client of this.clients) {
       if (client.token === null) {
-        if (now - client.connectedAt >= HELLO_TIMEOUT_MS) this.fail(client, 'hello overdue');
+        if (now - client.connectedAt >= HELLO_TIMEOUT_MS) this.fail(client, { code: 'helloOverdue' });
         continue;
       }
       const stamp = client.probe.pingDue(now);
@@ -181,7 +187,7 @@ export class Relay {
 
   private hello(client: Client, message: Extract<ClientMessage, { kind: 'hello' }>): void {
     if (message.protocol !== PROTOCOL_VERSION) {
-      this.fail(client, `protocol ${message.protocol} unsupported, this relay speaks ${PROTOCOL_VERSION}`);
+      this.fail(client, { code: 'protocolUnsupported', client: message.protocol, relay: PROTOCOL_VERSION });
       return;
     }
     const previous = this.byToken.get(message.token);
@@ -193,7 +199,7 @@ export class Relay {
       previous.token = null;
       previous.room = null;
       previous.member = null;
-      previous.connection.send({ kind: 'error', reason: 'replaced by a newer connection' });
+      previous.connection.send({ kind: 'error', reason: { code: 'replaced' } });
       previous.connection.close('replaced');
     }
     client.token = message.token;
@@ -212,10 +218,10 @@ export class Relay {
     this.log('hello', { nick: message.nick, rejoined: member !== null });
   }
 
-  private dispatch(client: Client, message: ClientMessage): string | null {
+  private dispatch(client: Client, message: ClientMessage): Refusal {
     switch (message.kind) {
       case 'hello':
-        return 'already introduced';
+        return { code: 'alreadyIntroduced' };
       case 'listRooms':
         client.connection.send({
           kind: 'rooms',
@@ -223,8 +229,8 @@ export class Relay {
         });
         return null;
       case 'createRoom': {
-        if (client.room !== null) return 'already in a room';
-        if (this.rooms.size >= this.maxRooms) return `the relay is full at ${this.maxRooms} rooms`;
+        if (client.room !== null) return { code: 'alreadyInRoom' };
+        if (this.rooms.size >= this.maxRooms) return { code: 'relayFull', rooms: this.maxRooms };
         const member = this.newMember(client, client.nick);
         const room = new Room(this.newRoomId(), member, message.settings, message.seats, this.hooks);
         this.rooms.set(room.id, room);
@@ -234,9 +240,9 @@ export class Relay {
         return null;
       }
       case 'joinRoom': {
-        if (client.room !== null) return 'already in a room';
+        if (client.room !== null) return { code: 'alreadyInRoom' };
         const room = this.rooms.get(message.roomId);
-        if (room === undefined) return `no room ${message.roomId}`;
+        if (room === undefined) return { code: 'noRoom' };
         const member = this.newMember(client, room.uniqueNick(client.nick));
         const refusal = room.join(member);
         if (refusal !== null) return refusal;
@@ -250,7 +256,7 @@ export class Relay {
       }
       case 'leaveRoom': {
         const { room, member } = client;
-        if (room === null || member === null) return 'not in a room';
+        if (room === null || member === null) return { code: 'notInRoom' };
         const refusal = room.leave(member, this.now());
         if (refusal !== null) return refusal;
         this.dropIfEmpty(room);
@@ -269,7 +275,7 @@ export class Relay {
       }
       default: {
         const { room, member } = client;
-        if (room === null || member === null) return 'not in a room';
+        if (room === null || member === null) return { code: 'notInRoom' };
         const refusal = dispatchRoomMessage(room, member, message, this.now());
         if (message.kind === 'start' && refusal === null) this.log('room started', { room: room.id });
         return refusal;
@@ -323,27 +329,26 @@ export class Relay {
     if (this.rooms.get(room.id) === room && room.memberTokens().length === 0) this.dropRoom(room);
   }
 
-  private dropRoom(room: Room, reason?: string): void {
+  private dropRoom(room: Room, reason?: RelayReason): void {
     this.rooms.delete(room.id);
     this.emptySince.delete(room);
     retireRoomMembers(room, (token) => this.detach(token, room), this.hooks.deliver, reason);
     this.log('room dropped', { room: room.id, ...(reason === undefined ? {} : { reason }) });
   }
 
-  private reject(client: Client, of: ClientMessage['kind'], reason: string, raw?: unknown): void {
+  private reject(client: Client, of: ClientMessage['kind'], reason: RelayReason, raw?: unknown): void {
     const requestId = saveOrdersRequestId(raw);
     client.connection.send({
       kind: 'rejected',
       of,
-      reason: reason.slice(0, MAX_REASON_LENGTH),
+      reason,
       ...(requestId === undefined ? {} : { requestId }),
     });
   }
 
-  private fail(client: Client, reason: string): void {
-    const clipped = reason.slice(0, MAX_REASON_LENGTH);
-    client.connection.send({ kind: 'error', reason: clipped });
-    client.connection.close(clipped);
+  private fail(client: Client, reason: ClosingReason): void {
+    client.connection.send({ kind: 'error', reason });
+    client.connection.close(reason.code);
     this.disconnect(client);
   }
 }

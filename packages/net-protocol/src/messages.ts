@@ -7,6 +7,7 @@ import type {
 } from '@open-northland/lockstep';
 import type { SyncDomain } from '@open-northland/sim';
 import type { LobbyCompatibility } from './compatibility.js';
+import type { RelayReason } from './reasons.js';
 
 export type RoomState = 'lobby' | 'running' | 'ended';
 
@@ -229,7 +230,7 @@ export type ServerMessage =
   | {
       readonly kind: 'rejected';
       readonly of: ClientMessageKind;
-      readonly reason: string;
+      readonly reason: RelayReason;
       readonly requestId?: number;
     }
-  | { readonly kind: 'error'; readonly reason: string };
+  | { readonly kind: 'error'; readonly reason: RelayReason };

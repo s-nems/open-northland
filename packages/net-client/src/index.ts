@@ -10,5 +10,6 @@ export {
   type RelayClientOptions,
   type WorldPort,
 } from './relay-client.js';
+export { RelayRefusal } from './relay-refusal.js';
 export { RelaySocket, type RelaySocketOptions } from './relay-socket.js';
 export { base64ToBytes, bytesToBase64, decodeSnapshot, encodeSnapshot } from './snapshot-codec.js';

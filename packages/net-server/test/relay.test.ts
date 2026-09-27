@@ -30,12 +30,16 @@ describe('relay identity', () => {
     const s = stage();
     const early = s.peer();
     early.send({ kind: 'chat', text: 'hej' });
-    expect(early.last('error')?.reason).toBe('hello first');
-    expect(early.closed()).toBe('hello first');
+    expect(early.last('error')?.reason).toEqual({ code: 'helloFirst' });
+    expect(early.closed()).toBe('helloFirst');
 
     const future = s.peer();
     future.send({ kind: 'hello', protocol: PROTOCOL_VERSION + 1, token: TOKEN_A, nick: 'Ania' });
-    expect(future.last('error')?.reason).toContain(`protocol ${PROTOCOL_VERSION + 1} unsupported`);
+    expect(future.last('error')?.reason).toEqual({
+      code: 'protocolUnsupported',
+      client: PROTOCOL_VERSION + 1,
+      relay: PROTOCOL_VERSION,
+    });
     expect(s.relay.clientCount).toBe(0);
   });
 
@@ -45,7 +49,7 @@ describe('relay identity', () => {
     s.advance(HELLO_TIMEOUT_MS - 1);
     expect(idle.closed()).toBeNull();
     s.advance(1);
-    expect(idle.closed()).toBe('hello overdue');
+    expect(idle.closed()).toBe('helloOverdue');
     expect(s.relay.clientCount).toBe(0);
     const introduced = s.introduce(TOKEN_A, 'Ania');
     s.advance(HELLO_TIMEOUT_MS * 2);
@@ -56,7 +60,7 @@ describe('relay identity', () => {
     const s = stage();
     const first = s.introduce(TOKEN_A, 'Ania');
     const second = s.introduce(TOKEN_A, 'Ania');
-    expect(first.last('error')?.reason).toMatch(/replaced/);
+    expect(first.last('error')?.reason).toEqual({ code: 'replaced' });
     expect(first.closed()).toBe('replaced');
     expect(second.last('welcome')).toEqual({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' });
     expect(s.relay.clientCount).toBe(1);
@@ -152,7 +156,7 @@ describe('relay rooms', () => {
     };
     s.advance(TICK_MS);
     s.advance(TICK_MS);
-    expect(faulty.last('error')?.reason).toBe('relay fault');
+    expect(faulty.last('error')?.reason).toEqual({ code: 'relayFault' });
     expect(faulty.last('left')).toBeDefined();
     expect(s.relay.roomCount).toBe(1);
     expect(healthy.of('frame').map((frame) => frame.tick)).toEqual([1, 2]);
@@ -174,7 +178,7 @@ describe('relay rooms', () => {
     expect(sent.at(-1)).toEqual({
       kind: 'rejected',
       of: 'createRoom',
-      reason: 'the relay is full at 1 rooms',
+      reason: { code: 'relayFull', rooms: 1 },
     });
   });
 
@@ -199,12 +203,12 @@ describe('relay rooms', () => {
     b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
     b.send({ kind: 'claimSeat', player: 1 });
     a.send({ kind: 'claimSeat', player: 1 });
-    expect(a.last('rejected')?.reason).toMatch(/taken by Bartek/);
+    expect(a.last('rejected')?.reason).toMatchObject({ code: 'seatTaken', nick: 'Bartek' });
     b.send({ kind: 'setSeat', player: 0, mode: 'ai' });
-    expect(b.last('rejected')?.reason).toMatch(/only the creator/);
+    expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     a.send({ kind: 'setSeat', player: 0, mode: 'ai', color: 5 });
     a.send({ kind: 'setSeat', player: 1, mode: 'ai' });
-    expect(a.last('rejected')?.reason).toMatch(/taken by Bartek/);
+    expect(a.last('rejected')?.reason).toMatchObject({ code: 'seatTaken', nick: 'Bartek' });
     expect(a.last('room')?.room.seats).toEqual([
       { player: 0, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 5, nick: null, ready: false },
       { player: 1, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 1, nick: 'Bartek', ready: false },
@@ -266,9 +270,9 @@ describe('relay rooms', () => {
     });
     b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
     a.send({ kind: 'setSeat', player: 1, mode: 'absent' });
-    expect(a.last('rejected')?.reason).toMatch(/does not offer absent/);
+    expect(a.last('rejected')?.reason).toMatchObject({ code: 'seatModeUnavailable', mode: 'absent' });
     a.send({ kind: 'setSeat', player: 1, mode: 'ai' });
-    expect(a.last('rejected')?.reason).toMatch(/does not offer ai/);
+    expect(a.last('rejected')?.reason).toMatchObject({ code: 'seatModeUnavailable', mode: 'ai' });
     a.send({ kind: 'claimSeat', player: 0 });
     b.send({ kind: 'claimSeat', player: 1 });
     a.send({ kind: 'setReady', ready: true });
@@ -308,14 +312,14 @@ describe('relay rooms', () => {
     a.send({ kind: 'claimSeat', player: 0 });
     a.send({ kind: 'setReady', ready: true });
     a.send({ kind: 'start' });
-    expect(a.last('rejected')?.reason).toBe('Bartek has no seat');
+    expect(a.last('rejected')?.reason).toEqual({ code: 'memberUnseated', nick: 'Bartek' });
     b.send({ kind: 'claimSeat', player: 1 });
     a.send({ kind: 'setReady', ready: true });
     a.send({ kind: 'start' });
-    expect(a.last('rejected')?.reason).toBe('Bartek is not ready');
+    expect(a.last('rejected')?.reason).toEqual({ code: 'memberNotReady', nick: 'Bartek' });
     b.send({ kind: 'setReady', ready: true });
     b.send({ kind: 'start' });
-    expect(b.last('rejected')?.reason).toMatch(/only the creator/);
+    expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     a.send({ kind: 'start' });
     const seats = [
       { player: 0, mode: 'human', color: 0 },
@@ -343,7 +347,7 @@ describe('relay rooms', () => {
     const s = startedRoom();
     const newer = s.introduce(TOKEN_B, 'Bartek');
     s.b.send(seatCommand(1));
-    expect(s.b.of('error').map((error) => error.reason)).toEqual(['replaced by a newer connection']);
+    expect(s.b.of('error').map((error) => error.reason)).toEqual([{ code: 'replaced' }]);
     s.advance(TICK_MS * 3);
     expect(newer.of('frame').flatMap((frame) => frame.commands)).toEqual([]);
     newer.send(seatCommand(1));
@@ -408,7 +412,7 @@ describe('relay clock', () => {
     expect(s.b.last('rejected')).toEqual({
       kind: 'rejected',
       of: 'command',
-      reason: expect.stringMatching(/player envelopes only/),
+      reason: { code: 'malformed', detail: expect.stringMatching(/player envelopes only/) },
     });
     s.b.send({
       kind: 'command',
@@ -420,7 +424,7 @@ describe('relay clock', () => {
       },
       fromTick: 0,
     });
-    expect(s.b.last('rejected')?.reason).toMatch(/over 1024/);
+    expect(s.b.last('rejected')?.reason).toEqual({ code: 'envelopeTooLarge' });
     s.advance(TICK_MS * 3);
     expect(s.a.of('frame').flatMap((frame) => frame.commands)).toEqual([]);
   });
@@ -429,7 +433,7 @@ describe('relay clock', () => {
     const s = startedRoom();
     for (let i = 0; i <= MAX_COMMANDS_PER_TICK; i++) s.a.send(seatCommand(0, i));
     expect(s.a.of('rejected')).toEqual([
-      { kind: 'rejected', of: 'command', reason: expect.stringMatching(/budget/) },
+      { kind: 'rejected', of: 'command', reason: { code: 'commandBudget' } },
     ]);
     s.advance(TICK_MS * 3);
     expect(s.b.of('frame').flatMap((frame) => frame.commands)).toHaveLength(MAX_COMMANDS_PER_TICK);
@@ -447,7 +451,7 @@ describe('relay clock', () => {
       s.a.send({ kind: 'clock', paused: false });
     }
     s.a.send({ kind: 'clock', paused: true });
-    expect(s.a.last('rejected')?.reason).toMatch(/no pauses left/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'noPausesLeft', budget: PAUSE_BUDGET });
     s.b.send({ kind: 'clock', paused: true });
     expect(s.a.last('clock')).toEqual({ kind: 'clock', tick: 3, speed: 2, paused: true, by: 'Bartek' });
     s.advance(TICK_MS * 4);

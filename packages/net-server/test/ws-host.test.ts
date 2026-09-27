@@ -166,8 +166,8 @@ describe('websocket host', () => {
     const closed = new Promise<CloseEvent>((resolve) => socket.addEventListener('close', resolve));
     client.say('hej');
     const event = await closed;
-    expect(client.errors).toEqual(['hello first']);
-    expect(event.reason).toBe('hello first');
+    expect(client.errors).toEqual([{ code: 'helloFirst' }]);
+    expect(event.reason).toBe('helloFirst');
   });
 
   it.skipIf(REMOTE_URL !== undefined)('survives a request target the URL parser would refuse', async () => {

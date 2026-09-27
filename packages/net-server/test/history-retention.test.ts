@@ -84,7 +84,7 @@ describe('catch-up retention budgets', () => {
         ackThrough(peer, currentTick + 1, currentTick + 1);
       }
     }
-    expect(s.a.last('error')?.reason).toMatch(/history byte limit/);
+    expect(s.a.last('error')?.reason).toEqual({ code: 'historyBytes' });
     expect(s.relay.roomCount).toBe(0);
     expect(s.a.of('rejected')).toEqual([]);
     expect(s.a.of('snapshotRequest').length).toBeGreaterThan(0);
@@ -98,7 +98,7 @@ describe('catch-up retention budgets', () => {
     expect(bytes).toBeGreaterThan(MAX_HISTORY_BYTES * 0.99);
     expect(frames.map(({ tick }) => tick)).toEqual(frames.map((_, i) => i + 1));
     s.a.send({ kind: 'joinRoom', roomId: s.roomId });
-    expect(s.a.last('rejected')?.reason).toMatch(/no room/);
+    expect(s.a.last('rejected')?.reason).toEqual({ code: 'noRoom' });
   });
 
   it('ends an unrefreshed room by age, releases memberships and leaves another room running', () => {
@@ -114,7 +114,7 @@ describe('catch-up retention budgets', () => {
       play(s, [s.a, s.b, c], 1);
       if (elapsed % 10_000 === 0) snapshot(c);
     }
-    expect(s.a.last('error')?.reason).toMatch(/history age limit/);
+    expect(s.a.last('error')?.reason).toEqual({ code: 'historyAge' });
     expect(s.a.last('left')).toEqual({ kind: 'left' });
     expect(s.b.last('left')).toBeUndefined();
     expect(s.relay.roomCount).toBe(1);

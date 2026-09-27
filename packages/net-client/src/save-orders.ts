@@ -1,5 +1,6 @@
-import type { ClientMessage, ServerMessage } from '@open-northland/net-protocol';
+import type { ClientMessage, RelayReason, ServerMessage } from '@open-northland/net-protocol';
 import { parseCommandEnvelope, type SaveGame, withSaveContinuation } from '@open-northland/sim';
+import { RelayRefusal } from './relay-refusal.js';
 
 const SAVE_ORDERS_TIMEOUT_MS = 10_000;
 type Orders = Extract<ServerMessage, { kind: 'saveOrders' }>;
@@ -56,14 +57,18 @@ export class SaveOrders {
     }
   }
 
-  refuse(requestId: number | undefined, reason: string): void {
-    if (requestId !== undefined && this.pending?.id === requestId) this.cancel(reason);
+  refuse(requestId: number | undefined, reason: RelayReason): void {
+    if (requestId !== undefined && this.pending?.id === requestId) this.fail(new RelayRefusal(reason));
   }
 
   cancel(reason: string): void {
+    this.fail(new Error(reason));
+  }
+
+  private fail(error: Error): void {
     const pending = this.pending;
     this.clear();
-    pending?.reject(new Error(reason));
+    pending?.reject(error);
   }
 
   private clear(): void {

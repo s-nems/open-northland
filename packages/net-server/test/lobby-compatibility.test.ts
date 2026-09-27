@@ -1,8 +1,22 @@
-import { type LobbyCompatibility, PROTOCOL_VERSION, type ServerMessage } from '@open-northland/net-protocol';
+import {
+  type CompatibilityIssue,
+  type LobbyCompatibility,
+  PROTOCOL_VERSION,
+  type RelayReason,
+  type ServerMessage,
+} from '@open-northland/net-protocol';
 import type { ClientHandle } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
 import { TEST_COMPATIBILITY } from './support/compatibility.js';
 import { SEATS, SETTINGS, stage, TOKEN_A, TOKEN_B, TOKEN_C } from './support/message-stage.js';
+
+function incompatible(
+  nick: string,
+  kind: CompatibilityIssue['kind'],
+  reason: CompatibilityIssue['reason'],
+): RelayReason {
+  return { code: 'incompatible', nick, kind, reason };
+}
 
 function lobby() {
   const s = stage(false);
@@ -33,9 +47,9 @@ describe('lobby compatibility gate', () => {
   it('requires reports before ready and checks them again before start', () => {
     const s = lobby();
     s.ready();
-    expect(s.a.last('rejected')?.reason).toBe('Ania: report compatibility missing');
+    expect(s.a.last('rejected')?.reason).toEqual(incompatible('Ania', 'report', 'missing'));
     s.a.send({ kind: 'start' });
-    expect(s.a.last('rejected')?.reason).toBe('Ania: report compatibility missing');
+    expect(s.a.last('rejected')?.reason).toEqual(incompatible('Ania', 'report', 'missing'));
     s.report();
     s.ready();
     expect(s.readiness()).toEqual([true, true]);
@@ -54,7 +68,7 @@ describe('lobby compatibility gate', () => {
     s.ready();
     expect(s.readiness()).toEqual([false, false]);
     s.a.send({ kind: 'start' });
-    expect(s.a.last('rejected')?.reason).toBe(`Bartek: ${kind} compatibility mismatch`);
+    expect(s.a.last('rejected')?.reason).toEqual(incompatible('Bartek', kind, 'mismatch'));
     expect(s.b.of('start')).toEqual([]);
   });
 
@@ -62,7 +76,7 @@ describe('lobby compatibility gate', () => {
     const s = lobby();
     s.report({ ...TEST_COMPATIBILITY, map: null });
     s.a.send({ kind: 'start' });
-    expect(s.a.last('rejected')?.reason).toBe('Bartek: map compatibility missing');
+    expect(s.a.last('rejected')?.reason).toEqual(incompatible('Bartek', 'map', 'missing'));
   });
 
   it('invalidates ready after report changes, and keeps no-op reports and seat claims ready', () => {
@@ -75,10 +89,10 @@ describe('lobby compatibility gate', () => {
     s.b.send({ kind: 'setCompatibility', compatibility: null });
     expect(s.readiness()).toEqual([false, false]);
     s.a.send({ kind: 'start' });
-    expect(s.a.last('rejected')?.reason).toBe('Bartek: report compatibility missing');
+    expect(s.a.last('rejected')?.reason).toEqual(incompatible('Bartek', 'report', 'missing'));
     s.report();
     s.a.send({ kind: 'start' });
-    expect(s.a.last('rejected')?.reason).toMatch(/not ready/);
+    expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'memberNotReady' });
   });
 
   it('invalidates ready after roster changes and when a lobby identity reconnects', () => {
@@ -97,7 +111,7 @@ describe('lobby compatibility gate', () => {
     expect(back.last('welcome')?.nick).toBe('Bartek');
     expect(s.readiness()).toEqual([false, false]);
     s.a.send({ kind: 'start' });
-    expect(s.a.last('rejected')?.reason).toBe('Bartek: report compatibility missing');
+    expect(s.a.last('rejected')?.reason).toEqual(incompatible('Bartek', 'report', 'missing'));
   });
 
   it('lets only the creator change settings, keeps the world fixed and invalidates ready', () => {
@@ -111,7 +125,7 @@ describe('lobby compatibility gate', () => {
       rules: SETTINGS.rules,
     };
     s.b.send({ kind: 'setSettings', settings: { ...settings, speed: 2 } });
-    expect(s.b.last('rejected')?.reason).toMatch(/only the creator/);
+    expect(s.b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     expect(s.readiness()).toEqual([true, true]);
     s.a.send({ kind: 'setSettings', settings });
     expect(s.readiness()).toEqual([true, true]);
@@ -119,12 +133,15 @@ describe('lobby compatibility gate', () => {
     expect(s.readiness()).toEqual([false, false]);
     expect(s.a.last('room')?.room.settings).toEqual({ ...SETTINGS, seed: 99, speed: 2 });
     s.a.send({ kind: 'setSettings', settings: { ...settings, world: { kind: 'map', mapId: 'other' } } });
-    expect(s.a.last('rejected')?.reason).toMatch(/immutable/);
+    expect(s.a.last('rejected')?.reason).toEqual({
+      code: 'malformed',
+      detail: expect.stringMatching(/immutable/),
+    });
     s.ready();
     s.a.send({ kind: 'start' });
     expect(s.b.last('start')?.session).toMatchObject({ seed: 99, speed: 2, world: SETTINGS.world });
     s.b.send({ kind: 'setCompatibility', compatibility: TEST_COMPATIBILITY });
-    expect(s.b.last('rejected')?.reason).toBe('the game has started');
+    expect(s.b.last('rejected')?.reason).toEqual({ code: 'gameStarted' });
   });
 
   it('preserves explicit teams in the descriptor and invalidates ready when a team or color changes', () => {
@@ -132,7 +149,7 @@ describe('lobby compatibility gate', () => {
     s.report();
     s.ready();
     s.b.send({ kind: 'setSeat', player: 1, team: 3 });
-    expect(s.b.last('rejected')?.reason).toMatch(/only the creator/);
+    expect(s.b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     s.a.send({ kind: 'setSeat', player: 0, team: 3 });
     expect(s.readiness()).toEqual([false, false]);
     s.a.send({ kind: 'setSeat', player: 1, team: 3 });

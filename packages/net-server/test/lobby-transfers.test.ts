@@ -29,15 +29,15 @@ describe('immutable lobby files', () => {
   it('requires the exact creator upload and every save report before readiness', () => {
     const { a, b } = lobby();
     a.send({ kind: 'setReady', ready: true });
-    expect(a.last('rejected')?.reason).toMatch(/upload missing/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'initialSaveMissing' });
     b.send(upload);
-    expect(b.last('rejected')?.reason).toMatch(/only the creator/);
+    expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     a.send({ ...upload, bytes: Buffer.from('different').toString('base64') });
-    expect(a.last('rejected')?.reason).toMatch(/fingerprint mismatch/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'initialSaveFingerprintMismatch' });
     a.send(upload);
     b.send({ kind: 'setCompatibility', compatibility: TEST_COMPATIBILITY });
     a.send({ kind: 'setReady', ready: true });
-    expect(a.last('rejected')?.reason).toMatch(/Bartek: save/);
+    expect(a.last('rejected')?.reason).toMatchObject({ code: 'incompatible', nick: 'Bartek', kind: 'save' });
   });
   it('starts at the declared saved tick and serves cached bytes instead of fresh tick zero', () => {
     const { a, b } = lobby();
@@ -46,7 +46,7 @@ describe('immutable lobby files', () => {
     a.send({ kind: 'start' });
     expect(a.last('start')).toMatchObject({ snapshotTick: 73, session: { initialSave: identity } });
     a.send({ kind: 'loaded', tick: 0, world: 73 });
-    expect(a.last('rejected')?.reason).toMatch(/tick 73/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'worldTickMismatch', tick: 73 });
     b.send({ kind: 'loaded', tick: null, world: 0 });
     expect(b.last('blob')).toMatchObject({ type: 'snapshot', tick: 73, bytes });
   });
@@ -62,29 +62,29 @@ describe('immutable lobby files', () => {
     a.send({ kind: 'setSeat', player: 2, mode: 'idle' });
     expect(a.last('room')?.room.seats.find((seat) => seat.player === 2)?.mode).toBe('idle');
     b.send({ kind: 'setSeat', player: 2, mode: 'ai' });
-    expect(b.last('rejected')?.reason).toMatch(/creator/);
+    expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     a.send({ kind: 'setSeat', player: 2, team: 1 });
-    expect(a.last('rejected')?.reason).toMatch(/saved seat/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'savedSeatsFixed' });
     a.send({ kind: 'setSeat', player: 2, mode: 'ai' });
     expect(a.last('room')?.room.seats.find((seat) => seat.player === 2)?.mode).toBe('ai');
     a.send({ kind: 'setSeat', player: 2, mode: 'absent' });
-    expect(a.last('rejected')?.reason).toMatch(/saved world/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'savedSeatsFixed' });
   });
   it('locks saved overrides and routes map retries to the current creator', () => {
     const { a, b, advance } = lobby();
     a.send({ kind: 'setSeat', player: 2, color: 3 });
-    expect(a.last('rejected')?.reason).toMatch(/saved seat/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'savedSeatsFixed' });
     a.send({ kind: 'setSettings', settings: { ...SETTINGS, seed: 9, world: undefined } });
-    expect(a.last('rejected')?.reason).toMatch(/saved/);
+    expect(a.last('rejected')?.reason).toEqual({ code: 'savedRulesFixed' });
     b.send({ kind: 'requestMap' });
     expect(a.last('mapRequest')).toEqual({ kind: 'mapRequest', from: 'Bartek' });
     b.send({ kind: 'requestMap' });
-    expect(b.last('rejected')?.reason).toMatch(/too soon/);
+    expect(b.last('rejected')?.reason).toEqual({ code: 'retryTooSoon' });
     expect(a.of('mapRequest')).toHaveLength(1);
     advance(2000);
     b.send({ kind: 'requestMap' });
     expect(a.of('mapRequest')).toHaveLength(2);
     b.send({ kind: 'blob', type: 'map', tick: null, to: null, bytes });
-    expect(b.last('rejected')?.reason).toMatch(/creator/);
+    expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
   });
 });

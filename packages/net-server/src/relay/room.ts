@@ -111,8 +111,8 @@ export class Room {
   }
 
   join(member: Member): Refusal {
-    if (this.game !== null) return 'the game has started';
-    if (this.members.size >= MAX_MEMBERS) return `the room is full at ${MAX_MEMBERS}`;
+    if (this.game !== null) return { code: 'gameStarted' };
+    if (this.members.size >= MAX_MEMBERS) return { code: 'roomFull', members: MAX_MEMBERS };
     this.admit(member);
     return null;
   }
@@ -164,36 +164,36 @@ export class Room {
   }
 
   claimSeat(member: Member, player: number | null): Refusal {
-    if (this.game !== null) return 'the game has started';
+    if (this.game !== null) return { code: 'gameStarted' };
     return this.lobby.claimSeat(member, player);
   }
 
   setSeat(member: Member, player: number, change: SeatChange): Refusal {
-    if (this.game !== null) return 'the game has started';
+    if (this.game !== null) return { code: 'gameStarted' };
     return this.lobby.setSeat(member, player, change);
   }
 
   setReady(member: Member, ready: boolean): Refusal {
-    if (this.game !== null) return 'the game has started';
+    if (this.game !== null) return { code: 'gameStarted' };
     const refusal = ready ? this.transfers.readyRefusal() : null;
     return refusal ?? this.lobby.setReady(member, ready);
   }
 
   setCompatibility(member: Member, compatibility: LobbyCompatibility | null): Refusal {
-    if (this.game !== null) return 'the game has started';
+    if (this.game !== null) return { code: 'gameStarted' };
     return this.lobby.setCompatibility(member, compatibility);
   }
 
   setSettings(member: Member, settings: LobbySettings): Refusal {
-    if (this.game !== null) return 'the game has started';
+    if (this.game !== null) return { code: 'gameStarted' };
     return this.lobby.setSettings(member, settings);
   }
 
   /** Hand every member its descriptor and its input delay. The clock starts once they have all built
    *  their world. */
   start(member: Member, now: number): Refusal {
-    if (this.game !== null) return 'the game has started';
-    if (member.token !== this.creatorToken) return 'only the creator starts the game';
+    if (this.game !== null) return { code: 'gameStarted' };
+    if (member.token !== this.creatorToken) return { code: 'creatorOnly' };
     const refusal = this.transfers.readyRefusal() ?? this.lobby.startRefusal();
     if (refusal !== null) return refusal;
     this.game = new Game(
@@ -219,38 +219,38 @@ export class Room {
   }
 
   saveOrders(member: Member, request: Extract<ClientMessage, { kind: 'saveOrders' }>): Refusal {
-    if (this.game === null) return 'the game has not started';
+    if (this.game === null) return { code: 'gameNotStarted' };
     return this.game.saveOrders(member, request);
   }
 
   finish(member: Member, report: Extract<ClientMessage, { kind: 'finish' }>): Refusal {
-    if (this.game === null) return 'the game has not started';
+    if (this.game === null) return { code: 'gameNotStarted' };
     return this.game.finish(member, report);
   }
 
   markLoaded(member: Member, world: Extract<ClientMessage, { kind: 'loaded' }>, now: number): Refusal {
-    if (this.game === null) return 'the game has not started';
+    if (this.game === null) return { code: 'gameNotStarted' };
     return this.game.loaded(member, world, now);
   }
 
   ack(member: Member, tick: number, digest: WireDigest, world: number, now: number): Refusal {
-    if (this.game === null) return 'the game has not started';
+    if (this.game === null) return { code: 'gameNotStarted' };
     return this.game.ack(member, tick, digest, world, now);
   }
 
   submit(member: Member, envelope: PlayerWireEnvelope, fromTick: number): Refusal {
-    if (this.game === null) return 'the game has not started';
+    if (this.game === null) return { code: 'gameNotStarted' };
     return this.game.submit(member, envelope, fromTick);
   }
 
   setClock(member: Member, speed: number | undefined, paused: boolean | undefined): Refusal {
-    if (this.game === null) return 'the game has not started';
+    if (this.game === null) return { code: 'gameNotStarted' };
     return this.game.setClock(member, speed, paused);
   }
 
   /** One yes towards kicking the member in seat `player`; a passing vote empties the seat. */
   kick(member: Member, player: number, now: number): Refusal {
-    if (this.game === null) return 'the game has not started';
+    if (this.game === null) return { code: 'gameNotStarted' };
     const outcome = this.game.kick(member, player, now);
     if ('refused' in outcome) return outcome.refused;
     if (outcome.kicked !== null) this.kickOut(outcome.kicked, player, now);
@@ -259,17 +259,17 @@ export class Room {
 
   blob(member: Member, upload: BlobUpload, now: number): Refusal {
     if (this.game === null) return this.transfers.upload(member, upload);
-    if (upload.type === 'map' || upload.type === 'initialSave') return 'lobby files are fixed after start';
+    if (upload.type === 'map' || upload.type === 'initialSave') return { code: 'lobbyFilesFixed' };
     return this.game.blob(member, upload, now);
   }
 
   requestInitialSave(member: Member, now: number): Refusal {
-    if (this.game !== null) return 'the game has started';
+    if (this.game !== null) return { code: 'gameStarted' };
     return this.transfers.requestInitialSave(member, now);
   }
 
   requestMap(member: Member, now: number): Refusal {
-    if (this.game !== null) return 'the game has started';
+    if (this.game !== null) return { code: 'gameStarted' };
     return this.transfers.requestMap(member, now);
   }
 

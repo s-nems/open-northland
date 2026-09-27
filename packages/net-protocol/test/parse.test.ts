@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type ClientMessage,
   clientMessageKind,
+  closingCode,
   MAX_BLOB_BYTES,
   MAX_NICK_LENGTH,
   PROTOCOL_VERSION,
@@ -307,8 +308,14 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   },
   { kind: 'chat', from: 'Ania', text: 'gotowi?' },
   { kind: 'ping', t: 99, roundTripMs: 42.5 },
-  { kind: 'rejected', of: 'command', reason: 'no seat' },
-  { kind: 'error', reason: 'hello first' },
+  { kind: 'rejected', of: 'command', reason: { code: 'seatRequired' } },
+  { kind: 'rejected', of: 'claimSeat', reason: { code: 'seatTaken', player: 2, nick: 'Bartek' } },
+  {
+    kind: 'rejected',
+    of: 'setReady',
+    reason: { code: 'incompatible', nick: 'Ania', kind: 'map', reason: 'missing' },
+  },
+  { kind: 'error', reason: { code: 'protocolUnsupported', client: 7, relay: 9 } },
 ];
 
 describe('server messages', () => {
@@ -366,6 +373,26 @@ describe('server messages', () => {
     expect(() =>
       parseServerMessage({ kind: 'desync', tick: 1, domains: ['weather'], reference: 'A' }, parseSession),
     ).toThrow(/domains\[0\]/);
+  });
+
+  it('refuses a reason code it does not know, prose, and a code missing or mistyping its values', () => {
+    for (const reason of [
+      'the game has started',
+      { code: 'bored' },
+      { code: 'roomFull' },
+      { code: 'seatTaken', player: 2, nick: '' },
+      { code: 'seatModeUnavailable', player: 1, mode: 'human' },
+      { code: 'incompatible', nick: 'A', kind: 'weather', reason: 'missing' },
+    ]) {
+      expect(() => parseServerMessage({ kind: 'error', reason }, parseSession)).toThrow(/error\.reason/);
+    }
+  });
+
+  it('names the codes a relay closes a connection with, and no other', () => {
+    expect(closingCode('protocolUnsupported')).toBe('protocolUnsupported');
+    expect(closingCode('trafficLimit')).toBe('trafficLimit');
+    expect(closingCode('gameStarted')).toBeNull();
+    expect(closingCode('closed with code 1002')).toBeNull();
   });
 
   it('hands the session to the parser it was given', () => {
