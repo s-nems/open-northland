@@ -309,7 +309,6 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return vehicle !== null && loadInto(vehicle, ship);
   };
 
-
   const issueAttachSelected = (event: MouseEvent, onNoneBoards: () => void): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
