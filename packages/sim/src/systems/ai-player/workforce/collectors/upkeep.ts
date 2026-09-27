@@ -22,15 +22,15 @@ import {
 import type { CollectorGround } from './allocate.js';
 import type { WantedGood } from './wanted-goods.js';
 
-/** Every how many of a seat's decisions the collector flags are re-aimed at the nearest live resource
+/** Every how many of a seat's decisions a collector flag is re-aimed at the nearest live resource
  *  (authored). 30 decisions is about 60 s at the base clock. */
 export const FLAG_RELOCATE_EVERY_DECISIONS = 30;
 
-/** Whether `player`'s decision on this tick re-aims its collector flags. Each seat's round is offset by its
- *  number, so seats pay the re-aim on different decisions instead of all in one run of ticks. */
-export function flagRelocateDue(ctx: SystemContext, player: number): boolean {
+/** Whether this tick's decision re-aims `holder`'s flag. Each holder's round is offset by his id, so a
+ *  seat's holders pay the re-aim over the whole round instead of all on one decision. */
+export function flagRelocateDue(ctx: SystemContext, holder: Entity): boolean {
   const decision = Math.floor(ctx.tick / AI_DECISION_INTERVAL_TICKS);
-  return (decision + player) % FLAG_RELOCATE_EVERY_DECISIONS === 0;
+  return (decision + holder) % FLAG_RELOCATE_EVERY_DECISIONS === 0;
 }
 
 /** Every how many of a seat's decisions a holder whose patch is worked out searches for a re-plant again
@@ -46,9 +46,10 @@ export const REPLANT_MISSES_BEFORE_RETIRE = 3;
  * The upkeep over one good's current holders, each serving its anchor in `anchors`, index for index. A
  * flag whose holder would find nothing of the good to harvest from it ({@link patchWorked}) is re-planted
  * beside the workable resource nearest its anchor, one standing past the band from that resource is moved
- * after it when `relocateDue` and a nearer spot exists, and a holder whose good has left the map, or whose
- * re-plants keep finding nothing ({@link replantDue}), rejoins the builder pool. Every re-plant claims its
- * node, since holders of one good resolve the same nearest resource and would otherwise share a tile.
+ * after it on his {@link flagRelocateDue} decision when a nearer spot exists, and a holder whose good has
+ * left the map, or whose re-plants keep finding nothing ({@link replantDue}), rejoins the builder pool.
+ * Every re-plant claims its node, since holders of one good resolve the same nearest resource and would
+ * otherwise share a tile.
  */
 export function upkeepHolders(
   world: World,
@@ -58,7 +59,6 @@ export function upkeepHolders(
   holders: readonly Entity[],
   anchors: readonly HalfCellNode[],
   taken: TakenFlagNodes,
-  relocateDue: boolean,
   builderJob: number | null,
   commands: PlayerCommand[],
 ): void {
@@ -73,7 +73,7 @@ export function upkeepHolders(
     if (flag === undefined || flagNode === null) continue; // vanished mid-decision - next pass rehires
     const alive = patchWorked(world, reach, holder, flagNode, flag.radius, ofGood);
     if (alive) forgetReplantMissesWhileHarvesting(world, holder);
-    if (alive ? !relocateDue : !replantDue(world, ctx, holder, flagNode)) continue;
+    if (alive ? !flagRelocateDue(ctx, holder) : !replantDue(world, ctx, holder, flagNode)) continue;
     const anchor = anchors[rank];
     if (anchor === undefined) continue;
     const nearest = (open: WorkableTest): Entity | null =>

@@ -19,7 +19,7 @@ of that at speed 3.
 ## Scope
 
 - `AI_DECISION_INTERVAL_TICKS` becomes 48. Everything keyed on it follows: the seat slots
-  (`aiDecisionDue`), each seat's flag relocation round (`flagRelocateDue`, every 30 decisions, so once
+  (`aiDecisionDue`), each holder's flag relocation round (`flagRelocateDue`, every 30 decisions, so once
   per 1440 ticks) and any wave or governor timing expressed in decisions rather than ticks. Check each such constant and keep its meaning in ticks where the design intended a clock
   (`WAVE_GATHER_TICKS`, `WAVE_RAMP_TICKS`, the supply governor by game clock).
 - Behaviour change: AI goldens, the AI acceptance scenes and every state hash a test pins over an AI

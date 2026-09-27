@@ -38,9 +38,18 @@ import { grassNodeMap } from '../../fixtures/terrain.js';
 
 export const VIKING = 1;
 export const SEAT = 2;
-/** A tick of the first decision round after zero on which {@link SEAT} re-aims its collector flags. The
- *  round is judged by decision alone, so a module run directly needs no seat slot. */
-export const SEAT_FLAG_RELOCATION_TICK = AI_DECISION_INTERVAL_TICKS * (FLAG_RELOCATE_EVERY_DECISIONS - SEAT);
+/** A tick of the first decision round after zero on which `holder`'s collector flag is re-aimed. The round
+ *  is judged by decision alone, so a module run directly needs no seat slot. */
+export function flagRelocationTick(holder: Entity): number {
+  return (
+    AI_DECISION_INTERVAL_TICKS * (FLAG_RELOCATE_EVERY_DECISIONS - (holder % FLAG_RELOCATE_EVERY_DECISIONS))
+  );
+}
+
+/** The decision just before `holder`'s {@link flagRelocationTick}, an ordinary one for his flag. */
+export function ordinaryDecisionTick(holder: Entity): number {
+  return flagRelocationTick(holder) - AI_DECISION_INTERVAL_TICKS;
+}
 export const CIVILIST = 6;
 export const BUILDER = 7;
 export const COLLECTOR = 8;

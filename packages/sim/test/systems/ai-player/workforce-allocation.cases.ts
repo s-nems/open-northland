@@ -94,6 +94,7 @@ import {
   entityOfBuilding,
   FARM_TYPE,
   FARMER,
+  flagRelocationTick,
   HOME_TYPE,
   HQ_TYPE,
   HQ_X,
@@ -104,13 +105,13 @@ import {
   JOINERY_TYPE,
   MUD,
   makeAiSeat,
+  ordinaryDecisionTick,
   placeHq,
   placeResources,
   plantPostAtHq,
   RESOURCE_SPOTS,
   SCOUT,
   SEAT,
-  SEAT_FLAG_RELOCATION_TICK,
   STOCK_TYPE,
   STONE,
   STONE_XP_TRACK,
@@ -898,9 +899,9 @@ describe('workforce module (collectResources)', () => {
         (c) => c.kind === 'setWorkFlag' && c.entity === gatherer,
       );
     // A live patch is left alone on an ordinary decision…
-    expect(flagMoves(AI_DECISION_INTERVAL_TICKS)).toEqual([]);
+    expect(flagMoves(ordinaryDecisionTick(gatherer))).toEqual([]);
     // …and follows the nearer resource on the periodic upkeep.
-    const [moved] = flagMoves(SEAT_FLAG_RELOCATION_TICK);
+    const [moved] = flagMoves(flagRelocationTick(gatherer));
     if (moved?.kind !== 'setWorkFlag') throw new Error('expected the generic flag to move');
     expect(Math.abs(moved.x - NEAR.x) + Math.abs(moved.y - NEAR.y)).toBeLessThanOrEqual(
       FLAG_MAX_DISTANCE_NODES,
@@ -1621,8 +1622,11 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.wood]);
     spawnMen(sim, 1);
     sim.step();
-    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
+    const hire = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    for (const c of hire) sim.enqueueSetup(c);
     sim.step();
+    const posted = hire.find((c) => c.kind === 'setWorkFlag');
+    if (posted === undefined) throw new Error('setup: the wood post');
 
     // Drain the original node; a survivor stands INSIDE the work circle but beyond the 2–3-tile
     // band (wherever in that band the flag stood), so the patch never runs dry and only the
@@ -1639,10 +1643,12 @@ describe('workforce module (collectResources)', () => {
     });
     sim.step();
 
-    // An ordinary decision (the second of the run) leaves the live flag alone…
-    expect([...collectModule.run(sim.world, ctxOf(sim, 24), SEAT)]).toEqual([]);
-    // …the seat's upkeep decision re-plants it into the survivor's band.
-    const upkeep = [...collectModule.run(sim.world, ctxOf(sim, SEAT_FLAG_RELOCATION_TICK), SEAT)];
+    // An ordinary decision leaves the live flag alone…
+    expect([...collectModule.run(sim.world, ctxOf(sim, ordinaryDecisionTick(posted.entity)), SEAT)]).toEqual(
+      [],
+    );
+    // …his upkeep decision re-plants it into the survivor's band.
+    const upkeep = [...collectModule.run(sim.world, ctxOf(sim, flagRelocationTick(posted.entity)), SEAT)];
     const moved = upkeep.find((c) => c.kind === 'setWorkFlag');
     if (moved === undefined) throw new Error('expected the periodic flag re-aim');
     const dist = Math.abs(moved.x - DRIFTED.x) + Math.abs(moved.y - DRIFTED.y);

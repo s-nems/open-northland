@@ -226,18 +226,16 @@ describe('AiPlayerSystem - cadence, stagger, and module gates', () => {
     expect(houseRuns).toEqual([OTHER_SEAT, 0]);
   });
 
-  it("re-aims each seat's collector flags once a round, on a decision of its own", () => {
-    const relocations = (player: number): number[] => {
-      const decisions: number[] = [];
-      for (let decision = 0; decision < FLAG_RELOCATE_EVERY_DECISIONS; decision++) {
-        const tick = decision * AI_DECISION_INTERVAL_TICKS;
-        if (flagRelocateDue(ctxAt(tick, new CommandQueue()), player)) decisions.push(decision);
-      }
-      return decisions;
-    };
-    expect(relocations(0)).toEqual([0]);
-    expect(relocations(AI_SEAT)).toEqual([FLAG_RELOCATE_EVERY_DECISIONS - AI_SEAT]);
-    expect(relocations(OTHER_SEAT)).toEqual([FLAG_RELOCATE_EVERY_DECISIONS - OTHER_SEAT]);
+  it('re-aims each collector flag once a round, spreading consecutive holders over its decisions', () => {
+    const HOLDERS = 2 * FLAG_RELOCATE_EVERY_DECISIONS;
+    const dueByDecision: number[] = [];
+    for (let decision = 0; decision < FLAG_RELOCATE_EVERY_DECISIONS; decision++) {
+      const ctx = ctxAt(decision * AI_DECISION_INTERVAL_TICKS, new CommandQueue());
+      let due = 0;
+      for (let holder = 0; holder < HOLDERS; holder++) if (flagRelocateDue(ctx, holder as Entity)) due++;
+      dueByDecision.push(due);
+    }
+    expect(dueByDecision).toEqual(new Array(FLAG_RELOCATE_EVERY_DECISIONS).fill(2));
   });
 
   it('gives a non-flagged player zero AI decisions', () => {

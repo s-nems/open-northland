@@ -17,7 +17,6 @@ import type { Command } from '../../../src/core/commands/index.js';
 import { contentIndex } from '../../../src/core/content-index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import type { Simulation } from '../../../src/index.js';
-import { AI_DECISION_INTERVAL_TICKS } from '../../../src/systems/ai-player/cadence.js';
 import {
   CORE_CREW_FROM_TICKS,
   type GamePhase,
@@ -73,17 +72,18 @@ import {
   entityOfBuilding,
   FARM_TYPE,
   FARMER,
+  flagRelocationTick,
   HQ_TYPE,
   HQ_X,
   HQ_Y,
   IRON,
   MILL_TYPE,
   MUD,
+  ordinaryDecisionTick,
   placeHq,
   placeResources,
   RESOURCE_SPOTS,
   SEAT,
-  SEAT_FLAG_RELOCATION_TICK,
   STONE,
   spawnMen,
   VIKING,
@@ -650,7 +650,9 @@ describe('workforce module - the clay gatherer serves the pottery', () => {
       Math.abs(flag.x - spot.x) + Math.abs(flag.y - spot.y) <= FLAG_MAX_DISTANCE_NODES;
 
     const hire = run(0);
-    expect(near(clayFlag(hire), BASE_CLAY)).toBe(true);
+    const posted = clayFlag(hire);
+    expect(near(posted, BASE_CLAY)).toBe(true);
+    if (posted?.kind !== 'setWorkFlag') throw new Error('expected the clay post');
     for (const c of hire) sim.enqueueSetup(c);
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -662,8 +664,8 @@ describe('workforce module - the clay gatherer serves the pottery', () => {
     sim.step();
 
     // An ordinary decision leaves the working flag be; the periodic upkeep moves it to the pottery's clay.
-    expect(run(AI_DECISION_INTERVAL_TICKS).filter((c) => c.kind === 'setWorkFlag')).toEqual([]);
-    const upkeep = run(SEAT_FLAG_RELOCATION_TICK);
+    expect(run(ordinaryDecisionTick(posted.entity)).filter((c) => c.kind === 'setWorkFlag')).toEqual([]);
+    const upkeep = run(flagRelocationTick(posted.entity));
     expect(near(clayFlag(upkeep), POTTERY_CLAY)).toBe(true);
   });
 });
@@ -722,12 +724,12 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
     expect(seatHolders(sim.world, [low, high], slots, hq).anchors).toEqual([hq, hut]);
     // So the periodic upkeep of a seat wanting both posts moves neither flag.
     const twoStonePosts = workforceModule([{ kind: 'collector', good: 'stone', count: 2 }]);
-    const upkeep = [
-      ...twoStonePosts.run(sim.world, { ...ctxOf(sim, SEAT_FLAG_RELOCATION_TICK), content }, SEAT),
-    ];
-    expect(upkeep.filter((c) => c.kind === 'setWorkFlag' && (c.entity === low || c.entity === high))).toEqual(
-      [],
-    );
+    for (const man of [low, high]) {
+      const upkeep = [
+        ...twoStonePosts.run(sim.world, { ...ctxOf(sim, flagRelocationTick(man)), content }, SEAT),
+      ];
+      expect(upkeep.filter((c) => c.kind === 'setWorkFlag' && c.entity === man)).toEqual([]);
+    }
   });
 });
 

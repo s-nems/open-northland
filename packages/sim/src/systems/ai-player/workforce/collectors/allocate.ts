@@ -155,14 +155,13 @@ export function allocateCollectors(
   builderJob: number | null,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  const relocateDue = flagRelocateDue(ctx, player);
   const { workable } = ground;
   const isBuilder = (e: Entity): boolean => world.get(e, Settler).jobType === builderJob;
   let builders: number | undefined; // counted once a post beyond a good's first needs a man
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     const seated = seatGood(world, ground, w, holders);
-    upkeepHolders(world, ctx, ground, w, holders, seated.anchors, taken, relocateDue, builderJob, commands);
+    upkeepHolders(world, ctx, ground, w, holders, seated.anchors, taken, builderJob, commands);
     const anchor = seated.free[0];
     if (holders.length >= w.min || anchor === undefined) continue;
     const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable);
@@ -264,7 +263,6 @@ export function topUpCollectors(
 export function allocateGenericCollectors(
   world: World,
   ctx: SystemContext,
-  player: number,
   ground: CollectorGround,
   genericCollectors: readonly Entity[],
   force: SpareForce,
@@ -275,7 +273,6 @@ export function allocateGenericCollectors(
   const commands: PlayerCommand[] = [];
   const { baseNode, workable } = ground;
   const reach = gathererReach(world, ctx, ground.flags.terrain);
-  const relocateDue = flagRelocateDue(ctx, player);
   // The other posts' flags: a re-plant or a hire keeps its resource clear of them, so the posts fan out.
   const flags: HalfCellNode[] = [];
   for (const g of genericCollectors) {
@@ -292,7 +289,7 @@ export function allocateGenericCollectors(
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
     const alive = patchWorked(world, reach, g, flagNode, flag.radius, harvests);
     if (alive) forgetReplantMissesWhileHarvesting(world, g);
-    if (alive ? !relocateDue : !replantDue(world, ctx, g, flagNode)) continue;
+    if (alive ? !flagRelocateDue(ctx, g) : !replantDue(world, ctx, g, flagNode)) continue;
     const others = flags.filter((f) => f !== flagNode);
     const nearest = (open: WorkableTest): Entity | null =>
       clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
