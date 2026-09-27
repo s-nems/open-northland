@@ -133,7 +133,6 @@ and 145 ticks.
   [zoom-out-detail-tiers](../tickets/render/zoom-out-detail-tiers.md),
   [scene-rebuild-and-depth-sort-churn](../tickets/render/scene-rebuild-and-depth-sort-churn.md).
 - Sim: [ai-dead-holder-replant-retries](../tickets/sim/ai-dead-holder-replant-retries.md),
-  [alarmed-idlers-run-full-ladder](../tickets/sim/alarmed-idlers-run-full-ladder.md),
   [combat-pass-scans-every-combatant](../tickets/sim/combat-pass-scans-every-combatant.md),
   [planner-pile-searches-scan-every-pile](../tickets/sim/planner-pile-searches-scan-every-pile.md),
   [canonical-joints-rebuild-every-tick](../tickets/sim/canonical-joints-rebuild-every-tick.md),

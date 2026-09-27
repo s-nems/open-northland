@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import { Owner, ownerOf, Position, Settler } from '../../../components/index.js';
 import {
   includesSortedId,
@@ -55,18 +56,23 @@ class SweepCandidates {
    * The first settler above `cursor` to visit, caught up first, so one another's plan woke earlier in
    * this pass is still reached in id order. An idler counts on `beat`, or on every beat when that is
    * undefined. With `shelters` on alarm a quiet walker or an idler of an alarmed owner counts too when
-   * its cover may draw it; each is looked at about once per pass, since a scan stops at the next settler
-   * already chosen.
+   * {@link takesCoverFrom} holds; each is looked at about once per pass, since a scan stops at the next
+   * settler already chosen.
    */
-  after(cursor: number, shelters: ShelterSites, beat: number | undefined): Entity | undefined {
+  after(
+    cursor: number,
+    content: ContentSet,
+    shelters: ShelterSites,
+    beat: number | undefined,
+  ): Entity | undefined {
     this.catchUp();
     const idlers = beat === undefined ? this.idle : this.idlersOn(beat);
     let next = earlier(this.acting[this.actingAbove(cursor)], idlers[indexAboveId(idlers, cursor, byId)]);
     if (shelters.size === 0) return next;
     for (const owner of shelters.keys()) {
-      next = this.firstTakingCover(this.travellingByOwner.get(owner), cursor, next, shelters);
+      next = this.firstTakingCover(this.travellingByOwner.get(owner), cursor, next, content, shelters);
       if (beat !== undefined) {
-        next = this.firstTakingCover(this.idleByOwner.get(owner), cursor, next, shelters);
+        next = this.firstTakingCover(this.idleByOwner.get(owner), cursor, next, content, shelters);
       }
     }
     return next;
@@ -77,13 +83,14 @@ class SweepCandidates {
     ids: readonly Entity[] | undefined,
     cursor: number,
     bound: Entity | undefined,
+    content: ContentSet,
     shelters: ShelterSites,
   ): Entity | undefined {
     if (ids === undefined) return bound;
     for (let i = indexAboveId(ids, cursor, byId); i < ids.length; i++) {
       const e = ids[i];
       if (e === undefined || (bound !== undefined && e > bound)) break;
-      if (takesCoverFrom(this.world, e, shelters)) return e;
+      if (takesCoverFrom(this.world, content, e, shelters)) return e;
     }
     return bound;
   }
@@ -230,6 +237,7 @@ const candidates = new WeakMap<World, SweepCandidates>();
  */
 export function* sweepOrder(
   world: World,
+  content: ContentSet,
   shelters: ShelterSites,
   idleBeat: number | undefined,
 ): Generator<Entity> {
@@ -242,9 +250,9 @@ export function* sweepOrder(
   }
   const createdMidPass = world.nextEntityId;
   for (
-    let e = held.after(0, shelters, idleBeat);
+    let e = held.after(0, content, shelters, idleBeat);
     e !== undefined && e < createdMidPass;
-    e = held.after(e, shelters, idleBeat)
+    e = held.after(e, content, shelters, idleBeat)
   ) {
     yield e;
   }

@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Chat,
   CurrentAtomic,
@@ -108,10 +109,8 @@ function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed
 function seeksShelterEnRoute(world: World, ctx: SystemContext, e: Entity, shelters: ShelterSites): boolean {
   const settler = world.tryGet(e, Settler);
   if (
-    !takesCoverFrom(world, e, shelters) ||
     settler === undefined ||
-    settler.jobType === null ||
-    !sheltersOnAlarm(ctx.content, settler.jobType) ||
+    !takesCoverFrom(world, ctx.content, e, shelters) ||
     ctx.terrain === undefined ||
     world.has(e, Sheltering) ||
     world.has(e, PlayerOrder) ||
@@ -189,7 +188,7 @@ export function idleRelease(world: World, e: Entity): IdleRelease | null {
 
 /** Whether {@link releaseStaleIntent} returns true for `e` without a write: nothing holds or walks it,
  *  no errand or farm claim to release, not indoors, and no clip but a pastime chat's, which it keeps.
- *  A flight only matters to an alarm, and the sweep visits an alarmed owner's idlers every tick. */
+ *  A flight only matters to an alarm, and the sweep visits every idler an alarm may draw every tick. */
 function shedsNothing(world: World, e: Entity): boolean {
   return (
     !isTravelling(world, e) &&
@@ -200,10 +199,18 @@ function shedsNothing(world: World, e: Entity): boolean {
   );
 }
 
-/** Whether one of `e`'s owner's buildings on alarm may draw it off its route. */
-export function takesCoverFrom(world: World, e: Entity, shelters: ShelterSites): boolean {
+/** Whether one of `e`'s owner's buildings on alarm may draw it off its route or its idle wait: the owner
+ *  has one, and `e` is of a trade that runs for cover. */
+export function takesCoverFrom(
+  world: World,
+  content: ContentSet,
+  e: Entity,
+  shelters: ShelterSites,
+): boolean {
   const owner = ownerOf(world, e);
-  return owner !== undefined && shelters.has(owner);
+  if (owner === undefined || !shelters.has(owner)) return false;
+  const jobType = world.tryGet(e, Settler)?.jobType ?? null;
+  return jobType !== null && sheltersOnAlarm(content, jobType);
 }
 
 /**

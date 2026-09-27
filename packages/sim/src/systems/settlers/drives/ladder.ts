@@ -29,7 +29,7 @@ import { abandonCargoRun } from '../../vehicles/cargo.js';
 import { heldOffEconomy } from '../action-owner.js';
 import { stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
-import { idleReplanPeriodTicks } from '../planner/idle-replan.js';
+import { IDLE_REPLAN_PERIOD_TICKS } from '../planner/idle-replan.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { combatOwnsFeet } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
@@ -66,16 +66,21 @@ import { planTraining } from './training.js';
  * though it never mans the walls (`defence/manning.ts`).
  */
 export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): void {
+  if (planShelterRung(pass, e, settler)) return;
+  if (staysPut(pass.world, e)) return;
+  planChildWander(pass.world, pass.ctx, pass.terrain, e, pass.spacing);
+}
+
+/** The ladder's top rung alone, free while nothing is on alarm: what an idler runs between its idle beats,
+ *  so an alarm still draws it indoors within a tick. */
+export function planShelterRung(pass: PlannerPass, e: Entity, settler: SettlerView): boolean {
+  if (pass.shelters.size === 0) return false;
   const { world, ctx, terrain } = pass;
-  if (pass.shelters.size > 0) {
-    const p = world.get(e, Position);
-    const hereNode = nodeOfPosition(p.x, p.y);
-    const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-    const limit = navigationLimitFor(world, ctx.content, terrain, e);
-    if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
-  }
-  if (staysPut(world, e)) return;
-  planChildWander(world, ctx, terrain, e, pass.spacing);
+  const p = world.get(e, Position);
+  const hereNode = nodeOfPosition(p.x, p.y);
+  const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
+  const limit = navigationLimitFor(world, ctx.content, terrain, e);
+  return planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters);
 }
 
 /** Plan one idle adult. `jobType` is the caller's non-null narrowing of `settler.jobType`. */
@@ -290,8 +295,7 @@ function planEconomy(
   if (world.has(e, Chat) || staysPut(world, e)) return;
   if (stepOffHomeDoor(world, ctx, terrain, e, plan.here, pass.spacing)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
-    const period = idleReplanPeriodTicks(world, pass.shelters, e);
-    planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, period, alert);
+    planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates, IDLE_REPLAN_PERIOD_TICKS, alert);
   }
 }
 

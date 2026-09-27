@@ -14,6 +14,7 @@ import {
   PathRequest,
   Position,
   Resting,
+  Settler,
   Stranded,
   SupplyRun,
   TALK_ATOMIC_ID,
@@ -56,6 +57,8 @@ const ATOMIC_TICKS = 10;
 const ALARMED = 0;
 const CALM = 1;
 const WOODCUTTER = 1;
+const SOLDIER = 31; // `soldier_unarmed`: a fighter trade, which never takes cover
+const CONTENT = testContent();
 const PLANK = 2;
 /** The sweep's idle beat that lets every idler through. */
 const EVERY_IDLER = undefined;
@@ -84,6 +87,13 @@ function idler(world: World): Entity {
   return e;
 }
 
+/** Give `e` a trade and an owner, as an alarm reads them. */
+function employ(world: World, e: Entity, jobType: number, player: number): Entity {
+  world.mut(e, Settler).jobType = jobType;
+  world.add(e, Owner, { player });
+  return e;
+}
+
 function busy(world: World): Entity {
   const e = settler(world);
   addCurrentAtomic(world, e, atomic({ kind: 'move', to: { x: 0, y: 0 } }, WALK_ATOMIC));
@@ -101,7 +111,11 @@ describe('planner sweep order', () => {
     const failedRoute = walking(world);
     world.add(failedRoute, PathRequest, { start: GOAL, goal: GOAL, failed: true });
 
-    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual([standing, idleWalker, failedRoute]);
+    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual([
+      standing,
+      idleWalker,
+      failedRoute,
+    ]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
@@ -110,7 +124,7 @@ describe('planner sweep order', () => {
     const first = settler(world);
     const walker = walking(world);
     const visited: Entity[] = [];
-    for (const e of sweepOrder(world, NO_SHELTERS, EVERY_IDLER)) {
+    for (const e of sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)) {
       visited.push(e);
       if (e === first) {
         world.remove(walker, MoveGoal);
@@ -124,41 +138,38 @@ describe('planner sweep order', () => {
     const world = new World();
     const [failing, engaged, supplying] = [walking(world), walking(world), walking(world)];
     world.add(failing, PathRequest, { start: GOAL, goal: GOAL, failed: false });
-    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual([]);
+    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual([]);
 
     world.mut(failing, PathRequest).failed = true;
     world.add(engaged, Engagement, { repathAt: 0 });
     world.add(supplying, SupplyRun, { site: failing, goodType: PLANK, amount: 1, source: null });
-    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual([failing, engaged, supplying]);
+    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual([failing, engaged, supplying]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
-  it('adds the quiet walkers of an owner with a shelter on alarm, which cover may divert', () => {
+  it('adds the quiet civilian walkers of an owner with a shelter on alarm, which cover may divert', () => {
     const world = new World();
     const standing = settler(world);
-    const alarmedWalker = walking(world);
-    world.add(alarmedWalker, Owner, { player: ALARMED });
-    const calmWalker = walking(world);
-    world.add(calmWalker, Owner, { player: CALM });
-    const alarmedWorker = busy(world);
-    world.add(alarmedWorker, Owner, { player: ALARMED });
+    const alarmedWalker = employ(world, walking(world), WOODCUTTER, ALARMED);
+    employ(world, walking(world), WOODCUTTER, CALM);
+    employ(world, walking(world), SOLDIER, ALARMED);
+    employ(world, busy(world), WOODCUTTER, ALARMED);
     const alarm: ShelterSites = new Map([[ALARMED, []]]);
-    expect([...sweepOrder(world, alarm, EVERY_IDLER)]).toEqual([standing, alarmedWalker]);
+    expect([...sweepOrder(world, CONTENT, alarm, EVERY_IDLER)]).toEqual([standing, alarmedWalker]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
   it('files a re-owned walker under its new owner', () => {
     const world = new World();
-    const walker = walking(world);
-    world.add(walker, Owner, { player: CALM });
+    const walker = employ(world, walking(world), WOODCUTTER, CALM);
     const alarm: ShelterSites = new Map([[ALARMED, []]]);
-    expect([...sweepOrder(world, alarm, EVERY_IDLER)]).toEqual([]);
+    expect([...sweepOrder(world, CONTENT, alarm, EVERY_IDLER)]).toEqual([]);
     world.add(walker, Owner, { player: ALARMED });
-    expect([...sweepOrder(world, alarm, EVERY_IDLER)]).toEqual([walker]);
+    expect([...sweepOrder(world, CONTENT, alarm, EVERY_IDLER)]).toEqual([walker]);
     expect(world.verifyCaches()).toEqual([]);
   });
 
-  it('visits an idler with nothing to shed on its beat, and every beat once alarmed or woken', () => {
+  it('visits an idler with nothing to shed on its beat, and a civilian one every beat once alarmed or woken', () => {
     const world = new World();
     const idlers = Array.from({ length: IDLE_REPLAN_PERIOD_TICKS + 1 }, () => idler(world));
     const [first, second, third] = idlers;
@@ -167,11 +178,12 @@ describe('planner sweep order', () => {
       throw new Error('too few idlers');
     }
     const beat = idleBeatOf(first);
-    const sweep = (shelters: ShelterSites): Entity[] => [...sweepOrder(world, shelters, beat)];
+    const sweep = (shelters: ShelterSites): Entity[] => [...sweepOrder(world, CONTENT, shelters, beat)];
     expect(sweep(NO_SHELTERS)).toEqual([first, last]);
-    expect([...sweepOrder(world, NO_SHELTERS, EVERY_IDLER)]).toEqual(idlers);
+    expect([...sweepOrder(world, CONTENT, NO_SHELTERS, EVERY_IDLER)]).toEqual(idlers);
 
-    world.add(second, Owner, { player: ALARMED });
+    employ(world, second, WOODCUTTER, ALARMED);
+    employ(world, third, SOLDIER, ALARMED);
     expect(sweep(new Map([[ALARMED, []]]))).toEqual([first, second, last]);
     wakeIdle(world, second);
     world.add(third, MoveGoal, { cell: GOAL }); // its visit wakes a walking idler

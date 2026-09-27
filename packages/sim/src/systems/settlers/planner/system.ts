@@ -14,14 +14,14 @@ import type { System, SystemContext } from '../../context.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { endChat } from '../../social/index.js';
 import { cutOffCheckDue, reconcileCutOff } from '../drives/cut-off.js';
-import { planAdult, planChild } from '../drives/ladder.js';
+import { planAdult, planChild, planShelterRung } from '../drives/ladder.js';
 import { clearLostWay } from '../lost-way.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { idleBeatOfTick, waitsIdle, wakeIdle } from './idle-replan.js';
 import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './pass.js';
 import { dispatchRecruitArming } from './recruit-arming.js';
-import { releaseStaleIntent } from './replan.js';
+import { releaseStaleIntent, takesCoverFrom } from './replan.js';
 import { sweepOrder } from './sweep.js';
 
 /** The atomic pass runs before {@link navigationPlanner}, so a goal it sets is routed in the same tick
@@ -41,7 +41,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   dispatchAssistantGrants(pass);
   // Off its beat an idler's visit only runs the standing cut-off check, so that tick visits every idler.
   const idleBeat = cutOffCheckDue(ctx) ? undefined : idleBeatOfTick(ctx.tick);
-  for (const e of sweepOrder(world, pass.shelters, idleBeat)) {
+  for (const e of sweepOrder(world, ctx.content, pass.shelters, idleBeat)) {
     // A busy settler plays its intent out, and is no longer idle; the rest shed what the previous plan
     // left before re-planning.
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound, pass.shelters)) {
@@ -55,7 +55,12 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (world.has(e, Age)) {
       planChild(pass, e, settler);
     } else {
-      if (waitsIdle(world, pass.shelters, ctx.tick, e)) {
+      // Between its beats an idler runs only the shelter rung, and only when an alarm may draw it.
+      const offBeat = waitsIdle(world, ctx.tick, e);
+      if (
+        offBeat &&
+        !(takesCoverFrom(world, ctx.content, e, pass.shelters) && planShelterRung(pass, e, settler))
+      ) {
         // Still standing, so it keeps any lost-way mark; the idle tail's seat-reach check keeps its cadence.
         if (world.get(e, IdleStand).standing && cutOffCheckDue(ctx)) {
           const limit = navigationLimitFor(world, ctx.content, terrain, e);
@@ -63,7 +68,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         }
         continue;
       }
-      planAdult(pass, e, settler, settler.jobType);
+      if (!offBeat) planAdult(pass, e, settler, settler.jobType);
       pass.idle.settle(world, e);
       if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
     }

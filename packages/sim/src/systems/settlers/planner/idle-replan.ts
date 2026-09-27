@@ -1,7 +1,6 @@
-import { IdleStand, ownerOf } from '../../../components/index.js';
+import { IdleStand } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { ShelterSites } from '../../defence/index.js';
 
 /**
  * How often an idle adult re-runs its drive ladder, staggered by entity id so the idle population spreads
@@ -10,9 +9,9 @@ import type { ShelterSites } from '../../defence/index.js';
  */
 export const IDLE_REPLAN_PERIOD_TICKS = TICKS_PER_SECOND;
 
-/** Whether `tick` is one on which idle `e` re-plans, given its period. */
-export function idleReplanDue(tick: number, e: Entity, periodTicks = IDLE_REPLAN_PERIOD_TICKS): boolean {
-  return (tick + e) % periodTicks === 0;
+/** Whether `tick` is one on which idle `e` re-plans. */
+export function idleReplanDue(tick: number, e: Entity): boolean {
+  return (tick + e) % IDLE_REPLAN_PERIOD_TICKS === 0;
 }
 
 /** The beat of the idle period `e` re-plans on: {@link idleReplanDue} holds on the ticks whose
@@ -25,18 +24,10 @@ export function idleBeatOfTick(tick: number): number {
   return (IDLE_REPLAN_PERIOD_TICKS - (tick % IDLE_REPLAN_PERIOD_TICKS)) % IDLE_REPLAN_PERIOD_TICKS;
 }
 
-/**
- * The ticks between idle `e`'s ladder runs: the idle period, or every tick while its owner has buildings
- * on alarm, since taking shelter outranks every other drive.
- */
-export function idleReplanPeriodTicks(world: World, shelters: ShelterSites, e: Entity): number {
-  const owner = ownerOf(world, e);
-  return owner !== undefined && shelters.has(owner) ? 1 : IDLE_REPLAN_PERIOD_TICKS;
-}
-
-/** Whether idle `e` skips its ladder on `tick`. */
-export function waitsIdle(world: World, shelters: ShelterSites, tick: number, e: Entity): boolean {
-  return world.has(e, IdleStand) && !idleReplanDue(tick, e, idleReplanPeriodTicks(world, shelters, e));
+/** Whether idle `e` skips its full ladder on `tick`. An alarm does not shorten the wait: between beats
+ *  the sweep still visits an idler its owner's shelters may draw, for the shelter rung alone. */
+export function waitsIdle(world: World, tick: number, e: Entity): boolean {
+  return world.has(e, IdleStand) && !idleReplanDue(tick, e);
 }
 
 /** End `e`'s idle wait, so it re-plans on the next pass: something moved it, or an order or errand

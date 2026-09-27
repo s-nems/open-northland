@@ -1,5 +1,5 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Age,
   AttackOrder,
@@ -31,7 +31,8 @@ import {
 import { SHELTER_SHOT_PERIOD_TICKS, shotsDue } from '../../src/systems/conflict/shelter-fire.js';
 import { shelterOccupancy } from '../../src/systems/defence/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
-import { idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
+import * as ladder from '../../src/systems/settlers/drives/ladder.js';
+import { IDLE_REPLAN_PERIOD_TICKS, idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 // DEFENCE MODE - the alarm a player raises on a garrison building: its civilians run inside, the building
@@ -215,6 +216,8 @@ const shelterOf = (sim: Simulation, e: Entity): Entity | undefined =>
   sim.world.tryGet(e, Sheltering)?.shelter;
 const insideOf = (sim: Simulation, e: Entity): Entity | undefined => sim.world.tryGet(e, Resting)?.at;
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('defence mode', () => {
   it('raises the alarm on a garrison building and rings the civil-defence bells once', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
@@ -271,6 +274,33 @@ describe('defence mode', () => {
     sim.step(); // not its re-plan tick, but the alarm outranks the wait
 
     expect(shelterOf(sim, farmer)).toBe(tower);
+  });
+
+  it('an idler the full towers leave outside keeps its idle beat, and claims a freed door at once', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const civilians = [1, 2, 3].map((x) => settlerAt(sim, x, 1, P1, FARMER));
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => civilians.filter((e) => insideOf(sim, e) === tower).length >= TOWER_CAPACITY);
+    const [outside] = civilians.filter((e) => shelterOf(sim, e) === undefined);
+    const [inside] = civilians.filter((e) => shelterOf(sim, e) === tower);
+    if (outside === undefined || inside === undefined) throw new Error('expected one civilian left outside');
+    stepUntil(sim, 400, () => sim.world.has(outside, IdleStand));
+
+    const planned = vi.spyOn(ladder, 'planAdult');
+    const plannedTicks: number[] = [];
+    for (let i = 0; i < 2 * IDLE_REPLAN_PERIOD_TICKS; i++) {
+      planned.mockClear();
+      sim.step();
+      if (planned.mock.calls.some((args) => args[1] === outside)) plannedTicks.push(sim.tick);
+    }
+    expect(plannedTicks).toHaveLength(2);
+    for (const tick of plannedTicks) expect(idleReplanDue(tick, outside)).toBe(true);
+
+    while (idleReplanDue(sim.tick + 1, outside) || idleReplanDue(sim.tick + 2, outside)) sim.step();
+    sim.world.mut(inside, Settler).jobType = SOLDIER; // drilled mid-alarm: its claim is released
+    stepUntil(sim, 2, () => shelterOf(sim, outside) === tower);
+    expect(shelterOf(sim, outside)).toBe(tower);
   });
 
   it('shelters only up to the type capacity and leaves the overflow outside', () => {
