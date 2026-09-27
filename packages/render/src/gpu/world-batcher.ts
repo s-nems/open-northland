@@ -1,4 +1,6 @@
 import {
+  type Batch,
+  type BatchableElement,
   Batcher,
   type BatcherOptions,
   Buffer,
@@ -10,13 +12,17 @@ import {
   Geometry,
   GlProgram,
   getBatchSamplersUniformGroup,
+  type InstructionSet,
   Shader,
+  type Texture,
+  type TextureSource,
   type ViewContainer,
 } from 'pixi.js';
 import { PIXEL_ART_MAGNIFY_GLSL } from './pixel-art-magnify.js';
 import {
   isMagnifiedTexture,
   isShadowTexture,
+  palettedLutOf,
   pixelArtMagnifyMode,
   worldShadowStyle,
 } from './pixel-art-registry.js';
@@ -74,9 +80,28 @@ export const WORLD_ATTRIBUTE_OFFSETS = {
  *  rather than growing every world vertex by another attribute. */
 export const WORLD_FLAG_MAGNIFY = 1;
 export const WORLD_FLAG_SHADOW = 2;
-/** The element's page is straight-alpha, so Pixi picks its non-premultiplied blend for this element and
- *  multiplies the colour by alpha itself. */
-export const WORLD_FLAG_STRAIGHT_ALPHA = 4;
+/** The element's page is palette-indexed: the batch texture at its LUT slot holds the palette, and the
+ *  flags above the slot hold its LUT row. */
+export const WORLD_FLAG_PALETTED = 4;
+/** A paletted element's LUT slot in the batch's texture list, in `aFlags` bits 3 to 7. */
+export const WORLD_LUT_SLOT_SHIFT = 3;
+const WORLD_LUT_SLOT_MASK = 31;
+/** A paletted element's LUT row, from `aFlags` bit 8 up; a float32 holds it exactly below 2^16 rows. */
+export const WORLD_LUT_ROW_SHIFT = 8;
+/** Texture slots each batch keeps free for the palette LUT its paletted elements read. */
+const LUT_SLOTS = 1;
+
+/** A world sprite drawn through a palette LUT names its row here; its texture names the LUT. */
+export interface PalettedRow {
+  readonly lutRow: number;
+}
+
+/** Read off the element's sprite: a batchable record names it `renderable`, which the element types omit. */
+function lutRowOf(element: BatchableElement): number {
+  const renderable: unknown = (element as { renderable?: unknown }).renderable;
+  if (typeof renderable !== 'object' || renderable === null || !('lutRow' in renderable)) return 0;
+  return typeof renderable.lutRow === 'number' ? renderable.lutRow : 0;
+}
 
 /** The batcher class, its geometry and shaders are defined on first install, not at import, so a
  *  test that mocks `pixi.js` can still load this module. */
@@ -148,11 +173,12 @@ function defineWorldBatcher(): WorldBatcherClass {
     }
   }`;
 
-  /** GLSL ES 3.0 indexes sampler arrays only by constants, so every lookup is an if-chain. */
-  function textureChain(maxTextures: number, call: (index: number) => string): string {
+  /** GLSL ES 3.0 indexes sampler arrays only by constants, so every lookup is an if-chain over the
+   *  float `slot` expression. */
+  function textureChain(maxTextures: number, slot: string, call: (index: number) => string): string {
     const lines: string[] = [];
     for (let i = 0; i < maxTextures; i++) {
-      const guard = i < maxTextures - 1 ? `if (vTextureId < ${i}.5) ` : '';
+      const guard = i < maxTextures - 1 ? `if (${slot} < ${i}.5) ` : '';
       lines.push(`  ${i > 0 ? 'else ' : ''}${guard}{ ${call(i)} }`);
     }
     return lines.join('\n');
@@ -171,11 +197,10 @@ function defineWorldBatcher(): WorldBatcherClass {
   const float SHADOW_MAX_ALPHA = ${glslFloat(shadow.maxAlpha)};
   const vec3 SHADOW_TINT = vec3(${red}, ${green}, ${blue});`,
       // A silhouette carries coverage only, so the element's own colour contributes nothing but its
-      // alpha. The premultiply is ours except on a straight-alpha page, whose blend does it instead.
+      // alpha.
       output: /* glsl */ `if (hasFlag(WORLD_FLAG_SHADOW)) {
       float shadowAlpha = min(outColor.a * SHADOW_ALPHA_GAIN, SHADOW_MAX_ALPHA) * vColor.a;
-      float shadowPremultiply = hasFlag(WORLD_FLAG_STRAIGHT_ALPHA) ? 1.0 : shadowAlpha;
-      finalColor = vec4(SHADOW_TINT * shadowPremultiply, shadowAlpha);
+      finalColor = vec4(SHADOW_TINT * shadowAlpha, shadowAlpha);
     } else {
       finalColor = outColor * vColor;
     }`,
@@ -195,32 +220,55 @@ function defineWorldBatcher(): WorldBatcherClass {
   uniform sampler2D uTextures[${maxTextures}];
   // 0 off (Pixi's default sampling) / 1 sampler filter + frame-clamped minification / 2 sharp / 3 xbr
   const float WORLD_MAGNIFY = ${mode}.0;
-  const float WORLD_FLAG_MAGNIFY = ${WORLD_FLAG_MAGNIFY}.0;
-  const float WORLD_FLAG_SHADOW = ${WORLD_FLAG_SHADOW}.0;
-  const float WORLD_FLAG_STRAIGHT_ALPHA = ${WORLD_FLAG_STRAIGHT_ALPHA}.0;${shading.declarations}
-  vec2 texSize; // the bound page's size, resolved once per fragment
+  const int WORLD_FLAG_MAGNIFY = ${WORLD_FLAG_MAGNIFY};
+  const int WORLD_FLAG_SHADOW = ${WORLD_FLAG_SHADOW};
+  const int WORLD_FLAG_PALETTED = ${WORLD_FLAG_PALETTED};
+  const int WORLD_LUT_SLOT_SHIFT = ${WORLD_LUT_SLOT_SHIFT};
+  const int WORLD_LUT_SLOT_MASK = ${WORLD_LUT_SLOT_MASK};
+  const int WORLD_LUT_ROW_SHIFT = ${WORLD_LUT_ROW_SHIFT};
+  // One texel per 8-bit palette index across a LUT row.
+  const float PALETTE_INDEX_MAX = 255.0;
+  // Below this uv footprint a paletted sample is magnified, so the minification taps would coincide.
+  const float PALETTED_MIN_FOOTPRINT = 0.000001;${shading.declarations}
+  // Resolved once per fragment: the bound page's size, the element's flags and its palette lookup.
+  vec2 texSize;
+  int flags;
+  bool paletted;
+  float lutSlot;
+  int lutRow;
 
-  bool hasFlag(float bit) {
-    return mod(floor(vFlags / bit), 2.0) >= 0.5;
+  bool hasFlag(int bit) {
+    return (flags & bit) != 0;
   }
 
   vec4 sampleTexture(vec2 uv) {
-  ${textureChain(maxTextures, (i) => `return texture(uTextures[${i}], uv);`)}
+  ${textureChain(maxTextures, 'vTextureId', (i) => `return texture(uTextures[${i}], uv);`)}
   }
 
   ivec2 textureSizeOf() {
-  ${textureChain(maxTextures, (i) => `return textureSize(uTextures[${i}], 0);`)}
+  ${textureChain(maxTextures, 'vTextureId', (i) => `return textureSize(uTextures[${i}], 0);`)}
   }
 
   vec4 fetchTexel(ivec2 px) {
-  ${textureChain(maxTextures, (i) => `return texelFetch(uTextures[${i}], px, 0);`)}
+  ${textureChain(maxTextures, 'vTextureId', (i) => `return texelFetch(uTextures[${i}], px, 0);`)}
   }
 
-  // The frame boundary is transparent, not the packed neighbour a two-texel tap could reach.
+  vec4 fetchLut(ivec2 px) {
+  ${textureChain(maxTextures, 'lutSlot', (i) => `return texelFetch(uTextures[${i}], px, 0);`)}
+  }
+
+  // A paletted texel's red is its palette index, read exactly (an interpolated index names another colour).
+  vec3 paletteColour(float red) {
+    return fetchLut(ivec2(int(floor(red * PALETTE_INDEX_MAX + 0.5)), lutRow)).rgb;
+  }
+
+  // The frame boundary is transparent, not the packed neighbour a two-texel tap could reach. A paletted
+  // texel resolves its colour first, so the magnifiers blend colours, never indices.
   vec4 frameTexel(ivec2 px) {
     vec2 uv = (vec2(px) + 0.5) / texSize;
     if (any(lessThan(uv, vFrame.xy)) || any(greaterThanEqual(uv, vFrame.zw))) return vec4(0.0);
-    return fetchTexel(px);
+    vec4 texel = fetchTexel(px);
+    return paletted ? vec4(paletteColour(texel.r) * texel.a, texel.a) : texel;
   }
 
   #define MAGNIFY_FETCH(px) frameTexel(px)
@@ -230,14 +278,38 @@ const float MINIFY_TAP_OFFSET = 0.25;
 const float MINIFY_TAP_WEIGHT = 0.25;
 ${PIXEL_ART_MAGNIFY_GLSL}
 
+  // A paletted element samples its nearest texel with magnification off; otherwise every tap resolves
+  // its colour before the blend, since the page itself cannot be filtered.
+  vec4 palettedColour(vec2 p, float texelsPerPixel, vec2 uvFootprint) {
+    if (WORLD_MAGNIFY < 0.5) {
+      vec4 texel = sampleTexture(vUV);
+      return vec4(paletteColour(texel.r) * texel.a, texel.a);
+    }
+    if (texelsPerPixel < 1.0 && WORLD_MAGNIFY > 1.5) {
+      return WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel) : magnifySharp(p, texelsPerPixel);
+    }
+    vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
+    if (max(footprint.x, footprint.y) < PALETTED_MIN_FOOTPRINT) return magnifyBilinear(p);
+    return MINIFY_TAP_WEIGHT * (magnifyBilinear((vUV - footprint) * texSize)
+                     + magnifyBilinear((vUV + vec2(footprint.x, -footprint.y)) * texSize)
+                     + magnifyBilinear((vUV + vec2(-footprint.x, footprint.y)) * texSize)
+                     + magnifyBilinear((vUV + footprint) * texSize));
+  }
+
   void main(void) {
     texSize = vec2(textureSizeOf());
+    flags = int(vFlags);
+    paletted = hasFlag(WORLD_FLAG_PALETTED);
+    lutSlot = float((flags >> WORLD_LUT_SLOT_SHIFT) & WORLD_LUT_SLOT_MASK);
+    lutRow = flags >> WORLD_LUT_ROW_SHIFT;
     // Derivatives before any branch: they are only defined in uniform control flow.
     vec2 p = vUV * texSize;
     float texelsPerPixel = max(fwidth(p.x), fwidth(p.y));
     vec2 uvFootprint = fwidth(vUV);
     vec4 outColor;
-    if (!hasFlag(WORLD_FLAG_MAGNIFY) || WORLD_MAGNIFY < 0.5) {
+    if (paletted) {
+      outColor = palettedColour(p, texelsPerPixel, uvFootprint);
+    } else if (!hasFlag(WORLD_FLAG_MAGNIFY) || WORLD_MAGNIFY < 0.5) {
       outColor = sampleTexture(vUV);
     } else if (texelsPerPixel < 1.0) {
       outColor = WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel)
@@ -286,27 +358,60 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     return shader;
   }
 
-  /** The per-element flags the fragment shader branches on; the shadow lookups are skipped entirely
-   *  while no shadow shading is compiled in. */
-  function elementFlags(texture: DefaultBatchableQuadElement['texture']): number {
+  /** The element being packed: what each of its vertices repeats, including its frame's UV box. Filled
+   *  by {@link beginElement} so the packers allocate nothing per element. */
+  const packing = { textureIdAndRound: 0, argb: 0, flags: 0, minU: 0, minV: 0, maxU: 0, maxV: 0 };
+
+  function beginElement(texture: Texture, textureIdAndRound: number, argb: number, flags: number): void {
+    const { x0, y0, x1, y1, x2, y2, x3, y3 } = texture.uvs;
+    packing.textureIdAndRound = textureIdAndRound;
+    packing.argb = argb;
+    packing.flags = flags;
+    packing.minU = Math.min(x0, x1, x2, x3);
+    packing.minV = Math.min(y0, y1, y2, y3);
+    packing.maxU = Math.max(x0, x1, x2, x3);
+    packing.maxV = Math.max(y0, y1, y2, y3);
+  }
+
+  /** Write one vertex after its transformed position; returns the next vertex's index. */
+  function packVertex(f32: Float32Array, u32: Uint32Array, index: number, u: number, v: number): number {
+    f32[index] = u;
+    f32[index + 1] = v;
+    u32[index + 2] = packing.argb;
+    u32[index + 3] = packing.textureIdAndRound;
+    f32[index + 4] = packing.flags;
+    f32[index + 5] = packing.minU;
+    f32[index + 6] = packing.minV;
+    f32[index + 7] = packing.maxU;
+    f32[index + 8] = packing.maxV;
+    return index + WORLD_VERTEX_SIZE - 2;
+  }
+
+  /** The flags of an element whose page is not paletted; the shadow lookups are skipped entirely while
+   *  no shadow shading is compiled in. */
+  function plainFlags(texture: Texture): number {
     const magnify = isMagnifiedTexture(texture) ? WORLD_FLAG_MAGNIFY : 0;
     if (worldShadowStyle() === null || !isShadowTexture(texture)) return magnify;
-    const straight = texture.source.alphaMode === 'no-premultiply-alpha' ? WORLD_FLAG_STRAIGHT_ALPHA : 0;
-    return magnify | WORLD_FLAG_SHADOW | straight;
+    return magnify | WORLD_FLAG_SHADOW;
   }
 
-  /** The frame's UV box, written straight into the vertex stream (no per-element allocation). */
-  const frame = new Float32Array(4);
-  function writeFrame(texture: DefaultBatchableQuadElement['texture']): void {
-    const { x0, y0, x1, y1, x2, y2, x3, y3 } = texture.uvs;
-    frame[0] = Math.min(x0, x1, x2, x3);
-    frame[1] = Math.min(y0, y1, y2, y3);
-    frame[2] = Math.max(x0, x1, x2, x3);
-    frame[3] = Math.max(y0, y1, y2, y3);
+  function palettedFlags(element: BatchableElement, lutSlot: number): number {
+    return (
+      WORLD_FLAG_PALETTED | (lutSlot << WORLD_LUT_SLOT_SHIFT) | (lutRowOf(element) << WORLD_LUT_ROW_SHIFT)
+    );
   }
 
-  /** Pixi's default batcher plus two vertex attributes: whether the element's texture is registered
-   *  for magnification, and its frame's UV box. */
+  /** `lut`'s slot in the element's batch; Pixi clears a slot to `null`, and an element packed before its
+   *  batch is final may still point at an older one. */
+  function lutSlotIn(batch: Batch | null, lut: TextureSource): number | null {
+    const slot: number | null | undefined = batch?.textures.ids[lut.uid];
+    return slot ?? null;
+  }
+
+  const FLAGS_FLOAT = WORLD_ATTRIBUTE_OFFSETS.aFlags / 4;
+
+  /** Pixi's default batcher plus vertex attributes for what the fragment shader must know about the
+   *  element's page: magnification, shadow shading, its palette LUT and row, and its frame's UV box. */
   class WorldBatcher extends Batcher {
     static extension = { type: [ExtensionType.Batcher], name: WORLD_BATCHER } as const;
 
@@ -315,6 +420,59 @@ ${PIXEL_ART_MAGNIFY_GLSL}
     override vertexSize = WORLD_VERTEX_SIZE;
     /** Served by the prototype accessor below; `declare` keeps it off the instance. */
     declare shader: Shader;
+    /** Paletted elements packed by the running {@link break}, before their batch's texture list is final. */
+    private readonly unslotted: BatchableElement[] = [];
+    private breaking = false;
+
+    /** Pixi always passes the renderer's texture limit. The flags address at most
+     *  {@link WORLD_LUT_SLOT_MASK} + 1 slots, so a larger limit is capped rather than overflowing the
+     *  slot into the row bits. */
+    constructor(options: BatcherOptions & { maxTextures: number }) {
+      const slots = Math.min(options.maxTextures, WORLD_LUT_SLOT_MASK + 1);
+      super({ ...options, maxTextures: slots - LUT_SLOTS });
+    }
+
+    /** Every element's flags. A paletted one packed during a {@link break} gets its LUT slot afterwards. */
+    private flagsOf(element: BatchableElement): number {
+      const texture = element.texture;
+      const lut = palettedLutOf(texture);
+      if (lut === undefined) return plainFlags(texture);
+      if (this.breaking) this.unslotted.push(element);
+      return palettedFlags(element, lutSlotIn(element._batch, lut) ?? 0);
+    }
+
+    override break(instructionSet: InstructionSet): void {
+      this.breaking = true;
+      try {
+        super.break(instructionSet);
+      } finally {
+        this.breaking = false;
+      }
+      const f32 = this.attributeBuffer.float32View;
+      for (const element of this.unslotted) this.slotLut(element, f32);
+      this.unslotted.length = 0;
+    }
+
+    /** Append the element's LUT to its batch's textures, once per batch, and rewrite its flags with the
+     *  slot. A batch always has room: the batcher keeps {@link LUT_SLOTS} of its textures free. */
+    private slotLut(element: BatchableElement, f32: Float32Array): void {
+      const lut = palettedLutOf(element.texture);
+      if (lut === undefined) return;
+      const textures = element._batch.textures;
+      let slot = lutSlotIn(element._batch, lut);
+      if (slot === null) {
+        if (textures.count >= this.maxTextures + LUT_SLOTS) {
+          throw new Error('A world batch holds one palette LUT');
+        }
+        slot = textures.count++;
+        textures.ids[lut.uid] = slot;
+        textures.textures[slot] = lut;
+      }
+      const flags = palettedFlags(element, slot);
+      for (let v = 0; v < element.attributeSize; v++) {
+        f32[element._attributeStart + v * WORLD_VERTEX_SIZE + FLAGS_FLOAT] = flags;
+      }
+    }
 
     packAttributes(
       element: DefaultBatchableMeshElement,
@@ -324,11 +482,9 @@ ${PIXEL_ART_MAGNIFY_GLSL}
       textureId: number,
     ): void {
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
+      beginElement(element.texture, textureIdAndRound, element.color, this.flagsOf(element));
       const { a, b, c, d, tx, ty } = element.transform;
       const { positions, uvs } = element;
-      const argb = element.color;
-      const flags = elementFlags(element.texture);
-      writeFrame(element.texture);
       const end = element.attributeOffset + element.attributeSize;
       for (let i = element.attributeOffset; i < end; i++) {
         const i2 = i * 2;
@@ -336,16 +492,11 @@ ${PIXEL_ART_MAGNIFY_GLSL}
         const y = positions[i2 + 1] ?? 0;
         float32View[index++] = a * x + c * y + tx;
         float32View[index++] = d * y + b * x + ty;
-        float32View[index++] = uvs[i2] ?? 0;
-        float32View[index++] = uvs[i2 + 1] ?? 0;
-        uint32View[index++] = argb;
-        uint32View[index++] = textureIdAndRound;
-        float32View[index++] = flags;
-        float32View.set(frame, index);
-        index += 4;
+        index = packVertex(float32View, uint32View, index, uvs[i2] ?? 0, uvs[i2 + 1] ?? 0);
       }
     }
 
+    /** Runs for every quad of the sprite layer on each rebuild, so it writes the four corners inline. */
     packQuadAttributes(
       element: DefaultBatchableQuadElement,
       float32View: Float32Array,
@@ -354,28 +505,24 @@ ${PIXEL_ART_MAGNIFY_GLSL}
       textureId: number,
     ): void {
       const texture = element.texture;
+      const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
+      beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
       const { a, b, c, d, tx, ty } = element.transform;
       const { minX, minY, maxX, maxY } = element.bounds;
       const uvs = texture.uvs;
-      const argb = element.color;
-      const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
-      const flags = elementFlags(texture);
-      writeFrame(texture);
-      const write = (x: number, y: number, u: number, v: number): void => {
-        float32View[index++] = a * x + c * y + tx;
-        float32View[index++] = d * y + b * x + ty;
-        float32View[index++] = u;
-        float32View[index++] = v;
-        uint32View[index++] = argb;
-        uint32View[index++] = textureIdAndRound;
-        float32View[index++] = flags;
-        float32View.set(frame, index);
-        index += 4;
-      };
-      write(minX, minY, uvs.x0, uvs.y0);
-      write(maxX, minY, uvs.x1, uvs.y1);
-      write(maxX, maxY, uvs.x2, uvs.y2);
-      write(minX, maxY, uvs.x3, uvs.y3);
+      let i = index;
+      float32View[i++] = a * minX + c * minY + tx;
+      float32View[i++] = d * minY + b * minX + ty;
+      i = packVertex(float32View, uint32View, i, uvs.x0, uvs.y0);
+      float32View[i++] = a * maxX + c * minY + tx;
+      float32View[i++] = d * minY + b * maxX + ty;
+      i = packVertex(float32View, uint32View, i, uvs.x1, uvs.y1);
+      float32View[i++] = a * maxX + c * maxY + tx;
+      float32View[i++] = d * maxY + b * maxX + ty;
+      i = packVertex(float32View, uint32View, i, uvs.x2, uvs.y2);
+      float32View[i++] = a * minX + c * maxY + tx;
+      float32View[i++] = d * maxY + b * minX + ty;
+      packVertex(float32View, uint32View, i, uvs.x3, uvs.y3);
     }
   }
 
@@ -383,7 +530,7 @@ ${PIXEL_ART_MAGNIFY_GLSL}
   // setting change takes effect on the next frame. Pixi's base class never assigns the property.
   Object.defineProperty(WorldBatcher.prototype, 'shader', {
     get(this: WorldBatcher) {
-      return shaderFor(this.maxTextures, pixelArtMagnifyMode(), worldShadowStyle());
+      return shaderFor(this.maxTextures + LUT_SLOTS, pixelArtMagnifyMode(), worldShadowStyle());
     },
     set() {}, // Pixi's base class never assigns it; the mode owns the choice
   });

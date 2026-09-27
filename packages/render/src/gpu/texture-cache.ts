@@ -3,7 +3,7 @@ import { clamp } from '../data/math.js';
 import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
 import { BuildingTextureCache } from './building-texture-cache.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
-import { markMagnifiedTexture, markShadowTexture } from './pixel-art-registry.js';
+import { markMagnifiedTexture, markPalettedTexture, markShadowTexture } from './pixel-art-registry.js';
 import { SoftShadowCache } from './soft-shadow-cache.js';
 
 /**
@@ -39,6 +39,10 @@ export class TextureCache {
   /** Cast-silhouette views of the character frames that project onto the ground, kept out of
    *  {@link cache} so the same frame can draw both, keyed by how many of its top rows the view keeps. */
   private readonly casts = new Map<AtlasFrame, Map<number, Texture>>();
+  /** Views of indexed character frames, drawn through a palette LUT; kept out of {@link pages} so the
+   *  linear-sampling flip never reaches an indexed sheet, and out of {@link cache} since they need no
+   *  magnification mark. */
+  private readonly paletteIndexed = new Map<AtlasFrame, Texture>();
   private readonly pages = new Set<TextureSource>();
   /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
    *  frame→texture cache above stays a clean 1:1. */
@@ -101,6 +105,21 @@ export class TextureCache {
     return tex;
   }
 
+  /** A frame of a palette-indexed sheet, marked to draw through `lut` in the world batch shader. Each
+   *  frame belongs to one sheet, and each sheet reads one LUT. */
+  palettedFrame(source: TextureSource, frame: AtlasFrame, lut: TextureSource): Texture {
+    let tex = this.paletteIndexed.get(frame);
+    if (tex === undefined) {
+      tex = new Texture({
+        source,
+        frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
+      });
+      markPalettedTexture(tex, lut);
+      this.paletteIndexed.set(frame, tex);
+    }
+    return tex;
+  }
+
   getBuilding(source: TextureSource, frame: AtlasFrame): Texture {
     return this.buildings.get(source, frame) ?? this.get(source, frame);
   }
@@ -120,7 +139,7 @@ export class TextureCache {
   }
 
   /** The distinct atlas pages served so far: world RGB and shadow bob atlases only. Paletted character
-   *  meshes bypass this cache, and a reveal bake's own `CanvasSource` is never registered here, so a
+   *  frames stay off it, and a reveal bake's own `CanvasSource` is never registered here, so a
    *  sampling toggle cannot reach an indexed sheet, whose palette indices must stay nearest-sampled. */
   pageSources(): ReadonlySet<TextureSource> {
     return this.pages;
@@ -237,6 +256,8 @@ export class TextureCache {
       for (const tex of byRows.values()) tex.destroy();
     }
     this.casts.clear();
+    for (const tex of this.paletteIndexed.values()) tex.destroy();
+    this.paletteIndexed.clear();
     for (const byTop of this.cropCache.values()) {
       for (const tex of byTop.values()) tex.destroy();
     }

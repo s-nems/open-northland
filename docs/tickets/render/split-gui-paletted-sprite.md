@@ -2,8 +2,9 @@
 
 **Area:** render · **Focus:** gpu/paletted-sprite · **Priority:** P3
 
-`PalettedSprite` is the world team-colour mesh for characters (its own doc says to keep it to
-characters; the sprite pool uses only `setFrame`, `place`, `player`). App HUD code has since
+`PalettedSprite` is the world team-colour mesh for vehicles (characters draw as batched
+`PalettedQuad`s; the sprite pool uses only `setFrame`, `place`, `player`, `shear`, `sampling`, the tint
+and the cloth wind). App HUD code has since
 bolted on `colorKey`, `silhouette`, `flipY`, and `stretchToRect`, all driven from
 `packages/app/src/hud/**` and `content/gui-art.ts`. Two concrete accretion symptoms:
 
@@ -13,13 +14,13 @@ bolted on `colorKey`, `silhouette`, `flipY`, and `stretchToRect`, all driven fro
 - `stretchToRect` invalidates the `setFrame` memo by poking the private cache key
   (`this.lastAtlasW = -1; // bust the setFrame memo`).
 
-Every world character pays the GUI fragment branches, and the class doc already warns paletted
+Every world vehicle pays the GUI fragment branches, and the class doc already warns paletted
 meshes bypass batching.
 
 ## Scope
 
 - A separate `GuiPalettedSprite` (own shader program) carrying the key/silhouette/clip/stretch
-  features; the world class keeps only frame/place/player.
+  features; the world class keeps only what vehicles use.
 - Give the round-corner clip its own named uniform instead of colour-key mode 2, and replace the
   `lastAtlasW` poke with an explicit invalidation method.
 - Non-goal: any visual change; both sprites must render pixel-identically to today.
@@ -27,5 +28,5 @@ meshes bypass batching.
 ## Verify
 
 `npm test`, `npm run check`, `npm run build`. Human seam: compare tool panel buttons, details
-panel chrome, bitmap text, and in-world settler team colours in `?scene=sandbox` before/after;
+panel chrome, bitmap text, and in-world ship team colours in `?scene=sandbox` before/after;
 pixels must match.

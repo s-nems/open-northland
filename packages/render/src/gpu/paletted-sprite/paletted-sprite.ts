@@ -26,8 +26,9 @@ export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
  * `256 × N` LUT row chosen by {@link PalettedSprite.player}. Team colour is a palette-band remap, not a
  * whole-sprite tint, and one indexed atlas plus one LUT draw all N player colours.
  *
- * It is a custom-shader {@link Mesh} because Pixi's batched `Sprite` cannot run a custom fragment shader.
- * That bypasses batching (one draw call each), so keep it to characters and ships.
+ * It is a custom-shader {@link Mesh}, which bypasses batching (one draw call each). World characters draw
+ * as batched `PalettedQuad`s instead; this mesh stays for what the world batch shader lacks: a ship's
+ * roll and sail wind, and the GUI's colour keys.
  *
  * Positioning is manual, in screen space via {@link place}: Pixi does not wire its transform uniform
  * blocks into a custom `Shader.from` program, so the mesh cannot ride the scene-graph transform.

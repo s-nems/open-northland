@@ -1,9 +1,10 @@
 import { Graphics, Sprite, type Texture } from 'pixi.js';
 import { FOG_GHOST_TINT } from '../../data/fog/index.js';
+import { clamp } from '../../data/math.js';
 import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
-import { PalettedSprite } from '../paletted-sprite/index.js';
+import { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
@@ -126,7 +127,7 @@ export class LayerBinder {
     // Only a character's layers include a head, which reads the settler LUT's own head row.
     const settlerLut = pe.kind === 'vehicle' && driven === undefined ? undefined : settlerPalette;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
-    // Feet-local union of the drawn rects: one box for mesh and plain layers alike.
+    // Feet-local union of the drawn rects: one box for paletted and plain layers alike.
     const bounds = this.layerBounds;
     bounds.reset();
     const displayReveal = pe.reveal;
@@ -169,7 +170,11 @@ export class LayerBinder {
         this.bindShadowSprite(pe, shadowSlot++, layer, box, tint, shadowStyle);
       } else if (pe.paletted) {
         const row = settlerLut === undefined ? bodyRow : layerLutRow(settlerLut, layer, bodyRow);
-        this.bindPalettedLayer(pe, spriteSlot++, layer, originX, originY, camScale, frame, row, tint);
+        if (pe.kind === 'vehicle') {
+          this.bindPalettedMesh(pe, spriteSlot++, layer, originX, originY, camScale, frame, row, tint);
+        } else {
+          this.bindPalettedQuad(pe, spriteSlot++, layer, box, frame, row, tint);
+        }
       } else {
         pe.shadowFlags[spriteSlot] = layer.shadow === true;
         if (layer.cast === true) {
@@ -234,8 +239,8 @@ export class LayerBinder {
   /**
    * One of a paletted character's shadow silhouettes. A silhouette carries no palette indices, so it
    * draws as a plain batched sprite - which is also what puts it on the soft-shadow bake - ahead of the
-   * meshes in child order so it paints under them. It rides the container transform like every other
-   * plain layer, so it follows the interpolated feet anchor the meshes place themselves from.
+   * paletted layers in child order so it paints under them. It rides the container transform like every
+   * other plain layer, so it follows the interpolated feet anchor the layers are placed from.
    */
   private bindShadowSprite(
     pe: PalettedPooledEntity,
@@ -250,7 +255,7 @@ export class LayerBinder {
       spr = worldBatched(new Sprite());
       pe.shadows[slot] = spr;
       // Slots fill in order, so the slot index is this sprite's place among the silhouettes and keeps
-      // every one of them ahead of the meshes.
+      // every one of them ahead of the paletted layers.
       pe.container.addChildAt(spr, slot);
     }
     this.placeShadow(spr, layer, box, tint, style);
@@ -324,7 +329,30 @@ export class LayerBinder {
     );
   }
 
-  private bindPalettedLayer(
+  /** A character layer: one quad of the world batch, drawn through the entity's LUT. */
+  private bindPalettedQuad(
+    pe: PalettedPooledEntity,
+    i: number,
+    layer: ResolvedLayer,
+    box: LayerDrawBox,
+    frame: BindFrame,
+    lutRow: number,
+    tint: number,
+  ): void {
+    const spr = palettedSlot(pe, i, PalettedQuad, () => new PalettedQuad());
+    spr.texture = this.textures.palettedFrame(layer.source, layer.frame, pe.palette.source);
+    spr.scale.set(layer.scale);
+    spr.offsetX = box.ox;
+    spr.offsetY = box.oy;
+    spr.placeFor(frame.camera, pe.motion.drawX, pe.motion.drawY, frame.snapResolution);
+    // The shader reads the LUT without a bounds check.
+    spr.lutRow = clamp(lutRow, 0, pe.palette.colours - 1);
+    if (spr.tint !== tint) spr.tint = tint;
+    spr.visible = true;
+  }
+
+  /** A vehicle layer: a self-placing mesh, whose shader also rolls the hull and ripples the sail. */
+  private bindPalettedMesh(
     pe: PalettedPooledEntity,
     i: number,
     layer: ResolvedLayer,
@@ -335,12 +363,12 @@ export class LayerBinder {
     lutRow: number,
     tint: number,
   ): void {
-    let spr = pe.sprites[i];
-    if (spr === undefined) {
-      spr = new PalettedSprite(pe.palette.source, pe.palette.colours);
-      pe.sprites[i] = spr;
-      pe.container.addChild(spr);
-    }
+    const spr = palettedSlot(
+      pe,
+      i,
+      PalettedSprite,
+      () => new PalettedSprite(pe.palette.source, pe.palette.colours),
+    );
     spr.setFrame(
       layer.source,
       layer.frame,
@@ -440,4 +468,21 @@ export class LayerBinder {
     pe.bounds.maxY = maxY;
     pe.boundsFrame = frameId;
   }
+}
+
+/** Slot `i`'s layer sprite, minted on the first frame that reaches it. An entity's kind fixes which class
+ *  its slots hold. */
+function palettedSlot<T extends PalettedQuad | PalettedSprite>(
+  pe: PalettedPooledEntity,
+  i: number,
+  kind: abstract new (...args: never[]) => T,
+  mint: () => T,
+): T {
+  const existing = pe.sprites[i];
+  if (existing instanceof kind) return existing;
+  if (existing !== undefined) throw new Error(`Paletted slot ${i} holds another layer class`);
+  const spr = mint();
+  pe.sprites[i] = spr;
+  pe.container.addChild(spr);
+  return spr;
 }

@@ -20,16 +20,19 @@ plus GPU frame time, following the A/B rules in `docs/DEVELOPMENT.md`.
   `main` adds one size query; each expands the full `maxTextures` sampler if-chain, so a magnified
   fragment runs it 17 times rather than once. With the usual 16 batchable textures that is up to ~256
   branch comparisons per magnified fragment. ESSL 3.00 allows a `sampler2D` function parameter with a
-  constant-indexed argument, so the chain can be entered once per fragment. The paletted path re-reads
-  `textureSize` on all 16 taps as well.
+  constant-indexed argument, so the chain can be entered once per fragment. A paletted character tap
+  in the world batch runs two chains, its page and its LUT; a ship's paletted mesh re-reads
+  `textureSize` on all 16 taps.
 - **Baseline vertex cost** (`gpu/world-batcher.ts`). `WORLD_VERTEX_SIZE` is 11 floats against Pixi's 6,
-  so every world quad uploads 176 bytes instead of 96 and the packer writes 20 extra floats, two WeakSet
-  lookups and a frame box per element per frame, with every enhancement off. `aFrame` is read only by
+  so every world quad uploads 176 bytes instead of 96 and the packer writes 20 extra floats, a WeakMap
+  and up to two WeakSet lookups and a frame box per packed element, with every enhancement off. `aFrame` is read only by
   the magnify and minify branches.
 - **One page per soft bake** (`gpu/soft-shadow-cache.ts`). Each bake mints its own `CanvasSource`, so
   silhouettes that were sub-rect views of one `_s` page become one texture each inside the depth-sorted
   sprite layer. Past the batcher's texture slots a pass that was one page flushes repeatedly. Shelf-pack
-  the bakes into one page per silhouette atlas if the draw-call count confirms it.
+  the bakes into one page per silhouette atlas if the draw-call count confirms it. Page count already
+  bounds the layer: over the late-game reference's dense settlement at t80k, 142 of its 172 world
+  batches end on full texture slots.
 - **Program link on a live scaler change** (`gpu/world-batcher.ts`). Programs compile lazily inside the
   draw call, so the first frame after the player changes the filter links a new program mid-frame. Warm
   the four magnification programs when the enhancement settings change if the hitch is visible.

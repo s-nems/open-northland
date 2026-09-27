@@ -1,7 +1,7 @@
 import { Container, type Graphics, type Sprite } from 'pixi.js';
 import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
-import type { PalettedSprite } from '../paletted-sprite/index.js';
+import type { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import type { PaletteLut } from '../sprite-sheet.js';
 import { BindStamp } from './bind-stamp.js';
 import { createPresentationTrack, type PresentationTrack } from './present-item.js';
@@ -46,11 +46,15 @@ interface PooledEntityBase extends PresentationTrack {
   readonly bound: BindStamp;
 }
 
-/** A settler or an indexed vehicle, drawing team-coloured {@link PalettedSprite} meshes through its LUT. */
+/** One team-coloured layer: a character's batched {@link PalettedQuad}, or a vehicle's self-placing
+ *  {@link PalettedSprite} mesh, whose shader also rolls the hull and blows wind through the sail. */
+export type PalettedLayerSprite = PalettedQuad | PalettedSprite;
+
+/** A settler or an indexed vehicle, drawing its layers through its LUT. */
 export interface PalettedPooledEntity extends PooledEntityBase {
   readonly paletted: true;
-  readonly sprites: PalettedSprite[];
-  /** This character's shadow silhouettes in resolved order, kept apart from the meshes: a silhouette
+  readonly sprites: PalettedLayerSprite[];
+  /** This character's shadow silhouettes in resolved order, kept apart from its layers: a silhouette
    *  draws palette-less, as a plain sprite under them. Grown as frames resolve them. */
   readonly shadows: Sprite[];
   readonly palette: PaletteLut;
@@ -68,7 +72,7 @@ export interface PlainPooledEntity extends PooledEntityBase {
 export type PooledEntity = PalettedPooledEntity | PlainPooledEntity;
 
 /** A fresh, empty pooled entity; sprites and placeholder grow lazily, and a `palette` makes it the
- *  paletted (team-coloured mesh) variant. */
+ *  paletted (team-coloured) variant. */
 export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined): PooledEntity {
   const base = {
     ...createPresentationTrack(kind),

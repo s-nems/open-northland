@@ -1,5 +1,6 @@
 import { Sprite } from 'pixi.js';
 import type { SelectionEllipse } from '../../data/sprites/atlas.js';
+import { PalettedSprite } from '../paletted-sprite/index.js';
 import { alphaMaskOf, maskSolidAt } from './alpha-mask.js';
 import { keelLine } from './keel-line.js';
 import type { EntityBounds, PalettedPooledEntity, PooledEntity } from './pooled-entity.js';
@@ -49,9 +50,10 @@ export function keelOf(
   if (pe === undefined || pe.lastSeen !== frameId || !pe.paletted) return undefined;
   // A vehicle's silhouette lives in `pe.shadows`, so its first mesh is the body.
   const body = pe.sprites[0];
-  const frame = body?.frame;
-  const source = body?.frameSource;
-  if (body === undefined || !body.visible || frame === undefined || source === undefined) return undefined;
+  if (!(body instanceof PalettedSprite)) return undefined;
+  const frame = body.frame;
+  const source = body.frameSource;
+  if (!body.visible || frame === undefined || source === undefined) return undefined;
   const mask = alphaMaskOf(source);
   if (mask === null) return undefined;
   const keel = keelLine(mask, frame);
@@ -83,7 +85,7 @@ export function pixelHit(
 ): boolean | undefined {
   if (pe === undefined || pe.boundsFrame !== frameId) return undefined;
   if (pe.paletted) {
-    // Settler meshes keep the (deliberately generous) box hit; a ship's sail box is mostly air.
+    // A settler keeps the (deliberately generous) box hit; a ship's sail box is mostly air.
     return pe.kind === 'settler' ? undefined : palettedPixelHit(pe, wx, wy);
   }
   // An under-construction site keeps the box hit too: its drawn pixels are the partial reveal, and a
@@ -111,12 +113,14 @@ export function pixelHit(
   return sampledEveryLayer ? false : undefined;
 }
 
-/** {@link pixelHit} over self-placing meshes, whose frame sits at its draw offset from the feet anchor. */
+/** {@link pixelHit} over a vehicle's self-placing meshes, whose frame sits at its draw offset from the feet
+ *  anchor. */
 function palettedPixelHit(pe: PalettedPooledEntity, wx: number, wy: number): boolean | undefined {
   let sampledEveryLayer = false;
   for (let i = 0; i < pe.sprites.length; i++) {
     const spr = pe.sprites[i];
-    if (spr === undefined || !spr.visible) continue; // its silhouettes live in `pe.shadows`, never here
+    // A vehicle's meshes; its silhouettes live in `pe.shadows`, never here.
+    if (!(spr instanceof PalettedSprite) || !spr.visible) continue;
     const frame = spr.frame;
     const mask = spr.frameSource === undefined ? null : alphaMaskOf(spr.frameSource);
     if (frame === undefined || mask === null) return undefined;

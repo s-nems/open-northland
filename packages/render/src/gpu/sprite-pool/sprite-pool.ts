@@ -19,6 +19,7 @@ import {
 } from '../../data/scene/index.js';
 import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
+import { PalettedQuad } from '../paletted-sprite/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
 import type { PlanStakeTextures } from '../plan-stake.js';
 import type { ShadowStyle } from '../shadow-style.js';
@@ -56,7 +57,7 @@ export interface PoolFrame {
   readonly viewport: Viewport;
   /** The sim tick the snapshot belongs to - the animation clock for looping gaits. */
   readonly tick: number;
-  /** The camera transform; the screen-space paletted settler meshes self-place from it. */
+  /** The camera transform; the screen-space paletted vehicle meshes self-place from it. */
   readonly camera: Camera;
   /** Canvas size in pixels. */
   readonly screenW: number;
@@ -65,7 +66,7 @@ export interface PoolFrame {
   /** Fixed-timestep interpolation fraction [0,1] between an entity's last two tick anchors; `1` draws
    *  raw tick positions, which is what a gait-clocked walker draws whatever this carries. */
   readonly alpha: number;
-  /** Device px per screen px the self-placing paletted meshes round their origin to; absent draws them
+  /** Device px per screen px the paletted layers round their feet origin to; absent draws them
    *  at their fractional origin, as the `?shot` capture does. */
   readonly snapResolution?: number | undefined;
   /** Entities the retained static map-object layer draws instead; the scene build skips them, so the
@@ -458,8 +459,9 @@ export class SpritePool {
     }
   }
 
-  /** Re-place every drawn paletted entity's meshes for a camera and target size (logical px). Must
-   *  mirror the {@link LayerBinder}'s placement exactly. */
+  /** Re-place every drawn paletted layer for a camera and target size (logical px): a mesh its screen
+   *  origin, a quad its snap to that camera's device grid. Must mirror the {@link LayerBinder}'s
+   *  placement exactly. */
   private placePaletted(camera: Camera, resWidth: number, resHeight: number): void {
     const camScale = camera.scale ?? 1;
     const snap = this.snapResolution;
@@ -469,6 +471,10 @@ export class SpritePool {
       const originY = snapToDevicePixels(cameraScreenY(camera, pe.motion.drawY), snap);
       for (const spr of pe.sprites) {
         if (!spr.visible) continue;
+        if (spr instanceof PalettedQuad) {
+          spr.placeFor(camera, pe.motion.drawX, pe.motion.drawY, snap);
+          continue;
+        }
         spr.place(
           originX + spr.artDx * camScale,
           originY + spr.artDy * camScale,

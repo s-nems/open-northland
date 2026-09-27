@@ -67,6 +67,21 @@ export function isShadowTexture(texture: Texture): boolean {
   return shadowTextures.has(texture);
 }
 
+/**
+ * Frames of palette-indexed character sheets and the palette LUT each draws through. The world batch
+ * shader reads such a texel's red channel as a palette index and its alpha as coverage, and looks the
+ * colour up in the sprite's `lutRow` of that LUT, which rides in the batch's own texture list.
+ */
+const palettedTextures = new WeakMap<Texture, TextureSource>();
+
+export function markPalettedTexture(texture: Texture, lut: TextureSource): void {
+  palettedTextures.set(texture, lut);
+}
+
+export function palettedLutOf(texture: Texture): TextureSource | undefined {
+  return palettedTextures.get(texture);
+}
+
 /** The shadow shading the batch shader is compiled for, or `null` while the enhancement is off. */
 let shadowStyle: ShadowStyle | null = null;
 

@@ -124,9 +124,10 @@ export async function createWindowPixiApp(
  * `alpha: 'straight'` is required for palette-indexed sheets (`<stem>.indexed`): their red channel is a
  * palette index, not colour, so Pixi's default premultiply-on-upload would scale the index by the frame's
  * graded coverage and every feathered pixel would look up the wrong LUT entry. `data.alphaMode:
- * 'premultiplied-alpha'` is Pixi's only hook that decodes the bitmap with `premultiplyAlpha: 'none'`;
- * relabelling the source `no-premultiply-alpha` then keeps the bytes raw through upload. The
- * `PalettedSprite` shader premultiplies its own output; RGB atlases keep Pixi's premultiplied default.
+ * 'premultiplied-alpha'` is Pixi's only hook that decodes the bitmap with `premultiplyAlpha: 'none'`, and
+ * that label also uploads the bytes raw. It stays on the source although the bytes are straight: every
+ * shader reading an indexed sheet premultiplies its own output, and the label keeps Pixi's normal blend,
+ * so a character's quads batch with the plain sprites around them.
  */
 export async function loadAtlasSource(
   url: string,
@@ -137,7 +138,6 @@ export async function loadAtlasSource(
     alpha === 'straight'
       ? ((await Assets.load({ src: url, data: { alphaMode: 'premultiplied-alpha' } })) as Texture)
       : ((await Assets.load(url)) as Texture);
-  if (alpha === 'straight') texture.source.alphaMode = 'no-premultiply-alpha';
   texture.source.scaleMode = scaleMode;
   // A nearest-loaded page is authored pixel art and may magnify edge-aware; ground pages stay linear.
   if (scaleMode === 'nearest') markPixelArtSource(texture.source);

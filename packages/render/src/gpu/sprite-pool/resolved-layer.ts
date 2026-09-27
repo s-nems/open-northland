@@ -3,7 +3,7 @@ import type { AtlasFrame, BuildTimeSheet } from '../../data/sprites/index.js';
 import type { ClothWind } from '../cloth-wind.js';
 
 /** One resolved atlas layer to draw: which source page, which frame rect, at what scale.
- *  `atlasW`/`atlasH` are the source sheet's pixel size, needed only by the paletted path, whose mesh
+ *  `atlasW`/`atlasH` are the source sheet's pixel size, needed only by a vehicle's paletted mesh, which
  *  samples its atlas by UV. */
 export interface ResolvedLayer {
   readonly source: TextureSource;
@@ -13,7 +13,7 @@ export interface ResolvedLayer {
   readonly dx?: number;
   readonly dy?: number;
   readonly shear?: number;
-  /** Wind through the layer's cloth pixels; paletted path only. */
+  /** Wind through the layer's cloth pixels; a vehicle's paletted mesh only. */
   readonly cloth?: ClothWind;
   readonly atlasW?: number;
   readonly atlasH?: number;
