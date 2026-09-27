@@ -21,7 +21,7 @@ interface HerdIndex {
 }
 
 const memo = new WeakMap<World, HerdIndex>();
-const NO_ANIMALS: readonly Entity[] = Object.freeze([]);
+const NO_ANIMALS: readonly Entity[] = [];
 
 /** The animals attached to `farm`, in the world's store order. Shared: never mutate it. */
 export function herdOf(world: World, farm: Entity): readonly Entity[] {

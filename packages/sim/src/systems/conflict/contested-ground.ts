@@ -30,7 +30,7 @@ export interface PlayerPlacementProbe extends PlacementProbe {
   readonly contestedKeyWithin: ContestedGround['keyWithin'];
 }
 
-const NO_FIGHTERS: readonly HalfCellNode[] = Object.freeze([]);
+const NO_FIGHTERS: readonly HalfCellNode[] = [];
 
 /** Coarse cells of one radius an edge: a fighter within the radius of a node lies in that node's cell or a
  *  neighbour, so a query reads at most nine cells. */

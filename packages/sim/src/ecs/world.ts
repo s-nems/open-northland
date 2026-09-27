@@ -59,7 +59,7 @@ export class World {
   private readonly changeFeeds = new ChangeFeeds();
   private readonly touched = new TouchedLog();
   private readonly cacheVerifiers = new CacheVerifiers();
-  private readonly canonicalQueries = new CanonicalQueries();
+  private readonly canonicalQueries = new CanonicalQueries(this.stores);
   private mutations: MutationSink | null = null;
   /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create} and
    *  {@link destroy} since component add/remove cannot change the alive set. */
@@ -274,19 +274,20 @@ export class World {
   }
 
   /** The entities carrying every `required` component in ascending id: {@link query} in canonical order,
-   *  shared and frozen like {@link canonicalEntities}. A caller that reorders or edits the list copies it. */
+   *  shared like {@link canonicalEntities}. A caller that reorders or edits the list copies it. */
   canonicalQuery(...required: Array<Component<unknown>>): readonly Entity[] {
-    return this.canonicalQueries.query(this.stores, required);
+    return this.canonicalQueries.query(required);
   }
 
   /**
    * Ascending-sorted alive entity ids: the canonical order for snapshots, golden hashes, and any system that
-   * must *pick* an entity deterministically. Shared and frozen, so a consumer that sorts or reverses it in
-   * place throws at the mutation site instead of silently corrupting the order every other consumer reads.
+   * must *pick* an entity deterministically. Shared and not frozen (a frozen array costs every `for...of`
+   * an iterator result per element): a consumer that sorts or edits it copies first, and
+   * {@link verifyCaches} reports one that did not.
    */
   canonicalEntities(): readonly Entity[] {
     if (this.canonicalCache === null) {
-      this.canonicalCache = Object.freeze([...this.alive].sort((a, b) => a - b));
+      this.canonicalCache = [...this.alive].sort((a, b) => a - b);
     }
     return this.canonicalCache;
   }

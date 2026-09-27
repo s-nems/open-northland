@@ -54,7 +54,7 @@ export function translatedCells(
 }
 
 /** The 1-cell footprint a footprint-less building presents to placement checks. */
-export const ANCHOR_ONLY: readonly FootprintCell[] = Object.freeze([{ dx: 0, dy: 0 }]);
+export const ANCHOR_ONLY: readonly FootprintCell[] = [{ dx: 0, dy: 0 }];
 
 /** Ground a standing building reserves against fields, including walkable margins under its art. */
 export function buildingFieldZone(content: ContentSet, buildingType: number): readonly FootprintCell[] {

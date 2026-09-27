@@ -15,7 +15,7 @@ interface AssignedIndex {
 }
 
 const indexes = new WeakMap<World, AssignedIndex>();
-const NO_WORKERS: readonly Entity[] = Object.freeze([]);
+const NO_WORKERS: readonly Entity[] = [];
 const idOf = (e: Entity): number => e;
 
 /** The settlers whose {@link JobAssignment} names `workplace`, ascending id, whether or not the workplace

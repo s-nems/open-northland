@@ -66,7 +66,7 @@ export function presentOperators(world: World, ctx: SystemContext, building: Ent
 }
 
 const UNSTAFFED: WorkplaceOperators = { kind: 'unstaffed' };
-const DESERTED: WorkplaceOperators = { kind: 'staffed', operators: Object.freeze([]) };
+const DESERTED: WorkplaceOperators = { kind: 'staffed', operators: [] };
 
 /**
  * How many operators a {@link presentOperators} result is worth to the production rate: one anonymous

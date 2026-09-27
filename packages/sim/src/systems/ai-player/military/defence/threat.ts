@@ -154,7 +154,7 @@ function scanRaiders(
     const reach = Math.max(weaponReach(world, ctx, e), SIGHT_RADIUS_NODES);
     raiders.push({ entity: e, ...terrain.coordsOf(at), component: terrain.componentOf(at), reach });
   }
-  return Object.freeze(raiders);
+  return raiders;
 }
 
 /** The weapon `e` fights with and its reach band, or null for an unarmed man. */

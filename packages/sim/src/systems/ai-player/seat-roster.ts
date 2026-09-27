@@ -11,15 +11,14 @@ interface RosterCache {
   readonly byPlayer: ReadonlyMap<number, readonly Entity[]>;
 }
 
-const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
+const NO_ENTITIES: readonly Entity[] = [];
 
 function sameRoster(held: readonly Entity[] | undefined, fresh: readonly Entity[]): boolean {
   return held !== undefined && held.length === fresh.length && fresh.every((e, i) => held[i] === e);
 }
 
 /** A per-world memoized reader for the seats' `component` rosters: one scan per generation answers every
- *  seat. Derived read-state, never hashed; the returned list is the shared cached copy, frozen, so a
- *  caller that sorts or reverses it throws at the mutation site. */
+ *  seat. Derived read-state, never hashed; the returned list is the shared cached copy. */
 function createOwnedRoster(
   component: Component<unknown>,
   name: string,
@@ -41,7 +40,6 @@ function createOwnedRoster(
       if (held === undefined) byPlayer.set(player, [e]);
       else held.push(e);
     }
-    for (const roster of byPlayer.values()) Object.freeze(roster);
     return byPlayer;
   };
 
@@ -54,7 +52,9 @@ function createOwnedRoster(
       fresh.size === cached.byPlayer.size &&
       [...fresh].every(([player, roster]) => sameRoster(cached.byPlayer.get(player), roster));
     if (coherent) return [];
-    return [`${name} cache disagrees with a fresh derivation: an owner changed outside World.add/mut`];
+    return [
+      `${name} cache disagrees with a fresh derivation: an owner changed outside World.add/mut, or a reader edited a roster`,
+    ];
   };
 
   return (world, player) => {

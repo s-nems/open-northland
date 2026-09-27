@@ -124,7 +124,7 @@ const byId = (e: Entity): number => e;
 /** One world's quality sources in ascending id, kept across ticks and caught up by {@link qualitySources}. */
 class QualitySources {
   private readonly ids: Entity[] = [];
-  private frozen: readonly Entity[] | null = null;
+  private shared: readonly Entity[] | null = null;
   /** Buckets of the list they were last filled from, refilled only when a different list is searched. */
   private readonly buckets: NodeBuckets;
   private bucketed: readonly Entity[] | null = null;
@@ -146,24 +146,24 @@ class QualitySources {
         capture: (e) => (isQualitySource(world, content, e) ? true : null),
         apply: (e) => {
           insertSortedById(this.ids, e, byId);
-          this.frozen = null;
+          this.shared = null;
         },
         withdraw: (e) => {
           removeSortedById(this.ids, e, byId);
-          this.frozen = null;
+          this.shared = null;
         },
         clear: () => {
           this.ids.length = 0;
-          this.frozen = null;
+          this.shared = null;
         },
       },
     );
   }
 
-  /** The sources as of the last catch-up, shared and frozen. */
+  /** The sources as of the last catch-up, shared. */
   list(): readonly Entity[] {
-    this.frozen ??= Object.freeze(this.ids.slice());
-    return this.frozen;
+    this.shared ??= this.ids.slice();
+    return this.shared;
   }
 
   /** `list`'s entities by node; `list` is one {@link list} returned. */

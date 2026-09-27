@@ -21,7 +21,7 @@ interface VehicleIndexCache {
   readonly index: VehicleIndex;
 }
 
-const NONE: readonly Entity[] = Object.freeze([]);
+const NONE: readonly Entity[] = [];
 const vehicleIndexCache = new WeakMap<World, VehicleIndexCache>();
 
 /** Membership of the three stores plus the value generations a script's owner or id change bumps. */
@@ -76,7 +76,7 @@ const byId = (e: Entity): number => e;
 /** One filter's vehicles in ascending id, kept across ticks and caught up by {@link vehiclesAtWork}. */
 class VehicleWorkList {
   private readonly ids: Entity[] = [];
-  private frozen: readonly Entity[] | null = null;
+  private shared: readonly Entity[] | null = null;
   readonly captures: JournaledCaptures<true>;
 
   constructor(
@@ -92,15 +92,15 @@ class VehicleWorkList {
         capture: (e) => (this.matches(e) ? true : null),
         apply: (e) => {
           insertSortedById(this.ids, e, byId);
-          this.frozen = null;
+          this.shared = null;
         },
         withdraw: (e) => {
           removeSortedById(this.ids, e, byId);
-          this.frozen = null;
+          this.shared = null;
         },
         clear: () => {
           this.ids.length = 0;
-          this.frozen = null;
+          this.shared = null;
         },
       },
     );
@@ -111,10 +111,10 @@ class VehicleWorkList {
     return state !== undefined && this.filter(this.content, state);
   }
 
-  /** The matching vehicles as of the last catch-up, shared and frozen. */
+  /** The matching vehicles as of the last catch-up, shared. */
   list(): readonly Entity[] {
-    this.frozen ??= Object.freeze(this.ids.slice());
-    return this.frozen;
+    this.shared ??= this.ids.slice();
+    return this.shared;
   }
 
   verify(): string[] {

@@ -13,7 +13,7 @@ interface FreeStock {
 }
 
 const memo = new WeakMap<World, FreeStock>();
-const NONE: readonly Entity[] = Object.freeze([]);
+const NONE: readonly Entity[] = [];
 
 /** `player`'s free claimed animals, in no promised order. Shared: never mutate it. */
 export function freeStockOf(world: World, player: number): readonly Entity[] {

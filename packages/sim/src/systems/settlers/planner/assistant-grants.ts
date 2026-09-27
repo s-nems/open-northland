@@ -171,7 +171,7 @@ export function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): num
   return free === -1 ? null : free;
 }
 
-const NO_SETTLERS: readonly Entity[] = Object.freeze([]);
+const NO_SETTLERS: readonly Entity[] = [];
 
 /** The settlers bucketed by scan beat, for each settler roster a world has served: rebuilt only when a
  *  settler is born or dies, so a tick visits its own beat's slice instead of the whole roster. */

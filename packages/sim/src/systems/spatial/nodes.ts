@@ -15,7 +15,7 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 }
 
 /** Shared and frozen so an unoccupied-node lookup allocates nothing. */
-const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
+const NO_ENTITIES: readonly Entity[] = [];
 
 /** Packs a node into one map key. A probe at `(x, -d)` aliases `(x - 1, 2^16 - d)`, which still reads
  *  empty because every map is far fewer than `2^16` half-rows tall, minus any ring radius. */
@@ -53,7 +53,7 @@ export class NodeBuckets {
   private readonly live: NodeBucket[] = [];
   private liveCount = 0;
 
-  constructor(world: World, entities: Iterable<Entity>) {
+  constructor(world: World, entities: readonly Entity[]) {
     this.refill(world, entities);
   }
 
@@ -62,11 +62,13 @@ export class NodeBuckets {
    * rebuilt every tick allocates only for nodes it has not held recently. Entries are overwritten in place
    * and trimmed afterwards: V8 frees an array's backing store at length 0, and the next push reallocates.
    */
-  refill(world: World, entities: Iterable<Entity>): void {
+  refill(world: World, entities: readonly Entity[]): void {
     this.fill++;
     if (this.byNode.size > STALE_BUCKET_RATIO * this.liveCount) this.dropStale();
     this.liveCount = 0;
-    for (const e of entities) {
+    for (let i = 0; i < entities.length; i++) {
+      const e = entities[i];
+      if (e === undefined) continue;
       const p = world.tryGet(e, Position);
       if (p === undefined) continue;
       const bucket = this.filledBucket(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));

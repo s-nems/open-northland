@@ -1,25 +1,29 @@
 import { insertSortedById, removeSortedById } from '../core/sorted-id.js';
 import type { Component, Entity } from './component.js';
 
-const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
+type Stores = ReadonlyMap<Component<unknown>, ReadonlyMap<Entity, unknown>>;
+
+const NO_ENTITIES: readonly Entity[] = [];
 const entityId = (e: Entity): number => e;
 
 /** One component's members in ascending id, kept current by every membership change once tracked. */
 interface Members {
   readonly ids: Entity[];
-  /** Bumped by a membership change only; a value-replacing re-`add` leaves it alone. */
-  epoch: number;
-  frozen: readonly Entity[] | null;
+  /** The copy handed to readers; dropped by a membership change, remade by the next query. */
+  shared: Entity[] | null;
+  /** The joints requiring this component, updated with it. */
+  readonly joints: Joint[];
 }
 
-/** A memoized multi-component result, current while every required component's epoch matches. */
+/** The entities carrying every required component in ascending id, updated per membership change. */
 interface Joint {
   readonly required: readonly Component<unknown>[];
-  readonly epochs: readonly number[];
-  readonly list: readonly Entity[];
+  readonly stores: readonly ReadonlyMap<Entity, unknown>[];
+  readonly ids: Entity[];
+  shared: Entity[] | null;
 }
 
-/** Joint results keyed by the required components in call order, so a lookup allocates nothing. */
+/** Joints keyed by the required components in call order, so a lookup allocates nothing. */
 interface JointNode {
   readonly next: Map<Component<unknown>, JointNode>;
   joint: Joint | null;
@@ -27,44 +31,48 @@ interface JointNode {
 
 /**
  * Ascending-id query results shared by every caller of `World.canonicalQuery`. A component is tracked from
- * its first canonical query on; untracked components pay nothing on add/remove. Results are frozen, so a
- * caller that sorts or splices one in place throws instead of corrupting it for the next reader.
+ * its first canonical query on and a joint from its first query; untracked components pay nothing on
+ * add/remove. A reader gets a copy made on the first query after its list changed, so a held list stays
+ * a snapshot. Copies are not frozen: `readonly` types and {@link verify} catch a reader that edits one.
  */
 export class CanonicalQueries {
   private readonly members = new Map<Component<unknown>, Members>();
-  private readonly joints: JointNode = { next: new Map(), joint: null };
+  private readonly trie: JointNode = { next: new Map(), joint: null };
+  private readonly joints: Joint[] = [];
+
+  constructor(private readonly stores: Stores) {}
 
   entered(component: Component<unknown>, entity: Entity): void {
     const m = this.members.get(component);
     if (m === undefined) return;
-    // Ids never recycle, so a new entity appends; only a re-entering older one needs the search.
-    const last = m.ids[m.ids.length - 1];
-    if (last === undefined || last < entity) m.ids.push(entity);
-    else insertSortedById(m.ids, entity, entityId);
-    m.epoch++;
-    m.frozen = null;
+    insertAscending(m.ids, entity);
+    m.shared = null;
+    for (const joint of m.joints) {
+      if (!carriesAll(joint.stores, entity)) continue;
+      insertAscending(joint.ids, entity);
+      joint.shared = null;
+    }
   }
 
   left(component: Component<unknown>, entity: Entity): void {
     const m = this.members.get(component);
     if (m === undefined || !removeSortedById(m.ids, entity, entityId)) return;
-    m.epoch++;
-    m.frozen = null;
+    m.shared = null;
+    for (const joint of m.joints) {
+      if (removeSortedById(joint.ids, entity, entityId)) joint.shared = null;
+    }
   }
 
-  query(
-    stores: ReadonlyMap<Component<unknown>, ReadonlyMap<Entity, unknown>>,
-    required: readonly Component<unknown>[],
-  ): readonly Entity[] {
+  query(required: readonly Component<unknown>[]): readonly Entity[] {
     const [first] = required;
     if (first === undefined) return NO_ENTITIES;
     if (required.length === 1) {
-      const m = this.track(stores, first);
+      const m = this.track(first);
       if (m === null) return NO_ENTITIES;
-      m.frozen ??= Object.freeze(m.ids.slice());
-      return m.frozen;
+      m.shared ??= m.ids.slice();
+      return m.shared;
     }
-    let node = this.joints;
+    let node = this.trie;
     for (const c of required) {
       let child = node.next.get(c);
       if (child === undefined) {
@@ -73,84 +81,87 @@ export class CanonicalQueries {
       }
       node = child;
     }
-    const cached = node.joint;
-    if (cached !== null && this.current(cached)) return cached.list;
-    const joint = this.join(stores, required);
+    node.joint ??= this.join(required);
+    const joint = node.joint;
     if (joint === null) return NO_ENTITIES;
-    node.joint = joint;
-    return joint.list;
+    joint.shared ??= joint.ids.slice();
+    return joint.shared;
   }
 
-  /** Walks the smallest required member list and keeps the ids every other store holds. Null while a
-   *  required store does not exist yet. */
-  private join(
-    stores: ReadonlyMap<Component<unknown>, ReadonlyMap<Entity, unknown>>,
-    required: readonly Component<unknown>[],
-  ): Joint | null {
-    const epochs: number[] = [];
-    const others: Array<ReadonlyMap<Entity, unknown>> = [];
+  /** Walks the smallest required member list once and registers the joint with every required component.
+   *  Null while a required store does not exist yet. */
+  private join(required: readonly Component<unknown>[]): Joint | null {
+    const stores: Array<ReadonlyMap<Entity, unknown>> = [];
+    const tracked: Members[] = [];
     let smallest: Members | null = null;
-    let smallestStore: ReadonlyMap<Entity, unknown> | null = null;
     for (const c of required) {
-      const store = stores.get(c);
-      const m = this.track(stores, c);
+      const store = this.stores.get(c);
+      const m = this.track(c);
       if (store === undefined || m === null) return null;
-      epochs.push(m.epoch);
-      others.push(store);
-      if (smallest === null || m.ids.length < smallest.ids.length) {
-        smallest = m;
-        smallestStore = store;
-      }
+      stores.push(store);
+      tracked.push(m);
+      if (smallest === null || m.ids.length < smallest.ids.length) smallest = m;
     }
     if (smallest === null) return null;
-    const list = smallest.ids.filter((e) => others.every((s) => s === smallestStore || s.has(e)));
-    return { required, epochs, list: Object.freeze(list) };
+    const ids = smallest.ids.filter((e) => stores.every((s) => s.has(e)));
+    const joint: Joint = { required, stores, ids, shared: null };
+    for (const m of tracked) if (!m.joints.includes(joint)) m.joints.push(joint);
+    this.joints.push(joint);
+    return joint;
   }
 
-  private current(joint: Joint): boolean {
-    return joint.required.every((c, i) => this.members.get(c)?.epoch === joint.epochs[i]);
-  }
-
-  private track(
-    stores: ReadonlyMap<Component<unknown>, ReadonlyMap<Entity, unknown>>,
-    component: Component<unknown>,
-  ): Members | null {
+  private track(component: Component<unknown>): Members | null {
     let m = this.members.get(component);
     if (m === undefined) {
-      const store = stores.get(component);
+      const store = this.stores.get(component);
       if (store === undefined) return null;
-      m = { ids: [...store.keys()].sort((a, b) => a - b), epoch: 0, frozen: null };
+      m = { ids: [...store.keys()].sort((a, b) => a - b), shared: null, joints: [] };
       this.members.set(component, m);
     }
     return m;
   }
 
-  /** Re-derive every tracked list and every current joint from the stores; a message per mismatch. */
-  verify(stores: ReadonlyMap<Component<unknown>, ReadonlyMap<Entity, unknown>>): string[] {
+  /** Re-derive every tracked list and joint from the stores; a message per mismatch, including a shared
+   *  copy a reader edited in place. */
+  verify(): string[] {
     const out: string[] = [];
     for (const [component, m] of this.members) {
-      const fresh = [...(stores.get(component)?.keys() ?? [])].sort((a, b) => a - b);
-      if (!sameIds(m.ids, fresh))
-        out.push(`canonicalQuery(${component.name}) members diverge from the store`);
-      if (m.frozen !== null && !sameIds(m.frozen, m.ids)) {
-        out.push(`canonicalQuery(${component.name}) frozen list is stale`);
-      }
+      const fresh = [...(this.stores.get(component)?.keys() ?? [])].sort((a, b) => a - b);
+      out.push(...divergence(component.name, m, fresh));
     }
-    const pending = [this.joints];
-    for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
-      pending.push(...node.next.values());
-      const joint = node.joint;
-      const head = joint?.required[0];
-      if (joint === null || head === undefined || !this.current(joint)) continue;
-      const fresh = [...(stores.get(head)?.keys() ?? [])]
-        .filter((e) => joint.required.every((c) => stores.get(c)?.has(e) === true))
+    for (const joint of this.joints) {
+      const [head] = joint.stores;
+      const fresh = [...(head?.keys() ?? [])]
+        .filter((e) => joint.stores.every((s) => s.has(e)))
         .sort((a, b) => a - b);
-      if (!sameIds(joint.list, fresh)) {
-        out.push(`canonicalQuery(${joint.required.map((c) => c.name).join(', ')}) diverges from the stores`);
-      }
+      out.push(...divergence(joint.required.map((c) => c.name).join(', '), joint, fresh));
     }
     return out;
   }
+}
+
+function carriesAll(stores: readonly ReadonlyMap<Entity, unknown>[], entity: Entity): boolean {
+  for (let i = 0; i < stores.length; i++) if (stores[i]?.has(entity) !== true) return false;
+  return true;
+}
+
+/** Ids never recycle, so a new entity appends; only a re-entering older one needs the search. */
+function insertAscending(ids: Entity[], entity: Entity): void {
+  const last = ids[ids.length - 1];
+  if (last === undefined || last < entity) ids.push(entity);
+  else insertSortedById(ids, entity, entityId);
+}
+
+function divergence(
+  name: string,
+  list: { readonly ids: readonly Entity[]; readonly shared: readonly Entity[] | null },
+  fresh: readonly Entity[],
+): string[] {
+  if (!sameIds(list.ids, fresh)) return [`canonicalQuery(${name}) diverges from the stores`];
+  if (list.shared !== null && !sameIds(list.shared, fresh)) {
+    return [`canonicalQuery(${name}) shared list was edited by a reader`];
+  }
+  return [];
 }
 
 function sameIds(a: readonly Entity[], b: readonly Entity[]): boolean {

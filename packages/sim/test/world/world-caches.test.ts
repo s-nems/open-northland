@@ -6,8 +6,8 @@ import { defineComponent, World } from '../../src/ecs/world.js';
  * The World cache-coherence guard: incremental caches are the classic lockstep-desync source, so
  * every memoized value must re-derive from authoritative state to the same bytes. Two halves:
  *
- *  - the shared `canonicalEntities()` memo is FROZEN, so a consumer that mutates it in place
- *    (.sort()/.reverse() - the documented never-do) throws at the mutation site;
+ *  - the shared `canonicalEntities()` memo is `readonly`, and a consumer that mutates it in place anyway
+ *    (.sort()/.reverse() - the documented never-do) shows up in `verifyCaches()`;
  *  - `verifyCaches()` re-derives the memo from the alive set and reports a mismatch, so a missed
  *    invalidation is caught at the tick it happens (it runs inside CORE_INVARIANTS as
  *    `cachesCoherent`), not later as an unexplained golden/hash divergence.
@@ -17,15 +17,14 @@ const A = defineComponent<{ n: number }>('CacheA', 'economy');
 const B = defineComponent<{ n: number }>('CacheB', 'economy');
 
 describe('World cache coherence', () => {
-  it('canonicalEntities returns a frozen array - in-place mutation throws at the offender', () => {
+  it('verifyCaches reports a consumer that reversed the shared canonicalEntities list', () => {
     const w = new World();
     w.create();
     w.create();
-    const ids = w.canonicalEntities();
-    // The runtime enforcement behind the `readonly Entity[]` type: reverse() must throw, not
-    // silently corrupt the canonical order every other consumer shares.
-    expect(() => (ids as Entity[]).reverse()).toThrow();
-    expect([...w.canonicalEntities()]).toEqual(ids);
+    (w.canonicalEntities() as Entity[]).reverse();
+    expect(w.verifyCaches()).toEqual([
+      "canonicalEntities cache diverges at index 0: cached 2, alive 1 - a stale memo or a reader's edit",
+    ]);
   });
 
   it('verifyCaches is clean across create/destroy churn (invalidation works)', () => {
@@ -91,7 +90,7 @@ describe('World cache coherence', () => {
     (Reflect.get(w, 'memberships') as Map<Entity, number[]>).delete(e);
     // A registered verifier can never preempt the World's own two checks.
     expect(w.verifyCaches()).toEqual([
-      'canonicalEntities cache diverges at index 0: cached 999, alive 1 - stale memo',
+      "canonicalEntities cache diverges at index 0: cached 999, alive 1 - a stale memo or a reader's edit",
       'entity 1 carries CacheA but its membership list misses it',
       'registered says stale',
     ]);

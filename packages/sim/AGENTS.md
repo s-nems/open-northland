@@ -73,7 +73,9 @@ the sim, ever. Parallelism can make state depend on core count, which desyncs mu
 A group order starts every member moving in the tick it applies: cut its path cost with cheaper
 searches, never by rationing its path requests across ticks.
 
-Never mutate a shared cached list. Measure system scaling with `npm run bench:sim` (synthetic world,
+Never mutate a shared cached list or empty sentinel; copy it first. Neither is frozen: once a frozen
+array reaches a `for...of` site, that site allocates an iterator result per element for every array it
+walks. `readonly` types are the guard, and `verifyCaches` reports an edit to a list it re-derives. Measure system scaling with `npm run bench:sim` (synthetic world,
 isolated axes) or `npm run bench:map` (a real decoded map, reported as a growth curve); timing stays in
 the caller through `Simulation.setInstrument`, never in sim source.
 

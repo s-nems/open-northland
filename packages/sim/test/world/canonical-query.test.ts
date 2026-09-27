@@ -51,22 +51,41 @@ describe('World.canonicalQuery', () => {
     expect(w.canonicalQuery(P)).toEqual([a, b, c]);
   });
 
-  it('serves one frozen list until membership changes', () => {
+  it('serves one list until its own membership changes', () => {
     const w = new World();
     const e = w.create();
     w.add(e, P, { n: 0 });
     w.add(e, Q, { n: 0 });
     const single = w.canonicalQuery(P);
     const joint = w.canonicalQuery(P, Q);
-    expect(() => (single as Entity[]).push(e)).toThrow();
-    expect(() => (joint as Entity[]).pop()).toThrow();
     w.add(e, P, { n: 1 });
     expect(w.canonicalQuery(P)).toBe(single);
+    expect(w.canonicalQuery(P, Q)).toBe(joint);
+    // A required component's membership moves, but not for an entity the joint could hold.
+    const other = w.create();
+    w.add(other, P, { n: 0 });
+    expect(w.canonicalQuery(P)).toEqual([e, other]);
     expect(w.canonicalQuery(P, Q)).toBe(joint);
     // A held list is a snapshot: a later membership change hands out a new list and leaves it alone.
     w.remove(e, Q);
     expect(w.canonicalQuery(P, Q)).toEqual([]);
     expect(joint).toEqual([e]);
+    w.add(other, Q, { n: 0 });
+    expect(w.canonicalQuery(Q, P)).toEqual([other]);
+    expect(w.canonicalQuery(P, Q)).toEqual([other]);
+  });
+
+  it('verifyCaches reports a reader that edited a shared list', () => {
+    const w = new World();
+    const e = w.create();
+    w.add(e, P, { n: 0 });
+    w.add(e, Q, { n: 0 });
+    (w.canonicalQuery(P) as Entity[]).push(99 as Entity);
+    (w.canonicalQuery(P, Q) as Entity[]).pop();
+    expect(w.verifyCaches()).toEqual([
+      'canonicalQuery(CanonicalQueryP) shared list was edited by a reader',
+      'canonicalQuery(CanonicalQueryP, CanonicalQueryQ) shared list was edited by a reader',
+    ]);
   });
 
   it('answers empty for an unregistered component and tracks it once it exists', () => {
@@ -94,6 +113,6 @@ describe('World.canonicalQuery', () => {
       { ids: Entity[] }
     >;
     members.get(P)?.ids.push(99 as Entity);
-    expect(w.verifyCaches()).toEqual(['canonicalQuery(CanonicalQueryP) members diverge from the store']);
+    expect(w.verifyCaches()).toEqual(['canonicalQuery(CanonicalQueryP) diverges from the stores']);
   });
 });

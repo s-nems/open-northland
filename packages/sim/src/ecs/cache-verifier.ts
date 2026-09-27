@@ -29,7 +29,7 @@ export class CacheVerifiers {
   run(storage: VerifiableStorage): string[] {
     const out = verifyCanonicalCache(storage);
     out.push(...verifyMemberships(storage));
-    out.push(...storage.canonicalQueries.verify(storage.stores));
+    out.push(...storage.canonicalQueries.verify());
     for (const verify of this.byName.values()) out.push(...verify());
     return out;
   }
@@ -68,14 +68,14 @@ function verifyCanonicalCache({ canonicalCache, alive }: VerifiableStorage): str
   const fresh = [...alive].sort((a, b) => a - b);
   if (canonicalCache.length !== fresh.length) {
     out.push(
-      `canonicalEntities cache holds ${canonicalCache.length} ids but ${fresh.length} are alive - a create/destroy missed invalidation`,
+      `canonicalEntities cache holds ${canonicalCache.length} ids but ${fresh.length} are alive - a missed invalidation or a reader's edit`,
     );
     return out;
   }
   for (let i = 0; i < fresh.length; i++) {
     if (canonicalCache[i] !== fresh[i]) {
       out.push(
-        `canonicalEntities cache diverges at index ${i}: cached ${canonicalCache[i]}, alive ${fresh[i]} - stale memo`,
+        `canonicalEntities cache diverges at index ${i}: cached ${canonicalCache[i]}, alive ${fresh[i]} - a stale memo or a reader's edit`,
       );
       break;
     }

@@ -93,7 +93,7 @@ export function edibleGoodFormOf(content: ContentSet, goodType: number): number 
   return edibleForms(content).get(goodType) ?? goodType;
 }
 
-const NO_GOODS: readonly number[] = Object.freeze([]);
+const NO_GOODS: readonly number[] = [];
 
 /** Resolved `edible goodType -> the goods that count as it`: the edible first, then the dishes that
  *  become it, ascending by typeId. */

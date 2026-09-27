@@ -71,8 +71,7 @@ export function evictSettlersFromCells(
   // Canonical order fixes the Position-write and claim order.
   const evictees = canonicalById(evicteesUnsorted);
 
-  // Travellers count too, since a landing must not stack on anyone. Only `.at(x, y).length` is read, an
-  // order-independent count, so the query-ordered buckets are safe here (unlike NodeBuckets.nearest).
+  // Travellers count too, since a landing must not stack on anyone.
   const occupancy = byNode;
   const claimed = new Set<NodeId>();
   for (const e of evictees) {
@@ -155,7 +154,7 @@ export function settlersByNode(world: World): NodeBuckets {
   ) {
     return cached.buckets;
   }
-  const buckets = new NodeBuckets(world, world.query(Settler, Position));
+  const buckets = new NodeBuckets(world, world.canonicalQuery(Settler, Position));
   settlerNodeCache.set(world, { settlers, positions, moves, buckets });
   return buckets;
 }

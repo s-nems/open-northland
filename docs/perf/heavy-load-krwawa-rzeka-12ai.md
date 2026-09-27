@@ -135,7 +135,6 @@ and 145 ticks.
 - Sim: [ai-dead-holder-replant-retries](../tickets/sim/ai-dead-holder-replant-retries.md),
   [combat-pass-scans-every-combatant](../tickets/sim/combat-pass-scans-every-combatant.md),
   [planner-pile-searches-scan-every-pile](../tickets/sim/planner-pile-searches-scan-every-pile.md),
-  [canonical-joints-rebuild-every-tick](../tickets/sim/canonical-joints-rebuild-every-tick.md),
   [gossip-candidates-refill-every-tick](../tickets/sim/gossip-candidates-refill-every-tick.md).
 
 Below the admission bar at this scale: `nodeOfPosition`'s per-call object (125 KB a tick),

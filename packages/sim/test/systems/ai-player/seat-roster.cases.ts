@@ -92,14 +92,17 @@ describe('the seat rosters', () => {
     expect(ownedSettlers(world, RIVAL)).toEqual([taken]);
   });
 
-  it('hands out one shared frozen list, so a caller cannot reorder what every other caller reads', () => {
+  it('hands out one shared list, and verifyCaches reports a caller that reordered it', () => {
     const world = new World();
     addBuilding(world, SEAT);
     addBuilding(world, SEAT);
     const roster = ownedBuildings(world, SEAT);
     expect(ownedBuildings(world, SEAT)).toBe(roster); // the memo, not a fresh scan
-    expect(() => (roster as Entity[]).sort((a, b) => b - a)).toThrow();
-    expect(() => (roster as Entity[]).push(1 as Entity)).toThrow();
+    expect(world.verifyCaches()).toEqual([]);
+    (roster as Entity[]).sort((a, b) => b - a);
+    expect(world.verifyCaches()).toEqual([
+      'ownedBuildings cache disagrees with a fresh derivation: an owner changed outside World.add/mut, or a reader edited a roster',
+    ]);
   });
 
   it('leaves the world coherent under verifyCaches after a tracked capture', () => {

@@ -13,8 +13,8 @@ import { forEachNodeInBand, type WeaponBand } from './melee-slots.js';
 // The nodes combat measures a target's distance to, and paths a chaser toward, so the target index, the
 // chase drive and the mid-swing whiff check all resolve a building target's approach the same way.
 
-/** Shared and frozen so a body-less lookup allocates nothing. */
-const NO_BODY: readonly NodeId[] = Object.freeze([]);
+/** Shared so a body-less lookup allocates nothing. */
+const NO_BODY: readonly NodeId[] = [];
 
 interface BuildingBodyCache {
   /** Building MEMBERSHIP generation - a placement or destruction. */

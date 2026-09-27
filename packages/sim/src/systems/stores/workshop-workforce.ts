@@ -81,7 +81,7 @@ const MEMBERSHIP_JOURNALS = [...SETTLER_MEMBERSHIP, ...WORKPLACE_MEMBERSHIP];
 const VALUE_JOURNALS = [...SETTLER_VALUES, ...WORKPLACE_VALUES];
 
 const indexes = new WeakMap<World, WorkforceIndex>();
-const NO_CREW: readonly Entity[] = Object.freeze([]);
+const NO_CREW: readonly Entity[] = [];
 const idOf = (e: Entity): number => e;
 
 /**

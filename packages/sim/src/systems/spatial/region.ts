@@ -35,9 +35,9 @@ interface RegionState<Extra, Capture> {
   byNode: NodeBuckets | null;
   /** Ascending-id canonical membership, the mutable master copy behind {@link RegionIndex.canonical}. */
   list: Entity[];
-  /** The shared frozen view handed to consumers, dropped on every change, so a consumer holding one
-   *  keeps an immutable snapshot. */
-  frozen: readonly Entity[] | null;
+  /** The shared copy handed to consumers, dropped on every change, so a consumer holding one keeps a
+   *  snapshot. */
+  shared: readonly Entity[] | null;
   extra: Extra;
 }
 
@@ -74,7 +74,7 @@ export const NO_REGION_EXTRA: RegionExtraOps<undefined, undefined> = {
 
 /** A memoized region index over `(component, Position)` entities. */
 export interface RegionIndex<Extra, Capture> {
-  /** The memoized ascending-id list of every indexed entity, shared and frozen. */
+  /** The memoized ascending-id list of every indexed entity, shared. */
   canonical(world: World): readonly Entity[];
   /** Every indexed entity whose anchor node lies within the axis-aligned box `reach` nodes around
    *  `(hx, hy)`, ascending-id. A candidate superset, valid only when `reach` covers the caller's radius
@@ -200,10 +200,10 @@ export function createRegionIndex<Extra, Capture>(
   }
 
   const memo = createSpatialMemo<RegionState<Extra, Capture>, Member>(component, labels, {
-    empty: () => ({ byRegion: new Map(), byNode: null, list: [], frozen: null, extra: extraOps.empty() }),
+    empty: () => ({ byRegion: new Map(), byNode: null, list: [], shared: null, extra: extraOps.empty() }),
     member: (world, e, hx, hy) => ({ hx, hy, capture: extraOps.capture(world, e) }),
     insert: (state, e, m) => {
-      state.frozen = null;
+      state.shared = null;
       insertSortedById(state.list, e, (id) => id);
       const key = regionKeyOf(m.hx, m.hy);
       let bucket = state.byRegion.get(key);
@@ -216,7 +216,7 @@ export function createRegionIndex<Extra, Capture>(
       extraOps.insert(state.extra, m.capture);
     },
     remove: (state, e, m) => {
-      state.frozen = null;
+      state.shared = null;
       removeSortedById(state.list, e, (id) => id);
       const key = regionKeyOf(m.hx, m.hy);
       const bucket = state.byRegion.get(key);
@@ -232,6 +232,12 @@ export function createRegionIndex<Extra, Capture>(
         return [
           `${labels.verifier} canonical list diverges from a fresh rebuild - an incremental splice missed`,
         ];
+      }
+      if (
+        held.shared !== null &&
+        (held.shared.length !== held.list.length || held.shared.some((e, i) => held.list[i] !== e))
+      ) {
+        return [`${labels.verifier} shared canonical list was edited by a reader`];
       }
       for (const [key, bucket] of fresh.byRegion) {
         const heldBucket = held.byRegion.get(key);
@@ -266,8 +272,8 @@ export function createRegionIndex<Extra, Capture>(
   return {
     canonical: (world) => {
       const state = memo.read(world);
-      if (state.frozen === null) state.frozen = Object.freeze([...state.list]);
-      return state.frozen;
+      state.shared ??= state.list.slice();
+      return state.shared;
     },
     extra: (world) => memo.read(world).extra,
     near: (world, hx, hy, reach, keep, skipReach) => {

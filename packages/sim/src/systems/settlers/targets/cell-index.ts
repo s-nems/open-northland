@@ -247,7 +247,9 @@ export function nearestByCell<P = null>(
   let best: NearestByCell<P> | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const entity of list) {
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (entity === undefined) continue;
     if (onSide !== undefined && !onSide(entity)) continue; // another player's candidate
     const match = resolve(entity);
     if (match === null) continue;

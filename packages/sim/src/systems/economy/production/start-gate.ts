@@ -28,7 +28,7 @@ interface GateMemo {
 }
 
 const memos = new WeakMap<World, GateMemo>();
-const NO_BATCHES: readonly number[] = Object.freeze([]);
+const NO_BATCHES: readonly number[] = [];
 
 /**
  * {@link anyCycleStartable}, answered from memory while a workshop keeps the stock, batches, building,
