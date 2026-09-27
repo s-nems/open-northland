@@ -447,6 +447,23 @@ for and can be voted out under the rules above, never removed on its own, and dr
 frames when it resumes. The desktop window disables Electron's background throttling so a minimized
 client keeps ticking.
 
+In a browser the network worker steps and acknowledges on its own `setTimeout` chain, so a hidden tab
+does not stop it, but the browser slows it. Measured with a dedicated worker running a 20 ms timer chain
+and a 20 ms interval, on a tab hidden behind another tab of the same window for seven minutes (macOS):
+
+| Browser | Visible | Hidden |
+| --- | --- | --- |
+| Chrome 153 | 22 ms per firing | about 95 ms per firing from the moment the tab is hidden, steady for the whole seven minutes, no drop to once per second |
+| Safari 27 | not measured, hidden from the start | about 100 ms per firing for four and a half minutes, then the tab stopped reporting at all and stayed silent |
+| Firefox 155 | 24 ms per firing | not reached: behind another window and minimized the page never reported itself hidden and kept 24 ms |
+
+The lockstep driver steps at most five ticks per firing, so under a 100 ms clamp a hidden client keeps
+up with the room only at speed 1, and slips behind it a little even there; at speed 2 it runs at half
+pace. It is then `slow` for the room and can be voted out, and on return it drains its buffered frames
+at up to five ticks per firing. A Safari tab suspended this way acknowledges nothing and is `silent` after
+`SILENT_AFTER_MS`; nothing distinguishes it from a crashed client. Neither case is
+designed around: the desktop build is the primary target.
+
 ## Public relay security boundary
 
 The relay accepts anonymous players. A client-generated token is a bearer secret for reconnecting,

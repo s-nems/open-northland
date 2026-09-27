@@ -35,8 +35,6 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [10 Desync forensics](10-desync-forensics.md) | Both sides of a divergence capture the disputed tick per domain into the bundle | none |
-| [11 Background tab ticking](11-background-tab-ticking.md) | Verify and document whether the worker host keeps ticking in a hidden tab | none |
 
 The runtime reads the world through one host interface, `SessionHost` in `packages/app/src/session/`.
 The `?map=` entry runs its `Simulation`, `LockstepDriver` over `LoopbackTransport` and fixed timestep
@@ -49,9 +47,12 @@ it keeps stepping and acknowledging, and sheds the transient events of ticks the
 taken. Scenes and tests run `inlineSessionHost` on the main thread, over the same mirror. The system
 menu shows delivered against requested speed while two consecutive one-second windows deliver under
 nine tenths of the requested ticks. A relayed room governed for a slow member runs every client at
-the governed speed and names the limiter in the waiting panel. Zoom-out detail tiers left the epic
-for the render backlog (`docs/tickets/render/zoom-out-detail-tiers.md`): they do not depend on the
-sim rework. 00 lands first. 10 and 11 close the epic. Contract edits land with the ticket that makes them true.
+the governed speed and names the limiter in the waiting panel. On a desync verdict both the diverged
+and the reference member keep the disputed tick's digest fold inputs in their diagnostics bundle, and
+`npm run diag -- diff` names the first entity and component that differ. A hidden browser tab's
+behaviour is measured and stated in `docs/NETWORK.md` "Background windows". Zoom-out detail tiers left
+the epic for the render backlog (`docs/tickets/render/zoom-out-detail-tiers.md`): they do not depend on
+the sim rework. 00 closes the epic. Contract edits land with the ticket that makes them true.
 
 ## Not in this epic
 
