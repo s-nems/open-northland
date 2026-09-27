@@ -22,9 +22,11 @@ export function vehicleLookFor(binding: VehicleBinding, item: DrawItem): Vehicle
   return own ?? binding.byTribe[binding.fallbackTribe]?.[item.typeId];
 }
 
-/** The drive clip a moving vehicle plays: per hauled good, then any-cargo, then empty, then the wait. */
+/** The drive clip a moving vehicle plays: per hauled good, then any-cargo, then empty, then the wait.
+ *  A ship sails on its empty drive whatever it carries: its loaded drive is the furled hull, and the
+ *  sails stay set until it moors (owner's choice). */
 export function vehicleMovingRef(look: VehicleLook, item: DrawItem): SpriteFrameRef {
-  const loaded = item.carrying === true;
+  const loaded = item.carrying === true && look.afloat !== true;
   const byGood = loaded && item.carryGood !== undefined ? look.movingByGood?.[item.carryGood] : undefined;
   return byGood ?? (loaded ? look.loadedMoving : undefined) ?? look.moving ?? look.idle;
 }
@@ -48,7 +50,7 @@ export interface VehicleDraw extends BuildingDraw {
 /**
  * The frame a vehicle draws, or `null` for a type its tribe and the fallback tribe both lack. An
  * attacking vehicle loops its shot on the attack cadence, a moving one its drive on the gait clock, and a
- * standing one its wait on the free tick, the furled-sail hull while a ship lies moored.
+ * standing one its wait on the free tick. A ship's sails are furled only while it lies moored.
  */
 export function resolveVehicleDraw(
   binding: VehicleBinding | undefined,

@@ -50,6 +50,8 @@ const ship: VehicleLook = {
   idle: oneFrame(6000),
   mooredIdle: oneFrame(7000),
   moving: oneFrame(6000),
+  loadedMoving: oneFrame(7000),
+  movingByGood: { [WOOD]: oneFrame(7000) },
   afloat: true,
 };
 const catapult: VehicleLook = {
@@ -102,12 +104,14 @@ describe('resolveVehicleDraw', () => {
     expect(draw).toEqual({ bob: 5004, layer: 'cr_veh_body_00.oxcart', sway: 'none', indexed: false });
   });
 
-  it('furls the sails while a ship lies moored, sets them at sea, and keeps a cart on its one wait', () => {
+  it('furls the sails only while a ship lies moored, sets them at sea loaded or not, and keeps a cart on its one wait', () => {
     expect(resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0, moored: true }), 0)?.bob).toBe(7000);
     expect(
       resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0, moored: true, carrying: true }), 0)?.bob,
     ).toBe(7000);
     expect(resolveVehicleDraw(binding, item({ typeId: SHIP, facing: 0, carrying: true }), 0)?.bob).toBe(6000);
+    const sailing = { typeId: SHIP, facing: 0, state: 'moving' as const, carrying: true, carryGood: WOOD };
+    expect(resolveVehicleDraw(binding, item(sailing), 0)?.bob).toBe(6000);
     expect(resolveVehicleDraw(binding, item({ typeId: HANDCART, facing: 0, moored: true }), 0)?.bob).toBe(
       1000,
     );

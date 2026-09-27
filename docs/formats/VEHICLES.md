@@ -566,9 +566,10 @@ these choices for the holes:
   (observations of the decoded frames). A moored ship's furled sail stays rigid.
 - The ships' two hulls: action 2 (bobs 0..31 of `ls_vehicles`) has the sails set, action 4 (bobs 66..94)
   has them furled with crates on deck (observation of the baked frames). A moored ship draws the furled
-  hull, a ship standing or sailing at sea the set one; the `wood` gait the rows author as the loaded
-  drive is the furled hull too and plays as authored while a loaded ship sails. Which state the
-  original draws action 4 in is not read; the moored reading follows the observed game.
+  hull, a ship standing or sailing at sea the set one. The `wood` gait the rows author as the loaded
+  drive is the furled hull too; owner's choice: a loaded ship sails on the empty drive, so the sails
+  stay set until it moors. Which state the original draws action 4 in is not read; the moored
+  reading follows the observed game.
 - The ships' `gfxturnframelist` in-place turns are not played; a facing change snaps. The N and S
   frames, which the original shows only mid-turn, are the headings of a vehicle moving straight up or
   down ("Movement").
