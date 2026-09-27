@@ -13,7 +13,9 @@ import type { MenuMode } from './types.js';
  * callbacks are the mount's seams.
  */
 export interface ActionRingInputContext {
-  readonly tooltip: HTMLElement;
+  /** The button's name beside the cursor, at a client point. */
+  readonly showTip: (text: string, clientX: number, clientY: number) => void;
+  readonly hideTip: () => void;
   /** Client (CSS) point to canvas px, the space the layout and every hit-test work in. */
   readonly toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
   readonly getMode: () => MenuMode;
@@ -33,13 +35,13 @@ export interface ActionRingInput {
   /** True when a client point is over a visible menu button; the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** A left press on a ring button. */
-  press(command: ActionCommand, event: MouseEvent): void;
+  press(command: ActionCommand, event: Pick<MouseEvent, 'preventDefault' | 'stopPropagation'>): void;
   /** The cursor over a ring button (its event) or off every one (null): the button's name beside it. */
-  hover(command: ActionCommand | null, event: MouseEvent | null): void;
+  hover(command: ActionCommand | null, event: Pick<MouseEvent, 'clientX' | 'clientY'> | null): void;
 }
 
 export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingInput => {
-  const { tooltip, toCanvas } = ctx;
+  const { toCanvas } = ctx;
 
   return {
     claimsPointer: (clientX, clientY) => {
@@ -65,14 +67,8 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
       ctx.onCommand(command.id, targets);
     },
     hover(command, event): void {
-      if (command === null || event === null || ctx.getMode() === 'closed') {
-        tooltip.style.display = 'none';
-        return;
-      }
-      tooltip.textContent = messages().actionRing[command.id];
-      tooltip.style.left = `${event.clientX + 12}px`;
-      tooltip.style.top = `${event.clientY - 22}px`;
-      tooltip.style.display = 'block';
+      if (command === null || event === null || ctx.getMode() === 'closed') ctx.hideTip();
+      else ctx.showTip(messages().actionRing[command.id], event.clientX, event.clientY);
     },
   };
 };

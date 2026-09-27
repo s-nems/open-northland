@@ -25,7 +25,9 @@ import type { MenuMode, RingAnchor, RingPin, SettlerActions, SettlerActionsOptio
  * geometry.
  */
 
-/** Just above the DOM HUD, so a ring opened from the settler panel stands over it. */
+/** Just above the DOM HUD: a ring opened from the settler panel stands over it, and so does one opened
+ *  before a window, since the ring is the last thing the player called up and closes on any order,
+ *  Space or Escape. */
 const RING_Z = HUD_DOM_Z + 1;
 
 const LAYER_STYLE = ['position:fixed', 'inset:0', 'pointer-events:none', `z-index:${RING_Z}`].join(';');
@@ -47,6 +49,9 @@ const TOOLTIP_STYLE = [
   'display:none',
 ].join(';');
 
+/** Where the button's name stands from the cursor, in client px: beside it and just above. */
+const TIP_OFFSET = { x: 12, y: -22 } as const;
+
 /** Mount the settler action menu. Async because it loads the optional decoded GUI art. */
 export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<SettlerActions> {
   const { app, canvas } = opts;
@@ -65,8 +70,6 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const cleanup: Array<() => void> = [() => layer.remove()];
   try {
     document.body.append(layer);
-    // A right press on a button is the ring's too, and opens no browser menu.
-    layer.addEventListener('contextmenu', (event) => event.preventDefault());
 
     const tooltip = el('div', TOOLTIP_STYLE);
     document.body.append(tooltip);
@@ -222,7 +225,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
     // Click routing is order-independent: unit-controls asks `claimsPointer` before world picking.
     const input = createActionRingInput({
-      tooltip,
+      showTip: (text, clientX, clientY) => {
+        tooltip.textContent = text;
+        tooltip.style.left = `${clientX + TIP_OFFSET.x}px`;
+        tooltip.style.top = `${clientY + TIP_OFFSET.y}px`;
+        tooltip.style.display = 'block';
+      },
+      hideTip: hideTransient,
       toCanvas,
       getMode: () => mode,
       isRingVisible: () => !layer.hidden,

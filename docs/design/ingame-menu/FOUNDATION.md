@@ -279,11 +279,10 @@ person, so the centre holds), at the right the bronze close that clears the sele
 the trade as the bronze kicker (13 px, the line the player checks) over the person's name in smaller
 type (12.5 px) with 4 px between them, and an owner line only when it says something (another seat's
 person, a child's age). The orders medallion and a right click on the portrait open the action ring
-around the cursor, as a right click on the figure in the world does; the panel steps aside (unseen,
-taking no pointer) while that ring is up, since the ring is drawn on the canvas under the plane, and
-comes back the moment the ring closes, whether an order, Space or Esc closed it (Esc closes the ring
-first and keeps the selection). An open trade window stays: that ring keeps right of its edge, so no
-arm opens under it. The kicker browses the trade:
+around the cursor, as a right click on the figure in the world does. The ring stands over the panel,
+which stays in place under it, until an order, Space or Esc closes it (Esc closes the ring first and
+keeps the selection). An open trade window stays: that ring keeps right of its edge, so no arm opens
+under it. The kicker browses the trade:
 chevrons on both sides and "2 / 5" step to the previous or next person of the same trade and bring
 them into view (Tab and Shift+Tab do the same while the panel is open and no field or other window
 has the focus); they are absent while the person is the only one of the trade. A double click on

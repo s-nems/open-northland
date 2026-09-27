@@ -4067,10 +4067,13 @@ body.on-drag-scroll-cursor-hidden * {
 .on-ring__button[hidden] {
   display: none;
 }
-.on-ring__button > canvas {
+/* A crop of the ring's one icon page, which the layer carries as `--ring-page`. */
+.on-ring__glyph {
   display: block;
   flex-shrink: 0;
   pointer-events: none;
+  background-image: var(--ring-page);
+  background-repeat: no-repeat;
 }
 .on-ring__button:hover::after {
   content: "";

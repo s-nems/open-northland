@@ -200,7 +200,6 @@ export {
   vehicleLutRow,
 } from './gpu/sprite-sheet.js';
 export {
-  bakeToFlippedSprite,
   bakeToSprite,
   createReusableBaker,
   oversampleFor,

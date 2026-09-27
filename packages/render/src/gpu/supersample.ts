@@ -5,8 +5,8 @@ import { clamp } from '../data/math.js';
  * Off-screen supersampling for the screen-space `PalettedSprite` HUD meshes. Palette indices cannot be
  * linearly filtered, so nearest-sampled GUI art drawn straight at a fractional UI scale doubles texel
  * columns unevenly; rasterizing at an integer oversample and linear-downscaling that resolved-RGBA
- * texture is smooth instead. A baked source lands upside-down unless one side corrects it, so each bake
- * entry point states its flip.
+ * texture is smooth instead. A baked source lands upside-down unless it is drawn flipped, so a
+ * `PalettedSprite` in it sets `flipY`.
  */
 
 /**
@@ -37,7 +37,6 @@ function bake(
   texW: number,
   texH: number,
   invScale: number,
-  flipDisplay: boolean,
 ): SupersampledTexture {
   let texture: RenderTexture | null = null;
   let display: Sprite | null = null;
@@ -51,7 +50,7 @@ function bake(
     redraw();
 
     display = new Sprite(bakedTexture);
-    display.scale.set(invScale, flipDisplay ? -invScale : invScale);
+    display.scale.set(invScale);
     const bakedDisplay = display;
 
     return {
@@ -70,17 +69,6 @@ function bake(
   }
 }
 
-/** Bake an all-PalettedSprite source: the display is Y-flipped and the caller bottom-anchors it. */
-export function bakeToFlippedSprite(
-  renderer: Renderer,
-  source: Container,
-  texW: number,
-  texH: number,
-  invScale: number,
-): SupersampledTexture {
-  return bake(renderer, source, texW, texH, invScale, true);
-}
-
 /** Bake an already-upright source (Pixi-native content plus `flipY` PalettedSprites): the display is not
  *  flipped and the caller top-anchors it. */
 export function bakeToSprite(
@@ -90,7 +78,7 @@ export function bakeToSprite(
   texH: number,
   invScale: number,
 ): SupersampledTexture {
-  return bake(renderer, source, texW, texH, invScale, false);
+  return bake(renderer, source, texW, texH, invScale);
 }
 
 /** A {@link bakeToSprite} twin that reuses one render target across bakes. */
