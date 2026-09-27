@@ -136,7 +136,8 @@ tick's own untargeted commands, through `Simulation.enqueueAt`.
 
 Any member may change the clock with `clock { speed?, paused? }`. The relay applies it and broadcasts
 `clock { tick, speed, paused, by, governed }` with the sender's nick and the first tick the setting
-holds from. Each member may start at most `PAUSE_BUDGET` (3) pauses per game; a resume costs nothing.
+holds from; a speed request carries `governed` recomputed for the new requested speed. Each member may
+start at most `PAUSE_BUDGET` (3) pauses per game; a resume costs nothing.
 
 `speed` is always the requested speed. The running speed is `governed.speed` while `governed` is
 `{ nick, speed }`, and `speed` when it is null: the relay governs the clock for a `slow` member (see
@@ -218,7 +219,9 @@ of frames at the requested speed, 24 ticks at speed 1 and 24 times the speed oth
 `slow` until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A `slow` member does
 not hold the clock; the relay governs it instead, at the member's sustainable speed with headroom:
 `TICK_MS / load.tickMs * GOVERNOR_HEADROOM` (0.8), rounded to `GOVERNED_SPEED_STEP` (0.05), never
-above the requested speed and never below `MIN_GOVERNED_SPEED` (0.25). Before its first load report
+above the requested speed and never below `MIN_GOVERNED_SPEED` (0.25). The governed speed drops at
+once but rises only by `GOVERNED_RISE_STEPS` (2) steps or more at a time, so a load report jittering
+across one rounding boundary does not become a `clock` broadcast per advance. Before its first load report
 a member gets `GOVERNOR_HEADROOM` times the requested speed. A `slow` member whose share reaches the
 requested speed governs nothing: it is behind for another reason and its own pacer catches up. With
 several `slow` members the lowest governed speed wins, and a tie goes to the member furthest behind.
@@ -385,6 +388,8 @@ replaces the client's world, and the frames that follow are applied through the 
 | `MAX_SPEED` | 8 |
 | `GOVERN_BEHIND_MS` / `GOVERN_RELEASE_MS` | 2 s / 0.5 s of frames |
 | `GOVERNOR_HEADROOM` / `MIN_GOVERNED_SPEED` | 0.8 / 0.25 |
+| `GOVERNED_SPEED_STEP` / `GOVERNED_RISE_STEPS` | 0.05 / 2 steps |
+| `MAX_REPORTED_TICK_MS` / `MAX_REPORTED_BUFFERED` in `load` | 60 s / an hour of ticks at `MAX_SPEED` |
 | `SILENT_AFTER_MS` | 4 s |
 | `KICK_COUNTDOWN_MS` | 60 s |
 | `SNAPSHOT_REFRESH_MS` / `SNAPSHOT_RETRY_MS` | 5 min / 10 s |
@@ -457,10 +462,11 @@ and a 20 ms interval, on a tab hidden behind another tab of the same window for 
 | Safari 27 | not measured, hidden from the start | about 100 ms per firing for four and a half minutes, then the tab stopped reporting at all and stayed silent |
 | Firefox 155 | 24 ms per firing | not reached: behind another window and minimized the page never reported itself hidden and kept 24 ms |
 
-The lockstep driver steps at most five ticks per firing, so under a 100 ms clamp a hidden client keeps
-up with the room only at speed 1, and slips behind it a little even there; at speed 2 it runs at half
-pace. It is then `slow` for the room and can be voted out, and on return it drains its buffered frames
-at up to five ticks per firing. A Safari tab suspended this way acknowledges nothing and is `silent` after
+The lockstep driver owes `elapsed * speed` ticks per firing and steps at most five of them, so a
+clamped 100 ms firing still delivers up to 50 ticks a second: derived from the driver, not measured in
+the worker, a hidden Chrome tab keeps pace up to about speed 4 and trails beyond it. It is then `slow`
+for the room and can be voted out, and on return it drains its buffered frames at up to five ticks per
+firing. A Safari tab suspended this way acknowledges nothing and is `silent` after
 `SILENT_AFTER_MS`; nothing distinguishes it from a crashed client. Neither case is
 designed around: the desktop build is the primary target.
 

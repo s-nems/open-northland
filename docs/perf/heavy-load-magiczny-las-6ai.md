@@ -1,7 +1,7 @@
 # Heavy-load reference: `magiczny_las`, six AI seats, 100k ticks
 
-The yardstick the runtime-architecture epic (`docs/tickets/runtime-architecture/`) measures against
-until ticket 00 delivers its war scenario. Session: `?map=magiczny_las&player=observer&ai=0,1,2,3,4,5`
+The heavy-load yardstick sim and render optimisation is measured against, taken with the `?map=`
+sim still stepping on the main thread, before it moved to a worker. Session: `?map=magiczny_las&player=observer&ai=0,1,2,3,4,5`
 (the map adds its own computer seat, so seven AI seats play), map rules for progression and needs,
 100 000 measured ticks after a 200-tick warm-up, headless through `npm run bench:map`. Fog and speed
 flags do not change tick cost, so the browser URL with `fog=reveal&speed=10` measures the same world.
@@ -165,29 +165,29 @@ Playwright Chromium (1600x900, `fullscreen=off`, boot from the staged save 3.5 s
 At speed 1 the sim takes 20 ms per step spread over frames, but the draw alone costs 11 ms per frame
 against 5.3 ms paused: the frame that follows a step re-reconciles about 2000 drawn sprites out of
 35 700 entities. Frame p95 at speed 1 is 58 ms, which is the AI stall cluster landing on single frames.
-Speed 3 is not sustainable at this scale: the loop caps at 5 steps per frame, drops ticks, and a frame
-with the AI cluster inside reaches 400 ms. This is the split ticket 00 asks `FrameStats` to report per
-frame class; here it is read from three separate windows instead.
+Speed 3 is not sustainable at this scale: the main-thread loop of that build capped at 5 steps per
+frame and dropped ticks, and a frame with the AI cluster inside reached 400 ms. The worker host has
+no such frame cap; the system menu's speed shortfall line now reports the delivered speed instead.
+Here the split is read from three separate windows.
 
-## What this means for the epic
+## What the runtime rework had to beat
 
-- The worker host (04) removes 20 ms of sim from the frame at speed 1 but not the 11 ms draw; the
-  mirror and its indexes (02, 03) have to bring the draw of a stepped frame back toward the 5 ms paused
-  floor.
+- Moving the sim to a worker removes 20 ms of sim from the frame at speed 1 but not the 11 ms draw;
+  the mirror and its per-change indexes have to bring the draw of a stepped frame back toward the 5 ms
+  paused floor.
 - A full snapshot clone is measured here as 1.5 ms per frame at 35 700 entities on the main thread;
-  the delta of 02 has to beat that plus the structured-clone cost of a worker boundary.
+  the per-tick delta has to beat that plus the structured-clone cost of a worker boundary.
 - The relay's catch-up store carries a 23 MB JSON save at this scale, exported in about 1 s; a
-  compressed and binary form is a 00/10 decision, not a sim one.
-- The digest adds 17% to a lockstep tick at 2700 settlers; the split digest of 10 should be measured
+  compressed and binary form is a network decision, not a sim one.
+- The digest adds 17% to a lockstep tick at 2700 settlers; the per-component fold should be measured
   against that number.
-- The AI stall cluster is the single largest frame-level defect and is independent of the epic. The
-  seats now decide on spread slots and relocate on rounds of their own; what one seat's pass costs is
-  left to the AI decision ticket.
+- The AI stall cluster is the single largest frame-level defect and is independent of the runtime
+  boundaries. The seats now decide on spread slots and relocate on rounds of their own; what one seat's
+  pass costs is left to the AI decision ticket.
 
 ## Tickets filed from this run
 
-Per-system optimisation runs beside the epic; these tickets carry the numbers above and the code
-evidence, all under `docs/tickets/sim/`:
+These tickets carry the numbers above and the code evidence, all under `docs/tickets/sim/`:
 
 - [`ai-decision-tick-slicing.md`](../tickets/sim/ai-decision-tick-slicing.md): one seat's pass cost and
   its terms; the consecutive-tick seat slots and the shared flag-relocation round are fixed.
@@ -209,7 +209,7 @@ evidence, all under `docs/tickets/sim/`:
 - [`combat-target-search-at-army-scale.md`](../tickets/sim/combat-target-search-at-army-scale.md) and
   [`combat-route-searches-outside-budget.md`](../tickets/sim/combat-route-searches-outside-budget.md):
   the predicted army-scale terms (band collect and sort without a target lock, chase geometry,
-  unbudgeted searches at walls), blocked on ticket 00's war probe.
+  unbudgeted searches at walls), still to be measured on a war-scale battle.
 
 Confirmed in code but below the admission bar at this scale, with their 80k profile share:
 canonical-query joint rebuilds on Position churn 0.55% and `removeSortedById` 0.17%; generation-journal

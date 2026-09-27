@@ -1,35 +1,51 @@
 // Reads the diagnostics bundles the app exports; usage in docs/DEVELOPMENT.md.
 import { readFileSync } from 'node:fs';
 
-const EXIT_DIFFERENCE = 0;
-const EXIT_NO_DIFFERENCE = 1;
+// The exit codes of `diff`: agreement, a named difference, and a comparison that could not be made.
+const EXIT_SAME = 0;
+const EXIT_DIFFERENT = 1;
 const EXIT_UNUSABLE = 2;
 const USAGE = 'usage: npm run diag -- diff <a.json> <b.json>';
 
-let diffDigestInputs;
-let digestInputsFromJson;
 try {
-  ({ diffDigestInputs, digestInputsFromJson } = await import('../packages/sim/dist/index.js'));
+  process.exit(await main(process.argv.slice(2)));
 } catch (err) {
-  fail(`diag needs the workspace built (npm run build): ${String(err)}`);
+  fail(String(err));
 }
 
-const [command, ...args] = process.argv.slice(2);
-if (command !== 'diff' || args.length !== 2) fail(USAGE);
-const [pathA, pathB] = args;
-const disputeA = disputeOf(pathA);
-const disputeB = disputeOf(pathB);
-if (disputeA.tick !== disputeB.tick) {
-  fail(
-    `the bundles hold verdicts for different ticks: ${disputeA.tick} in ${pathA}, ${disputeB.tick} in ${pathB}`,
+async function main(argv) {
+  const [command, ...args] = argv;
+  if (command !== 'diff' || args.length !== 2) fail(USAGE);
+  const { diffDigestInputs, digestInputsFromJson } = await simExports();
+  const [pathA, pathB] = args;
+  const disputeA = disputeOf(pathA);
+  const disputeB = disputeOf(pathB);
+  if (disputeA.tick !== disputeB.tick) {
+    fail(
+      `the bundles hold verdicts for different ticks: ${disputeA.tick} in ${pathA}, ${disputeB.tick} in ${pathB}`,
+    );
+  }
+  const difference = diffDigestInputs(
+    digestInputsFromJson(disputeA.inputs),
+    digestInputsFromJson(disputeB.inputs),
   );
+  console.log(`tick ${disputeA.tick}: ${describe(difference)}`);
+  return difference === null ? EXIT_SAME : EXIT_DIFFERENT;
 }
-const difference = diffDigestInputs(
-  digestInputsFromJson(disputeA.inputs),
-  digestInputsFromJson(disputeB.inputs),
-);
-console.log(`tick ${disputeA.tick}: ${describe(difference)}`);
-process.exit(difference === null ? EXIT_NO_DIFFERENCE : EXIT_DIFFERENCE);
+
+/** The built sim's fold-input readers; a missing or stale build is reported, not thrown through. */
+async function simExports() {
+  let sim;
+  try {
+    sim = await import('../packages/sim/dist/index.js');
+  } catch (err) {
+    fail(`diag needs the workspace built (npm run build): ${String(err)}`);
+  }
+  if (typeof sim.diffDigestInputs !== 'function' || typeof sim.digestInputsFromJson !== 'function') {
+    fail('packages/sim/dist is older than this tool: run npm run build');
+  }
+  return sim;
+}
 
 /** The bundle's `game.net.dispute`, which must carry the fold inputs of its tick. */
 function disputeOf(path) {
@@ -58,8 +74,14 @@ function describe(difference) {
     case 'fog':
       return `fog differs at word ${difference.index}`;
     case 'componentSet':
+      if (difference.detail === 'order') {
+        return `${difference.domain} components written in a different order, from ${difference.component}`;
+      }
       return `component ${difference.component} written on one side only (${difference.detail})`;
     case 'component':
+      if (difference.detail === 'order') {
+        return `${difference.domain} ${difference.component} entities written in a different order, from entity ${difference.entity}`;
+      }
       return `${difference.domain} ${difference.component} entity ${difference.entity} (${difference.detail})`;
     default:
       return JSON.stringify(difference);

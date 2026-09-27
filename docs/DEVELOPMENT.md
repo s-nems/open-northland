@@ -240,8 +240,11 @@ Flags combine: `?debug=profile,trace` runs both.
 A relayed session's diagnostics bundle carries `game.net.dispute`, the last desync verdict the client
 took part in on either side: its role, tick, domains, the counterpart nicks and the digest fold inputs of
 that tick. Given the diverged and the reference member's bundles, `npm run diag -- diff a.json b.json`
-names the first entity and component that differ, after `npm run build`. It exits 0 when it names a
-difference, 1 when the retained inputs agree, and 2 when a bundle holds no verdict with inputs.
+names the first fold input that differs: the rng state, the entity allocator, a fog word, or an entity's
+component word, in fold order. It reads `packages/sim/dist`, so run `npm run build` first. Like `diff`,
+it exits 0 when the retained inputs agree, 1 when it names a difference, and 2 when it cannot compare:
+a bundle without a verdict or without inputs, verdicts for different ticks, unreadable JSON or a
+missing build.
 
 The on-canvas stats readout and the Admin / Debug palette are off by default: the "Debug tools"
 toggle on the settings screen's Gameplay tab shows both, persists with the other settings, and applies
