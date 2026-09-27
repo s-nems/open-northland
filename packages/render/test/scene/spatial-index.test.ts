@@ -157,11 +157,11 @@ describe('collectSpriteScene over the position index', () => {
       Resting: { at: BAKERY_ID },
       CurrentAtomic: {
         atomicId: MAKE_BREAD,
-        elapsed: 30,
         duration: 100,
         effect: { kind: 'produce', recipeOutput: BREAD },
         targetEntity: BAKERY_ID,
       },
+      AtomicClock: { elapsed: 30 },
     });
     const snapshot = snapshotOf([bakery, baker]);
     const inHousePrograms = (tribe: number, job: number, action: number) =>
