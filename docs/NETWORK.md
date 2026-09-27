@@ -342,6 +342,8 @@ request is outstanding however many members wait for it. A snapshot prunes the f
 A same-tick upload replaces the cached bytes and donor, so a client still in sync can correct a
 diverged donor's snapshot; with no retained frames it also satisfies a paused refresh. An older
 upload leaves the cache and any pending resync unchanged.
+If the cached donor is found out of sync, reconnects wait for a replacement too; its cached tick
+still marks the start of retained replay history.
 
 If the age limit is reached or the next frame would exceed the byte limit, the relay ends that room:
 connected members receive `error` with the `historyBytes` or `historyAge` reason, then `left`. All members,

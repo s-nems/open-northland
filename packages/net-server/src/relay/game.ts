@@ -195,7 +195,7 @@ export class Game {
     this.end.settle();
   }
 
-  /** A snapshot or a save refreshes the cache and reaches whoever waits; a save or a map is relayed. */
+  /** Snapshots refresh the recovery cache; manual saves are relayed as addressed. */
   blob(sender: Member, upload: BlobUpload, now: number): Refusal {
     if (upload.type !== 'map' && upload.tick !== null) {
       if (!isSynced(sender)) return { code: 'snapshotUnsynced' };
@@ -242,7 +242,7 @@ export class Game {
     const snapshot = this.resync.snapshot;
     if (snapshot !== null) {
       this.ledger.forget(member.token);
-      this.resync.serve(member, snapshot);
+      this.resync.serve(member, snapshot, now);
     } else if (member.outOfSync === null) {
       return { code: 'noSnapshot' };
     } else {

@@ -6,6 +6,23 @@ const divergentBytes = Buffer.from('divergent snapshot').toString('base64');
 const correctedBytes = Buffer.from('corrected snapshot').toString('base64');
 
 describe('snapshot recovery', () => {
+  it('keeps a reconnect waiting when the cached donor has diverged', () => {
+    const s = startedRoom();
+    s.advance(TICK_MS);
+    s.b.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: divergentBytes });
+    ackThrough(s.a, 1, 1);
+    ackThrough(s.b, 1, 1, 2);
+    expect(s.b.last('desync')?.tick).toBe(1);
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.of('blob')).toEqual([]);
+
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: correctedBytes });
+    expect(back.last('blob')).toMatchObject({ from: 'Ania', tick: 1, bytes: correctedBytes });
+    expect(back.of('rejected')).toEqual([]);
+  });
+
   it('keeps a diverged member waiting when a delayed upload is older than the cached snapshot', () => {
     const s = startedRoom();
     s.advance(TICK_MS * 2);

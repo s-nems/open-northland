@@ -13,6 +13,7 @@ export const SNAPSHOT_RETRY_MS = 10_000;
  */
 export class Resync {
   private readonly catchUp = new CatchUpStore();
+  private snapshotInvalid = false;
   /** Connected members only: a dropped one leaves, and asks again with `loaded` on its return. */
   private readonly awaiting = new Set<Member>();
   private requestedAt: number | null = null;
@@ -55,6 +56,7 @@ export class Resync {
   /** Queue `member` for the next snapshot a client in sync sends; one request at a time serves every
    *  member queued meanwhile, and an unanswered one is repeated on its retry cadence. */
   queue(member: Member, now: number): void {
+    if (member.outOfSync !== null && this.catchUp.snapshot?.from === member.nick) this.snapshotInvalid = true;
     this.awaiting.add(member);
     if (this.requestedAt === null || now - this.requestedAt >= SNAPSHOT_RETRY_MS) this.request(now);
   }
@@ -71,7 +73,12 @@ export class Resync {
   }
 
   /** Hand `member` the snapshot and every frame since; it stands at the snapshot's tick from here. */
-  serve(member: Member, snapshot: CachedSnapshot): void {
+  serve(member: Member, snapshot: CachedSnapshot, now: number): void {
+    // A donor's later digest verdict can invalidate bytes already cached for reconnects.
+    if (this.snapshotInvalid) {
+      this.queue(member, now);
+      return;
+    }
     this.deliver(member, {
       kind: 'blob',
       type: 'snapshot',
@@ -100,7 +107,8 @@ export class Resync {
     const newest = this.catchUp.snapshot;
     // An older upload cannot resolve a resync by replaying the cache it failed to replace.
     if (newest !== null && newest.tick === tick) {
-      for (const member of this.awaiting) this.serve(member, newest);
+      this.snapshotInvalid = false;
+      for (const member of this.awaiting) this.serve(member, newest, now);
     }
     return newer;
   }
