@@ -154,9 +154,9 @@ export function goodLabel(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: n
 }
 
 /**
- * A job's display name, shared by the worker-slot rows and a settler's profession title. Life-stage roles
- * (baby/child/woman/civilist, not picker professions) are keyed by the content job's string id through
- * the locale catalog. Every hero role is shown as the generic profession "Hero": maps reuse one hero
+ * A job's display name, shared by the worker-slot rows and a settler's profession title. Roles outside the
+ * profession picker (life stages, the jester) are keyed by the content job's string id through the locale
+ * catalog. Every hero role is shown as the generic profession "Hero": maps reuse one hero
  * body for different named characters, so the job id is not a reliable personal name.
  */
 export function jobDisplayName(
@@ -166,10 +166,10 @@ export function jobDisplayName(
   if (jobType === undefined) return jobLabel(undefined);
   if (professionDefForJob(jobType) !== undefined) return jobLabel(jobType);
   const job = ctx.jobs.find((j) => j.typeId === jobType);
-  const stages: Readonly<Record<string, string | undefined>> = messages().lifeStage;
-  const stage = job?.id !== undefined ? stages[job.id] : undefined;
+  const roles: Readonly<Record<string, string | undefined>> = messages().roleNames;
+  const role = job?.id !== undefined ? roles[job.id] : undefined;
   const hero = job !== undefined && systems.isHeroJobRow(job) ? messages().heroNames.hero_unarmed : undefined;
-  return stage ?? hero ?? job?.name ?? jobLabel(jobType);
+  return role ?? hero ?? job?.name ?? jobLabel(jobType);
 }
 
 /**

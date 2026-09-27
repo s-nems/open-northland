@@ -687,14 +687,16 @@ export const enGame = {
     allowRegeneration: 'Allow Regeneration', // 42
     prohibitRegeneration: 'Prohibit Regeneration', // 43
   },
-  // Non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by content job slug.
-  lifeStage: {
+  // Roles outside the profession picker, keyed by content job slug: the life stages (`jobtypes.ini` 1..6)
+  // and the jester (28), which maps can place but no player can train.
+  roleNames: {
     baby_female: 'Baby (girl)',
     baby_male: 'Baby (boy)',
     child_female: 'Girl',
     child_male: 'Boy',
     woman: 'Woman',
     civilist: 'Civilian',
+    jester: 'Jester',
   },
   heroNames: {
     hero_unarmed: 'Hero',

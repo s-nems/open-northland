@@ -127,6 +127,15 @@ describe('selection details panel model', () => {
     for (const [typeId, , label] of heroes) expect(jobDisplayName(ctx, typeId)).toBe(label);
   });
 
+  it('names the map-placed jester through the locale catalog instead of its job slug', () => {
+    const JOB_JESTER = 28; // `jobtypes.ini` 28
+    const ctx = {
+      ...sandboxCtx(),
+      jobs: [{ typeId: JOB_JESTER, id: 'jester', name: 'jester', allowedAtomics: [], forbiddenAtomics: [] }],
+    };
+    expect(jobDisplayName(ctx, JOB_JESTER)).toBe('Błazen');
+  });
+
   it('reflects a selected headquarters from the sandbox acceptance scene', () => {
     const sim = createSceneSim(sandboxScene);
     sim.step();
