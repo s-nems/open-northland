@@ -20,14 +20,23 @@ import {
   type PlayerCommand,
   parseCommandEnvelope,
   playerCommand,
-  type ScriptLandscapeType,
   Simulation,
   setupCommand,
 } from '../../../src/index.js';
 import { authorizedCommand } from '../../../src/systems/command/authority.js';
 import { testContent } from '../../fixtures/content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
-import { fresh, HEADQUARTERS, nthEntity, SAWMILL, VIKING, WOODCUTTER } from './support.js';
+import {
+  fresh,
+  GATE_ROW,
+  HEADQUARTERS,
+  nthEntity,
+  SAWMILL,
+  VIKING,
+  WALL_ROW,
+  WALL_ROWS,
+  WOODCUTTER,
+} from './support.js';
 
 /** The fixture HQ declares three woodcutter slots, so a spawned woodcutter qualifies for one. */
 const HQ_JOBS = [WOODCUTTER];
@@ -335,43 +344,12 @@ describe('CommandSystem - command authority', () => {
   });
 
   describe('walls', () => {
-    const WALL_ROW = 691;
-    const GATE_ROW = 696;
-    const OPEN_GATE_ROW = 700;
-    const WOOD_GOOD = 5;
-    const post = { dx: 0, dy: 0 };
-    const span = [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 }));
-    const wallRow = (
-      typeId: number,
-      walk: { dx: number; dy: number }[],
-      gate?: { open: boolean; counterpartGfxIndex: number },
-    ): ScriptLandscapeType => ({
-      typeId,
-      walk,
-      build: walk,
-      groups: [],
-      wall: {
-        maxHitpoints: 100,
-        repairPerStrike: 1,
-        construction: [{ goodType: WOOD_GOOD, amount: 1 }],
-        ...(gate === undefined ? {} : { gate }),
-      },
-    });
-    const ROWS = [
-      wallRow(WALL_ROW, [post]),
-      wallRow(GATE_ROW, span, { open: false, counterpartGfxIndex: OPEN_GATE_ROW }),
-      wallRow(OPEN_GATE_ROW, [span[0] ?? post, span[4] ?? post], {
-        open: true,
-        counterpartGfxIndex: GATE_ROW,
-      }),
-    ];
-
     function walled(): Simulation {
       const base = grassNodeMap(24, 24);
       const sim = new Simulation({
         seed: 1,
         content: testContent(),
-        map: { ...base, landscapes: { types: ROWS, placements: [] } },
+        map: { ...base, landscapes: { types: WALL_ROWS, placements: [] } },
       });
       setPlayerPlacementTribes(sim.world, sim.content, MINE, [VIKING]);
       return sim;

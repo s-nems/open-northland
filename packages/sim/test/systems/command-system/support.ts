@@ -1,6 +1,6 @@
 import { Position } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { Simulation } from '../../../src/index.js';
+import { type ScriptLandscapeType, Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 /**
@@ -22,6 +22,41 @@ export const WOOD = 1;
 export const PLANK = 2; // the sawmill recipe's output - an HQ stock slot whose `initial` is 0
 export const VIKING = 1;
 export const FRANK = 2; // a tribe absent from the fixture's tribe table - its tech-graph gates nothing
+
+/** The map catalog's wall rows these cases place: a one-post wall and a five-wide gate, closed and open. */
+export const WALL_ROW = 691;
+export const GATE_ROW = 696;
+const OPEN_GATE_ROW = 700;
+const WALL_POST = { dx: 0, dy: 0 };
+const GATE_SPAN = [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy: 0 }));
+
+function wallRow(
+  typeId: number,
+  walk: ScriptLandscapeType['walk'],
+  gate?: { open: boolean; counterpartGfxIndex: number },
+): ScriptLandscapeType {
+  return {
+    typeId,
+    walk,
+    build: walk,
+    groups: [],
+    wall: {
+      maxHitpoints: 100,
+      repairPerStrike: 1,
+      construction: [{ goodType: WOOD, amount: 1 }],
+      ...(gate === undefined ? {} : { gate }),
+    },
+  };
+}
+
+export const WALL_ROWS: readonly ScriptLandscapeType[] = [
+  wallRow(WALL_ROW, [WALL_POST]),
+  wallRow(GATE_ROW, GATE_SPAN, { open: false, counterpartGfxIndex: OPEN_GATE_ROW }),
+  wallRow(OPEN_GATE_ROW, [GATE_SPAN[0] ?? WALL_POST, GATE_SPAN[4] ?? WALL_POST], {
+    open: true,
+    counterpartGfxIndex: GATE_ROW,
+  }),
+];
 
 export function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
