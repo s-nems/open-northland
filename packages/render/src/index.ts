@@ -26,6 +26,8 @@ export {
   TILE_HALF_W,
   type TileRange,
   tileToScreen,
+  tileToScreenX,
+  tileToScreenY,
   type Viewport,
   visibleTileRange,
 } from './data/projection/index.js';

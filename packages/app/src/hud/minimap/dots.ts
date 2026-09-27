@@ -1,7 +1,7 @@
-import { fogTileVisible, ONE, tileToScreen, type WorldBounds } from '@open-northland/render';
+import { fogTileVisible, ONE, tileToScreenX, tileToScreenY, type WorldBounds } from '@open-northland/render';
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import { actorsOf, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
+import { actorsOf, isSettler, num, ownerPlayerOf } from '../../game/snapshot.js';
 
 /** Dot sizes in minimap px: a settler is a 2x2 dot, a building a 3x3 block. */
 const SETTLER_DOT_PX = 2;
@@ -29,13 +29,16 @@ export function forEachMinimapDot(
     const player = ownerPlayerOf(e);
     if (player === undefined) continue; // wildlife and neutral buildings never plot
     const settler = isSettler(e);
-    const pos = positionOf(e);
-    if (pos === undefined) continue;
+    const pos = e.components.Position as { x?: unknown; y?: unknown } | undefined;
+    const x = num(pos?.x);
+    const y = num(pos?.y);
+    if (x === undefined || y === undefined) continue;
+    const col = x / ONE;
+    const row = y / ONE;
     // Only currently-visible ground plots; the viewer's own forces always see their own cell.
-    if (fog !== null && !fogTileVisible(fog, pos.x / ONE, pos.y / ONE)) continue;
-    const s = tileToScreen(pos.x / ONE, pos.y / ONE);
-    const bx = (s.x - bounds.minX) * scale;
-    const by = (s.y - bounds.minY) * scale;
+    if (fog !== null && !fogTileVisible(fog, col, row)) continue;
+    const bx = (tileToScreenX(col, row) - bounds.minX) * scale;
+    const by = (tileToScreenY(row) - bounds.minY) * scale;
     const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;
     const colourSlot = playerColourOf?.(player) ?? player;
     const colour =
