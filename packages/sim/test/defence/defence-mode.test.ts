@@ -298,7 +298,7 @@ describe('defence mode', () => {
     for (const tick of plannedTicks) expect(idleReplanDue(tick, outside)).toBe(true);
 
     while (idleReplanDue(sim.tick + 1, outside) || idleReplanDue(sim.tick + 2, outside)) sim.step();
-    sim.world.mut(inside, Settler).jobType = SOLDIER; // drilled mid-alarm: its claim is released
+    sim.enqueueSetup({ kind: 'setJob', entity: inside, jobType: SOLDIER }); // drilled mid-alarm: released
     stepUntil(sim, 2, () => shelterOf(sim, outside) === tower);
     expect(shelterOf(sim, outside)).toBe(tower);
   });

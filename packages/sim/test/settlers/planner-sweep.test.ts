@@ -89,7 +89,7 @@ function idler(world: World): Entity {
 
 /** Give `e` a trade and an owner, as an alarm reads them. */
 function employ(world: World, e: Entity, jobType: number, player: number): Entity {
-  world.mut(e, Settler).jobType = jobType;
+  world.add(e, Settler, { ...world.get(e, Settler), jobType });
   world.add(e, Owner, { player });
   return e;
 }
