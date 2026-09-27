@@ -191,7 +191,11 @@ function walkTo(plan: PlannerContext, house: Entity, start: () => void): void {
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, house, here), start);
 }
 
-/** Drop every stop whose house fell; reports whether a full route is left to work. */
+/**
+ * Drop every stop whose house fell; reports whether a full route of finished houses is left to work. A
+ * house being upgraded stays on the route, as its workers keep their bindings, and holds the trader
+ * until it stands finished again.
+ */
 function dropFallenStops(world: World, e: Entity, route: TradeRouteView): boolean {
   const standing = route.stops.filter((stop) => isStandingHouse(world, stop.house));
   if (standing.length !== route.stops.length) {
@@ -202,13 +206,14 @@ function dropFallenStops(world: World, e: Entity, route: TradeRouteView): boolea
     live.received = 0;
     if (!live.stops.some((stop) => stop.foreign)) live.agreement = -1;
   }
-  return standing.length === TRADE_ROUTE_HOUSES;
+  return (
+    standing.length === TRADE_ROUTE_HOUSES &&
+    standing.every((stop) => world.get(stop.house, Building).built === ONE)
+  );
 }
 
 function isStandingHouse(world: World, house: Entity): boolean {
-  if (!world.isAlive(house) || !world.has(house, Position)) return false;
-  const building = world.tryGet(house, Building);
-  return building !== undefined && building.built === ONE;
+  return world.isAlive(house) && world.has(house, Position) && world.has(house, Building);
 }
 
 function decide(

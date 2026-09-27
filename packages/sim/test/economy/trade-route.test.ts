@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addPerson,
@@ -12,6 +13,7 @@ import {
   setStockAmount,
   TRADE_LIMIT_NONE,
   TradeRoute,
+  UnderConstruction,
   Vehicle,
   VehicleStock,
 } from '../../src/components/index.js';
@@ -36,7 +38,8 @@ import {
 } from '../../src/systems/trade/index.js';
 import { createVehicle, VEHICLE_WALK_RANGE_NODES } from '../../src/systems/vehicles/index.js';
 import { tradeVehicleStock } from '../../src/systems/vehicles/stock.js';
-import { testContent } from '../fixtures/content.js';
+import { economyContent } from '../fixtures/content/economy.js';
+import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
 
@@ -61,6 +64,8 @@ const PLANK = 2;
 const FOOD = 3;
 const BREAD = 7;
 const HEADQUARTERS = 1;
+/** The headquarters' next level, in {@link upgradableHeadquartersContent}. */
+const HEADQUARTERS_L1 = 90;
 /** The fixture's work temple, a house type that keeps no stock. */
 const TEMPLE = 3;
 const TRADING_POST_ID = 700;
@@ -162,10 +167,32 @@ function cartDistanceTo(sim: Simulation, trader: Entity, house: Entity): number 
   return hexDistance(anchor, { hx: door.x, hy: door.y });
 }
 
-function newSim(): Simulation {
-  const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(MAP_W, MAP_H) });
+function newSim(content = testContent()): Simulation {
+  const sim = new Simulation({ seed: 3, content, map: grassMap(MAP_W, MAP_H) });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return sim;
+}
+
+/** The fixture content with a next level of the headquarters to upgrade into. */
+function upgradableHeadquartersContent(): ContentSet {
+  const content = testContent();
+  const headquarters = economyContent.buildings.find((type) => type.typeId === HEADQUARTERS);
+  if (headquarters === undefined) throw new Error('headquarters not in the fixture');
+  return parseContentSet({
+    ...content,
+    manifest: TEST_MANIFEST,
+    buildings: [
+      ...content.buildings.map((type) =>
+        type.typeId === HEADQUARTERS ? { ...type, upgradeTarget: HEADQUARTERS_L1 } : type,
+      ),
+      {
+        ...headquarters,
+        typeId: HEADQUARTERS_L1,
+        id: 'headquarters_01',
+        construction: [{ goodType: WOOD, amount: 1 }],
+      },
+    ],
+  });
 }
 
 function attach(sim: Simulation, trader: Entity, house: Entity): void {
@@ -287,6 +314,41 @@ describe('a trader between its own houses', () => {
     sim.run(RUN_TICKS);
 
     expect(vehicleAnchor(sim.world, cart)).toEqual(parked);
+  });
+
+  it('keeps a house on its route through an upgrade and trades on once it stands again', () => {
+    const sim = newSim(upgradableHeadquartersContent());
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    sim.enqueue(playerCommand(HUMAN, { kind: 'upgradeBuilding', building: far }));
+    sim.step();
+    expect(sim.world.has(far, UnderConstruction)).toBe(true);
+
+    sim.run(RUN_TICKS);
+
+    expect(sim.world.get(trader, TradeRoute).stops.map((stop) => stop.house)).toEqual([near, far]);
+    expect(stockOf(sim, near, WOOD) + cartOf(sim, trader, WOOD)).toBe(10);
+
+    sim.enqueue(playerCommand(HUMAN, { kind: 'cancelUpgrade', building: far }));
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, far, WOOD)).toBe(10);
+  });
+
+  it('drops a house that falls from its route', () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN, []);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    sim.run(TRADE_START_TICKS);
+
+    sim.world.destroy(far);
+    sim.run(TRADE_START_TICKS);
+
+    expect(sim.world.get(trader, TradeRoute).stops.map((stop) => stop.house)).toEqual([near]);
   });
 
   it('unloads cargo no house marks at the first house that stores it', () => {
