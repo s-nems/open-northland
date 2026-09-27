@@ -107,6 +107,25 @@ describe('computeDoorBadges', () => {
     expect(badge?.dy).toBe(29);
   });
 
+  it('reads only the buildings standing in the box, and every one without a box', () => {
+    const snap = snapshotOf([
+      building(1, 7, 4, 4),
+      settler(2, CRAFTSMAN, 1),
+      building(3, 8, 200, 200),
+      settler(4, CRAFTSMAN, 3),
+    ]);
+    const asked: (number | undefined)[] = [];
+    const infoOf = (typeId: number | undefined): BuildingDoorInfo | undefined => {
+      asked.push(typeId);
+      return undefined;
+    };
+    const box = { minX: 0, minY: 0, maxX: 10, maxY: 10 };
+
+    expect(computeDoorBadges(snap, infoOf, roleOf, box).map((badge) => badge.id)).toEqual([1]);
+    expect(asked).toEqual([7]); // the far building was never projected
+    expect(computeDoorBadges(snap, infoOf, roleOf).map((badge) => badge.id)).toEqual([1, 3]);
+  });
+
   it('emits no badge for an unstaffed building, and ignores an unbound settler', () => {
     const snap = snapshotOf([
       building(1, 7, 4, 4), // no workers bound here

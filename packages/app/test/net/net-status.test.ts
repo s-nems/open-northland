@@ -87,11 +87,17 @@ describe('waitingText', () => {
     expect(text).toEqual({
       title: copy.slowedTitle,
       lines: [
-        `Bartek · ${formatMessage(copy.slowingTo, { speed: '×0.5' })}`,
+        `Bartek · ${formatMessage(copy.slowingTo, { speed: '×0.50' })}`,
         `Celina · ${copy.reasons.slow}`,
       ],
       footer: null,
     });
+  });
+
+  it('names each twentieth step the relay governs to apart, like the other speed readouts', () => {
+    const line = (speed: number) => waitingText([slow('Bartek')], { nick: 'Bartek', speed }, 'Ania').lines[0];
+    expect(line(0.25)).toBe(`Bartek · ${formatMessage(copy.slowingTo, { speed: '×0.25' })}`);
+    expect(line(0.35)).toBe(`Bartek · ${formatMessage(copy.slowingTo, { speed: '×0.35' })}`);
   });
 
   it('tells the member slowing the game that the others wait for it', () => {

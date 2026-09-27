@@ -1,6 +1,14 @@
 import type { MusicStanding } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
-import type { DrawItem, HudLayout, HudModel, PortraitInsetFrame } from '@open-northland/render';
+import {
+  cameraViewport,
+  type DrawItem,
+  type HudLayout,
+  type HudModel,
+  type PortraitInsetFrame,
+  SPRITE_CULL_MARGIN,
+  type Viewport,
+} from '@open-northland/render';
 import type { FogView, Paper, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordTickDiagnostics } from '../../diag/index.js';
@@ -70,14 +78,14 @@ export interface FrameLoopDeps {
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
   /** The same per-tick aggregation behind {@link hudFor}, for its figures rather than its layout. */
   readonly hudModelFor: (snap: WorldSnapshot) => HudModel;
-  /** Memoized by snapshot identity and fog-filtered. */
-  readonly doorBadgesFor: (snap: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
+  /** Memoized by snapshot identity and the screen, and fog-filtered. */
+  readonly doorBadgesFor: (snap: WorldSnapshot, viewport?: Viewport) => ReturnType<typeof computeDoorBadges>;
   /** One stand per site door; memoized by snapshot identity and fog-filtered. */
   readonly constructionSignsFor: (snap: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   /** Make-child and wedding bubbles; memoized by snapshot identity and fog-filtered. */
   readonly settlerBubblesFor: (snap: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
-  /** Memoized by snapshot identity and the selection version, and fog-filtered. */
-  readonly lifeHeartsFor: (snap: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
+  /** Memoized by snapshot identity, the screen and the selection version, and fog-filtered. */
+  readonly lifeHeartsFor: (snap: WorldSnapshot, viewport?: Viewport) => ReturnType<typeof computeLifeHearts>;
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   /** The civilization the local seat builds as; the placement ghost previews its bodies. */
   readonly placementTribe: number;
@@ -277,10 +285,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     geometryDebug.update(snap);
     // The gate tool tints the walls it can cut into; otherwise an assignment tints its candidates.
     renderer.setBuildingHighlight(toolPanel.controller.gateSites()?.highlight ?? controls.assignHighlight());
-    const doorBadges = doorBadgesFor(snap);
     const constructionSigns = constructionSignsFor(snap);
     const settlerBubbles = settlerBubblesFor(snap);
-    const lifeHearts = lifeHeartsFor(snap);
     // Blood and bones decay against the sim tick, so a pause or a screenshot reproduces.
     renderer.ingestCombatEffects(presentEvents, snap.tick);
     // A script's earthquake shakes the drawn world alone; picking and the HUD keep the steady frame.
@@ -290,6 +296,15 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       jitter === null
         ? camera
         : { ...camera, offsetX: camera.offsetX + jitter.dx, offsetY: camera.offsetY + jitter.dy };
+    // The renderer culls the marks by this box, so the projections read only the units under it.
+    const markViewport = cameraViewport(
+      drawnCamera,
+      app.screen.width,
+      app.screen.height,
+      SPRITE_CULL_MARGIN + (deps.elevation?.maxLift ?? 0),
+    );
+    const doorBadges = doorBadgesFor(snap, markViewport);
+    const lifeHearts = lifeHeartsFor(snap, markViewport);
     renderer.update({
       snapshot: snap,
       camera: drawnCamera,

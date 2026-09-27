@@ -302,6 +302,41 @@ describe('FogGhostStore', () => {
     expect(store.has(shifted.id)).toBe(true);
   });
 
+  it('forgets a vehicle remembered on explored ground once the live one is sighted elsewhere', () => {
+    const ship = (tileX: number) => entity(3, tileX, 6, { Vehicle: { vehicleType: 0, tribe: 1 } });
+    const lastSeen = '5,6';
+    const elsewhere = '20,6';
+    const store = new FogGhostStore();
+    store.update(snapshotOf([ship(5)]), viewOf(new Map([[lastSeen, FOG_STATE.VISIBLE]]), 1));
+    store.update(snapshotOf([ship(5)]), viewOf(new Map([[lastSeen, FOG_STATE.EXPLORED]]), 2));
+    expect(drawn(store).map((g) => g.ref)).toEqual([3]);
+    // Sailing on under fog, the memory holds where it was last seen.
+    store.update(
+      snapshotOf([ship(20)]),
+      viewOf(
+        new Map([
+          [lastSeen, FOG_STATE.EXPLORED],
+          [elsewhere, FOG_STATE.EXPLORED],
+        ]),
+        3,
+      ),
+    );
+    expect(drawn(store).map((g) => g.ref)).toEqual([3]);
+    // In sight at another cell, the live vehicle draws there and the memory goes.
+    store.update(
+      snapshotOf([ship(20)]),
+      viewOf(
+        new Map([
+          [lastSeen, FOG_STATE.EXPLORED],
+          [elsewhere, FOG_STATE.VISIBLE],
+        ]),
+        4,
+      ),
+    );
+    expect(drawn(store)).toEqual([]);
+    expect(store.has(3)).toBe(false);
+  });
+
   it('answers a box query with the drawable ghosts under it', () => {
     const near = entity(3, 2, 2, { Stump: { goodType: 3 } });
     const far = entity(4, 40, 40, { Stump: { goodType: 3 } });

@@ -134,8 +134,9 @@ function moveTarget(counts: Map<number, number>, before: number | null, after: n
   countTarget(counts, after, 1);
 }
 
-/** Each id some actor faces or crafts at, with how many actors reference it. Both references read
- *  `CurrentAtomic` alone. */
+/** Each id some actor faces or crafts at, with how many actors reference it. The craft reference also
+ *  needs the `AtomicClock`, but only its presence, and the sim adds and removes that clock together with
+ *  `CurrentAtomic`, so an unchanged `CurrentAtomic` object leaves both references unchanged. */
 const WANTED_TARGETS: SnapshotIndexSpec<Map<number, number>> = {
   empty: () => new Map(),
   add: (counts, entity) => countTargetsOf(counts, entity, 1),

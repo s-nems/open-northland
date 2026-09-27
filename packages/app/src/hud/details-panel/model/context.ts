@@ -58,7 +58,6 @@ export interface UnitPanelModelContext {
   readonly standsTo?: ((entity: number) => boolean) | undefined;
   /** The sim's land-trader test (`isTraderJob`); absent reads no trade as the trader. */
   readonly isTraderJob?: ((jobType: number) => boolean) | undefined;
-  /** The sim's trader read seam (`Simulation.traderView`); absent hides the Handel section. */
   /** The sim's trader read seam (`SessionHost.traderView`); absent hides the Handel section. */
   readonly traderView?: ((entity: number) => TraderView | undefined) | undefined;
   /** The sim's agreement read seam (`SessionHost.tradeOffersAt`); absent lists no offers on a house. */

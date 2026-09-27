@@ -1029,30 +1029,31 @@ describe('selection details panel model', () => {
   });
 
   it('counts ripe map fields within a farm plot in its production panel', () => {
+    const mapField = (id: number, tileX: number, tileY: number) => ({
+      id,
+      components: {
+        Position: { x: tileX * ONE, y: tileY * ONE },
+        Crop: { farm: null, goodType: GOOD_WHEAT, stage: 5, stages: 5 },
+      },
+    });
+    // The farm stands on node (8, 8); a node is half a tile, so the 16-node plot reaches 8 tiles along an
+    // axis, and the node distance sums both axes.
     const snapshot = snapshotOf([
       buildingEntity(1, BUILDING_FARM, {
         components: { Position: { x: fx.fromInt(4), y: fx.fromInt(4) } },
       }),
-      {
-        id: 2,
-        components: {
-          Position: { x: fx.fromInt(5), y: fx.fromInt(4) },
-          Crop: { farm: null, goodType: GOOD_WHEAT, stage: 5, stages: 5 },
-        },
-      },
-      {
-        id: 3,
-        components: {
-          Position: { x: fx.fromInt(30), y: fx.fromInt(4) },
-          Crop: { farm: null, goodType: GOOD_WHEAT, stage: 5, stages: 5 },
-        },
-      },
+      mapField(2, 5, 4),
+      mapField(3, 30, 4), // far off the plot
+      mapField(4, 12, 4), // node (24, 8): on the plot's edge
+      mapField(5, 12.5, 4), // node (25, 8): one node past it
+      mapField(6, 8, 8), // node (16, 16): the edge diagonally
+      mapField(7, 8.5, 8), // node (17, 16): one node past it
     ]);
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
-    expect(model.production).toMatchObject({ kind: 'fields', sown: 1, growing: 0, ripe: 1 });
+    expect(model.production).toMatchObject({ kind: 'fields', sown: 3, growing: 0, ripe: 3 });
   });
 
   it('shows a settler equipment section with labeled rows, worn goods, condition percentages and empty slots', () => {

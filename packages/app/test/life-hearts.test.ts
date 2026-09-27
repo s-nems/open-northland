@@ -103,3 +103,20 @@ describe('computeLifeHearts - who among the people wears one', () => {
     expect(ids).toEqual([1, 2, 3, 5]);
   });
 });
+
+describe('computeLifeHearts - only the units under the screen', () => {
+  it('reads the wounded standing in the box and none beyond it, still by ascending id', () => {
+    const at = (e: Ent, tileX: number): Ent => ({
+      id: e.id,
+      components: { ...e.components, Position: { x: fx.fromInt(tileX), y: fx.fromInt(1) } },
+    });
+    const box = { minX: 0, minY: 0, maxX: 10, maxY: 10 };
+    const far = at(person(1, { hitpoints: 50, max: 100 }), 200);
+    const near = at(person(2, { hitpoints: 50, max: 100 }), 5);
+    const stock = at(animal(3), 2);
+    const inputs = { isLivestockTribe: (tribe: number) => tribe === LIVESTOCK_TRIBE };
+    const world = snapshotOf([far, near, stock]);
+    expect(computeLifeHearts(world, inputs, box).map((heart) => heart.id)).toEqual([2, 3]);
+    expect(computeLifeHearts(world, inputs).map((heart) => heart.id)).toEqual([1, 2, 3]);
+  });
+});

@@ -1,13 +1,12 @@
 import type { GovernedClock, ServerMessage, WaitedMember } from '@open-northland/net-protocol';
 import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
+import { formatSpeed } from '../perf-overlay.js';
 
 /** Above the HUD and the perf readout, below the system menu (z 2000), so the menu still opens over it. */
 const WAITING_Z_INDEX = '1500';
 /** The countdown is redrawn on this cadence; finer would only redraw the same second. */
 const REDRAW_MS = 250;
-/** A governed speed steps by a twentieth; one decimal is enough to say how slow the game runs. */
-const GOVERNED_SPEED_DECIMALS = 1;
 
 const PANEL_STYLE = [
   'position:fixed',
@@ -207,7 +206,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
 function reasonText(row: WaitedRow, governed: GovernedClock | null): string {
   const copy = messages().net;
   if (row.reason === 'slow' && governed !== null && governed.nick === row.nick) {
-    return formatMessage(copy.slowingTo, { speed: `×${governed.speed.toFixed(GOVERNED_SPEED_DECIMALS)}` });
+    return formatMessage(copy.slowingTo, { speed: formatSpeed(governed.speed) });
   }
   return copy.reasons[row.reason];
 }

@@ -1,4 +1,13 @@
-import { groupedBy, indexesOf, listedWhere, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
+import {
+  groupedBy,
+  indexesOf,
+  nodeOfPosition,
+  ONE,
+  positionedWithin,
+  positionOfNode,
+  type TileBox,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
@@ -74,7 +83,9 @@ const CROPS_BY_FARM = groupedBy((e) => {
   return crop === undefined ? undefined : num(crop.farm);
 });
 
-const UNOWNED_CROPS = listedWhere((e) => cropOf(e)?.farm === null);
+/** Tiles a position reaches past its half-cell node's lattice point: the node spans half a tile, and the
+ *  row stagger shifts it by up to half a tile more. */
+const NODE_REACH_TILES = 1;
 
 export function productionModel(
   ctx: UnitPanelModelContext,
@@ -97,13 +108,22 @@ export function productionModel(
     const pos = positionOf(ent);
     if (pos !== undefined && fieldGood.farming !== undefined) {
       const anchor = nodeOfPosition(pos.x, pos.y);
-      for (const field of indexesOf(snapshot).get(UNOWNED_CROPS)) {
+      const radius = fieldGood.farming.fieldRadius;
+      // Every position whose node lies within the radius on either axis; the exact test follows.
+      const low = positionOfNode(anchor.hx - radius, anchor.hy - radius);
+      const high = positionOfNode(anchor.hx + radius, anchor.hy + radius);
+      const box: TileBox = {
+        minX: low.x / ONE - NODE_REACH_TILES,
+        minY: low.y / ONE - NODE_REACH_TILES,
+        maxX: high.x / ONE + NODE_REACH_TILES,
+        maxY: high.y / ONE + NODE_REACH_TILES,
+      };
+      for (const field of positionedWithin(snapshot, box, [])) {
         const crop = cropOf(field);
         const at = positionOf(field);
-        if (crop === undefined || at === undefined || num(crop.goodType) !== fieldGood.typeId) continue;
+        if (crop?.farm !== null || at === undefined || num(crop.goodType) !== fieldGood.typeId) continue;
         const node = nodeOfPosition(at.x, at.y);
-        if (Math.abs(node.hx - anchor.hx) + Math.abs(node.hy - anchor.hy) > fieldGood.farming.fieldRadius)
-          continue;
+        if (Math.abs(node.hx - anchor.hx) + Math.abs(node.hy - anchor.hy) > radius) continue;
         if (isRipe(crop)) ripe++;
         else growing++;
       }

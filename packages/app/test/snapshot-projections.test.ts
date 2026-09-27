@@ -1,4 +1,4 @@
-import { terrainWorldBounds } from '@open-northland/render';
+import { terrainWorldBounds, type Viewport } from '@open-northland/render';
 import { FOG_MODE, FOG_STATE, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../src/game/sandbox/index.js';
@@ -30,6 +30,17 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
 
     const next = snapshotOf([building(10, HOME_TYPE, 1, 1)]); // a new tick's snapshot - a new instance
     expect(doorBadgesFor(next)).not.toBe(doorBadgesFor(snap));
+  });
+
+  it('keeps the badges while the screen scrolls within its position buckets, and re-reads them past', () => {
+    const { doorBadgesFor } = projectionsFor();
+    const screenAt = (x: number): Viewport => ({ minX: x, minY: 0, maxX: x + 800, maxY: 600 });
+    const held = doorBadgesFor(snap, screenAt(0));
+    expect(doorBadgesFor(snap, screenAt(1))).toBe(held);
+    const far = doorBadgesFor(snap, screenAt(100_000));
+    expect(far).not.toBe(held);
+    expect(far).toEqual([]); // the home stands far off that screen
+    expect(held.map((badge) => badge.id)).toEqual([10]);
   });
 
   it('re-reads the summary when a spectator switches seats under a held snapshot, zero for the whole map', () => {
@@ -147,6 +158,8 @@ describe('per-tick projections - one walk of the map between them', () => {
     id,
     components: { Resource: { goodType: 1 }, Position: { x: fx.fromInt(id), y: fx.fromInt(id) } },
   });
+  /** A sprite cull box over the map's first tiles, where the fixtures' actors stand. */
+  const SCREEN: Viewport = { minX: 0, minY: 0, maxX: 800, maxY: 600 };
   const owned = (e: Ent, x: number, y: number): Ent => ({
     id: e.id,
     components: {
@@ -168,9 +181,9 @@ describe('per-tick projections - one walk of the map between them', () => {
         createFogGates(),
         { isLivestockTribe: () => false },
       );
-      doorBadgesFor(snapshot);
+      doorBadgesFor(snapshot, SCREEN);
       settlerBubblesFor(snapshot);
-      lifeHeartsFor(snapshot);
+      lifeHeartsFor(snapshot, SCREEN);
       forEachMinimapDot(snapshot, null, terrainWorldBounds(8, 8), 0.5, undefined, () => undefined);
     };
 
@@ -207,8 +220,8 @@ describe('per-tick projections - one walk of the map between them', () => {
       createFogGates(),
       heartInputs,
     );
-    expect(first.lifeHeartsFor(snapshot)).toHaveLength(0); // hidden indoors
-    expect(visits()).toBe(entities.length * 2); // the actor index, plus the scene index once
+    expect(first.lifeHeartsFor(snapshot, SCREEN)).toHaveLength(0); // hidden indoors
+    expect(visits()).toBe(entities.length * 2); // the position index, plus the scene index once
 
     const second = createSnapshotProjections(
       fixedViewerSeat(PLAYER),
@@ -217,7 +230,7 @@ describe('per-tick projections - one walk of the map between them', () => {
       createFogGates(),
       heartInputs,
     );
-    second.lifeHeartsFor(snapshot);
+    second.lifeHeartsFor(snapshot, SCREEN);
     expect(visits()).toBe(entities.length * 2); // unchanged - both indexes key on the snapshot, not on us
   });
 });

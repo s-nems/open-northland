@@ -270,6 +270,20 @@ export class FogGhostStore implements GhostSource {
     if (changed) this.contentVersion++;
     if (leaving.size > 0) this.captureCells(snapshot, staticRefs, elevation);
     leaving.clear();
+    this.forgetSightedVehicles(snapshot);
+  }
+
+  /** A vehicle's memory stays at the cell it was last seen in, but once the live vehicle stands in sight
+   *  anywhere it draws there, so the stale memory goes even while its own cell stays explored. */
+  private forgetSightedVehicles(snapshot: WorldSnapshot): void {
+    if (this.records.size === 0) return;
+    for (const vehicle of entitiesWith(snapshot, 'Vehicle')) {
+      if (!this.records.has(vehicle.id)) continue;
+      const pos = readPosition(vehicle.components);
+      if (pos === null) continue;
+      const cell = this.cellOf(pos.x / ONE, pos.y / ONE);
+      if (cell !== OFF_MASK && this.states[cell] === FOG_STATE.VISIBLE) this.forget(vehicle.id);
+    }
   }
 
   /** Capture the ghost-kind entities in {@link leavingCells}: one position query per tile bucket of

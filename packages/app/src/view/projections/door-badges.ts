@@ -10,7 +10,9 @@ import {
   entityById,
   type Fixed,
   nodeOfPosition,
+  positionedWithin,
   positionOfNode,
+  type TileBox,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
@@ -55,13 +57,21 @@ export type BuildingDoorInfoOf = (
   tribe: number | undefined,
 ) => BuildingDoorInfo | undefined;
 
+/** The badges of the buildings standing in `box`, ascending by building id; no box reads the whole map. */
 export function computeDoorBadges(
   snapshot: WorldSnapshot,
   buildingInfoOf: BuildingDoorInfoOf,
   roleOf: (jobType: number) => WorkerRole,
+  box?: TileBox,
 ): DoorBadge[] {
   const out: DoorBadge[] = [];
-  for (const e of entitiesWith(snapshot, 'Building')) {
+  const buildings =
+    box === undefined
+      ? entitiesWith(snapshot, 'Building')
+      : positionedWithin(snapshot, box, [])
+          .filter((e) => 'Building' in e.components)
+          .sort((a, b) => a.id - b.id);
+  for (const e of buildings) {
     const counts = staffTallyOf(staffOf(snapshot, e.id), roleOf);
     // One banner row per resident family.
     const families = homeFamiliesOf(snapshot, e.id);

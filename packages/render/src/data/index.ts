@@ -19,6 +19,7 @@ export {
   type Viewport,
   visibleTileRange,
 } from './projection/index.js';
+export { anchorTileBox } from './scene/entity-source.js';
 export { indoorHouseOf, isIndoorSettler } from './scene/snapshot-index.js';
 export { type SceneGround, type SceneTerrain, terrainMapToScene } from './scene/terrain-scene.js';
 export type { SpriteAtlas } from './sprites/atlas.js';

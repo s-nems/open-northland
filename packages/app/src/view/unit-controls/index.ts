@@ -35,6 +35,16 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
 /** The browser's click count (`MouseEvent.detail`) on the second press of a double-click. */
 const DOUBLE_CLICK = 2;
 
+/** A right-click press as it landed. A fallback that runs once the sim's answer arrives replays it, so
+ *  the order controllers resolve its client point to the press's world point and read the press's
+ *  selection, however far the camera or the selection moved meanwhile. */
+interface RightClickPress {
+  readonly clientX: number;
+  readonly clientY: number;
+  readonly world: { readonly x: number; readonly y: number };
+  readonly selected: ReadonlySet<number>;
+}
+
 /**
  * App-layer select-and-command input: it reads the mouse and keyboard and issues sim commands through
  * the one-way seam, never touching sim state. Selection is client view state fed to the renderer's
@@ -112,6 +122,24 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return screenToWorld(opts.camera(), c.x, c.y);
   };
 
+  let replaying: RightClickPress | null = null;
+  const orderToWorld = (clientX: number, clientY: number): { x: number; y: number } =>
+    replaying !== null && replaying.clientX === clientX && replaying.clientY === clientY
+      ? replaying.world
+      : toWorld(clientX, clientY);
+  const orderSelection = (): ReadonlySet<number> => replaying?.selected ?? selection.ids();
+  const replayed =
+    (press: RightClickPress, run: () => void): (() => void) =>
+    () => {
+      const outer = replaying;
+      replaying = press;
+      try {
+        run();
+      } finally {
+        replaying = outer;
+      }
+    };
+
   /** The half-cell node a click on the world view names, under the terrain lift it was drawn with. */
   const nodeAt = (clientX: number, clientY: number): Tile => {
     const w = toWorld(clientX, clientY);
@@ -179,13 +207,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     technologyVersion: opts.technologyVersion,
     requestEquipPicks: opts.requestEquipPicks,
     answered,
-    selected: selection.ids,
+    selected: orderSelection,
     targets: unitTargets,
     snapshot: opts.snapshot,
     content: opts.content,
     mapSize: opts.mapSize,
     ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
-    toWorld,
+    toWorld: orderToWorld,
     enqueue: opts.enqueue,
     selectOwnSettler: (id) => applySelection([id], false),
     openActions: (atClient) => chrome.actions().open(atClient),
@@ -194,14 +222,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   });
 
   const vehicleOrders = createVehicleOrderController({
-    selected: selection.ids,
+    selected: orderSelection,
     targets: unitTargets,
     snapshot: opts.snapshot,
     content: opts.content,
     mapSize: opts.mapSize,
     ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
     viewer: opts.viewer,
-    toWorld,
+    toWorld: orderToWorld,
     enqueue: opts.enqueue,
     askAttachToVehicle: opts.askAttachToVehicle,
     askMoorAt: opts.askMoorAt,
@@ -242,8 +270,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       } else {
         // Settlers the vehicle under the cursor refuses take the usual right-click once it answered.
         const onBuilding = marker?.kind === 'building' ? marker.ref : null;
-        if (vehicleOrders.issueAttachSelected(e, () => rightClickOrders(e, onBuilding))) cue('confirm');
-        else if (rightClickOrders(e, onBuilding)) cue('confirm');
+        const press: RightClickPress = {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          world: w,
+          selected: new Set(selection.ids()),
+        };
+        const fallback = replayed(press, () => rightClickOrders(e, onBuilding, press));
+        if (vehicleOrders.issueAttachSelected(e, fallback)) cue('confirm');
+        else if (rightClickOrders(e, onBuilding, press)) cue('confirm');
       }
       return;
     }
@@ -253,12 +288,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /** Settlers and vehicles selected together both take the click. One that picks an own settler replaces
    *  the selection first, which leaves no vehicle selected to drive. */
-  const rightClickOrders = (e: MouseEvent, onBuilding: number | null): boolean => {
+  const rightClickOrders = (e: MouseEvent, onBuilding: number | null, press: RightClickPress): boolean => {
     const settlersTook = orders.issueRightClick(e, onBuilding);
     // A trader riding its cart takes a house onto its route instead of driving the cart there.
     const vehiclesTook =
-      orders.issueRiderTradeHouse(e, onBuilding, () => vehicleOrders.issueRightClick(e)) ||
-      vehicleOrders.issueRightClick(e);
+      orders.issueRiderTradeHouse(
+        e,
+        onBuilding,
+        replayed(press, () => vehicleOrders.issueRightClick(e)),
+      ) || vehicleOrders.issueRightClick(e);
     return settlersTook || vehiclesTook;
   };
 

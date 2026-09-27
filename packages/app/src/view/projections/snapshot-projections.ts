@@ -7,7 +7,8 @@ import {
   layoutHud,
   ONE,
 } from '@open-northland/render';
-import type { WorldSnapshot } from '@open-northland/sim';
+import { anchorTileBox, type Viewport } from '@open-northland/render/data';
+import { TILE_BUCKET_SIZE, type TileBox, type WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { computeConstructionSigns } from './construction-signs.js';
@@ -37,6 +38,41 @@ export function memoBySnapshot<T>(
   };
 }
 
+/** The candidate box of a mark over the sprites' cull `viewport`: every tile whose anchor can land in it,
+ *  grown to whole position-index buckets so a scroll inside them keeps the memo. */
+function markTileBox(viewport: Viewport): TileBox {
+  const box = anchorTileBox(viewport);
+  return {
+    minX: Math.floor(box.minX / TILE_BUCKET_SIZE) * TILE_BUCKET_SIZE,
+    minY: Math.floor(box.minY / TILE_BUCKET_SIZE) * TILE_BUCKET_SIZE,
+    maxX: Math.ceil(box.maxX / TILE_BUCKET_SIZE) * TILE_BUCKET_SIZE,
+    maxY: Math.ceil(box.maxY / TILE_BUCKET_SIZE) * TILE_BUCKET_SIZE,
+  };
+}
+
+function sameBox(a: TileBox | undefined, b: TileBox | undefined): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  return a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
+}
+
+/** {@link memoBySnapshot} for a mark projection that reads only the units under the screen: keyed on the
+ *  candidate box too, and no viewport reads the whole map. */
+function memoByScreen<T>(
+  build: (snapshot: WorldSnapshot, box: TileBox | undefined) => T,
+  versionOf: () => number,
+): (snapshot: WorldSnapshot, viewport?: Viewport) => T {
+  const memo = new WeakMap<WorldSnapshot, { version: number; box: TileBox | undefined; value: T }>();
+  return (snapshot, viewport) => {
+    const version = versionOf();
+    const box = viewport === undefined ? undefined : markTileBox(viewport);
+    const hit = memo.get(snapshot);
+    if (hit !== undefined && hit.version === version && sameBox(hit.box, box)) return hit.value;
+    const value = build(snapshot, box);
+    memo.set(snapshot, { version, box, value });
+    return value;
+  };
+}
+
 /** The live selection the heart projection reads, paired with its memo key. */
 export interface HeartSelection {
   readonly ids: () => ReadonlySet<number>;
@@ -61,10 +97,17 @@ export function createSnapshotProjections(
   /** The panel's own aggregates, shared with any consumer needing a figure rather than its layout. */
   readonly hudModelFor: (snapshot: WorldSnapshot) => HudModel;
   readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
-  readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
+  /** `viewport` is the sprites' cull box: only buildings whose badges can draw there are read. */
+  readonly doorBadgesFor: (
+    snapshot: WorldSnapshot,
+    viewport?: Viewport,
+  ) => ReturnType<typeof computeDoorBadges>;
   readonly constructionSignsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
-  readonly lifeHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
+  readonly lifeHeartsFor: (
+    snapshot: WorldSnapshot,
+    viewport?: Viewport,
+  ) => ReturnType<typeof computeLifeHearts>;
 } {
   // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot, and
   // the fog is the viewer's, so every fog-filtered memo keys on it as well.
@@ -73,14 +116,21 @@ export function createSnapshotProjections(
     const seat = viewer.seat();
     return seat === null ? emptyHud(snapshot.tick) : buildHud(snapshot, seat);
   }, viewerVersion);
-  const heartsMemo = (): ((snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>) =>
-    memoBySnapshot(
-      (snapshot) => {
-        const list = computeLifeHearts(snapshot, {
-          isLivestockTribe: hearts.isLivestockTribe,
-          playerColourOf: hearts.playerColourOf,
-          selected: hearts.selection?.ids(),
-        });
+  const heartsMemo = (): ((
+    snapshot: WorldSnapshot,
+    viewport?: Viewport,
+  ) => ReturnType<typeof computeLifeHearts>) =>
+    memoByScreen(
+      (snapshot, box) => {
+        const list = computeLifeHearts(
+          snapshot,
+          {
+            isLivestockTribe: hearts.isLivestockTribe,
+            playerColourOf: hearts.playerColourOf,
+            selected: hearts.selection?.ids(),
+          },
+          box,
+        );
         const fog = fogGates.current();
         return fog === null ? list : list.filter((h) => fogTileVisible(fog, h.x / ONE, h.y / ONE));
       },
@@ -95,8 +145,8 @@ export function createSnapshotProjections(
       (snapshot) => layoutHud(hudModelFor(snapshot), hudLabels(seatNameOf)),
       viewerVersion,
     ),
-    doorBadgesFor: memoBySnapshot((snapshot) => {
-      const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf);
+    doorBadgesFor: memoByScreen((snapshot, box) => {
+      const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf, box);
       const fog = fogGates.current();
       return fog === null
         ? badges
@@ -112,12 +162,12 @@ export function createSnapshotProjections(
       const fog = fogGates.current();
       return fog === null ? bubbles : bubbles.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
     }, viewerVersion),
-    lifeHeartsFor: (snapshot) => {
+    lifeHeartsFor: (snapshot, viewport) => {
       if (viewer.version() !== heartsViewer) {
         heartsViewer = viewer.version();
         lifeHearts = heartsMemo();
       }
-      return lifeHearts(snapshot);
+      return lifeHearts(snapshot, viewport);
     },
   };
 }

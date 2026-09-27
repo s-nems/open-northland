@@ -8,7 +8,9 @@ const US_PER_MS = 1000;
  * The per-tick cost of the snapshot delta path a worker host pays: taking the delta, the structured
  * clone `postMessage` would make, and applying it to a mirror, beside the delta's size. Sampled outside
  * the timed tick, so the tick table stays the sim's. At each window's end it checks the mirror against
- * the live snapshot and clones a full snapshot once for the comparison the delta replaces.
+ * the live snapshot and clones a full snapshot once for the comparison the delta replaces. The runtime's
+ * readers register their indexes on the mirror lazily, so this mirror holds none, and its apply figure
+ * leaves out the per-delta index upkeep the runtime also pays.
  */
 export class MirrorProbe {
   private readonly deltas;
@@ -69,7 +71,7 @@ export class MirrorProbe {
       `p95 ${percentile(this.touched, 95).toFixed(0)}  components/tick p50 ${percentile(this.components, 50).toFixed(0)} ` +
       `p95 ${percentile(this.components, 95).toFixed(0)}  delta JSON KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
       `p95 ${percentile(this.kilobytes, 95).toFixed(1)}  take µs ${us(this.takeUs)}  clone µs ${us(this.cloneUs)}  ` +
-      `apply µs ${us(this.applyUs)}  full snapshot clone ${fullCloneMs.toFixed(0)} ms`;
+      `apply only, no indexes µs ${us(this.applyUs)}  full snapshot clone ${fullCloneMs.toFixed(0)} ms`;
     this.takeUs = [];
     this.cloneUs = [];
     this.applyUs = [];
