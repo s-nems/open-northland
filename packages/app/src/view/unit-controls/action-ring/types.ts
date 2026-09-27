@@ -27,6 +27,9 @@ export interface SettlerActionsOptions {
   readonly jobUnlocked: (ids: readonly number[], jobType: number) => boolean;
   readonly jobBlockedReason?: (ids: readonly number[], jobType: number) => string;
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
+  /** Bumped when an answer the job gates read lands changed, so an open list redraws under one
+   *  snapshot, as a paused game keeps. */
+  readonly jobAnswersVersion: () => number;
   /** One ring button was clicked for the selected settlers; the menu has already closed. */
   readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => void;
   /** The GUI click every pressed ring button and picked profession confirms with. */

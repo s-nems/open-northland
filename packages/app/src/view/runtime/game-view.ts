@@ -638,6 +638,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       panelAnswersVersion: answers.versions.unitPanel,
       attachPicksVersion: answers.versions.attachPicks,
       canChooseJob: answers.canChooseJob,
+      askCanChooseJob: answers.askCanChooseJob,
+      jobChoicesVersion: answers.versions.jobChoices,
       app,
       canvas,
       uiscale,

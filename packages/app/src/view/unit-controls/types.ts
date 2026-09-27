@@ -53,6 +53,10 @@ export interface UnitControlsOptions {
   /** The sim's own answer to whether a settler may take a trade; the picker offers a row when a selected
    *  settler the profession order reaches may, and changes only those who may. */
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
+  /** `canChooseJob` as of now, which a profession pick awaits before it orders. */
+  readonly askCanChooseJob: (entity: number, jobType: number) => Promise<boolean>;
+  /** Bumped when a `canChooseJob` answer changes, which redraws an open profession list. */
+  readonly jobChoicesVersion: () => number;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly uiscale?: number;

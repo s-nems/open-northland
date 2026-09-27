@@ -100,9 +100,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     let menu: { readonly ids: readonly number[]; readonly groups: readonly ActionGroup[] } | null = null;
     let restoredJobs = false;
     let restoredPickerScrollTop = 0;
-    /** The snapshot the open list was last gated against: every gate reads tick state, so the frames
-     *  between two ticks would only ask them again. */
+    /** The snapshot and answers the open list was last gated against: the frames between two ticks
+     *  would only ask the gates again, unless an answer landed. */
     let listedSnapshot: WorldSnapshot | null = null;
+    let listedAnswers = -1;
 
     const hideTransient = (): void => {
       tooltip.style.display = 'none';
@@ -191,8 +192,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
           picker.setScrollTop(restoredPickerScrollTop);
           restoredJobs = false;
         }
-        if (snapshot !== listedSnapshot) {
+        const answers = opts.jobAnswersVersion();
+        if (snapshot !== listedSnapshot || answers !== listedAnswers) {
           listedSnapshot = snapshot;
+          listedAnswers = answers;
           picker.refresh();
         }
         // Keep the ring hidden under the DOM list window.

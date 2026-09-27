@@ -1,6 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { type Entity, entityById, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
-import { num, ownerPlayerOf } from '../../game/snapshot.js';
+import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import {
@@ -24,14 +23,11 @@ import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { createTooltip } from '../tooltip.js';
-import {
-  mountSettlerActions,
-  orderRecipients,
-  type SettlerActions,
-  selectionCentre,
-} from './action-ring/index.js';
+import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
+import type { AnsweredOrders } from './answered-orders.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { PickMode } from './pick-mode.js';
+import { professionGates } from './profession-gates.js';
 import type { UnitSelection } from './selection.js';
 import { type SettlerContractCommands, settlerPanelActions } from './settler-panel.js';
 import type { UnitControlsOptions } from './types.js';
@@ -68,6 +64,8 @@ export interface UnitChromeCallbacks {
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
   /** The GUI click feedback the ring's and the panel's buttons press with. */
   readonly cue: (cue: UiCue) => void;
+  /** Runs a click's order once the host answered it, never after the controls are gone. */
+  readonly answered: AnsweredOrders;
 }
 
 export interface UnitChromeHandle {
@@ -332,15 +330,6 @@ export async function createUnitChrome(
       ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
     });
 
-  /** The selection's settlers the ring's profession order reaches. */
-  const professionTargets = (ids: readonly number[]): number[] =>
-    orderRecipients(opts.content, opts.snapshot(), ids, 'changeProfession');
-  /** Of those, the ones that have earned `jobType`; the picker offers a job when any of them has. */
-  const professionTakers = (ids: readonly number[], jobType: number): number[] =>
-    professionTargets(ids).filter((id) => opts.canChooseJob(id, jobType));
-  const currentProfession = (id: number): number | undefined =>
-    num((entityById(opts.snapshot(), id)?.components.Settler as { jobType?: unknown } | undefined)?.jobType);
-
   const mountActions = (uiscale: number): Promise<SettlerActions> =>
     mountSettlerActions({
       app: opts.app,
@@ -352,29 +341,16 @@ export async function createUnitChrome(
       ),
       professions: opts.professions,
       content: opts.content,
-      jobVisible: (ids, jobType) =>
-        professionTakers(ids, jobType).length > 0 ||
-        professionTargets(ids).some((id) => currentProfession(id) === jobType),
-      jobUnlocked: (ids, jobType) => professionTargets(ids).some((id) => opts.canChooseJob(id, jobType)),
-      jobBlockedReason: (ids, jobType) => {
-        for (const id of professionTargets(ids)) {
-          const ent = entityById(opts.snapshot(), id);
-          if (ent === undefined) continue;
-          const tribe = num((ent.components.Settler as { tribe?: unknown } | undefined)?.tribe);
-          if (tribe === undefined) continue;
-          const status = opts.technologyStatus?.('job', jobType, tribe, ownerPlayerOf(ent));
-          if (status !== undefined) {
-            const reason = technologyReason(opts.content, status);
-            if (reason !== null) return reason;
-          }
-        }
-        return messages().hud.technologyExperience;
-      },
-      onSetJob: (ids, jobType) => {
-        for (const id of professionTakers(ids, jobType)) {
-          opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
-        }
-      },
+      ...professionGates({
+        content: opts.content,
+        snapshot: opts.snapshot,
+        canChooseJob: opts.canChooseJob,
+        askCanChooseJob: opts.askCanChooseJob,
+        technologyStatus: opts.technologyStatus,
+        answered: callbacks.answered,
+        enqueue: opts.enqueue,
+      }),
+      jobAnswersVersion: () => opts.jobChoicesVersion() + (opts.technologyVersion?.() ?? 0),
       onCommand: callbacks.ringCommand,
       cue: callbacks.cue,
     });

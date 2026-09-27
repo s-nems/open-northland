@@ -93,6 +93,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     armPick: (mode) => pickMode.arm(mode),
     armedPick: () => pickMode.armed(),
     selectGroup: (ids) => applySelection(ids, false),
+    answered,
     ringCommand: (id, targets) =>
       issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
         enqueue: opts.enqueue,

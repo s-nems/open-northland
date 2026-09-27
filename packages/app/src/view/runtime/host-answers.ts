@@ -57,6 +57,7 @@ export interface HostAnswers {
     player?: number,
   ) => UnlockStatus | undefined;
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
+  readonly askCanChooseJob: (entity: number, jobType: number) => Promise<boolean>;
   readonly standsTo: (entity: number) => boolean;
   /** Undefined while unanswered, which leaves the status detail out. */
   readonly workStatus: (entity: number) => WorkStatus | undefined;
@@ -145,6 +146,13 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
     canChooseJob: (entity, jobType) =>
       perTick(jobChoices, `${entity}:${jobType}`, () => host.canChooseJob(entity as Entity, jobType)) ===
       true,
+    askCanChooseJob: (entity, jobType) =>
+      jobChoices.fresh(
+        `${entity}:${jobType}`,
+        () => host.canChooseJob(entity as Entity, jobType),
+        NO_INPUTS,
+        PER_TICK,
+      ),
     standsTo: (entity) => perTick(stands, `${entity}`, () => host.standsTo(entity as Entity)) === true,
     workStatus: (entity) => perTick(workStatuses, `${entity}`, () => host.workStatus(entity as Entity)),
     traderView: (trader) => perTick(traders, `${trader}`, () => host.traderView(trader as Entity)),
