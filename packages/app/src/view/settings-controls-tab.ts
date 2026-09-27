@@ -36,15 +36,7 @@ export function createControlsTab(opts: {
     const text = messages().mainMenu.settings;
     chip.classList.remove('is-capturing');
     chip.classList.toggle('is-unassigned', binding === null);
-    chip.textContent =
-      binding === null
-        ? text.bindingUnassigned
-        : keyDisplayLabel(binding, {
-            space: text.keySpace,
-            mouseLeft: text.mouseLeft,
-            mouseMiddle: text.mouseMiddle,
-            mouseRight: text.mouseRight,
-          });
+    chip.textContent = binding === null ? text.bindingUnassigned : keyDisplayLabel(binding);
   };
 
   const startCapture = (action: KeybindingAction, chip: HTMLButtonElement): void => {

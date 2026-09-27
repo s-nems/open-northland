@@ -150,7 +150,7 @@ describe('Escape', () => {
   it('opens the game menu by default, with B on the construction window', () => {
     expect(DEFAULT_KEY_BINDINGS.gameMenu).toBe('Escape');
     expect(DEFAULT_KEY_BINDINGS.construction).toBe('KeyB');
-    expect(keyDisplayLabel('Escape', { space: 'Space' })).toBe('Esc');
+    expect(keyDisplayLabel('Escape')).toBe('Esc');
   });
 
   it('never sticks to another action through storage', () => {
@@ -222,7 +222,12 @@ describe('input chords', () => {
 });
 
 describe('keyDisplayLabel', () => {
-  const names = { space: 'Spacja' };
+  const names = {
+    space: 'Spacja',
+    mouseLeft: 'lewy klik',
+    mouseMiddle: 'środkowy klik',
+    mouseRight: 'prawy klik',
+  };
 
   it('renders key caps, not event codes', () => {
     expect(keyDisplayLabel('KeyA', names)).toBe('A');
@@ -232,10 +237,9 @@ describe('keyDisplayLabel', () => {
     expect(keyDisplayLabel('Comma', names)).toBe(',');
     expect(keyDisplayLabel('Space', names)).toBe('Spacja');
     expect(keyDisplayLabel('Shift+Digit2', names)).toBe('Shift + 2');
-    expect(keyDisplayLabel('Ctrl+Mouse2', { ...names, mouseRight: 'prawy klik' })).toBe('Ctrl + prawy klik');
-    expect(keyDisplayLabel('Primary+Mouse2', { ...names, mouseRight: 'prawy klik' })).toBe(
-      'Ctrl/Cmd + prawy klik',
-    );
+    expect(keyDisplayLabel('Ctrl+Mouse2', names)).toBe('Ctrl + prawy klik');
+    expect(keyDisplayLabel('Primary+Mouse2', names)).toBe('Ctrl/Cmd + prawy klik');
+    expect(keyDisplayLabel('Mouse1', names)).toBe('środkowy klik');
   });
 
   it('leaves navigation keys as their code', () => {

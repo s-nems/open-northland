@@ -104,8 +104,7 @@ export async function createUnitChrome(
   };
   const keyLabel = (action: 'actionRing'): string => {
     const binding = opts.bindings[action];
-    const names = messages().mainMenu.settings;
-    return binding === null ? names.bindingUnassigned : keyDisplayLabel(binding, { space: names.keySpace });
+    return binding === null ? messages().mainMenu.settings.bindingUnassigned : keyDisplayLabel(binding);
   };
   // Its own card: the world hover hides the plane's shared one every frame the cursor is over the HUD.
   const hoverCard = createHoverCard({

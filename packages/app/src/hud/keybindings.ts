@@ -1,3 +1,5 @@
+import { messages } from '../i18n/index.js';
+
 export const CONTROL_GROUP_ACTIONS = [
   'controlGroup1',
   'controlGroup2',
@@ -255,20 +257,30 @@ const CODE_LABELS: Readonly<Record<string, string>> = {
 
 export interface BindingDisplayNames {
   readonly space: string;
-  readonly mouseLeft?: string;
-  readonly mouseMiddle?: string;
-  readonly mouseRight?: string;
+  readonly mouseLeft: string;
+  readonly mouseMiddle: string;
+  readonly mouseRight: string;
+}
+
+function localeBindingNames(): BindingDisplayNames {
+  const text = messages().mainMenu.settings;
+  return {
+    space: text.keySpace,
+    mouseLeft: text.mouseLeft,
+    mouseMiddle: text.mouseMiddle,
+    mouseRight: text.mouseRight,
+  };
 }
 
 /** Player-facing label for a normalized binding chord. */
-export function keyDisplayLabel(binding: string, names: BindingDisplayNames): string {
+export function keyDisplayLabel(binding: string, names: BindingDisplayNames = localeBindingNames()): string {
   const parts = binding.split('+');
   const code = parts.pop() ?? binding;
   let codeLabel = CODE_LABELS[code] ?? code;
   if (code === 'Space') codeLabel = names.space;
-  else if (code === 'Mouse0') codeLabel = names.mouseLeft ?? 'Mouse 1';
-  else if (code === 'Mouse1') codeLabel = names.mouseMiddle ?? 'Mouse 3';
-  else if (code === 'Mouse2') codeLabel = names.mouseRight ?? 'Mouse 2';
+  else if (code === 'Mouse0') codeLabel = names.mouseLeft;
+  else if (code === 'Mouse1') codeLabel = names.mouseMiddle;
+  else if (code === 'Mouse2') codeLabel = names.mouseRight;
   else codeLabel = /^Key([A-Z])$/.exec(code)?.[1] ?? codeLabel;
   const digit = /^Digit([0-9])$/.exec(code)?.[1];
   if (digit !== undefined) codeLabel = digit;
