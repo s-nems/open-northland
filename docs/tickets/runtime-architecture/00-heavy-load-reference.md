@@ -41,6 +41,10 @@ which is the split that shows whether the sim or the draw is over budget.
 - On the checkpoint: the resync snapshot's encoded size and its encode, transfer and decode time, as
   the relay's catch-up store would carry it.
 - The recipe and the report format in `docs/DEVELOPMENT.md`, beside the existing bench entries.
+- The epic's closing comparison, taken last: the local (`?map=`) and the relayed session on the
+  checkpoint, on the desktop build or a hardware-accelerated browser on an idle machine, before the
+  epic (`main` at its start) and after; per client frame p95, per-tick receive cost beside sim time
+  (`perf().frame`), world boot to the first delivered tick, main-thread and worker memory.
 
 No target budget is set. The reference is the yardstick; the goal is the smoothest achievable.
 
