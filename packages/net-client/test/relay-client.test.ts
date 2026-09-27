@@ -56,6 +56,24 @@ function start(client: RelayClient, snapshotTick: number | null): void {
 }
 
 describe('RelayClient and its world port', () => {
+  it.each([
+    { tick: 4, generation: 5 },
+    { tick: 5, generation: DESCRIPTOR_WORLD },
+  ])(
+    'refuses a restored world with tick $tick and generation $generation for snapshot 5',
+    async ({ tick, generation }) => {
+      const sim = new Simulation({ seed: 3, content: testContent() });
+      sim.run(tick);
+      const { client, worlds } = harness({ restore: async () => ({ sim, generation }) });
+      start(client, 5);
+      await client.settled();
+      client.receive({ kind: 'blob', type: 'snapshot', from: 'Bartek', tick: 5, bytes: 'AAAA' });
+      await expect(client.settled()).rejects.toThrow('snapshot');
+      expect(client.sim).toBeNull();
+      expect(worlds).toEqual([]);
+    },
+  );
+
   it('uploads the captured manual save rather than exporting a later live tick', async () => {
     const sim = new Simulation({ seed: 3, content: testContent() });
     const { client, sent } = harness({ open: async () => ({ sim, generation: DESCRIPTOR_WORLD }) });
@@ -402,8 +420,10 @@ function deferredWorld() {
   return { promise, release };
 }
 
-function fixtureWorld(): OpenedWorld {
-  return { sim: new Simulation({ seed: 3, content: testContent() }), generation: DESCRIPTOR_WORLD };
+function fixtureWorld(tick = 0): OpenedWorld {
+  const sim = new Simulation({ seed: 3, content: testContent() });
+  sim.run(tick);
+  return { sim, generation: tick === 0 ? DESCRIPTOR_WORLD : tick };
 }
 
 describe('RelayClient world operation ownership', () => {
@@ -434,7 +454,7 @@ describe('RelayClient world operation ownership', () => {
   it('keeps the newest snapshot when older restores finish later', async () => {
     const older = deferredWorld();
     const newer = deferredWorld();
-    const expected = fixtureWorld();
+    const expected = fixtureWorld(6);
     const { client, worlds } = harness({
       restore: (_session, bytes) => (bytes === 'AAAA' ? older.promise : newer.promise),
     });
@@ -443,7 +463,7 @@ describe('RelayClient world operation ownership', () => {
     client.receive({ kind: 'blob', type: 'snapshot', from: 'Bartek', tick: 5, bytes: 'AAAA' });
     client.receive({ kind: 'blob', type: 'snapshot', from: 'Bartek', tick: 6, bytes: 'BBBB' });
     newer.release(expected);
-    older.release(fixtureWorld());
+    older.release(fixtureWorld(5));
     await client.settled();
     expect(client.sim).toBe(expected.sim);
     expect(worlds).toEqual([{ ...expected, worldId: FIRST_WORLD_ID }]);
@@ -459,15 +479,15 @@ describe('RelayClient world operation ownership', () => {
     sent.length = 0;
     client.receive({ kind: 'start', session: SESSION, snapshotTick: 5 });
     expect(sent).toEqual([]);
-    restore.release(fixtureWorld());
+    restore.release(fixtureWorld(5));
     await client.settled();
-    expect(sent).toEqual([{ kind: 'loaded', tick: 0, world: DESCRIPTOR_WORLD }]);
+    expect(sent).toEqual([{ kind: 'loaded', tick: 5, world: 5 }]);
   });
 
   it('numbers every adopted world and holds no number between worlds', async () => {
     const { client, worlds } = harness({
       open: async () => fixtureWorld(),
-      restore: async () => fixtureWorld(),
+      restore: async () => fixtureWorld(5),
     });
     expect(client.worldId).toBeNull();
     start(client, null);

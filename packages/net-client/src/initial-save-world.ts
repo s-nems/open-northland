@@ -40,12 +40,8 @@ export async function restoreSessionWorld(
   if (initialBoot)
     await verifyInitialSave(snapshot, initial, session.world.kind === 'map' ? session.world.mapId : null);
   const opened = await port.restore(session, snapshot);
-  if (
-    initialBoot &&
-    opened !== null &&
-    (opened.sim.tick !== initial.tick || opened.generation !== initial.tick)
-  ) {
-    throw new Error('the restored initial save stands at another tick');
+  if (opened !== null && (opened.sim.tick !== tick || opened.generation !== tick)) {
+    throw new Error('the restored snapshot has another tick or generation');
   }
   return opened;
 }
