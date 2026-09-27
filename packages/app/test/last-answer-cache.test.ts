@@ -118,7 +118,7 @@ describe('last-answer cache', () => {
     expect(cache.read('k', host.ask, '', true)).toBe('now');
   });
 
-  it('reports a failed ask once and asks again only when the inputs change', async () => {
+  it('reports a failed ask once and asks a plain read again only when the inputs change', async () => {
     let asks = 0;
     const failing = (): Promise<string> => {
       asks++;
@@ -128,15 +128,43 @@ describe('last-answer cache', () => {
     const cache = createLastAnswerCache<string>({ tick: () => tick });
     const warn = vi.spyOn(diag, 'warn').mockImplementation(() => undefined);
     try {
-      cache.read('k', failing, 'v1', true);
+      cache.read('k', failing, 'v1');
       await Promise.resolve();
       await Promise.resolve();
       tick = 1;
-      cache.read('k', failing, 'v1', true);
+      cache.read('k', failing, 'v1');
       expect(asks).toBe(1);
       expect(warn).toHaveBeenCalledTimes(1);
-      cache.read('k', failing, 'v2', true);
+      cache.read('k', failing, 'v2');
       expect(asks).toBe(2);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('asks a per-tick read that failed again once the tick moves past the failed ask', async () => {
+    let asks = 0;
+    let fails = true;
+    const ask = (): Promise<string> => {
+      asks++;
+      return fails ? Promise.reject(new Error('the host is gone')) : Promise.resolve('back');
+    };
+    let tick = 0;
+    const cache = createLastAnswerCache<string>({ tick: () => tick });
+    const warn = vi.spyOn(diag, 'warn').mockImplementation(() => undefined);
+    try {
+      cache.read('k', ask, '', true);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(cache.read('k', ask, '', true)).toBeUndefined();
+      expect(asks).toBe(1);
+      tick = 1;
+      fails = false;
+      cache.read('k', ask, '', true);
+      expect(asks).toBe(2);
+      await Promise.resolve();
+      expect(cache.read('k', ask, '', true)).toBe('back');
+      expect(warn).toHaveBeenCalledTimes(1);
     } finally {
       warn.mockRestore();
     }

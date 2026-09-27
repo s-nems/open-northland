@@ -26,7 +26,8 @@ export interface LastAnswerCache<V> extends AnswerCacheControl {
   /**
    * The last answer to `key`. Asks `ask` when none was asked yet, and again once `inputs` differ from
    * those of the last ask or, for a `perTick` read, once the tick moved; one ask per key is in flight at
-   * a time. A stale answer is still returned while the fresh one is on its way.
+   * a time. A stale answer is still returned while the fresh one is on its way. A failed ask is asked
+   * again on the same terms as a landed one.
    */
   read(key: string, ask: () => Promise<V>, inputs?: string, perTick?: boolean): V | undefined;
   /** The answer to `key` as of now: the held one when it is current, else a new ask, which the cache
@@ -51,7 +52,7 @@ interface Entry<V> {
   /** The newest ask's number, and the newest one that landed: an older ask landing late is dropped. */
   askedSeq: number;
   landedSeq: number;
-  /** The inputs an ask failed under; the key is not asked again until they change. */
+  /** The inputs an ask failed under, so a failure repeated under them is reported once. */
   failedInputs: string | null;
   readTick: number;
 }
@@ -137,8 +138,7 @@ export function createLastAnswerCache<V>(options: LastAnswerCacheOptions<V>): La
       const entry = entryOf(key, inputs);
       entry.readTick = options.tick();
       const pending = entry.askedSeq !== entry.landedSeq;
-      const failed = entry.failedInputs === inputs;
-      if (!known || (!pending && !failed && !current(entry, inputs, perTick))) {
+      if (!known || (!pending && !current(entry, inputs, perTick))) {
         // A failed ask is reported, not retried every frame: the rejection is swallowed here.
         launch(key, entry, ask, inputs).catch(() => undefined);
       }

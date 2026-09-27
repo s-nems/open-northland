@@ -281,9 +281,11 @@ class WorkerClient<E> {
     };
   }
 
-  /** The worker cannot go on: the next frame's `advance` throws, where the crash capture sees it. */
+  /** The worker cannot go on: the next frame's `advance` throws, where the crash capture sees it, and
+   *  every pending ask ends now, so a boot awaiting one does not wait forever. */
   fail(error: Error): void {
     this.failure ??= error;
+    this.release(error);
   }
 
   private post(message: ToWorker<unknown>): void {
@@ -343,7 +345,9 @@ class WorkerClient<E> {
     return this.alpha.at(performance.now());
   }
 
+  /** A backlog held since before a seat pick carries the previous seat's masks: they no longer apply. */
   private setFog(answer: FogMaskAnswer | null): void {
+    if (answer !== null && answer.player !== this.fogSeat) return;
     this.fog = answer === null ? null : fogViewOfMask(answer);
   }
 
@@ -393,10 +397,20 @@ class WorkerClient<E> {
   private dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    clearInterval(this.heartbeat);
     this.port.close();
+    this.release(null);
+  }
+
+  /** Stop the heartbeat and drop the pending asks: with an `error` the calls reject with it and the
+   *  waiters resolve, without one neither settles. */
+  private release(error: Error | null): void {
+    clearInterval(this.heartbeat);
+    const calls = [...this.calls.values()];
+    const waiters = this.waiters.splice(0);
     this.calls.clear();
-    this.waiters.length = 0;
+    if (error === null) return;
+    for (const call of calls) call.reject(error);
+    for (const waiter of waiters) waiter.resolve();
   }
 
   private host(): SessionHost {

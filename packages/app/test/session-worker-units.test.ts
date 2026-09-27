@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 import { changedFacts, readWorldFacts } from '../src/session/worker/facts.js';
 import type { SessionPort } from '../src/session/worker/port.js';
-import type { FromWorker } from '../src/session/worker/protocol.js';
+import type { FromWorker, ToWorker } from '../src/session/worker/protocol.js';
 import { ArrivalAlpha } from '../src/session/worker/render-alpha.js';
 import {
   serveSession,
@@ -200,6 +200,84 @@ describe('tick batch queue', () => {
       await settle(UNDELIVERED_LIMIT_SECONDS * MS_PER_SECOND * PAST_THE_LIMIT);
       // Checked between the timer's steps, so the last of them may carry it a step or few past.
       expect(await lead()).toBeLessThan(undeliveredTickLimit(FAST) + session.driver.maxStepsPerFrame);
+    } finally {
+      session.dispose();
+    }
+  });
+});
+
+describe('failures between the ends', () => {
+  const CALL_ID = 7;
+  const UNCLONEABLE = 'the answer could not be cloned';
+  const WORKER_GONE = 'the worker is gone';
+  const HEARTBEAT_MS = 10;
+  /** Heartbeats a stopped heartbeat would have sent while the test watches. */
+  const HEARTBEATS_WATCHED = 5;
+  const UNMEASURED_MS = 0;
+
+  it('replies with an error when the answer itself cannot be posted', async () => {
+    const replies: FromWorker<null>[] = [];
+    let refuseReply = true;
+    let deliver: (message: ToWorker<TestWorldBoot>) => void = () => undefined;
+    const port: SessionPort = {
+      post: (message) => {
+        const posted = message as FromWorker<null>;
+        if (posted.kind !== 'reply') return;
+        if (refuseReply) {
+          refuseReply = false;
+          throw new Error(UNCLONEABLE);
+        }
+        replies.push(posted);
+      },
+      listen: (receive) => {
+        deliver = (message) => receive(message, UNMEASURED_MS);
+      },
+      listenFailure: () => undefined,
+      close: () => undefined,
+    };
+    serveSession(port, buildTestWorld);
+    deliver({ kind: 'boot', boot: { kind: 'scene', id: 'sandbox' }, options: DEFAULT_TEST_OPTIONS });
+    deliver({ kind: 'call', id: CALL_ID, call: { method: 'hashState' } });
+    while (replies.length === 0) await settle(TURN_MS);
+    expect(replies).toMatchObject([
+      { kind: 'reply', id: CALL_ID, ok: false, error: { message: UNCLONEABLE } },
+    ]);
+  });
+
+  it('rejects the pending asks and stops its heartbeat when the worker fails', async () => {
+    const channel = new MessageChannel();
+    serveSession(nodeParentPort(channel.port1), buildTestWorld);
+    const inner = nodeParentPort(channel.port2);
+    let failWorker: (error: Error) => void = () => undefined;
+    let pings = 0;
+    const port: SessionPort = {
+      listen: inner.listen,
+      post: (message, transfer) => {
+        if ((message as ToWorker<unknown>).kind === 'ping') pings++;
+        inner.post(message, transfer);
+      },
+      listenFailure: (fail) => {
+        failWorker = fail;
+      },
+      close: () => {
+        channel.port1.close();
+        channel.port2.close();
+      },
+    };
+    const session = await startWorkerSession<TestWorldBoot, null>(
+      port,
+      { kind: 'scene', id: 'sandbox' },
+      DEFAULT_TEST_OPTIONS,
+      SILENT_STALL_REPORTS,
+      { heartbeatMs: HEARTBEAT_MS },
+    );
+    try {
+      const pending = session.host.hashState();
+      failWorker(new Error(WORKER_GONE));
+      await expect(pending).rejects.toThrow(WORKER_GONE);
+      const pingsAtFailure = pings;
+      await settle(HEARTBEAT_MS * HEARTBEATS_WATCHED);
+      expect(pings).toBe(pingsAtFailure);
     } finally {
       session.dispose();
     }

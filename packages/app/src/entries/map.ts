@@ -92,12 +92,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     worker.dispose();
     throw err;
   });
-  view.lifetime.addEventListener(
-    'abort',
-    () => {
-      worker.dispose();
-      scope.abort();
-    },
-    { once: true },
-  );
+  const end = (): void => {
+    worker.dispose();
+    scope.abort();
+  };
+  // The view may have ended while the intro or the boot's finish was awaited.
+  if (view.lifetime.aborted) end();
+  else view.lifetime.addEventListener('abort', end, { once: true });
 }

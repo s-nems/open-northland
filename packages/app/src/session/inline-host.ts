@@ -59,11 +59,16 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     missionStatus: () => sim.missionStatus(),
 
     tickEvents: () => sim.events.current(),
-    tickDiagnostics: () =>
-      Promise.resolve({
+    tickDiagnostics: () => {
+      const cadence = diagCadenceAt(sim.tick);
+      if (cadence === null) {
+        return Promise.reject(new Error(`the session took no diagnostics at tick ${sim.tick}`));
+      }
+      return Promise.resolve({
         hash: sim.hashState(),
-        violations: diagCadenceAt(sim.tick)?.invariants === true ? sim.checkInvariants() : null,
-      }),
+        violations: cadence.invariants ? sim.checkInvariants() : null,
+      });
+    },
     hashState: () => Promise.resolve({ tick: sim.tick, hash: sim.hashState() }),
 
     placementProbe: (buildingType, area, player, tribe) =>

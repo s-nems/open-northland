@@ -10,8 +10,11 @@ import {
 } from '@open-northland/sim';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { diag } from '../src/diag/log.js';
+import { diagCadenceAt, HASH_TRACE_EVERY_TICKS } from '../src/diag/session.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
+import type { SessionHost } from '../src/session/host.js';
+import { inlineSessionHost } from '../src/session/inline-host.js';
 import type {
   FromWorker,
   TickBatch,
@@ -233,10 +236,20 @@ describe('session worker host', () => {
   });
 
   it('posts the seat fog masks as their generation changes, and the next seat on request', async () => {
+    let switched = false;
+    let staleMasks = 0;
     const session = await startTestSession(
       bundle.path,
       { kind: 'scene', id: 'team-vision' },
       { speed: FAST_SPEED, paused: false, fogSeat: HUMAN_PLAYER },
+      SILENT_STALL_REPORTS,
+      {},
+      (message) => {
+        if (message.kind === 'fog') switched = true;
+        if (switched && message.kind === 'ticks' && message.batch.fog?.fog?.player === HUMAN_PLAYER) {
+          staleMasks++;
+        }
+      },
     );
     try {
       const generations = new Set<number>();
@@ -257,8 +270,24 @@ describe('session worker host', () => {
       expect([view.player, view.generation]).toEqual([HUMAN_PLAYER, live.generation]);
       expect(fogCells(view)).toEqual(fogCells(live));
 
+      // A backlog the runtime left undelivered was taken under the previous seat and lands after the
+      // next seat's masks; its masks must not replace them.
+      session.driver.setPaused(false);
+      const lead = async () => (await session.host.hashState()).tick - session.host.tick;
+      while ((await lead()) < undeliveredTickLimit(FAST_SPEED)) await sleep(TURN_MS);
       session.host.fogView(TEAMMATE);
-      await pumpUntil(session, () => session.host.fogView(TEAMMATE)?.player === TEAMMATE);
+      const heldTo = (await session.host.hashState()).tick;
+      const seatsDrawn: number[] = [];
+      await pumpUntil(session, () => {
+        const drawn = session.host.fogView(TEAMMATE)?.player;
+        if (drawn !== undefined && (drawn === TEAMMATE || seatsDrawn.length > 0)) seatsDrawn.push(drawn);
+        return session.host.tick >= heldTo;
+      });
+      expect(staleMasks).toBeGreaterThan(0);
+      expect(new Set(seatsDrawn)).toEqual(new Set([TEAMMATE]));
+      session.driver.setPaused(true);
+      await pumpWhile(session, session.host.settled());
+      sim.run(session.host.tick - sim.tick);
       const teammate = sim.fogView(TEAMMATE);
       const received = session.host.fogView(TEAMMATE);
       if (teammate === null || received === null) throw new Error('the scene plays under fog');
@@ -471,6 +500,50 @@ describe('session worker host', () => {
       second.dispose();
     } finally {
       port.close();
+    }
+  });
+
+  it('answers tick diagnostics on the diag cadence alone, inline and in the worker', async () => {
+    /** Each delivered tick's answer: whether it was on the cadence, and whether the host answered. */
+    const answers = (host: SessionHost, onCadence: boolean[], landed: Promise<boolean>[]) => () => {
+      onCadence.push(diagCadenceAt(host.tick) !== null);
+      landed.push(
+        host.tickDiagnostics().then(
+          () => true,
+          () => false,
+        ),
+      );
+    };
+    const sim = createSceneSim(scene('sandbox'));
+    const inline = inlineSessionHost(sim);
+    const inlineCadence: boolean[] = [];
+    const inlineLanded: Promise<boolean>[] = [];
+    const answerInline = answers(inline, inlineCadence, inlineLanded);
+    for (let i = 0; i < HASH_TRACE_EVERY_TICKS; i++) {
+      sim.step();
+      answerInline();
+    }
+    expect(inlineCadence).toContain(true);
+    expect(await Promise.all(inlineLanded)).toEqual(inlineCadence);
+
+    const session = await startTestSession(
+      bundle.path,
+      { kind: 'scene', id: 'sandbox' },
+      { speed: FAST_SPEED, paused: false, diagnostics: true },
+    );
+    try {
+      const workerCadence: boolean[] = [];
+      const workerLanded: Promise<boolean>[] = [];
+      const start = session.host.tick;
+      await pumpUntil(
+        session,
+        () => session.host.tick >= start + HASH_TRACE_EVERY_TICKS,
+        answers(session.host, workerCadence, workerLanded),
+      );
+      expect(workerCadence).toContain(true);
+      expect(await Promise.all(workerLanded)).toEqual(workerCadence);
+    } finally {
+      session.dispose();
     }
   });
 

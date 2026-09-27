@@ -408,14 +408,24 @@ export class ServedSession<E> {
 
   private async answer(id: number, call: WorkerCall): Promise<void> {
     this.answering.add(id);
+    let value: unknown;
     try {
-      const value = await this.perform(call);
-      if (this.answering.delete(id)) this.post({ kind: 'reply', id, tick: this.sim.tick, ok: true, value });
+      value = await this.perform(call);
     } catch (err) {
-      if (this.answering.delete(id)) {
-        this.post({ kind: 'reply', id, tick: this.sim.tick, ok: false, error: wireError(err) });
-      }
+      if (this.answering.delete(id)) this.replyFailed(id, err);
+      return;
     }
+    if (!this.answering.delete(id)) return;
+    try {
+      this.post({ kind: 'reply', id, tick: this.sim.tick, ok: true, value });
+    } catch (err) {
+      // An answer the port cannot clone still settles the runtime's ask.
+      this.replyFailed(id, err);
+    }
+  }
+
+  private replyFailed(id: number, err: unknown): void {
+    this.post({ kind: 'reply', id, tick: this.sim.tick, ok: false, error: wireError(err) });
   }
 
   private async perform(call: WorkerCall): Promise<unknown> {
