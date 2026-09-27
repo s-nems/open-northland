@@ -6,22 +6,12 @@
  * Ties break on a history-independent total order, so two clients in lockstep pick byte-identical paths.
  * The line-deviation key only separates routes that already tie on cost, so optimality is untouched.
  *
- * Working storage is reused per graph, so a query allocates records only for the nodes it discovers.
+ * Working storage is reused per graph, so a query allocates only the path it returns.
  */
-import { fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
 import { latticeDistanceTo, type NodeId, type TerrainGraph, type Traversal } from '../terrain/index.js';
-import { siftDown, siftUp } from './heap.js';
-import { MAX_QUERY_GENERATION, type NodeRecord, type SearchScratch, scratchFor } from './scratch.js';
-
-/** The canonical open-set order (f, h, dev, node id), all ascending. Ending on the id makes it total, so
- *  the heap's minimum is unique and independent of the heap's internal layout. */
-function betterRecord(a: NodeRecord, b: NodeRecord): boolean {
-  if (a.f !== b.f) return a.f < b.f;
-  if (a.h !== b.h) return a.h < b.h;
-  if (a.dev !== b.dev) return a.dev < b.dev;
-  return a.node < b.node;
-}
+import { siftDown, siftUp } from './open-heap.js';
+import { MAX_QUERY_GENERATION, NO_NODE, SETTLED, type SearchScratch, scratchFor } from './scratch.js';
 
 /**
  * `explored` counts settled nodes, the unit a search's running time is proportional to. A pure
@@ -208,28 +198,20 @@ class ResumableSearch {
     this.startY = graph.yOf(start);
     this.goalX = graph.xOf(goal);
     this.goalY = graph.yOf(goal);
-    const startH = latticeDistanceTo(graph, this.goalX, this.goalY, start);
-    const startRec: NodeRecord = {
-      node: start,
-      g: fx.fromInt(0),
-      h: startH,
-      f: startH,
-      dev: 0, // the start sits on its own line
-      cameFrom: null,
-      open: true,
-      heapIdx: 0,
-    };
-    scratch.records[start] = startRec;
     scratch.stamps[start] = this.query;
-    scratch.heap.push(startRec);
+    scratch.g[start] = 0;
+    scratch.f[start] = latticeDistanceTo(graph, this.goalX, this.goalY, start);
+    scratch.dev[start] = 0; // the start sits on its own line
+    scratch.cameFrom[start] = NO_NODE;
+    scratch.heapIdx[start] = 0;
+    scratch.heap.push(start);
   }
 
   /** Settle until a verdict, or return `'aborted'` once this search has settled `maxExplored` in total. */
   advance(maxExplored: number): NodeId[] | 'unreachable' | 'aborted' {
-    const { graph, goal, blocked, stats, query, traversal } = this;
-    const { records, stamps, heap, steps } = this.scratch;
-    if (this.scratch.query !== query)
-      throw new Error('a newer search on this scratch overwrote a paused one');
+    const { scratch, graph, goal, blocked, stats, query, traversal } = this;
+    const { stamps, g, f, dev, cameFrom, heapIdx, heap, steps } = scratch;
+    if (scratch.query !== query) throw new Error('a newer search on this scratch overwrote a paused one');
     const lineHX = this.goalX - this.startX;
     const lineHY = this.goalY - this.startY;
     for (;;) {
@@ -239,66 +221,57 @@ class ResumableSearch {
 
       this.explored += 1;
       if (stats !== undefined) stats.explored += 1;
-      if (current.node === goal) return reconstruct(records, stamps, query, current);
+      if (current === goal) return reconstruct(scratch, current);
 
       // The heuristic is admissible, so the popped minimum is settled and can be closed.
-      current.open = false;
+      heapIdx[current] = SETTLED;
       const last = heap.pop();
       if (last !== undefined && heap.length > 0) {
         heap[0] = last;
-        siftDown(heap, 0, betterRecord);
+        siftDown(scratch, 0);
       }
 
-      graph.stepsInto(current.node, blocked, steps, traversal);
+      const currentG = g[current] ?? 0;
+      graph.stepsInto(current, blocked, steps, traversal);
       for (let i = 0; i < steps.length; i++) {
         const { node: next, cost } = steps.at(i);
-        const tentativeG = fx.add(current.g, cost);
-        const existing = stamps[next] === query ? records[next] : undefined;
-        if (existing === undefined) {
-          const h = latticeDistanceTo(graph, this.goalX, this.goalY, next);
-          const rec: NodeRecord = {
-            node: next,
-            g: tentativeG,
-            h,
-            f: fx.add(tentativeG, h),
-            dev: Math.abs(
-              (graph.xOf(next) - this.startX) * lineHY - (graph.yOf(next) - this.startY) * lineHX,
-            ),
-            cameFrom: current.node,
-            open: true,
-            heapIdx: heap.length,
-          };
-          records[next] = rec;
+        const tentativeG = currentG + cost;
+        if (stamps[next] !== query) {
           stamps[next] = query;
-          heap.push(rec);
-          siftUp(heap, rec.heapIdx, betterRecord);
-        } else if (existing.open && tentativeG < existing.g) {
-          // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
-          // Closed nodes are never relaxed: under a consistent heuristic their g is already optimal.
-          existing.g = tentativeG;
-          existing.f = fx.add(tentativeG, existing.h);
-          existing.cameFrom = current.node;
-          siftUp(heap, existing.heapIdx, betterRecord);
+          g[next] = tentativeG;
+          f[next] = tentativeG + latticeDistanceTo(graph, this.goalX, this.goalY, next);
+          dev[next] = Math.abs(
+            (graph.xOf(next) - this.startX) * lineHY - (graph.yOf(next) - this.startY) * lineHX,
+          );
+          cameFrom[next] = current;
+          heap.push(next);
+          siftUp(scratch, heap.length - 1);
+          continue;
         }
+        // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
+        // Settled nodes are never relaxed: under a consistent heuristic their g is already optimal.
+        const index = heapIdx[next] ?? SETTLED;
+        const knownG = g[next] ?? 0;
+        if (index === SETTLED || tentativeG >= knownG) continue;
+        f[next] = tentativeG + ((f[next] ?? 0) - knownG);
+        g[next] = tentativeG;
+        cameFrom[next] = current;
+        siftUp(scratch, index);
       }
     }
   }
 }
 
-/** Walk `cameFrom` back from the goal record to the start, returning the path in start→goal order. */
-function reconstruct(
-  records: ReadonlyArray<NodeRecord | undefined>,
-  stamps: Int32Array,
-  query: number,
-  goalRec: NodeRecord,
-): NodeId[] {
-  const path: NodeId[] = [goalRec.node];
-  let node: NodeId | null = goalRec.cameFrom;
-  while (node !== null) {
-    path.push(node);
-    const rec = stamps[node] === query ? records[node] : undefined;
-    if (rec === undefined) throw new Error(`path reconstruction hit an undiscovered node ${node}`);
-    node = rec.cameFrom;
+/** Walk `cameFrom` back from the goal to the start, returning the path in start→goal order. `cameFrom`
+ *  holds only node ids or {@link NO_NODE}. */
+function reconstruct(scratch: SearchScratch, goal: NodeId): NodeId[] {
+  const { stamps, cameFrom, query } = scratch;
+  const path: NodeId[] = [goal];
+  let node = cameFrom[goal] ?? NO_NODE;
+  while (node !== NO_NODE) {
+    if (stamps[node] !== query) throw new Error(`path reconstruction hit an undiscovered node ${node}`);
+    path.push(node as NodeId);
+    node = cameFrom[node] ?? NO_NODE;
   }
   path.reverse();
   return path;

@@ -138,7 +138,6 @@ and 145 ticks.
   [combat-pass-scans-every-combatant](../tickets/sim/combat-pass-scans-every-combatant.md),
   [planner-pile-searches-scan-every-pile](../tickets/sim/planner-pile-searches-scan-every-pile.md),
   [canonical-joints-rebuild-every-tick](../tickets/sim/canonical-joints-rebuild-every-tick.md),
-  [pathfinding-node-records-promote](../tickets/sim/pathfinding-node-records-promote.md),
   [gossip-candidates-refill-every-tick](../tickets/sim/gossip-candidates-refill-every-tick.md),
   [fixed-point-asserts-ship-enabled](../tickets/sim/fixed-point-asserts-ship-enabled.md).
 
