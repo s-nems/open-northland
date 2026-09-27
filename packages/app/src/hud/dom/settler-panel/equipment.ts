@@ -58,13 +58,11 @@ function socketOf(row: EquipRow, slot: number, label: string, hero: boolean): So
   }
   const good = cell.label ?? label;
   const values = { slot: label, good, percent: cell.conditionPct ?? 0 };
-  const tooltip = hero
-    ? formatMessage(copy.settlerPanel.lockedSlot, values)
-    : !row.wearable
-      ? formatMessage(copy.settlerPanel.fixedSlot, values)
-      : cell.conditionPct === null
-        ? formatMessage(copy.settlerPanel.swap, values)
-        : formatMessage(copy.settlerPanel.swapWorn, values);
+  const tooltip = !row.wearable
+    ? formatMessage(copy.settlerPanel.fixedSlot, values)
+    : cell.conditionPct === null
+      ? formatMessage(copy.settlerPanel.swap, values)
+      : formatMessage(copy.settlerPanel.swapWorn, values);
   const takeOff = formatMessage(copy.settlerPanel.takeOff, { good });
   const discards = cell.conditionPct !== null && cell.conditionPct < FULL_CONDITION_PCT;
   return {

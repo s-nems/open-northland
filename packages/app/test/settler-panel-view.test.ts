@@ -125,9 +125,6 @@ describe('equipment sockets', () => {
     expect(sockets.bag).toEqual([]);
     expect(sockets.worn.every((spec) => spec.fixed && spec.model.inert)).toBe(true);
     expect(sockets.worn[0]?.model.kind === 'item' ? sockets.worn[0].model.removeLabel : 'x').toBeNull();
-    expect(sockets.worn[0]?.model.tooltip).toContain(
-      messages().hud.settlerPanel.lockedSlot.split('·')[1]?.trim(),
-    );
     const armed = equipmentSockets([row('weapon', [arms], false), row('armor', [arms], false)], true);
     expect(armed.worn.map((spec) => spec.ref.group)).toEqual(['weapon', 'armor']);
   });
