@@ -257,7 +257,9 @@ counts message deserialization only in Chromium, which deserializes on the first
 so elsewhere it is the mirror apply alone. A main thread that cannot keep up shows in
 `throughput.deliveredSpeed`, not in `droppedTicks`: the worker holds its clock two seconds of session
 time past the last delivered tick instead of dropping ticks, and a frame delivers at most
-`maxStepsPerFrame` ticks. Read
+`maxStepsPerFrame` ticks. Either way the system menu shows delivered against requested speed once two
+consecutive windows, each with at least half a second of unpaused running, deliver under nine tenths
+of the requested ticks. Read
 `sampling.hidden` before trusting any timing: a background tab throttles its frame loop and every
 millisecond becomes fiction.
 

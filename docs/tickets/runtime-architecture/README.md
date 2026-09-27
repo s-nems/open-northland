@@ -33,7 +33,6 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [06 Speed shortfall in the menu](06-speed-shortfall-in-menu.md) | A sustained shortfall, dropped ticks or a held worker clock, shown in the system menu | 00 |
 | [07 Client load telemetry](07-client-load-telemetry.md) | Each client reports tick cost and backlog to the relay on the protocol | 00 |
 | [08 Room pace governor](08-room-pace-governor.md) | Free band, governed speed with a named limiter, kick vote; no clock hold for lag | 07 |
 | [09 Zoom-out LOD](09-zoom-out-lod.md) | Frame cost bounded across the zoom range by named detail tiers | 00 |
@@ -48,10 +47,10 @@ indexes, and interpolates by the tick arrival time. Probes and request-shaped re
 which the last-answer cache serves to synchronous HUD reads. The relayed entry's `RelayClient`, relay
 link and world run in a network worker (`entries/relay/net-worker.ts`) that never holds its clock:
 it keeps stepping and acknowledging, and sheds the transient events of ticks the main thread has not
-taken. Scenes and tests run `inlineSessionHost` on the main thread, over the same mirror. 00 lands
-first and 06 surfaces the shortfall. 07 and 08 are the networking
-change and can proceed in parallel. 09 to 11 close the epic. Contract edits land with the ticket that
-makes them true.
+taken. Scenes and tests run `inlineSessionHost` on the main thread, over the same mirror. The system
+menu shows delivered against requested speed while two consecutive one-second windows deliver under
+nine tenths of the requested ticks. 00 lands first. 07 and 08 are the networking change and can
+proceed in parallel. 09 to 11 close the epic. Contract edits land with the ticket that makes them true.
 
 ## Not in this epic
 
@@ -66,7 +65,7 @@ makes them true.
 ## Shared verification
 
 Every ticket runs the gates in `docs/TESTING.md` and reports its numbers from the 00 reference. State
-hashes and goldens change only where a ticket names the behaviour change; 06 names none.
+hashes and goldens change only where a ticket names the behaviour change.
 The browser and desktop measurements of the whole epic (frame p95, per-tick receive cost beside sim
 time, boot and memory, in the local and the relayed session) are taken once, at the epic's end, on the
 00 reference against `main` before the epic; no ticket takes them on its own.

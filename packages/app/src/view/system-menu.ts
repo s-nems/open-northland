@@ -5,10 +5,13 @@ import { mountNetStatusPanel, type NetStatusPanel } from './net/net-status.js';
 import type { GameSettingsRuntime } from './runtime/game-settings.js';
 import type { SaveLoadSession } from './runtime/save-load/index.js';
 import { buildLoadPanel, buildSavePanel, type SavePanelView } from './save-panels/index.js';
+import { mountSpeedStatusLine, type SpeedStatusLine } from './speed-status.js';
 import { buildSystemSettingsPanel } from './system-settings-panel.js';
 
 export interface SystemMenu {
   updateNetStatus: NetStatusPanel['update'];
+  /** Delivered against requested speed while a sustained shortfall holds; null delivered hides it. */
+  updateSpeedStatus: SpeedStatusLine['update'];
   toggle(): void;
   /** True while the dimmed menu is up; it owns the keyboard until it hides. */
   isOpen(): boolean;
@@ -201,6 +204,8 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     ...(trace !== null ? [trace] : []),
     close,
   );
+  // Mounted before the lazily added net status, so the two status blocks stay in this order.
+  const speedStatus = mountSpeedStatusLine(panel);
   backdrop.append(panel, savePanel.el, loadPanel.el, settingsPanel.el);
   document.body.append(backdrop);
 
@@ -209,6 +214,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       netStatus ??= mountNetStatusPanel(panel);
       netStatus.update(rows, readout);
     },
+    updateSpeedStatus: (delivered, requested) => speedStatus.update(delivered, requested),
     isOpen: () => backdrop.style.display !== 'none',
     toggle(): void {
       if (backdrop.style.display === 'none') {
@@ -228,6 +234,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       deps.setCameraSuspended(false);
       scope.abort();
       netStatus?.dispose();
+      speedStatus.dispose();
       document.removeEventListener('keydown', onKey);
       backdrop.remove();
     },

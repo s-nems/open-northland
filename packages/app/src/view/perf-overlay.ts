@@ -35,19 +35,17 @@ const PANEL_STYLE = [
   'pointer-events:none',
 ].join(';');
 
-function formatSpeed(speed: number): string {
+export function formatSpeed(speed: number): string {
   return Number.isInteger(speed) ? `×${speed}` : `×${speed.toFixed(2)}`;
 }
 
-/** Delivered speed is a two-second average, good to about a tenth; more digits would overstate it. */
-function formatDelivered(speed: number): string {
+/** Delivered speed averages a second or less, good to about a tenth; more digits would overstate it. */
+export function formatDelivered(speed: number): string {
   return `×${speed.toFixed(1)}`;
 }
 
-/**
- * Shows the delivered speed only on a sustained shortfall: without discarded ticks the accumulator
- * carries every fraction into the next frame and delivered converges on requested exactly.
- */
+/** Shows the delivered speed only on a sustained shortfall: a window's edge moves a healthy loop's
+ *  figure by a tick either way, which is not worth an arrow. */
 function formatDeliveredSpeed(requested: number, recent: FrameRecent): string {
   const label = formatSpeed(requested);
   if (!recent.sustainedShortfall) return label;
@@ -97,8 +95,12 @@ export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: numb
       const net = readNet();
 
       const rate = last.paused ? copy.paused : formatDeliveredSpeed(last.speed, recent);
-      // The rolling window's count, not the session total, so a recovered stall leaves the readout.
-      const dropped = recent.sustainedShortfall ? `  ${copy.dropped} ${recent.droppedTicks}` : '';
+      // The rolling window's count, not the session total, so a recovered stall leaves the readout. A
+      // worker that holds its clock falls short without dropping, so a zero says nothing.
+      const dropped =
+        recent.sustainedShortfall && recent.droppedTicks > 0
+          ? `  ${copy.dropped} ${recent.droppedTicks}`
+          : '';
       const simState = `${copy.tick} ${last.tick}  ${rate}  ${copy.steps} ${last.steps}${dropped}   ${copy.entities} ${last.entities}  ${copy.drawn} ${last.drawn}  ${copy.pooled} ${last.pooled}`;
 
       const fps = ema.frameMs > 0 ? Math.round(1000 / ema.frameMs) : 0;

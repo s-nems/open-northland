@@ -49,11 +49,13 @@ export interface FrameRecent {
   readonly worstMs: number;
   /** Ticks discarded in the window, not the session total. */
   readonly droppedTicks: number;
-  /** Delivered tick-rate multiplier over the window: 1 means 12 ticks/s actually ran. */
+  /** Delivered tick-rate multiplier: 1 means 12 ticks/s actually ran. Over the current window once it
+   *  has run long enough to judge, else over the last window that did. */
   readonly deliveredSpeed: number;
   /**
-   * Two consecutive windows dropped work, so the loop is losing ground rather than recovering from one
-   * hitch such as a map load.
+   * The last two judged windows each delivered under nine tenths of the steps their frames asked for,
+   * whether the loop dropped ticks or a worker held its clock. One slow window does not raise it, and
+   * stall frames and paused frames are not judged at all.
    */
   readonly sustainedShortfall: boolean;
 }
@@ -97,6 +99,16 @@ const RECENT_WINDOW_MS = 1000;
  */
 const STALL_FRAME_MS = 500;
 
+/**
+ * A window delivering under this share of its requested steps is short. Tolerates the one tick a
+ * window's edge can cost at x1 (11 of 12 is 0.92) while a real shortfall falls well below it.
+ */
+const SHORTFALL_RATIO = 0.9;
+
+/** Running time a window needs before its delivered speed says anything: a few frames of a fresh
+ *  window hold zero or several ticks and read as any speed at all. */
+const JUDGE_MIN_RUNNING_MS = RECENT_WINDOW_MS / 2;
+
 /** Log-spaced frame-time buckets: 1 ms to roughly 7 s at 1.15x growth, fixed size for any session
  *  length. Quantiles are bucket upper edges, so read them as +/- 15%. */
 const BUCKET_COUNT = 64;
@@ -130,9 +142,15 @@ export class FrameStats {
   private recentWallMs = 0;
   private recentRunningMs = 0;
   private recentSteps = 0;
+  /** Steps the running frames asked for at their own requested speed, so a mid-window speed change
+   *  judges each frame against its own request. */
+  private recentExpectedSteps = 0;
   private recentWorstMs = 0;
   private recentDroppedAtStart = 0;
-  private previousWindowDropped = 0;
+  /** The two most recent closed windows that ran long enough to judge; unjudged ones leave them. */
+  private lastJudgedShort = false;
+  private priorJudgedShort = false;
+  private lastJudgedSpeed: number | null = null;
 
   private frames = 0;
   private windowMs = 0;
@@ -171,10 +189,15 @@ export class FrameStats {
 
   private recordRecent(sample: FrameSample): void {
     if (this.recentWallMs >= RECENT_WINDOW_MS) {
-      this.previousWindowDropped = this.droppedTotal - this.recentDroppedAtStart;
+      if (this.recentJudged()) {
+        this.priorJudgedShort = this.lastJudgedShort;
+        this.lastJudgedShort = this.recentShort();
+        this.lastJudgedSpeed = this.recentSpeed();
+      }
       this.recentWallMs = 0;
       this.recentRunningMs = 0;
       this.recentSteps = 0;
+      this.recentExpectedSteps = 0;
       this.recentWorstMs = 0;
       this.recentDroppedAtStart = this.droppedTotal;
     }
@@ -190,7 +213,37 @@ export class FrameStats {
     if (!sample.paused) {
       this.recentRunningMs += sample.elapsedMs;
       this.recentSteps += sample.steps;
+      this.recentExpectedSteps += (sample.elapsedMs / 1000) * TICKS_PER_SECOND * sample.speed;
     }
+  }
+
+  private recentJudged(): boolean {
+    return this.recentRunningMs >= JUDGE_MIN_RUNNING_MS;
+  }
+
+  private recentShort(): boolean {
+    return this.recentSteps < this.recentExpectedSteps * SHORTFALL_RATIO;
+  }
+
+  private recentSpeed(): number {
+    const seconds = this.recentRunningMs / 1000;
+    return seconds === 0 ? 0 : this.recentSteps / seconds / TICKS_PER_SECOND;
+  }
+
+  private deliveredSpeed(): number {
+    return this.recentJudged() ? this.recentSpeed() : (this.lastJudgedSpeed ?? this.recentSpeed());
+  }
+
+  private shortfallHolds(): boolean {
+    return this.recentJudged()
+      ? this.recentShort() && this.lastJudgedShort
+      : this.lastJudgedShort && this.priorJudgedShort;
+  }
+
+  /** The delivered speed while a sustained shortfall holds, else null. Allocation-free for a caller
+   *  that asks every frame. */
+  sustainedShortfallSpeed(): number | null {
+    return this.shortfallHolds() ? this.deliveredSpeed() : null;
   }
 
   /** Opens a fresh measurement window. The EMAs keep their values: they describe "recently", not the
@@ -220,7 +273,6 @@ export class FrameStats {
 
   report(): FrameStatsReport {
     const windowSeconds = this.windowMs / 1000;
-    const recentSeconds = this.recentRunningMs / 1000;
     const recentDropped = this.droppedTotal - this.recentDroppedAtStart;
     return {
       last: this.last,
@@ -235,8 +287,8 @@ export class FrameStats {
       recent: {
         worstMs: this.recentWorstMs,
         droppedTicks: recentDropped,
-        deliveredSpeed: recentSeconds === 0 ? 0 : this.recentSteps / recentSeconds / TICKS_PER_SECOND,
-        sustainedShortfall: recentDropped > 0 && this.previousWindowDropped > 0,
+        deliveredSpeed: this.deliveredSpeed(),
+        sustainedShortfall: this.shortfallHolds(),
       },
       window: {
         frames: this.frames,

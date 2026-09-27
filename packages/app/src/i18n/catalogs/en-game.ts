@@ -193,6 +193,7 @@ export const enGame = {
     },
     downloadDiagnostics: 'Download diagnostics report',
     downloadTrace: 'Download performance trace',
+    speedShortfall: 'The game runs at {delivered} instead of {requested}',
     dismiss: 'Dismiss',
     simStalled: 'The simulation has not responded for {seconds} s.',
     crashTitle: 'The game hit an error',

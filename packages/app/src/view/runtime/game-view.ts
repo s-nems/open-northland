@@ -917,6 +917,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       portraitVisible: () => !missionWindowOpen,
       perf,
       netReadout,
+      updateSpeedStatus: (delivered, requested) => systemMenu?.updateSpeedStatus(delivered, requested),
       pointer: pointerAt,
       syncViewport: liveSettings.syncViewport,
     });

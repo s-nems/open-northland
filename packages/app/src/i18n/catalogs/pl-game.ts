@@ -190,6 +190,7 @@ export const plGame = {
     },
     downloadDiagnostics: 'Pobierz raport diagnostyczny',
     downloadTrace: 'Pobierz zapis wydajności',
+    speedShortfall: 'Gra działa w tempie {delivered} zamiast {requested}',
     dismiss: 'Zamknij',
     simStalled: 'Symulacja nie odpowiada od {seconds} s.',
     crashTitle: 'Gra napotkała błąd',

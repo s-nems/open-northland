@@ -87,15 +87,109 @@ describe('FrameStats', () => {
     expect(stats.report().recent.sustainedShortfall).toBe(false);
   });
 
-  it('waits for a second dropping window before calling a shortfall sustained', () => {
-    const stats = new FrameStats();
-    // A hitch confined to one window: real, over, and not a claim about how the loop is keeping up.
-    for (let i = 0; i < 12; i++) stats.record(sample({ elapsedMs: 80, droppedTicks: i < 6 ? i : 6 }));
-    for (let i = 0; i < 25; i++) stats.record(sample({ elapsedMs: 80, droppedTicks: 6 }));
-    expect(stats.report().recent.sustainedShortfall).toBe(false);
-    // Dropping every frame from here: two consecutive windows, so the loop really is losing ground.
-    for (let i = 0; i < 50; i++) stats.record(sample({ elapsedMs: 80, steps: 5, droppedTicks: 6 + i }));
-    expect(stats.report().recent.sustainedShortfall).toBe(true);
+  describe('sustained shortfall', () => {
+    /** Exact in binary, so the rolling windows close on whole seconds of {@link run} time. */
+    const FRAME_MS = 1000 / 64;
+    /** Frames of `elapsedMs` asking for `speed` and delivering `delivered` of it, as the fixed timestep
+     *  would: whole steps, the fraction carried to the next frame. */
+    function run(
+      stats: FrameStats,
+      ms: number,
+      opts: { speed?: number; delivered?: number; elapsedMs?: number; dropPerFrame?: number } = {},
+    ): void {
+      const { speed = 1, delivered = speed, elapsedMs = FRAME_MS, dropPerFrame = 0 } = opts;
+      for (let t = 0; t < ms; t += elapsedMs) {
+        carry += (elapsedMs / 1000) * TICKS_PER_SECOND * delivered;
+        const steps = Math.floor(carry);
+        carry -= steps;
+        dropped += dropPerFrame;
+        stats.record(sample({ elapsedMs, speed, steps, droppedTicks: dropped }));
+      }
+    }
+    let carry = 0;
+    let dropped = 0;
+    const fresh = (): FrameStats => {
+      carry = 0;
+      dropped = 0;
+      return new FrameStats();
+    };
+    const shortfall = (stats: FrameStats): boolean => stats.report().recent.sustainedShortfall;
+
+    it('holds when a worker delivers below the request without dropping a tick', () => {
+      const stats = fresh();
+      run(stats, 2_000, { speed: 5 });
+      expect(shortfall(stats)).toBe(false);
+      // The held worker clock: fewer ticks arrive, none is discarded.
+      run(stats, 1_600, { speed: 5, delivered: 3 });
+      expect(stats.report().recent.droppedTicks).toBe(0);
+      expect(shortfall(stats)).toBe(true);
+      expect(stats.sustainedShortfallSpeed()).toBeCloseTo(3, 0);
+      expect(stats.report().recent.deliveredSpeed).toBeCloseTo(3, 0);
+    });
+
+    it('reads a healthy session as no shortfall at any requested speed', () => {
+      for (const speed of [1, 2, 5]) {
+        const stats = fresh();
+        run(stats, 5_000, { speed });
+        expect(shortfall(stats)).toBe(false);
+        expect(stats.sustainedShortfallSpeed()).toBeNull();
+      }
+    });
+
+    it('does not call one slow window a sustained shortfall', () => {
+      const stats = fresh();
+      run(stats, 2_000);
+      run(stats, 1_000, { delivered: 0.4 });
+      run(stats, 3_000);
+      expect(shortfall(stats)).toBe(false);
+    });
+
+    it('does not read a stall frame as a shortfall', () => {
+      const stats = fresh();
+      run(stats, 2_000, { speed: 5 });
+      // A blocking load that ran a capped handful of steps and discarded the rest of the wall-clock.
+      dropped += 50;
+      stats.record(sample({ elapsedMs: 3_000, speed: 5, steps: 3, droppedTicks: dropped }));
+      for (let ms = 0; ms < 4_000; ms += 250) {
+        run(stats, 250, { speed: 5 });
+        expect(shortfall(stats)).toBe(false);
+      }
+    });
+
+    it('holds when the loop drops ticks every frame', () => {
+      const stats = fresh();
+      run(stats, 2_000, { speed: 5 });
+      // Slow frames under a per-frame step cap: part of each frame's due steps discarded.
+      run(stats, 2_500, { speed: 5, delivered: 2.5, elapsedMs: 80, dropPerFrame: 2 });
+      expect(stats.report().recent.droppedTicks).toBeGreaterThan(0);
+      expect(shortfall(stats)).toBe(true);
+    });
+
+    it('judges each frame against its own requested speed across a speed change', () => {
+      const stats = fresh();
+      run(stats, 2_000, { speed: 5 });
+      // Dropping back to x1 mid-window delivers x1 at once; the window's average request is not x5.
+      run(stats, 400, { speed: 5 });
+      run(stats, 3_000, { speed: 1 });
+      expect(shortfall(stats)).toBe(false);
+    });
+
+    it('keeps its verdict through a pause instead of clearing it for lack of running frames', () => {
+      const stats = fresh();
+      run(stats, 3_000, { speed: 5, delivered: 3 });
+      expect(shortfall(stats)).toBe(true);
+      for (let i = 0; i < 180; i++) stats.record(sample({ paused: true, steps: 0, speed: 5 }));
+      expect(shortfall(stats)).toBe(true);
+    });
+
+    it('clears once the loop keeps up again', () => {
+      const stats = fresh();
+      run(stats, 3_000, { speed: 5, delivered: 3 });
+      expect(shortfall(stats)).toBe(true);
+      run(stats, 1_500, { speed: 5 });
+      expect(shortfall(stats)).toBe(false);
+      expect(stats.sustainedShortfallSpeed()).toBeNull();
+    });
   });
 
   it('lets a recovered stall leave the readout instead of pinning it there for the session', () => {
