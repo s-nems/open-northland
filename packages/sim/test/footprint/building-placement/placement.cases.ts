@@ -10,7 +10,13 @@ import {
   type ResourceFootprintData,
   Stump,
 } from '../../../src/components/index.js';
-import { halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
+import {
+  halfCellMapFromCells,
+  nodeOfPosition,
+  playerCommand,
+  positionOfNode,
+  Simulation,
+} from '../../../src/index.js';
 import {
   buildingBlockedCells,
   canPlaceBuilding,
@@ -35,6 +41,9 @@ import {
   WATER,
   WOODCUTTER,
 } from './support.js';
+
+/** The seat the player-placement cases issue from. */
+const SEAT = 0;
 
 /** A tree whose trunk fills just its anchor node: one walk cell, so a building's reserved ring may not
  *  cover that node and nothing else. */
@@ -125,6 +134,19 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2); // no collision model - both land, like before footprints
   });
+
+  it('refuses a seat placement off the map instead of failing the tick', () => {
+    const sim = mappedSim();
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    sim.step();
+    // A relayed payload may carry any safe integer, and an anchor past the fixed-point range throws once
+    // it reaches assembly, stopping every client of the room.
+    for (const x of [-1, 2 ** 31, 5]) {
+      sim.enqueue(playerCommand(SEAT, { kind: 'placeBuilding', buildingType: HQ, x, y: 5, tribe: VIKING }));
+    }
+    sim.step();
+    expect(buildingsPlaced(sim)).toBe(1); // only the anchor on the map
+  });
 });
 
 describe('the dense mask rule agrees with an independent derivation', () => {
@@ -160,11 +182,15 @@ describe('the dense mask rule agrees with an independent derivation', () => {
     expect(free).toBeGreaterThan(0);
   });
 
-  it('reports a footprint-less type placeable everywhere (its command-time behavior)', () => {
+  it('reports a footprint-less type placeable anywhere on the map and nowhere off it', () => {
     const sim = mappedSim();
-    const probe = placementProbe(sim.world, sim.content, terrainOf(sim), HQ, []);
+    const terrain = terrainOf(sim);
+    const probe = placementProbe(sim.world, sim.content, terrain, HQ, []);
     expect(probe.canPlace(0, 0)).toBe(true);
     expect(probe.canPlace(5, 5)).toBe(true);
+    expect(probe.canPlace(-1, 5)).toBe(false);
+    expect(probe.canPlace(terrain.width, 5)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HQ, 5, terrain.height)).toBe(false);
   });
 
   it('returns null from Simulation.placementProbe on a mapless sim (no rule → no overlay)', () => {

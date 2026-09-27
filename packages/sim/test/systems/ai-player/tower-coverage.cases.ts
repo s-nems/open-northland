@@ -68,7 +68,7 @@ describe('build-order tower and store coverage', () => {
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
-      x: HQ_X - 31,
+      x: HQ_X - 30,
       y: HQ_Y,
       tribe: VIKING,
       owner: SEAT,

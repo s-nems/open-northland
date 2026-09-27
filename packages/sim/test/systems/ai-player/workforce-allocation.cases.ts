@@ -132,7 +132,7 @@ const FIRST_WORKSHOP_SPOT = { x: 40, y: 16 };
 /** Nodes across the map of the seat-reach case: its far end lies past `WALK_RANGE_NODES` from the HQ. */
 const FAR_MAP_WIDTH = 160;
 const SECOND_WORKSHOP_SPOT = { x: 40, y: 26 };
-const THIRD_WORKSHOP_SPOT = { x: 40, y: 36 };
+const THIRD_WORKSHOP_SPOT = { x: 50, y: 26 };
 
 /** The farmer's atomic, which the fixture collector's trade lacks. */
 const FARM_ATOMIC = 29;

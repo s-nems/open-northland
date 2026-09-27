@@ -109,12 +109,7 @@ export function canPlaceBuilding(
   const building = contentIndex(ctx.content).buildings.get(buildingType);
   const footprint = building?.footprint;
   const buildOnBioPattern = building?.buildOnBioPattern === true;
-  if (footprint === undefined) {
-    return (
-      !scriptForbids(world, terrain, x, y) &&
-      (!buildOnBioPattern || (terrain.inBounds(x, y) && terrain.isPlantable(terrain.nodeAt(x, y))))
-    );
-  }
+  if (footprint === undefined) return canPlaceWithoutFootprint(world, terrain, buildOnBioPattern, x, y);
   return canPlaceAnchor(
     placementBlockerGrid(world, ctx.content, terrain),
     footprint,
@@ -147,9 +142,18 @@ function ownSignpostSlots(terrain: TerrainGraph, posts: readonly HalfCellNode[])
   return slots;
 }
 
-/** Whether a script closed the node to building; a node off the map is nobody's to forbid. */
-function scriptForbids(world: World, terrain: TerrainGraph, x: number, y: number): boolean {
-  return terrain.inBounds(x, y) && landscapeEditState(world).forbidden.has(terrain.nodeAt(x, y));
+/** A type without a footprint has no collision model: its anchor only has to lie on the map, on a node no
+ *  script closed to building, and on plantable ground for a bio-pattern type. */
+function canPlaceWithoutFootprint(
+  world: World,
+  terrain: TerrainGraph,
+  buildOnBioPattern: boolean,
+  x: number,
+  y: number,
+): boolean {
+  if (!terrain.inBounds(x, y)) return false;
+  const node = terrain.nodeAt(x, y);
+  return !landscapeEditState(world).forbidden.has(node) && (!buildOnBioPattern || terrain.isPlantable(node));
 }
 
 /** A ready-to-query buildability test for one building type, with its footprint resolved once. `canPlace`
@@ -177,11 +181,7 @@ export function placementProbe(
   const footprint = building?.footprint;
   const buildOnBioPattern = building?.buildOnBioPattern === true;
   if (footprint === undefined) {
-    return {
-      canPlace: (x, y) =>
-        !scriptForbids(world, terrain, x, y) &&
-        (!buildOnBioPattern || (terrain.inBounds(x, y) && terrain.isPlantable(terrain.nodeAt(x, y)))),
-    };
+    return { canPlace: (x, y) => canPlaceWithoutFootprint(world, terrain, buildOnBioPattern, x, y) };
   }
   const grid = placementBlockerGrid(world, content, terrain);
   const own = ownSignpostSlots(terrain, ownSignposts);
