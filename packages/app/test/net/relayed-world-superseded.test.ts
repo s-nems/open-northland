@@ -17,12 +17,13 @@ const OPTIONS = { speed: 1 } as WorkerSessionOptions;
 const DOCUMENTS = {} as MapWorldDocuments;
 
 /** Host a restored world whose hosting rejects with `error`. */
-function hostFailing(error: Error): Promise<null> {
+function hostFailing(error: Error, multiplayer = false): Promise<null> {
   const plan: MapBootPlan<never> = {
     hostWorld: () => Promise.reject(error),
     mapId: 'forest',
     stagedSave: { header: { tick: 40, mapId: 'forest' } },
     sessionFor: () => ({}) as GameSession,
+    multiplayer,
   };
   return hostMapWorld(plan, DOCUMENTS);
 }
@@ -39,6 +40,13 @@ describe('a restored world that is not hosted', () => {
     mocks.halt.mockClear();
     const dropped = new WorldNotAdoptedError();
     await expect(hostFailing(dropped)).rejects.toBe(dropped);
+    expect(mocks.halt).not.toHaveBeenCalled();
+  });
+
+  it('hands a failed relayed restore to its entry, which shows the one failure', async () => {
+    mocks.halt.mockClear();
+    const failed = new Error('the snapshot does not decode');
+    await expect(hostFailing(failed, true)).rejects.toBe(failed);
     expect(mocks.halt).not.toHaveBeenCalled();
   });
 });
@@ -62,5 +70,16 @@ describe('relayed worlds', () => {
     expect(secondSettled).toBe(false);
     worlds.unadopted(2);
     await expect(second).rejects.toBeInstanceOf(WorldNotAdoptedError);
+  });
+
+  it('opens no world once the connection closed, so a boot still loading settles', async () => {
+    const posted: unknown[] = [];
+    const worlds = new RelayedWorlds<null>((message) => posted.push(message), SILENT_STALL_REPORTS);
+    const opening = worlds.host(1, { requestId: 1 }, OPTIONS);
+    worlds.close();
+    await expect(opening).rejects.toBeInstanceOf(WorldNotAdoptedError);
+    posted.length = 0;
+    await expect(worlds.host(2, { requestId: 2 }, OPTIONS)).rejects.toBeInstanceOf(WorldNotAdoptedError);
+    expect(posted).toEqual([]);
   });
 });

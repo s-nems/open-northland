@@ -249,7 +249,10 @@ export function renderNetworkGame(
         }
         view = presented;
         hud = mountNetHud({ client, view, readout });
-        if (!connection.connected) hud.link('reconnecting');
+        // A link event while the world was rebuilt had no HUD to reach.
+        const link = connection.linkState;
+        if (link === null) hud.link('reconnecting');
+        else if (link.state !== 'ok') hud.link(link.state, link.reason);
         reportNet();
       })
       .catch((error: unknown) => {

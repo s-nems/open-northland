@@ -158,16 +158,14 @@ export class NetworkConnection {
     this.client.apply({ kind: 'left' });
     this.onWorld = () => undefined;
     this.resolveWorldPort(REFUSING_PORT);
-    // A world still opening settles; the one being shown is its view's to end.
-    this.worlds.unadopted();
+    this.worlds.close();
     this.rejectAnswers(new Error(CLOSED_MESSAGE));
     this.post({ kind: 'leave', leave });
     this.leaveTimer = setTimeout(() => this.port.close(), LEAVE_GRACE_MS);
   }
 
   /** The link dropped: the relay welcomes this client anew once it is back, and a lobby room is left,
-   *  as its `left` would have. The worker's client did the same on its retry. */
-  /** Forget what the link drop invalidated; true when a lobby room was left with it. */
+   *  as its `left` would have; the worker's client did the same on its retry. True when a room was left. */
   private dropped(): boolean {
     const left = this.client.room?.state === 'lobby';
     this.client.reset(left);

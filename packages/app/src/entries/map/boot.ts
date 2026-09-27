@@ -121,8 +121,9 @@ export interface AssembledMapWorld<H extends HostedMapWorld = HostedMapWorld> {
 }
 
 /**
- * Host the planned world; null when a staged save failed to restore, which halts the boot. A world
- * the relay client dropped for a newer one, or on leaving, failed no load: its entry settles it.
+ * Host the planned world; null when a staged save failed to restore, which halts the boot. A relayed
+ * world's failure is its entry's to show, and a world the relay client dropped for a newer one, or on
+ * leaving, failed no load: its entry settles it.
  */
 export async function hostMapWorld<H extends HostedMapWorld>(
   plan: MapBootPlan<H>,
@@ -131,7 +132,8 @@ export async function hostMapWorld<H extends HostedMapWorld>(
   try {
     return await plan.hostWorld(documents);
   } catch (err) {
-    if (plan.stagedSave === null || err instanceof WorldNotAdoptedError) throw err;
+    if (plan.stagedSave === null || plan.multiplayer === true || err instanceof WorldNotAdoptedError)
+      throw err;
     haltOnFailedRestore(err);
     return null;
   }

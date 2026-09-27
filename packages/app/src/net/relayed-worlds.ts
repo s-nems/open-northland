@@ -24,6 +24,8 @@ export class RelayedWorlds<E> {
   /** The worker client's request the opening world answers. */
   private openingRequest: number | null = null;
   private served: WorkerSessionOpening<E> | null = null;
+  /** The connection ended: no world opens any more, since no worker answers its inputs. */
+  private closed = false;
 
   constructor(
     private readonly post: (message: unknown) => void,
@@ -32,6 +34,7 @@ export class RelayedWorlds<E> {
 
   /** Post the world's inputs and resolve once the worker serves it; a world still opening is dropped. */
   host(requestId: number, inputs: unknown, options: WorkerSessionOptions): Promise<WorkerSession<E>> {
+    if (this.closed) return Promise.reject(new WorldNotAdoptedError());
     this.opening?.fail(new WorldNotAdoptedError());
     const opening: WorkerSessionOpening<E> = sessionOverPort<E>(
       {
@@ -64,9 +67,19 @@ export class RelayedWorlds<E> {
   }
 
   /** The opening world will not be served: its client did not take the world `requestId` asked
-   *  for, or the connection ended (no id). A request an opening already replaced changes nothing. */
-  unadopted(requestId?: number): void {
-    if (requestId !== undefined && requestId !== this.openingRequest) return;
+   *  for. A request an opening already replaced changes nothing. */
+  unadopted(requestId: number): void {
+    if (requestId === this.openingRequest) this.failOpening();
+  }
+
+  /** The connection ended: the opening world is not served, and a world hosted from now on is not
+   *  either. The one being shown is its view's to end. */
+  close(): void {
+    this.closed = true;
+    this.failOpening();
+  }
+
+  private failOpening(): void {
     const opening = this.opening;
     this.opening = null;
     opening?.fail(new WorldNotAdoptedError());
