@@ -28,6 +28,7 @@ function house(id: number, amount: number): BuildingHoverModel {
     entityId: id,
     title: `house ${id}`,
     state: null,
+    owner: null,
     health: null,
     rows: [{ label: 'wood', amount }],
   };

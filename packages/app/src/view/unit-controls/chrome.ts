@@ -16,7 +16,7 @@ import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
 import { createTradeWindow, type HousePortrait } from '../../hud/dom/trade-window/window.js';
 import { createVehiclePanel } from '../../hud/dom/vehicle-panel/view.js';
 import { clientToCanvas } from '../../hud/geometry.js';
-import { buildingHoverModel } from '../../hud/hover-card/building.js';
+import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
 import type { BuildingHoverModel } from '../../hud/hover-card/model.js';
 import { keyDisplayLabel } from '../../hud/keybindings.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
@@ -126,7 +126,14 @@ export async function createUnitChrome(
     pack: opts.domHud.pack,
     uiString: opts.domHud.uiString,
   });
-  const hoverContext = { buildings: opts.content.buildings, goods: opts.content.goods, viewer: opts.viewer };
+  const hoverContext: BuildingHoverContext = {
+    buildings: opts.content.buildings,
+    goods: opts.content.goods,
+    viewer: opts.viewer,
+    seatNameOf: opts.seatNameOf,
+    diplomacyStance: opts.diplomacyStance,
+    playerColourOf: opts.playerColourOf,
+  };
   /** One card model per house and snapshot: a move over a link then only repositions the card. */
   const hoverModels = memoBySnapshot(() => new Map<number, BuildingHoverModel | null>());
   const buildingHover = (id: number): BuildingHoverModel | null => {

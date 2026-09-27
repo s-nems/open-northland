@@ -18,7 +18,7 @@ import type { BuildingThumbs } from '../../dom/building-thumb.js';
 import { createNoticeArt, noticeTint } from '../../dom/notice-art.js';
 import { createNoticeColumn, type NoticeCardView } from '../../dom/notice-column.js';
 import type { PanelContext } from '../context.js';
-import { diplomacyStanceText } from '../diplomacy/model.js';
+import { diplomacyStanceText, playerLabel } from '../diplomacy/model.js';
 import { noticeThumb, orderNotes } from './cards.js';
 import type { MessageFeedState } from './feed.js';
 import type { FigureFrames } from './figure-frames.js';
@@ -37,8 +37,6 @@ export type { MessageFeedState } from './feed.js';
 export type { MetSeat } from './from-diplomacy.js';
 export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 
-/** The `miscwindow` row heading an unnamed seat, ahead of its slot number. */
-const PLAYER_STRING_ID = 361;
 /** A note this young slides in as it arrives; an older one (a restored feed) simply stands. */
 const FRESH_NOTE_TICKS = 2 * TICKS_PER_SECOND;
 /** The building body's canvas box on a note (design px): the thumbnail's content height at rest;
@@ -145,11 +143,8 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       const typeId = num((e.components.Vehicle as { vehicleType?: unknown } | undefined)?.vehicleType);
       return typeId === undefined ? null : (deps.vehicleLabel(typeId) ?? null);
     },
-    // An authored roster name, else the numbered fallback the diplomacy window renders: many maps leave
-    // a slot unnamed, and a note about a nameless seat would lose its subject entirely.
-    player: (player) =>
-      deps.playerLabel(player) ??
-      `${deps.ctx.uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`,
+    // The numbered fallback keeps a note about a nameless seat from losing its subject.
+    player: (player) => playerLabel(deps.ctx.uiString, player, deps.playerLabel(player)),
     stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
     paper: deps.paperLabel,
     technology: deps.technologyLabel,

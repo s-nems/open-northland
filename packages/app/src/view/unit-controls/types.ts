@@ -134,6 +134,8 @@ export interface UnitControlsOptions {
   readonly workStatus?: (entity: number) => SettlerWorkStatus | undefined;
   /** The viewer seat's stance toward another owner, for a foreign person's owner line. */
   readonly diplomacyStance?: (owner: number) => DiplomacyStance;
+  /** The roster's authored seat name, for another seat's house card; absent numbers the seat. */
+  readonly seatNameOf?: (player: number) => string | undefined;
 }
 
 export interface UnitControls {

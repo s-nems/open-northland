@@ -1,6 +1,7 @@
 import { ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CHILD_MALE, JOB_JOINER } from '../src/catalog/jobs.js';
+import { playerSwatchHex } from '../src/catalog/roster.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import {
   BUILDING_JOINERY,
@@ -13,7 +14,7 @@ import {
 } from '../src/game/sandbox/ids/index.js';
 import { fixedViewerSeat, overseerViewerSeat, type ViewerSeat } from '../src/game/viewer-seat.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../src/hud/hover-card/building.js';
-import { settlerHoverModel } from '../src/hud/hover-card/settler.js';
+import { type SettlerHoverContext, settlerHoverModel } from '../src/hud/hover-card/settler.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 /** A store holding these amounts, as the snapshot carries them. */
@@ -24,9 +25,11 @@ function stockpile(amounts: readonly (readonly [number, number])[]): Record<stri
 /** Another seat than the viewer's. */
 const OTHER_PLAYER = HUMAN_PLAYER + 1;
 
-/** The card's content, read by the human seat unless another viewer is given. */
-function hoverCtx(viewer: ViewerSeat = fixedViewerSeat(HUMAN_PLAYER)): BuildingHoverContext {
-  return { ...sandboxCtx(), viewer };
+/** The card's content, read by the human seat unless another viewer is given, at war with everyone. */
+function hoverCtx(
+  viewer: ViewerSeat = fixedViewerSeat(HUMAN_PLAYER),
+): BuildingHoverContext & SettlerHoverContext {
+  return { ...sandboxCtx(), viewer, diplomacyStance: () => 'enemy' };
 }
 
 describe('building hover card model', () => {
@@ -98,7 +101,7 @@ describe('building hover card model', () => {
     expect(model?.rows).toEqual([]);
   });
 
-  it("shows another seat's building by its health, keeping its store and bill to the owner", () => {
+  it("shows another seat's building by its owner and health, keeping its store and bill to the owner", () => {
     const ctx = hoverCtx();
     const foreign = { Owner: { player: OTHER_PLAYER }, Health: { hitpoints: 30, max: 120 } };
     const snapshot = snapshotOf([
@@ -115,6 +118,11 @@ describe('building hover card model', () => {
     const site = buildingHoverModel(snapshot, 7, ctx);
 
     expect(store?.rows).toEqual([]);
+    expect(store?.owner).toEqual({
+      player: OTHER_PLAYER,
+      stance: 'enemy',
+      colour: playerSwatchHex(OTHER_PLAYER),
+    });
     expect(store?.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '30/120' });
     expect(site?.rows).toEqual([]);
     expect(site?.state).toEqual({ kind: 'construction', pct: 50 });
@@ -133,8 +141,10 @@ describe('building hover card model', () => {
     const own = buildingHoverModel(snapshot, 8, hoverCtx());
     const overseen = buildingHoverModel(snapshot, 9, hoverCtx(overseerViewerSeat(HUMAN_PLAYER)));
 
+    expect(own?.owner).toBeNull();
     expect(own?.health).toBeNull();
     expect(own?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 4 }]);
+    expect(overseen?.owner).toBeNull();
     expect(overseen?.health).toBeNull();
     expect(overseen?.rows).toEqual([{ goodId: 'stone', label: 'stone', amount: 1 }]);
   });
@@ -163,24 +173,46 @@ function settlerEntity(id: number, jobType: number, components: Record<string, u
 
 describe('settler hover card model', () => {
   it('names the settler and the trade it works', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const snapshot = snapshotOf([settlerEntity(1, JOB_JOINER)]);
 
     const model = settlerHoverModel(snapshot, 1, ctx);
 
     expect(model?.title).toMatch(/^\S+$/); // the given name alone, no surname
     expect(model?.profession).toBe('Cieśla');
+    expect(model?.owner).toBeNull();
+    expect(model?.health).toBeNull();
+  });
+
+  it("adds another seat's owner, by its authored name, and the person's health", () => {
+    const ctx = {
+      ...hoverCtx(),
+      seatNameOf: (player: number) => (player === OTHER_PLAYER ? 'Wikingowie' : undefined),
+    };
+    const snapshot = snapshotOf([
+      settlerEntity(5, JOB_JOINER, { Owner: { player: OTHER_PLAYER }, Health: { hitpoints: 10, max: 40 } }),
+    ]);
+
+    const model = settlerHoverModel(snapshot, 5, ctx);
+
+    expect(model?.owner).toEqual({
+      player: OTHER_PLAYER,
+      name: 'Wikingowie',
+      stance: 'enemy',
+      colour: playerSwatchHex(OTHER_PLAYER),
+    });
+    expect(model?.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '10/40' });
   });
 
   it('calls a growing child by its life stage, which is the only trade it has', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const snapshot = snapshotOf([settlerEntity(2, JOB_CHILD_MALE, { Age: { ticks: 0 } })]);
 
     expect(settlerHoverModel(snapshot, 2, ctx)?.profession).toBe('Chłopiec');
   });
 
   it('has nothing to say about an animal or a building, which draw as settlers or hold no name', () => {
-    const ctx = sandboxCtx();
+    const ctx = hoverCtx();
     const snapshot = snapshotOf([
       { id: 3, components: { Settler: { jobType: 0, tribe: PRIMARY_TRIBE } } },
       buildingEntity(4, BUILDING_WATCHTOWER),

@@ -1,9 +1,22 @@
+import type { DiplomacyState } from '@open-northland/sim';
 import type { PanelBar } from '../details-panel/model/bars.js';
 
 /**
  * What the cursor card says about the thing under it. A settler and a building share one card: a title,
- * one line under it, and the good rows only a store fills.
+ * one line under it, and the good rows only a store fills. Another seat's building or person also names
+ * its owner and shows its health, and keeps its store to itself.
  */
+
+/** The seat another seat's building or person belongs to. */
+export interface HoverOwner {
+  readonly player: number;
+  /** Authored roster name; absent renders the numbered fallback. */
+  readonly name?: string;
+  /** The viewer's stance toward the owner, when the game has one to tell. */
+  readonly stance: DiplomacyState | null;
+  /** The team swatch as a CSS colour. */
+  readonly colour: string;
+}
 
 /** One good line: a unit the building holds, or a material line of a site's bill. */
 export interface HoverCardRow {
@@ -24,7 +37,8 @@ export interface BuildingHoverModel {
   readonly title: string;
   /** Null for a finished building; otherwise the state and how far it has come. */
   readonly state: { readonly kind: BuildingHoverState; readonly pct: number } | null;
-  /** Another seat's building shows its health in place of its store, which stays its owner's secret. */
+  /** Null for the viewer's own building, whose card lists its store instead. */
+  readonly owner: HoverOwner | null;
   readonly health: PanelBar | null;
   readonly rows: readonly HoverCardRow[];
 }
@@ -36,6 +50,9 @@ export interface SettlerHoverModel {
   readonly title: string;
   /** The trade it works, beside its name on the card's one line. */
   readonly profession: string;
+  /** Null for the viewer's own person, whose card stays that one line. */
+  readonly owner: HoverOwner | null;
+  readonly health: PanelBar | null;
 }
 
 export type HoverCardModel = BuildingHoverModel | SettlerHoverModel;

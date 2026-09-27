@@ -48,6 +48,7 @@ import type { WorldTribes } from '../../game/world-tribes.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
+import type { HoverOwnerContext } from '../../hud/hover-card/owner.js';
 import { settlerHoverModel } from '../../hud/hover-card/settler.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -682,6 +683,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       workStatus: answers.workStatus,
       diplomacyStance: (owner) => host.diplomacyStance(viewerPlayer(), owner),
+      ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
     });
     cleanup.push(() => controls.dispose());
     selectEntity = controls.selectEntity;
@@ -781,10 +783,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // A building's card reads content alone: names, store slots and construction bills. No species
     // filter, so a farm's herd is one of its store lines, as the original's card lists it; the details
     // panel filters it out only because its own Produkcja window already counts the herd.
+    const hoverOwners: HoverOwnerContext = {
+      viewer,
+      seatNameOf: deps.seatNameOf,
+      diplomacyStance: (owner) => host.diplomacyStance(viewerPlayer(), owner),
+      playerColourOf: deps.playerColourOf,
+    };
     const hoverContext: BuildingHoverContext = {
       buildings: host.content.buildings,
       goods: host.content.goods,
-      viewer,
+      ...hoverOwners,
     };
 
     // The parchment card a hovered settler or building opens, on the DOM plane the redesigned regions
@@ -808,7 +816,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       card: hoverCard,
       buildingModel: (snapshot, entityId) => buildingHoverModel(snapshot, entityId, hoverContext),
       settlerModel: (snapshot, entityId) =>
-        settlerHoverModel(snapshot, entityId, { jobs: host.content.jobs, mapText }),
+        settlerHoverModel(snapshot, entityId, { jobs: host.content.jobs, mapText, ...hoverOwners }),
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>

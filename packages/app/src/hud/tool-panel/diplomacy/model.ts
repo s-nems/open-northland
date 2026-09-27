@@ -82,6 +82,14 @@ export function diplomacyStanceText(uiString: UiString, state: DiplomacyState): 
   return uiString('misclogic', STANCE_STRING_ID[state], messages().hud.diplomacyStances[state]);
 }
 
+/** The decoded `miscwindow` row 'Player'. */
+const PLAYER_STRING_ID = 361;
+
+/** An authored roster name, else the numbered fallback: many maps leave a slot unnamed. */
+export function playerLabel(uiString: UiString, player: number, name: string | null | undefined): string {
+  return name ?? `${uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`;
+}
+
 /** One discovered player as the window lists it. */
 export interface DiplomacyPanelRow {
   readonly player: number;

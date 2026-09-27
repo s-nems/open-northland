@@ -7,15 +7,17 @@ import type {
   BuildingHoverState,
   HoverCardModel,
   HoverCardRow,
+  HoverOwner,
 } from '../hover-card/model.js';
+import { diplomacyStanceText, playerLabel } from '../tool-panel/diplomacy/model.js';
 import { createGoodIconPainter, goodIconMarkup } from './good-art.js';
 import { setClass, setHidden, write } from './parts/dom.js';
 import { createMeterRow } from './parts/meter-row.js';
 
 /**
  * The parchment card the cursor opens over the world: a settler's name and trade, or a building's name,
- * construction state and store, or another seat's building's health. It rides the DOM plane in design px
- * and never takes pointer events, so the press under it still reaches the map.
+ * construction state and store; another seat's adds its owner and health. It rides the DOM plane in
+ * design px and never takes pointer events, so the press under it still reaches the map.
  */
 
 /** Design px between the cursor and the card's near corner, so the card never covers what is pointed at. */
@@ -91,20 +93,28 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
   element.setAttribute('role', 'tooltip');
   element.hidden = true;
   element.innerHTML =
-    '<h4 class="on-tip__title"></h4><p class="on-hovercard__caption"></p><div class="on-hovercard__rows"></div>';
+    '<h4 class="on-tip__title"></h4><p class="on-hovercard__caption"></p>' +
+    '<p class="on-hovercard__owner"><i class="on-hovercard__swatch"></i><span></span></p>' +
+    '<div class="on-hovercard__rows"></div>';
   const title = element.querySelector('.on-tip__title');
   const caption = element.querySelector('.on-hovercard__caption');
+  const owner = element.querySelector('.on-hovercard__owner');
+  const swatch = element.querySelector('.on-hovercard__swatch');
+  const ownerName = element.querySelector('.on-hovercard__owner > span');
   const rows = element.querySelector('.on-hovercard__rows');
   if (
     !(title instanceof HTMLElement) ||
     !(caption instanceof HTMLElement) ||
+    !(owner instanceof HTMLElement) ||
+    !(swatch instanceof HTMLElement) ||
+    !(ownerName instanceof HTMLElement) ||
     !(rows instanceof HTMLElement)
   ) {
     throw new Error('hover card: template incomplete');
   }
   const health = createMeterRow();
   health.element.classList.add('on-hovercard__health');
-  caption.after(health.element);
+  owner.after(health.element);
   deps.plane.append(element);
 
   /** The model drawn now: the caller's per-tick object, so identity is the cheap unchanged test. */
@@ -151,17 +161,28 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
     return `${label} (${model.state.pct}%)`;
   };
 
+  /** The owner's name and, when the game tells one, the viewer's stance toward it. */
+  const ownerLine = (seat: HoverOwner): string => {
+    const name = playerLabel(deps.uiString, seat.player, seat.name);
+    return seat.stance === null ? name : `${name} · ${diplomacyStanceText(deps.uiString, seat.stance)}`;
+  };
+
   /** True when the card's words or lines changed, so its box is measured again. */
   const fill = (model: HoverCardModel): boolean => {
     if (model === drawn) return false;
     drawn = model;
-    // A settler is a name and a trade, which stand side by side rather than stacked.
-    let changed = setClass(element, 'on-hovercard--brief', model.kind === 'settler');
+    // The viewer's own settler is a name and a trade, which stand side by side rather than stacked.
+    let changed = setClass(element, 'on-hovercard--brief', model.kind === 'settler' && model.owner === null);
     changed = write(title, model.title) || changed;
     const line = captionOf(model);
     changed = setHidden(caption, line === null) || changed;
     if (line !== null) changed = write(caption, line) || changed;
-    const bar = model.kind === 'building' ? model.health : null;
+    changed = setHidden(owner, model.owner === null) || changed;
+    if (model.owner !== null) {
+      changed = write(ownerName, ownerLine(model.owner)) || changed;
+      swatch.style.background = model.owner.colour;
+    }
+    const bar = model.health;
     changed = setHidden(health.element, bar === null) || changed;
     // The meter's width is fixed by its grid, so a new figure never changes the card's box.
     if (bar !== null) health.update({ label: bar.label, pct: bar.pct, tooltip: bar.hover });

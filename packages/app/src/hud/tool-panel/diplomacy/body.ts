@@ -20,6 +20,7 @@ import {
   type DiplomacyWindowLayout,
   diplomacyStanceText,
   noteTextWidth,
+  playerLabel,
   type TributeCardSpec,
   type TributePanelRow,
   tributeTextWidth,
@@ -34,7 +35,6 @@ const SWATCH_NAME_GAP = 5;
 const IN_STORES_STRING_ID = 355; // miscwindow 'in stores', the tribute demand's stock note
 const THEIR_STANCE_STRING_ID = 358; // miscwindow 'Relationship to your tribe is'
 const YOUR_STANCE_STRING_ID = 359; // miscwindow 'Your relation to the other tribe'
-const PLAYER_STRING_ID = 361; // miscwindow 'Player'
 const GOODS_TRADED_STRING_ID = 360; // miscwindow 'You have traded %d goods so far'
 /** The count's slot in the decoded string, a C format the original prints the tally through. */
 const COUNT_PLACEHOLDER = '%d';
@@ -49,7 +49,7 @@ interface TributeCard {
 }
 
 export const diplomacyPlayerLabel = (ctx: PanelContext, player: number, name: string | undefined): string =>
-  name ?? `${ctx.uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`;
+  playerLabel(ctx.uiString, player, name);
 
 export function createDiplomacyBody(layers: WindowLayers) {
   const { ctx } = layers;
