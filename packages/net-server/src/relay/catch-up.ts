@@ -62,8 +62,11 @@ export class CatchUpStore {
   }
 
   cache(snapshot: CachedSnapshot): boolean {
-    if (this.cached !== null && snapshot.tick <= this.cached.tick) return false;
+    if (this.cached !== null && snapshot.tick < this.cached.tick) return false;
+    const newer = this.cached === null || snapshot.tick > this.cached.tick;
+    // A donor still in sync can correct a cached author's divergent state at the same tick.
     this.cached = snapshot;
+    if (!newer) return false;
     const kept = this.frames.findIndex(({ frame }) => frame.tick > snapshot.tick);
     for (const removed of this.frames.splice(0, kept === -1 ? this.frames.length : kept)) {
       this.retainedBytes -= removed.bytes;
