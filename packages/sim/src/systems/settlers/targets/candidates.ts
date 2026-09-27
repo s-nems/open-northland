@@ -21,6 +21,7 @@ import { canonicalResources } from '../../spatial/resources.js';
 import { TargetBands } from './bands.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { fieldZones } from './field-zones.js';
+import { stockpileCells } from './stockpile-cells.js';
 import { SinkAvailability } from './stores/sinks.js';
 import { yardOccupancy } from './yard-occupancy.js';
 
@@ -37,12 +38,12 @@ export interface TargetCandidates {
   readonly resources: readonly Entity[];
   /** Stores / food stores / workplace outputs: entities with {@link Stockpile} + {@link Position}. */
   readonly stockpiles: readonly Entity[];
-  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks. */
+  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks. Kept
+   *  across ticks and caught up here, so like the list it holds the stockpiles standing at the pass's
+   *  start. */
   readonly stockpileCells: InteractionCellIndex;
   /** Building-keyed targets (prayer sites): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
-  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-prayer-site pick. */
-  readonly buildingCells: InteractionCellIndex;
   /** Building construction sites builders and haulers serve, kept separate so an idle world scans an
    *  empty list. A vehicle house's hidden site is not among them: only the workshop worker raising it
    *  crews it. */
@@ -115,8 +116,6 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   let sites: SiteSplit | undefined;
   const siteSplit = (): SiteSplit => (sites ??= splitVehicleSites(world, ctx));
   let cropsByFarm: Map<Entity, Entity[]> | undefined;
-  let stockpileCells: InteractionCellIndex | undefined;
-  let buildingCells: InteractionCellIndex | undefined;
   let constructionSiteCells: InteractionCellIndex | undefined;
   let wallSiteCells: InteractionCellIndex | undefined;
   let repairSiteCells: InteractionCellIndex | undefined;
@@ -128,15 +127,8 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   return {
     resources: canonicalResources(world),
     stockpiles,
-    get stockpileCells() {
-      stockpileCells ??= new InteractionCellIndex(world, ctx, terrain, stockpiles);
-      return stockpileCells;
-    },
+    stockpileCells: stockpileCells(world, ctx.content, terrain),
     buildings,
-    get buildingCells() {
-      buildingCells ??= new InteractionCellIndex(world, ctx, terrain, buildings);
-      return buildingCells;
-    },
     get constructionSites() {
       return siteSplit().construction;
     },
@@ -216,7 +208,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     },
     harvestAtomicByGood,
     sinks: new SinkAvailability(world, ctx),
-    bands: new TargetBands(world, ctx, terrain, stockpiles, buildings),
+    bands: new TargetBands(world, ctx, terrain, buildings),
     yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupancy(world, terrain) },
   };
 }

@@ -134,7 +134,10 @@ and 145 ticks.
   [zoom-out-detail-tiers](../tickets/render/zoom-out-detail-tiers.md),
   [scene-rebuild-and-depth-sort-churn](../tickets/render/scene-rebuild-and-depth-sort-churn.md).
 - Sim: [engage-spec-allocates-per-unit](../tickets/sim/engage-spec-allocates-per-unit.md),
-  [planner-pile-searches-scan-every-pile](../tickets/sim/planner-pile-searches-scan-every-pile.md),
+  `planner-pile-searches-scan-every-pile` (done: a porter query tests about 13 piles instead of 3359;
+  the cell indexes allocate 48 KB a tick instead of 115 and the pile merge 30 KB instead of 144;
+  per-owner lists dropped, since the owner check rejects about 62 foreign candidates a tick at one
+  lookup each),
   [gossip-candidates-refill-every-tick](../tickets/sim/gossip-candidates-refill-every-tick.md).
 
 Below the admission bar at this scale: `nodeOfPosition`'s per-call object (125 KB a tick),
@@ -142,5 +145,6 @@ Below the admission bar at this scale: `nodeOfPosition`'s per-call object (125 K
 `collectInboundSupply` Maps (77 KB), the housewife's owner-blind food search (1.9% at t100k, mostly
 driven by the standing alarm), the mirror keeping the opening `ready` message (about 10 MB), and about
 130 unchanged component rewrites a tick (mostly `CurrentAtomic`). Not analysed: pathfinding (4.5%),
-separation (5.8%) and movement (5.6%), per-walker work within the scale rule. Unexplained: 3351 loose
-piles lie uncollected at t100k, mostly flag-yard goods.
+separation (5.8%) and movement (5.6%), per-walker work within the scale rule. Unexplained: 3350 loose
+piles (79 of them `GroundDrop`s) hold 8558 units at t100k, mostly flag-yard goods. Nine in ten piles a
+porter tests are deliverable, yet porters search only 163 times in the 2000-tick repeat.

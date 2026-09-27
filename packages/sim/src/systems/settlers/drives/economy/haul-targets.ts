@@ -1,35 +1,43 @@
-import { JobAssignment, Position, Stockpile, sameSideAs } from '../../../../components/index.js';
+import { Building, JobAssignment, Position, Stockpile, sameSideAs } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
+import { buildingBlockedCells } from '../../../footprint/index.js';
 import { buildingProduces, lowestStockedGood } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
+import { buriedUnderBuilding } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
 import { isFarmCarrierHaulOutRole } from './store-policy.js';
 
 /**
  * The nearest ground pile a porter should collect from and the good to lift, or null when none is within
- * reach. A ground pile is a positioned `Stockpile` with no `Building`; the good lifted is its lowest-id
- * stocked one, and the scan is canonical by Manhattan distance then ascending cell id. A pile whose good
- * this porter could not deliver is skipped, since lifting it would only make it shed the load at its feet.
+ * reach. A ground pile is a positioned `Stockpile` with no `Building`, not buried under a building's
+ * walls; the good lifted is its lowest-id stocked one, and the scan is canonical by Manhattan distance
+ * then ascending cell id. A pile whose good this porter could not deliver is skipped, since lifting it
+ * would only make it shed the load at its feet. The pile tests run per candidate, so a lift earlier in
+ * the pass is seen by the next porter.
  *
- * The same-side gate stays even though a ground heap is never owner-stamped: a boat hull is a positioned
- * building-less stockpile too, so without it a porter would unload a rival's ship.
+ * The same-side gate stays even though a ground heap is never owner-stamped: an owned wall segment is a
+ * positioned building-less stockpile too.
  */
 export function nearestGroundPile(
   plan: PlannerContext,
   opts: { readonly deliverable: (goodType: number) => boolean },
 ): { pile: Entity; goodType: number } | null {
-  const { world, here, targets } = plan;
+  const { world, ctx, terrain, here, targets } = plan;
   const { deliverable } = opts;
-  const best = targets.bands.groundPiles().nearest(
+  const walls = buildingBlockedCells(world, ctx, terrain);
+  const best = targets.stockpileCells.nearestLoose(
     here,
     (e) => {
-      const good = lowestStockedGood(world.get(e, Stockpile));
-      return good !== null && deliverable(good) ? { payload: good } : null;
+      const stock = world.tryGet(e, Stockpile);
+      if (stock === undefined || world.has(e, Building) || !world.has(e, Position)) return null;
+      const good = lowestStockedGood(stock);
+      if (good === null || !deliverable(good)) return null;
+      return buriedUnderBuilding(world, terrain, walls, e) ? null : { payload: good };
     },
     plan.limit ?? undefined, // the porter's confinement: an out-of-area pile is not one it fetches
-    unreachableGoalVeto(world, plan.ctx, plan.entity),
+    unreachableGoalVeto(world, ctx, plan.entity),
     sameSideAs(world, plan.owner),
   );
   return best === null ? null : { pile: best.entity, goodType: best.payload };

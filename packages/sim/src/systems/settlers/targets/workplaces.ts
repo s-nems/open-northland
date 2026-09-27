@@ -9,7 +9,7 @@ import {
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
+import type { MapContext, SystemContext } from '../../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
 import { workplaceStaffable } from '../../progression/index.js';
 import { buildingWorkerJobs, mergedRecipeOf, refillsOwnStock } from '../../stores/index.js';
@@ -52,7 +52,7 @@ export function boundWorkplaceTarget(
 /** Resolve a target entity to the node the settler can actually interact from. */
 export function interactionCell(
   world: World,
-  ctx: SystemContext,
+  ctx: MapContext,
   terrain: TerrainGraph,
   entity: Entity,
   from?: NodeId,

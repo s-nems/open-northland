@@ -15,7 +15,6 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { isFinishedPrayerSite } from '../../readviews/index.js';
-import { lowestStockedGood } from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { FetchableStock } from './stores/fetchable-stock.js';
 import { StoreSinks } from './stores/sinks.js';
@@ -38,15 +37,12 @@ export class TargetBands {
   private readonly sinksByGood = new Map<number, InteractionCellIndex>();
   private readonly storageSinksByGood = new Map<number, InteractionCellIndex>();
   private readonly prayerSiteBands = new Map<PrayerSite, InteractionCellIndex>();
-  private groundPileBand: InteractionCellIndex | undefined;
   private stamp: number;
 
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly terrain: TerrainGraph,
-    /** Canonical ascending-id `Stockpile + Position` candidates, the ground-pile question's universe. */
-    private readonly stockpiles: readonly Entity[],
     /** Canonical ascending-id `Building + Position` candidates, the prayer-site questions' universe. */
     private readonly buildings: readonly Entity[],
   ) {
@@ -83,28 +79,6 @@ export class TargetBands {
       memo.set(goodType, index);
     }
     return index;
-  }
-
-  /** Unburied building-less piles holding any good, loose heaps and boat hulls alike: the porter pickup's
-   *  seeker-independent half. */
-  groundPiles(): InteractionCellIndex {
-    this.ensureFresh();
-    if (this.groundPileBand === undefined) {
-      const { world, terrain } = this;
-      const walls = buildingBlockedCells(world, this.ctx, terrain);
-      this.groundPileBand = this.indexOver(
-        this.stockpiles.filter((e) => {
-          if (world.has(e, Building) || !world.has(e, Position)) return false;
-          const stock = world.tryGet(e, Stockpile);
-          return (
-            stock !== undefined &&
-            lowestStockedGood(stock) !== null &&
-            !buriedUnderBuilding(world, terrain, walls, e)
-          );
-        }),
-      );
-    }
-    return this.groundPileBand;
   }
 
   /** The player-blind band of finished `site` buildings; a seeker's own-side filter stays per query. */
@@ -152,6 +126,5 @@ export class TargetBands {
     this.sinksByGood.clear();
     this.storageSinksByGood.clear();
     this.prayerSiteBands.clear();
-    this.groundPileBand = undefined;
   }
 }

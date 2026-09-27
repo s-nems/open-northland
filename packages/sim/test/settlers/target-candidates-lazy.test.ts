@@ -6,8 +6,8 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
-// Counts every InteractionCellIndex construction, so the tests below can prove collectTargets
-// defers the three index builds to their first accessor instead of paying them eagerly per tick.
+// Counts every InteractionCellIndex construction, so the tests below can prove collectTargets defers
+// the per-tick index builds to their first accessor and keeps the stockpile index across ticks.
 // A construct trap keeps the real prototype, and spying the live export rather than mocking the
 // module reaches a subject an earlier file in this worker already imported.
 const constructed = vi.fn();
@@ -31,20 +31,28 @@ function fixture() {
 }
 
 describe('collectTargets cell indexes', () => {
-  it('constructs no index until one is accessed', () => {
-    constructed.mockClear();
+  it('constructs no per-tick index until one is accessed', () => {
     const { terrain, targets } = fixture();
-    expect(constructed).not.toHaveBeenCalled();
+    constructed.mockClear();
     targets.stockpileCells.nearest(terrain.nodeAt(0, 0), () => null);
+    expect(constructed).not.toHaveBeenCalled();
+    targets.constructionSiteCells.nearest(terrain.nodeAt(0, 0), () => null);
     expect(constructed).toHaveBeenCalledTimes(1);
   });
 
-  it('memoizes each index for the tick - one build per accessed category', () => {
-    constructed.mockClear();
+  it('memoizes each per-tick index for the tick - one build per accessed category', () => {
     const { targets } = fixture();
-    expect(targets.stockpileCells).toBe(targets.stockpileCells);
-    expect(targets.buildingCells).toBe(targets.buildingCells);
+    constructed.mockClear();
     expect(targets.constructionSiteCells).toBe(targets.constructionSiteCells);
-    expect(constructed).toHaveBeenCalledTimes(3);
+    expect(targets.wallSiteCells).toBe(targets.wallSiteCells);
+    expect(constructed).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the stockpile index across ticks instead of rebuilding it', () => {
+    const { sim, terrain, targets } = fixture();
+    constructed.mockClear();
+    const next = collectTargets(sim.world, ctxOf(sim), terrain);
+    expect(next.stockpileCells).toBe(targets.stockpileCells);
+    expect(constructed).not.toHaveBeenCalled();
   });
 });

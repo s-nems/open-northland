@@ -45,11 +45,11 @@ export class CanonicalQueries {
   entered(component: Component<unknown>, entity: Entity): void {
     const m = this.members.get(component);
     if (m === undefined) return;
-    insertAscending(m.ids, entity);
+    insertSortedById(m.ids, entity, entityId);
     m.shared = null;
     for (const joint of m.joints) {
       if (!carriesAll(joint.stores, entity)) continue;
-      insertAscending(joint.ids, entity);
+      insertSortedById(joint.ids, entity, entityId);
       joint.shared = null;
     }
   }
@@ -143,13 +143,6 @@ export class CanonicalQueries {
 function carriesAll(stores: readonly ReadonlyMap<Entity, unknown>[], entity: Entity): boolean {
   for (let i = 0; i < stores.length; i++) if (stores[i]?.has(entity) !== true) return false;
   return true;
-}
-
-/** Ids never recycle, so a new entity appends; only a re-entering older one needs the search. */
-function insertAscending(ids: Entity[], entity: Entity): void {
-  const last = ids[ids.length - 1];
-  if (last === undefined || last < entity) ids.push(entity);
-  else insertSortedById(ids, entity, entityId);
 }
 
 function divergence(

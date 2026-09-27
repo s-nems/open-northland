@@ -6,12 +6,11 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { manhattan } from '../../spatial/metric.js';
-import { canonicalById } from '../../spatial/nodes.js';
 import { anyHarvestAtomicPresent, resourcesNearNode } from '../../spatial/resources.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
-import { nearestByCell } from './cell-index.js';
+import { type CellMatch, type NearestByCell, nearerOf, nearestByCell } from './cell-index.js';
 import { unreachableWorkCell, type WorkCellGates } from './reachability.js';
 import { interactionCell, jobAtomics } from './workplaces.js';
 
@@ -132,22 +131,24 @@ export function nearestHarvestableFor(
 }
 
 /**
- * The nearest {@link GroundDrop} pile whose good `pick` selects, with its Manhattan distance. Every
- * `targets.groundDrops` entry already carries GroundDrop+Stockpile+Position, so the scan re-checks no
- * markers. The good `pick` returns then faces the work-cell reachability and signpost gates.
+ * The nearest {@link GroundDrop} pile across `lists` whose good `pick` selects, with its Manhattan
+ * distance. Every `targets.groundDrops` entry already carries GroundDrop+Stockpile+Position, so the scan
+ * re-checks no markers. The good `pick` returns then faces the work-cell reachability and signpost gates.
+ * A pile may sit in several lists: each list is ascending-id and the winners merge by the scan's total
+ * order, so the pick matches one scan over their sorted union.
  */
 function nearestDropFor(
   plan: PlannerContext,
-  piles: readonly Entity[],
+  lists: readonly (readonly Entity[])[],
   pick: (e: Entity) => number | null,
   within?: { center: NodeId; radius: number },
 ): { pile: Entity; goodType: number; dist: number } | null {
   const { world, ctx, terrain, here } = plan;
-  if (piles.length === 0) return null;
+  if (lists.every((piles) => piles.length === 0)) return null;
   const gate = plan.limit ?? undefined; // signpost confinement
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const gates: WorkCellGates = { terrain, blocked, memo: unreachableGoals(world, ctx, plan.entity) };
-  const best = nearestByCell(terrain, piles, here, (e) => {
+  const resolve = (e: Entity): CellMatch<number> | null => {
     const good = pick(e);
     if (good === null) return null;
     const cell = interactionCell(world, ctx, terrain, e, here);
@@ -156,7 +157,9 @@ function nearestDropFor(
     if (unreachableWorkCell(gates, here, cell)) return null; // the walk there would fail
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
-  });
+  };
+  let best: NearestByCell<number> | null = null;
+  for (const piles of lists) best = nearerOf(best, nearestByCell(terrain, piles, here, resolve));
   return best === null ? null : { pile: best.entity, goodType: best.payload, dist: best.distance };
 }
 
@@ -186,8 +189,7 @@ export function nearestCollectablePileFor(
   }
   return nearestDropFor(
     plan,
-    // A pile holding two such goods sits in both lists, hence the set.
-    piles.length === 1 ? (piles[0] ?? []) : canonicalById(new Set(piles.flat())),
+    piles,
     (e) => {
       const good = lowestStockedGood(world.get(e, Stockpile));
       if (good === null) return null; // an emptied drop, about to be reaped
@@ -209,7 +211,7 @@ export function nearestOwnDropFor(
   plan: PlannerContext,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const { world, entity: gatherer, targets } = plan;
-  return nearestDropFor(plan, targets.groundDropsByHarvester.get(gatherer) ?? [], (e) => {
+  return nearestDropFor(plan, [targets.groundDropsByHarvester.get(gatherer) ?? []], (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop
     const good = lowestStockedGood(world.get(e, Stockpile));

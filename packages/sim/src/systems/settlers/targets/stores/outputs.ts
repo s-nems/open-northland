@@ -33,7 +33,8 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
  * The nearest workplace with a finished output good a carrier should haul away, with the good to haul,
  * or null when nothing needs hauling. A candidate is a building whose type carries a recipe or fills
  * itself, so a stocked good is finished output rather than a passive store's reserve. The `deliverable` check keeps
- * the carrier from picking up a good it could never deliver and would shuttle back and forth.
+ * the carrier from picking up a good it could never deliver and would shuttle back and forth. Only a
+ * building carries a recipe, so the search skips the loose piles.
  */
 export function nearestWorkplaceOutput(
   index: InteractionCellIndex,
@@ -49,7 +50,7 @@ export function nearestWorkplaceOutput(
   avoid?: (cell: NodeId) => boolean,
 ): { workplace: Entity; goodType: number } | null {
   // The good that qualified the winner is the good it hauls.
-  const winner = index.nearest(
+  const winner = index.nearestDoor(
     here,
     (e) => qualifiedGood(haulableOutputGood(world, ctx, deliverable, e)),
     gate,

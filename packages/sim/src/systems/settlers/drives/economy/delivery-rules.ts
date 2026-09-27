@@ -219,7 +219,8 @@ function toNearbyRecipeConsumer(
   if (home === undefined || !refillsOwnStock(world, ctx, home)) return null;
   if (!buildingProduces(world, ctx, home).includes(goodType)) return null;
   return (
-    targets.stockpileCells.nearest(
+    // Only a building carries a recipe, so the search skips the loose piles.
+    targets.stockpileCells.nearestDoor(
       here,
       (e) => {
         if (world.has(e, UnderConstruction)) return null;

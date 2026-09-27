@@ -17,9 +17,13 @@ function lowerBound<T>(arr: readonly T[], id: number, idOf: (item: T) => number)
   return lo;
 }
 
-/** Splice `item` into ascending-id `arr` at its {@link lowerBound} slot. */
+/** Splice `item` into ascending-id `arr` at its {@link lowerBound} slot; a new highest id is pushed, since
+ *  a splice allocates its removed-items array even when it removes nothing. */
 export function insertSortedById<T>(arr: T[], item: T, idOf: (item: T) => number): void {
-  arr.splice(lowerBound(arr, idOf(item), idOf), 0, item);
+  const id = idOf(item);
+  const last = arr[arr.length - 1];
+  if (last === undefined || idOf(last) < id) arr.push(item);
+  else arr.splice(lowerBound(arr, id, idOf), 0, item);
 }
 
 /** Remove the item with `id` from ascending-id `arr`; returns whether it was present, so the caller can
