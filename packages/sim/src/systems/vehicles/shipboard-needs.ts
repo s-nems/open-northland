@@ -61,10 +61,11 @@ function clipWorth(ctx: SystemContext, world: World, e: Entity, atomicId: number
 function eatAboard(world: World, ctx: SystemContext, e: Entity, vehicle: Entity): boolean {
   const settler = world.get(e, Settler);
   if (settler.hunger < NEED_DRIVE_THRESHOLD) return false;
+  if (!due(ctx, e, atomicDuration(ctx.content, settler, EAT_ATOMIC_ID))) return false;
   const food = vehicleStockEntries(world.get(vehicle, VehicleStock)).find(
     ([good, line]) => line.current > 0 && isFood(ctx, good),
   );
-  if (food === undefined || !due(ctx, e, atomicDuration(ctx.content, settler, EAT_ATOMIC_ID))) return false;
+  if (food === undefined) return false;
   const worth = clipWorth(ctx, world, e, EAT_ATOMIC_ID, HUNGER);
   if (worth <= 0 || !consumeVehicleGood(world, vehicle, ctx.content, food[0])) return false;
   const s = world.mut(e, Settler);
