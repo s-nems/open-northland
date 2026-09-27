@@ -2476,11 +2476,6 @@ body.on-drag-scroll-cursor-hidden * {
   opacity: 0;
   pointer-events: none;
 }
-/* Stepped aside for the action ring opened from the panel, which is drawn on the canvas under it. */
-.on-hud .on-selection--veiled {
-  visibility: hidden;
-  pointer-events: none;
-}
 /* Head: the kicker browses the trade with its chevrons, the name renames under the pen. The trade is
    what the player checks, so it carries the weight; the name sits smaller under it. */
 .on-hud .on-kicker {
@@ -4053,4 +4048,43 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-transfer--balanced .on-trade-limit {
   visibility: hidden;
+}
+
+/* ---------- action ring ---------- */
+/* The order buttons stand on their own client-px layer above the HUD, so a ring opened from the settler
+   panel covers the panel rather than hiding under it. */
+.on-ring__button {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.on-ring__button[hidden] {
+  display: none;
+}
+.on-ring__button > canvas {
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.on-ring__button:hover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #ffffff47;
+}
+/* Without the decoded GUI art: a flat disc at the same geometry. */
+.on-ring__button--disc::before {
+  content: "";
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #6b4f2a;
+  box-shadow: inset 0 0 0 1px #2a1d0e;
 }

@@ -25,9 +25,6 @@ export interface SettlerPanel {
   browse(step: 1 | -1): boolean;
   /** The HUD scale changed: the portraits' boxes are measured again. */
   invalidate(): void;
-  /** Step aside (unseen, no pointer, no portrait) while the ring opened from the panel is up. The
-   *  trade window stays: the ring keeps right of it. */
-  veil(on: boolean): void;
   /** Once a frame, after the paint: the transfer lines fit again after another section or the plane
    *  changed size, and a shown tip follows its control. */
   refresh(): void;
@@ -204,7 +201,6 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
     claims: (clientX, clientY) => frame.claims(clientX, clientY),
     browse,
     invalidate: () => frame.invalidate(),
-    veil: (on) => frame.veil(on),
     dispose(): void {
       deps.hoverCard.hide();
       deps.tooltip.hide();

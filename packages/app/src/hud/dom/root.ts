@@ -3,7 +3,7 @@ import './foundation.css';
 import { HUD_SYMBOLS } from './symbols.js';
 
 /** Below the DOM diagnostics overlays (perf 50, admin 150/160) and the system menu (2000). */
-const HUD_DOM_Z = 40;
+export const HUD_DOM_Z = 40;
 
 export interface HudPlane {
   /** The design-px plane; regions append themselves here. */

@@ -36,6 +36,11 @@ export interface ScreenScale {
   readonly rect: { readonly left: number; readonly top: number };
 }
 
+/** The inverse of {@link clientToCanvas}: a canvas (screen) px point back to client (CSS) px. */
+export function canvasToClient(scale: ScreenScale, x: number, y: number): { x: number; y: number } {
+  return { x: scale.rect.left + x / scale.sx, y: scale.rect.top + y / scale.sy };
+}
+
 /** Map a client (CSS) point to canvas (screen) px: subtract the canvas origin in CSS px, then scale. */
 export function clientToCanvas(
   scale: ScreenScale,

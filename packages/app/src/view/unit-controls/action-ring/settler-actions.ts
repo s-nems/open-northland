@@ -1,6 +1,5 @@
 import { type Camera, cameraScreenX, cameraScreenY } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { Container, Graphics } from 'pixi.js';
 import { loadGuiArt } from '../../../content/gui-art.js';
 import {
   ACTION_COMMANDS,
@@ -10,7 +9,8 @@ import {
   actionRingScale,
   layoutActionRing,
 } from '../../../hud/action-ring/index.js';
-import { clientToScreen } from '../../camera/index.js';
+import { HUD_DOM_Z } from '../../../hud/dom/root.js';
+import { clientToScreen, screenScale } from '../../camera/index.js';
 import { el } from '../../overlay.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
 import { createActionRingInput } from './input.js';
@@ -19,14 +19,16 @@ import { createProfessionPicker } from './profession-picker.js';
 import type { MenuMode, RingAnchor, RingPin, SettlerActions, SettlerActionsOptions } from './types.js';
 
 /**
- * Pixi and input glue over the pure action-ring layout: it draws the order buttons in original GUI art
+ * DOM and input glue over the pure action-ring layout: it draws the order buttons in original GUI art
  * and turns a click into a command through the callback seams, never touching sim state. It owns the
  * mode and anchor state machine; without decoded GUI art the buttons degrade to flat discs at the same
  * geometry.
  */
 
-/** Drawn above the world layer. */
-const RING_Z = 1000;
+/** Just above the DOM HUD, so a ring opened from the settler panel stands over it. */
+const RING_Z = HUD_DOM_Z + 1;
+
+const LAYER_STYLE = ['position:fixed', 'inset:0', 'pointer-events:none', `z-index:${RING_Z}`].join(';');
 
 /** The "no ring" layout: menu closed or nothing selected. */
 const EMPTY_LAYOUT: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
@@ -57,15 +59,14 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   const art = await loadGuiArt();
 
-  const root = new Container();
-  const cleanup: Array<() => void> = [() => root.destroy({ children: true })];
+  const layer = el('div', LAYER_STYLE);
+  layer.className = 'on-ring';
+  layer.hidden = true;
+  const cleanup: Array<() => void> = [() => layer.remove()];
   try {
-    root.zIndex = RING_Z;
-    root.visible = false;
-    app.stage.addChild(root);
-    const buttonContainer = new Container();
-    const hoverG = new Graphics();
-    root.addChild(buttonContainer, hoverG);
+    document.body.append(layer);
+    // A right press on a button is the ring's too, and opens no browser menu.
+    layer.addEventListener('contextmenu', (event) => event.preventDefault());
 
     const tooltip = el('div', TOOLTIP_STYLE);
     document.body.append(tooltip);
@@ -77,7 +78,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       art,
       scale,
       commands: ACTION_COMMANDS,
-      container: buttonContainer,
+      layer,
+      onPress: (command, event) => input.press(command, event),
+      onHover: (command, event) => input.hover(command, event),
     });
     cleanup.push(() => visuals.dispose());
 
@@ -99,7 +102,6 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     let listedSnapshot: WorldSnapshot | null = null;
 
     const hideTransient = (): void => {
-      hoverG.clear();
       tooltip.style.display = 'none';
     };
 
@@ -139,7 +141,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       mode = 'closed';
       anchor = null; // no anchor means no open session, and this is the only place `closed` is entered
       menu = null;
-      root.visible = false;
+      layer.hidden = true;
       hideTransient();
     };
 
@@ -166,7 +168,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     const update = (camera: Camera, snapshot: WorldSnapshot): void => {
       const centre = mode === 'closed' ? null : opts.selectionCentre(snapshot);
       if (centre === null) {
-        root.visible = false;
+        layer.hidden = true;
         layout = EMPTY_LAYOUT;
         selectedIds = [];
         anchor = null;
@@ -190,8 +192,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
           listedSnapshot = snapshot;
           picker.refresh();
         }
-        // Keep the canvas ring hidden under the DOM list window.
-        root.visible = false;
+        // Keep the ring hidden under the DOM list window.
+        layer.hidden = true;
         layout = EMPTY_LAYOUT;
         visuals.hideAll();
         return;
@@ -214,28 +216,23 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         app.screen.height,
         anchor.leftBound ?? 0,
       );
-      visuals.placeLayout(layout);
-      root.visible = true;
+      visuals.placeLayout(layout, screenScale(canvas, app.renderer.resolution));
+      layer.hidden = false;
     };
 
     // Click routing is order-independent: unit-controls asks `claimsPointer` before world picking.
     const input = createActionRingInput({
-      canvas,
-      scale,
-      hoverG,
       tooltip,
       toCanvas,
       getMode: () => mode,
-      isRingVisible: () => root.visible,
+      isRingVisible: () => !layer.hidden,
       getLayout: () => layout,
       getTargets: () => selectedIds,
-      hideTransient,
       onCommand: opts.onCommand,
       cue: opts.cue,
       openJobWindow,
       closeMenu,
     });
-    cleanup.push(() => input.dispose());
 
     return {
       update,
@@ -265,17 +262,16 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         menu = null;
         restoredJobs = mode === 'jobs';
         restoredPickerScrollTop = state.pickerScrollTop;
-        root.visible = false;
+        layer.hidden = true;
         layout = EMPTY_LAYOUT;
         visuals.hideAll();
         hideTransient();
       },
       dispose: (): void => {
-        input.dispose();
         tooltip.remove();
         picker.dispose();
         visuals.dispose();
-        root.destroy({ children: true });
+        layer.remove();
       },
     };
   } catch (error: unknown) {

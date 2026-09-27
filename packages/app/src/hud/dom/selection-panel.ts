@@ -12,8 +12,6 @@ const SELECTION_TOP_GAP_PX = 16;
 export const SELECTION_PANEL_W = 318;
 /** The panel painted out of sight for its warm-up frame (foundation.css). */
 const WARM_CLASS = 'on-selection--warm';
-/** The panel stepped aside for the action ring (foundation.css). */
-const VEIL_CLASS = 'on-selection--veiled';
 /** The fill's hole over the portrait frame (foundation.css `--hole-*`). */
 const HOLE = 'hole';
 
@@ -93,9 +91,6 @@ export interface SelectionPanel {
   holeClientRect(): ClientRect | null;
   /** True when this client point is over the panel. */
   claims(clientX: number, clientY: number): boolean;
-  /** Take the panel out of the way (unseen, no pointer) while the action ring opened from it stands
-   *  where the panel was; the ring is drawn on the canvas under the plane. */
-  veil(on: boolean): void;
   /** Design px the content stands taller than the frame allows, so its bottom is cut (0 when it
    *  fits): the owner folds something. Reads the layout, so it is asked once per content change,
    *  never per tick. */
@@ -287,7 +282,7 @@ export function createSelectionPanel(
       );
     },
     holeClientRect(): ClientRect | null {
-      if (root.hidden || root.classList.contains(VEIL_CLASS)) return null;
+      if (root.hidden) return null;
       if (dirty) {
         hole = measure();
         dirty = false;
@@ -298,10 +293,6 @@ export function createSelectionPanel(
       if (root.hidden) return false;
       const hit = document.elementFromPoint(clientX, clientY);
       return hit !== null && root.contains(hit);
-    },
-    veil(on): void {
-      if (on) tips.hide();
-      setClass(root, VEIL_CLASS, on);
     },
     overflow: () => Math.max(0, body.scrollHeight - body.clientHeight),
     renaming: () => editing,

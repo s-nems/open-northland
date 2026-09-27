@@ -32,7 +32,6 @@ import {
 } from './action-ring/index.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { PickMode } from './pick-mode.js';
-import { createRingVeil } from './ring-veil.js';
 import type { UnitSelection } from './selection.js';
 import { type SettlerContractCommands, settlerPanelActions } from './settler-panel.js';
 import type { UnitControlsOptions } from './types.js';
@@ -85,9 +84,8 @@ export interface UnitChromeHandle {
   /** Escape: close the trade window or the vehicle hold's picker; false when neither was open. */
   closeWindow(): boolean;
   windowOpen(): boolean;
-  /** Once a frame: the settler panel comes back once the ring it stepped aside for is down, the trade
-   *  window follows the plane and yields to a beam window, and the vehicle panel lights its armed
-   *  order. */
+  /** Once a frame: the trade window follows the plane and yields to a beam window, and the vehicle
+   *  panel lights its armed order. */
   refreshWindows(): void;
   /** Show the selection on the panel, or nothing while the HUD is hidden. */
   renderPanel(snapshot: WorldSnapshot): void;
@@ -151,11 +149,6 @@ export async function createUnitChrome(
   };
   // Its own chip: the Pixi details panel hides the shared one on every canvas mouse move off its rows.
   const panelChip = createTooltip();
-  // The ring is down when it closed, or when its selection went and it lost its pin.
-  const veil = createRingVeil({ veil: (on) => settlerPanel.veil(on) }, () => {
-    const ring = mounts.current().actions.state();
-    return ring.mode !== 'closed' && ring.anchor !== null;
-  });
   const settlerActions = settlerPanelActions(
     opts,
     {
@@ -167,7 +160,6 @@ export async function createUnitChrome(
         mounts
           .current()
           .actions.open({ x: press.x, y: press.y, ...(edge === null ? {} : { keepRightOf: edge }) });
-        veil.raise();
       },
       assignWorkplace: callbacks.assignWorkplace,
       assignHome: callbacks.assignHome,
@@ -440,7 +432,6 @@ export async function createUnitChrome(
     },
     windowOpen: () => tradeWindow.isOpen(),
     refreshWindows: () => {
-      veil.refresh();
       tradeWindow.refresh();
       settlerPanel.refresh();
       vehiclePanel.refresh();
