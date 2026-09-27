@@ -53,6 +53,15 @@ describe('game session descriptor', () => {
     expect(() => parseGameSession(session({ seats: shuffled }))).toThrow(/ascending/);
   });
 
+  it('round-trips the fallback map while requiring a scene name', () => {
+    const fallback = session({ world: { kind: 'map', mapId: '' } });
+    expect(roundTrip(fallback)).toEqual(fallback);
+    expect(() => roundTrip(session({ world: { kind: 'scene', sceneId: '' } }))).toThrow(/world.sceneId/);
+    for (const mapId of ['map\nname', '\u0000']) {
+      expect(() => roundTrip(session({ world: { kind: 'map', mapId } }))).toThrow(/world.mapId/);
+    }
+  });
+
   it('preserves explicit teams and the map-authored diplomacy default', () => {
     const configured = session({
       seats: [

@@ -132,7 +132,9 @@ export function parseGameSession(value: unknown): GameSession {
 
 function parseWorld(value: unknown): SessionWorld {
   const raw = asRecord(value, 'world');
-  if (raw.kind === 'map') return { kind: 'map', mapId: worldId(raw.mapId, 'world.mapId') };
+  if (raw.kind === 'map') {
+    return { kind: 'map', mapId: raw.mapId === '' ? '' : worldId(raw.mapId, 'world.mapId') };
+  }
   if (raw.kind === 'scene') return { kind: 'scene', sceneId: worldId(raw.sceneId, 'world.sceneId') };
   throw new Error(`session.world.kind must be 'map' or 'scene', got ${JSON.stringify(raw.kind)}`);
 }
