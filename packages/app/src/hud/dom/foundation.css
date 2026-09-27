@@ -3319,8 +3319,9 @@ body.on-drag-scroll-cursor-hidden * {
 }
 
 /* ---------- vehicle panel: orders, wear, crew seats, the hold's manifest ---------- */
-/* The portrait frame with the vehicle's wear under it, the way an RTS unit card carries its health. */
-.on-hud .on-vehicle-shot {
+/* The portrait frame with the vehicle's or the building's wear under it, the way an RTS unit card
+   carries its health. */
+.on-hud .on-portrait-shot {
   display: grid;
   align-content: start;
   gap: 4px;
@@ -3664,6 +3665,14 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-cargo-row--leaving .on-cargo-row__name,
 .on-hud .on-cargo-row--leaving .on-cargo-row__now {
   color: var(--muted);
+}
+/* A shelf with nothing on it, a bill line delivered, a product with no batch running. */
+.on-hud .on-cargo-row--out .on-cargo-row__name,
+.on-hud .on-cargo-row--out .on-cargo-row__now {
+  color: var(--muted);
+}
+.on-hud .on-cargo-row--out .on-good-well {
+  opacity: 0.55;
 }
 .on-hud .on-cargo-add {
   display: flex;
@@ -5173,4 +5182,75 @@ body.on-drag-scroll-cursor-hidden * {
   border-radius: 50%;
   background: #6b4f2a;
   box-shadow: inset 0 0 0 1px #2a1d0e;
+}
+
+/* ---------- building panel: staff wells, household wares, stock ---------- */
+/* One line per trade (or the sheltering crowd, the site's crew): the label over its dotted leader, then
+   the wells, six to a row. */
+.on-hud .on-staff__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 3px 0;
+  font-size: 12.5px;
+}
+.on-hud .on-staff__label {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding-top: 5px;
+  color: #c7bda3;
+  white-space: nowrap;
+}
+.on-hud .on-staff__label::after {
+  content: "";
+  flex: 1;
+  min-width: 8px;
+  border-bottom: 1px dotted #c9a26255;
+  transform: translateY(-3px);
+}
+.on-hud .on-staff__wells {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 164px;
+}
+/* A home's families stand side by side, a wider gap between two families than inside one. */
+.on-hud .on-staff--families {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+}
+.on-hud .on-staff--families .on-staff__wells {
+  max-width: none;
+  justify-content: flex-start;
+}
+.on-hud .on-seat-well--child .on-figure {
+  width: 12px;
+  height: 15px;
+}
+.on-hud .on-seat-well--more {
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+/* A household ware: its pool on the rule, what it buys, and the owner's allow toggle. */
+.on-hud .on-cargo-row--ware {
+  grid-template-columns: 22px 1fr auto 22px;
+}
+.on-hud .on-cargo-row__state {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.on-hud .on-building-stock .on-tabs--icons {
+  margin-bottom: 4px;
+}
+.on-hud .on-building-empty {
+  margin: 4px 0;
+  font-size: 12px;
 }

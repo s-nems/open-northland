@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import type { ElevationField, SpriteSheet, TerrainTextureSet } from '@open-northland/render';
-import type { Renderer, Texture } from 'pixi.js';
+import type { Renderer } from 'pixi.js';
 import type { ContentIr } from '../content/ir/rows.js';
 import type { LoadedMapObjects, MapObjectsData } from '../content/objects.js';
 import type { GoodRef } from '../content/settler-gfx/index.js';
@@ -30,8 +30,6 @@ export interface PresentationPack {
   ): Promise<LoadedMapObjects>;
   /** A good's DOM icon, or undefined to fall back to the original's frame. */
   goodIconSource(goodId: string): GoodIconSource | undefined;
-  /** Goods icons the Pixi panels draw from this pack's families on `sheet`. */
-  goodTextures(sheet: SpriteSheet | undefined): ReadonlyMap<string, Texture>;
 }
 
 interface PackModule {

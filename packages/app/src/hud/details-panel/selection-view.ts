@@ -1,7 +1,5 @@
 import {
-  type BuildingLayout,
   type CompactLayout,
-  layoutBuilding,
   layoutCompact,
   layoutPalisade,
   layoutSignpost,
@@ -9,7 +7,6 @@ import {
   type SignpostLayout,
 } from './layout/index.js';
 import type {
-  BuildingPanelModel,
   GenericSelectionPanelModel,
   MultiSettlerPanelModel,
   PalisadePanelModel,
@@ -19,12 +16,11 @@ import type {
 
 /**
  * A selection's model paired with the geometry laid out for it, discriminated by the layout's kind rather
- * than the model's: one `compact` strip serves both multi-select model kinds. A single settler or vehicle
- * has no view here: the DOM panels show it.
+ * than the model's: one `compact` strip serves both multi-select model kinds. A single settler, vehicle or
+ * building has no view here: the DOM panels show it.
  */
 export type PanelView =
   | { readonly kind: 'empty' }
-  | { readonly kind: 'building'; readonly model: BuildingPanelModel; readonly layout: BuildingLayout }
   | { readonly kind: 'signpost'; readonly model: SignpostPanelModel; readonly layout: SignpostLayout }
   | { readonly kind: 'palisade'; readonly model: PalisadePanelModel; readonly layout: PalisadeLayout }
   | {
@@ -44,9 +40,8 @@ export function panelViewFor(
     case 'empty':
     case 'settler':
     case 'vehicle':
-      return EMPTY_PANEL_VIEW;
     case 'building':
-      return { kind: 'building', model, layout: layoutBuilding(model, screen, s) };
+      return EMPTY_PANEL_VIEW;
     case 'signpost':
       return { kind: 'signpost', model, layout: layoutSignpost(screen, s) };
     case 'palisade':

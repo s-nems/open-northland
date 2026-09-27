@@ -2,12 +2,8 @@ import type { UiCue } from '@open-northland/audio';
 import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
 import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
-import {
-  mountUnitPanel,
-  type PortraitBox,
-  type UnitPanel,
-  type UnitPanelState,
-} from '../../hud/details-panel/index.js';
+import { mountUnitPanel, type PortraitBox, type UnitPanel } from '../../hud/details-panel/index.js';
+import { createBuildingPanel } from '../../hud/dom/building-panel/view.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import type { ClientRect } from '../../hud/dom/portrait-hole.js';
@@ -25,6 +21,7 @@ import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { createTooltip } from '../tooltip.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
 import type { AnsweredOrders } from './answered-orders.js';
+import { buildingPanelActions, buildingPeers } from './building-panel.js';
 import type { EquipPickController } from './equip-picker.js';
 import type { PickMode } from './pick-mode.js';
 import { professionGates } from './profession-gates.js';
@@ -76,8 +73,8 @@ export interface UnitChromeHandle {
   portraits(): readonly PortraitBox[];
   /** True over any details panel or the trade window. */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade, or vehicle of
-   *  the shown vehicle's class. */
+  /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade, vehicle of the
+   *  shown vehicle's class, or building of the shown building's type. */
   browse(step: 1 | -1): boolean;
   /** Escape: close the trade window or the vehicle hold's picker; false when neither was open. */
   closeWindow(): boolean;
@@ -145,7 +142,8 @@ export async function createUnitChrome(
     models.set(id, model);
     return model;
   };
-  // Its own chip: the Pixi details panel hides the shared one on every canvas mouse move off its rows.
+  // Its own chip: the frame loop hides the ground tooltip whenever the pointer is over the HUD, which is
+  // exactly where this one must stay shown.
   const panelChip = createTooltip();
   const settlerActions = settlerPanelActions(
     opts,
@@ -206,6 +204,21 @@ export async function createUnitChrome(
     vehiclePeers: (vehicle) => vehiclePeersOf(opts.snapshot(), opts.content, vehicle),
     armedPick: (vehicle) => armedVehiclePick(callbacks.armedPick(), vehicle),
   });
+  const buildingPanel = createBuildingPanel({
+    plane: opts.domHud.plane,
+    icons,
+    tooltip: panelChip,
+    cue: callbacks.cue,
+    now: () => performance.now(),
+    actions: settlerActions,
+    building: buildingPanelActions({
+      snapshot: opts.snapshot,
+      viewer: opts.viewer,
+      enqueue: opts.enqueue,
+      cue: callbacks.cue,
+    }),
+    buildingPeers: (building) => buildingPeers(opts.snapshot(), building),
+  });
   const canvasRect = (client: ClientRect): PortraitBox['rect'] => {
     const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
     const { left, top, width, height } = client;
@@ -216,22 +229,24 @@ export async function createUnitChrome(
   /** The canvas box of the DOM portrait, converted once per measured client box and subject. */
   let portraitMemo: { client: ClientRect; box: PortraitBox } | null = null;
   const domPortrait = (): PortraitBox | null => {
-    const shown = settlerPanel.portrait() ?? vehiclePanel.portrait();
+    const shown = settlerPanel.portrait() ?? vehiclePanel.portrait() ?? buildingPanel.portrait();
     if (shown === null) return null;
+    const inside = 'inside' in shown ? shown.inside : undefined;
+    const aboard = 'aboard' in shown ? shown.aboard : undefined;
     if (
       portraitMemo?.client !== shown.rect ||
       portraitMemo.box.entityRef !== shown.entityRef ||
       portraitMemo.box.kind !== shown.kind ||
-      portraitMemo.box.inside !== ('inside' in shown ? shown.inside : undefined) ||
-      portraitMemo.box.aboard !== shown.aboard
+      portraitMemo.box.inside !== inside ||
+      portraitMemo.box.aboard !== aboard
     ) {
       portraitMemo = {
         client: shown.rect,
         box: {
           entityRef: shown.entityRef,
           kind: shown.kind,
-          ...('inside' in shown && shown.inside !== undefined ? { inside: shown.inside } : {}),
-          ...(shown.aboard === undefined ? {} : { aboard: shown.aboard }),
+          ...(inside === undefined ? {} : { inside }),
+          ...(aboard === undefined ? {} : { aboard }),
           rect: canvasRect(shown.rect),
         },
       };
@@ -254,17 +269,17 @@ export async function createUnitChrome(
     }
     return housesMemo.boxes;
   };
-  /** Every portrait of the frame, the settler's first; the same list while its boxes are the same. */
+  /** Every portrait of the frame, the selection's first; the same list while its boxes are the same. */
   let portraitsMemo: {
-    settler: PortraitBox | null;
+    selected: PortraitBox | null;
     houses: readonly PortraitBox[];
     list: readonly PortraitBox[];
   } | null = null;
   const portraits = (): readonly PortraitBox[] => {
-    const settler = domPortrait() ?? mounts.current().panel.portrait();
+    const selected = domPortrait();
     const houses = housePortraits();
-    if (portraitsMemo?.settler !== settler || portraitsMemo.houses !== houses) {
-      portraitsMemo = { settler, houses, list: settler === null ? houses : [settler, ...houses] };
+    if (portraitsMemo?.selected !== selected || portraitsMemo.houses !== houses) {
+      portraitsMemo = { selected, houses, list: selected === null ? houses : [selected, ...houses] };
     }
     return portraitsMemo.list;
   };
@@ -302,32 +317,20 @@ export async function createUnitChrome(
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
       isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
       ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
-      ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
-      ...(opts.packGoods !== undefined ? { packGoods: opts.packGoods } : {}),
-      ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
       onUiCue: callbacks.cue,
-      onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
-      onUpgrade: (id) => opts.enqueue({ kind: 'upgradeBuilding', building: id as Entity }),
-      onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
       onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
       onDemolishPalisade: (id) => opts.enqueue({ kind: 'demolishPalisade', palisade: id as Entity }),
       onSetPalisadeGate: (id, open) =>
         opts.enqueue({ kind: 'setPalisadeGate', palisade: id as Entity, open }),
-      onSetDefenceMode: (id, enabled) =>
-        opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
-      onSetHouseholdGoodUse: (player, effect, allowed) =>
-        opts.enqueue({ kind: 'setHouseholdGoodUse', player, effect, allowed }),
       ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
       ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
       ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
       ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
-      onSelectEntity: callbacks.selectEntity,
-      onCenterOnEntity: centre,
       onModel: (model) => {
         settlerPanel.update(model);
         vehiclePanel.update(model);
+        buildingPanel.update(model);
       },
-      ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
     });
 
   const mountActions = (uiscale: number): Promise<SettlerActions> =>
@@ -376,16 +379,14 @@ export async function createUnitChrome(
 
   let hudHidden = false;
   const panelIds = (): ReadonlySet<number> => (hudHidden ? NO_SELECTION : selection.ids());
-  /** The stock tab the hide found, given back on show while the selection is the same one. */
-  let keptPanel: { readonly state: UnitPanelState; readonly version: number } | null = null;
   // Behind the loading screen: the panels' styles raster once now, not on the first click.
   const warmGoods = opts.content.goods.slice(0, WARM_GOOD_ICONS).map((good) => good.id);
   settlerPanel.warm(warmGoods);
   vehiclePanel.warm(warmGoods);
+  buildingPanel.warm(warmGoods);
   const mounts = createReplaceableMount(await mount(opts.uiscale ?? 1), mount, (next, previous) => {
     const snapshot = opts.snapshot();
     next.panel.render(snapshot, panelIds());
-    next.panel.restore(previous.panel.state());
     next.actions.restore(previous.actions.state());
     next.actions.update(opts.camera(), snapshot);
   });
@@ -396,9 +397,10 @@ export async function createUnitChrome(
     claimsPointer: (x, y) =>
       settlerPanel.claims(x, y) ||
       vehiclePanel.claims(x, y) ||
+      buildingPanel.claims(x, y) ||
       tradeWindow.claims(x, y) ||
       mounts.current().panel.claimsPointer(x, y),
-    browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step),
+    browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step) || buildingPanel.browse(step),
     closeWindow: () => {
       if (tradeWindow.isOpen()) {
         tradeWindow.dismiss();
@@ -411,22 +413,19 @@ export async function createUnitChrome(
       tradeWindow.refresh();
       settlerPanel.refresh();
       vehiclePanel.refresh();
+      buildingPanel.refresh();
     },
     renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
     setHudHidden: (hidden) => {
       hudHidden = hidden;
       const { panel, actions } = mounts.current();
-      if (hidden) {
-        keptPanel = { state: panel.state(), version: selection.version() };
-        actions.close();
-      }
+      if (hidden) actions.close();
       panel.render(opts.snapshot(), panelIds());
-      if (!hidden && keptPanel?.version === selection.version()) panel.restore(keptPanel.state);
-      if (!hidden) keptPanel = null;
     },
     setUiScale: (uiscale) => {
       settlerPanel.invalidate();
       vehiclePanel.invalidate();
+      buildingPanel.invalidate();
       tradeWindow.invalidate();
       return mounts.replace(uiscale);
     },
@@ -435,6 +434,7 @@ export async function createUnitChrome(
       tradeWindow.dispose();
       settlerPanel.dispose();
       vehiclePanel.dispose();
+      buildingPanel.dispose();
       hoverCard.dispose();
       panelChip.destroy();
     },

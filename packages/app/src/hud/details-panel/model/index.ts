@@ -1,57 +1,32 @@
-import {
-  entityById,
-  type HouseholdGoodPolicyView,
-  homeQualityView,
-  householdGoodPolicyView,
-  type WorldSnapshot,
-} from '@open-northland/sim';
-import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
-import {
-  homeFamiliesOf,
-  isBuilding,
-  isFemale,
-  isPalisade,
-  isSettler,
-  isSignpost,
-  isVehicle,
-  num,
-  ownerPlayerOf,
-  shelterClaimCount,
-} from '../../../game/snapshot.js';
-import { tribeName } from '../../../i18n/index.js';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { isBuilding, isPalisade, isSettler, isSignpost, isVehicle, num } from '../../../game/snapshot.js';
 import { healthBar, pct } from './bars.js';
-import {
-  type BuildingPanelModel,
-  constructionModel,
-  defenseLine,
-  productionModel,
-  stockRows,
-  upgradeCostRows,
-  workerSlotsFor,
-} from './building.js';
-import {
-  buildingDef,
-  buildingTitle,
-  type Comp,
-  contentTribeName,
-  goodLabel,
-  type UnitPanelModelContext,
-} from './context.js';
+import { type BuildingPanelModel, buildingPanelModel } from './building.js';
+import type { UnitPanelModelContext } from './context.js';
 import { type SettlerPanelModel, settlerPanelModel } from './settler-panel.js';
-import { tradeOfferLabel } from './trade.js';
 import { type VehiclePanelModel, vehiclePanelModel } from './vehicle.js';
 
 export { type BarTone, barTone, type PanelBar, remainingPct } from './bars.js';
-export type {
-  BuildingPanelModel,
-  ConstructionModel,
-  ConstructionRow,
-  HomeQualityRow,
-  HomeResidentsModel,
-  ProductionModel,
-  StockRow,
-  UpgradeCostRow,
-  WorkerSlotRow,
+export {
+  type BuildingOfferModel,
+  type BuildingOrdersModel,
+  type BuildingPanelModel,
+  type BuildingStaffModel,
+  type BuildingStatusModel,
+  type BuildingStatusTone,
+  buildingPeersOf,
+  type ConstructionModel,
+  type ConstructionRow,
+  type HomeQualityModel,
+  type HomeQualityRow,
+  type HouseholdEffect,
+  type PersonLook,
+  type ProductionModel,
+  type ProductionRow,
+  type StaffGroup,
+  type StaffPerson,
+  type StockRow,
+  type UpgradeCostRow,
 } from './building.js';
 export {
   type DiplomacyStance,
@@ -163,8 +138,6 @@ export type UnitPanelModel =
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
-const ALL_HOUSEHOLD_GOODS: HouseholdGoodPolicyView = { cooking: true, rest: true, piety: true };
-
 export function buildUnitPanelModel(
   snapshot: WorldSnapshot,
   selected: ReadonlySet<number>,
@@ -228,112 +201,8 @@ export function buildUnitPanelModel(
   if (settlerIds.length > 0 && vehicleIds.length > 0) return { kind: 'generic', count: selected.size };
 
   if (settlerIds.length === 0 && buildingIds.length === 1) {
-    const entityId = buildingIds[0] as number;
-    const ent = entityById(snapshot, entityId);
-    if (ent === undefined) return { kind: 'empty' };
-    const b = (ent.components.Building ?? {}) as Comp;
-    const rawType = num(b.buildingType);
-    const typeId = rawType ?? -1;
-    const def = buildingDef(ctx, rawType);
-    const catalog = rawType === undefined ? undefined : vikingBuildingByTypeId(rawType);
-    const category = def?.kind ?? catalog?.kind ?? 'unknown';
-    // Computed once, so the Upgrade button's presence and its cost-preview tooltip cannot disagree.
-    const upgradable =
-      def?.upgradeTarget !== undefined &&
-      ent.components.UnderConstruction === undefined &&
-      pct(num(b.built)) >= 100;
-    // `shelterCapacity` is also the gate the sim's `setDefenceMode` reads, so the panel can never offer
-    // an order the sim refuses. Neither side gates on ownership: an enemy garrison offers its alarm too.
-    const shelterCapacity = def?.shelterCapacity ?? 0;
-    const defenseEnabled = ent.components.DefenceMode !== undefined;
-    const sheltered = shelterClaimCount(snapshot, entityId);
-    const level = num(b.level) ?? 0;
-    const finished = ent.components.UnderConstruction === undefined && pct(num(b.built)) >= 100;
-    const pools = homeQualityView(snapshot, entityId) ?? { cooking: 0, rest: 0, piety: 0 };
-    const ownerPlayer = ownerPlayerOf(ent);
-    const policy =
-      ownerPlayer === undefined ? ALL_HOUSEHOLD_GOODS : householdGoodPolicyView(snapshot, ownerPlayer);
-    const effectOrder = { cooking: 0, rest: 1, piety: 2 } as const;
-    const homeQuality =
-      def?.kind === 'home' && finished
-        ? ctx.goods
-            .flatMap((good) => {
-              const use = good.homeQuality;
-              if (use === undefined || level < use.minimumHomeLevel) return [];
-              const value = pools[use.effect];
-              return [
-                {
-                  effect: use.effect,
-                  goodId: good.id,
-                  label: goodLabel(ctx, good.typeId),
-                  value,
-                  capacity: use.capacity,
-                  allowed: policy[use.effect],
-                  ...(use.effect === 'piety'
-                    ? { holyFireActive: value > 0 && policy.piety }
-                    : { uses: Math.floor(value / use.useCost) }),
-                },
-              ];
-            })
-            .sort((a, b) => effectOrder[a.effect] - effectOrder[b.effect])
-        : [];
-    return {
-      kind: 'building',
-      entityId,
-      typeId,
-      title: buildingTitle(ctx, rawType),
-      category,
-      owner: `#${ownerPlayerOf(ent) ?? '-'}`,
-      ownerPlayer,
-      canSetHouseholdGoodPolicy: ownerPlayer !== undefined && ownerPlayer === ctx.viewer?.seat(),
-      tribe: tribeName(num(b.tribe), contentTribeName(ctx, num(b.tribe))),
-      tribeId: num(b.tribe),
-      level,
-      builtPct: pct(num(b.built)),
-      health: healthBar(ent),
-      stock: stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
-      workerSlots: workerSlotsFor(ctx, snapshot, def, entityId),
-      home:
-        def?.kind === 'home'
-          ? {
-              families: (homeFamiliesOf(snapshot, entityId) ?? []).map((f) => ({
-                members: [
-                  ...f.members.slice(0, f.adults).sort((a, b) => {
-                    const left = entityById(snapshot, a);
-                    const right = entityById(snapshot, b);
-                    return (
-                      Number(left !== undefined && isFemale(left)) -
-                      Number(right !== undefined && isFemale(right))
-                    );
-                  }),
-                  ...f.members.slice(f.adults),
-                ],
-              })),
-              capacity: def.homeSize,
-            }
-          : null,
-      homeQuality,
-      showDefense: shelterCapacity > 0,
-      defenseEnabled,
-      garrison: sheltered > 0 ? { sheltered, capacity: shelterCapacity } : null,
-      defenseLabel: defenseLine(
-        snapshot,
-        def,
-        entityId,
-        defenseEnabled ? { sheltered, capacity: shelterCapacity } : null,
-      ),
-      production: productionModel(ctx, snapshot, def, ent),
-      construction: constructionModel(ctx, snapshot, def, ent),
-      upgradable,
-      cancelable: ent.components.Upgrading !== undefined,
-      upgradeBlockedReason:
-        def?.upgradeTarget === undefined
-          ? null
-          : (ctx.technologyReason?.('house', def.upgradeTarget, num(b.tribe) ?? 0, ownerPlayerOf(ent)) ??
-            null),
-      upgradeCost: upgradable ? upgradeCostRows(ctx, def) : [],
-      tradeOffers: (ctx.tradeOffersAt?.(entityId) ?? []).map((offer) => tradeOfferLabel(ctx, offer)),
-    };
+    const ent = entityById(snapshot, buildingIds[0] as number);
+    return ent === undefined ? { kind: 'empty' } : buildingPanelModel(ctx, snapshot, ent);
   }
 
   if (settlerIds.length === 1) {

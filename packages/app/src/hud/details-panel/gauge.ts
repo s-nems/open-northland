@@ -13,10 +13,6 @@ const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   warn: 0xd08a2e,
   critical: 0xb5392b,
 };
-/** The neutral production-progress fill, eyeballed to sit on the parchment without reading as a
- *  health/need level. */
-export const PRODUCTION_BAR_FILL = 0xb8894a;
-
 /** Where the fill's vertical gradient rolls over from lit to shaded (fraction of the fill height). */
 const GAUGE_GRADIENT_KNEE = 0.45;
 /** How far the fill's lit top is blended toward white / the shaded bottom toward black. */

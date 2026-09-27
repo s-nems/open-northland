@@ -114,6 +114,21 @@ export interface TradePanelModel {
   readonly agreementHolds: boolean;
 }
 
+/** One side of an agreement: so many units of a good. */
+export function offerSide(
+  ctx: Pick<UnitPanelModelContext, 'goods'>,
+  amount: number,
+  goodType: number,
+): TradeOfferSide {
+  const def = goodDef(ctx, goodType);
+  return {
+    amount,
+    goodType,
+    label: goodLabel(ctx, goodType),
+    ...(def?.id !== undefined ? { goodId: def.id } : {}),
+  };
+}
+
 /** "you give N X, you get M Y", the wording of an agreement wherever it is listed. */
 export function tradeOfferLabel(ctx: UnitPanelModelContext, offer: TradeOffer): string {
   return formatMessage(messages().hud.tradeOffer, {
@@ -216,22 +231,13 @@ export function tradePanelModel(
   const a = view.stops.find((stop) => stop.slot === TRADE_SLOT_A);
   const b = view.stops.find((stop) => stop.slot === TRADE_SLOT_B);
   const own = foreign === undefined && a !== undefined && b !== undefined ? { a, b } : null;
-  const side = (amount: number, goodType: number): TradeOfferSide => {
-    const def = goodDef(ctx, goodType);
-    return {
-      amount,
-      goodType,
-      label: goodLabel(ctx, goodType),
-      ...(def?.id !== undefined ? { goodId: def.id } : {}),
-    };
-  };
   const offers: TradeOfferModel[] = (foreign?.offers ?? []).map((offer) => {
     const selected = offer.index === view.agreement;
     return {
       index: offer.index,
       label: tradeOfferLabel(ctx, offer),
-      give: side(offer.giveAmount, offer.giveGood),
-      take: side(offer.takeAmount, offer.takeGood),
+      give: offerSide(ctx, offer.giveAmount, offer.giveGood),
+      take: offerSide(ctx, offer.takeAmount, offer.takeGood),
       selected,
       progress: selected ? { given: view.given, received: view.received } : null,
     };

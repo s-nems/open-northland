@@ -67,7 +67,7 @@ export function createPortraitSection(
   current: () => VehiclePanelModel | null,
 ): PortraitSection {
   const row = element('div', 'on-portrait');
-  const shot = element('div', 'on-vehicle-shot');
+  const shot = element('div', 'on-portrait-shot');
   const frame = button('on-portrait__frame');
   frame.addEventListener('click', () => {
     const shown = current();

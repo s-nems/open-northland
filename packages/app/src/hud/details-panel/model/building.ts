@@ -1,21 +1,60 @@
-import type { PanelBar } from './bars.js';
-import type { ConstructionModel, StockRow, UpgradeCostRow } from './building-materials.js';
-import type { ProductionModel } from './building-production.js';
-import type { WorkerSlotRow } from './building-workers.js';
+import {
+  countedBy,
+  groupedBy,
+  homeQualityView,
+  householdGoodPolicyView,
+  indexesOf,
+  type WorldSnapshot,
+} from '@open-northland/sim';
+import {
+  buildingTribeOf,
+  buildingTypeOf,
+  healthOf,
+  homeFamiliesOf,
+  isBuilding,
+  num,
+  ownerPlayerOf,
+  type SnapshotEntity,
+  settlerJobType,
+  shelterClaimCount,
+  staffOf,
+} from '../../../game/snapshot.js';
+import { pickableSeat } from '../../../game/viewer-seat.js';
+import { messages, tribeName } from '../../../i18n/index.js';
+import { pct } from './bars.js';
+import {
+  type ConstructionModel,
+  constructionModel,
+  type StockRow,
+  stockRows,
+  type UpgradeCostRow,
+  upgradeCostRows,
+} from './building-materials.js';
+import { type ProductionModel, productionModel } from './building-production.js';
+import { type BuildingStaffModel, buildingStaff, garrisonPosts } from './building-staff.js';
+import { type BuildingStatusModel, buildingStatus } from './building-status.js';
+import {
+  type BuildingDef,
+  buildingDef,
+  buildingTitle,
+  contentTribeName,
+  foreignOwnerLine,
+  goodLabel,
+  type SettlerWorkStatus,
+  type UnitPanelModelContext,
+} from './context.js';
+import type { SeatControl } from './settler-household.js';
+import { offerSide, type TradeOfferSide } from './trade.js';
 
 export * from './building-materials.js';
 export * from './building-production.js';
-export * from './building-workers.js';
+export * from './building-staff.js';
+export * from './building-status.js';
 
-export interface HomeResidentsModel {
-  /** One entry per resident family; a family's members list its adults before the child. */
-  readonly families: readonly { readonly members: readonly number[] }[];
-  /** Family slots this home tier offers (`homeSize`). */
-  readonly capacity: number;
-}
+export type HouseholdEffect = 'cooking' | 'rest' | 'piety';
 
 export interface HomeQualityRow {
-  readonly effect: 'cooking' | 'rest' | 'piety';
+  readonly effect: HouseholdEffect;
   readonly goodId: string;
   readonly label: string;
   readonly value: number;
@@ -27,50 +66,274 @@ export interface HomeQualityRow {
   readonly holyFireActive?: boolean;
 }
 
+/** Wyposażenie: the household wares a finished home keeps, and the owner's policy over every home. */
+export interface HomeQualityModel {
+  readonly rows: readonly HomeQualityRow[];
+  /** The seat whose policy the toggles set. */
+  readonly player: number;
+  /** True while the viewer may set that seat's policy, else the reason. */
+  readonly control: SeatControl;
+}
+
+/** The orders beside the portrait. A null order is not offered for this house. */
+export interface BuildingOrdersModel {
+  /** Rozbuduj: true or the refusal, with the next tier's bill. */
+  readonly upgrade: { readonly control: SeatControl; readonly cost: readonly UpgradeCostRow[] } | null;
+  /** Anuluj rozbudowę, while a tier is being raised. */
+  readonly cancelUpgrade: boolean;
+  /** The alarm toggle of a house that shelters civilians, and whether it is up. */
+  readonly alarm: { readonly on: boolean } | null;
+}
+
+/** An agreement this house offers a visiting trader: the trader gives one side and takes the other. */
+export interface BuildingOfferModel {
+  readonly give: TradeOfferSide;
+  readonly take: TradeOfferSide;
+}
+
+/** The selected building's panel (FOUNDATION.md, "Building panel"). A null or empty section is not
+ *  shown; another seat's house shows its name, owner, health, state and agreements only. */
 export interface BuildingPanelModel {
   readonly kind: 'building';
   readonly entityId: number;
   readonly typeId: number;
-  readonly title: string;
-  readonly category: string;
-  readonly owner: string;
-  /** Player whose global household-good policy the selected home follows. */
-  readonly ownerPlayer: number | undefined;
-  /** Whether the local seat may change that owner's global household-good policy. */
-  readonly canSetHouseholdGoodPolicy: boolean;
-  /** The building's civilization, named for the player. */
-  readonly tribe: string;
-  /** The same civilization as the `Building.tribe` code, the per-tribe art join key. */
+  /** The building's civilization, the per-tribe art join key. */
   readonly tribeId: number | undefined;
-  readonly level: number;
-  readonly builtPct: number;
-  /** Null for a type declaring no hitpoints (`work_murek`); the slot under the name then stays empty. */
-  readonly health: PanelBar | null;
-  readonly stock: readonly StockRow[];
-  readonly workerSlots: readonly WorkerSlotRow[];
-  /** Non-null for a `home`-kind building: the workers window becomes the residents window. */
-  readonly home: HomeResidentsModel | null;
-  /** Durable household wares available at this home tier, in cooking/rest/piety order. */
-  readonly homeQuality: readonly HomeQualityRow[];
-  /** Whether the type offers the Obrona window, that is whether content gives it a `shelterCapacity`. */
-  readonly showDefense: boolean;
-  /** Whether the alarm is currently up (the sim's `DefenceMode` marker). */
-  readonly defenseEnabled: boolean;
-  /** Non-null while civilians hold a seat: the workers window becomes the garrison window. */
-  readonly garrison: { readonly sheltered: number; readonly capacity: number } | null;
-  readonly defenseLabel: string;
+  readonly title: string;
+  /** The building's class, the head's kicker. */
+  readonly kicker: string;
+  readonly foreign: boolean;
+  /** Another seat's owner line, or the civilization while the seat keeps houses of several. */
+  readonly meta: string | null;
+  /** Null for a type declaring no hitpoints (`work_murek`). */
+  readonly health: { readonly hitpoints: number; readonly max: number } | null;
+  readonly status: BuildingStatusModel;
+  readonly orders: BuildingOrdersModel | null;
+  /** Present while the building is a site, raised from nothing or a tier up. */
+  readonly construction: (ConstructionModel & { readonly pct: number; readonly upgrade: boolean }) | null;
+  readonly staff: BuildingStaffModel | null;
   readonly production: ProductionModel | null;
-  /** Non-null while the building is a site: the panel swaps its defence, production, and stock windows
-   *  for the one Construction window. */
-  readonly construction: ConstructionModel | null;
-  /** Whether the general section offers the Upgrade button (`housewindow` 110). */
-  readonly upgradable: boolean;
-  /** Whether the general section offers the Cancel-upgrade button (`housewindow` 112); aborting keeps the
-   *  tier the building already had and loses what the hold took in beyond the building's own inventory. */
-  readonly cancelable: boolean;
-  /** Material cost of the upgrade target tier; empty unless `upgradable`. */
-  readonly upgradeBlockedReason?: string | null;
-  readonly upgradeCost: readonly UpgradeCostRow[];
-  /** The map's trade agreements this house offers a visiting trader, as text rows; empty for most. */
-  readonly tradeOffers: readonly string[];
+  readonly stock: readonly StockRow[];
+  readonly homeQuality: HomeQualityModel | null;
+  readonly offers: readonly BuildingOfferModel[];
+}
+
+/** Composite index keys: an owner times the span, plus a type or tribe id under it. */
+const OWNER_KEY_SPAN = 1 << 16;
+const NO_OWNER = OWNER_KEY_SPAN - 1;
+
+function ownerKey(owner: number | undefined, id: number): number {
+  return (owner ?? NO_OWNER) * OWNER_KEY_SPAN + id;
+}
+
+/** What the two building indexes place a building by. */
+const BUILDING_OWNER_READS = { values: ['Building', 'Owner'] };
+
+const BUILDINGS_BY_OWNER_TYPE = groupedBy(
+  (e) => {
+    if (!isBuilding(e)) return undefined;
+    const type = buildingTypeOf(e);
+    return type === undefined ? undefined : ownerKey(ownerPlayerOf(e), type);
+  },
+  'buildings by owner and type',
+  BUILDING_OWNER_READS,
+);
+
+const BUILDINGS_BY_OWNER_TRIBE = countedBy(
+  (e) => {
+    if (!isBuilding(e)) return undefined;
+    const tribe = buildingTribeOf(e);
+    return tribe === undefined ? undefined : ownerKey(ownerPlayerOf(e), tribe);
+  },
+  'buildings by owner and tribe',
+  BUILDING_OWNER_READS,
+);
+
+/** The owner's buildings of `ent`'s type, ascending: the head's browse. */
+export function buildingPeersOf(snapshot: WorldSnapshot, ent: SnapshotEntity): readonly number[] {
+  const type = buildingTypeOf(ent);
+  if (type === undefined) return [];
+  const peers = indexesOf(snapshot)
+    .get(BUILDINGS_BY_OWNER_TYPE)
+    .get(ownerKey(ownerPlayerOf(ent), type));
+  return peers?.map((e) => e.id) ?? [];
+}
+
+/** Whether `owner` keeps buildings of more than one civilization, so each house names its own. */
+function ownsSeveralTribes(snapshot: WorldSnapshot, owner: number | undefined): boolean {
+  const low = ownerKey(owner, 0);
+  let tribes = 0;
+  for (const key of indexesOf(snapshot).get(BUILDINGS_BY_OWNER_TRIBE).keys()) {
+    if (key >= low && key < low + OWNER_KEY_SPAN) tribes++;
+  }
+  return tribes > 1;
+}
+
+/** The building class the head's kicker names; an unrecognized `maintype_*` reads as a plain building. */
+function kickerOf(kind: string | undefined): string {
+  const kinds: Readonly<Record<string, string>> = messages().hud.buildingPanel.kinds;
+  return (
+    (kind !== undefined && Object.hasOwn(kinds, kind) ? kinds[kind] : undefined) ??
+    messages().hud.buildingGeneric
+  );
+}
+
+const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, rest: 1, piety: 2 };
+
+function homeQuality(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  def: BuildingDef,
+  ent: SnapshotEntity,
+  level: number,
+): HomeQualityModel | null {
+  const player = ownerPlayerOf(ent);
+  if (player === undefined || def.kind !== 'home') return null;
+  const pools = homeQualityView(snapshot, ent.id) ?? { cooking: 0, rest: 0, piety: 0 };
+  const policy = householdGoodPolicyView(snapshot, player);
+  const rows = ctx.goods
+    .flatMap((good): HomeQualityRow[] => {
+      const use = good.homeQuality;
+      if (use === undefined || level < use.minimumHomeLevel) return [];
+      const value = pools[use.effect];
+      return [
+        {
+          effect: use.effect,
+          goodId: good.id,
+          label: goodLabel(ctx, good.typeId),
+          value,
+          capacity: use.capacity,
+          allowed: policy[use.effect],
+          ...(use.effect === 'piety'
+            ? { holyFireActive: value > 0 && policy.piety }
+            : { uses: Math.floor(value / use.useCost) }),
+        },
+      ];
+    })
+    .sort((a, b) => HOUSEHOLD_ORDER[a.effect] - HOUSEHOLD_ORDER[b.effect]);
+  if (rows.length === 0) return null;
+  return {
+    rows,
+    player,
+    control: player === ctx.viewer?.seat() ? true : messages().hud.buildingPanel.policyForeign,
+  };
+}
+
+function ordersModel(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+  ent: SnapshotEntity,
+  finished: boolean,
+): BuildingOrdersModel {
+  const tribe = buildingTribeOf(ent) ?? 0;
+  const next = def?.upgradeTarget;
+  const blocked =
+    next === undefined ? null : (ctx.technologyReason?.('house', next, tribe, ownerPlayerOf(ent)) ?? null);
+  const upgrading = ent.components.Upgrading !== undefined;
+  const shelters = (def?.shelterCapacity ?? 0) > 0;
+  return {
+    upgrade:
+      next === undefined || upgrading || !finished
+        ? null
+        : { control: blocked ?? true, cost: upgradeCostRows(ctx, def) },
+    cancelUpgrade: upgrading,
+    // `shelterCapacity` is the gate the sim's `setDefenceMode` reads, so the toggle is never refused.
+    alarm: shelters && finished ? { on: ent.components.DefenceMode !== undefined } : null,
+  };
+}
+
+/** The good the first posted worker's reading names, labelled; null when it names none. */
+function firstWorkerStatus(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  building: number,
+): { status: SettlerWorkStatus | undefined; good: string | null } {
+  const worker = staffOf(snapshot, building).find((e) => settlerJobType(e) !== undefined);
+  const status = worker === undefined ? undefined : ctx.workStatus?.(worker.id);
+  const good = status !== undefined && 'goodType' in status ? goodLabel(ctx, status.goodType) : null;
+  return { status, good };
+}
+
+/** The product of the craft cycle furthest along, labelled; null while none runs. */
+function craftingNow(ctx: UnitPanelModelContext, ent: SnapshotEntity): string | null {
+  const production = ent.components.Production as { cycles?: unknown } | undefined;
+  let best: { good: number; share: number } | null = null;
+  for (const c of Array.isArray(production?.cycles) ? production.cycles : []) {
+    const cycle = c as { elapsed?: unknown; duration?: unknown; goodType?: unknown } | null;
+    const good = num(cycle?.goodType);
+    const duration = num(cycle?.duration) ?? 0;
+    if (good === undefined || duration <= 0) continue;
+    const share = (num(cycle?.elapsed) ?? 0) / duration;
+    if (best === null || share > best.share) best = { good, share };
+  }
+  return best === null ? null : goodLabel(ctx, best.good);
+}
+
+export function buildingPanelModel(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  ent: SnapshotEntity,
+): BuildingPanelModel {
+  const b = (ent.components.Building ?? {}) as { buildingType?: unknown; built?: unknown; level?: unknown };
+  const rawType = num(b.buildingType);
+  const def = buildingDef(ctx, rawType);
+  const tribeId = buildingTribeOf(ent);
+  const owner = ownerPlayerOf(ent);
+  const seat = ctx.viewer === undefined ? null : pickableSeat(ctx.viewer);
+  const foreign = seat !== null && owner !== undefined && owner !== seat;
+  const builtPct = pct(num(b.built));
+  const site = ent.components.UnderConstruction !== undefined;
+  const finished = !site && builtPct >= 100;
+  const upgrade = ent.components.Upgrading !== undefined;
+  const construction = constructionModel(ctx, snapshot, def, ent);
+  const shelterCapacity = def?.shelterCapacity ?? 0;
+  const sheltered = shelterClaimCount(snapshot, ent.id);
+  const alarm = ent.components.DefenceMode !== undefined ? { sheltered, capacity: shelterCapacity } : null;
+  const staff = foreign ? null : buildingStaff(ctx, snapshot, def, ent, site);
+  const seats = staff?.kind === 'workers' && staff.count !== null ? staff.count.filled : null;
+  const work = foreign || site ? { status: undefined, good: null } : firstWorkerStatus(ctx, snapshot, ent.id);
+  const health = healthOf(ent);
+  const kind = def?.kind;
+  const status = buildingStatus({
+    site:
+      construction === null ? null : { upgrade, pct: builtPct, stall: foreign ? null : construction.status },
+    alarm,
+    crafting: site ? null : craftingNow(ctx, ent),
+    seats,
+    garrison: site ? null : garrisonPosts(snapshot, def, ent.id),
+    work: work.status,
+    workGood: work.good,
+    families: kind === 'home' && !site ? (homeFamiliesOf(snapshot, ent.id)?.length ?? 0) : null,
+  });
+  const meta = foreign
+    ? foreignOwnerLine(ctx, owner, tribeId)
+    : ownsSeveralTribes(snapshot, owner)
+      ? tribeName(tribeId, contentTribeName(ctx, tribeId))
+      : null;
+  return {
+    kind: 'building',
+    entityId: ent.id,
+    typeId: rawType ?? -1,
+    tribeId,
+    title: buildingTitle(ctx, rawType),
+    kicker: kickerOf(kind),
+    foreign,
+    meta,
+    health: health === undefined || health.max <= 0 ? null : health,
+    status,
+    orders: foreign ? null : ordersModel(ctx, def, ent, finished),
+    construction: construction === null || foreign ? null : { ...construction, pct: builtPct, upgrade },
+    staff,
+    production: foreign || site ? null : productionModel(ctx, snapshot, def, ent),
+    stock:
+      foreign || site ? [] : stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
+    homeQuality:
+      foreign || def === undefined || !finished
+        ? null
+        : homeQuality(ctx, snapshot, def, ent, num(b.level) ?? 0),
+    offers: (ctx.tradeOffersAt?.(ent.id) ?? []).map((offer) => ({
+      give: offerSide(ctx, offer.giveAmount, offer.giveGood),
+      take: offerSide(ctx, offer.takeAmount, offer.takeGood),
+    })),
+  };
 }

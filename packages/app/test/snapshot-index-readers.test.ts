@@ -24,7 +24,7 @@ import {
   surnameSourceOf,
   trainingOccupancyOf,
 } from '../src/game/snapshot.js';
-import { fieldWorkers } from '../src/hud/details-panel/worker-selection.js';
+import { raisingCrew, shelteringIn } from '../src/hud/details-panel/model/building-staff.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import { computeConstructionSigns } from '../src/view/projections/construction-signs.js';
 import { computeDoorBadges } from '../src/view/projections/door-badges.js';
@@ -78,7 +78,8 @@ function expectReadersMatchWalk(live: WorldSnapshot): void {
     expect(ids(supplyRunsTo(live, e.id))).toEqual(ids(supplyRunsTo(walked, e.id)));
     expect(ids(shelterersOf(live, e.id))).toEqual(ids(shelterersOf(walked, e.id)));
     expect(homeFamiliesOf(live, e.id)).toEqual(homeFamiliesOf(walked, e.id));
-    expect(fieldWorkers(live, e.id, true)).toEqual(fieldWorkers(walked, e.id, true));
+    expect(ids(raisingCrew(live, e.id))).toEqual(ids(raisingCrew(walked, e.id)));
+    expect(ids(shelteringIn(live, e.id))).toEqual(ids(shelteringIn(walked, e.id)));
     if (!isSettler(e)) continue;
     expect(surnameSourceOf(live, e)).toBe(surnameSourceOf(walked, e));
     expect(progressionGatesSettler(live, e)).toBe(progressionGatesSettler(walked, e));

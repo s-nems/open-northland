@@ -183,7 +183,7 @@ function portrait(v) {
         ? ' on-status-strip--neutral'
         : '';
   return `<div class="on-portrait">
-    <div class="on-vehicle-shot">
+    <div class="on-portrait-shot">
       <button class="on-portrait__frame vx-shot" type="button" style="${v.shot}"${tip('Centruj widok na pojeździe')}></button>
       <span class="on-hp${v.hp < 34 && v.hp >= 17 ? ' on-hp--low' : ''}${v.hp < 17 ? ' on-hp--critical' : ''}" role="meter" style="--value:${v.hp}%"${tip(`Wytrzymałość ${Math.round((v.hp * v.hpMax) / 100)} / ${v.hpMax}`)}></span>
     </div>

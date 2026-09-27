@@ -20,7 +20,7 @@ export function drawPalisade(
       layout.healthLabel.y + ROW_TEXT_PAD * s,
       'white',
     );
-    chrome.bar(layout.health, model.health.pct, 'gauge');
+    chrome.bar(layout.health, model.health.pct);
   }
   if (layout.progress !== null) {
     const progress = formatMessage(hud.constructionProgress, {

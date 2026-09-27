@@ -1,7 +1,5 @@
-import type { SpriteSheet, TextureSource } from '@open-northland/render';
-import { Rectangle, Texture } from 'pixi.js';
-import { boundBuildingRef } from '../../content/building-gfx/index.js';
-import { type GoodsArt, loadGoodsArt } from '../../content/goods-gfx.js';
+import type { TextureSource } from '@open-northland/render';
+import { Texture } from 'pixi.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
 import {
   type GuiBarRamp,
@@ -46,65 +44,8 @@ async function loadGuiBitmaps(): Promise<GuiBitmapSet> {
   };
 }
 
-/** One selected-building preview: an atlas region as a ready texture, sized in native frame px. */
-export interface BuildingPreview {
-  readonly texture: Texture;
-  readonly width: number;
-  readonly height: number;
-}
-
-/** The selected building's own world bob, resolved through the same per-tribe binding the map draws. */
-export interface BuildingPreviews {
-  get(typeId: number, tribe: number | undefined): BuildingPreview | undefined;
-}
-
-/** Memoized per sheet, which outlives every panel mount: a `Texture` pins a resize listener on its shared
- *  `TextureSource`, so re-minting one per remount would leak those wrappers on each HUD scale change. */
-const previewsBySheet = new WeakMap<SpriteSheet, BuildingPreviews>();
-
-/**
- * Preview textures cut from the sheet's already-loaded building pages, so the panel shows each tribe its
- * own body without fetching a second copy of any atlas.
- */
-export function buildingPreviews(sheet: SpriteSheet | undefined): BuildingPreviews {
-  if (sheet === undefined) return { get: () => undefined };
-  const held = previewsBySheet.get(sheet);
-  if (held !== undefined) return held;
-  const cache = new Map<string, BuildingPreview | undefined>();
-  const previews: BuildingPreviews = {
-    get(typeId, tribe) {
-      // The general window promises a neutral plate over a misleading complete one.
-      const ref = boundBuildingRef(sheet.bindings.building, typeId, tribe);
-      if (ref === undefined) return undefined;
-      const draw = typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
-      const key = `${draw.layer ?? ''}:${draw.bob}`;
-      const hit = cache.get(key);
-      if (hit !== undefined || cache.has(key)) return hit;
-      const layer = draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.building;
-      const frame = layer?.atlas.frames.get(draw.bob);
-      const preview =
-        layer === undefined || frame === undefined
-          ? undefined
-          : {
-              texture: new Texture({
-                source: layer.source,
-                frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
-              }),
-              width: frame.width,
-              height: frame.height,
-            };
-      cache.set(key, preview);
-      return preview;
-    },
-  };
-  previewsBySheet.set(sheet, previews);
-  return previews;
-}
-
-export interface DetailsPanelArt {
+export interface DetailsPanelAssets {
   readonly art: GuiArt | null;
-  /** The per-good resource icons from the recolourable `ls_goods` atlas. */
-  readonly goods: GoodsArt | null;
   readonly uiFont: UiFont;
   readonly bitmaps: GuiBitmapSet;
   readonly strings: GuiStrings | null;
@@ -112,31 +53,19 @@ export interface DetailsPanelArt {
   readonly barRamp: GuiBarRamp | undefined;
 }
 
-/** The panel's art plus the building previews, which come from the caller's loaded sprite sheet. */
-export interface DetailsPanelAssets extends DetailsPanelArt {
-  readonly packGoods?: ReadonlyMap<string, Texture>;
-  /** The species goods, drawn as the animal a herd row counts rather than as a pile of it. */
-  readonly animalGoods?: ReadonlyMap<string, Texture>;
-  /** Good id -> the standing vehicle a vehicle good's icon draws, cut from the loaded vehicle atlases. */
-  readonly vehicleGoods?: ReadonlyMap<string, Texture>;
-  readonly previews: BuildingPreviews;
-}
+const assetsByLanguage = new Map<string, Promise<DetailsPanelAssets>>();
 
-const assetsByLanguage = new Map<string, Promise<DetailsPanelArt>>();
-
-export async function loadDetailsPanelArt(lang: string): Promise<DetailsPanelArt> {
+export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanelAssets> {
   let assets = assetsByLanguage.get(lang);
   if (assets === undefined) {
     assets = Promise.all([
       loadGuiArt(),
-      loadGoodsArt(),
       loadUiFont(),
       loadGuiBitmaps(),
       loadGuiStrings(lang),
       loadGuiBarRamp(),
-    ]).then(([art, goods, uiFont, bitmaps, strings, barRamp]) => ({
+    ]).then(([art, uiFont, bitmaps, strings, barRamp]) => ({
       art,
-      goods,
       uiFont,
       bitmaps,
       strings,

@@ -10,8 +10,6 @@ import { navBeamRect } from '../../nav-beam.js';
 export const PANEL_W = 322;
 /** Gap between the panel and the screen's right/bottom edge. */
 const PANEL_MARGIN = 6;
-/** Vertical gap between two section windows; the original stacks them flush, rope borders touching. */
-export const SECTION_GAP = 0;
 /** The headline strip's height, sized to fit the title face. */
 const TITLE_H = 18;
 /** Vertical padding between a section's headline/body/end. */

@@ -6,7 +6,7 @@ import type { DetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
 import { mapLayout } from './layout/index.js';
 import type { PanelHover } from './pointer-intent.js';
-import { drawBuilding, drawCompact, drawPalisade, drawSignpost } from './sections/index.js';
+import { drawCompact, drawPalisade, drawSignpost } from './sections/index.js';
 import type { PanelView } from './selection-view.js';
 
 export type DrawableView = Exclude<PanelView, { kind: 'empty' }>;
@@ -35,7 +35,6 @@ export interface PanelBakeOptions {
   readonly view: DrawableView;
   readonly hover: PanelHover;
   readonly ui: UiString;
-  readonly activeStockTab: number;
   /** Fractional on-screen scale the texture is displayed at; `ss` is the integer oversample it draws at. */
   readonly scale: number;
   readonly ss: number;
@@ -55,17 +54,12 @@ export interface BakedPanel extends SupersampledTexture {
 }
 
 export function bakePanel(opts: PanelBakeOptions): BakedPanel {
-  const { assets, baker, view, hover, ui, activeStockTab, scale, ss } = opts;
+  const { assets, baker, view, hover, ui, scale, ss } = opts;
   const { toDraw, texW, texH } = panelDrawGeometry(view.layout.panel, scale, ss);
   const offscreen = new Container();
   const layers = makeLayers(offscreen);
   const chrome = createChrome(assets, ss, layers, { w: texW, h: texH });
   switch (view.kind) {
-    case 'building': {
-      const draw = mapLayout(view.layout, toDraw);
-      drawBuilding(chrome, draw, view.model, ui, hover.action, activeStockTab, ss);
-      break;
-    }
     case 'compact':
       drawCompact(chrome, mapLayout(view.layout, toDraw), view.model, ui, ss);
       break;

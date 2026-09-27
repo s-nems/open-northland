@@ -106,8 +106,8 @@ not authorize replacement world buildings or characters.
 
 Work one panel/ticket at a time from current main; see [session instructions](AGENTS.md).
 The shell, the notification column, the summary bar, the construction window with its papers page,
-the residents window, the settler panel and the mission book are in place. Continue with building and
-group details, automation, statistics, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical
+the residents window, the settler, vehicle and building panels and the mission book are in place.
+Continue with group details, automation, statistics, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical
 prerequisites; numbering is the suggested review order, not permission for parallel sessions to edit
 shared files. Ticket 12 separates statistics data from chart rendering because the current popup is
 only diagnostics.
@@ -115,7 +115,6 @@ only diagnostics.
 | Ticket | Outcome |
 | --- | --- |
 | [08-settler-details](../../tickets/app/ingame-ui-08-settler-details.md) | Finish the settler panel's deferred affordances |
-| [09-building-details](../../tickets/app/ingame-ui-09-building-details.md) | Redesign the selected building panel |
 | [10-group-details](../../tickets/app/ingame-ui-10-group-details.md) | Redesign multiple-selection details and shared orders |
 | [11-assistant](../../tickets/app/ingame-ui-11-assistant.md) | Create the direct assistant window |
 | [12-statistics-data](../../tickets/app/ingame-ui-12-statistics-data.md) | Provide the real historical data required by statistics |

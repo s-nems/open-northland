@@ -59,7 +59,7 @@ import {
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
 import { goodLabel, jobDisplayName } from '../src/hud/details-panel/model/context.js';
-import { experienceShown, type PanelBar } from '../src/hud/details-panel/model/index.js';
+import { experienceShown } from '../src/hud/details-panel/model/index.js';
 import { messages } from '../src/i18n/index.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
@@ -106,7 +106,10 @@ describe('selection details panel model', () => {
     ]);
     const model = buildUnitPanelModel(snapshot, new Set([20]), sandboxCtx());
     if (model.kind !== 'building') throw new Error('expected a building model');
-    expect(model.home?.families.map((family) => family.members)).toEqual([[2, 1, 3]]);
+    expect(model.staff?.groups.map((family) => family.people.map((person) => person.entity))).toEqual([
+      [2, 1, 3],
+    ]);
+    expect(model.staff?.groups[0]?.people.map((person) => person.look)).toEqual(['man', 'woman', 'child']);
   });
 
   it('shows the generic hero profession for every hero job instead of a body-specific name', () => {
@@ -153,7 +156,7 @@ describe('selection details panel model', () => {
     expect(model.typeId).toBe(BUILDING_HEADQUARTERS);
     // The title reads the SAME localized name the build menu shows (catalog/building-i18n.ts).
     expect(model.title).toBe('Kwatera Główna');
-    expect(model.showDefense).toBe(true);
+    expect(model.orders?.alarm).toEqual({ on: false });
     // The stock list is the HQ's ACCEPTED goods (its `stock` slots), each shown even at 0 - so every
     // accepted good appears; a freshly-placed HQ holds nothing, so every row is 0.
     const hqDef = sim.content.buildings.find((b) => b.typeId === BUILDING_HEADQUARTERS);
@@ -223,9 +226,16 @@ describe('selection details panel model', () => {
     expect(model.stock[0]?.amount).toBe(3);
     // The worker section is a per-trade filled/capacity line: the joinery's one collector slot, now filled
     // (the bound settler), named from the shared catalog + i18n (Polish), not the raw job id.
-    expect(model.workerSlots).toEqual([
-      expect.objectContaining({ label: 'Zbieracz', filled: 1, capacity: 1 }),
+    expect(model.staff?.groups).toEqual([
+      expect.objectContaining({
+        label: 'Zbieracz',
+        people: [expect.objectContaining({ entity: 2 })],
+        capacity: 1,
+      }),
     ]);
+    expect(model.staff?.count).toEqual({ filled: 1, capacity: 1 });
+    // The running batch is what the status strip names.
+    expect(model.status).toEqual({ label: 'Pracuje', detail: 'plank', tone: 'ok' });
   });
 
   it('models a construction site: delivered/needed/inbound materials, stall reason, and health ramp', () => {
@@ -261,10 +271,13 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
-    expect(model.builtPct).toBe(25);
+    expect(model.construction).toMatchObject({ pct: 25, upgrade: false });
     // A site carries the health gauge too: the sim ramps its hitpoints with `built`, so the bar fills as
     // the foundation rises (user rule - a house under construction shows its HP growing).
-    expect(model.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '25/100' });
+    expect(model.health).toEqual({ hitpoints: 25, max: 100 });
+    expect(model.status).toEqual({ label: 'Budowa', detail: '25% · brak budowniczego', tone: 'trouble' });
+    // Both builders on a supply run for the site show among its crew.
+    expect(model.staff?.groups[0]?.people.map((person) => person.entity)).toEqual([2, 3]);
     // One row per construction cost line (the farm's wood+stone parcel): delivered reads off the hold,
     // while inbound is the live SupplyRun reservation and remains separate from delivered stock.
     expect(model.construction?.rows).toEqual([
@@ -364,7 +377,7 @@ describe('selection details panel model', () => {
 
   it('gives a building the settler Zdrowie bar off its Health pool', () => {
     /** The panel's health bar for a farm holding `hitpoints`/1000. */
-    const healthOfBuilding = (hitpoints: number): PanelBar | null => {
+    const healthOfBuilding = (hitpoints: number): { hitpoints: number; max: number } | null => {
       const model = buildUnitPanelModel(
         snapshotOf(
           [buildingEntity(1, BUILDING_FARM, { components: { Health: { hitpoints, max: 1000 } } })],
@@ -377,10 +390,9 @@ describe('selection details panel model', () => {
       return model.health;
     };
 
-    // Same shape as a settler's health bar: pinned label, hp/max gauge, raw points in the hover value.
-    expect(healthOfBuilding(300)).toEqual({ label: 'Zdrowie', pct: 30, hover: '300/1000' });
+    expect(healthOfBuilding(300)).toEqual({ hitpoints: 300, max: 1000 });
     // Damage moves the model, which is what makes the drawn bar follow the building's hitpoints.
-    expect(healthOfBuilding(120)).toEqual({ label: 'Zdrowie', pct: 12, hover: '120/1000' });
+    expect(healthOfBuilding(120)).toEqual({ hitpoints: 120, max: 1000 });
 
     // A building whose type declares no hitpoints carries no bar at all (never a zeroed one).
     const poolless = buildUnitPanelModel(
@@ -414,8 +426,8 @@ describe('selection details panel model', () => {
     // The sim never ramps an upgrading building's pool (`construction.ts` skips the ramp for
     // `Upgrading`): the old tier stands at full health while `built` restarts from 0. Both readouts are
     // real and different - the panel must not render one of them twice.
-    expect(model.builtPct).toBe(0);
-    expect(model.health).toEqual({ label: 'Zdrowie', pct: 100, hover: '1000/1000' });
+    expect(model.construction).toMatchObject({ pct: 0, upgrade: true });
+    expect(model.health).toEqual({ hitpoints: 1000, max: 1000 });
   });
 
   it('retains the upgrade control and its explanation when technology blocks it', () => {
@@ -423,8 +435,7 @@ describe('selection details panel model', () => {
       ...sandboxCtx(),
       technologyReason: () => 'Requires collector',
     });
-    expect(model.kind === 'building' && model.upgradable).toBe(true);
-    expect(model.kind === 'building' && model.upgradeBlockedReason).toBe('Requires collector');
+    expect(model.kind === 'building' && model.orders?.upgrade?.control).toBe('Requires collector');
   });
 
   it('shows exact household durability, remaining uses, and the mature home holy fire', () => {
@@ -446,7 +457,7 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (mature.kind !== 'building') throw new Error('expected a building panel');
-    expect(mature.homeQuality).toEqual([
+    expect(mature.homeQuality?.rows).toEqual([
       expect.objectContaining({
         effect: 'cooking',
         goodId: 'crockery',
@@ -469,8 +480,8 @@ describe('selection details panel model', () => {
         holyFireActive: true,
       }),
     ]);
-    expect(mature.homeQuality.find((row) => row.effect === 'piety')?.uses).toBeUndefined();
-    expect(mature.homeQuality.map((row) => row.goodId)).toEqual([
+    expect(mature.homeQuality?.rows.find((row) => row.effect === 'piety')?.uses).toBeUndefined();
+    expect(mature.homeQuality?.rows.map((row) => row.goodId)).toEqual([
       sandboxCtx().goods.find((good) => good.typeId === GOOD_CROCKERY)?.id,
       sandboxCtx().goods.find((good) => good.typeId === GOOD_FURNITURE)?.id,
       sandboxCtx().goods.find((good) => good.typeId === GOOD_HOLY_OIL)?.id,
@@ -486,7 +497,7 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (young.kind !== 'building') throw new Error('expected a building panel');
-    expect(young.homeQuality.map((row) => row.effect)).toEqual(['cooking', 'rest']);
+    expect(young.homeQuality?.rows.map((row) => row.effect)).toEqual(['cooking', 'rest']);
 
     const dry = buildUnitPanelModel(
       snapshotOf([
@@ -505,8 +516,8 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (dry.kind !== 'building') throw new Error('expected a building panel');
-    expect(dry.homeQuality.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
-    expect(dry.homeQuality.find((row) => row.effect === 'rest')?.allowed).toBe(false);
+    expect(dry.homeQuality?.rows.find((row) => row.effect === 'piety')?.holyFireActive).toBe(false);
+    expect(dry.homeQuality?.rows.find((row) => row.effect === 'rest')?.allowed).toBe(false);
 
     const retainedOil = buildUnitPanelModel(
       snapshotOf([
@@ -525,7 +536,7 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (retainedOil.kind !== 'building') throw new Error('expected a building panel');
-    expect(retainedOil.homeQuality.find((row) => row.effect === 'piety')).toMatchObject({
+    expect(retainedOil.homeQuality?.rows.find((row) => row.effect === 'piety')).toMatchObject({
       value: 2000,
       allowed: false,
       holyFireActive: false,
@@ -546,7 +557,27 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (site.kind !== 'building') throw new Error('expected a building panel');
-    expect(site.homeQuality).toEqual([]);
+    expect(site.homeQuality).toBeNull();
+
+    // Another seat's home keeps its wares to itself; a whole-map viewer sees them but may not set
+    // another owner's policy.
+    const foreign = buildUnitPanelModel(
+      snapshotOf([buildingEntity(1, BUILDING_HOME_00, { components: { Owner: { player: 1 } } })]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (foreign.kind !== 'building') throw new Error('expected a building panel');
+    expect(foreign.foreign).toBe(true);
+    expect(foreign.homeQuality).toBeNull();
+    const overseen = buildUnitPanelModel(
+      snapshotOf([buildingEntity(1, BUILDING_HOME_00, { components: { Owner: { player: 1 } } })]),
+      new Set([1]),
+      { ...sandboxCtx(), viewer: { seat: () => 0, wholeMap: () => true, version: () => 0 } },
+    );
+    if (overseen.kind !== 'building') throw new Error('expected a building panel');
+    expect(overseen.homeQuality?.control).toBe(messages().hud.buildingPanel.policyForeign);
+    expect(mature.homeQuality?.control).toBe(true);
+    expect(mature.homeQuality?.player).toBe(0);
   });
 
   it('offers Upgrade on a built chained home and Cancel on a running upgrade site - never both', () => {
@@ -555,11 +586,12 @@ describe('selection details panel model', () => {
       new Set([1]),
       sandboxCtx(),
     );
-    expect(built.kind === 'building' && built.upgradable).toBe(true);
-    expect(built.kind === 'building' && built.cancelable).toBe(false);
-    // The Upgrade button's hover tooltip lists the next tier's own bill (home level 1: wood 4, stone 3),
-    // not the from-scratch cumulative cost - the level difference the sim actually charges.
-    expect(built.kind === 'building' && built.upgradeCost).toEqual([
+    if (built.kind !== 'building') throw new Error('expected a building panel');
+    expect(built.orders?.upgrade?.control).toBe(true);
+    expect(built.orders?.cancelUpgrade).toBe(false);
+    // The Upgrade button's tooltip lists the next tier's own bill (home level 1: wood 4, stone 3), not
+    // the from-scratch cumulative cost - the level difference the sim actually charges.
+    expect(built.orders?.upgrade?.cost).toEqual([
       expect.objectContaining({ goodType: GOOD_WOOD, amount: 4 }),
       expect.objectContaining({ goodType: GOOD_STONE, amount: 3 }),
     ]);
@@ -581,10 +613,10 @@ describe('selection details panel model', () => {
       new Set([1]),
       sandboxCtx(),
     );
-    expect(upgrading.kind === 'building' && upgrading.upgradable).toBe(false);
-    expect(upgrading.kind === 'building' && upgrading.cancelable).toBe(true);
+    if (upgrading.kind !== 'building') throw new Error('expected a building panel');
     // No Upgrade button on a running upgrade site, so no cost preview to show.
-    expect(upgrading.kind === 'building' && upgrading.upgradeCost).toEqual([]);
+    expect(upgrading.orders?.upgrade).toBeNull();
+    expect(upgrading.orders?.cancelUpgrade).toBe(true);
   });
 
   it('keeps Magazyn rows in declared slot order while amounts change (Pszenica before Mąka, always)', () => {
@@ -641,7 +673,7 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
-    expect(model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`)).toEqual([
+    expect(model.staff?.groups.map((r) => `${r.label} ${r.people.length}/${r.capacity}`)).toEqual([
       'Druid 1/1',
       'Tragarz 0/1',
       'Zbieracz 0/1',
@@ -1461,7 +1493,7 @@ describe('the animal farm panel - the species rows are its herd', () => {
     expect(sheep?.goodId).toBe('sheep'); // the species itself, not a ware its slaughter yields
     expect(sheep?.label).toContain('3/20'); // the herd attached to the farm against the row's cap
     expect(cattle?.label).toContain('0/20'); // no cattle attached yet
-    expect(sheep?.inputs.split('\n')).toHaveLength(2); // what one breeding costs: water + wheat
+    expect(sheep?.inputs.split(', ')).toHaveLength(2); // what one breeding costs: water + wheat
   });
 
   it("a breeder's production rows offer the two herds it may tend", () => {
@@ -1495,10 +1527,10 @@ describe('the animal farm panel - the species rows are its herd', () => {
     if (tower.kind !== 'building' || workshop.kind !== 'building' || barracks.kind !== 'building') {
       throw new Error('expected buildings');
     }
-    expect(tower.showDefense).toBe(true);
-    expect(workshop.showDefense).toBe(false);
+    expect(tower.orders?.alarm).toEqual({ on: false });
+    expect(workshop.orders?.alarm).toBeNull();
     // The barracks carries the source flag too (`houses.ini` logictype 39), so it raises the alarm.
-    expect(barracks.showDefense).toBe(true);
+    expect(barracks.orders?.alarm).toEqual({ on: false });
   });
 
   it('reports the raised alarm and how full the garrison is', () => {
@@ -1521,14 +1553,16 @@ describe('the animal farm panel - the species rows are its herd', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctxOf(sim));
 
     if (model.kind !== 'building') throw new Error('expected a building model');
-    expect(model.defenseEnabled).toBe(true);
-    expect(model.defenseLabel).toContain(`2/${capacity}`);
-    // The same claimants take the workers window, so its headline and count line read for the garrison
-    // rather than leaving "Tragarz 0/3" standing over a field of sheltering civilians.
-    expect(model.garrison).toEqual({ sheltered: 2, capacity });
+    expect(model.orders?.alarm).toEqual({ on: true });
+    expect(model.status).toEqual({ label: 'Alarm', detail: `schronieni 2 / ${capacity}`, tone: 'trouble' });
+    // The claimants show as their own group, those already inside first.
+    expect(model.staff?.groups.find((group) => group.key === 'sheltered')).toMatchObject({
+      capacity,
+      people: [expect.objectContaining({ entity: 3 }), expect.objectContaining({ entity: 2 })],
+    });
   });
 
-  it('leaves the workers window to the workers once nobody is sheltering', () => {
+  it('lists no sheltered group while nobody is sheltering', () => {
     const sim = createSceneSim(sandboxScene);
     const snapshot = snapshotOf([
       buildingEntity(1, BUILDING_WATCHTOWER, { components: { DefenceMode: {} } }),
@@ -1538,8 +1572,8 @@ describe('the animal farm panel - the species rows are its herd', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctxOf(sim));
 
     if (model.kind !== 'building') throw new Error('expected a building model');
-    expect(model.defenseEnabled).toBe(true); // the alarm alone does not take the window
-    expect(model.garrison).toBeNull();
+    expect(model.orders?.alarm).toEqual({ on: true });
+    expect(model.staff?.groups.some((group) => group.key === 'sheltered')).toBe(false);
   });
 });
 

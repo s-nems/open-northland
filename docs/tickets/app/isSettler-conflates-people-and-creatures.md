@@ -8,7 +8,7 @@ table, so `Person` is already in every snapshot and this side can key on it.
 
 Its 25 call sites ask two different questions and the name hides which:
 
-- "a person" - shelter occupancy (`hud/details-panel/worker-selection.ts`), building workers, the house
+- "a person" - shelter occupancy (`hud/details-panel/model/building-staff.ts`), building workers, the house
   and assign highlights, the action-ring menu state, the family reads in `game/snapshot-family.ts`;
 - "anything with a body" - selection and order targets (`view/unit-controls/`), the life hearts, the
   minimap dots. A claimed cow the player can click is correct there.

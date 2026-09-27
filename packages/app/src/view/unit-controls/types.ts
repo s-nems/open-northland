@@ -7,7 +7,6 @@ import type {
   DrawItem,
   ElevationField,
   EntityBounds,
-  SpriteSheet,
   WorkAreaRing,
 } from '@open-northland/render';
 import type {
@@ -19,7 +18,7 @@ import type {
   UnlockStatus,
   WorldSnapshot,
 } from '@open-northland/sim';
-import type { Application, Texture } from 'pixi.js';
+import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import type { UiString } from '../../content/gui-gfx.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
@@ -73,9 +72,6 @@ export interface UnitControlsOptions {
   readonly bindings: KeyBindings;
   readonly professions: readonly PickerEntry[];
   readonly content: ContentSet;
-  readonly sheet?: SpriteSheet;
-  /** The presentation pack's goods icons for the details panel, by good id. */
-  readonly packGoods?: ReadonlyMap<string, Texture>;
   /** Owner slot to team-colour slot; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: PlayerCommand) => void;
@@ -118,10 +114,6 @@ export interface UnitControlsOptions {
   /** The GUI click feedback: a pressed button, a taken selection or an accepted order confirms, a
    *  cancelled pick fails. Absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
-  readonly tooltip?: {
-    show(clientX: number, clientY: number, text: string): void;
-    hide(): void;
-  };
   /** The DOM plane the settler panel mounts on, and what its icons, hover card and trade browsing read. */
   readonly domHud: {
     readonly plane: HTMLElement;

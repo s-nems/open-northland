@@ -40,6 +40,6 @@ tower garrison posts and 3 civilians, concentrated in the mixed-tribe maps.
 `npm test`, then `npm run test:content` re-counting the authored attachments that land. One browser
 pass on `burza_piaskowa` player 2, whose saracen archers stand in an Egyptian tower.
 
-Related: `docs/tickets/app/tribe-partition-is-invisible.md` covers showing the partition to the player
-and presumes this rule is real. The graphics join now reads the field: every civilization draws its own
+The building panel names a house's civilization while its seat keeps houses of several, which
+presumes this rule is real. The graphics join now reads the field: every civilization draws its own
 buildings and settlers, so a refused cross-tribe attachment is visible on the map rather than silent.

@@ -92,7 +92,6 @@ import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
-import { createTooltip } from '../tooltip.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
 import { chestTooltipLines, createWorldHover } from '../world-hover.js';
 import { installDebugHandle } from './debug-handle.js';
@@ -631,8 +630,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Late-bound: the badge projection below needs the fog gates and the building index.
     let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
 
-    const detailsTooltip = createTooltip();
-    cleanup.push(() => detailsTooltip.destroy());
     const controls = await createUnitControls({
       technologyStatus: answers.technologyStatus,
       technologyVersion: answers.versions.technology,
@@ -655,8 +652,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       professions: pickerEntries(),
       content: host.content,
       mapText,
-      ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
-      ...(pack !== null ? { packGoods: pack.goodTextures(deps.sheet) } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       enqueue: issueCommand,
       centerOn: jumpToWorld,
@@ -680,9 +675,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       claimPointer: (x: number, y: number) =>
         toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
-      // A separate instance from the ground tooltip below, which the frame loop hides whenever the
-      // pointer is over the HUD - exactly when this one must stay shown.
-      tooltip: detailsTooltip,
       onUiCue: uiCue,
       domHud: {
         plane: hudDom.element,

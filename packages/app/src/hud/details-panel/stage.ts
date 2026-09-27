@@ -14,9 +14,6 @@ import type { PanelView } from './selection-view.js';
 /** The outermost HUD layer, above the world and the left tool panel. */
 const PANEL_Z = 1002;
 
-/** The animated worker sprites draw live, one z above the baked panel they sit on. */
-export const WORKER_OVERLAY_Z = PANEL_Z + 1;
-
 /**
  * Bake oversample cap, decided here rather than by the shared `oversampleFor`: a fractional display scale
  * bakes at the cap for smooth palette edges; an integer scale within the cap bakes
@@ -33,7 +30,7 @@ export interface PanelStageOptions {
 
 export interface PanelStage {
   /** Repaint for `view`, or hide the stage when the selection has no panel. */
-  paint(view: PanelView, hover: PanelHover, activeStockTab: number): void;
+  paint(view: PanelView, hover: PanelHover): void;
   dispose(): void;
 }
 
@@ -51,7 +48,7 @@ export function createPanelStage(opts: PanelStageOptions): PanelStage {
   const baker = createReusableBaker(app.renderer);
 
   return {
-    paint(view, hover, activeStockTab): void {
+    paint(view, hover): void {
       baked?.dispose();
       baked = null;
       root.destroy({ children: true });
@@ -63,7 +60,7 @@ export function createPanelStage(opts: PanelStageOptions): PanelStage {
         return;
       }
       root.visible = true;
-      const texture = bakePanel({ assets, baker, view, hover, ui, activeStockTab, scale, ss });
+      const texture = bakePanel({ assets, baker, view, hover, ui, scale, ss });
       texture.display.position.set(view.layout.panel.x, view.layout.panel.y);
       texture.textLayer.position.copyFrom(texture.display.position);
       root.addChild(texture.display, texture.textLayer);

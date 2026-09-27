@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { panelDrawGeometry } from '../src/hud/details-panel/bake.js';
 import type { Rect } from '../src/hud/geometry.js';
 
-/** A panel anchored bottom-right, as `layoutBuilding` places it - the origin is never (0, 0). */
+/** A panel anchored bottom-right, as `panelRect` places it - the origin is never (0, 0). */
 const PANEL: Rect = { x: 731, y: 402, w: 293, h: 366 };
 /** `panel.ts` bakes at the display scale when it is an integer, else at `PANEL_MAX_SUPERSAMPLE`. */
 const BAKE: readonly { readonly scale: number; readonly ss: number }[] = [

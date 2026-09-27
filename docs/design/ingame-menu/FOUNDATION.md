@@ -100,8 +100,8 @@ filters are an explicit exception in this mouse/keyboard study.
 - Construction: 640 px wide, so the widest bill in the content (eight goods) sits in one row on a
   card; content-sized rather than filling the screen vertically; the catalogue scrolls
   inside it once the window would reach the beam.
-- Selection: the settler panel is 318 px on the DOM plane; a building, a signpost and a group keep the
-  legacy 322 px panel until tickets 09 and 10 replace it.
+- Selection: the settler, vehicle and building panels are 318 px on the DOM plane; a signpost, a
+  palisade and a group keep the legacy 322 px panel until ticket 10 replaces it.
 - Notifications: 173 px, no opaque background in unused column space.
 - Minimap: S/M/L/XL Atlas with bounded aspect trim, flush to the bottom-left corner; capped before the centred
   navigation beam with a 6 design-px gap, as specified in [Minimap direction](#minimap-direction).
@@ -529,6 +529,63 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
 - Another seat's vehicle: class, type, owner line with the stance, the portrait, the state and the
   crew's figures; no order, no hold, no control.
 
+### Building panel
+
+The selected building's panel, in the settler panel's frame and place, built from the settler and
+vehicle panels' parts; implemented on the running game without a separate mockup. The same quick-look
+rules hold: every state fits the plane without a scrollbar, every control's tooltip is a few words
+saying what the press does or why it is refused.
+
+- Head: the building's class as the kicker (Magazyn, Dom, Warsztat, Szkolenie, Wieża, Warsztat
+  pojazdów, Cud), the browse over the owner's buildings of the same type (chevrons, "2 / 3", Tab and
+  Shift+Tab), the building's name as the title. The meta line is another seat's owner line, or the
+  civilization while the seat keeps houses of more than one (a mixed-tribe seat must see which tribe
+  a house belongs to: tribe partitions its economy). A building has no action ring, so the gold
+  medallion stays blank and keeps the heading centred.
+- Portrait row: the live building in the 96 × 92 px frame is the centre-view button, with the 7 px
+  wear bar under it (Wytrzymałość in its tooltip), as the vehicle's. Beside it the orders, 30 px:
+  Rozbuduj (its tooltip the next tier's bill, or the refusal, faded), Anuluj rozbudowę while a tier is
+  being raised, the alarm bell for a house that shelters civilians (lit gold while the alarm is up),
+  and Zburz in red, last. A demolition takes a second press within three seconds: the first lights the
+  button and its tooltip asks for the confirming press. The status strip along the frame's floor
+  names the first state that holds: Budowa or Rozbudowa with the percent and a proven stall (brak
+  materiałów and brak budowniczego in amber, dostawa w drodze in green), Alarm with the sheltered
+  count in amber, Zamieszkany or Pusty for a home, Pracuje with the product of the batch furthest
+  along, Brak załogi in amber or Obsadzony for a house with tower posts (by its garrison alone,
+  whatever its carriers do), Brak pracowników in amber, Bezczynny with the
+  stall the first posted worker reports in amber, Pracuje, and Czynny for a house without work.
+- Budowa (Rozbudowa for a tier): the percent on the rule, then a line per material of the bill: the
+  good's well, its name, "delivered / needed" with "+N" on the way, and the delivered share on the
+  thin rule under the line; a delivered line reads muted.
+- Pracownicy: a line per declared seat trade, its label over a dotted leader and a well per seat, the
+  posted people's figures then the free seats empty, six to a row; the sheltering crowd under an alarm
+  and the recruits drilling there follow as their own lines (a worker sheltering where it works stays
+  on its trade's line). A line holds twelve wells: free seats give way first, and people past that read
+  "+N" in the last well. The rule carries
+  the posts filled of all. Mieszkańcy for a home: the families side by side (the man, the woman, the
+  child), an empty well per free family place, the families of all on the rule. Budowniczowie for a
+  site: the crew raising it, "nikt" while nobody is. A press on a figure selects the person.
+  Workforce is assigned from the person's panel; the building side only shows it.
+- Produkcja: a line per product in recipe order (a breeding farm's per species, its herd against the
+  cap in the name), the running batch's percent on the rule and in figures, the recipe in the tooltip;
+  a product with no batch running reads muted. A farm has one line: its fields and how many are ripe,
+  the ripe share on the rule. What each worker makes is set in the worker's panel.
+- Wyposażenie (a finished home): a line per household ware of the home's tier, its pool on the rule
+  and what it buys ("48 użyć", the holy fire "płonie" / "wygasły"), and a round toggle, a tick while
+  the owner allows the ware in every home and a crossed circle while forbidden. The toggle is the
+  owner's seat's only.
+- Umowy handlowe: the agreements the house offers a visiting trader as the trader's read-only chips
+  "1 [coin] → 4 [iron]"; another seat's trade house shows them too.
+- Magazyn, last: every good the house stores in its slot order, "amount / shelf" to a decimal (the
+  original's figure), the shelf's fill on the rule, an empty shelf muted. A house storing more than
+  eight goods lists one category at a time under the stock's icon tabs (a category the house does not
+  store faded, a dot on one that holds something), opening on the first category that holds anything.
+  Past eight lines the list scrolls in place and fades at the bottom; when the panel would run past the
+  plane, the list alone gives way, down to three lines.
+- First paint at map start, as the settler panel's: a made-up building lights every section once.
+- Another seat's building: class, name, owner line with the stance, the portrait, the wear, the state
+  and its agreements; no order, no staff, no production, no stock.
+
 ### Mission book
 
 Misja is an open book over the map, not a framed window: the wood rails, bronze line
@@ -585,7 +642,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | System bar | top right, flush with both edges | residents and five stock counters with breakdowns, the sim clock, pause / ×1 / ×2 / ×3 segments, menu medallion (rules below) |
 | Notifications | left 10, top 18, width 173, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam, slid right of the minimap when a narrow screen would put it over the corner | one window at a time; Wiedza shows a framed pending note |
-| Selection | bottom right: the 318 px settler panel, the legacy 322 px panel for the rest | lifts above the beam when the beam reaches under it (narrower than 1056 design px for the settler panel, 1076 for the legacy one) |
+| Selection | bottom right: the 318 px settler, vehicle and building panels, the legacy 322 px panel for the rest | lifts above the beam when the beam reaches under it (narrower than 1056 design px for the settler panel, 1076 for the legacy one) |
 | Minimap | bottom left, S/M/L/XL Atlas; outer aspect at most 1.5:1 | fixed 32 px corner glyphs; right-edge controls and filter disclosure; uniformly scaled terrain; 6 design-px navigation gap |
 
 Rules the shell enforces:

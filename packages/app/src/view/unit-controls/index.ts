@@ -380,8 +380,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
   };
 
-  /** Tab steps through the shown settler's trade or vehicle's class unless a field or another HUD
-   *  window has the focus, whose own focus order Tab keeps. */
+  /** Tab steps through the shown settler's trade, vehicle's class or building's type unless a field or
+   *  another HUD window has the focus, whose own focus order Tab keeps. */
   const browsesTrade = (e: KeyboardEvent): boolean =>
     !e.altKey &&
     !e.ctrlKey &&

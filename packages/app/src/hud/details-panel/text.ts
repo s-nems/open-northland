@@ -29,18 +29,6 @@ export interface TextKit {
   /** Center a line of text in `r` on both axes; `maxWidth` (in `r`'s px) shrinks an over-long line to fit
    *  the box instead of overflowing it. */
   textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant, maxWidth?: number): void;
-  /** Left-anchor a line of text at `x`, vertically centred on `centerY`; `maxWidth` shrinks an over-long
-   *  line to fit instead of overflowing. */
-  textLeftMiddle(
-    text: string,
-    x: number,
-    centerY: number,
-    color: FontColorName,
-    variant?: FontVariant,
-    maxWidth?: number,
-  ): void;
-  /** Right-align a line of text's end at `rightX` (top at `y`). */
-  textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
 }
 
 /** Lay out text in panel draw coordinates; the panel maps it to screen size before rendering. */
@@ -83,31 +71,5 @@ export function createTextKit(textLayer: Container, fontFamily: string, scale: n
     t.position.set(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2 + CENTER_BIAS * scale));
   };
 
-  const textLeftMiddle = (
-    text: string,
-    x: number,
-    centerY: number,
-    color: FontColorName,
-    variant: FontVariant = 'body',
-    maxWidth?: number,
-  ): void => {
-    const t = makeText(text, color, variant);
-    t.anchor.set(0, 0.5);
-    if (maxWidth !== undefined && t.width > maxWidth) t.scale.set(maxWidth / t.width);
-    t.position.set(Math.round(x), Math.round(centerY + CENTER_BIAS * scale));
-  };
-
-  const textRight = (
-    text: string,
-    rightX: number,
-    y: number,
-    color: FontColorName,
-    variant: FontVariant = 'body',
-  ): void => {
-    const t = makeText(text, color, variant);
-    t.anchor.set(1, 0);
-    t.position.set(Math.round(rightX), Math.round(y - CAP_TOP_RATIO * FONT_PX[variant] * scale));
-  };
-
-  return { textAt, textCentered, textLeftMiddle, textRight };
+  return { textAt, textCentered };
 }

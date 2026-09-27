@@ -7,7 +7,7 @@ root AGENTS.md before work.
 ## Where the work happens
 
 The shell, notifications, summary bar, construction window with its papers page, residents window and
-settler panel are on main. Every remaining panel starts from current main:
+settler, vehicle and building panels are on main. Every remaining panel starts from current main:
 
 - One ticket at a time, in its own worktree off current main, on its own free preview port.
 - `:5173` stays reserved for the primary checkout.

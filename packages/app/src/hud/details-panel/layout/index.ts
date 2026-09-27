@@ -1,23 +1,16 @@
 import type { Rect } from '../../geometry.js';
 import type { PalisadePanelModel } from '../model/index.js';
-import type { BuildingLayout, ButtonHit } from './building.js';
 import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared.js';
 
-export {
-  BAR_H,
-  type BuildingLayout,
-  type ButtonAction,
-  type ButtonHit,
-  DEFENCE_LABEL_GAP,
-  HOME_QUALITY_ROW_H,
-  layoutBuilding,
-  MAX_STOCK_ROWS,
-  PREVIEW_INSET,
-  STOCK_PLATE_H,
-  STOCK_ROW_H,
-  stockSlotRects,
-} from './building.js';
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
+
+export type ButtonAction = 'demolish' | 'toggle-gate' | 'demolish-palisade';
+
+export interface ButtonHit {
+  readonly action: ButtonAction;
+  readonly rect: Rect;
+  readonly enabled: boolean;
+}
 /** The multi-select / generic views: one section window with a single hint row. */
 export interface CompactLayout {
   readonly kind: 'compact';
@@ -44,7 +37,7 @@ export interface PalisadeLayout {
   readonly buttons: readonly ButtonHit[];
 }
 
-export type DetailsLayout = BuildingLayout | CompactLayout | SignpostLayout | PalisadeLayout;
+export type DetailsLayout = CompactLayout | SignpostLayout | PalisadeLayout;
 
 /** One body row: the selection count lives in the headline, the body is the controls hint. */
 const COMPACT_ROWS = 1;
@@ -60,35 +53,6 @@ const SIGNPOST_BUTTON_PAD = 2;
  */
 export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => Rect): T {
   const sec = (s: SectionRect): SectionRect => ({ frame: fn(s.frame), title: fn(s.title), body: fn(s.body) });
-  if (layout.kind === 'building') {
-    return {
-      ...layout,
-      panel: fn(layout.panel),
-      general: sec(layout.general),
-      preview: fn(layout.preview),
-      name: fn(layout.name),
-      health: fn(layout.health),
-      buttons: layout.buttons.map((b) => ({ ...b, rect: fn(b.rect) })),
-      construction: layout.construction ? sec(layout.construction) : null,
-      defence: layout.defence ? sec(layout.defence) : null,
-      defenceToggle: layout.defenceToggle
-        ? { ...layout.defenceToggle, rect: fn(layout.defenceToggle.rect) }
-        : null,
-      production: layout.production ? sec(layout.production) : null,
-      productionRowRects: layout.productionRowRects.map(fn),
-      stock: layout.stock ? sec(layout.stock) : null,
-      stockTabHits: layout.stockTabHits.map(fn),
-      workers: sec(layout.workers),
-      homeQuality: layout.homeQuality ? sec(layout.homeQuality) : null,
-      homeQualityRows: layout.homeQualityRows.map((row) => ({
-        ...row,
-        text: fn(row.text),
-        button: { ...row.button, rect: fn(row.button.rect) },
-      })),
-      offers: layout.offers ? sec(layout.offers) : null,
-      offerRows: layout.offerRows.map(fn),
-    };
-  }
   if (layout.kind === 'signpost') {
     return {
       ...layout,

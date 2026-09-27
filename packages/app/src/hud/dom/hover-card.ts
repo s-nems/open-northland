@@ -1,7 +1,6 @@
 import type { UiString } from '../../content/gui-gfx.js';
 import { messages } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
-import { stockAmount } from '../details-panel/sections/building/shared.js';
 import type {
   BuildingHoverModel,
   BuildingHoverState,
@@ -11,6 +10,7 @@ import type {
 } from '../hover-card/model.js';
 import { diplomacyStanceText, playerLabel } from '../tool-panel/diplomacy/model.js';
 import { createGoodIconPainter, goodIconMarkup } from './good-art.js';
+import { stockAmount } from './parts/amount.js';
 import { setClass, setHidden, setStyleVar, write } from './parts/dom.js';
 import { createMeterRow } from './parts/meter-row.js';
 

@@ -9,7 +9,6 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
-import { messages } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
 import { liveAmounts } from './building-materials.js';
 import {
@@ -25,15 +24,12 @@ export interface ProductionRow {
   readonly goodType: number;
   /** The product's string id - the row's icon key. */
   readonly goodId?: string;
-  /** Further icon keys drawn beside {@link goodId} - a livestock chain row shows every ware the
-   *  species' visit yields (meat + wool, meat + leather). */
-  readonly extraGoodIds?: readonly string[];
   readonly label: string;
   /** The highest progress among the in-flight `Production.cycles` crafting this product; 0 when none
    *  runs, since a finished batch deposits and leaves the list. */
   readonly pct: number;
-  /** The hover tooltip's ingredient lines, one "- Żelazo ×2" per recipe input; empty when the inputs are
-   *  unknown. */
+  /** What one cycle takes ("Żelazo ×2, Drewno ×1"); empty for a craft that takes nothing or unknown
+   *  inputs. */
   readonly inputs: string;
 }
 
@@ -214,11 +210,10 @@ function livestockHerdRows(
   return rows;
 }
 
-/** A recipe's inputs as tooltip ingredient lines, or the no-materials label for an input-less craft. */
+/** A recipe's inputs as one tooltip line. */
 function recipeInputsLabel(
   ctx: UnitPanelModelContext,
   inputs: readonly { goodType: number; amount: number }[],
 ): string {
-  if (inputs.length === 0) return messages().hud.recipeNoInputs;
-  return inputs.map((i) => `- ${goodLabel(ctx, i.goodType)} ×${i.amount}`).join('\n');
+  return inputs.map((i) => `${goodLabel(ctx, i.goodType)} ×${i.amount}`).join(', ');
 }

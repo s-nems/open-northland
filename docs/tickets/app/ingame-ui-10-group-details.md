@@ -2,7 +2,7 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [08-settler-details](ingame-ui-08-settler-details.md), [09-building-details](ingame-ui-09-building-details.md)
+**Blocked by:** [08-settler-details](ingame-ui-08-settler-details.md)
 
 `hud/details-panel/selection-view.ts` and `view/unit-controls/` own selection behavior; the wireframe's eight-person grid is only a spatial example.
 
@@ -16,6 +16,9 @@ against this checkout before starting; the reference document describes an earli
 - Show only commands valid for the selection; explain partial applicability and forbidden orders rather than silently issuing misleading commands. The action ring already shows a group order when any member allows it and sends it only to those members (`orderRecipients` in `view/unit-controls/action-ring/menu-state.ts`); the panel should show which members an order will reach.
 - Preserve selection identity while members die, disappear or become ineligible; keep camera controls and interaction with the residents list consistent.
 - Use the same bottom-right component family as single-entity details, with scrolling or pagination rather than an indefinitely growing panel.
+- Move the selected signpost (tear down) and palisade or gate (health, build progress, open/close,
+  demolish) to the same family: with the groups they are the last selections the legacy Pixi
+  `mountUnitPanel` draws, which then goes, keeping only the model derive the DOM panels read.
 
 ## Verify
 
