@@ -18,8 +18,13 @@ import {
 } from '../../src/components/index.js';
 import { fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
-import { navigationLimitFor } from '../../src/systems/index.js';
+import { hexDistanceBetween, Simulation } from '../../src/index.js';
+import {
+  createSignpost,
+  navigationLimitFor,
+  networkLimitAt,
+  signpostNetwork,
+} from '../../src/systems/index.js';
 import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -444,6 +449,56 @@ describe('navigationLimitFor, the per-settler memo', () => {
     sim.step();
     // Re-enabling serves the held entry again: the toggle never invalidates, it only gates.
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBe(first);
+  });
+});
+
+describe('networkLimitAt, the shared post coverage', () => {
+  it('allows exactly the spot range plus strictly inside the range of every caught post, on either row parity', () => {
+    const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(96, 40) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    // Posts on odd and even node rows, in two groups too far apart to link, plus a lone post of another seat.
+    for (const [hx, hy] of [
+      [20, 20],
+      [45, 33],
+      [60, 21],
+      [150, 40],
+      [171, 57],
+    ] as const) {
+      createSignpost(sim.world, terrain, terrain.nodeAt(hx, hy), P0);
+    }
+    createSignpost(sim.world, terrain, terrain.nodeAt(80, 30), P0 + 1);
+    const posts = signpostNetwork(sim.world).get(P0) ?? [];
+    expect(new Set(posts.map((s) => s.group)).size).toBe(2);
+
+    for (const [hx, hy] of [
+      [5, 5],
+      [40, 30],
+      [110, 41],
+      [160, 70],
+    ] as const) {
+      const limit = networkLimitAt(sim.world, terrain, P0, hx, hy);
+      if (limit === null) throw new Error('navigation is on');
+      const caught = new Set(
+        posts.filter((s) => hexDistanceBetween(hx, hy, s.hx, s.hy) < WALK_RANGE_NODES).map((s) => s.group),
+      );
+      for (let y = 0; y < terrain.height; y++) {
+        for (let x = 0; x < terrain.width; x++) {
+          const expected =
+            hexDistanceBetween(hx, hy, x, y) <= WALK_RANGE_NODES ||
+            posts.some((s) => caught.has(s.group) && hexDistanceBetween(s.hx, s.hy, x, y) < WALK_RANGE_NODES);
+          if (limit.allowsNode(terrain.nodeAt(x, y)) !== expected) {
+            throw new Error(`spot (${hx}, ${hy}): node (${x}, ${y}) should be ${expected ? 'in' : 'out'}`);
+          }
+          if (expected) {
+            expect(x >= limit.bounds.minX && x <= limit.bounds.maxX).toBe(true);
+            expect(y >= limit.bounds.minY && y <= limit.bounds.maxY).toBe(true);
+          }
+        }
+      }
+    }
   });
 });
 

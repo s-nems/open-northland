@@ -139,7 +139,6 @@ and 145 ticks.
   [planner-pile-searches-scan-every-pile](../tickets/sim/planner-pile-searches-scan-every-pile.md),
   [canonical-joints-rebuild-every-tick](../tickets/sim/canonical-joints-rebuild-every-tick.md),
   [pathfinding-node-records-promote](../tickets/sim/pathfinding-node-records-promote.md),
-  [signpost-limit-rebuilt-per-step](../tickets/sim/signpost-limit-rebuilt-per-step.md),
   [gossip-candidates-refill-every-tick](../tickets/sim/gossip-candidates-refill-every-tick.md),
   [fixed-point-asserts-ship-enabled](../tickets/sim/fixed-point-asserts-ship-enabled.md).
 

@@ -319,6 +319,109 @@ function componentAt(terrain: TerrainGraph, x: number, y: number): number | null
   return component === -1 ? null : component;
 }
 
+/** The posts of the signpost groups one catch opens, shared by every settler of the player whose catch
+ *  opens the same groups under the same range, and answering "strictly inside a post's range" from a
+ *  bitmap over {@link bounds} painted on first use. */
+class CaughtPosts {
+  readonly bounds: NodeBox;
+  private readonly width: number;
+  private coverage: Uint8Array | undefined;
+
+  constructor(
+    private readonly posts: readonly SignpostSite[],
+    private readonly range: number,
+  ) {
+    this.bounds = unionNodeBoxes(posts.map((s) => hexNodeBox(s.hx, s.hy, range)));
+    this.width = this.bounds.maxX - this.bounds.minX + 1;
+  }
+
+  covers(x: number, y: number): boolean {
+    const { minX, maxX, minY, maxY } = this.bounds;
+    if (x < minX || x > maxX || y < minY || y > maxY) return false;
+    const coverage = this.coverage ?? this.paint();
+    return coverage[(y - minY) * this.width + (x - minX)] === 1;
+  }
+
+  /** Marks every node with `hexDistanceBetween(post, node) < range`, row by row: on a row `rows` off the
+   *  post that holds for `|dx| < lim`, `lim = range - rows + floor(rows / 2)`, and an odd `rows` reaches
+   *  one node further east on an even node row and one further west on an odd one. */
+  private paint(): Uint8Array {
+    const { minX, maxY, minY } = this.bounds;
+    const coverage = new Uint8Array(this.width * (maxY - minY + 1));
+    for (const s of this.posts) {
+      for (let y = s.hy - this.range + 1; y < s.hy + this.range; y++) {
+        const rows = Math.abs(y - s.hy);
+        const lim = this.range - rows + Math.floor(rows / 2);
+        const oddRows = rows % 2 !== 0;
+        const west = oddRows && y % 2 !== 0 ? lim : lim - 1;
+        const east = oddRows && y % 2 === 0 ? lim : lim - 1;
+        const rowStart = (y - minY) * this.width - minX;
+        coverage.fill(1, rowStart + s.hx - west, rowStart + s.hx + east + 1);
+      }
+    }
+    this.coverage = coverage;
+    return coverage;
+  }
+}
+
+/** The shared {@link CaughtPosts} of one network revision, keyed by player, range and the ascending
+ *  caught groups. */
+interface CaughtPostsMemo {
+  readonly revision: number;
+  readonly byCatch: Map<string, CaughtPosts>;
+}
+
+const caughtPostsMemo = new WeakMap<World, CaughtPostsMemo>();
+
+function sharedCaughtPosts(
+  world: World,
+  revision: number,
+  player: number,
+  range: number,
+  posts: readonly SignpostSite[],
+  groups: readonly number[],
+): CaughtPosts {
+  let memo = caughtPostsMemo.get(world);
+  if (memo === undefined || memo.revision !== revision) {
+    memo = { revision, byCatch: new Map() };
+    caughtPostsMemo.set(world, memo);
+  }
+  const key = `${player}:${range}:${groups.join(',')}`;
+  let caught = memo.byCatch.get(key);
+  if (caught === undefined) {
+    caught = new CaughtPosts(
+      posts.filter((s) => groups.includes(s.group)),
+      range,
+    );
+    memo.byCatch.set(key, caught);
+  }
+  return caught;
+}
+
+/** A spot's confinement: the walk range around the spot itself, inclusive, plus whatever its caught
+ *  posts cover. */
+class SignpostConfinement implements NavigationLimit {
+  readonly bounds: NodeBox;
+
+  constructor(
+    private readonly terrain: TerrainGraph,
+    private readonly hx: number,
+    private readonly hy: number,
+    private readonly range: number,
+    private readonly caught: CaughtPosts | null,
+  ) {
+    const own = hexNodeBox(hx, hy, range);
+    this.bounds = caught === null ? own : unionNodeBoxes([own, caught.bounds]);
+  }
+
+  allowsNode(node: NodeId): boolean {
+    const x = this.terrain.xOf(node);
+    const y = this.terrain.yOf(node);
+    if (hexDistanceBetween(this.hx, this.hy, x, y) <= this.range) return true;
+    return this.caught?.covers(x, y) === true;
+  }
+}
+
 /** The confinement a spot carries whoever stands on it: the walk range around `(hx, hy)` unioned with
  *  the range around every post of each signpost group it catches. {@link navigationLimitFor} adds the
  *  per-job exemptions and the carrier's longer range, which an errand does not inherit. */
@@ -331,33 +434,20 @@ export function networkLimitAt(
   range = WALK_RANGE_NODES,
 ): NavigationLimit | null {
   if (!signpostNavigationEnabled(world)) return null;
-  const posts = signpostNetwork(world).get(player) ?? [];
+  const network = refreshedMemo(world);
+  const posts = network.byPlayer.get(player) ?? [];
   // A post is caught when it stands inside the range and on ground the spot connects to; a caught post
   // opens its whole group.
   const here = componentAt(terrain, hx, hy);
-  const reachable = new Set<number>();
+  const groups: number[] = [];
   for (const s of posts) {
+    if (groups.includes(s.group)) continue;
     if (hexDistanceBetween(hx, hy, s.hx, s.hy) >= range) continue;
     if (here !== null && componentAt(terrain, s.hx, s.hy) !== here) continue;
-    reachable.add(s.group);
+    groups.push(s.group);
   }
-  const inRange: SignpostSite[] = [];
-  const boxes: NodeBox[] = [hexNodeBox(hx, hy, range)];
-  for (const s of posts) {
-    if (!reachable.has(s.group)) continue;
-    inRange.push(s);
-    boxes.push(hexNodeBox(s.hx, s.hy, range));
-  }
-  return {
-    bounds: unionNodeBoxes(boxes),
-    allowsNode(node: NodeId): boolean {
-      const cx = terrain.xOf(node);
-      const cy = terrain.yOf(node);
-      if (hexDistanceBetween(hx, hy, cx, cy) <= range) return true;
-      for (const s of inRange) {
-        if (hexDistanceBetween(s.hx, s.hy, cx, cy) < range) return true;
-      }
-      return false;
-    },
-  };
+  groups.sort((a, b) => a - b);
+  const caught =
+    groups.length === 0 ? null : sharedCaughtPosts(world, network.revision, player, range, posts, groups);
+  return new SignpostConfinement(terrain, hx, hy, range, caught);
 }
