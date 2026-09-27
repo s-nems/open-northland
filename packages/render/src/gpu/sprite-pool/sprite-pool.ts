@@ -26,6 +26,7 @@ import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 import { LayerBinder } from './bind-layers.js';
+import { FrameEpoch } from './bind-stamp.js';
 import { anchorOf, boundsOf, type DamagedBuilding, keelOf, pixelHit, type ShipAfloat } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
@@ -132,6 +133,7 @@ export class SpritePool {
   private readonly keelScratch: number[] = [];
   private readonly portrait: PortraitSubject;
   private readonly binder: LayerBinder;
+  private readonly epoch = new FrameEpoch();
   /** Last {@link reconcile}'s device grid, so the portrait pass re-places the meshes the way it drew
    *  them. */
   private snapResolution: number | undefined;
@@ -142,7 +144,7 @@ export class SpritePool {
    */
   constructor(
     private readonly spriteLayer: Container,
-    textures: TextureCache,
+    private readonly textures: TextureCache,
     private readonly sheet: SpriteSheet | undefined,
     /** Owner slot → team-colour slot; absent = identity. */
     private readonly playerColourOf?: (player: number) => number,
@@ -159,6 +161,7 @@ export class SpritePool {
   reconcile(frame: PoolFrame): void {
     const scene = this.sceneFor(frame);
     this.frameId++;
+    this.epoch.advance(frame, this.textures.shadowRevision);
     this.snapResolution = frame.snapResolution;
     this.portrait.release();
     this.damaged.length = 0;
@@ -185,17 +188,9 @@ export class SpritePool {
       // drawn: resuming from it would glide an arrow in from that stale anchor, and would run a walker's
       // gait and stall clocks over the whole gap. Reset to first-sighting and let trackMotion snap.
       // Reads `lastSeen` before the stamp below overwrites it.
-      if (pe.lastSeen !== this.frameId - 1) pe.motion.tick = -1;
-      this.updatePooled(pe, item, frame);
-      // Depth is the feet-anchor screen y plus a small deterministic x tiebreak, the same key the tall map
-      // objects use, so a settler and the tree it walks behind sort into one painter order. Adding back
-      // `item.lift` restores the pre-lift y, so occlusion sorts by map row while the sprite rides the hill.
-      pe.container.zIndex = screenDepth(
-        pe.motion.drawX,
-        pe.motion.drawY + (item.lift ?? 0),
-        item.kind,
-        item.isFlag === true,
-      );
+      const continuous = pe.lastSeen === this.frameId - 1;
+      if (!continuous) pe.motion.tick = -1;
+      this.presentPooled(pe, item, frame, continuous);
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
@@ -216,6 +211,44 @@ export class SpritePool {
     }
 
     this.reap(scene.liveRefs);
+  }
+
+  /**
+   * Present and bind `pe` for this frame, unless what it last bound on the previous frame still stands:
+   * the same inputs keep it without a present, and a present that only moved the frame alpha keeps it
+   * when it resolved exactly what was bound. A construction site always binds: its eased reveal moves
+   * every frame, and a reveal bake left unbound may be evicted.
+   */
+  private presentPooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame, continuous: boolean): void {
+    const stamp = pe.bound;
+    const highlight = frame.highlight?.get(item.ref);
+    const holds = continuous && pe.reveal === undefined && stamp.holds(item, this.epoch.current, highlight);
+    if (holds && stamp.alpha === frame.alpha) {
+      this.keepBound(pe);
+      return;
+    }
+    const layers = presentEntity(pe, item, frame, this.sheet);
+    stamp.alpha = frame.alpha;
+    if (holds && stamp.presents(pe.motion, layers)) {
+      this.keepBound(pe);
+      return;
+    }
+    this.binder.bind(pe, item, layers, frame, this.frameId);
+    stamp.record(item, this.epoch.current, highlight, pe.motion, layers);
+    // Depth is the feet-anchor screen y plus a small deterministic x tiebreak, the same key the tall map
+    // objects use, so a settler and the tree it walks behind sort into one painter order. Adding back
+    // `item.lift` restores the pre-lift y, so occlusion sorts by map row while the sprite rides the hill.
+    pe.container.zIndex = screenDepth(
+      pe.motion.drawX,
+      pe.motion.drawY + (item.lift ?? 0),
+      item.kind,
+      item.isFlag === true,
+    );
+  }
+
+  /** Leave `pe`'s sprites and depth as bound; bounds stamped last frame hold for this one. */
+  private keepBound(pe: PooledEntity): void {
+    if (pe.boundsFrame === this.frameId - 1) pe.boundsFrame = this.frameId;
   }
 
   /**
@@ -457,10 +490,5 @@ export class SpritePool {
     this.attached.clear();
     this.reapCursor = undefined;
     this.sceneCache.clear();
-  }
-
-  private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    const layers = presentEntity(pe, item, frame, this.sheet);
-    this.binder.bind(pe, item, layers, frame, this.frameId);
   }
 }

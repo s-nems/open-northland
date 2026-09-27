@@ -20,6 +20,9 @@ thread, nearly all of it the viewport query `positionedWithin`.
   membership is unchanged, or a collection pass that writes into retained `MutableSpriteDrawItem`
   records instead of fresh ones. The draw order must stay identical to the current comparator,
   including the `ref` tie-break.
+- The sprite pool keeps an entity's bind while its draw item is the same object
+  (`gpu/sprite-pool/bind-stamp.ts`), so a retained record whose fields change must not stay the same
+  object.
 
 ## Verify
 

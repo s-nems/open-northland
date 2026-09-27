@@ -235,7 +235,7 @@ describe('SpritePool - motion track across a gap in the draw list', () => {
 });
 
 /**
- * Every kind shares one `updatePooled` path, so only the pool proves a projectile's track is born under
+ * Every kind shares one `presentPooled` path, so only the pool proves a projectile's track is born under
  * the projectile band; `motion.test.ts` owns what the bands themselves do.
  */
 describe('SpritePool - a projectile glides across a catch-up frame', () => {

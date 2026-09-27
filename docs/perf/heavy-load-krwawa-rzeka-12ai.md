@@ -129,8 +129,7 @@ and 145 ticks.
 - Delta path: [delta-take-copies-carried-components](../tickets/sim/delta-take-copies-carried-components.md),
   [per-tick-counters-rewrite-every-settler](../tickets/sim/per-tick-counters-rewrite-every-settler.md),
   [mirror-index-upkeep-per-touched-entity](../tickets/app/mirror-index-upkeep-per-touched-entity.md).
-- Render: [sprite-pool-rebinds-unchanged-entities](../tickets/render/sprite-pool-rebinds-unchanged-entities.md),
-  [sprite-layer-instruction-rebuild](../tickets/render/sprite-layer-instruction-rebuild.md),
+- Render: [sprite-layer-instruction-rebuild](../tickets/render/sprite-layer-instruction-rebuild.md),
   [zoom-out-detail-tiers](../tickets/render/zoom-out-detail-tiers.md),
   [scene-rebuild-and-depth-sort-churn](../tickets/render/scene-rebuild-and-depth-sort-churn.md).
 - Sim: [ai-dead-holder-replant-retries](../tickets/sim/ai-dead-holder-replant-retries.md),

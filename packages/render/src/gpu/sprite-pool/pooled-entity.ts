@@ -3,6 +3,7 @@ import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedSprite } from '../paletted-sprite/index.js';
 import type { PaletteLut } from '../sprite-sheet.js';
+import { BindStamp } from './bind-stamp.js';
 import { createPresentationTrack, type PresentationTrack } from './present-item.js';
 
 /** The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame. */
@@ -42,6 +43,7 @@ interface PooledEntityBase extends PresentationTrack {
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
   boundsFrame: number;
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
+  readonly bound: BindStamp;
 }
 
 /** A settler or an indexed vehicle, drawing team-coloured {@link PalettedSprite} meshes through its LUT. */
@@ -77,6 +79,7 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
     selectionEllipse: undefined,
+    bound: new BindStamp(),
   };
   return palette === undefined
     ? { ...base, paletted: false, sprites: [], shadowFlags: [] }

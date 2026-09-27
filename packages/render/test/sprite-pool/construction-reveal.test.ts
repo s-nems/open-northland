@@ -1,8 +1,9 @@
 import type { TextureSource } from 'pixi.js';
 import { Container } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
+import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
@@ -116,6 +117,18 @@ describe('SpritePool - construction stages track the eased reveal, not the raw s
     const done = entity(1, 0, 0, { Building: { buildingType: 13, built: SIM_ONE } });
     pool.reconcile(poolFrame(snapshotOf([done])));
     expect(visibleStages(layer)).toBe(1);
+  });
+});
+
+describe('SpritePool - a paused site keeps easing', () => {
+  it('binds every frame of an unchanged snapshot while its reveal catches up', () => {
+    const pool = new SpritePool(new Container(), new TextureCache(), sheet);
+    const bind = vi.spyOn(LayerBinder.prototype, 'bind');
+    pool.reconcile(poolFrame(snapshotOf([site(20)])));
+    const paused = snapshotOf([site(80)]);
+    for (let frame = 0; frame < 3; frame++) pool.reconcile(poolFrame(paused));
+    expect(bind).toHaveBeenCalledTimes(4);
+    bind.mockRestore();
   });
 });
 
