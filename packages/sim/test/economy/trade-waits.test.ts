@@ -9,10 +9,13 @@ import {
   Position,
   Rider,
   Stockpile,
+  setStockAmount,
+  VehicleDrive,
   VehicleStock,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, playerCommand, Simulation } from '../../src/index.js';
+import { roomFor } from '../../src/systems/missions/stock.js';
 import { IDLE_REPLAN_PERIOD_TICKS } from '../../src/systems/settlers/planner/idle-replan.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { combatContent } from '../fixtures/content/combat.js';
@@ -25,7 +28,8 @@ import { grassCellMap } from '../fixtures/terrain.js';
 /**
  * A trader with nothing it can move waits: parked by its cart's door it stands on the idle cadence instead
  * of running its ladder every tick, and a route command wakes it on the tick it applies; at a foreign
- * house whose take good its cart cannot carry it hands nothing over.
+ * house whose take good its cart cannot carry it hands nothing over, and at one with no room for the give
+ * good it keeps the cart parked there until room appears.
  */
 
 const VIKING = 1;
@@ -47,6 +51,21 @@ const MAP_H = 3;
 const SETTLE_TICKS = 60;
 /** Long enough for a woken trader to put a unit in the hold. */
 const LOAD_TICKS = 300;
+/** The trading post's wood once room is made on its full shelf. */
+const POST_WOOD_DRAWN_DOWN = 10;
+
+/** How many times the cart set off over `ticks` ticks. */
+function cartDrives(sim: Simulation, cart: Entity, ticks: number): number {
+  let drives = 0;
+  let driving = sim.world.has(cart, VehicleDrive);
+  for (let t = 0; t < ticks; t++) {
+    sim.step();
+    const now = sim.world.has(cart, VehicleDrive);
+    if (now && !driving) drives++;
+    driving = now;
+  }
+  return drives;
+}
 
 function newSim(content = testContent()): Simulation {
   const sim = new Simulation({ seed: 3, content, map: grassCellMap(MAP_W, MAP_H) });
@@ -175,5 +194,39 @@ describe('a trader at a foreign house its cart cannot take from', () => {
     expect(sim.world.get(cart, VehicleStock).lines.get(WOOD)?.current ?? 0).toBeGreaterThan(0);
     expect(sim.world.get(post, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
     expect(sim.world.get(post, Stockpile).amounts.get(PLANK)).toBe(8);
+  });
+});
+
+describe('a trader at a foreign house with no room for the give good', () => {
+  it('keeps the cart parked at the house with its load until room appears, then hands over', () => {
+    const sim = newSim();
+    const home = houseAt(sim, NEAR_X, [[WOOD, 6]]);
+    const post = houseAt(sim, FAR_X, [[PLANK, 8]], NEIGHBOUR, TRADING_POST_ID);
+    const { trader, cart } = traderWithCart(sim, NEAR_X);
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN, to: NEIGHBOUR, state: 'friend' });
+    sim.enqueueSetup({
+      kind: 'addTradeAgreement',
+      missionId: TRADING_POST_ID,
+      giveGood: WOOD,
+      giveAmount: 1,
+      takeGood: PLANK,
+      takeAmount: 2,
+    });
+    sim.enqueue(playerCommand(HUMAN, { kind: 'attachTradeHouse', entity: trader, house: home }));
+    sim.enqueue(playerCommand(HUMAN, { kind: 'attachTradeHouse', entity: trader, house: post }));
+    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
+    sim.step();
+    setStockAmount(sim.world, post, WOOD, roomFor(sim.world, ctxOf(sim), post, WOOD));
+    const full = sim.world.get(post, Stockpile).amounts.get(WOOD);
+
+    // One trip out with the wood, and none after it while the shelf stays full.
+    expect(cartDrives(sim, cart, RUN_TICKS)).toBe(1);
+    expect(cartDrives(sim, cart, RUN_TICKS)).toBe(0);
+    expect(sim.world.get(cart, VehicleStock).lines.get(WOOD)?.current).toBe(6);
+    expect(sim.world.get(post, Stockpile).amounts.get(WOOD)).toBe(full);
+
+    setStockAmount(sim.world, post, WOOD, POST_WOOD_DRAWN_DOWN);
+    sim.run(RUN_TICKS);
+    expect(sim.world.get(post, Stockpile).amounts.get(WOOD)).toBeGreaterThan(POST_WOOD_DRAWN_DOWN);
   });
 });

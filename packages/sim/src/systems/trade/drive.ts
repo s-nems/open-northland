@@ -268,9 +268,9 @@ function decidePreparation(
  * house runs out of the take good mid-batch (what was handed over stays given, as the original's goods
  * vanish into the house). Nothing is handed over while the house holds fewer take goods than one batch
  * pays out, where the original delivers regardless: the trader waits at the house for its seat's refill
- * instead, so one trip sells the whole load (owner's choice). At a house no refill tops up again, or
- * whose take good the cart cannot carry, a trader with only give goods aboard waits there, one with
- * anything else aboard carries it home first.
+ * instead, so one trip sells the whole load (owner's choice). At a house no refill tops up again, whose
+ * take good the cart cannot carry, or with no room for the give good, a trader with only give goods
+ * aboard waits there, one with anything else aboard carries it home first.
  */
 function decideExchange(
   world: World,
@@ -296,8 +296,11 @@ function decideExchange(
     // The cart holds a dish as its edible, so the unit handed over is whichever aboard good the
     // agreement's give good matches.
     const giving = hold.entries.find(([good]) => sameFoodClass(ctx, good, agreement.giveGood));
-    const slot = giving === undefined ? undefined : storableFormAt(world, ctx, house, giving[0]);
-    if (giving === undefined || slot === undefined || roomFor(world, ctx, house, slot) <= 0) return NEXT;
+    if (giving === undefined) return NEXT;
+    const slot = storableFormAt(world, ctx, house, giving[0]);
+    // A house with no room for the give good: driving home with only give goods aboard brings the same
+    // load straight back.
+    if (slot === undefined || roomFor(world, ctx, house, slot) <= 0) return otherAboard ? NEXT : WAIT;
     return { kind: 'unload', good: giving[0], into: house };
   }
   if (route.received < agreement.takeAmount) {
