@@ -102,6 +102,24 @@ export class TileBuckets<T> {
     return out;
   }
 
+  /** Where these buckets place an item otherwise than `other` does, or null: the same items under the
+   *  same ids in the same buckets, whatever order their history left inside a bucket. */
+  differenceFrom(other: TileBuckets<T>): string | null {
+    if (this.records.size !== other.records.size)
+      return `size ${this.records.size} against ${other.records.size}`;
+    let bucketed = 0;
+    for (const bucket of this.buckets.values()) bucketed += bucket.length;
+    if (bucketed !== this.records.size) return `${bucketed} bucketed against ${this.records.size} held`;
+    for (const [id, record] of this.records) {
+      const theirs = other.records.get(id);
+      if (theirs === undefined || theirs.item !== record.item) return `id ${id}`;
+      if (theirs.key !== record.key || this.buckets.get(record.key)?.[record.slot] !== record) {
+        return `id ${id}'s bucket`;
+      }
+    }
+    return null;
+  }
+
   private insert(record: BucketRecord<T>, key: number): void {
     let bucket = this.buckets.get(key);
     if (bucket === undefined) {

@@ -229,5 +229,6 @@ describe('the views over a mirror', () => {
     expect(second.map((e) => e.id)).toEqual([1, 5]);
     expect(first.map((e) => e.id)).toEqual([1]); // a list already handed out never changes
     expect(signpostsOf(built)).toEqual([]);
+    expect(mirror.verifyIndexes()).toEqual([]);
   });
 });

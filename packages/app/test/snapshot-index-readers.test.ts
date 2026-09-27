@@ -1,4 +1,10 @@
-import { SnapshotMirror, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  MirrorTruth,
+  type Simulation,
+  SnapshotMirror,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../src/game/sandbox/worker-roles.js';
 import {
@@ -28,8 +34,24 @@ import { computeSettlerBubbles } from '../src/view/projections/settler-bubbles.j
 /**
  * The snapshot readers answer from indexes a mirror maintains per delta. After every delta each one must
  * equal what a fresh walk over the same entity list builds, so no change the sim makes leaves a view
- * stale.
+ * stale, and the `debug=diag` checks (the delta digest and `verifyIndexes`) must find nothing to report.
  */
+
+/** A digest-carrying stream into a mirror, checked the way a `debug=diag` session checks it. */
+function checkedMirror(sim: Simulation): { readonly mirror: SnapshotMirror; advance(): void } {
+  const deltas = sim.snapshotDeltas({ digest: true });
+  const mirror = new SnapshotMirror();
+  const truth = new MirrorTruth();
+  return {
+    mirror,
+    advance: () => {
+      const delta = deltas.next();
+      if (delta === null) return;
+      mirror.apply(delta);
+      expect(truth.check(delta, mirror.snapshot())).toBeNull();
+    },
+  };
+}
 
 /** Scenes whose runs exercise the grouped bonds: families, building sites, shelters and drills. */
 const SCENES = ['family', 'construction', 'ai-defence', 'school', 'household-goods'] as const;
@@ -69,13 +91,12 @@ describe('snapshot readers over a mirror', () => {
     const scene = getScene(id);
     if (scene === undefined) throw new Error(`scene ${id} missing`);
     const sim = createSceneSim(scene);
-    const deltas = sim.snapshotDeltas();
-    const mirror = new SnapshotMirror();
+    const { mirror, advance } = checkedMirror(sim);
     for (let tick = 0; tick < RUN_TICKS; tick++) {
       sim.step();
-      const delta = deltas.next();
-      if (delta !== null) mirror.apply(delta);
+      advance();
       expectReadersMatchWalk(mirror.snapshot());
+      expect(mirror.verifyIndexes()).toEqual([]);
     }
   });
 });
@@ -109,15 +130,14 @@ describe('per-tick projections over a mirror', () => {
     const scene = getScene(id);
     if (scene === undefined) throw new Error(`scene ${id} missing`);
     const sim = createSceneSim(scene);
-    const deltas = sim.snapshotDeltas();
-    const mirror = new SnapshotMirror();
+    const { mirror, advance } = checkedMirror(sim);
     const isLivestockTribe = (tribe: number): boolean => systems.isCatchableAnimal(sim.content, tribe);
     for (let tick = 0; tick < RUN_TICKS; tick++) {
       sim.step();
-      const delta = deltas.next();
-      if (delta !== null) mirror.apply(delta);
+      advance();
       const live = mirror.snapshot();
       expectProjectionsMatchWalk(live, { isLivestockTribe, selected: everyFewSettlers(live) });
+      expect(mirror.verifyIndexes()).toEqual([]);
     }
   });
 });

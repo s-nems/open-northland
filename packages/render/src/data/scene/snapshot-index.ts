@@ -2,6 +2,7 @@ import {
   type EntitySnapshot,
   entitiesWith,
   entityById,
+  firstDifference,
   indexesOf,
   listedWhere,
   type SnapshotIndexSpec,
@@ -85,6 +86,7 @@ function isEnterableStore(components: Readonly<Record<string, unknown>>): boolea
 }
 
 const ENTERABLE_STORES: SnapshotIndexSpec<Set<number>> = {
+  name: 'enterable stores',
   empty: () => new Set(),
   add: (ids, entity) => {
     if (isEnterableStore(entity.components)) ids.add(entity.id);
@@ -138,6 +140,7 @@ function moveTarget(counts: Map<number, number>, before: number | null, after: n
  *  needs the `AtomicClock`, but only its presence, and the sim adds and removes that clock together with
  *  `CurrentAtomic`, so an unchanged `CurrentAtomic` object leaves both references unchanged. */
 const WANTED_TARGETS: SnapshotIndexSpec<Map<number, number>> = {
+  name: 'wanted targets',
   empty: () => new Map(),
   add: (counts, entity) => countTargetsOf(counts, entity, 1),
   remove: (counts, entity) => countTargetsOf(counts, entity, -1),
@@ -162,6 +165,7 @@ interface PalisadeList {
 }
 
 const PALISADES: SnapshotIndexSpec<PalisadeList> = {
+  name: 'palisades',
   empty: () => ({ held: PALISADE_ENTRIES.empty(), copy: null }),
   add: (list, entity) => {
     if (!carriesPalisade(entity)) return;
@@ -173,6 +177,9 @@ const PALISADES: SnapshotIndexSpec<PalisadeList> = {
     PALISADE_ENTRIES.remove(list.held, entity);
     list.copy = null;
   },
+  differs: (list, fresh) =>
+    firstDifference(list.held, fresh.held, 'held') ??
+    (list.copy === null ? null : firstDifference(list.copy, fresh.held, 'copy')),
 };
 
 const positionsBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, { x: number; y: number }>>();

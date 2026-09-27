@@ -1,3 +1,4 @@
+import { FNV_OFFSET_BASIS, fnvMixWord } from '@open-northland/data';
 import { isPlainRecord, sortedKeys, sortedMapEntries, valueShapeName } from './plain-value.js';
 
 /** Folds one 32-bit word into a running hash. */
@@ -60,4 +61,26 @@ export function mixValue(mix: MixWord, mixText: MixText, value: unknown): void {
 
 /** The word standing in for `null` and `undefined` (the golden-ratio constant, an arbitrary fixed
  *  pattern that no small integer collides with). */
-const ABSENT_WORD = 0x9e3779b9;
+export const ABSENT_WORD = 0x9e3779b9;
+
+/**
+ * Module state under the memo exception: `stringWord` is a pure function of its argument, no simulation
+ * decision reads the table, and a string is immutable, so an entry can never go stale.
+ */
+const stringWords = new Map<string, number>();
+
+/** Vocabulary size past which the table is dropped rather than grown forever - reachable only if a
+ *  component ever holds open-ended text. Recomputing an entry yields the same word, so nothing moves. */
+const STRING_WORD_LIMIT = 4096;
+
+/** One memoized word per string, for a digest that folds the same names and values many times over.
+ *  The sync digest and the `debug=diag` mirror digest share the table. */
+export function stringWord(text: string): number {
+  const known = stringWords.get(text);
+  if (known !== undefined) return known;
+  let word = fnvMixWord(FNV_OFFSET_BASIS, text.length);
+  for (let i = 0; i < text.length; i++) word = fnvMixWord(word, text.charCodeAt(i));
+  if (stringWords.size >= STRING_WORD_LIMIT) stringWords.clear();
+  stringWords.set(text, word);
+  return word;
+}

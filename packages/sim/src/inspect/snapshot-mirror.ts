@@ -57,6 +57,12 @@ export class SnapshotMirror {
     attachIndexes(this.current, this.indexes);
   }
 
+  /** Each maintained index that no longer matches a fresh walk of the entities, described
+   *  (`SnapshotIndexes.verify`). */
+  verifyIndexes(): string[] {
+    return this.indexes.verify();
+  }
+
   /** The snapshot the applied deltas add up to. Throws before the first delta: there is no world yet. */
   snapshot(): WorldSnapshot {
     if (this.current === null) throw new Error('snapshot mirror: no delta applied yet');

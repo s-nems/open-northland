@@ -226,7 +226,9 @@ interpolated presentation clocks.
 Debug modes:
 
 - `debug=diag` records replay and state-hash diagnostics, and every 120 ticks checks the sim's
-  invariants and logs any violation;
+  invariants and logs any violation. In a worker session each delta also carries a digest of the
+  entities it names, which the drawn mirror must match, and on the invariant ticks the mirror's indexes
+  are checked against a fresh walk; either disagreement is logged on the `mirror` channel;
 - `debug=perf` adds browser performance marks;
 - `debug=trace` records a trace that can be exported for offline profiling;
 - `debug=profile` accumulates per-system sim cost for the whole session;
@@ -333,6 +335,7 @@ browser. `player=overseer` builds the same world whenever seat 0 is an AI seat. 
 | `ON_BENCH_SYNC_DIGEST` | fold the per-tick sync digest, what a networked session pays |
 | `ON_BENCH_MIRROR` | `on` measures the snapshot delta path per delta (take, V8 serialize and deserialize as `postMessage` does them, mirror apply without the runtime's indexes, serialized size) and checks the mirror against the live snapshot at each window's end; that check and its full-snapshot clone add GC to the next window |
 | `ON_BENCH_MIRROR_BATCH` | ticks per delta under `ON_BENCH_MIRROR` (default 1), the batching a worker does when several ticks reach one frame |
+| `ON_BENCH_MIRROR_DIGEST` | `on` under `ON_BENCH_MIRROR` has the deltas carry the `debug=diag` truth digest: take includes the worker's fold, `truth` samples the main thread's check, and a mismatch fails the run |
 | `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP`, `ON_BENCH_CHECKPOINTS` | checkpoints, below |
 | `ON_BENCH_JSON` | where the report is written instead of `bench-out/` |
 

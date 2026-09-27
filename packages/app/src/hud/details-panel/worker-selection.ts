@@ -85,13 +85,15 @@ export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
   return [...garrison, ...posted, ...crew, ...drilling].slice(0, MAX_WORKERS);
 }
 
-const ATOMIC_TARGETS = groupedBy((e) =>
-  isSettler(e)
-    ? num((e.components.CurrentAtomic as { targetEntity?: unknown } | undefined)?.targetEntity)
-    : undefined,
+const ATOMIC_TARGETS = groupedBy(
+  (e) =>
+    isSettler(e)
+      ? num((e.components.CurrentAtomic as { targetEntity?: unknown } | undefined)?.targetEntity)
+      : undefined,
+  'atomic targets',
 );
 
-const TRAINEES = groupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined));
+const TRAINEES = groupedBy((e) => (isSettler(e) ? trainingHouseOf(e) : undefined), 'trainees');
 
 /** The settlers raising `site`, ascending by id: its assigned builders, the ones working on it right now
  *  and the ones supplying it. */

@@ -75,6 +75,11 @@ export {
   type SyncDigestInputsJson,
 } from './inspect/digest-inputs-diff.js';
 export {
+  type DeltaDigest,
+  type DigestMismatch,
+  MirrorTruth,
+} from './inspect/entity-digest.js';
+export {
   dumpEntity,
   type EntityDump,
   type EntityTraceStep,
@@ -100,6 +105,7 @@ export {
   type EntityDelta,
   type SnapshotDelta,
   SnapshotDeltaStream,
+  type SnapshotDeltaStreamOptions,
 } from './inspect/snapshot-clones.js';
 export {
   type ChangedEntity,
@@ -110,6 +116,7 @@ export {
 export {
   countedBy,
   entitiesWith,
+  firstDifference,
   groupedBy,
   indexesOf,
   isPositioned,

@@ -1,6 +1,7 @@
 import type { SimEvent } from '../core/events.js';
 import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../ecs/touched-log.js';
 import type { Entity, World } from '../ecs/world.js';
+import { type DeltaDigest, EntityDigest } from './entity-digest.js';
 import { clonePlain } from './plain-clone.js';
 import type { EntitySnapshot } from './snapshot.js';
 
@@ -24,6 +25,8 @@ export interface SnapshotDelta {
   readonly removed: readonly number[];
   /** The events of `tick`, as the snapshot carries them. */
   readonly events: readonly SimEvent[];
+  /** The world at `tick` as a stream opened with `digest` folds it, for `MirrorTruth` to compare. */
+  readonly digest?: DeltaDigest;
 }
 
 /** One touched entity's changes since the base. An entity the base did not hold, and every entity of
@@ -173,6 +176,12 @@ const NO_TICK = -1;
 const NO_VERSION = -1;
 const NO_COMPONENT_NAMES: readonly string[] = [];
 
+export interface SnapshotDeltaStreamOptions {
+  /** Fold the world's clones of every entity a delta names into a digest the delta carries: a
+   *  diagnostic, since it hashes each changed component once more. */
+  readonly digest?: boolean;
+}
+
 /**
  * The per-tick change feed one mirror rebuilds the snapshot from. Each stream accumulates on its own,
  * so two streams over one world each see every change; a stream nobody takes from is bounded by the
@@ -188,10 +197,15 @@ export class SnapshotDeltaStream {
   private lastVersion = NO_VERSION;
   private sequence = 0;
   private closed = false;
+  private readonly digest: EntityDigest | null;
 
-  constructor(private readonly source: SnapshotDeltaSource) {
+  constructor(
+    private readonly source: SnapshotDeltaSource,
+    options: SnapshotDeltaStreamOptions = {},
+  ) {
     this.clones = snapshotClonesFor(source.world);
     this.pending = this.clones.open();
+    this.digest = options.digest === true ? new EntityDigest() : null;
   }
 
   /**
@@ -210,11 +224,15 @@ export class SnapshotDeltaStream {
     let removed: Entity[];
     if (pending.rebuild) {
       this.sent.clear();
+      this.digest?.clear();
       touched = world.canonicalEntities().map((id) => this.whole(id));
       removed = [];
     } else {
       removed = ascending(pending.removed);
-      for (const id of removed) this.sent.delete(id);
+      for (const id of removed) {
+        this.sent.delete(id);
+        this.digest?.drop(id);
+      }
       touched = ascending(pending.touched).map((id) => this.changesOf(id));
     }
     const delta: SnapshotDelta = {
@@ -224,6 +242,7 @@ export class SnapshotDeltaStream {
       touched,
       removed,
       events: cloneEvents(this.source.events.current()),
+      ...(this.digest === null ? {} : { digest: { entities: world.entityCount, hash: this.digest.hash } }),
     };
     pending.touched.clear();
     pending.removed.clear();
@@ -244,6 +263,7 @@ export class SnapshotDeltaStream {
   private whole(id: Entity): EntityDelta {
     const cached = this.clones.entryOf(id);
     this.sent.set(id, cached.componentRevisions);
+    this.digest?.fold(cached.snap);
     return { id, components: cached.snap.components, removed: NO_COMPONENT_NAMES };
   }
 
@@ -253,6 +273,7 @@ export class SnapshotDeltaStream {
     if (base === undefined) return this.whole(id);
     const cached = this.clones.entryOf(id);
     this.sent.set(id, cached.componentRevisions);
+    this.digest?.fold(cached.snap);
     const revisions = cached.componentRevisions;
     const components: Record<string, unknown> = {};
     let stillCarried = 0;

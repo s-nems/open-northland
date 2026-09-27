@@ -1,5 +1,11 @@
 import { deserialize, serialize } from 'node:v8';
-import { diffSnapshots, type Simulation, type SnapshotDelta, SnapshotMirror } from '@open-northland/sim';
+import {
+  diffSnapshots,
+  MirrorTruth,
+  type Simulation,
+  type SnapshotDelta,
+  SnapshotMirror,
+} from '@open-northland/sim';
 import { percentile } from './report/index.js';
 
 const BYTES_PER_KB = 1024;
@@ -13,7 +19,9 @@ const US_PER_MS = 1000;
  * the timed tick, so the tick table stays the sim's. At each window's end it checks the mirror against
  * the live snapshot and clones a full snapshot once for the comparison the delta replaces. The runtime's
  * readers register their indexes on the mirror lazily, so this mirror holds none, and its apply figure
- * leaves out the per-delta index upkeep the runtime also pays.
+ * leaves out the per-delta index upkeep the runtime also pays. With `digest`, the deltas carry the
+ * `debug=diag` truth digest, so the take figure includes its fold, and the mirror side's check is
+ * sampled as `truth`.
  */
 export class MirrorProbe {
   private readonly deltas;
@@ -23,6 +31,8 @@ export class MirrorProbe {
   private serializeUs: number[] = [];
   private deserializeUs: number[] = [];
   private applyUs: number[] = [];
+  private truthUs: number[] = [];
+  private readonly truth: MirrorTruth | null;
   private touched: number[] = [];
   private components: number[] = [];
   private kilobytes: number[] = [];
@@ -30,8 +40,10 @@ export class MirrorProbe {
   constructor(
     private readonly sim: Simulation,
     private readonly ticksPerDelta: number,
+    digest: boolean,
   ) {
-    this.deltas = sim.snapshotDeltas();
+    this.deltas = sim.snapshotDeltas({ digest });
+    this.truth = digest ? new MirrorTruth() : null;
   }
 
   /** Call after every step. */
@@ -49,6 +61,12 @@ export class MirrorProbe {
     const t3 = performance.now();
     this.mirror.apply(received);
     const t4 = performance.now();
+    if (this.truth !== null) {
+      const mismatch = this.truth.check(received, this.mirror.snapshot());
+      this.truthUs.push((performance.now() - t4) * US_PER_MS);
+      if (mismatch !== null)
+        throw new Error(`mirror digest parted from the world: ${JSON.stringify(mismatch)}`);
+    }
     this.takeUs.push((t1 - t0) * US_PER_MS);
     this.serializeUs.push((t2 - t1) * US_PER_MS);
     this.deserializeUs.push((t3 - t2) * US_PER_MS);
@@ -87,11 +105,14 @@ export class MirrorProbe {
       `p95 ${percentile(this.components, 95).toFixed(0)}  delta KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
       `p95 ${percentile(this.kilobytes, 95).toFixed(1)}  take µs ${us(this.takeUs)}  ` +
       `serialize µs ${us(this.serializeUs)}  deserialize µs ${us(this.deserializeUs)}  ` +
-      `apply only, no indexes µs ${us(this.applyUs)}  full snapshot clone ${fullCloneMs.toFixed(0)} ms`;
+      `apply only, no indexes µs ${us(this.applyUs)}  ` +
+      (this.truth === null ? '' : `truth µs ${us(this.truthUs)}  `) +
+      `full snapshot clone ${fullCloneMs.toFixed(0)} ms`;
     this.takeUs = [];
     this.serializeUs = [];
     this.deserializeUs = [];
     this.applyUs = [];
+    this.truthUs = [];
     this.touched = [];
     this.components = [];
     this.kilobytes = [];

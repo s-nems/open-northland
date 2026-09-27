@@ -1,6 +1,7 @@
 import {
   type EntitySnapshot,
   type Fixed,
+  firstDifference,
   type HalfCellNode,
   heapReach,
   IDLE_JOB,
@@ -240,6 +241,7 @@ function count(state: HudTotals, entity: EntitySnapshot, sign: Sign): void {
 
 /** Every player's HUD figures, kept per change over one snapshot lineage. */
 const HUD_TOTALS: SnapshotIndexSpec<HudTotals> = {
+  name: 'HUD totals',
   empty: () => ({ players: new Map(), heaps: new Map() }),
   add: (state, entity) => count(state, entity, ADD),
   remove: (state, entity) => count(state, entity, SUBTRACT),
@@ -267,7 +269,47 @@ const HUD_TOTALS: SnapshotIndexSpec<HudTotals> = {
       addHeap(state, next.id, is);
     }
   },
+  differs: (held, fresh) => {
+    const heaps = firstDifference(held.heaps, fresh.heaps, 'heaps');
+    if (heaps !== null) return heaps;
+    for (const player of new Set([...held.players.keys(), ...fresh.players.keys()])) {
+      const heldTotals = held.players.get(player) ?? UNCOUNTED;
+      const where = playerDifference(player, heldTotals, fresh, fresh.players.get(player) ?? UNCOUNTED);
+      if (where !== null) return where;
+    }
+    return null;
+  },
 };
+
+/** A player the state never counted reads as one whose counts all went back to nothing. */
+const UNCOUNTED: PlayerTotals = {
+  population: 0,
+  jobs: new Map(),
+  owned: new Map(),
+  anchors: new Map(),
+  heapStock: new Map(),
+  inReach: null,
+  reachStale: false,
+};
+
+/** The counts compare as kept; the heap total only once the held side settled it, against the fresh
+ *  side settled now, since both are derived on read. */
+function playerDifference(
+  player: number,
+  held: PlayerTotals,
+  fresh: HudTotals,
+  freshTotals: PlayerTotals,
+): string | null {
+  const at = `player ${player}`;
+  if (held.population !== freshTotals.population) return `${at} population`;
+  const counts =
+    firstDifference(held.jobs, freshTotals.jobs, `${at} jobs`) ??
+    firstDifference(held.owned, freshTotals.owned, `${at} owned`) ??
+    firstDifference(held.anchors, freshTotals.anchors, `${at} anchors`);
+  if (counts !== null || held.reachStale) return counts;
+  if (freshTotals.reachStale) settleReach(fresh, freshTotals);
+  return firstDifference(held.heapStock, freshTotals.heapStock, `${at} heap stock`);
+}
 
 /** Derive a stale player's reach and heap total again from every heap: once per anchor change. */
 function settleReach(state: HudTotals, totals: PlayerTotals): void {

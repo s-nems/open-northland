@@ -166,13 +166,16 @@ export class ServedSession<E> {
     );
     this.answers = inlineSessionHost(sim, { snapshots: 'live' });
     // Without the events: each tick's record carries its own, so the stream's clone would be dropped.
-    this.deltas = new SnapshotDeltaStream({
-      world: sim.world,
-      get tick() {
-        return sim.tick;
+    this.deltas = new SnapshotDeltaStream(
+      {
+        world: sim.world,
+        get tick() {
+          return sim.tick;
+        },
+        events: { current: () => NO_EVENTS },
       },
-      events: { current: () => NO_EVENTS },
-    });
+      { digest: options.diagnostics },
+    );
     this.fogSeat = options.fogSeat;
     this.lastFacts = readWorldFacts(sim);
     const delta = this.deltas.next();

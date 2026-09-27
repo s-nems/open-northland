@@ -1,5 +1,5 @@
 import { FNV_OFFSET_BASIS, fnvMixWord } from '@open-northland/data';
-import { type MixText, type MixWord, mixValue } from '../core/hash-value.js';
+import { type MixText, type MixWord, mixValue, stringWord } from '../core/hash-value.js';
 import type { Component, Entity, MutationSink, SyncDomain, World } from '../ecs/world.js';
 import type { FogState } from '../systems/vision/index.js';
 
@@ -15,26 +15,6 @@ export interface SyncDigest {
   readonly tick: number;
   /** Unsigned 32-bit FNV fold per domain, so a mismatch names where the two runs parted. */
   readonly domains: Readonly<Record<SyncDomain, number>>;
-}
-
-/**
- * Module state under the memo exception: `stringWord` is a pure function of its argument, no simulation
- * decision reads the table, and a string is immutable, so an entry can never go stale.
- */
-const stringWords = new Map<string, number>();
-
-/** Vocabulary size past which the table is dropped rather than grown forever - reachable only if a
- *  component ever holds open-ended text. Recomputing an entry yields the same word, so nothing moves. */
-const STRING_WORD_LIMIT = 4096;
-
-function stringWord(text: string): number {
-  const known = stringWords.get(text);
-  if (known !== undefined) return known;
-  let word = fnvMixWord(FNV_OFFSET_BASIS, text.length);
-  for (let i = 0; i < text.length; i++) word = fnvMixWord(word, text.charCodeAt(i));
-  if (stringWords.size >= STRING_WORD_LIMIT) stringWords.clear();
-  stringWords.set(text, word);
-  return word;
 }
 
 /** One touched component's per-entity words, in the order the digest folded them. */

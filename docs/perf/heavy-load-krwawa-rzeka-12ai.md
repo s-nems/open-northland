@@ -124,7 +124,7 @@ and 145 ticks.
 
 - Runtime: [worker-lead-follows-drawn-frames](../tickets/app/worker-lead-follows-drawn-frames.md),
   [relay-pacing-sees-render-cost](../tickets/net-client/relay-pacing-sees-render-cost.md),
-  [mirror-truth-check](../tickets/app/mirror-truth-check.md),
+  `mirror-truth-check` (done: the `debug=diag` digest and index check),
   [worker-edge-states-reach-the-view](../tickets/app/worker-edge-states-reach-the-view.md).
 - Delta path: [delta-take-copies-carried-components](../tickets/sim/delta-take-copies-carried-components.md),
   [per-tick-counters-rewrite-every-settler](../tickets/sim/per-tick-counters-rewrite-every-settler.md),

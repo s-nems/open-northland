@@ -81,7 +81,7 @@ function isRipe(crop: CropSnapshot): boolean {
 const CROPS_BY_FARM = groupedBy((e) => {
   const crop = cropOf(e);
   return crop === undefined ? undefined : num(crop.farm);
-});
+}, 'crops by farm');
 
 /** Tiles a position reaches past its half-cell node's lattice point: the node spans half a tile, and the
  *  row stagger shifts it by up to half a tile more. */

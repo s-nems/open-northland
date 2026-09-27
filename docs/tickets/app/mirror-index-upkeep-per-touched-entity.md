@@ -30,6 +30,6 @@ the 13 `withComponent` lists 0.44 together, position buckets 0.15, families 0.11
 
 - The probe's split from the reference's t60k and t100k checkpoints against the numbers above.
 - Index parity: after each applied delta over a few hundred real-content ticks with random 1-7-tick
-  batches, every runtime index equals a fresh walk of the mirror's entities; add that check to the
-  probe's per-window check.
+  batches, `SnapshotMirror.verifyIndexes()` finds nothing; add it to the probe's per-window check once
+  the probe's mirror holds the runtime's readers.
 - The snapshot index tests, `npm test`, `npm run check`.

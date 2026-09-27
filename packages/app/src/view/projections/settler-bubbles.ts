@@ -30,7 +30,7 @@ export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] 
 
 /** The settlers some bubble would float over, whatever their seat: a small crowd, so the read scales with
  *  it rather than with the population. */
-const BUBBLE_CARRIERS = listedWhere((e) => isSettler(e) && bubbleKindOf(e) !== undefined);
+const BUBBLE_CARRIERS = listedWhere((e) => isSettler(e) && bubbleKindOf(e) !== undefined, 'bubble carriers');
 
 function bubbleKindOf(e: SnapshotEntity): SettlerBubbleKind | undefined {
   if (childOrderOf(e) !== undefined) return 'child';

@@ -9,11 +9,17 @@ import { type TileBox, TileBuckets } from './tile-buckets.js';
  * tick. Hold a spec as a module constant; the state lives under the spec object's identity.
  */
 export interface SnapshotIndexSpec<T> {
+  /** What a diagnostic calls the index. */
+  readonly name?: string;
   empty(): T;
   add(state: T, entity: EntitySnapshot): void;
   remove(state: T, entity: EntitySnapshot): void;
   /** The new object of a touched entity the snapshot already held; defaults to remove then add. */
   replace?(state: T, previous: EntitySnapshot, next: EntitySnapshot): void;
+  /** Where a maintained state says something a fresh walk (`fresh`) does not, or null; defaults to
+   *  {@link firstDifference}. A state holding read-through caches or an order its history set compares
+   *  what its readers see; `current` reads the other specs fresh over the same entities. */
+  differs?(held: T, fresh: T, current: SnapshotIndexReader): string | null;
 }
 
 /** The read side of a snapshot's indexes: the state of `spec` over the snapshot's current entities. */
@@ -44,6 +50,22 @@ export class SnapshotIndexes implements SnapshotIndexReader {
 
   reset(): void {
     this.held.clear();
+  }
+
+  /** Each held state that no longer matches a fresh walk of the current entities, described: a
+   *  diagnostic that costs a first read of every held spec. */
+  verify(): string[] {
+    const current = new SnapshotIndexes(this.entities);
+    const out: string[] = [];
+    for (const [spec, held] of this.held) {
+      const fresh = current.get(spec);
+      const where =
+        spec.differs === undefined ? firstDifference(held, fresh) : spec.differs(held, fresh, current);
+      if (where !== null) {
+        out.push(`the ${spec.name ?? describe(held)} index differs from a fresh walk at ${where}`);
+      }
+    }
+    return out;
   }
 
   added(entity: EntitySnapshot): void {
@@ -87,13 +109,63 @@ export function attachIndexes(snapshot: WorldSnapshot, indexes: SnapshotIndexes)
   INDEXES.set(snapshot, indexes);
 }
 
+/** The path to the first place two plain index states differ, or null when they agree. Arrays compare
+ *  in order, `Map`s and `Set`s by key, other objects by own keys under one prototype. */
+export function firstDifference(a: unknown, b: unknown, path = 'the root'): string | null {
+  if (a === b || (Number.isNaN(a) && Number.isNaN(b))) return null;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return path;
+  if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return path;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return `${path} (length ${a.length} against ${b.length})`;
+    for (let i = 0; i < a.length; i++) {
+      const where = firstDifference(a[i], b[i], `${path}[${i}]`);
+      if (where !== null) return where;
+    }
+    return null;
+  }
+  if (a instanceof Map && b instanceof Map) {
+    if (a.size !== b.size) return `${path} (size ${a.size} against ${b.size})`;
+    for (const [key, value] of a) {
+      if (!b.has(key)) return `${path} key ${String(key)}`;
+      const where = firstDifference(value, b.get(key), `${path} key ${String(key)}`);
+      if (where !== null) return where;
+    }
+    return null;
+  }
+  if (a instanceof Set && b instanceof Set) {
+    if (a.size !== b.size) return `${path} (size ${a.size} against ${b.size})`;
+    for (const item of a) if (!b.has(item)) return `${path} item ${String(item)}`;
+    return null;
+  }
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return `${path} (keys)`;
+  for (const key of keys) {
+    if (!Object.hasOwn(b, key)) return `${path}.${key}`;
+    const where = firstDifference(
+      (a as Record<string, unknown>)[key],
+      (b as Record<string, unknown>)[key],
+      `${path}.${key}`,
+    );
+    if (where !== null) return where;
+  }
+  return null;
+}
+
+function describe(state: unknown): string {
+  if (Array.isArray(state)) return `list of ${state.length}`;
+  if (state instanceof Map || state instanceof Set) return `${state.constructor.name} of ${state.size}`;
+  return typeof state === 'object' && state !== null ? state.constructor.name : typeof state;
+}
+
 // The generic views most consumers compose.
 
 /** The entities `matches` accepts, ascending by id like the snapshot's own list. */
 export function listedWhere(
   matches: (entity: EntitySnapshot) => boolean,
+  name?: string,
 ): SnapshotIndexSpec<EntitySnapshot[]> {
   return {
+    ...(name === undefined ? {} : { name }),
     empty: () => [],
     add: (list, entity) => {
       if (matches(entity)) insertSorted(list, entity);
@@ -117,7 +189,7 @@ const BY_COMPONENT = new Map<string, SnapshotIndexSpec<EntitySnapshot[]>>();
 export function withComponent(name: string): SnapshotIndexSpec<EntitySnapshot[]> {
   let spec = BY_COMPONENT.get(name);
   if (spec === undefined) {
-    spec = listedWhere((entity) => Object.hasOwn(entity.components, name));
+    spec = listedWhere((entity) => Object.hasOwn(entity.components, name), `withComponent(${name})`);
     BY_COMPONENT.set(name, spec);
   }
   return spec;
@@ -130,6 +202,7 @@ export function entitiesWith(snapshot: WorldSnapshot, name: string): readonly En
 /** How many entities map to each key; a key with no entity left is absent, not zero. */
 export function countedBy(
   keyOf: (entity: EntitySnapshot) => number | undefined,
+  name?: string,
 ): SnapshotIndexSpec<Map<number, number>> {
   const add = (counts: Map<number, number>, entity: EntitySnapshot): void => {
     const key = keyOf(entity);
@@ -143,6 +216,7 @@ export function countedBy(
     else counts.delete(key);
   };
   return {
+    ...(name === undefined ? {} : { name }),
     empty: () => new Map(),
     add,
     remove,
@@ -157,6 +231,7 @@ export function countedBy(
 /** The entities under each key, each list ascending by id; a key with no entity left is absent. */
 export function groupedBy(
   keyOf: (entity: EntitySnapshot) => number | undefined,
+  name?: string,
 ): SnapshotIndexSpec<Map<number, EntitySnapshot[]>> {
   const add = (groups: Map<number, EntitySnapshot[]>, entity: EntitySnapshot): void => {
     const key = keyOf(entity);
@@ -174,6 +249,7 @@ export function groupedBy(
     if (group.length === 0) groups.delete(key);
   };
   return {
+    ...(name === undefined ? {} : { name }),
     empty: () => new Map(),
     add,
     remove,
@@ -199,7 +275,9 @@ function tileOf(entity: EntitySnapshot): { x: number; y: number } | null {
 
 /** Every positioned entity bucketed by its `Position`, in fractional tile units. */
 const BY_POSITION: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
+  name: 'position buckets',
   empty: () => new TileBuckets(),
+  differs: (held, fresh) => held.differenceFrom(fresh),
   add: (buckets, entity) => {
     const tile = tileOf(entity);
     if (tile !== null) buckets.set(entity.id, entity, tile.x, tile.y);

@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import {
   entityById,
+  firstDifference,
   groupedBy,
   indexesOf,
   type SnapshotIndexSpec,
@@ -146,7 +147,7 @@ function marriageChildOf(e: SnapshotEntity): number | undefined {
 }
 
 /** The actors naming each growing child in their `Marriage`, ascending by id. */
-const PARENTS = groupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined));
+const PARENTS = groupedBy((e) => (isActor(e) ? marriageChildOf(e) : undefined), 'parents');
 
 /** A growing child's father, named by its lowest-id parent: a list naming a whole settlement asks once
  *  per child, so the parents come from a maintained index rather than a walk per question. */
@@ -169,7 +170,7 @@ export interface HomeFamily {
 const residentHomeOf = (e: SnapshotEntity): number | undefined =>
   isSettler(e) ? residenceHomeOf(e) : undefined;
 
-const RESIDENTS = groupedBy(residentHomeOf);
+const RESIDENTS = groupedBy(residentHomeOf, 'residents');
 
 /** Whether two objects of one entity group identically: a family reads only the home, adulthood and the
  *  marriage's spouse and child. */
@@ -193,6 +194,7 @@ function sameFamilyFacts(previous: SnapshotEntity, next: SnapshotEntity): boolea
 /** Each home's grouped families, built on read and dropped when a change may regroup that home: every
  *  fact a grouping reads belongs to the home's own residents. */
 const FAMILIES: SnapshotIndexSpec<Map<number, readonly HomeFamily[]>> = {
+  name: 'families',
   empty: () => new Map(),
   add: (families, e) => forgetHomeOf(families, e),
   remove: (families, e) => forgetHomeOf(families, e),
@@ -200,6 +202,16 @@ const FAMILIES: SnapshotIndexSpec<Map<number, readonly HomeFamily[]>> = {
     if (sameFamilyFacts(previous, next)) return;
     forgetHomeOf(families, previous);
     forgetHomeOf(families, next);
+  },
+  // A fresh walk groups nothing, so each grouping still held is checked against its home's residents.
+  differs: (families, _fresh, current) => {
+    for (const [home, grouped] of families) {
+      const residents = current.get(RESIDENTS).get(home);
+      if (residents === undefined) return `home ${home}, which nobody lives in`;
+      const where = firstDifference(grouped, groupFamilies(residents), `home ${home}`);
+      if (where !== null) return where;
+    }
+    return null;
   },
 };
 

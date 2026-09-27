@@ -18,6 +18,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { buildHud, type HudModel, type JobCount, type StockCount } from '../src/data/hud/index.js';
+import { hudTotalsOf } from '../src/data/hud/totals.js';
 import {
   readAmountPairs,
   readNumField,
@@ -261,6 +262,7 @@ describe('buildHud over a mirror', () => {
       };
       mirror.apply(delta);
       expectMatchesWalk(mirror.snapshot());
+      expect(mirror.verifyIndexes()).toEqual([]);
     }
   });
 
@@ -310,6 +312,7 @@ describe('buildHud over a mirror', () => {
         removed: step.removed ?? [],
         events: [],
       });
+      expect(mirror.verifyIndexes()).toEqual([]);
     }
     const snapshot = mirror.snapshot();
     const read = buildHud(snapshot, PLAYER);
@@ -317,6 +320,11 @@ describe('buildHud over a mirror', () => {
     // The moved far heap counts: the settled reach covers the second anchor.
     expect(read.stocks).toContainEqual({ goodType: STONE, amount: FAR_STONE + STASHED_STONE });
     expectMatchesWalk(snapshot);
+    expect(mirror.verifyIndexes()).toEqual([]);
+    // A settled heap total that drifted from its heaps is reported; a stale one is derived again on read.
+    const heapStock = hudTotalsOf(snapshot, PLAYER)?.heapStock as Map<number, number>;
+    heapStock.set(WOOD, (heapStock.get(WOOD) ?? 0) + 1);
+    expect(mirror.verifyIndexes()).toEqual([expect.stringContaining(`player ${PLAYER} heap stock`)]);
   });
 
   it('keeps the walked figures through a running settlement', () => {
@@ -363,6 +371,7 @@ describe('buildHud over a mirror', () => {
       mirror.apply(nonNull(deltas.next()));
       const snapshot = mirror.snapshot();
       expectMatchesWalk(snapshot);
+      expect(mirror.verifyIndexes()).toEqual([]);
       if (buildHud(snapshot, PLAYER).stocks.length > 0) sawStock = true;
     }
     expect(buildHud(mirror.snapshot(), PLAYER).population).toBe(2);

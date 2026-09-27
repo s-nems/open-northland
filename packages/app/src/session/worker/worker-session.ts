@@ -13,8 +13,10 @@ import {
   SnapshotMirror,
 } from '@open-northland/sim';
 import { type DiagEntry, diag } from '../../diag/log.js';
+import { diagCadenceAt } from '../../diag/session.js';
 import type { SystemProfileRow } from '../../diag/system-profile.js';
 import type { OffThreadTickCost, SessionHost, StateHash, SystemSpanSink, TickDiagnostics } from '../host.js';
+import { MirrorTruthWatch } from './mirror-truth-watch.js';
 import type { SessionPort } from './port.js';
 import {
   type AssistantFacts,
@@ -184,6 +186,8 @@ export function startWorkerSession<B, E>(
 
 class WorkerClient<E> {
   private readonly mirror = new SnapshotMirror();
+  /** Present when the session takes diagnostics. */
+  private readonly truth: MirrorTruthWatch | null;
   private readonly queue: Queued[] = [];
   private readonly calls = new Map<number, PendingCall>();
   private readonly waiters: TickWaiter[] = [];
@@ -219,6 +223,8 @@ class WorkerClient<E> {
     timings: WorkerSessionTimings,
   ) {
     this.mirror.apply(ready.delta);
+    this.truth = options.diagnostics ? new MirrorTruthWatch(this.mirror) : null;
+    this.truth?.applied(ready.delta);
     this.tick = ready.delta.tick;
     this.facts = ready.facts;
     this.fog = ready.fog === null ? null : fogViewOfMask(ready.fog);
@@ -321,6 +327,8 @@ class WorkerClient<E> {
       if (batch.fog !== null) this.setFog(batch.fog.fog);
       this.droppedTicks = batch.droppedTicks;
       receiveMs += item.receiveMs + (performance.now() - applyStartMs);
+      // Outside the receive figure, which reads the runtime's own cost of taking a batch in.
+      this.truth?.applied(batch.delta);
       if (batch.spans !== null) this.emitSpans(batch.spans);
       this.shedLog.note(batch);
       for (const record of batch.ticks) {
@@ -329,6 +337,12 @@ class WorkerClient<E> {
         this.diagnostics = record.diagnostics;
         simMs += record.simMs;
         onTick?.();
+      }
+      if (
+        this.truth !== null &&
+        batch.ticks.some((record) => diagCadenceAt(record.tick)?.invariants === true)
+      ) {
+        this.truth.checkIndexes(batch.delta.tick);
       }
       this.alpha.arrived(item.arrivedMs);
       delivered++;

@@ -46,7 +46,7 @@ import {
   takeSnapshot,
   type WorldSnapshot,
 } from './inspect/snapshot.js';
-import { SnapshotDeltaStream } from './inspect/snapshot-clones.js';
+import { SnapshotDeltaStream, type SnapshotDeltaStreamOptions } from './inspect/snapshot-clones.js';
 import type { NodeArea } from './nav/halfcell.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
@@ -351,8 +351,8 @@ export class Simulation {
 
   /** Open the change feed a `SnapshotMirror` rebuilds the snapshot from, one stream per mirror. Its
    *  first delta rebuilds; taken after every `step()`, each later one is that tick's changes. */
-  snapshotDeltas(): SnapshotDeltaStream {
-    return new SnapshotDeltaStream(this);
+  snapshotDeltas(options?: SnapshotDeltaStreamOptions): SnapshotDeltaStream {
+    return new SnapshotDeltaStream(this, options);
   }
 
   unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): UnlockStatus {
