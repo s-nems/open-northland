@@ -125,20 +125,37 @@ describe('network connection mirror', () => {
     ]);
   });
 
-  it('resets a dropped link: not welcomed, and a lobby room left as its `left` would', () => {
+  it('resets on a dropped link before announcing it: not welcomed, and a lobby room left as its `left` would', () => {
+    const { connection, worker } = connect();
+    const seen: string[] = [];
+    connection.subscribe((event) => {
+      if (event.kind === 'message') seen.push(event.message.kind);
+      else if (event.kind === 'link') {
+        seen.push(event.state);
+        expect([connection.client.welcomed, connection.client.room]).toEqual([false, null]);
+      }
+    });
+    worker.send({ kind: 'link', state: 'ok' });
+    worker.send({ kind: 'message', message: { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' } });
+    worker.send({ kind: 'message', message: { kind: 'room', room: ROOM } });
+    worker.send({ kind: 'link', state: 'reconnecting' });
+    expect(seen).toEqual(['ok', 'welcome', 'room', 'left', 'reconnecting']);
+    // The worker's client left on its own retry.
+    expect(worker.posted.at(-1)?.kind).toBe('connect');
+  });
+
+  it('keeps a started room over a dropped link, since the relay holds the seat', () => {
     const { connection, worker } = connect();
     const seen: string[] = [];
     connection.subscribe((event) => {
       if (event.kind === 'message') seen.push(event.message.kind);
     });
     worker.send({ kind: 'message', message: { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania' } });
-    worker.send({ kind: 'message', message: { kind: 'room', room: ROOM } });
-    connection.reset();
+    worker.send({ kind: 'message', message: { kind: 'room', room: { ...ROOM, state: 'running' } } });
+    worker.send({ kind: 'link', state: 'reconnecting' });
     expect(connection.client.welcomed).toBe(false);
-    expect(connection.client.room).toBeNull();
-    expect(seen).toEqual(['welcome', 'room', 'left']);
-    // The worker's client left on its own retry.
-    expect(worker.posted.at(-1)?.kind).toBe('connect');
+    expect(connection.client.room?.id).toBe('r');
+    expect(seen).toEqual(['welcome', 'room']);
   });
 
   it('leaves on disposal unless told to keep the seat, and ends the worker once it closed', () => {
@@ -158,15 +175,26 @@ describe('network connection mirror', () => {
 
   it('reports a failure that ends the game and only logs one the link carries', () => {
     const { connection, worker } = connect();
-    const failures: unknown[] = [];
+    const failures: { what: string; error: unknown }[] = [];
     connection.subscribe((event) => {
-      if (event.kind === 'failure') failures.push(event.error);
+      if (event.kind === 'failure') failures.push({ what: event.what, error: event.error });
     });
     const error = { name: 'Error', message: 'no map', stack: undefined };
     worker.send({ kind: 'failure', what: 'command', error });
-    worker.send({ kind: 'failure', what: 'open', error });
+    worker.send({ kind: 'failure', what: 'restore', error });
     expect(failures).toHaveLength(1);
-    expect(String(failures[0])).toMatch(/no map/);
+    expect(failures[0]?.what).toBe('restore');
+    expect(String(failures[0]?.error)).toMatch(/no map/);
+  });
+
+  it('keeps the last link state and its close reason for a late subscriber', () => {
+    const { connection, worker } = connect();
+    expect(connection.linkState).toBeNull();
+    worker.send({ kind: 'link', state: 'ok' });
+    expect(connection.linkState).toEqual({ state: 'ok' });
+    worker.send({ kind: 'link', state: 'closed', reason: 'gameStarted' });
+    expect(connection.connected).toBe(false);
+    expect(connection.linkState).toEqual({ state: 'closed', reason: 'gameStarted' });
   });
 
   it('rebuilds a relay refusal with its coded reason', () => {

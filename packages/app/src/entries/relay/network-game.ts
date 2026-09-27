@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { verifyInitialSave } from '@open-northland/net-client';
-import { type ServerMessage, TICK_MS } from '@open-northland/net-protocol';
+import type { ServerMessage } from '@open-northland/net-protocol';
 import { serializeSaveGame } from '@open-northland/sim';
 import { errorText } from '../../diag/error-text.js';
 import {
@@ -14,8 +14,8 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
 import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
 import type { NetworkHandover } from '../../net/handover.js';
-import { deliveredMatchEnd, relayedSessionDriver } from '../../net/net-worker-client.js';
-import { relayFailureText, relayReasonText } from '../../net/relay-reason.js';
+import { deliveredMatchEnd, inputDelayMs, relayedSessionDriver } from '../../net/net-worker-client.js';
+import { relayCloseText, relayFailureText, relayReasonText } from '../../net/relay-reason.js';
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
@@ -67,7 +67,7 @@ export function renderNetworkGame(
     connected: connection.connected,
     roundTripMs: client.roundTripMs,
     delayTicks: client.delayTicks,
-    delayMs: client.delayTicks === null ? null : (client.delayTicks * TICK_MS) / client.speed,
+    delayMs: inputDelayMs(client),
     clickToApplyMs: client.latency.clickToApplyMs,
     bufferedTicks: client.bufferedTicks,
   });
@@ -134,6 +134,8 @@ export function renderNetworkGame(
     }
     hud?.observe(event.message);
   });
+  // A link that closed between the handover and this subscription would otherwise never be heard of.
+  if (connection.linkState?.state === 'closed') fail(relayCloseText(connection.linkState.reason));
 
   function build(
     session: GameSession,

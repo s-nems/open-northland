@@ -1,3 +1,4 @@
+import { MAX_SPEED, TICK_MS } from '@open-northland/net-protocol';
 import {
   digestInputsToJson,
   type SyncDigestInputs,
@@ -5,9 +6,19 @@ import {
   type SyncDomain,
 } from '@open-northland/sim';
 
-/** The verdict for a tick lands once the slowest synced member acknowledged it, so the window must
- *  outlast the relay's slow threshold at the room speed plus a round trip. */
-export const DISPUTE_WINDOW_TICKS = 256;
+/** How far behind the relay lets a member fall before it paces the room: the relay's
+ *  `GOVERN_BEHIND_MS`, which this package cannot import; a test holds the window above it. */
+const RELAY_SLOW_BEHIND_MS = 2000;
+/** Room over the slow threshold for the round trip and the governed catch-up. */
+const WINDOW_MARGIN = 2;
+
+/**
+ * The verdict for a tick lands once the slowest synced member acknowledged it, so the window covers the
+ * relay's slow threshold at the top speed, with a margin. An approximation, not a bound: the governor
+ * paces rather than holds, so a member slower than the governed floor can trail further, and a verdict
+ * then finds its tick gone and records no inputs.
+ */
+export const DISPUTE_WINDOW_TICKS = Math.ceil((RELAY_SLOW_BEHIND_MS / TICK_MS) * MAX_SPEED) * WINDOW_MARGIN;
 
 /** The relay's last desync verdict this client took part in, with the fold inputs of that tick. */
 export interface DisputeRecord {

@@ -1,7 +1,14 @@
 import { MessageChannel } from 'node:worker_threads';
 import type { GameSession } from '@open-northland/lockstep';
-import type { RelayLinkEvents } from '@open-northland/net-client';
-import { type ClientMessage, DESCRIPTOR_WORLD, PROTOCOL_VERSION } from '@open-northland/net-protocol';
+import { DISPUTE_WINDOW_TICKS, type RelayLinkEvents } from '@open-northland/net-client';
+import {
+  type ClientMessage,
+  DESCRIPTOR_WORLD,
+  MAX_SPEED,
+  PROTOCOL_VERSION,
+  TICK_MS,
+} from '@open-northland/net-protocol';
+import { GOVERN_BEHIND_MS } from '@open-northland/net-server';
 import { afterEach, expect, it } from 'vitest';
 import type { MapWorkerBoot, MapWorldPlacements } from '../../src/entries/map/world-inputs.js';
 import { type HostedRelayedWorld, NetworkConnection } from '../../src/net/connection.js';
@@ -21,6 +28,7 @@ const SESSION: GameSession = {
   speed: 1,
 };
 const FRAMES = 5;
+const DISPUTED_TICK = 3;
 /** A polling interval while the other end of an in-process channel works. */
 const TURN_MS = 5;
 const WAIT_LIMIT_MS = 10_000;
@@ -137,7 +145,16 @@ it('walks the lobby, hosts the started world and runs the relay frames through t
   const digests = await connection.digests();
   expect(digests.map((digest) => digest.tick)).toEqual([1, 2, 3, 4, 5]);
 
+  link.deliver({ kind: 'disputed', tick: DISPUTED_TICK, domains: ['rng'], diverged: ['Bartek'] });
+  const dispute = await connection.dispute();
+  expect(dispute).toMatchObject({ role: 'reference', tick: DISPUTED_TICK, counterparts: ['Bartek'] });
+  expect(dispute?.inputs?.tick).toBe(DISPUTED_TICK);
+
   world.session.dispose();
   connection.dispose();
   await until(() => link.state.closed);
+});
+
+it('keeps disputed inputs for longer than the relay lets a member trail at the top speed', () => {
+  expect(DISPUTE_WINDOW_TICKS).toBeGreaterThan((GOVERN_BEHIND_MS / TICK_MS) * MAX_SPEED);
 });

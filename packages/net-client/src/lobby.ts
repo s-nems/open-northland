@@ -45,10 +45,6 @@ export class RelayLobby {
     return this.state.room;
   }
 
-  set room(room: RoomView | null) {
-    this.state.room = room;
-  }
-
   attach(send: (message: ClientMessage) => void): void {
     this.send = send;
   }

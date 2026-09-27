@@ -1,6 +1,6 @@
 import { type GameSession, parseSavedSessionMetadata } from '@open-northland/lockstep';
 import { RelayClient } from '@open-northland/net-client';
-import { DESCRIPTOR_WORLD } from '@open-northland/net-protocol';
+import { DESCRIPTOR_WORLD, type RoomView } from '@open-northland/net-protocol';
 import { exportSaveGame, Simulation } from '@open-northland/sim';
 import { expect, it, vi } from 'vitest';
 import { testContent } from '../../../sim/test/fixtures/content.js';
@@ -27,7 +27,7 @@ it('captures the current public roster and does not upload an old world after re
   client.attach(() => undefined);
   client.receive({ kind: 'start', session, snapshotTick: null });
   await client.settled();
-  client.room = {
+  const room: RoomView = {
     id: 'room',
     state: 'running',
     creator: 'Ania',
@@ -46,6 +46,7 @@ it('captures the current public roster and does not upload an old world after re
     ],
     members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null }],
   };
+  client.receive({ kind: 'room', room });
   const worldId = client.worldId;
   if (worldId === null) throw new Error('the client adopted no world');
   const hooks = networkSaveSession(client, worldId);

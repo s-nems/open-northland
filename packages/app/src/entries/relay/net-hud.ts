@@ -4,14 +4,13 @@ import { diag } from '../../diag/index.js';
 import { DEFAULT_GAME_SPEED_CONTROL, type GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { relayCloseText, relayReasonText } from '../../net/relay-reason.js';
+import type { LinkState } from '../../session/worker/net-protocol.js';
 import { type ChatPanel, mountChatPanel } from '../../view/net/chat-panel.js';
 import { memberRows } from '../../view/net/net-status.js';
 import { clockAnnouncement, speedControlFor } from '../../view/net/session-clock.js';
 import { createWaitingOverlay, type WaitingOverlay } from '../../view/net/waiting-overlay.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
-
-export type LinkState = 'ok' | 'reconnecting' | 'closed';
 
 export interface NetHudDeps {
   readonly client: RelayClientView;

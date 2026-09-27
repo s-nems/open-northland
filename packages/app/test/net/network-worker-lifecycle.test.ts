@@ -49,11 +49,12 @@ it('reports the confirmed match end only once the runtime delivered its tick', (
   expect(deliveredMatchEnd({ endedTick: null }, { tick: ENDED_TICK })).toBeNull();
 });
 
-it('leaves the lobby room on the worker as soon as its link drops, not when the runtime answers', () => {
+/** The worker end serving a relay link the test plays. */
+function servedRelay() {
   const worker = fakePort<ToNetWorker<never>, FromNetWorker<never>>();
   const sent: ClientMessage[] = [];
   let events: RelayLinkEvents | null = null;
-  let connected = false;
+  const socket = { connected: false };
   serveRelay(
     worker.port,
     () => {
@@ -63,14 +64,14 @@ it('leaves the lobby room on the worker as soon as its link drops, not when the 
       events = linkEvents;
       return {
         get connected() {
-          return connected;
+          return socket.connected;
         },
         send: (message) => {
-          if (connected) sent.push(message);
-          return connected;
+          if (socket.connected) sent.push(message);
+          return socket.connected;
         },
         close: () => {
-          connected = false;
+          socket.connected = false;
         },
       };
     },
@@ -81,19 +82,35 @@ it('leaves the lobby room on the worker as soon as its link drops, not when the 
     return events;
   };
   const open = (): void => {
-    connected = true;
+    socket.connected = true;
     link().onOpen();
     link().onMessage({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: NICK });
   };
+  return { worker, sent, socket, link, open };
+}
+
+it('leaves the lobby room on the worker as soon as its link drops, not when the runtime answers', () => {
+  const { worker, sent, socket, link, open } = servedRelay();
   open();
   link().onMessage({ kind: 'room', room: LOBBY });
-  connected = false;
+  socket.connected = false;
   link().onRetry?.(1, 0);
   expect(worker.posted.at(-1)).toEqual({ kind: 'link', state: 'reconnecting' });
   // Back and welcomed before the runtime saw the drop: the client sits in no room to leave.
   open();
   worker.send({ kind: 'leave', leave: true });
   expect(sent.map((message) => message.kind)).not.toContain('leaveRoom');
+});
+
+it('posts a relay refusal as a failure that keeps its coded reason across the worker', () => {
+  const { worker, link, open } = servedRelay();
+  open();
+  link().onMessage({ kind: 'rejected', of: 'loaded', reason: { code: 'noSnapshot' } });
+  const failure = worker.posted.find((message) => message.kind === 'failure');
+  expect(failure).toMatchObject({
+    what: 'open',
+    error: { name: 'RelayRefusal', refusal: { code: 'noSnapshot' } },
+  });
 });
 
 describe('pending network worker answers', () => {

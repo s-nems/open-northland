@@ -1,9 +1,10 @@
+import { RelayRefusal } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
 import { loadRoomMapDocuments } from '../content/transfer/index.js';
 import { errorText } from '../diag/error-text.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { swapToEntry } from '../launch.js';
-import { NetworkConnection } from '../net/connection.js';
+import { type FailureSource, NetworkConnection } from '../net/connection.js';
 import { takeNetworkHandover } from '../net/handover.js';
 import { relayCloseText, relayFailureText, relayReasonText } from '../net/relay-reason.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
@@ -64,41 +65,58 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
   const connection = new NetworkConnection(plan.url, identity);
   const { client } = connection;
   let urlPinned = roomPlan.kind === 'join';
-  let walking = true;
+  // The walk hands off until the network game has subscribed, so a closing link or a failure in
+  // between still ends the entry.
+  let stage: 'walking' | 'handingOff' | 'ended' = 'walking';
   let requestedEntry = false;
   const compatibility = lobbyCompatibilityReporter(client, (error) => {
     card.note(formatMessage(copy.refused, { reason: String(error) }));
   });
   const observeExit = roomExitObserver((reason) =>
-    halt(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`),
+    halt(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`, ''),
   );
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'failure')
-      halt(formatMessage(copy.bootFailed, { reason: relayFailureText(event.error) }));
-    else if (event.kind === 'message') observe(event.message);
-    else if (event.state === 'closed') halt(relayCloseText(event.reason));
+      halt(
+        failureTitle(event.what, event.error),
+        event.what === 'open' || event.what === 'restore'
+          ? formatMessage(copy.bootFailed, { reason: relayFailureText(event.error) })
+          : '',
+      );
+    else if (event.kind === 'message') {
+      if (stage === 'walking') observe(event.message);
+    } else if (event.state === 'closed') halt(relayCloseText(event.reason), '');
   });
 
-  /** The lobby walk is over: the game takes the connection, or the entry gives up. */
+  function failureTitle(what: FailureSource, error: unknown): string {
+    // The client reports the relay's refusal of its `loaded` as a failed open, ahead of the message.
+    if (what === 'open') return error instanceof RelayRefusal ? relayCopy.worldRefused : relayCopy.openFailed;
+    if (what === 'restore') return relayCopy.restoreFailed;
+    return formatMessage(copy.bootFailed, { reason: relayFailureText(error) });
+  }
+
+  /** The lobby walk is over: the game is about to take the connection, or the entry gives up. */
   function stopWalking(): boolean {
-    if (!walking) return false;
-    walking = false;
-    unsubscribe();
+    if (stage !== 'walking') return false;
+    stage = 'handingOff';
     compatibility.dispose();
     card.dismiss();
     scope.abort();
     return true;
   }
 
-  function halt(reason: string): void {
-    if (!stopWalking()) return;
+  function halt(title: string, detail: string): void {
+    stopWalking();
+    if (stage === 'ended') return;
+    stage = 'ended';
+    unsubscribe();
     connection.dispose();
     const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
     back.type = 'button';
     back.addEventListener('click', () => {
       void swapToEntry(menuSearch(), () => back.parentElement?.remove());
     });
-    mountMessage(reason, '', [back]);
+    mountMessage(title, detail, [back]);
   }
 
   function observe(message: ServerMessage): void {
@@ -132,15 +150,18 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       case 'rejected': {
         const entering = message.of === 'joinRoom' || message.of === 'createRoom';
         if (entering && client.room !== null) break;
-        // A refusal that ends the walk: the room could not be entered, or the world was not taken.
-        if (entering || message.of === 'loaded')
-          halt(formatMessage(copy.refused, { reason: relayReasonText(message.reason) }));
+        // A refusal that ends the walk: the room could not be entered.
+        if (entering)
+          halt(
+            message.of === 'joinRoom' ? relayCopy.joinRoomFailed : relayCopy.createRoomFailed,
+            formatMessage(copy.refused, { reason: relayReasonText(message.reason) }),
+          );
         // A lobby step the walk repeats on the next room view, such as a seat two joiners raced for.
         else card.note(formatMessage(copy.refused, { reason: relayReasonText(message.reason) }));
         break;
       }
       case 'kicked':
-        if (message.player === client.session?.localSeat) halt(copy.youWereKicked);
+        if (message.player === client.session?.localSeat) halt(copy.youWereKicked, '');
         break;
       case 'start':
         void handOff();
@@ -159,10 +180,12 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       const map = room === null ? null : await loadRoomMapDocuments(room);
       if (map === null) throw new Error('Missing or incompatible verified map');
       const { renderNetworkGame } = await import('./relay/network-game.js');
+      if (stage !== 'handingOff') return;
       renderNetworkGame(canvas, params, { connection, map, initialSave: null });
+      stage = 'ended';
+      unsubscribe();
     } catch (error) {
-      connection.dispose();
-      mountMessage('relay', formatMessage(copy.bootFailed, { reason: errorText(error) }));
+      halt(relayCopy.openFailed, formatMessage(copy.bootFailed, { reason: errorText(error) }));
     }
   }
 }

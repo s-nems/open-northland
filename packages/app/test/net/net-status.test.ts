@@ -1,6 +1,7 @@
-import type { RoomView } from '@open-northland/net-protocol';
+import { type RoomView, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { formatMessage, messages } from '../../src/i18n/index.js';
+import { inputDelayMs, runningSpeed } from '../../src/net/net-worker-client.js';
 import { memberRows } from '../../src/view/net/net-status.js';
 import { type WaitedRow, waitedRows, waitingText } from '../../src/view/net/waiting-overlay.js';
 
@@ -22,6 +23,28 @@ const ROOM: RoomView = {
     { nick: 'Celina', seat: 3, connected: false, compatibility: null, load: null },
   ],
 };
+
+describe('input delay readout', () => {
+  const DELAY_TICKS = 4;
+  const REQUESTED_SPEED = 2;
+  const GOVERNED_SPEED = 0.5;
+
+  it('reads the delay at the governed speed the clock runs at, not the requested one', () => {
+    const client = {
+      delayTicks: DELAY_TICKS,
+      speed: REQUESTED_SPEED,
+      governed: { nick: 'Bartek', speed: GOVERNED_SPEED },
+    };
+    expect(runningSpeed(client)).toBe(GOVERNED_SPEED);
+    expect(inputDelayMs(client)).toBe((DELAY_TICKS * TICK_MS) / GOVERNED_SPEED);
+  });
+
+  it('reads the requested speed while nobody governs the clock, and no delay before one is assigned', () => {
+    const client = { delayTicks: DELAY_TICKS, speed: REQUESTED_SPEED, governed: null };
+    expect(inputDelayMs(client)).toBe((DELAY_TICKS * TICK_MS) / REQUESTED_SPEED);
+    expect(inputDelayMs({ ...client, delayTicks: null })).toBeNull();
+  });
+});
 
 describe('memberRows', () => {
   it('reads each member from the wait list first, then from the connection flag', () => {

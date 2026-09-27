@@ -13,6 +13,7 @@ import type {
   ServerMessage,
   WaitedMember,
 } from '@open-northland/net-protocol';
+import { TICK_MS } from '@open-northland/net-protocol';
 import type { CommandEnvelope, SaveGame } from '@open-northland/sim';
 import type { RelayFacts, RelayRequest, ToNetWorker } from '../session/worker/net-protocol.js';
 
@@ -186,6 +187,18 @@ export class RelayClientMirror implements RelayClientView {
   }
 }
 
+/** The speed the relay's clock runs at: governed down to the slowest member's pace, else as requested. */
+export function runningSpeed(client: Pick<RelayClientView, 'speed' | 'governed'>): number {
+  return client.governed?.speed ?? client.speed;
+}
+
+/** The assigned input delay in wall time at the speed the clock runs at. */
+export function inputDelayMs(
+  client: Pick<RelayClientView, 'delayTicks' | 'speed' | 'governed'>,
+): number | null {
+  return client.delayTicks === null ? null : (client.delayTicks * TICK_MS) / runningSpeed(client);
+}
+
 /**
  * The driver the runtime runs a relayed world through: the worker session's delivery, with the relay's
  * clock. Tempo and pause read as the relay last broadcast them and change by request; the session's
@@ -210,7 +223,7 @@ export function relayedSessionDriver(
     setPaused: (paused) => client.setPaused(paused),
     setSpeed: (speed) => client.setSpeed(speed),
     advance: (elapsedMs, onTick) => {
-      const running = client.governed?.speed ?? client.speed;
+      const running = runningSpeed(client);
       if (session.speed !== running) session.setSpeed(running);
       return session.advance(elapsedMs, onTick);
     },

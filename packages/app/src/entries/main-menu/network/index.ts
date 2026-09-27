@@ -212,7 +212,6 @@ export function networkScreen(
       if (event.state === 'reconnecting') {
         generation++;
         busy = false;
-        current.reset();
         notice(copy.reconnecting);
       } else if (event.state === 'closed') notice(relayCloseText(event.reason));
       room && current.client.room && room.update(current.client.room, current.connected);

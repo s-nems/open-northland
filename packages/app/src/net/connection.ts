@@ -21,10 +21,17 @@ import type { WorkerSession } from '../session/worker/worker-session.js';
 import { RelayClientMirror } from './net-worker-client.js';
 import { RelayedWorlds, WorldNotAdoptedError } from './relayed-worlds.js';
 
+/** The client failures that end a game; a command or snapshot dropped while the link is down is the
+ *  link's notice to carry. */
+const GAME_FAILURES = ['open', 'restore', 'result', 'message'] as const;
+
+/** What ended the game: one of the worker client's steps, or the worker itself. */
+export type FailureSource = (typeof GAME_FAILURES)[number] | 'worker';
+
 export type ConnectionEvent =
   | { readonly kind: 'message'; readonly message: ServerMessage }
   | { readonly kind: 'link'; readonly state: LinkState; readonly reason?: string }
-  | { readonly kind: 'failure'; readonly error: unknown };
+  | { readonly kind: 'failure'; readonly what: FailureSource; readonly error: unknown };
 
 export type RelayedMapSession = WorkerSession<MapWorldPlacements>;
 
@@ -51,10 +58,6 @@ export interface HostedRelayedWorld {
 }
 
 type WorldRequest = Extract<FromNetWorker<unknown>, { readonly kind: 'openWorld' | 'restoreWorld' }>;
-
-/** The client failures that end a game; a command or snapshot dropped while the link is down is the
- *  link's notice to carry. */
-const GAME_FAILURES: readonly string[] = ['open', 'restore', 'result', 'message'];
 
 /** What a request the worker will never answer rejects with. */
 const CLOSED_MESSAGE = 'the relay connection closed before the network worker answered';
@@ -85,6 +88,7 @@ export class NetworkConnection {
   private resolveWorldPort: (port: NetWorldPort) => void = () => undefined;
   private onWorld: (world: HostedRelayedWorld) => void = () => undefined;
   private link: LinkState | null = null;
+  private lastLink: { readonly state: LinkState; readonly reason?: string } | null = null;
   private disposed = false;
   private leaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -107,7 +111,7 @@ export class NetworkConnection {
     this.port.listenFailure((error) => {
       this.worlds.fail(error);
       this.rejectAnswers(error);
-      this.emit({ kind: 'failure', error });
+      this.emit({ kind: 'failure', what: 'worker', error });
     });
     this.post({ kind: 'connect', url, ...identity });
   }
@@ -115,6 +119,11 @@ export class NetworkConnection {
   /** Whether the relay link is up. */
   get connected(): boolean {
     return this.link === 'ok';
+  }
+
+  /** The link's last state and the reason it closed with, for a screen that subscribes after the fact. */
+  get linkState(): { readonly state: LinkState; readonly reason?: string } | null {
+    return this.lastLink;
   }
 
   subscribe(listener: (event: ConnectionEvent) => void): () => void {
@@ -140,14 +149,6 @@ export class NetworkConnection {
     return this.request({ method: 'dispute' });
   }
 
-  /** The link dropped: the relay welcomes this client anew once it is back, and a lobby room the menu
-   *  showed is left, as its `left` would have. The worker's client did the same on its retry. */
-  reset(): void {
-    const left = this.client.room?.state === 'lobby';
-    this.client.reset(left);
-    if (left) this.emit({ kind: 'message', message: { kind: 'left' } });
-  }
-
   /** `leave` sends the explicit leave that gives a seat in a started game up; without it the link
    *  just closes and the relay keeps the seat for a reconnect. */
   dispose(leave = true): void {
@@ -162,6 +163,14 @@ export class NetworkConnection {
     this.rejectAnswers(new Error(CLOSED_MESSAGE));
     this.post({ kind: 'leave', leave });
     this.leaveTimer = setTimeout(() => this.port.close(), LEAVE_GRACE_MS);
+  }
+
+  /** The link dropped: the relay welcomes this client anew once it is back, and a lobby room is left,
+   *  as its `left` would have. The worker's client did the same on its retry. */
+  private dropped(): void {
+    const left = this.client.room?.state === 'lobby';
+    this.client.reset(left);
+    if (left) this.emit({ kind: 'message', message: { kind: 'left' } });
   }
 
   private post(message: ToNetWorker<MapWorkerBoot>): void {
@@ -186,11 +195,12 @@ export class NetworkConnection {
         return;
       case 'link':
         this.link = message.state;
-        this.emit(
+        if (message.state === 'reconnecting') this.dropped();
+        this.lastLink =
           message.reason === undefined
-            ? { kind: 'link', state: message.state }
-            : { kind: 'link', state: message.state, reason: message.reason },
-        );
+            ? { state: message.state }
+            : { state: message.state, reason: message.reason };
+        this.emit({ kind: 'link', ...this.lastLink });
         return;
       case 'openWorld':
       case 'restoreWorld':
@@ -202,7 +212,8 @@ export class NetworkConnection {
       case 'failure': {
         const error = failureFromWire(message.error);
         diag.warn('net', `${message.what} failed`, { error: errorText(error) });
-        if (GAME_FAILURES.includes(message.what)) this.emit({ kind: 'failure', error });
+        const what = GAME_FAILURES.find((failure) => failure === message.what);
+        if (what !== undefined) this.emit({ kind: 'failure', what, error });
         return;
       }
       case 'warning':
@@ -257,7 +268,7 @@ export class NetworkConnection {
       if (hosted.world === null) this.post({ kind: 'worldFailed', requestId, error: wireError(error) });
       else if (!(error instanceof WorldNotAdoptedError)) {
         diag.warn('net', 'world failed', { error: errorText(error) });
-        this.emit({ kind: 'failure', error });
+        this.emit({ kind: 'failure', what: request.kind === 'openWorld' ? 'open' : 'restore', error });
       }
     }
   }
