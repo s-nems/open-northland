@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backTarget, MAIN_NAV, moveFocus } from '../src/entries/main-menu/model.js';
+import { backTarget, MAIN_NAV, mainNavFor, moveFocus } from '../src/entries/main-menu/model.js';
 
 describe('backTarget', () => {
   it('keeps Esc inert on the main screen', () => {
@@ -19,6 +19,11 @@ describe('MAIN_NAV', () => {
   it('lists the menu order with multiplayer available and credits hidden', () => {
     expect(MAIN_NAV.map((item) => item.id)).toEqual(['newGame', 'load', 'multiplayer', 'settings', 'exit']);
     expect(MAIN_NAV.find((item) => item.id === 'multiplayer')?.kind).toBe('open');
+  });
+
+  it('offers the exit only in the desktop shell, since a page cannot close its browser tab', () => {
+    expect(mainNavFor(false).map((item) => item.id)).toContain('exit');
+    expect(mainNavFor(true).map((item) => item.id)).toEqual(['newGame', 'load', 'multiplayer', 'settings']);
   });
 });
 

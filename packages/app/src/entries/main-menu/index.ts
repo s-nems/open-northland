@@ -2,6 +2,7 @@ import { messages } from '../../i18n/index.js';
 import { type LaunchEntry, swapToEntry } from '../../launch.js';
 import { BRAND_LOGO_STACKED, BRAND_LOGO_STACKED_SIZE } from '../../view/brand-art.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
+import { servedByBrowser } from '../../view/host.js';
 import { clearPendingLoad } from '../../view/runtime/save-load/pending-store.js';
 import { initialSettingsMemory } from '../../view/settings-page.js';
 import { startBackdropRotation } from './backdrops.js';
@@ -15,10 +16,10 @@ import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
 import {
   backTarget,
-  MAIN_NAV,
   type MainNavItem,
   type MenuScreen,
   type MountedScreen,
+  mainNavFor,
   moveFocus,
   VERSION_LINE,
 } from './model.js';
@@ -41,7 +42,7 @@ function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLB
   button.append(label);
   if (item.kind === 'exit') {
     button.classList.add('is-exit');
-    // Quits without confirmation. In a plain browser tab `close()` is a no-op.
+    // Quits without confirmation.
     button.addEventListener('click', () => window.close());
   } else {
     button.addEventListener('click', () => open(item.id));
@@ -75,7 +76,7 @@ function mainScreen(open: (screen: MenuScreen) => void): HTMLElement {
 
   const nav = document.createElement('nav');
   nav.className = 'main-menu__nav';
-  for (const item of MAIN_NAV) nav.append(navButton(item, open));
+  for (const item of mainNavFor(servedByBrowser())) nav.append(navButton(item, open));
 
   home.append(brand, nav);
   return home;
@@ -214,7 +215,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     const focused = active instanceof HTMLButtonElement ? buttons.indexOf(active) : -1;
     // With nothing focused yet, Down enters at the first interactive item, Up at the last.
     const from = focused >= 0 ? focused : delta === 1 ? -1 : 0;
-    buttons[moveFocus(MAIN_NAV, from, delta)]?.focus();
+    buttons[moveFocus(buttons, from, delta)]?.focus();
   };
   window.addEventListener('keydown', onKeydown, { signal: scope.signal });
 }

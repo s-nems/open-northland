@@ -29,6 +29,11 @@ export const MAIN_NAV: readonly MainNavItem[] = [
   { id: 'exit', kind: 'exit' },
 ];
 
+/** A page cannot close the browser tab that opened it, so only the desktop shell offers an exit. */
+export function mainNavFor(browser: boolean): readonly MainNavItem[] {
+  return browser ? MAIN_NAV.filter((item) => item.kind !== 'exit') : MAIN_NAV;
+}
+
 /** Where Esc and the back link lead; `null` on the main screen. */
 export function backTarget(screen: MenuScreen): MenuScreen | null {
   if (screen === 'main') return null;
@@ -37,7 +42,7 @@ export function backTarget(screen: MenuScreen): MenuScreen | null {
 }
 
 /** Moves focus by `delta` (+1 down, -1 up) over the rows, wrapping at the ends. */
-export function moveFocus(items: readonly MainNavItem[], from: number, delta: 1 | -1): number {
+export function moveFocus(items: readonly unknown[], from: number, delta: 1 | -1): number {
   if (items.length === 0) return from;
   return (((from + delta) % items.length) + items.length) % items.length;
 }
