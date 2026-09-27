@@ -105,7 +105,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
   const paintGlyph = (glyph: HTMLElement, icon: ActionCommand['icon'], clientPerPx: number): void => {
     const cell = page?.cells.get(icon);
     if (page === null || cell === undefined) return;
-    const k = clientPerPx / page.oversample;
+    const k = clientPerPx / page.pagePxPerCanvasPx;
     const style = glyph.style;
     style.backgroundSize = `${page.width * k}px ${page.height * k}px`;
     style.backgroundPosition = `${-cell.x * k}px ${-cell.y * k}px`;

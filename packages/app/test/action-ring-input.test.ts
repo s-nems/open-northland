@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ACTION_COMMANDS, type ActionCommand } from '../src/hud/action-ring/index.js';
+import { messages } from '../src/i18n/index.js';
 import { createActionRingInput } from '../src/view/unit-controls/action-ring/input.js';
 import type { MenuMode } from '../src/view/unit-controls/action-ring/types.js';
 
@@ -16,7 +17,7 @@ function harness(mode: MenuMode, ringVisible = true) {
   const calls: string[] = [];
   let targets: readonly number[] = TARGETS;
   const input = createActionRingInput({
-    showTip: (text) => calls.push(`tip ${text}`),
+    showTip: (text, x, y) => calls.push(`tip ${text} ${x},${y}`),
     hideTip: () => calls.push('hideTip'),
     toCanvas: (x, y) => ({ x, y }),
     getMode: () => mode,
@@ -73,5 +74,16 @@ describe('action ring button presses', () => {
       expect(calls).toEqual([]);
       expect(event.stopped).toBe(false);
     }
+  });
+
+  it('names the button beside the cursor, and hides the name off every button or with the ring closed', () => {
+    const open = harness('menu');
+    open.input.hover(command('sleep'), { clientX: 30, clientY: 40 });
+    open.input.hover(null, null);
+    expect(open.calls).toEqual([`tip ${messages().actionRing.sleep} 30,40`, 'hideTip']);
+
+    const closed = harness('closed');
+    closed.input.hover(command('sleep'), { clientX: 30, clientY: 40 });
+    expect(closed.calls).toEqual(['hideTip']);
   });
 });

@@ -29,9 +29,13 @@ export interface SupersampledTexture {
   dispose(): void;
 }
 
-/** `source` is a detached container already placed at an integer oversample into the `texW × texH` box;
- *  `invScale` is displayScale ÷ oversample. Owns the texture and `source` lifetime via `dispose`. */
-function bake(
+/**
+ * Bake an already-upright source (Pixi-native content plus `flipY` PalettedSprites): the display is not
+ * flipped and the caller top-anchors it. `source` is a detached container already placed at an integer
+ * oversample into the `texW × texH` box; `invScale` is displayScale ÷ oversample. Owns the texture and
+ * `source` lifetime via `dispose`.
+ */
+export function bakeToSprite(
   renderer: Renderer,
   source: Container,
   texW: number,
@@ -67,18 +71,6 @@ function bake(
     texture?.destroy(true);
     throw error;
   }
-}
-
-/** Bake an already-upright source (Pixi-native content plus `flipY` PalettedSprites): the display is not
- *  flipped and the caller top-anchors it. */
-export function bakeToSprite(
-  renderer: Renderer,
-  source: Container,
-  texW: number,
-  texH: number,
-  invScale: number,
-): SupersampledTexture {
-  return bake(renderer, source, texW, texH, invScale);
 }
 
 /** A {@link bakeToSprite} twin that reuses one render target across bakes. */

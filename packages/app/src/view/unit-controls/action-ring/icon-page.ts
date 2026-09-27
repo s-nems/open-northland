@@ -7,6 +7,8 @@ import { type GuiFrameName, guiFrameIndex } from '../../../content/gui-atlas-map
  *  bounds the page. */
 const MIN_SUPERSAMPLE = 3;
 const MAX_SUPERSAMPLE = 6;
+/** Clear page px between cells, so a scaled crop's filtered edge never samples the next glyph. */
+const CELL_GUTTER_PX = 2;
 
 /** One glyph's box on the page, in page px. */
 export interface IconCell {
@@ -21,8 +23,8 @@ export interface IconPage {
   readonly url: string;
   readonly width: number;
   readonly height: number;
-  /** Page px per canvas (screen) px of the drawn glyph. */
-  readonly oversample: number;
+  /** Page px per canvas (screen) px of the drawn glyph: the bake's oversample over the ring scale. */
+  readonly pagePxPerCanvasPx: number;
   readonly cells: ReadonlyMap<GuiFrameName, IconCell>;
 }
 
@@ -48,13 +50,15 @@ export function bakeIconPage(
   const cellW = Math.max(...made.map((m) => Math.ceil(m.frame.width * ss)));
   const cellH = Math.max(...made.map((m) => Math.ceil(m.frame.height * ss)));
   const columns = Math.ceil(Math.sqrt(made.length));
-  const width = cellW * columns;
-  const height = cellH * Math.ceil(made.length / columns);
+  const strideX = cellW + CELL_GUTTER_PX;
+  const strideY = cellH + CELL_GUTTER_PX;
+  const width = strideX * columns;
+  const height = strideY * Math.ceil(made.length / columns);
   const offscreen = new Container();
   const cells = new Map<GuiFrameName, IconCell>();
   made.forEach(({ name, sprite, frame }, i) => {
-    const x = (i % columns) * cellW;
-    const y = Math.floor(i / columns) * cellH;
+    const x = (i % columns) * strideX;
+    const y = Math.floor(i / columns) * strideY;
     // Upright into the render texture, so the readback needs no flip; the offset cancels the frame's
     // draw offset so its content box starts at the cell corner.
     sprite.flipY = true;
@@ -79,5 +83,5 @@ export function bakeIconPage(
   const image = context.createImageData(read.width, read.height);
   image.data.set(read.pixels);
   context.putImageData(image, 0, 0);
-  return { url: canvas.toDataURL(), width, height, oversample: ss / scale, cells };
+  return { url: canvas.toDataURL(), width, height, pagePxPerCanvasPx: ss / scale, cells };
 }
