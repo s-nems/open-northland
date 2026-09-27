@@ -184,7 +184,16 @@ class RelayConnection<B, E> {
     try {
       this.served = new ServedSession(
         post,
-        { sim: world.sim, driver: this.driver, extras: candidate.extras, awaitsFrames: true },
+        {
+          sim: world.sim,
+          driver: this.driver,
+          extras: candidate.extras,
+          awaitsFrames: true,
+          costs: {
+            charge: (ms) => this.client.chargeTickWork(ms),
+            drawn: (ms, ticks) => this.client.drawnTickCost(ms, ticks),
+          },
+        },
         candidate.options,
         candidate.buildMs,
       );

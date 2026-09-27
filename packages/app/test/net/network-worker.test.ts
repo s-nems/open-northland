@@ -109,7 +109,7 @@ it('walks the lobby, hosts the started world and runs the relay frames through t
   connection.bindWorld(
     {
       open: async (_session, _tick, host) => {
-        await host({} as MapWorkerBoot, { ...DEFAULT_TEST_OPTIONS, paused: false, undelivered: 'shed' });
+        await host({} as MapWorkerBoot, { ...DEFAULT_TEST_OPTIONS, paused: false });
       },
       restore: async () => undefined,
     },

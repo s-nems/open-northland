@@ -360,6 +360,38 @@ describe('RelayClient acknowledgements', () => {
       { tickMs: FIRST_TICK_MS + (SECOND_TICK_MS - FIRST_TICK_MS) / TICKS_PER_SECOND, buffered: 1 },
     ]);
   });
+
+  it("counts the host's per-tick work, and reports a slower display's cost instead of the sim's", async () => {
+    const SIM_MS = 2;
+    const HOST_MS = 3;
+    const DRAWN_MS = 50;
+    let nowMs = 0;
+    const sent: ClientMessage[] = [];
+    const client = new RelayClient({
+      token: 'token-0123456789abcdef',
+      nick: 'Ania',
+      world: { open: async () => fixtureWorld(), restore: async () => null },
+      now: () => nowMs,
+    });
+    client.attach((message) => sent.push(message));
+    start(client, null);
+    await client.settled();
+    client.receive({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null, governed: null });
+    for (let tick = 1; tick <= 3; tick++) client.receive({ kind: 'frame', tick, commands: [] });
+    const acknowledged = () => sent.filter((message) => message.kind === 'ack').map((ack) => ack.load.tickMs);
+
+    // The host's `onTick` runs inside the tick's measured span.
+    client.advance(TICK_MS, () => {
+      nowMs += HOST_MS;
+    });
+    expect(acknowledged()).toEqual([HOST_MS]);
+
+    client.drawnTickCost(DRAWN_MS, 1);
+    client.advance(TICK_MS, () => {
+      nowMs += SIM_MS;
+    });
+    expect(acknowledged()[1]).toBe(DRAWN_MS);
+  });
 });
 
 function deferredWorld() {

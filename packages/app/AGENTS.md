@@ -36,14 +36,15 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   facts and the network worker's world port; the `biome.json` override lists them. The inline host
   serves scenes and tests. `entries/shot.ts` and one-off sims, such as a sub-mission's restore check,
   step their `Simulation` on the main thread with no host.
-- Two worker entries run a world off the main thread. `entries/map/sim-worker.ts` serves the `?map=`
-  world over the loopback transport with `undelivered: 'hold'`: the worker steps at most
-  `leadTickLimit`, about two of the runtime's frames, past the delivered tick, so the clock slows to
-  what the runtime draws. `entries/relay/net-worker.ts` starts with a
-  `NetworkConnection` and owns the relay link, the `RelayClient` and each world the client adopts,
-  with `undelivered: 'shed'`: the relay runs the clock, so the worker keeps stepping and
-  acknowledging and drops the oldest undelivered ticks' events, except `DURABLE_EVENT_KINDS`
-  (`view/runtime/world-events.ts`).
+- Two worker entries run a world off the main thread, and in both the worker steps at most
+  `leadTickLimit`, about two of the runtime's frames, past the delivered tick. `entries/map/sim-worker.ts`
+  serves the `?map=` world over the loopback transport, so its clock slows to what the runtime draws.
+  `entries/relay/net-worker.ts` starts with a `NetworkConnection` and owns the relay link, the
+  `RelayClient` and each world the client adopts. There the relay runs the clock: a runtime that
+  draws too slowly leaves the client's acknowledgements behind, and its load (`TickCostSink` in
+  `session/worker/serve.ts`) carries what a tick costs the display, so the relay governs the room
+  for it. A hidden tab draws nothing: it stops acknowledging and is listed slow, but its last load
+  is a drawing one, so the room runs on while its kick countdown runs, and it catches up on return.
 - No relayed world's `Simulation` is referenced on the main thread. The main thread reads the client
   through `RelayClientMirror` (the relay messages the worker's client applied, and its facts), each
   adopted world through that world's `WorkerSession`, and matches a save to the running world by

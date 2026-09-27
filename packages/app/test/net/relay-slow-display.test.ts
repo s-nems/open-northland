@@ -1,23 +1,23 @@
 import { fileURLToPath } from 'node:url';
 import type { GameSession } from '@open-northland/lockstep';
 import { type RoomSeatSetup, type RoomSettings, TICKS_PER_SECOND } from '@open-northland/net-protocol';
-import { GOVERN_BEHIND_MS, Relay } from '@open-northland/net-server';
+import { MIN_GOVERNED_SPEED, Relay } from '@open-northland/net-server';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { HeadlessClient } from '../../../net-server/test/support/headless-client.js';
 import type { Stage } from '../../../net-server/test/support/session-run.js';
 import { VirtualClock, VirtualNetwork } from '../../../net-server/test/support/virtual-network.js';
 import { buildRelayedMapWorld, type MapWorkerBoot } from '../../src/entries/map/world-inputs.js';
-import { UNDELIVERED_LIMIT_SECONDS } from '../../src/session/worker/serve.js';
 import { assemblePacedRoom, PacedStage } from '../support/net-worker/paced-stage.js';
-import { type RecordedAck, WorkerHeadlessClient } from '../support/net-worker/worker-headless-client.js';
+import { WorkerHeadlessClient } from '../support/net-worker/worker-headless-client.js';
 import { canonicalEntities } from '../support/session-worker/canonical-entities.js';
 import { bundleTestWorker } from '../support/session-worker/start-worker.js';
 
 /**
- * A relayed runtime that stops drawing does not stop its client. The network worker's client keeps
- * running the relay's frames and acknowledging them while the runtime delivers nothing: the relay never
- * waits for it, and past the undelivered limit the worker sheds the oldest records it holds, so the
- * runtime's mirror catches up exactly once it draws again.
+ * A relayed runtime that draws slower than the room's speed slows the room. The network worker steps
+ * only a couple of frames past the tick its runtime drew, so its acknowledgements fall behind the
+ * relay's clock, and its load reports what a tick costs the display: the relay lists it slow and
+ * governs the clock below the rate it draws, so it stops falling further behind. Once it draws at full rate again the room is released, and
+ * the runtime's mirror has seen every tick.
  *
  * The room is an inline headless client and a worker-hosted one on the map-less fallback world, so the
  * file runs without generated content. See `PacedStage` for how real and virtual time are kept in step.
@@ -25,9 +25,8 @@ import { bundleTestWorker } from '../support/session-worker/start-worker.js';
 
 const NET_WORKER_ENTRY = fileURLToPath(new URL('../support/net-worker/node-net-worker.ts', import.meta.url));
 const WORKER_BUNDLE_TIMEOUT_MS = 60_000;
-const TEST_TIMEOUT_MS = 60_000;
-const MS_PER_SECOND = 1000;
-/** Four times the base rate, so a short stall window holds several acknowledgements. */
+const TEST_TIMEOUT_MS = 120_000;
+/** Four times the base rate, so the slow display falls behind within seconds. */
 const SESSION_SPEED = 4;
 const LINK = { latencyMs: 20, jitterMs: 4 };
 const SEATS: readonly RoomSeatSetup[] = [
@@ -42,25 +41,21 @@ const SETTINGS: RoomSettings = {
   rules: { fog: null, progression: null, needs: null },
   speed: SESSION_SPEED,
 };
+const HOSTED_NICK = 'Bartek';
 const STEP_TIMEOUT_MS = 10_000;
 const OPEN_TIMEOUT_MS = 30_000;
-const CATCH_UP_TIMEOUT_MS = 10_000;
-/** One second of the session, played before the first stall. */
+const GOVERN_TIMEOUT_MS = 20_000;
+const CATCH_UP_TIMEOUT_MS = 20_000;
+/** One second of the session, played before the display slows. */
 const WARMUP_TICKS = TICKS_PER_SECOND * SESSION_SPEED;
-/** The runtime stops delivering for `SHORT_STALL_MS` once every `STALL_CYCLE_MS`, this many times. */
-const SHORT_STALLS = 3;
-const STALL_CYCLE_MS = 1000;
-const SHORT_STALL_MS = 200;
-const STALL_MARGIN_MS = 500;
-/** Past the undelivered limit and the relay's lag allowance together: a worker that held its clock at
- *  the limit would be listed slow before this stall ends. */
-const LONG_STALL_MS = UNDELIVERED_LIMIT_SECONDS * MS_PER_SECOND + GOVERN_BEHIND_MS + STALL_MARGIN_MS;
-/** The longest silence between two acknowledgements the cadence allows on a loaded machine; a worker
- *  holding at the undelivered limit would go quiet for seconds. */
-const MAX_ACK_GAP_MS = 500;
-/** The share of the frames the relay sent during the long stall that the worker must acknowledge in
- *  it; one holding at the limit would reach well under half. */
-const MIN_ACKED_SHARE = 0.75;
+/** The slow display's frame interval: past the worker's longest lead frame, so each frame takes in
+ *  fewer ticks than the requested speed plays in it. */
+const SLOW_FRAME_MS = 2000;
+/** Time for the governed speed to settle once the relay first governs, as the display's cost does. */
+const SETTLE_MS = 8000;
+/** Each of the two windows whose mean acknowledgement lag is compared: several slow frames, so the
+ *  lag's saw-tooth over a frame averages out. */
+const LAG_WINDOW_MS = 6000;
 /** Real time for the frames in flight to land once the relay holds. */
 const LINK_DRAIN_MS = 200;
 
@@ -85,37 +80,13 @@ function stageFor(): Stage {
   return { clock, relay, network: new VirtualNetwork(clock, relay) };
 }
 
-interface StallWindow {
-  readonly startMs: number;
-  readonly endMs: number;
-}
-
-/** The last acknowledgement at or before `atMs`. */
-function ackedAt(acks: readonly RecordedAck[], atMs: number): number {
-  let tick = 0;
-  for (const ack of acks) if (ack.atMs <= atMs) tick = ack.tick;
-  return tick;
-}
-
-/** The longest gap between acknowledgements across `window`, its edges included. */
-function longestAckGap(acks: readonly RecordedAck[], window: StallWindow): number {
-  const times = [
-    window.startMs,
-    ...acks.map((ack) => ack.atMs).filter((at) => at > window.startMs && at < window.endMs),
-    window.endMs,
-  ];
-  let longest = 0;
-  for (let i = 1; i < times.length; i++) longest = Math.max(longest, (times[i] ?? 0) - (times[i - 1] ?? 0));
-  return longest;
-}
-
 let bundle: Awaited<ReturnType<typeof bundleTestWorker>>;
 beforeAll(async () => {
   bundle = await bundleTestWorker(NET_WORKER_ENTRY);
 }, WORKER_BUNDLE_TIMEOUT_MS);
 afterAll(() => bundle.dispose());
 
-it('keeps acknowledging while its runtime stalls, and sheds only past the undelivered limit', {
+it('governs the room to the rate a slow display draws, and releases it once the display recovers', {
   timeout: TEST_TIMEOUT_MS,
 }, async () => {
   const stage = stageFor();
@@ -128,7 +99,7 @@ it('keeps acknowledging while its runtime stalls, and sheds only past the undeli
   const hosted = new WorkerHeadlessClient({
     workerPath: bundle.path,
     token: 'token-hosted-0123456789',
-    nick: 'Bartek',
+    nick: HOSTED_NICK,
     boot: fallbackBoot,
   });
   try {
@@ -151,50 +122,43 @@ it('keeps acknowledging while its runtime stalls, and sheds only past the undeli
       () => (peer.tick ?? 0) >= WARMUP_TICKS && hosted.ackedTick >= WARMUP_TICKS,
       STEP_TIMEOUT_MS,
     );
-    const waitsBefore = peer.waits.length;
+    expect(peer.governed).toBeNull();
 
-    const stall = async (ms: number): Promise<StallWindow & { readonly framed: number }> => {
-      const framedBefore = hosted.lastFrameTick;
-      hosted.stalled = true;
-      const startMs = performance.now();
-      await paced.runFor(ms);
-      const endMs = performance.now();
-      hosted.stalled = false;
-      return { startMs, endMs, framed: hosted.lastFrameTick - framedBefore };
-    };
-
-    const shortStalls: StallWindow[] = [];
-    for (let i = 0; i < SHORT_STALLS; i++) {
-      await paced.runFor(STALL_CYCLE_MS - SHORT_STALL_MS);
-      shortStalls.push(await stall(SHORT_STALL_MS));
-    }
-    await paced.runFor(STALL_CYCLE_MS - SHORT_STALL_MS);
-    const shedBeforeLongStall = hosted.batches.reduce((sum, batch) => sum + batch.shedTicks, 0);
-    const longStall = await stall(LONG_STALL_MS);
-    const ackedAtStallEnd = hosted.ackedTick;
+    hosted.frameMs = SLOW_FRAME_MS;
     await paced.until(
-      'the mirror catches up with the acknowledged tick',
-      () => (hosted.tick ?? 0) >= ackedAtStallEnd,
+      'the relay governs the room for the slow display',
+      () => peer.governed?.nick === HOSTED_NICK,
+      GOVERN_TIMEOUT_MS,
+    );
+    // The relay slows at once on each load report, so the governed speed comes down as the display's
+    // cost settles. Then the room runs no faster than the display draws: the lag stops growing.
+    await paced.runFor(SETTLE_MS);
+    const lagWindow = async (): Promise<number> => {
+      const lags: number[] = [];
+      const end = performance.now() + LAG_WINDOW_MS;
+      while (performance.now() < end) {
+        await paced.turn();
+        lags.push((peer.tick ?? 0) - hosted.ackedTick);
+      }
+      return lags.reduce((sum, lag) => sum + lag, 0) / lags.length;
+    };
+    const earlierLag = await lagWindow();
+    const laterLag = await lagWindow();
+    expect(laterLag).toBeLessThanOrEqual(earlierLag);
+    expect(peer.governed?.nick).toBe(HOSTED_NICK);
+    expect(peer.governed?.speed).toBeLessThan(SESSION_SPEED);
+    expect(peer.governed?.speed).toBeGreaterThan(MIN_GOVERNED_SPEED);
+    expect(peer.waits.at(-1)?.for).toEqual([expect.objectContaining({ nick: HOSTED_NICK, reason: 'slow' })]);
+
+    hosted.frameMs = null;
+    await paced.until(
+      'the room is released once the display draws at full rate',
+      () => peer.governed === null && peer.waits.at(-1)?.for.length === 0,
       CATCH_UP_TIMEOUT_MS,
     );
 
-    // Acknowledgements keep their cadence through every stall, and the relay never waits for the client.
-    for (const window of [...shortStalls, longStall]) {
-      expect(ackedAt(hosted.acks, window.endMs)).toBeGreaterThan(ackedAt(hosted.acks, window.startMs));
-      expect(longestAckGap(hosted.acks, window)).toBeLessThan(MAX_ACK_GAP_MS);
-    }
-    const ackedInLongStall = ackedAt(hosted.acks, longStall.endMs) - ackedAt(hosted.acks, longStall.startMs);
-    expect(ackedInLongStall).toBeGreaterThanOrEqual(longStall.framed * MIN_ACKED_SHARE);
-    const waitedFor = peer.waits.slice(waitsBefore).filter((notice) => notice.for.length > 0);
-    expect(waitedFor).toEqual([]);
-
-    // A stall shorter than the limit sheds nothing; the long one does.
-    expect(shedBeforeLongStall).toBe(0);
-    const shed = hosted.batches.reduce((sum, batch) => sum + batch.shedTicks, 0);
-    expect(shed).toBeGreaterThan(0);
-
-    // Both clients come to rest on the relay's last frame: the mirror spans every tick the worker
-    // stepped, delivered or shed, and stands where the peer's sim does.
+    // Both clients come to rest on the relay's last frame, and the runtime's mirror saw every tick the
+    // worker stepped.
     paced.relayHeld = true;
     await paced.runFor(LINK_DRAIN_MS);
     const rested = (): boolean =>
@@ -203,8 +167,8 @@ it('keeps acknowledging while its runtime stalls, and sheds only past the undeli
       peer.tick === hosted.lastFrameTick;
     await paced.until('both clients rest on the last frame', rested, CATCH_UP_TIMEOUT_MS);
     const lastTick = hosted.lastFrameTick;
-    const stepped = hosted.batches.reduce((sum, batch) => sum + batch.ticks + batch.shedTicks, 0);
-    expect(stepped).toBe(lastTick - (hosted.openedAtTick ?? 0));
+    const delivered = hosted.batchTicks.reduce((sum, ticks) => sum + ticks, 0);
+    expect(delivered).toBe(lastTick - (hosted.openedAtTick ?? 0));
     const world = hosted.world;
     const sim = peer.sim;
     if (world === null || sim === null) throw new Error('a client lost its world');

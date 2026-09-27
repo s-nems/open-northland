@@ -26,8 +26,6 @@ const OPTIONS: WorkerSessionOptions = {
   fogSeat: null,
   diagnostics: true,
   pauseOnSubMission: false,
-  undelivered: 'hold',
-  retainedEventKinds: [],
 };
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));

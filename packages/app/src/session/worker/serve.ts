@@ -49,23 +49,22 @@ export interface HostedBuild<E> extends BuiltWorld<E> {
   /** The driver may step nothing while it waits for another authority's frames; its session then
    *  polls at {@link IDLE_POLL_TICKS} until `wake`. */
   readonly awaitsFrames?: boolean;
+  /** Where a driver that reports its own load learns the tick costs its `advance` does not see. */
+  readonly costs?: TickCostSink;
+}
+
+/** The tick costs a session's driver cannot measure itself. */
+export interface TickCostSink {
+  /** Worker time spent on stepped ticks outside the driver's `advance`: taking and posting a batch. */
+  charge(ms: number): void;
+  /** The wall time a tick costs the runtime, per frame that delivered `ticks`: the frame interval over
+   *  the most ticks one frame takes in on average. */
+  drawn(ms: number, ticks: number): void;
 }
 
 export type WorldBuilder<B, E> = (boot: B, options: WorkerSessionOptions) => HostedBuild<E>;
 
-/**
- * Session time a shedding worker may run past the last tick the runtime delivered before it drops
- * records. A runtime that stops drawing, such as a hidden tab, would otherwise have the worker bank
- * every tick's events without bound; a slow frame shorter than this costs no ticks.
- */
-export const UNDELIVERED_LIMIT_SECONDS = 2;
-
-/** {@link UNDELIVERED_LIMIT_SECONDS} in ticks at a session speed. */
-export function undeliveredTickLimit(speed: number): number {
-  return Math.ceil(UNDELIVERED_LIMIT_SECONDS * TICKS_PER_SECOND * speed);
-}
-
-/** The runtime's frames a holding worker may step past the delivered tick: a batch posted on one
+/** The runtime's frames a worker may step past the delivered tick: a batch posted on one
  *  frame's acknowledgement is drawn on the next, so the worker steps one frame ahead of the batch in
  *  flight. */
 const LEAD_FRAMES = 2;
@@ -81,10 +80,10 @@ const MAX_LEAD_FRAME_MS = 250;
  *  lead of under two would stop the clock behind it until the next delivery. */
 const LEAD_SPARE_TICKS = 1;
 
-/** The frame interval a holding worker assumes until the runtime reports its first. */
+/** The frame interval a worker assumes until the runtime reports its first. */
 export const ASSUMED_FRAME_MS = 1000 / 60;
 
-/** The ticks a holding worker may step past the runtime's delivered tick, at a session speed and the
+/** The ticks a worker may step past the runtime's delivered tick, at a session speed and the
  *  runtime's last frame interval. */
 export function leadTickLimit(speed: number, frameMs: number): number {
   const leadMs = LEAD_FRAMES * Math.min(frameMs, MAX_LEAD_FRAME_MS) + LEAD_GRACE_MS;
@@ -157,6 +156,7 @@ export class ServedSession<E> {
   private readonly driver: SessionDriver;
   private readonly offClock: OffClockRun | undefined;
   private readonly awaitsFrames: boolean;
+  private readonly costs: TickCostSink | undefined;
   private readonly deltas: SnapshotDeltaStream;
   /** Answers the request-shaped reads as the inline host does, over this thread's sim. */
   private readonly answers: SessionHost;
@@ -205,18 +205,12 @@ export class ServedSession<E> {
     this.driver = driver;
     this.offClock = built.run;
     this.awaitsFrames = built.awaitsFrames === true;
-    this.outbox = new TickOutbox(
-      options.undelivered,
-      {
-        take: (records, shedTicks, leadTicks) => this.takeBatch(records, shedTicks, leadTicks),
-        post: (batch) => this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog)),
-        limit: () =>
-          options.undelivered === 'hold'
-            ? leadTickLimit(this.driver.speed, this.frameMs)
-            : undeliveredTickLimit(this.driver.speed),
-      },
-      new Set(options.retainedEventKinds),
-    );
+    this.costs = built.costs;
+    this.outbox = new TickOutbox({
+      take: (records, leadTicks) => this.takeBatch(records, leadTicks),
+      post: (batch) => this.post({ kind: 'ticks', batch }, fogTransfer(batch.fog)),
+      limit: () => leadTickLimit(this.driver.speed, this.frameMs),
+    });
     this.answers = inlineSessionHost(sim, { snapshots: 'live' });
     // Without the events: each tick's record carries its own, so the stream's clone would be dropped.
     this.deltas = new SnapshotDeltaStream(
@@ -298,11 +292,18 @@ export class ServedSession<E> {
         this.driver.setSpeed(message.speed);
         this.resume();
         return;
-      case 'delivered':
+      case 'delivered': {
         this.frameMs = message.frameMs;
-        this.outbox.delivered(message.messages);
+        const flushStartMs = performance.now();
+        const ticks = this.outbox.delivered(message.messages);
+        this.costs?.charge(performance.now() - flushStartMs);
+        // The batch in flight and the ticks stepped behind it share one lead, so two frames take in one
+        // lead's ticks between them.
+        const leadMs = this.frameMs * LEAD_FRAMES;
+        this.costs?.drawn(leadMs / leadTickLimit(this.driver.speed, this.frameMs), ticks);
         this.resume();
         return;
+      }
       case 'fogSeat':
         this.fogSeat = message.player;
         this.postFogChange();
@@ -445,7 +446,7 @@ export class ServedSession<E> {
 
   /** The records as one batch, its delta taken now: a delta is taken only for ticks a batch carries,
    *  since one taken and not posted would leave the mirror a gap. */
-  private takeBatch(ticks: TickRecord[], shedTicks: number, leadTicks: number): TickBatch {
+  private takeBatch(ticks: TickRecord[], leadTicks: number): TickBatch {
     const last = ticks[ticks.length - 1];
     const delta = this.deltas.next();
     if (last === undefined || delta === null) throw new Error('a batch needs a stepped tick');
@@ -461,7 +462,6 @@ export class ServedSession<E> {
       fog: this.fogChange(),
       droppedTicks: this.driver.droppedTicks + Math.round(this.droppedMs / MS_PER_TICK),
       spans,
-      shedTicks,
       leadTicks,
     };
   }

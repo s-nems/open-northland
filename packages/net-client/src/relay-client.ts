@@ -308,21 +308,33 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
         this.tick === this.completion.confirmedTick ||
         (this.paused && transport.bufferedTicks === 0),
     );
-    // A tick's cost runs from the end of the previous tick's work here to its own callback: the
-    // frame's admission and the sim step, without the acknowledgement or the host's `onTick`.
+    // A tick's cost runs from the end of the previous tick's work here to its acknowledgement: the
+    // frame's admission, the sim step and the host's `onTick`.
     this.tickCost.begin(this.now());
     this.alpha = driver.advance(elapsedMs * paceScale(transport.bufferedTicks), () => {
-      const tickMs = this.tickCost.end(this.now());
       if (this.completion.detect(this.sim) || this.tick === this.completion.confirmedTick) {
         driver.setPaused(true);
       }
-      this.acknowledge(tickMs);
+      onTick?.();
+      this.acknowledge(this.tickCost.end(this.now()));
       this.reportResult();
       this.verifyResult();
-      onTick?.();
       this.tickCost.begin(this.now());
     });
     return this.alpha;
+  }
+
+  /** Host work for this client's ticks done outside `advance`, such as posting a batch of them to a
+   *  display; the next acknowledged tick's cost carries it. */
+  chargeTickWork(ms: number): void {
+    this.tickCost.charge(ms);
+  }
+
+  /** The wall time a tick costs the host's display, once per drawn frame that took in `ticks`. The
+   *  load an acknowledgement reports is the larger of it and the sim's, so the relay paces the room
+   *  for a slow display too. */
+  drawnTickCost(ms: number, ticks: number): void {
+    this.tickCost.drawn(ms, ticks);
   }
 
   private verifyResult(): void {

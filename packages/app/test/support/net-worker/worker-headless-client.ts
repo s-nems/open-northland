@@ -16,7 +16,6 @@ import { type HostedRelayedWorld, NetworkConnection } from '../../../src/net/con
 import { relayedSessionDriver } from '../../../src/net/net-worker-client.js';
 import type { SessionPort } from '../../../src/session/worker/port.js';
 import type { FromWorker, WorkerSessionOptions } from '../../../src/session/worker/protocol.js';
-import { DURABLE_EVENT_KINDS } from '../../../src/view/runtime/world-events.js';
 import { nodeWorkerPort } from '../session-worker/node-ports.js';
 import type { NetWorkerData } from './node-net-worker.js';
 import type { FromWorkerLink, ToWorkerLink } from './port-link.js';
@@ -26,19 +25,10 @@ const RELAY_URL = 'ws://relay.test';
 
 type Notice<K extends ServerMessage['kind']> = Extract<ServerMessage, { kind: K }>;
 
-/** An acknowledgement the worker's client sent the relay, and when it reached this thread. */
+/** An acknowledgement the worker's client sent the relay. */
 export interface RecordedAck {
   readonly tick: number;
   readonly digest: WireDigest;
-  readonly atMs: number;
-}
-
-/** A tick batch the worker posted to the runtime, as it left the worker. */
-export interface RecordedBatch {
-  readonly lastTick: number;
-  readonly ticks: number;
-  readonly shedTicks: number;
-  readonly atMs: number;
 }
 
 export interface WorkerHeadlessClientOptions {
@@ -50,8 +40,7 @@ export interface WorkerHeadlessClientOptions {
   readonly boot: (session: GameSession) => MapWorkerBoot;
 }
 
-/** The world's session options as the relayed entry passes them: the relay runs the clock, so the
- *  worker sheds what the runtime leaves undelivered. */
+/** The world's session options as the relayed entry passes them. */
 function relayedOptions(session: GameSession): WorkerSessionOptions {
   return {
     speed: session.speed,
@@ -59,8 +48,6 @@ function relayedOptions(session: GameSession): WorkerSessionOptions {
     fogSeat: null,
     diagnostics: false,
     pauseOnSubMission: false,
-    undelivered: 'shed',
-    retainedEventKinds: DURABLE_EVENT_KINDS,
   };
 }
 
@@ -71,13 +58,14 @@ function relayedOptions(session: GameSession): WorkerSessionOptions {
  * same raw messages a socket would carry, and the test reads every acknowledgement off that link.
  *
  * The worker steps on its own real timers. This thread stands in for the frame loop with `deliver`,
- * which a test holds back with `stalled` to play a runtime that stops drawing.
+ * which a test slows with `frameMs` to play a runtime that draws slower than the turns come.
  */
 export class WorkerHeadlessClient implements LinkedClient {
   readonly nick: string;
   readonly connection: NetworkConnection;
   readonly acks: RecordedAck[] = [];
-  readonly batches: RecordedBatch[] = [];
+  /** The ticks each batch the worker posted to the runtime carried. */
+  readonly batchTicks: number[] = [];
   readonly waits: Notice<'waiting'>[] = [];
   readonly desyncs: Notice<'desync'>[] = [];
   readonly rejections: { readonly of: string; readonly reason: RelayReason }[] = [];
@@ -87,8 +75,9 @@ export class WorkerHeadlessClient implements LinkedClient {
   world: HostedRelayedWorld | null = null;
   /** The tick the served world stood at when the worker handed it over. */
   openedAtTick: number | null = null;
-  /** While set, `deliver` delivers nothing: the runtime's frame loop has stopped. */
-  stalled = false;
+  /** The runtime's frame interval while set: `deliver` draws only once this much time has gathered. */
+  frameMs: number | null = null;
+  private undrawnMs = 0;
   private driver: SessionDriver | null = null;
   private send: ((message: ClientMessage) => void) | null = null;
   private readonly link: MessagePort;
@@ -170,11 +159,16 @@ export class WorkerHeadlessClient implements LinkedClient {
     this.driver.submit(envelope);
   }
 
-  /** One frame of the runtime: deliver what the worker stepped, `onTick` after each delivered tick. */
+  /** Time passed on the runtime: once a frame's worth gathered, deliver what the worker stepped,
+   *  `onTick` after each delivered tick. */
   deliver(elapsedMs: number, onTick?: (tick: number) => void): void {
     const { driver, world } = this;
-    if (this.stalled || driver === null || world === null) return;
-    driver.advance(elapsedMs, () => onTick?.(world.session.host.tick));
+    if (driver === null || world === null) return;
+    this.undrawnMs += elapsedMs;
+    if (this.frameMs !== null && this.undrawnMs < this.frameMs) return;
+    const frameMs = this.undrawnMs;
+    this.undrawnMs = 0;
+    driver.advance(frameMs, () => onTick?.(world.session.host.tick));
   }
 
   attach(send: (message: ClientMessage) => void): void {
@@ -201,8 +195,7 @@ export class WorkerHeadlessClient implements LinkedClient {
   private fromLink(message: FromWorkerLink): void {
     if (message.kind === 'closed') return;
     const sent = message.message;
-    if (sent.kind === 'ack')
-      this.acks.push({ tick: sent.tick, digest: sent.digest, atMs: performance.now() });
+    if (sent.kind === 'ack') this.acks.push({ tick: sent.tick, digest: sent.digest });
     this.send?.(sent);
   }
 
@@ -237,15 +230,7 @@ export class WorkerHeadlessClient implements LinkedClient {
       listen: (receive) =>
         port.listen((data, receiveMs) => {
           const message = data as FromWorker<unknown>;
-          if (message.kind === 'ticks') {
-            const { batch } = message;
-            this.batches.push({
-              lastTick: batch.delta.tick,
-              ticks: batch.ticks.length,
-              shedTicks: batch.shedTicks,
-              atMs: performance.now(),
-            });
-          }
+          if (message.kind === 'ticks') this.batchTicks.push(message.batch.ticks.length);
           receive(data, receiveMs);
         }),
     };

@@ -12,7 +12,6 @@ import {
   type WorkerSession,
   type WorkerSessionTimings,
 } from '../../../src/session/worker/worker-session.js';
-import { DURABLE_EVENT_KINDS } from '../../../src/view/runtime/world-events.js';
 import { nodeWorkerPort } from './node-ports.js';
 import type { TestWorldBoot } from './test-world.js';
 
@@ -48,8 +47,6 @@ export const DEFAULT_TEST_OPTIONS: WorkerSessionOptions = {
   fogSeat: null,
   diagnostics: false,
   pauseOnSubMission: false,
-  undelivered: 'hold',
-  retainedEventKinds: DURABLE_EVENT_KINDS,
 };
 
 /** The runtime's end over a new test worker; `observe` sees each message before the session does. */

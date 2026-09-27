@@ -32,7 +32,6 @@ import {
   type WorldFacts,
 } from './protocol.js';
 import { ArrivalAlpha } from './render-alpha.js';
-import { ShedLog } from './shed-log.js';
 import {
   HEARTBEAT_INTERVAL_MS,
   type StallReports,
@@ -214,7 +213,6 @@ class WorkerClient<E> {
   private failure: Error | null = null;
   private started = false;
   private spans: SystemSpanSink | null = null;
-  private readonly shedLog = new ShedLog();
   private disposed = false;
 
   constructor(
@@ -329,7 +327,6 @@ class WorkerClient<E> {
       // Outside the receive figure, which reads the runtime's own cost of taking a batch in.
       this.truth?.applied(batch.delta);
       if (batch.spans !== null) this.emitSpans(batch.spans);
-      this.shedLog.note(batch);
       this.leadTicks = batch.leadTicks;
       for (const record of batch.ticks) {
         this.tick = record.tick;

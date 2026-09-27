@@ -123,7 +123,7 @@ and 145 ticks.
 ## Tickets filed from this run
 
 - Runtime: `worker-lead-follows-drawn-frames` (done),
-  [relay-pacing-sees-render-cost](../tickets/net-client/relay-pacing-sees-render-cost.md),
+  `relay-pacing-sees-render-cost` (done),
   `mirror-truth-check` (done: the `debug=diag` digest and index check),
   `worker-edge-states-reach-the-view` (done).
 - Delta path: [delta-take-copies-carried-components](../tickets/sim/delta-take-copies-carried-components.md),

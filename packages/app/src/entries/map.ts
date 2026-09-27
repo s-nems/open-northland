@@ -8,7 +8,6 @@ import { bindDisplayMode } from '../view/fullscreen.js';
 import { introParam } from '../view/params.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { haltOnFailedRestore } from '../view/runtime/world-bootstrap.js';
-import { DURABLE_EVENT_KINDS } from '../view/runtime/world-events.js';
 import { assembleMapWorld, type HostedMapWorld, presentMapWorld } from './map/boot.js';
 import { workerStallReports } from './map/stall-reports.js';
 import type { MapWorkerBoot, MapWorldDocuments, MapWorldPlacements } from './map/world-inputs.js';
@@ -53,9 +52,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
         fogSeat: isSpectator(inputs.session) ? null : localPlayerOf(inputs.session),
         diagnostics: hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG),
         pauseOnSubMission: true,
-        // A local session is its own clock, so a runtime that stops drawing stops it too.
-        undelivered: 'hold',
-        retainedEventKinds: DURABLE_EVENT_KINDS,
       },
       workerStallReports,
     );

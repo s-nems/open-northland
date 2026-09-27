@@ -24,7 +24,7 @@ export function framesIn(ms: number, speed: number): number {
 
 /**
  * The speed the clock runs at for the slowest of `slow`, or null when none is slow. A member's
- * sustainable speed is the one that exactly saturates its sim thread; the clock takes the headroom
+ * sustainable speed is the one its reported tick cost exactly saturates; the clock takes the headroom
  * share of it, never above the requested speed nor below `MIN_GOVERNED_SPEED`. Before its first load
  * report a member gets the headroom share of the requested speed. The lowest speed wins; a tie goes to
  * the member furthest behind. A slow member whose share reaches the requested speed governs nothing: it

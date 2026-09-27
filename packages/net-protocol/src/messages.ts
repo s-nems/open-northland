@@ -109,9 +109,9 @@ export interface WireFrame {
 /** A tick's sync digest as the wire carries it: the sim's `SyncDigest.domains`. */
 export type WireDigest = Readonly<Record<SyncDomain, number>>;
 
-/** A client's own load, reported with every acknowledgement: `tickMs` is its smoothed cost of one sim
- *  tick in milliseconds on the thread that runs the sim, `buffered` the frames it holds received and
- *  not yet run. */
+/** A client's own load, reported with every acknowledgement: `tickMs` is the smoothed wall time one
+ *  tick costs it in milliseconds, its sim's or its display's, whichever is more; `buffered` the frames
+ *  it holds received and not yet run. */
 export interface ClientLoad {
   readonly tickMs: number;
   readonly buffered: number;

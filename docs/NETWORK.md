@@ -187,9 +187,14 @@ away, and is ignored. Within a generation acknowledgements are consecutive; one 
 ahead of the clock is refused. The acknowledged tick is also how far the relay believes the client
 has applied.
 
-`load { tickMs, buffered }` is the client's own pace. `tickMs` is its cost of one sim tick in
-milliseconds on the thread that runs the sim: frame admission and the step, without the host's
-per-tick work, as an exponential moving average whose newest tick weighs `1 / TICKS_PER_SECOND`.
+`load { tickMs, buffered }` is the client's own pace. `tickMs` is the wall time one tick costs it in
+milliseconds, the larger of two exponential moving averages whose newest tick weighs
+`1 / TICKS_PER_SECOND`: the sim's, on the thread that runs it (frame admission, the step, and the
+host's work to hand the tick to its display), and the display's, sampled once per drawn frame as the
+frame interval over the most ticks a frame takes in on average, weighing as the ticks that frame
+took in. The app's sim worker steps only a couple of frames
+past the tick its display drew, so a display that cannot keep up also leaves the client's
+acknowledgements behind, and the relay governs the room for it as for a slow sim.
 `buffered` is the frames it holds received and not yet applied. The relay keeps the latest load of
 an accepted acknowledgement as sent, with no smoothing of its own.
 
