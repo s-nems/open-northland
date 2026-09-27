@@ -67,6 +67,58 @@ describe('HashTrace', () => {
     expect(trace.list().map((e) => e.tick)).toEqual([3, 4, 5]);
   });
 
+  describe('ring wrap', () => {
+    const CAPACITY = 5;
+    /** Enough records to wrap the ring several times and leave its head mid-array. */
+    const RECORDS = CAPACITY * 3 + 2;
+    const fakeSnap = (tick: number) => ({ tick, entities: [], events: [] });
+
+    it('keeps its capacity and an ascending list after several wraps', () => {
+      const trace = new HashTrace({ hashCapacity: CAPACITY });
+      for (let t = 1; t <= RECORDS; t++) {
+        trace.record(t, `h${t}`);
+        expect(trace.size).toBe(Math.min(t, CAPACITY));
+        const ticks = trace.list().map((e) => e.tick);
+        expect(ticks).toEqual([...ticks].sort((x, y) => x - y));
+        expect(trace.oldestTick).toBe(ticks[0]);
+        expect(trace.newestTick).toBe(t);
+      }
+      const oldest = RECORDS - CAPACITY + 1;
+      expect(trace.list().map((e) => e.tick)).toEqual(Array.from({ length: CAPACITY }, (_, i) => oldest + i));
+    });
+
+    it('finds entries on both sides of the wrap seam', () => {
+      const trace = new HashTrace({ hashCapacity: CAPACITY });
+      // Tick 6 overwrites slot 0 and tick 7 slot 1, so ticks 3..5 sit after the seam and 6..7 before it.
+      const recorded = CAPACITY + 2;
+      for (let t = 1; t <= recorded; t++) trace.record(t, `h${t}`);
+      for (let t = recorded - CAPACITY + 1; t <= recorded; t++) expect(trace.hashAt(t)).toBe(`h${t}`);
+      expect(trace.hashAt(recorded - CAPACITY)).toBeUndefined();
+      expect(trace.hashAt(recorded + 1)).toBeUndefined();
+    });
+
+    it('rejects a stale tick against the newest entry, not the last array slot', () => {
+      const trace = new HashTrace({ hashCapacity: CAPACITY });
+      for (let t = 1; t <= CAPACITY + 1; t++) trace.record(t, `h${t}`);
+      expect(() => trace.record(CAPACITY + 1, 'again')).toThrow(/not after the last recorded tick/);
+    });
+
+    it('ages snapshots across the seam', () => {
+      const SNAPSHOTS = 2;
+      const trace = new HashTrace({ hashCapacity: CAPACITY, snapshotCapacity: SNAPSHOTS });
+      for (let t = 1; t <= RECORDS; t++) {
+        trace.record(t, `h${t}`, fakeSnap(t));
+        const withSnap = trace
+          .list()
+          .filter((e) => e.snapshot !== undefined)
+          .map((e) => e.tick);
+        expect(withSnap).toEqual(
+          Array.from({ length: Math.min(t, SNAPSHOTS) }, (_, i) => t - Math.min(t, SNAPSHOTS) + 1 + i),
+        );
+      }
+    });
+  });
+
   it('throws on a non-monotonic record (out-of-order ticks are a caller bug)', () => {
     const trace = new HashTrace();
     trace.record(5, 'a');

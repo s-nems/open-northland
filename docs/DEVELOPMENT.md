@@ -237,6 +237,12 @@ Debug modes:
 
 Flags combine: `?debug=profile,trace` runs both.
 
+A relayed session's diagnostics bundle carries `game.net.dispute`, the last desync verdict the client
+took part in on either side: its role, tick, domains, the counterpart nicks and the digest fold inputs of
+that tick. Given the diverged and the reference member's bundles, `npm run diag -- diff a.json b.json`
+names the first entity and component that differ, after `npm run build`. It exits 0 when it names a
+difference, 1 when the retained inputs agree, and 2 when a bundle holds no verdict with inputs.
+
 The on-canvas stats readout and the Admin / Debug palette are off by default: the "Debug tools"
 toggle on the settings screen's Gameplay tab shows both, persists with the other settings, and applies
 live inside a running game. A relayed session shows only the readout, since the palette's pokes are

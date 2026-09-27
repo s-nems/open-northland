@@ -38,6 +38,7 @@
     "check:assets": "node scripts/check-repository-assets.mjs",
     "brand": "npm run generate --workspace @open-northland/brand",
     "check:docs": "node scripts/check-docs.mjs",
+    "diag": "node scripts/diag-bundle.mjs",
     "missions:coverage": "tsc --build && node scripts/mission-coverage.mjs",
     "tickets:list": "node scripts/list-tickets.mjs",
     "desktop": "npm run build && npm run start --workspace @open-northland/desktop",

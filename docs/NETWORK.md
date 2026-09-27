@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 10` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 11` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -198,7 +198,9 @@ reference; on a tie, the client connected the longest (the earliest current conn
 earliest to join). A client in the minority gets `desync { tick, domains, reference }` naming the
 domains that differ and the reference's nick, and is out of sync from then on: its acknowledgements
 are ignored and its snapshots refused until it has rebuilt from a snapshot, and the notice is sent
-again if it reconnects meanwhile. A client acknowledging a tick the room has already settled is
+again if it reconnects meanwhile. The reference, if connected, gets one `disputed { tick, domains,
+diverged }` naming the nicks newly out of sync at that tick and the union of their differing domains,
+so both sides can keep that tick's digest inputs for a diagnostics bundle. A client acknowledging a tick the room has already settled is
 judged against that tick's reference, so a returning client is checked from its first tick back. A
 disconnected client's reports do not count; it says where it stands again on its return.
 

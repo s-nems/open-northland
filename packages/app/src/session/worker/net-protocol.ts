@@ -1,5 +1,5 @@
 import type { GameSession } from '@open-northland/lockstep';
-import type { LobbyAction, TickDigest } from '@open-northland/net-client';
+import type { DisputeRecord, LobbyAction, TickDigest } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
 import type { FromWorker, ToWorker, WireError, WorkerSessionOptions } from './protocol.js';
@@ -36,6 +36,7 @@ export interface RelayedWorldAnswer<B> {
 
 export type RelayRequest =
   | { readonly method: 'digests' }
+  | { readonly method: 'dispute' }
   | { readonly method: 'shareSave'; readonly to: string | null; readonly save: SaveGame };
 
 /** The session protocol's messages, minus the boot a world request replaces. */
@@ -88,4 +89,11 @@ export interface RestoredHeader {
   readonly mapId: string | null;
 }
 
-export type RelayAnswer = readonly TickDigest[] | null;
+export type RelayAnswer = readonly TickDigest[] | DisputeRecord | null;
+
+/** The answer a request's method yields; the wire carries the {@link RelayAnswer} union. */
+export type RelayAnswerFor<R extends RelayRequest> = R extends { readonly method: 'digests' }
+  ? readonly TickDigest[]
+  : R extends { readonly method: 'dispute' }
+    ? DisputeRecord | null
+    : null;

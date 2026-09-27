@@ -23,6 +23,7 @@ interface Recorded {
   readonly votes: Notice<'kickVote'>[];
   readonly kicks: Notice<'kicked'>[];
   readonly desyncs: Notice<'desync'>[];
+  readonly disputes: Notice<'disputed'>[];
   /** Blobs other than the snapshots this client rebuilt from. */
   readonly blobs: Notice<'blob'>[];
   readonly restoredFrom: number[];
@@ -59,6 +60,7 @@ export class HeadlessClient extends RelayClient {
       votes: [],
       kicks: [],
       desyncs: [],
+      disputes: [],
       blobs: [],
       restoredFrom: [],
       rejections: [],
@@ -96,6 +98,9 @@ export class HeadlessClient extends RelayClient {
           case 'desync':
             holdsWorld = false;
             recorded.desyncs.push(message);
+            return;
+          case 'disputed':
+            recorded.disputes.push(message);
             return;
           case 'blob':
             if (message.type !== 'snapshot') recorded.blobs.push(message);
@@ -140,6 +145,10 @@ export class HeadlessClient extends RelayClient {
 
   get desyncs(): readonly Notice<'desync'>[] {
     return this.recorded.desyncs;
+  }
+
+  get disputes(): readonly Notice<'disputed'>[] {
+    return this.recorded.disputes;
   }
 
   get blobs(): readonly Notice<'blob'>[] {

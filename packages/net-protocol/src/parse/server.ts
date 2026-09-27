@@ -33,6 +33,7 @@ const SERVER_KINDS = keysOf<ServerMessage['kind']>({
   kickVote: true,
   kicked: true,
   desync: true,
+  disputed: true,
   snapshotRequest: true,
   mapRequest: true,
   blob: true,
@@ -134,6 +135,17 @@ export function parseServerMessage(
         ),
         reference: parseNick(raw.reference, 'desync.reference'),
       };
+    case 'disputed':
+      return {
+        kind,
+        tick: asCount(raw.tick, 'disputed.tick'),
+        domains: nonEmpty(asArray(raw.domains, 'disputed.domains'), 'disputed.domains').map((domain, i) =>
+          asOneOf(domain, SYNC_DOMAINS, `disputed.domains[${i}]`),
+        ),
+        diverged: nonEmpty(asArray(raw.diverged, 'disputed.diverged'), 'disputed.diverged').map((nick, i) =>
+          parseNick(nick, `disputed.diverged[${i}]`),
+        ),
+      };
     case 'mapRequest':
       return { kind, from: parseNick(raw.from, 'mapRequest.from') };
     case 'blob':
@@ -185,4 +197,9 @@ function parseWaitedMember(value: unknown, at: string): WaitedMember {
     reason: asOneOf(raw.reason, WAIT_REASONS, `${at}.reason`),
     voteAfterMs: asCount(raw.voteAfterMs, `${at}.voteAfterMs`),
   };
+}
+
+function nonEmpty(list: readonly unknown[], at: string): readonly unknown[] {
+  if (list.length === 0) throw new Error(`${at}: expected at least one entry`);
+  return list;
 }

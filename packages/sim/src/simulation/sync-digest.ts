@@ -1,5 +1,5 @@
 import { FNV_OFFSET_BASIS, fnvMixWord } from '@open-northland/data';
-import { type MixWord, mixValue } from '../core/hash-value.js';
+import { type MixText, type MixWord, mixValue } from '../core/hash-value.js';
 import type { Component, Entity, MutationSink, SyncDomain, World } from '../ecs/world.js';
 import type { FogState } from '../systems/vision/index.js';
 
@@ -37,12 +37,57 @@ function stringWord(text: string): number {
   return word;
 }
 
+/** One touched component's per-entity words, in the order the digest folded them. */
+export interface DigestComponentInputs {
+  /** `Component.name`. */
+  readonly name: string;
+  readonly domain: SyncDomain;
+  /** The entities the tick wrote, in first-touch order. */
+  readonly entities: Uint32Array;
+  /** The entity word folded for `entities[i]`: its id and its value at the seal, or absence. */
+  readonly words: Uint32Array;
+}
+
+/**
+ * Everything one {@link SyncDigest} was folded from, kept so two clients' inputs at a disputed tick can
+ * be diffed down to the first entity and component that differ.
+ */
+export interface SyncDigestInputs {
+  readonly tick: number;
+  readonly rng: number;
+  readonly nextEntityId: number;
+  readonly entityCount: number;
+  readonly allocations: Uint32Array;
+  /** The words `fog.syncFoldInto` produced, in order; empty when the world has no fog. */
+  readonly fog: Uint32Array;
+  /** Touched components in first-touch order. */
+  readonly components: readonly DigestComponentInputs[];
+}
+
+export interface SealedSyncDigest {
+  readonly digest: SyncDigest;
+  /** Null unless the recorder captures inputs. */
+  readonly inputs: SyncDigestInputs | null;
+}
+
+export interface SyncDigestRecorderOptions {
+  /** Keep each seal's {@link SyncDigestInputs}; off by default, and free while off. */
+  readonly captureInputs?: boolean;
+}
+
+/** Shared by every fogless capture; a zero-length view has nothing to mutate. */
+const NO_WORDS = new Uint32Array(0);
+
 /**
  * Collects the tick's mutations through the {@link MutationSink} and folds them at the tick boundary.
  * Values are read at {@link seal}, never when the write is reported: `World.mut` hands out the live
  * value before its caller changes it.
+ *
+ * Each touched (component, entity) pair folds into one entity word, the component word folds its name
+ * and its entity words, and the domain folds one word per component.
  */
 export class SyncDigestRecorder implements MutationSink {
+  readonly captureInputs: boolean;
   /** The entities whose stored value changed this tick, per component. Both this map's entry order and
    *  each set's are first-touch order within the tick, deterministic like every other sim decision. */
   private readonly touched = new Map<Component<unknown>, Set<Entity>>();
@@ -50,6 +95,24 @@ export class SyncDigestRecorder implements MutationSink {
    *  list is what says which of them are current. */
   private readonly order: Array<Component<unknown>> = [];
   private readonly allocations: Entity[] = [];
+  /** Reused per seal to collect fog words before they are copied into their typed array. */
+  private readonly fogScratch: number[] = [];
+  /** The word the bound mixers below fold into. */
+  private word = FNV_OFFSET_BASIS;
+  private readonly mix: MixWord = (word) => {
+    this.word = fnvMixWord(this.word, word);
+  };
+  private readonly mixText: MixText = (text) => {
+    this.word = fnvMixWord(this.word, stringWord(text));
+  };
+  private readonly mixFogCapturing: MixWord = (word) => {
+    this.fogScratch.push(word);
+    this.word = fnvMixWord(this.word, word);
+  };
+
+  constructor(options: SyncDigestRecorderOptions = {}) {
+    this.captureInputs = options.captureInputs ?? false;
+  }
 
   /** Drop the previous tick's mutations, at the tick's start, so the set holds exactly one tick's
    *  writes however often the caller snapshots. */
@@ -74,7 +137,7 @@ export class SyncDigestRecorder implements MutationSink {
   }
 
   /** Fold the tick into a digest. Reads live values, so it belongs at a tick boundary. */
-  seal(world: World, tick: number, rngState: number, fog: FogState | undefined): SyncDigest {
+  seal(world: World, tick: number, rngState: number, fog: FogState | undefined): SealedSyncDigest {
     const domains: Record<SyncDomain, number> = {
       rng: FNV_OFFSET_BASIS,
       entities: FNV_OFFSET_BASIS,
@@ -85,44 +148,93 @@ export class SyncDigestRecorder implements MutationSink {
       combat: FNV_OFFSET_BASIS,
       fog: FNV_OFFSET_BASIS,
     };
-    // A domain receives one word per component, not one per mixed word.
-    let running = FNV_OFFSET_BASIS;
-    const mix: MixWord = (word) => {
-      running = fnvMixWord(running, word);
-    };
-    const mixText: (text: string) => void = (text) => {
-      running = fnvMixWord(running, stringWord(text));
-    };
-    const foldInto = (domain: SyncDomain): void => {
-      domains[domain] = fnvMixWord(domains[domain], running);
-      running = FNV_OFFSET_BASIS;
-    };
+    const capture = this.captureInputs;
 
-    mix(rngState);
-    foldInto('rng');
+    this.word = FNV_OFFSET_BASIS;
+    this.mix(rngState);
+    domains.rng = fnvMixWord(domains.rng, this.word);
 
-    mix(world.nextEntityId);
-    mix(world.entityCount);
-    for (const entity of this.allocations) mix(entity);
-    foldInto('entities');
+    this.word = FNV_OFFSET_BASIS;
+    this.mix(world.nextEntityId);
+    this.mix(world.entityCount);
+    for (const entity of this.allocations) this.mix(entity);
+    domains.entities = fnvMixWord(domains.entities, this.word);
 
+    let fogWords = NO_WORDS;
     if (fog !== undefined) {
-      fog.syncFoldInto(mix);
-      foldInto('fog');
+      this.word = FNV_OFFSET_BASIS;
+      if (capture) {
+        this.fogScratch.length = 0;
+        fog.syncFoldInto(this.mixFogCapturing);
+        fogWords = Uint32Array.from(this.fogScratch);
+      } else {
+        fog.syncFoldInto(this.mix);
+      }
+      domains.fog = fnvMixWord(domains.fog, this.word);
     }
 
+    const digest: SyncDigest = { tick, domains };
+    if (!capture) {
+      this.foldComponents(world, domains);
+      return { digest, inputs: null };
+    }
+    const components = this.foldComponentsCapturing(world, domains);
+    const inputs: SyncDigestInputs = {
+      tick,
+      rng: rngState,
+      nextEntityId: world.nextEntityId,
+      entityCount: world.entityCount,
+      allocations: Uint32Array.from(this.allocations),
+      fog: fogWords,
+      components,
+    };
+    return { digest, inputs };
+  }
+
+  private foldComponents(world: World, domains: Record<SyncDomain, number>): void {
     for (const component of this.order) {
       const entities = this.touched.get(component);
       if (entities === undefined) continue; // unreachable: `order` only holds components with a set
-      mixText(component.name);
+      let componentWord = fnvMixWord(FNV_OFFSET_BASIS, stringWord(component.name));
       for (const entity of entities) {
-        mix(entity);
-        // A removed component (and every component of a destroyed entity) reads absent, which
-        // `mixValue` folds as its own value - the removal itself is the state change.
-        mixValue(mix, mixText, world.tryGet(entity, component));
+        componentWord = fnvMixWord(componentWord, this.entityWord(world, component, entity));
       }
-      foldInto(component.domain);
+      domains[component.domain] = fnvMixWord(domains[component.domain], componentWord);
     }
-    return { tick, domains };
+  }
+
+  /** {@link foldComponents}, keeping every entity word it folds. */
+  private foldComponentsCapturing(
+    world: World,
+    domains: Record<SyncDomain, number>,
+  ): DigestComponentInputs[] {
+    const captured: DigestComponentInputs[] = [];
+    for (const component of this.order) {
+      const entities = this.touched.get(component);
+      if (entities === undefined) continue; // unreachable: `order` only holds components with a set
+      const ids = new Uint32Array(entities.size);
+      const words = new Uint32Array(entities.size);
+      let componentWord = fnvMixWord(FNV_OFFSET_BASIS, stringWord(component.name));
+      let i = 0;
+      for (const entity of entities) {
+        const word = this.entityWord(world, component, entity);
+        componentWord = fnvMixWord(componentWord, word);
+        ids[i] = entity;
+        words[i] = word;
+        i++;
+      }
+      domains[component.domain] = fnvMixWord(domains[component.domain], componentWord);
+      captured.push({ name: component.name, domain: component.domain, entities: ids, words });
+    }
+    return captured;
+  }
+
+  private entityWord(world: World, component: Component<unknown>, entity: Entity): number {
+    this.word = FNV_OFFSET_BASIS;
+    this.mix(entity);
+    // A removed component (and every component of a destroyed entity) reads absent, which `mixValue`
+    // folds as its own value - the removal itself is the state change.
+    mixValue(this.mix, this.mixText, world.tryGet(entity, component));
+    return this.word;
   }
 }

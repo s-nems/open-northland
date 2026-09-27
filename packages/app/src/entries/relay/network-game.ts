@@ -32,8 +32,8 @@ import {
 } from './relayed-world.js';
 import { roomExitObserver } from './room-exit.js';
 
-/** Within the bundle's wait for the whole net report, so the digests' own bound lands first. */
-const DIGESTS_ANSWER_TIMEOUT_MS = REPORT_ANSWER_TIMEOUT_MS / 2;
+/** Within the bundle's wait for the whole net report, so the worker's answers' own bound lands first. */
+const WORKER_ANSWER_TIMEOUT_MS = REPORT_ANSWER_TIMEOUT_MS / 2;
 
 export function renderNetworkGame(
   canvas: HTMLCanvasElement,
@@ -182,16 +182,23 @@ export function renderNetworkGame(
     if (diagSession === null) return;
     setDiagGameSession({
       ...diagSession,
-      net: async () => ({
-        desync:
-          lastDesync === null
-            ? null
-            : { tick: lastDesync.tick, domains: lastDesync.domains, reference: lastDesync.reference },
-        // A stalled worker costs the report its digests, not the desync notice this thread holds.
-        digests: (await answeredWithin(connection.digests(), DIGESTS_ANSWER_TIMEOUT_MS)) ?? [],
-        delayTicks: client.delayTicks,
-        roundTripMs: client.roundTripMs,
-      }),
+      net: async () => {
+        // A stalled worker costs the report its answers, not the desync notice this thread holds.
+        const [digests, dispute] = await Promise.all([
+          answeredWithin(connection.digests(), WORKER_ANSWER_TIMEOUT_MS),
+          answeredWithin(connection.dispute(), WORKER_ANSWER_TIMEOUT_MS),
+        ]);
+        return {
+          desync:
+            lastDesync === null
+              ? null
+              : { tick: lastDesync.tick, domains: lastDesync.domains, reference: lastDesync.reference },
+          digests: digests ?? [],
+          dispute: dispute ?? null,
+          delayTicks: client.delayTicks,
+          roundTripMs: client.roundTripMs,
+        };
+      },
     });
   }
 

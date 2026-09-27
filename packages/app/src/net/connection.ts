@@ -1,5 +1,5 @@
 import type { GameSession } from '@open-northland/lockstep';
-import type { TickDigest } from '@open-northland/net-client';
+import type { DisputeRecord, TickDigest } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
 import { errorText } from '../diag/error-text.js';
 import { diag } from '../diag/index.js';
@@ -9,6 +9,7 @@ import type {
   FromNetWorker,
   LinkState,
   RelayAnswer,
+  RelayAnswerFor,
   RelayRequest,
   RestoredHeader,
   ToNetWorker,
@@ -130,7 +131,12 @@ export class NetworkConnection {
 
   /** The digests the client acknowledged last, oldest first. */
   async digests(): Promise<readonly TickDigest[]> {
-    return (await this.request({ method: 'digests' })) ?? [];
+    return this.request({ method: 'digests' });
+  }
+
+  /** The relay's last desync verdict the client took part in, with the fold inputs of that tick. */
+  async dispute(): Promise<DisputeRecord | null> {
+    return this.request({ method: 'dispute' });
   }
 
   /** The link dropped: the relay welcomes this client anew once it is back, and a lobby room the menu
@@ -255,11 +261,12 @@ export class NetworkConnection {
     }
   }
 
-  private request(request: RelayRequest): Promise<RelayAnswer> {
+  /** The worker answers each method with its own shape; the wire union is narrowed here, once. */
+  private request<R extends RelayRequest>(request: R): Promise<RelayAnswerFor<R>> {
     if (this.disposed) return Promise.reject(new Error(CLOSED_MESSAGE));
     const id = this.nextRequestId++;
     return new Promise((resolve, reject) => {
-      this.answers.set(id, { resolve, reject });
+      this.answers.set(id, { resolve: (value) => resolve(value as RelayAnswerFor<R>), reject });
       this.post({ kind: 'request', id, request });
     });
   }

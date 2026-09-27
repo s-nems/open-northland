@@ -75,6 +75,7 @@ export class RelayState {
       case 'chat':
       case 'error':
       case 'snapshotRequest':
+      case 'disputed':
       case 'blob':
       case 'rejected':
         break;

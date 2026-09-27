@@ -10,7 +10,7 @@ import { currentDiagGameSession, type DiagGameSession, type DiagNetReport } from
 import { recordedTraceEvents, type TraceEvent } from './trace.js';
 
 export const DIAGNOSTICS_BUNDLE_KIND = 'opennorthland-diagnostics';
-export const DIAGNOSTICS_BUNDLE_VERSION = 1;
+export const DIAGNOSTICS_BUNDLE_VERSION = 2;
 
 /** The running game's repro payload, absent when no game session is registered. */
 export interface DiagnosticsGameReport {
@@ -26,7 +26,7 @@ export interface DiagnosticsGameReport {
   readonly commandLog: readonly LoggedCommand[];
   /** The hash trace recorded in `?debug=diag` runs only, for divergence localization. */
   readonly hashes?: readonly { readonly tick: number; readonly hash: string }[];
-  /** A relayed session's desync notice and acknowledged digests. */
+  /** A relayed session's desync notice, acknowledged digests and last verdict with its fold inputs. */
   readonly net?: DiagNetReport;
 }
 

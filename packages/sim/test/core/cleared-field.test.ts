@@ -32,7 +32,7 @@ function digestOf(value: ProbeValue): number {
   world.setMutationSink(recorder);
   recorder.beginTick();
   world.add(world.create(), Probe, structuredClone(value));
-  return recorder.seal(world, 0, 0, undefined).domains.economy;
+  return recorder.seal(world, 0, 0, undefined).digest.domains.economy;
 }
 
 const absent = () => simWith(ABSENT);

@@ -22,6 +22,7 @@ import {
   type Simulation,
 } from '@open-northland/sim';
 import { DigestTrail } from './digest-trail.js';
+import { DisputeCapture, type DisputeRecord } from './dispute-capture.js';
 import { applyInitialSeatControl, openSessionWorld, restoreSessionWorld } from './initial-save-world.js';
 import { CommandLatency } from './latency.js';
 import { RelayLobby } from './lobby.js';
@@ -82,6 +83,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   sim: Simulation | null = null;
   readonly latency: CommandLatency;
   readonly digests = new DigestTrail();
+  private readonly verdicts = new DisputeCapture();
   private driver: LockstepDriver | null = null;
   private transport: RelayTransport | null = null;
   private world = DESCRIPTOR_WORLD;
@@ -186,6 +188,11 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     return this.state.outOfSync;
   }
 
+  /** The relay's last desync verdict this client took part in, on either side; kept across worlds. */
+  get dispute(): DisputeRecord | null {
+    return this.verdicts.record;
+  }
+
   captureSave(options: ExportSaveOptions = {}): Promise<SaveGame> {
     if (this.sim === null || this.state.outOfSync || this.options.connected?.() === false)
       return Promise.reject(new Error('A save requires a connected, synchronized world'));
@@ -253,7 +260,11 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
         else this.transport.receiveFrame(message);
         break;
       case 'desync':
+        this.verdicts.freeze('diverged', message.tick, message.domains, [message.reference]);
         this.dropWorld();
+        break;
+      case 'disputed':
+        this.verdicts.freeze('reference', message.tick, message.domains, message.diverged);
         break;
       case 'snapshotRequest':
         this.answerSnapshotRequest();
@@ -329,6 +340,8 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     const digest = this.sim?.syncDigest();
     if (digest === null || digest === undefined) return;
     this.digests.record(digest.tick, digest.domains);
+    const inputs = this.sim?.syncDigestInputs();
+    if (inputs !== null && inputs !== undefined) this.verdicts.retain(inputs);
     this.send({
       kind: 'ack',
       tick: digest.tick,
@@ -399,7 +412,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     const session = this.session;
     if (session === null) throw new Error(`${this.nick} has no session to run`);
     const { sim } = opened;
-    sim.setSyncDigest(true);
+    sim.setSyncDigest(true, { captureInputs: true });
     this.sim = sim;
     this.world = opened.generation;
     this.state.outOfSync = false;
@@ -433,6 +446,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private dropWorld(): void {
     this.saveOrders.cancel('The world changed while saving');
     this.loader.invalidate();
+    this.verdicts.forgetWorld();
     this.reportRestoredWorld = false;
     this.sim = null;
     this.currentWorldId = null;

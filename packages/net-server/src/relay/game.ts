@@ -5,9 +5,11 @@ import {
   PAUSE_BUDGET,
   type PlayerWireEnvelope,
   type ServerMessage,
+  SYNC_DOMAINS,
   type WaitReason,
   type WireDigest,
 } from '@open-northland/net-protocol';
+import type { SyncDomain } from '@open-northland/sim';
 import { type BlobUpload, relayBlob } from './blob-relay.js';
 import type { CachedSnapshot } from './catch-up.js';
 import { Departures } from './departures.js';
@@ -342,7 +344,11 @@ export class Game {
     this.ledger.pruneBefore(lowest + 1);
   }
 
+  /** Notify each newly diverged member, then tell the reference whom it disagreed with, so both
+   *  sides can keep that tick's digest inputs. */
   private apply(verdict: Verdict, now: number): void {
+    const diverged: string[] = [];
+    const disputedDomains = new Set<SyncDomain>();
     for (const { token, domains } of verdict.outOfSync) {
       const member = this.members.get(token);
       if (member === undefined || member.outOfSync !== null) continue;
@@ -357,7 +363,17 @@ export class Game {
       this.ledger.forget(token);
       this.deliver(member, notice);
       this.resync.queue(member, now);
+      diverged.push(member.nick);
+      for (const domain of domains) disputedDomains.add(domain);
     }
+    const reference = this.members.get(verdict.reference.token);
+    if (diverged.length === 0 || reference === undefined || !reference.connected) return;
+    this.deliver(reference, {
+      kind: 'disputed',
+      tick: verdict.tick,
+      domains: SYNC_DOMAINS.filter((domain) => disputedDomains.has(domain)),
+      diverged,
+    });
   }
 
   private broadcast(message: ServerMessage): void {

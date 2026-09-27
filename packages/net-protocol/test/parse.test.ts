@@ -312,6 +312,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   { kind: 'kickVote', player: 0, nick: 'Ania', yes: ['Bartek'], needed: 2 },
   { kind: 'kicked', player: 0, nick: 'Ania', mode: 'ai', tick: 42 },
   { kind: 'desync', tick: 41, domains: ['rng', 'economy'], reference: 'Ania' },
+  { kind: 'disputed', tick: 41, domains: ['rng', 'economy'], diverged: ['Bartek', 'Celina'] },
   { kind: 'snapshotRequest' },
   { kind: 'blob', type: 'snapshot', from: 'Ania', tick: 40, bytes: BLOB },
   {
@@ -411,6 +412,19 @@ describe('server messages', () => {
     expect(closingCode('trafficLimit')).toBe('trafficLimit');
     expect(closingCode('gameStarted')).toBeNull();
     expect(closingCode('closed with code 1002')).toBeNull();
+  });
+
+  it('refuses a dispute with no domain, no diverged nick, an unknown domain or a negative tick', () => {
+    const disputed = { kind: 'disputed', tick: 1, domains: ['rng'], diverged: ['B'] };
+    expect(() => parseServerMessage({ ...disputed, domains: [] }, parseSession)).toThrow(/disputed\.domains/);
+    expect(() => parseServerMessage({ ...disputed, diverged: [] }, parseSession)).toThrow(
+      /disputed\.diverged/,
+    );
+    expect(() => parseServerMessage({ ...disputed, domains: ['weather'] }, parseSession)).toThrow(
+      /domains\[0\]/,
+    );
+    expect(() => parseServerMessage({ ...disputed, diverged: [' '] }, parseSession)).toThrow(/diverged\[0\]/);
+    expect(() => parseServerMessage({ ...disputed, tick: -1 }, parseSession)).toThrow(/disputed\.tick/);
   });
 
   it('refuses a clock whose governed speed is missing, unnamed or not a positive speed', () => {

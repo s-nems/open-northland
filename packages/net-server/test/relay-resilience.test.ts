@@ -459,9 +459,14 @@ describe('digests and resync', () => {
     ackThrough(s.a, 1, 3, 1);
     ackThrough(s.b, 1, 2, 1);
     expect(s.b.of('desync')).toEqual([]);
+    expect(s.a.of('disputed')).toEqual([]);
     s.b.send({ kind: 'ack', load: LOAD, tick: 3, digest: { ...digest(1), economy: 9 }, world: 0 });
     expect(s.b.last('desync')).toEqual({ kind: 'desync', tick: 3, domains: ['economy'], reference: 'Ania' });
     expect(s.a.of('desync')).toEqual([]);
+    expect(s.a.of('disputed')).toEqual([
+      { kind: 'disputed', tick: 3, domains: ['economy'], diverged: ['Bartek'] },
+    ]);
+    expect(s.b.of('disputed')).toEqual([]);
     expect(s.a.of('snapshotRequest')).toHaveLength(1);
     s.advance(TICK_MS * 2);
     expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'resync' }]);
@@ -501,6 +506,7 @@ describe('digests and resync', () => {
     expect(back.of('desync')).toEqual([]);
     expect(s.a.of('desync')).toEqual([]);
     expect(s.c.of('desync')).toEqual([]);
+    for (const client of [back, s.a, s.c]) expect(client.of('disputed')).toEqual([]);
   });
 
   it('reports a world once per connection, and refuses a command before any world has loaded', () => {

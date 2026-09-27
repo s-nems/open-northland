@@ -1,11 +1,12 @@
 /** The running game's diagnostics identity; the view that registers it clears it when it closes. */
+import type { DisputeRecord } from '@open-northland/net-client';
 import { HashTrace, type SyncDomain } from '@open-northland/sim';
 import type { SessionHost } from '../session/index.js';
 import { hasDebugFlag } from './debug-flags.js';
 import { diag } from './log.js';
 
 /** What a relayed session adds to a bundle: where the relay said this client parted from the room,
- *  and the digests it acknowledged around there. */
+ *  the digests it acknowledged around there, and the last verdict it took part in on either side. */
 export interface DiagNetReport {
   readonly desync: {
     readonly tick: number;
@@ -16,6 +17,7 @@ export interface DiagNetReport {
     readonly tick: number;
     readonly digest: Readonly<Record<SyncDomain, number>>;
   }[];
+  readonly dispute: DisputeRecord | null;
   readonly delayTicks: number | null;
   readonly roundTripMs: number | null;
 }

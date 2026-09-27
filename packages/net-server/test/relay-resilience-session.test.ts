@@ -1,9 +1,13 @@
 import type { GameSession } from '@open-northland/lockstep';
-import { prepareInitialSave } from '@open-northland/net-client';
+import { type DisputeRecord, prepareInitialSave } from '@open-northland/net-client';
 import { type RoomSettings, TICK_MS } from '@open-northland/net-protocol';
 import { GOVERN_BEHIND_MS, KICK_COUNTDOWN_MS, Relay, SILENT_AFTER_MS } from '@open-northland/net-server';
 import {
+  components,
+  diffDigestInputs,
+  digestInputsFromJson,
   exportSaveGame,
+  fx,
   playerCommand,
   restoreSimulation,
   type SaveGame,
@@ -43,6 +47,7 @@ const SEATS = [
   { player: 2, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 2 },
 ] as const;
 const RUN_TICKS = 200;
+const VIKINGS = 1;
 const ORDER_EVERY_TICKS = 7;
 const LINK = { latencyMs: 60, jitterMs: 20 };
 /** Time for a lobby step, a reconnect, or a snapshot to cross the link and back, with margin. */
@@ -54,15 +59,31 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
   return new Simulation({ seed: session.seed, content: testContent() });
 }
 
+/** The fixture world with one newborn, whose `Age` the sim writes every tick. */
+async function buildWorldWithNewborn(session: GameSession): Promise<Simulation> {
+  const sim = await buildWorld(session);
+  const newborn = sim.world.create();
+  components.addPerson(sim.world, newborn, {
+    tribe: VIKINGS,
+    jobType: null,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+  });
+  sim.world.add(newborn, components.Age, { ticks: 0 });
+  return sim;
+}
+
 async function restoreWorld(_session: GameSession, save: SaveGame): Promise<Simulation> {
   return restoreSimulation(save, { content: testContent() });
 }
 
-function client(nick: string): HeadlessClient {
+function client(nick: string, build = buildWorld): HeadlessClient {
   return new HeadlessClient({
     token: `${nick.toLowerCase()}-token-0123456789`,
     nick,
-    buildWorld,
+    buildWorld: build,
     restoreWorld,
   });
 }
@@ -97,10 +118,28 @@ function divergeAt(target: HeadlessClient, atTick: number) {
   };
 }
 
-async function twoClients(seed: number) {
+/** Push one client's newborn a tick older on `atTick`; the sim's next write to its `Age` shows it. */
+function ageAt(target: HeadlessClient, atTick: number) {
+  return (client: HeadlessClient, tick: number): void => {
+    orderAt(client, tick);
+    const world = client.sim?.world;
+    const [newborn] = world?.query(components.Age) ?? [];
+    if (client === target && tick === atTick && world !== undefined && newborn !== undefined) {
+      world.mut(newborn, components.Age).ticks += 1;
+    }
+  };
+}
+
+/** Both sides' fold inputs of one verdict, and where they part. */
+function disputeDifference(reference: DisputeRecord | null, diverged: DisputeRecord | null) {
+  if (reference?.inputs == null || diverged?.inputs == null) throw new Error('a dispute without inputs');
+  return diffDigestInputs(digestInputsFromJson(reference.inputs), digestInputsFromJson(diverged.inputs));
+}
+
+async function twoClients(seed: number, build = buildWorld) {
   const stage = stageFor(seed);
-  const ania = client('Ania');
-  const bartek = client('Bartek');
+  const ania = client('Ania', build);
+  const bartek = client('Bartek', build);
   const links = [stage.network.link(ania, LINK), stage.network.link(bartek, LINK)] as const;
   await assembleRoom(stage, [ania, bartek], {
     settings: SETTINGS,
@@ -206,10 +245,33 @@ describe('a relayed session under faults', () => {
     expect(bartek.desyncs[0]).toMatchObject({ tick: 51, reference: 'Ania' });
     expect(bartek.desyncs[0]?.domains).toContain('rng');
     expect(ania.desyncs).toEqual([]);
+    expect(ania.disputes).toEqual([
+      { kind: 'disputed', tick: 51, domains: bartek.desyncs[0]?.domains, diverged: ['Bartek'] },
+    ]);
+    expect(bartek.disputes).toEqual([]);
+    expect(ania.dispute).toMatchObject({ role: 'reference', tick: 51, counterparts: ['Bartek'] });
+    expect(bartek.dispute).toMatchObject({ role: 'diverged', tick: 51, counterparts: ['Ania'] });
+    expect(disputeDifference(ania.dispute, bartek.dispute)).toMatchObject({ kind: 'rng' });
     expect(ania.snapshotsSent).toBe(1);
     expect(bartek.restoredFrom).toHaveLength(1);
     expect(bartek.restoredFrom[0]).toBeGreaterThanOrEqual(51);
     expect(ania.waits.some((wait) => wait.for.some((entry) => entry.reason === 'resync'))).toBe(true);
+    expectAgreement(captures, [ania, bartek]);
+  });
+
+  it('names the entity and component whose write parted a client from the room', async () => {
+    const { stage, ania, bartek } = await twoClients(3, buildWorldWithNewborn);
+    const captures = await runUntil(stage, [ania, bartek], RUN_TICKS, { onTick: ageAt(bartek, 50) });
+    expect(bartek.dispute).toMatchObject({ role: 'diverged', tick: 51, domains: ['settlers'] });
+    expect(ania.dispute).toMatchObject({ role: 'reference', tick: 51 });
+    const [newborn] = ania.sim?.world.query(components.Age) ?? [];
+    expect(disputeDifference(ania.dispute, bartek.dispute)).toEqual({
+      kind: 'component',
+      domain: 'settlers',
+      component: 'Age',
+      entity: newborn,
+      detail: 'word',
+    });
     expectAgreement(captures, [ania, bartek]);
   });
 

@@ -9,7 +9,8 @@ recorded tick). Operationalize it: one command a dev points at a downloaded bund
 
 ## Scope
 
-1. `npm run replay -- <bundle.json>` (a node script over `dist/`, like the planned bench harness):
+1. `npm run diag -- replay <bundle.json>`, a second subcommand of `scripts/diag-bundle.mjs` beside
+   `diff`, over `dist/`:
    - parse + validate the bundle (`kind`/`version`),
    - rebuild the world: scene bundles via the registered scene builder; map bundles via the decoded
      map (`content/maps/<worldId>.json` from the local checkout - the bundle never carries map bytes),

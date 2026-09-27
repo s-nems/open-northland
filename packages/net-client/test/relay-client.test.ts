@@ -1,6 +1,7 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
   type AdoptedWorld,
+  DISPUTE_WINDOW_TICKS,
   decodeSnapshot,
   JITTER_BUFFER_TICKS,
   type OpenedWorld,
@@ -15,7 +16,7 @@ import {
   TICK_MS,
   TICKS_PER_SECOND,
 } from '@open-northland/net-protocol';
-import { exportSaveGame, Simulation } from '@open-northland/sim';
+import { digestInputsToJson, exportSaveGame, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 
@@ -462,5 +463,68 @@ describe('RelayClient world operation ownership', () => {
     expect(client.session).toBeNull();
     expect(client.clockState).toBeNull();
     expect(sent).toEqual([]);
+  });
+});
+
+/** Deliver frames up to `tick` and run them all. */
+function runTo(client: RelayClient, tick: number): void {
+  const from = (client.tick ?? 0) + 1;
+  for (let next = from; next <= tick; next++) client.receive({ kind: 'frame', tick: next, commands: [] });
+  while ((client.tick ?? tick) < tick) client.advance(TICK_MS * (tick - (client.tick ?? 0)));
+}
+
+describe('RelayClient desync verdicts', () => {
+  const DISPUTED_TICK = 3;
+
+  async function running() {
+    const world = fixtureWorld();
+    const { client } = harness({ open: async () => world });
+    start(client, null);
+    await client.settled();
+    client.receive({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null, governed: null });
+    return { client, sim: world.sim };
+  }
+
+  it('freezes a reference record with the fold inputs of the disputed tick', async () => {
+    const { client, sim } = await running();
+    runTo(client, DISPUTED_TICK);
+    const inputs = sim.syncDigestInputs();
+    if (inputs === null) throw new Error('the client should capture digest inputs');
+    runTo(client, DISPUTED_TICK + 2);
+    client.receive({
+      kind: 'disputed',
+      tick: DISPUTED_TICK,
+      domains: ['rng'],
+      diverged: ['Bartek', 'Cezary'],
+    });
+    expect(client.dispute).toEqual({
+      role: 'reference',
+      tick: DISPUTED_TICK,
+      domains: ['rng'],
+      counterparts: ['Bartek', 'Cezary'],
+      inputs: digestInputsToJson(inputs),
+    });
+    expect(client.sim).toBe(sim);
+  });
+
+  it('freezes a diverged record before it drops the world, and keeps it', async () => {
+    const { client } = await running();
+    runTo(client, DISPUTED_TICK);
+    client.receive({ kind: 'desync', tick: DISPUTED_TICK, domains: ['movement'], reference: 'Bartek' });
+    expect(client.sim).toBeNull();
+    expect(client.dispute).toMatchObject({
+      role: 'diverged',
+      tick: DISPUTED_TICK,
+      domains: ['movement'],
+      counterparts: ['Bartek'],
+      inputs: { tick: DISPUTED_TICK },
+    });
+  });
+
+  it('keeps no inputs for a tick that already left the window', async () => {
+    const { client } = await running();
+    runTo(client, DISPUTED_TICK + DISPUTE_WINDOW_TICKS);
+    client.receive({ kind: 'disputed', tick: DISPUTED_TICK, domains: ['rng'], diverged: ['Bartek'] });
+    expect(client.dispute).toMatchObject({ role: 'reference', tick: DISPUTED_TICK, inputs: null });
   });
 });

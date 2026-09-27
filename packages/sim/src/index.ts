@@ -67,6 +67,14 @@ export {
   scenario,
 } from './harness/scenario.js';
 export {
+  type DigestComponentInputsJson,
+  type DigestInputDifference,
+  diffDigestInputs,
+  digestInputsFromJson,
+  digestInputsToJson,
+  type SyncDigestInputsJson,
+} from './inspect/digest-inputs-diff.js';
+export {
   dumpEntity,
   type EntityDump,
   type EntityTraceStep,
@@ -183,11 +191,13 @@ export {
 } from './simulation/probe-answers.js';
 export { fogViewOfMask } from './simulation/read-seams.js';
 export {
+  type DigestComponentInputs,
   type FogMaskAnswer,
   type FogView,
   type SimOptions,
   Simulation,
   type SyncDigest,
+  type SyncDigestInputs,
   type SystemInstrument,
 } from './simulation.js';
 export type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';

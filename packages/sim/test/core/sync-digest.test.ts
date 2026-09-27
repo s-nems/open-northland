@@ -31,6 +31,8 @@ const IDLE_ATOMIC_ID = 1;
 const LONG_ATOMIC_TICKS = 100;
 /** More than enough ticks for the planner and routing to hand a fresh goal its path. */
 const ROUTE_DELIVERY_TICKS = 10;
+/** Ticks compared between a capturing and a plain run. */
+const CAPTURED_TICKS = 6;
 /** A goal node far enough across the map that the walker is still mid-route when observed. */
 const WALK_GOAL_NODE = 20;
 /** Both halves of every component the per-tick writers were split out of. */
@@ -106,6 +108,30 @@ describe('sync digest', () => {
     const on = digesting(mapless);
     on.run(3);
     expect(on.hashState()).toBe(off.hashState());
+  });
+
+  it('captures no inputs unless asked, and capturing leaves the digest unchanged', () => {
+    const plain = watchedWorld();
+    const capturing = watchedWorld();
+    capturing.setSyncDigest(true, { captureInputs: true });
+    const plainDigests = sequence(plain, CAPTURED_TICKS, (sim) => {
+      expect(sim.syncDigestInputs()).toBeNull();
+    });
+    const capturedDigests = sequence(capturing, CAPTURED_TICKS, (sim) => {
+      expect(sim.syncDigestInputs()?.tick).toBe(sim.tick);
+    });
+    expect(capturedDigests).toEqual(plainDigests);
+  });
+
+  it('turns capture off with the digest', () => {
+    const sim = digesting(mapless);
+    sim.setSyncDigest(true, { captureInputs: true });
+    sim.step();
+    expect(sim.syncDigestInputs()).not.toBeNull();
+    sim.setSyncDigest(false);
+    sim.step();
+    expect(sim.syncDigestInputs()).toBeNull();
+    expect(sim.syncDigest()).toBeNull();
   });
 
   it('reports the same sequence for two runs of the same inputs', () => {

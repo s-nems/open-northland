@@ -68,7 +68,7 @@ import {
   placementProbeFor,
   signpostProbeFor,
 } from './simulation/read-seams.js';
-import { type SyncDigest, SyncDigestRecorder } from './simulation/sync-digest.js';
+import { type SyncDigest, type SyncDigestInputs, SyncDigestRecorder } from './simulation/sync-digest.js';
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
 import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 import type { MapContext, SystemContext } from './systems/context.js';
@@ -122,7 +122,7 @@ import {
 import { FogState, playerHasMet } from './systems/vision/index.js';
 
 export type { FogMaskAnswer, FogView } from './simulation/read-seams.js';
-export type { SyncDigest } from './simulation/sync-digest.js';
+export type { DigestComponentInputs, SyncDigest, SyncDigestInputs } from './simulation/sync-digest.js';
 
 export interface SimOptions {
   seed: number;
@@ -169,6 +169,7 @@ export class Simulation {
   /** Null until {@link setSyncDigest} turns the digest on; while set it is the world's mutation sink. */
   private digest: SyncDigestRecorder | null = null;
   private lastDigest: SyncDigest | null = null;
+  private lastDigestInputs: SyncDigestInputs | null = null;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /** The serializable external-input queue, drained and logged each tick for replay. */
@@ -316,7 +317,9 @@ export class Simulation {
       }
     }
     if (this.digest !== null) {
-      this.lastDigest = this.digest.seal(this.world, this.currentTick, this.rng.getState(), this.fog);
+      const sealed = this.digest.seal(this.world, this.currentTick, this.rng.getState(), this.fog);
+      this.lastDigest = sealed.digest;
+      this.lastDigestInputs = sealed.inputs;
     }
   }
 
@@ -693,18 +696,21 @@ export class Simulation {
   /**
    * Turn the per-tick {@link SyncDigest} on or off. Off by default, so a run that never asks does no
    * digest work at all. Turning it on mid-run costs one walk of the fog masks, and the first digest it
-   * seals covers the tick it was turned on for.
+   * seals covers the tick it was turned on for. `captureInputs` also keeps each seal's
+   * {@link SyncDigestInputs}; changing it while on replaces the recorder and forgets the last digest.
    */
-  setSyncDigest(enabled: boolean): void {
-    if (enabled === (this.digest !== null)) return;
+  setSyncDigest(enabled: boolean, options: { readonly captureInputs?: boolean } = {}): void {
+    const captureInputs = enabled && (options.captureInputs ?? false);
+    if (enabled === (this.digest !== null) && captureInputs === (this.digest?.captureInputs ?? false)) return;
     this.lastDigest = null;
+    this.lastDigestInputs = null;
     if (!enabled) {
       this.digest = null;
       this.world.setMutationSink(null);
       this.fog?.stopFolding();
       return;
     }
-    this.digest = new SyncDigestRecorder();
+    this.digest = new SyncDigestRecorder({ captureInputs });
     this.world.setMutationSink(this.digest);
     this.fog?.startFolding();
   }
@@ -715,6 +721,11 @@ export class Simulation {
    */
   syncDigest(): SyncDigest | null {
     return this.lastDigest;
+  }
+
+  /** What the last {@link syncDigest} was folded from; null while the digest or its input capture is off. */
+  syncDigestInputs(): SyncDigestInputs | null {
+    return this.lastDigestInputs;
   }
 }
 

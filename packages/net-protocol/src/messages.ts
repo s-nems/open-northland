@@ -240,6 +240,13 @@ export type ServerMessage =
       readonly domains: readonly SyncDomain[];
       readonly reference: string;
     }
+  /** To the reference member of a verdict: the nicks whose digest differed from its own at `tick`. */
+  | {
+      readonly kind: 'disputed';
+      readonly tick: number;
+      readonly domains: readonly SyncDomain[];
+      readonly diverged: readonly string[];
+    }
   | { readonly kind: 'snapshotRequest' }
   | { readonly kind: 'mapRequest'; readonly from: string }
   | {

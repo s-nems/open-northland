@@ -1,4 +1,5 @@
 export type { DigestTrail, TickDigest } from './digest-trail.js';
+export { DISPUTE_WINDOW_TICKS, type DisputeRecord } from './dispute-capture.js';
 export { newToken } from './identity.js';
 export { type PreparedInitialSave, prepareInitialSave, verifyInitialSave } from './initial-save.js';
 export { CommandLatency } from './latency.js';
