@@ -47,6 +47,8 @@ const SHORE = 2;
 const START = { hx: 24, hy: 24 };
 const NORTH_GOAL = { hx: 24, hy: 8 };
 const SOUTH_GOAL = { hx: 24, hy: 40 };
+/** Straight east of the start along its row, the heading a fresh ship already faces. */
+const EAST_GOAL = { hx: 36, hy: 24 };
 /** Ticks the ship sails north before the order turns it round. */
 const TICKS_BEFORE_REVERSAL = 20;
 const DRIVE_LIMIT = 400;
@@ -201,5 +203,20 @@ describe('ship helm', () => {
       lastWay = s.world.tryGet(ship, VehicleDrive)?.helm?.way ?? lastWay;
     }
     expect(lastWay).toBeLessThanOrEqual(LANDFALL_MAX_WAY);
+  });
+
+  it('moves its blocker cells on every node it enters while it holds its heading', () => {
+    const s = new Simulation({ seed: 5, content: testContent(), map: lakeMap() });
+    const ship = crewedShip(s);
+    expect(s.world.get(ship, Vehicle).facing).toBe(WALK_DIRECTION.E);
+    order(s, ship, EAST_GOAL);
+    for (let tick = 1; s.world.has(ship, VehicleDrive) || tick === 1; tick++) {
+      if (tick > DRIVE_LIMIT) throw new Error('drive never ended');
+      s.step();
+      expect(s.world.get(ship, Vehicle).facing).toBe(WALK_DIRECTION.E); // the hull never swings
+      expect(s.world.verifyCaches()).toEqual([]);
+    }
+    const end = s.world.get(ship, Position);
+    expect(nodeOfPosition(end.x, end.y)).toEqual(EAST_GOAL);
   });
 });

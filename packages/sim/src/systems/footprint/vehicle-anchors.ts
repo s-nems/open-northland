@@ -47,7 +47,7 @@ function resyncAll(world: World, memo: AnchorMemo): boolean {
 /**
  * The revision of the vehicles' anchors and types: unchanged across a tick in which no vehicle entered a
  * node, left the map or changed type. A vehicle's cells move only through a `World.mut(e, Vehicle)` write
- * (the mover writes its facing on every node it enters), so the value-write journal narrows a bump to the
+ * (the mover acquires it on every node it enters), so the value-write journal narrows a bump to the
  * written vehicles; a membership change or a journal gap re-keys them all.
  */
 export function vehicleAnchorRevision(world: World): number {

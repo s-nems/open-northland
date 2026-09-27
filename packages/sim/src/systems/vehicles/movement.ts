@@ -453,6 +453,9 @@ export const vehicleMovementSystem: System = (world, ctx) => {
     live.route.shift();
     live.from = anchor;
     live.increment = vehicleProgressPerTick(vehicleLegTicks(period, hexDistance(anchor, next)));
+    // Written on every node entered, a ship holding its heading included: the blocker caches learn
+    // that a vehicle's cells moved from the `Vehicle` store's value writes (`footprint/vehicle-anchors.ts`).
+    const vehicle = world.mut(e, Vehicle);
     if (live.helm !== null) {
       live.helm.heading = course;
       live.progress = 0;
@@ -460,7 +463,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       // A land vehicle turns on `from`: progress below zero draws it there, facing the new way.
       const turnTicks = walkTurnSteps(state.facing, facing) * VEHICLE_TURN_TICKS_PER_DIRECTION;
       live.progress = live.increment * (1 - turnTicks);
-      world.mut(e, Vehicle).facing = facing;
+      vehicle.facing = facing;
     }
     const at = positionOfNode(next.hx, next.hy);
     const pos = world.mut(e, Position);
