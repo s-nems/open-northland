@@ -14,8 +14,16 @@ const TAB_GLYPHS = [...iconsTs.slice(iconsTs.indexOf('STOCK_TAB_GLYPHS')).matchA
   .slice(0, 8)
   .map((match) => match[1]);
 const symbols = symbolsTs.match(/HUD_SYMBOLS = `([\s\S]*?)`;/)?.[1] ?? '';
-const ORNAMENTS = `<svg aria-hidden="true" class="on-window__knot"><use href="#on-knot"/></svg>${['tl', 'tr', 'bl', 'br']
-  .map((c) => `<svg aria-hidden="true" class="on-window__corner on-window__corner--${c}"><use href="#on-corner"/></svg>`)
+const ORNAMENTS = `<svg aria-hidden="true" class="on-window__knot"><use href="#on-knot"/></svg>${[
+  'tl',
+  'tr',
+  'bl',
+  'br',
+]
+  .map(
+    (c) =>
+      `<svg aria-hidden="true" class="on-window__corner on-window__corner--${c}"><use href="#on-corner"/></svg>`,
+  )
   .join('')}`;
 
 // The order glyphs, from the runtime table.
@@ -34,18 +42,64 @@ const ORDER_GLYPH = {
 
 // Category of each sample good, the runtime's `goodCategoryTab`.
 const CATEGORY = {
-  bread: 0, fish: 0, meat: 0, wheat: 0, flour: 0, food_simple: 0, water: 1, mead: 1,
-  wood: 2, stone: 2, mud: 2, iron: 2, gold: 2, leather: 2, wool: 2, brick: 3, tile: 3, pillar: 3,
-  tool_wooden: 4, tool_iron: 4, crockery: 5, furniture: 5, shoes: 5, sword_shord: 6, spear_iron: 6,
-  bow_short: 6, armor_leather: 6, coin: 7,
+  bread: 0,
+  fish: 0,
+  meat: 0,
+  wheat: 0,
+  flour: 0,
+  food_simple: 0,
+  water: 1,
+  mead: 1,
+  wood: 2,
+  stone: 2,
+  mud: 2,
+  iron: 2,
+  gold: 2,
+  leather: 2,
+  wool: 2,
+  brick: 3,
+  tile: 3,
+  pillar: 3,
+  tool_wooden: 4,
+  tool_iron: 4,
+  crockery: 5,
+  furniture: 5,
+  shoes: 5,
+  sword_shord: 6,
+  spear_iron: 6,
+  bow_short: 6,
+  armor_leather: 6,
+  coin: 7,
 };
 const GOOD_NAME = {
-  bread: 'Chleb', fish: 'Ryba', meat: 'Mięso', wheat: 'Zboże', flour: 'Mąka', food_simple: 'Żywność',
-  water: 'Woda', mead: 'Miód pitny', wood: 'Drewno', stone: 'Kamień', mud: 'Glina', iron: 'Żelazo',
-  gold: 'Złoto', leather: 'Skóra', wool: 'Wełna', brick: 'Cegła', tile: 'Dachówka', pillar: 'Kolumna',
-  tool_wooden: 'Drewniane narzędzie', tool_iron: 'Żelazne narzędzie', crockery: 'Naczynia',
-  furniture: 'Meble', shoes: 'Buty', sword_shord: 'Krótki miecz', spear_iron: 'Żelazna włócznia',
-  bow_short: 'Krótki łuk', armor_leather: 'Skórzana zbroja', coin: 'Moneta',
+  bread: 'Chleb',
+  fish: 'Ryba',
+  meat: 'Mięso',
+  wheat: 'Zboże',
+  flour: 'Mąka',
+  food_simple: 'Żywność',
+  water: 'Woda',
+  mead: 'Miód pitny',
+  wood: 'Drewno',
+  stone: 'Kamień',
+  mud: 'Glina',
+  iron: 'Żelazo',
+  gold: 'Złoto',
+  leather: 'Skóra',
+  wool: 'Wełna',
+  brick: 'Cegła',
+  tile: 'Dachówka',
+  pillar: 'Kolumna',
+  tool_wooden: 'Drewniane narzędzie',
+  tool_iron: 'Żelazne narzędzie',
+  crockery: 'Naczynia',
+  furniture: 'Meble',
+  shoes: 'Buty',
+  sword_shord: 'Krótki miecz',
+  spear_iron: 'Żelazna włócznia',
+  bow_short: 'Krótki łuk',
+  armor_leather: 'Skórzana zbroja',
+  coin: 'Moneta',
 };
 const TAB_LABELS = ['Żywność', 'Napoje', 'Surowce', 'Budulec', 'Narzędzia', 'Wyroby', 'Wojsko', 'Inne'];
 
@@ -53,22 +107,32 @@ const TAB_LABELS = ['Żywność', 'Napoje', 'Surowce', 'Budulec', 'Narzędzia', 
 const GOOD_BOX_PX = 25;
 const GOOD_MASS_PX = 19.5;
 const GOOD_MARGIN_PX = 1;
-const manifest = await fetch('/goods/manifest.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+const manifest = await fetch('/goods/manifest.json')
+  .then((r) => (r.ok ? r.json() : null))
+  .catch(() => null);
 const atlases = new Map();
 async function iconStyle(goodId, box) {
   const icon = manifest?.icons[goodId];
   if (icon === undefined) return null;
   const stem = manifest.previewStem.replace(/\.[^.]+$/, `.${icon.palette}`);
-  if (!atlases.has(stem)) atlases.set(stem, fetch(`/bobs/${stem}.atlas.json`).then((r) => r.json()));
+  if (!atlases.has(stem))
+    atlases.set(
+      stem,
+      fetch(`/bobs/${stem}.atlas.json`).then((r) => r.json()),
+    );
   const atlas = await atlases.get(stem);
   const rect = atlas.frames.find((f) => f.bobId === icon.frame)?.rect;
   if (rect === undefined) return null;
   const k = box / GOOD_BOX_PX;
-  const s = Math.min((GOOD_MASS_PX * k) / Math.sqrt(rect.width * rect.height), (box - GOOD_MARGIN_PX * k) / Math.max(rect.width, rect.height));
+  const s = Math.min(
+    (GOOD_MASS_PX * k) / Math.sqrt(rect.width * rect.height),
+    (box - GOOD_MARGIN_PX * k) / Math.max(rect.width, rect.height),
+  );
   const px = (n) => `${n.toFixed(2)}px`;
   return `width:${px(rect.width * s)};height:${px(rect.height * s)};background-image:url("/bobs/${stem}.png");background-size:${px(atlas.width * s)} ${px(atlas.height * s)};background-position:${px(-rect.x * s)} ${px(-rect.y * s)};`;
 }
-const good = (id, box = 20) => `<span class="on-good" aria-hidden="true" style="width:${box}px;height:${box}px"><i class="on-good__frame" data-good="${id}" data-box="${box}"></i></span>`;
+const good = (id, box = 20) =>
+  `<span class="on-good" aria-hidden="true" style="width:${box}px;height:${box}px"><i class="on-good__frame" data-good="${id}" data-box="${box}"></i></span>`;
 async function paintGoods(root) {
   for (const frame of root.querySelectorAll('[data-good]')) {
     const style = await iconStyle(frame.dataset.good, Number(frame.dataset.box));
@@ -79,17 +143,14 @@ async function paintGoods(root) {
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 const tip = (text) => (text ? ` data-tip="${esc(text)}"` : '');
 const section = (title, control = '') => `<div class="on-section"><span>${title}</span>${control}</div>`;
-const link = (text, tooltip = '', extra = '') => `<button class="on-ledger__link${extra}" type="button"${tip(tooltip)}>${text}</button>`;
+const link = (text, tooltip = '', extra = '') =>
+  `<button class="on-ledger__link${extra}" type="button"${tip(tooltip)}>${text}</button>`;
 const round = (glyph, tooltip, disabled = false) =>
   `<button class="on-round" type="button" aria-label="${esc(tooltip)}"${tip(tooltip)}${disabled ? ' aria-disabled="true"' : ''}>${glyph}</button>`;
-const blank = '<button class="on-round on-round--blank" type="button" aria-hidden="true" tabindex="-1"></button>';
 const ledger = (label, value, buttons = []) =>
   `<div class="on-ledger${buttons.length ? ' on-ledger--ctl' : ''}"><span><span>${label}</span></span><b class="on-ledger__value">${value}</b>${
     buttons.length ? `<span class="on-ledger__btns">${buttons.join('')}</span>` : ''
   }</div>`;
-const meterRow = (label, pct, value, tooltip) =>
-  `<div class="on-meter-row${pct < 34 ? ' on-meter-row--low' : ''}"${tip(tooltip)}><span>${label}</span><span class="on-meter" role="meter" style="--value:${pct}%"></span><b>${value}</b></div>`;
-
 // ---------------------------------------------------------------- sections
 
 function head(v) {
@@ -115,7 +176,12 @@ function portrait(v) {
         : `<button class="on-order${o.attack ? ' on-order--attack' : ''}${o.armed ? ' on-order--armed' : ''}" type="button" aria-label="${esc(o.label)}"${tip(o.tip ?? o.label)}${o.disabled ? ' aria-disabled="true"' : ''}>${ORDER_GLYPH[o.glyph]}</button>`,
     )
     .join('');
-  const tone = v.status.tone === 'trouble' ? ' on-status-strip--trouble' : v.status.tone === 'neutral' ? ' on-status-strip--neutral' : '';
+  const tone =
+    v.status.tone === 'trouble'
+      ? ' on-status-strip--trouble'
+      : v.status.tone === 'neutral'
+        ? ' on-status-strip--neutral'
+        : '';
   return `<div class="on-portrait">
     <div class="on-vehicle-shot">
       <button class="on-portrait__frame vx-shot" type="button" style="${v.shot}"${tip('Centruj widok na pojeździe')}></button>
@@ -130,7 +196,11 @@ function portrait(v) {
 
 function military(v) {
   if (!v.stance) return '';
-  const seg = [['attack', 'Atak', 'Szuka celów wokół miejsca, w którym stoi, i ściga je'], ['defence', 'Obrona', 'Pilnuje tego miejsca: ściga pobliskie cele i wraca'], ['hold', 'Pozycja', 'Nie rusza się: strzela tylko do celów w zasięgu']]
+  const seg = [
+    ['attack', 'Atak', 'Szuka celów wokół miejsca, w którym stoi, i ściga je'],
+    ['defence', 'Obrona', 'Pilnuje tego miejsca: ściga pobliskie cele i wraca'],
+    ['hold', 'Pozycja', 'Nie rusza się: strzela tylko do celów w zasięgu'],
+  ]
     .map(([k, l, t]) => `<button type="button" aria-pressed="${k === v.stance}"${tip(t)}>${l}</button>`)
     .join('');
   return `<div>${section('Wojsko')}<div class="on-ledger on-ledger--ctl"><span>Postawa</span><span class="on-segmented" role="group">${seg}</span></div></div>`;
@@ -140,11 +210,23 @@ const FIGURE = { man: GLYPH.man, woman: GLYPH.woman };
 function crew(v) {
   const c = v.crew;
   if (!c) return '';
-  const count = c.seats ? `<span class="on-section__count"${tip('Miejsca zajęte / wszystkie')}>${c.count} / ${c.capacity}</span>` : '';
+  const count = c.seats
+    ? `<span class="on-section__count"${tip('Miejsca zajęte / wszystkie')}>${c.count} / ${c.capacity}</span>`
+    : '';
   const rows = [];
   const lead = c.commander;
   if (lead === null) {
-    rows.push(ledger(c.role, link(`Przydziel ${c.roleWho}`, 'Wskaż swojego osadnika na mapie · Esc anuluje', ' on-ledger--missing'), [round(ORDER_GLYPH.addPerson, `Przydziel ${c.roleWho}`)]));
+    rows.push(
+      ledger(
+        c.role,
+        link(
+          `Przydziel ${c.roleWho}`,
+          'Wskaż swojego osadnika na mapie · Esc anuluje',
+          ' on-ledger--missing',
+        ),
+        [round(ORDER_GLYPH.addPerson, `Przydziel ${c.roleWho}`)],
+      ),
+    );
   } else if (lead) {
     const who = `${link(lead.name, `${lead.job} · kliknij: zaznacz`)}${lead.walking ? ' <small class="on-ledger--muted">idzie</small>' : ''}`;
     rows.push(ledger(c.role, who, v.foreign ? [] : [round(GLYPH.close, `Wysiądź: ${lead.name}`)]));
@@ -153,7 +235,8 @@ function crew(v) {
     const wells = c.seats
       .map((s) => {
         if (s === null) return '<span class="on-seat-well on-seat-well--empty"></span>';
-        if (s === 'add') return `<button class="on-seat-well on-seat-well--empty on-seat-well--add" type="button"${tip('Wsadź osadnika na pokład · Esc anuluje')}>${ORDER_GLYPH.addPerson}</button>`;
+        if (s === 'add')
+          return `<button class="on-seat-well on-seat-well--empty on-seat-well--add" type="button"${tip('Wsadź osadnika na pokład · Esc anuluje')}>${ORDER_GLYPH.addPerson}</button>`;
         const cls = `${s.walking ? ' on-seat-well--walking' : ''}${s.look === 'woman' ? ' on-seat-well--woman' : ''}${s.soldier ? ' on-seat-well--soldier' : ''}`;
         const note = s.walking ? ' · idzie na pokład' : '';
         return `<button class="on-seat-well${cls}" type="button"${tip(v.foreign ? `${s.job}` : `${s.name} · ${s.job}${note} · kliknij: zaznacz`)}>${FIGURE[s.look]}</button>`;
@@ -165,8 +248,12 @@ function crew(v) {
     rows.push(
       ledger(
         'Pojazd',
-        c.deck === null ? '<span class="on-ledger--muted">brak pojazdu</span>' : link(c.deck, 'Kliknij: zaznacz wóz'),
-        c.deck === null ? [round(ORDER_GLYPH.boardShip, 'Wprowadź wóz na pokład · Wskaż swój wóz na mapie · Esc anuluje')] : [round(ORDER_GLYPH.leaveShip, `Zjedź na ląd: ${c.deck}`, !v.moored)],
+        c.deck === null
+          ? '<span class="on-ledger--muted">brak pojazdu</span>'
+          : link(c.deck, 'Kliknij: zaznacz wóz'),
+        c.deck === null
+          ? [round(ORDER_GLYPH.boardShip, 'Wprowadź wóz na pokład · Wskaż swój wóz na mapie · Esc anuluje')]
+          : [round(ORDER_GLYPH.leaveShip, `Zjedź na ląd: ${c.deck}`, !v.moored)],
       ),
     );
   }
@@ -179,9 +266,13 @@ function crew(v) {
 function trade(v) {
   const t = v.trade;
   if (!t) return '';
-  const stop = (badge, name, heading) => `<li class="on-stop${heading ? ' on-stop--heading' : ''}"><span class="on-stop__badge">${badge}</span>${link(name, '', ' on-stop__name')}<span class="on-stop__heading"${tip('Kupiec jedzie teraz tutaj')}>${GLYPH.arrow}</span>${round(GLYPH.close, 'Zdejmij ten dom z trasy')}</li>`;
+  const stop = (badge, name, heading) =>
+    `<li class="on-stop${heading ? ' on-stop--heading' : ''}"><span class="on-stop__badge">${badge}</span>${link(name, '', ' on-stop__name')}<span class="on-stop__heading"${tip('Kupiec jedzie teraz tutaj')}>${GLYPH.arrow}</span>${round(GLYPH.close, 'Zdejmij ten dom z trasy')}</li>`;
   const lines = t.lines
-    .map((l) => `<li class="on-trade-line"><span class="on-good-well">${good(l.good, 18)}</span><span class="on-trade-line__name">${GOOD_NAME[l.good]}</span><b class="on-trade-line__summary">${l.summary}</b></li>`)
+    .map(
+      (l) =>
+        `<li class="on-trade-line"><span class="on-good-well">${good(l.good, 18)}</span><span class="on-trade-line__name">${GOOD_NAME[l.good]}</span><b class="on-trade-line__summary">${l.summary}</b></li>`,
+    )
     .join('');
   return `<div>${section('Handel')}
     <div class="on-trade-route"><ul class="on-stops">${stop('A', t.a, t.heading === 'A')}${stop('B', t.b, t.heading === 'B')}</ul>
@@ -210,11 +301,16 @@ function hold(v) {
       return `<li class="on-cargo-row${h.static ? ' on-cargo-row--static' : ''}${leaving ? ' on-cargo-row--leaving' : ''}" style="--fill:${fill}%"><span class="on-good-well">${good(r.good, 18)}</span><span class="on-cargo-row__name">${GOOD_NAME[r.good]}</span>${now}${counter}</li>`;
     })
     .join('');
-  const more = h.more ? `<li class="on-cargo-add"><button class="on-more" type="button"${tip('Pokaż wszystkie towary na liście')}>jeszcze ${h.more} towary</button></li>` : '';
+  const more = h.more
+    ? `<li class="on-cargo-add"><button class="on-more" type="button"${tip('Pokaż wszystkie towary na liście')}>jeszcze ${h.more} towary</button></li>`
+    : '';
   const add = h.static
     ? ''
     : `<li class="on-cargo-add">${round(GLYPH.plus, 'Dodaj towar do listy załadunku')}<button class="on-more" type="button"${tip('Wybierz towar, który ma być załadowany')}>Dodaj towar</button></li>`;
-  const empty = h.rows.length === 0 ? `<li class="on-cargo-add"><span class="on-ledger--muted">${h.static ? 'Pusty' : 'Nic nie załadowano'}</span></li>` : '';
+  const empty =
+    h.rows.length === 0
+      ? `<li class="on-cargo-add"><span class="on-ledger--muted">${h.static ? 'Pusty' : 'Nic nie załadowano'}</span></li>`
+      : '';
   const flag = h.flag ? `<span class="on-flag"${tip(h.flag.tip)}>${h.flag.text}</span>` : '';
   const control = h.static
     ? `<span class="on-section__count"${tip('Ładunek prowadzi trasa handlowa')}>według trasy</span>`
@@ -224,21 +320,35 @@ function hold(v) {
 
 function picker(h) {
   const listed = new Set(h.rows.map((r) => r.good));
-  const tabs = TAB_GLYPHS.map((g, i) => `<button class="on-tab on-tab--icon" type="button" role="tab" aria-selected="${i === 2}"${tip(TAB_LABELS[i])}>${g}<i class="on-tab__dot"></i></button>`).join('');
+  const tabs = TAB_GLYPHS.map(
+    (g, i) =>
+      `<button class="on-tab on-tab--icon" type="button" role="tab" aria-selected="${i === 2}"${tip(TAB_LABELS[i])}>${g}<i class="on-tab__dot"></i></button>`,
+  ).join('');
   const goods = Object.keys(CATEGORY).filter((g) => CATEGORY[g] === 2);
-  const cells = goods.map((g) => `<button type="button" aria-pressed="${listed.has(g)}"${tip(listed.has(g) ? `${GOOD_NAME[g]} · już na liście` : `${GOOD_NAME[g]} · dodaj do listy`)}>${good(g, 24)}</button>`).join('');
+  const cells = goods
+    .map(
+      (g) =>
+        `<button type="button" aria-pressed="${listed.has(g)}"${tip(listed.has(g) ? `${GOOD_NAME[g]} · już na liście` : `${GOOD_NAME[g]} · dodaj do listy`)}>${good(g, 24)}</button>`,
+    )
+    .join('');
   return `<div class="on-cargo-picker"><div class="on-cargo-picker__title"><span>Dodaj towar · Surowce</span><button class="on-round" type="button"${tip('Zamknij · Esc')}>${GLYPH.close}</button></div><div class="on-tabs on-tabs--icons" role="tablist">${tabs}</div><div class="on-cargo-picker__grid">${cells}</div></div>`;
 }
 
 // ---------------------------------------------------------------- sample vehicles
 
-const shot = (file, x, y, zoom = 1) => `background-image:url(/vehicle-review/${file}.png);background-size:${1280 * zoom}px ${720 * zoom}px;background-position:${-x * zoom}px ${-y * zoom}px`;
+const shot = (file, x, y, zoom = 1) =>
+  `background-image:url(/vehicle-review/${file}.png);background-size:${1280 * zoom}px ${720 * zoom}px;background-position:${-x * zoom}px ${-y * zoom}px`;
 const man = (name, job, extra = {}) => ({ name, job, look: 'man', ...extra });
 const woman = (name, job, extra = {}) => ({ name, job, look: 'woman', ...extra });
 const CART_ORDERS = (o = {}) => [
   { glyph: 'goTo', label: 'Jedź do…', tip: o.goTip ?? 'Jedź do… · lub PPM na mapie', disabled: o.noDriver },
   { glyph: 'stop', label: 'Zatrzymaj', disabled: o.noDriver },
-  { glyph: 'boardShip', label: 'Wjedź na statek…', tip: 'Wjedź na statek… · lub PPM na zacumowany statek', disabled: o.noDriver },
+  {
+    glyph: 'boardShip',
+    label: 'Wjedź na statek…',
+    tip: 'Wjedź na statek… · lub PPM na zacumowany statek',
+    disabled: o.noDriver,
+  },
 ];
 
 const STATES = {
@@ -264,7 +374,14 @@ const STATES = {
         { good: 'wood', summary: 'A ⇄ B' },
       ],
     },
-    hold: { slots: 15, static: true, rows: [{ good: 'bread', now: 6 }, { good: 'wood', now: 3 }] },
+    hold: {
+      slots: 15,
+      static: true,
+      rows: [
+        { good: 'bread', now: 6 },
+        { good: 'wood', now: 3 },
+      ],
+    },
   },
   oxcart: {
     bg: 'carts',
@@ -302,7 +419,10 @@ const STATES = {
     hold: {
       slots: 30,
       room: 20,
-      flag: { text: 'bez tragarza', tip: 'Nikt nie załaduje ani nie rozładuje wozu. Przydziel woźnicę: kupca lub tragarza.' },
+      flag: {
+        text: 'bez tragarza',
+        tip: 'Nikt nie załaduje ani nie rozładuje wozu. Przydziel woźnicę: kupca lub tragarza.',
+      },
       rows: [{ good: 'stone', now: 10, want: 10 }],
     },
   },
@@ -315,7 +435,12 @@ const STATES = {
     orders: [
       { glyph: 'goTo', label: 'Płyń do…', tip: 'Płyń do… · lub PPM na wodzie' },
       { glyph: 'stop', label: 'Zatrzymaj' },
-      { glyph: 'dock', label: 'Zacumuj przy brzegu…', tip: 'Zacumuj przy brzegu… · lub PPM na brzegu', armed: false },
+      {
+        glyph: 'dock',
+        label: 'Zacumuj przy brzegu…',
+        tip: 'Zacumuj przy brzegu… · lub PPM na brzegu',
+        armed: false,
+      },
     ],
     moored: true,
     status: { text: 'Zacumowany · przystań zachodnia', tone: 'neutral' },
@@ -409,7 +534,10 @@ const STATES = {
       { glyph: 'stop', label: 'Zatrzymaj', disabled: true, tip: 'Wóz stoi na statku' },
       { glyph: 'leaveShip', label: 'Zjedź ze statku', tip: 'Zjedź ze statku na ląd' },
     ],
-    status: { text: `Na statku · ${'<button class="on-ledger__link" type="button" data-tip="Kliknij: zaznacz statek">Mały statek</button>'}`, tone: 'neutral' },
+    status: {
+      text: `Na statku · ${'<button class="on-ledger__link" type="button" data-tip="Kliknij: zaznacz statek">Mały statek</button>'}`,
+      tone: 'neutral',
+    },
     hp: 72,
     hpMax: 1000,
     crew: { role: 'Woźnica', roleWho: 'woźnicę', commander: man('Eindride Kolbeinsson', 'Tragarz') },
@@ -424,11 +552,26 @@ const STATES = {
     orders: [
       { glyph: 'goTo', label: 'Jedź do…', tip: 'Jedź do… · lub PPM na mapie' },
       { glyph: 'stop', label: 'Zatrzymaj' },
-      { glyph: 'boardShip', label: 'Wjedź na statek…', tip: 'Wjedź na statek… · lub PPM na zacumowany statek' },
+      {
+        glyph: 'boardShip',
+        label: 'Wjedź na statek…',
+        tip: 'Wjedź na statek… · lub PPM na zacumowany statek',
+      },
       null,
       null,
-      { glyph: 'attackPeople', label: 'Atakuj ludzi…', attack: true, tip: 'Atakuj ludzi… · lub PPM na wrogu' },
-      { glyph: 'attackBuilding', label: 'Atakuj budynek…', attack: true, armed: true, tip: 'Atakuj budynek… · lub PPM na wrogim budynku' },
+      {
+        glyph: 'attackPeople',
+        label: 'Atakuj ludzi…',
+        attack: true,
+        tip: 'Atakuj ludzi… · lub PPM na wrogu',
+      },
+      {
+        glyph: 'attackBuilding',
+        label: 'Atakuj budynek…',
+        attack: true,
+        armed: true,
+        tip: 'Atakuj budynek… · lub PPM na wrogim budynku',
+      },
       { glyph: 'attackVehicle', label: 'Atakuj pojazd…', attack: true },
       { glyph: 'attackPosition', label: 'Ostrzelaj miejsce…', attack: true },
     ],
@@ -456,8 +599,12 @@ const STATES = {
       count: 12,
       capacity: 20,
       seats: [
-        ...Array(8).fill(0).map(() => man('?', 'Żołnierz', { soldier: true })),
-        ...Array(3).fill(0).map(() => man('?', 'Łucznik', { soldier: true })),
+        ...Array(8)
+          .fill(0)
+          .map(() => man('?', 'Żołnierz', { soldier: true })),
+        ...Array(3)
+          .fill(0)
+          .map(() => man('?', 'Łucznik', { soldier: true })),
         man('?', 'Tragarz'),
         ...Array(7).fill(null),
       ],
@@ -472,12 +619,11 @@ function render(key) {
   const v = STATES[key];
   stage.dataset.bg = v.bg;
   const foreign = v.foreign === true;
-  const body = foreign
-    ? [portrait(v), crew(v)]
-    : [portrait(v), military(v), crew(v), trade(v), hold(v)];
+  const body = foreign ? [portrait(v), crew(v)] : [portrait(v), military(v), crew(v), trade(v), hold(v)];
   hud.innerHTML = `${symbols}<aside class="on-window on-selection" style="width:318px;bottom:0" aria-label="${esc(v.title)}"><div class="on-selection__fill"></div>${ORNAMENTS}${head(v)}<div class="on-selection__body">${body.join('')}</div></aside>`;
   paintGoods(hud);
-  for (const b of document.querySelectorAll('[data-state]')) b.setAttribute('aria-pressed', String(b.dataset.state === key));
+  for (const b of document.querySelectorAll('[data-state]'))
+    b.setAttribute('aria-pressed', String(b.dataset.state === key));
 }
 
 let tipTimer = 0;
@@ -497,5 +643,6 @@ hud.addEventListener('pointerleave', () => {
   clearTimeout(tipTimer);
   chip.hidden = true;
 });
-for (const b of document.querySelectorAll('[data-state]')) b.addEventListener('click', () => render(b.dataset.state));
+for (const b of document.querySelectorAll('[data-state]'))
+  b.addEventListener('click', () => render(b.dataset.state));
 render(new URLSearchParams(location.search).get('state') ?? 'handcart');
