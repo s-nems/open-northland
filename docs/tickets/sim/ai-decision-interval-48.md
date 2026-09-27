@@ -7,7 +7,9 @@ every `AI_DECISION_INTERVAL_TICKS` (`ai-player/cadence.ts`, 24 ticks, an authore
 On the heavy-load reference (`docs/perf/heavy-load-magiczny-las-6ai.md`) those passes are 16 to 19% of
 all sim time from 20k ticks on, 13.7 of the 15.8 points in the workforce module, and their cost per
 pass grows with the seat's settlement. Halving the pass rate halves that share whatever the passes
-themselves cost.
+themselves cost. On `krwawa_rzeka` with 12 AI seats (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`) the
+share is 25.7% at t80k and 12.9% at t100k. Halving the rate does not bound one pathological pass; that is
+[the dead-holder ticket](ai-dead-holder-replant-retries.md).
 
 The owner has ruled the slower cadence acceptable for every module, the military one included: combat,
 flight, alarms and tower fire run per tick regardless, and the scripted map handlers keep their own

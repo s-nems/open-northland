@@ -6,7 +6,10 @@
 chosen for cost: an idle adult re-runs its drive ladder once a second, staggered by entity id. On the
 heavy-load reference (`docs/perf/heavy-load-magiczny-las-6ai.md`) the planner is a third of the tick
 with several hundred idle settlers late in the run, and the idle tail's share of it scales with that
-population divided by the period.
+population divided by the period. On `krwawa_rzeka` with 12 AI seats
+(`docs/perf/heavy-load-krwawa-rzeka-12ai.md`) on-beat idle ladder runs are only 19 to 25 a tick
+(0.35 to 0.49 ms at t80k and t100k), so this period saves about 0.2 ms a tick there; the alarm
+exception below costs more ([alarmed-idlers-run-full-ladder.md](alarmed-idlers-run-full-ladder.md)).
 
 The owner has ruled a 2 s period acceptable: an idle settler takes up new work up to 2 s of game time
 late instead of 1 s.
@@ -18,7 +21,7 @@ late instead of 1 s.
 - Behaviour change: goldens and pinned hashes over idle settlers move in the same commit, which names
   this change. The planner already visits an idler only on its beat, so the saving is the ladder runs
   themselves; [the standing-wait cadence ticket](planner-standing-waits-replan-every-tick.md) would give
-  loiterers and waiting builders this period too.
+  seated crafters, garrisons and resting or sheltering settlers this period too.
 - Count before and after through `Simulation.setInstrument`: idle ladder runs per tick.
 
 ## Verify

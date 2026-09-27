@@ -8,7 +8,9 @@ snapshot's position index over the viewport, so its collection scales with the s
 rebuild and allocated ~126 KB of sort scratch per rebuild (566 MB over 45 s of allocation sampling on the
 fortress at tick ~48k, x3, ~1500 drawn items). The scene cache (`gpu/sprite-pool/scene-cache.ts`) keys on
 snapshot identity, so the rebuild runs once per sim tick, 36 times a second at x3, even though most items
-keep their depth between ticks.
+keep their depth between ticks. In the late-game `krwawa_rzeka` session
+(`docs/perf/heavy-load-krwawa-rzeka-12ai.md`, t82k, speed 10) `collectSpriteScene` is 5% of the main
+thread, nearly all of it the viewport query `positionedWithin`.
 
 ## Scope
 

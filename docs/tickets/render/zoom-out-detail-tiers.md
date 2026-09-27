@@ -1,6 +1,6 @@
 # Drop detail as the view zooms out, behind a graphics setting
 
-**Area:** render, app · **Focus:** world-renderer, sprite-pool, settings · **Priority:** P3
+**Area:** render, app · **Focus:** world-renderer, sprite-pool, settings · **Priority:** P2
 
 `MIN_ZOOM` (`packages/app/src/view/camera/pan-zoom.ts`) is 0.35, so the widest view covers about eight
 times the world area of zoom 1 and the visible set grows with it, while every layer draws at every
@@ -8,10 +8,16 @@ scale: cast and soft shadows, settler head overlays, environment motion, bubbles
 construction signs and decor shadows. `packages/render/AGENTS.md` requires a deliberate
 level-of-detail strategy for a wider view and none exists.
 
+Measured in the late-game `krwawa_rzeka` session (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`,
+new-headless Chromium on ANGLE Metal, 1920x1080, x3), main-thread CPU only: at zoom 0.35 the main thread spends 30.7, 30.9 and 34.1 ms a frame at t81k, t92k and
+t101k with 1480 to 2190 sprites drawn, 27 to 31 FPS, against 12.5 to 17 ms at zoom 1 over a dense
+settlement.
+
 ## Scope
 
-- Measure first on a developed settlement: frame cost and drawn counts at zoom 1, 0.7, 0.5 and 0.35,
-  per layer, on a real GPU (headless Chromium timing is not evidence).
+- Measure the split per layer on a developed settlement at zoom 1, 0.7, 0.5 and 0.35 from the
+  reference's t80k checkpoint: main-thread CPU per layer, and GPU frame time in a headed browser
+  (headless timing covers the CPU only).
 - Define tiers by camera scale as named constants, each dropping what the previous did: shadows and
   soft shadows, then head overlays and environment motion, then bubbles, badges, hearts, signs and
   decor shadows, then characters as a single frame. The owner judges the look of each tier.

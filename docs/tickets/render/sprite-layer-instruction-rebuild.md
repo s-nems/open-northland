@@ -1,36 +1,35 @@
-# Cut the per-frame Pixi instruction rebuild of the moving sprite layer
+# Cut the Pixi instruction rebuild and buffer re-upload of the moving sprite layer
 
-**Area:** render · **Focus:** world-renderer · **Priority:** P3 · **Complexity:** high
+**Area:** render · **Focus:** world-renderer · **Priority:** P2 · **Complexity:** high
 
-After the frame-CPU cuts (scene-build reuse, map-object frame memo, sprite-layer render-group
-isolation), the dominant draw term was the sprite render group itself: a moving on-screen unit
-re-writes zIndex, so Pixi re-sorts and re-builds that group's instruction set (live magiczny_las probe
-at tick ~24k, 161 drawn, 2048x1048: `_buildInstructions` ~0.98 ms + `sortChildren` ~0.17 ms of the
-2.38 ms running draw EMA; both drop to 0 when paused). The cost scales with attached containers, so a
-big battle or city view multiplies it.
+While the game runs, Pixi rebuilds the sprite render group's instruction set and re-packs and
+re-uploads its vertex buffers; paused, it does neither. A moving on-screen unit rewrites `zIndex`
+(`SpritePool.reconcile`), which re-sorts and re-builds the group it sits in, and the rebuild repacks
+every quad of the group through `WorldBatcher.packQuadAttributes` (`gpu/world-batcher.ts`).
 
-**That measurement predates walkers stepping on the sim tick.** A walker now writes the same position
-and zIndex on every frame inside a tick, and Pixi early-returns on an unchanged value, so the rebuild
-should now fire on tick boundaries rather than every frame. Re-run the probe below before scheduling
-this work: the remaining cost may not justify the flattening.
+Measured in the live late-game session (`docs/perf/heavy-load-krwawa-rzeka-12ai.md`, main-thread CPU, t82k,
+1920x1080, speed 10): `collectRenderables` 17% and `_buildInstructions` 19% of the main thread, both
+gone when paused; 590 buffer uploads and 1.9 MB of `bufferSubData` per frame at x3, none paused;
+`packQuadAttributes` and its inlined callees allocate 196 MB per 10 s; about 1500 draw calls a frame
+running or paused, with `bindVertexArray` and `bindTexture` 1 to 2.6% self each.
 
 ## Scope
 
-- Fewer nodes under the sprite layer: each pooled entity is a `Container` holding its layer
-  sprites, and each tall map object attaches its own `Sprite` (plus a shadow twin). Flattening
-  either - single-sprite entities without a wrapper, or batch-friendly tall objects - shrinks the
-  per-frame walk. Measure per candidate before cutting: `window.__opennorthland.renderer` exposes
-  the layer objects at runtime, so a page-side wrapper around `_buildInstructions`/`sortChildren`
-  attributes the cost without instrumenting source.
-- A camera pan also rebuilds the sprite scene every frame (~0.55 ms at 161 drawn); reusing the
-  DrawItem array across pan frames is the remaining allocation cut if pans show up in profiles.
+- Measure first per candidate with a page-side wrapper around `_buildInstructions`, `sortChildren` and
+  the batcher (`window.__opennorthland.renderer` exposes the layers): how often the group rebuilds per
+  tick and per frame, and what share of its quads actually moved.
+- Rebuild only what moved: fewer nodes under the sprite layer (each pooled entity is a `Container`
+  holding its layer sprites, each tall map object a `Sprite` plus a shadow twin), a depth order that
+  does not dirty the whole group when one unit steps, or static and moving content in separate groups.
+- The batcher allocates nothing per quad and uploads only the ranges that changed.
+- Say why a frame needs about 1500 draw calls (texture or atlas-page breaks, blend or shader changes)
+  and cut the largest cause if it is in this layer.
 - `PalettedSprite.place` calls `vars.update()` unconditionally, so every settler mesh re-uploads its
-  placement UBO every frame even though origin, scale and canvas size now hold still between ticks.
-  An unchanged-value early return is the same measurement question as the rebuild above.
-- Painter order and fog gating must stay byte-identical; the shot comparison
-  (`npm run shot`, synthetic + `--map magiczny_las --terrain`) must stay pixel-identical.
+  placement UBO every frame; skip an unchanged one.
+- Painter order and fog gating stay identical; `?shot` captures stay pixel-identical.
 
 ## Verify
 
-- Running drawMs falls on the live probe with unchanged paused floor (~0.8 ms).
+- Running main-thread ms per frame at x3 over the reference's dense settlement falls toward the paused
+  floor; uploads and draw calls per frame in the closing report.
 - `npm test`, `npm run check`, `npm run build`, plus human review of one live session.
