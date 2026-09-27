@@ -1302,14 +1302,20 @@ describe('selection details panel model', () => {
     expect(experienceShown(model.experience)).toBe(2);
   });
 
-  it('floors the remaining-condition percent, so any wear at all reads below 100', () => {
+  it('rounds the remaining-condition percent, with any wear below 100 and a live item above 0', () => {
     expect(remainingPct(undefined)).toBe(100); // fresh (absent degreeOfUse)
     expect(remainingPct(0)).toBe(100);
     // A barely-worn item must never claim freshness: taking it off would still destroy it.
     expect(remainingPct(1)).toBe(99);
     expect(remainingPct(Math.round(ONE * 0.004))).toBe(99);
     expect(remainingPct(ONE / 2)).toBe(50);
+    expect(remainingPct(ONE - 1)).toBe(1);
     expect(remainingPct(ONE)).toBe(0);
+  });
+
+  it('reads a five-sip bottle in whole fifths, though each sip wears a hair over one', () => {
+    const sip = Math.ceil(ONE / 5);
+    expect([1, 2, 3, 4].map((sips) => remainingPct(sips * sip))).toEqual([80, 60, 40, 20]);
   });
 });
 

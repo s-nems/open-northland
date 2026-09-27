@@ -53,7 +53,12 @@ export function pctRatio(elapsed: number | undefined, duration: number | undefin
   return clampPct((elapsed / duration) * 100);
 }
 
-/** Remaining-life percent of a wearing item, floored so that any wear at all reads at most 99. */
+/** Remaining-life percent of a wearing item, rounded so a wear step a hair over a whole percent (a
+ *  five-sip bottle's `divCeil(ONE, 5)`) reads 80 rather than 79. Any wear at all reads at most 99 and a
+ *  live item at least 1. */
 export function remainingPct(used: number | undefined): number {
-  return Math.max(0, Math.min(100, Math.floor((1 - (used ?? 0) / ONE) * 100)));
+  const spent = used ?? 0;
+  if (spent <= 0) return 100;
+  if (spent >= ONE) return 0;
+  return Math.max(1, Math.min(99, Math.round((1 - spent / ONE) * 100)));
 }
