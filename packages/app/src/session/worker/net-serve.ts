@@ -8,7 +8,14 @@ import {
   RelaySocket,
 } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
-import type { FromNetWorker, RelayAnswer, RelayFacts, RelayRequest, ToNetWorker } from './net-protocol.js';
+import {
+  type FromNetWorker,
+  type RelayAnswer,
+  type RelayFacts,
+  type RelayRequest,
+  type ToNetWorker,
+  wireFailure,
+} from './net-protocol.js';
 import { type RelayedWorldBuilder, RelayedWorldPort } from './net-world-port.js';
 import type { SessionPort } from './port.js';
 import { errorFromWire, type FromWorker, wireError } from './protocol.js';
@@ -73,7 +80,7 @@ class RelayConnection<B, E> {
       onWorld: (world) => this.serve(world),
       onDropped: (tick, reason) =>
         post({ kind: 'warning', message: `dropped an envelope for tick ${tick}: ${reason}` }),
-      onError: (what, error) => post({ kind: 'failure', what, error: wireError(error) }),
+      onError: (what, error) => post({ kind: 'failure', what, error: wireFailure(error) }),
     });
     this.client = client;
     this.driver = relayedDriver(client, () => this.postFacts());
@@ -86,7 +93,7 @@ class RelayConnection<B, E> {
         try {
           client.receive(raw);
         } catch (error) {
-          post({ kind: 'failure', what: 'message', error: wireError(error) });
+          post({ kind: 'failure', what: 'message', error: wireFailure(error) });
         }
       },
       onRetry: () => {
@@ -198,7 +205,7 @@ class RelayConnection<B, E> {
       const value = await this.perform(request);
       this.post({ kind: 'answer', id, ok: true, value });
     } catch (err) {
-      this.post({ kind: 'answer', id, ok: false, error: wireError(err) });
+      this.post({ kind: 'answer', id, ok: false, error: wireFailure(err) });
     }
   }
 

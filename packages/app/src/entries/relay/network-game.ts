@@ -15,6 +15,7 @@ import { swapToEntry } from '../../launch.js';
 import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
 import type { NetworkHandover } from '../../net/handover.js';
 import { deliveredMatchEnd, relayedSessionDriver } from '../../net/net-worker-client.js';
+import { relayFailureText, relayReasonText } from '../../net/relay-reason.js';
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
@@ -111,9 +112,11 @@ export function renderNetworkGame(
     back.addEventListener('click', () => {
       void swapToEntry(menuSearch(), () => back.parentElement?.remove());
     });
-    mountMessage(formatMessage(copy.bootFailed, { reason: errorText(error) }), '', [back]);
+    mountMessage(formatMessage(copy.bootFailed, { reason: relayFailureText(error) }), '', [back]);
   }
-  const exit = roomExitObserver((reason) => fail(reason ?? copy.roomEnded));
+  const exit = roomExitObserver((reason) =>
+    fail(reason === null ? copy.roomEnded : `${copy.roomEnded}: ${relayReasonText(reason)}`),
+  );
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'failure') {
       fail(event.error);

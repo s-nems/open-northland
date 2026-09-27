@@ -1,4 +1,5 @@
 import type { GameSession } from '@open-northland/lockstep';
+import { RelayRefusal } from '@open-northland/net-client';
 import { PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type NetWorldPort, NetworkConnection } from '../../src/net/connection.js';
@@ -166,6 +167,22 @@ describe('network connection mirror', () => {
     worker.send({ kind: 'failure', what: 'open', error });
     expect(failures).toHaveLength(1);
     expect(String(failures[0])).toMatch(/no map/);
+  });
+
+  it('rebuilds a relay refusal with its coded reason', () => {
+    const { connection, worker } = connect();
+    const failures: unknown[] = [];
+    connection.subscribe((event) => {
+      if (event.kind === 'failure') failures.push(event.error);
+    });
+    worker.send({
+      kind: 'failure',
+      what: 'open',
+      error: { name: 'RelayRefusal', message: 'refused', stack: undefined, refusal: { code: 'noSnapshot' } },
+    });
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toBeInstanceOf(RelayRefusal);
+    expect(failures[0]).toMatchObject({ reason: { code: 'noSnapshot' } });
   });
 
   it('answers the digests request from the worker', async () => {

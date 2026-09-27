@@ -2,6 +2,7 @@ import { MessageChannel, type MessagePort, Worker } from 'node:worker_threads';
 import type { GameSession, SessionDriver } from '@open-northland/lockstep';
 import type {
   ClientMessage,
+  RelayReason,
   RoomSeatSetup,
   RoomSettings,
   ServerMessage,
@@ -79,7 +80,7 @@ export class WorkerHeadlessClient implements LinkedClient {
   readonly batches: RecordedBatch[] = [];
   readonly waits: Notice<'waiting'>[] = [];
   readonly desyncs: Notice<'desync'>[] = [];
-  readonly rejections: { readonly of: string; readonly reason: string }[] = [];
+  readonly rejections: { readonly of: string; readonly reason: RelayReason }[] = [];
   readonly failures: unknown[] = [];
   /** The last frame the relay sent this client. */
   lastFrameTick = 0;

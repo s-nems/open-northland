@@ -5,17 +5,18 @@ import { errorText } from '../diag/error-text.js';
 import { diag } from '../diag/index.js';
 import { workerStallReports } from '../entries/map/stall-reports.js';
 import type { MapWorkerBoot, MapWorldPlacements } from '../entries/map/world-inputs.js';
-import type {
-  FromNetWorker,
-  LinkState,
-  RelayAnswer,
-  RelayAnswerFor,
-  RelayRequest,
-  RestoredHeader,
-  ToNetWorker,
+import {
+  type FromNetWorker,
+  failureFromWire,
+  type LinkState,
+  type RelayAnswer,
+  type RelayAnswerFor,
+  type RelayRequest,
+  type RestoredHeader,
+  type ToNetWorker,
 } from '../session/worker/net-protocol.js';
 import { endpointPort, type SessionPort } from '../session/worker/port.js';
-import { errorFromWire, type WorkerSessionOptions, wireError } from '../session/worker/protocol.js';
+import { type WorkerSessionOptions, wireError } from '../session/worker/protocol.js';
 import type { WorkerSession } from '../session/worker/worker-session.js';
 import { RelayClientMirror } from './net-worker-client.js';
 import { RelayedWorlds, WorldNotAdoptedError } from './relayed-worlds.js';
@@ -199,7 +200,7 @@ export class NetworkConnection {
         this.worlds.unadopted(message.requestId);
         return;
       case 'failure': {
-        const error = errorFromWire(message.error);
+        const error = failureFromWire(message.error);
         diag.warn('net', `${message.what} failed`, { error: errorText(error) });
         if (GAME_FAILURES.includes(message.what)) this.emit({ kind: 'failure', error });
         return;
@@ -211,7 +212,7 @@ export class NetworkConnection {
         const pending = this.answers.get(message.id);
         this.answers.delete(message.id);
         if (message.ok) pending?.resolve(message.value);
-        else pending?.reject(errorFromWire(message.error));
+        else pending?.reject(failureFromWire(message.error));
         return;
       }
       default:

@@ -1,8 +1,20 @@
 import type { GameSession } from '@open-northland/lockstep';
-import type { DisputeRecord, LobbyAction, TickDigest } from '@open-northland/net-client';
-import type { ServerMessage } from '@open-northland/net-protocol';
+import {
+  type DisputeRecord,
+  type LobbyAction,
+  RelayRefusal,
+  type TickDigest,
+} from '@open-northland/net-client';
+import type { RelayReason, ServerMessage } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
-import type { FromWorker, ToWorker, WireError, WorkerSessionOptions } from './protocol.js';
+import {
+  errorFromWire,
+  type FromWorker,
+  type ToWorker,
+  type WireError,
+  type WorkerSessionOptions,
+  wireError,
+} from './protocol.js';
 
 /**
  * The messages between the runtime and the network worker, which owns one relay connection, its client
@@ -11,6 +23,21 @@ import type { FromWorker, ToWorker, WireError, WorkerSessionOptions } from './pr
  */
 
 export type LinkState = 'ok' | 'reconnecting' | 'closed';
+
+/** A client failure as it crosses; a relay refusal keeps its coded reason so the page can word it. */
+export type WireFailure = WireError & { readonly refusal?: RelayReason };
+
+export function wireFailure(error: unknown): WireFailure {
+  const wire = wireError(error);
+  return error instanceof RelayRefusal ? { ...wire, refusal: error.reason } : wire;
+}
+
+export function failureFromWire(wire: WireFailure): Error {
+  if (wire.refusal === undefined) return errorFromWire(wire);
+  const refusal = new RelayRefusal(wire.refusal);
+  if (wire.stack !== undefined) refusal.stack = wire.stack;
+  return refusal;
+}
 
 /** What only the worker's client knows, posted with every tick batch and whenever one changes. */
 export interface RelayFacts {
@@ -77,10 +104,10 @@ export type FromNetWorker<E> =
    *  on. No `ready` follows. */
   | { readonly kind: 'unadopted'; readonly requestId: number }
   /** The client could not open a world, check a result or send a command. */
-  | { readonly kind: 'failure'; readonly what: string; readonly error: WireError }
+  | { readonly kind: 'failure'; readonly what: string; readonly error: WireFailure }
   | { readonly kind: 'warning'; readonly message: string }
   | { readonly kind: 'answer'; readonly id: number; readonly ok: true; readonly value: RelayAnswer }
-  | { readonly kind: 'answer'; readonly id: number; readonly ok: false; readonly error: WireError }
+  | { readonly kind: 'answer'; readonly id: number; readonly ok: false; readonly error: WireFailure }
   /** The connection ended after a `leave`; the worker closes itself. */
   | { readonly kind: 'closed' };
 

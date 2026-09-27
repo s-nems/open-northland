@@ -317,7 +317,7 @@ describe('pacing the clock for a slow member', () => {
       speed: SETTINGS.speed * GOVERNOR_HEADROOM,
     });
     s.a.send({ kind: 'kick', player: 1 });
-    expect(s.a.last('rejected')?.reason).toMatch(/opens in/);
+    expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'voteNotOpen' });
     const before = lastTick(s.a);
     play(s, [s.a], KICK_COUNTDOWN_MS, [s.a, s.b]);
     expect(lastTick(s.a)).toBeGreaterThan(before);

@@ -1,5 +1,5 @@
 import type { GameSession } from '@open-northland/lockstep';
-import type { RoomSeatSetup, RoomSettings, RoomView } from '@open-northland/net-protocol';
+import type { RelayReason, RoomSeatSetup, RoomSettings, RoomView } from '@open-northland/net-protocol';
 import type { HeadlessClient } from '../../../../net-server/test/support/headless-client.js';
 import { NETWORK_STEP_MS, type Stage } from '../../../../net-server/test/support/session-run.js';
 import type { WorkerHeadlessClient } from './worker-headless-client.js';
@@ -87,7 +87,7 @@ interface LobbyMember {
   readonly welcomed: boolean;
   readonly room: RoomView | null;
   readonly session: GameSession | null;
-  readonly rejections: readonly { readonly of: string; readonly reason: string }[];
+  readonly rejections: readonly { readonly of: string; readonly reason: RelayReason }[];
   hello(): void;
   createRoom(settings: RoomSettings, seats: readonly RoomSeatSetup[]): void;
   joinRoom(roomId: string): void;
