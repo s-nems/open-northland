@@ -6,5 +6,7 @@
  * Approximation: the data binds children only `listen`, so the candidate list drops `Age` holders instead
  * of modelling one-sided listeners.
  */
+
+export { GossipCandidates } from './candidates.js';
 export { CHAT_COOLDOWN_TICKS, endChat, gossipSystem } from './drive.js';
-export { GossipCandidates, planGossipIdle, planGossipSeek } from './plan.js';
+export { planGossipIdle, planGossipSeek } from './plan.js';

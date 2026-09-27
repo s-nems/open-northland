@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Age,
   Chat,
   ChatCooldown,
   CurrentAtomic,
@@ -17,8 +18,9 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
+import { nodeOfPosition, nodesAdjacent, positionOfNode } from '../../src/nav/halfcell.js';
 import { CHAT_COOLDOWN_TICKS, gossipSystem, plannerSystem } from '../../src/systems/index.js';
+import { GossipCandidates } from '../../src/systems/social/index.js';
 import { testContent } from '../fixtures/content.js';
 import { idleReplanTick } from '../fixtures/idle-replan.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
@@ -225,6 +227,66 @@ describe('gossip initiation (planner rungs)', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, Chat)).toBe(false);
+  });
+});
+
+describe('gossip candidate index', () => {
+  /** The candidate entities at `e`'s node as a pass sees them. */
+  function bucketOf(candidates: GossipCandidates, sim: Simulation, e: Entity): readonly Entity[] {
+    const at = sim.world.get(e, Position);
+    const node = nodeOfPosition(at.x, at.y);
+    return candidates.ensure().at(node.hx, node.hy);
+  }
+
+  it('follows spawns, moves, job changes, ageing and deaths between passes', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 4) });
+    const mover = gossiper(sim, 1, 0, MILD);
+    const recruit = gossiper(sim, 1, 0, MILD);
+    const child = gossiper(sim, 5, 0, MILD);
+    const doomed = gossiper(sim, 5, 0, MILD);
+    new GossipCandidates(sim.world, sim.content).ensure();
+
+    sim.world.mut(mover, Position).y = fx.fromInt(2);
+    setSettlerJob(sim.world, recruit, SOLDIER_JOB);
+    sim.world.add(child, Age, { ticks: 0 });
+    sim.world.destroy(doomed);
+    const newcomer = gossiper(sim, 1, 0, MILD);
+
+    const next = new GossipCandidates(sim.world, sim.content);
+    expect(bucketOf(next, sim, mover)).toEqual([mover]);
+    expect(bucketOf(next, sim, newcomer)).toEqual([newcomer]);
+    expect(bucketOf(next, sim, child)).toEqual([]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('follows a candidate onto off-map nodes', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 4) });
+    const a = gossiper(sim, 1, 0, MILD);
+    const b = gossiper(sim, 2, 0, MILD);
+    new GossipCandidates(sim.world, sim.content).ensure();
+
+    sim.world.mut(a, Position).x = positionOfNode(-1, 5).x;
+    sim.world.mut(a, Position).y = positionOfNode(-1, 5).y;
+    sim.world.mut(b, Position).x = positionOfNode(0, -1).x;
+    sim.world.mut(b, Position).y = positionOfNode(0, -1).y;
+
+    const next = new GossipCandidates(sim.world, sim.content).ensure();
+    expect(next.at(-1, 5)).toEqual([a]);
+    expect(next.at(0, -1)).toEqual([b]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('holds the candidates as of its first search for the rest of the pass', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 4) });
+    const a = gossiper(sim, 1, 0, MILD);
+    const pass = new GossipCandidates(sim.world, sim.content);
+    const before = nodeOfPosition(sim.world.get(a, Position).x, sim.world.get(a, Position).y);
+    pass.ensure();
+
+    sim.world.mut(a, Position).y = fx.fromInt(2);
+
+    expect(pass.ensure().at(before.hx, before.hy)).toEqual([a]);
+    expect(bucketOf(new GossipCandidates(sim.world, sim.content), sim, a)).toEqual([a]);
   });
 });
 

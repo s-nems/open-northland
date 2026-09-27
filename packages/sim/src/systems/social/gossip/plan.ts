@@ -1,6 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
 import {
-  Age,
   Carrying,
   Chat,
   ChatCooldown,
@@ -11,7 +9,6 @@ import {
   Fleeing,
   inPastimeChat,
   ownerOf,
-  Person,
   PlayerOrder,
   Position,
   Resting,
@@ -26,7 +23,7 @@ import type { SystemContext } from '../../context.js';
 import { carriesNeeds, NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFighterJob } from '../../readviews/index.js';
-import { NodeBuckets } from '../../spatial/nodes.js';
+import type { GossipCandidates } from './candidates.js';
 import { endChat } from './drive.js';
 
 /** How far in half-cell nodes a lonely working settler searches. Authored: a bounded ring search. */
@@ -54,56 +51,6 @@ const CHAT_IDLE_WALK_MEAN_WAIT_TICKS = 240;
 function chatCooldownActive(world: World, tick: number, e: Entity): boolean {
   const cd = world.tryGet(e, ChatCooldown);
   return cd !== undefined && cd.until > tick;
-}
-
-/** One world's chat-candidate list and buckets, refilled by each pass's first search rather than rebuilt. */
-interface GossipScratch {
-  readonly eligible: Entity[];
-  readonly buckets: NodeBuckets;
-  /** The instance whose fill the buckets hold. */
-  filledBy: GossipCandidates | null;
-}
-
-const scratchByWorld = new WeakMap<World, GossipScratch>();
-
-/**
- * Lazily filled per-tick chat-candidate buckets: every settler statically able to gossip, which is an adult
- * (approximation: children do not chat) and employed non-fighter, the soldier and hero `forbidatomic`
- * exclusion. Filled on the first settler that looks for a partner, so a tick with nobody lonely pays
- * nothing; per-candidate dynamic state is checked at accept time instead. The buckets are shared per
- * world, so an instance refills them when another one filled them last.
- */
-export class GossipCandidates {
-  constructor(
-    private readonly world: World,
-    private readonly content: ContentSet,
-  ) {}
-
-  ensure(): NodeBuckets {
-    const { world } = this;
-    let scratch = scratchByWorld.get(world);
-    if (scratch === undefined) {
-      scratch = { eligible: [], buckets: new NodeBuckets(world, []), filledBy: null };
-      scratchByWorld.set(world, scratch);
-    }
-    if (scratch.filledBy !== this) {
-      const { eligible } = scratch;
-      const people = world.canonicalQuery(Person, Position);
-      let count = 0;
-      for (let i = 0; i < people.length; i++) {
-        const e = people[i];
-        if (e === undefined) continue; // i < length, so only for the type
-        const s = world.get(e, Settler);
-        if (s.jobType !== null && !isFighterJob(this.content, s.jobType) && !world.has(e, Age)) {
-          eligible[count++] = e;
-        }
-      }
-      eligible.length = count;
-      scratch.buckets.refill(world, eligible);
-      scratch.filledBy = this;
-    }
-    return scratch.buckets;
-  }
 }
 
 /** Whether `e` may be pulled into a chat right now: unclaimed, hands free, out of its post-chat breather,

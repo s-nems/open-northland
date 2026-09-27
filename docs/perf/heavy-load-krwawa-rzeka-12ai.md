@@ -138,7 +138,10 @@ and 145 ticks.
   the cell indexes allocate 48 KB a tick instead of 115 and the pile merge 30 KB instead of 144;
   per-owner lists dropped, since the owner check rejects about 62 foreign candidates a tick at one
   lookup each),
-  [gossip-candidates-refill-every-tick](../tickets/sim/gossip-candidates-refill-every-tick.md).
+  `gossip-candidates-refill-every-tick` (done: the candidates are kept from change feeds; a tick
+  handles about 740 `Position` writes, 490 of them candidates and 71 node changes, instead of
+  re-bucketing 1330 people; `ensure` 0.83 to 1.05% of the sim step against 1.56 to 1.76% on a loaded
+  box, and 25 KB a tick of bucket churn against the refill's 19).
 
 Below the admission bar at this scale: `nodeOfPosition`'s per-call object (125 KB a tick),
 `aiPlayerEntity`'s query per call (52 KB), `WorkshopWorkforce` rebuilt per call (74 KB),
