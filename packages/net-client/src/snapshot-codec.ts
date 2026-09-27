@@ -56,21 +56,25 @@ async function gzipText(text: string): Promise<Uint8Array<ArrayBuffer>> {
 
 async function gunzipText(bytes: Uint8Array<ArrayBuffer>, maxDecodedBytes: number): Promise<string> {
   const reader = streamOf(bytes).pipeThrough(new DecompressionStream('gzip')).getReader();
-  const decoder = new TextDecoder();
+  const decoder = new TextDecoder('utf-8', { fatal: true });
   const chunks: string[] = [];
   let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxDecodedBytes) {
-      await reader.cancel().catch(() => undefined);
-      throw new Error(`snapshot inflates past ${maxDecodedBytes} bytes`);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxDecodedBytes) throw new Error(`snapshot inflates past ${maxDecodedBytes} bytes`);
+      chunks.push(decoder.decode(value, { stream: true }));
     }
-    chunks.push(decoder.decode(value, { stream: true }));
+    chunks.push(decoder.decode());
+    return chunks.join('');
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
   }
-  chunks.push(decoder.decode());
-  return chunks.join('');
 }
 
 export function bytesToBase64(bytes: Uint8Array): string {

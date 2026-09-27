@@ -1,3 +1,4 @@
+import { gzipSync } from 'node:zlib';
 import { base64ToBytes, bytesToBase64, decodeSnapshot, encodeSnapshot } from '@open-northland/net-client';
 import { MAX_BLOB_BYTES } from '@open-northland/net-protocol';
 import { exportSaveGame, Simulation, serializeSaveGame } from '@open-northland/sim';
@@ -7,6 +8,15 @@ import { testContent } from '../../sim/test/fixtures/content.js';
 const WARM_UP_TICKS = 30;
 
 describe('snapshot codec', () => {
+  it('rejects invalid UTF-8 instead of silently changing save strings', async () => {
+    const save = exportSaveGame(new Simulation({ seed: 11, content: testContent() }), {
+      mapId: 'utf8-marker',
+    });
+    const bytes = Buffer.from(serializeSaveGame(save));
+    bytes[bytes.indexOf('utf8-marker')] = 0xff;
+    await expect(decodeSnapshot(bytesToBase64(gzipSync(bytes)))).rejects.toThrow();
+  });
+
   it('rejects compressed snapshots before inflation exceeds the decoded byte budget', async () => {
     const save = exportSaveGame(new Simulation({ seed: 11, content: testContent() }));
     const wire = await encodeSnapshot(save);
