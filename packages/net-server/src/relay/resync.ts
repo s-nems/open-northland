@@ -98,7 +98,8 @@ export class Resync {
       this.resetRequests();
     }
     const newest = this.catchUp.snapshot;
-    if (newest !== null) {
+    // An older upload cannot resolve a resync by replaying the cache it failed to replace.
+    if (newest !== null && newest.tick === tick) {
       for (const member of this.awaiting) this.serve(member, newest);
     }
     return newer;
