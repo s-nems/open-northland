@@ -14,6 +14,7 @@ import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
 import { ARMOR_MAIN_TYPE, armorByClass, isFighterJob } from '../../readviews/index.js';
 import { INTENT_WEAPON_CLASS } from '../../settlers/atomics/effects/goods/weapon-class.js';
+import { equipFetchesUnderway } from '../../settlers/drives/equip-fetches.js';
 import { freeSlotFor, type GrantSpec } from '../../settlers/planner/assistant-grants.js';
 import { approachNode, armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
 import { FetchableStock, interactionCell, storeYieldsGood } from '../../settlers/targets/index.js';
@@ -212,11 +213,9 @@ function spareStock(
       spare.set(goodType, (spare.get(goodType) ?? 0) + units);
     }
   }
-  for (const e of world.query(EquipOrder)) {
-    const order = world.get(e, EquipOrder);
-    if (order.stage !== 'acquire' || order.goodType === null || ownerOf(world, e) !== player) continue;
-    const units = spare.get(order.goodType);
-    if (units !== undefined) spare.set(order.goodType, units - 1);
+  for (const [goodType, held] of equipFetchesUnderway(world).get(player) ?? []) {
+    const units = spare.get(goodType);
+    if (units !== undefined) spare.set(goodType, units - held);
   }
   return {
     take: (goodType) => {

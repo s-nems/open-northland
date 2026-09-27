@@ -16,10 +16,12 @@ import { contentIndex } from '../../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { standsAtPost } from '../../conflict/tower-post.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE, mayChangeEquipment } from '../../readviews/index.js';
 import { equipFetchLimitFor, type NavigationLimit } from '../../signposts/index.js';
 import { anotherSystemOwns } from '../action-owner.js';
+import { equipFetchesUnderway } from '../drives/equip-fetches.js';
 import { FetchableStock, nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { wakeIdle } from './idle-replan.js';
@@ -52,15 +54,12 @@ export interface GrantSpec {
   readonly category: EquipCategory;
 }
 
-/** A player's fetch errands underway per good. Manual orders are included, so the assistant also
- *  respects a unit the player already sent someone after. */
-type FetchTally = Map<number, number>;
-
 export function dispatchAssistantGrants(pass: PlannerPass): void {
   const { world, ctx, terrain, targets } = pass;
   const grants = collectGrantSpecs(pass);
   if (grants.size === 0) return; // no player granted anything: the pass costs one empty query
-  const inFlight = collectInFlightFetches(world);
+  // Manual orders are included, so the assistant also respects a unit the player already sent someone after.
+  const inFlight = equipFetchesUnderway(world);
   const stock = FetchableStock.of(world, ctx);
 
   for (const e of dueThisBeat(world, ctx.tick)) {
@@ -80,9 +79,15 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     // A DEFEND guard stays on its anchor: the player may send one for gear, but this pass does not walk
     // one off unasked.
     if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) continue;
+    // Nor does it call a garrison down from his tower: the wall stays manned unless the player asks.
+    if (standsAtPost(world, e) !== null) continue;
     const toolless = !toolHelpsJob(ctx.content, jobType);
 
-    const tally = tallyFor(inFlight, owner);
+    let tally = inFlight.get(owner);
+    if (tally === undefined) {
+      tally = new Map();
+      inFlight.set(owner, tally);
+    }
     const eq = world.tryGet(e, Equipment);
     // Resolved once, and only when a grant has both a free slot and spare stock.
     let limit: NavigationLimit | null | undefined;
@@ -149,32 +154,6 @@ function collectGrantSpecs(pass: PlannerPass): Map<number, readonly GrantSpec[]>
     );
   }
   return byPlayer;
-}
-
-function collectInFlightFetches(world: World): Map<number, FetchTally> {
-  const byPlayer = new Map<number, FetchTally>();
-  for (const e of world.query(EquipOrder)) {
-    const order = world.get(e, EquipOrder);
-    if (order.stage !== 'acquire' || order.goodType === null) continue;
-    // A jobless settler's errand is frozen, since the ladder never plans one, so it must not hold a
-    // reservation while it cannot advance.
-    const settler = world.tryGet(e, Settler);
-    if (settler === undefined || settler.jobType === null) continue;
-    const owner = ownerOf(world, e);
-    if (owner === undefined) continue;
-    const tally = tallyFor(byPlayer, owner);
-    tally.set(order.goodType, (tally.get(order.goodType) ?? 0) + 1);
-  }
-  return byPlayer;
-}
-
-function tallyFor(byPlayer: Map<number, FetchTally>, player: number): FetchTally {
-  let tally = byPlayer.get(player);
-  if (tally === undefined) {
-    tally = new Map();
-    byPlayer.set(player, tally);
-  }
-  return tally;
 }
 
 /**

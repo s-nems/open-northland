@@ -192,8 +192,12 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   if (planTraining(world, ctx, terrain, e, settler, here, limit)) return;
   // EQUIP ERRAND: a player order outranking the DEFEND hold below, socialising and every economy rung,
   // but under the needs drives and the ownership gate. A DEFEND guard walks the errand and re-holds its
-  // unchanged anchor afterwards, since the combat walk-back pass defers to a live errand.
-  if (planEquipOrder(world, ctx, terrain, e, settler, here, limit, pass.targets)) return;
+  // unchanged anchor afterwards, since the combat walk-back pass defers to a live errand. A garrison steps
+  // down from his tower first: a route cannot start inside the building's walk-blocked body.
+  if (planEquipOrder(world, ctx, terrain, e, settler, here, limit, pass.targets)) {
+    stepOut(world, e);
+    return;
+  }
   // TOWER WATCH: above the DEFEND hold below because it is the more specific standing order - a posted
   // archer whose stance is also DEFEND must still walk to his tower rather than freeze on the spot.
   if (planTowerPost(world, ctx, terrain, e, jobType, here)) return;

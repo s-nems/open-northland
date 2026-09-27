@@ -7,6 +7,7 @@ import {
   CurrentAtomic,
   DeferredOrder,
   Engagement,
+  Equipment,
   EquipOrder,
   Garrison,
   Health,
@@ -48,6 +49,10 @@ const SOLDIER_JOB = 31;
 const TOWER_TYPE = 92;
 const HEADQUARTERS_TYPE = 1;
 const FOOD_GOOD = 3;
+/** The fixture's boots (`shoes`), wearable by every man. */
+const SHOES_GOOD = 8;
+/** Enough for a fetch across the map and the walk back up the tower. */
+const GEAR_ERRAND_TICKS = 800;
 /** The garrison bow: `maxRange 4` plain, so a target at 8 nodes is reachable only from the tower
  *  (4 + {@link TOWER_RANGE_BONUS_NODES} = 9) - the bonus, not the bow, is what lands the shot. */
 const GARRISON_BOW_RANGE = 4;
@@ -60,7 +65,13 @@ const SLEEP_ATOMIC = 8;
 /** Long enough for the walk to the door plus the step inside. */
 const WALK_TICKS = 120;
 
-function towerContent(): ContentSet {
+/** The fixture tower's body: its anchor alone by default, so a route can still leave it. */
+type TowerBody = readonly { readonly dx: number; readonly dy: number }[];
+const ANCHOR_ONLY: TowerBody = [{ dx: 0, dy: 0 }];
+/** A body walling the anchor in on every side, as the real towers' footprints do. */
+const SOLID_BODY: TowerBody = [-1, 0, 1].flatMap((dx) => [-1, 0, 1].map((dy) => ({ dx, dy })));
+
+function towerContent(body: TowerBody = ANCHOR_ONLY): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
@@ -78,7 +89,7 @@ function towerContent(): ContentSet {
         stock: [{ goodType: FOOD_GOOD, capacity: 25, initial: 0 }],
         // A door two nodes off the anchor: without it the interaction cell IS the tower tile and every
         // "he stands on the post, not the doorstep" assertion below would hold vacuously.
-        footprint: { blocked: [{ dx: 0, dy: 0 }], door: { dx: 2, dy: 0 } },
+        footprint: { blocked: [...body], door: { dx: 2, dy: 0 } },
       },
     ],
     weapons: [
@@ -100,8 +111,8 @@ function towerContent(): ContentSet {
   });
 }
 
-function simWithTower(): Simulation {
-  return new Simulation({ seed: 1, content: towerContent(), map: grassMap(24, 8) });
+function simWithTower(body?: TowerBody): Simulation {
+  return new Simulation({ seed: 1, content: towerContent(body), map: grassMap(24, 8) });
 }
 
 /** The tower's life pool - deep enough to outlast the exchanges below, so no test's tower is razed
@@ -390,6 +401,48 @@ describe('the tower garrison - where the watch sits in the drive ladder', () => 
 
     expect(sim.world.has(soldier, Garrison)).toBe(false);
     expect(sim.world.tryGet(soldier, JobAssignment)).toEqual({ workplace: tower }); // still posted
+  });
+});
+
+describe('the tower garrison - fetching gear', () => {
+  /** A pile of shoes on the far side of the map from the tower. */
+  function shoesAt(sim: Simulation, x: number, y: number): Entity {
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+    sim.world.add(e, Stockpile, { amounts: new Map([[SHOES_GOOD, 2]]) });
+    sim.world.add(e, Owner, { player: HUMAN });
+    return e;
+  }
+
+  it('steps down from the tower for a player equip order and comes back wearing the gear', () => {
+    const sim = simWithTower(SOLID_BODY);
+    const tower = towerAt(sim, 6, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    manTheTower(sim, soldier, tower);
+    expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower);
+    shoesAt(sim, 18, 3);
+
+    sim.enqueueSetup({ kind: 'equipGood', entity: soldier, group: 'boots', slot: 0, goodType: SHOES_GOOD });
+    run(sim, GEAR_ERRAND_TICKS);
+
+    expect(sim.world.tryGet(soldier, Equipment)?.boots?.goodType).toBe(SHOES_GOOD);
+    expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower); // back on the wall
+  });
+
+  it('is left on the wall by the assistant, which dresses the men below', () => {
+    const sim = simWithTower(SOLID_BODY);
+    const tower = towerAt(sim, 6, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    manTheTower(sim, soldier, tower);
+    const below = settlerAt(sim, SOLDIER_JOB, 2, 5);
+    shoesAt(sim, 18, 3);
+
+    sim.enqueueSetup({ kind: 'setAssistantGrant', player: HUMAN, goodType: SHOES_GOOD, enabled: true });
+    run(sim, GEAR_ERRAND_TICKS);
+
+    expect(sim.world.tryGet(below, Equipment)?.boots?.goodType).toBe(SHOES_GOOD);
+    expect(sim.world.tryGet(soldier, Equipment)?.boots ?? null).toBeNull();
+    expect(tileOf(sim, soldier)).toEqual(tileOf(sim, tower));
   });
 });
 
