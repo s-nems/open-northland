@@ -1695,12 +1695,16 @@ body.on-drag-scroll-cursor-hidden * {
   font-size: 10px;
 }
 /* A settler is one line: its name and its trade beside each other, with no rule to divide them and no
-   width floor to leave air after two short words. */
+   width floor to leave air after two short words. Another seat's owner wraps onto a line of its own. */
 .on-hud .on-hovercard--brief {
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: baseline;
-  gap: 5px;
+  gap: 2px 5px;
   min-width: 0;
+}
+.on-hud .on-hovercard--brief .on-hovercard__owner {
+  grid-column: 1 / -1;
 }
 .on-hud .on-hovercard--brief .on-tip__title {
   padding-bottom: 0;

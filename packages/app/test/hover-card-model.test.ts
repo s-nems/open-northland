@@ -181,17 +181,14 @@ describe('settler hover card model', () => {
     expect(model?.title).toMatch(/^\S+$/); // the given name alone, no surname
     expect(model?.profession).toBe('Cieśla');
     expect(model?.owner).toBeNull();
-    expect(model?.health).toBeNull();
   });
 
-  it("adds another seat's owner, by its authored name, and the person's health", () => {
+  it("adds another seat's owner, by its authored name", () => {
     const ctx = {
       ...hoverCtx(),
       seatNameOf: (player: number) => (player === OTHER_PLAYER ? 'Wikingowie' : undefined),
     };
-    const snapshot = snapshotOf([
-      settlerEntity(5, JOB_JOINER, { Owner: { player: OTHER_PLAYER }, Health: { hitpoints: 10, max: 40 } }),
-    ]);
+    const snapshot = snapshotOf([settlerEntity(5, JOB_JOINER, { Owner: { player: OTHER_PLAYER } })]);
 
     const model = settlerHoverModel(snapshot, 5, ctx);
 
@@ -201,7 +198,6 @@ describe('settler hover card model', () => {
       stance: 'enemy',
       colour: playerSwatchHex(OTHER_PLAYER),
     });
-    expect(model?.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '10/40' });
   });
 
   it('calls a growing child by its life stage, which is the only trade it has', () => {

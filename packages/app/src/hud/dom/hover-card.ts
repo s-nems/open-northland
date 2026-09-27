@@ -16,7 +16,7 @@ import { createMeterRow } from './parts/meter-row.js';
 
 /**
  * The parchment card the cursor opens over the world: a settler's name and trade, or a building's name,
- * construction state and store; another seat's adds its owner and health. It rides the DOM plane in
+ * construction state and store; another seat's adds its owner, and a building its health. It rides the DOM plane in
  * design px and never takes pointer events, so the press under it still reaches the map.
  */
 
@@ -171,8 +171,9 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
   const fill = (model: HoverCardModel): boolean => {
     if (model === drawn) return false;
     drawn = model;
-    // The viewer's own settler is a name and a trade, which stand side by side rather than stacked.
-    let changed = setClass(element, 'on-hovercard--brief', model.kind === 'settler' && model.owner === null);
+    // A settler is a name and a trade, which stand side by side rather than stacked; another seat's
+    // person puts its owner on a line of its own under them.
+    let changed = setClass(element, 'on-hovercard--brief', model.kind === 'settler');
     changed = write(title, model.title) || changed;
     const line = captionOf(model);
     changed = setHidden(caption, line === null) || changed;
@@ -182,7 +183,7 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
       changed = write(ownerName, ownerLine(model.owner)) || changed;
       swatch.style.background = model.owner.colour;
     }
-    const bar = model.health;
+    const bar = model.kind === 'building' ? model.health : null;
     changed = setHidden(health.element, bar === null) || changed;
     // The meter's width is fixed by its grid, so a new figure never changes the card's box.
     if (bar !== null) health.update({ label: bar.label, pct: bar.pct, tooltip: bar.hover });
