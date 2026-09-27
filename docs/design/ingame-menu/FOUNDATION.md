@@ -603,7 +603,8 @@ lifetime, dedupe and priority table.
   "Obcy: wrogi"); the original's sentence is never on the card. The thumbnail is the live settler
   painted into the card's own canvas, as on the map with its current activity, motion and pace, over
   a translucent backing that shows the map through; a vehicle is drawn the same way, fitted whole
-  into the box and never enlarged past the map's size; a finished or upgraded building is its body as
+  into the box and never enlarged past the map's size, and a subject no longer drawn (a cart driven
+  aboard) turns to the scroll; a finished or upgraded building is its body as
   the construction card pictures it, painted once; an attacked settler, building or vehicle, a
   death, a seat, a paper and a subjectless row show a flat graphic emblem from the notification
   atlas instead (sword and axe, house for a building whose type is gone, skull on a dim backing,

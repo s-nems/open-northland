@@ -74,7 +74,7 @@ interface HoverTargets {
   readonly rest: Pickable[];
 }
 
-/** "Type · Player #n · task", the vehicle window's headline and task line in one. */
+/** "Type · Player #n · task": a vehicle's hover line. */
 function vehicleLine(
   vehicleLabel: WorldHoverOptions['vehicleLabel'],
   entity: SnapshotEntity,

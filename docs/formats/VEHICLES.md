@@ -422,36 +422,39 @@ livestock-store scan (a draught tribe that is not catchable is never owned and n
 boarding node standing in for the cart's own node, and the pool handling on transform; the
 original's animal list order and transform details are not read.
 
-Open Northland (`packages/app/src/hud/details-panel/model/vehicle.ts`, `view/unit-controls/vehicle-orders.ts`):
-a vehicle is selected by a click on its drawn sprite (solid pixels), after the door markers, flags,
-settlers and buildings under the same point and before a signpost. A marquee takes every own
-vehicle whose drawn bounds it touches along with the settlers (an addition); the window opens for
-one vehicle alone, and a group, or vehicles boxed with settlers, shows only the selection count. The
-world tooltip reads "type · player · task". The window stacks Ogólne (owner, task, stance or
-carrier, capacity, hit points), the order buttons, Mieszkańcy (commander first, then passengers and
-carried vehicles, each row selecting what it names, a rider still outside marked) and Magazyn (the
-store window's category tabs over "aboard/wanted" cells with the wanted steps of 1 and 10 with Shift,
-"Wszystkie" listing the lines with anything on them). Labels are the `vehiclewindow` and
-`misclogic` strings where the original has one. Approximations: the section stack, the button grid
-and the tabbed hold are authored, not the original's window; the order set per type (every vehicle
-drives and stops; a ship moors and lands its crew; a siege engine takes the attack orders and the
-three stances; a hold-less vehicle has no unload-goods; the carrier pair follows whether the
-vehicle rides a ship) and the stance buttons' "hold" name come from the command semantics, not a
-button-by-button reading; the clear order is the "unload goods" button; the right-click defaults follow the
-original's order (enemy human, own moored ship for a land vehicle, enemy vehicle or house, else go
-to) but the attack defaults apply to an armed vehicle only, since the sim drops an unarmed one's
-attack order silently; a ship's right-click on a shore the mooring probe accepts docks there, elsewhere
-it is a goto the sim refuses, the mooring order being explicit; a group's right-click (an addition)
-sends its armed vehicles at the enemy under the cursor and drives the rest to spaced slots there,
-never boarding or docking; the ring's "Assign Vehicle" is offered
-to every grown settler, its pick lights the settler's own vehicles green where `canAttachToVehicle`
-(job list, free seat, a door on the settler's continent) takes it and red otherwise, and a red vehicle
-drops the click; the selected settlers' right-click on an own vehicle attaches each one that rule
-admits (approximation, owner's choice: the original assigns through the pick only); a commander selected while aboard (through the Mieszkańcy row) stands for its
-vehicle, so a right-click on the ground drives the vehicle whether the commander is aboard or beside
-it, and the ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message ids
-0x0f (no raise site, *open*) and 0x16 (no vehicle discovery event) have no raiser yet; 0x35 is the
-goto refusal above.
+Open Northland (`packages/app/src/hud/details-panel/model/vehicle.ts`,
+`view/unit-controls/vehicle-orders.ts`): a vehicle is selected by a click on its drawn sprite (solid
+pixels), after the door markers, flags, settlers and buildings under the same point and before a
+signpost. A marquee takes every own vehicle whose drawn bounds it touches along with the settlers
+(an addition); the panel opens for one vehicle alone, and a group, or vehicles boxed with settlers,
+shows only the selection count. The world tooltip reads "type · player · task". The selection panel
+(`packages/app/src/hud/dom/vehicle-panel/`) shows the class and type, the live portrait with its
+wear bar, the order buttons over the state line, a siege engine's stance, Załoga (the commander's
+well, a ship's seats and deck: a click selects a rider, a Ctrl click detaches it, an empty well arms
+the pick of an own settler to seat, the deck row arms the pick of an own cart to drive aboard), a
+trader's Handel, and Ładownia (one line per good aboard, asked for or booked, a counter on its
+wanted amount, a picker adding a good at zero; a hold a trader's route drives is read-only). Labels
+come from the app catalog. Approximations: the panel's layout is authored, not the original's
+window; the order set per type (every vehicle drives and stops; a ship moors; a land vehicle boards
+or leaves a ship; a siege engine takes the attack orders and the three stances) and the stances'
+"hold" name come from the command semantics, not a button-by-button reading; the clear order is
+"Rozładuj wszystko"; the wanted counter steps by 1, by 10 with Ctrl and to 0 or as much as fits with
+Shift (owner's choice; the original steps 10 with Shift), and echoes a step until the snapshot
+carries it; the right-click defaults follow the original's order (enemy human, own moored ship for a
+land vehicle, enemy vehicle or house, else go to) but the attack defaults apply to an armed vehicle
+only, since the sim drops an unarmed one's attack order silently; a ship's right-click on a shore
+the mooring probe accepts docks there, elsewhere it is a goto the sim refuses, the mooring order
+being explicit; a group's right-click (an addition) sends its armed vehicles at the enemy under the
+cursor and drives the rest to spaced slots there, never boarding or docking; the ring's "Assign
+Vehicle" is offered to every grown settler, its pick lights the settler's own vehicles green where
+`canAttachToVehicle` (job list, free seat, a door on the settler's continent) takes it and red
+otherwise, and a red vehicle drops the click; the selected settlers' right-click on an own vehicle
+attaches each one that rule admits (approximation, owner's choice: the original assigns through the
+pick only); a commander selected while aboard (through its well) stands for its vehicle, so a
+right-click on the ground drives the vehicle whether the commander is aboard or beside it, and the
+ring's "Remove Vehicle" (`misclogic` 32) is the detach order for any rider. Message ids 0x0f (no
+raise site, *open*) and 0x16 (no vehicle discovery event) have no raiser yet; 0x35 is the goto
+refusal above.
 
 ## Map scripts
 

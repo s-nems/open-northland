@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { type Entity, entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { num, ownerPlayerOf } from '../../game/snapshot.js';
-import { technologyReason, vehicleLabel } from '../../game/technology.js';
+import { technologyReason } from '../../game/technology.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import {
   mountUnitPanel,
@@ -295,7 +295,6 @@ export async function createUnitChrome(
       usesWorkFlag: (jobType) => systems.jobUsesWorkFlag({ content: opts.content }, jobType),
       livestockTribeOfGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType),
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
-      vehicleLabel: (typeId) => vehicleLabel(opts.content, typeId),
       isTraderJob: (jobType) => systems.isTraderJob(opts.content, jobType),
       ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),

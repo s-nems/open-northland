@@ -154,13 +154,16 @@ export class NoticeFigures {
     private readonly playerColourOf?: (player: number) => number,
   ) {}
 
-  /** `alpha` is the frame's inter-tick fraction, as the map draws with. */
+  /** `alpha` is the frame's inter-tick fraction, as the map draws with. `unpictured` takes a slot whose
+   *  subject the scene no longer draws (a vehicle driven aboard a ship), so its card can show a glyph
+   *  in place of an empty canvas. */
   render(
     snapshot: WorldSnapshot,
     slots: readonly NoticeFigureSlot[],
     box: NoticeFigureBox,
     tick: number,
     alpha: number,
+    unpictured: (slot: NoticeFigureSlot) => void,
   ): void {
     const items = this.items(snapshot, slots);
     const width = Math.max(1, Math.round(box.width * box.pixelScale));
@@ -172,8 +175,12 @@ export class NoticeFigures {
       const ctx = this.context(slot.canvas, width, height);
       if (ctx === null) continue;
       ctx.clearRect(0, 0, width, height);
+      if (this.sheet === undefined) continue;
       const item = items.get(slot.entity);
-      if (item === undefined || this.sheet === undefined) continue;
+      if (item === undefined) {
+        unpictured(slot);
+        continue;
+      }
       let track = this.tracks.get(slot.entity);
       if (track === undefined) {
         track = createPresentationTrack(item.kind === 'vehicle' ? 'vehicle' : 'settler');

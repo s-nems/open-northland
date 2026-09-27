@@ -75,6 +75,36 @@ describe('PortraitInsetLayer', () => {
     expect(layer.subjects()).toEqual({ ref: SETTLER, house: null, others: [CART] });
   });
 
+  it("holds a vehicle's zoom while its drawn box shrinks between frames, and forgets it once unframed", () => {
+    // A stand-in pool: the vehicle's box narrows as a turning ship or a walking driver changes frame.
+    const anchor = { x: 100, y: 200 };
+    let box = { minX: 60, minY: 150, maxX: 140, maxY: 210 };
+    const scales: number[] = [];
+    const pool = {
+      boundsOf: () => box,
+      anchorOf: () => anchor,
+      portraitPass: (_subjects: readonly number[], inset: { camera: Camera }) => {
+        scales.push(inset.camera.scale ?? 0);
+      },
+    } as unknown as SpritePool;
+    const layer = new PortraitInsetLayer(
+      { screen: { width: 800, height: 600 } } as Application,
+      new Container(),
+      pool,
+    );
+    const frames: PortraitInsetFrame[] = [{ rect: BOX, entityRef: CART, kind: 'vehicle' }];
+    layer.set(frames);
+    layer.draw(CAMERA);
+    box = { minX: 90, minY: 150, maxX: 110, maxY: 210 };
+    layer.draw(CAMERA);
+    expect(scales[1]).toBe(scales[0]);
+    // Unframed for a frame, the vehicle starts afresh and fits its narrower box closer.
+    layer.set([]);
+    layer.set(frames);
+    layer.draw(CAMERA);
+    expect(scales[2]).toBeGreaterThan(scales[0] ?? 0);
+  });
+
   it('floors a box it cannot frame instead of leaving the map under it exposed', () => {
     const { passes, layer, terrain } = harness();
     layer.set([{ rect: BOX, entityRef: SETTLER, kind: 'settler' }]);

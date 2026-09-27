@@ -2,13 +2,14 @@ import type { UiCue } from '@open-northland/audio';
 import type { ContentSet } from '@open-northland/data';
 import { type Entity, entityById, type PlayerCommand, type WorldSnapshot } from '@open-northland/sim';
 import { isVehicle, num, ownerPlayerOf } from '../../game/snapshot.js';
-import { pickableSeat, type ViewerSeat } from '../../game/viewer-seat.js';
+import type { ViewerSeat } from '../../game/viewer-seat.js';
 import {
   type VehicleOrder,
   type VehicleStance,
   vehicleClassOf,
 } from '../../hud/details-panel/model/index.js';
 import type { VehiclePanelActions, VehiclePick } from '../../hud/dom/vehicle-panel/actions.js';
+import { ownedOrder } from './owned-order.js';
 import type { PickMode } from './pick-mode.js';
 
 /** The pick an order button arms, or null for an order that issues at once. */
@@ -97,28 +98,9 @@ export interface VehiclePanelHost {
   readonly cue: (cue: UiCue) => void;
 }
 
-/**
- * The vehicle panel's presses as orders. Every order first checks that the viewer's seat owns the
- * vehicle or rider (the whole-map view owns everything): a refused press fails with the GUI click and
- * sends nothing.
- */
+/** The vehicle panel's presses as orders, each gated on the seat owning the vehicle or rider. */
 export function vehiclePanelActions(host: VehiclePanelHost): VehiclePanelActions {
-  const owns = (id: number): boolean => {
-    const ent = entityById(host.snapshot(), id);
-    if (ent === undefined) return false;
-    const seat = pickableSeat(host.viewer);
-    return seat === null || ownerPlayerOf(ent) === seat;
-  };
-  const order =
-    <A extends unknown[]>(run: (id: number, ...args: A) => void) =>
-    (id: number, ...args: A): void => {
-      if (!owns(id)) {
-        host.cue('fail');
-        return;
-      }
-      host.cue('confirm');
-      run(id, ...args);
-    };
+  const order = ownedOrder(host.snapshot, host.viewer, host.cue);
   const send = host.enqueue;
   return {
     order: order((id, next: VehicleOrder) => {

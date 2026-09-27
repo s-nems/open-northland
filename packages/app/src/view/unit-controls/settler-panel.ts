@@ -1,12 +1,11 @@
 import type { UiCue } from '@open-northland/audio';
-import { type Entity, entityById, type NeedKind } from '@open-northland/sim';
-import { ownerPlayerOf } from '../../game/snapshot.js';
-import { pickableSeat } from '../../game/viewer-seat.js';
+import type { Entity, NeedKind } from '@open-northland/sim';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import type { OrdersPress } from '../../hud/dom/selection-panel.js';
 import type { SettlerPanelActions, TradeMarkChange } from '../../hud/dom/settler-panel/actions.js';
 import { NEED_ORDER } from '../../hud/dom/settler-panel/needs.js';
 import type { EquipPickController } from './equip-picker.js';
+import { ownedOrder } from './owned-order.js';
 import type { UnitControlsOptions } from './types.js';
 
 /** The commands of the settler panel's sim contract, which `chrome.ts` builds. */
@@ -39,23 +38,7 @@ export function settlerPanelActions(
   contract: SettlerContractCommands,
   equipPicker: EquipPickController | null,
 ): SettlerPanelActions {
-  const owns = (id: number): boolean => {
-    const ent = entityById(opts.snapshot(), id);
-    if (ent === undefined) return false;
-    const seat = pickableSeat(opts.viewer);
-    return seat === null || ownerPlayerOf(ent) === seat;
-  };
-  /** A press that orders the settler: confirmed and run when the seat owns it, else refused. */
-  const order =
-    <A extends unknown[]>(run: (id: number, ...args: A) => void) =>
-    (id: number, ...args: A): void => {
-      if (!owns(id)) {
-        host.cue('fail');
-        return;
-      }
-      host.cue('confirm');
-      run(id, ...args);
-    };
+  const order = ownedOrder(opts.snapshot, opts.viewer, host.cue);
   /** A press that only moves the view or the selection. */
   const view =
     <A extends unknown[]>(run: (...args: A) => void) =>

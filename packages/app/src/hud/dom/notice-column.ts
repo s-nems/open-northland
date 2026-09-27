@@ -79,6 +79,8 @@ export interface NoticeColumn {
   render(cards: readonly NoticeCardView[], tally: readonly number[], level: MessagePriorityLevel): void;
   /** The settler and vehicle figures to paint this frame: only the cards on screen cost a draw. */
   figures(): NoticeFigureSlots;
+  /** Swap a figure canvas whose subject is no longer drawn for the scroll glyph. */
+  unpicture(canvas: HTMLCanvasElement): void;
   dispose(): void;
 }
 
@@ -399,6 +401,9 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
         slots.push({ entity: Number(li.dataset.entity), canvas, visible: li.offsetHeight - covered });
       });
       return { slots, box };
+    },
+    unpicture: (canvas): void => {
+      canvas.outerHTML = glyphMarkup('scroll', false);
     },
     dispose: (): void => {
       resize.disconnect();

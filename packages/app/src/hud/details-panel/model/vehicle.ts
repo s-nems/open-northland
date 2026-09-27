@@ -14,11 +14,11 @@ import {
 } from '../../../game/snapshot.js';
 import { vehicleLabel } from '../../../game/technology.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
-import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
+import { messages } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import {
   type Comp,
-  contentTribeName,
+  foreignOwnerLine,
   goodDef,
   goodLabel,
   isCarrierJob,
@@ -467,16 +467,6 @@ function vehicleTrade(
   return null;
 }
 
-function metaLine(ctx: UnitPanelModelContext, ent: SnapshotEntity, tribe: number | undefined): string {
-  const copy = messages().hud;
-  const owner = ownerPlayerOf(ent);
-  const values = { player: owner ?? '-', tribe: tribeName(tribe, contentTribeName(ctx, tribe)) };
-  const stance = owner === undefined ? undefined : ctx.diplomacyStance?.(owner);
-  return stance === undefined
-    ? formatMessage(copy.settlerPanel.foreignOwnerPlain, values)
-    : formatMessage(copy.settlerPanel.foreignOwner, { ...values, stance: copy.diplomacyStances[stance] });
-}
-
 export function vehiclePanelModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -525,7 +515,7 @@ export function vehiclePanelModel(
     typeId: typeId ?? -1,
     vehicleClass,
     title: vehicleTitle(ctx, typeId),
-    meta: foreign ? metaLine(ctx, ent, num(v.tribe)) : null,
+    meta: foreign ? foreignOwnerLine(ctx, ownerPlayerOf(ent), num(v.tribe)) : null,
     foreign,
     status: vehicleStatus({
       vehicleClass,

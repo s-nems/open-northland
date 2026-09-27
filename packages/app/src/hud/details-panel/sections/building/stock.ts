@@ -80,7 +80,7 @@ const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
  * Justifying the tabs across the body width and drawing the glyphs through `bg_invert` are legibility
  * approximations, not read from the original.
  */
-export function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
+function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
   rects.forEach((r, i) => {
     chrome.tabButton(r, i === activeTab);
     const glyph = STOCK_TAB_GLYPH[i];

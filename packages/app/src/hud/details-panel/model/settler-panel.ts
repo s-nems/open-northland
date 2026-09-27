@@ -12,11 +12,11 @@ import {
   stanceModeOf,
 } from '../../../game/snapshot.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
-import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
+import { formatMessage, messages } from '../../../i18n/index.js';
 import type { PanelBar } from './bars.js';
 import {
   type Comp,
-  contentTribeName,
+  foreignOwnerLine,
   goodDef,
   goodLabel,
   jobDisplayName,
@@ -114,13 +114,8 @@ function metaLine(
 ): string | null {
   const copy = messages().hud;
   if (foreign) {
-    const owner = ownerPlayerOf(ent);
     const tribeId = num((ent.components.Settler as { tribe?: unknown } | undefined)?.tribe);
-    const values = { player: owner ?? '-', tribe: tribeName(tribeId, contentTribeName(ctx, tribeId)) };
-    const stance = owner === undefined ? undefined : ctx.diplomacyStance?.(owner);
-    return stance === undefined
-      ? formatMessage(copy.settlerPanel.foreignOwnerPlain, values)
-      : formatMessage(copy.settlerPanel.foreignOwner, { ...values, stance: copy.diplomacyStances[stance] });
+    return foreignOwnerLine(ctx, ownerPlayerOf(ent), tribeId);
   }
   if (role !== 'child') return null;
   // `Age` is the sim's marker for a settler still growing up, dropped at adulthood.

@@ -21,7 +21,7 @@ import { diplomacyStanceText } from '../diplomacy/model.js';
 import { noticeThumb, orderNotes } from './cards.js';
 import type { MessageFeedState } from './feed.js';
 import type { FigureFrames } from './figure-frames.js';
-import { NoticeFigures } from './figures.js';
+import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource, SNAPSHOT_SWEEP_INTERVAL_TICKS } from './from-snapshot.js';
@@ -227,6 +227,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     },
   });
   const figures = new NoticeFigures(deps.sheet, deps.figureFrames, deps.playerColourOf);
+  const unpictured = (slot: NoticeFigureSlot): void => column.unpicture(slot.canvas);
   let previous: WorldSnapshot | null = null;
   let renderedVersion = -1;
   // The sources start over with the seat, since the idle streaks and the met seats they remember are
@@ -286,7 +287,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
       // The figures are painted into their cards every frame, so they move as the map's settlers do and
       // stay part of the card. A paused sim holds the tick, so they hold their frame with it.
       const { slots, box } = column.figures();
-      figures.render(snapshot, slots, box, snapshot.tick, alpha);
+      figures.render(snapshot, slots, box, snapshot.tick, alpha, unpictured);
     },
     state: () => feeds.current.state(),
     restore: (state): void => {

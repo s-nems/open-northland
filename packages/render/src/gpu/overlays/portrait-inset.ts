@@ -56,6 +56,32 @@ const SETTLER_VIEW_HEIGHT = 58;
 /** Where the feet anchor sits down the settler portrait, as a fraction of its height. */
 const SETTLER_FEET_FRACTION = 0.84;
 
+/** A vehicle's held box around its anchor (world px), grown in place. */
+interface HeldBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/** Centre a world box in a `w` x `h` portrait at {@link PORTRAIT_FILL}, within the zoom limits. */
+function fitFraming(
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  w: number,
+  h: number,
+): { cx: number; cy: number; scale: number } {
+  const boundsW = Math.max(1, maxX - minX);
+  const boundsH = Math.max(1, maxY - minY);
+  const scale = Math.max(
+    PORTRAIT_MIN_SCALE,
+    Math.min(PORTRAIT_MAX_SCALE, Math.min(w / boundsW, h / boundsH) * PORTRAIT_FILL),
+  );
+  return { cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, scale };
+}
+
 /**
  * Renders the portrait cutout: a second, viewport-framed screen render of the shared `worldLayer`,
  * re-aimed at the selected entity and painted into the panel's preview box. It must run as the frame's
@@ -70,6 +96,9 @@ export class PortraitInsetLayer {
   private subjectsNow: PortraitSubjects = { ref: null, house: null, others: [] };
   /** The ground-coloured floor quad, parented into the world only for a pass. */
   private readonly backdrop = new Sprite(Texture.WHITE);
+  /** Each framed vehicle's drawn box around its feet anchor over every frame it has drawn, so its cutout
+   *  holds one zoom while it turns or its driver walks. */
+  private readonly heldVehicleBounds = new Map<number, HeldBounds>();
 
   constructor(
     private readonly app: Application,
@@ -91,6 +120,10 @@ export class PortraitInsetLayer {
       if (f.aboard !== undefined) others.push(f.aboard);
     }
     this.subjectsNow = { ref, house, others };
+    for (const held of this.heldVehicleBounds.keys()) {
+      if (!frames.some((f) => f.kind === 'vehicle' && (f.entityRef === held || f.aboard === held)))
+        this.heldVehicleBounds.delete(held);
+    }
   }
 
   /** The entities the insets are centred on, so the sprite pool can force-draw them through the cull:
@@ -123,9 +156,38 @@ export class PortraitInsetLayer {
         scale: h / SETTLER_VIEW_HEIGHT,
       };
     }
-    const own = this.boundsFraming(f.entityRef, w, h);
-    if (own !== null || f.kind !== 'vehicle' || f.aboard === undefined) return own;
-    return this.boundsFraming(f.aboard, w, h);
+    if (f.kind !== 'vehicle') return this.boundsFraming(f.entityRef, w, h);
+    const own = this.heldFraming(f.entityRef, w, h);
+    return own !== null || f.aboard === undefined ? own : this.heldFraming(f.aboard, w, h);
+  }
+
+  /** A vehicle's framing off the union of every box it has drawn around its anchor while framed. */
+  private heldFraming(ref: number, w: number, h: number): { cx: number; cy: number; scale: number } | null {
+    const bounds = this.pool.boundsOf(ref);
+    const anchor = this.pool.anchorOf(ref);
+    if (bounds === undefined || anchor === undefined) return null;
+    const minX = bounds.minX - anchor.x;
+    const minY = bounds.minY - anchor.y;
+    const maxX = bounds.maxX - anchor.x;
+    const maxY = bounds.maxY - anchor.y;
+    let held = this.heldVehicleBounds.get(ref);
+    if (held === undefined) {
+      held = { minX, minY, maxX, maxY };
+      this.heldVehicleBounds.set(ref, held);
+    } else {
+      held.minX = Math.min(held.minX, minX);
+      held.minY = Math.min(held.minY, minY);
+      held.maxX = Math.max(held.maxX, maxX);
+      held.maxY = Math.max(held.maxY, maxY);
+    }
+    return fitFraming(
+      anchor.x + held.minX,
+      anchor.y + held.minY,
+      anchor.x + held.maxX,
+      anchor.y + held.maxY,
+      w,
+      h,
+    );
   }
 
   private aboardAnchor(f: PortraitInsetFrame): { x: number; y: number } | undefined {
@@ -135,15 +197,7 @@ export class PortraitInsetLayer {
   private boundsFraming(ref: number, w: number, h: number): { cx: number; cy: number; scale: number } | null {
     const bounds = this.pool.boundsOf(ref);
     if (bounds === undefined) return null;
-    const cx = (bounds.minX + bounds.maxX) / 2;
-    const cy = (bounds.minY + bounds.maxY) / 2;
-    const boundsW = Math.max(1, bounds.maxX - bounds.minX);
-    const boundsH = Math.max(1, bounds.maxY - bounds.minY);
-    const scale = Math.max(
-      PORTRAIT_MIN_SCALE,
-      Math.min(PORTRAIT_MAX_SCALE, Math.min(w / boundsW, h / boundsH) * PORTRAIT_FILL),
-    );
-    return { cx, cy, scale };
+    return fitFraming(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY, w, h);
   }
 
   /**

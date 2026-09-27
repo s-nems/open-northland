@@ -12,7 +12,7 @@ import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
-import { currentLocale, messages, professionLabel } from '../../../i18n/index.js';
+import { currentLocale, formatMessage, messages, professionLabel, tribeName } from '../../../i18n/index.js';
 
 export type BuildingDef = ContentSet['buildings'][number];
 export type GoodDef = ContentSet['goods'][number];
@@ -56,8 +56,6 @@ export interface UnitPanelModelContext {
   /** The sim's battle-alert read seam (`Simulation.standsTo`): whether a unit is holding its ground
    *  because fighting is going on around it. Absent leaves such a unit reading as idle. */
   readonly standsTo?: ((entity: number) => boolean) | undefined;
-  /** A vehicle type's name, for the cart a trader commands; absent names it the generic cart. */
-  readonly vehicleLabel?: ((typeId: number) => string | undefined) | undefined;
   /** The sim's land-trader test (`isTraderJob`); absent reads no trade as the trader. */
   readonly isTraderJob?: ((jobType: number) => boolean) | undefined;
   /** The sim's trader read seam (`Simulation.traderView`); absent hides the Handel section. */
@@ -106,6 +104,20 @@ export function contentTribeName(
   if (tribe === undefined) return undefined;
   const row = ctx.tribes.find((t) => t.typeId === tribe);
   return row?.name ?? row?.id;
+}
+
+/** Another seat's unit's owner line: the player, the tribe, and the stance toward it when known. */
+export function foreignOwnerLine(
+  ctx: Pick<UnitPanelModelContext, 'tribes' | 'diplomacyStance'>,
+  owner: number | undefined,
+  tribe: number | undefined,
+): string {
+  const copy = messages().hud;
+  const values = { player: owner ?? '-', tribe: tribeName(tribe, contentTribeName(ctx, tribe)) };
+  const stance = owner === undefined ? undefined : ctx.diplomacyStance?.(owner);
+  return stance === undefined
+    ? formatMessage(copy.settlerPanel.foreignOwnerPlain, values)
+    : formatMessage(copy.settlerPanel.foreignOwner, { ...values, stance: copy.diplomacyStances[stance] });
 }
 
 export function buildingDef(
