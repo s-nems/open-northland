@@ -18,6 +18,7 @@
 
 body { margin: 0; background: #0b0f0d; color: #e8dcc0; font: 14px/1.4 "Alegreya Sans", system-ui, sans-serif; }
 .review { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 14px; background: #151c19; border-bottom: 1px solid #3a3226; }
+.review .row[hidden] { display: none; }
 .review .row { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; flex-basis: 100%; }
 .review b { color: #c9a262; font-weight: 700; margin-right: 4px; min-width: 76px; }
 .review button { font: inherit; font-size: 13px; padding: 3px 9px; border: 1px solid #4d3b28; border-radius: 3px; background: #22201a; color: #e8dcc0; cursor: pointer; }
@@ -34,6 +35,7 @@ body { margin: 0; background: #0b0f0d; color: #e8dcc0; font: 14px/1.4 "Alegreya 
 <nav class="review" aria-label="Przegląd">
   <div class="row" data-proposals><b>Propozycja</b></div>
   <div class="row" data-views><b>Widok</b></div>
+  <div class="row" data-option hidden><b></b></div>
   <div class="row" data-maps><b>Misja</b></div>
   <div class="row" data-pages><b>Strona</b></div>
   <p class="blurb" data-blurb></p>

@@ -54,13 +54,25 @@
 .mp-b .bk-cover {
   position: absolute;
   inset: 0;
-  border-radius: 6px;
-  background: url(/mission-review/art/b-book-spread.jpg) 0 0 / 100% 100% no-repeat, #2a1d13;
-  box-shadow: inset 0 0 0 1px #0d0906, 0 0 0 1px #0d0906;
+  border: 7px solid var(--wood);
+  border-image: linear-gradient(160deg, #6f5539, #3a2c1e 28%, #5a4631 52%, #2e2418 78%, #6f5539) 7;
+  background: url(/mission-review/art/b-book-spread.jpg) -7px -7px / calc(100% + 14px) calc(100% + 14px) no-repeat, #2a1d13;
+  box-shadow:
+    0 0 0 1px #0d100d,
+    inset 0 0 0 1px var(--bronze),
+    inset 0 0 0 3px #0d0906aa;
 }
 .mp-b .bk-cover .on-window__knot {
-  top: -9px;
+  top: -20px;
 }
+.mp-b .bk-cover .on-window__corner--tl,
+.mp-b .bk-cover .on-window__corner--bl { left: -16px; }
+.mp-b .bk-cover .on-window__corner--tr,
+.mp-b .bk-cover .on-window__corner--br { right: -16px; }
+.mp-b .bk-cover .on-window__corner--tl,
+.mp-b .bk-cover .on-window__corner--tr { top: -16px; }
+.mp-b .bk-cover .on-window__corner--bl,
+.mp-b .bk-cover .on-window__corner--br { bottom: -16px; }
 .mp-b .bk-close {
   position: absolute;
   right: -17px;
@@ -75,67 +87,52 @@
   stroke-width: 2.2;
 }
 
-/* ---------- ribbons: the tabs on the fore-edge ---------- */
-.mp-b .bk-ribbons {
+/* ---------- tabs on the fore-edge: the UI's wood tab, parchment when selected ---------- */
+.mp-b .bk-tabs {
   position: absolute;
-  left: calc(100% - 2px);
+  left: calc(100% - 1px);
   top: 84px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
-.mp-b .bk-ribbon {
-  --cloth: #7a2e25;
-  position: relative;
-  width: 40px;
-  height: 118px;
-  margin-left: -4px;
+.mp-b .bk-tab {
+  width: 38px;
+  height: 116px;
   padding: 0;
-  border: 1px solid #0006;
+  border: 1px solid var(--wood-lo);
   border-left: 0;
-  border-radius: 0 7px 7px 0;
-  background:
-    repeating-linear-gradient(0deg, #ffffff09 0 1px, transparent 1px 3px),
-    linear-gradient(90deg, color-mix(in srgb, var(--cloth) 55%, #000) 0, var(--cloth) 30%, color-mix(in srgb, var(--cloth) 80%, #fff2) 70%, color-mix(in srgb, var(--cloth) 70%, #000));
-  color: #f3e6c8;
-  box-shadow: 2px 3px 5px #0009, inset -1px 0 #fff2;
-  transition: width 0.12s, filter 0.12s;
+  border-radius: 0 6px 6px 0;
+  background: linear-gradient(90deg, var(--wood), var(--wood-hi));
+  color: #e9dcbd;
+  box-shadow: 2px 2px 5px #0009, inset -1px 0 #fff2;
+  transition: width 0.12s;
 }
-.mp-b .bk-ribbon span {
+.mp-b .bk-tab > span {
   display: block;
   writing-mode: vertical-rl;
   margin: 0 auto;
-  font: 700 13px var(--font-body);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 2px #000a;
+  font: 600 13px var(--font-body);
+  letter-spacing: 0.06em;
 }
-.mp-b .bk-ribbon small {
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
+.mp-b .bk-tab .on-tab__count {
+  margin: 5px 0 0;
 }
-.mp-b .bk-ribbon::after {
-  content: "";
-  position: absolute;
-  right: 6px;
-  top: 8px;
-  bottom: 8px;
-  border-right: 1px dashed #f3e6c855;
+.mp-b .bk-tab:hover {
+  width: 41px;
+  background: linear-gradient(90deg, var(--wood-hi), #8a6d4a);
+  color: #fff4d8;
 }
-.mp-b .bk-ribbon--goals { --cloth: #4b6537; }
-.mp-b .bk-ribbon--history { --cloth: #34495a; }
-.mp-b .bk-ribbon:hover {
+.mp-b .bk-tab[aria-selected="true"] {
   width: 44px;
-  filter: brightness(1.12);
+  margin-left: -3px;
+  background: linear-gradient(90deg, var(--parchment), var(--parchment-hi));
+  color: var(--ink);
+  border-color: #8d7549;
+  box-shadow: 2px 2px 5px #0009, inset -2px 0 #fff8;
 }
-.mp-b .bk-ribbon[aria-selected="true"] {
-  width: 50px;
-  filter: brightness(1.15) saturate(1.1);
-  box-shadow: 3px 3px 7px #000b, inset -2px 0 var(--bronze), inset -1px 0 #fff4;
-}
-.mp-b .bk-ribbon[aria-selected="true"] span {
-  color: #fff4dc;
+.mp-b .bk-tab[aria-selected="true"] > span {
+  font-weight: 700;
 }
 
 /* ---------- the spread: page rectangles measured on the painted vellum ---------- */
@@ -278,7 +275,78 @@
   visibility: hidden;
 }
 
-/* ---------- left page: chapter plates ---------- */
+/* ---------- pictures and world views inside the text ---------- */
+.mp-b .bk-fig {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 0.6em;
+  padding: 6px 0;
+  break-inside: avoid;
+}
+.mp-b .bk-fig .bk-plate__frame {
+  min-width: 0;
+  min-height: 0;
+  padding: 6px;
+}
+.mp-b .bk-fig--portrait {
+  margin: 0.2em 0 0.6em;
+}
+.mp-b .bk-views {
+  display: grid;
+  gap: 8px;
+  margin: 0.3em 0 0.9em;
+  break-inside: avoid;
+}
+.mp-b .bk-views--2 {
+  grid-template-columns: 1fr 1fr;
+}
+.mp-b .bk-view {
+  position: relative;
+  display: block;
+  padding: 3px;
+  border: 1px solid #8d7549;
+  background: linear-gradient(#f6edd4, #e6d6b0);
+  box-shadow: 0 2px 5px #5c4c3755;
+  cursor: zoom-in;
+}
+.mp-b .bk-view .bk-plate__view {
+  border-color: #5c4c37;
+}
+.mp-b .bk-view:hover .bk-plate__view {
+  filter: none;
+}
+.mp-b .bk-view__go {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 6px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 12px;
+  background: #1a1510e0;
+  color: var(--bronze-hi);
+  font: 700 12px var(--font-body);
+}
+.mp-b .bk-views--2 .bk-view__go {
+  font-size: 0;
+  gap: 0;
+  padding: 4px;
+}
+.mp-b .bk-view__go .on-glyph {
+  width: 15px;
+  height: 15px;
+}
+.mp-b .bk-view:hover .bk-view__go {
+  background: var(--wood);
+  color: #fff4dc;
+}
+.mp-b .bk-spread--inline .bk-kicker + .bk-when {
+  margin-bottom: 8px;
+}
+
+/* ---------- left page: chapter plates, when pictures are gathered there ---------- */
 .mp-b .bk-left-front {
   display: flex;
   flex-direction: column;
@@ -313,54 +381,10 @@
   font-size: 12.5px;
   color: var(--ink-muted);
 }
-.mp-b .bk-voice {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0 0 12px;
-  border-bottom: 1px solid #8d754955;
-}
-.mp-b .bk-voice__play {
-  width: 36px;
-  height: 36px;
-}
 .mp-b .bk-ico {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-}
-.mp-b .bk-voice__bar {
-  position: relative;
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: #8d754955;
-}
-.mp-b .bk-voice__bar i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 2px;
-  background: var(--bk-red);
-}
-.mp-b .bk-voice__time {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-muted);
-}
-.mp-b .bk-voice__again {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid #8d754988;
-  border-radius: 50%;
-  background: #fff3;
-  color: var(--ink-muted);
-}
-.mp-b .bk-voice__again:hover {
-  background: #fff6;
-  color: var(--ink);
 }
 .mp-b .bk-art {
   flex: 1;
@@ -656,54 +680,6 @@
 }
 
 /* ---------- goals ---------- */
-.mp-b .bk-progress {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 2px 0 6px;
-}
-.mp-b .bk-progress__num {
-  font: 700 38px / 1 var(--font-title);
-  color: #3a2a18;
-}
-.mp-b .bk-progress__num small {
-  font-size: 22px;
-  color: var(--ink-muted);
-}
-.mp-b .bk-progress__label {
-  font-size: 14px;
-  color: var(--ink-muted);
-}
-.mp-b .bk-tallies {
-  display: flex;
-  gap: 6px;
-  margin: 0 0 16px;
-}
-.mp-b .bk-tally {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1.5px dashed #8d7549;
-  color: #f3eadb;
-}
-.mp-b .bk-tally .bk-ico {
-  width: 13px;
-  height: 13px;
-}
-.mp-b .bk-tally--done {
-  border: 0;
-  background: radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%), var(--wax-ok);
-  box-shadow: 0 0 0 1.5px #2e3b24, inset 0 -2px 3px #0005;
-}
-.mp-b .bk-tally--open {
-  border-style: solid;
-  border-color: var(--bk-red);
-}
-.mp-b .bk-tally--idle {
-  opacity: 0.5;
-}
 .mp-b .bk-list-head {
   display: flex;
   align-items: center;
@@ -748,10 +724,6 @@
   background: #fff4;
   transform: rotate(-2deg);
 }
-.mp-b .bk-goal__box--idle {
-  border-style: dashed;
-  border-color: var(--ink-muted);
-}
 .mp-b .bk-goal__seal {
   display: grid;
   place-items: center;
@@ -772,10 +744,6 @@
   text-decoration-color: #5c4c3799;
   text-decoration-thickness: 1px;
 }
-.mp-b .bk-goal--idle .bk-goal__text {
-  color: #7d6c52;
-  font-style: italic;
-}
 .mp-b .bk-goal__main {
   display: inline-block;
   margin-left: 8px;
@@ -789,7 +757,6 @@
   font-style: normal;
   vertical-align: 2px;
 }
-.mp-b .bk-note,
 .mp-b .bk-empty {
   margin: 0;
   font-style: italic;
@@ -835,6 +802,10 @@
 .mp-b .bk-toc__title {
   font-size: 15px;
   font-weight: 500;
+}
+.mp-b .bk-toc__derived {
+  color: var(--ink-muted);
+  font-weight: 400;
 }
 .mp-b .bk-toc__new {
   margin-left: 8px;
@@ -902,50 +873,35 @@
   text-underline-offset: 3px;
 }
 
-/* ---------- update: the book stays closed, a bookmark slip tracks the goals ---------- */
-.mp-b .bk-tracker {
+/* ---------- on the map: the goal slip hangs under the summary bar and folds to its tab ---------- */
+.mp-b .bk-slipdock {
   position: absolute;
-  right: 12px;
-  top: 62px;
+  right: 14px;
+  top: 49px;
   width: 268px;
-  padding: 12px 14px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.mp-b .bk-tracker {
+  position: relative;
+  width: 100%;
+  padding: 10px 14px 4px 16px;
   pointer-events: auto;
   color: var(--ink);
   background: var(--paper-grain), linear-gradient(170deg, var(--parchment-hi), var(--parchment) 70%, var(--parchment-lo));
   border: 1px solid #8d7549;
-  border-radius: 2px;
-  box-shadow: 0 6px 16px #000a, inset 0 0 18px #6b532a44, inset 0 1px #fff6;
-  animation: bk-slip 0.35s ease-out;
+  border-top: 0;
+  box-shadow: 0 6px 16px #000a, inset 0 0 18px #6b532a44, inset 0 6px 6px -4px #3a2a1866;
+  animation: bk-unroll 0.25s ease-out;
+  transform-origin: top;
 }
-@keyframes bk-slip {
+@keyframes bk-unroll {
   from {
-    transform: translateY(-12px);
+    transform: scaleY(0.4);
     opacity: 0;
   }
-}
-.mp-b .bk-tracker__ribbon {
-  position: absolute;
-  left: 18px;
-  top: -8px;
-  width: 16px;
-  height: 46px;
-  background: linear-gradient(90deg, #5a1f16, #8a3526 50%, #5a1f16);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
-  box-shadow: 0 2px 3px #0006;
-}
-.mp-b .bk-tracker__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding-left: 26px;
-  margin-bottom: 6px;
-  font: 700 14px var(--font-title);
-  letter-spacing: 0.1em;
-  color: #3a2a18;
-}
-.mp-b .bk-tracker__head b {
-  font: 700 13px var(--font-body);
-  color: var(--ink-muted);
 }
 .mp-b .bk-tracker__list {
   margin: 0;
@@ -962,6 +918,14 @@
   line-height: 1.3;
   border-top: 1px dotted #8d754977;
 }
+.mp-b .bk-tr:first-child {
+  border-top: 0;
+}
+.mp-b .bk-tr--empty {
+  display: block;
+  font-style: italic;
+  color: var(--ink-muted);
+}
 .mp-b .bk-tr .bk-goal__box {
   width: 17px;
   height: 17px;
@@ -977,17 +941,7 @@
     opacity: 0;
   }
 }
-.mp-b .bk-tr--done span:last-child {
-  color: var(--ink-muted);
-  text-decoration: line-through;
-  text-decoration-color: #5c4c3799;
-}
-.mp-b .bk-tr--new {
-  background: linear-gradient(90deg, #c98a3a33, transparent);
-  margin: 0 -8px;
-  padding: 6px 8px;
-}
-.mp-b .bk-tr--new em {
+.mp-b .bk-tr em {
   display: block;
   font: 700 10.5px var(--font-body);
   font-style: normal;
@@ -995,14 +949,25 @@
   text-transform: uppercase;
   color: var(--bk-red);
 }
+.mp-b .bk-tr--done em {
+  color: #4e6a3e;
+}
+.mp-b .bk-tr--done span:last-child {
+  color: var(--ink-muted);
+}
+.mp-b .bk-tr--new {
+  background: linear-gradient(90deg, #c98a3a33, transparent);
+  margin: 0 -8px;
+  padding: 6px 8px;
+}
 .mp-b .bk-tracker__open {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 6px;
   width: 100%;
   min-height: 36px;
-  margin-top: 4px;
+  margin-top: 2px;
   padding: 0;
   border: 0;
   border-top: 1px solid #8d754955;
@@ -1010,8 +975,72 @@
   color: var(--bk-red);
   font: 700 13px var(--font-body);
 }
+.mp-b .bk-tracker__open > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mp-b .bk-tracker__open > span:first-child {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
 .mp-b .bk-tracker__open .on-key {
   background: #2b2117;
+}
+/* The pull tab: a wood tab hanging from the bar, or from the slip's lower edge when it is open. */
+.mp-b .bk-sliptab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin-right: 12px;
+  padding: 4px 10px 6px 12px;
+  pointer-events: auto;
+  border: 1px solid var(--wood-lo);
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(var(--wood), var(--wood-hi));
+  color: #e9dcbd;
+  font: 600 13px var(--font-body);
+  box-shadow: 0 3px 6px #000a, inset 0 -1px #fff2;
+}
+.mp-b .bk-sliptab:hover {
+  background: linear-gradient(var(--wood-hi), #8a6d4a);
+  color: #fff4d8;
+}
+.mp-b .bk-sliptab__label {
+  font: 700 13px var(--font-title);
+  letter-spacing: 0.08em;
+}
+.mp-b .bk-sliptab .on-tab__count {
+  margin: 0;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.mp-b .bk-sliptab .bk-ico {
+  width: 14px;
+  height: 14px;
+  transform: rotate(180deg);
+}
+.mp-b .bk-sliptab--open {
+  margin-top: -1px;
+  background: linear-gradient(var(--parchment-lo), #a8966d);
+  color: var(--ink);
+  border-color: #8d7549;
+}
+.mp-b .bk-sliptab--open .bk-ico {
+  transform: none;
+}
+.mp-b .bk-sliptab__mark {
+  position: absolute;
+  right: -5px;
+  top: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #ffffff66, transparent 45%), var(--wax-danger);
+  box-shadow: 0 0 0 1.5px #0d100d;
 }
 .mp-b .bk-beam-mark {
   position: absolute;

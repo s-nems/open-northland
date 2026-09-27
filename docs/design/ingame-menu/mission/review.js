@@ -8,7 +8,8 @@ const VIEWS = [
   ['task', 'Misja otwarta z belki'],
   ['goals', 'Cele'],
   ['history', 'Historia'],
-  ['update', 'Aktualizacja celu (w grze)'],
+  ['update', 'Zmiana celu (w grze)'],
+  ['map', 'Karta celów zwinięta (w grze)'],
 ];
 
 const proposals = await Promise.all(PROPOSALS.map(async (path) => (await import(`./proposals/${path}`)).default));
@@ -39,6 +40,26 @@ function buttons(selector, items, key) {
 
 buttons('[data-proposals]', proposals.map((p) => [p.id, `${p.id.toUpperCase()} · ${p.name}`]), 'p');
 buttons('[data-views]', VIEWS, 'v');
+const option = document.querySelector('[data-option]');
+function optionRow(proposal) {
+  option.querySelectorAll('button').forEach((b) => b.remove());
+  option.hidden = proposal.option === undefined;
+  if (proposal.option === undefined) return;
+  option.querySelector('b').textContent = proposal.option.label;
+  state.o ??= proposal.option.values[0][0];
+  for (const [value, label] of proposal.option.values) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(value === state.o));
+    b.addEventListener('click', () => {
+      state.o = value;
+      render();
+    });
+    option.append(b);
+  }
+}
+
 buttons('[data-maps]', Object.keys(lib.MISSIONS).map((m) => [m, lib.missionName(lib.MISSIONS[m])]), 'm');
 
 function render() {
@@ -65,6 +86,8 @@ function render() {
   document.querySelectorAll('[data-views] button').forEach((b) => {
     b.disabled = !(proposal.views ?? VIEWS.map((v) => v[0])).includes(b.dataset.value);
   });
+  optionRow(proposal);
+  document.querySelector('[data-proposals]').hidden = proposals.length < 2;
   location.replace(`#${new URLSearchParams(state)}`);
   css.href = proposal.css ? `mission/proposals/${proposal.css}` : '';
   blurb.innerHTML = `<strong>${lib.esc(proposal.name)}.</strong> ${proposal.blurb}`;
@@ -75,6 +98,7 @@ function render() {
     mission,
     lang: 'pl',
     view: state.v,
+    option: state.o,
     pageIndex,
     page: lib.analysePage(mission.pages[pageIndex]),
     pages: mission.pages.slice(0, pageIndex + 1).map((p) => lib.analysePage(p)),
