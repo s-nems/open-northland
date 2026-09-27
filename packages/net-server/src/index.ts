@@ -18,4 +18,5 @@ export {
   type RelayOptions,
 } from './relay/relay.js';
 export { SNAPSHOT_REFRESH_MS, SNAPSHOT_RETRY_MS } from './relay/resync.js';
+export { LOAD_VIEW_INTERVAL_MS } from './relay/room.js';
 export { KICK_COUNTDOWN_MS } from './relay/waiting.js';

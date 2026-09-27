@@ -1,4 +1,5 @@
 import {
+  type ClientLoad,
   DESCRIPTOR_WORLD,
   type LobbyCompatibility,
   type RelayReason,
@@ -18,6 +19,9 @@ export interface Member {
   /** The connection's input delay and round trip, as the relay last measured them. */
   delayTicks: number;
   roundTripMs: number;
+  /** The load the client's last acknowledgement reported, kept as sent: the client already smooths
+   *  the tick cost. Null before its first. */
+  load: ClientLoad | null;
   seat: number | null;
   ready: boolean;
   compatibility: LobbyCompatibility | null;
@@ -47,6 +51,7 @@ export function createMember(token: string, nick: string, now: number, link: Mea
     lastHeardAt: now,
     delayTicks: link.delayTicks,
     roundTripMs: link.roundTripMs,
+    load: null,
     seat: null,
     ready: false,
     compatibility: null,

@@ -58,7 +58,10 @@ describe('lobby settings replacement queue', () => {
     queue.change({ speed: 2 });
     queue.change({ speed: 3 });
     queue.update(
-      { ...view(), members: [{ nick: 'guest', seat: null, connected: true, compatibility: null }] },
+      {
+        ...view(),
+        members: [{ nick: 'guest', seat: null, connected: true, compatibility: null, load: null }],
+      },
       true,
     );
     expect(send).toHaveBeenCalledOnce();

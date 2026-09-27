@@ -91,6 +91,7 @@ it('running reload requires the current room fingerprint and refuses a local pro
         seat: 0,
         connected: true,
         compatibility: { map: map.fingerprint, content: 'c', client: 'b', protocol: 3 },
+        load: null,
       },
     ],
   };

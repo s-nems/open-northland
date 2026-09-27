@@ -32,7 +32,7 @@ export function dispatchRoomMessage(room: Room, member: Member, message: RoomMes
     case 'finish':
       return room.finish(member, message);
     case 'ack':
-      return room.ack(member, message.tick, message.digest, message.world, now);
+      return room.ack(member, message, now);
     case 'command': {
       const bytes = Buffer.byteLength(JSON.stringify(message.envelope));
       if (bytes > MAX_ENVELOPE_BYTES) return { code: 'envelopeTooLarge' };

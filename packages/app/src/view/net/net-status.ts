@@ -1,7 +1,8 @@
-import type { RoomView, WaitedMember, WaitReason } from '@open-northland/net-protocol';
+import type { ClientLoad, RoomView, WaitedMember, WaitReason } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { el } from '../overlay.js';
 import type { NetReadout } from '../runtime/net-readout.js';
+import { memberLoadText } from './member-load.js';
 
 export type MemberStatus = WaitReason | 'ok';
 
@@ -10,6 +11,7 @@ export interface MemberRow {
   readonly seat: number | null;
   readonly status: MemberStatus;
   readonly self: boolean;
+  readonly load: ClientLoad | null;
 }
 
 /** Every member's standing as the room and the wait list say it: the wait's reason wins over the
@@ -26,6 +28,7 @@ export function memberRows(
     seat: member.seat,
     status: reasons.get(member.nick) ?? (member.connected ? 'ok' : 'gone'),
     self: member.nick === selfNick,
+    load: member.load,
   }));
 }
 
@@ -58,7 +61,7 @@ export function mountNetStatusPanel(parent: HTMLElement): NetStatusPanel {
           const status = el(
             'span',
             row.status === 'ok' ? 'opacity:0.7' : 'color:#f0c070',
-            copy.status[row.status],
+            [copy.status[row.status], memberLoadText(row)].filter(Boolean).join(' · '),
           );
           line.append(name, status);
           return line;

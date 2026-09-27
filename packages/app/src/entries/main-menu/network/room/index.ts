@@ -1,5 +1,6 @@
 import { MAX_CHAT_LENGTH, type RoomView } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../../../i18n/index.js';
+import { memberLoadText } from '../../../../view/net/member-load.js';
 import { node } from '../../dom.js';
 import { button } from './controls.js';
 import { roomPermissions } from './model.js';
@@ -97,8 +98,10 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       settings.update(room, permissions.creator);
       members.textContent = room.members
         .filter((member) => member.seat === null)
-        .map(
-          (member) => `${member.nick} · ${copy.unseated}${member.connected ? '' : ` · ${copy.disconnected}`}`,
+        .map((member) =>
+          [member.nick, copy.unseated, member.connected ? '' : copy.disconnected, memberLoadText(member)]
+            .filter(Boolean)
+            .join(' · '),
         )
         .join(' · ');
       const net = messages().net;

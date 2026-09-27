@@ -9,6 +9,7 @@ import {
   MAX_WORLD_ID_LENGTH,
 } from '../limits.js';
 import type {
+  ClientLoad,
   DepartedSeatMode,
   LobbySettings,
   RoomMemberView,
@@ -24,6 +25,7 @@ import {
   asArray,
   asBoolean,
   asCount,
+  asNonNegativeNumber,
   asOneOf,
   asPositiveNumber,
   asRecord,
@@ -164,6 +166,15 @@ function parseRoomMemberView(value: unknown, at: string): RoomMemberView {
     seat: raw.seat === null ? null : parseSeatIndex(raw.seat, `${at}.seat`),
     connected: asBoolean(raw.connected, `${at}.connected`),
     compatibility: parseCompatibility(raw.compatibility, `${at}.compatibility`),
+    load: raw.load === null ? null : parseClientLoad(raw.load, `${at}.load`),
+  };
+}
+
+export function parseClientLoad(value: unknown, at: string): ClientLoad {
+  const raw = asRecord(value, at);
+  return {
+    tickMs: asNonNegativeNumber(raw.tickMs, `${at}.tickMs`),
+    buffered: asCount(raw.buffered, `${at}.buffered`),
   };
 }
 

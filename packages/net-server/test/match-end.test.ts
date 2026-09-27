@@ -1,14 +1,22 @@
 import { TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { SNAPSHOT_REFRESH_MS, SNAPSHOT_RETRY_MS } from '../src/index.js';
-import { digest, seatCommand, startedRoom, TOKEN_A, TOKEN_B, TOKEN_C } from './support/message-stage.js';
+import {
+  digest,
+  LOAD,
+  seatCommand,
+  startedRoom,
+  TOKEN_A,
+  TOKEN_B,
+  TOKEN_C,
+} from './support/message-stage.js';
 
 const hash = '12345678';
 const finish = (tick: number, world = 0, result = hash) => ({ kind: 'finish', tick, world, hash: result });
 function acknowledged() {
   const s = startedRoom();
   s.advance(TICK_MS);
-  for (const p of [s.a, s.b]) p.send({ kind: 'ack', tick: 1, world: 0, digest: digest(1) });
+  for (const p of [s.a, s.b]) p.send({ kind: 'ack', load: LOAD, tick: 1, world: 0, digest: digest(1) });
   return s;
 }
 describe('terminal room consensus', () => {
@@ -46,8 +54,8 @@ describe('terminal room consensus', () => {
   it('sends no snapshot to a diverged member that left the ended room while it waited', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, world: 0, digest: digest(2) });
-    s.a.send({ kind: 'ack', tick: 1, world: 0, digest: digest(1) });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, world: 0, digest: digest(2) });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, world: 0, digest: digest(1) });
     s.relay.disconnect(s.b.handle);
     s.a.send(finish(1));
     const back = s.introduce(TOKEN_B, 'Bartek');
@@ -124,7 +132,7 @@ describe('terminal room consensus', () => {
     const s = acknowledged();
     s.a.send(finish(1));
     s.advance(TICK_MS);
-    s.a.send({ kind: 'ack', tick: 2, world: 0, digest: digest(1) });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 2, world: 0, digest: digest(1) });
     s.b.send(finish(1));
     expect(s.a.last('ended')).toBeUndefined();
   });
@@ -141,7 +149,7 @@ describe('terminal room consensus', () => {
     b.send({ kind: 'loaded', tick: 0, world: 0 });
     expect(b.last('frame')?.tick).toBe(1);
     expect(b.last('ended')).toEqual({ kind: 'ended', tick: 1, hash });
-    b.send({ kind: 'ack', tick: 1, world: 0, digest: digest(1) });
+    b.send({ kind: 'ack', load: LOAD, tick: 1, world: 0, digest: digest(1) });
     b.send(finish(1));
     expect(b.of('rejected')).toEqual([]);
   });

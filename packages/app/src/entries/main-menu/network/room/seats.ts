@@ -5,6 +5,7 @@ import {
   type VacantSeatMode,
 } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../../../i18n/index.js';
+import { memberLoadText } from '../../../../view/net/member-load.js';
 import { node } from '../../dom.js';
 import { colorChip, colorPalette } from '../../lobby-controls/color.js';
 import { seatRow as createSeatRow } from '../../lobby-controls/seat.js';
@@ -124,7 +125,7 @@ export function roomSeats(deps: NetworkRoomDeps) {
                 ? copy.ready
                 : copy.notReady;
         const saved = savedSeatHint(deps.savedRoster?.() ?? null, player, client.nick);
-        const detail = [status];
+        const detail = [status, memberLoadText(member)];
         if (saved !== null) {
           detail.push(formatMessage(copy.savedPlayer, { nick: saved.nick }));
           if (saved.recommended) detail.push(copy.previousSeat);

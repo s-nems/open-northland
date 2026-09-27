@@ -23,7 +23,7 @@ policies so that optimisation has a ceiling worth reaching.
   room slows to that member's sustainable speed and everyone sees who limits it. The relay stops
   holding the clock for a lagging member.
 - The sync digest stays stamped per tick. The disputed-tick forensics of 10 and the per-tick
-  acknowledgement that 07 extends rest on it; a cheaper digest splits its components, it does not
+  acknowledgement's load report rest on it; a cheaper digest splits its components, it does not
   widen its window.
 - The desktop build is the primary target. Browser-only behaviour, such as a hidden tab, is verified
   and documented, not designed around.
@@ -33,8 +33,7 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [07 Client load telemetry](07-client-load-telemetry.md) | Each client reports tick cost and backlog to the relay on the protocol | 00 |
-| [08 Room pace governor](08-room-pace-governor.md) | Free band, governed speed with a named limiter, kick vote; no clock hold for lag | 07 |
+| [08 Room pace governor](08-room-pace-governor.md) | Free band, governed speed with a named limiter, kick vote; no clock hold for lag | none |
 | [09 Zoom-out LOD](09-zoom-out-lod.md) | Frame cost bounded across the zoom range by named detail tiers | 00 |
 | [10 Desync forensics](10-desync-forensics.md) | Both sides of a divergence capture the disputed tick per domain into the bundle | none |
 | [11 Background tab ticking](11-background-tab-ticking.md) | Verify and document whether the worker host keeps ticking in a hidden tab | none |
@@ -49,8 +48,8 @@ link and world run in a network worker (`entries/relay/net-worker.ts`) that neve
 it keeps stepping and acknowledging, and sheds the transient events of ticks the main thread has not
 taken. Scenes and tests run `inlineSessionHost` on the main thread, over the same mirror. The system
 menu shows delivered against requested speed while two consecutive one-second windows deliver under
-nine tenths of the requested ticks. 00 lands first. 07 and 08 are the networking change and can
-proceed in parallel. 09 to 11 close the epic. Contract edits land with the ticket that makes them true.
+nine tenths of the requested ticks. 00 lands first. 08 is the networking change and can proceed
+in parallel. 09 to 11 close the epic. Contract edits land with the ticket that makes them true.
 
 ## Not in this epic
 

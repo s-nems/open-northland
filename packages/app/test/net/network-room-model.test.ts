@@ -1,11 +1,17 @@
 import { createSavedSessionMetadata } from '@open-northland/lockstep';
-import { type LobbyCompatibility, PROTOCOL_VERSION, type RoomView } from '@open-northland/net-protocol';
+import {
+  type LobbyCompatibility,
+  PROTOCOL_VERSION,
+  type RoomMemberView,
+  type RoomView,
+} from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import {
   canClaimSeat,
   roomPermissions,
   savedSeatHint,
 } from '../../src/entries/main-menu/network/room/model.js';
+import { memberLoadText } from '../../src/view/net/member-load.js';
 
 const report: LobbyCompatibility = {
   content: 'a'.repeat(64),
@@ -31,8 +37,8 @@ function room(): RoomView {
       { player: 2, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 2, nick: null, ready: false },
     ],
     members: [
-      { nick: 'Ania', seat: 0, connected: true, compatibility: report },
-      { nick: 'Bartek', seat: 1, connected: true, compatibility: report },
+      { nick: 'Ania', seat: 0, connected: true, compatibility: report, load: null },
+      { nick: 'Bartek', seat: 1, connected: true, compatibility: report, load: null },
     ],
   };
 }
@@ -143,4 +149,22 @@ it('recommends only an exact saved nick match and leaves unnamed/legacy seats wi
   expect(savedSeatHint(metadata, 0, 'ania')).toEqual({ nick: 'Ania', recommended: false });
   expect(savedSeatHint(metadata, 1, 'Ania')).toBeNull();
   expect(savedSeatHint(null, 0, 'Ania')).toBeNull();
+});
+
+describe('member load in the room', () => {
+  it('reads nothing before the member reported a load', () => {
+    expect(memberLoadText(room().members[0])).toBe('');
+    expect(memberLoadText(undefined)).toBe('');
+  });
+
+  it('shows the tick cost to a tenth of a millisecond and the frames buffered', () => {
+    const member: RoomMemberView = {
+      nick: 'Ania',
+      seat: 0,
+      connected: true,
+      compatibility: report,
+      load: { tickMs: 12.345, buffered: 3 },
+    };
+    expect(memberLoadText(member)).toMatch(/^12\.3 ms\/.* 3\b/);
+  });
 });

@@ -11,6 +11,7 @@ import {
 import {
   ackThrough,
   digest,
+  LOAD,
   type MessageStage,
   type Peer,
   SEATS,
@@ -150,7 +151,7 @@ describe('waiting for a member', () => {
     expect(a.last('clock')).toMatchObject({ tick: 2 });
     s.advance(TICK_MS);
     expect(a.of('frame').map((frame) => frame.tick)).toEqual([2]);
-    a.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0 });
+    a.send({ kind: 'ack', load: LOAD, tick: 2, digest: digest(1), world: 0 });
     expect(a.of('rejected')).toEqual([]);
   });
 
@@ -248,12 +249,12 @@ describe('waiting for a member', () => {
   it('refuses an acknowledgement out of order or ahead of the clock', () => {
     const s = startedRoom();
     s.advance(TICK_MS * 3);
-    s.a.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 2, digest: digest(1), world: 0 });
     expect(s.a.last('rejected')?.reason).toEqual({ code: 'ackOutOfOrder', expected: 1 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
-    s.a.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0 });
-    s.a.send({ kind: 'ack', tick: 3, digest: digest(1), world: 0 });
-    s.a.send({ kind: 'ack', tick: 4, digest: digest(1), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 2, digest: digest(1), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 3, digest: digest(1), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 4, digest: digest(1), world: 0 });
     expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'tickNotEmitted' });
   });
 });
@@ -376,7 +377,7 @@ describe('digests and resync', () => {
     ackThrough(s.a, 1, 3, 1);
     ackThrough(s.b, 1, 2, 1);
     expect(s.b.of('desync')).toEqual([]);
-    s.b.send({ kind: 'ack', tick: 3, digest: { ...digest(1), economy: 9 }, world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 3, digest: { ...digest(1), economy: 9 }, world: 0 });
     expect(s.b.last('desync')).toEqual({ kind: 'desync', tick: 3, domains: ['economy'], reference: 'Ania' });
     expect(s.a.of('desync')).toEqual([]);
     expect(s.a.of('snapshotRequest')).toHaveLength(1);
@@ -384,7 +385,7 @@ describe('digests and resync', () => {
     expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'resync' }]);
     expect(lastTick(s.a)).toBe(3);
 
-    s.b.send({ kind: 'ack', tick: 4, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 4, digest: digest(1), world: 0 });
     expect(s.b.of('rejected')).toEqual([]);
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 2, bytes: BLOB });
     expect(s.b.last('blob')).toEqual({ kind: 'blob', type: 'snapshot', from: 'Ania', tick: 2, bytes: BLOB });
@@ -394,7 +395,7 @@ describe('digests and resync', () => {
         .filter((frame) => frame.tick > 2)
         .map((frame) => frame.tick),
     ).toEqual([3, 3]);
-    s.b.send({ kind: 'ack', tick: 3, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 3, digest: digest(1), world: 0 });
     expect(s.b.of('rejected')).toEqual([]);
     s.advance(TICK_MS);
     expect(s.a.last('waiting')?.for).toEqual([]);
@@ -406,7 +407,7 @@ describe('digests and resync', () => {
     s.advance(TICK_MS * 4);
     ackThrough(s.a, 1, 2);
     ackThrough(s.b, 1, 3);
-    s.b.send({ kind: 'ack', tick: 4, digest: digest(9), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 4, digest: digest(9), world: 0 });
     s.relay.disconnect(s.b.handle);
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 2, bytes: BLOB });
     const back = s.introduce(TOKEN_B, 'Bartek');
@@ -447,7 +448,7 @@ describe('digests and resync', () => {
     s.advance(TICK_MS * 2);
     ackThrough(s.a, 1, 2);
     ackThrough(s.c, 1, 2);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(9), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(9), world: 0 });
     expect(s.b.last('desync')?.tick).toBe(1);
     const asked = s.a.of('snapshotRequest').length === 1 ? s.a : s.c;
     const other = asked === s.a ? s.c : s.a;
@@ -460,9 +461,9 @@ describe('digests and resync', () => {
   it('judges a tick among the clients in sync alone, without a dropped client’s report', () => {
     const s = roomOfThree();
     s.advance(TICK_MS * 2);
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(9), world: 0 });
-    s.c.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
-    s.c.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(9), world: 0 });
+    s.c.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
+    s.c.send({ kind: 'ack', load: LOAD, tick: 2, digest: digest(1), world: 0 });
     s.relay.disconnect(s.a.handle);
     ackThrough(s.b, 1, 2);
     expect(s.b.of('desync')).toEqual([]);
@@ -470,7 +471,7 @@ describe('digests and resync', () => {
     // Ania comes back where she stood and is judged against the tick her absence settled.
     const back = s.introduce(TOKEN_A, 'Ania');
     back.send({ kind: 'loaded', tick: 1, world: 0 });
-    back.send({ kind: 'ack', tick: 2, digest: digest(9), world: 0 });
+    back.send({ kind: 'ack', load: LOAD, tick: 2, digest: digest(9), world: 0 });
     expect(back.last('desync')).toMatchObject({ tick: 2, reference: 'Bartek' });
   });
 
@@ -481,18 +482,18 @@ describe('digests and resync', () => {
     s.relay.disconnect(s.c.handle);
     const back = s.introduce(TOKEN_C, 'Cezary');
     back.send({ kind: 'loaded', tick: 4, world: 0 });
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
-    s.b.send({ kind: 'ack', tick: 2, digest: digest(1), world: 0 });
-    s.b.send({ kind: 'ack', tick: 3, digest: digest(1), world: 0 });
-    s.b.send({ kind: 'ack', tick: 4, digest: { ...digest(1), economy: 5 }, world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 2, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 3, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 4, digest: { ...digest(1), economy: 5 }, world: 0 });
     expect(s.b.last('desync')).toMatchObject({ tick: 4, domains: ['economy'], reference: 'Ania' });
   });
 
   it('tells a diverged client that dropped of it again on return, and serves the snapshot it asks for', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     expect(s.b.of('desync')).toHaveLength(1);
     s.relay.disconnect(s.b.handle);
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
@@ -505,15 +506,15 @@ describe('digests and resync', () => {
     expect(back.of('blob').map((blob) => blob.tick)).toEqual([1]);
     s.advance(TICK_MS);
     expect(back.of('frame').map((frame) => frame.tick)).toEqual([2]);
-    back.send({ kind: 'ack', tick: 2, digest: digest(1), world: 1 });
+    back.send({ kind: 'ack', load: LOAD, tick: 2, digest: digest(1), world: 1 });
     expect(back.of('rejected')).toHaveLength(1);
   });
 
   it('serves a returning diverged client the snapshot once, when it asks, not before', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     s.relay.disconnect(s.b.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.last('start')?.snapshotTick).toBeNull();
@@ -528,8 +529,8 @@ describe('digests and resync', () => {
   it('serves a diverged client whose connection was replaced only when the new one asks', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.of('desync')).toHaveLength(1);
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
@@ -542,8 +543,8 @@ describe('digests and resync', () => {
   it('queues a returning diverged client that asks before any snapshot is cached', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     s.relay.disconnect(s.b.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
     back.send({ kind: 'loaded', tick: null });
@@ -557,7 +558,7 @@ describe('digests and resync', () => {
     s.advance(TICK_MS * 2);
     ackThrough(s.a, 1, 2);
     ackThrough(s.c, 1, 2);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(9), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(9), world: 0 });
     const asked = s.a.of('snapshotRequest').length === 1 ? s.a : s.c;
     const other = asked === s.a ? s.c : s.a;
     s.introduce(asked === s.a ? TOKEN_A : TOKEN_C, 'again');
@@ -568,8 +569,8 @@ describe('digests and resync', () => {
   it('asks for a snapshot again only while someone connected waits for it', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     s.relay.disconnect(s.b.handle);
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
     tick(s, [s.a], SNAPSHOT_RETRY_MS * 3);
@@ -579,8 +580,8 @@ describe('digests and resync', () => {
   it('gives a two-client tie to the longer-connected one', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     expect(s.b.last('desync')?.reference).toBe('Ania');
     expect(s.a.of('desync')).toEqual([]);
   });
@@ -588,8 +589,8 @@ describe('digests and resync', () => {
   it('repeats an unanswered snapshot request to whoever is best connected', () => {
     const s = startedRoom();
     s.advance(TICK_MS);
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     expect(s.a.of('snapshotRequest')).toHaveLength(1);
     tick(s, [s.a], SNAPSHOT_RETRY_MS + TICK_MS);
     expect(s.a.of('snapshotRequest')).toHaveLength(2);
@@ -600,8 +601,8 @@ describe('digests and resync', () => {
     s.advance(TICK_MS);
     s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 5, bytes: BLOB });
     expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'tickNotEmitted' });
-    s.b.send({ kind: 'ack', tick: 1, digest: digest(2), world: 0 });
-    s.a.send({ kind: 'ack', tick: 1, digest: digest(1), world: 0 });
+    s.b.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(2), world: 0 });
+    s.a.send({ kind: 'ack', load: LOAD, tick: 1, digest: digest(1), world: 0 });
     s.b.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: BLOB });
     expect(s.b.last('rejected')?.reason).toEqual({ code: 'snapshotUnsynced' });
   });

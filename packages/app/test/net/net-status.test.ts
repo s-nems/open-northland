@@ -16,9 +16,9 @@ const ROOM: RoomView = {
   },
   seats: [],
   members: [
-    { nick: 'Ania', seat: 1, connected: true, compatibility: null },
-    { nick: 'Bartek', seat: 2, connected: true, compatibility: null },
-    { nick: 'Celina', seat: 3, connected: false, compatibility: null },
+    { nick: 'Ania', seat: 1, connected: true, compatibility: null, load: null },
+    { nick: 'Bartek', seat: 2, connected: true, compatibility: null, load: null },
+    { nick: 'Celina', seat: 3, connected: false, compatibility: null, load: null },
   ],
 };
 
@@ -26,9 +26,9 @@ describe('memberRows', () => {
   it('reads each member from the wait list first, then from the connection flag', () => {
     const rows = memberRows(ROOM, [{ nick: 'Bartek', reason: 'lagging', voteAfterMs: 1000 }], 'Ania');
     expect(rows).toEqual([
-      { nick: 'Ania', seat: 1, status: 'ok', self: true },
-      { nick: 'Bartek', seat: 2, status: 'lagging', self: false },
-      { nick: 'Celina', seat: 3, status: 'gone', self: false },
+      { nick: 'Ania', seat: 1, status: 'ok', self: true, load: null },
+      { nick: 'Bartek', seat: 2, status: 'lagging', self: false, load: null },
+      { nick: 'Celina', seat: 3, status: 'gone', self: false, load: null },
     ]);
   });
 

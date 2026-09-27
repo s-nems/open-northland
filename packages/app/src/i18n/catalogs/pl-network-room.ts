@@ -43,4 +43,5 @@ export const plNetworkRoom: { readonly [Key in keyof typeof enNetworkRoom]: stri
   send: 'Wyślij',
   unseated: 'Bez miejsca',
   disconnected: 'Brak połączenia',
+  load: '{ms} ms/krok, w buforze {buffered}',
 };

@@ -69,7 +69,10 @@ duplicate nick within a room gets a numeric suffix (`Ania`, `Ania2`). At most `M
 people share a room.
 
 Every change to a room is broadcast to its members as `room { room }`, the whole view:
-`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, nick, ready }], members: [{ nick, seat, connected, compatibility }] }`.
+`{ id, state, creator, settings, seats: [{ player, mode, offers, color, team?, nick, ready }], members: [{ nick, seat, connected, compatibility, load }] }`.
+A member's `load` is the one its last acknowledgement reported (below), null before its first. A
+moved load alone sends a view at most once per `LOAD_VIEW_INTERVAL_MS` (1 s) per room; any other
+change carries the current loads with it.
 
 - `claimSeat { player }` sits down in a seat nobody holds, which makes it `human` whatever it was;
   `claimSeat { player: null }` stands up and returns it to its lobby setting.
@@ -167,7 +170,7 @@ change is sent as `delay { ticks }`; every member also gets its current delay at
 
 ## Acknowledgements and the sync check
 
-After every tick a client sends `ack { tick, digest, world }` with the sim's `SyncDigest.domains`
+After every tick a client sends `ack { tick, digest, world, load }` with the sim's `SyncDigest.domains`
 for that tick: one unsigned 32-bit word per domain (`rng`, `entities`, `players`, `movement`,
 `settlers`, `economy`, `combat`, `fog`). `world` is the generation of the world the client reports
 from: 0 for one built from the descriptor, otherwise the tick of the snapshot it was restored from.
@@ -175,6 +178,12 @@ An acknowledgement from another generation is still in flight from a world the c
 away, and is ignored. Within a generation acknowledgements are consecutive; one out of order or
 ahead of the clock is refused. The acknowledged tick is also how far the relay believes the client
 has applied.
+
+`load { tickMs, buffered }` is the client's own pace. `tickMs` is its cost of one sim tick in
+milliseconds on the thread that runs the sim: frame admission and the step, without the host's
+per-tick work, as an exponential moving average whose newest tick weighs `1 / TICKS_PER_SECOND`.
+`buffered` is the frames it holds received and not yet applied. The relay keeps the latest load of
+an accepted acknowledgement as sent, with no smoothing of its own.
 
 Once every client in sync has passed a tick, by acknowledging it or by being moved past it with a
 snapshot, the relay compares the digests those clients reported for it. The majority digest is the

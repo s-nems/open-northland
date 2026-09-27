@@ -1,7 +1,6 @@
 # Pace the room by its slowest member instead of holding the clock for it
 
 **Area:** net-server, net-client, net-protocol, app · **Focus:** relay/game, room-clock, HUD · **Priority:** P2
-**Blocked by:** [07 Client load telemetry](07-client-load-telemetry.md)
 
 A member whose acknowledged tick trails the clock by more than `WAIT_BEHIND_MS` is `lagging`, and the
 relay holds the clock for everyone until it catches up. On a heavy map one weak machine turns the
@@ -14,7 +13,8 @@ slows to what that member sustains and names it, and the existing kick vote.
 - Free band: a member behind by up to a named allowance (five seconds of ticks at the room speed) is
   not waited for. Its pacer drains the backlog as it does after a resync.
 - Governed band: past the allowance the relay lowers the room's effective speed to the slowest
-  member's sustainable speed derived from the telemetry of 07, until that member is back inside the
+  member's sustainable speed derived from the `load` each member reports with its acknowledgements
+  (`docs/NETWORK.md`, "Acknowledgements and the sync check"), until that member is back inside the
   band, then restores the requested speed. The `clock` broadcast gains the limiting member's nick
   while the governor holds; bump `PROTOCOL_VERSION`.
 - Every client's HUD shows who limits the room while it is governed; the limiting client sees that

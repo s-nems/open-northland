@@ -1,4 +1,5 @@
 import {
+  type ClientLoad,
   clientMessageKind,
   PROTOCOL_VERSION,
   type RoomSettings,
@@ -126,7 +127,11 @@ export function digest(word: number): WireDigest {
   return { rng: word, entities: 0, players: 0, movement: 0, settlers: 0, economy: 0, combat: 0, fog: 0 };
 }
 
+/** The load a test's acknowledgements report when the test is not about it. */
+export const LOAD: ClientLoad = { tickMs: 1, buffered: 0 };
+
 /** Acknowledge every emitted tick up to `tick` with one digest word, from the descriptor's world. */
 export function ackThrough(peer: Peer, fromTick: number, tick: number, word = 1, world = 0): void {
-  for (let t = fromTick; t <= tick; t++) peer.send({ kind: 'ack', tick: t, digest: digest(word), world });
+  for (let t = fromTick; t <= tick; t++)
+    peer.send({ kind: 'ack', tick: t, digest: digest(word), world, load: LOAD });
 }

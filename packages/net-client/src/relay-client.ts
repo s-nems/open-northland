@@ -31,6 +31,7 @@ import { RelayRefusal } from './relay-refusal.js';
 import type { ClockState } from './relay-state.js';
 import { SaveOrders } from './save-orders.js';
 import { encodeSnapshot } from './snapshot-codec.js';
+import { TickCost } from './tick-cost.js';
 import { WorldLoader } from './world-loader.js';
 
 /** A world the client runs, and the generation its acknowledgements carry: `DESCRIPTOR_WORLD` for a
@@ -71,7 +72,7 @@ export interface RelayClientOptions {
   /** Whether a message sent now reaches the relay; default always. A command issued while it does not
    *  is dropped here rather than lost on the way. */
   readonly connected?: () => boolean;
-  /** Milliseconds for the click-to-apply measurement; default `performance.now`. */
+  /** Milliseconds for the click-to-apply and tick-cost measurements; default `performance.now`. */
   readonly now?: () => number;
 }
 
@@ -90,6 +91,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
   private alpha = 1;
   private readonly completion = new MatchCompletion();
   private readonly saveOrders = new SaveOrders();
+  private readonly tickCost = new TickCost();
 
   get session(): GameSession | null {
     return this.state.session;
@@ -289,14 +291,19 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
         this.tick === this.completion.confirmedTick ||
         (this.paused && transport.bufferedTicks === 0),
     );
+    // A tick's cost runs from the end of the previous tick's work here to its own callback: the
+    // frame's admission and the sim step, without the acknowledgement or the host's `onTick`.
+    this.tickCost.begin(this.now());
     this.alpha = driver.advance(elapsedMs * paceScale(transport.bufferedTicks), () => {
+      const tickMs = this.tickCost.end(this.now());
       if (this.completion.detect(this.sim) || this.tick === this.completion.confirmedTick) {
         driver.setPaused(true);
       }
-      this.acknowledge();
+      this.acknowledge(tickMs);
       this.reportResult();
       this.verifyResult();
       onTick?.();
+      this.tickCost.begin(this.now());
     });
     return this.alpha;
   }
@@ -312,11 +319,17 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     );
   }
 
-  private acknowledge(): void {
+  private acknowledge(tickMs: number): void {
     const digest = this.sim?.syncDigest();
     if (digest === null || digest === undefined) return;
     this.digests.record(digest.tick, digest.domains);
-    this.send({ kind: 'ack', tick: digest.tick, digest: digest.domains, world: this.world });
+    this.send({
+      kind: 'ack',
+      tick: digest.tick,
+      digest: digest.domains,
+      world: this.world,
+      load: { tickMs, buffered: this.bufferedTicks },
+    });
   }
 
   private startSession(session: GameSession, snapshotTick: number | null): void {

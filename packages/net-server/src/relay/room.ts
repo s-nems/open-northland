@@ -12,7 +12,6 @@ import {
   type RoomSummary,
   type RoomView,
   type ServerMessage,
-  type WireDigest,
 } from '@open-northland/net-protocol';
 import type { BlobUpload } from './blob-relay.js';
 import { Game } from './game.js';
@@ -21,6 +20,10 @@ import { LobbyTransfers } from './lobby-transfers.js';
 import { broadcast, type Deliver, type Member, type Refusal } from './member.js';
 import { roomView, sessionForMember } from './room-view.js';
 import { type SeatChange, SeatTable } from './seats.js';
+
+/** Least wall time between two room views sent only because a member's load moved. A load changes
+ *  with nearly every acknowledgement; a view per ack would be a room broadcast per member per tick. */
+export const LOAD_VIEW_INTERVAL_MS = 1000;
 
 export interface RoomHooks {
   readonly deliver: Deliver;
@@ -45,6 +48,9 @@ export class Room {
   private joined = 0;
   /** The roster as every client built its world; fixed at the start, whatever the seats do after. */
   private startedSeats: GameSession['seats'] | null = null;
+  /** A member's load moved since the last room view went out. */
+  private loadMoved = false;
+  private nextLoadViewAt = 0;
 
   constructor(
     id: string,
@@ -233,9 +239,16 @@ export class Room {
     return this.game.loaded(member, world, now);
   }
 
-  ack(member: Member, tick: number, digest: WireDigest, world: number, now: number): Refusal {
+  ack(member: Member, ack: Extract<ClientMessage, { kind: 'ack' }>, now: number): Refusal {
     if (this.game === null) return { code: 'gameNotStarted' };
-    return this.game.ack(member, tick, digest, world, now);
+    const refusal = this.game.ack(member, ack.tick, ack.digest, ack.world, now);
+    if (refusal !== null) return refusal;
+    const { load } = ack;
+    if (member.load?.tickMs !== load.tickMs || member.load.buffered !== load.buffered) {
+      member.load = load;
+      this.loadMoved = true;
+    }
+    return null;
   }
 
   submit(member: Member, envelope: PlayerWireEnvelope, fromTick: number): Refusal {
@@ -278,7 +291,12 @@ export class Room {
   }
 
   advance(elapsedMs: number, now: number): Refusal {
-    return this.game?.advance(elapsedMs, now) ?? null;
+    const refusal = this.game?.advance(elapsedMs, now) ?? null;
+    if (refusal === null && this.loadMoved && now >= this.nextLoadViewAt) {
+      this.nextLoadViewAt = now + LOAD_VIEW_INTERVAL_MS;
+      this.broadcastView();
+    }
+    return refusal;
   }
 
   view(): RoomView {
@@ -337,6 +355,7 @@ export class Room {
   }
 
   broadcastView(): void {
+    this.loadMoved = false;
     this.broadcast({ kind: 'room', room: this.view() });
   }
 

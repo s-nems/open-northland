@@ -24,7 +24,7 @@ function room(id: string, compatibility: LobbyCompatibility | null = null): Room
     seats: [
       { player: 0, mode: 'human', offers: ['idle', 'ai', 'absent'], color: 0, nick: 'Ania', ready: false },
     ],
-    members: [{ nick: 'Ania', seat: 0, connected: true, compatibility }],
+    members: [{ nick: 'Ania', seat: 0, connected: true, compatibility, load: null }],
   };
 }
 

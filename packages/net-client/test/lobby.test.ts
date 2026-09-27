@@ -46,7 +46,7 @@ const ROOM: RoomView = {
       ready: false,
     },
   ],
-  members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: COMPATIBILITY }],
+  members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: COMPATIBILITY, load: null }],
 };
 
 describe('RelayClient lobby API', () => {

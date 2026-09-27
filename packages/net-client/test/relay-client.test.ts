@@ -7,7 +7,13 @@ import {
   RelayClient,
   type WorldPort,
 } from '@open-northland/net-client';
-import { type ClientMessage, DESCRIPTOR_WORLD, PROTOCOL_VERSION } from '@open-northland/net-protocol';
+import {
+  type ClientMessage,
+  DESCRIPTOR_WORLD,
+  PROTOCOL_VERSION,
+  TICK_MS,
+  TICKS_PER_SECOND,
+} from '@open-northland/net-protocol';
 import { exportSaveGame, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
@@ -291,6 +297,33 @@ describe('RelayClient at a pause', () => {
     client.receive({ kind: 'frame', tick: 6, commands: [] });
     client.advance(1000);
     expect(client.tick).toBe(6);
+  });
+});
+
+describe('RelayClient acknowledgements', () => {
+  it('carries the smoothed tick cost and the frames still buffered', async () => {
+    const FIRST_TICK_MS = 12;
+    const SECOND_TICK_MS = 24;
+    // Each tick's cost runs from the reading before it to the reading at its end.
+    const readings = [0, FIRST_TICK_MS, FIRST_TICK_MS, FIRST_TICK_MS + SECOND_TICK_MS];
+    const sent: ClientMessage[] = [];
+    const client = new RelayClient({
+      token: 'token-0123456789abcdef',
+      nick: 'Ania',
+      world: { open: async () => fixtureWorld(), restore: async () => null },
+      now: () => readings.shift() ?? Number.NaN,
+    });
+    client.attach((message) => sent.push(message));
+    start(client, null);
+    await client.settled();
+    client.receive({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null });
+    for (let tick = 1; tick <= 3; tick++) client.receive({ kind: 'frame', tick, commands: [] });
+    client.advance(TICK_MS * 2);
+    const acks = sent.filter((message) => message.kind === 'ack');
+    expect(acks.map((ack) => ack.load)).toEqual([
+      { tickMs: FIRST_TICK_MS, buffered: 2 },
+      { tickMs: FIRST_TICK_MS + (SECOND_TICK_MS - FIRST_TICK_MS) / TICKS_PER_SECOND, buffered: 1 },
+    ]);
   });
 });
 

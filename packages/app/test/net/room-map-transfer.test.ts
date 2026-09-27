@@ -28,12 +28,14 @@ function room(): RoomView {
         seat: 0,
         connected: true,
         compatibility: { content: 'content', map: handle.fingerprint, client: 'build', protocol: 2 },
+        load: null,
       },
       {
         nick: 'Guest',
         seat: 1,
         connected: true,
         compatibility: { content: 'content', map: null, client: 'build', protocol: 2 },
+        load: null,
       },
     ],
   };

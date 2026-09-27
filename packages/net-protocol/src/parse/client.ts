@@ -3,6 +3,7 @@ import type { ClientMessage, ClientMessageKind } from '../messages.js';
 import { asBoolean, asCount, asOneOf, asPositiveNumber, asRecord, asString, keysOf } from '../untrusted.js';
 import { parseCompatibility } from './compatibility.js';
 import {
+  parseClientLoad,
   parseLobbySettings,
   parseRoomSettings,
   parseSeatIndex,
@@ -118,6 +119,7 @@ export function parseClientMessage(value: unknown): ClientMessage {
         tick: asCount(raw.tick, 'ack.tick'),
         digest: parseDigest(raw.digest, 'ack.digest'),
         world: asCount(raw.world, 'ack.world'),
+        load: parseClientLoad(raw.load, 'ack.load'),
       };
     case 'command':
       return {

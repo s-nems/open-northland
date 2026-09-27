@@ -44,7 +44,7 @@ it('captures the current public roster and does not upload an old world after re
       },
       { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 4, nick: null, ready: false },
     ],
-    members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null }],
+    members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null, load: null }],
   };
   const worldId = client.worldId;
   if (worldId === null) throw new Error('the client adopted no world');

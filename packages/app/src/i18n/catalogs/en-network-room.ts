@@ -41,4 +41,5 @@ export const enNetworkRoom = {
   send: 'Send',
   unseated: 'No seat',
   disconnected: 'Disconnected',
+  load: '{ms} ms/tick, {buffered} buffered',
 } as const;

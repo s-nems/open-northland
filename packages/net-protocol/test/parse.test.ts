@@ -62,6 +62,7 @@ const DIGEST: WireDigest = {
   combat: 7,
   fog: 0xffffffff,
 };
+const LOAD = { tickMs: 1, buffered: 0 };
 const BLOB = Buffer.from('a snapshot').toString('base64');
 
 function wire<T>(value: T): unknown {
@@ -97,7 +98,7 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   { kind: 'loaded', tick: 1, world: 0 },
   { kind: 'loaded', tick: 300, world: 240 },
   { kind: 'loaded', tick: null },
-  { kind: 'ack', tick: 12, digest: DIGEST, world: 0 },
+  { kind: 'ack', tick: 12, digest: DIGEST, world: 0, load: { tickMs: 3.25, buffered: 2 } },
   {
     kind: 'command',
     envelope: { v: 1, origin: 'player', player: 0, command: MOVE_ORDER },
@@ -203,18 +204,29 @@ describe('client messages', () => {
     ['an empty chat line', { kind: 'chat', text: '   ' }, /empty/],
     [
       'a digest missing a domain',
-      { kind: 'ack', tick: 1, digest: { ...DIGEST, fog: undefined }, world: 0 },
+      { kind: 'ack', tick: 1, digest: { ...DIGEST, fog: undefined }, world: 0, load: LOAD },
       /digest\.fog/,
     ],
     [
       'a digest with a stray domain',
-      { kind: 'ack', tick: 1, digest: { ...DIGEST, magic: 1 }, world: 0 },
+      { kind: 'ack', tick: 1, digest: { ...DIGEST, magic: 1 }, world: 0, load: LOAD },
       /unknown domain/,
     ],
     [
       'a digest word past 32 bits',
-      { kind: 'ack', tick: 1, digest: { ...DIGEST, rng: 2 ** 32 }, world: 0 },
+      { kind: 'ack', tick: 1, digest: { ...DIGEST, rng: 2 ** 32 }, world: 0, load: LOAD },
       /32-bit/,
+    ],
+    ['an ack without its load', { kind: 'ack', tick: 1, digest: DIGEST, world: 0 }, /ack\.load/],
+    [
+      'a negative tick cost',
+      { kind: 'ack', tick: 1, digest: DIGEST, world: 0, load: { ...LOAD, tickMs: -1 } },
+      /ack\.load\.tickMs/,
+    ],
+    [
+      'a fractional backlog',
+      { kind: 'ack', tick: 1, digest: DIGEST, world: 0, load: { ...LOAD, buffered: 0.5 } },
+      /ack\.load\.buffered/,
     ],
     [
       'a save without a tick',
@@ -264,8 +276,14 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
         { player: 1, mode: 'ai', offers: ['idle', 'ai', 'absent'], color: 4, nick: null, ready: false },
       ],
       members: [
-        { nick: 'Ania', seat: 0, connected: true, compatibility: COMPATIBILITY },
-        { nick: 'Bartek', seat: null, connected: false, compatibility: null },
+        {
+          nick: 'Ania',
+          seat: 0,
+          connected: true,
+          compatibility: COMPATIBILITY,
+          load: { tickMs: 4.5, buffered: 1 },
+        },
+        { nick: 'Bartek', seat: null, connected: false, compatibility: null, load: null },
       ],
     },
   },
@@ -393,6 +411,15 @@ describe('server messages', () => {
     expect(closingCode('trafficLimit')).toBe('trafficLimit');
     expect(closingCode('gameStarted')).toBeNull();
     expect(closingCode('closed with code 1002')).toBeNull();
+  });
+
+  it('refuses a room member whose load is missing', () => {
+    const room = SERVER_MESSAGES.find((message) => message.kind === 'room');
+    if (room?.kind !== 'room') throw new Error('no room fixture');
+    const members = room.room.members.map(({ load: _load, ...member }) => member);
+    expect(() =>
+      parseServerMessage(wire({ ...room, room: { ...room.room, members } }), parseSession),
+    ).toThrow(/members\[0\]\.load/);
   });
 
   it('hands the session to the parser it was given', () => {

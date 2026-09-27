@@ -56,6 +56,8 @@ export interface RoomMemberView {
   readonly seat: number | null;
   readonly connected: boolean;
   readonly compatibility: LobbyCompatibility | null;
+  /** The load the member's last acknowledgement reported; null before its first. */
+  readonly load: ClientLoad | null;
 }
 
 export interface RoomView {
@@ -107,6 +109,14 @@ export interface WireFrame {
 /** A tick's sync digest as the wire carries it: the sim's `SyncDigest.domains`. */
 export type WireDigest = Readonly<Record<SyncDomain, number>>;
 
+/** A client's own load, reported with every acknowledgement: `tickMs` is its smoothed cost of one sim
+ *  tick in milliseconds on the thread that runs the sim, `buffered` the frames it holds received and
+ *  not yet run. */
+export interface ClientLoad {
+  readonly tickMs: number;
+  readonly buffered: number;
+}
+
 export type WaitReason = 'gone' | 'silent' | 'loading' | 'lagging' | 'resync';
 
 export interface WaitedMember {
@@ -151,7 +161,13 @@ export type ClientMessage =
   | { readonly kind: 'loaded'; readonly tick: number; readonly world: number }
   | { readonly kind: 'loaded'; readonly tick: null }
   | { readonly kind: 'finish'; readonly tick: number; readonly hash: string; readonly world: number }
-  | { readonly kind: 'ack'; readonly tick: number; readonly digest: WireDigest; readonly world: number }
+  | {
+      readonly kind: 'ack';
+      readonly tick: number;
+      readonly digest: WireDigest;
+      readonly world: number;
+      readonly load: ClientLoad;
+    }
   | { readonly kind: 'command'; readonly envelope: PlayerWireEnvelope; readonly fromTick: number }
   | { readonly kind: 'clock'; readonly speed?: number; readonly paused?: boolean }
   | { readonly kind: 'kick'; readonly player: number }

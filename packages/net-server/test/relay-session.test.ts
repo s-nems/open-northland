@@ -105,6 +105,12 @@ describe('a relayed session', () => {
       expect(ania.dropped).toEqual([]);
       // The slower link earns the longer input delay; the outcome above did not depend on it.
       expect(bartek.delayTicks).toBeGreaterThan(ania.delayTicks ?? Number.POSITIVE_INFINITY);
+      // Each client reported its tick cost and backlog, and the room view carries them.
+      for (const member of ania.room?.members ?? []) {
+        expect(member.load?.tickMs).toBeGreaterThanOrEqual(0);
+        expect(member.load?.buffered).toBeGreaterThanOrEqual(0);
+      }
+      expect(ania.room?.members).toHaveLength(2);
     },
   );
 
