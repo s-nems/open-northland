@@ -1,4 +1,6 @@
+import type { MapText } from '@open-northland/data';
 import { MAX_NICK_LENGTH } from '@open-northland/net-protocol';
+import { loadMapList } from '../../../content/maps-index.js';
 import { errorText } from '../../../diag/error-text.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
@@ -13,7 +15,7 @@ import { screenHead } from '../screen-head.js';
 import { roomAssets } from './assets.js';
 import { createPanel } from './create.js';
 import { prepareRoomCreation } from './creation.js';
-import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick } from './model.js';
+import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick, worldTitle } from './model.js';
 import { button, field } from './parts.js';
 import { DEFAULT_RELAY_URL } from './relay-default.js';
 import { mountNetworkRoom } from './room/index.js';
@@ -51,6 +53,14 @@ export function networkScreen(
   let busy = false;
   let generation = 0;
   let enteredStartedRoom = false;
+  /** Map names for the room header; a room shown before the listing answers names its map by id. */
+  let mapNames: ReadonlyMap<string, MapText | undefined> = new Map();
+  void loadMapList().then((entries) => {
+    mapNames = new Map(entries.map((entry) => [entry.id, entry.name]));
+    const current = connection;
+    if (!disposed && room !== null && current?.client.room)
+      room.update(current.client.room, current.socket.connected);
+  });
 
   const notice = (text: string): void => {
     status.textContent = text;
@@ -231,6 +241,7 @@ export function networkScreen(
             onLeave: leaveRoom,
             rejoin: enteredStartedRoom ? launchGame : null,
             onRetryCompatibility: () => assets?.retry(),
+            worldTitle: (world) => worldTitle(world, mapNames),
           });
           roomHost.replaceChildren(room.element);
           browser.hidden = true;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ruleChoiceState } from '../../src/entries/main-menu/lobby-controls/rules-state.js';
-import { escapeLeavesRoom, validNetworkNick } from '../../src/entries/main-menu/network/model.js';
+import { escapeLeavesRoom, validNetworkNick, worldTitle } from '../../src/entries/main-menu/network/model.js';
 
 describe('escapeLeavesRoom', () => {
   it('lets Esc clear a chat line still being written and leaves the room from anywhere else', () => {
@@ -31,5 +31,20 @@ describe('ruleChoiceState', () => {
     state.request(0);
     state.request(null);
     expect(changes).toEqual([0, null]);
+  });
+});
+
+describe('worldTitle', () => {
+  const mapNames = new Map([['arabian', { pol: 'ARABSKIE WYSPY', eng: 'ARABIAN ISLANDS' }]]);
+
+  it("names the room's map or scene in the player's language", () => {
+    expect(worldTitle({ kind: 'map', mapId: 'arabian' }, mapNames, 'eng')).toBe('ARABIAN ISLANDS');
+    expect(worldTitle({ kind: 'map', mapId: 'arabian' }, mapNames, 'pol')).toBe('ARABSKIE WYSPY');
+    expect(worldTitle({ kind: 'scene', sceneId: 'sandbox' }, mapNames, 'eng')).toBe('Open sandbox');
+  });
+
+  it('falls back to the id before the map listing answers or for an unknown world', () => {
+    expect(worldTitle({ kind: 'map', mapId: 'unlisted' }, new Map(), 'eng')).toBe('unlisted');
+    expect(worldTitle({ kind: 'scene', sceneId: 'no-such-scene' }, mapNames, 'eng')).toBe('no-such-scene');
   });
 });

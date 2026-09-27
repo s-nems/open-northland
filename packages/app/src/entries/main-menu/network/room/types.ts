@@ -1,4 +1,4 @@
-import type { SavedSessionMetadata } from '@open-northland/lockstep';
+import type { SavedSessionMetadata, SessionWorld } from '@open-northland/lockstep';
 import type { RelayClient } from '@open-northland/net-client';
 import type { enNetworkRoom } from '../../../../i18n/catalogs/en-network-room.js';
 
@@ -17,4 +17,6 @@ export interface NetworkRoomDeps {
    *  a room entered in its lobby, whose start the screen follows on its own. */
   readonly rejoin: (() => void) | null;
   readonly onRetryCompatibility: () => void;
+  /** The room's map or scene named in the player's language. */
+  readonly worldTitle: (world: SessionWorld) => string;
 }

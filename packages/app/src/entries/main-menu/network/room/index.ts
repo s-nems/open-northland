@@ -91,8 +91,7 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       connected = online;
       const permissions = roomPermissions(room, client.nick, connected);
       title.textContent = room.settings.name;
-      const world = room.settings.world;
-      identity.textContent = `${copy.title} · ${room.id} · ${world.kind === 'map' ? world.mapId : world.sceneId} · ${client.nick}`;
+      identity.textContent = `${copy.title} · ${room.id} · ${deps.worldTitle(room.settings.world)} · ${client.nick}`;
       linkLine.hidden = connected;
       seats.update(room, connected);
       settings.update(room, permissions.creator);

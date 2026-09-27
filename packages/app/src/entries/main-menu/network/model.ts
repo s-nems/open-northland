@@ -1,5 +1,8 @@
+import type { MapText } from '@open-northland/data';
+import type { SessionWorld } from '@open-northland/lockstep';
 import { parseNick, type RoomSummary } from '@open-northland/net-protocol';
-import { compareLabels } from '../../../i18n/index.js';
+import { localizedMapText } from '../../../game/map-strings.js';
+import { compareLabels, currentLocale, type Locale, sceneCopy } from '../../../i18n/index.js';
 
 export { relayAddress } from '../../../net/address.js';
 
@@ -28,4 +31,14 @@ export function openRooms(rooms: readonly RoomSummary[]): readonly RoomSummary[]
   return rooms
     .filter((room) => room.state === 'lobby')
     .sort((a, b) => compare(a.name, b.name) || a.id.localeCompare(b.id));
+}
+
+/** A room's world as the player reads it: the map's or scene's title in `lang`, else its id. */
+export function worldTitle(
+  world: SessionWorld,
+  mapNames: ReadonlyMap<string, MapText | undefined>,
+  lang: Locale = currentLocale(),
+): string {
+  if (world.kind === 'scene') return sceneCopy(world.sceneId, lang)?.title ?? world.sceneId;
+  return localizedMapText(mapNames.get(world.mapId), lang) ?? world.mapId;
 }
