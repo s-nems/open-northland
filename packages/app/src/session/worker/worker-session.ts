@@ -387,6 +387,13 @@ class WorkerClient<E> {
     >;
   }
 
+  /** Resolves once the ticks the worker stood at after `call` are delivered. After a failure none
+   *  will be, so it rejects with that failure; the reads that need no delivery still answer. */
+  private untilStepped(call: WorkerCall): Promise<void> {
+    if (this.failure !== null) return Promise.reject(this.failure);
+    return this.call(call).then(({ tick }) => this.untilDelivered(tick));
+  }
+
   /** Resolves once the delivered tick reaches `tick`. */
   private untilDelivered(tick: number): Promise<void> {
     if (this.tick >= tick) return Promise.resolve();
@@ -516,8 +523,8 @@ class WorkerClient<E> {
           reset: () => this.post({ kind: 'profileReset' }),
         };
       },
-      run: (ticks) => this.call({ method: 'run', ticks }).then(({ tick }) => this.untilDelivered(tick)),
-      settled: () => this.call({ method: 'settle' }).then(({ tick }) => this.untilDelivered(tick)),
+      run: (ticks) => this.untilStepped({ method: 'run', ticks }),
+      settled: () => this.untilStepped({ method: 'settle' }),
     };
   }
 

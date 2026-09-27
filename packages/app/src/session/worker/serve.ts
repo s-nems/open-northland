@@ -120,6 +120,9 @@ function nextTask(task: () => void): () => void {
 /** What a replaced session's pending answers reject with. */
 export const REPLACED_SESSION_MESSAGE = 'the served world was replaced by a newly booted one';
 
+/** What a `run` on a session whose tick threw rejects with: its world holds the failed tick's writes. */
+export const BROKEN_SESSION_MESSAGE = 'the served world stopped at a tick that threw';
+
 /** Serve sessions on `port`: build a world from each `boot` message and run it, a later boot replacing
  *  the session served until then. */
 export function serveSession<B, E>(port: SessionPort, build: WorldBuilder<B, E>): void {
@@ -547,6 +550,7 @@ export class ServedSession<E> {
   /** Step outside the session clock, paused or not. A command submitted while the run yields applies
    *  at the tick the session gave it. */
   private async run(offClock: OffClockRun, ticks: number): Promise<void> {
+    if (this.broken) throw new Error(BROKEN_SESSION_MESSAGE);
     this.running = true;
     this.halt();
     try {

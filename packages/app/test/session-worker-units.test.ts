@@ -6,7 +6,12 @@ import { changedFacts, readWorldFacts } from '../src/session/worker/facts.js';
 import type { SessionPort } from '../src/session/worker/port.js';
 import type { FromWorker, ToWorker } from '../src/session/worker/protocol.js';
 import { ArrivalAlpha } from '../src/session/worker/render-alpha.js';
-import { ASSUMED_FRAME_MS, leadTickLimit, serveSession } from '../src/session/worker/serve.js';
+import {
+  ASSUMED_FRAME_MS,
+  BROKEN_SESSION_MESSAGE,
+  leadTickLimit,
+  serveSession,
+} from '../src/session/worker/serve.js';
 import { StallWatch } from '../src/session/worker/stall-watch.js';
 import { startWorkerSession } from '../src/session/worker/worker-session.js';
 import { canonicalEntities } from './support/session-worker/canonical-entities.js';
@@ -239,6 +244,11 @@ describe('failures between the ends', () => {
       expect(session.host.tick).toBeLessThan(faultTick);
       direct.run(session.host.tick - direct.tick);
       expect(canonicalEntities(session.host.snapshot())).toBe(canonicalEntities(direct.snapshot()));
+      // No tick is delivered after the failure, so a wait for one would never end.
+      await expect(session.host.run(1)).rejects.toThrow(INJECTED_FAULT_MESSAGE);
+      await expect(session.host.settled()).rejects.toThrow(INJECTED_FAULT_MESSAGE);
+      // A crash report still reads the world as it stopped.
+      await expect(session.host.commandLog()).resolves.toBeDefined();
     } finally {
       session.dispose();
     }
@@ -251,6 +261,41 @@ describe('failures between the ends', () => {
   /** Heartbeats a stopped heartbeat would have sent while the test watches. */
   const HEARTBEATS_WATCHED = 5;
   const UNMEASURED_MS = 0;
+
+  it('steps no further a world whose tick threw', async () => {
+    const replies = new Map<number, FromWorker<null>>();
+    let deliver: (message: ToWorker<TestWorldBoot>) => void = () => undefined;
+    const port: SessionPort = {
+      post: (message) => {
+        const posted = message as FromWorker<null>;
+        if (posted.kind === 'reply') replies.set(posted.id, posted);
+      },
+      listen: (receive) => {
+        deliver = (message) => receive(message, UNMEASURED_MS);
+      },
+      listenFailure: () => undefined,
+      close: () => undefined,
+    };
+    const answer = async (id: number): Promise<FromWorker<null>> => {
+      while (!replies.has(id)) await settle(TURN_MS);
+      const reply = replies.get(id);
+      if (reply === undefined) throw new Error(`no reply ${id}`);
+      return reply;
+    };
+    serveSession(port, buildTestWorld);
+    const faultTick = createSceneSim(sandbox()).tick + 1;
+    deliver({
+      kind: 'boot',
+      boot: { kind: 'scene', id: 'sandbox', fault: { tick: faultTick, kind: 'throwAfterWrites' } },
+      options: DEFAULT_TEST_OPTIONS,
+    });
+    deliver({ kind: 'call', id: 1, call: { method: 'run', ticks: 1 } });
+    expect(await answer(1)).toMatchObject({ ok: false, error: { message: INJECTED_FAULT_MESSAGE } });
+    deliver({ kind: 'call', id: 2, call: { method: 'run', ticks: 1 } });
+    expect(await answer(2)).toMatchObject({ ok: false, error: { message: BROKEN_SESSION_MESSAGE } });
+    deliver({ kind: 'call', id: 3, call: { method: 'hashState' } });
+    expect(await answer(3)).toMatchObject({ ok: true, value: { tick: faultTick } });
+  });
 
   it('replies with an error when the answer itself cannot be posted', async () => {
     const replies: FromWorker<null>[] = [];
