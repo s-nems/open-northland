@@ -70,14 +70,12 @@ export {
   isHeroJobRow,
   isHunterJob,
   isScoutJob,
-  isSeaJob,
   isSoldierJob,
   isTraderJob,
   jobChangesProduction,
   jobIgnoresHomeHouse,
   jobNeedsReligion,
   scoutJobType,
-  seaJobs,
 } from './jobs.js';
 export {
   isLandLayerType,

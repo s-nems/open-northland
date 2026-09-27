@@ -112,24 +112,7 @@ export function hunterJobType(content: ContentSet): number | null {
   return lowestJobOf(contentIndex(content).hunterJobs);
 }
 
-/**
- * The `jobtypes` id suffix marking a water-borne specialization of a land trade. It is the only extracted
- * distinguisher: a sea variant carries the same `baseJob` and an empty `allowedAtomics`, its sea-work
- * atomics being bound per-tribe through `tribetypes` `setatomic`.
- */
-const SEA_JOB_SUFFIX = '_sea';
-
-/** The suffix isolates exactly `fisher_sea` (23) and `trader_sea` (26) in the real IR. */
-export function isSeaJob(job: JobType): boolean {
-  return job.id.endsWith(SEA_JOB_SUFFIX);
-}
-
-/** The shore-working fisher, distinct from its currently inert `fisher_sea` vehicle specialization. */
+/** The shore-working fisher, not the never-staffed `fisher_sea` row. */
 export function isFisherJob(content: ContentSet, jobType: number | null): boolean {
   return jobType !== null && contentIndex(content).jobs.get(jobType)?.id === 'fisher';
-}
-
-/** Sorted ascending by `typeId`, so enumeration does not depend on declaration order. */
-export function seaJobs(content: ContentSet): JobType[] {
-  return content.jobs.filter(isSeaJob).sort((a, b) => a.typeId - b.typeId);
 }
