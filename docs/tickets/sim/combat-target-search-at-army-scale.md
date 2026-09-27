@@ -1,7 +1,6 @@
 # Bound each fighter's per-tick target and approach search at army scale
 
 **Area:** sim · **Focus:** conflict · **Priority:** P3
-**Blocked by:** [00 Heavy-load reference](../runtime-architecture/00-heavy-load-reference.md)
 
 Predicted from the loop shapes, not measured at army scale: the 100k `magiczny_las` run had no war, and
 its profiles sample `CombatIndex.bandScan` at zero. The work below scales with fighters times the
@@ -29,7 +28,8 @@ the blow alarm at once with a 40 map point `ownedWithin` scan (`conflict/hit-ala
 
 ## Scope
 
-- Measure on the 00 reference battle first, the projectile system's landing and alarm work included:
+- Measure on the `ON_BENCH_FIGHTERS` battle of `npm run bench:sim` first, the projectile system's landing and
+  alarm work included:
   the share of `bandScan`, `nearestFew`, `crowdingOf` and `approachCell` at 100, 400 and 1000 fighters. Delete this ticket if they stay below the other combat terms.
 - Hash-identical cuts: visit the band's grid cells by increasing minimum distance and stop once no
   remaining cell can beat the best accepted candidate, with the `(distance, id)` order kept; reuse a

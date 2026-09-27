@@ -19,7 +19,7 @@ rest moves.
 Measured so far, without a battle (`docs/perf/heavy-load-magiczny-las-6ai.md`): pathfinding 6% of the
 tick at 1000 fighters with a 100 ms per-tick max, `findPath.advance` and `stepsInto` most of it. A
 mass order into contact, hundreds of chase repaths per tick and the wall and seal searches outside the
-budget are predicted, not measured, and belong to ticket 00's war scenario.
+budget are predicted, not measured; a deterministic mass-battle scenario would measure them.
 
 ## Scope
 

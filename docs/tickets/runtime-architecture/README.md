@@ -30,11 +30,7 @@ policies so that optimisation has a ceiling worth reaching.
 - The desktop build is the primary target. Browser-only behaviour, such as a hidden tab, is verified
   and documented, not designed around.
 
-## Order and dependencies
-
-| Ticket | Outcome | Depends on |
-| --- | --- | --- |
-| [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
+## What landed
 
 The runtime reads the world through one host interface, `SessionHost` in `packages/app/src/session/`.
 The `?map=` entry runs its `Simulation`, `LockstepDriver` over `LoopbackTransport` and fixed timestep
@@ -52,22 +48,20 @@ and the reference member keep the disputed tick's digest fold inputs in their di
 `npm run diag -- diff` names the first entity and component that differ. A hidden browser tab's
 behaviour is measured and stated in `docs/NETWORK.md` "Background windows". Zoom-out detail tiers left
 the epic for the render backlog (`docs/tickets/render/zoom-out-detail-tiers.md`): they do not depend on
-the sim rework. 00 closes the epic. Contract edits land with the ticket that makes them true.
+the sim rework. Every ticket of the epic has landed; the folder keeps this map until the branch merges.
 
 ## Not in this epic
 
 - Optimisation of individual sim systems or render layers. That work runs beside the epic and is
-  measured on the 00 reference like everything else.
+  measured on the six-AI reference (`docs/perf/heavy-load-magiczny-las-6ai.md`) like everything else.
 - Rendering in a worker (`OffscreenCanvas`).
 - A server that runs the sim. Full state streaming is out on bandwidth alone. A relay-side sim as an
   always-synced member that judges digests and donates snapshots is a later option if 08 proves
   insufficient.
-- A new save format. It enters only if 00 shows the resync snapshot too slow on a heavy map.
+- A new save format. It enters only if a measurement shows the resync snapshot too slow on a heavy map.
 
-## Shared verification
+## Verification
 
-Every ticket runs the gates in `docs/TESTING.md` and reports its numbers from the 00 reference. State
-hashes and goldens change only where a ticket names the behaviour change.
-The browser and desktop measurements of the whole epic (frame p95, per-tick receive cost beside sim
-time, boot and memory, in the local and the relayed session) are taken once, at the epic's end, on the
-00 reference against `main` before the epic; no ticket takes them on its own.
+Every ticket ran the gates in `docs/TESTING.md`; state hashes and goldens changed only where a ticket
+named the behaviour change. The epic's before/after numbers on a real GPU are not taken as a separate
+step: the benchmarks and optimisation passes before the merge measure the branch against `main`.

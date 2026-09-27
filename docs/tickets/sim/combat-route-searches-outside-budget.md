@@ -1,7 +1,6 @@
 # Bring the breach and sealed-target route searches under the pathfinding budget
 
 **Area:** sim · **Focus:** conflict, palisades · **Priority:** P3
-**Blocked by:** [00 Heavy-load reference](../runtime-architecture/00-heavy-load-reference.md)
 
 `drainPathRequests` (`movement/routing.ts`) caps routing at `PATHFINDING_NODE_BUDGET_PER_TICK` (16384
 settled nodes). Two combat paths call `findPath` directly, outside that cap:
@@ -20,7 +19,7 @@ searches in one tick. Not measured: the 100k `magiczny_las` run had no siege. Th
 
 ## Scope
 
-- Measure on the 00 reference battle with a palisade in the way: the tick share and max of
+- Measure on the `ON_BENCH_FIGHTERS` battle of `npm run bench:sim` with a palisade in the way: the tick share and max of
   `palisadeBarring` and `sealedByStructures`. Delete this ticket if neither spikes.
 - Otherwise, without changing answers: build the standing-wall map once per tick, keyed on the
   `Palisade` generations; memoize the "barred by walls" and "sealed by structures" verdicts per
