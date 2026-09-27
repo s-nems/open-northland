@@ -21,9 +21,9 @@ import {
   missionBriefingPage,
   needsEnabled,
   type Paper,
+  Position,
   playerGoodList,
   playerPaperSlots,
-  Position,
   professionProgressionEnabled,
   Settler,
 } from './components/index.js';
