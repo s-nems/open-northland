@@ -254,7 +254,8 @@ export function createCrewSection(
     },
     refresh(armed): void {
       const seating = armed === 'seatRider';
-      setClass(commander.element, 'on-ledger--armed', seating);
+      // The commander row offers the pick only while the seat is empty; else its button steps out.
+      setClass(commander.element, 'on-ledger--armed', seating && shown()?.crew.commander === null);
       for (const well of wells)
         setClass(well, 'on-seat-well--armed', seating && well.classList.contains('on-seat-well--add'));
       setClass(deck.element, 'on-ledger--armed', armed === 'loadVehicle');
