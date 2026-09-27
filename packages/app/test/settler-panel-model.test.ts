@@ -439,6 +439,21 @@ describe('the settler panel model', () => {
     );
     const balanced = settlerModel(world, { ...ctx, traderView: () => both }).trade?.transfers;
     expect(balanced?.find((transfer) => transfer.goodType === GOOD_WOOD)?.direction).toBe('both');
+
+    // Upgrading, a house shows the stock stashed on the marker, not the site's build goods.
+    const [home, ...rest] = world;
+    if (home === undefined) throw new Error('expected the home');
+    const upgrading = {
+      ...home,
+      components: {
+        ...home.components,
+        Stockpile: { amounts: [[GOOD_IRON, 1]] },
+        Upgrading: { savedStock: [[GOOD_WOOD, WOOD_ABOARD]], seeded: [] },
+      },
+    };
+    const site = settlerModel([upgrading, ...rest], { ...ctx, traderView: () => view }).trade?.stock?.a;
+    expect(site?.find((row) => row.goodType === GOOD_WOOD)?.amount).toBe(WOOD_ABOARD);
+    expect(site?.find((row) => row.goodType === GOOD_IRON)?.amount).toBe(0);
   });
 
   it('carries the good in hand to the status line', () => {

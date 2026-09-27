@@ -124,11 +124,14 @@ export function tradeOfferLabel(ctx: UnitPanelModelContext, offer: TradeOffer): 
   });
 }
 
-/** The goods a house keeps (its type's stock table) with the units it holds now. */
+/** The goods a house keeps (its type's stock table) with the units it holds now. An upgrading house
+ *  keeps them stashed on its `Upgrading` marker while its shelves hold the site's build goods. */
 function houseStock(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, house: number): TradeStockRow[] {
   const ent = entityById(snapshot, house);
   const typeId = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
-  return stockRows(ctx, buildingDef(ctx, typeId), ent?.components.Stockpile).map((row) => ({
+  const upgrading = ent?.components.Upgrading as { savedStock?: unknown } | undefined;
+  const stock = upgrading === undefined ? ent?.components.Stockpile : { amounts: upgrading.savedStock };
+  return stockRows(ctx, buildingDef(ctx, typeId), stock).map((row) => ({
     goodType: row.goodType,
     ...(row.goodId !== undefined ? { goodId: row.goodId } : {}),
     label: row.label,
