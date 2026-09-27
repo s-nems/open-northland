@@ -20,7 +20,7 @@ function house(id: number): Ent {
 
 const trader: Ent = {
   id: TRADER,
-  components: { TradeRoute: { stops: [{ house: ON_ROUTE, foreign: false, imports: [] }] } },
+  components: { TradeRoute: { stops: [{ slot: 0, house: ON_ROUTE, imports: [] }] } },
 };
 
 describe('tradeHousePick', () => {

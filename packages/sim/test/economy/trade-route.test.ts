@@ -11,6 +11,7 @@ import {
   Rider,
   Stockpile,
   setStockAmount,
+  stampOwner,
   TRADE_LIMIT_NONE,
   TradeRoute,
   UnderConstruction,
@@ -741,6 +742,22 @@ describe('a trader at a foreign house', () => {
     expect(goodsTradedWith(sim.world, NEIGHBOUR, HUMAN)).toBe(0);
   });
 
+  it('keeps its agreement when a fallen own stop is replaced before the trader plans again', () => {
+    const { sim, home, post, trader } = tradingWorld('friend');
+    sim.run(TRADE_START_TICKS);
+
+    sim.world.destroy(home);
+    expect(sim.traderView(trader)?.stops.map((stop) => stop.foreign)).toEqual([false, true]);
+    expect(sim.traderView(trader)?.agreementHolds).toBe(true);
+    const rebuilt = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 6]]);
+    attach(sim, trader, rebuilt);
+    sim.step();
+
+    const route = sim.world.get(trader, TradeRoute);
+    expect(route.stops.map((stop) => stop.house)).toEqual([rebuilt, post]);
+    expect(route.agreement).toBe(0);
+  });
+
   it('answers a dish in the agreement with the edible its houses hold', () => {
     const sim = newSim();
     const home = houseAt(sim, NEAR_X, HUMAN, [[FOOD, 4]]);
@@ -790,6 +807,48 @@ describe('a trader at a foreign house', () => {
     restored.run(RUN_TICKS);
 
     expect(restored.hashState()).toBe(sim.hashState());
+  });
+});
+
+describe('a route whose owners a map script changes', () => {
+  it("stops carting between its old owner's houses once the trader is handed to another player", () => {
+    const sim = newSim();
+    const near = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 10]]);
+    const far = houseAt(sim, FAR_X, HUMAN);
+    const trader = traderAt(sim, NEAR_X);
+    woodRoute(sim, trader, near, far);
+    sim.step();
+
+    // As `ChangePlayerIdInArea` does to a trader and its cart standing in the area, not to the houses.
+    stampOwner(sim.world, trader, NEIGHBOUR);
+    stampOwner(sim.world, sim.world.get(trader, Rider).vehicle, NEIGHBOUR);
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, near, WOOD)).toBe(10);
+    expect(stockOf(sim, far, WOOD)).toBe(0);
+    expect(sim.traderView(trader)?.stops.map((stop) => stop.foreign)).toEqual([true, true]);
+  });
+
+  it("works a trading house handed to the trader's player as its own: marks, no exchange, no tally", () => {
+    const sim = newSim();
+    const home = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 6]]);
+    const post = houseAt(sim, FAR_X, NEIGHBOUR, [[PLANK, 8]], TRADING_POST_ID);
+    const trader = traderAt(sim, NEAR_X);
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN, to: NEIGHBOUR, state: 'friend' });
+    offerWoodForPlanks(sim);
+    attach(sim, trader, home);
+    attach(sim, trader, post);
+    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
+    sim.step();
+
+    stampOwner(sim.world, post, HUMAN);
+    mark(sim, trader, home, PLANK);
+    sim.run(RUN_TICKS);
+
+    expect(stockOf(sim, post, WOOD)).toBe(0);
+    expect(stockOf(sim, home, PLANK) + cartOf(sim, trader, PLANK)).toBe(8);
+    expect(goodsTradedWith(sim.world, HUMAN, HUMAN)).toBe(0);
+    expect(sim.traderView(trader)?.agreementHolds).toBe(false);
   });
 });
 

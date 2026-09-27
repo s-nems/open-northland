@@ -2,6 +2,7 @@ import {
   Building,
   diplomacyStance,
   isAiPlayer,
+  isForeignHouse,
   isMatchParticipant,
   MissionObjectId,
   matchParticipantBits,
@@ -45,24 +46,20 @@ export function agreementsAt(world: World, house: Entity): HouseAgreement[] {
   return offered;
 }
 
-/** The route's foreign stop, or undefined for a route between the trader's own houses. */
-export function foreignStopOf(route: TradeRouteView): TradeRouteView['stops'][number] | undefined {
-  return route.stops.find((stop) => stop.foreign);
-}
-
 /**
  * The agreement the trader's route trades on, or undefined when its choice does not hold: no foreign
  * stop, an index off the table, an agreement of another house, or a partner the trader's player is
  * not on friendly terms with (reading: the exchange needs the payer's stance toward the house owner to
- * be `friend`).
+ * be `friend`). A route whose stops a map script's owner change left both foreign has no house of the
+ * trader's own to trade from, and holds none.
  */
 export function activeAgreement(
   world: World,
   trader: Entity,
   route: TradeRouteView,
 ): DeepReadonly<TradeAgreement> | undefined {
-  const stop = foreignStopOf(route);
-  if (stop === undefined || route.agreement < 0) return undefined;
+  const [stop, second] = route.stops.filter((s) => isForeignHouse(world, trader, s.house));
+  if (stop === undefined || second !== undefined || route.agreement < 0) return undefined;
   const chosen = agreementsAt(world, stop.house).find((offer) => offer.index === route.agreement);
   if (chosen === undefined) return undefined;
   const player = ownerOf(world, trader);

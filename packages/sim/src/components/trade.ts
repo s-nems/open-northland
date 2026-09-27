@@ -1,6 +1,8 @@
 import { type DeepReadonly, defineComponent, type Entity, type World } from '../ecs/world.js';
 import { defineWorldSingleton } from '../ecs/world-singleton.js';
-import { MAX_PLAYERS } from './ownership.js';
+import { Building } from './economy/infrastructure.js';
+import { Position } from './movement.js';
+import { MAX_PLAYERS, ownerOf } from './ownership.js';
 
 /** A trader's route holds two houses (reading: the original's merchant data has two house slots). */
 export const TRADE_ROUTE_HOUSES = 2;
@@ -26,10 +28,24 @@ export interface TradeStop {
   /** Which of the route's {@link TRADE_ROUTE_HOUSES} slots the stop fills, from 0. */
   readonly slot: number;
   readonly house: Entity;
-  /** Whether the house belongs to another player: the stop the exchange happens at. */
-  readonly foreign: boolean;
   /** The goods the player marked for import into this house, ascending by good. */
   imports: TradeImportMark[];
+}
+
+/** Whether `house` belongs to another player than `trader`: the stop the exchange happens at. Read off
+ *  the live owners, since a map script can hand either to another player mid-route; a house that is gone
+ *  belongs to nobody. */
+export function isForeignHouse(world: World, trader: Entity, house: Entity): boolean {
+  return world.isAlive(house) && ownerOf(world, house) !== ownerOf(world, trader);
+}
+
+/** The route's stop at another player's house, or undefined for a route between the trader's own houses. */
+export function foreignStopOf(
+  world: World,
+  trader: Entity,
+  route: DeepReadonly<{ stops: TradeStop[] }>,
+): DeepReadonly<TradeStop> | undefined {
+  return route.stops.find((stop) => isForeignHouse(world, trader, stop.house));
 }
 
 /**
@@ -76,28 +92,49 @@ export function ensureTradeRoute(world: World, e: Entity): void {
  * reads as `[first, second]`. The import flags of every stop are cleared, as the original does on any
  * route change.
  */
-export function addTradeStop(world: World, e: Entity, house: Entity, foreign: boolean): boolean {
+export function addTradeStop(world: World, e: Entity, house: Entity): boolean {
   ensureTradeRoute(world, e);
+  dropFallenTradeStops(world, e);
   const route = world.get(e, TradeRoute);
   if (route.stops.some((s) => s.house === house)) return false;
+  const foreignStop = isForeignHouse(world, e, house) ? foreignStopOf(world, e, route) : undefined;
   const live = world.mut(e, TradeRoute);
   let slot = 0;
   while (slot < TRADE_ROUTE_HOUSES && live.stops.some((s) => s.slot === slot)) slot++;
-  const foreignStop = foreign ? live.stops.find((s) => s.foreign) : undefined;
   if (foreignStop !== undefined) slot = foreignStop.slot;
   else if (slot === TRADE_ROUTE_HOUSES) slot = 0;
   const dropped = live.stops.find((s) => s.slot === slot);
   if (dropped !== undefined) {
     live.stops = live.stops.filter((s) => s !== dropped);
-    if (dropped.foreign) live.agreement = -1;
+    if (isForeignHouse(world, e, dropped.house)) live.agreement = -1;
   }
-  live.stops.push({ slot, house, foreign, imports: [] });
+  live.stops.push({ slot, house, imports: [] });
   live.stops.sort((a, b) => a.slot - b.slot);
   for (const stop of live.stops) stop.imports = [];
   live.current = -1;
   live.given = 0;
   live.received = 0;
   return true;
+}
+
+/** Whether a stop's house still stands on the map, finished or a site. */
+function houseStands(world: World, house: Entity): boolean {
+  return world.isAlive(house) && world.has(house, Position) && world.has(house, Building);
+}
+
+/**
+ * Drop every stop whose house fell, starting the route over; a route left with no foreign stop drops its
+ * agreement. A house being upgraded stands and stays, as its workers keep their bindings.
+ */
+export function dropFallenTradeStops(world: World, e: Entity): void {
+  const route = world.tryGet(e, TradeRoute);
+  if (route === undefined || route.stops.every((stop) => houseStands(world, stop.house))) return;
+  const live = world.mut(e, TradeRoute);
+  live.stops = live.stops.filter((stop) => houseStands(world, stop.house));
+  live.current = -1;
+  live.given = 0;
+  live.received = 0;
+  if (foreignStopOf(world, e, live) === undefined) live.agreement = -1;
 }
 
 /** Remove `house` from the route; the stop index rewinds so the next plan starts from the first stop. */
@@ -108,7 +145,7 @@ export function removeTradeStop(world: World, e: Entity, house: Entity): boolean
   live.stops = live.stops.filter((s) => s.house !== house);
   for (const stop of live.stops) stop.imports = [];
   live.current = -1;
-  if (!live.stops.some((s) => s.foreign)) live.agreement = -1;
+  if (foreignStopOf(world, e, live) === undefined) live.agreement = -1;
   live.given = 0;
   live.received = 0;
   return true;
@@ -162,7 +199,7 @@ function isUnitCount(value: number): boolean {
 /** The index of `house` among the route's stops, or -1 when it is none or the route has a foreign stop. */
 function domesticStopIndex(world: World, e: Entity, house: Entity): number {
   const route = world.tryGet(e, TradeRoute);
-  if (route === undefined || route.stops.some((s) => s.foreign)) return -1;
+  if (route === undefined || foreignStopOf(world, e, route) !== undefined) return -1;
   return route.stops.findIndex((s) => s.house === house);
 }
 

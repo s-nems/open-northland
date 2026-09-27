@@ -672,8 +672,10 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   third house in the original, gives this build's new house the first slot (owner's choice). The
   panel's balance row marks a good at both own stops in one click, and every stop offers a mark for
   each good its house stores, held anywhere or not (owner's choice). This build also takes only an own
-  house that keeps a stock, or another player's house that offers an agreement, and keeps no import
-  mark on a route with a foreign stop, where the agreement alone decides (owner's choice). Every unit
+  house that keeps a stock, or another player's house that offers an agreement, and takes or reads no
+  import mark on a route with a foreign stop, where the agreement alone decides (owner's choice). Which stop
+  is foreign is read off the live owners, so a script's handover changes the rules a route runs under,
+  and a route it leaves with two foreign stops trades nothing. Every unit
   loaded out of the foreign house adds one to the player's tally with the house's owner, which the
   goal compares.
 - The trader works from the cart it commands (it needs the human attached as the vehicle's

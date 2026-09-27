@@ -3,7 +3,7 @@ import {
   addTradeStop,
   Building,
   clearTradeImports,
-  ownerOf,
+  isForeignHouse,
   removeTradeStop,
   Settler,
   setTradeAgreement,
@@ -41,7 +41,7 @@ export function canAttachTradeHouse(
   const building = world.tryGet(house, Building);
   if (building === undefined || building.built !== ONE) return false;
   if (tradeRouteOf(world, trader)?.stops.some((stop) => stop.house === house) === true) return false;
-  if (ownerOf(world, house) !== ownerOf(world, trader)) return agreementsAt(world, house).length > 0;
+  if (isForeignHouse(world, trader, house)) return agreementsAt(world, house).length > 0;
   return (contentIndex(ctx.content).storedGoodsByBuilding.get(building.buildingType)?.size ?? 0) > 0;
 }
 
@@ -49,12 +49,11 @@ export function canAttachTradeHouse(
 export function applyTradeCommand(world: World, ctx: SystemContext, command: TradeCommand): void {
   if (!isTrader(world, ctx, command.entity)) return;
   switch (command.kind) {
-    case 'attachTradeHouse': {
-      if (!canAttachTradeHouse(world, ctx, command.entity, command.house)) return;
-      const foreign = ownerOf(world, command.house) !== ownerOf(world, command.entity);
-      addTradeStop(world, command.entity, command.house, foreign);
+    case 'attachTradeHouse':
+      if (canAttachTradeHouse(world, ctx, command.entity, command.house)) {
+        addTradeStop(world, command.entity, command.house);
+      }
       return;
-    }
     case 'detachTradeHouse':
       removeTradeStop(world, command.entity, command.house);
       return;

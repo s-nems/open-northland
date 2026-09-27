@@ -1,5 +1,6 @@
 import {
   Building,
+  isForeignHouse,
   MissionObjectId,
   ownerOf,
   Settler,
@@ -97,15 +98,17 @@ export function traderView(world: World, ctx: ContentContext, trader: Entity): T
       cargo,
     };
   }
-  const player = ownerOf(world, trader);
   return {
-    stops: route.stops.map((stop) => ({
-      slot: stop.slot,
-      house: stop.house,
-      foreign: stop.foreign,
-      imports: stop.imports.map((mark) => ({ good: mark.good, upTo: mark.upTo, keep: mark.keep })),
-      offers: stop.foreign && player !== undefined ? agreementsAt(world, stop.house).map(offerOf) : [],
-    })),
+    stops: route.stops.map((stop) => {
+      const foreign = isForeignHouse(world, trader, stop.house);
+      return {
+        slot: stop.slot,
+        house: stop.house,
+        foreign,
+        imports: stop.imports.map((mark) => ({ good: mark.good, upTo: mark.upTo, keep: mark.keep })),
+        offers: foreign ? agreementsAt(world, stop.house).map(offerOf) : [],
+      };
+    }),
     current: route.current,
     agreement: route.agreement,
     agreementHolds: activeAgreement(world, trader, route) !== undefined,

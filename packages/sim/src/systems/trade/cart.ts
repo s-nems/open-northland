@@ -1,6 +1,7 @@
 import type { VehicleType } from '@open-northland/data';
 import {
   Carrying,
+  isForeignHouse,
   ownerOf,
   recordGoodsTraded,
   TradeRoute,
@@ -79,7 +80,7 @@ export function cartHoldOf(world: World, ctx: ContentContext, cart: TradeCart): 
 /** Whether the trader is at the stop of another player's house, where the exchange is counted. */
 function atForeignStop(world: World, trader: Entity, house: Entity): boolean {
   const route = world.tryGet(trader, TradeRoute);
-  return route?.stops.some((stop) => stop.house === house && stop.foreign) === true;
+  return route?.stops.some((stop) => stop.house === house) === true && isForeignHouse(world, trader, house);
 }
 
 /**

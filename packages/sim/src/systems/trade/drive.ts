@@ -1,6 +1,7 @@
 import {
   Building,
-  Position,
+  dropFallenTradeStops,
+  isForeignHouse,
   TRADE_LIMIT_NONE,
   TRADE_ROUTE_HOUSES,
   type TradeAgreement,
@@ -68,13 +69,10 @@ const WAIT: TradeAction = { kind: 'wait' };
 export function planTrader(plan: PlannerContext): boolean {
   const { world, ctx, entity: e } = plan;
   if (!isTraderJob(ctx.content, plan.jobType)) return false;
-  const route = world.tryGet(e, TradeRoute);
-  if (route === undefined) return false;
-  if (!dropFallenStops(world, e, route)) return false;
+  if (!world.has(e, TradeRoute) || !routeStandsFinished(world, e)) return false;
   const cart = tradeCartOf(world, ctx, e);
   if (cart === null || cartUnderWay(world, cart)) return false;
-  const live = world.get(e, TradeRoute);
-  if (live.current < 0) world.mut(e, TradeRoute).current = 0;
+  if (world.get(e, TradeRoute).current < 0) world.mut(e, TradeRoute).current = 0;
   const current = world.get(e, TradeRoute);
   const stop = current.stops[current.current];
   const other = current.stops[1 - current.current];
@@ -91,7 +89,7 @@ export function planTrader(plan: PlannerContext): boolean {
     case 'next':
       break;
   }
-  if (!stop.foreign && !other.foreign) {
+  if (!isForeignHouse(world, e, stop.house) && !isForeignHouse(world, e, other.house)) {
     // Original behavior: an own stop with nothing to move hands the turn to the other one, and the cart
     // drives only once that stop has a unit to load or unload.
     const there = decideDomestic(world, ctx, hold, other, stop);
@@ -191,29 +189,15 @@ function walkTo(plan: PlannerContext, house: Entity, start: () => void): void {
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, house, here), start);
 }
 
-/**
- * Drop every stop whose house fell; reports whether a full route of finished houses is left to work. A
- * house being upgraded stays on the route, as its workers keep their bindings, and holds the trader
- * until it stands finished again.
- */
-function dropFallenStops(world: World, e: Entity, route: TradeRouteView): boolean {
-  const standing = route.stops.filter((stop) => isStandingHouse(world, stop.house));
-  if (standing.length !== route.stops.length) {
-    const live = world.mut(e, TradeRoute);
-    live.stops = live.stops.filter((stop) => isStandingHouse(world, stop.house));
-    live.current = -1;
-    live.given = 0;
-    live.received = 0;
-    if (!live.stops.some((stop) => stop.foreign)) live.agreement = -1;
-  }
+/** Drop the stops whose house fell; reports whether a full route of finished houses is left to work. A
+ *  house being upgraded holds the trader until it stands finished again. */
+function routeStandsFinished(world: World, e: Entity): boolean {
+  dropFallenTradeStops(world, e);
+  const { stops } = world.get(e, TradeRoute);
   return (
-    standing.length === TRADE_ROUTE_HOUSES &&
-    standing.every((stop) => world.get(stop.house, Building).built === ONE)
+    stops.length === TRADE_ROUTE_HOUSES &&
+    stops.every((stop) => world.get(stop.house, Building).built === ONE)
   );
-}
-
-function isStandingHouse(world: World, house: Entity): boolean {
-  return world.isAlive(house) && world.has(house, Position) && world.has(house, Building);
 }
 
 function decide(
@@ -225,10 +209,13 @@ function decide(
   stop: DeepReadonly<TradeStop>,
   other: DeepReadonly<TradeStop>,
 ): TradeAction {
-  if (!stop.foreign && !other.foreign) return decideDomestic(world, ctx, hold, stop, other);
+  const foreign = isForeignHouse(world, trader, stop.house);
+  if (!foreign && !isForeignHouse(world, trader, other.house)) {
+    return decideDomestic(world, ctx, hold, stop, other);
+  }
   const agreement = activeAgreement(world, trader, route);
   if (agreement === undefined) return WAIT;
-  return stop.foreign
+  return foreign
     ? decideExchange(world, ctx, trader, route, hold, stop.house, agreement)
     : decidePreparation(world, ctx, hold, stop.house, agreement);
 }

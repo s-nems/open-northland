@@ -466,7 +466,7 @@ describe('right-clicking a standing house with a trader', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
-    components.addTradeStop(sim.world, trader, home, false);
+    components.addTradeStop(sim.world, trader, home);
 
     expect(await rightClick(sim, [trader], home)).toEqual([
       { kind: 'detachTradeHouse', entity: trader, house: home },
