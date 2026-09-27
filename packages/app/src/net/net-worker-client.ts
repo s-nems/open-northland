@@ -6,7 +6,13 @@ import {
   type RelayLobby,
   RelayState,
 } from '@open-northland/net-client';
-import type { RoomSummary, RoomView, ServerMessage, WaitedMember } from '@open-northland/net-protocol';
+import type {
+  GovernedClock,
+  RoomSummary,
+  RoomView,
+  ServerMessage,
+  WaitedMember,
+} from '@open-northland/net-protocol';
 import type { CommandEnvelope, SaveGame } from '@open-northland/sim';
 import type { RelayFacts, RelayRequest, ToNetWorker } from '../session/worker/net-protocol.js';
 
@@ -94,6 +100,9 @@ export class RelayClientMirror implements RelayClientView {
   get speed(): number {
     return this.facts.speed;
   }
+  get governed(): GovernedClock | null {
+    return this.state.clockState?.governed ?? null;
+  }
   get bufferedTicks(): number {
     return this.facts.bufferedTicks;
   }
@@ -180,11 +189,12 @@ export class RelayClientMirror implements RelayClientView {
 /**
  * The driver the runtime runs a relayed world through: the worker session's delivery, with the relay's
  * clock. Tempo and pause read as the relay last broadcast them and change by request; the session's
- * own speed follows the relay's so its interpolation keeps pace.
+ * own speed follows the speed the relay's clock runs at, governed or requested, so its interpolation
+ * keeps pace.
  */
 export function relayedSessionDriver(
   session: SessionDriver,
-  client: Pick<RelayClientView, 'paused' | 'speed' | 'setPaused' | 'setSpeed'>,
+  client: Pick<RelayClientView, 'paused' | 'speed' | 'governed' | 'setPaused' | 'setSpeed'>,
 ): SessionDriver {
   return {
     get paused() {
@@ -200,7 +210,8 @@ export function relayedSessionDriver(
     setPaused: (paused) => client.setPaused(paused),
     setSpeed: (speed) => client.setSpeed(speed),
     advance: (elapsedMs, onTick) => {
-      if (session.speed !== client.speed) session.setSpeed(client.speed);
+      const running = client.governed?.speed ?? client.speed;
+      if (session.speed !== running) session.setSpeed(running);
       return session.advance(elapsedMs, onTick);
     },
     submit: (envelope) => session.submit(envelope),

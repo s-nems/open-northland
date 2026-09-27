@@ -1,7 +1,7 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { prepareInitialSave } from '@open-northland/net-client';
 import { type RoomSettings, TICK_MS } from '@open-northland/net-protocol';
-import { KICK_COUNTDOWN_MS, Relay, SILENT_AFTER_MS, WAIT_BEHIND_MS } from '@open-northland/net-server';
+import { GOVERN_BEHIND_MS, KICK_COUNTDOWN_MS, Relay, SILENT_AFTER_MS } from '@open-northland/net-server';
 import {
   exportSaveGame,
   playerCommand,
@@ -166,9 +166,9 @@ describe('a relayed session under faults', () => {
     const { stage, ania, bartek } = await twoClients(21);
     await runUntil(stage, [ania, bartek], 40, { onTick: orderAt });
     const stoppedAt = bartek.tick;
-    await runFor(stage, [ania], WAIT_BEHIND_MS + SETTLE_MS * 2);
+    await runFor(stage, [ania], GOVERN_BEHIND_MS + SETTLE_MS * 2);
     expect(bartek.tick).toBe(stoppedAt);
-    expect(ania.waits.at(-1)?.for).toMatchObject([{ nick: 'Bartek', reason: 'lagging' }]);
+    expect(ania.waits.at(-1)?.for).toMatchObject([{ nick: 'Bartek', reason: 'slow' }]);
     ania.kick(1);
     await runFor(stage, [ania], SETTLE_MS);
     expect(ania.rejections.at(-1)?.reason).toMatchObject({ code: 'voteNotOpen' });
@@ -183,20 +183,19 @@ describe('a relayed session under faults', () => {
     expect(ania.rejections.at(-1)?.reason).toEqual({ code: 'notWaitedFor', nick: 'Bartek' });
   });
 
-  it('offers a vote for a connected client that stops ticking, without automatically removing it', async () => {
+  it('paces for a connected client that stops ticking and offers a vote, without removing it', async () => {
     const { stage, ania, bartek } = await twoClients(22);
     await runUntil(stage, [ania, bartek], 40);
-    await runFor(stage, [ania], WAIT_BEHIND_MS + KICK_COUNTDOWN_MS + SETTLE_MS * 2);
-    expect(ania.waits.at(-1)?.for).toEqual([{ nick: 'Bartek', reason: 'lagging', voteAfterMs: 0 }]);
+    await runFor(stage, [ania], GOVERN_BEHIND_MS + KICK_COUNTDOWN_MS + SETTLE_MS * 2);
+    expect(ania.waits.at(-1)?.for).toEqual([{ nick: 'Bartek', reason: 'slow', voteAfterMs: 0 }]);
     expect(ania.room?.members.find((member) => member.nick === 'Bartek')?.connected).toBe(true);
     expect(ania.kicks).toEqual([]);
-    const held = ania.tick;
+    const paced = ania.tick ?? 0;
     await runFor(stage, [ania], SETTLE_MS);
-    expect(ania.tick).toBe(held);
+    expect(ania.tick).toBeGreaterThan(paced);
     ania.kick(1);
     await runFor(stage, [ania], SETTLE_MS * 2);
     expect(ania.kicks.at(-1)).toMatchObject({ player: 1, nick: 'Bartek', mode: 'idle' });
-    expect(ania.tick).toBeGreaterThan(held ?? 0);
     expect(ania.waits.at(-1)?.for).toEqual([]);
   });
 

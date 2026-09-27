@@ -1,4 +1,4 @@
-import type { ServerMessage, WaitedMember } from '@open-northland/net-protocol';
+import type { GovernedClock, ServerMessage, WaitedMember } from '@open-northland/net-protocol';
 import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 
@@ -6,6 +6,8 @@ import { BUTTON_STYLE, el } from '../overlay.js';
 const WAITING_Z_INDEX = '1500';
 /** The countdown is redrawn on this cadence; finer would only redraw the same second. */
 const REDRAW_MS = 250;
+/** A governed speed steps by a twentieth; one decimal is enough to say how slow the game runs. */
+const GOVERNED_SPEED_DECIMALS = 1;
 
 const PANEL_STYLE = [
   'position:fixed',
@@ -50,6 +52,29 @@ export function waitedRows(
   }));
 }
 
+export interface WaitingText {
+  readonly title: string;
+  /** One line per row, in the rows' order: the member and why the room waits for them. */
+  readonly lines: readonly string[];
+  /** Said under the list while this client's own member is the one slowing the game. */
+  readonly footer: string | null;
+}
+
+/** What the panel says over `rows`: a room only slowed down reads differently from one held. */
+export function waitingText(
+  rows: readonly WaitedRow[],
+  governed: GovernedClock | null,
+  ownNick: string,
+): WaitingText {
+  const copy = messages().net;
+  const slowing = rows.filter((row) => row.reason === 'slow');
+  return {
+    title: slowing.length === rows.length ? copy.slowedTitle : copy.waitingTitle,
+    lines: rows.map((row) => `${row.nick} · ${reasonText(row, governed)}`),
+    footer: slowing.some((row) => row.nick === ownNick) ? copy.othersWaitForYou : null,
+  };
+}
+
 export interface WaitingOverlayDeps {
   /** The seat a nick holds, for the kick vote; null for a member without one. */
   readonly seatOf: (nick: string) => number | null;
@@ -65,6 +90,8 @@ export interface WaitingOverlay {
   tally(vote: KickVote): void;
   /** A line above the list about this client's own link or world; null clears it. */
   notice(text: string | null): void;
+  /** The member the relay slows the clock for and the speed it runs at; null when none. */
+  governed(state: GovernedClock | null): void;
   dispose(): void;
 }
 
@@ -74,6 +101,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
   let waited: readonly WaitedMember[] = [];
   let receivedAt = 0;
   let noticeText: string | null = null;
+  let governedClock: GovernedClock | null = null;
   const tallies = new Map<number, KickVote>();
   let panel: HTMLDivElement | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -99,6 +127,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
     const signature = JSON.stringify([
       currentLocale(),
       noticeText,
+      governedClock,
       rows,
       [...tallies],
       rows.map((row) => deps.seatOf(row.nick)),
@@ -112,12 +141,13 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
     const children: HTMLElement[] = [];
     if (noticeText !== null) children.push(el('div', 'opacity:0.9', noticeText));
     if (rows.length > 0) {
-      children.push(el('div', 'font-weight:700', copy.waitingTitle));
-      for (const row of rows) {
+      const text = waitingText(rows, governedClock, deps.ownNick());
+      children.push(el('div', 'font-weight:700', text.title));
+      for (const [index, row] of rows.entries()) {
         const line = el('div', 'display:flex;align-items:center;gap:10px;justify-content:space-between');
         const seat = deps.seatOf(row.nick);
         const tally = seat === null ? undefined : tallies.get(seat);
-        line.append(el('span', '', `${row.nick} · ${copy.reasons[row.reason]}`));
+        line.append(el('span', '', text.lines[index] ?? row.nick));
         if (row.voteInSeconds > 0) {
           line.append(
             el('span', 'opacity:0.7', formatMessage(copy.kickCountdown, { seconds: row.voteInSeconds })),
@@ -135,6 +165,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
         }
         children.push(line);
       }
+      if (text.footer !== null) children.push(el('div', 'opacity:0.9', text.footer));
     }
     panel.replaceChildren(...children);
     if (focusedSeat !== undefined) {
@@ -160,10 +191,23 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
       noticeText = text;
       render();
     },
+    governed(state): void {
+      governedClock = state;
+      render();
+    },
     dispose(): void {
       waited = [];
       noticeText = null;
       render();
     },
   };
+}
+
+/** Why the room waits for a row's member; the member the clock is slowed for also names the speed. */
+function reasonText(row: WaitedRow, governed: GovernedClock | null): string {
+  const copy = messages().net;
+  if (row.reason === 'slow' && governed !== null && governed.nick === row.nick) {
+    return formatMessage(copy.slowingTo, { speed: `×${governed.speed.toFixed(GOVERNED_SPEED_DECIMALS)}` });
+  }
+  return copy.reasons[row.reason];
 }

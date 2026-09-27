@@ -369,7 +369,14 @@ describe('relay rooms', () => {
     const back = s.introduce(TOKEN_A, 'Ania');
     expect(back.last('room')?.room.members[0]).toMatchObject({ nick: 'Ania', seat: 0, connected: true });
     expect(back.last('start')?.session.localSeat).toBe(0);
-    expect(back.last('clock')).toEqual({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null });
+    expect(back.last('clock')).toEqual({
+      kind: 'clock',
+      tick: 1,
+      speed: 1,
+      paused: false,
+      by: null,
+      governed: null,
+    });
   });
 });
 
@@ -384,7 +391,14 @@ describe('relay clock', () => {
     s.advance(TICK_MS * 5);
     expect(a.of('frame')).toEqual([]);
     a.send({ kind: 'loaded', tick: 0, world: 0 });
-    expect(a.last('clock')).toEqual({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null });
+    expect(a.last('clock')).toEqual({
+      kind: 'clock',
+      tick: 1,
+      speed: 1,
+      paused: false,
+      by: null,
+      governed: null,
+    });
     s.advance(TICK_MS * 2);
     expect(a.of('frame')).toEqual([
       { kind: 'frame', tick: 1, commands: [] },
@@ -442,7 +456,14 @@ describe('relay clock', () => {
   it('lets any member drive the clock, names who did, and refuses a pause past the budget', () => {
     const s = startedRoom();
     s.b.send({ kind: 'clock', speed: 2 });
-    expect(s.a.last('clock')).toEqual({ kind: 'clock', tick: 1, speed: 2, paused: false, by: 'Bartek' });
+    expect(s.a.last('clock')).toEqual({
+      kind: 'clock',
+      tick: 1,
+      speed: 2,
+      paused: false,
+      by: 'Bartek',
+      governed: null,
+    });
     expect(s.b.last('clock')).toEqual(s.a.last('clock'));
     s.advance(TICK_MS);
     expect(s.a.of('frame').map((frame) => frame.tick)).toEqual([1, 2]);
@@ -453,7 +474,14 @@ describe('relay clock', () => {
     s.a.send({ kind: 'clock', paused: true });
     expect(s.a.last('rejected')?.reason).toEqual({ code: 'noPausesLeft', budget: PAUSE_BUDGET });
     s.b.send({ kind: 'clock', paused: true });
-    expect(s.a.last('clock')).toEqual({ kind: 'clock', tick: 3, speed: 2, paused: true, by: 'Bartek' });
+    expect(s.a.last('clock')).toEqual({
+      kind: 'clock',
+      tick: 3,
+      speed: 2,
+      paused: true,
+      by: 'Bartek',
+      governed: null,
+    });
     s.advance(TICK_MS * 4);
     expect(s.a.of('frame').map((frame) => frame.tick)).toEqual([1, 2]);
   });

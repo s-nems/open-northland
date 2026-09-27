@@ -6,6 +6,7 @@ import {
 } from '@open-northland/lockstep';
 import {
   DESCRIPTOR_WORLD,
+  type GovernedClock,
   parseServerMessage,
   RelayTransport,
   type ServerMessage,
@@ -148,8 +149,13 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     );
   }
 
+  /** The requested speed; the clock runs slower while `governed` is set. */
   get speed(): number {
     return this.clockState?.speed ?? this.session?.speed ?? 1;
+  }
+
+  get governed(): GovernedClock | null {
+    return this.clockState?.governed ?? null;
   }
 
   /** A request, sent only when it would change what the relay last broadcast. */
@@ -240,7 +246,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
         this.startSession(message.session, message.snapshotTick);
         break;
       case 'clock':
-        this.driver?.setSpeed(message.speed);
+        this.driver?.setSpeed(runningSpeed(message));
         break;
       case 'frame':
         if (this.transport === null) this.earlyFrames.push(message);
@@ -420,7 +426,7 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     this.earlyFrames.length = 0;
     this.driver = new LockstepDriver({ sim, transport: this.transport, speed: session.speed });
     const clock = this.clockState;
-    if (clock !== null) this.driver.setSpeed(clock.speed);
+    if (clock !== null) this.driver.setSpeed(runningSpeed(clock));
     this.options.onWorld?.({ ...opened, worldId: this.adoptedWorlds });
   }
 
@@ -468,4 +474,9 @@ export class RelayClient extends RelayLobby implements SessionDriver, RelayClien
     );
     return work;
   }
+}
+
+/** The speed the relay's clock actually runs at: the governed one below the requested one. */
+function runningSpeed(clock: ClockState): number {
+  return clock.governed?.speed ?? clock.speed;
 }

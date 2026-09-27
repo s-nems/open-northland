@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import type { GameSession } from '@open-northland/lockstep';
 import { type RoomSeatSetup, type RoomSettings, TICKS_PER_SECOND } from '@open-northland/net-protocol';
-import { Relay, WAIT_BEHIND_MS } from '@open-northland/net-server';
+import { GOVERN_BEHIND_MS, Relay } from '@open-northland/net-server';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { HeadlessClient } from '../../../net-server/test/support/headless-client.js';
 import type { Stage } from '../../../net-server/test/support/session-run.js';
@@ -53,8 +53,8 @@ const STALL_CYCLE_MS = 1000;
 const SHORT_STALL_MS = 200;
 const STALL_MARGIN_MS = 500;
 /** Past the undelivered limit and the relay's lag allowance together: a worker that held its clock at
- *  the limit would be waited for before this stall ends. */
-const LONG_STALL_MS = UNDELIVERED_LIMIT_SECONDS * MS_PER_SECOND + WAIT_BEHIND_MS + STALL_MARGIN_MS;
+ *  the limit would be listed slow before this stall ends. */
+const LONG_STALL_MS = UNDELIVERED_LIMIT_SECONDS * MS_PER_SECOND + GOVERN_BEHIND_MS + STALL_MARGIN_MS;
 /** The longest silence between two acknowledgements the cadence allows on a loaded machine; a worker
  *  holding at the undelivered limit would go quiet for seconds. */
 const MAX_ACK_GAP_MS = 500;

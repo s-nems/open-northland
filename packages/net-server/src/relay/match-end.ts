@@ -68,7 +68,14 @@ export class MatchEnd {
     this.clock.finishAt(candidate.tick);
     const send = (message: Parameters<Deliver>[1]) => broadcast(this.members.values(), this.deliver, message);
     send({ kind: 'waiting', for: [] });
-    send({ kind: 'clock', tick: this.clock.nextTick, speed: this.clock.speed, paused: true, by: null });
+    send({
+      kind: 'clock',
+      tick: this.clock.nextTick,
+      speed: this.clock.speed,
+      paused: true,
+      by: null,
+      governed: this.clock.governed,
+    });
     this.onEnded(candidate.tick);
     send({ kind: 'ended', tick: candidate.tick, hash: candidate.hash });
   }

@@ -290,8 +290,8 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
   { kind: 'left' },
   { kind: 'start', session, snapshotTick: null },
   { kind: 'start', session, snapshotTick: 300 },
-  { kind: 'clock', tick: 40, speed: 2, paused: false, by: 'Ania' },
-  { kind: 'clock', tick: 1, speed: 1, paused: false, by: null },
+  { kind: 'clock', tick: 40, speed: 2, paused: false, by: 'Ania', governed: null },
+  { kind: 'clock', tick: 1, speed: 1, paused: false, by: null, governed: { nick: 'Bartek', speed: 0.5 } },
   {
     kind: 'frame',
     tick: 41,
@@ -305,7 +305,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
     kind: 'waiting',
     for: [
       { nick: 'Ania', reason: 'gone', voteAfterMs: 60000 },
-      { nick: 'Cezary', reason: 'lagging', voteAfterMs: 0 },
+      { nick: 'Cezary', reason: 'slow', voteAfterMs: 0 },
     ],
   },
   { kind: 'waiting', for: [] },
@@ -411,6 +411,23 @@ describe('server messages', () => {
     expect(closingCode('trafficLimit')).toBe('trafficLimit');
     expect(closingCode('gameStarted')).toBeNull();
     expect(closingCode('closed with code 1002')).toBeNull();
+  });
+
+  it('refuses a clock whose governed speed is missing, unnamed or not a positive speed', () => {
+    const clock = (governed: unknown) => ({
+      kind: 'clock',
+      tick: 1,
+      speed: 1,
+      paused: false,
+      by: null,
+      governed,
+    });
+    expect(() => parseServerMessage({ ...clock(null), governed: undefined }, parseSession)).toThrow(
+      /clock\.governed/,
+    );
+    expect(() => parseServerMessage(clock({ nick: ' ', speed: 1 }), parseSession)).toThrow(/governed\.nick/);
+    for (const speed of [0, -1, Number.POSITIVE_INFINITY, '1'])
+      expect(() => parseServerMessage(clock({ nick: 'A', speed }), parseSession)).toThrow(/governed\.speed/);
   });
 
   it('refuses a room member whose load is missing', () => {

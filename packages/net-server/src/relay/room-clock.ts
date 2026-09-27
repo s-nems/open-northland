@@ -1,4 +1,5 @@
 import {
+  type GovernedClock,
   MAX_COMMANDS_PER_TICK,
   type PlayerWireEnvelope,
   type RelayWireEnvelope,
@@ -17,7 +18,8 @@ export type ScheduleOutcome = { readonly applyTick: number } | { readonly refuse
 /**
  * The room's tick clock: wall time scaled by the speed becomes frames, each carrying the commands
  * scheduled for its tick in the order they arrived. A pause is a member's choice; a hold is the
- * relay's, while it waits for a member, and the two are independent.
+ * relay's, while it waits for a member, and the two are independent. A governed clock runs slower than
+ * the requested speed, for a member that cannot keep up with it.
  */
 export class RoomClock {
   private accumulatorMs = 0;
@@ -26,6 +28,7 @@ export class RoomClock {
   private pausedFlag = false;
   private heldFlag = false;
   private speedMultiplier: number;
+  private governedClock: GovernedClock | null = null;
   private readonly pending = new Map<number, WireCommand[]>();
   /** Per tick, how many commands each member has landed on it. */
   private readonly budgets = new Map<number, Map<string, number>>();
@@ -47,8 +50,13 @@ export class RoomClock {
     return this.started;
   }
 
+  /** The requested speed; frames come at the governed one while that is set. */
   get speed(): number {
     return this.speedMultiplier;
+  }
+
+  get governed(): GovernedClock | null {
+    return this.governedClock;
   }
 
   get paused(): boolean {
@@ -70,6 +78,7 @@ export class RoomClock {
   finishAt(tick: number): void {
     this.lastTick = tick;
     this.pausedFlag = true;
+    this.governedClock = null;
     this.accumulatorMs = 0;
     this.pending.clear();
     this.budgets.clear();
@@ -89,6 +98,10 @@ export class RoomClock {
 
   hold(held: boolean): void {
     this.heldFlag = held;
+  }
+
+  govern(governed: GovernedClock | null): void {
+    this.governedClock = governed;
   }
 
   /**
@@ -121,7 +134,7 @@ export class RoomClock {
 
   advance(elapsedMs: number): readonly WireFrame[] {
     if (!this.started || this.pausedFlag || this.heldFlag) return [];
-    this.accumulatorMs += elapsedMs * this.speedMultiplier;
+    this.accumulatorMs += elapsedMs * (this.governedClock?.speed ?? this.speedMultiplier);
     const frames: WireFrame[] = [];
     while (this.accumulatorMs >= TICK_MS - TIME_EPSILON_MS && frames.length < MAX_FRAMES_PER_ADVANCE) {
       this.accumulatorMs -= TICK_MS;

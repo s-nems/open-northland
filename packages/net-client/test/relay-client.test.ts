@@ -2,6 +2,7 @@ import type { GameSession } from '@open-northland/lockstep';
 import {
   type AdoptedWorld,
   decodeSnapshot,
+  JITTER_BUFFER_TICKS,
   type OpenedWorld,
   prepareInitialSave,
   RelayClient,
@@ -174,7 +175,7 @@ describe('RelayClient and its world port', () => {
   it('requests a clock change only when it differs from the relay’s last word', () => {
     const { client, sent } = harness({});
     start(client, 12);
-    client.receive({ kind: 'clock', tick: 1, speed: 2, paused: false, by: null });
+    client.receive({ kind: 'clock', tick: 1, speed: 2, paused: false, by: null, governed: null });
     sent.length = 0;
     client.setSpeed(2);
     client.setPaused(false);
@@ -282,9 +283,9 @@ describe('RelayClient at a pause', () => {
     });
     start(client, null);
     await client.settled();
-    client.receive({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null });
+    client.receive({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null, governed: null });
     for (let tick = 1; tick <= 4; tick++) client.receive({ kind: 'frame', tick, commands: [] });
-    client.receive({ kind: 'clock', tick: 5, speed: 1, paused: true, by: 'Ania' });
+    client.receive({ kind: 'clock', tick: 5, speed: 1, paused: true, by: 'Ania', governed: null });
     expect(client.paused).toBe(true);
     client.advance(1000);
     client.advance(1000);
@@ -293,10 +294,43 @@ describe('RelayClient at a pause', () => {
     client.receive({ kind: 'frame', tick: 5, commands: [] });
     client.advance(1000);
     expect(client.tick).toBe(5);
-    client.receive({ kind: 'clock', tick: 6, speed: 1, paused: false, by: 'Ania' });
+    client.receive({ kind: 'clock', tick: 6, speed: 1, paused: false, by: 'Ania', governed: null });
     client.receive({ kind: 'frame', tick: 6, commands: [] });
     client.advance(1000);
     expect(client.tick).toBe(6);
+  });
+});
+
+describe('RelayClient under a governed clock', () => {
+  it('runs at the governed speed while it is set and reports the requested one', async () => {
+    const REQUESTED_SPEED = 2;
+    const GOVERNED_SPEED = 0.5;
+    const { client } = harness({ open: async () => fixtureWorld() });
+    start(client, null);
+    await client.settled();
+    const governed = { nick: 'Ola', speed: GOVERNED_SPEED };
+    client.receive({ kind: 'clock', tick: 1, speed: REQUESTED_SPEED, paused: false, by: null, governed });
+    // A buffer one frame past the jitter buffer runs at the clock's own pace.
+    for (let tick = 1; tick <= JITTER_BUFFER_TICKS + 1; tick++) {
+      client.receive({ kind: 'frame', tick, commands: [] });
+    }
+    client.advance(TICK_MS / GOVERNED_SPEED);
+    expect(client.tick).toBe(1);
+    expect(client.speed).toBe(REQUESTED_SPEED);
+    expect(client.governed).toEqual(governed);
+
+    client.receive({
+      kind: 'clock',
+      tick: 2,
+      speed: REQUESTED_SPEED,
+      paused: false,
+      by: null,
+      governed: null,
+    });
+    client.receive({ kind: 'frame', tick: JITTER_BUFFER_TICKS + 2, commands: [] });
+    client.advance(TICK_MS / REQUESTED_SPEED);
+    expect(client.tick).toBe(2);
+    expect(client.governed).toBeNull();
   });
 });
 
@@ -316,7 +350,7 @@ describe('RelayClient acknowledgements', () => {
     client.attach((message) => sent.push(message));
     start(client, null);
     await client.settled();
-    client.receive({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null });
+    client.receive({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null, governed: null });
     for (let tick = 1; tick <= 3; tick++) client.receive({ kind: 'frame', tick, commands: [] });
     client.advance(TICK_MS * 2);
     const acks = sent.filter((message) => message.kind === 'ack');
@@ -420,7 +454,7 @@ describe('RelayClient world operation ownership', () => {
     const opening = deferredWorld();
     const { client, sent } = harness({ open: () => opening.promise });
     start(client, null);
-    client.receive({ kind: 'clock', tick: 1, speed: 2, paused: true, by: null });
+    client.receive({ kind: 'clock', tick: 1, speed: 2, paused: true, by: null, governed: null });
     client.receive({ kind: 'left' });
     opening.release(fixtureWorld());
     await client.settled();

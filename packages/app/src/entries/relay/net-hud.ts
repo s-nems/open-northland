@@ -58,6 +58,7 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const syncClock = (clock: ClockState): void => {
     speedControl = speedControlFor(clock, speedControl);
     view.syncSpeed(speedControl);
+    waiting.governed(clock.governed);
   };
   const announceRoom = (room: RoomView): void => {
     const before = new Map(previousRoom?.members.map((member) => [member.nick, member.connected]) ?? []);

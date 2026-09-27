@@ -69,6 +69,16 @@ describe('room clock', () => {
     expect(frame?.commands).toHaveLength(MAX_COMMANDS_PER_TICK + 1);
   });
 
+  it('runs at the governed speed while one is set, reporting the requested speed throughout', () => {
+    const clock = startedAt(0);
+    clock.setSpeed(2);
+    clock.govern({ nick: 'Bartek', speed: 0.5 });
+    expect(clock.advance(TICK_MS * 4).map((frame) => frame.tick)).toEqual([1, 2]);
+    expect(clock.speed).toBe(2);
+    clock.govern(null);
+    expect(clock.advance(TICK_MS).map((frame) => frame.tick)).toEqual([3, 4]);
+  });
+
   it('caps a stall to one burst and lets the game run late instead', () => {
     const clock = startedAt(0);
     expect(clock.advance(TICK_MS * 100)).toHaveLength(STALL_BURST_FRAMES);

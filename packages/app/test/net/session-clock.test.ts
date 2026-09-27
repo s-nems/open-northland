@@ -3,7 +3,7 @@ import { DEFAULT_GAME_SPEED_CONTROL } from '../../src/hud/tool-panel/game-speed.
 import { clockAnnouncement, speedControlFor } from '../../src/view/net/session-clock.js';
 
 const clock = (speed: number, paused: boolean, by: string | null) =>
-  ({ kind: 'clock', tick: 10, speed, paused, by }) as const;
+  ({ kind: 'clock', tick: 10, speed, paused, by, governed: null }) as const;
 
 describe('speedControlFor', () => {
   it('maps the button multipliers and keeps the running state for any other', () => {

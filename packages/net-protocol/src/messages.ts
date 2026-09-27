@@ -117,7 +117,14 @@ export interface ClientLoad {
   readonly buffered: number;
 }
 
-export type WaitReason = 'gone' | 'silent' | 'loading' | 'lagging' | 'resync';
+export type WaitReason = 'gone' | 'silent' | 'loading' | 'slow' | 'resync';
+
+/** The speed the relay runs the clock at below the requested one, and the member it paces the room
+ *  for. */
+export interface GovernedClock {
+  readonly nick: string;
+  readonly speed: number;
+}
 
 export interface WaitedMember {
   readonly nick: string;
@@ -203,9 +210,11 @@ export type ServerMessage =
   | {
       readonly kind: 'clock';
       readonly tick: number;
+      /** The requested speed; the clock runs at `governed.speed` while that is set. */
       readonly speed: number;
       readonly paused: boolean;
       readonly by: string | null;
+      readonly governed: GovernedClock | null;
     }
   | { readonly kind: 'frame'; readonly tick: number; readonly commands: readonly WireCommand[] }
   | { readonly kind: 'delay'; readonly ticks: number }

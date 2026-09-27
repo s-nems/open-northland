@@ -11,6 +11,7 @@ export type {
   ClientMessage,
   ClientMessageKind,
   DepartedSeatMode,
+  GovernedClock,
   LobbySettings,
   PlayerWireEnvelope,
   RelayWireEnvelope,

@@ -1,4 +1,4 @@
-import { MAX_CLIENT_MESSAGE_BYTES, TICK_MS } from '@open-northland/net-protocol';
+import { type ClientLoad, MAX_CLIENT_MESSAGE_BYTES, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import {
   INITIAL_INPUT_DELAY_TICKS,
@@ -6,8 +6,8 @@ import {
   SILENT_AFTER_MS,
   SNAPSHOT_REFRESH_MS,
   SNAPSHOT_RETRY_MS,
-  WAIT_BEHIND_MS,
 } from '../src/index.js';
+import { framesIn, GOVERN_BEHIND_MS, GOVERN_RELEASE_MS, GOVERNOR_HEADROOM } from '../src/relay/governor.js';
 import {
   ackThrough,
   digest,
@@ -30,7 +30,13 @@ import {
  */
 
 const BLOB = Buffer.from('bytes the relay never reads').toString('base64');
-const LAG_TICKS = WAIT_BEHIND_MS / TICK_MS;
+const BEHIND_TICKS = framesIn(GOVERN_BEHIND_MS, SETTINGS.speed);
+const RELEASE_TICKS = framesIn(GOVERN_RELEASE_MS, SETTINGS.speed);
+/** A client whose sim tick costs two ticks of wall time: it sustains half the speed. */
+const SLOW_LOAD: ClientLoad = { tickMs: TICK_MS * 2, buffered: 0 };
+const SLOW_GOVERNED_SPEED = 0.4;
+/** Wall time over which the frame rate is counted. */
+const RATE_WINDOW_MS = 3000;
 const answeredPing = new WeakMap<Peer, number>();
 const ackedTick = new WeakMap<Peer, number>();
 
@@ -51,10 +57,10 @@ function tick(s: MessageStage, peers: readonly Peer[], ms: number): void {
   }
 }
 
-/** Move the clock with every peer answering pings and acknowledging each frame as it arrives. */
-function play(s: MessageStage, peers: readonly Peer[], ms: number): void {
+/** Move the clock with `peers` acknowledging each frame as it arrives, and `heard` answering pings. */
+function play(s: MessageStage, peers: readonly Peer[], ms: number, heard: readonly Peer[] = peers): void {
   for (let elapsed = 0; elapsed < ms; elapsed += TICK_MS) {
-    tick(s, peers, TICK_MS);
+    tick(s, heard, TICK_MS);
     for (const peer of peers) {
       const acked = ackedTick.get(peer) ?? 0;
       const emitted = lastTick(peer);
@@ -62,6 +68,37 @@ function play(s: MessageStage, peers: readonly Peer[], ms: number): void {
       ackedTick.set(peer, emitted);
     }
   }
+}
+
+/** Acknowledge every tick through `tick` not yet acknowledged, reporting `load`. */
+function ackTo(peer: Peer, tick: number, load: ClientLoad): void {
+  const acked = ackedTick.get(peer) ?? 0;
+  for (let t = acked + 1; t <= tick; t++)
+    peer.send({ kind: 'ack', tick: t, digest: digest(1), world: 0, load });
+  ackedTick.set(peer, Math.max(acked, tick));
+}
+
+/** Move the clock with `lead` acknowledging every frame and `trailer` staying `behind` ticks short. */
+function trail(
+  s: MessageStage,
+  lead: Peer,
+  trailer: Peer,
+  behind: number,
+  ms: number,
+  load: ClientLoad,
+): void {
+  for (let elapsed = 0; elapsed < ms; elapsed += TICK_MS) {
+    tick(s, [lead, trailer], TICK_MS);
+    ackTo(lead, lastTick(lead), LOAD);
+    ackTo(trailer, lastTick(trailer) - behind, load);
+  }
+}
+
+/** Frames the clock emits over `ms` while `trailer` stays `behind`. */
+function framesOver(s: MessageStage, lead: Peer, trailer: Peer, behind: number, ms: number): number {
+  const before = lastTick(lead);
+  trail(s, lead, trailer, behind, ms, SLOW_LOAD);
+  return lastTick(lead) - before;
 }
 
 /** Three seated members in a running room; `c` holds the AI-vacant seat. */
@@ -113,24 +150,6 @@ describe('waiting for a member', () => {
     play(s, [s.a], SILENT_AFTER_MS + TICK_MS * 2);
     expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'silent' }]);
     expect(s.b.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'silent' }]);
-  });
-
-  it('waits for a client whose applied tick trails the clock past the budget, until it catches up', () => {
-    const s = startedRoom();
-    tick(s, [s.a, s.b], TICK_MS * (LAG_TICKS + 2));
-    expect(s.a.last('waiting')?.for).toMatchObject([
-      { nick: 'Ania', reason: 'lagging' },
-      { nick: 'Bartek', reason: 'lagging' },
-    ]);
-    const held = lastTick(s.a);
-    ackThrough(s.a, 1, held);
-    tick(s, [s.a, s.b], TICK_MS * 2);
-    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'lagging' }]);
-    expect(lastTick(s.a)).toBe(held);
-    ackThrough(s.b, 1, held);
-    tick(s, [s.a, s.b], TICK_MS * 2);
-    expect(s.a.last('waiting')?.for).toEqual([]);
-    expect(lastTick(s.a)).toBeGreaterThan(held);
   });
 
   it('counts frames on from the tick the built worlds stand at, and holds every world to it', () => {
@@ -256,6 +275,69 @@ describe('waiting for a member', () => {
     s.a.send({ kind: 'ack', load: LOAD, tick: 3, digest: digest(1), world: 0 });
     s.a.send({ kind: 'ack', load: LOAD, tick: 4, digest: digest(1), world: 0 });
     expect(s.a.last('rejected')?.reason).toMatchObject({ code: 'tickNotEmitted' });
+  });
+});
+
+describe('pacing the clock for a slow member', () => {
+  it('neither waits for nor paces for a member at the threshold', () => {
+    const s = startedRoom();
+    trail(s, s.a, s.b, BEHIND_TICKS, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')?.governed).toBeNull();
+  });
+
+  it('paces the clock at a slow member’s sustainable speed without holding it, and releases it lower', () => {
+    const s = startedRoom();
+    trail(s, s.a, s.b, BEHIND_TICKS + 1, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'slow' }]);
+    const governed = { nick: 'Bartek', speed: SLOW_GOVERNED_SPEED };
+    expect(s.b.last('clock')).toMatchObject({ speed: SETTINGS.speed, paused: false, by: null, governed });
+    const governedFrames = framesIn(RATE_WINDOW_MS, SLOW_GOVERNED_SPEED);
+    expect(framesOver(s, s.a, s.b, BEHIND_TICKS + 1, RATE_WINDOW_MS)).toBeGreaterThanOrEqual(
+      governedFrames - 1,
+    );
+    expect(framesOver(s, s.a, s.b, BEHIND_TICKS + 1, RATE_WINDOW_MS)).toBeLessThanOrEqual(governedFrames);
+
+    // Between the two thresholds it stays slow; at the lower one it is released.
+    trail(s, s.a, s.b, RELEASE_TICKS + 1, TICK_MS * 2, SLOW_LOAD);
+    expect(s.a.last('clock')?.governed).toEqual(governed);
+    trail(s, s.a, s.b, RELEASE_TICKS, TICK_MS * 2, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toEqual([]);
+    expect(s.a.last('clock')).toMatchObject({ speed: SETTINGS.speed, governed: null });
+    const fullFrames = framesIn(RATE_WINDOW_MS, SETTINGS.speed);
+    expect(framesOver(s, s.a, s.b, RELEASE_TICKS, RATE_WINDOW_MS)).toBeGreaterThanOrEqual(fullFrames - 1);
+  });
+
+  it('keeps the clock running for a slow member that never reports, and counts down its kick vote', () => {
+    const s = startedRoom();
+    play(s, [s.a], GOVERN_BEHIND_MS + TICK_MS * 2, [s.a, s.b]);
+    expect(s.a.last('waiting')?.for).toMatchObject([{ nick: 'Bartek', reason: 'slow' }]);
+    expect(s.a.last('clock')?.governed).toEqual({
+      nick: 'Bartek',
+      speed: SETTINGS.speed * GOVERNOR_HEADROOM,
+    });
+    s.a.send({ kind: 'kick', player: 1 });
+    expect(s.a.last('rejected')?.reason).toMatch(/opens in/);
+    const before = lastTick(s.a);
+    play(s, [s.a], KICK_COUNTDOWN_MS, [s.a, s.b]);
+    expect(lastTick(s.a)).toBeGreaterThan(before);
+    expect(s.a.last('waiting')?.for).toEqual([{ nick: 'Bartek', reason: 'slow', voteAfterMs: 0 }]);
+    s.a.send({ kind: 'kick', player: 1 });
+    expect(s.a.last('kicked')).toMatchObject({ player: 1, nick: 'Bartek' });
+  });
+
+  it('holds the clock for a dropped member even while another is paced for', () => {
+    const s = roomOfThree();
+    trail(s, s.a, s.b, BEHIND_TICKS + 1, GOVERN_BEHIND_MS * 2, SLOW_LOAD);
+    s.relay.disconnect(s.c.handle);
+    trail(s, s.a, s.b, BEHIND_TICKS + 1, TICK_MS, SLOW_LOAD);
+    expect(s.a.last('waiting')?.for).toMatchObject([
+      { nick: 'Bartek', reason: 'slow' },
+      { nick: 'Cezary', reason: 'gone' },
+    ]);
+    const held = lastTick(s.a);
+    trail(s, s.a, s.b, BEHIND_TICKS + 1, RATE_WINDOW_MS, SLOW_LOAD);
+    expect(lastTick(s.a)).toBe(held);
   });
 });
 

@@ -1,15 +1,17 @@
 import {
   type ClientMessage,
   type DepartedSeatMode,
+  type GovernedClock,
   PAUSE_BUDGET,
   type PlayerWireEnvelope,
   type ServerMessage,
-  TICK_MS,
+  type WaitReason,
   type WireDigest,
 } from '@open-northland/net-protocol';
 import { type BlobUpload, relayBlob } from './blob-relay.js';
 import type { CachedSnapshot } from './catch-up.js';
 import { Departures } from './departures.js';
+import { framesIn, GOVERN_BEHIND_MS, GOVERN_RELEASE_MS, governedSpeed } from './governor.js';
 import { castKickVote, type KickOutcome } from './kick-vote.js';
 import { MatchEnd } from './match-end.js';
 import { broadcast, type Deliver, isSynced, type Member, type Refusal } from './member.js';
@@ -19,9 +21,6 @@ import { SaveOrders } from './save-orders.js';
 import { SyncLedger, type Verdict } from './sync-ledger.js';
 import { type Waited, Waiting } from './waiting.js';
 
-/** Wall time a client may trail the clock before the clock waits for it: that many frames at the
- *  session speed. */
-export const WAIT_BEHIND_MS = 2000;
 /** Pings unanswered this long make a connection silent, whatever its socket says. */
 export const SILENT_AFTER_MS = 4000;
 
@@ -37,6 +36,8 @@ export class Game {
   private readonly end: MatchEnd;
   private readonly ledger = new SyncLedger();
   private readonly waiting = new Waiting();
+  /** Members the clock is paced for; they are released at the lower `GOVERN_RELEASE_MS` threshold. */
+  private readonly slowTokens = new Set<string>();
   private readonly resync: Resync;
   private readonly orders: SaveOrders;
   /** The tick the first built world reported; every other world of the room must stand there too. */
@@ -99,6 +100,7 @@ export class Game {
       speed: this.clock.speed,
       paused: this.clock.paused,
       by,
+      governed: this.clock.governed,
     };
   }
 
@@ -180,6 +182,7 @@ export class Game {
     this.ledger.forget(member.token);
     this.resync.forget(member);
     this.waiting.forget(member.token);
+    this.slowTokens.delete(member.token);
   }
 
   /** The kicked member is out of the room: the rest may be complete now. */
@@ -282,25 +285,33 @@ export class Game {
     member.loaded = true;
   }
 
+  /** Every member the room cannot run without holds the clock; a slow one paces it instead. */
   private updateWaiting(now: number): void {
-    const lagTicks = Math.ceil((WAIT_BEHIND_MS / TICK_MS) * this.clock.speed);
     const waited: Waited[] = [];
+    const slow: Member[] = [];
     for (const member of this.members.values()) {
-      const reason = !member.connected
-        ? 'gone'
-        : member.outOfSync !== null
-          ? 'resync'
-          : !member.loaded
-            ? 'loading'
-            : now - member.lastHeardAt > SILENT_AFTER_MS
-              ? 'silent'
-              : this.clock.tick - member.ackedTick > lagTicks
-                ? 'lagging'
-                : null;
-      if (reason !== null) waited.push({ token: member.token, nick: member.nick, reason });
+      const reason = this.waitReason(member, now);
+      if (reason === null) continue;
+      waited.push({ token: member.token, nick: member.nick, reason });
+      if (reason === 'slow') slow.push(member);
     }
+    this.slowTokens.clear();
+    for (const member of slow) this.slowTokens.add(member.token);
     if (this.waiting.update(waited, now)) this.broadcast(this.waiting.message(now));
-    this.clock.hold(this.waiting.active);
+    this.clock.hold(waited.some((entry) => entry.reason !== 'slow'));
+    const governed = governedSpeed(slow, this.clock.tick, this.clock.speed);
+    if (sameGoverned(governed, this.clock.governed)) return;
+    this.clock.govern(governed);
+    if (this.clock.running) this.broadcast(this.clockMessage(null));
+  }
+
+  private waitReason(member: Member, now: number): WaitReason | null {
+    if (!member.connected) return 'gone';
+    if (member.outOfSync !== null) return 'resync';
+    if (!member.loaded) return 'loading';
+    if (now - member.lastHeardAt > SILENT_AFTER_MS) return 'silent';
+    const allowedMs = this.slowTokens.has(member.token) ? GOVERN_RELEASE_MS : GOVERN_BEHIND_MS;
+    return this.clock.tick - member.ackedTick > framesIn(allowedMs, this.clock.speed) ? 'slow' : null;
   }
 
   /** The clock starts once a world has been admitted and every connected member has loaded. */
@@ -352,4 +363,8 @@ export class Game {
   private broadcast(message: ServerMessage): void {
     broadcast(this.members.values(), this.deliver, message);
   }
+}
+
+function sameGoverned(a: GovernedClock | null, b: GovernedClock | null): boolean {
+  return a === b || (a !== null && b !== null && a.nick === b.nick && a.speed === b.speed);
 }

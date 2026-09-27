@@ -1,6 +1,6 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { MAX_CHAT_LENGTH, MAX_SPEED } from '../limits.js';
-import type { ServerMessage, WaitedMember, WaitReason } from '../messages.js';
+import type { GovernedClock, ServerMessage, WaitedMember, WaitReason } from '../messages.js';
 import {
   asArray,
   asBoolean,
@@ -46,7 +46,7 @@ const WAIT_REASONS = keysOf<WaitReason>({
   gone: true,
   silent: true,
   loading: true,
-  lagging: true,
+  slow: true,
   resync: true,
 });
 
@@ -94,6 +94,7 @@ export function parseServerMessage(
         speed: asPositiveNumber(raw.speed, 'clock.speed', MAX_SPEED),
         paused: asBoolean(raw.paused, 'clock.paused'),
         by: raw.by === null ? null : parseNick(raw.by, 'clock.by'),
+        governed: raw.governed === null ? null : parseGovernedClock(raw.governed, 'clock.governed'),
       };
     case 'frame':
       return {
@@ -167,6 +168,14 @@ export function parseServerMessage(
     default:
       return assertNever(kind);
   }
+}
+
+function parseGovernedClock(value: unknown, at: string): GovernedClock {
+  const raw = asRecord(value, at);
+  return {
+    nick: parseNick(raw.nick, `${at}.nick`),
+    speed: asPositiveNumber(raw.speed, `${at}.speed`, MAX_SPEED),
+  };
 }
 
 function parseWaitedMember(value: unknown, at: string): WaitedMember {

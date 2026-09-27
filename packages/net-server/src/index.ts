@@ -6,7 +6,13 @@ export {
   type RelayHostOptions,
   startRelayHost,
 } from './host/ws-host.js';
-export { SILENT_AFTER_MS, WAIT_BEHIND_MS } from './relay/game.js';
+export { SILENT_AFTER_MS } from './relay/game.js';
+export {
+  GOVERN_BEHIND_MS,
+  GOVERN_RELEASE_MS,
+  GOVERNOR_HEADROOM,
+  MIN_GOVERNED_SPEED,
+} from './relay/governor.js';
 export { INITIAL_INPUT_DELAY_TICKS, InputDelayEstimator } from './relay/input-delay.js';
 export {
   type ClientHandle,

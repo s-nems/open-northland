@@ -19,9 +19,11 @@ policies so that optimisation has a ceiling worth reaching.
   reduce the cost of a frame and would split one Pixi scene between two threads.
 - Transfer goes over `postMessage`. `SharedArrayBuffer` is not planned; it becomes its own ticket only
   if the delta's measured receive cost on the heavy-load reference forces it.
-- A slow room member falls behind and catches up on its own inside a free band, past which the
-  room slows to that member's sustainable speed and everyone sees who limits it. The relay stops
-  holding the clock for a lagging member.
+- A relayed room runs at the pace its slowest member sustains: past two seconds of frames behind the
+  relay governs the clock to that member's sustainable speed and everyone sees who limits it, as
+  Spring, Age of Empires and Supreme Commander pace by the slowest machine. No free band: a
+  competitive room cannot have a member seconds behind. The relay never holds the clock for a slow
+  member; the kick vote stays.
 - The sync digest stays stamped per tick. The disputed-tick forensics of 10 and the per-tick
   acknowledgement's load report rest on it; a cheaper digest splits its components, it does not
   widen its window.
@@ -33,8 +35,6 @@ policies so that optimisation has a ceiling worth reaching.
 | Ticket | Outcome | Depends on |
 | --- | --- | --- |
 | [00 Heavy-load reference](00-heavy-load-reference.md) | The scenario, harness and measurements every other ticket verifies against | none |
-| [08 Room pace governor](08-room-pace-governor.md) | Free band, governed speed with a named limiter, kick vote; no clock hold for lag | none |
-| [09 Zoom-out LOD](09-zoom-out-lod.md) | Frame cost bounded across the zoom range by named detail tiers | 00 |
 | [10 Desync forensics](10-desync-forensics.md) | Both sides of a divergence capture the disputed tick per domain into the bundle | none |
 | [11 Background tab ticking](11-background-tab-ticking.md) | Verify and document whether the worker host keeps ticking in a hidden tab | none |
 
@@ -48,8 +48,10 @@ link and world run in a network worker (`entries/relay/net-worker.ts`) that neve
 it keeps stepping and acknowledging, and sheds the transient events of ticks the main thread has not
 taken. Scenes and tests run `inlineSessionHost` on the main thread, over the same mirror. The system
 menu shows delivered against requested speed while two consecutive one-second windows deliver under
-nine tenths of the requested ticks. 00 lands first. 08 is the networking change and can proceed
-in parallel. 09 to 11 close the epic. Contract edits land with the ticket that makes them true.
+nine tenths of the requested ticks. A relayed room governed for a slow member runs every client at
+the governed speed and names the limiter in the waiting panel. Zoom-out detail tiers left the epic
+for the render backlog (`docs/tickets/render/zoom-out-detail-tiers.md`): they do not depend on the
+sim rework. 00 lands first. 10 and 11 close the epic. Contract edits land with the ticket that makes them true.
 
 ## Not in this epic
 

@@ -1,5 +1,5 @@
 import type { GameSession } from '@open-northland/lockstep';
-import type { RoomSummary, RoomView, WaitedMember } from '@open-northland/net-protocol';
+import type { GovernedClock, RoomSummary, RoomView, WaitedMember } from '@open-northland/net-protocol';
 import type { CommandEnvelope, SaveGame } from '@open-northland/sim';
 import type { RelayLobby } from './lobby.js';
 import type { ClockState } from './relay-state.js';
@@ -44,7 +44,9 @@ export interface RelayClientView extends Pick<RelayLobby, LobbyAction> {
   readonly isOutOfSync: boolean;
   readonly tick: number | null;
   readonly paused: boolean;
+  /** The requested speed; the clock runs at `governed.speed` while that is set. */
   readonly speed: number;
+  readonly governed: GovernedClock | null;
   readonly bufferedTicks: number;
   readonly droppedTicks: number;
   readonly latency: { readonly clickToApplyMs: number | null };

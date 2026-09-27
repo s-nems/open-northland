@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 9` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 10` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -118,13 +118,14 @@ it and reports `loaded { tick, world: 0 }` with the tick that world stands at (0
 setup tick, 1 for a decoded map whose placements drain on one). The first report fixes the room's
 built tick; the relay refuses any other tick from the rest, a second `loaded` on the same connection,
 and a command sent before any world has loaded. The clock starts once every connected member has
-loaded, announced by `clock { tick, speed, paused: false, by: null }` naming the first tick to run.
+loaded, announced by `clock { tick, speed, paused: false, by: null, governed: null }` naming the first
+tick to run.
 After the start there is no host role.
 
 ## The clock and tick frames
 
 Once started, the relay emits one `frame { tick, commands }` per simulation tick on its own clock,
-at `TICKS_PER_SECOND` (12) times the session speed, empty frames included. Ticks count on from the
+at `TICKS_PER_SECOND` (12) times the running speed, empty frames included. Ticks count on from the
 one the built worlds stood at and are never skipped. A client runs tick `t` only once it holds
 frame `t`; that is the whole synchronisation rule. If the relay stalls it emits at most a short
 burst and the game runs late; no tick is dropped.
@@ -134,8 +135,14 @@ from 0 in the order the relay received them. Every client applies them in that o
 tick's own untargeted commands, through `Simulation.enqueueAt`.
 
 Any member may change the clock with `clock { speed?, paused? }`. The relay applies it and broadcasts
-`clock { tick, speed, paused, by }` with the sender's nick and the first tick the setting holds from.
-Each member may start at most `PAUSE_BUDGET` (3) pauses per game; a resume costs nothing.
+`clock { tick, speed, paused, by, governed }` with the sender's nick and the first tick the setting
+holds from. Each member may start at most `PAUSE_BUDGET` (3) pauses per game; a resume costs nothing.
+
+`speed` is always the requested speed. The running speed is `governed.speed` while `governed` is
+`{ nick, speed }`, and `speed` when it is null: the relay governs the clock for a `slow` member (see
+[Waiting](#waiting)) and runs it at that member's pace. Clients run their driver at
+`governed?.speed ?? speed`. The relay broadcasts `clock` with `by: null` whenever the governing member
+or its speed changes.
 
 ## Commands
 
@@ -202,17 +209,27 @@ The clock waits, emitting no frames, while any member is:
 - `gone`: its connection dropped;
 - `silent`: it has answered no ping for `SILENT_AFTER_MS` (4 s), whatever its socket says;
 - `loading`: it has not said where its world stands, before the start or after a return;
-- `lagging`: its acknowledged tick trails the clock by more than `WAIT_BEHIND_MS` (2 s) of frames,
-  24 ticks at speed 1 and 24 times the speed otherwise;
 - `resync`: it is out of sync and its snapshot has not arrived.
 
-Every change to that set is broadcast as `waiting { for: [{ nick, reason, voteAfterMs }] }`; an
-empty `for` ends the wait. Each member's `voteAfterMs` counts down from `KICK_COUNTDOWN_MS` (60 s)
-from the moment that member began to be waited for, and restarts only once it has stopped being
-waited for. A wait is over as soon as nobody is waited for: the dropped token returned, the silent
-one answered, the lagging one caught up, or the diverged one rebuilt. A client that never loads or never acknowledges is waited
-for and can be voted out, before the start as after it; a member kicked before the start is not
-waited for to start the clock.
+A member is `slow` while its acknowledged tick trails the clock by more than `GOVERN_BEHIND_MS` (2 s)
+of frames at the requested speed, 24 ticks at speed 1 and 24 times the speed otherwise. It stays
+`slow` until it trails by no more than `GOVERN_RELEASE_MS` (0.5 s) of frames. A `slow` member does
+not hold the clock; the relay governs it instead, at the member's sustainable speed with headroom:
+`TICK_MS / load.tickMs * GOVERNOR_HEADROOM` (0.8), rounded to `GOVERNED_SPEED_STEP` (0.05), never
+above the requested speed and never below `MIN_GOVERNED_SPEED` (0.25). Before its first load report
+a member gets `GOVERNOR_HEADROOM` times the requested speed. A `slow` member whose share reaches the
+requested speed governs nothing: it is behind for another reason and its own pacer catches up. With
+several `slow` members the lowest governed speed wins, and a tie goes to the member furthest behind.
+Once nobody is `slow` the clock runs at the requested speed again.
+
+Every change to the waited set, `slow` members included, is broadcast as
+`waiting { for: [{ nick, reason, voteAfterMs }] }`; an empty `for` ends the wait. Each member's
+`voteAfterMs` counts down from `KICK_COUNTDOWN_MS` (60 s) from the moment that member began to be
+waited for, and restarts only once it has stopped being waited for. A wait is over as soon as nobody
+is waited for: the dropped token returned, the silent one answered, the slow one caught up, or the
+diverged one rebuilt. A client that never loads or never acknowledges is waited for and can be voted
+out, before the start as after it; a member kicked before the start is not waited for to start the
+clock.
 
 ## Kick votes
 
@@ -323,7 +340,7 @@ needed to replay from its advertised snapshot.
 A client told `desync` drops its world and waits. The relay asks the best-connected client in sync
 for a fresh snapshot and, when it arrives, sends the diverged client `blob { type: "snapshot" }`
 followed by every frame after the snapshot's tick. The client restores, replays those frames, and
-acknowledges from the snapshot's tick on; the wait ends once it is within the lag budget. A diverged
+acknowledges from the snapshot's tick on; the clock is governed for it while it is still `slow`. A diverged
 client that drops leaves the queue: on its return it asks with `loaded { tick: null }` and takes the
 cache, or the next snapshot when none is cached yet. Nothing is sent to it before it asks.
 
@@ -364,7 +381,8 @@ replaces the client's world, and the frames that follow are applied through the 
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
 | `PAUSE_BUDGET` per member per game | 3 |
 | `MAX_SPEED` | 8 |
-| `WAIT_BEHIND_MS` | 2 s of frames |
+| `GOVERN_BEHIND_MS` / `GOVERN_RELEASE_MS` | 2 s / 0.5 s of frames |
+| `GOVERNOR_HEADROOM` / `MIN_GOVERNED_SPEED` | 0.8 / 0.25 |
 | `SILENT_AFTER_MS` | 4 s |
 | `KICK_COUNTDOWN_MS` | 60 s |
 | `SNAPSHOT_REFRESH_MS` / `SNAPSHOT_RETRY_MS` | 5 min / 10 s |
