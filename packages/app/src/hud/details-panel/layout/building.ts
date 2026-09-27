@@ -3,7 +3,6 @@ import type { Rect } from '../../geometry.js';
 import type { UnitPanelModel } from '../model/index.js';
 import { DETAILS_STOCK_TAB_COUNT, stockTabRects } from '../stock-tabs.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
-import type { VehicleOrderAction } from './vehicle.js';
 
 type BuildingModel = Extract<UnitPanelModel, { kind: 'building' }>;
 
@@ -59,10 +58,7 @@ export type ButtonAction =
   | 'toggle-home-rest'
   | 'toggle-home-piety'
   | 'toggle-gate'
-  | 'demolish-palisade'
-  | 'attach-trade-house'
-  | 'detach-trade-house'
-  | VehicleOrderAction;
+  | 'demolish-palisade';
 
 export interface ButtonHit {
   readonly action: ButtonAction;

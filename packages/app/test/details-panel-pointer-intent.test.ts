@@ -3,13 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { BUILDING_HEADQUARTERS, BUILDING_HOME_00 } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel } from '../src/hud/details-panel/index.js';
 import {
-  NO_MODIFIERS,
   NO_PANEL_HOVER,
   panelClickAt,
   panelHoverAt,
   sameHover,
 } from '../src/hud/details-panel/pointer-intent.js';
-import { ALL_STOCK_TAB } from '../src/hud/details-panel/stock-tabs.js';
 import { center, panelModelOf, viewOfKind } from './support/details-panel.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
@@ -31,7 +29,7 @@ describe('details panel click intents', () => {
   it('resolves a click on the portrait box into a re-centre on the entity it shows', () => {
     const building = viewOfKind(panelModelOf(buildingEntity(4, BUILDING_HEADQUARTERS)), 'building');
     const bp = center(building.layout.preview);
-    expect(panelClickAt(building, bp.x, bp.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(building, bp.x, bp.y)).toEqual({
       kind: 'centerOnEntity',
       entityId: 4,
     });
@@ -40,7 +38,7 @@ describe('details panel click intents', () => {
     const button = building.layout.buttons.find((b) => b.action === 'center');
     if (button === undefined || !button.enabled) throw new Error('expected a live center button');
     const cp = center(button.rect);
-    expect(panelClickAt(building, cp.x, cp.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(building, cp.x, cp.y)).toEqual({
       kind: 'centerOnEntity',
       entityId: 4,
     });
@@ -52,7 +50,7 @@ describe('details panel click intents', () => {
     if (tab === undefined) throw new Error('expected a stock tab strip');
     const p = center(tab);
 
-    expect(panelClickAt(view, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({ kind: 'stockTab', tab: 2 });
+    expect(panelClickAt(view, p.x, p.y)).toEqual({ kind: 'stockTab', tab: 2 });
   });
 
   it('resolves the demolish button of a building and of a signpost into their own orders', () => {
@@ -60,14 +58,14 @@ describe('details panel click intents', () => {
     const demolish = building.layout.buttons.find((b) => b.action === 'demolish');
     if (demolish === undefined) throw new Error('expected a demolish button');
     const bp = center(demolish.rect);
-    expect(panelClickAt(building, bp.x, bp.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(building, bp.x, bp.y)).toEqual({
       kind: 'demolish',
       entityId: 3,
     });
 
     const sign = viewOfKind(panelModelOf(signpost), 'signpost');
     const sp = center(sign.layout.button.rect);
-    expect(panelClickAt(sign, sp.x, sp.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(sign, sp.x, sp.y)).toEqual({
       kind: 'demolishSignpost',
       entityId: 7,
     });
@@ -89,7 +87,7 @@ describe('details panel click intents', () => {
 
     const intents = view.layout.buttons.map((button) => {
       const p = center(button.rect);
-      return panelClickAt(view, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB);
+      return panelClickAt(view, p.x, p.y);
     });
     expect(intents).toEqual([
       { kind: 'setPalisadeGate', entityId: 8, open: true },
@@ -119,7 +117,7 @@ describe('details panel click intents', () => {
     );
     const unfinishedIntents = unfinished.layout.buttons.map((button) => {
       const p = center(button.rect);
-      return panelClickAt(unfinished, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB);
+      return panelClickAt(unfinished, p.x, p.y);
     });
     expect(unfinished.layout.buttons.map((button) => button.enabled)).toEqual([false, true]);
     expect(unfinished.layout.progress).not.toBeNull();
@@ -142,7 +140,7 @@ describe('details panel click intents', () => {
     const toggle = down.layout.defenceToggle;
     if (toggle === null) throw new Error('expected a defence toggle on the headquarters');
     const p = center(toggle.rect);
-    expect(panelClickAt(down, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(down, p.x, p.y)).toEqual({
       kind: 'setDefenceMode',
       entityId: 5,
       enabled: true,
@@ -152,7 +150,7 @@ describe('details panel click intents', () => {
       panelModelOf(buildingEntity(5, BUILDING_HEADQUARTERS, { components: { DefenceMode: {} } })),
       'building',
     );
-    expect(panelClickAt(up, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(up, p.x, p.y)).toEqual({
       kind: 'setDefenceMode',
       entityId: 5,
       enabled: false,
@@ -164,7 +162,7 @@ describe('details panel click intents', () => {
     const cooking = allowed.layout.homeQualityRows.find((row) => row.effect === 'cooking');
     if (cooking === undefined) throw new Error('expected a crockery policy button');
     const p = center(cooking.button.rect);
-    expect(panelClickAt(allowed, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(allowed, p.x, p.y)).toEqual({
       kind: 'setHouseholdGoodUse',
       player: 0,
       effect: 'cooking',
@@ -185,7 +183,7 @@ describe('details panel click intents', () => {
       ),
       'building',
     );
-    expect(panelClickAt(forbidden, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+    expect(panelClickAt(forbidden, p.x, p.y)).toEqual({
       kind: 'setHouseholdGoodUse',
       player: 0,
       effect: 'cooking',
@@ -208,7 +206,7 @@ describe('details panel click intents', () => {
     expect(localCooking.button.enabled).toBe(true);
     expect(foreignCooking.button.enabled).toBe(false);
     const p = center(foreignCooking.button.rect);
-    expect(panelClickAt(foreign, p.x, p.y, NO_MODIFIERS, ALL_STOCK_TAB)).toBeNull();
+    expect(panelClickAt(foreign, p.x, p.y)).toBeNull();
   });
 
   it('resolves nothing for a disabled button or a point on inert chrome', () => {
@@ -217,10 +215,8 @@ describe('details panel click intents', () => {
     if (help === undefined || help.enabled) throw new Error('expected an unwired help button');
     const hp = center(help.rect);
 
-    expect(panelClickAt(view, hp.x, hp.y, NO_MODIFIERS, ALL_STOCK_TAB)).toBeNull();
-    expect(
-      panelClickAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50, NO_MODIFIERS, ALL_STOCK_TAB),
-    ).toBeNull();
+    expect(panelClickAt(view, hp.x, hp.y)).toBeNull();
+    expect(panelClickAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50)).toBeNull();
   });
 });
 
@@ -231,11 +227,11 @@ describe('details panel hover state', () => {
     if (demolish === undefined) throw new Error('expected a demolish button');
     const p = center(demolish.rect);
 
-    const hover = panelHoverAt(view, p.x, p.y, ALL_STOCK_TAB);
+    const hover = panelHoverAt(view, p.x, p.y);
     expect(hover.action).toBe('demolish');
     expect(sameHover(hover, NO_PANEL_HOVER)).toBe(false);
 
-    const far = panelHoverAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50, ALL_STOCK_TAB);
+    const far = panelHoverAt(view, view.layout.panel.x - 50, view.layout.panel.y - 50);
     expect(sameHover(far, NO_PANEL_HOVER)).toBe(true);
   });
 });
@@ -248,9 +244,9 @@ it('a technology-locked upgrade is visible but cannot submit a command', () => {
   if (button === undefined) throw new Error('Missing upgrade control');
   const at = center(button.rect);
   expect(button.enabled).toBe(false);
-  expect(panelClickAt(locked, at.x, at.y, NO_MODIFIERS, ALL_STOCK_TAB)).toBeNull();
+  expect(panelClickAt(locked, at.x, at.y)).toBeNull();
   const open = viewOfKind({ ...model, upgradeBlockedReason: null }, 'building');
-  expect(panelClickAt(open, at.x, at.y, NO_MODIFIERS, ALL_STOCK_TAB)).toEqual({
+  expect(panelClickAt(open, at.x, at.y)).toEqual({
     kind: 'upgrade',
     entityId: 1,
   });

@@ -124,6 +124,7 @@ describe('the Pojazd row', () => {
       },
       cancel: () => undefined,
       isArmed: () => armed.length > 0,
+      armed: () => armed.at(-1) ?? null,
       signpostActive: () => false,
       dockVehicle: () => null,
       flagActive: () => false,

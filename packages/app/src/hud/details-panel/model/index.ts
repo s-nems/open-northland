@@ -100,20 +100,27 @@ export {
   type TradeOfferSide,
   type TradePanelModel,
   type TradeRouteStock,
+  type TraderSubject,
   type TradeStockRow,
   type TradeStopModel,
   type TradeTransferModel,
 } from './trade.js';
 export {
-  VEHICLE_ORDER_STRING,
-  VEHICLE_ORDERS,
-  VEHICLEWINDOW,
+  type RiderLook,
+  type VehicleCargoGood,
   type VehicleCargoRow,
-  type VehicleCrewRow,
+  type VehicleClass,
+  type VehicleCrewModel,
+  type VehicleDeckModel,
+  type VehicleHoldModel,
   type VehicleOrder,
   type VehicleOrderModel,
   type VehiclePanelModel,
+  type VehicleRiderModel,
+  type VehicleStance,
+  type VehicleStatusModel,
   type VehicleTradeModel,
+  vehicleClassOf,
 } from './vehicle.js';
 
 export interface MultiSettlerPanelModel {

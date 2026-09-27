@@ -1,4 +1,3 @@
-import type { VehicleOrder } from './model/index.js';
 import type { PanelClick } from './pointer-intent.js';
 
 /** The orders a decoded {@link PanelClick} issues. An absent optional handler leaves its button inert. */
@@ -18,18 +17,6 @@ export interface PanelClickActions {
     effect: 'cooking' | 'rest' | 'piety',
     allowed: boolean,
   ) => void;
-  /** Enter "add a house to the trade route" pick mode for the selected trader. */
-  readonly onAttachTradeHouse?: (settlerId: number) => void;
-  readonly onDetachTradeHouse?: (settlerId: number, house: number) => void;
-  readonly onSetTradeImport?: (settlerId: number, house: number, goodType: number, on: boolean) => void;
-  /** Trade on the agreement at `agreement` in the map's table; -1 drops the choice. */
-  readonly onSetTradeAgreement?: (settlerId: number, agreement: number) => void;
-  /** Select the settler or vehicle a crew row names, as a click on it in the world would. */
-  readonly onSelectEntity?: (entityId: number) => void;
-  /** One of the vehicle window's order buttons; the spot and target orders arm a pick mode. */
-  readonly onVehicleOrder?: (vehicleId: number, order: VehicleOrder) => void;
-  /** Ask for `amount` units of `goodType` in the vehicle's hold (`setVehicleWanted`). */
-  readonly onSetVehicleWanted?: (vehicleId: number, goodType: number, amount: number) => void;
   readonly onCenterOnEntity: (entityId: number) => void;
 }
 
@@ -70,35 +57,6 @@ export function applyPanelClick(
       return;
     case 'setPalisadeGate':
       actions.onSetPalisadeGate?.(click.entityId, click.open);
-      return;
-    case 'attachTradeHouse':
-      actions.onAttachTradeHouse?.(click.entityId);
-      return;
-    case 'detachTradeHouse':
-      actions.onDetachTradeHouse?.(click.entityId, click.house);
-      return;
-    case 'setTradeImport':
-      actions.onSetTradeImport?.(click.entityId, click.house, click.goodType, click.on);
-      return;
-    case 'setTradeBalance':
-      // A mark kept for the balance is cleared first, so it sheds the one-way limits a balanced flow
-      // does not show (the settler panel's direction strip does the same).
-      for (const house of click.houses) {
-        if (click.on) actions.onSetTradeImport?.(click.entityId, house, click.goodType, false);
-        actions.onSetTradeImport?.(click.entityId, house, click.goodType, click.on);
-      }
-      return;
-    case 'setTradeAgreement':
-      actions.onSetTradeAgreement?.(click.entityId, click.agreement);
-      return;
-    case 'selectEntity':
-      actions.onSelectEntity?.(click.entityId);
-      return;
-    case 'vehicleOrder':
-      actions.onVehicleOrder?.(click.entityId, click.order);
-      return;
-    case 'setVehicleWanted':
-      actions.onSetVehicleWanted?.(click.entityId, click.goodType, click.amount);
       return;
     default: {
       const unreachable: never = click;

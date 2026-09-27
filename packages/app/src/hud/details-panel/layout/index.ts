@@ -2,7 +2,6 @@ import type { Rect } from '../../geometry.js';
 import type { PalisadePanelModel } from '../model/index.js';
 import type { BuildingLayout, ButtonHit } from './building.js';
 import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared.js';
-import { mapVehicleLayout, type VehicleLayout } from './vehicle.js';
 
 export {
   BAR_H,
@@ -18,25 +17,7 @@ export {
   STOCK_ROW_H,
   stockSlotRects,
 } from './building.js';
-export {
-  type TradeImportHit,
-  type TradeLayout,
-  type TradeOfferHit,
-  type TradeStopLayout,
-  tradeButtons,
-} from './settler-trade.js';
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
-export {
-  layoutVehicle,
-  type VehicleCargoCell,
-  type VehicleCrewRowRect,
-  type VehicleLayout,
-  type VehicleOrderAction,
-  vehicleGeneralLines,
-  vehicleOrderAction,
-  vehicleOrderOf,
-} from './vehicle.js';
-
 /** The multi-select / generic views: one section window with a single hint row. */
 export interface CompactLayout {
   readonly kind: 'compact';
@@ -63,7 +44,7 @@ export interface PalisadeLayout {
   readonly buttons: readonly ButtonHit[];
 }
 
-export type DetailsLayout = BuildingLayout | CompactLayout | SignpostLayout | PalisadeLayout | VehicleLayout;
+export type DetailsLayout = BuildingLayout | CompactLayout | SignpostLayout | PalisadeLayout;
 
 /** One body row: the selection count lives in the headline, the body is the controls hint. */
 const COMPACT_ROWS = 1;
@@ -127,7 +108,6 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       buttons: layout.buttons.map((button) => ({ ...button, rect: fn(button.rect) })),
     };
   }
-  if (layout.kind === 'vehicle') return mapVehicleLayout(layout, fn) as T;
   return { ...layout, panel: fn(layout.panel), section: sec(layout.section) };
 }
 

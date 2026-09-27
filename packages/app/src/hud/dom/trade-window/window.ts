@@ -1,9 +1,9 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
-  type SettlerPanelModel,
   TRADE_SLOT_A,
   TRADE_SLOT_B,
   type TradePanelModel,
+  type TraderSubject,
 } from '../../details-panel/model/index.js';
 import type { BuildingHoverModel } from '../../hover-card/model.js';
 import type { GoodIconPainter } from '../good-art.js';
@@ -62,12 +62,12 @@ export interface HousePortrait {
 export interface TradeWindow {
   isOpen(): boolean;
   /** Open for the settler the model shows, when its route is two own houses. */
-  open(model: SettlerPanelModel): void;
+  open(model: TraderSubject): void;
   /** Close as the cross does, telling the dismiss listeners. */
   dismiss(): void;
   close(): void;
   /** The shown settler's model; closes the window when it no longer fits. */
-  update(model: SettlerPanelModel): void;
+  update(model: TraderSubject): void;
   /** Once a frame, after the paint: re-place on a new plane size, yield to a beam window opened after
    *  it, and let a shown tip follow its control. */
   refresh(): void;
@@ -76,7 +76,7 @@ export interface TradeWindow {
   /** The client right edge while the window shows, else null. */
   clientRight(): number | null;
   /** Paint once out of sight at map start, so the first open costs no first-paint work. */
-  warm(model: SettlerPanelModel): void;
+  warm(model: TraderSubject): void;
   /** The houses' portraits while the window shows; the same list while nothing moved. */
   portraits(): readonly HousePortrait[];
   /** The HUD scale changed: the portraits' boxes are measured again. */
@@ -168,7 +168,7 @@ export function createTradeWindow(deps: TradeWindowDeps): TradeWindow {
     deps.hoverCard.hide();
   });
 
-  const show = (model: SettlerPanelModel, trade: TradePanelModel): void => {
+  const show = (model: TraderSubject, trade: TradePanelModel): void => {
     const again = trader === model.entityId;
     trader = model.entityId;
     for (const { column } of columns) column.reopen(trade, again);

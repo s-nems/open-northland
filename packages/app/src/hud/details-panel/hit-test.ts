@@ -1,17 +1,8 @@
-import { formatMessage, messages } from '../../i18n/index.js';
+import { messages } from '../../i18n/index.js';
 import { contains } from '../geometry.js';
-import {
-  type ButtonHit,
-  stockSlotRects,
-  type TradeImportHit,
-  type TradeLayout,
-  type TradeOfferHit,
-  tradeButtons,
-  vehicleOrderOf,
-} from './layout/index.js';
-import type { VehicleCargoRow, VehicleOrder } from './model/index.js';
+import { type ButtonHit, stockSlotRects } from './layout/index.js';
 import type { PanelView } from './selection-view.js';
-import { detailsStockTabLabels, holdTabRows, visibleStockRows } from './stock-tabs.js';
+import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
 // Pure probes for the details panel: map a canvas point in the current PanelView to the action target
 // under it or the tooltip text that names it. No Pixi or DOM.
@@ -31,8 +22,6 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
       return [view.layout.button];
     case 'palisade':
       return view.layout.buttons;
-    case 'vehicle':
-      return [...view.layout.orderButtons, ...tradeButtons(view.layout.trade)];
     case 'empty':
     case 'compact':
       return [];
@@ -42,113 +31,11 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
 export const hitButton = (view: PanelView, x: number, y: number): ButtonHit | null =>
   panelButtons(view).find((b) => contains(b.rect, x, y)) ?? null;
 
-/** The stock category tab under a canvas point, or null - a building's store and a vehicle's hold carry
- *  the tab strip. */
+/** The stock category tab under a canvas point, or null. */
 export const hitStockTab = (view: PanelView, x: number, y: number): number | null => {
-  const tabs =
-    view.kind === 'building'
-      ? view.layout.stockTabHits
-      : view.kind === 'vehicle'
-        ? view.layout.cargoTabHits
-        : [];
+  const tabs = view.kind === 'building' ? view.layout.stockTabHits : [];
   const i = tabs.findIndex((r) => contains(r, x, y));
   return i >= 0 ? i : null;
-};
-
-type VehicleView = Extract<PanelView, { kind: 'vehicle' }>;
-
-/** The hold's rows for the active tab, cell by cell: one source for the section's draw and the hit-tests.
- *  The layout sizes the grid from the same rows, so none is cut off. */
-export const visibleCargoRows = (view: VehicleView, activeStockTab: number): VehicleCargoRow[] =>
-  holdTabRows(view.model.cargo, activeStockTab);
-
-/** A wanted-amount step button under a canvas point: the good and the direction, or undefined. */
-export interface VehicleCargoStepHit {
-  readonly row: VehicleCargoRow;
-  readonly step: -1 | 1;
-}
-
-export const hitVehicleCargoStep = (
-  view: PanelView,
-  x: number,
-  y: number,
-  activeStockTab: number,
-): VehicleCargoStepHit | undefined => {
-  if (view.kind !== 'vehicle') return undefined;
-  const rows = visibleCargoRows(view, activeStockTab);
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const cell = view.layout.cargoCells[i];
-    if (row === undefined || cell === undefined) continue;
-    if (contains(cell.less, x, y)) return { row, step: -1 };
-    if (contains(cell.more, x, y)) return { row, step: 1 };
-  }
-  return undefined;
-};
-
-/** The cargo row whose cell (icon or counts plate) holds a canvas point, or undefined. */
-const hitVehicleCargoRow = (
-  view: VehicleView,
-  x: number,
-  y: number,
-  activeStockTab: number,
-): VehicleCargoRow | undefined => {
-  const rows = visibleCargoRows(view, activeStockTab);
-  const i = view.layout.cargoCells.findIndex((cell) => contains(cell.cell, x, y));
-  return i < 0 ? undefined : rows[i];
-};
-
-/** The crew or carried-vehicle row under a canvas point, as the entity it names, or undefined. */
-export const hitVehicleCrew = (view: PanelView, x: number, y: number): number | undefined => {
-  if (view.kind !== 'vehicle') return undefined;
-  return view.layout.crewRows.find((row) => contains(row.rect, x, y))?.entity;
-};
-
-/** The order button under a canvas point, enabled or not, or undefined. */
-export const hitVehicleOrder = (view: PanelView, x: number, y: number): VehicleOrder | undefined => {
-  if (view.kind !== 'vehicle') return undefined;
-  const hit = view.layout.orderButtons.find((b) => contains(b.rect, x, y));
-  return hit === undefined ? undefined : vehicleOrderOf(hit.action);
-};
-
-/** A drawn Handel section and the trader its controls act on: the vehicle window of a cart it rides. */
-export interface TradeTarget {
-  readonly trader: number;
-  readonly layout: TradeLayout;
-}
-
-export const tradeTargetOf = (view: PanelView): TradeTarget | null => {
-  if (view.kind === 'vehicle') {
-    return view.layout.trade === null || view.model.trade === null
-      ? null
-      : { trader: view.model.trade.trader, layout: view.layout.trade };
-  }
-  return null;
-};
-
-/** The import mark under a canvas point in a Handel section, or undefined. */
-export const hitTradeImport = (view: PanelView, x: number, y: number): TradeImportHit | undefined => {
-  const trade = tradeTargetOf(view)?.layout;
-  if (trade === undefined) return undefined;
-  for (const stop of trade.stops) {
-    const hit = stop.imports.find((h) => contains(h.rect, x, y));
-    if (hit !== undefined) return hit;
-  }
-  return trade.balance.find((h) => contains(h.rect, x, y));
-};
-
-/** The agreement row under a canvas point in a Handel section, or undefined. */
-export const hitTradeOffer = (view: PanelView, x: number, y: number): TradeOfferHit | undefined =>
-  tradeTargetOf(view)?.layout.offers.find((h) => contains(h.rect, x, y));
-
-/** The stop whose detach button holds a canvas point, or undefined. */
-export const hitTradeDetach = (view: PanelView, x: number, y: number): number | undefined =>
-  tradeTargetOf(view)?.layout.stops.find((stop) => contains(stop.detach.rect, x, y))?.house;
-
-/** Whether a canvas point lies on the attach button of a Handel section with a free stop. */
-export const hitTradeAttach = (view: PanelView, x: number, y: number): boolean => {
-  const attach = tradeTargetOf(view)?.layout.attach;
-  return attach != null && contains(attach.button.rect, x, y);
 };
 
 /** The entity whose portrait box holds a canvas point, or null. */
@@ -186,91 +73,12 @@ const buildingHealthValue = (view: PanelView, x: number, y: number): string | nu
   return `${health.label}: ${health.hover}`;
 };
 
-/** The Handel section's tooltips: the route buttons, an import mark's good, an agreement row. */
-const tradeControlHint = (view: PanelView, x: number, y: number): string | null => {
-  const hud = messages().hud;
-  if (hitTradeAttach(view, x, y)) return hud.tradeAttachHouseHint;
-  if (hitTradeDetach(view, x, y) !== undefined) return hud.tradeDetachHouse;
-  const mark = hitTradeImport(view, x, y);
-  if (mark !== undefined) {
-    return formatMessage(mark.pair === null ? hud.tradeImportHint : hud.tradeBalanceHint, {
-      good: mark.label,
-    });
-  }
-  if (hitTradeOffer(view, x, y) !== undefined) return hud.tradeOfferHint;
-  return null;
-};
-
 /** The alarm toggle's tooltip names what the click will do, so the wording flips with the current mode. */
 const defenceToggleHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'building') return null;
   const toggle = view.layout.defenceToggle;
   if (toggle === null || !contains(toggle.rect, x, y)) return null;
   return view.model.defenseEnabled ? messages().hud.lowerAlarmHint : messages().hud.raiseAlarmHint;
-};
-
-/** The vehicle window's tooltips: an order's effect, a hold cell's counts, a step button's direction, and
- *  the crew rows' select hint. */
-const vehicleHint = (view: PanelView, x: number, y: number, activeStockTab: number): string | null => {
-  if (view.kind !== 'vehicle') return null;
-  const hud = messages().hud;
-  const step = hitVehicleCargoStep(view, x, y, activeStockTab);
-  if (step !== undefined) {
-    return formatMessage(step.step > 0 ? hud.vehicleWantedMore : hud.vehicleWantedLess, {
-      good: step.row.label,
-    });
-  }
-  const cargo = hitVehicleCargoRow(view, x, y, activeStockTab);
-  if (cargo !== undefined) {
-    return formatMessage(hud.vehicleCargoLine, {
-      good: cargo.label,
-      current: cargo.current,
-      wanted: cargo.wanted,
-      reserved: Math.max(0, cargo.reserved - cargo.current),
-    });
-  }
-  if (hitVehicleCrew(view, x, y) !== undefined) return hud.vehicleSelectHint;
-  const order = hitVehicleOrder(view, x, y);
-  if (order === undefined) return null;
-  return vehicleOrderHint(order);
-};
-
-const vehicleOrderHint = (order: VehicleOrder): string | null => {
-  const hud = messages().hud;
-  switch (order) {
-    case 'goTo':
-      return hud.vehicleOrderGoToHint;
-    case 'dock':
-      return hud.vehicleOrderDockHint;
-    case 'unloadPeople':
-      return hud.vehicleOrderUnloadPeopleHint;
-    case 'stop':
-      return hud.vehicleOrderStopHint;
-    case 'attackInhabitants':
-      return hud.vehicleOrderAttackInhabitantsHint;
-    case 'attackBuilding':
-      return hud.vehicleOrderAttackBuildingHint;
-    case 'attackVehicle':
-      return hud.vehicleOrderAttackVehicleHint;
-    case 'attackPosition':
-      return hud.vehicleOrderAttackPositionHint;
-    case 'stanceAttack':
-      return hud.vehicleOrderAttackModeHint;
-    case 'stanceDefence':
-      return hud.vehicleOrderDefenceModeHint;
-    case 'stanceHold':
-      return hud.vehicleOrderHoldModeHint;
-    case 'loadIntoShip':
-      return hud.vehicleOrderLoadIntoShipHint;
-    case 'leaveShip':
-      return null;
-    case 'unloadGoods':
-      return hud.vehicleOrderUnloadGoodsHint;
-    default: {
-      const unreachable: never = order;
-      return unreachable;
-    }
-  }
 };
 
 /** The Upgrade button's cost card ("Upgrade requires:" then one "- Drewno ×5" line per required good),
@@ -314,8 +122,6 @@ export const tooltipTextAt = (
     buildingHealthValue(view, x, y) ??
     productionRowHint(view, x, y) ??
     upgradeButtonHint(view, x, y) ??
-    defenceToggleHint(view, x, y) ??
-    tradeControlHint(view, x, y) ??
-    vehicleHint(view, x, y, activeStockTab)
+    defenceToggleHint(view, x, y)
   );
 };

@@ -11,12 +11,12 @@ import { renderFramedWorld } from './framed-world-render.js';
 export interface PortraitInsetFrame {
   readonly rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
   readonly entityRef: number;
-  readonly kind: 'settler' | 'building';
+  readonly kind: 'settler' | 'building' | 'vehicle';
   /** A settler subject's building while it is inside one: kept through the cull for the portrait and
    *  framed whenever the scene draws no figure for the subject (nothing choreographs it in there). */
   readonly inside?: number;
-  /** The vehicle a settler subject rides: a rider draws no figure of its own, so the settler framing
-   *  centres on the vehicle it sits on. */
+  /** The vehicle a settler subject rides, or the ship a vehicle subject rides: a rider draws no sprite
+   *  of its own, so the framing centres on what carries it. */
   readonly aboard?: number;
 }
 
@@ -41,7 +41,8 @@ export interface InsetTerrainCull {
   readonly backdrop: number;
 }
 
-/** A building's drawn bounds fill this fraction of the portrait box; the rest is world margin. */
+/** A building's or a vehicle's drawn bounds fill this fraction of the portrait box; the rest is world
+ *  margin. */
 const PORTRAIT_FILL = 0.72;
 /** Zoom-out floor, so a huge building's cutout stays legible. */
 const PORTRAIT_MIN_SCALE = 0.2;
@@ -100,7 +101,8 @@ export class PortraitInsetLayer {
 
   /**
    * The inset camera framing (world centre + px-per-world scale), or null when nothing it frames was
-   * drawn this frame. A building fits its static drawn bounds in the box; a settler frames a fixed
+   * drawn this frame. A building or a vehicle fits its drawn bounds in the box (a carried vehicle its
+   * ship's); a settler frames a fixed
    * window off its stable feet anchor (or off the vehicle it rides), never the swaying animation bounds,
    * so a standing unit's cutout holds still.
    */
@@ -113,7 +115,7 @@ export class PortraitInsetLayer {
       const anchor = this.pool.anchorOf(f.entityRef) ?? this.aboardAnchor(f);
       if (anchor === undefined) {
         // Hidden inside a building the scene shows nobody in: the cutout frames the building instead.
-        return f.inside === undefined ? null : this.buildingFraming(f.inside, w, h);
+        return f.inside === undefined ? null : this.boundsFraming(f.inside, w, h);
       }
       return {
         cx: anchor.x,
@@ -121,18 +123,16 @@ export class PortraitInsetLayer {
         scale: h / SETTLER_VIEW_HEIGHT,
       };
     }
-    return this.buildingFraming(f.entityRef, w, h);
+    const own = this.boundsFraming(f.entityRef, w, h);
+    if (own !== null || f.kind !== 'vehicle' || f.aboard === undefined) return own;
+    return this.boundsFraming(f.aboard, w, h);
   }
 
   private aboardAnchor(f: PortraitInsetFrame): { x: number; y: number } | undefined {
     return f.aboard === undefined ? undefined : this.pool.anchorOf(f.aboard);
   }
 
-  private buildingFraming(
-    ref: number,
-    w: number,
-    h: number,
-  ): { cx: number; cy: number; scale: number } | null {
+  private boundsFraming(ref: number, w: number, h: number): { cx: number; cy: number; scale: number } | null {
     const bounds = this.pool.boundsOf(ref);
     if (bounds === undefined) return null;
     const cx = (bounds.minX + bounds.maxX) / 2;

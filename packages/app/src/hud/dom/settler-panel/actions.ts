@@ -7,7 +7,7 @@ import type { GoodIconPainter } from '../good-art.js';
 import type { HoverCard } from '../hover-card.js';
 import type { TipChip } from '../parts/tip-layer.js';
 import type { OrdersPress } from '../selection-panel.js';
-import type { CentralWindows } from '../trade-window/window.js';
+import type { TradeWindow } from '../trade-window/window.js';
 
 /** One import mark to set or clear: `goodType` carried into `house`. */
 export interface TradeMarkChange {
@@ -86,6 +86,6 @@ export interface SettlerPanelDeps {
   readonly now: () => number;
   /** The GUI click a press that only opens a surface makes. */
   readonly cue: (cue: UiCue) => void;
-  /** The tool panel's central windows, which the trade window takes turns with. */
-  readonly centralWindows?: CentralWindows;
+  /** The trade window the Handel section's configure button opens; one for every panel. */
+  readonly tradeWindow: TradeWindow;
 }

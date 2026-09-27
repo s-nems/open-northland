@@ -1,5 +1,5 @@
 import { GLYPH } from '../icons.js';
-import { button, element, onPress, setAttribute, setTip, write } from './dom.js';
+import { button, element, isDisabled, onPress, setAttribute, setDisabled, setTip, write } from './dom.js';
 
 /** A counter's finite range and, optionally, the sentinel above it that means "never stop" (shown
  *  as ∞). Without the sentinel the arrows stop at the range's ends. */
@@ -61,6 +61,9 @@ export interface CounterModel {
   readonly moreLabel: string;
   readonly lessTooltip: string;
   readonly moreTooltip: string;
+  /** False fades the arrow and ignores its press; its tooltip then says why. Absent is true. */
+  readonly lessEnabled?: boolean;
+  readonly moreEnabled?: boolean;
 }
 
 /** A −/n/+ counter; `onChange` receives the value the press asks for. */
@@ -78,6 +81,7 @@ export function createCounter(range: CounterRange, onChange: (next: number) => v
   root.append(less, value, more);
   let current = 0;
   const press = (delta: 1 | -1, event: MouseEvent): void => {
+    if (isDisabled(delta > 0 ? more : less)) return;
     const next = counterStep(range, current, delta, counterModifiers(event));
     if (next !== current) onChange(next);
   };
@@ -92,6 +96,8 @@ export function createCounter(range: CounterRange, onChange: (next: number) => v
       setAttribute(more, 'aria-label', model.moreLabel);
       setTip(less, model.lessTooltip);
       setTip(more, model.moreTooltip);
+      setDisabled(less, model.lessEnabled === false);
+      setDisabled(more, model.moreEnabled === false);
     },
   };
 }

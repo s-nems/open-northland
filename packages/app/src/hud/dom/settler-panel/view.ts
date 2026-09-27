@@ -1,7 +1,6 @@
 import type { SettlerPanelModel, UnitPanelModel } from '../../details-panel/model/index.js';
 import type { ClientRect } from '../portrait-hole.js';
 import { createSelectionPanel } from '../selection-panel.js';
-import { createTradeWindow, type HousePortrait } from '../trade-window/window.js';
 import type { SettlerPanelDeps } from './actions.js';
 import { createExperienceSection } from './experience.js';
 import { settlerHead } from './head.js';
@@ -21,25 +20,17 @@ export interface SettlerPanel {
   hide(): void;
   /** The shown person and the client box the renderer paints its live figure into. */
   portrait(): PortraitSubject | null;
-  /** The trade window's houses and their portrait boxes while it is open. */
-  tradePortraits(): readonly HousePortrait[];
   claims(clientX: number, clientY: number): boolean;
   /** Tab and Shift+Tab: show the next or previous person of the trade; false when there is none. */
   browse(step: 1 | -1): boolean;
   /** The HUD scale changed: the portraits' boxes are measured again. */
   invalidate(): void;
   /** Step aside (unseen, no pointer, no portrait) while the ring opened from the panel is up. The
-   *  trade window stays: the ring keeps right of it (`tradeWindowRight`). */
+   *  trade window stays: the ring keeps right of it. */
   veil(on: boolean): void;
-  /** The trade window's client right edge while it is open, else null. */
-  tradeWindowRight(): number | null;
-  /** Once a frame, after the paint: the trade window follows the plane and yields to a beam window,
-   *  the transfer lines fit again after another section or the plane changed size, and a shown tip
-   *  follows its control. */
+  /** Once a frame, after the paint: the transfer lines fit again after another section or the plane
+   *  changed size, and a shown tip follows its control. */
   refresh(): void;
-  /** Escape: close the trade window; false when it was not open. */
-  closeTradeWindow(): boolean;
-  tradeWindowOpen(): boolean;
   /** Paint every section once at map start (`SelectionPanel.warm`) with a few of the game's goods on
    *  the icons, so the first selection costs no first-paint work. */
   warm(goodIds: readonly string[]): void;
@@ -58,7 +49,7 @@ export interface PortraitSubject {
 }
 
 export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
-  const { actions } = deps;
+  const { actions, tradeWindow } = deps;
   let shown: SettlerPanelModel | null = null;
   let peers: TradePeers = NO_PEERS;
   const peerIndex = createPeerIndex(deps.residents, deps.now);
@@ -91,7 +82,6 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   const work = createWorkSection(deps, current);
   const production = createProductionSection(deps, current);
   const military = createMilitarySection(deps, entity);
-  const tradeWindow = createTradeWindow(deps);
   const trade = createTradeSection(deps, current, () => {
     if (shown === null) return;
     deps.cue('confirm');
@@ -160,6 +150,7 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
   }
 
   const hide = (): void => {
+    if (shown === null) return;
     shown = null;
     tradeWindow.close();
     peers = NO_PEERS;
@@ -193,18 +184,11 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
       tradeWindow.warm(model);
     },
     refresh(): void {
-      tradeWindow.refresh();
       frame.refreshTip();
       if (!refit || shown === null) return;
       refit = false;
       fit(false);
     },
-    closeTradeWindow(): boolean {
-      if (!tradeWindow.isOpen()) return false;
-      tradeWindow.dismiss();
-      return true;
-    },
-    tradeWindowOpen: () => tradeWindow.isOpen(),
     portrait(): PortraitSubject | null {
       if (shown === null) return null;
       const rect = frame.holeClientRect();
@@ -217,20 +201,14 @@ export function createSettlerPanel(deps: SettlerPanelDeps): SettlerPanel {
         rect,
       };
     },
-    claims: (clientX, clientY) => frame.claims(clientX, clientY) || tradeWindow.claims(clientX, clientY),
+    claims: (clientX, clientY) => frame.claims(clientX, clientY),
     browse,
-    invalidate(): void {
-      frame.invalidate();
-      tradeWindow.invalidate();
-    },
-    tradePortraits: () => tradeWindow.portraits(),
+    invalidate: () => frame.invalidate(),
     veil: (on) => frame.veil(on),
-    tradeWindowRight: () => tradeWindow.clientRight(),
     dispose(): void {
       deps.hoverCard.hide();
       deps.tooltip.hide();
       resizes.disconnect();
-      tradeWindow.dispose();
       frame.dispose();
     },
   };

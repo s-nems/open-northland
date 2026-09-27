@@ -1,5 +1,5 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { SettlerPanelModel, TradeOfferModel, TradePanelModel } from '../../details-panel/model/index.js';
+import type { TradeOfferModel, TradePanelModel, TraderSubject } from '../../details-panel/model/index.js';
 import { goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
 import { button, element, setAttribute, setClass, setStyleVar, setTip, write } from '../parts/dom.js';
@@ -52,7 +52,7 @@ export interface TradeAgreement {
 
 export function createTradeAgreement(
   deps: SettlerPanelDeps,
-  current: () => SettlerPanelModel | null,
+  current: () => TraderSubject | null,
 ): TradeAgreement {
   const { actions } = deps;
   const id = (): number => current()?.entityId ?? -1;

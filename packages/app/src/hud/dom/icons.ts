@@ -75,6 +75,21 @@ export const GLYPH = {
   /* Two wedding bands, linked: the family row's find-a-partner order. */
   rings:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="9" cy="13" r="5.5"/><circle cx="15" cy="13" r="5.5"/><path d="M7 7.5 9 4M17 7.5 15 4"/></svg>',
+  /* The vehicle panel's orders: halt, an anchor to moor, a ship to board or leave, a burning house, a
+     crosshair on a spot, and a person with a plus to seat one. */
+  stop: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/></svg>',
+  anchor:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 4v16M8 7h8M5 13a7 7 0 0 0 14 0M5 13l-1.5 1.5M19 13l1.5 1.5"/></svg>',
+  boardShip:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 15h18l-3 5H6zM12 4v9M12 4l6 7h-6M8 9l4-4"/></svg>',
+  leaveShip:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M3 15h18l-3 5H6zM12 13V4M8 8l4-4 4 4"/></svg>',
+  siegeHouse:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7M5 10v10h14V10M12 11c-2 2 1 3 0 5M14 13c1 1 0 3-2 3"/></svg>',
+  crosshair:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><circle cx="12" cy="12" r="4"/></svg>',
+  addPerson:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="9" cy="6.5" r="2"/><path d="M6 20v-6l1-4h4l1 4v6M18 8v8M14 12h8"/></svg>',
 } as const;
 
 /** The stock categories' tab faces, indexed by stock tab (`good-categories.ts`), as solid silhouettes

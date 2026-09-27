@@ -5,10 +5,8 @@ import {
   layoutCompact,
   layoutPalisade,
   layoutSignpost,
-  layoutVehicle,
   type PalisadeLayout,
   type SignpostLayout,
-  type VehicleLayout,
 } from './layout/index.js';
 import type {
   BuildingPanelModel,
@@ -17,20 +15,18 @@ import type {
   PalisadePanelModel,
   SignpostPanelModel,
   UnitPanelModel,
-  VehiclePanelModel,
 } from './model/index.js';
 
 /**
  * A selection's model paired with the geometry laid out for it, discriminated by the layout's kind rather
- * than the model's: one `compact` strip serves both multi-select model kinds. A single settler has no
- * view here: the DOM settler panel shows it.
+ * than the model's: one `compact` strip serves both multi-select model kinds. A single settler or vehicle
+ * has no view here: the DOM panels show it.
  */
 export type PanelView =
   | { readonly kind: 'empty' }
   | { readonly kind: 'building'; readonly model: BuildingPanelModel; readonly layout: BuildingLayout }
   | { readonly kind: 'signpost'; readonly model: SignpostPanelModel; readonly layout: SignpostLayout }
   | { readonly kind: 'palisade'; readonly model: PalisadePanelModel; readonly layout: PalisadeLayout }
-  | { readonly kind: 'vehicle'; readonly model: VehiclePanelModel; readonly layout: VehicleLayout }
   | {
       readonly kind: 'compact';
       readonly model: MultiSettlerPanelModel | GenericSelectionPanelModel;
@@ -47,6 +43,7 @@ export function panelViewFor(
   switch (model.kind) {
     case 'empty':
     case 'settler':
+    case 'vehicle':
       return EMPTY_PANEL_VIEW;
     case 'building':
       return { kind: 'building', model, layout: layoutBuilding(model, screen, s) };
@@ -54,8 +51,6 @@ export function panelViewFor(
       return { kind: 'signpost', model, layout: layoutSignpost(screen, s) };
     case 'palisade':
       return { kind: 'palisade', model, layout: layoutPalisade(model, screen, s) };
-    case 'vehicle':
-      return { kind: 'vehicle', model, layout: layoutVehicle(model, screen, s) };
     case 'multi-settler':
     case 'generic':
       return { kind: 'compact', model, layout: layoutCompact(screen, s) };

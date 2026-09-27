@@ -79,6 +79,11 @@ export interface VehicleOrderController {
   /** Attach `settler` to the own vehicle under the cursor (the ring's "Assign Vehicle"); a vehicle the
    *  attach rule refuses orders nothing, the way a red building cancels a building pick. */
   issueAttach(event: MouseEvent, settler: number): boolean;
+  /** The same attach from the vehicle's side: the own settler under the cursor takes a seat on
+   *  `vehicle`, the commander's first. */
+  issueSeatRider(event: MouseEvent, vehicle: number): boolean;
+  /** Drive the own land vehicle under the cursor onto `ship`'s deck. */
+  issueDeckLoad(event: MouseEvent, ship: number): boolean;
   /** The selected settlers' right-click on an own vehicle: each one the attach rule admits is assigned
    *  to it (approximation, owner's choice: the original assigns through the ring's pick only). False when
    *  no vehicle lies under the cursor, an own settler or an enemy drawn there takes the click first (a
@@ -260,6 +265,25 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     return true;
   };
 
+  const issueSeatRider = (event: MouseEvent, vehicle: number): boolean => {
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const settler = pickTopAt(deps.targets.owned('settler'), world.x, world.y);
+    if (settler === null) return false;
+    if (deps.canAttachToVehicle !== undefined && !deps.canAttachToVehicle(settler, vehicle)) return false;
+    deps.enqueue({ kind: 'attachToVehicle', entity: settler as Entity, vehicle: vehicle as Entity });
+    return true;
+  };
+
+  const issueDeckLoad = (event: MouseEvent, ship: number): boolean => {
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const vehicle = pickTopAt(
+      deps.targets.owned('vehicle').filter((target) => target.ref !== ship),
+      world.x,
+      world.y,
+    );
+    return vehicle !== null && loadInto(vehicle, ship);
+  };
+
   const issueAttachSelected = (event: MouseEvent): boolean => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const vehicle = pickTopAt(deps.targets.owned('vehicle'), world.x, world.y);
@@ -334,6 +358,8 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     issueAttackTarget,
     issueLoadInto,
     issueAttach,
+    issueSeatRider,
+    issueDeckLoad,
     issueAttachSelected,
   };
 }

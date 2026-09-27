@@ -1,4 +1,4 @@
-import { components, type Entity, playerCommand, TICKS_PER_SECOND } from '@open-northland/sim';
+import { components, type Entity, playerCommand } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { grassTerrain } from '../../src/catalog/buildings.js';
 import { JOB_TRADER } from '../../src/catalog/jobs.js';
@@ -12,13 +12,8 @@ import {
   GOOD_IRON,
   placeBuiltSandboxBuilding,
   spawnSettlerDirect,
-  VEHICLE_HANDCART,
 } from '../../src/game/sandbox/index.js';
-import { vehicleLabel } from '../../src/game/technology.js';
-import { goodLabel } from '../../src/hud/details-panel/model/context.js';
 import { tradePanelModel } from '../../src/hud/details-panel/model/trade.js';
-import { tradeStatusLines } from '../../src/hud/details-panel/model/trade-status.js';
-import { messages } from '../../src/i18n/index.js';
 import { createSceneSim, createSceneWorld } from '../../src/scenes/runtime.js';
 import { sceneTrader, tradeScene } from '../../src/scenes/trade.js';
 import { ctxOf } from '../support/sandbox.js';
@@ -59,34 +54,6 @@ it('a trader with no agreement chosen carts nothing across', () => {
   expect(view?.cargo.some((line) => line.good === GOOD_COIN)).toBe(false);
 });
 
-/** The vehicle window's Handel status names the commanded cart with its load, and says so when the
- *  trader has none. */
-it("the trader's Handel status shows the handcart and its load", () => {
-  const sim = createSceneSim(tradeScene);
-  sim.run(TICKS_PER_SECOND * 12);
-  const trader = sceneTrader(sim);
-  expect(trader).toBeDefined();
-  if (trader === undefined) return;
-  const ctx = {
-    ...ctxOf(sim),
-    traderView: (entity: number) => sim.traderView(entity as Entity),
-    vehicleLabel: (typeId: number) => vehicleLabel(sim.content, typeId),
-  };
-  const status = () => {
-    const view = sim.traderView(trader);
-    return view === undefined ? [] : tradeStatusLines(ctx, view);
-  };
-  const view = sim.traderView(trader);
-  const cartName = vehicleLabel(sim.content, VEHICLE_HANDCART);
-  expect(cartName).toBeDefined();
-  expect(view?.cargo.length).toBeGreaterThan(0);
-  expect(status()[0]).toBe(`${cartName}: ${view?.cargo[0]?.amount} ${goodLabel(ctx, GOOD_COIN)}`);
-
-  sim.enqueue(playerCommand(HUMAN_PLAYER, { kind: 'detachFromVehicle', entity: trader }));
-  sim.run(2);
-  expect(status()[0]).toBe(messages().hud.tradeNoCart);
-});
-
 /** A dish a house holds is offered as its edible at a storehouse, which stocks the edible only. */
 it('offers the edible of a dish the other stop holds as a good to carry', () => {
   const sim = createSceneWorld({ seed: 1, terrain: grassTerrain(DISH_MAP_W, DISH_MAP_H), build: () => {} });
@@ -104,6 +71,4 @@ it('offers the edible of a dish the other stop holds as a good to carry', () => 
   expect(model?.stops.map((stop) => stop.house)).toEqual([bakery, store]);
   expect(model?.stock?.b.some((row) => row.goodType === GOOD_FOOD_SIMPLE)).toBe(true);
   expect(model?.transfers).toEqual([]);
-  const view = sim.traderView(trader);
-  expect(view === undefined ? [] : tradeStatusLines(ctx, view)).toContain(messages().hud.tradeNoImports);
 });

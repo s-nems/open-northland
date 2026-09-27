@@ -3277,6 +3277,329 @@ body.on-drag-scroll-cursor-hidden * {
   margin-bottom: 2px;
 }
 
+/* ---------- vehicle panel: orders, wear, crew seats, the hold's manifest ---------- */
+/* The portrait frame with the vehicle's wear under it, the way an RTS unit card carries its health. */
+.on-hud .on-vehicle-shot {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+.on-hud .on-hp {
+  position: relative;
+  height: 7px;
+  border: 1px solid var(--wood-lo);
+  background: #12171388;
+  box-shadow: 0 0 0 1px var(--bronze-lo);
+  overflow: hidden;
+}
+.on-hud .on-hp::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--value);
+  background: linear-gradient(#c7d9a8, #7f9a5e);
+}
+.on-hud .on-hp--low::before {
+  background: linear-gradient(#f3cf8a, #c98a3a);
+}
+.on-hud .on-hp--critical::before {
+  background: linear-gradient(#f0a58f, #a8412f);
+}
+/* Order buttons in the portrait column, where a settler has the equipment sockets: five to a row. */
+.on-hud .on-orders {
+  display: grid;
+  grid-template-columns: repeat(5, 30px);
+  gap: 5px;
+}
+.on-hud .on-order {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--wood-lo);
+  border-radius: 6px;
+  background: radial-gradient(circle at 45% 35%, var(--wood-hi), var(--wood) 55%, var(--wood-lo) 95%);
+  box-shadow:
+    inset 0 1px #fff2,
+    0 1px 2px #000a;
+  color: #f0e4c8;
+}
+.on-hud .on-order .on-glyph {
+  width: 18px;
+  height: 18px;
+}
+.on-hud .on-order:hover:not([aria-disabled="true"]),
+.on-hud .on-order:focus-visible {
+  border-color: var(--bronze-lo);
+  color: #fff6de;
+  transform: translateY(-1px);
+}
+.on-hud .on-order[aria-disabled="true"] {
+  opacity: 0.38;
+  filter: saturate(0.4);
+  cursor: default;
+}
+.on-hud .on-counter__step[aria-disabled="true"],
+.on-hud .on-more[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+.on-hud .on-order--break {
+  grid-column-start: 1;
+}
+.on-hud .on-order--attack {
+  background: radial-gradient(circle at 45% 35%, #8a4a36, #5a2a1e 60%, #2d1510 95%);
+}
+/* The pick this button armed waits for its target. */
+.on-hud .on-order--armed {
+  border-color: var(--active);
+  box-shadow:
+    0 0 0 1px var(--active),
+    0 0 8px #e3b86888;
+  color: #fff6de;
+}
+.on-hud .on-status-strip .on-ledger__link {
+  font-size: 11px;
+}
+/* A count or a plain word at the section rule's right end. */
+.on-hud .on-section__count {
+  font: 500 12px var(--font-body);
+  font-variant: normal;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+/* Several controls at the rule's right end (a count, a warning, an action) share one slot. */
+.on-hud .on-section__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* A warning chip on a section rule. */
+.on-hud .on-flag {
+  padding: 0 6px;
+  border: 1px solid #efbe7066;
+  border-radius: 9px;
+  font: 500 11px / 16px var(--font-body);
+  font-variant: normal;
+  letter-spacing: 0;
+  color: var(--warning);
+}
+/* Crew: the commander on its ledger row, a ship's seats as small wells under it. */
+.on-hud .on-seats {
+  display: grid;
+  grid-template-columns: repeat(10, 24px);
+  gap: 4px;
+  margin: 4px 0 2px;
+}
+.on-hud .on-seat-well {
+  position: relative;
+  width: 24px;
+  height: 26px;
+  display: grid;
+  place-items: end center;
+  padding: 0 0 1px;
+  border: 0;
+  border-radius: 4px;
+  background: #1d160f;
+  box-shadow: inset 0 0 0 1px #c9a26233;
+  color: var(--parchment);
+}
+.on-hud .on-seat-well .on-figure {
+  width: 16px;
+  height: 20px;
+}
+.on-hud button.on-seat-well:hover,
+.on-hud button.on-seat-well:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--bronze);
+  color: #fff6de;
+}
+.on-hud .on-seat-well--empty {
+  place-items: center;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px #c9a26222;
+  color: #c9a26244;
+}
+.on-hud .on-seat-well--empty .on-glyph {
+  width: 12px;
+  height: 12px;
+}
+.on-hud button.on-seat-well--add {
+  color: var(--warning);
+  box-shadow: inset 0 0 0 1px #efbe7055;
+}
+.on-hud .on-seat-well--walking {
+  opacity: 0.5;
+  outline: 1px dashed #c9a26288;
+  outline-offset: -3px;
+}
+.on-hud .on-seat-well--woman {
+  color: #e7c7b0;
+}
+.on-hud .on-seat-well--soldier {
+  color: #c9d2d9;
+}
+/* The hold: a load gauge (aboard, on the way, the target) over one manifest line per good. */
+.on-hud .on-load {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.on-hud .on-load__bar {
+  position: relative;
+  height: 12px;
+  border: 2px solid var(--wood-lo);
+  background: #12171388;
+  box-shadow: 0 0 0 1px var(--bronze-lo);
+  overflow: hidden;
+}
+.on-hud .on-load__bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.on-hud .on-load__aboard {
+  left: 0;
+  background: linear-gradient(#e3c07a, #a98247);
+}
+.on-hud .on-load__coming {
+  background: repeating-linear-gradient(135deg, #e3c07a88 0 3px, transparent 3px 6px);
+}
+.on-hud .on-load__target {
+  width: 2px;
+  margin-left: -1px;
+  background: #fff4dc;
+  box-shadow: 0 0 3px #000;
+}
+.on-hud .on-load > b {
+  font-size: 13px;
+  color: var(--text-hi);
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-load small {
+  font-weight: 400;
+  color: var(--muted);
+}
+.on-hud .on-manifest {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.on-hud .on-cargo-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  height: 25px;
+  font-size: 13px;
+}
+.on-hud .on-cargo-row--static {
+  grid-template-columns: 22px 1fr auto;
+}
+/* How much of the target is aboard, as a thin rule under the line. */
+.on-hud .on-cargo-row::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 0;
+  bottom: 1px;
+  height: 2px;
+  background: linear-gradient(90deg, #c9a262aa var(--fill, 0%), #c9a26222 var(--fill, 0%));
+}
+.on-hud .on-cargo-row__name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.on-hud .on-cargo-row__now {
+  font-weight: 700;
+  color: var(--text-hi);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.on-hud .on-cargo-row__now small {
+  margin-left: 2px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.on-hud .on-cargo-row__now em {
+  margin: 0 1px 0 3px;
+  font-style: normal;
+  color: var(--bronze);
+}
+/* Asked for less than it holds: the rest goes back to a store. */
+.on-hud .on-cargo-row--leaving .on-cargo-row__name,
+.on-hud .on-cargo-row--leaving .on-cargo-row__now {
+  color: var(--muted);
+}
+.on-hud .on-cargo-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+}
+/* The add-a-good picker: the stock categories over the category's goods, in place of the add row. */
+.on-hud .on-cargo-picker {
+  margin: 4px 0 2px;
+  padding: 6px 8px 8px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 4px;
+  background: linear-gradient(#22322c, #1a2622);
+  box-shadow: inset 0 1px #c9a26233;
+}
+.on-hud .on-cargo-picker__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 6px 2px;
+  font: 700 12px var(--font-body);
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+  color: var(--bronze);
+}
+.on-hud .on-cargo-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+.on-hud .on-cargo-picker__grid > button {
+  position: relative;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: #1d160f;
+  box-shadow: inset 0 0 0 1px #c9a26233;
+}
+.on-hud .on-cargo-picker__grid > button:hover,
+.on-hud .on-cargo-picker__grid > button:focus-visible {
+  background: #3a2d1f;
+  box-shadow: inset 0 0 0 1px var(--bronze-hi);
+}
+.on-hud .on-cargo-picker__grid > button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--active);
+}
+.on-hud .on-cargo-picker__grid > button[aria-pressed="true"]::after {
+  content: "✓";
+  position: absolute;
+  top: -1px;
+  right: 2px;
+  font-size: 10px;
+  color: var(--active);
+}
+.on-hud .on-cargo-picker__empty {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* ---------- trade window: both houses with their portraits and tabs, the transfers ---------- */
 /* No head: the close medallion takes the top-right corner ornament's place, the body starts under the
    top rail. The slate is a fill with a hole over each house's portrait (`--hole-a-*`, `--hole-b-*` in

@@ -55,13 +55,16 @@ type StrikePickKind = 'attack-settler' | 'attack-building' | 'attack-animal' | '
 /** The vehicle window's orders that resolve against a spot: a drive, a mooring point, a bombardment. */
 export type VehicleSpotPickKind = 'vehicle-destination' | 'vehicle-dock' | 'vehicle-attack-position';
 
-/** The vehicle window's orders that resolve against what is drawn under the cursor: an enemy of one
- *  kind, or one of the player's own ships to ride in. */
+/** The vehicle panel's orders that resolve against what is drawn under the cursor: an enemy of one
+ *  kind, one of the player's own ships to ride in, an own settler to seat, or an own land vehicle to
+ *  drive onto the ship's deck. */
 export type VehicleTargetPickKind =
   | 'vehicle-attack-settler'
   | 'vehicle-attack-building'
   | 'vehicle-attack-vehicle'
-  | 'vehicle-carrier';
+  | 'vehicle-carrier'
+  | 'vehicle-rider'
+  | 'vehicle-deck';
 
 /** A mode whose target is a spot, so any surface that names one - the world view or the map overview -
  *  can resolve it. */
@@ -191,6 +194,8 @@ const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<
   'vehicle-attack-building',
   'vehicle-attack-vehicle',
   'vehicle-carrier',
+  'vehicle-rider',
+  'vehicle-deck',
 ]);
 
 export interface PickModeDeps {
@@ -245,6 +250,8 @@ export interface PickModeController {
   arm(mode: PickMode): void;
   cancel(): void;
   isArmed(): boolean;
+  /** The armed mode, for a control that lights while its pick waits; null when none is. */
+  armed(): PickMode | null;
   signpostActive(): boolean;
   /** The ship whose dock pick is armed, or null: the frame loop washes the map with its mooring spots. */
   dockVehicle(): number | null;
@@ -416,6 +423,10 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.vehicleOrders().issueAttackTarget(event, mode.vehicle, 'vehicle');
       case 'vehicle-carrier':
         return deps.vehicleOrders().issueLoadInto(event, mode.vehicle);
+      case 'vehicle-rider':
+        return deps.vehicleOrders().issueSeatRider(event, mode.vehicle);
+      case 'vehicle-deck':
+        return deps.vehicleOrders().issueDeckLoad(event, mode.vehicle);
       default: {
         const unreachable: never = mode;
         throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);
@@ -470,6 +481,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     arm: setMode,
     cancel,
     isArmed: () => pickMode !== null,
+    armed: () => pickMode,
     signpostActive: () => pickMode?.kind === 'signpost',
     dockVehicle: () => (pickMode?.kind === 'vehicle-dock' ? pickMode.vehicle : null),
     flagActive: () => pickMode?.kind === 'workplace-or-flag',

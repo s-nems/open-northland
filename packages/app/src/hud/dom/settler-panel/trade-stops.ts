@@ -1,8 +1,8 @@
 import { messages } from '../../../i18n/index.js';
 import {
-  type SettlerPanelModel,
   TRADE_ROUTE_HOUSES,
   type TradePanelModel,
+  type TraderSubject,
   type TradeStopModel,
 } from '../../details-panel/model/index.js';
 import { createHouseCardLink, type HouseCardLink } from '../hover-card.js';
@@ -37,10 +37,7 @@ export interface TradeStops {
   update(trade: TradePanelModel): void;
 }
 
-export function createTradeStops(
-  deps: SettlerPanelDeps,
-  current: () => SettlerPanelModel | null,
-): TradeStops {
+export function createTradeStops(deps: SettlerPanelDeps, current: () => TraderSubject | null): TradeStops {
   const { actions } = deps;
   const id = (): number => current()?.entityId ?? -1;
   const liveSlot = (slot: number): SlotState | null => {

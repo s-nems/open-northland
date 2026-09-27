@@ -26,7 +26,6 @@ import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
-import { issueVehicleOrder } from './vehicle-order-buttons.js';
 import { createVehicleOrderController } from './vehicle-orders.js';
 import { createWorkAreaOverlay } from './work-area.js';
 
@@ -76,7 +75,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     assignHome: (id) => pickMode.arm({ kind: 'home', units: [id] }),
     attachTradeHouse: (id) => pickMode.arm({ kind: 'trade-house', units: [id] }),
     selectEntity: (id) => applySelection([id], false),
-    vehicleOrder: (vehicle, order) => issueVehicleOrder(vehicle, order, { enqueue: opts.enqueue, pickMode }),
+    armPick: (mode) => pickMode.arm(mode),
+    armedPick: () => pickMode.armed(),
     selectGroup: (ids) => applySelection(ids, false),
     ringCommand: (id, targets) =>
       issueRingCommand(id, orderRecipients(opts.content, opts.snapshot(), targets, id), {
@@ -213,8 +213,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // too, since its own listener consumes left clicks only.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     // The details panel routes its buttons through the same claim, so no panel-owned listener races this one.
-    const modifiers = { bigStep: e.shiftKey };
-    if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button, modifiers)) return;
+    if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button)) return;
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
     const pick = pickMode.handleMouseDown(e);
     if (pick !== null) {
@@ -361,10 +360,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (e.code === 'Tab' && browsesTrade(e) && chrome.browse(e.shiftKey ? -1 : 1)) {
       e.preventDefault();
     } else if (e.code === 'Escape') {
-      // Escape steps back one level: the ring (its job list first), the trade window, an armed pick
-      // mode, the selection.
+      // Escape steps back one level: the ring (its job list first), the trade window or the hold's
+      // picker, an armed pick mode, the selection.
       if (chrome.actions().handleEscape()) return;
-      if (chrome.closeTradeWindow()) return;
+      if (chrome.closeWindow()) return;
       if (pickMode.isArmed()) {
         pickMode.cancel();
         cue('fail'); // approximation: the original's cancel click is a mouse path; Esc is unverified
@@ -391,7 +390,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     workFlagPlacementActive: pickMode.flagActive,
     claimsEscape: () =>
       chrome.actions().state().mode !== 'closed' ||
-      chrome.tradeWindowOpen() ||
+      chrome.windowOpen() ||
       pickMode.isArmed() ||
       selection.ids().size > 0,
     dockPickVehicle: pickMode.dockVehicle,

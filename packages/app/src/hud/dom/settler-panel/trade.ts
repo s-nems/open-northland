@@ -1,5 +1,5 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
-import type { SettlerPanelModel, TradePanelModel } from '../../details-panel/model/index.js';
+import type { TradePanelModel, TraderSubject } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
 import { button, element, setAttribute, setHidden, setTip, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
@@ -31,7 +31,7 @@ export function bodyOf(trade: TradePanelModel): TradeBody {
 export interface TradeSection {
   readonly element: HTMLElement;
   /** True when the section changed shape, so the owner asks the frame whether everything fits. */
-  update(model: SettlerPanelModel, fresh: boolean): boolean;
+  update(model: TraderSubject, fresh: boolean): boolean;
   /** Every transfer line back, for the owner's fit pass to measure the panel in full. */
   unfit(): void;
   /** The panel, measured in full, stands `overflow` px past the plane: keep the lines that fit, or
@@ -43,7 +43,7 @@ export interface TradeSection {
 
 export function createTradeSection(
   deps: SettlerPanelDeps,
-  current: () => SettlerPanelModel | null,
+  current: () => TraderSubject | null,
   onConfigure: () => void,
 ): TradeSection {
   const toggle = button('on-more');

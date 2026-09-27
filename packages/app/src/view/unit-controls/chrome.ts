@@ -8,13 +8,13 @@ import {
   type PortraitBox,
   type UnitPanel,
   type UnitPanelState,
-  type VehicleOrder,
 } from '../../hud/details-panel/index.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import type { ClientRect } from '../../hud/dom/portrait-hole.js';
 import { createSettlerPanel } from '../../hud/dom/settler-panel/view.js';
-import type { HousePortrait } from '../../hud/dom/trade-window/window.js';
+import { createTradeWindow, type HousePortrait } from '../../hud/dom/trade-window/window.js';
+import { createVehiclePanel } from '../../hud/dom/vehicle-panel/view.js';
 import { clientToCanvas } from '../../hud/geometry.js';
 import { buildingHoverModel } from '../../hud/hover-card/building.js';
 import type { BuildingHoverModel } from '../../hud/hover-card/model.js';
@@ -31,10 +31,12 @@ import {
   selectionCentre,
 } from './action-ring/index.js';
 import type { EquipPickController } from './equip-picker.js';
+import type { PickMode } from './pick-mode.js';
 import { createRingVeil } from './ring-veil.js';
 import type { UnitSelection } from './selection.js';
 import { type SettlerContractCommands, settlerPanelActions } from './settler-panel.js';
 import type { UnitControlsOptions } from './types.js';
+import { armedVehiclePick, vehiclePanelActions, vehiclePeersOf } from './vehicle-panel.js';
 
 const NO_SELECTION: ReadonlySet<number> = new Set();
 /** Goods the warm-up paints icons of, enough to fill every icon slot of the warm model. */
@@ -51,8 +53,9 @@ export interface UnitChromeCallbacks {
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
   readonly selectEntity: (id: number) => void;
-  /** One of the vehicle window's order buttons. */
-  readonly vehicleOrder: (vehicle: number, order: VehicleOrder) => void;
+  /** Arm a pick for a vehicle panel control, and read which one waits for its target. */
+  readonly armPick: (mode: PickMode) => void;
+  readonly armedPick: () => PickMode | null;
   /** Replace the selection with these entities; none clears it. */
   readonly selectGroup: (ids: readonly number[]) => void;
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
@@ -63,18 +66,20 @@ export interface UnitChromeCallbacks {
 export interface UnitChromeHandle {
   panel(): UnitPanel;
   actions(): SettlerActions;
-  /** The live cutouts' boxes on the canvas: the settler's (the DOM settler panel's frame, else the Pixi
+  /** The live cutouts' boxes on the canvas: the selection's (a DOM panel's frame, else the Pixi
    *  panel's), then the trade window's houses while it is open. */
   portraits(): readonly PortraitBox[];
-  /** True over either details panel. */
+  /** True over any details panel or the trade window. */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade. */
+  /** Tab and Shift+Tab: show the next or previous person of the shown settler's trade, or vehicle of
+   *  the shown vehicle's class. */
   browse(step: 1 | -1): boolean;
-  /** Escape: close the trade window; false when it was not open. */
-  closeTradeWindow(): boolean;
-  tradeWindowOpen(): boolean;
-  /** Once a frame: the settler panel comes back once the ring it stepped aside for is down, and the
-   *  trade window follows the plane and yields to a beam window. */
+  /** Escape: close the trade window or the vehicle hold's picker; false when neither was open. */
+  closeWindow(): boolean;
+  windowOpen(): boolean;
+  /** Once a frame: the settler panel comes back once the ring it stepped aside for is down, the trade
+   *  window follows the plane and yields to a beam window, and the vehicle panel lights its armed
+   *  order. */
   refreshWindows(): void;
   /** Show the selection on the panel, or nothing while the HUD is hidden. */
   renderPanel(snapshot: WorldSnapshot): void;
@@ -132,10 +137,43 @@ export async function createUnitChrome(
     const ring = mounts.current().actions.state();
     return ring.mode !== 'closed' && ring.anchor !== null;
   });
-  // Mounted once on the plane, which scales as a whole: a HUD scale change remounts only the Pixi parts.
-  const settlerPanel = createSettlerPanel({
+  const settlerActions = settlerPanelActions(
+    opts,
+    {
+      selectEntity: callbacks.selectEntity,
+      selectGroup: callbacks.selectGroup,
+      centre,
+      openOrders: (press) => {
+        const edge = tradeWindow.clientRight();
+        mounts
+          .current()
+          .actions.open({ x: press.x, y: press.y, ...(edge === null ? {} : { keepRightOf: edge }) });
+        veil.raise();
+      },
+      assignWorkplace: callbacks.assignWorkplace,
+      assignHome: callbacks.assignHome,
+      attachTradeHouse: callbacks.attachTradeHouse,
+      ringCommand: callbacks.ringCommand,
+      cue: callbacks.cue,
+    },
+    contract,
+    equipPicker,
+  );
+  const icons = createGoodIconPainter(opts.domHud.pack);
+  // One trade window for both panels: a trader's own and a trader's cart's Handel open it.
+  const tradeWindow = createTradeWindow({
     plane: opts.domHud.plane,
-    icons: createGoodIconPainter(opts.domHud.pack),
+    icons,
+    tooltip: panelChip,
+    hoverCard,
+    buildingHover,
+    actions: settlerActions,
+    ...(opts.domHud.centralWindows !== undefined ? { centralWindows: opts.domHud.centralWindows } : {}),
+  });
+  // Mounted once on the plane, which scales as a whole: a HUD scale change remounts only the Pixi parts.
+  const panelDeps = {
+    plane: opts.domHud.plane,
+    icons,
     residents: opts.domHud.residents,
     keyLabel,
     hoverCard,
@@ -143,29 +181,21 @@ export async function createUnitChrome(
     buildingHover,
     now: () => performance.now(),
     cue: callbacks.cue,
-    ...(opts.domHud.centralWindows !== undefined ? { centralWindows: opts.domHud.centralWindows } : {}),
-    actions: settlerPanelActions(
-      opts,
-      {
-        selectEntity: callbacks.selectEntity,
-        selectGroup: callbacks.selectGroup,
-        centre,
-        openOrders: (press) => {
-          const edge = settlerPanel.tradeWindowRight();
-          mounts
-            .current()
-            .actions.open({ x: press.x, y: press.y, ...(edge === null ? {} : { keepRightOf: edge }) });
-          veil.raise();
-        },
-        assignWorkplace: callbacks.assignWorkplace,
-        assignHome: callbacks.assignHome,
-        attachTradeHouse: callbacks.attachTradeHouse,
-        ringCommand: callbacks.ringCommand,
-        cue: callbacks.cue,
-      },
-      contract,
-      equipPicker,
-    ),
+    tradeWindow,
+    actions: settlerActions,
+  };
+  const settlerPanel = createSettlerPanel(panelDeps);
+  const vehiclePanel = createVehiclePanel({
+    ...panelDeps,
+    vehicle: vehiclePanelActions({
+      snapshot: opts.snapshot,
+      viewer: opts.viewer,
+      enqueue: opts.enqueue,
+      arm: callbacks.armPick,
+      cue: callbacks.cue,
+    }),
+    vehiclePeers: (vehicle) => vehiclePeersOf(opts.snapshot(), opts.content, vehicle),
+    armedPick: (vehicle) => armedVehiclePick(callbacks.armedPick(), vehicle),
   });
   const canvasRect = (client: ClientRect): PortraitBox['rect'] => {
     const scale = screenScale(opts.canvas, opts.app.renderer.resolution);
@@ -174,15 +204,16 @@ export async function createUnitChrome(
     const to = clientToCanvas(scale, left + width, top + height);
     return { x: from.x, y: from.y, w: to.x - from.x, h: to.y - from.y };
   };
-  /** The canvas box of the DOM portrait, converted once per measured client box and settler. */
+  /** The canvas box of the DOM portrait, converted once per measured client box and subject. */
   let portraitMemo: { client: ClientRect; box: PortraitBox } | null = null;
   const domPortrait = (): PortraitBox | null => {
-    const shown = settlerPanel.portrait();
+    const shown = settlerPanel.portrait() ?? vehiclePanel.portrait();
     if (shown === null) return null;
     if (
       portraitMemo?.client !== shown.rect ||
       portraitMemo.box.entityRef !== shown.entityRef ||
-      portraitMemo.box.inside !== shown.inside ||
+      portraitMemo.box.kind !== shown.kind ||
+      portraitMemo.box.inside !== ('inside' in shown ? shown.inside : undefined) ||
       portraitMemo.box.aboard !== shown.aboard
     ) {
       portraitMemo = {
@@ -190,7 +221,7 @@ export async function createUnitChrome(
         box: {
           entityRef: shown.entityRef,
           kind: shown.kind,
-          ...(shown.inside === undefined ? {} : { inside: shown.inside }),
+          ...('inside' in shown && shown.inside !== undefined ? { inside: shown.inside } : {}),
           ...(shown.aboard === undefined ? {} : { aboard: shown.aboard }),
           rect: canvasRect(shown.rect),
         },
@@ -201,7 +232,7 @@ export async function createUnitChrome(
   /** The trade window's house portraits on the canvas, converted once per list the window measured. */
   let housesMemo: { client: readonly HousePortrait[]; boxes: readonly PortraitBox[] } | null = null;
   const housePortraits = (): readonly PortraitBox[] => {
-    const shown = settlerPanel.tradePortraits();
+    const shown = tradeWindow.portraits();
     if (housesMemo?.client !== shown) {
       housesMemo = {
         client: shown,
@@ -282,23 +313,16 @@ export async function createUnitChrome(
         opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
       onSetHouseholdGoodUse: (player, effect, allowed) =>
         opts.enqueue({ kind: 'setHouseholdGoodUse', player, effect, allowed }),
-      onAttachTradeHouse: callbacks.attachTradeHouse,
-      onDetachTradeHouse: (id, house) =>
-        opts.enqueue({ kind: 'detachTradeHouse', entity: id as Entity, house: house as Entity }),
-      onSetTradeImport: (id, house, good, on) =>
-        opts.enqueue({ kind: 'setTradeImport', entity: id as Entity, house: house as Entity, good, on }),
-      onSetTradeAgreement: (id, agreement) =>
-        opts.enqueue({ kind: 'setTradeAgreement', entity: id as Entity, agreement }),
       ...(opts.traderView !== undefined ? { traderView: opts.traderView } : {}),
       ...(opts.tradeOffersAt !== undefined ? { tradeOffersAt: opts.tradeOffersAt } : {}),
-      onVehicleOrder: callbacks.vehicleOrder,
-      onSetVehicleWanted: (id, goodType, amount) =>
-        opts.enqueue({ kind: 'setVehicleWanted', vehicle: id as Entity, goodType, amount }),
       ...(opts.workStatus !== undefined ? { workStatus: opts.workStatus } : {}),
       ...(opts.diplomacyStance !== undefined ? { diplomacyStance: opts.diplomacyStance } : {}),
       onSelectEntity: callbacks.selectEntity,
       onCenterOnEntity: centre,
-      onModel: (model) => settlerPanel.update(model),
+      onModel: (model) => {
+        settlerPanel.update(model);
+        vehiclePanel.update(model);
+      },
       ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
     });
 
@@ -372,8 +396,10 @@ export async function createUnitChrome(
   const panelIds = (): ReadonlySet<number> => (hudHidden ? NO_SELECTION : selection.ids());
   /** The stock tab the hide found, given back on show while the selection is the same one. */
   let keptPanel: { readonly state: UnitPanelState; readonly version: number } | null = null;
-  // Behind the loading screen: the panel's styles raster once now, not on the first click.
-  settlerPanel.warm(opts.content.goods.slice(0, WARM_GOOD_ICONS).map((good) => good.id));
+  // Behind the loading screen: the panels' styles raster once now, not on the first click.
+  const warmGoods = opts.content.goods.slice(0, WARM_GOOD_ICONS).map((good) => good.id);
+  settlerPanel.warm(warmGoods);
+  vehiclePanel.warm(warmGoods);
   const mounts = createReplaceableMount(await mount(opts.uiscale ?? 1), mount, (next, previous) => {
     const snapshot = opts.snapshot();
     next.panel.render(snapshot, panelIds());
@@ -385,13 +411,25 @@ export async function createUnitChrome(
     panel: () => mounts.current().panel,
     actions: () => mounts.current().actions,
     portraits,
-    claimsPointer: (x, y) => settlerPanel.claims(x, y) || mounts.current().panel.claimsPointer(x, y),
-    browse: settlerPanel.browse,
-    closeTradeWindow: settlerPanel.closeTradeWindow,
-    tradeWindowOpen: settlerPanel.tradeWindowOpen,
+    claimsPointer: (x, y) =>
+      settlerPanel.claims(x, y) ||
+      vehiclePanel.claims(x, y) ||
+      tradeWindow.claims(x, y) ||
+      mounts.current().panel.claimsPointer(x, y),
+    browse: (step) => settlerPanel.browse(step) || vehiclePanel.browse(step),
+    closeWindow: () => {
+      if (tradeWindow.isOpen()) {
+        tradeWindow.dismiss();
+        return true;
+      }
+      return vehiclePanel.closePicker();
+    },
+    windowOpen: () => tradeWindow.isOpen(),
     refreshWindows: () => {
       veil.refresh();
+      tradeWindow.refresh();
       settlerPanel.refresh();
+      vehiclePanel.refresh();
     },
     renderPanel: (snapshot) => mounts.current().panel.render(snapshot, panelIds()),
     setHudHidden: (hidden) => {
@@ -407,11 +445,15 @@ export async function createUnitChrome(
     },
     setUiScale: (uiscale) => {
       settlerPanel.invalidate();
+      vehiclePanel.invalidate();
+      tradeWindow.invalidate();
       return mounts.replace(uiscale);
     },
     dispose: () => {
       mounts.dispose();
+      tradeWindow.dispose();
       settlerPanel.dispose();
+      vehiclePanel.dispose();
       hoverCard.dispose();
       panelChip.destroy();
     },

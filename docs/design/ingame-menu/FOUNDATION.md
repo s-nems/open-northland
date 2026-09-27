@@ -438,6 +438,62 @@ button; for those the built panel is the reference.
 - A dead or removed target clears the selection and the panel with it. Every control checks the seat's
   ownership before submitting a command.
 
+### Vehicle panel
+
+The selected vehicle's panel, in the settler panel's frame and place, built from its parts. Review
+states: `vehicle.html` in the mockup (the portrait there is a crop of a capture; in game the renderer
+paints the live vehicle). The same quick-look rules hold: every state fits the plane without a
+scrollbar, every control's tooltip is a few words saying what the press does or why it is refused.
+
+- Head: the vehicle's class as the kicker (Wóz, Statek, Machina oblężnicza) with the browse over
+  the seat's vehicles of that class (chevrons, "1 / 3", Tab and Shift+Tab; a double click selects
+  them all), the type as the title (vehicles carry no name), the owner line only for another seat's
+  vehicle. A vehicle has no action ring, so the gold medallion stays blank and keeps the heading
+  centred; a right click on the map drives the vehicle as before.
+- Portrait row: the live vehicle in the 96 × 92 px frame is the centre-view button; a vehicle riding
+  a ship shows the ship. A 7 px wear bar under the frame fills with the hitpoints left (amber under
+  a third, red under a sixth), its tooltip the hitpoints. Beside it, where a person has sockets, the
+  order buttons, 30 px, five to a row: Jedź do (Płyń do on a ship), Zatrzymaj, and Wjedź na statek
+  for a land vehicle (Zjedź ze statku while it rides one) or Zacumuj for a ship; a siege engine adds
+  a second row of red attack orders (ludzi, budynek, pojazd, miejsce). A spot or target order arms
+  its pick and its button stays lit gold until the pick resolves or Esc drops it; its tooltip names
+  the right click that gives the same order on the map. A refused order is faded with the reason
+  (no driver, standing on a ship, the ship at sea, waiting for the draught animal). The status strip
+  along the frame's floor names the first state that holds: Na statku with the ship as a link,
+  Wjeżdża na statek, Atakuje, Cumuje, Płynie or Jedzie, Czeka na zwierzę pociągowe, Czeka na
+  woźnicę / kapitana / obsługę in amber, Czeka na załogę, Ładuje or Rozładowuje towary while a cargo
+  hand has a trip to make, Zacumowany, Zatrzymany, Stoi.
+- Wojsko (a siege engine only): Postawa as the soldier's three-way strip with the vehicle's stances,
+  Atak, Obrona and Pozycja, each tooltip saying how it fights.
+- Załoga: the commander on a ledger row named by class (Woźnica, Kapitan, Obsługa), a link that
+  selects the person, "idzie" while it still walks to the door, and × to step out. Without one the
+  row reads "Przydziel woźnicę" in amber, a link that arms the pick of an own settler on the map
+  (the sim seats the commander first, then an ordinary seat). A ship lists its ordinary seats as
+  24 px wells under it, ten to a row: a rider's figure (a woman's warmer, a soldier's steel) selects
+  them, a rider still walking to the door is dashed and faded, the first free seat is the amber
+  seat pick, the rest are plain. A ship's deck is a Pojazd row: the carried cart as a link with the
+  button that drives it ashore, or "brak" with the button that arms the pick of an own cart to
+  drive aboard. The title carries the seats taken of all and "Wysadź wszystkich"; stepping in or
+  out is refused at sea.
+- Handel: a cart a trader rides shows the trader's Handel section as the settler panel does, and its
+  configure button opens the same trade window, addressed to that trader.
+- Ładownia: a load gauge over the hold's units (aboard solid, on the way hatched, a mark at the sum
+  of the targets) with "aboard / slots"; then one manifest line per good aboard, asked for or
+  booked: the good's well, its name, what is aboard with "+N" on the way or "−N" leaving, and the
+  target as the production counter (Ctrl ±10, Shift to 0 or as much as fits; the hold's room caps
+  the plus, which fades with "Ładownia jest już w całości rozdzielona"). A thin rule under the line
+  fills with the part of the target aboard; a line asked for less than it holds reads muted. The
+  counter echoes a step until the snapshot carries it, so steps within one snapshot add up, and a
+  line keeps its place while its counts change. "Dodaj towar" opens the picker in place of the add
+  row: the stock category tabs over the goods of the open one the type may carry, a listed good
+  ticked; a press adds the line at zero (a second press on such a line takes it off). The title
+  carries "Rozładuj wszystko" (every target to zero) and, while nobody works the hold (no commander
+  and no carrier seated), "bez tragarza" in amber. A trader's cart lists the lines read-only under
+  "według trasy": its route writes the targets.
+- First paint at map start, as the settler panel's: a made-up vehicle lights every section once.
+- Another seat's vehicle: class, type, owner line with the stance, the portrait, the state and the
+  crew's figures; no order, no hold, no control.
+
 ## HUD shell
 
 The runtime shell (ticket 02) places the regions on the DOM plane in design px and keeps the legacy

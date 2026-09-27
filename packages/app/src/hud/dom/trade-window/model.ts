@@ -1,12 +1,12 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
-  type SettlerPanelModel,
   TRADE_LIMIT_MAX,
   TRADE_LIMIT_NONE,
   TRADE_SLOT_A,
   TRADE_SLOT_B,
   type TradeDirection,
   type TradePanelModel,
+  type TraderSubject,
   type TradeTransferModel,
 } from '../../details-panel/model/index.js';
 import { GLYPH } from '../icons.js';
@@ -35,7 +35,7 @@ export const KEEP_RANGE: CounterRange = { max: TRADE_LIMIT_MAX };
 export const DIRECTIONS: readonly TradeDirection[] = ['toB', 'both', 'toA'];
 
 /** The trader's route while it is two own houses, the one thing the window shows; null closes it. */
-export function windowRoute(model: SettlerPanelModel): TradePanelModel | null {
+export function windowRoute(model: TraderSubject): TradePanelModel | null {
   return model.trade?.stock == null ? null : model.trade;
 }
 

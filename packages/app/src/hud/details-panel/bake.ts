@@ -6,7 +6,7 @@ import type { DetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
 import { mapLayout } from './layout/index.js';
 import type { PanelHover } from './pointer-intent.js';
-import { drawBuilding, drawCompact, drawPalisade, drawSignpost, drawVehicle } from './sections/index.js';
+import { drawBuilding, drawCompact, drawPalisade, drawSignpost } from './sections/index.js';
 import type { PanelView } from './selection-view.js';
 
 export type DrawableView = Exclude<PanelView, { kind: 'empty' }>;
@@ -74,9 +74,6 @@ export function bakePanel(opts: PanelBakeOptions): BakedPanel {
       break;
     case 'palisade':
       drawPalisade(chrome, mapLayout(view.layout, toDraw), view.model, hover.action, ss);
-      break;
-    case 'vehicle':
-      drawVehicle(chrome, view, mapLayout(view.layout, toDraw), ui, hover, activeStockTab, ss);
       break;
     default: {
       const unreachable: never = view;

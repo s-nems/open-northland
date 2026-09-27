@@ -398,4 +398,27 @@ describe('vehicle picks', () => {
     expect(pickMode.handleMouseDown({ ...leftClick, clientX: CLICK.x + 500 } as MouseEvent)).toBe('missed');
     expect(issued.length).toBe(1);
   });
+
+  it("seats the own settler a vehicle panel's pick clicks, and drives an own cart onto a ship's deck", () => {
+    const seat = harness([SHIP], {
+      settlersUnder: [under(OWN_SETTLER, 'settler')],
+      canAttachToVehicle: (_settler, vehicle) => vehicle === SHIP,
+    });
+    seat.pickMode.arm({ kind: 'vehicle-rider', vehicle: SHIP });
+    expect(seat.pickMode.armed()).toEqual({ kind: 'vehicle-rider', vehicle: SHIP });
+    expect(seat.pickMode.handleMouseDown(leftClick)).toBe('ordered');
+    expect(seat.pickMode.armed()).toBeNull();
+    // The attach rule refuses this one: the click orders nothing.
+    seat.pickMode.arm({ kind: 'vehicle-rider', vehicle: SHIP_AT_SEA });
+    expect(seat.pickMode.handleMouseDown(leftClick)).toBe('missed');
+    expect(seat.issued).toEqual([{ kind: 'attachToVehicle', entity: OWN_SETTLER, vehicle: SHIP }]);
+
+    const deck = harness([SHIP], { vehicles: [under(SHIP, 'vehicle'), under(HANDCART, 'vehicle')] });
+    deck.pickMode.arm({ kind: 'vehicle-deck', vehicle: SHIP });
+    expect(deck.pickMode.handleMouseDown(leftClick)).toBe('ordered');
+    // A ship at sea takes nothing aboard.
+    deck.pickMode.arm({ kind: 'vehicle-deck', vehicle: SHIP_AT_SEA });
+    expect(deck.pickMode.handleMouseDown(leftClick)).toBe('missed');
+    expect(deck.issued).toEqual([{ kind: 'loadIntoVehicle', vehicle: HANDCART, carrier: SHIP }]);
+  });
 });

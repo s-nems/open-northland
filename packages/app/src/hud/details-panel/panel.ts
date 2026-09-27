@@ -7,19 +7,10 @@ import { vehicleGoodIcons } from '../../content/vehicle-gfx/index.js';
 import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { buildingPreviews, loadDetailsPanelArt } from './assets.js';
-import { createCargoWantedEcho } from './cargo-echo.js';
 import { applyPanelClick, type PanelClickActions } from './click-actions.js';
 import { tooltipTextAt } from './hit-test.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
-import {
-  NO_MODIFIERS,
-  NO_PANEL_HOVER,
-  type PanelClickModifiers,
-  type PanelHover,
-  panelClickAt,
-  panelHoverAt,
-  sameHover,
-} from './pointer-intent.js';
+import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { createPanelStage } from './stage.js';
@@ -47,10 +38,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActio
   readonly packGoods?: ReadonlyMap<string, Texture>;
   /** Owner slot → team-colour slot for the worker sprites; absent = identity. */
   readonly playerColourOf?: (player: number) => number;
-  /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field or a
-   *  crew row of the vehicle window. */
+  /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field. */
   readonly onSelectEntity?: (entityId: number) => void;
-  /** Every model the rebuild gate lets through: the DOM settler panel shows the single settler this
+  /** Every model the rebuild gate lets through: the DOM panels show the single settler or vehicle this
    *  panel leaves blank. */
   readonly onModel?: (model: UnitPanelModel) => void;
   /** The GUI click every pressed panel button and worker portrait confirms with; absent, silent. */
@@ -69,12 +59,9 @@ export interface UnitPanel {
   claimsPointer(clientX: number, clientY: number): boolean;
   /** Null when the current selection has no portrait (multi-select, empty). */
   portrait(): PortraitBox | null;
-  /**
-   * Returns true when the point is over the panel, so the caller must not world-pick it; a left press on
-   * an enabled button performs its action. The modifiers switch a craft-choice click from replace to
-   * toggle (Ctrl/Cmd) and a wanted-amount step to the big one (Shift).
-   */
-  handleMouseDown(clientX: number, clientY: number, button: number, modifiers?: PanelClickModifiers): boolean;
+  /** Returns true when the point is over the panel, so the caller must not world-pick it; a left press
+   *  on an enabled button performs its action. */
+  handleMouseDown(clientX: number, clientY: number, button: number): boolean;
   state(): UnitPanelState;
   restore(state: UnitPanelState): void;
   dispose(): void;
@@ -114,9 +101,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     now: () => performance.now(),
   });
   let view: PanelView = EMPTY_PANEL_VIEW;
-  /** The model the gate last handed out, before the hold's wanted echo is laid over it. */
+  /** The model the gate last handed out. */
   let liveModel: UnitPanelModel | null = null;
-  const cargoEcho = createCargoWantedEcho();
   let hover: PanelHover = NO_PANEL_HOVER;
   /** The last known cursor position over the canvas (client coords), or null after it left, so a rebuild
    *  can refresh a still cursor's tooltip with live values. */
@@ -127,7 +113,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const rebuild = (model: UnitPanelModel): void => {
     rebuildGate.rebuilt();
     liveModel = model;
-    view = panelViewFor(cargoEcho.apply(model), app.screen, scale);
+    view = panelViewFor(model, app.screen, scale);
     stage.paint(view, hover, activeStockTab);
     if (view.kind === 'empty') {
       opts.tooltip?.hide();
@@ -165,12 +151,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     rebuildCurrent();
   };
 
-  const handleMouseDown = (
-    clientX: number,
-    clientY: number,
-    button: number,
-    modifiers: PanelClickModifiers = NO_MODIFIERS,
-  ): boolean => {
+  const handleMouseDown = (clientX: number, clientY: number, button: number): boolean => {
     if (!claimsPointer(clientX, clientY)) return false;
     if (button !== 0) return true; // over the panel - swallow, but only the left button acts
     const { x, y } = toCanvas(clientX, clientY);
@@ -181,14 +162,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       opts.onSelectEntity?.(worker);
       return true;
     }
-    const click = panelClickAt(view, x, y, modifiers, activeStockTab);
+    const click = panelClickAt(view, x, y);
     if (click !== null) {
       opts.onUiCue?.('confirm');
       applyPanelClick(click, opts, selectStockTab);
-      if (click.kind === 'setVehicleWanted' && opts.onSetVehicleWanted !== undefined) {
-        if (liveModel?.kind === 'vehicle') cargoEcho.hold(liveModel, click.goodType, click.amount);
-        rebuildCurrent();
-      }
     }
     return true;
   };
@@ -217,7 +194,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     lastPointer = { clientX: e.clientX, clientY: e.clientY };
     updateTooltip(e.clientX, e.clientY);
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    setHover(panelHoverAt(view, x, y, activeStockTab));
+    setHover(panelHoverAt(view, x, y));
   };
 
   // Leaving the canvas can't fire a final over-empty mousemove, so the row tooltip would linger - hide it.
