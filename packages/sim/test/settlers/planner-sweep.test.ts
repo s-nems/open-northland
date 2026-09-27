@@ -147,6 +147,17 @@ describe('planner sweep order', () => {
     expect(world.verifyCaches()).toEqual([]);
   });
 
+  it('files a re-owned walker under its new owner', () => {
+    const world = new World();
+    const walker = walking(world);
+    world.add(walker, Owner, { player: CALM });
+    const alarm: ShelterSites = new Map([[ALARMED, []]]);
+    expect([...sweepOrder(world, alarm, EVERY_IDLER)]).toEqual([]);
+    world.add(walker, Owner, { player: ALARMED });
+    expect([...sweepOrder(world, alarm, EVERY_IDLER)]).toEqual([walker]);
+    expect(world.verifyCaches()).toEqual([]);
+  });
+
   it('visits an idler with nothing to shed on its beat, and every beat once alarmed or woken', () => {
     const world = new World();
     const idlers = Array.from({ length: IDLE_REPLAN_PERIOD_TICKS + 1 }, () => idler(world));
