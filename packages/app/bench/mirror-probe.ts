@@ -1,12 +1,15 @@
-import { diffSnapshots, type Simulation, SnapshotMirror } from '@open-northland/sim';
+import { deserialize, serialize } from 'node:v8';
+import { diffSnapshots, type Simulation, type SnapshotDelta, SnapshotMirror } from '@open-northland/sim';
 import { percentile } from './report/index.js';
 
 const BYTES_PER_KB = 1024;
 const US_PER_MS = 1000;
 
 /**
- * The per-tick cost of the snapshot delta path a worker host pays: taking the delta, the structured
- * clone `postMessage` would make, and applying it to a mirror, beside the delta's size. Sampled outside
+ * The cost of the snapshot delta path a worker host pays per posted delta: taking it, the structured
+ * clone `postMessage` makes (V8's serializer, split into the worker's serialize and the main thread's
+ * deserialize), and applying it to a mirror, beside its serialized size. `ticksPerDelta` takes one delta
+ * every that many ticks, the batching a worker does when several ticks reach one frame. Sampled outside
  * the timed tick, so the tick table stays the sim's. At each window's end it checks the mirror against
  * the live snapshot and clones a full snapshot once for the comparison the delta replaces. The runtime's
  * readers register their indexes on the mirror lazily, so this mirror holds none, and its apply figure
@@ -15,36 +18,47 @@ const US_PER_MS = 1000;
 export class MirrorProbe {
   private readonly deltas;
   private readonly mirror = new SnapshotMirror();
+  private ticksSinceDelta = 0;
   private takeUs: number[] = [];
-  private cloneUs: number[] = [];
+  private serializeUs: number[] = [];
+  private deserializeUs: number[] = [];
   private applyUs: number[] = [];
   private touched: number[] = [];
   private components: number[] = [];
   private kilobytes: number[] = [];
 
-  constructor(private readonly sim: Simulation) {
+  constructor(
+    private readonly sim: Simulation,
+    private readonly ticksPerDelta: number,
+  ) {
     this.deltas = sim.snapshotDeltas();
   }
 
   /** Call after every step. */
   tick(): void {
+    this.ticksSinceDelta++;
+    if (this.ticksSinceDelta < this.ticksPerDelta) return;
+    this.ticksSinceDelta = 0;
     const t0 = performance.now();
     const delta = this.deltas.next();
     const t1 = performance.now();
     if (delta === null) return;
-    const cloned = structuredClone(delta);
+    const bytes = serialize(delta);
     const t2 = performance.now();
-    this.mirror.apply(cloned);
+    const received = deserialize(bytes) as SnapshotDelta;
     const t3 = performance.now();
+    this.mirror.apply(received);
+    const t4 = performance.now();
     this.takeUs.push((t1 - t0) * US_PER_MS);
-    this.cloneUs.push((t2 - t1) * US_PER_MS);
-    this.applyUs.push((t3 - t2) * US_PER_MS);
+    this.serializeUs.push((t2 - t1) * US_PER_MS);
+    this.deserializeUs.push((t3 - t2) * US_PER_MS);
+    this.applyUs.push((t4 - t3) * US_PER_MS);
     this.touched.push(delta.touched.length + delta.removed.length);
     let components = 0;
     for (const entry of delta.touched)
       components += Object.keys(entry.components).length + entry.removed.length;
     this.components.push(components);
-    this.kilobytes.push(JSON.stringify(delta).length / BYTES_PER_KB);
+    this.kilobytes.push(bytes.byteLength / BYTES_PER_KB);
   }
 
   /** One report line for the window that just closed, resetting the samples; throws when the mirror
@@ -67,13 +81,16 @@ export class MirrorProbe {
     structuredClone(live);
     const fullCloneMs = performance.now() - t0;
     const line =
-      `  mirror  entities ${live.entities.length}  changed/tick p50 ${percentile(this.touched, 50).toFixed(0)} ` +
-      `p95 ${percentile(this.touched, 95).toFixed(0)}  components/tick p50 ${percentile(this.components, 50).toFixed(0)} ` +
-      `p95 ${percentile(this.components, 95).toFixed(0)}  delta JSON KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
-      `p95 ${percentile(this.kilobytes, 95).toFixed(1)}  take µs ${us(this.takeUs)}  clone µs ${us(this.cloneUs)}  ` +
+      `  mirror  entities ${live.entities.length}  ticks/delta ${this.ticksPerDelta}  ` +
+      `changed/delta p50 ${percentile(this.touched, 50).toFixed(0)} p95 ${percentile(this.touched, 95).toFixed(0)}  ` +
+      `components/delta p50 ${percentile(this.components, 50).toFixed(0)} ` +
+      `p95 ${percentile(this.components, 95).toFixed(0)}  delta KB p50 ${percentile(this.kilobytes, 50).toFixed(1)} ` +
+      `p95 ${percentile(this.kilobytes, 95).toFixed(1)}  take µs ${us(this.takeUs)}  ` +
+      `serialize µs ${us(this.serializeUs)}  deserialize µs ${us(this.deserializeUs)}  ` +
       `apply only, no indexes µs ${us(this.applyUs)}  full snapshot clone ${fullCloneMs.toFixed(0)} ms`;
     this.takeUs = [];
-    this.cloneUs = [];
+    this.serializeUs = [];
+    this.deserializeUs = [];
     this.applyUs = [];
     this.touched = [];
     this.components = [];

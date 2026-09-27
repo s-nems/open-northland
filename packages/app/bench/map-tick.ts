@@ -19,7 +19,8 @@ import { publishReport, reportFrom } from './run.js';
  * Knobs (env, all optional): `ON_BENCH_MAP`, `ON_BENCH_SEATS` (a count or a comma list),
  * `ON_BENCH_PROGRESSION` and `ON_BENCH_NEEDS` (`on`/`off`), `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
  * `ON_BENCH_WINDOWS`, `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, the lockstep session's
- * cost), `ON_BENCH_MIRROR` (sample the snapshot delta path per tick, see `mirror-probe.ts`),
+ * cost), `ON_BENCH_MIRROR` (sample the snapshot delta path, see `mirror-probe.ts`) with
+ * `ON_BENCH_MIRROR_BATCH` (ticks per delta, default 1),
  * `ON_BENCH_CHECKPOINT`, `ON_BENCH_SKIP` and `ON_BENCH_CHECKPOINTS` (see `map-world.ts`),
  * `ON_BENCH_JSON=<path>` (write the machine-readable report).
  */
@@ -48,7 +49,9 @@ async function main(): Promise<void> {
   const startMs = performance.now();
   const world = await mapBenchWorld(knobs, knobs.warmupTicks + knobs.measuredTicks);
   for (const line of worldSourceLines(world, knobs)) console.log(line);
-  const mirror = boolEnv('ON_BENCH_MIRROR') ? new MirrorProbe(world.sim) : null;
+  const mirror = boolEnv('ON_BENCH_MIRROR')
+    ? new MirrorProbe(world.sim, intEnv('ON_BENCH_MIRROR_BATCH', 1, 1))
+    : null;
 
   const measurement = await measureWindows(world.sim, {
     warmupTicks: knobs.warmupTicks,
