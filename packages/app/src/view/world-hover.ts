@@ -45,6 +45,9 @@ export interface WorldHoverOptions {
   readonly card: HoverCard;
   readonly buildingModel: (snapshot: WorldSnapshot, entityId: number) => BuildingHoverModel | null;
   readonly settlerModel: (snapshot: WorldSnapshot, entityId: number) => SettlerHoverModel | null;
+  /** Bumps whenever the models above would read differently within one tick: a spectator's seat switch
+   *  turns another seat's card into an own one and back. */
+  readonly modelVersion: () => number;
   /** Solid-texel refinement of a building's or vehicle's drawn box, so its transparent corner hovers the
    *  ground. */
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
@@ -182,8 +185,8 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
     return hoverTargets;
   };
 
-  // The card's model is rebuilt only when the target or the tick changes; the frames in between show
-  // the model already standing.
+  // The card's model is rebuilt only when the target, the tick or the viewer's seat changes; the frames
+  // in between show the model already standing.
   let cardKey = '';
   let cardModel: HoverCardModel | null = null;
   const modelFor = (
@@ -191,7 +194,7 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
     ref: number,
     kind: 'building' | 'settler',
   ): HoverCardModel | null => {
-    const key = `${ref}:${snap.tick}`;
+    const key = `${ref}:${snap.tick}:${opts.modelVersion()}`;
     if (key !== cardKey) {
       cardKey = key;
       cardModel = kind === 'building' ? opts.buildingModel(snap, ref) : opts.settlerModel(snap, ref);

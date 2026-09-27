@@ -134,8 +134,12 @@ export async function createUnitChrome(
     diplomacyStance: opts.diplomacyStance,
     playerColourOf: opts.playerColourOf,
   };
-  /** One card model per house and snapshot: a move over a link then only repositions the card. */
-  const hoverModels = memoBySnapshot(() => new Map<number, BuildingHoverModel | null>());
+  /** One card model per house, snapshot and viewer seat: a move over a link then only repositions the
+   *  card, and a spectator's seat switch reads the houses anew. */
+  const hoverModels = memoBySnapshot(
+    () => new Map<number, BuildingHoverModel | null>(),
+    () => opts.viewer.version(),
+  );
   const buildingHover = (id: number): BuildingHoverModel | null => {
     const snapshot = opts.snapshot();
     const models = hoverModels(snapshot);

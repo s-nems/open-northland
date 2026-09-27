@@ -1733,6 +1733,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-hovercard__swatch {
   flex-shrink: 0;
+  background: var(--swatch);
   width: 8px;
   height: 8px;
   border: 1px solid var(--wood-lo);

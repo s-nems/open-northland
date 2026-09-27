@@ -12,11 +12,12 @@ import {
   type WindowLayers,
 } from '../window-family/index.js';
 import { createWindowShell, type ToolWindow } from '../window-shell.js';
-import { createDiplomacyBody, diplomacyPlayerLabel } from './body.js';
+import { createDiplomacyBody } from './body.js';
 import {
   type DiplomacyPanelRow,
   hitTestDiplomacyWindow,
   layoutDiplomacyWindow,
+  playerLabel,
   resolveSelectedPlayer,
   tradeSectionRows,
 } from './model.js';
@@ -159,7 +160,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     const tabs: TitledTab[] = built.tabs.map((tab) => ({
       rect: tab.rect,
       selected: tab.selected,
-      label: diplomacyPlayerLabel(ctx, tab.player, byPlayer.get(tab.player)?.name),
+      label: playerLabel(ctx.uiString, tab.player, byPlayer.get(tab.player)?.name),
     }));
     paintTitledTabWindow(
       layers,

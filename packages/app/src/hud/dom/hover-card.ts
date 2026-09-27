@@ -11,7 +11,7 @@ import type {
 } from '../hover-card/model.js';
 import { diplomacyStanceText, playerLabel } from '../tool-panel/diplomacy/model.js';
 import { createGoodIconPainter, goodIconMarkup } from './good-art.js';
-import { setClass, setHidden, write } from './parts/dom.js';
+import { setClass, setHidden, setStyleVar, write } from './parts/dom.js';
 import { createMeterRow } from './parts/meter-row.js';
 
 /**
@@ -181,7 +181,7 @@ export function createHoverCard(deps: HoverCardDeps): HoverCard {
     changed = setHidden(owner, model.owner === null) || changed;
     if (model.owner !== null) {
       changed = write(ownerName, ownerLine(model.owner)) || changed;
-      swatch.style.background = model.owner.colour;
+      setStyleVar(swatch, '--swatch', model.owner.colour);
     }
     const bar = model.kind === 'building' ? model.health : null;
     changed = setHidden(health.element, bar === null) || changed;

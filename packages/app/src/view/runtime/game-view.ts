@@ -817,6 +817,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       buildingModel: (snapshot, entityId) => buildingHoverModel(snapshot, entityId, hoverContext),
       settlerModel: (snapshot, entityId) =>
         settlerHoverModel(snapshot, entityId, { jobs: host.content.jobs, mapText, ...hoverOwners }),
+      modelVersion: viewer.version,
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>

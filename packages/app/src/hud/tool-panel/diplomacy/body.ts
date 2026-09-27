@@ -3,7 +3,6 @@ import { messages } from '../../../i18n/index.js';
 import { drawPlateOutline } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { ParagraphRun, TextRun } from '../../text-run.js';
-import type { PanelContext } from '../context.js';
 import {
   addRun,
   centreRun,
@@ -48,9 +47,6 @@ interface TributeCard {
   readonly spec: TributeCardSpec;
 }
 
-export const diplomacyPlayerLabel = (ctx: PanelContext, player: number, name: string | undefined): string =>
-  playerLabel(ctx.uiString, player, name);
-
 export function createDiplomacyBody(layers: WindowLayers) {
   const { ctx } = layers;
   const { scale } = ctx;
@@ -78,7 +74,7 @@ export function createDiplomacyBody(layers: WindowLayers) {
     drawPlateOutline(layers.graphics, swatch, scale);
     placeOnCard(
       layers,
-      addRun(layers, diplomacyPlayerLabel(ctx, row.player, row.name), 'white', ROW_PX),
+      addRun(layers, playerLabel(ctx.uiString, row.player, row.name), 'white', ROW_PX),
       idCard,
       ROW_INSET_X + SWATCH + SWATCH_NAME_GAP,
     );

@@ -12,7 +12,12 @@ import {
   GOOD_STONE,
   GOOD_WOOD,
 } from '../src/game/sandbox/ids/index.js';
-import { fixedViewerSeat, overseerViewerSeat, type ViewerSeat } from '../src/game/viewer-seat.js';
+import {
+  fixedViewerSeat,
+  overseerViewerSeat,
+  switchableViewerSeat,
+  type ViewerSeat,
+} from '../src/game/viewer-seat.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../src/hud/hover-card/building.js';
 import { type SettlerHoverContext, settlerHoverModel } from '../src/hud/hover-card/settler.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
@@ -147,6 +152,31 @@ describe('building hover card model', () => {
     expect(overseen?.owner).toBeNull();
     expect(overseen?.health).toBeNull();
     expect(overseen?.rows).toEqual([{ goodId: 'stone', label: 'stone', amount: 1 }]);
+  });
+
+  it("lists the store of an ownerless building, which is nobody else's", () => {
+    const ownerless = buildingEntity(10, BUILDING_WAREHOUSE_00, { components: stockpile([[GOOD_WOOD, 3]]) });
+    const { Owner: _owner, ...components } = ownerless.components;
+    const snapshot = snapshotOf([{ ...ownerless, components }]);
+
+    const model = buildingHoverModel(snapshot, 10, hoverCtx());
+
+    expect(model?.owner).toBeNull();
+    expect(model?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 3 }]);
+  });
+
+  it("follows a spectator's seat switch: another seat's store hides, the watched seat's shows", () => {
+    const viewer = switchableViewerSeat(OTHER_PLAYER);
+    const snapshot = snapshotOf([
+      buildingEntity(11, BUILDING_WAREHOUSE_00, { components: stockpile([[GOOD_WOOD, 2]]) }),
+    ]);
+
+    const watchingOther = buildingHoverModel(snapshot, 11, hoverCtx(viewer));
+    viewer.watch(HUMAN_PLAYER);
+    const watchingOwner = buildingHoverModel(snapshot, 11, hoverCtx(viewer));
+
+    expect(watchingOther?.rows).toEqual([]);
+    expect(watchingOwner?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 2 }]);
   });
 
   it('has nothing to say about an entity that is not a building', () => {
