@@ -227,11 +227,17 @@ describe('resourceBoxHoldsAll (the dry-map stop of the expanding searches)', () 
     expect(nearestLiveResource(sim.world, 1, { hx: 10, hy: 10 }, (e) => e !== far)).toBeNull();
   });
 
-  it("picks the reference scan's winner, corner hits past a searched box included", () => {
+  it.each([
+    {
+      label: 'a map-sized span: misses, corner hits and a box that holds every region',
+      span: 480,
+      nodes: 30,
+    },
+    { label: 'a crowded patch: many nodes tie on distance', span: 24, nodes: 60 },
+    { label: 'a sparse span past the box cap: the whole-good fold', span: 3000, nodes: 8 },
+  ])("picks the reference scan's winner over $label", ({ span: SPAN, nodes: NODES }) => {
     const TRIALS = 40;
-    const NODES = 30;
     const QUERIES = 10;
-    const SPAN = 480; // a map-sized span: misses, corner hits and a box that holds every region
     const GOODS = 3;
     const rng = new Rng(7);
     for (let trial = 0; trial < TRIALS; trial++) {

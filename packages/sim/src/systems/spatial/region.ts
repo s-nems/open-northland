@@ -28,8 +28,13 @@ interface RegionMember<Capture> {
   readonly capture: Capture;
 }
 
+/** Region buckets by region key, each ascending-id. */
+type RegionBuckets<Capture> = Map<number, RegionMember<Capture>[]>;
+
 interface RegionState<Extra, Capture> {
-  byRegion: Map<number, RegionMember<Capture>[]>;
+  byRegion: RegionBuckets<Capture>;
+  /** The same members split by their partition key, for a partitioned index; null otherwise. */
+  byPart: Map<number, RegionBuckets<Capture>> | null;
   /** The same members re-bucketed at node granularity, minted by the first {@link RegionIndex.atNode}
    *  caller and maintained from then on. */
   byNode: NodeBuckets | null;
@@ -72,6 +77,12 @@ export const NO_REGION_EXTRA: RegionExtraOps<undefined, undefined> = {
   diverges: () => false,
 };
 
+/** The best member of a {@link PartitionedRegionIndex.nearestOf} fold and its Manhattan node distance. */
+export interface RegionNearest {
+  readonly entity: Entity;
+  readonly distance: number;
+}
+
 /** A memoized region index over `(component, Position)` entities. */
 export interface RegionIndex<Extra, Capture> {
   /** The memoized ascending-id list of every indexed entity, shared. */
@@ -107,6 +118,26 @@ export interface RegionIndex<Extra, Capture> {
   atNode(world: World, hx: number, hy: number): readonly Entity[];
   /** The per-index derived extra, maintained incrementally beside the membership. */
   extra(world: World): Extra;
+}
+
+/** A region index whose members also sit in per-key buckets, so a search for one key reads only its own
+ *  members. The key is read at insert, so a change to it must re-add the component. */
+export interface PartitionedRegionIndex<Extra, Capture> extends RegionIndex<Extra, Capture> {
+  /** The `accept`ed member of partition `part` with the least `(Manhattan node distance, entity id)`
+   *  inside the box `reach` nodes around `(hx, hy)` and past the inner box `skipReach`, or null. An
+   *  unbounded `reach` folds the whole partition. `accept` runs only on a member that would win, so it
+   *  must be a pure filter. */
+  nearestOf(
+    world: World,
+    part: number,
+    hx: number,
+    hy: number,
+    reach: number | undefined,
+    skipReach: number | undefined,
+    accept: (e: Entity) => boolean,
+  ): RegionNearest | null;
+  /** {@link RegionIndex.boxHoldsAll} for the members of partition `part` alone. */
+  partitionBoxHoldsAll(world: World, part: number, hx: number, hy: number, reach: number): boolean;
 }
 
 /** Pack a region coordinate pair into a map key. Both axes are non-negative because an anchor is an
@@ -184,6 +215,84 @@ function nodeLayerDivergence(
   return [];
 }
 
+/** Whether a partition's held buckets match a fresh rebuild's, region for region and element-wise. */
+function partitionsDiverge(
+  held: ReadonlyMap<number, RegionBuckets<unknown>>,
+  fresh: ReadonlyMap<number, RegionBuckets<unknown>>,
+): boolean {
+  if (held.size !== fresh.size) return true;
+  for (const [part, freshRegions] of fresh) {
+    const heldRegions = held.get(part);
+    if (heldRegions === undefined || heldRegions.size !== freshRegions.size) return true;
+    for (const [key, bucket] of freshRegions) {
+      const heldBucket = heldRegions.get(key);
+      if (heldBucket === undefined || heldBucket.length !== bucket.length) return true;
+      if (bucket.some((m, i) => heldBucket[i]?.e !== m.e)) return true;
+    }
+  }
+  return false;
+}
+
+function insertIntoBuckets<Capture>(buckets: RegionBuckets<Capture>, m: RegionMember<Capture>): void {
+  const key = regionKeyOf(m.hx, m.hy);
+  let bucket = buckets.get(key);
+  if (bucket === undefined) {
+    bucket = [];
+    buckets.set(key, bucket);
+  }
+  insertSortedById(bucket, m, (member) => member.e);
+}
+
+function removeFromBuckets<Capture>(
+  buckets: RegionBuckets<Capture>,
+  e: Entity,
+  hx: number,
+  hy: number,
+): void {
+  const key = regionKeyOf(hx, hy);
+  const bucket = buckets.get(key);
+  if (bucket === undefined) return;
+  removeSortedById(bucket, e, (member) => member.e);
+  if (bucket.length === 0) buckets.delete(key);
+}
+
+/** Whether every region holding a member of `buckets` lies inside the box `reach` nodes around `(hx, hy)`. */
+function bucketsInBox(buckets: RegionBuckets<unknown>, hx: number, hy: number, reach: number): boolean {
+  for (const key of buckets.keys()) {
+    if (!regionInBox(Math.floor(key / REGION_KEY_STRIDE), key % REGION_KEY_STRIDE, hx, hy, reach)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+interface NearestFold {
+  best: Entity | null;
+  distance: number;
+}
+
+/** Fold `bucket` into `acc` by `(Manhattan distance, id)`, testing `accept` only on a member that wins. */
+function foldNearest(
+  bucket: readonly RegionMember<unknown>[],
+  hx: number,
+  hy: number,
+  reach: number | undefined,
+  skipReach: number | undefined,
+  accept: (e: Entity) => boolean,
+  acc: NearestFold,
+): void {
+  for (const m of bucket) {
+    if (reach !== undefined && !inBox(m, hx, hy, reach)) continue;
+    if (skipReach !== undefined && inBox(m, hx, hy, skipReach)) continue;
+    const distance = Math.abs(m.hx - hx) + Math.abs(m.hy - hy);
+    if (distance > acc.distance) continue;
+    if (distance === acc.distance && acc.best !== null && m.e > acc.best) continue;
+    if (!accept(m.e)) continue;
+    acc.best = m.e;
+    acc.distance = distance;
+  }
+}
+
 /**
  * Build a memoized region index over the entities carrying `component` and a Position, maintained
  * incrementally against that component's store generation.
@@ -193,36 +302,71 @@ export function createRegionIndex<Extra, Capture>(
   labels: RegionIndexLabels,
   extraOps: RegionExtraOps<Extra, Capture>,
 ): RegionIndex<Extra, Capture> {
+  return buildRegionIndex(component, labels, extraOps, null);
+}
+
+/** {@link createRegionIndex} with members also bucketed by `partitionOf`, read at insert. */
+export function createPartitionedRegionIndex<Extra, Capture>(
+  component: Component<unknown>,
+  labels: RegionIndexLabels,
+  extraOps: RegionExtraOps<Extra, Capture>,
+  partitionOf: (world: World, e: Entity) => number,
+): PartitionedRegionIndex<Extra, Capture> {
+  return buildRegionIndex(component, labels, extraOps, partitionOf);
+}
+
+function buildRegionIndex<Extra, Capture>(
+  component: Component<unknown>,
+  labels: RegionIndexLabels,
+  extraOps: RegionExtraOps<Extra, Capture>,
+  partitionOf: ((world: World, e: Entity) => number) | null,
+): PartitionedRegionIndex<Extra, Capture> {
   interface Member {
     readonly hx: number;
     readonly hy: number;
     readonly capture: Capture;
+    readonly part: number;
   }
 
   const memo = createSpatialMemo<RegionState<Extra, Capture>, Member>(component, labels, {
-    empty: () => ({ byRegion: new Map(), byNode: null, list: [], shared: null, extra: extraOps.empty() }),
-    member: (world, e, hx, hy) => ({ hx, hy, capture: extraOps.capture(world, e) }),
+    empty: () => ({
+      byRegion: new Map(),
+      byPart: partitionOf === null ? null : new Map(),
+      byNode: null,
+      list: [],
+      shared: null,
+      extra: extraOps.empty(),
+    }),
+    member: (world, e, hx, hy) => ({
+      hx,
+      hy,
+      capture: extraOps.capture(world, e),
+      part: partitionOf === null ? 0 : partitionOf(world, e),
+    }),
     insert: (state, e, m) => {
       state.shared = null;
       insertSortedById(state.list, e, (id) => id);
-      const key = regionKeyOf(m.hx, m.hy);
-      let bucket = state.byRegion.get(key);
-      if (bucket === undefined) {
-        bucket = [];
-        state.byRegion.set(key, bucket);
+      const member: RegionMember<Capture> = { e, hx: m.hx, hy: m.hy, capture: m.capture };
+      insertIntoBuckets(state.byRegion, member);
+      if (state.byPart !== null) {
+        let regions = state.byPart.get(m.part);
+        if (regions === undefined) {
+          regions = new Map();
+          state.byPart.set(m.part, regions);
+        }
+        insertIntoBuckets(regions, member);
       }
-      insertSortedById(bucket, { e, hx: m.hx, hy: m.hy, capture: m.capture }, (member) => member.e);
       state.byNode?.insert(e, m.hx, m.hy);
       extraOps.insert(state.extra, m.capture);
     },
     remove: (state, e, m) => {
       state.shared = null;
       removeSortedById(state.list, e, (id) => id);
-      const key = regionKeyOf(m.hx, m.hy);
-      const bucket = state.byRegion.get(key);
-      if (bucket !== undefined) {
-        removeSortedById(bucket, e, (member) => member.e);
-        if (bucket.length === 0) state.byRegion.delete(key);
+      removeFromBuckets(state.byRegion, e, m.hx, m.hy);
+      const regions = state.byPart?.get(m.part);
+      if (regions !== undefined) {
+        removeFromBuckets(regions, e, m.hx, m.hy);
+        if (regions.size === 0) state.byPart?.delete(m.part);
       }
       state.byNode?.remove(e, m.hx, m.hy);
       extraOps.remove(state.extra, m.capture);
@@ -255,6 +399,11 @@ export function createRegionIndex<Extra, Capture>(
             `${labels.verifier} region ${key} diverges from a fresh rebuild - a ${labels.singular} moved or changed in place`,
           ];
         }
+      }
+      if (held.byPart !== null && fresh.byPart !== null && partitionsDiverge(held.byPart, fresh.byPart)) {
+        return [
+          `${labels.verifier} partition buckets diverge from a fresh rebuild - a ${labels.singular}'s partition key changed in place`,
+        ];
       }
       if (held.byNode !== null) {
         const missed = nodeLayerDivergence(labels.verifier, held.byNode, fresh.byRegion);
@@ -296,14 +445,7 @@ export function createRegionIndex<Extra, Capture>(
       out.sort((a, b) => a - b);
       return out;
     },
-    boxHoldsAll: (world, hx, hy, reach) => {
-      for (const key of memo.read(world).byRegion.keys()) {
-        if (!regionInBox(Math.floor(key / REGION_KEY_STRIDE), key % REGION_KEY_STRIDE, hx, hy, reach)) {
-          return false;
-        }
-      }
-      return true;
-    },
+    boxHoldsAll: (world, hx, hy, reach) => bucketsInBox(memo.read(world).byRegion, hx, hy, reach),
     atNode: (world, hx, hy) => {
       const state = memo.read(world);
       if (state.byNode === null) {
@@ -328,6 +470,40 @@ export function createRegionIndex<Extra, Capture>(
         }
       }
       return false;
+    },
+    nearestOf: (world, part, hx, hy, reach, skipReach, accept) => {
+      const regions = memo.read(world).byPart?.get(part);
+      if (regions === undefined) return null;
+      const acc: NearestFold = { best: null, distance: Number.POSITIVE_INFINITY };
+      if (reach === undefined) {
+        for (const bucket of regions.values()) foldNearest(bucket, hx, hy, undefined, undefined, accept, acc);
+      } else {
+        const { minRx, maxRx, minRy, maxRy } = boxRegionRange(hx, hy, reach);
+        const skipped = (rx: number, ry: number): boolean =>
+          skipReach !== undefined && regionInBox(rx, ry, hx, hy, skipReach);
+        // A sparse partition walks its own few regions rather than probing every region of a wide box.
+        if ((maxRx - minRx + 1) * (maxRy - minRy + 1) > regions.size) {
+          for (const [key, bucket] of regions) {
+            const rx = Math.floor(key / REGION_KEY_STRIDE);
+            const ry = key % REGION_KEY_STRIDE;
+            if (rx < minRx || rx > maxRx || ry < minRy || ry > maxRy || skipped(rx, ry)) continue;
+            foldNearest(bucket, hx, hy, reach, skipReach, accept, acc);
+          }
+        } else {
+          for (let rx = minRx; rx <= maxRx; rx++) {
+            for (let ry = minRy; ry <= maxRy; ry++) {
+              if (skipped(rx, ry)) continue;
+              const bucket = regions.get(regionKey(rx, ry));
+              if (bucket !== undefined) foldNearest(bucket, hx, hy, reach, skipReach, accept, acc);
+            }
+          }
+        }
+      }
+      return acc.best === null ? null : { entity: acc.best, distance: acc.distance };
+    },
+    partitionBoxHoldsAll: (world, part, hx, hy, reach) => {
+      const regions = memo.read(world).byPart?.get(part);
+      return regions === undefined || bucketsInBox(regions, hx, hy, reach);
     },
   };
 }

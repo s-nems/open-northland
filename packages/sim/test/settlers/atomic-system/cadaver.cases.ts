@@ -9,6 +9,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation } from '../../../src/index.js';
+import { nearestLiveResource } from '../../../src/systems/ai-player/live-resources.js';
 import { atomicSystem } from '../../../src/systems/index.js';
 import {
   harvestFromNode,
@@ -118,9 +119,12 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     const node = [...sim.world.query(Resource)][0];
     if (node === undefined) throw new Error('carcass missing');
 
-    // Meat, skin, meat off the one body - the alternating cadaver stages (see ResourceLayers).
+    // Meat, skin, meat off the one body - the alternating cadaver stages (see ResourceLayers). Each stage
+    // keeps the harvest atomic but changes the good, so the per-good resource buckets must follow it.
     for (const expected of [MEAT, LEATHER, MEAT]) {
       expect(sim.world.get(node, Resource).goodType).toBe(expected);
+      expect(nearestLiveResource(sim.world, expected, { hx: 0, hy: 0 })).toBe(node);
+      expect(sim.world.verifyCaches()).toEqual([]);
       startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: expected }, 1, HARVEST_CADAVER);
       atomicSystem(sim.world, ctxOf(sim));
       expect(sim.world.get(hunter, Carrying)).toEqual({ goodType: expected, amount: 1 });

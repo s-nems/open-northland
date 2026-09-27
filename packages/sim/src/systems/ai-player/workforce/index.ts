@@ -263,20 +263,27 @@ function allocateScout(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const scoutJob = scoutJobType(ctx.content);
-  // The round-up probes first even though it ranks second: a satisfied lattice has to scan every ring
-  // to answer null, so the cheaper herd scan short-circuits it.
-  const hasScoutWork =
-    nextLivestockCatch(world, ctx, player) !== null || nextSignpostTarget(world, ctx, player, order) !== null;
-  const keepScoutAs = scoutJob !== null && hasScoutWork ? scoutJob : null;
-  if (keepScoutAs !== null && scouts.length === 0) {
-    const spare = force.take((e) => !isMarried(world, e));
-    if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: keepScoutAs });
+  // Asked only when the answer decides a hire or an idle scout's keep: a busy scout keeps his job either
+  // way, and a satisfied lattice has to scan every ring to answer null. The round-up probes first even
+  // though it ranks second, so the cheaper herd scan short-circuits it.
+  let scoutWork: boolean | undefined;
+  const hasScoutWork = (): boolean => {
+    scoutWork ??=
+      nextLivestockCatch(world, ctx, player) !== null ||
+      nextSignpostTarget(world, ctx, player, order) !== null;
+    return scoutWork;
+  };
+  const unmarried = (e: Entity): boolean => !isMarried(world, e);
+  if (scoutJob !== null && scouts.length === 0 && force.any(unmarried) && hasScoutWork()) {
+    const spare = force.take(unmarried);
+    if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: scoutJob });
   }
   for (const [i, scout] of scouts.entries()) {
-    if (keepScoutAs !== null && i === 0) continue; // the working scout - keep
     if (world.has(scout, CurrentAtomic)) continue;
     if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) continue;
-    if (builderJob !== null) commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });
+    if (builderJob === null) continue;
+    if (i === 0 && scoutJob !== null && hasScoutWork()) continue; // the working scout - keep
+    commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });
   }
   return commands;
 }

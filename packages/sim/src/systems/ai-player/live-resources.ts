@@ -15,8 +15,9 @@ import { entityNode } from '../spatial/nodes.js';
 import {
   anyResourceNear,
   canonicalResources,
+  goodBoxHoldsAll,
+  nearestResourceOfGood,
   resourceBoxHoldsAll,
-  resourcesNearNode,
 } from '../spatial/resources.js';
 import { anchorNodeOf } from './node-geometry.js';
 
@@ -200,33 +201,6 @@ function inBox(world: World, e: Entity, from: HalfCellNode, reach: number): bool
   return node !== null && Math.abs(node.hx - from.hx) <= reach && Math.abs(node.hy - from.hy) <= reach;
 }
 
-/** The best `(Manhattan distance, entity id)` live `goodType` resource `workable` accepts inside the
- *  Chebyshev `reach` box around `from` and past the `searched` box, which held none, or null. Candidates
- *  arrive ascending-id, so the strict `<` keeps the lowest id among the minimum distance - the same winner
- *  the reference scan picks. */
-function bestLiveResourceInBox(
-  world: World,
-  goodType: number,
-  from: HalfCellNode,
-  reach: number,
-  workable: WorkableTest | undefined,
-  searched: number | undefined,
-): { entity: Entity; distance: number } | null {
-  let best: Entity | null = null;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (const e of resourcesNearNode(world, from.hx, from.hy, reach, undefined, searched)) {
-    if (!isLiveResource(world, e, goodType)) continue;
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    const distance = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-    if (distance < bestDistance && (workable === undefined || workable(e))) {
-      best = e;
-      bestDistance = distance;
-    }
-  }
-  return best === null ? null : { entity: best, distance: bestDistance };
-}
-
 /** Whether `e` is a standing not-yet-empty resource of `goodType`. */
 function isLiveResource(world: World, e: Entity, goodType: number): boolean {
   const r = world.get(e, Resource);
@@ -236,8 +210,8 @@ function isLiveResource(world: World, e: Entity, goodType: number): boolean {
 /**
  * The standing not-yet-empty resource of `goodType` nearest to `from` (Manhattan node distance,
  * ties to the lower entity id) that `workable` accepts, or null when the map holds none. Expanding boxes
- * over the resource region index, so a decision near a stocked neighbourhood never walks the whole
- * canonical list.
+ * over the good's own region buckets, so a decision near a stocked neighbourhood never walks the whole
+ * map and a good that stands only far away never pays for the others.
  */
 export function nearestLiveResource(
   world: World,
@@ -245,12 +219,14 @@ export function nearestLiveResource(
   from: HalfCellNode,
   workable?: WorkableTest,
 ): Entity | null {
+  const accept = (e: Entity): boolean =>
+    world.get(e, Resource).remaining > 0 && (workable === undefined || workable(e));
   let searched: number | undefined; // the largest box that held no candidate; later boxes skip its members
   for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
-    const hit = bestLiveResourceInBox(world, goodType, from, reach, workable, searched);
+    const hit = nearestResourceOfGood(world, goodType, from.hx, from.hy, reach, searched, accept);
     if (hit === null) {
-      // A miss in a box holding every resource is final, so an absent good skips the larger boxes and the list.
-      if (resourceBoxHoldsAll(world, from.hx, from.hy, reach)) return null;
+      // A miss in a box holding every node of the good is final, so a far or absent good stops here.
+      if (goodBoxHoldsAll(world, goodType, from.hx, from.hy, reach)) return null;
       searched = reach;
       continue;
     }
@@ -259,23 +235,13 @@ export function nearestLiveResource(
     if (hit.distance <= reach) return hit.entity;
     // Only a box-corner hit (Manhattan up to 2·reach): every node at Manhattan ≤ hit.distance lies
     // inside the Chebyshev `hit.distance` box, so one exact re-query settles the winner.
-    const exact = bestLiveResourceInBox(world, goodType, from, hit.distance, workable, searched);
+    const exact = nearestResourceOfGood(world, goodType, from.hx, from.hy, hit.distance, searched, accept);
     return (exact ?? hit).entity;
   }
-  // Nothing within the cap - the reference scan finds the same winner the uncapped search would.
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  for (const e of canonicalResources(world)) {
-    if (!isLiveResource(world, e, goodType)) continue;
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-    if (dist < bestDist && (workable === undefined || workable(e))) {
-      best = e;
-      bestDist = dist;
-    }
-  }
-  return best;
+  // Nothing within the cap - folding the good's whole partition finds the winner the uncapped search would.
+  return (
+    nearestResourceOfGood(world, goodType, from.hx, from.hy, undefined, undefined, accept)?.entity ?? null
+  );
 }
 
 /**
