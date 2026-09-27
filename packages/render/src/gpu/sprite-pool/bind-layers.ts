@@ -2,19 +2,12 @@ import { Graphics, Sprite, type Texture } from 'pixi.js';
 import { FOG_GHOST_TINT } from '../../data/fog/index.js';
 import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
-import { buildTimeThreshold, type SpriteKind, vehicleLookFor } from '../../data/sprites/index.js';
+import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
-import {
-  layerLutRow,
-  type PaletteLut,
-  paletteBlockRow,
-  type SpriteSheet,
-  settlerPaletteLutRow,
-  vehicleLutRow,
-} from '../sprite-sheet.js';
+import { layerLutRow, type PaletteLut, type SpriteSheet, settlerPaletteLutRow } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
@@ -29,6 +22,7 @@ import {
 } from './pooled-entity.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 import type { PoolFrame } from './sprite-pool.js';
+import { vehicleBodyRow, vehiclePalette } from './vehicle-palette.js';
 
 export type BindFrame = Pick<
   PoolFrame,
@@ -82,12 +76,7 @@ export class LayerBinder {
 
   private paletteFor(kind: SpriteKind, item: DrawItem): PaletteLut | undefined {
     const sheet = this.sheet;
-    if (kind === 'vehicle') {
-      if (cartDriveLook(sheet, item) !== undefined) return sheet?.palette;
-      const binding = sheet?.bindings.vehicle;
-      const indexed = binding !== undefined && vehicleLookFor(binding, item)?.indexed === true;
-      return indexed ? sheet?.vehiclePalette : undefined;
-    }
+    if (kind === 'vehicle') return vehiclePalette(sheet, item);
     const characters = sheet?.characters;
     const isAnimal = item.tribe !== undefined && characters?.animals?.tribes.has(item.tribe) === true;
     return kind === 'settler' && characters !== undefined && !isAnimal ? sheet?.palette : undefined;
@@ -131,11 +120,9 @@ export class LayerBinder {
     const settlerPalette = this.sheet?.palette;
     const bodyRow = !pe.paletted
       ? 0
-      : driven !== undefined && settlerPalette !== undefined
-        ? paletteBlockRow(settlerPalette, item.player, driven.paletteBlock)
-        : pe.kind === 'vehicle'
-          ? vehicleLutRow(pe.palette, item.player)
-          : settlerPaletteLutRow(this.sheet, item);
+      : pe.kind === 'vehicle'
+        ? vehicleBodyRow(this.sheet, item, pe.palette, driven)
+        : settlerPaletteLutRow(this.sheet, item);
     // Only a character's layers include a head, which reads the settler LUT's own head row.
     const settlerLut = pe.kind === 'vehicle' && driven === undefined ? undefined : settlerPalette;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity

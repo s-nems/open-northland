@@ -598,16 +598,18 @@ lifetime, dedupe and priority table.
   without an ellipsis (a good or stance the row is about follows a colon: "Brak: drewno",
   "Obcy: wrogi"); the original's sentence is never on the card. The thumbnail is the live settler
   painted into the card's own canvas, as on the map with its current activity, motion and pace, over
-  a translucent backing that shows the map through; a finished or upgraded building is its body as
-  the construction card pictures it, painted once; an attacked settler or building, a death, a seat,
-  a paper and a subjectless row show a flat graphic emblem from the notification atlas instead (sword
-  and axe, house for a building whose type is gone, skull on a dim backing, shield for a first
-  contact, banner for a changed stance, chest, scroll). A card about another seat (first contact,
-  changed stance, a seat out of the game) paints the shield face, the banner cloth or the skull in
-  that seat's colour; an own settler's skull is bone ivory. The bronze line glyphs stand in while the
-  atlas is undelivered or fails to load. The seal stands midway between the thumbnail and the event
-  line, 4 px clear of each, and the seal, the event line and the × share one line, centred in the
-  card's visible part; the card carries no hairline, the seal alone tells the weight.
+  a translucent backing that shows the map through; a vehicle is drawn the same way, fitted whole
+  into the box and never enlarged past the map's size; a finished or upgraded building is its body as
+  the construction card pictures it, painted once; an attacked settler, building or vehicle, a
+  death, a seat, a paper and a subjectless row show a flat graphic emblem from the notification
+  atlas instead (sword and axe, house for a building whose type is gone, skull on a dim backing,
+  shield for a first contact, banner for a changed stance, chest, scroll). A card about another seat
+  (first contact, changed stance, a seat out of the game) paints the shield face, the banner cloth
+  or the skull in that seat's colour; an own settler's skull is bone ivory. The bronze line glyphs
+  stand in while the atlas is undelivered or fails to load. The seal stands midway between the
+  thumbnail and the event line, 4 px clear of each, and the seal, the event line and the × share one
+  line, centred in the card's visible part; the card carries no hairline, the seal alone tells the
+  weight.
 - Left click or Enter centres the camera on the target and selects it, without a window. A card with
   no target left (an unnamed death, a seat) has no chevron, and a press pins its message instead.
   Right click, Delete or the × dismisses one card; Shift with any of them, or the bin button beside

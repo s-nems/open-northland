@@ -8,11 +8,12 @@ export function orderNotes(notes: readonly UserMessage[]): UserMessage[] {
 /** The emblems a card without a live settler shows on its thumbnail; each has a line glyph fallback. */
 export type NoticeGlyph = 'house' | 'swords' | 'skull' | 'shield' | 'banner' | 'chest' | 'scroll';
 
-/** What a card's thumbnail shows: the subject settler drawn as on the map, the subject building's body
- *  as the construction window pictures it, or a glyph. A dim glyph marks a subject that is gone; a
- *  glyph about another seat names it, so the card can paint the glyph in that seat's colour. */
+/** What a card's thumbnail shows: the subject settler or vehicle drawn as on the map, the subject
+ *  building's body as the construction window pictures it, or a glyph. A dim glyph marks a subject that
+ *  is gone; a glyph about another seat names it, so the card can paint the glyph in that seat's colour. */
 export type NoticeThumb =
   | { readonly kind: 'settler'; readonly entity: number }
+  | { readonly kind: 'vehicle'; readonly entity: number }
   | { readonly kind: 'building'; readonly typeId: number }
   | {
       readonly kind: 'glyph';
@@ -42,16 +43,25 @@ const SEAT_ROWS: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
   USER_MESSAGE_TYPE.playerDied,
 ]);
 
-/** An attacked settler shows the swords rather than its figure; any other settler subject is drawn. A
- *  building subject that would show the house glyph shows its own body instead while `buildingTypeOf`
- *  still knows its type. */
+/** An attacked settler or vehicle shows the swords rather than its figure; any other settler subject is
+ *  drawn, and a vehicle subject while `vehicleOnMap` finds it standing on the map (a vehicle carried on a
+ *  ship has no picture of its own). A building subject that would show the house glyph shows its own
+ *  body instead while `buildingTypeOf` still knows its type. */
 export function noticeThumb(
   note: Pick<PendingMessage, 'type' | 'subject' | 'about'>,
   buildingTypeOf: (entity: number) => number | undefined,
+  vehicleOnMap: (entity: number) => boolean,
 ): NoticeThumb {
   const { type, subject } = note;
   if (subject?.kind === 'settler' && type !== USER_MESSAGE_TYPE.humanAttacked) {
     return { kind: 'settler', entity: subject.entity };
+  }
+  if (
+    subject?.kind === 'vehicle' &&
+    type !== USER_MESSAGE_TYPE.vehicleAttacked &&
+    vehicleOnMap(subject.entity)
+  ) {
+    return { kind: 'vehicle', entity: subject.entity };
   }
   const glyph = GLYPH_BY_TYPE.get(type) ?? (subject?.kind === 'settler' ? 'swords' : 'scroll');
   if (subject?.kind === 'building' && glyph === 'house') {

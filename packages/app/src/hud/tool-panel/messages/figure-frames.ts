@@ -3,6 +3,7 @@ import {
   type DrawableResource,
   isDrawableResource,
   layerLutRow,
+  type PaletteLut,
   type PlayerColourLut,
   type ResolvedLayer,
   readable2dContext,
@@ -61,10 +62,10 @@ export class ShelfPacker {
 }
 
 /**
- * Settler frames for 2d canvases. A baked sheet's frame is its atlas image; an indexed sheet's frame is
- * recoloured on the CPU through the player LUT row, as the paletted shader does on the GPU, and cached
+ * Settler or vehicle frames for 2d canvases. A baked sheet's frame is its atlas image; an indexed sheet's
+ * frame is recoloured on the CPU through its LUT row, as the paletted shader does on the GPU, and cached
  * per (frame, row) on one shared page. Nothing here needs the GPU, so a DOM element can draw the figure
- * the map draws.
+ * the map draws. Only the settler LUT has a head row.
  */
 export class FigureFrames {
   private readonly recoloured = new WeakMap<AtlasFrame, Map<number, FigureFrameImage | null>>();
@@ -75,7 +76,7 @@ export class FigureFrames {
   private page: CanvasRenderingContext2D | null | undefined;
   private lut: ImageData | null | undefined;
 
-  constructor(private readonly palette: PlayerColourLut | undefined) {}
+  constructor(private readonly palette: PlayerColourLut | PaletteLut | undefined) {}
 
   /** `row` is the LUT row the layer reads; ignored by a baked sheet. Null when the source cannot be
    *  drawn (a GPU-only resource) or the palette cannot be read. */
@@ -101,7 +102,8 @@ export class FigureFrames {
   }
 
   /** Draw a figure's resolved layers with its feet at (`feetX`, `feetY`), `zoom` canvas px per map
-   *  px. `bodyRow` is the settler's own LUT row, which a layer may override. */
+   *  px. `bodyRow` is the body's own LUT row, which a settler's head layer overrides. A shadow is left
+   *  out: its page holds a mask for the map's shadow pass, not colours a 2d canvas can paint. */
   draw(
     ctx: CanvasRenderingContext2D,
     layers: readonly ResolvedLayer[],
@@ -111,7 +113,10 @@ export class FigureFrames {
     feetY: number,
   ): void {
     for (const layer of layers) {
-      const row = this.palette === undefined ? bodyRow : layerLutRow(this.palette, layer, bodyRow);
+      if (layer.shadow === true) continue;
+      const palette = this.palette;
+      const row =
+        palette === undefined || !('headRow' in palette) ? bodyRow : layerLutRow(palette, layer, bodyRow);
       const image = this.frame(layer, row);
       if (image === null) continue;
       const s = zoom * layer.scale;

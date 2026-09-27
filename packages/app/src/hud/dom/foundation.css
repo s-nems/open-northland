@@ -1194,8 +1194,9 @@ body.on-drag-scroll-cursor-hidden * {
   border: 1px solid #c9a26233;
   background: radial-gradient(ellipse at 50% 65%, #c9a26226, transparent 75%), #18252188;
 }
-/* The figure is painted into the card's own canvas, so it scrolls, slides and clips with the card. */
-.on-hud .on-notice__preview--settler {
+/* A settler or vehicle is painted into the card's own canvas, so it scrolls, slides and clips with the
+   card. */
+.on-hud .on-notice__preview--figure {
   display: block;
 }
 /* A finished building's body or a glyph's artwork, painted once into the card's canvas and kept whole

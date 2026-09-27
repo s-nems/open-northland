@@ -8,3 +8,4 @@ export { reconcileSprites } from './reconcile.js';
 export { resolveLayers } from './resolve-layers.js';
 export type { ResolvedLayer } from './resolved-layer.js';
 export { type MapViewPassFrame, type PoolFrame, type PortraitView, SpritePool } from './sprite-pool.js';
+export { vehicleBodyRow, vehiclePalette } from './vehicle-palette.js';

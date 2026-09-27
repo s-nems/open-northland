@@ -176,13 +176,17 @@ function buildingTypeIn(snapshot: WorldSnapshot): (entity: number) => number | u
   };
 }
 
+function vehicleOnMapIn(snapshot: WorldSnapshot): (entity: number) => boolean {
+  return (entity) => entityById(snapshot, entity)?.components.Position !== undefined;
+}
+
 function cardOf(m: UserMessage, snapshot: WorldSnapshot): NoticeCardView {
   return {
     id: m.id,
     level: m.priority,
     short: m.text.short,
     full: m.text.full,
-    thumb: noticeThumb(m, buildingTypeIn(snapshot)),
+    thumb: noticeThumb(m, buildingTypeIn(snapshot), vehicleOnMapIn(snapshot)),
     canGo: m.subject !== null || m.at !== null,
     fresh: snapshot.tick - m.tick < FRESH_NOTE_TICKS,
   };

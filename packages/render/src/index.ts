@@ -182,10 +182,13 @@ export {
   presentItem,
   type ResolvedLayer,
   resolveLayers,
+  vehicleBodyRow,
+  vehiclePalette,
 } from './gpu/sprite-pool/index.js';
 export {
   type CartDriveBinding,
   layerLutRow,
+  type PaletteLut,
   type PlayerColourLut,
   paletteLutRow,
   type SettlerCharacter,

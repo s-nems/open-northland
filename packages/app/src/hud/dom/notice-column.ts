@@ -77,7 +77,7 @@ export interface NoticeFigureSlots {
 export interface NoticeColumn {
   /** Rebuild for `cards` in column order; call only when the feed changed. */
   render(cards: readonly NoticeCardView[], tally: readonly number[], level: MessagePriorityLevel): void;
-  /** The settler figures to paint this frame: only the cards on screen cost a draw. */
+  /** The settler and vehicle figures to paint this frame: only the cards on screen cost a draw. */
   figures(): NoticeFigureSlots;
   dispose(): void;
 }
@@ -102,7 +102,8 @@ function glyphMarkup(glyph: NoticeGlyph, dim: boolean): string {
 function previewMarkup(thumb: NoticeThumb): string {
   switch (thumb.kind) {
     case 'settler':
-      return '<canvas class="on-notice__preview on-notice__preview--settler" aria-hidden="true"></canvas>';
+    case 'vehicle':
+      return '<canvas class="on-notice__preview on-notice__preview--figure" aria-hidden="true"></canvas>';
     case 'building':
       return '<canvas class="on-notice__preview on-notice__preview--building" aria-hidden="true"></canvas>';
     case 'glyph':
@@ -112,7 +113,7 @@ function previewMarkup(thumb: NoticeThumb): string {
 
 /** Paint a new card's building or glyph canvas; one the painters cannot draw becomes a line glyph. */
 export function paintNoticeThumb(li: Element, thumb: NoticeThumb, painters: NoticeThumbPainters): void {
-  if (thumb.kind === 'settler') return;
+  if (thumb.kind === 'settler' || thumb.kind === 'vehicle') return;
   const canvas = li.querySelector('canvas.on-notice__preview');
   if (!(canvas instanceof HTMLCanvasElement)) return;
   if (thumb.kind === 'building') {
@@ -131,7 +132,8 @@ export function noticeCardMarkup(card: NoticeCardView, dismissLabel: string): st
   const li = document.createElement('li');
   li.className = `on-notice${seal === '' ? '' : ` on-notice--${seal}`}${card.fresh ? ` ${FRESH}` : ''}`;
   li.dataset.id = String(card.id);
-  if (card.thumb.kind === 'settler') li.dataset.entity = String(card.thumb.entity);
+  if (card.thumb.kind === 'settler' || card.thumb.kind === 'vehicle')
+    li.dataset.entity = String(card.thumb.entity);
   li.innerHTML = `<button type="button" class="on-notice__card">${previewMarkup(card.thumb)}<b class="on-notice__event"></b><i class="on-seal${seal === '' ? '' : ` on-seal--${seal}`}" aria-hidden="true"></i>${card.canGo ? GLYPH.go : ''}</button><button type="button" class="on-notice__dismiss">${GLYPH.close}</button>`;
   const button = li.querySelector('.on-notice__card');
   const event = li.querySelector('.on-notice__event');
@@ -382,7 +384,7 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       let box: NoticeFigureBox = { width: 0, height: 0, pixelScale: 0 };
       items().forEach((li, i) => {
         if (li.offsetTop + li.offsetHeight <= top || li.offsetTop >= bottom) return;
-        const canvas = li.querySelector('.on-notice__preview--settler');
+        const canvas = li.querySelector('.on-notice__preview--figure');
         if (!(canvas instanceof HTMLCanvasElement)) return;
         // One rect read serves every card: the plane's scale is theirs. The bitmap fills the content
         // box inside the thumbnail's border.

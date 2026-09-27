@@ -25,6 +25,7 @@ function note(id: number, priority: MessagePriorityLevel, tick: number): UserMes
 }
 
 const noBuilding = (): number | undefined => undefined;
+const onMap = (): boolean => true;
 
 function raised(type: UserMessageType, subject: MessageSubject | null, about: number | null = null) {
   return { type, subject, about };
@@ -39,11 +40,34 @@ describe('notice cards', () => {
 
   it('draws a live settler subject and swaps in the swords for an attacked one', () => {
     const settler = { kind: 'settler', entity: 7 } as const;
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.hungry, settler), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.hungry, settler), noBuilding, onMap)).toEqual({
       kind: 'settler',
       entity: 7,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanAttacked, settler), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanAttacked, settler), noBuilding, onMap)).toEqual({
+      kind: 'glyph',
+      glyph: 'swords',
+      dim: false,
+      seat: null,
+    });
+  });
+
+  it('draws a live vehicle subject and swaps in the swords for an attacked one', () => {
+    const vehicle = { kind: 'vehicle', entity: 9 } as const;
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.vehicleNoCarrier, vehicle), noBuilding, onMap)).toEqual({
+      kind: 'vehicle',
+      entity: 9,
+    });
+    // A vehicle carried on a ship draws nothing of its own, so its card keeps the scroll.
+    expect(
+      noticeThumb(raised(USER_MESSAGE_TYPE.cannotLeaveVehicle, vehicle), noBuilding, () => false),
+    ).toEqual({
+      kind: 'glyph',
+      glyph: 'scroll',
+      dim: false,
+      seat: null,
+    });
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.vehicleAttacked, vehicle), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'swords',
       dim: false,
@@ -54,21 +78,21 @@ describe('notice cards', () => {
   it('pictures a finished or upgraded building by its body while its type is known, else the house glyph', () => {
     const building = { kind: 'building', entity: 3 } as const;
     const typeOf = (entity: number): number | undefined => (entity === 3 ? 27 : undefined);
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), typeOf)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), typeOf, onMap)).toEqual({
       kind: 'building',
       typeId: 27,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseUpgraded, building), typeOf)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseUpgraded, building), typeOf, onMap)).toEqual({
       kind: 'building',
       typeId: 27,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseFinished, building), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'house',
       dim: false,
       seat: null,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseAttacked, building), typeOf)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.houseAttacked, building), typeOf, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'swords',
       dim: false,
@@ -78,19 +102,19 @@ describe('notice cards', () => {
 
   it('shows a glyph for a subjectless row, dim for a death', () => {
     // A death's `about` is the reaped settler's id, never a seat to paint the skull with.
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanDied, null, 41), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.humanDied, null, 41), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'skull',
       dim: true,
       seat: null,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.specialItemFound, null), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.specialItemFound, null), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'chest',
       dim: false,
       seat: null,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.experienceUnlocks, null), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.experienceUnlocks, null), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'scroll',
       dim: false,
@@ -100,19 +124,19 @@ describe('notice cards', () => {
 
   it('names the seat a seat row is about, so its glyph takes that colour', () => {
     const SEAT = 3;
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.playerSighted, null, SEAT), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.playerSighted, null, SEAT), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'shield',
       dim: false,
       seat: SEAT,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.diplomacyChanged, null, SEAT), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.diplomacyChanged, null, SEAT), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'banner',
       dim: false,
       seat: SEAT,
     });
-    expect(noticeThumb(raised(USER_MESSAGE_TYPE.playerDied, null, SEAT), noBuilding)).toEqual({
+    expect(noticeThumb(raised(USER_MESSAGE_TYPE.playerDied, null, SEAT), noBuilding, onMap)).toEqual({
       kind: 'glyph',
       glyph: 'skull',
       dim: true,
