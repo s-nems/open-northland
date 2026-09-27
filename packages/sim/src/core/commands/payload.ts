@@ -69,12 +69,26 @@ const AI_MODULES: FieldCheck = {
   fields: { optional: Object.fromEntries(AI_MODULE_IDS.map((id) => [id, 'boolean' as const])) },
 };
 
+type RequiredKey<T> = { [P in keyof T]-?: object extends Pick<T, P> ? never : P }[keyof T];
+type OptionalKey<T> = Exclude<keyof T, RequiredKey<T>>;
+/**
+ * A kind's field contract, with the same required and optional field names as its {@link Command}
+ * variant: the relay parses every remote envelope through this table, so a field missing from it would
+ * refuse a peer's valid command.
+ */
+type PayloadSpec<C> = {
+  readonly required: { readonly [P in Exclude<RequiredKey<C>, 'kind'>]: FieldCheck };
+} & ([OptionalKey<C>] extends [never]
+  ? { readonly optional?: never }
+  : { readonly optional: { readonly [P in OptionalKey<C>]: FieldCheck } });
+
 /**
  * The field contract of every command kind, keyed like {@link COMMAND_ISSUER} so a new kind cannot be
- * added without one. It describes the wire payload, not who may send it: the authority gate still
- * decides that, and an authored-setup-only option is a field a seat envelope simply may not carry.
+ * added without one, and typed by {@link PayloadSpec} so a new top-level field cannot either. It
+ * describes the wire payload, not who may send it: the authority gate still decides that, and an
+ * authored-setup-only option is a field a seat envelope simply may not carry.
  */
-const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
+const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Command, { kind: K }>> } = {
   learn: {
     required: { entity: 'integer', house: 'integer', target: { oneOf: ['job', 'good'] }, typeId: 'integer' },
   },
