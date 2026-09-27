@@ -5,10 +5,12 @@ import {
   Building,
   Chest,
   JobAssignment,
+  Marriage,
   PAPER_KINDS,
   Palisade,
   type Paper,
   PRODUCTION_UNLIMITED,
+  Residence,
   Settler,
   Sheltering,
   VEHICLE_STANCES,
@@ -49,24 +51,21 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 const VIKING = 1;
 /** A type id absent from every fixture table - the unknown-id skip path. */
 const INVALID_TYPE = 99;
-/** A FOOTPRINTED building type added on top of the fixture tables (see {@link fuzzContent}), so the
- *  stream exercises the ground-collision gate and `force`'s collision-skip - random anchors on the
- *  small map often clip the reserved ring off the edge or overlap an earlier house. */
-const FOOTPRINTED_TYPE = 5;
-/** A HOME building type added on top of the fixture tables (see {@link fuzzContent}) so `assignHouse`
- *  and the family loop reach their ACCEPT paths - without it every fuzzed house assignment dies on the
- *  `builtHomeType` gate and the wedding/birth machinery never runs under the harness. The id must be
- *  FREE in the fixture (9; 1–8 are taken): `contentIndex.buildings` is first-wins, so a shadowed id
- *  would place as this type but resolve to the fixture's entry in every system. */
-const HOME_TYPE = 9;
+// The types {@link fuzzContent} appends take ids the fixture leaves free, which it asserts: the content
+// index resolves a duplicated id to the fixture's entry, so a shadowed type would place as the fuzz's own
+// and then run as the fixture's in every system.
+/** A FOOTPRINTED building type, so the stream exercises the ground-collision gate and `force`'s
+ *  collision-skip - random anchors on the small map often clip the reserved ring off the edge or overlap
+ *  an earlier house. */
+const FOOTPRINTED_TYPE = 11;
+/** A HOME building type so `assignHouse` and the family loop reach their ACCEPT paths - without it every
+ *  fuzzed house assignment dies on the `builtHomeType` gate and the wedding/birth machinery never runs. */
+const HOME_TYPE = 12;
 /** The fuzz home's upgrade target (`HOME_TYPE.upgradeTarget`), so `upgradeBuilding` rolls reach the
  *  ACCEPT path: the home re-opens as an upgrade site (stash + separate hold + difference bill) and can
- *  organically finish when the fuzzed stream happens to deliver its wood and hammer it. Id 10 is free. */
+ *  organically finish when the fuzzed stream happens to deliver its wood and hammer it. */
 const HOME_TIER2_TYPE = 10;
-/** The garrison-capable type the harness alarms (see {@link fuzzContent}). Free in the fixture, which
- *  ids 5 and 9 are NOT any more - `contentIndex.buildings` is first-wins, so `footprinted_hut` and
- *  `fuzz_home` currently resolve to the fixture's `farm` and `forge`
- *  (`docs/tickets/sim/fuzz-fixture-type-shadowing.md`). */
+/** The garrison-capable type the harness alarms. */
 const SHELTER_TYPE = 30;
 /** The fixture's `food_simple` good - what the fuzz home's larder stocks and the preamble drops. */
 const FOOD_GOOD = 3;
@@ -112,6 +111,10 @@ const RESOURCE_GFX_INDEX = 200;
  *  re-gate the goldens' pinned placements; a female slug would re-sex their spawns). */
 function fuzzContent() {
   const base = testContent();
+  assertFreeIds('building', base.buildings, [FOOTPRINTED_TYPE, HOME_TYPE, HOME_TIER2_TYPE, SHELTER_TYPE]);
+  assertFreeIds('job', base.jobs, [WOMAN_TYPE, CATAPULT_JOB]);
+  assertFreeIds('weapon', base.weapons, [FUZZ_SWORD_WEAPON, FUZZ_CATAPULT_WEAPON]);
+  assertFreeIds('landscape', base.landscape, [RESOURCE_LANDSCAPE_TYPE]);
   return parseContentSet({
     ...base,
     jobs: [
@@ -136,7 +139,7 @@ function fuzzContent() {
         damage: { '0': 50 },
       },
       {
-        typeId: 21,
+        typeId: FUZZ_CATAPULT_WEAPON,
         id: 'fuzz_catapult',
         tribeType: VIKING,
         jobType: CATAPULT_JOB,
@@ -159,6 +162,8 @@ function fuzzContent() {
         homeSize: 2,
         // A stocked larder is what arms the birth path.
         stock: [{ goodType: FOOD_GOOD, capacity: 5 }],
+        // The harness alarms the nucleus home too, a second shelter for a seed whose stream razes the first.
+        shelterCapacity: 2,
         upgradeTarget: HOME_TIER2_TYPE,
       },
       {
@@ -223,10 +228,21 @@ function fuzzContent() {
     ],
   });
 }
+function assertFreeIds(
+  table: string,
+  rows: readonly { readonly typeId: number }[],
+  ids: readonly number[],
+): void {
+  for (const id of ids) {
+    if (rows.some((row) => row.typeId === id))
+      throw new Error(`fuzz ${table} id ${id} shadows a fixture row`);
+  }
+}
+
 /** A `woman`-slug job added on top of the fixture tables (see {@link fuzzContent}): a spawn with it
  *  stamps {@link import('../../src/components/index.js').Female}, so `marry` can find opposite-sex
  *  pairs and `makeChild`/the hoard rung run their accept paths - the fixture's own jobs are all male. */
-const WOMAN_TYPE = 7;
+const WOMAN_TYPE = 8;
 /** Job types: idle / woodcutter / carpenter / hunter / scout / soldier (a catapult's crew) / carrier / woman /
  *  unknown. */
 const JOB_TYPES = [0, 1, 2, 15, 27, 31, 36, WOMAN_TYPE, INVALID_TYPE] as const;
@@ -251,8 +267,9 @@ const HEAL_POTION_GOOD = 16;
 const MAX_USE_PCT = 100;
 /** The fixture's sword good, the one weapon good the stream's veto rolls can land on. */
 const SWORD_GOOD = 9;
-/** A weapon type id no fixture row uses, for the sword class {@link fuzzContent} adds. */
+/** Weapon type ids no fixture row uses, for the sword and stone classes {@link fuzzContent} adds. */
 const FUZZ_SWORD_WEAPON = 22;
+const FUZZ_CATAPULT_WEAPON = 21;
 /** The fixture's armed fighter job (`test_axe`'s), which the fuzz sword class shares. */
 const FIGHTER_JOB = 1;
 /** The sword class of the weapon table's `mainType` column. */
@@ -322,21 +339,24 @@ const MAP_W = 12;
 const MAP_H = 12;
 const NODE_W = MAP_W * 2;
 const NODE_H = MAP_H * 2;
-/** The anchor {@link runFuzz}'s preamble builds its home on - the one node an authored attachment can bind
- *  to before the stream places anything. */
+/** The anchors {@link runFuzz}'s preamble builds its home and its workshop on - the nodes an authored
+ *  attachment can bind to before the stream places anything. */
 const PREAMBLE_HOME_NODE = { x: 10, y: 10 } as const;
-/** The trade the preamble's attached settler spawns in: the one worker slot the type at
- *  {@link PREAMBLE_HOME_NODE} resolves to, since an attachment is only ever posted in its own trade. */
+const PREAMBLE_WORK_NODE = { x: 6, y: 10 } as const;
+/** The fixture sawmill the preamble stands on {@link PREAMBLE_WORK_NODE}, and the trade of its one worker
+ *  slot, which the attached settler spawns in: an attachment is only ever posted in its own trade. */
+const PREAMBLE_WORKSHOP_TYPE = 2;
 const ATTACH_TRADE = 2;
 /** The preamble's home, the first couple it spawns and the last man - ids mint after the chests, in
- *  setup order; a woman's spawn also mints her delivery-flag entity, so each man follows his woman by 2. */
+ *  setup order, each woman followed by her man. */
 const NUCLEUS_HOME = (PREAMBLE_CHESTS.length + 1) as Entity;
 const NUCLEUS_WIFE = (NUCLEUS_HOME + 1) as Entity;
-const NUCLEUS_HUSBAND = (NUCLEUS_HOME + 3) as Entity;
-const CHEST_OPENER = (NUCLEUS_HOME + 9) as Entity;
-/** The preamble's attached settler: the last entity it creates. The attach assertion pins the id, so a
- *  preamble that grows another entity fails loudly here rather than quietly stopping the coverage. */
-const ATTACHED_SETTLER = (PREAMBLE_CHESTS.length + 11) as Entity;
+const NUCLEUS_HUSBAND = (NUCLEUS_HOME + 2) as Entity;
+const CHEST_OPENER = (NUCLEUS_HOME + 6) as Entity;
+/** The preamble's attached settler, spawned after the three couples and the workshop. The attach assertion
+ *  pins the id, so a preamble that grows another entity before it fails loudly here rather than quietly
+ *  stopping the coverage. */
+const ATTACHED_SETTLER = (CHEST_OPENER + 2) as Entity;
 const FUZZ_SEEDS = [13, 29, 47] as const;
 
 /** Wall rows on the fuzz map: a one-post wall and a horizontal gate in both states. The good is the
@@ -387,6 +407,8 @@ const PREAMBLE_CATAPULT_NODE = { x: 4, y: 20 } as const;
 const PREAMBLE_GUNNER_NODE = { x: 4, y: 17 } as const;
 /** Twelve nodes north of the catapult: inside the stone's 8..24 band. */
 const PREAMBLE_SHOT_NODE = { hx: 4, hy: 8 } as const;
+/** Open ground for the preamble's footprinted hut, its reserved ring clear of every other preamble body. */
+const PREAMBLE_HUT_NODE = { x: 19, y: 12 } as const;
 const CATAPULT_TYPE = 5;
 const SOLDIER_JOB = 31;
 
@@ -529,14 +551,14 @@ function nextCommand(rng: Rng): Command {
         // good the handler must reject. Both branches must hash and replay identically.
         ...(rng.int(4) === 0 ? { gatherGood: rng.int(2) === 0 ? RESOURCE_GOOD : INVALID_TYPE } : {}),
         // Occasionally an authored house attachment (a decoded map's `attachtohouse`), aimed at the
-        // preamble's building or at a free node. Both shapes must hash and replay identically; the
+        // preamble's buildings or at a free node. Both shapes must hash and replay identically; the
         // preamble's own attached spawn is what covers the ACCEPT path.
         ...(rng.int(4) === 0
           ? { home: rng.int(2) === 0 ? PREAMBLE_HOME_NODE : { x: rng.int(NODE_W), y: rng.int(NODE_H) } }
           : {}),
         ...(rng.int(4) === 0
           ? {
-              workplace: rng.int(2) === 0 ? PREAMBLE_HOME_NODE : { x: rng.int(NODE_W), y: rng.int(NODE_H) },
+              workplace: rng.int(2) === 0 ? PREAMBLE_WORK_NODE : { x: rng.int(NODE_W), y: rng.int(NODE_H) },
             }
           : {}),
       };
@@ -1033,6 +1055,13 @@ interface FuzzRun {
    *  buys, pinned so a content or gate change cannot quietly turn the defence half of the stream into a
    *  skip path. */
   readonly sheltered: boolean;
+  /** Whether a family moved into a home and whether a wedding finished - the family loop the fuzz home
+   *  and woman job exist for. */
+  readonly housed: boolean;
+  readonly married: boolean;
+  /** Whether a footprinted house stood, so the ground-collision gate ran its accept path, pinned like
+   *  the latches below. */
+  readonly footprintStood: boolean;
   /** Whether the preamble's authored attachment actually took a post - pinned so a gate change cannot
    *  quietly turn every attached spawn in the stream into a refusal. */
   readonly attachedToWork: boolean;
@@ -1092,6 +1121,13 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
   // instead of waiting for the stream to roll one at a valid owner. Fixed input, logged like every
   // command, so replay fidelity covers it.
   sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: PREAMBLE_WORKSHOP_TYPE,
+    ...PREAMBLE_WORK_NODE,
+    tribe: VIKING,
+    owner: 0,
+  });
+  sim.enqueueSetup({
     kind: 'spawnSettler',
     jobType: ATTACH_TRADE,
     x: 12,
@@ -1099,7 +1135,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     tribe: VIKING,
     owner: 0,
     home: PREAMBLE_HOME_NODE,
-    workplace: PREAMBLE_HOME_NODE,
+    workplace: PREAMBLE_WORK_NODE,
   });
   // The match over the two valid owner slots plus the invalid one: the MatchRules singleton rides the
   // hash and the save round trip under the stream. Declared last, so the pinned attached id above holds;
@@ -1144,12 +1180,23 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     tribe: VIKING,
     owner: 0,
   });
+  // A footprinted hut through the collision gate, placed last so the pinned ids above hold: the stream
+  // rolls one only a few times a run, and its own placements then meet a reserved ring.
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: FOOTPRINTED_TYPE,
+    ...PREAMBLE_HUT_NODE,
+    tribe: VIKING,
+  });
   // An independent generator stream (any fixed derivation of the fuzz seed works - it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
   const checkpoints: string[] = [];
   const violations: string[] = [];
   let sheltered = false;
+  let housed = false;
+  let footprintStood = false;
+  let married = false;
   let attachedToWork = false;
   let chestOpened = false;
   let gateSwung = false;
@@ -1230,6 +1277,13 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
     }
     if (!sheltered) for (const _ of sim.world.query(Sheltering)) sheltered = true;
+    if (!housed) for (const _ of sim.world.query(Residence)) housed = true;
+    if (!footprintStood) {
+      footprintStood = [...sim.world.query(Building)].some(
+        (e) => sim.world.get(e, Building).buildingType === FOOTPRINTED_TYPE,
+      );
+    }
+    if (!married) for (const _ of sim.world.query(Marriage)) married = true;
     // Latched, not read at the end: the stream is free to kill or demolish its way out of the post. The
     // trade check keeps a drifted id from latching on some other settler the stream happened to employ.
     if (!attachedToWork && sim.world.tryGet(ATTACHED_SETTLER, Settler)?.jobType === ATTACH_TRADE) {
@@ -1260,6 +1314,9 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     checkpoints,
     violations,
     sheltered,
+    housed,
+    married,
+    footprintStood,
     attachedToWork,
     chestOpened,
     gateSwung,
@@ -1282,6 +1339,9 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       const a = runFuzz(seed, TICKS, { saveRoundTrip: true });
       const b = runFuzz(seed, TICKS);
       expect(a.sheltered).toBe(true); // the stream really reached defence mode, not just its skip paths
+      expect(a.housed).toBe(true); // and a family really moved into a home
+      expect(a.married).toBe(true); // and a wedding really finished
+      expect(a.footprintStood).toBe(true); // and a footprinted house really passed the collision gate
       expect(a.attachedToWork).toBe(true); // and the authored attachment really bound, not just refused
       expect(a.chestOpened).toBe(true); // and a chest really opened, not just refused
       expect(a.gateSwung).toBe(true); // and a gate really stood in the wall run and opened
