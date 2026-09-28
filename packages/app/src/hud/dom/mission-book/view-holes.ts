@@ -16,14 +16,6 @@ export interface BookView {
   readonly soloFill?: number;
 }
 
-/** A hole in the painted cover, design px from its border box. */
-interface Hole {
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-}
-
 function intersect(a: ClientRect, b: ClientRect): ClientRect | null {
   const left = Math.max(a.left, b.left);
   const top = Math.max(a.top, b.top);
@@ -33,21 +25,16 @@ function intersect(a: ClientRect, b: ClientRect): ClientRect | null {
 }
 
 /**
- * The world views on the shown spread, read off the laid-out page, and one hole cut into `cover` per
- * view, so the canvas the renderer paints them on shows through the book. A view outside its page
- * window (another spread's column) gets neither. Reads the layout: it runs on a layout change, never
- * per frame.
+ * The world views on the shown spread, read off the laid-out page with their visible part. A view
+ * outside its page window (another spread's column) is left out. Reads the layout: it runs on a
+ * layout change, never per frame.
  */
-export function cutViewHoles(
-  cover: HTMLElement,
+export function measureViews(
   spread: HTMLElement,
   slots: readonly ViewSlot[],
+  k: number,
 ): readonly BookView[] {
   const views: BookView[] = [];
-  const holes: Hole[] = [];
-  const coverBox = cover.getBoundingClientRect();
-  // Client px per design px of the book: the plane's scale times the book's own.
-  const k = cover.offsetWidth === 0 ? 1 : coverBox.width / cover.offsetWidth;
   for (const lens of spread.querySelectorAll<HTMLElement>('.on-book__lens')) {
     const slot = slots[Number(lens.parentElement?.dataset.view)];
     const win = lens.closest<HTMLElement>('.on-book__window');
@@ -76,27 +63,32 @@ export function cutViewHoles(
       zoom,
       ...(icon.soloFill !== undefined ? { soloFill: icon.soloFill } : {}),
     });
-    holes.push({
-      x: (clip.left - coverBox.left) / k,
-      y: (clip.top - coverBox.top) / k,
-      w: clip.width / k,
-      h: clip.height / k,
-    });
   }
-  maskHoles(cover, holes);
   return views;
 }
 
-/** Every hole is one mask layer, excluded from a whole layer under them all (foundation.css). */
-export function maskHoles(cover: HTMLElement, holes: readonly Hole[]): void {
-  if (holes.length === 0) {
-    cover.style.removeProperty('mask-image');
-    cover.style.removeProperty('mask-size');
-    cover.style.removeProperty('mask-position');
+/**
+ * Cut `clips` (client px) out of `layer`, so the canvas the renderer paints under them shows through
+ * it: every hole is one mask layer, excluded from a whole layer under them all (foundation.css).
+ */
+export function maskHoles(layer: HTMLElement, clips: readonly ClientRect[]): void {
+  if (clips.length === 0) {
+    layer.style.removeProperty('mask-image');
+    layer.style.removeProperty('mask-size');
+    layer.style.removeProperty('mask-position');
     return;
   }
+  const origin = layer.getBoundingClientRect();
+  // Client px per px of the layer's own box: the plane's scale, times the book's inside it.
+  const k = layer.offsetWidth === 0 ? 1 : origin.width / layer.offsetWidth;
   const whole = 'linear-gradient(#000 0 0)';
-  cover.style.setProperty('mask-image', [...holes.map(() => whole), whole].join(', '));
-  cover.style.setProperty('mask-size', [...holes.map((h) => `${h.w}px ${h.h}px`), '100% 100%'].join(', '));
-  cover.style.setProperty('mask-position', [...holes.map((h) => `${h.x}px ${h.y}px`), '0 0'].join(', '));
+  layer.style.setProperty('mask-image', [...clips.map(() => whole), whole].join(', '));
+  layer.style.setProperty(
+    'mask-size',
+    [...clips.map((c) => `${c.width / k}px ${c.height / k}px`), '100% 100%'].join(', '),
+  );
+  layer.style.setProperty(
+    'mask-position',
+    [...clips.map((c) => `${(c.left - origin.left) / k}px ${(c.top - origin.top) / k}px`), '0 0'].join(', '),
+  );
 }

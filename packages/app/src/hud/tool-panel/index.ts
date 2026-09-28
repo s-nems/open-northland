@@ -216,8 +216,8 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** The decoded UI string lookup the panel resolved for its language, shared with sibling overlays. */
   readonly uiString: UiString;
-  /** Open the mission window (the map's briefing and goals), as the session start does; on `page`
-   *  when a script asked for one. */
+  /** Open the mission book (the map's briefing and goals), as the session start does; on `page` when a
+   *  script asked for one, which holds the game while it shows. */
   openMission(page?: number): void;
   /** The on-screen info lines a map script writes for the seat, top to bottom. */
   setInfoLines(lines: readonly string[]): void;
@@ -418,6 +418,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       for (const mode of held) mode.cancel();
     };
 
+    // The slip opens the book the way the beam does; the beam's surfaces exist once the windows do.
+    let openGoals: (() => void) | null = null;
     // Closing a window returns keyboard focus to the beam entry that owns it.
     let focusOwner: ((id: NavEntryId) => void) | null = null;
     const shellCopy = messages().hud.shell;
@@ -453,6 +455,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           onScriptHold: (held) => opts.onMissionHold?.(held),
           ...(opts.onMissionOpen !== undefined ? { onOpenChange: opts.onMissionOpen } : {}),
           onShowOnMap: (target) => opts.onShowOnMap?.(target),
+          onSlipOpen: () => openGoals?.(),
           bookKey: () => {
             const binding = opts.bindings.mission;
             return binding === null ? null : keyDisplayLabel(binding);
@@ -516,6 +519,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     domParts.push(windows);
 
     const surfaces = { windows: windows.byId, cancelHeld };
+    openGoals = () => applyNavEntry(surfaces, 'mission', () => windows.mission.openGoals());
     /** The book's views in canvas px, the same array while neither they nor the canvas moved. */
     let framed: { views: readonly BookView[]; key: string; frames: readonly MapViewFrame[] } | null = null;
     const bookFrames = (views: readonly BookView[]): readonly MapViewFrame[] => {

@@ -7,6 +7,7 @@ import { navBeamRect } from '../../nav-beam.js';
 import { NOTICE_COLUMN, TOP_BAR_HEIGHT } from '../../regions.js';
 import { GLYPH } from '../icons.js';
 import { escapeHtml, setClass, setHidden } from '../parts/dom.js';
+import type { ClientRect } from '../portrait-hole.js';
 import { WINDOW_ORNAMENTS } from '../symbols.js';
 import { chronicleSpread } from './chronicle.js';
 import type { GoalMark } from './goal-marks.js';
@@ -16,7 +17,7 @@ import { FLOURISH, type FlowContext, flowMarkup, roman, type ViewSlot } from './
 import { type BookPage, displayTitle, pageSegments } from './page-segments.js';
 import { type BookPosition, columnCount, spreadCount, turnPage } from './paging.js';
 import { type MissionHumanLookup, type UserIconBox, userIconBox } from './user-icons.js';
-import { type BookView, cutViewHoles, maskHoles } from './view-holes.js';
+import { type BookView, maskHoles, measureViews as viewsOn } from './view-holes.js';
 
 export type { BookView } from './view-holes.js';
 
@@ -122,7 +123,15 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   const spreadEl = scene.querySelector<HTMLElement>('.on-book__spread');
   const pausedEl = scene.querySelector<HTMLElement>('.on-book__paused');
   const goalCount = scene.querySelector<HTMLElement>('.on-tab__count');
-  if (book === null || cover === null || spreadEl === null || pausedEl === null || goalCount === null) {
+  const dim = scene.querySelector<HTMLElement>('.on-book-scene__dim');
+  if (
+    book === null ||
+    cover === null ||
+    spreadEl === null ||
+    pausedEl === null ||
+    goalCount === null ||
+    dim === null
+  ) {
     throw new Error('mission book: markup');
   }
   deps.plane.append(scene);
@@ -239,14 +248,23 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     if (goalCount.textContent !== text) goalCount.textContent = text;
   };
 
+  /** The painted cover and the arrival's dim both lie over a view, so both are cut. */
+  const cutHoles = (clips: readonly ClientRect[]): void => {
+    maskHoles(cover, clips);
+    maskHoles(dim, clips);
+  };
+
   /** The views on the shown spread, holes cut for them; none while the book is hidden or a leaf turns. */
   const measureViews = (): void => {
     if (scene.hidden || turning !== null) {
       shownViews = [];
-      maskHoles(cover, []);
+      cutHoles([]);
       return;
     }
-    shownViews = cutViewHoles(cover, spreadEl, slots);
+    // Client px per design px of the book: the plane's scale times the book's own.
+    const k = cover.offsetWidth === 0 ? 1 : cover.getBoundingClientRect().width / cover.offsetWidth;
+    shownViews = viewsOn(spreadEl, slots, k);
+    cutHoles(shownViews.map((v) => v.clip));
   };
 
   /** Lay the chapter out in page columns and show the current spread's two. */
@@ -483,7 +501,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       setHidden(scene, true);
       arrival = false;
       shownViews = [];
-      maskHoles(cover, []);
+      cutHoles([]);
     },
     reading: () => reading,
     refresh(): void {

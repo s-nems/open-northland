@@ -4,7 +4,14 @@ import type { MissionBook, MissionWindowState } from '../../src/hud/dom/mission-
 export function stubMissionBook(): MissionBook & { readonly shownPages: readonly number[] } {
   let open = false;
   const shownPages: number[] = [];
-  let state: MissionWindowState = { page: null, pages: [], reading: null, held: false, slipFolded: false };
+  let state: MissionWindowState = {
+    page: null,
+    pages: [],
+    reading: null,
+    held: false,
+    slipFolded: false,
+    goalMarks: { states: null, marks: [] },
+  };
   return {
     shownPages,
     isOpen: () => open,
@@ -19,6 +26,9 @@ export function stubMissionBook(): MissionBook & { readonly shownPages: readonly
     showPage: (page) => {
       open = true;
       shownPages.push(page);
+    },
+    openGoals: () => {
+      open = true;
     },
     state: () => state,
     restore: (next) => {

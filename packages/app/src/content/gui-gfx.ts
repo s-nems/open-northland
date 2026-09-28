@@ -134,7 +134,7 @@ export function loadGuiStrings(lang: string): Promise<GuiStrings | null> {
   return fetchJsonOrNull<GuiStrings>(`${GUI_ROOT}/strings/${lang}.json`);
 }
 
-/** Load one language's rendered history book (the mission window's third tab), or `null` without it. */
+/** Load one language's rendered history tables (read in the mission book's chronicle), or `null` without them. */
 export async function loadGuiHistory(
   lang: string,
   fetchImpl: typeof fetch = fetch,

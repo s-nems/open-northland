@@ -113,6 +113,5 @@ describe('tool panel layout', () => {
     const layout = buildToolPanelLayout(2);
     expect(layout.windowOrigin(SCREEN, 300)).toEqual(centralWindowOrigin(SCREEN, 2, 300));
     expect(layout.windowFloor(SCREEN)).toBe(centralWindowFloor(SCREEN, 2));
-    expect(layout.sheetArea(SCREEN)).toEqual({ width: SCREEN.width, height: centralWindowFloor(SCREEN, 2) });
   });
 });

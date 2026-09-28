@@ -19,8 +19,6 @@ export interface ToolPanelLayout {
     span: { readonly x: number; readonly w: number },
     overlay: Rect | null,
   ): Rect | null;
-  /** The screen area a screen-centred sheet (the mission window) centres in: above the beam. */
-  sheetArea(screen: ScreenSize): ScreenSize;
 }
 
 export function buildToolPanelLayout(uiscale: number): ToolPanelLayout {
@@ -30,6 +28,5 @@ export function buildToolPanelLayout(uiscale: number): ToolPanelLayout {
     windowOrigin: (screen, width) => centralWindowOrigin(screen, scale, width),
     windowFloor: (screen) => centralWindowFloor(screen, scale),
     bottomReserve: (screen, span, overlay) => bottomReserveFor(screen, scale, span, overlay),
-    sheetArea: (screen) => ({ width: screen.width, height: centralWindowFloor(screen, scale) }),
   };
 }

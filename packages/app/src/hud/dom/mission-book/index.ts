@@ -3,9 +3,15 @@ import type { HypertextBook } from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 import type { MissionReader } from '../../../game/mission-brief.js';
 import type { ToolWindow } from '../../tool-panel/window-shell.js';
-import { type BookReading, type BookView, createBookWindow } from './book-window.js';
-import { GoalMarks } from './goal-marks.js';
-import { createGoalSlip } from './goal-slip.js';
+import {
+  type BookReading,
+  type BookView,
+  type BookWindow,
+  type BookWindowDeps,
+  createBookWindow,
+} from './book-window.js';
+import { GoalMarks, type GoalMarksState } from './goal-marks.js';
+import { createGoalSlip, type GoalSlip, type GoalSlipDeps } from './goal-slip.js';
 import { ShownPages, type ShownPagesState } from './shown-pages.js';
 import type { MissionHumanLookup } from './user-icons.js';
 
@@ -19,6 +25,8 @@ export interface MissionWindowState extends ShownPagesState {
   /** The open book shows a script's chapter and holds the game. */
   readonly held: boolean;
   readonly slipFolded: boolean;
+  /** Unread goal changes, so the seals survive a remount. */
+  readonly goalMarks: GoalMarksState;
 }
 
 /** What a world without a mission reader shows: the book's empty page and no goals. */
@@ -47,6 +55,9 @@ export interface MissionBookDeps {
   readonly onScriptHold: (held: boolean) => void;
   readonly onOpenChange?: (open: boolean) => void;
   readonly onShowOnMap: (target: MapViewTarget) => void;
+  /** The slip's "open the book" was pressed; the owner opens it as the beam entry does (one central
+   *  window, a held placement dropped) through {@link MissionBook.openGoals}. */
+  readonly onSlipOpen: () => void;
   /** The key that toggles the book, for the slip's button; null when unbound. */
   readonly bookKey: () => string | null;
   readonly cue: (cue: UiCue) => void;
@@ -57,6 +68,8 @@ export interface MissionBookDeps {
 export interface MissionBook extends ToolWindow {
   /** Open on briefing `page`, a script's `PlayCutscene`, which joins the chapters. */
   showPage(page: number): void;
+  /** Open on the goal page, never holding the game. */
+  openGoals(): void;
   state(): MissionWindowState;
   restore(state: MissionWindowState): void;
   /** Once a frame: follow the goals, the slip and the screen. */
@@ -74,7 +87,15 @@ export interface MissionBook extends ToolWindow {
 
 const FIRST: BookReading = { tab: 'brief', chapter: 0, spread: 0, table: null, pick: 0 };
 
-export function createMissionBook(deps: MissionBookDeps): MissionBook {
+/** The book's two DOM parts; a test hands in stubs to drive the book's state without a document. */
+export interface MissionBookParts {
+  readonly book: (deps: BookWindowDeps) => BookWindow;
+  readonly slip: (deps: GoalSlipDeps) => GoalSlip;
+}
+
+const DOM_PARTS: MissionBookParts = { book: createBookWindow, slip: createGoalSlip };
+
+export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts = DOM_PARTS): MissionBook {
   const shown = new ShownPages();
   const marks = new GoalMarks();
   const listeners: (() => void)[] = [];
@@ -107,7 +128,7 @@ export function createMissionBook(deps: MissionBookDeps): MissionBook {
     deps.onOpenChange?.(false);
   };
 
-  const book = createBookWindow({
+  const book = parts.book({
     plane: deps.plane,
     chapters,
     page: (page) => deps.reader.page(page),
@@ -149,14 +170,10 @@ export function createMissionBook(deps: MissionBookDeps): MissionBook {
     open(resumed?.reading ?? { ...FIRST, chapter: chapterOf(deps.replayPage() ?? shown.page) }, held);
   };
 
-  const slip = createGoalSlip({
+  const slip = parts.slip({
     plane: deps.plane,
     bookKey: deps.bookKey,
-    onOpenBook: () => {
-      shown.fold(deps.briefingHistory());
-      resume = null;
-      open({ ...FIRST, tab: 'goals', chapter: chapterOf(shown.page) }, false);
-    },
+    onOpenBook: deps.onSlipOpen,
     cue: deps.cue,
   });
   slip.setDrop(0);
@@ -174,16 +191,23 @@ export function createMissionBook(deps: MissionBookDeps): MissionBook {
       hold();
       open({ ...FIRST, chapter: chapterOf(page), pick: chapterOf(page) }, true);
     },
+    openGoals(): void {
+      shown.fold(deps.briefingHistory());
+      resume = null;
+      open({ ...FIRST, tab: 'goals', chapter: chapterOf(shown.page) }, held);
+    },
     state: () => ({
       ...shown.state(),
       reading: book.isOpen() ? book.reading() : null,
       held,
       slipFolded: slip.isFolded(),
+      goalMarks: marks.state(),
     }),
     restore(state): void {
       shown.restore(state);
       resume = state.reading === null ? null : { reading: state.reading, held: state.held };
       slip.setFolded(state.slipFolded);
+      marks.restore(state.goalMarks);
     },
     refresh(): void {
       const version = deps.answersVersion();

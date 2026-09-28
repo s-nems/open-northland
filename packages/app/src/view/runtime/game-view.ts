@@ -193,9 +193,9 @@ export interface GameViewDeps {
   readonly worldToken?: string | null;
   readonly saveEntrySearch?: string;
   readonly networkSave?: Pick<SaveLoadSessionOptions, 'sessionMetadata' | 'onSaved'>;
-  /** Where the mission window's briefs come from; omitted, the window shows nothing. */
+  /** Where the mission book's pages and goals come from; omitted, the book shows nothing. */
   readonly missionBriefSource?: MissionBriefSource;
-  /** Open the mission window as the session starts, the original's mission briefing; the entry decides
+  /** Open the mission book as the session starts, the original's mission briefing; the entry decides
    *  (a fresh world, and no `?intro=off`). */
   readonly introAtStart?: boolean;
   /** The map's `[misc_music]` code; omitted or null, the world plays no music. */
@@ -280,8 +280,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     },
     isPaused: () => driver.paused,
   });
-  // Three overlays hold the sim paused - the menu, the mission sheet and the verdict - so each holds
-  // under its own key and none can release another's.
+  // Three overlays hold the sim paused - the menu, a script's briefing chapter and the verdict - so
+  // each holds under its own key and none can release another's.
   const pauseHolds = createPauseHolds(saveLoad, !sharedClock);
   const destroy = (): void => {
     if (destroyed) return;

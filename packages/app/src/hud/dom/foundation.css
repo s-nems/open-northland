@@ -4072,6 +4072,9 @@ body.on-drag-scroll-cursor-hidden * {
   inset: 0;
   background: radial-gradient(ellipse at 50% 48%, #0b0f0d99 0%, #07090888 55%, #050605dd 100%);
   pointer-events: auto;
+  /* The book's world views are cut out of it too, so a chapter's map shows at full light. */
+  mask-repeat: no-repeat;
+  mask-composite: exclude;
 }
 .on-hud .on-book-scene--arrival .on-book-scene__dim {
   display: block;
