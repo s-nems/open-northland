@@ -499,8 +499,8 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
 
 ### Mission book
 
-Misja is an open book over the map (ticket 14), not a framed window: the wood rails, bronze line,
-corners and knot of the window family around a painted spread (`assets/ui/mission-book/spread.webp`:
+Misja is an open book over the map (ticket 14), not a framed window: the wood rails, bronze line
+and top knot of the window family (no corner ornaments) around a painted spread (`assets/ui/mission-book/spread.webp`:
 carved cover, bronze fittings, two vellum pages), and the tabs Zadanie, Cele and Kronika standing out
 of its fore-edge as wood tabs, parchment when selected. The page rectangles are measured on that
 spread, so a new spread must keep them or move `.on-book__spread`. The book keeps its 990 x 620 design
@@ -516,9 +516,14 @@ size and shrinks whole on a screen that cannot hold it.
   and world views stand inside the text where the page places them; a narrow picture is a portrait,
   an oval beside the quote that follows it. A page whose prose the author centred as a whole is set
   flush left; a few centred lines (captions, a table's entries, links) stay centred.
+- The page's own markers carry over: its headline font sets the title and the headings, justified
+  and right-aligned lines stay so, red and dimmed ink stay (white and dark read as the book's ink),
+  and its empty lines keep their weight: none sets the next line close under the last, one is a
+  paragraph gap, two or more open a section. The format has no other emphasis to honour.
 - A world view is a hole in the painted book that the renderer fills with the live map, with its own
-  "Pokaż na mapie", which closes the book and centres the view there. While a leaf turns no hole is
-  cut.
+  "Pokaż na mapie", which closes the book and centres the view there. The renderer copies the shown
+  views into stills about once a second; a turning leaf shows those, while the new spread's views
+  are live under it from the turn's first frame.
 - Goals list what the script currently marks visible: the open ones with a box, the visible but not
   yet active ones after them in muted ink without a mark, the done ones on the right page with a green
   seal. No total and no count of what is still to come; the Cele tab counts the open goals only.

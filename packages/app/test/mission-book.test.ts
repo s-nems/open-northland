@@ -1,4 +1,9 @@
-import type { HypertextBlock, HypertextPicture, HypertextUserIcon } from '@open-northland/data';
+import type {
+  HypertextBlock,
+  HypertextParagraph,
+  HypertextPicture,
+  HypertextUserIcon,
+} from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import type { MissionGoal } from '../src/game/mission-brief.js';
 import { GoalMarks, goalLists, openGoalCount, slipRows } from '../src/hud/dom/mission-book/goal-marks.js';
@@ -35,13 +40,50 @@ describe('pageSegments', () => {
     const page = pageSegments(blocks);
     expect(page.title).toBe('AL-MUKALLAH');
     expect(page.segments).toEqual([
-      { kind: 'para', text: 'Przed nami miasto.', align: 'left', link: null },
+      { kind: 'para', text: 'Przed nami miasto.', align: 'left', tone: null, link: null },
       { kind: 'icons', icons: [VIEW_ICON, [2, 7, 0, 0]] },
-      { kind: 'heading', text: 'Targ' },
-      { kind: 'speech', speaker: 'Ares', text: 'Idziemy dalej.', portrait: null },
+      { kind: 'heading', text: 'Targ', space: 'tight' },
+      { kind: 'speech', speaker: 'Ares', text: 'Idziemy dalej.', portrait: null, space: 'tight' },
       { kind: 'speech', speaker: null, text: 'Witajcie w mieście!', portrait: PORTRAIT },
-      { kind: 'para', text: 'SIEDEM CUDÓW', align: 'center', link: 'mythology_00' },
-      { kind: 'signature', text: 'by Autor' },
+      {
+        kind: 'para',
+        text: 'SIEDEM CUDÓW',
+        align: 'center',
+        tone: null,
+        link: 'mythology_00',
+        space: 'tight',
+      },
+      { kind: 'signature', text: 'by Autor', space: 'tight' },
+    ]);
+  });
+
+  it("keeps the author's empty lines, ink and justified lines", () => {
+    const text = (t: string, more: Partial<HypertextParagraph> = {}): HypertextBlock => ({
+      kind: 'text',
+      style: 'body',
+      text: t,
+      ...more,
+    });
+    const page = pageSegments([
+      text('Jeden.'),
+      text('Zaraz pod nim.'),
+      { kind: 'blank', lines: 1 },
+      text('Nowy akapit.', { align: 'justify' }),
+      { kind: 'blank', lines: 3 },
+      text('Nowa część.', { color: 'red' }),
+      { kind: 'blank', lines: 1 },
+      text('Przygaszone.', { color: 'dimmed' }),
+      text('Białe.', { color: 'white' }),
+    ]);
+    expect(
+      page.segments.map((s) => (s.kind === 'para' ? [s.text, s.align, s.tone, s.space ?? null] : s.kind)),
+    ).toEqual([
+      ['Jeden.', 'left', null, null],
+      ['Zaraz pod nim.', 'left', null, 'tight'],
+      ['Nowy akapit.', 'justify', null, null],
+      ['Nowa część.', 'left', 'red', 'wide'],
+      ['Przygaszone.', 'left', 'dimmed', null],
+      ['Białe.', 'left', null, 'tight'],
     ]);
   });
 

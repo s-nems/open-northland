@@ -545,6 +545,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           focusY: v.focusY * perDesign,
           scale: perDesign * v.zoom,
           ...(v.soloFill !== undefined ? { soloFill: v.soloFill } : {}),
+          ...(v.still !== undefined ? { still: v.still } : {}),
         };
       });
       framed = { views, key, frames };

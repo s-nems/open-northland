@@ -8,7 +8,7 @@ import { NOTICE_COLUMN, TOP_BAR_HEIGHT } from '../../regions.js';
 import { GLYPH } from '../icons.js';
 import { escapeHtml, setClass, setHidden } from '../parts/dom.js';
 import type { ClientRect } from '../portrait-hole.js';
-import { WINDOW_ORNAMENTS } from '../symbols.js';
+import { WINDOW_KNOT } from '../symbols.js';
 import { chronicleSpread } from './chronicle.js';
 import type { GoalMark } from './goal-marks.js';
 import { openGoalCount } from './goal-marks.js';
@@ -32,6 +32,8 @@ const WHEEL_TURN_MS = 280;
 /** The leaf's flip (foundation.css, `on-book-flip`) and a frame's margin, after which the world views
  *  are cut in again. */
 const LEAF_TURN_MS = 620;
+/** How often the shown world views are copied into stills, which a turning leaf shows in their place. */
+const STILL_REFRESH_MS = 1000;
 
 export type BookTab = 'brief' | 'goals' | 'history';
 const TABS: readonly BookTab[] = ['brief', 'goals', 'history'];
@@ -97,7 +99,6 @@ const curl = (direction: -1 | 1): string => {
     <linearGradient id="${id}-flap" gradientUnits="userSpaceOnUse" x1="45" y1="45" x2="29" y2="29"><stop offset="0" stop-color="#fbf4df"/><stop offset="1" stop-color="#d9c79b"/></linearGradient>
   </defs><g${direction < 0 ? ' transform="matrix(-1 0 0 1 64 0)"' : ''}><path d="M26 64L64 26V64Z" fill="url(#${id}-under)"/><path class="on-book__curl-flap" d="M26 64L64 26Q46 27.5 29 29Q27.5 46 26 64Z" fill="url(#${id}-flap)"/><path class="on-book__curl-fold" d="M26 64L64 26"/><path class="on-book__curl-arrow" d="M32.5 45C33 37.5 38.5 33.5 46 35.5M41.5 31.5l4.8 4-4 4.6"/></g></svg>`;
 };
-const TURNING = 'on-book__spread--turning';
 
 /** A page of the spread as it stood, and where it stands on the book in design px. */
 interface PageShot {
@@ -121,7 +122,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     <section class="on-book" aria-label="${escapeHtml(copy.title)}">
       <div class="on-book__shadow"></div>
       <div class="on-book__cover"></div>
-      <div class="on-book__trim">${WINDOW_ORNAMENTS}</div>
+      <div class="on-book__trim">${WINDOW_KNOT}</div>
       <div class="on-book__tabs" role="tablist" aria-label="${escapeHtml(copy.tabsLabel)}">${TABS.map(
         (t) =>
           `<button type="button" role="tab" class="on-book__tab" data-tab="${t}" aria-selected="false"><span>${escapeHtml(copy.tabs[t])}${
@@ -160,8 +161,17 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   let spreads = 1;
   let slots: ViewSlot[] = [];
   let shownViews: readonly BookView[] = [];
-  /** A page turn animates the leaf; the world views wait for it to settle. */
+  /** A page turn animates the leaf until this timer settles it. */
   let turning: ReturnType<typeof setTimeout> | null = null;
+  /** Each view slot's still canvas; a leaf lifts copies of the ones the renderer has painted. */
+  const stills = new Map<number, HTMLCanvasElement>();
+  const painted = new Set<number>();
+  let stillsDue = true;
+  let stillsAt = Number.NEGATIVE_INFINITY;
+  /** Slots whose stills went to the renderer, which paints them after this frame's read. */
+  let handed: readonly number[] = [];
+  /** Leaf lenses whose view had no still yet; the next copy fills them. */
+  let waiting: { readonly lens: HTMLElement; readonly slot: number }[] = [];
   /** The goal list the tabs and the goal page were built from, and its content. */
   let goalsShown: readonly MissionGoal[] | null = null;
   let goalsKey = '';
@@ -264,9 +274,10 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     maskHoles(dim, clips);
   };
 
-  /** The views on the shown spread, holes cut for them; none while the book is hidden or a leaf turns. */
+  /** The views on the shown spread, holes cut for them; none while the book is hidden. A turning leaf
+   *  covers the new spread's holes where it lies. */
   const measureViews = (): void => {
-    if (scene.hidden || turning !== null) {
+    if (scene.hidden) {
       shownViews = [];
       cutHoles([]);
       return;
@@ -275,6 +286,20 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     const k = cover.offsetWidth === 0 ? 1 : cover.getBoundingClientRect().width / cover.offsetWidth;
     shownViews = viewsOn(spreadEl, slots, k);
     cutHoles(shownViews.map((v) => v.clip));
+    if (shownViews.some((v) => !painted.has(v.slot))) stillsDue = true;
+  };
+
+  /** Show `slot`'s still in a copied page's lens; false while the view has none. */
+  const fillLens = (lens: HTMLElement, slot: number): boolean => {
+    const still = stills.get(slot);
+    if (still === undefined || !painted.has(slot)) return false;
+    const copy = document.createElement('canvas');
+    copy.className = 'on-book__still';
+    copy.width = still.width;
+    copy.height = still.height;
+    copy.getContext('2d')?.drawImage(still, 0, 0);
+    lens.replaceChildren(copy);
+    return true;
   };
 
   /** Lay the chapter out in page columns and show the current spread's two. */
@@ -343,6 +368,9 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
 
   const render = (): void => {
     slots = [];
+    stills.clear();
+    painted.clear();
+    handed = [];
     leaves.replaceChildren();
     const goals = deps.goals();
     goalsShown = goals;
@@ -393,6 +421,10 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       if (page === null) return null;
       const copied = page.cloneNode(true);
       if (!(copied instanceof HTMLElement)) return null;
+      for (const lens of copied.querySelectorAll<HTMLElement>('.on-book__lens')) {
+        const slot = Number(lens.parentElement?.dataset.view);
+        if (!fillLens(lens, slot)) waiting.push({ lens, slot });
+      }
       return {
         page: copied,
         x: spreadEl.offsetLeft + page.offsetLeft,
@@ -454,8 +486,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   const settle = (): void => {
     turning = null;
     leaves.replaceChildren();
-    spreadEl.classList.remove(TURNING);
-    measureViews();
+    waiting = [];
   };
 
   const turn = (direction: -1 | 1): void => {
@@ -468,6 +499,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     );
     if (to === null) return;
     deps.cue('confirm');
+    waiting = [];
     const before = shootPages();
     const crosses = !table && to.chapter !== reading.chapter;
     landLast = to.spread === 'last';
@@ -480,7 +512,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     turning = setTimeout(settle, LEAF_TURN_MS);
     if (crosses) render();
     else layout();
-    spreadEl.classList.add(TURNING);
+    stillsDue = true;
     if (before !== null) flip(direction, before);
   };
 
@@ -574,7 +606,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       if (turning !== null) clearTimeout(turning);
       turning = null;
       leaves.replaceChildren();
-      spreadEl.classList.remove(TURNING);
+      waiting = [];
       setHidden(scene, true);
       arrival = false;
       shownViews = [];
@@ -583,6 +615,12 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     reading: () => reading,
     refresh(): void {
       if (scene.hidden) return;
+      if (handed.length > 0) {
+        for (const slot of handed) painted.add(slot);
+        handed = [];
+        waiting = waiting.filter(({ lens, slot }) => !fillLens(lens, slot));
+      }
+      if (performance.now() - stillsAt > STILL_REFRESH_MS) stillsDue = true;
       if (place()) relayout();
       // The goal states follow the sim; the reading pages never move under the reader.
       const goals = deps.goals();
@@ -597,7 +635,20 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     rebuild(): void {
       if (!scene.hidden) render();
     },
-    views: () => shownViews,
+    views(): readonly BookView[] {
+      if (!stillsDue || shownViews.length === 0) return shownViews;
+      stillsDue = false;
+      handed = shownViews.map((view) => view.slot);
+      stillsAt = performance.now();
+      return shownViews.map((view) => {
+        let still = stills.get(view.slot);
+        if (still === undefined) {
+          still = document.createElement('canvas');
+          stills.set(view.slot, still);
+        }
+        return { ...view, still };
+      });
+    },
     dispose(): void {
       if (turning !== null) clearTimeout(turning);
       resizes.disconnect();

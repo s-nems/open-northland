@@ -5,17 +5,26 @@ import type {
   HypertextUserIcon,
 } from '@open-northland/data';
 
+/** The author's empty lines before a text segment: none sets it on the very next line, two or more
+ *  open a section; one is the book's plain paragraph gap (no mark). */
+export type SegmentSpace = 'tight' | 'wide';
+
+/** A paragraph's ink: the page's red and dimmed font palettes. White, drawn for the original's dark
+ *  window, and dark read as the book's ink. */
+export type SegmentTone = 'red' | 'dimmed';
+
 /**
  * A hypertext page as the book sets it: the flat block stack read into headings, narration, spoken
  * lines, pictures, world views and the author's signature, so the book can typeset them. The reading
  * is this book's approximation; the original stacks the blocks line by line.
  */
-export type BookSegment =
+export type BookSegment = (
   | { readonly kind: 'heading'; readonly text: string }
   | {
       readonly kind: 'para';
       readonly text: string;
-      readonly align: 'left' | 'center' | 'right';
+      readonly align: 'left' | 'center' | 'right' | 'justify';
+      readonly tone: SegmentTone | null;
       /** The book page a click opens, for a paragraph that links one. */
       readonly link: string | null;
     }
@@ -30,7 +39,8 @@ export type BookSegment =
   | { readonly kind: 'picture'; readonly picture: HypertextPicture }
   /** User icons of consecutive rows, which the book sets side by side. */
   | { readonly kind: 'icons'; readonly icons: readonly HypertextUserIcon[] }
-  | { readonly kind: 'signature'; readonly text: string };
+  | { readonly kind: 'signature'; readonly text: string }
+) & { readonly space?: SegmentSpace };
 
 export interface BookPage {
   /** The page's first title line; null for a page the author left untitled, which gets none. */
@@ -49,8 +59,8 @@ const QUOTE_MARKS = /^["„”«»]+|["„”«»]+$/gu;
 /** Where a paragraph is set. A page that centres most of its prose was centred as a whole for the
  *  original's narrow sheet, so the book sets its prose flush left; a page that centres a few lines
  *  (captions, a table's entries, links) keeps them centred. */
-function alignOf(p: HypertextParagraph, centredPage: boolean): 'left' | 'center' | 'right' {
-  if (p.align === 'right') return 'right';
+function alignOf(p: HypertextParagraph, centredPage: boolean): 'left' | 'center' | 'right' | 'justify' {
+  if (p.align === 'right' || p.align === 'justify') return p.align;
   if (p.align !== 'center') return 'left';
   return centredPage && p.link === undefined ? 'left' : 'center';
 }
@@ -71,7 +81,11 @@ export function pageSegments(blocks: readonly HypertextBlock[]): BookPage {
   const segments: BookSegment[] = [];
   const centredPage = centresProse(blocks);
   let title: string | null = null;
+  /** Empty lines since the last block; none counted before the first. */
+  let blanks: number | null = null;
   for (const b of blocks) {
+    const before = blanks;
+    blanks = b.kind === 'blank' ? (blanks ?? 0) + b.lines : 0;
     switch (b.kind) {
       case 'blank':
         break;
@@ -87,28 +101,44 @@ export function pageSegments(blocks: readonly HypertextBlock[]): BookPage {
       }
       case 'text':
         if (b.style === 'title' && title === null && b.text.trim() !== '') title = b.text.trim();
-        else textSegment(b, segments, centredPage);
+        else textSegment(b, segments, centredPage, segments.length === 0 ? undefined : spaceOf(before));
         break;
     }
   }
   return { title, segments };
 }
 
+const WIDE_BLANKS = 2;
+
+function spaceOf(blanks: number | null): SegmentSpace | undefined {
+  if (blanks === null) return undefined;
+  if (blanks === 0) return 'tight';
+  return blanks >= WIDE_BLANKS ? 'wide' : undefined;
+}
+
+const TONES: Readonly<Record<string, SegmentTone>> = { red: 'red', dimmed: 'dimmed' };
+
 /** Read one paragraph into `segments`; a title line after the page's title is a heading. */
-function textSegment(p: HypertextParagraph, segments: BookSegment[], centredPage: boolean): void {
+function textSegment(
+  p: HypertextParagraph,
+  segments: BookSegment[],
+  centredPage: boolean,
+  space: SegmentSpace | undefined,
+): void {
   const text = p.text.trim();
   if (text === '') return;
+  const spaced = space === undefined ? {} : { space };
   if (p.style === 'title') {
-    segments.push({ kind: 'heading', text });
+    segments.push({ kind: 'heading', text, ...spaced });
     return;
   }
   if (p.link === undefined && SIGNATURE.test(text)) {
-    segments.push({ kind: 'signature', text: text.replace(SIGNATURE_TILDES, '') });
+    segments.push({ kind: 'signature', text: text.replace(SIGNATURE_TILDES, ''), ...spaced });
     return;
   }
   const spoken = p.link === undefined ? SPEAKER.exec(text) : null;
   if (spoken?.[1] !== undefined && spoken[2] !== undefined) {
-    segments.push({ kind: 'speech', speaker: spoken[1], text: spoken[2].trim(), portrait: null });
+    segments.push({ kind: 'speech', speaker: spoken[1], text: spoken[2].trim(), portrait: null, ...spaced });
     return;
   }
   const last = segments.at(-1);
@@ -121,7 +151,14 @@ function textSegment(p: HypertextParagraph, segments: BookSegment[], centredPage
     };
     return;
   }
-  segments.push({ kind: 'para', text, align: alignOf(p, centredPage), link: p.link ?? null });
+  segments.push({
+    kind: 'para',
+    text,
+    align: alignOf(p, centredPage),
+    tone: (p.color === undefined ? undefined : TONES[p.color]) ?? null,
+    link: p.link ?? null,
+    ...spaced,
+  });
 }
 
 /** Words the table of contents shows for an untitled page, marked apart from a real title. */

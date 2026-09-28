@@ -32,6 +32,9 @@ export interface MapViewFrame {
   readonly focusY: number;
   readonly scale: number;
   readonly soloFill?: number;
+  /** A canvas the pass copies the drawn view into, for a window that shows the view as a still picture
+   *  while it moves (the mission book's turning leaf). Sized by the pass to the clip in device px. */
+  readonly still?: HTMLCanvasElement;
 }
 
 /** The retained world layers a view re-culls to its own camera, and the main frame's culls it restores. */
@@ -121,9 +124,23 @@ export class MapViewLayer {
             keep,
           }),
       );
+      if (view.still !== undefined) this.copyStill(view.still, x, y, w, h);
     } finally {
       if (solo === undefined) world.restore();
     }
+  }
+
+  /** Copy the region just drawn out of the canvas. The drawing buffer still holds it within this task,
+   *  before the frame is presented. */
+  private copyStill(still: HTMLCanvasElement, x: number, y: number, w: number, h: number): void {
+    const resolution = this.app.renderer.resolution;
+    const width = Math.round(w * resolution);
+    const height = Math.round(h * resolution);
+    if (still.width !== width) still.width = width;
+    if (still.height !== height) still.height = height;
+    still
+      .getContext('2d')
+      ?.drawImage(this.app.canvas, x * resolution, y * resolution, width, height, 0, 0, width, height);
   }
 }
 

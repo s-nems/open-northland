@@ -80,14 +80,21 @@ function views(icons: readonly HypertextUserIcon[], ctx: FlowContext): string {
   return `<div class="on-book__views on-book__views--${across}">${cells.join('')}</div>`;
 }
 
+/** The class that keeps the author's empty lines before a segment. */
+const spaceClass = (s: BookSegment): string => (s.space === undefined ? '' : ` on-book__space--${s.space}`);
+
 function paragraph(s: Extract<BookSegment, { kind: 'para' }>, first: boolean): string {
   const text = escapeHtml(s.text).replace(/\n/g, '<br>');
-  const align = s.align === 'left' ? '' : ` on-book__p--${s.align}`;
+  const classes = ['on-book__p'];
+  if (first && s.link === null && (s.align === 'left' || s.align === 'justify'))
+    classes.push('on-book__p--first');
+  if (s.align !== 'left') classes.push(`on-book__p--${s.align}`);
+  if (s.tone !== null) classes.push(`on-book__p--${s.tone}`);
   const body =
     s.link === null
       ? text
       : `<button type="button" class="on-book__jump" data-jump="${escapeHtml(s.link)}">${text}</button>`;
-  return `<p class="on-book__p${first && s.link === null && s.align === 'left' ? ' on-book__p--first' : ''}${align}">${body}</p>`;
+  return `<p class="${classes.join(' ')}${spaceClass(s)}">${body}</p>`;
 }
 
 function speech(s: Extract<BookSegment, { kind: 'speech' }>, ctx: FlowContext): string {
@@ -99,7 +106,7 @@ function speech(s: Extract<BookSegment, { kind: 'speech' }>, ctx: FlowContext): 
   const classes = ['on-book__speech'];
   if (s.portrait !== null) classes.push('on-book__speech--face');
   if (s.text.length <= SHORT_SPEECH) classes.push('on-book__speech--keep');
-  return `<div class="${classes.join(' ')}">${face}<p>${who}${escapeHtml(s.text)}</p></div>`;
+  return `<div class="${classes.join(' ')}${spaceClass(s)}">${face}<p>${who}${escapeHtml(s.text)}</p></div>`;
 }
 
 /** The segments as one flowing column; the first narration opens with a drop capital. */
@@ -109,7 +116,7 @@ export function flowMarkup(page: BookPage, ctx: FlowContext): string {
   for (const s of page.segments) {
     switch (s.kind) {
       case 'heading':
-        out.push(`<h4 class="on-book__sub">${escapeHtml(s.text)}</h4>`);
+        out.push(`<h4 class="on-book__sub${spaceClass(s)}">${escapeHtml(s.text)}</h4>`);
         break;
       case 'para':
         out.push(paragraph(s, first));
@@ -126,7 +133,7 @@ export function flowMarkup(page: BookPage, ctx: FlowContext): string {
         out.push(views(s.icons, ctx));
         break;
       case 'signature':
-        out.push(`<p class="on-book__sign">${escapeHtml(s.text)}</p>`);
+        out.push(`<p class="on-book__sign${spaceClass(s)}">${escapeHtml(s.text)}</p>`);
         break;
     }
   }

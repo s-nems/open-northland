@@ -4112,7 +4112,7 @@ body.on-drag-scroll-cursor-hidden * {
   mask-repeat: no-repeat;
   mask-composite: exclude;
 }
-/* The rails' knot and corners stand outside the cover, which the world views' holes mask. */
+/* The rails' knot stands outside the cover, which the world views' holes mask. */
 .on-hud .on-book__trim {
   position: absolute;
   inset: 0;
@@ -4120,22 +4120,6 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-book__trim .on-window__knot {
   top: -20px;
-}
-.on-hud .on-book__trim .on-window__corner--tl,
-.on-hud .on-book__trim .on-window__corner--bl {
-  left: -16px;
-}
-.on-hud .on-book__trim .on-window__corner--tr,
-.on-hud .on-book__trim .on-window__corner--br {
-  right: -16px;
-}
-.on-hud .on-book__trim .on-window__corner--tl,
-.on-hud .on-book__trim .on-window__corner--tr {
-  top: -16px;
-}
-.on-hud .on-book__trim .on-window__corner--bl,
-.on-hud .on-book__trim .on-window__corner--br {
-  bottom: -16px;
 }
 .on-hud .on-book__close {
   position: absolute;
@@ -4255,7 +4239,7 @@ body.on-drag-scroll-cursor-hidden * {
   column-width: var(--book-win);
   column-gap: 60px;
   column-fill: auto;
-  font: 400 14.5px / 1.5 var(--font-body);
+  font: 400 14px / 1.5 var(--font-body);
 }
 .on-hud .on-book__window--blank .on-book__flow {
   visibility: hidden;
@@ -4291,7 +4275,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-book__title {
   margin: 0;
-  font: 700 20px / 1.15 var(--font-title);
+  font: 700 19.5px / 1.15 var(--font-title);
   letter-spacing: 0.02em;
   color: #3a2a18;
 }
@@ -4318,6 +4302,25 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-book__p--right {
   text-align: right;
+}
+.on-hud .on-book__p--justify {
+  text-align: justify;
+  hyphens: auto;
+}
+.on-hud .on-book__p--red {
+  color: var(--book-red);
+}
+.on-hud .on-book__p--dimmed {
+  color: var(--ink-muted);
+}
+/* The author's empty lines: none keeps the next line close under the last, two or more open a section. */
+.on-hud
+  .on-book__flow
+  > :is(.on-book__p, .on-book__speech, .on-book__sub, .on-book__sign):has(+ .on-book__space--tight) {
+  margin-bottom: 0;
+}
+.on-hud .on-book__flow > .on-book__space--wide {
+  margin-top: 1.4em;
 }
 .on-hud .on-book__p--first::first-letter {
   float: left;
@@ -4470,9 +4473,14 @@ body.on-drag-scroll-cursor-hidden * {
   display: block;
   border: 1px solid #3a2a18;
 }
-/* While a leaf turns no hole is cut; the lens stands dark until it lies still. */
-.on-hud :is(.on-book__spread--turning, .on-book__leaves) .on-book__lens {
+/* On a turning leaf a view shows its last still, dark until one is painted. */
+.on-hud .on-book__leaves .on-book__lens {
   background: #1d2420;
+}
+.on-hud .on-book__still {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .on-hud .on-book__go {
   position: absolute;
@@ -4716,7 +4724,7 @@ body.on-drag-scroll-cursor-hidden * {
   gap: 10px;
   align-items: start;
   padding: 7px 0;
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.35;
   border-bottom: 1px dotted #8d754966;
 }
@@ -4820,7 +4828,7 @@ body.on-drag-scroll-cursor-hidden * {
   text-align: right;
 }
 .on-hud .on-book__toc-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
 }
 .on-hud .on-book__toc-derived {
@@ -4840,7 +4848,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-book__preview {
   margin: 14px 0 12px;
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .on-hud .on-book__preview-art {
@@ -4875,7 +4883,7 @@ body.on-drag-scroll-cursor-hidden * {
   border: 0;
   background: none;
   color: var(--book-red);
-  font: 700 14px var(--font-body);
+  font: 700 13.5px var(--font-body);
   text-decoration: underline;
   text-underline-offset: 3px;
 }

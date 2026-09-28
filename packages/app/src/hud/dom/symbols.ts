@@ -7,13 +7,11 @@ export const HUD_SYMBOLS = `<svg aria-hidden="true" width="0" height="0" style="
 <linearGradient id="on-pawn-wood"><stop stop-color="#debe83"/><stop offset=".55" stop-color="#a4804d"/><stop offset="1" stop-color="#61482d"/></linearGradient>
 </defs></svg>`;
 
+/** The knot on a window's top rail. */
+export const WINDOW_KNOT = '<svg aria-hidden="true" class="on-window__knot"><use href="#on-knot"/></svg>';
+
 /** The four knot corners and the top knot every framed window carries. */
-export const WINDOW_ORNAMENTS = `<svg aria-hidden="true" class="on-window__knot"><use href="#on-knot"/></svg>${[
-  'tl',
-  'tr',
-  'bl',
-  'br',
-]
+export const WINDOW_ORNAMENTS = `${WINDOW_KNOT}${['tl', 'tr', 'bl', 'br']
   .map(
     (corner) =>
       `<svg aria-hidden="true" class="on-window__corner on-window__corner--${corner}"><use href="#on-corner"/></svg>`,

@@ -4,6 +4,8 @@ import type { ViewSlot } from './markup.js';
 
 /** One world view the open book shows: its box and the part of it inside the page, in client px. */
 export interface BookView {
+  /** The view's slot in the page's flow (`data-view`). */
+  readonly slot: number;
   readonly box: ClientRect;
   readonly clip: ClientRect;
   /** The box's width in design px, which sets the world's scale in it. */
@@ -14,6 +16,8 @@ export interface BookView {
   readonly focusY: number;
   readonly zoom: number;
   readonly soloFill?: number;
+  /** A canvas the renderer copies the drawn view into this frame. */
+  readonly still?: HTMLCanvasElement;
 }
 
 function intersect(a: ClientRect, b: ClientRect): ClientRect | null {
@@ -36,7 +40,8 @@ export function measureViews(
 ): readonly BookView[] {
   const views: BookView[] = [];
   for (const lens of spread.querySelectorAll<HTMLElement>('.on-book__lens')) {
-    const slot = slots[Number(lens.parentElement?.dataset.view)];
+    const index = Number(lens.parentElement?.dataset.view);
+    const slot = slots[index];
     const win = lens.closest<HTMLElement>('.on-book__window');
     const target = slot?.icon.target ?? null;
     if (slot === undefined || target === null || win === null) continue;
@@ -53,6 +58,7 @@ export function measureViews(
     const designW = lens.clientWidth;
     const designH = lens.clientHeight;
     views.push({
+      slot: index,
       box,
       clip,
       designW,
