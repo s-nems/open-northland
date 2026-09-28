@@ -104,7 +104,7 @@ describe('the mission book`s pause', () => {
     expect(holds).toEqual([]);
   });
 
-  it('shows a chapter without the paused banner on a shared clock', () => {
+  it('shows a chapter without dimming the map on a shared clock', () => {
     const { mission, openings } = mount(false);
     mission.showPage(PAGE);
     expect(openings.at(-1)).toMatchObject({ arrival: true, paused: false });

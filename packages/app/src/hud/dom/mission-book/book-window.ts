@@ -29,9 +29,9 @@ const BOOK_MARGIN = 16;
 const TAB_REACH = 44;
 /** One wheel turn per this many ms, so a trackpad's burst turns one page, not ten. */
 const WHEEL_TURN_MS = 280;
-/** The leaf's turn (foundation.css, `on-book-leaf`) and a frame's margin, after which the world views
+/** The leaf's flip (foundation.css, `on-book-flip`) and a frame's margin, after which the world views
  *  are cut in again. */
-const LEAF_TURN_MS = 340;
+const LEAF_TURN_MS = 620;
 
 export type BookTab = 'brief' | 'goals' | 'history';
 const TABS: readonly BookTab[] = ['brief', 'goals', 'history'];
@@ -59,7 +59,7 @@ export interface BookWindowDeps {
   readonly onShowOnMap: (target: MapViewTarget) => void;
   /** The goal changes the player has not seen yet, which count as seen once the goal page shows them. */
   readonly takeGoalMarks: () => ReadonlyMap<string, GoalMark>;
-  /** The close medallion or the resume button closed the book. */
+  /** The close medallion closed the book. */
   readonly onDismiss: () => void;
   readonly cue: (cue: UiCue) => void;
 }
@@ -68,7 +68,8 @@ export interface BookWindowDeps {
  *  reader stood. */
 export interface BookOpening {
   readonly reading: BookReading;
-  /** A script delivered this chapter: it is marked new, and with `paused` the game waits behind it. */
+  /** A script delivered this chapter: it is marked new, and with `paused` the map dims behind it while
+   *  the game waits. */
   readonly arrival: boolean;
   readonly paused: boolean;
 }
@@ -87,13 +88,25 @@ export interface BookWindow {
   dispose(): void;
 }
 
-const svgTurn = (direction: -1 | 1): string =>
-  direction < 0
-    ? '<svg viewBox="0 0 20 20" class="on-book__ico"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    : '<svg viewBox="0 0 20 20" class="on-book__ico"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const PLAY =
-  '<svg viewBox="0 0 20 20" class="on-book__ico"><path d="M6 4l10 6-10 6z" fill="currentColor"/></svg>';
-const TURN_CLASS = { [-1]: 'on-book__spread--turn-prev', 1: 'on-book__spread--turn-next' } as const;
+/** The page's lower corner curled up with an arrow on the flap, drawn for the right page; the left
+ *  page's corner mirrors it. The gradients shade the page under the fold and light the flap. */
+const curl = (direction: -1 | 1): string => {
+  const id = `on-curl-${direction < 0 ? 'prev' : 'next'}`;
+  return `<svg viewBox="0 0 64 64" class="on-book__curl" aria-hidden="true"><defs>
+    <linearGradient id="${id}-under" gradientUnits="userSpaceOnUse" x1="45" y1="45" x2="64" y2="64"><stop offset="0" stop-color="#4a3824"/><stop offset="0.55" stop-color="#9c8558"/><stop offset="1" stop-color="#b8a274"/></linearGradient>
+    <linearGradient id="${id}-flap" gradientUnits="userSpaceOnUse" x1="45" y1="45" x2="29" y2="29"><stop offset="0" stop-color="#fbf4df"/><stop offset="1" stop-color="#d9c79b"/></linearGradient>
+  </defs><g${direction < 0 ? ' transform="matrix(-1 0 0 1 64 0)"' : ''}><path d="M26 64L64 26V64Z" fill="url(#${id}-under)"/><path class="on-book__curl-flap" d="M26 64L64 26Q46 27.5 29 29Q27.5 46 26 64Z" fill="url(#${id}-flap)"/><path class="on-book__curl-fold" d="M26 64L64 26"/><path class="on-book__curl-arrow" d="M32.5 45C33 37.5 38.5 33.5 46 35.5M41.5 31.5l4.8 4-4 4.6"/></g></svg>`;
+};
+const TURNING = 'on-book__spread--turning';
+
+/** A page of the spread as it stood, and where it stands on the book in design px. */
+interface PageShot {
+  readonly page: HTMLElement;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
 
 const goalsKeyOf = (goals: readonly MissionGoal[]): string =>
   goals.map((g) => `${g.key}:${g.state}:${g.text}`).join('\n');
@@ -107,7 +120,8 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   scene.innerHTML = `<div class="on-book-scene__dim"></div>
     <section class="on-book" aria-label="${escapeHtml(copy.title)}">
       <div class="on-book__shadow"></div>
-      <div class="on-book__cover">${WINDOW_ORNAMENTS}</div>
+      <div class="on-book__cover"></div>
+      <div class="on-book__trim">${WINDOW_ORNAMENTS}</div>
       <div class="on-book__tabs" role="tablist" aria-label="${escapeHtml(copy.tabsLabel)}">${TABS.map(
         (t) =>
           `<button type="button" role="tab" class="on-book__tab" data-tab="${t}" aria-selected="false"><span>${escapeHtml(copy.tabs[t])}${
@@ -115,26 +129,27 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
           }</span></button>`,
       ).join('')}</div>
       <div class="on-book__spread"></div>
-      <p class="on-book__paused" role="status" hidden><span class="on-book__paused-bars"></span>${escapeHtml(copy.paused)}</p>
+      <div class="on-book__leaves" inert></div>
       <button type="button" class="on-medallion on-book__close" aria-label="${escapeHtml(messages().hud.shell.close)}">${GLYPH.close}</button>
     </section>`;
   const book = scene.querySelector<HTMLElement>('.on-book');
   const cover = scene.querySelector<HTMLElement>('.on-book__cover');
   const spreadEl = scene.querySelector<HTMLElement>('.on-book__spread');
-  const pausedEl = scene.querySelector<HTMLElement>('.on-book__paused');
+  const leaves = scene.querySelector<HTMLElement>('.on-book__leaves');
   const goalCount = scene.querySelector<HTMLElement>('.on-tab__count');
   const dim = scene.querySelector<HTMLElement>('.on-book-scene__dim');
   if (
     book === null ||
     cover === null ||
     spreadEl === null ||
-    pausedEl === null ||
+    leaves === null ||
     goalCount === null ||
     dim === null
   ) {
     throw new Error('mission book: markup');
   }
   deps.plane.append(scene);
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   let reading: BookReading = { tab: 'brief', chapter: 0, spread: 0, table: null, pick: 0 };
   /** A chapter to land on its last spread once it is laid out (turning back into it). */
@@ -182,15 +197,10 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     const col = (side: 'left' | 'right'): string =>
       `<div class="on-book__window on-book__window--${side}" data-col="${side}"><div class="on-book__flow">${head}${flow}<p class="on-book__fin" aria-hidden="true">❦</p></div></div>`;
     return `<div class="on-book__page on-book__page--left">${col('left')}<p class="on-book__folio" data-folio="left"></p>
-        <button type="button" class="on-book__corner on-book__corner--prev" data-turn="-1">${svgTurn(-1)}</button></div>
+        <button type="button" class="on-book__corner on-book__corner--prev" data-turn="-1">${curl(-1)}</button></div>
       <div class="on-book__page on-book__page--right">${col('right')}<div class="on-book__foot">${foot}</div>
-        <button type="button" class="on-book__corner on-book__corner--next" data-turn="1">${svgTurn(1)}</button></div>`;
+        <button type="button" class="on-book__corner on-book__corner--next" data-turn="1">${curl(1)}</button></div>`;
   };
-
-  const resumeButton = (): string =>
-    arrival && !pausedEl.hidden
-      ? `<button type="button" class="on-button on-button--accent on-book__resume" data-close>${PLAY}${escapeHtml(copy.resume)}</button>`
-      : '<span></span>';
 
   const briefMarkup = (): string => {
     const count = chapters().length;
@@ -214,7 +224,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
         ? `<p class="on-book__p">${escapeHtml(copy.noBriefing)}</p>`
         : flowMarkup(page, flowContext());
     const foot = `<span class="on-book__foot-chapter">${escapeHtml(formatMessage(copy.chapterOf, { n: index + 1, count }))}</span>
-      <span class="on-book__folio" data-folio="right"></span>${resumeButton()}`;
+      <span class="on-book__folio" data-folio="right"></span><span></span>`;
     return readingSpread(head, flow, foot);
   };
 
@@ -333,6 +343,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
 
   const render = (): void => {
     slots = [];
+    leaves.replaceChildren();
     const goals = deps.goals();
     goalsShown = goals;
     goalsKey = goalsKeyOf(goals);
@@ -375,10 +386,75 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     return true;
   };
 
+  /** The spread's two pages as they stand now, copied, so a turn can lift the old ones over the new. */
+  const shootPages = (): { readonly left: PageShot; readonly right: PageShot } | null => {
+    const shot = (side: 'left' | 'right'): PageShot | null => {
+      const page = spreadEl.querySelector<HTMLElement>(`.on-book__page--${side}`);
+      if (page === null) return null;
+      const copied = page.cloneNode(true);
+      if (!(copied instanceof HTMLElement)) return null;
+      return {
+        page: copied,
+        x: spreadEl.offsetLeft + page.offsetLeft,
+        y: spreadEl.offsetTop + page.offsetTop,
+        w: page.offsetWidth,
+        h: page.offsetHeight,
+      };
+    };
+    const left = shot('left');
+    const right = shot('right');
+    return left === null || right === null ? null : { left, right };
+  };
+
+  /** A page copy on its own piece of the painted vellum, placed at `x`, `y` in its parent. */
+  const leafSide = (shot: PageShot, className: string, x: number, y: number): HTMLElement => {
+    const node = document.createElement('div');
+    node.className = className;
+    Object.assign(node.style, {
+      left: `${x}px`,
+      top: `${y}px`,
+      width: `${shot.w}px`,
+      height: `${shot.h}px`,
+      backgroundPosition: `${-shot.x}px ${-shot.y}px`,
+    });
+    node.append(shot.page);
+    return node;
+  };
+
+  /** Lift the old page on the turned side and flip it over the gutter onto the other side, where its
+   *  back is the new page there; the other old page lies under it until it lands. */
+  const flip = (direction: -1 | 1, before: { readonly left: PageShot; readonly right: PageShot }): void => {
+    leaves.replaceChildren();
+    if (calm.matches) return;
+    const after = shootPages();
+    if (after === null) return;
+    const lifted = direction > 0 ? before.right : before.left;
+    const lying = direction > 0 ? before.left : before.right;
+    const back = direction > 0 ? after.left : after.right;
+    const gutter = (before.left.x + before.left.w + before.right.x) / 2;
+    const leaf = document.createElement('div');
+    leaf.className = `on-book__leaf on-book__leaf--${direction > 0 ? 'next' : 'prev'}`;
+    Object.assign(leaf.style, {
+      left: `${lifted.x}px`,
+      top: `${lifted.y}px`,
+      width: `${lifted.w}px`,
+      height: `${lifted.h}px`,
+      transformOrigin: `${gutter - lifted.x}px 50%`,
+    });
+    // The back is turned over on the leaf (foundation.css), so the flip lands it where the new page
+    // stands.
+    leaf.append(
+      leafSide(lifted, 'on-book__side on-book__side--front', 0, 0),
+      leafSide(back, 'on-book__side on-book__side--back', 0, 0),
+    );
+    leaves.append(leafSide(lying, 'on-book__side', lying.x, lying.y), leaf);
+  };
+
   /** The leaf lies still: the world views are cut in again. */
   const settle = (): void => {
     turning = null;
-    spreadEl.classList.remove(TURN_CLASS[-1], TURN_CLASS[1]);
+    leaves.replaceChildren();
+    spreadEl.classList.remove(TURNING);
     measureViews();
   };
 
@@ -392,6 +468,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     );
     if (to === null) return;
     deps.cue('confirm');
+    const before = shootPages();
     const crosses = !table && to.chapter !== reading.chapter;
     landLast = to.spread === 'last';
     reading = {
@@ -403,9 +480,8 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     turning = setTimeout(settle, LEAF_TURN_MS);
     if (crosses) render();
     else layout();
-    spreadEl.classList.remove(TURN_CLASS[-1], TURN_CLASS[1]);
-    void spreadEl.offsetWidth; // restart the leaf animation
-    spreadEl.classList.add(TURN_CLASS[direction]);
+    spreadEl.classList.add(TURNING);
+    if (before !== null) flip(direction, before);
   };
 
   const show = (next: Partial<BookReading>): void => {
@@ -420,7 +496,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   const onClick = (event: MouseEvent): void => {
     const target = event.target instanceof Element ? event.target : null;
     const control = target?.closest<HTMLElement>(
-      '[data-tab], [data-turn], [data-close], .on-book__close, [data-pick], [data-read], [data-jump], [data-table], [data-back], [data-view]',
+      '[data-tab], [data-turn], .on-book__close, [data-pick], [data-read], [data-jump], [data-table], [data-back], [data-view]',
     );
     if (control === null || control === undefined || !scene.contains(control)) return;
     const data = control.dataset;
@@ -432,7 +508,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     if (data.tab !== undefined) {
       const tab = TABS.find((t) => t === data.tab);
       if (tab !== undefined && tab !== reading.tab) show({ tab, table: null });
-    } else if (data.close !== undefined || control.classList.contains('on-book__close')) {
+    } else if (control.classList.contains('on-book__close')) {
       deps.onDismiss();
     } else if (data.pick !== undefined) {
       show({ pick: Number(data.pick) });
@@ -486,7 +562,6 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       arrival = opening.arrival;
       marks = new Map();
       setClass(scene, 'on-book-scene--arrival', opening.arrival && opening.paused);
-      setHidden(pausedEl, !(opening.arrival && opening.paused));
       reading = opening.reading;
       landLast = false;
       setHidden(scene, false);
@@ -498,6 +573,8 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     close(): void {
       if (turning !== null) clearTimeout(turning);
       turning = null;
+      leaves.replaceChildren();
+      spreadEl.classList.remove(TURNING);
       setHidden(scene, true);
       arrival = false;
       shownViews = [];

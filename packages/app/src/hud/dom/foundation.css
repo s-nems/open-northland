@@ -4112,23 +4112,29 @@ body.on-drag-scroll-cursor-hidden * {
   mask-repeat: no-repeat;
   mask-composite: exclude;
 }
-.on-hud .on-book__cover .on-window__knot {
+/* The rails' knot and corners stand outside the cover, which the world views' holes mask. */
+.on-hud .on-book__trim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.on-hud .on-book__trim .on-window__knot {
   top: -20px;
 }
-.on-hud .on-book__cover .on-window__corner--tl,
-.on-hud .on-book__cover .on-window__corner--bl {
+.on-hud .on-book__trim .on-window__corner--tl,
+.on-hud .on-book__trim .on-window__corner--bl {
   left: -16px;
 }
-.on-hud .on-book__cover .on-window__corner--tr,
-.on-hud .on-book__cover .on-window__corner--br {
+.on-hud .on-book__trim .on-window__corner--tr,
+.on-hud .on-book__trim .on-window__corner--br {
   right: -16px;
 }
-.on-hud .on-book__cover .on-window__corner--tl,
-.on-hud .on-book__cover .on-window__corner--tr {
+.on-hud .on-book__trim .on-window__corner--tl,
+.on-hud .on-book__trim .on-window__corner--tr {
   top: -16px;
 }
-.on-hud .on-book__cover .on-window__corner--bl,
-.on-hud .on-book__cover .on-window__corner--br {
+.on-hud .on-book__trim .on-window__corner--bl,
+.on-hud .on-book__trim .on-window__corner--br {
   bottom: -16px;
 }
 .on-hud .on-book__close {
@@ -4143,35 +4149,6 @@ body.on-drag-scroll-cursor-hidden * {
   width: 17px;
   height: 17px;
   stroke-width: 2.2;
-}
-.on-hud .on-book__paused {
-  position: absolute;
-  left: 50%;
-  top: 14px;
-  z-index: 3;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 0;
-  padding: 6px 16px 6px 12px;
-  border: 1px solid var(--bronze-lo);
-  border-radius: 16px;
-  background: linear-gradient(#2b2117f0, #1a1510f0);
-  color: var(--bronze-hi);
-  font: 700 12px var(--font-body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  box-shadow: 0 3px 10px #000a;
-}
-.on-hud .on-book__paused[hidden] {
-  display: none;
-}
-.on-hud .on-book__paused-bars {
-  width: 12px;
-  height: 12px;
-  background: linear-gradient(90deg, currentColor 0 4px, transparent 4px 8px, currentColor 8px 12px);
 }
 .on-hud .on-book__ico {
   width: 16px;
@@ -4278,7 +4255,7 @@ body.on-drag-scroll-cursor-hidden * {
   column-width: var(--book-win);
   column-gap: 60px;
   column-fill: auto;
-  font: 400 15.5px / 1.52 var(--font-body);
+  font: 400 14.5px / 1.5 var(--font-body);
 }
 .on-hud .on-book__window--blank .on-book__flow {
   visibility: hidden;
@@ -4288,7 +4265,7 @@ body.on-drag-scroll-cursor-hidden * {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 0;
+  margin: 0 0 6px;
   font: 700 13px var(--font-title);
   letter-spacing: 0.12em;
   color: var(--book-red);
@@ -4308,13 +4285,13 @@ body.on-drag-scroll-cursor-hidden * {
   text-transform: uppercase;
 }
 .on-hud .on-book__when {
-  margin: 3px 0 8px;
+  margin: 0 0 10px;
   font-size: 12.5px;
   color: var(--ink-muted);
 }
 .on-hud .on-book__title {
   margin: 0;
-  font: 700 21px / 1.15 var(--font-title);
+  font: 700 20px / 1.15 var(--font-title);
   letter-spacing: 0.02em;
   color: #3a2a18;
 }
@@ -4493,8 +4470,8 @@ body.on-drag-scroll-cursor-hidden * {
   display: block;
   border: 1px solid #3a2a18;
 }
-/* While the leaf turns no hole is cut; the lens stands dark until it lies still. */
-.on-hud :is(.on-book__spread--turn-next, .on-book__spread--turn-prev) .on-book__lens {
+/* While a leaf turns no hole is cut; the lens stands dark until it lies still. */
+.on-hud :is(.on-book__spread--turning, .on-book__leaves) .on-book__lens {
   background: #1d2420;
 }
 .on-hud .on-book__go {
@@ -4561,15 +4538,6 @@ body.on-drag-scroll-cursor-hidden * {
   letter-spacing: 0.08em;
   font-weight: 700;
 }
-.on-hud .on-book__resume {
-  min-height: 38px;
-  padding: 6px 16px 6px 12px;
-  font-size: 14px;
-  font-weight: 700;
-}
-.on-hud .on-book__resume .on-book__ico {
-  color: var(--bronze-hi);
-}
 .on-hud .on-book__back {
   display: inline-flex;
   align-items: center;
@@ -4585,92 +4553,138 @@ body.on-drag-scroll-cursor-hidden * {
   width: 16px;
   height: 16px;
 }
+/* The page corners: the lower corner curled up, an arrow on the flap, red when it turns into the
+   next or the previous chapter. The left page's corner is the right one mirrored. */
 .on-hud .on-book__corner {
   position: absolute;
   bottom: 0;
   z-index: 2;
-  width: 54px;
-  height: 54px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border: 0;
-  color: var(--ink);
+  color: #5c4028;
   background: none;
-}
-.on-hud .on-book__corner::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(var(--dir), #e6d7b0 0 44%, #cbb68a 50%, #9c8358 55%, transparent 56%);
-  filter: drop-shadow(0 -1px 2px #5c4c3766);
-  transition: transform 0.12s;
-}
-.on-hud .on-book__corner .on-book__ico {
-  position: absolute;
-  bottom: 9px;
-  width: 17px;
-  height: 17px;
 }
 .on-hud .on-book__corner--prev {
   left: 0;
-  --dir: 45deg;
-}
-.on-hud .on-book__corner--prev::before {
-  transform-origin: 0 100%;
-}
-.on-hud .on-book__corner--prev .on-book__ico {
-  left: 8px;
 }
 .on-hud .on-book__corner--next {
   right: 0;
-  --dir: -45deg;
 }
-.on-hud .on-book__corner--next::before {
+.on-hud .on-book__curl {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
   transform-origin: 100% 100%;
+  transition: transform 0.15s ease-out;
 }
-.on-hud .on-book__corner--next .on-book__ico {
-  right: 8px;
+.on-hud .on-book__corner--prev .on-book__curl {
+  transform-origin: 0 100%;
 }
-.on-hud .on-book__corner:hover::before {
-  transform: scale(1.18);
+.on-hud .on-book__corner:hover .on-book__curl {
+  transform: scale(1.14);
 }
-.on-hud .on-book__corner--chapter {
+.on-hud .on-book__curl-flap {
+  stroke: #8d7549;
+  stroke-width: 0.8;
+  filter: drop-shadow(-1.5px -1.5px 1.5px #3a2a1866);
+}
+.on-hud .on-book__curl-fold {
+  fill: none;
+  stroke: #fffbe9;
+  stroke-width: 1.2;
+  opacity: 0.8;
+}
+.on-hud .on-book__curl-arrow {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.on-hud .on-book__corner:hover {
+  color: #3a2a18;
+}
+.on-hud .on-book__corner--chapter,
+.on-hud .on-book__corner--chapter:hover {
   color: var(--book-red);
-}
-.on-hud .on-book__corner--chapter::after {
-  content: "";
-  position: absolute;
-  bottom: 30px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--wax-danger);
-  box-shadow: 0 0 0 1px #4a1a10;
-}
-.on-hud .on-book__corner--prev.on-book__corner--chapter::after {
-  left: 12px;
-}
-.on-hud .on-book__corner--next.on-book__corner--chapter::after {
-  right: 12px;
 }
 .on-hud .on-book__corner:disabled {
   visibility: hidden;
 }
-/* The leaf turns in 0.32 s (`LEAF_TURN_MS` in book-window.ts waits it out). */
-.on-hud .on-book__spread--turn-next .on-book__page--right,
-.on-hud .on-book__spread--turn-prev .on-book__page--left {
-  animation: on-book-leaf 0.32s ease-out;
+
+/* A turn lifts a copy of the old page and flips it over the gutter; its back is the new page on the
+   other side. Each face is a piece of the painted vellum. The flip takes 0.6 s (`LEAF_TURN_MS` in
+   book-window.ts waits it out). */
+.on-hud .on-book__leaves {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  perspective: 2200px;
 }
-.on-hud .on-book__spread--turn-next .on-book__page--right {
-  transform-origin: 0 50%;
+.on-hud .on-book__leaf {
+  position: absolute;
+  transform-style: preserve-3d;
+  animation: on-book-flip 0.6s cubic-bezier(0.45, 0.05, 0.4, 1) both;
 }
-.on-hud .on-book__spread--turn-prev .on-book__page--left {
-  transform-origin: 100% 50%;
-  --book-leaf: 10deg;
+.on-hud .on-book__leaf--next {
+  --leaf-to: -180deg;
 }
-@keyframes on-book-leaf {
+.on-hud .on-book__leaf--prev {
+  --leaf-to: 180deg;
+}
+@keyframes on-book-flip {
   from {
-    transform: perspective(1400px) rotateY(var(--book-leaf, -10deg));
-    filter: brightness(0.86);
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(var(--leaf-to));
+  }
+}
+.on-hud .on-book__side {
+  position: absolute;
+  overflow: hidden;
+  background: url("../../assets/ui/mission-book/spread.webp") no-repeat;
+  background-size: 990px 620px;
+  backface-visibility: hidden;
+}
+.on-hud .on-book__side > .on-book__page {
+  position: absolute;
+  inset: 0;
+}
+.on-hud .on-book__side--back {
+  transform: rotateY(180deg);
+}
+/* The leaf darkens as it rises away from the light and brightens as it lies down. */
+.on-hud .on-book__side--front::after,
+.on-hud .on-book__side--back::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #2a1d10;
+  animation: on-book-shade 0.6s ease-in both;
+}
+.on-hud .on-book__side--back::after {
+  animation-name: on-book-unshade;
+  animation-timing-function: ease-out;
+}
+@keyframes on-book-shade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+@keyframes on-book-unshade {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 0;
   }
 }
 
@@ -4702,7 +4716,7 @@ body.on-drag-scroll-cursor-hidden * {
   gap: 10px;
   align-items: start;
   padding: 7px 0;
-  font-size: 15.5px;
+  font-size: 14.5px;
   line-height: 1.35;
   border-bottom: 1px dotted #8d754966;
 }
@@ -4806,7 +4820,7 @@ body.on-drag-scroll-cursor-hidden * {
   text-align: right;
 }
 .on-hud .on-book__toc-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
 }
 .on-hud .on-book__toc-derived {
@@ -4826,7 +4840,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-book__preview {
   margin: 14px 0 12px;
-  font-size: 15.5px;
+  font-size: 14.5px;
   line-height: 1.5;
 }
 .on-hud .on-book__preview-art {
@@ -4861,7 +4875,7 @@ body.on-drag-scroll-cursor-hidden * {
   border: 0;
   background: none;
   color: var(--book-red);
-  font: 700 15px var(--font-body);
+  font: 700 14px var(--font-body);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -5125,7 +5139,7 @@ body.on-drag-scroll-cursor-hidden * {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .on-hud :is(.on-book__page, .on-slip__sheet, .on-book__seal, .on-action__mark) {
+  .on-hud :is(.on-slip__sheet, .on-book__seal, .on-action__mark) {
     animation: none;
   }
 }

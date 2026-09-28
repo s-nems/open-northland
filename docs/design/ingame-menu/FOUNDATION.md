@@ -509,8 +509,10 @@ size and shrinks whole on a screen that cannot hold it.
 - Only what the map provides: the page's text, its pictures, its world views and its goals. No
   narration, and a page the author left untitled gets no invented title; the book prints its chapter
   number and the map's name over it.
-- A chapter's text flows across both pages in columns and is turned, not scrolled: the page corners
-  turn a spread and at a chapter's end step into the next chapter, and so does the wheel. Pictures
+- A chapter's text flows across both pages in columns and is turned, not scrolled: the curled page
+  corners turn a spread and at a chapter's end step into the next chapter (the arrow turns red), and
+  so does the wheel. The turned page lifts and flips over the gutter, its back the new page there;
+  reduced motion turns without the flip. Pictures
   and world views stand inside the text where the page places them; a narrow picture is a portrait,
   an oval beside the quote that follows it. A page whose prose the author centred as a whole is set
   flush left; a few centred lines (captions, a table's entries, links) stay centred.
@@ -523,12 +525,13 @@ size and shrinks whole on a screen that cannot hold it.
 - Kronika lists the chapters delivered so far, a preview of the picked one and its "Czytaj", and the
   history tables the game ships, read in the same book with their links.
 - A script's chapter opens the book on it marked "Nowy rozdział", dims the map and holds the game
-  with "Gra wstrzymana · opowieść trwa" and "Wznów grę"; on a shared clock nothing is held and the
-  banner stays away. Opening the book from the beam or the slip never touches the pause.
+  until the close medallion or Escape shuts the book; the book itself says nothing about the pause.
+  On a shared clock nothing is held and the map is not dimmed. Opening the book from the beam or the
+  slip never touches the pause.
 - The goal slip hangs from the top bar at the right edge, or below the script's info lines when they
   stand there: a leaf of the book's vellum (`vellum.webp`) under a strip of the cover's carved band
-(`band.webp`), with bronze fittings at its lower corners. It folds up into its band tab "Cele" with the
-open count. It lists the goals just done,
+  (`band.webp`), with bronze fittings at its lower corners. It folds up into its band tab "Cele" with
+  the open count. It lists the goals just done,
   then the open ones with the new first, up to four, and "Otwórz księgę" with the book's key. A goal
   change never unfolds it: the folded tab and the beam's Misja entry carry a wax seal until the goal
   page shows the change. The slip hides while the book is open and with the HUD.

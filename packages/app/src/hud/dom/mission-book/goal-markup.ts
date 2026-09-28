@@ -37,8 +37,11 @@ export function goalsSpread(
         : `<em class="on-book__goal-tag on-book__goal-tag--${mark}">${escapeHtml(mark === 'new' ? copy.goalNew : copy.goalDone)}</em>`;
     return `<li class="on-book__goal on-book__goal--${goal.state}">${goalMarkMarkup(goal)}<span>${tag}${goalTextMarkup(goal)}</span></li>`;
   };
-  const list = (rows: readonly MissionGoal[], empty: string): string =>
-    `<ul class="on-book__goals">${rows.map(row).join('') || `<li class="on-book__empty">${escapeHtml(empty)}</li>`}</ul>`;
+  const list = (rows: readonly MissionGoal[], empty: string | null): string => {
+    const items = rows.map(row).join('');
+    const none = items === '' && empty !== null ? `<li class="on-book__empty">${escapeHtml(empty)}</li>` : '';
+    return `<ul class="on-book__goals">${items}${none}</ul>`;
+  };
   const { current, done } = goalLists(goals);
   const name = missionName === '' ? '' : `<small> · ${escapeHtml(missionName)}</small>`;
   return `<div class="on-book__page on-book__page--left"><div class="on-book__sheet">
@@ -47,6 +50,6 @@ export function goalsSpread(
       <p class="on-book__list-head">${escapeHtml(copy.current)} · ${openGoalCount(goals)}</p>${list(current, copy.noneOpen)}
     </div><p class="on-book__folio">${escapeHtml(copy.tabs.goals)}</p></div>
     <div class="on-book__page on-book__page--right"><div class="on-book__sheet">
-      <p class="on-book__list-head">${escapeHtml(copy.done)} · ${done.length}</p>${list(done, copy.noneDone)}
+      <p class="on-book__list-head">${escapeHtml(copy.done)} · ${done.length}</p>${list(done, null)}
     </div><p class="on-book__folio">${escapeHtml(copy.tabs.goals)}</p></div>`;
 }

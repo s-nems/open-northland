@@ -80,7 +80,7 @@ export interface MissionBook extends ToolWindow {
   views(): readonly BookView[];
   /** A goal changed since the goal page last showed, which the beam and the folded slip mark. */
   unread(): boolean;
-  /** The close medallion or the resume button closed the book; the owner returns focus. */
+  /** The close medallion closed the book; the owner returns focus. */
   onDismiss(listener: () => void): void;
   dispose(): void;
 }
