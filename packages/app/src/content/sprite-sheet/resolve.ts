@@ -29,9 +29,11 @@ export async function resolveSpriteSheet(
   goods: readonly GoodRef[] = [],
   /** The civilizations this world fields; each brings its own building and settler pages. */
   tribes?: WorldTribes,
+  /** Tribes that need settler looks but no building pages. */
+  extraCharacterTribes?: readonly number[],
 ): Promise<SpriteSheet> {
   try {
-    return await loadHumanSpriteSheet(goods, tribes);
+    return await loadHumanSpriteSheet(goods, tribes, extraCharacterTribes);
   } catch (err) {
     if (!(err instanceof MissingAtlasError)) throw err;
     diag.warn(

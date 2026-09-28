@@ -867,6 +867,9 @@ export const enGame = {
     camera: 'Camera',
     warriors: 'Warriors',
     civilians: 'Civilians',
+    creatures: 'Monsters',
+    creaturesHint:
+      'Owner and HP apply. Monsters use natural weapons; armor stays unset. Their graphics load when admin tools are on at game start.',
     vehicles: 'Vehicles',
     animals: 'Wildlife',
     resources: 'Resource nodes',
@@ -908,6 +911,22 @@ export const enGame = {
       longbow: 'Longbow archer',
       civilian: 'Civilian',
       carrier: 'Carrier',
+    },
+    creaturesCatalog: {
+      weresnake: 'Weresnake',
+      werewolf: 'Werewolf',
+      weresnakeSheep: 'Weresnake · sheep form',
+      weresnakeChicken: 'Weresnake · chicken form',
+      weresnakeLion: 'Weresnake · lion form',
+      weresnakeWolf: 'Weresnake · wolf form',
+      weresnakeBear: 'Weresnake · bear form',
+    },
+    wildlifeCatalog: {
+      8: 'Brown bears',
+      18: 'Polar bears',
+      20: 'Wolves',
+      25: 'Lions',
+      26: 'Lionesses',
     },
     actionsCatalog: {
       kill: 'Kill unit',

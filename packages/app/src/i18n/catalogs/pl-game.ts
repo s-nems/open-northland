@@ -848,6 +848,9 @@ export const plGame = {
     camera: 'Kamera',
     warriors: 'Wojownicy',
     civilians: 'Cywile',
+    creatures: 'Potwory',
+    creaturesHint:
+      'Właściciel i PW obowiązują. Potwory używają naturalnej broni; pancerz pozostaje pusty. Ich grafika wczytuje się, gdy narzędzia admina są włączone przy starcie gry.',
     vehicles: 'Wehikuły',
     animals: 'Zwierzęta',
     resources: 'Złoża surowców',
@@ -889,6 +892,22 @@ export const plGame = {
       longbow: 'Łucznik z długim łukiem',
       civilian: 'Cywil',
       carrier: 'Tragarz',
+    },
+    creaturesCatalog: {
+      weresnake: 'Wężoczłowiek',
+      werewolf: 'Wilkołak',
+      weresnakeSheep: 'Wężoczłowiek · postać owcy',
+      weresnakeChicken: 'Wężoczłowiek · postać kury',
+      weresnakeLion: 'Wężoczłowiek · postać lwa',
+      weresnakeWolf: 'Wężoczłowiek · postać wilka',
+      weresnakeBear: 'Wężoczłowiek · postać niedźwiedzia',
+    },
+    wildlifeCatalog: {
+      8: 'Niedźwiedzie brunatne',
+      18: 'Niedźwiedzie polarne',
+      20: 'Wilki',
+      25: 'Lwy',
+      26: 'Lwice',
     },
     actionsCatalog: {
       kill: 'Zabij jednostkę',

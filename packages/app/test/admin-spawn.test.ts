@@ -39,6 +39,8 @@ import { resourceCommand } from '../src/game/sandbox/place/index.js';
 import {
   ADMIN_DROP_AMOUNT,
   CIVILIAN_PRESETS,
+  CREATURE_PRESETS,
+  creatureSpawnCommand,
   goodDropCommand,
   RESOURCE_ENTRIES,
   unitSpawnCommand,
@@ -58,6 +60,34 @@ describe('admin spawn command mapping', () => {
   const civilian = CIVILIAN_PRESETS.find((p) => p.id === 'civilian');
   // The running content's goods table the palette resolves weapon-good slugs against.
   const sandboxGoods = sandboxContent(grassTerrain(4, 4)).goods;
+
+  it('spawns each creature with its fixed tribe and form, selected owner and natural weapon', () => {
+    expect(CREATURE_PRESETS.map(({ tribe, jobType }) => [tribe, jobType])).toEqual([
+      [5, 31],
+      [6, 31],
+      [5, 16],
+      [5, 18],
+      [5, 32],
+      [5, 33],
+      [5, 35],
+    ]);
+    for (const preset of CREATURE_PRESETS) {
+      expect(creatureSpawnCommand(preset, { player: 1, hitpoints: 0, x: 7, y: 9 })).toEqual({
+        kind: 'spawnSettler',
+        jobType: preset.jobType,
+        tribe: preset.tribe,
+        owner: 1,
+        x: 7,
+        y: 9,
+      });
+    }
+    const first = CREATURE_PRESETS[0];
+    if (first === undefined) throw new Error('missing creature preset');
+    expect(creatureSpawnCommand(first, { player: 2, hitpoints: 8400, x: 1, y: 2 })).toMatchObject({
+      owner: 2,
+      hitpoints: 8400,
+    });
+  });
 
   it('a warrior spawns with its class weapon (combat + equipment slot), chosen owner, HP and armor', () => {
     if (sword === undefined) throw new Error('missing sword preset');

@@ -100,6 +100,8 @@ export async function loadHumanSpriteSheet(
   /** The civilizations this world fields; each brings its own building and settler pages, so only the
    *  ones actually placed are loaded. */
   tribes: WorldTribes = [VIKING_TRIBE],
+  /** Tribes that need settler looks but no building pages: the admin panel's spawnable monsters. */
+  extraCharacterTribes: readonly number[] = [],
 ): Promise<SpriteSheet> {
   // This sheet's own body/head layers draw no cast shadow - a settler's silhouette rides its per-job
   // character look - so their fetches start before the IR await; the tree/house/family loads wait for
@@ -122,14 +124,18 @@ export async function loadHumanSpriteSheet(
   // recolourable indexed atlas drawn through it per player; without it they fall back to the baked-palette
   // characters and draw single-coloured. One indexed atlas plus one LUT serve every player.
   const lut = await loadPlayerLut();
-  // With the LUT every body loads as the one recolourable atlas; without it each keeps its own authored
-  // skin, which for several tribe bodies is the only one decoded (`cr_hum_body_78.egypt_soldier`).
+  // With the LUT every human body loads as the one recolourable atlas; without it each keeps its own
+  // authored skin, which for several tribe bodies is the only one decoded (`cr_hum_body_78.egypt_soldier`).
   const characterPalette = lut !== undefined ? INDEXED_CHARACTER_PALETTE : undefined;
   // Per-job characters (the `[jobbasegraphics]` join): a missing extra body degrades per look, never
   // failing the sheet, and `undefined` keeps the legacy single-body settler path. The wildlife looks have
   // no resolution path without the human characters, so they attach only when that set built.
+  const characterTribes: WorldTribes = [
+    tribes[0],
+    ...new Set([...tribes.slice(1), ...extraCharacterTribes].filter((tribe) => tribe !== tribes[0])),
+  ];
   const [humanCharacters, animalCharacters] = await Promise.all([
-    loadCharacters(ir, goods, characterPalette, tribes),
+    loadCharacters(ir, goods, characterPalette, characterTribes),
     loadAnimalCharacters(ir),
   ]);
   const characters =

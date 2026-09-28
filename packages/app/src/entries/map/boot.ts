@@ -12,6 +12,7 @@ import {
 } from '@open-northland/render';
 import type { MatchRulesView, SaveGame, SaveGameHeader } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
+import { MONSTER_TRIBES } from '../../catalog/creatures.js';
 import { loadAmbientCreatures } from '../../content/animal-gfx/index.js';
 import { loadGroundWaves } from '../../content/ground-waves.js';
 import { loadIr } from '../../content/ir/load.js';
@@ -185,8 +186,13 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     const tribes = worldTribes(script, loaded?.entities, ir ?? {});
     await boot.begin('sprites');
     const goods = realContent?.content.goods ?? sandboxGoods();
+    // The admin panel's monster presets draw only with their looks loaded; those pages are large, so they
+    // load when the admin tools were on at game start.
+    const adminCharacterTribes = readStoredSettings().debugToolsEnabled ? [...MONSTER_TRIBES] : [];
     const sheet =
-      pack !== null ? await pack.spriteSheet(ir, goods, params) : await resolveSpriteSheet(goods, tribes);
+      pack !== null
+        ? await pack.spriteSheet(ir, goods, params)
+        : await resolveSpriteSheet(goods, tribes, adminCharacterTribes);
     await boot.begin('terrain');
     let terrain: TerrainTextureSet;
     try {

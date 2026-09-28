@@ -34,6 +34,8 @@ import {
   ARMOR_CLASSES,
   animalSpawnCommand,
   CIVILIAN_PRESETS,
+  CREATURE_PRESETS,
+  creatureSpawnCommand,
   type GoodEntry,
   goodDropCommand,
   PLAYER_SWATCHES,
@@ -214,9 +216,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     entries: readonly { readonly label: string; readonly armed: Armed }[],
     startOpen: boolean,
     filterHint?: string,
+    note?: string,
   ): void => {
     const section = collapsibleSection(title, entries.length, startOpen);
     const buttons = armEntries(entries);
+    if (note !== undefined) section.content.append(el('div', 'opacity:0.7;margin-bottom:6px', note));
     if (filterHint !== undefined) section.content.append(filterInput(buttons, filterHint));
     section.content.append(rowOf(buttons));
     body.append(section.wrap);
@@ -232,6 +236,16 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     copy.civilians,
     CIVILIAN_PRESETS.map((preset) => ({ label: labels.unit(preset), armed: { kind: 'unit', preset } })),
     false,
+  );
+  addPaletteSection(
+    copy.creatures,
+    CREATURE_PRESETS.map((preset) => ({
+      label: labels.creature(preset),
+      armed: { kind: 'creature', preset },
+    })),
+    false,
+    undefined,
+    copy.creaturesHint,
   );
   const vehicles = deps.vehicles ?? [];
   if (vehicles.length > 0) {
@@ -323,6 +337,10 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     if (armed.kind === 'vehicle') {
       const tribe = deps.seatTribeOf(player);
       deps.enqueue(vehicleSpawnCommand(armed.entry.vehicleType, { player, tribe, x: col, y: row }));
+      return;
+    }
+    if (armed.kind === 'creature') {
+      deps.enqueue(creatureSpawnCommand(armed.preset, { player, hitpoints, x: col, y: row }));
       return;
     }
     deps.enqueue(

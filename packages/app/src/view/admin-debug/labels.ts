@@ -2,6 +2,7 @@ import { formatMessage, type Messages, professionLabel } from '../../i18n/index.
 import type { DebugAction, DebugTargetKind } from './actions-catalog.js';
 import {
   type AnimalEntry,
+  type CreaturePreset,
   type GoodEntry,
   PLAYER_SWATCHES,
   RESOURCE_ENTRIES,
@@ -12,6 +13,7 @@ import {
 /** What the next map click will do. */
 export type Armed =
   | { readonly kind: 'unit'; readonly preset: UnitPreset }
+  | { readonly kind: 'creature'; readonly preset: CreaturePreset }
   | { readonly kind: 'vehicle'; readonly entry: VehicleEntry }
   | { readonly kind: 'animal'; readonly entry: AnimalEntry }
   | { readonly kind: 'resource'; readonly good: number }
@@ -21,6 +23,7 @@ export type Armed =
 export function sameArmed(a: Armed, b: Armed | null): boolean {
   if (b === null) return false;
   if (a.kind === 'unit' && b.kind === 'unit') return a.preset.id === b.preset.id;
+  if (a.kind === 'creature' && b.kind === 'creature') return a.preset.id === b.preset.id;
   if (a.kind === 'vehicle' && b.kind === 'vehicle') return a.entry.vehicleType === b.entry.vehicleType;
   if (a.kind === 'animal' && b.kind === 'animal') return a.entry.tribe === b.entry.tribe;
   if (a.kind === 'resource' && b.kind === 'resource') return a.good === b.good;
@@ -33,7 +36,8 @@ export interface AdminLabels {
   /** The live localized name, else the catalog id. */
   readonly good: (entry: { readonly good: number; readonly id: string }) => string;
   readonly unit: (preset: UnitPreset) => string;
-  /** The content tribe slug, not translated player copy. */
+  readonly creature: (preset: CreaturePreset) => string;
+  /** The localized species name, falling back to the content tribe slug. */
   readonly animal: (entry: AnimalEntry) => string;
   readonly action: (action: DebugAction) => string;
   readonly player: (player: number) => string;
@@ -63,7 +67,10 @@ export function createAdminLabels(
     return preset.id;
   };
   const actionLabel = (action: DebugAction): string => copy.actionsCatalog[action.id];
-  const animalLabel = (entry: AnimalEntry): string => entry.id.replace(/_/g, ' ');
+  const creatureLabel = (preset: CreaturePreset): string =>
+    copy.creaturesCatalog[preset.id as keyof typeof copy.creaturesCatalog] ?? preset.id;
+  const animalLabel = (entry: AnimalEntry): string =>
+    copy.wildlifeCatalog[entry.tribe as keyof typeof copy.wildlifeCatalog] ?? entry.id.replace(/_/g, ' ');
   const playerName = (player: number): string => messages.animation.playerColors[player] ?? String(player);
 
   const status = (armed: Armed | null, player: number): string => {
@@ -92,7 +99,12 @@ export function createAdminLabels(
     // A vehicle is owned like a unit, so its line names the seat it is dropped for too.
     const who = PLAYER_SWATCHES.find((s) => s.player === player);
     return formatMessage(copy.armedUnit, {
-      label: armed.kind === 'vehicle' ? armed.entry.label : unitLabel(armed.preset),
+      label:
+        armed.kind === 'vehicle'
+          ? armed.entry.label
+          : armed.kind === 'creature'
+            ? creatureLabel(armed.preset)
+            : unitLabel(armed.preset),
       player,
       name: who === undefined ? '?' : playerName(who.player),
     });
@@ -101,6 +113,7 @@ export function createAdminLabels(
   return {
     good: localizedGood,
     unit: unitLabel,
+    creature: creatureLabel,
     animal: animalLabel,
     action: actionLabel,
     player: playerName,

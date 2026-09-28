@@ -5,6 +5,7 @@ import { DEBUG_ACTIONS, type DebugAction } from '../src/view/admin-debug/actions
 import { type Armed, createAdminLabels, sameArmed } from '../src/view/admin-debug/labels.js';
 import {
   CIVILIAN_PRESETS,
+  CREATURE_PRESETS,
   type GoodEntry,
   type UnitPreset,
   type VehicleEntry,
@@ -53,6 +54,11 @@ describe('sameArmed', () => {
   it('matches same-kind arms by identity', () => {
     expect(sameArmed(spear, spear)).toBe(true);
     expect(sameArmed(spear, bow)).toBe(false);
+    const creature = CREATURE_PRESETS[0];
+    if (creature === undefined) throw new Error('missing creature preset');
+    expect(
+      sameArmed({ kind: 'creature', preset: creature }, { kind: 'creature', preset: { ...creature } }),
+    ).toBe(true);
     expect(sameArmed({ kind: 'resource', good: 1 }, { kind: 'resource', good: 1 })).toBe(true);
     expect(sameArmed({ kind: 'resource', good: 1 }, { kind: 'resource', good: 2 })).toBe(false);
     expect(sameArmed({ kind: 'good', good: 5 }, { kind: 'good', good: 5 })).toBe(true);
@@ -124,6 +130,22 @@ describe('createAdminLabels field labels', () => {
   it('reads a directly-labelled preset, and routes collector through the profession label', () => {
     expect(labels.unit(preset('spear'))).toBe(copy.units.spear);
     expect(labels.unit(preset('collector'))).toBe(professionLabel('collector'));
+  });
+
+  it('names creature forms and threat herds by their visible species', () => {
+    const form = CREATURE_PRESETS.find((entry) => entry.id === 'weresnakeLion');
+    if (form === undefined) throw new Error('missing lion form');
+    expect(labels.creature(form)).toBe(copy.creaturesCatalog.weresnakeLion);
+    expect(labels.status({ kind: 'creature', preset: form }, 1)).toContain(labels.player(1));
+    for (const [tribe, id] of [
+      [8, 'bears'],
+      [18, 'evil_hares'],
+      [20, 'wolves'],
+      [25, 'lions'],
+      [26, 'lionesses'],
+    ] as const) {
+      expect(labels.animal({ tribe, id })).toBe(copy.wildlifeCatalog[tribe]);
+    }
   });
 
   it('falls back to the raw player index past the color table', () => {

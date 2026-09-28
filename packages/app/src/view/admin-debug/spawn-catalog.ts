@@ -1,12 +1,16 @@
 import type { Command } from '@open-northland/sim';
+import { MONSTER_TRIBE_WERESNAKE, MONSTER_TRIBE_WEREWOLF } from '../../catalog/creatures.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_BREEDER,
   JOB_CARRIER,
   JOB_CIVILIST,
   JOB_COLLECTOR,
+  JOB_FARMER,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
 } from '../../catalog/jobs.js';
@@ -94,6 +98,38 @@ export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
   { id: 'carrier', jobType: JOB_CARRIER },
   { id: 'collector', jobType: JOB_COLLECTOR },
 ];
+
+/** Creature bodies have fixed tribes and natural weapons; they carry no human inventory goods. */
+export interface CreaturePreset {
+  readonly id: string;
+  readonly tribe: number;
+  readonly jobType: number;
+}
+
+export const CREATURE_PRESETS: readonly CreaturePreset[] = [
+  { id: 'weresnake', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_UNARMED },
+  { id: 'werewolf', tribe: MONSTER_TRIBE_WEREWOLF, jobType: JOB_SOLDIER_UNARMED },
+  { id: 'weresnakeSheep', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_BREEDER },
+  { id: 'weresnakeChicken', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_FARMER },
+  { id: 'weresnakeLion', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_SPEAR_WOODEN },
+  { id: 'weresnakeWolf', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_SPEAR },
+  { id: 'weresnakeBear', tribe: MONSTER_TRIBE_WERESNAKE, jobType: JOB_SOLDIER_BROADSWORD },
+];
+
+export function creatureSpawnCommand(
+  preset: CreaturePreset,
+  opts: Pick<UnitSpawnOptions, 'player' | 'hitpoints' | 'x' | 'y'>,
+): Command {
+  return {
+    kind: 'spawnSettler',
+    jobType: preset.jobType,
+    x: opts.x,
+    y: opts.y,
+    tribe: preset.tribe,
+    owner: opts.player,
+    ...(opts.hitpoints > 0 ? { hitpoints: opts.hitpoints } : {}),
+  };
+}
 
 /** One spawnable species: its tribe plus the tribe's content id. */
 export interface AnimalEntry {
