@@ -3,7 +3,7 @@ import type { Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
 import type { UiString } from '../../content/gui-gfx.js';
 import type { Rect } from '../geometry.js';
-import type { ParagraphAlign, ParagraphFace, ParagraphRun, TextRun } from '../text-run.js';
+import type { ParagraphRun, TextRun } from '../text-run.js';
 import type { ToolPanelLayout } from './layout.js';
 
 /** The original bitmap fills the pop-up windows tile for the wood look; `undefined` when `content/` is
@@ -23,16 +23,7 @@ export interface PanelContext {
   /** The caller owns placement and destruction; `px` overrides the default body size in design px. */
   readonly makeText: (text: string, color: FontColorName, px?: number) => TextRun;
   /** A word-wrapped block at `px`, wrapped to `wrapWidth` design px; the caller owns it like a run. */
-  readonly makeParagraph: (
-    text: string,
-    color: FontColorName,
-    px: number,
-    wrapWidth: number,
-    align?: ParagraphAlign,
-    face?: ParagraphFace,
-  ) => ParagraphRun;
-  /** The same context re-based to `scale`, for a window sized by something other than the HUD. */
-  readonly atScale: (scale: number) => PanelContext;
+  readonly makeParagraph: (text: string, color: FontColorName, px: number, wrapWidth: number) => ParagraphRun;
   readonly bitmaps: PanelBitmaps;
   /** Prefer the decoded UI string for `(table, id)`, else the pinned fallback label. */
   readonly uiString: UiString;

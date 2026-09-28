@@ -76,7 +76,6 @@ function stubContext(overlayReserve?: () => Rect | null): {
       cues.push(cue);
     },
     ...(overlayReserve !== undefined ? { overlayReserve } : {}),
-    atScale: (scale) => ({ ...ctx, scale }),
   };
   return { ctx, made, cues };
 }

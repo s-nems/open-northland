@@ -375,7 +375,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     goalsShown = goals;
     goalsKey = goalsKeyOf(goals);
     syncTabs(goals);
-    spreadEl.className = `on-book__spread on-book__spread--${reading.tab}`;
+    spreadEl.className = 'on-book__spread';
     if (reading.tab === 'goals') {
       for (const [key, mark] of deps.takeGoalMarks()) marks.set(key, mark);
       spreadEl.innerHTML = goalsSpread(goals, marks, displayTitle(deps.missionName, locale));

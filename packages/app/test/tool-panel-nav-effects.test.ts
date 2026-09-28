@@ -45,7 +45,6 @@ function stubContext(): PanelContext {
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
     cue: () => undefined,
-    atScale: (scale) => ({ ...ctx, scale }),
   };
   return ctx;
 }

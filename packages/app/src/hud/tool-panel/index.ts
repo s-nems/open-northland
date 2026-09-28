@@ -351,12 +351,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   };
   try {
     const uiString = uiStringLookup(strings);
-    const contextAt = (at: number): PanelContext => ({
+    const ctx: PanelContext = {
       layout,
-      scale: at,
-      makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, at, px),
-      makeParagraph: (text, color, px, wrapWidth, align, face) =>
-        makeUiParagraph(uiFont.family, text, color, at, px, wrapWidth, align, face),
+      scale,
+      makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, scale, px),
+      makeParagraph: (text, color, px, wrapWidth) =>
+        makeUiParagraph(uiFont.family, text, color, scale, px, wrapWidth),
       bitmaps,
       uiString,
       screen: () => app.screen,
@@ -366,9 +366,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         const { sx, sy, rect } = opts.screenScale(canvas);
         return { x: rect.left + x / sx, y: rect.top + y / sy };
       },
-      atScale: contextAt,
-    });
-    const ctx = contextAt(scale);
+    };
 
     const nameOfPaper = (paper: Paper): string =>
       paperLabel(paper, {
