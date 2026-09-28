@@ -150,7 +150,6 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     throw new Error('mission book: markup');
   }
   deps.plane.append(scene);
-  const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   let reading: BookReading = { tab: 'brief', chapter: 0, spread: 0, table: null, pick: 0 };
   /** A chapter to land on its last spread once it is laid out (turning back into it). */
@@ -457,7 +456,6 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
    *  back is the new page there; the other old page lies under it until it lands. */
   const flip = (direction: -1 | 1, before: { readonly left: PageShot; readonly right: PageShot }): void => {
     leaves.replaceChildren();
-    if (calm.matches) return;
     const after = shootPages();
     if (after === null) return;
     const lifted = direction > 0 ? before.right : before.left;

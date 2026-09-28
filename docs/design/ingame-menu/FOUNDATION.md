@@ -511,8 +511,8 @@ size and shrinks whole on a screen that cannot hold it.
   number and the map's name over it.
 - A chapter's text flows across both pages in columns and is turned, not scrolled: the curled page
   corners turn a spread and at a chapter's end step into the next chapter (the arrow turns red), and
-  so does the wheel. The turned page lifts and flips over the gutter, its back the new page there;
-  reduced motion turns without the flip. Pictures
+  so does the wheel. The turned page lifts and flips over the gutter, its back the new page there.
+  The flip answers the reader's own click, so it plays under reduced motion too. Pictures
   and world views stand inside the text where the page places them; a narrow picture is a portrait,
   an oval beside the quote that follows it. A page whose prose the author centred as a whole is set
   flush left; a few centred lines (captions, a table's entries, links) stay centred.
