@@ -7,6 +7,22 @@ export const enGame = {
     retry: 'Try again',
   },
   hud: {
+    minimap: {
+      label: 'Minimap',
+      interaction:
+        'Click or drag to move the camera. Scroll to zoom the minimap. Drag with the middle mouse button to pan the zoomed map.',
+      zoomIn: 'Zoom in',
+      zoomOut: 'Zoom out',
+      zoom: 'Minimap zoom: {zoom}×',
+      reset: 'Show all',
+      minimumZoom: 'The whole map is already visible (1×).',
+      maximumZoom: 'Maximum minimap zoom reached (4×).',
+      size: 'Change size',
+      sizeState: 'Minimap size: {size}. Change size',
+      sizes: { s: 'Small', m: 'Medium', l: 'Large', xl: 'Extra large' },
+      filters: 'Minimap layers',
+      layers: { people: 'People', buildings: 'Buildings' },
+    },
     changeProfession: 'Change profession',
     build: 'Build',
     assignHome: 'Assign home',

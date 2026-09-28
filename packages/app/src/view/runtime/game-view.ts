@@ -603,6 +603,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Mounted after the tool panel (draw order) and before the unit controls, so that a minimap click
     // never falls through to unit selection or a world order.
     minimap = await mountMinimap({
+      plane: hudDom.element,
       app,
       canvas,
       terrain: deps.terrainGrid,

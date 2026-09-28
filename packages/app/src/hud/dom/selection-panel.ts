@@ -1,5 +1,5 @@
 import { navBeamRect } from '../nav-beam.js';
-import { TOP_BAR_HEIGHT } from '../regions.js';
+import { SELECTION_PANEL_W, TOP_BAR_HEIGHT } from '../regions.js';
 import { GLYPH } from './icons.js';
 import { button, element, setAttribute, setClass, setHidden, setTip, write } from './parts/dom.js';
 import { attachTipLayer, type TipChip } from './parts/tip-layer.js';
@@ -8,8 +8,10 @@ import { WINDOW_ORNAMENTS } from './symbols.js';
 
 /** Design px between the summary bar and the panel's top when the panel is as tall as it gets. */
 const SELECTION_TOP_GAP_PX = 16;
+
 /** The panel's design-px width (FOUNDATION.md). */
-export const SELECTION_PANEL_W = 318;
+export { SELECTION_PANEL_W } from '../regions.js';
+
 /** The panel painted out of sight for its warm-up frame (foundation.css). */
 const WARM_CLASS = 'on-selection--warm';
 /** The fill's hole over the portrait frame (foundation.css `--hole-*`). */

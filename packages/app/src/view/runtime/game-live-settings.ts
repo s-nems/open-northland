@@ -27,7 +27,7 @@ export function perfCornerForUiScale(scale: number): {
   readonly bottom: number;
 } {
   return {
-    left: minimapPanelWidth(scale) + DEBUG_HUD_GAP,
+    left: minimapPanelWidth(scale, 'xl') + DEBUG_HUD_GAP,
     right: panelSpanFromRight(scale) + DEBUG_HUD_GAP,
     bottom: NAV_BEAM_H * scale + DEBUG_HUD_GAP,
   };

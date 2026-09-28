@@ -1,6 +1,7 @@
+import { terrainWorldBounds } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { panelBottomInset, panelRect } from '../src/hud/details-panel/layout/shared.js';
-import { minimapDesignBox, minimapPanelWidth } from '../src/hud/minimap/model.js';
+import { minimapLayout, minimapPanelWidth } from '../src/hud/minimap/model.js';
 import { NAV_BEAM_H, NAV_BEAM_W, navBeamRect } from '../src/hud/nav-beam.js';
 import {
   bottomReserveFor,
@@ -55,17 +56,22 @@ describe('central window region', () => {
   it('slides a central window clear of the minimap instead of covering its presses', () => {
     // The DOM plane takes every press inside a window, so a window over the corner kills the minimap.
     const box = (screen: { width: number; height: number }, width: number) =>
-      centralWindowBox(screen, 1, width, minimapDesignBox(screen.height));
-    const minimapRight = Math.ceil(minimapDesignBox(SCREEN.height).w);
+      centralWindowBox(
+        screen,
+        1,
+        width,
+        minimapLayout(terrainWorldBounds(64, 64), screen.height, 1, 'l', screen.width).panel,
+      );
+    const minimapRight = 344;
 
     // Wide enough to reach the corner when centred: it starts at the minimap's right edge instead.
     expect(box(SCREEN, 900).x).toBe(minimapRight);
     // The reachable narrow planes: 1280x720 at the slider's 1.5 maximum, and 1280x1024 by default.
-    expect(box({ width: 910, height: 512 }, 640).x).toBe(minimapRight);
-    expect(box({ width: 1024, height: 819 }, 640).x).toBe(minimapRight);
+    expect(box({ width: 910, height: 512 }, 640).x).toBe(239);
+    expect(box({ width: 1024, height: 819 }, 640).x).toBe(296);
     // A window the centre already clears stays centred.
-    expect(box(SCREEN, 640)).toEqual(centralWindowBox(SCREEN, 1, 640, null));
-    expect(box(SCREEN, 640).x).toBe(320);
+    expect(box(SCREEN, 500)).toEqual(centralWindowBox(SCREEN, 1, 500, null));
+    expect(box(SCREEN, 500).x).toBe(390);
     // One too wide for the free space keeps its right edge on screen rather than clearing the corner.
     expect(box(SCREEN, 1100).x).toBe(SCREEN.width - 1100);
     expect(box({ width: 400, height: 720 }, 640).x).toBe(0);

@@ -2,7 +2,7 @@ import { terrainWorldBounds, tileToScreen } from '@open-northland/render';
 import { FOG_MODE, FOG_STATE, type FogView, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
-import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
+import { DEFAULT_MINIMAP_FILTERS, forEachMinimapDot, type MinimapFilters } from '../src/hud/minimap/dots.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 const BOUNDS = terrainWorldBounds(8, 8);
@@ -21,10 +21,17 @@ function dotsOf(
   entities: readonly Ent[],
   fog: FogView | null = null,
   playerColourOf?: (player: number) => number,
+  filters?: MinimapFilters,
 ): Dot[] {
   const out: Dot[] = [];
-  forEachMinimapDot(snapshotOf(entities), fog, BOUNDS, SCALE, playerColourOf, (bx, by, half, colour) =>
-    out.push({ bx, by, half, colour }),
+  forEachMinimapDot(
+    snapshotOf(entities),
+    fog,
+    BOUNDS,
+    SCALE,
+    playerColourOf,
+    (bx, by, half, colour) => out.push({ bx, by, half, colour }),
+    filters,
   );
   return out;
 }
@@ -83,6 +90,51 @@ describe('forEachMinimapDot', () => {
       { ...pxAt(2, 2), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] },
     ]);
     expect(dotsOf(forces, null)).toHaveLength(2); // no fog view: every force shows
+  });
+
+  it('hides people and buildings independently without changing the remaining dots', () => {
+    const entities = [owned(1, 'Settler', 0, 2, 2), owned(2, 'Building', 1, 4, 4)];
+    expect(dotsOf(entities, null, undefined, { ...DEFAULT_MINIMAP_FILTERS, people: false })).toEqual([
+      { ...pxAt(4, 4), half: BUILDING_HALF, colour: PLAYER_SWATCH_COLORS[1] },
+    ]);
+    expect(dotsOf(entities, null, undefined, { ...DEFAULT_MINIMAP_FILTERS, buildings: false })).toEqual([
+      { ...pxAt(2, 2), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] },
+    ]);
+    expect(dotsOf(entities, null, undefined, { people: false, buildings: false })).toEqual([]);
+  });
+
+  it('never exposes actors on fogged ground when filters change', () => {
+    const entities = [
+      owned(1, 'Settler', 0, 2, 2),
+      owned(2, 'Settler', 1, 6, 6),
+      owned(3, 'Building', 0, 2, 3),
+      owned(4, 'Building', 1, 6, 5),
+    ];
+    const fog = fogWhere((cellX) => cellX < 4);
+    expect(dotsOf(entities, fog, undefined, { ...DEFAULT_MINIMAP_FILTERS, people: false })).toEqual([
+      { ...pxAt(2, 3), half: BUILDING_HALF, colour: PLAYER_SWATCH_COLORS[0] },
+    ]);
+    expect(dotsOf(entities, fog, undefined, { ...DEFAULT_MINIMAP_FILTERS, buildings: false })).toEqual([
+      { ...pxAt(2, 2), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] },
+    ]);
+    expect(dotsOf(entities, fog, undefined, DEFAULT_MINIMAP_FILTERS)).toHaveLength(2);
+  });
+
+  it('keeps standalone vehicles outside the existing actor lane', () => {
+    const entities = [
+      {
+        id: 1,
+        components: {
+          Vehicle: {},
+          Owner: { player: 0 },
+          Position: { x: fx.fromInt(2), y: fx.fromInt(2) },
+        },
+      },
+      owned(2, 'Settler', 0, 4, 4),
+    ];
+    const expected = [{ ...pxAt(4, 4), half: SETTLER_HALF, colour: PLAYER_SWATCH_COLORS[0] }];
+    expect(dotsOf(entities)).toEqual(expected);
+    expect(dotsOf(entities, null, undefined, DEFAULT_MINIMAP_FILTERS)).toEqual(expected);
   });
 
   it('remaps the swatch through playerColourOf and wraps the raw player index modulo the table', () => {

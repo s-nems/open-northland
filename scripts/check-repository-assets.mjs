@@ -24,6 +24,8 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/ui/mission-book/band.webp',
   'packages/app/src/assets/ui/mission-book/spread.webp',
   'packages/app/src/assets/ui/mission-book/vellum.webp',
+  // Atlas chrome: independently generated parchment frame, no original-game input.
+  'packages/app/src/assets/ui/minimap/atlas-frame.png',
   // The line tools' plan stake: generated for this project, no original-game input (provenance in the
   // custom art checkout's ui package); the blocked copy is the same image with its stones recoloured and
   // the ring copy the same image with its stake pulled.

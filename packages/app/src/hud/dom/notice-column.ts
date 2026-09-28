@@ -47,7 +47,7 @@ export interface NoticeCardView {
 export interface NoticeColumnDeps {
   readonly plane: HTMLElement;
   /** Design px the column keeps clear above the plane's bottom edge, for the minimap. */
-  readonly bottomInset: number;
+  readonly bottomInset: number | (() => number);
   readonly onLevel: (level: MessagePriorityLevel) => void;
   readonly onGo: (id: number) => void;
   readonly onDismiss: (id: number) => void;
@@ -155,11 +155,14 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
   const copy = messages().hud.notices;
   const column = document.createElement('aside');
   column.className = 'on-notices';
+  const bottomInset = (): number =>
+    typeof deps.bottomInset === 'function' ? deps.bottomInset() : deps.bottomInset;
+  let inset = bottomInset();
   Object.assign(column.style, {
     left: `${NOTICE_COLUMN.left}px`,
     top: `${NOTICE_COLUMN.top}px`,
     width: `${NOTICE_COLUMN.width}px`,
-    bottom: `${deps.bottomInset}px`,
+    bottom: `${inset}px`,
   });
   column.innerHTML = `<div class="on-notices__head"><span class="on-sr"></span><div class="on-filters" role="toolbar"></div><button type="button" class="on-notices__clear">${GLYPH.bin}</button></div><p class="on-notices__empty" hidden></p><ul class="on-notices__list"></ul><button type="button" class="on-notices__more" hidden><svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg><span></span></button><div class="on-notices__full" role="tooltip" hidden></div>`;
   const part = <T extends Element>(selector: string): T => {
@@ -380,6 +383,12 @@ export function createNoticeColumn(deps: NoticeColumnDeps): NoticeColumn {
       layout();
     },
     figures: (): NoticeFigureSlots => {
+      const nextInset = bottomInset();
+      if (nextInset !== inset) {
+        inset = nextInset;
+        column.style.bottom = `${inset}px`;
+        layout();
+      }
       const top = list.scrollTop;
       const bottom = top + list.clientHeight;
       const slots: NoticeFigureSlot[] = [];

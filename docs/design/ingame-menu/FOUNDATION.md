@@ -11,6 +11,36 @@ a single flattened stylesheet: later panel mockups extend it instead of layering
 rule below differs from the mockup (a change accepted on the running game), the rule wins. The
 tokens below are the shared language for every screen, including a future main-menu redesign.
 
+## Minimap direction
+
+The approved [Atlas minimap](../minimap-study/README.md) uses a warm parchment perimeter,
+fine aged bronze edging, dark leather binding and small ink ornaments, related to the mission book.
+The original A concept is the material reference; [art provenance](../minimap-study/generation.md)
+records the delivered frame. The approved **Muted parchment** tone uses saturation 0.56 and brightness 0.72,
+with warm grey-brown paper (`#827459`) and matching muted bronze controls and filter drawer.
+- Provide S/M/L/XL sizes with nominal longest sides of 224/280/344/416 design px.
+  Anchor the panel flush to the bottom-left screen corner. Cap its
+  longest side before the centred navigation beam's left edge with a 6 design-px gap; keep the
+  selection panel clear. Both dimensions have a 124 design-px minimum. Hide the panel when that
+  minimum cannot fit rather than covering adjacent controls.
+- Trim the shorter frame side toward the projected map's proportions, by at most one third of the
+  longer side (outer aspect at most 1.5:1). Use the same scale on both terrain axes. Parchment fills unused bands and its torn inner
+  edge follows the visible terrain during zoom. Sample the existing paper and torn edge separately;
+  keep the outer corners fixed and use the same asset at every viewport size.
+- Give all four edges the same parchment border. Nine-slice corner glyphs remain 32 design px;
+  aspect changes stretch the intervening edges, never the corner ornaments. All five small round
+  bronze controls sit on the right frame edge: zoom out, zoom in, whole map, size and filters.
+  There is no header bar or separate toolbar inside the atlas.
+- Include independent minimap zoom (1–4×), small +/− controls and a return to the whole map.
+  The third control uses a fit-corners icon and the label “Whole map · 1×”. Show custom hints on
+  hover and keyboard focus, including the current scale where relevant. Middle drag pans the atlas.
+- Put people/building filters in a compact parchment disclosure opening to the right of the minimap.
+  Lift it above the bottom navigation when needed. Keep fog gating and return focus on closing it.
+- Do not include a hover preview of map areas.
+- Defer terrain appearance until the actual game maps can be compared in the renderer.
+- The compact minimap artwork is approved. The separate large-map frame remains undecided;
+  [ticket 19](../../tickets/app/ingame-ui-19-map-overview.md) owns its design and implementation.
+
 ## Tokens
 
 | Role | Token | Value |
@@ -71,8 +101,8 @@ filters are an explicit exception in this mouse/keyboard study.
 - Selection: the settler panel is 318 px on the DOM plane; a building, a signpost and a group keep the
   legacy 322 px panel until tickets 09 and 10 replace it.
 - Notifications: 173 px, no opaque background in unused column space.
-- Minimap: 270 × 214 px in the study, touching the bottom-left corner; the runtime keeps the legacy
-  224 × 200 until ticket 19.
+- Minimap: S/M/L/XL Atlas with bounded aspect trim, flush to the bottom-left corner; capped before the centred
+  navigation beam with a 6 design-px gap, as specified in [Minimap direction](#minimap-direction).
 
 At 125% the catalogue scrolls within available height to avoid bottom navigation. The intended minimum
 is 1280 × 720 at 90%; a 90–130% range in 5% steps remains proposed, not a verified runtime capability.
@@ -554,7 +584,7 @@ Pixi panels behind the new navigation until their owner tickets replace them.
 | Notifications | left 10, top 18, width 173, ends 16 px above the minimap | three seal filters with tallies over the fanning card list (rules below) |
 | Central window | centred on the screen's vertical axis, the beam's; top 96, floor at the beam, slid right of the minimap when a narrow screen would put it over the corner | one window at a time; Wiedza shows a framed pending note |
 | Selection | bottom right: the 318 px settler panel, the legacy 322 px panel for the rest | lifts above the beam when the beam reaches under it (narrower than 1056 design px for the settler panel, 1076 for the legacy one) |
-| Minimap | bottom left, legacy 224 × 200 | unchanged until ticket 19 |
+| Minimap | bottom left, S/M/L/XL Atlas; outer aspect at most 1.5:1 | fixed 32 px corner glyphs; right-edge controls and filter disclosure; uniformly scaled terrain; 6 design-px navigation gap |
 
 Rules the shell enforces:
 

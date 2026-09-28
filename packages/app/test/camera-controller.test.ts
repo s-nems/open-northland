@@ -157,6 +157,19 @@ const wheelOutFully = (
 };
 
 describe('createCameraController edge-scroll arming', () => {
+  it('leaves middle dragging on a claimed minimap point to the HUD', () => {
+    const { ctl, startMiddleDrag, move, cursorHidden } = install();
+    ctl.setPointerGuard((x) => x < 300);
+    startMiddleDrag(100, 400);
+    move(140, 410);
+    expect(ctl.camera()).toEqual({ offsetX: 0, offsetY: 0 });
+    expect(cursorHidden()).toBe(false);
+    startMiddleDrag(400, 400);
+    move(440, 410);
+    expect(ctl.camera()).toEqual({ offsetX: 40, offsetY: 10 });
+    ctl.dispose();
+  });
+
   it('arms on a mousemove over the canvas, with no boundary crossing first', () => {
     const { ctl, move } = install();
     move(LEFT_BAND_X, CENTRE_Y);

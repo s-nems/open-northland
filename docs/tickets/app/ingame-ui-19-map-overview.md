@@ -1,23 +1,26 @@
-# Redesign minimap and its separate large overview
+# Design and implement the separate large map overview
 
 **Area:** app, render · **Focus:** in-game UI redesign · **Priority:** P2
 
-`hud/minimap/` owns the lower-left map; the reference requires a separate large overview entry and object filters. The wireframe map is decorative, not this implementation.
+The approved compact Atlas minimap has S/M/L/XL sizes, frame zoom controls, camera picking, middle-drag pan,
+people/building filters and a live HUD footprint. The separate large overview is still missing;
+its frame has not been selected. The minimap retains the existing terrain rendering.
 
-Follow the [approved design and panel workflow](../../design/ingame-menu/README.md) and
-[session instructions](../../design/ingame-menu/AGENTS.md). Re-check the cited paths
-against this checkout before starting; the reference document describes an earlier implementation.
+Follow the [approved design workflow](../../design/ingame-menu/README.md) and
+[shared minimap decisions](../../design/ingame-menu/FOUNDATION.md#minimap-direction).
+The [minimap reference](../../design/minimap-study/README.md) describes the implemented compact view.
+Its approval does not select the large-map frame.
 
 ## Scope
 
-- Design minimap chrome that anchors the bottom of the frameless message rail, with clear large-map access, viewport indicator, pan, zoom and compact filters.
-- Design the large overview separately, preserving object categories described in the original reference, known-terrain rules and selected/event markers.
-- Inspect actual map/projection/picking capabilities before connecting each action. Do not reveal unexplored objects or replace simulation coordinate conversions with UI guesses.
-- Match the accepted style and coordinate window placement with central panels and bottom-right selection. Keep existing performance work in its owner ticket unless directly resolved.
+- Choose the large-map frame with a reviewable design, then add explicit access from the minimap.
+- Connect only categories and selected/event markers supported by actual snapshot/projection data.
+- Preserve known-terrain rules, fog gates and order coordinate conversion.
+- Keep large-view state separate from compact minimap size and the world camera.
+- Keep performance work in its existing owner ticket unless directly resolved.
 
 ## Verify
 
-Test camera movement/drag/zoom, viewport bounds, map filters, fog, selected/event markers, high-DPI and UI scales. Review on a real map with busy notifications.
-
-For player-visible work, provide the verified preview from the ticket's worktree. A mockup is design evidence,
-not proof of runtime behavior. Apply the shared design-review step before implementation.
+Test open/close and focus return, camera movement and orders, zoom/pan bounds, supported filters,
+fog and markers. Check actual maps, high-DPI and UI scales with notifications and selection open.
+Provide a verified game preview from the worktree.

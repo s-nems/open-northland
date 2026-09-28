@@ -54,7 +54,7 @@ export interface MessageCenterDeps {
   /** The DOM plane the column mounts on. */
   readonly plane: HTMLElement;
   /** Design px the column keeps clear above the plane's bottom edge, for the minimap. */
-  readonly bottomInset: number;
+  readonly bottomInset: number | (() => number);
   /** The sheet the cards' settler figures draw from; absent, the thumbnails stay clear. */
   readonly sheet?: SpriteSheet | undefined;
   /** That sheet's recoloured-frame cache, one for every figure painter of the panel. */

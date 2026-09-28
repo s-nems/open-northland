@@ -31,6 +31,7 @@ import type { PresentationPack } from '../../presentation/pack.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
+import { minimapReserve } from '../dom/minimap-reserve.js';
 import {
   type BookView,
   createMissionBook,
@@ -44,7 +45,6 @@ import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
-import { FRAME_NATIVE, MINIMAP_ART_SCALE } from '../minimap/model.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
@@ -595,9 +595,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const messageCenter = createMessageCenter({
       ctx,
       plane,
-      // The minimap's frame scales with the HUD like the plane does, so its design-px height is the
-      // native frame at the art scale.
-      bottomInset: FRAME_NATIVE.h * MINIMAP_ART_SCALE + NOTICE_MINIMAP_GAP,
+      bottomInset: () => {
+        const reserve = minimapReserve(plane);
+        return reserve === null ? NOTICE_MINIMAP_GAP : plane.clientHeight - reserve.y + NOTICE_MINIMAP_GAP;
+      },
       sheet: opts.sheet,
       figureFrames,
       buildingThumbs: thumbs,

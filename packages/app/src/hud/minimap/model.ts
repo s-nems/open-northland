@@ -6,97 +6,133 @@ import {
 } from '@open-northland/render';
 import { FOG_STATE } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
+import { navBeamRect } from '../nav-beam.js';
+import { SELECTION_PANEL_W } from '../regions.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
  * The pure half of the minimap window: layout, the world↔minimap projection, the raster writes and the
  * camera-viewport rectangle. "World" here is the renderer's projected px space before the camera
- * transform, so clicks, dots and the view rectangle all share one uniform downscale of the on-screen
- * world.
+ * transform. Terrain, dots and the camera rectangle use the same uniform scale as the world view.
  */
 
-/**
- * The original overview-window frame's native geometry, measured from the decoded `ls_gui_window` bob
- * 55: the braid carries ornament along its top and right only and its hole runs flush to the left and
- * bottom edges, which is why the window pins to the screen's bottom-left corner. `inner` is the
- * near-black map hole, letterboxed when the map's aspect differs.
- */
-export const FRAME_NATIVE = {
-  w: 149,
-  h: 133,
-  inner: { x: 0, y: 16, w: 116, h: 117 },
-} as const;
+export const ATLAS_WIDTHS = { s: 224, m: 280, l: 344, xl: 416 } as const;
+export type MinimapSize = keyof typeof ATLAS_WIDTHS;
 
-/**
- * Extra drawn px per native frame px at UI scale 1, the knob that sizes the whole window. Named
- * deviation: the original drew its GUI art 1:1, so this frame renders 1.5× larger relative to the rest
- * of the HUD, a readability choice for modern screen sizes.
- */
-export const MINIMAP_ART_SCALE = 1.5;
+const BORDER = 20;
+const MIN_PANEL_SIDE = 124;
+// Limit the trim to one third of a side; fixed-size corner slices remain intact.
+const MAX_FRAME_ASPECT = 1.5;
+const NAV_GAP = 6;
+const TOP_SAFE = 70;
+const SELECTION_GAP = 12;
 
-/** Drawn px per native frame px at a UI scale; a scale under the floor draws as the floor. */
-function minimapArtScale(uiscale: number): number {
-  return MINIMAP_ART_SCALE * Math.max(MIN_UI_SCALE, uiscale);
+/** Outer geometry in screen px; an impossibly small screen collapses the available map area. */
+function atlasPanel(
+  bounds: WorldBounds,
+  screenH: number,
+  screenW: number,
+  artScale: number,
+  size: MinimapSize,
+): Rect {
+  const besideNavigation = navBeamRect({ width: screenW, height: screenH }, artScale).x - NAV_GAP * artScale;
+  const besideSelection = screenW - (SELECTION_GAP + SELECTION_PANEL_W) * artScale;
+  const top = Math.min(TOP_SAFE * artScale, Math.max(0, screenH));
+  const available = Math.max(
+    0,
+    Math.min(ATLAS_WIDTHS[size] * artScale, besideNavigation, besideSelection, screenH - top),
+  );
+  const side = available >= MIN_PANEL_SIDE * artScale ? available : 0;
+  if (side === 0) return { x: 0, y: screenH, w: 0, h: 0 };
+  const border = 2 * BORDER * artScale;
+  const fit = (side - border) / Math.max(bounds.width, bounds.height);
+  const minimum = Math.max(MIN_PANEL_SIDE * artScale, side / MAX_FRAME_ASPECT);
+  const w = Math.min(side, Math.max(minimum, bounds.width * fit + border));
+  const h = Math.min(side, Math.max(minimum, bounds.height * fit + border));
+  return { x: 0, y: screenH - h, w, h };
 }
 
-/** The framed window's width in screen px, for HUD that sits beside it along the bottom edge. */
-export function minimapPanelWidth(uiscale: number): number {
-  return FRAME_NATIVE.w * minimapArtScale(uiscale);
+/** Panel width in screen px before a narrow screen limits it. */
+export function minimapPanelWidth(uiscale: number, size: MinimapSize = 'm'): number {
+  return ATLAS_WIDTHS[size] * Math.max(MIN_UI_SCALE, uiscale);
 }
 
-/**
- * The framed window's box in HUD design px, for DOM regions laid out on the plane: the native frame
- * at the art scale, pinned flush to the plane's bottom-left corner. The frame scales with the HUD, so
- * the design-px box holds at every HUD scale the settings can reach; a `?uiscale=` under
- * `MIN_UI_SCALE` draws it larger than this, since `minimapArtScale` floors the scale.
- */
-export function minimapDesignBox(planeHeight: number): Rect {
-  const w = FRAME_NATIVE.w * MINIMAP_ART_SCALE;
-  const h = FRAME_NATIVE.h * MINIMAP_ART_SCALE;
-  return { x: 0, y: planeHeight - h, w, h };
-}
-
-/** The minimap window's screen layout, all rects in absolute screen px. */
+/** Screen-px geometry. At zoom > 1, `map` may extend outside the clipped `inner` region. */
 export interface MinimapLayout {
-  /** The whole framed window (the braided frame's outer box), pinned to the bottom-left corner. */
   readonly panel: Rect;
-  /** The frame's map hole - the black window the ground/bars fill. */
   readonly inner: Rect;
-  /** The map picture itself, aspect-fitted and centred inside `inner` (letterboxed bars around it). */
   readonly map: Rect;
-  /** Minimap px per world px (uniform - the map never distorts). */
-  readonly scale: number;
-  /** Drawn px per native frame px - the frame art's placement scale. */
+  /** Minimap px per projected world px; zero only when no map area fits on the screen. */
+  readonly scaleX: number;
+  readonly scaleY: number;
+  /** Drawn px per HUD design px. */
   readonly artScale: number;
 }
 
-/**
- * Lay the framed window out against the live screen: a fixed-size frame pinned flush to the bottom-left
- * corner, with the map aspect-fitted into the hole between letterbox bars. Only the screen height
- * matters, and it is recomputed per frame rather than through a resize listener.
- */
-export function minimapLayout(bounds: WorldBounds, screenH: number, uiscale: number): MinimapLayout {
-  const artScale = minimapArtScale(uiscale);
-  const panel: Rect = {
-    x: 0,
-    y: screenH - FRAME_NATIVE.h * artScale,
-    w: FRAME_NATIVE.w * artScale,
-    h: FRAME_NATIVE.h * artScale,
-  };
+/** Anchor the map at the bottom-left, beside the bottom navigation, preserving geography through narrow and short screens. */
+export function minimapLayout(
+  bounds: WorldBounds,
+  screenH: number,
+  uiscale: number,
+  size: MinimapSize = 'm',
+  screenW: number = Number.POSITIVE_INFINITY,
+): MinimapLayout {
+  const artScale = Math.max(MIN_UI_SCALE, uiscale);
+  const panel = atlasPanel(bounds, screenH, screenW, artScale, size);
+  const border = Math.min(BORDER * artScale, panel.w / 2);
   const inner: Rect = {
-    x: panel.x + FRAME_NATIVE.inner.x * artScale,
-    y: panel.y + FRAME_NATIVE.inner.y * artScale,
-    w: FRAME_NATIVE.inner.w * artScale,
-    h: FRAME_NATIVE.inner.h * artScale,
+    x: panel.x + border,
+    y: panel.y + border,
+    w: Math.max(0, panel.w - 2 * border),
+    h: Math.max(0, panel.h - 2 * border),
   };
-  const scale = Math.min(inner.w / bounds.width, inner.h / bounds.height);
+  const scaleX = Math.min(inner.w / bounds.width, inner.h / bounds.height);
+  const scaleY = scaleX;
   const map: Rect = {
-    x: inner.x + (inner.w - bounds.width * scale) / 2,
-    y: inner.y + (inner.h - bounds.height * scale) / 2,
-    w: bounds.width * scale,
-    h: bounds.height * scale,
+    x: inner.x + (inner.w - bounds.width * scaleX) / 2,
+    y: inner.y + (inner.h - bounds.height * scaleY) / 2,
+    w: bounds.width * scaleX,
+    h: bounds.height * scaleY,
   };
-  return { panel, inner, map, scale, artScale };
+  return { panel, inner, map, scaleX, scaleY, artScale };
+}
+
+/** The visible terrain window; parchment fills the remainder of the inner frame. */
+export function visibleMinimapRect(layout: MinimapLayout): Rect {
+  const { inner, map } = layout;
+  const x = Math.max(inner.x, map.x);
+  const y = Math.max(inner.y, map.y);
+  return {
+    x,
+    y,
+    w: Math.max(0, Math.min(inner.x + inner.w, map.x + map.w) - x),
+    h: Math.max(0, Math.min(inner.y + inner.h, map.y + map.h) - y),
+  };
+}
+
+/** A zoom axis stays centred while letterboxed and cannot expose blank space when larger than the hole. */
+function zoomAxis(origin: number, size: number, mapSize: number, target: number): number {
+  if (mapSize <= size) return origin + (size - mapSize) / 2;
+  return Math.max(origin + size - mapSize, Math.min(origin, target));
+}
+
+/** Zoom the whole-world layout independently of the world camera; pass the unzoomed base each time. */
+export function zoomMinimapLayout(
+  base: MinimapLayout,
+  bounds: WorldBounds,
+  zoom: number,
+  center: { readonly x: number; readonly y: number },
+): MinimapLayout {
+  const factor = Number.isNaN(zoom) ? 1 : Math.min(4, Math.max(1, zoom));
+  if (factor === 1) return base;
+  const scaleX = base.scaleX * factor;
+  const scaleY = base.scaleY * factor;
+  const w = bounds.width * scaleX;
+  const h = bounds.height * scaleY;
+  const { inner } = base;
+  const x = zoomAxis(inner.x, inner.w, w, inner.x + inner.w / 2 - (center.x - bounds.minX) * scaleX);
+  const y = zoomAxis(inner.y, inner.h, h, inner.y + inner.h / 2 - (center.y - bounds.minY) * scaleY);
+  return { ...base, scaleX, scaleY, map: { x, y, w, h } };
 }
 
 /** World point → absolute screen px on the minimap (may fall outside the map rect for an off-map point). */
@@ -107,8 +143,8 @@ export function worldToMinimap(
   wy: number,
 ): { x: number; y: number } {
   return {
-    x: layout.map.x + (wx - bounds.minX) * layout.scale,
-    y: layout.map.y + (wy - bounds.minY) * layout.scale,
+    x: layout.map.x + (wx - bounds.minX) * layout.scaleX,
+    y: layout.map.y + (wy - bounds.minY) * layout.scaleY,
   };
 }
 
@@ -119,9 +155,11 @@ export function minimapToWorld(
   mx: number,
   my: number,
 ): { x: number; y: number } {
+  if (layout.scaleX === 0 || layout.scaleY === 0)
+    return { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
   return {
-    x: bounds.minX + (mx - layout.map.x) / layout.scale,
-    y: bounds.minY + (my - layout.map.y) / layout.scale,
+    x: bounds.minX + (mx - layout.map.x) / layout.scaleX,
+    y: bounds.minY + (my - layout.map.y) / layout.scaleY,
   };
 }
 
@@ -130,27 +168,34 @@ export function pointOverMinimap(layout: MinimapLayout, x: number, y: number): b
   return contains(layout.panel, x, y);
 }
 
-/** True when the point lies in the map hole - where a click means "jump there" (braid clicks don't). */
+/** True when the point lies in the map hole - where a click means "jump there" (chrome clicks do not). */
 export function pointOverMinimapHole(layout: MinimapLayout, x: number, y: number): boolean {
   return contains(layout.inner, x, y);
 }
 
 /**
- * The camera's visible world box as an absolute screen rect, clamped to the map picture so a
- * half-off-map view draws a partial frame instead of bleeding into the bars. Returns null when the
- * view lies entirely off the map.
+ * The camera's visible world box as an absolute screen rect, clipped to the map picture and its hole.
+ * Returns null when the camera is outside the visible map fragment.
  */
 export function viewportRectOnMinimap(layout: MinimapLayout, bounds: WorldBounds, vp: Viewport): Rect | null {
-  const x0 = Math.max(layout.map.x, layout.map.x + (vp.minX - bounds.minX) * layout.scale);
-  const y0 = Math.max(layout.map.y, layout.map.y + (vp.minY - bounds.minY) * layout.scale);
-  const x1 = Math.min(layout.map.x + layout.map.w, layout.map.x + (vp.maxX - bounds.minX) * layout.scale);
-  const y1 = Math.min(layout.map.y + layout.map.h, layout.map.y + (vp.maxY - bounds.minY) * layout.scale);
+  const x0 = Math.max(layout.inner.x, layout.map.x, layout.map.x + (vp.minX - bounds.minX) * layout.scaleX);
+  const y0 = Math.max(layout.inner.y, layout.map.y, layout.map.y + (vp.minY - bounds.minY) * layout.scaleY);
+  const x1 = Math.min(
+    layout.inner.x + layout.inner.w,
+    layout.map.x + layout.map.w,
+    layout.map.x + (vp.maxX - bounds.minX) * layout.scaleX,
+  );
+  const y1 = Math.min(
+    layout.inner.y + layout.inner.h,
+    layout.map.y + layout.map.h,
+    layout.map.y + (vp.maxY - bounds.minY) * layout.scaleY,
+  );
   if (x1 <= x0 || y1 <= y0) return null;
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
 /**
- * Stamp one opaque square dot (`2·half` px a side, centred on `cx, cy`) into an RGBA raster, clipped to
+ * Stamp one opaque dot centred on `cx, cy` into an RGBA raster, clipped to
  * the buffer edges. Stamping into one retained buffer avoids a Graphics rebuild, which would
  * re-tessellate hundreds of dot rects and allocate on every tick.
  */

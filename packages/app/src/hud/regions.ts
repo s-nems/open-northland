@@ -6,6 +6,9 @@ import { navBeamRect, type ScreenSize } from './nav-beam.js';
  * scale.
  */
 
+/** The selection panel column in HUD design px. */
+export const SELECTION_PANEL_W = 318;
+
 export const NOTICE_COLUMN = { left: 10, top: 18, width: 173 } as const;
 /** The top-right bar's height: the `.on-panel` 1 px border and the `.on-bar` 6 px padding around its
  *  tallest child, the 34 px menu medallion. */

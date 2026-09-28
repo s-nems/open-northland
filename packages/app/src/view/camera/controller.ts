@@ -44,8 +44,8 @@ export interface CameraController {
   /** Suspend camera gestures and discard held, dragged, edge-pan, and glide state. */
   setSuspended(suspended: boolean): void;
   /**
-   * Claim a client point for the HUD so the wheel does not zoom there; `null` clears. Wired to open
-   * pop-up windows only, since the wheel should still zoom over the strip and during placement.
+   * Claim a client point for the HUD so wheel zoom and middle dragging yield to its controls.
+   * `null` clears the guard.
    */
   setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /** Hold edge scrolling while a HUD gesture steers the camera itself; `null` clears. */
@@ -105,7 +105,7 @@ export function createCameraController(
 
   const onMouseDown = (e: MouseEvent): void => {
     if (suspended) return;
-    if (e.button !== 1) return; // middle button only
+    if (e.button !== 1 || pointerGuard?.(e.clientX, e.clientY)) return;
     dragging = true;
     setDragScrollCursorHidden(true);
     lastX = e.clientX;

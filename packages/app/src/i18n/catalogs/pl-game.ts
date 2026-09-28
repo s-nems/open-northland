@@ -7,6 +7,22 @@ export const plGame = {
     retry: 'Spróbuj ponownie',
   },
   hud: {
+    minimap: {
+      label: 'Minimapa',
+      interaction:
+        'Kliknij lub przeciągnij, aby przesunąć kamerę. Kółko zmienia skalę minimapy. Przeciągnij środkowym przyciskiem, aby przesunąć powiększony wycinek mapy.',
+      zoomIn: 'Przybliż',
+      zoomOut: 'Oddal',
+      zoom: 'Powiększenie minimapy: {zoom}×',
+      reset: 'Pokaż całą',
+      minimumZoom: 'Cała mapa jest już widoczna (1×).',
+      maximumZoom: 'Osiągnięto maksymalne powiększenie minimapy (4×).',
+      size: 'Zmień rozmiar',
+      sizeState: 'Rozmiar minimapy: {size}. Zmień rozmiar',
+      sizes: { s: 'Mała', m: 'Średnia', l: 'Duża', xl: 'Bardzo duża' },
+      filters: 'Warstwy minimapy',
+      layers: { people: 'Ludzie', buildings: 'Budynki' },
+    },
     changeProfession: 'Zmiana zawodu',
     build: 'Budowa',
     assignHome: 'Przydziel dom',

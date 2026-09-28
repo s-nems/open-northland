@@ -1,7 +1,17 @@
 import { fogTileVisible, ONE, tileToScreenX, tileToScreenY, type WorldBounds } from '@open-northland/render';
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import { actorsOf, isSettler, num, ownerPlayerOf } from '../../game/snapshot.js';
+import { actorsOf, isBuilding, isSettler, num, ownerPlayerOf } from '../../game/snapshot.js';
+
+export interface MinimapFilters {
+  readonly people: boolean;
+  readonly buildings: boolean;
+}
+
+export const DEFAULT_MINIMAP_FILTERS: MinimapFilters = {
+  people: true,
+  buildings: true,
+};
 
 /** Dot sizes in minimap px: a settler is a 2x2 dot, a building a 3x3 block. */
 const SETTLER_DOT_PX = 2;
@@ -24,11 +34,13 @@ export function forEachMinimapDot(
   scale: number,
   playerColourOf: ((player: number) => number) | undefined,
   sink: MinimapDotSink,
+  filters: MinimapFilters = DEFAULT_MINIMAP_FILTERS,
 ): void {
   for (const e of actorsOf(snapshot)) {
     const player = ownerPlayerOf(e);
     if (player === undefined) continue; // wildlife and neutral buildings never plot
     const settler = isSettler(e);
+    if ((settler && !filters.people) || (isBuilding(e) && !filters.buildings)) continue;
     const pos = e.components.Position as { x?: unknown; y?: unknown } | undefined;
     const x = num(pos?.x);
     const y = num(pos?.y);

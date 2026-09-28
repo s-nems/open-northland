@@ -124,7 +124,7 @@ only diagnostics.
 | [16-knowledge-reference](../../tickets/app/ingame-ui-16-knowledge-reference.md) | Build Knowledge with encyclopedia and gameplay guidance |
 | [17-knowledge-dependencies](../../tickets/app/ingame-ui-17-knowledge-dependencies.md) | Add production and progression dependencies to Knowledge |
 | [18-system-menu](../../tickets/app/ingame-ui-18-system-menu.md) | Redesign in-game settings and save/load surfaces |
-| [19-map-overview](../../tickets/app/ingame-ui-19-map-overview.md) | Redesign minimap and its separate large overview |
+| [19-map-overview](../../tickets/app/ingame-ui-19-map-overview.md) | Design and implement the separate large map overview |
 | [20-final-acceptance](../../tickets/app/ingame-ui-20-final-acceptance.md) | Verify the complete redesigned HUD and retire obsolete UI |
 
 When a ticket finishes, delete it per the repository lifecycle, remove its row here and remove/update

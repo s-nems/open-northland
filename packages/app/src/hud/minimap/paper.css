@@ -1,0 +1,89 @@
+.on-hud .on-minimap-paper {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.on-hud .on-minimap-paper[hidden],
+.on-hud .on-minimap-paper__band[hidden] {
+  display: none;
+}
+.on-hud .on-minimap-paper__band {
+  position: absolute;
+  transform-origin: 0 0;
+  filter: saturate(0.56) brightness(0.72);
+  pointer-events: none;
+}
+.on-hud .on-minimap-paper__fill,
+.on-hud .on-minimap-paper__edge {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.on-hud .on-minimap-paper__fill {
+  top: 0;
+  height: var(--paper-fill-height);
+  background: var(--paper-grain, none), #cdad82;
+}
+.on-hud .on-minimap-paper__edge {
+  top: var(--paper-fill-height);
+  display: flex;
+  height: 7.073684px;
+}
+.on-hud .on-minimap-paper__tile {
+  display: block;
+  flex: 0 0 134.736842px;
+  height: 100%;
+  background-image: url("../../assets/ui/minimap/atlas-frame.png");
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+.on-hud .on-minimap-paper__fill .on-minimap-paper__tile {
+  flex-basis: 55.578947px;
+  background-size: 211.2px 211.2px;
+  background-position: -40.421053px -20.210526px;
+}
+.on-hud .on-minimap-paper__edge .on-minimap-paper__tile {
+  background-size: 211.2px 211.2px;
+  background-position: -37.052632px -24.926316px;
+}
+
+.on-hud .on-minimap-paper__row {
+  display: flex;
+  height: 4.715789px;
+  opacity: 0.24;
+}
+/* Keep the fixed corner blocks while replacing only the old inner straight-edge segments. */
+.on-hud .on-minimap-chrome[data-minimap-paper-bands="vertical"] .on-minimap-chrome__frame {
+  mask:
+    linear-gradient(to bottom, #000 18px, transparent) top / 100% 22px no-repeat,
+    linear-gradient(to top, #000 18px, transparent) bottom / 100% 22px no-repeat,
+    linear-gradient(to right, #000 33px, transparent) left / 38px 100% no-repeat,
+    linear-gradient(to left, #000 33px, transparent) right / 38px 100% no-repeat;
+}
+.on-hud .on-minimap-chrome[data-minimap-paper-bands="horizontal"] .on-minimap-chrome__frame {
+  mask:
+    linear-gradient(to bottom, #000 33px, transparent) top / 100% 38px no-repeat,
+    linear-gradient(to top, #000 33px, transparent) bottom / 100% 38px no-repeat,
+    linear-gradient(to right, #000 18px, transparent) left / 22px 100% no-repeat,
+    linear-gradient(to left, #000 18px, transparent) right / 22px 100% no-repeat;
+}
+.on-hud .on-minimap-chrome[data-minimap-paper-bands="both"] .on-minimap-chrome__frame {
+  mask:
+    linear-gradient(to bottom, #000 18px, transparent) top / 100% 22px no-repeat,
+    linear-gradient(to top, #000 18px, transparent) bottom / 100% 22px no-repeat,
+    linear-gradient(to right, #000 18px, transparent) left / 22px 100% no-repeat,
+    linear-gradient(to left, #000 18px, transparent) right / 22px 100% no-repeat,
+    linear-gradient(#000 0 0) top left / 38px 38px no-repeat,
+    linear-gradient(#000 0 0) top right / 38px 38px no-repeat,
+    linear-gradient(#000 0 0) bottom left / 38px 38px no-repeat,
+    linear-gradient(#000 0 0) bottom right / 38px 38px no-repeat;
+}
+
+.on-hud .on-minimap-paper__row:nth-child(even) {
+  transform: scaleY(-1);
+}
+.on-hud .on-minimap-paper__fill .on-minimap-paper__tile:nth-child(even) {
+  transform: scaleX(-1);
+}
