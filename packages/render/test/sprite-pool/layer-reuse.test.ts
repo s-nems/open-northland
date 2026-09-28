@@ -142,8 +142,11 @@ describe('layer reuse across frames', () => {
         },
       },
     });
+    // The shadow and the body; the ground overlays around them are the body frame's too.
     const read = (sheetUnder: SpriteSheet) =>
-      (resolveLayers(sheetUnder, building, 0) ?? []).map((l) => [l.source === shadowSource, l.atlasW]);
+      (resolveLayers(sheetUnder, building, 0) ?? [])
+        .filter((l) => l.groundFoot === undefined || l.groundFoot === 'body')
+        .map((l) => [l.source === shadowSource, l.atlasW]);
     const otherShadowSource = {} as TextureSource;
     // One body frame object and one silhouette frame object behind both sheets.
     expect(read(houses(64, shadowSource))).toEqual([

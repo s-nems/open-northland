@@ -98,7 +98,8 @@ export class CollapseLayer {
     let maxX = -Infinity;
     let baseY = -Infinity;
     for (const layer of layers) {
-      if (layer.shadow === true) continue;
+      // The collapse draws the plain body; the ground's shade and cover would copy it.
+      if (layer.shadow === true || layer.groundFoot === 'cover') continue;
       const spr = mintLayerSprite(this.textures, layer);
       (spr as CollapseSprite).collapseLayer = layer;
       node.addChild(spr);

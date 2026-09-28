@@ -1,6 +1,7 @@
 import type { TextureSource } from 'pixi.js';
 import type { AtlasFrame, BuildTimeSheet } from '../../data/sprites/index.js';
 import type { ClothWind } from '../cloth-wind.js';
+import type { GroundFootPart } from '../ground-foot/index.js';
 
 /** One resolved atlas layer to draw: which source page, which frame rect, at what scale.
  *  `atlasW`/`atlasH` are the source sheet's pixel size, needed only by a vehicle's paletted mesh, which
@@ -46,6 +47,10 @@ export interface ResolvedLayer {
    * head overlay, where it drops the rows that project onto ground the body's own cast already covers.
    */
   readonly castRows?: number;
+  /** The layer's part in setting its body frame's foot into the ground. A shade is also a {@link shadow};
+   *  a shade and a cover are also {@link boundsExempt}. Each draws as the original where the ground is
+   *  unknown or the art stands on no ground line. */
+  readonly groundFoot?: GroundFootPart;
   /** A settler's head overlay, which the paletted path reads through the LUT's head row. */
   readonly head?: true;
 }

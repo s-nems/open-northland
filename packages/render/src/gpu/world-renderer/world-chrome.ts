@@ -71,8 +71,10 @@ export class WorldChrome {
       if (this.linearPages.size === 0) return;
       for (const source of this.linearPages) source.scaleMode = 'nearest';
       this.linearPages.clear();
+      this.textures.pageSamplingChanged();
       return;
     }
+    const flipped = this.linearPages.size;
     // Sprite smoothing claims every page it finds nearest, but only while minifying. The art filter
     // claims the original's pixel-art pages at any zoom and nothing else, so own art keeps the sampling
     // its loader chose from the sprite-smoothing setting.
@@ -84,11 +86,14 @@ export class WorldChrome {
       this.linearPages.add(source);
     }
     // A page one condition claimed and neither still wants goes back, rather than waiting for both off.
+    let restored = false;
     for (const source of this.linearPages) {
       if (claimed(source)) continue;
       source.scaleMode = 'nearest';
       this.linearPages.delete(source);
+      restored = true;
     }
+    if (restored || this.linearPages.size !== flipped) this.textures.pageSamplingChanged();
   }
 
   /** Destroy the chrome quads and hand the app-owned atlas pages back at the sampling they were lent at.

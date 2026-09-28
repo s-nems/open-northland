@@ -52,6 +52,10 @@ function entityTint(ref: number, ghost: boolean, highlight?: ReadonlyMap<number,
 export class LayerBinder {
   /** Per-entity and per-layer scratch, so the bind pass allocates nothing. */
   private readonly layerBounds = new BoundsUnion();
+  /** Where the entity being bound stands, lifted like its drawn feet: where a grounded foot meets the
+   *  ground. Its own anchor rather than the smoothed draw point, so a standing building keeps one spot. */
+  private feetX = 0;
+  private feetY = 0;
   private readonly drawBox = createLayerDrawBox();
 
   constructor(
@@ -127,6 +131,8 @@ export class LayerBinder {
     // Only a character's layers include a head, which reads the settler LUT's own head row.
     const settlerLut = pe.kind === 'vehicle' && driven === undefined ? undefined : settlerPalette;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
+    this.feetX = item.x;
+    this.feetY = item.y - (item.lift ?? 0);
     // Feet-local union of the drawn rects: one box for paletted and plain layers alike.
     const bounds = this.layerBounds;
     bounds.reset();
@@ -176,7 +182,8 @@ export class LayerBinder {
           this.bindPalettedQuad(pe, spriteSlot++, layer, box, frame, row, tint);
         }
       } else {
-        pe.shadowFlags[spriteSlot] = layer.shadow === true;
+        // The ground overlays spill past the body; a click on them is a click on the ground.
+        pe.pickExempt[spriteSlot] = layer.shadow === true || layer.groundFoot === 'cover';
         if (layer.cast === true) {
           this.placeShadow(this.plainSlot(pe, spriteSlot++), layer, box, tint, shadowStyle);
         } else {
@@ -204,7 +211,7 @@ export class LayerBinder {
       );
     }
     // Hide what this frame did not bind: leftover sprites from a frame that needed more layers, and a
-    // silhouette the drawn bob has none for. The shadow flags shrink with the sprites they describe.
+    // silhouette the drawn bob has none for. The pick exemptions shrink with the sprites they describe.
     if (!hasSelection) pe.selectionEllipse = undefined;
     for (let i = spriteSlot; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
@@ -216,7 +223,7 @@ export class LayerBinder {
         if (s !== undefined) s.visible = false;
       }
     } else {
-      pe.shadowFlags.length = spriteSlot;
+      pe.pickExempt.length = spriteSlot;
     }
     if (site === 'claimed') {
       this.placeClaimRing(pe);
@@ -405,6 +412,27 @@ export class LayerBinder {
     enhanceBuilding: boolean,
   ): void {
     const spr = this.plainSlot(pe, i);
+    const grounded =
+      layer.groundFoot === undefined
+        ? null
+        : this.textures.groundedPart(
+            layer.groundFoot,
+            layer.source,
+            layer.frame,
+            layer.scale,
+            this.feetX + (layer.dx ?? 0),
+            this.feetY + (layer.dy ?? 0),
+            enhanceBuilding,
+          );
+    if (layer.groundFoot === 'shade' || layer.groundFoot === 'cover') {
+      spr.visible = grounded !== null;
+      if (grounded === null) return;
+      spr.texture = grounded;
+      spr.position.set(box.ox, box.drawnOy);
+      setVegetationShear(spr, layer.scale, 0);
+      if (spr.tint !== tint) spr.tint = tint;
+      return;
+    }
     if (revealTexture === null && box.hiddenTop >= layer.frame.height) {
       // Nothing revealed yet: draw nothing, but bounds still stamp so the flat site stays clickable
       // over its plot.
@@ -413,6 +441,7 @@ export class LayerBinder {
     }
     spr.texture =
       revealTexture ??
+      grounded ??
       (box.hiddenTop > 0
         ? this.textures.cropped(layer.source, layer.frame, box.hiddenTop)
         : layer.shadow === true

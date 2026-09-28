@@ -178,6 +178,9 @@ export const plSurfaces = {
       environmentMotion: 'Ruch otoczenia',
       environmentMotionTip:
         'Drzewa, które oryginał rysuje jedną nieruchomą klatką, kołyszą się na wietrze razem ze swoim cieniem, ryby pływają płynnie, a wiatr w roślinności projektu jest wygładzony. Osadnicy i zwierzęta zachowują krok oryginału, a oryginalne animacje nie dostają dodatkowych klatek. We wczytanym zapisie drzewa stoją nieruchomo.',
+      groundedBuildings: 'Osadzenie budynków w terenie',
+      groundedBuildingsTip:
+        'Budynki, palisady i kamienne mury lekko zapadają się w teren, na którym stoją: miękki cień wzdłuż ścian, kępki trawy na łące i zaspa na śniegu, każde w świetle własnej ściany. Po wyłączeniu zostaje wygląd oryginału.',
       uiScale: 'Skala interfejsu w grze',
       uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',

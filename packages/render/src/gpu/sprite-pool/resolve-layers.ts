@@ -19,6 +19,8 @@ import {
   layeredLayerFor,
   layerScale,
   pushBodyWithShadow,
+  pushGroundedBody,
+  pushGroundedFrom,
   pushLayeredWithShadow,
   resolveFromLayer,
 } from './layered-layers.js';
@@ -152,9 +154,12 @@ function pushLayers(
   const scale = layerScale(sheet, item.kind, undefined);
   const kindLayer = sheet.kindLayers?.[item.kind];
   if (kindLayer !== undefined) {
-    if (!pushBodyWithShadow(out, kindLayer, bobId, scale)) return false;
-    if (item.kind === 'building') pushBuildingExtras(out, sheet, item, tick);
-    return true;
+    if (item.kind === 'building') {
+      if (!pushGroundedFrom(out, kindLayer, bobId, scale)) return false;
+      pushBuildingExtras(out, sheet, item, tick);
+      return true;
+    }
+    return pushBodyWithShadow(out, kindLayer, bobId, scale);
   }
 
   // Shared body atlas + overlay (head) layers, all indexed by the same resolved bob id.
@@ -208,8 +213,7 @@ function appendPalisadePost(
   post: PalisadePostDraw | null,
 ): boolean {
   PALISADE_POST.reset();
-  if (!pushLayeredWithShadow(PALISADE_POST, sheet, 'palisade', resolvePalisadeDraw(binding, draw)))
-    return false;
+  if (!pushGroundedBody(PALISADE_POST, sheet, 'palisade', resolvePalisadeDraw(binding, draw))) return false;
   for (const layer of PALISADE_POST.finish()) {
     const placed = post === null ? layer : shiftedLayer(layer, post);
     (layer.shadow === true ? PALISADE_SHADOWS : PALISADE_BODIES).push(placed);

@@ -162,7 +162,7 @@ export class SpritePool {
   reconcile(frame: PoolFrame): void {
     const scene = this.sceneFor(frame);
     this.frameId++;
-    this.epoch.advance(frame, this.textures.shadowRevision);
+    this.epoch.advance(frame, this.textures.textureRevision);
     this.snapResolution = frame.snapResolution;
     this.portrait.release();
     this.damaged.length = 0;

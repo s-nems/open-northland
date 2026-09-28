@@ -18,6 +18,7 @@ import {
 import { loadLayer, MissingAtlasError } from './ir/load.js';
 import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
+import { isGroundedWall } from './object-grounding.js';
 import { footprintBrightness, unshadedLogicTypeIds } from './object-shading.js';
 import { standingVegetationTypeIds, stillVegetationSway } from './object-sway.js';
 
@@ -174,6 +175,8 @@ export async function loadMapObjects(
     /** The ground cells the object's walk area covers, relative to its node: what
      *  {@link footprintBrightness} grades it against. */
     readonly walkFootprint: readonly FootprintCell[];
+    /** A built wall whose foot sets into the ground ({@link isGroundedWall}). */
+    readonly grounded: boolean;
   }
   // One ResolvedType per (type, state list), indexed [typeIndex][stateIndex]; a null entry means that
   // state resolved nothing and the placement falls back to state 0.
@@ -204,6 +207,7 @@ export async function loadMapObjects(
         groundPass,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
         walkFootprint,
+        grounded: isGroundedWall(record),
       };
     });
   });
@@ -246,6 +250,7 @@ export async function loadMapObjects(
       ...(type.environmentSway !== undefined ? { environmentSway: type.environmentSway } : {}),
       decor: type.decor,
       ...(type.groundPass ? { groundPass: true } : {}),
+      ...(type.grounded ? { grounded: true as const } : {}),
       ...(lift !== 0 ? { lift } : {}),
       // The map stores no per-object phase, so this gradient is invented here: neighbouring half-cells
       // stay within one frame of each other while the surface avoids pulsing as one stamp.

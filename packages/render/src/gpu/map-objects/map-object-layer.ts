@@ -34,7 +34,7 @@ interface UpdateInputs {
   readonly maxY: number;
   readonly tick: number;
   readonly motionTime: number;
-  readonly shadowRevision: number;
+  readonly textureRevision: number;
   readonly fogEpoch: number | undefined;
 }
 
@@ -149,7 +149,7 @@ export class MapObjectLayer {
       writeDecorShadowStyle(this.decorShadowStyle, shadowStyle);
       this.writtenShadowStyle = shadowStyle;
     }
-    const shadowRevision = this.textures.shadowRevision;
+    const textureRevision = this.textures.textureRevision;
     // A fog probe without an epoch has no change signal, so such a frame never counts as identical.
     const fogKeyed = fogStateOfCell === undefined || fogEpoch !== undefined;
     const last = this.lastInputs;
@@ -162,7 +162,7 @@ export class MapObjectLayer {
       last.maxY === vp.maxY &&
       last.tick === tick &&
       last.motionTime === motionTime &&
-      last.shadowRevision === shadowRevision &&
+      last.textureRevision === textureRevision &&
       last.fogEpoch === fogEpoch
     ) {
       return;
@@ -175,7 +175,7 @@ export class MapObjectLayer {
           maxY: vp.maxY,
           tick,
           motionTime,
-          shadowRevision,
+          textureRevision,
           fogEpoch,
         }
       : null;

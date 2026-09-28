@@ -86,24 +86,42 @@ function mipBytes(width: number, height: number): number {
   return bytes;
 }
 
+/** What a building frame's bake does to its copy of the frame. */
+export interface BuildingBake {
+  /** The enhanced-sampling look: a sharpened interior, linear sampling and generated mips. Otherwise the
+   *  copy samples like its atlas page. */
+  readonly enhanced: boolean;
+  /** Reworks the frame's isolated RGBA copy, placed at `pad` px in an image `stride` wide, before the
+   *  enhancement touches it. */
+  readonly rework?: (frame: AtlasFrame, image: Uint8ClampedArray, stride: number, pad: number) => void;
+}
+
 /** Each frame is isolated before mip generation, so atlas neighbours cannot contaminate roof detail.
- * Retained GPU pixels including mips are capped at 32 MiB, plus at most 32 MiB of CPU canvas copies.
+ * Retained GPU pixels including mips are capped at 32 MiB per cache, plus at most 32 MiB of CPU canvas
+ * copies; a renderer holds one cache per bake it draws with, and only the ones in use fill.
  * No eviction: even detached pooled sprites can retain a texture until they next enter the viewport. */
 export class BuildingTextureCache {
   private readonly textures = new Map<AtlasFrame, Texture>();
   private unavailable = new WeakSet<AtlasFrame>();
   private gpuBytes = 0;
 
+  constructor(private readonly bake: BuildingBake = { enhanced: true }) {}
+
   get(source: TextureSource, frame: AtlasFrame): Texture | null {
     // Authored assets already have their own mip policy; never bake them again.
     if (source.autoGenerateMipmaps || source.mipLevelCount > 1) return null;
     const cached = this.textures.get(frame);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      // A plain copy follows its page's sampling, which the zoom and the enhancement toggle flip; a flip
+      // bumps the texture revision, so every holder asks again.
+      if (!this.bake.enhanced) cached.source.scaleMode = source.scaleMode;
+      return cached;
+    }
     if (this.unavailable.has(frame)) return null;
     const width = frame.width + PADDING * 2;
     const height = frame.height + PADDING * 2;
     if (width * height > MAX_FRAME_PIXELS || frame.width <= 0 || frame.height <= 0) return null;
-    const bytes = mipBytes(width, height);
+    const bytes = this.bake.enhanced ? mipBytes(width, height) : width * height * 4;
     if (this.gpuBytes + bytes > MAX_GPU_BYTES) return null;
     const resource: unknown = source.resource;
     if (!isDrawableResource(resource)) {
@@ -128,12 +146,13 @@ export class BuildingTextureCache {
         frame.height,
       );
       const image = ctx.getImageData(0, 0, width, height);
-      sharpenBuildingInterior(image.data, width, height);
+      this.bake.rework?.(frame, image.data, width, PADDING);
+      if (this.bake.enhanced) sharpenBuildingInterior(image.data, width, height);
       ctx.putImageData(image, 0, 0);
       const baked = new CanvasSource({
         resource: ctx.canvas,
-        scaleMode: 'linear',
-        autoGenerateMipmaps: true,
+        scaleMode: this.bake.enhanced ? 'linear' : source.scaleMode,
+        autoGenerateMipmaps: this.bake.enhanced,
       });
       const texture = new Texture({
         source: baked,

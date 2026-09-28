@@ -64,9 +64,10 @@ export interface PalettedPooledEntity extends PooledEntityBase {
 export interface PlainPooledEntity extends PooledEntityBase {
   readonly paletted: false;
   readonly sprites: Sprite[];
-  /** Parallel to {@link PlainPooledEntity.sprites}: whether that layer is a cast shadow this frame, the
-   *  pixel picker's exclusion. A paletted character keeps its shadow on a sprite of its own. */
-  readonly shadowFlags: boolean[];
+  /** Parallel to {@link PlainPooledEntity.sprites}: whether the pixel picker skips that layer this frame,
+   *  as it does a cast shadow and a foot's ground cover. A paletted character keeps its shadow on a sprite
+   *  of its own. */
+  readonly pickExempt: boolean[];
 }
 
 export type PooledEntity = PalettedPooledEntity | PlainPooledEntity;
@@ -86,6 +87,6 @@ export function createPooled(kind: SpriteKind, palette: PaletteLut | undefined):
     bound: new BindStamp(),
   };
   return palette === undefined
-    ? { ...base, paletted: false, sprites: [], shadowFlags: [] }
+    ? { ...base, paletted: false, sprites: [], pickExempt: [] }
     : { ...base, paletted: true, sprites: [], shadows: [], palette };
 }

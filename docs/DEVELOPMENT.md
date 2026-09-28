@@ -172,8 +172,8 @@ stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reprodu
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.
 
-The Graphics tab also owns four enhancements of the world view. They are stored settings, default on,
-and apply to a running game without a restart. With all four off the world matches the previous
+The Graphics tab also owns five enhancements of the world view. They are stored settings, default on,
+and apply to a running game without a restart. With all five off the world matches the previous
 renderer except for two silhouettes that now draw either way: flat decor casts its authored shadow,
 and settlers and animals draw the authored `_s` twin the original ships. For a before/after review
 keep the map, camera and zoom fixed, and include x2 and a zoomed-out pan.
@@ -215,6 +215,16 @@ keep the map, camera and zoom fixed, and include x2 and a zoomed-out pan.
   vegetation and adds that breeze to the tall trees the original ships as one still frame (its
   walk-blocking dead trees), whose cast shadows lean with them. That breeze belongs to the static map layer: a
   harvestable the sprite pool draws, which is every one after a save is restored, stands still.
+- **Grounded buildings** (`groundedBuildings`): finished buildings, palisade posts and the maps' built
+  stone walls stand in the ground instead of on it, an invented look rather than the original's. From
+  the art alone the renderer finds where each wall meets the ground, sinks that foot a few pixels,
+  darkens the wall toward it, shades the ground beside it and covers it with what the ground is along
+  each stretch of the foot: a stain of its colour, tufts on grass, a drift on snow. The ground's
+  colours come from the terrain's per-cell colours, so a presentation pack without them draws the
+  original look, and whatever covers a wall's foot takes that wall's own light. A frame with no ground
+  line, an unreadable page, or a full GPU budget draws as the original; a bake the per-frame budget
+  defers is picked up on a later frame, so a town grounds progressively. Construction stages, the
+  placement ghost and a collapse draw the plain body.
 
 Original humans and animals keep their tick anchors under every setting: the original engine moves
 a walker only together with its walk frame, and moving the body inside a frame hold would drag the

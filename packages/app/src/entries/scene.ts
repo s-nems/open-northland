@@ -4,6 +4,7 @@ import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
+import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
@@ -155,6 +156,9 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
 
   const renderer = await createWorldRenderer(app, params, sheet);
   renderer.setTerrain(terrainGrid, terrain);
+  // A presentation pack's own ground has no per-cell colours for a building's foot to take on.
+  const groundColours = pack !== null ? null : await loadMinimapCellColours(terrainGrid, terrain);
+  renderer.setGroundColours(groundColours, terrainGrid.width, terrainGrid.height);
 
   const driver = new LockstepDriver({
     sim,

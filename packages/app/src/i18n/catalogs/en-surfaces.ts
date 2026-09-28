@@ -181,6 +181,9 @@ export const enSurfaces = {
       environmentMotion: 'Environment motion',
       environmentMotionTip:
         "Trees the original draws as one still frame sway in the wind together with their shadow, fish swim smoothly, and the breeze in the project's own vegetation is smoothed. Settlers and animals keep the original stepping, and original animations gain no extra frames. Trees stand still in a restored save.",
+      groundedBuildings: 'Grounded buildings',
+      groundedBuildingsTip:
+        'Buildings, palisades and stone walls sink a little into the ground they stand on: a soft shade along the walls, tufts of grass on a meadow and a drift on snow, each in the light of its own wall. Off keeps the original look.',
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',

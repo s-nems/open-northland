@@ -5,7 +5,7 @@ import { defaultSettings, parseStoredSettings } from '../src/view/settings-store
 describe('graphics enhancement choices', () => {
   it('keeps each saved choice and ignores malformed values', () => {
     const settings = parseStoredSettings(
-      '{"enhancedSampling":false,"pixelArtScaler":"nearest","softShadows":false,"enhancedWater":false,"environmentMotion":"off"}',
+      '{"enhancedSampling":false,"pixelArtScaler":"nearest","softShadows":false,"enhancedWater":false,"environmentMotion":"off","groundedBuildings":false}',
     );
     expect(enhancementsOf(settings)).toEqual({
       enhancedSampling: false,
@@ -13,6 +13,7 @@ describe('graphics enhancement choices', () => {
       softShadows: false,
       enhancedWater: false,
       environmentMotion: true,
+      groundedBuildings: false,
     });
   });
 

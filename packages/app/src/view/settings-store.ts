@@ -50,6 +50,7 @@ export interface MenuSettings {
   readonly softShadows: boolean;
   readonly enhancedWater: boolean;
   readonly environmentMotion: boolean;
+  readonly groundedBuildings: boolean;
   readonly fpsLimit: FpsLimit;
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
@@ -86,6 +87,7 @@ export function defaultSettings(): MenuSettings {
     softShadows: true,
     enhancedWater: true,
     environmentMotion: true,
+    groundedBuildings: true,
     fpsLimit: null,
     cursorTheme: DEFAULT_CURSOR_THEME,
     cursorSize: DEFAULT_CURSOR_SIZE,
@@ -157,6 +159,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     enhancedWater: typeof record.enhancedWater === 'boolean' ? record.enhancedWater : defaults.enhancedWater,
     environmentMotion:
       typeof record.environmentMotion === 'boolean' ? record.environmentMotion : defaults.environmentMotion,
+    groundedBuildings:
+      typeof record.groundedBuildings === 'boolean' ? record.groundedBuildings : defaults.groundedBuildings,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     cursorTheme: parseCursorTheme(record.cursorTheme),
     cursorSize: parseCursorSize(record.cursorSize),

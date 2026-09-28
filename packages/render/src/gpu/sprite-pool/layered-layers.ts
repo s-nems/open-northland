@@ -139,3 +139,43 @@ export function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number)
   shadowRecords.set(frame, record);
   return record;
 }
+
+/** The shade, grounded body and cover records of each body record (see {@link pushGroundedFrom}). */
+const groundedRecords = new WeakMap<ResolvedLayer, readonly [ResolvedLayer, ResolvedLayer, ResolvedLayer]>();
+
+/**
+ * Append a building body set into the ground, ordered `[shade, shadow, body, cover]`; false appends
+ * nothing and means the placeholder.
+ */
+export function pushGroundedBody(
+  out: LayerBuffer,
+  sheet: SpriteSheet,
+  kind: SpriteKind,
+  draw: BuildingDraw,
+): boolean {
+  const layer = sourceLayerFor(sheet, kind, draw);
+  if (layer === undefined) return false;
+  return pushGroundedFrom(out, layer, draw.bob, layeredScale(sheet, kind, draw));
+}
+
+/** {@link pushGroundedBody} for one bob of an already chosen layer. */
+export function pushGroundedFrom(out: LayerBuffer, layer: SpriteLayer, bob: number, scale: number): boolean {
+  const body = resolveFromLayer(layer, bob, scale);
+  if (body === null) return false;
+  let parts = groundedRecords.get(body);
+  if (parts === undefined) {
+    const overlay = { source: body.source, frame: body.frame, scale, boundsExempt: true } as const;
+    parts = [
+      { ...overlay, shadow: true, groundFoot: 'shade' },
+      { ...body, groundFoot: 'body' },
+      { ...overlay, groundFoot: 'cover' },
+    ];
+    groundedRecords.set(body, parts);
+  }
+  out.push(parts[0]);
+  const shadow = shadowLayerFor(layer, bob, scale);
+  if (shadow !== null) out.push(shadow);
+  out.push(parts[1]);
+  out.push(parts[2]);
+  return true;
+}

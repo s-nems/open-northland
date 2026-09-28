@@ -10,7 +10,7 @@ import {
   resolveUpgradeDraws,
 } from '../../data/sprites/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
-import { hasLoadedFamily, layeredLayerFor, pushLayeredWithShadow } from './layered-layers.js';
+import { hasLoadedFamily, layeredLayerFor, pushGroundedBody } from './layered-layers.js';
 import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 
 /** A state overlay's bounds-exempt twin of its memoized record (see {@link layeredLayerFor}). */
@@ -35,7 +35,7 @@ export function pushBuildingLayers(
   // construction path, which drops the stage instead.
   if (!hasLoadedFamily(sheet, draw)) return draw.bob;
   // A broken body never draws floating extras.
-  if (!pushLayeredWithShadow(out, sheet, 'building', draw)) return false;
+  if (!pushGroundedBody(out, sheet, 'building', draw)) return false;
   pushBuildingExtras(out, sheet, item, tick);
   return true;
 }

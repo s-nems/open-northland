@@ -27,6 +27,22 @@ describe('world sprite smoothing', () => {
     cache.clear();
     source.destroy();
   });
+  it('asks every holder to rebind when a page flips, and not on a steady frame', () => {
+    const cache = new TextureCache();
+    const source = atlas(cache, 'nearest');
+    const chrome = new WorldChrome(cache, false, true);
+    const revision = cache.textureRevision;
+    chrome.applyWorldSampling(0.5);
+    expect(cache.textureRevision).toBe(revision + 1);
+    chrome.applyWorldSampling(0.5);
+    expect(cache.textureRevision).toBe(revision + 1);
+    chrome.applyWorldSampling(1);
+    expect(cache.textureRevision).toBe(revision + 2);
+    chrome.destroy();
+    cache.clear();
+    source.destroy();
+  });
+
   it('leaves own art at the sampling its loader chose, whatever the art filter is set to', () => {
     const cache = new TextureCache();
     const ownArt = atlas(cache, 'nearest', false);

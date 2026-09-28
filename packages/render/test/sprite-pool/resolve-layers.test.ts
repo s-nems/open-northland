@@ -2,6 +2,7 @@ import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import {
   type DrawItem,
+  type ResolvedLayer,
   resolveLayers,
   type SpriteAtlas,
   type SpriteLayer,
@@ -11,6 +12,10 @@ import {
 /** `resolveLayers` is a pure layer decision, so these fake sources are never touched. */
 const source = {} as TextureSource;
 const shadowSource = {} as TextureSource;
+
+/** A resolve without the ground shade and cover a finished building or a palisade post sets its foot with. */
+const withoutGroundOverlays = (layers: readonly ResolvedLayer[] | null): readonly ResolvedLayer[] =>
+  (layers ?? []).filter((l) => l.groundFoot !== 'shade' && l.groundFoot !== 'cover');
 
 /** An atlas entry at bob `n`, laid out at x=n so an assertion can read `frame.x` back as the bob id. */
 const frame = (
@@ -57,13 +62,15 @@ describe('resolveLayers - the animated building overlay is bounds-exempt', () =>
   };
   const mill: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 13 };
 
-  it('marks ONLY the overlay layer boundsExempt (the body still stamps the entity box)', () => {
+  it('keeps only the body in the entity box: the rotor and the ground overlays are bounds-exempt', () => {
     const layers = resolveLayers(sheet, mill, 0) ?? [];
-    // Only the rotor leaves the bounds union, so the selection ring and the portrait framing read the
-    // stable body box while the spin frames breathe.
-    expect(layers.map((l) => [l.frame.x, l.boundsExempt ?? false])).toEqual([
-      [70, false],
-      [76, true],
+    // The rotor leaves the bounds union, so the selection ring and the portrait framing read the stable
+    // body box while the spin frames breathe; the foot's shade and cover spill past the body.
+    expect(layers.map((l) => [l.frame.x, l.groundFoot ?? null, l.boundsExempt ?? false])).toEqual([
+      [70, 'shade', true],
+      [70, 'body', false],
+      [70, 'cover', true],
+      [76, null, true],
     ]);
   });
 });
@@ -121,7 +128,11 @@ describe('resolveLayers - connected palisades', () => {
       ],
     };
     expect(
-      resolveLayers(sheet, item, 0)?.map((layer) => [layer.frame.x, layer.dx ?? 0, layer.dy ?? 0]),
+      withoutGroundOverlays(resolveLayers(sheet, item, 0)).map((layer) => [
+        layer.frame.x,
+        layer.dx ?? 0,
+        layer.dy ?? 0,
+      ]),
     ).toEqual([
       [0, 0, 0],
       [1, 10, 3],
@@ -142,10 +153,34 @@ describe('resolveLayers - connected palisades', () => {
         { dx: 20, dy: -26, gfxIndex: 691, variantStep: 2 },
       ],
     };
-    expect(resolveLayers(sheet, item, 0)?.map((layer) => [layer.frame.x, layer.dy ?? 0])).toEqual([
+    expect(
+      withoutGroundOverlays(resolveLayers(sheet, item, 0)).map((layer) => [layer.frame.x, layer.dy ?? 0]),
+    ).toEqual([
       [2, -26],
       [1, -13],
       [0, 0],
+    ]);
+  });
+
+  it('sets every post into the ground: all shades under all bodies, each cover over its own post', () => {
+    const item: DrawItem = {
+      kind: 'palisade',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      gfxIndex: 691,
+      palisadePosts: [{ dx: 10, dy: -13, gfxIndex: 691, variantStep: 1 }],
+    };
+    expect(
+      resolveLayers(sheet, item, 0)?.map((layer) => [layer.frame.x, layer.groundFoot, layer.dy ?? 0]),
+    ).toEqual([
+      [0, 'shade', 0],
+      [1, 'shade', -13],
+      [1, 'body', -13],
+      [1, 'cover', -13],
+      [0, 'body', 0],
+      [0, 'cover', 0],
     ]);
   });
 
@@ -190,7 +225,9 @@ describe('resolveLayers - connected palisades', () => {
       gfxIndex: 691,
       palisadePosts: [{ dx: 10, dy: 0, gfxIndex: 691, variantStep: 1, builtPct: 10 }],
     };
-    expect(resolveLayers(sheet, item, 0)?.map((layer) => layer.frame.x)).toEqual([0, 21]);
+    expect(withoutGroundOverlays(resolveLayers(sheet, item, 0)).map((layer) => layer.frame.x)).toEqual([
+      0, 21,
+    ]);
   });
 });
 
@@ -500,15 +537,25 @@ describe('resolveLayers - cast shadows draw under the body from the atlas shadow
 
   it('prepends the same-id shadow frame, bounds-exempt, under a finished building body', () => {
     const layers = resolveLayers(sheet, finished, 0) ?? [];
-    expect(layers.map((l) => [l.frame.x, l.source === shadowSource, l.boundsExempt ?? false])).toEqual([
-      [70, true, true],
-      [70, false, false],
+    // The ground's shade goes under the cast shadow, the cover over the body.
+    expect(
+      layers.map((l) => [
+        l.frame.x,
+        l.source === shadowSource,
+        l.boundsExempt ?? false,
+        l.groundFoot ?? null,
+      ]),
+    ).toEqual([
+      [70, false, true, 'shade'],
+      [70, true, true, null],
+      [70, false, false, 'body'],
+      [70, false, true, 'cover'],
     ]);
   });
 
   it('draws only the body when the shadow twin has no frame at the bob id', () => {
     const noShadowBob: DrawItem = { ...finished, typeId: 14 };
-    const layers = resolveLayers(sheet, noShadowBob, 0) ?? [];
+    const layers = withoutGroundOverlays(resolveLayers(sheet, noShadowBob, 0));
     expect(layers.map((l) => [l.frame.x, l.source === shadowSource])).toEqual([[85, false]]);
   });
 

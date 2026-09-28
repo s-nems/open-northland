@@ -33,6 +33,8 @@ export interface WorldEnhancements {
   readonly enhancedWater: boolean;
   /** Interpolated fish, the smoothed breeze and the sway of trees authored as one still frame. */
   readonly environmentMotion: boolean;
+  /** Buildings, palisades and built walls set into the ground they stand on instead of on it. */
+  readonly groundedBuildings: boolean;
 }
 
 /** The baseline renderer: every enhancement off. */
@@ -42,6 +44,7 @@ export const BASELINE_ENHANCEMENTS: WorldEnhancements = {
   softShadows: false,
   enhancedWater: false,
   environmentMotion: false,
+  groundedBuildings: false,
 };
 
 export interface WorldRendererOptions {

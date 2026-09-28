@@ -95,7 +95,7 @@ export function pixelHit(
   for (let i = 0; i < pe.sprites.length; i++) {
     const spr = pe.sprites[i];
     if (!(spr instanceof Sprite) || !spr.visible) continue;
-    if (pe.shadowFlags[i] === true) continue;
+    if (pe.pickExempt[i] === true) continue;
     const mask = alphaMaskOf(spr.texture.source);
     if (mask === null) return undefined; // pixels unreadable → the box hit stands
     sampledEveryLayer = true;

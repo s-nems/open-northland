@@ -266,6 +266,8 @@ export class PlacementGhostLayer {
       return;
     }
     for (const layer of layers) {
+      // The ghost floats over the ground it is judged against; it draws no contact shade.
+      if (layer.groundFoot === 'shade' || layer.groundFoot === 'cover') continue;
       const sprite = mintLayerSprite(this.textures, layer);
       if (ghost.kind === 'gate' && !ghost.ok) sprite.tint = STRING_BLOCKED;
       this.container.addChild(sprite);

@@ -141,6 +141,7 @@ export async function presentMapWorld(
   // map-selection card art, not an overview raster. Null without lanes or textures.
   await boot.begin('minimap');
   const minimapCells = pack !== null ? null : await loadMinimapCellColours(terrainGrid, world.terrain);
+  renderer.setGroundColours(minimapCells, terrainGrid.width, terrainGrid.height);
 
   await boot.begin('hud');
   const view = await startGameView({

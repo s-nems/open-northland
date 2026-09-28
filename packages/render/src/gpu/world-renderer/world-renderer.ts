@@ -3,6 +3,7 @@ import { type Application, Container } from 'pixi.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import { type DrawItem, palisadeLayoutOf, type SceneTerrain } from '../../data/scene/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
+import { GroundTone } from '../ground-foot/index.js';
 import { type GroundWave, GroundWaveLayer } from '../ground-waves/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
 import {
@@ -61,6 +62,7 @@ export class WorldRenderer {
   private readonly mapObjects: MapObjectLayer;
   private readonly groundWaves: GroundWaveLayer;
   private readonly pool: SpritePool;
+  private groundTone: GroundTone | null = null;
   private readonly fog = new WorldFog();
   private readonly placementOverlay: PlacementOverlayLayer;
   private readonly constructionPlots = new ConstructionPlotLayer();
@@ -131,6 +133,7 @@ export class WorldRenderer {
     this.terrain.setEnhancedSampling(next.enhancedSampling);
     this.terrain.setEnhancedWater(next.enhancedWater);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);
+    this.textureCache.setGroundColours(next.groundedBuildings ? this.groundTone : null);
   }
 
   setPaused(paused: boolean): void {
@@ -154,6 +157,16 @@ export class WorldRenderer {
 
   brightnessField(): BrightnessField {
     return this.terrain.brightnessField();
+  }
+
+  /** The map's per-cell ground colours (`0xRRGGBB`, or the minimap's unresolved sentinel), which the
+   *  feet of buildings and walls take on; null sets nothing into the ground. Call after {@link setTerrain}. */
+  setGroundColours(cells: Uint32Array | null, width: number, height: number): void {
+    this.groundTone =
+      cells === null
+        ? null
+        : new GroundTone(cells, width, height, this.terrain.brightnessField(), this.elevation);
+    this.textureCache.setGroundColours(this.enhancements.groundedBuildings ? this.groundTone : null);
   }
 
   /** Call once per map. */

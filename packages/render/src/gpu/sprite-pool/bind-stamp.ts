@@ -14,7 +14,7 @@ export class FrameEpoch {
   private pixelArtScaler: PoolFrame['pixelArtScaler'];
   private environmentMotion: PoolFrame['environmentMotion'];
   private shadowStyle: PoolFrame['shadowStyle'];
-  private shadowRevision = Number.NaN;
+  private textureRevision = Number.NaN;
   private offsetX = Number.NaN;
   private offsetY = Number.NaN;
   private scale: number | undefined;
@@ -22,7 +22,7 @@ export class FrameEpoch {
   private screenH = Number.NaN;
   private snapResolution: number | undefined;
 
-  advance(frame: PoolFrame, shadowRevision: number): void {
+  advance(frame: PoolFrame, textureRevision: number): void {
     const camera = frame.camera;
     if (
       frame.tick === this.tick &&
@@ -30,7 +30,7 @@ export class FrameEpoch {
       frame.pixelArtScaler === this.pixelArtScaler &&
       frame.environmentMotion === this.environmentMotion &&
       frame.shadowStyle === this.shadowStyle &&
-      shadowRevision === this.shadowRevision &&
+      textureRevision === this.textureRevision &&
       camera.offsetX === this.offsetX &&
       camera.offsetY === this.offsetY &&
       camera.scale === this.scale &&
@@ -46,7 +46,7 @@ export class FrameEpoch {
     this.pixelArtScaler = frame.pixelArtScaler;
     this.environmentMotion = frame.environmentMotion;
     this.shadowStyle = frame.shadowStyle;
-    this.shadowRevision = shadowRevision;
+    this.textureRevision = textureRevision;
     this.offsetX = camera.offsetX;
     this.offsetY = camera.offsetY;
     this.scale = camera.scale;

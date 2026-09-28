@@ -118,7 +118,9 @@ export function graphicsSettingsRows(
     },
   );
   markSegment(filter.root, 'pixel-art-filter');
-  const enhancementToggles = (['softShadows', 'enhancedWater', 'environmentMotion'] as const).map((key) => {
+  const enhancementToggles = (
+    ['softShadows', 'enhancedWater', 'environmentMotion', 'groundedBuildings'] as const
+  ).map((key) => {
     const toggle = togglePill(settings[key], (enabled) => {
       void store.update({ [key]: enabled });
     });

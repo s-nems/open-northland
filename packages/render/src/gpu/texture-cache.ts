@@ -3,6 +3,7 @@ import { clamp } from '../data/math.js';
 import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
 import { BuildingTextureCache } from './building-texture-cache.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
+import { type GroundColours, GroundedFootCache, type GroundFootPart, sinkBody } from './ground-foot/index.js';
 import { markMagnifiedTexture, markPalettedTexture, markShadowTexture } from './pixel-art-registry.js';
 import { SoftShadowCache } from './soft-shadow-cache.js';
 
@@ -32,9 +33,22 @@ interface RevealBake {
  */
 export class TextureCache {
   private readonly buildings = new BuildingTextureCache();
+  private readonly groundedFeet = new GroundedFootCache();
+  private readonly sinkFoot = (
+    frame: AtlasFrame,
+    image: Uint8ClampedArray,
+    stride: number,
+    pad: number,
+  ): void => {
+    const analysis = this.groundedFeet.analysisFromImage(frame, image, stride, pad, pad);
+    if (analysis !== null) sinkBody(image, stride, pad, pad, analysis);
+  };
+  /** Sunk building bodies in the enhanced look, and in the page's own sampling. */
+  private readonly groundedEnhanced = new BuildingTextureCache({ enhanced: true, rework: this.sinkFoot });
+  private readonly groundedPlain = new BuildingTextureCache({ enhanced: false, rework: this.sinkFoot });
   private readonly softShadows = new SoftShadowCache();
   private useSoftShadows = false;
-  private shadowVersion = 0;
+  private revision = 0;
   private readonly cache = new Map<AtlasFrame, Texture>();
   /** Cast-silhouette views of the character frames that project onto the ground, kept out of
    *  {@link cache} so the same frame can draw both, keyed by how many of its top rows the view keeps. */
@@ -52,21 +66,36 @@ export class TextureCache {
   /** Reveal bakes per frame, keyed by quantised threshold. */
   private readonly revealCache = new Map<AtlasFrame, Map<number, RevealBake>>();
 
-  get shadowRevision(): number {
-    return this.shadowVersion;
+  /** Bumps whenever a bind of unchanged layers would pick other textures: a shadow or ground switch, a
+   *  page sampling flip, or a bake the last frame's budget turned away. */
+  get textureRevision(): number {
+    return this.revision;
   }
 
   /** Opens a frame. A bake the last frame's budget turned away bumps the revision, so the layers still
-   *  holding hard silhouettes rebind and the backlog drains a frame at a time. */
+   *  holding hard silhouettes or plain feet rebind and the backlog drains a frame at a time. */
   beginFrame(): void {
-    if (this.softShadows.deferredBakes) this.shadowVersion++;
+    if (this.softShadows.deferredBakes || this.groundedFeet.deferredBakes) this.revision++;
     this.softShadows.beginFrame();
+    this.groundedFeet.beginFrame();
   }
 
   setSoftShadows(enabled: boolean): void {
     if (this.useSoftShadows === enabled) return;
     this.useSoftShadows = enabled;
-    this.shadowVersion++;
+    this.revision++;
+  }
+
+  /** The world pages' sampling flipped: copies that follow a page's sampling pick it up on their next
+   *  bind. */
+  pageSamplingChanged(): void {
+    this.revision++;
+  }
+
+  /** The ground buildings set their feet into; null draws every building as the original. */
+  setGroundColours(ground: GroundColours | null): void {
+    this.groundedFeet.setGround(ground);
+    this.revision++;
   }
 
   /** A frame of a silhouette (`_s`) atlas. That page serves nothing else, so the returned view is marked
@@ -118,6 +147,29 @@ export class TextureCache {
       this.paletteIndexed.set(frame, tex);
     }
     return tex;
+  }
+
+  /**
+   * One part of a building frame set into the ground, drawn at `scale` with its feet at the lifted
+   * pre-camera point `(x, y)`: the ground's shade, the sunk body in the enhanced or the page's own look,
+   * or the cover over its foot. Null draws the part as the original would: a plain body, no shade, no
+   * cover.
+   */
+  groundedPart(
+    part: GroundFootPart,
+    source: TextureSource,
+    frame: AtlasFrame,
+    scale: number,
+    x: number,
+    y: number,
+    enhanced: boolean,
+  ): Texture | null {
+    const overlays = this.groundedFeet.overlaysAt(source, frame, scale, x, y);
+    if (overlays === null) return null;
+    // An overlay without its sunk body would shade a foot that still stands on the ground.
+    const body = (enhanced ? this.groundedEnhanced : this.groundedPlain).get(source, frame);
+    if (body === null) return null;
+    return part === 'body' ? body : part === 'shade' ? overlays.shade : overlays.cover;
   }
 
   getBuilding(source: TextureSource, frame: AtlasFrame): Texture {
@@ -249,6 +301,9 @@ export class TextureCache {
    *  page outlives the renderer; the reveal bakes own their canvas source and take it with them. */
   clear(): void {
     this.buildings.clear();
+    this.groundedEnhanced.clear();
+    this.groundedPlain.clear();
+    this.groundedFeet.clear();
     this.softShadows.clear();
     for (const tex of this.cache.values()) tex.destroy();
     this.cache.clear();

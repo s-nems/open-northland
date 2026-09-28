@@ -149,6 +149,8 @@ describe('CollapseLayer', () => {
     expect(spr.texture.frame.height).toBe(BODY_H); // intact at progress 0
     expect(spr.position.y).toBe(-BODY_H); // the frame's own feet-anchored draw offset
 
+    // One body, then the dust: the ground's shade and cover a standing building draws are left out.
+    expect(node.children).toHaveLength(2);
     // The dust cloud is minted last, so it draws over the sprites' crop edge.
     const dust = node.children[node.children.length - 1] as Container;
     expect(dust.children).toHaveLength(DUST_PUFFS);

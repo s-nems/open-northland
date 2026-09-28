@@ -1,5 +1,5 @@
 import { FOG_STATE } from '@open-northland/sim';
-import { type Container, Sprite } from 'pixi.js';
+import { type Container, Sprite, type Texture } from 'pixi.js';
 import { fogGhostTint } from '../../data/fog/index.js';
 import {
   aabbIntersects,
@@ -9,11 +9,23 @@ import {
   type Viewport,
 } from '../../data/projection/index.js';
 import { drawPassDepth, SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
+import type { AtlasFrame } from '../../data/sprites/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
+import type { GroundFootPart } from '../ground-foot/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { castShadowShear, setVegetationShear, vegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
 import { activeSway, type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
+
+/** A grounded object's ground shade sorts under its cast shadow, and the cover over its foot one mark over
+ *  its body: each clear of `depthKey`'s x tiebreak, so nothing on the same row slips between, and under
+ *  one whole paint step, so neither crosses a kind boundary. */
+const GROUND_SHADE_DEPTH_EPS = 1.5 * SHADOW_DEPTH_EPS;
+const FOOT_COVER_DEPTH_EPS = SHADOW_DEPTH_EPS;
+/** The overlays' tint on watched and on explored ground: their colours already carry the ground's
+ *  brightness, so only the fog dims them. */
+const WATCHED_OVERLAY_TINT = 0xffffff;
+const GHOST_OVERLAY_TINT = fogGhostTint(WATCHED_OVERLAY_TINT);
 
 /**
  * The tall landscape objects - anything that occludes a settler: pooled sprites in the renderer's shared
@@ -27,6 +39,9 @@ interface PooledObject {
   sprite: Sprite | null;
   /** The cast-shadow twin, minted with {@link sprite} only when the object carries shadow frames. */
   shadowSprite: Sprite | null;
+  /** A {@link MapObjectSprite.grounded} object's ground shade and foot cover, minted with {@link sprite}. */
+  shadeSprite: Sprite | null;
+  coverSprite: Sprite | null;
   attached: boolean;
   /** The undimmed tint, computed at mint so the per-frame fog grading picks between two cached
    *  colours instead of recomputing. */
@@ -75,6 +90,14 @@ function fitBox(block: TallBlock): void {
   block.maxY = maxY;
 }
 
+/** Show an overlay at the body's `(x, y)`, or hide it without one. */
+function placeOverlay(overlay: Sprite, texture: Texture | null, x: number, y: number): void {
+  overlay.visible = texture !== null;
+  if (texture === null) return;
+  overlay.texture = texture;
+  overlay.position.set(x, y);
+}
+
 export class TallObjectLayer {
   private readonly blocks = new Map<string, TallBlock>();
   /** Which block holds each object, so {@link remove} does not scan every block. */
@@ -83,7 +106,7 @@ export class TallObjectLayer {
   private lastAnimTick = -1;
   private lastMotionTime = -1;
   private lastEnvironmentMotion = false;
-  private lastShadowRevision = -1;
+  private lastTextureRevision = -1;
 
   /** Tall objects attach to `spriteLayer` so they interleave with entities in one painter order. */
   constructor(
@@ -104,6 +127,8 @@ export class TallObjectLayer {
           obj,
           sprite: null,
           shadowSprite: null,
+          shadeSprite: null,
+          coverSprite: null,
           attached: false,
           baseTint: 0xffffff,
           ghostTint: 0xffffff,
@@ -131,6 +156,8 @@ export class TallObjectLayer {
       if (this.detach(po)) block.attachedCount--;
       po.sprite?.destroy();
       po.shadowSprite?.destroy();
+      po.shadeSprite?.destroy();
+      po.coverSprite?.destroy();
       block.objects.splice(i, 1);
       if (block.objects.length === 0) this.blocks.delete(block.key);
       else fitBox(block);
@@ -143,6 +170,8 @@ export class TallObjectLayer {
     if (!po.attached || po.sprite === null) return false;
     this.spriteLayer.removeChild(po.sprite);
     if (po.shadowSprite !== null) this.spriteLayer.removeChild(po.shadowSprite);
+    if (po.shadeSprite !== null) this.spriteLayer.removeChild(po.shadeSprite);
+    if (po.coverSprite !== null) this.spriteLayer.removeChild(po.coverSprite);
     po.attached = false;
     return true;
   }
@@ -162,8 +191,29 @@ export class TallObjectLayer {
       po.shadowSprite.scale.set(obj.scale);
       po.shadowSprite.zIndex = depth - SHADOW_DEPTH_EPS;
     }
+    if (obj.grounded === true) {
+      po.shadeSprite = worldBatched(new Sprite());
+      po.shadeSprite.scale.set(obj.scale);
+      po.shadeSprite.zIndex = depth - GROUND_SHADE_DEPTH_EPS;
+      po.coverSprite = worldBatched(new Sprite());
+      po.coverSprite.scale.set(obj.scale);
+      po.coverSprite.zIndex = depth + FOOT_COVER_DEPTH_EPS;
+    }
     po.sprite = sprite;
     return sprite;
+  }
+
+  /** Set a grounded object's pose into the ground: its sunk body and two overlays, placed at the body's
+   *  `(x, y)`. Where the foot has no grounding, the body keeps its plain texture and the overlays hide. */
+  private bindGrounded(po: PooledObject, sprite: Sprite, frame: AtlasFrame, x: number, y: number): void {
+    const { obj, shadeSprite, coverSprite } = po;
+    if (shadeSprite === null || coverSprite === null) return;
+    const feetY = obj.y - (obj.lift ?? 0);
+    const grounded = (part: GroundFootPart): Texture | null =>
+      this.textures.groundedPart(part, obj.source, frame, obj.scale, obj.x, feetY, false);
+    sprite.texture = grounded('body') ?? sprite.texture;
+    placeOverlay(shadeSprite, grounded('shade'), x, y);
+    placeOverlay(coverSprite, grounded('cover'), x, y);
   }
 
   /** Bind the pose at `clock` onto a member's sprites. False when that pose has no frame, which
@@ -188,6 +238,7 @@ export class TallObjectLayer {
       obj.x + (frame.offsetX + frame.offsetY * shear) * obj.scale,
       obj.y - lift + frame.offsetY * obj.scale,
     );
+    this.bindGrounded(po, sprite, frame, sprite.position.x, sprite.position.y);
     if (po.shadowSprite !== null && obj.shadow !== undefined) {
       const shadowFrame = obj.shadow.frames[frameIndex];
       po.shadowSprite.visible = shadowFrame !== undefined; // a pose with no silhouette just hides it
@@ -221,7 +272,7 @@ export class TallObjectLayer {
     const animAdvanced = tick !== this.lastAnimTick;
     const motionAdvanced = motionTime !== this.lastMotionTime;
     const motionSwitched = environmentMotion !== this.lastEnvironmentMotion;
-    const shadowsChanged = this.lastShadowRevision !== this.textures.shadowRevision;
+    const texturesChanged = this.lastTextureRevision !== this.textures.textureRevision;
     for (const block of this.blocks.values()) {
       if (!aabbIntersects(vp, block)) {
         if (block.attachedCount > 0) {
@@ -250,10 +301,13 @@ export class TallObjectLayer {
         const sway = activeSway(obj, environmentMotion);
         const tint = watched ? po.baseTint : po.ghostTint;
         if (sprite.tint !== tint) sprite.tint = tint;
+        const overlayTint = watched ? WATCHED_OVERLAY_TINT : GHOST_OVERLAY_TINT;
+        if (po.shadeSprite !== null && po.shadeSprite.tint !== overlayTint) po.shadeSprite.tint = overlayTint;
+        if (po.coverSprite !== null && po.coverSprite.tint !== overlayTint) po.coverSprite.tint = overlayTint;
         // The frozen/live pose switches with the tint.
         const rebind =
           !po.attached ||
-          shadowsChanged ||
+          texturesChanged ||
           watched !== po.lastWatched ||
           (watched && animAdvanced && obj.frames.length > 1) ||
           (watched && motionAdvanced && sway !== undefined) ||
@@ -265,6 +319,8 @@ export class TallObjectLayer {
         if (!po.attached) {
           this.spriteLayer.addChild(sprite);
           if (po.shadowSprite !== null) this.spriteLayer.addChild(po.shadowSprite);
+          if (po.shadeSprite !== null) this.spriteLayer.addChild(po.shadeSprite);
+          if (po.coverSprite !== null) this.spriteLayer.addChild(po.coverSprite);
           po.attached = true;
           block.attachedCount++;
         }
@@ -273,7 +329,7 @@ export class TallObjectLayer {
     this.lastAnimTick = tick;
     this.lastMotionTime = motionTime;
     this.lastEnvironmentMotion = environmentMotion;
-    this.lastShadowRevision = this.textures.shadowRevision;
+    this.lastTextureRevision = this.textures.textureRevision;
   }
 
   /** Free the tall-object sprites (a map change re-invalidates them). */
@@ -282,12 +338,14 @@ export class TallObjectLayer {
       for (const po of block.objects) {
         po.sprite?.destroy();
         po.shadowSprite?.destroy();
+        po.shadeSprite?.destroy();
+        po.coverSprite?.destroy();
       }
     }
     this.blocks.clear();
     this.blockByObject.clear();
     this.lastAnimTick = -1;
     this.lastMotionTime = -1;
-    this.lastShadowRevision = -1;
+    this.lastTextureRevision = -1;
   }
 }

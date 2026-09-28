@@ -38,6 +38,7 @@ describe('parseStoredSettings', () => {
       softShadows: true,
       enhancedWater: false,
       environmentMotion: false,
+      groundedBuildings: false,
       fpsLimit: 30,
       cursorTheme: 'amber',
       cursorSize: 24,

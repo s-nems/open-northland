@@ -52,6 +52,8 @@ export interface MapObjectSprite {
     readonly source: TextureSource;
     readonly frames: readonly (AtlasFrame | undefined)[];
   };
+  /** Built stonework whose foot sets into the ground like a building's. */
+  readonly grounded?: true;
 }
 
 /** Shared by the body and shadow binds, so the pair can never drift. */
