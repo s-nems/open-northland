@@ -38,7 +38,13 @@ import { hunterEngageSpec } from './hunting/index.js';
 import { type Crowding, type OwnClaims, type Side, type WeaponBand, withinBand } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, reachableTargetGate } from './target-node.js';
-import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
+import {
+  ANIMAL_AGGRO_RADIUS_NODES,
+  ANIMAL_LEASH_NODES,
+  isValidTarget,
+  SIGHT_RADIUS_NODES,
+  wildPursuit,
+} from './targeting.js';
 import { givenUpTargetVeto } from './unreachable-targets.js';
 import type { ArmedWith } from './weapons.js';
 
@@ -221,9 +227,6 @@ export function engageSpec(
     );
   }
 
-  // An unowned hostile animal advances like a soldier within its shorter ambush radius; any other unowned
-  // combatant (a scenario civ) swings in place, its search capped at weapon reach.
-  const animalSeeker = !owned && isAnimalTribe(ctx.content, attacker.tribe);
   if (owned) {
     return {
       accept: adultOnly(world, advanceAccept),
@@ -236,16 +239,53 @@ export function engageSpec(
       hold: { keep: holdable, band: weapon, contact },
     };
   }
+  // An unowned hostile animal advances on what its herd takes up; any other unowned combatant (a scenario
+  // civ) swings in place, its search capped at weapon reach.
+  if (isAnimalTribe(ctx.content, attacker.tribe)) {
+    const pursuit = wildPursuit(world, ctx, terrain, e, here, attacker);
+    const wild = { minDist: advanceNear, player, animalSeeker: true, lowPriority: lowPriorityBuildings };
+    switch (pursuit.kind) {
+      case 'hold':
+        // Approximation: the chase stops short of the leash rather than a point past it, and one it gives
+        // up walks home too.
+        return {
+          ...wild,
+          ...NO_SEARCH,
+          lock: { target: pursuit.target },
+          defend: pursuit.stay === undefined ? null : wildLeash(pursuit.stay),
+        };
+      case 'search':
+        return {
+          ...wild,
+          accept: advanceAccept,
+          searchRadius: ANIMAL_AGGRO_RADIUS_NODES,
+          searchCenter: pursuit.center,
+          lock: null,
+          defend: null,
+        };
+      case 'return':
+        return { ...wild, ...NO_SEARCH, lock: null, defend: wildLeash(pursuit.stay) };
+      case 'idle':
+        return { ...wild, ...NO_SEARCH, lock: null, defend: null };
+    }
+  }
   return {
     accept: advanceAccept,
     minDist,
-    searchRadius: animalSeeker ? Math.max(weapon.maxRange, ANIMAL_AGGRO_RADIUS_NODES) : weapon.maxRange,
+    searchRadius: weapon.maxRange,
     player,
-    animalSeeker,
     lowPriority: lowPriorityBuildings,
     lock: null,
     defend: null,
   };
+}
+
+/** A search that admits nothing, over the seeker's own node alone. */
+const NO_SEARCH = { accept: (): boolean => false, searchRadius: 0 } as const;
+
+/** A wild animal's leash on its stay point, which it walks back to once it lets its target go. */
+function wildLeash(stay: NodeId): NonNullable<EngageSpec['defend']> {
+  return { anchorCell: stay, leash: ANIMAL_LEASH_NODES, metric: 'hex', hold: true };
 }
 
 /** `accept` narrowed to grown targets. Original behavior: a fighter picks no child for a target. */
@@ -278,6 +318,9 @@ export interface EngageSpec {
   readonly player: number | null;
   /** A hostile wild animal seeking - gates on {@link CombatIndex.civsWithin} instead. */
   readonly animalSeeker?: boolean;
+  /** Where the search is centred and its candidates ranked from when not the seeker's own node: a wild
+   *  herd leader's stay point. */
+  readonly searchCenter?: NodeId;
   /** A hunter seeking prey: its primary tier is always game {@link CombatIndex.gameWithin} tallies, so a hold
    *  on the deprioritized tier skips the search for something to yield to while none is in the band. */
   readonly preySeeker?: boolean;
@@ -330,11 +373,11 @@ export function resolveTarget(
   moving: boolean,
 ): { target: Entity; dist: number } | null {
   const { index } = pass;
-  const { x, y } = terrain.coordsOf(here);
   // The engage ladder already dropped an order whose target died or stopped being hostile this tick. An
   // ordered target is chased regardless of sight, so its real distance is measured, uncapped by the band.
   const order = world.tryGet(self, AttackOrder);
   if (order !== undefined) {
+    const { x, y } = terrain.coordsOf(here);
     // An enemy within a breaker's reach is fought first, and the wall taken up again once it is gone.
     const rival =
       order.breach?.enemy === undefined
@@ -354,6 +397,7 @@ export function resolveTarget(
   if (spec.hold !== undefined) {
     return heldOrPicked(world, ctx, terrain, pass, self, here, spec, spec.hold, moving);
   }
+  const { x, y } = terrain.coordsOf(spec.searchCenter ?? here);
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
     // A commitment ignores `minDist`: prey that closes inside the weapon's dead zone is backed off by the

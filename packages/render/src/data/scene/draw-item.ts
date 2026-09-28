@@ -140,6 +140,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  `..._agressive` gait replaces the relaxed economy one, though a bound attack swing still wins
    *  mid-swing. */
   readonly engaged?: boolean;
+  /** A moving animal using its authored fast gait. */
+  readonly running?: boolean;
   /** For a settler: its `Settler.jobType`, the body/head look key (the original's `[jobbasegraphics]`
    *  job → body/head join). Omitted when the settler has no job. */
   readonly jobType?: number;

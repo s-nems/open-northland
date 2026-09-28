@@ -144,6 +144,15 @@ describe('extractJobExperience', () => {
 });
 
 describe('extractTribes', () => {
+  it('marks only the two monster tribes with their initial natural weapon type', () => {
+    const tribes = extractTribes(
+      parseIniSections(
+        '[tribetype]\ntype 1\n[tribetype]\ntype 5\n[tribetype]\ntype 6\n[tribetype]\ntype 8\n',
+      ),
+      { file: 'synthetic.ini' },
+    );
+    expect(tribes.map((tribe) => tribe.naturalWeaponType)).toEqual([undefined, 1, 1, undefined]);
+  });
   it('maps `setatomic` triples to (jobType, atomicId, animation) bindings in file order', () => {
     const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), {
       file: 'DataCnmd/tribetypes12/tribetypes.ini',

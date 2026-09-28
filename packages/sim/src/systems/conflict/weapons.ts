@@ -7,20 +7,29 @@ import {
   Equipment,
   isWildlife,
   Palisade,
+  Position,
   type SettlerIdentity,
   Vehicle,
   type VehicleStateView,
+  type WalkDirection,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { atomicDurationForName, boundAtomicAnimation } from '../readviews/animations.js';
+import { headingToward } from '../movement/turning.js';
+import {
+  atomicDurationForName,
+  boundAnimalAtomicAnimation,
+  boundAtomicAnimation,
+} from '../readviews/animations.js';
 import {
   ARMOR_MATERIAL,
   ATOMIC_EVENT_TYPE_ATTACK,
+  ATOMIC_EVENT_TYPE_MOVE_FORWARD,
   armorMaterialForClass,
   armorMaterialForGood,
   atomicEventFrame,
+  atomicEventFrames,
   isAnimalTribe,
   isAreaWeapon,
   isRangedWeapon,
@@ -40,8 +49,8 @@ import {
  * not hit.
  *
  * An animal's combat identity is its tribe: a jobless animal keys by `tribeType` alone, because the
- * weapon's `jobType` is a monster combat-class rather than a job it could match on. Duplicate rows resolve
- * first-wins per key.
+ * weapon's `jobType` is a monster combat-class rather than a job it could match on. Stored weapon-type
+ * overrides resolve to the last definition in file order.
  */
 export function attackerWeapon(
   ctx: SystemContext,
@@ -54,6 +63,12 @@ export function attackerWeapon(
   if (wornWeaponTypeId !== undefined) {
     const worn = index.weaponsByTribeAndTypeId.get(tribe)?.get(wornWeaponTypeId);
     return worn === undefined ? null : withReach(worn);
+  }
+  // A natural weapon type stays equipped as a creature changes form or job.
+  const naturalType = index.tribes.get(tribe)?.naturalWeaponType;
+  if (naturalType !== undefined) {
+    const natural = index.weaponsByTribeAndTypeId.get(tribe)?.get(naturalType);
+    return natural === undefined ? null : withReach(natural);
   }
   // A jobless combatant is armed only if it's an animal tribe (weapon keyed by tribe); a jobless civilian
   // is unarmed.
@@ -156,8 +171,7 @@ export function hitSoundVsMaterial(
 
 /** Start an `attack` {@link CurrentAtomic} on `attacker` against `target`, carrying the pre-resolved
  *  `blow`. `duration` is the attack animation's length via the attacker's `setatomic` binding, and the
- *  swing repeats at that cadence; `hitAt` is the animation's attack-event frame, so the blow lands
- *  mid-animation. */
+ *  swing repeats at that cadence; each attack event lands one blow at its authored frame. */
 export function startAttack(
   world: World,
   ctx: SystemContext,
@@ -167,9 +181,15 @@ export function startAttack(
   blow: Blow,
   weapon: WeaponType,
 ): void {
-  const animation = boundAtomicAnimation(ctx.content, attacker, ATTACK_ATOMIC_ID);
-  const hitAt =
-    animation === undefined ? undefined : atomicEventFrame(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
+  const animation = isAnimalTribe(ctx.content, attacker.tribe)
+    ? boundAnimalAtomicAnimation(ctx.content, attacker, ATTACK_ATOMIC_ID)
+    : boundAtomicAnimation(ctx.content, attacker, ATTACK_ATOMIC_ID);
+  const hitFrames =
+    animation === undefined ? [] : atomicEventFrames(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
+  const lunge =
+    animation !== undefined && isWildlife(world, e)
+      ? animalLunge(world, ctx, e, target, animation)
+      : undefined;
   // A ranged weapon with a positive travel `speed` fires a projectile at the release frame instead of
   // landing the blow in place; a melee weapon, or a ranged one missing its `speed`, falls back to the
   // in-place hit.
@@ -198,7 +218,8 @@ export function startAttack(
       damage: blow.damage,
       // The fallback-to-completion, no-XP, silent-hit and melee-hit paths are a field's absence, not a
       // sentinel.
-      ...(hitAt !== undefined ? { hitAt } : {}),
+      ...(animation !== undefined ? { hitFrames } : {}),
+      ...(lunge !== undefined ? { lunge } : {}),
       ...(weapon.mainType !== undefined ? { weaponMainType: weapon.mainType } : {}),
       ...(blow.hitSoundType !== undefined ? { hitSoundType: blow.hitSoundType } : {}),
       // A melee swing carries the weapon's reach so the executor can whiff at the hit frame if the target
@@ -212,13 +233,33 @@ export function startAttack(
   // sync with the visible strike.
 }
 
+/** An animal attack clip's forward events and the heading they step along. Original behavior: only an
+ *  animal plays them; a person's clip ignores them, even one borrowed from an animal. Approximation: the
+ *  heading is the screen octant toward `target` as the swing starts. */
+function animalLunge(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  target: Entity,
+  animation: string,
+): { frames: number[]; direction: WalkDirection } | undefined {
+  const frames = atomicEventFrames(ctx.content, animation, ATOMIC_EVENT_TYPE_MOVE_FORWARD);
+  const from = world.tryGet(e, Position);
+  const toward = world.tryGet(target, Position);
+  if (frames.length === 0 || from === undefined || toward === undefined) return undefined;
+  const direction = headingToward(from, toward);
+  return direction === undefined ? undefined : { frames, direction };
+}
+
 /** The attack clip `attacker`'s trade binds: its length in ticks and the tick of it the shot leaves at,
  *  the clip's attack event, or its last tick when it has none. */
 export function attackClipTiming(
   content: SystemContext['content'],
   attacker: SettlerIdentity,
 ): { readonly length: number; readonly shotAt: number } {
-  const clip = boundAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID);
+  const clip = isAnimalTribe(content, attacker.tribe)
+    ? boundAnimalAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID)
+    : boundAtomicAnimation(content, attacker, ATTACK_ATOMIC_ID);
   const length = atomicDurationForName(content, clip);
   const event = clip === undefined ? undefined : atomicEventFrame(content, clip, ATOMIC_EVENT_TYPE_ATTACK);
   return { length, shotAt: Math.min(event ?? length, length) };

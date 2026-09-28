@@ -54,6 +54,12 @@ function* clipPairs(
   head: SettlerStateBinding,
 ): Generator<readonly [string, SpriteFrameRef, SpriteFrameRef]> {
   yield ['idle', body.idle, head.idle];
+  for (const [i, ref] of (body.idleFidgets ?? []).entries()) {
+    yield [`idle fidget ${i}`, ref, head.idleFidgets?.[i] ?? ref];
+  }
+  for (const [i, ref] of (body.idleChoices ?? []).entries()) {
+    yield [`idle choice ${i}`, ref, head.idleChoices?.[i] ?? ref];
+  }
   if (body.moving !== undefined) yield ['moving', body.moving, head.moving ?? body.moving];
   for (const [id, ref] of Object.entries(body.byAtomic ?? {})) {
     yield [`atomic ${id}`, ref, head.byAtomic?.[Number(id)] ?? ref];

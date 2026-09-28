@@ -3,10 +3,11 @@ import {
   type DrawItem,
   resolveLayers,
   type SpriteSheet,
+  settlerPalette,
   settlerPaletteLutRow,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { FigureFrames } from '../messages/figure-frames.js';
+import { FigureFrames } from '../messages/figure-frames.js';
 
 /** The figure's map-px multiplier in its row box and how far above the box's bottom edge its feet
  *  stand (design px). */
@@ -51,6 +52,8 @@ function lookKey(item: DrawItem, box: ResidentFigureBox): string {
  */
 export class ResidentFigures {
   private readonly painted = new WeakMap<HTMLCanvasElement, string>();
+  /** A baked look's frames, drawn as its atlas is rather than through the settler LUT. */
+  private readonly bakedFrames = new FigureFrames(undefined);
 
   /** `frames` is the sheet's recoloured-frame cache, shared with every other figure painter. */
   constructor(
@@ -87,11 +90,12 @@ export class ResidentFigures {
     canvas.height = height;
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null) return;
-    const bodyRow = settlerPaletteLutRow(this.sheet, item);
+    const baked = settlerPalette(this.sheet, item) === undefined;
+    const bodyRow = baked ? 0 : settlerPaletteLutRow(this.sheet, item);
     const zoom = ROW_ZOOM * box.pixelScale;
     const feetX = width / 2;
     const feetY = height - ROW_FEET_INSET * box.pixelScale;
-    this.frames.draw(ctx, layers, bodyRow, zoom, feetX, feetY);
+    (baked ? this.bakedFrames : this.frames).draw(ctx, layers, bodyRow, zoom, feetX, feetY);
   }
 }
 

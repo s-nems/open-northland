@@ -2,6 +2,7 @@ import {
   Anger,
   Building,
   diplomacyStance,
+  Engagement,
   Garrison,
   Health,
   isWildlife,
@@ -10,11 +11,14 @@ import {
   Position,
   Settler,
   type SettlerIdentity,
+  StayPoint,
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isManningShelter, shelterOccupancy, shelterStillHolds } from '../defence/index.js';
+import { herdLeaderOf } from '../movement/herd-leader.js';
 import {
   animalCannotBeAttacked,
   houseBow,
@@ -23,11 +27,12 @@ import {
   mayAttack,
   mayHunt,
 } from '../readviews/index.js';
+import { hexNodeDistance } from '../spatial/metric.js';
 import { isManningPost, standsAtPost } from './tower-post.js';
 import { vehicleWeapon } from './weapons.js';
 
-// The combat targeting relations: who may fight whom, and how far a combatant spots an enemy. A leaf of
-// conflict/ - nothing here reaches back into the drives that consult it.
+// The combat targeting relations: who may fight whom, how far a combatant spots an enemy, and what a wild
+// animal takes up. A leaf of conflict/ - nothing here reaches back into the drives that consult it.
 
 /**
  * How far (map points) an owned combatant looks for an enemy to advance on - the radius an ATTACK fighter
@@ -35,10 +40,53 @@ import { vehicleWeapon } from './weapons.js';
  */
 export const SIGHT_RADIUS_NODES = 18;
 
-/** How far (map points) a hostile wild animal spots a civilization victim to advance on - the animal
- *  twin of {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat sight radius"): no readable aggro
- *  field exists; half a soldier's sight reads as an ambush radius rather than a map-wide hunt. */
-export const ANIMAL_AGGRO_RADIUS_NODES = 8;
+/** How far from its stay point a wild herd leader looks for a victim, in map points; one without a stay
+ *  point looks around itself. Original behavior. */
+export const ANIMAL_AGGRO_RADIUS_NODES = 20;
+
+/** How far from its stay point, in map points, a wild animal still takes up a target. Original behavior:
+ *  one pursuing past it drops its target and walks back to its stay point. */
+export const ANIMAL_LEASH_NODES = 40;
+
+/** What an unowned animal's attack drive does this pass: fight `target` on the leash of its stay point,
+ *  search around `center`, walk back to `stay` having pursued past its leash, or nothing. */
+export type WildPursuit =
+  | { readonly kind: 'hold'; readonly target: Entity; readonly stay: NodeId | undefined }
+  | { readonly kind: 'search'; readonly center: NodeId }
+  | { readonly kind: 'return'; readonly stay: NodeId }
+  | { readonly kind: 'idle' };
+
+const WILD_IDLE: WildPursuit = { kind: 'idle' };
+
+/**
+ * An unowned animal's pursuit this pass. Original behavior: an animal keeps its target, and a follower
+ * without one copies its leader's; a leader without one searches around its stay point. Past the leash
+ * nothing is taken up, and a pursuit is dropped. Approximation: the leash is read every pass rather than
+ * at each map point reached, and a follower's leash counts from its own stay point.
+ */
+export function wildPursuit(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  attacker: SettlerIdentity,
+): WildPursuit {
+  const stay = world.tryGet(e, StayPoint)?.cell;
+  if (stay !== undefined && hexNodeDistance(terrain, here, stay) > ANIMAL_LEASH_NODES) {
+    return world.has(e, Engagement) ? { kind: 'return', stay } : WILD_IDLE;
+  }
+  const own = world.tryGet(e, Engagement)?.target;
+  if (own !== undefined && isValidTarget(world, ctx, e, attacker, own)) {
+    return { kind: 'hold', target: own, stay };
+  }
+  const leader = herdLeaderOf(world, e);
+  if (leader === e) return { kind: 'search', center: stay ?? here };
+  const copied = world.tryGet(leader, Engagement)?.target;
+  return copied !== undefined && isValidTarget(world, ctx, e, attacker, copied)
+    ? { kind: 'hold', target: copied, stay }
+    : WILD_IDLE;
+}
 
 /** A building, wall or vehicle: a hit on one is an impact on a hull, not a body - no blood, no scream. */
 export function isStructureTarget(world: World, t: Entity): boolean {
@@ -213,6 +261,17 @@ export function mayTarget(
   if (selfOwner !== undefined && targetOwner !== undefined) {
     if (selfOwner.player === targetOwner.player) return false;
     return diplomacyStance(world, selfOwner.player, targetOwner.player) === 'enemy';
+  }
+  // A wild aggressive animal may turn on a player's claimed animal. Wildlife carries no Owner in
+  // this sim, so its directed diplomacy stance cannot yet be checked here; this assumes hostility.
+  if (
+    selfOwner === undefined &&
+    targetOwner !== undefined &&
+    isAnimalTribe(ctx.content, attackerTribe) &&
+    isAnimalTribe(ctx.content, targetTribe) &&
+    isAggressiveAnimal(ctx.content, attackerTribe)
+  ) {
+    return !animalCannotBeAttacked(ctx.content, targetTribe);
   }
   if (mayAttack(ctx.content, attackerTribe, targetTribe)) return true; // static tribe hostility
   // a hunter striking huntable prey, and only unowned prey

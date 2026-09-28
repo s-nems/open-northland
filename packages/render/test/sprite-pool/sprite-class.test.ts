@@ -6,7 +6,7 @@ import { PalettedQuad } from '../../src/gpu/paletted-sprite/index.js';
 import { palettedLutOf } from '../../src/gpu/pixel-art-registry.js';
 import { DEFAULT_SHADOW_STYLE, type ShadowStyle } from '../../src/gpu/shadow-style.js';
 import { type BindFrame, LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
-import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
+import { type PoolFrame, SpritePool, settlerPalette } from '../../src/gpu/sprite-pool/index.js';
 import { createPooled } from '../../src/gpu/sprite-pool/pooled-entity.js';
 import type { ResolvedLayer } from '../../src/gpu/sprite-pool/resolved-layer.js';
 import { type PlayerColourLut, settlerPaletteLutRow } from '../../src/gpu/sprite-sheet.js';
@@ -365,7 +365,7 @@ describe('LayerBinder - a paletted character body draws as a batched quad throug
 
 describe('LayerBinder - an animal settler is never paletted, even with the LUT loaded', () => {
   // The species atlases are baked recolours: reading them through the player-colour LUT would treat
-  // pixel colours as palette indices. The class is decided once at creation, so the guard lives there.
+  // pixel colours as palette indices. The class is decided at creation and rechecked each frame.
   const ANIMAL_TRIBE = 8;
   const palettedSheet: SpriteSheet = {
     ...sheet,
@@ -385,6 +385,58 @@ describe('LayerBinder - an animal settler is never paletted, even with the LUT l
     const binder = new LayerBinder(new TextureCache(), palettedSheet);
     expect(binder.create('settler', item(0)).paletted).toBe(true);
     expect(binder.create('settler', item(ANIMAL_TRIBE)).paletted).toBe(false);
+  });
+
+  const MONSTER_TRIBE = 5;
+  const HUMAN_FORM_JOB = 31;
+  const ANIMAL_FORM_JOB = 35;
+  const monsterSheet: SpriteSheet = {
+    ...palettedSheet,
+    characters: {
+      byJob: {},
+      default: { body: { source, atlas }, binding: { idle: BODY_BOB } },
+      byTribe: {
+        [MONSTER_TRIBE]: {
+          byJob: {
+            [ANIMAL_FORM_JOB]: { body: { source, atlas }, binding: { idle: BODY_BOB }, indexed: false },
+          },
+          default: { body: { source, atlas }, binding: { idle: BODY_BOB } },
+        },
+      },
+    },
+  };
+
+  it('keeps a monster job with a baked animal body plain', () => {
+    const binder = new LayerBinder(new TextureCache(), monsterSheet);
+    const monster = (jobType: number): DrawItem => ({ ...item(MONSTER_TRIBE), jobType });
+    expect(binder.create('settler', monster(ANIMAL_FORM_JOB)).paletted).toBe(false);
+    expect(binder.create('settler', monster(HUMAN_FORM_JOB)).paletted).toBe(true);
+    expect(settlerPalette(monsterSheet, monster(ANIMAL_FORM_JOB))).toBeUndefined();
+    expect(settlerPalette(monsterSheet, monster(HUMAN_FORM_JOB))).toBe(monsterSheet.palette);
+    expect(settlerPalette(palettedSheet, item(ANIMAL_TRIBE))).toBeUndefined();
+  });
+
+  it('re-mints a settler whose job moves its look between an indexed and a baked atlas', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), monsterSheet);
+    const drawAs = (jobType: number): Container => {
+      pool.reconcile(
+        poolFrame(snapshotOf([entity(1, 0, 0, { Settler: { tribe: MONSTER_TRIBE, jobType } })])),
+      );
+      expect(layer.children).toHaveLength(1);
+      return layer.children[0] as Container;
+    };
+    const human = drawAs(HUMAN_FORM_JOB);
+    expect(human.children.some((c) => c instanceof PalettedQuad)).toBe(true);
+    const animal = drawAs(ANIMAL_FORM_JOB);
+    expect(animal).not.toBe(human);
+    expect(animal.children.length).toBeGreaterThan(0);
+    for (const spr of animal.children) expect(spr).toBeInstanceOf(Sprite);
+    const again = drawAs(HUMAN_FORM_JOB);
+    expect(again).not.toBe(animal);
+    expect(again.children.some((c) => c instanceof PalettedQuad)).toBe(true);
+    // An unchanged look keeps its pooled sprites.
+    expect(drawAs(HUMAN_FORM_JOB)).toBe(again);
   });
 
   it('binds a drawn animal through plain Sprites end-to-end while the LUT is loaded', () => {

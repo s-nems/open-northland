@@ -32,12 +32,14 @@ import {
   JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
   RELIGION_JOBS,
 } from '../../../../catalog/jobs.js';
 import { PROFESSIONS } from '../../../../catalog/professions.js';
+import { ADULT_ANIMAL_JOB } from '../../../../content/animal-gfx/bindings.js';
 import { messages, professionLabel } from '../../../../i18n/index.js';
 import {
   EXTRACTED_GATHERER_TRADES,
@@ -63,6 +65,9 @@ export interface SandboxJob {
 
 /** Extracted `jobtypes.ini` 15 `allowatomic 33/81`; the rebase-exempt hunter slot shares it by identity. */
 const HUNTER_JOB_ATOMICS = [HARVEST_CADAVER_ATOMIC, ATTACK_ATOMIC];
+
+/** `jobtypes.ini` / `logicdefines.inc` baby_animal pseudo-job; the adult lane is `ADULT_ANIMAL_JOB`. */
+const BABY_ANIMAL_JOB = 48;
 
 export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, SandboxJob> {
   const jobs = new Map<number, SandboxJob>();
@@ -118,12 +123,16 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       allowedAtomics: [WHEAT_HARVEST_ATOMIC, PLANT_ATOMIC, CULTIVATE_ATOMIC],
     },
     { typeId: JOB_SOLDIER_UNARMED, id: 'soldier_unarmed', name: messages().admin.units.unarmed },
+    // The animal attack bindings use the adult pseudo-job; its base job carries atomic 81.
+    { typeId: BABY_ANIMAL_JOB, id: 'baby_animal', allowedAtomics: [ATTACK_ATOMIC] },
+    { typeId: ADULT_ANIMAL_JOB, id: 'adult_animal', allowedAtomics: [ATTACK_ATOMIC] },
     {
       typeId: JOB_BUILDER,
       id: 'builder',
       name: professionLabel('builder'),
       allowedAtomics: [BUILD_HOUSE_ATOMIC, BUILD_WALL_ATOMIC],
     },
+    { typeId: JOB_SOLDIER_SPEAR_WOODEN, id: 'soldier_spear_wooden', name: messages().admin.units.spear },
     { typeId: JOB_SOLDIER_SPEAR, id: 'soldier_spear', name: messages().admin.units.spear },
     { typeId: JOB_SOLDIER_SWORD, id: 'soldier_sword', name: messages().admin.units.sword },
     { typeId: JOB_SOLDIER_BROADSWORD, id: 'soldier_broadsword', name: messages().admin.units.broadsword },

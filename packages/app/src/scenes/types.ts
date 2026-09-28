@@ -1,5 +1,6 @@
 import type { CellTerrainMap, MissionScript, Simulation } from '@open-northland/sim';
 import type { FogModeName } from '../game/fog.js';
+import type { WorldTribes } from '../game/world-tribes.js';
 
 export interface SceneCheck {
   readonly label: string;
@@ -36,6 +37,8 @@ export interface SceneWorld {
 export interface SceneDefinition extends SceneWorld {
   /** URL-safe id: the `?scene=<id>` value and the test's `describe()` name. */
   readonly id: string;
+  /** Civilization body libraries this scene fields; the first is the fallback look. */
+  readonly graphicTribes?: WorldTribes;
   /** Ticks the headless acceptance test advances before checking. */
   readonly runTicks: number;
   /** Starting camera zoom for the browser view; 1 when omitted. */

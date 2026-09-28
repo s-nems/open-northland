@@ -26,6 +26,9 @@ export const ATOMIC_EVENT_CHANNEL = {
  */
 export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 
+/** The forward map-point step authored in some animal attack clips. */
+export const ATOMIC_EVENT_TYPE_MOVE_FORWARD = 26;
+
 /**
  * The `event <at> <type>` type id marking the frame a swing plays its sound FX. An animation carrying no
  * such event plays no mid-swing sound.
@@ -181,6 +184,25 @@ export function boundAtomicAnimation(
   return contentIndex(content).atomicBindingsByTribe.get(settler.tribe)?.get(settler.jobType)?.get(atomicId);
 }
 
+const adultAnimalJobs = new WeakMap<ContentSet, number | null>();
+
+/** Resolve a wild creature's authored adult job while its runtime Settler has no player trade. */
+export function boundAnimalAtomicAnimation(
+  content: ContentSet,
+  settler: SettlerIdentity,
+  atomicId: number,
+): string | undefined {
+  if (settler.jobType !== null) return boundAtomicAnimation(content, settler, atomicId);
+  let adultJob = adultAnimalJobs.get(content);
+  if (adultJob === undefined) {
+    adultJob = content.jobs.find((job) => job.id === 'adult_animal')?.typeId ?? null;
+    adultAnimalJobs.set(content, adultJob);
+  }
+  return adultJob === null
+    ? undefined
+    : boundAtomicAnimation(content, { tribe: settler.tribe, jobType: adultJob }, atomicId);
+}
+
 /**
  * Whether the named atomic animation may be interrupted mid-play (`atomicanimations.ini` `interruptable 1`) -
  * an idle or walk a settler can abandon, versus a harvest swing or attack that must play to completion.
@@ -236,4 +258,13 @@ export function atomicEventFrame(content: ContentSet, name: string, eventType: n
     if (event.type === eventType) return event.at;
   }
   return undefined;
+}
+
+/** Every occurrence of an event type in clip order. An attack clip may contain several timed blows. */
+export function atomicEventFrames(content: ContentSet, name: string, eventType: number): number[] {
+  return (
+    atomicAnimationByName(content, name)
+      ?.events.filter((event) => event.type === eventType)
+      .map((event) => event.at) ?? []
+  );
 }

@@ -142,7 +142,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   const sheet =
     pack !== null
       ? await pack.spriteSheet(ir, sim.content.goods, params)
-      : await resolveSpriteSheet(sim.content.goods);
+      : await resolveSpriteSheet(sim.content.goods, scene.graphicTribes);
   await boot.begin('terrain');
   let terrain: TerrainTextureSet;
   try {
@@ -206,6 +206,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     initialViewport,
     renderer,
     sheet,
+    ...(scene.graphicTribes !== undefined ? { tribes: scene.graphicTribes } : {}),
     host,
     driver,
     cameraCtl,

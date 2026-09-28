@@ -163,15 +163,14 @@ describe('herdParams (the animal herd/spawn read view)', () => {
 });
 
 describe('locomotionOf (the animal pace read view)', () => {
-  it('surfaces the movespeed off the animaltypes record (runspeed stays unconsumed - no sprint)', () => {
-    const params = locomotionOf(tribeContent(), 8); // bears: movespeed 8
-    expect(params).toEqual({ walkSpeed: 8 });
+  it('surfaces both walking and running speeds from the animaltypes record', () => {
+    const params = locomotionOf(tribeContent(), 8); // bears: movespeed 8, runspeed 5
+    expect(params).toEqual({ walkSpeed: 8, runSpeed: 5 });
   });
 
-  it('defaults a source-omitted speed to 0 rather than guessing (the engine default applies)', () => {
-    // The cow record (tribe 10) sets no movespeed; the read view passes the schema's
-    // source-omitted 0 through verbatim - no inference of a default pace.
-    expect(locomotionOf(tribeContent(), 10)).toEqual({ walkSpeed: 0 });
+  it('uses the walking default for a missing movespeed and keeps missing runspeed at zero', () => {
+    // The cow record (tribe 10) omits both keys; the parsed schema applies their source defaults.
+    expect(locomotionOf(tribeContent(), 10)).toEqual({ walkSpeed: 8, runSpeed: 0 });
   });
 });
 

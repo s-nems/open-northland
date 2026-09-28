@@ -9,6 +9,7 @@ import type { System } from '../../context.js';
 import { applyEffect } from './effects/apply.js';
 import {
   applyPendingHitReactions,
+  lungeForward,
   type PendingHitReaction,
   resolveAttackHit,
 } from './effects/combat/index.js';
@@ -38,13 +39,20 @@ export const atomicSystem: System = (world, ctx) => {
     const running = world.get(e, CurrentAtomic);
     const duration = Math.max(1, running.duration);
 
-    // An attack lands mid-animation at its `hitAt` frame, the follow-through then playing out to
-    // `duration`. `elapsed` equals the clamped frame exactly once, so one swing lands one blow.
+    // Each authored attack event lands at its frame. Only a swing with no bound clip uses the
+    // completion fallback; a bound clip with no attack event is a visual feint.
     if (running.effect.kind === 'attack') {
-      const hitFrame = eventFrameWithin(running.effect.hitAt ?? duration, duration);
-      if (elapsed === hitFrame) {
-        resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+      const frames = running.effect.hitFrames;
+      if (frames === undefined) {
+        if (elapsed === duration) resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+      } else {
+        for (const frame of frames) {
+          if (elapsed === eventFrameWithin(frame, duration))
+            resolveAttackHit(world, ctx, e, running, running.effect, pendingReactions);
+        }
       }
+      const lunge = running.effect.lunge;
+      if (lunge?.frames.includes(elapsed)) lungeForward(world, ctx, e, lunge.direction);
     }
 
     applyAtomicNeedEvents(world, ctx, e, running, elapsed);

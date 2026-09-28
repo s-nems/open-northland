@@ -13,6 +13,8 @@ import { chestsScene } from './chests.js';
 import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
 import { constructionScene } from './construction.js';
+import { creatureFormsScene } from './creature-forms.js';
+import { creaturesScene } from './creatures.js';
 import { deathLootScene } from './death-loot.js';
 import { diplomacyScene } from './diplomacy.js';
 import { equipmentScene } from './equipment.js';
@@ -94,6 +96,8 @@ export const SCENES: readonly SceneDefinition[] = [
   childrenScene,
   gossipScene,
   wildlifeScene,
+  creaturesScene,
+  creatureFormsScene,
   movementContinuityScene,
   huntingScene,
   householdGoodsScene,

@@ -129,6 +129,8 @@ export {
   isTraderJob,
   scoutJobType,
 } from './readviews/jobs.js';
+// The landscape a dead animal leaves, so a scene's terrain types the same record the sim lays.
+export { firstLandscapeGfxOf, MEAT_LANDSCAPE_SLUG } from './readviews/landscape.js';
 export { MILITARY_MODE } from './readviews/stances.js';
 // Exported so the app's livestock-heart projection keys on the same content read as the capture drive,
 // and so a real-content scenario stands its herd on the same pool the spawn would give it.

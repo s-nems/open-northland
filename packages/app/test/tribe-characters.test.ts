@@ -71,7 +71,7 @@ function inputsFor(
   for (const [specId, chain] of tribeLooks(source, tribe)) {
     looks.set(
       specId,
-      chain.map((look) => ({ ...look, bodyStem: look.bodyBmd, headStems: [] })),
+      chain.map((look) => ({ ...look, bodyStem: look.bodyBmd, headStems: [], indexed: true })),
     );
   }
   const layersByBody = new Map<string, LoadedLook>(

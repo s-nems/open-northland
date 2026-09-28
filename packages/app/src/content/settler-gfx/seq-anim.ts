@@ -47,8 +47,8 @@ export function eightDirAnim(
 /**
  * Reduce a walk row's per-`<dir>` frame lists to a per-block frame cut, valid only when every facing's list
  * is the same contiguous run of `frames` starting at `facing*stride` - true of every viking human list.
- * Anything else (a few animal gaits mix run lengths across directions) returns `undefined` and the caller
- * keeps the whole-block reading, an approximation that plays block frames the list skips.
+ * Anything else returns `undefined` and {@link eightDirAnim} keeps the whole-block reading, an
+ * approximation that plays block frames the list skips; the animal gaits keep such lists as frame lists.
  */
 function blockAnimFromLists(
   row: BobSeqRow,

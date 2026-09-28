@@ -197,7 +197,12 @@ function siegeContent(): ContentSet {
       },
     ],
     atomicAnimations: [
-      { id: 'viking_attack', name: 'viking_attack', length: 4 },
+      {
+        id: 'viking_attack',
+        name: 'viking_attack',
+        length: 4,
+        events: [{ at: 4, type: ATOMIC_EVENT_ATTACK }],
+      },
       {
         id: 'viking_catapult_attack',
         name: 'viking_catapult_attack',

@@ -4,11 +4,14 @@
 export {
   ATOMIC_EVENT_CHANNEL,
   ATOMIC_EVENT_TYPE_ATTACK,
+  ATOMIC_EVENT_TYPE_MOVE_FORWARD,
   atomicAnimationByName,
   atomicEventChannelDelta,
   atomicEventFrame,
+  atomicEventFrames,
   atomicHasExtendedEvents,
   atomicStartDirection,
+  boundAnimalAtomicAnimation,
   isInterruptibleAtomic,
   isStrokeCountedAtomic,
   isTransformAtomic,
@@ -78,10 +81,12 @@ export {
   scoutJobType,
 } from './jobs.js';
 export {
+  firstLandscapeGfxOf,
   isLandLayerType,
   isUniversalLayerType,
   isWaterLayerType,
   landLayerLandscape,
+  MEAT_LANDSCAPE_SLUG,
   universalLayerLandscape,
   waterLayerLandscape,
 } from './landscape.js';

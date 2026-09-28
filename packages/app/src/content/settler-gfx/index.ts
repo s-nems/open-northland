@@ -29,7 +29,8 @@ export {
 export {
   HAMMER_TICKS_PER_FRAME,
   HARVEST_TICKS,
+  IDLE_ACTIONS,
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
 } from './sequences.js';
-export { lookStem, type TribeLook, tribeLooks } from './tribe-looks.js';
+export { isAnimalBody, lookFrom, lookStem, type TribeLook, tribeLooks } from './tribe-looks.js';

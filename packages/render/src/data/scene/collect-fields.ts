@@ -46,6 +46,7 @@ export function assignSettlerFields(
     if (elapsed !== null) item.elapsed = elapsed;
   }
   if (readEngaged(components)) item.engaged = true;
+  if ('AnimalRunning' in components) item.running = true;
   // Target facing wins over the walk heading, so a stale path can't leave a mid-swing settler
   // chopping at empty air.
   const facing = targetFacing ?? readFacing(components);

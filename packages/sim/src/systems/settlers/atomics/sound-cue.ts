@@ -7,7 +7,7 @@ import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationByName,
   atomicClipName,
-  boundAtomicAnimation,
+  boundAnimalAtomicAnimation,
 } from '../../readviews/animations.js';
 
 /** The running atomic a cue lookup reads - its join key, its length, and the effect that tells a real
@@ -38,7 +38,7 @@ function soundingClip(
   // the batch clock below and a workshop stays silent rather than sounding early.
   if (atomic.effect?.kind === 'produce') return undefined;
   const name = isWildlife(world, settler)
-    ? boundAtomicAnimation(ctx.content, s, atomic.atomicId)
+    ? boundAnimalAtomicAnimation(ctx.content, s, atomic.atomicId)
     : atomicClipName(ctx.content, s, atomic.atomicId);
   if (name === undefined) return undefined;
   const anim = atomicAnimationByName(ctx.content, name);

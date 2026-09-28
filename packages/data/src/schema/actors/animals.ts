@@ -41,10 +41,9 @@ export const AnimalType = z.strictObject({
   maximumDistanceToStayPoint: z.number().int().nonnegative().default(0),
   /** `maximumdistancetobirthpoint` - how far the herd ranges from its birth/spawn point. */
   maximumDistanceToBirthPoint: z.number().int().nonnegative().default(0),
-  /** `movespeed` - walking speed (0 = the source default). */
-  moveSpeed: z.number().int().nonnegative().default(0),
-  /** `runspeed` - the original's animal run gait; 0 when the source omits it. Extracted for fidelity
-   *  but unconsumed: the sim models no run gait. */
+  /** `movespeed` - walking step period; an omitted key uses the original default of 8. */
+  moveSpeed: z.number().int().nonnegative().default(8),
+  /** `runspeed` - the animal run gait; 0 when the source omits it. */
   runSpeed: z.number().int().nonnegative().default(0),
   /** `catchable` - livestock a scout claims by contact (cows/sheep) vs wild-only. */
   catchable: z.boolean().default(false),

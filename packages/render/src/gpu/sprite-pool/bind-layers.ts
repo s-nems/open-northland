@@ -13,6 +13,7 @@ import type { TextureCache } from '../texture-cache.js';
 import { setVegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
 import { cartDriveLook } from './cart-drive.js';
+import { settlerPalette } from './character-layers.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
 import {
@@ -64,27 +65,25 @@ export class LayerBinder {
     private readonly stakes?: PlanStakeTextures,
   ) {}
 
-  /** A settler is created paletted only when the player-colour LUT and the indexed characters are both
-   *  loaded; animal atlases are baked recolours, never LUT-indexed. A vehicle is created paletted when
-   *  its look is the indexed body, or through the settler LUT while it draws as its driver. Only a cart's
-   *  class changes over its life, which {@link suits} tells the pool. */
+  /** A settler is created paletted when its look is an indexed human character and the player-colour
+   *  LUT is loaded; animal atlases and baked looks are never LUT-indexed. A vehicle is created paletted
+   *  when its look is the indexed body, or through the settler LUT while it draws as its driver. Settlers
+   *  and vehicles can change class over their lives, which {@link suits} tells the pool. */
   create(kind: SpriteKind, item: DrawItem): PooledEntity {
     return createPooled(kind, this.paletteFor(kind, item));
   }
 
   /** Whether `pe`'s sprite class still suits `item`: a cart turns from its own sprite into the driving
-   *  figure and back as its driver boards and steps off. */
+   *  figure and back as its driver boards and steps off, and a settler's look can move between an
+   *  indexed and a baked atlas when its job or weapon changes. */
   suits(pe: PooledEntity, item: DrawItem): boolean {
-    if (pe.kind !== 'vehicle') return true;
+    if (pe.kind !== 'vehicle' && pe.kind !== 'settler') return true;
     return (pe.paletted ? pe.palette : undefined) === this.paletteFor(pe.kind, item);
   }
 
   private paletteFor(kind: SpriteKind, item: DrawItem): PaletteLut | undefined {
-    const sheet = this.sheet;
-    if (kind === 'vehicle') return vehiclePalette(sheet, item);
-    const characters = sheet?.characters;
-    const isAnimal = item.tribe !== undefined && characters?.animals?.tribes.has(item.tribe) === true;
-    return kind === 'settler' && characters !== undefined && !isAnimal ? sheet?.palette : undefined;
+    if (kind === 'vehicle') return vehiclePalette(this.sheet, item);
+    return kind === 'settler' ? settlerPalette(this.sheet, item) : undefined;
   }
 
   /**
@@ -122,14 +121,13 @@ export class LayerBinder {
     const originY = snapToDevicePixels(cameraScreenY(frame.camera, drawY), snap);
     // The (armor tier, player) LUT row - worn armor recolours the clothing bands. Unused on the plain path.
     const driven = pe.kind === 'vehicle' && pe.paletted ? cartDriveLook(this.sheet, item) : undefined;
-    const settlerPalette = this.sheet?.palette;
     const bodyRow = !pe.paletted
       ? 0
       : pe.kind === 'vehicle'
         ? vehicleBodyRow(this.sheet, item, pe.palette, driven)
         : settlerPaletteLutRow(this.sheet, item);
     // Only a character's layers include a head, which reads the settler LUT's own head row.
-    const settlerLut = pe.kind === 'vehicle' && driven === undefined ? undefined : settlerPalette;
+    const settlerLut = pe.kind === 'vehicle' && driven === undefined ? undefined : this.sheet?.palette;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
     this.feetX = item.x;
     this.feetY = item.y - (item.lift ?? 0);

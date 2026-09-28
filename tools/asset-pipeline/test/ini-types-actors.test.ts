@@ -322,7 +322,7 @@ describe('extractAnimals', () => {
         searchForLeader: false,
         maximumDistanceToStayPoint: 20,
         maximumDistanceToBirthPoint: 40,
-        moveSpeed: 0,
+        moveSpeed: 8,
         runSpeed: 0,
         catchable: false,
         warrantable: false,
@@ -362,6 +362,14 @@ describe('extractAnimals', () => {
     // on (the key is genuinely absent in real data, unlike a malformed `type`-keyed table).
     const animals = extractAnimals(parseIniSections(ANIMALTYPES_INI), { file: 'animaltypes.ini' });
     expect(animals.map((a) => a.tribeType)).toEqual([8, 9]);
+  });
+
+  it('keeps an explicit zero movespeed distinct from the omitted default', () => {
+    const animals = extractAnimals(
+      parseIniSections('[animaltype]\ntribetype 8\n[animaltype]\ntribetype 9\nmovespeed 0\n'),
+      { file: 'animaltypes.ini' },
+    );
+    expect(animals.map((animal) => animal.moveSpeed)).toEqual([8, 0]);
   });
 });
 

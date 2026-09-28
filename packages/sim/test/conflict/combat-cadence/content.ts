@@ -42,6 +42,13 @@ export const ARMOR_BLOCKING = 5;
 export const ATTACK_ATOMIC = 81;
 export const ATTACKED_ATOMIC = 82;
 
+/** The `adult_animal` job a grown wild animal's clips bind under; the animal itself holds no trade. */
+export const ADULT_ANIMAL_JOB = 49;
+/** A synthetic creature-form job, bound to an attack clip with no attack event. */
+export const QUIET_FORM_JOB = 16;
+/** The unarmed soldier's `fist` weapon type. */
+export const FIST_WEAPON_TYPE = 1;
+
 // Real weapon damagevalue columns (viking, verified in the extracted IR) - the AP asymmetry the test pins:
 // the iron spear is anti-plate (2090 vs plate 4 / 950 vs chain 3); the long sword is anti-chain (the mirror).
 export const IRON_SPEAR_DAMAGE = { '0': 3800, '1': 1900, '2': 2850, '3': 950, '4': 2090, '6': 200, '7': 500 };
@@ -81,7 +88,7 @@ export function combatCadenceContent(): ContentSet {
     { jobType: SOLDIER_SPEAR, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_spear_iron' },
     { jobType: SOLDIER_SWORD_SHORT, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_sword_short' },
     { jobType: SOLDIER_SWORD_LONG, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_sword_long' },
-    // The saber attack animation carries NO ATTACK event - the completion-fallback + saber-has-no-fight-XP case.
+    // The saber attack animation carries no ATTACK event, so its clip lands no blow.
     { jobType: SOLDIER_SABER, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_saber' },
     { jobType: SOLDIER_BOW, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_spear_iron' },
   ];
@@ -97,7 +104,7 @@ export function combatCadenceContent(): ContentSet {
       damage: WOMAN_FIST_DAMAGE,
     },
     {
-      typeId: 1,
+      typeId: FIST_WEAPON_TYPE,
       id: 'fist',
       tribeType: tribe,
       jobType: SOLDIER_UNARMED,
@@ -239,7 +246,7 @@ export function combatCadenceContent(): ContentSet {
         length: 29,
         events: [...drainEvents(SOLDIER_DRAIN), { at: 16, type: 25 }],
       },
-      // The saber swing has the drains but NO ATTACK event (type 25) - the completion-fallback case.
+      // The saber swing has need drains but no ATTACK event (type 25).
       {
         id: 'soldier_attack_saber',
         name: 'soldier_attack_saber',

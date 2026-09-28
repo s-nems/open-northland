@@ -1,9 +1,18 @@
 import type { SpriteLayer } from '@open-northland/render';
+import { MONSTER_TRIBES } from '../../catalog/creatures.js';
+import { INDEXED_CHARACTER_PALETTE } from '../../catalog/roster.js';
 import { diag } from '../../diag/index.js';
 import { servedShadowStem } from '../ir/joins.js';
 import { loadGalleryLayers } from '../ir/load.js';
 import type { ContentIr } from '../ir/rows.js';
-import { type CharacterSpecId, lookStem, type TribeLook, tribeLooks } from '../settler-gfx/index.js';
+import {
+  type CharacterSpecId,
+  isAnimalBody,
+  lookFrom,
+  lookStem,
+  type TribeLook,
+  tribeLooks,
+} from '../settler-gfx/index.js';
 
 /** One tribe's look for a character spec, with the served atlas stems its palettes resolve to. */
 export interface ResolvedLook extends TribeLook {
@@ -12,6 +21,8 @@ export interface ResolvedLook extends TribeLook {
    *  body loads in. */
   readonly shadowStem?: string;
   readonly headStems: readonly string[];
+  /** Whether body and heads load as the recolourable atlas the player-colour LUT is read through. */
+  readonly indexed: boolean;
 }
 
 /** A loaded body bob set and the head looks that overlay it, by served stem. */
@@ -21,13 +32,28 @@ export interface LoadedLook {
 }
 
 /**
- * Every tribe's looks per spec, as the stems to fetch. `palette` overrides each bob set's authored skin -
- * the recolourable atlases the player-colour LUT is read through - and `undefined` keeps each record's own,
- * which is the only skin some bob sets are decoded in (the egyptian soldier ships `egypt_soldier` alone).
+ * `look` as the stems to fetch. `palette` overrides each bob set's authored skin - the recolourable atlases
+ * the player-colour LUT is read through - and `undefined` keeps each record's own, which is the only skin
+ * some bob sets are decoded in (the egyptian soldier ships `egypt_soldier` alone). An animal body has no
+ * recolourable atlas, so it keeps its own skin and its heads keep theirs: a look never mixes an indexed
+ * layer with a baked one.
  *
- * Known limitation on the LUT path: its rows are composed from `test_human_00` alone, so the five looks
- * authored against another palette draw in the viking colour table.
+ * Known limitation on the LUT path: its rows are composed from `test_human_00` alone, so the civilization
+ * looks authored against another palette (the egyptian soldiers) draw in the viking colour table.
  */
+function resolveLook(look: TribeLook, palette: string | undefined): ResolvedLook {
+  const skin = isAnimalBody(look.bodyBmd) ? undefined : palette;
+  const shadowStem = servedShadowStem(look.shadowBmd);
+  return {
+    ...look,
+    bodyStem: lookStem(look.bodyBmd, skin ?? look.bodyPalette),
+    ...(shadowStem !== undefined ? { shadowStem } : {}),
+    headStems: look.headBmds.map((bmd) => lookStem(bmd, skin ?? look.headPalette)),
+    indexed: skin === INDEXED_CHARACTER_PALETTE,
+  };
+}
+
+/** Every tribe's looks per spec, each resolved by {@link resolveLook}. */
 export function resolveLooks(
   ir: ContentIr | null,
   tribes: readonly number[],
@@ -35,22 +61,37 @@ export function resolveLooks(
 ): Map<number, Map<CharacterSpecId, ResolvedLook[]>> {
   const byTribe = new Map<number, Map<CharacterSpecId, ResolvedLook[]>>();
   for (const tribe of tribes) {
+    // The monsters' own skins are their look, so they trade the player colour for them.
+    const skin = MONSTER_TRIBES.has(tribe) ? undefined : palette;
     const resolved = new Map<CharacterSpecId, ResolvedLook[]>();
     for (const [specId, chain] of tribeLooks(ir, tribe)) {
       resolved.set(
         specId,
-        chain.map((look) => {
-          const shadowStem = servedShadowStem(look.shadowBmd);
-          return {
-            ...look,
-            bodyStem: lookStem(look.bodyBmd, palette ?? look.bodyPalette),
-            ...(shadowStem !== undefined ? { shadowStem } : {}),
-            headStems: look.headBmds.map((bmd) => lookStem(bmd, palette ?? look.headPalette)),
-          };
-        }),
+        chain.map((look) => resolveLook(look, skin)),
       );
     }
     byTribe.set(tribe, resolved);
+  }
+  return byTribe;
+}
+
+/** Explicit animal-body jobs, including ones whose numeric job is also a standard soldier class. */
+export function resolveAnimalJobLooks(
+  ir: ContentIr | null,
+  tribes: readonly number[],
+): Map<number, Map<number, ResolvedLook[]>> {
+  const byTribe = new Map<number, Map<number, ResolvedLook[]>>();
+  for (const tribe of tribes) {
+    const byJob = new Map<number, ResolvedLook[]>();
+    for (const row of ir?.jobGraphics ?? []) {
+      if (row.tribe !== tribe) continue;
+      const look = lookFrom(row);
+      if (!isAnimalBody(look.bodyBmd)) continue;
+      const list = byJob.get(row.job) ?? [];
+      list.push(resolveLook(look, undefined));
+      byJob.set(row.job, list);
+    }
+    byTribe.set(tribe, byJob);
   }
   return byTribe;
 }

@@ -18,6 +18,9 @@ export interface PresentationTrack {
   readonly kind: SpriteKind;
   readonly motion: MotionTrack;
   readonly atomicPose: AtomicPoseTrack;
+  /** Wait actions restart when the displayed settler returns to idle. */
+  idleActive: boolean;
+  idleStartTick: number;
   /** Last real facing (0..7), retained through a route gap or arrival. */
   lastFacing?: number;
   /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
@@ -34,6 +37,8 @@ export function createPresentationTrack(kind: SpriteKind): PresentationTrack {
     reveal: undefined,
     layers: new LayerBuffer(),
     atomicPose: { tick: -1, item: undefined },
+    idleActive: false,
+    idleStartTick: 0,
     motion: {
       tick: -1,
       x: 0,
@@ -67,7 +72,10 @@ export function presentItem(
   sheet: SpriteSheet | undefined,
   environmentMotion = false,
 ): readonly ResolvedLayer[] | null {
-  if (track.motion.tick === -1) track.atomicPose.item = undefined;
+  if (track.motion.tick === -1) {
+    track.atomicPose.item = undefined;
+    track.idleActive = false;
+  }
   const atomic = atomicPose(item, tick, track.atomicPose);
   // An original walker keeps its tick anchor under the motion setting too: its clip plays one authored
   // frame per tick, so the body may only move with the frame, as the original engine steps it. Moving
@@ -95,12 +103,34 @@ export function presentItem(
   // same eased reveal as a from-scratch one.
   track.reveal = easeReveal(track.reveal, item.builtPct ?? item.upgradePct);
   const clocks = motionClocks(item, tick, frameAlpha, track.motion, smooth, environmentMotion);
+  const displayed = revealedItem(walkPose(pose, track.kind, track.motion, track.lastFacing), track.reveal);
+  const idleElapsed = idleClipElapsed(track, displayed, tick);
   return resolveLayersInto(
     track.layers,
     sheet,
-    revealedItem(walkPose(pose, track.kind, track.motion, track.lastFacing), track.reveal),
+    displayed,
     clocks.animation,
     clocks.gait,
     environmentMotion ? tick + frameAlpha : clocks.animation,
+    held ? 0 : idleElapsed,
   );
+}
+
+/** A new visible idle period restarts the idle schedules, even after a walk or attack ended mid-clip: an
+ *  animal's waits from frame zero, a settler's fidgets from the base wait. */
+export function idleClipElapsed(track: PresentationTrack, item: DrawItem, tick: number): number | undefined {
+  const idle =
+    track.kind === 'settler' &&
+    (item.state ?? 'idle') === 'idle' &&
+    item.engaged !== true &&
+    item.carrying !== true;
+  if (!idle) {
+    track.idleActive = false;
+    return undefined;
+  }
+  if (!track.idleActive) {
+    track.idleActive = true;
+    track.idleStartTick = tick;
+  }
+  return Math.max(0, tick - track.idleStartTick);
 }

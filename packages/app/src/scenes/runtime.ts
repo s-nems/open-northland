@@ -1,4 +1,12 @@
-import { halfCellMapFromCells, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
+import { type ContentSet, fullStateBlockAreaCells } from '@open-northland/data';
+import {
+  halfCellMapFromCells,
+  restoreSimulation,
+  type SaveGame,
+  type ScriptLandscapeType,
+  Simulation,
+  systems,
+} from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import {
   resolveWorldContent,
@@ -8,12 +16,29 @@ import {
 import { setupPlacementTribes } from '../game/world/index.js';
 import type { SceneWorld } from './types.js';
 
-function sceneTerrain(scene: SceneWorld) {
+function sceneTerrain(scene: SceneWorld, content: ContentSet) {
   return {
     ...halfCellMapFromCells(scene.terrain),
-    landscapes: { types: sandboxPalisadeTypes(), placements: [] },
+    landscapes: { types: [...sandboxPalisadeTypes(), ...animalRemainsTypes(content)], placements: [] },
     ...(scene.landVertices !== undefined ? { landVertices: scene.landVertices } : {}),
   };
+}
+
+/** The meat pile a dead animal leaves, typed as the map join types it: a heap of the good whose ground
+ *  form it is when the content names one, else a decor object. */
+function animalRemainsTypes(content: ContentSet): ScriptLandscapeType[] {
+  const record = systems.firstLandscapeGfxOf(content, systems.MEAT_LANDSCAPE_SLUG);
+  if (record === undefined) return [];
+  const good = content.goods.find((g) => g.landscapeType === record.logicType);
+  return [
+    {
+      typeId: record.index,
+      walk: fullStateBlockAreaCells(record.walkBlockAreas),
+      build: fullStateBlockAreaCells(record.buildBlockAreas),
+      groups: [],
+      ...(good === undefined ? {} : { good: { goodId: good.id } }),
+    },
+  ];
 }
 
 /**
@@ -39,11 +64,12 @@ export function enableSceneScript(sim: Simulation, scene: SceneWorld): void {
  * both geometries.
  */
 export function createSceneWorld(scene: SceneWorld, options: WorldContentOptions = {}): Simulation {
+  const content = resolveWorldContent(scene.terrain, options);
   const sim = new Simulation({
     seed: scene.seed,
-    content: resolveWorldContent(scene.terrain, options),
+    content,
     // Scenes author cell grids; the sim navigates their half-cell lattice.
-    map: sceneTerrain(scene),
+    map: sceneTerrain(scene, content),
     ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
   scene.build(sim);
@@ -74,9 +100,10 @@ export function restoreSceneSim(
   save: SaveGame,
   options: WorldContentOptions = {},
 ): Simulation {
+  const content = resolveWorldContent(scene.terrain, options);
   return restoreSimulation(save, {
-    content: resolveWorldContent(scene.terrain, options),
-    map: sceneTerrain(scene),
+    content,
+    map: sceneTerrain(scene, content),
     ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
 }

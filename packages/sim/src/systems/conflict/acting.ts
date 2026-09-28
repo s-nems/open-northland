@@ -41,7 +41,7 @@ import { entityNode } from '../spatial/nodes.js';
 import type { CombatIndex } from './combat-index.js';
 import { asleepOnDuty } from './engage-combatant.js';
 import { DEFEND_RADIUS_NODES } from './engagement.js';
-import { ANIMAL_AGGRO_RADIUS_NODES, SIGHT_RADIUS_NODES } from './targeting.js';
+import { ANIMAL_AGGRO_RADIUS_NODES, SIGHT_RADIUS_NODES, wildPursuit } from './targeting.js';
 import { attackerWeapon } from './weapons.js';
 
 /**
@@ -77,7 +77,10 @@ export function mayEngage(
     if (!isAnimalTribe(ctx.content, settler.tribe)) return true; // a scenario civ's search is ungated
     // A passive animal stands down; a provoked one holds Anger.
     if (!isAggressiveAnimal(ctx.content, settler.tribe)) return false;
-    return index.civsWithin(x, y, Math.max(ANIMAL_AGGRO_RADIUS_NODES, reachOf(world, ctx, e)));
+    const pursuit = wildPursuit(world, ctx, terrain, e, here, settler);
+    if (pursuit.kind !== 'search') return pursuit.kind !== 'idle';
+    const { center } = pursuit;
+    return index.civsWithin(terrain.xOf(center), terrain.yOf(center), ANIMAL_AGGRO_RADIUS_NODES);
   }
   // The flee drive and every owned search stay inside this, bar a guard's search further out.
   let radius = Math.max(SIGHT_RADIUS_NODES, DEFEND_RADIUS_NODES);

@@ -53,9 +53,10 @@ export function resolveLayersInto(
   tick: number,
   gaitClock: number,
   vegetationClock: number,
+  idleElapsed?: number,
 ): readonly ResolvedLayer[] | null {
   out.reset();
-  return pushLayers(out, sheet, item, tick, gaitClock, vegetationClock) ? out.finish() : null;
+  return pushLayers(out, sheet, item, tick, gaitClock, vegetationClock, idleElapsed) ? out.finish() : null;
 }
 
 /** Append an entity's layers to an empty buffer; false means the placeholder. */
@@ -66,6 +67,7 @@ function pushLayers(
   tick: number,
   gaitClock: number,
   vegetationClock: number,
+  idleElapsed?: number,
 ): boolean {
   if (sheet === undefined) return false;
 
@@ -79,8 +81,8 @@ function pushLayers(
       // Per-job settler character (the `[jobbasegraphics]` join), resolved in that body's own frame-id
       // space. A sheet with no characters falls through to the sheet-global settler path.
       if (sheet.characters !== undefined)
-        return pushCharacterLayers(out, sheet, sheet.characters, item, tick, gaitClock);
-      bobId = resolveSpriteBobId(item, sheet.bindings, tick, gaitClock);
+        return pushCharacterLayers(out, sheet, sheet.characters, item, tick, gaitClock, idleElapsed);
+      bobId = resolveSpriteBobId(item, sheet.bindings, tick, gaitClock, idleElapsed);
       break;
     case 'fish': {
       const binding = sheet.bindings.fish;

@@ -8,6 +8,8 @@ import {
   type JobRequirementTarget,
   JobType,
   TribeType,
+  WERESNAKE_TRIBE,
+  WEREWOLF_TRIBE,
 } from '@open-northland/data';
 import type { RuleSection } from '../grammar.js';
 import { makeSource, requireTypeId, type SourceRef, slug } from '../ir-fields.js';
@@ -133,6 +135,10 @@ const WALK_STEP_REDUCTIONS: Readonly<Record<number, { ticks: number; jobType?: n
   [TRIBE_EGYPT]: { ticks: WALK_STEP_REDUCTION_TICKS },
 };
 
+/** Original behavior: a person's weapon resets to type 1. Whether a monster's claw stays equipped
+ *  across all five body-form job changes is not traced; keeping it there is an approximation. */
+const MONSTER_INITIAL_WEAPON_TYPE = 1;
+
 /** The readable mod `tribetypes.ini` covers the playable tribes and the animal tribes alike. */
 export function extractTribes(sections: readonly RuleSection[], src: SourceRef): TribeType[] {
   const tribes: TribeType[] = [];
@@ -153,6 +159,8 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         typeId,
         id: name ? slug(name) : `tribe_${typeId}`,
         name,
+        naturalWeaponType:
+          typeId === WERESNAKE_TRIBE || typeId === WEREWOLF_TRIBE ? MONSTER_INITIAL_WEAPON_TYPE : undefined,
         atomicBindings,
         walkStepReduction: WALK_STEP_REDUCTIONS[typeId],
         permissions: {

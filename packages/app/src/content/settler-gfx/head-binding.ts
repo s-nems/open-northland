@@ -1,4 +1,9 @@
-import type { SettlerStateBinding, SpriteAtlas, SpriteFrameRef } from '@open-northland/render/data';
+import type {
+  FrameListAnim,
+  SettlerStateBinding,
+  SpriteAtlas,
+  SpriteFrameRef,
+} from '@open-northland/render/data';
 import type { BobSeqRow } from '../ir/rows.js';
 import { HEX_FACINGS } from './seq-anim.js';
 
@@ -54,16 +59,28 @@ function headOffset(offset: number, bodyLength: number, headLength: number): num
   return block * headBlock + Math.floor(((offset % bodyBlock) * headBlock) / bodyBlock);
 }
 
-function headRef(ref: SpriteFrameRef, clips: ReadonlyMap<number, HeadClip>): SpriteFrameRef {
-  if (typeof ref === 'number') return ref;
-  const clip = clips.get(ref.start);
-  if (clip === undefined) return ref;
-  const { head, bodyLength } = clip;
-  if (!('frameLists' in ref)) return { ...ref, start: head.start };
+function headListRef(ref: FrameListAnim, { head, bodyLength }: HeadClip): FrameListAnim {
   const frameLists = ref.frameLists.map((list) =>
     list.map((offset) => headOffset(offset, bodyLength, head.length)),
   );
   return { ...ref, start: head.start, frameLists };
+}
+
+function headRef(ref: SpriteFrameRef, clips: ReadonlyMap<number, HeadClip>): SpriteFrameRef {
+  if (typeof ref === 'number') return ref;
+  const clip = clips.get(ref.start);
+  if (clip === undefined) return ref;
+  return 'frameLists' in ref ? headListRef(ref, clip) : { ...ref, start: clip.head.start };
+}
+
+function headLists(
+  refs: readonly FrameListAnim[],
+  clips: ReadonlyMap<number, HeadClip>,
+): readonly FrameListAnim[] {
+  return refs.map((ref) => {
+    const clip = clips.get(ref.start);
+    return clip === undefined ? ref : headListRef(ref, clip);
+  });
 }
 
 /** `record` with every value mapped, keys kept. */
@@ -87,11 +104,14 @@ export function headBinding(
     ...(slot.idle !== undefined ? { idle: ref(slot.idle) } : {}),
     ...(slot.moving !== undefined ? { moving: ref(slot.moving) } : {}),
   });
-  const { carrying, engaged, byAtomic, bySubClip } = binding;
+  const { carrying, engaged, byAtomic, bySubClip, idleChoices, idleFidgets, running } = binding;
   return {
     ...binding,
     idle: ref(binding.idle),
+    ...(idleChoices !== undefined ? { idleChoices: headLists(idleChoices, clips) } : {}),
+    ...(idleFidgets !== undefined ? { idleFidgets: headLists(idleFidgets, clips) } : {}),
     ...(binding.moving !== undefined ? { moving: ref(binding.moving) } : {}),
+    ...(running !== undefined ? { running: ref(running) } : {}),
     ...(binding.acting !== undefined ? { acting: ref(binding.acting) } : {}),
     ...(byAtomic !== undefined ? { byAtomic: mapRecord(byAtomic, ref) } : {}),
     ...(bySubClip !== undefined ? { bySubClip: mapRecord(bySubClip, ref) } : {}),

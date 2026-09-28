@@ -325,7 +325,7 @@ describe('healing draught - below half of max hitpoints', () => {
     addCurrentAtomic(sim.world, attacker, {
       atomicId: ATTACK_SWING.atomicId,
       duration: ATTACK_SWING.duration,
-      effect: { kind: 'attack', target: settler, damage: HP_MAX + 50, hitAt: 1 },
+      effect: { kind: 'attack', target: settler, damage: HP_MAX + 50, hitFrames: [1] },
       targetEntity: settler,
       targetTile: null,
     });

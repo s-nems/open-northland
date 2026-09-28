@@ -32,6 +32,7 @@ describe('combatSystem - target selection + issuing the attack atomic', () => {
       kind: 'attack',
       target: enemy,
       damage: 50,
+      hitFrames: [4], // the bound clip's attack event
       hitSoundType: 82,
       maxRange: 2,
     });

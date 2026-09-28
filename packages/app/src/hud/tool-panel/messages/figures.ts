@@ -7,6 +7,7 @@ import {
   presentItem,
   type ResolvedLayer,
   type SpriteSheet,
+  settlerPalette,
   settlerPaletteLutRow,
   vehicleBodyRow,
   vehiclePalette,
@@ -140,8 +141,8 @@ export class NoticeFigures {
   private readonly tracks = new Map<number, PresentationTrack>();
   /** Each shown vehicle's box over every frame it has drawn, so its fit holds still as it animates. */
   private readonly vehicleBounds = new Map<number, FigureBounds>();
-  /** Frame caches for the LUTs a vehicle is drawn through other than the settler LUT `frames` serves. */
-  private readonly vehicleFrames = new Map<PaletteLut | undefined, FigureFrames>();
+  /** Frame caches for every LUT other than the settler LUT `frames` serves, and for none (a baked look). */
+  private readonly otherFrames = new Map<PaletteLut | undefined, FigureFrames>();
   private readonly contexts = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
   /** The scene built for the last (snapshot, subjects) pair; frames between ticks reuse it. */
   private sceneFor: { snapshot: WorldSnapshot; refs: string; items: ReadonlyMap<number, DrawItem> } | null =
@@ -192,11 +193,13 @@ export class NoticeFigures {
         this.drawVehicle(ctx, slot, item, layers, width, height, pixelScale);
         continue;
       }
-      const bodyRow = settlerPaletteLutRow(this.sheet, item);
+      // A baked look (an animal, an animal-bodied monster) is drawn as its atlas is, not through the LUT.
+      const palette = settlerPalette(this.sheet, item);
+      const bodyRow = palette === undefined ? 0 : settlerPaletteLutRow(this.sheet, item);
       const zoom = THUMB_ZOOM * pixelScale;
       const feetX = width / 2;
       const feetY = feetLine(layers, height, slot.visible * pixelScale, zoom, pixelScale);
-      this.frames.draw(ctx, layers, bodyRow, zoom, feetX, feetY);
+      this.framesFor(palette).draw(ctx, layers, bodyRow, zoom, feetX, feetY);
     }
     for (const entity of this.tracks.keys()) if (!live.has(entity)) this.tracks.delete(entity);
     for (const entity of this.vehicleBounds.keys()) if (!live.has(entity)) this.vehicleBounds.delete(entity);
@@ -222,10 +225,10 @@ export class NoticeFigures {
 
   private framesFor(palette: PaletteLut | undefined): FigureFrames {
     if (palette !== undefined && palette === this.sheet?.palette) return this.frames;
-    let frames = this.vehicleFrames.get(palette);
+    let frames = this.otherFrames.get(palette);
     if (frames === undefined) {
       frames = new FigureFrames(palette);
-      this.vehicleFrames.set(palette, frames);
+      this.otherFrames.set(palette, frames);
     }
     return frames;
   }

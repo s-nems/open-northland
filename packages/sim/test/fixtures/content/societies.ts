@@ -161,10 +161,8 @@ export const societyContent = {
     // pack of 3 that follows a leader (searchForLeader). All three distances are half-cell nodes: 2 from
     // its birth point, 3 from its leader (maximumLeaderDistance, the herdingSystem cohesion radius), and
     // 6 from its own stay point (maximumDistanceToStayPoint, the animalWanderSystem territory leash).
-    // `moveSpeed 8` (the real cow/boar value) gives it eight ticks per route step through
-    // MoveStepPeriod, exercising the per-entity movement pace. `runSpeed 4` mirrors
-    // the real record shape (`runspeed < movespeed`) but is deliberately unconsumed by the sim -
-    // no run/sprint gait exists; it proves the spawn ignores the param.
+    // `moveSpeed 8` and `runSpeed 4` exercise the walk and fast gaits through
+    // MoveStepPeriod. Gait changes at waypoint boundaries in this simulation.
     {
       id: 'bear',
       tribeType: 10,
@@ -297,12 +295,20 @@ export const societyContent = {
     },
     // The swing carries the original's per-weapon sound cue (`event <at> 34 81` - PLAY_SOUND_FX naming
     // the Weapon Sword Short `logicSoundType`), as every `viking_soldier_attack_*` row does.
-    { id: 'viking_attack', name: 'viking_attack', length: 4, events: [{ at: 2, type: 34, value: 81 }] },
-    { id: 'viking_hunter_attack', name: 'viking_hunter_attack', length: 4 },
-    { id: 'wolf_attack', name: 'wolf_attack', length: 4 },
-    { id: 'bear_attack', name: 'bear_attack', length: 4 },
-    { id: 'boar_attack', name: 'boar_attack', length: 4 },
-    { id: 'deer_attack', name: 'deer_attack', length: 4 },
+    {
+      id: 'viking_attack',
+      name: 'viking_attack',
+      length: 4,
+      events: [
+        { at: 2, type: 34, value: 81 },
+        { at: 4, type: 25 },
+      ],
+    },
+    { id: 'viking_hunter_attack', name: 'viking_hunter_attack', length: 4, events: [{ at: 4, type: 25 }] },
+    { id: 'wolf_attack', name: 'wolf_attack', length: 4, events: [{ at: 4, type: 25 }] },
+    { id: 'bear_attack', name: 'bear_attack', length: 4, events: [{ at: 4, type: 25 }] },
+    { id: 'boar_attack', name: 'boar_attack', length: 4, events: [{ at: 4, type: 25 }] },
+    { id: 'deer_attack', name: 'deer_attack', length: 4, events: [{ at: 4, type: 25 }] },
   ],
   // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
   // (good 1, the narrow `(job, good)` specialization) and a general track (no good) - so the

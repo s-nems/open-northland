@@ -21,6 +21,7 @@ export function resolveSpriteBobId(
   tick = 0,
   // The motion-scaled walk-cycle clock, which only a settler reads.
   gaitClock: number = tick,
+  idleElapsed?: number,
 ): number | null {
   // The unbound checks cover the required-typed keys too: the binding record is content-built, and a
   // caller outside the type system gets the placeholder rather than a crash.
@@ -40,7 +41,7 @@ export function resolveSpriteBobId(
     case 'settler':
       return bindings.settler === undefined
         ? null
-        : resolveSettlerBobId(bindings.settler, item, tick, gaitClock);
+        : resolveSettlerBobId(bindings.settler, item, tick, gaitClock, idleElapsed);
     case 'building':
       return bindings.building === undefined ? null : resolveBuildingDraw(bindings.building, item).bob;
     case 'palisade':

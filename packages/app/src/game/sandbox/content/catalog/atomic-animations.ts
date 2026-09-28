@@ -1,5 +1,6 @@
 import type { AtomicEvent } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
+import { CREATURE_ATTACKS } from '../../../../catalog/creatures.js';
 import {
   HUNTER_BOW_DRAW_LENGTH,
   HUNTER_BOW_RELEASE_FRAME,
@@ -137,6 +138,12 @@ export const CATAPULT_ANIMATION = 'viking_catapult_attack';
 
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
+    ...[...new Map(CREATURE_ATTACKS.map((attack) => [attack.name, attack])).values()].map((attack) => ({
+      id: attack.name,
+      name: attack.name,
+      length: attack.length,
+      events: attack.events.map((event) => ({ ...event, extended: false })),
+    })),
     ...GATHERERS.map((gatherer) =>
       workClip(gatherer.animation, HARVEST_TICKS[gatherer.atomic] ?? 1, [
         { at: gatherer.workEventFrame, type: GATHER_EVENT_TYPE[gatherer.mode] },

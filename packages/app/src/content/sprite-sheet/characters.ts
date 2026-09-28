@@ -1,9 +1,10 @@
 import type { ByJobTable, SettlerCharacter, SettlerCharacterSet } from '@open-northland/render';
+import { ANIMAL_BODY_IMAGELIB } from '../../catalog/animal-roster.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
-import { bodySequences, humanSequences } from '../ir/joins.js';
+import { bodySequences, humanSequences, playableSequences, sequencesFor } from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
-import type { GoodRef } from '../settler-gfx/index.js';
-import { loadLookLayers, resolveLooks } from './character-looks.js';
+import { type GoodRef, isAnimalBody } from '../settler-gfx/index.js';
+import { loadLookLayers, resolveAnimalJobLooks, resolveLooks } from './character-looks.js';
 import { type TribeCharacterInputs, tribeCharacters } from './tribe-characters.js';
 
 /**
@@ -24,19 +25,28 @@ export async function loadCharacters(
   if (ir?.bobSequences === undefined || ir.bobSequences.length === 0) return undefined;
 
   const looksByTribe = resolveLooks(ir, tribes, palette);
-  const looks = [...looksByTribe.values()].flatMap((bySpec) => [...bySpec.values()].flat());
+  const animalJobsByTribe = resolveAnimalJobLooks(ir, tribes);
+  const looks = [
+    ...[...looksByTribe.values()].flatMap((bySpec) => [...bySpec.values()].flat()),
+    ...[...animalJobsByTribe.values()].flatMap((byJob) => [...byJob.values()].flat()),
+  ];
   const layersByBody = await loadLookLayers(looks);
   const bmdByStem = new Map(looks.map((look) => [look.bodyStem, look.bodyBmd]));
   const sequences = humanSequences(ir);
+  // An animal body plays the animal bob set's own table.
+  const animalSequences = sequencesFor(ir, ANIMAL_BODY_IMAGELIB);
   const sequencesByBody = new Map(
     [...layersByBody].map(([stem, layers]) => [
       stem,
-      bodySequences(ir, bmdByStem.get(stem) ?? stem, layers.body.atlas),
+      isAnimalBody(stem)
+        ? playableSequences(animalSequences, layers.body.atlas)
+        : bodySequences(ir, bmdByStem.get(stem) ?? stem, layers.body.atlas),
     ]),
   );
 
   const inputsFor = (tribe: number): TribeCharacterInputs => ({
     looks: looksByTribe.get(tribe) ?? new Map(),
+    animalJobs: animalJobsByTribe.get(tribe) ?? new Map(),
     layersByBody,
     sequencesByBody,
     sequences,

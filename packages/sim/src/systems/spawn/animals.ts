@@ -92,8 +92,8 @@ export function spawnAnimalHerd(
  * its hitpoint pool, its walking pace, and the {@link Livestock} marker mirroring the content's
  * `catchable` flag, so the husbandry systems query that small store rather than the whole population.
  *
- * Approximation: interpret `movespeed` as ticks per map-point step. This timing has not been
- * confirmed against the running original.
+ * The original advances one map-point step in `movespeed` ticks at a steady gait. The timing of
+ * first steps and turns has not been confirmed against the running game with the current mod.
  */
 export function stampAnimalBody(
   world: World,

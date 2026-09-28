@@ -421,6 +421,16 @@ export const enContent = {
       summary:
         'Bears, stags and wolves spawn as herds on open grass, drawn with their species bodies and shadows.',
     },
+    creatures: {
+      title: 'Monsters and predators',
+      summary:
+        'Weresnakes and werewolves face a band of warriors. Wolves, lions, lionesses, brown bears and polar bears roam nearby.',
+    },
+    'creature-forms': {
+      title: 'Weresnake forms',
+      summary:
+        'Inspect the sheep, chicken, lion, wolf and bear forms of the weresnake tribe. The three warrior forms face nearby soldiers.',
+    },
     'movement-continuity': {
       title: 'Movement continuity',
       summary:

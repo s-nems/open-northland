@@ -1,3 +1,4 @@
+export { settlerPalette } from './character-layers.js';
 export { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 export { type MotionTrack, trackMotion } from './motion.js';
 export type { DamagedBuilding, DrawnGeometry, ShipAfloat } from './pick.js';

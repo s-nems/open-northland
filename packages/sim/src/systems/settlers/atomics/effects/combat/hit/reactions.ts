@@ -4,6 +4,7 @@ import {
   diplomacyStance,
   Engagement,
   FOG_MODE,
+  Frightened,
   Owner,
   PlayerOrder,
   Position,
@@ -17,6 +18,7 @@ import { frightenKin } from '../../../../../conflict/fright.js';
 import { combatTargetNode } from '../../../../../conflict/target-node.js';
 import { isValidTarget } from '../../../../../conflict/targeting.js';
 import type { SystemContext } from '../../../../../context.js';
+import { herdLeaderOf } from '../../../../../movement/herd-leader.js';
 import {
   angryGameTimeOf,
   isAggressiveAnimal,
@@ -118,6 +120,28 @@ export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entit
   ) {
     return;
   }
+  if (engagement === undefined) world.add(victim, Engagement, { repathAt: ctx.tick, target: attacker });
+  else world.mut(victim, Engagement).target = attacker;
+}
+
+/**
+ * Turn a struck wild herd follower on its attacker, the unowned twin of {@link turnOnAttacker}. Original
+ * behavior: a follower holding no target takes the one who struck it, unless its leader is fleeing.
+ */
+export function followerTakesAttacker(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  victim: Entity,
+): void {
+  const settler = world.tryGet(victim, Settler);
+  if (settler === undefined || world.has(victim, Owner)) return;
+  const leader = herdLeaderOf(world, victim);
+  if (leader === victim || world.has(leader, Frightened)) return;
+  const engagement = world.tryGet(victim, Engagement);
+  const held = engagement?.target;
+  if (held !== undefined && isValidTarget(world, ctx, victim, settler, held)) return;
+  if (!isValidTarget(world, ctx, victim, settler, attacker)) return;
   if (engagement === undefined) world.add(victim, Engagement, { repathAt: ctx.tick, target: attacker });
   else world.mut(victim, Engagement).target = attacker;
 }

@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   addCurrentAtomic,
@@ -9,16 +10,21 @@ import {
   JobAssignment,
   Owner,
   Position,
+  Resource,
   Settler,
+  Stockpile,
   WorkFlag,
+  YoungAnimal,
 } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../src/index.js';
-import { cleanupSystem } from '../../src/systems/index.js';
+import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../src/index.js';
+import { atomicSystem, cleanupSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
+import { startAtomic } from '../settlers/atomic-system/support.js';
 
 /**
  * Unit + integration tests for the CleanupSystem - the death/cleanup half of the combat loop. It
@@ -30,7 +36,128 @@ import { settlerAt } from '../fixtures/settler.js';
 /** Tribe 13 in the fixture content: passive livestock, no job enables - an `isAnimalTribe` tribe. */
 const ANIMAL_TRIBE = 13;
 
+// The animal remains fixture: the wolves (9) and the bear (10) are no prey, the cow (13) is (meat 21 x4),
+// and the `meat` logic landscape (type 44) shows its `meat pile 01` record (index 215), as decoded.
+const WOLVES = 9;
+const BEAR = 10;
+const COW = 13;
+const VIKING = 1;
+const HUNTER = 15;
+const ATTACK_ATOMIC = 81;
+const MEAT = 21;
+const MEAT_LANDSCAPE_TYPE = 44;
+const MEAT_PILE_GFX = 215;
+const REMAINS_MAP = {
+  ...grassNodeMap(16, 16),
+  landscapes: { types: [{ typeId: MEAT_PILE_GFX, walk: [], build: [], groups: [] }], placements: [] },
+};
+
+function remainsContent(cadaverSizes: readonly (readonly [tribe: number, size: number])[]): ContentSet {
+  const base = testContent();
+  const sizes = new Map(cadaverSizes);
+  return parseContentSet({
+    ...base,
+    animals: base.animals.map((a) => {
+      const size = sizes.get(a.tribeType);
+      return size === undefined ? a : { ...a, maximumCadaverSize: size };
+    }),
+    landscape: [
+      ...base.landscape,
+      { typeId: MEAT_LANDSCAPE_TYPE, id: 'meat', walkable: true, buildable: true },
+    ],
+    landscapeGfx: [
+      ...base.landscapeGfx,
+      { index: MEAT_PILE_GFX, editName: 'meat pile 01', logicType: MEAT_LANDSCAPE_TYPE },
+    ],
+  });
+}
+
+/** A wild animal of `tribe` drained to 0 hitpoints at visual cell `(x, 5)`. */
+function deadAnimal(sim: Simulation, tribe: number, x: number): Entity {
+  const e = settlerAt(sim, { jobType: null, tribe, position: { x: fx.fromInt(x), y: fx.fromInt(5) } });
+  sim.world.add(e, Health, { hitpoints: 0, max: 500 });
+  return e;
+}
+
 describe('cleanupSystem - reaping 0-HP combatants', () => {
+  it("leaves a third of a wild animal's cadaver size as meat, at least one, and saves it", () => {
+    const content = remainsContent([
+      [WOLVES, 12],
+      [BEAR, 2],
+    ]);
+    const sim = new Simulation({ seed: 1, content, map: REMAINS_MAP });
+    deadAnimal(sim, WOLVES, 4);
+    deadAnimal(sim, BEAR, 6);
+    cleanupSystem(sim.world, ctxOf(sim));
+    expect(sim.landscapeEdits().added).toMatchObject([
+      { typeId: MEAT_PILE_GFX, hx: 9, hy: 10, level: 4 },
+      { typeId: MEAT_PILE_GFX, hx: 13, hy: 10, level: 1 },
+    ]);
+    expect(sim.events.current()).toContainEqual({ kind: 'missionLandscapeChanged' });
+    const restored = restoreSimulation(exportSaveGame(sim), { content, map: REMAINS_MAP });
+    expect(restored.landscapeEdits().added).toEqual(sim.landscapeEdits().added);
+    expect(restored.hashState()).toBe(sim.hashState());
+  });
+
+  it("halves a young animal's pile after taking the third, down to nothing", () => {
+    const content = remainsContent([
+      [WOLVES, 12],
+      [BEAR, 4],
+    ]);
+    const sim = new Simulation({ seed: 1, content, map: REMAINS_MAP });
+    sim.world.add(deadAnimal(sim, WOLVES, 4), YoungAnimal, { adultAt: 100 });
+    sim.world.add(deadAnimal(sim, BEAR, 6), YoungAnimal, { adultAt: 100 });
+    cleanupSystem(sim.world, ctxOf(sim));
+    expect(sim.landscapeEdits().added).toMatchObject([{ typeId: MEAT_PILE_GFX, hx: 9, hy: 10, level: 2 }]);
+  });
+
+  it('lays the pile as a meat heap where the terrain types it as the good on the ground', () => {
+    const content = remainsContent([[WOLVES, 12]]);
+    const map = {
+      ...REMAINS_MAP,
+      landscapes: {
+        types: [{ typeId: MEAT_PILE_GFX, walk: [], build: [], groups: [], good: { goodId: 'meat' } }],
+        placements: [],
+      },
+    };
+    const sim = new Simulation({ seed: 1, content, map });
+    deadAnimal(sim, WOLVES, 4);
+    cleanupSystem(sim.world, ctxOf(sim));
+    const heaps = [...sim.world.query(Stockpile)].map((e) => [...sim.world.get(e, Stockpile).amounts]);
+    expect(heaps).toEqual([[[MEAT, 4]]]);
+  });
+
+  it("leaves a hunter's kill of huntable prey only its harvestable carcass", () => {
+    const sim = new Simulation({ seed: 1, content: remainsContent([[COW, 12]]), map: REMAINS_MAP });
+    const hunter = settlerAt(sim, {
+      jobType: HUNTER,
+      tribe: VIKING,
+      position: { x: fx.fromInt(1), y: fx.fromInt(5) },
+    });
+    const cow = settlerAt(sim, {
+      jobType: null,
+      tribe: COW,
+      position: { x: fx.fromInt(4), y: fx.fromInt(5) },
+    });
+    sim.world.add(cow, Health, { hitpoints: 20, max: 20 });
+    startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 100 }, 1, ATTACK_ATOMIC);
+    atomicSystem(sim.world, ctxOf(sim));
+    // Approximation: prey another hand kills leaves nothing, where the original lays meat.
+    deadAnimal(sim, COW, 6);
+    cleanupSystem(sim.world, ctxOf(sim));
+    expect(sim.world.isAlive(cow)).toBe(false);
+    expect([...sim.world.query(Resource)].map((e) => sim.world.get(e, Resource).goodType)).toEqual([MEAT]);
+    expect(sim.landscapeEdits().added).toEqual([]);
+  });
+
+  it('leaves nothing for an animal whose cadaver size is 0', () => {
+    const sim = new Simulation({ seed: 1, content: remainsContent([[WOLVES, 0]]), map: REMAINS_MAP });
+    deadAnimal(sim, WOLVES, 4);
+    cleanupSystem(sim.world, ctxOf(sim));
+    expect(sim.landscapeEdits().added).toEqual([]);
+    expect(sim.events.current()).not.toContainEqual({ kind: 'missionLandscapeChanged' });
+  });
+
   it('destroys an entity whose hitpoints reached 0 and emits settlerDied', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const dead = sim.world.create();

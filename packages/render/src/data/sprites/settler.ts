@@ -1,5 +1,5 @@
 import type { DrawItem, SpriteState } from '../scene/index.js';
-import type { ByJobTable, SettlerStateBinding, SpriteFrameRef } from './settler-bindings.js';
+import type { ByJobTable, FrameListAnim, SettlerStateBinding, SpriteFrameRef } from './settler-bindings.js';
 
 /**
  * The facing for an item carrying no heading. Approximation: `5` is SE on screen in the `CR_Hum_Body`
@@ -35,6 +35,89 @@ function heldStep(holds: readonly number[], time: number): number {
     time -= duration;
   }
   return Math.max(0, holds.length - 1);
+}
+
+/**
+ * Approximation: a resting settler shows its base wait this long between two idle fidgets, each fidget
+ * played to its end. The source authors the fidget clips but not how often a settler plays one.
+ */
+const IDLE_FIDGET_GAP_TICKS = 180;
+/** Ticks each entity id shifts the idle schedules by, so neighbours that came to rest together do not
+ *  gesture in step. */
+const IDLE_PHASE_STAGGER_TICKS = 37;
+
+/** The length of `clip`'s list for `facing`; 0 when that facing authors none. */
+function clipLength(clip: FrameListAnim, facing: number): number {
+  const lists = clip.frameLists;
+  return lists.length === 0 ? 0 : (lists[wrap(facing, lists.length)]?.length ?? 0);
+}
+
+/**
+ * The fidget frame due now, or `undefined` while the base wait shows. Each fidget follows a base-wait gap,
+ * in an order that starts at a per-entity clip. Timed from the idle period's start when a track supplies
+ * `idleElapsed`, which opens on a staggered part of the first gap, else from the free tick.
+ */
+function idleFidgetFrame(
+  binding: SettlerStateBinding,
+  ref: number,
+  facing: number,
+  tick: number,
+  idleElapsed: number | undefined,
+): number | undefined {
+  const fidgets = binding.idleFidgets;
+  if (fidgets === undefined || fidgets.length === 0) return undefined;
+  let period = 0;
+  for (let i = 0; i < fidgets.length; i++) {
+    const clip = fidgets[i];
+    if (clip !== undefined) period += IDLE_FIDGET_GAP_TICKS + clipLength(clip, facing);
+  }
+  const stagger = ref * IDLE_PHASE_STAGGER_TICKS;
+  const since =
+    idleElapsed === undefined
+      ? Math.floor(tick) + stagger
+      : Math.floor(idleElapsed) + wrap(stagger, IDLE_FIDGET_GAP_TICKS);
+  let time = wrap(since, period);
+  const first = wrap(ref, fidgets.length);
+  for (let i = 0; i < fidgets.length; i++) {
+    const clip = fidgets[(first + i) % fidgets.length];
+    if (clip === undefined) continue;
+    if (time < IDLE_FIDGET_GAP_TICKS) return undefined;
+    time -= IDLE_FIDGET_GAP_TICKS;
+    const length = clipLength(clip, facing);
+    if (time < length) return frameOf(clip, facing, time);
+    time -= length;
+  }
+  return undefined;
+}
+
+/** The source selects another allowed animal wait action when the prior clip finishes. The selection
+ * order is deterministic here because render has no simulation randomness; each authored duration is
+ * preserved. */
+function idleChoiceFrame(
+  binding: SettlerStateBinding,
+  ref: number,
+  facing: number,
+  tick: number,
+  idleElapsed: number | undefined,
+): number | undefined {
+  const choices = binding.idleChoices;
+  if (choices === undefined || choices.length === 0) return undefined;
+  let duration = 0;
+  for (let i = 0; i < choices.length; i++) {
+    const clip = choices[i];
+    if (clip !== undefined) duration += Math.max(1, clipLength(clip, facing));
+  }
+  const stagger = idleElapsed === undefined ? ref * IDLE_PHASE_STAGGER_TICKS : 0;
+  let time = wrap(Math.floor(idleElapsed ?? tick) + stagger, duration);
+  const first = wrap(ref, choices.length);
+  for (let i = 0; i < choices.length; i++) {
+    const clip = choices[(first + i) % choices.length];
+    if (clip === undefined) continue;
+    const length = Math.max(1, clipLength(clip, facing));
+    if (time < length) return frameOf(clip, facing, time);
+    time -= length;
+  }
+  return undefined;
 }
 
 /** Subtick clips accept a fractional presentation clock; original bindings retain integer cadence. */
@@ -104,6 +187,7 @@ export function movingFrameRef(binding: SettlerStateBinding, item: DrawItem): Sp
   const loaded = item.carryGood === undefined ? undefined : carry?.byGood?.[item.carryGood];
   return (
     (item.engaged ? binding.engaged?.moving : undefined) ??
+    (item.running ? binding.running : undefined) ??
     loaded?.moving ??
     carry?.moving ??
     binding.moving ??
@@ -118,6 +202,8 @@ export function resolveSettlerBobId(
   tick: number,
   // The moving-state clock. Defaults to the free tick, for a caller with no motion track.
   gaitClock: number = tick,
+  /** Presentation ticks since the current idle period began, when a retained track supplies one. */
+  idleElapsed?: number,
 ): number {
   if (typeof binding === 'number') return binding;
   const facing = item.facing ?? DEFAULT_FACING;
@@ -155,6 +241,12 @@ export function resolveSettlerBobId(
   }
   if (state === 'moving') {
     return frameOf(movingFrameRef(binding, item), facing, gaitClock);
+  }
+  if (!item.engaged && carry === undefined) {
+    const choice = idleChoiceFrame(binding, item.ref, facing, tick, idleElapsed);
+    if (choice !== undefined) return choice;
+    const fidget = idleFidgetFrame(binding, item.ref, facing, tick, idleElapsed);
+    if (fidget !== undefined) return fidget;
   }
   return frameOf(engaged?.idle ?? carry?.idle ?? binding.idle, facing, tick);
 }

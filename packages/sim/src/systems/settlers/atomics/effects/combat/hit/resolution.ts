@@ -28,7 +28,13 @@ import { spawnCarcasses } from './carcass.js';
 import { landedDamage } from './damage.js';
 import { launchProjectile } from './projectile-launch.js';
 import { collectHitReaction, type PendingHitReaction } from './reaction.js';
-import { frightenStruckAnimal, provokeAnger, provokeHostility, turnOnAttacker } from './reactions.js';
+import {
+  followerTakesAttacker,
+  frightenStruckAnimal,
+  provokeAnger,
+  provokeHostility,
+  turnOnAttacker,
+} from './reactions.js';
 
 /**
  * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit. A ranged swing launches a
@@ -159,6 +165,7 @@ export function resolveCombatHit(
   frightenStruckAnimal(world, ctx, attacker, target);
   if (dealtDamage && source !== 'collateral') provokeHostility(world, ctx, attacker, target);
   turnOnAttacker(world, ctx, attacker, target);
+  followerTakesAttacker(world, ctx, attacker, target);
   raiseHitAlarm(world, ctx, attacker, target);
   // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
   // the original marks it on the computed damage, before the pool is touched.

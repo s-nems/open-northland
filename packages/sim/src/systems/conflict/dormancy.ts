@@ -24,6 +24,7 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
   const civTribes = new Set<number>();
   let hasCiv = false;
   let hasHostileAnimal = false;
+  let hasClaimedAnimal = false;
   let hasHunter = false;
   let hasPrey = false;
   for (const e of combatants) {
@@ -36,6 +37,7 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
     if (owner !== undefined) owners.add(owner.player);
     if (isAnimalTribe(ctx.content, s.tribe)) {
       if (isAggressiveAnimal(ctx.content, s.tribe)) hasHostileAnimal = true;
+      if (owner !== undefined) hasClaimedAnimal = true;
       if (isHuntablePrey(ctx.content, s.tribe)) hasPrey = true;
     } else {
       hasCiv = true;
@@ -46,6 +48,7 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
     if (owners.size >= 2) return true; // two players → possible pvp
     if (civTribes.size >= 2) return true; // two civilizations → civ-vs-civ (unowned scenarios)
     if (hasHostileAnimal && hasCiv) return true; // an aggressive animal near a civilization
+    if (hasHostileAnimal && hasClaimedAnimal) return true; // a wild animal may strike claimed livestock
     if (hasHunter && hasPrey) return true; // a hunter and huntable prey
   }
   // A vehicle with a standing attack fights on its own, a marching one resumes its march from the

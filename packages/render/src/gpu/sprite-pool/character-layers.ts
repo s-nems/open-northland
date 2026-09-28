@@ -1,7 +1,7 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import { type AtlasFrame, pickByJob, resolveSettlerBobId } from '../../data/sprites/index.js';
 import { DEFAULT_FACING, movingFrameRef } from '../../data/sprites/settler.js';
-import type { SettlerCharacter, SettlerCharacterSet, SpriteSheet } from '../sprite-sheet.js';
+import type { PaletteLut, SettlerCharacter, SettlerCharacterSet, SpriteSheet } from '../sprite-sheet.js';
 import { layerScale, resolveFromLayer, shadowLayerFor } from './layered-layers.js';
 import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 
@@ -73,12 +73,23 @@ export function pushCharacterLayers(
   item: DrawItem,
   tick: number,
   gaitClock: number,
+  idleElapsed?: number,
 ): boolean {
   // No look at all is a listed-but-unbound wildlife tribe, which draws nothing. A look whose resolved bob
   // has no frame is a real gap and falls to the placeholder.
   const char = characterForItem(characters, item);
   if (char === undefined) return true;
-  return pushComposedCharacterLayers(out, sheet, char, char.binding, char.headBinding, item, tick, gaitClock);
+  return pushComposedCharacterLayers(
+    out,
+    sheet,
+    char,
+    char.binding,
+    char.headBinding,
+    item,
+    tick,
+    gaitClock,
+    idleElapsed,
+  );
 }
 
 /**
@@ -95,13 +106,15 @@ export function pushComposedCharacterLayers(
   item: DrawItem,
   tick: number,
   gaitClock: number,
+  idleElapsed?: number,
 ): boolean {
   const scale = characterScale(sheet, char);
-  const bob = resolveSettlerBobId(binding, item, tick, gaitClock);
+  const bob = resolveSettlerBobId(binding, item, tick, gaitClock, idleElapsed);
   const body = resolveFromLayer(char.body, bob, scale);
   const heads = char.heads;
   const headLayer = heads !== undefined && heads.length > 0 ? heads[item.ref % heads.length] : undefined;
-  const headBob = headBinding !== undefined ? resolveSettlerBobId(headBinding, item, tick, gaitClock) : bob;
+  const headBob =
+    headBinding !== undefined ? resolveSettlerBobId(headBinding, item, tick, gaitClock, idleElapsed) : bob;
   const head = headLayer === undefined ? null : resolveFromLayer(headLayer, headBob, scale);
   if (body !== null) {
     out.push(castLayerFor(body));
@@ -140,6 +153,23 @@ export function humanCharacter(
   const character = pickByJob(table, jobType, young, weaponGood);
   const variants = character.variants;
   return variants?.length ? (variants[ref % variants.length] ?? character) : character;
+}
+
+/** The LUT a settler draws through: the settler LUT for an indexed human look, none for a wildlife
+ *  species or a look on a baked atlas. Reads the same job, weapon and variant pick the layers do. */
+export function settlerPalette(sheet: SpriteSheet | undefined, item: DrawItem): PaletteLut | undefined {
+  const characters = sheet?.characters;
+  if (characters === undefined) return undefined;
+  if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) return undefined;
+  const character = humanCharacter(
+    characters,
+    item.tribe,
+    item.jobType,
+    item.young === true,
+    item.weaponGood,
+    item.ref,
+  );
+  return character.indexed === false ? undefined : sheet?.palette;
 }
 
 /** Converts measured foot travel to the selected clip's tick clock without changing movement. */

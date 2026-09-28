@@ -13,11 +13,11 @@ import type { CombatantStance, EngageSpec } from '../engagement.js';
 export const HUNT_SEARCH_REST_TICKS = 10;
 
 /** Rest a hunter's prey acquisition after a pass that took no prey - an empty search, or a chase that gave its
- *  target up - so the next tick pays no target search and no carcass probe. Only the prey spec carries a `lock`,
- *  so a hunter fighting as a soldier is never paced; a DEFEND post-holder is not either, because the rest
- *  would also skip its walk-back retry. */
+ *  target up - so the next tick pays no target search and no carcass probe. Only the prey spec seeks prey, so
+ *  a hunter fighting as a soldier and a leashed wild animal are never paced; a DEFEND post-holder is not
+ *  either, because the rest would also skip its walk-back retry. */
 export function restPreySearch(world: World, ctx: SystemContext, e: Entity, spec: EngageSpec): void {
-  if (spec.lock === null || spec.defend?.hold === true) return;
+  if (spec.preySeeker !== true || spec.defend?.hold === true) return;
   if (world.has(e, HuntRest)) return;
   world.add(e, HuntRest, { until: ctx.tick + HUNT_SEARCH_REST_TICKS });
 }

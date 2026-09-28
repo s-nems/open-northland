@@ -74,6 +74,70 @@ describe('subtick character clips', () => {
   });
 });
 
+describe('animal run gait', () => {
+  it('selects the faster clip only while the creature is moving fast', () => {
+    const binding: SettlerStateBinding = {
+      idle: 10,
+      moving: { start: 100, dirs: 8, stride: 2 },
+      running: { start: 200, dirs: 8, stride: 3 },
+    };
+    const walking = settlerItem('moving', { facing: 4 });
+    expect(resolveSettlerBobId(binding, walking, 0, 1)).toBe(109);
+    expect(resolveSettlerBobId(binding, { ...walking, running: true }, 0, 1)).toBe(213);
+    expect(resolveSettlerBobId(binding, { ...walking, running: true, state: 'idle' }, 0)).toBe(10);
+  });
+});
+
+describe('idle gestures', () => {
+  it('plays each authored fidget once between base waits with a stable entity offset', () => {
+    const binding: SettlerStateBinding = {
+      idle: 10,
+      idleFidgets: [
+        { start: 300, frameLists: [[0, 1]] },
+        { start: 400, frameLists: [[0, 1, 2]] },
+      ],
+    };
+    // Entity 1 starts its order on the second fidget, 37 ticks into the schedule.
+    const item = { ...settlerItem('idle', { facing: 0 }), ref: 1 };
+    const frames = (ticks: readonly number[]) =>
+      ticks.map((tick) => resolveSettlerBobId(binding, item, tick));
+    expect(frames([142, 143, 144, 145, 146])).toEqual([10, 400, 401, 402, 10]);
+    expect(frames([325, 326, 327, 328])).toEqual([10, 300, 301, 10]);
+    expect(resolveSettlerBobId(binding, { ...item, engaged: true }, 143)).toBe(10);
+  });
+
+  it('plays a fidget longer than the base-wait gap to its end, opening each rest on the base wait', () => {
+    const LONG = 400;
+    /** The base-wait gap between two fidgets. */
+    const GAP = 180;
+    const binding: SettlerStateBinding = {
+      idle: 10,
+      idleFidgets: [{ start: 1000, frameLists: [Array.from({ length: LONG }, (_, i) => i)] }],
+    };
+    const item = { ...settlerItem('idle', { facing: 0 }), ref: 0 };
+    const at = (elapsed: number) => resolveSettlerBobId(binding, item, 5000 + elapsed, 0, elapsed);
+    expect(at(0)).toBe(10);
+    expect(at(GAP - 1)).toBe(10);
+    expect(at(GAP)).toBe(1000);
+    expect(at(GAP + LONG - 1)).toBe(1000 + LONG - 1);
+    expect(at(GAP + LONG)).toBe(10);
+  });
+
+  it('plays each animal wait action for its authored length before the next choice', () => {
+    const binding: SettlerStateBinding = {
+      idle: 10,
+      idleChoices: [
+        { start: 300, frameLists: [[0, 1]] },
+        { start: 400, frameLists: [[0, 1, 2]] },
+      ],
+    };
+    const item = { ...settlerItem('idle', { facing: 0 }), ref: 1 };
+    expect([0, 1, 2, 3, 4].map((tick) => resolveSettlerBobId(binding, item, tick))).toEqual([
+      402, 300, 301, 400, 401,
+    ]);
+  });
+});
+
 describe('resolveSpriteFrame - per-state settler binding', () => {
   /** An atlas with a distinct frame per state bob: idle=10, moving=11, acting=12, chop=13. */
   function stateAtlas(): SpriteAtlas {

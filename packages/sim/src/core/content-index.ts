@@ -19,7 +19,7 @@ import {
 } from '@open-northland/data';
 import type { GoodsLine } from '../components/economy/infrastructure.js';
 import { atomicBindingTables, harvestCapableJobs } from './content-index/atomics.js';
-import { byKey, byOptionalKey, byPairKey, valueByKey } from './content-index/by-key.js';
+import { byKey, byOptionalKey, byPairKey, lastByPairKey, valueByKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
 import { jobRoleSets } from './content-index/jobs.js';
@@ -115,7 +115,7 @@ export interface ContentIndex {
    * non-producing type.
    */
   readonly mergedRecipeByBuilding: ReadonlyMap<number, Recipe>;
-  /** The worn-weapon override key; first-wins per pair in source order. */
+  /** The worn/stored weapon type key; later rows replace earlier definitions of the same type. */
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** How a jobbed combatant binds its class weapon; first-wins per pair in source order. */
   readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
@@ -266,7 +266,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     ),
     hunterJobs: roles.hunter,
     maxResourceWorkOffset: maxWorkCellOffset(content),
-    weaponsByTribeAndTypeId: byPairKey(
+    weaponsByTribeAndTypeId: lastByPairKey(
       content.weapons,
       (w) => w.tribeType,
       (w) => w.typeId,

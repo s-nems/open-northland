@@ -55,7 +55,13 @@ export type SpriteFrameRef = number | DirectionalAnim | FrameListAnim;
  *  back to. */
 export interface SettlerStateBinding {
   readonly idle: SpriteFrameRef;
+  /** Animal wait actions 2..7, each played through before the next choice. */
+  readonly idleChoices?: readonly FrameListAnim[];
+  /** Authored one-shot idle gestures, each played to its end between spells of the base wait. */
+  readonly idleFidgets?: readonly FrameListAnim[];
   readonly moving?: SpriteFrameRef;
+  /** The animal's faster unloaded gait, selected while its movement uses run speed. */
+  readonly running?: SpriteFrameRef;
   readonly acting?: SpriteFrameRef;
   /** Per-atomic override for the `acting` state (the `setatomic` join). */
   readonly byAtomic?: Readonly<Record<number, SpriteFrameRef>>;

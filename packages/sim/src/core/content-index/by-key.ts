@@ -59,3 +59,24 @@ export function byPairKey<T>(
   }
   return map;
 }
+
+/** Map a two-level key with later rows replacing earlier rows for the same pair. */
+export function lastByPairKey<T>(
+  items: readonly T[],
+  outer: (item: T) => number | undefined,
+  inner: (item: T) => number | undefined,
+): ReadonlyMap<number, ReadonlyMap<number, T>> {
+  const map = new Map<number, Map<number, T>>();
+  for (const item of items) {
+    const o = outer(item);
+    const i = inner(item);
+    if (o === undefined || i === undefined) continue;
+    let innerMap = map.get(o);
+    if (innerMap === undefined) {
+      innerMap = new Map<number, T>();
+      map.set(o, innerMap);
+    }
+    innerMap.set(i, item);
+  }
+  return map;
+}

@@ -19,7 +19,7 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
-    startSwing(sim, attacker, { target, damage: 0, hitAt: 17 }, 27);
+    startSwing(sim, attacker, { target, damage: 0, hitFrames: [17] }, 27);
 
     for (let i = 0; i < 27; i++) atomicSystem(sim.world, ctxOf(sim)); // run to completion
 
@@ -34,7 +34,7 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOMAN);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
-    startSwing(sim, attacker, { target, damage: 0, hitAt: 6 }, 16);
+    startSwing(sim, attacker, { target, damage: 0, hitFrames: [6] }, 16);
 
     for (let i = 0; i < 16; i++) atomicSystem(sim.world, ctxOf(sim));
 
@@ -51,7 +51,7 @@ describe('atomicSystem - the attacker pays the swing need-drain from its own cli
     setNeedsEnabled(sim.world, false);
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
-    startSwing(sim, attacker, { target, damage: 0, hitAt: 17 }, 27);
+    startSwing(sim, attacker, { target, damage: 0, hitFrames: [17] }, 27);
 
     for (let i = 0; i < 27; i++) atomicSystem(sim.world, ctxOf(sim));
 

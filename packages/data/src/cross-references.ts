@@ -131,7 +131,19 @@ const JOB_REQUIREMENT_TARGET: Readonly<Record<JobRequirementTarget, ReferenceTar
 function checkTribes(set: ContentSet, ids: IdSets): string[] {
   const { jobIds } = ids;
   const errors: string[] = [];
+  const weaponTypesByTribe = new Map<number, Set<number>>();
+  for (const weapon of set.weapons) {
+    if (weapon.tribeType === undefined) continue;
+    let types = weaponTypesByTribe.get(weapon.tribeType);
+    if (types === undefined) {
+      types = new Set<number>();
+      weaponTypesByTribe.set(weapon.tribeType, types);
+    }
+    types.add(weapon.typeId);
+  }
   for (const t of set.tribes) {
+    if (t.naturalWeaponType !== undefined && !weaponTypesByTribe.get(t.typeId)?.has(t.naturalWeaponType))
+      errors.push(`tribe "${t.id}" naturalWeaponType ${t.naturalWeaponType} has no scoped weapon`);
     const walkJob = t.walkStepReduction?.jobType;
     if (walkJob !== undefined && !jobIds.has(walkJob))
       errors.push(`tribe "${t.id}" walkStepReduction has unknown jobType ${walkJob}`);

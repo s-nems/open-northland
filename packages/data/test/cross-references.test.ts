@@ -47,6 +47,14 @@ function parseWith(overrides: Record<string, unknown>): void {
 }
 
 describe('validateCrossReferences', () => {
+  it('requires a natural weapon to resolve within its own tribe', () => {
+    const tribe = { typeId: 5, id: 'monster', naturalWeaponType: 1 };
+    const foreignWeapon = { typeId: 1, id: 'other claw', tribeType: 6 };
+    expect(() => parseWith({ tribes: [tribe], weapons: [foreignWeapon] })).toThrow(
+      /tribe "monster" naturalWeaponType 1 has no scoped weapon/,
+    );
+    expect(() => parseWith({ tribes: [tribe], weapons: [{ ...foreignWeapon, tribeType: 5 }] })).not.toThrow();
+  });
   it('validates an optional tribe walk-reduction profession', () => {
     expect(() =>
       parseWith({ tribes: [{ typeId: 1, id: 'test', walkStepReduction: { ticks: 2, jobType: 99 } }] }),

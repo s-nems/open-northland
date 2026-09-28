@@ -24,16 +24,24 @@ export interface TribeLook {
  *  than a base bob palette; until that composition is supported, this keeps its unique body drawable. */
 const DEFAULT_PALETTE = 'test_human_00';
 
-/** The bob-set prefix of the human bodies. A `[jobbasegraphics]` record may name an animal body instead -
- *  the weresnake and bear jobs name `cr_ani_body_00` - whose clips live outside the human sequence table. */
+/** The bob-set prefixes of the human and the animal body libraries. Some monster jobs draw a person on an
+ *  animal body. */
 const HUMAN_BODY_PREFIX = 'cr_hum_';
+const ANIMAL_BODY_PREFIX = 'cr_ani_';
+
+/** Whether a bob stem, or a served atlas stem, is an animal body. The pipeline decodes the recolourable
+ *  `.indexed` atlas for the human bobs alone, so an animal body is served in its baked skins only. */
+export function isAnimalBody(stem: string): boolean {
+  return stem.startsWith(ANIMAL_BODY_PREFIX);
+}
 
 /** `data/engine2d/bin/bobs/cr_hum_body_30.bmd` → `cr_hum_body_30`. */
 function bobStem(bmd: string): string {
   return bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '');
 }
 
-function lookFrom(row: JobGraphicsRow): TribeLook {
+/** One `[jobbasegraphics]` record's bob sets, whatever body library it names. */
+export function lookFrom(row: JobGraphicsRow): TribeLook {
   const heads: string[] = [];
   for (const head of row.heads) {
     const stem = bobStem(head);
@@ -53,7 +61,7 @@ function lookFrom(row: JobGraphicsRow): TribeLook {
  * One tribe's looks per character spec, from the `[jobbasegraphics]` rows: each spec names the jobs whose
  * record draws it, best first, so the list degrades from the soldier class to the tribe's plain soldier.
  * The caller takes the first whose bobs are actually decoded, since a record can name a body the pipeline
- * emits no atlas for (the byzantine spearman). A spec with no human body in its chain keeps no entry, and
+ * emits no atlas for. A spec with no playable body in its chain keeps no entry, and
  * its jobs then draw the base tribe's look for the same job.
  */
 export function tribeLooks(ir: ContentIr | null, tribe: number): Map<CharacterSpecId, TribeLook[]> {
@@ -67,7 +75,7 @@ export function tribeLooks(ir: ContentIr | null, tribe: number): Map<CharacterSp
       const row = byJob.get(job);
       if (row === undefined) return [];
       const look = lookFrom(row);
-      return look.bodyBmd.startsWith(HUMAN_BODY_PREFIX) ? [look] : [];
+      return look.bodyBmd.startsWith(HUMAN_BODY_PREFIX) || isAnimalBody(look.bodyBmd) ? [look] : [];
     });
     if (chain.length > 0) looks.set(specId, chain);
   }

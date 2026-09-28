@@ -418,6 +418,16 @@ export const plContent = {
       summary:
         'Niedźwiedzie, jelenie i wilki pojawiają się stadami na trawie, rysowane ciałami swoich gatunków wraz z cieniami.',
     },
+    creatures: {
+      title: 'Potwory i drapieżniki',
+      summary:
+        'Wężoludzie i wilkołaki naprzeciw oddziału wojowników. W pobliżu grasują wilki, lwy, lwice oraz niedźwiedzie brunatne i polarne.',
+    },
+    'creature-forms': {
+      title: 'Postacie wężoludzi',
+      summary:
+        'Obejrzyj owczą, kurzą, lwią, wilczą i niedźwiedzią postać wężoludzi. Trzy bojowe postacie stoją naprzeciw wojowników.',
+    },
     'movement-continuity': {
       title: 'Płynność ruchu',
       summary:

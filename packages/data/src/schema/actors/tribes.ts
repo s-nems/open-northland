@@ -55,6 +55,9 @@ export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
+  /** Reset weapon type (original behavior: a person's weapon resets to type 1). Keeping it equipped
+   *  across a monster's body-form job changes is an approximation, not traced for all five body jobs. */
+  naturalWeaponType: TypeId.optional(),
   /** Walk-cost reduction, optionally restricted to one profession. */
   walkStepReduction: z
     .strictObject({

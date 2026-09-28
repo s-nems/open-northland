@@ -1,4 +1,5 @@
 import type { ArmorType, EquipClass } from '@open-northland/data';
+import { CREATURE_WEAPONS, NATURAL_WEAPON_TYPE } from '../../catalog/creatures.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -9,7 +10,6 @@ import {
   JOB_SOLDIER_UNARMED,
 } from '../../catalog/jobs.js';
 import { PRIMARY_TRIBE } from '../rules.js';
-import { ANIMAL_TRIBE_BEARS, ANIMAL_TRIBE_WOLVES } from './content/catalog/animals.js';
 import {
   EQUIP_GOODS,
   GOOD_ARMOR_CHAIN,
@@ -102,13 +102,6 @@ const HOUSE_BOW_DAMAGE: Readonly<Record<string, number>> = {
   '6': 9,
   '7': 50,
 };
-// Extracted from the mod `weapons.ini` `bearfist`/`wolvefist` rows. Both share weapon type 1 because
-// the lookup key is `(tribeType, typeId)`. The source `goodtype 0` is dropped on purpose: carrying it
-// would count good 0 among the military goods.
-const ANIMAL_FIST_TYPE = 1;
-const BEAR_FIST_DAMAGE = 800;
-const WOLF_FIST_DAMAGE = 350;
-
 // The weapon's HOUSE column (`weapons.ini` `damagevalue 7`). A named sandbox approximation, not
 // extracted: sized so a warband razes a home, watchtower or HQ in a watchable siege.
 const FIST_VS_BUILDING = 120;
@@ -296,23 +289,15 @@ export function sandboxWeapons() {
       maxRange: CATAPULT_MAX_RANGE,
       damage: { ...CATAPULT_DAMAGE },
     },
-    // One row per animal tribe, because a jobless animal binds combat through its tribe's first weapon
-    // row. Without one an aggressive wolf disengages instead of hunting.
-    {
-      typeId: ANIMAL_FIST_TYPE,
-      id: 'bearfist',
-      tribeType: ANIMAL_TRIBE_BEARS,
+    ...CREATURE_WEAPONS.map((weapon) => ({
+      typeId: NATURAL_WEAPON_TYPE,
+      id: weapon.id,
+      tribeType: weapon.tribeType,
+      ...('jobType' in weapon ? { jobType: weapon.jobType } : {}),
+      mainType: UNARMED_MAIN_TYPE,
       minRange: 1,
       maxRange: 1,
-      damage: { '0': BEAR_FIST_DAMAGE },
-    },
-    {
-      typeId: ANIMAL_FIST_TYPE,
-      id: 'wolvefist',
-      tribeType: ANIMAL_TRIBE_WOLVES,
-      minRange: 1,
-      maxRange: 1,
-      damage: { '0': WOLF_FIST_DAMAGE },
-    },
+      damage: { ...weapon.damage },
+    })),
   ];
 }

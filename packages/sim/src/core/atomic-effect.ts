@@ -1,4 +1,5 @@
 import type { EquipCategory } from '@open-northland/data';
+import type { WalkDirection } from '../components/movement.js';
 import type { Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
@@ -67,9 +68,12 @@ export type AtomicEffect =
        *  the striker's fight experience, before the hit's own modifiers. A ranged swing resolves its own
        *  on contact. */
       readonly damage: number;
-      /** The animation's `ATOMIC_EVENT_TYPE_ATTACK` frame the blow lands on; the completion frame when
-       *  omitted. */
-      readonly hitAt?: number;
+      /** Every attack-event frame; an event lands one blow. Empty means a bound clip with no hit event;
+       *  omitted means no bound clip, which uses one completion-frame fallback blow. */
+      readonly hitFrames?: readonly number[];
+      /** An animal clip's forward events: each frame steps one map point along `direction`, the heading
+       *  toward `target` as the swing began. Wildlife keeps no facing, so the swing carries it. */
+      readonly lunge?: { readonly frames: readonly number[]; readonly direction: WalkDirection };
       /** `WeaponType.mainType`, which keys the fight-experience bucket; omitting it accrues no fight XP. */
       readonly weaponMainType?: number;
       /** The sound-bank group id the landed blow plays (`weapon.soundtype_Hit[targetMaterial]`); absent,
@@ -78,7 +82,7 @@ export type AtomicEffect =
       /** The melee weapon's reach in half-cell nodes, re-checked at the hit frame: a target that stepped
        *  beyond it during the swing takes no damage. Absent means no reach check. */
       readonly maxRange?: number;
-      /** Present for a ranged swing: at `hitAt` a projectile of this ammunition class and travel speed
+      /** Present for a ranged swing: at each hit frame a projectile of this ammunition class and travel speed
        *  flies toward `target` instead of the blow landing in place. It strikes whatever stands where it
        *  comes down, resolving the weapon's `damage` and `hitSounds` columns against that victim; a shot
        *  that strikes nothing thuds by the ground's logic type through `missSounds`. */

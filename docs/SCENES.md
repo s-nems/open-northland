@@ -62,6 +62,15 @@ feet anchor, the walk cycle follows ground travel, and animals retain their head
 Original sprite movement remains tick-anchored to preserve foot contact; authored smooth clips keep
 their own interpolation.
 
+`?scene=creatures` places weresnakes and werewolves opposite four swordsmen, with wolves, lions,
+lionesses, brown bears and polar bears nearby. Watch the monsters' repeated strikes, the predators'
+walk and run cycles, and the animals turning before attacking. Order a soldier to attack a brown bear
+to check its retaliation. Reload the scene to repeat the encounter with the same seed.
+
+`?scene=creature-forms` lines up the five animal-body looks authored for the weresnake tribe: sheep,
+chicken, lion, wolf and bear. The lion, wolf and bear forms have soldiers nearby for observing their
+combat motions; the sheep and chicken forms remain clear for inspecting their idle and walk poses.
+
 ## Real map acceptance
 
 `?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with

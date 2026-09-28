@@ -175,7 +175,7 @@ export function engageCombatant(
   }
 
   const { target, dist } = found;
-  if (spec.hold !== undefined) holdTarget(world, ctx, e, target);
+  if (spec.hold !== undefined || spec.animalSeeker === true) holdTarget(world, ctx, e, target);
   // Woken: the rest already slept keeps, the clip is cut where it stands.
   if (dozing) removeCurrentAtomic(world, e);
   holdPrey(world, e, spec, target);

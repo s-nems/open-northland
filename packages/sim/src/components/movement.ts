@@ -28,6 +28,9 @@ export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed', 'movem
  * lattice step gets its own duration regardless of its screen-space length. */
 export const MoveStepPeriod = defineComponent<{ ticks: number }>('MoveStepPeriod', 'movement');
 
+/** A moving animal using its `animaltypes.ini` `runspeed` gait. */
+export const AnimalRunning = defineComponent<Record<string, never>>('AnimalRunning', 'movement');
+
 /** The original's walk direction vocabulary, with its numbering. */
 export const WALK_DIRECTION = { E: 0, SE: 1, SW: 2, W: 3, NW: 4, NE: 5, N: 6, S: 7 } as const;
 export type WalkDirection = (typeof WALK_DIRECTION)[keyof typeof WALK_DIRECTION];

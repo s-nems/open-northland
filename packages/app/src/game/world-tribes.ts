@@ -1,4 +1,4 @@
-import type { MapScript, TerrainMapFile } from '@open-northland/data';
+import { decodeMissionResult, type MapScript, type TerrainMapFile } from '@open-northland/data';
 import { PRIMARY_TRIBE } from './rules.js';
 import { type AuthoredJoinRows, contentJoins } from './world/index.js';
 
@@ -15,11 +15,11 @@ const LAST_HUMAN_TRIBE = 7;
 
 /**
  * The civilizations a world fields: the seats' roster tribes plus the tribes of every authored building
- * and settler. Each one costs its own building and settler atlas pages, so the loaders take this set
+ * and settler, including later mission reinforcements. Each one costs its own atlas pages, so the loaders take this set
  * rather than every tribe the content describes.
  */
 export function worldTribes(
-  script: Pick<MapScript, 'players'> | null,
+  script: (Pick<MapScript, 'players'> & Partial<Pick<MapScript, 'missions'>>) | null,
   entities: TerrainMapFile['entities'],
   rows: AuthoredJoinRows,
 ): WorldTribes {
@@ -33,6 +33,13 @@ export function worldTribes(
   // The same joins the placements themselves resolve through, so the art loaded and the tribe the sim
   // stamps can never disagree.
   const joins = contentJoins(rows);
+  for (const mission of script?.missions ?? []) {
+    for (const line of mission.results) {
+      const op = decodeMissionResult(line);
+      if (op.opcode !== 'SetHuman' && op.opcode !== 'SetHumanX') continue;
+      add(op.tribe.ref === 'id' ? op.tribe.id : joins.tribe(op.tribe.name));
+    }
+  }
   for (const human of entities?.humans ?? []) add(joins.tribe(human.tribe));
   for (const building of entities?.buildings ?? []) {
     add(joins.buildingBob(building.name, building.level)?.tribeId);

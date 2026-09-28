@@ -8,6 +8,7 @@ import {
 } from '../src/catalog/jobs.js';
 import type { ContentIr, JobGraphicsRow } from '../src/content/ir/rows.js';
 import { lookStem, tribeLooks } from '../src/content/settler-gfx/index.js';
+import { resolveLooks } from '../src/content/sprite-sheet/character-looks.js';
 
 /**
  * The per-tribe `[jobbasegraphics]` join: which bob sets each civilization composes a character look from.
@@ -115,5 +116,58 @@ describe('tribeLooks', () => {
       'cr_hum_body_60',
       'cr_hum_body_05',
     ]);
+  });
+
+  it('keeps an animal-body look assigned to a monster soldier job, and every monster look its own skin', () => {
+    const monsterIr: ContentIr = {
+      jobGraphics: [
+        row(5, JOB_SOLDIER_UNARMED, 'cr_hum_body_70', { bodyPalette: 'house_byzantine01' }),
+        row(5, 35, 'cr_ani_body_00', { bodyPalette: 'bear01' }),
+      ],
+    };
+    const monster = tribeLooks(monsterIr, 5);
+    expect(monster.get('warrior-broadsword')?.[0]).toMatchObject({
+      bodyBmd: 'cr_ani_body_00',
+      bodyPalette: 'bear01',
+    });
+    const looks = resolveLooks(monsterIr, [5], 'indexed');
+    expect(looks.get(5)?.get('warrior-broadsword')?.[0]?.bodyStem).toBe('cr_ani_body_00.bear01');
+    expect(looks.get(5)?.get('warrior')?.[0]?.bodyStem).toBe('cr_hum_body_70.house_byzantine01');
+  });
+
+  it('loads a look indexed or baked as one, the heads following the body', () => {
+    const mixedIr: ContentIr = {
+      jobGraphics: [
+        // The frank spearman: a default-skinned body under heads authored on another palette.
+        row(FRANK, JOB_SOLDIER_SPEAR_WOODEN, 'cr_hum_body_52', {
+          heads: [`${BOBS}/cr_hum_head_33.bmd`],
+          bodyPalette: 'test_human_00',
+          headPalette: 'human_special',
+        }),
+        // An animal body under human heads, which only its baked skins can draw.
+        row(FRANK, JOB_SOLDIER_UNARMED, 'cr_ani_body_00', {
+          heads: [`${BOBS}/cr_hum_head_53.bmd`],
+          bodyPalette: 'bear01',
+          headPalette: 'test_human_00',
+        }),
+      ],
+    };
+    const looks = resolveLooks(mixedIr, [FRANK], 'indexed').get(FRANK);
+    expect(looks?.get('warrior-spear')?.[0]).toMatchObject({
+      bodyStem: 'cr_hum_body_52.indexed',
+      headStems: ['cr_hum_head_33.indexed'],
+      indexed: true,
+    });
+    expect(looks?.get('warrior')?.[0]).toMatchObject({
+      bodyStem: 'cr_ani_body_00.bear01',
+      headStems: ['cr_hum_head_53.test_human_00'],
+      indexed: false,
+    });
+    const baked = resolveLooks(mixedIr, [FRANK], undefined).get(FRANK)?.get('warrior-spear')?.[0];
+    expect(baked).toMatchObject({
+      bodyStem: 'cr_hum_body_52.test_human_00',
+      headStems: ['cr_hum_head_33.human_special'],
+      indexed: false,
+    });
   });
 });

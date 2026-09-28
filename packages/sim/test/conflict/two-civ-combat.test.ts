@@ -97,8 +97,8 @@ function twoCivContent(): ContentSet {
       },
     ],
     atomicAnimations: [
-      { id: 'viking_attack', name: 'viking_attack', length: 4 },
-      { id: 'saxon_attack', name: 'saxon_attack', length: 6 },
+      { id: 'viking_attack', name: 'viking_attack', length: 4, events: [{ at: 4, type: 25 }] },
+      { id: 'saxon_attack', name: 'saxon_attack', length: 6, events: [{ at: 6, type: 25 }] },
     ],
   });
 }

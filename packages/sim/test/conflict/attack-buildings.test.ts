@@ -142,7 +142,9 @@ function siegeContent(opts: { meleeRange?: { min: number; max: number } } = {}):
         jobEnables: [{ jobType: SOLDIER, kind: 'house', targetId: HOME }],
       },
     ],
-    atomicAnimations: [{ id: 'viking_attack', name: 'viking_attack', length: 4 }],
+    atomicAnimations: [
+      { id: 'viking_attack', name: 'viking_attack', length: 4, events: [{ at: 4, type: 25 }] },
+    ],
   });
 }
 

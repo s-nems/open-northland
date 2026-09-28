@@ -2,11 +2,18 @@ import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import type { ContentSet } from '@open-northland/data';
 import { atlasFromManifest, type SpriteLayer, type TextureSource } from '@open-northland/render';
+import { ANIMAL_BODY_IMAGELIB } from '../../src/catalog/animal-roster.js';
 import { INDEXED_CHARACTER_PALETTE } from '../../src/catalog/roster.js';
-import { bodySequences, humanSequences } from '../../src/content/ir/joins.js';
+import {
+  bodySequences,
+  humanSequences,
+  playableSequences,
+  sequencesFor,
+} from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../src/content/real-content.js';
-import { resolveLooks } from '../../src/content/sprite-sheet/character-looks.js';
+import { isAnimalBody } from '../../src/content/settler-gfx/index.js';
+import { resolveAnimalJobLooks, resolveLooks } from '../../src/content/sprite-sheet/character-looks.js';
 import { tribeCharacters } from '../../src/content/sprite-sheet/tribe-characters.js';
 import type { WorldTribes } from '../../src/game/world-tribes.js';
 import { checkoutRoot } from '../support/checkout-root.js';
@@ -100,6 +107,7 @@ export function characterTablesUnderTest(
     return { source, atlas: atlasFromManifest(JSON.parse(readFileSync(path, 'utf8'))) };
   };
   const looksByTribe = resolveLooks(ir, civilizations, INDEXED_CHARACTER_PALETTE);
+  const animalJobsByTribe = resolveAnimalJobLooks(ir, civilizations);
   const layersByBody = new Map<string, { body: SpriteLayer; headsByStem: Map<string, SpriteLayer> }>();
   const bmdByStem = new Map<string, string>();
   for (const bySpec of looksByTribe.values()) {
@@ -118,13 +126,22 @@ export function characterTablesUnderTest(
       }
     }
   }
+  for (const byJob of animalJobsByTribe.values()) {
+    for (const look of [...byJob.values()].flat()) {
+      const body = layerFor(look.bodyStem);
+      if (body !== undefined) layersByBody.set(look.bodyStem, { body, headsByStem: new Map() });
+    }
+  }
   const allSequences = humanSequences(ir);
+  const animalSequences = sequencesFor(ir, ANIMAL_BODY_IMAGELIB);
   // The IR's own goods stand in for the running set's, so the per-good carry gaits bind as they would.
   const goods = (ir.goods ?? []).map(({ typeId, id }) => ({ typeId, id }));
   const sequencesByBody = new Map(
     [...layersByBody].map(([stem, layers]) => [
       stem,
-      bodySequences(ir, bmdByStem.get(stem) ?? stem, layers.body.atlas),
+      isAnimalBody(stem)
+        ? playableSequences(animalSequences, layers.body.atlas)
+        : bodySequences(ir, bmdByStem.get(stem) ?? stem, layers.body.atlas),
     ]),
   );
   // As the sheet does, the first civilization is the base every other one fills its missing looks from.
@@ -133,6 +150,7 @@ export function characterTablesUnderTest(
   for (const tribe of civilizations) {
     const inputs = {
       looks: looksByTribe.get(tribe) ?? new Map(),
+      animalJobs: animalJobsByTribe.get(tribe) ?? new Map(),
       layersByBody,
       sequencesByBody,
       sequences: allSequences,

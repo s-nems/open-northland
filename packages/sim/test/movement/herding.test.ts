@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   HerdMember,
   MoveGoal,
+  Owner,
   Position,
   Resting,
   StayPoint,
@@ -148,14 +149,29 @@ describe('herdingSystem - follow-the-leader cohesion', () => {
     expect(sim.world.get(travelling, MoveGoal).cell).toBe(sim.terrain?.nodeAt(2, 0));
   });
 
-  it('does nothing if the leader has been reaped (no Position to return to)', () => {
+  it("recalls a player herd's strayed follower to its owned leader", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const leader = herderAt(sim, 0, 0, 'self');
+    const follower = herderAt(sim, 8, 0, leader);
+    sim.world.add(leader, Owner, { player: 0 });
+    sim.world.add(follower, Owner, { player: 0 });
+
+    herdingSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(follower, HerdMember).leader).toBe(leader);
+    expect(sim.world.has(follower, MoveGoal)).toBe(true);
+  });
+
+  it('a lone follower of a reaped leader leads itself and stays put', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const leader = herderAt(sim, 0, 0, 'self');
     const follower = herderAt(sim, 8, 0, leader);
     sim.world.destroy(leader); // leader killed - its components are gone
 
-    expect(() => herdingSystem(sim.world, ctxOf(sim))).not.toThrow();
-    expect(sim.world.has(follower, MoveGoal)).toBe(false); // nowhere to go
+    herdingSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(follower, HerdMember).leader).toBe(follower);
+    expect(sim.world.has(follower, MoveGoal)).toBe(false);
   });
 
   it('over a full step() schedule, a strayed follower walks back toward its leader', () => {

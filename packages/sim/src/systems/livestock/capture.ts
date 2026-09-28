@@ -14,6 +14,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
+import { promoteHerdSuccessor } from '../movement/herd-leader.js';
 import { clearNavState } from '../movement/nav-state.js';
 import { isScoutJob } from '../readviews/index.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -92,21 +93,6 @@ function claim(world: World, animal: Entity, player: number): void {
     world.remove(animal, DraughtAnimal);
     clearNavState(world, animal);
   }
-  if (wasHerded) promoteWildLeader(world, animal);
-}
-
-/** Re-point a claimed leader's wild followers onto their lowest-id remaining member, which then leads
- *  itself, so the wild herd does not follow the claimed animal to the farm. */
-function promoteWildLeader(world: World, claimed: Entity): void {
-  let successor: Entity | null = null;
-  for (const f of world.query(HerdMember)) {
-    if (world.get(f, HerdMember).leader !== claimed) continue;
-    if (successor === null || f < successor) successor = f;
-  }
-  if (successor === null) return;
-  const leader = successor;
-  for (const f of world.query(HerdMember)) {
-    if (world.get(f, HerdMember).leader !== claimed) continue;
-    world.mut(f, HerdMember).leader = leader;
-  }
+  // The wild herd does not follow the claimed animal to the farm.
+  if (wasHerded) promoteHerdSuccessor(world, animal);
 }

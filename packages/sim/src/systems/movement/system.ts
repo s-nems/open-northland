@@ -1,10 +1,14 @@
 import {
+  AnimalRunning,
+  Engagement,
+  Frightened,
   isWildlife,
   MoveSpeed,
   MoveStepPeriod,
   PathFollow,
   PathRoute,
   Position,
+  Settler,
   type Waypoint,
 } from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP } from '../../core/fixed.js';
@@ -14,6 +18,7 @@ import { HALF_COLUMN, HALF_ROW, worldDistance } from '../../nav/world-metric.js'
 import type { System, SystemContext } from '../context.js';
 import { wearWornBoots } from '../equipment/index.js';
 import { chargeBarefootStep, drinkPressingDraughts } from '../lifecycle/needs/index.js';
+import { locomotionOf } from '../readviews/index.js';
 import { dropPath } from './nav-state.js';
 import { stepTowardPoint } from './stepping.js';
 import { beginWalkTurn, finishWalkTurn } from './turning.js';
@@ -41,8 +46,8 @@ export const MAX_STEP_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(MIN_STEP_
 export const REFERENCE_STEP_TICKS = 8;
 export const REFERENCE_PACE_PER_TICK: Fixed = fx.div(HALF_COLUMN, fx.fromInt(REFERENCE_STEP_TICKS));
 
-/** The pre-existing fallback for an animal whose source `movespeed` is 0 (the original's default is
- *  unknown). It remains independent of the human terrain/shoes cost until that animal default is pinned. */
+/** The pre-existing fallback for an animal whose row explicitly sets `movespeed` to 0. Rows that omit
+ *  `movespeed` receive the content default of 8 before reaching this system. */
 const DEFAULT_ANIMAL_TICKS_PER_CELL = 18;
 const DEFAULT_ANIMAL_PACE_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(DEFAULT_ANIMAL_TICKS_PER_CELL));
 
@@ -62,10 +67,15 @@ export const SLOWEST_PACE_PER_TICK: Fixed = fx.div(HALF_ROW, fx.fromInt(MAX_STEP
  * advances a fixed world distance each tick.
  */
 export const movementSystem: System = (world, ctx) => {
+  // An interrupted run can lose its route before this pass; shed the visual gait while it stands.
+  for (const e of world.query(AnimalRunning)) {
+    if (!world.has(e, PathFollow)) world.remove(e, AnimalRunning);
+  }
   for (const e of world.query(Position, PathFollow)) {
     const pf = world.mut(e, PathFollow);
     const stops = world.get(e, PathRoute).waypoints;
     const p = world.mut(e, Position);
+    syncAnimalGait(world, ctx, e, pf);
     // Wildlife with source `movespeed = 0` has no period component, but stays on the animal fallback
     // rather than inheriting human terrain, fatigue, equipment and hunger rules.
     const period = world.tryGet(e, MoveStepPeriod)?.ticks;
@@ -75,6 +85,7 @@ export const movementSystem: System = (world, ctx) => {
       const target = stops[pf.index];
       if (target === undefined) {
         dropPath(world, e);
+        world.remove(e, AnimalRunning);
         break;
       }
       const distance = paced ? worldDistance(p.x, p.y, target.x, target.y) : ULP;
@@ -87,6 +98,7 @@ export const movementSystem: System = (world, ctx) => {
       if (pf.index + 1 >= stops.length) {
         if (!paced && period === undefined) chargeNode(world, ctx, e, roughnessAt(ctx.terrain, target));
         dropPath(world, e);
+        world.remove(e, AnimalRunning);
         break;
       }
       pf.index += 1;
@@ -102,6 +114,30 @@ export const movementSystem: System = (world, ctx) => {
     }
   }
 };
+
+/** Change gait at a waypoint boundary, where no leg's captured cost is in flight. Approximation: the
+ *  original changes the step rate as soon as an attack or flee task starts, mid-leg included. */
+function syncAnimalGait(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  follow: { readonly legCost: number },
+): void {
+  if (!isWildlife(world, e) || follow.legCost !== 0) return;
+  const tribe = world.get(e, Settler).tribe;
+  const locomotion = locomotionOf(ctx.content, tribe);
+  if (locomotion === null) return;
+  const running =
+    locomotion.runSpeed > 0 &&
+    locomotion.runSpeed !== locomotion.walkSpeed &&
+    (world.has(e, Frightened) || world.has(e, Engagement));
+  const period = running ? locomotion.runSpeed : locomotion.walkSpeed;
+  const current = world.tryGet(e, MoveStepPeriod)?.ticks;
+  if (period > 0 && current !== period) world.add(e, MoveStepPeriod, { ticks: period });
+  else if (period <= 0 && current !== undefined) world.remove(e, MoveStepPeriod);
+  if (running && !world.has(e, AnimalRunning)) world.add(e, AnimalRunning, {});
+  else if (!running && world.has(e, AnimalRunning)) world.remove(e, AnimalRunning);
+}
 
 type FollowState = NonNullable<(typeof PathFollow)['__value']>;
 

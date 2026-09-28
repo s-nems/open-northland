@@ -1,3 +1,4 @@
+import { systems } from '@open-northland/sim';
 import { NAV_LANDSCAPE_TYPES } from '../../catalog/terrain.js';
 import { GATHERERS, type GathererSpec, GOOD_MUD } from './ids/index.js';
 import { sandboxPalisadeGfx, sandboxPalisadeLandscapeTypes } from './palisades.js';
@@ -9,6 +10,10 @@ export interface TerrainTypeIds {
 
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
+
+/** `landscapetypes.ini` type 44 `meat` and its decoded `meat pile 01` record: what a dead animal leaves. */
+const MEAT_LANDSCAPE_TYPE = 44;
+const MEAT_PILE_GFX_INDEX = 215;
 
 function resourceLandscapeType(good: number): number {
   return RESOURCE_LANDSCAPE_BASE + good;
@@ -66,6 +71,7 @@ export function sandboxLandscape(
 ): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean; plantable?: boolean }> {
   const base = [
     ...NAV_LANDSCAPE_TYPES,
+    { typeId: MEAT_LANDSCAPE_TYPE, id: systems.MEAT_LANDSCAPE_SLUG, walkable: true, buildable: true },
     ...sandboxPalisadeLandscapeTypes(),
     ...GATHERERS.map((g) => ({
       typeId: resourceLandscapeType(g.good),
@@ -93,6 +99,7 @@ export function sandboxWalkableTypeIds(map?: TerrainTypeIds): ReadonlySet<number
 
 export function sandboxLandscapeGfx() {
   return [
+    { index: MEAT_PILE_GFX_INDEX, editName: 'meat pile 01', logicType: MEAT_LANDSCAPE_TYPE },
     ...GATHERERS.map((g) => ({
       index: resourceGfxIndex(g.good),
       editName: `sandbox ${g.id} resource`,

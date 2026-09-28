@@ -49,6 +49,18 @@ describe('buildScene - settler stance & component reads', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 2)?.engaged).toBeUndefined();
   });
 
+  it('marks a fast moving animal for its run clip', () => {
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 1, 1, { Settler: { tribe: 20 }, AnimalRunning: {}, PathFollow: { index: 0 } }),
+        entity(2, 2, 1, { Settler: { tribe: 20 }, PathFollow: { index: 0 } }),
+      ]),
+      FLAT_3x2,
+    );
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.running).toBe(true);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 2)?.running).toBeUndefined();
+  });
+
   it('derives a settler state from its components: acting > moving > idle', () => {
     const scene = buildScene(
       snapshotOf([

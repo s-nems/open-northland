@@ -116,16 +116,17 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
   };
 }
 
-/** The IR's `runspeed` is not surfaced: no sprint gait is modeled, every unit moves at one pace. */
 interface Locomotion {
-  /** `movespeed`, 0 when omitted by the source. */
+  /** `movespeed`, 8 when omitted by the source. */
   readonly walkSpeed: number;
+  /** `runspeed`, 0 when omitted by the source. */
+  readonly runSpeed: number;
 }
 
 export function locomotionOf(content: ContentSet, tribeType: number): Locomotion | null {
   const animal = animalRecord(content, tribeType);
   if (animal === null) return null;
-  return { walkSpeed: animal.moveSpeed };
+  return { walkSpeed: animal.moveSpeed, runSpeed: animal.runSpeed };
 }
 
 /**

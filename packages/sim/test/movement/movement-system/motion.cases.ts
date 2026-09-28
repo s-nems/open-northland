@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AnimalRunning,
   addWildlife,
   Carrying,
+  Engagement,
+  Frightened,
   MISSION_BEHAVIOUR,
   MissionBehaviour,
   MoveSpeed,
@@ -13,7 +16,9 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../../src/index.js';
 import { HALF_COLUMN, worldDistance } from '../../../src/nav/world-metric.js';
 import { MAX_STEP_PER_TICK, MIN_STEP_TICKS } from '../../../src/systems/index.js';
+import { movementSystem } from '../../../src/systems/movement/system.js';
 import { testContent } from '../../fixtures/content.js';
+import { ctxOf } from '../../fixtures/context.js';
 import { roughNodeMap } from '../../fixtures/terrain.js';
 
 import { followerAt, grassMap, LAND_STEP_TICKS, pos, ticksToArrive } from './support.js';
@@ -174,15 +179,47 @@ describe('movementSystem - per-entity movement timing', () => {
     expect(restored.hashState()).toBe(sim.hashState());
   });
 
-  it('keeps source-default wildlife on its animal fallback, not the human terrain gait', () => {
+  it('uses the source-default animal walk period instead of the human terrain gait', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
-    addWildlife(sim.world, e, 10);
+    addWildlife(sim.world, e, 11); // source-default bee: walk period 8, no run pace
     expect(sim.world.has(e, MoveSpeed)).toBe(false);
-    expect(ticksToArrive(sim, e)).toBe(18);
+    expect(ticksToArrive(sim, e)).toBe(8);
+  });
+
+  it('uses the authored run gait for pursuit and flight, then resumes walking at a waypoint', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 0.5, y: 0 },
+      { x: 1, y: 0 },
+      { x: 1.5, y: 0 },
+    ]);
+    addWildlife(sim.world, e, 10); // fixture bear: walk 8, run 4
+    sim.world.add(e, Engagement, { target: e, repathAt: 0 });
+    movementSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, MoveStepPeriod).ticks).toBe(4);
+    expect(sim.world.has(e, AnimalRunning)).toBe(true);
+    sim.world.remove(e, Engagement);
+    // A leg already underway keeps its captured cost.
+    for (let i = 0; i < 3; i++) movementSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, PathFollow).index).toBe(2);
+    movementSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, MoveStepPeriod).ticks).toBe(8);
+    expect(sim.world.has(e, AnimalRunning)).toBe(false);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped fixture expected');
+    sim.world.add(e, Frightened, { until: 100, from: terrain.nodeAt(0, 0), repathAt: 0 });
+    for (let i = 0; i < 7; i++) movementSystem(sim.world, ctxOf(sim));
+    movementSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, MoveStepPeriod).ticks).toBe(4);
+    expect(sim.world.has(e, AnimalRunning)).toBe(true);
+    for (let i = 0; i < 4; i++) movementSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(e, PathFollow)).toBe(false);
+    expect(sim.world.has(e, AnimalRunning)).toBe(false);
   });
 
   it('a MoveSpeed follower advances at its own constant perTick, not the human step cost', () => {

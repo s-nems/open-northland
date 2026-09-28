@@ -17,6 +17,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { herdParams } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
+import { leadsHerd, promoteHerdSuccessor } from './herd-leader.js';
 import { isTravelling } from './nav-state.js';
 import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
 
@@ -44,8 +45,11 @@ export const herdingSystem: System = (world, ctx) => {
   let taken: Set<NodeId> | undefined;
   let blocked: BlockOverlay | undefined;
   for (const e of world.canonicalQuery(HerdMember, Settler, Position)) {
-    const leader = world.get(e, HerdMember).leader;
+    let leader = world.get(e, HerdMember).leader;
     if (leader === e) continue; // the leader follows no one
+    // Original behavior: a follower whose leader is gone finds a leader again on its next update.
+    if (!leadsHerd(world, leader)) leader = promoteHerdSuccessor(world, leader) ?? e;
+    if (leader === e) continue;
     // Busy or already travelling: interrupting would cut a swing short or fight the navigation planner.
     if (world.has(e, CurrentAtomic)) continue;
     if (isTravelling(world, e)) continue;
@@ -53,8 +57,6 @@ export const herdingSystem: System = (world, ctx) => {
     // Inside a building it is out of the herd's reach until it steps out again; a cart's recruit is
     // walking to its cart.
     if (world.has(e, Resting) || world.has(e, DraughtAnimal)) continue;
-    // A reaped leader has no Position, so the follower has no cell to return to and stays where it is.
-    if (!world.has(leader, Position)) continue;
 
     const range = herdParams(ctx.content, world.get(e, Settler).tribe)?.leaderDistance ?? 0;
     const here = entityNode(world, terrain, e);

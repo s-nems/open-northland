@@ -85,6 +85,9 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
   // (observed pace).
   [MUSHROOM_HARVEST_ATOMIC]: MUSHROOM_PLUCK_FRAMES * MUSHROOM_PLUCKS_PER_PICK + MUSHROOM_PLUCK_BREATHER_TICKS,
 };
+/** The idle actions a resting settler or animal plays clips for: `logicdefines.inc` `IDLE_SHORT_A` (2)
+ *  through `IDLE_VERYLONG` (7). */
+export const IDLE_ACTIONS: readonly number[] = [2, 3, 4, 5, 6, 7];
 /** The remaining atomic ids the animation tables key on, pinned to the original's `setatomic` table. */
 export const EAT_ATOMIC = 10;
 export const SLEEP_ATOMIC = 8;

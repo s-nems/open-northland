@@ -5,11 +5,15 @@ import {
   CurrentAtomic,
   Engagement,
   Health,
+  HerdMember,
   MoveGoal,
+  Owner,
+  Position,
+  StayPoint,
   WalkFacing,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { Simulation } from '../../../src/index.js';
+import { positionOfNode, Simulation } from '../../../src/index.js';
 import { atomicSystem, combatSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -97,6 +101,17 @@ describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
     expect(sim.world.has(bear, CurrentAtomic)).toBe(false); // an animal does not war on another animal
   });
 
+  it('a wild aggressive animal can attack claimed livestock', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
+    const cow = fighterAt(sim, 1, 0, COW, null);
+    sim.world.add(cow, Owner, { player: 0 });
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(bear, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+  });
+
   it('a JOBLESS spawned animal resolves its weapon by tribe and still does damage', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     // What `spawnAnimalHerd` actually places: an animal with jobType NULL (not born into a trade).
@@ -142,6 +157,7 @@ describe('combatSystem - hunter strike on catchable prey (animaltypes.ini catcha
       kind: 'attack',
       target: cow,
       damage: 70,
+      hitFrames: [4], // the bound clip's attack event
       hitSoundType: 77,
       maxRange: 17,
     });
@@ -211,11 +227,11 @@ describe('combatSystem - hunter strike on catchable prey (animaltypes.ini catcha
   });
 });
 
-describe('combatSystem - hostile-animal advance (the ambush lunge)', () => {
+describe('combatSystem - hostile-animal advance', () => {
   it('an aggressive animal beyond weapon reach but inside its aggro radius chases the civ', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const bear = fighterAt(sim, 0, 0, BEAR, null);
-    fighterAt(sim, 3, 0, VIKING, WOODCUTTER); // 6 nodes - beyond test_bearfist reach 2, inside aggro 8
+    fighterAt(sim, 3, 0, VIKING, WOODCUTTER); // 6 nodes - beyond test_bearfist reach 2
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -225,15 +241,65 @@ describe('combatSystem - hostile-animal advance (the ambush lunge)', () => {
   });
 
   it('an aggressive animal leaves a civ beyond its aggro radius alone (no map-wide hunt)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 1) });
     const bear = fighterAt(sim, 0, 0, BEAR, null);
-    fighterAt(sim, 5, 0, VIKING, WOODCUTTER); // 10 nodes - past ANIMAL_AGGRO_RADIUS_NODES (8)
+    fighterAt(sim, 11, 0, VIKING, WOODCUTTER); // 22 nodes - past the 20-point search circle
 
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(bear, CurrentAtomic)).toBe(false);
     expect(sim.world.has(bear, Engagement)).toBe(false);
     expect(sim.world.has(bear, MoveGoal)).toBe(false);
+  });
+
+  it('followers join the leader target and do not acquire independently when separated', () => {
+    const near = new Simulation({ seed: 1, content: testContent(), map: grassMap(24, 1) });
+    const leader = fighterAt(near, 4, 0, BEAR, null);
+    const follower = fighterAt(near, 3, 0, BEAR, null);
+    near.world.add(follower, HerdMember, { leader });
+    const leaderTarget = fighterAt(near, 5, 0, VIKING, WOODCUTTER);
+    fighterAt(near, 2, 0, FRANK, WOODCUTTER); // nearer the follower, but the leader picks its own neighbour
+    combatSystem(near.world, ctxOf(near));
+    expect(near.world.get(follower, Engagement).target).toBe(leaderTarget);
+
+    const far = new Simulation({ seed: 1, content: testContent(), map: grassMap(24, 1) });
+    const strayed = fighterAt(far, 0, 0, BEAR, null);
+    const farLeader = fighterAt(far, 21, 0, BEAR, null); // 42 points from strayed
+    far.world.add(strayed, HerdMember, { leader: farLeader });
+    fighterAt(far, 1, 0, VIKING, WOODCUTTER);
+    combatSystem(far.world, ctxOf(far));
+    expect(far.world.has(strayed, Engagement)).toBe(false);
+  });
+
+  it('a follower keeps its own live opponent until it is gone, then takes the leader target', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const leader = fighterAt(sim, 4, 0, BEAR, null);
+    const follower = fighterAt(sim, 3, 0, BEAR, null);
+    sim.world.add(follower, HerdMember, { leader });
+    const own = fighterAt(sim, 2, 0, FRANK, WOODCUTTER);
+    const leaderTarget = fighterAt(sim, 5, 0, VIKING, WOODCUTTER);
+    sim.world.add(follower, Engagement, { target: own, repathAt: 0 });
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(leader, CurrentAtomic).effect).toMatchObject({ target: leaderTarget });
+    expect(sim.world.get(follower, CurrentAtomic).effect).toMatchObject({ target: own });
+
+    sim.world.mut(own, Health).hitpoints = 0;
+    sim.world.remove(follower, CurrentAtomic);
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(follower, Engagement).target).toBe(leaderTarget);
+  });
+
+  it('drops a chase when its former target has left the search circle', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(28, 1) });
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
+    const target = fighterAt(sim, 2, 0, VIKING, WOODCUTTER);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped fixture expected');
+    sim.world.add(bear, StayPoint, { cell: terrain.nodeAt(0, 0) });
+    sim.world.add(bear, Engagement, { target, repathAt: 0 });
+    sim.world.add(bear, Position, positionOfNode(42, 0));
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(bear, Engagement)).toBe(false);
   });
 
   it('a passive animal never advances (only a hostile one ambushes)', () => {

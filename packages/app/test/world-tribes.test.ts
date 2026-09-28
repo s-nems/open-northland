@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@open-northland/data';
+import { MapScript, type TerrainMapFile } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import type { AuthoredJoinRows } from '../src/game/world/index.js';
 import { worldTribes } from '../src/game/world-tribes.js';
@@ -19,6 +19,8 @@ const rows: AuthoredJoinRows = {
     { typeId: VIKING, id: 'viking' },
     { typeId: FRANK, id: 'frank' },
     { typeId: SARACEN, id: 'saracen' },
+    { typeId: 5, id: 'weresnake' },
+    { typeId: 6, id: 'werewolf' },
     { typeId: 20, id: 'wolves' },
   ],
   buildingBobs: [
@@ -67,5 +69,25 @@ describe('worldTribes', () => {
       buildings: [{ name: 'no such house', level: 0, player: 0, hx: 4, hy: 4 }],
     });
     expect(worldTribes(null, map, rows)).toEqual([VIKING]);
+  });
+
+  it('loads monster libraries for later mission waves even when no opening unit or seat has their tribe', () => {
+    const script = MapScript.parse({
+      players: seats(SARACEN).players,
+      missions: [
+        {
+          active: false,
+          results: [
+            {
+              key: 'result',
+              values: ['SetHumanX', '0', 'weresnake', 'soldier_unarmed', '20', '20', '7', '0', '3'],
+            },
+            { key: 'result', values: ['sethuman', '1', '6', '31', '30', '20', '8', '0'] },
+            { key: 'result', values: ['SetHuman', '1', 'wolves', 'civilist', '30', '20', '9', '0'] },
+          ],
+        },
+      ],
+    });
+    expect(worldTribes(script, entities({}), rows)).toEqual([VIKING, SARACEN, 5, 6]);
   });
 });

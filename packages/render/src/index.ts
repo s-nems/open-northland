@@ -184,6 +184,7 @@ export {
   presentItem,
   type ResolvedLayer,
   resolveLayers,
+  settlerPalette,
   vehicleBodyRow,
   vehiclePalette,
 } from './gpu/sprite-pool/index.js';

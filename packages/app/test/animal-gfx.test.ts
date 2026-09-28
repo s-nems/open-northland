@@ -55,6 +55,34 @@ describe('animalWalkSeqName', () => {
 });
 
 describe('animalBinding', () => {
+  it('plays each authored walk list when the directions have different cuts', () => {
+    const lists = Array.from({ length: 8 }, (_, dir) =>
+      dir === 1 ? [dir * 16, dir * 16 + 2] : [dir * 16, dir * 16 + 1, dir * 16 + 2],
+    );
+    const ir: ContentIr = {
+      gfxWalkAtomics: [{ tribe: 8, job: ADULT, goodType: 0, bodySeq: 'animal_bear_walk', dirFrames: lists }],
+    };
+    const moving = animalBinding(ir, 8, seqs)?.moving;
+    expect(moving).toMatchObject({ start: 115, loop: true });
+    if (moving === undefined || typeof moving === 'number' || !('frameLists' in moving)) {
+      throw new Error('mixed walk cuts must remain frame lists');
+    }
+    expect(moving.frameLists[5]).toEqual([16, 18]);
+    expect(moving.frameLists[4]).toEqual([0, 1, 2]);
+  });
+
+  it('binds the distinct faster gait beside the wolf walk', () => {
+    const ir: ContentIr = {
+      gfxWalkAtomics: [
+        { tribe: 20, job: ADULT, goodType: 0, bodySeq: 'animal_wolf_walk', walkSpeed: 8 },
+        { tribe: 20, job: ADULT, goodType: 0, bodySeq: 'animal_wolf_run', walkSpeed: 5 },
+      ],
+    };
+    const binding = animalBinding(ir, 20, seqs);
+    expect(binding?.moving).toEqual({ start: 3024, dirs: 8, stride: 12 });
+    expect(binding?.running).toEqual({ start: 2883, dirs: 8, stride: 13 });
+  });
+
   it('loops a single-list wait program facing-locked and binds the ×8 fight as a facing-remapped attack', () => {
     const ir: ContentIr = {
       gfxWalkAtomics: [{ tribe: 8, job: ADULT, goodType: 0, bodySeq: 'animal_bear_walk' }],
@@ -121,6 +149,34 @@ describe('animalBinding', () => {
       ],
     };
     expect(animalBinding(ir, 8, seqs)?.idle).toEqual({ start: 88, frameLists: [[0, 1, 2]], loop: true });
+    expect(animalBinding(ir, 8, seqs)?.idleChoices).toEqual([
+      { start: 88, frameLists: [[9, 9, 10]] },
+      { start: 88, frameLists: [[0, 1, 2]] },
+    ]);
+  });
+
+  it('keeps the first base wait and, without one, the first one-shot however short a later one is', () => {
+    const wait = (action: number, dirFrames: number[][], mode: number) => ({
+      tribe: 8,
+      job: ADULT,
+      action,
+      bodySeq: 'animal_bear_wait',
+      dirFrames,
+      mode,
+    });
+    const twoBases: ContentIr = {
+      gfxAtomics: [wait(IDLE_ACTION, [[0, 1]], 1), wait(IDLE_ACTION + 1, [[5, 6]], 1)],
+    };
+    expect(animalBinding(twoBases, 8, seqs)?.idle).toEqual({ start: 88, frameLists: [[0, 1]], loop: true });
+    // The wolf's shape: a multi-frame clean first, a one-frame stand later on the ladder.
+    const oneShots: ContentIr = {
+      gfxAtomics: [wait(IDLE_ACTION, [[0, 1, 2]], 0), wait(IDLE_ACTION + 2, [[7]], 0)],
+    };
+    expect(animalBinding(oneShots, 8, seqs)?.idle).toEqual({
+      start: 88,
+      frameLists: [[0, 1, 2]],
+      loop: true,
+    });
   });
 
   it('skips a wait row whose program is empty (falls through to the walk-hold pose)', () => {

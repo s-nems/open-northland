@@ -108,6 +108,8 @@ export interface SpriteLayer {
  *  in its own frame-id space, so the binding travels with the layers. */
 export interface SettlerCharacter {
   readonly body: SpriteLayer;
+  /** False for a baked body atlas that must bypass the player-colour LUT. */
+  readonly indexed?: boolean;
   /** Complete appearances selected stably by entity id. */
   readonly variants?: readonly Omit<SettlerCharacter, 'variants'>[];
   readonly interpolateMotion?: boolean;

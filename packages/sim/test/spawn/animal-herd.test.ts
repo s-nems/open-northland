@@ -133,7 +133,7 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.get(bee, Settler).tribe).toBe(BEE);
     expect(sim.world.get(bee, Health)).toEqual({ hitpoints: 200, max: 200 });
     expect(sim.world.has(bee, HerdMember)).toBe(false); // solitary - no leader to follow
-    expect(sim.world.has(bee, MoveStepPeriod)).toBe(false); // no movespeed in its record -> walks the default
+    expect(sim.world.get(bee, MoveStepPeriod)).toEqual({ ticks: 8 }); // omitted movespeed uses the source default
     const p = sim.world.get(bee, Position);
     expect([fx.toInt(p.x), fx.toInt(p.y)]).toEqual([2, 3]); // sits on the birth node (tile (2,3)'s anchor)
   });
