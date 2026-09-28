@@ -19,7 +19,7 @@ prompty w [generation.md](generation.md).
 ## Obsługa
 
 Wszystkie pięć przycisków znajduje się na prawej krawędzi: oddalenie, przybliżenie,
-**Cała mapa · 1×**, rozmiar i warstwy. Własne podpowiedzi działają po najechaniu i ustawieniu fokusu.
+**Pokaż całą**, rozmiar i warstwy. Własne podpowiedzi działają po najechaniu i ustawieniu fokusu.
 Trzeci przycisk używa symbolu czterech narożników.
 
 | Działanie | Efekt |
@@ -27,7 +27,7 @@ Trzeci przycisk używa symbolu czterech narożników.
 | LPM i przeciągnięcie po mapie | Przesunięcie kamery gry |
 | Rolka lub + / − | Niezależny zoom minimapy 1–4× |
 | Środkowy przycisk i przeciągnięcie | Przesunięcie powiększonego wycinka |
-| Cała mapa · 1× | Powrót do pełnego zasięgu |
+| Pokaż całą | Powrót do pełnego zasięgu |
 | Rozmiar | Przełączenie S → M → L → XL |
 | Warstwy | Pokazanie lub ukrycie ludzi i budynków |
 

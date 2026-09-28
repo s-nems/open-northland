@@ -18,6 +18,7 @@ fine aged bronze edging, dark leather binding and small ink ornaments, related t
 The original A concept is the material reference; [art provenance](../minimap-study/generation.md)
 records the delivered frame. The approved **Muted parchment** tone uses saturation 0.56 and brightness 0.72,
 with warm grey-brown paper (`#827459`) and matching muted bronze controls and filter drawer.
+
 - Provide S/M/L/XL sizes with nominal longest sides of 224/280/344/416 design px.
   Anchor the panel flush to the bottom-left screen corner. Cap its
   longest side before the centred navigation beam's left edge with a 6 design-px gap; keep the
@@ -32,8 +33,9 @@ with warm grey-brown paper (`#827459`) and matching muted bronze controls and fi
   bronze controls sit on the right frame edge: zoom out, zoom in, whole map, size and filters.
   There is no header bar or separate toolbar inside the atlas.
 - Include independent minimap zoom (1–4×), small +/− controls and a return to the whole map.
-  The third control uses a fit-corners icon and the label “Whole map · 1×”. Show custom hints on
-  hover and keyboard focus, including the current scale where relevant. Middle drag pans the atlas.
+  The third control uses a fit-corners icon and the short hint “Show all” (“Pokaż całą”).
+  Show short hints on hover and keyboard focus; accessible zoom labels also include the current scale
+  and zoom limits. Middle drag pans the atlas.
 - Put people/building filters in a compact parchment disclosure opening to the right of the minimap.
   Lift it above the bottom navigation when needed. Keep fog gating and return focus on closing it.
 - Do not include a hover preview of map areas.
