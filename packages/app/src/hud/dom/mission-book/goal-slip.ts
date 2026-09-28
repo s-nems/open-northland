@@ -26,7 +26,7 @@ export interface GoalSlipDeps {
 
 /**
  * The goal slip on the map: a vellum list of the open goals under the top bar that folds up into
- * its band tab. A goal change never unfolds it; the folded tab carries a seal until the book is read.
+ * its band tab. A goal change never unfolds it; unfolding acknowledges the rows it shows.
  */
 export interface GoalSlip {
   /** Show the goals as they stand; nothing changes the markup unless the list, a mark or the fold did. */
@@ -91,11 +91,14 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
 
   let lastMarks: GoalMarks | null = null;
 
+  const keyOf = (goals: readonly MissionGoal[], marks: GoalMarks): string =>
+    `${folded}|${marks.version}|${deps.bookKey()}|${goals.map((g) => `${g.key}:${g.state}:${g.text}`).join('\n')}`;
+
   const paint = (goals: readonly MissionGoal[], marks: GoalMarks, bookOpen: boolean): void => {
     const hidden = bookOpen || goals.length === 0;
     setHidden(dock, hidden);
     if (hidden) return;
-    const key = `${folded}|${marks.version}|${deps.bookKey()}|${goals.map((g) => `${g.key}:${g.state}:${g.text}`).join('\n')}`;
+    const key = keyOf(goals, marks);
     if (key === shownKey) return;
     shownKey = key;
     dock.innerHTML = markup(goals, marks);
@@ -130,6 +133,13 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
       deps.cue('confirm');
       folded = !folded;
       repaint();
+      if (!folded && seen !== null && lastMarks !== null) {
+        const { rows } = slipRows(seen.goals, lastMarks, SLIP_OPEN_ROWS);
+        lastMarks.read(rows.map(({ goal }) => goal.key));
+        // Keep the rows just painted until the list changes, including newly completed goals.
+        seen.version = lastMarks.version;
+        shownKey = keyOf(seen.goals, lastMarks);
+      }
     } else if (target.closest('[data-book]') !== null) {
       deps.cue('confirm');
       deps.onOpenBook();
@@ -143,7 +153,6 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
       if (depth === drop) return;
       drop = depth;
       dock.style.top = `${TOP_BAR_HEIGHT + 1 + (depth > 0 ? depth + INFO_LINES_GAP : 0)}px`;
-      dock.classList.toggle('on-slip--dropped', depth > 0);
     },
     setFolded(next): void {
       folded = next;

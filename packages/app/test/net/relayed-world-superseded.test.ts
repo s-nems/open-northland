@@ -1,16 +1,11 @@
 import type { GameSession } from '@open-northland/lockstep';
-import { describe, expect, it, vi } from 'vitest';
-
-const mocks = vi.hoisted(() => ({ halt: vi.fn() }));
-vi.mock('../../src/view/runtime/world-bootstrap.js', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  haltOnFailedRestore: mocks.halt,
-}));
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { hostMapWorld, type MapBootPlan } from '../../src/entries/map/boot.js';
 import type { MapWorldDocuments } from '../../src/entries/map/world-inputs.js';
 import { RelayedWorlds, WorldNotAdoptedError } from '../../src/net/relayed-worlds.js';
 import type { WorkerSessionOptions } from '../../src/session/worker/protocol.js';
+import * as bootstrap from '../../src/view/runtime/world-bootstrap.js';
 
 const SILENT_STALL_REPORTS = { stalled: () => undefined, recovered: () => undefined };
 const OPTIONS = { speed: 1 } as WorkerSessionOptions;
@@ -29,6 +24,11 @@ function hostFailing(error: Error, multiplayer = false): Promise<null> {
 }
 
 describe('a restored world that is not hosted', () => {
+  const mocks = { halt: vi.fn() };
+  beforeEach(() => {
+    vi.spyOn(bootstrap, 'haltOnFailedRestore').mockImplementation(mocks.halt);
+  });
+  afterEach(() => vi.restoreAllMocks());
   it('halts the boot on a failed restore', async () => {
     mocks.halt.mockClear();
     const failed = new Error('the save does not decode');

@@ -14,7 +14,7 @@ import { playerNameMap, playerTribe } from '../../game/map-roster.js';
 import { mapStartFocus } from '../../game/map-start.js';
 import { mapStringLookup } from '../../game/map-strings.js';
 import { hasEliminationGoal } from '../../game/match-participants.js';
-import { briefingPage, mapBriefFallback } from '../../game/mission-brief.js';
+import { briefingMatchObjectives, briefingPage, mapBriefFallback } from '../../game/mission-brief.js';
 import { observerSeats } from '../../game/observer-seats.js';
 import { harvestablePlacementOrdinals } from '../../game/sandbox/index.js';
 import { sessionSearch } from '../../game/session-url.js';
@@ -194,6 +194,7 @@ export async function presentMapWorld(
     introAtStart: runtime.introAtStart && host.missions === undefined,
     musicType: meta?.musicType ?? null,
     missionBriefSource: {
+      matchObjectives: briefingMatchObjectives(host.missions),
       page: (id) => briefingPage(world.briefing, currentLocale(), id),
       fallback: mapBriefFallback(meta, currentLocale()),
       skirmishGoal:

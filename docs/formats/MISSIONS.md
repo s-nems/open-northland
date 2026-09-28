@@ -776,7 +776,13 @@ rather than the list's colour (reading); this build strips the mark and sets the
 accent ink. The
 `visible` flag is the `SetVisible` result's; the satisfied flag is rewritten by every check. This
 build also keeps `X` once the mission has fired, so a repeatable trigger that consumes its input
-does not erase an earned completion mark (UI approximation). The app-side page format is
+does not erase an earned completion mark (UI approximation). For map HUDs, an initially active,
+visible mission with a description, only `True` goals under `all`/`any`/`half`, and a `PlayCutscene`
+result is treated as the map's overall objective: it stays open until the local player wins. This
+is a UI approximation based on the readable opening-briefing pattern; it does not change script
+execution or `IsMissionDone`. Later activated chapters and conditional goals retain their script
+status. A visible overall objective replaces the generic skirmish goal text.
+The app-side page format is
 documented with the `.briefing.json` sidecar schema in `packages/data`.
 
 The markers (`SetGuiMarker`, the area and import markers) and weather squares are retained in a lazy

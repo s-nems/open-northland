@@ -180,6 +180,20 @@ describe('GoalMarks', () => {
     expect(marks.version).toBeGreaterThan(version);
   });
 
+  it('acknowledges only the goals shown in the expanded slip', () => {
+    const marks = new GoalMarks();
+    marks.observe([]);
+    const goals = Array.from({ length: 5 }, (_, i) => goal(String(i), 'open'));
+    marks.observe(goals);
+    const { rows } = slipRows(goals, marks, 4);
+    expect(marks.read(rows.map(({ goal }) => goal.key))).toBe(true);
+    expect(marks.markOf('0')).toBeNull();
+    expect(marks.markOf('4')).toBe('new');
+    expect(marks.unread).toBe(true);
+    marks.read();
+    expect(marks.unread).toBe(false);
+  });
+
   it('counts every change as read once the book opens', () => {
     const marks = new GoalMarks();
     marks.observe([goal('0', 'open')]);

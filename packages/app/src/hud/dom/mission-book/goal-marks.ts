@@ -73,10 +73,11 @@ export class GoalMarks {
     this.changes++;
   }
 
-  /** The goal page showed them: every change counts as read. */
-  read(): boolean {
-    if (this.marks.size === 0) return false;
-    this.marks.clear();
+  /** A visible list acknowledges its rows; the full goal page acknowledges every change. */
+  read(keys: readonly string[] = [...this.marks.keys()]): boolean {
+    let changed = false;
+    for (const key of keys) changed = this.marks.delete(key) || changed;
+    if (!changed) return false;
     this.changes++;
     return true;
   }

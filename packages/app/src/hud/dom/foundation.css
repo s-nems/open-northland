@@ -4294,12 +4294,11 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--book-red);
   break-after: avoid;
 }
-/* Prose is justified and hyphenated in the page's language, as a printed book sets it; the author's
-   centred and right-aligned lines keep their own alignment. */
+/* The author's centred and right-aligned lines keep their own alignment. */
 .on-hud .on-book__p,
 .on-hud .on-book__speech p {
   text-align: justify;
-  hyphens: auto;
+  hyphens: none;
 }
 .on-hud .on-book__p {
   margin: 0 0 0.62em;
@@ -4325,11 +4324,12 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-book__flow > .on-book__space--wide {
   margin-top: 1.4em;
 }
+/* Keep the padded initial within two 21px prose lines so the third regains the full width. */
 .on-hud .on-book__p--first::first-letter {
   float: left;
   margin: 5px 7px 0 0;
   padding: 1px 5px 0;
-  font: 700 46px / 0.82 var(--font-title);
+  font: 700 46px / 0.7 var(--font-title);
   color: #f3e6c8;
   background: radial-gradient(circle at 40% 35%, #9a4630, var(--book-red) 70%);
   border: 1px solid #4a1a10;
@@ -4924,20 +4924,6 @@ body.on-drag-scroll-cursor-hidden * {
   animation: on-slip-unroll 0.25s ease-out;
   transform-origin: top;
 }
-.on-hud .on-slip__sheet::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  top: 0;
-  height: 5px;
-  background:
-    url("../../assets/ui/mission-book/band.webp") left center / auto 40px,
-    #2e2418;
-  box-shadow:
-    0 1px 0 #b08a5088,
-    0 2px 4px #3a2a1899;
-}
 /* Bronze corner fittings on the lower edge, as on the book's cover. */
 .on-hud .on-slip__sheet::after {
   --fitting: linear-gradient(var(--bronze), var(--bronze-lo));
@@ -4953,13 +4939,6 @@ body.on-drag-scroll-cursor-hidden * {
     var(--fitting) left bottom / 2px 11px no-repeat,
     var(--fitting) right bottom / 11px 2px no-repeat,
     var(--fitting) right bottom / 2px 11px no-repeat;
-}
-/* Below the script's info lines the slip hangs free, so its band gets a bronze head. */
-.on-hud .on-slip--dropped .on-slip__sheet::before {
-  top: -1px;
-  height: 6px;
-  border-top: 1px solid var(--bronze-lo);
-  border-radius: 2px 2px 0 0;
 }
 @keyframes on-slip-unroll {
   from {

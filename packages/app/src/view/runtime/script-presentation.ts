@@ -31,6 +31,8 @@ export interface ScriptPresentationDeps {
     'tick' | 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'
   >;
   readonly missionTrace?: boolean;
+  /** False suppresses automatic briefing windows; the host still records their chapters. */
+  readonly showBriefings?: boolean;
   /** Whose info lines the panel shows, read on every refresh; null shows none. */
   readonly seat: () => number | null;
   readonly toolPanel: GameToolPanelHandle;
@@ -112,7 +114,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
         if (event.kind.startsWith('mission')) scriptFired = true;
         switch (event.kind) {
           case 'missionCutscene':
-            toolPanel.controller.openMission(event.page);
+            if (deps.showBriefings !== false) toolPanel.controller.openMission(event.page);
             break;
           case 'missionCamera':
             centreOn(event.point);

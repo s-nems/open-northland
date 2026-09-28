@@ -40,6 +40,7 @@ function harness(
   lines: InfoLineView[] = [],
   saved: MissionPresentationView = { guiMarkers: [], groundMarkers: [], weather: [] },
   seat: () => number | null = () => 0,
+  showBriefings = true,
 ) {
   const calls: string[] = [];
   const infoLines: (readonly string[])[] = [];
@@ -74,6 +75,7 @@ function harness(
   const presentation = createScriptPresentation({
     host,
     seat,
+    showBriefings,
     toolPanel,
     controls: { select: (ids) => calls.push(`select:${[...ids].join()}`) },
     centerOn: (x, y) => calls.push(`centre:${x},${y}`),
@@ -199,4 +201,15 @@ it('leaves the map on Exit and stops presenting the remaining frame events', () 
     { kind: 'missionCutscene', mission: 1, page: 5, replay: false },
   ]);
   expect(calls).toEqual(['exit']);
+});
+
+it('can suppress automatic briefings while applying other script presentation', () => {
+  const { calls, presentation } = harness([], undefined, undefined, false);
+  presentation.onEvents([
+    { kind: 'missionCutscene', mission: 0, page: 500, replay: true },
+    { kind: 'missionEarthquake', seconds: 2 },
+    { kind: 'missionCutscene', mission: 1, page: 501, replay: true },
+  ]);
+  expect(calls).toEqual(['quake:2']);
+  presentation.dispose();
 });

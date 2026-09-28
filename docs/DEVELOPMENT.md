@@ -158,7 +158,7 @@ loading a save preserves its stored mission rules.
 
 Common modifiers include `lang=<pol|eng>`, `fog=<off|classic|classic-fow|recon|recon-fow>` (the
 lobby's map setting, with `-fow` for fog of war; `off` reveals the map), `player=<...>`, `ai=<...>`, `sound=off`,
-`intro=off` (skip the mission book a fresh world opens on), and `fullscreen=off`. `ai=<seat,...>`
+`intro=off` (skip all automatic briefing windows, including script chapters), and `fullscreen=off`. `ai=<seat,...>`
 names the seats a person could have taken that the strategic AI plays instead; a map's own computer
 seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` picks
 the world seed a `?map=` session runs on, so two clients of one session start from the same world;
@@ -171,6 +171,12 @@ settings. The HUD scales from the canvas height sampled at game start (capped at
 stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reproducible diagnostics and is
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.
+
+For HUD checks, use `/?map=magiczny_las&intro=off` to load the map without dismissing the briefing.
+For a playable match or victory checks, use `/?map=magiczny_las&ai=1,2,3,4,5&intro=off`:
+without `ai=`, the other selectable seats are idle and do not count toward elimination, even though
+their settlements remain on the map. Mission scripts still run in both cases, and recorded chapters
+remain available from the mission book. Omit `intro=off` when testing the briefing itself.
 
 The Graphics tab also owns five enhancements of the world view. They are stored settings, default on,
 and apply to a running game without a restart. With all five off the world matches the previous

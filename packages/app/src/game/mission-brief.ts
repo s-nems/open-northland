@@ -1,5 +1,10 @@
 import type { HypertextBlock, MapBriefing, MapMeta, MapTextLanguage } from '@open-northland/data';
-import type { MatchOutcome, MissionStatus } from '@open-northland/sim';
+import {
+  type MatchOutcome,
+  type MissionScript,
+  type MissionStatus,
+  SUCCESSFUL_IF,
+} from '@open-northland/sim';
 import { localizedMapText } from './map-strings.js';
 
 /**
@@ -12,7 +17,7 @@ export interface MissionGoal {
   readonly text: string;
   /** The author prefixed the text with the emphasis mark; the book sets it in its accent ink. */
   readonly emphasis: boolean;
-  /** An authored trigger's description is listed as information; the skirmish rule is what decides. */
+  /** Whether the text comes from the map's script or the generic skirmish rule. */
   readonly rule: 'authored' | 'skirmish';
   /** A goal that fired or whose last check held is done; an active unmet one is open; an inactive,
    *  unmet one is idle and printed dimmed (reading). Keeping done after a fire is a UI approximation
@@ -45,6 +50,33 @@ export interface MissionBriefSource {
   /** The skirmish goal text, listed whenever a match runs, since it is the rule that decides; null
    *  for a world that declared none. */
   readonly skirmishGoal: string | null;
+  /** Opening instructions whose completion follows the match verdict, not the briefing trigger. */
+  readonly matchObjectives?: ReadonlySet<string>;
+}
+
+/**
+ * UI approximation: maps attach their overall objective to an initially visible, unconditional
+ * briefing trigger. Its firing presents the instructions; only victory completes that objective.
+ * Later activated chapters and goals with gameplay conditions keep their script status.
+ */
+export function briefingMatchObjectives(script: MissionScript | undefined): ReadonlySet<string> {
+  const objectives = new Set<string>();
+  script?.missions.forEach((mission, index) => {
+    if (
+      mission.active &&
+      mission.visible &&
+      mission.description !== undefined &&
+      (mission.successfullIf === SUCCESSFUL_IF.all ||
+        mission.successfullIf === SUCCESSFUL_IF.any ||
+        mission.successfullIf === SUCCESSFUL_IF.half) &&
+      mission.goals.length > 0 &&
+      mission.goals.every((goal) => goal.opcode === 'True') &&
+      mission.results.some((result) => result.opcode === 'PlayCutscene')
+    ) {
+      objectives.add(String(index));
+    }
+  });
+  return objectives;
 }
 
 /** The map's menu name and description in `lang`, the task tab's text when no page is shipped. */
@@ -114,9 +146,14 @@ export function missionGoalList(
   textOf: (stringId: number) => string | undefined,
   outcome: MatchOutcome,
 ): MissionGoal[] {
-  const goals = missionGoals(status, textOf);
+  const goals = missionGoals(status, textOf).map(
+    (goal): MissionGoal =>
+      source.matchObjectives?.has(goal.key)
+        ? { ...goal, state: outcome === 'victory' ? 'done' : 'open' }
+        : goal,
+  );
   const skirmish = source.skirmishGoal;
-  if (skirmish !== null && !goals.some((g) => g.text === skirmish)) {
+  if (skirmish !== null && !goals.some((g) => g.text === skirmish || source.matchObjectives?.has(g.key))) {
     goals.push({
       key: SKIRMISH_GOAL_KEY,
       text: skirmish,

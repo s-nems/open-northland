@@ -78,7 +78,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
-import { floatParam } from '../params.js';
+import { floatParam, introParam } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import {
   createFogGates,
@@ -738,6 +738,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     presentation = createScriptPresentation({
       host,
       missionTrace: hasDebugFlag(params, 'missions'),
+      showBriefings: introParam(params),
       seat: viewer.seat,
       toolPanel,
       controls,
