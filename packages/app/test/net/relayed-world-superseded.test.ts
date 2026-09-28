@@ -72,6 +72,14 @@ describe('relayed worlds', () => {
     await expect(second).rejects.toBeInstanceOf(WorldNotAdoptedError);
   });
 
+  it('opens no world once its worker failed', async () => {
+    const posted: unknown[] = [];
+    const worlds = new RelayedWorlds<null>((message) => posted.push(message), SILENT_STALL_REPORTS);
+    worlds.fail(new Error('the network worker died'));
+    await expect(worlds.host(1, { requestId: 1 }, OPTIONS)).rejects.toBeInstanceOf(WorldNotAdoptedError);
+    expect(posted).toEqual([]);
+  });
+
   it('opens no world once the connection closed, so a boot still loading settles', async () => {
     const posted: unknown[] = [];
     const worlds = new RelayedWorlds<null>((message) => posted.push(message), SILENT_STALL_REPORTS);

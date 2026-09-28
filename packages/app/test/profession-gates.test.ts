@@ -1,5 +1,5 @@
 import { fx, type PlayerCommand } from '@open-northland/sim';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { JOB_COLLECTOR, JOB_HUNTER } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import { createAnsweredOrders } from '../src/view/unit-controls/answered-orders.js';
@@ -36,10 +36,8 @@ describe('profession pick', () => {
 
     gates.onSetJob([1, 2], JOB_HUNTER);
     expect(orders).toEqual([]);
-    await Promise.resolve();
-    await Promise.resolve();
 
-    expect(orders).toEqual([{ kind: 'setJob', entity: 2, jobType: JOB_HUNTER }]);
+    await vi.waitFor(() => expect(orders).toEqual([{ kind: 'setJob', entity: 2, jobType: JOB_HUNTER }]));
   });
 
   it('orders nothing once the controls are gone', async () => {

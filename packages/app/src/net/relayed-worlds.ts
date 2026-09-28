@@ -24,7 +24,7 @@ export class RelayedWorlds<E> {
   /** The worker client's request the opening world answers. */
   private openingRequest: number | null = null;
   private served: WorkerSessionOpening<E> | null = null;
-  /** The connection ended: no world opens any more, since no worker answers its inputs. */
+  /** The connection ended or its worker failed: no world opens any more, since no worker answers. */
   private closed = false;
 
   constructor(
@@ -85,8 +85,10 @@ export class RelayedWorlds<E> {
     opening?.fail(new WorldNotAdoptedError());
   }
 
-  /** The worker failed: the opening world rejects, the served one throws on its next frame. */
+  /** The worker failed: the opening world rejects, the served one throws on its next frame, and no
+   *  world opens any more. */
   fail(error: Error): void {
+    this.closed = true;
     this.opening?.fail(error);
     this.served?.fail(error);
   }
