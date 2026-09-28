@@ -1,14 +1,15 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { BuildingPanelModel } from '../../details-panel/model/index.js';
+import { amountText } from '../parts/amount.js';
 import { element, setHidden } from '../parts/dom.js';
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 import type { BuildingPanelDeps } from './actions.js';
 import { createGoodLine, type GoodLine, syncLines } from './good-line.js';
 
-/** Produkcja: one line per product (or bred species) with the running cycle's progress on its rule and
- *  the recipe in its tooltip, or a farm's one line of fields with the ripe share on the rule. What each
- *  worker makes is set in the worker's own panel. */
+/** Produkcja: one line per product (or bred species) with its ingredients as "have/need" beside the
+ *  name and the running cycle's progress on its rule, or a farm's one line of fields with the ripe share
+ *  on the rule. What each worker makes is set in the worker's own panel. */
 export interface ProductionSection {
   readonly element: HTMLElement;
   update(model: BuildingPanelModel): void;
@@ -48,16 +49,24 @@ export function createProductionSection(deps: BuildingPanelDeps): ProductionSect
         make,
       );
       production.rows.forEach((row, index) => {
+        const inputs = row.inputs.map((input) => `${input.label} ×${input.need}`).join(', ');
         shown[index]?.update({
           goodId: row.goodId,
           label: row.label,
           value: `${row.pct}%`,
           fill: `${row.pct}%`,
-          tooltip:
-            row.inputs === ''
-              ? row.label
-              : formatMessage(copy.needs, { good: row.label, inputs: row.inputs }),
+          tooltip: inputs === '' ? row.label : formatMessage(copy.needs, { good: row.label, inputs }),
           muted: row.pct === 0,
+          needs: row.inputs.map((input) => ({
+            goodId: input.goodId,
+            text: `${amountText(input.have)}/${amountText(input.need)}`,
+            short: input.have < input.need,
+            tooltip: formatMessage(copy.need, {
+              good: input.label,
+              have: amountText(input.have),
+              need: amountText(input.need),
+            }),
+          })),
         });
       });
     },

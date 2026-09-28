@@ -1,4 +1,5 @@
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
+import { amountText } from './amount.js';
 import { type CategoryTab, createCategoryTabs } from './category-tabs.js';
 import { element, setAttribute, setClass, setStyleVar, setTip, write } from './dom.js';
 import { meterFill } from './meter-row.js';
@@ -91,11 +92,6 @@ export function stockGoodsKey(rows: readonly StockBrowserRow[]): string {
     .map((row) => row.goodType)
     .sort((x, y) => x - y)
     .join(',');
-}
-
-/** Whole units as integers, a banked fraction with one decimal. */
-export function amountText(amount: number): string {
-  return Number.isInteger(amount) ? String(amount) : amount.toFixed(1);
 }
 
 /** The goods in the order a list takes afresh: in stock first, then empty, each group in the owner's

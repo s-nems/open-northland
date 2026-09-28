@@ -538,17 +538,21 @@ saying what the press does or why it is refused.
 
 - Head: the building's class as the kicker (Magazyn, Dom, Warsztat, Szkolenie, Wieża, Warsztat
   pojazdów, Cud), the browse over the owner's buildings of the same type (chevrons, "2 / 3", Tab and
-  Shift+Tab), the building's name as the title. The meta line is another seat's owner line, or the
+  Shift+Tab), the building's name as the title; a home's title is its tier ("Poziom 2"), since the
+  kicker names it already. The meta line is another seat's owner line, or the
   civilization while the seat keeps houses of more than one (a mixed-tribe seat must see which tribe
   a house belongs to: tribe partitions its economy). A building has no action ring, so the gold
   medallion stays blank and keeps the heading centred.
 - Portrait row: the live building in the 96 × 92 px frame is the centre-view button, with the 7 px
-  wear bar under it (Wytrzymałość in its tooltip), as the vehicle's. Beside it the orders, 30 px:
-  Rozbuduj (its tooltip the next tier's bill, or the refusal, faded), Anuluj rozbudowę while a tier is
-  being raised, the alarm bell for a house that shelters civilians (lit gold while the alarm is up),
-  and Zburz in red, last. A demolition takes a second press within three seconds: the first lights the
-  button and its tooltip asks for the confirming press. The status strip along the frame's floor
-  names the first state that holds: Budowa or Rozbudowa with the percent and a proven stall (brak
+  wear bar under it (Wytrzymałość in its tooltip), as the vehicle's. Beside it four labelled order
+  tiles in two rows, each in a fixed place so the hand learns it: Rozbuduj (its tooltip the next tier's
+  bill; faded with the reason when there is no higher tier, the house is unfinished or a technology is
+  missing), Anuluj in its place while a tier is being raised, Pracownicy (opens Mieszkańcy filtered to
+  who could take the trade: a site's builders, else the first trade with a free seat, a craft before
+  carriers; faded for a house employing nobody), Wiedza (the type's Knowledge entry), and Zburz in red,
+  which asks in the confirmation dialog first. Another seat's house offers Wiedza alone. The status
+  strip along the frame's floor carries the alarm bell at its end for a house that shelters civilians
+  (gold while the alarm is up), and names the first state that holds: Budowa or Rozbudowa with the percent and a proven stall (brak
   materiałów and brak budowniczego in amber, dostawa w drodze in green), Alarm with the sheltered
   count in amber, Zamieszkany or Pusty for a home, Pracuje with the product of the batch furthest
   along, Brak załogi in amber or Obsadzony for a house with tower posts (by its garrison alone,
@@ -556,18 +560,22 @@ saying what the press does or why it is refused.
   stall the first posted worker reports in amber, Pracuje, and Czynny for a house without work.
 - Budowa (Rozbudowa for a tier): the percent on the rule, then a line per material of the bill: the
   good's well, its name, "delivered / needed" with "+N" on the way, and the delivered share on the
-  thin rule under the line; a delivered line reads muted.
+  thin rule under the line; a delivered line reads muted, and a line still short after what is on its
+  way reads amber with "brak" when the owner holds none of it anywhere else.
 - Pracownicy: a line per declared seat trade, its label over a dotted leader and a well per seat, the
   posted people's figures then the free seats empty, six to a row; the sheltering crowd under an alarm
   and the recruits drilling there follow as their own lines (a worker sheltering where it works stays
-  on its trade's line). A line holds twelve wells: free seats give way first, and people past that read
+  on its trade's line). A press on a trade's free seat opens Mieszkańcy filtered to that trade. A line
+  holds twelve wells: free seats give way first, and people past that read
   "+N" in the last well. The rule carries
   the posts filled of all. Mieszkańcy for a home: the families side by side (the man, the woman, the
   child), an empty well per free family place, the families of all on the rule. Budowniczowie for a
   site: the crew raising it, "nikt" while nobody is. A press on a figure selects the person.
   Workforce is assigned from the person's panel; the building side only shows it.
 - Produkcja: a line per product in recipe order (a breeding farm's per species, its herd against the
-  cap in the name), the running batch's percent on the rule and in figures, the recipe in the tooltip;
+  cap in the name), its ingredients beside the name as the good and "have/need" for one cycle (amber
+  while the shelf lacks it), the running batch's percent on the rule and in figures, the recipe in the
+  tooltip;
   a product with no batch running reads muted. A farm has one line: its fields and how many are ripe,
   the ripe share on the rule. What each worker makes is set in the worker's panel.
 - Wyposażenie (a finished home): a line per household ware of the home's tier, its pool on the rule
@@ -576,8 +584,9 @@ saying what the press does or why it is refused.
   owner's seat's only.
 - Umowy handlowe: the agreements the house offers a visiting trader as the trader's read-only chips
   "1 [coin] → 4 [iron]"; another seat's trade house shows them too.
-- Magazyn, last: every good the house stores in its slot order, "amount / shelf" to a decimal (the
-  original's figure), the shelf's fill on the rule, an empty shelf muted. A house storing more than
+- Magazyn, last: every good the house stores in its slot order, "amount / shelf" (a decimal only for a
+  banked fraction), the shelf's fill on the rule, an empty shelf muted, the input a posted worker waits
+  for in amber and a product's full shelf in red, since production stops there. A house storing more than
   eight goods lists one category at a time under the stock's icon tabs (a category the house does not
   store faded, a dot on one that holds something), opening on the first category that holds anything.
   Past eight lines the list scrolls in place and fades at the bottom; when the panel would run past the

@@ -65,7 +65,10 @@ export interface ToolWindowsDeps {
 
 export interface ToolWindows {
   /** Each window by id, as the beam entries toggle them. */
-  readonly byId: Readonly<Record<ToolWindowId, ToolWindow>> & { readonly menu: ConstructionWindow };
+  readonly byId: Readonly<Record<ToolWindowId, ToolWindow>> & {
+    readonly menu: ConstructionWindow;
+    readonly residents: ResidentsWindow;
+  };
   /** The mission book itself, for the page a script opens it on. */
   readonly mission: MissionBook;
   /** The open central window, or null; the beam lights its entry. */

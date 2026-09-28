@@ -27,8 +27,9 @@ export function openingStockTab(rows: readonly StockRow[], tabs: number): number
 }
 
 /** Magazyn: every good the house stores in its slot order, what it holds against its shelf with the
- *  shelf's fill on the rule, empty shelves faded. A large store lists one category at a time under icon
- *  tabs; past eight lines the list scrolls in place. */
+ *  shelf's fill on the rule, empty shelves faded, an input the workers wait for in amber and a product's
+ *  full shelf in red. A large store lists one category at a time under icon tabs; past eight lines the
+ *  list scrolls in place. */
 export interface StockSection {
   readonly element: HTMLElement;
   /** `fresh` is another house: the tab opens anew. */
@@ -82,17 +83,24 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
     );
     rows.forEach((row, index) => {
       const capacity = row.capacity ?? 0;
+      const words = formatMessage(copy.stockRow, {
+        good: row.label,
+        amount: stockAmount(row.amount),
+        capacity: stockAmount(capacity),
+      });
       kept[index]?.update({
         goodId: row.goodId,
         label: row.label,
         value: stockAmount(row.amount, row.capacity),
         fill: meterFill(row.amount, capacity),
-        tooltip: formatMessage(copy.stockRow, {
-          good: row.label,
-          amount: stockAmount(row.amount),
-          capacity: stockAmount(capacity),
-        }),
-        muted: row.amount <= 0,
+        tooltip:
+          row.alert === undefined
+            ? words
+            : formatMessage(row.alert === 'waiting' ? copy.stockWaiting : copy.stockFull, {
+                good: row.label,
+              }),
+        muted: row.amount <= 0 && row.alert === undefined,
+        ...(row.alert === undefined ? {} : { tone: row.alert === 'waiting' ? 'warning' : 'danger' }),
       });
     });
     paintFold();

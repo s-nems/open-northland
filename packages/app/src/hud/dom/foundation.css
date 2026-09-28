@@ -219,6 +219,11 @@ body.on-drag-scroll-cursor-hidden * {
     inset 0 0 0 1px var(--bronze),
     inset 0 0 0 3px var(--deep);
 }
+/* A window the player opened stands over the selection panel, often opened from it; under the panel,
+   the portrait's hole would show the window through it. */
+.on-hud .on-window.on-panel {
+  z-index: 1;
+}
 .on-hud .on-window::before {
   inset: 4px;
   border: 1px solid color-mix(in srgb, var(--bronze) 30%, transparent);
@@ -5184,7 +5189,96 @@ body.on-drag-scroll-cursor-hidden * {
   box-shadow: inset 0 0 0 1px #2a1d0e;
 }
 
-/* ---------- building panel: staff wells, household wares, stock ---------- */
+/* ---------- building panel: order tiles, alarm bell, staff wells, household wares, stock ---------- */
+/* Four labelled tiles in two rows fill the column beside the portrait, each in a fixed place. */
+.on-hud .on-orders--tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.on-hud .on-order--tile {
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 0 5px;
+  font: 600 11px / 1 var(--font-body);
+  white-space: nowrap;
+}
+.on-hud .on-order--tile .on-glyph {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+.on-hud .on-order--tile > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The alarm bell at the status strip's end: dim while the alarm is down, gold while it is up. */
+.on-hud .on-status-strip__bell {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-right: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--muted);
+}
+.on-hud .on-status-strip__bell .on-glyph {
+  width: 14px;
+  height: 14px;
+}
+.on-hud .on-status-strip__bell:hover,
+.on-hud .on-status-strip__bell:focus-visible {
+  color: #fff6de;
+  box-shadow: inset 0 0 0 1px var(--bronze-lo);
+}
+.on-hud .on-status-strip__bell--on {
+  color: var(--active);
+  filter: drop-shadow(0 0 3px #e3b86888);
+}
+/* A product's ingredients beside its name: the good and "have/need", amber while the shelf lacks it. */
+.on-hud .on-cargo-row--needs {
+  grid-template-columns: 22px 1fr auto auto;
+}
+.on-hud .on-cargo-row__needs {
+  display: flex;
+  gap: 6px;
+}
+.on-hud .on-cargo-row__needs:empty {
+  display: none;
+}
+.on-hud .on-need {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font: 600 11px / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.on-hud .on-need--short {
+  color: var(--warning);
+}
+/* A line that holds the house up: an input the workers wait for, a bill line nobody holds (amber), a
+   product's full shelf (red), on the figure and the rule. */
+.on-hud .on-cargo-row--warning .on-cargo-row__now,
+.on-hud .on-cargo-row--warning .on-cargo-row__now small {
+  color: var(--warning);
+}
+.on-hud .on-cargo-row--warning::after {
+  background: linear-gradient(90deg, var(--warning) var(--fill, 0%), #efbe7033 var(--fill, 0%));
+}
+.on-hud .on-cargo-row--danger .on-cargo-row__now {
+  color: var(--danger);
+}
+.on-hud .on-cargo-row--danger::after {
+  background: linear-gradient(90deg, var(--danger) var(--fill, 0%), #eda08d33 var(--fill, 0%));
+}
 /* One line per trade (or the sheltering crowd, the site's crew): the label over its dotted leader, then
    the wells, six to a row. */
 .on-hud .on-staff__line {

@@ -94,6 +94,9 @@ export const GLYPH = {
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m3 12 9-7 9 7M6 11v9h12v-9M12 19v-7M9 15l3-3 3 3"/></svg>',
   cancelUpgrade:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m3 12 9-7 9 7M6 11v9h12v-9M10 13l4 4M14 13l-4 4"/></svg>',
+  people:
+    '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 5v1"/></svg>',
+  book: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M4 5c3-1 6-1 8 1v14c-2-2-5-2-8-1ZM20 5c-3-1-6-1-8 1v14c2-2 5-2 8-1Z"/></svg>',
   bell: '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0M12 3v2"/></svg>',
   demolish:
     '<svg aria-hidden="true" class="on-glyph" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7M6 10v10h5l-1-3 2-2-1-3M14 20h4V10M16 4l2-2M19 6l2-1"/></svg>',

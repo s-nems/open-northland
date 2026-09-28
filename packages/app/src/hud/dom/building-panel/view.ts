@@ -25,8 +25,8 @@ export interface BuildingPanel {
   browse(step: 1 | -1): boolean;
   /** The HUD scale changed: the portrait's box is measured again. */
   invalidate(): void;
-  /** Once a frame, after the paint: an unconfirmed demolition goes out, the stock list fits again after
-   *  the plane changed size, and a shown tip follows its control. */
+  /** Once a frame, after the paint: the stock list fits again after the plane changed size, and a shown
+   *  tip follows its control. */
   refresh(): void;
   /** Paint every section once at map start, so the first selection costs no first-paint work. */
   warm(goodIds: readonly string[]): void;
@@ -146,7 +146,6 @@ export function createBuildingPanel(deps: BuildingPanelDeps): BuildingPanel {
       frame.warm();
     },
     refresh(): void {
-      portrait.refresh();
       frame.refreshTip();
       if (!refit || shown === null) return;
       refit = false;

@@ -1,5 +1,13 @@
+import { buildHud } from '@open-northland/render';
 import { constructionBillForType, type Fixed, fx, systems, type WorldSnapshot } from '@open-northland/sim';
-import { isSettler, num, type SnapshotEntity, siteCrewOf, supplyRunsTo } from '../../../game/snapshot.js';
+import {
+  isSettler,
+  num,
+  ownerPlayerOf,
+  type SnapshotEntity,
+  siteCrewOf,
+  supplyRunsTo,
+} from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import {
   type BuildingDef,
@@ -19,7 +27,12 @@ export interface StockRow {
   readonly capacity?: number;
   /** The stock-window category tab (0-7) this good belongs to. */
   readonly category: number;
+  /** The shelf holds up the house: a posted worker waits for this input, or this product's shelf is
+   *  full. Set by the building panel only. */
+  readonly alert?: StockAlert;
 }
+
+export type StockAlert = 'waiting' | 'full';
 
 /** One material line of a construction site's cost - the "delivered / needed" a site's bill reads. */
 export interface ConstructionBillRow {
@@ -36,6 +49,8 @@ export interface ConstructionBillRow {
 export interface ConstructionRow extends ConstructionBillRow {
   /** Units reserved by live construction-supply errands for this site and good. */
   readonly inbound: number;
+  /** Still short after what is on its way, and the owner holds none of it anywhere else. */
+  readonly unsourced: boolean;
 }
 
 export type ConstructionStatus = 'missing-materials' | 'delivery-en-route' | 'no-builder';
@@ -177,11 +192,26 @@ export function constructionModel(
 ): ConstructionModel | null {
   if (ent.components.UnderConstruction === undefined) return null;
   const activity = constructionActivity(snapshot, ent.id);
-  const rows = constructionBillRows(ctx, def, ent).map((row) => ({
-    ...row,
-    inbound: Math.min(activity.inbound.get(row.goodType) ?? 0, Math.max(0, row.needed - row.delivered)),
-  }));
+  const owner = ownerPlayerOf(ent);
+  const held = owner === undefined ? null : seatStockOf(snapshot, owner);
+  const onSite = liveAmounts(ent.components.Stockpile);
+  const rows = constructionBillRows(ctx, def, ent).map((row) => {
+    const carried = activity.inbound.get(row.goodType) ?? 0;
+    const inbound = Math.min(carried, Math.max(0, row.needed - row.delivered));
+    // The seat's figure counts this site's own pile and the loads carried to it.
+    const elsewhere = (held?.get(row.goodType) ?? 0) - (onSite.get(row.goodType) ?? 0) - carried;
+    return {
+      ...row,
+      inbound,
+      unsourced: held !== null && row.delivered + inbound < row.needed && elsewhere <= 0,
+    };
+  });
   return { rows, status: constructionStatus(ent, rows, activity.hasBuilder) };
+}
+
+/** What `player` holds by good, by the summary bar's rule. */
+function seatStockOf(snapshot: WorldSnapshot, player: number): Map<number, number> {
+  return new Map(buildHud(snapshot, player).stocks.map((stock) => [stock.goodType, stock.amount]));
 }
 
 /** The two live facts the selected site's construction status needs, off its crew and supply runs. */

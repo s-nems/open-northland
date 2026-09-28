@@ -28,6 +28,7 @@ import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
+import type { BuildingPanelWindows } from '../dom/building-panel/actions.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
@@ -43,6 +44,7 @@ import { createPlacementStrip } from '../dom/placement-strip.js';
 import type { ClientRect } from '../dom/portrait-hole.js';
 import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
+import type { CentralWindows } from '../dom/trade-window/window.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
@@ -78,6 +80,7 @@ import {
   type PlacementState,
 } from './placement.js';
 import { ResidentFigures } from './residents/figures.js';
+import { NO_RESIDENT_FILTERS } from './residents/rows.js';
 import type { ResidentsSeam } from './residents/seam.js';
 import { createSpeedControl } from './speed-control.js';
 import { createToolWindows, type ToolWindowsState } from './windows.js';
@@ -224,8 +227,8 @@ export interface ToolPanelController {
    *  taking presses unseen; a window opened while hidden shows. */
   setHudHidden(hidden: boolean): void;
   /** The central windows the beam opens, for a window opened elsewhere that shares the centre (the
-   *  trade window): one central window at a time. */
-  readonly centralWindows: { isOpen(): boolean; close(): void };
+   *  trade window): one central window at a time. The building panel opens two of them on its subject. */
+  readonly centralWindows: CentralWindows & BuildingPanelWindows;
   /** True when a client point should be claimed by the HUD (over an open window or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
@@ -683,6 +686,23 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       centralWindows: {
         isOpen: () => windows.openId() !== null,
         close: () => windows.closeAll(),
+        // Opened as the beam opens it, then narrowed; a trade the list cannot filter by lists everyone.
+        residentsFor: (jobType) =>
+          applyNavEntry(surfaces, 'residents', () => {
+            const residents = windows.byId.residents;
+            if (!residents.isOpen()) residents.toggle();
+            const offered = PROFESSIONS.some((profession) => profession.jobType === jobType);
+            residents.restore({
+              ...residents.state(),
+              filters: { ...NO_RESIDENT_FILTERS, canBecome: offered ? jobType : null },
+              scrollTop: 0,
+            });
+          }),
+        // The building's Knowledge page is the knowledge ticket's; until then the pending note stands in.
+        knowledge: () =>
+          applyNavEntry(surfaces, 'knowledge', () => {
+            if (!windows.byId.knowledge.isOpen()) windows.byId.knowledge.toggle();
+          }),
       },
       claimsPointer,
       claimsWheel,

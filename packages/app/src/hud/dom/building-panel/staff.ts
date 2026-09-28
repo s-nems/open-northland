@@ -50,7 +50,7 @@ const LOOK_CLASS: Readonly<Record<PersonLook, string>> = {
 
 /** Pracownicy, Mieszkańcy or Budowniczowie: a line per group (a trade's seats, the sheltering crowd, a
  *  family) with a well per person, and the filled and declared seats on the rule. A press on a person
- *  selects it. */
+ *  selects it; a press on a trade's free seat lists who could take it. */
 export interface StaffSection {
   readonly element: HTMLElement;
   update(model: BuildingPanelModel): void;
@@ -66,6 +66,7 @@ export function createStaffSection(deps: BuildingPanelDeps): StaffSection {
   let lines: { label: HTMLElement; wells: HTMLElement }[] = [];
   let wellNodes: HTMLButtonElement[][] = [];
   let shownWells: StaffWell[][] = [];
+  let shownGroups: StaffGroup[] = [];
 
   const paintWell = (node: HTMLButtonElement, well: StaffWell, group: StaffGroup): void => {
     const copy = messages().hud.buildingPanel;
@@ -93,12 +94,14 @@ export function createStaffSection(deps: BuildingPanelDeps): StaffSection {
         ? formatMessage(copy.person, { name: person.name, job: person.job })
         : well.kind === 'more'
           ? formatMessage(copy.morePeople, { count: well.count })
-          : group.label === ''
-            ? copy.freeFamily
-            : formatMessage(copy.emptySeat, { job: group.label });
+          : group.jobType !== null
+            ? formatMessage(copy.emptySeat, { job: group.label })
+            : group.label === ''
+              ? copy.freeFamily
+              : formatMessage(copy.freeSeat, { group: group.label });
     setTip(node, tip);
     setAttribute(node, 'aria-label', person?.name ?? tip);
-    setDisabled(node, person === null);
+    setDisabled(node, person === null && (well.kind !== 'seat' || group.jobType === null));
   };
 
   return {
@@ -123,8 +126,9 @@ export function createStaffSection(deps: BuildingPanelDeps): StaffSection {
           : 0;
       const groups: StaffGroup[] =
         free > 0
-          ? [...staff.groups, { key: 'free', label: '', people: [], capacity: free }]
+          ? [...staff.groups, { key: 'free', label: '', people: [], capacity: free, jobType: null }]
           : [...staff.groups];
+      shownGroups = groups;
       setClass(list, 'on-staff--families', staff.kind === 'residents');
       shownWells = groups.map(staffWells);
       const nextShape = groups.map((group, index) => `${group.key}:${shownWells[index]?.length}`).join('|');
@@ -132,7 +136,7 @@ export function createStaffSection(deps: BuildingPanelDeps): StaffSection {
         shape = nextShape;
         lines = [];
         wellNodes = [];
-        const nodes = groups.map((group, groupIndex) => {
+        const nodes = groups.map((_, groupIndex) => {
           const line = element('div', 'on-staff__line');
           const label = element('span', 'on-staff__label');
           const wells = element('span', 'on-staff__wells');
@@ -140,7 +144,9 @@ export function createStaffSection(deps: BuildingPanelDeps): StaffSection {
             const node = button('on-seat-well');
             node.addEventListener('click', () => {
               const well = shownWells[groupIndex]?.[wellIndex];
+              const jobType = shownGroups[groupIndex]?.jobType ?? null;
               if (well?.kind === 'person') deps.actions.select(well.person.entity);
+              else if (well?.kind === 'seat' && jobType !== null) deps.windows.residentsFor(jobType);
             });
             return node;
           });

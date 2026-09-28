@@ -208,8 +208,6 @@ export async function createUnitChrome(
     plane: opts.domHud.plane,
     icons,
     tooltip: panelChip,
-    cue: callbacks.cue,
-    now: () => performance.now(),
     actions: settlerActions,
     building: buildingPanelActions({
       snapshot: opts.snapshot,
@@ -217,6 +215,10 @@ export async function createUnitChrome(
       enqueue: opts.enqueue,
       cue: callbacks.cue,
     }),
+    windows: {
+      residentsFor: (jobType) => opts.domHud.centralWindows?.residentsFor(jobType),
+      knowledge: (typeId) => opts.domHud.centralWindows?.knowledge(typeId),
+    },
     buildingPeers: (building) => buildingPeers(opts.snapshot(), building),
   });
   const canvasRect = (client: ClientRect): PortraitBox['rect'] => {

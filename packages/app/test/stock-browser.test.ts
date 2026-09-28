@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { amountText } from '../src/hud/dom/parts/amount.js';
 import {
-  amountText,
   firstStockedTab,
   type StockBrowserRow,
   stockFirst,

@@ -1,17 +1,24 @@
 import type { Entity, PlayerCommand } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_ARCHER, JOB_CARRIER } from '../src/catalog/jobs.js';
+import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
+  BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_MILL,
   BUILDING_WATCHTOWER,
+  GOOD_FLOUR,
+  GOOD_STONE,
+  GOOD_WHEAT,
+  GOOD_WOOD,
 } from '../src/game/sandbox/ids/index.js';
+import { workerRoleOf } from '../src/game/sandbox/index.js';
 import { fixedViewerSeat } from '../src/game/viewer-seat.js';
 import { buildUnitPanelModel } from '../src/hud/details-panel/index.js';
 import {
+  type BuildingOrdersModel,
   type BuildingPanelModel,
   type BuildingStatusInputs,
   buildingStatus,
@@ -20,14 +27,10 @@ import {
   type StockRow,
   shelteringIn,
 } from '../src/hud/details-panel/model/building.js';
-import {
-  DEMOLISH_CONFIRM_MS,
-  demolishConfirmed,
-  orderViews,
-} from '../src/hud/dom/building-panel/portrait.js';
+import { orderViews } from '../src/hud/dom/building-panel/portrait.js';
 import { STAFF_WELLS_MAX, staffWells } from '../src/hud/dom/building-panel/staff.js';
 import { openingStockTab } from '../src/hud/dom/building-panel/stock.js';
-import { messages } from '../src/i18n/index.js';
+import { formatMessage, messages } from '../src/i18n/index.js';
 import { buildingPanelActions, buildingPeers } from '../src/view/unit-controls/building-panel.js';
 import { buildingEntity, snapshotOf as panelSnapshotOf, sandboxCtx } from './support/sandbox.js';
 import { type Ent, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
@@ -40,8 +43,12 @@ function sett(id: number, components: Record<string, unknown> = {}): Ent {
   return { id, components: { Settler: {}, ...components } };
 }
 
-function buildingModel(entities: Parameters<typeof panelSnapshotOf>[0], id: number): BuildingPanelModel {
-  const model = buildUnitPanelModel(panelSnapshotOf(entities), new Set([id]), sandboxCtx());
+function buildingModel(
+  entities: Parameters<typeof panelSnapshotOf>[0],
+  id: number,
+  ctx = sandboxCtx(),
+): BuildingPanelModel {
+  const model = buildUnitPanelModel(panelSnapshotOf(entities), new Set([id]), ctx);
   if (model.kind !== 'building') throw new Error('expected a building model');
   return model;
 }
@@ -277,47 +284,127 @@ describe('building panel model', () => {
   });
 });
 
+describe('building panel orders and alerts', () => {
+  const copy = messages().hud.buildingPanel;
+  const millSlots = sandboxCtx().buildings.find((def) => def.typeId === BUILDING_MILL)?.workers ?? [];
+  const craft = millSlots.find((slot) => workerRoleOf(slot.jobType) !== 'carrier');
+  const carrier = millSlots.find((slot) => workerRoleOf(slot.jobType) === 'carrier');
+
+  it('looks for the craft with a free seat first, then a free carrier seat, and a site for builders', () => {
+    if (craft === undefined || carrier === undefined)
+      throw new Error('the mill declares a craft and a carrier');
+    expect(buildingModel([buildingEntity(1, BUILDING_MILL)], 1).orders?.hire?.jobType).toBe(craft.jobType);
+    const millers = Array.from({ length: craft.count }, (_, index) => ({
+      id: 10 + index,
+      components: { Settler: { jobType: craft.jobType }, JobAssignment: { workplace: 1 } },
+    }));
+    expect(buildingModel([buildingEntity(1, BUILDING_MILL), ...millers], 1).orders?.hire?.jobType).toBe(
+      carrier.jobType,
+    );
+    const site = buildingModel(
+      [buildingEntity(1, BUILDING_MILL, { built: 0, components: { UnderConstruction: { labor: 0 } } })],
+      1,
+    );
+    expect(site.orders?.hire?.jobType).toBe(JOB_BUILDER);
+    expect(site.orders?.upgrade.control).not.toBe(true);
+    expect(buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1).orders?.hire).toBeNull();
+  });
+
+  it("titles a home by its tier under the kicker, keeping the type's name for Knowledge", () => {
+    const home = buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1);
+    expect(home.title).toBe(formatMessage(copy.homeTitle, { level: 1 }));
+    expect(home.name).not.toBe(home.title);
+    expect(buildingModel([buildingEntity(1, BUILDING_MILL)], 1).title).toBe(
+      buildingModel([buildingEntity(1, BUILDING_MILL)], 1).name,
+    );
+  });
+
+  it('marks the input a posted worker waits for and a full product shelf', () => {
+    const flourShelf =
+      sandboxCtx()
+        .buildings.find((def) => def.typeId === BUILDING_MILL)
+        ?.stock.find((slot) => slot.goodType === GOOD_FLOUR)?.capacity ?? 0;
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_MILL, {
+          components: { Stockpile: { amounts: [[GOOD_FLOUR, flourShelf]] } },
+        }),
+        { id: 2, components: { Settler: { jobType: craft?.jobType }, JobAssignment: { workplace: 1 } } },
+      ],
+      1,
+      { ...sandboxCtx(), workStatus: () => ({ kind: 'waitingInput', goodType: GOOD_WHEAT }) },
+    );
+    const alert = (good: number) => model.stock.find((row) => row.goodType === good)?.alert;
+    expect(alert(GOOD_WHEAT)).toBe('waiting');
+    expect(alert(GOOD_FLOUR)).toBe('full');
+  });
+
+  it('marks a bill line the owner holds none of beyond the site and what is carried to it', () => {
+    const site = buildingEntity(1, BUILDING_FARM, {
+      built: 0,
+      components: { UnderConstruction: { labor: 0 }, Stockpile: { amounts: [[GOOD_WOOD, 2]] } },
+    });
+    const unsourced = (entities: Parameters<typeof panelSnapshotOf>[0]) =>
+      buildingModel(entities, 1).construction?.rows.map((row) => [row.goodType, row.unsourced]);
+    expect(unsourced([site])).toEqual([
+      [GOOD_WOOD, true],
+      [GOOD_STONE, true],
+    ]);
+    const store = buildingEntity(2, BUILDING_HEADQUARTERS, {
+      components: { Stockpile: { amounts: [[GOOD_WOOD, 5]] } },
+    });
+    expect(unsourced([site, store])).toEqual([
+      [GOOD_WOOD, false],
+      [GOOD_STONE, true],
+    ]);
+  });
+});
+
 describe('building orders', () => {
   const copy = messages().hud.buildingPanel;
 
-  it('offers the tier with its bill or refusal, the alarm lit while up, the demolition last in red', () => {
-    const views = orderViews(
-      {
-        upgrade: { control: true, cost: [{ goodType: 1, label: 'Drewno', amount: 4 }] },
-        cancelUpgrade: false,
-        alarm: { on: true },
-      },
-      false,
-    );
-    expect(views.map((view) => view.order)).toEqual(['upgrade', 'alarm', 'demolish']);
-    expect(views[0]?.tooltip).toBe(copy.upgradeCost.replace('{cost}', '4 Drewno'));
-    expect(views[1]).toMatchObject({ lit: true, label: copy.orders.alarmOff });
-    expect(views[2]).toMatchObject({ danger: true, lit: false, tooltip: copy.orders.demolish });
-
-    const refused = orderViews(
-      {
-        upgrade: { control: 'Wymaga zbieracza', cost: [] },
-        cancelUpgrade: true,
-        alarm: null,
-      },
-      true,
-    );
-    expect(refused.map((view) => view.order)).toEqual(['upgrade', 'cancelUpgrade', 'demolish']);
-    expect(refused[0]).toMatchObject({ enabled: false, tooltip: 'Wymaga zbieracza' });
-    expect(refused[2]).toMatchObject({ lit: true, tooltip: copy.demolishConfirm });
+  const orders = (patch: Partial<BuildingOrdersModel>): BuildingOrdersModel => ({
+    upgrade: { control: true, cost: [{ goodType: 1, label: 'Drewno', amount: 4 }] },
+    cancelUpgrade: false,
+    alarm: null,
+    hire: { jobType: JOB_CARRIER, label: 'Tragarz' },
+    ...patch,
   });
 
-  it('demolishes only on a second press on the same house while the first is fresh', () => {
-    const armed = { building: 4, at: 1000 };
-    expect(demolishConfirmed(armed, 4, 1000 + DEMOLISH_CONFIRM_MS - 1)).toBe(true);
-    expect(demolishConfirmed(armed, 4, 1000 + DEMOLISH_CONFIRM_MS)).toBe(false);
-    expect(demolishConfirmed(armed, 5, 1001)).toBe(false);
-    expect(demolishConfirmed(null, 4, 1001)).toBe(false);
+  it('keeps four tiles in fixed places: the tier with its bill, Pracownicy, Wiedza, Zburz in red', () => {
+    const views = orderViews({ orders: orders({}), name: 'Młyn' });
+    expect(views.map((view) => view.order)).toEqual(['upgrade', 'workers', 'knowledge', 'demolish']);
+    expect(views[0]?.tooltip).toBe(formatMessage(copy.upgradeCost, { cost: '4 Drewno' }));
+    expect(views[1]).toMatchObject({
+      enabled: true,
+      tooltip: formatMessage(copy.hireTooltip, { job: 'Tragarz' }),
+    });
+    expect(views[2]?.tooltip).toBe(formatMessage(copy.knowledgeTooltip, { name: 'Młyn' }));
+    expect(views[3]).toMatchObject({ enabled: true, danger: true });
   });
 
-  it("turns the presses into the building's commands and refuses another seat's house", () => {
+  it('fades a refused tile in its place with the reason, and sets Cancel where Upgrade stood', () => {
+    const refused = orderViews({
+      orders: orders({ upgrade: { control: copy.upgradeTop, cost: [] }, hire: null }),
+      name: 'Dom',
+    });
+    expect(refused.map((view) => view.order)).toEqual(['upgrade', 'workers', 'knowledge', 'demolish']);
+    expect(refused[0]).toMatchObject({ enabled: false, tooltip: copy.upgradeTop });
+    expect(refused[1]).toMatchObject({ enabled: false, tooltip: copy.hireNone });
+    expect(orderViews({ orders: orders({ cancelUpgrade: true }), name: 'Dom' })[0]?.order).toBe(
+      'cancelUpgrade',
+    );
+  });
+
+  it("offers only Wiedza on another seat's house", () => {
+    expect(orderViews({ orders: null, name: 'Młyn' }).map((view) => view.order)).toEqual(['knowledge']);
+  });
+
+  it("turns the presses into the building's commands, asks before a demolition, refuses another seat's house", async () => {
     const sent: PlayerCommand[] = [];
     const cues: string[] = [];
+    const answers = [false, true];
+    const asked: string[] = [];
     const snapshot = panelSnapshotOf([
       buildingEntity(1, BUILDING_HEADQUARTERS),
       buildingEntity(2, BUILDING_HEADQUARTERS, { components: { Owner: { player: 1 } } }),
@@ -327,16 +414,28 @@ describe('building orders', () => {
       viewer: fixedViewerSeat(HUMAN_PLAYER),
       enqueue: (command) => sent.push(command),
       cue: (cue) => cues.push(cue),
+      confirm: (question) => {
+        asked.push(question.message);
+        return Promise.resolve(answers.shift() ?? false);
+      },
     });
     actions.setAlarm(1, true);
-    actions.demolish(2);
+    actions.demolish(2, 'Obca');
+    actions.demolish(1, 'Kwatera');
+    actions.demolish(1, 'Kwatera');
     actions.setHouseholdGoodUse(HUMAN_PLAYER, 'rest', false);
     actions.setHouseholdGoodUse(1, 'rest', false);
+    await Promise.resolve();
+    expect(asked).toEqual([
+      formatMessage(copy.demolishQuestion, { name: 'Kwatera' }),
+      formatMessage(copy.demolishQuestion, { name: 'Kwatera' }),
+    ]);
     expect(sent).toEqual([
       { kind: 'setDefenceMode', building: 1 as Entity, enabled: true },
       { kind: 'setHouseholdGoodUse', player: HUMAN_PLAYER, effect: 'rest', allowed: false },
+      { kind: 'demolish', building: 1 as Entity },
     ]);
-    expect(cues).toEqual(['confirm', 'fail', 'confirm', 'fail']);
+    expect(cues).toEqual(['confirm', 'fail', 'confirm', 'confirm', 'confirm', 'fail']);
   });
 });
 
@@ -344,13 +443,14 @@ describe('building staff wells', () => {
   const person = (entity: number) => ({ entity, name: 'A', job: 'B', look: 'man' as const });
 
   it('follows the people with the free seats, and counts the rest past the cap in the last well', () => {
-    const slot: StaffGroup = { key: 'a', label: 'Kowal', people: [person(1)], capacity: 3 };
+    const slot: StaffGroup = { key: 'a', label: 'Kowal', people: [person(1)], capacity: 3, jobType: 1 };
     expect(staffWells(slot).map((well) => well.kind)).toEqual(['person', 'seat', 'seat']);
     const crowd: StaffGroup = {
       key: 'b',
       label: '',
       people: Array.from({ length: STAFF_WELLS_MAX + 4 }, (_, i) => person(i)),
       capacity: null,
+      jobType: null,
     };
     const wells = staffWells(crowd);
     expect(wells).toHaveLength(STAFF_WELLS_MAX);
@@ -361,6 +461,7 @@ describe('building staff wells', () => {
       label: 'S',
       people: [person(1), person(2), person(3)],
       capacity: 30,
+      jobType: null,
     };
     const cut = staffWells(shelter);
     expect(cut).toHaveLength(STAFF_WELLS_MAX);

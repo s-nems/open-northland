@@ -212,9 +212,11 @@ describe('selection details panel model', () => {
     expect(model.production.rows).toHaveLength(1);
     expect(model.production.rows[0]).toMatchObject({ goodType: GOOD_PLANK, pct: 50, label: 'plank' });
     // The production row carries its output's string id - the icon key the panel draws beside the bar -
-    // and its recipe-inputs tooltip line ("Wymaga: <wood> ×1").
+    // and its ingredient against the shelf: one wood a cycle, three held.
     expect(model.production.rows[0]?.goodId).toBe('plank');
-    expect(model.production.rows[0]?.inputs).toContain('×1');
+    expect(model.production.rows[0]?.inputs).toEqual([
+      expect.objectContaining({ goodType: GOOD_WOOD, have: 3, need: 1 }),
+    ]);
     expect(model.stock).toEqual(
       expect.arrayContaining([expect.objectContaining({ goodType: GOOD_WOOD, amount: 3 })]),
     );
@@ -580,7 +582,7 @@ describe('selection details panel model', () => {
     expect(mature.homeQuality?.player).toBe(0);
   });
 
-  it('offers Upgrade on a built chained home and Cancel on a running upgrade site - never both', () => {
+  it('offers Upgrade on a built chained home and Cancel in its place on a running upgrade site', () => {
     const built = buildUnitPanelModel(
       snapshotOf([buildingEntity(1, BUILDING_HOME_00)], 1),
       new Set([1]),
@@ -614,8 +616,8 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (upgrading.kind !== 'building') throw new Error('expected a building panel');
-    // No Upgrade button on a running upgrade site, so no cost preview to show.
-    expect(upgrading.orders?.upgrade).toBeNull();
+    // A running upgrade site offers Cancel in Upgrade's place; Upgrade itself waits for the house.
+    expect(upgrading.orders?.upgrade.control).toBe(messages().hud.buildingPanel.upgradeUnfinished);
     expect(upgrading.orders?.cancelUpgrade).toBe(true);
   });
 
@@ -1493,7 +1495,7 @@ describe('the animal farm panel - the species rows are its herd', () => {
     expect(sheep?.goodId).toBe('sheep'); // the species itself, not a ware its slaughter yields
     expect(sheep?.label).toContain('3/20'); // the herd attached to the farm against the row's cap
     expect(cattle?.label).toContain('0/20'); // no cattle attached yet
-    expect(sheep?.inputs.split(', ')).toHaveLength(2); // what one breeding costs: water + wheat
+    expect(sheep?.inputs).toHaveLength(2); // what one breeding costs: water + wheat
   });
 
   it("a breeder's production rows offer the two herds it may tend", () => {

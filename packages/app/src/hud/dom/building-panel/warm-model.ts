@@ -2,8 +2,9 @@ import type { BuildingPanelModel, StaffPerson } from '../../details-panel/model/
 import { STOCK_TABS_FROM } from './stock.js';
 
 /**
- * A made-up building that lights every part of the panel at once: the wear bar low, live, lit and
- * refused orders, a site's bill, wells of every look with free seats, production lines, a tabbed store,
+ * A made-up building that lights every part of the panel at once: the wear bar low, live and refused
+ * orders, the lit alarm bell, a site's bill with a line nobody holds, wells of every look with free
+ * seats, production lines with short and met ingredients, a tabbed store with both alerts,
  * household wares and an agreement. The panel paints it once at map start (`BuildingPanel.warm`), so the
  * browser's first raster of these styles happens behind the loading screen, not on the first click.
  * Only the shapes matter; the words are never read.
@@ -26,6 +27,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
     typeId: -1,
     tribeId: undefined,
     title: 'Warm',
+    name: 'Warm',
     kicker: 'Warm',
     foreign: false,
     meta: 'Warm',
@@ -33,8 +35,9 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
     status: { label: 'Warm', detail: 'Warm', tone: 'trouble' },
     orders: {
       upgrade: { control: 'warm', cost: [] },
-      cancelUpgrade: true,
+      cancelUpgrade: false,
       alarm: { on: true },
+      hire: { jobType: 0, label: 'Warm' },
     },
     construction: {
       rows: [0, 1].map((goodType) => ({
@@ -44,6 +47,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
         delivered: goodType,
         needed: 2,
         inbound: 1,
+        unsourced: goodType === 0,
       })),
       status: 'missing-materials',
       pct: 40,
@@ -52,8 +56,20 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
     staff: {
       kind: 'workers',
       groups: [
-        { key: 'a', label: 'Warm', people: [person(1, 'man'), person(2, 'woman')], capacity: 3 },
-        { key: 'b', label: 'Warm', people: [person(3, 'soldier'), person(4, 'child')], capacity: null },
+        {
+          key: 'a',
+          label: 'Warm',
+          people: [person(1, 'man'), person(2, 'woman')],
+          capacity: 3,
+          jobType: 0,
+        },
+        {
+          key: 'b',
+          label: 'Warm',
+          people: [person(3, 'soldier'), person(4, 'child')],
+          capacity: null,
+          jobType: null,
+        },
       ],
       count: { filled: 2, capacity: 3 },
     },
@@ -64,7 +80,13 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
         ...good(goodType),
         label: 'Warm',
         pct: 50 * goodType,
-        inputs: 'Warm',
+        inputs: [0, 1].map((input) => ({
+          goodType: input,
+          ...good(input),
+          label: 'Warm',
+          have: input,
+          need: 1,
+        })),
       })),
     },
     stock: Array.from({ length: STOCK_TABS_FROM }, (_, goodType) => ({
@@ -74,6 +96,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
       amount: goodType % 2,
       capacity: 10,
       category: goodType % 2,
+      ...(goodType === 0 ? { alert: 'waiting' as const } : goodType === 1 ? { alert: 'full' as const } : {}),
     })),
     homeQuality: {
       rows: [

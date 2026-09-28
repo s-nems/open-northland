@@ -7,7 +7,7 @@ import type { BuildingPanelDeps } from './actions.js';
 import { createGoodLine, type GoodLine, syncLines } from './good-line.js';
 
 /** Budowa or Rozbudowa: how far the site has come on the rule, then one line per material of its bill,
- *  delivered against needed with what is on its way. */
+ *  delivered against needed with what is on its way, in amber when the owner holds none of the rest. */
 export interface ConstructionSection {
   readonly element: HTMLElement;
   update(model: BuildingPanelModel): void;
@@ -41,15 +41,23 @@ export function createConstructionSection(deps: BuildingPanelDeps): Construction
           delivered: row.delivered,
           needed: row.needed,
         });
-        const inbound = row.inbound > 0 ? formatMessage(copy.billInbound, { count: row.inbound }) : null;
+        const notes = [
+          ...(row.inbound > 0 ? [formatMessage(copy.billInbound, { count: row.inbound })] : []),
+          ...(row.unsourced ? [copy.billUnsourced] : []),
+        ];
+        const aside = [
+          ...(row.inbound > 0 ? [`+${row.inbound}`] : []),
+          ...(row.unsourced ? [copy.billUnsourcedMark] : []),
+        ];
         shown[index]?.update({
           goodId: row.goodId,
           label: row.label,
           value: `${row.delivered} / ${row.needed}`,
-          ...(row.inbound > 0 ? { aside: `+${row.inbound}` } : {}),
+          ...(aside.length > 0 ? { aside: aside.join(' ') } : {}),
           fill: meterFill(row.delivered, row.needed),
-          tooltip: inbound === null ? words : `${words} · ${inbound}`,
+          tooltip: [words, ...notes].join(' · '),
           muted: row.delivered >= row.needed,
+          ...(row.unsourced ? { tone: 'warning' as const } : {}),
         });
       });
     },

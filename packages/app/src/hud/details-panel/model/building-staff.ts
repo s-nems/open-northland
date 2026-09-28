@@ -36,6 +36,8 @@ export interface StaffGroup {
   readonly people: readonly StaffPerson[];
   /** The seats the group has, as empty wells after its people; null has no fixed number. */
   readonly capacity: number | null;
+  /** The trade a free seat takes, for a worker slot's line. */
+  readonly jobType: number | null;
 }
 
 /**
@@ -124,6 +126,7 @@ function workerGroups(
     label: jobDisplayName(ctx, slot.jobType),
     people: (byJob.get(slot.jobType) ?? []).map((e) => personOf(ctx, snapshot, e)),
     capacity: slot.count,
+    jobType: slot.jobType,
   }));
   const slotted = new Set((def?.workers ?? []).map((slot) => slot.jobType));
   for (const [jobType, people] of byJob) {
@@ -133,6 +136,7 @@ function workerGroups(
       label: jobDisplayName(ctx, jobType),
       people: people.map((e) => personOf(ctx, snapshot, e)),
       capacity: null,
+      jobType,
     });
   }
   return groups;
@@ -156,6 +160,7 @@ export function buildingStaff(
           label: '',
           people: crew.map((e) => personOf(ctx, snapshot, e)),
           capacity: null,
+          jobType: null,
         },
       ],
       count: null,
@@ -176,6 +181,7 @@ export function buildingStaff(
         label: '',
         people: [...adults, ...minors].map((e) => personOf(ctx, snapshot, e)),
         capacity: null,
+        jobType: null,
       };
     });
     return { kind: 'residents', groups, count: { filled: families.length, capacity: def.homeSize } };
@@ -190,6 +196,7 @@ export function buildingStaff(
       label: copy.sheltered,
       people: sheltering.map((e) => personOf(ctx, snapshot, e)),
       capacity: def?.shelterCapacity ?? null,
+      jobType: null,
     });
   }
   const drilling = indexesOf(snapshot).get(TRAINEES).get(ent.id) ?? [];
@@ -199,6 +206,7 @@ export function buildingStaff(
       label: copy.trainees,
       people: drilling.map((e) => personOf(ctx, snapshot, e)),
       capacity: null,
+      jobType: null,
     });
   }
   if (groups.length === 0) return null;

@@ -28,9 +28,17 @@ export interface ProductionRow {
   /** The highest progress among the in-flight `Production.cycles` crafting this product; 0 when none
    *  runs, since a finished batch deposits and leaves the list. */
   readonly pct: number;
-  /** What one cycle takes ("Żelazo ×2, Drewno ×1"); empty for a craft that takes nothing or unknown
-   *  inputs. */
-  readonly inputs: string;
+  /** What one cycle takes against what the house holds; empty for a craft that takes nothing. */
+  readonly inputs: readonly RecipeInputModel[];
+}
+
+/** One ingredient of a product's recipe: the units one cycle takes and the whole units on the shelf. */
+export interface RecipeInputModel {
+  readonly goodType: number;
+  readonly goodId?: string;
+  readonly label: string;
+  readonly have: number;
+  readonly need: number;
 }
 
 /**
@@ -146,11 +154,12 @@ export function productionModel(
   // never move; the worker picks it in the settler window's craft choices instead.
   const outputs = recipeOutputs(ctx, def).filter((o) => goodDef(ctx, o.goodType)?.vehicleHouse === undefined);
   if (outputs.length === 0) return null; // not a producer - no Produkcja window
-  const inputsByProduct = new Map<number, string>();
+  const held = liveAmounts(ent.components.Stockpile);
+  const inputsByProduct = new Map<number, RecipeInputModel[]>();
   for (const recipe of def?.recipes ?? []) {
     const product = recipe.outputs[0]?.goodType;
     if (product === undefined || inputsByProduct.has(product)) continue;
-    inputsByProduct.set(product, recipeInputsLabel(ctx, recipe.inputs));
+    inputsByProduct.set(product, recipeInputs(ctx, recipe.inputs, held));
   }
   const rows = outputs.map((o) => {
     const goodId = goodDef(ctx, o.goodType)?.id;
@@ -158,7 +167,7 @@ export function productionModel(
       goodType: o.goodType,
       label: o.amount > 1 ? `${goodLabel(ctx, o.goodType)} ×${o.amount}` : goodLabel(ctx, o.goodType),
       pct: bestPct.get(o.goodType) ?? 0,
-      inputs: inputsByProduct.get(o.goodType) ?? '',
+      inputs: inputsByProduct.get(o.goodType) ?? [],
       ...(goodId !== undefined ? { goodId } : {}),
     };
   });
@@ -202,18 +211,27 @@ function livestockHerdRows(
       goodType: species,
       label: `${goodLabel(ctx, species)} ${herd}${cap === undefined ? '' : `/${cap}`}`,
       pct: bestPct.get(species) ?? 0,
-      // The requirements hover: what one breeding costs.
-      inputs: recipeInputsLabel(ctx, recipe.inputs),
+      // What one breeding costs.
+      inputs: recipeInputs(ctx, recipe.inputs, held),
       ...(goodId !== undefined ? { goodId } : {}),
     });
   }
   return rows;
 }
 
-/** A recipe's inputs as one tooltip line. */
-function recipeInputsLabel(
+function recipeInputs(
   ctx: UnitPanelModelContext,
   inputs: readonly { goodType: number; amount: number }[],
-): string {
-  return inputs.map((i) => `${goodLabel(ctx, i.goodType)} ×${i.amount}`).join(', ');
+  held: ReadonlyMap<number, number>,
+): RecipeInputModel[] {
+  return inputs.map((input) => {
+    const goodId = goodDef(ctx, input.goodType)?.id;
+    return {
+      goodType: input.goodType,
+      label: goodLabel(ctx, input.goodType),
+      have: held.get(input.goodType) ?? 0,
+      need: input.amount,
+      ...(goodId !== undefined ? { goodId } : {}),
+    };
+  });
 }

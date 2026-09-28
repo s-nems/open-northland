@@ -6,6 +6,8 @@ import {
   indexesOf,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import { JOB_BUILDER } from '../../../catalog/jobs.js';
+import { workerRoleOf } from '../../../game/sandbox/index.js';
 import {
   buildingTribeOf,
   buildingTypeOf,
@@ -20,11 +22,12 @@ import {
   staffOf,
 } from '../../../game/snapshot.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
-import { messages, tribeName } from '../../../i18n/index.js';
+import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { pct } from './bars.js';
 import {
   type ConstructionModel,
   constructionModel,
+  type StockAlert,
   type StockRow,
   stockRows,
   type UpgradeCostRow,
@@ -40,6 +43,8 @@ import {
   contentTribeName,
   foreignOwnerLine,
   goodLabel,
+  jobDisplayName,
+  recipeOutputs,
   type SettlerWorkStatus,
   type UnitPanelModelContext,
 } from './context.js';
@@ -77,12 +82,16 @@ export interface HomeQualityModel {
 
 /** The orders beside the portrait. A null order is not offered for this house. */
 export interface BuildingOrdersModel {
-  /** Rozbuduj: true or the refusal, with the next tier's bill. */
-  readonly upgrade: { readonly control: SeatControl; readonly cost: readonly UpgradeCostRow[] } | null;
-  /** Anuluj rozbudowę, while a tier is being raised. */
+  /** Rozbuduj: true or the refusal (no higher tier, an unfinished site, a technology), with the next
+   *  tier's bill. */
+  readonly upgrade: { readonly control: SeatControl; readonly cost: readonly UpgradeCostRow[] };
+  /** Anuluj rozbudowę, while a tier is being raised; it stands in Rozbuduj's place. */
   readonly cancelUpgrade: boolean;
   /** The alarm toggle of a house that shelters civilians, and whether it is up. */
   readonly alarm: { readonly on: boolean } | null;
+  /** Pracownicy: the trade the residents window lists candidates for; null for a house employing
+   *  nobody. */
+  readonly hire: { readonly jobType: number; readonly label: string } | null;
 }
 
 /** An agreement this house offers a visiting trader: the trader gives one side and takes the other. */
@@ -100,6 +109,8 @@ export interface BuildingPanelModel {
   /** The building's civilization, the per-tribe art join key. */
   readonly tribeId: number | undefined;
   readonly title: string;
+  /** The type's full name, which Knowledge and the demolition question use. */
+  readonly name: string;
   /** The building's class, the head's kicker. */
   readonly kicker: string;
   readonly foreign: boolean;
@@ -219,27 +230,66 @@ function homeQuality(
   };
 }
 
+/** The trade Pracownicy looks for: a site's builders, else the first trade with a free seat, a
+ *  craft before the carriers, else the first craft. */
+function hireJob(staff: BuildingStaffModel | null, site: boolean): number | null {
+  if (site) return JOB_BUILDER;
+  if (staff?.kind !== 'workers') return null;
+  const slots = staff.groups.flatMap((group) =>
+    group.jobType === null || group.capacity === null
+      ? []
+      : [{ jobType: group.jobType, free: group.people.length < group.capacity }],
+  );
+  const carrier = (slot: { jobType: number }): boolean => workerRoleOf(slot.jobType) === 'carrier';
+  const trades = [...slots.filter((slot) => !carrier(slot)), ...slots.filter(carrier)];
+  return (trades.find((slot) => slot.free) ?? trades[0])?.jobType ?? null;
+}
+
 function ordersModel(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
   finished: boolean,
+  hire: number | null,
 ): BuildingOrdersModel {
+  const copy = messages().hud.buildingPanel;
   const tribe = buildingTribeOf(ent) ?? 0;
   const next = def?.upgradeTarget;
   const blocked =
     next === undefined ? null : (ctx.technologyReason?.('house', next, tribe, ownerPlayerOf(ent)) ?? null);
-  const upgrading = ent.components.Upgrading !== undefined;
   const shelters = (def?.shelterCapacity ?? 0) > 0;
   return {
-    upgrade:
-      next === undefined || upgrading || !finished
-        ? null
-        : { control: blocked ?? true, cost: upgradeCostRows(ctx, def) },
-    cancelUpgrade: upgrading,
+    upgrade: {
+      control: next === undefined ? copy.upgradeTop : !finished ? copy.upgradeUnfinished : (blocked ?? true),
+      cost: upgradeCostRows(ctx, def),
+    },
+    cancelUpgrade: ent.components.Upgrading !== undefined,
     // `shelterCapacity` is the gate the sim's `setDefenceMode` reads, so the toggle is never refused.
     alarm: shelters && finished ? { on: ent.components.DefenceMode !== undefined } : null,
+    hire: hire === null ? null : { jobType: hire, label: jobDisplayName(ctx, hire) },
   };
+}
+
+/** The shelves that hold the house up: the inputs its posted workers wait for, and its products'
+ *  full shelves. */
+function withStockAlerts(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  def: BuildingDef | undefined,
+  building: number,
+  rows: readonly StockRow[],
+): StockRow[] {
+  const waiting = new Set<number>();
+  for (const worker of staffOf(snapshot, building)) {
+    const status = ctx.workStatus?.(worker.id);
+    if (status?.kind === 'waitingInput') waiting.add(status.goodType);
+  }
+  const products = new Set(recipeOutputs(ctx, def).map((output) => output.goodType));
+  return rows.map((row): StockRow => {
+    const full = products.has(row.goodType) && row.capacity !== undefined && row.amount >= row.capacity;
+    const alert: StockAlert | null = waiting.has(row.goodType) ? 'waiting' : full ? 'full' : null;
+    return alert === null ? row : { ...row, alert };
+  });
 }
 
 /** The good the first posted worker's reading names, labelled; null when it names none. */
@@ -305,6 +355,8 @@ export function buildingPanelModel(
     workGood: work.good,
     families: kind === 'home' && !site ? (homeFamiliesOf(snapshot, ent.id)?.length ?? 0) : null,
   });
+  const level = num(b.level) ?? 0;
+  const name = buildingTitle(ctx, rawType);
   const meta = foreign
     ? foreignOwnerLine(ctx, owner, tribeId)
     : ownsSeveralTribes(snapshot, owner)
@@ -315,22 +367,31 @@ export function buildingPanelModel(
     entityId: ent.id,
     typeId: rawType ?? -1,
     tribeId,
-    title: buildingTitle(ctx, rawType),
+    // A home's kicker names it already; its title is the tier.
+    title:
+      kind === 'home' ? formatMessage(messages().hud.buildingPanel.homeTitle, { level: level + 1 }) : name,
+    name,
     kicker: kickerOf(kind),
     foreign,
     meta,
     health: health === undefined || health.max <= 0 ? null : health,
     status,
-    orders: foreign ? null : ordersModel(ctx, def, ent, finished),
+    orders: foreign ? null : ordersModel(ctx, def, ent, finished, hireJob(staff, site)),
     construction: construction === null || foreign ? null : { ...construction, pct: builtPct, upgrade },
     staff,
     production: foreign || site ? null : productionModel(ctx, snapshot, def, ent),
     stock:
-      foreign || site ? [] : stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
+      foreign || site
+        ? []
+        : withStockAlerts(
+            ctx,
+            snapshot,
+            def,
+            ent.id,
+            stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
+          ),
     homeQuality:
-      foreign || def === undefined || !finished
-        ? null
-        : homeQuality(ctx, snapshot, def, ent, num(b.level) ?? 0),
+      foreign || def === undefined || !finished ? null : homeQuality(ctx, snapshot, def, ent, level),
     offers: (ctx.tradeOffersAt?.(ent.id) ?? []).map((offer) => ({
       give: offerSide(ctx, offer.giveAmount, offer.giveGood),
       take: offerSide(ctx, offer.takeAmount, offer.takeGood),
