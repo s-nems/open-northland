@@ -339,11 +339,15 @@ byte or age budget. `snapshotRequest` goes to the client in sync with the lowest
 answers with a `snapshot` blob at its current tick. An unanswered request is repeated every
 `SNAPSHOT_RETRY_MS` (10 s) to the next eligible donor, at once when the asked donor drops, and one
 request is outstanding however many members wait for it. A snapshot prunes the frames it covers.
-If the cached donor is found out of sync, reconnects wait for a replacement too; its cached tick
-still marks the start of retained replay history. A same-tick upload can replace that invalidated
-copy. Otherwise the first copy of a tick stays cached, so delayed duplicates cannot undo a correction.
 With no retained frames, a same-tick upload also satisfies a paused refresh. An older upload leaves
-the cache and any pending resync unchanged.
+the cache unchanged.
+
+When the cached snapshot's donor is found out of sync, the cache is held back: a drop forgets held
+digests, so that tick may never have been judged. Reconnects then wait for a replacement while a
+client in sync can send one; with none left, returning clients take the held copy and diverged ones
+keep waiting for the next donor. The held copy's tick still marks the start of retained replay
+history. A same-tick upload can replace it. Otherwise the first copy of a tick stays cached, so a
+delayed same-tick duplicate cannot undo a correction.
 
 If the age limit is reached or the next frame would exceed the byte limit, the relay ends that room:
 connected members receive `error` with the `historyBytes` or `historyAge` reason, then `left`. All members,
@@ -356,7 +360,8 @@ for a fresh snapshot and, when it arrives, sends the diverged client `blob { typ
 followed by every frame after the snapshot's tick. The client restores, replays those frames, and
 acknowledges from the snapshot's tick on; the clock is governed for it while it is still `slow`. A diverged
 client that drops leaves the queue: on its return it asks with `loaded { tick: null }` and takes the
-cache, or the next snapshot when none is cached yet. Nothing is sent to it before it asks.
+cache, or the next snapshot when none is cached yet or the cache is held back. Nothing is sent to it
+before it asks.
 
 A returning token gets `room`, its pending `desync` notice if it has one, `start { session,
 snapshotTick }`, `clock` while the game runs, and `ended` once it has ended. `snapshotTick`

@@ -13,6 +13,8 @@ export const SNAPSHOT_RETRY_MS = 10_000;
  */
 export class Resync {
   private readonly catchUp = new CatchUpStore();
+  /** The cache's author was found out of sync. A drop forgets held digests, so its cached tick may
+   *  never have been judged: the bytes wait for a replacement while a member in sync can send one. */
   private snapshotInvalid = false;
   /** Connected members only: a dropped one leaves, and asks again with `loaded` on its return. */
   private readonly awaiting = new Set<Member>();
@@ -72,13 +74,17 @@ export class Resync {
     }
   }
 
-  /** Hand `member` the snapshot and every frame since; it stands at the snapshot's tick from here. */
+  /** Hand `member` the snapshot, or queue it while a held-back cache can still be replaced. */
   serve(member: Member, snapshot: CachedSnapshot, now: number): void {
-    // A donor's later digest verdict can invalidate bytes already cached for reconnects.
-    if (this.snapshotInvalid) {
+    if (this.snapshotInvalid && this.anySynced()) {
       this.queue(member, now);
       return;
     }
+    this.deliverCache(member, snapshot);
+  }
+
+  /** Send the snapshot and every frame since; `member` stands at the snapshot's tick from here. */
+  private deliverCache(member: Member, snapshot: CachedSnapshot): void {
     this.deliver(member, {
       kind: 'blob',
       type: 'snapshot',
@@ -105,9 +111,9 @@ export class Resync {
       this.resetRequests();
     }
     const newest = this.catchUp.snapshot;
-    // An older upload cannot resolve a resync by replaying the cache it failed to replace.
-    if (newest !== null && newest.tick === tick) {
-      this.snapshotInvalid = false;
+    // Only an upload at the cached tick vouches for it; an older one leaves an invalidated cache held.
+    if (newest?.tick === tick) this.snapshotInvalid = false;
+    if (newest !== null) {
       for (const member of this.awaiting) this.serve(member, newest, now);
     }
     return newer;
@@ -130,6 +136,14 @@ export class Resync {
   }
 
   private request(now: number): void {
+    const cached = this.catchUp.snapshot;
+    if (this.snapshotInvalid && cached !== null && !this.anySynced()) {
+      // Nobody can replace the invalidated cache: returning members take it, then answer for the
+      // diverged ones.
+      for (const member of this.awaiting) {
+        if (member.outOfSync === null) this.deliverCache(member, cached);
+      }
+    }
     const eligible = [...this.members.values()].filter(isSynced);
     if (eligible.length === 0) return;
     if (eligible.every((member) => this.triedDonors.has(member.token))) this.triedDonors.clear();
@@ -144,6 +158,11 @@ export class Resync {
     this.askedDonor = donor.token;
     this.triedDonors.add(donor.token);
     this.deliver(donor, { kind: 'snapshotRequest' });
+  }
+
+  private anySynced(): boolean {
+    for (const member of this.members.values()) if (isSynced(member)) return true;
+    return false;
   }
 
   private resetRequests(): void {

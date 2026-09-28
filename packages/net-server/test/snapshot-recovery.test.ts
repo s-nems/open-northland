@@ -1,6 +1,6 @@
 import { TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import { ackThrough, startedRoom, TOKEN_B } from './support/message-stage.js';
+import { ackThrough, roomOfThree, startedRoom, TOKEN_A, TOKEN_B, TOKEN_C } from './support/message-stage.js';
 
 const divergentBytes = Buffer.from('divergent snapshot').toString('base64');
 const correctedBytes = Buffer.from('corrected snapshot').toString('base64');
@@ -78,5 +78,47 @@ describe('snapshot recovery', () => {
     back.send({ kind: 'loaded', tick: null });
     expect(back.last('blob')).toMatchObject({ from: 'Ania', tick: 1, bytes: correctedBytes });
     expect(back.of('frame').map(({ tick }) => tick)).toEqual([2]);
+  });
+
+  it("holds a returning member off a diverged donor's cache until nobody in sync can replace it", () => {
+    const s = roomOfThree();
+    s.advance(TICK_MS);
+    s.b.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: divergentBytes });
+    ackThrough(s.a, 1, 1);
+    ackThrough(s.c, 1, 1);
+    ackThrough(s.b, 1, 1, 2);
+    expect(s.b.last('desync')?.tick).toBe(1);
+    s.relay.disconnect(s.c.handle);
+    const back = s.introduce(TOKEN_C, 'Cezary');
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.of('blob')).toEqual([]);
+
+    // The last member in sync drops before answering: the cache is the best world left.
+    s.relay.disconnect(s.a.handle);
+    s.advance(1);
+    expect(back.last('blob')).toMatchObject({ from: 'Bartek', tick: 1, bytes: divergentBytes });
+    expect(back.of('snapshotRequest')).toHaveLength(1);
+    back.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: correctedBytes });
+    expect(s.b.last('blob')).toMatchObject({ from: 'Cezary', tick: 1, bytes: correctedBytes });
+    expect(back.of('rejected')).toEqual([]);
+  });
+
+  it("serves a reloading reference the diverged donor's cache when nobody else is in sync", () => {
+    const s = startedRoom();
+    s.advance(TICK_MS);
+    s.b.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: divergentBytes });
+    ackThrough(s.a, 1, 1);
+    ackThrough(s.b, 1, 1, 2);
+    expect(s.a.of('snapshotRequest')).toHaveLength(1);
+    s.relay.disconnect(s.a.handle);
+    const back = s.introduce(TOKEN_A, 'Ania');
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.last('blob')).toMatchObject({ from: 'Bartek', tick: 1, bytes: divergentBytes });
+
+    s.advance(1);
+    expect(back.of('snapshotRequest')).toHaveLength(1);
+    back.send({ kind: 'blob', type: 'snapshot', to: null, tick: 1, bytes: correctedBytes });
+    expect(s.b.last('blob')).toMatchObject({ from: 'Ania', tick: 1, bytes: correctedBytes });
+    expect(back.of('rejected')).toEqual([]);
   });
 });
