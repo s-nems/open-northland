@@ -22,7 +22,7 @@ import {
   staffOf,
 } from '../../../game/snapshot.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
-import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
+import { messages, tribeName } from '../../../i18n/index.js';
 import { pct } from './bars.js';
 import {
   type ConstructionModel,
@@ -112,11 +112,12 @@ export interface BuildingPanelModel {
   readonly typeId: number;
   /** The building's civilization, the per-tribe art join key. */
   readonly tribeId: number | undefined;
+  /** The type's name without its tier. */
   readonly title: string;
   /** The type's full name, which Knowledge and the demolition question use. */
   readonly name: string;
-  /** The building's class, the head's kicker. */
-  readonly kicker: string;
+  /** The tier in the type's upgrade chain from 1, the line under the title; null for a single tier. */
+  readonly tier: number | null;
   readonly foreign: boolean;
   /** Another seat's owner line, or the civilization while the seat keeps houses of several. */
   readonly meta: string | null;
@@ -185,13 +186,21 @@ function ownsSeveralTribes(snapshot: WorldSnapshot, owner: number | undefined): 
   return tribes > 1;
 }
 
-/** The building class the head's kicker names; an unrecognized `maintype_*` reads as a plain building. */
-function kickerOf(kind: string | undefined): string {
-  const kinds: Readonly<Record<string, string>> = messages().hud.buildingPanel.kinds;
-  return (
-    (kind !== undefined && Object.hasOwn(kinds, kind) ? kinds[kind] : undefined) ??
-    messages().hud.buildingGeneric
-  );
+/** The locale tables name a tier of an upgrade chain "<name> (poziom N)"; the head shows the tier on
+ *  its own line. */
+const TIER_SUFFIX = /\s*\([^()]*\)$/;
+
+/** `def`'s place in its upgrade chain, 1 for the first tier; null for a type with no other tier. */
+function tierOf(ctx: UnitPanelModelContext, def: BuildingDef | undefined): number | null {
+  if (def === undefined) return null;
+  let tier = 1;
+  for (let below = def; ; tier++) {
+    const typeId = below.typeId;
+    const previous = ctx.buildings.find((candidate) => candidate.upgradeTarget === typeId);
+    if (previous === undefined) break;
+    below = previous;
+  }
+  return tier === 1 && def.upgradeTarget === undefined ? null : tier;
 }
 
 const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, rest: 1, piety: 2 };
@@ -374,6 +383,7 @@ export function buildingPanelModel(
   });
   const level = num(b.level) ?? 0;
   const name = buildingTitle(ctx, rawType);
+  const tier = tierOf(ctx, def);
   const stock =
     foreign || site
       ? []
@@ -394,11 +404,9 @@ export function buildingPanelModel(
     entityId: ent.id,
     typeId: rawType ?? -1,
     tribeId,
-    // A home's kicker names it already; its title is the tier.
-    title:
-      kind === 'home' ? formatMessage(messages().hud.buildingPanel.homeTitle, { level: level + 1 }) : name,
+    title: tier === null ? name : name.replace(TIER_SUFFIX, ''),
     name,
-    kicker: kickerOf(kind),
+    tier,
     foreign,
     meta,
     health: health === undefined || health.max <= 0 ? null : health,

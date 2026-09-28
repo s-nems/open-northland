@@ -500,15 +500,6 @@ export const enGame = {
       pickerEmpty: 'This vehicle carries nothing of this category',
     },
     buildingPanel: {
-      kinds: {
-        storage: 'Storehouse',
-        home: 'Home',
-        workplace: 'Workshop',
-        training: 'Training',
-        tower: 'Tower',
-        vehicle: 'Vehicle yard',
-        wonder: 'Wonder',
-      },
       prevTooltip: 'Previous building of this type · Shift+Tab',
       nextTooltip: 'Next building of this type · Tab',
       centre: 'Centre the view on the building',
@@ -532,7 +523,7 @@ export const enGame = {
       alarmOffTooltip: 'Call off the alarm: the sheltered go back to work',
       demolishQuestion: 'Demolish “{name}”?',
       demolishKeep: 'Keep',
-      homeTitle: 'Level {level}',
+      tier: 'Level {level}',
       status: {
         building: 'Construction',
         upgrading: 'Upgrade',

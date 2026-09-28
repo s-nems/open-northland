@@ -32,7 +32,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
     tribeId: undefined,
     title: 'Warm',
     name: 'Warm',
-    kicker: 'Warm',
+    tier: 1,
     foreign: false,
     meta: 'Warm',
     health: { hitpoints: 1, max: 10 },

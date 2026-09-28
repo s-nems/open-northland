@@ -537,10 +537,10 @@ vehicle panels' parts; implemented on the running game without a separate mockup
 rules hold: every state fits the plane without a scrollbar, every control's tooltip is a few words
 saying what the press does or why it is refused.
 
-- Head: the building's class as the kicker (Magazyn, Dom, Warsztat, Szkolenie, Wieża, Warsztat
-  pojazdów, Cud), the browse over the owner's buildings of the same type (chevrons, "2 / 3", Tab and
-  Shift+Tab), the building's name as the title; a home's title is its tier ("Poziom 2"), since the
-  kicker names it already. The meta line is another seat's owner line, or the
+- Head: no class kicker; its line carries only the browse over the owner's buildings of the same
+  type (chevrons, "2 / 3", Tab and Shift+Tab) and folds away when there is none. The title is the
+  type's name without its tier ("Chata kamieniarza", "Dom"), and the meta line under it names the
+  tier for a type with an upgrade chain ("Poziom 2"), then another seat's owner line, or the
   civilization while the seat keeps houses of more than one (a mixed-tribe seat must see which tribe
   a house belongs to: tribe partitions its economy). A building has no action ring, so the gold
   medallion stays blank and keeps the heading centred.
@@ -583,7 +583,8 @@ saying what the press does or why it is refused.
   batches in flight ("Nic teraz nie powstaje" while none runs) behind "rozwiń (N)" at the title's
   end, so Magazyn stays in view; "zwiń" folds it again, and the choice holds for the next house. A
   farm has one line: its fields and how many are ripe, the ripe share on the rule. What each worker makes is set in the worker's panel.
-- Wyposażenie (a finished home): a line per household ware of the home's tier, its pool on the rule
+- Wyposażenie (a finished home): a line per household ware of the home's tier (holy oil from
+  Poziom 3; a house placed at a higher tier outright stands on that tier), its pool on the rule
   and what it buys ("48 użyć", the holy fire "płonie" / "wygasły"), and a round toggle, a tick while
   the owner allows the ware in every home and a crossed circle while forbidden. The toggle is the
   owner's seat's only.

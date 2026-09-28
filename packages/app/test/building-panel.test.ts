@@ -283,7 +283,6 @@ describe('building panel model', () => {
 });
 
 describe('building panel orders and alerts', () => {
-  const copy = messages().hud.buildingPanel;
   const millSlots = sandboxCtx().buildings.find((def) => def.typeId === BUILDING_MILL)?.workers ?? [];
   const craft = millSlots.find((slot) => workerRoleOf(slot.jobType) !== 'carrier');
   const carrier = millSlots.find((slot) => workerRoleOf(slot.jobType) === 'carrier');
@@ -326,13 +325,17 @@ describe('building panel orders and alerts', () => {
     expect(rows.length > 0 && rows.every((row) => !row.running)).toBe(true);
   });
 
-  it("titles a home by its tier under the kicker, keeping the type's name for Knowledge", () => {
+  it('names the type without its tier and counts the tier up its upgrade chain', () => {
     const home = buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1);
-    expect(home.title).toBe(formatMessage(copy.homeTitle, { level: 1 }));
-    expect(home.name).not.toBe(home.title);
-    expect(buildingModel([buildingEntity(1, BUILDING_MILL)], 1).title).toBe(
-      buildingModel([buildingEntity(1, BUILDING_MILL)], 1).name,
-    );
+    expect(home.tier).toBe(1);
+    expect(home.title).not.toMatch(/\(/);
+    expect(home.name.startsWith(home.title)).toBe(true);
+    const next = sandboxCtx().buildings.find((def) => def.typeId === BUILDING_HOME_00)?.upgradeTarget;
+    if (next === undefined) throw new Error('the first home tier upgrades');
+    expect(buildingModel([buildingEntity(1, next)], 1).tier).toBe(2);
+    const mill = buildingModel([buildingEntity(1, BUILDING_MILL)], 1);
+    expect(mill.tier).toBeNull();
+    expect(mill.title).toBe(mill.name);
   });
 
   it('marks the input a posted worker waits for and a full product shelf', () => {

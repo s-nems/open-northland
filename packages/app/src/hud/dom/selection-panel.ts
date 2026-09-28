@@ -28,6 +28,7 @@ export function selectionBottomInset(plane: { readonly width: number; readonly h
  *  the kicker (with browsing), the title (with rename) and the meta line centred, the close at the
  *  right. */
 export interface SelectionHeadModel {
+  /** Empty with no browse hides the kicker's line. */
   readonly kicker: string;
   /** The chevrons and "i / n" over the kicker's peers; null shows the kicker alone. */
   readonly browse: {
@@ -227,6 +228,8 @@ export function createSelectionPanel(
       setHidden(prev, browse === null);
       setHidden(next, browse === null);
       setHidden(kickerCount, browse === null);
+      // A head without a kicker (a building) keeps the line for its browse alone.
+      setHidden(kicker, model.kicker === '' && browse === null);
       if (browse !== null) {
         write(kickerCount, `${browse.index} / ${browse.count}`);
         setTip(prev, browse.prevTooltip);

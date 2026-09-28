@@ -5349,13 +5349,14 @@ body.on-drag-scroll-cursor-hidden * {
   white-space: nowrap;
 }
 /* A workshop's inputs and products, each run under a small caption with a faint rule. */
+/* The caption hugs its own run; the room above it parts the run from the title or the inputs. */
 .on-hud .on-cargo-row--caption {
-  margin-top: 16px;
+  margin-top: 26px;
 }
 .on-hud .on-cargo-row--caption::before {
   content: attr(data-caption);
   position: absolute;
-  top: -15px;
+  top: -16px;
   left: 0;
   right: 0;
   padding-bottom: 1px;

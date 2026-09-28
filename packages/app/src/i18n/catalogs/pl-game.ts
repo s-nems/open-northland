@@ -482,15 +482,6 @@ export const plGame = {
       pickerEmpty: 'Ten pojazd nie wozi nic z tej kategorii',
     },
     buildingPanel: {
-      kinds: {
-        storage: 'Magazyn',
-        home: 'Dom',
-        workplace: 'Warsztat',
-        training: 'Szkolenie',
-        tower: 'Wieża',
-        vehicle: 'Warsztat pojazdów',
-        wonder: 'Cud',
-      },
       prevTooltip: 'Poprzedni budynek tego typu · Shift+Tab',
       nextTooltip: 'Następny budynek tego typu · Tab',
       centre: 'Centruj widok na budynku',
@@ -514,7 +505,7 @@ export const plGame = {
       alarmOffTooltip: 'Odwołaj alarm: schronieni wracają do pracy',
       demolishQuestion: 'Zburzyć budynek „{name}”?',
       demolishKeep: 'Zostaw',
-      homeTitle: 'Poziom {level}',
+      tier: 'Poziom {level}',
       status: {
         building: 'Budowa',
         upgrading: 'Rozbudowa',
