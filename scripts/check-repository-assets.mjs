@@ -17,10 +17,13 @@ const reviewedBinaryAssets = new Set([
   'packages/app/src/assets/menu-backdrops/straznicypolnocy.jpg',
   'packages/app/src/assets/menu-backdrops/wielka_inwazja.jpg',
   // The in-game HUD chrome: generated for this project, no original-game input (provenance in the custom
-  // art checkout's ui/foundation package, which publishes this copy).
+  // art checkout's ui/foundation and ui/mission-book packages, which publish these copies).
   'packages/app/src/assets/ui/foundation/icons.png',
   'packages/app/src/assets/ui/foundation/notices.png',
   'packages/app/src/assets/ui/foundation/surface.png',
+  'packages/app/src/assets/ui/mission-book/band.webp',
+  'packages/app/src/assets/ui/mission-book/spread.webp',
+  'packages/app/src/assets/ui/mission-book/vellum.webp',
   // The line tools' plan stake: generated for this project, no original-game input (provenance in the
   // custom art checkout's ui package); the blocked copy is the same image with its stones recoloured and
   // the ring copy the same image with its stake pulled.

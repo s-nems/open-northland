@@ -500,11 +500,11 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
 ### Mission book
 
 Misja is an open book over the map (ticket 14), not a framed window: the wood rails, bronze line,
-corners and knot of the window family around a leather cover with two vellum pages, and the tabs
-Zadanie, Cele and Kronika standing out of its fore-edge as wood tabs, parchment when selected. The
-book keeps its 990 x 620 design size and shrinks whole on a screen that cannot hold it. Its paint is
-code-native (CSS gradients over the surface texture and the paper grain); no generated art is
-delivered for it.
+corners and knot of the window family around a painted spread (`assets/ui/mission-book/spread.webp`:
+carved cover, bronze fittings, two vellum pages), and the tabs Zadanie, Cele and Kronika standing out
+of its fore-edge as wood tabs, parchment when selected. The page rectangles are measured on that
+spread, so a new spread must keep them or move `.on-book__spread`. The book keeps its 990 x 620 design
+size and shrinks whole on a screen that cannot hold it.
 
 - Only what the map provides: the page's text, its pictures, its world views and its goals. No
   narration, and a page the author left untitled gets no invented title; the book prints its chapter
@@ -526,7 +526,9 @@ delivered for it.
   with "Gra wstrzymana · opowieść trwa" and "Wznów grę"; on a shared clock nothing is held and the
   banner stays away. Opening the book from the beam or the slip never touches the pause.
 - The goal slip hangs from the top bar at the right edge, or below the script's info lines when they
-  stand there, and folds up into its wood tab "Cele" with the open count. It lists the goals just done,
+  stand there: a leaf of the book's vellum (`vellum.webp`) under a strip of the cover's carved band
+(`band.webp`), with bronze fittings at its lower corners. It folds up into its band tab "Cele" with the
+open count. It lists the goals just done,
   then the open ones with the new first, up to four, and "Otwórz księgę" with the book's key. A goal
   change never unfolds it: the folded tab and the beam's Misja entry carry a wax seal until the goal
   page shows the change. The slip hides while the book is open and with the HUD.

@@ -4101,73 +4101,16 @@ body.on-drag-scroll-cursor-hidden * {
   inset: 0;
   border: 7px solid var(--wood);
   border-image: linear-gradient(160deg, #6f5539, #3a2c1e 28%, #5a4631 52%, #2e2418 78%, #6f5539) 7;
+  /* The painted spread (assets/ui/mission-book): leather, bronze fittings and both vellum pages. The
+     spread's page rectangles are measured on it, so the art stretches over the whole book. */
   background:
-    radial-gradient(ellipse at 50% 50%, transparent 55%, #0a060399 100%),
-    linear-gradient(160deg, #4a2f1ce6, #2c1b0fee 45%, #3f2817e6),
-    var(--on-surface) center / 720px auto,
-    #2a1b10;
+    url("../../assets/ui/mission-book/spread.webp") -7px -7px / calc(100% + 14px) calc(100% + 14px) no-repeat,
+    #2a1d13;
   box-shadow:
     inset 0 0 0 1px var(--bronze),
-    inset 0 0 0 3px #0d0906aa,
-    inset 0 0 0 15px #00000000,
-    inset 0 0 0 16px #b08a5055;
-  isolation: isolate;
+    inset 0 0 0 3px #0d0906aa;
   mask-repeat: no-repeat;
   mask-composite: exclude;
-}
-/* The two vellum pages: warm in the middle, browned toward the edges, shadowed into the gutter, with
-   the stacked leaves showing at the fore-edges. */
-.on-hud .on-book__cover::before {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  inset: 36px 44px 28px;
-  border-radius: 5px 5px 8px 8px;
-  background:
-    linear-gradient(
-      90deg,
-      #0000 0 46.5%,
-      #5c4c3730 48.6%,
-      #3a2a1870 49.7%,
-      #2a1d1088 50%,
-      #3a2a1870 50.3%,
-      #5c4c3730 51.4%,
-      #0000 53.5%
-    ),
-    radial-gradient(ellipse 60% 75% at 25% 50%, #0000 55%, #7a5f3a2e 100%),
-    radial-gradient(ellipse 60% 75% at 75% 50%, #0000 55%, #7a5f3a2e 100%), var(--paper-grain),
-    linear-gradient(
-      90deg,
-      #d4c197,
-      #eadcb8 8%,
-      #f0e5c6 30%,
-      #e4d4ae 47%,
-      #cdb98c 50%,
-      #e4d4ae 53%,
-      #f0e5c6 70%,
-      #eadcb8 92%,
-      #d4c197
-    );
-  box-shadow:
-    -2px 2px 0 #cdb98c,
-    -4px 4px 0 #b39d70,
-    -6px 6px 0 #9c8558,
-    2px 2px 0 #cdb98c,
-    4px 4px 0 #b39d70,
-    6px 6px 0 #9c8558,
-    0 10px 18px #000b;
-}
-/* The spine's head and tail band between the pages. */
-.on-hud .on-book__gutter {
-  position: absolute;
-  left: 50%;
-  top: 26px;
-  bottom: 18px;
-  width: 16px;
-  transform: translateX(-50%);
-  border-radius: 6px;
-  background: linear-gradient(90deg, #1d120a, #4a2f1c 40%, #4a2f1c 60%, #1d120a);
-  box-shadow: 0 0 0 1px #0d0906;
 }
 .on-hud .on-book__cover .on-window__knot {
   top: -20px;
@@ -4924,9 +4867,11 @@ body.on-drag-scroll-cursor-hidden * {
 }
 
 /* On the map: the goal slip hangs under the top bar and folds up into its wood tab. */
+/* The goal slip: a leaf of the book's vellum hung under the top bar from a strip of the cover's carved
+   band, which is also its tab. */
 .on-hud .on-slip {
   position: absolute;
-  width: 268px;
+  width: 236px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -4939,25 +4884,57 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-slip__sheet {
   position: relative;
   width: 100%;
-  padding: 10px 14px 4px 16px;
+  padding: 9px 11px 2px 12px;
   pointer-events: auto;
   color: var(--ink);
   background:
-    var(--paper-grain),
-    linear-gradient(170deg, var(--parchment-hi), var(--parchment) 70%, var(--parchment-lo));
-  border: 1px solid #8d7549;
+    radial-gradient(ellipse 75% 80% at 50% 45%, #0000 60%, #6b532a40 100%),
+    url("../../assets/ui/mission-book/vellum.webp") center / 240px auto,
+    #e3d3ac;
+  border: 1px solid #3a2c1e;
   border-top: 0;
   box-shadow:
-    0 6px 16px #000a,
-    inset 0 0 18px #6b532a44,
-    inset 0 6px 6px -4px #3a2a1866;
+    0 6px 14px #000a,
+    inset 0 0 0 1px #f4ead066;
   animation: on-slip-unroll 0.25s ease-out;
   transform-origin: top;
 }
-/* Below the script's info lines the slip hangs free, so it closes its top edge. */
-.on-hud .on-slip--dropped .on-slip__sheet {
-  border-top: 1px solid #8d7549;
-  border-radius: 3px 3px 0 0;
+.on-hud .on-slip__sheet::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: 0;
+  height: 5px;
+  background:
+    url("../../assets/ui/mission-book/band.webp") left center / auto 40px,
+    #2e2418;
+  box-shadow:
+    0 1px 0 #b08a5088,
+    0 2px 4px #3a2a1899;
+}
+/* Bronze corner fittings on the lower edge, as on the book's cover. */
+.on-hud .on-slip__sheet::after {
+  --fitting: linear-gradient(var(--bronze), var(--bronze-lo));
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  height: 11px;
+  pointer-events: none;
+  background:
+    var(--fitting) left bottom / 11px 2px no-repeat,
+    var(--fitting) left bottom / 2px 11px no-repeat,
+    var(--fitting) right bottom / 11px 2px no-repeat,
+    var(--fitting) right bottom / 2px 11px no-repeat;
+}
+/* Below the script's info lines the slip hangs free, so its band gets a bronze head. */
+.on-hud .on-slip--dropped .on-slip__sheet::before {
+  top: -1px;
+  height: 6px;
+  border-top: 1px solid var(--bronze-lo);
+  border-radius: 2px 2px 0 0;
 }
 @keyframes on-slip-unroll {
   from {
@@ -4972,12 +4949,12 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-slip__row {
   display: grid;
-  grid-template-columns: 24px 1fr;
-  gap: 8px;
+  grid-template-columns: 18px 1fr;
+  gap: 7px;
   align-items: start;
-  padding: 6px 0;
-  font-size: 14px;
-  line-height: 1.3;
+  padding: 4px 0;
+  font-size: 12.5px;
+  line-height: 1.28;
   border-top: 1px dotted #8d754977;
 }
 .on-hud .on-slip__row:first-child {
@@ -4989,12 +4966,18 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--ink-muted);
 }
 .on-hud .on-slip__row .on-book__box {
+  width: 13px;
+  height: 13px;
+  margin: 1px 0 0 2px;
+  border-width: 1.5px;
+}
+.on-hud .on-slip__row .on-book__seal {
   width: 17px;
   height: 17px;
 }
-.on-hud .on-slip__row .on-book__seal {
-  width: 22px;
-  height: 22px;
+.on-hud .on-slip__row .on-book__seal .on-book__ico {
+  width: 11px;
+  height: 11px;
 }
 .on-hud .on-slip__row--done .on-book__seal {
   animation: on-slip-stamp 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.2s both;
@@ -5007,7 +4990,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-slip__row em {
   display: block;
-  font: 700 10.5px var(--font-body);
+  font: 700 9.5px var(--font-body);
   font-style: normal;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -5020,8 +5003,8 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--ink-muted);
 }
 .on-hud .on-slip__row--new {
-  margin: 0 -8px;
-  padding: 6px 8px;
+  margin: 0 -7px;
+  padding: 4px 7px;
   background: linear-gradient(90deg, #c98a3a33, transparent);
 }
 .on-hud .on-slip .on-book__goal-text--emphasis {
@@ -5034,69 +5017,78 @@ body.on-drag-scroll-cursor-hidden * {
   justify-content: space-between;
   gap: 6px;
   width: 100%;
-  min-height: 36px;
-  margin-top: 2px;
+  min-height: 26px;
+  margin-top: 1px;
   padding: 0;
   border: 0;
   border-top: 1px solid #8d754955;
   background: none;
   color: #7a2e1d;
-  font: 700 13px var(--font-body);
+  font: 700 11.5px var(--font-body);
 }
 .on-hud .on-slip__book > span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 .on-hud .on-slip__book > span:first-child {
   color: var(--ink-muted);
   font-weight: 500;
 }
-.on-hud .on-slip__book .on-key {
-  background: #2b2117;
+.on-hud .on-slip__book:hover > span:last-child {
+  color: #a8412f;
 }
+.on-hud .on-slip__book .on-key {
+  padding: 0 5px;
+  background: #2b2117;
+  font-size: 10px;
+}
+/* The tab: a short length of the carved band with a bronze edge. */
 .on-hud .on-slip__tab {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  margin-right: 12px;
-  padding: 4px 10px 6px 12px;
+  gap: 5px;
+  min-height: 24px;
+  margin-right: 10px;
+  padding: 1px 7px 3px 10px;
   pointer-events: auto;
-  border: 1px solid var(--wood-lo);
+  border: 1px solid #0d0906;
   border-top: 0;
-  border-radius: 0 0 6px 6px;
-  background: linear-gradient(var(--wood), var(--wood-hi));
-  color: #e9dcbd;
-  font: 600 13px var(--font-body);
+  border-radius: 0 0 5px 5px;
+  background:
+    linear-gradient(#0000 55%, #0006),
+    url("../../assets/ui/mission-book/band.webp") 0 40% / auto 44px,
+    #2e2418;
+  color: #ecdcb4;
   box-shadow:
-    0 3px 6px #000a,
-    inset 0 -1px #fff2;
+    inset 0 0 0 1px #b08a5059,
+    0 3px 6px #000a;
+  text-shadow: 0 1px 1px #000c;
 }
 .on-hud .on-slip__tab:hover {
-  background: linear-gradient(var(--wood-hi), #8a6d4a);
   color: #fff4d8;
+  box-shadow:
+    inset 0 0 0 1px #d6b27299,
+    0 3px 6px #000a;
 }
 .on-hud .on-slip__label {
-  font: 700 13px var(--font-title);
-  letter-spacing: 0.08em;
+  font: 700 11px var(--font-title);
+  letter-spacing: 0.1em;
 }
 .on-hud .on-slip__tab .on-tab__count {
   margin: 0;
-  font-weight: 700;
-  opacity: 0.9;
+  font: 700 11px var(--font-body);
+  color: var(--bronze-hi);
+  opacity: 1;
 }
 .on-hud .on-slip__fold {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   transform: rotate(180deg);
 }
 .on-hud .on-slip__tab--open {
-  margin-top: -1px;
-  background: linear-gradient(var(--parchment-lo), #a8966d);
-  color: var(--ink);
-  border-color: #8d7549;
+  margin-top: 0;
 }
 .on-hud .on-slip__tab--open .on-slip__fold {
   transform: none;

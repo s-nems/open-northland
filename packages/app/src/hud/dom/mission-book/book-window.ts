@@ -107,7 +107,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   scene.innerHTML = `<div class="on-book-scene__dim"></div>
     <section class="on-book" aria-label="${escapeHtml(copy.title)}">
       <div class="on-book__shadow"></div>
-      <div class="on-book__cover">${WINDOW_ORNAMENTS}<span class="on-book__gutter"></span></div>
+      <div class="on-book__cover">${WINDOW_ORNAMENTS}</div>
       <div class="on-book__tabs" role="tablist" aria-label="${escapeHtml(copy.tabsLabel)}">${TABS.map(
         (t) =>
           `<button type="button" role="tab" class="on-book__tab" data-tab="${t}" aria-selected="false"><span>${escapeHtml(copy.tabs[t])}${

@@ -25,8 +25,8 @@ export interface GoalSlipDeps {
 }
 
 /**
- * The goal slip on the map: a parchment list of the open goals under the top bar that folds up into
- * its wood tab. A goal change never unfolds it; the folded tab carries a seal until the book is read.
+ * The goal slip on the map: a vellum list of the open goals under the top bar that folds up into
+ * its band tab. A goal change never unfolds it; the folded tab carries a seal until the book is read.
  */
 export interface GoalSlip {
   /** Show the goals as they stand; nothing changes the markup unless the list, a mark or the fold did. */
