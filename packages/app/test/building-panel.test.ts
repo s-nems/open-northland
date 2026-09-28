@@ -1,6 +1,6 @@
 import type { Entity, PlayerCommand } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER } from '../src/catalog/jobs.js';
+import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER, JOB_TRADER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
   BUILDING_FARM,
@@ -24,12 +24,10 @@ import {
   buildingStatus,
   raisingCrew,
   type StaffGroup,
-  type StockRow,
   shelteringIn,
 } from '../src/hud/details-panel/model/building.js';
 import { orderViews } from '../src/hud/dom/building-panel/portrait.js';
 import { STAFF_WELLS_MAX, staffWells } from '../src/hud/dom/building-panel/staff.js';
-import { openingStockTab } from '../src/hud/dom/building-panel/stock.js';
 import { formatMessage, messages } from '../src/i18n/index.js';
 import { buildingPanelActions, buildingPeers } from '../src/view/unit-controls/building-panel.js';
 import { buildingEntity, snapshotOf as panelSnapshotOf, sandboxCtx } from './support/sandbox.js';
@@ -290,7 +288,7 @@ describe('building panel orders and alerts', () => {
   const craft = millSlots.find((slot) => workerRoleOf(slot.jobType) !== 'carrier');
   const carrier = millSlots.find((slot) => workerRoleOf(slot.jobType) === 'carrier');
 
-  it('looks for the craft with a free seat first, then a free carrier seat, and a site for builders', () => {
+  it("looks for the house's craft even with every seat taken, never a collector, a store's traders", () => {
     if (craft === undefined || carrier === undefined)
       throw new Error('the mill declares a craft and a carrier');
     expect(buildingModel([buildingEntity(1, BUILDING_MILL)], 1).orders?.hire?.jobType).toBe(craft.jobType);
@@ -299,7 +297,12 @@ describe('building panel orders and alerts', () => {
       components: { Settler: { jobType: craft.jobType }, JobAssignment: { workplace: 1 } },
     }));
     expect(buildingModel([buildingEntity(1, BUILDING_MILL), ...millers], 1).orders?.hire?.jobType).toBe(
-      carrier.jobType,
+      craft.jobType,
+    );
+    // The sandbox joinery seats a collector alone: nobody to look for.
+    expect(buildingModel([buildingEntity(1, BUILDING_JOINERY)], 1).orders?.hire).toBeNull();
+    expect(buildingModel([buildingEntity(1, BUILDING_HEADQUARTERS)], 1).orders?.hire?.jobType).toBe(
+      JOB_TRADER,
     );
     const site = buildingModel(
       [buildingEntity(1, BUILDING_MILL, { built: 0, components: { UnderConstruction: { labor: 0 } } })],
@@ -308,6 +311,16 @@ describe('building panel orders and alerts', () => {
     expect(site.orders?.hire?.jobType).toBe(JOB_BUILDER);
     expect(site.orders?.upgrade.control).not.toBe(true);
     expect(buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1).orders?.hire).toBeNull();
+  });
+
+  it("lists a store under tabs and a workshop's inputs over its products", () => {
+    expect(buildingModel([buildingEntity(1, BUILDING_HEADQUARTERS)], 1).stockLayout).toBe('tabs');
+    const mill = buildingModel([buildingEntity(1, BUILDING_MILL)], 1);
+    expect(mill.stockLayout).toBe('split');
+    expect(mill.stock.map((row) => [row.goodType, row.product === true])).toEqual([
+      [GOOD_WHEAT, false],
+      [GOOD_FLOUR, true],
+    ]);
   });
 
   it("titles a home by its tier under the kicker, keeping the type's name for Knowledge", () => {
@@ -467,20 +480,5 @@ describe('building staff wells', () => {
     expect(cut).toHaveLength(STAFF_WELLS_MAX);
     expect(cut.filter((well) => well.kind === 'person')).toHaveLength(3);
     expect(cut.some((well) => well.kind === 'more')).toBe(false);
-  });
-});
-
-describe('building stock tabs', () => {
-  const row = (goodType: number, category: number, amount: number): StockRow => ({
-    goodType,
-    label: `g${goodType}`,
-    amount,
-    category,
-  });
-
-  it('opens on the first category holding anything, else the first stored', () => {
-    expect(openingStockTab([row(1, 1, 0), row(2, 4, 3), row(3, 6, 1)], 8)).toBe(4);
-    expect(openingStockTab([row(1, 3, 0), row(2, 5, 0)], 8)).toBe(3);
-    expect(openingStockTab([], 8)).toBe(0);
   });
 });

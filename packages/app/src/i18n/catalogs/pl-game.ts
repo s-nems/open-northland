@@ -215,6 +215,8 @@ export const plGame = {
       military: 'Wojsko',
     },
     stockTabs: ['Żywność', 'Napoje', 'Surowce', 'Budulec', 'Narzędzia', 'Wyroby', 'Wojsko', 'Inne'],
+    stockOverview: 'Wszystkie: czego jest najwięcej',
+    stockOverviewEmpty: 'Nic tu teraz nie leży',
     equipmentSlots: {
       boots: 'Buty',
       tools: 'Narzędzia',

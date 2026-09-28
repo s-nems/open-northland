@@ -6,7 +6,7 @@ import {
   indexesOf,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { JOB_BUILDER } from '../../../catalog/jobs.js';
+import { JOB_BUILDER, JOB_TRADER } from '../../../catalog/jobs.js';
 import { workerRoleOf } from '../../../game/sandbox/index.js';
 import {
   buildingTribeOf,
@@ -94,6 +94,10 @@ export interface BuildingOrdersModel {
   readonly hire: { readonly jobType: number; readonly label: string } | null;
 }
 
+/** How Magazyn lists the shelves: a store under category tabs, a workshop its inputs over its
+ *  products, anything else one list. */
+export type StockLayout = 'tabs' | 'split' | 'list';
+
 /** An agreement this house offers a visiting trader: the trader gives one side and takes the other. */
 export interface BuildingOfferModel {
   readonly give: TradeOfferSide;
@@ -125,6 +129,7 @@ export interface BuildingPanelModel {
   readonly staff: BuildingStaffModel | null;
   readonly production: ProductionModel | null;
   readonly stock: readonly StockRow[];
+  readonly stockLayout: StockLayout;
   readonly homeQuality: HomeQualityModel | null;
   readonly offers: readonly BuildingOfferModel[];
 }
@@ -230,19 +235,23 @@ function homeQuality(
   };
 }
 
-/** The trade Pracownicy looks for: a site's builders, else the first trade with a free seat, a
- *  craft before the carriers, else the first craft. */
-function hireJob(staff: BuildingStaffModel | null, site: boolean): number | null {
+/** The trade Pracownicy looks for: a site's builders, a store's traders, else the house's own craft,
+ *  one with a free seat first. The carriers and gatherers (collectors) a workshop keeps are never it. */
+function hireJob(
+  def: BuildingDef | undefined,
+  staff: BuildingStaffModel | null,
+  site: boolean,
+): number | null {
   if (site) return JOB_BUILDER;
+  if (def?.kind === 'storage') return JOB_TRADER;
   if (staff?.kind !== 'workers') return null;
-  const slots = staff.groups.flatMap((group) =>
-    group.jobType === null || group.capacity === null
+  const helper = (jobType: number): boolean => ['carrier', 'gatherer'].includes(workerRoleOf(jobType));
+  const crafts = staff.groups.flatMap((group) =>
+    group.jobType === null || group.capacity === null || helper(group.jobType)
       ? []
       : [{ jobType: group.jobType, free: group.people.length < group.capacity }],
   );
-  const carrier = (slot: { jobType: number }): boolean => workerRoleOf(slot.jobType) === 'carrier';
-  const trades = [...slots.filter((slot) => !carrier(slot)), ...slots.filter(carrier)];
-  return (trades.find((slot) => slot.free) ?? trades[0])?.jobType ?? null;
+  return (crafts.find((slot) => slot.free) ?? crafts[0])?.jobType ?? null;
 }
 
 function ordersModel(
@@ -270,9 +279,9 @@ function ordersModel(
   };
 }
 
-/** The shelves that hold the house up: the inputs its posted workers wait for, and its products'
- *  full shelves. */
-function withStockAlerts(
+/** The shelves marked for Magazyn: the inputs its posted workers wait for, its products' full shelves,
+ *  and the products themselves, listed after the inputs. */
+function markedStock(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   def: BuildingDef | undefined,
@@ -285,11 +294,19 @@ function withStockAlerts(
     if (status?.kind === 'waitingInput') waiting.add(status.goodType);
   }
   const products = new Set(recipeOutputs(ctx, def).map((output) => output.goodType));
-  return rows.map((row): StockRow => {
-    const full = products.has(row.goodType) && row.capacity !== undefined && row.amount >= row.capacity;
+  const marked = rows.map((row): StockRow => {
+    const product = products.has(row.goodType);
+    const full = product && row.capacity !== undefined && row.amount >= row.capacity;
     const alert: StockAlert | null = waiting.has(row.goodType) ? 'waiting' : full ? 'full' : null;
-    return alert === null ? row : { ...row, alert };
+    return { ...row, ...(alert === null ? {} : { alert }), ...(product ? { product } : {}) };
   });
+  return [...marked.filter((row) => row.product !== true), ...marked.filter((row) => row.product === true)];
+}
+
+function stockLayoutOf(def: BuildingDef | undefined, rows: readonly StockRow[]): StockLayout {
+  if (def?.kind === 'storage') return 'tabs';
+  const products = rows.filter((row) => row.product === true).length;
+  return products > 0 && products < rows.length ? 'split' : 'list';
 }
 
 /** The good the first posted worker's reading names, labelled; null when it names none. */
@@ -357,6 +374,16 @@ export function buildingPanelModel(
   });
   const level = num(b.level) ?? 0;
   const name = buildingTitle(ctx, rawType);
+  const stock =
+    foreign || site
+      ? []
+      : markedStock(
+          ctx,
+          snapshot,
+          def,
+          ent.id,
+          stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
+        );
   const meta = foreign
     ? foreignOwnerLine(ctx, owner, tribeId)
     : ownsSeveralTribes(snapshot, owner)
@@ -376,20 +403,12 @@ export function buildingPanelModel(
     meta,
     health: health === undefined || health.max <= 0 ? null : health,
     status,
-    orders: foreign ? null : ordersModel(ctx, def, ent, finished, hireJob(staff, site)),
+    orders: foreign ? null : ordersModel(ctx, def, ent, finished, hireJob(def, staff, site)),
     construction: construction === null || foreign ? null : { ...construction, pct: builtPct, upgrade },
     staff,
     production: foreign || site ? null : productionModel(ctx, snapshot, def, ent),
-    stock:
-      foreign || site
-        ? []
-        : withStockAlerts(
-            ctx,
-            snapshot,
-            def,
-            ent.id,
-            stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
-          ),
+    stock,
+    stockLayout: stockLayoutOf(def, stock),
     homeQuality:
       foreign || def === undefined || !finished ? null : homeQuality(ctx, snapshot, def, ent, level),
     offers: (ctx.tradeOffersAt?.(ent.id) ?? []).map((offer) => ({

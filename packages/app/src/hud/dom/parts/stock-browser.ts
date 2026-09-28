@@ -1,4 +1,6 @@
+import { messages } from '../../../i18n/index.js';
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
+import { STOCK_OVERVIEW_GLYPH } from '../icons.js';
 import { amountText } from './amount.js';
 import { type CategoryTab, createCategoryTabs } from './category-tabs.js';
 import { element, setAttribute, setClass, setStyleVar, setTip, write } from './dom.js';
@@ -39,13 +41,14 @@ export interface StockBrowserModel {
   readonly label: string;
   /** Every good the house stores; with the tab strip, the open tab's are listed. */
   readonly rows: readonly StockBrowserRow[];
-  /** The line shown while there are no rows. */
+  /** The line shown while a category lists no rows. */
   readonly empty: string;
 }
 
-/** The optional category strip: one icon tab per stock category, each browser keeping its own. */
+/** The optional category strip: the overview, then one icon tab per stock category, each browser
+ *  keeping its own. */
 export interface StockBrowserTabs {
-  /** One face per category, in tab order. */
+  /** One face per category, in tab order; the overview's comes before them. */
   readonly glyphs: readonly string[];
   readonly groupLabel: string;
   /** The categories' names in tab order, read at each paint for the current language. */
@@ -57,8 +60,8 @@ export interface StockBrowserTabs {
  * optional button the owner defines. It knows nothing of what the button means: the trade window
  * uses it for its two houses, and the building window is meant to reuse it for a house's stock.
  *
- * With the optional tab strip the browser lists the open category's goods and keeps that tab itself,
- * opening on the first category that holds anything. Goods in stock lead and the empty ones follow
+ * With the optional tab strip the browser lists the open tab's goods and keeps that tab itself, opening
+ * on the overview of the largest stocks. In a category, goods in stock lead and the empty ones follow
  * faded, in the owner's order within each group. That order is taken when the listed goods change
  * (another tab, another house) or on `reorder`, and kept while only amounts change, so a row never
  * moves under the cursor as the sim ticks. The list scrolls inside itself; the owner sizes it.
@@ -69,8 +72,6 @@ export interface StockBrowser {
   /** The category strip, placed by the owner (beside a portrait, over the list); null without one. */
   readonly tabs: HTMLElement | null;
   update(model: StockBrowserModel): void;
-  /** The open category, or null without a strip. */
-  activeTab(): number | null;
   /** Take the order and the scroll afresh (a reopened window). */
   reorder(): void;
   /** Another subject: the order, the scroll and the open tab are taken afresh. */
@@ -87,7 +88,7 @@ interface RowView {
 }
 
 /** What decides whether the list takes its order afresh: the set of goods, not their amounts. */
-export function stockGoodsKey(rows: readonly StockBrowserRow[]): string {
+export function stockGoodsKey(rows: readonly { readonly goodType: number }[]): string {
   return rows
     .map((row) => row.goodType)
     .sort((x, y) => x - y)
@@ -117,10 +118,26 @@ export function stockTabStates(
   return states;
 }
 
-/** The tab a fresh browser opens on: the first category holding anything, else the first. */
-export function firstStockedTab(states: readonly { readonly stocked: number }[]): number {
-  const found = states.findIndex((state) => state.stocked > 0);
-  return found < 0 ? 0 : found;
+/** The strip's first tab, before the categories: the house's largest stocks. */
+export const OVERVIEW_TAB = 0;
+/** The overview lists as many goods as the list shows unscrolled. */
+export const OVERVIEW_LINES = 8;
+
+/** The goods under strip tab `tab`: the overview's largest stocks, most first, or one category's. */
+export function stockTabRows<Row extends { readonly amount: number; readonly category: number }>(
+  rows: readonly Row[],
+  tab: number,
+): Row[] {
+  if (tab !== OVERVIEW_TAB) return rows.filter((row) => row.category === tab - 1);
+  return rows
+    .filter((row) => row.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, OVERVIEW_LINES);
+}
+
+/** The strip's faces: the overview's, then the categories'. */
+export function stockStripGlyphs(categories: readonly string[]): readonly string[] {
+  return [STOCK_OVERVIEW_GLYPH, ...categories];
 }
 
 /** Where a row's button sits: after the numbers, or before the icon (the right-hand list of a pair,
@@ -150,7 +167,7 @@ export function createStockBrowser(
   const strip =
     tabsOptions === undefined
       ? null
-      : createCategoryTabs(tabsOptions.glyphs, tabsOptions.groupLabel, (index) => {
+      : createCategoryTabs(stockStripGlyphs(tabsOptions.glyphs), tabsOptions.groupLabel, (index) => {
           active = index;
           if (last !== null) paint(last);
         });
@@ -196,14 +213,21 @@ export function createStockBrowser(
   const paintTabs = (rows: readonly StockBrowserRow[]): number | null => {
     if (strip === null || tabsOptions === undefined) return null;
     const states = stockTabStates(rows, tabsOptions.glyphs.length);
-    const open = active ?? firstStockedTab(states);
+    const open = active ?? OVERVIEW_TAB;
     active = open;
     const labels = tabsOptions.labels();
-    const tabs: CategoryTab[] = states.map((state, category) => ({
-      label: labels[category] ?? '',
-      empty: state.stocked === 0,
-      marked: state.marked,
-    }));
+    const tabs: CategoryTab[] = [
+      {
+        label: messages().hud.stockOverview,
+        empty: states.every((state) => state.stocked === 0),
+        marked: false,
+      },
+      ...states.map((state, category) => ({
+        label: labels[category] ?? '',
+        empty: state.stocked === 0,
+        marked: state.marked,
+      })),
+    ];
     strip.update(tabs, open);
     return open;
   };
@@ -212,13 +236,15 @@ export function createStockBrowser(
     last = model;
     setAttribute(list, 'aria-label', model.label);
     const open = paintTabs(model.rows);
-    const rows = open === null ? model.rows : model.rows.filter((row) => row.category === open);
-    const key = stockGoodsKey(rows);
+    const rows = open === null ? model.rows : stockTabRows(model.rows, open);
+    // Another tab takes the order afresh even over the same goods: the overview ranks by amount.
+    const key = `${open}:${stockGoodsKey(rows)}`;
     if (key !== goodsKey) {
       goodsKey = key;
       rebuild(rows);
     }
-    write(empty, rows.length === 0 ? model.empty : '');
+    const emptyWords = open === OVERVIEW_TAB ? messages().hud.stockOverviewEmpty : model.empty;
+    write(empty, rows.length === 0 ? emptyWords : '');
     setClass(root, 'on-stock--empty', rows.length === 0);
     for (const row of rows) {
       const view = views.get(row.goodType);
@@ -247,7 +273,6 @@ export function createStockBrowser(
     element: root,
     tabs: strip?.element ?? null,
     update: paint,
-    activeTab: () => active,
     reorder(): void {
       goodsKey = '';
     },

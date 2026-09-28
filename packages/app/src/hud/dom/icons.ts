@@ -121,6 +121,10 @@ export const STOCK_TAB_GLYPHS: readonly string[] = [
   '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M9.5 3h5v2.2h-.9v3.4c3.1 1 5.4 3.8 5.4 7 0 3.8-3.1 6.4-7 6.4s-7-2.6-7-6.4c0-3.2 2.3-6 5.4-7V5.2h-.9ZM11.6 10c-2.3.8-3.9 2.3-4.3 4.2h9.4c-.4-1.9-2-3.4-4.3-4.2l-.2-.1V6.6h-.4v3.3Z"/></svg>',
 ];
 
+/** The overview tab before the categories: three bars, longest first, the largest stocks. */
+export const STOCK_OVERVIEW_GLYPH =
+  '<svg aria-hidden="true" class="on-glyph on-glyph--solid" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="4" rx=".6"/><rect x="3" y="10" width="13" height="4" rx=".6"/><rect x="3" y="15.5" width="8" height="4" rx=".6"/></svg>';
+
 /** The residents' counters: filled silhouettes (a dress, a tunic, a small figure), never faces. */
 export const FIGURE = {
   woman:

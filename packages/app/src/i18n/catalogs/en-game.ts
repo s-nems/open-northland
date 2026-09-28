@@ -228,6 +228,8 @@ export const enGame = {
       'Military',
       'Other',
     ],
+    stockOverview: 'All: the largest stocks',
+    stockOverviewEmpty: 'Nothing is stored here now',
     equipmentSlots: {
       boots: 'Boots',
       tools: 'Tools',

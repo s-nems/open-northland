@@ -5242,21 +5242,28 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--active);
   filter: drop-shadow(0 0 3px #e3b86888);
 }
-/* A product's ingredients beside its name: the good and "have/need", amber while the shelf lacks it. */
+/* A product's ingredients beside its name: the good and "have/need", amber while the shelf lacks it.
+   The name takes its whole width first; the ingredients get what is left, and one that does not fit
+   wraps onto a hidden second line (the tooltip lists them all). */
 .on-hud .on-cargo-row--needs {
-  grid-template-columns: 22px 1fr auto auto;
+  grid-template-columns: 22px auto minmax(0, 1fr) auto;
 }
 .on-hud .on-cargo-row__needs {
   display: flex;
-  gap: 6px;
-}
-.on-hud .on-cargo-row__needs:empty {
-  display: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  column-gap: 6px;
+  height: 25px;
+  overflow: hidden;
 }
 .on-hud .on-need {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 2px;
+  /* A whole line high, so a wrapped chip starts below the box. */
+  height: 25px;
   font: 600 11px / 1 var(--font-body);
   font-variant-numeric: tabular-nums;
   color: var(--muted);
@@ -5340,6 +5347,19 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
+}
+/* A workshop's products under its inputs, past a rule. */
+.on-hud .on-cargo-row--products {
+  margin-top: 5px;
+}
+.on-hud .on-cargo-row--products::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #c9a26266;
 }
 .on-hud .on-building-stock .on-tabs--icons {
   margin-bottom: 4px;

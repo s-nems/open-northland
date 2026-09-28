@@ -261,18 +261,19 @@ assistive tech.
   names it), the name as a link (select and bring into view, which closes the window with
   the trader's selection, as a residents row does; resting shows the hover card and no tooltip, which
   would cover it) and the arrow while
-  the trader heads there, over the house's own strip of the eight stock categories as square icon
-  tabs with solid silhouettes (a loaf, a tankard, a log, bricks, a mallet, a boot, a sword, a potion
-  flask), standing on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
+  the trader heads there, over the house's own strip of square icon tabs with solid silhouettes:
+  Wszystkie first (three bars, the house's eight largest stocks, most first), then the eight stock
+  categories (a loaf, a tankard, a log, bricks, a mallet, a boot, a sword, a potion flask), standing
+  on the list's parchment. Each house keeps its own open tab (A on Żywność while B is
   on Wojsko), a tab's tooltip is the category's name alone (a category the house holds nothing of
   reads faded), a lit dot marks a category with a transfer, and the
   arrow keys move along the strip. A new trader, or a slot that took another house since the last
-  open, opens that house on the first category it holds anything of; the open tabs stay across ticks
+  open, opens that house on Wszystkie; the open tabs stay across ticks
   and a reopen for the same trader and houses. The stock browser
   owns the strip, so the building window can show the same per house.
 - Under the head the house's stock of the open tab: per good its icon, name, "amount / shelf" and a
-  thin meter, the goods in stock first and the empty ones faded after them. That order is taken when
-  the window opens or the tab changes and kept while amounts change, so no row moves under the
+  thin meter; in a category the goods in stock first and the empty ones faded after them. That order
+  is taken when the window opens or the tab changes and kept while amounts change, so no row moves under the
   cursor. Every list shows nine 28 px rows whatever the tab holds, so switching tabs moves nothing,
   and nine is what fits the 768 px plane of a 1280 × 720 screen (the window stands 567 px of its
   592 px allowance); a longer category ("Inne" in a warehouse) scrolls inside its list, never the
@@ -548,11 +549,12 @@ saying what the press does or why it is refused.
   tiles in two rows, each in a fixed place so the hand learns it: Rozbuduj (its tooltip the next tier's
   bill; faded with the reason when there is no higher tier, the house is unfinished or a technology is
   missing), Anuluj in its place while a tier is being raised, Pracownicy (opens Mieszkańcy filtered to
-  who could take the trade: a site's builders, else the first trade with a free seat, a craft before
-  carriers; faded for a house employing nobody), Wiedza (the type's Knowledge entry), and Zburz in red,
+  who could take the trade: a site's builders, a store's traders, else the house's own craft, one
+  with a free seat first, never its carriers or collectors; faded for a house employing none), Wiedza (the type's Knowledge entry), and Zburz in red,
   which asks in the confirmation dialog first. Another seat's house offers Wiedza alone. The status
   strip along the frame's floor carries the alarm bell at its end for a house that shelters civilians
-  (gold while the alarm is up), and names the first state that holds: Budowa or Rozbudowa with the percent and a proven stall (brak
+  (gold while the alarm is up), shows its whole words in a tooltip when they are cut short, and names
+  the first state that holds: Budowa or Rozbudowa with the percent and a proven stall (brak
   materiałów and brak budowniczego in amber, dostawa w drodze in green), Alarm with the sheltered
   count in amber, Zamieszkany or Pusty for a home, Pracuje with the product of the batch furthest
   along, Brak załogi in amber or Obsadzony for a house with tower posts (by its garrison alone,
@@ -574,7 +576,8 @@ saying what the press does or why it is refused.
   Workforce is assigned from the person's panel; the building side only shows it.
 - Produkcja: a line per product in recipe order (a breeding farm's per species, its herd against the
   cap in the name), its ingredients beside the name as the good and "have/need" for one cycle (amber
-  while the shelf lacks it), the running batch's percent on the rule and in figures, the recipe in the
+  while the shelf lacks it; the full name comes first, and the ingredients that do not fit beside it
+  are left to the tooltip), the running batch's percent on the rule and in figures, the recipe in the
   tooltip;
   a product with no batch running reads muted. A farm has one line: its fields and how many are ripe,
   the ripe share on the rule. What each worker makes is set in the worker's panel.
@@ -586,9 +589,11 @@ saying what the press does or why it is refused.
   "1 [coin] → 4 [iron]"; another seat's trade house shows them too.
 - Magazyn, last: every good the house stores in its slot order, "amount / shelf" (a decimal only for a
   banked fraction), the shelf's fill on the rule, an empty shelf muted, the input a posted worker waits
-  for in amber and a product's full shelf in red, since production stops there. A house storing more than
-  eight goods lists one category at a time under the stock's icon tabs (a category the house does not
-  store faded, a dot on one that holds something), opening on the first category that holds anything.
+  for in amber and a product's full shelf in red, since production stops there. A workshop lists its
+  inputs first and its products under a thin rule. A store lists its goods under the stock's icon
+  tabs, opening on Wszystkie (its eight largest stocks, most first), then one category per tab (a
+  category the house does not store faded, a dot on one that holds something); any other house lists
+  every shelf.
   Past eight lines the list scrolls in place and fades at the bottom; when the panel would run past the
   plane, the list alone gives way, down to three lines.
 - First paint at map start, as the settler panel's: a made-up building lights every section once.

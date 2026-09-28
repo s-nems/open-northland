@@ -119,7 +119,15 @@ export function createPortraitSection(
   const orders = element('div', 'on-orders on-orders--tiles');
   const status = element('div', 'on-status-strip', '<i class="on-status-strip__dot"></i><span></span>');
   const text = status.lastElementChild;
-  if (text === null) throw new Error('building portrait: status');
+  if (!(text instanceof HTMLElement)) throw new Error('building portrait: status');
+  // The strip's words in a tooltip only while they are cut short. Measured as the pointer comes in,
+  // before the tip layer's own handler reads the tip.
+  let statusWords = '';
+  let clipped = false;
+  status.addEventListener('mouseover', () => {
+    clipped = text.scrollWidth > text.clientWidth;
+    setTip(status, clipped ? statusWords : '');
+  });
   const bell = button('on-status-strip__bell', GLYPH.bell);
   bell.addEventListener('click', () => {
     const shown = current();
@@ -207,7 +215,9 @@ export function createPortraitSection(
       }
       paintOrders(model);
       const state = model.status;
-      write(text, state.detail === null ? state.label : `${state.label} · ${state.detail}`);
+      statusWords = state.detail === null ? state.label : `${state.label} · ${state.detail}`;
+      write(text, statusWords);
+      if (clipped) setTip(status, statusWords);
       setClass(status, 'on-status-strip--trouble', state.tone === 'trouble');
       setClass(status, 'on-status-strip--neutral', state.tone === 'neutral');
       const alarm = model.orders?.alarm ?? null;

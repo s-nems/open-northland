@@ -25,6 +25,7 @@ import {
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionReader } from '../../game/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
+import { canonicalJobType } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
@@ -691,10 +692,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           applyNavEntry(surfaces, 'residents', () => {
             const residents = windows.byId.residents;
             if (!residents.isOpen()) residents.toggle();
-            const offered = PROFESSIONS.some((profession) => profession.jobType === jobType);
+            // A sandbox slot's trade is rebased; the filter lists the raw trades.
+            const trade = canonicalJobType(jobType);
+            const offered = PROFESSIONS.some((profession) => profession.jobType === trade);
             residents.restore({
               ...residents.state(),
-              filters: { ...NO_RESIDENT_FILTERS, canBecome: offered ? jobType : null },
+              filters: { ...NO_RESIDENT_FILTERS, canBecome: offered ? trade : null },
               scrollTop: 0,
             });
           }),

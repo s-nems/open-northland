@@ -1,5 +1,8 @@
 import type { BuildingPanelModel, StaffPerson } from '../../details-panel/model/index.js';
-import { STOCK_TABS_FROM } from './stock.js';
+import { OVERVIEW_LINES } from '../parts/stock-browser.js';
+
+/** One stock line past the overview's, so the overview is full and a category tab lists the rest. */
+const WARM_STOCK_LINES = OVERVIEW_LINES + 1;
 
 /**
  * A made-up building that lights every part of the panel at once: the wear bar low, live and refused
@@ -89,7 +92,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
         })),
       })),
     },
-    stock: Array.from({ length: STOCK_TABS_FROM }, (_, goodType) => ({
+    stock: Array.from({ length: WARM_STOCK_LINES }, (_, goodType) => ({
       goodType,
       ...good(goodType),
       label: 'Warm',
@@ -98,6 +101,7 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
       category: goodType % 2,
       ...(goodType === 0 ? { alert: 'waiting' as const } : goodType === 1 ? { alert: 'full' as const } : {}),
     })),
+    stockLayout: 'tabs',
     homeQuality: {
       rows: [
         {

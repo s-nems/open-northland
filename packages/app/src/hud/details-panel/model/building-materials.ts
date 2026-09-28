@@ -30,6 +30,8 @@ export interface StockRow {
   /** The shelf holds up the house: a posted worker waits for this input, or this product's shelf is
    *  full. Set by the building panel only. */
   readonly alert?: StockAlert;
+  /** A good the house's recipes make, listed after its inputs. Set by the building panel only. */
+  readonly product?: boolean;
 }
 
 export type StockAlert = 'waiting' | 'full';

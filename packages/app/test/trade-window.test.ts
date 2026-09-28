@@ -8,7 +8,7 @@ import {
   type TradePanelModel,
 } from '../src/hud/details-panel/model/index.js';
 import { GLYPH } from '../src/hud/dom/icons.js';
-import { firstStockedTab, stockTabStates } from '../src/hud/dom/parts/stock-browser.js';
+import { stockTabStates } from '../src/hud/dom/parts/stock-browser.js';
 import type { TradeMarkChange } from '../src/hud/dom/settler-panel/actions.js';
 import { createTradeCommands } from '../src/hud/dom/trade-window/commands.js';
 import {
@@ -136,17 +136,15 @@ describe('trade window model', () => {
     expect(windowRoute(settler(null))).toBeNull();
   });
 
-  it('gives each house its own tabs: kinds in stock, a dot where a transfer runs, the first stocked open', () => {
+  it('gives each house its own tabs: kinds in stock and a dot where a transfer runs', () => {
     const trade = ownRoute([transfer(SWORD, 'toB')]);
     const a = stockTabStates(houseRows(trade, TRADE_SLOT_A), CATEGORIES);
     expect(a[FOOD_TAB]).toEqual({ stocked: 1, marked: false });
     expect(a[MILITARY_TAB]).toEqual({ stocked: 1, marked: true });
     expect(a.filter((tab) => tab.stocked === 0)).toHaveLength(CATEGORIES - 2);
-    expect(firstStockedTab(a)).toBe(FOOD_TAB);
-    // B holds no sword yet: nothing in stock, still the transfer's dot; a house holding nothing opens first.
+    // B holds no sword yet: nothing in stock, still the transfer's dot.
     const b = stockTabStates(houseRows(trade, TRADE_SLOT_B), CATEGORIES);
     expect(b[MILITARY_TAB]).toEqual({ stocked: 0, marked: true });
-    expect(firstStockedTab(b)).toBe(0);
   });
 
   it('lists a house’s goods of the open tab with an arrow into the other house', () => {
