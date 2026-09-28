@@ -53,6 +53,18 @@ export const PRAYER_SITE = {
 } as const;
 export type PrayerSite = (typeof PRAYER_SITE)[keyof typeof PRAYER_SITE];
 
+/**
+ * What another tribe's own `[GfxHouse]` record gives a building `typeId`. The type's top-level `footprint`
+ * and `hitpoints` are the lowest `LogicTribeType`'s; every other tribe that describes the type carries its
+ * own values here, since a saracen palace and a viking longhouse share a `typeId` but not a body.
+ */
+export const BuildingTribeVariant = z.strictObject({
+  tribe: TypeId,
+  footprint: BuildingFootprint.optional(),
+  hitpoints: z.number().int().positive().optional(),
+});
+export type BuildingTribeVariant = z.infer<typeof BuildingTribeVariant>;
+
 export const BuildingType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
@@ -79,8 +91,10 @@ export const BuildingType = z.strictObject({
   /**
    * Build-material cost, joined onto the logic record from the graphics table's `[GfxHouse]`
    * `LogicConstructionGoods` line (`DataCnmd/budynki12/houses/houses.ini`, keyed by the same `LogicType`
-   * id). Empty for the pre-placed headquarters and for any type the graphics table omits. Each level of
-   * a home's chain is a distinct `typeId` carrying its own cost, not a cumulative total.
+   * id), the lowest tribe's record. Empty for the pre-placed headquarters and for any type the graphics
+   * table omits. Each level of a home's chain is a distinct `typeId` carrying its own cost, not a
+   * cumulative total. Approximation: saracen and egyptian homes declare each level as a standalone build
+   * with the cumulative cost, which the shared upgrade chain cannot charge.
    */
   construction: z.array(GoodQuantity).default([]),
   /**
@@ -92,16 +106,18 @@ export const BuildingType = z.strictObject({
    */
   upgradeTarget: TypeId.optional(),
   /**
-   * Max hitpoints from the graphics table's `[GfxHouse]` `logichitpoints` line, overlaid by `typeId`
-   * like {@link construction}; each level of a home's chain resolves its own tier. Absent when the
-   * graphics table has no record for the type, which simply leaves it with no life pool.
+   * Max hitpoints from the graphics table's `[GfxHouse]` `logichitpoints` line, the lowest tribe's record;
+   * each level of a home's chain resolves its own tier. Absent when the graphics table has no record for
+   * the type, which simply leaves it with no life pool. Read through `buildingHitpointsFor`.
    */
   hitpoints: z.number().int().positive().optional(),
   /**
-   * Ground footprint from the graphics table's `[GfxHouse]` record, overlaid by `typeId` like
-   * {@link construction}. Absent when the graphics table has no record for the type.
+   * Ground footprint from the graphics table's `[GfxHouse]` record, the lowest tribe's. Absent when the
+   * graphics table has no record for the type. Read through `buildingFootprintFor`.
    */
   footprint: BuildingFootprint.optional(),
+  /** The other tribes' own {@link BuildingTribeVariant}s, ascending by tribe. */
+  tribeVariants: z.array(BuildingTribeVariant).default([]),
   /**
    * Extracted `logichousetype` `logicbuildonbiopattern`: the building's walk-block body must stand on
    * ground carrying the vegetation regrow/plant flags. The source sets it for wells and hives.

@@ -426,7 +426,8 @@ function enemyHouseAt(
   for (const e of world.query(Building, Owner, Position)) {
     if (diplomacyStance(world, seat, world.get(e, Owner).player) !== 'enemy') continue;
     const at = pointOf(world, e);
-    const cells = buildingFootprintOf(ctx.content, world.get(e, Building).buildingType)?.blocked ?? [];
+    const { buildingType, tribe } = world.get(e, Building);
+    const cells = buildingFootprintOf(ctx.content, buildingType, tribe)?.blocked ?? [];
     const body = translatedCells(terrain, cells, at.hx, at.hy);
     if (body.includes(target) || (at.hx === group.hx && at.hy === group.hy)) {
       if (best === null || e < best) best = e;

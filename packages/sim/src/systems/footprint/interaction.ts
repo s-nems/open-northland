@@ -38,7 +38,7 @@ export function interactionNode(world: World, ctx: MapContext, building: Entity)
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return null;
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-  const door = buildingFootprintOf(ctx.content, b.buildingType)?.door;
+  const door = buildingFootprintOf(ctx.content, b.buildingType, b.tribe)?.door;
   if (door === undefined) return { x: ax, y: ay };
   const at = { x: ax + footprintCellDx(ay, door), y: ay + door.dy };
   if (ctx.terrain !== undefined && !ctx.terrain.inBounds(at.x, at.y)) return { x: ax, y: ay };
@@ -78,7 +78,9 @@ export function constructionWorkCells(
   const anchorCoords = nodeOfPosition(position.x, position.y);
   const anchor = terrain.nodeAtClamped(anchorCoords.hx, anchorCoords.hy);
   const footprint =
-    building === undefined ? undefined : buildingFootprintOf(ctx.content, building.buildingType);
+    building === undefined
+      ? undefined
+      : buildingFootprintOf(ctx.content, building.buildingType, building.tribe);
   const bodyOffsets =
     palisade !== undefined && palisade.walk.length > 0
       ? palisade.walk

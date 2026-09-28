@@ -81,10 +81,11 @@ export function seatPlacementProbe(
   terrain: TerrainGraph,
   fog: FogState | undefined,
   buildingType: number,
+  tribe: number | undefined,
   player: number | undefined,
 ): PlayerPlacementProbe {
   const ownSignposts = player === undefined ? [] : (signpostNetwork(world).get(player) ?? []);
-  const footprint = placementProbe(world, content, terrain, buildingType, ownSignposts);
+  const footprint = placementProbe(world, content, terrain, buildingType, tribe, ownSignposts);
   if (player === undefined)
     return { canPlace: (x, y) => footprint.canPlace(x, y), contestedKeyWithin: () => '' };
   const ground = contestedGroundFor(world, content, fog, player);

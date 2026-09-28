@@ -85,8 +85,8 @@ export function buildingBlockerCells(
   const p = world.tryGet(e, Position);
   if (b === undefined || p === undefined) return;
   const { hx, hy } = nodeOfPosition(p.x, p.y);
-  const fp = buildingFootprintOf(content, b.buildingType);
-  const body = buildingFlagBody(content, b.buildingType);
+  const fp = buildingFootprintOf(content, b.buildingType, b.tribe);
+  const body = buildingFlagBody(content, b.buildingType, b.tribe);
   const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
   for (const c of body) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
   for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);

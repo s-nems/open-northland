@@ -54,7 +54,7 @@ function trunkOnlyFootprint(): ResourceFootprintData {
 describe('canPlaceBuilding - the free-placement collision rule', () => {
   it('accepts a footprinted type on open ground and places it through the command seam', () => {
     const sim = mappedSim();
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 5)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 5, 5)).toBe(true);
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
@@ -90,7 +90,7 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
     sim.step();
     // (6,6) is the level-max growth node - blocked for OTHERS via the family zone even though the
     // level-0 walls don't cover it: a placement whose body would take it is rejected.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 6)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 5, 6)).toBe(false);
   });
 
   it('keeps the reserved zone clear of blocking terrain (minimum distance from water)', () => {
@@ -99,11 +99,11 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
     // (15,9) covers x∈[14..17] on even-dy rows and x∈[15..18] on shifted odd-dy rows - too close.
     cells.typeIds[5 * 16 + 8] = WATER;
     const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 15, 9)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 15, 9)).toBe(false);
     // Three nodes further west the ring (x≤14, shifted rows x≤15) misses the water - accepted.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 12, 9)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 12, 9)).toBe(true);
     // And a zone hanging off the map edge is rejected, not clamped.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 0, 5)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 0, 5)).toBe(false);
   });
 
   it('keeps the reserved zone clear of resource nodes (minimum distance from a tree)', () => {
@@ -113,9 +113,9 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
     // Anchor (6,5): reserved ring x∈[5..8] covers the tree at node (7,5) - rejected.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 6, 5)).toBe(false);
     // Anchor (4,5): ring x∈[3..6] misses it - accepted.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 4, 5)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 4, 5)).toBe(true);
   });
 
   it('keeps a footprinted house away from a footprint-less building (1-cell body/zone) and vice versa', () => {
@@ -123,8 +123,8 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ, x: 6, y: 6, tribe: VIKING });
     sim.step();
     // The HQ (no footprint) occupies its anchor node (6,6); a hut at (5,5) would reserve that node.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 5)).toBe(false);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 9, 9)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 5, 5)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 9, 9)).toBe(true);
   });
 
   it('places a footprint-less type freely (synthetic content keeps the pre-footprint behavior)', () => {
@@ -166,13 +166,13 @@ describe('the dense mask rule agrees with an independent derivation', () => {
     stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
 
     const terrain = terrainOf(sim);
-    const probe = placementProbe(sim.world, sim.content, terrain, HUT, []);
+    const probe = placementProbe(sim.world, sim.content, terrain, HUT, VIKING, []);
     let blocked = 0;
     let free = 0;
     for (let y = 0; y < terrain.height; y++) {
       for (let x = 0; x < terrain.width; x++) {
         const expected = referenceCanPlace(sim, terrain, HUT, x, y);
-        expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, x, y)).toBe(expected);
+        expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, x, y)).toBe(expected);
         expect(probe.canPlace(x, y)).toBe(expected); // the overlay greys exactly what a click is refused
         expected ? free++ : blocked++;
       }
@@ -185,12 +185,12 @@ describe('the dense mask rule agrees with an independent derivation', () => {
   it('reports a footprint-less type placeable anywhere on the map and nowhere off it', () => {
     const sim = mappedSim();
     const terrain = terrainOf(sim);
-    const probe = placementProbe(sim.world, sim.content, terrain, HQ, []);
+    const probe = placementProbe(sim.world, sim.content, terrain, HQ, VIKING, []);
     expect(probe.canPlace(0, 0)).toBe(true);
     expect(probe.canPlace(5, 5)).toBe(true);
     expect(probe.canPlace(-1, 5)).toBe(false);
     expect(probe.canPlace(terrain.width, 5)).toBe(false);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HQ, 5, terrain.height)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HQ, VIKING, 5, terrain.height)).toBe(false);
   });
 
   it('returns null from Simulation.placementProbe on a mapless sim (no rule → no overlay)', () => {
@@ -236,15 +236,17 @@ describe('placementBlockerVersion - the overlay memo key that decouples the bloc
     const terrain = terrainOf(sim);
 
     // Prime the memo on the empty map, then tick: a version-keyed memo must survive idle ticks…
-    expect(placementProbe(sim.world, sim.content, terrain, HUT, []).canPlace(11, 11)).toBe(true);
+    expect(placementProbe(sim.world, sim.content, terrain, HUT, VIKING, []).canPlace(11, 11)).toBe(true);
     sim.run(5);
 
     // …but re-derive the instant a hut lands, so the overlay can never keep tinting a taken spot green.
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
     sim.step();
 
-    const probe = placementProbe(sim.world, sim.content, terrain, HUT, []);
-    expect(probe.canPlace(11, 11)).toBe(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 11));
+    const probe = placementProbe(sim.world, sim.content, terrain, HUT, VIKING, []);
+    expect(probe.canPlace(11, 11)).toBe(
+      canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, 11, 11),
+    );
     expect(probe.canPlace(11, 11)).toBe(false); // now sits on the just-placed hut's zone
   });
 
@@ -254,18 +256,18 @@ describe('placementBlockerVersion - the overlay memo key that decouples the bloc
     const sim = mappedSim();
     const terrain = terrainOf(sim);
     // Anchor (6,5): reserved ring x∈[5..8] covers node (7,5).
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 5)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, 6, 5)).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
 
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(7, 5));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 5)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, 6, 5)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
 
     sim.world.destroy(tree);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 5)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, 6, 5)).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
@@ -278,7 +280,7 @@ describe('placementBlockerVersion - the overlay memo key that decouples the bloc
     sim.world.add(tree, Position, positionOfNode(3, 3));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
     stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
-    canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5); // stamps the memo
+    canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, VIKING, 6, 5); // stamps the memo
     expect(sim.world.verifyCaches()).toEqual([]);
 
     // Logged or not, an in-place move is invisible to the version key the grid memoizes on - the
@@ -310,8 +312,8 @@ describe('buildable terrain channel - walkable ground that rejects building', ()
     const terrain = terrainOf(sim);
     expect(terrain.isWalkable(terrain.nodeAt(14, 10))).toBe(true); // nav still crosses it
     expect(terrain.isBuildable(terrain.nodeAt(14, 10))).toBe(false); // building may not
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 13, 9)).toBe(false);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 13)).toBe(true); // clear ground
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, 13, 9)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, 11, 13)).toBe(true); // clear ground
   });
 });
 
@@ -328,9 +330,9 @@ describe('bio-pattern placement - wells and hives need grass', () => {
     });
     const terrain = terrainOf(sim);
 
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 6)).toBe(true);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, BIO_HUT, 6, 6)).toBe(false);
-    expect(placementProbe(sim.world, sim.content, terrain, BIO_HUT, []).canPlace(6, 6)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, VIKING, 6, 6)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, BIO_HUT, VIKING, 6, 6)).toBe(false);
+    expect(placementProbe(sim.world, sim.content, terrain, BIO_HUT, VIKING, []).canPlace(6, 6)).toBe(false);
 
     sim.enqueueSetup({ kind: 'placeBuilding', buildingType: BIO_HUT, x: 6, y: 6, tribe: VIKING });
     sim.step();
@@ -340,8 +342,8 @@ describe('bio-pattern placement - wells and hives need grass', () => {
   it('accepts the same bio-pattern building when its body stands on plantable grass', () => {
     const sim = mappedSim();
     const terrain = terrainOf(sim);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, BIO_HUT, 6, 6)).toBe(true);
-    expect(placementProbe(sim.world, sim.content, terrain, BIO_HUT, []).canPlace(6, 6)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, BIO_HUT, VIKING, 6, 6)).toBe(true);
+    expect(placementProbe(sim.world, sim.content, terrain, BIO_HUT, VIKING, []).canPlace(6, 6)).toBe(true);
   });
 });
 
@@ -357,7 +359,7 @@ describe('forced placement - authored map imports load as-is', () => {
       content: placementContent(),
       map: halfCellMapFromCells(cells),
     });
-    expect(canPlaceBuilding(wetSim.world, ctxOf(wetSim), terrainOf(wetSim), HUT, 9, 9)).toBe(false);
+    expect(canPlaceBuilding(wetSim.world, ctxOf(wetSim), terrainOf(wetSim), HUT, VIKING, 9, 9)).toBe(false);
 
     wetSim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 9, tribe: VIKING });
     wetSim.step();

@@ -106,7 +106,7 @@ export function evictWorkFlagsFromFootprint(world: World, ctx: SystemContext, bu
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return;
   const anchor = nodeOfPosition(p.x, p.y);
-  const body = buildingFlagBodyNodes(ctx.content, terrain, b.buildingType, anchor.hx, anchor.hy);
+  const body = buildingFlagBodyNodes(ctx.content, terrain, b.buildingType, b.tribe, anchor.hx, anchor.hy);
   evictWorkFlagsFromCells(world, ctx, terrain, body);
 }
 

@@ -1,7 +1,7 @@
 import type { BuildingFootprint } from '@open-northland/data';
 import type { GeometryDebugItem } from '@open-northland/render';
 import { entitiesWith, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
-import { buildingTypeOf, positionOf } from '../../game/snapshot.js';
+import { buildingTribeOf, buildingTypeOf, positionOf } from '../../game/snapshot.js';
 import { workerIconNode } from './building-points.js';
 
 /** The per-building footprint diagram behind the `?debug=geometry` flag. */
@@ -11,9 +11,15 @@ export interface GeometryBuildingInfo {
   readonly footprint?: BuildingFootprint | undefined;
 }
 
+/** A building's geometry by type and the tribe that built it. */
+export type GeometryBuildingInfoOf = (
+  typeId: number | undefined,
+  tribe: number | undefined,
+) => GeometryBuildingInfo | undefined;
+
 export function computeGeometryDebugItems(
   snapshot: WorldSnapshot,
-  buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>,
+  geometryOf: GeometryBuildingInfoOf,
 ): GeometryDebugItem[] {
   const items: GeometryDebugItem[] = [];
   for (const e of entitiesWith(snapshot, 'Building')) {
@@ -21,7 +27,7 @@ export function computeGeometryDebugItems(
     if (pos === undefined) continue;
     const anchor = nodeOfPosition(pos.x, pos.y);
     const typeId = buildingTypeOf(e);
-    const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
+    const info = geometryOf(typeId, buildingTribeOf(e));
     const fp = info?.footprint;
     items.push({
       anchor,
@@ -41,12 +47,8 @@ export function computeGeometryDebugItems(
  * without an add or remove. Order-sensitive 32-bit accumulate, so a collision costs one stale frame
  * and heals on the next real change.
  */
-export function buildingSetFingerprint(
-  snapshot: WorldSnapshot,
-  buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>,
-): number {
-  // Seeded with the table size so a content swap invalidates too.
-  let h = buildingsByType.size | 0;
+export function buildingSetFingerprint(snapshot: WorldSnapshot): number {
+  let h = 0;
   for (const e of entitiesWith(snapshot, 'Building')) {
     const pos = positionOf(e);
     h = (Math.imul(h, 31) + e.id) | 0;
@@ -65,7 +67,7 @@ export interface GeometryDebugOverlay {
 /** Pushes a fresh projection to `setItems` only when the building set changes, never per frame. */
 export function createGeometryDebugOverlay(opts: {
   readonly enabled: boolean;
-  readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;
+  readonly geometryOf: GeometryBuildingInfoOf;
   readonly setItems: (items: GeometryDebugItem[]) => void;
 }): GeometryDebugOverlay {
   let fingerprint: number | null = null;
@@ -73,10 +75,10 @@ export function createGeometryDebugOverlay(opts: {
   return {
     update(snapshot: WorldSnapshot): void {
       if (!enabled) return;
-      const fp = buildingSetFingerprint(snapshot, opts.buildingsByType);
+      const fp = buildingSetFingerprint(snapshot);
       if (fp === fingerprint) return;
       fingerprint = fp;
-      opts.setItems(computeGeometryDebugItems(snapshot, opts.buildingsByType));
+      opts.setItems(computeGeometryDebugItems(snapshot, opts.geometryOf));
     },
     enabled: () => enabled,
     setEnabled(next): void {

@@ -91,7 +91,9 @@ describe('building over signposts', () => {
     expect(sim.placementProbe(HUT, P0)?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(true);
     expect(sim.placementProbe(HUT, P1)?.canPlace(ANCHOR.x, ANCHOR.y)).toBe(false);
     // An ownerless placement has nobody's posts to discount.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, ANCHOR.x, ANCHOR.y)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, undefined, ANCHOR.x, ANCHOR.y)).toBe(
+      false,
+    );
   });
 
   it("refuses a building over a rival's post", () => {

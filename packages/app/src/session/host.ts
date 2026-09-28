@@ -138,12 +138,13 @@ export interface SessionHost {
   // Probes: the placement rules as data over a node area, or null for a mapless world.
 
   /** The `placeBuilding` rule; with a `player` it also refuses the ground a hostile army contests, and a
-   *  `tribe` adds the seat's technology gate. */
+   *  `tribe` picks the footprint and, while `gated`, adds the seat's technology gate (a paper waives it). */
   placementProbe(
     buildingType: number,
     area: NodeArea,
     player?: number,
     tribe?: number,
+    gated?: boolean,
   ): Promise<NodeGridAnswer | null>;
   signpostProbe(player: number, area: NodeArea): Promise<NodeGridAnswer | null>;
   palisadeProbe(gfxIndex: number, area: NodeArea): Promise<NodeGridAnswer | null>;

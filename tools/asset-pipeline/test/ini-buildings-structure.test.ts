@@ -121,8 +121,8 @@ LogicConstructionGoods 1 3
 describe('extractHouseHitpoints', () => {
   it('joins per-level logichitpoints onto typeId, splitting lumped multi-house brackets', () => {
     const hp = extractHouseHitpoints(parseIniSections(GFXHOUSE_LUMPED_INI));
-    expect(hp.get(50)).toBe(60000);
-    expect(hp.get(51)).toBe(25000);
+    expect(hp.get(50)?.get(7)).toBe(60000);
+    expect(hp.get(51)?.get(7)).toBe(25000);
   });
 
   it('rejects a malformed or non-positive HP line so it never wins the typeId', () => {
@@ -139,9 +139,7 @@ logichitpoints 1 x
     expect(hp.size).toBe(0);
   });
 
-  it('keeps a standing winner when the better-ranked record rejects its own line', () => {
-    // Tribe 1 outranks tribe 4 for typeId 60, but its HP line is malformed. Rejecting a candidate
-    // must not evict the value tribe 4 already won, which would leave the typeId with no HP at all.
+  it('keeps each tribe its own pool, a malformed line leaving only that tribe without one', () => {
     const hp = extractHouseHitpoints(
       parseIniSections(`[GfxHouse]
 EditName "saracen tower"
@@ -153,9 +151,31 @@ EditName "viking tower"
 LogicTribeType 1
 LogicType 0 60
 logichitpoints 0 x
+[GfxHouse]
+EditName "frank tower"
+LogicTribeType 2
+LogicType 0 60
+logichitpoints 0 52000
 `),
     );
-    expect(hp.get(60)).toBe(41000);
+    expect([...(hp.get(60) ?? [])]).toEqual([
+      [2, 52000],
+      [4, 41000],
+    ]);
+  });
+
+  it('keeps a standing level when a lower level of the same tribe rejects its line', () => {
+    const hp = extractHouseHitpoints(
+      parseIniSections(`[GfxHouse]
+EditName "viking tower"
+LogicTribeType 1
+LogicType 0 60
+LogicType 1 60
+logichitpoints 1 30000
+logichitpoints 0 x
+`),
+    );
+    expect(hp.get(60)?.get(1)).toBe(30000);
   });
 });
 
@@ -225,8 +245,8 @@ LogicWalkBlockArea 1 0 1 1
 describe('extractBuildingFootprints', () => {
   it('expands area runs, keys walk-block/door by level, and shares the build zone family-wide', () => {
     const footprints = extractBuildingFootprints(parseIniSections(GFXHOUSE_FOOTPRINT_INI));
-    const level0 = footprints.get(2);
-    const level1 = footprints.get(3);
+    const level0 = footprints.get(2)?.get(1);
+    const level1 = footprints.get(3)?.get(1);
     expect(level0).toBeDefined();
     expect(level1).toBeDefined();
     // Level 0's body: rows (-1,-1)x2 and (-1,0)x3, canonical (y then x) order.
@@ -253,7 +273,7 @@ describe('extractBuildingFootprints', () => {
     expect(level1?.door).toEqual({ dx: 0, dy: 1 });
   });
 
-  it('collapses a per-(tribe, typeId) footprint to the lowest-tribeType record', () => {
+  it('keeps each tribe its own footprint for a shared typeId', () => {
     const otherTribe = `[GfxHouse]
 EditName "saracen hut"
 LogicTribeType 4
@@ -265,8 +285,56 @@ LogicDoorPoint 0 -9 -8
     const footprints = extractBuildingFootprints(
       parseIniSections(`${otherTribe}\n${GFXHOUSE_FOOTPRINT_INI}`),
     );
-    // tribe 1 wins even though tribe 4 was parsed first.
-    expect(footprints.get(2)?.door).toEqual({ dx: -1, dy: 1 });
+    expect([...(footprints.get(2)?.keys() ?? [])]).toEqual([1, 4]);
+    expect(footprints.get(2)?.get(1)?.door).toEqual({ dx: -1, dy: 1 });
+    expect(footprints.get(2)?.get(4)).toEqual({
+      blocked: [{ dx: -9, dy: -9 }],
+      familyBody: [{ dx: -9, dy: -9 }],
+      reserved: [{ dx: -9, dy: -9 }],
+      door: { dx: -9, dy: -8 },
+    });
+  });
+
+  it("widens a tribe's family body and reserve over an upgrade chain split across its records", () => {
+    // Tribe 1 chains 2 -> 3 in one record; tribe 4 describes each level in a record of its own, the
+    // saracen homes' layout, so its level 0 would otherwise reserve none of its level 1 body.
+    const splitLevels = `[GfxHouse]
+EditName "saracen tent"
+LogicTribeType 4
+LogicType 0 2
+LogicBuildBlockArea 0 -1 1
+LogicWalkBlockArea 0 0 0 1
+[GfxHouse]
+EditName "saracen residence"
+LogicTribeType 4
+LogicType 0 3
+LogicBuildBlockArea 5 -1 1
+LogicWalkBlockArea 0 4 0 2
+`;
+    const footprints = extractBuildingFootprints(
+      parseIniSections(`${GFXHOUSE_FOOTPRINT_INI}\n${splitLevels}`),
+    );
+    const tent = footprints.get(2)?.get(4);
+    const residence = footprints.get(3)?.get(4);
+    expect(tent?.blocked).toEqual([{ dx: 0, dy: 0 }]);
+    expect(tent?.familyBody).toEqual([
+      { dx: 0, dy: 0 },
+      { dx: 4, dy: 0 },
+      { dx: 5, dy: 0 },
+    ]);
+    expect(residence?.familyBody).toEqual(tent?.familyBody);
+    expect(tent?.reserved).toEqual([
+      { dx: 0, dy: -1 },
+      { dx: 5, dy: -1 },
+      { dx: 0, dy: 0 },
+      { dx: 4, dy: 0 },
+      { dx: 5, dy: 0 },
+    ]);
+    expect(residence?.reserved).toEqual(tent?.reserved);
+    // The chain's own record already shares its family body, so widening leaves tribe 1 as it was.
+    expect(footprints.get(2)?.get(1)).toEqual(
+      extractBuildingFootprints(parseIniSections(GFXHOUSE_FOOTPRINT_INI)).get(2)?.get(1),
+    );
   });
 
   it('skips a record with no collision data and returns an empty map without [GfxHouse]', () => {

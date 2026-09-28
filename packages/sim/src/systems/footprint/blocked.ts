@@ -19,7 +19,8 @@ import { vehicleBlockedLayer } from './vehicle-blocked-cache.js';
 export function buildingDoorNodes(world: World, ctx: ContentContext, terrain: TerrainGraph): Set<NodeId> {
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
-    const door = buildingFootprintOf(ctx.content, world.get(e, Building).buildingType)?.door;
+    const { buildingType, tribe } = world.get(e, Building);
+    const door = buildingFootprintOf(ctx.content, buildingType, tribe)?.door;
     if (door === undefined) continue;
     const p = world.get(e, Position);
     const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
@@ -74,7 +75,7 @@ export function constructionSitePlots(world: World, content: ContentSet): readon
   for (const e of world.query(UnderConstruction, Building, Position)) {
     const b = world.get(e, Building);
     types.set(e, b.buildingType);
-    const footprint = buildingFootprintOf(content, b.buildingType);
+    const footprint = buildingFootprintOf(content, b.buildingType, b.tribe);
     const p = world.get(e, Position);
     const { hx, hy } = nodeOfPosition(p.x, p.y);
     const body = footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
@@ -115,7 +116,7 @@ export function walkBlockedBodyOf(
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return null;
-  const footprint = buildingFootprintOf(ctx.content, b.buildingType);
+  const footprint = buildingFootprintOf(ctx.content, b.buildingType, b.tribe);
   if (footprint === undefined || footprint.blocked.length === 0) return null;
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const body = new Set<NodeId>(translatedCells(terrain, footprint.blocked, ax, ay));

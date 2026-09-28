@@ -20,9 +20,10 @@ original before trusting it.
 
 1. Add a `constructionWorkArea` `FootprintCell[]` to `BuildingFootprint`
    (`packages/data/src/schema/economy/building-footprint.ts`).
-2. Parse the key in `extractBuildingFootprints` via the existing `expandAreaRun` + per-`sizeIdx` +
-   tribe/size winner path.
-3. In `constructionWorkCells`: when the site's type carries a work area, use those cells
+2. Parse the key in `extractBuildingFootprints` via the existing `expandAreaRun` + per-tribe,
+   per-`sizeIdx` winner path, so each tribe keeps its own cells like the rest of the footprint.
+3. In `constructionWorkCells`: when the site's footprint (`buildingFootprintOf` with the site's tribe)
+   carries a work area, use those cells
    (anchored, intersected with walkable); keep the footprint perimeter as fallback for types the
    table omits and synthetic test content.
 

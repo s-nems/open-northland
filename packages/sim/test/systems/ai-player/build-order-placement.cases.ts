@@ -519,9 +519,9 @@ describe('build-order placement - affinity and ground rules', () => {
     stampResourceFootprintData(sim.world, mushroom, { walk: [], build: [], work: [{ dx: 0, dy: 0 }] });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
-    expect(canPlaceBuilding(sim.world, { ...ctxOf(sim), content }, terrain, PIT_HOUSE, clayX, clayY)).toBe(
-      true,
-    );
+    expect(
+      canPlaceBuilding(sim.world, { ...ctxOf(sim), content }, terrain, PIT_HOUSE, VIKING, clayX, clayY),
+    ).toBe(true);
 
     const [spot] = buildOrderModule([
       { kind: 'place', building: 'test_pit_house', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
@@ -533,11 +533,14 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(covered).toBe(false);
     expect(Math.abs(spot.x - clayX) + Math.abs(spot.y - clayY)).toBeLessThanOrEqual(CLAY_NEIGHBOURHOOD_NODES);
 
-    const accept = spotAcceptor(sim.world, { ...ctxOf(sim), content }, terrain, SEAT, PIT_HOUSE).around(
-      enemyFire([]),
-      { hx: clayX, hy: clayY },
-      0,
-    );
+    const accept = spotAcceptor(
+      sim.world,
+      { ...ctxOf(sim), content },
+      terrain,
+      SEAT,
+      PIT_HOUSE,
+      VIKING,
+    ).around(enemyFire([]), { hx: clayX, hy: clayY }, 0);
     expect(accept(clayX, clayY)).toBe(false);
     expect(accept(MUSHROOM_SPOT.x, MUSHROOM_SPOT.y)).toBe(true);
   });

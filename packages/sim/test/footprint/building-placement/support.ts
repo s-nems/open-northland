@@ -137,7 +137,7 @@ export function referenceCanPlace(
   x: number,
   y: number,
 ): boolean {
-  const footprint = buildingFootprintOf(sim.content, buildingType);
+  const footprint = buildingFootprintOf(sim.content, buildingType, undefined);
   const building = sim.content.buildings.find((b) => b.typeId === buildingType);
   if (footprint === undefined) {
     return (

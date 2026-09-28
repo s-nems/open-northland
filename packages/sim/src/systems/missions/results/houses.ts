@@ -1,3 +1,4 @@
+import { buildingHitpointsFor } from '@open-northland/data';
 import { Building, Health, MAX_BUILDING_LEVEL, UnderConstruction } from '../../../components/index.js';
 import { buildingLevelOf, type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -33,7 +34,7 @@ export function placeScriptedHouse(
     pass.reportFailed(mission, op.opcode); // the map named a house its own content does not declare
     return;
   }
-  const spot = nearestBuildableSpot(world, ctx, typeId, op.point);
+  const spot = nearestBuildableSpot(world, ctx, typeId, tribe, op.point);
   if (spot === null) {
     pass.reportFailed(mission, op.opcode);
     return;
@@ -87,7 +88,7 @@ function rebuildAtLevel(
   const building = world.mut(e, Building);
   building.buildingType = typeId;
   building.level = at;
-  const max = type.hitpoints;
+  const max = buildingHitpointsFor(type, building.tribe);
   if (max === undefined) {
     world.remove(e, Health); // the new level carries no life pool, so the house cannot be besieged
   } else {
@@ -109,12 +110,13 @@ function nearestBuildableSpot(
   world: World,
   ctx: SystemContext,
   buildingType: number,
+  tribe: number,
   point: HalfCellNode,
 ): HalfCellNode | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return point;
   // A scripted house has no seat, so every signpost blocks it.
-  const probe = placementProbe(world, ctx.content, terrain, buildingType, []);
+  const probe = placementProbe(world, ctx.content, terrain, buildingType, tribe, []);
   let best: HalfCellNode | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   // A column step never costs less than a row step, so every node in range fits this square.

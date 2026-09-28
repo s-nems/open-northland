@@ -5,6 +5,7 @@ import {
   computeGeometryDebugItems,
   createGeometryDebugOverlay,
   type GeometryBuildingInfo,
+  type GeometryBuildingInfoOf,
 } from '../src/view/projections/index.js';
 import { building, type Ent, snapshotOf } from './support/snapshot.js';
 
@@ -28,10 +29,11 @@ const TYPES = new Map<number, GeometryBuildingInfo>([
     },
   ],
 ]);
+const geometryOf: GeometryBuildingInfoOf = (typeId) => (typeId === undefined ? undefined : TYPES.get(typeId));
 
 describe('computeGeometryDebugItems', () => {
   it('projects footprint cells, the door, and the workerIconNode-derived icon anchor', () => {
-    const items = computeGeometryDebugItems(snapshotOf([building(1, 7, 4, 4)]), TYPES);
+    const items = computeGeometryDebugItems(snapshotOf([building(1, 7, 4, 4)]), geometryOf);
     expect(items).toHaveLength(1);
     const item = items[0];
     expect(item?.anchor).toEqual(nodeOfPosition(fx.fromInt(4), fx.fromInt(4)));
@@ -45,30 +47,45 @@ describe('computeGeometryDebugItems', () => {
   });
 
   it('marks the icon anchor beside the ANCHOR for a doorless/unknown type (matching the badge fallback)', () => {
-    const items = computeGeometryDebugItems(snapshotOf([building(1, 99, 4, 4)]), TYPES);
+    const items = computeGeometryDebugItems(snapshotOf([building(1, 99, 4, 4)]), geometryOf);
     const item = items[0];
     expect(item?.door).toBeUndefined();
     expect(item?.iconAnchor).toEqual({ hx: 9, hy: 8 }); // anchor (8,8) + the default offset - the badge draws here
     expect(item?.label).toBe('#99');
   });
 
+  it("reads the geometry of the building's own tribe", () => {
+    const SARACEN = 4;
+    const tribes: (number | undefined)[] = [];
+    const saracenHouse: Ent = {
+      id: 1,
+      components: {
+        Building: { buildingType: 7, tribe: SARACEN },
+        Position: { x: fx.fromInt(4), y: fx.fromInt(4) },
+      },
+    };
+    computeGeometryDebugItems(snapshotOf([saracenHouse]), (typeId, tribe) => {
+      tribes.push(tribe);
+      return geometryOf(typeId, tribe);
+    });
+    expect(tribes).toEqual([SARACEN]);
+  });
+
   it('skips non-building entities', () => {
     const settler: Ent = { id: 3, components: { Settler: { jobType: 1 } } };
-    expect(computeGeometryDebugItems(snapshotOf([settler]), TYPES)).toEqual([]);
+    expect(computeGeometryDebugItems(snapshotOf([settler]), geometryOf)).toEqual([]);
   });
 });
 
 describe('buildingSetFingerprint', () => {
   it('moves when a building is added, upgraded IN PLACE, or moved - and not otherwise', () => {
     const base = snapshotOf([building(1, 7, 4, 4)]);
-    const fp = buildingSetFingerprint(base, TYPES);
-    expect(buildingSetFingerprint(snapshotOf([building(1, 7, 4, 4)]), TYPES)).toBe(fp); // same set
+    const fp = buildingSetFingerprint(base);
+    expect(buildingSetFingerprint(snapshotOf([building(1, 7, 4, 4)]))).toBe(fp); // same set
     // In-place level-up (same entity, new type) - the case placementBlockerVersion misses.
-    expect(buildingSetFingerprint(snapshotOf([building(1, 8, 4, 4)]), TYPES)).not.toBe(fp);
-    expect(buildingSetFingerprint(snapshotOf([building(1, 7, 4, 4), building(2, 7, 9, 9)]), TYPES)).not.toBe(
-      fp,
-    );
-    expect(buildingSetFingerprint(snapshotOf([building(1, 7, 5, 4)]), TYPES)).not.toBe(fp); // moved
+    expect(buildingSetFingerprint(snapshotOf([building(1, 8, 4, 4)]))).not.toBe(fp);
+    expect(buildingSetFingerprint(snapshotOf([building(1, 7, 4, 4), building(2, 7, 9, 9)]))).not.toBe(fp);
+    expect(buildingSetFingerprint(snapshotOf([building(1, 7, 5, 4)]))).not.toBe(fp); // moved
   });
 
   it('ignores non-building churn (a felled tree must not force an overlay rebuild)', () => {
@@ -77,7 +94,7 @@ describe('buildingSetFingerprint', () => {
       building(1, 7, 4, 4),
       { id: 9, components: { Resource: { goodType: 2, remaining: 4 } } },
     ]);
-    expect(buildingSetFingerprint(withResource, TYPES)).toBe(buildingSetFingerprint(buildingOnly, TYPES));
+    expect(buildingSetFingerprint(withResource)).toBe(buildingSetFingerprint(buildingOnly));
   });
 });
 
@@ -86,7 +103,7 @@ describe('createGeometryDebugOverlay', () => {
     const pushed: unknown[][] = [];
     const overlay = createGeometryDebugOverlay({
       enabled: false,
-      buildingsByType: TYPES,
+      geometryOf,
       setItems: (items) => pushed.push(items),
     });
     const snapshot = snapshotOf([building(1, 7, 4, 4)]);

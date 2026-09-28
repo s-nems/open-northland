@@ -1,7 +1,8 @@
 /**
  * `[GfxHouse]` structural overlays keyed by building `typeId`, read from the mod's readable
- * `DataCnmd/budynki12/houses/houses.ini`. Each collapses a source that is genuinely multi-valued (per
- * tribe, per size level) to one flat value per typeId.
+ * `DataCnmd/budynki12/houses/houses.ini`. The source is multi-valued per tribe and per size level: the
+ * footprint and hitpoints keep one value per `(typeId, tribe)`, the cost and upgrade chain collapse to one
+ * value per typeId.
  */
 import type { BuildingFootprint, FootprintCell } from '@open-northland/data';
 import type { RuleSection } from '../grammar.js';
@@ -39,16 +40,53 @@ class GfxHouseWinners<T> {
   }
 }
 
+/** One value per tribe that describes a building type, ascending by `LogicTribeType`; a record without a
+ *  tribe keys on `Infinity`. */
+export type ByTribe<T> = ReadonlyMap<number, T>;
+
+/** {@link GfxHouseWinners} run once per tribe: within a tribe the lowest `sizeIdx` wins, and every tribe
+ *  keeps its own value. */
+class TribeGfxHouseWinners<T> {
+  private readonly byTribe = new Map<number, GfxHouseWinners<T>>();
+
+  offer(typeId: number, tribeType: number, sizeIdx: number, read: () => T | undefined): void {
+    let winners = this.byTribe.get(tribeType);
+    if (winners === undefined) {
+      winners = new GfxHouseWinners<T>();
+      this.byTribe.set(tribeType, winners);
+    }
+    winners.offer(typeId, tribeType, sizeIdx, read);
+  }
+
+  collapse(): Map<number, ByTribe<T>> {
+    const out = new Map<number, Map<number, T>>();
+    for (const tribe of [...this.byTribe.keys()].sort((a, b) => a - b)) {
+      for (const [typeId, value] of this.byTribe.get(tribe)?.collapse() ?? []) {
+        const tribes = out.get(typeId) ?? new Map<number, T>();
+        tribes.set(tribe, value);
+        out.set(typeId, tribes);
+      }
+    }
+    return out;
+  }
+}
+
+/** The ranking {@link collectGfxHouseWinner} feeds: one value per typeId, or one per `(typeId, tribe)`. */
+interface Winners<T, R> {
+  offer(typeId: number, tribeType: number, sizeIdx: number, read: () => T | undefined): void;
+  collapse(): R;
+}
+
 /**
  * Pairs each `key` line to its level's `typeId` through the record's own `LogicType <sizeIdx> <typeId>`
- * table, for the per-typeId overlays that collapse to a single flat value.
+ * table, ranking each candidate through `winners`.
  */
-function collectGfxHouseWinner<T>(
+function collectGfxHouseWinner<T, R>(
   sections: readonly RuleSection[],
   key: string,
+  winners: Winners<T, R>,
   readValue: (values: readonly string[]) => T | undefined,
-): Map<number, T> {
-  const winners = new GfxHouseWinners<T>();
+): R {
   for (const { rec, tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
     for (const p of findProps(rec, key)) {
       const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
@@ -74,7 +112,8 @@ export function extractConstructionCosts(
   sections: readonly RuleSection[],
 ): Map<number, { goodType: number; amount: number }[]> {
   // Never rejects a line: an empty goods list is a valid zero cost.
-  return collectGfxHouseWinner(sections, 'LogicConstructionGoods', (values) => {
+  const winners = new GfxHouseWinners<{ goodType: number; amount: number }[]>();
+  return collectGfxHouseWinner(sections, 'LogicConstructionGoods', winners, (values) => {
     const ids = values
       .slice(1)
       .map((v) => Number.parseInt(v, 10))
@@ -84,12 +123,13 @@ export function extractConstructionCosts(
 }
 
 /**
- * Extracts each building type's max hitpoints, `logichitpoints <sizeIdx> <value>`, joined to a `typeId`
- * through the record's `LogicType <sizeIdx> <typeId>` table.
+ * Extracts each building type's max hitpoints per tribe, `logichitpoints <sizeIdx> <value>`, joined to a
+ * `typeId` through the record's `LogicType <sizeIdx> <typeId>` table.
  */
-export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<number, number> {
+export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<number, ByTribe<number>> {
   // Reject a non-positive/malformed HP so it never wins a typeId.
-  return collectGfxHouseWinner(sections, 'logichitpoints', (values) => {
+  const winners = new TribeGfxHouseWinners<number>();
+  return collectGfxHouseWinner(sections, 'logichitpoints', winners, (values) => {
     const hitpoints = Number.parseInt(values[1] ?? '', 10);
     return Number.isNaN(hitpoints) || hitpoints <= 0 ? undefined : hitpoints;
   });
@@ -131,15 +171,15 @@ function canonicalCells(cells: Iterable<FootprintCell>): FootprintCell[] {
 }
 
 /**
- * Extracts each building type's ground footprint from three key families joined by the record's
+ * Extracts each building type's ground footprint per tribe from three key families joined by the record's
  * `LogicType <sizeIdx> <typeId>` table: `LogicWalkBlockArea <sizeIdx> <x> <y> <run>`,
  * `LogicDoorPoint <sizeIdx> <x> <y>`, and `LogicBuildBlockArea <x> <y> <run>`, which is defined once per
  * record with no level index, so every level's typeId gets the same build-exclusion zone.
- *
- * Footprints genuinely differ per tribe skin, so the cross-tribe collapse is an approximation.
  */
-export function extractBuildingFootprints(sections: readonly RuleSection[]): Map<number, BuildingFootprint> {
-  const winners = new GfxHouseWinners<BuildingFootprint>();
+export function extractBuildingFootprints(
+  sections: readonly RuleSection[],
+): Map<number, ByTribe<BuildingFootprint>> {
+  const winners = new TribeGfxHouseWinners<BuildingFootprint>();
   for (const { rec, tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
     if (typeByLevel.size === 0) continue;
 
@@ -179,5 +219,50 @@ export function extractBuildingFootprints(sections: readonly RuleSection[]): Map
       }));
     }
   }
-  return winners.collapse();
+  return widenAcrossUpgradeChains(winners.collapse(), extractUpgradeTargets(sections));
+}
+
+/**
+ * Widens each tribe's `familyBody` and `reserved` to the whole upgrade chain its type sits on. A record's
+ * own levels already share them, but the saracen and egyptian homes describe each level in a record of its
+ * own, so a tent would otherwise reserve none of the residence the shared chain grows it into.
+ * Approximation: those homes carry no chain in the source; they follow the lowest tribe's chain, as
+ * `extractUpgradeTargets` collapses it.
+ */
+function widenAcrossUpgradeChains(
+  footprints: ReadonlyMap<number, ByTribe<BuildingFootprint>>,
+  upgradeTargets: ReadonlyMap<number, number>,
+): Map<number, ByTribe<BuildingFootprint>> {
+  const chainOf = upgradeChains(upgradeTargets);
+  const out = new Map<number, ByTribe<BuildingFootprint>>();
+  for (const [typeId, byTribe] of footprints) {
+    const chain = chainOf.get(typeId) ?? [typeId];
+    const widened = new Map<number, BuildingFootprint>();
+    for (const [tribe, footprint] of byTribe) {
+      const members = chain.flatMap((member) => footprints.get(member)?.get(tribe) ?? []);
+      widened.set(tribe, {
+        ...footprint,
+        familyBody: canonicalCells(members.flatMap((m) => m.familyBody)),
+        reserved: canonicalCells(members.flatMap((m) => m.reserved)),
+      });
+    }
+    out.set(typeId, widened);
+  }
+  return out;
+}
+
+/** Each chained typeId → every typeId of its upgrade chain, bottom level first. */
+function upgradeChains(upgradeTargets: ReadonlyMap<number, number>): Map<number, readonly number[]> {
+  const targets = new Set(upgradeTargets.values());
+  const chainOf = new Map<number, readonly number[]>();
+  for (const bottom of upgradeTargets.keys()) {
+    if (targets.has(bottom)) continue;
+    const chain = [bottom];
+    for (let at = upgradeTargets.get(bottom); at !== undefined && !chain.includes(at); ) {
+      chain.push(at);
+      at = upgradeTargets.get(at);
+    }
+    for (const member of chain) chainOf.set(member, chain);
+  }
+  return chainOf;
 }

@@ -118,7 +118,7 @@ function computeBuildingBodyNodes(
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const body = translatedCells(
     terrain,
-    buildingFootprintOf(ctx.content, b.buildingType)?.blocked ?? [],
+    buildingFootprintOf(ctx.content, b.buildingType, b.tribe)?.blocked ?? [],
     hx,
     hy,
   );

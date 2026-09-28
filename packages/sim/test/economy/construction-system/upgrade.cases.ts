@@ -1,8 +1,10 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Residence } from '../../../src/components/family.js';
 import {
   Building,
   DefenceMode,
+  Health,
   IdleStand,
   JobAssignment,
   Owner,
@@ -275,6 +277,37 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     expect(sim.world.has(site, UnderConstruction)).toBe(true); // the site keeps rising
     expect(sim.world.get(site, Building).built).toBe(0);
     expect(sim.world.get(home, Stockpile).amounts.get(STONE)).toBe(2); // inventory untouched
+  });
+
+  it("raises the life pool to the target tier's own for the building's tribe", () => {
+    const SARACEN = 4;
+    const L1_HITPOINTS = 400;
+    const SARACEN_L1_HITPOINTS = 350;
+    const base = levelChainContent();
+    const content = parseContentSet({
+      ...base,
+      tribes: [{ typeId: SARACEN, id: 'saracen' }],
+      buildings: base.buildings.map((b) =>
+        b.typeId === HOME_L1
+          ? {
+              ...b,
+              hitpoints: L1_HITPOINTS,
+              tribeVariants: [{ tribe: SARACEN, hitpoints: SARACEN_L1_HITPOINTS }],
+            }
+          : b,
+      ),
+    });
+    const sim = new Simulation({ seed: 1, content });
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
+    sim.world.mut(e, Building).tribe = SARACEN;
+    sim.world.add(e, Health, { hitpoints: 100, max: 100 });
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
+    sim.step();
+    sim.world.mut(e, UnderConstruction).labor = ONE;
+    constructionSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(e, Building).buildingType).toBe(HOME_L1);
+    expect(sim.world.get(e, Health).max).toBe(SARACEN_L1_HITPOINTS);
   });
 
   it('is deterministic - two same-seed upgrade runs reach the same state hash', () => {

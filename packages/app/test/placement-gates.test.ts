@@ -90,7 +90,7 @@ describe('placement gates - the ground an enemy army contests', () => {
     await expect(gates.askPlaceAt(BUILDING_HOME_00, NEAR.hx, NEAR.hy)).resolves.toBe(true);
   });
 
-  it('omits only the technology tribe from a paper-paid probe', () => {
+  it("waives only the technology gate for a paper-paid probe, keeping the seat's tribe for the footprint", () => {
     const { sim, fog } = openField();
     const gates = createPlacementGates(inlineSessionHost(sim), fog, HUMAN_PLAYER, VIKING);
     const probe = vi.spyOn(sim, 'placementAnswer');
@@ -99,9 +99,9 @@ describe('placement gates - the ground an enemy army contests', () => {
     gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy);
     gates.canPlaceAt(BUILDING_HOME_00, FAR.hx, FAR.hy, paper);
 
-    expect(probe.mock.calls.map(([type, , player, tribe]) => [type, player, tribe])).toEqual([
-      [BUILDING_HOME_00, HUMAN_PLAYER, VIKING],
-      [BUILDING_HOME_00, HUMAN_PLAYER, undefined],
+    expect(probe.mock.calls.map(([type, , player, tribe, gated]) => [type, player, tribe, gated])).toEqual([
+      [BUILDING_HOME_00, HUMAN_PLAYER, VIKING, true],
+      [BUILDING_HOME_00, HUMAN_PLAYER, VIKING, false],
     ]);
   });
 
@@ -274,11 +274,11 @@ describe('placement gates - the ground an enemy army contests', () => {
     const techAreas = probe.mock.calls.length;
     overlay(BUILDING_HOME_00, camera, 320, 200, paper);
 
-    const tribes = probe.mock.calls.map(([, , player, tribe]) => `${player}:${tribe}`);
+    const tribes = probe.mock.calls.map(([, , player, tribe, gated]) => `${player}:${tribe}:${gated}`);
     expect(techAreas).toBeGreaterThan(0);
     expect(tribes).toEqual([
-      ...Array<string>(techAreas).fill(`${HUMAN_PLAYER}:${VIKING}`),
-      ...Array<string>(techAreas).fill(`${HUMAN_PLAYER}:undefined`),
+      ...Array<string>(techAreas).fill(`${HUMAN_PLAYER}:${VIKING}:true`),
+      ...Array<string>(techAreas).fill(`${HUMAN_PLAYER}:${VIKING}:false`),
     ]);
   });
 

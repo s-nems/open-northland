@@ -1,5 +1,6 @@
 import {
   type BuildingFootprint,
+  buildingFootprintFor,
   type ContentSet,
   type FootprintCell,
   footprintCellDx,
@@ -93,21 +94,22 @@ export function canPlacePalisadeAnchor(
 }
 
 /**
- * Whether a building of `buildingType` may be placed with its anchor at integer tile `(x, y)`, per the rule
- * on {@link canPlaceAnchor}. A type without a footprint has no collision model; a bio-pattern type still
- * checks its anchor ground. Settlers never block placement: the foundation appears under them and they
- * walk off.
+ * Whether `tribe`'s building of `buildingType` may be placed with its anchor at integer tile `(x, y)`,
+ * per the rule on {@link canPlaceAnchor}. A type without a footprint has no collision model; a bio-pattern
+ * type still checks its anchor ground. Settlers never block placement: the foundation appears under them
+ * and they walk off.
  */
 export function canPlaceBuilding(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   buildingType: number,
+  tribe: number | undefined,
   x: number,
   y: number,
 ): boolean {
   const building = contentIndex(ctx.content).buildings.get(buildingType);
-  const footprint = building?.footprint;
+  const footprint = building === undefined ? undefined : buildingFootprintFor(building, tribe);
   const buildOnBioPattern = building?.buildOnBioPattern === true;
   if (footprint === undefined) return canPlaceWithoutFootprint(world, terrain, buildOnBioPattern, x, y);
   return canPlaceAnchor(
@@ -163,9 +165,9 @@ export interface PlacementProbe {
 }
 
 /**
- * A {@link PlacementProbe} for `buildingType` with its footprint resolved once, so a caller can probe a
- * whole band against the same rule the `placeBuilding` command gates on without re-resolving content per
- * cell. A footprint-less type has no collision rule but retains any bio-pattern ground restriction. The
+ * A {@link PlacementProbe} for `tribe`'s `buildingType` with its footprint resolved once, so a caller can
+ * probe a whole band against the same rule the `placeBuilding` command gates on without re-resolving
+ * content per cell. A footprint-less type has no collision rule but retains any bio-pattern ground restriction. The
  * probe reads the live shared count arrays, which the next blocker change updates in place, so drain a
  * probe's band before the world can change again. `ownSignposts` are the placer's posts, which no longer
  * block its reserved zone.
@@ -175,10 +177,11 @@ export function placementProbe(
   content: ContentSet,
   terrain: TerrainGraph,
   buildingType: number,
+  tribe: number | undefined,
   ownSignposts: readonly HalfCellNode[],
 ): PlacementProbe {
   const building = contentIndex(content).buildings.get(buildingType);
-  const footprint = building?.footprint;
+  const footprint = building === undefined ? undefined : buildingFootprintFor(building, tribe);
   const buildOnBioPattern = building?.buildOnBioPattern === true;
   if (footprint === undefined) {
     return { canPlace: (x, y) => canPlaceWithoutFootprint(world, terrain, buildOnBioPattern, x, y) };

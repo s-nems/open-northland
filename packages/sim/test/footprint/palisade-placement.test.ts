@@ -87,8 +87,8 @@ describe('palisade placement', () => {
     sim.step();
     const ctx = ctxOf(sim);
     const terrain = terrainOf(sim);
-    expect(canPlaceBuilding(sim.world, ctx, terrain, HUT, 20, 20)).toBe(true);
-    expect(canPlaceBuilding(sim.world, ctx, terrain, HUT, 22, 20)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctx, terrain, HUT, undefined, 20, 20)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctx, terrain, HUT, undefined, 22, 20)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 });

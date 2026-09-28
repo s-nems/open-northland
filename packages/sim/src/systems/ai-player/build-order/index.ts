@@ -185,7 +185,7 @@ function runBuildOrder(
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         if (searches.waits(entryIndex, ctx.tick)) return [];
-        const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry, underFire);
+        const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, tribe, entry, underFire);
         searches.searched(entryIndex, ctx.tick, spot !== null, true);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
@@ -249,7 +249,7 @@ function searchVerdict(
       if (entry.unlessWithin === undefined) return ACTS;
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined || !buildingEnabled(world, ctx, player, tribe, type.typeId)) return ACTS;
-      const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry, underFire);
+      const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, tribe, entry, underFire);
       return spot === null ? PASSED_OVER : { kind: 'act', placement: siteCommand(type, spot, tribe, player) };
     }
     case 'towerCoverage':
@@ -317,7 +317,18 @@ function coverageCommand(
   if (type === undefined) return null; // unreachable after 'skip', kept for the type system
   if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return null;
   const coverage = coverageOf(entry);
-  const spotFor = coverageSpotSearch(world, ctx, terrain, player, owned, anchor, type, coverage, underFire);
+  const spotFor = coverageSpotSearch(
+    world,
+    ctx,
+    terrain,
+    player,
+    owned,
+    anchor,
+    type,
+    tribe,
+    coverage,
+    underFire,
+  );
   for (const target of uncoveredTargets(world, ctx, player, owned, coverage)) {
     const spot = spotFor(target);
     if (spot !== null) return siteCommand(type, spot, tribe, player);
@@ -456,6 +467,7 @@ function replaceMissingBase(
     owned,
     centre,
     type,
+    tribe,
     BASE_REPLACEMENT_ENTRY,
     underFire,
   );

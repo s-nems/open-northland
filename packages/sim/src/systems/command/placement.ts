@@ -1,4 +1,4 @@
-import type { BuildingType } from '@open-northland/data';
+import { type BuildingType, buildingHitpointsFor } from '@open-northland/data';
 import {
   Building,
   DefenceMode,
@@ -92,6 +92,7 @@ export function placeBuilding(
         ctx.terrain,
         ctx.fog,
         command.buildingType,
+        command.tribe,
         command.owner,
       ).canPlace(command.x, command.y)
     ) {
@@ -149,11 +150,12 @@ export function assembleBuilding(
   const level = buildingLevelOf(contentIndex(ctx.content), spec.buildingType);
   world.add(e, Building, { buildingType: spec.buildingType, tribe: spec.tribe, built, level });
   const amounts = new Map<number, number>();
+  const hitpoints = buildingHitpointsFor(type, spec.tribe);
   if (underConstruction) {
     // The ConstructionSystem ramps Health up as the site rises; it starts at 1 so a foundation is never a
     // 0-HP corpse the CleanupSystem reaps.
     world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
-    if (type.hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: type.hitpoints });
+    if (hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: hitpoints });
   } else if (fillStock) {
     for (const slot of type.stock) amounts.set(slot.goodType, slot.capacity);
   } else {
@@ -170,8 +172,7 @@ export function assembleBuilding(
     }
     // A placed-built building arrives at full life so it can be besieged; a type with no extracted
     // `hitpoints` carries no Health and cannot be attacked.
-    if (type.hitpoints !== undefined)
-      world.add(e, Health, { hitpoints: type.hitpoints, max: type.hitpoints });
+    if (hitpoints !== undefined) world.add(e, Health, { hitpoints, max: hitpoints });
   }
   world.add(e, Stockpile, { amounts });
   stampOwner(world, e, spec.owner);

@@ -1,4 +1,4 @@
-import { lastByTypeId } from '@open-northland/data';
+import { buildingFootprintFor, lastByTypeId } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
 import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
@@ -19,6 +19,7 @@ import {
   createSnapshotProjections,
   type FogGates,
   type GeometryBuildingInfo,
+  type GeometryBuildingInfoOf,
   type HeartSelection,
 } from '../projections/index.js';
 import type { PlacementProbeViews } from './placement-gates.js';
@@ -42,41 +43,48 @@ export interface ViewReadModelDeps {
   readonly selection?: HeartSelection | undefined;
 }
 
-/** The building read models: the geometry every type shares, plus the per-skin sign-post and
- *  garrison-mast anchors. */
+/** The building read models by type and tribe: the footprint the tribe builds the type with, plus the
+ *  per-skin sign-post and garrison-mast anchors. */
 export function buildingModels(
   buildings: SessionHost['content']['buildings'],
   ir: ContentIr | null,
   tribes: WorldTribes,
-): { readonly byType: ReadonlyMap<number, GeometryBuildingInfo>; readonly infoOf: BuildingDoorInfoOf } {
-  const byType = new Map(
-    [...lastByTypeId(buildings)].map(([typeId, b]) => [
-      typeId,
-      { id: b.id, footprint: b.footprint } satisfies GeometryBuildingInfo,
-    ]),
-  );
+): { readonly geometryOf: GeometryBuildingInfoOf; readonly infoOf: BuildingDoorInfoOf } {
+  const byType = lastByTypeId(buildings);
   const anchorsOf = buildingSignAnchorsFor(ir, tribes);
   // Memoized per `(typeId, tribe)`: the door-badge and sign projections ask for every building on every
   // new snapshot, and the answer only changes when the content does.
+  const geometryCache = new Map<string, GeometryBuildingInfo | undefined>();
+  const geometryOf: GeometryBuildingInfoOf = (typeId, tribe) => {
+    if (typeId === undefined) return undefined;
+    const skin = tribe ?? tribes[0];
+    const key = `${typeId}:${skin}`;
+    const held = geometryCache.get(key);
+    if (held !== undefined || geometryCache.has(key)) return held;
+    const b = byType.get(typeId);
+    const geometry = b === undefined ? undefined : { id: b.id, footprint: buildingFootprintFor(b, skin) };
+    geometryCache.set(key, geometry);
+    return geometry;
+  };
   const cache = new Map<string, BuildingDoorInfo | undefined>();
   const infoOf: BuildingDoorInfoOf = (typeId, tribe) => {
     if (typeId === undefined) return undefined;
     const key = `${typeId}:${tribe ?? tribes[0]}`;
     const held = cache.get(key);
     if (held !== undefined || cache.has(key)) return held;
-    const geometry = byType.get(typeId);
+    const geometry = geometryOf(typeId, tribe);
     const info = geometry === undefined ? undefined : { ...geometry, ...anchorsOf(typeId, tribe) };
     cache.set(key, info);
     return info;
   };
-  return { byType, infoOf };
+  return { geometryOf, infoOf };
 }
 
 export interface ViewReadModels extends ReturnType<typeof createSnapshotProjections> {
   /** A good's display name by sim goodType, falling back to its id. */
   readonly goodLabel: (typeId: number) => string | undefined;
-  /** Per-type geometry for the debug overlay; the per-tribe anchors travel with the projections. */
-  readonly buildingDoors: ReadonlyMap<number, GeometryBuildingInfo>;
+  /** Per-type, per-tribe geometry for the debug overlay; the anchors travel with the projections. */
+  readonly buildingGeometry: GeometryBuildingInfoOf;
   /** The memoized build-mode band probe and its erect-signpost twin. */
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
@@ -92,7 +100,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
   const buildings = buildingModels(host.content.buildings, ir, deps.tribes);
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
-    buildingDoors: buildings.byType,
+    buildingGeometry: buildings.geometryOf,
     overlayFrame: makeOverlayFrameSource(deps.probes, host, mapSize, localPlayer),
     signpostOverlayFrame: makeSignpostOverlaySource(deps.probes, host, mapSize, localPlayer),
     litOverlayFrame: makeLitOverlaySource(host, mapSize, localPlayer),

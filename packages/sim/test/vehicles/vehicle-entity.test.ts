@@ -322,11 +322,11 @@ describe('footprint', () => {
       ],
     });
     const ctx = { ...ctxOf(s), content };
-    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, 4, 4)).toBe(false);
-    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, 13, 12)).toBe(false);
-    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, 8, 8)).toBe(true);
+    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, undefined, 4, 4)).toBe(false);
+    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, undefined, 13, 12)).toBe(false);
+    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, undefined, 8, 8)).toBe(true);
     removeVehicle(s.world, ctxOf(s), cart, 'script');
-    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, 4, 4)).toBe(true);
+    expect(canPlaceBuilding(s.world, ctx, terrain, HUT, undefined, 4, 4)).toBe(true);
   });
 
   it("puts a cart's door on the first open ring node beside it and a catapult's just outside its disc", () => {

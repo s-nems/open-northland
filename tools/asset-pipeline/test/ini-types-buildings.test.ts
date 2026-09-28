@@ -28,6 +28,7 @@ describe('extractBuildings', () => {
         recipes: [],
         construction: [], // build cost is overlaid from the graphics table, not the logic table
         shelterCapacity: 0, // the garrison size is authored balance, overlaid at the app boundary
+        tribeVariants: [], // each tribe's own body is overlaid from the graphics table
         source: src,
       },
       {
@@ -45,6 +46,7 @@ describe('extractBuildings', () => {
         recipes: [],
         construction: [],
         shelterCapacity: 0,
+        tribeVariants: [],
         source: src,
       },
       {
@@ -62,6 +64,7 @@ describe('extractBuildings', () => {
         recipes: [],
         construction: [],
         shelterCapacity: 0,
+        tribeVariants: [],
         source: src,
       },
       {
@@ -80,6 +83,7 @@ describe('extractBuildings', () => {
         recipes: [],
         construction: [],
         shelterCapacity: 0,
+        tribeVariants: [],
         source: src,
       },
       {
@@ -98,6 +102,7 @@ describe('extractBuildings', () => {
         recipes: [],
         construction: [],
         shelterCapacity: 0,
+        tribeVariants: [],
         source: src,
       },
     ]);

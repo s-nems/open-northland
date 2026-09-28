@@ -103,14 +103,15 @@ export function createPlacementGates(
     return probe;
   };
   const building = (typeId: number, paper?: Paper): NodeGridProbe => {
-    const gateTribe = paper === undefined ? tribe : undefined;
-    const family = `b${typeId}:${gateTribe ?? ''}`;
+    // A placing paper authorizes the house past the technology gate; the tribe still picks its footprint.
+    const gated = paper === undefined;
+    const family = `b${typeId}:${gated}`;
     // Asked every tick besides: a hostile fighter's step and a technology unlock move no blocker version.
     return gridProbe(family, () =>
       nodeGridProbe(
         grids,
         family,
-        (area) => host.placementProbe(typeId, area, localPlayer, gateTribe),
+        (area) => host.placementProbe(typeId, area, localPlayer, tribe, gated),
         blockerVersion,
         true,
       ),

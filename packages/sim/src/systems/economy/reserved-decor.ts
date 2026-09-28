@@ -27,7 +27,7 @@ export function decorInReservedZone(
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return [];
   const anchor = nodeOfPosition(p.x, p.y);
-  const rz = reservedZoneOf(ctx.content, terrain, b.buildingType, anchor.hx, anchor.hy);
+  const rz = reservedZoneOf(ctx.content, terrain, b.buildingType, b.tribe, anchor.hx, anchor.hy);
   if (rz === undefined) return [];
   return near(world, anchor.hx, anchor.hy, rz.reach).filter((e) =>
     rz.zone.has(entityNode(world, terrain, e)),

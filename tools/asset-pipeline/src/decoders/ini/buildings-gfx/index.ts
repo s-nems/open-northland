@@ -1,4 +1,5 @@
 export {
+  type ByTribe,
   extractBuildingFootprints,
   extractConstructionCosts,
   extractHouseHitpoints,

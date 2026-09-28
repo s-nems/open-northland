@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import type { BuildingFootprint, GoodQuantity } from '@open-northland/data';
 import {
+  type ByTribe,
   extractAnimals,
   extractArmor,
   extractAtomicAnimations,
@@ -70,9 +71,9 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   const buildingHolyFirePoints = [];
   const buildingGraphicsOverlays = {
     constructionCosts: new Map<number, GoodQuantity[]>(),
-    hitpoints: new Map<number, number>(),
+    hitpoints: new Map<number, ByTribe<number>>(),
     upgradeTargets: new Map<number, number>(),
-    footprints: new Map<number, BuildingFootprint>(),
+    footprints: new Map<number, ByTribe<BuildingFootprint>>(),
   } satisfies BuildingGraphicsOverlays;
 
   for (const { path, file, layer } of sources) {

@@ -35,10 +35,11 @@ export function placementProbeFor(
   buildingType: number,
   player?: number,
   tribe?: number,
+  gated = true,
 ): PlayerPlacementProbe | null {
   if (terrain === undefined) return null;
-  const probe = seatPlacementProbe(world, content, terrain, fog, buildingType, player);
-  if (tribe === undefined) return probe;
+  const probe = seatPlacementProbe(world, content, terrain, fog, buildingType, tribe, player);
+  if (tribe === undefined || !gated) return probe;
   const enabled = buildingEnabled(world, { content }, player, tribe, buildingType);
   return {
     ...probe,

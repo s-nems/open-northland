@@ -1,13 +1,28 @@
-import { type BuildingFootprint, firstByTypeId, footprintCellDx } from '@open-northland/data';
+import {
+  type BuildingFootprint,
+  buildingFootprintFor,
+  firstByTypeId,
+  footprintCellDx,
+} from '@open-northland/data';
 import { entityById, nodeOfPosition, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { forEachPlacement } from '../content/map-placements.js';
-import { buildingTypeOf, isBuilding, positionOf, type SnapshotEntity } from '../game/snapshot.js';
+import {
+  buildingTribeOf,
+  buildingTypeOf,
+  isBuilding,
+  positionOf,
+  type SnapshotEntity,
+} from '../game/snapshot.js';
 import type { StaticDrawSurface } from './harvestable-handover.js';
 
-/** The slice of a building type the clearing reads: its walk-block cells. */
+/** The slice of a building type the clearing reads: each tribe's walk-block cells. */
 export interface FootprintBuildingType {
   readonly typeId: number;
   readonly footprint?: Pick<BuildingFootprint, 'blocked'> | undefined;
+  readonly tribeVariants: readonly {
+    readonly tribe: number;
+    readonly footprint?: Pick<BuildingFootprint, 'blocked'> | undefined;
+  }[];
 }
 
 function nodeKey(hx: number, hy: number): string {
@@ -44,7 +59,9 @@ export function bindFootprintClearing<Sprite>(
     const type = buildingTypeOf(building);
     const pos = positionOf(building);
     if (type === undefined || pos === undefined) return;
-    const cells = buildingsByType.get(type)?.footprint?.blocked ?? [];
+    const def = buildingsByType.get(type);
+    const cells =
+      (def === undefined ? undefined : buildingFootprintFor(def, buildingTribeOf(building)))?.blocked ?? [];
     const { hx, hy } = nodeOfPosition(pos.x, pos.y);
     for (const cell of cells) {
       const key = nodeKey(hx + footprintCellDx(hy, cell), hy + cell.dy);

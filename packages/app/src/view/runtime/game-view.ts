@@ -697,7 +697,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
     const {
       goodLabel,
-      buildingDoors,
+      buildingGeometry,
       overlayFrame,
       signpostOverlayFrame,
       litOverlayFrame,
@@ -763,7 +763,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       renderer,
       cameraCtl,
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-      buildingsByType: buildingDoors,
+      geometryOf: buildingGeometry,
       clientToScreen,
       clientToTile: (x, y) => toolPanel.clientToTile(x, y),
       claimPointer: (x, y) => controls.claimsPointer(x, y),

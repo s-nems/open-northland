@@ -341,7 +341,7 @@ describe('the yard site search', () => {
     // Park a cart on each spot the search opens in turn: a parked cart is skipped where it stands, and
     // once nothing else fits the verdict names the cart rather than the ground.
     const taken: HalfCellNode[] = [];
-    let verdict = findVehicleSite(s.world, ctxOf(s), terrain, HANDCART_YARD, centre, here);
+    let verdict = findVehicleSite(s.world, ctxOf(s), terrain, HANDCART_YARD, VIKING, centre, here);
     while (verdict.kind === 'site' && taken.length < 8) {
       expect(taken).not.toContainEqual(verdict.node);
       taken.push(verdict.node);
@@ -351,7 +351,7 @@ describe('the yard site search', () => {
         y: verdict.node.hy,
         tribe: VIKING,
       });
-      verdict = findVehicleSite(s.world, ctxOf(s), terrain, HANDCART_YARD, centre, here);
+      verdict = findVehicleSite(s.world, ctxOf(s), terrain, HANDCART_YARD, VIKING, centre, here);
     }
     expect(taken.length).toBeGreaterThan(0);
     expect(verdict).toEqual({ kind: 'occupied' });

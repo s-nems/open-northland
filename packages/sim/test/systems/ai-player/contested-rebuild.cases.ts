@@ -76,7 +76,7 @@ function bowReach(sim: Simulation): number {
 
 /** The nearest map-point distance from `at` to any wall cell of a `buildingType` site anchored on `site`. */
 function wallDistance(sim: Simulation, buildingType: number, site: Spot, at: Spot): number {
-  const cells = buildingFootprintOf(sim.content, buildingType)?.blocked ?? [];
+  const cells = buildingFootprintOf(sim.content, buildingType, undefined)?.blocked ?? [];
   let nearest = hexDistanceBetween(site.x, site.y, at.x, at.y);
   for (const c of cells) {
     const x = site.x + footprintCellDx(site.y, c);

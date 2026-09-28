@@ -12,7 +12,7 @@ import type { CameraController } from '../camera/index.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import {
   createGeometryDebugOverlay,
-  type GeometryBuildingInfo,
+  type GeometryBuildingInfoOf,
   type GeometryDebugOverlay,
 } from '../projections/index.js';
 
@@ -30,7 +30,7 @@ export interface DebugMountsOptions {
   readonly initialToolsEnabled: boolean;
   readonly palettePosition: AdminPalettePosition;
   readonly elevation?: ElevationField;
-  readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;
+  readonly geometryOf: GeometryBuildingInfoOf;
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
   readonly clientToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The trusted admin channel: every debug poke is a world edit, not a seat's order. */
@@ -63,7 +63,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
 
   const geometryDebug = createGeometryDebugOverlay({
     enabled: hasDebugFlag(params, GEOMETRY_DEBUG_FLAG),
-    buildingsByType: opts.buildingsByType,
+    geometryOf: opts.geometryOf,
     setItems: (items) => renderer.setGeometryDebug(items),
   });
   // Writing the URL back keeps a reload reproducing what is on screen.

@@ -142,8 +142,8 @@ export function displaceSignpostsFromFootprint(world: World, ctx: SystemContext,
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return;
   const anchor = nodeOfPosition(p.x, p.y);
-  const covered = buildingFlagBodyNodes(ctx.content, terrain, b.buildingType, anchor.hx, anchor.hy);
-  const door = buildingFootprintOf(ctx.content, b.buildingType)?.door;
+  const covered = buildingFlagBodyNodes(ctx.content, terrain, b.buildingType, b.tribe, anchor.hx, anchor.hy);
+  const door = buildingFootprintOf(ctx.content, b.buildingType, b.tribe)?.door;
   if (door !== undefined) {
     const x = anchor.hx + footprintCellDx(anchor.hy, door);
     const y = anchor.hy + door.dy;

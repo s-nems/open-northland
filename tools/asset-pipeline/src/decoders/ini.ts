@@ -26,6 +26,7 @@ export {
   rampAliasMap,
 } from './ini/bindings/index.js';
 export {
+  type ByTribe,
   extractBuildingBobs,
   extractBuildingFlagPoints,
   extractBuildingFootprints,

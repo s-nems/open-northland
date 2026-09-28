@@ -152,12 +152,14 @@ describe('resource footprints', () => {
     const terrain = terrainOf(sim);
     placeResource(sim, WOOD, WOOD_ATOMIC, 5, 2);
 
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, 4, 2)).toBe(false);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, 1, 2)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, undefined, 4, 2)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, undefined, 1, 2)).toBe(true);
 
     const patchSim = mappedSim();
     placeResource(patchSim, MUSHROOM, MUSHROOM_ATOMIC, 4, 2);
-    expect(canPlaceBuilding(patchSim.world, ctxOf(patchSim), terrainOf(patchSim), TEST_HUT, 4, 2)).toBe(true);
+    expect(
+      canPlaceBuilding(patchSim.world, ctxOf(patchSim), terrainOf(patchSim), TEST_HUT, undefined, 4, 2),
+    ).toBe(true);
   });
 
   it('a chest blocks, reserves and is worked like a node, and frees its ground once opened', () => {
@@ -167,7 +169,7 @@ describe('resource footprints', () => {
     expect(sim.world.get(chest, ResourceFootprint).sourceGfxIndex).toBe(CHEST_GFX);
     expect(resourceBlockedCells(sim.world, terrain).has(terrain.nodeAt(5, 2))).toBe(true);
     // The build margin keeps a house off, and the work flag rule keeps a flag off the chest's own cell.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, 4, 2)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, undefined, 4, 2)).toBe(false);
     expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(5, 2))).toBe(false);
     expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(4, 3))).toBe(true);
     // Worked from a cell of its record's work area, never from its own blocked node.
@@ -177,7 +179,7 @@ describe('resource footprints', () => {
 
     unstampResourceFootprint(sim.world, chest);
     sim.world.destroy(chest);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, 4, 2)).toBe(true);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, undefined, 4, 2)).toBe(true);
     expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(5, 2))).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

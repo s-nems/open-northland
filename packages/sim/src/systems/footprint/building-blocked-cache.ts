@@ -90,7 +90,7 @@ function deriveBuildingCells(
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
     types?.set(e, b.buildingType);
-    const footprint = buildingFootprintOf(content, b.buildingType);
+    const footprint = buildingFootprintOf(content, b.buildingType, b.tribe);
     if (footprint === undefined || footprint.blocked.length === 0) continue;
     const p = world.get(e, Position);
     const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);

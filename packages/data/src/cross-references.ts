@@ -76,7 +76,7 @@ function checkGoodProduction(set: ContentSet, { goodIds, buildingIds }: IdSets):
   return errors;
 }
 
-function checkBuildings(set: ContentSet, { goodIds, jobIds, vehicleIds }: IdSets): string[] {
+function checkBuildings(set: ContentSet, { goodIds, jobIds, tribeIds, vehicleIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const b of set.buildings) {
     for (const w of b.workers) {
@@ -100,6 +100,10 @@ function checkBuildings(set: ContentSet, { goodIds, jobIds, vehicleIds }: IdSets
         if (!goodIds.has(io.goodType))
           errors.push(`building "${b.id}" recipe references unknown goodType ${io.goodType}`);
       }
+    }
+    for (const v of b.tribeVariants) {
+      if (!tribeIds.has(v.tribe))
+        errors.push(`building "${b.id}" has a variant for unknown tribe ${v.tribe}`);
     }
     if (b.refillsOwnStock && b.recipes.length > 0)
       errors.push(`building "${b.id}" refills its own stock and also carries a recipe`);

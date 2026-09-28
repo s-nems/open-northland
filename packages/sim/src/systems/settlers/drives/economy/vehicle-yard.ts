@@ -109,7 +109,7 @@ function siteFor(plan: PlannerContext, workplace: Entity, houseType: number): En
   // no target scan vetoes, so the entry only spaces the searches out.
   const centreNode = terrain.nodeAtClamped(centre.hx, centre.hy);
   if (isUnreachableGoal(unreachableGoals(world, ctx, e), centreNode)) return null;
-  const verdict = findVehicleSite(world, ctx, terrain, houseType, centre, here);
+  const verdict = findVehicleSite(world, ctx, terrain, houseType, plan.tribe, centre, here);
   if (verdict.kind !== 'site') {
     if (noteUnreachableGoal(world, ctx, e, centreNode)) {
       ctx.events.emit({ kind: 'vehicleSiteRefused', entity: e, reason: verdict.kind });

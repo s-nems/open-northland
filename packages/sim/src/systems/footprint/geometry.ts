@@ -1,5 +1,6 @@
 import {
   type BuildingFootprint,
+  buildingFootprintFor,
   type ContentSet,
   type FootprintCell,
   footprintCellDx,
@@ -26,13 +27,16 @@ export function countsMatchCells(counts: Uint16Array, cells: ReadonlySet<NodeId>
   return true;
 }
 
-/** The footprint of a building type, or undefined when the type is unknown or carries none. Keyed by
- *  content (not a full SystemContext) so the placement-overlay probe can resolve footprints without a tick. */
+/** The footprint `tribe` builds a building type with, or undefined when the type is unknown or carries
+ *  none; an undefined tribe reads the lowest tribe's. Keyed by content (not a full SystemContext) so the
+ *  placement-overlay probe can resolve footprints without a tick. */
 export function buildingFootprintOf(
   content: ContentSet,
   buildingType: number,
+  tribe: number | undefined,
 ): BuildingFootprint | undefined {
-  return contentIndex(content).buildings.get(buildingType)?.footprint;
+  const type = contentIndex(content).buildings.get(buildingType);
+  return type === undefined ? undefined : buildingFootprintFor(type, tribe);
 }
 
 /** Translate a footprint cell list onto an anchor node, applying the odd-row parity shift
@@ -57,8 +61,12 @@ export function translatedCells(
 export const ANCHOR_ONLY: readonly FootprintCell[] = [{ dx: 0, dy: 0 }];
 
 /** Ground a standing building reserves against fields, including walkable margins under its art. */
-export function buildingFieldZone(content: ContentSet, buildingType: number): readonly FootprintCell[] {
-  const footprint = buildingFootprintOf(content, buildingType);
+export function buildingFieldZone(
+  content: ContentSet,
+  buildingType: number,
+  tribe: number,
+): readonly FootprintCell[] {
+  const footprint = buildingFootprintOf(content, buildingType, tribe);
   if (footprint?.reserved.length) return footprint.reserved;
   if (footprint?.blocked.length) return footprint.blocked;
   return ANCHOR_ONLY;
@@ -67,8 +75,12 @@ export function buildingFieldZone(content: ContentSet, buildingType: number): re
 /** The cells the walls of `buildingType` own, anchor-relative: its family body (a level-0 house reserves
  *  its top tier's space), or the bare anchor for a footprint-less type. No marker stands there: the
  *  OBSTACLE channel refuses one, and a placement pushes a standing one off, so the two cannot disagree. */
-export function buildingFlagBody(content: ContentSet, buildingType: number): readonly FootprintCell[] {
-  const fp = buildingFootprintOf(content, buildingType);
+export function buildingFlagBody(
+  content: ContentSet,
+  buildingType: number,
+  tribe: number,
+): readonly FootprintCell[] {
+  const fp = buildingFootprintOf(content, buildingType, tribe);
   return fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
 }
 
@@ -77,10 +89,13 @@ export function buildingFlagBodyNodes(
   content: ContentSet,
   terrain: TerrainGraph,
   buildingType: number,
+  tribe: number,
   anchorHx: number,
   anchorHy: number,
 ): Set<NodeId> {
-  return new Set(translatedCells(terrain, buildingFlagBody(content, buildingType), anchorHx, anchorHy));
+  return new Set(
+    translatedCells(terrain, buildingFlagBody(content, buildingType, tribe), anchorHx, anchorHy),
+  );
 }
 
 /** A building's reserved build-exclusion zone as {@link NodeId}s. See {@link reservedZoneOf}. */
@@ -100,10 +115,11 @@ export function reservedZoneOf(
   content: ContentSet,
   terrain: TerrainGraph,
   buildingType: number,
+  tribe: number,
   anchorHx: number,
   anchorHy: number,
 ): ReservedZone | undefined {
-  const cells = buildingFootprintOf(content, buildingType)?.reserved ?? ANCHOR_ONLY;
+  const cells = buildingFootprintOf(content, buildingType, tribe)?.reserved ?? ANCHOR_ONLY;
   const zone = new Set<NodeId>(translatedCells(terrain, cells, anchorHx, anchorHy));
   if (zone.size === 0) return undefined;
   let reach = 0;

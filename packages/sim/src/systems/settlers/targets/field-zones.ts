@@ -76,7 +76,12 @@ function zoneOf(
   const position = world.tryGet(e, Position);
   if (building === undefined || position === undefined) return null;
   const anchor = nodeOfPosition(position.x, position.y);
-  return translatedCells(terrain, buildingFieldZone(content, building.buildingType), anchor.hx, anchor.hy);
+  return translatedCells(
+    terrain,
+    buildingFieldZone(content, building.buildingType, building.tribe),
+    anchor.hx,
+    anchor.hy,
+  );
 }
 
 const zonesByWorld = new WeakMap<World, FieldZones>();

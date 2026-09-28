@@ -309,12 +309,13 @@ function groundAccepted(
   ctx: SystemContext,
   terrain: TerrainGraph,
   type: BuildingType,
+  tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   x: number,
   y: number,
 ): boolean {
   if (entry.ground === undefined) return true;
-  const footprint = buildingFootprintOf(ctx.content, type.typeId);
+  const footprint = buildingFootprintOf(ctx.content, type.typeId, tribe);
   if (footprint === undefined) return terrain.isPlantable(terrain.nodeAt(x, y));
   for (const c of footprint.reserved) {
     const cx = x + footprintCellDx(y, c);
@@ -331,8 +332,8 @@ const DEPOSIT_GOOD_IDS: readonly string[] = ['mud', 'stone', 'iron', 'gold'];
 
 /** How far out from its anchor a building of the type's chain ever has a wall, in Manhattan nodes: what an
  *  enemy shot at the building reaches for. */
-function wallSpan(ctx: SystemContext, buildingTypeId: number): number {
-  const footprint = buildingFootprintOf(ctx.content, buildingTypeId);
+function wallSpan(ctx: SystemContext, buildingTypeId: number, tribe: number): number {
+  const footprint = buildingFootprintOf(ctx.content, buildingTypeId, tribe);
   let span = 0;
   for (const c of [...(footprint?.familyBody ?? []), ...(footprint?.blocked ?? [])]) {
     span = Math.max(span, footprintCellMaxAbsDx(c) + Math.abs(c.dy));
@@ -356,15 +357,16 @@ export function spotAcceptor(
   terrain: TerrainGraph,
   player: number,
   buildingTypeId: number,
+  tribe: number,
 ): SpotAcceptor {
-  const span = wallSpan(ctx, buildingTypeId);
+  const span = wallSpan(ctx, buildingTypeId, tribe);
   const occupied = new Set<NodeId>(); // an off-grid anchor can never match a candidate, so it is left out
   for (const e of world.query(Building)) {
     const node = anchorNodeOf(world, e);
     if (node !== null && terrain.inBounds(node.hx, node.hy)) occupied.add(terrain.nodeAt(node.hx, node.hy));
   }
-  const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, player);
-  const reserved = buildingFootprintOf(ctx.content, buildingTypeId)?.reserved;
+  const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, tribe, player);
+  const reserved = buildingFootprintOf(ctx.content, buildingTypeId, tribe)?.reserved;
   const zone = reserved !== undefined && reserved.length > 0 ? reserved : ANCHOR_ONLY;
   const deposits = new Set<number>();
   for (const id of DEPOSIT_GOOD_IDS) {
@@ -426,11 +428,12 @@ export function placementSpot(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
+  tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
 ): HalfCellNode | null {
   const settlement = buildReach(world, owned, anchor);
-  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId);
+  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const { centre, serves } = searchCentre(
     world,
     ctx,
@@ -451,11 +454,24 @@ export function placementSpot(
     centre,
     serves,
     type,
+    tribe,
     entry,
     underFire,
   );
   if (pulled !== null || (centre.hx === anchor.hx && centre.hy === anchor.hy)) return pulled;
-  return spotAround(ctx, terrain, settlement, acceptor, anchor, anchor, serves, type, entry, underFire);
+  return spotAround(
+    ctx,
+    terrain,
+    settlement,
+    acceptor,
+    anchor,
+    anchor,
+    serves,
+    type,
+    tribe,
+    entry,
+    underFire,
+  );
 }
 
 function spotAround(
@@ -467,6 +483,7 @@ function spotAround(
   centre: HalfCellNode,
   serves: HalfCellNode | null,
   type: BuildingType,
+  tribe: number,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
 ): HalfCellNode | null {
@@ -482,7 +499,7 @@ function spotAround(
     if (!reach.contains(x, y)) return false;
     if (serves !== null && !withinNodeRadius(serves.hx, serves.hy, x, y, serveRadius)) return false;
     if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
-    if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
+    if (!groundAccepted(ctx, terrain, type, tribe, entry, x, y)) return false;
     return accept(x, y);
   });
 }

@@ -16,6 +16,7 @@ const TYPES = [
         { dx: 1, dy: 0 },
       ],
     },
+    tribeVariants: [],
   },
 ];
 /** Ordinal 0 is grass on the house anchor node, ordinal 1 a bush on the node beside it. */

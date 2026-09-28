@@ -1,3 +1,4 @@
+export * from './building-tribe.js';
 export * from './content-fingerprint.js';
 export * from './fnv.js';
 export * from './footprint.js';

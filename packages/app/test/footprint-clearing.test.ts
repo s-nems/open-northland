@@ -8,8 +8,10 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
 
 const HOUSE = 2;
 const HALL = 3;
-/** A house blocks its anchor node and the nodes in front of and behind it; a hall its anchor and
- *  the node beside it. */
+const VIKING = 1;
+const SARACEN = 4;
+/** A house blocks its anchor node and the nodes in front of and behind it, a saracen's only its anchor; a
+ *  hall its anchor and the node beside it. */
 const TYPES: readonly FootprintBuildingType[] = [
   {
     typeId: HOUSE,
@@ -20,6 +22,7 @@ const TYPES: readonly FootprintBuildingType[] = [
         { dx: 0, dy: -1 },
       ],
     },
+    tribeVariants: [{ tribe: SARACEN, footprint: { blocked: [{ dx: 0, dy: 0 }] } }],
   },
   {
     typeId: HALL,
@@ -29,6 +32,7 @@ const TYPES: readonly FootprintBuildingType[] = [
         { dx: 1, dy: 0 },
       ],
     },
+    tribeVariants: [],
   },
 ];
 
@@ -55,8 +59,8 @@ const SPRITES = new Map([
 ]);
 
 /** A building entity anchored at half-cell node `(hx, hy)`. */
-function buildingAt(id: number, typeId: number, hx: number, hy: number): Ent {
-  return { id, components: { Building: { buildingType: typeId }, Position: positionOfNode(hx, hy) } };
+function buildingAt(id: number, typeId: number, hx: number, hy: number, tribe = VIKING): Ent {
+  return { id, components: { Building: { buildingType: typeId, tribe }, Position: positionOfNode(hx, hy) } };
 }
 
 function bind(entities: readonly Ent[]) {
@@ -87,6 +91,11 @@ describe('footprint clearing of static landscape sprites', () => {
   it('clears the walk-block cells of every building standing when bound, with the odd-row shift', () => {
     const { removed } = bind([buildingAt(1, HOUSE, 10, 11)]);
     expect(removed.sort()).toEqual(['anchor-grass', 'back-bush', 'front-grass']);
+  });
+
+  it("clears only the walk-block cells of the building's own tribe", () => {
+    const { removed } = bind([buildingAt(1, HOUSE, 10, 11, SARACEN)]);
+    expect(removed).toEqual(['anchor-grass']);
   });
 
   it('clears under a building as its placement event arrives, and every sprite on a covered node', () => {

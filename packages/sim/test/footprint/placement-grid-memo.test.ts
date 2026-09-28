@@ -45,7 +45,7 @@ function tree(sim: Simulation, hx: number, hy: number): Entity {
 }
 
 function canPlaceHut(sim: Simulation, x: number, y: number): boolean {
-  return canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, x, y);
+  return canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, undefined, x, y);
 }
 
 /** Every anchor answers what a from-scratch derive answers, and the grid verifier agrees with a full

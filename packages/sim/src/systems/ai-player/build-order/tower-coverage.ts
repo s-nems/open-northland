@@ -135,13 +135,14 @@ export function coverageSpotSearch(
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
+  tribe: number,
   coverage: Coverage,
   underFire: EnemyFire,
 ): (target: HalfCellNode) => HalfCellNode | null {
   const centroid = anchorCentroid(world, owned);
   const apartFrom = coverage.by === 'tower' ? [] : coverageCentres(world, ctx, player, owned, coverage);
   const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
-  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId);
+  const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const settlement = buildReach(world, owned, anchor);
   const box = nodeBoxOfCircles([{ x: 0, y: 0, r: coverage.radius }]);
   // Every node covering a target lies within this Manhattan span of it.

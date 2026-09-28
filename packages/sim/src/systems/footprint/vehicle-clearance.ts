@@ -63,7 +63,7 @@ function blockerCellsOf(world: World, content: ContentSet, terrain: TerrainGraph
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const building = world.tryGet(e, Building);
   if (building !== undefined) {
-    const footprint = buildingFootprintOf(content, building.buildingType);
+    const footprint = buildingFootprintOf(content, building.buildingType, building.tribe);
     if (footprint === undefined) return [];
     const cells = translatedCells(terrain, footprint.blocked, hx, hy);
     const door = footprint.door;

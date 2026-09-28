@@ -1,4 +1,9 @@
-import type { BuildingType, VehicleType } from '@open-northland/data';
+import {
+  type BuildingFootprint,
+  type BuildingType,
+  buildingFootprintFor,
+  type VehicleType,
+} from '@open-northland/data';
 import { Building, Owner, Position, UnderConstruction } from '../../../components/index.js';
 import { landscapeEditState } from '../../../components/landscape.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -69,17 +74,27 @@ function parkedVehicleNodes(world: World, ctx: SystemContext, terrain: TerrainGr
   return nodes;
 }
 
-/** The half-cell nodes of `house`'s walk-block body at anchor `(hx, hy)`, or the bare anchor for a
+/** The half-cell nodes of a house's walk-block body at anchor `(hx, hy)`, or the bare anchor for a
  *  footprint-less type; null when any lies off the map. */
-function bodyNodes(terrain: TerrainGraph, house: BuildingType, hx: number, hy: number): NodeId[] | null {
-  const cells = house.footprint?.blocked.length ? house.footprint.blocked : ANCHOR_ONLY;
+function bodyNodes(
+  terrain: TerrainGraph,
+  footprint: BuildingFootprint | undefined,
+  hx: number,
+  hy: number,
+): NodeId[] | null {
+  const cells = footprint?.blocked.length ? footprint.blocked : ANCHOR_ONLY;
   const nodes = translatedCells(terrain, cells, hx, hy);
   return nodes.length === cells.length ? nodes : null;
 }
 
 /** The node the worker stands on to build: the house door, or the anchor for a door-less footprint. */
-function workPoint(terrain: TerrainGraph, house: BuildingType, hx: number, hy: number): NodeId | null {
-  const door = house.footprint?.door;
+function workPoint(
+  terrain: TerrainGraph,
+  footprint: BuildingFootprint | undefined,
+  hx: number,
+  hy: number,
+): NodeId | null {
+  const door = footprint?.door;
   const nodes =
     door === undefined
       ? translatedCells(terrain, ANCHOR_ONLY, hx, hy)
@@ -88,6 +103,13 @@ function workPoint(terrain: TerrainGraph, house: BuildingType, hx: number, hy: n
 }
 
 type Objection = 'none' | 'blocked' | 'occupied';
+
+/** The house a site is sought for, with the footprint its builder's tribe gives it. */
+interface SiteHouse {
+  readonly house: BuildingType;
+  readonly tribe: number;
+  readonly footprint: BuildingFootprint | undefined;
+}
 
 /**
  * Why a land house may not go at `(hx, hy)`: a parked vehicle on the body, else the placement rule, the
@@ -99,18 +121,18 @@ function landObjection(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  house: BuildingType,
+  site: SiteHouse,
   vehicle: VehicleType,
   workerContinent: number,
   parked: ReadonlySet<NodeId>,
   hx: number,
   hy: number,
 ): Objection {
-  const body = bodyNodes(terrain, house, hx, hy);
+  const body = bodyNodes(terrain, site.footprint, hx, hy);
   if (body === null) return 'blocked';
   for (const node of body) if (parked.has(node)) return 'occupied';
-  if (!canPlaceBuilding(world, ctx, terrain, house.typeId, hx, hy)) return 'blocked';
-  const point = workPoint(terrain, house, hx, hy);
+  if (!canPlaceBuilding(world, ctx, terrain, site.house.typeId, site.tribe, hx, hy)) return 'blocked';
+  const point = workPoint(terrain, site.footprint, hx, hy);
   if (point === null || terrain.componentOf(point) !== workerContinent) return 'blocked';
   const clearance = vehicleClearance(world, ctx, terrain);
   for (const node of body) {
@@ -131,14 +153,14 @@ function waterObjection(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  house: BuildingType,
+  site: SiteHouse,
   vehicle: VehicleType,
   workerContinent: number,
   parked: ReadonlySet<NodeId>,
   hx: number,
   hy: number,
 ): Objection {
-  const body = bodyNodes(terrain, house, hx, hy);
+  const body = bodyNodes(terrain, site.footprint, hx, hy);
   if (body === null) return 'blocked';
   for (const node of body) if (parked.has(node)) return 'occupied';
   const anchor = terrain.nodeAt(hx, hy);
@@ -149,14 +171,14 @@ function waterObjection(
   for (const node of body) {
     if (forbidden.has(node) || terrain.componentOf(node) !== continent) return 'blocked';
   }
-  const point = workPoint(terrain, house, hx, hy);
+  const point = workPoint(terrain, site.footprint, hx, hy);
   if (point === null || terrain.componentOf(point) !== workerContinent) return 'blocked';
   return 'none';
 }
 
 /**
  * The first point in the original's ring order (`hexagonRing`, rings 0 to {@link VEHICLE_SITE_PLACEMENT_RINGS}
- * exclusive around `centre`) where a fresh site of `houseType` may go for a worker standing at
+ * exclusive around `centre`) where a fresh site of `tribe`'s `houseType` may go for a worker standing at
  * `workerNode`, else why none may.
  */
 export function findVehicleSite(
@@ -164,6 +186,7 @@ export function findVehicleSite(
   ctx: SystemContext,
   terrain: TerrainGraph,
   houseType: number,
+  tribe: number,
   centre: HalfCellNode,
   workerNode: NodeId,
 ): VehicleSiteVerdict {
@@ -171,6 +194,7 @@ export function findVehicleSite(
   const house = index.buildings.get(houseType);
   const vehicle = house?.vehicleType === undefined ? undefined : index.vehicles.get(house.vehicleType);
   if (house === undefined || vehicle === undefined) return { kind: 'notFound' };
+  const site: SiteHouse = { house, tribe, footprint: buildingFootprintFor(house, tribe) };
   const workerContinent = terrain.componentOf(workerNode);
   const parked = parkedVehicleNodes(world, ctx, terrain);
   let occupied = false;
@@ -178,8 +202,8 @@ export function findVehicleSite(
     for (const { point } of hexagonRing(centre, r)) {
       if (!terrain.inBounds(point.hx, point.hy)) continue;
       const objection = house.ignoreContinents
-        ? waterObjection(world, ctx, terrain, house, vehicle, workerContinent, parked, point.hx, point.hy)
-        : landObjection(world, ctx, terrain, house, vehicle, workerContinent, parked, point.hx, point.hy);
+        ? waterObjection(world, ctx, terrain, site, vehicle, workerContinent, parked, point.hx, point.hy)
+        : landObjection(world, ctx, terrain, site, vehicle, workerContinent, parked, point.hx, point.hy);
       if (objection === 'none') return { kind: 'site', node: point };
       if (objection === 'occupied') occupied = true;
     }

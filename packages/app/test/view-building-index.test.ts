@@ -25,6 +25,7 @@ const building = (typeId: number, id: string): ContentBuilding => ({
   ignoreContinents: false,
   shelterCapacity: 0,
   footprint: FOOTPRINT,
+  tribeVariants: [],
 });
 
 /** An IR carrying just the flag-point lanes the index reads. */
@@ -38,6 +39,7 @@ function ir(
 
 const VIKING = 1;
 const FRANK = 2;
+const SARACEN = 4;
 
 describe('view building models', () => {
   it('carries the extracted sign-post anchor of the drawing tribe', () => {
@@ -51,6 +53,21 @@ describe('view building models', () => {
     expect(infoOf(SMITHY, VIKING)?.flagPoint).toEqual({ x: 12, y: -4 });
     // A type with no flag-point row still resolves - the sign chain just has nothing to anchor on.
     expect(infoOf(FARM, VIKING)).toEqual({ id: 'farm', footprint: FOOTPRINT });
+  });
+
+  it("resolves each tribe's own footprint for the same type, the base one for a tribe without a variant", () => {
+    const PALACE = 20;
+    const SARACEN_BODY = { blocked: [{ dx: 0, dy: 0 }], familyBody: [{ dx: 0, dy: 0 }], reserved: [] };
+    const palace = {
+      ...building(PALACE, 'palace'),
+      tribeVariants: [{ tribe: SARACEN, footprint: SARACEN_BODY }],
+    };
+    const { geometryOf, infoOf } = buildingModels([palace], ir([]), [VIKING, SARACEN, FRANK]);
+    expect(geometryOf(PALACE, SARACEN)?.footprint).toEqual(SARACEN_BODY);
+    expect(infoOf(PALACE, SARACEN)?.footprint).toEqual(SARACEN_BODY);
+    expect(geometryOf(PALACE, FRANK)?.footprint).toEqual(FOOTPRINT);
+    // An unknown drawing tribe reads the world's first civilization.
+    expect(geometryOf(PALACE, undefined)?.footprint).toEqual(FOOTPRINT);
   });
 
   it('gives each tribe its own anchor for the same type, and falls back to the base tribe', () => {
@@ -83,7 +100,6 @@ describe('view building models', () => {
     // viking mast is measured against the viking roof, so borrowing it would hang the flag off this one;
     // the caller's derived anchor is the honest answer.
     const TOWER = 40;
-    const SARACEN = 4;
     const SARACEN_BMD = 'data/engine2d/bin/bobs/ls_houses_saracen.bmd';
     const withSkins: ContentIr = {
       ...ir(
@@ -113,12 +129,12 @@ describe('view building models', () => {
     // No schema enforces typeId uniqueness, and the two index rules resolve a duplicate differently
     // (packages/data/test/lookup.test.ts). This index reads last-wins.
     const DUPLICATE = 7;
-    const { byType, infoOf } = buildingModels(
+    const { geometryOf, infoOf } = buildingModels(
       [building(DUPLICATE, 'base'), building(DUPLICATE, 'mod')],
       ir([]),
       [VIKING],
     );
-    expect(byType.size).toBe(1);
+    expect(geometryOf(DUPLICATE, VIKING)?.id).toBe('mod');
     expect(infoOf(DUPLICATE, VIKING)?.id).toBe('mod');
   });
 

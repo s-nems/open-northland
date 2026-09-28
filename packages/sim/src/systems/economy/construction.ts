@@ -1,4 +1,4 @@
-import { BUILDING_KIND } from '@open-northland/data';
+import { BUILDING_KIND, buildingHitpointsFor } from '@open-northland/data';
 import {
   Building,
   consumeGoods,
@@ -179,7 +179,8 @@ function finishBuilding(
       b.buildingType = target.typeId;
       b.level += 1;
       const health = world.tryMut(e, Health);
-      if (health !== undefined && target.hitpoints !== undefined) health.max = target.hitpoints;
+      const max = buildingHitpointsFor(target, b.tribe);
+      if (health !== undefined && max !== undefined) health.max = max;
     }
     // Canonical good order, so the merge cannot depend on the stashed map's insertion order.
     const amounts = world.get(e, Stockpile).amounts;
