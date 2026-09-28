@@ -88,7 +88,8 @@ function paragraph(s: Extract<BookSegment, { kind: 'para' }>, first: boolean): s
   const classes = ['on-book__p'];
   if (first && s.link === null && (s.align === 'left' || s.align === 'justify'))
     classes.push('on-book__p--first');
-  if (s.align !== 'left') classes.push(`on-book__p--${s.align}`);
+  // The book justifies all prose, so only a centred or right-aligned line carries its own class.
+  if (s.align === 'center' || s.align === 'right') classes.push(`on-book__p--${s.align}`);
   if (s.tone !== null) classes.push(`on-book__p--${s.tone}`);
   const body =
     s.link === null

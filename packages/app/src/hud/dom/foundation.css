@@ -4294,6 +4294,13 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--book-red);
   break-after: avoid;
 }
+/* Prose is justified and hyphenated in the page's language, as a printed book sets it; the author's
+   centred and right-aligned lines keep their own alignment. */
+.on-hud .on-book__p,
+.on-hud .on-book__speech p {
+  text-align: justify;
+  hyphens: auto;
+}
 .on-hud .on-book__p {
   margin: 0 0 0.62em;
 }
@@ -4302,10 +4309,6 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-book__p--right {
   text-align: right;
-}
-.on-hud .on-book__p--justify {
-  text-align: justify;
-  hyphens: auto;
 }
 .on-hud .on-book__p--red {
   color: var(--book-red);

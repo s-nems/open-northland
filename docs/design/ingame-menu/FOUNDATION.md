@@ -516,8 +516,9 @@ size and shrinks whole on a screen that cannot hold it.
   and world views stand inside the text where the page places them; a narrow picture is a portrait,
   an oval beside the quote that follows it. A page whose prose the author centred as a whole is set
   flush left; a few centred lines (captions, a table's entries, links) stay centred.
-- The page's own markers carry over: its headline font sets the title and the headings, justified
-  and right-aligned lines stay so, red and dimmed ink stay (white and dark read as the book's ink),
+- Prose is justified and hyphenated in the page's language. The page's own markers carry over: its
+  headline font sets the title and the headings, centred and right-aligned lines stay so, red and
+  dimmed ink stay (white and dark read as the book's ink),
   and its empty lines keep their weight: none sets the next line close under the last, one is a
   paragraph gap, two or more open a section. The format has no other emphasis to honour.
 - A world view is a hole in the painted book that the renderer fills with the live map, with its own
