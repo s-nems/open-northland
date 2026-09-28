@@ -22,8 +22,8 @@ export type { MissionHumanLookup } from './user-icons.js';
  *  a remount. */
 export interface MissionWindowState extends ShownPagesState {
   readonly reading: BookReading | null;
-  /** The open book shows a script's chapter and holds the game. */
-  readonly held: boolean;
+  /** The open book shows a chapter a script delivered. */
+  readonly arrival: boolean;
   readonly slipFolded: boolean;
   /** Unread goal changes, so the seals survive a remount. */
   readonly goalMarks: GoalMarksState;
@@ -51,8 +51,8 @@ export interface MissionBookDeps {
   readonly pictureUrl: (file: string) => string;
   /** Whether a held pause stops the clock; a shared clock is nobody's to hold. */
   readonly pauseStopsClock: boolean;
-  /** A script's chapter holds the game while the book shows it; the player's own reading never does. */
-  readonly onScriptHold: (held: boolean) => void;
+  /** The open book holds the game, as the original stops game time behind its large windows. */
+  readonly onHold: (held: boolean) => void;
   readonly onShowOnMap: (target: MapViewTarget) => void;
   /** The slip's "open the book" was pressed; the owner opens it as the beam entry does (one central
    *  window, a held placement dropped) through {@link MissionBook.openGoals}. */
@@ -67,7 +67,7 @@ export interface MissionBookDeps {
 export interface MissionBook extends ToolWindow {
   /** Open on briefing `page`, a script's `PlayCutscene`, which joins the chapters. */
   showPage(page: number): void;
-  /** Open on the goal page, never holding the game. */
+  /** Open on the goal page. */
   openGoals(): void;
   state(): MissionWindowState;
   restore(state: MissionWindowState): void;
@@ -99,8 +99,9 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
   const marks = new GoalMarks();
   const listeners: (() => void)[] = [];
   let held = false;
-  /** A restored reading the next opening resumes, and whether it held the game. */
-  let resume: { readonly reading: BookReading; readonly held: boolean } | null = null;
+  let arrival = false;
+  /** A restored reading the next opening resumes, and whether a script delivered it. */
+  let resume: { readonly reading: BookReading; readonly arrival: boolean } | null = null;
   let answersKey = deps.answersVersion();
 
   const chapters = (): readonly (number | null)[] => shown.list;
@@ -112,17 +113,18 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
   const hold = (): void => {
     if (held) return;
     held = true;
-    deps.onScriptHold(true);
+    deps.onHold(true);
   };
   const release = (): void => {
     if (!held) return;
     held = false;
-    deps.onScriptHold(false);
+    deps.onHold(false);
   };
 
   const close = (): void => {
     if (!book.isOpen()) return;
     book.close();
+    arrival = false;
     release();
   };
 
@@ -151,8 +153,10 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     cue: deps.cue,
   });
 
-  const open = (reading: BookReading, arrival: boolean): void => {
+  const open = (reading: BookReading, delivered: boolean): void => {
     marks.observe(deps.reader.goals());
+    arrival = delivered;
+    hold();
     book.open({ reading, arrival, paused: arrival && deps.pauseStopsClock });
   };
 
@@ -162,8 +166,10 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     shown.fold(deps.briefingHistory());
     const resumed = resume;
     resume = null;
-    if (resumed?.held === true) hold();
-    open(resumed?.reading ?? { ...FIRST, chapter: chapterOf(deps.replayPage() ?? shown.page) }, held);
+    open(
+      resumed?.reading ?? { ...FIRST, chapter: chapterOf(deps.replayPage() ?? shown.page) },
+      resumed?.arrival === true,
+    );
   };
 
   const slip = parts.slip({
@@ -184,24 +190,23 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
       resume = null;
       shown.fold(deps.briefingHistory());
       shown.show(page);
-      hold();
       open({ ...FIRST, chapter: chapterOf(page), pick: chapterOf(page) }, true);
     },
     openGoals(): void {
       shown.fold(deps.briefingHistory());
       resume = null;
-      open({ ...FIRST, tab: 'goals', chapter: chapterOf(shown.page) }, held);
+      open({ ...FIRST, tab: 'goals', chapter: chapterOf(shown.page) }, arrival);
     },
     state: () => ({
       ...shown.state(),
       reading: book.isOpen() ? book.reading() : null,
-      held,
+      arrival,
       slipFolded: slip.isFolded(),
       goalMarks: marks.state(),
     }),
     restore(state): void {
       shown.restore(state);
-      resume = state.reading === null ? null : { reading: state.reading, held: state.held };
+      resume = state.reading === null ? null : { reading: state.reading, arrival: state.arrival };
       slip.setFolded(state.slipFolded);
       marks.restore(state.goalMarks);
     },
@@ -223,7 +228,7 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     onDismiss: (listener) => {
       listeners.push(listener);
     },
-    // A remount carries a held chapter over through the state, so the hold is not released here.
+    // A remount reopens an open book from the state, so the hold is not released here.
     dispose(): void {
       book.dispose();
       slip.dispose();

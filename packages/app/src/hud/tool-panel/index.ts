@@ -198,7 +198,7 @@ export interface ToolPanelOptions {
   readonly missionHuman?: MissionHumanLookup;
   /** Bumped when a mission read above lands anew, which rebuilds an open mission book. */
   readonly missionAnswersVersion?: () => number;
-  /** A script's chapter holds the game while the book shows it. */
+  /** The open mission book holds the game. */
   readonly onMissionHold?: (held: boolean) => void;
   /** Whether a held pause stops the clock; false on a shared clock. */
   readonly pauseStopsClock?: boolean;
@@ -457,7 +457,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           answersVersion: opts.missionAnswersVersion ?? ((): number => 0),
           pictureUrl: hypertextPictureUrl,
           pauseStopsClock: opts.pauseStopsClock ?? false,
-          onScriptHold: (held) => opts.onMissionHold?.(held),
+          onHold: (held) => opts.onMissionHold?.(held),
           onShowOnMap: (target) => opts.onShowOnMap?.(target),
           onSlipOpen: () => openGoals?.(),
           bookKey: () => {

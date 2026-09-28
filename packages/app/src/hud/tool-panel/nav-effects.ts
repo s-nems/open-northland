@@ -17,8 +17,7 @@ export interface NavEntryEffect {
   /** The central window the entry toggles. */
   readonly window: ToolWindowId;
   /** Cancel an active placement or held paper first: the window starts a pick of its own, or (the
-   *  mission book) covers the map a script's chapter holds still. Informational windows leave a
-   *  placement running. */
+   *  mission book) covers the map it holds still. Informational windows leave a placement running. */
   readonly cancelsHeld: boolean;
 }
 

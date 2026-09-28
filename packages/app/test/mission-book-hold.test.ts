@@ -4,8 +4,8 @@ import type { BookOpening, BookReading, BookWindow } from '../src/hud/dom/missio
 import type { GoalSlip } from '../src/hud/dom/mission-book/goal-slip.js';
 import { createMissionBook, type MissionBookDeps } from '../src/hud/dom/mission-book/index.js';
 
-/** The mission book's pause contract without a document: a script's chapter holds the game until the
- *  book closes, the player's own reading never does, and a remount carries a held chapter over. */
+/** The mission book's pause contract without a document: the open book holds the game until it
+ *  closes, a script's chapter is marked as delivered, and a remount carries an open book over. */
 
 const PAGE = 500;
 
@@ -62,7 +62,7 @@ function mount(pauseStopsClock = true) {
     answersVersion: () => 0,
     pictureUrl: (file) => file,
     pauseStopsClock,
-    onScriptHold: (held) => holds.push(held),
+    onHold: (held) => holds.push(held),
     onShowOnMap: () => undefined,
     onSlipOpen: () => undefined,
     bookKey: () => null,
@@ -93,15 +93,28 @@ describe('the mission book`s pause', () => {
     expect(mission.isOpen()).toBe(false);
   });
 
-  it('never holds for the player`s own reading from the beam or the slip', () => {
+  it('holds the game for the player`s own reading from the beam or the slip, without the arrival dim', () => {
     const { mission, holds, openings } = mount();
     mission.toggle();
     expect(openings.at(-1)).toMatchObject({ arrival: false, paused: false });
+    expect(holds).toEqual([true]);
     mission.close();
+    expect(holds).toEqual([true, false]);
     mission.openGoals();
     expect(openings.at(-1)?.reading.tab).toBe('goals');
     mission.close();
-    expect(holds).toEqual([]);
+    expect(holds).toEqual([true, false, true, false]);
+  });
+
+  it('keeps one hold when a script`s chapter opens over the player`s reading', () => {
+    const { mission, holds, openings } = mount();
+    mission.toggle();
+    mission.showPage(PAGE);
+    expect(openings.at(-1)).toMatchObject({ arrival: true, paused: true });
+    mission.openGoals();
+    expect(openings.at(-1)).toMatchObject({ arrival: true });
+    mission.close();
+    expect(holds).toEqual([true, false]);
   });
 
   it('shows a chapter without dimming the map on a shared clock', () => {
@@ -110,14 +123,14 @@ describe('the mission book`s pause', () => {
     expect(openings.at(-1)).toMatchObject({ arrival: true, paused: false });
   });
 
-  it('carries a held chapter and the unread goal marks over a remount', () => {
+  it('carries a delivered chapter and the unread goal marks over a remount', () => {
     const first = mount();
     first.mission.refresh();
     first.setGoals([goal('0', 'done')]);
     first.mission.refresh();
     first.mission.showPage(PAGE);
     const state = first.mission.state();
-    expect(state.held).toBe(true);
+    expect(state.arrival).toBe(true);
     first.mission.dispose();
     expect(first.holds).toEqual([true]);
 

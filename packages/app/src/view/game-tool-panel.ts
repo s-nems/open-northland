@@ -108,7 +108,7 @@ export interface GameToolPanelDeps {
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Whether the session clock stands, whoever stopped it; absent, the bar shows its own pause only. */
   readonly clockPaused?: () => boolean;
-  /** True while an overlay holds the game paused (the system menu, the verdict, a script's briefing). */
+  /** True while an overlay holds the game paused (the system menu, the verdict, the mission book). */
   readonly pauseHeld?: () => boolean;
   /** A higher overlay's claim: the panel yields left clicks it covers, so hit priority follows draw order. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
@@ -128,7 +128,7 @@ export interface GameToolPanelDeps {
   readonly missionHuman?: (missionId: number) => number | null;
   /** Bumped when a mission read above lands anew, which rebuilds an open mission book. */
   readonly missionAnswersVersion?: () => number;
-  /** A script's chapter holds the game while the book shows it. */
+  /** The open mission book holds the game. */
   readonly onMissionHold?: (held: boolean) => void;
   /** Whether a held pause stops the clock; false on a shared clock. */
   readonly pauseStopsClock?: boolean;

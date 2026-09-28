@@ -637,10 +637,9 @@ size and shrinks whole on a screen that cannot hold it.
   seal. No total and no count of what is still to come; the Cele tab counts the open goals only.
 - Kronika lists the chapters delivered so far, a preview of the picked one and its "Czytaj", and the
   history tables the game ships, read in the same book with their links.
-- A script's chapter opens the book on it marked "Nowy rozdział", dims the map and holds the game
-  until the close medallion or Escape shuts the book; the book itself says nothing about the pause.
-  On a shared clock nothing is held and the map is not dimmed. Opening the book from the beam or the
-  slip never touches the pause.
+- The open book holds the game until the close medallion or Escape shuts it, however it opened; the
+  book itself says nothing about the pause. A script's chapter opens the book on it marked "Nowy
+  rozdział" and dims the map. On a shared clock nothing is held and the map is not dimmed.
 - The goal slip hangs from the top bar at the right edge, or below the script's info lines when they
   stand there: a leaf of the book's vellum (`vellum.webp`) under a strip of the cover's carved band
   (`band.webp`), with bronze fittings at its lower corners. It folds up into its band tab "Cele" with
@@ -675,8 +674,8 @@ Rules the shell enforces:
   menu: that last step is the rebindable "Menu gry" action (default Esc, the one action Esc may hold)
   and on any other key it opens the menu at once.
 - Closing with Esc or the close medallion returns keyboard focus to the beam entry that owns the
-  window. Only a script's briefing chapter and the system menu hold the simulation paused; opening the
-  mission book to read and other windows never touch the pause.
+  window. Only the mission book and the system menu hold the simulation paused; other windows never
+  touch the pause.
 - A wheel over a DOM region never reaches the camera. The edge pan keeps working over every region,
   so chrome along a screen edge never blocks scrolling. Presses on a region never reach the map;
   presses on the map keep the window open and select independently, with the details panel in its

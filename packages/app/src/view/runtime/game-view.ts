@@ -279,7 +279,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     },
     isPaused: () => driver.paused,
   });
-  // Three overlays hold the sim paused - the menu, a script's briefing chapter and the verdict - so
+  // Three overlays hold the sim paused - the menu, the mission book and the verdict - so
   // each holds under its own key and none can release another's.
   const pauseHolds = createPauseHolds(saveLoad, !sharedClock);
   const destroy = (): void => {
@@ -525,7 +525,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       missionReplayPage: answers.missionBriefingPage,
       missionHuman: answers.missionHuman,
       missionAnswersVersion: answers.versions.mission,
-      // A script's chapter keeps the pause it always had; opening the book to read holds nothing.
       onMissionHold: (held) => {
         if (held) pauseHolds.hold(PAUSE_HOLDER_MISSION);
         else pauseHolds.release(PAUSE_HOLDER_MISSION);
