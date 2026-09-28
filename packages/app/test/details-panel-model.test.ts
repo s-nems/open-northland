@@ -210,7 +210,12 @@ describe('selection details panel model', () => {
     if (model.production?.kind !== 'recipe') return;
     // One row PER PRODUCT (the joinery makes plank only); its bar shows the front-runner batch (50%).
     expect(model.production.rows).toHaveLength(1);
-    expect(model.production.rows[0]).toMatchObject({ goodType: GOOD_PLANK, pct: 50, label: 'plank' });
+    expect(model.production.rows[0]).toMatchObject({
+      goodType: GOOD_PLANK,
+      pct: 50,
+      running: true,
+      label: 'plank',
+    });
     // The production row carries its output's string id - the icon key the panel draws beside the bar -
     // and its ingredient against the shelf: one wood a cycle, three held.
     expect(model.production.rows[0]?.goodId).toBe('plank');

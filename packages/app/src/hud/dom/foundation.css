@@ -5348,18 +5348,22 @@ body.on-drag-scroll-cursor-hidden * {
   font-size: 11px;
   white-space: nowrap;
 }
-/* A workshop's products under its inputs, past a rule. */
-.on-hud .on-cargo-row--products {
-  margin-top: 5px;
+/* A workshop's inputs and products, each run under a small caption with a faint rule. */
+.on-hud .on-cargo-row--caption {
+  margin-top: 16px;
 }
-.on-hud .on-cargo-row--products::before {
-  content: "";
+.on-hud .on-cargo-row--caption::before {
+  content: attr(data-caption);
   position: absolute;
-  top: -3px;
+  top: -15px;
   left: 0;
   right: 0;
-  height: 1px;
-  background: #c9a26266;
+  padding-bottom: 1px;
+  border-bottom: 1px solid #c9a26233;
+  color: var(--muted);
+  font: 600 10px / 1.2 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .on-hud .on-building-stock .on-tabs--icons {
   margin-bottom: 4px;

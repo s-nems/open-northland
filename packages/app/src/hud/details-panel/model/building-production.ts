@@ -28,6 +28,8 @@ export interface ProductionRow {
   /** The highest progress among the in-flight `Production.cycles` crafting this product; 0 when none
    *  runs, since a finished batch deposits and leaves the list. */
   readonly pct: number;
+  /** A batch of this product is in flight, however far along. */
+  readonly running: boolean;
   /** What one cycle takes against what the house holds; empty for a craft that takes nothing. */
   readonly inputs: readonly RecipeInputModel[];
 }
@@ -167,6 +169,7 @@ export function productionModel(
       goodType: o.goodType,
       label: o.amount > 1 ? `${goodLabel(ctx, o.goodType)} ×${o.amount}` : goodLabel(ctx, o.goodType),
       pct: bestPct.get(o.goodType) ?? 0,
+      running: bestPct.has(o.goodType),
       inputs: inputsByProduct.get(o.goodType) ?? [],
       ...(goodId !== undefined ? { goodId } : {}),
     };
@@ -211,6 +214,7 @@ function livestockHerdRows(
       goodType: species,
       label: `${goodLabel(ctx, species)} ${herd}${cap === undefined ? '' : `/${cap}`}`,
       pct: bestPct.get(species) ?? 0,
+      running: bestPct.has(species),
       // What one breeding costs.
       inputs: recipeInputs(ctx, recipe.inputs, held),
       ...(goodId !== undefined ? { goodId } : {}),

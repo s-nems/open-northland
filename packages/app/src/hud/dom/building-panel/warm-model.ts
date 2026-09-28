@@ -1,5 +1,6 @@
 import type { BuildingPanelModel, StaffPerson } from '../../details-panel/model/index.js';
 import { OVERVIEW_LINES } from '../parts/stock-browser.js';
+import { PRODUCTION_FOLD_FROM } from './production.js';
 
 /** One stock line past the overview's, so the overview is full and a category tab lists the rest. */
 const WARM_STOCK_LINES = OVERVIEW_LINES + 1;
@@ -78,11 +79,13 @@ export function warmBuildingModel(goodIds: readonly string[]): BuildingPanelMode
     },
     production: {
       kind: 'recipe',
-      rows: [0, 1].map((goodType) => ({
+      // Long enough to fold, one batch in flight.
+      rows: Array.from({ length: PRODUCTION_FOLD_FROM }, (_, goodType) => ({
         goodType,
         ...good(goodType),
         label: 'Warm',
         pct: 50 * goodType,
+        running: goodType === 1,
         inputs: [0, 1].map((input) => ({
           goodType: input,
           ...good(input),

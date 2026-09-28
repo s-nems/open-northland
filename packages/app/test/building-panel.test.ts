@@ -321,6 +321,9 @@ describe('building panel orders and alerts', () => {
       [GOOD_WHEAT, false],
       [GOOD_FLOUR, true],
     ]);
+    // No batch in flight: a folded Produkcja shows none of the mill's lines.
+    const rows = mill.production?.kind === 'recipe' ? mill.production.rows : [];
+    expect(rows.length > 0 && rows.every((row) => !row.running)).toBe(true);
   });
 
   it("titles a home by its tier under the kicker, keeping the type's name for Knowledge", () => {

@@ -579,8 +579,10 @@ saying what the press does or why it is refused.
   while the shelf lacks it; the full name comes first, and the ingredients that do not fit beside it
   are left to the tooltip), the running batch's percent on the rule and in figures, the recipe in the
   tooltip;
-  a product with no batch running reads muted. A farm has one line: its fields and how many are ripe,
-  the ripe share on the rule. What each worker makes is set in the worker's panel.
+  a product with no batch running reads muted. A list of four products or more shows only the
+  batches in flight ("Nic teraz nie powstaje" while none runs) behind "rozwiń (N)" at the title's
+  end, so Magazyn stays in view; "zwiń" folds it again, and the choice holds for the next house. A
+  farm has one line: its fields and how many are ripe, the ripe share on the rule. What each worker makes is set in the worker's panel.
 - Wyposażenie (a finished home): a line per household ware of the home's tier, its pool on the rule
   and what it buys ("48 użyć", the holy fire "płonie" / "wygasły"), and a round toggle, a tick while
   the owner allows the ware in every home and a crossed circle while forbidden. The toggle is the
@@ -590,7 +592,7 @@ saying what the press does or why it is refused.
 - Magazyn, last: every good the house stores in its slot order, "amount / shelf" (a decimal only for a
   banked fraction), the shelf's fill on the rule, an empty shelf muted, the input a posted worker waits
   for in amber and a product's full shelf in red, since production stops there. A workshop lists its
-  inputs first and its products under a thin rule. A store lists its goods under the stock's icon
+  inputs under a small "Zużywa" caption and its products under "Wytwarza". A store lists its goods under the stock's icon
   tabs, opening on Wszystkie (its eight largest stocks, most first), then one category per tab (a
   category the house does not store faded, a dot on one that holds something); any other house lists
   every shelf.

@@ -4,7 +4,7 @@ import { stockTabLabels } from '../../good-categories.js';
 import { STOCK_TAB_GLYPHS } from '../icons.js';
 import { stockAmount } from '../parts/amount.js';
 import { createCategoryTabs } from '../parts/category-tabs.js';
-import { element, setClass, setHidden } from '../parts/dom.js';
+import { element, removeAttribute, setAttribute, setClass, setHidden } from '../parts/dom.js';
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
 import { OVERVIEW_TAB, stockGoodsKey, stockStripGlyphs, stockTabRows } from '../parts/stock-browser.js';
@@ -19,7 +19,7 @@ const STOCK_LINES_LEAST = 3;
 /** Magazyn: every good the house stores, what it holds against its shelf with the shelf's fill on the
  *  rule, empty shelves faded, an input the workers wait for in amber and a product's full shelf in red.
  *  A store opens on its largest stocks and lists the rest by category under icon tabs; a workshop's
- *  inputs stand over a rule and its products under it. Past eight lines the list scrolls in place. */
+ *  inputs stand under "Zużywa" and its products under "Wytwarza". Past eight lines the list scrolls in place. */
 export interface StockSection {
   readonly element: HTMLElement;
   /** `fresh` is another house: the tab opens anew. */
@@ -105,11 +105,12 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
     rows.forEach((row, index) => {
       const line = kept[index];
       if (line === undefined) return;
-      setClass(
-        line.element,
-        'on-cargo-row--products',
-        split && row.product === true && rows[index - 1]?.product !== true,
-      );
+      const product = row.product === true;
+      const runStarts = index === 0 || (rows[index - 1]?.product === true) !== product;
+      const caption = !split || !runStarts ? null : product ? copy.stockMakes : copy.stockUses;
+      setClass(line.element, 'on-cargo-row--caption', caption !== null);
+      if (caption === null) removeAttribute(line.element, 'data-caption');
+      else setAttribute(line.element, 'data-caption', caption);
       const capacity = row.capacity ?? 0;
       const words = formatMessage(copy.stockRow, {
         good: row.label,
