@@ -29,8 +29,6 @@ export interface PlacementProbeViews {
   readonly signpost: () => NodeGridProbe;
   /** The ship's mooring spots; undefined while they are being answered. */
   readonly mooring: (vehicle: number) => MooringProbe | null | undefined;
-  /** Bumped by every answer that lands, for a memo over what the gates answered. */
-  readonly version: () => number;
 }
 
 /** The placement rules a click decides on: each awaits the host's answer as of now. */
@@ -56,6 +54,8 @@ export interface PlacementGates extends PlacementClickGates {
   readonly canPlacePalisadeAt: (gfxIndex: number, col: number, row: number) => boolean;
   /** Whether `owner`'s wall, gate or wall site stands on a node. */
   readonly palisadeBuiltAt: (owner: number, col: number, row: number) => boolean;
+  /** Changes whenever `canPlacePalisadeAt` or `palisadeBuiltAt` may answer differently. */
+  readonly palisadeAnswersKey: () => string;
   readonly palisadeGateProbe: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites: () => GateSites;
   readonly probes: PlacementProbeViews;
@@ -173,6 +173,7 @@ export function createPlacementGates(
       const built = ownNodes.read(`${owner}`, askOwnNodes(owner), blockerVersion());
       return built !== undefined && nodeSetHas(built, col, row);
     },
+    palisadeAnswersKey: () => `${blockerVersion()}:${grids.version}:${ownNodes.version}:${fogKey()}`,
     palisadeGateProbe: (col, row) => {
       if (!fogGates.seesNode(col, row)) return null;
       // Only a convertible centre reaches the probe's mover test, so only there is it re-asked each tick.
@@ -217,7 +218,6 @@ export function createPlacementGates(
       building,
       signpost,
       mooring,
-      version: () => grids.version + ownNodes.version,
     },
     dispose: () => {
       for (const cache of [grids, ownNodes, siteLists, gateProbes, moorings]) cache.dispose();

@@ -20,7 +20,6 @@ import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type {
   makeDockOverlaySource,
-  makeLineReachSource,
   makeLitOverlaySource,
   makeOverlayFrameSource,
   makeSignpostOverlaySource,
@@ -68,7 +67,6 @@ export interface FrameLoopDeps {
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   /** The erect-signpost band probe, live while signpost placement mode is active. */
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
-  readonly lineReach: ReturnType<typeof makeLineReachSource>;
   readonly litOverlayFrame: ReturnType<typeof makeLitOverlaySource>;
   /** The mooring-spot band probe, live while a ship's dock pick is armed. */
   readonly dockOverlayFrame: ReturnType<typeof makeDockOverlaySource>;
@@ -127,7 +125,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     geometryDebug,
     overlayFrame,
     signpostOverlayFrame,
-    lineReach,
     litOverlayFrame,
     dockOverlayFrame,
     hudFor,
@@ -181,7 +178,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // The started wall line lights its reach, the gate tool the spans it can cut into.
   const palisadeWash = () => {
     const line = toolPanel.controller.activeLine();
-    const lit = line !== null ? lineReach(line) : toolPanel.controller.gateSites();
+    const lit = line !== null ? line.reach() : toolPanel.controller.gateSites();
     return lit === null
       ? null
       : litOverlayFrame(lit, cameraCtl.camera(), app.screen.width, app.screen.height);

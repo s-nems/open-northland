@@ -6,7 +6,6 @@ import {
 } from '@open-northland/render';
 import { FOG_STATE, type NodeGridAnswer, nodeGridAccepts, type Paper } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import { type ActiveLine, type LineFan, lineFan, lineReach } from '../hud/tool-panel/line-tool.js';
 import type { LitNodes } from '../hud/tool-panel/placement.js';
 import { type NodeGridProbe, PROBE_AREA_NODES, type SessionHost } from '../session/index.js';
 import { nodeBandOfCells } from './picking.js';
@@ -57,37 +56,6 @@ export function makeSignpostOverlaySource(
 ): (camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
   const band = makeBandProber(host, mapSize, player);
   return (camera, screenW, screenH) => band(gridBandProbe(probes.signpost(), 's'), camera, screenW, screenH);
-}
-
-/**
- * A started line's lit nodes (`lineReach`): exactly where a confirming click lays the whole line. The
- * lines themselves are walked once per anchor; the nodes are re-probed only when the tool, a placement
- * blocker, a landed placement answer or the fog changes.
- */
-export function makeLineReachSource(
-  host: Pick<SessionHost, 'placementBlockerVersion' | 'fogView'>,
-  answers: Pick<PlacementProbeViews, 'version'>,
-  player: number = HUMAN_PLAYER,
-): (line: ActiveLine) => LitNodes {
-  let lit: LitNodes = { key: '', has: () => false };
-  let fan: LineFan | null = null;
-  return (line) => {
-    const fog = host.fogView(player);
-    const key = `line:${line.tool}:${line.anchor.col},${line.anchor.row}:${host.placementBlockerVersion()}:${answers.version()}:${fog === null ? 'off' : `${fog.mode}:${fog.generation}`}`;
-    if (key !== lit.key) {
-      if (
-        fan === null ||
-        fan.anchor.col !== line.anchor.col ||
-        fan.anchor.row !== line.anchor.row ||
-        fan.maxEdges !== line.maxEdges
-      ) {
-        fan = lineFan(line.anchor, line.maxEdges);
-      }
-      const reach = lineReach(line, fan);
-      lit = { key, has: (col, row) => reach.has(`${col},${row}`) };
-    }
-    return lit;
-  };
 }
 
 /** The wash of a tool that lights a node set of its own: everything dims but `lit`. */

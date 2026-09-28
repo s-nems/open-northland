@@ -14,10 +14,12 @@ import {
 export type PalisadePlacementMode = 'wall' | 'gate' | 'standingWall';
 
 /**
- * Original behavior: a wall line accepts twenty moves after its starting marker.
+ * Original behavior: a wall line accepts twenty moves after its starting marker, and its pathfinder
+ * detours around an obstacle.
  *
- * Approximation: the original routes the line with a pathfinder that detours around an obstacle, where
- * this lays the line the cursor draws on screen and stops at the first node the placement probe rejects.
+ * Approximation: a free line runs where the cursor draws it on screen; a blocked one takes a shortest
+ * detour over the hex lattice that keeps each step nearest the drawn line. The original's own choice
+ * among equally short detours is unconfirmed.
  */
 export const PALISADE_LINE_MAX_EDGES = 20;
 
@@ -95,6 +97,8 @@ export interface PlacementDeps {
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
   /** Whether `owner`'s wall, gate or wall site already stands on a node. */
   readonly palisadeBuiltAt?: (owner: number, col: number, row: number) => boolean;
+  /** Changes whenever the two rules above may answer differently. */
+  readonly palisadeAnswersKey?: () => string;
   readonly palisadeGateProbe?: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
   /** The admin channel a standing-wall line commits through; absent, that tool lays nothing. */
@@ -196,6 +200,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       maxEdges: PALISADE_LINE_MAX_EDGES,
       canPlace: (node) => deps.canPlacePalisadeAt?.(gfxIndex, node.col, node.row) === true,
       built: (node) => deps.palisadeBuiltAt?.(side.owner, node.col, node.row) === true,
+      answersKey: () => deps.palisadeAnswersKey?.() ?? '',
       commit: (nodes) => {
         for (const node of nodes) {
           const place = { kind: 'placePalisade', gfxIndex, x: node.col, y: node.row, ...side } as const;

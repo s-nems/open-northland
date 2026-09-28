@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   createLineTool,
   type LineNode,
-  lineFan,
   lineReach,
+  routedLine,
   screenLine,
   straightLine,
 } from '../src/hud/tool-panel/line-tool.js';
@@ -49,40 +49,57 @@ describe('screen line', () => {
   });
 });
 
+/** Every consecutive pair of `nodes` is one hex step apart. */
+function expectConnected(nodes: readonly LineNode[]): void {
+  for (let i = 1; i < nodes.length; i++) {
+    const before = nodes[i - 1];
+    const after = nodes[i];
+    if (before === undefined || after === undefined) throw new Error('line gap');
+    expect(hexDistanceBetween(before.col, before.row, after.col, after.row)).toBe(1);
+  }
+}
+
 describe('line reach', () => {
-  it('lights only the ends whose whole line from the anchor is accepted', () => {
-    // A blocked node east of the anchor shadows everything behind it on the same row.
-    const reach = lineReach({
-      tool: 'test',
-      anchor: { col: 10, row: 10 },
-      maxEdges: 4,
-      accepts: (col, row) => !(col === 12 && row === 10),
-    });
-    expect(reach.has('11,10')).toBe(true);
+  it('lights the ends a line bends to around a refused node, within the edge budget', () => {
+    const reach = lineReach({ col: 10, row: 10 }, 4, (col, row) => !(col === 12 && row === 10));
+    expect(reach.get('11,10')).toBe(1);
     expect(reach.has('12,10')).toBe(false);
-    expect(reach.has('13,10')).toBe(false);
-    expect(reach.has('8,10')).toBe(true);
-    expect(reach.has('15,10')).toBe(false); // past the edge budget
+    // Straight it is three steps; around the refused node, four.
+    expect(reach.get('13,10')).toBe(4);
+    expect(reach.has('14,10')).toBe(false);
+    expect(reach.get('8,10')).toBe(2);
   });
 
-  it('answers a changed probe over one walked fan as a fresh walk does', () => {
-    const anchor = { col: 30, row: 31 };
-    const fan = lineFan(anchor, MAX_EDGES);
-    for (const blockedCol of [27, 31, 36]) {
-      const line = {
-        tool: 'test',
-        anchor,
-        maxEdges: MAX_EDGES,
-        accepts: (col: number) => col !== blockedCol,
-      };
-      expect([...lineReach(line, fan)].sort()).toEqual([...lineReach(line)].sort());
-    }
+  it('leaves out ground a refused wall closes off', () => {
+    // Refused column 12 splits the ground.
+    const reach = lineReach({ col: 10, row: 10 }, 6, (col) => col !== 12);
+    expect(reach.has('11,10')).toBe(true);
+    expect(reach.has('13,10')).toBe(false);
   });
 
   it('lights nothing when the anchor itself is refused', () => {
-    expect(
-      lineReach({ tool: 'test', anchor: { col: 1, row: 1 }, maxEdges: 3, accepts: () => false }).size,
-    ).toBe(0);
+    expect(lineReach({ col: 1, row: 1 }, 3, () => false).size).toBe(0);
+  });
+});
+
+describe('routed line', () => {
+  it('takes a shortest line of accepted nodes around an obstacle', () => {
+    const blocked = new Set(['12,9', '12,10', '12,11']);
+    const anchor = { col: 10, row: 10 };
+    const end = { col: 14, row: 10 };
+    const reach = lineReach(anchor, MAX_EDGES, (col, row) => !blocked.has(`${col},${row}`));
+    const nodes = routedLine(anchor, end, reach);
+    if (nodes === null) throw new Error('no route');
+    expect(nodes[0]).toEqual(anchor);
+    expect(nodes.at(-1)).toEqual(end);
+    expectConnected(nodes);
+    expect(nodes.some((node) => blocked.has(`${node.col},${node.row}`))).toBe(false);
+    expect(nodes).toHaveLength((reach.get('14,10') ?? 0) + 1);
+  });
+
+  it('has no line to an end out of reach', () => {
+    const reach = lineReach({ col: 0, row: 0 }, 2, () => true);
+    expect(routedLine({ col: 0, row: 0 }, { col: 5, row: 0 }, reach)).toBeNull();
   });
 });
 
@@ -136,6 +153,7 @@ describe('line tool', () => {
       tool: 'test',
       maxEdges: MAX_EDGES,
       canPlace,
+      answersKey: () => '',
       ...(built !== undefined ? { built } : {}),
       commit: (nodes) => lines.push(nodes),
     });
@@ -177,6 +195,71 @@ describe('line tool', () => {
 
     line.click(cursor, { straight: true });
     expect(lines).toEqual([[10, 11, 12, 13, 14].map((col) => ({ col, row: 10 }))]);
+  });
+
+  it('bends a started line around a refused node and lays it whole', () => {
+    const { line, lines } = tool((node) => !(node.col === 6 && node.row === 2));
+    line.click({ col: 4, row: 2 });
+    const preview = line.preview({ col: 8, row: 2 });
+    expect(preview.every((node) => node.state === 'open')).toBe(true);
+    expect(preview.some((node) => node.col === 6 && node.row === 2)).toBe(false);
+    expect(preview.at(-1)).toEqual({ col: 8, row: 2, state: 'open' });
+    expectConnected(preview);
+
+    line.click({ col: 8, row: 2 });
+    expect(lines).toEqual([preview.map(({ col, row }) => ({ col, row }))]);
+  });
+
+  it('keeps the straight line with its refused tail when no free line reaches the cursor', () => {
+    const { line } = tool((node) => node.col !== 6);
+    line.click({ col: 4, row: 2 });
+    expect(line.preview({ col: 8, row: 2 }).map((node) => node.state)).toEqual([
+      'open',
+      'open',
+      'blocked',
+      'blocked',
+      'blocked',
+    ]);
+  });
+
+  it('keeps a held straight run straight past a refused node', () => {
+    const { line } = tool((node) => !(node.col === 6 && node.row === 2));
+    line.click({ col: 4, row: 2 });
+    expect(line.preview({ col: 8, row: 2 }, true).map((node) => node.state)).toEqual([
+      'open',
+      'open',
+      'blocked',
+      'blocked',
+      'blocked',
+    ]);
+  });
+
+  it('walks a started line reach again only when the answers change', () => {
+    let answers = 'a';
+    let probed = 0;
+    let refused = -1;
+    const line = createLineTool({
+      tool: 'test',
+      maxEdges: 3,
+      canPlace: (node) => {
+        probed++;
+        return node.col !== refused;
+      },
+      answersKey: () => answers,
+      commit: () => undefined,
+    });
+    line.click({ col: 4, row: 2 });
+    const active = line.active();
+    if (active === null) throw new Error('no line');
+    const first = active.reach();
+    const walked = probed;
+    expect(active.reach()).toBe(first);
+    expect(probed).toBe(walked);
+
+    refused = 5;
+    answers = 'b';
+    expect(active.reach().has(5, 2)).toBe(false);
+    expect(first.has(5, 2)).toBe(true);
   });
 
   it('shows one marker under the cursor before a line starts', () => {

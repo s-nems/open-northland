@@ -15,14 +15,19 @@ export interface LinePreviewNode extends LineNode {
   readonly state: LineNodeState;
 }
 
-/** The started line the reach overlay washes around: every node a straight line from `anchor` of at
- *  most `maxEdges` steps reaches through accepted (open or built) nodes only. */
+/** The nodes a started line can end on, each keyed `col,row` with the fewest steps a line takes there;
+ *  `key` changes whenever they do. */
+export interface LineReach {
+  readonly key: string;
+  readonly steps: ReadonlyMap<string, number>;
+  has(col: number, row: number): boolean;
+}
+
+/** The started line the reach overlay washes around. */
 export interface ActiveLine {
-  /** Names the probe behind `accepts`, so a memo never serves one tool's reach to another. */
-  readonly tool: string;
   readonly anchor: LineNode;
-  readonly maxEdges: number;
-  readonly accepts: (col: number, row: number) => boolean;
+  /** Walked once per anchor and `answersKey`: the frame loop reads it every frame. */
+  reach(): LineReach;
 }
 
 /** Two candidate steps this close to the drawn segment count as equally near it. */
@@ -138,79 +143,102 @@ function markPrefix(
   });
 }
 
-/** Every line a started line can draw from `anchor`, walked once: only the anchor and the edge budget
- *  shape them, so a world change re-probes the nodes without walking the lines again. */
-export interface LineFan {
-  readonly anchor: LineNode;
-  readonly maxEdges: number;
-  /** The distinct nodes the lines pass; the anchor is the first. */
-  readonly nodes: readonly LineNode[];
-  /** Each end a line reaches exactly, with its nodes as indexes into `nodes`. */
-  readonly lines: readonly { readonly end: string; readonly path: readonly number[] }[];
-}
-
-export function lineFan(anchor: LineNode, maxEdges: number): LineFan {
-  const nodes: LineNode[] = [];
-  const indexOf = new Map<string, number>();
-  const index = (node: LineNode): number => {
-    const key = `${node.col},${node.row}`;
-    let at = indexOf.get(key);
-    if (at === undefined) {
-      at = nodes.length;
-      nodes.push({ col: node.col, row: node.row });
-      indexOf.set(key, at);
-    }
-    return at;
-  };
-  index(anchor);
-  const lines: { end: string; path: number[] }[] = [];
-  // Half-cell rows step one hex row each, and a row holds at most `maxEdges` steps either way.
-  for (let row = anchor.row - maxEdges; row <= anchor.row + maxEdges; row++) {
-    for (let col = anchor.col - maxEdges; col <= anchor.col + maxEdges; col++) {
-      if (hexDistanceBetween(anchor.col, anchor.row, col, row) > maxEdges) continue;
-      const path = screenLine(anchor, { col, row }, maxEdges);
-      const last = path[path.length - 1];
-      if (last?.col === col && last.row === row) lines.push({ end: `${col},${row}`, path: path.map(index) });
-    }
-  }
-  return { anchor: { col: anchor.col, row: anchor.row }, maxEdges, nodes, lines };
-}
-
-const UNPROBED = 0;
-const ACCEPTED = 1;
-const REFUSED = 2;
+const nodeKey = (col: number, row: number): string => `${col},${row}`;
 
 /**
- * The nodes a started line can end on: those whose whole line from the anchor is accepted. Each node the
- * fan passes is probed at most once, so the cost is the reach radius's area, not area times line length.
- * `fan` must be the one of `line`'s anchor and budget.
+ * The nodes a started line can end on, each with the fewest steps a line of accepted nodes takes there
+ * from the anchor: a breadth-first walk over the hex neighbours, so a line bends around what refuses it.
+ * The walk stays within `maxEdges` steps, so its cost is the reach radius's area, not the map's.
  */
 export function lineReach(
-  line: ActiveLine,
-  fan: LineFan = lineFan(line.anchor, line.maxEdges),
-): ReadonlySet<string> {
-  const verdicts = new Uint8Array(fan.nodes.length);
-  const accepted = (at: number): boolean => {
-    let verdict = verdicts[at] ?? UNPROBED;
-    if (verdict === UNPROBED) {
-      const node = fan.nodes[at];
-      verdict = node !== undefined && line.accepts(node.col, node.row) ? ACCEPTED : REFUSED;
-      verdicts[at] = verdict;
+  anchor: LineNode,
+  maxEdges: number,
+  accepts: (col: number, row: number) => boolean,
+): ReadonlyMap<string, number> {
+  const steps = new Map<string, number>();
+  if (!accepts(anchor.col, anchor.row)) return steps;
+  steps.set(nodeKey(anchor.col, anchor.row), 0);
+  const refused = new Set<string>();
+  let ring: LineNode[] = [anchor];
+  for (let step = 1; step <= maxEdges && ring.length > 0; step++) {
+    const next: LineNode[] = [];
+    for (const node of ring) {
+      for (const { hx, hy } of hexNeighboursOf(node.col, node.row)) {
+        const key = nodeKey(hx, hy);
+        if (steps.has(key) || refused.has(key)) continue;
+        if (!accepts(hx, hy)) {
+          refused.add(key);
+          continue;
+        }
+        steps.set(key, step);
+        next.push({ col: hx, row: hy });
+      }
     }
-    return verdict === ACCEPTED;
-  };
-  const reach = new Set<string>();
-  if (!accepted(0)) return reach;
-  for (const { end, path } of fan.lines) if (path.every(accepted)) reach.add(end);
-  return reach;
+    ring = next;
+  }
+  return steps;
+}
+
+/** Squared screen distance from `p` to the segment `a`-`b`. */
+function segmentDistanceSq(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): number {
+  const vx = b.x - a.x;
+  const vy = b.y - a.y;
+  const lengthSq = vx * vx + vy * vy;
+  const t = lengthSq === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / lengthSq));
+  const dx = p.x - (a.x + t * vx);
+  const dy = p.y - (a.y + t * vy);
+  return dx * dx + dy * dy;
+}
+
+/**
+ * A shortest line from the anchor of `reach` to `end` over its accepted nodes, or null when `end` is out of
+ * reach. Among the equally short lines it keeps each step nearest the drawn segment, so it hugs an
+ * obstacle instead of swinging wide of it.
+ */
+export function routedLine(
+  anchor: LineNode,
+  end: LineNode,
+  reach: ReadonlyMap<string, number>,
+): LineNode[] | null {
+  let steps = reach.get(nodeKey(end.col, end.row));
+  if (steps === undefined) return null;
+  const from = halfCellToScreen(anchor.col, anchor.row);
+  const to = halfCellToScreen(end.col, end.row);
+  const nodes: LineNode[] = [{ col: end.col, row: end.row }];
+  let node: LineNode = end;
+  while (steps > 0) {
+    let best: LineNode | null = null;
+    let bestOff = Infinity;
+    for (const { hx, hy } of hexNeighboursOf(node.col, node.row)) {
+      if (reach.get(nodeKey(hx, hy)) !== steps - 1) continue;
+      const off = segmentDistanceSq(halfCellToScreen(hx, hy), from, to);
+      if (off < bestOff - TIE_PX) {
+        best = { col: hx, row: hy };
+        bestOff = off;
+      }
+    }
+    // A breadth-first step count always has a predecessor one step nearer the anchor.
+    if (best === null) return null;
+    nodes.push(best);
+    node = best;
+    steps--;
+  }
+  return nodes.reverse();
 }
 
 export interface LineToolSpec {
+  /** Names the probe behind `canPlace`, so a memo never serves one tool's reach to another. */
   readonly tool: string;
   readonly maxEdges: number;
   readonly canPlace: (node: LineNode) => boolean;
   /** A node that already holds a piece: a line may start, pass or end there without laying another. */
   readonly built?: (node: LineNode) => boolean;
+  /** Changes whenever `canPlace` or `built` may answer differently. */
+  readonly answersKey: () => string;
   /** Lays the open nodes of a confirmed line's accepted prefix; never called with none. */
   readonly commit: (nodes: readonly LineNode[]) => void;
 }
@@ -223,8 +251,9 @@ export interface LineToolSpec {
  */
 export interface LineTool {
   anchor(): LineNode | null;
-  /** The cursor's marker before a line starts, the capped line toward the cursor after; `straight`
-   *  keeps it to the nearest of the eight straight runs. */
+  /** The cursor's marker before a line starts, the capped line toward the cursor after. A refused node on
+   *  the way bends the line around it when a free line within the budget exists; `straight` keeps it to
+   *  the nearest of the eight straight runs instead. */
   preview(tile: LineNode, straight?: boolean): LinePreviewNode[];
   /** True when the press laid a line. */
   click(tile: LineNode | null, opts?: LineClick): boolean;
@@ -240,7 +269,6 @@ export interface LineClick {
 }
 
 export function createLineTool(spec: LineToolSpec): LineTool {
-  // Built once per started line: the frame loop reads it every frame.
   let line: ActiveLine | null = null;
   // A chained line's anchor, just committed: built before the commit lands, never laid twice.
   let laid: LineNode | null = null;
@@ -251,14 +279,37 @@ export function createLineTool(spec: LineToolSpec): LineTool {
         ? 'open'
         : 'blocked';
   const accepts = (col: number, row: number): boolean => stateOf({ col, row }) !== 'blocked';
-  const startAt = (node: LineNode): ActiveLine => ({
-    tool: spec.tool,
-    anchor: { col: node.col, row: node.row },
-    maxEdges: spec.maxEdges,
-    accepts,
-  });
-  const route = (from: LineNode, tile: LineNode, straight: boolean): LinePreviewNode[] =>
-    markPrefix((straight ? straightLine : screenLine)(from, tile, spec.maxEdges), stateOf);
+  const startAt = (node: LineNode): ActiveLine => {
+    const anchor = { col: node.col, row: node.row };
+    let walked: LineReach = { key: '', steps: new Map(), has: () => false };
+    return {
+      anchor,
+      reach: () => {
+        const key = `${spec.tool}:${anchor.col},${anchor.row}:${spec.answersKey()}`;
+        if (key !== walked.key) {
+          const steps = lineReach(anchor, spec.maxEdges, accepts);
+          walked = { key, steps, has: (col, row) => steps.has(nodeKey(col, row)) };
+        }
+        return walked;
+      },
+    };
+  };
+  const route = (from: LineNode, tile: LineNode, straight: boolean): LinePreviewNode[] => {
+    if (straight) return markPrefix(straightLine(from, tile, spec.maxEdges), stateOf);
+    const direct = markPrefix(screenLine(from, tile, spec.maxEdges), stateOf);
+    const last = direct.at(-1);
+    const clear = last?.col === tile.col && last.row === tile.row && last.state !== 'blocked';
+    // No line of accepted nodes is shorter than the hex distance, so a farther end keeps the refused line.
+    if (
+      clear ||
+      line === null ||
+      hexDistanceBetween(from.col, from.row, tile.col, tile.row) > spec.maxEdges
+    ) {
+      return direct;
+    }
+    const around = routedLine(from, tile, line.reach().steps);
+    return around === null ? direct : around.map((node) => ({ ...node, state: stateOf(node) }));
+  };
   return {
     anchor: () => line?.anchor ?? null,
     preview: (tile, straight = false) => route(line?.anchor ?? tile, tile, straight),

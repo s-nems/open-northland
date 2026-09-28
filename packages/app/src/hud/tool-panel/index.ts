@@ -161,6 +161,7 @@ export interface ToolPanelOptions {
   readonly canPlaceAt: (typeId: number, col: number, row: number, paper?: Paper) => boolean;
   readonly canPlacePalisadeAt?: (gfxIndex: number, col: number, row: number) => boolean;
   readonly palisadeBuiltAt?: (owner: number, col: number, row: number) => boolean;
+  readonly palisadeAnswersKey?: () => string;
   readonly palisadeGateProbe?: (col: number, row: number) => PalisadeGateProbeView | null;
   readonly palisadeGateSites?: () => GateSites;
   /** The placement rules a click asks the sim as it lands. */
@@ -392,6 +393,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       canPlaceAt: opts.canPlaceAt,
       ...(opts.canPlacePalisadeAt !== undefined ? { canPlacePalisadeAt: opts.canPlacePalisadeAt } : {}),
       ...(opts.palisadeBuiltAt !== undefined ? { palisadeBuiltAt: opts.palisadeBuiltAt } : {}),
+      ...(opts.palisadeAnswersKey !== undefined ? { palisadeAnswersKey: opts.palisadeAnswersKey } : {}),
       ...(opts.palisadeGateProbe !== undefined ? { palisadeGateProbe: opts.palisadeGateProbe } : {}),
       ...(opts.palisadeGateSites !== undefined ? { palisadeGateSites: opts.palisadeGateSites } : {}),
       ...(opts.placementClickAsks !== undefined ? { clickAsks: opts.placementClickAsks } : {}),

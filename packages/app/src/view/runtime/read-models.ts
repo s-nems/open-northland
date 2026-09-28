@@ -9,7 +9,6 @@ import type { WorldTribes } from '../../game/world-tribes.js';
 import type { SessionHost } from '../../session/index.js';
 import {
   makeDockOverlaySource,
-  makeLineReachSource,
   makeLitOverlaySource,
   makeOverlayFrameSource,
   makeSignpostOverlaySource,
@@ -81,8 +80,7 @@ export interface ViewReadModels extends ReturnType<typeof createSnapshotProjecti
   /** The memoized build-mode band probe and its erect-signpost twin. */
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
-  /** A started line's reach, and the wash that lights it or another tool's node set. */
-  readonly lineReach: ReturnType<typeof makeLineReachSource>;
+  /** The wash that lights a started line's reach or another tool's node set. */
   readonly litOverlayFrame: ReturnType<typeof makeLitOverlaySource>;
   readonly dockOverlayFrame: ReturnType<typeof makeDockOverlaySource>;
 }
@@ -97,7 +95,6 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     buildingDoors: buildings.byType,
     overlayFrame: makeOverlayFrameSource(deps.probes, host, mapSize, localPlayer),
     signpostOverlayFrame: makeSignpostOverlaySource(deps.probes, host, mapSize, localPlayer),
-    lineReach: makeLineReachSource(host, deps.probes, localPlayer),
     litOverlayFrame: makeLitOverlaySource(host, mapSize, localPlayer),
     dockOverlayFrame: makeDockOverlaySource(deps.probes, host, mapSize, localPlayer),
     ...createSnapshotProjections(
