@@ -190,6 +190,11 @@ export const enContent = {
       summary:
         'Four archers keep natural-scale arrows visible along horizontal, vertical and diagonal lanes.',
     },
+    'weapon-facings': {
+      title: 'Weapon facings',
+      summary:
+        'Every weapon class strikes a sturdy target in each of the eight directions, fists to longbow.',
+    },
     'battle-weary': {
       title: 'Weary warband',
       summary:

@@ -187,6 +187,11 @@ export const plContent = {
       title: 'Lot strzały',
       summary: 'Czterech łuczników pokazuje strzały w naturalnej skali w poziomie, pionie i po przekątnej.',
     },
+    'weapon-facings': {
+      title: 'Kierunki broni',
+      summary:
+        'Każdy rodzaj broni, od pięści po długi łuk, uderza wytrzymały cel we wszystkich ośmiu kierunkach.',
+    },
     'battle-weary': {
       title: 'Zmęczona drużyna',
       summary:

@@ -98,11 +98,10 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
 }
 
 /**
- * Every human `[bobseq]` row by name, across all the `cr_hum_*` body tables. The name space is global:
- * a tribe's `[gfxanimatomic]` records name sequences that live in another body's table - only the viking
- * soldier body ships a table of its own, and the other civilizations' rank-and-file bodies play from it -
- * and no name is defined twice with a different range. A body plays only the subset its own bob pool
- * covers - see {@link playableSequences}.
+ * Every human `[bobseq]` row by name, across all the `cr_hum_*` body tables. A tribe's `[gfxanimatomic]`
+ * records name sequences that live in another body's table - only the viking soldier body ships a table
+ * of its own, and the other civilizations' rank-and-file bodies play from it - and no name is defined twice
+ * with a different range. A body plays only its own layout's names - see {@link bodySequences}.
  */
 export function humanSequences(ir: ContentIr | null): Map<string, BobSeqRow> {
   const byName = new Map<string, BobSeqRow>();
@@ -119,13 +118,71 @@ export function humanSequences(ir: ContentIr | null): Map<string, BobSeqRow> {
 const HUMAN_IMAGELIB_PREFIX = 'cr_hum_';
 
 /**
+ * The rows a human body plays, by name: the `[bobseq]` table its bob pool is laid out by, plus the clips
+ * the records of a job it is drawn for name, cut to the {@link playableSequences} it draws. That table is
+ * the body's own, or for a body shipping none the one whose drawn clips cover most of its frames - every
+ * non-viking soldier body follows the viking soldier's. Another table's names address other clips at the
+ * same bob ids, so one binds only by its own job's word: the werewolf's attack record names the
+ * weresnake's clip over its own fight, while the civilian pray a soldier reaches through its base job lands
+ * on the soldier body's longbow walk, and the civilian walk on its shortbow sleep.
+ */
+export function bodySequences(
+  ir: ContentIr | null,
+  bodyBmd: string,
+  atlas: SpriteAtlas,
+): Map<string, BobSeqRow> {
+  const tables = (ir?.bobSequences ?? []).filter((set) => set.imagelib.startsWith(HUMAN_IMAGELIB_PREFIX));
+  let table = tables.find((set) => set.imagelib === `${bodyBmd}.bmd`);
+  if (table === undefined) {
+    let bestCover = 0;
+    for (const set of tables) {
+      const cover = drawnCover(set.sequences ?? [], atlas);
+      if (cover > bestCover) {
+        bestCover = cover;
+        table = set;
+      }
+    }
+  }
+  const rows = new Map((table?.sequences ?? []).map((row) => [row.name, row]));
+  const everyRow = humanSequences(ir);
+  for (const name of clipsNamedForBody(ir, bodyBmd)) {
+    const row = everyRow.get(name);
+    if (row !== undefined && !rows.has(name)) rows.set(name, row);
+  }
+  return playableSequences(rows, atlas);
+}
+
+/** The body clips the `[gfxanimatomic]` and `[gfxwalkatomic]` records of each `(tribe, job)` whose
+ *  `[jobbasegraphics]` record draws `bodyBmd` name. */
+function clipsNamedForBody(ir: ContentIr | null, bodyBmd: string): Set<string> {
+  const drawnFor = new Set(
+    (ir?.jobGraphics ?? [])
+      .filter((row) => row.body.slice(row.body.lastIndexOf('/') + 1) === `${bodyBmd}.bmd`)
+      .map((row) => `${row.tribe}/${row.job}`),
+  );
+  const names = new Set<string>();
+  for (const row of [...(ir?.gfxAtomics ?? []), ...(ir?.gfxWalkAtomics ?? [])]) {
+    if (row.bodySeq !== undefined && drawnFor.has(`${row.tribe}/${row.job}`)) names.add(row.bodySeq);
+  }
+  return names;
+}
+
+/** How many bob ids the rows of `rows` that `atlas` draws in full cover. */
+function drawnCover(rows: readonly BobSeqRow[], atlas: SpriteAtlas): number {
+  const covered = new Set<number>();
+  for (const row of rows) {
+    if (row.length <= 0 || !drawsEveryFrame(atlas, row)) continue;
+    for (let bob = row.start; bob < row.start + row.length; bob++) covered.add(bob);
+  }
+  return covered.size;
+}
+
+/**
  * The sequences of `seqByName` that `atlas` can actually draw: every frame of the run must be a bob with
- * pixels. Approximation: reading a filled range as "this body authors this clip" holds for 867 of the 892
- * clip references the tribes' own records make, and dropping the rest is what lets a binding fall back to
- * a gait the body does draw instead of resolving a blank frame, which the renderer draws as the
- * missing-sprite placeholder. The non-viking bodies are the shorter ones, so the filter costs them the
- * pray, talk, listen and kiss atomics, about half the per-good carry gaits, and every `_agressive` combat
- * gait: those settlers walk their plain gait carrying nothing visible and never change stance.
+ * pixels. Dropping the rest is what lets a binding fall back to a gait the body does draw instead of
+ * resolving a blank frame, which the renderer draws as the missing-sprite placeholder: the shorter
+ * non-viking bodies lose clips such as some per-good carry gaits, which then walk the plain gait carrying
+ * nothing visible.
  */
 export function playableSequences(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -284,10 +341,14 @@ export interface TribeClip {
  */
 export interface TribeJobSeqs {
   readonly walk: readonly string[];
+  /** Every unloaded gait the jobs' walk records name, the aggressive walks among them. */
+  readonly gaits: readonly string[];
   readonly wait: readonly string[];
   readonly attack: readonly string[];
   /** Action → the remaining `[gfxanimatomic]` records (no wait, attack or indoor sub-clip). */
   readonly atomics: ReadonlyMap<number, readonly TribeClip[]>;
+  /** Body bobseq → the `gfxbobseqhead` the first record naming it overlays, where that is another clip. */
+  readonly heads: ReadonlyMap<string, string>;
 }
 
 /**
@@ -328,26 +389,37 @@ function clipLookupChain(ir: ContentIr | null, jobs: readonly number[]): number[
  */
 export function tribeJobSeqs(ir: ContentIr | null, tribe: number, jobs: readonly number[]): TribeJobSeqs {
   const walk: string[] = [];
+  const gaits: string[] = [];
   const wait: string[] = [];
   const attack: string[] = [];
   const atomics = new Map<number, TribeClip[]>();
+  const heads = new Map<string, string>();
+  const headNamed = new Set<string>();
   const push = (list: string[], seq: string): void => {
     if (!list.includes(seq)) list.push(seq);
   };
+  const nameHead = (bodySeq: string, headSeq: string | undefined): void => {
+    if (headNamed.has(bodySeq)) return;
+    headNamed.add(bodySeq);
+    if (headSeq !== undefined && headSeq !== bodySeq) heads.set(bodySeq, headSeq);
+  };
   for (const job of clipLookupChain(ir, jobs)) {
+    let jobWalk: string | undefined;
     for (const row of ir?.gfxWalkAtomics ?? []) {
-      if (row.tribe === tribe && row.job === job && row.goodType === UNLOADED_GOOD_TYPE) {
-        push(walk, row.bodySeq);
-        break;
-      }
+      if (row.tribe !== tribe || row.job !== job) continue;
+      nameHead(row.bodySeq, row.headSeq);
+      if (row.goodType !== UNLOADED_GOOD_TYPE) continue;
+      jobWalk ??= row.bodySeq;
+      push(gaits, row.bodySeq);
     }
+    if (jobWalk !== undefined) push(walk, jobWalk);
     let jobWait: string | undefined;
     let waitIsBase = false;
     let jobAttack: string | undefined;
     for (const row of ir?.gfxAtomics ?? []) {
-      if (row.tribe !== tribe || row.job !== job || row.subId !== undefined || row.bodySeq === undefined) {
-        continue;
-      }
+      if (row.tribe !== tribe || row.job !== job || row.bodySeq === undefined) continue;
+      nameHead(row.bodySeq, row.headSeq);
+      if (row.subId !== undefined) continue;
       if (row.action === ATTACK_ATOMIC) {
         jobAttack ??= row.bodySeq;
         continue;
@@ -373,7 +445,7 @@ export function tribeJobSeqs(ir: ContentIr | null, tribe: number, jobs: readonly
     if (jobWait !== undefined) push(wait, jobWait);
     if (jobAttack !== undefined) push(attack, jobAttack);
   }
-  return { walk, wait, attack, atomics };
+  return { walk, gaits, wait, attack, atomics, heads };
 }
 
 /** One tribe's `gfxwalkframelist` per-`<dir>` lists, indexed by walk bobseq name (first record wins). */

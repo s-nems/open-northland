@@ -21,10 +21,13 @@ import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPEC_ENTRIES,
   type CharacterSpecId,
-  carryHeadAnims,
+  carryHeadFallback,
   characterBinding,
   type GoodRef,
   HERO_JOBS,
+  type HeadClip,
+  headBinding,
+  headClips,
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
   UNARMED_WARRIOR_SPEC,
@@ -89,31 +92,27 @@ function repeatMushroomPluck(
   programsByAction.set(MUSHROOM_HARVEST_ATOMIC, repeated);
 }
 
-/** The head overlay's own binding when a carry variant's head bobs are empty, so it plays the base walk's
- *  head instead of walking headless. Absent when every carry look authors its head. */
+/** The head overlay's binding when it differs from the body's: the source's head clips, then the walk's
+ *  head for a carry gait whose head clip is blank. */
 function headBindingFor(
   binding: SettlerStateBinding,
   heads: readonly SpriteLayer[],
-): { headBinding?: SettlerStateBinding } {
-  const byGood = binding.carrying?.byGood;
-  // All of a body's heads share one bob layout, so checking the first head atlas stands for the set.
+  clips: ReadonlyMap<number, HeadClip>,
+): SettlerStateBinding | undefined {
+  // All of a body's heads share one bob layout, so the first head atlas stands for the set.
   const headAtlas = heads[0]?.atlas;
-  if (byGood === undefined || headAtlas === undefined) return {};
-  // The head-borrow reference is the plain walk; `moving` is never a FrameListAnim (walk lists reduce to a
-  // directional block cut), so exclude that kind to keep the type.
-  const moving = binding.moving;
-  const walk = typeof moving === 'object' && !('frameLists' in moving) ? moving : undefined;
-  const headByGood = carryHeadAnims(byGood, walk, headAtlas);
-  if (headByGood === byGood) return {};
-  return { headBinding: { ...binding, carrying: { ...binding.carrying, byGood: headByGood } } };
+  if (headAtlas === undefined) return undefined;
+  const head = carryHeadFallback(headBinding(binding, clips) ?? binding, headAtlas);
+  return head === binding ? undefined : head;
 }
 
-/** What one tribe's table is composed from: its looks, the loaded bob sets, and each body's playable
- *  `[bobseq]` rows. */
+/** What one tribe's table is composed from: its looks, the loaded bob sets, each body's playable
+ *  `[bobseq]` rows, and every human row, where a head clip is looked up whether or not the body draws it. */
 export interface TribeCharacterInputs {
   readonly looks: ReadonlyMap<CharacterSpecId, readonly ResolvedLook[]>;
   readonly layersByBody: ReadonlyMap<string, LoadedLook>;
   readonly sequencesByBody: ReadonlyMap<string, ReadonlyMap<string, BobSeqRow>>;
+  readonly sequences: ReadonlyMap<string, BobSeqRow>;
 }
 
 /**
@@ -149,13 +148,14 @@ export function tribeCharacters(
       const layers = inputs.layersByBody.get(look.bodyStem);
       const seqByName = inputs.sequencesByBody.get(look.bodyStem);
       if (layers === undefined || seqByName === undefined) continue;
+      const tribeSeqs = tribeJobSeqs(ir, tribe, spec.gfxJobs);
       const binding = characterBinding(spec, seqByName, goods, {
         ...(spec.logicJob !== undefined ? { carrySeqBySlug: carryWalkSeqs(ir, tribe, spec.logicJob) } : {}),
         // Own-clip names keyed by the settler's job, as the original looks them up, never by the record
         // that drew the body: the spec's own job first, so a class whose body the tribe does not author
         // still gets the motion it authors for that class (the saracen bowman's shortbow swing on the
         // plain soldier body), then the classes it degrades through.
-        tribeSeqs: tribeJobSeqs(ir, tribe, spec.gfxJobs),
+        tribeSeqs,
         programsByAction,
         waitBySeq,
         walkLists,
@@ -166,11 +166,12 @@ export function tribeCharacters(
       const heads = look.headStems
         .map((stem) => layers.headsByStem.get(stem))
         .filter((l): l is SpriteLayer => l !== undefined);
+      const head = headBindingFor(binding, heads, headClips(seqByName, tribeSeqs.heads, inputs.sequences));
       bySpec.set(specId, {
         body: feetShiftedLayer(layers.body, spec.feetShiftY),
         ...(heads.length > 0 ? { heads } : {}),
         binding,
-        ...headBindingFor(binding, heads),
+        ...(head !== undefined ? { headBinding: head } : {}),
       });
       break;
     }

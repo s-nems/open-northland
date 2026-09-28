@@ -131,8 +131,9 @@ export interface CharacterSpec {
    */
   readonly feetShiftY?: number;
   /**
-   * The combat-engaged gait bobseq names (`..._walk_agressive` / `..._wait_agressive`). Absent for a look
-   * with no aggressive variant, which stays on its relaxed gait.
+   * The combat-engaged gait bobseq names (`..._walk_agressive` / `..._wait_agressive`). Each binds only where
+   * the look's own tribe authors it (see `characterBinding`); otherwise, as for a look with none, the look
+   * stays on its relaxed gait.
    */
   readonly engaged?: { readonly moving?: string; readonly idle?: string };
 }
@@ -349,8 +350,8 @@ export const CHARACTER_SPECS = {
   // The attack and aggressive-gait names below are the viking (`logicdefines.inc` TRIBE_TYPE_HUMAN_VIKING
   // = 1) joins; their per-direction frame counts match the viking atomicanimation lengths (spear 27,
   // sword_long 29, bows 12/28). Each body also authors its own `*_pick_up` strip, which the source's
-  // action-22/23/91 rows bind for goods handling and the chest bend alike; the unarmed body authors no
-  // `_agressive` gait.
+  // action-22/23/91 rows bind for goods handling and the chest bend alike. No record names a bow
+  // `_agressive` gait a bowman's body draws.
   warrior: {
     gfxJobs: [JOB_SOLDIER_UNARMED],
     logicJob: JOB_SOLDIER_UNARMED,
@@ -434,10 +435,6 @@ export const CHARACTER_SPECS = {
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_Shortbow_pick_up' },
       [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_Shortbow_pick_up' },
     },
-    engaged: {
-      moving: 'human_man_Warrior_Shortbow_walk_agressive',
-      idle: 'human_man_Warrior_Shortbow_wait_agressive',
-    },
   },
   'warrior-longbow': {
     gfxJobs: [JOB_ARCHER_LONG, JOB_SOLDIER_UNARMED],
@@ -451,10 +448,6 @@ export const CHARACTER_SPECS = {
       [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_Longbow_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_Longbow_pick_up' },
       [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_Longbow_pick_up' },
-    },
-    engaged: {
-      moving: 'human_man_Warrior_Longbow_walk_agressive',
-      idle: 'human_man_Warrior_Longbow_wait_agressive',
     },
   },
   // Hero bodies carry their arms in the authored bob set. Every clip name comes from this tribe's rows for

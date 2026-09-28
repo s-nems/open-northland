@@ -1,5 +1,7 @@
+import { indexAtlasFrames } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
+  bodySequences,
   gfxAtomicProgramsByAction,
   gfxWaitProgramsBySeq,
   gfxWalkFrameLists,
@@ -158,6 +160,8 @@ describe('tribeJobSeqs', () => {
   it('lists one job own unloaded gait, base wait, first attack and every action record ahead of its base jobs', () => {
     expect(tribeJobSeqs(ir, VIKING, [LONGBOWMAN])).toEqual({
       walk: ['longbow_walk', 'soldier_walk'],
+      gaits: ['longbow_walk', 'soldier_walk'],
+      heads: new Map(),
       wait: ['longbow_wait', 'civilist_wait'],
       attack: ['longbow_attack'],
       // A job's several records for one action all stay, in file order, each with its own frame lists;
@@ -201,12 +205,13 @@ describe('tribeJobSeqs', () => {
   });
 
   it('omits what the tribe does not author rather than borrowing another job or tribe', () => {
-    const none = { walk: [], wait: [], attack: [], atomics: new Map() };
+    const none = { walk: [], gaits: [], wait: [], attack: [], atomics: new Map(), heads: new Map() };
     expect(tribeJobSeqs(ir, VIKING, [34])).toEqual(none);
     expect(tribeJobSeqs(ir, 3, [LONGBOWMAN])).toEqual(none);
     expect(tribeJobSeqs(null, VIKING, [LONGBOWMAN])).toEqual(none);
     // A loaded gait is not the job's walk: only the `logicgoodtype 0` row is.
-    expect(tribeJobSeqs(ir, 2, [LONGBOWMAN])).toEqual({ ...none, walk: ['frank_longbow_walk'] });
+    const frankWalk = ['frank_longbow_walk'];
+    expect(tribeJobSeqs(ir, 2, [LONGBOWMAN])).toEqual({ ...none, walk: frankWalk, gaits: frankWalk });
   });
 
   it('reads several keys in order without repeating a job', () => {
@@ -223,5 +228,110 @@ describe('tribeJobSeqs', () => {
         .atomics.get(EAT_ACTION)
         ?.map((c) => c.seq),
     ).toEqual(['soldier_eat', 'civilist_eat']);
+  });
+
+  it('lists every unloaded gait a job walks, the aggressive one beside the plain', () => {
+    const aggressive: ContentIr = {
+      ...ir,
+      gfxWalkAtomics: [
+        ...(ir.gfxWalkAtomics ?? []),
+        { tribe: VIKING, job: LONGBOWMAN, goodType: UNLOADED, bodySeq: 'longbow_walk_agressive' },
+      ],
+    };
+    const seqs = tribeJobSeqs(aggressive, VIKING, [LONGBOWMAN]);
+    expect(seqs.walk).toEqual(['longbow_walk', 'soldier_walk']);
+    expect(seqs.gaits).toEqual(['longbow_walk', 'longbow_walk_agressive', 'soldier_walk']);
+  });
+
+  it('maps a body clip to the head clip the first record naming it overlays', () => {
+    const headed: ContentIr = {
+      jobs: ir.jobs ?? [],
+      gfxWalkAtomics: [
+        { tribe: VIKING, job: LONGBOWMAN, goodType: UNLOADED, bodySeq: 'walk', headSeq: 'sword_walk' },
+        // A loaded gait's head counts too, and naming the clip itself keeps the body's own frames.
+        { tribe: VIKING, job: LONGBOWMAN, goodType: 3, bodySeq: 'walk_wood', headSeq: 'walk' },
+        { tribe: VIKING, job: LONGBOWMAN, goodType: 4, bodySeq: 'walk_stone', headSeq: 'walk_stone' },
+      ],
+      gfxAtomics: [
+        { tribe: VIKING, job: LONGBOWMAN, action: 81, bodySeq: 'shot', dirFrames: [[0]] },
+        // The base job's later record for the same clip does not override the nearer job's.
+        { tribe: VIKING, job: SOLDIER, action: 81, bodySeq: 'shot', headSeq: 'other_shot', dirFrames: [[0]] },
+        { tribe: VIKING, job: SOLDIER, action: 8, bodySeq: 'nap', headSeq: 'longbow_nap', dirFrames: [[0]] },
+        {
+          tribe: 2,
+          job: LONGBOWMAN,
+          action: 5,
+          bodySeq: 'fidget',
+          headSeq: 'frank_fidget',
+          dirFrames: [[0]],
+        },
+      ],
+    };
+    expect(tribeJobSeqs(headed, VIKING, [LONGBOWMAN]).heads).toEqual(
+      new Map([
+        ['walk', 'sword_walk'],
+        ['walk_wood', 'walk'],
+        ['nap', 'longbow_nap'],
+      ]),
+    );
+  });
+});
+
+describe('bodySequences', () => {
+  // The same bob ids hold different clips on the soldier and the civilian layouts.
+  const ir: ContentIr = {
+    bobSequences: [
+      {
+        imagelib: 'cr_hum_body_05.bmd',
+        sequences: [
+          { name: 'shot', start: 0, length: 2 },
+          { name: 'aim', start: 2, length: 2 },
+        ],
+      },
+      {
+        imagelib: 'cr_hum_body_00.bmd',
+        sequences: [
+          { name: 'pray', start: 0, length: 3 },
+          { name: 'walk', start: 3, length: 5 },
+        ],
+      },
+    ],
+  };
+  const drawing = (count: number) =>
+    indexAtlasFrames(
+      64,
+      64,
+      Array.from({ length: count }, (_, bobId) => ({
+        bobId,
+        rect: { x: 0, y: 0, width: 4, height: 4 },
+        offsetX: 0,
+        offsetY: 0,
+      })),
+    );
+
+  it("plays only a body's own table, whatever other names its frames would fill", () => {
+    expect([...bodySequences(ir, 'cr_hum_body_05', drawing(8)).keys()]).toEqual(['shot', 'aim']);
+    expect([...bodySequences(ir, 'cr_hum_body_00', drawing(8)).keys()]).toEqual(['pray', 'walk']);
+  });
+
+  it("adds another table's clip that a record of a job the body is drawn for names", () => {
+    // The werewolf's attack record names the weresnake's clip, which sits over its own fight.
+    const own: ContentIr = {
+      ...ir,
+      jobGraphics: [{ tribe: 6, job: 31, body: 'data/bobs/cr_hum_body_05.bmd', heads: [] }],
+      gfxAtomics: [{ tribe: 6, job: 31, action: 81, bodySeq: 'pray', dirFrames: [[0]] }],
+    };
+    expect([...bodySequences(own, 'cr_hum_body_05', drawing(8)).keys()]).toEqual(['shot', 'aim', 'pray']);
+    // A base job's record for another body adds nothing.
+    const other = {
+      ...own,
+      jobGraphics: [{ tribe: 6, job: 6, body: 'data/bobs/cr_hum_body_00.bmd', heads: [] }],
+    };
+    expect([...bodySequences(other, 'cr_hum_body_05', drawing(8)).keys()]).toEqual(['shot', 'aim']);
+  });
+
+  it('lays a body shipping no table out by the table whose drawn clips cover most of it', () => {
+    // Four frames: both soldier clips (4 ids) against the civilian pray alone (3 ids).
+    expect([...bodySequences(ir, 'cr_hum_body_32', drawing(4)).keys()]).toEqual(['shot', 'aim']);
   });
 });

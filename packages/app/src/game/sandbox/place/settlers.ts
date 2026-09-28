@@ -1,6 +1,7 @@
 import {
   cellAnchorNode,
   type Entity,
+  type HalfCellNode,
   type SettlerEquipment,
   type Simulation,
   systems,
@@ -48,7 +49,16 @@ export function spawnSettlerDirect(
   y: number,
   owner: number = HUMAN_PLAYER,
 ): Entity {
-  const node = cellAnchorNode(x, y);
+  return spawnSettlerAtNode(sim, jobType, cellAnchorNode(x, y), owner);
+}
+
+/** {@link spawnSettlerDirect} on a half-cell node, for a scene that places between tile centres. */
+export function spawnSettlerAtNode(
+  sim: Simulation,
+  jobType: number,
+  node: HalfCellNode,
+  owner: number = HUMAN_PLAYER,
+): Entity {
   const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
     x: node.hx,
@@ -56,7 +66,7 @@ export function spawnSettlerDirect(
     tribe: PRIMARY_TRIBE,
     owner,
   });
-  if (e === null) throw new Error(`spawnSettlerDirect: unknown settler job ${jobType}`);
+  if (e === null) throw new Error(`spawnSettlerAtNode: unknown settler job ${jobType}`);
   return e;
 }
 

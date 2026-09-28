@@ -3,10 +3,9 @@ import { isAbsolute, resolve } from 'node:path';
 import type { ContentSet } from '@open-northland/data';
 import { atlasFromManifest, type SpriteLayer, type TextureSource } from '@open-northland/render';
 import { INDEXED_CHARACTER_PALETTE } from '../../src/catalog/roster.js';
-import { humanSequences, playableSequences } from '../../src/content/ir/joins.js';
+import { bodySequences, humanSequences } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../src/content/real-content.js';
-import type { LoadedLook } from '../../src/content/sprite-sheet/character-looks.js';
 import { resolveLooks } from '../../src/content/sprite-sheet/character-looks.js';
 import { tribeCharacters } from '../../src/content/sprite-sheet/tribe-characters.js';
 import type { WorldTribes } from '../../src/game/world-tribes.js';
@@ -85,7 +84,7 @@ export function loadContentUnderTest(): Promise<RealContentUnderTest> {
 export type CharacterTableUnderTest = ReturnType<typeof tribeCharacters>;
 
 /**
- * The character tables of `civilizations` resolved over the generated body atlases, the way the sprite
+ * The character tables of `civilizations` resolved over the generated body and head atlases, the way the sprite
  * sheet builds them, so a test can read what clip a look binds to an action. Null on a checkout whose
  * content has no rendered bobs.
  */
@@ -101,25 +100,46 @@ export function characterTablesUnderTest(
     return { source, atlas: atlasFromManifest(JSON.parse(readFileSync(path, 'utf8'))) };
   };
   const looksByTribe = resolveLooks(ir, civilizations, INDEXED_CHARACTER_PALETTE);
-  const layersByBody = new Map<string, LoadedLook>();
+  const layersByBody = new Map<string, { body: SpriteLayer; headsByStem: Map<string, SpriteLayer> }>();
+  const bmdByStem = new Map<string, string>();
   for (const bySpec of looksByTribe.values()) {
     for (const look of [...bySpec.values()].flat()) {
-      const body = layerFor(look.bodyStem);
-      if (body !== undefined) layersByBody.set(look.bodyStem, { body, headsByStem: new Map() });
+      bmdByStem.set(look.bodyStem, look.bodyBmd);
+      let loaded = layersByBody.get(look.bodyStem);
+      if (loaded === undefined) {
+        const body = layerFor(look.bodyStem);
+        if (body === undefined) continue;
+        loaded = { body, headsByStem: new Map() };
+        layersByBody.set(look.bodyStem, loaded);
+      }
+      for (const stem of look.headStems) {
+        const head = loaded.headsByStem.get(stem) ?? layerFor(stem);
+        if (head !== undefined) loaded.headsByStem.set(stem, head);
+      }
     }
   }
   const allSequences = humanSequences(ir);
+  // The IR's own goods stand in for the running set's, so the per-good carry gaits bind as they would.
+  const goods = (ir.goods ?? []).map(({ typeId, id }) => ({ typeId, id }));
   const sequencesByBody = new Map(
-    [...layersByBody].map(([stem, layers]) => [stem, playableSequences(allSequences, layers.body.atlas)]),
-  );
-  return new Map(
-    civilizations.map((tribe) => [
-      tribe,
-      tribeCharacters(ir, [], tribe, {
-        looks: looksByTribe.get(tribe) ?? new Map(),
-        layersByBody,
-        sequencesByBody,
-      }),
+    [...layersByBody].map(([stem, layers]) => [
+      stem,
+      bodySequences(ir, bmdByStem.get(stem) ?? stem, layers.body.atlas),
     ]),
   );
+  // As the sheet does, the first civilization is the base every other one fills its missing looks from.
+  const tables = new Map<number, CharacterTableUnderTest>();
+  let base: CharacterTableUnderTest;
+  for (const tribe of civilizations) {
+    const inputs = {
+      looks: looksByTribe.get(tribe) ?? new Map(),
+      layersByBody,
+      sequencesByBody,
+      sequences: allSequences,
+    };
+    const table = tribeCharacters(ir, goods, tribe, inputs, base);
+    base ??= table;
+    tables.set(tribe, table);
+  }
+  return tables;
 }

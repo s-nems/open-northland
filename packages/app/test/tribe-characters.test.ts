@@ -78,7 +78,7 @@ function inputsFor(
     decoded.map((stem) => [stem, { body: layer(), headsByStem: new Map() }]),
   );
   const sequencesByBody = new Map(decoded.map((stem) => [stem, seqs(names)]));
-  return { looks: looks as never, layersByBody, sequencesByBody };
+  return { looks: looks as never, layersByBody, sequencesByBody, sequences: seqs(names) };
 }
 
 describe('tribeCharacters', () => {

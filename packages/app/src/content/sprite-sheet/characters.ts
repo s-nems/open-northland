@@ -1,6 +1,6 @@
 import type { ByJobTable, SettlerCharacter, SettlerCharacterSet } from '@open-northland/render';
 import type { WorldTribes } from '../../game/world-tribes.js';
-import { humanSequences, playableSequences } from '../ir/joins.js';
+import { bodySequences, humanSequences } from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import { loadLookLayers, resolveLooks } from './character-looks.js';
@@ -24,20 +24,22 @@ export async function loadCharacters(
   if (ir?.bobSequences === undefined || ir.bobSequences.length === 0) return undefined;
 
   const looksByTribe = resolveLooks(ir, tribes, palette);
-  const layersByBody = await loadLookLayers(
-    [...looksByTribe.values()].flatMap((bySpec) => [...bySpec.values()].flat()),
-  );
-  // The `[bobseq]` name space is global across the human bodies; each body plays the subset its own bob
-  // pool draws, so a name outside it falls back rather than resolving to a blank frame.
-  const allSequences = humanSequences(ir);
+  const looks = [...looksByTribe.values()].flatMap((bySpec) => [...bySpec.values()].flat());
+  const layersByBody = await loadLookLayers(looks);
+  const bmdByStem = new Map(looks.map((look) => [look.bodyStem, look.bodyBmd]));
+  const sequences = humanSequences(ir);
   const sequencesByBody = new Map(
-    [...layersByBody].map(([stem, layers]) => [stem, playableSequences(allSequences, layers.body.atlas)]),
+    [...layersByBody].map(([stem, layers]) => [
+      stem,
+      bodySequences(ir, bmdByStem.get(stem) ?? stem, layers.body.atlas),
+    ]),
   );
 
   const inputsFor = (tribe: number): TribeCharacterInputs => ({
     looks: looksByTribe.get(tribe) ?? new Map(),
     layersByBody,
     sequencesByBody,
+    sequences,
   });
   const baseTable = tribeCharacters(ir, goods, tribes[0], inputsFor(tribes[0]));
   if (baseTable === undefined) return undefined;

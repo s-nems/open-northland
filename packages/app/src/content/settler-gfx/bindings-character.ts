@@ -12,7 +12,7 @@ import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram, type TribeClip, type TribeJobSeqs } from '../ir/joins.js';
 import type { BobSeqRow, GfxAnimAtomicRow } from '../ir/rows.js';
 import type { CharacterSpec } from './character-specs.js';
-import { eightDirAnim, frameListsByFacing, type GoodRef, singleDirAnim } from './seq-anim.js';
+import { eightDirAnim, type GoodRef, programFrameLists, singleDirAnim } from './seq-anim.js';
 import { DIRS } from './sequences.js';
 
 /** The extracted `[gfxanimatomic]` / `[gfxwalkatomic]` tables a character binding draws from. Every
@@ -72,26 +72,28 @@ export function carryAnimsByGood(
 }
 
 /**
- * Whether every frame a program addresses is a bob the body draws. An offset inside the row is drawable by
- * construction, since the rows come from {@link playableSequences}; one past it has to be proven, because a
- * program can outrun its row in either direction. Four human attack records lay out a full eight facings
- * against a row declaring six and the extra frames are drawn, while a tribe naming a clip a shorter body
+ * The per-facing lists a program plays on this body ({@link programFrameLists}), when every frame they
+ * address is a bob the body draws. An offset inside the row is drawable by construction, since the rows come
+ * from {@link playableSequences}; one past it has to be proven, because a program can outrun its row in
+ * either direction. The werewolf's attack record names the weresnake's 256-frame clip and lays its facings
+ * out over its own 264-frame fight, whose extra frames are drawn, while a tribe naming a clip a shorter body
  * carries runs off its pool into blank bobs, which the renderer draws as the missing-sprite placeholder.
  */
-function drawsProgram(
+function playableLists(
   program: GfxAtomicProgram | undefined,
   row: BobSeqRow,
   atlas: SpriteAtlas | undefined,
-): program is GfxAtomicProgram {
-  if (program === undefined || row.length <= 0) return false;
-  for (const list of program.dirFrames) {
+): readonly (readonly number[])[] | undefined {
+  if (program === undefined || row.length <= 0) return undefined;
+  const lists = programFrameLists(program.dirFrames, row.length);
+  for (const list of lists) {
     for (const offset of list) {
       if (offset < row.length) continue;
       const frame = atlas?.frames.get(row.start + offset);
-      if (frame === undefined || frame.width === 0 || frame.height === 0) return false;
+      if (frame === undefined || frame.width === 0 || frame.height === 0) return undefined;
     }
   }
-  return true;
+  return lists;
 }
 
 /**
@@ -105,10 +107,10 @@ function waitListAnim(
   atlas: SpriteAtlas | undefined,
 ): FrameListAnim | undefined {
   if (name === undefined) return undefined;
-  const program = waitBySeq?.get(name);
   const row = seqByName.get(name);
-  if (row === undefined || !drawsProgram(program, row, atlas)) return undefined;
-  return { start: row.start, frameLists: frameListsByFacing(program.dirFrames), loop: true };
+  const lists = row === undefined ? undefined : playableLists(waitBySeq?.get(name), row, atlas);
+  if (row === undefined || lists === undefined) return undefined;
+  return { start: row.start, frameLists: lists, loop: true };
 }
 
 /**
@@ -127,7 +129,7 @@ function subClipAnims(
     if (seq === undefined || seq.length <= 0) continue;
     out[subClipKey(row.action, row.subId)] = {
       start: seq.start,
-      frameLists: frameListsByFacing(row.dirFrames),
+      frameLists: programFrameLists(row.dirFrames, seq.length),
     };
   }
   return out;
@@ -175,18 +177,18 @@ export function characterBinding(
     ];
     const playable = candidates.find((clip) => {
       const row = seqByName.get(clip.seq);
-      return row !== undefined && drawsProgram(clip.program, row, bodyAtlas);
+      return row !== undefined && playableLists(clip.program, row, bodyAtlas) !== undefined;
     });
     const clip = playable ?? candidates.find((c) => seqByName.has(c.seq));
     if (clip === undefined) continue;
     const row = seqByName.get(clip.seq);
     if (row === undefined || row.length <= 0) continue;
-    const program = clip.program;
-    if (drawsProgram(program, row, bodyAtlas)) {
+    const lists = playableLists(clip.program, row, bodyAtlas);
+    if (lists !== undefined) {
       byAtomic[atomicId] = {
         start: row.start,
-        frameLists: frameListsByFacing(program.dirFrames),
-        ...(program.mode === GFX_ANIM_MODE_LOOP || action?.loop === true ? { loop: true } : {}),
+        frameLists: lists,
+        ...(clip.program?.mode === GFX_ANIM_MODE_LOOP || action?.loop === true ? { loop: true } : {}),
         ...(action?.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
       };
       continue;
@@ -211,16 +213,21 @@ export function characterBinding(
   if (attackSeq !== undefined) {
     const row = seqByName.get(attackSeq);
     const program = programsByAction?.get(ATTACK_ATOMIC)?.get(attackSeq);
-    if (row !== undefined && drawsProgram(program, row, bodyAtlas)) {
-      const swing: FrameListAnim = { start: row.start, frameLists: frameListsByFacing(program.dirFrames) };
+    const lists = row === undefined ? undefined : playableLists(program, row, bodyAtlas);
+    if (row !== undefined && lists !== undefined) {
+      const swing: FrameListAnim = { start: row.start, frameLists: lists };
       byAtomic[ATTACK_ATOMIC] = swing;
     }
   }
 
-  const engagedMoving = eightDirAnim(seqByName, spec.engaged?.moving, walkLists);
-  const engagedIdle =
-    waitListAnim(spec.engaged?.idle, seqByName, waitBySeq, bodyAtlas) ??
-    singleDirAnim(spec.engaged?.idle !== undefined ? seqByName.get(spec.engaged.idle) : undefined);
+  // An aggressive gait binds where this tribe authors it: the walk as one of the job's walk records, the
+  // stance as a wait program, since a bare stance strip plays a facing-less fidget.
+  const engagedWalk = spec.engaged?.moving;
+  const engagedMoving =
+    engagedWalk !== undefined && (tribeSeqs === undefined || tribeSeqs.gaits.includes(engagedWalk))
+      ? eightDirAnim(seqByName, engagedWalk, walkLists)
+      : undefined;
+  const engagedIdle = waitListAnim(spec.engaged?.idle, seqByName, waitBySeq, bodyAtlas);
   const engaged =
     engagedMoving !== undefined || engagedIdle !== undefined
       ? {
@@ -279,42 +286,10 @@ function cartDriveAnims(
     const moving = eightDirAnim(seqByName, seq, walkLists);
     const row = seqByName.get(seq);
     if (moving === undefined || row === undefined) continue;
-    const program = programsByAction?.get(standAction)?.get(seq);
-    const idle: SpriteFrameRef = drawsProgram(program, row, bodyAtlas)
-      ? { start: row.start, frameLists: frameListsByFacing(program.dirFrames) }
-      : { ...moving, frames: 1 };
+    const lists = playableLists(programsByAction?.get(standAction)?.get(seq), row, bodyAtlas);
+    const idle: SpriteFrameRef =
+      lists !== undefined ? { start: row.start, frameLists: lists } : { ...moving, frames: 1 };
     out[Number(vehicleType)] = { idle, moving };
   }
   return Object.keys(out).length > 0 ? out : undefined;
-}
-
-/**
- * The head-side twin of a per-good carry table. Most of the man's carry-walk variants ship empty head bobs
- * (19 of 27 in the real decode; the head is authored once, on the base walk), so a good whose head frame is
- * empty borrows the base walk at the same (facing, frame) offset instead of walking headless. Returns the
- * input table by identity when nothing borrows.
- */
-export function carryHeadAnims(
-  byGood: NonNullable<CarryingBinding['byGood']>,
-  walk: DirectionalAnim | undefined,
-  headAtlas: SpriteAtlas,
-): NonNullable<CarryingBinding['byGood']> {
-  if (walk === undefined) return byGood;
-  const out: Record<number, { readonly idle?: SpriteFrameRef; readonly moving?: SpriteFrameRef }> = {};
-  let borrowed = false;
-  for (const [goodType, slot] of Object.entries(byGood)) {
-    const moving = slot.moving;
-    let headAuthored = true;
-    if (typeof moving === 'object') {
-      const frame = headAtlas.frames.get(moving.start);
-      headAuthored = frame !== undefined && frame.width > 0 && frame.height > 0;
-    }
-    if (headAuthored) {
-      out[Number(goodType)] = slot;
-    } else {
-      out[Number(goodType)] = { moving: walk, idle: { ...walk, frames: 1 } };
-      borrowed = true;
-    }
-  }
-  return borrowed ? out : byGood;
 }

@@ -3,7 +3,7 @@
  * (`CR_Hum_Head_*`) on top, as the original's `jobgraphics` (`gfxbobmanagerbody` + `gfxbobmanagerhead`)
  * composes a human. The reducers here are pure; byte loading and sheet assembly live in `../sprite-sheet/`.
  */
-export { carryAnimsByGood, carryHeadAnims, characterBinding } from './bindings-character.js';
+export { carryAnimsByGood, characterBinding } from './bindings-character.js';
 export { buildHumanBindings } from './bindings-demo.js';
 export {
   ADULT_CHARACTER_BY_JOB,
@@ -17,7 +17,15 @@ export {
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from './character-specs.js';
-export { directionalAnimFromSeq, eightDirAnim, frameListsByFacing, type GoodRef } from './seq-anim.js';
+export { carryHeadFallback, type HeadClip, headBinding, headClips } from './head-binding.js';
+export {
+  directionalAnimFromSeq,
+  eightDirAnim,
+  FACING,
+  frameListsByFacing,
+  type GoodRef,
+  programFrameLists,
+} from './seq-anim.js';
 export {
   HAMMER_TICKS_PER_FRAME,
   HARVEST_TICKS,

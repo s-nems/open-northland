@@ -17,7 +17,6 @@ import {
   buildHumanBindings,
   CHARACTER_SPECS,
   carryAnimsByGood,
-  carryHeadAnims,
   characterBinding,
   directionalAnimFromSeq,
   frameListsByFacing,
@@ -404,8 +403,10 @@ describe('characterBinding', () => {
     ]);
     const tribeSeqs = {
       walk: [],
+      gaits: [],
       wait: [],
       attack: [],
+      heads: new Map(),
       atomics: new Map([
         [10, [{ seq: 'empty_eat', program: { dirFrames: [[0, 1]] } }]],
         [22, [{ seq: 'empty_pick_up', program: { dirFrames: [[0, 1, 2]] } }]],
@@ -507,7 +508,7 @@ describe('characterBinding', () => {
     expect(characterBinding(spec, seqs, [])?.byAtomic).toBeUndefined();
   });
 
-  it('binds the engaged gait: aggressive ×8 walk + facing-locked aggressive wait', () => {
+  it('binds an engaged gait only where the tribe authors it', () => {
     const seqs = new Map([
       ['wait', { name: 'wait', start: 1931, length: 57 }],
       ['aggr_walk', { name: 'aggr_walk', start: 536, length: 96 }],
@@ -518,10 +519,22 @@ describe('characterBinding', () => {
       waitSeq: 'wait',
       engaged: { moving: 'aggr_walk', idle: 'aggr_wait' },
     } as const;
-    expect(characterBinding(spec, seqs, [])?.engaged).toEqual({
+    const tribeSeqs = {
+      walk: [],
+      gaits: ['aggr_walk'],
+      wait: [],
+      attack: [],
+      atomics: new Map(),
+      heads: new Map(),
+    };
+    const waitBySeq = new Map([['aggr_wait', { dirFrames: [[0, 1, 2]] }]]);
+    expect(characterBinding(spec, seqs, [], { tribeSeqs, waitBySeq })?.engaged).toEqual({
       moving: { start: 536, dirs: 8, stride: 12 },
-      idle: { start: 418, dirs: 1, stride: 22 },
+      idle: { start: 418, frameLists: [[0, 1, 2]], loop: true },
     });
+    // Unauthored, the drawn strips stay unbound: a bare stance strip would play as a facing-less fidget.
+    const unauthored = { ...tribeSeqs, gaits: [] };
+    expect(characterBinding(spec, seqs, [], { tribeSeqs: unauthored })?.engaged).toBeUndefined();
   });
 
   const CARRY_SEQS = new Map([
@@ -672,43 +685,10 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
   });
 });
 
-describe('carryHeadAnims - the head-borrow for head-empty carry cycles', () => {
-  const WALK = { start: 1988, dirs: 8, stride: 12 } as const;
-  const STONE_CARRY = { start: 4100, dirs: 8, stride: 12 } as const;
-  const WOOD_CARRY = { start: 4580, dirs: 8, stride: 12 } as const;
-  /** A head atlas that authors the wood carry's frames but ships the stone carry empty (the real
-   *  decode's shape: 19 of 27 man carry variants have no head bobs). */
-  function headAtlas(): SpriteAtlas {
-    return indexAtlasFrames(64, 64, [
-      { bobId: WOOD_CARRY.start, rect: { x: 0, y: 0, width: 10, height: 10 }, offsetX: 0, offsetY: 0 },
-      { bobId: STONE_CARRY.start, rect: { x: 0, y: 0, width: 0, height: 0 }, offsetX: 0, offsetY: 0 },
-    ]);
-  }
-  const byGood = {
-    3: { moving: STONE_CARRY, idle: { ...STONE_CARRY, frames: 1 } },
-    5: { moving: WOOD_CARRY, idle: { ...WOOD_CARRY, frames: 1 } },
-  };
-
-  it('borrows the base walk for a head-empty carry cycle, keeps an authored one', () => {
-    const head = carryHeadAnims(byGood, WALK, headAtlas());
-    expect(head[3]).toEqual({ moving: WALK, idle: { ...WALK, frames: 1 } }); // stone: borrowed
-    expect(head[5]).toBe(byGood[5]); // wood: its own authored head range
-  });
-
-  it('returns the input table BY IDENTITY when every head is authored (no head binding needed)', () => {
-    const allAuthored = { 5: { moving: WOOD_CARRY, idle: { ...WOOD_CARRY, frames: 1 } } };
-    expect(carryHeadAnims(allAuthored, WALK, headAtlas())).toBe(allAuthored);
-  });
-
-  it('returns the input table when there is no walk to borrow', () => {
-    expect(carryHeadAnims(byGood, undefined, headAtlas())).toBe(byGood);
-  });
-});
-
 /**
- * The out-of-row guard on an authored frame list. Four human attack records lay out a full eight facings
- * against a `[bobseq]` row declaring six, and the frames past the row are drawn - the viking civilian's
- * brawl among them - so the bound is the body's bob pool, not the declared length.
+ * The out-of-row guard on an authored frame list. The werewolf's attack record names the weresnake's
+ * 256-frame row and lays its facings out over its own longer fight, whose frames past the row are drawn, so
+ * the bound is the body's bob pool, not the declared length.
  */
 describe('characterBinding out-of-row frame lists', () => {
   const PUNCH = { name: 'punch', start: 425, length: 102 } as const;

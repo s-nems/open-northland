@@ -55,6 +55,7 @@ import { vehicleYardScene } from './vehicle-yard.js';
 import { vehiclesScene } from './vehicles.js';
 import { victoryScene } from './victory.js';
 import { warehouseScene } from './warehouse.js';
+import { weaponFacingsScene } from './weapon-facings.js';
 import { wildlifeScene } from './wildlife.js';
 
 export { MAP_SCENES, mapSceneParams } from './map-scenes.js';
@@ -68,6 +69,7 @@ export const SCENES: readonly SceneDefinition[] = [
   collisionScene,
   battleScene,
   bowFlightScene,
+  weaponFacingsScene,
   battleWearyScene,
   siegeScene,
   repairScene,
