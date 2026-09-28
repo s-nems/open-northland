@@ -15,6 +15,7 @@ import {
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createToolWindows, type ToolWindowId, type ToolWindows } from '../src/hud/tool-panel/windows.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
+import { stubMissionBook } from './support/mission-book-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
 import { stubPlacementStrip } from './support/placement-strip-stub.js';
 import { stubResidentsWindow } from './support/residents-window-stub.js';
@@ -96,11 +97,7 @@ function mountSurfaces() {
     },
     heldPaper: createHeldPaperController(ctx, strip),
     diplomacyRows: () => [],
-    art: null,
-    missionBrief: () => null,
-    missionBriefingHistory: () => [],
-    missionReplayPage: () => null,
-    history: null,
+    missionBook: stubMissionBook,
     onPickBuilding: (typeId) => {
       windows?.byId.menu.suspend();
       placement.enter(typeId);

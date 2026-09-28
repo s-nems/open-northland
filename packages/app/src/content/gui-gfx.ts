@@ -149,11 +149,8 @@ export async function loadGuiHistory(
   return parsed.data;
 }
 
-/**
- * Load one hypertext page picture, by the content-addressed file name its block carries. `undefined`
- * when the pipeline hasn't emitted it, so the page keeps its layout with an empty box. These are
- * scanned paintings drawn at a fractional HUD scale, so they resample smoothly rather than as pixel art.
- */
-export function loadHypertextPicture(file: string): Promise<TextureSource | undefined> {
-  return loadTextureIfPresent(`${GUI_ROOT}/hypertext/${file}`, 'linear');
+/** A hypertext page picture's URL, by the content-addressed file name its block carries; a checkout
+ *  without the pipeline's output answers it with a missing image. */
+export function hypertextPictureUrl(file: string): string {
+  return `${GUI_ROOT}/hypertext/${file}`;
 }

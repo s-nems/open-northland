@@ -3,6 +3,10 @@
  * an unchanged write would still dirty the layout the next read forces.
  */
 
+/** Text set into markup a template builds, such as a map's page or a label. */
+export const escapeHtml = (text: string): string =>
+  text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
+
 export function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className: string,

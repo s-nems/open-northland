@@ -9,8 +9,16 @@ export const GLYPH = Object.fromEntries(
   [...iconsTs.matchAll(/(\w+):\s*'(<svg[^']*)'/g)].map((match) => [match[1], match[2]]),
 );
 export const SYMBOLS = symbolsTs.match(/HUD_SYMBOLS = `([\s\S]*?)`;/)?.[1] ?? '';
-export const ORNAMENTS = `<svg aria-hidden="true" class="on-window__knot"><use href="#on-knot"/></svg>${['tl', 'tr', 'bl', 'br']
-  .map((c) => `<svg aria-hidden="true" class="on-window__corner on-window__corner--${c}"><use href="#on-corner"/></svg>`)
+export const ORNAMENTS = `<svg aria-hidden="true" class="on-window__knot"><use href="#on-knot"/></svg>${[
+  'tl',
+  'tr',
+  'bl',
+  'br',
+]
+  .map(
+    (c) =>
+      `<svg aria-hidden="true" class="on-window__corner on-window__corner--${c}"><use href="#on-corner"/></svg>`,
+  )
   .join('')}`;
 
 export const MISSIONS = await (await fetch('/mission-review/missions.json')).json();
@@ -46,11 +54,18 @@ export function analysePage(page, lang = 'pl') {
     if (b.kind === 'blank') continue;
     if (b.kind === 'picture') {
       portrait = b;
-      segments.push({ kind: 'picture', file: b.file, width: b.width, height: b.height, src: pictureUrl(b.file) });
+      segments.push({
+        kind: 'picture',
+        file: b.file,
+        width: b.width,
+        height: b.height,
+        src: pictureUrl(b.file),
+      });
       continue;
     }
     if (b.kind === 'icons') {
-      for (const icon of b.icons) if (icon[0] === 1 || icon[0] === 2) segments.push({ kind: 'mapview', icon });
+      for (const icon of b.icons)
+        if (icon[0] === 1 || icon[0] === 2) segments.push({ kind: 'mapview', icon });
       continue;
     }
     const text = b.text.trim();

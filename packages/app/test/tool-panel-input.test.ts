@@ -44,7 +44,6 @@ const CLOSED_WINDOWS = {
   claims: () => false,
   handleClick: () => false,
   handleWheel: () => false,
-  handleHover: () => undefined,
 } as unknown as ToolWindows;
 
 /** The key listener registers on `window` and its typing-target guard probes DOM classes; the node test

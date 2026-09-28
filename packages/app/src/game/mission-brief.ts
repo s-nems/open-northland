@@ -3,25 +3,29 @@ import type { MatchOutcome, MissionStatus } from '@open-northland/sim';
 import { localizedMapText } from './map-strings.js';
 
 /**
- * What the mission window shows for one world: a briefing page and the goal list. Pure joins over the
- * decoded briefing sidecar and the sim's mission status; the window itself is HUD.
+ * What the mission book shows for one world: its briefing pages and the goal list. Pure joins over the
+ * decoded briefing sidecar and the sim's mission status; the book itself is HUD.
  */
 export interface MissionGoal {
+  /** Stable while the world runs: the mission's script index, or the skirmish rule. */
+  readonly key: string;
   readonly text: string;
+  /** The author prefixed the text with the emphasis mark; the book sets it in its accent ink. */
+  readonly emphasis: boolean;
   /** An authored trigger's description is listed as information; the skirmish rule is what decides. */
   readonly rule: 'authored' | 'skirmish';
-  /** A goal that fired or whose last check held shows `X`; an active unmet one shows `o`; an inactive,
-   *  unmet one is dimmed with no mark. Keeping `X` after a fire is a UI approximation for repeatable
-   *  scripts that consume their own goal input. */
+  /** A goal that fired or whose last check held is done; an active unmet one is open; an inactive,
+   *  unmet one is idle and printed dimmed (reading). Keeping done after a fire is a UI approximation
+   *  for repeatable scripts that consume their own goal input. */
   readonly state: 'done' | 'open' | 'idle';
 }
 
-export interface MissionBrief {
+/** One briefing page, or the map's fallback text. */
+export interface MissionPage {
   /** The headline over fallback text; empty over a briefing page, which carries its own. */
   readonly title: string;
   /** The briefing page; a map without one reads its menu description, a scene its summary. */
   readonly blocks: readonly HypertextBlock[];
-  readonly goals: readonly MissionGoal[];
 }
 
 /** Where a world's briefs come from: its pages, the fallback text, and whether a match runs. */
@@ -47,8 +51,7 @@ export function mapBriefFallback(
   };
 }
 
-/** A goal description starting with this is printed without it, in the window's emphasis colour
- *  (approximation: the emphasis is not applied). */
+/** A goal description starting with this is printed without it, in the window's emphasis colour. */
 const GOAL_EMPHASIS_MARK = '@';
 /** The mission window's language order: the app locale, then the mod's authoring language. */
 const BRIEFING_LANG_FALLBACKS = ['pol', 'eng'] as const;
@@ -67,10 +70,13 @@ export function briefingPage(
   return null;
 }
 
+const SKIRMISH_GOAL_KEY = 'skirmish';
+
 /**
- * The goals the window lists: every mission the author marked visible that names a goal text, in
- * script order, with its mark from the live flags (reading). A text the map's table lacks prints its
- * id, the way the original prints a placeholder there.
+ * The goals the book lists: every mission the script currently marks visible that names a goal text,
+ * in script order, with its state from the live flags (reading). A hidden mission stays out, and with
+ * it any count of what is still to come. A text the map's table lacks prints its id, the way the
+ * original prints a placeholder there.
  */
 export function missionGoals(
   status: readonly MissionStatus[],
@@ -80,9 +86,11 @@ export function missionGoals(
   for (const mission of status) {
     if (!mission.visible || mission.description === undefined) continue;
     const raw = (textOf(mission.description) ?? `#${mission.description}`).trim();
-    const text = raw.startsWith(GOAL_EMPHASIS_MARK) ? raw.slice(GOAL_EMPHASIS_MARK.length).trim() : raw;
+    const emphasis = raw.startsWith(GOAL_EMPHASIS_MARK);
     goals.push({
-      text,
+      key: String(mission.index),
+      text: emphasis ? raw.slice(GOAL_EMPHASIS_MARK.length).trim() : raw,
+      emphasis,
       rule: 'authored',
       state: mission.done ? 'done' : mission.active ? 'open' : 'idle',
     });
@@ -90,58 +98,81 @@ export function missionGoals(
   return goals;
 }
 
-/**
- * The brief for `page`: the page as authored, headline included; without one, the fallback name heads
- * the fallback description. The authored goals come first; the skirmish rule follows unless the author
- * already wrote it, ticked once the match is won.
- */
-export function missionBrief(
+/** The authored goals, then the skirmish rule unless the author already wrote it, done once the match
+ *  is won. */
+export function missionGoalList(
   source: MissionBriefSource,
-  page: number | null,
   status: readonly MissionStatus[],
   textOf: (stringId: number) => string | undefined,
   outcome: MatchOutcome,
-): MissionBrief {
+): MissionGoal[] {
   const goals = missionGoals(status, textOf);
   const skirmish = source.skirmishGoal;
   if (skirmish !== null && !goals.some((g) => g.text === skirmish)) {
-    goals.push({ text: skirmish, rule: 'skirmish', state: outcome === 'victory' ? 'done' : 'open' });
+    goals.push({
+      key: SKIRMISH_GOAL_KEY,
+      text: skirmish,
+      emphasis: false,
+      rule: 'skirmish',
+      state: outcome === 'victory' ? 'done' : 'open',
+    });
   }
-  const blocks = page === null ? null : source.page(page);
-  if (blocks === null) {
-    const { title, description } = source.fallback;
-    return {
-      title,
-      blocks: description === undefined ? [] : [{ kind: 'text', style: 'body', text: description }],
-      goals,
-    };
-  }
-  return { title: '', blocks, goals };
+  return goals;
 }
 
-/** What a live brief reads off the world: the sim's mission flags, the match verdict and the tick. */
+/** The page as authored, headline included; without one, the fallback name heads the fallback
+ *  description. */
+export function missionPage(source: MissionBriefSource, page: number | null): MissionPage {
+  const blocks = page === null ? null : source.page(page);
+  if (blocks !== null) return { title: '', blocks };
+  const { title, description } = source.fallback;
+  return {
+    title,
+    blocks: description === undefined ? [] : [{ kind: 'text', style: 'body', text: description }],
+  };
+}
+
+/** What a live reader reads off the world: the sim's mission flags, the match verdict and the tick. */
 export interface MissionBriefWorld {
   readonly tick: () => number;
   readonly status: () => readonly MissionStatus[];
   readonly outcome: () => MatchOutcome;
 }
 
-/**
- * The brief reader an open mission window pulls every frame: {@link missionBrief} over the live
- * world, memoised per tick and page, since the goal marks move only with the tick.
- */
-export function missionBriefReader(
+/** The pages and goals the book and the goal slip pull. */
+export interface MissionReader {
+  page(page: number | null): MissionPage;
+  /** The same array while the tick stands, since the goal states move only with the tick. */
+  goals(): readonly MissionGoal[];
+  /** The map's menu name, which the book prints over its chapters. */
+  readonly missionName: string;
+}
+
+/** A {@link MissionReader} over the live world; pages are fixed content, the goals are memoised per
+ *  tick. */
+export function missionReader(
   source: MissionBriefSource,
   world: MissionBriefWorld,
   textOf: (stringId: number) => string | undefined,
-): (page: number | null) => MissionBrief {
-  let memo: { readonly tick: number; readonly page: number | null; readonly brief: MissionBrief } | null =
-    null;
-  return (page) => {
-    const tick = world.tick();
-    if (memo === null || memo.tick !== tick || memo.page !== page) {
-      memo = { tick, page, brief: missionBrief(source, page, world.status(), textOf, world.outcome()) };
-    }
-    return memo.brief;
+): MissionReader {
+  const pages = new Map<number | null, MissionPage>();
+  let goals: { readonly tick: number; readonly list: readonly MissionGoal[] } | null = null;
+  return {
+    page(page) {
+      let found = pages.get(page);
+      if (found === undefined) {
+        found = missionPage(source, page);
+        pages.set(page, found);
+      }
+      return found;
+    },
+    goals() {
+      const tick = world.tick();
+      if (goals === null || goals.tick !== tick) {
+        goals = { tick, list: missionGoalList(source, world.status(), textOf, world.outcome()) };
+      }
+      return goals.list;
+    },
+    missionName: source.fallback.title,
   };
 }

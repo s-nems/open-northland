@@ -497,6 +497,40 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
 - Another seat's vehicle: class, type, owner line with the stance, the portrait, the state and the
   crew's figures; no order, no hold, no control.
 
+### Mission book
+
+Misja is an open book over the map (ticket 14), not a framed window: the wood rails, bronze line,
+corners and knot of the window family around a leather cover with two vellum pages, and the tabs
+Zadanie, Cele and Kronika standing out of its fore-edge as wood tabs, parchment when selected. The
+book keeps its 990 x 620 design size and shrinks whole on a screen that cannot hold it. Its paint is
+code-native (CSS gradients over the surface texture and the paper grain); no generated art is
+delivered for it.
+
+- Only what the map provides: the page's text, its pictures, its world views and its goals. No
+  narration, and a page the author left untitled gets no invented title; the book prints its chapter
+  number and the map's name over it.
+- A chapter's text flows across both pages in columns and is turned, not scrolled: the page corners
+  turn a spread and at a chapter's end step into the next chapter, and so does the wheel. Pictures
+  and world views stand inside the text where the page places them; a narrow picture is a portrait,
+  an oval beside the quote that follows it. A page whose prose the author centred as a whole is set
+  flush left; a few centred lines (captions, a table's entries, links) stay centred.
+- A world view is a hole in the painted book that the renderer fills with the live map, with its own
+  "Pokaż na mapie", which closes the book and centres the view there. While a leaf turns no hole is
+  cut.
+- Goals list what the script currently marks visible: the open ones with a box, the visible but not
+  yet active ones after them in muted ink without a mark, the done ones on the right page with a green
+  seal. No total and no count of what is still to come; the Cele tab counts the open goals only.
+- Kronika lists the chapters delivered so far, a preview of the picked one and its "Czytaj", and the
+  history tables the game ships, read in the same book with their links.
+- A script's chapter opens the book on it marked "Nowy rozdział", dims the map and holds the game
+  with "Gra wstrzymana · opowieść trwa" and "Wznów grę"; on a shared clock nothing is held and the
+  banner stays away. Opening the book from the beam or the slip never touches the pause.
+- The goal slip hangs from the top bar at the right edge, or below the script's info lines when they
+  stand there, and folds up into its wood tab "Cele" with the open count. It lists the goals just done,
+  then the open ones with the new first, up to four, and "Otwórz księgę" with the book's key. A goal
+  change never unfolds it: the folded tab and the beam's Misja entry carry a wax seal until the goal
+  page shows the change. The slip hides while the book is open and with the HUD.
+
 ## HUD shell
 
 The runtime shell (ticket 02) places the regions on the DOM plane in design px and keeps the legacy
@@ -523,8 +557,8 @@ Rules the shell enforces:
   menu: that last step is the rebindable "Menu gry" action (default Esc, the one action Esc may hold)
   and on any other key it opens the menu at once.
 - Closing with Esc or the close medallion returns keyboard focus to the beam entry that owns the
-  window. Only the mission sheet and the system menu hold the simulation paused; other windows never
-  touch the pause.
+  window. Only a script's briefing chapter and the system menu hold the simulation paused; opening the
+  mission book to read and other windows never touch the pause.
 - A wheel over a DOM region never reaches the camera. The edge pan keeps working over every region,
   so chrome along a screen edge never blocks scrolling. Presses on a region never reach the map;
   presses on the map keep the window open and select independently, with the details panel in its

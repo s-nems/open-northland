@@ -36,7 +36,8 @@ const SVG = {
   prev: '<svg viewBox="0 0 20 20" class="bk-ico"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   next: '<svg viewBox="0 0 20 20" class="bk-ico"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   fold: '<svg viewBox="0 0 20 20" class="bk-ico"><path d="M5 12.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  check: '<svg viewBox="0 0 20 20" class="bk-ico"><path d="M4.5 10.5l3.6 3.4 7.4-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  check:
+    '<svg viewBox="0 0 20 20" class="bk-ico"><path d="M4.5 10.5l3.6 3.4 7.4-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   flourish:
     '<svg viewBox="0 0 120 16" class="bk-flourish" aria-hidden="true"><path d="M2 8h44M74 8h44" stroke="currentColor" stroke-width="1"/><path d="M60 2l6 6-6 6-6-6z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="60" cy="8" r="1.6" fill="currentColor"/><path d="M46 8c4-4 6-4 8 0M74 8c-4 4-6 4-8 0" fill="none" stroke="currentColor" stroke-width="1"/></svg>',
 };
@@ -47,11 +48,22 @@ const S = { key: '', tab: 'brief', chapter: 0, spread: 0, plate: 0, pick: 0, sli
 function sync(ctx) {
   const key = `${ctx.map}|${ctx.view}|${ctx.pageIndex}|${ctx.option}`;
   if (S.key === key) return;
-  Object.assign(S, { key, tab: TAB_OF_VIEW[ctx.view] ?? 'brief', chapter: ctx.pageIndex, spread: 0, plate: 0, pick: ctx.pageIndex, slip: ctx.view !== 'map' });
+  Object.assign(S, {
+    key,
+    tab: TAB_OF_VIEW[ctx.view] ?? 'brief',
+    chapter: ctx.pageIndex,
+    spread: 0,
+    plate: 0,
+    pick: ctx.pageIndex,
+    slip: ctx.view !== 'map',
+  });
 }
 
 const inline = (ctx) => ctx.option !== PLACEMENT.side;
-const niceTitle = (t) => (t === t.toUpperCase() ? t.toLowerCase().replace(/(^|[\s:(„-])(\p{L})/gu, (_, p, c) => p + c.toUpperCase()) : t);
+const niceTitle = (t) =>
+  t === t.toUpperCase()
+    ? t.toLowerCase().replace(/(^|[\s:(„-])(\p{L})/gu, (_, p, c) => p + c.toUpperCase())
+    : t;
 /** Only goals the mission has revealed: the original keeps later goals, and their count, hidden. */
 const revealed = (goals) => goals.filter((g) => g.state !== 'idle');
 
@@ -106,7 +118,9 @@ function flowHtml(ctx, page, index) {
         out.push(`<h4 class="bk-sub">${lib.esc(niceTitle(s.text))}</h4>`);
         break;
       case 'para':
-        out.push(`<p class="bk-p${first ? ' bk-p--first' : ''}">${lib.esc(s.text).replace(/\n/g, '<br>')}</p>`);
+        out.push(
+          `<p class="bk-p${first ? ' bk-p--first' : ''}">${lib.esc(s.text).replace(/\n/g, '<br>')}</p>`,
+        );
         first = false;
         break;
       case 'speech': {
@@ -114,7 +128,9 @@ function flowHtml(ctx, page, index) {
         const face = s.portrait ? `<img class="bk-speech__face" src="${s.portrait}" alt="">` : '';
         const who = s.speaker ? `<b class="bk-speech__who">${lib.esc(s.speaker)}</b>` : '';
         const keep = s.text.length <= SHORT_SPEECH ? ' bk-speech--keep' : '';
-        out.push(`<div class="bk-speech${s.portrait ? ' bk-speech--face' : ''}${keep}">${face}<p>${who}${lib.esc(s.text.replace(/^["„”«»]|["„”«»]$/g, ''))}</p></div>`);
+        out.push(
+          `<div class="bk-speech${s.portrait ? ' bk-speech--face' : ''}${keep}">${face}<p>${who}${lib.esc(s.text.replace(/^["„”«»]|["„”«»]$/g, ''))}</p></div>`,
+        );
         break;
       }
       case 'picture':
@@ -133,7 +149,11 @@ function flowHtml(ctx, page, index) {
     }
   }
   const head = withFigures ? chapterHead(ctx, index) : '';
-  const title = page.titled ? `<h3 class="bk-title">${lib.esc(niceTitle(page.title))}</h3>${SVG.flourish}` : withFigures ? SVG.flourish : '';
+  const title = page.titled
+    ? `<h3 class="bk-title">${lib.esc(niceTitle(page.title))}</h3>${SVG.flourish}`
+    : withFigures
+      ? SVG.flourish
+      : '';
   return `${head}${title}${out.join('')}<p class="bk-fin" aria-hidden="true">❦</p>`;
 }
 
@@ -167,7 +187,10 @@ function leftFront(ctx, page) {
     const thumbs =
       plates.length > 1
         ? `<div class="bk-thumbs" role="tablist" aria-label="Ryciny">${plates
-            .map((p, j) => `<button type="button" role="tab" class="bk-thumb" data-plate="${j}" aria-selected="${j === i}">${plateHtml(lib, map, p)}</button>`)
+            .map(
+              (p, j) =>
+                `<button type="button" role="tab" class="bk-thumb" data-plate="${j}" aria-selected="${j === i}">${plateHtml(lib, map, p)}</button>`,
+            )
             .join('')}</div>`
         : '';
     art = `<figure class="bk-plate bk-plate--${shown.kind}"><div class="bk-plate__frame">${plateHtml(lib, map, shown, plates.length > 1 ? PLATE_WITH_THUMBS : PLATE)}</div>${caption}</figure>${thumbs}`;
@@ -257,7 +280,9 @@ function excerptOf(page) {
 
 /** A page's own title, or its opening words set apart as a derived label. */
 function tocTitle(lib, page) {
-  return page.titled ? lib.esc(niceTitle(page.title)) : `<i class="bk-toc__derived">${lib.esc(page.title)}</i>`;
+  return page.titled
+    ? lib.esc(niceTitle(page.title))
+    : `<i class="bk-toc__derived">${lib.esc(page.title)}</i>`;
 }
 
 function historySpread(ctx) {
@@ -274,7 +299,11 @@ function historySpread(ctx) {
   const page = ctx.pages[pick];
   const plates = platesOf(page);
   const cast = castOf(page);
-  const thumb = plates[0] ? plateHtml(lib, ctx.map, plates[0], PREVIEW) : cast[0] ? `<img src="${cast[0]}" alt="">` : '';
+  const thumb = plates[0]
+    ? plateHtml(lib, ctx.map, plates[0], PREVIEW)
+    : cast[0]
+      ? `<img src="${cast[0]}" alt="">`
+      : '';
   const count = ctx.pages.length;
   return `
     <div class="bk-page bk-page--left">
@@ -309,7 +338,8 @@ function tabs(ctx) {
 
 function book(ctx) {
   const { lib } = ctx;
-  const spread = S.tab === 'goals' ? goalsSpread(ctx) : S.tab === 'history' ? historySpread(ctx) : briefSpread(ctx);
+  const spread =
+    S.tab === 'goals' ? goalsSpread(ctx) : S.tab === 'history' ? historySpread(ctx) : briefSpread(ctx);
   const arrival = ctx.view === 'arrival';
   return `<section class="bk-book${arrival ? ' bk-book--arrival' : ''}" aria-label="Misja">
     <div class="bk-cover">${lib.ORNAMENTS}</div>
@@ -381,7 +411,8 @@ function layout(root, ctx) {
   flow.style.transform = `translateX(${-rightCol * step}px)`;
   right.classList.toggle('bk-window--blank', rightCol >= columns);
   root.querySelector('[data-folio-left]').textContent = leftCol >= 0 ? `strona ${leftCol + 1}` : '';
-  root.querySelector('[data-folio-right]').textContent = rightCol < columns ? `strona ${rightCol + 1} z ${columns}` : '';
+  root.querySelector('[data-folio-right]').textContent =
+    rightCol < columns ? `strona ${rightCol + 1} z ${columns}` : '';
   const atStart = S.spread === 0 && S.chapter === 0;
   const atEnd = S.spread === spreads - 1 && S.chapter === ctx.pages.length - 1;
   const prev = root.querySelector('[data-prev]');
@@ -427,16 +458,18 @@ export default {
       relayout();
       document.fonts.ready.then(relayout);
       document.querySelector('[data-proposal-css]')?.addEventListener('load', relayout, { once: true });
-      root.querySelectorAll('.bk-flow img').forEach((img) => img.complete || img.addEventListener('load', relayout, { once: true }));
+      for (const img of root.querySelectorAll('.bk-flow img')) {
+        if (!img.complete) img.addEventListener('load', relayout, { once: true });
+      }
       const win = root.querySelector('[data-col="right"]');
       if (win) new ResizeObserver(relayout).observe(win);
-      root.querySelectorAll('[data-tab]').forEach((b) =>
+      for (const b of root.querySelectorAll('[data-tab]')) {
         b.addEventListener('click', () => {
           S.tab = b.dataset.tab;
           S.spread = 0;
           refresh();
-        }),
-      );
+        });
+      }
       root.querySelector('[data-next]')?.addEventListener('click', (e) => {
         const spreads = Number(e.currentTarget.dataset.spreads);
         if (S.spread < spreads - 1) {
@@ -460,12 +493,12 @@ export default {
           turn(root, -1);
         }
       });
-      root.querySelectorAll('[data-plate]').forEach((b) =>
+      for (const b of root.querySelectorAll('[data-plate]')) {
         b.addEventListener('click', () => {
           S.plate = Number(b.dataset.plate);
           refresh();
-        }),
-      );
+        });
+      }
       root.querySelectorAll('[data-pick]').forEach((b) => {
         b.addEventListener('click', () => {
           S.pick = Number(b.dataset.pick);
@@ -477,7 +510,12 @@ export default {
         });
       });
       root.querySelector('[data-open]')?.addEventListener('click', (e) => {
-        Object.assign(S, { tab: 'brief', chapter: Number(e.currentTarget.dataset.open), spread: 0, plate: 0 });
+        Object.assign(S, {
+          tab: 'brief',
+          chapter: Number(e.currentTarget.dataset.open),
+          spread: 0,
+          plate: 0,
+        });
         refresh();
       });
       root.querySelector('[data-book]')?.addEventListener('click', () => {

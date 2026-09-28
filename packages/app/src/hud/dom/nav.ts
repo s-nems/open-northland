@@ -8,6 +8,8 @@ export interface HudNavEntry<Id extends string> {
 /** The bottom navigation beam: one medallion action per entry, the open window's entry lit. */
 export interface HudNav<Id extends string> {
   setActive(id: Id | null): void;
+  /** A wax seal on the entry for news waiting behind it, named `label` for assistive tech. */
+  setMarked(id: Id, marked: boolean, label: string): void;
   focus(id: Id): void;
   dispose(): void;
 }
@@ -37,11 +39,27 @@ export function createHudNav<Id extends string>(
   }
   plane.append(nav);
   let active: Id | null = null;
+  const marks = new Map<Id, HTMLElement>();
   return {
     setActive: (id) => {
       if (id === active) return;
       active = id;
       for (const [entryId, button] of buttons) button.setAttribute('aria-pressed', String(entryId === id));
+    },
+    setMarked: (id, marked, label) => {
+      const button = buttons.get(id);
+      if (button === undefined || marks.has(id) === marked) return;
+      if (!marked) {
+        marks.get(id)?.remove();
+        marks.delete(id);
+        return;
+      }
+      const seal = document.createElement('i');
+      seal.className = 'on-action__mark';
+      seal.setAttribute('role', 'status');
+      seal.setAttribute('aria-label', label);
+      button.append(seal);
+      marks.set(id, seal);
     },
     focus: (id) => buttons.get(id)?.focus(),
     dispose: () => nav.remove(),

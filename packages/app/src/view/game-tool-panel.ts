@@ -1,7 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import type { ContentSet } from '@open-northland/data';
 import type { SessionClock } from '@open-northland/lockstep';
-import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
+import type { Camera, ElevationField, MapViewTarget, SpriteSheet } from '@open-northland/render';
 import {
   type Command,
   constructionBillForType,
@@ -12,7 +12,7 @@ import {
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
-import type { MissionBrief } from '../game/mission-brief.js';
+import type { MissionReader } from '../game/mission-brief.js';
 import type { ViewerSeat } from '../game/viewer-seat.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
@@ -107,7 +107,7 @@ export interface GameToolPanelDeps {
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Whether the session clock stands, whoever stopped it; absent, the bar shows its own pause only. */
   readonly clockPaused?: () => boolean;
-  /** True while an overlay holds the game paused (the system menu, the verdict, the mission sheet). */
+  /** True while an overlay holds the game paused (the system menu, the verdict, a script's briefing). */
   readonly pauseHeld?: () => boolean;
   /** A higher overlay's claim: the panel yields left clicks it covers, so hit priority follows draw order. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
@@ -118,16 +118,21 @@ export interface GameToolPanelDeps {
   /** True while the system menu is open and owns the keyboard. */
   readonly systemMenuOpen?: () => boolean;
   readonly escapeClaimed?: () => boolean;
-  /** The mission window's brief for a briefing page, or the map's fallback text with null. */
-  readonly missionBrief?: (page: number | null) => MissionBrief | null;
+  /** The mission book's pages and goals; absent, the book stays empty. */
+  readonly mission?: MissionReader;
   readonly missionBriefingHistory?: () => readonly number[];
-  /** The briefing page the mission window opens on from the strip; null before any replayable one. */
+  /** The briefing page the mission book opens on from the beam; null before any replayable one. */
   readonly missionReplayPage?: () => number | null;
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: (missionId: number) => number | null;
-  /** Bumped when a mission read above lands anew, which rebuilds an open mission window. */
+  /** Bumped when a mission read above lands anew, which rebuilds an open mission book. */
   readonly missionAnswersVersion?: () => number;
-  readonly onLargeWindow?: (open: boolean) => void;
+  /** A script's chapter holds the game while the book shows it. */
+  readonly onMissionHold?: (held: boolean) => void;
+  readonly onMissionOpen?: (open: boolean) => void;
+  /** Whether a held pause stops the clock; false on a shared clock. */
+  readonly pauseStopsClock?: boolean;
+  readonly onShowOnMap?: (target: MapViewTarget) => void;
   /** The map's sprite sheet for the cards' settler figures; absent leaves the thumbnails bare. */
   readonly sheet?: SpriteSheet;
   readonly playerColourOf?: (player: number) => number;
@@ -275,7 +280,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.onToggleHud !== undefined ? { onToggleHud: deps.onToggleHud } : {}),
       ...(deps.systemMenuOpen !== undefined ? { systemMenuOpen: deps.systemMenuOpen } : {}),
       ...(deps.escapeClaimed !== undefined ? { escapeClaimed: deps.escapeClaimed } : {}),
-      ...(deps.missionBrief !== undefined ? { missionBrief: deps.missionBrief } : {}),
+      ...(deps.mission !== undefined ? { mission: deps.mission } : {}),
       ...(deps.missionBriefingHistory !== undefined
         ? { missionBriefingHistory: deps.missionBriefingHistory }
         : {}),
@@ -284,7 +289,10 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.missionAnswersVersion !== undefined
         ? { missionAnswersVersion: deps.missionAnswersVersion }
         : {}),
-      ...(deps.onLargeWindow !== undefined ? { onLargeWindow: deps.onLargeWindow } : {}),
+      ...(deps.onMissionHold !== undefined ? { onMissionHold: deps.onMissionHold } : {}),
+      ...(deps.onMissionOpen !== undefined ? { onMissionOpen: deps.onMissionOpen } : {}),
+      ...(deps.pauseStopsClock !== undefined ? { pauseStopsClock: deps.pauseStopsClock } : {}),
+      ...(deps.onShowOnMap !== undefined ? { onShowOnMap: deps.onShowOnMap } : {}),
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       ...(deps.onSelectMessageTarget !== undefined

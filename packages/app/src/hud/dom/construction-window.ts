@@ -26,6 +26,7 @@ import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { BuildingThumbs } from './building-thumb.js';
 import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
 import { GLYPH, paintedIcon } from './icons.js';
+import { escapeHtml } from './parts/dom.js';
 import { centralWindowPlacer, createHudWindow } from './window.js';
 
 /** Design px (FOUNDATION.md): the window width, sized so the widest bill in the content (eight goods,
@@ -102,9 +103,6 @@ function button(className: string, html: string): HTMLButtonElement {
   element.innerHTML = html;
   return element;
 }
-
-const escapeHtml = (text: string): string =>
-  text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
 
 export interface BuildingCardView {
   readonly title: string;

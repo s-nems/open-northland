@@ -4050,6 +4050,1091 @@ body.on-drag-scroll-cursor-hidden * {
   visibility: hidden;
 }
 
+/* ---------- mission book: an open saga book over the map, its goal slip on the map ---------- */
+/* One stacking layer over the notices and the selection panel, under the hover card. The book is
+   design px at its own size; the owner scales it whole to the screen. The cover paints the whole
+   book, leather and vellum, so a world view's hole cut into it shows the canvas; nothing else in the
+   book paints a background under a view. */
+.on-hud .on-book-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 250;
+  pointer-events: none;
+  --book-red: #7a2e1d;
+  --book-win: 348px;
+}
+.on-hud .on-book-scene[hidden] {
+  display: none;
+}
+.on-hud .on-book-scene__dim {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 48%, #0b0f0d99 0%, #07090888 55%, #050605dd 100%);
+  pointer-events: auto;
+}
+.on-hud .on-book-scene--arrival .on-book-scene__dim {
+  display: block;
+}
+.on-hud .on-book {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 990px;
+  height: 620px;
+  transform-origin: 0 0;
+  pointer-events: auto;
+  color: var(--ink);
+}
+.on-hud .on-book__shadow {
+  position: absolute;
+  inset: 0;
+  box-shadow:
+    0 18px 30px #000c,
+    0 0 0 1px #0d100d;
+}
+.on-hud .on-book__cover {
+  position: absolute;
+  inset: 0;
+  border: 7px solid var(--wood);
+  border-image: linear-gradient(160deg, #6f5539, #3a2c1e 28%, #5a4631 52%, #2e2418 78%, #6f5539) 7;
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 55%, #0a060399 100%),
+    linear-gradient(160deg, #4a2f1ce6, #2c1b0fee 45%, #3f2817e6),
+    var(--on-surface) center / 720px auto,
+    #2a1b10;
+  box-shadow:
+    inset 0 0 0 1px var(--bronze),
+    inset 0 0 0 3px #0d0906aa,
+    inset 0 0 0 15px #00000000,
+    inset 0 0 0 16px #b08a5055;
+  isolation: isolate;
+  mask-repeat: no-repeat;
+  mask-composite: exclude;
+}
+/* The two vellum pages: warm in the middle, browned toward the edges, shadowed into the gutter, with
+   the stacked leaves showing at the fore-edges. */
+.on-hud .on-book__cover::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 36px 44px 28px;
+  border-radius: 5px 5px 8px 8px;
+  background:
+    linear-gradient(
+      90deg,
+      #0000 0 46.5%,
+      #5c4c3730 48.6%,
+      #3a2a1870 49.7%,
+      #2a1d1088 50%,
+      #3a2a1870 50.3%,
+      #5c4c3730 51.4%,
+      #0000 53.5%
+    ),
+    radial-gradient(ellipse 60% 75% at 25% 50%, #0000 55%, #7a5f3a2e 100%),
+    radial-gradient(ellipse 60% 75% at 75% 50%, #0000 55%, #7a5f3a2e 100%), var(--paper-grain),
+    linear-gradient(
+      90deg,
+      #d4c197,
+      #eadcb8 8%,
+      #f0e5c6 30%,
+      #e4d4ae 47%,
+      #cdb98c 50%,
+      #e4d4ae 53%,
+      #f0e5c6 70%,
+      #eadcb8 92%,
+      #d4c197
+    );
+  box-shadow:
+    -2px 2px 0 #cdb98c,
+    -4px 4px 0 #b39d70,
+    -6px 6px 0 #9c8558,
+    2px 2px 0 #cdb98c,
+    4px 4px 0 #b39d70,
+    6px 6px 0 #9c8558,
+    0 10px 18px #000b;
+}
+/* The spine's head and tail band between the pages. */
+.on-hud .on-book__gutter {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  bottom: 18px;
+  width: 16px;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  background: linear-gradient(90deg, #1d120a, #4a2f1c 40%, #4a2f1c 60%, #1d120a);
+  box-shadow: 0 0 0 1px #0d0906;
+}
+.on-hud .on-book__cover .on-window__knot {
+  top: -20px;
+}
+.on-hud .on-book__cover .on-window__corner--tl,
+.on-hud .on-book__cover .on-window__corner--bl {
+  left: -16px;
+}
+.on-hud .on-book__cover .on-window__corner--tr,
+.on-hud .on-book__cover .on-window__corner--br {
+  right: -16px;
+}
+.on-hud .on-book__cover .on-window__corner--tl,
+.on-hud .on-book__cover .on-window__corner--tr {
+  top: -16px;
+}
+.on-hud .on-book__cover .on-window__corner--bl,
+.on-hud .on-book__cover .on-window__corner--br {
+  bottom: -16px;
+}
+.on-hud .on-book__close {
+  position: absolute;
+  right: -17px;
+  top: -17px;
+  z-index: 5;
+  width: 38px;
+  height: 38px;
+}
+.on-hud .on-book__close .on-glyph {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.2;
+}
+.on-hud .on-book__paused {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  z-index: 3;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 6px 16px 6px 12px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 16px;
+  background: linear-gradient(#2b2117f0, #1a1510f0);
+  color: var(--bronze-hi);
+  font: 700 12px var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px #000a;
+}
+.on-hud .on-book__paused[hidden] {
+  display: none;
+}
+.on-hud .on-book__paused-bars {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(90deg, currentColor 0 4px, transparent 4px 8px, currentColor 8px 12px);
+}
+.on-hud .on-book__ico {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* The fore-edge tabs: the HUD's wood tab standing up, parchment when selected. */
+.on-hud .on-book__tabs {
+  position: absolute;
+  left: calc(100% - 1px);
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.on-hud .on-book__tab {
+  width: 38px;
+  height: 116px;
+  padding: 0;
+  border: 1px solid var(--wood-lo);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: linear-gradient(90deg, var(--wood), var(--wood-hi));
+  color: #e9dcbd;
+  box-shadow:
+    2px 2px 5px #0009,
+    inset -1px 0 #fff2;
+  transition: width 0.12s;
+}
+.on-hud .on-book__tab > span {
+  display: block;
+  margin: 0 auto;
+  writing-mode: vertical-rl;
+  font: 600 13px var(--font-body);
+  letter-spacing: 0.06em;
+}
+.on-hud .on-book__tab .on-tab__count {
+  margin: 5px 0 0;
+}
+.on-hud .on-book__tab .on-tab__count[hidden] {
+  display: none;
+}
+.on-hud .on-book__tab:hover {
+  width: 41px;
+  background: linear-gradient(90deg, var(--wood-hi), #8a6d4a);
+  color: #fff4d8;
+}
+.on-hud .on-book__tab[aria-selected="true"] {
+  width: 44px;
+  margin-left: -3px;
+  background: linear-gradient(90deg, var(--parchment), var(--parchment-hi));
+  color: var(--ink);
+  border-color: #8d7549;
+  box-shadow:
+    2px 2px 5px #0009,
+    inset -2px 0 #fff8;
+}
+.on-hud .on-book__tab[aria-selected="true"] > span {
+  font-weight: 700;
+}
+
+/* The spread: two pages, each a window onto the chapter's column flow. */
+.on-hud .on-book__spread {
+  position: absolute;
+  left: 76px;
+  right: 78px;
+  top: 60px;
+  bottom: 57px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 5px;
+}
+.on-hud .on-book__page {
+  position: relative;
+}
+.on-hud .on-book__sheet {
+  position: absolute;
+  inset: 0 0 46px;
+  padding: 26px 30px 0 36px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #8d754988 transparent;
+}
+.on-hud .on-book__page--right .on-book__sheet {
+  padding: 26px 34px 0 32px;
+}
+.on-hud .on-book__window {
+  position: absolute;
+  top: 26px;
+  bottom: 50px;
+  width: var(--book-win);
+  overflow: hidden;
+}
+.on-hud .on-book__window--left {
+  left: 36px;
+}
+.on-hud .on-book__window--right {
+  left: 32px;
+}
+.on-hud .on-book__flow {
+  width: var(--book-win);
+  height: 100%;
+  column-width: var(--book-win);
+  column-gap: 60px;
+  column-fill: auto;
+  font: 400 15.5px / 1.52 var(--font-body);
+}
+.on-hud .on-book__window--blank .on-book__flow {
+  visibility: hidden;
+}
+.on-hud .on-book__kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+  font: 700 13px var(--font-title);
+  letter-spacing: 0.12em;
+  color: var(--book-red);
+}
+.on-hud .on-book__kicker small {
+  font: 500 12.5px var(--font-body);
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.on-hud .on-book__new {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--book-red);
+  color: #f6ead0;
+  font: 700 10.5px var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.on-hud .on-book__when {
+  margin: 3px 0 8px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+.on-hud .on-book__title {
+  margin: 0;
+  font: 700 21px / 1.15 var(--font-title);
+  letter-spacing: 0.02em;
+  color: #3a2a18;
+}
+.on-hud .on-book__flourish {
+  display: block;
+  width: 120px;
+  height: 14px;
+  margin: 7px 0 12px;
+  color: #8d7549;
+}
+.on-hud .on-book__sub {
+  margin: 0.7em 0 0.35em;
+  font: 700 14px var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--book-red);
+  break-after: avoid;
+}
+.on-hud .on-book__p {
+  margin: 0 0 0.62em;
+}
+.on-hud .on-book__p--center {
+  text-align: center;
+}
+.on-hud .on-book__p--right {
+  text-align: right;
+}
+.on-hud .on-book__p--first::first-letter {
+  float: left;
+  margin: 5px 7px 0 0;
+  padding: 1px 5px 0;
+  font: 700 46px / 0.82 var(--font-title);
+  color: #f3e6c8;
+  background: radial-gradient(circle at 40% 35%, #9a4630, var(--book-red) 70%);
+  border: 1px solid #4a1a10;
+  box-shadow: inset 0 0 0 2px #c9a26266;
+  text-shadow: 0 1px 1px #0008;
+}
+.on-hud .on-book__jump {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--book-red);
+  font-weight: 700;
+  text-align: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.on-hud .on-book__jump:hover {
+  color: #a8412f;
+}
+.on-hud .on-book__speech {
+  display: flow-root;
+  margin: 0 0 0.7em;
+  orphans: 2;
+  widows: 2;
+}
+.on-hud .on-book__speech p {
+  margin: 0;
+}
+.on-hud .on-book__speech--keep {
+  break-inside: avoid;
+}
+.on-hud .on-book__speech--face p {
+  min-height: 60px;
+  margin-left: 92px;
+}
+.on-hud .on-book__speech:not(.on-book__speech--face) {
+  padding-left: 12px;
+  border-left: 2px solid #8d754977;
+}
+.on-hud .on-book__face {
+  float: left;
+  width: 82px;
+  height: 68px;
+  object-fit: contain;
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 70%, transparent 100%);
+  filter: sepia(0.25) contrast(1.05);
+}
+.on-hud .on-book__who {
+  display: block;
+  font: 700 12px var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--book-red);
+}
+.on-hud .on-book__sign {
+  margin: 0.8em 0 0;
+  text-align: right;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+.on-hud .on-book__fin {
+  margin: 0.4em 0 0;
+  text-align: center;
+  color: #8d7549;
+  font-size: 18px;
+}
+
+/* Pictures and world views inside the text, where the page's author placed them. */
+.on-hud .on-book__fig {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 0.6em;
+  padding: 6px 0;
+  break-inside: avoid;
+}
+.on-hud .on-book__fig--portrait {
+  margin: 0.2em 0 0.6em;
+}
+.on-hud .on-book__plate {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  background: linear-gradient(#f6edd4, #e6d6b0);
+  border: 1px solid #8d7549;
+  outline: 1px solid #8d754966;
+  outline-offset: 3px;
+  box-shadow: 0 2px 6px #5c4c3755;
+}
+.on-hud .on-book__plate::before,
+.on-hud .on-book__plate::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--bronze-lo);
+}
+.on-hud .on-book__plate::before {
+  left: -5px;
+  top: -5px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.on-hud .on-book__plate::after {
+  right: -5px;
+  bottom: -5px;
+  border-left: 0;
+  border-top: 0;
+}
+.on-hud .on-book__img {
+  display: block;
+  filter: sepia(0.15);
+}
+.on-hud .on-book__img--portrait {
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 75%, transparent 100%);
+}
+.on-hud .on-book__img--missing {
+  visibility: hidden;
+}
+.on-hud .on-book__views {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0.3em 0 0.9em;
+  break-inside: avoid;
+}
+/* The mat around a view is the only paint it has: the lens inside is a hole onto the canvas. */
+.on-hud .on-book__view {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 4px solid #efe4c6;
+  background: none;
+  box-shadow:
+    0 0 0 1px #8d7549,
+    0 2px 5px #5c4c3755;
+}
+.on-hud button.on-book__view {
+  cursor: zoom-in;
+}
+.on-hud .on-book__lens {
+  display: block;
+  border: 1px solid #3a2a18;
+}
+/* While the leaf turns no hole is cut; the lens stands dark until it lies still. */
+.on-hud :is(.on-book__spread--turn-next, .on-book__spread--turn-prev) .on-book__lens {
+  background: #1d2420;
+}
+.on-hud .on-book__go {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 6px;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 12px;
+  background: #1a1510e0;
+  color: var(--bronze-hi);
+  font: 700 12px var(--font-body);
+}
+.on-hud .on-book__views--2 .on-book__go {
+  gap: 0;
+  padding: 4px;
+}
+.on-hud .on-book__views--2 .on-book__go > span {
+  display: none;
+}
+.on-hud .on-book__go .on-glyph {
+  width: 15px;
+  height: 15px;
+}
+.on-hud .on-book__view:hover .on-book__go {
+  background: var(--wood);
+  color: #fff4dc;
+}
+
+/* Page furniture: folios, the chapter foot, the turning corners. */
+.on-hud .on-book__folio {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .on-book__page > .on-book__folio {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  text-align: center;
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+}
+.on-hud .on-book__foot {
+  position: absolute;
+  left: 32px;
+  right: 58px;
+  bottom: 6px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+.on-hud .on-book__foot-chapter {
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+.on-hud .on-book__resume {
+  min-height: 38px;
+  padding: 6px 16px 6px 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.on-hud .on-book__resume .on-book__ico {
+  color: var(--bronze-hi);
+}
+.on-hud .on-book__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 6px 0 2px;
+  border: 0;
+  background: none;
+  color: var(--book-red);
+  font-weight: 700;
+}
+.on-hud .on-book__back .on-glyph {
+  width: 16px;
+  height: 16px;
+}
+.on-hud .on-book__corner {
+  position: absolute;
+  bottom: 0;
+  z-index: 2;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  background: none;
+}
+.on-hud .on-book__corner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--dir), #e6d7b0 0 44%, #cbb68a 50%, #9c8358 55%, transparent 56%);
+  filter: drop-shadow(0 -1px 2px #5c4c3766);
+  transition: transform 0.12s;
+}
+.on-hud .on-book__corner .on-book__ico {
+  position: absolute;
+  bottom: 9px;
+  width: 17px;
+  height: 17px;
+}
+.on-hud .on-book__corner--prev {
+  left: 0;
+  --dir: 45deg;
+}
+.on-hud .on-book__corner--prev::before {
+  transform-origin: 0 100%;
+}
+.on-hud .on-book__corner--prev .on-book__ico {
+  left: 8px;
+}
+.on-hud .on-book__corner--next {
+  right: 0;
+  --dir: -45deg;
+}
+.on-hud .on-book__corner--next::before {
+  transform-origin: 100% 100%;
+}
+.on-hud .on-book__corner--next .on-book__ico {
+  right: 8px;
+}
+.on-hud .on-book__corner:hover::before {
+  transform: scale(1.18);
+}
+.on-hud .on-book__corner--chapter {
+  color: var(--book-red);
+}
+.on-hud .on-book__corner--chapter::after {
+  content: "";
+  position: absolute;
+  bottom: 30px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--wax-danger);
+  box-shadow: 0 0 0 1px #4a1a10;
+}
+.on-hud .on-book__corner--prev.on-book__corner--chapter::after {
+  left: 12px;
+}
+.on-hud .on-book__corner--next.on-book__corner--chapter::after {
+  right: 12px;
+}
+.on-hud .on-book__corner:disabled {
+  visibility: hidden;
+}
+/* The leaf turns in 0.32 s (`LEAF_TURN_MS` in book-window.ts waits it out). */
+.on-hud .on-book__spread--turn-next .on-book__page--right,
+.on-hud .on-book__spread--turn-prev .on-book__page--left {
+  animation: on-book-leaf 0.32s ease-out;
+}
+.on-hud .on-book__spread--turn-next .on-book__page--right {
+  transform-origin: 0 50%;
+}
+.on-hud .on-book__spread--turn-prev .on-book__page--left {
+  transform-origin: 100% 50%;
+  --book-leaf: 10deg;
+}
+@keyframes on-book-leaf {
+  from {
+    transform: perspective(1400px) rotateY(var(--book-leaf, -10deg));
+    filter: brightness(0.86);
+  }
+}
+
+/* The goals: what is to do on the left page, what is done on the right. */
+.on-hud .on-book__list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+  font: 700 12.5px var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.on-hud .on-book__list-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #8d7549aa, transparent);
+}
+.on-hud .on-book__goals {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+.on-hud .on-book__goal {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 7px 0;
+  font-size: 15.5px;
+  line-height: 1.35;
+  border-bottom: 1px dotted #8d754966;
+}
+.on-hud .on-book__goal:last-child {
+  border-bottom: 0;
+}
+.on-hud .on-book__box {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0 2px;
+  border: 1.8px solid var(--ink);
+  border-radius: 2px;
+  background: #fff4;
+  transform: rotate(-2deg);
+}
+.on-hud .on-book__nobox {
+  display: block;
+}
+.on-hud .on-book__seal {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #f3eadb;
+  background: radial-gradient(circle at 38% 32%, #ffffff55, transparent 45%), var(--wax-ok);
+  box-shadow:
+    0 0 0 1.5px #2e3b24,
+    0 1px 2px #0006,
+    inset 0 -2px 3px #0005;
+}
+.on-hud .on-book__seal .on-book__ico {
+  width: 14px;
+  height: 14px;
+}
+.on-hud .on-book__goal--done .on-book__goal-text {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+  text-decoration-color: #5c4c3799;
+  text-decoration-thickness: 1px;
+}
+.on-hud .on-book__goal--idle .on-book__goal-text {
+  color: #8a7a60;
+}
+.on-hud .on-book__goal-text--emphasis {
+  color: var(--book-red);
+  font-weight: 700;
+}
+.on-hud .on-book__goal-tag {
+  display: block;
+  font: 700 10.5px var(--font-body);
+  font-style: normal;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--book-red);
+}
+.on-hud .on-book__goal-tag--done {
+  color: #4e6a3e;
+}
+.on-hud .on-book__empty {
+  margin: 0;
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+
+/* The chronicle: the chapters so far, a preview, and the history tables. */
+.on-hud .on-book__title--toc {
+  margin: 2px 0 8px;
+}
+.on-hud .on-book__toc {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.on-hud .on-book__toc-row {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 8px 5px 6px;
+  border: 0;
+  border-bottom: 1px dotted #8d754988;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+.on-hud .on-book__toc-row:hover {
+  background: #fff5;
+}
+.on-hud .on-book__toc-row[aria-current="true"] {
+  background: linear-gradient(90deg, #7a2e1d22, #7a2e1d08);
+  box-shadow: inset 3px 0 var(--book-red);
+}
+.on-hud .on-book__toc-num {
+  font: 700 14px var(--font-title);
+  color: var(--book-red);
+  text-align: right;
+}
+.on-hud .on-book__toc-title {
+  font-size: 15px;
+  font-weight: 500;
+}
+.on-hud .on-book__toc-derived {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+.on-hud .on-book__toc-new {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--wax-ok);
+  color: #f3eadb;
+  font: 700 10px / 16px var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+.on-hud .on-book__preview {
+  margin: 14px 0 12px;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+.on-hud .on-book__preview-art {
+  float: right;
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 108px;
+  margin: 2px 0 6px 12px;
+  border: 1px solid #8d7549;
+  background: #fff4;
+  overflow: hidden;
+}
+.on-hud .on-book__preview-art img {
+  max-width: 132px;
+  max-height: 100px;
+}
+.on-hud .on-book__read {
+  min-height: 38px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.on-hud .on-book__tables {
+  margin: 16px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #8d754955;
+}
+.on-hud .on-book__link {
+  min-height: 30px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--book-red);
+  font: 700 15px var(--font-body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* On the map: the goal slip hangs under the top bar and folds up into its wood tab. */
+.on-hud .on-slip {
+  position: absolute;
+  width: 268px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.on-hud .on-slip[hidden],
+.on-hud[data-chrome="hidden"] .on-slip {
+  display: none;
+}
+.on-hud .on-slip__sheet {
+  position: relative;
+  width: 100%;
+  padding: 10px 14px 4px 16px;
+  pointer-events: auto;
+  color: var(--ink);
+  background:
+    var(--paper-grain),
+    linear-gradient(170deg, var(--parchment-hi), var(--parchment) 70%, var(--parchment-lo));
+  border: 1px solid #8d7549;
+  border-top: 0;
+  box-shadow:
+    0 6px 16px #000a,
+    inset 0 0 18px #6b532a44,
+    inset 0 6px 6px -4px #3a2a1866;
+  animation: on-slip-unroll 0.25s ease-out;
+  transform-origin: top;
+}
+/* Below the script's info lines the slip hangs free, so it closes its top edge. */
+.on-hud .on-slip--dropped .on-slip__sheet {
+  border-top: 1px solid #8d7549;
+  border-radius: 3px 3px 0 0;
+}
+@keyframes on-slip-unroll {
+  from {
+    transform: scaleY(0.4);
+    opacity: 0;
+  }
+}
+.on-hud .on-slip__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.on-hud .on-slip__row {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 1.3;
+  border-top: 1px dotted #8d754977;
+}
+.on-hud .on-slip__row:first-child {
+  border-top: 0;
+}
+.on-hud .on-slip__row--empty {
+  display: block;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+.on-hud .on-slip__row .on-book__box {
+  width: 17px;
+  height: 17px;
+}
+.on-hud .on-slip__row .on-book__seal {
+  width: 22px;
+  height: 22px;
+}
+.on-hud .on-slip__row--done .on-book__seal {
+  animation: on-slip-stamp 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.2s both;
+}
+@keyframes on-slip-stamp {
+  from {
+    transform: scale(2.2) rotate(-20deg);
+    opacity: 0;
+  }
+}
+.on-hud .on-slip__row em {
+  display: block;
+  font: 700 10.5px var(--font-body);
+  font-style: normal;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--book-red, #7a2e1d);
+}
+.on-hud .on-slip__row--done em {
+  color: #4e6a3e;
+}
+.on-hud .on-slip__row--done .on-book__goal-text {
+  color: var(--ink-muted);
+}
+.on-hud .on-slip__row--new {
+  margin: 0 -8px;
+  padding: 6px 8px;
+  background: linear-gradient(90deg, #c98a3a33, transparent);
+}
+.on-hud .on-slip .on-book__goal-text--emphasis {
+  color: #7a2e1d;
+  font-weight: 700;
+}
+.on-hud .on-slip__book {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid #8d754955;
+  background: none;
+  color: #7a2e1d;
+  font: 700 13px var(--font-body);
+}
+.on-hud .on-slip__book > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.on-hud .on-slip__book > span:first-child {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+.on-hud .on-slip__book .on-key {
+  background: #2b2117;
+}
+.on-hud .on-slip__tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin-right: 12px;
+  padding: 4px 10px 6px 12px;
+  pointer-events: auto;
+  border: 1px solid var(--wood-lo);
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(var(--wood), var(--wood-hi));
+  color: #e9dcbd;
+  font: 600 13px var(--font-body);
+  box-shadow:
+    0 3px 6px #000a,
+    inset 0 -1px #fff2;
+}
+.on-hud .on-slip__tab:hover {
+  background: linear-gradient(var(--wood-hi), #8a6d4a);
+  color: #fff4d8;
+}
+.on-hud .on-slip__label {
+  font: 700 13px var(--font-title);
+  letter-spacing: 0.08em;
+}
+.on-hud .on-slip__tab .on-tab__count {
+  margin: 0;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.on-hud .on-slip__fold {
+  width: 14px;
+  height: 14px;
+  transform: rotate(180deg);
+}
+.on-hud .on-slip__tab--open {
+  margin-top: -1px;
+  background: linear-gradient(var(--parchment-lo), #a8966d);
+  color: var(--ink);
+  border-color: #8d7549;
+}
+.on-hud .on-slip__tab--open .on-slip__fold {
+  transform: none;
+}
+.on-hud .on-slip__seal,
+.on-hud .on-action__mark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #ffffff66, transparent 45%), var(--wax-danger);
+  box-shadow: 0 0 0 1.5px #0d100d;
+  pointer-events: none;
+}
+.on-hud .on-slip__seal {
+  right: -5px;
+  top: -2px;
+}
+.on-hud .on-action__mark {
+  top: 3px;
+  right: 7px;
+  width: 14px;
+  height: 14px;
+  box-shadow:
+    0 0 0 1.5px #0d100d,
+    0 1px 3px #000c;
+  animation: on-mark-pulse 1.2s ease-in-out 3;
+}
+@keyframes on-mark-pulse {
+  50% {
+    box-shadow:
+      0 0 0 1.5px #0d100d,
+      0 0 0 7px #a8412f55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .on-hud :is(.on-book__page, .on-slip__sheet, .on-book__seal, .on-action__mark) {
+    animation: none;
+  }
+}
+
 /* ---------- action ring ---------- */
 /* The order buttons stand on their own client-px layer above the HUD, so a ring opened from the settler
    panel covers the panel rather than hiding under it. */

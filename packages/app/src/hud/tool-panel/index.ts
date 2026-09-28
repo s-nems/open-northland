@@ -1,6 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
-import type { HudLayout, HudModel, MapViewFrame, SpriteSheet } from '@open-northland/render';
+import type { HudLayout, HudModel, MapViewFrame, MapViewTarget, SpriteSheet } from '@open-northland/render';
 import type {
   Command,
   DiplomacyState,
@@ -12,10 +12,10 @@ import type {
 } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { PROFESSIONS, professionDefForJob } from '../../catalog/professions.js';
-import { loadGuiArt } from '../../content/gui-art.js';
 import {
   type GuiBitmapName,
   type GuiStrings,
+  hypertextPictureUrl,
   loadGuiBitmap,
   loadGuiHistory,
   loadGuiStrings,
@@ -23,7 +23,7 @@ import {
   uiStringLookup,
 } from '../../content/gui-gfx.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
-import type { MissionBrief } from '../../game/mission-brief.js';
+import type { MissionReader } from '../../game/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { messages, professionLabel } from '../../i18n/index.js';
@@ -31,12 +31,19 @@ import type { PresentationPack } from '../../presentation/pack.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
+import {
+  type BookView,
+  createMissionBook,
+  type MissionHumanLookup,
+  NO_MISSION,
+} from '../dom/mission-book/index.js';
 import { createHudNav, type HudNavEntry } from '../dom/nav.js';
 import { createPlacementStrip } from '../dom/placement-strip.js';
+import type { ClientRect } from '../dom/portrait-hole.js';
 import { createResidentsWindow } from '../dom/residents-window.js';
 import { createHudSystemBar } from '../dom/system-bar.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
-import type { KeyBindings } from '../keybindings.js';
+import { type KeyBindings, keyDisplayLabel } from '../keybindings.js';
 import { FRAME_NATIVE, MINIMAP_ART_SCALE } from '../minimap/model.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import { CONSTRUCTION_TOOLS, type ConstructionTool, type MenuBuildingEntry } from './building-menu.js';
@@ -57,7 +64,6 @@ import {
   type MetSeat,
   type NoticeGallery,
 } from './messages/index.js';
-import type { MissionHumanLookup } from './mission/index.js';
 import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
 import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
@@ -178,16 +184,22 @@ export interface ToolPanelOptions {
   /** True while the unit controls would take an Escape (a job list, an armed pick, a selection); the
    *  game menu's Escape waits for that too. */
   readonly escapeClaimed?: () => boolean;
-  /** The mission window's brief for a briefing page, or the map's fallback text with null. */
-  readonly missionBrief?: (page: number | null) => MissionBrief | null;
+  /** The mission book's pages and goals; absent, the book stays empty. */
+  readonly mission?: MissionReader;
   readonly missionBriefingHistory?: () => readonly number[];
-  /** The briefing page the mission window opens on from the beam; null before any replayable one. */
+  /** The briefing page the mission book opens on from the beam; null before any replayable one. */
   readonly missionReplayPage?: () => number | null;
   /** The human a briefing picture of a mission id shows; absent, those pictures draw nothing. */
   readonly missionHuman?: MissionHumanLookup;
-  /** Bumped when a mission read above lands anew, which rebuilds an open mission window. */
+  /** Bumped when a mission read above lands anew, which rebuilds an open mission book. */
   readonly missionAnswersVersion?: () => number;
-  readonly onLargeWindow?: (open: boolean) => void;
+  /** A script's chapter holds the game while the book shows it. */
+  readonly onMissionHold?: (held: boolean) => void;
+  readonly onMissionOpen?: (open: boolean) => void;
+  /** Whether a held pause stops the clock; false on a shared clock. */
+  readonly pauseStopsClock?: boolean;
+  /** A world view's "show on map" was pressed. */
+  readonly onShowOnMap?: (target: MapViewTarget) => void;
   /** The map's sprite sheet, which draws a settler on its notice card and a building on its
    *  construction card; absent leaves the thumbnails bare. */
   readonly sheet?: SpriteSheet;
@@ -239,7 +251,7 @@ export interface ToolPanelController {
   /** Per-frame hook: the tick's model feeds the summary bar; the layout over it arrives as an accessor
    *  so a closed window never lays it out. */
   update(hudFor: () => HudLayout, model: HudModel): void;
-  /** The world views an open briefing's pictures paint this frame; read after {@link update}. */
+  /** The world views the open mission book shows this frame; read after {@link update}. */
   mapViews(): readonly MapViewFrame[];
   /** Per-frame hook for the notification column: this frame's unfiltered sim events, the snapshot
    *  after them and the entities its steps removed. */
@@ -265,7 +277,6 @@ export interface ToolPanelState {
 }
 
 interface ToolPanelAssets {
-  readonly art: Awaited<ReturnType<typeof loadGuiArt>>;
   readonly strings: GuiStrings | null;
   readonly uiFont: UiFont;
   readonly bitmaps: PanelBitmaps;
@@ -282,7 +293,6 @@ function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
     return source === undefined ? undefined : new Texture({ source });
   };
   assets = Promise.all([
-    loadGuiArt(),
     loadGuiStrings(lang),
     loadGuiHistory(lang),
     loadUiFont(),
@@ -290,8 +300,7 @@ function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
     loadBitmap('bg_button'),
     loadBitmap('bg_button_hilite'),
     loadBitmap('bg_headline'),
-  ]).then(([art, strings, history, uiFont, bg, button, buttonHilite, headline]) => ({
-    art,
+  ]).then(([strings, history, uiFont, bg, button, buttonHilite, headline]) => ({
     strings,
     uiFont,
     bitmaps: { bg, button, buttonHilite, headline },
@@ -302,6 +311,8 @@ function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
   void assets.catch(() => assetsByLanguage.delete(lang));
   return assets;
 }
+
+const NO_FRAMES: readonly MapViewFrame[] = [];
 
 /** The beam's seven entries: painted icons from the ui pack, the wooden token for the residents. */
 function navEntries(): readonly HudNavEntry<NavEntryId>[] {
@@ -320,7 +331,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const layout = buildToolPanelLayout(opts.uiscale);
   const scale = layout.scale;
 
-  const { art, strings, uiFont, bitmaps, history } = await loadToolPanelAssets(opts.lang);
+  const { strings, uiFont, bitmaps, history } = await loadToolPanelAssets(opts.lang);
 
   const labelByType = opts.buildingLabels;
 
@@ -428,6 +439,29 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         window.onDismiss(() => focusOwner?.(navEntryForWindow(id)));
         return window;
       },
+      missionBook: () => {
+        const book = createMissionBook({
+          plane,
+          reader: opts.mission ?? NO_MISSION,
+          briefingHistory: opts.missionBriefingHistory ?? (() => []),
+          replayPage: opts.missionReplayPage ?? ((): null => null),
+          history,
+          missionHuman: opts.missionHuman ?? ((): null => null),
+          answersVersion: opts.missionAnswersVersion ?? ((): number => 0),
+          pictureUrl: hypertextPictureUrl,
+          pauseStopsClock: opts.pauseStopsClock ?? false,
+          onScriptHold: (held) => opts.onMissionHold?.(held),
+          ...(opts.onMissionOpen !== undefined ? { onOpenChange: opts.onMissionOpen } : {}),
+          onShowOnMap: (target) => opts.onShowOnMap?.(target),
+          bookKey: () => {
+            const binding = opts.bindings.mission;
+            return binding === null ? null : keyDisplayLabel(binding);
+          },
+          cue: ctx.cue,
+        });
+        book.onDismiss(() => focusOwner?.('mission'));
+        return book;
+      },
       residentsWindow: () => {
         const figures = new ResidentFigures(opts.sheet, figureFrames, opts.playerColourOf);
         const window = createResidentsWindow({
@@ -477,25 +511,41 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       diplomacyRows: opts.diplomacyRows,
       onPayTribute: opts.onPayTribute,
       onDeclareDiplomacy: opts.onDeclareDiplomacy,
-      art,
-      missionBrief: opts.missionBrief ?? ((): null => null),
-      missionBriefingHistory: opts.missionBriefingHistory ?? (() => []),
-      missionReplayPage: opts.missionReplayPage ?? ((): null => null),
-      history,
-      ...(opts.missionHuman !== undefined ? { missionHuman: opts.missionHuman } : {}),
-      ...(opts.missionAnswersVersion !== undefined
-        ? { missionAnswersVersion: opts.missionAnswersVersion }
-        : {}),
-      onLargeWindow: (open) => {
-        // A briefing must cover the selected unit's details and its worker sprites.
-        root.zIndex = open ? 1004 : 1000;
-        opts.onLargeWindow?.(open);
-      },
       onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
     });
     domParts.push(windows);
 
     const surfaces = { windows: windows.byId, cancelHeld };
+    /** The book's views in canvas px, the same array while neither they nor the canvas moved. */
+    let framed: { views: readonly BookView[]; key: string; frames: readonly MapViewFrame[] } | null = null;
+    const bookFrames = (views: readonly BookView[]): readonly MapViewFrame[] => {
+      if (views.length === 0) return NO_FRAMES;
+      const { sx, sy, rect } = opts.screenScale(canvas);
+      const key = `${sx},${sy},${rect.left},${rect.top}`;
+      if (framed?.views === views && framed.key === key) return framed.frames;
+      const frames = views.map((v): MapViewFrame => {
+        const toCanvas = (r: ClientRect) => ({
+          x: (r.left - rect.left) * sx,
+          y: (r.top - rect.top) * sy,
+          w: r.width * sx,
+          h: r.height * sy,
+        });
+        const box = toCanvas(v.box);
+        // Canvas px per design px of the book, which is the world's scale in a map view.
+        const perDesign = v.designW === 0 ? 1 : box.w / v.designW;
+        return {
+          box,
+          clip: toCanvas(v.clip),
+          target: v.target,
+          focusX: v.focusX * perDesign,
+          focusY: v.focusY * perDesign,
+          scale: perDesign * v.zoom,
+          ...(v.soloFill !== undefined ? { soloFill: v.soloFill } : {}),
+        };
+      });
+      framed = { views, key, frames };
+      return frames;
+    };
     const nav = createHudNav(plane, shellCopy.navLabel, navEntries(), (id) => {
       ctx.cue('confirm');
       applyNavEntry(surfaces, id);
@@ -506,7 +556,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const speed = createSpeedControl({
       onSpeedChange: opts.onSpeedChange,
       onShow: (control) => systemBar.setSpeed(control),
-      held: () => windows.mission.isOpen() || opts.pauseHeld?.() === true,
+      held: () => opts.pauseHeld?.() === true,
       ...(opts.clockPaused !== undefined ? { clockPaused: opts.clockPaused } : {}),
     });
     const systemBar = createHudSystemBar(plane, {
@@ -603,10 +653,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       },
       toggleHud: () => opts.onToggleHud?.(),
       cue: ctx.cue,
-      deferToOverlay: (clientX, clientY) => {
-        const { x, y } = toCanvas(clientX, clientY);
-        return !windows.mission.claims(x, y) && opts.deferToOverlay?.(clientX, clientY) === true;
-      },
+      deferToOverlay: (clientX, clientY) => opts.deferToOverlay?.(clientX, clientY) === true,
     });
 
     const claimsPointer = (clientX: number, clientY: number): boolean => {
@@ -658,9 +705,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         windows.refresh(hudFor);
         const open = windows.openId();
         nav.setActive(open === null ? null : navEntryForWindow(open));
+        nav.setMarked('mission', windows.mission.unread(), messages().hud.missionBook.beamMark);
         infoLines.refresh();
+        windows.mission.dropSlip(infoLines.depth());
       },
-      mapViews: () => windows.mission.mapViews(),
+      mapViews: () => bookFrames(windows.mission.views()),
       presentMessages: (snapshot, events, departed, alpha) =>
         messageCenter.present(snapshot, events, departed, alpha),
       state: () => ({

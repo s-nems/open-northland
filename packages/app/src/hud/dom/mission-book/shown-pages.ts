@@ -7,20 +7,19 @@ export interface ShownPagesState {
 }
 
 /**
- * The briefing pages the window has shown, oldest first, and the one on display: the prev/next pair
- * walks the list, which drops its oldest page past {@link BRIEFING_HISTORY_LIMIT} (reading).
+ * The briefing pages the book has shown, oldest first, which are its chapters, and the one on display.
+ * The list drops its oldest page past {@link BRIEFING_HISTORY_LIMIT} (reading).
  */
 export class ShownPages {
-  /** The page the task tab shows; null shows the map's fallback text. */
+  /** The page last shown; null before any. */
   page: number | null = null;
   private pages: number[] = [];
 
-  /** Whether two pages have been shown, which is when the prev/next pair appears. */
-  get walkable(): boolean {
-    return this.pages.length >= 2;
+  get list(): readonly number[] {
+    return this.pages;
   }
 
-  /** Fold the sim's own delivered history in, so a page shown before this window mounted is walkable. */
+  /** Fold the sim's own delivered history in, so a page shown before this book mounted is a chapter. */
   fold(recorded: readonly number[]): void {
     for (const page of recorded) this.add(page);
   }
@@ -28,14 +27,6 @@ export class ShownPages {
   show(page: number): void {
     this.page = page;
     this.add(page);
-  }
-
-  /** The page `direction` steps from the shown one, or null at either end or off the list. */
-  neighbour(direction: -1 | 1): number | null {
-    if (this.page === null) return null;
-    const at = this.pages.indexOf(this.page);
-    if (at < 0) return null;
-    return this.pages[at + direction] ?? null;
   }
 
   state(): ShownPagesState {

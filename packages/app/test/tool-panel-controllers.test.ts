@@ -31,6 +31,7 @@ import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { messages } from '../src/i18n/index.js';
 import { type ConstructionWindowStub, stubConstructionWindow } from './support/construction-window-stub.js';
+import { stubMissionBook } from './support/mission-book-stub.js';
 import { stubPendingWindow } from './support/pending-window-stub.js';
 import { stubPlacementStrip } from './support/placement-strip-stub.js';
 import { stubResidentsWindow } from './support/residents-window-stub.js';
@@ -247,11 +248,7 @@ describe('tool windows registry', () => {
       counters: stubCountersSeam().seam,
       heldPaper,
       diplomacyRows: () => [],
-      art: null,
-      missionBrief: () => null,
-      missionBriefingHistory: () => [],
-      missionReplayPage: () => null,
-      history: null,
+      missionBook: stubMissionBook,
       onPickBuilding: (typeId, paper) => picks.push([typeId, paper]),
       onPayTribute: () => undefined,
       onDeclareDiplomacy: () => undefined,

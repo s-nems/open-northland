@@ -8,7 +8,7 @@ import type {
   SpriteSheet,
   WorldRenderer,
 } from '@open-northland/render';
-import { fogTileVisible } from '@open-northland/render';
+import { fogTileVisible, projectNode } from '@open-northland/render';
 import {
   adminCommand,
   type Command,
@@ -34,7 +34,7 @@ import {
   setDiagGameSession,
 } from '../../diag/index.js';
 import { mapStartFocus } from '../../game/map-start.js';
-import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
+import { type MissionBriefSource, missionReader } from '../../game/mission-brief.js';
 import type { ObserverSeatEntry } from '../../game/observer-seats.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { technologyLabel, vehicleLabel } from '../../game/technology.js';
@@ -408,10 +408,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
       });
     const mapText = deps.mapText ?? ((): undefined => undefined);
-    const briefFor: (page: number | null) => MissionBrief | null =
+    const mission =
       deps.missionBriefSource === undefined
-        ? () => null
-        : missionBriefReader(
+        ? undefined
+        : missionReader(
             deps.missionBriefSource,
             {
               tick: () => host.tick,
@@ -520,16 +520,26 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       systemMenuOpen: () => systemMenu?.isOpen() === true,
       escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
-      missionBrief: briefFor,
+      ...(mission !== undefined ? { mission } : {}),
       missionBriefingHistory: answers.missionBriefingHistory,
       missionReplayPage: answers.missionBriefingPage,
       missionHuman: answers.missionHuman,
       missionAnswersVersion: answers.versions.mission,
-      // The original stops game time behind its large windows.
-      onLargeWindow: (open) => {
-        missionWindowOpen = open;
-        if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);
+      // A script's chapter keeps the pause it always had; opening the book to read holds nothing.
+      onMissionHold: (held) => {
+        if (held) pauseHolds.hold(PAUSE_HOLDER_MISSION);
         else pauseHolds.release(PAUSE_HOLDER_MISSION);
+      },
+      onMissionOpen: (open) => {
+        missionWindowOpen = open;
+      },
+      pauseStopsClock: !sharedClock,
+      onShowOnMap: (target) => {
+        const at =
+          target.kind === 'node'
+            ? projectNode(deps.elevation, target.hx, target.hy)
+            : entityAnchor(host.snapshot(), target.ref, deps.elevation);
+        if (at !== null) jumpToWorld(at.x, at.y);
       },
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),

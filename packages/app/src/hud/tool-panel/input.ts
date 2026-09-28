@@ -124,8 +124,6 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
 
   const onMouseMove = (e: MouseEvent): void => {
     syncStraight(e.shiftKey);
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-    windows.handleHover(x, y);
   };
 
   // A wheel over an open pop-up belongs to that window; its default would scroll the page behind the

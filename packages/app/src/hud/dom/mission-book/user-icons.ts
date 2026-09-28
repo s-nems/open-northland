@@ -2,7 +2,7 @@ import type { HypertextUserIcon } from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 
 /**
- * What the mission window draws for one `<usericon:kind,a,b,c>`: kind 1 the map
+ * What the mission book draws for one `<usericon:kind,a,b,c>`: kind 1 the map
  * around half-cell node (a, b), kind 2 the map around the first human stamped with mission id `a`,
  * kind 0 that human alone on a card, which stays an empty card when nobody carries the id. Any other
  * kind, or kind 2 for an id nobody carries, draws nothing.

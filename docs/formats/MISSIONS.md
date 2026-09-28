@@ -759,15 +759,17 @@ the map centred on half-cell node (a, b), kind 2 the same view centred 25 px abo
 stamped with mission id `a`, kind 0 a 50×80 card of that human alone on a parchment fill with its
 feet 20 px above the bottom, an empty card when no human carries the id; any other kind, or kind 2
 for an id no human carries, draws nothing and leaves the line empty. The map view ignores the fog. The history book
-draws no user icons. Here the page text is Tinos sized to font12's
-glyphs (approximation) and a pressed bevel stands in for the frame the original draws around the
-bitmap.
+draws no user icons. Here the mission book reads the lines into paragraphs, speech, pictures and
+views and sets them as flowing text across two pages in the HUD's own face; a view keeps the live
+map at the HUD's scale in the column's width, and a mat stands in for the frame the original draws
+around the bitmap.
 
 The goals tab lists every mission whose `visible` flag is set and whose `description` is not `-1`,
 in script order, printing the string from the map's own table under the heading: with an `X` when
 the mission's last check satisfied its `successfullif` rule, with an `o` when it is active, and with
 no mark and dimmed when it is neither. A description starting with `@` prints without it, in black
-rather than the list's colour (reading); this build strips the mark and keeps the list's colour. The
+rather than the list's colour (reading); this build strips the mark and sets the goal in the book's
+accent ink. The
 `visible` flag is the `SetVisible` result's; the satisfied flag is rewritten by every check. This
 build also keeps `X` once the mission has fired, so a repeatable trigger that consumes its input
 does not erase an earned completion mark (UI approximation). The app-side page format is

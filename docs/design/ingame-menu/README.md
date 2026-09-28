@@ -106,9 +106,8 @@ not authorize replacement world buildings or characters.
 
 Work one panel/ticket at a time from current main; see [session instructions](AGENTS.md).
 The shell, the notification column, the summary bar, the construction window with its papers page,
-the residents window and the settler panel are in place. Continue with building and group details,
-automation,
-statistics, mission, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical
+the residents window, the settler panel and the mission book are in place. Continue with building and
+group details, automation, statistics, diplomacy, Knowledge, settings and maps. Blocked-by links express real technical
 prerequisites; numbering is the suggested review order, not permission for parallel sessions to edit
 shared files. Ticket 12 separates statistics data from chart rendering because the current popup is
 only diagnostics.
@@ -121,7 +120,6 @@ only diagnostics.
 | [11-assistant](../../tickets/app/ingame-ui-11-assistant.md) | Create the direct assistant window |
 | [12-statistics-data](../../tickets/app/ingame-ui-12-statistics-data.md) | Provide the real historical data required by statistics |
 | [13-statistics-window](../../tickets/app/ingame-ui-13-statistics-window.md) | Implement the designed statistics charts and lists |
-| [14-mission](../../tickets/app/ingame-ui-14-mission.md) | Redesign mission briefing, objectives and history |
 | [15-diplomacy](../../tickets/app/ingame-ui-15-diplomacy.md) | Redesign diplomacy with actionable relations and tribute |
 | [16-knowledge-reference](../../tickets/app/ingame-ui-16-knowledge-reference.md) | Build Knowledge with encyclopedia and gameplay guidance |
 | [17-knowledge-dependencies](../../tickets/app/ingame-ui-17-knowledge-dependencies.md) | Add production and progression dependencies to Knowledge |

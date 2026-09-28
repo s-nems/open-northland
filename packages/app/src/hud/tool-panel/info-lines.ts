@@ -23,6 +23,8 @@ export interface InfoLinesOverlay {
   set(lines: readonly string[]): void;
   /** Per-frame hook: re-place on a resize. */
   refresh(): void;
+  /** Design px from the top bar's lower edge to below the last line; 0 without lines. */
+  depth(): number;
   dispose(): void;
 }
 
@@ -65,6 +67,7 @@ export function createInfoLinesOverlay(ctx: PanelContext, parent: Container): In
       const { width, height } = ctx.screen();
       if (runs.length > 0 && `${width}x${height}` !== screenKey) place();
     },
+    depth: () => (runs.length === 0 ? 0 : TOP_INSET - TOP_BAR_HEIGHT + runs.length * LINE_PITCH),
     dispose() {
       clear();
       container.destroy({ children: true });

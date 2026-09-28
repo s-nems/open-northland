@@ -5,12 +5,14 @@ import {
   briefingPage,
   type MissionBriefSource,
   mapBriefFallback,
-  missionBrief,
+  missionGoalList,
   missionGoals,
+  missionPage,
+  missionReader,
 } from '../src/game/mission-brief.js';
 
-/** The pure joins behind the mission window: which goals show with which mark, and how the brief
- *  falls back when a map ships no briefing. */
+/** The pure joins behind the mission book: which goals show in which state, and how a page falls back
+ *  when a map ships no briefing. */
 
 const TEXTS: Readonly<Record<number, string>> = {
   300: 'Pokonaj saracenów',
@@ -46,18 +48,17 @@ describe('missionGoals', () => {
       ],
       textOf,
     );
-    expect(goals).toEqual([
-      { text: 'Pokonaj saracenów', rule: 'authored', state: 'done' },
-      { text: 'Zbuduj świątynię', rule: 'authored', state: 'open' },
-      { text: 'Zbuduj świątynię', rule: 'authored', state: 'idle' },
-      { text: '#999', rule: 'authored', state: 'open' },
+    expect(goals.map(({ key, text, state }) => ({ key, text, state }))).toEqual([
+      { key: '0', text: 'Pokonaj saracenów', state: 'done' },
+      { key: '1', text: 'Zbuduj świątynię', state: 'open' },
+      { key: '2', text: 'Zbuduj świątynię', state: 'idle' },
+      { key: '5', text: '#999', state: 'open' },
     ]);
   });
 
-  it('drops the emphasis mark the corpus prefixes some goals with', () => {
-    expect(missionGoals([status({ description: 301 })], textOf).map((g) => g.text)).toEqual([
-      'Skolonizuj krainę!',
-    ]);
+  it('drops the emphasis mark the corpus prefixes some goals with and keeps it as emphasis', () => {
+    const [goal] = missionGoals([status({ description: 301 })], textOf);
+    expect(goal).toMatchObject({ text: 'Skolonizuj krainę!', emphasis: true });
   });
 });
 
@@ -93,33 +94,49 @@ describe('briefingPage and missionBrief', () => {
     expect(briefingPage(null, 'pol', 500)).toBeNull();
   });
 
-  it('carries the page as authored and lists the authored goals, then the match rule', () => {
-    const goals = [status({})];
-    expect(missionBrief(source(null), 500, goals, textOf, 'undecided')).toEqual({
-      title: '',
-      blocks: briefing.texts.pol?.['500'],
-      goals: [{ text: 'Pokonaj saracenów', rule: 'authored', state: 'open' }],
-    });
-    expect(missionBrief(source('Pokonaj wszystkich.'), 500, goals, textOf, 'undecided').goals).toEqual([
-      { text: 'Pokonaj saracenów', rule: 'authored', state: 'open' },
-      { text: 'Pokonaj wszystkich.', rule: 'skirmish', state: 'open' },
-    ]);
-    // The author already wrote the rule: it is not listed twice.
-    expect(missionBrief(source('Pokonaj saracenów'), 500, goals, textOf, 'undecided').goals).toHaveLength(1);
-  });
-
-  it('ticks the skirmish goal on victory and leaves the authored ones to the sim', () => {
-    const goals = missionBrief(source('Pokonaj wszystkich.'), 500, [status({})], textOf, 'victory').goals;
-    expect(goals.map((g) => g.state)).toEqual(['open', 'done']);
-  });
-
-  it('falls back to the map name and menu description without a page', () => {
-    expect(missionBrief(source(null), null, [], textOf, 'undecided')).toEqual({
+  it('carries the page as authored, else the map name over its menu description', () => {
+    expect(missionPage(source(null), 500)).toEqual({ title: '', blocks: briefing.texts.pol?.['500'] });
+    expect(missionPage(source(null), null)).toEqual({
       title: 'Burza Piaskowa',
       blocks: [{ kind: 'text', style: 'body', text: 'Opis z menu.' }],
-      goals: [],
     });
-    expect(missionBrief(source(null), 7, [], textOf, 'undecided').title).toBe('Burza Piaskowa');
+    expect(missionPage(source(null), 7).title).toBe('Burza Piaskowa');
+  });
+
+  it('lists the authored goals, then the match rule unless the author wrote it, done on victory', () => {
+    const goals = [status({})];
+    const texts = (outcome: 'undecided' | 'victory', rule: string | null) =>
+      missionGoalList(source(rule), goals, textOf, outcome).map((g) => `${g.key}:${g.state}:${g.text}`);
+    expect(texts('undecided', null)).toEqual(['0:open:Pokonaj saracenów']);
+    expect(texts('undecided', 'Pokonaj wszystkich.')).toEqual([
+      '0:open:Pokonaj saracenów',
+      'skirmish:open:Pokonaj wszystkich.',
+    ]);
+    expect(texts('victory', 'Pokonaj wszystkich.').at(-1)).toBe('skirmish:done:Pokonaj wszystkich.');
+    expect(texts('undecided', 'Pokonaj saracenów')).toHaveLength(1);
+  });
+
+  it('keeps one goal list per tick and reads the flags anew on the next', () => {
+    let tick = 1;
+    let reads = 0;
+    const reader = missionReader(
+      source(null),
+      {
+        tick: () => tick,
+        status: () => {
+          reads++;
+          return [status({})];
+        },
+        outcome: () => 'undecided',
+      },
+      textOf,
+    );
+    const first = reader.goals();
+    expect(reader.goals()).toBe(first);
+    tick = 2;
+    expect(reader.goals()).not.toBe(first);
+    expect(reads).toBe(2);
+    expect(reader.missionName).toBe('Burza Piaskowa');
   });
 });
 

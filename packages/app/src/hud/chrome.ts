@@ -108,11 +108,6 @@ export function drawScrollbar(g: Graphics, track: Rect, thumb: Rect, scale: numb
   drawBevel(g, thumb, scale, 'raised');
 }
 
-/** Fill `r` with the hover highlight: a light wash over the control under the cursor. */
-export function drawHoverHighlight(g: Graphics, r: Rect): void {
-  g.rect(r.x, r.y, r.w, r.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
-}
-
 /** Draw the close affordance into `r`: a dimmed box with an X. */
 export function drawCloseX(g: Graphics, r: Rect, scale: number): void {
   const m = Math.max(2, 2 * scale);
