@@ -11,8 +11,9 @@ nearest package contract.
 The repository never contains original game files, mod files, decoded content, binary probes, or
 reference captures from the original. `npm run check:assets` rejects tracked `content/`, original
 file types, and unreviewed binaries; review covers the rest. The pinned CulturesNation mod archive
-is the pipeline's only input. An owned game installation beside the checkout serves as format and
-behavior evidence, never as pipeline input.
+is the pipeline's only input; the named corrections in `tools/asset-pipeline/corrections/` fix single
+mod files as the pipeline reads them. An owned game installation beside the checkout serves as
+format and behavior evidence, never as pipeline input.
 
 This is an independent AGPL-3.0-or-later implementation. Do not copy or translate another engine's
 code. Base format and behavior work must use the sources listed in `docs/LEGAL.md`, which also holds

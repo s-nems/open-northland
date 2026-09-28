@@ -1,5 +1,6 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
+import type { SourceCorrections } from './corrections.js';
 import { statIfExists, walkFiles } from './files.js';
 import { CULTURESNATION_HOME_URL, CULTURESNATION_MOD } from './mod-root.js';
 
@@ -13,6 +14,13 @@ export const MOD_GUI_BITMAPS_DIR = 'Data/gui/bitmaps';
 /** The source tree one conversion reads: the unpacked culturesnation mod. */
 export interface SourceRoots {
   readonly mod: string;
+  /** Fixes applied as stages read the mod; without them it is read as shipped. */
+  readonly corrections?: SourceCorrections;
+}
+
+/** Reads a mod file as the run sees it, through the corrections that name it. */
+export function readSourceFile(roots: SourceRoots, path: string): Promise<Uint8Array> {
+  return roots.corrections?.read(path) ?? readFile(path);
 }
 
 /** One source file found under the root. */

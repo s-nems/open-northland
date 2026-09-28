@@ -18,15 +18,16 @@ const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'ai.inc', 'misc.inc', 'ma
 
 /**
  * Resolves one map folder's player roster, diplomacy and mission triggers: the already-decoded sibling
- * `map.cif` sections when they carry script data, else the folder's plaintext `SCRIPT_INC_FILES`. An
- * unreadable `.inc` warns and is skipped so one bad file cannot drop the whole script. Returns
- * undefined when neither source yields anything.
+ * `map.cif` sections when they carry script data, else the folder's plaintext `SCRIPT_INC_FILES` as
+ * `readSource` returns them. An unreadable `.inc` warns and is skipped so one bad file cannot drop
+ * the whole script. Returns undefined when neither source yields anything.
  */
 export async function resolveMapScript(
   mapDir: string,
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
   tables: MapStringTables,
+  readSource: (path: string) => Promise<Uint8Array> = readFile,
 ): Promise<MapScript | undefined> {
   let script =
     cifSections !== undefined
@@ -39,7 +40,7 @@ export async function resolveMapScript(
       const path = await findPathCaseInsensitive(mapDir, [inc]);
       if (path === undefined) continue;
       try {
-        sections.push(...iniBytesToSections(await readFile(path)));
+        sections.push(...iniBytesToSections(await readSource(path)));
         read.push(inc);
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: ${inc} unreadable: ${errorMessage(err)}`);

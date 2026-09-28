@@ -23,6 +23,18 @@ Provenance fields currently record source file, optional block, and layer where 
 them. Do not claim provenance fields that the schema does not store. Keep full field mapping in the
 decoder and its tests.
 
+## Corrections
+
+`corrections/<id>.json` fixes an authoring error in one mod file that no data rule can express, such
+as a map script that swaps two seats' gathering points. The file names the mod-relative path, the
+SHA-256 of the shipped file, and whole-line `from`/`to` swaps, with a `reason` in Polish for the
+owner reviewing the list. The stage reading the file goes through `readSourceFile`, which applies the
+swaps only while the hash still matches.
+
+A correction the run did not apply fails the pipeline, including after a mod release changes the
+file: check whether the mod now fixes it, then delete the file or re-pin its hash. Deleting the file
+removes the correction. Behavior differences from the original stay in code and docs, not here.
+
 ## Decoder work
 
 Binary claims need byte-level evidence from the owned copy and synthetic fixtures. Test valid input,

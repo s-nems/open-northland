@@ -9,7 +9,12 @@ import {
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { writeFileWithParents } from '../../files.js';
-import { collectSourceFilesNamed, findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
+import {
+  collectSourceFilesNamed,
+  findPathCaseInsensitive,
+  readSourceFile,
+  type SourceRoots,
+} from '../../roots.js';
 import { MAPS_DIR } from '../content-tree.js';
 import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
 import { excludeStringTableCopies, mapIdFromPath } from './info.js';
@@ -123,7 +128,9 @@ export async function convertMapDatTree(
     await writeFileWithParents(metaPath, `${JSON.stringify(metaFile)}\n`);
     let scriptFile: MapScript | undefined;
     try {
-      scriptFile = await resolveMapScript(mapDir, rel, cifSections, stringTables);
+      scriptFile = await resolveMapScript(mapDir, rel, cifSections, stringTables, (path) =>
+        readSourceFile(roots, path),
+      );
     } catch (err) {
       // A schema-invalid script degrades that map to no roster rather than aborting the batch.
       console.warn(`[pipeline] map ${rel}: script undecodable: ${errorMessage(err)}`);

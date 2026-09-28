@@ -1,0 +1,15 @@
+{
+  "reason": "Autor mapy zamienił punkty zbiórki żołnierzy. Saraceni (gracz 2) mają punkt w wiosce Wikingów, a Wikingowie (gracz 3) w wiosce Saracenów, więc zaraz po starcie obie armie idą przez całą mapę i wpadają na Franków gracza. Na (295,23) mapa stawia wikińskich cywilów, a (132,465) leży przy saraceńskich kobietach. Zamieniamy same punkty, każdy zostaje ze swoim zasięgiem.",
+  "file": "CnModMaps/Wielkie Sprzatanie/ai.inc",
+  "sha256": "714b4fe12e022baca3fb85c30a007dd611981c9dff3ad9be6cc255d9dec70ffa",
+  "lines": [
+    {
+      "from": "AI_SoldiersDefaultPosition 2 295 23 50",
+      "to": "AI_SoldiersDefaultPosition 2 132 465 55"
+    },
+    {
+      "from": "AI_SoldiersDefaultPosition 3 132 465 55",
+      "to": "AI_SoldiersDefaultPosition 3 295 23 50"
+    }
+  ]
+}

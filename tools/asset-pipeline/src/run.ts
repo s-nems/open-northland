@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Args } from './args.js';
+import { CORRECTIONS_DIR, loadSourceCorrections } from './corrections.js';
 import { decodePng } from './decoders/png.js';
 import { errorMessage } from './errors.js';
 import { resolveModRoot, type SourceRoots } from './roots.js';
@@ -33,8 +34,11 @@ import { convertVertexPalette, VERTEX_PALETTE_FILE } from './stages/vertex-palet
 
 /** Runs the full conversion of the mod root into the IR under `args.out`. */
 export async function runPipeline(args: Args): Promise<void> {
-  const roots: SourceRoots = { mod: await resolveModRoot(args.modRoot) };
+  const mod = await resolveModRoot(args.modRoot);
+  const corrections = await loadSourceCorrections(CORRECTIONS_DIR, mod);
+  const roots: SourceRoots = { mod, corrections };
   console.log(`[pipeline] mod=${roots.mod} out=${args.out}`);
+  for (const { id, file } of corrections.list) console.log(`[pipeline] correction ${id}: ${file}`);
 
   await mkdir(args.out, { recursive: true });
 
@@ -176,4 +180,7 @@ export async function runPipeline(args: Args): Promise<void> {
   // Last, so the bobs listing sees every atlas the stages above wrote.
   await writeListings(args.out, terrains);
   console.log(`[pipeline] listings: ${MAPS_INDEX_FILE}, ${BOBS_INDEX_FILE} into ${args.out}`);
+
+  corrections.assertApplied();
+  console.log(`[pipeline] corrections: ${corrections.list.length} applied`);
 }
