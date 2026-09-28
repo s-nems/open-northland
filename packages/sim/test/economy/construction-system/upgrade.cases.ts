@@ -15,6 +15,7 @@ import type { ChangeFeed } from '../../../src/ecs/change-feed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
+import { assembleBuilding } from '../../../src/systems/command/placement.js';
 import { constructionSystem, stockCapacity } from '../../../src/systems/index.js';
 
 import {
@@ -46,6 +47,24 @@ function writtenBy(feed: ChangeFeed): Entity[] {
  * toward the upgrade is a named approximation.
  */
 describe('constructionSystem - manual upgrade lifecycle', () => {
+  it('stands a higher tier placed outright on its rung of the chain', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const ctx = ctxOf(sim);
+    const levelOf = (buildingType: number): number | undefined => {
+      const type = sim.content.buildings.find((candidate) => candidate.typeId === buildingType);
+      if (type === undefined) return undefined;
+      const spec = { buildingType, tribe: VIKING, owner: 1, missionId: undefined, x: 0, y: 0 };
+      const e = assembleBuilding(sim.world, ctx, type, {
+        ...spec,
+        underConstruction: false,
+        fillStock: false,
+      });
+      return sim.world.get(e, Building).level;
+    };
+    // The household wares a home offers go by this level, so a map's upgraded house must carry its own.
+    expect([levelOf(HOME_L0), levelOf(HOME_L1), levelOf(HOME_L2)]).toEqual([0, 1, 2]);
+  });
+
   it('takes a raised alarm down with the roof', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });

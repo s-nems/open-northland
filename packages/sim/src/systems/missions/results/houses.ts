@@ -1,5 +1,5 @@
 import { Building, Health, MAX_BUILDING_LEVEL, UnderConstruction } from '../../../components/index.js';
-import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
+import { buildingLevelOf, type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistance } from '../../../nav/halfcell.js';
 import { placeBuilding } from '../../command/placement.js';
@@ -71,9 +71,7 @@ function rebuildAtLevel(
 ): void {
   const wanted = Math.min(Math.max(level, 0), MAX_BUILDING_LEVEL);
   let typeId = world.get(e, Building).buildingType;
-  // The stored level does not answer this: every placement is stamped level 0, whatever rung of the
-  // chain its type sits on, so the chain itself is what says where the house currently stands.
-  let at = levelOfType(index, typeId);
+  let at = buildingLevelOf(index, typeId);
   for (; at < wanted; at++) {
     const above = index.commandBuildings.get(typeId)?.upgradeTarget;
     if (above === undefined) return; // the chain tops out below the level the script asked for
@@ -103,19 +101,6 @@ function rebuildAtLevel(
     settleFootprint(world, ctx, e);
     ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: at });
   }
-}
-
-/** How many rungs a type sits above the root of its growth chain. */
-function levelOfType(index: ContentIndex, typeId: number): number {
-  let level = 0;
-  let at = typeId;
-  while (level < MAX_BUILDING_LEVEL) {
-    const below = index.buildingLevelBelow.get(at);
-    if (below === undefined) return level;
-    at = below;
-    level++;
-  }
-  return level;
 }
 
 /** The buildable node nearest `point`, ties going to the lower node id; null when the whole band is

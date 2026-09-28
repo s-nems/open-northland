@@ -18,7 +18,7 @@ import {
   Upgrading,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import { contentIndex } from '../../core/content-index.js';
+import { buildingLevelOf, contentIndex } from '../../core/content-index.js';
 import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
@@ -145,7 +145,9 @@ export function assembleBuilding(
   // The anchor is a half-cell node; its Position is the node's fractional tile coords.
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   const built = underConstruction ? fx.fromInt(0) : ONE;
-  world.add(e, Building, { buildingType: spec.buildingType, tribe: spec.tribe, built, level: 0 });
+  // A higher tier placed outright (a map's house, a script's) stands on its rung of the chain.
+  const level = buildingLevelOf(contentIndex(ctx.content), spec.buildingType);
+  world.add(e, Building, { buildingType: spec.buildingType, tribe: spec.tribe, built, level });
   const amounts = new Map<number, number>();
   if (underConstruction) {
     // The ConstructionSystem ramps Health up as the site rises; it starts at 1 so a foundation is never a

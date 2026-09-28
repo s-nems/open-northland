@@ -48,6 +48,7 @@ export {
 } from './core/commands/index.js';
 export { parseCommandEnvelope, parseCommandLog } from './core/commands/parse.js';
 export {
+  buildingLevelForType,
   constructionBillForType,
   harvestJobsOf,
   jobAllowsAtomic,

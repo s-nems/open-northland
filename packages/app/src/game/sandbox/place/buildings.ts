@@ -1,5 +1,6 @@
 import { footprintCellDx } from '@open-northland/data';
 import {
+  buildingLevelForType,
   cellAnchorNode,
   components,
   type Entity,
@@ -63,7 +64,8 @@ export function placeBuiltSandboxBuilding(
   const node = cellAnchorNode(x, y);
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
-  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: ONE, level: 0 });
+  const level = buildingLevelForType(sim.content, typeId);
+  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: ONE, level });
   const amounts = new Map<number, number>();
   for (const slot of def?.stock ?? []) {
     const seeded = opts.fillStock ? slot.capacity : slot.initial;
@@ -95,7 +97,8 @@ export function placeSandboxSite(
   const node = cellAnchorNode(x, y);
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
-  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: NONE, level: 0 });
+  const level = buildingLevelForType(sim.content, typeId);
+  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: NONE, level });
   sim.world.add(e, UnderConstruction, { labor: NONE });
   sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
   if (def?.hitpoints !== undefined) sim.world.add(e, Health, { hitpoints: 1, max: def.hitpoints });

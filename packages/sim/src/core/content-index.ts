@@ -292,6 +292,23 @@ function buildIndex(content: ContentSet): ContentIndex {
 /** The stable `weapons.ini` id of the wall bow. */
 const HOUSE_BOW_WEAPON_ID = 'house_bow';
 
+/** A type's rung on its `upgradeTarget` chain, 0 for the first tier or a type outside any chain. Bounded
+ *  by the chain links, so a looping chain cannot hang it. */
+export function buildingLevelOf(index: ContentIndex, typeId: number): number {
+  let level = 0;
+  for (let at = typeId; level < index.buildingLevelBelow.size; level++) {
+    const below = index.buildingLevelBelow.get(at);
+    if (below === undefined) break;
+    at = below;
+  }
+  return level;
+}
+
+/** {@link buildingLevelOf} for a caller holding the content set, not its index. */
+export function buildingLevelForType(content: ContentSet, typeId: number): number {
+  return buildingLevelOf(contentIndex(content), typeId);
+}
+
 function levelBelowTypes(content: ContentSet): ReadonlyMap<number, number> {
   const out = new Map<number, number>();
   for (const building of content.buildings) {
