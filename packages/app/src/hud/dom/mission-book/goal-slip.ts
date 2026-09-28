@@ -1,15 +1,13 @@
 import type { UiCue } from '@open-northland/audio';
 import type { MissionGoal } from '../../../game/mission-brief.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { TOP_BAR_HEIGHT } from '../../regions.js';
+import { GOAL_SLIP, TOP_BAR_HEIGHT } from '../../regions.js';
 import { escapeHtml, setHidden } from '../parts/dom.js';
 import { type GoalMarks, openGoalCount, slipRows } from './goal-marks.js';
 import { goalMarkMarkup, goalTextMarkup } from './goal-markup.js';
 
 /** Open goals the slip lists before it points to the book. */
 const SLIP_OPEN_ROWS = 4;
-/** The slip hangs from the top bar's lower edge, this far in from the screen's right edge. */
-const SLIP_RIGHT_INSET = 14;
 /** Room it keeps under the script's info lines when they stand under the bar. */
 const INFO_LINES_GAP = 6;
 
@@ -44,7 +42,8 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
   const dock = document.createElement('div');
   dock.className = 'on-slip';
   dock.hidden = true;
-  dock.style.right = `${SLIP_RIGHT_INSET}px`;
+  dock.style.right = `${GOAL_SLIP.right}px`;
+  dock.style.width = `${GOAL_SLIP.width}px`;
   deps.plane.append(dock);
   let drop = Number.NaN;
   let folded = false;

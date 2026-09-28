@@ -5,9 +5,10 @@ import { panelSpanFromRight } from '../../hud/details-panel/layout/shared.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { minimapPanelWidth } from '../../hud/minimap/model.js';
 import { NAV_BEAM_H } from '../../hud/nav-beam.js';
-import { TOP_BAR_HEIGHT } from '../../hud/regions.js';
+import { GOAL_SLIP, TOP_BAR_HEIGHT } from '../../hud/regions.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { defaultLocale, localeParam } from '../../i18n/index.js';
+import type { AdminPalettePosition } from '../admin-debug/chrome.js';
 import type { CameraController } from '../camera/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
@@ -33,9 +34,12 @@ export function perfCornerForUiScale(scale: number): {
   };
 }
 
-/** The admin chip's top edge: under the top-right bar, clear of the summary counters. */
-export function debugPaletteTopForUiScale(scale: number): number {
-  return TOP_BAR_HEIGHT * scale + DEBUG_HUD_GAP;
+/** Place the admin chip and panel to the left of the expanded goal slip. */
+export function debugPalettePositionForUiScale(scale: number): AdminPalettePosition {
+  return {
+    top: TOP_BAR_HEIGHT * scale + DEBUG_HUD_GAP,
+    right: (GOAL_SLIP.width + GOAL_SLIP.right) * scale + DEBUG_HUD_GAP,
+  };
 }
 
 export interface LiveGameSettingsDeps {
@@ -51,7 +55,7 @@ export interface LiveGameSettingsDeps {
   /** The DOM HUD plane, scaled with the Pixi parts. */
   readonly hudDom: HudScaleTarget;
   readonly perf: PerfOverlayHandle;
-  readonly placeDebugPalette: (top: number) => void;
+  readonly placeDebugPalette: (position: AdminPalettePosition) => void;
   readonly sound: SoundDriver | null;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
@@ -74,7 +78,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     placeDebugOverlays: (scale) => {
       const corner = perfCornerForUiScale(scale);
       deps.perf.place(corner.left, corner.right, corner.bottom);
-      deps.placeDebugPalette(debugPaletteTopForUiScale(scale));
+      deps.placeDebugPalette(debugPalettePositionForUiScale(scale));
     },
     onError: (error) => diag.warn('ui', `HUD scale rebuild failed: ${String(error)}`),
   });

@@ -100,7 +100,7 @@ import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
 import {
   createLiveGameSettings,
-  debugPaletteTopForUiScale,
+  debugPalettePositionForUiScale,
   perfCornerForUiScale,
 } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
@@ -763,7 +763,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       host,
       perf,
       initialToolsEnabled: storedSettings.debugToolsEnabled,
-      paletteTop: debugPaletteTopForUiScale(uiscale),
+      palettePosition: debugPalettePositionForUiScale(uiscale),
       allowWorldEdits: !sharedClock,
       // The admin palette is a dev channel rather than part of the seat's HUD, so a read-only spectator
       // still pokes with it.

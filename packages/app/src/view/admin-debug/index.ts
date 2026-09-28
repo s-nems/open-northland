@@ -6,6 +6,7 @@ import { BUTTON_STYLE, el } from '../overlay.js';
 import { DEBUG_ACTIONS, type DebugAction, type DebugTargetKind } from './actions-catalog.js';
 import {
   ADMIN_PANEL_STYLE,
+  type AdminPalettePosition,
   BODY_STYLE,
   collapsibleSection,
   FOOTER_STYLE,
@@ -83,14 +84,13 @@ export interface AdminDebugDeps {
   readonly setGeometryEnabled: (enabled: boolean) => void;
   readonly zoomOutUnlocked: () => boolean;
   readonly setZoomOutUnlocked: (unlocked: boolean) => void;
-  /** The chip's top edge in client px, under the HUD's top-right bar. */
-  readonly top: number;
+  readonly position: AdminPalettePosition;
 }
 
 export interface AdminDebugHandle {
   setVisible(visible: boolean): void;
-  /** Move the chip, and the panel under it, to `top` client px. */
-  place(top: number): void;
+  /** Move the chip and the panel beneath it together. */
+  place(position: AdminPalettePosition): void;
   dispose(): void;
 }
 
@@ -283,11 +283,13 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   );
 
   panel.append(header, body, status);
-  const place = (top: number): void => {
+  const place = ({ top, right }: AdminPalettePosition): void => {
     toggle.style.top = `${top}px`;
+    toggle.style.right = `${right}px`;
     panel.style.top = `${top + PANEL_BELOW_CHIP_PX}px`;
+    panel.style.right = `${right}px`;
   };
-  place(deps.top);
+  place(deps.position);
   document.body.append(toggle, panel);
   refresh();
 

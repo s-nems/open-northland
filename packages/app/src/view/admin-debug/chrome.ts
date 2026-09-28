@@ -1,16 +1,17 @@
 import { el } from '../overlay.js';
 
 export const PANEL_WIDTH_PX = 300;
-/** Half the toggle chip's ~140px width. */
-const TOGGLE_CHIP_HALF_WIDTH_PX = 70;
+/** Screen-pixel offsets for the palette beside the goal slip. */
+export interface AdminPalettePosition {
+  readonly top: number;
+  readonly right: number;
+}
 
 /** How far the panel's top edge sits below the chip's: just clear of the ~35 px chip. */
 export const PANEL_BELOW_CHIP_PX = 36;
 
 export const TOGGLE_STYLE = [
   'position:fixed',
-  // Centres the chip over the rail below it (rail: right:8px, width PANEL_WIDTH_PX).
-  `right:${8 + PANEL_WIDTH_PX / 2 - TOGGLE_CHIP_HALF_WIDTH_PX}px`,
   'cursor:var(--cursor-pointer, pointer)',
   'padding:6px 14px',
   'background:rgba(20,16,12,0.92)',
@@ -24,7 +25,6 @@ export const TOGGLE_STYLE = [
 
 export const ADMIN_PANEL_STYLE = [
   'position:fixed',
-  'right:8px',
   'bottom:8px',
   `width:${PANEL_WIDTH_PX}px`,
   'display:flex',

@@ -4896,7 +4896,6 @@ body.on-drag-scroll-cursor-hidden * {
    band, which is also its tab. */
 .on-hud .on-slip {
   position: absolute;
-  width: 236px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;

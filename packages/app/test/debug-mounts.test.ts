@@ -17,7 +17,7 @@ it('hides the debug readout with the HUD, and shows it again only while the tool
     params: new URLSearchParams(),
     perf,
     initialToolsEnabled: true,
-    paletteTop: 0,
+    palettePosition: { top: 0, right: 0 },
     allowWorldEdits: false,
     buildingsByType: new Map(),
     renderer: { setGeometryDebug: () => undefined },

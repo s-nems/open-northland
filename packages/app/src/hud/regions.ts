@@ -13,6 +13,8 @@ export const NOTICE_COLUMN = { left: 10, top: 18, width: 173 } as const;
 /** The top-right bar's height: the `.on-panel` 1 px border and the `.on-bar` 6 px padding around its
  *  tallest child, the 34 px menu medallion. */
 export const TOP_BAR_HEIGHT = 48;
+/** Goal slip geometry in HUD design px. */
+export const GOAL_SLIP = { width: 236, right: 14 } as const;
 /** Top of the central window region, under the top bar. */
 export const WINDOW_REGION_TOP = 96;
 /** Breathing room between the central region's floor and the navigation beam. */

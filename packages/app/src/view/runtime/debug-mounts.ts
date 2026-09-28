@@ -5,6 +5,7 @@ import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
 import { vehicleLabel } from '../../game/technology.js';
 import type { SessionHost } from '../../session/index.js';
+import type { AdminPalettePosition } from '../admin-debug/chrome.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { type AdminDebugHandle, mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera/index.js';
@@ -27,8 +28,7 @@ export interface DebugMountsOptions {
   readonly cameraCtl: CameraController;
   readonly perf: PerfOverlayHandle;
   readonly initialToolsEnabled: boolean;
-  /** The admin chip's top edge in client px, under the HUD's top-right bar. */
-  readonly paletteTop: number;
+  readonly palettePosition: AdminPalettePosition;
   readonly elevation?: ElevationField;
   readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
@@ -53,7 +53,7 @@ export interface DebugMounts {
   setToolsEnabled(enabled: boolean): void;
   /** Hide the readout and the palette with the rest of the HUD, leaving the tools switched on. */
   setHudHidden(hidden: boolean): void;
-  placePalette(top: number): void;
+  placePalette(position: AdminPalettePosition): void;
   /** Tear the palette's listeners and DOM down with the world that mounted it. */
   dispose(): void;
 }
@@ -86,7 +86,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
   let admin: AdminDebugHandle | null = null;
   let toolsEnabled = false;
   let hudHidden = false;
-  let paletteTop = opts.paletteTop;
+  let palettePosition = opts.palettePosition;
   const setToolsEnabled = (enabled: boolean): void => {
     toolsEnabled = enabled;
     opts.perf.setVisible(enabled && !hudHidden);
@@ -98,7 +98,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
       return;
     }
     if (opts.allowWorldEdits === false) return;
-    admin ??= mountAdminPalette(opts, geometryDebug, setGeometryEnabled, paletteTop, {
+    admin ??= mountAdminPalette(opts, geometryDebug, setGeometryEnabled, palettePosition, {
       unlocked: () => zoomOutUnlocked,
       setUnlocked: setZoomOutUnlocked,
     });
@@ -114,9 +114,9 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
       opts.perf.setVisible(toolsEnabled && !hidden);
       admin?.setVisible(toolsEnabled && !hidden);
     },
-    placePalette: (top) => {
-      paletteTop = top;
-      admin?.place(top);
+    placePalette: (position) => {
+      palettePosition = position;
+      admin?.place(position);
     },
     dispose: () => {
       admin?.dispose();
@@ -129,7 +129,7 @@ function mountAdminPalette(
   opts: DebugMountsOptions,
   geometryDebug: GeometryDebugOverlay,
   setGeometryEnabled: (enabled: boolean) => void,
-  top: number,
+  position: AdminPalettePosition,
   zoomOut: { readonly unlocked: () => boolean; readonly setUnlocked: (unlocked: boolean) => void },
 ): AdminDebugHandle {
   const { app, canvas, host, renderer } = opts;
@@ -177,6 +177,6 @@ function mountAdminPalette(
     setGeometryEnabled,
     zoomOutUnlocked: zoomOut.unlocked,
     setZoomOutUnlocked: zoomOut.setUnlocked,
-    top,
+    position,
   });
 }
