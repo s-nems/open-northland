@@ -1,5 +1,6 @@
+import { PLACED_GARRISON_MASTS, type PlacedGarrisonMast } from '../../catalog/building-tweaks.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
-import type { BuildingFlagPointRow, ContentIr } from '../ir/rows.js';
+import type { BuildingBobRow, BuildingFlagPointRow, ContentIr } from '../ir/rows.js';
 import { CANONICAL_EDIT_NAME, rowsByType } from './families.js';
 
 /** A building's marker anchor in screen px from its bob draw anchor, +y down. */
@@ -7,6 +8,14 @@ export interface FlagPoint {
   readonly x: number;
   readonly y: number;
 }
+
+/** A garrison mast, and the height from which down its flag draws behind the building. */
+export interface MastPoint extends FlagPoint {
+  readonly behindFrom?: number;
+}
+
+/** A flag-point row, or a garrison mast the catalog places where no record authors one. */
+type MastRow = BuildingFlagPointRow & Pick<PlacedGarrisonMast, 'behindFrom'>;
 
 /**
  * The per-typeId sign-post anchor from the IR's `buildingFlagPoints` lane (`GfxFlagPoint`), for one tribe's
@@ -20,14 +29,32 @@ export function flagPointByType(ir: ContentIr | null, tribeId: number): Readonly
 /**
  * The per-typeId garrison mast from the IR's `buildingSoldierFlagPoints` lane (`gfxsoldierflagpoint`),
  * resolved like {@link flagPointByType}. The tribe key earns its keep here: the frank tower authors a
- * different height from the viking one on the same typeId. Only the tower records carry the key, which is
- * the source's own statement of which buildings hold a garrison.
+ * different height from the viking one on the same typeId. Only the viking and frank tower records
+ * author the key; the other towers take `PLACED_GARRISON_MASTS`.
  */
 export function soldierFlagPointByType(
   ir: ContentIr | null,
   tribeId: number,
-): ReadonlyMap<number, FlagPoint> {
-  return pointsByType(ir?.buildingSoldierFlagPoints, tribeId);
+): ReadonlyMap<number, MastPoint> {
+  const authored = ir?.buildingSoldierFlagPoints ?? [];
+  return pointsByType([...authored, ...placedMastRows(ir?.buildingBobs ?? [], authored)], tribeId);
+}
+
+/** A mast row per level of each tower record the catalog places a mast on, unless the record's
+ *  `(tribe, type)` authors its own. */
+function placedMastRows(
+  bobs: readonly BuildingBobRow[],
+  authored: readonly BuildingFlagPointRow[],
+): MastRow[] {
+  const masted = new Set(authored.map((row) => `${row.tribeId}:${row.typeId}`));
+  const out: MastRow[] = [];
+  for (const { tribeId, typeId, level, editName } of bobs) {
+    if (editName === undefined) continue;
+    const mast = PLACED_GARRISON_MASTS.get(editName);
+    if (mast === undefined || masted.has(`${tribeId}:${typeId}`)) continue;
+    out.push({ tribeId, typeId, level, editName, ...mast });
+  }
+  return out;
 }
 
 /** The typeIds a tribe draws with a body of its own. A tribe that skins a type but authors no anchor for
@@ -41,7 +68,7 @@ export function skinnedTypesOf(ir: ContentIr | null, tribeId: number): ReadonlyS
 /** A building type's sign post and garrison mast, as one tribe's skin authors them. */
 export interface BuildingSignAnchors {
   readonly flagPoint?: FlagPoint | undefined;
-  readonly mastPoint?: FlagPoint | undefined;
+  readonly mastPoint?: MastPoint | undefined;
 }
 
 /**
@@ -77,14 +104,13 @@ export function buildingSignAnchorsFor(
   };
 }
 
-function pointsByType(
-  rows: readonly BuildingFlagPointRow[] | undefined,
-  tribeId: number,
-): ReadonlyMap<number, FlagPoint> {
-  const out = new Map<number, FlagPoint>();
+function pointsByType(rows: readonly MastRow[] | undefined, tribeId: number): ReadonlyMap<number, MastPoint> {
+  const out = new Map<number, MastPoint>();
   for (const [typeId, group] of rowsByType(rows ?? [], tribeId)) {
     const row = pickFlagPointRow(typeId, group);
-    if (row !== undefined) out.set(typeId, { x: row.x, y: row.y });
+    if (row === undefined) continue;
+    const { x, y, behindFrom } = row;
+    out.set(typeId, { x, y, ...(behindFrom !== undefined ? { behindFrom } : {}) });
   }
   return out;
 }
@@ -94,17 +120,14 @@ function pointsByType(
  *  Accepted divergence: a multi-variant typeId without a canonical name may take its point from a different
  *  variant record than the drawn bob; in the extracted data no such collision differs in value, on either
  *  lane, for any of the five civilizations. */
-function pickFlagPointRow(
-  typeId: number,
-  rows: readonly BuildingFlagPointRow[],
-): BuildingFlagPointRow | undefined {
+function pickFlagPointRow<T extends BuildingFlagPointRow>(typeId: number, rows: readonly T[]): T | undefined {
   let candidates = rows;
   const canonName = CANONICAL_EDIT_NAME[typeId];
   if (canonName !== undefined) {
     const named = rows.filter((r) => r.editName === canonName);
     if (named.length > 0) candidates = named;
   }
-  let best: BuildingFlagPointRow | undefined;
+  let best: T | undefined;
   for (const r of candidates) {
     if (
       best === undefined ||

@@ -1,5 +1,6 @@
 import type { Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { PLACED_GARRISON_MASTS } from '../src/catalog/building-tweaks.js';
 import type { ContentIr } from '../src/content/ir/rows.js';
 import { buildingModels } from '../src/view/runtime/read-models.js';
 
@@ -123,6 +124,30 @@ describe('view building models', () => {
     // The frank is loaded but skins no tower, so it draws the base body and its anchors apply.
     expect(infoOf(TOWER, FRANK)?.mastPoint).toEqual({ x: -6, y: -239 });
     expect(infoOf(TOWER, FRANK)?.flagPoint).toEqual({ x: -6, y: 29 });
+  });
+
+  it('flies a garrison flag from the placed mast of a tower record that authors none', () => {
+    const TOWER = 40;
+    const SARACEN = 4;
+    const SARACEN_TOWER = 'saracen tower';
+    const skin = (tribeId: number) => ({
+      tribeId,
+      typeId: TOWER,
+      level: 0,
+      bmd: 'data/engine2d/bin/bobs/ls_houses_saracen.bmd',
+      paletteName: 'house_saracen01',
+      bobId: 100,
+      editName: SARACEN_TOWER,
+    });
+    const AUTHORED = { tribeId: VIKING, typeId: TOWER, x: -6, y: -239 };
+    const { infoOf } = buildingModels(
+      [building(TOWER, 'tower_00')],
+      // The viking row reuses the record name only to prove an authored mast outranks a placed one.
+      { ...ir([], [AUTHORED]), buildingBobs: [skin(SARACEN), skin(VIKING)] },
+      [VIKING, SARACEN],
+    );
+    expect(infoOf(TOWER, SARACEN)?.mastPoint).toEqual(PLACED_GARRISON_MASTS.get(SARACEN_TOWER));
+    expect(infoOf(TOWER, VIKING)?.mastPoint).toEqual({ x: AUTHORED.x, y: AUTHORED.y });
   });
 
   it('keeps the last building when two share a typeId', () => {

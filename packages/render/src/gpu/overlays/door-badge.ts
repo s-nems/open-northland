@@ -29,6 +29,9 @@ export interface DoorBadge {
     readonly stars: number;
     readonly dx: number;
     readonly dy: number;
+    /** The screen-px offset, like `dy`, from which down the flag draws behind its building, so the
+     *  parapet in front of the pole covers it; absent flies the whole flag in front. */
+    readonly behindFromDy?: number;
   };
 }
 

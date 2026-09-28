@@ -24,6 +24,8 @@ interface BadgeStack {
   /** The garrison flag, flown from the building's mast. A sibling of the chain in the sprite layer, not
    *  its child: the two marks stand at different anchors but pool, cull and sort as one building. */
   readonly flag?: Container | undefined;
+  /** The flag's lower rows, sorted under the building so its parapet covers them. */
+  readonly flagBehind?: Container | undefined;
   readonly advanceFlag?: ((clock: number) => void) | undefined;
   /** The drawn rows joined into a change-detection key ('' = none). */
   readonly rows: string;
@@ -31,6 +33,9 @@ interface BadgeStack {
   /** Stars flown this build (0 = no garrison) - part of the key, so a man joining or leaving the post
    *  swaps the flag. */
   readonly stars: number;
+  /** The cut the flag was split at, in px from its mast foot - part of the key, since an upgrade that
+   *  moves the mast moves the cut with it. */
+  readonly behindFrom: number | undefined;
   /** The player recolour the stack was built with, 0 for the player-agnostic placeholder marks, so an
    *  owner change never rebuilds a visually identical placeholder stack. */
   readonly player: number;
@@ -92,6 +97,7 @@ export class BadgeLayer {
         retainOffscreen(stack?.node, badge.id, this.drawn);
         stack?.node.removeFromParent();
         stack?.flag?.removeFromParent();
+        stack?.flagBehind?.removeFromParent();
         continue;
       }
 
@@ -102,21 +108,24 @@ export class BadgeLayer {
       // Capped here, so the key is what the flag looks like: the sixth man onto a post does not rebuild
       // a stack that would draw the same five stars.
       const stars = Math.min(badge.garrison?.stars ?? 0, GARRISON_STAR_MAX);
+      const behindFrom = flagBehindFrom(badge);
       if (
         stack === undefined ||
         stack.rows !== rows ||
         stack.hearts !== (badge.hearts === true) ||
         stack.stars !== stars ||
+        stack.behindFrom !== behindFrom ||
         stack.player !== player
       ) {
         destroyStack(stack);
-        stack = this.build(badge, sheet, rows, player, stars);
+        stack = this.build(badge, sheet, rows, player, stars, behindFrom);
         this.stacks.set(badge.id, stack);
       }
       stack.node.visible = true;
       if (stack.node.parent === null) this.spriteLayer.addChild(stack.node);
       stack.node.position.set(anchor.x, anchor.y);
-      const depth = screenDepth(anchor.depthX, anchor.depthY, 'building') + SIGN_DEPTH_EPS;
+      const building = screenDepth(anchor.depthX, anchor.depthY, 'building');
+      const depth = building + SIGN_DEPTH_EPS;
       stack.node.zIndex = depth;
       if (stack.flag !== undefined && anchor.mast !== undefined) {
         stack.flag.visible = true;
@@ -125,6 +134,12 @@ export class BadgeLayer {
         // Its building's key, like the chain. Two marks on one anchor tie here; the flag is added
         // second, and the depth sort is stable, so it stays on top.
         stack.flag.zIndex = depth;
+        if (stack.flagBehind !== undefined) {
+          if (stack.flagBehind.parent === null) this.spriteLayer.addChild(stack.flagBehind);
+          stack.flagBehind.position.set(anchor.mast.x, anchor.mast.y);
+          // The chain's step mirrored: under the building's whole unit, shadow included.
+          stack.flagBehind.zIndex = building - SIGN_DEPTH_EPS;
+        }
         stack.advanceFlag?.(clock);
       }
       this.drawn.add(badge.id);
@@ -140,6 +155,7 @@ export class BadgeLayer {
     rows: string,
     player: number,
     stars: number,
+    behindFrom: number | undefined,
   ): BadgeStack {
     const gfx = this.gfx;
     const hearts = badge.hearts === true;
@@ -147,12 +163,12 @@ export class BadgeLayer {
       gfx !== undefined && sheet !== undefined
         ? makeSignStack(badge.rows, hearts, gfx.textures, sheet)
         : makePlaceholderStack(badge.rows, hearts);
-    const base = { node, rows, hearts, stars, player };
+    const base = { node, rows, hearts, stars, behindFrom, player };
     // Gated on the capped `stars`, not on `garrison` being present: `stars` is the whole garrison term
     // in the rebuild key, and a zero-star garrison keys the same as none, so such a flag never retires.
     if (badge.garrison === undefined || stars < 1) return base;
-    const flag = makeGarrisonFlag(stars, gfx?.textures, sheet);
-    return { ...base, flag: flag.node, advanceFlag: flag.advance };
+    const flag = makeGarrisonFlag(stars, gfx?.textures, sheet, behindFrom);
+    return { ...base, flag: flag.node, flagBehind: flag.behind, advanceFlag: flag.advance };
   }
 
   destroy(): void {
@@ -164,4 +180,11 @@ export class BadgeLayer {
 function destroyStack(stack: BadgeStack | undefined): void {
   stack?.node.destroy({ children: true });
   stack?.flag?.destroy({ children: true });
+  stack?.flagBehind?.destroy({ children: true });
+}
+
+/** The flag's cut in px from its mast foot, the frame its art is laid out in. */
+function flagBehindFrom(badge: DoorBadge): number | undefined {
+  const garrison = badge.garrison;
+  return garrison?.behindFromDy === undefined ? undefined : garrison.behindFromDy - garrison.dy;
 }

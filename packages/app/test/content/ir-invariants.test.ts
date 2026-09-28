@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { hasFieldFarmAtomics } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { PLACED_GARRISON_MASTS } from '../../src/catalog/building-tweaks.js';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
 import {
   flagPointByType,
@@ -338,6 +339,27 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     // broken tribe filter shows up as a wrong value, and a broken lane as an empty map.
     expect(masts.size).toBeGreaterThan(0);
     expect(masts.size).toBeLessThan(flagPointByType(rawIrUnderTest() as ContentIr, VIKING_TRIBE).size);
+  });
+
+  it('gives every civilization tower a garrison mast, placing one only where the record authors none', () => {
+    const ir = rawIrUnderTest() as ContentIr;
+    const authored = ir.buildingSoldierFlagPoints ?? [];
+    const mastedTypes = new Set(authored.map((row) => row.typeId));
+    // A mod release that adds the key to a placed record, or renames it, fails here.
+    for (const name of PLACED_GARRISON_MASTS.keys()) {
+      expect(
+        authored.some((row) => row.editName === name),
+        name,
+      ).toBe(false);
+      expect(
+        ir.buildingBobs?.some((row) => row.editName === name && mastedTypes.has(row.typeId)),
+        name,
+      ).toBe(true);
+    }
+    for (const row of ir.buildingBobs ?? []) {
+      if (!mastedTypes.has(row.typeId)) continue;
+      expect(soldierFlagPointByType(ir, row.tribeId).has(row.typeId), row.editName).toBe(true);
+    }
   });
 
   it('specializes only pairings a tribe enables, at most once each', async () => {

@@ -406,6 +406,37 @@ describe('BadgeLayer (garrison flag)', () => {
     expect(flagOf(root, 3, 5)).toBe(five); // the star count is capped, so a sixth man draws no change
   });
 
+  it('splits a flag at its cut, sorting the rows below it under the building', () => {
+    const { layer, root } = layerIn();
+    const { sheet: s, frames } = garrisonSheet();
+    layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
+    // A cut three rows above the mast foot: the frame spans -38..+4 around it, so 35 rows fly in front.
+    const CUT_ABOVE_FOOT = 3;
+    const whole = manned(1, 3, 5, 2);
+    const split = { ...whole, garrison: { stars: 2, ...MAST, behindFromDy: MAST.dy - CUT_ABOVE_FOOT } };
+    layer.draw([split]);
+
+    const anchor = tileToScreen(3, 5);
+    const parts = root.children.filter((c) => c.position.y === anchor.y + MAST.dy);
+    expect(parts).toHaveLength(2);
+    const building = screenDepth(anchor.x, anchor.y, 'building');
+    const [back, front] = [...parts].sort((a, b) => a.zIndex - b.zIndex);
+    expect(back?.zIndex).toBe(building - SIGN_DEPTH_EPS);
+    expect(front?.zIndex).toBe(building + SIGN_DEPTH_EPS);
+
+    const frame = frames[1]?.[0];
+    if (frame === undefined) throw new Error('no wave frame');
+    const rowsInFront = -CUT_ABOVE_FOOT - frame.offsetY;
+    const drawn = (part: Container | undefined): Sprite => part?.children[0] as Sprite;
+    expect(drawn(front).texture.frame.height).toBe(rowsInFront);
+    expect(drawn(back).texture.frame.height).toBe(frame.height - rowsInFront);
+    expect(drawn(back).position.y).toBe(frame.offsetY + rowsInFront);
+
+    // Without the cut the flag flies whole in front again, as one mark.
+    layer.draw([whole]);
+    expect(root.children.filter((c) => c.position.y === anchor.y + MAST.dy)).toHaveLength(1);
+  });
+
   it('draws a placeholder mast without decoded art, and retires the flag with its building', () => {
     const { layer, root } = layerIn();
     layer.draw([manned(1, 3, 5, 2)]);

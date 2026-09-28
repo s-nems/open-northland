@@ -41,13 +41,13 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
  */
 
 /** The slice of a building type this projection needs: the half-cell door offset from the placed anchor,
- *  the stable `id` used as the worker-icon override key, the extracted `GfxFlagPoint`, and the authored
- *  mast point a garrison flag flies from. */
+ *  the stable `id` used as the worker-icon override key, the extracted `GfxFlagPoint`, and the mast
+ *  point a garrison flag flies from. */
 export interface BuildingDoorInfo {
   readonly id?: string | undefined;
   readonly footprint?: DoorFootprint | undefined;
   readonly flagPoint?: { readonly x: number; readonly y: number } | undefined;
-  readonly mastPoint?: { readonly x: number; readonly y: number } | undefined;
+  readonly mastPoint?: { readonly x: number; readonly y: number; readonly behindFrom?: number } | undefined;
 }
 
 /** A building's anchors by type and tribe: the anchors are per-skin pixel offsets, so the frank tower's
@@ -161,14 +161,17 @@ function anchorOf(
   return { x: pos.x, y: pos.y, dx: to.x - from.x, dy: to.y - from.y };
 }
 
-/** Where the garrison flag is planted: the authored mast point, else beside the sign post the badges
+/** Where the garrison flag is planted: the type's mast point, else beside the sign post the badges
  *  stand on, so a mastless post's flag does not cover the rows a click has to reach. */
 function mastOf(
   info: BuildingDoorInfo | undefined,
   post: Pick<DoorBadge, 'dx' | 'dy'>,
-): { readonly dx: number; readonly dy: number } {
+): { readonly dx: number; readonly dy: number; readonly behindFromDy?: number } {
   const mast = info?.mastPoint;
-  if (mast !== undefined) return { dx: mast.x, dy: mast.y };
+  if (mast !== undefined) {
+    const { x: dx, y: dy, behindFrom } = mast;
+    return { dx, dy, ...(behindFrom !== undefined ? { behindFromDy: behindFrom } : {}) };
+  }
   return { dx: (post.dx ?? 0) + GARRISON_MAST_FALLBACK_DX, dy: post.dy ?? 0 };
 }
 

@@ -117,9 +117,9 @@ export const SIGN_HALF_WIDTH = 14;
 export const CONSTRUCTION_SIGN_DX = -2 * SIGN_HALF_WIDTH;
 
 /**
- * World-px the garrison flag stands right of the sign post when its building type authored no
- * `gfxsoldierflagpoint`, the mirror of {@link CONSTRUCTION_SIGN_DX}: without it the flag plants on the
- * badge chain and a click on the cloth answers with a row hidden behind it.
+ * World-px the garrison flag stands right of the sign post when its building type has no mast point,
+ * the mirror of {@link CONSTRUCTION_SIGN_DX}: without it the flag plants on the badge chain and a click
+ * on the cloth answers with a row hidden behind it.
  */
 export const GARRISON_MAST_FALLBACK_DX = 2 * SIGN_HALF_WIDTH;
 

@@ -1,4 +1,5 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
+import { clamp } from '../../data/math.js';
 import { type AtlasFrame, type WaveLoop, waveFrameAt } from '../../data/sprites/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import type { BuildingSignSheet } from './sign-gfx.js';
@@ -37,6 +38,9 @@ export function hitsGarrisonFlag(dx: number, dy: number): boolean {
  *  art (the placeholder mast does not animate). */
 export interface GarrisonFlagMark {
   readonly node: Container;
+  /** The flag's rows from the cut down, mounted at the same mast point but sorted under its building, so
+   *  the parapet in front of the pole covers them. Absent when the whole flag flies in front. */
+  readonly behind?: Container;
   readonly advance?: (clock: number) => void;
 }
 
@@ -52,28 +56,51 @@ export function garrisonFlagLoop(
 }
 
 /** The flag a `stars`-strong post flies: its wave loop from `sheet` when the art resolved, else the
- *  placeholder mast. */
+ *  placeholder mast. `behindFrom` is the height, in px from the mast foot (+y down), from which down the
+ *  art draws in {@link GarrisonFlagMark.behind}; the placeholder always flies whole in front. */
 export function makeGarrisonFlag(
   stars: number,
   textures: TextureCache | undefined,
   sheet: BuildingSignSheet | undefined,
+  behindFrom?: number,
 ): GarrisonFlagMark {
   const loop = garrisonFlagLoop(sheet, stars);
   if (loop === undefined || sheet === undefined || textures === undefined) {
     return { node: makePlaceholderFlag(stars) };
   }
   const { source } = sheet;
-  const sprite = new Sprite();
-  // The sprite carries the frame's own draw offset, so the node the layer positions stays the mast foot.
+  // Each sprite carries its rows' own draw offset, so the nodes the layer positions stay the mast foot.
+  const front = new Sprite();
   const node = new Container();
-  node.addChild(sprite);
+  node.addChild(front);
+  let back: Sprite | undefined;
+  let behind: Container | undefined;
+  if (behindFrom !== undefined) {
+    back = new Sprite();
+    behind = new Container();
+    behind.addChild(back);
+  }
   const advance = (clock: number): void => {
     const frame = waveFrameAt(loop, clock);
-    sprite.texture = textures.get(source, frame);
-    sprite.position.set(frame.offsetX, frame.offsetY);
+    const cut =
+      behindFrom === undefined
+        ? frame.height
+        : clamp(Math.round(behindFrom - frame.offsetY), 0, frame.height);
+    front.visible = cut > 0;
+    if (cut > 0) {
+      front.texture =
+        cut === frame.height ? textures.get(source, frame) : textures.topRows(source, frame, cut);
+      front.position.set(frame.offsetX, frame.offsetY);
+    }
+    if (back === undefined) return;
+    back.visible = cut < frame.height;
+    if (cut < frame.height) {
+      back.texture = textures.cropped(source, frame, cut);
+      back.position.set(frame.offsetX, frame.offsetY + cut);
+    }
   };
   advance(0);
-  return { node, advance };
+  return { node, ...(behind !== undefined ? { behind } : {}), advance };
 }
 
 /** Placeholder mast + banner + a dot per star (world px, drawn up from the mast foot), sized from

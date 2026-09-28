@@ -61,6 +61,8 @@ export class TextureCache {
   /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
    *  frame→texture cache above stays a clean 1:1. */
   private readonly cropCache = new Map<AtlasFrame, Map<number, Texture>>();
+  /** Top-kept views of a frame, keyed by how many top pixels are kept. */
+  private readonly topCache = new Map<AtlasFrame, Map<number, Texture>>();
   /** Reveal bakes per frame, keyed by quantised threshold. */
   private readonly revealCache = new Map<AtlasFrame, Map<number, RevealBake>>();
 
@@ -220,6 +222,25 @@ export class TextureCache {
     return tex;
   }
 
+  /** A view of `frame` keeping only its top `rows` pixels, the upper part of a mark split around a body
+   *  it partly stands behind. `rows` is clamped like {@link cropped}'s count, and the view shares the page. */
+  topRows(source: TextureSource, frame: AtlasFrame, rows: number): Texture {
+    const kept = clamp(Math.round(rows), 0, frame.height);
+    let byRows = this.topCache.get(frame);
+    if (byRows === undefined) {
+      byRows = new Map();
+      this.topCache.set(frame, byRows);
+    }
+    let tex = byRows.get(kept);
+    if (tex === undefined) {
+      tex = new Texture({ source, frame: new Rectangle(frame.x, frame.y, frame.width, kept) });
+      markMagnifiedTexture(tex);
+      byRows.set(kept, tex);
+      this.pages.add(source);
+    }
+    return tex;
+  }
+
   /**
    * The frame with only its pixels whose baked build-time threshold is `<= threshold`, baked onto a
    * canvas at a {@link REVEAL_QUANT}-quantised threshold. `frameStamp` is the pool's frame counter, which
@@ -305,6 +326,10 @@ export class TextureCache {
       for (const tex of byTop.values()) tex.destroy();
     }
     this.cropCache.clear();
+    for (const byRows of this.topCache.values()) {
+      for (const tex of byRows.values()) tex.destroy();
+    }
+    this.topCache.clear();
     this.pages.clear();
     for (const byThreshold of this.revealCache.values()) {
       for (const bake of byThreshold.values()) bake.texture.destroy(true);
