@@ -90,7 +90,17 @@ export class MapViewLayer {
     const h = Math.round(view.clip.h);
     if (w < 1 || h < 1) return;
     const point = targetPoint(view.target, scene.snapshot, scene.elevation);
-    if (point === null) return;
+    if (point === null) {
+      // The window still shows its hole: floor it alone rather than leave the main frame there.
+      renderFramedWorld(this.app, this.worldLayer, this.floor, {
+        camera: { offsetX: 0, offsetY: 0, scale: 1 },
+        frame: new Rectangle(x, y, w, h),
+        fill: view.soloFill ?? world.backdrop,
+        keep: this.floor,
+      });
+      if (view.still !== undefined) this.copyStill(view.still, x, y, w, h);
+      return;
+    }
     const { scale } = view;
     const camera: Camera = {
       offsetX: view.box.x + view.focusX - x - point.x * scale,

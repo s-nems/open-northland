@@ -67,9 +67,11 @@ function views(icons: readonly HypertextUserIcon[], ctx: FlowContext): string {
     const w = card ? Math.round(box.w * CARD_ZOOM) : mapW;
     const h = card ? Math.round(box.h * CARD_ZOOM) : Math.round((mapW * box.h) / box.w);
     const index = ctx.views.push({ icon: box, zoom: card ? CARD_ZOOM : 1 }) - 1;
-    // A card shows its fill even when its human is gone and no hole is cut for it.
+    // A card whose human is gone gets no hole, so the page paints its fill; over a hole the renderer does.
     const fill =
-      box.soloFill === undefined ? '' : `;background:#${box.soloFill.toString(16).padStart(6, '0')}`;
+      box.soloFill === undefined || box.target !== null
+        ? ''
+        : `;background:#${box.soloFill.toString(16).padStart(6, '0')}`;
     const lens = `<span class="on-book__lens" style="width:${w}px;height:${h}px${fill}"></span>`;
     if (box.target === null)
       return `<span class="on-book__view on-book__view--card" data-view="${index}">${lens}</span>`;

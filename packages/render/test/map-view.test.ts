@@ -21,17 +21,31 @@ interface Pass {
   readonly x: number;
   readonly y: number;
   readonly scale: number;
+  /** Whether the world's own layers drew in the pass, rather than the floor alone. */
+  readonly world: boolean;
 }
+
+/** The renderer's device px per logical px. */
+const RESOLUTION = 2;
 
 function harness(fail = false) {
   const world = new Container();
   const sprites = new Container();
   world.addChild(sprites);
   const passes: Pass[] = [];
+  const canvas = {};
   const app = {
+    canvas,
     renderer: {
+      resolution: RESOLUTION,
       render: (opts: { frame: Rectangle }) => {
-        passes.push({ frame: opts.frame, x: world.position.x, y: world.position.y, scale: world.scale.x });
+        passes.push({
+          frame: opts.frame,
+          x: world.position.x,
+          y: world.position.y,
+          scale: world.scale.x,
+          world: sprites.visible,
+        });
         if (fail) throw new Error('render died');
       },
     },
@@ -52,7 +66,7 @@ function harness(fail = false) {
     main: MAIN,
     spriteMargin: 0,
   };
-  return { world, passes, layer, culls, worldCull, scene };
+  return { world, passes, layer, culls, worldCull, scene, canvas };
 }
 
 const VIEW: MapViewFrame = {
@@ -83,15 +97,56 @@ describe('MapViewLayer', () => {
     expect(world.scale.x).toBe(1);
   });
 
-  it('draws nothing for a vanished entity or a clip scrolled out of sight', () => {
+  it('draws nothing for a clip scrolled out of sight', () => {
     const { passes, layer, culls, worldCull, scene } = harness();
-    layer.set([
-      { ...VIEW, target: { kind: 'entity', ref: 99 } },
-      { ...VIEW, clip: { x: 104, y: 90, w: 552, h: 0 } },
-    ]);
+    layer.set([{ ...VIEW, clip: { x: 104, y: 90, w: 552, h: 0 } }]);
     layer.draw(scene, worldCull);
     expect(passes).toEqual([]);
     expect(culls).toEqual([]);
+  });
+
+  it('floors the clip alone for a vanished entity, so the window never shows the main frame there', () => {
+    const { world, passes, layer, culls, worldCull, scene } = harness();
+    layer.set([{ ...VIEW, target: { kind: 'entity', ref: 99 } }]);
+    layer.draw(scene, worldCull);
+    expect(passes).toHaveLength(1);
+    expect(passes[0]).toMatchObject({ frame: { x: 104, y: 90, width: 552, height: 396 }, world: false });
+    expect(culls).toEqual([]);
+    expect(world.children.every((c) => c.visible)).toBe(true);
+    expect(world.children).toHaveLength(1);
+  });
+
+  it('copies the drawn clip into the still in device px, and leaves the still of a skipped view alone', () => {
+    const { layer, worldCull, scene, canvas } = harness();
+    const copies: unknown[][] = [];
+    const still = (): HTMLCanvasElement =>
+      ({
+        width: 0,
+        height: 0,
+        getContext: () => ({ drawImage: (...args: unknown[]) => copies.push(args) }),
+      }) as unknown as HTMLCanvasElement;
+    const drawn = still();
+    const skipped = still();
+    layer.set([
+      { ...VIEW, still: drawn },
+      { ...VIEW, clip: { x: 104, y: 90, w: 552, h: 0 }, still: skipped },
+    ]);
+    layer.draw(scene, worldCull);
+    expect([drawn.width, drawn.height]).toEqual([552 * RESOLUTION, 396 * RESOLUTION]);
+    expect(copies).toEqual([
+      [
+        canvas,
+        104 * RESOLUTION,
+        90 * RESOLUTION,
+        552 * RESOLUTION,
+        396 * RESOLUTION,
+        0,
+        0,
+        552 * RESOLUTION,
+        396 * RESOLUTION,
+      ],
+    ]);
+    expect([skipped.width, skipped.height]).toEqual([0, 0]);
   });
 
   it('restores the world when the render throws', () => {

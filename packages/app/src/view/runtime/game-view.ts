@@ -441,7 +441,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Assigned once every HUD part it hides has mounted.
     let toggleHud: (() => void) | null = null;
     let hudHidden = false;
-    let missionWindowOpen = false;
     // The DOM plane the redesigned HUD regions mount on; it scales with the Pixi parts.
     const hudDom = mountHudDomRoot(uiscale);
     cleanup.push(() => hudDom.dispose());
@@ -529,9 +528,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onMissionHold: (held) => {
         if (held) pauseHolds.hold(PAUSE_HOLDER_MISSION);
         else pauseHolds.release(PAUSE_HOLDER_MISSION);
-      },
-      onMissionOpen: (open) => {
-        missionWindowOpen = open;
       },
       pauseStopsClock: !sharedClock,
       onShowOnMap: (target) => {
@@ -935,7 +931,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       placementTribe: seatTribeOf(localPlayer),
       soundDriver,
       presentation,
-      portraitVisible: () => !missionWindowOpen,
       perf,
       netReadout,
       updateSpeedStatus: (delivered, requested) => systemMenu?.updateSpeedStatus(delivered, requested),

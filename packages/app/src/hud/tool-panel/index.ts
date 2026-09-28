@@ -195,7 +195,6 @@ export interface ToolPanelOptions {
   readonly missionAnswersVersion?: () => number;
   /** A script's chapter holds the game while the book shows it. */
   readonly onMissionHold?: (held: boolean) => void;
-  readonly onMissionOpen?: (open: boolean) => void;
   /** Whether a held pause stops the clock; false on a shared clock. */
   readonly pauseStopsClock?: boolean;
   /** A world view's "show on map" was pressed. */
@@ -451,7 +450,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           pictureUrl: hypertextPictureUrl,
           pauseStopsClock: opts.pauseStopsClock ?? false,
           onScriptHold: (held) => opts.onMissionHold?.(held),
-          ...(opts.onMissionOpen !== undefined ? { onOpenChange: opts.onMissionOpen } : {}),
           onShowOnMap: (target) => opts.onShowOnMap?.(target),
           onSlipOpen: () => openGoals?.(),
           bookKey: () => {

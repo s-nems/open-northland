@@ -78,7 +78,7 @@ export function seatListParam(params: URLSearchParams, name: 'ai' | 'absent'): n
   return seats;
 }
 
-/** `?intro=off` skips the mission sheet a fresh world opens on, for captures and probes. */
+/** `?intro=off` skips the mission book a fresh world opens on, for captures and probes. */
 export function introParam(params: URLSearchParams): boolean {
   return params.get('intro') !== 'off';
 }

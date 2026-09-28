@@ -129,7 +129,6 @@ export interface GameToolPanelDeps {
   readonly missionAnswersVersion?: () => number;
   /** A script's chapter holds the game while the book shows it. */
   readonly onMissionHold?: (held: boolean) => void;
-  readonly onMissionOpen?: (open: boolean) => void;
   /** Whether a held pause stops the clock; false on a shared clock. */
   readonly pauseStopsClock?: boolean;
   readonly onShowOnMap?: (target: MapViewTarget) => void;
@@ -290,7 +289,6 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
         ? { missionAnswersVersion: deps.missionAnswersVersion }
         : {}),
       ...(deps.onMissionHold !== undefined ? { onMissionHold: deps.onMissionHold } : {}),
-      ...(deps.onMissionOpen !== undefined ? { onMissionOpen: deps.onMissionOpen } : {}),
       ...(deps.pauseStopsClock !== undefined ? { pauseStopsClock: deps.pauseStopsClock } : {}),
       ...(deps.onShowOnMap !== undefined ? { onShowOnMap: deps.onShowOnMap } : {}),
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),

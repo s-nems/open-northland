@@ -1,7 +1,8 @@
-import type { HypertextBlock, MapBriefing } from '@open-northland/data';
+import type { MapBriefing } from '@open-northland/data';
 import type { MissionStatus } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
+  type BriefingText,
   briefingPage,
   type MissionBriefSource,
   mapBriefFallback,
@@ -76,8 +77,8 @@ describe('briefingPage and missionBrief', () => {
   };
 
   /** The first block of a page, when it is text: every fixture page here opens on a paragraph. */
-  const firstText = (page: readonly HypertextBlock[] | null): string | undefined => {
-    const first = page?.[0];
+  const firstText = (page: BriefingText | null): string | undefined => {
+    const first = page?.blocks[0];
     return first?.kind === 'text' ? first.text : undefined;
   };
 
@@ -90,15 +91,22 @@ describe('briefingPage and missionBrief', () => {
   it('prefers the app language and falls back through the authoring languages', () => {
     expect(firstText(briefingPage(briefing, 'eng', 500))).toBe('The vikings laid siege.');
     expect(firstText(briefingPage(briefing, 'ger', 500))).toBe('BURZA PIASKOWA');
+    // The page keeps the language it was found in, which sets its hyphenation.
+    expect(briefingPage(briefing, 'ger', 500)?.lang).toBe('pol');
     expect(briefingPage(briefing, 'pol', 7)).toBeNull();
     expect(briefingPage(null, 'pol', 500)).toBeNull();
   });
 
   it('carries the page as authored, else the map name over its menu description', () => {
-    expect(missionPage(source(null), 500)).toEqual({ title: '', blocks: briefing.texts.pol?.['500'] });
+    expect(missionPage(source(null), 500)).toEqual({
+      title: '',
+      blocks: briefing.texts.pol?.['500'],
+      lang: 'pol',
+    });
     expect(missionPage(source(null), null)).toEqual({
       title: 'Burza Piaskowa',
       blocks: [{ kind: 'text', style: 'body', text: 'Opis z menu.' }],
+      lang: null,
     });
     expect(missionPage(source(null), 7).title).toBe('Burza Piaskowa');
   });

@@ -50,8 +50,13 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
   let folded = false;
   let shownKey = '';
   /** What the slip was last updated with, so an unchanged frame reads nothing. */
-  let seen: { goals: readonly MissionGoal[]; version: number; bookOpen: boolean; folded: boolean } | null =
-    null;
+  let seen: {
+    goals: readonly MissionGoal[];
+    version: number;
+    bookOpen: boolean;
+    folded: boolean;
+    bookKey: string | null;
+  } | null = null;
 
   const markup = (goals: readonly MissionGoal[], marks: GoalMarks): string => {
     const open = openGoalCount(goals);
@@ -98,16 +103,19 @@ export function createGoalSlip(deps: GoalSlipDeps): GoalSlip {
 
   const update = (goals: readonly MissionGoal[], marks: GoalMarks, bookOpen: boolean): void => {
     lastMarks = marks;
+    // The key is rebound live from the settings, without a remount.
+    const bookKey = deps.bookKey();
     if (
       seen !== null &&
       seen.goals === goals &&
       seen.version === marks.version &&
       seen.bookOpen === bookOpen &&
-      seen.folded === folded
+      seen.folded === folded &&
+      seen.bookKey === bookKey
     ) {
       return;
     }
-    seen = { goals, version: marks.version, bookOpen, folded };
+    seen = { goals, version: marks.version, bookOpen, folded, bookKey };
     paint(goals, marks, bookOpen);
   };
 

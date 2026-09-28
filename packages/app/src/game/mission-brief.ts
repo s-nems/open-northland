@@ -26,12 +26,20 @@ export interface MissionPage {
   readonly title: string;
   /** The briefing page; a map without one reads its menu description, a scene its summary. */
   readonly blocks: readonly HypertextBlock[];
+  /** The map text language the page is written in; null for text in the app's language. */
+  readonly lang: string | null;
+}
+
+/** A briefing page and the map text language it was found in. */
+export interface BriefingText {
+  readonly blocks: readonly HypertextBlock[];
+  readonly lang: string | null;
 }
 
 /** Where a world's briefs come from: its pages, the fallback text, and whether a match runs. */
 export interface MissionBriefSource {
   /** The briefing page for a cutscene id, in the player's language; null when the map ships none. */
-  readonly page: (id: number) => readonly HypertextBlock[] | null;
+  readonly page: (id: number) => BriefingText | null;
   /** What the task tab shows with no page: the map's menu name and description. */
   readonly fallback: { readonly title: string; readonly description?: string };
   /** The skirmish goal text, listed whenever a match runs, since it is the rule that decides; null
@@ -61,11 +69,11 @@ export function briefingPage(
   briefing: MapBriefing | null,
   lang: string,
   id: number | null,
-): readonly HypertextBlock[] | null {
+): BriefingText | null {
   if (briefing === null || id === null) return null;
   for (const candidate of [lang, ...BRIEFING_LANG_FALLBACKS]) {
     const page = briefing.texts[candidate]?.[String(id)];
-    if (page !== undefined && page.length > 0) return page;
+    if (page !== undefined && page.length > 0) return { blocks: page, lang: candidate };
   }
   return null;
 }
@@ -123,12 +131,13 @@ export function missionGoalList(
 /** The page as authored, headline included; without one, the fallback name heads the fallback
  *  description. */
 export function missionPage(source: MissionBriefSource, page: number | null): MissionPage {
-  const blocks = page === null ? null : source.page(page);
-  if (blocks !== null) return { title: '', blocks };
+  const text = page === null ? null : source.page(page);
+  if (text !== null) return { title: '', ...text };
   const { title, description } = source.fallback;
   return {
     title,
     blocks: description === undefined ? [] : [{ kind: 'text', style: 'body', text: description }],
+    lang: null,
   };
 }
 

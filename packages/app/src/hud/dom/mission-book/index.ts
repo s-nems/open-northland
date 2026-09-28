@@ -31,7 +31,7 @@ export interface MissionWindowState extends ShownPagesState {
 
 /** What a world without a mission reader shows: the book's empty page and no goals. */
 export const NO_MISSION: MissionReader = {
-  page: () => ({ title: '', blocks: [] }),
+  page: () => ({ title: '', blocks: [], lang: null }),
   goals: () => [],
   missionName: '',
 };
@@ -53,7 +53,6 @@ export interface MissionBookDeps {
   readonly pauseStopsClock: boolean;
   /** A script's chapter holds the game while the book shows it; the player's own reading never does. */
   readonly onScriptHold: (held: boolean) => void;
-  readonly onOpenChange?: (open: boolean) => void;
   readonly onShowOnMap: (target: MapViewTarget) => void;
   /** The slip's "open the book" was pressed; the owner opens it as the beam entry does (one central
    *  window, a held placement dropped) through {@link MissionBook.openGoals}. */
@@ -125,7 +124,6 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     if (!book.isOpen()) return;
     book.close();
     release();
-    deps.onOpenChange?.(false);
   };
 
   const book = parts.book({
@@ -154,10 +152,8 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
   });
 
   const open = (reading: BookReading, arrival: boolean): void => {
-    const wasOpen = book.isOpen();
     marks.observe(deps.reader.goals());
     book.open({ reading, arrival, paused: arrival && deps.pauseStopsClock });
-    if (!wasOpen) deps.onOpenChange?.(true);
   };
 
   /** From the beam the book opens on the map's replayable chapter (reading); a map whose pages all came

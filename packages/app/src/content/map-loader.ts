@@ -57,7 +57,7 @@ export async function loadTerrainMap(
 
 /**
  * A decoded map's meta sidecar, or null when it is absent or malformed (the map then plays no music
- * and the mission window falls back to the roster and goals alone).
+ * and the mission book has no map name or menu description to fall back on).
  */
 export async function loadMapMeta(id: string, fetchImpl: typeof fetch = fetch): Promise<MapMeta | null> {
   const safe = safeMapId(id);

@@ -5,7 +5,6 @@ import {
   type DrawItem,
   type HudLayout,
   type HudModel,
-  type PortraitInsetFrame,
   SPRITE_CULL_MARGIN,
   type Viewport,
 } from '@open-northland/render';
@@ -44,9 +43,6 @@ import { placementCursor } from './placement-cursor.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
 import type { ScriptPresentation } from './script-presentation.js';
 import { createVisiblePlots } from './visible-plots.js';
-
-/** The portrait insets of a frame without one. */
-const NO_PORTRAITS: readonly PortraitInsetFrame[] = [];
 
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
@@ -95,7 +91,6 @@ export interface FrameLoopDeps {
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   /** The map script's display: its camera jitter for the frame, and its overlays after the draw. */
   readonly presentation: Pick<ScriptPresentation, 'jitter' | 'frame'> | null;
-  readonly portraitVisible: () => boolean;
   readonly perf: PerfOverlayHandle;
   /** A relayed session's connection figures for the overlay; null in a local session. */
   readonly netReadout: () => NetReadout | null;
@@ -290,7 +285,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     controls.tick(snap);
     // World cutouts centred on the selection and on the trade window's houses, rendered into their boxes
     // during `renderer.update`; the list is the same object while the boxes hold still.
-    renderer.setPortraitInsets(loop.portraitVisible() ? controls.portraits() : NO_PORTRAITS);
+    renderer.setPortraitInsets(controls.portraits());
     renderer.updateConstructionPlots(visiblePlots(fogView));
     geometryDebug.update(snap);
     // The gate tool tints the walls it can cut into; otherwise an assignment tints its candidates.

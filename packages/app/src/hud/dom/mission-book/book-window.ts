@@ -36,6 +36,14 @@ const LEAF_TURN_MS = 440;
 const STILL_REFRESH_MS = 1000;
 
 export type BookTab = 'brief' | 'goals' | 'history';
+/** The HTML language tags of the map text languages, which set the prose's hyphenation. */
+const PAGE_LANG_TAGS: Readonly<Partial<Record<string, string>>> = {
+  pol: 'pl',
+  eng: 'en',
+  ger: 'de',
+  rus: 'ru',
+};
+
 const TABS: readonly BookTab[] = ['brief', 'goals', 'history'];
 
 /** Where the reader stands in an open book, carried across a remount. */
@@ -181,12 +189,14 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     const list = deps.chapters();
     return list.length === 0 ? [null] : list;
   };
-  const chapterPage = (index: number): { readonly page: BookPage; readonly title: string | null } => {
+  const chapterPage = (
+    index: number,
+  ): { readonly page: BookPage; readonly title: string | null; readonly lang: string | null } => {
     const list = chapters();
     const shown = deps.page(list[Math.min(index, list.length - 1)] ?? null);
     const page = pageSegments(shown.blocks);
     // The fallback text is headed by the map's name; a page without its own title gets none.
-    return { page, title: shown.title !== '' ? shown.title : page.title };
+    return { page, title: shown.title !== '' ? shown.title : page.title, lang: shown.lang };
   };
 
   const iconBox = (icon: HypertextUserIcon): UserIconBox | null => userIconBox(icon, deps.missionHuman);
@@ -202,9 +212,12 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       ? FLOURISH
       : `<h3 class="on-book__title">${escapeHtml(displayTitle(title, locale))}</h3>${FLOURISH}`;
 
-  const readingSpread = (head: string, flow: string, foot: string): string => {
+  /** `lang` is the page's map text language; without one the prose reads in the app's. */
+  const readingSpread = (head: string, flow: string, foot: string, lang: string | null = null): string => {
+    const tag = lang === null ? undefined : PAGE_LANG_TAGS[lang];
+    const langAttr = tag === undefined ? '' : ` lang="${tag}"`;
     const col = (side: 'left' | 'right'): string =>
-      `<div class="on-book__window on-book__window--${side}" data-col="${side}"><div class="on-book__flow">${head}${flow}<p class="on-book__fin" aria-hidden="true">❦</p></div></div>`;
+      `<div class="on-book__window on-book__window--${side}" data-col="${side}"><div class="on-book__flow"${langAttr}>${head}${flow}<p class="on-book__fin" aria-hidden="true">❦</p></div></div>`;
     return `<div class="on-book__page on-book__page--left">${col('left')}<p class="on-book__folio" data-folio="left"></p>
         <button type="button" class="on-book__corner on-book__corner--prev" data-turn="-1">${curl(-1)}</button></div>
       <div class="on-book__page on-book__page--right">${col('right')}<div class="on-book__foot">${foot}</div>
@@ -214,7 +227,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   const briefMarkup = (): string => {
     const count = chapters().length;
     const index = Math.min(reading.chapter, count - 1);
-    const { page, title } = chapterPage(index);
+    const { page, title, lang } = chapterPage(index);
     const fresh =
       arrival && index === count - 1
         ? `<span class="on-book__new">${escapeHtml(copy.newChapter)}</span>`
@@ -234,7 +247,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
         : flowMarkup(page, flowContext());
     const foot = `<span class="on-book__foot-chapter">${escapeHtml(formatMessage(copy.chapterOf, { n: index + 1, count }))}</span>
       <span class="on-book__folio" data-folio="right"></span><span></span>`;
-    return readingSpread(head, flow, foot);
+    return readingSpread(head, flow, foot, lang);
   };
 
   const tableMarkup = (id: string): string => {
@@ -370,6 +383,8 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     stills.clear();
     painted.clear();
     handed = [];
+    // Slots are numbered anew, so a lens copied from the old content must not take a new view's still.
+    waiting = [];
     leaves.replaceChildren();
     const goals = deps.goals();
     goalsShown = goals;

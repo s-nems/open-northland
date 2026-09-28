@@ -7,9 +7,10 @@ import type {
 import { describe, expect, it } from 'vitest';
 import type { MissionGoal } from '../src/game/mission-brief.js';
 import { GoalMarks, goalLists, openGoalCount, slipRows } from '../src/hud/dom/mission-book/goal-marks.js';
-import { roman } from '../src/hud/dom/mission-book/markup.js';
+import { flowMarkup, roman } from '../src/hud/dom/mission-book/markup.js';
 import { displayTitle, openingWords, pageSegments } from '../src/hud/dom/mission-book/page-segments.js';
 import { columnCount, spreadCount, turnPage } from '../src/hud/dom/mission-book/paging.js';
+import type { UserIconBox } from '../src/hud/dom/mission-book/user-icons.js';
 
 /** The mission book's pure parts: how a page is read into segments, how its text is paged, and which
  *  goal changes it and the goal slip mark. */
@@ -207,5 +208,21 @@ describe('goal lists', () => {
     const { rows, more } = slipRows([goal('0', 'done'), goal('2', 'open'), goal('3', 'open')], marks, 1);
     expect(rows.map((r) => `${r.goal.key}:${r.mark}`)).toEqual(['0:done', '3:new']);
     expect(more).toBe(1);
+  });
+});
+
+describe('flowMarkup', () => {
+  const CARD_FILL = 0xc4c09f;
+  const card = (target: UserIconBox['target']): string =>
+    flowMarkup(pageSegments([VIEW]), {
+      pictureUrl: (file) => file,
+      iconBox: () => ({ w: 40, h: 60, target, focusX: 20, focusY: 50, soloFill: CARD_FILL }),
+      showOnMap: 'Show on map',
+      views: [],
+    });
+
+  it('leaves a figure card clear over its hole, where the renderer paints the fill, and fills a card without one', () => {
+    expect(card({ kind: 'entity', ref: 7 })).not.toContain('background:');
+    expect(card(null)).toContain('background:#c4c09f');
   });
 });

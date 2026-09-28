@@ -499,7 +499,7 @@ scrollbar, every control's tooltip is a few words saying what the press does or 
 
 ### Mission book
 
-Misja is an open book over the map (ticket 14), not a framed window: the wood rails, bronze line
+Misja is an open book over the map, not a framed window: the wood rails, bronze line
 and top knot of the window family (no corner ornaments) around a painted spread (`assets/ui/mission-book/spread.webp`:
 carved cover, bronze fittings, two vellum pages), and the tabs Zadanie, Cele and Kronika standing out
 of its fore-edge as wood tabs, parchment when selected. The page rectangles are measured on that

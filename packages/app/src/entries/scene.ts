@@ -217,7 +217,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   await boot.finish();
 }
 
-/** The mission sheet for a scene: its menu title and summary, the briefing pages its catalog entry
+/** The mission book for a scene: its menu title and summary, the briefing pages its catalog entry
  *  authors as the stand-in for a map's briefing files, and the skirmish goal when it runs a match. */
 function sceneBriefSource(scene: SceneDefinition): MissionBriefSource {
   const entry = sceneCopy(scene.id);
@@ -225,7 +225,7 @@ function sceneBriefSource(scene: SceneDefinition): MissionBriefSource {
   return {
     page: (id) => {
       const text = pages?.[String(id)];
-      return text === undefined ? null : [{ kind: 'text', style: 'body', text }];
+      return text === undefined ? null : { blocks: [{ kind: 'text', style: 'body', text }], lang: null };
     },
     fallback: {
       title: entry?.title ?? scene.id,

@@ -21,7 +21,7 @@ function mount(pauseStopsClock = true) {
   let open = false;
   let reading: BookReading = { tab: 'brief', chapter: 0, spread: 0, table: null, pick: 0 };
   const reader: MissionReader = {
-    page: () => ({ title: '', blocks: [] }),
+    page: () => ({ title: '', blocks: [], lang: null }),
     goals: () => goals,
     missionName: 'Test',
   };
