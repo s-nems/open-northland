@@ -4624,7 +4624,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 
 /* A turn lifts a copy of the old page and flips it over the gutter; its back is the new page on the
-   other side. Each face is a piece of the painted vellum. The flip takes 0.6 s (`LEAF_TURN_MS` in
+   other side. Each face is a piece of the painted vellum. The flip takes 0.42 s (`LEAF_TURN_MS` in
    book-window.ts waits it out). */
 .on-hud .on-book__leaves {
   position: absolute;
@@ -4636,7 +4636,7 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-book__leaf {
   position: absolute;
   transform-style: preserve-3d;
-  animation: on-book-flip 0.6s cubic-bezier(0.45, 0.05, 0.4, 1) both;
+  animation: on-book-flip 0.42s cubic-bezier(0.45, 0.05, 0.4, 1) both;
 }
 .on-hud .on-book__leaf--next {
   --leaf-to: -180deg;
@@ -4673,7 +4673,7 @@ body.on-drag-scroll-cursor-hidden * {
   position: absolute;
   inset: 0;
   background: #2a1d10;
-  animation: on-book-shade 0.6s ease-in both;
+  animation: on-book-shade 0.42s ease-in both;
 }
 .on-hud .on-book__side--back::after {
   animation-name: on-book-unshade;

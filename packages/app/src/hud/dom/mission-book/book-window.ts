@@ -31,7 +31,7 @@ const TAB_REACH = 44;
 const WHEEL_TURN_MS = 280;
 /** The leaf's flip (foundation.css, `on-book-flip`) and a frame's margin, after which the world views
  *  are cut in again. */
-const LEAF_TURN_MS = 620;
+const LEAF_TURN_MS = 440;
 /** How often the shown world views are copied into stills, which a turning leaf shows in their place. */
 const STILL_REFRESH_MS = 1000;
 
