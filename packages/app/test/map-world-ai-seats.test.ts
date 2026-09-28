@@ -79,3 +79,41 @@ it('gives a monster tribe’s computer seat the scripted handler alone', () => {
     expect(components.AI_MODULE_IDS.some((id) => components.aiModuleRuns(world, seat, id))).toBe(false);
   }
 });
+
+it('starts the assistant grants for the seats a person or the strategic AI plays, never a scripted camp', () => {
+  // A seat running no strategic module is the map's scripted camp.
+  const PERSON = 0;
+  const STRATEGIC = 1;
+  const SCRIPTED_CAMP = 2;
+  const DISABLED = 3;
+  const { sim } = buildMapWorld({
+    seed: 3,
+    map,
+    ir: null,
+    content: {},
+    aiSeats: [STRATEGIC, SCRIPTED_CAMP, DISABLED],
+    assistantSeats: [PERSON, STRATEGIC, SCRIPTED_CAMP, DISABLED],
+    fog: null,
+    progression: null,
+    needs: null,
+    script: {
+      ai: [
+        {
+          player: SCRIPTED_CAMP,
+          disabled: false,
+          strategicOff: [...components.AI_MODULE_IDS],
+          conditions: [],
+          tasks: [],
+        },
+        { player: DISABLED, disabled: true, strategicOff: [], conditions: [], tasks: [] },
+      ],
+    },
+  });
+  sim.step();
+  const granted = new Set<number>();
+  for (const e of sim.world.query(components.AssistantGrants)) {
+    const { player, goods } = sim.world.get(e, components.AssistantGrants);
+    if (goods.length > 0) granted.add(player);
+  }
+  expect([...granted].sort((a, b) => a - b)).toEqual([PERSON, STRATEGIC]);
+});

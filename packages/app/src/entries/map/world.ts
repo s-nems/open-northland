@@ -75,7 +75,7 @@ export interface MapWorldOptions extends SessionRules {
    *  its scripts drive; only these keep {@link LOBBY_AI_PEACE_TICKS}. */
   readonly lobbyAiSeats?: readonly number[];
   readonly playerRoster?: MapScript['players'];
-  /** Seats whose chest-window assistant grants start on. */
+  /** Seats whose chest-window assistant grants start on, less the AI seats running no strategic module. */
   readonly assistantSeats: readonly number[];
   /** Override the authored participant roster; an empty list runs no match. */
   readonly matchParticipants?: readonly number[];
@@ -188,12 +188,14 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
   });
   for (const players of options.sharedVision ?? []) sim.enqueueSetup({ kind: 'setSharedVision', players });
   const roster = options.playerRoster === undefined ? null : { players: options.playerRoster };
+  const scriptedOnly = new Set<number>();
   for (const seat of options.aiSeats) {
     const authored = options.script?.ai?.find((row) => row.player === seat);
     // `AI_Disable` stops both handlers yet leaves the seat a computer player; `HAI_Disable*` stops
     // the named strategic modules alone, as does a monster tribe.
     const strategicOff = authored?.disabled || TRIBES_WITHOUT_STRATEGIC_AI.has(playerTribe(roster, seat));
     const off = strategicOff ? components.AI_MODULE_IDS : (authored?.strategicOff ?? []);
+    if (components.AI_MODULE_IDS.every((id) => off.includes(id))) scriptedOnly.add(seat);
     sim.enqueueSetup({
       kind: 'setPlayerAi',
       player: seat,
@@ -203,7 +205,14 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
       ...(options.lobbyAiSeats?.includes(seat) ? { peaceUntil: LOBBY_AI_PEACE_TICKS } : {}),
     });
   }
-  grantAssistantDefaults(sim, sim.content, options.assistantSeats);
+  // Original behavior: the assistant's switches start off for every player and only a chest-window
+  // command turns them on, so no computer seat ever sends its people for gear. This build starts them
+  // on for the seats a person or the strategic AI plays; a scripted camp keeps them off.
+  grantAssistantDefaults(
+    sim,
+    sim.content,
+    options.assistantSeats.filter((seat) => !scriptedOnly.has(seat)),
+  );
   grantStartingPapers(sim, options.specialItems ?? []);
   const participants = options.matchParticipants ?? (scripted ? options.script?.participants : undefined);
   if (participants !== undefined) {
