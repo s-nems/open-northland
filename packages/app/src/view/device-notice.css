@@ -56,7 +56,7 @@
   font-size: 15px;
   text-decoration: underline;
   text-underline-offset: 3px;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
 }
 
 .device-notice__browser {

@@ -2,6 +2,8 @@ import { localeParam, setActiveLocale } from './i18n/index.js';
 import { routeFor } from './routes.js';
 import { dismissBootProgress } from './view/boot-progress.js';
 
+let cursorsInstalled = false;
+
 /** Leaves the running entry for the one `search` names. */
 export type LaunchEntry = (search: string) => void;
 
@@ -21,6 +23,11 @@ export async function runEntry(
   try {
     setActiveLocale(localeParam(params));
     const run = await routeFor(params).load();
+    if (!cursorsInstalled) {
+      const { installCursorTheme } = await import('./view/cursors/theme.js');
+      installCursorTheme();
+      cursorsInstalled = true;
+    }
     onLoaded();
     await run(gameCanvas(), params);
   } catch (err) {

@@ -69,7 +69,7 @@ const CLOSE_STYLE = [
   'height:18px',
   'line-height:16px',
   'text-align:center',
-  'cursor:pointer',
+  'cursor:var(--cursor-pointer, pointer)',
   'font-size:14px',
   `color:${TEXT_DIM}`,
   `background:${WOOD_DARK}`,
@@ -85,7 +85,7 @@ const LIST_STYLE = [
   'overflow-y:auto',
 ].join(';');
 const ROW_STYLE = [
-  'cursor:pointer',
+  'cursor:var(--cursor-pointer, pointer)',
   'text-align:left',
   `background:linear-gradient(${WOOD_LIGHT},${WOOD})`,
   `color:${TEXT}`,

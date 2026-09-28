@@ -126,7 +126,7 @@
 .main-menu__map-row {
   all: unset;
   box-sizing: border-box;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 20);

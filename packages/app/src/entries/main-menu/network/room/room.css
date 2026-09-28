@@ -126,14 +126,14 @@
   color: inherit;
   background: #24433b;
   font: inherit;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
 }
 .network-room__button--primary {
   background: #35644d;
 }
 .network-room :disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 .network-room :focus-visible {
   outline: 2px solid #aad6a9;

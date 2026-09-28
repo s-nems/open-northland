@@ -176,30 +176,6 @@ const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<
 
 const isSpotMode = (mode: PickMode): mode is SpotMode => SPOT_MODES.has(mode.kind);
 
-/** Modes whose target is a point or a unit rather than a lit building, so the cursor carries the prompt. */
-const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<
-  Exclude<PickMode['kind'], BuildingPickKind | 'signpost'>
->([
-  'destination',
-  'work-area',
-  'attack-move',
-  'attack-settler',
-  'attack-building',
-  'attack-animal',
-  'attack-vehicle',
-  'explore',
-  'vehicle',
-  'vehicle-destination',
-  'vehicle-dock',
-  'vehicle-attack-position',
-  'vehicle-attack-settler',
-  'vehicle-attack-building',
-  'vehicle-attack-vehicle',
-  'vehicle-carrier',
-  'vehicle-rider',
-  'vehicle-deck',
-]);
-
 export interface PickModeDeps {
   readonly snapshot: () => WorldSnapshot;
   /** Bumped when an attach rule's answer lands anew, which re-lights the picks under one snapshot. */
@@ -218,7 +194,7 @@ export interface PickModeDeps {
   /** The vehicle orders, read at click time like {@link orders}. */
   readonly vehicleOrders: () => VehicleOrderController;
   /** Named addition: the original signals an armed mode with prompt text, not a cursor. */
-  readonly setArmedCursor: (armed: boolean) => void;
+  readonly setArmedCursor: (mode: PickMode | null) => void;
   /** The sim's attach rule as its last answer, which the "Assign Vehicle" pick lights the settler's own
    *  vehicles by; absent, the pick lights nothing. */
   readonly canAttachToVehicle?: ((settler: number, vehicle: number) => boolean) | undefined;
@@ -302,7 +278,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   const setMode = (next: PickMode | null): void => {
     pickMode = next;
     pickVersion++;
-    deps.setArmedCursor(next !== null && CROSSHAIR_MODES.has(next.kind));
+    deps.setArmedCursor(next);
   };
   const cancel = (): void => setMode(null);
 

@@ -11,7 +11,7 @@ export const TOGGLE_STYLE = [
   'position:fixed',
   // Centres the chip over the rail below it (rail: right:8px, width PANEL_WIDTH_PX).
   `right:${8 + PANEL_WIDTH_PX / 2 - TOGGLE_CHIP_HALF_WIDTH_PX}px`,
-  'cursor:pointer',
+  'cursor:var(--cursor-pointer, pointer)',
   'padding:6px 14px',
   'background:rgba(20,16,12,0.92)',
   'color:#e8dcc8',
@@ -52,7 +52,7 @@ const SECTION_HEADER_STYLE = [
   'align-items:center',
   'gap:6px',
   'width:100%',
-  'cursor:pointer',
+  'cursor:var(--cursor-pointer, pointer)',
   'background:none',
   'border:none',
   'border-top:1px solid #5a4a36',

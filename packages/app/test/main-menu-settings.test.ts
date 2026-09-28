@@ -39,6 +39,8 @@ describe('parseStoredSettings', () => {
       enhancedWater: false,
       environmentMotion: false,
       fpsLimit: 30,
+      cursorTheme: 'amber',
+      cursorSize: 24,
       soundEnabled: false,
       soundVolume: 0.35,
       musicVolume: 0.6,

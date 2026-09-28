@@ -120,7 +120,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     for (const { button, player: p } of swatchButtons)
       button.style.outline = p === player ? '2px solid #e8dcc8' : '1px solid #000';
     status.textContent = labels.status(armed, player);
-    canvas.style.cursor = armed === null ? '' : 'crosshair';
+    canvas.style.cursor = armed === null ? '' : 'var(--cursor-crosshair, crosshair)';
   };
 
   const setArmed = (next: Armed | null): void => {
@@ -166,7 +166,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   for (const s of PLAYER_SWATCHES) {
     const b = el(
       'button',
-      `width:26px;height:22px;border-radius:4px;cursor:pointer;background:${s.css};border:1px solid #000`,
+      `width:26px;height:22px;border-radius:4px;cursor:var(--cursor-pointer, pointer);background:${s.css};border:1px solid #000`,
     );
     b.title = formatMessage(copy.playerTitle, { player: s.player, name: labels.player(s.player) });
     b.addEventListener('click', () => {

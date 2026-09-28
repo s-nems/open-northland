@@ -70,7 +70,7 @@ it.each([false, true])(
       const deps = {
         host,
         params: new URLSearchParams(),
-        canvas: new EventTarget(),
+        canvas: Object.assign(new EventTarget(), { getAttribute: () => null }),
         initialViewport: { width: 1000, height: 600 },
         cameraCtl: { dispose: acquire('camera') },
         driver: {},

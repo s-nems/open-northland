@@ -8,7 +8,7 @@
   align-items: center;
   gap: calc(var(--u) * 12);
   padding: calc(var(--u) * 12) calc(var(--u) * 22);
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   font:
     500 calc(var(--u) * 20) / 1 "Alegreya Sans",
     system-ui,

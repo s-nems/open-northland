@@ -15,6 +15,8 @@ import { type FrameStats, framePhaseEmitter, recordTickDiagnostics } from '../..
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
+import { setCanvasCursor } from '../cursors/element.js';
+import { placementPointer } from '../cursors/placement.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type {
@@ -275,6 +277,14 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     });
     renderer.updatePlacementOverlay(cursor.overlay);
     renderer.updatePlacementGhost(cursor.ghost, snap);
+    setCanvasCursor(
+      deps.canvas,
+      'placement',
+      placementPointer(
+        toolPanel.controller.placementType() !== null || toolPanel.controller.palisadeGfxIndex() !== null,
+        cursor.ghost,
+      ),
+    );
     // Before `renderer.update`, so the panel a rebuild bakes and the portrait inset painted over it both
     // show this frame's state.
     controls.tick(snap);
@@ -318,6 +328,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       flagged: controls.flaggedFlagIds(),
       workAreas: controls.workAreaRings(),
     });
+    controls.refreshCursor(snap);
     worldHover.update(snap, nowMs); // after controls, so the pointer-claim state is current
     presentation?.frame(snap, drawnCamera, nowMs);
     deps.onFrame?.(snap);

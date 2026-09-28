@@ -2,6 +2,7 @@ import { PIXEL_ART_SCALERS, type PixelArtScaler } from '@open-northland/render';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, UI_SCALE_FACTOR_STEP } from '../hud/ui-scale.js';
 import { messages } from '../i18n/index.js';
 import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './settings-controls.js';
+import { cursorSettingsRows } from './settings-cursor-rows.js';
 import type { DisplayMode } from './settings-display-mode.js';
 import type { SettingsPageStore } from './settings-page.js';
 import { type FpsLimit, type MenuSettings, RENDER_SCALE_MAX, RENDER_SCALE_MIN } from './settings-store.js';
@@ -133,6 +134,7 @@ export function graphicsSettingsRows(
     }),
     settingRow(text.renderScale, renderScale, { tip: deferredTip(text.renderScaleTip) }),
     settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
+    ...cursorSettingsRows(store, markSegment),
     settingsHeading(text.worldHeading),
     settingRow(text.pixelArtFilter, filter.root, { tip: liveTip(text.pixelArtFilterTip) }),
     ...enhancementToggles,

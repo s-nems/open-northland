@@ -5,6 +5,7 @@ import { pickableSeat } from '../../game/viewer-seat.js';
 import { isActionHotkey, isFieldKey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
+import { setCanvasCursor } from '../cursors/element.js';
 import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
 import { orderRecipients } from './action-ring/index.js';
 import { createAnsweredOrders } from './answered-orders.js';
@@ -22,9 +23,11 @@ import { jobMateArea, jobMatesIn } from './job-mates.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { createOverviewOrders } from './overview-orders.js';
+import { pickCursor } from './pick-cursor.js';
 import { createPickModeController, pickPressCue } from './pick-mode.js';
 import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
+import { createSelectionCursor } from './selection-cursor.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
 import { createVehicleOrderController } from './vehicle-orders.js';
@@ -163,14 +166,27 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     enqueue: opts.enqueue,
     orders: () => orders,
     vehicleOrders: () => vehicleOrders,
-    setArmedCursor: (armed) => {
-      canvas.style.cursor = armed ? 'crosshair' : '';
+    setArmedCursor: (mode) => {
+      setCanvasCursor(canvas, 'pick', pickCursor(mode));
     },
     canAttachToVehicle: opts.canAttachToVehicle,
     canAttachTradeHouse: opts.canAttachTradeHouse,
     askAttachTradeHouse: opts.askAttachTradeHouse,
     answered,
     ...(opts.attachPicksVersion !== undefined ? { answersVersion: opts.attachPicksVersion } : {}),
+  });
+
+  const selectionCursor = createSelectionCursor({
+    canvas,
+    camera: opts.camera,
+    viewerVersion: opts.viewer.version,
+    toWorld,
+    selectionAt: clickHits.selectionAt,
+    blocked: (x, y) =>
+      pickMode.isArmed() ||
+      opts.claimPointer?.(x, y) === true ||
+      chrome.claimsPointer(x, y) ||
+      chrome.actions().claimsPointer(x, y),
   });
 
   /** The hotkey obeys the ring's own gate for the settlers, so both ways of arming the order agree on
@@ -452,6 +468,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       opts.claimPointer?.(x, y) === true ||
       chrome.claimsPointer(x, y) ||
       chrome.actions().claimsPointer(x, y),
+    refreshCursor: selectionCursor.update,
     tick: (snapshot) => {
       // A dead or removed target clears the selection, and the panel with it.
       if (selectionGone(snapshot)) applySelection([], false);
@@ -466,6 +483,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       await Promise.all([chrome.setUiScale(scale), orders.setUiScale(scale)]);
     },
     dispose: () => {
+      selectionCursor.dispose();
       pickMode.cancel(); // an armed mode owns the canvas cursor, which teardown must not leave set
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);

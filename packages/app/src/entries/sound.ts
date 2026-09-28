@@ -184,7 +184,7 @@ const ROOT_STYLE = pageRootStyle(32, 14);
 const INNER_STYLE = pageInnerStyle(1040);
 
 const CLIP_BTN_STYLE = [
-  'cursor:pointer',
+  'cursor:var(--cursor-pointer, pointer)',
   'background:#3a2f22',
   'color:#e8dcc8',
   'border:1px solid #6b5840',

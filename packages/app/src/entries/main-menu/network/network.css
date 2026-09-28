@@ -114,7 +114,7 @@
 }
 .network-menu button:disabled {
   opacity: 0.45;
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 .network-menu input:focus-visible,
 .network-menu select:focus-visible {

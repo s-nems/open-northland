@@ -63,7 +63,7 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud button {
   font: inherit;
   color: inherit;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
 }
 .on-hud button:focus-visible,
 .on-hud [tabindex]:focus-visible {
@@ -343,7 +343,7 @@ body.on-drag-scroll-cursor-hidden * {
   padding: 9px 12px 6px;
 }
 .on-hud .on-toolrow .on-button:disabled {
-  cursor: not-allowed;
+  cursor: var(--cursor-not-allowed, not-allowed);
   color: #b7ab92;
   background: linear-gradient(#5a4631, #3e3022);
   border-color: #2e2418;
@@ -615,7 +615,7 @@ body.on-drag-scroll-cursor-hidden * {
   background: var(--wax-danger);
 }
 .on-hud .on-bcard--locked .on-bcard__pick {
-  cursor: not-allowed;
+  cursor: var(--cursor-not-allowed, not-allowed);
   background: #cdbf9d;
 }
 .on-hud .on-bcard--locked .on-bcard__title {
@@ -1450,7 +1450,7 @@ body.on-drag-scroll-cursor-hidden * {
   border: 1px solid var(--bronze-lo);
   background: #0004;
   box-shadow: inset 0 1px #fff2;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
 }
 .on-hud .on-picker__button:hover,
 .on-hud .on-picker__button:focus-visible,
@@ -1499,7 +1499,7 @@ body.on-drag-scroll-cursor-hidden * {
   color: var(--ink);
   font: 700 13px / 1 var(--font-body);
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   box-shadow: 0 1px 0 #fff6 inset;
 }
 .on-hud .on-seat:hover:not([aria-selected="true"]),
@@ -1842,7 +1842,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-action:disabled {
   opacity: 0.38;
-  cursor: not-allowed;
+  cursor: var(--cursor-not-allowed, not-allowed);
 }
 /* A beam action shows no focus ring: its pressed art and its label are the cues. The beam carries no
    key badge, since the digits belong to the control groups. */
@@ -2254,7 +2254,7 @@ body.on-drag-scroll-cursor-hidden * {
   font-weight: 600;
 }
 .on-hud .on-res-all:disabled {
-  cursor: not-allowed;
+  cursor: var(--cursor-not-allowed, not-allowed);
   color: #b7ab92;
   background: linear-gradient(#5a4631, #3e3022);
 }
@@ -2357,7 +2357,7 @@ body.on-drag-scroll-cursor-hidden * {
   background: var(--deep);
   color: var(--muted);
   box-shadow: inset 0 0 0 1px #c9a26222;
-  cursor: help;
+  cursor: var(--cursor-help, help);
 }
 .on-hud .on-choice-empty {
   margin: 14px 0;
@@ -2527,7 +2527,7 @@ body.on-drag-scroll-cursor-hidden * {
   font: inherit;
   letter-spacing: inherit;
   text-shadow: inherit;
-  cursor: text;
+  cursor: var(--cursor-text, text);
 }
 .on-hud .on-rename .on-glyph {
   width: 12px;
@@ -2670,7 +2670,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-round[aria-disabled="true"] {
   opacity: 0.38;
-  cursor: not-allowed;
+  cursor: var(--cursor-not-allowed, not-allowed);
   filter: saturate(0.5);
 }
 /* A blank slot collapses, so a row's value sits the same distance from whatever chips it has. */
@@ -2824,7 +2824,7 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-socket--fixed {
   border-color: var(--wood-lo);
   box-shadow: inset 0 0 0 1px #c9a26218;
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 .on-hud .on-socket__lock {
   position: absolute;
@@ -2866,7 +2866,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-socket[aria-disabled="true"] {
   opacity: 0.4;
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 .on-hud button.on-socket[aria-disabled="true"]:hover {
   border-color: var(--wood-lo);
@@ -3379,12 +3379,12 @@ body.on-drag-scroll-cursor-hidden * {
 .on-hud .on-order[aria-disabled="true"] {
   opacity: 0.38;
   filter: saturate(0.4);
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 .on-hud .on-counter__step[aria-disabled="true"],
 .on-hud .on-more[aria-disabled="true"] {
   opacity: 0.4;
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 .on-hud .on-order--break {
   grid-column-start: 1;
@@ -4044,7 +4044,7 @@ body.on-drag-scroll-cursor-hidden * {
 }
 .on-hud .on-transfer__direction > button[aria-disabled="true"] {
   opacity: 0.38;
-  cursor: not-allowed;
+  cursor: var(--cursor-not-allowed, not-allowed);
 }
 .on-hud .on-transfer--balanced .on-trade-limit {
   visibility: hidden;
@@ -4062,7 +4062,7 @@ body.on-drag-scroll-cursor-hidden * {
   border: 0;
   background: none;
   pointer-events: auto;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
 }
 .on-ring__button[hidden] {
   display: none;

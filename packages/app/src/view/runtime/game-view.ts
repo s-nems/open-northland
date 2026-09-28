@@ -68,6 +68,7 @@ import {
   cameraCenteredOnWorld,
   clientToScreen as clientToScreenPx,
 } from '../camera/index.js';
+import { clearCanvasCursors } from '../cursors/element.js';
 import {
   applyGameSpeed,
   buildingLabelsFromContent,
@@ -251,6 +252,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let loop: RafLoop | null = null;
   let systemMenu: ReturnType<typeof createSystemMenu> | null = null;
   const cleanup: (() => void)[] = [];
+  cleanup.push(() => clearCanvasCursors(canvas));
   let verdict: MatchResultOverlay | null = null;
   let destroyed = false;
   const lifetime = new AbortController();

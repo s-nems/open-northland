@@ -19,7 +19,7 @@ export const PANEL_STYLE = [
 
 /** The small parchment button look (playback / navigation buttons). */
 export const BUTTON_STYLE = [
-  'cursor:pointer',
+  'cursor:var(--cursor-pointer, pointer)',
   'background:#3a2f22',
   'color:#e8dcc8',
   'border:1px solid #6b5840',

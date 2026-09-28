@@ -53,7 +53,7 @@ const GALLERY_CSS = `
 }
 .vig-tile{
   display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
-  background:#2c2015;border:1px solid #4a3a22;border-radius:8px;padding:10px 6px 8px;cursor:pointer;
+  background:#2c2015;border:1px solid #4a3a22;border-radius:8px;padding:10px 6px 8px;cursor:var(--cursor-pointer, pointer);
 }
 .vig-tile:hover{border-color:#8a6f3f}
 .vig-tile.sel{border-color:#d8fb55;box-shadow:0 0 0 1px #d8fb55}

@@ -112,7 +112,7 @@ export function slotList(
     const rows = slots.map((slot) => {
       const row = el(
         'button',
-        `${LIST_GRID_STYLE};padding:5px 8px;background:${ROW_BACKGROUND};color:inherit;font:inherit;border:none;border-radius:4px;cursor:pointer;text-align:left`,
+        `${LIST_GRID_STYLE};padding:5px 8px;background:${ROW_BACKGROUND};color:inherit;font:inherit;border:none;border-radius:4px;cursor:var(--cursor-pointer, pointer);text-align:left`,
       );
       row.type = 'button';
       const cell = (text: string): HTMLElement => el('span', CELL_OVERFLOW_STYLE, text);

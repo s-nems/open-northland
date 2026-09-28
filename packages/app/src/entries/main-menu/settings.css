@@ -1,6 +1,43 @@
 /* Settings: category nav on the left, rows panel on the right, autosave note and
    restore in the footer. Scaffold, header, seg/toggle/ghost/badge live in menu.css. */
 
+.main-menu__settings-row.main-menu__settings-row--cursor-theme {
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--u) * 16);
+}
+
+.main-menu__seg.main-menu__cursor-themes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: calc(var(--u) * 10);
+  border: 0;
+  border-radius: 0;
+}
+
+.main-menu__cursor-themes .main-menu__seg-btn {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 64px;
+  padding: 6px;
+  gap: 4px;
+  border: 2px solid rgb(var(--accent-rgb) / 0.3);
+  border-radius: 6px;
+  text-align: center;
+  white-space: normal;
+}
+
+.main-menu__cursor-themes img,
+.main-menu__cursor-themes svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
 .main-menu__settings-page {
   flex: 1;
   min-height: 0;
@@ -25,7 +62,7 @@
 
 .main-menu__settings-tab {
   all: unset;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 14);
@@ -55,7 +92,7 @@
 }
 
 .main-menu__settings-tab.is-coming-soon {
-  cursor: default;
+  cursor: var(--cursor-default, default);
   color: rgba(219, 232, 227, 0.35);
 }
 
@@ -125,7 +162,7 @@
    waits for the next keydown, `is-unassigned` lost its key to a takeover. */
 .main-menu__settings-key {
   all: unset;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   min-width: calc(var(--u) * 120);
   text-align: center;
   font:
@@ -164,7 +201,7 @@ button.main-menu__settings-key:focus-visible {
 }
 
 .main-menu__settings-key.is-fixed {
-  cursor: default;
+  cursor: var(--cursor-default, default);
   color: var(--text-muted);
 }
 
@@ -196,7 +233,7 @@ button.main-menu__settings-key:focus-visible {
   border-radius: 50%;
   background: var(--accent-bright);
   box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.6);
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
 }
 
 .main-menu__settings-range::-moz-range-thumb {
@@ -206,15 +243,15 @@ button.main-menu__settings-key:focus-visible {
   border-radius: 50%;
   background: var(--accent-bright);
   box-shadow: 0 0 14px rgb(var(--accent-rgb) / 0.6);
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
 }
 
 .main-menu__settings-range:disabled::-webkit-slider-thumb {
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 
 .main-menu__settings-range:disabled::-moz-range-thumb {
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 
 .main-menu__settings-range:focus-visible {

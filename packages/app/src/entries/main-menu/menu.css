@@ -235,7 +235,7 @@
 /* The menu holds the frame while the entry it launched downloads, so it has to look occupied rather
    than idle: the screens stop taking input until the game replaces them. */
 .main-menu.is-launching {
-  cursor: progress;
+  cursor: var(--cursor-progress, progress);
 }
 
 .main-menu.is-launching .main-menu__content {
@@ -332,7 +332,7 @@
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 14);
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   font:
     500 calc(var(--u) * 30) / 1 "Alegreya Sans",
     system-ui,
@@ -388,7 +388,7 @@
 
 .main-menu__back {
   all: unset;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   font:
     500 calc(var(--u) * 24) / 1 "Alegreya Sans",
     system-ui,
@@ -418,7 +418,7 @@
    destination. */
 .main-menu__ghost {
   background: none;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   padding: calc(var(--u) * 16) calc(var(--u) * 36);
   font:
     500 calc(var(--u) * 24) / 1 "Alegreya Sans",
@@ -460,7 +460,7 @@
 
 .main-menu__seg-btn {
   all: unset;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   padding: calc(var(--u) * 12) calc(var(--u) * 22);
   font:
     500 calc(var(--u) * 21) / 1 "Alegreya Sans",
@@ -490,7 +490,7 @@
 }
 
 .main-menu__seg-btn.is-coming-soon {
-  cursor: default;
+  cursor: var(--cursor-default, default);
   color: rgba(219, 232, 227, 0.25);
 }
 
@@ -543,7 +543,7 @@
 .main-menu__toggle {
   all: unset;
   box-sizing: border-box;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   position: relative;
   flex: none;
   width: calc(var(--u) * 66);
@@ -579,12 +579,12 @@
 }
 
 .main-menu__toggle:disabled {
-  cursor: default;
+  cursor: var(--cursor-default, default);
 }
 
 .main-menu__primary {
   all: unset;
-  cursor: pointer;
+  cursor: var(--cursor-pointer, pointer);
   flex: none;
   padding: calc(var(--u) * 20) calc(var(--u) * 60);
   font:
@@ -608,7 +608,7 @@
 }
 
 .main-menu__primary:disabled {
-  cursor: default;
+  cursor: var(--cursor-default, default);
   opacity: 0.4;
   box-shadow: none;
 }

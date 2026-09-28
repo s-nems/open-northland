@@ -8,6 +8,14 @@ import {
 } from '../hud/keybindings.js';
 import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../hud/ui-scale.js';
 import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
+import {
+  type CursorSize,
+  type CursorTheme,
+  DEFAULT_CURSOR_SIZE,
+  DEFAULT_CURSOR_THEME,
+  parseCursorSize,
+  parseCursorTheme,
+} from './cursors/model.js';
 
 /**
  * The player settings persisted in localStorage. Settings surfaces edit them; a launching game reads
@@ -43,6 +51,8 @@ export interface MenuSettings {
   readonly enhancedWater: boolean;
   readonly environmentMotion: boolean;
   readonly fpsLimit: FpsLimit;
+  readonly cursorTheme: CursorTheme;
+  readonly cursorSize: CursorSize;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
   /** Game-sounds volume, 0..1 (effects, jingles, voices - the original `fx_volume`). */
@@ -77,6 +87,8 @@ export function defaultSettings(): MenuSettings {
     enhancedWater: true,
     environmentMotion: true,
     fpsLimit: null,
+    cursorTheme: DEFAULT_CURSOR_THEME,
+    cursorSize: DEFAULT_CURSOR_SIZE,
     soundEnabled: true,
     soundVolume: DEFAULT_SFX_VOLUME,
     musicVolume: DEFAULT_MUSIC_VOLUME,
@@ -93,6 +105,7 @@ export function defaultSettings(): MenuSettings {
 }
 
 const STORAGE_KEY = 'open-northland.settings';
+const volatileSettings = new WeakMap<object, MenuSettings>();
 
 function clampFactor(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_UI_SCALE_FACTOR;
@@ -145,6 +158,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     environmentMotion:
       typeof record.environmentMotion === 'boolean' ? record.environmentMotion : defaults.environmentMotion,
     fpsLimit: parseFpsLimit(record.fpsLimit),
+    cursorTheme: parseCursorTheme(record.cursorTheme),
+    cursorSize: parseCursorSize(record.cursorSize),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
     musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),
@@ -170,6 +185,8 @@ function optionalText(value: unknown): string | null {
 /** The persisted settings, or defaults when storage is empty or denied (private mode). */
 export function readStoredSettings(): MenuSettings {
   try {
+    const pending = volatileSettings.get(window);
+    if (pending !== undefined) return pending;
     return parseStoredSettings(window.localStorage.getItem(STORAGE_KEY));
   } catch {
     return defaultSettings();
@@ -195,13 +212,26 @@ function storedShape(settings: MenuSettings): StoredSettings {
   };
 }
 
-/** Persist the settings to localStorage. */
+const storedListeners = new Set<(settings: MenuSettings) => void>();
+
+/** Document-wide preferences also apply when private mode denies persistence. */
+export function onStoredSettingsChange(listener: (settings: MenuSettings) => void): () => void {
+  storedListeners.add(listener);
+  return () => {
+    storedListeners.delete(listener);
+  };
+}
+
+/** Persist the settings and notify document-wide consumers. */
 export function persistSettings(settings: MenuSettings): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storedShape(settings)));
+    volatileSettings.delete(window);
   } catch {
-    // Storage denied (private mode): the caller's in-memory state still applies.
+    // Retain sequential patches and menu/game handovers when storage is unavailable or full.
+    if (typeof window !== 'undefined') volatileSettings.set(window, settings);
   }
+  for (const listener of storedListeners) listener(settings);
 }
 
 /** Merge one live surface's changes without overwriting settings it does not own. */

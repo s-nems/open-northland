@@ -22,7 +22,7 @@ const BUTTON_STYLE = [
   'font:inherit',
   'border:1px solid rgba(138,116,74,0.7)',
   'border-radius:5px',
-  'cursor:pointer',
+  'cursor:var(--cursor-pointer, pointer)',
 ].join(';');
 
 export interface ConfirmDialogCopy {

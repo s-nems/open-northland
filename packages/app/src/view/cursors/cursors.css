@@ -1,0 +1,47 @@
+:root {
+  --cursor-default: var(--cursor-normal, default);
+  --cursor-select: var(--cursor-selection, default);
+}
+
+body {
+  cursor: var(--cursor-default, default);
+}
+
+input:not([type]),
+input[type="text"],
+input[type="search"],
+input[type="password"],
+input[type="number"],
+textarea,
+[contenteditable="true"] {
+  cursor: var(--cursor-text, text);
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: var(--cursor-not-allowed, not-allowed);
+}
+
+:root[data-cursor-button="primary"] {
+  --cursor-default: var(--cursor-pressed, default);
+  --cursor-select: var(--cursor-pressed, default);
+}
+
+:root[data-cursor-button="secondary"] {
+  --cursor-default: var(--cursor-command, default);
+  --cursor-select: var(--cursor-command, default);
+}
+
+canvas[data-cursor-hover] {
+  cursor: var(--world-cursor-hover);
+}
+
+canvas[data-cursor-pick] {
+  cursor: var(--world-cursor-pick);
+}
+
+canvas[data-cursor-placement] {
+  cursor: var(--world-cursor-placement);
+}

@@ -163,6 +163,8 @@ export interface UnitControls {
   /** The ship whose dock pick is armed, whose mooring spots the frame loop washes onto the map. */
   readonly dockPickVehicle: () => number | null;
   readonly tick: (snapshot: WorldSnapshot) => void;
+  /** Refresh hit feedback after the renderer has rebuilt its screen-space targets. */
+  readonly refreshCursor: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
   /** Hide the details panel with the rest of the HUD and close the ring; a ring opened while hidden
    *  shows. The selection itself stays. */

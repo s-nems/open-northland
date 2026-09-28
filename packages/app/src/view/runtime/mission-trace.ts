@@ -22,7 +22,7 @@ export function mountMissionTrace(host: Pick<SessionHost, 'missionStatus'>): {
   const copy = messages().missionTrace;
   const panel = el('details', `${PANEL_STYLE};top:60px;left:12px;right:auto;width:300px`);
   panel.dataset.testid = 'mission-trace';
-  const summary = el('summary', 'cursor:pointer', copy.title);
+  const summary = el('summary', 'cursor:var(--cursor-pointer, pointer)', copy.title);
   const body = el('div', 'max-height:35vh;overflow:auto;margin-top:8px');
   panel.append(summary, body);
   document.body.append(panel);

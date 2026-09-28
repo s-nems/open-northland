@@ -79,6 +79,37 @@ const reviewRequiredExtensions = new Set([
   '.woff2',
 ]);
 
+// Shared cursor UI, generated without original-game input; only these reviewed deliveries are allowed.
+const cursorStates = [
+  'normal',
+  'select',
+  'pressed',
+  'command',
+  'pointer',
+  'grab',
+  'grabbing',
+  'not-allowed',
+  'move',
+  'attack',
+  'build',
+  'work',
+  'crosshair',
+  'text',
+  'help',
+  'progress',
+];
+for (const theme of ['iron', 'bone', 'amber', 'steel']) {
+  for (const state of cursorStates) {
+    for (const size of [24, 28, 32]) {
+      for (const density of ['', '@2x']) {
+        reviewedBinaryAssets.add(
+          `packages/app/src/assets/ui/cursors/${theme}/${state}-${size}${density}.png`,
+        );
+      }
+    }
+  }
+}
+
 // The largest art build input is a 14 MiB character clip; a bigger blob is a human-only source
 // and belongs in Git LFS, where its index entry is a pointer of a few hundred bytes.
 const MAX_PLAIN_BLOB_BYTES = 24 * 1024 * 1024;
