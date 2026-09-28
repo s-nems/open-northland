@@ -61,8 +61,6 @@ export class TextureCache {
   /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
    *  frame→texture cache above stays a clean 1:1. */
   private readonly cropCache = new Map<AtlasFrame, Map<number, Texture>>();
-  /** Top-kept views of a frame, keyed by how many bottom pixels are hidden. */
-  private readonly bottomCropCache = new Map<AtlasFrame, Map<number, Texture>>();
   /** Reveal bakes per frame, keyed by quantised threshold. */
   private readonly revealCache = new Map<AtlasFrame, Map<number, RevealBake>>();
 
@@ -223,30 +221,6 @@ export class TextureCache {
   }
 
   /**
-   * The mirror of {@link cropped}, for the building-collapse sink (the original
-   * removes rows bottom-up). Same caching and bounds discipline.
-   */
-  croppedBottom(source: TextureSource, frame: AtlasFrame, hiddenBottom: number): Texture {
-    const bottom = clamp(Math.round(hiddenBottom), 0, frame.height);
-    let byBottom = this.bottomCropCache.get(frame);
-    if (byBottom === undefined) {
-      byBottom = new Map();
-      this.bottomCropCache.set(frame, byBottom);
-    }
-    let tex = byBottom.get(bottom);
-    if (tex === undefined) {
-      tex = new Texture({
-        source,
-        frame: new Rectangle(frame.x, frame.y, frame.width, frame.height - bottom),
-      });
-      markMagnifiedTexture(tex);
-      byBottom.set(bottom, tex);
-      this.pages.add(source);
-    }
-    return tex;
-  }
-
-  /**
    * The frame with only its pixels whose baked build-time threshold is `<= threshold`, baked onto a
    * canvas at a {@link REVEAL_QUANT}-quantised threshold. `frameStamp` is the pool's frame counter, which
    * the eviction guard reads. `null` (pixels not CPU-readable) sends the caller to the crop fallback.
@@ -271,18 +245,9 @@ export class TextureCache {
       cached.texture.source.scaleMode = source.scaleMode;
       return cached.texture;
     }
-    const canvas = bakeRevealCanvas(source, frame, times, q);
-    if (canvas === null) return null;
-    const baked = new CanvasSource({
-      resource: canvas,
-      scaleMode: source.scaleMode,
-      autoGenerateMipmaps: source.autoGenerateMipmaps,
-    });
-    const bake: RevealBake = {
-      texture: new Texture({ source: baked }),
-      stamp: frameStamp,
-    };
-    markMagnifiedTexture(bake.texture, source);
+    const texture = this.bakeReveal(source, frame, times, q);
+    if (texture === null) return null;
+    const bake: RevealBake = { texture, stamp: frameStamp };
     byThreshold.set(q, bake);
     if (byThreshold.size > REVEAL_BAKES_PER_ATLAS_FRAME) {
       for (const [key, old] of byThreshold) {
@@ -293,6 +258,29 @@ export class TextureCache {
       }
     }
     return bake.texture;
+  }
+
+  /**
+   * An uncached {@link revealed} bake at the exact `threshold`, owned by the caller, who destroys it with
+   * `destroy(true)`: a transient that must outlive the cache's per-frame eviction. `null` when the pixels
+   * are not CPU-readable.
+   */
+  bakeReveal(
+    source: TextureSource,
+    frame: AtlasFrame,
+    times: BuildTimeSheet,
+    threshold: number,
+  ): Texture | null {
+    const canvas = bakeRevealCanvas(source, frame, times, threshold);
+    if (canvas === null) return null;
+    const baked = new CanvasSource({
+      resource: canvas,
+      scaleMode: source.scaleMode,
+      autoGenerateMipmaps: source.autoGenerateMipmaps,
+    });
+    const texture = new Texture({ source: baked });
+    markMagnifiedTexture(texture, source);
+    return texture;
   }
 
   /** Destroy every cached texture. Dropping the map entry is not enough: a Pixi `Texture` registers a
@@ -317,10 +305,6 @@ export class TextureCache {
       for (const tex of byTop.values()) tex.destroy();
     }
     this.cropCache.clear();
-    for (const byBottom of this.bottomCropCache.values()) {
-      for (const tex of byBottom.values()) tex.destroy();
-    }
-    this.bottomCropCache.clear();
     this.pages.clear();
     for (const byThreshold of this.revealCache.values()) {
       for (const bake of byThreshold.values()) bake.texture.destroy(true);

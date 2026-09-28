@@ -1,6 +1,6 @@
 import type { SimEvent } from '@open-northland/sim';
-import { Container, type Sprite, type TextureSource } from 'pixi.js';
-import { describe, expect, it } from 'vitest';
+import { Container, type Sprite, Texture, TextureSource } from 'pixi.js';
+import { describe, expect, it, vi } from 'vitest';
 import {
   COLLAPSE_LIFETIME_TICKS,
   COLLAPSE_TICKS,
@@ -28,26 +28,49 @@ const VIEW_ALL: Viewport = { minX: -1e6, maxX: 1e6, minY: -1e6, maxY: 1e6 };
 const source = {} as TextureSource;
 
 const BODY_BOB = 70;
+const STAGE_BOB = 80;
 const BODY_H = 10;
+const bodyFrame = (x: number) => ({ x, y: 0, width: 10, height: BODY_H, offsetX: -5, offsetY: -BODY_H });
 const atlas: SpriteAtlas = {
   width: 100,
   height: BODY_H,
-  frames: new Map([[BODY_BOB, { x: 0, y: 0, width: 10, height: BODY_H, offsetX: -5, offsetY: -BODY_H }]]),
+  frames: new Map([
+    [BODY_BOB, bodyFrame(0)],
+    [STAGE_BOB, bodyFrame(20)],
+  ]),
 };
+const HOUSE = 13;
+/** Rises by the bottom-up crop: its family has no time sheet. */
+const CROPPED_SITE = 14;
+/** Rises by the per-pixel reveal of its family's time sheet. */
+const TIMED_SITE = 15;
+const stage = (layer: string) => [{ layer, bob: STAGE_BOB, fromPct: 0, toPct: 100 }];
 const sheet: SpriteSheet = {
   source,
   atlas: { width: 0, height: 0, frames: new Map() },
   bindings: {
     settler: 1,
     resource: 1,
-    building: { byType: { 13: { layer: 'houses', bob: BODY_BOB } }, default: BODY_BOB },
+    building: {
+      byType: { [HOUSE]: { layer: 'houses', bob: BODY_BOB } },
+      default: BODY_BOB,
+      constructionByType: { [CROPPED_SITE]: stage('houses'), [TIMED_SITE]: stage('timed') },
+    },
   },
-  families: { houses: { source, atlas } },
+  families: {
+    houses: { source, atlas },
+    timed: { source, atlas, times: { width: 100, height: BODY_H, values: new Uint8Array(100 * BODY_H) } },
+  },
 };
 
 const SIM_ONE = 65536; // the sim fixed-point ONE (buildingDestroyed.built is a 0..ONE fraction)
-const razed = (entity: number, buildingType = 13, at: { hx: number; hy: number } = { hx: 4, hy: 6 }) =>
-  ({ kind: 'buildingDestroyed', entity, player: 2, buildingType, built: SIM_ONE, at }) as SimEvent;
+const razed = (
+  entity: number,
+  buildingType = HOUSE,
+  at: { hx: number; hy: number } = { hx: 4, hy: 6 },
+  built = SIM_ONE,
+) => ({ kind: 'buildingDestroyed', entity, player: 2, buildingType, built, at }) as SimEvent;
+const AT = { hx: 4, hy: 6 };
 
 describe('foldBuildingCollapses', () => {
   it('spawns a collapse per positioned buildingDestroyed and expires it once the dust settles', () => {
@@ -173,6 +196,57 @@ describe('CollapseLayer', () => {
     layer.ingest([], COLLAPSE_LIFETIME_TICKS);
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);
     expect(spriteLayer.children).toHaveLength(0);
+  });
+
+  it('sinks only the rows a cropped site had risen, not the whole stage frame', () => {
+    const spriteLayer = new Container();
+    const layer = new CollapseLayer(spriteLayer, new TextureCache(), sheet);
+    layer.ingest([razed(9, CROPPED_SITE, AT, (SIM_ONE * 3) / 10)], 0);
+
+    layer.draw(FLAT, VIEW_ALL, 0);
+    const spr = (spriteLayer.children[0] as Container).children[0] as Sprite;
+    const risenRows = (BODY_H * 3) / 10;
+    expect(spr.texture.frame.y).toBe(BODY_H - risenRows); // the bottom 30% the live site showed
+    expect(spr.texture.frame.height).toBe(risenRows);
+    expect(spr.position.y).toBe(-risenRows);
+
+    // The sink eats the short stub from below at the full body's rate, so it is gone early.
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / BODY_H);
+    expect(spr.texture.frame.height).toBe(risenRows - 1);
+    expect(spr.position.y).toBe(-risenRows + 1);
+    layer.draw(FLAT, VIEW_ALL, (COLLAPSE_TICKS * risenRows) / BODY_H);
+    expect(spr.visible).toBe(false);
+  });
+
+  it('draws nothing for a site that had revealed nothing yet', () => {
+    const spriteLayer = new Container();
+    const layer = new CollapseLayer(spriteLayer, new TextureCache(), sheet);
+    layer.ingest([razed(9, CROPPED_SITE, AT, 0)], 0);
+    layer.draw(FLAT, VIEW_ALL, 0);
+    expect(spriteLayer.children).toHaveLength(0);
+  });
+
+  it('sinks a timed site as its per-pixel reveal and destroys that bake with the collapse', () => {
+    const spriteLayer = new Container();
+    const textures = new TextureCache();
+    const bake = new Texture({ source: new TextureSource({ width: 10, height: BODY_H }) });
+    const bakeReveal = vi.spyOn(textures, 'bakeReveal').mockReturnValue(bake);
+    const layer = new CollapseLayer(spriteLayer, textures, sheet);
+    layer.ingest([razed(9, TIMED_SITE, AT, SIM_ONE / 4)], 0);
+
+    layer.draw(FLAT, VIEW_ALL, 0);
+    expect(bakeReveal).toHaveBeenCalledOnce();
+    expect(bakeReveal.mock.calls[0]?.[3]).toBeCloseTo(255 / 4, 0); // a quarter into its [0,100] window
+    const spr = (spriteLayer.children[0] as Container).children[0] as Sprite;
+    expect(spr.texture.source).toBe(bake.source);
+    expect(spr.texture.frame.height).toBe(BODY_H); // the reveal hides pixels, not rows
+
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / 2);
+    expect(spr.texture.frame.height).toBe(BODY_H / 2);
+
+    layer.ingest([], COLLAPSE_LIFETIME_TICKS);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);
+    expect(bake.destroyed).toBe(true);
   });
 
   it('draws nothing without a sheet (headless content-less checkout) and never throws', () => {
