@@ -262,6 +262,23 @@ describe('line tool', () => {
     expect(first.has(5, 2)).toBe(true);
   });
 
+  it('lights the nodes a line can start on, open or built, until the answers change', () => {
+    let answers = 'a';
+    const line = createLineTool({
+      tool: 'test',
+      maxEdges: MAX_EDGES,
+      canPlace: (node) => node.col < 5,
+      built: (node) => node.col === 9,
+      answersKey: () => answers,
+      commit: () => undefined,
+    });
+    const starts = line.starts();
+    expect([starts.has(4, 2), starts.has(6, 2), starts.has(9, 2)]).toEqual([true, false, true]);
+    expect(line.starts()).toBe(starts);
+    answers = 'b';
+    expect(line.starts().key).not.toBe(starts.key);
+  });
+
   it('shows one marker under the cursor before a line starts', () => {
     const { line } = tool((node) => node.col !== 9);
     expect(line.preview({ col: 3, row: 2 })).toEqual([{ col: 3, row: 2, state: 'open' }]);

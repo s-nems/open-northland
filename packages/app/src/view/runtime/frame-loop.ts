@@ -175,10 +175,12 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const frameReport = () => frameStats.report();
   const visiblePlots = createVisiblePlots(() => host.constructionPlots(), fogGates.seesNode);
-  // The started wall line lights its reach, the gate tool the spans it can cut into.
+  // The wall tool lights where a line starts, then the started line's reach; the gate tool the spans it
+  // can cut into.
   const palisadeWash = () => {
-    const line = toolPanel.controller.activeLine();
-    const lit = line !== null ? line.reach() : toolPanel.controller.gateSites();
+    const { controller } = toolPanel;
+    const line = controller.activeLine();
+    const lit = line !== null ? line.reach() : (controller.lineStarts() ?? controller.gateSites());
     return lit === null
       ? null
       : litOverlayFrame(lit, cameraCtl.camera(), app.screen.width, app.screen.height);

@@ -6,7 +6,7 @@ import {
 } from '@open-northland/render';
 import { FOG_STATE, type NodeGridAnswer, nodeGridAccepts, type Paper } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import type { LitNodes } from '../hud/tool-panel/placement.js';
+import type { LitNodes } from '../hud/tool-panel/line-tool.js';
 import { type NodeGridProbe, PROBE_AREA_NODES, type SessionHost } from '../session/index.js';
 import { nodeBandOfCells } from './picking.js';
 import type { PlacementProbeViews } from './runtime/placement-gates.js';

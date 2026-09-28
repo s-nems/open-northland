@@ -15,12 +15,15 @@ export interface LinePreviewNode extends LineNode {
   readonly state: LineNodeState;
 }
 
-/** The nodes a started line can end on, each keyed `col,row` with the fewest steps a line takes there;
- *  `key` changes whenever they do. */
-export interface LineReach {
+/** A set of nodes the placement wash leaves bright; `key` changes whenever the set does. */
+export interface LitNodes {
   readonly key: string;
-  readonly steps: ReadonlyMap<string, number>;
   has(col: number, row: number): boolean;
+}
+
+/** The nodes a started line can end on, each keyed `col,row` with the fewest steps a line takes there. */
+export interface LineReach extends LitNodes {
+  readonly steps: ReadonlyMap<string, number>;
 }
 
 /** The started line the reach overlay washes around. */
@@ -259,6 +262,8 @@ export interface LineTool {
   click(tile: LineNode | null, opts?: LineClick): boolean;
   stepBack(): boolean;
   active(): ActiveLine | null;
+  /** The nodes a first click starts a line on, for the wash before a line starts. */
+  starts(): LitNodes;
 }
 
 export interface LineClick {
@@ -279,6 +284,7 @@ export function createLineTool(spec: LineToolSpec): LineTool {
         ? 'open'
         : 'blocked';
   const accepts = (col: number, row: number): boolean => stateOf({ col, row }) !== 'blocked';
+  let starts: LitNodes = { key: '', has: accepts };
   const startAt = (node: LineNode): ActiveLine => {
     const anchor = { col: node.col, row: node.row };
     let walked: LineReach = { key: '', steps: new Map(), has: () => false };
@@ -340,5 +346,10 @@ export function createLineTool(spec: LineToolSpec): LineTool {
       return true;
     },
     active: () => line,
+    starts: () => {
+      const key = `${spec.tool}:start:${spec.answersKey()}`;
+      if (key !== starts.key) starts = { key, has: accepts };
+      return starts;
+    },
   };
 }

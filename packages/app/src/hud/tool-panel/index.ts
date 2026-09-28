@@ -58,7 +58,7 @@ import { createHeldPaperController } from './held-paper.js';
 import { createInfoLinesOverlay } from './info-lines.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout } from './layout.js';
-import type { ActiveLine, LineNode, LinePreviewNode } from './line-tool.js';
+import type { ActiveLine, LineNode, LinePreviewNode, LitNodes } from './line-tool.js';
 import { FigureFrames } from './messages/figure-frames.js';
 import {
   createMessageCenter,
@@ -250,6 +250,8 @@ export interface ToolPanelController {
   gatePreview(tile: LineNode | null): GatePreview | null;
   /** The started wall line, for the reach wash; null before its first click. */
   activeLine(): ActiveLine | null;
+  /** Where the wall tool's first click starts a line; null outside it or once a line started. */
+  lineStarts(): LitNodes | null;
   /** The gate tool's lit spans; null outside the gate tool. */
   gateSites(): GateSites | null;
   /** Per-frame hook: the tick's model feeds the summary bar; the layout over it arrives as an accessor
@@ -724,6 +726,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       palisadePreview: (tile) => placement.palisadePreview(tile),
       gatePreview: (tile) => placement.gatePreview(tile),
       activeLine: () => placement.activeLine(),
+      lineStarts: () => placement.lineStarts(),
       gateSites: () => placement.gateSites(),
       update(hudFor, model): void {
         systemBar.update(model);

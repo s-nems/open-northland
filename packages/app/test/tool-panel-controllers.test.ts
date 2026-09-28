@@ -644,9 +644,11 @@ describe('placement controller', () => {
       label: messages().hud.palisade,
       hint: messages().hud.construction.placeWallHint,
     });
+    expect(placement.lineStarts()).not.toBeNull();
     expect(placement.handleClick(10, 10)).toBe(true);
     expect(commands).toEqual([]);
     expect(placement.activeLine()?.anchor).toEqual({ col: 4, row: 2 });
+    expect(placement.lineStarts()).toBeNull();
     expect(strip.shown?.hint).toBe(messages().hud.construction.placeWallLineHint);
     tile = { col: 40, row: 2 };
     expect(placement.palisadePreview(tile)).toHaveLength(PALISADE_LINE_MAX_EDGES + 1);

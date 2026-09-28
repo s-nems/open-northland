@@ -8,6 +8,7 @@ import {
   type LineNode,
   type LinePreviewNode,
   type LineTool,
+  type LitNodes,
 } from './line-tool.js';
 
 /** `standingWall` is the admin tool's wall line: it lays finished walls through the trusted channel. */
@@ -29,12 +30,6 @@ export interface PalisadeGateProbeView {
   readonly canConvert: boolean;
   readonly center: Entity | null;
   readonly span: readonly { readonly hx: number; readonly hy: number }[];
-}
-
-/** A set of nodes the placement wash leaves bright; `key` changes whenever the set does. */
-export interface LitNodes {
-  readonly key: string;
-  has(col: number, row: number): boolean;
 }
 
 /** The gate the gate tool would cut in: its orientation row at the span's centre node. */
@@ -147,6 +142,8 @@ export interface PlacementController {
   gatePreview(tile: LineNode | null): GatePreview | null;
   /** The started wall line, for the reach wash. */
   activeLine(): ActiveLine | null;
+  /** Where the wall tool's first click starts a line, for its wash; null outside it or once started. */
+  lineStarts(): LitNodes | null;
   /** The gate tool's lit spans, for its wash; null outside the gate tool. */
   gateSites(): GateSites | null;
   state(): PlacementState;
@@ -372,6 +369,10 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     gatePreview: (tile): GatePreview | null =>
       tile === null || palisade?.mode !== 'gate' ? null : gateAt(tile),
     activeLine: () => (palisade !== null && palisade.mode !== 'gate' ? palisade.line.active() : null),
+    lineStarts: () =>
+      palisade !== null && palisade.mode !== 'gate' && palisade.line.active() === null
+        ? palisade.line.starts()
+        : null,
     gateSites: () => (palisade?.mode === 'gate' ? (deps.palisadeGateSites?.() ?? null) : null),
     state: () => ({
       type: placementType,
