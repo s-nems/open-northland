@@ -284,6 +284,11 @@ export const enContent = {
       summary:
         'Two crewed ships on open water: the small one sails straight north, the big one straight south, then both turn about and sail back. Each keeps its column and shows its bow-up or bow-down hull with the wake behind it, instead of zigzagging between the diagonals.',
     },
+    'ship-wakes': {
+      title: 'Ship wakes',
+      summary:
+        'Both ship hulls at rest on open water, one of each for every heading they are drawn in, and two crewed big ships under sail, one along a row and one on the diagonal. The foam should lap each hull at its waterline, and the bow wave and wash should leave from its stem and stern.',
+    },
     'vehicle-shipyard': {
       title: 'Shipyard',
       summary:

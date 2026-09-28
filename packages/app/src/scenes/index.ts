@@ -32,6 +32,7 @@ import { presentationScene } from './presentation.js';
 import { repairScene } from './repair.js';
 import { sandboxScene } from './sandbox/index.js';
 import { schoolScene } from './school.js';
+import { shipWakesScene } from './ship-wakes.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
 import { teamVisionScene } from './team-vision.js';
@@ -119,6 +120,7 @@ export const SCENES: readonly SceneDefinition[] = [
   vehicleOxScene,
   vehicleShipsScene,
   vehicleShipColumnScene,
+  shipWakesScene,
   vehicleShipyardScene,
   vehicleCargoScene,
   vehicleCatapultScene,

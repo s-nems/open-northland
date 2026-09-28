@@ -25,23 +25,78 @@ import { keelLine } from '../src/gpu/sprite-pool/keel-line.js';
 const FACING_E = 4;
 const FACING_W = 1;
 const FACING_NE = 3;
+const FACING_N = 7;
 const SEED = 17;
 
 const hullOf = (keel: readonly number[] | undefined, facing = FACING_E): Hull =>
-  fitHull(keel, facingHeading(facing), { bow: 0, stern: 0, beam: 0 });
+  fitHull(keel, facingHeading(facing), { bow: 0, stern: 0, beam: 0, centreline: 0 });
 const scratch = (): WakeMark => ({ x: 0, y: 0, rx: 0, ry: 0, rotation: 0, alpha: 0 });
 
-/** A side-on hull's keel line: bow at +100, stern at -100, the near waterline 30 screen px below the
- *  anchor amidships, and a stem-post tip 60 px above the stern. */
-const SIDE_KEEL = [-100, 0, -75, 20, -50, 30, 0, 30, 50, 30, 75, 20, 100, 0, -96, -60];
+/** A side-on hull's keel line, left to right: a stem-post tip 60 px above the stern, then the waterline
+ *  from the stern at -100 to the bow at +100, 30 screen px below the anchor amidships. */
+const SIDE_KEEL = [-110, -60, -100, 0, -75, 20, -50, 30, 0, 30, 50, 30, 75, 20, 100, 0];
+const COLUMN_PX = 8;
+
+/** The keel line a waterline ellipse draws along `heading`, its centre `centreline` to starboard of the
+ *  anchor: the lowest point of a one-px column every {@link COLUMN_PX}. */
+function ellipseKeel(heading: number, half: number, beam: number, centreline = 0): number[] {
+  const lowest = new Map<number, number>();
+  const steps = 20_000;
+  for (let step = 0; step < steps; step++) {
+    const t = (step / steps) * 2 * Math.PI;
+    const along = half * Math.cos(t);
+    const lateral = centreline + beam * Math.sin(t);
+    const x = along * Math.cos(heading) - lateral * Math.sin(heading);
+    const y = (along * Math.sin(heading) + lateral * Math.cos(heading)) * WATER_PLANE_SQUASH;
+    const column = Math.round(x);
+    if (column % COLUMN_PX === 0) lowest.set(column, Math.max(lowest.get(column) ?? -Infinity, y));
+  }
+  return [...lowest].sort(([a], [b]) => a - b).flat();
+}
 
 describe('fitHull', () => {
-  it('spans a side-on hull bow to stern and takes its beam from the near waterline', () => {
+  it('spans a side-on hull bow to stern and lays its near side along the keel line', () => {
     const hull = hullOf(SIDE_KEEL);
     expect(hull.bow).toBeCloseTo(100);
     expect(hull.stern).toBeCloseTo(-100);
     // 30 screen px below the anchor is 30 / squash on the water plane; the post tip does not widen it.
-    expect(hull.beam).toBeCloseTo(30 / WATER_PLANE_SQUASH);
+    expect(hull.centreline + hull.beam).toBeCloseTo(30 / WATER_PLANE_SQUASH);
+    // The far side, which the keel line cannot show, lies behind the hull rather than above its deck.
+    expect(hull.centreline - hull.beam).toBeGreaterThan(-30 / WATER_PLANE_SQUASH);
+  });
+
+  it('follows a hull the sprite draws below its anchor', () => {
+    const lowered = SIDE_KEEL.map((v, i) => (i % 2 === 1 ? v + 20 : v));
+    const hull = hullOf(lowered);
+    expect(hull.centreline - hullOf(SIDE_KEEL).centreline).toBeCloseTo(20 / WATER_PLANE_SQUASH);
+    expect(hull.beam).toBeCloseTo(hullOf(SIDE_KEEL).beam);
+  });
+
+  it('ends a side-on hull where its stern leaves the water, not at the post rising behind it', () => {
+    // A stern post rising gently out of the water past the waterline's end at -100.
+    const hull = hullOf([-160, -60, -145, -45, -130, -30, -115, -15, ...SIDE_KEEL.slice(2)]);
+    expect(hull.stern).toBeCloseTo(-100);
+  });
+
+  it('ends a diagonal hull by its stem, not at the figurehead rising past it', () => {
+    const keel = ellipseKeel(facingHeading(FACING_NE), 150, 40, -30);
+    const tipX = (keel[keel.length - 2] ?? 0) + COLUMN_PX;
+    const hull = hullOf([...keel, tipX, -120], FACING_NE);
+    // Where the waterline turns steep at either end, the fit gives up a column or two of it.
+    expect(hull.bow).toBeLessThanOrEqual(150);
+    expect(hull.bow).toBeGreaterThan(120);
+    expect(hull.stern).toBeLessThan(-120);
+    // The near waterline, where the foam shows, stays on the keel line; the far side hides behind the hull.
+    expect(Math.abs(hull.centreline + hull.beam - (-30 + 40))).toBeLessThan(2);
+  });
+
+  it('keeps an end-on hull its near end and beam, and gives its hidden far end a hull length', () => {
+    const hull = hullOf(ellipseKeel(facingHeading(FACING_N), 150, 40), FACING_N);
+    // Heading north, the stern is the near end at the bottom of the screen.
+    expect(hull.stern).toBeCloseTo(-150, 0);
+    expect(hull.beam).toBeGreaterThanOrEqual(40 - COLUMN_PX);
+    expect(hull.beam).toBeLessThanOrEqual(40);
+    expect(hull.bow - hull.stern).toBeGreaterThan(2 * hull.beam);
   });
 
   it('reads the same keel the other way round for a ship heading west', () => {
@@ -80,8 +135,8 @@ describe('wake marks', () => {
     // Off the stem: a crest is born on the centre line at the very bow.
     const time = 1;
     for (let i = 0; i < CRESTS_PER_ARM; i++) {
-      expect(crestMark(i, 1, time, hull, 1, SEED, scratch()).y).toBeGreaterThan(0);
-      expect(crestMark(i, -1, time, hull, 1, SEED, scratch()).y).toBeLessThan(0);
+      expect(crestMark(i, 1, time, hull, 1, SEED, scratch()).y).toBeGreaterThan(hull.centreline);
+      expect(crestMark(i, -1, time, hull, 1, SEED, scratch()).y).toBeLessThan(hull.centreline);
     }
     const young = crestMark(0, 1, 30, hull, 1, SEED, scratch());
     const old = crestMark(0, 1, 60, hull, 1, SEED, scratch());

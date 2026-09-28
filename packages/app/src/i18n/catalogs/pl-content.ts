@@ -282,6 +282,11 @@ export const plContent = {
       summary:
         'Dwa obsadzone statki na otwartym morzu: mały płynie prosto na północ, duży prosto na południe, potem oba zawracają i płyną z powrotem. Każdy trzyma swoją kolumnę i pokazuje kadłub dziobem w górę lub w dół ze śladem piany za rufą, zamiast kluczyć między przekątnymi.',
     },
+    'ship-wakes': {
+      title: 'Piana wokół statków',
+      summary:
+        'Oba kadłuby stoją na otwartym morzu, każdy w każdym kierunku, w jakim jest rysowany, a dwa obsadzone duże statki płyną: jeden wzdłuż rzędu, drugi po przekątnej. Piana powinna obmywać każdy kadłub przy linii wody, a fala dziobowa i kilwater zaczynać się przy dziobie i rufie.',
+    },
     'vehicle-shipyard': {
       title: 'Stocznia',
       summary:

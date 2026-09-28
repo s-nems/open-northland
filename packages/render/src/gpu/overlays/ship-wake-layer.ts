@@ -90,7 +90,7 @@ interface WakeNode {
   lastTime: number;
 }
 
-const hull: Hull = { bow: 0, stern: 0, beam: 0 };
+const hull: Hull = { bow: 0, stern: 0, beam: 0, centreline: 0 };
 const mark: WakeMark = { x: 0, y: 0, rx: 0, ry: 0, rotation: 0, alpha: 0 };
 /** The ship being placed, for fading its marks off the water: its anchor and heading. */
 const shore = { field: NO_WATER, x: 0, y: 0, cos: 1, sin: 0 };

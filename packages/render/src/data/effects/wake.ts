@@ -41,82 +41,171 @@ const OPEN_WATER_TICKS_PER_NODE = 6;
  *  water; over rougher water the ship is slower and they trail a little. */
 export const WAKE_DRIFT_PX_PER_TICK = TILE_HALF_W / OPEN_WATER_TICKS_PER_NODE;
 
-/** A hull's waterline ellipse in its ground frame; {@link beam} is the half-width. */
+/** A hull's waterline ellipse in its ground frame; {@link beam} is the half-width and {@link centreline}
+ *  the centre line's offset to starboard of the anchor. */
 export interface Hull {
   bow: number;
   stern: number;
   beam: number;
+  centreline: number;
 }
 
-/** Half-beam per hull length: a longship's ~1:5, the narrowest a fitted hull gets. */
-const HALF_BEAM_PER_LENGTH = 0.1;
+/** Half-beam per waterline length of both ship hulls. Observation of the ship frames: the end-on ones
+ *  show a half-beam about 0.16 of the length the side-on ones show. A side-on or diagonal keel line only
+ *  shows the near side, so the far side is placed by this proportion. */
+const HALF_BEAM_PER_LENGTH = 0.16;
 /** The hull a ship draws without a readable keel line. */
 const DEFAULT_HULL_LENGTH = 6 * TILE_HALF_W;
-/** A keel point further off the centre line than this many half-beams is not waterline (a sail's hem
- *  or a stem-post tip seen from the side) and does not stretch the hull. */
-const KEEL_LATERAL_LIMIT = 2.5;
+/** Screen px a keel line may rise per px across toward either end and still be waterline. A steeper rise
+ *  leaves the water for a stem post, a figurehead or a sail's hem. */
+const WATERLINE_MAX_RISE = 2.5;
+/** Half-beams past the centre line, toward the far side, that an end of the waterline may lie: a diagonal
+ *  hull's leftmost and rightmost points sit a little off it. A keel point further over is a stem or stern
+ *  rising out of the water. */
+const WATERLINE_END_SLACK = 0.5;
 
 /**
  * Fit `out` to a ship's keel line: `keel` holds the lowest drawn texel per sampled column as
- * anchor-relative world px `(x, y)` pairs, each read as a point on the water plane. The bow and stern are
- * the extreme points along `heading`, the beam the mean offset of the midships points off the centre
- * line, which a lone bump in the keel line does not widen.
+ * anchor-relative world px `(x, y)` pairs, left to right, each read as a point on the water plane. Only
+ * the waterline stretch is read, walking out from the lowest point until the line rises steeply.
  */
 export function fitHull(keel: readonly number[] | undefined, heading: number, out: Hull): Hull {
-  const cos = Math.cos(heading);
-  const sin = Math.sin(heading);
-  let bow = -Infinity;
-  let stern = Infinity;
-  // Two passes: the first spans every point, the second drops the ones far off that span's centre line.
-  for (let pass = 0; pass < 2; pass++) {
-    const lateralLimit = pass === 0 ? Infinity : KEEL_LATERAL_LIMIT * halfBeam(bow - stern);
-    let nextBow = -Infinity;
-    let nextStern = Infinity;
-    for (let i = 0; keel !== undefined && i + 1 < keel.length; i += 2) {
-      const along = alongOf(keel, i, cos, sin);
-      if (lateralOf(keel, i, cos, sin) > lateralLimit) continue;
-      if (along > nextBow) nextBow = along;
-      if (along < nextStern) nextStern = along;
-    }
-    if (!(nextBow > nextStern)) break;
-    bow = nextBow;
-    stern = nextStern;
+  if (keel === undefined || !readWaterline(keel, heading)) {
+    out.bow = DEFAULT_HULL_LENGTH / 2;
+    out.stern = -DEFAULT_HULL_LENGTH / 2;
+    out.beam = DEFAULT_HULL_LENGTH * HALF_BEAM_PER_LENGTH;
+    out.centreline = 0;
+    return out;
   }
-  if (!(bow > stern)) {
-    bow = DEFAULT_HULL_LENGTH / 2;
-    stern = -DEFAULT_HULL_LENGTH / 2;
-  }
-  const lateralLimit = KEEL_LATERAL_LIMIT * halfBeam(bow - stern);
-  const centre = (bow + stern) / 2;
-  // The middle half of the hull, clear of the ends where the waterline curves in.
-  const midships = (bow - stern) / 4;
-  let sum = 0;
-  let count = 0;
-  for (let i = 0; keel !== undefined && i + 1 < keel.length; i += 2) {
-    const lateral = lateralOf(keel, i, cos, sin);
-    if (lateral > lateralLimit || Math.abs(alongOf(keel, i, cos, sin) - centre) > midships) continue;
-    sum += lateral;
-    count++;
-  }
-  out.bow = bow;
-  out.stern = stern;
-  // A bow-on view shows little of the side; the beam never drops below the longship's proportion.
-  out.beam = Math.max(count > 0 ? sum / count : 0, halfBeam(bow - stern));
+  // Heading up or down the screen, the keel line runs across the hull rather than along it.
+  if (Math.abs(span.sin) * WATER_PLANE_SQUASH > Math.abs(span.cos)) return fitEndOn(out);
+  return fitSideOn(out);
+}
+
+/** The keel line being fitted: its waterline stretch, points `first..last`, read in the frame of a hull
+ *  on `cos`/`sin`. Scratch, so a fit allocates nothing per frame. */
+const span = { keel: [] as readonly number[], first: 0, last: 0, cos: 1, sin: 0 };
+/** {@link alongRange}'s answer. */
+const range = { stern: 0, bow: 0 };
+
+/** Point {@link span} at `keel`'s waterline stretch for `heading`: from the lowest point out to either
+ *  side, up to where the line rises more steeply than {@link WATERLINE_MAX_RISE}. False when the
+ *  stretch is under two points. */
+function readWaterline(keel: readonly number[], heading: number): boolean {
+  const points = Math.floor(keel.length / 2);
+  let lowest = 0;
+  for (let p = 1; p < points; p++) if (yAt(keel, p) > yAt(keel, lowest)) lowest = p;
+  let first = lowest;
+  while (first > 0 && waterlineStep(keel, first, first - 1)) first--;
+  let last = lowest;
+  while (last + 1 < points && waterlineStep(keel, last, last + 1)) last++;
+  span.keel = keel;
+  span.first = first;
+  span.last = last;
+  span.cos = Math.cos(heading);
+  span.sin = Math.sin(heading);
+  return last > first;
+}
+
+/**
+ * A hull seen from the side or on a diagonal: the keel line is its near waterline, from stem to stern.
+ * The midships points place the near side; the far side lies a proportional beam behind it. End points
+ * standing above the waterline, a stem or stern rising out of the water, do not lengthen the hull.
+ */
+function fitSideOn(out: Hull): Hull {
+  // +1 when starboard lies down the screen, toward the viewer.
+  const near = span.cos > 0 ? 1 : -1;
+  alongRange(near, -Infinity);
+  const { stern, bow } = range;
+  const waterline = midshipsLateral(stern, bow);
+  const roughBeam = (bow - stern) * HALF_BEAM_PER_LENGTH;
+  alongRange(near, near * waterline - (1 + WATERLINE_END_SLACK) * roughBeam);
+  // The midships points always pass; the guard only covers a keel line without any.
+  const afloat = range.bow > range.stern;
+  out.bow = afloat ? range.bow : bow;
+  out.stern = afloat ? range.stern : stern;
+  out.beam = (out.bow - out.stern) * HALF_BEAM_PER_LENGTH;
+  out.centreline = waterline - near * out.beam;
   return out;
 }
 
-/** Keel point `i`'s place along the heading, on the water plane. */
-function alongOf(keel: readonly number[], i: number, cos: number, sin: number): number {
-  return (keel[i] ?? 0) * cos + ((keel[i + 1] ?? 0) / WATER_PLANE_SQUASH) * sin;
+/** The mean lateral offset of the keel points in the middle half of `stern..bow`, clear of the ends
+ *  where the waterline curves in: where the near side runs, which a lone bump does not move. */
+function midshipsLateral(stern: number, bow: number): number {
+  const centre = (bow + stern) / 2;
+  const midships = (bow - stern) / 4;
+  let sum = 0;
+  let count = 0;
+  for (let p = span.first; p <= span.last; p++) {
+    if (Math.abs(alongOf(p) - centre) > midships) continue;
+    sum += lateralOf(p);
+    count++;
+  }
+  return count > 0 ? sum / count : 0;
 }
 
-/** Keel point `i`'s distance off the centre line, on the water plane. */
-function lateralOf(keel: readonly number[], i: number, cos: number, sin: number): number {
-  return Math.abs(-(keel[i] ?? 0) * sin + ((keel[i + 1] ?? 0) / WATER_PLANE_SQUASH) * cos);
+/** Set {@link range} to the sternmost and bowmost place of the keel points whose offset toward the `near`
+ *  side is at least `least`. */
+function alongRange(near: number, least: number): void {
+  range.stern = Infinity;
+  range.bow = -Infinity;
+  for (let p = span.first; p <= span.last; p++) {
+    if (near * lateralOf(p) < least) continue;
+    const along = alongOf(p);
+    range.stern = Math.min(range.stern, along);
+    range.bow = Math.max(range.bow, along);
+  }
 }
 
-function halfBeam(length: number): number {
-  return length * HALF_BEAM_PER_LENGTH;
+/**
+ * A hull seen end-on, heading up or down the screen: the keel line rounds its near end, bow or stern,
+ * and spans its beam. The far end, up the screen, hides behind the hull a proportional length away.
+ */
+function fitEndOn(out: Hull): Hull {
+  let port = Infinity;
+  let starboard = -Infinity;
+  for (let p = span.first; p <= span.last; p++) {
+    port = Math.min(port, lateralOf(p));
+    starboard = Math.max(starboard, lateralOf(p));
+  }
+  alongRange(1, -Infinity);
+  const { stern, bow } = range;
+  const beam = (starboard - port) / 2;
+  const length = beam / HALF_BEAM_PER_LENGTH;
+  if (span.sin < 0) {
+    out.stern = stern;
+    out.bow = stern + length;
+  } else {
+    out.bow = bow;
+    out.stern = bow - length;
+  }
+  out.beam = beam;
+  out.centreline = (starboard + port) / 2;
+  return out;
+}
+
+/** Whether the keel line stays waterline from point `from` out to its neighbour `to`. */
+function waterlineStep(keel: readonly number[], from: number, to: number): boolean {
+  const rise = yAt(keel, from) - yAt(keel, to);
+  return rise <= WATERLINE_MAX_RISE * Math.abs(xAt(keel, to) - xAt(keel, from));
+}
+
+function xAt(keel: readonly number[], point: number): number {
+  return keel[2 * point] ?? 0;
+}
+
+function yAt(keel: readonly number[], point: number): number {
+  return keel[2 * point + 1] ?? 0;
+}
+
+/** Keel point `p`'s place along the heading, on the water plane. */
+function alongOf(p: number): number {
+  return xAt(span.keel, p) * span.cos + (yAt(span.keel, p) / WATER_PLANE_SQUASH) * span.sin;
+}
+
+/** Keel point `p`'s offset to starboard of the anchor, on the water plane. */
+function lateralOf(p: number): number {
+  return -xAt(span.keel, p) * span.sin + (yAt(span.keel, p) / WATER_PLANE_SQUASH) * span.cos;
 }
 
 /** One foam or crest mark in the hull's ground frame: an ellipse at (`x`, `y`) with radii `rx` along its
@@ -158,7 +247,7 @@ export function lapMark(i: number, time: number, hull: Hull, sail: number, out: 
   const forward = cos > 0 ? cos : 0;
   const push = sail * BOW_PUSH_PX * forward * forward;
   out.x = centre + half * cos + push;
-  out.y = hull.beam * sin;
+  out.y = hull.centreline + hull.beam * sin;
   const pulse = 1 + LAP_PULSE * Math.sin((time / LAP_PERIOD_TICKS) * 2 * Math.PI + i * LAP_PHASE_STEP);
   const radius = LAP_RADIUS_PX * pulse * (1 + sail * BOW_BUNCH * forward);
   out.rx = radius * LAP_STRETCH;
@@ -212,7 +301,7 @@ export function crestMark(
   const spread = behind * KELVIN_TAN + (frac(seed, key) - 0.5) * 2 * CREST_OFFSET_JITTER_PX * t;
   const hug = hullHalfWidth(hull, x);
   out.x = x;
-  out.y = side * Math.sqrt(spread * spread + hug * hug);
+  out.y = hull.centreline + side * Math.sqrt(spread * spread + hug * hug);
   out.rx = mix(CREST_LENGTH_PX, t) * (1 - SIZE_JITTER * frac(seed, key + 1));
   out.ry = side * mix(CREST_WIDTH_PX, t);
   out.rotation = -side * CREST_FEATHER;
@@ -246,7 +335,7 @@ export function washMark(
   const scatter = (frac(seed, key) - 0.5) * 2;
   const radius = mix(WASH_RADIUS_PX, t) * (1 - SIZE_JITTER * frac(seed, key + 1));
   out.x = hull.stern - t * WASH_LIFE_TICKS * WAKE_DRIFT_PX_PER_TICK;
-  out.y = scatter * hull.beam * mix(WASH_SCATTER, t);
+  out.y = hull.centreline + scatter * hull.beam * mix(WASH_SCATTER, t);
   out.rx = radius * WASH_STRETCH;
   out.ry = radius;
   out.rotation = 0;
