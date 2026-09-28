@@ -23,6 +23,9 @@ const VIEW_GAP = 8;
 export const CARD_ZOOM = 1.25;
 /** A spoken line this short moves whole to the next page rather than leave its portrait behind. */
 const SHORT_SPEECH = 260;
+/** The drop capital spans two lines, so it opens only a paragraph that surely wraps: a one-line
+ *  paragraph at a page's foot would cut the capital off at the page edge. A full line holds about 50. */
+const DROP_CAP_MIN_CHARS = 90;
 
 export const FLOURISH =
   '<svg viewBox="0 0 120 16" class="on-book__flourish" aria-hidden="true"><path d="M2 8h44M74 8h44" stroke="currentColor" stroke-width="1"/><path d="M60 2l6 6-6 6-6-6z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="60" cy="8" r="1.6" fill="currentColor"/><path d="M46 8c4-4 6-4 8 0M74 8c-4 4-6 4-8 0" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
@@ -88,7 +91,12 @@ const spaceClass = (s: BookSegment): string => (s.space === undefined ? '' : ` o
 function paragraph(s: Extract<BookSegment, { kind: 'para' }>, first: boolean): string {
   const text = escapeHtml(s.text).replace(/\n/g, '<br>');
   const classes = ['on-book__p'];
-  if (first && s.link === null && (s.align === 'left' || s.align === 'justify'))
+  if (
+    first &&
+    s.link === null &&
+    (s.align === 'left' || s.align === 'justify') &&
+    s.text.length >= DROP_CAP_MIN_CHARS
+  )
     classes.push('on-book__p--first');
   // The book justifies all prose, so only a centred or right-aligned line carries its own class.
   if (s.align === 'center' || s.align === 'right') classes.push(`on-book__p--${s.align}`);

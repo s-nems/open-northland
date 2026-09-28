@@ -235,6 +235,20 @@ describe('flowMarkup', () => {
       views: [],
     });
 
+  it('opens only a paragraph long enough to wrap with the drop capital', () => {
+    const opening = (text: string): string =>
+      flowMarkup(pageSegments([{ kind: 'text', style: 'body', text }]), {
+        pictureUrl: (file) => file,
+        iconBox: () => null,
+        showOnMap: 'Show on map',
+        views: [],
+      });
+    expect(opening('Za 20 baryłek miodu drwal oswoił nam pięć niedźwiedzi')).not.toContain(
+      'on-book__p--first',
+    );
+    expect(opening('W celi znaleźliśmy osłabionego Thraina. '.repeat(3))).toContain('on-book__p--first');
+  });
+
   it('leaves a figure card clear over its hole, where the renderer paints the fill, and fills a card without one', () => {
     expect(card({ kind: 'entity', ref: 7 })).not.toContain('background:');
     expect(card(null)).toContain('background:#c4c09f');
