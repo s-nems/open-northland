@@ -7,7 +7,7 @@ import { createCategoryTabs } from '../parts/category-tabs.js';
 import { element, removeAttribute, setAttribute, setClass, setHidden } from '../parts/dom.js';
 import { meterFill } from '../parts/meter-row.js';
 import { createSection } from '../parts/section.js';
-import { OVERVIEW_TAB, stockGoodsKey, stockStripGlyphs, stockTabRows } from '../parts/stock-browser.js';
+import { keptRanking, OVERVIEW_TAB, stockStripGlyphs, stockTabRows } from '../parts/stock-browser.js';
 import type { BuildingPanelDeps } from './actions.js';
 import { createGoodLine, type GoodLine, syncLines } from './good-line.js';
 
@@ -55,13 +55,7 @@ export function createStockSection(deps: BuildingPanelDeps): StockSection {
   let ranked: readonly StockRow[] = [];
 
   const overview = (stock: readonly StockRow[]): StockRow[] => {
-    const next = stockTabRows(stock, OVERVIEW_TAB);
-    if (stockGoodsKey(next) !== stockGoodsKey(ranked)) {
-      ranked = next;
-      return next;
-    }
-    const byGood = new Map(next.map((row) => [row.goodType, row]));
-    ranked = ranked.flatMap((row) => byGood.get(row.goodType) ?? []);
+    ranked = keptRanking(ranked, stockTabRows(stock, OVERVIEW_TAB));
     return [...ranked];
   };
 

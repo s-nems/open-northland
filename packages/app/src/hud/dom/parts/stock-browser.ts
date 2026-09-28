@@ -135,6 +135,17 @@ export function stockTabRows<Row extends { readonly amount: number; readonly cat
     .slice(0, OVERVIEW_LINES);
 }
 
+/** `next` in the order `shown` already has while the same goods lead, so a line never moves under the
+ *  cursor as amounts shift; another set of goods takes `next`'s ranking. */
+export function keptRanking<Row extends { readonly goodType: number }>(
+  shown: readonly Row[],
+  next: readonly Row[],
+): Row[] {
+  if (stockGoodsKey(next) !== stockGoodsKey(shown)) return [...next];
+  const byGood = new Map(next.map((row) => [row.goodType, row]));
+  return shown.flatMap((row) => byGood.get(row.goodType) ?? []);
+}
+
 /** The strip's faces: the overview's, then the categories'. */
 export function stockStripGlyphs(categories: readonly string[]): readonly string[] {
   return [STOCK_OVERVIEW_GLYPH, ...categories];

@@ -590,15 +590,16 @@ saying what the press does or why it is refused.
   owner's seat's only.
 - Umowy handlowe: the agreements the house offers a visiting trader as the trader's read-only chips
   "1 [coin] → 4 [iron]"; another seat's trade house shows them too.
-- Magazyn, last: every good the house stores in its slot order, "amount / shelf" (a decimal only for a
+- Magazyn, last: every good the house stores in its slot order (a workshop's inputs before its
+  products), "amount / shelf" (a decimal only for a
   banked fraction), the shelf's fill on the rule, an empty shelf muted, the input a posted worker waits
   for in amber and a product's full shelf in red, since production stops there. A workshop lists its
   inputs under a small "Zużywa" caption and its products under "Wytwarza". A store lists its goods under the stock's icon
   tabs, opening on Wszystkie (its eight largest stocks, most first), then one category per tab (a
   category the house does not store faded, a dot on one that holds something); any other house lists
   every shelf.
-  Past eight lines the list scrolls in place and fades at the bottom; when the panel would run past the
-  plane, the list alone gives way, down to three lines.
+  Past its 200 px (eight lines, fewer under captions) the list scrolls in place and fades at the
+  bottom; when the panel would run past the plane, the list alone gives way, down to three lines.
 - First paint at map start, as the settler panel's: a made-up building lights every section once.
 - Another seat's building: class, name, owner line with the stance, the portrait, the wear, the state
   and its agreements; no order, no staff, no production, no stock.

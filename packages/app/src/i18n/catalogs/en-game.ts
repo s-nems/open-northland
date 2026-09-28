@@ -30,7 +30,6 @@ export const enGame = {
     production: 'Production',
     work: 'Work',
     experience: 'Experience',
-    buildingGeneric: 'Building',
     // Building-card fallbacks for the decoded `misc` state rows, from `content/gui/strings/eng.json`.
     hoverCard: {
       construction: 'Building under construction',

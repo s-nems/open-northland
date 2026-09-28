@@ -30,7 +30,6 @@ export const plGame = {
     production: 'Produkcja',
     work: 'Praca',
     experience: 'Doświadczenie',
-    buildingGeneric: 'Budynek',
     hoverCard: {
       construction: 'Budynek jest budowany',
       upgrade: 'Budynek jest ulepszany',

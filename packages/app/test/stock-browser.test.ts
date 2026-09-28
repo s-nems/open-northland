@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { amountText } from '../src/hud/dom/parts/amount.js';
 import {
+  keptRanking,
   OVERVIEW_LINES,
   OVERVIEW_TAB,
   type StockBrowserRow,
@@ -59,5 +60,16 @@ describe('stock browser', () => {
     expect(stockTabRows(rows, OVERVIEW_TAB + 1 + OTHER).map((entry) => entry.goodType)).toEqual([2, 3, 4]);
     const many = Array.from({ length: OVERVIEW_LINES + 2 }, (_, index) => row(index, index + 1));
     expect(stockTabRows(many, OVERVIEW_TAB)).toHaveLength(OVERVIEW_LINES);
+  });
+
+  it('keeps a ranking while the same goods lead and takes a new one when they change', () => {
+    const shown = [row(1, 9), row(2, 5)];
+    expect(
+      keptRanking(shown, [row(2, 12), row(1, 9)]).map((entry) => [entry.goodType, entry.amount]),
+    ).toEqual([
+      [1, 9],
+      [2, 12],
+    ]);
+    expect(keptRanking(shown, [row(3, 20), row(1, 9)]).map((entry) => entry.goodType)).toEqual([3, 1]);
   });
 });

@@ -1,7 +1,7 @@
-import type { Entity, PlayerCommand } from '@open-northland/sim';
+import { type Entity, ONE, type PlayerCommand } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_ARCHER, JOB_BUILDER, JOB_CARRIER, JOB_TRADER } from '../src/catalog/jobs.js';
-import { HUMAN_PLAYER } from '../src/game/rules.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
@@ -332,7 +332,11 @@ describe('building panel orders and alerts', () => {
     expect(home.name.startsWith(home.title)).toBe(true);
     const next = sandboxCtx().buildings.find((def) => def.typeId === BUILDING_HOME_00)?.upgradeTarget;
     if (next === undefined) throw new Error('the first home tier upgrades');
-    expect(buildingModel([buildingEntity(1, next)], 1).tier).toBe(2);
+    // The sim stamps the rung at placement and raises it with each upgrade.
+    const raised = buildingEntity(1, next, {
+      components: { Building: { buildingType: next, tribe: PRIMARY_TRIBE, built: ONE, level: 1 } },
+    });
+    expect(buildingModel([raised], 1).tier).toBe(2);
     const mill = buildingModel([buildingEntity(1, BUILDING_MILL)], 1);
     expect(mill.tier).toBeNull();
     expect(mill.title).toBe(mill.name);

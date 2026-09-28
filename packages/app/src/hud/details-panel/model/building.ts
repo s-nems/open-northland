@@ -190,19 +190,6 @@ function ownsSeveralTribes(snapshot: WorldSnapshot, owner: number | undefined): 
  *  its own line. */
 const TIER_SUFFIX = /\s*\([^()]*\)$/;
 
-/** `def`'s place in its upgrade chain, 1 for the first tier; null for a type with no other tier. */
-function tierOf(ctx: UnitPanelModelContext, def: BuildingDef | undefined): number | null {
-  if (def === undefined) return null;
-  let tier = 1;
-  for (let below = def; ; tier++) {
-    const typeId = below.typeId;
-    const previous = ctx.buildings.find((candidate) => candidate.upgradeTarget === typeId);
-    if (previous === undefined) break;
-    below = previous;
-  }
-  return tier === 1 && def.upgradeTarget === undefined ? null : tier;
-}
-
 const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, rest: 1, piety: 2 };
 
 function homeQuality(
@@ -383,7 +370,8 @@ export function buildingPanelModel(
   });
   const level = num(b.level) ?? 0;
   const name = buildingTitle(ctx, rawType);
-  const tier = tierOf(ctx, def);
+  // The sim keeps the rung of the upgrade chain; a type outside any chain has no tier to name.
+  const tier = level > 0 || def?.upgradeTarget !== undefined ? level + 1 : null;
   const stock =
     foreign || site
       ? []

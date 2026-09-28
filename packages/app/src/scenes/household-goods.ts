@@ -27,7 +27,7 @@ const JOINERY = { x: 8, y: 18 } as const;
 const DRUID_HUT = { x: 36, y: 13 } as const;
 const RUN_TICKS = 3600;
 
-const { Building, HomeQuality, Residence, Stockpile, setStockAmount } = components;
+const { HomeQuality, Residence, Stockpile, setStockAmount } = components;
 
 function seed(sim: Simulation, building: Entity, slug: string, amount: number): void {
   setStockAmount(sim.world, building, goodBySlug(sim, slug), amount);
@@ -49,10 +49,8 @@ function build(sim: Simulation): void {
   const joineryEntity = placeBuiltSandboxBuilding(sim, BUILDING_JOINERY_01, JOINERY.x, JOINERY.y);
   const druidEntity = placeBuiltSandboxBuilding(sim, BUILDING_DRUID_HUT, DRUID_HUT.x, DRUID_HUT.y);
   placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, HOME_1.x, HOME_1.y);
-  const home2Entity = placeBuiltSandboxBuilding(sim, BUILDING_HOME_01, HOME_2.x, HOME_2.y);
-  sim.world.mut(home2Entity, Building).level = 1;
+  placeBuiltSandboxBuilding(sim, BUILDING_HOME_01, HOME_2.x, HOME_2.y);
   const homeEntity = placeBuiltSandboxBuilding(sim, BUILDING_HOME_02, HOME_3.x, HOME_3.y);
-  sim.world.mut(homeEntity, Building).level = 2;
 
   seed(sim, potteryEntity, 'mud', 10);
   seed(sim, potteryEntity, 'wood', 20);
