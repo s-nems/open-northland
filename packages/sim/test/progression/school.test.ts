@@ -12,7 +12,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../src/index.js';
-import { heldGatherGood } from '../../src/systems/economy/gather-goods.js';
+import { heldGatherGood, holdToGatherGood } from '../../src/systems/economy/gather-goods.js';
 import { learn } from '../../src/systems/orders/education.js';
 import {
   needSubjectOf,
@@ -444,9 +444,12 @@ it('still teaches a new method of the trade the pupil already practises', () => 
   expect(sim.world.get(carpenter, TrainingOrder).lesson).toEqual({ kind: 'good', typeId: PLANK });
 });
 
-it('leaves a collector taught a good gathering only that good', () => {
-  const COLLECTOR = 7;
-  const ORE = 4;
+const COLLECTOR = 7;
+const WOOD = 1;
+const ORE = 4;
+
+/** A seat-0 collector mid-lesson in ORE at a built school; `finish` serves the lesson's last repetition. */
+function collectorLesson(): { sim: Simulation; collector: Entity; finish: () => void } {
   const base = testContent();
   const content = parseContentSet({
     ...base,
@@ -480,21 +483,35 @@ it('leaves a collector taught a good gathering only that good', () => {
     target: 'good',
     typeId: ORE,
   });
+  const finish = (): void => {
+    sim.world.mut(collector, TrainingOrder).drillTicksLeft = 0;
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('missing terrain');
+    planTraining(
+      sim.world,
+      ctxOf(sim),
+      terrain,
+      collector,
+      sim.world.get(collector, Settler),
+      terrain.nodeAt(2, 2),
+      null,
+    );
+  };
+  return { sim, collector, finish };
+}
+
+it('leaves a collector gathering every good on the good it was taught', () => {
+  const { sim, collector, finish } = collectorLesson();
   expect(heldGatherGood(sim.world, ctxOf(sim), collector)).toBeUndefined();
-  sim.world.mut(collector, TrainingOrder).drillTicksLeft = 0;
-
-  const terrain = sim.terrain;
-  if (terrain === undefined) throw new Error('missing terrain');
-  planTraining(
-    sim.world,
-    ctxOf(sim),
-    terrain,
-    collector,
-    sim.world.get(collector, Settler),
-    terrain.nodeAt(2, 2),
-    null,
-  );
-
+  finish();
   expect(sim.world.get(collector, SettlerProgress).learned?.good).toContain(ORE);
   expect(heldGatherGood(sim.world, ctxOf(sim), collector)).toBe(ORE);
+});
+
+it('leaves a collector held to another good on that good after a lesson', () => {
+  const { sim, collector, finish } = collectorLesson();
+  holdToGatherGood(sim.world, ctxOf(sim), collector, COLLECTOR, WOOD);
+  finish();
+  expect(sim.world.get(collector, SettlerProgress).learned?.good).toContain(ORE);
+  expect(heldGatherGood(sim.world, ctxOf(sim), collector)).toBe(WOOD);
 });

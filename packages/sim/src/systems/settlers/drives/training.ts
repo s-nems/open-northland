@@ -16,7 +16,7 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
+import { heldGatherGood, holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
 import { isSchool, schoolMethodJob } from '../../orders/education.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
@@ -101,12 +101,14 @@ export function planTraining(
           world.remove(e, JobAssignment);
           reidleAsJob(world, ctx, e, job);
         }
-        // A gatherer taught a good (a collector's iron or gold) leaves school gathering only that good.
+        // A gatherer taught a good (a collector's iron or gold) leaves school gathering only that good,
+        // unless the player already held it to one.
         const good = order.lesson.typeId;
         if (
           order.lesson.kind === 'good' &&
           jobChangesProduction(ctx.content, job) &&
-          jobGathersGood(ctx, job, good)
+          jobGathersGood(ctx, job, good) &&
+          heldGatherGood(world, ctx, e) === undefined
         ) {
           holdToGatherGood(world, ctx, e, job, good);
         }
