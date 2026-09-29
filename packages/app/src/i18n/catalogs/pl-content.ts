@@ -187,6 +187,11 @@ export const plContent = {
       title: 'Lot strzały',
       summary: 'Czterech łuczników pokazuje strzały w naturalnej skali w poziomie, pionie i po przekątnej.',
     },
+    'armed-idle': {
+      title: 'Uzbrojeni w bezczynności',
+      summary:
+        'Uzbrojeni żołnierze każdej nacji stoją bezczynnie; w każdej animacji nudzenia się trzymają broń.',
+    },
     'weapon-facings': {
       title: 'Kierunki broni',
       summary:

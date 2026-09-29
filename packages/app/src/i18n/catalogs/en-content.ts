@@ -190,6 +190,10 @@ export const enContent = {
       summary:
         'Four archers keep natural-scale arrows visible along horizontal, vertical and diagonal lanes.',
     },
+    'armed-idle': {
+      title: 'Armed idle',
+      summary: "Every civilization's armed soldiers stand idle; each fidget keeps the weapon in hand.",
+    },
     'weapon-facings': {
       title: 'Weapon facings',
       summary:
