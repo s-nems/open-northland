@@ -150,6 +150,7 @@ describe('road network', () => {
     const rng = new Rng(7);
     const laid = new Set<NodeId>();
     const rebuilt = new Int32Array(terrain.nodeCount);
+    const rebuiltNearest = new Int32Array(terrain.nodeCount);
     const syncs = vi.spyOn(terrain, 'syncRoads');
     for (let batch = 0; batch < RANDOM_BATCHES; batch++) {
       const size = 1 + rng.int(MAX_BATCH);
@@ -164,7 +165,7 @@ describe('road network', () => {
       }
       layRoad(sim.world, terrain, nodes);
       for (const node of nodes) laid.add(node);
-      fillRoadDistances(rebuilt, terrain.width, terrain.height, laid);
+      fillRoadDistances(rebuilt, rebuiltNearest, terrain.width, terrain.height, laid);
       for (let node = 0 as NodeId; node < terrain.nodeCount; node++) {
         expect(terrain.roadDistanceAt(node)).toBe(rebuilt[node]);
       }

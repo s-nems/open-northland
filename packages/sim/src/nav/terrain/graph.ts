@@ -55,7 +55,7 @@ export class TerrainGraph extends TerrainEdges {
   private readonly roads: Uint8Array;
   private roadNodes: NodeId[] = [];
   private roadRevision = UNSYNCED_ROAD_REVISION;
-  /** Per-node lattice distance to the nearest road, allocated with the first road. */
+  /** Per-node lattice distance to the nearest road and that road, allocated with the first road. */
   private roadDistances: RoadDistanceField | undefined;
   /** Per-node land route weight: the node's resistance, at least {@link MIN_ROUTE_RESISTANCE}, as a
    *  multiple of ONE. */
@@ -138,7 +138,7 @@ export class TerrainGraph extends TerrainEdges {
    * Mirror the world's road network into the per-node lanes, once per road revision; a repeat call with
    * the revision already mirrored costs nothing. The world owns the network (`systems/roads`); these
    * lanes only serve the per-step reads and the route heuristic. A change rebuilds the lanes in
-   * O(map nodes), about 2 ms on a 480 x 380 node map: the path for a restore, a first road or a removal;
+   * O(map nodes), about 3 ms on a 480 x 380 node map: the path for a restore, a first road or a removal;
    * {@link extendRoads} mirrors a laid road.
    */
   syncRoads(revision: number, nodes: Iterable<NodeId>): void {
