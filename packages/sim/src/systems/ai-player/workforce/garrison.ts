@@ -355,8 +355,7 @@ function isDraftable(world: World, e: Entity): boolean {
 }
 
 /** The seat's marriageable men beyond its marriageable women, the men the family plan will never need
- *  as husbands. Counted over {@link ownedSettlers} because claimed livestock is an owned `Settler` with
- *  no `Female` that {@link mayMarry} alone reads as a bachelor, licensing one more draft each. */
+ *  as husbands. */
 function bachelorSurplus(world: World, ctx: SystemContext, player: number): number {
   let surplus = 0;
   for (const e of ownedSettlers(world, player)) {

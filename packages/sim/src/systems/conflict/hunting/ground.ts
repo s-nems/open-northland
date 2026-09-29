@@ -44,10 +44,18 @@ export function huntingGround(
     return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: flag.radius };
   }
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
-  if (workplace !== undefined && world.has(workplace, Position)) {
-    const p = world.get(workplace, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: HUNTER_WORK_FLAG_RADIUS };
-  }
-  return null;
+  return workplace === undefined ? null : workplaceHuntingGround(world, terrain, workplace);
+}
+
+/** The {@link HUNTER_WORK_FLAG_RADIUS} circle the hunters employed at `workplace` hunt, or null for an
+ *  unplaced workplace. */
+export function workplaceHuntingGround(
+  world: World,
+  terrain: TerrainGraph,
+  workplace: Entity,
+): { anchorCell: NodeId; radius: number } | null {
+  const p = world.tryGet(workplace, Position);
+  if (p === undefined) return null;
+  const n = nodeOfPosition(p.x, p.y);
+  return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: HUNTER_WORK_FLAG_RADIUS };
 }

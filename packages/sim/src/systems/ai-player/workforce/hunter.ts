@@ -1,7 +1,6 @@
 import {
   Building,
   CurrentAtomic,
-  HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
   Position,
   Settler,
@@ -10,9 +9,7 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { HUNT_CHASE_SLACK_NODES } from '../../conflict/hunting/index.js';
+import { HUNT_CHASE_SLACK_NODES, workplaceHuntingGround } from '../../conflict/hunting/index.js';
 import { huntingGroundHoldsCarcass } from '../../conflict/hunting/kill-claim.js';
 import { isHuntTarget } from '../../conflict/targeting.js';
 import type { SystemContext } from '../../context.js';
@@ -88,8 +85,8 @@ function huntWorkLeft(
   slack: number,
 ): boolean {
   const terrain = ctx.terrain;
-  if (terrain === undefined || !world.has(base, Position)) return true;
-  const ground = baseHuntingGround(world, terrain, base);
+  const ground = terrain === undefined ? null : workplaceHuntingGround(world, terrain, base);
+  if (terrain === undefined || ground === null) return true;
   if (posted.some((h) => huntingGroundHoldsCarcass(world, ctx, terrain, h, hunterJob, ground))) return true;
   const reach = ground.radius + slack;
   const home = terrain.componentOf(ground.anchorCell);
@@ -101,17 +98,6 @@ function huntWorkLeft(
     if (home < 0 || terrain.componentOf(at) === home) return true;
   }
   return false;
-}
-
-/** The ground the base's employed hunters hunt: the {@link HUNTER_WORK_FLAG_RADIUS} circle round it. */
-function baseHuntingGround(
-  world: World,
-  terrain: TerrainGraph,
-  base: Entity,
-): { anchorCell: NodeId; radius: number } {
-  const p = world.get(base, Position);
-  const n = nodeOfPosition(p.x, p.y);
-  return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: HUNTER_WORK_FLAG_RADIUS };
 }
 
 /** Hand the opening hunters back to the pool as builders, leaving a man mid-action alone. */
