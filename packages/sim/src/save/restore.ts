@@ -7,6 +7,7 @@ import type { Entity } from '../ecs/world.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
 import { Simulation } from '../simulation.js';
 import type { MissionScript } from '../systems/missions/index.js';
+import { syncRoadLane } from '../systems/roads/index.js';
 import { REVEALED_BYTE } from '../systems/vision/index.js';
 import { simContentFingerprint } from './content-fingerprint.js';
 import { type ComponentSection, type FogSection, SAVE_MAP_KEY, type SaveGame } from './format.js';
@@ -77,6 +78,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Simulat
     }
   }
   sim.restoreTick(header.tick);
+  if (sim.terrain !== undefined) syncRoadLane(sim.world, sim.terrain);
   assertMissionScriptMatches(sim, opts.missions);
   assertAiScriptMatches(sim, opts.aiScript);
   // Structural validation cannot see that a saved reference points at a settler with no marriage or a

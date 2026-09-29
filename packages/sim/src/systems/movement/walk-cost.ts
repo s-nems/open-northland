@@ -19,7 +19,8 @@ import { isHeroJob } from '../readviews/jobs.js';
 /**
  * How many ticks a human's step from one lattice node to the next takes, the original's per-step move
  * cost. Original behavior: a step starts when the walker leaves a node,
- * reads that node's `lmpr` roughness, and completes after exactly `cost` ticks, where
+ * reads that node's resistance (its `lmpr` roughness, 1 on a road), and completes after exactly `cost`
+ * ticks, where
  *
  *   cost = 2 * roughness + (speed amulet ? 0 : 2) + (shoes ? 0 : 2) + (carrying a good ? 1 : 0)
  *        + (stamina <= 2000 ? 2 : 0)

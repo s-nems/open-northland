@@ -60,7 +60,7 @@ export const SLOWEST_PACE_PER_TICK: Fixed = fx.div(HALF_ROW, fx.fromInt(MAX_STEP
  * planner reads as arrived.
  *
  * A human walks each leg in its step cost (`walkStepTicks`) plus held turn ticks: the cost is fixed when the leg starts
- * from the roughness of the node it leaves and the walker's state then, the position closes the remaining
+ * from the resistance of the node it leaves and the walker's state then, the position closes the remaining
  * distance in equal shares of the movement ticks left, and the last tick lands on the stop. Turning
  * holds progress for all but its final tick; no acceleration or braking is modelled. A creature with
  * {@link MoveStepPeriod} takes its content-defined ticks per waypoint; an explicit {@link MoveSpeed}
@@ -96,7 +96,7 @@ export const movementSystem: System = (world, ctx) => {
           : walkPeriodicLeg(pf, stops, p, target, period);
       if (!arrived) break;
       if (pf.index + 1 >= stops.length) {
-        if (!paced && period === undefined) chargeNode(world, ctx, e, roughnessAt(ctx.terrain, target));
+        if (!paced && period === undefined) chargeNode(world, ctx, e, resistanceAt(ctx.terrain, target));
         dropPath(world, e);
         world.remove(e, AnimalRunning);
         break;
@@ -144,28 +144,29 @@ type FollowState = NonNullable<(typeof PathFollow)['__value']>;
 /** The per-node charge: after pace is read at departure, and once at the terminal destination.
  *  Original behavior: pace updates before shoe/food points are spent, and the charge lands before a
  *  new step and when the destination is reached; a pressing need then reaches for a carried draught. */
-function chargeNode(world: World, ctx: SystemContext, e: Entity, roughness: number): void {
+function chargeNode(world: World, ctx: SystemContext, e: Entity, resistance: number): void {
   const carrying = isCarryingGood(world, e);
-  if (hasLiveBoots(world, e)) wearWornBoots(world, ctx, e, roughness, carrying);
-  else chargeBarefootStep(world, ctx, e, roughness, carrying);
+  if (hasLiveBoots(world, e)) wearWornBoots(world, ctx, e, resistance, carrying);
+  else chargeBarefootStep(world, ctx, e, resistance, carrying);
   drinkPressingDraughts(world, ctx, e);
 }
 
-function roughnessAt(terrain: TerrainGraph | undefined, waypoint: { node: NodeId } | undefined): number {
+function resistanceAt(terrain: TerrainGraph | undefined, waypoint: { node: NodeId } | undefined): number {
   return terrain === undefined || waypoint === undefined
     ? DEFAULT_NODE_ROUGHNESS
-    : terrain.roughnessAt(waypoint.node);
+    : terrain.resistanceAt(waypoint.node);
 }
 
-/** The roughness of the node the current leg leaves, which paces and shoes it: the previous stop, or on
- *  a route's first leg the stop itself (the walker stands beside it). A mapless sim walks the default. */
-function departureRoughness(
+/** The resistance of the node the current leg leaves, a road's included, which paces and shoes it: the
+ *  previous stop, or on a route's first leg the stop itself (the walker stands beside it). A mapless sim
+ *  walks the default. */
+function departureResistance(
   terrain: TerrainGraph | undefined,
   pf: FollowState,
   stops: readonly Waypoint[],
 ): number {
   const from = stops[pf.index > 0 ? pf.index - 1 : 0];
-  return roughnessAt(terrain, from);
+  return resistanceAt(terrain, from);
 }
 
 /** One tick of a human's leg; true once it stands on `target`. */
@@ -181,13 +182,19 @@ function walkHumanLeg(
   // A redirect onto the current centre ends even a held turn without inventing another heading.
   if (p.x === target.x && p.y === target.y) return true;
   if (pf.legCost === 0) {
-    const roughness = departureRoughness(ctx.terrain, pf, stops);
-    beginTimedLeg(pf, stops, p, target, walkStepTicks(roughness, walkStepModifiersOf(world, e, ctx.content)));
+    const resistance = departureResistance(ctx.terrain, pf, stops);
+    beginTimedLeg(
+      pf,
+      stops,
+      p,
+      target,
+      walkStepTicks(resistance, walkStepModifiersOf(world, e, ctx.content)),
+    );
     // The planned heading is fixed for this leg. Separation can nudge the position across an octant
     // boundary; re-aiming every tick would insert fresh turn holds in the middle of a steady step.
     beginWalkTurn(world, e, pf.legPace === undefined ? (stops[pf.index - 1] ?? p) : p, target);
     if (pf.departureCharged !== true) {
-      chargeNode(world, ctx, e, roughness);
+      chargeNode(world, ctx, e, resistance);
       pf.departureCharged = true;
     }
   }
@@ -269,7 +276,7 @@ export function walkPacePerTick(world: World, ctx: SystemContext, e: Entity): Fi
       ? pf.legCost
       : (period ??
         walkStepTicks(
-          departureRoughness(ctx.terrain, pf, stops),
+          departureResistance(ctx.terrain, pf, stops),
           walkStepModifiersOf(world, e, ctx.content),
         ));
   return fx.div(worldDistance(from.x, from.y, to.x, to.y), fx.fromInt(ticks));

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { PathFollow, PathRoute, Position } from '../../../src/components/index.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { worldX } from '../../../src/nav/world-metric.js';
 import { movementSystem } from '../../../src/systems/index.js';
 import { stepTowardPoint } from '../../../src/systems/movement/stepping.js';
+import { layRoad } from '../../../src/systems/roads/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { roughNodeMap } from '../../fixtures/terrain.js';
 
@@ -12,6 +14,24 @@ import { followerAt, grassMap, LAND_STEP_TICKS, pos, ticksToArrive, waypointAt }
 /** A cell-long E/W walk east from node column 0: two half-column stops per cell. */
 const halfSteps = (cells: number): Array<{ x: number; y: number }> =>
   Array.from({ length: cells * 2 + 1 }, (_, i) => ({ x: i / 2, y: 0 }));
+
+/** Step `e` along its route to the end, returning the ticks each leg took. */
+function ticksPerLeg(sim: Simulation, e: Entity): number[] {
+  const legs: number[] = [];
+  let ticks = 0;
+  let index = 1;
+  while (sim.world.has(e, PathFollow)) {
+    sim.step();
+    ticks++;
+    const pf = sim.world.tryGet(e, PathFollow);
+    if (pf === undefined || pf.index !== index) {
+      legs.push(ticks);
+      ticks = 0;
+      index++;
+    }
+  }
+  return legs;
+}
 
 describe('movementSystem - path following', () => {
   it('keeps a world-space line straight when a redirected leg crosses a stagger cusp', () => {
@@ -54,20 +74,17 @@ describe('movementSystem - path following', () => {
     const map = roughNodeMap(8, 1, (hx) => roughness[hx] ?? 2);
     const sim = new Simulation({ seed: 1, content: testContent(), map });
     const e = followerAt(sim, 0, 0, halfSteps(1.5));
-    const legs: number[] = [];
-    let ticks = 0;
-    let index = 1;
-    while (sim.world.has(e, PathFollow)) {
-      sim.step();
-      ticks++;
-      const pf = sim.world.tryGet(e, PathFollow);
-      if (pf === undefined || pf.index !== index) {
-        legs.push(ticks);
-        ticks = 0;
-        index++;
-      }
-    }
-    expect(legs).toEqual([6, 10, 14]); // roads (1) are the fast lane, snow (5) the slow one
+    expect(ticksPerLeg(sim, e)).toEqual([6, 10, 14]); // roads (1) are the fast lane, snow (5) the slow one
+  });
+
+  it('paces the step off a road node as resistance 1, whatever ground lies under it', () => {
+    const SNOW = 5;
+    const sim = new Simulation({ seed: 1, content: testContent(), map: roughNodeMap(8, 1, () => SNOW) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim has no terrain');
+    layRoad(sim.world, terrain, [terrain.nodeAt(1, 0)]);
+    const e = followerAt(sim, 0, 0, halfSteps(1.5));
+    expect(ticksPerLeg(sim, e)).toEqual([14, 6, 14]); // off snow, off the road, off snow again: 2r + 4 each
   });
 
   it('adds heading changes to the same per-step cost on a bent route', () => {

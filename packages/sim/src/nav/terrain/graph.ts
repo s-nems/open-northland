@@ -1,3 +1,4 @@
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import { cellOfNode } from '../halfcell.js';
 import { TerrainEdges } from './edges.js';
 import type { LandscapeProps } from './landscape-props.js';
@@ -24,6 +25,23 @@ export const DEFAULT_WATER_ROUGHNESS = 1;
 export const NO_COMPONENT = -1;
 
 /**
+ * The walking resistance of a road node, whatever ground lies under it. Original behavior: a road
+ * rewrites the node's resistance, which every reader of the value then sees (step pace, shoe wear, a
+ * vehicle's ground class, the route search), and every authored `lmro` road node holds 1 in `lmpr`.
+ */
+export const ROAD_RESISTANCE = 1;
+
+/**
+ * The least resistance a land route step is weighed by. `lmpr` 0 marks the map border and a few void
+ * nodes, which the original's search enters for free; a zero weight would leave the A* heuristic nothing
+ * to scale by, so they weigh as a road. Approximation.
+ */
+const MIN_ROUTE_RESISTANCE = ROAD_RESISTANCE;
+
+/** The road revision of a graph no road network has been mirrored into yet; world revisions start at 0. */
+const UNSYNCED_ROAD_REVISION = -1;
+
+/**
  * The sim's navigation model: the half-cell node lattice with its 8-direction edge set and each node's
  * static connectivity label. Distinct from the render's triangle tessellation. Construct through
  * {@link buildTerrainGraph}.
@@ -32,6 +50,15 @@ export class TerrainGraph extends TerrainEdges {
   private readonly components: Int32Array;
   /** Per-node `lmpr` roughness, or undefined for the uniform default. */
   private readonly roughness: Uint8Array | undefined;
+  /** Per-node road flag, the world's road network mirrored by {@link syncRoads}. */
+  private readonly roads: Uint8Array;
+  private roadNodes: NodeId[] = [];
+  private roadRevision = UNSYNCED_ROAD_REVISION;
+  /** Per-node land route weight: the node's resistance, at least {@link MIN_ROUTE_RESISTANCE}, as a
+   *  multiple of ONE. */
+  private readonly routeWeights: Fixed[];
+  /** The least route weight of any walkable node without roads. */
+  private readonly groundMinRouteWeight: Fixed;
 
   constructor(
     width: number,
@@ -54,6 +81,19 @@ export class TerrainGraph extends TerrainEdges {
       throw new Error(`roughness lane has ${roughness.length} nodes, expected ${this.nodeCount}`);
     }
     this.roughness = roughness === undefined ? undefined : Uint8Array.from(roughness);
+    this.roads = new Uint8Array(this.nodeCount);
+    this.routeWeights = new Array<Fixed>(this.nodeCount);
+    let groundMin = routeWeightOf(ROAD_RESISTANCE);
+    let anyWalkable = false;
+    for (let i = 0; i < this.nodeCount; i++) {
+      const node = i as NodeId;
+      const weight = routeWeightOf(this.roughnessAt(node));
+      this.routeWeights[node] = weight;
+      if (!this.isWalkable(node)) continue;
+      if (!anyWalkable || weight < groundMin) groundMin = weight;
+      anyWalkable = true;
+    }
+    this.groundMinRouteWeight = groundMin;
     const cellCount = Math.ceil(width / 2) * Math.ceil(height / 2);
     if (elevation !== undefined && elevation.length !== cellCount) {
       throw new Error(`elevation lane has ${elevation.length} cells, expected ${cellCount}`);
@@ -61,15 +101,65 @@ export class TerrainGraph extends TerrainEdges {
     this.components = this.computeComponents();
   }
 
-  /** The roughness a step off `node` is paced by (the map's `lmpr` value, 0..5 on the owned corpus): a
-   *  settler's walk and shoe wear, and a vehicle's move period, which reads it as its ground speed class
-   *  (original behavior). Throws on an id outside the grid. */
+  /** The map's own `lmpr` roughness at `node` (0..5 on the owned corpus), ignoring roads laid since;
+   *  gameplay reads {@link resistanceAt}. Throws on an id outside the grid. */
   roughnessAt(node: NodeId): number {
     if (node < 0 || node >= this.nodeCount) {
       throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
     }
     if (this.roughness !== undefined) return this.roughness[node] ?? DEFAULT_NODE_ROUGHNESS;
     return this.isWater(node) ? DEFAULT_WATER_ROUGHNESS : DEFAULT_NODE_ROUGHNESS;
+  }
+
+  /** The walking resistance of `node` with roads: what a settler's step pace, shoe wear and hunger and a
+   *  vehicle's move period (its ground speed class) read off the node it leaves (original behavior).
+   *  Throws on an id outside the grid. */
+  resistanceAt(node: NodeId): number {
+    return this.isRoad(node) ? ROAD_RESISTANCE : this.roughnessAt(node);
+  }
+
+  /** Whether a road runs over `node`. Throws on an id outside the grid. */
+  isRoad(node: NodeId): boolean {
+    return this.checkedSlot(this.roads, node) !== 0;
+  }
+
+  /**
+   * The factor a route step onto `node` is weighed by, for a node the caller has bounds-checked. Original
+   * behavior: the search charges each step the resistance of the node it enters, so walkers keep to roads
+   * and round sand and snow. Ships sail unweighted.
+   */
+  routeWeightAt(node: NodeId, traversal: Traversal): Fixed {
+    return traversal === 'land' ? (this.routeWeights[node] ?? ONE) : ONE;
+  }
+
+  /** The least {@link routeWeightAt} any node of `traversal` carries, the A* heuristic's scale. */
+  minRouteWeight(traversal: Traversal): Fixed {
+    if (traversal === 'water') return ONE;
+    const road = routeWeightOf(ROAD_RESISTANCE);
+    return this.roadNodes.length > 0 && road < this.groundMinRouteWeight ? road : this.groundMinRouteWeight;
+  }
+
+  /**
+   * Mirror the world's road network into the per-node lanes, once per road revision; a repeat call with
+   * the revision already mirrored costs nothing. The world owns the network (`systems/roads`); this lane
+   * only serves the per-step reads.
+   */
+  syncRoads(revision: number, nodes: Iterable<NodeId>): void {
+    if (revision === this.roadRevision) return;
+    for (const node of this.roadNodes) this.setRoad(node, false);
+    this.roadNodes = [];
+    for (const node of nodes) {
+      if (this.roads[node] === 1) continue;
+      this.setRoad(node, true);
+      this.roadNodes.push(node);
+    }
+    this.roadRevision = revision;
+  }
+
+  private setRoad(node: NodeId, road: boolean): void {
+    this.checkedSlot(this.roads, node);
+    this.roads[node] = road ? 1 : 0;
+    this.routeWeights[node] = routeWeightOf(road ? ROAD_RESISTANCE : this.roughnessAt(node));
   }
 
   /** Source elevation unit under one half-cell node; absent maps are flat. */
@@ -128,4 +218,8 @@ export class TerrainGraph extends TerrainEdges {
     }
     return components;
   }
+}
+
+function routeWeightOf(resistance: number): Fixed {
+  return fx.fromInt(resistance < MIN_ROUTE_RESISTANCE ? MIN_ROUTE_RESISTANCE : resistance);
 }

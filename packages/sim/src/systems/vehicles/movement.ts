@@ -450,7 +450,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       continue; // the fresh route's first leg starts next tick
     }
     const here = terrain.nodeAtClamped(anchor.hx, anchor.hy);
-    const period = vehicleMovePeriod(terrain.roughnessAt(here), isSiegeVehicle(type));
+    const period = vehicleMovePeriod(terrain.resistanceAt(here), isSiegeVehicle(type));
     const facing = facingOfStep(anchor, next);
     const course = shipCourse(anchor, drive.route) ?? facing;
     const live = world.mut(e, VehicleDrive);

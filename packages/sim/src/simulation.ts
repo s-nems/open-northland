@@ -112,6 +112,7 @@ import {
 } from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { type WorkStatus, workStatus } from './systems/readviews/work-status.js';
+import { syncRoadLane } from './systems/roads/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
 import {
@@ -312,6 +313,7 @@ export class Simulation {
     this.currentTick++;
     this.events.clear(); // events for tick N are a pure function of this tick's systems
     this.digest?.beginTick();
+    if (this.terrain !== undefined) syncRoadLane(this.world, this.terrain);
     const ctx = this.context();
     const instrument = this.instrument;
     for (const { name, system } of SYSTEM_ORDER) {

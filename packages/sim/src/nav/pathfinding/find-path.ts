@@ -1,13 +1,17 @@
 /**
- * A* pathfinding over the terrain half-cell adjacency graph. Each edge costs its real world length and
- * the heuristic is the admissible {@link latticeDistanceTo}, so a route minimises true on-screen distance
- * and reads straight under the staggered raster. All costs are fixed-point; no float enters the search.
+ * A* pathfinding over the terrain half-cell adjacency graph. Each edge costs its real world length times
+ * the entered node's route weight (its walking resistance on land), and the heuristic is
+ * {@link latticeDistanceTo} scaled by the graph's least weight, admissible and consistent because no step
+ * weighs less. A route so minimises on-screen distance weighed by ground, reading straight under the
+ * staggered raster on even ground. All costs are fixed-point; no float enters the search.
  *
  * Ties break on a history-independent total order, so two clients in lockstep pick byte-identical paths.
  * The line-deviation key only separates routes that already tie on cost, so optimality is untouched.
  *
  * Working storage is reused per graph, so a query allocates only the path it returns.
  */
+
+import { type Fixed, fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
 import { latticeDistanceTo, type NodeId, type TerrainGraph, type Traversal } from '../terrain/index.js';
 import { siftDown, siftUp } from './open-heap.js';
@@ -177,6 +181,8 @@ class ResumableSearch {
   private readonly startY: number;
   private readonly goalX: number;
   private readonly goalY: number;
+  /** The heuristic's factor: no step of this traversal weighs less. */
+  private readonly heuristicScale: Fixed;
 
   constructor(
     private readonly scratch: SearchScratch,
@@ -198,9 +204,10 @@ class ResumableSearch {
     this.startY = graph.yOf(start);
     this.goalX = graph.xOf(goal);
     this.goalY = graph.yOf(goal);
+    this.heuristicScale = graph.minRouteWeight(traversal);
     scratch.stamps[start] = this.query;
     scratch.g[start] = 0;
-    scratch.f[start] = latticeDistanceTo(graph, this.goalX, this.goalY, start);
+    scratch.f[start] = this.heuristic(start);
     scratch.dev[start] = 0; // the start sits on its own line
     scratch.cameFrom[start] = NO_NODE;
     scratch.heapIdx[start] = 0;
@@ -234,12 +241,12 @@ class ResumableSearch {
       const currentG = g[current] ?? 0;
       graph.stepsInto(current, blocked, steps, traversal);
       for (let i = 0; i < steps.length; i++) {
-        const { node: next, cost } = steps.at(i);
-        const tentativeG = currentG + cost;
+        const { node: next, cost: length } = steps.at(i);
+        const tentativeG = currentG + fx.mul(length, graph.routeWeightAt(next, traversal));
         if (stamps[next] !== query) {
           stamps[next] = query;
           g[next] = tentativeG;
-          f[next] = tentativeG + latticeDistanceTo(graph, this.goalX, this.goalY, next);
+          f[next] = tentativeG + this.heuristic(next);
           dev[next] = Math.abs(
             (graph.xOf(next) - this.startX) * lineHY - (graph.yOf(next) - this.startY) * lineHX,
           );
@@ -259,6 +266,10 @@ class ResumableSearch {
         siftUp(scratch, index);
       }
     }
+  }
+
+  private heuristic(node: NodeId): Fixed {
+    return fx.mul(latticeDistanceTo(this.graph, this.goalX, this.goalY, node), this.heuristicScale);
   }
 }
 

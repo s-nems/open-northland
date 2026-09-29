@@ -9,6 +9,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
+import { layRoad } from '../../src/systems/roads/index.js';
 import { boardRider } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
@@ -33,11 +34,15 @@ const MAP_CELLS = 8;
 const REVEAL_POINT = { hx: 14, hy: 14 };
 const REVEAL_RANGE = 1;
 const FIXTURE_TICKS = 24;
+/** A road stretch under the cart's drive east. */
+const ROAD_ROW = 4;
+const ROAD_FROM_HX = 12;
+const ROAD_TO_HX = 15;
 const FIXTURE_MAP_ID = 'fixture';
 
 /** The world the fixture freezes: every section populated - a shared-vision pair and its fog mask
- *  from a scout and a script-style reveal, several component stores including a vehicle's, an advanced rng stream, and one
- *  pending envelope. */
+ *  from a scout and a script-style reveal, several component stores including a vehicle's and the road
+ *  network, an advanced rng stream, and one pending envelope. */
 function fixtureSim(): Simulation {
   const sim = new Simulation({ seed: 9, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
@@ -58,6 +63,11 @@ function fixtureSim(): Simulation {
   sim.enqueueSetup({ kind: 'createVehicle', vehicleType: HANDCART, x: 12, y: 4, tribe: VIKING, owner: P0 });
   sim.run(FIXTURE_TICKS);
   sim.fog?.revealArea(P0, REVEAL_POINT, REVEAL_RANGE); // after the setup pass: joining a group drops masks
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('save fixture sim has no terrain');
+  const road = [];
+  for (let hx = ROAD_FROM_HX; hx <= ROAD_TO_HX; hx++) road.push(terrain.nodeAt(hx, ROAD_ROW));
+  layRoad(sim.world, terrain, road);
   const scout = [...sim.world.query(Settler)][0];
   if (scout === undefined) throw new Error('save fixture scout missing');
   sim.enqueueSetup({ kind: 'equipGood', entity: scout, group: 'boots', slot: 0, goodType: SHOES_GOOD });

@@ -4,8 +4,8 @@ import type { HalfCellNode } from '../../nav/halfcell.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import { firstRingNode } from './node-geometry.js';
 
-/** Walking costs from a seed set over the pathfinder's own edges, in the tile units its step costs
- *  carry (a half column is half a tile, a diagonal edge three quarters, roughness on top): a spot search
+/** Walking costs from a seed set over the pathfinder's own edges, in the tile units their lengths carry
+ *  (a half column is half a tile, a diagonal edge three quarters; ground is not weighed): a spot search
  *  ranks candidates by the trip a man walks round what blocks him, not as the crow flies. */
 export interface WalkDistances {
   /** The cheapest walk from a seed to `node`, or undefined off the seeds' ground or past the flood budget. */
