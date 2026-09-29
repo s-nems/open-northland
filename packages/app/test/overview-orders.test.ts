@@ -63,7 +63,10 @@ const pressOn = (
   return press(spot.x, spot.y, event as MouseEvent);
 };
 
-function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
+function harness(
+  workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder,
+  wildlife: UnitTargets['wildlife'] = () => [],
+): {
   press: OverviewPress;
   pickMode: PickModeController;
   issued: Command[];
@@ -77,7 +80,7 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
   const orders = createUnitOrderController({
     answered: createAnsweredOrders(),
     selected: selection.ids,
-    targets,
+    targets: { ...targets, wildlife },
     snapshot: () => WORLD,
     content: sandboxContent(),
     mapSize: MAP_SIZE,
@@ -89,7 +92,7 @@ function harness(workFlagBinding = DEFAULT_KEY_BINDINGS.workFlagOrder): {
   const pickMode = createPickModeController({
     answered: createAnsweredOrders(),
     snapshot: () => WORLD,
-    targets,
+    targets: { ...targets, wildlife },
     content: sandboxContent(),
     mapSize: MAP_SIZE,
     toWorld: (clientX, clientY) => ({ x: clientX, y: clientY }),
@@ -227,5 +230,15 @@ describe('a world press on an armed pick mode', () => {
     pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [] });
     expect(pickMode.handleMouseDown(click(2))).toBe('calledOff');
     expect(issued).toHaveLength(1);
+  });
+
+  it('strikes a wild animal an attack-move is pressed on instead of marching past it', () => {
+    const DEER = 40;
+    const { pickMode, issued } = harness(DEFAULT_KEY_BINDINGS.workFlagOrder, () => [
+      { ref: DEER, x: 10, y: 10, kind: 'settler' },
+    ]);
+    pickMode.arm({ kind: 'attack-move', units: [SCOUT.id], vehicles: [] });
+    expect(pickMode.handleMouseDown(click(0))).toBe('ordered');
+    expect(issued).toEqual([{ kind: 'attackUnit', entity: SCOUT.id, target: DEER }]);
   });
 });
