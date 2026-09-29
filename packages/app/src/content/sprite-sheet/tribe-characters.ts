@@ -111,7 +111,9 @@ function headBindingFor(
 }
 
 /** The idle-action clips this body's bob pool draws, other than its base wait: a human body's `wait`
- *  sequences, an animal body's every idle clip. Render schedules them; the rows only define the clips. */
+ *  sequences, an animal body's every idle clip. Render schedules them; the rows only define the clips.
+ *  They come from the first job in `jobs` naming any, so an armed soldier never fidgets in the unarmed
+ *  soldier's empty-handed wait its class degrades through. */
 function characterIdleFidgets(
   ir: ContentIr | null,
   tribe: number,
@@ -127,15 +129,16 @@ function characterIdleFidgets(
     typeof idle === 'object' && 'frameLists' in idle
       ? `${idle.start}/${JSON.stringify(idle.frameLists)}`
       : '';
-  for (const row of ir?.gfxAtomics ?? []) {
-    if (
-      row.tribe !== tribe ||
-      !jobs.includes(row.job) ||
-      !IDLE_ACTIONS.includes(row.action) ||
-      row.bodySeq === undefined ||
-      (!isAnimalBody(look.bodyBmd) && !/wait/i.test(row.bodySeq))
-    )
-      continue;
+  const idleRows = (ir?.gfxAtomics ?? []).filter(
+    (row) =>
+      row.tribe === tribe &&
+      IDLE_ACTIONS.includes(row.action) &&
+      row.bodySeq !== undefined &&
+      (isAnimalBody(look.bodyBmd) || /wait/i.test(row.bodySeq)),
+  );
+  const ownJob = jobs.find((job) => idleRows.some((row) => row.job === job));
+  for (const row of idleRows) {
+    if (row.job !== ownJob || row.bodySeq === undefined) continue;
     const seq = seqByName.get(row.bodySeq);
     if (seq === undefined || row.dirFrames.every((list) => list.length === 0)) continue;
     if (

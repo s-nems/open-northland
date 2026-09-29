@@ -7,7 +7,13 @@ import {
 } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { ATTACK_ATOMIC } from '../../src/catalog/atomics.js';
-import { JOB_ARCHER_LONG, JOB_SOLDIER_UNARMED } from '../../src/catalog/jobs.js';
+import {
+  JOB_ARCHER_LONG,
+  JOB_HERO_UNARMED,
+  JOB_HEROINE_BOW,
+  JOB_SOLDIER_UNARMED,
+  SOLDIER_JOB_MAX,
+} from '../../src/catalog/jobs.js';
 import { humanSequences } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { FACING } from '../../src/content/settler-gfx/index.js';
@@ -30,6 +36,11 @@ const BYZANTINE = 3;
 const WERESNAKE = 5;
 const WEREWOLF = 6;
 const FACINGS = 8;
+/** Every weapon-carrying soldier and hero job: the soldier band past the unarmed base, then the armed heroes. */
+const ARMED_JOBS: readonly number[] = [
+  ...Array.from({ length: SOLDIER_JOB_MAX - JOB_SOLDIER_UNARMED }, (_, i) => JOB_SOLDIER_UNARMED + 1 + i),
+  ...Array.from({ length: JOB_HEROINE_BOW - JOB_HERO_UNARMED }, (_, i) => JOB_HERO_UNARMED + 1 + i),
+];
 
 /**
  * Head looks the source authors no frames for. Original behavior, unconfirmed in the running game: it draws
@@ -163,6 +174,28 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
       const look = tables.get(tribe)?.byJob[JOB_ARCHER_LONG];
       expect(look?.binding.byAtomic?.[ATTACK_ATOMIC], `tribe ${tribe}`).toBeDefined();
     }
+  });
+
+  it('keeps every armed look on its weapon while it fidgets', () => {
+    // Each weapon class degrades through the unarmed soldier, whose idle records name the empty-handed wait.
+    // A look already standing in that wait authors no armed clip at all, such as a non-viking axe hero.
+    const empty = humanSequences(rawIrUnderTest() as ContentIr).get('human_man_warrior_empty_wait');
+    expect(empty).toBeDefined();
+    const unarmedFidgets: string[] = [];
+    for (const [tribe, table] of tables) {
+      const armed = [
+        ...ARMED_JOBS.map((job) => [`job ${job}`, table?.byJob[job]] as const),
+        ...Object.entries(table?.byWeaponGood ?? {}).map(([good, char]) => [`weapon ${good}`, char] as const),
+      ];
+      for (const [key, char] of armed) {
+        const idle = char?.binding.idle;
+        if (typeof idle === 'object' && idle.start === empty?.start) continue;
+        for (const fidget of char?.binding.idleFidgets ?? []) {
+          if (fidget.start === empty?.start) unarmedFidgets.push(`tribe ${tribe} ${key}`);
+        }
+      }
+    }
+    expect(unarmedFidgets).toEqual([]);
   });
 
   it('draws a viking carrying stone under the stooped head the source names for it', () => {
