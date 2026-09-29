@@ -12,6 +12,7 @@ import {
 } from '../data/music/index.js';
 import type { AudioTerrain, SoundBindings } from '../data/types.js';
 import { type UiCue, uiCueShot } from '../data/ui-cues.js';
+import type { WeatherSoundInput } from '../data/weather/mix.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
 import type { RandomFn } from './platform.js';
 
@@ -114,6 +115,18 @@ export class SoundDriver {
   /** Set the music volume (0..1). */
   setMusicVolume(volume: number): void {
     this.engine.setMusicVolume(volume);
+  }
+
+  /** Once per rendered frame, after the render advanced its weather: the conditions on screen and the
+   *  game seconds they advanced by (frozen while paused, so no new thunder rolls; the rain bed keeps
+   *  sounding). Null conditions fade the weather out. */
+  updateWeather(conditions: WeatherSoundInput | null, gameSeconds: number): void {
+    this.engine.applyWeather(conditions, gameSeconds);
+  }
+
+  /** The graphics "Weather" switch (live). */
+  setWeatherEnabled(enabled: boolean): void {
+    this.engine.setWeatherEnabled(enabled);
   }
 
   /** Play a GUI cue now, from the input event itself: a button press confirms, a cancelled tool fails. */

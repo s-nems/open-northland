@@ -1,0 +1,240 @@
+import type { LightningStrike, WeatherConditions } from '@open-northland/render/data';
+import { THUNDER_MAX_DELAY_SECONDS } from '@open-northland/render/data';
+import { describe, expect, it } from 'vitest';
+import {
+  planThunder,
+  seededRandom,
+  THUNDER_CRACK_DISTANCE,
+  THUNDER_STALE_S,
+  ThunderQueue,
+} from '../src/data/weather/thunder.js';
+import { WebAudioEngine, weatherMix } from '../src/index.js';
+import { WEATHER_TEARDOWN_S, WeatherSoundscape } from '../src/web/engine/weather-soundscape.js';
+import { FakeContext, type FakeGain, type FakeNode, type FakeSource } from './helpers/fake-audio.js';
+
+const DRY = { rain: 0, snow: 0, sand: 0 };
+
+function conditions(over: Partial<WeatherConditions> = {}): WeatherConditions {
+  return { amounts: DRY, storm: 0, windX: 0, windY: 0, gust: 0, flash: 0, strikes: [], ...over };
+}
+
+const strike = (id: number, atSeconds: number, distance: number): LightningStrike => ({
+  id,
+  atSeconds,
+  screenX: 0.5,
+  screenY: 0.5,
+  distance,
+});
+
+describe('weatherMix', () => {
+  it('is silent with no conditions or a dry sky', () => {
+    expect(weatherMix(null).silent).toBe(true);
+    expect(weatherMix(conditions({ storm: 1, gust: 1 })).silent).toBe(true);
+  });
+
+  it('makes heavier rain louder, denser and lower', () => {
+    const light = weatherMix(conditions({ amounts: { ...DRY, rain: 0.05 } }));
+    const heavy = weatherMix(conditions({ amounts: { ...DRY, rain: 0.4 }, storm: 0.8 }));
+    expect(light.silent).toBe(false);
+    expect(heavy.rainHissGain).toBeGreaterThan(light.rainHissGain);
+    expect(heavy.rainBodyGain).toBeGreaterThan(light.rainBodyGain);
+    expect(light.patterSparseGain).toBeGreaterThan(light.patterDenseGain);
+    expect(heavy.patterDenseGain).toBeGreaterThan(heavy.patterSparseGain);
+    expect(heavy.rainBodyLowpassHz).toBeLessThan(light.rainBodyLowpassHz);
+    expect(heavy.rainHissHighpassHz).toBeLessThan(light.rainHissHighpassHz);
+  });
+
+  it('gives snow a muffled wind only and sand a harsh gritty one', () => {
+    const snow = weatherMix(conditions({ amounts: { ...DRY, snow: 0.3 } }));
+    const sand = weatherMix(conditions({ amounts: { ...DRY, sand: 0.3 } }));
+    expect(snow.rainHissGain + snow.patterSparseGain + snow.gritGain).toBe(0);
+    expect(snow.windGain).toBeGreaterThan(0);
+    expect(sand.gritGain).toBeGreaterThan(0);
+    expect(sand.windLowpassHz).toBeGreaterThan(snow.windLowpassHz * 4);
+  });
+
+  it('whistles only in a storm, and louder in a gust', () => {
+    const amounts = { ...DRY, snow: 0.3 };
+    expect(weatherMix(conditions({ amounts, gust: 1 })).whistleGain).toBe(0);
+    const lull = weatherMix(conditions({ amounts, storm: 1, gust: 0 }));
+    const gust = weatherMix(conditions({ amounts, storm: 1, gust: 1 }));
+    expect(lull.whistleGain).toBeGreaterThan(0);
+    expect(gust.whistleGain).toBeGreaterThan(lull.whistleGain);
+    expect(gust.windGain).toBeGreaterThan(lull.windGain);
+  });
+});
+
+describe('planThunder', () => {
+  it('delays and muffles with distance, and cracks only near', () => {
+    const near = planThunder(strike(1, 10, 0), seededRandom(1));
+    const far = planThunder(strike(2, 10, 1), seededRandom(2));
+    expect(near.arriveSeconds).toBe(10);
+    expect(far.arriveSeconds).toBeCloseTo(10 + THUNDER_MAX_DELAY_SECONDS, 6);
+    expect(near.crackGain).toBeGreaterThan(0);
+    expect(planThunder(strike(3, 0, THUNDER_CRACK_DISTANCE), seededRandom(3)).crackGain).toBe(0);
+    expect(far.lowpassHz).toBeLessThan(near.lowpassHz);
+    expect(far.rumbleS).toBeGreaterThan(near.rumbleS);
+  });
+
+  it('rolls in time order inside the rumble', () => {
+    const plan = planThunder(strike(7, 0, 0.6), seededRandom(7));
+    const times = plan.rolls.map((r) => r.atS);
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
+    expect(times.at(-1)).toBeLessThan(plan.rumbleS);
+  });
+});
+
+describe('ThunderQueue', () => {
+  it('releases each strike once, when its sound arrives by game time', () => {
+    const queue = new ThunderQueue();
+    const s = strike(5, 10, 0.5);
+    const arrive = 10 + 0.5 * THUNDER_MAX_DELAY_SECONDS;
+    expect(queue.advance([s], 10)).toEqual([]);
+    expect(queue.advance([s], arrive - 0.01)).toEqual([]);
+    expect(queue.advance([s], arrive).map((p) => p.strikeId)).toEqual([5]);
+    expect(queue.advance([s], arrive + 1)).toEqual([]);
+  });
+
+  it('holds pending thunder while game time stands still', () => {
+    const queue = new ThunderQueue();
+    const s = strike(6, 10, 1);
+    queue.advance([s], 10);
+    for (let frame = 0; frame < 100; frame++) expect(queue.advance([s], 11)).toEqual([]);
+    expect(queue.advance([], 10 + THUNDER_MAX_DELAY_SECONDS)).toHaveLength(1);
+  });
+
+  it('skips a strike first seen long after its thunder was due', () => {
+    const queue = new ThunderQueue();
+    expect(queue.advance([strike(8, 0, 0)], THUNDER_STALE_S + 1)).toEqual([]);
+    expect(queue.pendingCount).toBe(0);
+  });
+});
+
+function soundscape(): { ctx: FakeContext; scape: WeatherSoundscape; out: FakeNode } {
+  const ctx = new FakeContext();
+  const out = ctx.createGain();
+  const scape = new WeatherSoundscape(ctx as unknown as BaseAudioContext, out as unknown as AudioNode);
+  return { ctx, scape, out };
+}
+
+/** Nodes the soundscape made that are still wired in. */
+const live = (ctx: FakeContext, from: number): FakeNode[] =>
+  ctx.created.slice(from).filter((n) => !n.disconnected);
+
+describe('WeatherSoundscape', () => {
+  const rain = conditions({ amounts: { ...DRY, rain: 0.3 } });
+
+  it('builds nothing for a dry sky', () => {
+    const { ctx, scape } = soundscape();
+    scape.update(conditions(), 0);
+    expect(scape.active).toBe(false);
+    expect(ctx.sources).toHaveLength(0);
+  });
+
+  it('glides every layer gain to the mix target', () => {
+    const { ctx, scape, out } = soundscape();
+    scape.update(rain, 0);
+    expect(scape.active).toBe(true);
+    const mix = weatherMix(rain);
+    const bedOut = ctx.gains.find((g) => g.connectedTo.includes(out)) as FakeGain;
+    const layers = ctx.gains.filter((g) => g.connectedTo.includes(bedOut));
+    // Silent layers (whistle, grit in a calm rain) are never sent a target; the rest glide.
+    const sounding = layers.filter((g) => g.gain.value > 0);
+    expect(sounding.length).toBeGreaterThanOrEqual(3);
+    expect(sounding.every((g) => g.gain.events.every((e) => e.kind === 'target'))).toBe(true);
+    expect(layers.map((g) => g.gain.value)).toContain(mix.rainHissGain);
+    expect(layers.map((g) => g.gain.value)).toContain(mix.patterSparseGain);
+  });
+
+  it('does not resend an unchanged target every frame', () => {
+    const { ctx, scape } = soundscape();
+    scape.update(rain, 0);
+    const events = (): number => ctx.gains.reduce((n, g) => n + g.gain.events.length, 0);
+    const before = events();
+    for (let frame = 0; frame < 10; frame++) scape.update(rain, frame / 60);
+    expect(events()).toBe(before);
+  });
+
+  it('tears the graph down once silent long enough, releasing every node', () => {
+    const { ctx, scape } = soundscape();
+    const from = ctx.created.length;
+    scape.update(rain, 0);
+    scape.update(conditions(), 1);
+    expect(scape.active).toBe(true);
+    ctx.currentTime = WEATHER_TEARDOWN_S + 0.1;
+    scape.update(conditions(), 2);
+    expect(scape.active).toBe(false);
+    expect(live(ctx, from)).toEqual([]);
+    expect(ctx.sources.every((s) => s.stoppedAt !== null)).toBe(true);
+  });
+
+  it('leaks no nodes across repeated weather switch toggles', () => {
+    const { ctx, scape } = soundscape();
+    const from = ctx.created.length;
+    for (let round = 0; round < 5; round++) {
+      scape.setEnabled(true);
+      scape.update(rain, round);
+      expect(scape.active).toBe(true);
+      scape.setEnabled(false);
+      expect(scape.active).toBe(false);
+      expect(live(ctx, from)).toEqual([]);
+    }
+    scape.update(rain, 10);
+    expect(scape.active).toBe(false); // off stays off
+  });
+
+  it('plays one thunder per strike after its distance delay, and releases the voice', () => {
+    const { ctx, scape } = soundscape();
+    const storm = (strikes: LightningStrike[]): WeatherConditions => ({ ...rain, storm: 1, strikes });
+    const s = strike(3, 1, 0.5);
+    scape.update(storm([s]), 1);
+    expect(scape.thunderVoices).toBe(0);
+    scape.update(storm([s]), 1 + 0.5 * THUNDER_MAX_DELAY_SECONDS);
+    expect(scape.thunderVoices).toBe(1);
+    scape.update(storm([s]), 5);
+    scape.update(storm([s]), 6);
+    expect(scape.thunderVoices).toBe(1);
+    const rumble = ctx.sources.at(-1) as FakeSource;
+    const from = ctx.created.indexOf(rumble);
+    rumble.onended?.();
+    expect(scape.thunderVoices).toBe(0);
+    expect(live(ctx, from)).toEqual([]);
+  });
+
+  it('opens a near strike with a crack', () => {
+    const { ctx, scape } = soundscape();
+    scape.update({ ...rain, strikes: [strike(1, 0, 0)] }, 0);
+    const started = ctx.sources.filter((s) => !s.loop);
+    expect(started).toHaveLength(1); // the crack plays once; the rumble loops its buffer
+    expect(scape.thunderVoices).toBe(1);
+  });
+});
+
+describe('WebAudioEngine weather', () => {
+  it('plays only once audio is live, into the game-sounds bus, and stops on mute', async () => {
+    const ctx = new FakeContext();
+    const engine = new WebAudioEngine({
+      createContext: () => ctx as unknown as AudioContext,
+      fetchBytes: async () => new ArrayBuffer(4),
+    });
+    const rain = conditions({ amounts: { ...DRY, rain: 0.3 } });
+    engine.applyWeather(rain, 0);
+    expect(ctx.sources).toHaveLength(0);
+    await engine.resume();
+    engine.applyWeather(rain, 0);
+    const [, sfxBus] = ctx.gains as [FakeGain, FakeGain];
+    const from = ctx.created.indexOf(ctx.gains.find((g) => g.connectedTo.includes(sfxBus)) as FakeGain);
+    expect(from).toBeGreaterThan(0);
+    engine.setEnabled(false);
+    expect(live(ctx, from)).toEqual([]);
+  });
+
+  it('keeps the weather switch set before the context exists', async () => {
+    const ctx = new FakeContext();
+    const engine = new WebAudioEngine({ createContext: () => ctx as unknown as AudioContext });
+    engine.setWeatherEnabled(false);
+    await engine.resume();
+    engine.applyWeather(conditions({ amounts: { ...DRY, rain: 0.3 } }), 0);
+    expect(ctx.sources).toHaveLength(0);
+  });
+});

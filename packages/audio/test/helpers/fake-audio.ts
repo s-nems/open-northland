@@ -7,7 +7,7 @@
 /** One scheduled automation call, so a test can assert the anchor a ramp starts from and not only
  *  the target it ends on. */
 export interface ParamEvent {
-  readonly kind: 'set' | 'ramp' | 'cancel';
+  readonly kind: 'set' | 'ramp' | 'cancel' | 'target';
   readonly value: number;
   readonly time: number;
 }
@@ -34,6 +34,11 @@ export class FakeParam {
   }
   exponentialRampToValueAtTime(value: number, time: number): void {
     this.linearRampToValueAtTime(value, time);
+  }
+  /** Like the ramps, jumps straight to the target; `events` keeps the call. */
+  setTargetAtTime(value: number, time: number, _timeConstant: number): void {
+    this.events.push({ kind: 'target', value, time });
+    this.value = value;
   }
 }
 
@@ -83,8 +88,39 @@ export class FakeSource extends FakeNode {
   }
 }
 
+export class FakeBiquad extends FakeNode {
+  type: BiquadFilterType = 'lowpass';
+  frequency = new FakeParam();
+  Q = new FakeParam();
+  gain = new FakeParam();
+}
+
+export class FakeOscillator extends FakeSource {
+  frequency = new FakeParam();
+}
+
+export class FakeBuffer {
+  private readonly data: Float32Array;
+  constructor(
+    readonly length: number,
+    readonly sampleRate: number,
+  ) {
+    this.data = new Float32Array(length);
+  }
+  get duration(): number {
+    return this.length / this.sampleRate;
+  }
+  getChannelData(_channel: number): Float32Array {
+    return this.data;
+  }
+}
+
 export class FakeContext {
   currentTime = 0;
+  /** Low, so generated noise buffers stay small in tests. */
+  sampleRate = 8000;
+  /** Every node any factory made, so a test can prove a graph released all of them. */
+  readonly created: FakeNode[] = [];
   state: AudioContextState = 'suspended';
   destination = new FakeNode();
   readonly sources: FakeSource[] = [];
@@ -103,12 +139,27 @@ export class FakeContext {
   createGain(): FakeGain {
     const g = new FakeGain();
     this.gains.push(g);
+    this.created.push(g);
     return g;
   }
   createBufferSource(): FakeSource {
     const s = new FakeSource();
     this.sources.push(s);
+    this.created.push(s);
     return s;
+  }
+  createBiquadFilter(): FakeBiquad {
+    const f = new FakeBiquad();
+    this.created.push(f);
+    return f;
+  }
+  createOscillator(): FakeOscillator {
+    const o = new FakeOscillator();
+    this.created.push(o);
+    return o;
+  }
+  createBuffer(_channels: number, length: number, sampleRate: number): FakeBuffer {
+    return new FakeBuffer(length, sampleRate);
   }
   createStereoPanner(): FakePanner {
     return new FakePanner();

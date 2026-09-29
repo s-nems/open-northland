@@ -61,6 +61,15 @@ export type {
   SoundBindings,
 } from './data/types.js';
 export { UI_CUE_FILES, UI_CUE_GAIN, type UiCue, uiCueShot } from './data/ui-cues.js';
+// Weather soundscape: every level and band is a named approximation in its module (the original has
+// no weather sound); these are the decisions and the two knobs a caller most likely retunes.
+export {
+  WEATHER_AMOUNT_FOR_FULL_SOUND,
+  type WeatherMix,
+  type WeatherSoundInput,
+  weatherMix,
+} from './data/weather/mix.js';
+export { planThunder, type ThunderPlan, ThunderQueue } from './data/weather/thunder.js';
 export {
   AMBIENT_FADE_S,
   type AudioEngineOptions,
@@ -79,6 +88,7 @@ export {
   ONE_SHOT_COOLDOWN_S,
   sfxBusGain,
   VOLUME_RAMP_S,
+  WeatherSoundscape,
   WebAudioEngine,
 } from './web/engine/index.js';
 // Impure Web Audio sink (browser-only). The default-tuning constants stay exported as the documented

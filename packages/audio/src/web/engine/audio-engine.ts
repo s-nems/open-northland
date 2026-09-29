@@ -1,5 +1,6 @@
 import type { MusicTrack } from '../../data/music/index.js';
 import type { AudioFrame, OneShot } from '../../data/types.js';
+import type { WeatherSoundInput } from '../../data/weather/mix.js';
 import {
   type ContextFactory,
   type FetchBytes,
@@ -12,6 +13,7 @@ import { pruneExpired } from '../prune.js';
 import { AmbientMixer } from './ambient-mixer.js';
 import { MusicPlayer } from './music-player.js';
 import { SampleCache } from './sample-cache.js';
+import { WeatherSoundscape } from './weather-soundscape.js';
 
 /**
  * The impure Web Audio playback sink - the only part of the package that owns an `AudioContext`. It
@@ -113,6 +115,9 @@ export class WebAudioEngine {
   private samples: SampleCache | null = null;
   private mixer: AmbientMixer | null = null;
   private music: MusicPlayer | null = null;
+  private weather: WeatherSoundscape | null = null;
+  /** The graphics "Weather" switch, kept here so a setter before the context exists still lands. */
+  private weatherEnabled = true;
   /** Current bus volumes - kept here so a setter before the context exists still lands. */
   private sfxVolume: number;
   private musicVolume: number;
@@ -175,6 +180,7 @@ export class WebAudioEngine {
     if (!enabled) {
       this.mixer?.stopAll();
       this.music?.stop();
+      this.weather?.stop();
     } else {
       this.assertMusic();
     }
@@ -190,6 +196,7 @@ export class WebAudioEngine {
     if (ctx === null) return;
     this.mixer?.stopAll();
     this.music?.stop();
+    this.weather?.stop();
     void ctx.close().catch(() => undefined); // a context already closed elsewhere rejects
   }
 
@@ -228,6 +235,19 @@ export class WebAudioEngine {
     this.fire(frame.oneShots);
     this.mixer.reconcile(frame.ambient);
     this.updateMusicDuck(ctx);
+  }
+
+  /** Play one frame of weather; `gameSeconds` is the clock the conditions advanced by (see
+   *  {@link WeatherSoundscape.update}). Null conditions fade the weather out. */
+  applyWeather(conditions: WeatherSoundInput | null, gameSeconds: number): void {
+    if (!this.canPlay()) return;
+    this.weather?.update(conditions, gameSeconds);
+  }
+
+  /** The graphics "Weather" switch: off silences the weather and forgets its pending thunder. */
+  setWeatherEnabled(enabled: boolean): void {
+    this.weatherEnabled = enabled;
+    this.weather?.setEnabled(enabled);
   }
 
   /** Fire one-shots outside a frame decision - a GUI cue answering an input event right away. */
@@ -288,6 +308,9 @@ export class WebAudioEngine {
     this.samples = new SampleCache(this.baseUrl, this.fetchBytes, (bytes) => ctx.decodeAudioData(bytes));
     this.mixer = new AmbientMixer(ctx, sfxBus, this.samples, () => this.canPlay());
     this.music = new MusicPlayer(ctx, musicBus, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
+    // Weather rides the game-sounds bus beside the terrain beds, so the same slider sets it.
+    this.weather = new WeatherSoundscape(ctx, sfxBus);
+    this.weather.setEnabled(this.weatherEnabled);
     ctx.onstatechange = () => this.onStateChange(ctx);
     return ctx;
   }
