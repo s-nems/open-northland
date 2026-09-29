@@ -1,8 +1,8 @@
 /**
  * Weighted A* pathfinding over the terrain half-cell adjacency graph. Each edge costs its real world
- * length times the entered node's route weight (its walking resistance on land), and the heuristic is
- * {@link latticeDistanceTo} times {@link LAND_HEURISTIC_WEIGHT} on land. A route so nearly minimises
- * on-screen distance weighed by ground, reading straight under the staggered raster on even ground. All
+ * length times the entered node's route weight (its walking resistance on land), and the land heuristic
+ * is {@link latticeDistanceTo} weighed as grass, lowered near roads. A route so nearly minimises on-screen
+ * distance weighed by ground, reading straight under the staggered raster on even ground. All
  * costs are fixed-point; no float enters the search.
  *
  * Ties break on a history-independent total order, so two clients in lockstep pick byte-identical paths.
@@ -11,7 +11,7 @@
  * Working storage is reused per graph, so a query allocates only the path it returns.
  */
 
-import { type Fixed, fx, ONE } from '../../core/fixed.js';
+import { type Fixed, fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
 import {
   DEFAULT_NODE_ROUGHNESS,
@@ -167,14 +167,25 @@ export function findPathWithin(
 const UNCAPPED = Number.POSITIVE_INFINITY;
 
 /**
- * The land heuristic's per-length weight: common ground (grass, roughness 2), not a road's 1. A deliberately
- * inflated heuristic (weighted A*), a named approximation trading exactness for search cost: scaled by the
- * least weight, a long route on magiczny_las settled about 40k nodes. Unweighted lattice distance is
- * consistent (no step weighs under 1), so even without reopening settled nodes a route costs at most this
- * factor over the cheapest; measured there, 0.3 to 1.2% over on average. A road detouring off an
- * all-grass straight line is usually not taken; one across pricier ground is. On uniform grass it is exact.
+ * The land heuristic's per-length weight far from roads: common ground (grass, roughness 2), not a road's
+ * 1. A deliberately inflated heuristic (weighted A*), a named approximation trading exactness for search
+ * cost: scaled by the least weight, a long route on magiczny_las settled about 40k nodes. Unweighted
+ * lattice distance is consistent (no step weighs under 1), so even without reopening settled nodes a
+ * route costs at most this factor over the cheapest; measured there, 0.3 to 1.2% over on average. On
+ * uniform grass it is exact.
  */
 const LAND_HEURISTIC_WEIGHT = fx.fromInt(DEFAULT_NODE_ROUGHNESS);
+
+/**
+ * The inflation of the road-aware lower bound `d + min(d, r)`, with `d` the lattice distance to the goal
+ * and `r` to the nearest road: a route walks at least `r` over ground (grass, 2) before its first road
+ * step (1), so it costs at least `d + r`, and `2d` without a road. Measured on magiczny_las with town
+ * streets laid: uninflated, searches in and into a town settled 6 to 11 times what the grass weight
+ * does; at 3/2, 1.2 to 1.4 times, routes cost 1.9 to 2.7% over the cheapest on average, and 93 to 98% of
+ * the routes a road shortens by 2% take it (the grass weight alone: 61 to 90%). Approximation: native
+ * resistance-1 ground and map-border nodes are not counted as roads.
+ */
+const ROAD_HEURISTIC_INFLATION = fx.div(fx.fromInt(3), fx.fromInt(2));
 
 function pathOf(verdict: NodeId[] | 'unreachable' | 'aborted'): NodeId[] | null {
   return typeof verdict === 'string' ? null : verdict;
@@ -197,7 +208,6 @@ class ResumableSearch {
   private readonly startY: number;
   private readonly goalX: number;
   private readonly goalY: number;
-  private readonly heuristicScale: Fixed;
 
   constructor(
     private readonly scratch: SearchScratch,
@@ -219,7 +229,6 @@ class ResumableSearch {
     this.startY = graph.yOf(start);
     this.goalX = graph.xOf(goal);
     this.goalY = graph.yOf(goal);
-    this.heuristicScale = traversal === 'land' ? LAND_HEURISTIC_WEIGHT : ONE;
     scratch.stamps[start] = this.query;
     scratch.g[start] = 0;
     scratch.f[start] = this.heuristic(start);
@@ -272,7 +281,7 @@ class ResumableSearch {
         }
         // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
         // Settled nodes are never relaxed. Water's heuristic is consistent, so their g is optimal there;
-        // on land the inflated heuristic can settle a node early, a loss the weight's bound covers.
+        // on land the inflated heuristic can settle a node early, a loss the weights' bounds cover.
         const index = heapIdx[next] ?? SETTLED;
         const knownG = g[next] ?? 0;
         if (index === SETTLED || tentativeG >= knownG) continue;
@@ -284,8 +293,16 @@ class ResumableSearch {
     }
   }
 
+  /** Ships sail by plain lattice distance; land weighs it as grass, lowered near a road by
+   *  {@link ROAD_HEURISTIC_INFLATION}'s road-aware bound. */
   private heuristic(node: NodeId): Fixed {
-    return fx.mul(latticeDistanceTo(this.graph, this.goalX, this.goalY, node), this.heuristicScale);
+    const toGoal = latticeDistanceTo(this.graph, this.goalX, this.goalY, node);
+    if (this.traversal !== 'land') return toGoal;
+    const overGrass = fx.mul(toGoal, LAND_HEURISTIC_WEIGHT);
+    const toRoad = this.graph.roadDistanceAt(node);
+    if (toRoad >= toGoal) return overGrass;
+    const viaRoad = fx.mul(fx.add(toGoal, toRoad), ROAD_HEURISTIC_INFLATION);
+    return viaRoad < overGrass ? viaRoad : overGrass;
   }
 }
 

@@ -5,6 +5,7 @@ import type { LandscapeProps } from './landscape-props.js';
 import type { LandscapeMapInput } from './landscapes.js';
 import type { Traversal } from './lattice.js';
 import type { NodeId } from './node-id.js';
+import { fillRoadDistances, NO_ROAD_DISTANCE } from './road-distance.js';
 import { StepBuffer } from './step-buffer.js';
 
 /** The two mover classes in the order their continents are labelled. */
@@ -54,6 +55,8 @@ export class TerrainGraph extends TerrainEdges {
   private readonly roads: Uint8Array;
   private roadNodes: NodeId[] = [];
   private roadRevision = UNSYNCED_ROAD_REVISION;
+  /** Per-node lattice distance to the nearest road, allocated with the first road. */
+  private roadDistances: Int32Array | undefined;
   /** Per-node land route weight: the node's resistance, at least {@link MIN_ROUTE_RESISTANCE}, as a
    *  multiple of ONE. */
   private readonly routeWeights: Fixed[];
@@ -114,6 +117,13 @@ export class TerrainGraph extends TerrainEdges {
     return this.checkedSlot(this.roads, node) !== 0;
   }
 
+  /** The obstacle-free lattice distance from `node` to the nearest road in column units, or
+   *  {@link NO_ROAD_DISTANCE} on a map without roads; for a node the caller has bounds-checked. */
+  roadDistanceAt(node: NodeId): Fixed {
+    // The lane stores Fixed values; a typed array only drops the brand.
+    return (this.roadDistances?.[node] ?? NO_ROAD_DISTANCE) as Fixed;
+  }
+
   /**
    * The factor a route step onto `node` is weighed by, for a node the caller has bounds-checked. Original
    * behavior: the search charges each step the resistance of the node it enters, so walkers keep to roads
@@ -125,8 +135,9 @@ export class TerrainGraph extends TerrainEdges {
 
   /**
    * Mirror the world's road network into the per-node lanes, once per road revision; a repeat call with
-   * the revision already mirrored costs nothing. The world owns the network (`systems/roads`); this lane
-   * only serves the per-step reads.
+   * the revision already mirrored costs nothing. The world owns the network (`systems/roads`); these
+   * lanes only serve the per-step reads and the route heuristic. A change rebuilds the road distances,
+   * O(map nodes): about 2 ms on a 480 x 380 node map.
    */
   syncRoads(revision: number, nodes: Iterable<NodeId>): void {
     if (revision === this.roadRevision) return;
@@ -136,6 +147,10 @@ export class TerrainGraph extends TerrainEdges {
       if (this.roads[node] === 1) continue;
       this.setRoad(node, true);
       this.roadNodes.push(node);
+    }
+    if (this.roadNodes.length > 0 || this.roadDistances !== undefined) {
+      this.roadDistances ??= new Int32Array(this.nodeCount);
+      fillRoadDistances(this.roadDistances, this.width, this.height, this.roadNodes);
     }
     this.roadRevision = revision;
   }

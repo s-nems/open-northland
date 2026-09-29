@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { exportSaveGame, findPath, restoreSimulation, Simulation, type TerrainMap } from '../../src/index.js';
+import {
+  exportSaveGame,
+  findPath,
+  restoreSimulation,
+  type SearchStats,
+  Simulation,
+  type TerrainMap,
+} from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
+import { NO_ROAD_DISTANCE } from '../../src/nav/terrain/road-distance.js';
 import { isRoad, layRoad, roadRevision } from '../../src/systems/roads/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap, roughNodeMap } from '../fixtures/terrain.js';
@@ -15,6 +23,9 @@ const FROM = { hx: 0, hy: 10 };
 const TO = { hx: 20, hy: 10 };
 /** The row the road detour runs along, two diagonals north of the straight line. */
 const ROAD_ROW = 6;
+/** A map wide enough that a road at {@link FAR_ROAD_HX} lies farther from every node of the route than its goal. */
+const FAR_MAP_WIDTH = 160;
+const FAR_ROAD_HX = 140;
 
 function mappedSim(map: TerrainMap): { sim: Simulation; terrain: TerrainGraph } {
   const sim = new Simulation({ seed: 1, content: testContent(), map });
@@ -73,10 +84,30 @@ describe('road network', () => {
     );
   });
 
-  it('keeps to the straight line over grass beside a cheaper road: the land heuristic is weighed as grass', () => {
+  it('routes a walker along a road detour over grass: the heuristic drops to the road-aware bound', () => {
     const { sim, terrain } = mappedSim(grassNodeMap(24, 14));
     layRoad(sim.world, terrain, detourRoad(terrain));
-    expect(route(terrain).every((node) => terrain.yOf(node) === FROM.hy)).toBe(true);
+    const onRoad = route(terrain);
+    expect(onRoad).toContain(terrain.nodeAt(10, ROAD_ROW));
+    expect(onRoad.every((node) => terrain.isRoad(node) || node === terrain.nodeAt(FROM.hx, FROM.hy))).toBe(
+      true,
+    );
+  });
+
+  it('keeps the grass-weighted heuristic far from any road, settling only the straight line', () => {
+    const { sim, terrain } = mappedSim(grassNodeMap(FAR_MAP_WIDTH, 14));
+    const farRoad = Array.from({ length: 10 }, (_, i) => terrain.nodeAt(FAR_ROAD_HX + i, FROM.hy));
+    layRoad(sim.world, terrain, farRoad);
+    const stats: SearchStats = { explored: 0 };
+    const path = findPath(
+      terrain,
+      terrain.nodeAt(FROM.hx, FROM.hy),
+      terrain.nodeAt(TO.hx, TO.hy),
+      undefined,
+      stats,
+    );
+    expect(path?.every((node) => terrain.yOf(node) === FROM.hy)).toBe(true);
+    expect(stats.explored).toBe(path?.length);
   });
 
   it('routes round snow on the straight line: every ground weighs by its resistance', () => {
@@ -102,5 +133,8 @@ describe('road network', () => {
     const terrain = restored.terrain;
     if (terrain === undefined) throw new Error('restored sim has no terrain');
     expect(route(terrain)).toEqual(route(live.terrain));
+    const offRoad = terrain.nodeAt(TO.hx, 0);
+    expect(terrain.roadDistanceAt(offRoad)).toBeLessThan(NO_ROAD_DISTANCE);
+    expect(terrain.roadDistanceAt(offRoad)).toBe(live.terrain.roadDistanceAt(offRoad));
   });
 });
