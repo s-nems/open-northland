@@ -3,8 +3,8 @@ import { MAX_ROOM_NAME_LENGTH, type RoomSeatSetup, type RoomSettings } from '@op
 import { loadMapScript } from '../../content/map-loader.js';
 import { assertMultiplayerMap } from '../../game/multiplayer-map.js';
 import { sessionRuleOverrides } from '../../game/session-rules.js';
-import { DEFAULT_SESSION_SEED, DEFAULT_SESSION_SPEED } from '../../game/session-url.js';
-import { floatParam, intParam } from '../../view/params.js';
+import { DEFAULT_SESSION_SPEED, drawSessionSeed, seedParam } from '../../game/session-url.js';
+import { floatParam } from '../../view/params.js';
 import { authoredVacantMode, vacantOffers } from '../main-menu/lobby/roster-state.js';
 
 interface RoomCreation {
@@ -21,7 +21,7 @@ export async function roomCreation(params: URLSearchParams, mapId: string): Prom
     settings: {
       name: mapId.slice(0, MAX_ROOM_NAME_LENGTH),
       world: { kind: 'map', mapId },
-      seed: intParam(params, 'seed', DEFAULT_SESSION_SEED),
+      seed: seedParam(params) ?? drawSessionSeed(),
       rules: sessionRuleOverrides(params),
       speed: floatParam(params, 'speed', DEFAULT_SESSION_SPEED),
     },

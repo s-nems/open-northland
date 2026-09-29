@@ -1,12 +1,6 @@
 import { FOG_MODE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import {
-  DEFAULT_SESSION_SEED,
-  mapSession,
-  type SessionRosterSlot,
-  sceneSession,
-  sessionSearch,
-} from '../src/game/session-url.js';
+import { mapSession, type SessionRosterSlot, sceneSession, sessionSearch } from '../src/game/session-url.js';
 
 /**
  * The URL is one carrier of a session descriptor. These pin what each `?map=` parameter means and
@@ -51,10 +45,12 @@ describe('mapSession', () => {
     expect(parsed.speed).toBe(2);
   });
 
-  it('falls back to the default seat, seed and tempo when nothing usable names them', () => {
+  it('falls back to the default seat and tempo and draws a seed when nothing usable names them', () => {
     const parsed = session('map=zatoka&player=99&seed=-1&speed=abc');
     expect(parsed.localSeat).toBe(0);
-    expect(parsed.seed).toBe(DEFAULT_SESSION_SEED);
+    expect(Number.isInteger(parsed.seed)).toBe(true);
+    expect(parsed.seed).toBeGreaterThanOrEqual(0);
+    expect(new Set([1, 2, 3, 4].map(() => session('map=zatoka').seed)).size).toBeGreaterThan(1);
     expect(parsed.speed).toBe(1);
     expect(parsed.rules).toEqual({ fog: null, progression: null, needs: null, weather: null });
   });
@@ -142,9 +138,9 @@ describe('sessionSearch', () => {
     expect(mapSession(sessionSearch(parsed, ROSTER), ROSTER)).toEqual(parsed);
   });
 
-  it('writes only what the person chose, and always the seat', () => {
-    const parsed = session('map=zatoka');
-    expect(sessionSearch(parsed, ROSTER).toString()).toBe('map=zatoka&player=0');
+  it('writes only what the person chose, and always the seat and the seed', () => {
+    const parsed = session('map=zatoka&seed=9');
+    expect(sessionSearch(parsed, ROSTER).toString()).toBe('map=zatoka&player=0&seed=9');
   });
 
   it('names only the seats played as another civilization than the roster gives them', () => {
@@ -156,10 +152,10 @@ describe('sessionSearch', () => {
   });
 
   it('leaves the map’s own computer seats out of `?ai=`, which lists the person’s choices', () => {
-    const parsed = mapSession(new URLSearchParams('map=forteca&player=0&ai=2'), SCENARIO_ROSTER);
+    const parsed = mapSession(new URLSearchParams('map=forteca&player=0&ai=2&seed=9'), SCENARIO_ROSTER);
     expect(parsed.seats.filter((seat) => seat.mode === 'ai').map((seat) => seat.player)).toEqual([2, 3, 6]);
     const search = sessionSearch(parsed, SCENARIO_ROSTER);
-    expect(search.toString()).toBe('map=forteca&player=0&ai=2');
+    expect(search.toString()).toBe('map=forteca&player=0&ai=2&seed=9');
     expect(mapSession(search, SCENARIO_ROSTER)).toEqual(parsed);
   });
 

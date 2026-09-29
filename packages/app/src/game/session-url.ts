@@ -22,13 +22,18 @@ import { sessionRuleOverrides } from './session-rules.js';
 
 const { isValidPlayer } = components;
 
-/** The seed a session runs on when nothing names one; a networked session carries its own. */
-export const DEFAULT_SESSION_SEED = 7;
-
 const SEED_VALUES = 2 ** 32;
 
 /** A new match's seed, drawn outside the sim: each match plays another world and another weather. */
 export const drawSessionSeed = (): number => Math.floor(Math.random() * SEED_VALUES);
+
+const NO_SEED = -1;
+
+/** `?seed=<n>`: the seed that replays a match; null when the search names none. */
+export function seedParam(params: URLSearchParams): number | null {
+  const seed = intParam(params, 'seed', NO_SEED);
+  return seed === NO_SEED || seed >= SEED_VALUES ? null : seed;
+}
 
 /** The wall-clock multiplier a session starts at when `?speed=` names none. */
 export const DEFAULT_SESSION_SPEED = 1;
@@ -57,12 +62,13 @@ export function mapIdParam(params: URLSearchParams): string | null {
 }
 
 /** The session a `?map=` search describes. The roster supplies each seat's authored colour, which
- *  `?colors=` then overrides; `?tribes=` names the seats played as another civilization. */
+ *  `?colors=` then overrides; `?tribes=` names the seats played as another civilization. A search
+ *  naming no seed draws one. */
 export function mapSession(params: URLSearchParams, roster: readonly SessionRosterSlot[]): GameSession {
   const localSeat = localSeatParam(params);
   return {
     world: { kind: 'map', mapId: mapIdParam(params) ?? '' },
-    seed: intParam(params, 'seed', DEFAULT_SESSION_SEED),
+    seed: seedParam(params) ?? drawSessionSeed(),
     seats: rosterSeats(params, roster, localSeat),
     localSeat,
     rules: sessionRuleOverrides(params),
@@ -119,7 +125,7 @@ export function sessionSearch(
     const absent = session.seats.filter((seat) => seat.mode === 'absent').map((seat) => seat.player);
     if (absent.length > 0) params.set('absent', absent.join(','));
     // Only a map takes its seed from the search; a scene's is its own, so writing one would lie.
-    if (session.seed !== DEFAULT_SESSION_SEED) params.set('seed', String(session.seed));
+    params.set('seed', String(session.seed));
   }
   const fog = session.rules.fog === null ? null : fogModeName(session.rules.fog);
   if (fog !== null) params.set('fog', fog);

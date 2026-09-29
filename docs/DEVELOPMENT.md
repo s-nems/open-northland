@@ -165,7 +165,7 @@ weather is untouched; `weather=ambient[:<percent>]` holds the game's own weather
 names the seats a person could have taken that the strategic AI plays instead; a map's own computer
 seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` picks
 the world seed a `?map=` session runs on, so two clients of one session start from the same world;
-without it the map entry keeps its fixed default; the lobby draws a new one for each match. Without `lang`
+without it the entry draws one and writes it into the address, so a match's link replays it. Without `lang`
 the language follows the browser, and English stands in for a
 browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides

@@ -8,12 +8,7 @@ import {
 } from '@open-northland/lockstep';
 import { FOG_MODE_BY_NAME, type FogModeName } from '../../../game/fog.js';
 import { onOffParam, weatherModeParam } from '../../../game/session-rules.js';
-import {
-  DEFAULT_SESSION_SEED,
-  DEFAULT_SESSION_SPEED,
-  seatMode,
-  sessionSearch,
-} from '../../../game/session-url.js';
+import { DEFAULT_SESSION_SPEED, seatMode, sessionSearch } from '../../../game/session-url.js';
 import { formatSearch } from '../../../view/params.js';
 import {
   absentSeats,
@@ -102,7 +97,7 @@ export function lobbySession(
   state: RosterState,
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
-  seed: number = DEFAULT_SESSION_SEED,
+  seed: number,
 ): GameSession {
   const lists = {
     ai: new Set(state.seat === null ? [] : aiSeats(state, players)),
@@ -145,7 +140,7 @@ export function lobbyStartEntry(
   state: RosterState,
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
-  seed?: number,
+  seed: number,
 ): string {
   return formatSearch(sessionSearch(lobbySession(mapId, state, players, options, seed), players));
 }

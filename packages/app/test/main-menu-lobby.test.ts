@@ -104,6 +104,7 @@ describe('initialLobbyOptions', () => {
   });
 });
 
+const SEED = 42;
 const OPTIONS = {
   fog: 'classic',
   professionProgression: true,
@@ -113,7 +114,7 @@ const OPTIONS = {
 
 /** The offered seats the launched session declares as AI, which is what `?ai=` carries. */
 function aiSeatsOfLobby(state: RosterState, players: readonly MapsIndexPlayerSlot[]): number[] {
-  return lobbySession('zatoka', state, players, OPTIONS)
+  return lobbySession('zatoka', state, players, OPTIONS, SEED)
     .seats.filter(
       (seat) => seat.mode === 'ai' && players.some((p) => p.player === seat.player && p.claimable),
     )
@@ -132,7 +133,7 @@ describe('lobbySession', () => {
     // the fallback seat, and the descriptor has to say so or it would not survive its own URL. The
     // map's own computer seat (slot 2) plays regardless.
     const state = initialRosterState(players);
-    const session = lobbySession('zatoka', state, players, OPTIONS);
+    const session = lobbySession('zatoka', state, players, OPTIONS, SEED);
     expect(session.localSeat).toBe(0);
     expect(session.seats.map((seat) => seat.mode)).toEqual(['human', 'idle', 'ai']);
     expect(aiSeatsOfLobby(state, players)).toEqual([]);
@@ -142,7 +143,7 @@ describe('lobbySession', () => {
     let state = setVacantMode(initialRosterState(players), 1, 'ai');
     state = setVacantMode(state, 1, 'idle'); // back to the authored idle default
     state = claimSeat(state, 1);
-    const session = lobbySession('zatoka', state, players, OPTIONS);
+    const session = lobbySession('zatoka', state, players, OPTIONS, SEED);
     expect(session.localSeat).toBe(1);
     expect(session.seats.map((seat) => seat.mode)).toEqual(['idle', 'human', 'ai']);
   });
@@ -151,10 +152,10 @@ describe('lobbySession', () => {
     let state = claimSeat(initialRosterState(players), OBSERVER_SEAT);
     state = setVacantMode(state, 0, 'ai');
     state = setVacantMode(state, 1, 'ai');
-    expect(lobbySession('zatoka', state, players, OPTIONS).localSeat).toBe(OBSERVER_SEAT);
+    expect(lobbySession('zatoka', state, players, OPTIONS, SEED).localSeat).toBe(OBSERVER_SEAT);
     expect(aiSeatsOfLobby(state, players)).toEqual([0, 1]);
     const overseer = claimSeat(initialRosterState(players), OVERSEER_SEAT);
-    expect(lobbySession('zatoka', overseer, players, OPTIONS).localSeat).toBe(OVERSEER_SEAT);
+    expect(lobbySession('zatoka', overseer, players, OPTIONS, SEED).localSeat).toBe(OVERSEER_SEAT);
   });
 
   it('lets a claimable authored-ai slot auto-play until it is toggled to idle', () => {
@@ -181,23 +182,23 @@ describe('lobbySession', () => {
     let state = claimSeat(initialRosterState(lobby), 0);
     state = setVacantMode(state, 1, 'absent');
     state = setVacantMode(state, 3, 'absent');
-    const session = lobbySession('zatoka', state, lobby, OPTIONS);
+    const session = lobbySession('zatoka', state, lobby, OPTIONS, SEED);
     expect(session.seats.map((seat) => seat.mode)).toEqual(['human', 'absent', 'ai', 'absent']);
-    const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, lobby, OPTIONS));
+    const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, lobby, OPTIONS, SEED));
     expect(entry.get('absent')).toBe('1,3');
     // Sitting down in an absent seat plays it; the seat left behind keeps its own choice.
-    const moved = lobbySession('zatoka', claimSeat(state, 1), lobby, OPTIONS);
+    const moved = lobbySession('zatoka', claimSeat(state, 1), lobby, OPTIONS, SEED);
     expect(moved.seats.map((seat) => seat.mode)).toEqual(['idle', 'human', 'ai', 'absent']);
   });
 
   it('carries a recoloured slot and leaves an authored colour alone', () => {
     const recoloured = setSlotColor(claimSeat(initialRosterState(players), 0), 2, 3);
     expect(recoloured).not.toBeNull();
-    const session = lobbySession('zatoka', recoloured ?? initialRosterState(players), players, OPTIONS);
+    const session = lobbySession('zatoka', recoloured ?? initialRosterState(players), players, OPTIONS, SEED);
     expect(session.seats.map((seat) => seat.color)).toEqual([7, 4, 3]);
     expect(
       new URLSearchParams(
-        lobbyStartEntry('zatoka', recoloured ?? initialRosterState(players), players, OPTIONS),
+        lobbyStartEntry('zatoka', recoloured ?? initialRosterState(players), players, OPTIONS, SEED),
       ).get('colors'),
     ).toBe('2:3');
   });
@@ -212,22 +213,26 @@ describe('lobby civilization picks', () => {
 
   it('carries a chosen civilization from the lobby to the launched session', () => {
     const state = setSlotTribe(initialLobbyState(players), 1, SARACEN);
-    const session = lobbySession('zatoka', state, players, OPTIONS);
+    const session = lobbySession('zatoka', state, players, OPTIONS, SEED);
     expect(session.seats.map((seat) => seat.tribe)).toEqual([undefined, SARACEN, undefined]);
-    const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS));
+    const entry = new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS, SEED));
     expect(entry.get('tribes')).toBe(`1:${SARACEN}`);
     expect(mapSession(entry, players)).toEqual(session);
   });
 
   it('writes no `?tribes=` while every seat keeps the map’s civilization', () => {
     const state = setSlotTribe(initialLobbyState(players), 1, VIKING);
-    expect(lobbySession('zatoka', state, players, OPTIONS).seats.some((seat) => 'tribe' in seat)).toBe(false);
-    expect(new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS)).has('tribes')).toBe(false);
+    expect(lobbySession('zatoka', state, players, OPTIONS, SEED).seats.some((seat) => 'tribe' in seat)).toBe(
+      false,
+    );
+    expect(new URLSearchParams(lobbyStartEntry('zatoka', state, players, OPTIONS, SEED)).has('tribes')).toBe(
+      false,
+    );
   });
 
   it('keeps a monster seat its own tribe whatever the state holds', () => {
     const state = setSlotTribe(initialLobbyState(players), 2, SARACEN);
-    expect(lobbySession('zatoka', state, players, OPTIONS).seats[2]?.tribe).toBeUndefined();
+    expect(lobbySession('zatoka', state, players, OPTIONS, SEED).seats[2]?.tribe).toBeUndefined();
   });
 });
 
@@ -250,11 +255,13 @@ describe('lobbyStartEntry', () => {
     // offered seats alone, and the session still plays them.
     const forteca = [...players, slot(2), slot(6, { hidden: true })];
     const entry = new URLSearchParams(
-      lobbyStartEntry('forteca', initialLobbyState(forteca), forteca, OPTIONS),
+      lobbyStartEntry('forteca', initialLobbyState(forteca), forteca, OPTIONS, SEED),
     );
     expect(entry.get('ai')).toBe('1');
     expect(
-      lobbySession('forteca', initialLobbyState(forteca), forteca, OPTIONS).seats.map((seat) => seat.mode),
+      lobbySession('forteca', initialLobbyState(forteca), forteca, OPTIONS, SEED).seats.map(
+        (seat) => seat.mode,
+      ),
     ).toEqual(['human', 'ai', 'ai', 'ai']);
     expect(params.get('fog')).toBe('recon-fow');
     expect(params.get('progression')).toBe('off');
@@ -264,7 +271,7 @@ describe('lobbyStartEntry', () => {
 
   it('writes the needs and weather defaults explicitly, so a carried choice cannot leak into the next map', () => {
     const players = [slot(0, { claimable: true, type: 'human' })];
-    const entry = lobbyStartEntry('zatoka', initialLobbyState(players), players, OPTIONS);
+    const entry = lobbyStartEntry('zatoka', initialLobbyState(players), players, OPTIONS, SEED);
     expect(new URLSearchParams(entry).get('needs')).toBe('on');
     expect(new URLSearchParams(entry).get('weathermode')).toBe('variable');
   });
