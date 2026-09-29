@@ -75,7 +75,7 @@ export const armedIdleScene: SceneDefinition = {
   ),
   build,
   graphicTribes: CIVILIZATIONS,
-  initialZoom: 1,
+  initialZoom: 0.95,
   runTicks: 600,
   checks: [
     {
