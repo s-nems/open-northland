@@ -10,14 +10,16 @@ import {
   ThunderQueue,
 } from '../src/data/weather/thunder.js';
 import { WebAudioEngine, weatherMix } from '../src/index.js';
-import { createWeatherBuffers, seamlessLoop } from '../src/web/engine/weather-noise.js';
+import { seamlessLoop, WeatherBufferBuilder } from '../src/web/engine/weather-noise.js';
 import {
+  THUNDER_CRACK_LENGTH_S,
   WEATHER_LIMIT_CEILING,
   WEATHER_LIMIT_KNEE,
   WEATHER_TEARDOWN_S,
   WeatherSoundscape,
 } from '../src/web/engine/weather-soundscape.js';
 import {
+  type FakeBuffer,
   FakeContext,
   type FakeGain,
   type FakeNode,
@@ -140,11 +142,34 @@ describe('ThunderQueue', () => {
   });
 });
 
-function soundscape(): { ctx: FakeContext; scape: WeatherSoundscape; out: FakeNode } {
+interface Harness {
+  ctx: FakeContext;
+  scape: WeatherSoundscape;
+  out: FakeNode;
+  /** Idle tasks the soundscape queued and a test has not run yet. */
+  idle: Array<() => void>;
+}
+
+function soundscape(): Harness {
   const ctx = new FakeContext();
   const out = ctx.createGain();
-  const scape = new WeatherSoundscape(ctx as unknown as BaseAudioContext, out as unknown as AudioNode);
-  return { ctx, scape, out };
+  const idle: Array<() => void> = [];
+  const scape = new WeatherSoundscape(
+    ctx as unknown as BaseAudioContext,
+    out as unknown as AudioNode,
+    (task) => idle.push(task),
+  );
+  return { ctx, scape, out, idle };
+}
+
+/** Runs queued idle tasks, including the ones they queue, and counts them. */
+function drainIdle(idle: Array<() => void>): number {
+  let ran = 0;
+  for (let task = idle.shift(); task !== undefined; task = idle.shift()) {
+    task();
+    ran++;
+  }
+  return ran;
 }
 
 /** Nodes the soundscape made that are still wired in. */
@@ -242,6 +267,72 @@ describe('WeatherSoundscape', () => {
     expect(at(-1)).toBeGreaterThanOrEqual(-WEATHER_LIMIT_CEILING);
   });
 
+  it('builds its noise in idle slices before any weather, and on the spot when weather comes first', () => {
+    const early = soundscape();
+    expect(early.ctx.buffersCreated).toBe(0);
+    expect(drainIdle(early.idle)).toBeGreaterThan(1); // one buffer per slice
+    const built = early.ctx.buffersCreated;
+    early.scape.update(rain, 0);
+    expect(early.ctx.buffersCreated).toBe(built);
+
+    const late = soundscape();
+    late.scape.update(rain, 0);
+    expect(late.scape.active).toBe(true);
+    expect(late.ctx.buffersCreated).toBe(built);
+    drainIdle(late.idle);
+    expect(late.ctx.buffersCreated).toBe(built);
+  });
+
+  it('starts every crack early enough in its buffer to play its whole length', () => {
+    const strikeIds = Array.from({ length: 40 }, (_, id) => id);
+    const cracks = strikeIds.flatMap((id) => {
+      const { ctx, scape } = soundscape();
+      scape.update({ ...rain, strikes: [strike(id, 0, 0)] }, 0);
+      return ctx.sources.filter((s) => !s.loop);
+    });
+    expect(cracks).toHaveLength(strikeIds.length);
+    for (const crack of cracks) {
+      const buffer = crack.buffer as FakeBuffer;
+      expect(crack.startOffset + THUNDER_CRACK_LENGTH_S).toBeLessThanOrEqual(buffer.duration);
+    }
+  });
+
+  it('fades thunder out on a stop without reading an envelope mid-automation', () => {
+    const { ctx, scape } = soundscape();
+    scape.update({ ...rain, strikes: [strike(1, 0, 0)] }, 0);
+    expect(scape.thunderVoices).toBe(1);
+    const before = new Map(ctx.gains.map((g) => [g, g.gain.events.length]));
+    ctx.currentTime = 0.3;
+    scape.setEnabled(false);
+    const added = ctx.gains.flatMap((g) => g.gain.events.slice(before.get(g) ?? 0));
+    expect(added.length).toBeGreaterThan(0);
+    expect(added.every((e) => e.kind === 'target' && e.value === 0)).toBe(true);
+    expect(scape.thunderVoices).toBe(0);
+  });
+
+  it('keeps the shared bus while a new bed plays over one still fading', () => {
+    const { ctx, scape } = soundscape();
+    const from = ctx.created.length;
+    scape.update(rain, 0);
+    // Hold the old bed's sources open, as a real fade does, until the test ends them.
+    const fading = [...ctx.sources];
+    for (const source of fading) {
+      source.stop = (at: number) => {
+        source.stoppedAt = at;
+      };
+    }
+    scape.setEnabled(false);
+    scape.setEnabled(true);
+    scape.update(rain, 1);
+    expect(scape.active).toBe(true);
+    const shaper = ctx.created.find((n): n is FakeShaper => n instanceof FakeShaper);
+    expect(ctx.created.filter((n) => n instanceof FakeShaper)).toHaveLength(1);
+    fading[0]?.onended?.();
+    expect(shaper?.disconnected).toBe(false);
+    scape.setEnabled(false);
+    expect(live(ctx, from)).toEqual([]);
+  });
+
   it('opens a near strike with a crack', () => {
     const { ctx, scape } = soundscape();
     scape.update({ ...rain, strikes: [strike(1, 0, 0)] }, 0);
@@ -261,8 +352,8 @@ describe('weather noise buffers', () => {
   });
 
   it('builds every loop with a wrap no larger than its ordinary steps', () => {
-    const buffers = createWeatherBuffers(new FakeContext() as unknown as BaseAudioContext);
-    for (const buffer of [buffers.white, buffers.pink, buffers.brown, buffers.grit, buffers.swell]) {
+    const buffers = new WeatherBufferBuilder(new FakeContext() as unknown as BaseAudioContext).all();
+    for (const buffer of [buffers.pink, buffers.brown, buffers.grit, buffers.swell]) {
       for (let c = 0; c < buffer.numberOfChannels; c++) {
         const data = buffer.getChannelData(c);
         let largest = 0;

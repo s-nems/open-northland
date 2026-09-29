@@ -8,7 +8,6 @@ import { seededRandom } from '../../data/weather/thunder.js';
  */
 
 /** Noise loop lengths. Different, non-multiple lengths keep the layers from repeating in step. */
-export const WHITE_NOISE_S = 3.1;
 export const PINK_NOISE_S = 3.7;
 export const BROWN_NOISE_S = 4.3;
 /** Soft drop bursts of light rain: loop length and density. Approximation. */
@@ -55,15 +54,16 @@ const GRIT_MAX_DECAY_S = 0.0008;
 /** Envelope tail kept per event, in decay time constants (e^-6 is inaudible). */
 const DECAY_TAIL_CONSTANTS = 6;
 
-/** Leak of the brown-noise integrator per sample: keeps it from wandering off to DC. */
+/** Leak of the brown-noise integrator per sample: keeps it from wandering off to DC. Per-sample, so
+ *  the spectrum shifts with the context's sample rate. */
 const BROWN_LEAK = 0.02;
 
-/** Paul Kellet's economy pink-noise filter: three one-pole sections and their white-noise weights. */
+/** Paul Kellet's economy pink-noise filter: three one-pole sections and their white-noise weights.
+ *  The poles are per-sample, so the spectrum shifts with the context's sample rate. */
 const PINK_POLES = [0.99765, 0.963, 0.57] as const;
 const PINK_WEIGHTS = [0.099046, 0.2965164, 1.0526913] as const;
 const PINK_DIRECT = 0.1848;
 
-const SEED_WHITE = 1;
 const SEED_PINK = 2;
 const SEED_BROWN = 3;
 const SEED_DROPS = 4;
@@ -74,7 +74,6 @@ const SEED_RIGHT_OFFSET = 100;
 const STEREO_CHANNELS = 2;
 
 export interface WeatherBuffers {
-  readonly white: AudioBuffer;
   readonly pink: AudioBuffer;
   readonly brown: AudioBuffer;
   readonly drops: AudioBuffer;
@@ -86,26 +85,79 @@ export interface WeatherBuffers {
 /** Fills a looped channel: `raw` is the loop plus a crossfade tail, generated as one stretch. */
 type Generator = (raw: Float32Array, rate: number, seed: number) => void;
 
-export function createWeatherBuffers(ctx: BaseAudioContext): WeatherBuffers {
-  const rate = ctx.sampleRate;
-  const stereo = (seconds: number, generate: Generator, seed: number, level: Level): AudioBuffer => {
-    const length = Math.round(seconds * rate);
-    const buffer = ctx.createBuffer(STEREO_CHANNELS, length, rate);
-    const [left, right] = stereoLoop(length, rate, generate, seed, level);
-    buffer.getChannelData(0).set(left);
-    buffer.getChannelData(1).set(right);
+type WeatherBufferName = keyof WeatherBuffers;
+const WEATHER_BUFFER_NAMES: readonly WeatherBufferName[] = ['pink', 'brown', 'drops', 'grit', 'swell'];
+
+/**
+ * Generating every buffer takes tens of milliseconds, so {@link step} builds one per idle slice ahead
+ * of use; {@link all} builds whatever is still missing at once.
+ */
+export class WeatherBufferBuilder {
+  private readonly built: Partial<Record<WeatherBufferName, AudioBuffer>> = {};
+  private complete: WeatherBuffers | null = null;
+
+  constructor(private readonly ctx: BaseAudioContext) {}
+
+  /** Builds the next missing buffer; false once none is missing. */
+  step(): boolean {
+    const next = WEATHER_BUFFER_NAMES.find((name) => this.built[name] === undefined);
+    if (next === undefined) return false;
+    this.get(next);
+    return true;
+  }
+
+  all(): WeatherBuffers {
+    this.complete ??= {
+      pink: this.get('pink'),
+      brown: this.get('brown'),
+      drops: this.get('drops'),
+      grit: this.get('grit'),
+      swell: this.get('swell'),
+    };
+    return this.complete;
+  }
+
+  private get(name: WeatherBufferName): AudioBuffer {
+    const existing = this.built[name];
+    if (existing !== undefined) return existing;
+    const buffer = createWeatherBuffer(this.ctx, name);
+    this.built[name] = buffer;
     return buffer;
-  };
-  const swell = ctx.createBuffer(1, Math.round(SWELL_S * rate), rate);
-  fillSwell(swell.getChannelData(0), SEED_SWELL);
-  return {
-    white: stereo(WHITE_NOISE_S, fillWhite, SEED_WHITE, 'rms'),
-    pink: stereo(PINK_NOISE_S, fillPink, SEED_PINK, 'rms'),
-    brown: stereo(BROWN_NOISE_S, fillBrown, SEED_BROWN, 'rms'),
-    drops: stereo(DROPS_S, fillDrops, SEED_DROPS, 'peak'),
-    grit: stereo(GRIT_S, fillGrit, SEED_GRIT, 'peak'),
-    swell,
-  };
+  }
+}
+
+function createWeatherBuffer(ctx: BaseAudioContext, name: WeatherBufferName): AudioBuffer {
+  switch (name) {
+    case 'pink':
+      return stereoBuffer(ctx, PINK_NOISE_S, fillPink, SEED_PINK, 'rms');
+    case 'brown':
+      return stereoBuffer(ctx, BROWN_NOISE_S, fillBrown, SEED_BROWN, 'rms');
+    case 'drops':
+      return stereoBuffer(ctx, DROPS_S, fillDrops, SEED_DROPS, 'peak');
+    case 'grit':
+      return stereoBuffer(ctx, GRIT_S, fillGrit, SEED_GRIT, 'peak');
+    case 'swell': {
+      const swell = ctx.createBuffer(1, Math.round(SWELL_S * ctx.sampleRate), ctx.sampleRate);
+      fillSwell(swell.getChannelData(0), SEED_SWELL);
+      return swell;
+    }
+  }
+}
+
+function stereoBuffer(
+  ctx: BaseAudioContext,
+  seconds: number,
+  generate: Generator,
+  seed: number,
+  level: Level,
+): AudioBuffer {
+  const rate = ctx.sampleRate;
+  const length = Math.round(seconds * rate);
+  const buffer = ctx.createBuffer(STEREO_CHANNELS, length, rate);
+  const [left, right] = stereoLoop(length, rate, generate, seed, level);
+  buffer.getChannelData(0).set(left);
+  buffer.getChannelData(1).set(right);
+  return buffer;
 }
 
 /** How a buffer is levelled: steady noise by RMS, sparse textures by peak. */
@@ -146,11 +198,6 @@ export function seamlessLoop(length: number, rate: number, generate: Generator, 
     out[i] = (raw[length + i] ?? 0) * Math.cos(angle) + (raw[i] ?? 0) * Math.sin(angle);
   }
   return out;
-}
-
-export function fillWhite(data: Float32Array, _rate: number, seed: number): void {
-  const random = seededRandom(seed);
-  for (let i = 0; i < data.length; i++) data[i] = random() * 2 - 1;
 }
 
 export function fillPink(data: Float32Array, _rate: number, seed: number): void {
@@ -216,9 +263,12 @@ export function fillGrit(data: Float32Array, rate: number, seed: number): void {
     const decayS = GRIT_MIN_DECAY_S + (GRIT_MAX_DECAY_S - GRIT_MIN_DECAY_S) * random();
     const level = random();
     const length = Math.ceil(decayS * DECAY_TAIL_CONSTANTS * rate);
+    const decayPerSample = Math.exp(-1 / (decayS * rate));
+    let envelope = level;
     for (let k = 0; k < length; k++) {
       const i = (start + k) % data.length;
-      data[i] = (data[i] ?? 0) + level * Math.exp(-k / (decayS * rate)) * (random() * 2 - 1);
+      data[i] = (data[i] ?? 0) + envelope * (random() * 2 - 1);
+      envelope *= decayPerSample;
     }
   }
 }

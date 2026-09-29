@@ -73,14 +73,17 @@ export class FakeSource extends FakeNode {
   started = false;
   /** Context time the source was scheduled to open at, so a test can assert a silent gap. */
   startedAt = 0;
+  /** Buffer seconds `start` began playback from. */
+  startOffset = 0;
   stoppedAt: number | null = null;
   /** Seconds `start` limited playback to; null plays the buffer out. */
   playsForS: number | null = null;
   /** A test fires this to play the buffer out; a stop fires it too, as the real node does. */
   onended: (() => void) | null = null;
-  start(at = 0, _offset = 0, duration?: number): void {
+  start(at = 0, offset = 0, duration?: number): void {
     this.started = true;
     this.startedAt = at;
+    this.startOffset = offset;
     this.playsForS = duration ?? null;
   }
   stop(at: number): void {
@@ -129,6 +132,7 @@ export class FakeContext {
   destination = new FakeNode();
   readonly sources: FakeSource[] = [];
   readonly gains: FakeGain[] = [];
+  buffersCreated = 0;
   onstatechange: (() => void) | null = null;
   /** Resumes asked for, including the ones a suspension triggers without a gesture. */
   resumes = 0;
@@ -163,6 +167,7 @@ export class FakeContext {
     return w;
   }
   createBuffer(channels: number, length: number, sampleRate: number): FakeBuffer {
+    this.buffersCreated++;
     return new FakeBuffer(channels, length, sampleRate);
   }
   createStereoPanner(): FakePanner {

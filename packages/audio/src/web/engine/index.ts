@@ -20,4 +20,3 @@ export {
   MUSIC_SWITCH_TIMING,
   type MusicTiming,
 } from './music-player.js';
-export { WeatherSoundscape } from './weather-soundscape.js';

@@ -5,7 +5,7 @@ import {
   weatherMix,
 } from '../../data/weather/mix.js';
 import { seededRandom, type ThunderPlan, ThunderQueue } from '../../data/weather/thunder.js';
-import { createWeatherBuffers, SWELL_PLAYBACK_RATE, type WeatherBuffers } from './weather-noise.js';
+import { SWELL_PLAYBACK_RATE, WeatherBufferBuilder } from './weather-noise.js';
 
 /**
  * Plays the weather: a graph of looping shaped-noise layers whose levels and filters follow
@@ -44,6 +44,10 @@ export const WIND_BREATH_DEPTH = 0.35;
 export const WIND_WANDER_DEPTH_HZ = 60;
 /** The wind reads the swell curve this far along its loop, so it moves apart from the rain. */
 const WIND_SWELL_OFFSET_SHARE = 1 / 2;
+/** Where the roar, hiss and wind start in the shared pink loop: apart, so they stay uncorrelated. */
+const ROAR_PINK_OFFSET_SHARE = 0;
+const HISS_PINK_OFFSET_SHARE = 1 / 2;
+const WIND_PINK_OFFSET_SHARE = 1 / 4;
 /** Two stacked low-passes over the rumble: 24 dB per octave, so far thunder is truly dull. */
 const THUNDER_LOWPASS_STAGES = 2;
 /** Rumble high-pass: sub-audible energy under it would only eat headroom. */
@@ -79,10 +83,18 @@ interface Bed {
 
 interface ThunderVoice {
   readonly sources: readonly AudioBufferSourceNode[];
-  /** The gains carrying its envelopes, faded on a stop so it does not click off. */
-  readonly envelopes: readonly GainNode[];
+  /** Unity gain behind the envelopes, never automated, so a stop fades it from a known level. */
+  readonly out: GainNode;
   readonly nodes: readonly AudioNode[];
 }
+
+/** Runs a task when the main thread has time to spare. */
+type IdleScheduler = (task: () => void) => void;
+
+const idleSlice: IdleScheduler = (task) => {
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(task);
+  else setTimeout(task, 0);
+};
 
 /** The weather's own output stage: trim gain, then the soft limiter into the game-sounds bus. */
 interface WeatherBus {
@@ -107,7 +119,7 @@ const MIX_PARAMS: readonly MixParam[] = [
 ];
 
 export class WeatherSoundscape {
-  private buffers: WeatherBuffers | null = null;
+  private readonly buffers: WeatherBufferBuilder;
   private bus: WeatherBus | null = null;
   private bed: Bed | null = null;
   /** Audio time the mix went silent, null while something sounds. */
@@ -120,7 +132,16 @@ export class WeatherSoundscape {
     private readonly ctx: BaseAudioContext,
     /** The bus weather plays into (the game-sounds bus, so its slider applies). */
     private readonly out: AudioNode,
-  ) {}
+    scheduleIdle: IdleScheduler = idleSlice,
+  ) {
+    // Build the noise ahead of the first weather, one buffer per slice; a bed needed sooner builds
+    // the rest on the spot.
+    this.buffers = new WeatherBufferBuilder(ctx);
+    const buildNext = (): void => {
+      if (this.buffers.step()) scheduleIdle(buildNext);
+    };
+    scheduleIdle(buildNext);
+  }
 
   /** Whether a layer graph currently exists (for tests and diagnostics). */
   get active(): boolean {
@@ -167,11 +188,7 @@ export class WeatherSoundscape {
     const now = this.ctx.currentTime;
     this.releaseBed(now);
     for (const voice of this.voices) {
-      for (const envelope of voice.envelopes) {
-        envelope.gain.cancelScheduledValues(now);
-        envelope.gain.setValueAtTime(envelope.gain.value, now);
-        envelope.gain.linearRampToValueAtTime(0, now + WEATHER_STOP_FADE_S);
-      }
+      voice.out.gain.setTargetAtTime(0, now, WEATHER_STOP_FADE_S / 4);
       for (const source of voice.sources) stopSource(source, now + WEATHER_STOP_FADE_S);
     }
   }
@@ -213,8 +230,7 @@ export class WeatherSoundscape {
 
   private buildBed(mix: WeatherMix): Bed {
     const ctx = this.ctx;
-    this.buffers ??= createWeatherBuffers(ctx);
-    const buffers = this.buffers;
+    const buffers = this.buffers.all();
     const nodes: AudioNode[] = [];
     const sources: AudioBufferSourceNode[] = [];
     const out = ctx.createGain();
@@ -262,13 +278,10 @@ export class WeatherSoundscape {
     const hissLow = filter('lowpass', mix.rainHissLowpassHz);
     const hissGain = layer(rainBreath);
     // Pink noise: its falling spectrum reads as rain heard from above, where white reads as static.
-    loop(buffers.pink, 1 / 2)
-      .connect(hissHigh)
-      .connect(hissLow)
-      .connect(hissGain);
+    loop(buffers.pink, HISS_PINK_OFFSET_SHARE).connect(hissHigh).connect(hissLow).connect(hissGain);
     const roarLow = filter('lowpass', mix.rainRoarLowpassHz);
     const roarGain = layer(rainBreath);
-    loop(buffers.pink, 0)
+    loop(buffers.pink, ROAR_PINK_OFFSET_SHARE)
       .connect(filter('highpass', RAIN_ROAR_HIGHPASS_HZ))
       .connect(roarLow)
       .connect(roarGain);
@@ -277,11 +290,7 @@ export class WeatherSoundscape {
     const windBand = filter('bandpass', mix.windBandHz, WIND_BAND_Q);
     const windLow = filter('lowpass', mix.windLowpassHz);
     const windGain = layer(windBreath);
-    // The same pink loop feeds the roar and the wind from different offsets, so they stay uncorrelated.
-    loop(buffers.pink, 1 / 2)
-      .connect(windBand)
-      .connect(windLow)
-      .connect(windGain);
+    loop(buffers.pink, WIND_PINK_OFFSET_SHARE).connect(windBand).connect(windLow).connect(windGain);
     const gritHigh = filter('highpass', mix.gritHighpassHz);
     const gritGain = layer(out);
     loop(buffers.grit, 0).connect(gritHigh).connect(gritGain);
@@ -343,14 +352,15 @@ export class WeatherSoundscape {
 
   private playThunder(plan: ThunderPlan): void {
     const ctx = this.ctx;
-    this.buffers ??= createWeatherBuffers(ctx);
-    const buffers = this.buffers;
-    const bus = this.acquireBus();
+    const buffers = this.buffers.all();
     const t0 = ctx.currentTime + THUNDER_LEAD_S;
     const random = seededRandom(plan.strikeId);
     const nodes: AudioNode[] = [];
     const sources: AudioBufferSourceNode[] = [];
-    const envelopes: GainNode[] = [];
+    const out = ctx.createGain();
+    out.gain.value = 1;
+    out.connect(this.acquireBus());
+    nodes.push(out);
     const filter = (type: BiquadFilterType, hz: number): BiquadFilterNode => {
       const node = ctx.createBiquadFilter();
       node.type = type;
@@ -367,8 +377,7 @@ export class WeatherSoundscape {
       head = head.connect(filter('lowpass', plan.lowpassHz));
     const envelope = ctx.createGain();
     nodes.push(envelope);
-    envelopes.push(envelope);
-    head.connect(envelope).connect(bus);
+    head.connect(envelope).connect(out);
     const gain = envelope.gain;
     gain.setValueAtTime(0, t0);
     let previousAt = 0;
@@ -400,15 +409,16 @@ export class WeatherSoundscape {
         crackEnd - FADE_TO_ZERO_S,
       );
       crackGain.gain.linearRampToValueAtTime(0, crackEnd);
-      crack.connect(filter('lowpass', THUNDER_CRACK_LOWPASS_HZ)).connect(crackGain).connect(bus);
-      crack.start(t0, buffers.pink.duration * random());
+      crack.connect(filter('lowpass', THUNDER_CRACK_LOWPASS_HZ)).connect(crackGain).connect(out);
+      // The crack plays once, so it starts early enough in the loop to last its whole length.
+      const latestStart = Math.max(0, buffers.pink.duration - THUNDER_CRACK_LENGTH_S);
+      crack.start(t0, latestStart * random());
       crack.stop(crackEnd);
       nodes.push(crackGain);
-      envelopes.push(crackGain);
       sources.unshift(crack);
     }
 
-    const voice: ThunderVoice = { sources, envelopes, nodes };
+    const voice: ThunderVoice = { sources, out, nodes };
     this.voices.add(voice);
     // The rumble always outlasts the crack, so its end releases the whole voice.
     rumble.onended = () => {
