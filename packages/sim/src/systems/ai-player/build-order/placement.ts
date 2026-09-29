@@ -76,9 +76,9 @@ const SHORE_SPOT_RINGS = VEHICLE_SITE_PLACEMENT_RINGS;
  *  placement's own search fan, since the spot must still land in the settlement's reach. */
 const SHORE_SEARCH_RADIUS_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
 
-/** The Manhattan span of {@link SHORE_SPOT_RINGS} hex rings on the half-cell lattice, where one ring steps
- *  at most one node across and two down. */
-const SHORE_SPOT_SPAN_NODES = 3 * SHORE_SPOT_RINGS;
+/** The Manhattan span of the hex rings under {@link SHORE_SPOT_RINGS} on the half-cell lattice, where a
+ *  hex step moves two nodes across or one across and one row: 14 for 10 rings, found by enumeration. */
+const SHORE_SPOT_SPAN_NODES = Math.ceil((3 * SHORE_SPOT_RINGS) / 2);
 
 /** The static land component of the seat's base interaction cell, as {@link seaRouteOf} reads it, or
  *  {@link NO_COMPONENT} for a seat with no base. */
@@ -90,8 +90,9 @@ function baseComponent(world: World, ctx: SystemContext, terrain: TerrainGraph, 
 /**
  * The `shore` target: the water node nearest `anchor` on the lattice's rings where a yard of the content's
  * smallest ship fits with its door on the seat's home continent ({@link shipYardProbe}), in a body
- * bordering that continent, with a spot `accept`s inside the seat's reach within {@link SHORE_SPOT_RINGS}. The yard's door stands
- * south of its hull, so only shore with the water to its north admits one. A body that also borders the
+ * bordering that continent, with a spot `accept` takes inside the seat's reach within
+ * {@link SHORE_SPOT_RINGS}. The yard's door stands south of its hull, so only shore with the water to its
+ * north admits one. A body that also borders the
  * continent of the rival headquarters over the sea is taken first. The home continent is the sea route's
  * while one exists, else the base's, read the same way. Null when no such water lies within
  * {@link SHORE_SEARCH_RADIUS_NODES}.
@@ -117,6 +118,16 @@ function shoreTarget(
   if (ours === undefined) return null;
   const theirs = route === null ? undefined : coasts.get(route.rival);
   const reach = buildReach(world, owned, anchor);
+  // Neighbouring water nodes share most of their discs, so each land node is tested once a search.
+  const taken = new Map<NodeId, boolean>();
+  const takes = (x: number, y: number): boolean => {
+    const node = terrain.nodeAt(x, y);
+    const known = taken.get(node);
+    if (known !== undefined) return known;
+    const ok = reach.contains(x, y) && accept(x, y);
+    taken.set(node, ok);
+    return ok;
+  };
   const spotBeside = (wx: number, wy: number) =>
     firstRingNode(
       wx,
@@ -126,8 +137,7 @@ function shoreTarget(
         hexDistanceBetween(wx, wy, x, y) < SHORE_SPOT_RINGS &&
         terrain.inBounds(x, y) &&
         terrain.componentOf(terrain.nodeAt(x, y)) === home &&
-        reach.contains(x, y) &&
-        accept(x, y),
+        takes(x, y),
     ) !== null;
   const sailable = (bodies: ReadonlySet<number>) => (x: number, y: number) => {
     if (!terrain.inBounds(x, y)) return false;
@@ -496,9 +506,9 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
- * barracks or a mint anywhere in it beats a list stalled for half an hour. When neither finds a spot, the
- * pulled search runs once more over {@link OVERFLOW_BUILD_REACH_NODES}, on the base's own land component
- * only, since the wider reach can span a strait the builders cannot walk.
+ * barracks or a mint anywhere in it beats a list stalled for half an hour. When neither finds a spot for
+ * an entry with no spot bound, the pulled search runs once more over {@link OVERFLOW_BUILD_REACH_NODES}, on
+ * the base's own land component only, since the wider reach can span a strait the builders cannot walk.
  */
 export function placementSpot(
   world: World,
@@ -537,11 +547,11 @@ export function placementSpot(
   if (pulled !== null) return pulled;
   const fromAnchor =
     centre.hx === anchor.hx && centre.hy === anchor.hy ? null : near(settlement, anchor, within, fan);
-  if (fromAnchor !== null) return fromAnchor;
+  // A bounded entry's disc already lies in the usual reach, so only an unbounded one overflows.
+  if (fromAnchor !== null || within !== null) return fromAnchor;
   const home = baseComponent(world, ctx, terrain, player);
   if (home === NO_COMPONENT) return null;
-  const onHomeLand = (x: number, y: number) =>
-    (within === null || within(x, y)) && terrain.componentOf(terrain.nodeAt(x, y)) === home;
+  const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   const overflow = buildReach(world, owned, anchor, OVERFLOW_BUILD_REACH_NODES);
   return near(overflow, centre, onHomeLand, 2 * OVERFLOW_BUILD_REACH_NODES);
 }

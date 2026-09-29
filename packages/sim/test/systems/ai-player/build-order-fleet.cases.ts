@@ -308,6 +308,13 @@ describe('build order - the sea route', () => {
     expect(seaRoute.rivalOverSea(friend.world, fleetCtx(friend), SEAT)).toBe(false);
   });
 
+  it('sails for the enemy over the sea past a nearer neutral seat on its own land', () => {
+    const NEIGHBOUR = ENEMY + 1;
+    const sim = world(seaMap(), [{ buildingType: HQ_TYPE, x: HOME.x + 12, y: HOME.y, owner: NEIGHBOUR }]);
+    setDiplomacyStance(sim.world, SEAT, NEIGHBOUR, 'neutral');
+    expect(seaRoute.rivalOverSea(sim.world, fleetCtx(sim), SEAT)).toBe(true);
+  });
+
   it('needs a ship only when the nearest enemy headquarters stands on another continent', () => {
     const overSea = world(seaMap());
     expect(seaRoute.rivalOverSea(overSea.world, fleetCtx(overSea), SEAT)).toBe(true);

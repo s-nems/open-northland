@@ -11,7 +11,7 @@ import { anchorNodeOf } from './node-geometry.js';
 import { ownedBuildings } from './seat-roster.js';
 
 /** Another seat's building a seat measures its front or its sea route by. */
-export interface EnemyBuilding {
+export interface OpposingBuilding {
   readonly entity: Entity;
   readonly node: HalfCellNode;
   readonly headquarters: boolean;
@@ -58,8 +58,8 @@ function nearestHeadquarters(
   player: number,
   from: HalfCellNode,
   counts: StanceFilter,
-): EnemyBuilding | null {
-  let best: EnemyBuilding | null = null;
+): OpposingBuilding | null {
+  let best: OpposingBuilding | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (owner === player || !counts(diplomacyStance(world, player, owner))) continue;
@@ -85,10 +85,10 @@ export function nearestEnemyBuilding(
   ctx: SystemContext,
   player: number,
   from: HalfCellNode,
-): EnemyBuilding | null {
+): OpposingBuilding | null {
   const hq = nearestHeadquarters(world, ctx, player, from, isEnemy);
   if (hq !== null) return hq;
-  let best: EnemyBuilding | null = null;
+  let best: OpposingBuilding | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (owner === player || diplomacyStance(world, player, owner) !== 'enemy') continue;
@@ -114,10 +114,11 @@ export interface SeaRoute {
 }
 
 /**
- * The seat's route to the nearest rival headquarters (any seat not held as friend) when only a ship makes
- * it: its base's and that headquarters' interaction cells lie on different land components, neither
- * {@link NO_COMPONENT}. Null on a shared continent, while no rival headquarters stands, and for a seat
- * with no base.
+ * The seat's route to the headquarters it sails for when only a ship makes it: its base's and that
+ * headquarters' interaction cells lie on different land components, neither {@link NO_COMPONENT}. That is
+ * the nearest enemy headquarters, or while no enemy has one, the nearest of any seat not held as friend,
+ * so a neutral next door never hides an enemy over the sea. Null on a shared continent, while no such
+ * headquarters stands, and for a seat with no base.
  */
 export function seaRouteOf(world: World, ctx: SystemContext, player: number): SeaRoute | null {
   const terrain = ctx.terrain;
@@ -125,7 +126,9 @@ export function seaRouteOf(world: World, ctx: SystemContext, player: number): Se
   const base = seatBaseOf(world, ctx, player);
   const from = base === null ? null : anchorNodeOf(world, base);
   if (base === null || from === null) return null;
-  const rival = nearestHeadquarters(world, ctx, player, from, isRival);
+  const rival =
+    nearestHeadquarters(world, ctx, player, from, isEnemy) ??
+    nearestHeadquarters(world, ctx, player, from, isRival);
   if (rival === null) return null;
   const home = terrain.componentOf(interactionCell(world, ctx, terrain, base));
   const far = terrain.componentOf(interactionCell(world, ctx, terrain, rival.entity));
@@ -133,7 +136,7 @@ export function seaRouteOf(world: World, ctx: SystemContext, player: number): Se
   return { home, rival: far };
 }
 
-/** Whether the seat needs a ship to reach the nearest rival headquarters ({@link seaRouteOf}). */
+/** Whether the seat needs a ship to reach the headquarters it sails for ({@link seaRouteOf}). */
 export function rivalOverSea(world: World, ctx: SystemContext, player: number): boolean {
   return seaRouteOf(world, ctx, player) !== null;
 }

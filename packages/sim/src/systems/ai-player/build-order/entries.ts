@@ -24,8 +24,8 @@ export type BuildOrderEntry =
    *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
    *  then pulls the spot toward the first one lacking. `onlyWhen: 'rivalOverSea'` skips the entry while
-   *  the nearest headquarters of a seat not held as friend can be reached by land. `belowTier` stops the count below that tier of
-   *  the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
+   *  the headquarters the seat sails for (`../sea-route.ts`) can be reached by land. `belowTier` stops the
+   *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
    *  joineries holding that role (`../joinery-role.ts`). */
   | {
       readonly kind: 'place';
