@@ -1,4 +1,5 @@
 import {
+  BuildMode,
   Damaged,
   ownerOf,
   ownersCompatible,
@@ -44,10 +45,10 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 /**
  * BUILD - mend the nearest damaged building that is safe to reach, else keep a useful automatic crew
  * assignment stable, otherwise move the builder to the nearest reachable site with material to fetch or
- * delivered labor to install, and with no task anywhere wait beside a site. Walls come after every
- * building site, a damaged wall before a new segment, and road sites after every wall. Player pins and
- * unfinished workplace bindings are strict: their builders stay with that site even while another has
- * work.
+ * delivered labor to install, and with no task anywhere wait beside a site. A road or wall run the
+ * player started ({@link BuildMode}) goes before all of that. Walls come after every building site, a
+ * damaged wall before a new segment, and road sites after every wall. Player pins and unfinished
+ * workplace bindings are strict: their builders stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
@@ -69,7 +70,10 @@ export function planBuilder(
   const materials = constructionMaterialResolver(plan, spacing);
 
   const assigned = world.tryGet(e, SiteAssignment);
+  // A road or wall run outranks the pin and the workplace binding: the player ordered it last.
+  const mode = world.tryGet(e, BuildMode)?.kind;
   const pinned =
+    mode === undefined &&
     assigned?.pinned === true &&
     onOwnSide(plan, assigned.site) &&
     (world.has(assigned.site, UnderConstruction) || needsRepair(world, assigned.site))
@@ -78,7 +82,7 @@ export function planBuilder(
   // A segment another builder already claimed is not abandoned: the player's pin outranks the drive, so
   // this builder holds the order and does something else until the claim lapses.
   if (pinned !== null && !constructionSiteAvailableTo(world, pinned, e)) return false;
-  const bound = boundConstructionSite(plan);
+  const bound = mode === undefined ? boundConstructionSite(plan) : null;
   const locked = pinned ?? bound;
   if (locked !== null && segmentAwaitsClearance(plan, locked)) {
     dropAssignment(plan);
@@ -105,7 +109,6 @@ export function planBuilder(
     here,
     unreachableGoalVeto(world, ctx, e),
   );
-  if (repairNearest(plan, spacing, repairs, avoidSite, false)) return true;
 
   // A damaged upgrade site is mended before its upgrade goes on, and only by a repair crew, so an
   // automatic builder never hammers the upgrade of a building still under attack.
@@ -137,6 +140,25 @@ export function planBuilder(
       ? null
       : pickRoadSite(world, terrain, e, here, nearest, (site) => avoidSite?.(site) !== true && accepts(site));
   };
+
+  if (mode !== undefined) {
+    const next =
+      keptRunSite(plan, mode, assigned?.site) ??
+      (mode === 'roads'
+        ? pickRoad(targets.roadSiteCells, canStandAt)
+        : nearestSite(targets.wallSiteCells, canStandAt));
+    if (next !== null) {
+      stampAssignment(plan, next, true);
+      if (!holdSegment(plan, next)) return false;
+      if (!workAtSite(plan, spacing, claims, materials, next)) waitAtSite(plan, spacing, next);
+      return true;
+    }
+    // Nothing of the kind is left to claim: the run is over and normal priorities resume.
+    world.remove(e, BuildMode);
+    dropAssignment(plan);
+  }
+
+  if (repairNearest(plan, spacing, repairs, avoidSite, false)) return true;
 
   // Walls come last: an automatic builder turns to one only once no building site it could stand at is
   // left, so walls wait out every new house and upgrade. Project rule.
@@ -279,6 +301,23 @@ function soloSitesAwaitingSupply(plan: PlannerContext, kind: 'wall' | 'road'): I
     }
   }
   return sites.length === 0 ? null : new InteractionCellIndex(world, ctx, terrain, sites);
+}
+
+/** The site a road or wall run keeps working: its current one while that is still an unfinished site of
+ *  the run's kind on the builder's side that no other builder holds. Reach is not re-tested, like a pin. */
+function keptRunSite(plan: PlannerContext, mode: 'roads' | 'walls', site: Entity | undefined): Entity | null {
+  const { world, entity: e } = plan;
+  if (
+    site === undefined ||
+    !world.has(site, mode === 'roads' ? RoadSite : Palisade) ||
+    !world.has(site, UnderConstruction) ||
+    !onOwnSide(plan, site) ||
+    !constructionSiteAvailableTo(world, site, e) ||
+    segmentAwaitsClearance(plan, site)
+  ) {
+    return null;
+  }
+  return site;
 }
 
 /** Take a wall segment's single-builder claim; an ordinary building always passes. A lost claim drops

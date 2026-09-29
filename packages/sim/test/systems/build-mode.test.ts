@@ -1,0 +1,150 @@
+import { describe, expect, it } from 'vitest';
+import { BuildMode, Palisade, SiteAssignment, UnderConstruction } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
+import { playerCommand, type Simulation } from '../../src/index.js';
+import { claimSite } from '../../src/systems/economy/site-claim.js';
+import {
+  BUILD_TICKS,
+  builderAt,
+  HUMAN,
+  houseSiteAt,
+  orderRoads,
+  RIVAL,
+  ROW,
+  roadAt,
+  roadSim,
+  STORE_HX,
+  siteAt,
+  storeAt,
+  VIKING,
+  WALL,
+} from './road-support.js';
+
+const HOUSE_HX = 12;
+const BUILDER_HX = 8;
+const ROAD_HXS = [20, 26, 32] as const;
+const RIVAL_HX = 38;
+/** Budget for a run over three sites and the house after it. */
+const RUN_TICKS = 4 * BUILD_TICKS;
+
+function siteOf(sim: Simulation, hx: number): Entity {
+  const site = siteAt(sim, hx, ROW);
+  if (site === undefined) throw new Error(`expected a road site at ${hx}`);
+  return site;
+}
+
+function assign(sim: Simulation, builder: Entity, site: Entity): void {
+  sim.enqueue(playerCommand(HUMAN, { kind: 'assignBuilder', entity: builder, site }));
+  sim.step();
+}
+
+/** A store, a house site nearer than every road site, own road sites and a rival's, and one builder. */
+function roadRunScene(): { sim: Simulation; builder: Entity; house: Entity } {
+  const sim = roadSim();
+  storeAt(sim, STORE_HX);
+  const house = houseSiteAt(sim, HOUSE_HX);
+  const builder = builderAt(sim, BUILDER_HX);
+  orderRoads(
+    sim,
+    ROAD_HXS.map((hx) => ({ hx, hy: ROW })),
+  );
+  orderRoads(sim, [{ hx: RIVAL_HX, hy: ROW }], RIVAL);
+  return { sim, builder, house };
+}
+
+describe('a road run', () => {
+  it('builds every own road site before a nearer house, then returns to the house', () => {
+    const { sim, builder, house } = roadRunScene();
+    const [first] = ROAD_HXS;
+    assign(sim, builder, siteOf(sim, first));
+    expect(sim.world.get(builder, BuildMode).kind).toBe('roads');
+    const ownRoadsLeft = (): boolean => ROAD_HXS.some((hx) => siteAt(sim, hx, ROW) !== undefined);
+
+    for (let tick = 0; tick < RUN_TICKS && sim.world.has(house, UnderConstruction); tick++) {
+      sim.step();
+      if (ownRoadsLeft()) {
+        expect(sim.world.tryGet(builder, SiteAssignment)?.site, `tick ${tick}`).not.toBe(house);
+      }
+    }
+    for (const hx of ROAD_HXS) expect(roadAt(sim, hx, ROW), `road at ${hx}`).toBe(true);
+    expect(sim.world.has(house, UnderConstruction)).toBe(false);
+    expect(sim.world.has(builder, BuildMode)).toBe(false);
+    expect(siteAt(sim, RIVAL_HX, ROW)).toBeDefined();
+  });
+
+  it('passes over a site another builder holds', () => {
+    const { sim, builder } = roadRunScene();
+    const [first, second] = ROAD_HXS;
+    const held = siteOf(sim, first);
+    const holder = builderAt(sim, 40);
+    sim.world.add(holder, SiteAssignment, { site: held, pinned: false });
+    claimSite(sim.world, held, holder);
+    assign(sim, builder, held);
+    expect(sim.world.get(builder, SiteAssignment).site).toBe(siteOf(sim, second));
+  });
+
+  it('ends on a move, an unassign or another assignment', () => {
+    for (const order of ['move', 'unassign', 'assign'] as const) {
+      const { sim, builder, house } = roadRunScene();
+      assign(sim, builder, siteOf(sim, ROAD_HXS[0]));
+      sim.run(2);
+      expect(sim.world.has(builder, BuildMode), order).toBe(true);
+      if (order === 'move') {
+        sim.enqueue(playerCommand(HUMAN, { kind: 'moveUnit', entity: builder, x: 2, y: 2 }));
+        sim.step();
+      } else if (order === 'unassign') {
+        sim.enqueue(playerCommand(HUMAN, { kind: 'unassignBuilder', entity: builder }));
+        sim.step();
+      } else {
+        assign(sim, builder, house);
+        expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: house, pinned: true });
+      }
+      expect(sim.world.has(builder, BuildMode), order).toBe(false);
+      expect(sim.world.tryGet(builder, SiteAssignment)?.pinned === true, order).toBe(order === 'assign');
+    }
+  });
+
+  it('is not started by a building site', () => {
+    const { sim, builder, house } = roadRunScene();
+    assign(sim, builder, house);
+    expect(sim.world.has(builder, BuildMode)).toBe(false);
+    expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: house, pinned: true });
+  });
+});
+
+describe('a wall run', () => {
+  it('raises every own wall segment before a nearer house, then ends', () => {
+    const sim = roadSim();
+    storeAt(sim, STORE_HX);
+    const house = houseSiteAt(sim, HOUSE_HX);
+    const builder = builderAt(sim, BUILDER_HX);
+    for (const hx of [20, 30]) {
+      sim.enqueueSetup({
+        kind: 'placePalisade',
+        gfxIndex: WALL.typeId,
+        x: hx,
+        y: ROW,
+        tribe: VIKING,
+        owner: HUMAN,
+        underConstruction: true,
+      });
+    }
+    sim.step();
+    const walls = [...sim.world.query(Palisade)];
+    const [first] = walls;
+    if (first === undefined) throw new Error('expected wall segments');
+    assign(sim, builder, first);
+    expect(sim.world.get(builder, BuildMode).kind).toBe('walls');
+
+    const wallsLeft = (): boolean => walls.some((w) => sim.world.has(w, UnderConstruction));
+    for (let tick = 0; tick < RUN_TICKS && sim.world.has(house, UnderConstruction); tick++) {
+      sim.step();
+      if (wallsLeft()) {
+        expect(sim.world.tryGet(builder, SiteAssignment)?.site, `tick ${tick}`).not.toBe(house);
+      }
+    }
+    expect(wallsLeft()).toBe(false);
+    expect(sim.world.has(house, UnderConstruction)).toBe(false);
+    expect(sim.world.has(builder, BuildMode)).toBe(false);
+  });
+});

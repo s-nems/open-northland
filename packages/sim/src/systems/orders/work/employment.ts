@@ -1,11 +1,14 @@
 import {
   Age,
   Building,
+  BuildMode,
   Carrying,
   JobAssignment,
   ownerOf,
+  Palisade,
   PlayerOrder,
   ProductionCounters,
+  RoadSite,
   removeCurrentAtomic,
   Settler,
   SettlerProgress,
@@ -205,10 +208,18 @@ export function assignBuilder(
   }
 
   releaseSiteClaim(world, e);
-  world.add(e, SiteAssignment, { site, pinned: true });
   // A builder pinned mid-haul keeps its load, unlike a profession change: the trade is unchanged, so it
-  // carries the material onward instead of dumping it in the field.
+  // carries the material onward instead of dumping it in the field. Ends any earlier road or wall run.
   cancelActionAndRoute(world, e);
+  world.add(e, SiteAssignment, { site, pinned: true });
+  const mode = buildModeOf(world, site);
+  if (mode !== undefined) world.add(e, BuildMode, { kind: mode });
+}
+
+/** The run a hand-assigned site starts: every road site, or every wall segment still to raise. */
+function buildModeOf(world: World, site: Entity): 'roads' | 'walls' | undefined {
+  if (world.has(site, RoadSite)) return 'roads';
+  return world.has(site, Palisade) && world.has(site, UnderConstruction) ? 'walls' : undefined;
 }
 
 /**
@@ -220,7 +231,8 @@ export function assignBuilder(
 export function unassignBuilder(world: World, command: Extract<Command, { kind: 'unassignBuilder' }>): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
-  if (world.tryGet(e, SiteAssignment)?.pinned !== true) return; // never pinned - nothing to release
+  // Never pinned nor on a road or wall run - nothing to release.
+  if (world.tryGet(e, SiteAssignment)?.pinned !== true && !world.has(e, BuildMode)) return;
   releaseSiteClaim(world, e);
   world.remove(e, SiteAssignment);
   cancelActionAndRoute(world, e);

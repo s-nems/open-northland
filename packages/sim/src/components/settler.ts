@@ -210,6 +210,13 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 );
 
 /**
+ * A builder the player put on a road site or a wall segment by hand: it builds its owner's sites of that
+ * kind one after another, ahead of repairs and every other site, until none is left for it to claim.
+ * Any other order to the builder ends it. Owner ruling.
+ */
+export const BuildMode = defineComponent<{ kind: 'roads' | 'walls' }>('BuildMode', 'settlers');
+
+/**
  * A settler's live construction or workshop supply errand, cleared and re-stamped at the top of its own next planning
  * pass. Settlers planned later subtract these from a site's outstanding need and, while the pickup leg is
  * live, from the chosen source's available stock. `source` is null after pickup, on the delivery leg.

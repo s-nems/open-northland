@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
+  BuildMode,
   CurrentAtomic,
   Damaged,
   Health,
@@ -375,14 +376,15 @@ describe('wall claims', () => {
     return holder;
   }
 
-  it('keep a pin to a segment another builder claimed, which waits for the claim', () => {
+  it('leave a segment another builder claimed to it, ending the wall run when no other is left', () => {
     const sim = wallSim();
     const site = wallSite(sim, 24);
     const holder = stillClaimant(sim, site);
-    const pinned = builderAt(sim, 20);
-    sim.enqueueSetup({ kind: 'assignBuilder', entity: pinned, site });
+    const assigned = builderAt(sim, 20);
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: assigned, site });
     sim.run(30);
-    expect(sim.world.get(pinned, SiteAssignment)).toEqual({ site, pinned: true });
+    expect(sim.world.tryGet(assigned, SiteAssignment)?.site).not.toBe(site);
+    expect(sim.world.has(assigned, BuildMode)).toBe(false);
     expect(siteClaimHolder(sim.world, site)).toBe(holder);
     expect(sim.world.get(site, UnderConstruction).labor).toBe(0);
   });

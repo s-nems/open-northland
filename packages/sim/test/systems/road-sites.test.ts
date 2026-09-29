@@ -1,13 +1,10 @@
-import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
-  addPerson,
   Building,
   Carrying,
   CurrentAtomic,
   Owner,
   Palisade,
-  Position,
   RoadSite,
   SiteAssignment,
   Stockpile,
@@ -18,218 +15,45 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import {
   exportSaveGame,
-  fx,
   hexNeighboursOf,
   type NodeArea,
   nodeGridAccepts,
-  nodeOfPosition,
   ONE,
   playerCommand,
-  positionOfNode,
   restoreSimulation,
-  type ScriptLandscapeType,
-  Simulation,
+  type Simulation,
 } from '../../src/index.js';
-import type { TerrainMap } from '../../src/nav/terrain/index.js';
 import { constructionSystem } from '../../src/systems/economy/construction.js';
 import { claimSite } from '../../src/systems/economy/site-claim.js';
 import { palisadePlacementProbe as palisadeProbe } from '../../src/systems/palisades/index.js';
-import { isRoad } from '../../src/systems/roads/index.js';
 import { pickRoadSite } from '../../src/systems/roads/site-pick.js';
 import { roadSitePlacementProbe } from '../../src/systems/roads/sites.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
-import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { grassNodeMap } from '../fixtures/terrain.js';
-
-const VIKING = 1;
-const HUMAN = 0;
-const RIVAL = 1;
-const STONE = 1;
-const WOOD = 2;
-const IDLE = 0;
-const BUILDER = 7;
-const BUILD_HOUSE_ATOMIC = 39;
-const BUILD_ROAD_ATOMIC = 41;
-const BUILD_WALL_ATOMIC = 42;
-const BUILD_ROAD_CLIP = 'viking_builder_build_road';
-/** The mod's build-road clip length. */
-const BUILD_ROAD_CLIP_TICKS = 15;
-const STORE = 1;
-const HOUSE = 2;
-const GRASS = 0;
-const ROW = 6;
-const STORE_HX = 4;
-const MAP_WIDTH = 48;
-const MAP_HEIGHT = 16;
-/** Long enough for a builder to fetch a stone across the test map and swing once. */
-const BUILD_TICKS = 3000;
-const FAR_HX = 40;
-const HUT = 3;
-/** A two-node body over which a road site is cancelled, with a one-node margin a road may keep. */
-const HUT_FOOTPRINT = {
-  blocked: [
-    { dx: 0, dy: 0 },
-    { dx: 1, dy: 0 },
-  ],
-  familyBody: [
-    { dx: 0, dy: 0 },
-    { dx: 1, dy: 0 },
-  ],
-  reserved: [-1, 0, 1, 2].flatMap((dy) => [-1, 0, 1, 2].map((dx) => ({ dx, dy }))),
-  door: { dx: -1, dy: 0 },
-};
-const HANDCART = 1;
-const HANDCART_JOB = 50;
-const HANDCART_SLOTS = 15;
-const HANDCART_HITPOINTS = 100;
-/** A disc one node out from its anchor, so the cart covers its neighbours too. */
-const HANDCART_LOGIC_SIZE = 1;
-
-const WALL: ScriptLandscapeType = {
-  typeId: 691,
-  walk: [{ dx: 0, dy: 0 }],
-  build: [],
-  groups: [],
-  wall: { maxHitpoints: 100, repairPerStrike: 3, construction: [{ goodType: WOOD, amount: 1 }] },
-};
-
-function roadContent() {
-  return parseContentSet({
-    manifest: TEST_MANIFEST,
-    goods: [
-      { typeId: 0, id: 'none' },
-      { typeId: STONE, id: 'stone' },
-      { typeId: WOOD, id: 'wood' },
-    ],
-    jobs: [
-      { typeId: IDLE, id: 'idle' },
-      {
-        typeId: BUILDER,
-        id: 'builder',
-        allowedAtomics: [BUILD_HOUSE_ATOMIC, BUILD_ROAD_ATOMIC, BUILD_WALL_ATOMIC],
-      },
-    ],
-    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
-    tribes: [
-      {
-        typeId: VIKING,
-        id: 'viking',
-        atomicBindings: [{ jobType: BUILDER, atomicId: BUILD_ROAD_ATOMIC, animation: BUILD_ROAD_CLIP }],
-      },
-    ],
-    vehicles: [
-      {
-        typeId: HANDCART,
-        id: 'handcart',
-        jobId: HANDCART_JOB,
-        stockSlots: HANDCART_SLOTS,
-        logicSize: HANDCART_LOGIC_SIZE,
-        passengerJobs: [],
-        hitpoints: HANDCART_HITPOINTS,
-      },
-    ],
-    atomicAnimations: [{ id: BUILD_ROAD_CLIP, name: BUILD_ROAD_CLIP, length: BUILD_ROAD_CLIP_TICKS }],
-    buildings: [
-      {
-        typeId: STORE,
-        id: 'headquarters',
-        kind: 'storage',
-        stock: [
-          { goodType: STONE, capacity: 20 },
-          { goodType: WOOD, capacity: 20 },
-        ],
-      },
-      {
-        typeId: HOUSE,
-        id: 'home_small',
-        kind: 'home',
-        homeSize: 1,
-        construction: [{ goodType: STONE, amount: 1 }],
-      },
-      {
-        typeId: HUT,
-        id: 'hut',
-        kind: 'home',
-        homeSize: 1,
-        construction: [{ goodType: STONE, amount: 1 }],
-        footprint: HUT_FOOTPRINT,
-      },
-    ],
-  });
-}
-
-function roadSim(seed = 1): Simulation {
-  const map: TerrainMap = grassNodeMap(MAP_WIDTH, MAP_HEIGHT);
-  const sim = new Simulation({
-    seed,
-    content: roadContent(),
-    map: { ...map, landscapes: { types: [WALL], placements: [] } },
-  });
-  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: HUMAN, tribes: [VIKING] });
-  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: RIVAL, tribes: [VIKING] });
-  return sim;
-}
-
-function storeAt(sim: Simulation, hx: number, stone = 10): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, positionOfNode(hx, ROW));
-  sim.world.add(e, Building, { buildingType: STORE, tribe: VIKING, built: ONE, level: 0 });
-  sim.world.add(e, Stockpile, {
-    amounts: new Map([
-      [STONE, stone],
-      [WOOD, 10],
-    ]),
-  });
-  sim.world.add(e, Owner, { player: HUMAN });
-  return e;
-}
-
-function houseSiteAt(sim: Simulation, hx: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, positionOfNode(hx, ROW));
-  sim.world.add(e, Building, { buildingType: HOUSE, tribe: VIKING, built: fx.fromInt(0), level: 0 });
-  sim.world.add(e, Stockpile, { amounts: new Map() });
-  sim.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
-  sim.world.add(e, Owner, { player: HUMAN });
-  return e;
-}
-
-function builderAt(sim: Simulation, hx: number, hy = ROW): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, positionOfNode(hx, hy));
-  addPerson(sim.world, e, {
-    tribe: VIKING,
-    jobType: BUILDER,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-  });
-  sim.world.add(e, Owner, { player: HUMAN });
-  return e;
-}
-
-/** Order road sites through the seat's own command path and apply them. */
-function orderRoads(sim: Simulation, nodes: readonly { hx: number; hy: number }[], player = HUMAN): void {
-  for (const { hx, hy } of nodes) {
-    sim.enqueue(playerCommand(player, { kind: 'placeRoadSite', x: hx, y: hy, tribe: VIKING }));
-  }
-  sim.step();
-}
-
-function siteAt(sim: Simulation, hx: number, hy: number): Entity | undefined {
-  return [...sim.world.query(RoadSite, Position)].find((e) => {
-    const n = nodeOfPosition(sim.world.get(e, Position).x, sim.world.get(e, Position).y);
-    return n.hx === hx && n.hy === hy;
-  });
-}
-
-function roadAt(sim: Simulation, hx: number, hy: number): boolean {
-  const terrain = sim.terrain;
-  if (terrain === undefined) throw new Error('expected a mapped simulation');
-  return isRoad(sim.world, terrain.nodeAt(hx, hy));
-}
+import {
+  BUILD_ROAD_ATOMIC,
+  BUILD_TICKS,
+  builderAt,
+  FAR_HX,
+  HANDCART,
+  HUMAN,
+  HUT,
+  houseSiteAt,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  orderRoads,
+  RIVAL,
+  ROW,
+  roadAt,
+  roadMapOf,
+  roadSim,
+  STONE,
+  STORE_HX,
+  siteAt,
+  storeAt,
+  VIKING,
+  WALL,
+} from './road-support.js';
 
 /** Hand `site` its stone and a claim holder that has landed its one strike, then run the finish. */
 function finishDirectly(sim: Simulation, site: Entity): Entity {
@@ -582,8 +406,16 @@ describe('road site pick', () => {
         if (site !== undefined && !firstPick.has(b)) firstPick.set(b, site);
       }
     }
-    expect(builders.map((b) => sites.indexOf(firstPick.get(b) ?? -1))).toEqual([1, 4]);
-    expect(LINE.map(({ hx, hy }) => roadAt(sim, hx, hy))).toEqual([true, true, true, true, true, true, false]);
+    expect(builders.map((b) => firstPick.get(b))).toEqual([sites[1], sites[4]]);
+    expect(LINE.map(({ hx, hy }) => roadAt(sim, hx, hy))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
     expect(sim.world.get(store, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
   });
 
@@ -592,7 +424,8 @@ describe('road site pick', () => {
     const sites = lineSites(sim);
     const terrain = sim.terrain;
     const [west, second] = sites;
-    if (terrain === undefined || west === undefined || second === undefined) throw new Error('expected sites');
+    if (terrain === undefined || west === undefined || second === undefined)
+      throw new Error('expected sites');
     const holder = builderAt(sim, 30);
     sim.world.add(holder, SiteAssignment, { site: second, pinned: false });
     claimSite(sim.world, second, holder);
@@ -636,7 +469,3 @@ describe('road sites persisted', () => {
     expect([...a.world.query(RoadSite)]).toEqual([]);
   });
 });
-
-function roadMapOf(): TerrainMap {
-  return { ...grassNodeMap(MAP_WIDTH, MAP_HEIGHT), landscapes: { types: [WALL], placements: [] } };
-}

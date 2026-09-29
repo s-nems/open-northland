@@ -1,5 +1,6 @@
 import {
   Age,
+  BuildMode,
   CurrentAtomic,
   type DeferrableOrderCommand,
   DeferredOrder,
@@ -9,9 +10,11 @@ import {
   MISSION_BEHAVIOUR,
   Owner,
   Settler,
+  SiteAssignment,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { releaseSiteClaim } from '../economy/site-claim.js';
 import { atomicClipName, isInterruptibleAtomic } from '../readviews/animations.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 
@@ -43,6 +46,15 @@ export function mayChangeTrade(world: World, e: Entity): boolean {
 export function supersedeStandingOrders(world: World, e: Entity): void {
   world.remove(e, DeferredOrder);
   world.remove(e, ExploreOrder);
+  endBuildMode(world, e);
+}
+
+/** Call off a builder's road or wall run, letting go of the site it had claimed for it. */
+function endBuildMode(world: World, e: Entity): void {
+  if (!world.has(e, BuildMode)) return;
+  world.remove(e, BuildMode);
+  releaseSiteClaim(world, e);
+  world.remove(e, SiteAssignment);
 }
 
 /**

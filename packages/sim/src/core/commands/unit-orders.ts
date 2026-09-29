@@ -296,7 +296,9 @@ export type UnitOrderCommand =
       /**
        * Pin one owned builder to construction `site`, or to a damaged building it then mends whatever
        * fighting is near while its repair crew has room, so it works there over the nearest one. Only a job
-       * that can run the build atomic qualifies; other trades take the `assignWorker` path.
+       * that can run the build atomic qualifies; other trades take the `assignWorker` path. A road site or
+       * an unfinished wall segment starts a run: the builder goes on to its owner's other sites of that
+       * kind until none is left, and any other order to it ends the run.
        */
       readonly kind: 'assignBuilder';
       readonly entity: Entity;
