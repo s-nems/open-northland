@@ -103,7 +103,13 @@ import {
   palisadeLayoutVersion,
   palisadePlacementProbe,
 } from './systems/palisades/index.js';
-import { canChooseJob, needSubjectOf, type UnlockStatus, unlockStatus } from './systems/progression/index.js';
+import {
+  canChooseJob,
+  needSubjectOf,
+  settlerMeetsNeed,
+  type UnlockStatus,
+  unlockStatus,
+} from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { type WorkStatus, workStatus } from './systems/readviews/work-status.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
@@ -362,6 +368,14 @@ export class Simulation {
   canChooseJob(entity: Entity, jobType: number): boolean {
     if (!this.world.has(entity, Settler)) return false;
     return canChooseJob(this.world, { content: this.content }, needSubjectOf(this.world, entity), jobType);
+  }
+
+  /** Whether the settler has earned `goodType` under its tribe's `needforgood` table, the gate on
+   *  gathering or making it. */
+  hasEarnedGood(entity: Entity, goodType: number): boolean {
+    if (!this.world.has(entity, Settler)) return false;
+    const subject = needSubjectOf(this.world, entity);
+    return settlerMeetsNeed(this.world, { content: this.content }, subject, 'good', goodType);
   }
 
   /**

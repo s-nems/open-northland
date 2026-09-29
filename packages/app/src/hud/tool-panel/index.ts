@@ -11,7 +11,7 @@ import type {
   WorldSnapshot,
 } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
-import { PROFESSIONS, professionDefForJob } from '../../catalog/professions.js';
+import { professionDefForJob } from '../../catalog/professions.js';
 import {
   type GuiBitmapName,
   type GuiStrings,
@@ -80,6 +80,7 @@ import {
   type PlacementClickAsks,
   type PlacementState,
 } from './placement.js';
+import { canBecomeOptions } from './residents/can-become.js';
 import { ResidentFigures } from './residents/figures.js';
 import { NO_RESIDENT_FILTERS } from './residents/rows.js';
 import type { ResidentsSeam } from './residents/seam.js';
@@ -478,7 +479,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           ...(opts.residents.answersVersion !== undefined
             ? { answersVersion: opts.residents.answersVersion }
             : {}),
-          trades: PROFESSIONS.map((p) => ({ jobType: p.jobType, label: professionLabel(p.key) })),
+          trades: canBecomeOptions(),
           selection: opts.residents.selection,
           onSelect: opts.residents.onSelect,
           paintFigures: (slots, box) => figures.paint(opts.residents.snapshot(), slots, box),
@@ -698,10 +699,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
             if (!residents.isOpen()) residents.toggle();
             // A sandbox slot's trade is rebased; the filter lists the raw trades.
             const trade = canonicalJobType(jobType);
-            const offered = PROFESSIONS.some((profession) => profession.jobType === trade);
+            const offered = canBecomeOptions().find(
+              ({ pick }) => pick.goodType === null && pick.jobType === trade,
+            );
             residents.restore({
               ...residents.state(),
-              filters: { ...NO_RESIDENT_FILTERS, canBecome: offered ? trade : null },
+              filters: { ...NO_RESIDENT_FILTERS, canBecome: offered?.pick ?? null },
               scrollTop: 0,
             });
           }),

@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { ResidentRow } from './rows.js';
+import type { ResidentRow, TradePick } from './rows.js';
 
 /** What the residents window reads from the game and asks of it. */
 export interface ResidentsSeam {
@@ -8,8 +8,9 @@ export interface ResidentsSeam {
   readonly rows: () => readonly ResidentRow[];
   /** The snapshot those rows came from, which the row figures are drawn off. */
   readonly snapshot: () => WorldSnapshot;
-  /** Whether the sim would let the settler take the trade (`SessionHost.canChooseJob`). */
-  readonly canBecome: (id: number, jobType: number) => boolean;
+  /** Whether the sim would let the settler take the trade (`SessionHost.canChooseJob`) and, for a pick
+   *  held to a good, has earned that good (`SessionHost.hasEarnedGood`). */
+  readonly canBecome: (id: number, pick: TradePick) => boolean;
   /** Bumped when a `canBecome` answer lands anew. */
   readonly answersVersion?: () => number;
   /** The unit controls' selection; `version` moves with every change. */

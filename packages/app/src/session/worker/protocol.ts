@@ -49,6 +49,7 @@ export const HOST_REQUESTS = [
   'mooringProbe',
   'unlockStatus',
   'canChooseJob',
+  'hasEarnedGood',
   'equipPickList',
   'standsTo',
   'workStatus',

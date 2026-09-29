@@ -492,6 +492,7 @@ class WorkerClient<E> {
       mooringProbe: (...args) => this.ask('mooringProbe', args),
       unlockStatus: (...args) => this.ask('unlockStatus', args),
       canChooseJob: (...args) => this.ask('canChooseJob', args),
+      hasEarnedGood: (...args) => this.ask('hasEarnedGood', args),
       equipPickList: (...args) => this.ask('equipPickList', args),
       standsTo: (...args) => this.ask('standsTo', args),
       workStatus: (...args) => this.ask('workStatus', args),

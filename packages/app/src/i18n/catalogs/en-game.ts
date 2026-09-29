@@ -663,6 +663,7 @@ export const enGame = {
       anyJob: 'Any',
       jobOption: '{name} ({count})',
       canBecome: 'Can become',
+      collectorOf: 'Collector - {good}',
       anyone: 'Anyone',
       who: 'Who',
       without: 'No',

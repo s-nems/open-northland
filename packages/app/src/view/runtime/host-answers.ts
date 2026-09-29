@@ -58,6 +58,8 @@ export interface HostAnswers {
   ) => UnlockStatus | undefined;
   readonly canChooseJob: (entity: number, jobType: number) => boolean;
   readonly askCanChooseJob: (entity: number, jobType: number) => Promise<boolean>;
+  /** Versioned with the job choices, since the residents filter asks both of one row. */
+  readonly hasEarnedGood: (entity: number, goodType: number) => boolean;
   readonly standsTo: (entity: number) => boolean;
   /** Undefined while unanswered, which leaves the status detail out. */
   readonly workStatus: (entity: number) => WorkStatus | undefined;
@@ -146,6 +148,10 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
     canChooseJob: (entity, jobType) =>
       perTick(jobChoices, `${entity}:${jobType}`, () => host.canChooseJob(entity as Entity, jobType)) ===
       true,
+    hasEarnedGood: (entity, goodType) =>
+      perTick(jobChoices, `good:${entity}:${goodType}`, () =>
+        host.hasEarnedGood(entity as Entity, goodType),
+      ) === true,
     askCanChooseJob: (entity, jobType) =>
       jobChoices.fresh(
         `${entity}:${jobType}`,

@@ -463,7 +463,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       residents: {
         rows: () => residentsFor(host.snapshot()),
         snapshot: () => host.snapshot(),
-        canBecome: answers.canChooseJob,
+        canBecome: (id, pick) =>
+          answers.canChooseJob(id, pick.jobType) &&
+          (pick.goodType === null || answers.hasEarnedGood(id, pick.goodType)),
         answersVersion: answers.versions.jobChoices,
         selection: {
           ids: () => unitSelection?.selectedIds() ?? NO_SELECTION,

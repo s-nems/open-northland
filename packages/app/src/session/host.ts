@@ -167,6 +167,7 @@ export interface SessionHost {
 
   unlockStatus(kind: UnlockKind, typeId: number, tribe: number, player?: number): Promise<UnlockStatus>;
   canChooseJob(entity: Entity, jobType: number): Promise<boolean>;
+  hasEarnedGood(entity: Entity, goodType: number): Promise<boolean>;
   equipPickList(entity: Entity, group: EquipCategory): Promise<readonly EquipPickEntry[]>;
   /** Whether a unit is holding its ground on battle alert. */
   standsTo(entity: Entity): Promise<boolean>;

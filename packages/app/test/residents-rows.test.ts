@@ -7,11 +7,15 @@ import {
   pickGestureOf,
   type ResidentRow,
   sortResidents,
+  type TradePick,
 } from '../src/hud/tool-panel/residents/rows.js';
 
 const LOCALE = 'pl';
 const JOB_BAKER = 20;
 const JOB_SMITH = 13;
+const JOB_COLLECTOR = 8;
+const GOOD_IRON = 6;
+const SMITH: TradePick = { jobType: JOB_SMITH, goodType: null };
 
 function row(id: number, over: Partial<ResidentRow>): ResidentRow {
   return {
@@ -28,7 +32,7 @@ function row(id: number, over: Partial<ResidentRow>): ResidentRow {
   };
 }
 
-const nobodyRetrains = (_id: number, _jobType: number): boolean => false;
+const nobodyRetrains = (_id: number, _pick: TradePick): boolean => false;
 
 describe('residents list filters', () => {
   const people = [
@@ -69,21 +73,33 @@ describe('residents list filters', () => {
   });
 
   it('keeps the holders of a trade and the people the sim would let take it', () => {
-    const canSmith = (id: number, jobType: number): boolean => jobType === JOB_SMITH && id === 7;
-    expect(shown({ canBecome: JOB_SMITH }, canSmith)).toEqual([2, 7]);
+    const canSmith = (id: number, pick: TradePick): boolean => pick.jobType === JOB_SMITH && id === 7;
+    expect(shown({ canBecome: SMITH }, canSmith)).toEqual([2, 7]);
     expect(shown({ profession: 'Kowal' })).toEqual([2]);
+  });
+
+  it('asks a pick held to a good even of the men already in the trade', () => {
+    const collectors = [
+      row(1, { name: 'Arne', jobType: JOB_COLLECTOR, profession: 'Zbieracz' }),
+      row(2, { name: 'Bjorn', jobType: JOB_COLLECTOR, profession: 'Zbieracz' }),
+      row(3, { name: 'Egil', kind: 'civilian', jobType: 6, profession: 'Cywil' }),
+    ];
+    const ironHands = (id: number, pick: TradePick): boolean => pick.goodType === GOOD_IRON && id !== 1;
+    const canBecome: TradePick = { jobType: JOB_COLLECTOR, goodType: GOOD_IRON };
+    const listed = listResidents(collectors, { ...NO_RESIDENT_FILTERS, canBecome }, LOCALE, ironHands);
+    expect(listed.shown.map((p) => p.id)).toEqual([2, 3]);
   });
 
   it('offers a trade to no child and no woman, whatever the sim rule says of them', () => {
     const everyone = (): boolean => true;
-    expect(shown({ canBecome: JOB_SMITH }, everyone)).toEqual([1, 2, 5, 7, 8]);
+    expect(shown({ canBecome: SMITH }, everyone)).toEqual([1, 2, 5, 7, 8]);
   });
 
   it('knows a set filter from the resting state', () => {
     expect(filtersActive(NO_RESIDENT_FILTERS)).toBe(false);
     expect(filtersActive({ ...NO_RESIDENT_FILTERS, query: '  ' })).toBe(false);
     expect(filtersActive({ ...NO_RESIDENT_FILTERS, lacks: ['home'] })).toBe(true);
-    expect(filtersActive({ ...NO_RESIDENT_FILTERS, canBecome: JOB_SMITH })).toBe(true);
+    expect(filtersActive({ ...NO_RESIDENT_FILTERS, canBecome: SMITH })).toBe(true);
   });
 
   const listing = (filters: Partial<typeof NO_RESIDENT_FILTERS>) =>
@@ -128,13 +144,8 @@ describe('residents list filters', () => {
     const smiths = listing({ profession: 'Kowal' }).counts;
     expect(smiths.groups).toMatchObject({ all: 1, workers: 1, heroes: 0 });
 
-    const canSmith = (id: number, jobType: number): boolean => jobType === JOB_SMITH && id === 7;
-    const { counts } = listResidents(
-      people,
-      { ...NO_RESIDENT_FILTERS, canBecome: JOB_SMITH },
-      LOCALE,
-      canSmith,
-    );
+    const canSmith = (id: number, pick: TradePick): boolean => pick.jobType === JOB_SMITH && id === 7;
+    const { counts } = listResidents(people, { ...NO_RESIDENT_FILTERS, canBecome: SMITH }, LOCALE, canSmith);
     expect(counts.groups).toMatchObject({ all: 2, workers: 1, civilians: 1, women: 0 });
     expect(counts.lacks).toMatchObject({ home: 1, shoes: 1, weapon: 0 });
   });

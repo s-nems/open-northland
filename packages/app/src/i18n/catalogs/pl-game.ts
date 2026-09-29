@@ -645,6 +645,7 @@ export const plGame = {
       anyJob: 'Każdy',
       jobOption: '{name} ({count})',
       canBecome: 'Może zostać',
+      collectorOf: 'Zbieracz - {good}',
       anyone: 'Ktokolwiek',
       who: 'Kto',
       without: 'Bez',

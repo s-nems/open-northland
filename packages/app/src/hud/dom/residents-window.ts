@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { pickerEntries } from '../../catalog/professions.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import type { CanBecomeOption } from '../tool-panel/residents/can-become.js';
 import type { ResidentFigureBox, ResidentFigureSlot } from '../tool-panel/residents/figures.js';
 import {
   filtersActive,
@@ -19,7 +20,10 @@ import {
   type ResidentRow,
   type ResidentSortKey,
   type ResidentsWindowState,
+  sameTradePick,
   sortResidents,
+  type TradePick,
+  tradePickKey,
 } from '../tool-panel/residents/rows.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import type { ChoiceGroup } from './choice-window.js';
@@ -50,12 +54,12 @@ export interface ResidentsWindowDeps {
   /** The seat's people. A new array means a new tick's list; the same one costs nothing. */
   readonly rows: () => readonly ResidentRow[];
   /** The sim's rule behind the "can become" filter, asked only while that filter is set. */
-  readonly canBecome: (id: number, jobType: number) => boolean;
+  readonly canBecome: (id: number, pick: TradePick) => boolean;
   /** Bumped when a `canBecome` answer lands anew, which relists under unchanged rows; absent, only new
    *  rows relist. */
   readonly answersVersion?: () => number;
   /** The trades the "can become" filter offers, in picker order. */
-  readonly trades: readonly { readonly jobType: number; readonly label: string }[];
+  readonly trades: readonly CanBecomeOption[];
   /** The unit controls' selection, which the rows light for; `version` moves with every change. */
   readonly selection: { readonly ids: () => ReadonlySet<number>; readonly version: () => number };
   /** A row or the whole shown list was picked: `extend` adds to the selected group and the window
@@ -137,7 +141,6 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   find.append(search);
   const professionSelect = selectField(copy.job);
   const canBecomeSelect = selectField(copy.canBecome);
-  const trades = new Set(deps.trades.map((trade) => trade.jobType));
   const professionGroups = professionChoices(
     pickerEntries(),
     () => true,
@@ -152,12 +155,17 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
         options.append(...group.rows.map((row) => new Option(row.label, row.key)));
         return options;
       });
+  // Each profession row stands for the picks of its trade, in the category the picker files it under.
   canBecomeSelect.replaceChildren(
     new Option(copy.anyone, ''),
     ...optionGroups(
       professionGroups.map((group) => ({
         ...group,
-        rows: group.rows.filter((row) => trades.has(Number(row.key))),
+        rows: group.rows.flatMap((row) =>
+          deps.trades
+            .filter((trade) => String(trade.pick.jobType) === row.key)
+            .map((trade) => ({ key: tradePickKey(trade.pick), label: trade.label })),
+        ),
       })),
     ),
   );
@@ -359,7 +367,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       setAttribute(view.button, 'aria-pressed', String(filters.lacks.includes(id)));
     }
     setValue(query, filters.query);
-    setValue(canBecomeSelect, filters.canBecome === null ? '' : String(filters.canBecome));
+    setValue(canBecomeSelect, filters.canBecome === null ? '' : tradePickKey(filters.canBecome));
   };
 
   const showSummary = (all: readonly ResidentRow[], shown: number): void => {
@@ -374,7 +382,7 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
       filters.canBecome === null
         ? ''
         : formatMessage(copy.filterCanBecome, {
-            name: deps.trades.find((trade) => trade.jobType === filters.canBecome)?.label ?? '',
+            name: deps.trades.find((trade) => sameTradePick(trade.pick, filters.canBecome))?.label ?? '',
           }),
       filters.query.trim() === '' ? '' : formatMessage(copy.filterQuery, { query: filters.query.trim() }),
     ].filter((part) => part !== '');
@@ -511,7 +519,8 @@ export function createResidentsWindow(deps: ResidentsWindowDeps): ResidentsWindo
   canBecomeSelect.addEventListener('change', () =>
     setFilters({
       ...state.filters,
-      canBecome: canBecomeSelect.value === '' ? null : Number(canBecomeSelect.value),
+      canBecome:
+        deps.trades.find((trade) => tradePickKey(trade.pick) === canBecomeSelect.value)?.pick ?? null,
     }),
   );
   // The shell leaves a text field its keys, so the field takes Escape itself, and keeps it from the

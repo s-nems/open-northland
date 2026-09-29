@@ -69,13 +69,28 @@ export interface ResidentSort {
   readonly descending: boolean;
 }
 
+/** A "can become" pick: a trade, held to one good when the tribe gates that good (a collector of iron). */
+export interface TradePick {
+  readonly jobType: number;
+  readonly goodType: number | null;
+}
+
+/** The pick's `<option>` value. */
+export function tradePickKey(pick: TradePick): string {
+  return pick.goodType === null ? String(pick.jobType) : `${pick.jobType}:${pick.goodType}`;
+}
+
+export function sameTradePick(a: TradePick | null, b: TradePick | null): boolean {
+  return a === b || (a !== null && b !== null && a.jobType === b.jobType && a.goodType === b.goodType);
+}
+
 export interface ResidentFilters {
   readonly group: ResidentGroup;
   readonly lacks: readonly ResidentLack[];
   /** A `ResidentRow.profession` to keep; empty keeps every one. */
   readonly profession: string;
-  /** The job the listed people could take; null applies no such filter. */
-  readonly canBecome: number | null;
+  /** The trade the listed people could take; null applies no such filter. */
+  readonly canBecome: TradePick | null;
   readonly query: string;
 }
 
@@ -107,9 +122,9 @@ interface FilterVerdict {
 }
 
 /**
- * `canBecome` answers the job filter for a row: the sim's own rule, asked only while that filter is
+ * `canBecome` answers the trade filter for a row: the sim's own rule, asked only while that filter is
  * set and only of a grown man, since the sim's trade orders refuse a child and a woman before that
- * rule is read. Approximation: a script's trade lock on a unit is not mirrored, so a locked man may
+ * rule is read. A pick held to a good asks even of a man already in the trade. Approximation: a script's trade lock on a unit is not mirrored, so a locked man may
  * still be listed.
  */
 function verdictOf(
@@ -117,12 +132,13 @@ function verdictOf(
   filters: ResidentFilters,
   needle: string,
   locale: string,
-  canBecome: (id: number, jobType: number) => boolean,
+  canBecome: (id: number, pick: TradePick) => boolean,
 ): FilterVerdict {
+  const pick = filters.canBecome;
   const takesJob =
-    filters.canBecome === null ||
-    row.jobType === filters.canBecome ||
-    (row.kind !== 'child' && !row.female && canBecome(row.id, filters.canBecome));
+    pick === null ||
+    (pick.goodType === null && row.jobType === pick.jobType) ||
+    (row.kind !== 'child' && !row.female && canBecome(row.id, pick));
   const named =
     needle === '' ||
     [row.name, row.profession, row.workplace].some((text) => text.toLocaleLowerCase(locale).includes(needle));
@@ -152,7 +168,7 @@ export function listResidents(
   rows: readonly ResidentRow[],
   filters: ResidentFilters,
   locale: string,
-  canBecome: (id: number, jobType: number) => boolean,
+  canBecome: (id: number, pick: TradePick) => boolean,
 ): ResidentListing {
   const groups = Object.fromEntries(RESIDENT_GROUPS.map((id) => [id, 0])) as Record<ResidentGroup, number>;
   const lacks = Object.fromEntries(RESIDENT_LACKS.map((id) => [id, 0])) as Record<ResidentLack, number>;
