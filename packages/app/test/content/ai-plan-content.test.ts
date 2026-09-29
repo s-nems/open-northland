@@ -174,7 +174,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
     const carrierJob = content.jobs.find((j) => j.id === 'carrier')?.typeId;
     expect(carrierJob).toBeDefined();
-    const managed = supplyLines(content, DEFAULT_BUILD_ORDER);
+    const managed = supplyLines(content, DEFAULT_BUILD_ORDER, 'opening');
 
     for (const [id, row] of Object.entries(STAFFING_BY_BUILDING_ID)) {
       const building = buildingById.get(id);

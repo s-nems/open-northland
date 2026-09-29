@@ -58,7 +58,7 @@ const linesCache = new WeakMap<
 export function supplyLines(
   content: ContentSet,
   order: readonly BuildOrderEntry[],
-  phase: GamePhase = 'opening',
+  phase: GamePhase,
 ): ReadonlyMap<number, SupplyLines> {
   let byOrder = linesCache.get(content);
   if (byOrder === undefined) {

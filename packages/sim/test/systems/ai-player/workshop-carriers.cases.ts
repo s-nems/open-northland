@@ -245,7 +245,7 @@ const SUPPLY_GOODS = [BRICK, TILE, PILLAR, ORNAMENT];
 
 /** The default build order's supply lines of `good` over `content`. */
 function linesOf(content: ContentSet, good: number): SupplyLines {
-  const lines = supplyLines(content, DEFAULT_BUILD_ORDER).get(good);
+  const lines = supplyLines(content, DEFAULT_BUILD_ORDER, 'opening').get(good);
   if (lines === undefined) throw new Error(`good ${good} is not managed`);
   return lines;
 }
@@ -338,7 +338,7 @@ describe('workforce module - the supply lines', () => {
       ),
     });
     expect(linesOf(wide, WOOD)).toEqual(lines(HOME_CHAIN_WOOD, WIDE_SHELF));
-    expect(supplyLines(content, DEFAULT_BUILD_ORDER).has(CROCKERY)).toBe(false);
+    expect(supplyLines(content, DEFAULT_BUILD_ORDER, 'opening').has(CROCKERY)).toBe(false);
   });
 
   it('lays the glut line further out every game phase, but not for a stocked product', () => {

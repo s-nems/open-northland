@@ -251,7 +251,7 @@ function wantedRow(
 
 /** Stock the HQ at the good's comfort line, so no shortage post rides on the target. */
 function stockAtComfort(sim: Simulation, ctx: SystemContext, good: number): void {
-  const comfort = supplyLines(ctx.content, DEFAULT_BUILD_ORDER).get(good)?.comfort ?? 0;
+  const comfort = supplyLines(ctx.content, DEFAULT_BUILD_ORDER, 'opening').get(good)?.comfort ?? 0;
   setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, comfort);
 }
 
@@ -490,7 +490,7 @@ describe('workforce module (collectResources)', () => {
     const woodTarget = COLLECTOR_TARGET_BY_GOOD_ID.wood ?? 0;
     // With no wood the gap spans three units, so the joinery's two planned joiners cap the extra posts at
     // one.
-    const lines = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER).get(WOOD);
+    const lines = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER, 'opening').get(WOOD);
     expect(lines).toMatchObject(FIXTURE_WOOD_LINES);
     const woodComfort = lines?.comfort ?? 0;
 
@@ -528,7 +528,9 @@ describe('workforce module (collectResources)', () => {
       setStockAmount(sim.world, hq, WOOD, stock);
       return (wantedTarget(sim, ctx, WOOD) ?? 0) - woodTarget;
     };
-    expect(supplyLines(ctx.content, DEFAULT_BUILD_ORDER).get(WOOD)).toMatchObject(FIXTURE_WOOD_LINES);
+    expect(supplyLines(ctx.content, DEFAULT_BUILD_ORDER, 'opening').get(WOOD)).toMatchObject(
+      FIXTURE_WOOD_LINES,
+    );
 
     // One joinery plans two joiners: a gap of three units still gets one extra gatherer.
     expect(extraWood(0)).toBe(1);
@@ -700,7 +702,7 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, BUILDER_CAP + 4 + GENERIC_COLLECTOR_TARGET);
     sim.step();
     const hq = entityOfBuilding(sim, HQ_TYPE);
-    const comfort = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER).get(WOOD)?.comfort ?? 0;
+    const comfort = supplyLines(ctxOf(sim).content, DEFAULT_BUILD_ORDER, 'opening').get(WOOD)?.comfort ?? 0;
     for (const good of [WOOD, STONE]) setStockAmount(sim.world, hq, good, comfort);
     const decideAt = (tick: number) => {
       const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
@@ -1008,7 +1010,7 @@ describe('workforce module (collectResources)', () => {
     ];
     const stockAt = (line: 'glut' | 'none'): void => {
       for (const good of [IRON, WOOD]) {
-        const glut = supplyLines(content, DEFAULT_BUILD_ORDER).get(good)?.glut ?? 0;
+        const glut = supplyLines(content, DEFAULT_BUILD_ORDER, 'opening').get(good)?.glut ?? 0;
         setStockAmount(sim.world, hq, good, line === 'glut' ? glut : 0);
       }
     };
