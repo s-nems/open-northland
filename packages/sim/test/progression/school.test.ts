@@ -12,6 +12,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { exportSaveGame, fx, ONE, restoreSimulation, Simulation } from '../../src/index.js';
+import { heldGatherGood } from '../../src/systems/economy/gather-goods.js';
 import { learn } from '../../src/systems/orders/education.js';
 import {
   needSubjectOf,
@@ -441,4 +442,59 @@ it('still teaches a new method of the trade the pupil already practises', () => 
   });
 
   expect(sim.world.get(carpenter, TrainingOrder).lesson).toEqual({ kind: 'good', typeId: PLANK });
+});
+
+it('leaves a collector taught a good gathering only that good', () => {
+  const COLLECTOR = 7;
+  const ORE = 4;
+  const base = testContent();
+  const content = parseContentSet({
+    ...base,
+    buildings: [...base.buildings, { typeId: SCHOOL, id: 'school', kind: 'training', schoolSize: 1 }],
+    tribes: base.tribes.map((tribe) => ({
+      ...tribe,
+      jobEnables: [{ jobType: COLLECTOR, kind: 'good', targetId: ORE }],
+      jobRequirements: [
+        {
+          target: 'good',
+          targetId: ORE,
+          requirement: 'train',
+          amount: 1,
+          experienceTypes: [TRAINING_EXPERIENCE_TYPE],
+        },
+      ],
+    })),
+  });
+  const sim = new Simulation({ seed: 8, content, map: grassCellMap(12, 12) });
+  const collector = settlerAt(sim, { jobType: COLLECTOR, tribe: TRIBE });
+  sim.world.add(collector, Owner, { player: 0 });
+  const school = sim.world.create();
+  sim.world.add(school, Building, { buildingType: SCHOOL, tribe: TRIBE, built: ONE, level: 0 });
+  sim.world.add(school, Position, { x: fx.fromInt(SCHOOL_AT.x), y: fx.fromInt(SCHOOL_AT.y) });
+  sim.world.add(school, Owner, { player: 0 });
+  discoverTechnology(sim.world, 0, TRIBE, 'good', ORE);
+  learn(sim.world, ctxOf(sim), {
+    kind: 'learn',
+    entity: collector,
+    house: school,
+    target: 'good',
+    typeId: ORE,
+  });
+  expect(heldGatherGood(sim.world, ctxOf(sim), collector)).toBeUndefined();
+  sim.world.mut(collector, TrainingOrder).drillTicksLeft = 0;
+
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('missing terrain');
+  planTraining(
+    sim.world,
+    ctxOf(sim),
+    terrain,
+    collector,
+    sim.world.get(collector, Settler),
+    terrain.nodeAt(2, 2),
+    null,
+  );
+
+  expect(sim.world.get(collector, SettlerProgress).learned?.good).toContain(ORE);
+  expect(heldGatherGood(sim.world, ctxOf(sim), collector)).toBe(ORE);
 });

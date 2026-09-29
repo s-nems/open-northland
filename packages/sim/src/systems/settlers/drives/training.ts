@@ -16,11 +16,12 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { holdToGatherGood, jobGathersGood } from '../../economy/gather-goods.js';
 import { isSchool, schoolMethodJob } from '../../orders/education.js';
 import { reidleAsJob } from '../../orders/work/index.js';
 import { typeAllowed } from '../../progression/unlocks.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
+import { baseSoldierJobType, isBarracks, isFighterJob, jobChangesProduction } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import { EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { enterBuilding, stepOut } from '../indoors.js';
@@ -99,6 +100,15 @@ export function planTraining(
         if (s.jobType !== job) {
           world.remove(e, JobAssignment);
           reidleAsJob(world, ctx, e, job);
+        }
+        // A gatherer taught a good (a collector's iron or gold) leaves school gathering only that good.
+        const good = order.lesson.typeId;
+        if (
+          order.lesson.kind === 'good' &&
+          jobChangesProduction(ctx.content, job) &&
+          jobGathersGood(ctx, job, good)
+        ) {
+          holdToGatherGood(world, ctx, e, job, good);
         }
       }
       ctx.events.emit({
