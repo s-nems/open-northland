@@ -158,14 +158,14 @@ loading a save preserves its stored mission rules.
 
 Common modifiers include `lang=<pol|eng>`, `fog=<off|classic|classic-fow|recon|recon-fow>` (the
 lobby's map setting, with `-fow` for fog of war; `off` reveals the map), `player=<...>`, `ai=<...>`, `sound=off`,
-`intro=off` (skip all automatic briefing windows, including script chapters), `fullscreen=off`, and
+`intro=off` (skip all automatic briefing windows, including script chapters), `fullscreen=off`,
 `weather=<rain|snow|sand|clear>[:<percent>]` (whole-map weather in this view only, default 30; the sim's
-weather is untouched; `weather=ambient[:<percent>]` holds the game's own weather, 100 a light episode, 300 a storm),
-`weathermode=<map|variable|winter>` (the lobby's match weather, `variable` when absent). `ai=<seat,...>`
+weather is untouched; `weather=ambient[:<percent>]` holds the game's own weather, 100 a light episode, 300 a storm), and
+`weathermode=<map|variable|winter>` (the lobby's match weather, `variable` when no param names one). `ai=<seat,...>`
 names the seats a person could have taken that the strategic AI plays instead; a map's own computer
 seats (authored `ai`, offered to nobody) play without being named. `seed=<n>` picks
 the world seed a `?map=` session runs on, so two clients of one session start from the same world;
-without it the map entry keeps its fixed default. Without `lang`
+without it the map entry keeps its fixed default; the lobby draws a new one for each match. Without `lang`
 the language follows the browser, and English stands in for a
 browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides

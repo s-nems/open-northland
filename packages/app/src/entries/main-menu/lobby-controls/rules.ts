@@ -41,6 +41,8 @@ export interface GameRuleControlOptions {
   };
   readonly onChange: (change: Partial<GameRules>) => void;
 }
+let ruleIds = 0;
+
 interface Choice<T> extends RuleText {
   readonly value: T;
 }
@@ -129,6 +131,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       },
     );
     const title = document.createElement('span');
+    title.id = `lobby-rule-${++ruleIds}`;
     title.textContent = label;
     const segments = segControl<string>(
       choices.map((choice) => ({ id: choice.value, label: choice.label })),
@@ -139,6 +142,8 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       },
     );
     segments.root.classList.add('main-menu__lobby-map');
+    segments.root.setAttribute('role', 'group');
+    segments.root.setAttribute('aria-labelledby', title.id);
     const row = detailTipRow(title, segments.root, choices);
     return {
       elements: [row],
@@ -151,7 +156,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
   }
 
   const fog = fogRuleComposer();
-  const mapChoices: Choice<ShownMap>[] = MAP_MODES.map((mode) => ({
+  const mapChoices: Choice<MapModeName>[] = MAP_MODES.map((mode) => ({
     value: mode,
     ...options.map.modes[mode],
   }));
@@ -161,7 +166,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
         options.onChange({ fog: fog.request({ terrainKnown: mode === 'recon' }) });
     };
     if (options.presentation === 'select') {
-      const control = select(options.map.label, mapChoices, change);
+      const control = select<ShownMap>(options.map.label, mapChoices, change);
       return {
         elements: control.elements,
         update(shown: ShownMap, disabled: boolean): void {
@@ -169,11 +174,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
         },
       };
     }
-    const control = segmentedRule<MapModeName>(
-      options.map.label,
-      MAP_MODES.map((mode) => ({ value: mode, ...options.map.modes[mode] })),
-      change,
-    );
+    const control = segmentedRule<MapModeName>(options.map.label, mapChoices, change);
     return {
       elements: control.elements,
       update(shown: ShownMap, disabled: boolean): void {
