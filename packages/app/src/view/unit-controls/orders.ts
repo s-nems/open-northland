@@ -215,7 +215,39 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     ) {
       return true;
     }
-    return rightClickRest(event, commanded, aim);
+    const others = gatherFromResource(commanded, world.x, world.y);
+    if (others.length === 0) return true;
+    return rightClickRest(event, others, aim);
+  };
+
+  /** A right click on a resource switches the gatherers among `commanded` that gather its good to it,
+   *  leaving their work flag where it stands (Ctrl moves the flag too); returns the rest. */
+  const gatherFromResource = (
+    commanded: readonly FormationUnit[],
+    wx: number,
+    wy: number,
+  ): readonly FormationUnit[] => {
+    const resources = deps.targets.resources();
+    const resource = pickNearestAt(resources, wx, wy);
+    const goodType =
+      resource === null ? undefined : resources.find((target) => target.ref === resource)?.goodType;
+    if (goodType === undefined) return commanded;
+    const snapshot = deps.snapshot();
+    const gathers = (unit: FormationUnit): boolean => {
+      const self = entityById(snapshot, unit.ref);
+      const job = self === undefined ? undefined : settlerJobType(self);
+      return (
+        job !== undefined &&
+        systems.jobChangesProduction(deps.content, job) &&
+        systems.jobGathersGood({ content: deps.content }, job, goodType)
+      );
+    };
+    const others: FormationUnit[] = [];
+    for (const unit of commanded) {
+      if (gathers(unit)) deps.enqueue({ kind: 'setGatherGood', entity: unit.ref as Entity, goodType });
+      else others.push(unit);
+    }
+    return others;
   };
 
   /** The ladder past the goods heap: a trader's route toggle, then the building, then the walk. A trader

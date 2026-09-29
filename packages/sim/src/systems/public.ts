@@ -40,7 +40,8 @@ export { SIGHT_RADIUS_NODES } from './conflict/targeting.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { createMapCrop } from './economy/fields.js';
 export { addFishSwarms, FISH_REPRODUCTION_TICKS, MAX_FISH_PER_SWARM } from './economy/fish.js';
-export { heldGatherGood } from './economy/gather-goods.js';
+// The gather gate, so the app's right-click on a resource names the same gatherers `setGatherGood` accepts.
+export { heldGatherGood, jobGatherGoods, jobGathersGood } from './economy/gather-goods.js';
 export { createGroundGoods, type GroundGoodsSpec } from './economy/ground-goods.js';
 export { OUTPUT_TENTHS_PER_UNIT } from './economy/production/bonus-output.js';
 // The repair crew cap, so the app's right-click and site pick fall through where assignBuilder refuses.
@@ -127,6 +128,7 @@ export {
   isScoutJob,
   isSoldierJob,
   isTraderJob,
+  jobChangesProduction,
   scoutJobType,
 } from './readviews/jobs.js';
 // The landscape a dead animal leaves, so a scene's terrain types the same record the sim lays.

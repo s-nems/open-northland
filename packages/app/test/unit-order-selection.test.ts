@@ -1,5 +1,5 @@
 import { halfCellToScreen } from '@open-northland/render';
-import { type Command, fx, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
+import { type Command, fx, nodeOfPosition, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
@@ -209,13 +209,15 @@ describe('unit orders against a selection that moves under them', () => {
     ]);
   });
 
-  it('keeps plain right-click on a resource as an ordinary move order', () => {
+  it('switches a collector to the good of a right-clicked resource without moving its flag', () => {
     const issued: Command[] = [];
-    const resource = { id: 50, goodType: 3, at: OPEN_GROUND };
+    const [goodType] = systems.jobGatherGoods({ content: CONTENT }, JOB_COLLECTOR);
+    if (goodType === undefined) throw new Error('setup: the collector gathers nothing');
+    const resource = { id: 50, at: OPEN_GROUND };
     const p = halfCellToScreen(resource.at.hx, resource.at.hy);
     const resourceTargets: UnitTargets = {
       ...targets,
-      resources: () => [{ ref: resource.id, x: p.x, y: p.y, kind: 'resource' }],
+      resources: () => [{ ref: resource.id, x: p.x, y: p.y, kind: 'resource', goodType }],
     };
     const snapshot = snapshotOf([
       ...UNITS.map((unit) =>
@@ -226,11 +228,11 @@ describe('unit orders against a selection that moves under them', () => {
             }
           : standing(unit),
       ),
-      { id: resource.id, components: { Resource: { goodType: resource.goodType } } },
+      { id: resource.id, components: { Resource: { goodType } } },
     ]);
     const orders = createUnitOrderController({
       answered: createAnsweredOrders(),
-      selected: () => new Set([SCOUT.id]),
+      selected: () => new Set([SCOUT.id, GUARD.id]),
       targets: resourceTargets,
       snapshot: () => snapshot,
       content: CONTENT,
@@ -241,9 +243,13 @@ describe('unit orders against a selection that moves under them', () => {
       openActions: () => {},
     });
 
-    orders.issueRightClick(clickOn(resource.at));
+    expect(orders.issueRightClick(clickOn(resource.at))).toBe(true);
 
-    expect(issued).toEqual([{ kind: 'moveUnit', entity: SCOUT.id, x: resource.at.hx, y: resource.at.hy }]);
+    // The collector keeps its flag; the settler who gathers nothing walks there as before.
+    expect(issued).toEqual([
+      { kind: 'setGatherGood', entity: SCOUT.id, goodType },
+      { kind: 'moveUnit', entity: GUARD.id, x: resource.at.hx, y: resource.at.hy },
+    ]);
   });
 
   it('moves the work flag and changes the gatherer filter on Ctrl+right-click over a resource', () => {
