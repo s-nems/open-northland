@@ -66,6 +66,18 @@ describe('weather cover', () => {
     expect(dry.sector(0).wet).toBeGreaterThan(0);
   });
 
+  it('carries the rain falling now in alpha, apart from the wetness it leaves', () => {
+    const cover = new WeatherCover();
+    cover.setField(fieldOf(0.3, 0, 0));
+    cover.advance(0);
+    expect(cover.texels()[3]).toBe(255);
+    cover.setField(fieldOf(0, 0, 0));
+    run(cover, 0, 1);
+    const texels = cover.texels();
+    expect(texels[3]).toBe(0);
+    expect(texels[0]).toBeGreaterThan(200);
+  });
+
   it('builds snow over minutes, not seconds', () => {
     const cover = new WeatherCover();
     cover.setField(fieldOf(0, 0, 0));

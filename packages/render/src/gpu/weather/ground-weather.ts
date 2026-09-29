@@ -9,10 +9,16 @@ import { groundBudget, weatherActivity } from './ground-budget.js';
 import { buildGroundMask } from './ground-mask.js';
 import { GroundReactions } from './ground-reactions.js';
 
-/** The terrain's side of the cover hook (`TerrainLayer.setWeatherCover`). */
+/** A layer the cover shades: the terrain (`TerrainLayer.setWeatherCover`) and the flat decor. */
 export interface WeatherCoverTarget {
   setWeatherCover(texels: Uint8Array | null, sectorsX: number, sectorsY: number): void;
+  /** Per frame while the cover shows, for a target that animates it: game seconds and how much rain
+   *  falls on screen now, 0..1. */
+  setWeatherCoverClock?(gameSeconds: number, rainFalling: number): void;
 }
+
+/** The cover clock wraps here so the f32 uniform keeps its precision. */
+const COVER_CLOCK_WRAP_S = 3600;
 
 /** The map ground the reactions read: its size in cells, water and lift. */
 export interface WeatherGroundTerrain {
@@ -45,7 +51,7 @@ export class WeatherGround {
   private enabled = true;
   private coverShown = false;
 
-  constructor(private readonly target: WeatherCoverTarget) {
+  constructor(private readonly targets: readonly WeatherCoverTarget[]) {
     this.container.addChild(this.reactions.mesh);
   }
 
@@ -54,7 +60,7 @@ export class WeatherGround {
     this.terrain = terrain;
     this.groundReady = false;
     this.cover.setField(null);
-    this.coverShown = false;
+    this.clearCover();
     if (this.field !== null) this.setField(this.field);
   }
 
@@ -87,6 +93,7 @@ export class WeatherGround {
     }
     if (this.cover.advance(gameSeconds)) this.showCover(this.cover.any);
     if (!field.any || conditions === null) {
+      this.tickCover(gameSeconds, 0);
       this.reactions.hide();
       return;
     }
@@ -98,7 +105,8 @@ export class WeatherGround {
     const centreHx = (minX + width / 2) / TILE_HALF_W;
     const centreHy = (2 * (minY + height / 2)) / TILE_HALF_H;
     const activity = weatherActivity(conditions, field, centreHx, centreHy);
-    const budget = groundBudget(view.screenW, view.screenH, activity, conditions);
+    this.tickCover(gameSeconds, activity.rain);
+    const budget = groundBudget(width, height, activity, conditions);
     if (budget.splashes + budget.ripples + budget.wisps > 0 && !this.groundReady) {
       // Built on first need, so a dry map never pays for the per-cell mask.
       this.reactions.setGround(
@@ -118,26 +126,36 @@ export class WeatherGround {
   }
 
   destroy(): void {
-    this.target.setWeatherCover(null, 0, 0);
+    for (const target of this.targets) target.setWeatherCover(null, 0, 0);
     this.reactions.destroy();
     this.container.destroy({ children: true });
   }
 
   private showCover(any: boolean): void {
-    if (any) {
-      this.target.setWeatherCover(this.cover.texels(), this.cover.sectorsX, this.cover.sectorsY);
-      this.coverShown = true;
-    } else if (this.coverShown) {
-      this.target.setWeatherCover(null, 0, 0);
-      this.coverShown = false;
+    if (!any) {
+      this.clearCover();
+      return;
     }
+    const texels = this.cover.texels();
+    for (const target of this.targets)
+      target.setWeatherCover(texels, this.cover.sectorsX, this.cover.sectorsY);
+    this.coverShown = true;
+  }
+
+  private tickCover(gameSeconds: number, rainFalling: number): void {
+    if (!this.coverShown) return;
+    const clock = ((gameSeconds % COVER_CLOCK_WRAP_S) + COVER_CLOCK_WRAP_S) % COVER_CLOCK_WRAP_S;
+    for (const target of this.targets) target.setWeatherCoverClock?.(clock, rainFalling);
+  }
+
+  private clearCover(): void {
+    if (!this.coverShown) return;
+    for (const target of this.targets) target.setWeatherCover(null, 0, 0);
+    this.coverShown = false;
   }
 
   private hide(): void {
     this.reactions.hide();
-    if (this.coverShown) {
-      this.target.setWeatherCover(null, 0, 0);
-      this.coverShown = false;
-    }
+    this.clearCover();
   }
 }

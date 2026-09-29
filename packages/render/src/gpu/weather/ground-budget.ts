@@ -5,18 +5,19 @@ import { WEATHER_KINDS, type WeatherConditions, type WeatherKind } from '../../d
 /**
  * How many ground reactions the screen shows: rain splashes on land, rings on water, snow and sand
  * wisps. Each group owns a fixed slot range in one static mesh; the budget says how many of its slots
- * run this frame. Counts follow the screen's area in CSS px, never the map, and each group is capped
- * by its slot range. Densities are tuned by eye.
+ * run this frame. Counts follow the viewed ground's area in world px, so the ground keeps one density
+ * at every zoom, never the map, and each group is capped by its slot range, which bounds a zoomed-out
+ * view. Densities are tuned by eye.
  */
 
 export const SPLASH_SLOTS = 1536;
 export const RIPPLE_SLOTS = 512;
 export const WISP_SLOTS = 384;
 
-/** Screen px² per running slot at full activity, before the storm boost. */
-const SPLASH_SCREEN_PX2 = 2400;
-const RIPPLE_SCREEN_PX2 = 3200;
-const WISP_SCREEN_PX2 = 8000;
+/** World px² of viewed ground per running slot at full activity, before the storm boost. */
+const SPLASH_GROUND_PX2 = 3000;
+const RIPPLE_GROUND_PX2 = 3200;
+const WISP_GROUND_PX2 = 8000;
 /** A full storm runs this many times the calm count. */
 const STORM_BOOST = 1.6;
 /** Wisps run at this share of their count in still air and ramp to all of it at this wind speed. */
@@ -56,14 +57,14 @@ export interface GroundBudget {
 
 export const NO_GROUND_BUDGET: GroundBudget = { splashes: 0, ripples: 0, wisps: 0 };
 
-/** The running slot counts for a `screenW` by `screenH` CSS px view. */
+/** The running slot counts for a view of `groundW` by `groundH` world px. */
 export function groundBudget(
-  screenW: number,
-  screenH: number,
+  groundW: number,
+  groundH: number,
   activity: WeatherActivity,
   conditions: Pick<WeatherConditions, 'storm' | 'windX' | 'windY' | 'gust'>,
 ): GroundBudget {
-  const area = Math.max(0, screenW) * Math.max(0, screenH);
+  const area = Math.max(0, groundW) * Math.max(0, groundH);
   const storm = 1 + STORM_BOOST * Math.min(1, Math.max(0, conditions.storm));
   const wind = Math.min(1, Math.hypot(conditions.windX, conditions.windY) / WISP_FULL_WIND_PX_PER_S);
   const airborne = Math.max(activity.snow, activity.sand);
@@ -71,8 +72,8 @@ export function groundBudget(
   const count = (px2: number, scale: number, cap: number): number =>
     scale <= 0 ? 0 : Math.min(cap, Math.round((area / px2) * scale));
   return {
-    splashes: count(SPLASH_SCREEN_PX2, activity.rain * storm, SPLASH_SLOTS),
-    ripples: count(RIPPLE_SCREEN_PX2, activity.rain * storm, RIPPLE_SLOTS),
-    wisps: count(WISP_SCREEN_PX2, airborne * storm * windShare, WISP_SLOTS),
+    splashes: count(SPLASH_GROUND_PX2, activity.rain * storm, SPLASH_SLOTS),
+    ripples: count(RIPPLE_GROUND_PX2, activity.rain * storm, RIPPLE_SLOTS),
+    wisps: count(WISP_GROUND_PX2, airborne * storm * windShare, WISP_SLOTS),
   };
 }

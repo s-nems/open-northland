@@ -164,7 +164,7 @@ export class TerrainLayer {
 
   /**
    * The weather cover over the shaded ground: `texels` is a `sectorsX` by `sectorsY` RGBA grid of
-   * weather sectors (r wet, g snow, b dust), the map's half-cell nodes split like the weather field.
+   * weather sectors (r wet, g snow, b dust, a rain falling), the map's half-cell nodes split like the weather field.
    * `null` switches the cover off, which draws the ground exactly as without it. The unshaded
    * placeholder ground takes no cover.
    */
@@ -193,6 +193,15 @@ export class TerrainLayer {
       -1 / spanY,
     ]);
     uniforms.uCover = 1;
+    this.coverUniforms.update();
+  }
+
+  /** The puddles' rain rings run on this clock; a dry frame after a dry frame writes nothing. */
+  setWeatherCoverClock(gameSeconds: number, rainFalling: number): void {
+    const clock = this.coverUniforms.uniforms.uCoverClock;
+    if (rainFalling === 0 && clock[1] === 0) return;
+    clock[0] = gameSeconds;
+    clock[1] = rainFalling;
     this.coverUniforms.update();
   }
 

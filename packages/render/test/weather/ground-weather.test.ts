@@ -37,16 +37,32 @@ const SNOWING: WeatherConditions = {
   strikes: [],
 };
 
-/** Records every cover the ground hands the terrain. */
-function recorder(): WeatherCoverTarget & { calls: (Uint8Array | null)[] } {
+/** Records every cover and clock the ground hands a target. */
+function recorder(): WeatherCoverTarget & { calls: (Uint8Array | null)[]; rain: number[] } {
   const calls: (Uint8Array | null)[] = [];
-  return { calls, setWeatherCover: (texels) => calls.push(texels === null ? null : texels.slice()) };
+  const rain: number[] = [];
+  return {
+    calls,
+    rain,
+    setWeatherCover: (texels) => calls.push(texels === null ? null : texels.slice()),
+    setWeatherCoverClock: (_seconds, falling) => rain.push(falling),
+  };
 }
+
+function rainField(density: number) {
+  return buildWeatherField(
+    [{ weather: 'rain', min: { hx: 0, hy: 0 }, max: { hx: 2 * WIDTH - 1, hy: 2 * HEIGHT - 1 }, density }],
+    2 * WIDTH,
+    2 * HEIGHT,
+  );
+}
+
+const RAINING: WeatherConditions = { ...SNOWING, amounts: { rain: 0.3, snow: 0, sand: 0 } };
 
 describe('WeatherGround', () => {
   it('never switches the terrain cover on over a dry map', () => {
     const target = recorder();
-    const ground = new WeatherGround(target);
+    const ground = new WeatherGround([target]);
     ground.setTerrain(TERRAIN);
     ground.setField(snowField(0));
     for (let t = 0; t < 5; t += 0.1) ground.update(null, VIEW, t);
@@ -57,7 +73,7 @@ describe('WeatherGround', () => {
 
   it('opens a snowy map white and runs its reactions while it snows', () => {
     const target = recorder();
-    const ground = new WeatherGround(target);
+    const ground = new WeatherGround([target]);
     ground.setTerrain(TERRAIN);
     ground.setField(snowField(3000));
     ground.update(SNOWING, VIEW, 0);
@@ -67,6 +83,38 @@ describe('WeatherGround', () => {
     ground.setEnabled(false);
     expect(target.calls.at(-1)).toBeNull();
     expect(ground.container.children.every((c) => !c.visible)).toBe(true);
+    ground.destroy();
+  });
+});
+
+describe('WeatherGround cover targets', () => {
+  it('hands every target the same cover and runs the clock only while it shows', () => {
+    const terrain = recorder();
+    const decor = recorder();
+    const ground = new WeatherGround([terrain, decor]);
+    ground.setTerrain(TERRAIN);
+    ground.setField(rainField(3000));
+    ground.update(RAINING, VIEW, 0);
+    expect(decor.calls).toEqual(terrain.calls);
+    // Rain falling now rides the cover's alpha, the wetness its red.
+    expect(terrain.calls[0]?.[0]).toBe(255);
+    expect(terrain.calls[0]?.[3]).toBe(255);
+    expect(terrain.rain.at(-1)).toBeCloseTo(1, 5);
+    ground.destroy();
+  });
+
+  it('clears the previous map cover from every target when the next map opens dry', () => {
+    const terrain = recorder();
+    const decor = recorder();
+    const ground = new WeatherGround([terrain, decor]);
+    ground.setTerrain(TERRAIN);
+    ground.setField(snowField(3000));
+    ground.update(SNOWING, VIEW, 0);
+    ground.setTerrain(TERRAIN);
+    ground.setField(null);
+    ground.update(null, VIEW, 1);
+    expect(decor.calls.at(-1)).toBeNull();
+    expect(terrain.calls.at(-1)).toBeNull();
     ground.destroy();
   });
 });

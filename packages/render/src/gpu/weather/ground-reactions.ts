@@ -145,7 +145,7 @@ const SPLASH_COLOUR = 'vec3(0.84, 0.9, 0.97)';
 const RIPPLE_COLOUR = 'vec3(0.82, 0.9, 0.96)';
 const SNOW_WISP_COLOUR = 'vec3(1.0, 1.0, 1.0)';
 const SAND_WISP_COLOUR = 'vec3(0.98, 0.88, 0.68)';
-const SPLASH_ALPHA = 0.62;
+const SPLASH_ALPHA = 0.55;
 /** The spreading ring is fainter than the droplets. */
 const SPLASH_RING_ALPHA = 0.7;
 /** Share of a splash's life its droplets fly. */
@@ -169,9 +169,13 @@ const FRAGMENT = `#version 300 es
   flat in float vSeed;
   out vec4 finalColor;
 
+  // A squashed ring, its band measured in px across the ring so its top and bottom arcs stay as thick
+  // as its sides instead of breaking up on the pixel grid.
   float ring(vec2 p, float radius) {
-    float d = length(p * vec2(1.0, ${f(RING_SQUASH)}));
-    return 1.0 - smoothstep(0.35, 1.0, abs(d - radius));
+    vec2 q = p * vec2(1.0, ${f(RING_SQUASH)});
+    float d = length(q);
+    float slope = length(vec2(q.x, q.y * ${f(RING_SQUASH)})) / max(d, 1e-3);
+    return 1.0 - smoothstep(0.35, 1.0, abs(d - radius) / max(slope, 1.0));
   }
 
   void main(void) {
@@ -195,7 +199,7 @@ const FRAGMENT = `#version 300 es
           drops += 1.0 - step(0.75, length(p - drop));
         }
       }
-      alpha = max(body * ${f(SPLASH_RING_ALPHA)}, min(1.0, drops)) * ${f(SPLASH_ALPHA)};
+      alpha = max(body * ${f(SPLASH_RING_ALPHA)}, min(1.0, drops) * (1.0 - a)) * ${f(SPLASH_ALPHA)};
       colour = ${SPLASH_COLOUR};
     } else if (vKind == 1) {
       float outer = ring(p, mix(1.0, 10.0, a));

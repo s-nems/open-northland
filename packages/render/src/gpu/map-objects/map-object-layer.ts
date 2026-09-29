@@ -1,13 +1,16 @@
 import { FOG_STATE } from '@open-northland/sim';
-import { Container, Mesh } from 'pixi.js';
+import { type BufferImageSource, Container, Mesh } from 'pixi.js';
 import { aabbIntersects, screenToCell, TILE_HALF_W, type Viewport } from '../../data/projection/index.js';
+import { WEATHER_SECTOR_NODES } from '../../data/weather/field.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { worldShadowStyle } from '../pixel-art-registry.js';
 import type { ShadowStyle } from '../shadow-style.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
+import { makeDecorCoverUniforms, makeGroundCoverTexture } from '../weather/ground-cover-shading.js';
 import {
   buildDecorChunk,
+  type DecorBatchStyle,
   type DecorChunk,
   retireDecorQuad,
   uploadAnimatedBatch,
@@ -44,8 +47,11 @@ export class MapObjectLayer {
   /** The decor's cast shadows, mounted under {@link decorContainer}; its children pair with that
    *  container's by index. */
   readonly decorShadowContainer = new Container();
-  private readonly decorShadowStyle = makeDecorShadowUniforms();
-  /** The style {@link decorShadowStyle} holds; it starts as the authored silhouette, which is `null`. */
+  private decorStyle: DecorBatchStyle = {
+    shadow: makeDecorShadowUniforms(),
+    cover: { texture: makeGroundCoverTexture(1, 1), uniforms: makeDecorCoverUniforms() },
+  };
+  /** The style the decor shadow uniforms hold; it starts as the authored silhouette, which is `null`. */
   private writtenShadowStyle: ShadowStyle | null = null;
   private readonly decorChunks = new Map<string, DecorChunk>();
   private readonly decorByObject = new Map<MapObjectSprite, string>();
@@ -67,6 +73,32 @@ export class MapObjectLayer {
     if (this.environmentMotion === enabled) return;
     this.environmentMotion = enabled;
     this.lastInputs = null;
+  }
+
+  /**
+   * The weather cover the decor dusts itself with, the same grid the terrain takes
+   * (`TerrainLayer.setWeatherCover`); `null` draws the decor as without weather.
+   */
+  setWeatherCover(texels: Uint8Array | null, sectorsX: number, sectorsY: number): void {
+    const group = this.decorStyle.cover.uniforms;
+    if (texels === null || texels.length !== sectorsX * sectorsY * 4) {
+      if (group.uniforms.uCover !== 0) {
+        group.uniforms.uCover = 0;
+        group.update();
+      }
+      return;
+    }
+    let texture = this.decorStyle.cover.texture;
+    if (texture.width !== sectorsX || texture.height !== sectorsY)
+      texture = this.rebindCover(sectorsX, sectorsY);
+    (texture.resource as Uint8Array).set(texels);
+    texture.update();
+    group.uniforms.uCoverNodeScale.set([
+      1 / (sectorsX * WEATHER_SECTOR_NODES),
+      1 / (sectorsY * WEATHER_SECTOR_NODES),
+    ]);
+    group.uniforms.uCover = 1;
+    group.update();
   }
 
   /** Call once per map. */
@@ -99,7 +131,7 @@ export class MapObjectLayer {
           ? this.decorContainer.children.length
           : this.decorContainer.getChildIndex(previous.container);
       if (previous !== undefined) destroyDecorChunk(previous);
-      const chunk = buildDecorChunk(block, this.decorShadowStyle);
+      const chunk = buildDecorChunk(block, this.decorStyle);
       this.decorContainer.addChildAt(chunk.container, index);
       this.decorShadowContainer.addChildAt(chunk.shadowContainer, index);
       this.decorChunks.set(key, chunk);
@@ -146,7 +178,7 @@ export class MapObjectLayer {
     const motionTime = this.environmentMotion ? timeTicks : tick;
     const shadowStyle = worldShadowStyle();
     if (shadowStyle !== this.writtenShadowStyle) {
-      writeDecorShadowStyle(this.decorShadowStyle, shadowStyle);
+      writeDecorShadowStyle(this.decorStyle.shadow, shadowStyle);
       this.writtenShadowStyle = shadowStyle;
     }
     const textureRevision = this.textures.textureRevision;
@@ -200,6 +232,21 @@ export class MapObjectLayer {
       }
     }
     this.tall.update(vp, tick, fogStateOfCell, motionTime, this.environmentMotion);
+  }
+
+  private rebindCover(sectorsX: number, sectorsY: number): BufferImageSource {
+    const previous = this.decorStyle.cover.texture;
+    const texture = makeGroundCoverTexture(sectorsX, sectorsY);
+    this.decorStyle = { ...this.decorStyle, cover: { ...this.decorStyle.cover, texture } };
+    for (const chunk of this.decorChunks.values()) {
+      for (const child of chunk.container.children) {
+        if (child instanceof Mesh && child.shader?.resources.uCoverTex !== undefined) {
+          child.shader.resources.uCoverTex = texture;
+        }
+      }
+    }
+    previous.destroy();
+    return texture;
   }
 
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */

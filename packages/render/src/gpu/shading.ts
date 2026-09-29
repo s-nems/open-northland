@@ -4,6 +4,10 @@ import {
   COVER_FRAGMENT_DECLARATIONS,
   COVER_VERTEX_BODY,
   COVER_VERTEX_DECLARATIONS,
+  DECOR_COVER_FRAGMENT_DECLARATIONS,
+  DECOR_COVER_VERTEX_BODY,
+  DECOR_COVER_VERTEX_DECLARATIONS,
+  type DecorCoverUniforms,
   type GroundCoverUniforms,
 } from './weather/ground-cover-shading.js';
 
@@ -267,7 +271,8 @@ const FIELD_FRAGMENT = `#version 300 es
     }
     // Weather cover keeps off the water surface; the uniform gate keeps a dry map's arithmetic as it was.
     if (uCover > 0.5) {
-      vec3 cover = texture(uCoverTex, vCoverUV).rgb * (1.0 - clamp(vWater.x, 0.0, 1.0));
+      vec4 cover = texture(uCoverTex, vCoverUV);
+      cover.rgb *= 1.0 - clamp(vWater.x, 0.0, 1.0);
       texel.rgb = weatherCover(texel.rgb, texel.a, lane, cover);
     }
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
@@ -283,15 +288,19 @@ const VERTEX_VERTEX = `#version 300 es
   out vec2 vUV;
   out float vBrightness;
   ${matrixBlock}
+  ${DECOR_COVER_VERTEX_DECLARATIONS}
   void main(void) {
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
     gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
     vBrightness = aBrightness;
+    ${DECOR_COVER_VERTEX_BODY}
   }
 `;
 
 const VERTEX_FRAGMENT = `#version 300 es
+  precision highp float;
+  precision highp int;
   in vec2 vUV;
   in float vBrightness;
 
@@ -299,9 +308,12 @@ const VERTEX_FRAGMENT = `#version 300 es
   uniform vec4 uColor;
 
   out vec4 finalColor;
+  ${DECOR_COVER_FRAGMENT_DECLARATIONS}
 
   void main(void) {
     vec4 texel = texture(uTexture, vUV);
+    // vSnow is 0 unless the cover switch is on, so a dry map keeps its single fetch.
+    if (vSnow > 0.0) texel.rgb = decorSnow(texel.rgb, texel.a, vUV, vBrightness);
     finalColor = vec4(texel.rgb * vBrightness, texel.a) * uColor;
   }
 `;
@@ -364,12 +376,23 @@ export interface TerrainCoverBinding {
  * anchor cell's value. A flat decal has no cell-space UV lattice to interpolate, so the anchor constant
  * is the recorded approximation.
  */
-export function makeShadedDecorShader(source: TextureSource): Shader {
+export function makeShadedDecorShader(source: TextureSource, cover: DecorCoverBinding): Shader {
   vertexProgram ??= new GlProgram({ vertex: VERTEX_VERTEX, fragment: VERTEX_FRAGMENT });
   return new Shader({
     glProgram: vertexProgram,
-    resources: { uTexture: source, uSampler: source.style },
+    resources: {
+      uTexture: source,
+      uSampler: source.style,
+      decorCoverVars: cover.uniforms,
+      uCoverTex: cover.texture,
+    },
   });
+}
+
+/** The map's weather-cover texture and switch, shared by every shaded decor batch. */
+export interface DecorCoverBinding {
+  readonly texture: TextureSource;
+  readonly uniforms: DecorCoverUniforms;
 }
 
 const COLOR_VERTEX = `#version 300 es

@@ -1,6 +1,6 @@
 import { Container, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import { makeShadedDecorShader } from '../shading.js';
+import { type DecorCoverBinding, makeShadedDecorShader } from '../shading.js';
 import { SHADOW_BLUR_PADDING } from '../soft-shadow-cache.js';
 import { type DecorShadowUniforms, makeDecorShadowShader } from './decor-shadow-shader.js';
 import { type MapObjectSprite, objectFrameAt, objectFrameIndexAt } from './map-object-sprite.js';
@@ -34,6 +34,8 @@ const VERTICES_PER_QUAD = 4;
 /** `aFrame` is a vec4 per vertex: the frame's min and max texel corner. */
 const FRAME_BOUND_FLOATS = 4;
 const FRAME_FLOATS_PER_QUAD = FRAME_BOUND_FLOATS * VERTICES_PER_QUAD;
+/** `aAnchor` is a vec2 per vertex: the object's drawn feet anchor, for its weather cover. */
+const ANCHOR_FLOATS = 2;
 
 /** What a quad write fills: a batch's buffers, and the page size its UVs divide by. `frameBounds`
  *  exists on the shadow lane only. */
@@ -89,6 +91,12 @@ function writeObjectQuad(
   }
 }
 
+/** The uniforms every decor batch of a layer shares: its cast-shadow style and its weather cover. */
+export interface DecorBatchStyle {
+  readonly shadow: DecorShadowUniforms;
+  readonly cover: DecorCoverBinding;
+}
+
 /** One built quad-batch mesh plus the buffers behind it; only an animated batch's caller keeps the
  *  buffers, to rewrite its quads in place when the play-head advances. */
 interface QuadBatch {
@@ -104,7 +112,7 @@ function buildQuadBatch(
   objects: readonly MapObjectSprite[],
   source: TextureSource,
   lane: DecorLane,
-  shadowStyle: DecorShadowUniforms,
+  style: DecorBatchStyle,
 ): QuadBatch {
   const buffers: QuadBuffers = {
     positions: new Float32Array(objects.length * FLOATS_PER_QUAD),
@@ -115,7 +123,8 @@ function buildQuadBatch(
   };
   const indices = new Uint32Array(objects.length * 6);
   const shaded = lane === 'body' && objects.some((obj) => obj.brightness !== undefined);
-  const brightness = shaded ? new Float32Array(objects.length * 4) : null;
+  const brightness = shaded ? new Float32Array(objects.length * VERTICES_PER_QUAD) : null;
+  const anchors = shaded ? new Float32Array(objects.length * VERTICES_PER_QUAD * ANCHOR_FLOATS) : null;
   for (let q = 0; q < objects.length; q++) {
     // Indexed whatever the pose holds: a quad without a frame stays degenerate until a rewrite fills it.
     indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
@@ -123,15 +132,23 @@ function buildQuadBatch(
     const frame = obj === undefined ? undefined : laneFrameAt(obj, lane, 0);
     if (obj === undefined || frame === undefined) continue;
     writeObjectQuad(buffers, q, obj, frame, laneMargin(lane));
-    brightness?.fill(obj.brightness ?? 1, q * 4, q * 4 + 4);
+    brightness?.fill(obj.brightness ?? 1, q * VERTICES_PER_QUAD, (q + 1) * VERTICES_PER_QUAD);
+    if (anchors === null) continue;
+    for (let vertex = 0; vertex < VERTICES_PER_QUAD; vertex++) {
+      const a = (q * VERTICES_PER_QUAD + vertex) * ANCHOR_FLOATS;
+      anchors[a] = obj.x;
+      anchors[a + 1] = obj.y - (obj.lift ?? 0);
+    }
   }
   const geometry = new MeshGeometry({ positions: buffers.positions, uvs: buffers.uvs, indices });
   if (brightness !== null) geometry.addAttribute('aBrightness', { buffer: brightness });
+  if (anchors !== null) geometry.addAttribute('aAnchor', { buffer: anchors, format: 'float32x2' });
   if (buffers.frameBounds !== null) geometry.addAttribute('aFrame', { buffer: buffers.frameBounds });
   // A mesh with a shader of its own never reads a texture, so only the plain batch mints one.
   let mesh: Mesh<MeshGeometry, Shader>;
-  if (lane === 'shadow') mesh = new Mesh({ geometry, shader: makeDecorShadowShader(source, shadowStyle) });
-  else if (brightness !== null) mesh = new Mesh({ geometry, shader: makeShadedDecorShader(source) });
+  if (lane === 'shadow') mesh = new Mesh({ geometry, shader: makeDecorShadowShader(source, style.shadow) });
+  else if (brightness !== null)
+    mesh = new Mesh({ geometry, shader: makeShadedDecorShader(source, style.cover) });
   else mesh = new Mesh({ geometry, texture: new Texture({ source }) });
   return { mesh, buffers, geometry };
 }
@@ -216,7 +233,7 @@ function buildLane(
   block: readonly MapObjectSprite[],
   lane: DecorLane,
   container: Container,
-  shadowStyle: DecorShadowUniforms,
+  style: DecorBatchStyle,
   animated: AnimatedDecorBatch[],
   placed: (obj: MapObjectSprite, quad: DecorQuadRef) => void,
 ): void {
@@ -234,7 +251,7 @@ function buildLane(
   for (const [source, group] of bySource) {
     for (const objects of [group.still, group.moving]) {
       if (objects.length === 0) continue;
-      const batch = buildQuadBatch(objects, source, lane, shadowStyle);
+      const batch = buildQuadBatch(objects, source, lane, style);
       container.addChild(batch.mesh);
       let animBatch: AnimatedDecorBatch | null = null;
       if (objects === group.moving) {
@@ -254,10 +271,7 @@ function buildLane(
 }
 
 /** Batch one decor block. The caller owns attaching the returned chunk's containers to its layers. */
-export function buildDecorChunk(
-  block: readonly MapObjectSprite[],
-  shadowStyle: DecorShadowUniforms,
-): DecorChunk {
+export function buildDecorChunk(block: readonly MapObjectSprite[], style: DecorBatchStyle): DecorChunk {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
@@ -284,10 +298,10 @@ export function buildDecorChunk(
   const shadowContainer = new Container();
   const animated: AnimatedDecorBatch[] = [];
   const quads = new Map<MapObjectSprite, DecorObjectQuads>();
-  buildLane(block, 'body', container, shadowStyle, animated, (obj, body) => {
+  buildLane(block, 'body', container, style, animated, (obj, body) => {
     quads.set(obj, { body, shadow: null });
   });
-  buildLane(block, 'shadow', shadowContainer, shadowStyle, animated, (obj, shadow) => {
+  buildLane(block, 'shadow', shadowContainer, style, animated, (obj, shadow) => {
     const placed = quads.get(obj);
     if (placed !== undefined) placed.shadow = shadow;
   });

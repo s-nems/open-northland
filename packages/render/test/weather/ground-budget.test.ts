@@ -24,7 +24,7 @@ describe('ground reaction budget', () => {
     });
   });
 
-  it('follows the screen area, not the map, and never passes its slot ranges', () => {
+  it('follows the viewed ground area, not the map, and never passes its slot ranges', () => {
     const rain = { rain: 1, snow: 1, sand: 0 };
     const small = groundBudget(640, 360, rain, CALM);
     const large = groundBudget(1280, 720, rain, CALM);

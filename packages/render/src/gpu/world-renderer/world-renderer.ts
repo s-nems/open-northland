@@ -69,13 +69,13 @@ export class WorldRenderer {
   private readonly spriteLayer = new Container();
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
-  private readonly weatherGround = new WeatherGround(this.terrain);
   private readonly weatherSky = new WeatherSky();
   private readonly climate = new WeatherClimate();
   private weatherField: WeatherField | null = null;
   private weatherEnabled = true;
   private weather: WeatherConditions | null = null;
   private readonly mapObjects: MapObjectLayer;
+  private readonly weatherGround: WeatherGround;
   private readonly groundWaves: GroundWaveLayer;
   private readonly pool: SpritePool;
   private groundTone: GroundTone | null = null;
@@ -111,6 +111,7 @@ export class WorldRenderer {
     // re-build only this layer's instruction set, not the whole stage's.
     this.spriteLayer.isRenderGroup = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
+    this.weatherGround = new WeatherGround([this.terrain, this.mapObjects]);
     this.groundWaves = new GroundWaveLayer(app.renderer, this.terrain.container);
     this.pool = new SpritePool(
       this.spriteLayer,

@@ -175,17 +175,20 @@ export class WeatherCover {
     return true;
   }
 
-  /** RGBA8 per sector (r wet, g snow, b dust), row-major like `weatherFieldTexels`: texel centres sit
-   *  on sector centres. The returned buffer is reused by the next call. */
+  /** RGBA8 per sector (r wet, g snow, b dust, a how hard rain falls there now), row-major like
+   *  `weatherFieldTexels`: texel centres sit on sector centres. The returned buffer is reused by the
+   *  next call. */
   texels(): Uint8Array {
     const count = this.wet.length;
+    const amounts = this.field?.amounts;
     if (this.out.data.length !== count * 4) this.out.data = new Uint8Array(count * 4);
     const data = this.out.data;
     for (let i = 0; i < count; i++) {
       data[i * 4] = Math.round((this.wet[i] ?? 0) * BYTE_MAX);
       data[i * 4 + 1] = Math.round((this.snow[i] ?? 0) * BYTE_MAX);
       data[i * 4 + 2] = Math.round((this.dust[i] ?? 0) * BYTE_MAX);
-      data[i * 4 + 3] = BYTE_MAX;
+      const rain = amounts?.[i * KIND_COUNT + RAIN] ?? 0;
+      data[i * 4 + 3] = Math.round(response(rain, RAIN_SATURATING_AMOUNT) * BYTE_MAX);
     }
     return data;
   }
