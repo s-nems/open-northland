@@ -7,7 +7,7 @@ import type { MutableDrawItem, MutableSpriteDrawItem } from './draw-item.js';
 import { anchorTileBox } from './entity-source.js';
 import type { InHouseOverlay } from './in-house.js';
 import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from './projectile-arc.js';
-import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
+import { SIGNPOST_BOARD_FRAMES, signpostBoards } from './signpost-boards.js';
 import {
   assignStaticFields,
   copyStaticFields,
@@ -143,7 +143,7 @@ export function pushSignpostItems(
 ): void {
   const postPlayer = readOwnerPlayer(components);
   if (postPlayer !== undefined) item.player = postPlayer;
-  for (const bucket of signpostBoardsOf(snapshot).get(item.ref) ?? []) {
+  for (const bucket of signpostBoards(snapshot, components)) {
     const boardRef = extraItemRef(item.ref, bucket);
     liveRefs.add(boardRef);
     const board: MutableSpriteDrawItem = {

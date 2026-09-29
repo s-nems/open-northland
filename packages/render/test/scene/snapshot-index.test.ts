@@ -6,13 +6,8 @@ import {
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { ONE } from '../../src/data/projection/index.js';
-import { signpostBoardsOf } from '../../src/data/scene/signpost-boards.js';
-import {
-  enterableStoresOf,
-  palisadesOf,
-  signpostsOf,
-  targetPositionsOf,
-} from '../../src/data/scene/snapshot-index.js';
+import { signpostBoards } from '../../src/data/scene/signpost-boards.js';
+import { enterableStoresOf, palisadesOf, targetPositionsOf } from '../../src/data/scene/snapshot-index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /** The combat attack atomic (id 81) - the same numeric contract `snapshot-index.ts` transcribes. */
@@ -88,6 +83,7 @@ describe('the shared scene walk', () => {
   // The posts carry each other as a stored link, so both draw a board.
   const SIGNPOST_4 = { Signpost: { links: [5] }, Owner: { player: 0 } };
   const SIGNPOST_5 = { Signpost: { links: [4] }, Owner: { player: 0 } };
+  const POST_4 = entity(4, 4, 1, SIGNPOST_4);
   const world = () =>
     snapshotOf([
       entity(1, 1, 1, {
@@ -97,7 +93,7 @@ describe('the shared scene walk', () => {
       }),
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
       entity(3, 3, 1, { Building: { buildingType: 7, tribe: 0 } }),
-      entity(4, 4, 1, SIGNPOST_4),
+      POST_4,
       entity(5, 5, 1, SIGNPOST_5),
     ]);
 
@@ -105,12 +101,13 @@ describe('the shared scene walk', () => {
     const { snapshot, walks } = walkCounting(world());
     expect(enterableStoresOf(snapshot)).toEqual(new Set([3]));
     expect(targetPositionsOf(snapshot).get(2)).toEqual({ x: 2 * ONE, y: 1 * ONE });
-    expect(signpostBoardsOf(snapshot).size).toBe(2);
-    const VIEWS_READ = 3; // enterable stores, wanted targets, signposts
+    const VIEWS_READ = 2; // enterable stores, wanted targets
     expect(walks()).toBe(VIEWS_READ);
     enterableStoresOf(snapshot);
     targetPositionsOf(snapshot);
-    signpostBoardsOf(snapshot);
+    expect(walks()).toBe(VIEWS_READ);
+    // A drawn post's boards look its neighbours up by id instead of walking the map's posts.
+    expect(signpostBoards(snapshot, POST_4.components)).toHaveLength(1);
     expect(walks()).toBe(VIEWS_READ);
   });
 });
@@ -228,7 +225,6 @@ describe('the views over a mirror', () => {
     expect(second).not.toBe(first);
     expect(second.map((e) => e.id)).toEqual([1, 5]);
     expect(first.map((e) => e.id)).toEqual([1]); // a list already handed out never changes
-    expect(signpostsOf(built)).toEqual([]);
     expect(mirror.verifyIndexes()).toEqual([]);
   });
 });

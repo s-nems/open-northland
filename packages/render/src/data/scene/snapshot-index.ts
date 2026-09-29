@@ -248,12 +248,6 @@ export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, 
   return positions;
 }
 
-/** The snapshot's signpost entities, ascending by id. A mirror edits the list in place as it advances,
- *  so read it within the frame. */
-export function signpostsOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] {
-  return entitiesWith(snapshot, 'Signpost');
-}
-
 /** The snapshot's walls, gates and wall sites, ascending by id: the same array for as long as no change
  *  touches one. */
 export function palisadesOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] {

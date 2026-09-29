@@ -241,6 +241,18 @@ describe('collectSpriteScene over the position index', () => {
     expect(away.liveRefs.has(1)).toBe(true);
   });
 
+  it('points a drawn post at a linked neighbour standing outside the viewport', () => {
+    const snapshot = snapshotOf([
+      entity(1, 0, 0, { Signpost: { links: [2] }, Owner: { player: 1 } }),
+      entity(2, 40, 0, { Signpost: { links: [1] }, Owner: { player: 1 } }),
+    ]);
+    const viewport = viewportAt(0, 0);
+    const indexed = collectSpriteScene(snapshot, { viewport });
+    expect(indexed.items.some((d) => d.ref === 2)).toBe(false);
+    expect(indexed.items.filter((d) => d.boardIndex !== undefined)).toHaveLength(1);
+    expect(indexed.items).toEqual(culledWalk(snapshot, { viewport }));
+  });
+
   it('answers a released static on the frame its ref leaves the (in-place mutated) set', () => {
     const staticRefs = new Set([1]);
     const snapshot = snapshotOf([entity(1, 1, 1, TREE)]);

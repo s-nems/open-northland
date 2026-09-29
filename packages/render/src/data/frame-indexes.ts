@@ -1,12 +1,6 @@
 import { entitiesWith, type WorldSnapshot } from '@open-northland/sim';
 import { hudTotalsOf } from './hud/totals.js';
-import {
-  enterableStoresOf,
-  palisadesOf,
-  siegeShotsOf,
-  signpostsOf,
-  targetPositionsOf,
-} from './scene/snapshot-index.js';
+import { enterableStoresOf, palisadesOf, siegeShotsOf, targetPositionsOf } from './scene/snapshot-index.js';
 
 /** One per-frame read that registers snapshot indexes on a mirror; `seat` is the viewer the HUD counts
  *  for, null for an observer. */
@@ -28,7 +22,6 @@ export const RENDER_FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'enterable stores', read: (snapshot) => enterableStoresOf(snapshot) },
   { name: 'wanted targets', read: (snapshot) => targetPositionsOf(snapshot) },
   { name: 'palisades', read: (snapshot) => palisadesOf(snapshot) },
-  { name: 'signposts', read: (snapshot) => signpostsOf(snapshot) },
   { name: 'siege shots', read: (snapshot) => siegeShotsOf(snapshot) },
   { name: 'fog ghost vehicles', read: (snapshot) => entitiesWith(snapshot, 'Vehicle') },
 ];

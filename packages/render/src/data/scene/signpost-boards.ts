@@ -1,6 +1,5 @@
-import { ONE, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, ONE, type WorldSnapshot } from '@open-northland/sim';
 import { tileToScreen } from '../projection/index.js';
-import { signpostsOf } from './snapshot-index.js';
 import { readPosition } from './snapshot-readers/index.js';
 
 /**
@@ -13,63 +12,45 @@ import { readPosition } from './snapshot-readers/index.js';
 /** The decoded `ls_guidepost` board frame count: bobs 1..18 sweep a full turn in ~20° steps. */
 export const SIGNPOST_BOARD_FRAMES = 18;
 
-interface Post {
-  /** Tile-space position. */
-  readonly x: number;
-  readonly y: number;
-  readonly links: readonly number[];
+const BOARD_STEP = (2 * Math.PI) / SIGNPOST_BOARD_FRAMES;
+
+/**
+ * A drawn post's 0-based board frame indices, one per bearing bucket, in link order. Read per post the
+ * scene draws, so the cost follows the posts on screen: each link is one id lookup. A link to an entity
+ * that is no signpost with a position (a post already gone) shows no board.
+ */
+export function signpostBoards(
+  snapshot: WorldSnapshot,
+  components: Readonly<Record<string, unknown>>,
+): number[] {
+  const links = signpostLinks(components);
+  const from = readPosition(components);
+  if (links === null || links.length === 0 || from === null) return [];
+  const boards: number[] = [];
+  const fromScreen = tileToScreen(from.x / ONE, from.y / ONE);
+  for (const link of links) {
+    if (typeof link !== 'number') continue;
+    const other = entityById(snapshot, link);
+    if (other === undefined || signpostLinks(other.components) === null) continue;
+    const to = readPosition(other.components);
+    if (to === null) continue;
+    const bucket = boardBucket(fromScreen, tileToScreen(to.x / ONE, to.y / ONE));
+    if (!boards.includes(bucket)) boards.push(bucket);
+  }
+  return boards;
 }
 
-/** Per-snapshot memo: pairing runs once per snapshot, not once per frame. */
-const boardsBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, readonly number[]>>();
-const EMPTY_BOARDS: ReadonlyMap<number, readonly number[]> = new Map();
-
-/** Signpost entity id → its 0-based board frame indices, deduplicated per angle bucket. */
-export function signpostBoardsOf(snapshot: WorldSnapshot): ReadonlyMap<number, readonly number[]> {
-  const cached = boardsBySnapshot.get(snapshot);
-  if (cached !== undefined) return cached;
-  const posts = new Map<number, Post>();
-  for (const entity of signpostsOf(snapshot)) {
-    const post = readPost(entity.components);
-    if (post !== null) posts.set(entity.id, post);
-  }
-  let index: ReadonlyMap<number, readonly number[]> = EMPTY_BOARDS;
-  const byId = new Map<number, number[]>();
-  for (const [id, post] of posts) {
-    for (const linked of post.links) {
-      const other = posts.get(linked);
-      if (other !== undefined) addBoard(byId, id, post, other);
-    }
-  }
-  if (byId.size > 0) index = byId;
-  boardsBySnapshot.set(snapshot, index);
-  return index;
+/** The board frame pointing from `from` toward `to`, both screen px: the clockwise bearing from
+ *  screen-north in 20° buckets. Bob 1 points away from the camera and the series sweeps clockwise in
+ *  even steps (decoded frame offsets; the frame↔bearing join is an approximation). */
+function boardBucket(from: { x: number; y: number }, to: { x: number; y: number }): number {
+  const theta = Math.atan2(to.x - from.x, -(to.y - from.y));
+  return (
+    ((Math.round(theta / BOARD_STEP) % SIGNPOST_BOARD_FRAMES) + SIGNPOST_BOARD_FRAMES) % SIGNPOST_BOARD_FRAMES
+  );
 }
 
-/** Append `from`'s board frame pointing at `to` (screen-space bearing → 20° bucket), deduped. */
-function addBoard(byId: Map<number, number[]>, fromId: number, from: Post, to: Post): void {
-  const sa = tileToScreen(from.x, from.y);
-  const sb = tileToScreen(to.x, to.y);
-  // Clockwise bearing from screen-north: bob 1 points away from the camera and the series sweeps
-  // clockwise in even steps (decoded frame offsets; the frame↔bearing join is an approximation).
-  const theta = Math.atan2(sb.x - sa.x, -(sb.y - sa.y));
-  const step = (2 * Math.PI) / SIGNPOST_BOARD_FRAMES;
-  const bucket =
-    ((Math.round(theta / step) % SIGNPOST_BOARD_FRAMES) + SIGNPOST_BOARD_FRAMES) % SIGNPOST_BOARD_FRAMES;
-  let list = byId.get(fromId);
-  if (list === undefined) {
-    list = [];
-    byId.set(fromId, list);
-  }
-  if (!list.includes(bucket)) list.push(bucket);
-}
-
-/** Decode one signpost entity into a {@link Post}; null when it carries no links or position. */
-function readPost(components: Readonly<Record<string, unknown>>): Post | null {
+function signpostLinks(components: Readonly<Record<string, unknown>>): readonly unknown[] | null {
   const signpost = components.Signpost as { links?: unknown } | undefined;
-  if (signpost === undefined || !Array.isArray(signpost.links)) return null;
-  const p = readPosition(components);
-  if (p === null) return null;
-  const links = signpost.links.filter((e): e is number => typeof e === 'number');
-  return { x: p.x / ONE, y: p.y / ONE, links };
+  return signpost !== undefined && Array.isArray(signpost.links) ? signpost.links : null;
 }

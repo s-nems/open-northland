@@ -25,7 +25,7 @@ the same list object while the boxes hold still.
 
 A scene build takes its candidates from the snapshot's position index over the viewport
 (`positionedWithin`, `data/scene/entity-source.ts`) and culls each candidate. The lookups a build
-needs (enterable stores, the ids actors face or craft at, palisades, signposts, HUD totals) are indexes
+needs (enterable stores, the ids actors face or craft at, palisades, HUD totals) are indexes
 the mirror maintains per change, read through `indexesOf`. The target-position and siege-shot readers
 are per-snapshot passes over those small index lists, and the fog ghost store is render-owned, updated
 per fog generation from the position index. No per-tick pass over `snapshot.entities` belongs in this
