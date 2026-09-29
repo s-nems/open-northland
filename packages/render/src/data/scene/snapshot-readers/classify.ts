@@ -6,6 +6,8 @@ export function classify(components: Readonly<Record<string, unknown>>): EntityK
   if ('Vehicle' in components) return 'vehicle';
   if ('Building' in components) return 'building';
   if ('Palisade' in components) return 'palisade';
+  // Before the stockpile: a road site holds its stone in a Stockpile of its own.
+  if ('RoadSite' in components) return 'roadsite';
   if ('FishSwarm' in components) {
     const fish = components.FishSwarm as { count?: unknown } | undefined;
     return typeof fish?.count === 'number' && fish.count > 0 ? 'fish' : null;

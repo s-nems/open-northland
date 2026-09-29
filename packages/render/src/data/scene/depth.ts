@@ -16,6 +16,7 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   chest: 0, // a chest sits behind the settler opening it, like a resource node
   building: 1,
   palisade: 1,
+  roadsite: 0, // a plot on the ground, under the builder paving it
   grounddrop: 1,
   signpost: 1, // the post occludes like a small building
   stockpile: 2,
@@ -68,8 +69,10 @@ export function drawPassDepth(pass: DrawPass): number {
 /** A depth under every pass, for the ground tiles' own band. */
 export const UNDER_EVERY_PASS = -3 * PASS_BAND;
 
-function kindPassDepth(kind: DrawKind): number {
-  return PASS_DEPTH[kind === 'fish' ? 'fish' : 'sorted'];
+/** A flat ground marker (an unclaimed road plot) paints with the still landscape, under everything that
+ *  stands, so a settler crossing it never sinks into it. */
+function kindPassDepth(kind: DrawKind, groundMarker: boolean): number {
+  return PASS_DEPTH[groundMarker ? 'ground' : kind === 'fish' ? 'fish' : 'sorted'];
 }
 
 /** Row stride of the oracle sort key `tileY * ROW_STRIDE + tileX`, valid only while
@@ -80,8 +83,19 @@ const ROW_STRIDE = 4096;
  *  one tile column (base depths differ by ≥ 1 across cells) and can't cross a cell. */
 const PAINT_ORDER_EPS = 1 / 16;
 
-export function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag = false): number {
-  return kindPassDepth(kind) + tileY * ROW_STRIDE + tileX + paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS;
+export function spriteDepth(
+  tileX: number,
+  tileY: number,
+  kind: DrawKind,
+  isFlag = false,
+  groundMarker = false,
+): number {
+  return (
+    kindPassDepth(kind, groundMarker) +
+    tileY * ROW_STRIDE +
+    tileX +
+    paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS
+  );
 }
 
 /** Screen-px depth added per paint-order step in the live painter key. Above `depthKey`'s max
@@ -89,8 +103,14 @@ export function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag
  *  row's screen-y gap, so it never lifts a sprite past one a genuine row away. */
 const SCREEN_PAINT_EPS = 0.25;
 
-export function screenDepth(x: number, y: number, kind: DrawKind, isFlag = false): number {
-  return kindPassDepth(kind) + depthKey(x, y) + paintOrderBias(kind, isFlag) * SCREEN_PAINT_EPS;
+export function screenDepth(
+  x: number,
+  y: number,
+  kind: DrawKind,
+  isFlag = false,
+  groundMarker = false,
+): number {
+  return kindPassDepth(kind, groundMarker) + depthKey(x, y) + paintOrderBias(kind, isFlag) * SCREEN_PAINT_EPS;
 }
 
 /**

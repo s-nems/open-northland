@@ -11,6 +11,7 @@ import type {
   WorkAreaRing,
 } from '../overlays/index.js';
 import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler } from '../pixel-art-registry.js';
+import type { PlanRoadTextures } from '../plan-road.js';
 import type { PlanStakeTextures } from '../plan-stake.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
@@ -66,6 +67,8 @@ export interface WorldRendererOptions {
   readonly playerColourOf?: ((player: number) => number) | undefined;
   /** The line tools' stake art; absent draws a flat stand-in. */
   readonly planStakes?: PlanStakeTextures | undefined;
+  /** The road tool's plot art; absent draws a flat stand-in. */
+  readonly planRoads?: PlanRoadTextures | undefined;
 }
 
 /** `scale` defaults to the native landscape-object scale of 1. */

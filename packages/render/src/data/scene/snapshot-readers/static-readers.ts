@@ -23,6 +23,11 @@ export function readPalisadeClaimed(components: Readonly<Record<string, unknown>
   return palisade?.reservation !== undefined && palisade.reservation !== null;
 }
 
+export function readRoadSiteClaimed(components: Readonly<Record<string, unknown>>): boolean {
+  const site = components.RoadSite as { reservation?: unknown } | undefined;
+  return site?.reservation !== undefined && site.reservation !== null;
+}
+
 /**
  * A wall post's visible source-state percentage. Wall art is a durability ladder: finished damaged
  * posts descend with Health, while an unfinished site also cannot appear further along than its build
@@ -191,6 +196,7 @@ const STATIC_DRAW_KEYS = [
   'tribe',
   'palisadePosts',
   'palisadeSite',
+  'roadSite',
   'facing',
   'player',
 ] as const;

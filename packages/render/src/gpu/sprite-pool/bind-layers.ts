@@ -6,6 +6,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
+import { mintPlanRoad, PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
 import { mintPlanStake, type PlanStakeTextures, STAKE_BOUNDS } from '../plan-stake.js';
 import { type ShadowStyle, setCastShadowTransform } from '../shadow-style.js';
 import type { PaletteLut, SpriteSheet } from '../sprite-sheet.js';
@@ -70,6 +71,7 @@ export class LayerBinder {
     private readonly textures: TextureCache,
     private readonly sheet: SpriteSheet | undefined,
     private readonly stakes?: PlanStakeTextures,
+    private readonly roads?: PlanRoadTextures,
   ) {}
 
   /** A settler is created paletted when its look is an indexed human character and the player-colour
@@ -114,13 +116,14 @@ export class LayerBinder {
     frame: BindFrame,
     frameId: number,
   ): void {
-    const site = item.kind === 'palisade' ? item.palisadeSite : undefined;
+    const site =
+      item.kind === 'palisade' ? item.palisadeSite : item.kind === 'roadsite' ? item.roadSite : undefined;
     if (site === 'unclaimed') {
-      this.showPalisadeSite(pe, frameId);
+      this.showSiteMarker(pe, item.kind === 'roadsite', frameId);
       return;
     }
-    if (pe.palisadeSiteMarker !== undefined) pe.palisadeSiteMarker.visible = false;
-    if (site !== 'claimed' && pe.palisadeClaimRing !== undefined) pe.palisadeClaimRing.visible = false;
+    if (pe.siteMarker !== undefined) pe.siteMarker.visible = false;
+    if (site !== 'claimed' && pe.siteClaimMarker !== undefined) pe.siteClaimMarker.visible = false;
     if (layers === null) {
       pe.selectionEllipse = undefined;
       this.showPlaceholder(pe, item, frame, frameId);
@@ -251,8 +254,10 @@ export class LayerBinder {
       pe.pickExempt.length = spriteSlot;
     }
     if (site === 'claimed') {
-      this.placeClaimRing(pe);
-      bounds.add(STAKE_BOUNDS.left, STAKE_BOUNDS.top, STAKE_BOUNDS.right, STAKE_BOUNDS.bottom);
+      const road = item.kind === 'roadsite';
+      this.placeClaimMarker(pe, road);
+      const marker = road ? PLOT_BOUNDS : STAKE_BOUNDS;
+      bounds.add(marker.left, marker.top, marker.right, marker.bottom);
     }
     // A fog ghost stamps no bounds so it cannot be picked: its ref may be a dead entity, and selecting
     // a live one through the fog would leak its current state into the details panel.
@@ -326,37 +331,39 @@ export class LayerBinder {
     spr.visible = true;
   }
 
-  /** A claimed site's ring, under the builder's flag planted in its middle. */
-  private placeClaimRing(pe: PooledEntity): void {
-    let ring = pe.palisadeClaimRing;
-    if (ring === undefined) {
-      ring = mintPlanStake(this.stakes, 'ring');
-      pe.palisadeClaimRing = ring;
+  /** A claimed site's ring or plot, under the builder's flag planted in its middle. An entity is a wall or
+   *  a road for life, so the marker minted first stays the right one. */
+  private placeClaimMarker(pe: PooledEntity, road: boolean): void {
+    let marker = pe.siteClaimMarker;
+    if (marker === undefined) {
+      marker = road ? mintPlanRoad(this.roads, 'claimed') : mintPlanStake(this.stakes, 'ring');
+      pe.siteClaimMarker = marker;
     }
-    if (pe.container.children[0] !== ring) pe.container.addChildAt(ring, 0);
-    ring.visible = true;
+    if (pe.container.children[0] !== marker) pe.container.addChildAt(marker, 0);
+    marker.visible = true;
   }
 
-  /** The unclaimed segment is deliberately ground-only: no partially built post exists yet. */
-  private showPalisadeSite(pe: PooledEntity, frameId: number): void {
+  /** An unclaimed site is deliberately ground-only: no partially built post or road exists yet. */
+  private showSiteMarker(pe: PooledEntity, road: boolean, frameId: number): void {
     for (const s of pe.sprites) s.visible = false;
     if (pe.paletted) for (const s of pe.shadows) s.visible = false;
     pe.selectionEllipse = undefined;
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
-    if (pe.palisadeClaimRing !== undefined) pe.palisadeClaimRing.visible = false;
-    if (pe.palisadeSiteMarker === undefined) {
-      pe.palisadeSiteMarker = mintPlanStake(this.stakes, 'open');
-      pe.container.addChild(pe.palisadeSiteMarker);
+    if (pe.siteClaimMarker !== undefined) pe.siteClaimMarker.visible = false;
+    if (pe.siteMarker === undefined) {
+      pe.siteMarker = road ? mintPlanRoad(this.roads, 'open') : mintPlanStake(this.stakes, 'open');
+      pe.container.addChild(pe.siteMarker);
     }
-    pe.palisadeSiteMarker.visible = true;
+    pe.siteMarker.visible = true;
+    const marker = road ? PLOT_BOUNDS : STAKE_BOUNDS;
     const drawX = pe.motion.drawX;
     const drawY = pe.motion.drawY;
     this.stampBounds(
       pe,
-      drawX + STAKE_BOUNDS.left,
-      drawY + STAKE_BOUNDS.top,
-      drawX + STAKE_BOUNDS.right,
-      drawY + STAKE_BOUNDS.bottom,
+      drawX + marker.left,
+      drawY + marker.top,
+      drawX + marker.right,
+      drawY + marker.bottom,
       frameId,
     );
   }

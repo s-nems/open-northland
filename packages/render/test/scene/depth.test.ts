@@ -14,6 +14,7 @@ const ALL_KINDS = [
   'tile',
   'building',
   'palisade',
+  'roadsite',
   'settler',
   'fish',
   'resource',
@@ -110,5 +111,15 @@ describe('draw passes', () => {
     expect(UNDER_EVERY_PASS + farthestKey).toBeLessThan(drawPassDepth('ground'));
     expect(drawPassDepth('ground') + farthestKey).toBeLessThan(drawPassDepth('fish'));
     expect(drawPassDepth('fish') + farthestKey).toBeLessThan(drawPassDepth('sorted'));
+  });
+});
+
+describe('road site plots', () => {
+  it('paint an unclaimed plot under a settler standing a row behind it, and a claimed one in the sort', () => {
+    const ROW_BEHIND_PX = -TILE_HALF_H;
+    const settler = screenDepth(0, ROW_BEHIND_PX, 'settler');
+    expect(screenDepth(0, 0, 'roadsite', false, true)).toBeLessThan(settler);
+    expect(screenDepth(0, 0, 'roadsite')).toBeGreaterThan(settler);
+    expect(screenDepth(0, 0, 'roadsite')).toBeLessThan(screenDepth(0, 0, 'settler'));
   });
 });

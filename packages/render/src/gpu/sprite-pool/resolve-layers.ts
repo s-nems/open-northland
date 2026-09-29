@@ -97,6 +97,9 @@ function pushLayers(
     }
     case 'palisade':
       return pushPalisadeLayers(out, sheet, item, tick);
+    // The plot itself is the binder's marker; a claimed site adds the builder's flag planted in it.
+    case 'roadsite':
+      return item.roadSite === 'claimed' ? pushStockpileLayers(out, sheet, item, tick) : true;
     case 'resource': {
       // A layer-qualified ref (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the
       // default yew) falls through to the `kindLayers.resource` tree layer below. A null draw is a

@@ -4,6 +4,7 @@ export type DrawKind =
   | 'tile'
   | 'building'
   | 'palisade'
+  | 'roadsite'
   | 'settler'
   | 'fish'
   | 'resource'
@@ -80,6 +81,9 @@ export interface StaticDrawFields {
   /** An unfinished palisade site: its plan stake until a builder claims it, then the stake's stone ring
    *  with the ordinary delivery/work flag planted in it, and no heap for its wood, until the wall stands. */
   palisadeSite?: 'unclaimed' | 'claimed';
+  /** A road site: its pegged plot until a builder claims it, then the plot with the builder's flag planted
+   *  in it, until the road is paved. */
+  roadSite?: 'unclaimed' | 'claimed';
   /**
    * For a settler or vehicle: facing direction index (0..7) a directional binding indexes by. The
    * `CR_Hum_Body` blocks are not a uniform rotation (source basis "Settler facing"): `0 SW, 1 W, 2 NW,

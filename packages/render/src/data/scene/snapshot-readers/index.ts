@@ -19,6 +19,7 @@ export {
   readPalisadeClaimed,
   readPalisadeStatePct,
   readProducing,
+  readRoadSiteClaimed,
   readUpgradePct,
 } from './static-readers.js';
 export { readStockpile } from './stockpile-readers.js';

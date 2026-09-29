@@ -29,10 +29,11 @@ interface MutableBounds {
 interface PooledEntityBase extends PresentationTrack {
   readonly container: Container;
   placeholder?: Graphics;
-  /** The plan stake standing on an unfinished palisade segment no builder has claimed yet. */
-  palisadeSiteMarker?: Container;
-  /** The same segment's stone ring once claimed, holding the builder's flag in place of the stake. */
-  palisadeClaimRing?: Container;
+  /** The plan marker on an unfinished wall segment or road site no builder has claimed yet: a stake or a
+   *  pegged plot. */
+  siteMarker?: Container;
+  /** The same site's marker once claimed, holding the builder's flag: the stake's ring or the bare plot. */
+  siteClaimMarker?: Container;
   attached: boolean;
   /** The `frameId` this entity was last drawn on; −1 = never drawn. */
   lastSeen: number;

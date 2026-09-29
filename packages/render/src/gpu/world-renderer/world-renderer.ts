@@ -102,13 +102,19 @@ export class WorldRenderer {
       opts?.sheet,
       opts?.playerColourOf,
       opts?.planStakes,
+      opts?.planRoads,
     );
     this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
-    this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache, opts?.planStakes);
+    this.placementGhost = new PlacementGhostLayer(
+      opts?.sheet,
+      this.textureCache,
+      opts?.planStakes,
+      opts?.planRoads,
+    );
     this.spriteLayer.addChild(this.placementGhost.container);
     mountPainterOrder(this.worldLayer, {
       terrain: this.terrain.container,

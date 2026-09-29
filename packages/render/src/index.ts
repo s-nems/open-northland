@@ -188,6 +188,7 @@ export {
   parsePixelArtScaler,
 } from './gpu/pixel-art-registry.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
+export type { PlanRoadTextures } from './gpu/plan-road.js';
 export type { PlanStakeTextures } from './gpu/plan-stake.js';
 export { humanPaletteIdentity } from './gpu/sprite-pool/human-palette-row.js';
 export {

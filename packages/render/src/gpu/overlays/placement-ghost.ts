@@ -4,6 +4,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import { type PalisadeLayout, planShiftX } from '../../data/scene/palisade-connections.js';
 import { palisadeStaggerX } from '../../data/scene/palisade-stagger.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
+import { mintPlanRoad, type PlanRoadTextures } from '../plan-road.js';
 import {
   mintPlanStake,
   type PlanStakeTextures,
@@ -48,6 +49,9 @@ export type PlacementGhost =
       readonly kind: 'line';
       readonly nodes: readonly PlanNode[];
       readonly anchored: boolean;
+      /** `road` plans pegged plots with no string between them, on the plain lattice; a wall's stakes
+       *  stagger with the walls they will stand in. Defaults to `stake`. */
+      readonly marker?: 'stake' | 'road';
     }
   /** A gatherer's work flag about to be planted: the delivery-flag sprite, unowned. */
   | { readonly kind: 'flag'; readonly col: number; readonly row: number };
@@ -144,13 +148,15 @@ export class PlacementGhostLayer {
     nodes: readonly PlanNode[] | null;
     anchored: boolean;
     walls: PalisadeLayout | undefined;
-  } = { nodes: null, anchored: false, walls: undefined };
+    road: boolean;
+  } = { nodes: null, anchored: false, walls: undefined, road: false };
   private lineShifts: readonly number[] = [];
 
   constructor(
     private readonly sheet: SpriteSheet | undefined,
     private readonly textures: TextureCache,
     private readonly stakes?: PlanStakeTextures,
+    private readonly roads?: PlanRoadTextures,
   ) {
     this.container.visible = false;
     this.container.alpha = GHOST_ALPHA;
@@ -164,16 +170,20 @@ export class PlacementGhostLayer {
     }
     if (ghost.kind === 'line') {
       const planned = this.shiftsFor;
+      const road = ghost.marker === 'road';
       const samePlan =
         planned.nodes !== null &&
         planned.anchored === ghost.anchored &&
+        planned.road === road &&
         samePlanNodes(planned.nodes, ghost.nodes);
       let shifts = this.lineShifts;
       if (!samePlan || planned.walls !== walls) {
-        shifts = planShiftX(
-          ghost.nodes.map((node) => ({ hx: node.col, hy: node.row })),
-          walls,
-        );
+        shifts = road
+          ? ghost.nodes.map(() => 0)
+          : planShiftX(
+              ghost.nodes.map((node) => ({ hx: node.col, hy: node.row })),
+              walls,
+            );
       }
       if (!samePlan || this.builtForKey !== LINE_KEY || !sameShifts(shifts, this.lineShifts)) {
         this.builtForKey = LINE_KEY;
@@ -183,6 +193,7 @@ export class PlacementGhostLayer {
       planned.nodes = ghost.nodes;
       planned.anchored = ghost.anchored;
       planned.walls = walls;
+      planned.road = road;
       this.container.position.set(0, 0);
       // A plan is a cursor mark: it reads over the settlers and walls standing on its nodes.
       this.container.zIndex = Number.MAX_SAFE_INTEGER;
@@ -231,9 +242,10 @@ export class PlacementGhostLayer {
         alpha: 0.95,
       });
     }
+    const road = ghost.marker === 'road';
     // The string runs knot to knot under the stakes, coloured by the node it leads to, with a dark
-    // underline that keeps it readable over pale ground.
-    for (let i = 1; i < points.length; i++) {
+    // underline that keeps it readable over pale ground. Road plots lie apart, with no string.
+    for (let i = 1; i < points.length && !road; i++) {
       const from = points[i - 1];
       const to = points[i];
       if (from === undefined || to === undefined) continue;
@@ -246,10 +258,11 @@ export class PlacementGhostLayer {
         .stroke({ color, width: 1.5, alpha: 0.95 });
     }
     this.container.addChild(g);
-    // Back to front, so a nearer stake covers the one behind it.
+    // Back to front, so a nearer marker covers the one behind it.
     const stakes = points.filter((point) => point.state !== 'built').sort((a, b) => a.y - b.y);
     for (const point of stakes) {
-      const stake = mintPlanStake(this.stakes, point.state === 'open' ? 'open' : 'blocked');
+      const look = point.state === 'open' ? 'open' : 'blocked';
+      const stake = road ? mintPlanRoad(this.roads, look) : mintPlanStake(this.stakes, look);
       stake.position.set(point.x, point.y);
       this.container.addChild(stake);
     }

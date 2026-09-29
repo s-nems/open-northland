@@ -46,6 +46,10 @@ export function resolveSpriteBobId(
       return bindings.building === undefined ? null : resolveBuildingDraw(bindings.building, item).bob;
     case 'palisade':
       return bindings.palisade === undefined ? null : resolvePalisadeDraw(bindings.palisade, item).bob;
+    case 'roadsite':
+      return item.roadSite !== 'claimed' || bindings.stockpile === undefined
+        ? null
+        : resolveStockpileDraw(bindings.stockpile, item, tick).bob;
     case 'resource':
     case 'stump':
     case 'berrybush':

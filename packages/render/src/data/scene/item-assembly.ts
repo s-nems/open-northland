@@ -12,7 +12,12 @@ import { spriteDepth } from './depth.js';
 import type { EntityKind, MutableSpriteDrawItem } from './draw-item.js';
 import { assignPalisadeFields, type PalisadeLayout } from './palisade-connections.js';
 import type { SettlerPose } from './settler-pose.js';
-import { assignStaticFields, readVehicleDriver, readVehicleFields } from './snapshot-readers/index.js';
+import {
+  assignStaticFields,
+  readRoadSiteClaimed,
+  readVehicleDriver,
+  readVehicleFields,
+} from './snapshot-readers/index.js';
 
 export interface SceneBuild {
   readonly snapshot: WorldSnapshot;
@@ -61,6 +66,10 @@ export function assembleItem(
       break;
     case 'palisade':
       item.x += assignPalisadeFields(item, entity.id, components, build.palisades);
+      break;
+    case 'roadsite':
+      item.roadSite = readRoadSiteClaimed(components) ? 'claimed' : 'unclaimed';
+      if (item.roadSite === 'unclaimed') item.depth = spriteDepth(tileX, tileY, kind, false, true);
       break;
     case 'resource':
     case 'stump':

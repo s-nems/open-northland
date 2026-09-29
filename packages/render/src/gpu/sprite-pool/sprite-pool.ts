@@ -21,6 +21,7 @@ import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprite
 import type { ElevationField } from '../../data/terrain/index.js';
 import { PalettedQuad } from '../paletted-sprite/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
+import type { PlanRoadTextures } from '../plan-road.js';
 import type { PlanStakeTextures } from '../plan-stake.js';
 import type { ShadowStyle } from '../shadow-style.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
@@ -150,9 +151,10 @@ export class SpritePool {
     /** Owner slot → team-colour slot; absent = identity. */
     private readonly playerColourOf?: (player: number) => number,
     stakes?: PlanStakeTextures,
+    roads?: PlanRoadTextures,
   ) {
     this.portrait = new PortraitSubject(spriteLayer);
-    this.binder = new LayerBinder(textures, sheet, stakes);
+    this.binder = new LayerBinder(textures, sheet, stakes, roads);
   }
 
   /**
@@ -250,6 +252,7 @@ export class SpritePool {
       pe.motion.drawY + (item.lift ?? 0),
       item.kind,
       item.isFlag === true,
+      item.roadSite === 'unclaimed',
     );
   }
 
@@ -450,6 +453,7 @@ export class SpritePool {
             pe.motion.drawY + (item.lift ?? 0),
             item.kind,
             item.isFlag === true,
+            item.roadSite === 'unclaimed',
           );
           pe.viewSeen = this.frameId;
         }
