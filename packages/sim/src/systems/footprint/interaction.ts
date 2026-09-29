@@ -100,14 +100,15 @@ export function constructionWorkCells(
   return [...work].sort((a, b) => a - b);
 }
 
-/** Current extracted footprints need at most 5 bounding-margin cells per body cell (handcart/oxcart).
- *  Eight leaves headroom while bounding malformed sparse synthetic footprints. */
-const MAX_EXTERIOR_SCAN_CELLS_PER_BODY_CELL = 8;
+/** The largest box, margin included, the exterior flood scans, in nodes. The largest extracted body's
+ *  box is 1102 nodes (the Artemis temple); an open gate's two posts make the sparsest real body. The cap
+ *  only keeps a malformed hand-authored footprint from flooding the map. */
+const MAX_EXTERIOR_SCAN_AREA = 2048;
 
 /**
  * Walkable cells connected to the outside of a body's one-node bounding margin. The bounded flood excludes
  * enclosed footprint holes without scanning the map, and a dynamic block cannot turn a sealed pocket into
- * a work slot. A footprint outside the scan budget yields no slots at all.
+ * a work slot. A body whose box exceeds {@link MAX_EXTERIOR_SCAN_AREA} yields no slots at all.
  */
 function exteriorCellsAroundBody(
   terrain: TerrainGraph,
@@ -130,9 +131,7 @@ function exteriorCellsAroundBody(
   const maxX = Math.min(terrain.width - 1, bodyMaxX + 1);
   const minY = Math.max(0, bodyMinY - 1);
   const maxY = Math.min(terrain.height - 1, bodyMaxY + 1);
-  const scanArea = (maxX - minX + 1) * (maxY - minY + 1);
-  const scanBudget = Math.max(9, bodyCells.length * MAX_EXTERIOR_SCAN_CELLS_PER_BODY_CELL);
-  if (scanArea > scanBudget) return new Set();
+  if ((maxX - minX + 1) * (maxY - minY + 1) > MAX_EXTERIOR_SCAN_AREA) return new Set();
   const exterior = new Set<NodeId>();
   const frontier: NodeId[] = [];
   const seed = (x: number, y: number): void => {

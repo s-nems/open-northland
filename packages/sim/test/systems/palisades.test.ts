@@ -439,6 +439,23 @@ describe('palisades', () => {
     expect(needsRepair(sim.world, gate)).toBe(true);
   });
 
+  it('gives a builder a stand beside each post of a damaged open gate', () => {
+    const sim = fresh();
+    sim.enqueueSetup({ kind: 'placePalisade', gfxIndex: CLOSED_GATE.typeId, x: 8, y: 8, tribe: 0, owner: 0 });
+    sim.step();
+    const gate = onlyPalisade(sim);
+    strike(sim, gate, 10);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: true });
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected mapped simulation');
+
+    const cells = PlannerSpacing.forTick(sim.world, ctxOf(sim), terrain).workCells(gate);
+    // The open body is just the two posts four nodes apart, whose box is sparse beside their count.
+    expect(cells).toContain(terrain.nodeAt(5, 8));
+    expect(cells).toContain(terrain.nodeAt(11, 8));
+  });
+
   it('restores a damaged owned gate with its pairing, collision, health, and fixed-point valency', () => {
     const sim = fresh();
     sim.enqueueSetup({
