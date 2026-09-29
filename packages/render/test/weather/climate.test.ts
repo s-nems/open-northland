@@ -146,6 +146,26 @@ describe('weather climate storms', () => {
     expect(Math.abs(sand.windY)).toBeLessThan(0.2 * Math.abs(sand.windX));
   });
 
+  it('never blows a blizzard up the screen, while still drifting it sideways', () => {
+    const blizzard = field('snow', 0.5);
+    const seeds = [0, 3, 17];
+    // Two slow heading periods cover the whole drift range.
+    const seconds = 350;
+    let lowest = Number.POSITIVE_INFINITY;
+    let flattened = 0;
+    for (const seed of seeds) {
+      const climate = new WeatherClimate(seed);
+      for (let t = 0; t < seconds; t += 0.5) {
+        const c = climate.step({ field: blizzard, viewport: WHOLE_MAP, gameSeconds: t, enabled: true });
+        lowest = Math.min(lowest, c.windY);
+        if (c.windY === 0) flattened++;
+        expect(c.windX).toBeGreaterThan(0);
+      }
+    }
+    expect(lowest).toBe(0);
+    expect(flattened).toBeGreaterThan(0);
+  });
+
   it('reports wind sway strength and direction', () => {
     const sway = windSway(run(new WeatherClimate(), field('sand', 0.08), 0, 1));
     expect(sway.strength).toBeGreaterThan(0.9);

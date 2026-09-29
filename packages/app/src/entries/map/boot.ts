@@ -264,6 +264,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     });
     if (hosted === null) return null;
     const { host } = hosted;
+    renderer.setWeatherSeed(hosted.seed);
     setDiagGameSession({
       entry: 'map',
       worldId: mapId,

@@ -30,7 +30,8 @@ const CALM_WIND = 22;
 const STORM_WIND = 150;
 const SAND_WIND = 260;
 /** Screen-space wind heading in radians from +x towards +y (down the screen): the original's weather
- *  always drifted right, so the base heading blows right and slightly down. */
+ *  always drifted right, so the base heading blows right and slightly down. A heading above the
+ *  horizontal keeps only its sideways part, so a strong wind never lifts precipitation up the screen. */
 const BASE_HEADING = 0.18;
 /** How far the heading drifts either side of the base, and the two drift periods in game seconds. */
 const HEADING_DRIFT = 0.55;
@@ -105,9 +106,13 @@ export interface ClimateInput {
   readonly enabled: boolean;
 }
 
-/** The field's mean amount of each kind over evenly spread points of `viewport`. */
-export function viewWeatherAmounts(field: WeatherField, viewport: Viewport): Record<WeatherKind, number> {
-  const out: Record<WeatherKind, number> = { rain: 0, snow: 0, sand: 0 };
+/** The field's mean amount of each kind over evenly spread points of `viewport`, written into `out`. */
+export function viewWeatherAmounts(
+  field: WeatherField,
+  viewport: Viewport,
+  out: Record<WeatherKind, number> = { rain: 0, snow: 0, sand: 0 },
+): Record<WeatherKind, number> {
+  for (const kind of WEATHER_KINDS) out[kind] = 0;
   if (!field.any) return out;
   const samples = VIEW_SAMPLES_PER_AXIS * VIEW_SAMPLES_PER_AXIS;
   for (let iy = 0; iy < VIEW_SAMPLES_PER_AXIS; iy++) {
@@ -216,6 +221,7 @@ function calmConditions(): MutableConditions {
  */
 export class WeatherClimate {
   private readonly out = calmConditions();
+  private readonly target: Record<WeatherKind, number> = { rain: 0, snow: 0, sand: 0 };
   private lastSeconds: number | null = null;
   /** The first lightning bucket not yet rolled or emitted. */
   private nextBucket = 0;
@@ -245,7 +251,7 @@ export class WeatherClimate {
   }
 
   private stepAmounts(input: ClimateInput, dt: number | null): void {
-    const target = input.field === null ? null : viewWeatherAmounts(input.field, input.viewport);
+    const target = input.field === null ? null : viewWeatherAmounts(input.field, input.viewport, this.target);
     // A still clock (a pause) follows the view at once, so panning a paused game keeps the sky, sound
     // and sway in step with the particles, which read the field directly.
     const blend = dt === null || dt === 0 ? 1 : 1 - Math.exp(-dt / WEATHER_FADE_SECONDS);
@@ -271,7 +277,7 @@ export class WeatherClimate {
     const gust = gustAt(this.seed, now) * (GUST_CALM_SHARE + (1 - GUST_CALM_SHARE) * storm);
     const speed = (CALM_WIND + STORM_WIND * storm + SAND_WIND * sand) * (1 + GUST_GAIN * gust);
     this.out.windX = speed * Math.cos(heading);
-    this.out.windY = speed * Math.sin(heading);
+    this.out.windY = speed * Math.max(0, Math.sin(heading));
     this.out.gust = gust;
   }
 

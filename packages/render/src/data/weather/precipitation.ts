@@ -57,9 +57,6 @@ export const PARTICLE_AREA_PX: Readonly<Record<WeatherKind, number>> = { rain: 7
  *  flake never pops at the edge. */
 export const PARTICLE_WRAP_MARGIN_PX = 96;
 
-/** Hard ceiling per kind, whatever the screen: a 4K screen at full intensity stays near this. */
-export const PARTICLE_CAP = 24_000;
-
 /** The instance buffer grows in steps of this many particles so a window resize does not rebuild it. */
 export const PARTICLE_CAPACITY_STEP = 2048;
 
@@ -105,13 +102,64 @@ export function particleCount(
   if (intensity <= 0) return 0;
   const full = (particleWrapArea(screenW, screenH) / PARTICLE_AREA_PX[kind]) * zoomDensity(zoom);
   const stormGain = 1 + PARTICLE_STORM_BONUS[kind] * Math.min(1, Math.max(0, storm));
-  return Math.min(PARTICLE_CAP, Math.ceil(full * Math.min(1, intensity) * stormGain));
+  return Math.min(PARTICLE_CAP[kind], Math.ceil(full * Math.min(1, intensity) * stormGain));
 }
+
+/** Instance buffer needed for {@link particleCount} at full intensity, full storm and any zoom. */
+function uncappedCapacity(kind: WeatherKind, screenW: number, screenH: number): number {
+  const full = (particleWrapArea(screenW, screenH) / PARTICLE_AREA_PX[kind]) * ZOOM_DENSITY_MAX;
+  const needed = Math.ceil(full * (1 + PARTICLE_STORM_BONUS[kind]));
+  return Math.ceil(needed / PARTICLE_CAPACITY_STEP) * PARTICLE_CAPACITY_STEP;
+}
+
+/** The largest screen the particle caps cover at every zoom and a full storm. On a larger screen the
+ *  cap holds, and the density gate's ranks then shift as the on-screen amount changes. */
+export const PARTICLE_CAP_SCREEN = { width: 2560, height: 1440 } as const;
+
+/** Hard ceiling per kind, whatever the screen. Snow is densest: about 44 000 flakes at 1440p zoomed out. */
+export const PARTICLE_CAP: Readonly<Record<WeatherKind, number>> = {
+  rain: uncappedCapacity('rain', PARTICLE_CAP_SCREEN.width, PARTICLE_CAP_SCREEN.height),
+  snow: uncappedCapacity('snow', PARTICLE_CAP_SCREEN.width, PARTICLE_CAP_SCREEN.height),
+  sand: uncappedCapacity('sand', PARTICLE_CAP_SCREEN.width, PARTICLE_CAP_SCREEN.height),
+};
 
 /** Instance-buffer size that covers {@link particleCount} at full intensity, full storm and any zoom,
  *  rounded up to a step, so neither zoom nor a storm rebuilds the buffer. */
 export function particleCapacity(kind: WeatherKind, screenW: number, screenH: number): number {
-  const full = (particleWrapArea(screenW, screenH) / PARTICLE_AREA_PX[kind]) * ZOOM_DENSITY_MAX;
-  const needed = Math.ceil(full * (1 + PARTICLE_STORM_BONUS[kind]));
-  return Math.min(PARTICLE_CAP, Math.ceil(needed / PARTICLE_CAPACITY_STEP) * PARTICLE_CAPACITY_STEP);
+  return Math.min(PARTICLE_CAP[kind], uncappedCapacity(kind, screenW, screenH));
+}
+
+/** Game seconds and particle travel reach the shader split into a coarse whole number of steps and the
+ *  fine rest, each wrapped on its own, so float32 keeps sub-pixel motion however long a game runs. Sway
+ *  and tumble cycle a whole number of times per time step, so they stay continuous across it. */
+export const PRECIPITATION_TIME_SPLIT_SECONDS = 64;
+export const PRECIPITATION_WIND_SPLIT_PX = 4096;
+
+/** The coarse part of `value`: a whole number of `step`s. */
+export function splitCoarse(value: number, step: number): number {
+  return Math.floor(value / step) * step;
+}
+
+/**
+ * Particle travel integrated on game seconds. Speeds that follow the zoom are integrated here, so a zoom
+ * change only alters motion from then on instead of rescaling the whole distance travelled since the
+ * game began. The shader multiplies each by a particle's own zoom-1 constants.
+ */
+export class PrecipitationTravel {
+  /** Wind px at zoom 1: gust fronts and the mist ride it. */
+  windX = 0;
+  windY = 0;
+  /** Game seconds times the zoom size scale, for a particle's zoom-1 fall speed. */
+  fall = 0;
+  /** Wind px times the zoom size scale, for a particle's wind share. */
+  scaledWindX = 0;
+  scaledWindY = 0;
+
+  advance(dt: number, windX: number, windY: number, sizeScale: number): void {
+    this.windX += windX * dt;
+    this.windY += windY * dt;
+    this.fall += sizeScale * dt;
+    this.scaledWindX += windX * sizeScale * dt;
+    this.scaledWindY += windY * sizeScale * dt;
+  }
 }

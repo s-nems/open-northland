@@ -96,9 +96,45 @@ export interface AtmosphereLook {
   readonly flash: Rgb;
 }
 
-export function atmosphereLook(amounts: WeatherAmounts, flash: number): AtmosphereLook {
-  const grade: [number, number, number] = [1, 1, 1];
-  const haze: [number, number, number] = [0, 0, 0];
+type MutableRgb = [number, number, number];
+const CHANNELS = [0, 1, 2] as const;
+
+/** A look {@link atmosphereLook} can rewrite in place, so a frame allocates nothing. */
+export interface AtmosphereLookScratch extends AtmosphereLook {
+  visible: boolean;
+  readonly grade: MutableRgb;
+  cloudShadow: number;
+  vignette: number;
+  readonly haze: MutableRgb;
+  hazeAlpha: number;
+  mist: number;
+  streaks: number;
+  readonly flash: MutableRgb;
+}
+
+export function atmosphereLookScratch(): AtmosphereLookScratch {
+  return {
+    visible: false,
+    grade: [1, 1, 1],
+    cloudShadow: 0,
+    vignette: 0,
+    haze: [0, 0, 0],
+    hazeAlpha: 0,
+    mist: 0,
+    streaks: 0,
+    flash: [0, 0, 0],
+  };
+}
+
+/** The look for the view's `amounts` and `flash`, written into `out`. */
+export function atmosphereLook(
+  amounts: WeatherAmounts,
+  flash: number,
+  out: AtmosphereLookScratch = atmosphereLookScratch(),
+): AtmosphereLook {
+  const { grade, haze } = out;
+  grade.fill(1);
+  haze.fill(0);
   let clear = 1;
   let hazeWeight = 0;
   let cloudShadow = 0;
@@ -111,13 +147,13 @@ export function atmosphereLook(amounts: WeatherAmounts, flash: number): Atmosphe
     if (intensity <= 0) continue;
     const kindStorm = stormOf(kind, amounts[kind]);
     const air = AIR[kind];
-    for (let c = 0; c < grade.length; c++) {
-      const full = (air.grade[c] ?? 1) * (1 + ((air.stormGrade[c] ?? 1) - 1) * kindStorm);
-      grade[c] = (grade[c] ?? 1) * (1 + (full - 1) * intensity);
+    for (const c of CHANNELS) {
+      const full = air.grade[c] * (1 + (air.stormGrade[c] - 1) * kindStorm);
+      grade[c] *= 1 + (full - 1) * intensity;
     }
     const alpha = air.hazeAlpha * intensity + air.stormHazeAlpha * kindStorm;
     clear *= 1 - alpha;
-    for (let c = 0; c < haze.length; c++) haze[c] = (haze[c] ?? 0) + (air.haze[c] ?? 0) * alpha;
+    for (const c of CHANNELS) haze[c] += air.haze[c] * alpha;
     hazeWeight += alpha;
     cloudShadow = Math.max(cloudShadow, air.cloudShadow * intensity + air.stormCloudShadow * kindStorm);
     storm = Math.max(storm, kindStorm);
@@ -128,21 +164,17 @@ export function atmosphereLook(amounts: WeatherAmounts, flash: number): Atmosphe
   const gradeLuminance = grade[0] * LUMA[0] + grade[1] * LUMA[1] + grade[2] * LUMA[2];
   const keep = gradeLuminance < MIN_GRADE_LUMINANCE ? (1 - MIN_GRADE_LUMINANCE) / (1 - gradeLuminance) : 1;
   const lift = FLASH_LIFT * flash;
-  for (let c = 0; c < grade.length; c++) {
-    const dimming = (1 - (grade[c] ?? 1)) * keep;
-    grade[c] = 1 - dimming * (1 - lift);
-  }
-  const hazeAlpha = Math.min(MAX_HAZE_ALPHA, 1 - clear);
   const norm = hazeWeight > 0 ? 1 / hazeWeight : 0;
-  return {
-    visible: strongest > VISIBLE_EPSILON || flash > 0,
-    grade,
-    cloudShadow,
-    vignette: STORM_VIGNETTE * storm,
-    haze: [haze[0] * norm, haze[1] * norm, haze[2] * norm],
-    hazeAlpha,
-    mist: mist * norm,
-    streaks,
-    flash: [FLASH_COLOUR[0] * flash, FLASH_COLOUR[1] * flash, FLASH_COLOUR[2] * flash],
-  };
+  for (const c of CHANNELS) {
+    grade[c] = 1 - (1 - grade[c]) * keep * (1 - lift);
+    haze[c] *= norm;
+    out.flash[c] = FLASH_COLOUR[c] * flash;
+  }
+  out.visible = strongest > VISIBLE_EPSILON || flash > 0;
+  out.cloudShadow = cloudShadow;
+  out.vignette = STORM_VIGNETTE * storm;
+  out.hazeAlpha = Math.min(MAX_HAZE_ALPHA, 1 - clear);
+  out.mist = mist * norm;
+  out.streaks = streaks;
+  return out;
 }

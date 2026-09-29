@@ -1,7 +1,7 @@
 import { type Container, Graphics } from 'pixi.js';
 import { frac } from '../../data/effects/blood.js';
 import { LIGHTNING_FLASH_SECONDS } from '../../data/weather/climate.js';
-import type { LightningStrike, WeatherConditions } from '../../data/weather/types.js';
+import type { LightningStrike } from '../../data/weather/types.js';
 
 /**
  * The visible bolt of a near strike: a channel from above the screen to the strike's ground point, built
@@ -123,9 +123,16 @@ export class LightningBolt {
     parent.addChild(this.graphics);
   }
 
-  update(conditions: WeatherConditions, gameSeconds: number, screenW: number, screenH: number): void {
-    const strike = flashingStrike(conditions.strikes, gameSeconds, BOLT_MAX_DISTANCE);
-    if (strike === null || conditions.flash <= 0) {
+  /** Show the flashing `strike` at `flash` brightness, moved by `shiftX`, `shiftY` px from where it struck. */
+  update(
+    strike: LightningStrike | null,
+    flash: number,
+    screenW: number,
+    screenH: number,
+    shiftX: number,
+    shiftY: number,
+  ): void {
+    if (strike === null || strike.distance > BOLT_MAX_DISTANCE || flash <= 0) {
       this.graphics.visible = false;
       return;
     }
@@ -135,13 +142,10 @@ export class LightningBolt {
     const nearness = 1 - strike.distance / BOLT_MAX_DISTANCE;
     this.graphics.alpha = Math.min(
       1,
-      conditions.flash * BOLT_FLASH_GAIN * (BOLT_FAR_SHARE + (1 - BOLT_FAR_SHARE) * nearness),
+      flash * BOLT_FLASH_GAIN * (BOLT_FAR_SHARE + (1 - BOLT_FAR_SHARE) * nearness),
     );
+    this.graphics.position.set(shiftX, shiftY);
     this.graphics.visible = true;
-  }
-
-  hide(): void {
-    this.graphics.visible = false;
   }
 
   destroy(): void {
@@ -184,17 +188,16 @@ export class LightningBolt {
   }
 }
 
-/** The newest strike within `maxDistance` whose flash is still running. */
+/** The newest strike whose flash is still running. */
 export function flashingStrike(
   strikes: readonly LightningStrike[],
   gameSeconds: number,
-  maxDistance = 1,
 ): LightningStrike | null {
   for (let i = strikes.length - 1; i >= 0; i--) {
     const strike = strikes[i];
     if (strike === undefined) continue;
     const age = gameSeconds - strike.atSeconds;
-    if (age >= 0 && age <= LIGHTNING_FLASH_SECONDS && strike.distance <= maxDistance) return strike;
+    if (age >= 0 && age <= LIGHTNING_FLASH_SECONDS) return strike;
   }
   return null;
 }

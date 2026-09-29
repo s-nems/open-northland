@@ -8,19 +8,13 @@ import type { WeatherKind } from '../../data/weather/types.js';
 
 /**
  * The airborne precipitation shaders: one instanced quad per particle, placed entirely on the GPU from
- * game time, the integrated wind and the camera. Each particle reads the regional amount of its kind
+ * the integrated fall and wind travel and the camera. Each particle reads the regional amount of its kind
  * from the weather field texture at its own screen point and shows only while its rank is under that
  * amount, so rain stops at a region's edge instead of following the screen. Heavy weather reads through
  * motion, depth and gust fronts rather than cover: particles stay faint, and near ones thin out over the
  * middle of the view. All look constants are tuned by eye; the original drew single-pixel dashes and plus
  * signs (see the weather spec).
  */
-
-/** Game seconds and wind displacement reach the shader split into a coarse and a fine part, each wrapped
- *  on its own, so float32 keeps sub-pixel motion however long a game runs. Sway and tumble cycle a whole
- *  number of times per coarse step, so they stay continuous across it. */
-export const PRECIPITATION_TIME_SPLIT_SECONDS = 64;
-export const PRECIPITATION_WIND_SPLIT_PX = 4096;
 
 /** Per-kind look. Speeds in screen px per game second at zoom 1, far (0) to near (1) depth. */
 interface PrecipitationLook {
@@ -107,10 +101,14 @@ const VERTEX_HEAD = `#version 300 es
   uniform vec2 uScreen;
   // Camera pan px, zoom.
   uniform vec3 uCamera;
-  // Game seconds split: coarse (a whole number of splits), fine.
-  uniform vec2 uTime;
-  // Integrated wind px split: coarse xy, fine xy.
+  // Game seconds within the current time split, over the split: the sway phase.
+  uniform float uPhase;
+  // Zoom-scaled fall seconds split: coarse (a whole number of splits), fine.
+  uniform vec2 uFallTravel;
+  // Integrated wind px at zoom 1 split: coarse xy, fine xy.
   uniform vec4 uWindTravel;
+  // Integrated zoom-scaled wind px split: coarse xy, fine xy.
+  uniform vec4 uDriftTravel;
   // Current wind px/s.
   uniform vec2 uWind;
   uniform float uStorm;
@@ -127,7 +125,6 @@ const VERTEX_HEAD = `#version 300 es
 
   const float TAU = 6.28318530718;
   const float MARGIN = ${glslFloat(PARTICLE_WRAP_MARGIN_PX)};
-  const float TIME_SPLIT = ${glslFloat(PRECIPITATION_TIME_SPLIT_SECONDS)};
   const vec2 NODES_PER_WORLD = vec2(${glslFloat(WEATHER_NODES_PER_WORLD_X)}, ${glslFloat(WEATHER_NODES_PER_WORLD_Y)});
   // Speed spread between particles of one depth.
   const float SPEED_JITTER = 0.18;
@@ -148,14 +145,17 @@ const VERTEX_HEAD = `#version 300 es
   // The clear middle is wider than tall by this factor over the screen's own aspect.
   const float CENTRE_WIDEN = 1.4;
 
-  float speedOf(float jitter) {
-    return mix(1.0 - SPEED_JITTER, 1.0 + SPEED_JITTER, jitter) * uDraw.z;
+  // Zoom-1 fall speed factor of one particle.
+  float jitterOf(float draw) {
+    return mix(1.0 - SPEED_JITTER, 1.0 + SPEED_JITTER, draw);
   }
 
-  // Wrapped position of a particle moving at velocity factor 'fallVel' and wind share 'windShare'.
-  vec2 wrapped(vec2 box, vec2 fallVel, float windShare, float parallax) {
-    vec2 travel = mod(fallVel * uTime.x, box) + fallVel * uTime.y
-      + mod(uWindTravel.xy * windShare, box) + uWindTravel.zw * windShare
+  // Wrapped position of a particle with zoom-1 fall speed 'fall' and wind share 'windShare'. The zoom
+  // scale lives in the integrated travel, so a zoom change never jumps a particle.
+  vec2 wrapped(vec2 box, float fall, float windShare, float parallax) {
+    vec2 fallVel = vec2(0.0, fall);
+    vec2 travel = mod(fallVel * uFallTravel.x, box) + fallVel * uFallTravel.y
+      + mod(uDriftTravel.xy * windShare, box) + uDriftTravel.zw * windShare
       + mod(uCamera.xy * parallax, box);
     return mod(aSeedA.xy * box + travel, box) - MARGIN;
   }
@@ -222,10 +222,12 @@ const RAIN_VERTEX = `
   void main(void) {
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
-    float speed = mix(FALL.x, FALL.y, depth) * speedOf(aSeedB.x);
+    float fall = mix(FALL.x, FALL.y, depth) * jitterOf(aSeedB.x);
+    float windBase = WIND_RESPONSE * fall / FALL.y;
+    vec2 centre = wrapped(box, fall, windBase, mix(PARALLAX.x, PARALLAX.y, depth));
+    float speed = fall * uDraw.z;
     vec2 fallVel = vec2(0.0, speed);
-    float windShare = WIND_RESPONSE * speed / FALL.y;
-    vec2 centre = wrapped(box, fallVel, windShare, mix(PARALLAX.x, PARALLAX.y, depth));
+    float windShare = windBase * uDraw.z;
     float gate = densityGate(centre);
     if (gate <= 0.0) { cull(); return; }
     vec2 velocity = fallVel + uWind * windShare + vec2(SLANT_JITTER * speed * (aSeedB.w - 0.5), 0.0);
@@ -286,11 +288,12 @@ const SNOW_VERTEX = `
   void main(void) {
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
-    float speed = mix(FALL.x, FALL.y, depth) * speedOf(aSeedB.x);
-    vec2 fallVel = vec2(0.0, speed);
-    float windShare = WIND_RESPONSE * mix(FAR_WIND, 1.0, depth) * uDraw.z;
-    vec2 centre = wrapped(box, fallVel, windShare, mix(PARALLAX.x, PARALLAX.y, depth));
-    float phase = uTime.y / TIME_SPLIT;
+    float fall = mix(FALL.x, FALL.y, depth) * jitterOf(aSeedB.x);
+    float windBase = WIND_RESPONSE * mix(FAR_WIND, 1.0, depth);
+    vec2 centre = wrapped(box, fall, windBase, mix(PARALLAX.x, PARALLAX.y, depth));
+    vec2 fallVel = vec2(0.0, fall * uDraw.z);
+    float windShare = windBase * uDraw.z;
+    float phase = uPhase;
     float swayCycles = floor(mix(SWAY_CYCLES.x, SWAY_CYCLES.y, aSeedB.z));
     centre.x += SWAY_PX * (0.3 + depth) * uDraw.z * sin(TAU * (swayCycles * phase + aSeedB.y));
     float gate = densityGate(centre);
@@ -391,11 +394,12 @@ const SAND_VERTEX = `
     float depth = aSeedA.z;
     vec2 box = uScreen + 2.0 * MARGIN;
     bool puff = aSeedB.w < PUFF_SHARE;
-    float speed = mix(FALL.x, FALL.y, depth) * speedOf(aSeedB.x);
-    vec2 fallVel = vec2(0.0, speed);
-    float windShare = WIND_RESPONSE * (puff ? PUFF_WIND : mix(0.7, 1.15, depth) * (0.8 + 0.4 * aSeedB.x)) * uDraw.z;
-    vec2 centre = wrapped(box, fallVel, windShare, mix(PARALLAX.x, PARALLAX.y, depth));
-    float phase = uTime.y / TIME_SPLIT;
+    float fall = mix(FALL.x, FALL.y, depth) * jitterOf(aSeedB.x);
+    float windBase = WIND_RESPONSE * (puff ? PUFF_WIND : mix(0.7, 1.15, depth) * (0.8 + 0.4 * aSeedB.x));
+    vec2 centre = wrapped(box, fall, windBase, mix(PARALLAX.x, PARALLAX.y, depth));
+    vec2 fallVel = vec2(0.0, fall * uDraw.z);
+    float windShare = windBase * uDraw.z;
+    float phase = uPhase;
     centre.y += WOBBLE_PX * uDraw.z * sin(TAU * (floor(mix(WOBBLE_CYCLES.x, WOBBLE_CYCLES.y, aSeedB.z)) * phase + aSeedB.y));
     float gate = densityGate(centre);
     if (gate <= 0.0) { cull(); return; }

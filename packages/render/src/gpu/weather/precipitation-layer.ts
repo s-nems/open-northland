@@ -1,17 +1,17 @@
 import { Geometry, Mesh, Shader, UniformGroup } from 'pixi.js';
 import { frac } from '../../data/effects/blood.js';
 import {
+  PRECIPITATION_TIME_SPLIT_SECONDS,
+  PRECIPITATION_WIND_SPLIT_PX,
+  type PrecipitationTravel,
   particleCapacity,
+  splitCoarse,
   WEATHER_FULL_AMOUNT,
   WEATHER_INTENSITY_GAMMA,
 } from '../../data/weather/precipitation.js';
 import { WEATHER_KINDS, type WeatherKind } from '../../data/weather/types.js';
 import type { WeatherFieldTextures } from './field-textures.js';
-import {
-  PRECIPITATION_TIME_SPLIT_SECONDS,
-  PRECIPITATION_WIND_SPLIT_PX,
-  precipitationProgram,
-} from './precipitation-shader.js';
+import { precipitationProgram } from './precipitation-shader.js';
 
 /** Depth draws are skewed towards the far layer: most particles are small and faint, a few big and near. */
 const DEPTH_SKEW = 1.6;
@@ -30,9 +30,8 @@ export interface PrecipitationFrame {
   readonly offsetY: number;
   readonly zoom: number;
   readonly gameSeconds: number;
-  /** Integrated wind in px, carried by the sky across frames. */
-  readonly windTravelX: number;
-  readonly windTravelY: number;
+  /** Carried by the sky across frames. */
+  readonly travel: PrecipitationTravel;
   readonly windX: number;
   readonly windY: number;
   readonly storm: number;
@@ -45,8 +44,10 @@ type PrecipitationUniforms = UniformGroup & {
   readonly uniforms: {
     readonly uScreen: Float32Array;
     readonly uCamera: Float32Array;
-    readonly uTime: Float32Array;
+    uPhase: number;
+    readonly uFallTravel: Float32Array;
     readonly uWindTravel: Float32Array;
+    readonly uDriftTravel: Float32Array;
     readonly uWind: Float32Array;
     uStorm: number;
     uGust: number;
@@ -72,9 +73,14 @@ function seedBuffers(kind: WeatherKind, capacity: number): { a: Float32Array; b:
   return { a, b };
 }
 
-/** Split a value into a coarse whole number of `step`s and the fine rest, for float32 precision. */
-function splitCoarse(value: number, step: number): number {
-  return Math.floor(value / step) * step;
+/** Writes `x` and `y` split on `step` into `out` as coarse x, coarse y, fine x, fine y. */
+function writeSplitPair(out: Float32Array, x: number, y: number, step: number): void {
+  const coarseX = splitCoarse(x, step);
+  const coarseY = splitCoarse(y, step);
+  out[0] = coarseX;
+  out[1] = coarseY;
+  out[2] = x - coarseX;
+  out[3] = y - coarseY;
 }
 
 /**
@@ -97,8 +103,10 @@ export class PrecipitationLayer {
     this.uniforms = new UniformGroup({
       uScreen: { value: new Float32Array(2), type: 'vec2<f32>' },
       uCamera: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
-      uTime: { value: new Float32Array(2), type: 'vec2<f32>' },
+      uPhase: { value: 0, type: 'f32' },
+      uFallTravel: { value: new Float32Array(2), type: 'vec2<f32>' },
       uWindTravel: { value: new Float32Array(4), type: 'vec4<f32>' },
+      uDriftTravel: { value: new Float32Array(4), type: 'vec4<f32>' },
       uWind: { value: new Float32Array(2), type: 'vec2<f32>' },
       uStorm: { value: 0, type: 'f32' },
       uGust: { value: 0, type: 'f32' },
@@ -131,18 +139,30 @@ export class PrecipitationLayer {
     this.ensureCapacity(particleCapacity(this.kind, frame.screenW, frame.screenH));
     const drawn = Math.min(count, this.capacity);
     const u = this.uniforms.uniforms;
-    u.uScreen.set([frame.screenW, frame.screenH]);
-    u.uCamera.set([frame.offsetX, frame.offsetY, frame.zoom]);
-    const coarseTime = splitCoarse(frame.gameSeconds, PRECIPITATION_TIME_SPLIT_SECONDS);
-    u.uTime.set([coarseTime, frame.gameSeconds - coarseTime]);
-    const coarseX = splitCoarse(frame.windTravelX, PRECIPITATION_WIND_SPLIT_PX);
-    const coarseY = splitCoarse(frame.windTravelY, PRECIPITATION_WIND_SPLIT_PX);
-    u.uWindTravel.set([coarseX, coarseY, frame.windTravelX - coarseX, frame.windTravelY - coarseY]);
-    u.uWind.set([frame.windX, frame.windY]);
+    u.uScreen[0] = frame.screenW;
+    u.uScreen[1] = frame.screenH;
+    u.uCamera[0] = frame.offsetX;
+    u.uCamera[1] = frame.offsetY;
+    u.uCamera[2] = frame.zoom;
+    const seconds = frame.gameSeconds;
+    u.uPhase =
+      (seconds - splitCoarse(seconds, PRECIPITATION_TIME_SPLIT_SECONDS)) / PRECIPITATION_TIME_SPLIT_SECONDS;
+    const travel = frame.travel;
+    const coarseFall = splitCoarse(travel.fall, PRECIPITATION_TIME_SPLIT_SECONDS);
+    u.uFallTravel[0] = coarseFall;
+    u.uFallTravel[1] = travel.fall - coarseFall;
+    writeSplitPair(u.uWindTravel, travel.windX, travel.windY, PRECIPITATION_WIND_SPLIT_PX);
+    writeSplitPair(u.uDriftTravel, travel.scaledWindX, travel.scaledWindY, PRECIPITATION_WIND_SPLIT_PX);
+    u.uWind[0] = frame.windX;
+    u.uWind[1] = frame.windY;
     u.uStorm = frame.storm;
     u.uGust = frame.gust;
-    u.uField.set([this.field.nodeSpanX, this.field.nodeSpanY, this.field.mix]);
-    u.uDraw.set([drawn, intensity, frame.sizeScale]);
+    u.uField[0] = this.field.nodeSpanX;
+    u.uField[1] = this.field.nodeSpanY;
+    u.uField[2] = this.field.mix;
+    u.uDraw[0] = drawn;
+    u.uDraw[1] = intensity;
+    u.uDraw[2] = frame.sizeScale;
     this.uniforms.update();
     this.mesh.geometry.instanceCount = drawn;
     this.mesh.visible = true;
@@ -159,7 +179,7 @@ export class PrecipitationLayer {
   }
 
   destroy(): void {
-    this.mesh.geometry.destroy();
+    this.mesh.geometry.destroy(true);
     this.shader.destroy();
     this.mesh.destroy();
   }
@@ -168,7 +188,7 @@ export class PrecipitationLayer {
     if (capacity <= this.capacity) return;
     const old = this.mesh.geometry;
     this.mesh.geometry = this.makeGeometry(capacity);
-    old.destroy();
+    old.destroy(true);
   }
 
   private makeGeometry(capacity: number): Geometry {

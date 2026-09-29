@@ -1,4 +1,5 @@
 import { type Container, Geometry, GlProgram, Mesh, Shader, UniformGroup } from 'pixi.js';
+import type { PrecipitationTravel } from '../../data/weather/precipitation.js';
 import type { AtmosphereLook } from './atmosphere-look.js';
 
 /**
@@ -82,9 +83,11 @@ const GRADE_FRAGMENT = `#version 300 es
   ${NOISE}
   const float CLOUD_SCALE = ${CLOUD_SCALE_PX}.0;
   void main(void) {
-    vec2 world = (vScreen - uCamera.xy) / uCamera.z;
-    float clouds = fbm(world / CLOUD_SCALE + uCloudDrift);
-    float shade = 1.0 - uShade.x * smoothstep(0.42, 0.72, clouds);
+    float shade = 1.0;
+    if (uShade.x > 0.0) {
+      vec2 world = (vScreen - uCamera.xy) / uCamera.z;
+      shade -= uShade.x * smoothstep(0.42, 0.72, fbm(world / CLOUD_SCALE + uCloudDrift));
+    }
     vec2 centred = (vScreen / uScreen - 0.5) * vec2(uScreen.x / uScreen.y, 1.0);
     float vignette = 1.0 - uShade.y * smoothstep(0.35, 1.0, length(centred));
     finalColor = vec4(uGrade * shade * vignette, 1.0);
@@ -112,15 +115,21 @@ const VEIL_FRAGMENT = `#version 300 es
   // Veil alpha posterization steps; the dither between them stays below what reads as a pattern.
   const float STEPS = 64.0;
   void main(void) {
-    vec2 world = (vScreen - uCamera.xy) / uCamera.z;
-    vec2 p = world / MIST_CELL + uDrift.xy;
-    float banks = fbm(p);
-    float wisps = fbm(p * 2.0 + vec2(banks * 1.5, 0.0));
-    float mist = mix(banks, wisps, 0.4);
-    // Streaks only show inside the banks, so they break up instead of banding the screen.
-    float streaks = fbm(world / STREAK_CELL + uDrift.zw) * smoothstep(0.25, 0.7, banks);
-    mist = mix(mist, 0.5 + 1.2 * (streaks - 0.3), uMist.y);
-    float a = uHaze.a * clamp(1.0 - uMist.x + 2.0 * uMist.x * mist, 0.0, 1.0);
+    float a = uHaze.a;
+    // Flat haze (or none) skips the noise: the mist term only reshapes a veil that lies in banks.
+    if (a > 0.0 && uMist.x > 0.0) {
+      vec2 world = (vScreen - uCamera.xy) / uCamera.z;
+      vec2 p = world / MIST_CELL + uDrift.xy;
+      float banks = fbm(p);
+      float wisps = fbm(p * 2.0 + vec2(banks * 1.5, 0.0));
+      float mist = mix(banks, wisps, 0.4);
+      if (uMist.y > 0.0) {
+        // Streaks only show inside the banks, so they break up instead of banding the screen.
+        float streaks = fbm(world / STREAK_CELL + uDrift.zw) * smoothstep(0.25, 0.7, banks);
+        mist = mix(mist, 0.5 + 1.2 * (streaks - 0.3), uMist.y);
+      }
+      a *= clamp(1.0 - uMist.x + 2.0 * uMist.x * mist, 0.0, 1.0);
+    }
     a = clamp(floor(a * STEPS + bayer(vScreen)) / STEPS, 0.0, 1.0);
     vec2 fromStrike = (vScreen - uFlashAt.xy) / uFlashAt.z;
     float lit = FLASH_FLOOR + (1.0 - FLASH_FLOOR) * exp(-dot(fromStrike, fromStrike));
@@ -173,10 +182,7 @@ export interface AtmosphereFrame {
   readonly offsetX: number;
   readonly offsetY: number;
   readonly zoom: number;
-  readonly windTravelX: number;
-  readonly windTravelY: number;
-  readonly windX: number;
-  readonly windY: number;
+  readonly travel: PrecipitationTravel;
   /** Screen fraction of the lightning strike that lights the flash; off screen for a distant one. */
   readonly flashX: number;
   readonly flashY: number;
@@ -188,6 +194,17 @@ const latticeDrift = (travel: number, share: number, cellPx: number): number => 
   const cells = (-travel * share) / cellPx;
   return ((cells % ATMOSPHERE_NOISE_PERIOD) + ATMOSPHERE_NOISE_PERIOD) % ATMOSPHERE_NOISE_PERIOD;
 };
+
+function writeScreenAndCamera(
+  uniforms: { readonly uScreen: Float32Array; readonly uCamera: Float32Array },
+  frame: AtmosphereFrame,
+): void {
+  uniforms.uScreen[0] = frame.screenW;
+  uniforms.uScreen[1] = frame.screenH;
+  uniforms.uCamera[0] = frame.offsetX;
+  uniforms.uCamera[1] = frame.offsetY;
+  uniforms.uCamera[2] = frame.zoom;
+}
 
 export class WeatherAtmosphere {
   readonly grade: Mesh<Geometry, Shader>;
@@ -231,41 +248,36 @@ export class WeatherAtmosphere {
       this.hide();
       return;
     }
-    const { screenW, screenH } = frame;
-    const camera = [frame.offsetX, frame.offsetY, frame.zoom];
+    const { screenW, screenH, travel } = frame;
     const g = this.gradeUniforms.uniforms;
-    g.uScreen.set([screenW, screenH]);
-    g.uCamera.set(camera);
-    g.uCloudDrift.set([
-      latticeDrift(frame.windTravelX, CLOUD_DRIFT_SHARE, CLOUD_SCALE_PX),
-      latticeDrift(frame.windTravelY, CLOUD_DRIFT_SHARE, CLOUD_SCALE_PX),
-    ]);
+    writeScreenAndCamera(g, frame);
+    g.uCloudDrift[0] = latticeDrift(travel.windX, CLOUD_DRIFT_SHARE, CLOUD_SCALE_PX);
+    g.uCloudDrift[1] = latticeDrift(travel.windY, CLOUD_DRIFT_SHARE, CLOUD_SCALE_PX);
     g.uGrade.set(look.grade);
-    g.uShade.set([look.cloudShadow, look.vignette]);
+    g.uShade[0] = look.cloudShadow;
+    g.uShade[1] = look.vignette;
     this.gradeUniforms.update();
-    const shaded = look.cloudShadow > 0 || look.vignette > 0 || look.grade.some((channel) => channel !== 1);
-    this.grade.visible = shaded;
+    const { grade, flash } = look;
+    this.grade.visible =
+      look.cloudShadow > 0 || look.vignette > 0 || grade[0] !== 1 || grade[1] !== 1 || grade[2] !== 1;
     this.grade.scale.set(screenW, screenH);
 
     const v = this.veilUniforms.uniforms;
-    v.uScreen.set([screenW, screenH]);
-    v.uCamera.set(camera);
-    v.uDrift.set([
-      latticeDrift(frame.windTravelX, MIST_DRIFT_SHARE, MIST_SCALE_PX * MIST_STRETCH_X),
-      latticeDrift(frame.windTravelY, MIST_DRIFT_SHARE, MIST_SCALE_PX),
-      latticeDrift(frame.windTravelX, STREAK_DRIFT_SHARE, STREAK_CELL_PX[0]),
-      latticeDrift(frame.windTravelY, STREAK_DRIFT_SHARE, STREAK_CELL_PX[1]),
-    ]);
-    v.uHaze.set([...look.haze, look.hazeAlpha]);
-    v.uMist.set([look.mist, look.streaks]);
+    writeScreenAndCamera(v, frame);
+    v.uDrift[0] = latticeDrift(travel.windX, MIST_DRIFT_SHARE, MIST_SCALE_PX * MIST_STRETCH_X);
+    v.uDrift[1] = latticeDrift(travel.windY, MIST_DRIFT_SHARE, MIST_SCALE_PX);
+    v.uDrift[2] = latticeDrift(travel.windX, STREAK_DRIFT_SHARE, STREAK_CELL_PX[0]);
+    v.uDrift[3] = latticeDrift(travel.windY, STREAK_DRIFT_SHARE, STREAK_CELL_PX[1]);
+    v.uHaze.set(look.haze);
+    v.uHaze[3] = look.hazeAlpha;
+    v.uMist[0] = look.mist;
+    v.uMist[1] = look.streaks;
     v.uFlash.set(look.flash);
-    v.uFlashAt.set([
-      frame.flashX * screenW,
-      frame.flashY * screenH,
-      FLASH_REACH_SHARE * Math.max(screenW, screenH),
-    ]);
+    v.uFlashAt[0] = frame.flashX * screenW;
+    v.uFlashAt[1] = frame.flashY * screenH;
+    v.uFlashAt[2] = FLASH_REACH_SHARE * Math.max(screenW, screenH);
     this.veilUniforms.update();
-    this.veil.visible = look.hazeAlpha > 0 || look.flash.some((channel) => channel > 0);
+    this.veil.visible = look.hazeAlpha > 0 || flash[0] > 0 || flash[1] > 0 || flash[2] > 0;
     this.veil.scale.set(screenW, screenH);
   }
 
@@ -276,7 +288,7 @@ export class WeatherAtmosphere {
 
   destroy(): void {
     for (const mesh of [this.grade, this.veil]) {
-      mesh.geometry.destroy();
+      mesh.geometry.destroy(true);
       mesh.shader?.destroy();
       mesh.destroy();
     }

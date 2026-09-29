@@ -76,7 +76,7 @@ export class WorldRenderer {
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
   private readonly weatherSky = new WeatherSky();
-  private readonly climate = new WeatherClimate();
+  private climate = new WeatherClimate();
   private weatherField: WeatherField | null = null;
   private weatherEnabled = true;
   private weather: WeatherConditions | null = null;
@@ -201,6 +201,11 @@ export class WorldRenderer {
     this.weatherField = field;
     this.weatherGround.setField(field);
     this.weatherSky.setField(field);
+  }
+
+  /** The match seed the wind and lightning draw from; the same on every seat and after a load. */
+  setWeatherSeed(seed: number): void {
+    this.climate = new WeatherClimate(seed);
   }
 
   /** The weather setting: off draws a clear sky over ground without weather. */
@@ -337,10 +342,12 @@ export class WorldRenderer {
     this.terrain.animate(tick + alpha);
     // Game seconds, so a pause freezes the weather with the world.
     const gameSeconds = (tick + alpha) / TICKS_PER_SECOND;
-    const weatherView = { camera, screenW: this.app.screen.width, screenH: this.app.screen.height };
+    const screenW = this.app.screen.width;
+    const screenH = this.app.screen.height;
+    const weatherView = { camera, screenW, screenH, viewport: cameraViewport(camera, screenW, screenH) };
     this.weather = this.climate.step({
       field: this.weatherField,
-      viewport: cameraViewport(camera, weatherView.screenW, weatherView.screenH),
+      viewport: weatherView.viewport,
       gameSeconds,
       enabled: this.weatherEnabled,
     });
