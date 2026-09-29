@@ -133,7 +133,10 @@ export class LightningBolt {
       this.draw(strike, screenW, screenH);
     }
     const nearness = 1 - strike.distance / BOLT_MAX_DISTANCE;
-    this.graphics.alpha = Math.min(1, conditions.flash * BOLT_FLASH_GAIN * (BOLT_FAR_SHARE + (1 - BOLT_FAR_SHARE) * nearness));
+    this.graphics.alpha = Math.min(
+      1,
+      conditions.flash * BOLT_FLASH_GAIN * (BOLT_FAR_SHARE + (1 - BOLT_FAR_SHARE) * nearness),
+    );
     this.graphics.visible = true;
   }
 

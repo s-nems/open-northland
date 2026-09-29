@@ -63,7 +63,7 @@ describe('decor weather cover', () => {
     const sectorsY = 2;
     layer.setWeatherCover(new Uint8Array(sectorsX * sectorsY * 4), sectorsX, sectorsY);
     expect(group.uniforms.uCover).toBe(1);
-    expect([...group.uniforms.uCoverNodeScale]).toEqual([
+    expect(Array.from(group.uniforms.uCoverNodeScale as Float32Array)).toEqual([
       Math.fround(1 / (sectorsX * WEATHER_SECTOR_NODES)),
       Math.fround(1 / (sectorsY * WEATHER_SECTOR_NODES)),
     ]);

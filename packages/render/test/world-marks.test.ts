@@ -2,6 +2,7 @@ import type { Entity, SimEvent } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { NO_WATER } from '../src/data/terrain/index.js';
+import { CALM_WIND_SWAY } from '../src/data/weather/climate.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { WorldMarks, type WorldMarksFrame } from '../src/gpu/world-renderer/world-marks.js';
 import { cameraViewport, makeElevationField } from '../src/index.js';
@@ -47,6 +48,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     constructionSigns: [],
     settlerBubbles: [],
     lifeHearts: [],
+    wind: CALM_WIND_SWAY,
     ...over,
   };
 }
