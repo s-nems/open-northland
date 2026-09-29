@@ -5,6 +5,7 @@ import {
   JobAssignment,
   Owner,
   Settler,
+  setDiplomacyStance,
   setStockAmount,
   Vehicle,
 } from '../../../src/components/index.js';
@@ -295,14 +296,23 @@ function isWaterAt(map: TerrainMap, x: number, y: number): boolean {
 }
 
 describe('build order - the sea route', () => {
+  it('sails for a neutral seat over the sea as for an enemy, never for a friend', () => {
+    const neutral = world(seaMap());
+    setDiplomacyStance(neutral.world, SEAT, ENEMY, 'neutral');
+    expect(seaRoute.rivalOverSea(neutral.world, fleetCtx(neutral), SEAT)).toBe(true);
+    const friend = world(seaMap());
+    setDiplomacyStance(friend.world, SEAT, ENEMY, 'friend');
+    expect(seaRoute.rivalOverSea(friend.world, fleetCtx(friend), SEAT)).toBe(false);
+  });
+
   it('needs a ship only when the nearest enemy headquarters stands on another continent', () => {
     const overSea = world(seaMap());
-    expect(seaRoute.enemyOverSea(overSea.world, fleetCtx(overSea), SEAT)).toBe(true);
+    expect(seaRoute.rivalOverSea(overSea.world, fleetCtx(overSea), SEAT)).toBe(true);
     const bridged = world(seaMap({ bridge: true }));
-    expect(seaRoute.enemyOverSea(bridged.world, fleetCtx(bridged), SEAT)).toBe(false);
+    expect(seaRoute.rivalOverSea(bridged.world, fleetCtx(bridged), SEAT)).toBe(false);
     // Only a tower stands over the sea: no headquarters to sail for.
     const towerOnly = world(seaMap(), [{ buildingType: TOWER_TYPE, ...ENEMY_HOME, owner: ENEMY }], false);
-    expect(seaRoute.enemyOverSea(towerOnly.world, fleetCtx(towerOnly), SEAT)).toBe(false);
+    expect(seaRoute.rivalOverSea(towerOnly.world, fleetCtx(towerOnly), SEAT)).toBe(false);
   });
 
   it('reads each enemy seat’s headquarters, never its other buildings', () => {
@@ -322,7 +332,7 @@ describe('build order - the sea route', () => {
     const read = vi.spyOn(sim.world, 'get');
     try {
       const ctx = fleetCtx(sim);
-      expect(seaRoute.enemyOverSea(sim.world, ctx, SEAT)).toBe(true);
+      expect(seaRoute.rivalOverSea(sim.world, ctx, SEAT)).toBe(true);
       expect(seaRoute.nearestEnemyBuilding(sim.world, ctx, SEAT, { hx: HOME.x, hy: HOME.y })).toMatchObject({
         headquarters: true,
       });
@@ -334,7 +344,7 @@ describe('build order - the sea route', () => {
 
   it('asks the sea question once a decision, however many entries depend on it', () => {
     const sim = world(seaMap());
-    const asked = vi.spyOn(seaRoute, 'enemyOverSea');
+    const asked = vi.spyOn(seaRoute, 'rivalOverSea');
     try {
       const statuses = entryStatuses(sim.world, fleetCtx(sim), SEAT, [
         shipJoinery,
@@ -393,7 +403,7 @@ describe('build order - the shore affinity', () => {
 /** Each top-tier joinery of the seat with its role this decision, ascending id. */
 function rolesOf(sim: Simulation): JoineryRole[] {
   const ctx = fleetCtx(sim);
-  const roleOf = joineryRoles(sim.world, ctx, SEAT, () => seaRoute.enemyOverSea(sim.world, ctx, SEAT));
+  const roleOf = joineryRoles(sim.world, ctx, SEAT, () => seaRoute.rivalOverSea(sim.world, ctx, SEAT));
   return ownedBuildings(sim.world, SEAT)
     .filter((e) => sim.world.get(e, Building).buildingType === JOINERY_03_TYPE)
     .map(roleOf);
@@ -626,7 +636,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
 
   it('asks the sea question once a decision, and puts one crew by the water on ships', () => {
     const { sim } = crewedJoineries(seaMap(), [AWAY, { x: 44, y: 46 }]);
-    const asked = vi.spyOn(seaRoute, 'enemyOverSea');
+    const asked = vi.spyOn(seaRoute, 'rivalOverSea');
     try {
       expect([...tuned(sim).values()]).toEqual([all(SHIP_GOOD), all(CATAPULT_GOOD)]);
       expect(asked).toHaveBeenCalledTimes(1);

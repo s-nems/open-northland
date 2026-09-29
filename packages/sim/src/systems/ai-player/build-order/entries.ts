@@ -23,8 +23,8 @@ export type BuildOrderEntry =
    *  none of any one of them, like a collector entry. `unlessWithin` skips the entry while every one of
    *  the seat's named buildings (at that tier or above) has one of the buildings the entry counts within
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
-   *  then pulls the spot toward the first one lacking. `onlyWhen: 'enemyOverSea'` skips the entry while
-   *  the nearest enemy headquarters can be reached by land. `belowTier` stops the count below that tier of
+   *  then pulls the spot toward the first one lacking. `onlyWhen: 'rivalOverSea'` skips the entry while
+   *  the nearest headquarters of a seat not held as friend can be reached by land. `belowTier` stops the count below that tier of
    *  the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
    *  joineries holding that role (`../joinery-role.ts`). */
   | {
@@ -35,7 +35,7 @@ export type BuildOrderEntry =
       readonly ground?: 'plantable';
       readonly needsResources?: readonly string[];
       readonly unlessWithin?: { readonly building: string; readonly radius: number };
-      readonly onlyWhen?: 'enemyOverSea';
+      readonly onlyWhen?: 'rivalOverSea';
       readonly belowTier?: string;
       readonly role?: JoineryRole;
     }
@@ -215,13 +215,13 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'upgrade', building: 'home_level_03', count: 3 },
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
-  // Where only a ship reaches the nearest enemy, the joinery that builds it goes up by the water early.
+  // Where only a ship reaches the nearest rival, the joinery that builds it goes up by the water early.
   {
     kind: 'place',
     building: 'work_joinery_03',
     count: 1,
     near: [{ kind: 'shore' }],
-    onlyWhen: 'enemyOverSea',
+    onlyWhen: 'rivalOverSea',
     role: 'ship',
   },
   { kind: 'towerCoverage', building: 'tower_01' },

@@ -18,7 +18,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId } from '../content-lookup.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID } from '../joinery-role.js';
-import { enemyOverSea } from '../sea-route.js';
+import { rivalOverSea } from '../sea-route.js';
 import { ownedSettlers } from '../seat-roster.js';
 import type { SeatSupply, SupplyLine } from './supply.js';
 
@@ -252,7 +252,7 @@ export function tuneCraftCounters(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
-  const roleOf = joineryRoles(world, ctx, player, () => enemyOverSea(world, ctx, player));
+  const roleOf = joineryRoles(world, ctx, player, () => rivalOverSea(world, ctx, player));
   // Restricted plan -> its operators across the seat, gathered first because a seat's share depends on
   // how many men the plan employs. Insertion follows the canonical settler walk, so the seats and the
   // emitted command order are both deterministic.

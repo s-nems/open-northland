@@ -11,7 +11,7 @@ import { buildingTypeByContentId, countedTiers, goodTypeByContentId } from '../c
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource } from '../live-resources.js';
 import { anchorNodeOf } from '../node-geometry.js';
-import { enemyOverSea } from '../sea-route.js';
+import { rivalOverSea } from '../sea-route.js';
 import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import { type BuildOrderEntry, isLaneEntry } from './entries.js';
 import { unservedAnchor } from './placement.js';
@@ -35,21 +35,21 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
 }
 
 /** One decision's answers, so the entries that ask the same question work it out once: whether the map
- *  holds a live resource, per good type, whether the enemy lies over the sea, and the top-tier joineries'
+ *  holds a live resource, per good type, whether a rival lies over the sea, and the top-tier joineries'
  *  roles. */
 export interface DecisionMemo {
   readonly live: Map<number, boolean>;
-  enemyOverSea: boolean | undefined;
+  rivalOverSea: boolean | undefined;
   roleOf: ((joinery: Entity) => JoineryRole) | undefined;
 }
 
 export function decisionMemo(): DecisionMemo {
-  return { live: new Map(), enemyOverSea: undefined, roleOf: undefined };
+  return { live: new Map(), rivalOverSea: undefined, roleOf: undefined };
 }
 
 function memoOverSea(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
-  memo.enemyOverSea ??= enemyOverSea(world, ctx, player);
-  return memo.enemyOverSea;
+  memo.rivalOverSea ??= rivalOverSea(world, ctx, player);
+  return memo.rivalOverSea;
 }
 
 function memoRoles(
@@ -91,7 +91,7 @@ export function entryStatus(
         if (matches && (roleOf === undefined || roleOf(e) === entry.role)) have++;
       }
       if (have >= entry.count) return 'satisfied';
-      if (entry.onlyWhen === 'enemyOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
+      if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
       if (
         entry.unlessWithin !== undefined &&
         unservedAnchor(world, index, owned, counted, entry.unlessWithin) === null
