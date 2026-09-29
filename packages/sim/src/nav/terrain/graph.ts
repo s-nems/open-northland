@@ -5,7 +5,8 @@ import type { LandscapeProps } from './landscape-props.js';
 import type { LandscapeMapInput } from './landscapes.js';
 import type { Traversal } from './lattice.js';
 import type { NodeId } from './node-id.js';
-import { NO_ROAD_DISTANCE, RoadDistanceField } from './road-distance.js';
+import { NO_NEAREST_ROAD, NO_ROAD_DISTANCE, RoadDistanceField } from './road-distance.js';
+import { NO_ROAD_NETWORK, RoadNetworks } from './road-networks.js';
 import { StepBuffer } from './step-buffer.js';
 
 /** The two mover classes in the order their continents are labelled. */
@@ -57,6 +58,8 @@ export class TerrainGraph extends TerrainEdges {
   private roadRevision = UNSYNCED_ROAD_REVISION;
   /** Per-node lattice distance to the nearest road and that road, allocated with the first road. */
   private roadDistances: RoadDistanceField | undefined;
+  /** The connected road networks, allocated with the first road. */
+  private roadNetworks: RoadNetworks | undefined;
   /** Per-node land route weight: the node's resistance, at least {@link MIN_ROUTE_RESISTANCE}, as a
    *  multiple of ONE. */
   private readonly routeWeights: Fixed[];
@@ -124,6 +127,22 @@ export class TerrainGraph extends TerrainEdges {
     return (this.roadDistances?.distances[node] ?? NO_ROAD_DISTANCE) as Fixed;
   }
 
+  /** The label of the connected road network holding the road nearest `node`, or
+   *  {@link NO_ROAD_NETWORK} past every road's reach; for a node the caller has bounds-checked. Two
+   *  labels read before the next road change are equal exactly when their roads connect. */
+  roadNetworkNear(node: NodeId): number {
+    const road = this.roadDistances?.nearest[node] ?? NO_NEAREST_ROAD;
+    if (road === NO_NEAREST_ROAD || this.roadNetworks === undefined) return NO_ROAD_NETWORK;
+    return this.roadNetworks.networkOf(road);
+  }
+
+  /** The lattice distance from `(x, y)` to the bounding box of road network `network`, a label
+   *  {@link roadNetworkNear} returned since the last road change. */
+  roadNetworkGap(network: number, x: number, y: number): Fixed {
+    if (this.roadNetworks === undefined || network === NO_ROAD_NETWORK) return NO_ROAD_DISTANCE;
+    return this.roadNetworks.gapTo(network, x, y);
+  }
+
   /**
    * The factor a route step onto `node` is weighed by, for a node the caller has bounds-checked. Original
    * behavior: the search charges each step the resistance of the node it leaves, so walkers keep to roads
@@ -153,6 +172,9 @@ export class TerrainGraph extends TerrainEdges {
     if (this.roadNodes.length > 0 || this.roadDistances !== undefined) {
       this.roadDistances ??= new RoadDistanceField(this.width, this.height);
       this.roadDistances.rebuild(this.roadNodes);
+      this.roadNetworks ??= new RoadNetworks(this.width, this.height);
+      this.roadNetworks.clear();
+      for (const node of this.roadNodes) this.roadNetworks.add(node);
     }
     this.roadRevision = revision;
   }
@@ -164,11 +186,14 @@ export class TerrainGraph extends TerrainEdges {
    * then rebuilds through {@link syncRoads}.
    */
   extendRoads(from: number, revision: number, added: Iterable<NodeId>): boolean {
-    if (from !== this.roadRevision || this.roadDistances === undefined) return false;
+    if (from !== this.roadRevision || this.roadDistances === undefined || this.roadNetworks === undefined) {
+      return false;
+    }
     for (const node of added) {
       if (this.roads[node] === 1) continue;
       this.setRoad(node, true);
       this.roadNodes.push(node);
+      this.roadNetworks.add(node);
     }
     this.roadDistances.lower(added, this.roadNodes);
     this.roadRevision = revision;

@@ -9,7 +9,8 @@ import {
   type TerrainMap,
 } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
-import { fillRoadDistances, NO_ROAD_DISTANCE } from '../../src/nav/terrain/road-distance.js';
+import { fillRoadDistances, NO_NEAREST_ROAD, NO_ROAD_DISTANCE } from '../../src/nav/terrain/road-distance.js';
+import { NO_ROAD_NETWORK } from '../../src/nav/terrain/road-networks.js';
 import { isRoad, layRoad, roadRevision } from '../../src/systems/roads/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap, roughNodeMap, waterColumnMap } from '../fixtures/terrain.js';
@@ -27,6 +28,9 @@ const ROAD_ROW = 6;
 /** A map wide enough that a road at {@link FAR_ROAD_HX} lies farther from every node of the route than its goal. */
 const FAR_MAP_WIDTH = 160;
 const FAR_ROAD_HX = 140;
+/** A street along the start's row, and a goal on that row far enough east that no street node helps. */
+const NEAR_STREET_LENGTH = 12;
+const FAR_GOAL_HX = 120;
 /** The random laying run: a water-split map in cells, its batch count and the largest batch, a
  *  construction unit's node and six neighbours plus one. */
 const RANDOM_MAP_CELLS = { width: 17, height: 13, waterColumn: 6 };
@@ -116,6 +120,18 @@ describe('road network', () => {
     expect(stats.explored).toBe(path?.length);
   });
 
+  it('keeps the grass-weighted heuristic beside a road network the goal lies far from', () => {
+    const { sim, terrain } = mappedSim(grassNodeMap(FAR_MAP_WIDTH, 14));
+    // A street through the start that runs back west, away from a goal far to the east.
+    const street = Array.from({ length: NEAR_STREET_LENGTH }, (_, i) => terrain.nodeAt(i, FROM.hy - 1));
+    layRoad(sim.world, terrain, street);
+    const stats: SearchStats = { explored: 0 };
+    const goal = terrain.nodeAt(FAR_GOAL_HX, FROM.hy);
+    const path = findPath(terrain, terrain.nodeAt(NEAR_STREET_LENGTH - 1, FROM.hy), goal, undefined, stats);
+    expect(path?.every((node) => terrain.yOf(node) === FROM.hy)).toBe(true);
+    expect(stats.explored).toBe(path?.length);
+  });
+
   it('routes round snow on the straight line: every ground weighs by its resistance', () => {
     const snowBand = (hx: number, hy: number) => (hx >= 8 && hx <= 12 && hy >= 8 && hy <= 12 ? SNOW : LAND);
     const { terrain } = mappedSim(roughNodeMap(24, 20, snowBand));
@@ -144,7 +160,7 @@ describe('road network', () => {
     expect(terrain.roadDistanceAt(offRoad)).toBe(live.terrain.roadDistanceAt(offRoad));
   });
 
-  it('lowers the distances as roads are laid to exactly what a full rebuild computes, whatever the batching', () => {
+  it('lowers the distances and road networks as roads are laid to exactly what a full rebuild computes, whatever the batching', () => {
     const { width, height, waterColumn } = RANDOM_MAP_CELLS;
     const { sim, terrain } = mappedSim(waterColumnMap(width, height, waterColumn));
     const rng = new Rng(7);
@@ -168,6 +184,10 @@ describe('road network', () => {
       fillRoadDistances(rebuilt, rebuiltNearest, terrain.width, terrain.height, laid);
       for (let node = 0 as NodeId; node < terrain.nodeCount; node++) {
         expect(terrain.roadDistanceAt(node)).toBe(rebuilt[node]);
+        const nearest = rebuiltNearest[node] ?? NO_NEAREST_ROAD;
+        const network = terrain.roadNetworkNear(node);
+        if (nearest === NO_NEAREST_ROAD) expect(network).toBe(NO_ROAD_NETWORK);
+        else expect(network).toBe(terrain.roadNetworkNear(nearest as NodeId));
       }
     }
     // Only the first road rebuilds the lanes; every later batch is extended in place.
@@ -179,6 +199,7 @@ describe('road network', () => {
     if (restored === undefined) throw new Error('restored sim has no terrain');
     for (let node = 0 as NodeId; node < terrain.nodeCount; node++) {
       expect(restored.roadDistanceAt(node)).toBe(rebuilt[node]);
+      expect(restored.roadNetworkNear(node)).toBe(terrain.roadNetworkNear(node));
     }
   });
 });

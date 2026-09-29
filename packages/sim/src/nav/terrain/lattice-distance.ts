@@ -20,8 +20,11 @@ export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixe
  * coordinates are a loop invariant of an A* search.
  */
 export function latticeDistanceTo(g: TerrainGraph, bx: number, by: number, a: NodeId): Fixed {
-  const ax = Math.abs(bx - g.xOf(a));
-  const ay = Math.abs(by - g.yOf(a));
+  return latticeOffsetDistance(Math.abs(bx - g.xOf(a)), Math.abs(by - g.yOf(a)));
+}
+
+/** {@link nodeLatticeDistance} of two nodes `ax` half-columns and `ay` half-rows apart. */
+export function latticeOffsetDistance(ax: number, ay: number): Fixed {
   if (2 * ax <= ay) {
     // Vertical dominates: every half-column crosses diagonally, the leftover rows are half-row steps.
     return fx.add(fx.mul(fx.fromInt(ax), DIAGONAL_STEP), fx.mul(fx.fromInt(ay - 2 * ax), HALF_ROW));

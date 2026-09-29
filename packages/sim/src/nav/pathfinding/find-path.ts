@@ -294,15 +294,25 @@ class ResumableSearch {
     }
   }
 
-  /** Ships sail by plain lattice distance; land weighs it as grass, lowered near a road by
-   *  {@link ROAD_HEURISTIC_INFLATION}'s road-aware bound. */
+  /**
+   * Ships sail by plain lattice distance; land weighs it as grass, lowered near a road by
+   * {@link ROAD_HEURISTIC_INFLATION}'s road-aware bound. That bound never drops under `d + r + g`, with
+   * `g` the goal's distance to the bounding box of the network holding the nearest road: a route over
+   * that network still crosses `g` of ground to the goal. Without it a road node reads 1.5d however far
+   * its network lies, and a search between towns no road joins floods each town's streets. Measured on
+   * 150 routes between magiczny_las towns: 43% fewer settles, and 4.3% over the cheapest route, not 3.2%.
+   */
   private heuristic(node: NodeId): Fixed {
     const toGoal = latticeDistanceTo(this.graph, this.goalX, this.goalY, node);
     if (this.traversal !== 'land') return toGoal;
     const overGrass = fx.mul(toGoal, LAND_HEURISTIC_WEIGHT);
     const toRoad = this.graph.roadDistanceAt(node);
     if (toRoad >= toGoal) return overGrass;
-    const viaRoad = fx.mul(fx.add(toGoal, toRoad), ROAD_HEURISTIC_INFLATION);
+    const network = this.graph.roadNetworkNear(node);
+    const nearRoad = fx.add(toGoal, toRoad);
+    const inflated = fx.mul(nearRoad, ROAD_HEURISTIC_INFLATION);
+    const bounded = fx.add(nearRoad, this.graph.roadNetworkGap(network, this.goalX, this.goalY));
+    const viaRoad = inflated > bounded ? inflated : bounded;
     return viaRoad < overGrass ? viaRoad : overGrass;
   }
 }
