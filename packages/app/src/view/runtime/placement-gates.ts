@@ -139,9 +139,15 @@ export function createPlacementGates(
     gridProbe(`p${gfxIndex}`, () =>
       nodeGridProbe(grids, `p${gfxIndex}`, (area) => host.palisadeProbe(gfxIndex, area), blockerVersion),
     );
-  // Asked every tick while read: no host version names the road sites and the road network.
   const road = (): NodeGridProbe =>
-    gridProbe('r', () => nodeGridProbe(grids, 'r', (area) => host.roadSiteProbe(area), blockerVersion, true));
+    gridProbe('r', () =>
+      nodeGridProbe(
+        grids,
+        'r',
+        (area) => host.roadSiteProbe(area),
+        () => host.roadSitePlacementVersion(),
+      ),
+    );
   /** Brings `probe`'s areas within `reach` nodes of `anchor` up to now. */
   const areasReady = (
     probe: NodeGridProbe,

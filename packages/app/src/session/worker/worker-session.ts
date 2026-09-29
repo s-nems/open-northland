@@ -458,6 +458,7 @@ class WorkerClient<E> {
       placementBlockerVersion: () => facts().placementBlockerVersion,
       signpostBlockerVersion: () => facts().signpostBlockerVersion,
       palisadeLayoutVersion: () => facts().palisadeLayoutVersion,
+      roadSitePlacementVersion: () => facts().roadSitePlacementVersion,
       diplomacyStance: (from, to) => {
         const at = seatIndex(from, to);
         return at === null ? UNSET_STANCE : (facts().stances[at] ?? UNSET_STANCE);

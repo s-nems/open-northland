@@ -114,6 +114,7 @@ import {
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { type WorkStatus, workStatus } from './systems/readviews/work-status.js';
 import { syncRoadLane } from './systems/roads/index.js';
+import { roadSitePlacementVersion } from './systems/roads/sites.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import { type SignpostProbe, signpostNetworkRevision } from './systems/signposts/index.js';
 import {
@@ -470,6 +471,11 @@ export class Simulation {
   /** Where a road may be ordered over every node of `area`, as plain data; null for a mapless sim. */
   roadSiteAnswer(area: NodeArea): NodeGridAnswer | null {
     return roadSiteAnswerFor(this.world, this.content, this.terrain, area);
+  }
+
+  /** Changes whenever {@link roadSiteAnswer} may answer differently. */
+  roadSitePlacementVersion(): string {
+    return roadSitePlacementVersion(this.world);
   }
 
   /** The nodes {@link ownPalisadeNodes} accepts, as plain data. */

@@ -183,6 +183,21 @@ describe('placement gates - the ground an enemy army contests', () => {
     expect(probe).toHaveBeenCalledTimes(4);
   });
 
+  it('asks the road answer again only when the road site version moves, not per tick', async () => {
+    const { sim, gates } = openField();
+    const probe = vi.spyOn(sim, 'roadSiteAnswer');
+    expect(gates.canPlaceRoadAt(NEAR.hx, NEAR.hy)).toBe(false);
+    await landed();
+    expect(gates.canPlaceRoadAt(NEAR.hx, NEAR.hy)).toBe(true);
+    sim.step();
+    gates.canPlaceRoadAt(NEAR.hx, NEAR.hy);
+    expect(probe).toHaveBeenCalledTimes(1);
+
+    vi.spyOn(sim, 'roadSitePlacementVersion').mockReturnValue('next');
+    gates.canPlaceRoadAt(NEAR.hx, NEAR.hy);
+    expect(probe).toHaveBeenCalledTimes(2);
+  });
+
   it("tests the built nodes of the owner a line is laid for, not the seat's", async () => {
     const { sim, gates } = openField();
     const wallNode = 2 * NODE_SET_STRIDE + 4;

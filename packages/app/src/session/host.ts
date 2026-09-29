@@ -110,6 +110,8 @@ export interface SessionHost {
   signpostBlockerVersion(): string;
   /** Changes when a gate answer may, movers aside. */
   palisadeLayoutVersion(): string;
+  /** Changes when a road site answer may. */
+  roadSitePlacementVersion(): string;
   /** The directed stance `from` holds toward `to`; a pair never set reads `enemy`. */
   diplomacyStance(from: number, to: number): DiplomacyState;
   hasMetPlayer(viewer: number, other: number): boolean;

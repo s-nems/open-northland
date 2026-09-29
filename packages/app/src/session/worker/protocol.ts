@@ -132,6 +132,7 @@ export interface WorldFacts {
   readonly placementBlockerVersion: string;
   readonly signpostBlockerVersion: string;
   readonly palisadeLayoutVersion: string;
+  readonly roadSitePlacementVersion: string;
   /** `MAX_PLAYERS` rows of `MAX_PLAYERS` directed stances, row `from`. */
   readonly stances: readonly DiplomacyState[];
   /** The same layout, row `viewer`. */

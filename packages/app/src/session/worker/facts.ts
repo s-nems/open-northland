@@ -21,6 +21,7 @@ export function readWorldFacts(sim: Simulation): WorldFacts {
     placementBlockerVersion: sim.placementBlockerVersion(),
     signpostBlockerVersion: sim.signpostBlockerVersion(),
     palisadeLayoutVersion: sim.palisadeLayoutVersion(),
+    roadSitePlacementVersion: sim.roadSitePlacementVersion(),
     stances,
     met,
     assistants: SEATS.map(
@@ -48,6 +49,8 @@ export function changedFacts(last: WorldFacts, next: WorldFacts): Partial<WorldF
     changed.signpostBlockerVersion = next.signpostBlockerVersion;
   if (next.palisadeLayoutVersion !== last.palisadeLayoutVersion)
     changed.palisadeLayoutVersion = next.palisadeLayoutVersion;
+  if (next.roadSitePlacementVersion !== last.roadSitePlacementVersion)
+    changed.roadSitePlacementVersion = next.roadSitePlacementVersion;
   if (!samePlainData(next.stances, last.stances)) changed.stances = next.stances;
   if (!samePlainData(next.met, last.met)) changed.met = next.met;
   if (!samePlainData(next.assistants, last.assistants)) changed.assistants = next.assistants;

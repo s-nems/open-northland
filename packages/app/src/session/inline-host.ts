@@ -48,6 +48,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     placementBlockerVersion: () => sim.placementBlockerVersion(),
     signpostBlockerVersion: () => sim.signpostBlockerVersion(),
     palisadeLayoutVersion: () => sim.palisadeLayoutVersion(),
+    roadSitePlacementVersion: () => sim.roadSitePlacementVersion(),
     diplomacyStance: (from, to) => sim.diplomacyStance(from, to),
     hasMetPlayer: (viewer, other) => sim.hasMetPlayer(viewer, other),
     assistantCounters: (player) => sim.assistantCounters(player),
