@@ -135,7 +135,7 @@ export function loiterCell(
  * tick, or null when nothing free is reachable within the search cap. Blocked cells are neither entered nor
  * traversed, mirroring the pathfinder that will carry the move out.
  */
-function nearestFreeCell(terrain: TerrainGraph, from: NodeId, spacing: PlannerSpacing): NodeId | null {
+export function nearestFreeCell(terrain: TerrainGraph, from: NodeId, spacing: PlannerSpacing): NodeId | null {
   const blocked = spacing.blockedCells();
   return ringSearch(terrain, from, STAND_SEARCH_CAP, {
     traverse: (n) => !blocked.has(n),

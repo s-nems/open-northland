@@ -11,7 +11,7 @@ function stamp(world: World, ctx: SystemContext, e: Entity, cutOff: boolean): vo
   if (!world.has(e, Person)) return;
   const lost = world.tryGet(e, LostWay);
   if (lost === undefined) {
-    world.add(e, LostWay, { cutOff });
+    world.add(e, LostWay, { cutOff, since: ctx.tick });
     announceLostWay(world, ctx, e);
   } else if (cutOff && !lost.cutOff) {
     world.mut(e, LostWay).cutOff = true;

@@ -1,6 +1,9 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  AI_MODULE_IDS,
+  type AiModuleId,
+  AiPlayer,
   addPerson,
   Building,
   CARRIER_WALK_RANGE_NODES,
@@ -17,6 +20,7 @@ import {
   WALK_RANGE_NODES,
 } from '../../src/components/index.js';
 import { fx, ONE } from '../../src/core/fixed.js';
+import { TICKS_PER_SECOND } from '../../src/core/loop.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { hexDistanceBetween, Simulation } from '../../src/index.js';
 import {
@@ -26,6 +30,7 @@ import {
   signpostNetwork,
 } from '../../src/systems/index.js';
 import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
+import { LOST_GUIDE_DELAY_TICKS } from '../../src/systems/settlers/drives/lost-guide.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
 import { makeWoodcutter, placeFellableTree, VIKING } from '../settlers/gatherer-flag/support.js';
@@ -362,6 +367,80 @@ describe('the cut-off mark', () => {
     const sim = confinedSim();
     ownedUnit(sim, 60, 4, WOODCUTTER);
     expect(cutOffWithinOneCadence(sim)).toEqual([]);
+  });
+});
+
+describe('a computer seat leads its lost settlers back', () => {
+  const NO_MODULES = Object.fromEntries(AI_MODULE_IDS.map((id) => [id, false])) as Record<
+    AiModuleId,
+    boolean
+  >;
+  const LEAD_TICKS = LOST_GUIDE_DELAY_TICKS + 2 * CUT_OFF_CHECK_TICKS;
+  const WALK_TICKS = 120 * TICKS_PER_SECOND;
+
+  function building(sim: Simulation, x: number, y: number): void {
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+    sim.world.add(e, Building, { buildingType: 1, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(e, Owner, { player: P0 });
+  }
+
+  function computerSeat(sim: Simulation): void {
+    sim.world.add(sim.world.create(), AiPlayer, { player: P0, modules: NO_MODULES, scripted: false });
+  }
+
+  function tileX(sim: Simulation, e: Entity): number {
+    return fx.toInt(sim.world.get(e, Position).x);
+  }
+
+  function run(sim: Simulation, ticks: number): void {
+    for (let i = 0; i < ticks; i++) sim.step();
+  }
+
+  it('walks a stranded worker to the nearest post whose network reaches a door, and the mark lifts', () => {
+    const sim = confinedSim();
+    computerSeat(sim);
+    building(sim, 2, 2);
+    stampPost(sim, 12, 2);
+    stampPost(sim, 30, 2);
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
+    run(sim, LEAD_TICKS);
+    expect(sim.world.has(stranded, MoveGoal) || tileX(sim, stranded) < 60).toBe(true);
+    run(sim, WALK_TICKS);
+    expect(tileX(sim, stranded)).toBeLessThanOrEqual(31);
+    expect(sim.world.has(stranded, LostWay)).toBe(false);
+  });
+
+  it('passes over a lone post that reaches no door', () => {
+    const sim = confinedSim();
+    computerSeat(sim);
+    building(sim, 2, 2);
+    stampPost(sim, 30, 2);
+    stampPost(sim, 70, 2); // nearer, but linked to nothing
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
+    run(sim, LEAD_TICKS + WALK_TICKS);
+    expect(tileX(sim, stranded)).toBeLessThanOrEqual(31);
+  });
+
+  it('with no post at all, heads for the nearest door', () => {
+    const sim = confinedSim();
+    computerSeat(sim);
+    building(sim, 2, 2);
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
+    run(sim, LEAD_TICKS + WALK_TICKS);
+    expect(tileX(sim, stranded)).toBeLessThan(10);
+    expect(sim.world.has(stranded, LostWay)).toBe(false);
+  });
+
+  it("leaves a human seat's lost settler for the player to lead", () => {
+    const sim = confinedSim();
+    building(sim, 2, 2);
+    stampPost(sim, 12, 2);
+    stampPost(sim, 30, 2);
+    const stranded = ownedUnit(sim, 60, 4, WOODCUTTER);
+    run(sim, LEAD_TICKS + WALK_TICKS);
+    expect(tileX(sim, stranded)).toBe(60);
+    expect(sim.world.get(stranded, LostWay).cutOff).toBe(true);
   });
 });
 

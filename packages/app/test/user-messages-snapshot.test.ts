@@ -91,7 +91,7 @@ function components(a: Actor): Record<string, unknown> {
     ...(kind === 'child' ? { Age: { ticks: 40 } } : {}),
     ...(a.workplace === undefined ? {} : { JobAssignment: { workplace: a.workplace } }),
     ...(a.workFlag === undefined ? {} : { WorkFlag: { flag: a.workFlag } }),
-    ...(a.lost === true ? { LostWay: { cutOff: false } } : {}),
+    ...(a.lost === true ? { LostWay: { cutOff: false, since: 0 } } : {}),
     ...(a.tradeStops === undefined
       ? {}
       : { TradeRoute: { stops: Array.from({ length: a.tradeStops }, (_, house) => ({ house })) } }),

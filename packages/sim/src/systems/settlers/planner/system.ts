@@ -16,6 +16,7 @@ import { navigationLimitFor } from '../../signposts/index.js';
 import { endChat } from '../../social/index.js';
 import { cutOffCheckDue, reconcileCutOff } from '../drives/cut-off.js';
 import { planAdult, planChild, planShelterRung } from '../drives/ladder.js';
+import { guideLostSettler } from '../drives/lost-guide.js';
 import { clearLostWay } from '../lost-way.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { idleBeatOfTick, waitsIdle, wakeIdle } from './idle-replan.js';
@@ -69,6 +70,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         if (world.get(e, IdleStand).standing && cutOffCheckDue(ctx)) {
           const limit = navigationLimitFor(world, ctx.content, terrain, e);
           reconcileCutOff(world, ctx, e, settler.jobType, limit, pass.seatDoors);
+          guideLostSettler(world, ctx, terrain, e, limit, pass.seatDoors, pass.spacing);
         }
         continue;
       }

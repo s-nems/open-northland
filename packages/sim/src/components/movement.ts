@@ -104,9 +104,10 @@ export const Stranded = defineComponent<{ retryAt: number }>('Stranded', 'moveme
 /**
  * A settler standing lost: an ordered walk, a chase or its work found no way within its signpost reach.
  * Lifted once a drive or an obeyed order gives the settler something to do. `cutOff` says the idle tail
- * found no door of its seat in reach; that tail lifts the marker once a door is back in reach.
+ * found no door of its seat in reach; that tail lifts the marker once a door is back in reach. `since` is
+ * the tick the episode began.
  */
-export const LostWay = defineComponent<{ cutOff: boolean }>('LostWay', 'movement');
+export const LostWay = defineComponent<{ cutOff: boolean; since: number }>('LostWay', 'movement');
 
 /** One remembered route failure: the goal node, and the tick it stops being excluded. */
 export interface UnreachableGoal {
