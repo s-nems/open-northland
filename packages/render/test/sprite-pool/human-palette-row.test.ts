@@ -70,12 +70,12 @@ describe('a settler palette identity', () => {
 
   it('gives a soldier wearing no armor tier 0 and a civilian wearing none no armor recipe', () => {
     const out = createHumanPaletteIdentity(look);
-    const bare = { ...item, armorGood: undefined };
+    const { armorGood: _armor, jobType: _job, ...bare } = item;
     humanPaletteIdentity(sheetWith(plain), { ...bare, jobType: SOLDIER_JOB }, out);
     expect(out.armorTier).toBe(UNARMORED_TIER);
     humanPaletteIdentity(sheetWith(plain), { ...bare, jobType: SOLDIER_JOB, armorGood: CHAIN_MAIL }, out);
     expect(out.armorTier).toBe(CHAIN_TIER);
-    humanPaletteIdentity(sheetWith(plain), { ...bare, jobType: undefined }, out);
+    humanPaletteIdentity(sheetWith(plain), bare, out);
     expect(out.armorTier).toBeUndefined();
   });
 
