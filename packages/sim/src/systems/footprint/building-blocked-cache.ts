@@ -1,11 +1,11 @@
-import { type ContentSet, footprintCellDx } from '@open-northland/data';
+import type { BuildingFootprint, ContentSet } from '@open-northland/data';
 import { Building, Palisade, PalisadeBlocking, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CountedCells } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
-import { buildingFootprintOf, countsMatchCells, sameCells, translatedCells } from './geometry.js';
+import { buildingFootprintOf, countsMatchCells, doorNodeOf, sameCells, translatedCells } from './geometry.js';
 import { standingWallCells, wallJointSeals } from './wall-joints.js';
 
 // The memoized per-world cache of cells standing buildings make unwalkable, plus its coherence verifier -
@@ -120,6 +120,27 @@ function exteriorTest(
   };
 }
 
+/** A building's walk body: its footprint `blocked` cells on the map with the door and the passage from it
+ *  to exterior ground carved out. `passage` starts at the door and is empty without one. */
+export interface WalkBody {
+  readonly body: Set<NodeId>;
+  readonly door: NodeId | null;
+  readonly passage: readonly NodeId[];
+}
+
+export function walkBodyOf(
+  terrain: TerrainGraph,
+  footprint: BuildingFootprint,
+  anchorX: number,
+  anchorY: number,
+): WalkBody {
+  const body = new Set(translatedCells(terrain, footprint.blocked, anchorX, anchorY));
+  const door = doorNodeOf(terrain, footprint, anchorX, anchorY);
+  const passage = door === null ? [] : doorPassage(terrain, body, door);
+  for (const cell of passage) body.delete(cell);
+  return { body, door, passage };
+}
+
 interface BuildingCells {
   /** The building bodies, doors and their passages carved out. */
   readonly blocked: Set<NodeId>;
@@ -143,20 +164,10 @@ function deriveBuildingCells(
     const footprint = buildingFootprintOf(content, b.buildingType, b.tribe);
     if (footprint === undefined || footprint.blocked.length === 0) continue;
     const p = world.get(e, Position);
-    const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-    const body = new Set(translatedCells(terrain, footprint.blocked, ax, ay));
-    const door = footprint.door;
-    if (door !== undefined) {
-      const doorX = ax + footprintCellDx(ay, door);
-      if (terrain.inBounds(doorX, ay + door.dy)) {
-        const doorNode = terrain.nodeAt(doorX, ay + door.dy);
-        doors.add(doorNode);
-        for (const cell of doorPassage(terrain, body, doorNode)) {
-          body.delete(cell);
-          openings.add(cell);
-        }
-      }
-    }
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    const { body, door, passage } = walkBodyOf(terrain, footprint, hx, hy);
+    if (door !== null) doors.add(door);
+    for (const cell of passage) openings.add(cell);
     for (const cell of body) blocked.add(cell);
   }
   for (const cell of doors) blocked.delete(cell);

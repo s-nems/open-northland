@@ -6,8 +6,8 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
 import { landscapeBlocks } from '../landscape/view.js';
-import { buildingBlockedLayer, doorPassage, heldBuildingTypesStand } from './building-blocked-cache.js';
-import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
+import { buildingBlockedLayer, heldBuildingTypesStand, walkBodyOf } from './building-blocked-cache.js';
+import { ANCHOR_ONLY, buildingFootprintOf, doorNodeOf } from './geometry.js';
 import { resourceBlockedLayer } from './resource-blocked-cache.js';
 import { vehicleBlockedLayer } from './vehicle-blocked-cache.js';
 
@@ -20,12 +20,10 @@ export function buildingDoorNodes(world: World, ctx: ContentContext, terrain: Te
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
     const { buildingType, tribe } = world.get(e, Building);
-    const door = buildingFootprintOf(ctx.content, buildingType, tribe)?.door;
-    if (door === undefined) continue;
     const p = world.get(e, Position);
-    const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-    const doorX = ax + footprintCellDx(ay, door);
-    if (terrain.inBounds(doorX, ay + door.dy)) doors.add(terrain.nodeAt(doorX, ay + door.dy));
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    const door = doorNodeOf(terrain, buildingFootprintOf(ctx.content, buildingType, tribe), hx, hy);
+    if (door !== null) doors.add(door);
   }
   return doors;
 }
@@ -103,15 +101,8 @@ export function walkBlockedBodyOf(
   if (b === undefined || p === undefined) return null;
   const footprint = buildingFootprintOf(ctx.content, b.buildingType, b.tribe);
   if (footprint === undefined || footprint.blocked.length === 0) return null;
-  const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-  const body = new Set<NodeId>(translatedCells(terrain, footprint.blocked, ax, ay));
-  const door = footprint.door;
-  if (door !== undefined) {
-    const doorX = ax + footprintCellDx(ay, door);
-    if (terrain.inBounds(doorX, ay + door.dy)) {
-      for (const cell of doorPassage(terrain, body, terrain.nodeAt(doorX, ay + door.dy))) body.delete(cell);
-    }
-  }
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  const { body } = walkBodyOf(terrain, footprint, hx, hy);
   return body.size === 0 ? null : body;
 }
 

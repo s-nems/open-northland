@@ -57,6 +57,21 @@ export function translatedCells(
   return out;
 }
 
+/** The door node of `footprint` anchored at `(anchorX, anchorY)`, or null when it has no door or the door
+ *  lies off the grid. */
+export function doorNodeOf(
+  terrain: TerrainGraph,
+  footprint: BuildingFootprint | undefined,
+  anchorX: number,
+  anchorY: number,
+): NodeId | null {
+  const door = footprint?.door;
+  if (door === undefined) return null;
+  const x = anchorX + footprintCellDx(anchorY, door);
+  const y = anchorY + door.dy;
+  return terrain.inBounds(x, y) ? terrain.nodeAt(x, y) : null;
+}
+
 /** The 1-cell footprint a footprint-less building presents to placement checks. */
 export const ANCHOR_ONLY: readonly FootprintCell[] = [{ dx: 0, dy: 0 }];
 
