@@ -21,7 +21,7 @@ import { worldBatched } from '../world-batcher.js';
 import { cartDriveLook } from './cart-drive.js';
 import { settlerPalette } from './character-layers.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
-import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
+import { drawPlaceholder, placeholderBounds } from './placeholder.js';
 import {
   createPooled,
   type PalettedPooledEntity,
@@ -478,14 +478,12 @@ export class LayerBinder {
     }
     if (pe.placeholder === undefined) {
       pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
-      if (pe.kind === 'projectile') pe.placeholder.position.y = -PROJECTILE_FLIGHT_HEIGHT;
       pe.container.addChild(pe.placeholder);
     }
     pe.placeholder.visible = true;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight);
     if (pe.placeholder.tint !== tint) pe.placeholder.tint = tint;
-    // Rotation is about the graphic's own origin, so the flight-height offset above is not rotated with
-    // it: the arrow stays level over its ground anchor and only aims.
+    // The arrow's flight height rides the item's lift, so rotating about its own origin only aims it.
     if (pe.kind === 'projectile') pe.placeholder.rotation = pe.motion.drawRotation;
     if (item.ghost === true) return;
     const box = placeholderBounds(pe.kind);

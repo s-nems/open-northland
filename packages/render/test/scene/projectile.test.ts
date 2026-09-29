@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BOW_LAUNCH_HEIGHT_PX,
   COVER_LAUNCH_HEIGHT_PX,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
+  SHOT_STRIKE_HEIGHT_PX,
 } from '../../src/data/scene/index.js';
 import { headingValency } from '../../src/data/sprites/index.js';
 import { buildScene, ONE, tileToScreen } from '../../src/index.js';
@@ -53,9 +55,12 @@ describe('buildScene - projectile arc & aim', () => {
     };
   }
 
-  it('lobs a projectile with a readable origin: peak lift at mid-chord, level tangent, depth untouched', () => {
+  /** A ground lob's height halfway between the bow and the strike height, plus the lob's `peak`. */
+  const midFlightLift = (peak: number) => (BOW_LAUNCH_HEIGHT_PX + SHOT_STRIKE_HEIGHT_PX) / 2 + peak;
+
+  it('lobs a projectile with a readable origin: peak lift at mid-chord, depth untouched', () => {
     // Origin (0,1) to target (2,1) is a 2-cell chord of 136 px, and the shot sits exactly halfway, so
-    // p = 0.5: the lift is the parabola's peak and the tangent slope is 0.
+    // p = 0.5: the lob stands at its peak and the tangent only follows the bow-to-torso drop.
     const shot = entity(1, 1, 1, projectileFrom(2, 0, 1));
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     // A control shot with no readable origin, and so no arc, on the same cell: the arc must ride the
@@ -66,8 +71,8 @@ describe('buildScene - projectile arc & aim', () => {
     const scene = buildScene(snapshotOf([shot, target, flatShot]), FLAT_3x2);
     const arrow = scene.find((d) => d.kind === 'projectile' && d.ref === 1);
     const chord = tileToScreen(2, 1).x - tileToScreen(0, 1).x;
-    expect(arrow?.lift).toBeCloseTo(chord * PROJECTILE_ARC_PEAK_FRACTION); // 4·peak·½·½ = peak at mid-flight
-    expect(arrow?.rotation).toBeCloseTo(0); // level at the apex
+    expect(arrow?.lift).toBeCloseTo(midFlightLift(chord * PROJECTILE_ARC_PEAK_FRACTION)); // 4·peak·½·½ = peak
+    expect(arrow?.rotation).toBeCloseTo(Math.atan2(BOW_LAUNCH_HEIGHT_PX - SHOT_STRIKE_HEIGHT_PX, chord));
     const flat = scene.find((d) => d.kind === 'projectile' && d.ref === 4);
     expect(arrow?.depth).toBe(flat?.depth);
   });
@@ -80,7 +85,19 @@ describe('buildScene - projectile arc & aim', () => {
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
     const chord = tileToScreen(12, 1).x - tileToScreen(0, 1).x;
     expect(chord * PROJECTILE_ARC_PEAK_FRACTION).toBeGreaterThan(PROJECTILE_ARC_PEAK_MAX_PX); // the cap really binds
-    expect(scene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(PROJECTILE_ARC_PEAK_MAX_PX);
+    expect(scene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(
+      midFlightLift(PROJECTILE_ARC_PEAK_MAX_PX),
+    );
+  });
+
+  it('leaves the bow at hand height and comes down at the torso, never at the feet', () => {
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const liftAt = (x: number) =>
+      buildScene(snapshotOf([entity(1, x, 1, projectileFrom(2, 0, 1)), target]), FLAT_3x2).find(
+        (d) => d.kind === 'projectile',
+      )?.lift;
+    expect(liftAt(0)).toBeCloseTo(BOW_LAUNCH_HEIGHT_PX);
+    expect(liftAt(2)).toBeCloseTo(SHOT_STRIKE_HEIGHT_PX);
   });
 
   /** The same payload, loosed from building `cover`'s gallery instead of open ground. */
@@ -96,8 +113,8 @@ describe('buildScene - projectile arc & aim', () => {
 
   it('drops a garrison shot down the gallery height: full at the bow, nearly spent near the mark', () => {
     // Over the same 2-cell chord as the lob above: a shot still at the tower (p = 0) hangs at the
-    // gallery's full height, where the ground lob reads 0, and one at (1.8, 1) (p = 0.9) has fallen to
-    // h·(1−p²) of it.
+    // gallery's full height, and one at (1.8, 1) (p = 0.9) has fallen to (h−s)·(1−p²) over the strike
+    // height s.
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const bowScene = buildScene(
       snapshotOf([entity(1, 0, 1, coveredProjectileFrom(2, 0, 1, 9)), target]),
@@ -109,7 +126,7 @@ describe('buildScene - projectile arc & aim', () => {
       snapshotOf([entity(1, 1.8, 1, coveredProjectileFrom(2, 0, 1, 9)), target]),
       FLAT_3x2,
     );
-    const spent = COVER_LAUNCH_HEIGHT_PX * (1 - 0.9 ** 2);
+    const spent = SHOT_STRIKE_HEIGHT_PX + (COVER_LAUNCH_HEIGHT_PX - SHOT_STRIKE_HEIGHT_PX) * (1 - 0.9 ** 2);
     expect(nearScene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(spent);
   });
 
@@ -168,7 +185,7 @@ describe('buildScene - projectile arc & aim', () => {
     };
   }
 
-  it('flies a ground lob with its nose tangent: up off the bow, level at the peak, down into the mark', () => {
+  it('flies a ground lob with its nose tangent: up off the bow, near level at the peak, down into the mark', () => {
     // A 6-cell eastbound chord, sampled at a tenth, a half and nine tenths flown; the sheet's east frame
     // is valency 8, its neighbours above and below 10 and 6.
     const target = entity(2, 6, 1, { Settler: { tribe: 0 } });
@@ -180,15 +197,13 @@ describe('buildScene - projectile arc & aim', () => {
     const apex = drawAt(3);
     const falling = drawAt(5.4);
     expect(rising?.rotation ?? 0).toBeLessThan(0);
-    expect(apex?.rotation).toBeCloseTo(0);
     expect(falling?.rotation ?? 0).toBeGreaterThan(0);
-    expect(falling?.rotation).toBeCloseTo(-(rising?.rotation ?? 0));
     expect(headingValency(rising?.rotation ?? 0, 32)).toBe(10);
     expect(headingValency(apex?.rotation ?? 0, 32)).toBe(8);
     expect(headingValency(falling?.rotation ?? 0, 32)).toBe(6);
-    expect(rising?.lift ?? 0).toBeGreaterThan(0);
+    expect(rising?.lift ?? 0).toBeGreaterThan(BOW_LAUNCH_HEIGHT_PX);
     expect(apex?.lift ?? 0).toBeGreaterThan(rising?.lift ?? 0);
-    expect(falling?.lift).toBeCloseTo(rising?.lift ?? 0);
+    expect(falling?.lift ?? 0).toBeGreaterThan(SHOT_STRIKE_HEIGHT_PX);
   });
 
   it('keeps a multi-row diagonal on one projected chord instead of following the stagger wave', () => {

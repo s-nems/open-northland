@@ -43,10 +43,6 @@ const KIND_COLOURS: Record<BoxKind, number> = {
 const FOOTPRINT_HALF_W = 9;
 const FOOTPRINT_HALF_H = 5;
 
-/** How high (world px) above its ground anchor the arrow flies - roughly a settler's torso, so a shot
- *  crosses between fighters instead of skimming their feet. A drawn-look approximation. */
-export const PROJECTILE_FLIGHT_HEIGHT = 14;
-
 /** Paint {@link ARROW}, rotated by the pool to the flight heading. */
 function drawArrow(g: Graphics): Graphics {
   const { shaft, head, fletching } = ARROW;

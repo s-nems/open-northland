@@ -291,15 +291,21 @@ describe('SpritePool - a projectile turns between tick anchors', () => {
     pool.reconcile({ ...poolFrame(snapshotOf([arcingProjectile(1, 0)]), FRAMES_EVERYTHING), tick: 0 });
     const launchRotation = firstPlaceholderRotation(layer);
     expect(launchRotation).toBeLessThan(0); // the first half of the lob points uphill
+    const apexLayer = new Container();
+    new SpritePool(apexLayer, new TextureCache(), undefined).reconcile({
+      ...poolFrame(snapshotOf([arcingProjectile(1, 1)]), FRAMES_EVERYTHING),
+      tick: 0,
+    });
+    const apexRotation = firstPlaceholderRotation(apexLayer);
 
     pool.reconcile({
       ...poolFrame(snapshotOf([arcingProjectile(1, 1)]), FRAMES_EVERYTHING),
       tick: 1,
       alpha: 0.5,
     });
-    // The tick-1 tangent is level at the apex; midway through the visual tick it must be halfway there,
-    // rather than snapping level while its position and lift are still interpolating.
-    expect(firstPlaceholderRotation(layer)).toBeCloseTo(launchRotation / 2);
+    // Midway through the visual tick the angle must be halfway to the apex tangent, rather than snapping
+    // to it while its position and lift are still interpolating.
+    expect(firstPlaceholderRotation(layer)).toBeCloseTo((launchRotation + apexRotation) / 2);
   });
 });
 

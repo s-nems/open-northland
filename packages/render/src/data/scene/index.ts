@@ -14,9 +14,11 @@ export type { InHouseProgramLookup } from './in-house.js';
 export { type PalisadeLayout, palisadeLayoutOf } from './palisade-connections.js';
 export { palisadeStaggerX } from './palisade-stagger.js';
 export {
+  BOW_LAUNCH_HEIGHT_PX,
   COVER_LAUNCH_HEIGHT_PX,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
+  SHOT_STRIKE_HEIGHT_PX,
 } from './projectile-arc.js';
 export {
   readSiegeShot,

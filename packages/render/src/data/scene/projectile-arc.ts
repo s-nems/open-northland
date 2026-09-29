@@ -23,6 +23,18 @@ export const PROJECTILE_ARC_PEAK_MAX_PX = 56;
  */
 export const COVER_LAUNCH_HEIGHT_PX = 140;
 
+/**
+ * The height (screen px) a ground shot leaves the bow at: the archer's raised bow hand, measured on the
+ * drawn archer's release frames. A drawn-look approximation.
+ */
+export const BOW_LAUNCH_HEIGHT_PX = 26;
+
+/**
+ * The height (screen px) a shot comes down at over its aim: a standing settler's torso, so an arrow
+ * strikes the body instead of the feet. A drawn-look approximation.
+ */
+export const SHOT_STRIKE_HEIGHT_PX = 16;
+
 /** Height above the ground in screen px, riding the lift draw channel and never the depth key, plus the
  *  arrow's rotation in radians, tangent to the arc. */
 export interface ProjectileArc {
@@ -47,7 +59,7 @@ interface ArcSample {
  * staggered raster's row-parity triangle wave to a straight diagonal shot.
  *
  * Without a readable `origin`, or on a degenerate chord, the arrow points straight at the aim and flies
- * flat from its ordinarily projected current point.
+ * flat at the strike height from its ordinarily projected current point.
  */
 export function projectileArc(
   current: { x: number; y: number },
@@ -60,7 +72,7 @@ export function projectileArc(
   if (origin === null) {
     return {
       ...currentScreen,
-      lift: 0,
+      lift: SHOT_STRIKE_HEIGHT_PX,
       rotation: Math.atan2(aimScreen.y - currentScreen.y, aimScreen.x - currentScreen.x),
     };
   }
@@ -68,7 +80,7 @@ export function projectileArc(
   const mapDx = aim.x - origin.x;
   const mapDy = aim.y - origin.y;
   const mapLengthSq = mapDx * mapDx + mapDy * mapDy;
-  if (mapLengthSq === 0) return { ...currentScreen, lift: 0, rotation: 0 };
+  if (mapLengthSq === 0) return { ...currentScreen, lift: SHOT_STRIKE_HEIGHT_PX, rotation: 0 };
 
   // Orthogonal projection tolerates fixed-point rounding that puts an intermediate sim anchor a hair
   // off its ideal line without letting that error bend the displayed chord.
@@ -77,7 +89,7 @@ export function projectileArc(
   const screenDx = aimScreen.x - originScreen.x;
   const screenDy = aimScreen.y - originScreen.y;
   const chord = Math.hypot(screenDx, screenDy);
-  if (chord === 0) return { ...currentScreen, lift: 0, rotation: 0 };
+  if (chord === 0) return { ...currentScreen, lift: SHOT_STRIKE_HEIGHT_PX, rotation: 0 };
 
   const arc = launchHeight > 0 ? coverFall(launchHeight, p) : groundLob(chord, p);
   return {
@@ -88,14 +100,20 @@ export function projectileArc(
   };
 }
 
-/** A shot loosed at ground level: the symmetric lob `4·peak·p·(1−p)`, zero at the bow and at the impact. */
+/** A shot loosed from the bow: the lob `4·peak·p·(1−p)` over the straight line from the bow's height
+ *  down to the strike height. */
 function groundLob(chord: number, p: number): ArcSample {
   const peak = Math.min(chord * PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX);
-  return { height: 4 * peak * p * (1 - p), rise: 4 * peak * (1 - 2 * p) };
+  const drop = SHOT_STRIKE_HEIGHT_PX - BOW_LAUNCH_HEIGHT_PX;
+  return {
+    height: BOW_LAUNCH_HEIGHT_PX + drop * p + 4 * peak * p * (1 - p),
+    rise: drop + 4 * peak * (1 - 2 * p),
+  };
 }
 
-/** A shot loosed from a height: `h·(1−p²)`, a free fall from `launchHeight` to the ground at the mark.
- *  It leaves level and steepens as it drops, so a garrison's arrows rain down on the attackers. */
+/** A shot loosed from a height: `(h−s)·(1−p²)` over the strike height `s`, a free fall from `launchHeight`
+ *  to the mark. It leaves level and steepens as it drops, so a garrison's arrows rain down on the attackers. */
 function coverFall(launchHeight: number, p: number): ArcSample {
-  return { height: launchHeight * (1 - p * p), rise: -2 * launchHeight * p };
+  const fall = launchHeight - SHOT_STRIKE_HEIGHT_PX;
+  return { height: SHOT_STRIKE_HEIGHT_PX + fall * (1 - p * p), rise: -2 * fall * p };
 }
