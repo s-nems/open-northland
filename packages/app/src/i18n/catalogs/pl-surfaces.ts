@@ -71,8 +71,6 @@ export const plSurfaces = {
       controlHeader: 'Sterowanie',
       playerSlotLabel: 'Gracz {n}',
       freeSlot: 'Wolny slot',
-      yourSub: 'tu siedzisz',
-      scenarioSub: 'przeciwnik scenariusza',
       human: 'Człowiek',
       scenarioControl: 'SI - zablokowany',
       vacantComputer: 'Komputer',
@@ -97,7 +95,7 @@ export const plSurfaces = {
       teamColour: 'Kolor drużyny',
       teamColourLocked: 'ta mapa ma stałe kolory',
       tribe: 'Nacja',
-      tribeRecommended: 'Zalecana przez mapę',
+      tribeRecommended: 'ustawienia mapy',
       tribeMapChoice: 'Mapa zaleca: {tribe}',
       tribeTitle:
         'Nacja, którą gra to miejsce: jego osadnicy i budynki należą do tego ludu. Mapę zaprojektowano pod nację zalecaną.',

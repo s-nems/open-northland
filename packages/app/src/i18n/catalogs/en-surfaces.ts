@@ -72,8 +72,6 @@ export const enSurfaces = {
       controlHeader: 'Control',
       playerSlotLabel: 'Player {n}',
       freeSlot: 'Open slot',
-      yourSub: 'you sit here',
-      scenarioSub: 'scenario opponent',
       human: 'Human',
       scenarioControl: 'AI - locked',
       vacantComputer: 'Computer',
@@ -98,7 +96,7 @@ export const enSurfaces = {
       teamColour: 'Team colour',
       teamColourLocked: 'this map fixes its colours',
       tribe: 'Civilization',
-      tribeRecommended: 'Recommended by the map',
+      tribeRecommended: 'map default',
       tribeMapChoice: 'The map recommends {tribe}',
       tribeTitle:
         'The civilization this seat plays: its settlers and buildings take that people. The map was designed for the recommended one.',

@@ -61,10 +61,10 @@
   grid-template-columns:
     calc(var(--u) * 56)
     minmax(0, 1fr)
-    calc(var(--u) * 330)
-    calc(var(--u) * 340)
-    calc(var(--u) * 200);
-  gap: calc(var(--u) * 24);
+    calc(var(--u) * 66)
+    calc(var(--u) * 290)
+    calc(var(--u) * 150);
+  gap: calc(var(--u) * 18);
   align-items: center;
 }
 
@@ -156,6 +156,10 @@
   color: var(--text-primary);
 }
 
+.main-menu__lobby-sub:empty {
+  display: none;
+}
+
 .main-menu__lobby-sub {
   font:
     400 calc(var(--u) * 20) / 1 "Alegreya Sans",
@@ -179,11 +183,7 @@
   all: unset;
   box-sizing: border-box;
   display: flex;
-  align-items: center;
-  gap: calc(var(--u) * 12);
-  width: 100%;
-  min-width: 0;
-  padding: calc(var(--u) * 5) calc(var(--u) * 12) calc(var(--u) * 5) calc(var(--u) * 5);
+  padding: calc(var(--u) * 3);
   border: 2px solid rgb(var(--accent-rgb) / 0.35);
   border-radius: 6px;
   background: rgba(12, 22, 34, 0.6);
@@ -192,7 +192,6 @@
     border-color 150ms ease-out,
     background 150ms ease-out;
 }
-
 .lobby-tribe__button:hover,
 .lobby-tribe__button[aria-expanded="true"] {
   border-color: rgb(var(--accent-rgb) / 0.75);
@@ -234,13 +233,11 @@
 }
 
 .lobby-tribe__caption {
-  flex: 1;
   display: flex;
-  align-items: center;
-  gap: calc(var(--u) * 8);
+  flex-direction: column;
+  gap: calc(var(--u) * 5);
   min-width: 0;
 }
-
 .lobby-tribe__name {
   font:
     700 calc(var(--u) * 24) / 1.1 "Alegreya Sans",
@@ -252,24 +249,23 @@
   white-space: nowrap;
 }
 
+.lobby-tribe__note {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+  font:
+    400 calc(var(--u) * 16) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: #e8c46a;
+  white-space: nowrap;
+}
+
 .lobby-tribe__star {
   flex: none;
-  width: calc(var(--u) * 20);
-  height: calc(var(--u) * 20);
-  fill: #e8c46a;
-}
-
-.lobby-tribe__caret {
-  flex: none;
-  width: 0;
-  height: 0;
-  border-left: calc(var(--u) * 7) solid transparent;
-  border-right: calc(var(--u) * 7) solid transparent;
-  border-top: calc(var(--u) * 8) solid rgb(var(--accent-rgb) / 0.9);
-}
-
-.lobby-tribe__button:disabled .lobby-tribe__caret {
-  visibility: hidden;
+  width: calc(var(--u) * 15);
+  height: calc(var(--u) * 15);
+  fill: currentColor;
 }
 
 /* The opened list sits in the top layer; the picker places it under (or above) its button. */
@@ -322,25 +318,16 @@
   color: var(--text-primary);
 }
 
-.main-menu__lobby-tribe-fixed {
-  padding-left: calc(var(--u) * 12);
-  font:
-    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  color: rgba(143, 184, 173, 0.75);
-}
-
 /* Control cell states: your static "Human", a locked scenario seat, or the vacant-mode segment. */
 .main-menu__lobby-human,
 .main-menu__lobby-locked {
   box-sizing: border-box;
   text-align: center;
-  padding: calc(var(--u) * 12) 0;
+  padding: calc(var(--u) * 10) 0;
   border: 2px solid rgb(var(--accent-rgb) / 0.5);
   border-radius: 6px;
   font:
-    500 calc(var(--u) * 23) / 1 "Alegreya Sans",
+    500 calc(var(--u) * 20) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
   color: var(--accent-bright);
@@ -354,8 +341,8 @@
 .main-menu__lobby-vacant .main-menu__seg-btn {
   flex: 1;
   text-align: center;
-  padding: calc(var(--u) * 12) calc(var(--u) * 8);
-  font-size: calc(var(--u) * 22);
+  padding: calc(var(--u) * 10) calc(var(--u) * 4);
+  font-size: calc(var(--u) * 19);
 }
 
 .main-menu__lobby-sit {
@@ -364,11 +351,11 @@
   cursor: var(--cursor-pointer, pointer);
   width: 100%;
   text-align: center;
-  padding: calc(var(--u) * 12) 0;
+  padding: calc(var(--u) * 10) 0;
   border: 2px dashed rgb(var(--accent-rgb) / 0.35);
   border-radius: 6px;
   font:
-    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
+    500 calc(var(--u) * 19) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
   color: var(--text-body);

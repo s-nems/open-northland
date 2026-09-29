@@ -38,23 +38,21 @@ function emblem(tribe: number): HTMLElement {
   return box;
 }
 
-/** The civilization's name, starred when it is the map's own. */
-function caption(): { root: HTMLElement; set(tribe: number, authored: number): void } {
+/** A list entry's name, over a small starred line on the map's own civilization. */
+function caption(tribe: number, authored: number): HTMLElement {
   const root = node('span', 'lobby-tribe__caption');
-  const name = node('span', 'lobby-tribe__name');
-  root.append(name);
-  return {
-    root,
-    set(tribe, authored) {
-      name.textContent = tribeName(tribe);
-      root.replaceChildren(name, ...(tribe === authored ? [star()] : []));
-    },
-  };
+  root.append(node('span', 'lobby-tribe__name', tribeName(tribe)));
+  if (tribe === authored) {
+    const note = node('span', 'lobby-tribe__note');
+    note.append(star(), messages().mainMenu.lobby.tribeRecommended);
+    root.append(note);
+  }
+  return root;
 }
 
 /**
- * A seat's civilization picker, shared by the local lobby and a network room: a button showing the
- * chosen civilization, opening a list of all of them. The map's own is starred as recommended.
+ * A seat's civilization picker, shared by the local lobby and a network room: the chosen
+ * civilization's icon, opening a named list of all of them with the map's own starred.
  */
 export function tribePicker(authored: number, change: (tribe: number) => void, className = '') {
   const copy = messages().mainMenu.lobby;
@@ -64,12 +62,9 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
   button.type = 'button';
   button.setAttribute('aria-haspopup', 'listbox');
   button.setAttribute('aria-expanded', 'false');
-  const shown = caption();
-  const caret = node('span', 'lobby-tribe__caret');
-  caret.setAttribute('aria-hidden', 'true');
   let current = authored;
   let buttonEmblem = emblem(authored);
-  button.append(buttonEmblem, shown.root, caret);
+  button.append(buttonEmblem);
 
   const menu = node('div', 'lobby-tribe__menu');
   menu.popover = 'auto';
@@ -80,9 +75,7 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
     option.type = 'button';
     option.setAttribute('role', 'option');
     option.dataset.tribe = String(tribe);
-    const text = caption();
-    text.set(tribe, authored);
-    option.append(emblem(tribe), text.root);
+    option.append(emblem(tribe), caption(tribe, authored));
     option.addEventListener('click', () => {
       menu.hidePopover();
       if (tribe !== current) change(tribe);
@@ -102,7 +95,6 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
         : anchor.top - MENU_GAP_PX - height;
     menu.style.top = `${Math.max(MENU_GAP_PX, top)}px`;
     menu.style.left = `${anchor.left}px`;
-    menu.style.minWidth = `${anchor.width}px`;
   };
   button.addEventListener('click', () => menu.togglePopover());
   menu.addEventListener('toggle', (event) => {
@@ -141,13 +133,15 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
         buttonEmblem = next;
       }
       current = tribe;
-      shown.set(tribe, authored);
       const offMap = tribe !== authored;
       root.classList.toggle('is-off-map', offMap);
-      // Another pick names the map's own only in the tooltip, so the row stays one line.
-      button.title = offMap
-        ? `${formatMessage(copy.tribeMapChoice, { tribe: tribeName(authored) })}. ${copy.tribeTitle}`
-        : copy.tribeTitle;
+      const name = tribeName(tribe);
+      button.setAttribute('aria-label', `${copy.tribe}: ${name}`);
+      button.title = `${
+        offMap
+          ? `${name}. ${formatMessage(copy.tribeMapChoice, { tribe: tribeName(authored) })}.`
+          : `${name} (${copy.tribeRecommended})`
+      }\n${copy.tribeTitle}`;
       button.disabled = disabled;
       if (disabled && menu.matches(':popover-open')) menu.hidePopover();
       for (const option of options) {

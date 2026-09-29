@@ -96,14 +96,9 @@ export function localSeatElements(
     return control.root;
   };
 
-  // A monster seat keeps its people, so its cell only names them.
+  // A monster seat keeps its people, named on its detail line instead.
   const tribeCell = (row: LobbySlotRow): HTMLElement => {
-    if (!row.offersTribe) {
-      const cell = document.createElement('div');
-      cell.className = 'main-menu__lobby-tribe-fixed';
-      cell.textContent = tribeName(row.tribe);
-      return cell;
-    }
+    if (!row.offersTribe) return document.createElement('div');
     const picker = tribePicker(row.slot.tribeId, (tribe) => actions.pickTribe(row.slot.player, tribe));
     picker.update(row.tribe, false);
     picker.button.dataset.focus = `tribe:${row.slot.player}`;
@@ -116,14 +111,13 @@ export function localSeatElements(
       (row.kind === 'open'
         ? lobby.freeSlot
         : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
+    // Your seat and a scenario seat say what they are in the control cell, so they carry no detail line.
     const subText =
-      row.kind === 'yours'
-        ? lobby.yourSub
-        : row.kind === 'scenario'
-          ? lobby.scenarioSub
-          : { ai: lobby.vacantComputerSub, idle: lobby.vacantIdleSub, absent: lobby.vacantAbsentSub }[
-              row.vacantMode
-            ];
+      row.kind === 'yours' || row.kind === 'scenario'
+        ? ''
+        : { ai: lobby.vacantComputerSub, idle: lobby.vacantIdleSub, absent: lobby.vacantAbsentSub }[
+            row.vacantMode
+          ];
 
     const action = document.createElement('div');
     action.className = 'main-menu__lobby-action';
@@ -147,7 +141,8 @@ export function localSeatElements(
       beforeLabel: [chipButton(row)],
       controls: [tribeCell(row), controlCell(row), action],
     });
-    seat.update(title, subText, row.kind === 'yours');
+    const detail = row.offersTribe ? subText : [tribeName(row.tribe), subText].filter(Boolean).join(' · ');
+    seat.update(title, detail, row.kind === 'yours');
     seat.root.classList.toggle('is-scenario', row.kind === 'scenario');
     return seat.root;
   };
