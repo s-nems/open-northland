@@ -13,6 +13,7 @@ import {
   Stance,
   setDiplomacyStance,
   TrainingOrder,
+  WaveMarch,
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -221,11 +222,15 @@ function gatheringAt(sim: Simulation, commands: readonly Command[], rally: { x: 
   return walksInto(sim, commands, rally, holdRadius).length;
 }
 
-/** The men `commands` send in on `target` - each onto his own spot in the ring around its door. */
+/** The men `commands` send in on `target`: each onto his own spot in the ring around its door, or out
+ *  on the first leg of the wave marching on it. */
 function assaulting(sim: Simulation, commands: readonly Command[], target: Entity): Entity[] {
   const terrain = terrainOf(sim);
   const door = terrain.coordsOf(interactionCell(sim.world, ctxOf(sim), terrain, target));
-  return walksInto(sim, commands, door, ASSAULT_RING_RADIUS_NODES);
+  const march = sim.world.tryGet(buildingOfType(sim, BARRACKS_TYPE, SEAT), WaveMarch);
+  const wave = march?.target === target ? new Set(march.men) : new Set<Entity>();
+  const legs = walks(commands).flatMap((d) => (wave.has(d.entity) ? [d.entity] : []));
+  return [...new Set([...walksInto(sim, commands, door, ASSAULT_RING_RADIUS_NODES), ...legs])];
 }
 
 function stanceModes(commands: readonly Command[]): number[] {
@@ -786,9 +791,9 @@ describe('military module - the campaign', () => {
     );
     expect(seatBand(sim)).toHaveLength(ARMY_CAP_SOLDIERS);
     const wave = run(sim, PATIENT_SEED, WAVE_GATHER_TICKS);
-    expect(walks(wave)).toHaveLength(ARMY_CAP_SOLDIERS); // every man ordered out, past the door ring's spots
-    expect(gatheringAt(sim, wave, rally)).toBe(0);
-    expect(assaulting(sim, wave, foeHq).length).toBeGreaterThan(0);
+    expect(walks(wave)).toHaveLength(ARMY_CAP_SOLDIERS);
+    // Every man ordered out, none called in: the band at the door on its first leg, the rest onto the ring.
+    expect(assaulting(sim, wave, foeHq)).toHaveLength(ARMY_CAP_SOLDIERS);
     expect(sim.world.has(barracks, MusterPlan)).toBe(false);
   });
 

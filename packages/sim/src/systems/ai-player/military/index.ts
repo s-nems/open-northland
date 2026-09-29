@@ -13,6 +13,7 @@ import {
   towerPostOrders,
 } from './defence/index.js';
 
+import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
 import { outfitOrders } from './outfit.js';
 import { siegeCrewOrders } from './siege-crew.js';
@@ -33,6 +34,18 @@ export {
   threatWatchNodes,
   towerPostOrders,
 } from './defence/index.js';
+export {
+  CHARGE_ARMY_DIVISOR,
+  CHARGE_MIN_ENEMIES,
+  CHARGE_RADIUS_NODES,
+  LEG_NODES,
+  LEG_TIMEOUT_TICKS,
+  RANKS_BEHIND_CATAPULTS_NODES,
+  REGROUP_SLACK_NODES,
+  SIEGE_STANDOFF_NODES,
+  SIEGE_TOWER_RADIUS_NODES,
+  SIEGE_TOWER_STANDOFF_NODES,
+} from './march/index.js';
 export {
   ASSAULT_RING_RADIUS_NODES,
   RALLY_HOLD_RADIUS_NODES,
@@ -63,7 +76,8 @@ export {
  * towers take their garrison ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates
  * takes the rest of it, the catapults take their drivers, and the campaign gets what is left. A man the
  * campaign leaves waiting at the barracks, or a driver parked at home, is sent for his outfit; the errand
- * takes a driver off his catapult, which drafts another.
+ * takes a driver off his catapult, which drafts another. The men and catapults of a marching wave belong
+ * to its march ({@link marchingWave}) until it is spent.
  *
  * The home half runs with the module off too: the original's scripted handler, which the `HAI_Disable`
  * toggles do not reach, lists the soldiers, mans the towers and answers an attack (original behavior). The
@@ -81,16 +95,25 @@ function runMilitary(
   if (terrain === undefined) return []; // mapless sim: no ground to march over
   const owned = ownedBuildings(world, player);
   const army = takeCensus(world, ctx, player);
-  const posts = towerPostOrders(world, ctx, terrain, owned, army.ready);
-  const free = army.ready.filter((e) => !posts.claimed.has(e));
+  // A marching wave's men answer to it alone: no tower post, raid or catapult calls them home.
+  const wave = campaign ? marchingWave(world, ctx, player) : null;
+  const atHome = wave === null ? army.ready : army.ready.filter((e) => !wave.men.has(e));
+  const posts = towerPostOrders(world, ctx, terrain, owned, atHome);
+  const free = atHome.filter((e) => !posts.claimed.has(e));
   const raiders = seatRaiders(world, ctx, terrain, player);
   const raid = raidOnTheSettlement(world, ctx, terrain, owned, raiders);
   // A raid benches the campaign: it takes the same band the muster would have gathered.
   const marchable: readonly Entity[] = raid === null ? free : [];
-  const siege = campaign ? siegeCrewOrders(world, ctx, terrain, player, owned, marchable) : null;
+  const siege = campaign
+    ? siegeCrewOrders(world, ctx, terrain, player, owned, marchable, wave?.catapults ?? NONE_MARCHING)
+    : null;
   const field = siege === null ? marchable : marchable.filter((e) => !siege.drafted.has(e));
   const offensive = campaign
-    ? runOffensive(world, ctx, terrain, player, { army: field, awaitingWeapon: army.awaitingWeapon })
+    ? runOffensive(world, ctx, terrain, player, {
+        army: field,
+        awaitingWeapon: army.awaitingWeapon,
+        wave: wave === null ? [] : army.ready.filter((e) => wave.men.has(e)),
+      })
     : null;
   return [
     ...enlistOrders(world, ctx, player),
@@ -105,6 +128,8 @@ function runMilitary(
     ]),
   ];
 }
+
+const NONE_MARCHING: ReadonlySet<Entity> = new Set();
 
 export const militaryModule: AiPlayerModule = {
   id: 'military',

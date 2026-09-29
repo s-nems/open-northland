@@ -39,6 +39,11 @@ export interface Shooter {
   readonly reach: number;
 }
 
+/** A {@link Shooter} holding an enemy tower post, with the tower he shoots from. */
+export interface PostedShooter extends Shooter {
+  readonly tower: Entity;
+}
+
 /** The enemy's fire over the map, narrowed to the shooters a search can meet before it runs its test. */
 export interface EnemyFire {
   /** Whether a site anchored on `(x, y)`, its walls up to `span` nodes out from the anchor, stands inside
@@ -178,17 +183,18 @@ export function enemyPosts(
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
-): Shooter[] {
-  const posts: Shooter[] = [];
+): PostedShooter[] {
+  const posts: PostedShooter[] = [];
   for (const e of world.query(Garrison)) {
     const owner = world.tryGet(e, Owner)?.player;
     if (owner === undefined || owner === player || diplomacyStance(world, owner, player) !== 'enemy')
       continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0 || !isManningPost(world, ctx, e)) continue;
+    const tower = standsAtPost(world, e);
     const held = heldWeapon(world, ctx, e);
-    if (held === null || held.maxRange === 0) continue;
+    if (tower === null || held === null || held.maxRange === 0) continue;
     const at = terrain.coordsOf(entityNode(world, terrain, e));
-    posts.push({ x: at.x, y: at.y, reach: garrisonReach(held).maxRange });
+    posts.push({ tower, x: at.x, y: at.y, reach: garrisonReach(held).maxRange });
   }
   return posts;
 }

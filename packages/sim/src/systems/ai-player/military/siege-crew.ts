@@ -41,9 +41,9 @@ export const PARK_RING_MAX_NODES = 16;
  *  never touch and one enemy volley cannot catch both. */
 export const PARK_SPACING_NODES = 6;
 
-/** The longest drive toward a park beyond the goto's walk range: short enough that the target snap
+/** The longest drive toward a goal beyond the goto's walk range: short enough that the target snap
  *  cannot carry the goal past that range. */
-const PARK_HOP_NODES = VEHICLE_WALK_RANGE_NODES - VEHICLE_TARGET_SNAP_RADIUS;
+export const VEHICLE_HOP_NODES = VEHICLE_WALK_RANGE_NODES - VEHICLE_TARGET_SNAP_RADIUS;
 
 /** A catapult and the man in its commander seat, aboard or still walking to its door. */
 export interface CrewedCatapult {
@@ -89,8 +89,9 @@ function crewedOf(world: World, catapults: readonly Entity[]): CrewedCatapult[] 
 }
 
 /**
- * One decision for the seat's catapults: a driver for each one without, taken from `free` (the men no
- * tower, raid or fight holds), then the idle ones parked at home ({@link parkingOrders}).
+ * One decision for the seat's catapults at home: a driver for each one without, taken from `free` (the men
+ * no tower, raid or fight holds), then the idle ones parked ({@link parkingOrders}). The catapults of a
+ * marching wave (`marching`) are its own: one that loses its driver on the way stays where it stands.
  */
 export function siegeCrewOrders(
   world: World,
@@ -99,8 +100,9 @@ export function siegeCrewOrders(
   player: number,
   owned: readonly Entity[],
   free: readonly Entity[],
+  marching: ReadonlySet<Entity>,
 ): SiegeCrewDecision {
-  const catapults = seatCatapults(world, ctx, player);
+  const catapults = seatCatapults(world, ctx, player).filter((e) => !marching.has(e));
   if (catapults.length === 0) return NO_CREW;
   const draft = draftDrivers(world, ctx, catapults, free);
   const park = parkingOrders(world, ctx, terrain, player, owned, crewedOf(world, catapults));
@@ -311,5 +313,5 @@ function parkGoal(
     if (nearest === null || manhattanOf(at, door) < manhattanOf(at, nearest)) nearest = door;
   }
   if (nearest === null || hexDistance(at, nearest) <= VEHICLE_WALK_RANGE_NODES) return null;
-  return towardNode(at, nearest, PARK_HOP_NODES);
+  return towardNode(at, nearest, VEHICLE_HOP_NODES);
 }

@@ -1,5 +1,6 @@
 import { type MapAiModule, MapAiModule as MapAiModuleSchema } from '@open-northland/data';
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
+import type { HalfCellNode } from '../nav/halfcell.js';
 
 /**
  * The strategic AI player's module ids, one per concern the AI runs for a seat: the map data's
@@ -54,6 +55,31 @@ export interface MusterPlanState {
  * leaves it in place, window and all.
  */
 export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan', 'players');
+
+export interface WaveMarchState {
+  /** The objective the wave was routed to; a new campaign target routes it again. */
+  target: Entity;
+  /** Where the route starts: the direction of the first leg. */
+  origin: HalfCellNode;
+  /** The leg ends along the route, one leg apart, the last one short of the objective. */
+  waypoints: HalfCellNode[];
+  /** The index of the leg end the wave is ordered to. */
+  leg: number;
+  /** The tick the current leg was ordered. */
+  legSince: number;
+  /** Whether the wave has closed up on its last leg end and now besieges or assaults. */
+  arrived: boolean;
+  /** The men and catapults the wave marched with, ascending id; the dead drop out at the next leg. */
+  men: Entity[];
+  catapults: Entity[];
+}
+
+/**
+ * The wave a seat's barracks has launched, marching in legs toward its objective, held on the muster
+ * barracks beside its {@link MusterPlan}. Minted at the launch, removed when the wave is spent or the
+ * campaign loses its objective (`military/march.ts`).
+ */
+export const WaveMarch = defineComponent<WaveMarchState>('WaveMarch', 'players');
 
 export interface StalledPlacementsState {
   /** The first tick each entry, by its index in the seat's build order, searches a spot again after a

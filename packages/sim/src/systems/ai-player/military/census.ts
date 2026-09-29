@@ -110,10 +110,15 @@ export function strongestEnemyStrength(world: World, ctx: SystemContext, player:
 export function weaponMix(world: World, ctx: SystemContext, units: readonly Entity[]): WeaponMix {
   let ranged = 0;
   for (const e of units) {
-    const weapon = fightingWeapon(world, ctx, e, world.get(e, Settler));
-    if (weapon !== null && isRangedWeapon(weapon)) ranged++;
+    if (isRangedFighter(world, ctx, e)) ranged++;
   }
   return { total: units.length, ranged, melee: units.length - ranged };
+}
+
+/** Whether `e` fights at range: the split {@link weaponMix} counts. */
+export function isRangedFighter(world: World, ctx: SystemContext, e: Entity): boolean {
+  const weapon = fightingWeapon(world, ctx, e, world.get(e, Settler));
+  return weapon !== null && isRangedWeapon(weapon);
 }
 
 /** The weapon class (`maintype`) a fighter goes in with, or null when he fights bare-handed. */
