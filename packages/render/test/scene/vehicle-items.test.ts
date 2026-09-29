@@ -197,4 +197,14 @@ describe('vehicle draw items', () => {
     const fogged = buildSpriteScene(snapshotOf([vehicle(1)]), { ghosts: ghost, fogVisible: () => false });
     expect(fogged).toEqual([expect.objectContaining({ ref: 1, ghost: true })]);
   });
+
+  it("colours a remembered vehicle by its owner's roster colour, as it drew live", () => {
+    const ROSTER_COLOUR = 5;
+    const playerColourOf = (player: number) => (player === PLAYER ? ROSTER_COLOUR : player);
+    const ghost = ghostSourceOf([{ ref: 1, kind: 'vehicle', tileX: 2, tileY: 2, player: PLAYER }]);
+    const live = buildSpriteScene(snapshotOf([vehicle(1)]), { playerColourOf });
+    const remembered = buildSpriteScene(snapshotOf([]), { ghosts: ghost, playerColourOf });
+    expect(live[0]?.player).toBe(ROSTER_COLOUR);
+    expect(remembered[0]?.player).toBe(ROSTER_COLOUR);
+  });
 });

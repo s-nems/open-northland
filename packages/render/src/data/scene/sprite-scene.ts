@@ -203,7 +203,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   };
 
   const emitted = emitEntities(snapshot, opts, collected, emit);
-  if (ghosts !== undefined) pushGhostItems(items, ghosts, viewport, elevation, liveVehicles);
+  if (ghosts !== undefined) pushGhostItems(items, ghosts, viewport, elevation, liveVehicles, playerColourOf);
   const liveRefs: LiveRefs =
     ghosts === undefined ? emitted : { has: (ref) => emitted.has(ref) || ghosts.has(ref) };
   // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.

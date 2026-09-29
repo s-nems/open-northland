@@ -219,8 +219,9 @@ const ghostCandidates: FogGhost[] = [];
 
 /**
  * Append the viewer's remembered statics under `viewport` (every one without it), each projected with
- * the same anchor, lift and depth formula as a live static so it occludes correctly at the fog
- * boundary. A ghost whose ref `drawnLive` holds is skipped: its entity is already on screen in sight.
+ * the same anchor, lift, depth formula and team colour as a live static so it occludes and reads the
+ * same at the fog boundary. A ghost whose ref `drawnLive` holds is skipped: its entity is already on
+ * screen in sight.
  */
 export function pushGhostItems(
   items: MutableSpriteDrawItem[],
@@ -228,6 +229,7 @@ export function pushGhostItems(
   viewport: Viewport | undefined,
   elevation: ElevationField | undefined,
   drawnLive: ReadonlySet<number> | undefined,
+  playerColourOf: ((player: number) => number) | undefined,
 ): void {
   ghostCandidates.length = 0;
   ghosts.within(viewport === undefined ? undefined : anchorTileBox(viewport), ghostCandidates);
@@ -246,6 +248,7 @@ export function pushGhostItems(
       ghost: true,
     };
     copyStaticFields(item, g);
+    if (playerColourOf !== undefined && item.player !== undefined) item.player = playerColourOf(item.player);
     if (lift !== 0) item.lift = lift;
     items.push(item);
   }
