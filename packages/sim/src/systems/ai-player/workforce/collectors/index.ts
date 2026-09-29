@@ -30,6 +30,7 @@ export {
   NODES_PER_CLEARING_GATHERER,
   OPENING_SITE_SHORTAGE_POSTS,
   OPERATORS_PER_EXTRA_GATHERER,
+  ROAD_SITE_SHORTAGE_POSTS,
   siteShortagePosts,
   type WantedGood,
   wantedCollectorGoods,

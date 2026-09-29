@@ -8,6 +8,7 @@ import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
 import { aiDecisionDue } from './cadence.js';
 import { militaryModule } from './military/index.js';
 import { populationModule } from './population.js';
+import { roadBuildModule } from './road-build.js';
 import { scoutModule } from './scout/index.js';
 import { workforceModule } from './workforce/index.js';
 
@@ -17,6 +18,7 @@ export * from './cadence.js';
 export * from './diplomacy.js';
 export * from './military/index.js';
 export * from './population.js';
+export * from './road-build.js';
 export * from './scout/index.js';
 export * from './workforce/index.js';
 
@@ -49,6 +51,8 @@ export interface AiPlayerModule {
 export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
   workforceModule(DEFAULT_BUILD_ORDER),
   buildOrderModule(DEFAULT_BUILD_ORDER),
+  // After the build order, so a road site never lands on the ground a building placed this decision takes.
+  roadBuildModule,
   scoutModule(DEFAULT_BUILD_ORDER),
   populationModule,
   militaryModule,

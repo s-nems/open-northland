@@ -25,6 +25,14 @@ interface SiteEntry {
   readonly stocked: boolean;
 }
 
+/** One of an owner's road sites, claimed or not. */
+export interface OwnedRoadSite {
+  readonly node: NodeId;
+  /** No builder has claimed it. */
+  readonly open: boolean;
+  readonly stocked: boolean;
+}
+
 interface RoadSiteIndex {
   readonly terrain: TerrainGraph;
   readonly feed: ChangeFeed;
@@ -35,7 +43,10 @@ interface RoadSiteIndex {
   readonly regionChanges: Map<number, number>;
   /** Bumped by a rebuild, which may move any region at once. */
   epoch: number;
+  readonly byOwner: Map<number, Map<Entity, OwnedRoadSite>>;
 }
+
+const NO_SITES: ReadonlyMap<Entity, OwnedRoadSite> = new Map();
 
 const indexes = new WeakMap<World, RoadSiteIndex>();
 
@@ -56,6 +67,7 @@ function indexOf(world: World, terrain: TerrainGraph): RoadSiteIndex {
       openByOwner: new Map(),
       regionChanges: new Map(),
       epoch: 0,
+      byOwner: new Map(),
     };
     indexes.set(world, index);
     rebuildIndex(world, index);
@@ -95,6 +107,15 @@ function countRegionChange(index: RoadSiteIndex, node: NodeId): void {
   regionChanges.set(key, (regionChanges.get(key) ?? 0) + 1);
 }
 
+/** Every road site `owner` holds, claimed or not, in no canonical order. Read-only. */
+export function ownedRoadSites(
+  world: World,
+  terrain: TerrainGraph,
+  owner: number,
+): ReadonlyMap<Entity, OwnedRoadSite> {
+  return indexOf(world, terrain).byOwner.get(owner) ?? NO_SITES;
+}
+
 /** `owner`'s unclaimed road sites, or every owner's for an unowned asker. Read-only. */
 export function openRoadSites(world: World, terrain: TerrainGraph, owner: number | undefined): OpenRoadSites {
   const { openByOwner } = indexOf(world, terrain);
@@ -124,6 +145,7 @@ function refreshEntry(world: World, index: RoadSiteIndex, e: Entity): void {
     index.entries.delete(e);
     if (index.byNode.get(held.node) === e) index.byNode.delete(held.node);
     tally(index, held, -1);
+    index.byOwner.get(held.owner)?.delete(e);
   }
   const site = world.tryGet(e, RoadSite);
   const p = site === undefined ? undefined : world.tryGet(e, Position);
@@ -141,6 +163,12 @@ function refreshEntry(world: World, index: RoadSiteIndex, e: Entity): void {
   index.entries.set(e, entry);
   index.byNode.set(entry.node, e);
   tally(index, entry, 1);
+  let owned = index.byOwner.get(entry.owner);
+  if (owned === undefined) {
+    owned = new Map();
+    index.byOwner.set(entry.owner, owned);
+  }
+  owned.set(e, { node: entry.node, open: entry.open, stocked: entry.stocked });
   if (held?.node === entry.node) return;
   if (held !== undefined) countRegionChange(index, held.node);
   countRegionChange(index, entry.node);
@@ -158,6 +186,7 @@ function rebuildIndex(world: World, index: RoadSiteIndex): void {
   index.byNode.clear();
   index.entries.clear();
   index.openByOwner.clear();
+  index.byOwner.clear();
   for (const e of world.canonicalQuery(RoadSite, Position)) refreshEntry(world, index, e);
 }
 
@@ -170,10 +199,16 @@ function verifyIndex(world: World): string[] {
     entries: new Map(),
     openByOwner: new Map(),
     regionChanges: new Map(),
+    byOwner: new Map(),
   };
   rebuildIndex(world, fresh);
   const out: string[] = [];
   if (fresh.entries.size !== index.entries.size) out.push('road site index diverges from the live sites');
+  for (const [owner, sites] of fresh.byOwner) {
+    if ((index.byOwner.get(owner)?.size ?? 0) !== sites.size) {
+      out.push(`road sites of owner ${owner} are indexed stale`);
+    }
+  }
   for (const [e, entry] of fresh.entries) {
     const held = index.entries.get(e);
     if (

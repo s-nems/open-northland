@@ -14,6 +14,8 @@ import type { SystemContext } from '../../../context.js';
 import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
+import { ownedRoadSites } from '../../../roads/site-index.js';
+import { roadPavingGood } from '../../../roads/sites.js';
 import {
   type BuildOrderEntry,
   collectorGoodsWanted,
@@ -93,6 +95,16 @@ export function siteShortagePosts(tick: number): number {
   if (tick < BUILDING_GOODS_GROW_FROM_TICKS) return 0;
   if (tick < BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS) return OPENING_SITE_SHORTAGE_POSTS;
   return sitePace(tick).sites;
+}
+
+/** The shortage posts the paving good gains while the seat has road sites pending (authored): a road
+ *  crew draws stone on top of the building sites, and without this post the stone fell to a few units
+ *  in a six-seat run with a full road backlog. */
+export const ROAD_SITE_SHORTAGE_POSTS = 1;
+
+function roadShortagePosts(world: World, ctx: SystemContext, player: number): number {
+  if (ctx.terrain === undefined) return 0;
+  return ownedRoadSites(world, ctx.terrain, player).size > 0 ? ROAD_SITE_SHORTAGE_POSTS : 0;
 }
 
 /** The target of a good with no {@link COLLECTOR_TARGET_BY_GOOD_ID} row and no reached collector entry. */
@@ -220,6 +232,7 @@ export function wantedCollectorGoods(
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }
   const phase = gamePhase(ctx.tick);
+  const roadGood = roadPavingGood(ctx.content);
   const wanted: WantedGood[] = [];
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
@@ -237,7 +250,9 @@ export function wantedCollectorGoods(
           Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER) +
           scheduled
         : Math.max(fixed + scheduled, entryCount);
-    const sitePosts = fixed === undefined ? 0 : siteShortagePosts(ctx.tick);
+    const sitePosts =
+      (fixed === undefined ? 0 : siteShortagePosts(ctx.tick)) +
+      (good.typeId === roadGood ? roadShortagePosts(world, ctx, player) : 0);
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
     // A building good's row stands whole before the reserve (authored): the standard one gatherer
     // each is what a seat of fifteen men keeps in its first minutes, its other men building.
@@ -263,7 +278,8 @@ export function wantedCollectorGoods(
  * The extra gatherers a good calls for while it runs short for the seat's sites (authored): one per unit
  * its surplus lies under the line the lack is measured to, rounded up, at most `mostExtra`: one per
  * {@link OPERATORS_PER_EXTRA_GATHERER} planned operators of the built workshops consuming it, the same
- * rate the target grows at, or the {@link siteShortagePosts} of a good the sites themselves drain. The
+ * rate the target grows at, or the {@link siteShortagePosts} of a good the sites themselves drain, plus
+ * the {@link ROAD_SITE_SHORTAGE_POSTS} of the paving good while road sites are pending. The
  * workshop eats the good faster than its gatherers bring it, and what lies on its shelf is not the
  * builders'. The posts are hired under one line and, while any is held, kept up to the next, so the stock
  * crossing one line does not hire and release a man every few decisions: short and comfort in the

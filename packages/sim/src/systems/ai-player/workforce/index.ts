@@ -37,6 +37,7 @@ import { flagGround, type TakenFlagNodes } from './flag-spots.js';
 import { claimArmyFloor, garrisonArms, trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, civilianCount, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
+import { allocateRoadCrew } from './road-crew.js';
 import {
   BUILDER_CAP,
   builderCap,
@@ -59,6 +60,13 @@ export {
 export { CRAFT_PLANS_BY_BUILDING_ID, CRAFT_PLANS_BY_JOINERY_ROLE } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export { builderJobOf } from './pool.js';
+export {
+  BACKLOG_ROAD_CREW,
+  ROAD_BACKLOG_RELEASE_SITES,
+  ROAD_BACKLOG_SITES,
+  ROAD_CREW,
+  roadCrewTarget,
+} from './road-crew.js';
 export {
   BUILDER_CAP,
   GROWN_SEAT_BUILDER_CAP,
@@ -97,7 +105,7 @@ function runWorkforce(
   const baseNode = anchorNodeOf(world, base);
   const farGround = baseNode === null ? 0 : farGroundExtras(world, ctx, owned, baseNode);
   const genericTarget = GENERIC_COLLECTOR_TARGET + clearing + farGround;
-  const { pool, collectorsByGood, genericCollectors, fishers, scouts } = classifyWorkforce(
+  const { pool, collectorsByGood, genericCollectors, fishers, scouts, roadsters } = classifyWorkforce(
     world,
     ctx,
     player,
@@ -123,7 +131,7 @@ function runWorkforce(
           builderJob,
           genericTarget,
         );
-  const essentials = [
+  const posted = [
     ...(ground === null
       ? []
       : allocateCollectors(
@@ -144,13 +152,20 @@ function runWorkforce(
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
     ...staffBuildings(world, ctx, seat, force, tally, 'min'),
+  ];
+  // The road crew comes out of the builder reserve, ahead of it, so a seat with road sites always has
+  // its roadster.
+  const roadCrew = allocateRoadCrew(world, ctx, player, roadsters, force, builderJob);
+  const essentials = [
+    ...posted,
+    ...roadCrew.commands,
     // Construction never starves; while a placement is stalled the reserve shrinks to its floor, so the
-    // clearing posts below get the men the missing sites would have had.
+    // clearing posts below get the men the missing sites would have had. The road crew is part of it.
     ...reserveBuilders(
       world,
       force,
       builderJob,
-      clearing > 0 ? STALLED_BUILDER_CAP : builderCap(civilians, ctx.tick),
+      Math.max(0, (clearing > 0 ? STALLED_BUILDER_CAP : builderCap(civilians, ctx.tick)) - roadCrew.crew),
       ctx,
     ),
   ];

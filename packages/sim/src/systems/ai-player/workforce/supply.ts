@@ -3,6 +3,8 @@ import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { ownedRoadSites } from '../../roads/site-index.js';
+import { roadConstructionBill } from '../../roads/sites.js';
 import { type SeatStock, seatStockOf } from '../../stores/index.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
@@ -132,9 +134,30 @@ function raiseTo(map: Map<number, number>, key: number, value: number): void {
 }
 
 /**
+ * Add what the seat's road sites still lack to `owed`: each unstocked one's whole bill. A finished site
+ * also paves its unclaimed neighbours, so this is an upper bound (authored): the gatherers it hires dig
+ * the stone the road run will draw next.
+ */
+function addRoadSiteShortfall(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owed: Map<number, number>,
+): void {
+  if (ctx.terrain === undefined) return;
+  let unstocked = 0;
+  for (const site of ownedRoadSites(world, ctx.terrain, player).values()) if (!site.stocked) unstocked++;
+  if (unstocked === 0) return;
+  for (const line of roadConstructionBill(ctx.content)) {
+    owed.set(line.goodType, (owed.get(line.goodType) ?? 0) + unstocked * line.amount);
+  }
+}
+
+/**
  * One seat's supply this decision: each managed good's surplus (its {@link SeatStock} units minus what
- * the sites still lack) against its {@link SupplyLines} in the decision's game phase. The stock is the
- * summary bar's figure, so the bot and the player read the same number. An unmanaged good is never short.
+ * the building and road sites still lack) against its {@link SupplyLines} in the decision's game phase.
+ * The stock is the summary bar's figure, so the bot and the player read the same number. An unmanaged
+ * good is never short.
  */
 export class SeatSupply {
   private consumers: ReadonlyMap<number, number> | undefined;
@@ -157,6 +180,7 @@ export class SeatSupply {
   ): SeatSupply {
     const lines = supplyLines(ctx.content, order, gamePhase(ctx.tick));
     const owed = sitesShortfalls(world, ctx, owned);
+    addRoadSiteShortfall(world, ctx, player, owed);
     const stock = seatStockOf(world, player);
     const surplus = new Map<number, number>();
     for (const good of lines.keys()) surplus.set(good, stock.units(good) - (owed.get(good) ?? 0));

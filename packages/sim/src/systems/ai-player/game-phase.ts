@@ -27,6 +27,10 @@ export const CORE_CREW_FROM_TICKS = minutesToTicks(30);
  *  minutes keep the standard three gatherers and every other man building. */
 export const BUILDING_GOODS_GROW_FROM_TICKS = minutesToTicks(10);
 
+/** From when the seat links its buildings by road (authored): once the opening's first houses stand and
+ *  the building goods' gatherer posts may grow to carry the road stone too. */
+export const ROADS_FROM_TICKS = BUILDING_GOODS_GROW_FROM_TICKS;
+
 /** From when a building good's shortage posts follow every site the clock keeps open (authored);
  *  between the growth clock and this one site's worth answers the drain, so a seat of fifteen men still
  *  keeps most of them building. */

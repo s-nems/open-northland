@@ -1,4 +1,4 @@
-import { Female, JobAssignment, Settler, TrainingOrder } from '../../../components/index.js';
+import { BuildMode, Female, JobAssignment, Settler, TrainingOrder } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -25,6 +25,9 @@ export interface Workforce {
   /** The flag fishers, kept at their water; the fisher module alone re-plants or retires them. */
   readonly fishers: Entity[];
   readonly scouts: Entity[];
+  /** The builders on a road run, whom the road crew alone posts ({@link allocateRoadCrew}); they rejoin
+   *  the pool when the run ends. */
+  readonly roadsters: Entity[];
 }
 
 /** The lowest builder-trade job in content, or null when the content has no builder. */
@@ -55,9 +58,9 @@ export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): b
 }
 
 /**
- * Classify the seat's adult men: employed workers, the collectors of each wanted good up to its target,
- * the generic collectors, the fishers and the scouts are recognized in place; everyone else lands in the
- * spare pool.
+ * Classify the seat's adult men: employed workers, builders on a road or wall run, the collectors of each
+ * wanted good up to its target, the generic collectors, the fishers and the scouts are recognized in
+ * place; everyone else lands in the spare pool.
  * A good's holders are ranked most experienced first on its `(job, good)` track, ascending id on ties,
  * before the target caps them, so an over-target good hands back its greenest gatherers.
  */
@@ -76,10 +79,16 @@ export function classifyWorkforce(
   const genericCollectors: Entity[] = [];
   const fishers: Entity[] = [];
   const scouts: Entity[] = [];
+  const roadsters: Entity[] = [];
   for (const e of ownedSettlers(world, player)) {
     if (!isAllocatableMan(world, ctx, e)) continue;
     const job = world.get(e, Settler).jobType;
     if (world.has(e, JobAssignment)) continue; // staffing a building - keep the post
+    const mode = world.tryGet(e, BuildMode)?.kind;
+    if (mode !== undefined) {
+      if (mode === 'roads') roadsters.push(e);
+      continue; // on a road or wall run - the run's end hands him back
+    }
     if (isScoutJob(ctx.content, job)) {
       scouts.push(e);
       continue;
@@ -120,7 +129,7 @@ export function classifyWorkforce(
     for (const e of holders) kept.add(e);
   }
   const pool = spares.filter((e) => !kept.has(e));
-  return { pool, collectorsByGood, genericCollectors, fishers, scouts };
+  return { pool, collectorsByGood, genericCollectors, fishers, scouts, roadsters };
 }
 
 /**
